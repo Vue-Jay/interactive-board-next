@@ -28,14 +28,48 @@ if ($oldOk -and $newOk -and $OldProjectRef -ceq $NewProjectRef) {
   throw "STOP: OLD and NEW project refs are identical. Never restore into production."
 }
 Write-Host ""
-foreach ($toolName in @('supabase', 'psql', 'pg_dump')) {
+# Supabase CLI can be run through npx without a global executable.
+$cli = Get-Command supabase -ErrorAction SilentlyContinue
+$npx = Get-Command npx -ErrorAction SilentlyContinue
+if ($null -ne $cli) {
+  Write-Host "  [OK] supabase CLI (global)" -ForegroundColor Green
+}
+elseif ($null -ne $npx) {
+  Write-Host "  [AVAILABLE VIA NPX] use npx --yes supabase <command>" -ForegroundColor Green
+  Write-Host "    This check does not download anything. The first npx execution may download CLI."
+}
+else {
+  Write-Host "  [MISSING] supabase CLI and npx" -ForegroundColor Yellow
+}
+$postgresBase = Join-Path $env:ProgramFiles 'PostgreSQL'
+foreach ($toolName in @('psql','pg_dump')) {
   $found = Get-Command $toolName -ErrorAction SilentlyContinue
   if ($null -ne $found) {
-    Write-Host "  [OK] Found $toolName" -ForegroundColor Green
+    Write-Host "  [OK] Found $toolName on PATH" -ForegroundColor Green
+    continue
+  }
+  $candidate = $null
+  if (Test-Path $postgresBase) {
+    $candidate = Get-ChildItem $postgresBase -Directory -ErrorAction SilentlyContinue |
+      Sort-Object -Property Name -Descending |
+      ForEach-Object { Join-Path $_.FullName ('bin\\' + $toolName + '.exe') } |
+      Where-Object { Test-Path $_ } |
+      Select-Object -First 1
+  }
+  if ($null -ne $candidate) {
+    Write-Host "  [FOUND OUTSIDE PATH] $toolName at $candidate" -ForegroundColor Yellow
+    Write-Host "    Add this PostgreSQL bin folder to PATH in your current PowerShell session."
   }
   else {
     Write-Host "  [MISSING] $toolName" -ForegroundColor Yellow
   }
+}
+$docker = Get-Command docker -ErrorAction SilentlyContinue
+if ($null -ne $docker) {
+  Write-Host "  [OK] Docker command exists (daemon not tested)" -ForegroundColor Green
+}
+else {
+  Write-Host "  [MISSING] Docker CLI (required by Supabase db dump)" -ForegroundColor Yellow
 }
 Write-Host ""
 Write-Host "Next: read docs/lectris-full-migration.md before running ANY backup or restore."
