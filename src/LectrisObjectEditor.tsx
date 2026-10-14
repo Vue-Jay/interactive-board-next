@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { Item } from "./boardModel";
 
 const itemNames: Record<Item["kind"], string> = {
@@ -94,6 +95,10 @@ function NumberField({label,value,minimum=-100000,maximum=100000,disabled,onComm
 
 export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
   const editable=advancedKinds.has(item.kind);
+  const [textDraft,setTextDraft]=useState(item.text);
+  useEffect(()=>setTextDraft(item.text),[item.id,item.text]);
+  const textEditable=["text","sticky","frame","comment"].includes(item.kind);
+  const saveText=()=>{if(!canModify||textDraft===item.text)return;onPatch({text:item.kind==="frame"?textDraft.replace(/\\s*\\n+\\s*/g," ").trim().slice(0,120):textDraft});};
   return <aside className="lectris-object-inspector" aria-label="Свойства объекта" onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
     <header className="lectris-inspector-head">
       <div><small>СВОЙСТВА ОБЪЕКТА</small><strong>{itemNames[item.kind]}</strong></div>
@@ -110,6 +115,13 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
           <NumberField label="Угол, °" value={item.rotation??0} minimum={-360} maximum={360} disabled={!canModify} onCommit={rotation=>onPatch({rotation})}/>
         </div>
       </section>
+      {textEditable && <section className="lectris-inspector-section">
+        <h3>{item.kind==="frame"?"Название фрейма":"Содержимое"}</h3>
+        <textarea className="lectris-inspector-text" rows={item.kind==="frame"?2:6}
+          value={textDraft} disabled={!canModify} maxLength={item.kind==="frame"?120:10000}
+          onChange={e=>setTextDraft(e.target.value)} aria-label="Содержимое выбранного объекта"/>
+        <button type="button" className="lectris-inspector-primary" disabled={!canModify||textDraft===item.text} onClick={saveText}>Сохранить текст</button>
+      </section>}
       {colorKinds.has(item.kind) && <section className="lectris-inspector-section">
         <h3>Оформление</h3>
         <label className="lectris-inspector-color"><span>Цвет объекта</span>
