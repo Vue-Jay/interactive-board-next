@@ -158,3 +158,15 @@
 .workspace.lectris-layout-lesson .lectris-quick-properties{border-color:#bbcbef!important}
 .topbar.lectris-layout-lesson .presence-menu{outline:1px solid #cbdafa;outline-offset:2px;border-radius:10px}
 @media(max-width:700px){.lectris-layout-picker>summary{width:32px;height:32px}.lectris-layout-menu{right:-4px}}
+
+/* Multiple locally saved workspace layouts. */
+.lectris-layout-menu{width:260px;max-height:min(74dvh,510px);overflow-y:auto}
+.lectris-layout-custom{display:grid;gap:4px;margin-top:8px;padding-top:9px;border-top:1px solid #e6edf6}
+.lectris-layout-custom>small{padding:6px 9px;color:#7486a0;font-size:10px;font-weight:800;letter-spacing:.07em}
+.lectris-layout-saved-row{display:flex;align-items:center;gap:4px}
+.lectris-layout-saved-row>button:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.lectris-layout-saved-row>button:last-child{flex:0 0 27px;height:29px;text-align:center;justify-content:center;padding:2px;color:#a04a51;font-size:17px}
+.lectris-layout-save{display:grid;gap:7px;margin-top:9px;padding:11px 5px 3px;border-top:1px solid #e6edf6}
+.lectris-layout-save input{height:35px;border:1px solid #dce5f1;border-radius:9px;padding:7px 10px;background:#fff;color:#2c405e;font-size:12px}
+.lectris-layout-save button{justify-content:center!important;text-align:center!important;background:#eef3fd!important}
+.lectris-layout-save button:disabled{opacity:.45;cursor:default}
