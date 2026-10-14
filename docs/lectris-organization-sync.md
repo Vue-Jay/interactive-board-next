@@ -10,18 +10,22 @@ OnlineRepetitor/Tuqo Supabase project.** Lectris currently uses the same backend
 credentials when a working `.env` is copied from the old project. Such a
 setup is intentionally in **local-only** mode for organization metadata.
 
-Enable this feature only after you have created a **separate Supabase project**
-for Lectris, installed the complete Lectris base schema in that project, and
-verified that authentication, board creation and access work there.
+Enable this feature only after creating a **separate Supabase project**
+for Lectris, **restoring the original database into that new project**, and
+verifying that authentication, board creation and access work there.
+
+For the agreed migration of existing accounts and boards, follow
+[lectris-full-migration.md](lectris-full-migration.md). **Do not apply
+`supabase/setup.sql` before restoring the original database dump.**
 
 ## Deployment steps
 
 1. Create a dedicated Lectris Supabase project. Do not reuse the production
    project's URL, anon key or service role key.
-2. Deploy the existing application's required SQL schema to this **new**
-   project (see `supabase/setup.sql` and other applicable versioned
-   migrations). Verify that `public.boards`, `public.can_access_board(uuid)`
-   and `public.is_board_owner(uuid)` are present.
+2. Restore the old project's full schema and data into the **new**
+   project using the full migration guide. Verify that `public.boards`,
+   `public.can_access_board(uuid)` and `public.is_board_owner(uuid)` exist.
+   Copy Storage files and verify Auth settings separately.
 3. Run `supabase/lectris_organization_v1.sql` in **the new project's**
    SQL Editor. It creates two tables with row-level security:
    - `lectris_categories`: teacher-owned subject/group names;
