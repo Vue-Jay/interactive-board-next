@@ -112,3 +112,45 @@
  .lectris-overview-actions button{padding:9px 11px;font-size:12px}
  .lectris-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+
+/* Lectris v1.2: predictable drawing workspace, primary tools always visible. */
+@media (min-width:1101px), (pointer:fine) {
+  .toolbar.compact-toolbar {
+    border:1px solid #dce5f0!important;
+    border-radius:15px!important;
+    background:rgba(255,255,255,.98)!important;
+    box-shadow:0 10px 32px rgba(30,47,83,.12)!important;
+    padding:5px!important;
+  }
+  .toolbar.compact-toolbar .toolbar-pinned {
+    padding-bottom:5px!important;
+    border-bottom:1px solid #e8edf5;
+  }
+  .toolbar.compact-toolbar .toolbar-list {
+    scrollbar-width:thin!important;
+    scrollbar-color:#d0d9e8 transparent!important;
+  }
+  .toolbar.compact-toolbar .tool-button:focus-visible,
+  .toolbar.compact-toolbar .toolbar-more:focus-visible {
+    outline:2px solid #3a66da!important;
+    outline-offset:2px!important;
+  }
+  .toolbar.compact-toolbar .tool-button.active {
+    background:#e9efff!important;
+    color:#264eae!important;
+  }
+  .toolbar.compact-toolbar .toolbar-more {
+    border-radius:10px!important;
+    min-height:34px!important;
+    background:#f0f4fb!important;
+    color:#38547e!important;
+  }
+  .toolbar.compact-toolbar .toolbar-more:hover{background:#e7eefb!important}
+}
+/* Keep the board accessible on narrower screens without interfering with the
+   existing touch-specific toolbar logic and object editors. */
+@media (max-width:780px) {
+ .topbar{gap:6px!important}
+ .topbar-left,.topbar-right{min-width:0}
+ .toolbar.compact-toolbar .tool-button:focus-visible{outline-offset:0}
+}
