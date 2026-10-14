@@ -1,0 +1,25 @@
+name: Lectris Restore Script Syntax
+on:
+  push:
+    paths:
+      - 'scripts/lectris-restore-new-db.ps1'
+      - '.github/workflows/lectris-restore-check.yml'
+  workflow_dispatch:
+jobs:
+  check-windows-powershell:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check restore PowerShell parser without running any restore
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/scripts/lectris-restore-new-db.ps1", [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors -and $errors.Count -gt 0) {
+            foreach ($e in $errors) { Write-Error $e.Message }
+            exit 1
+          }
+          Write-Output 'Lectris guarded restore script parses correctly'
