@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { AccountRole } from "./accountRoleStore";
 import { listNotifications } from "./notificationsStore";
 
-type NavIcon = "home" | "subjects" | "groups" | "boards" | "users" | "assignments" | "schedule" | "progress" | "materials" | "templates" | "notification" | "profile" | "settings" | "admin" | "menu" | "chevron";
+type NavIcon = "search" | "home" | "subjects" | "groups" | "boards" | "users" | "assignments" | "schedule" | "progress" | "materials" | "templates" | "notification" | "profile" | "settings" | "admin" | "menu" | "chevron";
 type NavItem = { id: string; label: string; icon: NavIcon; teacher?: boolean; admin?: boolean };
 const items: NavItem[] = [
   { id:"", label:"Главная", icon:"home" },
@@ -21,6 +21,7 @@ const items: NavItem[] = [
   { id:"admin", label:"Администрирование", icon:"admin", admin:true },
 ];
 const icons: Record<NavIcon, ReactNode> = {
+  search:<><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></>,
   home:<><path d="m3 10 9-7 9 7v11H3z"/><path d="M9 21v-8h6v8"/></>,
   boards:<><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M10 10v10"/></>,
   subjects:<><path d="M4 4h8a4 4 0 0 1 4 4v12H8a4 4 0 0 0-4 1V4z"/><path d="M16 8a4 4 0 0 1 4-4v17a4 4 0 0 0-4-1"/></>,
@@ -46,6 +47,8 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
   const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("lectris.shell.collapsed")==="1"}catch{return false}});
   const [moreOpen,setMoreOpen]=useState(false);
   const [menuQuery,setMenuQuery]=useState("");
+  const [commandOpen,setCommandOpen]=useState(false);
+  const [commandQuery,setCommandQuery]=useState("");
   const [unreadCount,setUnreadCount]=useState(0);
   useEffect(()=>{
     let active=true;
@@ -59,7 +62,16 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
 
   const available=items.filter(x=>(!x.teacher||role==="teacher")&&(!x.admin||isAdmin));
   const active=available.some(x=>x.id===section)?section:"";
-  useEffect(()=>{setMoreOpen(false);setMenuQuery("")},[section]);
+  useEffect(()=>{setMoreOpen(false);setMenuQuery("");setCommandOpen(false);setCommandQuery("")},[section]);
+  useEffect(()=>{
+    const onKey=(event:KeyboardEvent)=>{
+      if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
+        event.preventDefault();setCommandOpen(prev=>!prev);
+      }else if(event.key==="Escape")setCommandOpen(false);
+    };
+    window.addEventListener("keydown",onKey);
+    return()=>window.removeEventListener("keydown",onKey);
+  },[]);
   useEffect(()=>{
     if(!moreOpen)return;
     const onEscape=(event:KeyboardEvent)=>{if(event.key==="Escape")setMoreOpen(false)};
@@ -69,11 +81,14 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
   const move=(target:string)=>{
     setMoreOpen(false);
     setMenuQuery("");
+    setCommandOpen(false);
+    setCommandQuery("");
     window.history.pushState({}, "",target?"/?section="+encodeURIComponent(target):"/");
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
   const toggle=()=>setCollapsed(prev=>{const next=!prev;try{localStorage.setItem("lectris.shell.collapsed",next?"1":"0")}catch{}return next});
   const mainTabs=available.filter(x=>["","boards","assignments","schedule"].includes(x.id));
+  const commandResults=available.filter(entry=>entry.label.toLocaleLowerCase("ru-RU").includes(commandQuery.trim().toLocaleLowerCase("ru-RU")));
   const navButton=(entry:NavItem, className="")=><button key={entry.id} type="button" className={["lectris-nav-link",className,active===entry.id?"is-active":""].filter(Boolean).join(" ")} title={entry.label} aria-label={entry.label} aria-current={active===entry.id?"page":undefined} onClick={()=>move(entry.id)}><NavGlyph name={entry.icon}/><span>{entry.label}</span>{entry.id==="notifications"&&unreadCount>0&&<b className="lectris-unread-badge">{unreadCount>99?"99+":unreadCount}</b>}</button>;
   return <div className={`lectris-workspace ${collapsed?"is-collapsed":""}`}>
     <header className="lectris-workspace-header">
@@ -81,6 +96,9 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
       <span className="lectris-header-divider" aria-hidden="true"/>
       <div className="lectris-header-page"><span>{available.find(x=>x.id===active)?.label||"Главная"}</span><small>{role==="teacher"?"Преподаватель":"Ученик"}</small></div>
       <div className="lectris-header-actions">
+        <button type="button" className="lectris-header-search" title="Найти раздел (Ctrl+K)" aria-label="Поиск по разделам Lectris" onClick={()=>setCommandOpen(true)}>
+          <NavGlyph name="search"/><span>Поиск по разделам</span><kbd>Ctrl K</kbd>
+        </button>
         <button type="button" className="lectris-header-icon" title="Уведомления" aria-label="Уведомления" onClick={()=>move("notifications")}><NavGlyph name="notification"/>{unreadCount>0&&<span className="lectris-unread-dot" aria-label={"Непрочитанных уведомлений: "+unreadCount}/>}</button>
         <button type="button" className="lectris-header-account" onClick={()=>move("profile")} title="Открыть профиль"><span className="lectris-avatar">{name.trim().slice(0,1).toUpperCase()||"?"}</span><span className="lectris-account-name">{name}</span></button>
       </div>
@@ -101,6 +119,23 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
       {mainTabs.map(x=>navButton(x,"lectris-mobile-tab"))}
       <button type="button" className={`lectris-nav-link lectris-mobile-tab ${moreOpen||!mainTabs.some(tab=>tab.id===active)?"is-active":""}`} aria-label="Ещё разделы" aria-expanded={moreOpen} onClick={()=>setMoreOpen(v=>!v)}><NavGlyph name="menu"/><span>Ещё</span></button>
     </nav>
+    {commandOpen&&<div className="lectris-command-overlay" onPointerDown={event=>{if(event.target===event.currentTarget)setCommandOpen(false)}}>
+      <section className="lectris-command-dialog" role="dialog" aria-modal="true" aria-label="Быстрый переход по разделам">
+        <div className="lectris-command-input-row">
+          <NavGlyph name="search"/>
+          <input autoFocus type="search" aria-label="Название раздела" placeholder="Куда перейти?"
+            value={commandQuery} onChange={event=>setCommandQuery(event.target.value)}
+            onKeyDown={event=>{if(event.key==="Enter"&&commandResults.length){event.preventDefault();move(commandResults[0].id)}}}/>
+          <button type="button" onClick={()=>setCommandOpen(false)} aria-label="Закрыть поиск">Esc</button>
+        </div>
+        <div className="lectris-command-results" role="list">
+          {commandResults.length?commandResults.map(entry=><button role="listitem" type="button" key={entry.id} onClick={()=>move(entry.id)}>
+            <NavGlyph name={entry.icon}/><span>{entry.label}</span><span aria-hidden="true">↗</span>
+          </button>):<p>Раздел не найден. Попробуйте другое название.</p>}
+        </div>
+        <div className="lectris-command-hint">Enter: первый результат · Esc: закрыть</div>
+      </section>
+    </div>}
     {moreOpen&&<>
       <button type="button" tabIndex={-1} aria-label="Закрыть меню разделов"
         className="lectris-mobile-more-backdrop" onClick={()=>setMoreOpen(false)}/>
