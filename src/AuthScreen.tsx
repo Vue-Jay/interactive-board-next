@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { isRemoteBackendEnabled } from "./backend";
 import { forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, registerUser, resumeRememberedAccount, type AuthUser } from "./authStore";
 
 type Mode = "login" | "register";
@@ -43,6 +44,7 @@ export default function AuthScreen({ onAuthenticated }: Props) {
 
   return <main className="auth-shell"><section className="auth-card" aria-labelledby="auth-title">
     <div className="auth-brand-row"><div className="auth-logo" aria-label="Lectris">L</div><div><div className="auth-brand">Lectris</div><div className="auth-subtitle">Интерактивная доска для занятий</div></div></div>
+    {!isRemoteBackendEnabled() && <div className="access-notice" role="alert">Сервер Supabase не подключён. Сейчас доступен только локальный вход с аккаунтами, созданными в этом браузере. Для входа под существующим аккаунтом добавьте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в файл .env.local и перезапустите npm run dev.</div>}
     {joining && <div className="access-notice">Откройте доску по приглашению: войдите в аккаунт или продолжите без регистрации.</div>}
     {mode==="login"&&remembered&&<div className="auth-remembered"><div className="auth-remembered-avatar">{remembered.name.charAt(0).toUpperCase()}</div><div className="auth-remembered-copy"><strong>{remembered.name}</strong><span>{remembered.email}</span></div><button className="auth-remembered-login" type="button" disabled={busy} onClick={()=>void quickLogin()}>{busy?"Входим…":"Войти"}</button><button className="auth-remembered-forget" type="button" disabled={busy} onClick={()=>void forgetQuickLogin()} title="Забыть сохранённый аккаунт">×</button></div>}
     <div className="auth-tabs" role="tablist" aria-label="Вход или регистрация"><button type="button" className={mode==="login"?"active":""} onClick={()=>changeMode("login")}>Вход</button><button type="button" className={mode==="register"?"active":""} onClick={()=>changeMode("register")}>Регистрация</button></div>
