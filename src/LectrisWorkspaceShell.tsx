@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { AccountRole } from "./accountRoleStore";
+import { listNotifications } from "./notificationsStore";
 
 type NavIcon = "home" | "subjects" | "groups" | "boards" | "users" | "assignments" | "schedule" | "progress" | "materials" | "templates" | "notification" | "profile" | "settings" | "admin" | "menu" | "chevron";
 type NavItem = { id: string; label: string; icon: NavIcon; teacher?: boolean; admin?: boolean };
@@ -44,6 +45,17 @@ type Props={children:ReactNode;section:string;role:AccountRole;isAdmin:boolean;n
 export default function LectrisWorkspaceShell({children,section,role,isAdmin,name}:Props) {
   const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("lectris.shell.collapsed")==="1"}catch{return false}});
   const [moreOpen,setMoreOpen]=useState(false);
+  const [unreadCount,setUnreadCount]=useState(0);
+  useEffect(()=>{
+    let active=true;
+    const refresh=()=>{if(document.visibilityState==="hidden")return;void listNotifications().then(rows=>{if(active)setUnreadCount(rows.filter(x=>!x.readAt).length)}).catch(()=>{})};
+    refresh();
+    const timer=window.setInterval(refresh,60000);
+    const wake=()=>{if(document.visibilityState==="visible")refresh()};
+    window.addEventListener("focus",wake);
+    return()=>{active=false;window.clearInterval(timer);window.removeEventListener("focus",wake)};
+  },[section]);
+
   const available=items.filter(x=>(!x.teacher||role==="teacher")&&(!x.admin||isAdmin));
   const active=available.some(x=>x.id===section)?section:"";
   useEffect(()=>setMoreOpen(false),[section]);
@@ -54,14 +66,14 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
   };
   const toggle=()=>setCollapsed(prev=>{const next=!prev;try{localStorage.setItem("lectris.shell.collapsed",next?"1":"0")}catch{}return next});
   const mainTabs=available.filter(x=>["","boards","assignments","schedule"].includes(x.id));
-  const navButton=(entry:NavItem, className="")=><button key={entry.id} type="button" className={["lectris-nav-link",className,active===entry.id?"is-active":""].filter(Boolean).join(" ")} title={entry.label} aria-label={entry.label} aria-current={active===entry.id?"page":undefined} onClick={()=>move(entry.id)}><NavGlyph name={entry.icon}/><span>{entry.label}</span></button>;
+  const navButton=(entry:NavItem, className="")=><button key={entry.id} type="button" className={["lectris-nav-link",className,active===entry.id?"is-active":""].filter(Boolean).join(" ")} title={entry.label} aria-label={entry.label} aria-current={active===entry.id?"page":undefined} onClick={()=>move(entry.id)}><NavGlyph name={entry.icon}/><span>{entry.label}</span>{entry.id==="notifications"&&unreadCount>0&&<b className="lectris-unread-badge">{unreadCount>99?"99+":unreadCount}</b>}</button>;
   return <div className={`lectris-workspace ${collapsed?"is-collapsed":""}`}>
     <header className="lectris-workspace-header">
       <button className="lectris-brand" type="button" onClick={()=>move("")} aria-label="Lectris, главная"><span className="lectris-brand-mark" aria-hidden="true">L</span><strong>Lectris</strong></button>
       <span className="lectris-header-divider" aria-hidden="true"/>
       <div className="lectris-header-page"><span>{available.find(x=>x.id===active)?.label||"Главная"}</span><small>{role==="teacher"?"Преподаватель":"Ученик"}</small></div>
       <div className="lectris-header-actions">
-        <button type="button" className="lectris-header-icon" title="Уведомления" aria-label="Уведомления" onClick={()=>move("notifications")}><NavGlyph name="notification"/></button>
+        <button type="button" className="lectris-header-icon" title="Уведомления" aria-label="Уведомления" onClick={()=>move("notifications")}><NavGlyph name="notification"/>{unreadCount>0&&<span className="lectris-unread-dot" aria-label={"Непрочитанных уведомлений: "+unreadCount}/>}</button>
         <button type="button" className="lectris-header-account" onClick={()=>move("profile")} title="Открыть профиль"><span className="lectris-avatar">{name.trim().slice(0,1).toUpperCase()||"?"}</span><span className="lectris-account-name">{name}</span></button>
       </div>
     </header>
