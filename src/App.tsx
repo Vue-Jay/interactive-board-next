@@ -1478,6 +1478,24 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
   const [preview, setPreview] = useState<Item | null>(null);
   const [tool, setTool] = useState<Tool>("hand");
+  const lectrisBoardOrganization=useMemo(()=>{
+    try{
+      const raw=JSON.parse(localStorage.getItem("lectris.board-organization.v1."+authUser.id)||"{}") as Record<string,{subject?:string;group?:string}>;
+      const data=raw?.[boardSummary.id];
+      return {subject:typeof data?.subject==="string"?data.subject:"",group:typeof data?.group==="string"?data.group:""};
+    }catch{return {subject:"",group:""}}
+  },[authUser.id,boardSummary.id]);
+  const lectrisSubjectTools=useMemo<Tool[]>(()=>{
+    const v=lectrisBoardOrganization.subject.toLocaleLowerCase("ru");
+    if(!v)return [];
+    if(/матем|алгеб|геом|информ/.test(v))return ["formula","graph","shape","table"];
+    if(/хими/.test(v))return ["formula","table","text","shape"];
+    if(/физик/.test(v))return ["graph","formula","connector","shape"];
+    if(/биол|географ/.test(v))return ["media","shape","text","table"];
+    if(/русск|англ|язык|литерат|истор/.test(v))return ["text","sticky","comment","table"];
+    return ["text","shape","table"];
+  },[lectrisBoardOrganization.subject]);
+
   const [view, setView] = useState<View>(() => {
     try {
       const raw = localStorage.getItem(viewStorageKey);
@@ -5268,6 +5286,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             readOnly={!canEdit}
           />
           {authUser.isGuest&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
+          {lectrisBoardOrganization.subject&&<span className="lectris-board-context" title="Предмет и группа доски">{lectrisBoardOrganization.subject}{lectrisBoardOrganization.group?" · "+lectrisBoardOrganization.group:""}</span>}
         </div>
         <div className="topbar-right">{installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lectris на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
           {isRemoteBackendEnabled() && <details className="presence-menu">
@@ -6095,6 +6114,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
           <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions">{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiOpen(true);setBoardAiPreview([])}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
+            {lectrisSubjectTools.length>0&&<div className="mobile-tools-group"><span>{lectrisBoardOrganization.subject}</span><div>
+              {lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""}
+                onClick={()=>{finishEdit();setTool(id);setMobileToolsOpen(false)}}>
+                <Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}
+            </div></div>}
             {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(toolAllowedForRole)})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span><div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div></div>)}
             <div className="mobile-tools-group"><span>Действия с доской</span><div>
               {boardSummary.role==="owner"&&<button type="button" onClick={()=>{setMobileToolsOpen(false);liveLesson?setLessonPanelOpen(true):setLessonOpen(true)}}><Icon name="play" size={19}/><small>{liveLesson?"Управление уроком":"Начать урок"}</small></button>}
@@ -6124,6 +6148,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты"} title={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты"} onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
           </button>
+          {lectrisSubjectTools.length>0&&<details className="lectris-subject-toolbox">
+            <summary title={"Инструменты: "+lectrisBoardOrganization.subject} aria-label={"Инструменты предмета "+lectrisBoardOrganization.subject}>∑</summary>
+            <div className="lectris-subject-toolbox-menu"><strong>{lectrisBoardOrganization.subject}</strong>
+              {lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return <button type="button" key={id}
+                onClick={e=>{finishEdit();setTool(id);e.currentTarget.closest("details")?.removeAttribute("open")}}>
+                <Icon name={t.icon} size={16}/>{toolShortLabel[id]}</button>})}
+            </div>
+          </details>}
           {!isStudent&&<button type="button" className="toolbar-ai-button" title="AI-помощник" aria-label="AI-помощник" onClick={()=>{finishEdit();setBoardAiOpen(true);setBoardAiPreview([])}}>
             <Icon name="robot" size={18}/><span className="tool-tooltip">AI-помощник</span>
           </button>}
