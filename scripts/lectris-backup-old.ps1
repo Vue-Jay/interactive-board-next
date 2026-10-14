@@ -3,7 +3,7 @@
 # on an untrusted/shared computer or share command-line/process/log output unredacted.
 param(
   [string]$OldProjectRef = 'vblmywoczinzezcmqrgb',
-  [string]$NewProjectRef = 'qxpocdbzqlgcqgmivtem'
+  [string]$NewProjectRef = 'vznjpfqodjnxnmkrhiqk'
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
