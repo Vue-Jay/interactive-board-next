@@ -77,3 +77,17 @@
 }
 .lectris-inspector-text:focus-visible{outline:2px solid #8daaf6;outline-offset:1px}
 .lectris-inspector-text:disabled{opacity:.65;resize:none}
+
+/* Mobile quick toolbar: a compact row with an explicit expand control. */
+.lectris-quick-details{display:flex;align-items:center;justify-content:center;gap:9px;min-width:0}
+.lectris-quick-expand{display:none!important}
+@media (max-width:1100px) and (pointer:coarse){
+ .lectris-quick-properties{overflow:visible!important;min-width:0!important}
+ .lectris-quick-expand{display:block!important;min-height:30px!important;padding:4px 9px!important}
+ .lectris-quick-details{display:none!important}
+ .lectris-quick-properties.is-expanded{flex-wrap:wrap!important}
+ .lectris-quick-properties.is-expanded .lectris-quick-details{
+    display:flex!important;flex:1 1 100%;justify-content:center;flex-wrap:wrap!important;
+    max-width:100%;gap:5px;padding:3px 0;
+ }
+}
