@@ -1481,7 +1481,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [preview, setPreview] = useState<Item | null>(null);
   const [tool, setTool] = useState<Tool>("hand");
   const lectrisLayoutKey="lectris.board-layout.v1."+authUser.id+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
-  const lectrisToolbarKey="lectris.toolbar.v1."+authUser.id+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
+  const lectrisToolbarKey="lectris.toolbar.v2."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
   const lectrisDefaultPinned=useMemo<Tool[]>(()=>(
     (window.matchMedia?.("(pointer:coarse)").matches?mobileDockTools:tools.filter(t=>primaryDesktopTools.has(t.id)).map(t=>t.id))
       .filter(id=>id!=="select"&&id!=="hand"&&id!=="lasso"&&toolAllowedForRole(id))
