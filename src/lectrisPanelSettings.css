@@ -1,0 +1,130 @@
+/* Lectris panel docking. Geometry here affects UI chrome only, never canvas
+   coordinates, document serialization or collaboration channels. */
+.lectris-panel-settings-overlay{
+ position:fixed;inset:0;z-index:2200;display:grid;place-items:center;
+ padding:16px;background:rgba(17,32,55,.57);
+}
+.lectris-panel-settings-dialog{
+ width:min(520px,100%);max-height:90dvh;display:flex;flex-direction:column;
+ min-height:0;overflow:auto;border:1px solid #dee7f4;border-radius:20px;
+ background:#fff;color:#263a57;box-shadow:0 25px 70px #15294544;
+}
+.lectris-panel-settings-dialog>header{
+ display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+ padding:22px 24px 10px;
+}
+.lectris-panel-settings-dialog>header small{
+ color:#5878bc;font-size:10px;font-weight:800;letter-spacing:.11em;
+}
+.lectris-panel-settings-dialog>header h2{
+ font-size:22px;letter-spacing:-.035em;margin:5px 0 0;font-weight:820;
+}
+.lectris-panel-settings-dialog>header button{
+ width:36px;height:36px;display:grid;place-items:center;border:0;border-radius:10px;
+ background:#f1f5fa;color:#526681;font-size:23px;cursor:pointer;
+}
+.lectris-panel-settings-dialog>p{
+ margin:0;padding:0 24px 18px;color:#687c96;font-size:12px;line-height:1.65;
+}
+.lectris-panel-settings-form{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;
+ padding:0 24px 19px;
+}
+.lectris-panel-settings-field{
+ margin:0;min-width:0;border:1px solid #e0e8f3;border-radius:12px;padding:10px;
+}
+.lectris-panel-settings-field legend{
+ padding:0 4px;font-size:12px;font-weight:760;color:#445d7f;
+}
+.lectris-panel-settings-segments{
+ display:flex;gap:5px;background:#f1f4f9;padding:4px;border-radius:10px;
+}
+.lectris-panel-settings-segments label{
+ display:flex;justify-content:center;align-items:center;gap:5px;
+ flex:1;min-height:37px;padding:6px 9px;border:1px solid transparent;
+ border-radius:8px;font-size:12px;font-weight:700;color:#627593;cursor:pointer;
+}
+.lectris-panel-settings-segments label.active{
+ background:#fff;border-color:#d7e3f6;color:#2e55ad;box-shadow:0 2px 7px #2036510c;
+}
+.lectris-panel-settings-segments input{accent-color:#365fd0}
+.lectris-panel-settings-range{
+ display:grid;gap:12px;border:1px solid #e0e8f3;border-radius:12px;
+ padding:14px;font-size:12px;font-weight:760;color:#445d7f;
+}
+.lectris-panel-settings-range>div{display:flex;align-items:center;gap:12px}
+.lectris-panel-settings-range input{width:100%;min-width:0;accent-color:#365fd0}
+.lectris-panel-settings-range strong{flex:0 0 57px;font-size:12px;color:#375ab2;font-variant-numeric:tabular-nums}
+.lectris-panel-settings-hint{
+ margin:0 24px 16px;padding:12px 14px;border-radius:11px;
+ background:#f6f8fc;color:#71829b;font-size:11px;line-height:1.6;
+}
+.lectris-panel-settings-dialog footer{
+ display:flex;justify-content:space-between;align-items:center;gap:10px;
+ border-top:1px solid #e5ebf4;padding:15px 24px 19px;
+}
+.lectris-panel-settings-dialog footer>div{display:flex;gap:9px}
+.lectris-panel-settings-dialog footer button{
+ min-height:38px;padding:9px 13px;border:1px solid #dce6f3;border-radius:10px;
+ color:#456082;background:#f6f9fd;font-weight:740;font-size:12px;cursor:pointer;
+}
+.lectris-panel-settings-dialog footer .lectris-panel-settings-primary{
+ background:#365fd0;color:#fff;border-color:#365fd0;
+}
+.lectris-panel-settings-dialog button:focus-visible,
+.lectris-panel-settings-dialog input:focus-visible{outline:2px solid #365fd0;outline-offset:2px}
+/* Desktop docking may be changed, while touch landscape keeps the familiar
+   left tool rail and bottom context row. */
+@media(min-width:1101px){
+ .workspace.lectris-tools-right .toolbar.compact-toolbar{
+  left:auto!important;right:12px!important;
+ }
+ .workspace.lectris-tools-right .lectris-subject-toolbox-menu{
+  left:auto!important;right:calc(100% + 10px)!important;
+ }
+ .workspace.lectris-quick-top .lectris-quick-properties{
+  top:78px!important;bottom:auto!important;
+ }
+ .workspace .lectris-object-inspector{
+  width:min(var(--lectris-inspector-width,340px),calc(100vw - 94px))!important;
+ }
+ .workspace.lectris-inspector-left .lectris-object-inspector{
+  left:12px!important;right:auto!important;
+ }
+ .workspace.lectris-inspector-right.lectris-tools-right .lectris-object-inspector{
+  right:78px!important;
+ }
+ .workspace.lectris-inspector-left.lectris-tools-left .lectris-object-inspector{
+  left:78px!important;
+ }
+ .workspace :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,
+   .notes-editor-modal,.checklist-editor-modal,.quiz-editor-modal,
+   .flashcard-editor-modal){
+  width:min(var(--lectris-inspector-width,340px),calc(100vw - 94px))!important;
+ }
+ .workspace.lectris-inspector-left :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,
+   .notes-editor-modal,.checklist-editor-modal,.quiz-editor-modal,
+   .flashcard-editor-modal){right:auto!important;left:12px!important}
+ .workspace.lectris-inspector-left.lectris-tools-left :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,
+   .notes-editor-modal,.checklist-editor-modal,.quiz-editor-modal,
+   .flashcard-editor-modal){left:78px!important}
+ .workspace.lectris-inspector-right.lectris-tools-right :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,
+   .notes-editor-modal,.checklist-editor-modal,.quiz-editor-modal,
+   .flashcard-editor-modal){right:78px!important}
+}
+/* Prevent inspector docking from blocking the context row in bottom mode. */
+@media(min-width:1101px){
+ .workspace.lectris-quick-bottom .lectris-object-inspector{bottom:78px!important}
+ .workspace.lectris-quick-bottom :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,
+   .notes-editor-modal,.checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){bottom:78px!important;max-height:calc(100dvh - 156px)!important}
+ .workspace.lectris-quick-top .lectris-object-inspector{top:142px!important}
+ .workspace.lectris-quick-top :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,
+   .notes-editor-modal,.checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){top:142px!important;max-height:calc(100dvh - 155px)!important}
+}
+@media(max-width:600px){
+ .lectris-panel-settings-dialog>header{padding:17px 16px 9px}
+ .lectris-panel-settings-dialog>p{padding:0 16px 12px}
+ .lectris-panel-settings-form{grid-template-columns:1fr;gap:12px;padding:0 16px 13px}
+ .lectris-panel-settings-hint{margin:0 16px 12px}
+ .lectris-panel-settings-dialog footer{padding:12px 16px 16px;flex-wrap:wrap}
+}
