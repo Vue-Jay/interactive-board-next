@@ -1478,6 +1478,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
   const [preview, setPreview] = useState<Item | null>(null);
   const [tool, setTool] = useState<Tool>("hand");
+  const lectrisLayoutKey="lectris.board-layout.v1."+authUser.id+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
+  const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
+    try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
+  });
+  useEffect(()=>{try{localStorage.setItem(lectrisLayoutKey,lectrisLayout)}catch{}},[lectrisLayoutKey,lectrisLayout]);
+
   const lectrisBoardOrganization=useMemo(()=>{
     try{
       const raw=JSON.parse(localStorage.getItem("lectris.board-organization.v1."+authUser.id)||"{}") as Record<string,{subject?:string;group?:string}>;
@@ -5259,7 +5265,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       {adminMaintenance && <div className="viewer-banner" style={{background:"#fff3d6",color:"#805200"}}>Режим администратора · изменения сохраняются от вашего имени</div>}
        {!canEdit && !publicPresentation && <div className="viewer-banner">Только просмотр</div>}
       {publicPresentation&&<div className="public-presentation-badge">Публичная презентация · ← → для навигации · F — полный экран</div>}
-      {!online&&<div className="offline-banner" role="status"><strong>Офлайн</strong><span>Можно продолжать работу с уже открытой локальной доской. Серверная синхронизация возобновится после подключения.</span></div>}{updateReady&&<div className="update-banner" role="status"><span>Доступна новая версия Lectris.</span><button type="button" onClick={applyUpdate}>Обновить</button><button type="button" className="secondary" onClick={()=>setUpdateReady(null)}>Позже</button></div>}<header className="topbar">
+      {!online&&<div className="offline-banner" role="status"><strong>Офлайн</strong><span>Можно продолжать работу с уже открытой локальной доской. Серверная синхронизация возобновится после подключения.</span></div>}{updateReady&&<div className="update-banner" role="status"><span>Доступна новая версия Lectris.</span><button type="button" onClick={applyUpdate}>Обновить</button><button type="button" className="secondary" onClick={()=>setUpdateReady(null)}>Позже</button></div>}<header className={`topbar lectris-layout-${lectrisLayout}`}>
         <div className="topbar-left">
           <button
             className="back-to-boards board-home-button"
@@ -5288,7 +5294,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           {authUser.isGuest&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
           {lectrisBoardOrganization.subject&&<span className="lectris-board-context" title="Предмет и группа доски">{lectrisBoardOrganization.subject}{lectrisBoardOrganization.group?" · "+lectrisBoardOrganization.group:""}</span>}
         </div>
-        <div className="topbar-right">{installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lectris на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
+        <div className="topbar-right"><details className="lectris-layout-picker">
+            <summary title="Рабочая раскладка" aria-label="Выбрать раскладку доски"><Icon name="settings" size={17}/></summary>
+            <div className="lectris-layout-menu">
+              <strong>Рабочая раскладка</strong>
+              {([["standard","Стандартная"],["lesson","Проведение урока"],["focus","Фокус на доске"]] as const).map(([id,label])=>
+                <button type="button" key={id} className={lectrisLayout===id?"active":""}
+                  onClick={e=>{setLectrisLayout(id);e.currentTarget.closest("details")?.removeAttribute("open")}}>
+                  <span aria-hidden="true">{lectrisLayout===id?"✓":"○"}</span>{label}
+                </button>)}
+            </div>
+          </details>{installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lectris на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
           {isRemoteBackendEnabled() && <details className="presence-menu">
             <summary title={realtimeStatus === "online" ? "Подключено · пользователи на доске" : realtimeStatus === "reconnecting" ? "Подключение к доске..." : "Нет подключения"}>
               <span className={`presence-live-dot connection-${realtimeStatus}`} aria-hidden="true"/>
@@ -5484,7 +5500,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </button>
         </div>
       </header>
-      <main className="workspace">
+      <main className={`workspace lectris-layout-${lectrisLayout}`}>
         {!objectEditorOpen && !presentation && <LectrisQuickProperties
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={color} weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
