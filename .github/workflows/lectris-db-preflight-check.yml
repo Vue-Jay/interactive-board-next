@@ -1,0 +1,25 @@
+name: Lectris Database Preflight Syntax
+on:
+  push:
+    paths:
+      - 'scripts/lectris-preflight-new-db.ps1'
+      - '.github/workflows/lectris-db-preflight-check.yml'
+  workflow_dispatch:
+jobs:
+  check-powershell-syntax:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse read-only PowerShell preflight without executing it
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/scripts/lectris-preflight-new-db.ps1", [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors -and $errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Output 'PowerShell preflight syntax OK'
