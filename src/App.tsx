@@ -17,6 +17,7 @@ import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
 import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { LectrisQuickProperties, LectrisObjectInspector } from "./LectrisObjectEditor";
+import LectrisToolbarSettings from "./LectrisToolbarSettings";
 const StudentsScreen = lazy(() => import("./StudentsScreen"));
 const AssignmentsScreen = lazy(() => import("./AssignmentsScreen"));
 const ProgressScreen = lazy(() => import("./ProgressScreen"));
@@ -1479,6 +1480,27 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [preview, setPreview] = useState<Item | null>(null);
   const [tool, setTool] = useState<Tool>("hand");
   const lectrisLayoutKey="lectris.board-layout.v1."+authUser.id+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
+  const lectrisToolbarKey="lectris.toolbar.v1."+authUser.id+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
+  const lectrisDefaultPinned=useMemo<Tool[]>(()=>(
+    (window.matchMedia?.("(pointer:coarse)").matches?mobileDockTools:tools.filter(t=>primaryDesktopTools.has(t.id)).map(t=>t.id))
+      .filter(id=>id!=="select"&&id!=="hand"&&id!=="lasso"&&toolAllowedForRole(id))
+  ),[isStudent]);
+  const [lectrisPinned,setLectrisPinned]=useState<Tool[]>(()=>{
+    const defaults=(window.matchMedia?.("(pointer:coarse)").matches?mobileDockTools:tools.filter(t=>primaryDesktopTools.has(t.id)).map(t=>t.id))
+      .filter(id=>id!=="select"&&id!=="hand"&&id!=="lasso"&&toolAllowedForRole(id));
+    try{
+      const parsed:unknown=JSON.parse(localStorage.getItem(lectrisToolbarKey)||"null");
+      if(!Array.isArray(parsed))return defaults;
+      return parsed.filter((id,index):id is Tool=>typeof id==="string"&&tools.some(t=>t.id===id)&&id!=="select"&&id!=="hand"&&id!=="lasso"&&parsed.indexOf(id)===index&&toolAllowedForRole(id));
+    }catch{return defaults}
+  });
+  const [lectrisCustomizeOpen,setLectrisCustomizeOpen]=useState(false);
+  useEffect(()=>{try{localStorage.setItem(lectrisToolbarKey,JSON.stringify(lectrisPinned))}catch{}},[lectrisToolbarKey,lectrisPinned]);
+  const lectrisToolbarOrder=useMemo(()=>[
+    ...lectrisPinned,
+    ...tools.map(t=>t.id).filter(id=>!lectrisPinned.includes(id)&&id!=="hand"&&id!=="select"&&id!=="lasso")
+  ],[lectrisPinned]);
+  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["hand","select","lasso",...lectrisPinned.filter(toolAllowedForRole)],[lectrisPinned,isStudent]);
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
@@ -6118,17 +6140,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         )}
 <nav className="mobile-board-tools" aria-label="Основные инструменты">
           <div className="mobile-tool-cluster mobile-tool-cluster-navigation" aria-label="Навигация">
-            {mobileDockTools.slice(0,3).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
+            {lectrisTouchDockTools.slice(0,3).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
           <div className="mobile-tool-cluster mobile-tool-cluster-create" aria-label="Создание">
-            {mobileDockTools.slice(3).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board} />}</div>})}
+            {lectrisTouchDockTools.slice(3).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board} />}</div>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
           <button type="button" className={`mobile-tools-more ${mobileToolsOpen?"active":""}`} aria-label="Все инструменты" title="Все инструменты" aria-expanded={mobileToolsOpen} onClick={()=>setMobileToolsOpen(v=>!v)}><Icon name={mobileToolsOpen?"chevron-left":"plus"} size={20}/></button>
         </nav>
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
-          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions">{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiOpen(true);setBoardAiPreview([])}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
+          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiOpen(true);setBoardAiPreview([])}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
             {lectrisSubjectTools.length>0&&<div className="mobile-tools-group"><span>{lectrisBoardOrganization.subject}</span><div>
               {lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""}
@@ -6152,8 +6174,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
           <span className="toolbar-section-line" aria-hidden="true"/>
           <div className="toolbar-list">
-            {tools.filter((t)=>t.id!=="select"&&t.id!=="hand"&&t.id!=="lasso"&&toolAllowedForRole(t.id)).map((t)=>{
-              const secondary=!primaryDesktopTools.has(t.id);
+            {lectrisToolbarOrder.map(id=>tools.find(t=>t.id===id)!).filter(t=>t&&toolAllowedForRole(t.id)).map((t)=>{
+              const secondary=!lectrisPinned.includes(t.id);
               return <div className={`tool-wrap ${secondary?"secondary-tool":""}`} key={t.id}>
                 <button aria-label={t.label} className={`tool-button ${tool===t.id?"active":""}`} onClick={()=>{finishEdit();if(t.id==="eraser")setSpace(false);setTool(t.id);setMobileToolsOpen(false)}}>
                   <span className="tool-icon"><Icon name={t.icon} size={18}/></span><span className="tool-tooltip">{toolShortLabel[t.id]}</span>
@@ -6178,7 +6200,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <button type="button" className="toolbar-command-search" title="Найти инструмент · Ctrl+K" aria-label="Найти инструмент" onClick={()=>{setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}}>
             <Icon name="search" size={17}/><span className="tool-tooltip">Найти инструмент</span>
           </button>
+          <button type="button" className="lectris-tools-configure" title="Настроить инструменты" aria-label="Настроить инструменты" onClick={()=>setLectrisCustomizeOpen(true)}>
+            <Icon name="settings" size={17}/><span className="tool-tooltip">Настроить</span>
+          </button>
         </aside>
+        {lectrisCustomizeOpen&&<LectrisToolbarSettings
+          tools={tools.filter(t=>t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
+          pinned={lectrisPinned} defaults={lectrisDefaultPinned}
+          onChange={next=>setLectrisPinned(next.filter((id):id is Tool=>tools.some(t=>t.id===id)))}
+          onClose={()=>setLectrisCustomizeOpen(false)}/>}
         {isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">Режим ученика</div>}
         {!isStudent&&attachmentRequests.length>0&&(()=>{
           const request=attachmentRequests[Math.min(attachmentRequestIndex,attachmentRequests.length-1)];
