@@ -152,6 +152,5 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
         <footer><button type="button" onClick={()=>setAdvancedOpen(false)}>Готово</button></footer>
       </section>
     </div>}
-    </div>
   </aside>;
 }
