@@ -98,7 +98,7 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
   const [textDraft,setTextDraft]=useState(item.text);
   useEffect(()=>setTextDraft(item.text),[item.id,item.text]);
   const textEditable=["text","sticky","frame","comment"].includes(item.kind);
-  const saveText=()=>{if(!canModify||textDraft===item.text)return;onPatch({text:item.kind==="frame"?textDraft.replace(/\\s*\\n+\\s*/g," ").trim().slice(0,120):textDraft});};
+  const saveText=()=>{if(!canModify||textDraft===item.text)return;onPatch({text:item.kind==="frame"?textDraft.replace(/\s*\n+\s*/g," ").trim().slice(0,120):textDraft});};
   return <aside className="lectris-object-inspector" aria-label="Свойства объекта" onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
     <header className="lectris-inspector-head">
       <div><small>СВОЙСТВА ОБЪЕКТА</small><strong>{itemNames[item.kind]}</strong></div>
