@@ -9,7 +9,7 @@ export type LectrisOrganizationData={
   pending:number;
 };
 type PendingOperation=
-  | {type:"board";boardId:string;subject:string;group:string}
+  | {type:"board";boardId:string;subject:string;group:string;onlyIfAbsent?:boolean}
   | {type:"category";kind:"subject"|"group";name:string};
 
 const orgKey=(id:string)=>"lectris.board-organization.v1."+id;
@@ -59,7 +59,7 @@ function readQueue(userId:string):PendingOperation[]{
       if(!row||typeof row!=="object")continue;
       const v=row as Record<string,unknown>;
       if(v.type==="board"&&typeof v.boardId==="string"&&uuid(v.boardId))
-        valid.push({type:"board",boardId:v.boardId,subject:name(v.subject),group:name(v.group)});
+        valid.push({type:"board",boardId:v.boardId,subject:name(v.subject),group:name(v.group),...(v.onlyIfAbsent===true?{onlyIfAbsent:true}:{})});
       if(v.type==="category"&&(v.kind==="subject"||v.kind==="group")&&name(v.name))
         valid.push({type:"category",kind:v.kind,name:name(v.name)});
     }
@@ -77,6 +77,31 @@ function enqueue(userId:string,op:PendingOperation){
   writeQueue(userId,[...readQueue(userId).filter(item=>operationKey(item)!==key),op]);
 }
 export const pendingLectrisOrganizationCount=(userId:string)=>readQueue(userId).length;
+
+/** Explicit, non-destructive import of legacy local labels. Existing cloud rows
+    win, and only boards currently owned by this user are eligible. */
+export function queueLectrisLocalImport(userId:string,ownedBoardIds:string[]):number{
+  const owned=new Set(ownedBoardIds.filter(uuid));
+  const current=readLectrisLocalOrganization(userId);
+  const queue=readQueue(userId);
+  const queuedKeys=new Set(queue.map(operationKey));
+  const additions:PendingOperation[]=[];
+  for(const [boardId,org] of Object.entries(current)){
+    if(!owned.has(boardId)||(!org.subject&&!org.group))continue;
+    const key="board:"+boardId;
+    if(!queuedKeys.has(key))additions.push({type:"board",boardId,subject:org.subject,group:org.group,onlyIfAbsent:true});
+  }
+  const cats=readLectrisLocalCatalog(userId);
+  for(const kind of ["subject","group"] as const){
+    for(const value of kind==="subject"?cats.subjects:cats.groups){
+      const key="category:"+kind+":"+value.toLowerCase();
+      if(!queuedKeys.has(key))additions.push({type:"category",kind,name:value});
+    }
+  }
+  if(additions.length)writeQueue(userId,[...queue,...additions]);
+  return additions.length;
+}
+
 function persistOrganization(userId:string,values:Record<string,LectrisOrganization>){
   localStorage.setItem(orgKey(userId),JSON.stringify(values));
 }
@@ -103,7 +128,7 @@ async function uploadOperation(userId:string,op:PendingOperation){
   if(op.type==="board"){
     await remoteRequest<unknown>("/rest/v1/lectris_board_organization?on_conflict=board_id",{
       method:"POST",
-      headers:{Prefer:"resolution=merge-duplicates,return=minimal"},
+      headers:{Prefer:op.onlyIfAbsent?"resolution=ignore-duplicates,return=minimal":"resolution=merge-duplicates,return=minimal"},
       body:JSON.stringify({board_id:op.boardId,subject:op.subject,group_name:op.group,updated_at:new Date().toISOString()})
     });
   }else{
