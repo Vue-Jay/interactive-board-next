@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type PointerEvent as PE,
+  type CSSProperties,
 } from "react";
 import { flushSync } from "react-dom";
 import "./App.css";
@@ -18,6 +19,8 @@ import BoardsScreen from "./BoardsScreen";
 import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { LectrisQuickProperties, LectrisObjectInspector } from "./LectrisObjectEditor";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
+import LectrisPanelSettings from "./LectrisPanelSettings";
+import { defaultLectrisPanelLayout, normalizeLectrisPanelLayout, readLectrisPanelLayout, type LectrisPanelLayout } from "./lectrisPanelLayout";
 const StudentsScreen = lazy(() => import("./StudentsScreen"));
 const AssignmentsScreen = lazy(() => import("./AssignmentsScreen"));
 const ProgressScreen = lazy(() => import("./ProgressScreen"));
@@ -363,7 +366,7 @@ const toolShortLabel: Record<Tool, string> = {
   cover:"Шторка",media:"Фото / PDF",linkmedia:"Видео / аудио",
 };
 const primaryDesktopTools = new Set<Tool>(["select","hand","lasso","pen","marker","eraser","connector","text","sticky","shape","media"]);
-type LectrisSavedLayout={id:string;name:string;mode:"standard"|"lesson"|"focus";pinned:Tool[]};
+type LectrisSavedLayout={id:string;name:string;mode:"standard"|"lesson"|"focus";pinned:Tool[];panels?:LectrisPanelLayout};
 const mobileToolGroups: { label:string; tools:Tool[] }[] = [
   { label:"Навигация", tools:["hand","select","lasso"] },
   { label:"Рисование", tools:["pen","marker","eraser"] },
@@ -1506,6 +1509,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
   useEffect(()=>{try{localStorage.setItem(lectrisLayoutKey,lectrisLayout)}catch{}},[lectrisLayoutKey,lectrisLayout]);
+  const lectrisPanelsKey="lectris.panels.v1."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
+  const [lectrisPanelLayout,setLectrisPanelLayout]=useState<LectrisPanelLayout>(()=>readLectrisPanelLayout(lectrisPanelsKey));
+  const [lectrisPanelSettingsOpen,setLectrisPanelSettingsOpen]=useState(false);
+  useEffect(()=>{try{localStorage.setItem(lectrisPanelsKey,JSON.stringify(lectrisPanelLayout))}catch{}},[lectrisPanelsKey,lectrisPanelLayout]);
   const lectrisSavedLayoutKey="lectris.named-layouts.v1."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
   const [lectrisSavedLayouts,setLectrisSavedLayouts]=useState<LectrisSavedLayout[]>(()=>{
     try{
@@ -1520,13 +1527,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const saveLectrisLayout=()=>{
     const name=lectrisLayoutName.trim().slice(0,40);
     if(!name)return;
-    const entry:LectrisSavedLayout={id:crypto.randomUUID(),name,mode:lectrisLayout,pinned:[...lectrisPinned]};
+    const entry:LectrisSavedLayout={id:crypto.randomUUID(),name,mode:lectrisLayout,pinned:[...lectrisPinned],panels:{...lectrisPanelLayout}};
     setLectrisSavedLayouts(prev=>[...prev.slice(-11),entry]);
     setLectrisLayoutName("");
   };
   const applyLectrisSavedLayout=(entry:LectrisSavedLayout)=>{
     setLectrisLayout(entry.mode);
     setLectrisPinned(entry.pinned.filter(toolAllowedForRole));
+    if(entry.panels)setLectrisPanelLayout(normalizeLectrisPanelLayout(entry.panels));
   };
 
 
@@ -5363,8 +5371,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <input type="text" aria-label="Название новой раскладки" placeholder="Название раскладки"
                   maxLength={40} value={lectrisLayoutName} onChange={e=>setLectrisLayoutName(e.target.value)}
                   onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){e.preventDefault();saveLectrisLayout()}}}/>
+                <button type="button" className="lectris-panel-entry" onClick={e=>{setLectrisPanelSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}>Расположение панелей…</button>
                 <button type="button" disabled={!lectrisLayoutName.trim()} onClick={saveLectrisLayout}>Сохранить текущую</button>
-                <button type="button" onClick={()=>{setLectrisLayout("standard");setLectrisPinned(lectrisDefaultPinned);setDesktopToolsExpanded(false)}}>Восстановить по умолчанию</button>
+                <button type="button" onClick={()=>{setLectrisLayout("standard");setLectrisPinned(lectrisDefaultPinned);setLectrisPanelLayout({...defaultLectrisPanelLayout});setDesktopToolsExpanded(false)}}>Восстановить по умолчанию</button>
               </div>
             </div>
           </details>{installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lectris на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
@@ -5563,7 +5572,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </button>
         </div>
       </header>
-      <main className={`workspace lectris-layout-${lectrisLayout}`}>
+      <main className={`workspace lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
+        {lectrisPanelSettingsOpen&&<LectrisPanelSettings value={lectrisPanelLayout} onChange={setLectrisPanelLayout} onClose={()=>setLectrisPanelSettingsOpen(false)}/>}
+
         {!objectEditorOpen && !presentation && <LectrisQuickProperties
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={color} weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
