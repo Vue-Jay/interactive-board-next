@@ -10,6 +10,7 @@ const itemNames: Record<Item["kind"], string> = {
 };
 const colorKinds = new Set<Item["kind"]>(["pen","marker","shape","text","sticky","connector","comment","formula","graph","checklist","quiz","flashcard","frame"]);
 const advancedKinds = new Set<Item["kind"]>(["text","sticky","frame","comment","graph","formula","table","checklist","quiz","flashcard","linkmedia"]);
+const palette = ["#1f2937","#365fd0","#7c3aed","#0f766e","#d97706","#dc2626","#ec4899","#ffffff"];
 
 type QuickProps = {
   item: Item | null;
@@ -109,9 +110,13 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
   useEffect(()=>setTextDraft(item.text),[item.id,item.text]);
   const textEditable=["text","sticky","frame","comment"].includes(item.kind);
   const saveText=()=>{if(!canModify||textDraft===item.text)return;onPatch({text:item.kind==="frame"?textDraft.replace(/\s*\n+\s*/g," ").trim().slice(0,120):textDraft});};
+  const currentColor = /^#[0-9a-fA-F]{6}$/.test(item.color||"") ? item.color : "#365fd0";
+  const rotation=item.rotation??0;
+  const rotateBy=(degrees:number)=>onPatch({rotation:((rotation+degrees)%360+360)%360});
   return <aside className="lectris-object-inspector" aria-label="Свойства объекта" onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
     <header className="lectris-inspector-head">
-      <div><small>СВОЙСТВА ОБЪЕКТА</small><strong>{itemNames[item.kind]}</strong></div>
+      <div><small>СВОЙСТВА ОБЪЕКТА</small><strong>{itemNames[item.kind]}</strong>
+        <span className="lectris-inspector-state">{item.locked?"Объект заблокирован":canModify?"Можно редактировать":"Только просмотр"}</span></div>
       <button type="button" onClick={onClose} aria-label="Закрыть свойства">×</button>
     </header>
     <div className="lectris-inspector-scroll">
@@ -122,7 +127,12 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
           <NumberField label="Y" value={item.y} disabled={!canModify} onCommit={y=>onPatch({y})}/>
           <NumberField label="Ширина" value={item.width} minimum={8} disabled={!canModify} onCommit={width=>onPatch({width})}/>
           <NumberField label="Высота" value={item.height} minimum={8} disabled={!canModify} onCommit={height=>onPatch({height})}/>
-          <NumberField label="Угол, °" value={item.rotation??0} minimum={-360} maximum={360} disabled={!canModify} onCommit={rotation=>onPatch({rotation})}/>
+          <NumberField label="Угол, °" value={rotation} minimum={-360} maximum={360} disabled={!canModify} onCommit={rotation=>onPatch({rotation})}/>
+        </div>
+        <div className="lectris-inspector-rotation" role="group" aria-label="Быстрый поворот">
+          <button type="button" disabled={!canModify} onClick={()=>rotateBy(-90)} title="Повернуть на 90 градусов влево">↶ −90°</button>
+          <button type="button" disabled={!canModify} onClick={()=>onPatch({rotation:0})} title="Убрать поворот">0°</button>
+          <button type="button" disabled={!canModify} onClick={()=>rotateBy(90)} title="Повернуть на 90 градусов вправо">+90° ↷</button>
         </div>
       </section>
       {textEditable && <section className="lectris-inspector-section">
@@ -135,14 +145,25 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
       {colorKinds.has(item.kind) && <section className="lectris-inspector-section">
         <h3>Оформление</h3>
         <label className="lectris-inspector-color"><span>Цвет объекта</span>
-          <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(item.color||"")?item.color:"#365fd0"} disabled={!canModify}
+          <input type="color" value={currentColor} disabled={!canModify} aria-label="Выбрать произвольный цвет"
             onChange={e=>onPatch({color:e.target.value})}/>
         </label>
+        <div className="lectris-inspector-palette" role="group" aria-label="Готовые цвета">
+          {palette.map(swatch=><button key={swatch} type="button" disabled={!canModify}
+            className={swatch.toLowerCase()===currentColor?.toLowerCase()?"selected":""}
+            aria-label={`Цвет ${swatch}`} aria-pressed={swatch.toLowerCase()===currentColor?.toLowerCase()}
+            style={{backgroundColor:swatch}} title={swatch}
+            onClick={()=>onPatch({color:swatch})}/>)}
+        </div>
         {typeof item.fontSize==="number" && <NumberField label="Размер текста" value={item.fontSize} minimum={8} maximum={144} disabled={!canModify} onCommit={fontSize=>onPatch({fontSize})}/>}
       </section>}
       <section className="lectris-inspector-section">
         <h3>Действия</h3>
         {editable && <button type="button" className="lectris-inspector-primary" disabled={!canModify} onClick={onEdit}>Редактировать содержимое</button>}
+        <div className="lectris-inspector-actions">
+          <button type="button" disabled={!canModify} onClick={onDuplicate}>Создать копию</button>
+          <button type="button" disabled={!canToggleLock} onClick={()=>onPatch({locked:!item.locked})}>{item.locked?"Разблокировать":"Заблокировать"}</button>
+        </div>
         <button type="button" onClick={()=>setAdvancedOpen(true)}>Дополнительные параметры…</button>
       </section>
     </div>
