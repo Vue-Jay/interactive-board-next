@@ -1,10 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { AccountRole } from "./accountRoleStore";
 
-type NavIcon = "home" | "boards" | "users" | "assignments" | "schedule" | "progress" | "materials" | "templates" | "notification" | "profile" | "settings" | "admin" | "menu" | "chevron";
+type NavIcon = "home" | "subjects" | "groups" | "boards" | "users" | "assignments" | "schedule" | "progress" | "materials" | "templates" | "notification" | "profile" | "settings" | "admin" | "menu" | "chevron";
 type NavItem = { id: string; label: string; icon: NavIcon; teacher?: boolean; admin?: boolean };
 const items: NavItem[] = [
   { id:"", label:"Главная", icon:"home" },
+  { id:"subjects", label:"Предметы", icon:"subjects" },
+  { id:"groups", label:"Группы и классы", icon:"groups", teacher:true },
   { id:"boards", label:"Доски", icon:"boards" },
   { id:"students", label:"Ученики", icon:"users", teacher:true },
   { id:"assignments", label:"Задания", icon:"assignments" },
@@ -20,6 +22,8 @@ const items: NavItem[] = [
 const icons: Record<NavIcon, ReactNode> = {
   home:<><path d="m3 10 9-7 9 7v11H3z"/><path d="M9 21v-8h6v8"/></>,
   boards:<><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M10 10v10"/></>,
+  subjects:<><path d="M4 4h8a4 4 0 0 1 4 4v12H8a4 4 0 0 0-4 1V4z"/><path d="M16 8a4 4 0 0 1 4-4v17a4 4 0 0 0-4-1"/></>,
+  groups:<><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 14h8M8 17h5"/></>,
   users:<><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 6a3 3 0 0 1 0 6M19 15a5 5 0 0 1 2 4v1"/></>,
   assignments:<><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 11h6M9 16h6"/></>,
   schedule:<><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 15h3"/></>,
