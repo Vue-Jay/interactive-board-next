@@ -176,20 +176,23 @@ export async function loadLectrisOrganization(userId:string,boardIds:string[]):P
       remoteBoards.push(...rows);
     }
     const remaining=readQueue(userId);
+    const latestLocal=readLectrisLocalOrganization(userId);
     const dirtyBoards=new Set(remaining.filter((x):x is Extract<PendingOperation,{type:"board"}>=>x.type==="board").map(x=>x.boardId));
-    organization={...organization};
+    organization={...latestLocal};
     for(const row of remoteBoards){
       if(!dirtyBoards.has(row.board_id))organization[row.board_id]={subject:name(row.subject),group:name(row.group_name)};
     }
-    const dirtyCategories=remaining.some(op=>op.type==="category");
+    const latestCatalog=readLectrisLocalCatalog(userId);
     const remoteCatalog={
       subjects:unique(categories.filter(x=>x.kind==="subject").map(x=>x.name)),
       groups:unique(categories.filter(x=>x.kind==="group").map(x=>x.name))
     };
-    catalog=dirtyCategories?{
-      subjects:unique([...remoteCatalog.subjects,...catalog.subjects]),
-      groups:unique([...remoteCatalog.groups,...catalog.groups])
-    }:remoteCatalog;
+    // Preserve pre-sync local categories so a first cloud refresh does not
+    // destroy labels that still need an explicit one-time import.
+    catalog={
+      subjects:unique([...remoteCatalog.subjects,...latestCatalog.subjects]),
+      groups:unique([...remoteCatalog.groups,...latestCatalog.groups])
+    };
     persistOrganization(userId,organization);
     persistCatalog(userId,catalog);
     return {organization,catalog,status:"synced",pending:remaining.length};
