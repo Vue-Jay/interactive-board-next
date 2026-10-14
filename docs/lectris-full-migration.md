@@ -128,6 +128,42 @@ InteractiveBoard: Supabase Dashboard → Project Settings → API Keys →
 восстановления базы, с учётом требований Supabase Storage API. Не
 манипулируйте `storage.objects` напрямую через SQL ради переноса файлов.
 
+## Этап 3. Перед восстановлением: проверка НОВОЙ базы (только SELECT)
+
+SQL-копия старого InteractiveBoard содержит 6 `auth.users`, 6 `auth.identities`,
+3 `storage.buckets` и 50 `storage.objects`. Само содержимое всех 50 файлов
+уже отдельно сохраняется локально через скрипт Storage и манифест SHA-256.
+**Не импортируйте `data.sql` в новый проект, пока не проверите, что он пуст.**
+
+В CMD на Windows:
+
+```cmd
+cd C:\Users\user\InteractiveBoardNext
+git pull --ff-only origin main
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\lectris-preflight-new-db.ps1"
+```
+
+Откройте **НОВЫЙ** проект `vznjpfqodjnxnmkrhiqk` → Connect →
+Session pooler → URI, вставьте URI в первый скрытый запрос, оставив
+`[YOUR-PASSWORD]`. Во втором скрытом запросе введите **пароль базы
+НОВОГО Lectris**, не пароль старого InteractiveBoard.
+
+Скрипт сверяет новый project ref с URI и выполняет **только SELECT**.
+Ожидается `auth_users=0`, `auth_identities=0`, `storage_buckets=0`,
+`storage_objects=0`, `public_tables=0`. При ненулевых значениях
+проверить, что это действительно пустой целевой проект, иначе есть
+риск конфликтов и дублирования во время восстановления. Также проверяются
+установленные расширения и версии PostgreSQL. Вывод можно прислать,
+**но ни URI, ни пароль не публиковать**.
+
+До следующего этапа не запускать `setup.sql`, миграции проекта, SQL restore,
+копирование `storage.objects` или загрузку Storage файлов. Восстановление
+нужно будет выполнять по официальной инструкции Supabase через `psql`
+в одной транзакции, затем настроить публикации Realtime и отдельно
+перенести байты файлов через Storage API. Совместимость старой схемы,
+возможные настройки Vault и уникальный ключ авторизации нового Supabase
+проверяются перед финальным переключением.
+
 ## Этап 2B. Ручной экспорт и восстановление
 
 Для Windows в репозитории есть **предпочтительный помощник только для резервной копии**:
