@@ -1,0 +1,44 @@
+/* InteractiveBoard Next: visual foundation, independent from legacy UI logic. */
+:root {
+  --next-brand: #4361ee;
+  --next-brand-hover: #3450d5;
+  --next-ink: #19243a;
+  --next-muted: #68768d;
+  --next-surface: #ffffff;
+  --next-surface-soft: #f6f8fc;
+  --next-outline: #e2e8f2;
+  --next-radius-sm: 10px;
+  --next-radius-md: 16px;
+  --next-radius-lg: 24px;
+  --next-shadow: 0 12px 36px rgba(28, 49, 91, .09);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --next-brand: #8298ff;
+    --next-brand-hover: #a0afff;
+    --next-ink: #eef2ff;
+    --next-muted: #9daac2;
+    --next-surface: #1b2435;
+    --next-surface-soft: #111b2a;
+    --next-outline: #344258;
+    --next-shadow: 0 12px 36px rgba(0,0,0,.22);
+  }
+}
+/* Opt-in components can use these classes while old screens stay intact. */
+.next-panel {
+  background: var(--next-surface);
+  border: 1px solid var(--next-outline);
+  border-radius: var(--next-radius-lg);
+  box-shadow: var(--next-shadow);
+  color: var(--next-ink);
+}
+.next-button {
+  background: var(--next-brand);
+  color: white;
+  border: 0;
+  border-radius: var(--next-radius-sm);
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.next-button:hover { background: var(--next-brand-hover); }
+.next-subtle { color: var(--next-muted); }
