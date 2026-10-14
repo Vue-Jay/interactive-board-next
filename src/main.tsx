@@ -10,6 +10,7 @@ import "./lectrisWorkspace.css";
 import "./lectrisBoard.css";
 import "./lectrisEditor.css";
 import "./lectrisHub.css";
+import "./lectrisDock.css";
 
 type ErrorBoundaryState = { error: Error | null };
 
