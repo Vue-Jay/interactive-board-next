@@ -91,7 +91,27 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
 
  useEffect(()=>{if(manage){void loadAccess(manage);void loadLinks(manage)}else{setAccess({members:[],invites:[]});setShareLinks([]);setCreatedUrl("")}},[manage?.id]);
 
- const add=async()=>{if(busy)return;setBusy(true);try{const b=await createBoard(user);await refresh();onOpenBoard(b)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось создать доску")}finally{setBusy(false)}};
+ const add=async(association?:{subject?:string;group?:string})=>{
+   if(busy)return;
+   setBusy(true);
+   try{
+     const b=await createBoard(user);
+     if(association&&(association.subject||association.group)){
+       try{
+         const key="lectris.board-organization.v1."+user.id;
+         const stored=JSON.parse(localStorage.getItem(key)||"{}") as Record<string,{subject?:string;group?:string}>;
+         const safe=stored&&typeof stored==="object"&&!Array.isArray(stored)?stored:{};
+         localStorage.setItem(key,JSON.stringify({...safe,[b.id]:{
+           subject:(association.subject||"").trim().slice(0,80),
+           group:(association.group||"").trim().slice(0,80)
+         }}));
+       }catch{/* Do not block access to a newly created board if local tags cannot be stored. */}
+     }
+     await refresh();
+     onOpenBoard(b);
+   }catch(e){setNotice(e instanceof Error?e.message:"Не удалось создать доску")}
+   finally{setBusy(false)}
+ };
  const saveRename=async(b:BoardSummary)=>{await renameBoard(user.id,b.id,draftTitle);setEditingId(null);await refresh()};
  const chooseImport=async(file:File)=>{setBusy(true);setImportProgress("Проверяем файл…");try{const preview=await inspectBoardImport(file);setImportPreview(preview);setImportFileName(file.name);setImportProgress("")}catch(e){setNotice(e instanceof Error?e.message:"Не удалось прочитать резервную копию");setImportProgress("")}finally{setBusy(false)}};
  const confirmImport=async()=>{if(!importPreview||busy)return;setBusy(true);setImportProgress("Создаём новую доску…");try{const board=await importAsNewBoard(user,importPreview,setImportProgress);setImportPreview(null);setImportProgress("");await refresh();setNotice(`Импортирована новая доска «${board.title}»`);onOpenBoard(board)}catch(e){setNotice(e instanceof Error?e.message:"Импорт не завершён")}finally{setBusy(false)}};
@@ -118,7 +138,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
 
  return <main className="boards-shell">
  {!isBoardListView&&<LectrisHub user={user} role={accountRole} view={hubView} boards={boards}
-    loading={loading} creating={busy} onCreateBoard={()=>void add()} onOpenBoard={onOpenBoard}/>}
+    loading={loading} creating={busy} onCreateBoard={association=>void add(association)} onOpenBoard={onOpenBoard}/>}
   {isBoardListView&&<section className="boards-content">{user.isGuest&&<div className="guest-lifecycle-note"><strong>Гостевой режим</strong><span>Это временная анонимная сессия. Доступ к доскам сохранится только пока действует эта гостевая сессия. Для постоянного аккаунта выйдите и зарегистрируйтесь.</span></div>}<div className="boards-heading-row"><div><h1>Мои доски</h1><p>{isRemoteBackendEnabled()?"Уроки, материалы и совместные доски в одном месте.":"Сейчас данные хранятся в этом браузере. Ссылки доступа появятся после подключения сервера."}</p></div><div className="boards-heading-actions">{accountRole==="teacher"?<><label className={`boards-secondary boards-import ${busy?"disabled":""}`}>Импортировать<input type="file" hidden disabled={busy} accept=".orboard,.json,application/json,application/vnd.onlinerepetitor.board+json" onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(f)void chooseImport(f)}}/></label><button className="boards-create" disabled={busy} onClick={()=>void add()}>+ Новая доска</button></>:<span className="student-board-note">Ученик работает только с досками, которые предоставил преподаватель.</span>}</div></div>
 
  <div className="boards-toolbar">
