@@ -45,6 +45,7 @@ type Props={children:ReactNode;section:string;role:AccountRole;isAdmin:boolean;n
 export default function LectrisWorkspaceShell({children,section,role,isAdmin,name}:Props) {
   const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("lectris.shell.collapsed")==="1"}catch{return false}});
   const [moreOpen,setMoreOpen]=useState(false);
+  const [menuQuery,setMenuQuery]=useState("");
   const [unreadCount,setUnreadCount]=useState(0);
   useEffect(()=>{
     let active=true;
@@ -58,9 +59,16 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
 
   const available=items.filter(x=>(!x.teacher||role==="teacher")&&(!x.admin||isAdmin));
   const active=available.some(x=>x.id===section)?section:"";
-  useEffect(()=>setMoreOpen(false),[section]);
+  useEffect(()=>{setMoreOpen(false);setMenuQuery("")},[section]);
+  useEffect(()=>{
+    if(!moreOpen)return;
+    const onEscape=(event:KeyboardEvent)=>{if(event.key==="Escape")setMoreOpen(false)};
+    window.addEventListener("keydown",onEscape);
+    return()=>window.removeEventListener("keydown",onEscape);
+  },[moreOpen]);
   const move=(target:string)=>{
     setMoreOpen(false);
+    setMenuQuery("");
     window.history.pushState({}, "",target?"/?section="+encodeURIComponent(target):"/");
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
@@ -93,9 +101,16 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
       {mainTabs.map(x=>navButton(x,"lectris-mobile-tab"))}
       <button type="button" className={`lectris-nav-link lectris-mobile-tab ${moreOpen||!mainTabs.some(tab=>tab.id===active)?"is-active":""}`} aria-label="Ещё разделы" aria-expanded={moreOpen} onClick={()=>setMoreOpen(v=>!v)}><NavGlyph name="menu"/><span>Ещё</span></button>
     </nav>
-    {moreOpen&&<div className="lectris-mobile-more" role="dialog" aria-label="Другие разделы">
-      <div className="lectris-mobile-more-head"><strong>Разделы Lectris</strong><button type="button" onClick={()=>setMoreOpen(false)} aria-label="Закрыть">×</button></div>
-      {available.filter(x=>!mainTabs.some(tab=>tab.id===x.id)).map(x=>navButton(x))}
-    </div>}
+    {moreOpen&&<>
+      <button type="button" tabIndex={-1} aria-label="Закрыть меню разделов"
+        className="lectris-mobile-more-backdrop" onClick={()=>setMoreOpen(false)}/>
+      <div className="lectris-mobile-more" role="dialog" aria-modal="true" aria-label="Другие разделы">
+        <div className="lectris-mobile-more-head"><strong>Разделы Lectris</strong><button type="button" onClick={()=>setMoreOpen(false)} aria-label="Закрыть">×</button></div>
+        <input type="search" className="lectris-mobile-more-search" placeholder="Найти раздел"
+          value={menuQuery} onChange={event=>setMenuQuery(event.target.value)} aria-label="Поиск раздела"/>
+        {available.filter(x=>!mainTabs.some(tab=>tab.id===x.id)&&x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU"))).map(x=>navButton(x))}
+        {!available.some(x=>!mainTabs.some(tab=>tab.id===x.id)&&x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU")))&&<p className="lectris-mobile-more-empty">Разделы не найдены</p>}
+      </div>
+    </>}
   </div>;
 }
