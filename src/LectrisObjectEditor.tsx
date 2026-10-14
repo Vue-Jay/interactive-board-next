@@ -45,7 +45,7 @@ export function LectrisQuickProperties(props: QuickProps) {
         <input type="color" aria-label="Цвет выбранного объекта" value={/^#[0-9a-fA-F]{6}$/.test(item.color||"") ? item.color : "#365fd0"} onChange={e=>props.onPatch({color:e.target.value})}/>
       </label>}
       {item && <span className="lectris-quick-metric">{Math.round(item.width)} × {Math.round(item.height)}</span>}
-      {item && <button type="button" onClick={props.onInspectorOpen} aria-pressed={props.inspectorOpen}>Свойства</button>}
+      {item && item.kind!=="pen" && item.kind!=="marker" && <button type="button" onClick={props.onInspectorOpen} aria-pressed={props.inspectorOpen}>Свойства</button>}
       {item && canModify && advancedKinds.has(item.kind) && <button type="button" onClick={props.onEdit}>Редактировать</button>}
       {canModify && <button type="button" onClick={props.onDuplicate}>Копия</button>}
       {canModify && <button type="button" className="lectris-danger" onClick={props.onDelete}>Удалить</button>}
