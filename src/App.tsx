@@ -16,6 +16,7 @@ import GeometryInstruments from "./GeometryInstruments";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
 import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
+import { LectrisQuickProperties, LectrisObjectInspector } from "./LectrisObjectEditor";
 const StudentsScreen = lazy(() => import("./StudentsScreen"));
 const AssignmentsScreen = lazy(() => import("./AssignmentsScreen"));
 const ProgressScreen = lazy(() => import("./ProgressScreen"));
@@ -1539,6 +1540,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const pendingDisplayItems = useRef<Item[] | null>(null);
   const gesturePaintFrame = useRef<number | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [lectrisInspectorOpen,setLectrisInspectorOpen]=useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const objectEditorOpen = Boolean(
     editing ||
@@ -3528,6 +3530,25 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     ? Math.max(54,Math.min((board.current?.clientWidth??window.innerWidth)-54,selectionScreenBounds.left+selectionScreenBounds.width/2))
     : 0;
 
+  const lectrisPatchSelected = (patch: Partial<Item>) => {
+    if (!canEdit || !singleSelected) return;
+    if (isStudent && structurallyLockedForStudent(singleSelected)) return;
+    if (singleSelected.locked && patch.locked !== false) return;
+    commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,...patch}:item));
+  };
+  const lectrisEditSelected = () => {
+    if (!singleSelected || !canEdit || singleSelected.locked || (isStudent && structurallyLockedForStudent(singleSelected))) return;
+    switch (singleSelected.kind) {
+      case "text": case "sticky": case "frame": case "comment": startEdit(singleSelected); break;
+      case "formula": openFormulaEditor(singleSelected); break;
+      case "graph": openGraphEditor(singleSelected); break;
+      case "table": openTableEditor(singleSelected); break;
+      case "checklist": openChecklistEditor(singleSelected); break;
+      case "quiz": openQuizEditor(singleSelected); break;
+      case "flashcard": openFlashcardEditor(singleSelected); break;
+      case "linkmedia": openLinkMediaEditor(singleSelected); break;
+    }
+  };
   const selectionToolbarPointerDown=(event:React.PointerEvent<HTMLDivElement>)=>{
     event.stopPropagation();
   };
@@ -5445,6 +5466,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         </div>
       </header>
       <main className="workspace">
+        {!objectEditorOpen && !presentation && <LectrisQuickProperties
+          item={singleSelected} selectionCount={selectedItems.length} tool={tool}
+          color={color} weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
+          canModify={canEdit && !selectionLocked && !(singleSelected && isStudent && structurallyLockedForStudent(singleSelected))}
+          inspectorOpen={lectrisInspectorOpen} onInspectorOpen={()=>setLectrisInspectorOpen(v=>!v)}
+          onDeselect={()=>{setSelected([]);setLectrisInspectorOpen(false)}}
+          onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}
+          onPatch={lectrisPatchSelected} onColor={setColor} onWeight={setWeight}
+          onMarkerWeight={setMarkerWeight} onEraserSize={setEraserSize}/>}
+        {lectrisInspectorOpen && singleSelected && !isInkItem(singleSelected) && !objectEditorOpen && !presentation &&
+          <LectrisObjectInspector key={singleSelected.id} item={singleSelected}
+            canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected))}
+            canToggleLock={canEdit && !(isStudent && structurallyLockedForStudent(singleSelected))}
+            onClose={()=>setLectrisInspectorOpen(false)} onPatch={lectrisPatchSelected}
+            onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}/>}
+
         <div className="mobile-undo-redo" aria-label="История изменений">
           <button type="button" disabled={index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
           <button type="button" disabled={index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
