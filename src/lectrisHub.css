@@ -94,3 +94,18 @@
  .lectris-hub-list-heading{align-items:flex-start}
  .lectris-hub-list-heading>button{min-width:90px}
 }
+
+/* Creation of empty subjects and groups. */
+.lectris-hub-new-category{border-top:1px solid #e8eef6;margin-top:8px;padding-top:8px;min-width:0}
+.lectris-hub-new-category-trigger{width:100%;min-height:40px;display:flex;align-items:center;justify-content:flex-start!important;padding:9px 12px;border:1px dashed #c8d5ed!important;border-radius:10px!important;background:#f7faff!important;color:#365ab3!important;font-weight:760!important}
+.lectris-hub-new-category-trigger:hover{background:#eaf1ff!important}
+.lectris-hub-new-category form{display:grid;gap:8px}
+.lectris-hub-new-category form input{width:100%;min-width:0;min-height:39px;border:1px solid #dbe5f3;border-radius:9px;padding:8px 10px;background:#fff;color:#293d5b;font-size:12px}
+.lectris-hub-new-category form>div{display:flex;gap:6px}
+.lectris-hub-new-category form button{flex:1;min-height:33px;display:grid;place-items:center;padding:6px;border:1px solid #dce5f4;border-radius:9px;background:#edf3ff;color:#375cac;font-weight:750;font-size:11px}
+.lectris-hub-new-category form button:disabled{opacity:.5}
+@media(max-width:760px){
+ .lectris-hub-new-category{border:0;border-left:1px solid #e8eef6;margin:0 0 0 5px;padding:0 0 0 9px;min-width:160px}
+ .lectris-hub-new-category form{width:210px}
+ .lectris-hub-new-category-trigger{white-space:nowrap}
+}
