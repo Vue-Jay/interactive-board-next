@@ -95,6 +95,7 @@ function NumberField({label,value,minimum=-100000,maximum=100000,disabled,onComm
 
 export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
   const editable=advancedKinds.has(item.kind);
+  const [advancedOpen,setAdvancedOpen]=useState(false);
   const [textDraft,setTextDraft]=useState(item.text);
   useEffect(()=>setTextDraft(item.text),[item.id,item.text]);
   const textEditable=["text","sticky","frame","comment"].includes(item.kind);
@@ -133,12 +134,24 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
       <section className="lectris-inspector-section">
         <h3>Действия</h3>
         {editable && <button type="button" className="lectris-inspector-primary" disabled={!canModify} onClick={onEdit}>Редактировать содержимое</button>}
-        <button type="button" disabled={!canModify} onClick={onDuplicate}>Создать копию</button>
-        <button type="button" disabled={!canToggleLock} onClick={()=>onPatch({locked:!item.locked})}>
-          {item.locked?"Разблокировать":"Заблокировать"}
-        </button>
-        <button type="button" className="lectris-danger" disabled={!canModify} onClick={onDelete}>Удалить объект</button>
+        <button type="button" onClick={()=>setAdvancedOpen(true)}>Дополнительные параметры…</button>
       </section>
+    </div>
+    {advancedOpen&&<div className="lectris-advanced-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget)setAdvancedOpen(false)}}>
+      <section role="dialog" aria-modal="true" aria-label="Дополнительные параметры объекта" className="lectris-advanced-modal"
+        onKeyDown={e=>{if(e.key==="Escape"){e.stopPropagation();setAdvancedOpen(false)}}}>
+        <header><div><small>LECTRIS · ДОПОЛНИТЕЛЬНО</small><strong>{itemNames[item.kind]}</strong></div>
+          <button type="button" onClick={()=>setAdvancedOpen(false)} aria-label="Закрыть дополнительные настройки">×</button></header>
+        <div className="lectris-advanced-body">
+          <p>Дополнительные операции с выбранным объектом.</p>
+          <button type="button" disabled={!canModify} onClick={()=>{onDuplicate();setAdvancedOpen(false)}}>Создать копию</button>
+          <button type="button" disabled={!canToggleLock} onClick={()=>{onPatch({locked:!item.locked});setAdvancedOpen(false)}}>{item.locked?"Разблокировать":"Заблокировать"}</button>
+          <button type="button" disabled={!canModify||!item.rotation} onClick={()=>{onPatch({rotation:0});setAdvancedOpen(false)}}>Сбросить поворот</button>
+          <button className="lectris-danger" type="button" disabled={!canModify} onClick={()=>{onDelete();setAdvancedOpen(false)}}>Удалить объект</button>
+        </div>
+        <footer><button type="button" onClick={()=>setAdvancedOpen(false)}>Готово</button></footer>
+      </section>
+    </div>}
     </div>
   </aside>;
 }
