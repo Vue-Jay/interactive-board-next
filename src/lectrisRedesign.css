@@ -86,7 +86,7 @@
 }
 .lectris-collapse-button{background:#f1f5fc;border:1px solid #e4ebf5}
 .lectris-sidebar-footer{border-top-color:#e7edf5}
-.lectris-workspace-stage{isolation:isolate}
+/* Preserve fixed dialogs above the shell header: no stacking context on stage. */
 .lectris-workspace-stage :is(.students-header,.assignments-header,.materials-header,.schedule-header,.notifications-header,.progress-header,.templates-header) {
   border-bottom-color:#e4eaf4;
 }
