@@ -1,0 +1,7233 @@
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as PE,
+} from "react";
+import { flushSync } from "react-dom";
+import "./App.css";
+import AuthScreen from "./AuthScreen";
+import GeometryInstruments from "./GeometryInstruments";
+import ViewerInkLayer from "./ViewerInkLayer";
+import BoardsScreen from "./BoardsScreen";
+const StudentsScreen = lazy(() => import("./StudentsScreen"));
+const AssignmentsScreen = lazy(() => import("./AssignmentsScreen"));
+const ProgressScreen = lazy(() => import("./ProgressScreen"));
+const ScheduleScreen = lazy(() => import("./ScheduleScreen"));
+const MaterialsScreen = lazy(() => import("./MaterialsScreen"));
+const NotificationsScreen = lazy(() => import("./NotificationsScreen"));
+const ProfileScreen = lazy(() => import("./ProfileScreen"));
+const SettingsScreen = lazy(() => import("./SettingsScreen"));
+const BillingScreen = lazy(() => import("./BillingScreen"));
+const AiStudioScreen = lazy(() => import("./AiStudioScreen"));
+const AdminScreen = lazy(() => import("./AdminScreen"));
+const TemplatesScreen = lazy(() => import("./TemplatesScreen"));
+import { clearNotificationCache } from "./notificationsStore";
+import { clearAiBoardTransfer, peekAiBoardTransfer } from "./aiLocalStore";
+import { generateMathAi, type MathAiLevel, type MathAiMode } from "./aiMathGenerator";
+import { clearAccountAccessCache, getAccountAccess, getCachedAccountAccess,type AccountRole } from "./accountRoleStore";
+
+import { materialBlob,markMaterialUsed,type Material } from "./materialsStore";
+import { finishLesson, getActiveLesson, startLesson, type LiveLesson } from "./lessonStore";
+import ShareDialog from "./ShareDialog";
+import { clearPendingShare, initialRoute, parseRoute, rememberShareToken, type AppRoute } from "./routes";
+import { redeemShareLink } from "./shareLinks";
+import { BOARD_ROLE_LABELS, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
+import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from "./boardStore";
+import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
+import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
+import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
+import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
+import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor, type LiveInkMessage } from "./boardBroadcast";
+import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
+import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState } from "./boardWorkSync";
+import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
+import { documentFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
+import {
+  parseDocument,
+  packDocumentInk,
+  expandDocumentInk,
+  isInkItem,
+  stroke,
+  type ShapeType,
+  type ConnectorStyle,
+  type ConnectorRouting,
+  type ConnectorBinding,
+  type Point,
+  type View,
+  type Item,
+  type DocumentData,
+} from "./boardModel";
+
+import { eraseInkAlongPath } from "./inkEraser";
+import { inkIdsInLasso } from "./inkLasso";
+import { hitTestInk } from "./inkHitTest";
+import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
+import { getBoardHistoryVersion, listBoardHistory, type BoardHistoryEntry } from "./historyStore";
+import { changesSinceLastVisit, recentBoardHistory } from "./boardHistoryUtils";
+import { createBoardComment, listBoardComments, listBoardCommentParticipants, setBoardCommentResolved, type BoardCommentParticipant, type BoardCommentThread } from "./commentThreadsStore";
+import { subscribeBoardComments } from "./commentRealtime";
+import { LinkMediaPlayer, resolveLinkMedia } from "./linkMedia";
+import { safeBackupName, validatePortableBundle, type PortableBoardBundle } from "./backupStore";
+
+const createId = (): string => {
+  const native = globalThis.crypto?.randomUUID;
+  if (typeof native === "function") {
+    try { return native.call(globalThis.crypto); } catch { /* use fallback below */ }
+  }
+  const bytes = new Uint8Array(16);
+  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(bytes);
+  else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0"));
+  return `${hex.slice(0,4).join("")}-${hex.slice(4,6).join("")}-${hex.slice(6,8).join("")}-${hex.slice(8,10).join("")}-${hex.slice(10).join("")}`;
+};
+
+type Tool =
+  | "select"
+  | "hand"
+  | "lasso"
+  | "sticky"
+  | "text"
+  | "shape"
+  | "pen"
+  | "marker"
+  | "eraser"
+  | "connector"
+  | "frame"
+  | "comment"
+  | "table"
+  | "formula"
+  | "graph"
+  | "checklist"
+  | "quiz"
+  | "flashcard"
+  | "cover"
+  | "media"
+  | "linkmedia";
+
+type IconName =
+  | Tool
+  | "search" | "present" | "layers" | "undo" | "redo" | "close"
+  | "duplicate" | "copy" | "lock" | "unlock" | "group" | "ungroup"
+  | "rotate-left" | "rotate-right" | "reset-rotation" | "more" | "rename"
+  | "layer-down" | "layer-up" | "send-back" | "send-front" | "trash"
+  | "align-left" | "align-center-x" | "align-right" | "align-top" | "align-center-y" | "align-bottom"
+  | "distribute-x" | "distribute-y" | "open" | "download" | "eye" | "eye-off"
+  | "frame-contents" | "fit" | "grid" | "dots" | "plain" | "line" | "arrow-one" | "arrow-double" | "elbow" | "link" | "unlink" | "label" | "zoom-in" | "zoom-out" | "snap" | "chevron-left" | "chevron-right"
+  | "templates" | "comments" | "check" | "plus" | "minus" | "presentation-order"
+  | "checklist" | "quiz" | "cover" | "flip" | "robot" | "fullscreen" | "timer" | "laser" | "spotlight" | "slides" | "play" | "pause" | "reset" | "keyboard" | "settings" | "add-person";
+
+const iconBody = (name: IconName) => {
+  switch (name) {
+    case "settings": return <><circle cx="12" cy="12" r="3"/><path d="M10 3h4l.6 2.2 1.7.9 2.1-.7 2 3.5-1.6 1.6v2l1.6 1.6-2 3.5-2.1-.7-1.7.9L14 21h-4l-.6-2.2-1.7-.9-2.1.7-2-3.5 1.6-1.6v-2L3.6 9.9l2-3.5 2.1.7 1.7-.9L10 3Z"/></>;
+    case "add-person": return <><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.5-3.5 2.5-5.5 5.5-5.5s5 2 5.5 5.5M18 8v8M14 12h8"/></>;
+    case "select": return <><path d="M5 3.8 18.2 11l-6.1 1.7-2.6 6.1L5 3.8Z"/><path d="m12.2 12.7 4.4 4.4"/></>;
+    case "hand": return <><path d="M7.5 11V7.7a1.5 1.5 0 0 1 3 0V10"/><path d="M10.5 10V6.2a1.5 1.5 0 0 1 3 0V10"/><path d="M13.5 10V7a1.5 1.5 0 0 1 3 0v5"/><path d="M7.5 10.2 6.4 9.1a1.6 1.6 0 0 0-2.3 2.2l4.5 6.1A4 4 0 0 0 11.8 19h1.7a5 5 0 0 0 5-5v-3a1.5 1.5 0 0 0-3 0v1"/></>;
+    case "lasso": return <><path d="M18.7 8.8c.5 3.1-2.4 6.4-6.8 7-4.5.6-7.9-1.3-8.3-4.1-.4-3 2.8-5.9 7.1-6.4 4-.5 7.3 1 8 3.5Z"/><path d="M12.5 15.7c.5 2.1 2.2 3.8 4.3 3.4 1.7-.3 2.6-1.8 1.7-2.8-.8-.9-2.8-.3-2.8 1.1"/></>;
+    case "pen": return <><path d="m5 19 3.2-.8L18 8.4a2 2 0 0 0-2.8-2.8l-9.8 9.8L5 19Z"/><path d="m13.7 7.1 3.2 3.2"/></>;
+    case "marker": return <><path d="m6 15 7.9-9a1.8 1.8 0 0 1 2.6-.1l1.6 1.5a1.8 1.8 0 0 1 0 2.6L10 18H6v-3Z"/><path d="M4 20h10"/><path d="m12.2 8 3.8 3.8"/></>;
+    case "eraser": return <><path d="m7.3 17.5-2.8-2.8a2 2 0 0 1 0-2.8l6.7-6.7a2 2 0 0 1 2.8 0l4.8 4.8a2 2 0 0 1 0 2.8l-4.7 4.7H7.3Z"/><path d="m9.2 8.2 6.6 6.6"/><path d="M13.8 17.5H20"/></>;
+    case "connector": return <><path d="M5 17 17 5"/><path d="M11 5h6v6"/><circle cx="5" cy="17" r="2"/><circle cx="17" cy="5" r="2"/></>;
+    case "frame": return <><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 5v14M16 5v14M4 9h16M4 15h16" opacity=".45"/></>;
+    case "comment": return <><path d="M5 5h14v10H9l-4 4V5Z"/><path d="M8 9h8M8 12h5"/></>;
+    case "table": return <><rect x="4" y="5" width="16" height="14" rx="1.5"/><path d="M4 10h16M4 14.5h16M10 5v14M15 5v14"/></>;
+    case "formula": return <><path d="M5 7h7l-5 10h7"/><path d="M16 8c1.8 0 3 1.2 3 3s-1.2 3-3 3M18.5 7.5l1.5-1.5"/></>;
+    case "graph": return <><path d="M4 19V5M4 12h16"/><path d="M6 16c3-1 4-8 7-8s3 5 7 3"/></>;
+    case "checklist": return <><rect x="4" y="4" width="16" height="16" rx="2"/><path d="m7 9 1.5 1.5L11 8M13.5 9H17M7 14l1.5 1.5L11 13M13.5 14H17"/></>;
+    case "quiz": return <><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9.2 9.1a2.9 2.9 0 1 1 4.7 2.3c-1.1.8-1.9 1.3-1.9 2.6"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/></>;
+    case "robot": return <><rect x="4.5" y="7" width="15" height="12" rx="3"/><path d="M12 7V4M9.5 4h5"/><circle cx="9" cy="12" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.15" fill="currentColor" stroke="none"/><path d="M8.5 16h7M2.5 11v4M21.5 11v4"/></>;
+    case "flashcard": return <><rect x="5" y="4" width="14" height="16" rx="2.5"/><path d="M8 8h8M8 12h5"/><path d="m15 16 2 2 3-4"/></>;
+    case "cover": return <><rect x="4" y="5" width="16" height="14" rx="2.5"/><path d="M7 9h10M7 12h7"/><path d="M17 15.5 20 12.5M20 12.5 17 9.5"/></>;
+    case "flip": return <><path d="M6 7h9a5 5 0 0 1 5 5v1"/><path d="m16 9 4 4 4-4" transform="translate(-4 0)"/><path d="M18 17H9a5 5 0 0 1-5-5v-1"/><path d="m8 15-4-4-4 4" transform="translate(4 0)"/></>;
+    case "text": return <><path d="M5 6h14M12 6v13M8.5 19h7"/></>;
+    case "sticky": return <><path d="M5 4h14v11l-5 5H5V4Z"/><path d="M14 20v-5h5"/></>;
+    case "shape": return <><rect x="4.5" y="5" width="7" height="7" rx="1.5"/><circle cx="16.5" cy="8.5" r="3.5"/><path d="m8 19 3.5-5 3.5 5H8Z"/></>;
+    case "media": return <><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m5.5 17 4.2-4 3.1 2.8 2.3-2.2 3.4 3.4"/></>;
+    case "linkmedia": return <><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M6 18 18 6"/></>;
+    case "search": return <><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></>;
+    case "present": return <><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M12 16v4M8.5 20h7"/><path d="m10 9 5 2.5-5 2.5V9Z"/></>;
+    case "layers": return <><path d="m12 4 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4M4 16l8 4 8-4"/></>;
+    case "undo": return <><path d="M8 7 4 11l4 4"/><path d="M5 11h8a6 6 0 0 1 6 6"/></>;
+    case "redo": return <><path d="m16 7 4 4-4 4"/><path d="M19 11h-8a6 6 0 0 0-6 6"/></>;
+    case "close": return <><path d="m7 7 10 10M17 7 7 17"/></>;
+    case "duplicate": return <><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>;
+    case "copy": return <><rect x="9" y="8" width="11" height="11" rx="2"/><rect x="4" y="4" width="11" height="11" rx="2"/></>;
+    case "lock": return <><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></>;
+    case "unlock": return <><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.2-2.4"/></>;
+    case "group": return <><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M14 4h6v6M4 14v6h6"/></>;
+    case "ungroup": return <><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M20 10V4h-6M4 14v6h6" strokeDasharray="2 2"/></>;
+    case "rotate-left": return <><path d="M7 7H3v-4"/><path d="M4 7a8 8 0 1 1 .9 10.8"/></>;
+    case "rotate-right": return <><path d="M17 7h4v-4"/><path d="M20 7a8 8 0 1 0-.9 10.8"/></>;
+    case "reset-rotation": return <><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></>;
+    case "more": return <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></>;
+    case "rename": return <><path d="M5 19h4l10-10a2 2 0 0 0-4-4L5 15v4Z"/><path d="m13.5 6.5 4 4"/></>;
+    case "layer-down": return <><path d="m5 8 7-4 7 4-7 4-7-4Z"/><path d="m5 13 7 4 7-4M12 17v4m0 0-2-2m2 2 2-2"/></>;
+    case "layer-up": return <><path d="m5 12 7 4 7-4-7-4-7 4Z"/><path d="m5 7 7-4 7 4M12 7V3m0 0-2 2m2-2 2 2"/></>;
+    case "send-back": return <><path d="m5 7 7-4 7 4-7 4-7-4ZM5 12l7 4 7-4M5 16l7 4 7-4"/><path d="M3 19V9"/></>;
+    case "send-front": return <><path d="m5 8 7-4 7 4-7 4-7-4ZM5 13l7 4 7-4"/><path d="M21 5v10"/></>;
+    case "trash": return <><path d="M5 7h14M9 7V4h6v3M8 10v7M12 10v7M16 10v7M6.5 7l1 13h9l1-13"/></>;
+    case "align-left": return <><path d="M5 4v16M8 7h10M8 12h7M8 17h9"/></>;
+    case "align-center-x": return <><path d="M12 4v16M6 7h12M8 12h8M5 17h14"/></>;
+    case "align-right": return <><path d="M19 4v16M6 7h10M9 12h7M7 17h9"/></>;
+    case "align-top": return <><path d="M4 5h16M7 8v10M12 8v7M17 8v9"/></>;
+    case "align-center-y": return <><path d="M4 12h16M7 6v12M12 8v8M17 5v14"/></>;
+    case "align-bottom": return <><path d="M4 19h16M7 6v10M12 9v7M17 7v9"/></>;
+    case "distribute-x": return <><path d="M4 5v14M20 5v14M8 8v8M12 6v12M16 8v8"/></>;
+    case "distribute-y": return <><path d="M5 4h14M5 20h14M8 8h8M6 12h12M8 16h8"/></>;
+    case "open": return <><path d="M14 5h5v5M19 5l-8 8"/><path d="M17 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5"/></>;
+    case "download": return <><path d="M12 4v11M8 11l4 4 4-4"/><path d="M5 19h14"/></>;
+    case "eye": return <><path d="M3 12s3-5 9-5 9 5 9 5-3 5-9 5-9-5-9-5Z"/><circle cx="12" cy="12" r="2.5"/></>;
+    case "eye-off": return <><path d="m4 4 16 16"/><path d="M9.5 7.4A9.7 9.7 0 0 1 12 7c6 0 9 5 9 5a14 14 0 0 1-2.1 2.6M6.1 8.1C4.1 9.5 3 12 3 12s3 5 9 5c1 0 1.9-.1 2.7-.4"/><path d="M10.4 10.4a2.5 2.5 0 0 0 3.2 3.2"/></>;
+    case "frame-contents": return <><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><rect x="12" y="9" width="4" height="4" rx=".7"/><path d="M8 16h8"/></>;
+    case "fit": return <><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></>;
+    case "grid": return <><path d="M4 4h16v16H4zM10 4v16M16 4v16M4 10h16M4 16h16"/></>;
+    case "dots": return <>{[6,12,18].flatMap((x) => [6,12,18].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1" fill="currentColor" stroke="none"/>))}</>;
+    case "plain": return <rect x="4" y="5" width="16" height="14" rx="2"/>;
+    case "line": return <path d="M4 12h16"/>;
+    case "arrow-one": return <><path d="M4 12h15"/><path d="m15 8 4 4-4 4"/></>;
+    case "arrow-double": return <><path d="M5 12h14"/><path d="m9 8-4 4 4 4M15 8l4 4-4 4"/></>;
+    case "elbow": return <><path d="M4 6h7v12h9"/><path d="m16 14 4 4-4 4"/></>;
+    case "link": return <><path d="M9.5 14.5 7 17a3 3 0 0 1-4-4l3-3a3 3 0 0 1 4 0"/><path d="m14.5 9.5 2.5-2.5a3 3 0 0 1 4 4l-3 3a3 3 0 0 1-4 0"/><path d="m8.5 15.5 7-7"/></>;
+    case "unlink": return <><path d="M8 16 7 17a3 3 0 0 1-4-4l3-3a3 3 0 0 1 3.5-.4"/><path d="M16 8 17 7a3 3 0 0 1 4 4l-3 3a3 3 0 0 1-3.5.4"/><path d="m4 4 16 16"/></>;
+    case "label": return <><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M8 10h8M8 14h5"/></>;
+    case "zoom-in": return <><circle cx="10.5" cy="10.5" r="5.5"/><path d="M10.5 8v5M8 10.5h5M15 15l4 4"/></>;
+    case "zoom-out": return <><circle cx="10.5" cy="10.5" r="5.5"/><path d="M8 10.5h5M15 15l4 4"/></>;
+    case "snap": return <><path d="M5 4v7a4 4 0 0 0 8 0V4M5 8h4M13 8h4"/><path d="M17 5v6"/></>;
+    case "chevron-left": return <path d="m15 5-7 7 7 7"/>;
+    case "chevron-right": return <path d="m9 5 7 7-7 7"/>;
+    case "templates": return <><rect x="4" y="4" width="7" height="7" rx="1.2"/><rect x="13" y="4" width="7" height="7" rx="1.2"/><rect x="4" y="13" width="7" height="7" rx="1.2"/><path d="M13 16.5h7M16.5 13v7"/></>;
+    case "comments": return <><path d="M4 5h16v11H9l-5 4V5Z"/><path d="M8 9h8M8 12h6"/></>;
+    case "check": return <path d="m5 12 4 4L19 6"/>;
+    case "plus": return <path d="M12 5v14M5 12h14"/>;
+    case "minus": return <path d="M5 12h14"/>;
+    case "presentation-order": return <><path d="M6 5h12M6 10h12M6 15h7"/><path d="m15 15 3 3 3-3M18 12v6"/></>;
+    case "fullscreen": return <><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></>;
+    case "timer": return <><circle cx="12" cy="13" r="7"/><path d="M9 3h6M12 6V3M12 10v4l3 2"/></>;
+    case "laser": return <><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7" opacity=".45"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></>;
+    case "spotlight": return <><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="m4.9 4.9 2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></>;
+    case "slides": return <><rect x="4" y="5" width="12" height="9" rx="1.5"/><path d="M8 18h12V9M7 18h1"/></>;
+    case "play": return <path d="m9 6 9 6-9 6V6Z"/>;
+    case "pause": return <><path d="M9 6v12M15 6v12"/></>;
+    case "reset": return <><path d="M6 7H3V4"/><path d="M4 7a8 8 0 1 1 1.2 10"/></>;
+    case "keyboard": return <><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M6 9h2M10 9h2M14 9h2M18 9h1M6 12h2M10 12h2M14 12h2M18 12h1M7 15h10"/></>;
+  }
+};
+
+function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
+  return (
+    <svg className="ui-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {iconBody(name)}
+    </svg>
+  );
+}
+
+function ShapeIcon({ type }: { type: ShapeType }) {
+  const d:Partial<Record<ShapeType,string>>={triangle:"M14 2 25 20H3Z",rightTriangle:"M4 2v18h21Z",diamond:"M14 2 25 11 14 20 3 11Z",parallelogram:"M8 3h17l-5 16H3Z",trapezoid:"M8 3h12l5 16H3Z",pentagon:"M14 2 25 9l-4 11H7L3 9Z",hexagon:"M8 3h12l6 8-6 8H8l-6-8Z"};
+  if(type==="ellipse"||type==="circle")return <svg viewBox="0 0 28 22"><ellipse cx="14" cy="11" rx={type==="circle"?8:10} ry={type==="circle"?8:7}/></svg>;
+  if(type==="rectangle"||type==="square"||type==="rounded")return <svg viewBox="0 0 28 22"><rect x={type==="square"?6:4} y="4" width={type==="square"?16:20} height="14" rx={type==="rounded"?4:0}/></svg>;
+  return <svg viewBox="0 0 28 22"><path d={d[type]??"M4 4h20v14H4Z"}/></svg>;
+}
+function loadInitial(storageKey: string) {
+  const empty: DocumentData = {
+    version: 1,
+    title: "Новая доска",
+    view: { x: 0, y: 0, zoom: 1 },
+    items: [],
+  };
+  try {
+    const raw = localStorage.getItem(storageKey);
+    return { data: raw ? parseDocument(raw) : empty, error: "" };
+  } catch {
+    return {
+      data: empty,
+      error: "Не удалось прочитать сохранение. Оно не перезаписано.",
+    };
+  }
+}
+const Ink = memo(function Ink({ item }: { item: Item }) {
+  return (
+    <svg
+      width={item.width}
+      height={item.height}
+      style={{ overflow: "visible" }}
+    >
+      <g opacity={item.kind === "marker" ? 0.32 : 1}>
+        {item.points?.length === 1 ? (
+          <circle
+            cx={item.points[0].x}
+            cy={item.points[0].y}
+            r={(item.weight ?? 3) / 2}
+            fill={item.color}
+          />
+        ) : (
+          <polyline
+            points={item.points?.map((p) => `${p.x},${p.y}`).join(" ")}
+            fill="none"
+            stroke={item.color}
+            strokeWidth={item.weight}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+      </g>
+    </svg>
+  );
+}, (previous, next) => previous.item === next.item);
+
+function liveStroke(id: string, kind: "pen" | "marker", path: Point[], colorValue: string, weight: number): Item {
+  /*
+   * Keep the live ink preview in one immutable world coordinate system.
+   * Recomputing a stroke item's bounding box while the pointer is moving makes
+   * its containing DOM element change origin and is visible as the line
+   * "jumping" up/down or left/right.  The preview SVG already has
+   * overflow:visible, so it can stay anchored at world (0, 0) and draw the
+   * collected world points directly.  The final item is normalized only once
+   * on pointer-up by boardModel.stroke().
+   */
+  return {
+    id,
+    kind,
+    x: 0,
+    y: 0,
+    width: 1,
+    height: 1,
+    text: "",
+    color: colorValue,
+    weight,
+    points: path.map((point) => ({ x: point.x, y: point.y })),
+  };
+}
+
+type Bounds = { x: number; y: number; width: number; height: number };
+type GuideState = { x?: number; y?: number };
+type ContextMenuState = { x: number; y: number } | null;
+
+type Gesture = {
+  dragging?: boolean;
+  pointer: number;
+  start: Point;
+  view: View;
+  before: Item[];
+  restore?: Item[];
+  ids: string[];
+  path: Point[];
+  mode: "pan" | "hand-smart" | "drag" | "lasso" | "draw" | "erase" | "resize" | "rotate" | "connector" | "connector-end";
+  handHitIds?: string[];
+  handMoveSelection?: boolean;
+  handle?: string;
+  transformItem?: Item;
+  transformItems?: Item[];
+  transformBounds?: Bounds;
+  ink?: { id: string; kind: "pen" | "marker"; color: string; weight: number };
+  additive: boolean;
+  connectorStartBinding?: ConnectorBinding;
+  connectorEndBinding?: ConnectorBinding;
+};
+const tools: { id: Tool; icon: IconName; label: string; dividerAfter?: boolean }[] = [
+  { id: "select", icon: "select", label: "Выделение · V / М" },
+  { id: "hand", icon: "hand", label: "Рука · H / Р", dividerAfter: true },
+  { id: "lasso", icon: "lasso", label: "Петля · выделение всех объектов · Q / Й" },
+  { id: "pen", icon: "pen", label: "Карандаш · P / З" },
+  { id: "marker", icon: "marker", label: "Маркер · M / Ь" },
+  { id: "eraser", icon: "eraser", label: "Ластик · E / У", dividerAfter: true },
+  { id: "connector", icon: "connector", label: "Связь / стрелка · C / С" },
+  { id: "frame", icon: "frame", label: "Фрейм / раздел · F / А" },
+  { id: "comment", icon: "comment", label: "Комментарий · N / Т", dividerAfter: true },
+  { id: "text", icon: "text", label: "Текст · T / Е" },
+  { id: "sticky", icon: "sticky", label: "Стикер · S / Ы" },
+  { id: "shape", icon: "shape", label: "Фигуры · R / К" },
+  { id: "table", icon: "table", label: "Таблица · B / И" },
+  { id: "formula", icon: "formula", label: "Формула · X / Ч" },
+  { id: "graph", icon: "graph", label: "График функции · Y / Н" },
+  { id: "checklist", icon: "checklist", label: "Чек-лист / задание · K / Л" },
+  { id: "quiz", icon: "quiz", label: "Вопрос / мини-тест · G / П" },
+  { id: "flashcard", icon: "flashcard", label: "Карточка вопрос–ответ · J / О" },
+  { id: "cover", icon: "cover", label: "Шторка / открыть ответ · U / Г", dividerAfter: true },
+  { id: "media", icon: "media", label: "Фото / PDF · I / Ш" },
+  { id: "linkmedia", icon: "linkmedia", label: "Видео / аудио по ссылке · L / Д" },
+];
+const toolShortLabel: Record<Tool, string> = {
+  select:"Выбрать",hand:"Двигать",lasso:"Петля",pen:"Карандаш",marker:"Маркер",eraser:"Ластик",
+  connector:"Стрелка",frame:"Фрейм",comment:"Комментарий",text:"Текст",sticky:"Стикер",shape:"Фигуры",
+  table:"Таблица",formula:"Формула",graph:"График",checklist:"Чек-лист",quiz:"Тест",flashcard:"Карточка",
+  cover:"Шторка",media:"Фото / PDF",linkmedia:"Видео / аудио",
+};
+const primaryDesktopTools = new Set<Tool>(["select","hand","lasso","pen","marker","eraser","connector","text","sticky","shape","media"]);
+const mobileToolGroups: { label:string; tools:Tool[] }[] = [
+  { label:"Навигация", tools:["hand","select","lasso"] },
+  { label:"Рисование", tools:["pen","marker","eraser"] },
+  { label:"Создание", tools:["sticky","text","shape","connector"] },
+  { label:"Материалы", tools:["media","linkmedia","frame"] },
+  { label:"Задания", tools:["checklist","quiz","flashcard"] },
+  { label:"Интерактив", tools:["table","formula","graph","cover","comment"] },
+];
+const mobileDockTools: Tool[] = ["hand","select","lasso","pen","eraser","sticky","text","shape"];
+const STUDENT_BLOCKED_CREATE_TOOLS = new Set<Tool>(["frame","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"]);
+const STUDENT_PROTECTED_KINDS = new Set<Item["kind"]>(["frame","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"]);
+
+
+const keyTools: Record<string, Tool> = {
+  KeyV: "select",
+  KeyH: "hand",
+  KeyQ: "lasso",
+  KeyT: "text",
+  KeyS: "sticky",
+  KeyR: "shape",
+  KeyP: "pen",
+  KeyM: "marker",
+  KeyE: "eraser",
+  KeyC: "connector",
+  KeyF: "frame",
+  KeyN: "comment",
+  KeyB: "table",
+  KeyX: "formula",
+  KeyY: "graph",
+  KeyK: "checklist",
+  KeyG: "quiz",
+  KeyJ: "flashcard",
+  KeyU: "cover",
+  KeyI: "media",
+  KeyL: "linkmedia",
+};
+const inside = (p: Point, polygon: Point[]) => {
+  let hit = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i],
+      b = polygon[j];
+    if (
+      a.y > p.y !== b.y > p.y &&
+      p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x
+    )
+      hit = !hit;
+  }
+  return hit;
+};
+
+const boundsOf = (list: Item[]): Bounds | null => {
+  if (!list.length) return null;
+  const x = Math.min(...list.map((i) => i.x));
+  const y = Math.min(...list.map((i) => i.y));
+  const right = Math.max(...list.map((i) => i.x + i.width));
+  const bottom = Math.max(...list.map((i) => i.y + i.height));
+  return { x, y, width: right - x, height: bottom - y };
+};
+
+const containedByFrame = (frame: Item, source: Item[]): Item[] => source.filter((item) => {
+  if (item.id === frame.id || item.hidden || item.kind === "frame") return false;
+  const cx = item.x + item.width / 2;
+  const cy = item.y + item.height / 2;
+  return cx >= frame.x && cx <= frame.x + frame.width && cy >= frame.y && cy <= frame.y + frame.height;
+});
+
+const deepItem = (item: Item): Item => ({
+  ...item,
+  points: item.points?.map((p) => ({ ...p })),
+  connectorStart: item.connectorStart ? { ...item.connectorStart } : undefined,
+  connectorEnd: item.connectorEnd ? { ...item.connectorEnd } : undefined,
+  connectorStartBinding: item.connectorStartBinding ? { ...item.connectorStartBinding } : undefined,
+  connectorEndBinding: item.connectorEndBinding ? { ...item.connectorEndBinding } : undefined,
+  tableCells: item.tableCells ? [...item.tableCells] : undefined,
+  checklistItems: item.checklistItems ? [...item.checklistItems] : undefined,
+  checklistDone: item.checklistDone ? [...item.checklistDone] : undefined,
+  quizOptions: item.quizOptions ? [...item.quizOptions] : undefined,
+});
+
+const cloneItems = (source: Item[], offset = 24): Item[] => {
+  const groups = new Map<string, string>();
+  const ids = new Map(source.map((item) => [item.id, createId()] as const));
+  return source.map((item) => {
+    const groupId = item.groupId
+      ? groups.get(item.groupId) ?? (() => {
+          const id = createId();
+          groups.set(item.groupId!, id);
+          return id;
+        })()
+      : undefined;
+    const remapBinding = (binding?: ConnectorBinding) => binding && ids.has(binding.itemId)
+      ? { ...binding, itemId: ids.get(binding.itemId)! }
+      : undefined;
+    return {
+      ...deepItem(item),
+      id: ids.get(item.id)!,
+      x: item.x + offset,
+      y: item.y + offset,
+      connectorStartBinding: remapBinding(item.connectorStartBinding),
+      connectorEndBinding: remapBinding(item.connectorEndBinding),
+      commentTargetId: item.commentTargetId && ids.has(item.commentTargetId) ? ids.get(item.commentTargetId) : undefined,
+      presentationOrder: item.kind === "frame" ? undefined : item.presentationOrder,
+      ...(groupId ? { groupId } : { groupId: undefined }),
+      locked: false,
+    };
+  });
+};
+
+const snapDraggedBounds = (
+  moving: Bounds,
+  others: Item[],
+  rawDx: number,
+  rawDy: number,
+  threshold: number,
+): { dx: number; dy: number; guides: GuideState } => {
+  let dx = rawDx;
+  let dy = rawDy;
+  let bestX = threshold + 1;
+  let bestY = threshold + 1;
+  let guideX: number | undefined;
+  let guideY: number | undefined;
+  const movingX = [moving.x, moving.x + moving.width / 2, moving.x + moving.width];
+  const movingY = [moving.y, moving.y + moving.height / 2, moving.y + moving.height];
+  for (const other of others) {
+    const targetX = [other.x, other.x + other.width / 2, other.x + other.width];
+    const targetY = [other.y, other.y + other.height / 2, other.y + other.height];
+    for (const source of movingX) {
+      for (const target of targetX) {
+        const diff = target - (source + rawDx);
+        const distance = Math.abs(diff);
+        if (distance <= threshold && distance < bestX) {
+          bestX = distance;
+          dx = rawDx + diff;
+          guideX = target;
+        }
+      }
+    }
+    for (const source of movingY) {
+      for (const target of targetY) {
+        const diff = target - (source + rawDy);
+        const distance = Math.abs(diff);
+        if (distance <= threshold && distance < bestY) {
+          bestY = distance;
+          dy = rawDy + diff;
+          guideY = target;
+        }
+      }
+    }
+  }
+  return { dx, dy, guides: { x: guideX, y: guideY } };
+};
+
+const blobToDataUrl = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("Не удалось прочитать вложение"));
+    reader.readAsDataURL(blob);
+  });
+
+const resizedRect = (
+  base: Bounds,
+  handle: string,
+  dx: number,
+  dy: number,
+  minW: number,
+  minH: number,
+  keepRatio: boolean,
+): Bounds => {
+  let x = base.x;
+  let y = base.y;
+  let width = base.width;
+  let height = base.height;
+  if (handle.includes("e")) width = Math.max(minW, base.width + dx);
+  if (handle.includes("s")) height = Math.max(minH, base.height + dy);
+  if (handle.includes("w")) {
+    width = Math.max(minW, base.width - dx);
+    x = base.x + base.width - width;
+  }
+  if (handle.includes("n")) {
+    height = Math.max(minH, base.height - dy);
+    y = base.y + base.height - height;
+  }
+  if (keepRatio && handle.length === 2) {
+    const ratio = base.width / Math.max(1, base.height);
+    if (Math.abs(width - base.width) >= Math.abs(height - base.height) * ratio)
+      height = Math.max(minH, width / ratio);
+    else
+      width = Math.max(minW, height * ratio);
+    if (handle.includes("w")) x = base.x + base.width - width;
+    if (handle.includes("n")) y = base.y + base.height - height;
+  }
+  return { x, y, width, height };
+};
+
+const fitItemToRect = (base: Item, rect: Bounds): Item => {
+  const sx = rect.width / Math.max(1, base.width);
+  const sy = rect.height / Math.max(1, base.height);
+  const scaled = { ...base, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  if (base.kind === "connector" && base.connectorStart && base.connectorEnd) {
+    return {
+      ...scaled,
+      connectorStart: { x: base.connectorStart.x * sx, y: base.connectorStart.y * sy },
+      connectorEnd: { x: base.connectorEnd.x * sx, y: base.connectorEnd.y * sy },
+      weight: Math.max(1, (base.weight ?? 3) * Math.sqrt(Math.abs(sx * sy))),
+    };
+  }
+  if (!base.points) return scaled;
+  return {
+    ...scaled,
+    points: base.points.map((p) => ({ x: p.x * sx, y: p.y * sy })),
+    weight: Math.max(0.5, (base.weight ?? 3) * Math.sqrt(Math.abs(sx * sy))),
+  };
+};
+
+const connectorItemFromPoints = (
+  start: Point,
+  end: Point,
+  connectorStyle: ConnectorStyle,
+  color: string,
+  weight: number,
+  id: string = createId(),
+  connectorRouting: ConnectorRouting = "straight",
+  connectorStartBinding?: ConnectorBinding,
+  connectorEndBinding?: ConnectorBinding,
+  text = "",
+): Item => {
+  const pad = Math.max(12, weight * 3);
+  const x = Math.min(start.x, end.x) - pad;
+  const y = Math.min(start.y, end.y) - pad;
+  const width = Math.max(24, Math.abs(end.x - start.x) + pad * 2);
+  const height = Math.max(24, Math.abs(end.y - start.y) + pad * 2);
+  return {
+    id,
+    kind: "connector",
+    x, y, width, height, text,
+    color, weight, connectorStyle, connectorRouting,
+    connectorStart: { x: start.x - x, y: start.y - y },
+    connectorEnd: { x: end.x - x, y: end.y - y },
+    ...(connectorStartBinding ? { connectorStartBinding: { ...connectorStartBinding } } : {}),
+    ...(connectorEndBinding ? { connectorEndBinding: { ...connectorEndBinding } } : {}),
+  };
+};
+
+const snappedConnectorEnd = (start: Point, end: Point, snap45: boolean): Point => {
+  if (!snap45) return end;
+  const dx = end.x - start.x, dy = end.y - start.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance < 1) return end;
+  const step = Math.PI / 4;
+  const angle = Math.round(Math.atan2(dy, dx) / step) * step;
+  return { x: start.x + Math.cos(angle) * distance, y: start.y + Math.sin(angle) * distance };
+};
+
+type ConnectorAnchorHit = { point: Point; binding: ConnectorBinding };
+
+const bindingPoint = (binding: ConnectorBinding | undefined, items: Item[]): Point | null => {
+  if (!binding) return null;
+  const target = items.find((item) => item.id === binding.itemId);
+  if (!target) return null;
+  return {
+    x: target.x + target.width * binding.nx,
+    y: target.y + target.height * binding.ny,
+  };
+};
+
+const connectorAnchor = (point: Point, items: Item[], threshold: number, excludeId?: string): ConnectorAnchorHit | null => {
+  let best: ConnectorAnchorHit | null = null;
+  let bestDistance = threshold;
+  for (const item of items) {
+    if (item.id === excludeId || item.hidden || item.kind === "connector" || item.kind === "frame") continue;
+    const left = item.x, right = item.x + item.width, top = item.y, bottom = item.y + item.height;
+    const insideBounds = point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+    if (!insideBounds && (point.x < left - threshold || point.x > right + threshold || point.y < top - threshold || point.y > bottom + threshold)) continue;
+    const clampX = Math.max(left, Math.min(right, point.x));
+    const clampY = Math.max(top, Math.min(bottom, point.y));
+    const candidates: ConnectorAnchorHit[] = [
+      { point: { x: clampX, y: top }, binding: { itemId: item.id, nx: item.width ? (clampX - left) / item.width : .5, ny: 0 } },
+      { point: { x: clampX, y: bottom }, binding: { itemId: item.id, nx: item.width ? (clampX - left) / item.width : .5, ny: 1 } },
+      { point: { x: left, y: clampY }, binding: { itemId: item.id, nx: 0, ny: item.height ? (clampY - top) / item.height : .5 } },
+      { point: { x: right, y: clampY }, binding: { itemId: item.id, nx: 1, ny: item.height ? (clampY - top) / item.height : .5 } },
+    ];
+    for (const candidate of candidates) {
+      const distance = Math.hypot(point.x - candidate.point.x, point.y - candidate.point.y);
+      if ((insideBounds && best == null) || distance <= bestDistance) {
+        bestDistance = distance;
+        best = candidate;
+      }
+    }
+  }
+  return best;
+};
+
+const syncBoundConnectors = (source: Item[]): Item[] => {
+  const current = source;
+  return current.map((item) => {
+    if (item.kind !== "connector") return item;
+    const startFallback = { x: item.x + (item.connectorStart?.x ?? 0), y: item.y + (item.connectorStart?.y ?? item.height / 2) };
+    const endFallback = { x: item.x + (item.connectorEnd?.x ?? item.width), y: item.y + (item.connectorEnd?.y ?? item.height / 2) };
+    const boundStart = bindingPoint(item.connectorStartBinding, current);
+    const boundEnd = bindingPoint(item.connectorEndBinding, current);
+    const start = boundStart ?? startFallback;
+    const end = boundEnd ?? endFallback;
+    const startBinding = boundStart ? item.connectorStartBinding : undefined;
+    const endBinding = boundEnd ? item.connectorEndBinding : undefined;
+    const rebuilt = connectorItemFromPoints(
+      start,
+      end,
+      item.connectorStyle ?? "arrow",
+      item.color ?? "#5355c9",
+      item.weight ?? 3,
+      item.id,
+      item.connectorRouting ?? "straight",
+      startBinding,
+      endBinding,
+      item.text,
+    );
+    return { ...rebuilt, groupId: item.groupId, locked: item.locked, hidden: item.hidden, rotation: item.rotation };
+  });
+};
+
+function Connector({ item }: { item: Item }) {
+  const start = item.connectorStart ?? { x: 12, y: item.height / 2 };
+  const end = item.connectorEnd ?? { x: item.width - 12, y: item.height / 2 };
+  const markerId = `arrow-${item.id.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const markerStartId = `arrow-start-${item.id.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  const lineColor = item.color ?? "#5355c9";
+  return (
+    <svg className="connector-svg" width={item.width} height={item.height} viewBox={`0 0 ${item.width} ${item.height}`}>
+      <defs>
+        <marker id={markerId} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L8,4 L0,8 z" fill={lineColor} />
+        </marker>
+        <marker id={markerStartId} markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+          <path d="M8,0 L0,4 L8,8 z" fill={lineColor} />
+        </marker>
+      </defs>
+      {item.connectorRouting === "elbow" ? (
+        <path
+          d={`M ${start.x} ${start.y} H ${(start.x + end.x) / 2} V ${end.y} H ${end.x}`}
+          fill="none"
+          stroke={lineColor}
+          strokeWidth={item.weight ?? 3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          markerEnd={item.connectorStyle === "line" ? undefined : `url(#${markerId})`}
+          markerStart={item.connectorStyle === "double" ? `url(#${markerStartId})` : undefined}
+        />
+      ) : (
+        <line
+          x1={start.x}
+          y1={start.y}
+          x2={end.x}
+          y2={end.y}
+          stroke={lineColor}
+          strokeWidth={item.weight ?? 3}
+          strokeLinecap="round"
+          markerEnd={item.connectorStyle === "line" ? undefined : `url(#${markerId})`}
+          markerStart={item.connectorStyle === "double" ? `url(#${markerStartId})` : undefined}
+        />
+      )}
+      {item.text.trim() && (
+        <g className="connector-label-svg" transform={`translate(${(start.x + end.x) / 2} ${(start.y + end.y) / 2})`}>
+          <rect x={-Math.min(90, Math.max(24, item.text.length * 3.8))} y={-11} width={Math.min(180, Math.max(48, item.text.length * 7.6))} height={22} rx={7}/>
+          <text x="0" y="4" textAnchor="middle">{item.text.length > 28 ? item.text.slice(0, 27) + "…" : item.text}</text>
+        </g>
+      )}
+    </svg>
+  );
+}
+
+function AttachmentRequestPreview({request,boardId}:{request:AttachmentApprovalRequest;boardId:string}){
+ const [url,setUrl]=useState<string|null>(null);
+ useEffect(()=>{let active=true;let objectUrl="";void getAsset(request.assetId,boardId).then(blob=>{if(!active||!blob)return;objectUrl=URL.createObjectURL(blob);setUrl(objectUrl)});return()=>{active=false;if(objectUrl)URL.revokeObjectURL(objectUrl)}},[request.assetId,boardId]);
+ if(!url)return <div className="teacher-media-request-preview teacher-media-request-loading">Загрузка предпросмотра…</div>;
+ return <div className="teacher-media-request-preview">{request.kind==="image"?<img src={url} alt={request.name} loading="lazy" decoding="async"/>:<iframe src={`${url}#page=1&toolbar=0`} title={request.name}/>}</div>;
+}
+
+const Media = memo(function Media({ item, boardId }: { item: Item; boardId: string }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [nearViewport, setNearViewport] = useState(false);
+  const [src, setSrc] = useState("");
+
+  useEffect(() => {
+    const node = hostRef.current;
+    if (!node) return;
+    if (!("IntersectionObserver" in window)) {
+      setNearViewport(true);
+      return;
+    }
+    // PDF iframes create full browser PDF renderers. Unmount them when out
+    // of view so a board with a few documents does not keep all pages alive.
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.some((entry) => entry.isIntersecting);
+      setNearViewport(current => current === visible ? current : visible);
+    }, { root: null, rootMargin: item.kind === "pdf" ? "120px" : "400px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [item.kind]);
+
+  useEffect(() => {
+    let url = "";
+    let alive = true;
+    if (!nearViewport || !item.assetId) return;
+    void (item.kind === "image" ? getDisplayAsset(item.assetId, boardId) : getAsset(item.assetId, boardId)).then((blob) => {
+      if (!blob || !alive) return;
+      url = URL.createObjectURL(blob);
+      setSrc(url);
+    }).catch(() => {});
+    return () => {
+      alive = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [nearViewport, item.assetId, boardId]);
+
+  return <div ref={hostRef} className="media-host">
+    {!nearViewport
+      ? <div className="media-missing">Вложение</div>
+      : !src
+        ? <div className="media-missing">Загрузка…</div>
+        : item.kind === "image"
+          ? <img className="media-image" src={src} alt={item.name??"Изображение"} loading="lazy" decoding="async"/>
+          : <iframe
+              key={`${item.assetId}-${item.pdfPage ?? 1}`}
+              className="media-pdf"
+              src={`${src}#page=${Math.max(1, item.pdfPage ?? 1)}&view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
+              title={item.name ?? "PDF"}
+              loading="lazy"
+            />}
+  </div>;
+}, (previous, next) =>
+  previous.boardId === next.boardId &&
+  previous.item.assetId === next.item.assetId &&
+  previous.item.kind === next.item.kind &&
+  previous.item.name === next.item.name &&
+  previous.item.pdfPage === next.item.pdfPage
+);
+type CropRect = { x: number; y: number; width: number; height: number };
+type CropHandle = "move" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
+
+function InlineImageCrop({ item, boardId, onApply, registerApply }: { item: Item; boardId: string; onApply: (blob: Blob, crop: CropRect, width: number, height: number) => Promise<void> | void; registerApply: (apply: (() => Promise<void>) | null) => void }) {
+  const [src, setSrc] = useState("");
+  const [natural, setNatural] = useState({ width: 1, height: 1 });
+  const [crop, setCrop] = useState<CropRect>({ x: 0, y: 0, width: 1, height: 1 });
+  const imageRef = useRef<HTMLImageElement>(null);
+  const dragRef = useRef<{ mode: CropHandle; startX: number; startY: number; crop: CropRect; box: DOMRect } | null>(null);
+  useEffect(() => {
+    let url = "", alive = true;
+    if (!item.assetId) return;
+    void getAsset(item.assetId, boardId).then((blob) => {
+      if (!blob || !alive) return;
+      url = URL.createObjectURL(blob);
+      setSrc(url);
+    });
+    return () => { alive = false; if (url) URL.revokeObjectURL(url); };
+  }, [item.assetId, boardId]);
+  const begin = (mode: CropHandle) => (event: React.PointerEvent<HTMLElement>) => {
+    const box = event.currentTarget.closest<HTMLElement>(".inline-image-crop")?.getBoundingClientRect();
+    if (!box) return;
+    event.preventDefault(); event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    dragRef.current = { mode, startX: event.clientX, startY: event.clientY, crop: { ...crop }, box };
+  };
+  const moveCrop = (event: React.PointerEvent<HTMLElement>) => {
+    const drag = dragRef.current; if (!drag) return;
+    event.preventDefault(); event.stopPropagation();
+    const dx = (event.clientX - drag.startX) / Math.max(1, drag.box.width);
+    const dy = (event.clientY - drag.startY) / Math.max(1, drag.box.height);
+    const min = Math.min(.16, Math.max(.035, 28 / Math.max(80, Math.min(drag.box.width, drag.box.height))));
+    let { x, y, width, height } = drag.crop;
+    if (drag.mode === "move") {
+      x = Math.max(0, Math.min(1 - width, x + dx));
+      y = Math.max(0, Math.min(1 - height, y + dy));
+    } else {
+      let left = x, top = y, right = x + width, bottom = y + height;
+      if (drag.mode.includes("w")) left = Math.max(0, Math.min(right - min, left + dx));
+      if (drag.mode.includes("e")) right = Math.min(1, Math.max(left + min, right + dx));
+      if (drag.mode.includes("n")) top = Math.max(0, Math.min(bottom - min, top + dy));
+      if (drag.mode.includes("s")) bottom = Math.min(1, Math.max(top + min, bottom + dy));
+      x = left; y = top; width = right - left; height = bottom - top;
+    }
+    setCrop({ x, y, width, height });
+  };
+  const finish = (event: React.PointerEvent<HTMLElement>) => { event.stopPropagation(); dragRef.current = null; };
+  const apply = async () => {
+    const image = imageRef.current;
+    if (!image || !src) return;
+    const sx = Math.max(0, Math.min(natural.width - 1, Math.round(crop.x * natural.width)));
+    const sy = Math.max(0, Math.min(natural.height - 1, Math.round(crop.y * natural.height)));
+    const sw = Math.max(1, Math.min(natural.width - sx, Math.round(crop.width * natural.width)));
+    const sh = Math.max(1, Math.min(natural.height - sy, Math.round(crop.height * natural.height)));
+    const canvas = document.createElement("canvas"); canvas.width = sw; canvas.height = sh;
+    const ctx = canvas.getContext("2d"); if (!ctx) return;
+    ctx.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+    const type = item.mime === "image/jpeg" ? "image/jpeg" : "image/png";
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, .95));
+    if (blob) await onApply(blob, crop, sw, sh);
+  };
+  useEffect(() => { registerApply(apply); return () => registerApply(null); }, [crop, src, natural.width, natural.height, item.assetId]);
+  const shadeTop = { left: 0, top: 0, width: "100%", height: `${crop.y * 100}%` };
+  const shadeBottom = { left: 0, top: `${(crop.y + crop.height) * 100}%`, width: "100%", bottom: 0 };
+  const shadeLeft = { left: 0, top: `${crop.y * 100}%`, width: `${crop.x * 100}%`, height: `${crop.height * 100}%` };
+  const shadeRight = { left: `${(crop.x + crop.width) * 100}%`, top: `${crop.y * 100}%`, right: 0, height: `${crop.height * 100}%` };
+  return <div className="inline-image-crop" onPointerDown={(e)=>{e.preventDefault();e.stopPropagation()}} onPointerMove={moveCrop} onPointerUp={finish} onPointerCancel={finish}>
+    {src && <img ref={imageRef} className="inline-image-crop-source" src={src} alt="" draggable={false} onLoad={(e)=>setNatural({width:e.currentTarget.naturalWidth||1,height:e.currentTarget.naturalHeight||1})}/>} 
+    <div className="inline-crop-shade" style={shadeTop}/><div className="inline-crop-shade" style={shadeBottom}/><div className="inline-crop-shade" style={shadeLeft}/><div className="inline-crop-shade" style={shadeRight}/>
+    <div className="inline-crop-frame" style={{left:`${crop.x*100}%`,top:`${crop.y*100}%`,width:`${crop.width*100}%`,height:`${crop.height*100}%`}} onPointerDown={begin("move")}>
+      {(["nw","n","ne","e","se","s","sw","w"] as const).map((handle)=><button key={handle} type="button" className={`inline-crop-handle ${handle}`} aria-label="Изменить область обрезки" onPointerDown={begin(handle)}/>)}
+    </div>
+  </div>;
+}
+
+function Shape({ type = "rectangle", color = "#6064d4" }: { type?: ShapeType; color?: string }) {
+  const paths: Partial<Record<ShapeType,string>> = {
+    triangle:"M50 5 L96 95 L4 95 Z", rightTriangle:"M6 5 L6 95 L96 95 Z",
+    diamond:"M50 4 L96 50 L50 96 L4 50 Z", parallelogram:"M24 5 L96 5 L76 95 L4 95 Z",
+    trapezoid:"M24 5 L76 5 L96 95 L4 95 Z", pentagon:"M50 4 L96 38 L78 95 L22 95 L4 38 Z",
+    hexagon:"M25 5 L75 5 L97 50 L75 95 L25 95 L3 50 Z",
+    star:"M50 5 L61 36 L94 37 L68 57 L77 91 L50 72 L23 91 L32 57 L6 37 L39 36 Z",
+    arrow:"M5 36 L65 36 L65 16 L96 50 L65 84 L65 64 L5 64 Z"
+  };
+  if(type==="ellipse" || type==="circle") return <svg className="shape-vector school-shape" viewBox="0 0 100 100" preserveAspectRatio={type==="circle"?"xMidYMid meet":"none"}><ellipse cx="50" cy="50" rx="46" ry="46" fill="none" stroke={color} strokeWidth="3"/></svg>;
+  if(type==="rectangle" || type==="square" || type==="rounded") return <svg className="shape-vector school-shape" viewBox="0 0 100 100" preserveAspectRatio={type==="square"?"xMidYMid meet":"none"}><rect x="4" y="4" width="92" height="92" rx={type==="rounded"?8:0} fill="none" stroke={color} strokeWidth="3"/></svg>;
+  return <svg className="shape-vector school-shape" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d={paths[type] ?? paths.triangle} fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round"/></svg>;
+}
+
+const FORMULA_SYMBOLS: Record<string, string> = {
+  alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε", theta: "θ", lambda: "λ", mu: "μ", pi: "π", rho: "ρ", sigma: "σ", phi: "φ", omega: "ω",
+  Gamma: "Γ", Delta: "Δ", Theta: "Θ", Lambda: "Λ", Sigma: "Σ", Phi: "Φ", Omega: "Ω",
+  times: "×", cdot: "·", div: "÷", pm: "±", mp: "∓", neq: "≠", approx: "≈", le: "≤", ge: "≥", in: "∈", notin: "∉",
+  infty: "∞", infinity: "∞", to: "→", rightarrow: "→", leftarrow: "←", leftrightarrow: "↔", implies: "⇒", iff: "⇔",
+  sum: "∑", prod: "∏", int: "∫", partial: "∂", nabla: "∇", forall: "∀", exists: "∃", degree: "°", ldots: "…", ellipsis: "…",
+  perp: "⟂", parallel: "∥", cup: "∪", cap: "∩", subset: "⊂", supset: "⊃", subseteq: "⊆", supseteq: "⊇", emptyset: "∅",
+};
+const FORMULA_FUNCTIONS = new Set(["sin", "cos", "tan", "cot", "log", "ln", "lim", "max", "min", "exp", "arcsin", "arccos", "arctan"]);
+
+type FormulaPaletteTab = "basic" | "greek" | "relations" | "functions" | "geometry" | "templates";
+type FormulaPaletteItem = { label: string; snippet: string; title?: string };
+const FORMULA_PALETTES: Record<FormulaPaletteTab, FormulaPaletteItem[]> = {
+  basic: [
+    { label: "a⁄b", snippet: "\\frac{⟦a⟧}{b}", title: "Дробь" },
+    { label: "√x", snippet: "\\sqrt{⟦x⟧}", title: "Квадратный корень" },
+    { label: "ⁿ√x", snippet: "\\sqrt[n]{⟦x⟧}", title: "Корень n-й степени" },
+    { label: "x²", snippet: "x^{⟦2⟧}", title: "Степень" },
+    { label: "xᵢ", snippet: "x_{⟦i⟧}", title: "Нижний индекс" },
+    { label: "±", snippet: "\\pm " }, { label: "×", snippet: "\\times " }, { label: "·", snippet: "\\cdot " },
+    { label: "∞", snippet: "\\infty " }, { label: "→", snippet: "\\to " },
+    { label: "⃗a", snippet: "\\vec{⟦a⟧}", title: "Вектор" }, { label: "ā", snippet: "\\overline{⟦a⟧}", title: "Черта сверху" }, { label: "|x|", snippet: "\\abs{⟦x⟧}", title: "Модуль" }, { label: "(n k)", snippet: "\\binom{⟦n⟧}{k}", title: "Биномиальный коэффициент" },
+  ],
+  greek: [
+    "alpha","beta","gamma","delta","epsilon","theta","lambda","mu","pi","rho","sigma","phi","omega","Delta","Sigma","Omega",
+  ].map((name) => ({ label: FORMULA_SYMBOLS[name], snippet: `\\${name} `, title: `\\${name}` })),
+  relations: [
+    ["=", " = "], ["≠", " \\neq "], ["≈", " \\approx "], ["≤", " \\le "], ["≥", " \\ge "], ["∈", " \\in "], ["∉", " \\notin "],
+    ["⊂", " \\subset "], ["⊆", " \\subseteq "], ["∪", " \\cup "], ["∩", " \\cap "], ["∥", " \\parallel "], ["⟂", " \\perp "],
+    ["⇒", " \\implies "], ["⇔", " \\iff "], ["↔", " \\leftrightarrow "],
+  ].map(([label, snippet]) => ({ label, snippet })),
+  functions: [
+    { label: "sin", snippet: "\\sin(⟦x⟧)" }, { label: "cos", snippet: "\\cos(⟦x⟧)" }, { label: "tan", snippet: "\\tan(⟦x⟧)" },
+    { label: "ln", snippet: "\\ln(⟦x⟧)" }, { label: "log", snippet: "\\log_{a}(⟦x⟧)" },
+    { label: "Σ", snippet: "\\sum_{i=1}^{n} ⟦a_i⟧" }, { label: "∫", snippet: "\\int_{a}^{b} ⟦f(x)⟧ \\, dx" },
+    { label: "lim", snippet: "\\lim_{x\\to a} ⟦f(x)⟧" }, { label: "d/dx", snippet: "\\frac{d}{dx}⟦f(x)⟧" }, { label: "∂", snippet: "\\frac{\\partial ⟦f⟧}{\\partial x}" },
+  ],
+  geometry: [
+    { label: "∠", snippet: "\\angle " }, { label: "△", snippet: "\\triangle " }, { label: "°", snippet: "^{\\circ}" },
+    { label: "∥", snippet: "\\parallel " }, { label: "⟂", snippet: "\\perp " },
+    { label: "AB⃗", snippet: "\\vec{⟦AB⟧}" }, { label: "|AB|", snippet: "\\abs{⟦AB⟧}" },
+    { label: "AB̅", snippet: "\\overline{⟦AB⟧}" }, { label: "πr²", snippet: "S = \\pi r^2" },
+  ],
+  templates: [
+    { label: "Пифагор", snippet: "a^2 + b^2 = c^2" },
+    { label: "Квадратное", snippet: "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}" },
+    { label: "Окружность", snippet: "(x-a)^2 + (y-b)^2 = r^2" },
+    { label: "Ньютон", snippet: "F = ma" },
+    { label: "Эйнштейн", snippet: "E = mc^2" },
+    { label: "Производная", snippet: "f'(x) = \\lim_{h\\to 0} \\frac{f(x+h)-f(x)}{h}" },
+    { label: "Интеграл", snippet: "\\int_{a}^{b} f(x) \\, dx" },
+    { label: "Сумма", snippet: "\\sum_{i=1}^{n} a_i" },
+  ],
+};
+
+function formulaSyntaxIssue(text: string) {
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "\\") { while (i + 1 < text.length && /[A-Za-z]/.test(text[i + 1])) i++; continue; }
+    if (ch === "{") depth++;
+    if (ch === "}") { depth--; if (depth < 0) return "Лишняя закрывающая фигурная скобка"; }
+  }
+  return depth ? `Не закрыто фигурных скобок: ${depth}` : "";
+}
+
+function formulaToPlainText(text: string) {
+  let value = text;
+  for (let pass = 0; pass < 5; pass++) {
+    value = value.replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, "($1)/($2)");
+    value = value.replace(/\\sqrt(?:\[([^\]]+)\])?\{([^{}]*)\}/g, (_, index, body) => `${index ? index : ""}√(${body})`);
+    value = value.replace(/\\(?:vec|overline|text)\{([^{}]*)\}/g, "$1");
+  }
+  value = value.replace(/\\([A-Za-z]+)/g, (_, name) => FORMULA_SYMBOLS[name] ?? (FORMULA_FUNCTIONS.has(name) ? name : `\\${name}`));
+  return value.replace(/[{}]/g, "").replace(/\\,/g, " ").replace(/\\quad/g, "  ");
+}
+
+function FormulaView({ text, fontSize = 28, color = "#20242c" }: { text: string; fontSize?: number; color?: string }) {
+  const source = text || "Формула";
+  let cursor = 0;
+  let keyIndex = 0;
+  const key = (prefix = "f") => `${prefix}-${keyIndex++}`;
+
+  function parseSequence(stop?: string): any[] {
+    const nodes: any[] = [];
+    while (cursor < source.length && (!stop || source[cursor] !== stop)) nodes.push(parseAtom());
+    if (stop && source[cursor] === stop) cursor++;
+    return nodes;
+  }
+  function parseGroup(): any[] {
+    if (source[cursor] !== "{") return [parseBase()];
+    cursor++;
+    return parseSequence("}");
+  }
+  function parseBracket(): any[] | null {
+    if (source[cursor] !== "[") return null;
+    cursor++;
+    return parseSequence("]");
+  }
+  function parseCommand(): any {
+    cursor++;
+    let name = "";
+    while (cursor < source.length && /[A-Za-z]/.test(source[cursor])) name += source[cursor++];
+    if (!name && cursor < source.length) name = source[cursor++];
+    if (name === "frac") {
+      const numerator = parseGroup(), denominator = parseGroup();
+      return <span key={key("frac")} className="formula-frac"><span className="formula-frac-num">{numerator}</span><span className="formula-frac-den">{denominator}</span></span>;
+    }
+    if (name === "sqrt") {
+      const index = parseBracket(), body = parseGroup();
+      return <span key={key("root")} className="formula-root">{index && <span className="formula-root-index">{index}</span>}<span className="formula-root-sign">√</span><span className="formula-root-body">{body}</span></span>;
+    }
+    if (name === "text") return <span key={key("text")} className="formula-upright">{parseGroup()}</span>;
+    if (name === "vec") return <span key={key("vec")} className="formula-vector">{parseGroup()}</span>;
+    if (name === "overline") return <span key={key("bar")} className="formula-overline">{parseGroup()}</span>;
+    if (name === "abs") return <span key={key("abs")} className="formula-absolute">|{parseGroup()}|</span>;
+    if (name === "binom") { const top = parseGroup(), bottom = parseGroup(); return <span key={key("binom")} className="formula-binom"><span>(</span><span className="formula-binom-stack"><span>{top}</span><span>{bottom}</span></span><span>)</span></span>; }
+    if (name === "left" || name === "right") return "";
+    if (name === ",") return <span key={key("space")} className="formula-thin-space" />;
+    if (name === ";") return <span key={key("space")} className="formula-med-space" />;
+    if (name === "quad") return <span key={key("space")} className="formula-quad-space" />;
+    if (FORMULA_FUNCTIONS.has(name)) return <span key={key("fn")} className="formula-upright formula-function">{name}</span>;
+    if (FORMULA_SYMBOLS[name]) return <span key={key("sym")}>{FORMULA_SYMBOLS[name]}</span>;
+    return <span key={key("unknown")} className="formula-unknown">{`\\${name}`}</span>;
+  }
+  function parseBase(): any {
+    if (cursor >= source.length) return "";
+    const ch = source[cursor];
+    if (ch === "{") { cursor++; return <span key={key("group")} className="formula-group">{parseSequence("}")}</span>; }
+    if (ch === "\\") return parseCommand();
+    cursor++;
+    if (ch === "\n") return <br key={key("br")} />;
+    return ch;
+  }
+  function parseScript(): any[] {
+    if (source[cursor] === "{") return parseGroup();
+    return [parseBase()];
+  }
+  function parseAtom(): any {
+    const base = parseBase();
+    let sup: any[] | null = null, sub: any[] | null = null;
+    while (cursor < source.length && (source[cursor] === "^" || source[cursor] === "_")) {
+      const marker = source[cursor++];
+      const content = parseScript();
+      if (marker === "^") sup = content; else sub = content;
+    }
+    if (!sup && !sub) return <span key={key("atom")} className="formula-atom">{base}</span>;
+    return <span key={key("scripted")} className="formula-scripted"><span className="formula-base">{base}</span><span className="formula-script-stack">{sup && <sup>{sup}</sup>}{sub && <sub>{sub}</sub>}</span></span>;
+  }
+
+  return <div className="formula-view" style={{ fontSize, color }}>{parseSequence()}</div>;
+}
+
+function evaluateGraphExpression(source: string, x: number): number {
+  const text=source.trim().toLowerCase().replace(/^y\s*=\s*/,"").replace(/,/g,".").replace(/π/g,"pi");
+  if(!text) return NaN;
+  const tokens=(text.match(/(?:\d+(?:\.\d+)?)|(?:[a-z]+)|[()+\-*/^]/g)??[]); let pos=0;
+  const primary=():number=>{const t=tokens[pos++];if(t===undefined)throw 0;if(t==="("){const v=expr();if(tokens[pos++]!==")")throw 0;return v}if(t==="-")return-primary();if(t==="+")return primary();if(/^\d/.test(t))return Number(t);if(t==="x")return x;if(t==="pi")return Math.PI;if(t==="e")return Math.E;if(/^[a-z]+$/.test(t)){if(tokens[pos++]!=="(")throw 0;const v=expr();if(tokens[pos++]!==")")throw 0;const f:{[k:string]:(n:number)=>number}={sin:Math.sin,cos:Math.cos,tan:Math.tan,sqrt:Math.sqrt,abs:Math.abs,exp:Math.exp,ln:Math.log,log:Math.log10};if(!f[t])throw 0;return f[t](v)}throw 0};
+  const power=():number=>{let v=primary();while(tokens[pos]==="^"){pos++;v=Math.pow(v,power())}return v};
+  const term=():number=>{let v=power();while(tokens[pos]==="*"||tokens[pos]==="/"){const op=tokens[pos++];const q=power();v=op==="*"?v*q:v/q}return v};
+  const expr=():number=>{let v=term();while(tokens[pos]==="+"||tokens[pos]==="-"){const op=tokens[pos++];const q=term();v=op==="+"?v+q:v-q}return v};
+  try{const value=expr();return pos===tokens.length&&Number.isFinite(value)?value:NaN}catch{return NaN}
+}
+function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Item; onPointMove?: (index:number,x:number,y:number)=>void; onAddPoint?: (x:number,y:number)=>void; onRemovePoint?: (index:number)=>void }) {
+  const expression=item.graphExpression?.trim()??"";
+  const xMin=item.graphXMin??-10,xMax=item.graphXMax??10,yMin=item.graphYMin??-10,yMax=item.graphYMax??10,W=600,H=360;
+  const sx=(x:number)=>(x-xMin)/(xMax-xMin)*W,sy=(y:number)=>H-(y-yMin)/(yMax-yMin)*H,ux=(p:number)=>xMin+p/W*(xMax-xMin),uy=(p:number)=>yMax-p/H*(yMax-yMin);
+  const step=Math.max(.1,item.graphGridStep??1), values=(a:number,b:number)=>{const first=Math.ceil(a/step)*step,count=Math.min(101,Math.max(0,Math.floor((b-first)/step)+1));return Array.from({length:count},(_,i)=>Number((first+i*step).toFixed(6)))};
+  const gridX=values(xMin,xMax),gridY=values(yMin,yMax),gp=item.graphPoints??[];
+  const curve=expression?Array.from({length:401},(_,i)=>{const x=xMin+(xMax-xMin)*i/400,y=evaluateGraphExpression(expression,x);return {x:sx(x),y:sy(y),ok:Number.isFinite(y)&&y>=yMin-(yMax-yMin)*2&&y<=yMax+(yMax-yMin)*2}}):[];
+  let path="",pen=false;for(const p of curve){if(!p.ok){pen=false;continue}path+=`${pen?"L":"M"}${p.x.toFixed(1)} ${p.y.toFixed(1)} `;pen=true}
+  const coord=(clientX:number,clientY:number,svg:SVGSVGElement)=>{const r=svg.getBoundingClientRect();let x=ux((clientX-r.left)/r.width*W),y=uy((clientY-r.top)/r.height*H);if(item.graphSnap!==false){x=Math.round(x/step)*step;y=Math.round(y/step)*step}return{x:Number(x.toFixed(4)),y:Number(y.toFixed(4))}};
+  return <div className={`graph-view ${onPointMove?"graph-interactive":""}`}><div className="graph-label">{expression?`y = ${expression.replace(/^y\s*=\s*/i,"")}`:"Координатная плоскость"}</div><svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" onDoubleClick={e=>{if(onAddPoint){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
+    {item.graphGrid!==false&&<g className="graph-grid">{gridX.map(x=><line key={`x${x}`} x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}{gridY.map(y=><line key={`y${y}`} x1="0" x2={W} y1={sy(y)} y2={sy(y)}/>)}</g>}
+    <g className="graph-axes">{xMin<=0&&xMax>=0&&<line x1={sx(0)} x2={sx(0)} y1="0" y2={H}/>} {yMin<=0&&yMax>=0&&<line x1="0" x2={W} y1={sy(0)} y2={sy(0)}/>}</g>
+    {item.graphAxisLabels!==false&&<g className="graph-axis-labels">{gridX.filter(x=>x!==0).map(x=><text key={`xl${x}`} x={sx(x)+2} y={Math.min(H-4,Math.max(12,sy(0)+14))}>{x}</text>)}{gridY.filter(y=>y!==0).map(y=><text key={`yl${y}`} x={Math.min(W-22,Math.max(3,sx(0)+5))} y={sy(y)-3}>{y}</text>)}</g>}
+    {expression&&path&&<path className="graph-curve" d={path}/>} {item.graphConnectPoints!==false&&gp.length>1&&<polyline className="graph-point-line" points={gp.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>} 
+    {gp.map((p,i)=>{const pointColor=p.color??"#111111";return <g className={`graph-point ${onPointMove?"draggable":""} ${onRemovePoint?"removable":""}`} key={i} onDoubleClick={onRemovePoint?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint(i)}:undefined} onPointerDown={onPointMove?(e)=>{e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;e.currentTarget.setPointerCapture?.(e.pointerId);const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up)}:undefined}><circle cx={sx(p.x)} cy={sy(p.y)} r={onPointMove?"4.5":"3.5"} style={{fill:pointColor,stroke:pointColor}}/>{item.graphShowLabels!==false&&p.label&&<text x={sx(p.x)+7} y={sy(p.y)-7} style={{fill:pointColor}}>{p.label}</text>}</g>})}
+  </svg></div>;
+}
+
+function TableView({ item }: { item: Item }) {
+  const rows = Math.max(1, item.tableRows ?? 3);
+  const cols = Math.max(1, item.tableCols ?? 3);
+  const cells = item.tableCells ?? [];
+  const header = item.tableHeader !== false;
+  return (
+    <div className={`table-view ${item.tableStripe ? "table-striped" : ""} ${item.tableCompact ? "table-compact" : ""}`} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`, fontSize: item.fontSize ?? 13, textAlign: item.tableAlign ?? "left" }}>
+      {Array.from({ length: rows * cols }, (_, index) => (
+        <div key={index} className={`table-cell ${header && index < cols ? "table-cell-header" : ""} ${item.tableStripe && Math.floor(index / cols) % 2 === 1 ? "table-cell-striped" : ""}`}><span>{cells[index] ?? ""}</span></div>
+      ))}
+    </div>
+  );
+}
+
+function ChecklistView({ item, onToggle }: { item: Item; onToggle?: (index: number) => void }) {
+  const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
+  const done = item.checklistDone ?? entries.map(() => false);
+  const completed = entries.filter((_, index) => done[index]).length;
+  const accent = item.color ?? "#5355c9";
+  return (
+    <div className="checklist-view" style={{ fontSize: item.fontSize ?? 15 }}>
+      <div className="checklist-title"><strong>{item.text.trim() || "Чек-лист"}</strong><span style={{ color: accent, backgroundColor: `${accent}16` }}>{completed}/{entries.length}</span></div>
+      <div className="checklist-rows">
+        {entries.map((entry, index) => (
+          <div key={index} className={`checklist-row ${done[index] ? "done" : ""}`}>
+            <button
+              type="button"
+              className="checklist-box"
+              disabled={!onToggle || item.locked}
+              style={{ borderColor: accent, backgroundColor: done[index] ? accent : "#fff" }}
+              onPointerDown={(e) => { if (onToggle) e.stopPropagation(); }}
+              onClick={(e) => { if (!onToggle) return; e.stopPropagation(); onToggle(index); }}
+              aria-label={done[index] ? `Снять отметку: ${entry || `Пункт ${index + 1}`}` : `Отметить выполненным: ${entry || `Пункт ${index + 1}`}`}
+            >{done[index] ? "✓" : ""}</button>
+            <span>{entry || "Пустой пункт"}</span>
+          </div>
+        ))}
+      </div>
+      <div className="checklist-progress"><i style={{ width: `${entries.length ? completed / entries.length * 100 : 0}%`, backgroundColor: accent }} /></div>
+    </div>
+  );
+}
+
+function QuizView({ item, onSelect }: { item: Item; onSelect?: (index: number) => void }) {
+  const options = item.quizOptions?.length ? item.quizOptions : ["Вариант 1", "Вариант 2"];
+  const correct = Math.max(0, Math.min(options.length - 1, item.quizCorrect ?? 0));
+  const selected = item.quizSelected;
+  const revealed = item.quizRevealed === true;
+  const accent = item.color ?? "#5355c9";
+  return (
+    <div className={`quiz-view ${revealed ? "revealed" : ""}`} style={{ fontSize: item.fontSize ?? 15 }}>
+      <div className="quiz-question-row">
+        <span className="quiz-mark" style={{ color: accent, backgroundColor: `${accent}16` }}>?</span>
+        <strong>{item.text.trim() || "Вопрос"}</strong>
+      </div>
+      <div className="quiz-options">
+        {options.map((option, index) => {
+          const isSelected = selected === index;
+          const isCorrect = revealed && index === correct;
+          const isWrong = revealed && isSelected && index !== correct;
+          return (
+            <button
+              type="button"
+              key={index}
+              className={`quiz-option ${isSelected ? "selected" : ""} ${isCorrect ? "correct" : ""} ${isWrong ? "wrong" : ""}`}
+              disabled={!onSelect || item.locked}
+              onPointerDown={(e) => { if (onSelect) e.stopPropagation(); }}
+              onClick={(e) => { if (!onSelect) return; e.stopPropagation(); onSelect(index); }}
+              style={!revealed && isSelected ? { borderColor: accent, boxShadow: `0 0 0 2px ${accent}18` } : undefined}
+            >
+              <span>{String.fromCharCode(65 + index)}</span>
+              <b>{option || `Вариант ${index + 1}`}</b>
+              {isCorrect && <i>✓</i>}
+              {isWrong && <i>×</i>}
+            </button>
+          );
+        })}
+      </div>
+      <div className="quiz-footer">
+        <span>{selected == null ? "Ответ ещё не выбран" : revealed ? (selected === correct ? "Верно" : "Есть ошибка") : `Выбран ответ ${String.fromCharCode(65 + selected)}`}</span>
+        {revealed && item.quizExplanation?.trim() && <em>{item.quizExplanation}</em>}
+      </div>
+    </div>
+  );
+}
+
+function FlashcardView({ item, onFlip }: { item: Item; onFlip?: () => void }) {
+  const flipped = item.flashcardFlipped === true;
+  const accent = item.color ?? "#5355c9";
+  const content = flipped ? (item.flashcardBack?.trim() || "Ответ") : (item.text.trim() || "Вопрос");
+  return (
+    <div className={`flashcard-view ${flipped ? "flipped" : ""}`} style={{ fontSize: item.fontSize ?? 18, borderColor: `${accent}55` }}>
+      <div className="flashcard-side-label" style={{ color: accent, backgroundColor: `${accent}12` }}>{flipped ? "Ответ" : "Вопрос"}</div>
+      <div className="flashcard-content">{content}</div>
+      <button className="flashcard-flip-button" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onFlip?.(); }} style={{ color: accent }} title={flipped ? "Показать вопрос" : "Показать ответ"}>
+        <Icon name="flip" size={14}/><span>{flipped ? "Вопрос" : "Ответ"}</span>
+      </button>
+    </div>
+  );
+}
+
+function CoverView({ item, onToggle }: { item: Item; onToggle?: () => void }) {
+  const accent=item.color??"#5355c9", opacity=item.coverOpen?0:Math.max(0,Math.min(1,item.coverOpacity??1));
+  return <div className={`cover-view ${opacity===0?"open":"closed"}`} style={{borderColor:accent,background:accent,opacity}}>
+    {onToggle&&<button type="button" className="cover-toggle" onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onToggle()}} title={opacity===0?"Закрыть шторку":"Сделать прозрачной"}><Icon name={opacity===0?"eye-off":"eye"} size={14}/></button>}
+  </div>;
+}
+
+function CommentCard({ item }: { item: Item }) {
+  return (
+    <div className={`comment-card ${item.resolved ? "resolved" : ""}`} style={{ background: item.color ?? "#fff8d6" }}>
+      <div className="comment-card-head"><span className="comment-dot" /><strong>{item.resolved ? "Решено" : "Комментарий"}</strong></div>
+      <div className="comment-card-text">{item.text || <span>Двойной щелчок — написать комментарий</span>}</div>
+      {item.commentTargetId && <div className="comment-attached">Привязан к объекту</div>}
+    </div>
+  );
+}
+
+const itemLabel = (item: Item) => {
+  if (item.kind === "image") return item.name || "Изображение";
+  if (item.kind === "pdf") return item.name || "PDF";
+  if (item.kind === "linkmedia") return item.mediaTitle || "Мультимедиа";
+  if (item.kind === "pen") return "Карандаш";
+  if (item.kind === "marker") return "Маркер";
+  if (item.kind === "connector") return item.text.trim() || (item.connectorStyle === "line" ? "Линия" : item.connectorStyle === "double" ? "Двусторонняя стрелка" : "Стрелка");
+  if (item.kind === "frame") return item.text.trim() || "Фрейм";
+  if (item.kind === "comment") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Комментарий";
+  if (item.kind === "table") return `Таблица ${item.tableRows ?? 3}×${item.tableCols ?? 3}`;
+  if (item.kind === "formula") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Формула";
+  if (item.kind === "graph") return "График функции";
+  if (item.kind === "checklist") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Чек-лист";
+  if (item.kind === "quiz") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Вопрос";
+  if (item.kind === "flashcard") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Карточка";
+  if (item.kind === "cover") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Шторка";
+  if (item.kind === "shape") return `Фигура · ${item.shapeType ?? "rounded"}`;
+  const text = item.text.trim().replace(/\s+/g, " ");
+  return text ? text.slice(0, 44) : item.kind === "sticky" ? "Стикер" : "Текст";
+};
+
+const itemKindLabel = (item: Item) => {
+  if (item.kind === "frame") return "Фрейм / раздел";
+  if (item.kind === "comment") return item.resolved ? "Комментарий · решён" : "Комментарий";
+  if (item.kind === "table") return "Таблица";
+  if (item.kind === "formula") return "Формула";
+  if (item.kind === "graph") return "График функции";
+  if (item.kind === "checklist") return "Чек-лист / задание";
+  if (item.kind === "quiz") return "Вопрос / мини-тест";
+  if (item.kind === "flashcard") return item.flashcardFlipped ? "Карточка · ответ" : "Карточка · вопрос";
+  if (item.kind === "cover") return item.coverOpen ? "Шторка · открыта" : "Шторка · закрыта";
+  if (item.kind === "sticky") return "Стикер";
+  if (item.kind === "text") return "Текст";
+  if (item.kind === "shape") return "Фигура";
+  if (item.kind === "connector") return "Связь";
+  if (item.kind === "image") return "Изображение";
+  if (item.kind === "pdf") return "PDF";
+  if (item.kind === "linkmedia") return "Видео / аудио по ссылке";
+  if (item.kind === "pen") return "Карандаш";
+  return "Маркер";
+};
+
+const itemIconName = (item: Item): IconName => {
+  if (item.kind === "image" || item.kind === "pdf") return "media";
+  if (item.kind === "linkmedia") return "linkmedia";
+  if (item.kind === "connector") return "connector";
+  if (item.kind === "frame") return "frame";
+  if (item.kind === "comment") return "comment";
+  if (item.kind === "table") return "table";
+  if (item.kind === "formula") return "formula";
+  if (item.kind === "graph") return "graph";
+  if (item.kind === "checklist") return "checklist";
+  if (item.kind === "quiz") return "quiz";
+  if (item.kind === "flashcard") return "flashcard";
+  if (item.kind === "cover") return "cover";
+  if (item.kind === "sticky") return "sticky";
+  if (item.kind === "text") return "text";
+  if (item.kind === "shape") return "shape";
+  if (item.kind === "pen") return "pen";
+  return "marker";
+};
+
+function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null }: {
+  authUser: AuthUser;
+  boardSummary: BoardSummary;
+  accountRole: AccountRole;
+  isAppAdmin?: boolean;
+  adminMaintenance?: boolean;
+  adminInvisible?: boolean;
+  onBackToBoards: () => void;
+  onLogout: () => void;
+  onBoardChanged: (board: BoardSummary) => void;
+  initialRemoteVersion?: number | null;
+}) {
+  const canEdit = boardSummary.role !== "viewer" || (isAppAdmin && adminMaintenance);
+  const isStudent = accountRole === "student" && !adminMaintenance;
+  const adminHidden = isAppAdmin && adminInvisible;
+  const toolAllowedForRole = (id:Tool) => !isStudent || !STUDENT_BLOCKED_CREATE_TOOLS.has(id);
+  const structurallyLockedForStudent = (item:Item|undefined|null) => !!item && isStudent && STUDENT_PROTECTED_KINDS.has(item.kind);
+  const studentSelectionHasProtected = () => isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)));
+  const rejectStudentStructuralEdit = () => {
+    if(!studentSelectionHasProtected()) return false;
+    setNotice("Ученик может выполнять задание, но не изменять его конструкцию");
+    return true;
+  };
+  const attachmentApprovalRef=useRef<AttachmentApprovalChannel|null>(null);
+  const [attachmentRequests,setAttachmentRequests]=useState<AttachmentApprovalRequest[]>([]);
+  const [pendingAttachmentRequests,setPendingAttachmentRequests]=useState<AttachmentApprovalRequest[]>([]);
+  const [attachmentRequestIndex,setAttachmentRequestIndex]=useState(0);
+  useEffect(()=>{setAttachmentRequestIndex(index=>Math.max(0,Math.min(index,attachmentRequests.length-1)))},[attachmentRequests.length]);
+  const pendingAttachmentTimers=useRef(new Map<string,ReturnType<typeof setInterval>>());
+  const pendingAttachmentStarted=useRef(new Map<string,number>());
+  const sendAttachmentRequest=(request:AttachmentApprovalRequest)=>{
+    attachmentApprovalRef.current?.request(request);
+    setPendingAttachmentRequests(current=>current.some(x=>x.requestId===request.requestId)?current:[...current,request]);
+    const old=pendingAttachmentTimers.current.get(request.requestId);if(old)clearInterval(old);
+    pendingAttachmentStarted.current.set(request.requestId,Date.now());
+    const timer=setInterval(()=>{
+      const started=pendingAttachmentStarted.current.get(request.requestId)??Date.now();
+      if(Date.now()-started>10*60*1000){
+        clearInterval(timer);
+        pendingAttachmentTimers.current.delete(request.requestId);
+        pendingAttachmentStarted.current.delete(request.requestId);
+        return;
+      }
+      attachmentApprovalRef.current?.request(request);
+    },4000);
+    pendingAttachmentTimers.current.set(request.requestId,timer);
+  };
+  const cancelPendingAttachmentRequest=(requestId:string)=>{
+    const timer=pendingAttachmentTimers.current.get(requestId);if(timer)clearInterval(timer);
+    pendingAttachmentTimers.current.delete(requestId);
+    pendingAttachmentStarted.current.delete(requestId);
+    setPendingAttachmentRequests(current=>current.filter(x=>x.requestId!==requestId));
+  };
+
+  const [boardAiOpen,setBoardAiOpen]=useState(false);
+  const [boardAiMode,setBoardAiMode]=useState<MathAiMode>("auto");
+  const [boardAiLevel,setBoardAiLevel]=useState<MathAiLevel>("basic");
+  const [boardAiCount,setBoardAiCount]=useState(6);
+  const [boardAiTopic,setBoardAiTopic]=useState("");
+  const [boardAiWithAnswers,setBoardAiWithAnswers]=useState(false);
+  const [boardAiDetected,setBoardAiDetected]=useState("");
+  const [boardAiPreview,setBoardAiPreview]=useState<string[]>([]);
+
+  const publicPresentation = !canEdit && new URLSearchParams(window.location.search).get("present")==="1";
+  const [sharing, setSharing] = useState(false);
+  const [historyOpen,setHistoryOpen]=useState(false);
+  const [historyRows,setHistoryRows]=useState<BoardHistoryEntry[]>([]);
+  const [historyBusy,setHistoryBusy]=useState(false);
+  const [historyError,setHistoryError]=useState("");
+  const [recentChanges,setRecentChanges]=useState<BoardHistoryEntry[]>([]);
+  const [recentNewCount,setRecentNewCount]=useState(0);
+  const [recentChangesOpen,setRecentChangesOpen]=useState(false);
+  const [leavingBoard,setLeavingBoard]=useState(false);
+  const historyVisitKey = "onlinerepetitor.history-seen." + authUser.id + "." + boardSummary.id;
+  const [discussionOpen,setDiscussionOpen]=useState(false);
+  const [chatOpen,setChatOpen]=useState(false);
+  const [chatUnread,setChatUnread]=useState(0);
+  const [discussionRows,setDiscussionRows]=useState<BoardCommentThread[]>([]);
+  const [discussionBusy,setDiscussionBusy]=useState(false);
+  const [discussionError,setDiscussionError]=useState("");
+  const [discussionDraft,setDiscussionDraft]=useState("");
+  const [discussionReplyTo,setDiscussionReplyTo]=useState<string|null>(null);
+  const [discussionParticipants,setDiscussionParticipants]=useState<BoardCommentParticipant[]>([]);
+  const [discussionFocusId,setDiscussionFocusId]=useState<string|null>(()=>new URLSearchParams(window.location.search).get("discussion"));
+  const [liveLesson,setLiveLesson]=useState<LiveLesson|null>(null);
+  const [lessonOpen,setLessonOpen]=useState(false),[lessonFinishOpen,setLessonFinishOpen]=useState(false);
+  const [lessonStudentId,setLessonStudentId]=useState(""),[lessonTopic,setLessonTopic]=useState("");
+  const [lessonScheduleId,setLessonScheduleId]=useState<string|null>(null);
+  const [lessonResult,setLessonResult]=useState(""),[lessonHomework,setLessonHomework]=useState(""),[lessonClock,setLessonClock]=useState(Date.now());
+  const [lessonPanelOpen,setLessonPanelOpen]=useState(false);
+  const [presenceUsers, setPresenceUsers] = useState<BoardPresenceUser[]>([]);
+  const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
+  const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
+  const [remoteInk, setRemoteInk] = useState<Record<string, LiveInkMessage>>({});
+  const [inkDiagnostics, setInkDiagnostics] = useState("подключается");
+  const [developerSettingsOpen, setDeveloperSettingsOpen] = useState(false);
+  const [developerPrefs, setDeveloperPrefs] = useState(readDeveloperPreferences);
+  const {showInkDiagnostics,showBoardDiagnostics,showPerformanceDiagnostics} = developerPrefs;
+  const changeDeveloperPref=(key:keyof typeof developerPrefs,value:boolean)=>{
+    const next={...developerPrefs,[key]:value};
+    setDeveloperPrefs(next);
+    writeDeveloperPreferences(next);
+  };
+  useEffect(()=>{
+    const update=()=>setDeveloperPrefs(readDeveloperPreferences());
+    window.addEventListener("onlinerepetitor:developer-preferences",update);
+    return()=>window.removeEventListener("onlinerepetitor:developer-preferences",update);
+  },[]);
+  const pendingRemoteCursors = useRef<Record<string, RemoteCursor>>({});
+  const remoteCursorFrame = useRef<number | null>(null);
+  const cursorChannel = useRef<BoardCursorChannel | null>(null);
+  const viewControlChannel = useRef<BoardViewControlChannel | null>(null);
+  const [followTeacher] = useState(false);
+  const followTeacherRef = useRef(false);
+  const teacherViewBroadcastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [remoteWork, setRemoteWork] = useState<Record<string, RemoteWorkState>>({});
+  const workChannel = useRef<BoardWorkChannel | null>(null);
+  const board = useRef<HTMLElement>(null);
+  const [boardViewportSize,setBoardViewportSize]=useState({width:0,height:0});
+  const globalHandlersRef = useRef<{
+    keyDown:(event:KeyboardEvent)=>void; keyUp:(event:KeyboardEvent)=>void; blur:()=>void;
+    pointerUp:()=>void; pointerCancel:()=>void; closeContextMenu:(event:PointerEvent)=>void; pasteFromSystem:(event:ClipboardEvent)=>void;
+  } | null>(null);
+  const storageKey = boardStorageKey(boardSummary.id);
+  const viewStorageKey = `${storageKey}.view`;
+  const [initial] = useState(() => loadInitial(storageKey));
+  const [saveBlocked, setSaveBlocked] = useState(!!initial.error);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const mediaInput = useRef<HTMLInputElement>(null);
+  const [linkMediaOpen,setLinkMediaOpen]=useState(false);
+  const [linkMediaUrl,setLinkMediaUrl]=useState("");
+  const [linkMediaTitle,setLinkMediaTitle]=useState("");
+  const [linkMediaEditId,setLinkMediaEditId]=useState<string|null>(null);
+  const [imageCropEditorId,setImageCropEditorId]=useState<string|null>(null);
+  const imageCropApplyRef=useRef<(()=>Promise<void>)|null>(null);
+  const imageCropApplyingRef=useRef(false);
+  useEffect(()=>{
+    if(!imageCropEditorId)return;
+    const finishCropFromOutside=(event:PointerEvent)=>{
+      const target=event.target;
+      if(!(target instanceof Element))return;
+      const objectId=target.closest<HTMLElement>("[data-object]")?.dataset.object;
+      if(objectId===imageCropEditorId||target.closest(".inline-image-crop"))return;
+      const applyCrop=imageCropApplyRef.current;
+      if(!applyCrop||imageCropApplyingRef.current)return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      imageCropApplyingRef.current=true;
+      void applyCrop().finally(()=>{imageCropApplyingRef.current=false});
+    };
+    document.addEventListener("pointerdown",finishCropFromOutside,true);
+    return()=>document.removeEventListener("pointerdown",finishCropFromOutside,true);
+  },[imageCropEditorId]);
+  const imageTapRef=useRef<{id:string;at:number;x:number;y:number}|null>(null);
+  const [shapeType, setShapeType] = useState<ShapeType>("rounded");
+  const [connectorStyle, setConnectorStyle] = useState<ConnectorStyle>("arrow");
+  const [connectorWeight, setConnectorWeight] = useState(3);
+  const [connectorRouting, setConnectorRouting] = useState<ConnectorRouting>("straight");
+  const [notice, setNotice] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [tableEditorId, setTableEditorId] = useState<string | null>(null);
+  const [tableDraft, setTableDraft] = useState<{ rows: number; cols: number; cells: string[]; header: boolean; fontSize: number; align: "left" | "center" | "right"; stripe: boolean; compact: boolean } | null>(null);
+  const [checklistEditorId, setChecklistEditorId] = useState<string | null>(null);
+  const [checklistDraft, setChecklistDraft] = useState<{ title: string; items: string[]; done: boolean[]; fontSize: number; color: string } | null>(null);
+  const [quizEditorId, setQuizEditorId] = useState<string | null>(null);
+  const [quizDraft, setQuizDraft] = useState<{ question: string; options: string[]; correct: number; explanation: string; fontSize: number; color: string } | null>(null);
+  const [flashcardEditorId, setFlashcardEditorId] = useState<string | null>(null);
+  const [flashcardDraft, setFlashcardDraft] = useState<{ front: string; back: string; fontSize: number; color: string } | null>(null);
+  const [studyOpen, setStudyOpen] = useState(false);
+  const [studyTab, setStudyTab] = useState<"quiz"|"flashcards">("quiz");
+  const [studyCardIndex, setStudyCardIndex] = useState(0);
+  const [graphEditorId, setGraphEditorId] = useState<string | null>(null);
+  const [graphDraft, setGraphDraft] = useState<{type:"linear"|"quadratic"|"sin"|"cos";expression:string;connectPoints:boolean;a:number;b:number;c:number;xMin:number;xMax:number;yMin:number;yMax:number;grid:boolean;points:{x:number;y:number;label:string;color?:string}[];showLabels:boolean;snap:boolean;axisLabels:boolean;gridStep:number;showCurve:boolean;projections:boolean;segments:{a:number;b:number;kind:"segment"|"line"|"ray";label:string;measure:boolean}[];angles:{a:number;vertex:number;b:number;label:string}[];circles:{center:number;edge:number;label:string;measure:boolean}[];polygons:{points:number[];label:string;measure:boolean}[];midpoints:{a:number;b:number;label:string}[]}|null>(null);
+  const [formulaEditorId, setFormulaEditorId] = useState<string | null>(null);
+  const [formulaDraft, setFormulaDraft] = useState<{ text: string; fontSize: number; color: string } | null>(null);
+  const [formulaPaletteTab, setFormulaPaletteTab] = useState<FormulaPaletteTab>("basic");
+  const [formulaHistory, setFormulaHistory] = useState<string[]>(() => { try { const v=JSON.parse(localStorage.getItem("onlinerepetitor.formula-history.v54")||"[]"); return Array.isArray(v)?v.slice(0,12):[] } catch { return [] } });
+  const formulaInput = useRef<HTMLTextAreaElement>(null);
+  const [frameNotesEditorId, setFrameNotesEditorId] = useState<string | null>(null);
+  const [frameNotesDraft, setFrameNotesDraft] = useState("");
+  const [presentationNotesOpen, setPresentationNotesOpen] = useState(false);
+  const [presentation, setPresentation] = useState(() => new URLSearchParams(window.location.search).get("present")==="1");
+  const [presentationFrameIndex, setPresentationFrameIndex] = useState(0);
+  const [presentationSlidesOpen, setPresentationSlidesOpen] = useState(false);
+  const [presentationLaser, setPresentationLaser] = useState(false);
+  const [presentationLaserPos, setPresentationLaserPos] = useState<Point | null>(null);
+  const [presentationSpotlight, setPresentationSpotlight] = useState(false);
+  const [presentationSpotlightPos, setPresentationSpotlightPos] = useState<Point | null>(null);
+  const [presentationSpotlightRadius, setPresentationSpotlightRadius] = useState(180);
+  const [presentationElapsed, setPresentationElapsed] = useState(0);
+  const [presentationTimerRunning, setPresentationTimerRunning] = useState(false);
+  const [presentationTimerMode, setPresentationTimerMode] = useState<"elapsed" | "countdown">("elapsed");
+  const [presentationCountdownTotal, setPresentationCountdownTotal] = useState(300);
+  const [presentationCountdownRemaining, setPresentationCountdownRemaining] = useState(300);
+  const [presentationBlackout, setPresentationBlackout] = useState(false);
+  const [gridMode, setGridMode] = useState<"dots" | "grid" | "plain">(() => {
+    const saved = localStorage.getItem("lesson-board.grid-mode");
+    return saved === "grid" || saved === "plain" ? saved : "dots";
+  });
+  const [previous, setPrevious] = useState<DocumentData | null>(() => {
+    try {
+      const raw = localStorage.getItem(storageKey + ".before-import");
+      return raw ? parseDocument(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [title, setTitle] = useState(initial.data.title);
+  const [, setSaveStatus] = useState(
+    initial.error || "Сохранено в браузере",
+  );
+  const [color, setColor] = useState("#5355c9");
+  const [weight, setWeight] = useState(3);
+  const [markerWeight, setMarkerWeight] = useState(22);
+  const [eraserSize, setEraserSize] = useState(32);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [guides, setGuides] = useState<GuideState>({});
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [commandPaletteQuery, setCommandPaletteQuery] = useState("");
+  const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
+  const [preview, setPreview] = useState<Item | null>(null);
+  const [tool, setTool] = useState<Tool>("hand");
+  const [view, setView] = useState<View>(() => {
+    try {
+      const raw = localStorage.getItem(viewStorageKey);
+      if (!raw) return initial.data.view;
+      const saved = JSON.parse(raw) as Partial<View>;
+      if (
+        typeof saved.x === "number" && Number.isFinite(saved.x) &&
+        typeof saved.y === "number" && Number.isFinite(saved.y) &&
+        typeof saved.zoom === "number" && Number.isFinite(saved.zoom) &&
+        saved.zoom >= 0.1 && saved.zoom <= 8
+      ) return { x: saved.x, y: saved.y, zoom: saved.zoom };
+    } catch {/* Fall back to the view stored in the board document. */}
+    return initial.data.view;
+  });
+  const viewerPanFrame = useRef<number | null>(null);
+  const viewerPendingPan = useRef<View | null>(null);
+  const scheduleViewerPan = (next: View) => {
+    viewerPendingPan.current = next;
+    if (viewerPanFrame.current !== null) return;
+    viewerPanFrame.current = requestAnimationFrame(() => {
+      viewerPanFrame.current = null;
+      const pending = viewerPendingPan.current;
+      viewerPendingPan.current = null;
+      if (pending) setView(pending);
+    });
+  };
+  useEffect(() => () => {
+    if (viewerPanFrame.current !== null) cancelAnimationFrame(viewerPanFrame.current);
+    viewerPendingPan.current = null;
+  }, []);
+  const viewRef = useRef(view);
+  const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastViewSerialized = useRef<string | null>(null);
+  const [items, setItems] = useState<Item[]>(() => expandDocumentInk(initial.data));
+  useEffect(() => {
+    // Remove an overlay only after its permanent item has appeared, avoiding flicker.
+    const persistedIds = new Set(items.map(item => item.id));
+    setRemoteInk(current => {
+      const stale = Object.keys(current).filter(id => persistedIds.has(id));
+      if (!stale.length) return current;
+      const next = {...current};
+      for (const id of stale) delete next[id];
+      return next;
+    });
+  }, [items]);
+
+  const itemsRef = useRef(items);
+  const eraserSession = useRef<{pointer:number;last:Point;zoom:number;path:Point[]}|null>(null);
+  const eraserPreviewCanvas=useRef<HTMLCanvasElement>(null);
+  const eraserPreviewRatio=useRef(1);
+  const eraserCursorElement = useRef<HTMLDivElement>(null);
+  const setLiveEraserCursor=(x:number,y:number)=>{
+    const el=eraserCursorElement.current;
+    if(!el)return;
+    el.style.left=x+"px";
+    el.style.top=y+"px";
+    el.style.visibility="visible";
+  };
+  const displayFrame = useRef<number | null>(null);
+  const pendingDisplayItems = useRef<Item[] | null>(null);
+  const gesturePaintFrame = useRef<number | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [editing, setEditing] = useState<string | null>(null);
+  const objectEditorOpen = Boolean(
+    editing ||
+    imageCropEditorId ||
+    linkMediaOpen ||
+    tableEditorId ||
+    checklistEditorId ||
+    quizEditorId ||
+    flashcardEditorId ||
+    graphEditorId ||
+    formulaEditorId ||
+    frameNotesEditorId
+  );
+  const [draft, setDraft] = useState("");
+  const draftRef = useRef("");
+  const editor = useRef<HTMLTextAreaElement>(null);
+  const [space, setSpace] = useState(false);
+  const [path, setPath] = useState<Point[]>([]);
+  const [panning, setPanning] = useState(false);
+  const touchPoints = useRef(new Map<number, Point>());
+  const pinchState = useRef<{ distance:number; center:Point; view:View } | null>(null);
+  const [mobileToolsOpen,setMobileToolsOpen]=useState(false);
+  const [colorMenuOpen,setColorMenuOpen]=useState(false);
+  const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(()=>{
+    try { return localStorage.getItem("onlinerepetitor.desktopToolsExpanded") === "1"; }
+    catch { return false; }
+  });
+  useEffect(()=>{
+    try { localStorage.setItem("onlinerepetitor.desktopToolsExpanded", desktopToolsExpanded ? "1" : "0"); }
+    catch {/* Private browsing/storage restrictions: keep session state only. */}
+  },[desktopToolsExpanded]);
+  const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
+  useEffect(()=>{const mq=window.matchMedia?.("(pointer: coarse)");if(!mq)return;const sync=()=>setIsCoarsePointer(mq.matches);sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync)},[]);
+  useEffect(()=>{
+    const element=board.current;if(!element)return;
+    const update=()=>{const rect=element.getBoundingClientRect();setBoardViewportSize(current=>Math.abs(current.width-rect.width)<1&&Math.abs(current.height-rect.height)<1?current:{width:rect.width,height:rect.height})};
+    update();
+    if(typeof ResizeObserver==="undefined"){window.addEventListener("resize",update);return()=>window.removeEventListener("resize",update)}
+    const observer=new ResizeObserver(update);observer.observe(element);return()=>observer.disconnect();
+  },[boardSummary.id]);
+  useEffect(()=>{
+    if(!isCoarsePointer)return;
+    // Never force browser fullscreen: Android/Chrome may create a persistent
+    // "copy this app URL" notification for that app-like fullscreen session.
+    // Installed PWA can lock orientation without entering browser fullscreen.
+    if(!window.matchMedia?.("(display-mode: standalone)").matches)return;
+    let cancelled=false;
+    const lockLandscape=async()=>{
+      try{
+        const orientation=screen.orientation as ScreenOrientation & {lock?:(orientation:"landscape")=>Promise<void>};
+        if(!cancelled&&orientation?.lock)await orientation.lock("landscape");
+      }catch{/* Manifest orientation remains the fallback for installed PWA. */}
+    };
+    void lockLandscape();
+    return()=>{cancelled=true};
+  },[isCoarsePointer]);
+  const [installPrompt,setInstallPrompt]=useState<Event|null>(null);
+  const [isStandalone,setIsStandalone]=useState(()=>window.matchMedia?.("(display-mode: standalone)").matches===true);
+  const [online,setOnline]=useState(()=>navigator.onLine);
+  const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
+  const gesture = useRef<Gesture | null>(null);
+  useEffect(()=>{const ready=(e:Event)=>{e.preventDefault();setInstallPrompt(e)};const installed=()=>{setInstallPrompt(null);setIsStandalone(true)};window.addEventListener("beforeinstallprompt",ready);window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",ready);window.removeEventListener("appinstalled",installed)}},[]);
+  useEffect(()=>{const sync=()=>setOnline(navigator.onLine);const update=((e:Event)=>setUpdateReady((e as CustomEvent<{registration:ServiceWorkerRegistration}>).detail.registration)) as EventListener;window.addEventListener("online",sync);window.addEventListener("offline",sync);window.addEventListener("or-sw-update",update);return()=>{window.removeEventListener("online",sync);window.removeEventListener("offline",sync);window.removeEventListener("or-sw-update",update)}},[]);
+  const applyUpdate=()=>{updateReady?.waiting?.postMessage({type:"SKIP_WAITING"})};
+  const installApp=async()=>{const p=installPrompt as (Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>})|null;if(!p)return;await p.prompt();await p.userChoice;setInstallPrompt(null)};
+  const clipboard = useRef<Item[]>([]);
+  const history = useRef<Item[][]>([expandDocumentInk(initial.data)]);
+  const index = useRef(0);
+
+  const snapshot = useRef<DocumentData | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastLocalSerialized = useRef<string | null>(null);
+  const lastBoardTouchAt = useRef(0);
+  const lastBoardTouchTitle = useRef(title);
+  const remoteVersion = useRef<number | null>(initialRemoteVersion);
+  const remoteSaveInFlight = useRef(false);
+  const remoteSavePromise = useRef<Promise<void> | null>(null);
+  const queuedRemoteSnapshot = useRef<DocumentData | null>(null);
+  const remoteSaveFailures = useRef(0);
+  const remoteRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const acknowledgedDocument = useRef<string | null>(initialRemoteVersion == null ? null : documentFingerprint(initial.data));
+  const deferredRemote = useRef<RemoteBoardDocument | null>(null);
+  const pendingRemote = useRef<RemoteBoardDocument | null>(null);
+  const lastAttempt = useRef<{ version: number; fingerprint: string } | null>(null);
+  const [, setRemoteConflict] = useState<RemoteBoardDocument | null>(null);
+  const [, setConflictLocalBackup] = useState<DocumentData | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("reconnecting");
+  const receiveRemote = useRef<(row: RemoteBoardDocument) => void>(() => {});
+  const boardMounted = useRef(true);
+  useEffect(() => {
+    boardMounted.current = true;
+    return () => {
+      boardMounted.current = false;
+      if (remoteRetryTimer.current) clearTimeout(remoteRetryTimer.current);
+      if (displayFrame.current != null) cancelAnimationFrame(displayFrame.current);
+      if (gesturePaintFrame.current != null) cancelAnimationFrame(gesturePaintFrame.current);
+      displayFrame.current = null;
+      gesturePaintFrame.current = null;
+      pendingDisplayItems.current = null;
+    };
+  }, []);
+  // Read recent server revisions once on entry, without blocking board rendering.
+  useEffect(()=>{
+    if(!isRemoteBackendEnabled())return;
+    let active=true;
+    let previousVersion:number|null=null;
+    try{
+      const stored=localStorage.getItem(historyVisitKey);
+      if(stored!==null){
+        const value=Number(stored);
+        if(Number.isSafeInteger(value)&&value>=0)previousVersion=value;
+      }
+    }catch{/* local history marker is optional */}
+    void listBoardHistory(boardSummary.id,20).then(rows=>{
+      if(!active)return;
+      const recent=recentBoardHistory(rows,5);
+      setRecentChanges(recent);
+      setRecentNewCount(previousVersion===null?0:changesSinceLastVisit(rows,previousVersion,20).length);
+      setRecentChangesOpen(false);
+    }).catch(()=>{/* The full history remains available manually. */});
+    return()=>{active=false};
+  },[boardSummary.id,historyVisitKey]);
+
+  // Mark server revisions seen when the user actually leaves this board.
+  useEffect(()=>{
+    const markSeen=()=>{
+      const version=remoteVersion.current;
+      if(version===null||!Number.isSafeInteger(version)||version<0)return;
+      try{localStorage.setItem(historyVisitKey,String(version))}catch{/* ignore */}
+    };
+    window.addEventListener("pagehide",markSeen);
+    return()=>{markSeen();window.removeEventListener("pagehide",markSeen)};
+  },[historyVisitKey]);
+
+  useEffect(() => {
+    localStorage.setItem("lesson-board.grid-mode", gridMode);
+  }, [gridMode]);
+
+  // Viewport is personal UI state, not shared board content. Persist it separately
+  // so reopening or refreshing a board returns this user to the exact same place
+  // without broadcasting pan/zoom changes as document revisions.
+  useEffect(() => {
+    viewRef.current = view;
+    if (viewSaveTimer.current) clearTimeout(viewSaveTimer.current);
+    viewSaveTimer.current = setTimeout(() => {
+      viewSaveTimer.current = null;
+      try {
+        const serialized = JSON.stringify(viewRef.current);
+        if (serialized !== lastViewSerialized.current) {
+          localStorage.setItem(viewStorageKey, serialized);
+          lastViewSerialized.current = serialized;
+        }
+      } catch {/* Board content saving still works if viewport persistence is unavailable. */}
+    }, 350);
+    return () => {
+      if (viewSaveTimer.current) clearTimeout(viewSaveTimer.current);
+    };
+  }, [view, viewStorageKey]);
+
+  useEffect(() => {
+    const saveViewNow = () => {
+      try {
+        const serialized = JSON.stringify(viewRef.current);
+        if (serialized !== lastViewSerialized.current) {
+          localStorage.setItem(viewStorageKey, serialized);
+          lastViewSerialized.current = serialized;
+        }
+      } catch {/* Ignore storage failures during navigation. */}
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") saveViewNow();
+    };
+    window.addEventListener("pagehide", saveViewNow);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      saveViewNow();
+      window.removeEventListener("pagehide", saveViewNow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [viewStorageKey]);
+  useEffect(() => {
+    if (!presentation || !presentationTimerRunning) return;
+    const id = window.setInterval(() => {
+      if (presentationTimerMode === "elapsed") {
+        setPresentationElapsed((value) => value + 1);
+      } else {
+        setPresentationCountdownRemaining((value) => {
+          if (value <= 1) {
+            setPresentationTimerRunning(false);
+            setNotice("Время вышло");
+            return 0;
+          }
+          return value - 1;
+        });
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [presentation, presentationTimerRunning, presentationTimerMode]);
+
+  const pushRemoteSnapshot = useCallback(async (data: DocumentData, knownFingerprint?: string) => {
+    if (!isRemoteBackendEnabled() || !canEdit || !boardMounted.current || pendingRemote.current) return;
+    const fingerprint = knownFingerprint ?? documentFingerprint(data);
+    if (fingerprint === acknowledgedDocument.current) return;
+    if (remoteSaveInFlight.current) {
+      queuedRemoteSnapshot.current = data;
+      return;
+    }
+    remoteSaveInFlight.current = true;
+    try {
+      await ensureBoardAssets(boardSummary.id, data);
+      if (!boardMounted.current) return;
+      const expectedVersion = remoteVersion.current ?? 0;
+      lastAttempt.current = { version: expectedVersion + 1, fingerprint };
+      const result = await (adminMaintenance ? adminSaveRemoteBoardDocument : saveRemoteBoardDocument)(boardSummary.id, data, expectedVersion);
+      if (!boardMounted.current) return;
+      if (result.conflict) {
+        const row = { board_id: boardSummary.id, version: result.version, document: result.document, updated_at: result.updated_at ?? "" };
+        if (!deferredRemote.current || row.version > deferredRemote.current.version) deferredRemote.current = row;
+        return;
+      }
+      remoteVersion.current = result.version;
+      acknowledgedDocument.current = fingerprint;
+      remoteSaveFailures.current = 0;
+      if (remoteRetryTimer.current) {
+        clearTimeout(remoteRetryTimer.current);
+        remoteRetryTimer.current = null;
+      }
+      setSaveStatus("Сохранено на сервере");
+    } catch {
+      // A short Supabase/network hiccup must not permanently leave the board in
+      // a scary "server unavailable" state. The local copy is already safe,
+      // so retry the latest snapshot quietly with a small exponential backoff.
+      remoteSaveFailures.current += 1;
+      const delay = Math.min(8000, 1000 * 2 ** Math.min(remoteSaveFailures.current - 1, 3));
+      setSaveStatus(remoteSaveFailures.current < 3
+        ? "Сохранено локально · повторная синхронизация…"
+        : "Сохранено локально · восстанавливаем связь с сервером…");
+      if (remoteRetryTimer.current) clearTimeout(remoteRetryTimer.current);
+      remoteRetryTimer.current = setTimeout(() => {
+        remoteRetryTimer.current = null;
+        if (!boardMounted.current || !snapshot.current || pendingRemote.current) return;
+        void pushRemoteSnapshot(snapshot.current);
+      }, delay);
+    } finally {
+      remoteSaveInFlight.current = false;
+      const deferred = deferredRemote.current;
+      deferredRemote.current = null;
+      if (boardMounted.current && deferred) receiveRemote.current(deferred);
+      const queued = queuedRemoteSnapshot.current;
+      queuedRemoteSnapshot.current = null;
+      if (queued) void pushRemoteSnapshot(queued);
+    }
+  }, [boardSummary.id, canEdit]);
+
+  const flushSave = useCallback(() => {
+    if (!canEdit) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    if (!snapshot.current) return;
+    try {
+      const data = snapshot.current;
+      // Serialize once per flush. Large boards used to be stringified repeatedly for
+      // local save, fingerprint checks and metadata touches, which caused visible stalls.
+      const serialized = JSON.stringify(data);
+      if (serialized !== lastLocalSerialized.current) {
+        localStorage.setItem(storageKey, serialized);
+        lastLocalSerialized.current = serialized;
+      }
+      if (!boardMounted.current) return;
+      const fingerprint = documentFingerprint(data);
+      if (isRemoteBackendEnabled() && (pendingRemote.current || fingerprint === acknowledgedDocument.current)) return;
+
+      // Board-list metadata does not need a PATCH on every board edit. Throttling this
+      // removes a second request (and for collaborators sometimes a role lookup) from
+      // the hot autosave path while still keeping recent boards ordered correctly.
+      const now = Date.now();
+      const titleChanged = lastBoardTouchTitle.current !== data.title;
+      if (titleChanged || now - lastBoardTouchAt.current >= 15_000) {
+        lastBoardTouchAt.current = now;
+        lastBoardTouchTitle.current = data.title;
+        void touchBoard(authUser.id, boardSummary.id, data.title, boardSummary.role).then((updatedBoard) => {
+          if (updatedBoard && boardMounted.current) onBoardChanged(updatedBoard);
+        }).catch(() => {});
+      }
+      if (isRemoteBackendEnabled()) {
+        setSaveStatus("Сохранение на сервер…");
+        const pending=pushRemoteSnapshot(data,fingerprint);
+        remoteSavePromise.current=pending;
+        void pending.finally(()=>{
+          if(remoteSavePromise.current===pending)remoteSavePromise.current=null;
+        });
+      } else {
+        setSaveStatus("Сохранено в браузере");
+      }
+    } catch {
+      setSaveStatus("Не удалось сохранить — скачайте копию");
+    }
+  }, [authUser.id, boardSummary.id, onBoardChanged, storageKey, canEdit, pushRemoteSnapshot]);
+
+  // A gesture is saved only when completed; in-progress text is saved too.
+  useEffect(() => {
+    if (saveBlocked || gesture.current || eraserSession.current) return;
+    const data: DocumentData = packDocumentInk({
+      version: 1,
+      title,
+      view: viewRef.current,
+      items: editing
+        ? items.map((i) => (i.id === editing ? { ...i, text: draft } : i))
+        : items,
+    });
+    snapshot.current = data;
+    if (!canEdit) return;
+    // Do not hash/stringify the entire board on every keystroke or React update.
+    // The debounced flush performs both operations once after editing settles.
+    setSaveStatus("Сохранение…");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(flushSave, 220);
+  }, [
+    items,
+    title,
+    editing,
+    draft,
+    saveBlocked,
+    flushSave,
+  ]);
+  useEffect(() => {
+    const hidden = () => {
+      if (document.visibilityState === "hidden") flushSave();
+    };
+    window.addEventListener("pagehide", flushSave);
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      flushSave();
+      window.removeEventListener("pagehide", flushSave);
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, [flushSave]);
+  const refreshDiscussions=useCallback(async()=>{setDiscussionRows(await listBoardComments(boardSummary.id))},[boardSummary.id]);
+  const refreshDiscussionParticipants=useCallback(async()=>{setDiscussionParticipants(await listBoardCommentParticipants(boardSummary.id))},[boardSummary.id]);
+  const openDiscussions=async(focusId:string|null=null)=>{
+    if(!isRemoteBackendEnabled()){setNotice("Чат доступен при серверной синхронизации");return}
+    setChatOpen(true);setChatUnread(0);setDiscussionOpen(true);setDiscussionBusy(true);setDiscussionError("");if(focusId)setDiscussionFocusId(focusId);
+    try{await Promise.all([refreshDiscussions(),refreshDiscussionParticipants()])}catch(error){setDiscussionError(error instanceof Error?error.message:"Не удалось загрузить обсуждения")}finally{setDiscussionBusy(false)}
+  };
+  useEffect(()=>{
+    if(!isRemoteBackendEnabled())return;
+    return subscribeBoardComments(boardSummary.id,()=>{
+      if(!chatOpen)setChatUnread(value=>Math.min(99,value+1));
+      void refreshDiscussions().catch(()=>{});
+    });
+  },[chatOpen,boardSummary.id,refreshDiscussions]);
+  useEffect(()=>{
+    const requested=new URLSearchParams(window.location.search).get("discussion");
+    if(requested){setDiscussionFocusId(requested);void openDiscussions(requested)}
+  // Opening a notification deep-link is intentionally a one-time action for this mounted board.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[boardSummary.id]);
+  useEffect(()=>{
+    if(!discussionOpen||!discussionFocusId||!discussionRows.length)return;
+    const requested=discussionRows.find(x=>x.id===discussionFocusId);
+    const rootId=requested?.parent_id||requested?.id||discussionFocusId;
+    window.setTimeout(()=>document.getElementById(`discussion-${rootId}`)?.scrollIntoView({behavior:"smooth",block:"center"}),60);
+  },[discussionOpen,discussionFocusId,discussionRows]);
+  const insertDiscussionMention=(person:BoardCommentParticipant)=>{
+    const mention=`@${person.display_name}`;
+    setDiscussionDraft(value=>`${value}${value&&!/\s$/.test(value)?" ":""}${mention} `);
+  };
+  const sendDiscussion=async()=>{
+    const body=discussionDraft.trim();if(!body)return;
+    setDiscussionBusy(true);setDiscussionError("");
+    try{const created=await createBoardComment(boardSummary.id,body,discussionReplyTo);setDiscussionDraft("");setDiscussionReplyTo(null);if(created?.id)setDiscussionFocusId(created.id);await refreshDiscussions()}
+    catch(error){setDiscussionError(error instanceof Error?error.message:"Не удалось отправить комментарий")}
+    finally{setDiscussionBusy(false)}
+  };
+  const toggleDiscussionResolved=async(row:BoardCommentThread)=>{
+    if(!canEdit)return;setDiscussionBusy(true);setDiscussionError("");
+    try{await setBoardCommentResolved(row.id,!row.resolved);await refreshDiscussions()}
+    catch(error){setDiscussionError(error instanceof Error?error.message:"Не удалось изменить статус")}
+    finally{setDiscussionBusy(false)}
+  };
+
+  const saveBeforeLeaving=async (logout=false)=>{
+    if(leavingBoard)return;
+    setLeavingBoard(true);
+    try{
+      finishEdit();
+      // Read the synchronous object model, not the last scheduled React frame.
+      const latest=currentDocument();
+      snapshot.current=latest;
+      flushSave();
+      const expected=documentFingerprint(latest);
+      if(canEdit&&isRemoteBackendEnabled()&&expected!==acknowledgedDocument.current){
+        const until=Date.now()+8000;
+        while(boardMounted.current&&Date.now()<until&&
+              acknowledgedDocument.current!==expected){
+          const running=remoteSavePromise.current;
+          if(running){
+            await Promise.race([
+              running.catch(()=>{}),
+              new Promise<void>(resolve=>window.setTimeout(resolve,220)),
+            ]);
+          }else{
+            await new Promise<void>(resolve=>window.setTimeout(resolve,140));
+          }
+        }
+        if(acknowledgedDocument.current!==expected){
+          const confirmed=window.confirm(
+            "Сервер ещё не подтвердил последнее сохранение. Локальная копия сохранена. "+
+            "Выйти всё равно? Для сохранения истории на сервере лучше дождаться соединения."
+          );
+          if(!confirmed)return;
+        }
+      }
+      if(logout)onLogout();else onBackToBoards();
+    }finally{
+      if(boardMounted.current)setLeavingBoard(false);
+    }
+  };
+
+  const openHistory=async()=>{
+    if(!isRemoteBackendEnabled()){setNotice("История версий доступна при серверной синхронизации");return}
+    setHistoryOpen(true);setHistoryBusy(true);setHistoryError("");
+    try{setHistoryRows(await listBoardHistory(boardSummary.id,40))}
+    catch(error){setHistoryError(error instanceof Error?error.message:"Не удалось загрузить историю")}
+    finally{setHistoryBusy(false)}
+  };
+  const restoreHistoryVersion=async(entry:BoardHistoryEntry)=>{
+    if(!canEdit){setNotice("У вас доступ только для просмотра");return}
+    if(!window.confirm(`Восстановить версию №${entry.version}? Текущее состояние останется в истории после следующего сохранения.`))return;
+    setHistoryBusy(true);setHistoryError("");
+    try{
+      const data=parseDocument(JSON.stringify(await getBoardHistoryVersion(boardSummary.id,entry.version)));
+      applyDocument(data);
+      setHistoryOpen(false);
+      setNotice(`Версия №${entry.version} восстановлена. Изменение будет сохранено как новая версия.`);
+    }catch(error){setHistoryError(error instanceof Error?error.message:"Не удалось восстановить версию")}
+    finally{setHistoryBusy(false)}
+  };
+
+  const exportBoard = async () => {
+    const data: DocumentData = packDocumentInk({
+      version: 1,
+      title,
+      view,
+      items: editing
+        ? itemsRef.current.map((i) =>
+            i.id === editing ? { ...i, text: draft } : i,
+          )
+        : itemsRef.current,
+    });
+    try {
+      setNotice("Подготавливаем переносимую копию…");
+      const assets: { id: string; name: string; mime: string; data: string }[] = [];
+      const media = data.items.filter((i) => (i.kind === "image" || i.kind === "pdf") && i.assetId);
+      const seen = new Set<string>();
+      for (const item of media) {
+        if (!item.assetId || seen.has(item.assetId)) continue;
+        seen.add(item.assetId);
+        const blob = await getAsset(item.assetId, boardSummary.id);
+        if (!blob) continue;
+        assets.push({
+          id: item.assetId,
+          name: item.name ?? "file",
+          mime: item.mime ?? blob.type ?? "application/octet-stream",
+          data: await blobToDataUrl(blob),
+        });
+      }
+      const bundle: PortableBoardBundle = {
+        format: "onlinerepetitor-board",
+        version: 2,
+        app: "OnlineRepetitor",
+        exportedAt: new Date().toISOString(),
+        document: data,
+        assets: assets.map(asset=>({ ...asset, size: Math.round((asset.data.length * 3) / 4) })),
+      };
+      validatePortableBundle(bundle);
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(bundle)], { type: "application/json" }),
+      );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = safeBackupName(title); 
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice(assets.length ? `Копия скачана вместе с вложениями: ${assets.length}` : "Копия доски скачана");
+    } catch {
+      setNotice("Не удалось подготовить переносимую копию");
+    }
+  };
+
+  const display = (next: Item[]) => {
+    const synced = syncBoundConnectors(next);
+    // Keep model state synchronous for pointer math, but paint at most once per frame.
+    // This prevents 100+ React renders/sec on fast mouse/touch drags.
+    itemsRef.current = synced;
+    pendingDisplayItems.current = synced;
+    if (displayFrame.current != null) return;
+    displayFrame.current = requestAnimationFrame(() => {
+      displayFrame.current = null;
+      const pending = pendingDisplayItems.current;
+      pendingDisplayItems.current = null;
+      if (pending) setItems(pending);
+    });
+  };
+  // The original SVG strokes are replaced with a lightweight, instant canvas
+  // preview while erasing. This keeps the brush responsive on teacher boards
+  // without forcing the entire React object tree to render on every pointermove.
+  const beginEraserPreview=()=>{
+    const canvas=eraserPreviewCanvas.current;
+    const host=board.current;
+    if(!canvas||!host)return;
+    const rect=host.getBoundingClientRect();
+    if(rect.width<=0||rect.height<=0)return;
+    const ratio=Math.min(2,window.devicePixelRatio||1);
+    eraserPreviewRatio.current=ratio;
+    canvas.width=Math.max(1,Math.round(rect.width*ratio));
+    canvas.height=Math.max(1,Math.round(rect.height*ratio));
+    const ctx=canvas.getContext("2d");
+    if(!ctx)return;
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    ctx.clearRect(0,0,rect.width,rect.height);
+    const z=view.zoom;
+    const left=-view.x/z,top=-view.y/z;
+    const right=(rect.width-view.x)/z,bottom=(rect.height-view.y)/z;
+    ctx.setTransform(ratio*z,0,0,ratio*z,ratio*view.x,ratio*view.y);
+    for(const item of itemsRef.current){
+      if((item.kind!=="pen"&&item.kind!=="marker")||item.hidden||item.locked||!item.points?.length)continue;
+      const pad=(item.weight??3)/2;
+      if(item.x+item.width+pad<left||item.x-pad>right||item.y+item.height+pad<top||item.y-pad>bottom)continue;
+      ctx.save();
+      if(item.rotation){
+        const cx=item.x+item.width/2,cy=item.y+item.height/2;
+        ctx.translate(cx,cy);ctx.rotate(item.rotation*Math.PI/180);ctx.translate(-cx,-cy);
+      }
+      ctx.globalAlpha=item.kind==="marker"?.32:1;
+      ctx.strokeStyle=item.color??"#000000";
+      ctx.fillStyle=item.color??"#000000";
+      ctx.lineWidth=item.weight??3;
+      ctx.lineJoin="round";
+      ctx.lineCap="round";
+      const pts=item.points;
+      if(pts.length===1){
+        ctx.beginPath();
+        ctx.arc(item.x+pts[0].x,item.y+pts[0].y,(item.weight??3)/2,0,Math.PI*2);
+        ctx.fill();
+      }else{
+        ctx.beginPath();
+        ctx.moveTo(item.x+pts[0].x,item.y+pts[0].y);
+        for(let i=1;i<pts.length;i++)ctx.lineTo(item.x+pts[i].x,item.y+pts[i].y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    canvas.style.display="block";
+    host.classList.add("eraser-live");
+  };
+  const previewEraserSegment=(from:Point,to:Point)=>{
+    const canvas=eraserPreviewCanvas.current;
+    if(!canvas||canvas.style.display!=="block")return;
+    const ctx=canvas.getContext("2d");
+    if(!ctx)return;
+    const ratio=eraserPreviewRatio.current;
+    ctx.save();
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    ctx.globalAlpha=1;
+    ctx.globalCompositeOperation="destination-out";
+    ctx.lineWidth=eraserSize;
+    ctx.lineCap="round";
+    ctx.lineJoin="round";
+    ctx.beginPath();
+    ctx.moveTo(from.x,from.y);
+    ctx.lineTo(to.x,to.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(to.x,to.y,eraserSize/2,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  };
+  const stopEraserPreview=()=>{
+    board.current?.classList.remove("eraser-live");
+    const canvas=eraserPreviewCanvas.current;
+    if(canvas)canvas.style.display="none";
+  };
+  const recordEraserPoint=(point:Point)=>{
+    const g=eraserSession.current;
+    if(!g)return;
+    if(Math.hypot(point.x-g.last.x,point.y-g.last.y)>.1){
+      g.path.push(point);
+      g.last=point;
+    }
+  };
+  const finishEraser=(point:Point|null)=>{
+    const g=eraserSession.current;
+    if(!g)return;
+    if(point)recordEraserPoint(point);
+    eraserSession.current=null;
+    // The model is changed once per gesture, as one undo/history operation.
+    const before=itemsRef.current;
+    const next=eraseInkAlongPath(before,g.path,eraserSize/2/g.zoom);
+    if(next!==before){
+      // Keep the canvas preview until the actual SVG fragments have painted.
+      flushSync(()=>{
+        commit(next);
+        setItems(itemsRef.current);
+      });
+    }
+    stopEraserPreview();
+  };
+  const currentDocument = (): DocumentData => packDocumentInk({
+    version: 1,
+    title,
+    view,
+    items: editing
+      ? itemsRef.current.map((i) =>
+          i.id === editing ? { ...i, text: draftRef.current } : i,
+        )
+      : itemsRef.current,
+  });
+  const applyDocument = (data: DocumentData, fromRemote = false) => {
+    end(true);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setEditing(null);
+    setSelected([]);
+    setSpace(false);
+    setTool("select");
+    setTitle(data.title);
+    if (!fromRemote) setView(data.view);
+    const allItems = expandDocumentInk(data);
+    display(allItems);
+    history.current = [allItems];
+    index.current = 0;
+    snapshot.current = data;
+    setSaveBlocked(false);
+    if (!fromRemote) flushSave();
+  };
+  const importBoard = async (file: File) => {
+    if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
+    try {
+      if (file.size > 120 * 1024 * 1024) throw new Error("Файл больше 120 МБ");
+      const raw = await file.text();
+      let data: DocumentData;
+      let bundledAssets: { id: string; data: string }[] = [];
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.format === "onlinerepetitor-board") {
+          const bundle = validatePortableBundle(parsed);
+          data = parseDocument(JSON.stringify(bundle.document));
+          bundledAssets = bundle.assets;
+        } else if (parsed?.format === "interactive-board-bundle" && parsed?.document) {
+          data = parseDocument(JSON.stringify(parsed.document));
+          bundledAssets = Array.isArray(parsed.assets)
+            ? parsed.assets.filter((a: unknown): a is { id: string; data: string } =>
+                !!a && typeof a === "object" && typeof (a as { id?: unknown }).id === "string" && typeof (a as { data?: unknown }).data === "string",
+              )
+            : [];
+        } else {
+          data = parseDocument(raw);
+        }
+      } catch {
+        data = parseDocument(raw);
+      }
+      if (
+        !window.confirm(
+          `Открыть «${data.title || "Без названия"}» (${data.items.length} объектов)? Текущая доска будет заменена; её копию можно вернуть кнопкой «До импорта».`,
+        )
+      )
+        return;
+      const before = currentDocument();
+      if (saveBlocked) {
+        const damaged = localStorage.getItem(storageKey);
+        if (damaged) localStorage.setItem(storageKey + ".damaged-backup", damaged);
+      }
+      localStorage.setItem(
+        storageKey + ".before-import",
+        JSON.stringify(before),
+      );
+      setPrevious(before);
+      const importedIds = new Map<string, string>();
+      for (const asset of bundledAssets) {
+        if (importedIds.has(asset.id) || !data.items.some(item => item.assetId === asset.id)) continue;
+        try {
+          if (!asset.data.startsWith("data:")) throw new Error("Некорректное вложение в копии");
+          const blob = await fetch(asset.data).then(r => r.blob());
+          const item = data.items.find(item => item.assetId === asset.id);
+          const id = createId();
+          await putAsset(id, item?.kind === "pdf" ? blob.slice(0, blob.size, "application/pdf") : blob, boardSummary.id);
+          importedIds.set(asset.id, id);
+        } catch (error) {
+          // Preserve v19 local imports even when one attachment is damaged.
+          if (isRemoteBackendEnabled()) throw error;
+        }
+      }
+      data.items = data.items.map(item => item.assetId && importedIds.has(item.assetId)
+        ? { ...item, assetId: importedIds.get(item.assetId)! } : item);
+      await ensureBoardAssets(boardSummary.id, data);
+      applyDocument(data);
+      setNotice(
+        bundledAssets.length
+          ? `Доска восстановлена вместе с вложениями: ${bundledAssets.length}`
+          : "Копия восстановлена",
+      );
+    } catch (error) {
+      setNotice(
+        "Импорт отменён: " +
+          (error instanceof Error
+            ? error.message
+            : "не удалось прочитать файл"),
+      );
+    }
+  };
+  const commit = (next: Item[]) => {
+    if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
+    const normalized = syncBoundConnectors(next);
+    // Most drawing gestures only add/remove strokes. Compare identities first,
+    // and serialize only genuinely changed items instead of megabytes of ink.
+    const baseline = history.current[index.current];
+    if (baseline?.length === normalized.length &&
+        normalized.every((item, pos) => item === baseline[pos] ||
+          JSON.stringify(item) === JSON.stringify(baseline[pos])))
+      return;
+    history.current = history.current.slice(0, index.current + 1);
+    history.current.push(normalized);
+    // Full snapshots are convenient for undo but can consume hundreds of MB on boards
+    // with many ink points. Keep a larger history for normal boards and automatically
+    // lower the cap for heavy documents to avoid mobile tab crashes.
+    const inkPoints = normalized.reduce((sum, item) => sum + (item.points?.length ?? 0), 0);
+    const historyLimit = normalized.length > 1200 || inkPoints > 120_000 ? 30 : normalized.length > 500 || inkPoints > 50_000 ? 50 : 80;
+    while (history.current.length > historyLimit) history.current.shift();
+    index.current = history.current.length - 1;
+    display(normalized);
+  };
+  const finishEdit = () => {
+    if (!editing) return;
+    const editedItem = itemsRef.current.find((item) => item.id === editing);
+    const nextText = editedItem?.kind === "frame"
+      ? draftRef.current.replace(/\s*\n+\s*/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 120)
+      : draftRef.current;
+    commit(
+      itemsRef.current.map((item) =>
+        item.id === editing ? { ...item, text: nextText } : item,
+      ),
+    );
+    draftRef.current = nextText;
+    setDraft(nextText);
+    setEditing(null);
+  };
+  const startEdit = (item: Item) => {
+    if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
+    if (item.kind !== "text" && item.kind !== "sticky" && item.kind !== "frame" && item.kind !== "comment") return;
+    setSelected([item.id]);
+    setTool("select");
+    setSpace(false);
+    draftRef.current = item.text;
+    setDraft(item.text);
+    setEditing(item.id);
+  };
+  const undo = (direction: number) => {
+    if (gesture.current) return;
+    const next = index.current + direction;
+    if (next < 0 || next >= history.current.length) return;
+    index.current = next;
+    display(history.current[next]);
+    setSelected([]);
+  };
+  const local = (x: number, y: number): Point => {
+    const rect = board.current!.getBoundingClientRect();
+    return { x: x - rect.left, y: y - rect.top };
+  };
+  const world = (p: Point): Point => ({
+    x: (p.x - view.x) / view.zoom,
+    y: (p.y - view.y) / view.zoom,
+  });
+  const generateBoardAi=()=>{
+    if(isStudent){setNotice("Создавать задания может только преподаватель");return}
+    const result=generateMathAi(boardAiMode,boardAiLevel,boardAiCount,boardAiTopic,boardAiWithAnswers);
+    setBoardAiDetected(result.detected);
+    setBoardAiPreview(boardAiWithAnswers?result.items.map((x,i)=>`${x}  •  Ответ: ${result.answers[i]}`):result.items);
+  };
+  const insertBoardAi=()=>{
+    if(isStudent){setNotice("Создавать задания может только преподаватель");return}
+    if(!canEdit||!boardAiPreview.length)return;
+    const rect=board.current?.getBoundingClientRect();if(!rect)return;
+    const center=world({x:rect.width/2,y:rect.height/2});
+    const title=boardAiDetected||"Задания";
+    const item:Item={
+      id:createId(),kind:"checklist",x:center.x-210,y:center.y-190,width:420,height:380,
+      text:title,checklistItems:boardAiPreview,checklistDone:Array(boardAiPreview.length).fill(false),
+      fontSize:16,color:"#5355c9"
+    };
+    commit([...itemsRef.current,item]);
+    setSelected([item.id]);setTool("select");setBoardAiOpen(false);setBoardAiPreview([]);
+    setNotice(`AI добавил задания на доску · ${boardAiPreview.length}`);
+  };
+
+  const aiTransferHandledRef = useRef<string|null>(null);
+  useEffect(()=>{
+    if(!canEdit)return;
+    const transfer=peekAiBoardTransfer();
+    if(!transfer||aiTransferHandledRef.current===transfer.queuedAt)return;
+    const rect=board.current?.getBoundingClientRect();
+    if(!rect)return;
+    aiTransferHandledRef.current=transfer.queuedAt;
+    const center=world({x:rect.width/2,y:rect.height/2});
+    const draft=transfer.draft;
+    const created:Item[]=[];
+    if(draft.tool==="assignment"){
+      const rows=draft.body.split(/\n+/).map(x=>x.replace(/^\s*\d+\.\s*/,"").trim()).filter(Boolean).slice(0,12);
+      created.push({
+        id:createId(),kind:"checklist",x:center.x-190,y:center.y-155,width:380,height:310,
+        text:draft.title,checklistItems:rows.length?rows:["Задание"],checklistDone:Array(Math.max(1,rows.length)).fill(false),
+        fontSize:15,color:"#5355c9"
+      });
+    }else if(draft.tool==="quiz"){
+      const blocks=draft.body.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean).slice(0,8);
+      blocks.forEach((block,indexValue)=>{
+        const lines=block.split("\n").map(x=>x.trim()).filter(Boolean);
+        const question=(lines[0]||`Вопрос ${indexValue+1}`).replace(/^\d+\.\s*/,"");
+        const options=lines.filter(x=>/^[A-DА-Г]\)/i.test(x)).map(x=>x.replace(/^[A-DА-Г]\)\s*/i,"")).slice(0,4);
+        const answerLine=lines.find(x=>/^Ответ:/i.test(x))||"Ответ: A";
+        const letter=(answerLine.split(":")[1]||"A").trim().toUpperCase();
+        const correct=Math.max(0,["A","B","C","D","А","Б","В","Г"].indexOf(letter)%4);
+        created.push({
+          id:createId(),kind:"quiz",
+          x:center.x-400+(indexValue%2)*420,y:center.y-170+Math.floor(indexValue/2)*340,width:390,height:310,
+          text:question,quizOptions:options.length>=2?options:["Вариант A","Вариант B","Вариант C","Вариант D"],
+          quizCorrect:correct,quizRevealed:false,fontSize:15,color:"#5355c9"
+        });
+      });
+    }else{
+      const blocks=draft.body.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean).slice(0,12);
+      blocks.forEach((block,indexValue)=>{
+        const q=block.match(/Вопрос:\s*(.+)/i)?.[1]?.trim()||`Вопрос ${indexValue+1}`;
+        const a=block.match(/Ответ:\s*(.+)/i)?.[1]?.trim()||"Ответ";
+        const col=indexValue%3,row=Math.floor(indexValue/3);
+        created.push({
+          id:createId(),kind:"flashcard",
+          x:center.x-420+col*290,y:center.y-150+row*220,width:260,height:190,
+          text:q,flashcardBack:a,flashcardFlipped:false,fontSize:17,color:"#5355c9"
+        });
+      });
+    }
+    if(!created.length){aiTransferHandledRef.current=null;setNotice("Не удалось разобрать AI-черновик");return}
+    commit([...itemsRef.current,...created]);
+    setSelected(created.map(x=>x.id));
+    setTool("select");
+    clearAiBoardTransfer();
+    setNotice(created.length===1?"AI-материал добавлен на доску":`AI-материалы добавлены на доску · ${created.length}`);
+  },[boardSummary.id,canEdit]);
+
+  const zoom = (factor: number, anchor?: Point) => {
+    if (gesture.current) return;
+    const rect = board.current?.getBoundingClientRect();
+    if (!rect) return;
+    const p = anchor ?? { x: rect.width / 2, y: rect.height / 2 };
+    setView((v) => {
+      const z = Math.max(0.1, Math.min(8, v.zoom * factor));
+      return {
+        zoom: z,
+        x: p.x - ((p.x - v.x) * z) / v.zoom,
+        y: p.y - ((p.y - v.y) * z) / v.zoom,
+      };
+    });
+  };
+
+  const fitToBounds = (bounds: Bounds | null, padding = 90) => {
+    const rect = board.current?.getBoundingClientRect();
+    if (!rect || !bounds) return;
+    const availableW = Math.max(120, rect.width - padding * 2);
+    const availableH = Math.max(120, rect.height - padding * 2);
+    const z = Math.max(0.1, Math.min(4, Math.min(availableW / Math.max(1, bounds.width), availableH / Math.max(1, bounds.height))));
+    setView({
+      zoom: z,
+      x: rect.width / 2 - (bounds.x + bounds.width / 2) * z,
+      y: rect.height / 2 - (bounds.y + bounds.height / 2) * z,
+    });
+  };
+
+  const familyIdsFor = (item: Item): string[] =>
+    item.groupId
+      ? itemsRef.current.filter((candidate) => candidate.groupId === item.groupId).map((candidate) => candidate.id)
+      : [item.id];
+
+  useEffect(()=>{
+    const channel=connectAttachmentApprovalChannel(
+      boardSummary.id,
+      {userId:authUser.id,name:authUser.name},
+      request=>{
+        if(isStudent)return;
+        setAttachmentRequests(current=>current.some(x=>x.requestId===request.requestId)?current:[...current,request]);
+        setNotice(`Новое вложение от ${request.studentName}`);
+      },
+      result=>{
+        if(result.studentId!==authUser.id)return;
+        cancelPendingAttachmentRequest(result.requestId);
+        setNotice(result.approved?`Преподаватель одобрил «${result.name}»`:`Преподаватель отклонил «${result.name}»`);
+      },
+    );
+    attachmentApprovalRef.current=channel;
+    return()=>{
+      channel.close();
+      if(attachmentApprovalRef.current===channel)attachmentApprovalRef.current=null;
+      for(const timer of pendingAttachmentTimers.current.values())clearInterval(timer);
+      pendingAttachmentTimers.current.clear();
+      pendingAttachmentStarted.current.clear();
+    };
+  },[boardSummary.id,authUser.id,authUser.name,isStudent]);
+
+  const addMediaFile = async (file: File, position?: Point, offset = 0) => {
+    if (!canEdit) throw new Error("У вас доступ только для просмотра");
+    if (file.size > 50 * 1024 * 1024) throw new Error(`${file.name}: файл больше 50 МБ`);
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImage = file.type.startsWith("image/");
+    if (!isPdf && !isImage) throw new Error(`${file.name}: нужна фотография или PDF`);
+
+    let width = 360;
+    let height = isPdf ? 500 : 260;
+    if (isImage) {
+      const url = URL.createObjectURL(file);
+      try {
+        const natural = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+          image.onerror = () => reject(new Error("Не удалось определить размер изображения"));
+          image.src = url;
+        });
+        const scale = Math.min(420 / Math.max(1, natural.width), 320 / Math.max(1, natural.height), 1);
+        width = Math.max(120, natural.width * scale);
+        height = Math.max(80, natural.height * scale);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    const id = createId();
+    await putAsset(id, isPdf ? file.slice(0, file.size, "application/pdf") : file, boardSummary.id);
+    const rect = board.current?.getBoundingClientRect();
+    const center = position ?? world({ x: (rect?.width ?? 800) / 2, y: (rect?.height ?? 600) / 2 });
+    const item: Item = {
+      id: createId(),
+      kind: isPdf ? "pdf" : "image",
+      x: center.x - width / 2 + offset,
+      y: center.y - height / 2 + offset,
+      width,
+      height,
+      text: "",
+      assetId: id,
+      name: file.name,
+      mime: file.type || (isPdf ? "application/pdf" : "image/*"),
+      notes: isStudent ? `student-media-request:${authUser.id}:${authUser.name}` : undefined,
+      hidden: isStudent ? true : undefined,
+    };
+    if(isStudent){
+      const approvalRequest:AttachmentApprovalRequest={
+        requestId:createId(),studentId:authUser.id,studentName:authUser.name,
+        assetId:id,name:file.name,mime:item.mime||file.type||"application/octet-stream",
+        kind:isPdf?"pdf":"image",width,height,sentAt:Date.now(),
+      };
+      sendAttachmentRequest(approvalRequest);
+      setSelected([]);
+      setTool("select");
+      setNotice("Вложение отправлено преподавателю на согласование");
+      return item;
+    }
+    commit([...itemsRef.current,{...item,notes:undefined,hidden:undefined}]);
+    setSelected([item.id]);
+    setTool("select");
+    return item;
+  };
+
+  const openLinkMediaEditor=(item?:Item)=>{setLinkMediaEditId(item?.kind==="linkmedia"?item.id:null);setLinkMediaUrl(item?.kind==="linkmedia"?item.mediaUrl??"":"");setLinkMediaTitle(item?.kind==="linkmedia"?item.mediaTitle??"":"");setLinkMediaOpen(true)};
+  const saveLinkMedia=()=>{if(!canEdit)return;const info=resolveLinkMedia(linkMediaUrl);if(!info){setNotice("Нужна корректная ссылка http/https");return}const title=linkMediaTitle.trim()||({youtube:"YouTube",vimeo:"Vimeo",audio:"Аудио",video:"Видео",web:"Медиа по ссылке"} as const)[info.kind];if(linkMediaEditId){commit(itemsRef.current.map(i=>i.id===linkMediaEditId?{...i,mediaUrl:info.sourceUrl,mediaTitle:title}:i));setNotice("Ссылка мультимедиа обновлена")}else{const rect=board.current?.getBoundingClientRect();const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});const audio=info.kind==="audio";const item:Item={id:createId(),kind:"linkmedia",x:center.x-240,y:center.y-(audio?70:150),width:480,height:audio?140:300,text:"",mediaUrl:info.sourceUrl,mediaTitle:title};commit([...itemsRef.current,item]);setSelected([item.id]);setNotice("Мультимедиа добавлено без загрузки файла в хранилище")}setLinkMediaOpen(false);setLinkMediaEditId(null);setTool("select")};
+
+  useEffect(()=>{if(!canEdit)return;let raw=sessionStorage.getItem("onlinerepetitor.material.pick");if(!raw)return;sessionStorage.removeItem("onlinerepetitor.material.pick");(async()=>{try{const picked=JSON.parse(raw) as Pick<Material,"id"|"title"|"fileName"|"mime"|"storagePath">;if(!picked.id||!(picked.mime.startsWith("image/")||picked.mime==="application/pdf")){setNotice("На доску сейчас можно вставить изображение или PDF");return}const blob=await materialBlob(picked as Material);const file=new File([blob],picked.fileName,{type:picked.mime});await addMediaFile(file);await markMaterialUsed(picked.id);setNotice(`Материал «${picked.title}» добавлен на доску`)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось добавить материал")}})()},[boardSummary.id,canEdit]);
+
+  const approveAttachmentRequest=(request:AttachmentApprovalRequest)=>{
+    if(isStudent)return;
+    const rect=board.current?.getBoundingClientRect();
+    const center=world({x:(rect?.width??800)/2,y:(rect?.height??600)/2});
+    const item:Item={
+      id:createId(),kind:request.kind,x:center.x-request.width/2,y:center.y-request.height/2,
+      width:request.width,height:request.height,text:"",assetId:request.assetId,name:request.name,mime:request.mime,
+    };
+    commit([...itemsRef.current,item]);
+    setSelected([item.id]);setTool("select");
+    setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
+    attachmentApprovalRef.current?.result({requestId:request.requestId,studentId:request.studentId,approved:true,name:request.name});
+    setNotice(`Вложение «${request.name}» одобрено и добавлено на доску`);
+  };
+  const rejectAttachmentRequest=(request:AttachmentApprovalRequest)=>{
+    if(isStudent)return;
+    setAttachmentRequests(current=>current.filter(x=>x.requestId!==request.requestId));
+    attachmentApprovalRef.current?.result({requestId:request.requestId,studentId:request.studentId,approved:false,name:request.name});
+    setNotice(`Вложение «${request.name}» отклонено`);
+  };
+  const openAttachmentRequest=async(request:AttachmentApprovalRequest)=>{
+    const blob=await getAsset(request.assetId,boardSummary.id);
+    if(!blob){setNotice("Не удалось загрузить вложение для предпросмотра");return}
+    const url=URL.createObjectURL(blob);window.open(request.kind==="pdf"?`${url}#page=1`:url,"_blank","noopener,noreferrer");window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+  };
+
+  const openMediaAsset = async (item: Item) => {
+    if ((item.kind !== "image" && item.kind !== "pdf") || !item.assetId) return;
+    const blob = await getAsset(item.assetId, boardSummary.id);
+    if (!blob) { setNotice("Исходный файл не найден в хранилище браузера"); return; }
+    const url = URL.createObjectURL(blob);
+    const targetUrl = item.kind === "pdf" ? `${url}#page=${Math.max(1, item.pdfPage ?? 1)}` : url;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
+
+  const downloadMediaAsset = async (item: Item) => {
+    if ((item.kind !== "image" && item.kind !== "pdf") || !item.assetId) return;
+    const blob = await getAsset(item.assetId, boardSummary.id);
+    if (!blob) { setNotice("Исходный файл не найден в хранилище браузера"); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = item.name || (item.kind === "pdf" ? "document.pdf" : "image");
+    a.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const setPdfPage = (item: Item, page: number) => {
+    if (item.kind !== "pdf" || item.locked) return;
+    const nextPage = Math.max(1, Math.min(10000, Math.round(Number.isFinite(page) ? page : 1)));
+    if (nextPage === (item.pdfPage ?? 1)) return;
+    commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, pdfPage: nextPage } : candidate));
+    setNotice(`PDF · страница ${nextPage}`);
+  };
+
+  const changePdfPage = (item: Item, delta: number) => setPdfPage(item, (item.pdfPage ?? 1) + delta);
+  const duplicateNextPdfPage = (item: Item) => {
+    if (item.kind !== "pdf" || item.locked) return;
+    const copy: Item = {
+      ...deepItem(item),
+      id: createId(),
+      x: item.x + item.width + 28,
+      y: item.y,
+      pdfPage: Math.max(1, (item.pdfPage ?? 1) + 1),
+      groupId: undefined,
+      locked: false,
+    };
+    commit([...itemsRef.current, copy]);
+    setSelected([copy.id]);
+    setNotice(`Добавлена страница PDF ${copy.pdfPage} рядом`);
+  };
+
+  const spreadPdfPages = (item: Item, count: 3 | 5) => {
+    if (item.kind !== "pdf" || item.locked) return;
+    const gap = 28, cols = count <= 3 ? count : 3;
+    const copies: Item[] = [];
+    for (let n = 1; n < count; n++) {
+      const col = n % cols, row = Math.floor(n / cols);
+      copies.push({ ...deepItem(item), id: createId(), x: item.x + col * (item.width + gap), y: item.y + row * (item.height + gap), pdfPage: Math.max(1, (item.pdfPage ?? 1) + n), groupId: undefined, locked: false });
+    }
+    commit([...itemsRef.current, ...copies]);
+    setSelected([item.id, ...copies.map((copy) => copy.id)]);
+    setNotice(`Разложено страниц PDF: ${count}`);
+  };
+
+  // Native non-passive listener prevents browser zoom on Ctrl + wheel.
+  useEffect(() => {
+    const element = board.current!;
+    const wheel = (e: WheelEvent) => {
+      if ((e.target as HTMLElement).closest("textarea")) return;
+      e.preventDefault();
+      if (gesture.current) return;
+      const unit =
+        e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? element.clientHeight : 1;
+      if (e.ctrlKey || e.metaKey)
+        zoom(Math.exp(-e.deltaY * unit * 0.002), local(e.clientX, e.clientY));
+      else
+        setView((v) => ({
+          ...v,
+          x: v.x - e.deltaX * unit,
+          y: v.y - e.deltaY * unit,
+        }));
+    };
+    element.addEventListener("wheel", wheel, { passive: false });
+    return () => element.removeEventListener("wheel", wheel);
+  });
+
+  const touchStart=(e: PE<HTMLElement>)=>{if(e.pointerType!=="touch")return;touchPoints.current.set(e.pointerId,local(e.clientX,e.clientY));if(touchPoints.current.size===2){end(true);const pts=[...touchPoints.current.values()];const dx=pts[1].x-pts[0].x,dy=pts[1].y-pts[0].y;pinchState.current={distance:Math.max(1,Math.hypot(dx,dy)),center:{x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2},view:{...view}};setPanning(true)}};
+  const touchMove=(e: PE<HTMLElement>)=>{if(e.pointerType!=="touch"||!touchPoints.current.has(e.pointerId))return;touchPoints.current.set(e.pointerId,local(e.clientX,e.clientY));const pinch=pinchState.current;if(!pinch||touchPoints.current.size<2)return;e.preventDefault();const pts=[...touchPoints.current.values()];const center={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};const distance=Math.max(1,Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y));const z=Math.max(.1,Math.min(8,pinch.view.zoom*distance/pinch.distance));const wx=(pinch.center.x-pinch.view.x)/pinch.view.zoom,wy=(pinch.center.y-pinch.view.y)/pinch.view.zoom;scheduleViewerPan({zoom:z,x:center.x-wx*z,y:center.y-wy*z})};
+  const touchEnd=(e: PE<HTMLElement>)=>{if(e.pointerType!=="touch")return;touchPoints.current.delete(e.pointerId);if(touchPoints.current.size<2){pinchState.current=null;setPanning(false)}};
+
+  const end = (cancel = false) => {
+    if (viewerPanFrame.current !== null) {
+      cancelAnimationFrame(viewerPanFrame.current);
+      viewerPanFrame.current = null;
+    }
+    const pendingPan = viewerPendingPan.current;
+    viewerPendingPan.current = null;
+    if (pendingPan && !cancel) setView(pendingPan);
+    const g = gesture.current;
+    if (!g) return;
+    gesture.current = null;
+    if (g.mode === "draw" && g.ink) cursorChannel.current?.sendInk({id:g.ink.id,kind:g.ink.kind,color:g.ink.color,weight:g.ink.weight,points:g.path.slice(-500),finished:true});
+    if (cancel) {
+      display(g.restore ?? g.before);
+      setView(g.view);
+    } else if (g.mode === "hand-smart") {
+      if (g.dragging) {
+        if (g.handMoveSelection) commit(itemsRef.current);
+      } else {
+        setSelected(g.handHitIds ?? []);
+      }
+    } else if (g.mode === "drag" || g.mode === "erase" || g.mode === "resize" || g.mode === "rotate" || g.mode === "connector-end")
+      commit(itemsRef.current);
+    else if (g.mode === "draw" && g.ink)
+      commit([
+        ...g.before,
+        stroke(g.ink.id, g.ink.kind, g.path, g.ink.color, g.ink.weight, g.view.zoom),
+      ]);
+    else if (g.mode === "connector") {
+      const startPoint = g.path[0];
+      const endPoint = g.path[g.path.length - 1] ?? startPoint;
+      if (Math.hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y) > 5 / g.view.zoom) {
+        const connector = connectorItemFromPoints(startPoint, endPoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, g.connectorStartBinding, g.connectorEndBinding);
+        commit([...g.before, connector]);
+        setSelected([connector.id]);
+        setTool("select");
+      }
+    }
+    else if (g.mode === "lasso") {
+      // Lasso is a *selection* tool, never destructive. Ink is stored as
+      // individual objects and uses geometric stroke/polygon intersection.
+      const inkHits = inkIdsInLasso(itemsRef.current, g.path, g.view.zoom);
+      const selectedGroups = new Set<string>();
+      const selectedIds = new Set<string>(inkHits);
+      if (g.path.length >= 3) {
+        for (const item of itemsRef.current) {
+          if (item.hidden || isInkItem(item)) continue;
+          if (inside({x:item.x+item.width/2,y:item.y+item.height/2},g.path)) {
+            selectedIds.add(item.id);
+            if (item.groupId) selectedGroups.add(item.groupId);
+          }
+        }
+        if (selectedGroups.size) {
+          for (const item of itemsRef.current)
+            if (!item.hidden && item.groupId && selectedGroups.has(item.groupId))
+              selectedIds.add(item.id);
+        }
+      }
+      const hits=[...selectedIds];
+      setSelected(g.additive ? [...new Set([...g.ids,...hits])] : hits);
+    }
+    setPath([]);
+    setPreview(null);
+    setPanning(false);
+    setGuides({});
+    if (board.current?.hasPointerCapture(g.pointer))
+      board.current.releasePointerCapture(g.pointer);
+  };
+  const down = (e: PE<HTMLElement>) => {
+    if (gesture.current || eraserSession.current || (e.target as HTMLElement).closest("textarea"))
+      return;
+    if (e.button !== 0 && e.button !== 1) return;
+    const target = e.target as HTMLElement;
+    finishEdit();
+    const start = local(e.clientX, e.clientY);
+    const p = world(start);
+    if (contextMenu && !target.closest("[data-context-menu]")) setContextMenu(null);
+    const connectorEndpointEl = target.closest<HTMLElement>("[data-connector-endpoint]");
+    const connectorEndpoint = connectorEndpointEl?.dataset.connectorEndpoint;
+    if (connectorEndpoint && selected.length === 1) {
+      const connector = itemsRef.current.find((item) => item.id === selected[0] && item.kind === "connector");
+      if (connector && !connector.locked) {
+        e.preventDefault();
+        e.stopPropagation();
+        gesture.current = {
+          pointer: e.pointerId, mode: "connector-end", handle: connectorEndpoint,
+          transformItem: deepItem(connector), start, view, before: itemsRef.current, ids: [connector.id], path: [p], additive: false,
+        };
+        board.current!.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
+    const groupHandleEl = target.closest<HTMLElement>("[data-group-transform-handle]");
+    const groupHandle = groupHandleEl?.dataset.groupTransformHandle;
+    if (groupHandle && selected.length > 1 && !itemsRef.current.some((i) => selected.includes(i.id) && i.locked)) {
+      const bases = itemsRef.current.filter((i) => selected.includes(i.id)).map((i) => ({ ...i, points: i.points?.map((p) => ({ ...p })) }));
+      const groupBounds = boundsOf(bases);
+      if (groupBounds) {
+        e.preventDefault();
+        e.stopPropagation();
+        gesture.current = {
+          pointer: e.pointerId,
+          mode: groupHandle === "rotate" ? "rotate" : "resize",
+          handle: groupHandle,
+          transformItems: bases,
+          transformBounds: groupBounds,
+          start,
+          view,
+          before: itemsRef.current,
+          ids: bases.map((i) => i.id),
+          path: [p],
+          additive: false,
+        };
+        board.current!.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
+    let id=target.closest<HTMLElement>("[data-object]")?.dataset.object;
+    if ((tool==="select"||tool==="hand") && !space &&
+        !target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint]")) {
+      // The Canvas layer is not a DOM object. Resolve a pen stroke only when
+      // clicked, in its original stacking order above a hit DOM object.
+      const domIndex=id?itemsRef.current.findIndex(item=>item.id===id):-1;
+      const picked=hitTestInk(itemsRef.current,p,7/Math.max(0.1,view.zoom),domIndex);
+      if(picked)id=picked.id;
+    }
+    const hit=itemsRef.current.find(item=>item.id===id);
+    // Formula touch manipulation has its own direct drag path. Text spans and
+    // nested fraction glyphs must not defer to browser text-selection gestures.
+    if (hit?.kind === "formula" && (e.pointerType === "touch" || e.pointerType === "pen") &&
+        (tool === "select" || tool === "hand") && !space && canEdit &&
+        !hit.locked && !structurallyLockedForStudent(hit) &&
+        !target.closest("[data-transform-handle]")) {
+      const family = familyIdsFor(hit);
+      const movableIds = family.filter((member) => {
+        const candidate = itemsRef.current.find((item) => item.id === member);
+        return !!candidate && !candidate.locked && !structurallyLockedForStudent(candidate);
+      });
+      if (movableIds.length) {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelected(family);
+        gesture.current = {
+          pointer: e.pointerId,
+          mode: "drag",
+          start,
+          view,
+          before: itemsRef.current,
+          ids: movableIds,
+          path: [p],
+          additive: false,
+          dragging: true,
+        };
+        board.current?.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
+    if (e.pointerType === "touch" && hit?.kind === "image" && (tool === "select" || tool === "hand") && !space && !hit.locked) {
+      const now = performance.now();
+      const previousTap = imageTapRef.current;
+      const isDoubleTap = !!previousTap && previousTap.id === hit.id && now - previousTap.at <= 420 && Math.hypot(e.clientX - previousTap.x, e.clientY - previousTap.y) <= 28;
+      imageTapRef.current = { id: hit.id, at: now, x: e.clientX, y: e.clientY };
+      if (isDoubleTap) {
+        e.preventDefault();
+        e.stopPropagation();
+        imageTapRef.current = null;
+        setSelected([hit.id]);
+        setImageCropEditorId(hit.id);
+        return;
+      }
+    }
+    const handleEl = target.closest<HTMLElement>("[data-transform-handle]");
+    const transformHandle = handleEl?.dataset.transformHandle;
+    if (transformHandle && hit && !hit.locked && !structurallyLockedForStudent(hit) && selected.length === 1 && selected[0] === hit.id) {
+      e.preventDefault();
+      e.stopPropagation();
+      gesture.current = {
+        pointer: e.pointerId,
+        mode: transformHandle === "rotate" ? "rotate" : "resize",
+        handle: transformHandle,
+        transformItem: { ...hit, points: hit.points?.map((p) => ({ ...p })) },
+        start,
+        view,
+        before: itemsRef.current,
+        ids: [hit.id],
+        path: [p],
+        additive: false,
+      };
+      board.current!.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (
+      tool === "text" &&
+      hit &&
+      !hit.locked &&
+      !space &&
+      e.button === 0 &&
+      (hit.kind === "text" || hit.kind === "sticky")
+    ) {
+      e.preventDefault();
+      startEdit(hit);
+      return;
+    }
+    let mode: Gesture["mode"] = "drag";
+    let ids = selected;
+    if (tool === "hand" && !space && e.button === 0) {
+      const family = hit ? familyIdsFor(hit) : [];
+      const hitIsSelected = !!hit && family.every((member) => selected.includes(member));
+      const movableIds = (hitIsSelected ? selected : family).filter((member) => {
+        const candidate=itemsRef.current.find((item) => item.id === member);
+        return !!candidate && !candidate.locked && !structurallyLockedForStudent(candidate);
+      });
+      if (e.pointerType === "touch" && hit && !hitIsSelected) setSelected(family);
+
+      /* Touch needs capture immediately. Waiting for the movement threshold on
+         Android can produce pointercancel/retargeting, which made selected
+         attachments jump a few pixels and then snap back. For an already
+         selected object use the proven normal drag path from pointerdown. */
+      if (e.pointerType === "touch" && hit && movableIds.length) {
+        e.preventDefault();
+        e.stopPropagation();
+        gesture.current = {
+          pointer:e.pointerId,
+          mode:"drag",
+          start,
+          view,
+          before:itemsRef.current,
+          ids:movableIds,
+          path:[p],
+          additive:false,
+          dragging:true,
+        };
+        board.current?.setPointerCapture(e.pointerId);
+        return;
+      }
+
+      gesture.current = {
+        pointer:e.pointerId,
+        mode:"hand-smart",
+        start,
+        view,
+        before:itemsRef.current,
+        ids:movableIds,
+        path:[p],
+        additive:false,
+        handHitIds:family,
+        handMoveSelection:hitIsSelected && movableIds.length>0,
+      };
+      /* Capture a single touch as well: board has touch-action:none, so this
+         does not break panning, while keeping the same pointer stream alive. */
+      if (e.pointerType === "touch") {
+        e.preventDefault();
+        board.current?.setPointerCapture(e.pointerId);
+      }
+      return;
+    }
+    if (e.button === 1 || space) {
+      mode = "pan";
+      setPanning(true);
+    } else if (tool === "lasso") {
+      mode = "lasso";
+      setPath([p]);
+    } else if (tool === "pen" || tool === "marker") {
+      mode = "draw";
+      setSelected([]);
+    } else if (tool === "connector") {
+      mode = "connector";
+      setSelected([]);
+    } else if (tool === "media") { mediaInput.current?.click(); setTool("select"); return;
+    } else if (tool === "linkmedia") { openLinkMediaEditor(); return;
+    } else if (tool === "frame") {
+      e.preventDefault();
+      const item: Item = {
+        id: createId(), kind: "frame",
+        x: p.x - 320, y: p.y - 210, width: 640, height: 420,
+        text: "Новый фрейм", color: "#8b8f9a", presentationOrder: Math.max(-1, ...itemsRef.current.filter((candidate) => candidate.kind === "frame").map((candidate, indexValue) => candidate.presentationOrder ?? indexValue)) + 1,
+      };
+      commit([item, ...itemsRef.current]);
+      setSelected([item.id]);
+      setTool("select");
+      window.setTimeout(() => startEdit(item), 0);
+      return;
+    } else if (tool === "comment") {
+      e.preventDefault();
+      const targetId = hit && hit.kind !== "comment" ? hit.id : undefined;
+      const item: Item = {
+        id: createId(), kind: "comment",
+        x: p.x + 18, y: p.y + 18, width: 250, height: 132,
+        text: "", color: "#fff8d6", resolved: false,
+        ...(targetId ? { commentTargetId: targetId } : {}),
+      };
+      commit([...itemsRef.current, item]);
+      setSelected([item.id]);
+      setTool("select");
+      // Keep the new frame movable immediately; edit its name using the selection bar.
+      return;
+    } else if (tool === "table") {
+      e.preventDefault();
+      const rows = 3, cols = 3;
+      const cells = ["Заголовок 1", "Заголовок 2", "Заголовок 3", "", "", "", "", "", ""];
+      const item: Item = { id: createId(), kind: "table", x: p.x - 220, y: p.y - 130, width: 440, height: 260, text: "", tableRows: rows, tableCols: cols, tableCells: cells, tableHeader: true, fontSize: 13 };
+      commit([...itemsRef.current, item]);
+      setSelected([item.id]);
+      setTool("select");
+      setTableEditorId(item.id);
+      setTableDraft({ rows, cols, cells: [...cells], header: true, fontSize: 13, align: "left", stripe: false, compact: false });
+      return;
+    } else if (tool === "graph") {
+      e.preventDefault(); const item: Item={id:createId(),kind:"graph",x:p.x-260,y:p.y-170,width:520,height:340,text:"",graphType:"quadratic",graphExpression:"",graphConnectPoints:true,graphA:1,graphB:0,graphC:0,graphXMin:-10,graphXMax:10,graphYMin:-10,graphYMax:10,graphGrid:true,graphPoints:[],graphShowLabels:true,graphSnap:true,graphAxisLabels:true,graphGridStep:1,graphShowCurve:true,graphProjections:false,graphSegments:[],graphAngles:[],graphCircles:[],graphPolygons:[],graphMidpoints:[],color:"#5355c9"}; commit([...itemsRef.current,item]);setSelected([item.id]);setTool("select");window.setTimeout(()=>openGraphEditor(item),0);return;
+    } else if (tool === "formula") {
+      e.preventDefault();
+      const item: Item = { id: createId(), kind: "formula", x: p.x - 190, y: p.y - 70, width: 380, height: 140, text: "x^2 + y^2 = r^2", fontSize: 28, color: "#20242c" };
+      commit([...itemsRef.current, item]);
+      setSelected([item.id]);
+      setTool("select");
+      window.setTimeout(() => openFormulaEditor(item), 0);
+      return;
+    } else if (tool === "checklist") {
+      e.preventDefault();
+      const item: Item = { id: createId(), kind: "checklist", x: p.x - 170, y: p.y - 130, width: 340, height: 260, text: "Задание", checklistItems: ["Первый пункт", "Второй пункт", "Третий пункт"], checklistDone: [false, false, false], fontSize: 15, color: "#5355c9" };
+      commit([...itemsRef.current, item]);
+      setSelected([item.id]);
+      setTool("select");
+      window.setTimeout(() => openChecklistEditor(item), 0);
+      return;
+    } else if (tool === "quiz") {
+      e.preventDefault();
+      const item: Item = {
+        id: createId(), kind: "quiz",
+        x: p.x - 190, y: p.y - 155, width: 380, height: 310,
+        text: "Какой ответ правильный?",
+        quizOptions: ["Вариант A", "Вариант B", "Вариант C", "Вариант D"],
+        quizCorrect: 0, quizRevealed: false, fontSize: 15, color: "#5355c9",
+      };
+      commit([...itemsRef.current, item]);
+      setSelected([item.id]);
+      setTool("select");
+      window.setTimeout(() => openQuizEditor(item), 0);
+      return;
+    } else if (tool === "flashcard") {
+      e.preventDefault();
+      const item: Item = {
+        id: createId(), kind: "flashcard",
+        x: p.x - 180, y: p.y - 125, width: 360, height: 250,
+        text: "Вопрос", flashcardBack: "Ответ", flashcardFlipped: false, fontSize: 18, color: "#5355c9",
+      };
+      commit([...itemsRef.current, item]);
+      setSelected([item.id]);
+      setTool("select");
+      window.setTimeout(() => openFlashcardEditor(item), 0);
+      return;
+    } else if (tool === "cover") {
+      e.preventDefault();
+      const item: Item = { id: createId(), kind: "cover", x: p.x - 85, y: p.y - 90, width: 170, height: 180, text: "", coverOpen: false, coverOpacity: 1, fontSize: 17, color: "#5355c9" };
+      commit([...itemsRef.current, item]);
+      setSelected([item.id]);
+      setTool("select");
+      window.setTimeout(() => startEdit(item), 0);
+      return;
+    } else if (tool === "sticky" || tool === "text" || tool === "shape") {
+      e.preventDefault();
+      const width = tool === "text" ? 260 : 220,
+        height = tool === "text" ? 100 : 170;
+      const item: Item = {
+        id: createId(),
+        kind: tool,
+        x: p.x - width / 2,
+        y: p.y - height / 2,
+        width,
+        height,
+        text: "",
+        ...(tool === "shape" ? { shapeType, color: "#6064d4" } : {}),
+        ...(tool === "sticky" ? { color: "#fff3a6", fontSize: 20, textAlign: "left" as const, fontWeight: "normal" as const, fontStyle: "normal" as const, textDecoration: "none" as const, textList: "none" as const, lineHeight: 1.45 } : {}),
+        ...(tool === "text" ? { color: "#202124", fontSize: 20, textAlign: "left" as const, fontWeight: "normal" as const, fontStyle: "normal" as const, textDecoration: "none" as const, textList: "none" as const, lineHeight: 1.45 } : {}),
+      };
+      commit([...itemsRef.current, item]);
+      setSelected([item.id]);
+      setTool("select");
+      if (item.kind === "text" || item.kind === "sticky") startEdit(item);
+      return;
+    } else if (id && hit) {
+      const family = familyIdsFor(hit);
+      if (e.shiftKey) {
+        const wholeFamilySelected = family.every((member) => selected.includes(member));
+        ids = wholeFamilySelected
+          ? selected.filter((member) => !family.includes(member))
+          : [...new Set([...selected, ...family])];
+      } else {
+        ids = family.every((member) => selected.includes(member)) ? selected : family;
+      }
+      setSelected(ids);
+      if (structurallyLockedForStudent(hit)) return;
+      if (!ids.includes(id) || ids.some((member) => itemsRef.current.find((item) => item.id === member)?.locked)) return;
+    } else {
+      setSelected([]);
+      return;
+    }
+    if (mode === "drag" && hit?.kind === "frame" && ids.includes(hit.id)) {
+      const carried = containedByFrame(hit, itemsRef.current)
+        .filter((item) => !item.locked && !(item.kind === "connector" && (item.connectorStartBinding || item.connectorEndBinding)))
+        .map((item) => item.id);
+      ids = [...new Set([...ids, ...carried])];
+      if (carried.length) setNotice(`Фрейм перемещается вместе с содержимым: ${carried.length}`);
+    }
+    let gestureBefore = itemsRef.current;
+    let restoreBefore: Item[] | undefined;
+    if (mode === "drag" && e.altKey && ids.length) {
+      if(isStudent && ids.some(member=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===member)))) return;
+      const original = itemsRef.current;
+      const copies = cloneItems(original.filter((item) => ids.includes(item.id)), 0);
+      if (copies.length) {
+        restoreBefore = original;
+        gestureBefore = [...original, ...copies];
+        display(gestureBefore);
+        ids = copies.map((item) => item.id);
+        setSelected(ids);
+        setNotice("Создана копия · продолжайте перетаскивать");
+      }
+    }
+    if (mode !== "drag") e.preventDefault();
+    const connectorStartHit = mode === "connector"
+      ? connectorAnchor(p, itemsRef.current, 18 / view.zoom)
+      : null;
+    const gesturePoint = mode === "connector"
+      ? (connectorStartHit?.point ?? p)
+      : p;
+    gesture.current = {
+      pointer: e.pointerId,
+      mode,
+      start,
+      view,
+      before: gestureBefore,
+      restore: restoreBefore,
+      ids,
+      path: [gesturePoint],
+      additive: e.shiftKey,
+      connectorStartBinding: connectorStartHit?.binding,
+      ink:
+        tool === "pen" || tool === "marker"
+          ? {
+              id: createId(),
+              kind: tool,
+              color,
+              weight: tool === "marker" ? markerWeight : weight,
+            }
+          : undefined,
+    };
+    if (mode === "draw") {
+      const ink = gesture.current.ink!;
+      setPreview(liveStroke(ink.id, ink.kind, [p], ink.color, ink.weight));
+      cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],finished:false});
+    }
+    if (mode === "connector") {
+      setPreview(connectorItemFromPoints(gesturePoint, gesturePoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, connectorStartHit?.binding));
+    }
+    // Desktop mouse drag keeps double-click semantics. Touch must be captured immediately,
+    // otherwise Android may retarget/cancel the pointer before selection drag starts.
+    if (e.pointerType === "touch" || e.pointerType === "pen") { e.preventDefault(); e.stopPropagation(); }
+    if (mode !== "drag" || e.pointerType === "touch" || e.pointerType === "pen") board.current!.setPointerCapture(e.pointerId);
+  };
+  const scheduleGesturePaint = () => {
+    if (gesturePaintFrame.current != null) return;
+    gesturePaintFrame.current = requestAnimationFrame(() => {
+      gesturePaintFrame.current = null;
+      const active = gesture.current;
+      if (!active) return;
+      if (active.mode === "draw" && active.ink) {
+        setPreview(liveStroke(active.ink.id, active.ink.kind, active.path, active.ink.color, active.ink.weight));
+        // Network ink is sent directly in pointer-move, not as a side effect of painting.
+      } else if (active.mode === "lasso") {
+        setPath([...active.path]);
+      } else if (active.mode === "connector") {
+        const startPoint = active.path[0];
+        const endPoint = active.path[active.path.length - 1] ?? startPoint;
+        setPreview(connectorItemFromPoints(startPoint, endPoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, active.connectorStartBinding, active.connectorEndBinding));
+      }
+    });
+  };
+
+  const move = (e: PE<HTMLElement>) => {
+    const g = gesture.current;
+    if (!g || e.pointerId !== g.pointer) return;
+    const p = local(e.clientX, e.clientY);
+    const dx = p.x - g.start.x,
+      dy = p.y - g.start.y;
+    if ((g.mode === "drag" || g.mode === "hand-smart") && !g.dragging) {
+      if (Math.hypot(dx, dy) < 5) return;
+      g.dragging = true;
+      board.current?.setPointerCapture(e.pointerId);
+      if (g.mode === "hand-smart" && !g.handMoveSelection) setPanning(true);
+    }
+    if (g.mode === "hand-smart") {
+      if (!g.dragging) return;
+      if (g.handMoveSelection && g.ids.length) {
+        const worldDx=dx/g.view.zoom, worldDy=dy/g.view.zoom;
+        display(g.before.map(item=>g.ids.includes(item.id)?{...item,x:item.x+worldDx,y:item.y+worldDy}:item));
+      } else {
+        setGuides({});
+        scheduleViewerPan({...g.view,x:g.view.x+dx,y:g.view.y+dy});
+      }
+    } else if (g.mode === "pan") {
+      setGuides({});
+      scheduleViewerPan({ ...g.view, x: g.view.x + dx, y: g.view.y + dy });
+    } else if (g.mode === "drag") {
+      let worldDx = dx / g.view.zoom;
+      let worldDy = dy / g.view.zoom;
+      if (snapEnabled && !e.altKey) {
+        const moving = boundsOf(g.before.filter((item) => g.ids.includes(item.id)));
+        const others = g.before.filter((item) => !item.hidden && !g.ids.includes(item.id));
+        if (moving) {
+          const snapped = snapDraggedBounds(moving, others, worldDx, worldDy, 7 / g.view.zoom);
+          worldDx = snapped.dx;
+          worldDy = snapped.dy;
+          setGuides(snapped.guides);
+        }
+      } else {
+        setGuides({});
+      }
+      display(
+        g.before.map((item) =>
+          g.ids.includes(item.id)
+            ? {
+                ...item,
+                x: item.x + worldDx,
+                y: item.y + worldDy,
+              }
+            : item,
+        ),
+      );
+    } else if (g.mode === "connector-end" && g.handle && g.transformItem?.kind === "connector") {
+      setGuides({});
+      const base = g.transformItem;
+      const baseStart = { x: base.x + (base.connectorStart?.x ?? 0), y: base.y + (base.connectorStart?.y ?? 0) };
+      const baseEnd = { x: base.x + (base.connectorEnd?.x ?? base.width), y: base.y + (base.connectorEnd?.y ?? base.height) };
+      const raw = world(p);
+      const magnetic = connectorAnchor(raw, g.before, 18 / g.view.zoom, base.id);
+      const moving = magnetic?.point ?? raw;
+      const startPoint = g.handle === "start" ? moving : baseStart;
+      const endPoint = g.handle === "end" ? moving : baseEnd;
+      const startBinding = g.handle === "start" ? magnetic?.binding : base.connectorStartBinding;
+      const endBinding = g.handle === "end" ? magnetic?.binding : base.connectorEndBinding;
+      const rebuilt = connectorItemFromPoints(
+        startPoint,
+        endPoint,
+        base.connectorStyle ?? "arrow",
+        base.color ?? "#5355c9",
+        base.weight ?? 3,
+        base.id,
+        base.connectorRouting ?? "straight",
+        startBinding,
+        endBinding,
+        base.text,
+      );
+      const nextConnector: Item = { ...rebuilt, groupId: base.groupId, locked: base.locked, hidden: base.hidden };
+      display(g.before.map((item) => item.id === base.id ? nextConnector : item));
+    } else if (g.mode === "resize" && g.handle) {
+      setGuides({});
+      const wx = dx / g.view.zoom, wy = dy / g.view.zoom;
+      if (g.transformItems && g.transformBounds) {
+        const baseBounds = g.transformBounds;
+        const nextBounds = resizedRect(baseBounds, g.handle, wx, wy, 80, 60, e.shiftKey);
+        const sx = nextBounds.width / Math.max(1, baseBounds.width);
+        const sy = nextBounds.height / Math.max(1, baseBounds.height);
+        const byId = new Map(g.transformItems.map((base) => {
+          const rect = {
+            x: nextBounds.x + (base.x - baseBounds.x) * sx,
+            y: nextBounds.y + (base.y - baseBounds.y) * sy,
+            width: Math.max(8, base.width * sx),
+            height: Math.max(8, base.height * sy),
+          };
+          return [base.id, fitItemToRect(base, rect)] as const;
+        }));
+        display(g.before.map((item) => byId.get(item.id) ?? item));
+      } else if (g.transformItem) {
+        const base = g.transformItem;
+        const minW = base.kind === "text" ? 100 : base.kind === "frame" ? 180 : base.kind === "comment" ? 180 : base.kind === "table" ? 220 : base.kind === "formula" ? 160 : base.kind === "checklist" ? 220 : base.kind === "quiz" ? 260 : base.kind === "flashcard" ? 220 : base.kind === "cover" ? 180 : base.kind === "connector" ? 24 : base.points ? 12 : 60;
+        const minH = base.kind === "text" ? 44 : base.kind === "frame" ? 120 : base.kind === "comment" ? 96 : base.kind === "table" ? 120 : base.kind === "formula" ? 64 : base.kind === "checklist" ? 140 : base.kind === "quiz" ? 190 : base.kind === "flashcard" ? 150 : base.kind === "cover" ? 90 : base.kind === "connector" ? 24 : base.points ? 12 : 60;
+        const rect = resizedRect(base, g.handle, wx, wy, minW, minH, e.shiftKey);
+        display(g.before.map((item) => item.id === base.id ? fitItemToRect(base, rect) : item));
+      }
+    } else if (g.mode === "rotate") {
+      setGuides({});
+      const now = world(p);
+      const startWorld = world(g.start);
+      if (g.transformItems && g.transformBounds) {
+        const bounds = g.transformBounds;
+        const cx = bounds.x + bounds.width / 2, cy = bounds.y + bounds.height / 2;
+        const a0 = Math.atan2(startWorld.y - cy, startWorld.x - cx);
+        const a1 = Math.atan2(now.y - cy, now.x - cx);
+        let delta = (a1 - a0) * 180 / Math.PI;
+        if (e.shiftKey) delta = Math.round(delta / 90) * 90;
+        const rad = delta * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        const byId = new Map(g.transformItems.map((base) => {
+          const bx = base.x + base.width / 2 - cx;
+          const by = base.y + base.height / 2 - cy;
+          const ncx = cx + bx * cos - by * sin;
+          const ncy = cy + bx * sin + by * cos;
+          return [base.id, {
+            ...base,
+            x: ncx - base.width / 2,
+            y: ncy - base.height / 2,
+            rotation: (base.rotation ?? 0) + delta,
+          }] as const;
+        }));
+        display(g.before.map((item) => byId.get(item.id) ?? item));
+      } else if (g.transformItem) {
+        const base = g.transformItem;
+        const cx = base.x + base.width / 2, cy = base.y + base.height / 2;
+        const a0 = Math.atan2(startWorld.y - cy, startWorld.x - cx);
+        const a1 = Math.atan2(now.y - cy, now.x - cx);
+        let rotation = (base.rotation ?? 0) + (a1 - a0) * 180 / Math.PI;
+        if (e.shiftKey) rotation = Math.round(rotation / 90) * 90;
+        display(g.before.map((item) => item.id === base.id ? { ...item, rotation } : item));
+      }
+    } else if (g.mode === "connector") {
+      const raw = world(p);
+      const magnetic = connectorAnchor(raw, g.before, 18 / g.view.zoom);
+      const point = magnetic?.point ?? snappedConnectorEnd(g.path[0], raw, e.shiftKey);
+      g.connectorEndBinding = magnetic?.binding;
+      g.path = [g.path[0], point];
+      scheduleGesturePaint();
+    } else {
+      const point = world(p),
+        last = g.path[g.path.length - 1];
+      if (Math.hypot(point.x - last.x, point.y - last.y) * view.zoom < 3)
+        return;
+      g.path.push(point);
+      // Publish directly from the pointer stream, independently of cursor visibility
+      // and React preview paint scheduling (including invisible admin sessions).
+      if (g.mode === "draw" && g.ink) {
+        cursorChannel.current?.sendInk({
+          id: g.ink.id, kind: g.ink.kind, color: g.ink.color,
+          weight: g.ink.weight, points: g.path.slice(-500), finished: false,
+        });
+      }
+      scheduleGesturePaint();
+    }
+  };
+
+  useEffect(() => {
+    const keyDown = (e: KeyboardEvent) => {
+      const target = e.target instanceof Element ? e.target : null;
+      if (
+        editing ||
+        target?.closest(
+          'input,textarea,select,[contenteditable="true"],[role="textbox"]',
+        ) ||
+        document.activeElement?.matches(
+          'input,textarea,select,[contenteditable="true"]',
+        ) ||
+        e.isComposing
+      )
+        return;
+      if (e.code === "Escape") {
+        if (presentation && !publicPresentation) { setPresentation(false); setPresentationTimerRunning(false); setPresentationLaser(false); setPresentationLaserPos(null); setPresentationSpotlight(false); setPresentationSpotlightPos(null); setPresentationBlackout(false); return; }
+        if (frameNotesEditorId) { setFrameNotesEditorId(null); setFrameNotesDraft(""); return; }
+        if (imageCropEditorId) { setImageCropEditorId(null); return; }
+        if (formulaEditorId) { closeFormulaEditor(); return; }
+        if (checklistEditorId) { saveChecklistEditor(); return; }
+        if (quizEditorId) { saveQuizEditor(); return; }
+        if (flashcardEditorId) { saveFlashcardEditor(); return; }
+        if (tableEditorId) { saveTableEditor(); return; }
+        if (commandPaletteOpen) { setCommandPaletteOpen(false); setCommandPaletteQuery(""); setCommandPaletteIndex(0); return; }
+        if (shortcutsOpen) { setShortcutsOpen(false); return; }
+        if (templatesOpen) { setTemplatesOpen(false); return; }
+        if (commentsOpen) { setCommentsOpen(false); return; }
+        if (searchOpen) { setSearchOpen(false); setSearchQuery(""); return; }
+        if (contextMenu) {
+          setContextMenu(null);
+          return;
+        }
+        end(true);
+        setSelected([]);
+        return;
+      }
+      if (presentation && (e.code === "ArrowRight" || e.code === "PageDown")) { e.preventDefault(); stepPresentation(1); return; }
+      if (presentation && (e.code === "ArrowLeft" || e.code === "PageUp")) { e.preventDefault(); stepPresentation(-1); return; }
+      if (presentation && e.code === "Home") { e.preventDefault(); showPresentationFrame(0); return; }
+      if (presentation && e.code === "End") { e.preventDefault(); showPresentationFrame(Math.max(0, presentationFrames.length - 1)); return; }
+      if (presentation && !publicPresentation && e.code === "KeyL") { e.preventDefault(); setPresentationLaser((value) => !value); setPresentationSpotlight(false); return; }
+      if (presentation && !publicPresentation && e.code === "KeyO") { e.preventDefault(); setPresentationSpotlight((value) => !value); setPresentationLaser(false); return; }
+      if (presentation && !publicPresentation && e.code === "BracketLeft") { e.preventDefault(); setPresentationSpotlightRadius((value) => Math.max(80, value - 20)); return; }
+      if (presentation && !publicPresentation && e.code === "BracketRight") { e.preventDefault(); setPresentationSpotlightRadius((value) => Math.min(360, value + 20)); return; }
+      if (presentation && !publicPresentation && e.code === "KeyT") { e.preventDefault(); setPresentationTimerMode((mode) => mode === "elapsed" ? "countdown" : "elapsed"); return; }
+      if (presentation && !publicPresentation && e.code === "KeyP") { e.preventDefault(); setPresentationTimerRunning((value) => !value); return; }
+      if (presentation && !publicPresentation && e.code === "KeyB") { e.preventDefault(); setPresentationBlackout((value) => !value); return; }
+      if (presentation && !publicPresentation && e.code === "KeyR") { e.preventDefault(); resetPresentationInteractions(); return; }
+      if (presentation) return;
+      if (gesture.current) return;
+      if ((e.code === "Enter" || e.code === "F2") && selected.length === 1) {
+        const item = itemsRef.current.find((i) => i.id === selected[0]);
+        if (item && !item.locked && (item.kind === "text" || item.kind === "sticky" || item.kind === "frame" || item.kind === "comment" || item.kind === "formula" || item.kind === "table" || item.kind === "checklist" || item.kind === "quiz" || item.kind === "flashcard" || item.kind === "cover" || item.kind === "linkmedia")) {
+          e.preventDefault();
+          if (item.kind === "table") openTableEditor(item); else if (item.kind === "formula") openFormulaEditor(item); else if (item.kind === "checklist") openChecklistEditor(item); else if (item.kind === "quiz") openQuizEditor(item); else if (item.kind === "flashcard") openFlashcardEditor(item); else if (item.kind === "linkmedia") openLinkMediaEditor(item); else startEdit(item);
+          return;
+        }
+      }
+      if (e.code === "Space") {
+        e.preventDefault();
+        setSpace(true);
+        return;
+      }
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.code === "KeyK") { e.preventDefault(); setCommandPaletteOpen((value) => !value); setCommandPaletteQuery(""); setCommandPaletteIndex(0); return; }
+      if (mod && e.code === "KeyZ") {
+        e.preventDefault();
+        undo(e.shiftKey ? 1 : -1);
+        return;
+      }
+      if (mod && e.code === "KeyY") {
+        e.preventDefault();
+        undo(1);
+        return;
+      }
+      if (e.code === "F1") {
+        e.preventDefault();
+        setShortcutsOpen((value) => !value);
+        return;
+      }
+      if (mod && e.code === "KeyF") {
+        e.preventDefault();
+        setSearchOpen(true);
+        setSearchQuery("");
+        
+        return;
+      }
+      if (mod && e.code === "KeyA") {
+        e.preventDefault();
+        setSelected(itemsRef.current.filter((i) => !i.hidden).map((i) => i.id));
+        return;
+      }
+      if (mod && e.code === "Digit0") {
+        e.preventDefault();
+        setView({ x: 0, y: 0, zoom: 1 });
+        return;
+      }
+      if (mod && e.shiftKey && e.code === "KeyE") {
+        e.preventDefault();
+        void exportItemsToPng(selected.length ? "selection" : "all");
+        return;
+      }
+      if (mod && e.code === "KeyC" && selected.length) {
+        e.preventDefault();
+        copySelected();
+        return;
+      }
+      if (mod && e.code === "KeyV" && clipboard.current.length) {
+        e.preventDefault();
+        pasteClipboard();
+        return;
+      }
+      if (mod && e.code === "KeyG" && selected.length) {
+        e.preventDefault();
+        if (e.shiftKey) ungroupSelected();
+        else groupSelected();
+        return;
+      }
+      if (mod && (e.code === "BracketRight" || e.code === "BracketLeft") && selected.length) {
+        e.preventDefault();
+        const front = e.code === "BracketRight";
+        if (e.shiftKey) moveLayer(front);
+        else moveLayerStep(front);
+        return;
+      }
+      if (mod && e.code === "KeyD" && selected.length) {
+        e.preventDefault();
+        duplicateSelected();
+        return;
+      }
+      if (e.altKey && (e.code === "ArrowLeft" || e.code === "ArrowRight") && selected.length) {
+        e.preventDefault();
+        rotateSelected(e.code === "ArrowLeft" ? -90 : 90);
+        return;
+      }
+      if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.code) && selected.length) {
+        e.preventDefault();
+        if (selectionLocked || rejectStudentStructuralEdit()) return;
+        const step=e.shiftKey?10:1;
+        const dx=e.code==="ArrowLeft"?-step:e.code==="ArrowRight"?step:0;
+        const dy=e.code==="ArrowUp"?-step:e.code==="ArrowDown"?step:0;
+        commit(itemsRef.current.map(i=>selected.includes(i.id)?{...i,x:i.x+dx,y:i.y+dy}:i));
+        return;
+      }
+      if ((e.code === "Delete" || e.code === "Backspace") && selected.length) {
+        e.preventDefault();
+        deleteSelected();
+        return;
+      }
+      if (!mod && !e.altKey && keyTools[e.code]) {
+        e.preventDefault();
+        const shortcutTool=keyTools[e.code];
+        if(!toolAllowedForRole(shortcutTool)){setNotice("Этот инструмент доступен преподавателю");return}
+        setTool(shortcutTool);
+      }
+    };
+    const keyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") setSpace(false);
+    };
+    const blur = () => {
+      setSpace(false);
+      end(true);
+    };
+    const pointerUp = () => {
+      if (gesture.current) end();
+    };
+    const pointerCancel = () => {
+      if (gesture.current) end(true);
+    };
+    const closeContextMenu = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target?.closest("[data-context-menu]")) setContextMenu(null);
+    };
+    const pasteFromSystem = (event: ClipboardEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (editing || target?.closest('input,textarea,select,[contenteditable="true"]')) return;
+      const clipboardData = event.clipboardData;
+      if (!clipboardData) return;
+      const imageFiles = Array.from(clipboardData.files).filter((file) => file.type.startsWith("image/"));
+      if (imageFiles.length) {
+        event.preventDefault();
+        void (async () => {
+          try {
+            for (let i = 0; i < imageFiles.length; i++) await addMediaFile(imageFiles[i], undefined, i * 24);
+            setNotice(imageFiles.length === 1 ? "Изображение вставлено из буфера обмена" : `Вставлено изображений: ${imageFiles.length}`);
+          } catch (error) {
+            setNotice(error instanceof Error ? error.message : "Не удалось вставить изображение");
+          }
+        })();
+        return;
+      }
+      const pastedText = clipboardData.getData("text/plain");
+      if (!pastedText.trim() || clipboard.current.length) return;
+      event.preventDefault();
+      const rect = board.current?.getBoundingClientRect();
+      if (!rect) return;
+      const center = world({ x: rect.width / 2, y: rect.height / 2 });
+      const text = pastedText.slice(0, 20000);
+      const item: Item = {
+        id: createId(), kind: "text", x: center.x - 170, y: center.y - 60, width: 340, height: 120, text, fontSize: 20,
+      };
+      commit([...itemsRef.current, item]);
+      setSelected([item.id]);
+      setTool("select");
+      setNotice("Текст вставлен на доску");
+    };
+    globalHandlersRef.current = { keyDown, keyUp, blur, pointerUp, pointerCancel, closeContextMenu, pasteFromSystem };
+  });
+
+  // Attach global listeners once. The ref above always points at handlers from the
+  // latest render, so keyboard/paste behavior stays fresh without tearing down and
+  // rebuilding seven window listeners on every cursor/timer/UI render.
+  useEffect(() => {
+    const keyDown = (event:KeyboardEvent) => globalHandlersRef.current?.keyDown(event);
+    const keyUp = (event:KeyboardEvent) => globalHandlersRef.current?.keyUp(event);
+    const blur = () => globalHandlersRef.current?.blur();
+    const pointerUp = () => globalHandlersRef.current?.pointerUp();
+    const pointerCancel = () => globalHandlersRef.current?.pointerCancel();
+    const closeContextMenu = (event:PointerEvent) => globalHandlersRef.current?.closeContextMenu(event);
+    const pasteFromSystem = (event:ClipboardEvent) => globalHandlersRef.current?.pasteFromSystem(event);
+    window.addEventListener("pointerup", pointerUp);
+    window.addEventListener("pointerdown", closeContextMenu);
+    window.addEventListener("pointercancel", pointerCancel);
+    window.addEventListener("paste", pasteFromSystem);
+    window.addEventListener("keydown", keyDown);
+    window.addEventListener("keyup", keyUp);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", keyDown);
+      window.removeEventListener("keyup", keyUp);
+      window.removeEventListener("blur", blur);
+      window.removeEventListener("pointerup", pointerUp);
+      window.removeEventListener("pointerdown", closeContextMenu);
+      window.removeEventListener("pointercancel", pointerCancel);
+      window.removeEventListener("paste", pasteFromSystem);
+    };
+  }, []);
+
+  const itemById = useMemo(() => new Map(items.map((item) => [item.id, item] as const)), [items]);
+  const selectedIds = useMemo(() => new Set(selected), [selected]);
+  const selectedItems = useMemo(() => selected.map((id) => itemById.get(id)).filter((item): item is Item => Boolean(item)), [selected, itemById]);
+  const singleSelected = selectedItems.length === 1 ? selectedItems[0] : null;
+  const selectionBounds = useMemo(() => boundsOf(selectedItems), [selectedItems]);
+  const selectionLocked = useMemo(() => selectedItems.some((item) => item.locked), [selectedItems]);
+  const selectionHasGroup = useMemo(() => selectedItems.some((item) => item.groupId), [selectedItems]);
+  const selectionScreenBounds = selectionBounds ? {
+    left: selectionBounds.x * view.zoom + view.x,
+    top: selectionBounds.y * view.zoom + view.y,
+    width: selectionBounds.width * view.zoom,
+    height: selectionBounds.height * view.zoom,
+  } : null;
+  const selectionToolbarTop = selectionScreenBounds
+    ? (() => {
+        const boardHeight=board.current?.clientHeight ?? window.innerHeight;
+        const below=selectionScreenBounds.top+selectionScreenBounds.height+12;
+        const above=selectionScreenBounds.top-48;
+        return below>boardHeight-54 ? Math.max(8,above) : Math.max(8,below);
+      })()
+    : 0;
+  const selectionToolbarLeft = selectionScreenBounds
+    ? Math.max(54,Math.min((board.current?.clientWidth??window.innerWidth)-54,selectionScreenBounds.left+selectionScreenBounds.width/2))
+    : 0;
+
+  const selectionToolbarPointerDown=(event:React.PointerEvent<HTMLDivElement>)=>{
+    event.stopPropagation();
+  };
+  const selectionToolbarClick=(event:React.MouseEvent<HTMLDivElement>)=>{
+    event.stopPropagation();
+  };
+
+  const selectedConnectorEndpoints = singleSelected?.kind === "connector" && singleSelected.connectorStart && singleSelected.connectorEnd ? {
+    start: { x: (singleSelected.x + singleSelected.connectorStart.x) * view.zoom + view.x, y: (singleSelected.y + singleSelected.connectorStart.y) * view.zoom + view.y },
+    end: { x: (singleSelected.x + singleSelected.connectorEnd.x) * view.zoom + view.x, y: (singleSelected.y + singleSelected.connectorEnd.y) * view.zoom + view.y },
+  } : null;
+
+  const expandedIdsForFrameSelection = (ids: string[]) => {
+    const expanded = new Set(ids);
+    for (const id of ids) {
+      const frame = itemsRef.current.find((item) => item.id === id && item.kind === "frame");
+      if (!frame) continue;
+      for (const item of containedByFrame(frame, itemsRef.current)) expanded.add(item.id);
+    }
+    return [...expanded];
+  };
+
+  const exportItemsToPng = async (scope: "all" | "selection" | "frame", frameId?: string) => {
+    try {
+      const frameForExport = scope === "frame" ? itemsRef.current.find((item) => item.kind === "frame" && item.id === (frameId ?? singleSelected?.id)) : undefined;
+      const idsForScope = scope === "frame" && frameForExport
+        ? expandedIdsForFrameSelection([frameForExport.id])
+        : scope === "selection" ? expandedIdsForFrameSelection(selected) : [];
+      const exportIds = scope === "all" ? null : new Set(idsForScope);
+      const source = itemsRef.current.filter((item) => !item.hidden && (!exportIds || exportIds.has(item.id)));
+      const bounds = boundsOf(source);
+      if (!bounds) { setNotice(scope === "all" ? "Доска пока пустая" : scope === "frame" ? "Сначала выберите фрейм" : "Сначала выберите объекты"); return; }
+      setNotice("Готовим PNG…");
+      const pad = 48;
+      const rawWidth = Math.max(1, bounds.width + pad * 2);
+      const rawHeight = Math.max(1, bounds.height + pad * 2);
+      const scale = Math.max(.35, Math.min(2, 4096 / Math.max(rawWidth, rawHeight)));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(rawWidth * scale));
+      canvas.height = Math.max(1, Math.round(rawHeight * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas недоступен");
+      ctx.scale(scale, scale);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, rawWidth, rawHeight);
+      ctx.translate(-bounds.x + pad, -bounds.y + pad);
+
+      const roundedRect = (x: number, y: number, w: number, h: number, r: number) => {
+        const rr = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y); ctx.lineTo(x + w - rr, y); ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+        ctx.lineTo(x + w, y + h - rr); ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+        ctx.lineTo(x + rr, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+        ctx.lineTo(x, y + rr); ctx.quadraticCurveTo(x, y, x + rr, y); ctx.closePath();
+      };
+      const wrapText = (text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines = 30) => {
+        const paragraphs = text.split(/\n/);
+        let lineY = y, count = 0;
+        for (const paragraph of paragraphs) {
+          const words = paragraph.split(/\s+/).filter(Boolean);
+          let line = "";
+          for (const word of words) {
+            const test = line ? `${line} ${word}` : word;
+            if (line && ctx.measureText(test).width > maxWidth) {
+              ctx.fillText(line, x, lineY); lineY += lineHeight; count++; line = word;
+              if (count >= maxLines) return;
+            } else line = test;
+          }
+          if (line && count < maxLines) { ctx.fillText(line, x, lineY); lineY += lineHeight; count++; }
+          if (!words.length) lineY += lineHeight;
+          if (count >= maxLines) return;
+        }
+      };
+      const drawArrowHead = (from: Point, to: Point, colorValue: string, size: number) => {
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        ctx.save(); ctx.translate(to.x, to.y); ctx.rotate(angle); ctx.fillStyle = colorValue;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-size, -size * .48); ctx.lineTo(-size, size * .48); ctx.closePath(); ctx.fill(); ctx.restore();
+      };
+      const drawConnector = (item: Item) => {
+        if (!item.connectorStart || !item.connectorEnd) return;
+        const start = { x: item.x + item.connectorStart.x, y: item.y + item.connectorStart.y };
+        const end = { x: item.x + item.connectorEnd.x, y: item.y + item.connectorEnd.y };
+        const c = item.color ?? "#5355c9";
+        const w = item.weight ?? 3;
+        ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = "round"; ctx.lineJoin = "round";
+        ctx.beginPath(); ctx.moveTo(start.x, start.y);
+        if (item.connectorRouting === "elbow") { const mid = (start.x + end.x) / 2; ctx.lineTo(mid, start.y); ctx.lineTo(mid, end.y); ctx.lineTo(end.x, end.y); }
+        else ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+        if (item.connectorStyle !== "line") {
+          const endFrom = item.connectorRouting === "elbow" ? { x: (start.x + end.x) / 2, y: end.y } : start;
+          drawArrowHead(endFrom, end, c, Math.max(8, w * 3.5));
+        }
+        if (item.connectorStyle === "double") {
+          const startFrom = item.connectorRouting === "elbow" ? { x: (start.x + end.x) / 2, y: start.y } : end;
+          drawArrowHead(startFrom, start, c, Math.max(8, w * 3.5));
+        }
+        if (item.text.trim()) {
+          const cx = (start.x + end.x) / 2, cy = (start.y + end.y) / 2;
+          ctx.font = "600 13px Arial, sans-serif"; const label = item.text.length > 28 ? item.text.slice(0, 27) + "…" : item.text;
+          const tw = Math.min(190, ctx.measureText(label).width + 18);
+          ctx.fillStyle = "rgba(255,255,255,.95)"; roundedRect(cx - tw / 2, cy - 13, tw, 26, 8); ctx.fill();
+          ctx.fillStyle = "#343741"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(label, cx, cy); ctx.textAlign = "start"; ctx.textBaseline = "alphabetic";
+        }
+      };
+      const loadImage = async (item: Item) => {
+        if (!item.assetId) return null;
+        const blob = await getAsset(item.assetId, boardSummary.id);
+        if (!blob) return null;
+        const url = URL.createObjectURL(blob);
+        try {
+          return await new Promise<HTMLImageElement | null>((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(img); img.onerror = () => resolve(null); img.src = url;
+          });
+        } finally { window.setTimeout(() => URL.revokeObjectURL(url), 0); }
+      };
+
+      for (const item of source) {
+        if (item.kind === "connector") { drawConnector(item); continue; }
+        ctx.save();
+        const cx = item.x + item.width / 2, cy = item.y + item.height / 2;
+        if (item.rotation) { ctx.translate(cx, cy); ctx.rotate(item.rotation * Math.PI / 180); ctx.translate(-cx, -cy); }
+        if (item.kind === "pen" || item.kind === "marker") {
+          if (item.points?.length) {
+            ctx.globalAlpha = item.kind === "marker" ? .32 : 1;
+            ctx.strokeStyle = item.color ?? "#000"; ctx.lineWidth = item.weight ?? 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
+            ctx.beginPath(); item.points.forEach((pt, index) => { const x = item.x + pt.x, y = item.y + pt.y; index ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+          }
+        } else if (item.kind === "frame") {
+          ctx.strokeStyle = item.color ?? "#8b8f9a"; ctx.lineWidth = 2; ctx.setLineDash([8, 6]); roundedRect(item.x, item.y, item.width, item.height, 14); ctx.stroke(); ctx.setLineDash([]);
+          ctx.font = "700 18px Arial, sans-serif"; ctx.fillStyle = item.color ?? "#525866"; ctx.fillText(item.text || "Без названия", item.x + 16, item.y + 28);
+        } else if (item.kind === "comment") {
+          ctx.fillStyle = item.resolved ? "#edf8ef" : (item.color ?? "#fff8d6"); roundedRect(item.x, item.y, item.width, item.height, 12); ctx.fill();
+          ctx.fillStyle = item.resolved ? "#3f7b50" : "#8a6b22"; ctx.font = "700 12px Arial, sans-serif"; ctx.fillText(item.resolved ? "Решено" : "Комментарий", item.x + 14, item.y + 24);
+          ctx.fillStyle = "#30343d"; ctx.font = "14px Arial, sans-serif"; wrapText(item.text, item.x + 14, item.y + 48, Math.max(30, item.width - 28), 19, 8);
+        } else if (item.kind === "table") {
+          const rows = Math.max(1, item.tableRows ?? 3), cols = Math.max(1, item.tableCols ?? 3);
+          const cw = item.width / cols, ch = item.height / rows;
+          const tableFont = Math.max(9, Math.min(32, item.fontSize ?? 13));
+          const tableHeader = item.tableHeader !== false;
+          ctx.fillStyle = "#fff"; ctx.fillRect(item.x, item.y, item.width, item.height);
+          ctx.strokeStyle = "#d7dbe4"; ctx.lineWidth = 1; ctx.font = `${tableFont}px Arial, sans-serif`;
+          for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+            const x = item.x + c * cw, y = item.y + r * ch;
+            if (tableHeader && r === 0) { ctx.fillStyle = "#f2f3f8"; ctx.fillRect(x, y, cw, ch); }
+            ctx.strokeRect(x, y, cw, ch);
+            ctx.fillStyle = "#30343d"; wrapText(item.tableCells?.[r * cols + c] ?? "", x + 7, y + tableFont + 6, Math.max(12, cw - 14), tableFont * 1.25, Math.max(1, Math.floor(ch / (tableFont * 1.25)) - 1));
+          }
+        } else if (item.kind === "checklist") {
+          const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
+          const done = item.checklistDone ?? entries.map(() => false);
+          const fs = Math.max(10, Math.min(32, item.fontSize ?? 15));
+          const accent = item.color ?? "#5355c9";
+          ctx.fillStyle = "#fff"; roundedRect(item.x, item.y, item.width, item.height, 12); ctx.fill();
+          ctx.strokeStyle = "#e0e3e9"; ctx.lineWidth = 1; roundedRect(item.x, item.y, item.width, item.height, 12); ctx.stroke();
+          ctx.fillStyle = "#252733"; ctx.font = `700 ${Math.max(14, fs + 1)}px Arial, sans-serif`; ctx.fillText(item.text || "Чек-лист", item.x + 16, item.y + 28);
+          let yy = item.y + 54; ctx.font = `${fs}px Arial, sans-serif`;
+          entries.slice(0, 20).forEach((entry, index) => {
+            const box = Math.max(12, fs - 1); ctx.strokeStyle = accent; ctx.lineWidth = 1.8; roundedRect(item.x + 16, yy - box + 2, box, box, 3); ctx.stroke();
+            if (done[index]) { ctx.fillStyle = accent; roundedRect(item.x + 16, yy - box + 2, box, box, 3); ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.max(10, fs - 2)}px Arial`; ctx.fillText("✓", item.x + 18, yy); }
+            ctx.fillStyle = done[index] ? "#8a909d" : "#30343d"; ctx.font = `${fs}px Arial, sans-serif`; ctx.fillText((entry || "Пустой пункт").slice(0, 70), item.x + 16 + box + 9, yy);
+            if (done[index]) { ctx.strokeStyle = "#a4a9b3"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(item.x + 16 + box + 9, yy - fs * .35); ctx.lineTo(Math.min(item.x + item.width - 16, item.x + 16 + box + 9 + ctx.measureText((entry || "Пустой пункт").slice(0,70)).width), yy - fs * .35); ctx.stroke(); }
+            yy += fs * 1.75;
+          });
+        } else if (item.kind === "quiz") {
+          const options = item.quizOptions?.length ? item.quizOptions : ["Вариант 1", "Вариант 2"];
+          const correct = Math.max(0, Math.min(options.length - 1, item.quizCorrect ?? 0));
+          const selectedAnswer = item.quizSelected;
+          const revealed = item.quizRevealed === true;
+          const fs = Math.max(10, Math.min(32, item.fontSize ?? 15));
+          const accent = item.color ?? "#5355c9";
+          ctx.fillStyle = "#fff"; roundedRect(item.x, item.y, item.width, item.height, 12); ctx.fill();
+          ctx.strokeStyle = "#e0e3e9"; ctx.lineWidth = 1; roundedRect(item.x, item.y, item.width, item.height, 12); ctx.stroke();
+          ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(item.x + 28, item.y + 28, 13, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "#fff"; ctx.font = "700 16px Arial, sans-serif"; ctx.textAlign = "center"; ctx.fillText("?", item.x + 28, item.y + 34); ctx.textAlign = "start";
+          ctx.fillStyle = "#252733"; ctx.font = `700 ${Math.max(14, fs + 1)}px Arial, sans-serif`;
+          wrapText(item.text || "Вопрос", item.x + 50, item.y + 28, Math.max(40, item.width - 68), fs * 1.35, 3);
+          let yy = item.y + 78;
+          const rowH = Math.max(34, fs * 2.15);
+          options.slice(0, 8).forEach((option, index) => {
+            const isCorrect = revealed && index === correct;
+            const isWrong = revealed && selectedAnswer === index && index !== correct;
+            ctx.fillStyle = isCorrect ? "#edf8ef" : isWrong ? "#fff0f1" : selectedAnswer === index ? `${accent}14` : "#f9fafb";
+            ctx.strokeStyle = isCorrect ? "#53a86a" : isWrong ? "#d76676" : selectedAnswer === index ? accent : "#e1e4e9";
+            ctx.lineWidth = selectedAnswer === index || isCorrect || isWrong ? 1.8 : 1;
+            roundedRect(item.x + 16, yy, item.width - 32, rowH - 6, 8); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = isCorrect ? "#438a57" : isWrong ? "#b94b5c" : accent;
+            ctx.font = `700 ${Math.max(10, fs - 1)}px Arial, sans-serif`;
+            ctx.fillText(String.fromCharCode(65 + index), item.x + 28, yy + rowH / 2 + 2);
+            ctx.fillStyle = "#343944"; ctx.font = `${fs}px Arial, sans-serif`;
+            ctx.fillText((option || `Вариант ${index + 1}`).slice(0, 70), item.x + 54, yy + rowH / 2 + 2);
+            yy += rowH;
+          });
+          if (revealed && item.quizExplanation?.trim()) {
+            ctx.fillStyle = "#66707e"; ctx.font = `${Math.max(10, fs - 2)}px Arial, sans-serif`;
+            wrapText(item.quizExplanation, item.x + 16, Math.min(item.y + item.height - 34, yy + 4), item.width - 32, fs * 1.2, 2);
+          }
+        } else if (item.kind === "flashcard") {
+          const fs = Math.max(10, Math.min(48, item.fontSize ?? 18));
+          const accent = item.color ?? "#5355c9";
+          const flipped = item.flashcardFlipped === true;
+          ctx.fillStyle = "#fff"; roundedRect(item.x, item.y, item.width, item.height, 14); ctx.fill();
+          ctx.strokeStyle = accent; ctx.globalAlpha = .35; ctx.lineWidth = 2; roundedRect(item.x, item.y, item.width, item.height, 14); ctx.stroke(); ctx.globalAlpha = 1;
+          ctx.fillStyle = accent; ctx.font = "700 11px Arial, sans-serif"; ctx.fillText(flipped ? "ОТВЕТ" : "ВОПРОС", item.x + 18, item.y + 26);
+          ctx.fillStyle = "#2d313a"; ctx.font = `${fs}px Arial, sans-serif`; wrapText(flipped ? (item.flashcardBack || "Ответ") : (item.text || "Вопрос"), item.x + 18, item.y + 58, item.width - 36, fs * 1.35, Math.max(2, Math.floor((item.height - 86) / (fs * 1.35))));
+        } else if (item.kind === "cover") {
+          const fs = Math.max(10, Math.min(48, item.fontSize ?? 17));
+          const accent = item.color ?? "#5355c9";
+          if (item.coverOpen) {
+            ctx.globalAlpha = .10; ctx.fillStyle = accent; roundedRect(item.x, item.y, item.width, item.height, 12); ctx.fill(); ctx.globalAlpha = 1;
+            ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.setLineDash([7, 6]); roundedRect(item.x, item.y, item.width, item.height, 12); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = accent; ctx.font = `700 ${Math.max(12, fs - 2)}px Arial, sans-serif`; ctx.fillText("Ответ открыт", item.x + 16, item.y + 28);
+          } else {
+            ctx.fillStyle = accent; roundedRect(item.x, item.y, item.width, item.height, 12); ctx.fill();
+            ctx.fillStyle = "#fff"; ctx.font = `700 ${fs}px Arial, sans-serif`; wrapText(item.text || "Открыть ответ", item.x + 18, item.y + Math.min(item.height / 2, fs + 26), item.width - 36, fs * 1.3, 4);
+          }
+        } else if (item.kind === "formula") {
+          ctx.fillStyle = "#fff"; roundedRect(item.x, item.y, item.width, item.height, 10); ctx.fill();
+          ctx.strokeStyle = "#e0e3e9"; ctx.lineWidth = 1; roundedRect(item.x, item.y, item.width, item.height, 10); ctx.stroke();
+          const formulaSize = Math.max(12, Math.min(96, item.fontSize ?? 28));
+          ctx.fillStyle = item.color ?? "#20242c"; ctx.font = `italic ${formulaSize}px Georgia, serif`;
+          wrapText(formulaToPlainText(item.text), item.x + 18, item.y + Math.min(item.height - 16, formulaSize + 18), Math.max(30, item.width - 36), formulaSize * 1.32, Math.max(1, Math.floor((item.height - 24) / (formulaSize * 1.32))));
+        } else if (item.kind === "sticky") {
+          ctx.fillStyle = item.color ?? "#fff3a6"; roundedRect(item.x, item.y, item.width, item.height, 10); ctx.fill();
+          ctx.fillStyle = "#252733"; ctx.font = `${item.fontSize ?? 20}px Arial, sans-serif`; wrapText(item.text, item.x + 14, item.y + 30, Math.max(20, item.width - 28), (item.fontSize ?? 20) * 1.25, 18);
+        } else if (item.kind === "text") {
+          ctx.fillStyle = "#252733"; ctx.font = `${item.fontSize ?? 20}px Arial, sans-serif`; wrapText(item.text, item.x, item.y + (item.fontSize ?? 20), Math.max(20, item.width), (item.fontSize ?? 20) * 1.25, 30);
+        } else if (item.kind === "shape") {
+          const c = item.color ?? "#6064d4"; ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = 3;
+          if (item.shapeType === "ellipse") { ctx.beginPath(); ctx.ellipse(cx, cy, item.width / 2 - 3, item.height / 2 - 3, 0, 0, Math.PI * 2); ctx.stroke(); }
+          else if (item.shapeType === "diamond") { ctx.beginPath(); ctx.moveTo(cx, item.y + 3); ctx.lineTo(item.x + item.width - 3, cy); ctx.lineTo(cx, item.y + item.height - 3); ctx.lineTo(item.x + 3, cy); ctx.closePath(); ctx.stroke(); }
+          else if (item.shapeType === "circle") { const r=Math.min(item.width,item.height)/2-3;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke(); }
+          else if (item.shapeType === "square") { const side=Math.min(item.width,item.height)-6;ctx.strokeRect(cx-side/2,cy-side/2,side,side); }
+          else if (item.shapeType === "triangle") { ctx.beginPath(); ctx.moveTo(cx, item.y + 3); ctx.lineTo(item.x + item.width - 4, item.y + item.height - 4); ctx.lineTo(item.x + 4, item.y + item.height - 4); ctx.closePath(); ctx.stroke(); }
+          else if (item.shapeType === "rightTriangle") { ctx.beginPath();ctx.moveTo(item.x+4,item.y+4);ctx.lineTo(item.x+4,item.y+item.height-4);ctx.lineTo(item.x+item.width-4,item.y+item.height-4);ctx.closePath();ctx.stroke(); }
+          else if (item.shapeType === "parallelogram") { ctx.beginPath();ctx.moveTo(item.x+item.width*.22,item.y+3);ctx.lineTo(item.x+item.width-3,item.y+3);ctx.lineTo(item.x+item.width*.78,item.y+item.height-3);ctx.lineTo(item.x+3,item.y+item.height-3);ctx.closePath();ctx.stroke(); }
+          else if (item.shapeType === "trapezoid") { ctx.beginPath();ctx.moveTo(item.x+item.width*.22,item.y+3);ctx.lineTo(item.x+item.width*.78,item.y+3);ctx.lineTo(item.x+item.width-3,item.y+item.height-3);ctx.lineTo(item.x+3,item.y+item.height-3);ctx.closePath();ctx.stroke(); }
+          else if (item.shapeType === "pentagon") { ctx.beginPath();ctx.moveTo(cx,item.y+3);ctx.lineTo(item.x+item.width-3,item.y+item.height*.38);ctx.lineTo(item.x+item.width*.78,item.y+item.height-3);ctx.lineTo(item.x+item.width*.22,item.y+item.height-3);ctx.lineTo(item.x+3,item.y+item.height*.38);ctx.closePath();ctx.stroke(); }
+          else if (item.shapeType === "arrow") { ctx.beginPath(); ctx.moveTo(item.x + 4, cy - item.height * .12); ctx.lineTo(item.x + item.width * .62, cy - item.height * .12); ctx.lineTo(item.x + item.width * .62, item.y + item.height * .2); ctx.lineTo(item.x + item.width - 4, cy); ctx.lineTo(item.x + item.width * .62, item.y + item.height * .8); ctx.lineTo(item.x + item.width * .62, cy + item.height * .12); ctx.lineTo(item.x + 4, cy + item.height * .12); ctx.closePath(); ctx.fill(); }
+          else if (item.shapeType === "hexagon") { ctx.beginPath(); ctx.moveTo(item.x + item.width * .25, item.y + 3); ctx.lineTo(item.x + item.width * .75, item.y + 3); ctx.lineTo(item.x + item.width - 3, cy); ctx.lineTo(item.x + item.width * .75, item.y + item.height - 3); ctx.lineTo(item.x + item.width * .25, item.y + item.height - 3); ctx.lineTo(item.x + 3, cy); ctx.closePath(); ctx.fill(); }
+          else if (item.shapeType === "star") { ctx.beginPath(); for (let n = 0; n < 10; n++) { const a = -Math.PI / 2 + n * Math.PI / 5; const r = n % 2 === 0 ? Math.min(item.width, item.height) * .46 : Math.min(item.width, item.height) * .2; const px = cx + Math.cos(a) * r, py = cy + Math.sin(a) * r; n ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.closePath(); ctx.fill(); }
+          else { roundedRect(item.x + 2, item.y + 2, item.width - 4, item.height - 4, item.shapeType === "rounded" ? 14 : 2); ctx.stroke(); }
+        } else if (item.kind === "image") {
+          const img = await loadImage(item);
+          if (img) { ctx.save(); roundedRect(item.x, item.y, item.width, item.height, 8); ctx.clip(); ctx.drawImage(img, item.x, item.y, item.width, item.height); ctx.restore(); }
+          else { ctx.fillStyle = "#eef0f4"; roundedRect(item.x, item.y, item.width, item.height, 8); ctx.fill(); }
+        } else if (item.kind === "pdf") {
+          ctx.fillStyle = "#fff"; ctx.strokeStyle = "#d8dce5"; ctx.lineWidth = 1.5; roundedRect(item.x, item.y, item.width, item.height, 8); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = "#dc4c64"; ctx.font = "700 24px Arial, sans-serif"; ctx.fillText("PDF", item.x + 18, item.y + 38);
+          ctx.fillStyle = "#4a4f5c"; ctx.font = "14px Arial, sans-serif"; wrapText(item.name ?? "Документ PDF", item.x + 18, item.y + 66, Math.max(30, item.width - 36), 19, 3);
+        }
+        ctx.restore();
+      }
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", .96));
+      if (!blob) throw new Error("Не удалось создать PNG");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url;
+      const base = (title || "board").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 70);
+      const suffix = scope === "selection" ? "_selection" : scope === "frame" ? `_${(frameForExport?.text || "frame").replace(/[\/:*?"<>|]+/g, "_").slice(0, 40)}` : "";
+      a.download = `${base}${suffix}.png`; a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice(`PNG сохранён · ${canvas.width} × ${canvas.height}`);
+    } catch (error) {
+      setNotice(error instanceof Error ? `Не удалось экспортировать PNG: ${error.message}` : "Не удалось экспортировать PNG");
+    }
+  };
+
+  const copySelected = () => {
+    if (!selected.length) return;
+    const ids = expandedIdsForFrameSelection(selected);
+    clipboard.current = itemsRef.current
+      .filter((item) => ids.includes(item.id))
+      .map(deepItem);
+    setNotice(`Скопировано объектов: ${clipboard.current.length}`);
+  };
+
+  const duplicateSelected = () => {
+    if (rejectStudentStructuralEdit()) return;
+    if (!selected.length) return;
+    const ids = expandedIdsForFrameSelection(selected);
+    const copies = cloneItems(itemsRef.current.filter((item) => ids.includes(item.id)));
+    commit([...itemsRef.current, ...copies]);
+    setSelected(copies.map((item) => item.id));
+    setNotice(ids.length > selected.length ? `Фрейм продублирован вместе с содержимым: ${copies.length}` : `Создано копий: ${copies.length}`);
+  };
+
+  const pasteClipboard = () => {
+    if (!clipboard.current.length) return;
+    const copies = cloneItems(clipboard.current);
+    clipboard.current = copies.map(deepItem);
+    commit([...itemsRef.current, ...copies]);
+    setSelected(copies.map((item) => item.id));
+  };
+
+  const deleteSelected = () => { 
+    if(isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)))){
+      setNotice("Ученик может выполнять задание, но не изменять его конструкцию");
+      return;
+    }
+    if (!selected.length) return;
+    const lockedIds = new Set(itemsRef.current.filter((item) => selected.includes(item.id) && item.locked).map((item) => item.id));
+    const deletable = selected.filter((id) => !lockedIds.has(id));
+    if (!deletable.length) {
+      setNotice("Сначала разблокируйте выбранные объекты");
+      return;
+    }
+    commit(itemsRef.current.filter((item) => !deletable.includes(item.id)));
+    setSelected(selected.filter((id) => lockedIds.has(id)));
+  };
+
+  const moveLayer = (front: boolean) => {
+    if (rejectStudentStructuralEdit()) return;
+    if (!selected.length || selectionLocked) return;
+    const chosen = itemsRef.current.filter((item) => selected.includes(item.id));
+    const rest = itemsRef.current.filter((item) => !selected.includes(item.id));
+    commit(front ? [...rest, ...chosen] : [...chosen, ...rest]);
+  };
+
+  const moveLayerStep = (forward: boolean) => {
+    if (rejectStudentStructuralEdit()) return;
+    if (!selected.length || selectionLocked) return;
+    const next = [...itemsRef.current];
+    const chosen = new Set(selected);
+    if (forward) {
+      for (let i = next.length - 2; i >= 0; i--) {
+        if (chosen.has(next[i].id) && !chosen.has(next[i + 1].id)) {
+          [next[i], next[i + 1]] = [next[i + 1], next[i]];
+        }
+      }
+    } else {
+      for (let i = 1; i < next.length; i++) {
+        if (chosen.has(next[i].id) && !chosen.has(next[i - 1].id)) {
+          [next[i], next[i - 1]] = [next[i - 1], next[i]];
+        }
+      }
+    }
+    commit(next);
+  };
+
+  const groupSelected = () => {
+    if (rejectStudentStructuralEdit()) return;
+    if (selected.length < 2 || selectionLocked) return;
+    const groupId = createId();
+    commit(itemsRef.current.map((item) => selected.includes(item.id) ? { ...item, groupId } : item));
+    setNotice(`Сгруппировано объектов: ${selected.length}`);
+  };
+
+  const ungroupSelected = () => {
+    if (rejectStudentStructuralEdit()) return;
+    const groupIds = new Set(
+      itemsRef.current
+        .filter((item) => selected.includes(item.id) && item.groupId)
+        .map((item) => item.groupId!),
+    );
+    if (!groupIds.size || selectionLocked) return;
+    commit(itemsRef.current.map((item) => item.groupId && groupIds.has(item.groupId) ? { ...item, groupId: undefined } : item));
+    setNotice("Группа разобрана");
+  };
+
+  const toggleLockSelected = () => {
+    if (rejectStudentStructuralEdit()) return;
+    if (!selected.length) return;
+    const shouldLock = selectedItems.some((item) => !item.locked);
+    commit(itemsRef.current.map((item) => selected.includes(item.id) ? { ...item, locked: shouldLock } : item));
+    setNotice(shouldLock ? "Объекты заблокированы" : "Объекты разблокированы");
+  };
+
+  const alignSelected = (mode: "left" | "hcenter" | "right" | "top" | "vcenter" | "bottom") => {
+    if (rejectStudentStructuralEdit()) return;
+    if (selectionLocked) return;
+    const chosen = itemsRef.current.filter((i) => selected.includes(i.id));
+    const bounds = boundsOf(chosen);
+    if (!bounds || chosen.length < 2) return;
+    const ids = new Set(chosen.map((i) => i.id));
+    commit(itemsRef.current.map((item) => {
+      if (!ids.has(item.id)) return item;
+      if (mode === "left") return { ...item, x: bounds.x };
+      if (mode === "hcenter") return { ...item, x: bounds.x + (bounds.width - item.width) / 2 };
+      if (mode === "right") return { ...item, x: bounds.x + bounds.width - item.width };
+      if (mode === "top") return { ...item, y: bounds.y };
+      if (mode === "vcenter") return { ...item, y: bounds.y + (bounds.height - item.height) / 2 };
+      return { ...item, y: bounds.y + bounds.height - item.height };
+    }));
+  };
+
+  const equalizeSelectedSize = (axis: "width" | "height" | "both") => {
+    const selectedItems = itemsRef.current.filter((item) => selected.includes(item.id) && !item.locked);
+    if (selectedItems.length < 2) return;
+    const reference = selectedItems[0];
+    const ids = new Set(selectedItems.map((item) => item.id));
+    commit(itemsRef.current.map((item) => !ids.has(item.id) ? item : {
+      ...item,
+      ...(axis === "width" || axis === "both" ? { width: reference.width } : {}),
+      ...(axis === "height" || axis === "both" ? { height: reference.height } : {}),
+    }));
+    setNotice(axis === "both" ? "Размер объектов выровнен" : axis === "width" ? "Ширина объектов выровнена" : "Высота объектов выровнена");
+  };
+
+  const distributeSelected = (axis: "x" | "y") => {
+    if (selectionLocked) return;
+    const chosen = itemsRef.current.filter((i) => selected.includes(i.id));
+    if (chosen.length < 3) return;
+    const sorted = [...chosen].sort((a, b) => axis === "x" ? a.x - b.x : a.y - b.y);
+    const first = sorted[0], last = sorted[sorted.length - 1];
+    const totalSize = sorted.reduce((sum, i) => sum + (axis === "x" ? i.width : i.height), 0);
+    const span = axis === "x"
+      ? (last.x + last.width - first.x)
+      : (last.y + last.height - first.y);
+    const gap = (span - totalSize) / (sorted.length - 1);
+    let cursor = axis === "x" ? first.x : first.y;
+    const positions = new Map<string, number>();
+    for (const item of sorted) {
+      positions.set(item.id, cursor);
+      cursor += (axis === "x" ? item.width : item.height) + gap;
+    }
+    commit(itemsRef.current.map((item) => {
+      const pos = positions.get(item.id);
+      if (pos == null) return item;
+      return axis === "x" ? { ...item, x: pos } : { ...item, y: pos };
+    }));
+  };
+
+  const rotateSelected = (degrees: number) => {
+    if (rejectStudentStructuralEdit()) return;
+    if (!selected.length || selectionLocked) return;
+    const chosen = itemsRef.current.filter((item) => selected.includes(item.id));
+    const bounds = boundsOf(chosen);
+    if (!bounds) return;
+    if (chosen.length === 1) {
+      commit(itemsRef.current.map((item) =>
+        selected.includes(item.id)
+          ? { ...item, rotation: (((item.rotation ?? 0) + degrees) % 360 + 360) % 360 }
+          : item,
+      ));
+      return;
+    }
+    const cx = bounds.x + bounds.width / 2;
+    const cy = bounds.y + bounds.height / 2;
+    const rad = degrees * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    commit(itemsRef.current.map((item) => {
+      if (!selected.includes(item.id)) return item;
+      const ox = item.x + item.width / 2 - cx;
+      const oy = item.y + item.height / 2 - cy;
+      const ncx = cx + ox * cos - oy * sin;
+      const ncy = cy + ox * sin + oy * cos;
+      return {
+        ...item,
+        x: ncx - item.width / 2,
+        y: ncy - item.height / 2,
+        rotation: (((item.rotation ?? 0) + degrees) % 360 + 360) % 360,
+      };
+    }));
+  };
+
+  const resetRotationSelected = () => {
+    if (!selected.length || selectionLocked) return;
+    commit(itemsRef.current.map((item) => selected.includes(item.id) ? { ...item, rotation: 0 } : item));
+  };
+
+  const renameSelectedFrame = () => {
+    if (!singleSelected || singleSelected.kind !== "frame" || singleSelected.locked) return;
+    startEdit(singleSelected);
+  };
+
+  const selectFrameContents = () => {
+    if (!singleSelected || singleSelected.kind !== "frame") return;
+    const frame = singleSelected;
+    const contained = itemsRef.current.filter((item) => {
+      if (item.id === frame.id || item.hidden || item.kind === "frame") return false;
+      const cx = item.x + item.width / 2;
+      const cy = item.y + item.height / 2;
+      return cx >= frame.x && cx <= frame.x + frame.width && cy >= frame.y && cy <= frame.y + frame.height;
+    });
+    setSelected([frame.id, ...contained.map((item) => item.id)]);
+    setNotice(contained.length ? `Выбрано объектов во фрейме: ${contained.length}` : "Во фрейме пока нет объектов");
+  };
+
+  const resizeSelectedFrame = (ratio: "16:9" | "4:3" | "A4") => {
+    if (!singleSelected || singleSelected.kind !== "frame" || selectionLocked) return;
+    const centerX = singleSelected.x + singleSelected.width / 2;
+    const centerY = singleSelected.y + singleSelected.height / 2;
+    const next = ratio === "16:9"
+      ? { width: 800, height: 450 }
+      : ratio === "4:3"
+        ? { width: 720, height: 540 }
+        : { width: 760, height: 538 };
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? {
+      ...item,
+      width: next.width,
+      height: next.height,
+      x: centerX - next.width / 2,
+      y: centerY - next.height / 2,
+    } : item));
+  };
+
+  const fitSelectedFrameToContents = () => {
+    if (!singleSelected || singleSelected.kind !== "frame" || selectionLocked) return;
+    const content = containedByFrame(singleSelected, itemsRef.current);
+    const contentBounds = boundsOf(content);
+    if (!contentBounds) {
+      setNotice("Во фрейме пока нет объектов");
+      return;
+    }
+    const padX = 48;
+    const padBottom = 48;
+    const titleSpace = 72;
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? {
+      ...item,
+      x: contentBounds.x - padX,
+      y: contentBounds.y - titleSpace,
+      width: contentBounds.width + padX * 2,
+      height: contentBounds.height + titleSpace + padBottom,
+    } : item));
+    setNotice(`Фрейм подогнан по содержимому: ${content.length}`);
+  };
+
+  const createFrameAroundSelection = () => {
+    const chosen = itemsRef.current.filter((item) => selected.includes(item.id) && item.kind !== "frame" && !item.hidden);
+    const chosenBounds = boundsOf(chosen);
+    if (!chosenBounds) return;
+    const padX = 52;
+    const titleSpace = 76;
+    const padBottom = 52;
+    const count = itemsRef.current.filter((item) => item.kind === "frame").length + 1;
+    const frame: Item = {
+      id: createId(),
+      kind: "frame",
+      x: chosenBounds.x - padX,
+      y: chosenBounds.y - titleSpace,
+      width: chosenBounds.width + padX * 2,
+      height: chosenBounds.height + titleSpace + padBottom,
+      text: `Раздел ${count}`,
+      color: "#8b8f9a",
+      presentationOrder: nextPresentationOrder(),
+    };
+    commit([frame, ...itemsRef.current]);
+    setSelected([frame.id]);
+    setNotice(`Создан фрейм вокруг объектов: ${chosen.length}`);
+    window.setTimeout(() => startEdit(frame), 0);
+  };
+
+  const openGraphEditor = (item: Item) => {
+    if(item.kind!=="graph"||item.locked)return; setSelected([item.id]); setGraphEditorId(item.id);
+    setGraphDraft({type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPoints??[]).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(item.graphSegments??[]).map(s=>({...s})),angles:(item.graphAngles??[]).map(g=>({...g})),circles:(item.graphCircles??[]).map(g=>({...g})),polygons:(item.graphPolygons??[]).map(g=>({...g,points:[...g.points]})),midpoints:(item.graphMidpoints??[]).map(g=>({...g}))});
+  };
+  const closeGraphEditor=()=>{setGraphEditorId(null);setGraphDraft(null)};
+  const saveGraphEditor=()=>{if(!graphEditorId||!graphDraft){closeGraphEditor();return} const d={...graphDraft,xMin:Math.min(graphDraft.xMin,graphDraft.xMax-1),xMax:Math.max(graphDraft.xMax,graphDraft.xMin+1),yMin:Math.min(graphDraft.yMin,graphDraft.yMax-1),yMax:Math.max(graphDraft.yMax,graphDraft.yMin+1)}; commit(itemsRef.current.map(item=>item.id===graphEditorId?{...item,graphType:d.type,graphExpression:d.expression,graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints}:item)); closeGraphEditor(); setNotice("График сохранён")};
+
+  const openFormulaEditor = (item: Item) => {
+    if (!canEdit || structurallyLockedForStudent(item)) return;
+    if (item.kind !== "formula" || item.locked) return;
+    if (editing) finishEdit();
+    setSelected([item.id]);
+    setTool("select");
+    setFormulaEditorId(item.id);
+    setFormulaDraft({ text: item.text, fontSize: Math.max(12, Math.min(96, item.fontSize ?? 28)), color: item.color ?? "#20242c" });
+    setFormulaPaletteTab("basic");
+  };
+
+  const closeFormulaEditor = (save = true) => {
+    if (save && formulaEditorId && formulaDraft) {
+      commit(itemsRef.current.map((item) => item.id === formulaEditorId ? {
+        ...item,
+        text: formulaDraft.text.slice(0, 10000),
+        fontSize: Math.max(12, Math.min(96, Math.round(formulaDraft.fontSize))),
+        color: formulaDraft.color,
+      } : item));
+    }
+    setFormulaEditorId(null);
+    setFormulaDraft(null);
+  };
+
+  const saveFormulaEditor = () => {
+    if (!formulaEditorId || !formulaDraft) { closeFormulaEditor(); return; }
+    const textValue = formulaDraft.text.slice(0, 10000);
+    const fontSize = Math.max(12, Math.min(96, Math.round(formulaDraft.fontSize)));
+    if (textValue.trim()) { const history=[textValue,...formulaHistory.filter((value)=>value!==textValue)].slice(0,12); setFormulaHistory(history); localStorage.setItem("onlinerepetitor.formula-history.v54",JSON.stringify(history)); }
+    commit(itemsRef.current.map((item) => item.id === formulaEditorId ? {
+      ...item,
+      text: textValue,
+      fontSize,
+      color: formulaDraft.color,
+    } : item));
+    closeFormulaEditor(false);
+    setNotice("Формула сохранена");
+  };
+
+  const insertFormulaSnippet = (rawSnippet: string, replaceAll = false) => {
+    if (!formulaDraft) return;
+    const input = formulaInput.current;
+    const start = replaceAll ? 0 : (input?.selectionStart ?? formulaDraft.text.length);
+    const end = replaceAll ? formulaDraft.text.length : (input?.selectionEnd ?? start);
+    const openMark = rawSnippet.indexOf("⟦"), closeMark = rawSnippet.indexOf("⟧");
+    const cleaned = rawSnippet.replace("⟦", "").replace("⟧", "");
+    let selectStart = start + cleaned.length, selectEnd = selectStart;
+    if (openMark >= 0 && closeMark > openMark) {
+      selectStart = start + openMark;
+      selectEnd = start + closeMark - 1;
+    }
+    const nextText = replaceAll ? cleaned : formulaDraft.text.slice(0, start) + cleaned + formulaDraft.text.slice(end);
+    setFormulaDraft({ ...formulaDraft, text: nextText });
+    window.setTimeout(() => {
+      formulaInput.current?.setSelectionRange(selectStart, selectEnd);
+    }, 0);
+  };
+
+  const pasteFormulaSource = async () => { if(!formulaDraft)return; try{const value=(await navigator.clipboard.readText()).slice(0,10000);if(!value.trim()){setNotice("Буфер обмена пуст");return}setFormulaDraft({...formulaDraft,text:value})}catch{setNotice("Браузер не дал прочитать буфер обмена")} };
+  const copyFormulaSource = async () => {
+    if (!formulaDraft) return;
+    try {
+      await navigator.clipboard.writeText(formulaDraft.text);
+      setNotice("Запись формулы скопирована");
+    } catch {
+      setNotice("Не удалось скопировать формулу");
+    }
+  };
+
+  const openTableEditor = (item: Item) => {
+    if (item.kind !== "table" || item.locked) return;
+    const rows = Math.max(1, item.tableRows ?? 3);
+    const cols = Math.max(1, item.tableCols ?? 3);
+    const cells = Array.from({ length: rows * cols }, (_, index) => item.tableCells?.[index] ?? "");
+    setSelected([item.id]);
+    setTableEditorId(item.id);
+    setTableDraft({ rows, cols, cells, header: item.tableHeader !== false, fontSize: item.fontSize ?? 13, align: item.tableAlign ?? "left", stripe: item.tableStripe === true, compact: item.tableCompact === true });
+  };
+
+  const resizeTableDraft = (rowsDelta: number, colsDelta: number) => {
+    setTableDraft((current) => {
+      if (!current) return current;
+      const rows = Math.max(1, Math.min(20, current.rows + rowsDelta));
+      const cols = Math.max(1, Math.min(12, current.cols + colsDelta));
+      const cells = Array.from({ length: rows * cols }, (_, index) => {
+        const row = Math.floor(index / cols), col = index % cols;
+        return row < current.rows && col < current.cols ? current.cells[row * current.cols + col] ?? "" : "";
+      });
+      return { ...current, rows, cols, cells };
+    });
+  };
+
+  const addTableRowAt = (at: number) => setTableDraft((current) => {
+    if (!current || current.rows >= 20) return current;
+    const row = Math.max(0, Math.min(current.rows, at));
+    const cells = [...current.cells];
+    cells.splice(row * current.cols, 0, ...Array(current.cols).fill(""));
+    return { ...current, rows: current.rows + 1, cells };
+  });
+  const removeTableRowAt = (at: number) => setTableDraft((current) => {
+    if (!current || current.rows <= 1) return current;
+    const row = Math.max(0, Math.min(current.rows - 1, at));
+    const cells = [...current.cells];
+    cells.splice(row * current.cols, current.cols);
+    return { ...current, rows: current.rows - 1, cells };
+  });
+  const addTableColAt = (at: number) => setTableDraft((current) => {
+    if (!current || current.cols >= 12) return current;
+    const col = Math.max(0, Math.min(current.cols, at));
+    const nextCols = current.cols + 1;
+    const cells = Array.from({ length: current.rows * nextCols }, (_, index) => {
+      const row = Math.floor(index / nextCols), nextCol = index % nextCols;
+      if (nextCol === col) return "";
+      const oldCol = nextCol > col ? nextCol - 1 : nextCol;
+      return current.cells[row * current.cols + oldCol] ?? "";
+    });
+    return { ...current, cols: nextCols, cells };
+  });
+  const removeTableColAt = (at: number) => setTableDraft((current) => {
+    if (!current || current.cols <= 1) return current;
+    const col = Math.max(0, Math.min(current.cols - 1, at));
+    const nextCols = current.cols - 1;
+    const cells = Array.from({ length: current.rows * nextCols }, (_, index) => {
+      const row = Math.floor(index / nextCols), nextCol = index % nextCols;
+      const oldCol = nextCol >= col ? nextCol + 1 : nextCol;
+      return current.cells[row * current.cols + oldCol] ?? "";
+    });
+    return { ...current, cols: nextCols, cells };
+  });
+
+  const copyTableTsv = async () => { if(!tableDraft)return; const value=Array.from({length:tableDraft.rows},(_,r)=>Array.from({length:tableDraft.cols},(_,c)=>tableDraft.cells[r*tableDraft.cols+c]??"").map(v=>v.replace(/\t/g," ").replace(/\r?\n/g," ")).join("\t")).join("\n"); try{await navigator.clipboard.writeText(value);setNotice("Таблица скопирована как TSV")}catch{setNotice("Не удалось скопировать таблицу")} };
+  const pasteTableTsv = async () => { if(!tableDraft)return; try{const raw=await navigator.clipboard.readText(),lines=raw.replace(/\r/g,"").split("\n").filter((line,i,a)=>line.length>0||i<a.length-1),matrix=lines.map(line=>line.split("\t"));if(!matrix.length||!matrix.some(row=>row.some(cell=>cell.trim()))){setNotice("В буфере нет табличных данных");return}const rows=Math.min(20,matrix.length),cols=Math.min(12,Math.max(1,...matrix.map(row=>row.length))),cells=Array.from({length:rows*cols},(_,i)=>(matrix[Math.floor(i/cols)]?.[i%cols]??"").slice(0,2000));setTableDraft({...tableDraft,rows,cols,cells});setNotice(`Вставлена таблица ${rows}×${cols}`)}catch{setNotice("Браузер не дал прочитать буфер обмена")} };
+  const saveTableEditor = () => {
+    if (!tableEditorId || !tableDraft) { setTableEditorId(null); setTableDraft(null); return; }
+    commit(itemsRef.current.map((item) => item.id === tableEditorId ? {
+      ...item,
+      tableRows: tableDraft.rows,
+      tableCols: tableDraft.cols,
+      tableCells: tableDraft.cells.map((cell) => cell.slice(0, 2000)),
+      tableHeader: tableDraft.header,
+      fontSize: Math.max(9, Math.min(32, Math.round(tableDraft.fontSize))),
+      tableAlign: tableDraft.align,
+      tableStripe: tableDraft.stripe,
+      tableCompact: tableDraft.compact,
+    } : item));
+    setTableEditorId(null);
+    setTableDraft(null);
+    setNotice(`Таблица сохранена · ${tableDraft.rows}×${tableDraft.cols}`);
+  };
+
+  const openChecklistEditor = (item: Item) => {
+    if (!canEdit || structurallyLockedForStudent(item)) return;
+    if (item.kind !== "checklist" || item.locked) return;
+    const entries = item.checklistItems?.length ? [...item.checklistItems] : ["Новый пункт"];
+    const done = entries.map((_, index) => item.checklistDone?.[index] === true);
+    setSelected([item.id]);
+    setChecklistEditorId(item.id);
+    setChecklistDraft({ title: item.text || "Чек-лист", items: entries, done, fontSize: item.fontSize ?? 15, color: item.color ?? "#5355c9" });
+  };
+
+  const saveChecklistEditor = () => {
+    if (!checklistEditorId || !checklistDraft) { setChecklistEditorId(null); setChecklistDraft(null); return; }
+    const cleanItems = checklistDraft.items.slice(0, 40).map((value) => value.slice(0, 2000));
+    const cleanDone = cleanItems.map((_, index) => checklistDraft.done[index] === true);
+    commit(itemsRef.current.map((item) => item.id === checklistEditorId ? {
+      ...item,
+      text: checklistDraft.title.slice(0, 200),
+      checklistItems: cleanItems.length ? cleanItems : ["Новый пункт"],
+      checklistDone: cleanItems.length ? cleanDone : [false],
+      fontSize: Math.max(10, Math.min(32, Math.round(checklistDraft.fontSize))),
+      color: checklistDraft.color,
+    } : item));
+    setChecklistEditorId(null);
+    setChecklistDraft(null);
+    setNotice("Чек-лист сохранён");
+  };
+
+  const addChecklistRow = () => setChecklistDraft((current) => current && current.items.length < 40 ? { ...current, items: [...current.items, ""], done: [...current.done, false] } : current);
+  const removeChecklistRow = (indexValue: number) => setChecklistDraft((current) => {
+    if (!current || current.items.length <= 1) return current;
+    return { ...current, items: current.items.filter((_, index) => index !== indexValue), done: current.done.filter((_, index) => index !== indexValue) };
+  });
+
+  const openQuizEditor = (item: Item) => {
+    if (!canEdit || structurallyLockedForStudent(item)) return;
+    if (item.kind !== "quiz" || item.locked) return;
+    const options = item.quizOptions?.length ? [...item.quizOptions] : ["Вариант 1", "Вариант 2"];
+    setSelected([item.id]);
+    setQuizEditorId(item.id);
+    setQuizDraft({
+      question: item.text || "Вопрос",
+      options,
+      correct: Math.max(0, Math.min(options.length - 1, item.quizCorrect ?? 0)),
+      explanation: item.quizExplanation ?? "",
+      fontSize: item.fontSize ?? 15,
+      color: item.color ?? "#5355c9",
+    });
+  };
+
+  const saveQuizEditor = () => {
+    if (!quizEditorId || !quizDraft) { setQuizEditorId(null); setQuizDraft(null); return; }
+    const options = quizDraft.options.slice(0, 8).map((value) => value.slice(0, 2000));
+    const correct = Math.max(0, Math.min(options.length - 1, Math.round(quizDraft.correct)));
+    commit(itemsRef.current.map((item) => item.id === quizEditorId ? {
+      ...item,
+      text: quizDraft.question.slice(0, 2000),
+      quizOptions: options.length >= 2 ? options : [...options, "Вариант 2"].slice(0, 2),
+      quizCorrect: correct,
+      quizExplanation: quizDraft.explanation.slice(0, 5000),
+      fontSize: Math.max(10, Math.min(32, Math.round(quizDraft.fontSize))),
+      color: quizDraft.color,
+      quizRevealed: false,
+      quizSelected: undefined,
+    } : item));
+    setQuizEditorId(null);
+    setQuizDraft(null);
+    setNotice("Мини-тест сохранён");
+  };
+
+  const addQuizOption = () => setQuizDraft((current) => current && current.options.length < 8 ? { ...current, options: [...current.options, ""] } : current);
+  const removeQuizOption = (indexValue: number) => setQuizDraft((current) => {
+    if (!current || current.options.length <= 2) return current;
+    const options = current.options.filter((_, index) => index !== indexValue);
+    const correct = current.correct === indexValue ? 0 : current.correct > indexValue ? current.correct - 1 : current.correct;
+    return { ...current, options, correct: Math.max(0, Math.min(options.length - 1, correct)) };
+  });
+  const selectQuizAnswer = (item: Item, indexValue: number) => {
+    if (item.kind !== "quiz" || item.locked) return;
+    commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, quizSelected: indexValue, quizRevealed: false } : candidate));
+  };
+  const toggleQuizReveal = (item: Item) => {
+    if (item.kind !== "quiz" || item.locked) return;
+    commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, quizRevealed: !item.quizRevealed } : candidate));
+  };
+  const resetQuizAnswer = (item: Item) => {
+    if (item.kind !== "quiz" || item.locked) return;
+    commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, quizSelected: undefined, quizRevealed: false } : candidate));
+  };
+
+  const openFlashcardEditor = (item: Item) => {
+    if (!canEdit || structurallyLockedForStudent(item)) return;
+    if (item.kind !== "flashcard" || item.locked) return;
+    setSelected([item.id]);
+    setFlashcardEditorId(item.id);
+    setFlashcardDraft({ front: item.text || "Вопрос", back: item.flashcardBack ?? "Ответ", fontSize: item.fontSize ?? 18, color: item.color ?? "#5355c9" });
+  };
+
+  const saveFlashcardEditor = () => {
+    if (!flashcardEditorId || !flashcardDraft) { setFlashcardEditorId(null); setFlashcardDraft(null); return; }
+    commit(itemsRef.current.map((item) => item.id === flashcardEditorId ? {
+      ...item, text: flashcardDraft.front.slice(0, 5000), flashcardBack: flashcardDraft.back.slice(0, 5000),
+      fontSize: Math.max(10, Math.min(48, Math.round(flashcardDraft.fontSize))), color: flashcardDraft.color, flashcardFlipped: false,
+    } : item));
+    setFlashcardEditorId(null); setFlashcardDraft(null); setNotice("Карточка сохранена");
+  };
+
+  const flipFlashcard = (item: Item) => {
+    if (item.kind !== "flashcard" || item.locked) return;
+    commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, flashcardFlipped: !item.flashcardFlipped } : candidate));
+  };
+
+  const studyItems = useMemo(() => {
+    const quizItems: Item[] = [];
+    const flashcardItems: Item[] = [];
+    for (const item of items) {
+      if (item.kind === "quiz") quizItems.push(item);
+      else if (item.kind === "flashcard") flashcardItems.push(item);
+    }
+    const answeredQuizItems = quizItems.filter((item) => item.quizSelected != null);
+    const checkedQuizItems = quizItems.filter((item) => item.quizRevealed && item.quizSelected != null);
+    return {
+      quizItems, flashcardItems, answeredQuizItems, checkedQuizItems,
+      correctQuizItems: checkedQuizItems.filter((item) => item.quizSelected === item.quizCorrect),
+      knownFlashcards: flashcardItems.filter((item) => item.flashcardMastery === "known").length,
+      againFlashcards: flashcardItems.filter((item) => item.flashcardMastery === "again").length,
+    };
+  }, [items]);
+  const { quizItems, flashcardItems, answeredQuizItems, checkedQuizItems, correctQuizItems, knownFlashcards, againFlashcards } = studyItems;
+  const currentStudyCard = flashcardItems.length ? flashcardItems[Math.min(studyCardIndex, flashcardItems.length - 1)] : null;
+  const checkQuizResults = () => {
+    commit(itemsRef.current.map((item) => item.kind === "quiz" && item.quizSelected != null ? { ...item, quizRevealed: true } : item));
+    setNotice("Результаты мини-теста проверены");
+  };
+  const resetAllQuizAnswers = () => {
+    commit(itemsRef.current.map((item) => item.kind === "quiz" ? { ...item, quizSelected: undefined, quizRevealed: false } : item));
+    setNotice("Ответы мини-теста сброшены");
+  };
+  const markStudyCard = (mastery: "again"|"known") => {
+    if (!currentStudyCard) return;
+    commit(itemsRef.current.map((item) => item.id === currentStudyCard.id ? { ...item, flashcardMastery: mastery, flashcardFlipped: false } : item));
+    setStudyCardIndex((index) => flashcardItems.length ? (index + 1) % flashcardItems.length : 0);
+  };
+  const resetFlashcardProgress = () => {
+    commit(itemsRef.current.map((item) => item.kind === "flashcard" ? { ...item, flashcardMastery: undefined, flashcardFlipped: false } : item));
+    setStudyCardIndex(0);
+    setNotice("Прогресс карточек сброшен");
+  };
+
+  const toggleCover = (item: Item) => {
+    if (item.kind !== "cover" || item.locked) return;
+    commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, coverOpen: !item.coverOpen } : candidate));
+  };
+
+  const openFrameNotesEditor = (frame: Item) => {
+    if (frame.kind !== "frame" || frame.locked) return;
+    setFrameNotesEditorId(frame.id);
+    setFrameNotesDraft(frame.notes ?? "");
+  };
+
+  const saveFrameNotes = () => {
+    if (!frameNotesEditorId) return;
+    const notes = frameNotesDraft.slice(0, 20000);
+    commit(itemsRef.current.map((item) => item.id === frameNotesEditorId ? { ...item, notes } : item));
+    setFrameNotesEditorId(null);
+    setFrameNotesDraft("");
+    setNotice(notes.trim() ? "Заметки к фрейму сохранены" : "Заметки к фрейму очищены");
+  };
+
+  const toggleSelectedCommentResolved = () => {
+    if (!singleSelected || singleSelected.kind !== "comment" || singleSelected.locked) return;
+    const nextResolved = !singleSelected.resolved;
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, resolved: nextResolved } : item));
+    setNotice(nextResolved ? "Комментарий отмечен решённым" : "Комментарий снова открыт");
+  };
+
+  const detachSelectedComment = () => {
+    if (!singleSelected || singleSelected.kind !== "comment" || singleSelected.locked) return;
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, commentTargetId: undefined } : item));
+    setNotice("Комментарий отвязан от объекта");
+  };
+
+  const addCommentToSelection = () => {
+    if (selectedItems.length !== 1) { setTool("comment"); setNotice("Щёлкните по объекту или пустому месту, чтобы добавить комментарий"); return; }
+    const target = selectedItems[0];
+    const item: Item = {
+      id: createId(), kind: "comment",
+      x: target.x + target.width + 28, y: target.y + 18,
+      width: 250, height: 132, text: "", color: "#fff8d6", resolved: false,
+      commentTargetId: target.id,
+    };
+    commit([...itemsRef.current, item]);
+    setSelected([item.id]);
+    window.setTimeout(() => startEdit(item), 0);
+  };
+
+  const viewportCenterWorld = () => {
+    const rect = board.current?.getBoundingClientRect();
+    if (!rect) return { x: 0, y: 0 };
+    return world({ x: rect.width / 2, y: rect.height / 2 });
+  };
+
+  const nextPresentationOrder = () => Math.max(-1, ...itemsRef.current.filter((item) => item.kind === "frame").map((item, index) => item.presentationOrder ?? index)) + 1;
+
+  const insertTemplate = (template: "lesson" | "mindmap" | "compare" | "brainstorm" | "checklist" | "quiz" | "cards") => {
+    const center = viewportCenterWorld();
+    const frameId = createId();
+    const order = nextPresentationOrder();
+    const addSticky = (x: number, y: number, w: number, h: number, text: string, colorValue: string): Item => ({
+      id: createId(), kind: "sticky", x, y, width: w, height: h, text, color: colorValue, fontSize: 18,
+    });
+    const addText = (x: number, y: number, w: number, h: number, text: string, size = 28): Item => ({
+      id: createId(), kind: "text", x, y, width: w, height: h, text, fontSize: size,
+    });
+    let frame: Item;
+    let content: Item[] = [];
+    if (template === "lesson") {
+      frame = { id: frameId, kind: "frame", x: center.x - 460, y: center.y - 320, width: 920, height: 640, text: "План урока", color: "#73798a", presentationOrder: order };
+      content = [
+        addText(frame.x + 54, frame.y + 68, 800, 56, "Тема урока", 32),
+        addSticky(frame.x + 54, frame.y + 150, 240, 180, "Цель\nЧто ученики должны понять?", "#dcecff"),
+        addSticky(frame.x + 340, frame.y + 150, 240, 180, "Ключевая идея\nГлавная мысль урока", "#fff3a6"),
+        addSticky(frame.x + 626, frame.y + 150, 240, 180, "Практика\nЧто делаем вместе?", "#dff5c8"),
+        addSticky(frame.x + 54, frame.y + 380, 812, 170, "Итог и вопросы\nЧто важно унести с собой?", "#eadcff"),
+      ];
+    } else if (template === "compare") {
+      frame = { id: frameId, kind: "frame", x: center.x - 470, y: center.y - 300, width: 940, height: 600, text: "Сравнение", color: "#73798a", presentationOrder: order };
+      content = [
+        addText(frame.x + 52, frame.y + 68, 820, 52, "Сравним два подхода", 30),
+        addSticky(frame.x + 70, frame.y + 160, 350, 330, "Вариант A\n\n• критерий 1\n• критерий 2\n• критерий 3", "#dcecff"),
+        addSticky(frame.x + 520, frame.y + 160, 350, 330, "Вариант B\n\n• критерий 1\n• критерий 2\n• критерий 3", "#ffd9de"),
+        addText(frame.x + 438, frame.y + 285, 70, 50, "VS", 28),
+      ];
+    } else if (template === "brainstorm") {
+      frame = { id: frameId, kind: "frame", x: center.x - 500, y: center.y - 330, width: 1000, height: 660, text: "Мозговой штурм", color: "#73798a", presentationOrder: order };
+      const colors = ["#fff3a6", "#dcecff", "#dff5c8", "#ffd9de", "#eadcff", "#fff3a6", "#dcecff", "#dff5c8"];
+      content = [addText(frame.x + 52, frame.y + 66, 850, 50, "Вопрос / проблема", 30)];
+      for (let n = 0; n < 8; n++) {
+        const col = n % 4, row = Math.floor(n / 4);
+        content.push(addSticky(frame.x + 52 + col * 232, frame.y + 145 + row * 220, 190, 170, `Идея ${n + 1}`, colors[n]));
+      }
+    } else if (template === "checklist") {
+      frame = { id: frameId, kind: "frame", x: center.x - 430, y: center.y - 300, width: 860, height: 600, text: "Проверка понимания", color: "#73798a", presentationOrder: order };
+      content = [
+        addText(frame.x + 52, frame.y + 64, 740, 52, "Что уже получилось?", 30),
+        { id: createId(), kind: "checklist", x: frame.x + 54, y: frame.y + 145, width: 470, height: 350, text: "Чек-лист урока", fontSize: 16, color: "#5355c9", checklistItems: ["Я могу объяснить главную идею своими словами", "Я выполнил основное задание", "Я понимаю, где допустил ошибку", "У меня остался вопрос по теме"], checklistDone: [false, false, false, false] },
+        addSticky(frame.x + 565, frame.y + 145, 235, 170, "Мой вопрос\nЧто ещё хочется уточнить?", "#fff3a6"),
+        addSticky(frame.x + 565, frame.y + 345, 235, 150, "Следующий шаг\nЧто попробовать дальше?", "#dff5c8"),
+      ];
+    } else if (template === "quiz") {
+      frame = { id: frameId, kind: "frame", x: center.x - 430, y: center.y - 300, width: 860, height: 600, text: "Быстрый вопрос", color: "#73798a", presentationOrder: order };
+      content = [
+        addText(frame.x + 52, frame.y + 58, 750, 48, "Проверим понимание", 30),
+        { id: createId(), kind: "quiz", x: frame.x + 70, y: frame.y + 135, width: 520, height: 360, text: "Какой вариант лучше всего отвечает на вопрос?", fontSize: 16, color: "#5355c9", quizOptions: ["Вариант A", "Вариант B", "Вариант C", "Вариант D"], quizCorrect: 0, quizRevealed: false },
+        addSticky(frame.x + 625, frame.y + 150, 180, 150, "Обсуждение\nПочему этот ответ верный?", "#fff3a6"),
+        addSticky(frame.x + 625, frame.y + 335, 180, 150, "Вывод\nЧто запомним?", "#dff5c8"),
+      ];
+    } else if (template === "cards") {
+      frame = { id: frameId, kind: "frame", x: center.x - 500, y: center.y - 320, width: 1000, height: 640, text: "Карточки для повторения", color: "#73798a", presentationOrder: order };
+      content = [addText(frame.x + 52, frame.y + 58, 820, 48, "Повторим ключевые понятия", 30)];
+      const colors = ["#5355c9", "#2f855a", "#d97706", "#8b5cf6", "#dc4c64", "#475569"];
+      for (let n = 0; n < 6; n++) {
+        const col = n % 3, row = Math.floor(n / 3);
+        content.push({ id: createId(), kind: "flashcard", x: frame.x + 52 + col * 300, y: frame.y + 135 + row * 220, width: 260, height: 180, text: `Вопрос ${n + 1}`, flashcardBack: `Ответ ${n + 1}`, flashcardFlipped: false, fontSize: 17, color: colors[n] });
+      }
+    } else {
+      frame = { id: frameId, kind: "frame", x: center.x - 520, y: center.y - 330, width: 1040, height: 660, text: "Карта идей", color: "#73798a", presentationOrder: order };
+      const centerNode: Item = { id: createId(), kind: "shape", x: center.x - 120, y: center.y - 60, width: 240, height: 120, text: "", shapeType: "rounded", color: "#5355c9" };
+      const nodes: Item[] = [
+        { id: createId(), kind: "sticky", x: center.x - 440, y: center.y - 230, width: 210, height: 140, text: "Ветка 1", color: "#dcecff", fontSize: 18 },
+        { id: createId(), kind: "sticky", x: center.x + 230, y: center.y - 230, width: 210, height: 140, text: "Ветка 2", color: "#dff5c8", fontSize: 18 },
+        { id: createId(), kind: "sticky", x: center.x - 440, y: center.y + 100, width: 210, height: 140, text: "Ветка 3", color: "#ffd9de", fontSize: 18 },
+        { id: createId(), kind: "sticky", x: center.x + 230, y: center.y + 100, width: 210, height: 140, text: "Ветка 4", color: "#eadcff", fontSize: 18 },
+      ];
+      const label: Item = addText(center.x - 95, center.y - 22, 190, 55, "Главная тема", 24);
+      const connectors = nodes.map((node) => connectorItemFromPoints(
+        { x: centerNode.x + centerNode.width / 2, y: centerNode.y + centerNode.height / 2 },
+        { x: node.x + node.width / 2, y: node.y + node.height / 2 },
+        "arrow", "#7379d6", 2.5, createId(), "straight",
+        { itemId: centerNode.id, nx: node.x < centerNode.x ? 0 : 1, ny: .5 },
+        { itemId: node.id, nx: node.x < centerNode.x ? 1 : 0, ny: .5 },
+      ));
+      content = [...connectors, centerNode, label, ...nodes];
+    }
+    const all = [frame, ...content];
+    commit([...itemsRef.current, ...all]);
+    setSelected([frame.id]);
+    setTemplatesOpen(false);
+    setCommentsOpen(false);
+    requestAnimationFrame(() => fitToBounds(boundsOf(all), 110));
+    setNotice(`Шаблон добавлен · ${frame.text}`);
+  };
+
+  const setSelectedFramePosition = (position: number) => {
+    if (!singleSelected || singleSelected.kind !== "frame" || selectionLocked) return;
+    const frames = itemsRef.current.filter(item => item.kind === "frame" && !item.hidden)
+      .sort((a,b)=>(a.presentationOrder ?? itemsRef.current.indexOf(a))-(b.presentationOrder ?? itemsRef.current.indexOf(b)));
+    const from = frames.findIndex(item=>item.id===singleSelected.id);
+    if (from<0) return;
+    const to=Math.max(0,Math.min(frames.length-1,Math.floor(position)-1));
+    const [moving]=frames.splice(from,1);
+    frames.splice(to,0,moving);
+    const order=new Map(frames.map((item,index)=>[item.id,index]));
+    commit(itemsRef.current.map(item=>order.has(item.id)?{...item,presentationOrder:order.get(item.id)}:item));
+  };
+  const toggleFrameFixation = () => {
+    if (!singleSelected || singleSelected.kind !== "frame" || !canEdit) return;
+    const locked=!singleSelected.locked;
+    commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,locked}:item));
+    setNotice(locked?"Фрейм зафиксирован":"Фрейм можно перемещать и изменять");
+  };
+  const moveSelectedFrameInPresentation = (direction: number) => {
+    if (!singleSelected || singleSelected.kind !== "frame" || singleSelected.locked) return;
+    const frames = itemsRef.current.filter((item) => item.kind === "frame" && !item.hidden).sort((a, b) => (a.presentationOrder ?? itemsRef.current.indexOf(a)) - (b.presentationOrder ?? itemsRef.current.indexOf(b)));
+    const indexValue = frames.findIndex((frame) => frame.id === singleSelected.id);
+    const otherIndex = indexValue + direction;
+    if (indexValue < 0 || otherIndex < 0 || otherIndex >= frames.length) return;
+    const a = frames[indexValue], b = frames[otherIndex];
+    const aOrder = a.presentationOrder ?? indexValue;
+    const bOrder = b.presentationOrder ?? otherIndex;
+    commit(itemsRef.current.map((item) => item.id === a.id ? { ...item, presentationOrder: bOrder } : item.id === b.id ? { ...item, presentationOrder: aOrder } : item));
+    setNotice(direction < 0 ? "Фрейм поднят в порядке показа" : "Фрейм опущен в порядке показа");
+  };
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLocaleLowerCase("ru");
+    if (!q) return [] as Item[];
+    return items.filter((item) => {
+      if (item.hidden) return false;
+      return `${item.text} ${item.name ?? ""} ${(item.tableCells ?? []).join(" ")} ${(item.checklistItems ?? []).join(" ")} ${(item.quizOptions ?? []).join(" ")} ${item.quizExplanation ?? ""} ${item.flashcardBack ?? ""} ${itemLabel(item)}`.toLocaleLowerCase("ru").includes(q);
+    });
+  }, [items, searchQuery]);
+
+  const focusItem = (item: Item) => {
+    finishEdit();
+    setTool("select");
+    const family = item.groupId ? itemsRef.current.filter((candidate) => candidate.groupId === item.groupId) : [item];
+    setSelected(family.map((candidate) => candidate.id));
+    fitToBounds(boundsOf(family), 180);
+  };
+
+  const cycleGrid = () => {
+    setGridMode((mode) => mode === "dots" ? "grid" : mode === "grid" ? "plain" : "dots");
+  };
+
+  const recolorSelected = (value: string) => {
+    if (!selected.length || selectionLocked) return;
+    commit(itemsRef.current.map((item) =>
+      selected.includes(item.id) && (item.kind === "text" || item.kind === "sticky" || item.kind === "shape" || item.kind === "frame" || item.kind === "connector" || item.kind === "formula" || item.kind === "checklist" || item.kind === "quiz" || item.kind === "flashcard" || item.kind === "cover")
+        ? { ...item, color: value }
+        : item,
+    ));
+  };
+
+  const fitSelectedFormula = () => {
+    if (!singleSelected || singleSelected.kind !== "formula" || selectionLocked) return;
+    const size = Math.max(12, Math.min(96, singleSelected.fontSize ?? 28));
+    const plain = formulaToPlainText(singleSelected.text || "Формула");
+    const lines = plain.split(/\n/);
+    const longest = Math.max(1, ...lines.map((line) => line.length));
+    const fractionBonus = (singleSelected.text.match(/\\frac/g) ?? []).length * size * .22;
+    const rootBonus = (singleSelected.text.match(/\\sqrt/g) ?? []).length * size * .08;
+    const width = Math.max(160, Math.min(960, longest * size * .58 + 48 + rootBonus));
+    const height = Math.max(72, Math.min(520, lines.length * size * 1.55 + 38 + fractionBonus));
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, width, height } : item));
+    setNotice("Размер формулы подогнан по содержимому");
+  };
+
+  const changeFontSize = (delta: number) => {
+    if (!singleSelected || selectionLocked || (singleSelected.kind !== "text" && singleSelected.kind !== "sticky" && singleSelected.kind !== "formula" && singleSelected.kind !== "table" && singleSelected.kind !== "checklist" && singleSelected.kind !== "quiz" && singleSelected.kind !== "flashcard" && singleSelected.kind !== "cover")) return;
+    const fallback = singleSelected.kind === "formula" ? 28 : singleSelected.kind === "table" ? 13 : singleSelected.kind === "checklist" || singleSelected.kind === "quiz" ? 15 : singleSelected.kind === "flashcard" ? 18 : singleSelected.kind === "cover" ? 17 : 20;
+    const min = singleSelected.kind === "table" ? 9 : singleSelected.kind === "formula" ? 12 : 10;
+    const max = singleSelected.kind === "table" || singleSelected.kind === "checklist" || singleSelected.kind === "quiz" ? 32 : singleSelected.kind === "flashcard" || singleSelected.kind === "cover" ? 48 : 96;
+    const nextSize = Math.max(min, Math.min(max, (singleSelected.fontSize ?? fallback) + delta));
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, fontSize: nextSize } : item));
+  };
+
+  const setSelectedTextStyle = (patch: Partial<Pick<Item, "textAlign" | "fontWeight" | "fontStyle" | "textDecoration" | "textList" | "lineHeight">>) => {
+    if (!singleSelected || selectionLocked || (singleSelected.kind !== "text" && singleSelected.kind !== "sticky")) return;
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, ...patch } : item));
+  };
+
+  const setSelectedConnectorStyle = (style: ConnectorStyle) => {
+    if (!singleSelected || singleSelected.kind !== "connector" || selectionLocked) return;
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, connectorStyle: style } : item));
+  };
+
+  const setSelectedConnectorRouting = (routing: ConnectorRouting) => {
+    if (!singleSelected || singleSelected.kind !== "connector" || selectionLocked) return;
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, connectorRouting: routing } : item));
+  };
+
+  const renameSelectedConnector = () => {
+    if (!singleSelected || singleSelected.kind !== "connector" || selectionLocked) return;
+    const value = window.prompt("Подпись линии", singleSelected.text ?? "");
+    if (value == null) return;
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, text: value.replace(/\s+/g, " ").trim().slice(0, 80) } : item));
+  };
+
+  const detachSelectedConnector = () => {
+    if (!singleSelected || singleSelected.kind !== "connector" || selectionLocked) return;
+    if (!singleSelected.connectorStartBinding && !singleSelected.connectorEndBinding) {
+      setNotice("Концы этой линии уже свободны");
+      return;
+    }
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? {
+      ...item,
+      connectorStartBinding: undefined,
+      connectorEndBinding: undefined,
+    } : item));
+    setNotice("Связь отвязана от объектов");
+  };
+
+  const changeSelectedConnectorWeight = (delta: number) => {
+    if (!singleSelected || singleSelected.kind !== "connector" || selectionLocked) return;
+    const nextWeight = Math.max(1, Math.min(12, (singleSelected.weight ?? 3) + delta));
+    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, weight: nextWeight } : item));
+  };
+
+  const visibleItems = useMemo(() => items.filter((item) => !item.hidden), [items]);
+  const visibleObjects = visibleItems;
+  const objectCount = items.length;
+  const drawingCount = useMemo(() => items.filter(isInkItem).length, [items]);
+  // Only actual objects need minimap markers; strokes are already rasterized.
+  const minimapObjects = useMemo(() => visibleItems.filter(item => !isInkItem(item)), [visibleItems]);
+  const allBounds = useMemo(() => boundsOf(visibleItems), [visibleItems]);
+  // Rasterize unselected, unlocked pen/marker runs in every role. Selected
+  // ink remains a real DOM object for handles, moving and rotating. The
+  // separate geometric hit test resolves clicks on canvas strokes.
+  // Runs are separated by ordinary objects, preserving their z-order.
+  const inkLayers = useMemo(() => {
+    type Layer =
+      | { kind: "ink"; key: string; strokes: Item[]; bounds: Bounds }
+      | { kind: "item"; key: string; item: Item };
+    const layers: Layer[] = [];
+    let run: Item[] = [];
+    const flush = () => {
+      if (!run.length) return;
+      const bounds = boundsOf(run);
+      if (bounds) layers.push({ kind: "ink", key: "ink-" + run[0].id, strokes: run, bounds });
+      run = [];
+    };
+    // A few selected strokes may show their editing handles individually.
+    // Large lasso selections remain batched to avoid thousands of DOM nodes.
+    const detailedInkSelection = selectedIds.size <= 24;
+    for (const item of visibleItems) {
+      if (isInkItem(item) && item.points?.length &&
+          !(detailedInkSelection && selectedIds.has(item.id))) run.push(item);
+      else { flush(); layers.push({ kind: "item", key: item.id, item }); }
+    }
+    flush();
+    return layers;
+  }, [visibleItems, selectedIds]);
+  const renderEntries = useMemo(() => {
+    // Wait for ResizeObserver before mounting a heavy board. Without viewport
+    // dimensions the old renderer mounted every single object at startup.
+    if (!boardViewportSize.width || !boardViewportSize.height) return [] as typeof inkLayers;
+    const margin = 180 / Math.max(0.1, view.zoom);
+    const left = -view.x / view.zoom - margin, top = -view.y / view.zoom - margin;
+    const right = (boardViewportSize.width - view.x) / view.zoom + margin;
+    const bottom = (boardViewportSize.height - view.y) / view.zoom + margin;
+    return inkLayers.filter(layer => {
+      if (layer.kind === "item" && (selectedIds.has(layer.item.id) || layer.item.id === editing)) return true;
+      const bounds = layer.kind === "ink" ? layer.bounds : layer.item;
+      return bounds.x + bounds.width >= left && bounds.x <= right &&
+        bounds.y + bounds.height >= top && bounds.y <= bottom;
+    });
+  }, [inkLayers, boardViewportSize.width, boardViewportSize.height, view.x, view.y, view.zoom, selectedIds, editing]);
+  const minimapBounds = allBounds ?? { x: -400, y: -300, width: 800, height: 600 };
+  // ResizeObserver already maintains these dimensions. Measuring layout in
+  // every pan render forced costly synchronous reflows on heavy boards.
+  const visibleWorld = boardViewportSize.width && boardViewportSize.height ? {
+    x: -view.x / view.zoom,
+    y: -view.y / view.zoom,
+    width: boardViewportSize.width / view.zoom,
+    height: boardViewportSize.height / view.zoom,
+  } : null;
+  const miniPad = 30;
+  // Stable content coordinates: panning should move only the viewport outline,
+  // not rebuild up to 400 minimap markers and resize the entire miniature.
+  const miniX = minimapBounds.x - miniPad;
+  const miniY = minimapBounds.y - miniPad;
+  const miniRight = minimapBounds.x + minimapBounds.width + miniPad;
+  const miniBottom = minimapBounds.y + minimapBounds.height + miniPad;
+  const miniW = Math.max(1, miniRight - miniX);
+  const miniH = Math.max(1, miniBottom - miniY);
+  // Retain minimap React elements between camera frames. Their geometry
+  // depends on content/bounds and selection, not on every pointer movement.
+  const minimapMarkers = useMemo(() => minimapObjects.slice(0, 400).map(item => (
+    <span
+      key={item.id}
+      className={`minimap-item ${selectedIds.has(item.id) ? "selected" : ""}`}
+      style={{
+        left: `${((item.x - miniX) / miniW) * 100}%`,
+        top: `${((item.y - miniY) / miniH) * 100}%`,
+        width: `${Math.max(1.2, (item.width / miniW) * 100)}%`,
+        height: `${Math.max(1.2, (item.height / miniH) * 100)}%`,
+      }}
+    />
+  )), [minimapObjects, selectedIds, miniX, miniY, miniW, miniH]);
+  const layerRows = useMemo(() => {
+    const seenGroups = new Set<string>();
+    const rows: Item[] = [];
+    let shownInk=0;
+    for (let indexValue = items.length - 1; indexValue >= 0; indexValue--) {
+      const item = items[indexValue];
+      // Keep the layer panel cheap even when it contains 10,000 strokes.
+      // The 80 most recent strokes can be accessed individually here;
+      // all of them remain selectable with lasso or by clicking the canvas.
+      if (isInkItem(item) && ++shownInk > 80) continue;
+      if (item.groupId) {
+        if (seenGroups.has(item.groupId)) continue;
+        seenGroups.add(item.groupId);
+      }
+      rows.push(item);
+    }
+    return rows;
+  }, [items]);
+
+  const { comments, openComments, linkedComments, presentationFrames } = useMemo(() => {
+    const comments: Item[] = [];
+    const frames: Array<{ item: Item; index: number }> = [];
+    items.forEach((item, indexValue) => {
+      if (item.kind === "comment") comments.push(item);
+      if (item.kind === "frame" && !item.hidden) frames.push({ item, index: indexValue });
+    });
+    frames.sort((a, b) => (a.item.presentationOrder ?? a.index) - (b.item.presentationOrder ?? b.index));
+    return {
+      comments,
+      openComments: comments.filter((item) => !item.resolved && !item.hidden),
+      linkedComments: comments.filter((item) => !item.hidden && item.commentTargetId),
+      presentationFrames: frames.map((entry) => entry.item),
+    };
+  }, [items]);
+  const activePresentationFrame = presentationFrames.length
+    ? presentationFrames[Math.min(presentationFrameIndex, presentationFrames.length - 1)]
+    : null;
+  const showPresentationFrame = (indexValue: number) => {
+    const frames = itemsRef.current.filter((item) => item.kind === "frame" && !item.hidden).sort((a, b) => (a.presentationOrder ?? itemsRef.current.indexOf(a)) - (b.presentationOrder ?? itemsRef.current.indexOf(b)));
+    if (!frames.length) {
+      requestAnimationFrame(() => fitToBounds(boundsOf(itemsRef.current.filter((item) => !item.hidden)), 70));
+      return;
+    }
+    const normalized = ((indexValue % frames.length) + frames.length) % frames.length;
+    setPresentationFrameIndex(normalized);
+    requestAnimationFrame(() => fitToBounds({
+      x: frames[normalized].x,
+      y: frames[normalized].y,
+      width: frames[normalized].width,
+      height: frames[normalized].height,
+    }, 64));
+  };
+  const startPresentation = () => {
+    finishEdit();
+    const selectedFrameId = selected.length === 1 ? itemsRef.current.find((item) => item.id === selected[0] && item.kind === "frame")?.id : undefined;
+    const frames = itemsRef.current.filter((item) => item.kind === "frame" && !item.hidden).sort((a, b) => (a.presentationOrder ?? itemsRef.current.indexOf(a)) - (b.presentationOrder ?? itemsRef.current.indexOf(b)));
+    const startIndex = selectedFrameId ? Math.max(0, frames.findIndex((frame) => frame.id === selectedFrameId)) : 0;
+    setSelected([]);
+    setTool("select");
+    setLayersOpen(false);
+    setSearchOpen(false);
+    setTemplatesOpen(false);
+    setCommentsOpen(false);
+    setTableEditorId(null);
+    setTableDraft(null);
+    setChecklistEditorId(null);
+    setChecklistDraft(null);
+    setQuizEditorId(null);
+    setQuizDraft(null);
+    setFlashcardEditorId(null);
+    setFlashcardDraft(null);
+    setShortcutsOpen(false);
+    closeFormulaEditor();
+    setFrameNotesEditorId(null);
+    setFrameNotesDraft("");
+    setPresentationNotesOpen(false);
+    setPresentationSlidesOpen(false);
+    setPresentationLaser(false);
+    setPresentationLaserPos(null);
+    setPresentationSpotlight(false);
+    setPresentationSpotlightPos(null);
+    setPresentationElapsed(0);
+    setPresentationCountdownRemaining(presentationCountdownTotal);
+    setPresentationTimerRunning(true);
+    setPresentationBlackout(false);
+    setPresentation(true);
+    setPresentationFrameIndex(startIndex);
+    showPresentationFrame(startIndex);
+  };
+  const publicPresentationAutoStarted = useRef(false);
+  useEffect(() => {
+    if (!publicPresentation || publicPresentationAutoStarted.current) return;
+    publicPresentationAutoStarted.current = true;
+    setPresentation(true);
+    setPresentationTimerRunning(false);
+    setPresentationFrameIndex(0);
+    setPresentationSlidesOpen(false);
+    window.setTimeout(() => showPresentationFrame(0), 80);
+  }, [publicPresentation, boardSummary.id]);
+
+  const stepPresentation = (direction: number) => {
+    if (!presentationFrames.length) return;
+    showPresentationFrame(presentationFrameIndex + direction);
+  };
+  const formatPresentationTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch { setNotice("Браузер не разрешил полноэкранный режим"); }
+  };
+
+  const presentationQuizzes = (activePresentationFrame
+    ? containedByFrame(activePresentationFrame, items).filter((item) => item.kind === "quiz")
+    : items.filter((item) => item.kind === "quiz" && !item.hidden)) as Item[];
+  const presentationQuizzesRevealed = presentationQuizzes.length > 0 && presentationQuizzes.every((item) => item.quizRevealed);
+  const togglePresentationQuizAnswers = () => {
+    if (!presentationQuizzes.length) { setNotice("На текущем слайде нет мини-тестов"); return; }
+    const ids = new Set(presentationQuizzes.map((item) => item.id));
+    const reveal = !presentationQuizzesRevealed;
+    commit(itemsRef.current.map((item) => ids.has(item.id) ? { ...item, quizRevealed: reveal } : item));
+    setNotice(reveal ? "Правильные ответы показаны" : "Правильные ответы скрыты");
+  };
+  const resetPresentationQuizzes = () => {
+    if (!presentationQuizzes.length) { setNotice("На текущем слайде нет мини-тестов"); return; }
+    const ids = new Set(presentationQuizzes.map((item) => item.id));
+    commit(itemsRef.current.map((item) => ids.has(item.id) ? { ...item, quizSelected: undefined, quizRevealed: false } : item));
+    setNotice("Ответы на текущем слайде сброшены");
+  };
+
+  const presentationFlashcards = (activePresentationFrame
+    ? containedByFrame(activePresentationFrame, items).filter((item) => item.kind === "flashcard")
+    : items.filter((item) => item.kind === "flashcard" && !item.hidden)) as Item[];
+  const presentationFlashcardsFlipped = presentationFlashcards.length > 0 && presentationFlashcards.every((item) => item.flashcardFlipped);
+  const togglePresentationFlashcards = () => {
+    if (!presentationFlashcards.length) { setNotice("На текущем слайде нет карточек"); return; }
+    const ids = new Set(presentationFlashcards.map((item) => item.id));
+    const flipped = !presentationFlashcardsFlipped;
+    commit(itemsRef.current.map((item) => ids.has(item.id) ? { ...item, flashcardFlipped: flipped } : item));
+    setNotice(flipped ? "Показаны ответы всех карточек" : "Показаны вопросы всех карточек");
+  };
+
+  const presentationChecklists = (activePresentationFrame
+    ? containedByFrame(activePresentationFrame, items).filter((item) => item.kind === "checklist")
+    : items.filter((item) => item.kind === "checklist" && !item.hidden)) as Item[];
+  const presentationCovers = (activePresentationFrame
+    ? containedByFrame(activePresentationFrame, items).filter((item) => item.kind === "cover")
+    : items.filter((item) => item.kind === "cover" && !item.hidden)) as Item[];
+  const resetPresentationInteractions = () => {
+    const quizIds = new Set(presentationQuizzes.map((item) => item.id));
+    const cardIds = new Set(presentationFlashcards.map((item) => item.id));
+    const checklistIds = new Set(presentationChecklists.map((item) => item.id));
+    const coverIds = new Set(presentationCovers.map((item) => item.id));
+    if (quizIds.size && !cardIds.size && !checklistIds.size && !coverIds.size) { resetPresentationQuizzes(); return; }
+    if (!quizIds.size && !cardIds.size && !checklistIds.size && !coverIds.size) { setNotice("На текущем слайде нет интерактивных заданий"); return; }
+    commit(itemsRef.current.map((item) => {
+      if (quizIds.has(item.id)) return { ...item, quizSelected: undefined, quizRevealed: false };
+      if (cardIds.has(item.id)) return { ...item, flashcardFlipped: false };
+      if (checklistIds.has(item.id)) return { ...item, checklistDone: (item.checklistItems ?? []).map(() => false) };
+      if (coverIds.has(item.id)) return { ...item, coverOpen: false };
+      return item;
+    }));
+    setNotice("Интерактивные задания текущего слайда сброшены");
+  };
+
+  const applyServerDocument = (row: RemoteBoardDocument) => {
+    const data = parseDocument(JSON.stringify(row.document));
+    // Normalize connector positions before setting the clean baseline.
+    data.items = syncBoundConnectors(data.items);
+    remoteVersion.current = row.version;
+    acknowledgedDocument.current = documentFingerprint(data);
+    pendingRemote.current = null;
+    queuedRemoteSnapshot.current = null;
+    remoteSaveFailures.current = 0;
+    if (remoteRetryTimer.current) { clearTimeout(remoteRetryTimer.current); remoteRetryTimer.current = null; }
+    setRemoteConflict(null);
+    setTableEditorId(null); setChecklistEditorId(null); setQuizEditorId(null);
+    setFlashcardEditorId(null); setFormulaEditorId(null); setFrameNotesEditorId(null);
+    applyDocument(data, true);
+    try { localStorage.setItem(storageKey, JSON.stringify(data)); } catch { /* still usable in memory */ }
+    setSaveStatus("Получена серверная версия");
+  };
+  receiveRemote.current = row => {
+    if (!boardMounted.current || row.board_id !== boardSummary.id) return;
+    const busy = !!(gesture.current || editing || tableEditorId || checklistEditorId || quizEditorId || flashcardEditorId || formulaEditorId || frameNotesEditorId);
+    const dirty = canEdit && (busy || documentFingerprint(currentDocument()) !== acknowledgedDocument.current);
+    const decision = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, dirty || !!pendingRemote.current);
+    if (decision === "ignore") return;
+    if (decision === "defer") {
+      if (!deferredRemote.current || row.version > deferredRemote.current.version) deferredRemote.current = row;
+      return;
+    }
+    try {
+      const data = parseDocument(JSON.stringify(row.document));
+      if (isOwnRemoteRevision(row, authUser.id, lastAttempt.current)) {
+        remoteVersion.current = row.version;
+        acknowledgedDocument.current = lastAttempt.current!.fingerprint;
+        return;
+      }
+      if (decision === "conflict") {
+        // Collaborative boards should converge automatically instead of asking the user
+        // to choose between "my" and "server" versions.
+        const local = parseDocument(JSON.stringify(currentDocument()));
+        const remote = data;
+        // Merge both normal objects and drawing strokes by stable ids.
+        // Drawings remain in the separate ink collection after packing.
+        const remoteItems = expandDocumentInk(remote);
+        const localItems = expandDocumentInk(local);
+        const remoteIds = new Set(remoteItems.map(item => item.id));
+        const localOnly = localItems.filter(item => !remoteIds.has(item.id));
+        const merged: DocumentData = packDocumentInk({
+          ...remote,
+          view: local.view,
+          items: [...remoteItems, ...localOnly],
+          ink: undefined,
+        });
+
+        remoteVersion.current = row.version;
+        acknowledgedDocument.current = documentFingerprint(remote);
+        pendingRemote.current = null;
+        setRemoteConflict(null);
+        setConflictLocalBackup(null);
+        try { localStorage.removeItem(storageKey + ".conflict-backup"); } catch {}
+        applyDocument(merged, true);
+        snapshot.current = merged;
+        queuedRemoteSnapshot.current = merged;
+        setSaveStatus("Синхронизировано");
+        window.setTimeout(() => void pushRemoteSnapshot(merged), 0);
+        return;
+      }
+      applyServerDocument(row);
+    } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
+  };
+  useEffect(() => subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id]);
+
+  useEffect(() => subscribeBoardPresence(
+    boardSummary.id,
+    { userId: authUser.id, name: authUser.name, role: boardSummary.role },
+    setPresenceUsers,
+    !adminHidden,
+  ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
+
+  useEffect(() => {
+    const channel = connectBoardCursorChannel(
+      boardSummary.id,
+      { userId: authUser.id, name: authUser.name, role: boardSummary.role },
+      (cursor) => {
+        pendingRemoteCursors.current[cursor.userId] = cursor;
+        if (remoteCursorFrame.current != null) return;
+        remoteCursorFrame.current = requestAnimationFrame(() => {
+          remoteCursorFrame.current = null;
+          const pending = pendingRemoteCursors.current;
+          pendingRemoteCursors.current = {};
+          if (Object.keys(pending).length) setRemoteCursors((current) => ({ ...current, ...pending }));
+        });
+      },
+      true, // Keep the socket active independently of invisible mode; cursor emission is guarded at pointer-move.
+      (ink) => {
+        // Each stroke must retain its own preview until the persisted document contains it.
+        // Keying by clientId replaced the previous completed stroke as soon as a new one began.
+        setRemoteInk(current => ({...current,[ink.id]:ink}));
+        if (ink.finished) window.setTimeout(() => setRemoteInk(current => {
+          if (!current[ink.id]?.finished) return current;
+          const next = {...current}; delete next[ink.id]; return next;
+        }), 15000);
+      },
+      setInkDiagnostics,
+      true, // Drawings remain collaborative even when the admin hides their presence.
+    );
+    cursorChannel.current = channel;
+    return () => {
+      cursorChannel.current = null;
+      channel.close();
+      if (remoteCursorFrame.current != null) cancelAnimationFrame(remoteCursorFrame.current);
+      remoteCursorFrame.current = null;
+      pendingRemoteCursors.current = {};
+      setRemoteCursors({});
+      setRemoteInk({});
+    };
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name]);
+
+  useEffect(() => {
+    const channel = connectBoardViewControl(
+      boardSummary.id,
+      { userId: authUser.id, name: authUser.name },
+      (command) => {
+        const rect = board.current?.getBoundingClientRect();
+        if (!rect) return;
+
+        setView({
+          x: rect.width / 2 - command.centerX * command.zoom,
+          y: rect.height / 2 - command.centerY * command.zoom,
+          zoom: command.zoom,
+        });
+        setNotice(`${command.senderName} переместил вас к своей области доски`);
+      },
+      (_teacherView) => { /* Continuous following removed; one-time focus remains supported. */ },
+      (_guided) => { /* Deprecated follow broadcasts are ignored. */ },
+    );
+
+    viewControlChannel.current = channel;
+
+    return () => {
+      viewControlChannel.current = null;
+      channel.close();
+    };
+  }, [boardSummary.id, authUser.id, authUser.name]);
+
+  useEffect(() => {
+    followTeacherRef.current = followTeacher;
+  }, [followTeacher]);
+
+  useEffect(() => {
+    const channel = connectBoardWorkChannel(
+      boardSummary.id,
+      { userId: authUser.id, name: authUser.name, role: boardSummary.role },
+      (state) => setRemoteWork((current) => ({ ...current, [state.userId]: state })),
+      (userId) => setRemoteWork((current) => {
+        if (!(userId in current)) return current;
+        const next = { ...current };
+        delete next[userId];
+        return next;
+      }),
+      !adminHidden,
+    );
+    workChannel.current = channel;
+    return () => {
+      workChannel.current = null;
+      channel.close();
+      setRemoteWork({});
+    };
+  }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
+
+  useEffect(() => {
+    if(!adminHidden) workChannel.current?.publish(selected, editing);
+  }, [selected, editing, adminHidden]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const cutoff = Date.now() - 15000;
+      const online = new Set(presenceUsers.map((user) => user.userId));
+      setRemoteWork((current) => {
+        let changed = false;
+        const next: Record<string, RemoteWorkState> = {};
+        for (const [userId, state] of Object.entries(current)) {
+          if (state.updatedAt >= cutoff && online.has(userId)) next[userId] = state;
+          else changed = true;
+        }
+        return changed ? next : current;
+      });
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [presenceUsers]);
+
+  const remoteWorkValues = useMemo(() => Object.values(remoteWork), [remoteWork]);
+  const remoteWorkIndex = useMemo(() => {
+    const editors = new Map<string, RemoteWorkState>();
+    const selectors = new Map<string, RemoteWorkState[]>();
+    let editingCount = 0;
+    for (const state of remoteWorkValues) {
+      if (state.editingId) { editors.set(state.editingId, state); editingCount++; }
+      for (const itemId of state.selectedIds) {
+        const list = selectors.get(itemId);
+        if (list) list.push(state); else selectors.set(itemId, [state]);
+      }
+    }
+    return { editors, selectors, editingCount };
+  }, [remoteWorkValues]);
+  const remoteEditorFor = (itemId: string) => remoteWorkIndex.editors.get(itemId);
+  const remoteSelectorsFor = (itemId: string) => remoteWorkIndex.selectors.get(itemId) ?? [];
+  const remoteEditingCount = remoteWorkIndex.editingCount;
+  const lessonStudents=visiblePresenceUsers.filter((u)=>u.userId!==authUser.id);
+  const lessonSeconds=liveLesson?Math.max(0,Math.floor((lessonClock-Date.parse(liveLesson.startedAt))/1000)):0;
+  const lessonTime=`${String(Math.floor(lessonSeconds/3600)).padStart(2,"0")}:${String(Math.floor((lessonSeconds%3600)/60)).padStart(2,"0")}:${String(lessonSeconds%60).padStart(2,"0")}`;
+
+  useEffect(() => {
+    if (adminHidden || boardSummary.role !== "owner") return;
+    if (teacherViewBroadcastTimer.current) clearTimeout(teacherViewBroadcastTimer.current);
+
+    teacherViewBroadcastTimer.current = setTimeout(() => {
+      teacherViewBroadcastTimer.current = null;
+      const rect = board.current?.getBoundingClientRect();
+      if (!rect) return;
+      const centerX = (rect.width / 2 - view.x) / view.zoom;
+      const centerY = (rect.height / 2 - view.y) / view.zoom;
+      viewControlChannel.current?.sendTeacherView(centerX, centerY, view.zoom);
+    }, 90);
+
+    return () => {
+      if (teacherViewBroadcastTimer.current) {
+        clearTimeout(teacherViewBroadcastTimer.current);
+        teacherViewBroadcastTimer.current = null;
+      }
+    };
+  }, [adminHidden, boardSummary.role, view.x, view.y, view.zoom]);
+
+  useEffect(() => {
+    const online = new Set(presenceUsers.map((user) => user.userId));
+    setRemoteCursors((current) => {
+      let changed = false;
+      const next: Record<string, RemoteCursor> = {};
+      for (const [userId, cursor] of Object.entries(current)) {
+        if (online.has(userId)) next[userId] = cursor;
+        else changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [presenceUsers]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const cutoff = Date.now() - 12000;
+      setRemoteCursors((current) => {
+        let changed = false;
+        const next: Record<string, RemoteCursor> = {};
+        for (const [userId, cursor] of Object.entries(current)) {
+          if (cursor.updatedAt >= cutoff) next[userId] = cursor;
+          else changed = true;
+        }
+        return changed ? next : current;
+      });
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(()=>{if(boardSummary.role!=="owner")return;void getActiveLesson(boardSummary.id).then(existing=>{if(existing){setLiveLesson(existing);return}try{const raw=sessionStorage.getItem("onlinerepetitor.schedule.start");if(!raw)return;const planned=JSON.parse(raw);sessionStorage.removeItem("onlinerepetitor.schedule.start");if(!planned?.studentId)return;setLessonStudentId(planned.studentId);setLessonTopic(planned.topic||"");setLessonScheduleId(planned.scheduleId||null);setLessonOpen(true);setNotice("Занятие из расписания готово к запуску")}catch{sessionStorage.removeItem("onlinerepetitor.schedule.start")}}).catch(()=>undefined)},[boardSummary.id,boardSummary.role]);
+  useEffect(()=>{if(!liveLesson)return;setLessonClock(Date.now());const t=window.setInterval(()=>setLessonClock(Date.now()),1000);return()=>window.clearInterval(t)},[liveLesson?.id]);
+  const beginLiveLesson=async()=>{const student=lessonStudents.find(u=>u.userId===lessonStudentId);if(!student){setNotice("Выберите ученика, который сейчас на доске");return}try{const lesson=await startLesson(boardSummary.id,student.userId,student.name,lessonTopic,lessonScheduleId);setLiveLesson(lesson);setLessonScheduleId(null);setLessonOpen(false);setLessonPanelOpen(true);setPresentationElapsed(0);setPresentationTimerMode("elapsed");setPresentationTimerRunning(true);setNotice("Урок начат")}catch{setNotice("Не удалось начать урок")}};
+  const completeLiveLesson=async()=>{if(!liveLesson)return;try{const done=await finishLesson(liveLesson,lessonResult,lessonHomework);setLiveLesson(null);setLessonFinishOpen(false);setPresentationTimerRunning(false);setLessonResult("");setLessonHomework("");setNotice(`Урок завершён · ${done.minutes} мин. Запись добавлена в историю`)}catch{setNotice("Не удалось завершить урок")}};
+
+  return (
+    <div className={`app ${presentation ? "presentation-mode" : ""} ${!canEdit ? "viewer-mode" : ""} ${publicPresentation ? "public-presentation-mode" : ""}`}>
+      {linkMediaOpen&&<div className="access-backdrop link-media-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setLinkMediaOpen(false)}}><section className="access-modal link-media-dialog"><div className="access-head"><div><h2>{linkMediaEditId?"Изменить мультимедиа":"Мультимедиа по ссылке"}</h2><p>Файл не загружается в OnlineRepetitor и не занимает Storage.</p></div><button onClick={()=>setLinkMediaOpen(false)}>×</button></div><label className="link-media-field"><span>Ссылка</span><input value={linkMediaUrl} onChange={e=>setLinkMediaUrl(e.target.value)} placeholder="YouTube, Vimeo, MP3, MP4 или другая http/https ссылка"/></label><label className="link-media-field"><span>Название</span><input value={linkMediaTitle} onChange={e=>setLinkMediaTitle(e.target.value)} placeholder="Необязательно"/></label><div className="link-media-support"><strong>Внутренний плеер</strong><span>YouTube и Vimeo открываются внутри доски. Прямые ссылки на MP3/MP4/WebM и другие поддерживаемые браузером файлы используют встроенный HTML5-плеер. Для остальных ссылок показывается безопасная карточка перехода.</span></div><div className="access-actions"><button onClick={()=>setLinkMediaOpen(false)}>Отмена</button><button className="boards-create" onClick={saveLinkMedia}>{linkMediaEditId?"Сохранить":"Добавить на доску"}</button></div></section></div>}
+
+      {sharing && <ShareDialog board={boardSummary} user={authUser} onClose={() => setSharing(false)}/>}
+      {lessonOpen && <div className="access-backdrop"><section className="access-modal lesson-live-modal"><div className="access-head"><div><h2>Начать урок</h2><p>Выберите ученика и тему. Запустится таймер, а доска останется общей для участников.</p></div><button onClick={()=>setLessonOpen(false)}>×</button></div><label><span>Ученик</span><select value={lessonStudentId} onChange={e=>setLessonStudentId(e.target.value)}><option value="">Выберите</option>{lessonStudents.map(u=><option key={u.userId} value={u.userId}>{u.name}</option>)}</select></label><label><span>Тема</span><input value={lessonTopic} onChange={e=>setLessonTopic(e.target.value)} placeholder="Тема занятия"/></label><p style={{fontSize:12,lineHeight:1.5,color:"#737987",margin:"8px 0"}}>Во время занятия можно открыть панель урока кнопкой с именем ученика: перейти к нужному месту доски, показать презентацию, использовать таймер и задания. В конце занятия сохраните результат и домашнее задание.</p><div className="session-actions"><button className="students-primary" onClick={()=>void beginLiveLesson()}>Начать и запустить таймер</button><button className="boards-secondary" onClick={()=>setLessonOpen(false)}>Отмена</button></div></section></div>}
+      {lessonPanelOpen && liveLesson && <aside className="lesson-control-panel">
+        <div className="lesson-control-head"><div><span className="live-lesson-dot"/><div><b>Идёт урок</b><small>{lessonTime}</small></div></div><button onClick={()=>setLessonPanelOpen(false)}>×</button></div>
+        <div className="lesson-control-student"><span className="presence-avatar">{liveLesson.studentName.charAt(0).toUpperCase()}</span><div><strong>{liveLesson.studentName}</strong><small>{liveLesson.topic||"Тема не указана"}</small></div></div>
+        <div className="lesson-control-status"><span><b>{lessonTime}</b>время урока</span><span><b>{visiblePresenceUsers.length}</b>на доске</span></div><div className="lesson-control-grid">
+          <button onClick={()=>{const rect=board.current?.getBoundingClientRect();if(!rect)return;const center=world({x:rect.width/2,y:rect.height/2});viewControlChannel.current?.sendFocus(liveLesson.studentId,center.x,center.y,view.zoom);setNotice("Экран ученика перемещён к вам")}}>◎<span>Ко мне</span></button>
+
+          <button onClick={()=>{setPresentation(true);setPresentationFrameIndex(0);setPresentationSlidesOpen(false);setLessonPanelOpen(false)}}>▶<span>Презентация</span></button>
+          <button onClick={()=>{window.history.pushState({},"","/?section=assignments");window.dispatchEvent(new PopStateEvent("popstate"))}}>✓<span>Задания</span></button>
+          <button className={presentationTimerRunning?"active-tool":""} onClick={()=>{setPresentationTimerMode("elapsed");setPresentationTimerRunning(v=>!v)}}>◷<span>{presentationTimerRunning?"Пауза таймера":"Таймер"}</span></button>
+          <button className={presentationLaser?"active-tool":""} onClick={()=>{setPresentationLaser(v=>!v);setPresentationSpotlight(false)}}>•<span>Лазер</span></button>
+          <button className={presentationSpotlight?"active-tool":""} onClick={()=>{setPresentationSpotlight(v=>!v);setPresentationLaser(false)}}>◉<span>Прожектор</span></button>
+        </div>
+        <div className="lesson-control-online"><strong>На доске сейчас</strong>{visiblePresenceUsers.map(u=><div key={u.userId}><span className="presence-avatar">{u.name.charAt(0).toUpperCase()}</span><span><b>{u.name}{u.userId===authUser.id?" · Вы":""}</b><small>{BOARD_ROLE_LABELS[u.role]}</small></span>{u.userId!==authUser.id&&<button onClick={()=>{const rect=board.current?.getBoundingClientRect();if(!rect)return;const center=world({x:rect.width/2,y:rect.height/2});viewControlChannel.current?.sendFocus(u.userId,center.x,center.y,view.zoom)}}>Ко мне</button>}</div>)}</div>
+        <button className="lesson-control-finish" onClick={()=>{setLessonPanelOpen(false);setLessonFinishOpen(true)}}>Завершить урок и записать результат</button>
+      </aside>}
+      {isAppAdmin && developerSettingsOpen && <div className="access-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setDeveloperSettingsOpen(false)}}>
+        <section className="access-modal" style={{width:"min(480px,calc(100vw - 24px))",maxHeight:"85vh",overflowY:"auto"}}>
+          <div className="access-head"><div><h2>Настройки разработчика</h2><p>Диагностика только для администратора этой доски</p></div><button type="button" aria-label="Закрыть" onClick={()=>setDeveloperSettingsOpen(false)}>×</button></div>
+          <div style={{display:"grid",gap:14,padding:"16px 0"}}>
+            <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showInkDiagnostics} onChange={e=>changeDeveloperPref("showInkDiagnostics",e.target.checked)}/> Показывать отправку и получение штрихов</label>
+            <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showBoardDiagnostics} onChange={e=>changeDeveloperPref("showBoardDiagnostics",e.target.checked)}/> Показывать состояние доски и синхронизации</label>
+            <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showPerformanceDiagnostics} onChange={e=>changeDeveloperPref("showPerformanceDiagnostics",e.target.checked)}/> Показывать статистику объектов и масштаб</label>
+            <div style={{fontSize:12,lineHeight:1.8,overflowWrap:"anywhere"}}><strong>Состояние Realtime:</strong> {realtimeStatus}<div><strong>Канал штрихов:</strong> {inkDiagnostics}</div><div><strong>Объектов:</strong> {items.length}</div><div><strong>Активных участников:</strong> {visiblePresenceUsers.length}</div><div><strong>Версия документа:</strong> {remoteVersion.current ?? "неизвестна"}</div></div>
+            <button type="button" className="boards-secondary" onClick={()=>void navigator.clipboard.writeText([`Доска: ${boardSummary.id}`,`Realtime: ${realtimeStatus}`,`Штрихи: ${inkDiagnostics}`,`Объектов: ${items.length}`,`Участников: ${visiblePresenceUsers.length}`,`Версия: ${remoteVersion.current ?? "unknown"}`].join("\\n")).then(()=>setNotice("Диагностика скопирована")).catch(()=>setNotice("Не удалось скопировать диагностику"))}>Скопировать диагностику</button>
+          </div>
+        </section>
+      </div>}
+      {lessonFinishOpen && liveLesson && <div className="access-backdrop"><section className="access-modal lesson-live-modal"><div className="access-head"><div><h2>Завершить урок</h2><p>{liveLesson.studentName} · {lessonTime}</p></div><button onClick={()=>setLessonFinishOpen(false)}>×</button></div><label><span>Итог</span><textarea rows={4} value={lessonResult} onChange={e=>setLessonResult(e.target.value)}/></label><label><span>Домашнее задание</span><textarea rows={4} value={lessonHomework} onChange={e=>setLessonHomework(e.target.value)}/></label><div className="session-actions"><button className="students-primary" onClick={()=>void completeLiveLesson()}>Завершить и сохранить</button><button className="boards-secondary" onClick={()=>setLessonFinishOpen(false)}>Продолжить</button></div></section></div>}
+      {studyOpen&&<div className="access-backdrop study-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setStudyOpen(false)}}><section className="access-modal study-modal" role="dialog" aria-modal="true" aria-label="Учебный режим"><div className="access-head"><div><h2>Учебный режим</h2><p>Пройдите мини-тесты и повторите карточки прямо на текущей доске</p></div><button onClick={()=>setStudyOpen(false)} aria-label="Закрыть">×</button></div><div className="study-tabs"><button className={studyTab==="quiz"?"active":""} onClick={()=>setStudyTab("quiz")}>Мини-тесты <b>{quizItems.length}</b></button><button className={studyTab==="flashcards"?"active":""} onClick={()=>setStudyTab("flashcards")}>Карточки <b>{flashcardItems.length}</b></button></div>{studyTab==="quiz"?<div className="study-quiz"><div className="study-summary"><article><b>{quizItems.length}</b><span>вопросов</span></article><article><b>{answeredQuizItems.length}</b><span>отвечено</span></article><article><b>{checkedQuizItems.length?`${correctQuizItems.length}/${checkedQuizItems.length}`:"—"}</b><span>результат</span></article><article><b>{checkedQuizItems.length?`${Math.round(correctQuizItems.length/checkedQuizItems.length*100)}%`:"—"}</b><span>точность</span></article></div>{quizItems.length===0?<div className="history-empty">На доске пока нет мини-тестов.</div>:<div className="study-question-list">{quizItems.map((item,index)=><article key={item.id} className={`study-question ${item.quizRevealed?"checked":""}`}><div><span>Вопрос {index+1}</span><strong>{item.text||"Вопрос"}</strong><small>{item.quizSelected==null?"Нет ответа":item.quizRevealed?(item.quizSelected===item.quizCorrect?"✓ Верно":"× Ошибка"):`Выбран ${String.fromCharCode(65+(item.quizSelected??0))}`}</small></div><button onClick={()=>{setStudyOpen(false);setSelected([item.id]);setView(v=>({...v,x:-(item.x+item.width/2)*v.zoom+window.innerWidth/2,y:-(item.y+item.height/2)*v.zoom+window.innerHeight/2}))}}>Показать</button></article>)}</div>}<div className="study-actions"><button className="primary" disabled={!answeredQuizItems.length} onClick={checkQuizResults}>Проверить ответы</button><button className="secondary" disabled={!answeredQuizItems.length&&!checkedQuizItems.length} onClick={resetAllQuizAnswers}>Пройти заново</button></div></div>:<div className="study-flashcards"><div className="study-summary"><article><b>{flashcardItems.length}</b><span>карточек</span></article><article><b>{knownFlashcards}</b><span>знаю</span></article><article><b>{againFlashcards}</b><span>повторить</span></article><article><b>{flashcardItems.length?`${Math.round(knownFlashcards/flashcardItems.length*100)}%`:"—"}</b><span>освоено</span></article></div>{currentStudyCard?<div className="study-card-stage"><div className="study-card-counter">{Math.min(studyCardIndex+1,flashcardItems.length)} / {flashcardItems.length}</div><div className="study-card-wrap"><FlashcardView item={currentStudyCard} onFlip={()=>flipFlashcard(currentStudyCard)}/></div><div className="study-card-grade"><button className="again" onClick={()=>markStudyCard("again")}>Повторить</button><button className="known" onClick={()=>markStudyCard("known")}>Знаю</button></div><div className="study-card-nav"><button onClick={()=>setStudyCardIndex(i=>(i-1+flashcardItems.length)%flashcardItems.length)}>← Предыдущая</button><button onClick={()=>setStudyCardIndex(i=>(i+1)%flashcardItems.length)}>Следующая →</button></div></div>:<div className="history-empty">На доске пока нет карточек.</div>}<div className="study-actions"><button className="secondary" disabled={!knownFlashcards&&!againFlashcards} onClick={resetFlashcardProgress}>Сбросить прогресс</button></div></div>}</section></div>}
+      {discussionOpen&&<aside className="board-chat-drawer" role="complementary" aria-label="Чат доски"><div className="board-chat-head"><div><h2>Чат доски</h2><p>{title}</p></div><button className="board-chat-minimize" disabled={discussionBusy} onClick={()=>{setDiscussionOpen(false);setChatOpen(false)}} title="Свернуть чат" aria-label="Свернуть чат">−</button></div>{discussionError&&<div className="access-notice">{discussionError}</div>}<div className="discussions-list">{discussionBusy&&discussionRows.length===0&&<div className="history-empty">Загружаем…</div>}{!discussionBusy&&discussionRows.length===0&&<div className="history-empty">Сообщений пока нет. Напишите первое ниже.</div>}{discussionRows.filter(x=>!x.parent_id).map(row=>{const focused=discussionFocusId===row.id||discussionRows.some(x=>x.id===discussionFocusId&&x.parent_id===row.id);return <div id={`discussion-${row.id}`} className={`discussion-thread ${row.resolved?"resolved":""} ${focused?"focused":""}`} key={row.id}><article className="discussion-card"><div className="discussion-meta"><strong>{row.author_name}</strong><span>{new Date(row.created_at).toLocaleString("ru-RU")}{row.resolved?" · решено":""}</span></div><div className="discussion-body">{row.body}</div><div className="discussion-actions"><button onClick={()=>setDiscussionReplyTo(row.id)}>Ответить</button>{canEdit&&<button disabled={discussionBusy} onClick={()=>void toggleDiscussionResolved(row)}>{row.resolved?"Открыть снова":"Решено"}</button>}</div></article>{discussionRows.filter(x=>x.parent_id===row.id).map(reply=><article className={`discussion-card discussion-reply ${discussionFocusId===reply.id?"focused-reply":""}`} key={reply.id}><div className="discussion-meta"><strong>{reply.author_name}</strong><span>{new Date(reply.created_at).toLocaleString("ru-RU")}</span></div><div className="discussion-body">{reply.body}</div></article>)}</div>})}</div><div className="discussion-compose">{discussionReplyTo&&<div className="discussion-replying">Ответ на сообщение <button onClick={()=>setDiscussionReplyTo(null)}>отменить</button></div>}{discussionParticipants.length>0&&<div className="discussion-mentions"><span>Упомянуть:</span>{discussionParticipants.filter(x=>x.user_id!==authUser.id).slice(0,8).map(person=><button type="button" key={person.user_id} onClick={()=>insertDiscussionMention(person)}>@{person.display_name}</button>)}</div>}<textarea value={discussionDraft} onChange={e=>setDiscussionDraft(e.target.value)} maxLength={4000} placeholder={discussionReplyTo?"Напишите ответ…":"Сообщение в чат…"} onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){e.preventDefault();void sendDiscussion()}}}/><button disabled={discussionBusy||!discussionDraft.trim()} onClick={()=>void sendDiscussion()}>Отправить</button><small>Ctrl+Enter · сообщения относятся только к этой доске</small></div></aside>}
+      {historyOpen&&<div className="access-backdrop history-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!historyBusy)setHistoryOpen(false)}}><section className="access-modal history-modal" role="dialog" aria-modal="true" aria-label="История версий"><div className="access-head"><div><h2>История изменений</h2><p>Кто и что менял между серверными сохранениями</p></div><button disabled={historyBusy} onClick={()=>setHistoryOpen(false)} aria-label="Закрыть">×</button></div>{historyBusy&&<div className="history-empty">Загружаем…</div>}{historyError&&<div className="access-notice">{historyError}</div>}{!historyBusy&&!historyError&&historyRows.length===0&&<div className="history-empty">История пока пуста. Изменения появятся после серверного сохранения доски.</div>}<div className="history-list">{historyRows.map((entry,index)=>{const changes=entry.added_count+entry.removed_count+entry.changed_count;return <div className="history-row history-rich-row" key={entry.id}><div className="history-main"><div className="history-title-line"><strong>{index===0?"Текущая сохранённая":`Версия №${entry.version}`}</strong><span className="history-author">{entry.saved_by_name||"Участник"}</span></div><span>{new Date(entry.saved_at).toLocaleString("ru-RU")} · объектов: {entry.item_count}{entry.ink_count ? " · штрихов: "+entry.ink_count : ""}</span><div className="history-delta" aria-label="Изменения версии">{entry.added_count>0&&<b className="history-added">+{entry.added_count} добавлено</b>}{entry.changed_count>0&&<b className="history-changed">~{entry.changed_count} изменено</b>}{entry.removed_count>0&&<b className="history-removed">−{entry.removed_count} удалено</b>}{changes===0&&<b className="history-unchanged">Без изменений объектов</b>}</div></div>{canEdit&&<button disabled={historyBusy||index===0} onClick={()=>void restoreHistoryVersion(entry)}>{index===0?"Текущая":"Восстановить"}</button>}</div>})}</div><p className="share-note">Хранятся последние 100 серверных снимков. Сводка сравнивает объекты с предыдущей версией. Восстановление создаёт новое состояние и не удаляет историю.</p></section></div>}
+      {recentChangesOpen&&recentChanges.length>0&&!publicPresentation&&
+         <aside className="board-recent-changes" aria-label="Последние изменения доски">
+           <div className="board-recent-head">
+             <div><strong>Последние изменения</strong><small>{recentNewCount>0 ? "Новых с прошлого посещения: "+recentNewCount : "Последние сохранённые версии"}</small></div>
+             <button type="button" aria-label="Скрыть последние изменения" onClick={()=>setRecentChangesOpen(false)}>×</button>
+           </div>
+           <div className="board-recent-list">
+             {recentChanges.map(entry=><div key={entry.id} className="board-recent-row">
+               <strong>{entry.saved_by_name||"Участник"}</strong>
+               <span>{new Date(entry.saved_at).toLocaleString("ru-RU")} · версия №{entry.version}</span>
+               <small>
+                 {entry.added_count+entry.changed_count+entry.removed_count>0
+                   ? [
+                      entry.added_count>0 ? "+"+entry.added_count+" добавлено" : "",
+                      entry.changed_count>0 ? entry.changed_count+" изменено" : "",
+                      entry.removed_count>0 ? entry.removed_count+" удалено" : ""
+                     ].filter(Boolean).join(" · ")
+                   : "Сохранённое состояние доски"}
+               </small>
+             </div>)}
+           </div>
+           <button type="button" className="board-recent-full" onClick={()=>{setRecentChangesOpen(false);void openHistory()}}>Вся история изменений</button>
+         </aside>}
+      {adminMaintenance && <div className="viewer-banner" style={{background:"#fff3d6",color:"#805200"}}>Режим администратора · изменения сохраняются от вашего имени</div>}
+       {!canEdit && !publicPresentation && <div className="viewer-banner">Только просмотр</div>}
+      {publicPresentation&&<div className="public-presentation-badge">Публичная презентация · ← → для навигации · F — полный экран</div>}
+      {!online&&<div className="offline-banner" role="status"><strong>Офлайн</strong><span>Можно продолжать работу с уже открытой локальной доской. Серверная синхронизация возобновится после подключения.</span></div>}{updateReady&&<div className="update-banner" role="status"><span>Доступна новая версия OnlineRepetitor.</span><button type="button" onClick={applyUpdate}>Обновить</button><button type="button" className="secondary" onClick={()=>setUpdateReady(null)}>Позже</button></div>}<header className="topbar">
+        <div className="topbar-left">
+          <button
+            className="back-to-boards board-home-button"
+            type="button"
+            onClick={() => {
+              void saveBeforeLeaving(false);
+            }}
+            disabled={leavingBoard}
+            title="Вернуться к списку досок"
+          >
+            {leavingBoard?"Сохраняем…":"← Доски"}
+          </button>
+          <input
+            aria-label="Название доски"
+            className="board-title"
+            value={title}
+            onChange={(e) => { if (canEdit) setTitle(e.target.value); }}
+            onKeyDown={(e) => e.stopPropagation()}
+            onFocus={() => {
+              setSpace(false);
+              end(true);
+            }}
+            maxLength={300}
+            readOnly={!canEdit}
+          />
+          {authUser.isGuest&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
+        </div>
+        <div className="topbar-right">{installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить OnlineRepetitor на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
+          {isRemoteBackendEnabled() && <details className="presence-menu">
+            <summary title={realtimeStatus === "online" ? "Подключено · пользователи на доске" : realtimeStatus === "reconnecting" ? "Подключение к доске..." : "Нет подключения"}>
+              <span className={`presence-live-dot connection-${realtimeStatus}`} aria-hidden="true"/>
+              <span className="presence-count">{visiblePresenceUsers.length}</span>
+            </summary>
+            <div className="presence-popover">
+              <div className="presence-popover-head">
+                <strong>Сейчас на доске</strong>
+                {boardSummary.role === "owner" && visiblePresenceUsers.some((user) => user.userId !== authUser.id) && <button
+                  type="button"
+                  className="presence-gather-button"
+                  title="Переместить всех остальных участников к вашей текущей области доски"
+                  onClick={() => {
+                    const rect = board.current?.getBoundingClientRect();
+                    if (!rect) return;
+
+                    const center = world({ x: rect.width / 2, y: rect.height / 2 });
+                    const targets = visiblePresenceUsers.filter((user) => user.userId !== authUser.id);
+
+                    for (const user of targets) {
+                      viewControlChannel.current?.sendFocus(user.userId, center.x, center.y, view.zoom);
+                    }
+
+                    setNotice(targets.length === 1 ? "Участник перемещён к вам" : `Участники перемещены к вам: ${targets.length}`);
+                  }}
+                >
+                  Собрать всех
+                </button>}
+              </div>
+              {visiblePresenceUsers.length ? visiblePresenceUsers.map((user) => <div className="presence-person" key={user.userId}>
+                <span className="presence-avatar" aria-hidden="true">{user.name.trim().charAt(0).toUpperCase() || "U"}</span>
+                <span className="presence-person-copy">
+                  <b>{user.name}{user.userId === authUser.id ? " · Вы" : ""}</b>
+                  <small>{BOARD_ROLE_LABELS[user.role]}{remoteWork[user.userId]?.editingId ? " · редактирует объект" : remoteWork[user.userId]?.selectedIds.length ? ` · выбрано: ${remoteWork[user.userId].selectedIds.length}` : ""}</small>
+                </span>
+                {boardSummary.role === "owner" && user.userId !== authUser.id && <button
+                  type="button"
+                  className="presence-focus-button"
+                  title={`Переместить экран пользователя ${user.name} к вашей текущей области доски`}
+                  onClick={() => {
+                    const rect = board.current?.getBoundingClientRect();
+                    if (!rect) return;
+                    const center = world({ x: rect.width / 2, y: rect.height / 2 });
+                    viewControlChannel.current?.sendFocus(user.userId, center.x, center.y, view.zoom);
+                    setNotice(`${user.name}: экран перемещён к вам`);
+                  }}
+                >
+                  Ко мне
+                </button>}
+              </div>) : adminHidden ? <div className="presence-person presence-person-empty"><span className="presence-person-copy"><b>Других участников нет</b><small>Невидимка включена · вы не отображаетесь другим</small></span></div> : <div className="presence-person">
+                <span className="presence-avatar" aria-hidden="true">{authUser.name.trim().charAt(0).toUpperCase() || "U"}</span>
+                <span className="presence-person-copy">
+                  <b>{authUser.name} · Вы</b>
+                  <small>{BOARD_ROLE_LABELS[boardSummary.role]}</small>
+                </span>
+              </div>}
+            </div>
+          </details>}
+          {remoteEditingCount > 0 && <span className="collab-editing-status" title="Сейчас другие участники редактируют объекты">
+            ✎ {remoteEditingCount}
+          </span>}
+          {boardSummary.role === "owner" && (liveLesson ? <div className="live-lesson-chip"><span className="live-lesson-dot"/><button className="live-lesson-main" onClick={()=>setLessonPanelOpen(true)} title="Открыть панель урока"><span><b>{liveLesson.studentName}</b><small>{liveLesson.topic||"Урок"} · {lessonTime}</small></span></button><button onClick={()=>setLessonFinishOpen(true)}>Завершить</button></div> : <button className="lesson-button start-live-lesson compact-top-action" aria-label="Начать урок" title="Начать урок" onClick={()=>{setLessonStudentId(lessonStudents[0]?.userId||"");setLessonOpen(true)}}><svg className="top-action-svg play-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5 18 12 8 18.5Z"/></svg></button>)}
+          {boardSummary.role === "owner" && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
+          {isRemoteBackendEnabled() && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
+          <details className="topbar-more-menu">
+            <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
+            <div className="topbar-more-popover">
+              <div className="topbar-menu-account">
+                <span className="account-avatar" aria-hidden="true">{authUser.name.trim().charAt(0).toUpperCase() || "U"}</span>
+                <span><strong>{authUser.name}</strong><small>{BOARD_ROLE_LABELS[boardSummary.role]}{authUser.email?` · ${authUser.email}`:""}</small></span>
+              </div>
+              <div className="topbar-menu-section">
+                {(quizItems.length>0||flashcardItems.length>0)&&<button onClick={()=>setStudyOpen(true)}><Icon name="quiz" size={16}/><span>Учебный режим</span><b>{quizItems.length+flashcardItems.length}</b></button>}
+                <button onClick={()=>void openDiscussions()}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b>{chatUnread}</b>}</button>
+                <button onClick={()=>void openHistory()}><Icon name="reset" size={16}/><span>История изменений</span></button>
+              </div>
+              <div className="topbar-menu-section">
+                <button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>
+                {previous&&<button onClick={()=>{if(window.confirm("Вернуть доску, сохранённую перед последним импортом? Текущие изменения заменятся.")){applyDocument(previous);setNotice("Доска до импорта восстановлена")}}}><Icon name="undo" size={16}/><span>Вернуть до импорта</span></button>}
+                <button onClick={()=>void exportBoard()}><Icon name="download" size={16}/><span>Скачать копию</span></button>
+              </div>
+              {isAppAdmin && <div className="topbar-menu-section">
+                <button type="button" onClick={()=>setDeveloperSettingsOpen(true)}><Icon name="settings" size={16}/><span>Настройки разработчика</span></button>
+              </div>}
+              <div className="topbar-menu-section">
+                <button className="topbar-menu-danger" disabled={leavingBoard} onClick={()=>void saveBeforeLeaving(true)}><Icon name="close" size={16}/><span>Выйти из аккаунта</span></button>
+              </div>
+            </div>
+          </details>
+          <input
+            ref={mediaInput}
+            type="file"
+            accept="image/*,.pdf,application/pdf"
+            multiple
+            hidden
+            aria-label="Добавить фото или PDF"
+            onChange={async (e) => {
+              const files = Array.from(e.target.files ?? []) as File[];
+              e.target.value = "";
+              if (!files.length) return;
+              try {
+                for (let i = 0; i < files.length; i++) await addMediaFile(files[i], undefined, i * 24);
+                setNotice(files.length === 1 ? "Файл добавлен на доску" : `Добавлено файлов: ${files.length}`);
+              } catch (error) {
+                setNotice(error instanceof Error ? error.message : "Не удалось добавить файл");
+              }
+            }}
+          />
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".orboard,.json,application/json"
+            hidden
+            aria-label="Файл резервной копии"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void importBoard(file);
+            }}
+          />
+          <button
+            className="top-button"
+            onClick={() => void exportItemsToPng("all")}
+            title="Экспорт всей доски в PNG · Ctrl+Shift+E без выделения"
+            aria-label="Экспорт всей доски в PNG"
+          >
+            <Icon name="download" />
+          </button>
+          <button
+            className={`top-button ${templatesOpen ? "active" : ""}`}
+            onClick={() => { setTemplatesOpen((value) => !value); setSearchOpen(false); setLayersOpen(false); setCommentsOpen(false); setShortcutsOpen(false); }}
+            title="Шаблоны уроков и схем"
+            aria-label="Шаблоны"
+          >
+            <Icon name="templates" />
+          </button>
+          <button
+            className={`top-button ${shortcutsOpen ? "active" : ""}`}
+            onClick={() => { setShortcutsOpen((value) => !value); setSearchOpen(false); setLayersOpen(false); setCommentsOpen(false); setTemplatesOpen(false); }}
+            title="Горячие клавиши · F1"
+            aria-label="Горячие клавиши"
+          >
+            <Icon name="keyboard" />
+          </button>
+          <button
+            className={`top-button comments-top-button ${commentsOpen ? "active" : ""}`}
+            onClick={() => { setCommentsOpen((value) => !value); setSearchOpen(false); setLayersOpen(false); setTemplatesOpen(false); setShortcutsOpen(false); }}
+            title="Комментарии"
+            aria-label={`Комментарии${openComments.length ? ` · открыто ${openComments.length}` : ""}`}
+          >
+            <Icon name="comments" />
+            {openComments.length > 0 && <span className="top-badge">{Math.min(99, openComments.length)}</span>}
+          </button>
+          <button
+            className={`top-button ${searchOpen ? "active" : ""}`}
+            onClick={() => { setSearchOpen((value) => !value); setLayersOpen(false); setTemplatesOpen(false); setCommentsOpen(false); setShortcutsOpen(false); }}
+            title="Поиск по доске · Ctrl+F"
+            aria-label="Поиск по доске"
+          >
+            <Icon name="search" />
+          </button>
+          <button
+            className="top-button"
+            onClick={startPresentation}
+            title="Режим показа"
+            aria-label="Режим показа"
+          >
+            <Icon name="present" />
+          </button>
+          <button
+            className={`top-button ${layersOpen ? "active" : ""}`}
+            onClick={() => { setLayersOpen((value) => !value); setSearchOpen(false); setTemplatesOpen(false); setCommentsOpen(false); setShortcutsOpen(false); }}
+            title="Слои и объекты"
+            aria-label="Открыть панель слоёв"
+          >
+            <Icon name="layers" />
+          </button>
+          <button
+            className="top-button"
+            disabled={index.current === 0}
+            onClick={() => undo(-1)}
+            title="Отменить · Ctrl+Z"
+          >
+            <Icon name="undo" />
+          </button>
+          <button
+            className="top-button"
+            disabled={index.current === history.current.length - 1}
+            onClick={() => undo(1)}
+            title="Повторить · Ctrl+Y"
+          >
+            <Icon name="redo" />
+          </button>
+        </div>
+      </header>
+      <main className="workspace">
+        <div className="mobile-undo-redo" aria-label="История изменений">
+          <button type="button" disabled={index.current === 0} onClick={() => undo(-1)} aria-label="Отменить"><Icon name="undo" size={19}/></button>
+          <button type="button" disabled={index.current === history.current.length - 1} onClick={() => undo(1)} aria-label="Повторить"><Icon name="redo" size={19}/></button>
+        </div>
+        {presentation && (
+          <div className="presentation-controls" onPointerDown={(e) => e.stopPropagation()}>
+            <button disabled={!presentationFrames.length} onClick={() => stepPresentation(-1)} title="Предыдущий фрейм · ← / PageUp"><Icon name="chevron-left" size={18} /></button>
+            <div className="presentation-frame-label">
+              <strong>{activePresentationFrame?.text || (presentationFrames.length ? "Без названия" : "Вся доска")}</strong>
+              <span>{presentationFrames.length ? `${presentationFrameIndex + 1} / ${presentationFrames.length}` : "Фреймы не созданы"}</span>
+              {presentationFrames.length>0&&<div className="presentation-progress" title={`Слайд ${presentationFrameIndex+1} из ${presentationFrames.length}`}><i style={{width:`${((presentationFrameIndex+1)/presentationFrames.length)*100}%`}}/></div>}
+            </div>
+            <button disabled={!presentationFrames.length} onClick={() => stepPresentation(1)} title="Следующий фрейм · → / PageDown"><Icon name="chevron-right" size={18} /></button>
+            <button className={presentationSlidesOpen ? "active" : ""} disabled={!presentationFrames.length} onClick={() => setPresentationSlidesOpen((value) => !value)} title="Список слайдов"><Icon name="slides" size={17}/></button>
+            <div className={`presentation-timer presentation-author-only ${presentationTimerMode === "countdown" ? "countdown" : ""}`} title="Таймер · T переключает секундомер / обратный отсчёт">
+              <button className="timer-mode-toggle" onClick={() => setPresentationTimerMode((mode) => mode === "elapsed" ? "countdown" : "elapsed")} title="Переключить режим таймера · T"><Icon name="timer" size={15}/></button>
+              <strong>{formatPresentationTime(presentationTimerMode === "elapsed" ? presentationElapsed : presentationCountdownRemaining)}</strong>
+              {presentationTimerMode === "countdown" && <label className="countdown-minutes" title="Минуты обратного отсчёта"><input type="number" min="1" max="180" value={Math.max(1, Math.round(presentationCountdownTotal / 60))} onChange={(e) => { const seconds = Math.max(60, Math.min(10800, (Number(e.target.value) || 1) * 60)); setPresentationCountdownTotal(seconds); setPresentationCountdownRemaining(seconds); }}/><span>м</span></label>}
+              <button onClick={() => setPresentationTimerRunning((value) => !value)} title={presentationTimerRunning ? "Пауза · P" : "Продолжить · P"}><Icon name={presentationTimerRunning ? "pause" : "play"} size={14}/></button>
+              <button onClick={() => presentationTimerMode === "elapsed" ? setPresentationElapsed(0) : setPresentationCountdownRemaining(presentationCountdownTotal)} title="Сбросить таймер"><Icon name="reset" size={14}/></button>
+            </div>
+            <button className={`presentation-author-only ${presentationLaser ? "active laser-active" : ""}`} onClick={() => { setPresentationLaser((value) => !value); setPresentationSpotlight(false); setPresentationLaserPos(null); }} title="Лазерная указка · L"><Icon name="laser" size={17}/></button>
+            <button className={`presentation-author-only ${presentationSpotlight ? "active" : ""}`} onClick={() => { setPresentationSpotlight((value) => !value); setPresentationLaser(false); setPresentationLaserPos(null); setPresentationSpotlightPos({ x: (board.current?.clientWidth ?? 800) / 2, y: (board.current?.clientHeight ?? 600) / 2 }); }} title="Прожектор · O · [ ] меняют размер"><Icon name="spotlight" size={17}/></button>
+            {presentationSpotlight && <div className="presentation-spotlight-size presentation-author-only" title="Размер прожектора · [ / ]"><button onClick={() => setPresentationSpotlightRadius((value) => Math.max(80, value - 20))}>−</button><strong>{presentationSpotlightRadius}</strong><button onClick={() => setPresentationSpotlightRadius((value) => Math.min(360, value + 20))}>+</button></div>}
+            {presentationQuizzes.length > 0 && <button className={`presentation-author-only ${presentationQuizzesRevealed ? "active" : ""}`} onClick={togglePresentationQuizAnswers} title="Показать / скрыть правильные ответы текущего слайда"><Icon name="quiz" size={17}/></button>}
+            {presentationFlashcards.length > 0 && <button className={`presentation-author-only ${presentationFlashcardsFlipped ? "active" : ""}`} onClick={togglePresentationFlashcards} title={presentationFlashcardsFlipped ? "Показать вопросы всех карточек" : "Показать ответы всех карточек"}><Icon name="flashcard" size={17}/></button>}
+            {(presentationQuizzes.length > 0 || presentationFlashcards.length > 0 || presentationChecklists.length > 0 || presentationCovers.length > 0) && <button className="presentation-author-only" onClick={resetPresentationInteractions} title="Сбросить все интерактивные задания текущего слайда · R"><Icon name="reset" size={16}/></button>}
+            <button className={`presentation-author-only ${presentationBlackout ? "active" : ""}`} onClick={() => setPresentationBlackout((value) => !value)} title="Затемнить экран · B"><Icon name="eye-off" size={17}/></button>
+            {activePresentationFrame && <button className={`presentation-author-only ${presentationNotesOpen ? "active" : ""}`} onClick={() => setPresentationNotesOpen((value) => !value)} title="Заметки к текущему фрейму"><Icon name="label" size={17}/></button>}
+            {activePresentationFrame && <button className="presentation-author-only" onClick={() => void exportItemsToPng("frame", activePresentationFrame.id)} title="Скачать текущий фрейм PNG"><Icon name="download" size={17}/></button>}
+            <button onClick={() => void toggleFullscreen()} title="Полноэкранный режим"><Icon name="fullscreen" size={17}/></button>
+            <span className="presentation-controls-separator presentation-author-only" />
+            <button className="presentation-author-only" onClick={() => { setPresentation(false); setPresentationTimerRunning(false); setPresentationLaser(false); setPresentationLaserPos(null); setPresentationSpotlight(false); setPresentationSpotlightPos(null); setPresentationBlackout(false); }} title="Выйти из режима показа · Esc"><Icon name="close" size={18} /></button>
+          </div>
+        )}
+        {presentation && presentationSlidesOpen && presentationFrames.length > 0 && (
+          <aside className="presentation-slides-panel" onPointerDown={(e) => e.stopPropagation()}>
+            <div className="presentation-slides-head"><strong>Слайды</strong><span>{presentationFrames.length}</span></div>
+            <div className="presentation-slides-list">{presentationFrames.map((frame, indexValue) => (
+              <button key={frame.id} className={indexValue === presentationFrameIndex ? "active" : ""} onClick={() => { showPresentationFrame(indexValue); setPresentationSlidesOpen(false); }}>
+                <span>{indexValue + 1}</span><strong>{frame.text || "Без названия"}</strong>
+              </button>
+            ))}</div>
+          </aside>
+        )}
+        {presentation && !publicPresentation && presentationNotesOpen && activePresentationFrame && (
+          <div className="presentation-notes" onPointerDown={(e) => e.stopPropagation()}>
+            <div><strong>Заметки · {activePresentationFrame.text || "Без названия"}</strong><button onClick={() => setPresentationNotesOpen(false)} aria-label="Скрыть заметки"><Icon name="close" size={14}/></button></div>
+            <p>{activePresentationFrame.notes?.trim() || "Для этого фрейма заметки ещё не добавлены."}</p>
+          </div>
+        )}
+        {commandPaletteOpen && (() => {
+          const commands: [string,string,()=>void,Tool?][] = [
+            ["Рука","Навигация",() => setTool("hand"),"hand"],["Выделение","Инструмент",() => setTool("select"),"select"],["Петля","Инструмент",() => setTool("lasso"),"lasso"],
+            ["Карандаш","Рисование",() => setTool("pen"),"pen"],["Маркер","Рисование",() => setTool("marker"),"marker"],["Ластик","Рисование",() => setTool("eraser"),"eraser"],
+            ["Текст","Создание",() => setTool("text"),"text"],["Стикер","Создание",() => setTool("sticky"),"sticky"],["Фигура","Создание",() => setTool("shape"),"shape"],
+            ["Связь","Создание",() => setTool("connector"),"connector"],["Фрейм","Создание",() => setTool("frame"),"frame"],["Таблица","Интерактив",() => setTool("table"),"table"],
+            ["Формула","Интерактив",() => setTool("formula"),"formula"],["График","Интерактив",() => setTool("graph"),"graph"],["Чек-лист","Задание",() => setTool("checklist"),"checklist"],
+            ["Мини-тест","Задание",() => setTool("quiz"),"quiz"],["Карточка вопрос–ответ","Задание",() => setTool("flashcard"),"flashcard"],["Шторка","Интерактив",() => setTool("cover"),"cover"],
+            ["Фото / PDF","Материалы",() => setTool("media"),"media"],["Поиск по доске","Панель",() => setSearchOpen(true)],["Шаблоны","Панель",() => setTemplatesOpen(true)],
+            ["Комментарии","Панель",() => setCommentsOpen(true)],["Слои","Панель",() => setLayersOpen(true)],["Горячие клавиши","Справка",() => setShortcutsOpen(true)],
+            ["Режим показа","Презентация",() => { setPresentation(true); setPresentationFrameIndex(0); }],
+          ];
+          const q = commandPaletteQuery.trim().toLocaleLowerCase("ru");
+          const filtered = commands.filter(([label,hint,,toolId]) => (!toolId || toolAllowedForRole(toolId)) && (!q || `${label} ${hint}`.toLocaleLowerCase("ru").includes(q)));
+          const execute = (run: () => void) => { setCommandPaletteOpen(false); setCommandPaletteQuery(""); setCommandPaletteIndex(0); run(); };
+          return <div className="command-palette-backdrop" onPointerDown={(e) => { if (e.target === e.currentTarget) { setCommandPaletteOpen(false); setCommandPaletteQuery(""); setCommandPaletteIndex(0); } }}>
+            <section className="command-palette" role="dialog" aria-modal="true" aria-label="Быстрые команды">
+              <div className="command-palette-search"><Icon name="search" size={18}/><input value={commandPaletteQuery} onChange={(e) => { setCommandPaletteQuery(e.target.value); setCommandPaletteIndex(0); }} placeholder="Найти инструмент или действие…" onKeyDown={(e) => {
+                if (e.key === "Escape") { e.preventDefault(); setCommandPaletteOpen(false); setCommandPaletteQuery(""); setCommandPaletteIndex(0); return; }
+                if (e.key === "ArrowDown" && filtered.length) { e.preventDefault(); setCommandPaletteIndex((value) => (value + 1) % filtered.length); return; }
+                if (e.key === "ArrowUp" && filtered.length) { e.preventDefault(); setCommandPaletteIndex((value) => (value - 1 + filtered.length) % filtered.length); return; }
+                if (e.key === "Enter" && filtered[commandPaletteIndex]) { e.preventDefault(); execute(filtered[commandPaletteIndex][2]); }
+              }}/><kbd>Esc</kbd></div>
+              <div className="command-palette-list">{filtered.length ? filtered.map(([label,hint,run],index) => <button key={`${label}:${hint}`} className={index === commandPaletteIndex ? "suggested" : ""} onMouseEnter={() => setCommandPaletteIndex(index)} onClick={() => execute(run)}><span><strong>{label}</strong><small>{hint}</small></span>{index === commandPaletteIndex && <kbd>Enter</kbd>}</button>) : <div className="command-palette-empty">Ничего не найдено</div>}</div>
+              <div className="command-palette-footer"><span className="command-palette-desktop-hint">Ctrl K</span><span>Начните вводить название инструмента · коснитесь результата для выбора</span></div>
+            </section>
+          </div>;
+        })()}
+        {notice && (
+          <div className="notice" role="status">
+            {notice}
+            <button
+              aria-label="Закрыть уведомление"
+              onClick={() => setNotice("")}
+            >
+              <Icon name="close" size={15} />
+            </button>
+          </div>
+        )}
+        {shortcutsOpen && (
+          <aside className="shortcuts-panel" aria-label="Горячие клавиши">
+            <div className="panel-heading">
+              <div><strong>Горячие клавиши</strong><span>Работают по физическим клавишам и не зависят от раскладки</span></div>
+              <button onClick={() => setShortcutsOpen(false)} aria-label="Закрыть подсказку"><Icon name="close" size={17}/></button>
+            </div>
+            <div className="shortcuts-grid">
+              <section><strong>Инструменты</strong>
+                {[["V / М","Выделение"],["H / Р","Рука"],["Q / Й","Петля"],["P / З","Карандаш"],["M / Ь","Маркер"],["E / У","Ластик"],["C / С","Связь"],["F / А","Фрейм"],["T / Е","Текст"],["S / Ы","Стикер"],["R / К","Фигуры"],["B / И","Таблица"],["X / Ч","Формула"],["K / Л","Чек-лист"],["G / П","Мини-тест"],["J / О","Карточка вопрос–ответ"],["U / Г","Шторка / открыть ответ"],["I / Ш","Фото / PDF"]].map(([key,label]) => <div key={key}><kbd>{key}</kbd><span>{label}</span></div>)}
+              </section>
+              <section><strong>Редактирование</strong>
+                {[["Ctrl+Z","Отменить"],["Ctrl+Y","Повторить"],["Ctrl+C / V","Копировать / вставить"],["Ctrl+D","Дублировать"],["Ctrl+G","Сгруппировать"],["Ctrl+Shift+G","Разгруппировать"],["Delete","Удалить"],["Enter / F2","Редактировать"],["Alt+← / →","Повернуть на 90°"],["Shift+стрелки","Сдвиг на 10 px"],["Ctrl+F","Поиск"],["Ctrl+K","Быстрые команды"],["Ctrl+Shift+E","Экспорт PNG"]].map(([key,label]) => <div key={key}><kbd>{key}</kbd><span>{label}</span></div>)}
+              </section>
+              <section><strong>Режим показа</strong>
+                {[["← / →","Предыдущий / следующий слайд"],["Home / End","Первый / последний"],["L","Лазер"],["O","Прожектор"],["[ / ]","Размер прожектора"],["P","Пауза таймера"],["T","Секундомер / отсчёт"],["B","Затемнить экран"],["R","Сбросить задания слайда"],["Esc","Выйти из показа"],["F1","Эта памятка"]].map(([key,label]) => <div key={key}><kbd>{key}</kbd><span>{label}</span></div>)}
+              </section>
+            </div>
+          </aside>
+        )}
+        {templatesOpen && (
+          <aside className="templates-panel" aria-label="Шаблоны">
+            <div className="panel-heading">
+              <div><strong>Шаблоны</strong><span>Готовые заготовки для урока и обсуждения</span></div>
+              <button onClick={() => setTemplatesOpen(false)} aria-label="Закрыть шаблоны"><Icon name="close" size={17} /></button>
+            </div>
+            <div className="template-grid">
+              <button onClick={() => insertTemplate("lesson")}><span className="template-preview lesson"><i/><i/><i/><i/></span><strong>План урока</strong><small>цель, идея, практика, итог</small></button>
+              <button onClick={() => insertTemplate("mindmap")}><span className="template-preview mindmap"><i/><i/><i/><i/><b/></span><strong>Карта идей</strong><small>центр и четыре связанные ветки</small></button>
+              <button onClick={() => insertTemplate("compare")}><span className="template-preview compare"><i/><i/><b>VS</b></span><strong>Сравнение</strong><small>два подхода рядом</small></button>
+              <button onClick={() => insertTemplate("brainstorm")}><span className="template-preview brainstorm">{Array.from({length:8},(_,i)=><i key={i}/>)}</span><strong>Мозговой штурм</strong><small>поле для восьми идей</small></button>
+              <button onClick={() => insertTemplate("checklist")}><span className="template-preview checklist">{Array.from({length:4},(_,i)=><i key={i}/>)}</span><strong>Проверка понимания</strong><small>чек-лист, вопрос и следующий шаг</small></button>
+              <button onClick={() => insertTemplate("quiz")}><span className="template-preview quiz"><b>?</b><i/><i/><i/></span><strong>Быстрый опрос</strong><small>вопрос, варианты и обсуждение ответа</small></button>
+              <button onClick={() => insertTemplate("cards")}><span className="template-preview cards"><b>Q</b><i/><b>A</b></span><strong>Карточки для повторения</strong><small>шесть вопрос–ответ карточек</small></button>
+            </div>
+          </aside>
+        )}
+        {commentsOpen && (
+          <aside className="comments-panel" aria-label="Комментарии">
+            <div className="panel-heading">
+              <div><strong>Комментарии</strong><span>{openComments.length} открыто · {comments.length} всего</span></div>
+              <button onClick={() => setCommentsOpen(false)} aria-label="Закрыть комментарии"><Icon name="close" size={17} /></button>
+            </div>
+            <button className="new-comment-button" onClick={() => { setTool("comment"); setCommentsOpen(false); setNotice("Щёлкните по объекту или пустому месту, чтобы добавить комментарий"); }}><Icon name="plus" size={15}/> Новый комментарий</button>
+            <div className="comments-list">
+              {[...comments].reverse().map((comment) => (
+                <div key={comment.id} className={`comment-list-row ${comment.resolved ? "resolved" : ""}`}>
+                  <button className="comment-list-main" onClick={() => focusItem(comment)}>
+                    <span className="comment-list-status"><Icon name={comment.resolved ? "check" : "comment"} size={15}/></span>
+                    <span><strong>{comment.text.trim().replace(/\s+/g," ").slice(0,72) || "Пустой комментарий"}</strong><small>{comment.commentTargetId ? "Привязан к объекту" : "На доске"}</small></span>
+                  </button>
+                  <button className="comment-resolve-button" title={comment.resolved ? "Открыть снова" : "Отметить решённым"} onClick={() => commit(itemsRef.current.map((item) => item.id === comment.id ? { ...item, resolved: !comment.resolved } : item))}><Icon name="check" size={14}/></button>
+                </div>
+              ))}
+              {!comments.length && <div className="comments-empty">Комментариев пока нет. Добавьте замечание прямо к объекту или на свободное место.</div>}
+            </div>
+          </aside>
+        )}
+        {searchOpen && (
+          <aside className="search-panel" aria-label="Поиск по доске">
+            <div className="search-panel-header">
+              <div>
+                <strong>Поиск</strong>
+                <span>{searchQuery.trim() ? `${searchResults.length} найдено` : "Текст, вопросы, карточки, комментарии, таблицы, формулы, чек-листы, фреймы и файлы"}</span>
+              </div>
+              <button onClick={() => setSearchOpen(false)} aria-label="Закрыть поиск"><Icon name="close" size={17} /></button>
+            </div>
+            <input
+              className="board-search-input"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.code === "Escape") { e.stopPropagation(); setSearchOpen(false); } }}
+              placeholder="Найти на доске…"
+             
+            />
+            <div className="search-results">
+              {searchQuery.trim() && searchResults.map((item) => (
+                <button key={item.id} className="search-result" onClick={() => focusItem(item)}>
+                  <span className={`search-kind search-kind-${item.kind}`}><Icon name={itemIconName(item)} size={16} /></span>
+                  <span><strong>{itemLabel(item)}</strong><small>{item.name && item.text ? item.name : itemKindLabel(item)}</small></span>
+                </button>
+              ))}
+              {searchQuery.trim() && !searchResults.length && <div className="search-empty">Ничего не найдено</div>}
+              {!searchQuery.trim() && <div className="search-empty">Начните вводить слово или название файла</div>}
+            </div>
+          </aside>
+        )}
+        {layersOpen && (
+          <aside className="layers-panel" aria-label="Слои и объекты">
+            <div className="layers-panel-header">
+              <div>
+                <strong>Слои</strong>
+                <span>{visibleObjects.length} видно · {objectCount} всего</span>
+              </div>
+              <button onClick={() => setLayersOpen(false)} aria-label="Закрыть слои"><Icon name="close" size={17} /></button>
+            </div>
+            <div className="layers-list">
+              {drawingCount>80 && <div className="layers-empty">Рисунки: {drawingCount} штрихов. В списке показаны последние 80; остальные можно выделить петлёй или нажатием на штрих.</div>}
+              {layerRows.map((item) => {
+                const family = item.groupId ? items.filter((candidate) => candidate.groupId === item.groupId) : [item];
+                const isSelected = family.every((candidate) => selected.includes(candidate.id));
+                const familyHidden = family.every((candidate) => candidate.hidden);
+                return (
+                  <div key={item.groupId ?? item.id} className={`layer-row ${isSelected ? "selected" : ""} ${familyHidden ? "hidden" : ""}`}>
+                    <button
+                      className="layer-main"
+                      onClick={() => {
+                        finishEdit();
+                        setTool("select");
+                        setSelected(family.map((candidate) => candidate.id));
+                      }}
+                      title={itemLabel(item)}
+                    >
+                      <span className="layer-index">{items.indexOf(item) + 1}</span>
+                      <span className={`layer-kind layer-kind-${item.kind}`}><Icon name={itemIconName(item)} size={14} /></span>
+                      <span className="layer-name">{itemLabel(item)}</span>
+                      {item.groupId && <span className="layer-group">G</span>}
+                    </button>
+                    <button
+                      className={`layer-visibility ${familyHidden ? "inactive" : ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const ids = new Set(family.map((candidate) => candidate.id));
+                        const shouldHide = family.some((candidate) => !candidate.hidden);
+                        commit(itemsRef.current.map((candidate) => ids.has(candidate.id) ? { ...candidate, hidden: shouldHide } : candidate));
+                        if (shouldHide) setSelected((current) => current.filter((id) => !ids.has(id)));
+                      }}
+                      title={familyHidden ? "Показать" : "Скрыть"}
+                      aria-label={familyHidden ? "Показать объект" : "Скрыть объект"}
+                    >
+                      <Icon name={familyHidden ? "eye-off" : "eye"} size={15} />
+                    </button>
+                    <button
+                      className={`layer-lock ${item.locked ? "active" : ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const ids = new Set(family.map((candidate) => candidate.id));
+                        const shouldLock = family.some((candidate) => !candidate.locked);
+                        commit(itemsRef.current.map((candidate) => ids.has(candidate.id) ? { ...candidate, locked: shouldLock } : candidate));
+                      }}
+                      title={item.locked ? "Разблокировать" : "Заблокировать"}
+                      aria-label={item.locked ? "Разблокировать объект" : "Заблокировать объект"}
+                    >
+                      <Icon name={item.locked ? "lock" : "unlock"} size={15} />
+                    </button>
+                  </div>
+                );
+              })}
+              {!objectCount && <div className="layers-empty">На доске пока нет объектов</div>}
+            </div>
+          </aside>
+        )}
+        {frameNotesEditorId && (
+          <div className="notes-editor-backdrop" onPointerDown={() => { setFrameNotesEditorId(null); setFrameNotesDraft(""); }}>
+            <div className="notes-editor-modal" role="dialog" aria-modal="true" aria-label="Заметки к фрейму" onPointerDown={(e) => e.stopPropagation()}>
+              <div className="notes-editor-header">
+                <div><strong>Заметки к фрейму</strong><span>Видны только вам при подготовке и во время показа</span></div>
+                <button onClick={() => { setFrameNotesEditorId(null); setFrameNotesDraft(""); }} aria-label="Закрыть"><Icon name="close" size={17}/></button>
+              </div>
+              <textarea value={frameNotesDraft} onChange={(e) => setFrameNotesDraft(e.target.value)} placeholder="Подсказки, вопросы аудитории, тайминг, важные акценты…" />
+              <div className="notes-editor-footer"><span>{frameNotesDraft.length} / 20000</span><div><button className="secondary" onClick={() => { setFrameNotesEditorId(null); setFrameNotesDraft(""); }}>Отмена</button><button className="primary" onClick={saveFrameNotes}><Icon name="check" size={15}/> Сохранить</button></div></div>
+            </div>
+          </div>
+        )}
+        
+        {graphEditorId && graphDraft && (<div className="graph-editor-backdrop" onPointerDown={()=>saveGraphEditor()}><div className="graph-editor-modal compact-editor" role="dialog" aria-modal="true" onPointerDown={e=>e.stopPropagation()}><div className="graph-editor-header"><div><strong>График и координатная плоскость</strong><span>Пустое поле функции = только система координат</span></div><button onClick={()=>saveGraphEditor()}><Icon name="close" size={17}/></button></div><div className="graph-editor-body"><div className="graph-editor-form"><label><span>Функция</span><input value={graphDraft.expression} onChange={e=>setGraphDraft({...graphDraft,expression:e.target.value})} placeholder="Например: x^2 - 4*x + 3"/></label><small>Поддерживаются + − × ÷ ^, скобки, sin, cos, tan, sqrt, abs, exp, ln, log.</small><div className="graph-ranges"><label>X min<input type="number" value={graphDraft.xMin} onChange={e=>setGraphDraft({...graphDraft,xMin:Number(e.target.value)})}/></label><label>X max<input type="number" value={graphDraft.xMax} onChange={e=>setGraphDraft({...graphDraft,xMax:Number(e.target.value)})}/></label><label>Y min<input type="number" value={graphDraft.yMin} onChange={e=>setGraphDraft({...graphDraft,yMin:Number(e.target.value)})}/></label><label>Y max<input type="number" value={graphDraft.yMax} onChange={e=>setGraphDraft({...graphDraft,yMax:Number(e.target.value)})}/></label></div><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.grid} onChange={e=>setGraphDraft({...graphDraft,grid:e.target.checked})}/> Сетка</label><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.axisLabels} onChange={e=>setGraphDraft({...graphDraft,axisLabels:e.target.checked})}/> Числа на осях</label><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.snap} onChange={e=>setGraphDraft({...graphDraft,snap:e.target.checked})}/> Привязка точек к сетке</label><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.connectPoints} onChange={e=>setGraphDraft({...graphDraft,connectPoints:e.target.checked})}/> Соединять точки линией</label><label><span>Шаг сетки</span><select value={graphDraft.gridStep} onChange={e=>setGraphDraft({...graphDraft,gridStep:Number(e.target.value)})}><option value={0.5}>0,5</option><option value={1}>1</option><option value={2}>2</option><option value={5}>5</option></select></label><div className="graph-points-head"><strong>Точки</strong><button type="button" onClick={()=>setGraphDraft({...graphDraft,points:[...graphDraft.points,{x:0,y:0,label:"",color:"#111111"}]})}>+ Точка</button></div>{graphDraft.points.map((p,i)=><div className="graph-point-editor" key={i}><input type="number" step="0.5" value={p.x} onChange={e=>setGraphDraft({...graphDraft,points:graphDraft.points.map((q,j)=>j===i?{...q,x:Number(e.target.value)}:q)})}/><input type="number" step="0.5" value={p.y} onChange={e=>setGraphDraft({...graphDraft,points:graphDraft.points.map((q,j)=>j===i?{...q,y:Number(e.target.value)}:q)})}/><input className="graph-point-color" type="color" value={p.color??"#111111"} aria-label="Цвет точки" onChange={e=>setGraphDraft({...graphDraft,points:graphDraft.points.map((q,j)=>j===i?{...q,color:e.target.value}:q)})}/><button onClick={()=>setGraphDraft({...graphDraft,points:graphDraft.points.filter((_,j)=>j!==i)})}>×</button></div>)}</div><div className="graph-editor-preview"><GraphView item={{id:"preview",kind:"graph",x:0,y:0,width:600,height:360,text:"",graphExpression:graphDraft.expression,graphConnectPoints:graphDraft.connectPoints,graphXMin:graphDraft.xMin,graphXMax:graphDraft.xMax,graphYMin:graphDraft.yMin,graphYMax:graphDraft.yMax,graphGrid:graphDraft.grid,graphPoints:graphDraft.points,graphShowLabels:graphDraft.showLabels,graphSnap:graphDraft.snap,graphAxisLabels:graphDraft.axisLabels,graphGridStep:graphDraft.gridStep}} onPointMove={(i,x,y)=>setGraphDraft(current=>current?{...current,points:current.points.map((p,j)=>j===i?{...p,x,y}:p)}:current)} onAddPoint={(x,y)=>setGraphDraft(current=>current?{...current,points:[...current.points,{x,y,label:"",color:"#111111"}]}:current)} onRemovePoint={(index)=>setGraphDraft(current=>current?{...current,points:current.points.filter((_,i)=>i!==index)}:current)}/><span className="graph-preview-hint">Двойное нажатие: пустое место — добавить точку, точка — удалить</span></div></div><div className="graph-editor-footer"><span>{graphDraft.expression.trim()?"Функция будет построена":"Будет сохранена пустая система координат"}</span><div><button className="secondary" onClick={closeGraphEditor}>Отмена</button><button className="primary" onClick={saveGraphEditor}>Сохранить</button></div></div></div></div>)}
+        {formulaEditorId && formulaDraft && (
+          <div
+            className="formula-editor-backdrop"
+            onPointerDown={() => closeFormulaEditor()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFormulaEditor(); }
+              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveFormulaEditor(); }
+            }}
+          >
+            <div className="formula-editor-modal" role="dialog" aria-modal="true" aria-label="Редактор формулы" onPointerDown={(e) => e.stopPropagation()}>
+              <div className="formula-editor-header">
+                <div>
+                  <strong>Редактор формулы</strong>
+                  <span>Дроби, корни, индексы, греческие буквы и математические символы</span>
+                </div>
+                <button onClick={() => closeFormulaEditor()} aria-label="Закрыть"><Icon name="close" size={17}/></button>
+              </div>
+
+              <div className="formula-editor-main">
+                <section className="formula-editor-compose">
+                  <div className="formula-source-head">
+                    <label htmlFor="formula-source">Запись</label>
+                    <div className="formula-size-editor">
+                      <span>Размер</span>
+                      <input
+                        type="range"
+                        min="12"
+                        max="72"
+                        step="1"
+                        value={formulaDraft.fontSize}
+                        onChange={(e) => setFormulaDraft({ ...formulaDraft, fontSize: Number(e.target.value) })}
+                        aria-label="Размер шрифта формулы"
+                      />
+                      <input
+                        className="formula-size-number"
+                        type="number"
+                        min="12"
+                        max="96"
+                        value={formulaDraft.fontSize}
+                        onChange={(e) => setFormulaDraft({ ...formulaDraft, fontSize: Math.max(12, Math.min(96, Number(e.target.value) || 12)) })}
+                        aria-label="Размер формулы в пикселях"
+                      />
+                      <span>px</span>
+                    </div>
+                  </div>
+                  <textarea
+                    id="formula-source"
+                    ref={formulaInput}
+                    className="formula-source-input"
+                    value={formulaDraft.text}
+                    onChange={(e) => setFormulaDraft({ ...formulaDraft, text: e.target.value.slice(0, 10000) })}
+                    spellCheck={false}
+                    placeholder="Например: x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}"
+                  />
+                  <div className={`formula-syntax-status ${formulaSyntaxIssue(formulaDraft.text) ? "issue" : "ok"}`}>
+                    {formulaSyntaxIssue(formulaDraft.text) || "Синтаксис выглядит нормально"}
+                    <span>Ctrl+Enter — сохранить</span>
+                  </div>
+
+                  <div className="formula-preview-card">
+                    <div className="formula-preview-head">
+                      <span>Предпросмотр</span>
+                      <div className="formula-color-palette" title="Цвет формулы">
+                        {["#20242c","#5355c9","#2f855a","#d97706","#dc4c64","#8b5cf6"].map((value) => (
+                          <button
+                            key={value}
+                            className={formulaDraft.color === value ? "active" : ""}
+                            style={{ background: value }}
+                            onClick={() => setFormulaDraft({ ...formulaDraft, color: value })}
+                            aria-label={`Цвет формулы ${value}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="formula-preview-surface">
+                      <FormulaView text={formulaDraft.text} fontSize={formulaDraft.fontSize} color={formulaDraft.color}/>
+                    </div>
+                  </div>
+                </section>
+
+                <aside className="formula-palette-panel">
+                  <div className="formula-palette-tabs" role="tablist" aria-label="Категории формул">
+                    {([
+                      ["basic", "Основное"], ["greek", "Греческие"], ["relations", "Знаки"], ["functions", "Функции"], ["geometry", "Геометрия"], ["templates", "Шаблоны"],
+                    ] as [FormulaPaletteTab, string][]).map(([tab, label]) => (
+                      <button key={tab} className={formulaPaletteTab === tab ? "active" : ""} onClick={() => setFormulaPaletteTab(tab)}>{label}</button>
+                    ))}
+                  </div>
+                  <div className={`formula-palette-grid ${formulaPaletteTab === "templates" ? "templates" : ""}`}>
+                    {FORMULA_PALETTES[formulaPaletteTab].map((item, indexValue) => (
+                      <button
+                        key={`${formulaPaletteTab}-${indexValue}`}
+                        title={item.title ?? item.label}
+                        onClick={() => insertFormulaSnippet(item.snippet, formulaPaletteTab === "templates")}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                  {formulaHistory.length > 0 && <div className="formula-history"><div><strong>Недавние формулы</strong><button onClick={()=>{setFormulaHistory([]);localStorage.removeItem("onlinerepetitor.formula-history.v54")}}>Очистить</button></div><div>{formulaHistory.map((value,index)=><button key={index} title={value} onClick={()=>insertFormulaSnippet(value,true)}><FormulaView text={value} fontSize={17}/></button>)}</div></div>}
+                  <div className="formula-help">
+                    <strong>Можно вводить с клавиатуры</strong>
+                    <code>x^2</code><code>x_1</code><code>\\frac&#123;a&#125;&#123;b&#125;</code><code>\\sqrt&#123;x&#125;</code>
+                    <code>\\alpha</code><code>\\sum_&#123;i=1&#125;^&#123;n&#125;</code>
+                    <p>Фигурные скобки объединяют выражение. Команды можно сочетать и вкладывать друг в друга.</p>
+                  </div>
+                </aside>
+              </div>
+
+              <div className="formula-editor-footer">
+                <span>{formulaDraft.text.length} / 10000</span>
+                <div>
+                  <button className="secondary" onClick={() => void pasteFormulaSource()}>Вставить из буфера</button><button className="secondary" onClick={() => void copyFormulaSource()}><Icon name="copy" size={15}/> Копировать запись</button>
+                  <button className="secondary" onClick={() => closeFormulaEditor()}>Отмена</button>
+                  <button className="primary" onClick={saveFormulaEditor}><Icon name="check" size={15}/> Сохранить</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {checklistEditorId && checklistDraft && (
+          <div className="checklist-editor-backdrop" onPointerDown={() => { saveChecklistEditor(); }}>
+            <div className="checklist-editor-modal" role="dialog" aria-modal="true" aria-label="Редактор чек-листа" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); saveChecklistEditor(); } if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveChecklistEditor(); } }}>
+              <div className="checklist-editor-header"><div className="checklist-editor-header-main"><strong>Чек-лист / задание</strong><span>{checklistDraft.done.filter(Boolean).length} из {checklistDraft.items.length} выполнено</span></div><button onClick={() => { saveChecklistEditor(); }} aria-label="Закрыть"><Icon name="close" size={17}/></button></div>
+              <div className="checklist-editor-settings">
+                <label className="checklist-title-input"><span>Название</span><input value={checklistDraft.title} maxLength={200} onChange={(e) => setChecklistDraft({ ...checklistDraft, title: e.target.value })}/></label>
+                <div className="checklist-editor-style-row">
+                  <label><span>Размер</span><input type="range" min="10" max="32" value={checklistDraft.fontSize} onChange={(e) => setChecklistDraft({ ...checklistDraft, fontSize: Number(e.target.value) })}/><strong>{checklistDraft.fontSize}px</strong></label>
+                  <label><span>Цвет</span><input type="color" value={checklistDraft.color} onChange={(e) => setChecklistDraft({ ...checklistDraft, color: e.target.value })}/></label>
+                </div>
+              </div>
+              <div className="checklist-editor-list">
+                {checklistDraft.items.map((entry, indexValue) => (
+                  <div className="checklist-editor-row" key={indexValue}>
+                    <label className="checklist-editor-check"><input type="checkbox" checked={checklistDraft.done[indexValue] ?? false} onChange={(e) => setChecklistDraft((current) => current ? { ...current, done: current.done.map((value, index) => index === indexValue ? e.target.checked : value) } : current)}/><span><Icon name="check" size={13}/></span></label>
+                    <input value={entry} maxLength={2000} placeholder={`Пункт ${indexValue + 1}`} onChange={(e) => setChecklistDraft((current) => current ? { ...current, items: current.items.map((value, index) => index === indexValue ? e.target.value : value) } : current)}/>
+                    <button disabled={checklistDraft.items.length <= 1} onClick={() => removeChecklistRow(indexValue)} title="Удалить пункт"><Icon name="trash" size={15}/></button>
+                  </div>
+                ))}
+                <button className="checklist-add-row" disabled={checklistDraft.items.length >= 40} onClick={addChecklistRow}><Icon name="plus" size={15}/> Добавить пункт</button>
+              </div>
+              <div className="checklist-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div className="checklist-editor-bulk"><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => false) } : current)}>Сбросить отметки</button><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => true) } : current)}>Отметить всё</button><button className="secondary" onClick={() => { saveChecklistEditor(); }}>Отмена</button><button className="primary" onClick={saveChecklistEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
+            </div>
+          </div>
+        )}
+        {flashcardEditorId && flashcardDraft && (
+          <div className="flashcard-editor-backdrop" onPointerDown={() => { saveFlashcardEditor(); }}>
+            <div className="flashcard-editor-modal" role="dialog" aria-modal="true" aria-label="Редактор карточки вопрос–ответ" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => {
+              if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); saveFlashcardEditor(); }
+              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveFlashcardEditor(); }
+            }}>
+              <div className="flashcard-editor-header"><div><strong>Карточка вопрос–ответ</strong><span>Лицевая и обратная стороны одной учебной карточки</span></div><button onClick={() => { saveFlashcardEditor(); }} aria-label="Закрыть"><Icon name="close" size={17}/></button></div>
+              <div className="flashcard-editor-body">
+                <section className="flashcard-editor-compose">
+                  <label><span>Вопрос / лицевая сторона</span><textarea value={flashcardDraft.front} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, front: e.target.value })} placeholder="Что нужно вспомнить?"/></label>
+                  <label><span>Ответ / обратная сторона</span><textarea value={flashcardDraft.back} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, back: e.target.value })} placeholder="Ответ или пояснение"/></label>
+                  <div className="flashcard-editor-settings">
+                    <label><span>Размер текста</span><input type="range" min="10" max="48" value={flashcardDraft.fontSize} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, fontSize: Number(e.target.value) })}/><strong>{flashcardDraft.fontSize}px</strong></label>
+                    <label><span>Цвет</span><input type="color" value={flashcardDraft.color} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, color: e.target.value })}/></label>
+                  </div>
+                </section>
+                <aside className="flashcard-editor-preview">
+                  <strong>Предпросмотр</strong>
+                  <div className="flashcard-preview-pair">
+                    <FlashcardView item={{ id:"preview-front", kind:"flashcard", x:0,y:0,width:320,height:210,text:flashcardDraft.front,flashcardBack:flashcardDraft.back,flashcardFlipped:false,fontSize:flashcardDraft.fontSize,color:flashcardDraft.color }}/>
+                    <FlashcardView item={{ id:"preview-back", kind:"flashcard", x:0,y:0,width:320,height:210,text:flashcardDraft.front,flashcardBack:flashcardDraft.back,flashcardFlipped:true,fontSize:flashcardDraft.fontSize,color:flashcardDraft.color }}/>
+                  </div>
+                </aside>
+              </div>
+              <div className="flashcard-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div><button className="secondary" onClick={() => { saveFlashcardEditor(); }}>Отмена</button><button className="primary" onClick={saveFlashcardEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
+            </div>
+          </div>
+        )}
+        {quizEditorId && quizDraft && (
+          <div className="quiz-editor-backdrop" onPointerDown={() => { saveQuizEditor(); }}>
+            <div className="quiz-editor-modal" role="dialog" aria-modal="true" aria-label="Редактор мини-теста" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => {
+              if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); saveQuizEditor(); }
+              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveQuizEditor(); }
+            }}>
+              <div className="quiz-editor-header">
+                <div><strong>Вопрос / мини-тест</strong><span>Выберите правильный вариант и при необходимости добавьте пояснение</span></div>
+                <button onClick={() => { saveQuizEditor(); }} aria-label="Закрыть"><Icon name="close" size={17}/></button>
+              </div>
+              <div className="quiz-editor-body">
+                <section className="quiz-editor-compose">
+                  <label className="quiz-question-editor"><span>Вопрос</span><textarea value={quizDraft.question} maxLength={2000} onChange={(e) => setQuizDraft({ ...quizDraft, question: e.target.value })} placeholder="Введите вопрос…"/></label>
+                  <div className="quiz-options-editor-head"><span>Варианты ответа</span><small>Нажмите кружок слева, чтобы назначить правильный ответ</small></div>
+                  <div className="quiz-options-editor">
+                    {quizDraft.options.map((option, indexValue) => (
+                      <div className={`quiz-editor-option ${quizDraft.correct === indexValue ? "correct" : ""}`} key={indexValue}>
+                        <label className="quiz-correct-radio" title="Правильный ответ">
+                          <input type="radio" name="quiz-correct" checked={quizDraft.correct === indexValue} onChange={() => setQuizDraft({ ...quizDraft, correct: indexValue })}/>
+                          <span>{String.fromCharCode(65 + indexValue)}</span>
+                        </label>
+                        <input value={option} maxLength={2000} placeholder={`Вариант ${String.fromCharCode(65 + indexValue)}`} onChange={(e) => setQuizDraft((current) => current ? { ...current, options: current.options.map((value, index) => index === indexValue ? e.target.value : value) } : current)}/>
+                        <button disabled={quizDraft.options.length <= 2} onClick={() => removeQuizOption(indexValue)} title="Удалить вариант"><Icon name="trash" size={15}/></button>
+                      </div>
+                    ))}
+                    <button className="quiz-add-option" disabled={quizDraft.options.length >= 8} onClick={addQuizOption}><Icon name="plus" size={15}/> Добавить вариант</button>
+                  </div>
+                  <label className="quiz-explanation-editor"><span>Пояснение после показа ответа <small>необязательно</small></span><textarea value={quizDraft.explanation} maxLength={5000} onChange={(e) => setQuizDraft({ ...quizDraft, explanation: e.target.value })} placeholder="Почему ответ правильный?"/></label>
+                </section>
+                <aside className="quiz-editor-preview">
+                  <div className="quiz-preview-head"><strong>Предпросмотр</strong><span>{quizDraft.options.length} вариантов</span></div>
+                  <div className="quiz-preview-card">
+                    <QuizView item={{
+                      id: "quiz-preview", kind: "quiz", x: 0, y: 0, width: 360, height: 320,
+                      text: quizDraft.question, quizOptions: quizDraft.options, quizCorrect: quizDraft.correct,
+                      quizRevealed: true, quizExplanation: quizDraft.explanation, fontSize: quizDraft.fontSize, color: quizDraft.color,
+                    }}/>
+                  </div>
+                  <div className="quiz-preview-settings">
+                    <label><span>Размер</span><input type="range" min="10" max="32" value={quizDraft.fontSize} onChange={(e) => setQuizDraft({ ...quizDraft, fontSize: Number(e.target.value) })}/><strong>{quizDraft.fontSize}px</strong></label>
+                    <label><span>Цвет</span><input type="color" value={quizDraft.color} onChange={(e) => setQuizDraft({ ...quizDraft, color: e.target.value })}/></label>
+                  </div>
+                </aside>
+              </div>
+              <div className="quiz-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div><button className="secondary" onClick={() => { saveQuizEditor(); }}>Отмена</button><button className="primary" onClick={saveQuizEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
+            </div>
+          </div>
+        )}
+        {tableEditorId && tableDraft && (
+          <div className="table-editor-backdrop" onPointerDown={() => { saveTableEditor(); }}>
+            <div className="table-editor-modal" role="dialog" aria-modal="true" aria-label="Редактирование таблицы" onPointerDown={(e) => e.stopPropagation()}>
+              <div className="table-editor-header">
+                <div><strong>Таблица</strong><span>{tableDraft.rows} строк × {tableDraft.cols} столбцов</span></div>
+                <button onClick={() => { saveTableEditor(); }} aria-label="Закрыть"><Icon name="close" size={17}/></button>
+              </div>
+              <div className="table-editor-controls">
+                <span>Строки</span><button onClick={() => resizeTableDraft(-1,0)} disabled={tableDraft.rows <= 1}><Icon name="minus" size={14}/></button><strong>{tableDraft.rows}</strong><button onClick={() => resizeTableDraft(1,0)} disabled={tableDraft.rows >= 20}><Icon name="plus" size={14}/></button>
+                <i/>
+                <span>Столбцы</span><button onClick={() => resizeTableDraft(0,-1)} disabled={tableDraft.cols <= 1}><Icon name="minus" size={14}/></button><strong>{tableDraft.cols}</strong><button onClick={() => resizeTableDraft(0,1)} disabled={tableDraft.cols >= 12}><Icon name="plus" size={14}/></button>
+                <i/>
+                <label className="table-header-toggle"><input type="checkbox" checked={tableDraft.header} onChange={(e) => setTableDraft({ ...tableDraft, header: e.target.checked })}/><span>Первая строка — заголовок</span></label>
+                <i/>
+                <label className="table-font-control"><span>Текст</span><input type="range" min="9" max="32" step="1" value={tableDraft.fontSize} onChange={(e) => setTableDraft({ ...tableDraft, fontSize: Number(e.target.value) })}/><strong>{tableDraft.fontSize}px</strong></label>
+                <i/>
+                <span className="table-clipboard-controls"><button type="button" onClick={()=>void pasteTableTsv()}>Вставить TSV</button><button type="button" onClick={()=>void copyTableTsv()}>Копировать TSV</button></span><i/>
+                <span className="table-style-controls">
+                  <button className={tableDraft.align === "left" ? "active" : ""} onClick={() => setTableDraft({ ...tableDraft, align: "left" })} title="По левому краю">≡</button>
+                  <button className={tableDraft.align === "center" ? "active" : ""} onClick={() => setTableDraft({ ...tableDraft, align: "center" })} title="По центру">≣</button>
+                  <button className={tableDraft.align === "right" ? "active" : ""} onClick={() => setTableDraft({ ...tableDraft, align: "right" })} title="По правому краю">≡</button>
+                  <button className={tableDraft.stripe ? "active" : ""} onClick={() => setTableDraft({ ...tableDraft, stripe: !tableDraft.stripe })} title="Чередовать строки">▤</button>
+                  <button className={tableDraft.compact ? "active" : ""} onClick={() => setTableDraft({ ...tableDraft, compact: !tableDraft.compact })} title="Компактные строки">↕</button>
+                </span>
+              </div>
+              <div className="table-editor-column-tools" style={{ gridTemplateColumns: `repeat(${tableDraft.cols}, minmax(120px, 1fr))` }}>
+                {Array.from({ length: tableDraft.cols }, (_, col) => <div key={col}><button onClick={() => addTableColAt(col + 1)} disabled={tableDraft.cols >= 12} title="Добавить столбец справа">+</button><button onClick={() => removeTableColAt(col)} disabled={tableDraft.cols <= 1} title="Удалить столбец">×</button></div>)}
+              </div>
+              <div className="table-editor-grid" style={{ gridTemplateColumns: `repeat(${tableDraft.cols}, minmax(120px, 1fr))` }}>
+                {tableDraft.cells.map((cell, indexValue) => (
+                  <textarea key={`${tableDraft.rows}-${tableDraft.cols}-${indexValue}`} className={`${tableDraft.header && indexValue < tableDraft.cols ? "table-editor-header-cell" : ""} ${tableDraft.stripe && Math.floor(indexValue / tableDraft.cols) % 2 === 1 ? "table-editor-striped-cell" : ""}`} style={{ fontSize: tableDraft.fontSize, textAlign: tableDraft.align, minHeight: tableDraft.compact ? 46 : undefined }} value={cell} placeholder={tableDraft.header && indexValue < tableDraft.cols ? `Заголовок ${indexValue + 1}` : "Текст"} onChange={(e) => setTableDraft((current) => current ? { ...current, cells: current.cells.map((value, cellIndex) => cellIndex === indexValue ? e.target.value : value) } : current)} />
+                ))}
+              </div>
+              <div className="table-editor-row-tools">
+                <button onClick={() => addTableRowAt(tableDraft.rows)} disabled={tableDraft.rows >= 20}><Icon name="plus" size={14}/> Добавить строку</button>
+                <button onClick={() => removeTableRowAt(tableDraft.rows - 1)} disabled={tableDraft.rows <= 1}>× Последняя строка</button>
+              </div>
+              <div className="table-editor-footer"><span>{tableDraft.header ? "Первая строка выделена как заголовок." : "Все строки отображаются одинаково."}</span><div><button className="secondary" onClick={() => { setTableEditorId(null); setTableDraft(null); }}>Отмена</button><button className="primary" onClick={saveTableEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
+            </div>
+          </div>
+        )}
+        {selected.length === 1 &&
+          !objectEditorOpen &&
+          items.some(
+            (i) =>
+              i.id === selected[0] &&
+              !i.locked &&
+              (i.kind === "text" || i.kind === "sticky" || i.kind === "frame" || i.kind === "comment" || i.kind === "formula" || i.kind === "table" || i.kind === "checklist" || i.kind === "quiz" || i.kind === "flashcard" || i.kind === "cover"),
+          ) && (
+            <button
+              className="edit-selected"
+              onClick={() => {
+                const item = itemsRef.current.find((i) => i.id === selected[0]);
+                if (!item || !canEdit || structurallyLockedForStudent(item)) return;
+                if (item.kind === "table") openTableEditor(item); else if (item.kind === "formula") openFormulaEditor(item); else if (item.kind === "checklist") openChecklistEditor(item); else if (item.kind === "quiz") openQuizEditor(item); else if (item.kind === "flashcard") openFlashcardEditor(item); else startEdit(item);
+              }}
+            >
+              <Icon name="rename" size={15} />
+              {items.find((i) => i.id === selected[0])?.kind === "frame" ? "Переименовать фрейм" : items.find((i) => i.id === selected[0])?.kind === "table" ? "Редактировать таблицу" : items.find((i) => i.id === selected[0])?.kind === "formula" ? "Редактировать формулу" : items.find((i) => i.id === selected[0])?.kind === "checklist" ? "Редактировать чек-лист" : items.find((i) => i.id === selected[0])?.kind === "quiz" ? "Редактировать мини-тест" : items.find((i) => i.id === selected[0])?.kind === "flashcard" ? "Редактировать карточку" : items.find((i) => i.id === selected[0])?.kind === "comment" ? "Редактировать комментарий" : "Редактировать текст"}
+              <kbd>Enter</kbd>
+            </button>
+          )}
+        {(tool === "pen" || tool === "marker") && (
+          <div className="ink-settings">
+            <label>
+              Цвет{" "}
+              <input
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+              />
+            </label>
+            <label>
+              Толщина{" "}
+              <input
+                aria-label="Толщина штриха"
+                type="range"
+                min={tool === "marker" ? 8 : 1}
+                max={tool === "marker" ? 48 : 16}
+                value={tool === "marker" ? markerWeight : weight}
+                onChange={(e) =>
+                  (tool === "marker" ? setMarkerWeight : setWeight)(
+                    Number(e.target.value),
+                  )
+                }
+              />
+              {tool === "marker" ? markerWeight : weight}
+            </label>
+          </div>
+        )}
+        {tool === "eraser" && <div className="ink-settings eraser-settings">
+          <label>Размер <input aria-label="Размер ластика" type="range" min={8} max={96} step={2} value={eraserSize} onChange={(e)=>setEraserSize(Number(e.target.value))}/><span className="eraser-size-value">{eraserSize}px</span></label>
+          <span>Стирает только карандаш и маркер · Ctrl+Z — отмена</span>
+        </div>}
+        {tool === "connector" && (
+          <div className="connector-settings">
+            <div className="connector-style-buttons">
+              <button className={connectorStyle === "line" ? "active" : ""} onClick={() => setConnectorStyle("line")} title="Линия"><Icon name="line" size={17} /></button>
+              <button className={connectorStyle === "arrow" ? "active" : ""} onClick={() => setConnectorStyle("arrow")} title="Стрелка"><Icon name="arrow-one" size={17} /></button>
+              <button className={connectorStyle === "double" ? "active" : ""} onClick={() => setConnectorStyle("double")} title="Двусторонняя стрелка"><Icon name="arrow-double" size={17} /></button>
+              <span className="connector-settings-separator" />
+              <button className={connectorRouting === "straight" ? "active" : ""} onClick={() => setConnectorRouting("straight")} title="Прямая связь"><Icon name="line" size={17} /></button>
+              <button className={connectorRouting === "elbow" ? "active" : ""} onClick={() => setConnectorRouting("elbow")} title="Ломаная связь"><Icon name="elbow" size={17} /></button>
+            </div>
+            <label>Цвет <input type="color" value={color} onChange={(e) => setColor(e.target.value)} /></label>
+            <label>Толщина <input type="range" min={1} max={8} value={connectorWeight} onChange={(e) => setConnectorWeight(Number(e.target.value))} /><span>{connectorWeight}px</span></label>
+            <span className="connector-hint">Тяните мышью · Shift — угол 45°</span>
+          </div>
+        )}
+        {tool === "shape" && (
+          <div className="shape-palette">
+            {([
+              ["rectangle","Прямоугольник"], ["square","Квадрат"], ["circle","Круг"], ["ellipse","Овал"],
+              ["triangle","Треугольник"], ["rightTriangle","Прямоугольный треугольник"], ["diamond","Ромб"], ["parallelogram","Параллелограмм"],
+              ["trapezoid","Трапеция"], ["pentagon","Пятиугольник"], ["hexagon","Шестиугольник"],
+            ] as [ShapeType,string][]).map(([id,label]) => (
+              <button key={id} title={label} className={shapeType === id ? "active" : ""} onClick={() => setShapeType(id)}>
+                <span className="shape-palette-icon"><ShapeIcon type={id} /></span>
+                <span className={id === "rightTriangle" ? "shape-label-two-line" : undefined}>{id === "rightTriangle" ? <>Прямоугольный<br/>треугольник</> : label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+<nav className="mobile-board-tools" aria-label="Основные инструменты">
+          <div className="mobile-tool-cluster mobile-tool-cluster-navigation" aria-label="Навигация">
+            {mobileDockTools.slice(0,3).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
+          </div>
+          <span className="mobile-tool-separator" aria-hidden="true"/>
+          <div className="mobile-tool-cluster mobile-tool-cluster-create" aria-label="Создание">
+            {mobileDockTools.slice(3).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board} />}</div>})}
+          </div>
+          <span className="mobile-tool-separator" aria-hidden="true"/>
+          <button type="button" className={`mobile-tools-more ${mobileToolsOpen?"active":""}`} aria-label="Все инструменты" title="Все инструменты" aria-expanded={mobileToolsOpen} onClick={()=>setMobileToolsOpen(v=>!v)}><Icon name={mobileToolsOpen?"chevron-left":"plus"} size={20}/></button>
+        </nav>
+        {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
+          <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions">{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiOpen(true);setBoardAiPreview([])}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
+          <div className="mobile-tools-groups">
+            {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(toolAllowedForRole)})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span><div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div></div>)}
+            <div className="mobile-tools-group"><span>Действия с доской</span><div>
+              {boardSummary.role==="owner"&&<button type="button" onClick={()=>{setMobileToolsOpen(false);liveLesson?setLessonPanelOpen(true):setLessonOpen(true)}}><Icon name="play" size={19}/><small>{liveLesson?"Управление уроком":"Начать урок"}</small></button>}
+              {boardSummary.role==="owner"&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setSharing(true)}}><Icon name="add-person" size={19}/><small>Участники</small></button>}
+              <button type="button" onClick={()=>{setMobileToolsOpen(false);void openHistory()}}><Icon name="reset" size={19}/><small>История</small></button>
+              <button type="button" onClick={()=>{setMobileToolsOpen(false);setPresentation(true);setPresentationFrameIndex(0)}}><Icon name="slides" size={19}/><small>Презентация</small></button>
+              <button type="button" onClick={()=>{setMobileToolsOpen(false);void exportBoard()}}><Icon name="download" size={19}/><small>Скачать</small></button>
+              <button type="button" onClick={()=>{setMobileToolsOpen(false);void openDiscussions()}}><Icon name="comments" size={19}/><small>Чат</small></button>
+            </div></div>
+          </div>
+        </section>}
+        <aside className={`toolbar compact-toolbar ${mobileToolsOpen?"mobile-open":""} ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
+          <div className="toolbar-pinned" aria-label="Навигация: выбор, рука, петля">
+            {(["select","hand","lasso"] as Tool[]).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} aria-label={t.label} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><span className="tool-icon"><Icon name={t.icon} size={18}/></span><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
+          </div>
+          <span className="toolbar-section-line" aria-hidden="true"/>
+          <div className="toolbar-list">
+            {tools.filter((t)=>t.id!=="select"&&t.id!=="hand"&&t.id!=="lasso"&&toolAllowedForRole(t.id)).map((t)=>{
+              const secondary=!primaryDesktopTools.has(t.id);
+              return <div className={`tool-wrap ${secondary?"secondary-tool":""}`} key={t.id}>
+                <button aria-label={t.label} className={`tool-button ${tool===t.id?"active":""}`} onClick={()=>{finishEdit();if(t.id==="eraser")setSpace(false);setTool(t.id);setMobileToolsOpen(false)}}>
+                  <span className="tool-icon"><Icon name={t.icon} size={18}/></span><span className="tool-tooltip">{toolShortLabel[t.id]}</span>
+                </button>{t.id==="eraser"&&<GeometryInstruments view={view} boardRef={board} />}{t.dividerAfter&&<span className="tool-divider" aria-hidden="true"/>}
+              </div>;
+            })}
+          </div>
+          <button type="button" className="toolbar-more" title={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты"} onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
+            <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
+          </button>
+          {!isStudent&&<button type="button" className="toolbar-ai-button" title="AI-помощник" aria-label="AI-помощник" onClick={()=>{finishEdit();setBoardAiOpen(true);setBoardAiPreview([])}}>
+            <Icon name="robot" size={18}/><span className="tool-tooltip">AI-помощник</span>
+          </button>}
+          <button type="button" className="toolbar-command-search" title="Найти инструмент · Ctrl+K" aria-label="Найти инструмент" onClick={()=>{setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}}>
+            <Icon name="search" size={17}/><span className="tool-tooltip">Найти инструмент</span>
+          </button>
+        </aside>
+        {isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">Режим ученика</div>}
+        {!isStudent&&attachmentRequests.length>0&&(()=>{
+          const request=attachmentRequests[Math.min(attachmentRequestIndex,attachmentRequests.length-1)];
+          return <aside className="teacher-media-request" onPointerDown={e=>e.stopPropagation()}>
+            <div className="teacher-media-request-head"><div><b>Ученик хочет добавить вложение</b><span>{request.studentName} · {request.name}</span></div><strong>{attachmentRequestIndex+1}/{attachmentRequests.length}</strong></div>
+            <AttachmentRequestPreview request={request} boardId={boardSummary.id}/>
+            {attachmentRequests.length>1&&<div className="teacher-media-request-nav"><button disabled={attachmentRequestIndex<=0} onClick={()=>setAttachmentRequestIndex(i=>Math.max(0,i-1))}>‹</button><span>Запросы на согласование</span><button disabled={attachmentRequestIndex>=attachmentRequests.length-1} onClick={()=>setAttachmentRequestIndex(i=>Math.min(attachmentRequests.length-1,i+1))}>›</button></div>}
+            <div className="teacher-media-request-actions"><button onClick={()=>void openAttachmentRequest(request)}>Открыть</button><button className="reject" onClick={()=>rejectAttachmentRequest(request)}>Отклонить</button><button className="approve" onClick={()=>approveAttachmentRequest(request)}>Одобрить</button></div>
+          </aside>
+        })()}
+        {isStudent&&pendingAttachmentRequests.length>0&&<aside className="student-media-pending" onPointerDown={e=>e.stopPropagation()}>
+          <div><Icon name="media" size={17}/><span><b>На согласовании</b><small>{pendingAttachmentRequests.length===1?pendingAttachmentRequests[0].name:`Вложений: ${pendingAttachmentRequests.length}`}</small></span></div>
+          <button onClick={()=>{for(const request of pendingAttachmentRequests)sendAttachmentRequest(request);setNotice("Запрос повторно отправлен преподавателю")}}>Отправить снова</button>
+        </aside>}
+        {boardAiOpen&&!isStudent&&<div className="board-ai-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setBoardAiOpen(false)}}>
+          <section className="board-ai-panel" role="dialog" aria-modal="true" aria-label="AI-помощник">
+            <header><div className="board-ai-title"><Icon name="robot" size={22}/><div><strong>AI-помощник</strong><span>Создать материал прямо на доске</span></div></div><button onClick={()=>setBoardAiOpen(false)} aria-label="Закрыть">×</button></header>
+            <div className="board-ai-types">
+              {([["auto","По запросу"],["arithmetic","Примеры"],["equations","Уравнения"],["fractions","Дроби"],["geometry","Геометрия"],["functions","Функции"],["percent","Проценты"],["word","Текстовые задачи"],["mixed","Смешанное"]] as [MathAiMode,string][]).map(([id,label])=><button key={id} className={boardAiMode===id?"active":""} onClick={()=>{setBoardAiMode(id);setBoardAiPreview([]);setBoardAiDetected("")}}>{label}</button>)}
+            </div>
+            <label className="board-ai-field"><span>Что нужно создать? <small>ИИ учитывает этот запрос</small></span><input value={boardAiTopic} onChange={e=>setBoardAiTopic(e.target.value)} placeholder="Например: создай кубические уравнения с целыми корнями"/></label><div className="board-ai-prompt-help">Запрос задаёт содержание: например «кубические уравнения», «задачи по теореме Пифагора», «дроби на сложение». Кнопки выше задают только общий раздел.</div>
+            <div className="board-ai-options"><label><span>Уровень</span><select value={boardAiLevel} onChange={e=>{setBoardAiLevel(e.target.value as MathAiLevel);setBoardAiPreview([])}}><option value="primary">Начальный</option><option value="basic">Средний</option><option value="advanced">Повышенный</option></select></label><label><span>Количество</span><select value={boardAiCount} onChange={e=>{setBoardAiCount(Number(e.target.value));setBoardAiPreview([])}}><option value={3}>3</option><option value={5}>5</option><option value={6}>6</option><option value={8}>8</option><option value={10}>10</option><option value={15}>15</option></select></label></div>
+            <label className="board-ai-answer-toggle"><input type="checkbox" checked={boardAiWithAnswers} onChange={e=>{setBoardAiWithAnswers(e.target.checked);setBoardAiPreview([])}}/><span>Показывать ответы</span></label>
+            {boardAiDetected&&<div className="board-ai-detected">Распознано: <b>{boardAiDetected}</b></div>}
+            {!boardAiPreview.length?<div className="board-ai-empty"><Icon name="robot" size={30}/><b>Что подготовить?</b><span>Выберите тип материала и нажмите «Сгенерировать».</span></div>:<div className="board-ai-preview"><strong>Предпросмотр</strong><ol>{boardAiPreview.map((x,i)=><li key={`${i}-${x}`}>{x}</li>)}</ol></div>}
+            <footer><button className="secondary" onClick={generateBoardAi}>{boardAiPreview.length?"Сгенерировать заново":"Сгенерировать"}</button><button className="primary" disabled={!boardAiPreview.length||!canEdit} onClick={insertBoardAi}>Добавить на доску</button></footer>
+          </section>
+        </div>}
+        <section
+          ref={board}
+          aria-label="Доска"
+          className={`board board-bg-${gridMode} board-tool-${tool} ${space || tool === "hand" ? "board-hand-active" : ""} ${panning ? "board-panning" : ""}`}
+          style={{
+            backgroundSize: `${24 * view.zoom}px ${24 * view.zoom}px`,
+            backgroundPosition: `${view.x}px ${view.y}px`,
+          }}
+          onPointerDownCapture={(e) => {
+            if(tool!=="eraser"||presentation||e.button!==0)return;
+            if(!canEdit){setNotice("У вас доступ только для просмотра");return;}
+            e.preventDefault();e.stopPropagation();
+            if(gesture.current)end();
+            const screen=local(e.clientX,e.clientY);
+            const p=world(screen);
+            eraserSession.current={pointer:e.pointerId,last:p,zoom:view.zoom,path:[p]};
+            setSelected([]);
+            beginEraserPreview();
+            previewEraserSegment(screen,screen);
+            setLiveEraserCursor(screen.x,screen.y);
+            board.current?.setPointerCapture(e.pointerId);
+          }}
+          onPointerMoveCapture={(e) => {
+            const g=eraserSession.current;
+            if(!g||g.pointer!==e.pointerId)return;
+            e.preventDefault();e.stopPropagation();
+            const screen=local(e.clientX,e.clientY);
+            const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
+            previewEraserSegment(previous,screen);
+            recordEraserPoint(world(screen));
+            setLiveEraserCursor(screen.x,screen.y);
+          }}
+          onPointerUpCapture={(e) => {
+            const g=eraserSession.current;
+            if(!g||g.pointer!==e.pointerId)return;
+            e.preventDefault();e.stopPropagation();
+            const screen=local(e.clientX,e.clientY);
+            const previous={x:g.last.x*g.zoom+view.x,y:g.last.y*g.zoom+view.y};
+            previewEraserSegment(previous,screen);
+            finishEraser(world(screen));
+            if(board.current?.hasPointerCapture(e.pointerId))board.current.releasePointerCapture(e.pointerId);
+          }}
+          onPointerCancelCapture={(e) => {
+            if(eraserSession.current?.pointer!==e.pointerId)return;
+            e.preventDefault();e.stopPropagation();
+            finishEraser(null);
+          }}
+          onPointerDown={(e) => { if(tool==="eraser")return; touchStart(e); if(touchPoints.current.size>=2)return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
+          onPointerMove={(e) => { if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;} if(eraserSession.current)return; touchMove(e); if(pinchState.current)return; const localPoint = local(e.clientX, e.clientY); const worldPoint = world(localPoint); if(!adminHidden) cursorChannel.current?.sendCursor(worldPoint.x, worldPoint.y); if (presentation) { if (presentationLaser) setPresentationLaserPos(localPoint); if (presentationSpotlight) setPresentationSpotlightPos(localPoint); } move(e); }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            finishEdit();
+            const point = local(e.clientX, e.clientY);
+            let id=(e.target as HTMLElement).closest<HTMLElement>("[data-object]")?.dataset.object;
+            const domIndex=id?itemsRef.current.findIndex(item=>item.id===id):-1;
+            const strokeHit=hitTestInk(itemsRef.current,world(point),7/Math.max(.1,view.zoom),domIndex);
+            if(strokeHit)id=strokeHit.id;
+            const hit=itemsRef.current.find(item=>item.id===id);
+            if (hit) {
+              const family = familyIdsFor(hit);
+              if (!family.every((member) => selected.includes(member))) setSelected(family);
+            } else {
+              setSelected([]);
+            }
+            setContextMenu({ x: point.x, y: point.y });
+          }}
+          onDragOver={(e) => {
+            if (Array.from(e.dataTransfer.types).includes("Files")) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+            }
+          }}
+          onDrop={async (e) => {
+            const files = Array.from(e.dataTransfer.files) as File[];
+            if (!files.length) return;
+            e.preventDefault();
+            const position = world(local(e.clientX, e.clientY));
+            try {
+              let added = 0;
+              for (const file of files.slice(0, 12)) {
+                const isSupported = file.type.startsWith("image/") || file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+                if (!isSupported) continue;
+                await addMediaFile(file, position, added * 24);
+                added++;
+              }
+              setNotice(added ? `Добавлено файлов перетаскиванием: ${added}` : "Перетащите изображение или PDF");
+            } catch (error) {
+              setNotice(error instanceof Error ? error.message : "Не удалось добавить файл");
+            }
+          }}
+          onPointerEnter={(e) => { if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y); } }}
+          onPointerLeave={() => { if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; }}
+          onPointerUp={(e) => {
+            touchEnd(e);
+            if (e.pointerId === gesture.current?.pointer) {
+              move(e);
+              end();
+            }
+          }}
+          onPointerCancel={(e) => { touchEnd(e); end(true); }}
+          onLostPointerCapture={() => { if(eraserSession.current)finishEraser(null);else end(true); }}
+        >
+          {isAppAdmin && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
+            {showInkDiagnostics && <div>Штрихи: {inkDiagnostics}</div>}
+            {showBoardDiagnostics && <div>Соединение: {realtimeStatus} · курсоров: {Object.keys(remoteCursors).length} · участников: {visiblePresenceUsers.length} · версия: {remoteVersion.current ?? "нет"}</div>}
+            {showPerformanceDiagnostics && <div>Объектов: {items.length} · штрихов: {items.filter(x=>x.kind==="pen"||x.kind==="marker").length} · масштаб: {Math.round(view.zoom*100)}%</div>}
+          </div>}
+          <div className="remote-cursors-layer" aria-hidden="true">
+            <svg className="remote-live-ink-layer" width="100%" height="100%" style={{position:"absolute",inset:0,overflow:"hidden",pointerEvents:"none"}}>
+              {Object.values(remoteInk).filter(ink => !items.some(item => item.id === ink.id)).map(ink => (
+                ink.points.length === 1
+                  ? <circle key={ink.clientId} cx={ink.points[0].x*view.zoom+view.x} cy={ink.points[0].y*view.zoom+view.y} r={Math.max(0.5,ink.weight*view.zoom/2)} fill={ink.color} opacity={ink.kind==="marker"?0.32:1}/>
+                  : <polyline key={ink.clientId} points={ink.points.map(point => `${point.x*view.zoom+view.x},${point.y*view.zoom+view.y}`).join(" ")} fill="none" stroke={ink.color} strokeWidth={ink.weight*view.zoom} strokeLinecap="round" strokeLinejoin="round" opacity={ink.kind==="marker"?0.32:1}/>
+              ))}
+            </svg>
+            {Object.values(remoteCursors).map((cursor) => <div
+              className="remote-cursor"
+              key={cursor.userId}
+              style={{
+                transform: `translate(${cursor.x * view.zoom + view.x}px,${cursor.y * view.zoom + view.y}px)`,
+              }}
+            >
+              <svg className="remote-cursor-pointer" viewBox="0 0 24 30">
+                <path d="M2 2 19 17l-8.2 1.5L7 27 2 2Z"/>
+              </svg>
+              <span>{cursor.name}</span>
+            </div>)}
+          </div>
+          <div
+            className="world"
+            style={{
+              transform: `translate(${view.x}px,${view.y}px) scale(${view.zoom})`,
+            }}
+          >
+            {!items.length && (
+              <div className="welcome-card">
+                <div className="welcome-badge">Пустая доска</div>
+                <h1>С чего начнём?</h1>
+                <p>Выберите действие. Остальные инструменты всегда доступны слева.</p>
+                <div className="welcome-actions">
+                  <button onClick={(e)=>{e.stopPropagation();setTool("pen")}}><Icon name="pen" size={18}/><span><b>Рисовать</b><small>Карандаш и маркер</small></span></button>
+                  <button onClick={(e)=>{e.stopPropagation();setTool("text")}}><Icon name="text" size={18}/><span><b>Добавить текст</b><small>Текст или стикер</small></span></button>
+                  <button onClick={(e)=>{e.stopPropagation();setTool("shape")}}><Icon name="shape" size={18}/><span><b>Фигура</b><small>Схемы и стрелки</small></span></button>
+                  <button onClick={(e)=>{e.stopPropagation();mediaInput.current?.click()}}><Icon name="media" size={18}/><span><b>Загрузить</b><small>Фото или PDF</small></span></button>
+                </div>
+                <div className="welcome-tip">Наведите курсор на инструмент, чтобы увидеть горячую клавишу.</div>
+              </div>
+            )}
+            <svg className="comment-links-world" aria-hidden="true">
+              {linkedComments.map((comment) => {
+                const target = comment.commentTargetId ? itemById.get(comment.commentTargetId) : undefined;
+                if (target?.hidden) return null;
+                if (!target) return null;
+                const sx = comment.x + Math.min(18, comment.width / 2), sy = comment.y + comment.height / 2;
+                const ex = target.x + target.width / 2, ey = target.y + target.height / 2;
+                return <g key={`comment-link-${comment.id}`}><line x1={sx} y1={sy} x2={ex} y2={ey} /><circle cx={ex} cy={ey} r={4} /></g>;
+              })}
+            </svg>
+            {renderEntries.map((entry) => {
+              if (entry.kind === "ink") return (
+                <ViewerInkLayer key={entry.key} strokes={entry.strokes} bounds={entry.bounds}
+                  view={view} viewport={boardViewportSize} />
+              );
+              const item = entry.item;
+              return (
+              <div
+                data-object={item.id}
+                key={item.id}
+                className={`board-object object-${item.kind} ${selectedIds.has(item.id) ? "selected" : ""} ${item.locked ? "locked" : ""}`}
+                style={{
+                  left: item.x,
+                  top: item.y,
+                  width: item.width,
+                  height: item.height,
+                  transform: item.rotation ? `rotate(${item.rotation}deg)` : undefined,
+                  borderColor: item.kind === "frame" ? (item.color ?? "#8b8f9a") : undefined,
+                  background: item.points
+                    ? "transparent"
+                    : item.kind === "sticky"
+                      ? (item.color ?? "#fff3a6")
+                      : item.kind === "frame" || item.kind === "connector" || item.kind === "comment" || item.kind === "cover"
+                        ? "transparent"
+                        : "#fff",
+                }}
+                onDoubleClick={() => {
+                  if (!canEdit || structurallyLockedForStudent(item)) return;
+                  const remoteEditor = remoteEditorFor(item.id);
+                  if (remoteEditor) {
+                    setNotice(`${remoteEditor.name} уже редактирует этот объект`);
+                    return;
+                  }
+                  if (
+                    tool === "select" &&
+                    !space &&
+                    !item.locked &&
+                    (item.kind === "text" || item.kind === "sticky" || item.kind === "frame" || item.kind === "comment")
+                  ) {
+                    startEdit(item);
+                  } else if (tool === "select" && !space && !item.locked && item.kind === "formula") {
+                    setSelected([item.id]);
+                    openFormulaEditor(item);
+                  } else if (tool === "select" && !space && !item.locked && item.kind === "table") {
+                    setSelected([item.id]);
+                    setTableEditorId(item.id);
+                    setTableDraft({ rows: item.tableRows ?? 3, cols: item.tableCols ?? 3, cells: [...(item.tableCells ?? [])], header: item.tableHeader !== false, fontSize: item.fontSize ?? 13, align: item.tableAlign ?? "left", stripe: item.tableStripe === true, compact: item.tableCompact === true });
+                  } else if (tool === "select" && !space && !item.locked && item.kind === "checklist") {
+                    setSelected([item.id]);
+                    openChecklistEditor(item);
+                  } else if (tool === "select" && !space && !item.locked && item.kind === "graph") { setSelected([item.id]); openGraphEditor(item);
+                  } else if (tool === "select" && !space && !item.locked && item.kind === "quiz") {
+                    setSelected([item.id]);
+                    openQuizEditor(item);
+                  } else if (tool === "select" && !space && !item.locked && item.kind === "flashcard") {
+                    setSelected([item.id]);
+                    openFlashcardEditor(item);
+                  } else if ((tool === "select" || tool === "hand") && !space && !item.locked && item.kind === "image") {
+                    setSelected([item.id]);
+                    setImageCropEditorId(item.id);
+                  }
+                }}
+              >
+                {remoteSelectorsFor(item.id).slice(0, 3).map((remote, indexValue) => <div
+                  key={remote.userId}
+                  className={`remote-selection-outline ${remote.editingId === item.id ? "editing" : ""}`}
+                  style={{ inset: -3 - indexValue * 3 }}
+                  aria-hidden="true"
+                >
+                  <span>{remote.name}{remote.editingId === item.id ? " · редактирует" : ""}</span>
+                </div>)}
+                {item.points && <Ink item={item} />}
+                {item.kind === "shape" && <Shape type={item.shapeType} color={item.color}/>}
+                {item.kind === "connector" && <Connector item={item}/>}
+                {(item.kind === "image" || item.kind === "pdf") && <Media item={item} boardId={boardSummary.id}/>}
+                {item.kind === "image" && imageCropEditorId === item.id && <InlineImageCrop item={item} boardId={boardSummary.id} registerApply={(apply)=>{imageCropApplyRef.current=apply}} onApply={async(blob,crop)=>{const current=itemsRef.current.find(candidate=>candidate.id===item.id&&candidate.kind==="image");if(!current)return;const assetId=createId();await putAsset(assetId,blob,boardSummary.id);const nextWidth=Math.max(24,current.width*crop.width),nextHeight=Math.max(24,current.height*crop.height);const angle=(current.rotation??0)*Math.PI/180;const localDx=(crop.x+crop.width/2-.5)*current.width,localDy=(crop.y+crop.height/2-.5)*current.height;const rotatedDx=localDx*Math.cos(angle)-localDy*Math.sin(angle),rotatedDy=localDx*Math.sin(angle)+localDy*Math.cos(angle);const oldCenterX=current.x+current.width/2,oldCenterY=current.y+current.height/2;const nextX=oldCenterX+rotatedDx-nextWidth/2,nextY=oldCenterY+rotatedDy-nextHeight/2;commit(itemsRef.current.map(candidate=>candidate.id===current.id?{...candidate,assetId,mime:blob.type||"image/png",x:nextX,y:nextY,width:nextWidth,height:nextHeight}:candidate));setImageCropEditorId(null);setSelected([current.id]);setNotice("Изображение обрезано")}}/>}
+                {item.kind === "linkmedia" && <LinkMediaPlayer item={item}/>}
+                {item.kind === "frame" && editing !== item.id && <div className="frame-title">{item.text || "Без названия"}</div>}
+                {item.kind === "comment" && editing !== item.id && <CommentCard item={item} />}
+                {item.kind === "table" && <TableView item={item} />}
+                {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
+                {item.kind === "graph" && <GraphView item={item} onAddPoint={!item.locked && canEdit ? (x,y)=>{const next={x,y,label:"",color:"#111111"};commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:[...(candidate.graphPoints??[]),next]}:candidate));setSelected([item.id]);} : undefined} onRemovePoint={!item.locked && canEdit ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:(candidate.graphPoints??[]).filter((_,i)=>i!==index)}:candidate));setSelected([item.id]);} : undefined}/>}
+                {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
+                  const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
+                  const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
+                  commit(itemsRef.current.map((candidate) => candidate.id === item.id ? { ...candidate, checklistDone: nextDone } : candidate));
+                } : undefined} />}
+                {item.kind === "quiz" && <QuizView item={item} onSelect={!item.locked ? (indexValue) => selectQuizAnswer(item, indexValue) : undefined} />}
+                {item.kind === "flashcard" && <FlashcardView item={item} onFlip={!item.locked ? () => flipFlashcard(item) : undefined} />}
+                {item.kind === "cover" && editing !== item.id && <CoverView item={item} onToggle={!isStudent && !item.locked ? () => toggleCover(item) : undefined} />}
+                {item.locked && <div className="object-lock-badge" aria-label="Объект заблокирован"><Icon name="lock" size={13} /></div>}
+                {(item.kind === "text" || item.kind === "sticky" || item.kind === "frame" || item.kind === "comment") &&
+                  (editing === item.id ? (
+                    <textarea
+                      ref={editor}
+                      key={item.id}
+                      aria-label="Текст объекта"
+                      className={item.kind === "frame" ? "text-editor frame-editor" : item.kind === "comment" ? "text-editor comment-editor" : "text-editor"}
+                      style={item.kind === "frame" || item.kind === "comment" ? undefined : { fontSize: item.fontSize ?? 20, ...(item.kind === "text" || item.kind === "sticky" ? { color:item.kind==="text"?(item.color??"#202124"):undefined, lineHeight:item.lineHeight??1.45, textAlign: item.textAlign ?? "left", fontWeight: item.fontWeight ?? "normal", fontStyle: item.fontStyle ?? "normal", textDecoration: item.textDecoration ?? "none" } : {}) }}
+                      value={draft}
+                      placeholder="Введите текст…"
+                      onChange={(e) => {
+                        draftRef.current = e.target.value;
+                        setDraft(e.target.value);
+                      }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerUp={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                      onBlur={finishEdit}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.nativeEvent.isComposing) return;
+                        if (e.code === "Escape") {
+                          e.preventDefault();
+                          setEditing(null);
+                        } else if (item.kind === "frame" && e.code === "Enter") {
+                          e.preventDefault();
+                          finishEdit();
+                        } else if ((e.ctrlKey || e.metaKey) && e.code === "Enter") {
+                          e.preventDefault();
+                          finishEdit();
+                        }
+                      }}
+                    />
+                  ) : item.kind === "frame" || item.kind === "comment" ? null : (
+                    <div className={`text-display text-list-${item.textList??"none"}`} style={{ fontSize: item.fontSize ?? 20, color:item.kind==="text"?(item.color??"#202124"):undefined, lineHeight:item.lineHeight??1.45, textAlign: item.textAlign ?? "left", fontWeight: item.fontWeight ?? "normal", fontStyle: item.fontStyle ?? "normal", textDecoration: item.textDecoration ?? "none" }}>
+                      {item.text ? ((item.textList??"none")==="none"?item.text:item.text.split("\n").map((line,lineIndex)=><div className="text-list-line" key={lineIndex}><span className="text-list-marker">{item.textList==="bullet"?"•":`${lineIndex+1}.`}</span><span>{line||" "}</span></div>)) : <span className="text-placeholder">Двойной щелчок — ввод текста</span>}
+                    </div>
+                  ))}
+              </div>
+              );
+            })}
+            {preview && (
+              <div
+                className={`gesture-preview preview-${preview.kind}`}
+                style={{ left: preview.x, top: preview.y, width: preview.width, height: preview.height }}
+              >
+                {preview.kind === "connector" ? <Connector item={preview} /> : <Ink item={preview} />}
+              </div>
+            )}
+          </div>
+          <canvas ref={eraserPreviewCanvas} aria-hidden="true" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:50,display:"none"}} />
+          {presentation && presentationLaser && presentationLaserPos && !presentationBlackout && <div className="presentation-laser-dot" style={{ left: presentationLaserPos.x, top: presentationLaserPos.y }} aria-hidden="true" />}
+          {presentation && presentationSpotlight && presentationSpotlightPos && !presentationBlackout && (
+            <div
+              className="presentation-spotlight"
+              style={{ background: `radial-gradient(circle ${presentationSpotlightRadius}px at ${presentationSpotlightPos.x}px ${presentationSpotlightPos.y}px, transparent 0, transparent ${Math.max(10, presentationSpotlightRadius - 2)}px, rgba(8,9,12,.72) ${presentationSpotlightRadius + 2}px)` }}
+              aria-hidden="true"
+            />
+          )}
+          {presentation && presentationBlackout && <div className="presentation-blackout" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={() => setPresentationBlackout(false)}><div><strong>Экран затемнён</strong><span>B или двойной щелчок — вернуться к слайду</span></div></div>}
+          {singleSelected?.kind === "connector" && selectedConnectorEndpoints && !editing && !selectionLocked && (
+            <div className="connector-endpoint-overlay" aria-label="Редактирование соединительной линии">
+              <svg className="connector-selection-line" aria-hidden="true">
+                {singleSelected.connectorRouting === "elbow" ? (
+                  <path d={`M ${selectedConnectorEndpoints.start.x} ${selectedConnectorEndpoints.start.y} H ${(selectedConnectorEndpoints.start.x + selectedConnectorEndpoints.end.x) / 2} V ${selectedConnectorEndpoints.end.y} H ${selectedConnectorEndpoints.end.x}`} />
+                ) : (
+                  <line
+                    x1={selectedConnectorEndpoints.start.x}
+                    y1={selectedConnectorEndpoints.start.y}
+                    x2={selectedConnectorEndpoints.end.x}
+                    y2={selectedConnectorEndpoints.end.y}
+                  />
+                )}
+              </svg>
+              <button
+                className={`connector-endpoint-handle ${singleSelected.connectorStartBinding ? "attached" : ""}`}
+                data-connector-endpoint="start"
+                style={{ left: selectedConnectorEndpoints.start.x, top: selectedConnectorEndpoints.start.y }}
+                title={singleSelected.connectorStartBinding ? "Начало привязано к объекту · перетащите, чтобы изменить" : "Перетащите начало линии"}
+                aria-label="Начало соединительной линии"
+              />
+              <button
+                className={`connector-endpoint-handle ${singleSelected.connectorEndBinding ? "attached" : ""}`}
+                data-connector-endpoint="end"
+                style={{ left: selectedConnectorEndpoints.end.x, top: selectedConnectorEndpoints.end.y }}
+                title={singleSelected.connectorEndBinding ? "Конец привязан к объекту · перетащите, чтобы изменить" : "Перетащите конец линии"}
+                aria-label="Конец соединительной линии"
+              />
+            </div>
+          )}
+          {singleSelected && singleSelected.kind !== "connector" && selectionScreenBounds && !objectEditorOpen && !selectionLocked && (
+            <div
+              className="screen-transform-overlay"
+              data-object={singleSelected.id}
+              style={{
+                left: selectionScreenBounds.left,
+                top: selectionScreenBounds.top,
+                width: selectionScreenBounds.width,
+                height: selectionScreenBounds.height,
+                transform: singleSelected.rotation ? `rotate(${singleSelected.rotation}deg)` : undefined,
+              }}
+            >
+              <div className="screen-selection-frame" />
+              <div className="screen-rotate-connector" />
+              <button
+                className="screen-rotate-handle"
+                data-transform-handle="rotate"
+                tabIndex={-1}
+                title="Повернуть мышью · Shift — шаг 90°"
+                aria-label="Повернуть объект"
+              >
+                <Icon name="rotate-right" size={14} />
+              </button>
+              {(["nw","n","ne","e","se","s","sw","w"] as const).map((h) => (
+                <button
+                  key={h}
+                  className={`screen-resize-handle screen-handle-${h}`}
+                  data-transform-handle={h}
+                  tabIndex={-1}
+                  title="Изменить размер · Shift на углу — сохранить пропорции"
+                  aria-label="Изменить размер"
+                />
+              ))}
+            </div>
+          )}
+          {selectedItems.length > 1 && selectionScreenBounds && !objectEditorOpen && !selectionLocked && (
+            <div
+              className="screen-transform-overlay screen-transform-group"
+              style={{
+                left: selectionScreenBounds.left,
+                top: selectionScreenBounds.top,
+                width: selectionScreenBounds.width,
+                height: selectionScreenBounds.height,
+              }}
+            >
+              <div className="screen-selection-frame" />
+              <div className="screen-rotate-connector" />
+              <button
+                className="screen-rotate-handle"
+                data-group-transform-handle="rotate"
+                tabIndex={-1}
+                title="Повернуть всю группу · Shift — шаг 90°"
+                aria-label="Повернуть группу"
+              >
+                <Icon name="rotate-right" size={14} />
+              </button>
+              {(["nw","n","ne","e","se","s","sw","w"] as const).map((h) => (
+                <button
+                  key={h}
+                  className={`screen-resize-handle screen-handle-${h}`}
+                  data-group-transform-handle={h}
+                  tabIndex={-1}
+                  title="Масштабировать всю группу"
+                  aria-label="Масштабировать группу"
+                />
+              ))}
+              <div className="group-count-badge">{selectedItems.length}</div>
+            </div>
+          )}
+          {selectionLocked && selectionScreenBounds && selectedItems.length > 0 && !editing && (
+            <div
+              className="screen-transform-overlay screen-transform-locked"
+              style={{
+                left: selectionScreenBounds.left,
+                top: selectionScreenBounds.top,
+                width: selectionScreenBounds.width,
+                height: selectionScreenBounds.height,
+              }}
+            >
+              <div className="screen-selection-frame" />
+              <div className="locked-selection-badge"><Icon name="lock" size={13} /> Заблокировано</div>
+            </div>
+          )}
+          {selectionScreenBounds && selectedItems.length > 0 && !objectEditorOpen && (
+            <div
+              className="selection-toolbar-screen"
+              style={{
+                left: selectionToolbarLeft,
+                top: selectionToolbarTop,
+              }}
+              onPointerDown={selectionToolbarPointerDown}
+              onClick={selectionToolbarClick}
+            >
+              <span className="selection-toolbar-info">
+                {selectedItems.length === 1
+                  ? `${Math.round(selectedItems[0].width)} × ${Math.round(selectedItems[0].height)}${selectedItems[0].rotation ? ` · ${Math.round(selectedItems[0].rotation!)}°` : ""}`
+                  : `${selectedItems.length} объектов`}
+              </span>
+
+              {singleSelected?.kind === "linkmedia" && !selectionLocked && (<span className="linkmedia-selection-controls"><button type="button" onClick={()=>openLinkMediaEditor(singleSelected)} title="Изменить ссылку"><Icon name="rename" size={15}/><span>Ссылка</span></button><a href={singleSelected.mediaUrl} target="_blank" rel="noreferrer" onPointerDown={e=>e.stopPropagation()} title="Открыть источник"><Icon name="open" size={15}/></a></span>)}
+              {singleSelected?.kind === "frame" && !selectionLocked && (
+                <button type="button" className="frame-name-action" onClick={renameSelectedFrame} title="Переименовать фрейм · Enter / F2">
+                  <Icon name="rename" size={15} />
+                  <span>{singleSelected.text.trim() || "Без названия"}</span>
+                </button>
+              )}
+              {singleSelected?.kind === "frame" && canEdit && (
+                <span className="frame-order-controls">
+                  <label title="Номер слайда">№ <input type="number" min={1} max={Math.max(1,items.filter(item=>item.kind==="frame"&&!item.hidden).length)}
+                    value={1+items.filter(item=>item.kind==="frame"&&!item.hidden).sort((a,b)=>(a.presentationOrder??items.indexOf(a))-(b.presentationOrder??items.indexOf(b))).findIndex(item=>item.id===singleSelected.id)}
+                    onChange={e=>setSelectedFramePosition(Number(e.target.value))} onPointerDown={e=>e.stopPropagation()} /></label>
+                  <button type="button" onClick={toggleFrameFixation} title={singleSelected.locked?"Разрешить перемещение":"Зафиксировать положение"}>
+                    <Icon name={singleSelected.locked?"unlock":"lock"} size={15}/><span>{singleSelected.locked?"Открепить":"Зафиксировать"}</span>
+                  </button>
+                </span>
+              )}
+              {singleSelected?.kind === "comment" && !selectionLocked && (
+                <span className="comment-selection-controls">
+                  <button type="button" className={singleSelected.resolved ? "active" : ""} onClick={toggleSelectedCommentResolved} title={singleSelected.resolved ? "Открыть комментарий снова" : "Отметить комментарий решённым"}><Icon name="check" size={15}/></button>
+                  <button type="button" onClick={() => startEdit(singleSelected)} title="Редактировать комментарий"><Icon name="rename" size={15}/></button>
+                  {singleSelected.commentTargetId && <button type="button" onClick={detachSelectedComment} title="Отвязать комментарий от объекта"><Icon name="unlink" size={15}/></button>}
+                </span>
+              )}
+              {singleSelected?.kind === "table" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
+                <button type="button" className="table-edit-action" onClick={() => openTableEditor(singleSelected)} title="Редактировать таблицу">
+                  <Icon name="table" size={15}/><span>{singleSelected.tableRows ?? 3}×{singleSelected.tableCols ?? 3}</span>
+                </button>
+              )}
+              {singleSelected?.kind === "checklist" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
+                <button type="button" className="checklist-edit-action" onClick={() => openChecklistEditor(singleSelected)} title="Редактировать чек-лист"><Icon name="checklist" size={15}/><span>{singleSelected.checklistDone?.filter(Boolean).length ?? 0}/{singleSelected.checklistItems?.length ?? 1}</span></button>
+              )}
+              {singleSelected?.kind === "quiz" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
+                <span className="quiz-selection-controls">
+                  <button type="button" className="quiz-edit-action" onClick={() => openQuizEditor(singleSelected)} title="Редактировать мини-тест"><Icon name="quiz" size={15}/><span>{singleSelected.quizOptions?.length ?? 2}</span></button>
+                  <button type="button" className={singleSelected.quizRevealed ? "active" : ""} onClick={() => toggleQuizReveal(singleSelected)} title={singleSelected.quizRevealed ? "Скрыть правильный ответ" : "Показать правильный ответ"}><Icon name={singleSelected.quizRevealed ? "eye-off" : "eye"} size={15}/></button>
+                  <button type="button" onClick={() => resetQuizAnswer(singleSelected)} title="Сбросить выбранный ответ"><Icon name="reset" size={15}/></button>
+                </span>
+              )}
+              {singleSelected?.kind === "flashcard" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
+                <span className="flashcard-selection-controls">
+                  <button type="button" onClick={() => openFlashcardEditor(singleSelected)} title="Редактировать карточку"><Icon name="flashcard" size={15}/><span>Редактировать</span></button>
+                  <button type="button" className={singleSelected.flashcardFlipped ? "active" : ""} onClick={() => flipFlashcard(singleSelected)} title="Перевернуть карточку"><Icon name="flip" size={15}/><span>{singleSelected.flashcardFlipped ? "Вопрос" : "Ответ"}</span></button>
+                </span>
+              )}
+              {singleSelected?.kind === "cover" && !isStudent && !selectionLocked && (
+                <span className="cover-selection-controls"><button type="button" className={singleSelected.coverOpen ? "active" : ""} onClick={() => toggleCover(singleSelected)} title="Прозрачность шторки"><Icon name={singleSelected.coverOpen ? "eye-off" : "eye"} size={15}/><span>{singleSelected.coverOpen ? "Закрыть" : "Прозрачная"}</span></button><input type="range" min="0" max="100" value={Math.round((singleSelected.coverOpen?0:(singleSelected.coverOpacity??1))*100)} onChange={e=>{const opacity=Number(e.target.value)/100;commit(itemsRef.current.map(i=>i.id===singleSelected.id?{...i,coverOpen:opacity===0,coverOpacity:opacity}:i))}} aria-label="Непрозрачность шторки"/></span>
+              )}
+              {singleSelected?.kind === "graph" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>openGraphEditor(singleSelected)} title="Параметры графика"><Icon name="graph" size={15}/><span>График</span></button></span>)}
+              {singleSelected?.kind === "formula" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
+                <span className="formula-selection-controls">
+                  <button type="button" className="formula-edit-action" onClick={() => openFormulaEditor(singleSelected)} title="Редактировать формулу"><Icon name="formula" size={15}/><span>{singleSelected.fontSize ?? 28}px</span></button>
+                  <button type="button" className="formula-fit-action" onClick={fitSelectedFormula} title="Подогнать рамку по формуле"><Icon name="fit" size={15}/></button>
+                </span>
+              )}
+
+              {(singleSelected?.kind === "text" || singleSelected?.kind === "sticky" || singleSelected?.kind === "shape" || singleSelected?.kind === "frame" || singleSelected?.kind === "formula" || singleSelected?.kind === "checklist" || singleSelected?.kind === "quiz" || singleSelected?.kind === "flashcard" || singleSelected?.kind === "cover" || singleSelected?.kind === "connector") && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
+                <span className="object-color-menu"><button type="button" className="object-color-trigger" onClick={()=>setColorMenuOpen(v=>!v)} title="Цвет"><span style={{background:singleSelected.color??"#5355c9"}}/>Цвет</button>{colorMenuOpen&&<span className="object-color-popover">{(singleSelected.kind==="sticky"?["#fff3a6","#ffd9de","#dff5c8","#dcecff","#eadcff","#ffffff"]:["#202124","#5355c9","#2f855a","#d97706","#dc4c64","#8b5cf6","#0ea5e9","#64748b","#ffffff"]).map(value=><button type="button" key={value} className="object-color-square" style={{background:value}} onClick={()=>{recolorSelected(value);setColorMenuOpen(false)}} aria-label={`Цвет ${value}`}/>)}</span>}</span>
+              )}
+              {(singleSelected?.kind === "text" || singleSelected?.kind === "sticky" || singleSelected?.kind === "formula" || singleSelected?.kind === "table" || singleSelected?.kind === "checklist" || singleSelected?.kind === "quiz" || singleSelected?.kind === "flashcard" || singleSelected?.kind === "cover") && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
+                <span className="font-size-controls" title={singleSelected.kind === "formula" ? "Размер формулы" : singleSelected.kind === "table" ? "Размер текста таблицы" : singleSelected.kind === "checklist" ? "Размер текста чек-листа" : singleSelected.kind === "quiz" ? "Размер текста вопроса" : singleSelected.kind === "flashcard" ? "Размер текста карточки" : singleSelected.kind === "cover" ? "Размер текста шторки" : "Размер текста"}>
+                  <button type="button" onClick={() => changeFontSize(-2)} aria-label="Уменьшить размер">A−</button>
+                  <span>{singleSelected.fontSize ?? (singleSelected.kind === "formula" ? 28 : singleSelected.kind === "table" ? 13 : singleSelected.kind === "checklist" || singleSelected.kind === "quiz" ? 15 : singleSelected.kind === "flashcard" ? 18 : singleSelected.kind === "cover" ? 17 : 20)}</span>
+                  <button type="button" onClick={() => changeFontSize(2)} aria-label="Увеличить размер">A+</button>
+                </span>
+              )}
+              {(singleSelected?.kind === "text" || singleSelected?.kind === "sticky") && !selectionLocked && (
+                <span className="text-format-controls" title="Форматирование текста">
+                  <button type="button" className={singleSelected.fontWeight === "bold" ? "active" : ""} onClick={() => setSelectedTextStyle({ fontWeight: singleSelected.fontWeight === "bold" ? "normal" : "bold" })} title="Полужирный"><b>B</b></button>
+                  <button type="button" className={singleSelected.fontStyle === "italic" ? "active" : ""} onClick={() => setSelectedTextStyle({ fontStyle: singleSelected.fontStyle === "italic" ? "normal" : "italic" })} title="Курсив"><i>I</i></button>
+                  <button type="button" className={singleSelected.textDecoration === "underline" ? "active" : ""} onClick={() => setSelectedTextStyle({ textDecoration: singleSelected.textDecoration === "underline" ? "none" : "underline" })} title="Подчёркивание"><u>U</u></button>
+                  <span className="connector-control-separator" />
+                  <button type="button" className={(singleSelected.textAlign ?? "left") === "left" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "left" })} title="По левому краю">≡</button>
+                  <button type="button" className={singleSelected.textAlign === "center" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "center" })} title="По центру">≣</button>
+                  <button type="button" className={singleSelected.textAlign === "right" ? "active" : ""} onClick={() => setSelectedTextStyle({ textAlign: "right" })} title="По правому краю">≡</button>
+                  <span className="connector-control-separator" />
+                  <button type="button" className={(singleSelected.textList??"none")==="bullet"?"active":""} onClick={()=>setSelectedTextStyle({textList:(singleSelected.textList??"none")==="bullet"?"none":"bullet"})} title="Маркированный список">•≡</button>
+                  <button type="button" className={singleSelected.textList==="number"?"active":""} onClick={()=>setSelectedTextStyle({textList:singleSelected.textList==="number"?"none":"number"})} title="Нумерованный список">1≡</button>
+                  <select className="text-line-height" value={singleSelected.lineHeight??1.45} onChange={e=>setSelectedTextStyle({lineHeight:Number(e.target.value)})} title="Межстрочный интервал"><option value={1}>1,0</option><option value={1.2}>1,2</option><option value={1.45}>1,45</option><option value={1.75}>1,75</option><option value={2}>2,0</option></select>
+                  
+                </span>
+              )}
+              {singleSelected?.kind === "connector" && !selectionLocked && (
+                <span className="connector-selection-controls">
+                  <button type="button" className={singleSelected.connectorStyle === "line" ? "active" : ""} onClick={() => setSelectedConnectorStyle("line")} title="Линия"><Icon name="line" size={16} /></button>
+                  <button type="button" className={(singleSelected.connectorStyle ?? "arrow") === "arrow" ? "active" : ""} onClick={() => setSelectedConnectorStyle("arrow")} title="Стрелка"><Icon name="arrow-one" size={16} /></button>
+                  <button type="button" className={singleSelected.connectorStyle === "double" ? "active" : ""} onClick={() => setSelectedConnectorStyle("double")} title="Двусторонняя стрелка"><Icon name="arrow-double" size={16} /></button>
+                  <span className="connector-control-separator" />
+                  <button type="button" className={(singleSelected.connectorRouting ?? "straight") === "straight" ? "active" : ""} onClick={() => setSelectedConnectorRouting("straight")} title="Прямая"><Icon name="line" size={16} /></button>
+                  <button type="button" className={singleSelected.connectorRouting === "elbow" ? "active" : ""} onClick={() => setSelectedConnectorRouting("elbow")} title="Ломаная"><Icon name="elbow" size={16} /></button>
+                  <button type="button" onClick={renameSelectedConnector} title="Подпись линии"><Icon name="label" size={16} /></button>
+                  <button type="button" className={(singleSelected.connectorStartBinding || singleSelected.connectorEndBinding) ? "linked" : ""} onClick={detachSelectedConnector} title="Отвязать концы от объектов"><Icon name={(singleSelected.connectorStartBinding || singleSelected.connectorEndBinding) ? "link" : "unlink"} size={16} /></button>
+                  {["#5355c9","#2f855a","#d97706","#dc4c64","#1f2937"].map((value) => (
+                    <button type="button" key={value} className="connector-color-button" style={{ background: value }} onClick={() => recolorSelected(value)} aria-label={`Цвет линии ${value}`} />
+                  ))}
+                  <button type="button" onClick={() => changeSelectedConnectorWeight(-1)} title="Тоньше">−</button>
+                  <span className="connector-weight-value">{singleSelected.weight ?? 3}px</span>
+                  <button type="button" onClick={() => changeSelectedConnectorWeight(1)} title="Толще">+</button>
+                </span>
+              )}
+              {(singleSelected?.kind === "image" || singleSelected?.kind === "pdf") && (
+                <span className="media-selection-controls">
+                  {singleSelected.kind === "pdf" && (
+                    <span className="pdf-page-controls" title="Навигация по PDF">
+                      <button type="button" disabled={selectionLocked || (singleSelected.pdfPage ?? 1) <= 1} onClick={() => changePdfPage(singleSelected, -5)} aria-label="На 5 страниц назад">«</button>
+                      <button type="button" disabled={selectionLocked || (singleSelected.pdfPage ?? 1) <= 1} onClick={() => changePdfPage(singleSelected, -1)} aria-label="Предыдущая страница PDF">‹</button>
+                      <input key={`pdf-page-${singleSelected.id}-${singleSelected.pdfPage ?? 1}`} type="number" min="1" max="10000" defaultValue={singleSelected.pdfPage ?? 1} aria-label="Номер страницы PDF" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={(e) => setPdfPage(singleSelected, Number(e.currentTarget.value))}/>
+                      <button type="button" disabled={selectionLocked} onClick={() => changePdfPage(singleSelected, 1)} aria-label="Следующая страница PDF">›</button>
+                      <button type="button" disabled={selectionLocked} onClick={() => changePdfPage(singleSelected, 5)} aria-label="На 5 страниц вперёд">»</button>
+                      <button type="button" disabled={selectionLocked} onClick={() => duplicateNextPdfPage(singleSelected)} aria-label="Добавить следующую страницу PDF рядом" title="Создать рядом копию с следующей страницей"><Icon name="duplicate" size={13}/></button>
+                    </span>
+                  )}
+                  <button type="button" onClick={() => void openMediaAsset(singleSelected)} title={singleSelected.kind === "pdf" ? "Открыть PDF отдельно" : "Открыть изображение отдельно"}><Icon name="open" size={16} /></button>
+                  <button type="button" onClick={() => void downloadMediaAsset(singleSelected)} title="Скачать исходный файл"><Icon name="download" size={16} /></button>
+                </span>
+              )}
+
+              <span className="selection-toolbar-separator" />
+              <button type="button" className="icon-action" onClick={duplicateSelected} title="Дублировать · Ctrl+D"><Icon name="duplicate" size={16} /></button>
+              <button type="button" className="icon-action" onClick={toggleLockSelected} disabled={structurallyLockedForStudent(singleSelected)} title={structurallyLockedForStudent(singleSelected)?"Доступно преподавателю":selectionLocked ? "Разблокировать" : "Заблокировать"}><Icon name={selectionLocked ? "unlock" : "lock"} size={16} /></button>
+              {singleSelected?.kind !== "connector" && (
+                <>
+                  <button type="button" className="icon-action" disabled={selectionLocked} onClick={() => rotateSelected(-90)} title="Повернуть на 90° влево · Alt+←"><Icon name="rotate-left" size={16} /></button>
+                  <button type="button" className="icon-action" disabled={selectionLocked} onClick={() => rotateSelected(90)} title="Повернуть на 90° вправо · Alt+→"><Icon name="rotate-right" size={16} /></button>
+                </>
+              )}
+
+              <details className="selection-more">
+                <summary title="Ещё действия" aria-label="Ещё действия"><Icon name="more" size={17} /></summary>
+                <div className="selection-more-menu">
+                  <button type="button" onClick={copySelected}><Icon name="copy" size={16} /><span>Копировать</span><kbd>Ctrl+C</kbd></button>
+                  {selectedItems.length === 1 && singleSelected?.kind !== "comment" && <button type="button" onClick={addCommentToSelection}><Icon name="comment" size={16}/><span>Добавить комментарий</span></button>}
+                  <button type="button" onClick={() => void exportItemsToPng("selection")}><Icon name="download" size={16} /><span>Скачать выделение PNG</span><kbd>Ctrl+Shift+E</kbd></button>
+                  {singleSelected?.kind === "frame" && !selectionLocked && (
+                    <>
+                      <button type="button" onClick={renameSelectedFrame}><Icon name="rename" size={16} /><span>Переименовать</span><kbd>F2</kbd></button>
+                      <button type="button" onClick={() => openFrameNotesEditor(singleSelected)}><Icon name="label" size={16}/><span>Заметки к фрейму</span></button>
+                      <button type="button" onClick={selectFrameContents}><Icon name="frame-contents" size={16} /><span>Выбрать содержимое</span></button>
+                      <button onClick={fitSelectedFrameToContents}><Icon name="fit" size={16} /><span>Подогнать по содержимому</span></button>
+                      <button onClick={() => void exportItemsToPng("frame")}><Icon name="download" size={16}/><span>Экспортировать этот фрейм PNG</span></button>
+                      <button onClick={() => moveSelectedFrameInPresentation(-1)}><Icon name="chevron-left" size={16}/><span>Раньше в показе</span></button>
+                      <button onClick={() => moveSelectedFrameInPresentation(1)}><Icon name="chevron-right" size={16}/><span>Позже в показе</span></button>
+                      <div className="selection-more-separator" />
+                      <div className="frame-preset-title">Размер фрейма</div>
+                      <div className="frame-preset-row">
+                        <button onClick={() => resizeSelectedFrame("16:9")}>16:9</button>
+                        <button onClick={() => resizeSelectedFrame("4:3")}>4:3</button>
+                        <button onClick={() => resizeSelectedFrame("A4")}>A4</button>
+                      </div>
+                    </>
+                  )}
+                  {singleSelected?.kind === "pdf" && !selectionLocked && (<>
+                    <button onClick={() => spreadPdfPages(singleSelected, 3)}><Icon name="slides" size={16}/><span>Разложить 3 страницы</span></button>
+                    <button onClick={() => spreadPdfPages(singleSelected, 5)}><Icon name="slides" size={16}/><span>Разложить 5 страниц</span></button>
+                  </>)}
+                  {selectedItems.length >= 1 && selectedItems.every((item) => item.kind !== "frame") && (
+                    <button onClick={createFrameAroundSelection}><Icon name="frame" size={16} /><span>Фрейм вокруг выделения</span></button>
+                  )}
+                  {selectedItems.length >= 2 && !selectionHasGroup && !selectionLocked && (
+                    <button onClick={groupSelected}><Icon name="group" size={16} /><span>Сгруппировать</span><kbd>Ctrl+G</kbd></button>
+                  )}
+                  {selectionHasGroup && !selectionLocked && (
+                    <button onClick={ungroupSelected}><Icon name="ungroup" size={16} /><span>Разгруппировать</span></button>
+                  )}
+                  {singleSelected?.kind !== "connector" && (
+                    <button disabled={selectionLocked} onClick={resetRotationSelected}><Icon name="reset-rotation" size={16} /><span>Сбросить поворот</span></button>
+                  )}
+                  <div className="selection-more-separator" />
+                  <button disabled={selectionLocked} onClick={() => moveLayerStep(false)}><Icon name="layer-down" size={16} /><span>На слой назад</span><kbd>Ctrl+[</kbd></button>
+                  <button disabled={selectionLocked} onClick={() => moveLayerStep(true)}><Icon name="layer-up" size={16} /><span>На слой вперёд</span><kbd>Ctrl+]</kbd></button>
+                  <button disabled={selectionLocked} onClick={() => moveLayer(false)}><Icon name="send-back" size={16} /><span>На задний план</span></button>
+                  <button disabled={selectionLocked} onClick={() => moveLayer(true)}><Icon name="send-front" size={16} /><span>На передний план</span></button>
+                  {selectedItems.length > 1 && (
+                    <>
+                      <div className="selection-more-separator" />
+                      <div className="selection-align-grid">
+                        <button disabled={selectionLocked} onClick={() => alignSelected("left")} title="По левому краю"><Icon name="align-left" size={16} /></button>
+                        <button disabled={selectionLocked} onClick={() => alignSelected("hcenter")} title="Центры по горизонтали"><Icon name="align-center-x" size={16} /></button>
+                        <button disabled={selectionLocked} onClick={() => alignSelected("right")} title="По правому краю"><Icon name="align-right" size={16} /></button>
+                        <button disabled={selectionLocked} onClick={() => alignSelected("top")} title="По верхнему краю"><Icon name="align-top" size={16} /></button>
+                        <button disabled={selectionLocked} onClick={() => alignSelected("vcenter")} title="Центры по вертикали"><Icon name="align-center-y" size={16} /></button>
+                        <button disabled={selectionLocked} onClick={() => alignSelected("bottom")} title="По нижнему краю"><Icon name="align-bottom" size={16} /></button>
+                        {selectedItems.length >= 3 && <button disabled={selectionLocked} onClick={() => distributeSelected("x")} title="Распределить по горизонтали"><Icon name="distribute-x" size={16} /></button>}
+                        {selectedItems.length >= 3 && <button disabled={selectionLocked} onClick={() => distributeSelected("y")} title="Распределить по вертикали"><Icon name="distribute-y" size={16} /></button>}
+                        {selectedItems.length >= 2 && <><button disabled={selectionLocked} onClick={() => equalizeSelectedSize("width")} title="Одинаковая ширина">↔</button><button disabled={selectionLocked} onClick={() => equalizeSelectedSize("height")} title="Одинаковая высота">↕</button><button disabled={selectionLocked} onClick={() => equalizeSelectedSize("both")} title="Одинаковый размер">□</button></>}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </details>
+
+              <button className="selection-toolbar-danger icon-action" disabled={selectionLocked} onClick={deleteSelected} title="Удалить · Delete"><Icon name="trash" size={16} /></button>
+            </div>
+          )}
+          {guides.x != null && (
+            <div
+              className="smart-guide smart-guide-vertical"
+              style={{ left: guides.x * view.zoom + view.x }}
+              aria-hidden="true"
+            />
+          )}
+          {guides.y != null && (
+            <div
+              className="smart-guide smart-guide-horizontal"
+              style={{ top: guides.y * view.zoom + view.y }}
+              aria-hidden="true"
+            />
+          )}
+          {contextMenu && (
+            <div
+              className="board-context-menu"
+              data-context-menu
+              style={{
+                left: Math.min(contextMenu.x, Math.max(8, (board.current?.clientWidth ?? 1200) - 230)),
+                top: Math.min(contextMenu.y, Math.max(8, (board.current?.clientHeight ?? 800) - 390)),
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {selectedItems.length ? (
+                <>
+                  <button onClick={() => { duplicateSelected(); setContextMenu(null); }}>Дублировать <span>Ctrl+D</span></button>
+                  <button onClick={() => { copySelected(); setContextMenu(null); }}>Копировать <span>Ctrl+C</span></button>
+                  {singleSelected?.kind !== "comment" && <button onClick={() => { addCommentToSelection(); setContextMenu(null); }}>Добавить комментарий</button>}
+                  {singleSelected?.kind === "table" && !selectionLocked && <button onClick={() => { openTableEditor(singleSelected); setContextMenu(null); }}>Редактировать таблицу</button>}
+                  {singleSelected?.kind === "formula" && !selectionLocked && <button onClick={() => { openFormulaEditor(singleSelected); setContextMenu(null); }}>Редактировать формулу</button>}
+                  {singleSelected?.kind === "checklist" && !selectionLocked && <button onClick={() => { openChecklistEditor(singleSelected); setContextMenu(null); }}>Редактировать чек-лист</button>}
+                  {singleSelected?.kind === "quiz" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<>
+                    <button onClick={() => { openQuizEditor(singleSelected); setContextMenu(null); }}>Редактировать мини-тест</button>
+                    <button onClick={() => { toggleQuizReveal(singleSelected); setContextMenu(null); }}>{singleSelected.quizRevealed ? "Скрыть правильный ответ" : "Показать правильный ответ"}</button>
+                    <button onClick={() => { resetQuizAnswer(singleSelected); setContextMenu(null); }}>Сбросить ответ</button>
+                  </>)}
+                  {singleSelected?.kind === "flashcard" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<>
+                    <button onClick={() => { openFlashcardEditor(singleSelected); setContextMenu(null); }}>Редактировать карточку</button>
+                    <button onClick={() => { flipFlashcard(singleSelected); setContextMenu(null); }}>{singleSelected.flashcardFlipped ? "Показать вопрос" : "Показать ответ"}</button>
+                  </>)}
+                  {singleSelected?.kind === "pdf" && !selectionLocked && (<>
+                    <button onClick={() => { duplicateNextPdfPage(singleSelected); setContextMenu(null); }}>Следующая страница рядом</button>
+                    <button onClick={() => { spreadPdfPages(singleSelected, 3); setContextMenu(null); }}>Разложить 3 страницы</button>
+                    <button onClick={() => { spreadPdfPages(singleSelected, 5); setContextMenu(null); }}>Разложить 5 страниц</button>
+                  </>)}
+                  {singleSelected?.kind === "comment" && !selectionLocked && (<>
+                    <button onClick={() => { toggleSelectedCommentResolved(); setContextMenu(null); }}>{singleSelected.resolved ? "Открыть комментарий снова" : "Отметить решённым"}</button>
+                    {singleSelected.commentTargetId && <button onClick={() => { detachSelectedComment(); setContextMenu(null); }}>Отвязать комментарий</button>}
+                  </>)}
+                  {singleSelected?.kind === "frame" && !selectionLocked && (
+                    <>
+                      <button onClick={() => { renameSelectedFrame(); setContextMenu(null); }}>Переименовать фрейм <span>F2</span></button>
+                      <button onClick={() => { openFrameNotesEditor(singleSelected); setContextMenu(null); }}>Заметки к фрейму</button>
+                      <button onClick={() => { selectFrameContents(); setContextMenu(null); }}>Выбрать содержимое фрейма</button>
+                      <button onClick={() => { void exportItemsToPng("frame"); setContextMenu(null); }}>Экспортировать фрейм PNG</button>
+                      <button onClick={() => { moveSelectedFrameInPresentation(-1); setContextMenu(null); }}>Раньше в показе</button>
+                      <button onClick={() => { moveSelectedFrameInPresentation(1); setContextMenu(null); }}>Позже в показе</button>
+                    </>
+                  )}
+                  <div className="context-separator" />
+                  {selectedItems.length >= 2 && !selectionHasGroup && !selectionLocked && (
+                    <button onClick={() => { groupSelected(); setContextMenu(null); }}>Сгруппировать <span>Ctrl+G</span></button>
+                  )}
+                  {selectionHasGroup && !selectionLocked && (
+                    <button onClick={() => { ungroupSelected(); setContextMenu(null); }}>Разгруппировать <span>Ctrl+Shift+G</span></button>
+                  )}
+                  <button disabled={studentSelectionHasProtected()} onClick={() => { toggleLockSelected(); setContextMenu(null); }}>{selectionLocked ? "Разблокировать" : "Заблокировать"}</button>
+                  <div className="context-separator" />
+                  <button disabled={selectionLocked||studentSelectionHasProtected()} onClick={() => { moveLayerStep(true); setContextMenu(null); }}>На слой вперёд <span>Ctrl+]</span></button>
+                  <button disabled={selectionLocked||studentSelectionHasProtected()} onClick={() => { moveLayerStep(false); setContextMenu(null); }}>На слой назад <span>Ctrl+[</span></button>
+                  <button disabled={selectionLocked||studentSelectionHasProtected()} onClick={() => { moveLayer(true); setContextMenu(null); }}>На передний план</button>
+                  <button disabled={selectionLocked||studentSelectionHasProtected()} onClick={() => { moveLayer(false); setContextMenu(null); }}>На задний план</button>
+                  {singleSelected?.kind !== "connector" && (
+                    <>
+                      <button disabled={selectionLocked} onClick={() => { rotateSelected(-90); setContextMenu(null); }}>Повернуть на 90° влево <span>Alt+←</span></button>
+                      <button disabled={selectionLocked} onClick={() => { rotateSelected(90); setContextMenu(null); }}>Повернуть на 90° вправо <span>Alt+→</span></button>
+                      <button disabled={selectionLocked} onClick={() => { resetRotationSelected(); setContextMenu(null); }}>Сбросить поворот</button>
+                    </>
+                  )}
+                  <div className="context-separator" />
+                  <button className="context-danger" disabled={selectionLocked} onClick={() => { deleteSelected(); setContextMenu(null); }}>Удалить <span>Delete</span></button>
+                </>
+              ) : (
+                <>
+                  <button disabled={!clipboard.current.length} onClick={() => { pasteClipboard(); setContextMenu(null); }}>Вставить <span>Ctrl+V</span></button>
+                  <button disabled={!items.length} onClick={() => { fitToBounds(boundsOf(itemsRef.current.filter((item) => !item.hidden))); setContextMenu(null); }}>Показать всю доску</button>
+                  <button onClick={() => { setView({ x: 0, y: 0, zoom: 1 }); setContextMenu(null); }}>Масштаб 100%</button>
+                </>
+              )}
+            </div>
+          )}
+          {tool === "eraser" && (
+            <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true" style={{ left:-1000, top:-1000, width:eraserSize, height:eraserSize, visibility:"hidden" }} />
+          )}
+          {path.length > 0 && (
+            <svg className="lasso-overlay">
+              <polygon
+                points={path
+                  .map(
+                    (p) =>
+                      `${p.x * view.zoom + view.x},${p.y * view.zoom + view.y}`,
+                  )
+                  .join(" ")}
+              />
+            </svg>
+          )}
+        </section>
+        <div className="coordinates">
+          {selected.length
+            ? selectionLocked
+              ? `Выделено: ${selected.length} · объект заблокирован · разблокируйте для редактирования`
+              : `Выделено: ${selected.length} · Alt+перетаскивание — копия · стрелки — сдвиг · Shift+стрелка — 10 px`
+            : `Сейчас: ${toolShortLabel[tool]} · правый клик — меню · колесо мыши — масштаб`}
+        </div>
+        <div className="board-controls">
+          <button aria-label="Уменьшить" title="Уменьшить" onClick={() => zoom(0.8)}><Icon name="zoom-out" size={16} /></button>
+          <button
+            className="zoom-value"
+            onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
+            title="Вернуть масштаб 100%"
+          >
+            {Math.round(view.zoom * 100)}%
+          </button>
+          <button aria-label="Увеличить" title="Увеличить" onClick={() => zoom(1.25)}><Icon name="zoom-in" size={16} /></button>
+          <span className="board-controls-separator" />
+          <button
+            className="grid-toggle"
+            onClick={cycleGrid}
+            title={gridMode === "dots" ? "Фон: точки · переключить на сетку" : gridMode === "grid" ? "Фон: сетка · переключить на чистый" : "Фон: чистый · переключить на точки"}
+          >
+            <Icon name={gridMode === "dots" ? "dots" : gridMode === "grid" ? "grid" : "plain"} size={16} />
+          </button>
+          <button
+            className={`snap-toggle ${snapEnabled ? "active" : ""}`}
+            onClick={() => { setSnapEnabled((value) => !value); setGuides({}); }}
+            title="Умные привязки при перемещении · Alt временно отключает"
+          >
+            <Icon name="snap" size={16} />
+          </button>
+          <button
+            className="fit-button fit-all-button"
+            aria-label="Показать всю доску"
+            disabled={!items.length}
+            onClick={() => fitToBounds(boundsOf(itemsRef.current.filter((item) => !item.hidden)))}
+            title="Показать всю доску"
+          >
+            <Icon name="fit" size={16} />
+          </button>
+          <button
+            className="fit-button fit-selection-button"
+            aria-label="Приблизить выделение"
+            disabled={!selectionBounds}
+            onClick={() => fitToBounds(selectionBounds, 120)}
+            title="Приблизить выделение"
+          >
+            <Icon name="select" size={16} />
+          </button>
+        </div>
+        {items.length > 0 && (
+          <div className="minimap">
+            <div className="minimap-header">
+              <span>Навигация</span>
+              <span>{visibleObjects.length} видно · {objectCount} всего</span>
+            </div>
+            <div
+              className="minimap-world"
+              title="Щёлкните, чтобы перейти к месту на доске"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                const miniRect = e.currentTarget.getBoundingClientRect();
+                const mainRect = board.current?.getBoundingClientRect();
+                if (!mainRect) return;
+                const worldX = miniX + ((e.clientX - miniRect.left) / miniRect.width) * miniW;
+                const worldY = miniY + ((e.clientY - miniRect.top) / miniRect.height) * miniH;
+                setView((current) => ({
+                  ...current,
+                  x: mainRect.width / 2 - worldX * current.zoom,
+                  y: mainRect.height / 2 - worldY * current.zoom,
+                }));
+              }}
+            >
+              {minimapMarkers}
+              {visibleWorld && (
+                <span
+                  className="minimap-viewport"
+                  style={{
+                    left: `${((visibleWorld.x - miniX) / miniW) * 100}%`,
+                    top: `${((visibleWorld.y - miniY) / miniH) * 100}%`,
+                    width: `${(visibleWorld.width / miniW) * 100}%`,
+                    height: `${(visibleWorld.height / miniH) * 100}%`,
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+
+export default function App() {
+  const [route, setRoute] = useState<AppRoute>(initialRoute);
+  const navigate = useCallback((path: string, replace = false) => {
+    window.history[replace ? "replaceState" : "pushState"](null, "", path);
+    const url = new URL(path, window.location.href);
+    setRoute(parseRoute(url.pathname));
+  }, []);
+  useEffect(() => {
+    const changed = () => {
+      const next = parseRoute(window.location.pathname);
+      if (next.kind === "join") rememberShareToken(next.token);
+      setRoute(next);
+    };
+    window.addEventListener("popstate", changed);
+    return () => window.removeEventListener("popstate", changed);
+  }, []);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => getCachedCurrentUser());
+  const [accountRole,setAccountRoleState]=useState<AccountRole>(()=>getCachedAccountAccess()?.role??"student");
+  const [isAppAdmin,setIsAppAdmin]=useState(()=>getCachedAccountAccess()?.isAdmin??false);
+  const [adminInspecting,setAdminInspecting]=useState(false);
+  const [adminEdit,setAdminEdit]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminEdit")==="1"}catch{return false}});
+  const changeAdminEdit=useCallback((value:boolean)=>{setAdminEdit(value);try{localStorage.setItem("onlinerepetitor.adminEdit",value?"1":"0")}catch{}},[]);
+  const [adminInvisible,setAdminInvisible]=useState(()=>{try{return localStorage.getItem("onlinerepetitor.adminInvisible")==="1"}catch{return false}});
+  const changeAdminInvisible=useCallback((value:boolean)=>{setAdminInvisible(value);try{localStorage.setItem("onlinerepetitor.adminInvisible",value?"1":"0")}catch{}},[]);
+  const [authReady, setAuthReady] = useState(() => Boolean(getCachedCurrentUser()));
+  const [activeBoard, setActiveBoard] = useState<BoardSummary | null>(null);
+  const boardChanged = useCallback((updated: BoardSummary) => {
+    setActiveBoard(current => current?.id === updated.id ? updated : current);
+  }, []);
+  const [boardLoading, setBoardLoading] = useState(false);
+  const [boardLoadError, setBoardLoadError] = useState("");
+  const [sharePassword, setSharePassword] = useState("");
+  const [sharePasswordRequired, setSharePasswordRequired] = useState(false);
+  const [remoteVersion, setRemoteVersion] = useState<number | null>(null);
+  const [boardMountKey, setBoardMountKey] = useState(0);
+  const [globalInstallPrompt,setGlobalInstallPrompt]=useState<Event|null>(null);
+  const [globalStandalone,setGlobalStandalone]=useState(()=>window.matchMedia?.("(display-mode: standalone)").matches===true);
+  useEffect(()=>{
+    const ready=(e:Event)=>{e.preventDefault();setGlobalInstallPrompt(e)};
+    const installed=()=>{setGlobalInstallPrompt(null);setGlobalStandalone(true)};
+    window.addEventListener("beforeinstallprompt",ready);
+    window.addEventListener("appinstalled",installed);
+    return()=>{window.removeEventListener("beforeinstallprompt",ready);window.removeEventListener("appinstalled",installed)};
+  },[]);
+  const installGlobalApp=async()=>{
+    const prompt=globalInstallPrompt as (Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>})|null;
+    if(!prompt)return;
+    await prompt.prompt();
+    await prompt.userChoice;
+    setGlobalInstallPrompt(null);
+  };
+
+  useEffect(() => {
+    let alive = true;
+    void getCurrentUser().then((user) => {
+      if (alive) setAuthUser(user);
+    }).catch(() => {
+      if (alive) setAuthUser(null);
+    }).finally(() => {
+      if (alive) setAuthReady(true);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  const logout = () => {
+    clearPendingShare();
+    clearAccountAccessCache();
+    clearNotificationCache();
+    clearAiBoardTransfer();
+    navigate("/", true);
+    setAuthUser(null);
+    setActiveBoard(null);
+    void logoutUser().finally(() => {
+      clearAccountAccessCache();
+      clearNotificationCache();
+      setActiveBoard(null);
+      setAuthUser(null);
+    });
+  };
+
+  const openBoard = useCallback(async (board: BoardSummary, isCurrent: () => boolean) => {
+    setBoardLoadError("");
+    setBoardLoading(true);
+    try {
+      if (isRemoteBackendEnabled()) {
+        const remote = await getRemoteBoardDocument(board.id);
+        if (!isCurrent()) return;
+        const key = boardStorageKey(board.id);
+        if (remote?.document) {
+          const parsed = parseDocument(JSON.stringify(remote.document));
+          localStorage.setItem(key, JSON.stringify(parsed));
+          setRemoteVersion(remote.version);
+        } else {
+          const raw = localStorage.getItem(key);
+          if (raw && board.role !== "viewer") {
+            const localDocument = parseDocument(raw);
+            try {
+              await ensureBoardAssets(board.id, localDocument);
+              const saved = await saveRemoteBoardDocument(board.id, localDocument, 0);
+              if (!isCurrent()) return;
+              // Keep local data; the mounted subscription will offer conflict resolution.
+              setRemoteVersion(saved.conflict ? null : saved.version);
+            } catch {
+              // A missing v19 attachment or unavailable Storage must not prevent
+              // opening the local document. Autosave will retry synchronization.
+              if (isCurrent()) setRemoteVersion(null);
+            }
+          } else {
+            setRemoteVersion(null);
+          }
+        }
+      } else {
+        setRemoteVersion(null);
+      }
+      if (!isCurrent()) return;
+      setActiveBoard(board);
+      setBoardMountKey((value) => value + 1);
+    } catch (error) {
+      if (isCurrent()) setBoardLoadError(error instanceof Error ? error.message : "Не удалось загрузить доску с сервера");
+    } finally {
+      if (isCurrent()) setBoardLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authReady || !authUser) return;
+    let alive = true;
+    setActiveBoard(null);
+    setBoardLoadError("");
+    setSharePasswordRequired(false);
+    if (route.kind === "home") { setBoardLoading(false); return; }
+    setBoardLoading(true);
+    void (async () => {
+      try {
+        if (route.kind === "invalid") throw new Error("Ссылка недействительна");
+        if (route.kind === "join") {
+          rememberShareToken(route.token);
+          const redeemed = await redeemShareLink(route.token, sharePassword || undefined);
+          if (!alive) return;
+          clearPendingShare();
+          navigate(`/board/${redeemed.board_id}`, true);
+          return;
+        }
+        setAdminInspecting(false);
+        const board = await getBoardForUser(authUser, route.boardId);
+        if (!alive) return;
+        if (!board) throw new Error("Доска недоступна. Попросите владельца прислать ссылку для доступа.");
+        await openBoard(board, () => alive);
+      } catch (error) {
+        if (!alive) return;
+        setBoardLoading(false);
+        const message=error instanceof Error ? error.message : "Не удалось открыть доску";
+        if(route.kind==="join" && /парол/i.test(message)){
+          setSharePasswordRequired(true);
+          setBoardLoadError("");
+        }else{
+          setSharePasswordRequired(false);
+          setBoardLoadError(route.kind === "join"
+            ? message || "Не удалось принять ссылку. Возможно, она отозвана, истекла или сервер недоступен."
+            : message);
+        }
+      }
+    })();
+    return () => { alive = false; };
+  }, [route, authReady, authUser, navigate, openBoard, sharePassword]);
+
+  useEffect(()=>{
+    if(!authUser)return;
+    let alive=true,lastRefresh=0,inFlight=false;
+    const apply=(x:Awaited<ReturnType<typeof getAccountAccess>>)=>{if(alive){setAccountRoleState(x.role);setIsAppAdmin(x.isAdmin)}};
+    const cached=getCachedAccountAccess();if(cached)apply(cached);
+    const refresh=()=>{
+      if(!alive||inFlight||document.visibilityState==="hidden"||Date.now()-lastRefresh<5000)return;
+      lastRefresh=Date.now();inFlight=true;
+      void getAccountAccess().then(apply).catch(()=>{}).finally(()=>{inFlight=false});
+    };
+    refresh();
+    const listener=()=>refresh();
+    const onVisibility=()=>{if(document.visibilityState==="visible")refresh()};
+    window.addEventListener("onlinerepetitor:account-access",listener);
+    window.addEventListener("focus",refresh);
+    window.addEventListener("online",refresh);
+    document.addEventListener("visibilitychange",onVisibility);
+    return()=>{alive=false;window.removeEventListener("onlinerepetitor:account-access",listener);window.removeEventListener("focus",refresh);window.removeEventListener("online",refresh);document.removeEventListener("visibilitychange",onVisibility)}
+  },[authUser?.id]);
+
+  useEffect(()=>{
+    const openSection=(section:string)=>{
+      window.history.pushState({}, "", `/?section=${section}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    };
+    const onDashboardClick=(event:MouseEvent)=>{
+      const target=event.target as HTMLElement|null;
+      if(!target)return;
+      const profile=target.closest(".account-chip");
+      if(profile){
+        event.preventDefault();
+        event.stopPropagation();
+        openSection("profile");
+        return;
+      }
+      const button=target.closest("button");
+      if(button?.textContent?.trim().includes("Настройки")){
+        event.preventDefault();
+        event.stopPropagation();
+        openSection("settings");
+      }
+    };
+    document.addEventListener("click",onDashboardClick,true);
+    return()=>document.removeEventListener("click",onDashboardClick,true);
+  },[]);
+
+  if (!authReady) {
+    return <main className="auth-shell"><section className="auth-card"><div className="auth-brand-row"><div className="auth-logo">B</div><div><div className="auth-brand">Учебная доска</div><div className="auth-subtitle">Проверяем сессию…</div></div></div></section></main>;
+  }
+
+
+
+  if (!authUser) {
+    return <AuthScreen onAuthenticated={(user) => { clearAccountAccessCache(); clearNotificationCache(); setAuthUser(user); setActiveBoard(null); }} />;
+  }
+
+  if (!activeBoard) {
+    return (
+      <>
+        <Suspense fallback={<div className="board-server-overlay"><div className="board-server-card"><strong>Открываем раздел…</strong><span>Загружаем только нужный модуль.</span></div></div>}>
+        {route.kind === "home" && (()=>{const section=new URLSearchParams(window.location.search).get("section");return section==="admin" && isAppAdmin
+          ? <AdminScreen user={authUser} invisible={adminInvisible} onInvisibleChange={changeAdminInvisible} adminEdit={adminEdit} onAdminEditChange={changeAdminEdit} onOpenBoard={(board)=>{setAdminInspecting(true);void openBoard(board,()=>true)}} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          : section==="students" && accountRole==="teacher"
+          ? <StudentsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          : section==="assignments"
+          ? <AssignmentsScreen user={authUser} accountRole={accountRole} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          : section==="progress" && accountRole==="teacher"
+          ? <ProgressScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          : section==="schedule"
+          ? <ScheduleScreen user={authUser} accountRole={accountRole} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          : section==="materials" && accountRole==="teacher"
+          ? <MaterialsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          : section==="notifications"
+          ? <NotificationsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          : section==="profile"
+          ? <ProfileScreen user={authUser} accountRole={accountRole} isAppAdmin={isAppAdmin} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          : section==="settings"
+          ? <SettingsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onLogout={logout} installAvailable={Boolean(globalInstallPrompt)} isInstalled={globalStandalone} onInstall={()=>void installGlobalApp()} onBilling={()=>{window.history.pushState({}, "", "/?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          : section==="billing"
+          ? <BillingScreen onBack={()=>{window.history.pushState({}, "", "/?section=settings");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          : section==="ai"
+          ? <AiStudioScreen onBack={()=>{window.history.pushState({}, "", "/?section=settings");window.dispatchEvent(new PopStateEvent("popstate"))}} onTariffs={()=>{window.history.pushState({}, "", "/?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          : section==="templates" && accountRole==="teacher"
+          ? <TemplatesScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
+          : <BoardsScreen user={authUser} accountRole={accountRole} isAppAdmin={isAppAdmin} onOpenBoard={(board) => navigate(`/board/${board.id}`)} onLogout={logout} />})()}
+        </Suspense>
+        {sharePasswordRequired && route.kind==="join" && <div className="board-server-overlay"><form className="board-server-card share-password-card" onSubmit={e=>{e.preventDefault();if(!sharePassword.trim())return;setSharePasswordRequired(false);setRoute({...route});}}><strong>Ссылка защищена паролем</strong><span>Введите пароль, который сообщил владелец доски.</span><input type="password" value={sharePassword} onChange={e=>setSharePassword(e.target.value)} placeholder="Пароль ссылки" autoComplete="off"/><div className="share-password-actions"><button className="primary" type="submit" disabled={!sharePassword.trim()}>Открыть доску</button><button type="button" onClick={()=>{setSharePassword("");clearPendingShare();navigate("/",true)}}>Отмена</button></div></form></div>}
+        {boardLoading && <div className="board-server-overlay"><div className="board-server-card"><strong>Загружаем доску…</strong><span>Получаем последнюю версию с сервера.</span></div></div>}
+        {boardLoadError && <div className="board-server-overlay"><div className="board-server-card"><strong>Не удалось открыть доску</strong><span>{boardLoadError}</span><button className="primary" onClick={() => setRoute({ ...route })}>Повторить</button><button onClick={() => { clearPendingShare(); navigate("/", true); }}>К моим доскам</button></div></div>}
+      </>
+    );
+  }
+
+  return (
+    <BoardApp
+      key={`${activeBoard.id}:${boardMountKey}`}
+      authUser={authUser}
+      boardSummary={activeBoard}
+      accountRole={accountRole}
+      isAppAdmin={isAppAdmin}
+      adminMaintenance={adminInspecting && isAppAdmin && adminEdit}
+      adminInvisible={adminInvisible}
+      initialRemoteVersion={remoteVersion}
+      onBoardChanged={boardChanged}
+      onBackToBoards={() => { setActiveBoard(null); if(adminInspecting){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
+      onLogout={logout}
+    />
+  );
+}
