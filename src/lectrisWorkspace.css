@@ -136,3 +136,26 @@
  .lectris-workspace-stage .boards-content{width:calc(100% - 26px)!important;padding:15px 0 32px!important}
 }
 @media (prefers-reduced-motion:reduce){.lectris-nav-link{transition:none}}
+
+/* Coherent controls for existing screen modules. Their original click handlers
+   and data flow are preserved. */
+.lectris-workspace-stage :is(.boards-toolbar,.students-toolbar,.schedule-toolbar,.materials-toolbar,.progress-toolbar,.templates-toolbar) {
+ gap:10px;align-items:center;
+}
+.lectris-workspace-stage :is(.boards-toolbar,.students-toolbar,.schedule-toolbar,.materials-toolbar,.progress-toolbar,.templates-toolbar) :is(input,select){
+ min-height:39px;border:1px solid #dbe4f1;border-radius:10px;background:#fff;color:#34435d;
+}
+.lectris-workspace-stage :is(.boards-toolbar,.students-toolbar,.schedule-toolbar,.materials-toolbar,.progress-toolbar,.templates-toolbar) button,
+.lectris-workspace-stage :is(.board-card-actions,.student-card-actions,.material-actions,.profile-inline-actions,.settings-footer-actions,.session-actions) button{
+ min-height:34px;border-radius:10px;font-weight:650;transition:background-color .14s ease,color .14s ease;
+}
+.lectris-workspace-stage :is(.board-card-actions,.student-card-actions,.material-actions,.profile-inline-actions,.settings-footer-actions,.session-actions) button:not(:disabled):hover{
+ background-color:#eef3fb;color:#3058b5;
+}
+.lectris-workspace-stage :is(.board-card,.student-card,.students-list,.profile-identity-card,.profile-compact-card){
+ border-color:#e1e8f2;box-shadow:0 6px 24px #1b33560c;
+}
+.lectris-workspace-stage :is(.boards-create,.students-primary):disabled{opacity:.55;cursor:not-allowed}
+.lectris-workspace-stage :is(.boards-create,.students-primary):focus-visible{
+ outline:2px solid #3a66d3;outline-offset:2px;
+}
