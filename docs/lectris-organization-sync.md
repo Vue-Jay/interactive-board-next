@@ -61,7 +61,13 @@ conflict resolution is implemented.
 
 Local-only data created *before* organization sync was enabled is not
 automatically uploaded. This avoids overwriting newer shared metadata.
-Users can re-save board associations to queue them for upload. A guided
-one-time import can be added once the separate project is provisioned.
+When the isolated backend is configured, teachers can click
+**Перенести локальные метки** in the Lectris workspace. This queues owned-board
+associations only and uses insert-ignore semantics: existing cloud
+associations win. Empty subject/group labels and non-owned boards are skipped.
+Local-only category names are also queued for an insert-ignore import.
+
+After import, click **Повторить синхронизацию** if the status reports an
+error. The local data is kept until successfully delivered.
 
 The original online whiteboard and existing Supabase project remain untouched.
