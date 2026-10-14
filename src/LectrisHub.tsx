@@ -15,10 +15,21 @@ type Props = {
   loading: boolean;
   creating: boolean;
   onOpenBoard: (board: BoardSummary) => void;
-  onCreateBoard: () => void;
+  onCreateBoard: (association?:Partial<Organization>) => void;
 };
 const commonSubjects = ["Математика","Русский язык","Физика","Химия","Биология","География","История","Английский язык","Информатика","Литература"];
 const storageKey=(id:string)=>"lectris.board-organization.v1."+id;
+type CategoryCatalog={subjects:string[];groups:string[]};
+const categoryKey=(id:string)=>"lectris.categories.v1."+id;
+function readCategoryCatalog(userId:string):CategoryCatalog{
+  try{
+    const raw=JSON.parse(localStorage.getItem(categoryKey(userId))||"{}") as Record<string,unknown>;
+    const safe=(name:"subjects"|"groups")=>Array.isArray(raw?.[name])
+      ?(raw[name] as unknown[]).filter((v):v is string=>typeof v==="string"&&!!v.trim()).map(v=>v.trim().slice(0,80)).slice(0,100):[];
+    return {subjects:safe("subjects"),groups:safe("groups")};
+  }catch{return {subjects:[],groups:[]}}
+}
+
 function loadOrganization(id:string):Record<string,Organization> {
   try{
     const parsed:unknown=JSON.parse(localStorage.getItem(storageKey(id))||"{}");
@@ -42,10 +53,14 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
   const [subjectDraft,setSubjectDraft]=useState("");
   const [groupDraft,setGroupDraft]=useState("");
   const [scope,setScope]=useState<string|null>(null);
+  const [categoryCatalog,setCategoryCatalog]=useState<CategoryCatalog>(()=>readCategoryCatalog(user.id));
+  const [categoryEntryOpen,setCategoryEntryOpen]=useState(false);
+  const [categoryDraft,setCategoryDraft]=useState("");
+
   const [students,setStudents]=useState<StudentRecord[]>([]);
   const [lessons,setLessons]=useState<ScheduledLesson[]>([]);
   const [dataLoading,setDataLoading]=useState(true);
-  useEffect(()=>{setOrganization(loadOrganization(user.id));setScope(null);setEditing(null)},[user.id]);
+  useEffect(()=>{setOrganization(loadOrganization(user.id));setCategoryCatalog(readCategoryCatalog(user.id));setScope(null);setEditing(null);setCategoryEntryOpen(false)},[user.id]);
   useEffect(()=>{
     let active=true;setDataLoading(true);
     void Promise.allSettled([
@@ -63,8 +78,8 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
     .sort((a,b)=>a.startsAt.localeCompare(b.startsAt)),[lessons]);
   const recent=useMemo(()=>[...boards].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,6),[boards]);
   const getOrg=(board:BoardSummary):Organization=>organization[board.id]||{subject:"",group:""};
-  const subjectList=useMemo(()=>[...new Set(boards.map(b=>organization[b.id]?.subject||"").filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization]);
-  const groupList=useMemo(()=>[...new Set(boards.map(b=>organization[b.id]?.group||"").filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization]);
+  const subjectList=useMemo(()=>[...new Set([...categoryCatalog.subjects,...boards.map(b=>organization[b.id]?.subject||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.subjects]);
+  const groupList=useMemo(()=>[...new Set([...categoryCatalog.groups,...boards.map(b=>organization[b.id]?.group||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.groups]);
   const openEdit=(board:BoardSummary)=>{
     const current=getOrg(board);setEditing(board.id);setSubjectDraft(current.subject);setGroupDraft(current.group);
   };
@@ -74,6 +89,20 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
     try{localStorage.setItem(storageKey(user.id),JSON.stringify(next));setOrganization(next);setEditing(null)}catch{
       window.alert("Не удалось сохранить организацию доски в браузере.");
     }
+  };
+  const createCategory=()=>{
+    if(!teacher)return;
+    const name=categoryDraft.trim().slice(0,80);
+    if(!name)return;
+    const key=view==="subjects"?"subjects":"groups";
+    const existing=key==="subjects"?subjectList:groupList;
+    const matched=existing.find(value=>value.toLocaleLowerCase("ru")===name.toLocaleLowerCase("ru"));
+    if(matched){setScope(matched);setCategoryDraft("");setCategoryEntryOpen(false);return}
+    const next:CategoryCatalog={...categoryCatalog,[key]:[...categoryCatalog[key],name]};
+    try{
+      localStorage.setItem(categoryKey(user.id),JSON.stringify(next));
+      setCategoryCatalog(next);setScope(name);setCategoryDraft("");setCategoryEntryOpen(false);
+    }catch{window.alert("Браузер не разрешил сохранить новый раздел.")}
   };
   const groupBy=(key:"subject"|"group")=>{
     const values=key==="subject"?subjectList:groupList;
@@ -150,9 +179,23 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
           {groupBy(view==="subjects"?"subject":"group").map(value=><button type="button" key={value||"-"} className={scope===value?"selected":""} onClick={()=>setScope(value)}>{named(value)}
             <span>{boards.filter(b=>getOrg(b)[view==="subjects"?"subject":"group"]===value).length}</span>
           </button>)}
+          {teacher&&<div className="lectris-hub-new-category">
+            {categoryEntryOpen?<form onSubmit={e=>{e.preventDefault();createCategory()}}>
+              <input aria-label={view==="subjects"?"Название предмета":"Название группы"} maxLength={80}
+                placeholder={view==="subjects"?"Название предмета":"Название группы"}
+                value={categoryDraft} onChange={e=>setCategoryDraft(e.target.value)}
+                onKeyDown={e=>e.stopPropagation()}/>
+              <div><button type="submit" disabled={!categoryDraft.trim()}>Создать</button>
+                <button type="button" onClick={()=>{setCategoryEntryOpen(false);setCategoryDraft("")}}>Отмена</button></div>
+            </form>:<button type="button" className="lectris-hub-new-category-trigger"
+              onClick={()=>setCategoryEntryOpen(true)}>+ {view==="subjects"?"Новый предмет":"Новая группа"}</button>}
+          </div>}
         </div>
         <section className="lectris-hub-section lectris-hub-collection-content">
-          <div className="lectris-hub-section-head"><div><small>{chosenBoards.length} досок</small><h2>{scope===null?"Все доски":named(scope)}</h2></div></div>
+          <div className="lectris-hub-section-head"><div><small>{chosenBoards.length} досок</small><h2>{scope===null?"Все доски":named(scope)}</h2></div>
+            {teacher&&<button type="button" disabled={creating}
+              onClick={()=>onCreateBoard(scope===null?undefined:view==="subjects"?{subject:scope}:{group:scope})}>+ Доска</button>}
+          </div>
           {loading?<p className="lectris-hub-placeholder">Загружаем…</p>:chosenBoards.length?<div className="lectris-hub-board-list">{chosenBoards.map(boardTile)}</div>:
             <div className="lectris-hub-empty"><strong>Здесь пока пусто</strong><p>Откройте меню «⋯» у доски и укажите предмет или группу.</p></div>}
           <p className="lectris-hub-local-note">Организация предметов и групп пока хранится только в этом браузере. Содержимое досок сохраняется как прежде.</p>
