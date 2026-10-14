@@ -19,7 +19,6 @@ type Props = {
   onCreateBoard: (association?:Partial<Organization>) => void;
 };
 const commonSubjects = ["Математика","Русский язык","Физика","Химия","Биология","География","История","Английский язык","Информатика","Литература"];
-const storageKey=(id:string)=>"lectris.board-organization.v1."+id;
 const shortDate=(iso:string)=>new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 const navigate=(section:string)=>{window.history.pushState({},"",section?"/?section="+encodeURIComponent(section):"/");window.dispatchEvent(new PopStateEvent("popstate"))};
 
