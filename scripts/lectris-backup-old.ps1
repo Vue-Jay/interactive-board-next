@@ -99,8 +99,8 @@ try {
   $backupDir = Join-Path $backupRoot ('old-' + $OldProjectRef + '-' + $stamp)
   New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
   Write-Host ''
-  Write-Host ('Saving encrypted-at-rest-sensitive backups to LOCAL folder: ' + $backupDir)
-  Write-Host 'These SQL files contain account data and password hashes. Never publish/share them.'
+  Write-Host ('Saving SENSITIVE UNENCRYPTED backups to LOCAL folder: ' + $backupDir)
+  Write-Host 'These SQL files contain account data and password hashes. Keep them encrypted on disk and never publish/share them.'
   $dumps = @(
     @{ Name='roles.sql'; Args=@('--role-only') },
     @{ Name='schema.sql'; Args=@() },
