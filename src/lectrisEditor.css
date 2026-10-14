@@ -91,3 +91,54 @@
     max-width:100%;gap:5px;padding:3px 0;
  }
 }
+
+
+/* Lectris inspector 1.4: compact, precise controls that reuse existing object patches. */
+.lectris-inspector-state{color:#71819a;font-size:11px;font-weight:600;line-height:1.3}
+.lectris-inspector-rotation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.lectris-inspector-rotation button{
+  min-height:35px;border:1px solid #dbe5f1;border-radius:10px;
+  background:#f7f9fe;color:#365479;font-size:12px;font-weight:750;
+  cursor:pointer;transition:background .15s ease,border-color .15s ease;
+}
+.lectris-inspector-rotation button:hover:not(:disabled){background:#e8effe;border-color:#b7caf2}
+.lectris-inspector-rotation button:disabled{opacity:.46;cursor:default}
+.lectris-inspector-palette{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px}
+.lectris-inspector-palette button{
+  position:relative;aspect-ratio:1;min-width:0;min-height:27px;
+  border:1px solid #ccd8e9;border-radius:9px;
+  cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;
+}
+.lectris-inspector-palette button:hover:not(:disabled){transform:translateY(-2px)}
+.lectris-inspector-palette button.selected{outline:2px solid #466cdb;outline-offset:2px;z-index:1}
+.lectris-inspector-palette button:disabled{opacity:.6;cursor:default}
+.lectris-inspector-palette button:focus-visible,
+.lectris-inspector-rotation button:focus-visible,
+.lectris-inspector-actions button:focus-visible{
+  outline:2px solid #365fd0;outline-offset:3px;
+}
+.lectris-inspector-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.lectris-inspector-actions button{
+  min-height:39px;padding:9px;border:1px solid #dbe5f1;
+  border-radius:11px;background:#f7f9fe;color:#354e73;
+  font-size:12px;font-weight:750;cursor:pointer;
+}
+.lectris-inspector-actions button:hover:not(:disabled){background:#e9f0ff}
+.lectris-inspector-actions button:disabled{opacity:.5;cursor:not-allowed}
+.lectris-inspector-scroll{scrollbar-width:thin;scrollbar-color:#c7d5e9 transparent}
+@media(max-width:700px) and (orientation:portrait){
+  .lectris-object-inspector{
+    top:auto;bottom:calc(70px + env(safe-area-inset-bottom));
+    height:min(66dvh,570px);max-height:calc(100dvh - 130px);
+    right:6px;width:calc(100vw - 12px);border-radius:19px;
+    box-shadow:0 12px 48px #182b4d36;
+  }
+  .lectris-inspector-head{min-height:62px;padding:10px 16px}
+  .lectris-inspector-scroll{padding:0 16px 14px}
+  .lectris-inspector-section{padding:13px 0}
+  .lectris-inspector-grid{gap:8px}
+  .lectris-inspector-palette button{min-height:30px}
+}
+@media(prefers-reduced-motion:reduce){
+  .lectris-inspector-rotation button,.lectris-inspector-palette button{transition:none}
+}
