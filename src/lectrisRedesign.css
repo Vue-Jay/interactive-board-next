@@ -507,3 +507,42 @@
     transition:none!important;animation:none!important;
   }
 }
+
+
+/* 08. Fast find on Home: search all accessible boards without a separate screen */
+.lectris-hub-board-search{
+  position:relative;display:flex;align-items:center;
+  margin:-2px 0 14px;
+}
+.lectris-hub-board-search::before{
+  content:"";flex:0 0 auto;pointer-events:none;position:absolute;
+  left:15px;top:50%;width:13px;height:13px;margin-top:-9px;
+  border:2px solid #8698b4;border-radius:50%;
+}
+.lectris-hub-board-search::after{
+  content:"";pointer-events:none;position:absolute;
+  left:29px;top:28px;width:7px;height:2px;
+  background:#8698b4;border-radius:2px;transform:rotate(45deg);
+  transform-origin:left center;
+}
+.lectris-hub-board-search input{
+  flex:1;min-width:0;width:100%;height:45px;padding:10px 40px 10px 41px;
+  border:1px solid #dde6f2;border-radius:12px;background:#f8faff;
+  color:#263a57;font:inherit;font-size:13px;
+  box-sizing:border-box;transition:border-color .15s,background .15s;
+}
+.lectris-hub-board-search input::placeholder{color:#8997ab}
+.lectris-hub-board-search input:focus{
+  background:#fff;border-color:#9cb5ea;outline:2px solid #a1b9ec70;
+  outline-offset:1px;
+}
+.lectris-hub-board-search>button{
+  position:absolute;right:6px;top:5px;width:35px;height:35px;
+  border:0;background:transparent;color:#7588a5;
+  border-radius:10px;font-size:21px;
+}
+.lectris-hub-board-search>button:hover{background:#e9effa}
+@media(max-width:760px){
+  .lectris-hub-board-search input{height:42px;font-size:12px}
+  .lectris-hub-board-search::after{top:26px}
+}
