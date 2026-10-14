@@ -6,6 +6,8 @@ import App from "./App";
 import "./interactiveCursor.css";
 import "./settingsCursorFix.css";
 import "./lectrisLayout.css";
+import "./lectrisWorkspace.css";
+import "./lectrisBoard.css";
 
 type ErrorBoundaryState = { error: Error | null };
 
