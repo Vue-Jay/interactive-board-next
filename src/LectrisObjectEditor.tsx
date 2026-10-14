@@ -35,33 +35,42 @@ type QuickProps = {
 
 export function LectrisQuickProperties(props: QuickProps) {
   const { item, selectionCount, tool, color, weight, markerWeight, eraserSize, canModify } = props;
-  const drawing = tool === "pen" || tool === "marker";
-  const erasing = tool === "eraser";
-  if (!selectionCount && !drawing && !erasing) return null;
-  return <section className="lectris-quick-properties" aria-label="Быстрые настройки">
-    {selectionCount > 0 ? <>
-      <span className="lectris-quick-title">{item ? itemNames[item.kind] : "Выбрано: " + selectionCount}</span>
-      {item && colorKinds.has(item.kind) && canModify && <label className="lectris-inline-color">Цвет
-        <input type="color" aria-label="Цвет выбранного объекта" value={/^#[0-9a-fA-F]{6}$/.test(item.color||"") ? item.color : "#365fd0"} onChange={e=>props.onPatch({color:e.target.value})}/>
-      </label>}
-      {item && <span className="lectris-quick-metric">{Math.round(item.width)} × {Math.round(item.height)}</span>}
-      {item && item.kind!=="pen" && item.kind!=="marker" && <button type="button" onClick={props.onInspectorOpen} aria-pressed={props.inspectorOpen}>Свойства</button>}
-      {item && canModify && advancedKinds.has(item.kind) && <button type="button" onClick={props.onEdit}>Редактировать</button>}
-      {canModify && <button type="button" onClick={props.onDuplicate}>Копия</button>}
-      {canModify && <button type="button" className="lectris-danger" onClick={props.onDelete}>Удалить</button>}
-      <button type="button" onClick={props.onDeselect} aria-label="Снять выделение">×</button>
-    </> : <>
-      <span className="lectris-quick-title">{erasing ? "Ластик" : tool==="marker" ? "Маркер" : "Карандаш"}</span>
-      {drawing && <label className="lectris-inline-color">Цвет
-        <input type="color" aria-label="Цвет рисования" value={color} onChange={e=>props.onColor(e.target.value)} />
-      </label>}
-      <label className="lectris-quick-slider">{erasing ? "Размер" : "Толщина"}
-        <input type="range" min={erasing?8:tool==="marker"?8:1} max={erasing?96:tool==="marker"?48:16}
-          step={erasing?2:1} value={erasing?eraserSize:tool==="marker"?markerWeight:weight}
-          onChange={e=>{const n=Number(e.target.value); if(erasing)props.onEraserSize(n);else if(tool==="marker")props.onMarkerWeight(n);else props.onWeight(n);}} />
-        <span>{erasing?eraserSize:tool==="marker"?markerWeight:weight} px</span>
-      </label>
-    </>}
+  const [expanded,setExpanded]=useState(false);
+  useEffect(()=>setExpanded(false),[tool,item?.id]);
+  const drawing=tool==="pen"||tool==="marker";
+  const erasing=tool==="eraser";
+  if(!selectionCount&&!drawing&&!erasing)return null;
+  return <section className={`lectris-quick-properties ${expanded?"is-expanded":""}`} aria-label="Быстрые настройки">
+    <span className="lectris-quick-title">
+      {selectionCount>0 ? item?itemNames[item.kind]:"Выбрано: "+selectionCount : erasing?"Ластик":tool==="marker"?"Маркер":"Карандаш"}
+    </span>
+    <button className="lectris-quick-expand" type="button" aria-expanded={expanded}
+      onClick={()=>setExpanded(v=>!v)}>{expanded?"Свернуть ▲":"Настройки ▼"}</button>
+    <div className="lectris-quick-details">
+      {selectionCount>0?<>
+        {item&&colorKinds.has(item.kind)&&canModify&&<label className="lectris-inline-color">Цвет
+          <input type="color" aria-label="Цвет выбранного объекта"
+            value={/^#[0-9a-fA-F]{6}$/.test(item.color||"")?item.color:"#365fd0"}
+            onChange={e=>props.onPatch({color:e.target.value})}/>
+        </label>}
+        {item&&<span className="lectris-quick-metric">{Math.round(item.width)} × {Math.round(item.height)}</span>}
+        {item&&item.kind!=="pen"&&item.kind!=="marker"&&<button type="button" onClick={props.onInspectorOpen} aria-pressed={props.inspectorOpen}>Свойства</button>}
+        {item&&canModify&&advancedKinds.has(item.kind)&&<button type="button" onClick={props.onEdit}>Редактировать</button>}
+        {canModify&&<button type="button" onClick={props.onDuplicate}>Копия</button>}
+        {canModify&&<button type="button" className="lectris-danger" onClick={props.onDelete}>Удалить</button>}
+        <button type="button" onClick={props.onDeselect} aria-label="Снять выделение">×</button>
+      </>:<>
+        {drawing&&<label className="lectris-inline-color">Цвет
+          <input type="color" aria-label="Цвет рисования" value={color} onChange={e=>props.onColor(e.target.value)}/>
+        </label>}
+        <label className="lectris-quick-slider">{erasing?"Размер":"Толщина"}
+          <input type="range" min={erasing?8:tool==="marker"?8:1} max={erasing?96:tool==="marker"?48:16}
+            step={erasing?2:1} value={erasing?eraserSize:tool==="marker"?markerWeight:weight}
+            onChange={e=>{const n=Number(e.target.value);if(erasing)props.onEraserSize(n);else if(tool==="marker")props.onMarkerWeight(n);else props.onWeight(n);}}/>
+          <span>{erasing?eraserSize:tool==="marker"?markerWeight:weight} px</span>
+        </label>
+      </>}
+    </div>
   </section>;
 }
 
