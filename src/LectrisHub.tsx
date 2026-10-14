@@ -38,6 +38,7 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
   const [students,setStudents]=useState<StudentRecord[]>([]);
   const [lessons,setLessons]=useState<ScheduledLesson[]>([]);
   const [dataLoading,setDataLoading]=useState(true);
+  const [boardSearch,setBoardSearch]=useState("");
   useEffect(()=>{
     setOrganization(readLectrisLocalOrganization(user.id));
     setCategoryCatalog(readLectrisLocalCatalog(user.id));
@@ -101,6 +102,15 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
     .sort((a,b)=>a.startsAt.localeCompare(b.startsAt)),[lessons]);
   const recent=useMemo(()=>[...boards].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,6),[boards]);
   const getOrg=(board:BoardSummary):Organization=>organization[board.id]||{subject:"",group:""};
+  const visibleHomeBoards=useMemo(()=>{
+    const query=boardSearch.trim().toLocaleLowerCase("ru-RU");
+    if(!query)return recent;
+    return [...boards].filter(board=>{
+      const org=organization[board.id];
+      return [board.title,org?.subject||"",org?.group||""].some(value=>
+        value.toLocaleLowerCase("ru-RU").includes(query));
+    }).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
+  },[boardSearch,boards,organization,recent]);
   const subjectList=useMemo(()=>[...new Set([...categoryCatalog.subjects,...boards.map(b=>organization[b.id]?.subject||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.subjects]);
   const groupList=useMemo(()=>[...new Set([...categoryCatalog.groups,...boards.map(b=>organization[b.id]?.group||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.groups]);
   const openEdit=(board:BoardSummary)=>{
@@ -178,10 +188,16 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
       {totals}
       <div className="lectris-hub-columns">
         <section className="lectris-hub-section">
-          <div className="lectris-hub-section-head"><div><small>ПРОДОЛЖИТЬ РАБОТУ</small><h2>Недавние доски</h2></div><button type="button" onClick={()=>navigate("boards")}>Все доски →</button></div>
-          {loading?<p className="lectris-hub-placeholder">Загружаем доски…</p>:recent.length?
-            <div className="lectris-hub-board-list">{recent.map(boardTile)}</div>:
-            <div className="lectris-hub-empty"><strong>Пока нет досок</strong><p>{teacher?"Создайте доску, чтобы начать занятие.":"Откройте доску по приглашению преподавателя."}</p></div>}
+          <div className="lectris-hub-section-head"><div><small>ПРОДОЛЖИТЬ РАБОТУ</small><h2>{boardSearch.trim()?"Поиск по доскам":"Недавние доски"}</h2></div><button type="button" onClick={()=>navigate("boards")}>Все доски →</button></div>
+          <div className="lectris-hub-board-search">
+            <input type="search" value={boardSearch} onChange={event=>setBoardSearch(event.target.value)}
+              placeholder="Найти доску, предмет или группу" aria-label="Поиск по всем доскам, предметам и группам"/>
+            {boardSearch&&<button type="button" aria-label="Очистить поиск" title="Очистить поиск" onClick={()=>setBoardSearch("")}>×</button>}
+          </div>
+          {loading?<p className="lectris-hub-placeholder">Загружаем доски…</p>:visibleHomeBoards.length?
+            <div className="lectris-hub-board-list">{visibleHomeBoards.map(boardTile)}</div>:
+            <div className="lectris-hub-empty"><strong>{boardSearch.trim()?"Ничего не найдено":"Пока нет досок"}</strong>
+              <p>{boardSearch.trim()?"Попробуйте другое название или очистите поиск.":teacher?"Создайте доску, чтобы начать занятие.":"Откройте доску по приглашению преподавателя."}</p></div>}
         </section>
         <div className="lectris-hub-aside">
           <section className="lectris-hub-section">
