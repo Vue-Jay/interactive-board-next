@@ -53,13 +53,15 @@
 3. Сохранить новый project ref и отдельно сгенерированный publishable/anon key.
 4. Перейти к этапу 3. Старую базу не изменять.
 
+**Актуальный новый проект Lectris:** `vznjpfqodjnxnmkrhiqk`. Ранее созданный `qxpocdbzqlgcqgmivtem` выведен из плана переноса и не должен использоваться как назначение.
+
 ## Этап 2B. Ручной экспорт и восстановление
 
 Для Windows в репозитории есть **предпочтительный помощник только для резервной копии**:
 `scripts/lectris-backup-old.ps1`. Он скрытно запрашивает **старый**
 PostgreSQL URI, проверяет source project ref
 `vblmywoczinzezcmqrgb`, запрещает адрес нового проекта
-`qxpocdbzqlgcqgmivtem`, делает три дампа в игнорируемую Git-папку
+`vznjpfqodjnxnmkrhiqk`, делает три дампа в игнорируемую Git-папку
 `migration-backups/` и **никогда не запускает восстановление**.
 
 ```powershell
