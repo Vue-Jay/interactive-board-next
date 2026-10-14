@@ -8,7 +8,7 @@ const sideOptions:{value:"left"|"right";label:string}[]=[{value:"left",label:"С
 export default function LectrisPanelSettings({value,onChange,onClose}:Props){
   const [draft,setDraft]=useState<LectrisPanelLayout>(value);
   useEffect(()=>setDraft(value),[value]);
-  const set=<K extends keyof LectrisPanelLayout>(key:K,next:LectrisPanelLayout[K])=>setDraft(current=>({...current,[key]:next}));
+  const set=<K extends keyof LectrisPanelLayout,>(key:K,next:LectrisPanelLayout[K])=>setDraft(current=>({...current,[key]:next}));
   const side=(key:SideKey,label:string)=><fieldset className="lectris-panel-settings-field">
     <legend>{label}</legend>
     <div className="lectris-panel-settings-segments">
