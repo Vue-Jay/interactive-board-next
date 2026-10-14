@@ -1,0 +1,19 @@
+name: Lectris Storage Backup Syntax
+on:
+  push:
+    paths:
+      - 'scripts/lectris-backup-old-storage.mjs'
+      - '.github/workflows/lectris-storage-check.yml'
+  workflow_dispatch:
+jobs:
+  check-node-script:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check JS migration script syntax without credentials or network access
+        run: node --check scripts/lectris-backup-old-storage.mjs
