@@ -2,10 +2,10 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./nextTheme.css";
-import "./lectrisLayout.css";
 import App from "./App";
 import "./interactiveCursor.css";
 import "./settingsCursorFix.css";
+import "./lectrisLayout.css";
 
 type ErrorBoundaryState = { error: Error | null };
 
