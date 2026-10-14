@@ -165,3 +165,23 @@
 .lectris-unread-badge{margin-left:auto;min-width:19px;min-height:19px;border-radius:10px;display:grid;place-items:center;padding:1px 5px;background:#e8eefc;color:#345bb6;font-size:10px;font-weight:850}
 .lectris-workspace.is-collapsed .lectris-unread-badge{display:none}
 @media(max-width:1080px){.lectris-workspace-sidebar .lectris-unread-badge{display:none}}
+
+
+/* Lectris mobile menu 1.4: nonblocking search, outside click and keyboard support. */
+.lectris-mobile-more-backdrop{display:none}
+@media(max-width:700px){
+  .lectris-mobile-more-backdrop{
+    display:block;position:fixed;inset:0 0 calc(60px + env(safe-area-inset-bottom)) 0;
+    z-index:131;background:rgba(18,34,57,.25);border:0;padding:0;cursor:default;
+  }
+  .lectris-mobile-more{isolation:isolate;scrollbar-width:thin;overscroll-behavior:contain}
+  .lectris-mobile-more-search{
+    width:100%;min-height:42px;box-sizing:border-box;
+    border:1px solid #d9e4f2;border-radius:12px;background:#f8faff;
+    color:#263953;font:inherit;font-size:13px;padding:10px 13px;
+    margin:1px 0 8px;
+  }
+  .lectris-mobile-more-search:focus-visible{outline:2px solid #8faaf0;outline-offset:1px}
+  .lectris-mobile-more-empty{font-size:13px;color:#72839b;text-align:center;padding:18px 8px;margin:0}
+  .lectris-mobile-more .lectris-nav-link{min-height:43px}
+}
