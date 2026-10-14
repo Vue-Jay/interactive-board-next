@@ -8,6 +8,7 @@ import "./settingsCursorFix.css";
 import "./lectrisLayout.css";
 import "./lectrisWorkspace.css";
 import "./lectrisBoard.css";
+import "./lectrisEditor.css";
 
 type ErrorBoundaryState = { error: Error | null };
 
