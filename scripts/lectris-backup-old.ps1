@@ -75,9 +75,6 @@ try {
   }
   $sourceInHost = $uri.Host -ieq ('db.' + $OldProjectRef + '.supabase.co')
   $sourceInUser = $uri.UserInfo -like ('postgres.' + $OldProjectRef + ':*')
-  if (-not $sourceInHost -and -not $sourceInUser) {
-    throw 'STOP: project ref does not match the old project. Verify OLD database URI in Dashboard > Connect.'
-  }
   $username = [Uri]::UnescapeDataString(($uri.UserInfo -split ':',2)[0])
   $poolerHost = $uri.Host -match '\.pooler\.supabase\.com$'
   if ($poolerHost -and $username -cne ('postgres.' + $OldProjectRef)) {
@@ -85,6 +82,9 @@ try {
   }
   if ($sourceInHost -and $username -cne 'postgres') {
     throw 'STOP: direct connections require username postgres.'
+  }
+  if (-not $sourceInHost -and -not $sourceInUser) {
+    throw 'STOP: project ref does not match the old project. Verify OLD database URI in Dashboard > Connect.'
   }
   if ($dbUrl -match '\[YOUR-PASSWORD\]' -or $uri.UserInfo -notmatch ':') {
     throw 'STOP: missing database password. Enter it when prompted.'
