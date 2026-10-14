@@ -1,0 +1,45 @@
+/* Lectris 1.0: first live layout iteration. Safe style layer, no drawing logic changes. */
+.boards-shell{background:#f3f6fa;color:#202c40}
+.boards-header{height:74px;padding-inline:clamp(18px,3vw,44px);border-bottom:1px solid #e1e8f1;background:#fff}
+.boards-brand .auth-logo{background:#385cc7!important;color:#fff!important;border-radius:13px!important;box-shadow:none!important}
+.boards-brand strong{font-size:20px;letter-spacing:-.045em;font-weight:800}
+.boards-brand span{font-size:12px}
+.lectris-overview{width:min(1180px,calc(100% - 40px));margin:32px auto 0;padding:28px 32px;border:1px solid #e0e8f1;border-radius:22px;background:#fff;box-shadow:0 14px 40px #293c6210;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px}
+.lectris-welcome h1{font-size:clamp(24px,3vw,34px);margin:7px 0;letter-spacing:-.045em}
+.lectris-welcome p{margin:0;color:#738098;font-size:14px;line-height:1.6}
+.lectris-eyebrow{font-size:10px;font-weight:850;letter-spacing:.14em;color:#526ec2}
+.lectris-overview-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lectris-overview-actions button{border:1px solid #dbe3ee;background:#fff;color:#303f5b;border-radius:11px;padding:11px 15px;font-weight:750;cursor:pointer}
+.lectris-overview-actions button:first-child{background:#385cc7;color:#fff;border-color:#385cc7}
+.lectris-overview-actions button:hover{filter:brightness(.96)}
+.lectris-overview-actions button:disabled{opacity:.5;cursor:wait}
+.lectris-summary{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;border-top:1px solid #edf0f6;padding-top:20px}
+.lectris-summary>div{display:grid;gap:5px;padding:12px 16px;background:#f6f8fc;border:1px solid #edf0f6;border-radius:13px}
+.lectris-summary strong{font-size:23px;font-weight:800;line-height:1}
+.lectris-summary span{font-size:12px;color:#687891}
+.boards-content{padding-top:25px}
+.dashboard-nav{background:#e9eff7;border-radius:13px;padding:5px}
+.dashboard-nav button{border-radius:10px}
+.dashboard-nav button.active{color:#314e9e}
+.boards-grid{gap:16px}
+.board-card{border-radius:18px;border-color:#e1e8f1;box-shadow:0 6px 20px #1a35590d}
+.board-card-preview{background:#f0f4fb;height:154px}
+.board-card-grid{background-image:radial-gradient(#bdcbe1 1px,transparent 1px)}
+.board-card-letter{color:#4160b6}
+.board-card-body{padding:17px}
+.boards-create{background:#385cc7;border-radius:11px;box-shadow:none}
+.boards-create:hover{background:#2c4ead}
+.topbar{background:#fff;border-bottom:1px solid #e2e8f1;box-shadow:0 2px 12px #182b4610}
+.compact-toolbar{border-color:#dfe7f0!important;box-shadow:0 8px 25px #223a5b18!important}
+.compact-toolbar .tool-button{border-radius:10px!important}
+@media(max-width:780px){
+ .lectris-overview{grid-template-columns:1fr;padding:20px;margin-top:18px;gap:16px}
+ .lectris-overview-actions{gap:7px}
+ .lectris-summary{gap:7px;padding-top:14px}
+ .lectris-summary>div{padding:11px 8px}
+ .lectris-summary strong{font-size:19px}
+ .lectris-summary span{font-size:10px}
+ .boards-header{height:64px}
+ .boards-content{padding-top:14px}
+}
+@media(prefers-reduced-motion:reduce){.board-card{transition:none!important}}
