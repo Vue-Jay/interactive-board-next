@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./nextTheme.css";
+import "./lectrisLayout.css";
 import App from "./App";
 import "./interactiveCursor.css";
 import "./settingsCursorFix.css";
@@ -46,7 +47,7 @@ createRoot(root).render(
     ? <main style={{minHeight:"100dvh",display:"grid",placeItems:"center",background:"#f5f7fc",fontFamily:"system-ui,sans-serif",padding:24}}>
         <section style={{maxWidth:460,padding:36,borderRadius:20,background:"white",boxShadow:"0 8px 40px #14234d18",textAlign:"center"}}>
           <h1>{confirmationError ? "Не удалось подтвердить почту" : "Почта подтверждена"}</h1>
-          <p>{confirmationError || "Адрес электронной почты подтверждён. Теперь можно закрыть эту вкладку и войти в OnlineRepetitor."}</p>
+          <p>{confirmationError || "Адрес электронной почты подтверждён. Теперь можно закрыть эту вкладку и войти в Lectris."}</p>
         </section>
       </main>
     : <ErrorBoundary><App /></ErrorBoundary>
