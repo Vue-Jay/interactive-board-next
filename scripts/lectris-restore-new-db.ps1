@@ -3,6 +3,12 @@
 # Any failed restore rolls back via psql --single-transaction --set ON_ERROR_STOP=1.
 param([switch]$Apply)
 Set-StrictMode -Version Latest
+# SAFETY INTERLOCK: Old InteractiveBoard has 4 live pg_cron jobs. Their commands
+# and effects have not been audited. SQL restore may recreate/re-activate them.
+# Do not permit a real restore until a reviewed migration plan handles these jobs.
+if ($Apply) {
+  throw 'RESTORE BLOCKED: 4 pg_cron jobs were found in OLD production, but not yet audited. Do not import data until jobs and external effects are reviewed. Preview mode remains available.'
+}
 $ErrorActionPreference = 'Stop'
 $oldRef = 'vblmywoczinzezcmqrgb'
 $newRef = 'vznjpfqodjnxnmkrhiqk'
