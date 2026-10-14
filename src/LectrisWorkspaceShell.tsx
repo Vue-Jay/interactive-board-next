@@ -75,7 +75,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
     </div>
     <nav className="lectris-mobile-bottom" aria-label="Навигация Lectris">
       {mainTabs.map(x=>navButton(x,"lectris-mobile-tab"))}
-      <button type="button" className={`lectris-nav-link lectris-mobile-tab ${moreOpen?"is-active":""}`} aria-label="Ещё разделы" aria-expanded={moreOpen} onClick={()=>setMoreOpen(v=>!v)}><NavGlyph name="menu"/><span>Ещё</span></button>
+      <button type="button" className={`lectris-nav-link lectris-mobile-tab ${moreOpen||!mainTabs.some(tab=>tab.id===active)?"is-active":""}`} aria-label="Ещё разделы" aria-expanded={moreOpen} onClick={()=>setMoreOpen(v=>!v)}><NavGlyph name="menu"/><span>Ещё</span></button>
     </nav>
     {moreOpen&&<div className="lectris-mobile-more" role="dialog" aria-label="Другие разделы">
       <div className="lectris-mobile-more-head"><strong>Разделы Lectris</strong><button type="button" onClick={()=>setMoreOpen(false)} aria-label="Закрыть">×</button></div>
