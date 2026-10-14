@@ -46,19 +46,19 @@
 
 Это только локальная проверка: никаких сетевых запросов и изменений БД. Если команды `supabase`/`psql` не найдены, установите инструменты до экспорта.
 
-### Если выводит \`FATAL: password authentication failed\`
+### Если выводит `FATAL: password authentication failed`
 
 **Не нужно повторять выгрузку или сбрасывать пароль наугад.** Проверьте исходные учётные данные через независимый клиент PostgreSQL:
 
-\`\`\`powershell
+```powershell
 cd C:\Users\user\InteractiveBoardNext
 .\scripts\lectris-check-old-db.ps1
-\`\`\`
+```
 
-В запрос «OLD Session pooler URI» вставьте URI из **старого** Supabase → Connect → Session pooler, оставив \`[YOUR-PASSWORD]\` без изменений. Затем введите пароль БД **отдельно** в скрытый запрос. Скрипт выполнит только \`SELECT 1\` через \`psql\` внутри Docker:
+В запрос «OLD Session pooler URI» вставьте URI из **старого** Supabase → Connect → Session pooler, оставив `[YOUR-PASSWORD]` без изменений. Затем введите пароль БД **отдельно** в скрытый запрос. Скрипт выполнит только `SELECT 1` через `psql` внутри Docker:
 
-- \`SUCCESS\`: пароль и подключение принимаются PostgreSQL, тогда дальнейшая ошибка \`db dump --role-only\` требует отдельного исправления CLI.
-- \`FAILED\` с \`password authentication failed\`: сначала проверить именно **старый пароль БД** и имя пользователя. Для Shared Session pooler нужно \`postgres.vblmywoczinzezcmqrgb\`, а не \`postgres\`.
+- `SUCCESS`: пароль и подключение принимаются PostgreSQL, тогда дальнейшая ошибка `db dump --role-only` требует отдельного исправления CLI.
+- `FAILED` с `password authentication failed`: сначала проверить именно **старый пароль БД** и имя пользователя. Для Shared Session pooler нужно `postgres.vblmywoczinzezcmqrgb`, а не `postgres`.
 - Сетевые ошибки, таймауты или отсутствие Docker означают проблему связи/окружения, не пароль.
 
 Не публикуйте URI, пароль или дампы. **Не сбрасывайте пароль рабочей базы**, пока не проверите, что сторонние приложения и инструменты не используют его.
