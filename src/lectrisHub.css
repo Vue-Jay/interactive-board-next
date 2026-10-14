@@ -109,3 +109,22 @@
  .lectris-hub-new-category form{width:210px}
  .lectris-hub-new-category-trigger{white-space:nowrap}
 }
+
+/* Organization synchronization status. No writes to the legacy project. */
+.lectris-hub-sync{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  min-height:38px;margin:0 0 14px;padding:8px 13px;
+  background:#fff;border:1px solid #e2eaf4;border-radius:11px;
+  color:#69809b;font-size:11px;font-weight:650;
+}
+.lectris-hub-sync-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#a7b3c5}
+.lectris-hub-sync-dot.status-synced{background:#35a477}
+.lectris-hub-sync-dot.status-saving{background:#e5ad4e}
+.lectris-hub-sync-dot.status-error{background:#d25b65}
+.lectris-hub-sync button{
+  background:#f0f5ff;border:1px solid #d5e1f6;border-radius:8px;
+  color:#385cb4;padding:6px 9px;font-size:11px;font-weight:760;
+  margin-left:auto;cursor:pointer;
+}
+.lectris-hub-sync button:hover:not(:disabled){background:#e4edff}
+.lectris-hub-sync button:disabled{opacity:.55;cursor:wait}
