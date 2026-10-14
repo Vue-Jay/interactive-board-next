@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "OnlineRepetitor — интерактивная доска",
-  "short_name": "OnlineRepetitor",
+  "name": "Lectris — интерактивная доска",
+  "short_name": "Lectris",
   "description": "Интерактивная доска для онлайн-занятий, совместной работы и учебных материалов.",
   "lang": "ru",
   "start_url": "/?source=pwa",
@@ -9,7 +9,7 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f4f5f7",
-  "theme_color": "#5355c9",
+  "theme_color": "#365fd0",
   "categories": ["education", "productivity"],
   "icons": [
     {"src": "/pwa-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
