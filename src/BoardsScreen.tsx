@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import LectrisHub from "./LectrisHub";
+import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectrisOrganizationStore";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
 import { createBoard, deleteBoard, deleteBoardForever, ensureUserBoards, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
 import { boardShareUrl, clearPendingShareToken, createBoardShareLink, listBoardShareLinks, pendingShareToken, redeemBoardShareLink, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
@@ -98,14 +99,11 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
      const b=await createBoard(user);
      if(association&&(association.subject||association.group)){
        try{
-         const key="lectris.board-organization.v1."+user.id;
-         const stored=JSON.parse(localStorage.getItem(key)||"{}") as Record<string,{subject?:string;group?:string}>;
-         const safe=stored&&typeof stored==="object"&&!Array.isArray(stored)?stored:{};
-         localStorage.setItem(key,JSON.stringify({...safe,[b.id]:{
-           subject:(association.subject||"").trim().slice(0,80),
-           group:(association.group||"").trim().slice(0,80)
-         }}));
-       }catch{/* Do not block access to a newly created board if local tags cannot be stored. */}
+         queueLectrisBoardOrganization(user.id,b.id,{
+           subject:association.subject||"",group:association.group||""
+         });
+         void flushLectrisOrganization(user.id).catch(()=>{});
+       }catch{/* Organization can be recovered without blocking board creation. */}
      }
      await refresh();
      onOpenBoard(b);
