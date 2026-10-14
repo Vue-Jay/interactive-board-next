@@ -43,3 +43,72 @@
  .boards-content{padding-top:14px}
 }
 @media(prefers-reduced-motion:reduce){.board-card{transition:none!important}}
+
+/* Lectris v1.1: desktop workspace navigation, responsive layouts. */
+@media (min-width: 1024px) {
+  .boards-content {
+    width: min(1450px, calc(100% - 48px));
+    display: grid;
+    grid-template-columns: 204px minmax(0,1fr);
+    align-items: start;
+    column-gap: 26px;
+    row-gap: 16px;
+  }
+  .boards-content:has(.lectris-side-nav-collapsed){grid-template-columns:64px minmax(0,1fr)}
+  .boards-content > :not(.lectris-side-nav) {grid-column:2;min-width:0}
+  .lectris-side-nav {
+    grid-column:1;
+    grid-row:1 / span 20;
+    position:sticky;
+    top:18px;
+    display:flex;
+    flex-direction:column;
+    width:100%;
+    max-width:none;
+    max-height:calc(100dvh - 36px);
+    overflow-y:auto;
+    border:1px solid #e1e8f1;
+    border-radius:17px;
+    padding:9px;
+    margin:0;
+    background:#fff;
+    box-shadow:0 6px 24px #2436530b;
+  }
+  .lectris-side-nav button {
+    width:100%;
+    text-align:left;
+    border-radius:11px;
+    min-height:40px;
+    padding:10px 13px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .lectris-side-nav .lectris-nav-toggle {border-bottom:1px solid #e8edf4;border-radius:0;margin-bottom:9px;color:#64748b}
+  .lectris-side-nav-collapsed button:not(.lectris-nav-toggle){
+    font-size:0;
+    text-align:center;
+    padding:9px 3px;
+    min-width:0;
+  }
+  .lectris-side-nav-collapsed button:not(.lectris-nav-toggle)::before{
+    content:"◦";
+    display:inline-block;
+    font-size:24px;
+    font-weight:700;
+    line-height:1;
+  }
+  .lectris-side-nav-collapsed button.active::before{content:"▦"}
+  .lectris-side-nav-collapsed .lectris-nav-toggle {text-align:center;padding:8px 0}
+  .lectris-side-nav-collapsed .lectris-nav-toggle span{display:none}
+  .lectris-side-nav-collapsed button:not(.lectris-nav-toggle):hover{font-size:12px}
+  .boards-heading-row{align-items:center}
+}
+@media (max-width:1023px) {
+ .lectris-nav-toggle{display:none!important}
+ .lectris-overview {width:min(1180px,calc(100% - 24px))}
+}
+@media (max-width:600px) {
+ .lectris-overview {margin-top:10px;padding:16px;border-radius:16px}
+ .lectris-overview-actions button{padding:9px 11px;font-size:12px}
+ .lectris-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
