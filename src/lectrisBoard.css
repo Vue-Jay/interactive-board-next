@@ -126,3 +126,35 @@
 .lectris-subject-toolbox-menu button:hover{background:#eff4ff;color:#305cbd}
 @media(max-width:1100px) and (pointer:coarse){.lectris-subject-toolbox{display:none}}
 @media(max-width:700px){.lectris-board-context{max-width:92px;padding:4px 6px;font-size:10px}}
+
+/* Saved Lectris layout presets, independent for mouse and touch devices. */
+.lectris-layout-picker{position:relative;display:flex;align-items:center;flex:0 0 auto;z-index:1100}
+.lectris-layout-picker>summary{
+ list-style:none;display:grid;place-items:center;width:36px;height:36px;
+ border:1px solid #dfe6f2;background:#f8faff;color:#526884;
+ border-radius:10px;cursor:pointer;
+}
+.lectris-layout-picker>summary::-webkit-details-marker{display:none}
+.lectris-layout-picker[open]>summary{color:#3158b5;background:#e8efff}
+.lectris-layout-menu{
+ position:absolute;right:0;top:calc(100% + 8px);width:225px;
+ padding:10px;border:1px solid #dae4f1;border-radius:14px;
+ background:#fff;box-shadow:0 12px 32px #152c4d31;z-index:1400;
+ display:grid;gap:4px;
+}
+.lectris-layout-menu strong{padding:7px 9px 9px;color:#7384a0;font-size:11px}
+.lectris-layout-menu button{
+ display:flex;align-items:center;gap:9px;padding:10px 9px;
+ border:0;background:transparent;border-radius:9px;text-align:left;
+ color:#3b5375;font-size:12px;font-weight:700;cursor:pointer;
+}
+.lectris-layout-menu button span{font-size:15px;width:16px;color:#476bcc}
+.lectris-layout-menu button:hover{background:#f0f4ff}
+.lectris-layout-menu button.active{background:#e8efff;color:#2855b9}
+.workspace.lectris-layout-focus :is(.minimap,.coordinates){display:none!important}
+.workspace.lectris-layout-focus .toolbar.compact-toolbar :is(.toolbar-ai-button,.toolbar-command-search){display:none!important}
+.workspace.lectris-layout-focus .toolbar.compact-toolbar{box-shadow:0 2px 14px #17335a15!important}
+.workspace.lectris-layout-lesson .toolbar.compact-toolbar{box-shadow:0 14px 36px #18365e27!important}
+.workspace.lectris-layout-lesson .lectris-quick-properties{border-color:#bbcbef!important}
+.topbar.lectris-layout-lesson .presence-menu{outline:1px solid #cbdafa;outline-offset:2px;border-radius:10px}
+@media(max-width:700px){.lectris-layout-picker>summary{width:32px;height:32px}.lectris-layout-menu{right:-4px}}
