@@ -1491,7 +1491,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     try{
       const parsed:unknown=JSON.parse(localStorage.getItem(lectrisToolbarKey)||"null");
       if(!Array.isArray(parsed))return defaults;
-      return parsed.filter((id,index):id is Tool=>typeof id==="string"&&tools.some(t=>t.id===id)&&id!=="select"&&id!=="hand"&&id!=="lasso"&&parsed.indexOf(id)===index&&toolAllowedForRole(id));
+      return parsed.filter((id,index):id is Tool=>typeof id==="string"&&tools.some(t=>t.id===id)&&id!=="select"&&id!=="hand"&&id!=="lasso"&&parsed.indexOf(id)===index&&toolAllowedForRole(id as Tool));
     }catch{return defaults}
   });
   const [lectrisCustomizeOpen,setLectrisCustomizeOpen]=useState(false);
