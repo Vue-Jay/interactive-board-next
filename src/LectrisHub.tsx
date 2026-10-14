@@ -135,7 +135,7 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
           <p>{teacher?"Все доски, предметы, ученики и ближайшие уроки под рукой.":"Занятия, задания и доступные доски в одном месте."}</p>
         </div>
         <div className="lectris-hub-hero-actions">
-          {teacher&&<button type="button" className="lectris-hub-primary" onClick={onCreateBoard} disabled={creating}>+ Создать доску</button>}
+          {teacher&&<button type="button" className="lectris-hub-primary" onClick={()=>onCreateBoard()} disabled={creating}>+ Создать доску</button>}
           <button type="button" onClick={()=>navigate("schedule")}>{teacher?"Расписание занятий":"Мои занятия"} ↗</button>
         </div>
       </div>
