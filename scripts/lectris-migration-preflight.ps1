@@ -2,8 +2,8 @@
 # Run from C:\Users\user\InteractiveBoardNext after creating a target project.
 # This script NEVER connects to, writes to, or modifies either database.
 param(
-  [string]$OldProjectRef = $env:LECTRIS_OLD_PROJECT_REF,
-  [string]$NewProjectRef = $env:LECTRIS_NEW_PROJECT_REF
+  [string]$OldProjectRef = $(if ($env:LECTRIS_OLD_PROJECT_REF) { $env:LECTRIS_OLD_PROJECT_REF } else { 'vblmywoczinzezcmqrgb' }),
+  [string]$NewProjectRef = $(if ($env:LECTRIS_NEW_PROJECT_REF) { $env:LECTRIS_NEW_PROJECT_REF } else { 'vznjpfqodjnxnmkrhiqk' })
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -24,6 +24,9 @@ function Assert-Ref([string]$Name, [string]$Ref) {
 }
 $oldOk = Assert-Ref 'OLD / Original whiteboard' $OldProjectRef
 $newOk = Assert-Ref 'NEW / Lectris only' $NewProjectRef
+if ($NewProjectRef -ceq 'qxpocdbzqlgcqgmivtem') {
+  throw 'STOP: old target was replaced. Use new Lectris ref vznjpfqodjnxnmkrhiqk.'
+}
 if ($oldOk -and $newOk -and $OldProjectRef -ceq $NewProjectRef) {
   throw "STOP: OLD and NEW project refs are identical. Never restore into production."
 }
