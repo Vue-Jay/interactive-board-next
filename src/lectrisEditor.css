@@ -69,3 +69,11 @@
  .lectris-object-inspector{top:56px;bottom:70px;right:4px;width:min(350px,calc(100vw - 8px))}
 }
 @media(prefers-reduced-motion:reduce){.lectris-quick-properties button{transition:none}}
+
+.lectris-inspector-text{
+  width:100%;min-height:68px;resize:vertical;padding:10px 11px;
+  border:1px solid #dce5ef;border-radius:11px;color:#2a3c58;
+  background:#fbfcfe;font:inherit;font-size:13px;line-height:1.5;
+}
+.lectris-inspector-text:focus-visible{outline:2px solid #8daaf6;outline-offset:1px}
+.lectris-inspector-text:disabled{opacity:.65;resize:none}
