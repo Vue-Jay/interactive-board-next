@@ -1,0 +1,96 @@
+/* Lectris structure: role-specific home and multiple views of the same boards. */
+.lectris-hub{
+ --hub-border:#e3eaf3;--hub-muted:#71829a;--hub-ink:#233550;--hub-accent:#365fd0;
+ width:min(1260px,calc(100% - 48px));margin:0 auto;
+ padding:27px 0 58px;color:var(--hub-ink);
+}
+.lectris-hub button{cursor:pointer;font:inherit}
+.lectris-hub button:focus-visible{outline:2px solid var(--hub-accent);outline-offset:2px}
+.lectris-hub-hero{
+ display:flex;align-items:center;justify-content:space-between;gap:24px;
+ background:linear-gradient(110deg,#fff 0%,#fff 53%,#edf3ff 100%);
+ border:1px solid var(--hub-border);border-radius:22px;padding:30px 35px;
+ box-shadow:0 12px 35px #1e385710;
+}
+.lectris-hub-overline,.lectris-hub-section-head small{font-size:10px;font-weight:850;letter-spacing:.13em;color:#496abd}
+.lectris-hub-hero h1,.lectris-hub-list-heading h1{font-size:clamp(26px,3.5vw,36px);letter-spacing:-.05em;line-height:1.12;margin:10px 0 10px;font-weight:800}
+.lectris-hub-hero p,.lectris-hub-list-heading p{font-size:14px;color:var(--hub-muted);line-height:1.6;margin:0;max-width:560px}
+.lectris-hub-hero-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.lectris-hub-hero-actions button,.lectris-hub-list-heading>button{
+ min-height:43px;padding:10px 17px;border-radius:11px;background:#fff;
+ border:1px solid #d8e2f3;color:#31507d;font-size:13px;font-weight:750;white-space:nowrap;
+}
+.lectris-hub .lectris-hub-primary{background:var(--hub-accent);border-color:var(--hub-accent);color:#fff}
+.lectris-hub .lectris-hub-primary:hover:not(:disabled){background:#294fb7}
+.lectris-hub button:disabled{opacity:.5;cursor:default}
+.lectris-hub-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0 24px}
+.lectris-hub-stats>div{background:#fff;border:1px solid var(--hub-border);border-radius:16px;padding:20px 22px;display:grid;gap:8px}
+.lectris-hub-stats strong{font-size:30px;line-height:1;font-weight:830;letter-spacing:-.04em}
+.lectris-hub-stats span{font-size:12px;color:var(--hub-muted)}
+.lectris-hub-columns{display:grid;grid-template-columns:minmax(0,1.48fr) minmax(280px,1fr);align-items:start;gap:19px}
+.lectris-hub-aside{display:grid;gap:19px}
+.lectris-hub-section{padding:22px;background:#fff;border:1px solid var(--hub-border);border-radius:18px;box-shadow:0 4px 16px #243b5308;min-width:0}
+.lectris-hub-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.lectris-hub-section-head h2{font-size:19px;line-height:1.25;letter-spacing:-.025em;margin:5px 0 0}
+.lectris-hub-section-head>button{background:transparent;border:0;color:var(--hub-accent);font-size:12px;font-weight:750;white-space:nowrap;padding:9px 0}
+.lectris-hub-section-head>button:hover{text-decoration:underline}
+.lectris-hub-board-list{display:grid;gap:8px}
+.lectris-hub-board{position:relative;display:flex;align-items:stretch;border:1px solid #e7ecf4;border-radius:13px;background:#fcfdff;min-height:75px}
+.lectris-hub-board:hover{border-color:#c8d6ed;background:#f7f9fe}
+.lectris-hub-board-main{display:flex;align-items:center;gap:13px;flex:1;min-width:0;padding:12px 43px 12px 12px;border:0;background:transparent;text-align:left;color:inherit}
+.lectris-hub-board-icon{width:40px;height:40px;display:grid;place-items:center;background:#eaf0ff;border-radius:11px;color:#3d65bd;font-size:20px;flex:0 0 40px}
+.lectris-hub-board-info{display:grid;gap:3px;min-width:0}
+.lectris-hub-board-info strong{font-size:13px;font-weight:760;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lectris-hub-board-info small{font-size:11px;color:var(--hub-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lectris-hub-board-arrow{margin-left:auto;color:#9cadc5;align-self:center}
+.lectris-hub-board-edit{position:absolute;right:5px;top:50%;transform:translateY(-50%);border:0;background:transparent;border-radius:10px;color:#5e7190;width:35px;height:35px;font-size:22px;font-weight:700}
+.lectris-hub-board-edit:hover{background:#e7eefb}
+.lectris-hub-lesson{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #edf1f7}
+.lectris-hub-lesson:last-child{border-bottom:0}
+.lectris-hub-lesson>div{display:grid;gap:4px;min-width:0}
+.lectris-hub-lesson strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lectris-hub-lesson small{font-size:11px;color:var(--hub-muted)}
+.lectris-hub-lesson button{border:1px solid #d6e2f8;background:#f4f7fe;color:#3155a0;border-radius:9px;padding:7px 10px;font-size:11px;font-weight:750}
+.lectris-hub-shortcuts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.lectris-hub-shortcuts button{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;border:1px solid #e2eaf5;border-radius:12px;background:#f8faff;padding:15px 13px;color:#405777;font-size:12px;font-weight:750}
+.lectris-hub-shortcuts button:hover{background:#edf3ff;color:#2855b8}
+.lectris-hub-shortcuts button span{font-size:18px}
+.lectris-hub-empty{padding:24px;background:#f7f9fd;border-radius:12px;text-align:center;font-size:12px}
+.lectris-hub-empty strong{font-size:13px}
+.lectris-hub-empty p,.lectris-hub-placeholder{font-size:12px;color:var(--hub-muted);line-height:1.6;margin:8px 0}
+.lectris-hub-list-heading{display:flex;justify-content:space-between;gap:20px;align-items:center;margin:10px 0 24px}
+.lectris-hub-collection{display:grid;grid-template-columns:minmax(200px,250px) minmax(0,1fr);align-items:start;gap:18px}
+.lectris-hub-categories{display:grid;gap:6px;background:#fff;border:1px solid var(--hub-border);border-radius:16px;padding:10px;position:sticky;top:90px}
+.lectris-hub-categories button{min-height:43px;display:flex;align-items:center;justify-content:space-between;border:0;border-radius:10px;background:transparent;padding:10px 13px;text-align:left;color:#50647d;font-size:13px;font-weight:700}
+.lectris-hub-categories button:hover{background:#f1f5fc}
+.lectris-hub-categories button.selected{background:#eaf0ff;color:#2b54b4}
+.lectris-hub-categories button span{font-variant-numeric:tabular-nums;color:#8494ae}
+.lectris-hub-local-note{font-size:11px;color:#8490a5;line-height:1.55;margin:17px 0 0}
+.lectris-hub-dialog-backdrop{position:fixed;inset:0;z-index:400;display:grid;place-items:center;padding:16px;background:#19294378}
+.lectris-hub-dialog{background:#fff;color:#24354c;width:min(460px,100%);border-radius:20px;padding:25px;box-shadow:0 22px 75px #101e3440}
+.lectris-hub-dialog header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.lectris-hub-dialog header small{font-size:10px;color:#5977ad;letter-spacing:.13em;font-weight:800}
+.lectris-hub-dialog header h2{font-size:21px;letter-spacing:-.03em;margin:6px 0}
+.lectris-hub-dialog header button{width:34px;height:34px;border:0;border-radius:9px;background:#f1f4fa;font-size:24px}
+.lectris-hub-dialog p{font-size:12px;color:#6c7d95;line-height:1.55}
+.lectris-hub-dialog>label{display:grid;gap:7px;font-size:12px;font-weight:700;margin:17px 0;color:#3e526f}
+.lectris-hub-dialog input{width:100%;border:1px solid #dce5f1;border-radius:11px;padding:11px 13px;background:#fff;color:#263a56;font-size:14px}
+.lectris-hub-dialog footer{display:flex;justify-content:flex-end;gap:9px;margin-top:25px}
+.lectris-hub-dialog footer button{border:1px solid #dce5f1;border-radius:10px;padding:10px 18px;background:#f8faff;font-size:13px;font-weight:750}
+@media(max-width:1060px){.lectris-hub-columns{grid-template-columns:1fr}.lectris-hub-aside{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){
+ .lectris-hub{width:calc(100% - 26px);padding:14px 0 28px}
+ .lectris-hub-hero{display:grid;padding:20px;gap:14px;border-radius:17px}
+ .lectris-hub-hero-actions{justify-content:flex-start}
+ .lectris-hub-stats{gap:7px;margin:11px 0 16px}
+ .lectris-hub-stats>div{padding:13px 10px;min-width:0;border-radius:11px}
+ .lectris-hub-stats strong{font-size:23px}
+ .lectris-hub-stats span{font-size:10px;line-height:1.4}
+ .lectris-hub-aside{grid-template-columns:1fr}
+ .lectris-hub-section{padding:15px}
+ .lectris-hub-collection{grid-template-columns:1fr}
+ .lectris-hub-categories{display:flex;overflow:auto;white-space:nowrap;position:static;scrollbar-width:thin}
+ .lectris-hub-categories button{flex:0 0 auto;gap:12px}
+ .lectris-hub-list-heading{align-items:flex-start}
+ .lectris-hub-list-heading>button{min-width:90px}
+}
