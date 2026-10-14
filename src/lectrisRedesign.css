@@ -1,0 +1,509 @@
+/*
+  Lectris Visual System 2.0
+  Interface-only styling. Drawing geometry, object serialization, collaboration,
+  teacher/student permissions and backend functionality are deliberately untouched.
+  Loaded LAST, after the legacy compatibility and docking layers.
+*/
+
+/* 01. Tokens, surfaces, interaction feedback */
+.lectris-workspace,
+.workspace {
+  --lx-accent:#315bd4;
+  --lx-accent-hover:#254bb9;
+  --lx-accent-soft:#ebf1ff;
+  --lx-ink:#1e304d;
+  --lx-muted:#687d9a;
+  --lx-border:#dce5f1;
+  --lx-surface:#ffffff;
+  --lx-soft:#f5f8fd;
+  --lx-shadow:0 10px 34px rgba(30,54,92,.075);
+  --lx-shadow-float:0 22px 60px rgba(22,45,82,.16);
+}
+.lectris-workspace {
+  --lectris-bg:#f4f7fc;
+  --lectris-fg:var(--lx-ink);
+  --lectris-muted:var(--lx-muted);
+  --lectris-line:var(--lx-border);
+  --lectris-accent:var(--lx-accent);
+  background:radial-gradient(circle at 95% 4%,#eaf1ff 0,transparent 460px),#f4f7fc;
+}
+.lectris-workspace :is(button,a,input,textarea,select),
+.workspace :is(button,input,textarea,select){-webkit-tap-highlight-color:transparent}
+.lectris-workspace :is(button,[role="button"]),
+.workspace :is(button,[role="button"]){touch-action:manipulation}
+.lectris-workspace :is(input,textarea,select):focus-visible,
+.workspace :is(input,textarea,select):focus-visible {
+  outline:2px solid #7899f4;
+  outline-offset:1px;
+}
+.lectris-workspace :is(button,[role="button"]):focus-visible,
+.workspace :is(button,[role="button"]):focus-visible {
+  outline:2px solid #5276dc;
+  outline-offset:2px;
+}
+.lectris-workspace button:disabled,.workspace button:disabled{cursor:not-allowed}
+
+/* 02. Navigation and shell */
+.lectris-workspace-header {
+  background:rgba(255,255,255,.96);
+  box-shadow:0 3px 22px rgba(33,56,89,.035);
+  border-bottom-color:#e4eaf3;
+}
+.lectris-brand-mark{
+  background:linear-gradient(140deg,#426def,#2e51be);
+  box-shadow:0 5px 11px rgba(49,91,212,.17);
+  border-radius:12px;
+}
+.lectris-brand strong{color:#192c4a;font-weight:850;letter-spacing:-.055em}
+.lectris-header-page>span{color:#233650;font-weight:780}
+.lectris-header-account{border:1px solid transparent}
+.lectris-header-account:hover{background:#f4f7fc;border-color:#e4ebf6}
+.lectris-avatar{background:#e9efff;border:1px solid #dfe8fb;color:#3359b5}
+.lectris-workspace-sidebar{
+  background:rgba(255,255,255,.98);
+  border-right-color:#e2e9f4;
+  padding-top:20px;
+}
+.lectris-sidebar-head>span{color:#7889a4}
+.lectris-nav-link {
+  position:relative;
+  transition:background-color .16s ease,color .16s ease,border-color .16s ease;
+  font-weight:670;
+  border-radius:12px;
+  min-height:43px;
+}
+.lectris-nav-link svg{color:#66809e}
+.lectris-nav-link:hover {background:#f1f5fd;color:#284a94}
+.lectris-nav-link:hover svg{color:#466cbb}
+.lectris-nav-link.is-active{
+  color:#254da8;background:linear-gradient(90deg,#eaf0ff,#eef3ff);
+  border-color:#dbe5ff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45);
+}
+.lectris-nav-link.is-active svg{color:#315bd4}
+.lectris-workspace:not(.is-collapsed) .lectris-workspace-sidebar .lectris-nav-link.is-active::before{
+  content:"";position:absolute;left:-8px;top:11px;bottom:11px;width:3px;
+  background:#4168db;border-radius:10px;
+}
+.lectris-collapse-button{background:#f1f5fc;border:1px solid #e4ebf5}
+.lectris-sidebar-footer{border-top-color:#e7edf5}
+.lectris-workspace-stage{isolation:isolate}
+.lectris-workspace-stage :is(.students-header,.assignments-header,.materials-header,.schedule-header,.notifications-header,.progress-header,.templates-header) {
+  border-bottom-color:#e4eaf4;
+}
+
+/* 03. Home: hero, stats, last opened boards, subject collections */
+.lectris-hub{--hub-accent:var(--lx-accent);--hub-border:var(--lx-border);--hub-ink:var(--lx-ink);--hub-muted:var(--lx-muted)}
+.lectris-hub-hero{
+  position:relative;isolation:isolate;overflow:hidden;
+  background:linear-gradient(113deg,#fff 8%,#f8fbff 58%,#eaf1ff 100%);
+  border:1px solid #dce5f4;
+  border-radius:25px;padding:33px clamp(22px,3vw,42px);
+  box-shadow:0 18px 45px rgba(37,68,118,.07);
+}
+.lectris-hub-hero::after{
+  content:"";pointer-events:none;position:absolute;z-index:-1;
+  width:300px;height:300px;right:-85px;bottom:-240px;border-radius:50%;
+  border:44px solid rgba(64,104,211,.055);
+}
+.lectris-hub-hero h1{
+  color:#1c3153;font-weight:860;letter-spacing:-.055em;
+  line-height:1.14;max-width:640px;
+}
+.lectris-hub-hero p{color:#69809e;font-size:14px;max-width:580px}
+.lectris-hub-overline{color:#4666ae;letter-spacing:.14em}
+.lectris-hub-hero-actions button,.lectris-hub-list-heading>button{
+  min-height:43px;border-radius:12px;
+  box-shadow:0 2px 4px rgba(34,59,102,.035);
+}
+.lectris-hub .lectris-hub-primary{
+  background:#315bd4;border-color:#315bd4;
+  box-shadow:0 6px 14px rgba(49,91,212,.18);
+}
+.lectris-hub .lectris-hub-primary:hover:not(:disabled){background:#254bb9}
+.lectris-hub-stats{gap:13px}
+.lectris-hub-stats>div {
+  position:relative;min-width:0;overflow:hidden;
+  border-radius:18px;padding:23px 25px;
+  box-shadow:0 5px 22px rgba(30,57,100,.035);
+  background:linear-gradient(180deg,#fff,#fcfdff);
+}
+.lectris-hub-stats>div::after{
+  content:"";width:48px;height:48px;border-radius:50%;
+  position:absolute;right:-23px;top:-23px;background:#eaf0ff;
+}
+.lectris-hub-stats strong{color:#1c3256;font-size:31px}
+.lectris-hub-stats span{font-size:12px;color:#74859d}
+.lectris-hub-section{
+  border-radius:20px;padding:23px;border-color:#e0e8f3;
+  box-shadow:var(--lx-shadow);
+}
+.lectris-hub-section-head h2{font-weight:820;color:#223755}
+.lectris-hub-section-head>button {border-radius:9px;padding:8px 10px}
+.lectris-hub-section-head>button:hover{
+  text-decoration:none;background:#edf3ff;
+}
+.lectris-hub-board{
+  border-radius:14px;overflow:hidden;background:#fbfcff;
+  transition:border-color .16s,box-shadow .16s,background .16s;
+}
+.lectris-hub-board:hover {
+  background:#fff;border-color:#b9c9eb;
+  box-shadow:0 7px 24px rgba(38,68,123,.09);
+}
+.lectris-hub-board-main{min-height:69px}
+.lectris-hub-board-icon{
+  border:1px solid #dbe5fc;background:#eaf1ff;
+  border-radius:12px;color:#3460c4;
+}
+.lectris-hub-board-info strong{color:#263c5c;font-weight:790;font-size:13px}
+.lectris-hub-board-arrow{font-weight:800}
+.lectris-hub-shortcuts button{
+  min-height:59px;border-radius:13px;background:#f8faff;
+  transition:background .16s,border-color .16s,transform .16s;
+}
+.lectris-hub-shortcuts button:hover{
+  background:#eaf1ff;border-color:#c7d7f5;transform:translateY(-1px);
+}
+.lectris-hub-categories{box-shadow:var(--lx-shadow);border-radius:18px}
+.lectris-hub-categories button.selected{background:#eaf0ff;color:#294fa9}
+.lectris-hub-empty{
+  border:1px dashed #cfdaea;background:#f8faff;border-radius:14px;
+}
+.lectris-hub-dialog,.lectris-panel-settings-dialog,.lectris-tools-customize,
+.lectris-advanced-modal{
+  border-radius:20px;box-shadow:var(--lx-shadow-float);
+}
+
+/* 04. Lists, panels and educational screens */
+.lectris-workspace-stage :is(
+  .board-card,.student-card,.students-list,.assignment-card,
+  .material-card,.template-card,.notification-card,.schedule-card,
+  .progress-card,.boards-empty
+){
+  border-radius:17px;
+  border-color:#dfe7f2;
+  box-shadow:0 5px 19px rgba(29,58,101,.045);
+}
+.lectris-workspace-stage :is(.board-card,.student-card,.assignment-card,.material-card,.template-card) {
+  transition:border-color .16s,box-shadow .16s,transform .16s;
+}
+.lectris-workspace-stage :is(.board-card,.student-card,.assignment-card,.material-card,.template-card):hover {
+  border-color:#c8d8ef;box-shadow:0 11px 30px rgba(26,57,102,.09);
+}
+.lectris-workspace-stage :is(.boards-toolbar,.students-toolbar,.materials-toolbar,.schedule-toolbar,.progress-toolbar,.templates-toolbar) {
+  gap:10px;flex-wrap:wrap;
+}
+.lectris-workspace-stage :is(.boards-toolbar,.students-toolbar,.materials-toolbar,.schedule-toolbar,.progress-toolbar,.templates-toolbar)
+:is(input,select) {
+  border-radius:11px;min-height:40px;background:#fff;
+  border:1px solid #dbe5f2;color:#293c58;
+}
+.lectris-workspace-stage :is(.boards-create,.students-primary){
+  min-height:40px;border-radius:11px;
+  box-shadow:0 5px 13px rgba(49,91,212,.12)!important;
+}
+.lectris-workspace-stage .board-card-preview{
+  background:linear-gradient(140deg,#f4f7fc,#edf3ff);
+}
+.lectris-workspace-stage .board-card-grid{
+  background-image:radial-gradient(#becfe9 .8px,transparent .8px);
+  background-size:18px 18px;
+}
+.lectris-hub-dialog input:focus,.lectris-workspace-stage :is(input,select,textarea):focus{
+  border-color:#a0b9f4;
+}
+
+/* 05. Board header, floating tool rail, selection actions */
+.topbar:not(.update-banner){
+  background:rgba(255,255,255,.98)!important;
+  border-bottom-color:#dce6f3!important;
+  box-shadow:0 3px 19px rgba(26,47,84,.08)!important;
+}
+.topbar .board-home-button{
+  background:#f4f7fc!important;border-color:#dce6f3!important;
+  color:#355172!important;border-radius:11px!important;
+}
+.topbar .board-title{
+  font-weight:810!important;letter-spacing:-.015em!important;
+  border:1px solid transparent!important;
+  text-overflow:ellipsis;min-width:0;
+}
+.topbar .board-title:hover{background:#f6f8fd!important}
+.topbar .board-title:focus{background:#fff!important;border-color:#b9cbf2!important}
+.topbar .lectris-board-context{border-radius:9px;background:#f0f5ff}
+.topbar :is(.top-button,.compact-top-action,.topbar-more-trigger,.board-invite-button){
+  border-radius:11px!important;
+}
+.topbar :is(.topbar-more-popover,.presence-popover){
+  border-color:#dce6f3!important;border-radius:16px!important;
+  box-shadow:var(--lx-shadow-float)!important;
+}
+.toolbar.compact-toolbar{
+  background:rgba(255,255,255,.985)!important;
+  box-shadow:0 17px 42px rgba(27,49,82,.14)!important;
+  border-radius:18px!important;
+  border-color:#d8e3f1!important;
+}
+.toolbar.compact-toolbar .tool-button{
+  border-radius:11px!important;
+  transition:background .13s ease,color .13s ease!important;
+}
+.toolbar.compact-toolbar .tool-button.active{
+  color:#264fae!important;
+  background:linear-gradient(140deg,#e4ecff,#edf3ff)!important;
+  box-shadow:inset 0 0 0 1px #d1defb;
+}
+.toolbar.compact-toolbar .tool-button:hover:not(.active){
+  color:#3158a9!important;background:#edf3ff!important;
+}
+.toolbar.compact-toolbar :is(.toolbar-more,.toolbar-command-search){
+  border-radius:11px!important;
+}
+.workspace :is(.selection-toolbar-screen,.ink-settings,.shape-settings,.connector-settings){
+  background:rgba(255,255,255,.98)!important;
+  border:1px solid #dce6f2!important;
+  box-shadow:0 12px 38px rgba(30,55,88,.13)!important;
+  border-radius:15px!important;
+}
+.workspace :is(.selection-more-menu,.selection-toolbar-screen,.object-color-popover,.board-context-menu){
+  color:#263953;
+}
+.workspace :is(.search-panel,.layers-panel,.comments-panel,.shortcuts-panel,.templates-panel,.presentation-slides-panel,.board-ai-panel){
+  border-color:#dce5f2!important;
+  box-shadow:0 15px 48px rgba(29,53,94,.13)!important;
+  background:#fff!important;
+}
+.workspace :is(.search-panel-header,.layers-panel-header,.panel-heading){
+  border-bottom-color:#e7edf6!important;
+}
+.workspace :is(.search-panel,.layers-panel,.comments-panel) :is(input,select,textarea){
+  border-color:#dce5f3;border-radius:10px;
+}
+.lectris-quick-properties{
+  background:rgba(255,255,255,.985)!important;
+  border-color:#dce6f4!important;
+  box-shadow:0 13px 36px rgba(26,50,94,.14)!important;
+  border-radius:16px!important;
+}
+.lectris-quick-properties button:not(.lectris-danger){
+  border-radius:10px;background:#f5f8ff;border-color:#e0e8f5;
+}
+.lectris-object-inspector{
+  box-shadow:0 20px 55px rgba(25,46,81,.16);
+  border-color:#dce5f2;border-radius:19px;
+}
+.lectris-inspector-head{
+  background:linear-gradient(180deg,#fff,#fafcff);
+}
+.lectris-inspector-section h3{color:#586e90}
+.lectris-inspector-field input{
+  border-radius:10px;background:#f9fbff;
+}
+.lectris-inspector-field input:focus-visible{
+  outline-color:#829ff0;background:#fff;
+}
+.lectris-inspector-text{background:#f9fbff}
+.lectris-inspector-palette button{
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.045);
+}
+
+/* 06. Unified math, graph, table, list, quiz, card and note editors */
+:is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal) {
+  color:#263a56!important;
+  border:1px solid #d8e3f1!important;
+  border-radius:20px!important;
+  background:linear-gradient(180deg,#fff,#fdfefe)!important;
+  box-shadow:0 23px 66px rgba(18,39,72,.20)!important;
+  scrollbar-width:thin;scrollbar-color:#c6d5e9 transparent;
+}
+:is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header) {
+  background:#fff!important;border-bottom:1px solid #e3eaf4!important;
+  padding:16px 18px!important;gap:12px!important;min-width:0;
+}
+:is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header)>div{
+  min-width:0;flex:1;
+}
+:is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header) strong{
+  display:block;font-size:16px!important;font-weight:820!important;
+  letter-spacing:-.025em;color:#1d3456!important;line-height:1.3;
+}
+:is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header) span{
+  display:block;color:#7587a0;font-size:11px;line-height:1.45;margin-top:4px;
+}
+:is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header)>button{
+  flex:0 0 34px;width:34px;height:34px;display:grid;place-items:center;
+  padding:0;border:1px solid #e1e8f4!important;border-radius:10px!important;
+  background:#f4f7fc!important;color:#5b7192!important;
+}
+:is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header)>button:hover{
+  background:#e9effa!important;color:#274d9f!important;
+}
+:is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),textarea,select){
+  max-width:100%;border-radius:10px;
+  border:1px solid #d7e2f0;background:#fbfcff;color:#273951;
+  padding:9px 11px;
+  font:inherit;font-size:13px;
+  box-sizing:border-box;
+}
+:is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal) :is(input,textarea,select):focus-visible{
+  border-color:#9ab3eb!important;outline:2px solid #98b1f1!important;
+  outline-offset:1px;background:#fff;
+}
+:is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal) textarea{
+  line-height:1.55;resize:vertical;min-width:0;
+}
+:is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal) :is(input[type="range"],input[type="checkbox"],input[type="radio"]){
+  accent-color:#315bd4;
+}
+:is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal) label{
+  color:#485f80;font-weight:680;
+}
+:is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+    .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer){
+  background:#fff!important;
+  border-top:1px solid #e1eaf5!important;
+  padding:12px 16px!important;gap:10px;
+}
+:is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+    .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer)>span{
+  color:#7285a1;font-size:11px;line-height:1.35;
+}
+:is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+    .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer) button{
+  min-height:36px;border-radius:10px;font-weight:750;
+}
+:is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+    .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer) button.primary{
+  background:#315bd4!important;border-color:#315bd4!important;color:white!important;
+}
+:is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+    .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer) button.primary:hover{
+  background:#254bb9!important;
+}
+:is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+    .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer) button.secondary{
+  background:#f3f6fc!important;border-color:#e1e8f3!important;color:#506887!important;
+}
+.graph-editor-form,.formula-editor-compose,.quiz-editor-compose,.flashcard-editor-compose,
+.checklist-editor-settings{
+  min-width:0;
+}
+.graph-editor-preview,.formula-palette-panel,.flashcard-editor-preview,
+.quiz-editor-preview,.quiz-options-editor,.table-editor-grid{
+  border-color:#dee7f4!important;border-radius:12px;
+}
+.graph-editor-form :is(input,select){min-width:0}
+.table-editor-controls,.table-editor-column-tools,.table-editor-row-tools{
+  gap:7px;
+}
+.table-editor-grid{scrollbar-width:thin;scrollbar-color:#b9cae0 transparent}
+.checklist-editor-row,.quiz-options-editor>div{border-radius:10px}
+.checklist-editor-check input[type="checkbox"]{border-radius:3px}
+.formula-palette-panel{background:#f8faff}
+.formula-editor-main{background:#fff}
+.lectris-tools-customize-section,.lectris-panel-settings-field{
+  border-radius:13px;background:#f9fbff;border-color:#e0e8f3;
+}
+.lectris-tools-customize-row{
+  border-radius:10px;border-color:#e1e8f4;background:#fff;
+}
+
+/* 07. Responsive: mobile home and editor ergonomics */
+@media(max-width:1100px){
+  .lectris-hub-hero{padding:25px}
+  .lectris-hub-columns{gap:14px}
+}
+@media(max-width:1100px) and (pointer:coarse) and (orientation:landscape){
+  .workspace :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
+    border-radius:15px!important;
+  }
+  .workspace :is(.graph-editor-header,.formula-editor-header,.table-editor-header,
+    .notes-editor-header,.checklist-editor-header,.quiz-editor-header,.flashcard-editor-header){
+    padding:10px 12px!important;min-height:48px!important;
+  }
+  .workspace :is(.graph-editor-header,.formula-editor-header,.table-editor-header,
+    .notes-editor-header,.checklist-editor-header,.quiz-editor-header,.flashcard-editor-header) strong{
+    font-size:14px!important;
+  }
+  .workspace :is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,
+    .notes-editor-footer,.checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer){
+    padding:8px 10px!important;
+  }
+  .mobile-board-tools{background:rgba(255,255,255,.985)!important;border:1px solid #dce5f2!important;box-shadow:0 12px 34px rgba(31,52,89,.17)!important}
+  .mobile-board-tools button.active{box-shadow:inset 0 0 0 1px #cfddfb}
+}
+@media(max-width:760px){
+  .lectris-hub{padding-top:12px}
+  .lectris-hub-hero{border-radius:19px;padding:21px;box-shadow:0 7px 20px rgba(37,68,118,.06)}
+  .lectris-hub-hero h1{font-size:clamp(25px,7vw,34px);margin:8px 0}
+  .lectris-hub-hero-actions{justify-content:stretch;gap:8px}
+  .lectris-hub-hero-actions button{flex:1 1 136px;white-space:normal}
+  .lectris-hub-stats>div{padding:14px 11px;border-radius:13px}
+  .lectris-hub-stats strong{font-size:24px}
+  .lectris-hub-section{border-radius:16px;padding:16px}
+  .lectris-hub-board-info small{white-space:normal;line-height:1.35}
+  .lectris-hub-categories{padding:7px}
+}
+@media(max-width:700px) and (orientation:portrait){
+  .lectris-workspace-header{box-shadow:0 2px 12px rgba(25,45,78,.055)}
+  .lectris-mobile-bottom{
+    background:rgba(255,255,255,.985)!important;border-top:1px solid #dce5f2!important;
+    box-shadow:0 -8px 27px rgba(30,52,83,.09)!important;
+  }
+  .lectris-mobile-bottom .lectris-mobile-tab{
+    border-radius:11px;
+  }
+  .lectris-mobile-bottom .lectris-mobile-tab.is-active{
+    background:#edf2ff;color:#3157bc;
+  }
+  :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+      .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
+    border-radius:16px!important;overscroll-behavior:contain!important;
+  }
+  :is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+      .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header){
+    padding:12px 14px!important;min-height:54px!important;
+  }
+  :is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+      .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header) strong{
+    font-size:15px!important;
+  }
+  :is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+      .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer){
+    padding:10px 12px max(11px,env(safe-area-inset-bottom))!important;
+    flex-wrap:wrap!important;
+  }
+  :is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+      .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer)>div{
+    display:flex;flex-wrap:wrap;gap:6px;width:100%;justify-content:flex-end;
+  }
+  :is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+      .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer)>span{
+    width:100%;font-size:10px;
+  }
+  :is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+      .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer) button{
+    min-height:38px;
+  }
+  .lectris-quick-properties{max-width:calc(100vw - 14px)!important}
+  .lectris-quick-details{max-width:100%}
+  .lectris-inspector-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){
+  .lectris-workspace *, .lectris-hub *,.toolbar.compact-toolbar .tool-button{
+    transition:none!important;animation:none!important;
+  }
+}
