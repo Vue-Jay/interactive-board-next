@@ -1,0 +1,28 @@
+/* Lectris customization dialog. Changes only local interface preferences. */
+.lectris-tools-configure{width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:10px;background:#f0f4fb;color:#557094;cursor:pointer}
+.lectris-tools-configure:hover{background:#e4edfc;color:#315db9}
+.lectris-tools-customize-backdrop{position:fixed;inset:0;z-index:1750;display:grid;place-items:center;padding:16px;background:rgba(21,38,64,.58)}
+.lectris-tools-customize{background:#fff;color:#243650;border:1px solid #dfe8f4;width:min(700px,100%);max-height:min(86dvh,800px);display:flex;flex-direction:column;min-height:0;border-radius:19px;box-shadow:0 20px 70px #11243a4d}
+.lectris-tools-customize header{padding:19px 23px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.lectris-tools-customize header small{color:#6984b5;font-size:10px;font-weight:850;letter-spacing:.1em}
+.lectris-tools-customize header h2{font-size:21px;letter-spacing:-.035em;margin:5px 0 0}
+.lectris-tools-customize header button{width:35px;height:35px;border:0;border-radius:10px;background:#f1f4fa;color:#6b7f98;font-size:23px;cursor:pointer}
+.lectris-tools-customize>p{font-size:12px;color:#71829b;line-height:1.5;margin:0 23px 15px}
+.lectris-tools-customize-sections{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 23px 18px;overflow:auto;min-height:0}
+.lectris-tools-customize-section{min-width:0;background:#f9fbff;border:1px solid #e5ebf5;border-radius:13px;padding:11px}
+.lectris-tools-customize-section h3{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:790;color:#526a8c;margin:4px 5px 12px}
+.lectris-tools-customize-list{display:grid;gap:6px}
+.lectris-tools-customize-row{display:flex;align-items:center;justify-content:space-between;gap:7px;min-height:41px;padding:6px 8px;border:1px solid #e4eaf4;background:#fff;border-radius:10px}
+.lectris-tools-customize-row>span{font-size:12px;font-weight:650;min-width:0}
+.lectris-tools-customize-row small{font-size:10px;color:#8691a2}
+.lectris-tools-customize-row>div{display:flex;gap:4px}
+.lectris-tools-customize-row button{width:29px;height:29px;border:1px solid #dee7f5;background:#f3f6fc;color:#46638e;border-radius:8px;font-size:17px;cursor:pointer}
+.lectris-tools-customize-row button:disabled{opacity:.3;cursor:default}
+.lectris-tools-customize-row button:hover:not(:disabled){background:#e3edff}
+.lectris-tools-customize-empty{font-size:12px;color:#8b98ad;padding:8px}
+.lectris-tools-customize footer{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 23px;border-top:1px solid #e8eef5}
+.lectris-tools-customize footer div{display:flex;gap:9px}
+.lectris-tools-customize footer button{min-height:38px;padding:9px 15px;border:1px solid #dde7f3;border-radius:10px;background:#f6f9fd;color:#496481;font-size:12px;font-weight:770;cursor:pointer}
+.lectris-tools-customize footer button.lectris-toolbar-save{background:#365fd0;border-color:#365fd0;color:#fff}
+.lectris-tools-customize footer button:hover:not(:disabled){filter:brightness(.97)}
+@media(max-width:680px){.lectris-tools-customize-sections{grid-template-columns:1fr}.lectris-tools-customize header{padding:14px}.lectris-tools-customize>p{margin:0 14px 11px}.lectris-tools-customize-sections{padding:0 14px 11px}.lectris-tools-customize footer{padding:10px 14px}}
