@@ -96,3 +96,33 @@
 @media (prefers-reduced-motion:reduce){
   .topbar .top-button,.topbar .compact-top-action{transition:none!important}
 }
+
+/* Subject is metadata, not a second board; recommendations reuse real tools. */
+.lectris-board-context{
+  display:inline-flex;align-items:center;min-height:29px;padding:5px 9px;
+  border:1px solid #dce7f5;border-radius:9px;background:#f5f8fd;
+  color:#4d688e;font-size:11px;font-weight:720;white-space:nowrap;
+  overflow:hidden;max-width:185px;text-overflow:ellipsis;
+}
+.lectris-subject-toolbox{position:relative;width:100%;display:grid;place-items:center;z-index:6}
+.lectris-subject-toolbox summary{
+ list-style:none;display:grid;place-items:center;width:34px;height:34px;
+ border-radius:10px;background:#eef2fa;color:#385ec1;cursor:pointer;
+ border:1px solid #dce5f5;font-size:19px;font-weight:720;
+}
+.lectris-subject-toolbox summary::-webkit-details-marker{display:none}
+.lectris-subject-toolbox[open] summary{background:#e0eaff}
+.lectris-subject-toolbox-menu{
+ position:absolute;left:calc(100% + 10px);bottom:0;width:205px;
+ display:grid;gap:4px;padding:9px;background:#fff;border:1px solid #dce5ef;
+ box-shadow:0 12px 30px #19305430;border-radius:12px;
+}
+.lectris-subject-toolbox-menu strong{padding:7px 9px;font-size:12px;color:#4b628a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lectris-subject-toolbox-menu button{
+ display:flex;align-items:center;gap:9px;border:0;text-align:left;
+ background:transparent;color:#3a5273;border-radius:8px;padding:9px;
+ font-size:12px;font-weight:710;cursor:pointer;
+}
+.lectris-subject-toolbox-menu button:hover{background:#eff4ff;color:#305cbd}
+@media(max-width:1100px) and (pointer:coarse){.lectris-subject-toolbox{display:none}}
+@media(max-width:700px){.lectris-board-context{max-width:92px;padding:4px 6px;font-size:10px}}
