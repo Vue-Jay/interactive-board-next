@@ -29,9 +29,9 @@ Write-Host ('DESTINATION (NEVER USED BY THIS SCRIPT): ' + $NewProjectRef)
 Write-Host 'This script only runs supabase db dump against the SOURCE.'
 Write-Host 'Use the OLD project Dashboard > Connect > Session pooler > URI.'
 Write-Host 'Copy the OLD Session pooler URI exactly as shown in Connect.'
-Write-Host 'Leave [YOUR-PASSWORD] in place: the script will ask for it separately.'
-Write-Host 'The script percent-encodes special characters in this password automatically.'
-Write-Host 'Do not paste the URI or any password/token into ChatGPT or GitHub.'
+Write-Host 'You may leave [YOUR-PASSWORD] in place: the script asks for it separately.'
+Write-Host 'The script percent-encodes special characters automatically.'
+Write-Host 'Do not paste the URI or any token/password into ChatGPT or GitHub.'
 Write-Host ''
 $secure = Read-Host 'Paste the complete OLD database URI (hidden input)' -AsSecureString
 $bstr = [IntPtr]::Zero
@@ -54,9 +54,7 @@ try {
     try {
       $passwordBstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($passwordSecure)
       $passwordClear = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordBstr)
-      if ([string]::IsNullOrEmpty($passwordClear)) {
-        throw 'STOP: empty database password.'
-      }
+      if ([string]::IsNullOrEmpty($passwordClear)) { throw 'STOP: empty database password.' }
       $dbUrl = $dbUrl.Replace('[YOUR-PASSWORD]', [Uri]::EscapeDataString($passwordClear))
     }
     finally {
@@ -81,57 +79,15 @@ try {
     throw 'STOP: project ref does not match the old project. Verify OLD database URI in Dashboard > Connect.'
   }
   $username = [Uri]::UnescapeDataString(($uri.UserInfo -split ':',2)[0])
-  $poolerHost = $uri.Host -match '(^|\\.)pooler\\.supabase\\.com
-  if ($uri.Host -ieq ('db.' + $NewProjectRef + '.supabase.co') -or $uri.UserInfo -like ('postgres.' + $NewProjectRef + ':*')) {
-    throw 'STOP: database URL seems to belong to the NEW project.'
-  }
-
-  $repoRoot = Split-Path -Parent $PSScriptRoot
-  $backupRoot = Join-Path $repoRoot 'migration-backups'
-  $stamp = [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss') + '-' + $PID
-  $backupDir = Join-Path $backupRoot ('old-' + $OldProjectRef + '-' + $stamp)
-  New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
-  Write-Host ''
-  Write-Host ('Saving encrypted-at-rest-sensitive backups to LOCAL folder: ' + $backupDir)
-  Write-Host 'These SQL files contain account data and password hashes. Never publish/share them.'
-  $dumps = @(
-    @{ Name='roles.sql'; Args=@('--role-only') },
-    @{ Name='schema.sql'; Args=@() },
-    @{ Name='data.sql'; Args=@('--use-copy','--data-only','-x','storage.buckets_vectors','-x','storage.vector_indexes') }
-  )
-  foreach ($dump in $dumps) {
-    $file = Join-Path $backupDir $dump.Name
-    Write-Host ('Starting ' + $dump.Name + ' ...') -ForegroundColor Cyan
-    $argsForCli = @('--yes','supabase','db','dump','--db-url',$dbUrl,'-f',$file) + $dump.Args
-    & npx @argsForCli
-    if ($LASTEXITCODE -ne 0) {
-      throw ('BACKUP FAILED at ' + $dump.Name + '. Do not restore or delete the old project.')
-    }
-    $created = Get-Item $file -ErrorAction SilentlyContinue
-    if ($null -eq $created -or $created.Length -eq 0) {
-      throw ('BACKUP FILE MISSING OR EMPTY: ' + $dump.Name)
-    }
-    Write-Host ('  OK ' + $dump.Name + ' : ' + $created.Length + ' bytes') -ForegroundColor Green
-  }
-  Write-Host ''
-  Write-Host 'All three read-only backup commands finished. The old project is unchanged.' -ForegroundColor Green
-  Write-Host ('LOCAL backup folder: ' + $backupDir)
-  Write-Host 'Do not restore anything yet. Next: separately back up Storage files and audit records.'
-}
-finally {
-  # Strings are immutable; this only drops references. Run on a trusted PC.
-  $dbUrl = $null
-  $uri = $null
-}
-
+  $poolerHost = $uri.Host -match '\.pooler\.supabase\.com$'
   if ($poolerHost -and $username -cne ('postgres.' + $OldProjectRef)) {
-    throw 'STOP: for Session pooler use the username postgres.OLD_PROJECT_REF (not just postgres). Copy the exact URI from Connect.'
+    throw 'STOP: for Session pooler the username must be postgres.OLD_PROJECT_REF. Copy the exact URI from Connect.'
   }
   if ($sourceInHost -and $username -cne 'postgres') {
-    throw 'STOP: direct connections require username postgres. Use the URI shown by the OLD project.'
+    throw 'STOP: direct connections require username postgres.'
   }
-  if ($dbUrl -match '\\[YOUR-PASSWORD\\]' -or $uri.UserInfo -notmatch ':') {
-    throw 'STOP: missing database password. Enter it when the script asks.'
+  if ($dbUrl -match '\[YOUR-PASSWORD\]' -or $uri.UserInfo -notmatch ':') {
+    throw 'STOP: missing database password. Enter it when prompted.'
   }
   if ($uri.Host -ieq ('db.' + $NewProjectRef + '.supabase.co') -or $uri.UserInfo -like ('postgres.' + $NewProjectRef + ':*')) {
     throw 'STOP: database URL seems to belong to the NEW project.'
