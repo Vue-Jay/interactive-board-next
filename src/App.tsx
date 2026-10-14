@@ -363,6 +363,7 @@ const toolShortLabel: Record<Tool, string> = {
   cover:"Шторка",media:"Фото / PDF",linkmedia:"Видео / аудио",
 };
 const primaryDesktopTools = new Set<Tool>(["select","hand","lasso","pen","marker","eraser","connector","text","sticky","shape","media"]);
+type LectrisSavedLayout={id:string;name:string;mode:"standard"|"lesson"|"focus";pinned:Tool[]};
 const mobileToolGroups: { label:string; tools:Tool[] }[] = [
   { label:"Навигация", tools:["hand","select","lasso"] },
   { label:"Рисование", tools:["pen","marker","eraser"] },
@@ -1505,6 +1506,29 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
   useEffect(()=>{try{localStorage.setItem(lectrisLayoutKey,lectrisLayout)}catch{}},[lectrisLayoutKey,lectrisLayout]);
+  const lectrisSavedLayoutKey="lectris.named-layouts.v1."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
+  const [lectrisSavedLayouts,setLectrisSavedLayouts]=useState<LectrisSavedLayout[]>(()=>{
+    try{
+      const parsed:unknown=JSON.parse(localStorage.getItem(lectrisSavedLayoutKey)||"[]");
+      if(!Array.isArray(parsed))return [];
+      return parsed.filter((x):x is LectrisSavedLayout=>x!==null&&typeof x==="object"&&typeof x.id==="string"&&typeof x.name==="string"&&Array.isArray(x.pinned)&&(x.mode==="standard"||x.mode==="lesson"||x.mode==="focus")).slice(0,12)
+        .map(p=>({...p,name:p.name.slice(0,40),pinned:p.pinned.filter((v):v is Tool=>tools.some(t=>t.id===v)&&toolAllowedForRole(v))}));
+    }catch{return []}
+  });
+  const [lectrisLayoutName,setLectrisLayoutName]=useState("");
+  useEffect(()=>{try{localStorage.setItem(lectrisSavedLayoutKey,JSON.stringify(lectrisSavedLayouts))}catch{}},[lectrisSavedLayoutKey,lectrisSavedLayouts]);
+  const saveLectrisLayout=()=>{
+    const name=lectrisLayoutName.trim().slice(0,40);
+    if(!name)return;
+    const entry:LectrisSavedLayout={id:crypto.randomUUID(),name,mode:lectrisLayout,pinned:[...lectrisPinned]};
+    setLectrisSavedLayouts(prev=>[...prev.slice(-11),entry]);
+    setLectrisLayoutName("");
+  };
+  const applyLectrisSavedLayout=(entry:LectrisSavedLayout)=>{
+    setLectrisLayout(entry.mode);
+    setLectrisPinned(entry.pinned.filter(toolAllowedForRole));
+  };
+
 
   const lectrisBoardOrganization=useMemo(()=>{
     try{
@@ -5325,6 +5349,23 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onClick={e=>{setLectrisLayout(id);e.currentTarget.closest("details")?.removeAttribute("open")}}>
                   <span aria-hidden="true">{lectrisLayout===id?"✓":"○"}</span>{label}
                 </button>)}
+              {lectrisSavedLayouts.length>0&&<div className="lectris-layout-custom">
+                <small>МОИ РАСКЛАДКИ</small>
+                {lectrisSavedLayouts.map(entry=><div key={entry.id} className="lectris-layout-saved-row">
+                  <button type="button" onClick={e=>{applyLectrisSavedLayout(entry);e.currentTarget.closest("details")?.removeAttribute("open")}}>
+                    <span aria-hidden="true">▦</span>{entry.name}
+                  </button>
+                  <button type="button" aria-label={"Удалить раскладку "+entry.name} title="Удалить сохранённую раскладку"
+                    onClick={()=>setLectrisSavedLayouts(prev=>prev.filter(p=>p.id!==entry.id))}>×</button>
+                </div>)}
+              </div>}
+              <div className="lectris-layout-save">
+                <input type="text" aria-label="Название новой раскладки" placeholder="Название раскладки"
+                  maxLength={40} value={lectrisLayoutName} onChange={e=>setLectrisLayoutName(e.target.value)}
+                  onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){e.preventDefault();saveLectrisLayout()}}}/>
+                <button type="button" disabled={!lectrisLayoutName.trim()} onClick={saveLectrisLayout}>Сохранить текущую</button>
+                <button type="button" onClick={()=>{setLectrisLayout("standard");setLectrisPinned(lectrisDefaultPinned);setDesktopToolsExpanded(false)}}>Восстановить по умолчанию</button>
+              </div>
             </div>
           </details>{installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lectris на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
           {isRemoteBackendEnabled() && <details className="presence-menu">
