@@ -1562,11 +1562,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [mobileToolsOpen,setMobileToolsOpen]=useState(false);
   const [colorMenuOpen,setColorMenuOpen]=useState(false);
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(()=>{
-    try { return localStorage.getItem("onlinerepetitor.desktopToolsExpanded") === "1"; }
+    try { return localStorage.getItem("lectris.desktopToolsExpanded") === "1"; }
     catch { return false; }
   });
   useEffect(()=>{
-    try { localStorage.setItem("onlinerepetitor.desktopToolsExpanded", desktopToolsExpanded ? "1" : "0"); }
+    try { localStorage.setItem("lectris.desktopToolsExpanded", desktopToolsExpanded ? "1" : "0"); }
     catch {/* Private browsing/storage restrictions: keep session state only. */}
   },[desktopToolsExpanded]);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
@@ -6083,7 +6083,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               </div>;
             })}
           </div>
-          <button type="button" className="toolbar-more" title={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты"} onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
+          <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты"} title={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты"} onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
           </button>
           {!isStudent&&<button type="button" className="toolbar-ai-button" title="AI-помощник" aria-label="AI-помощник" onClick={()=>{finishEdit();setBoardAiOpen(true);setBoardAiPreview([])}}>
