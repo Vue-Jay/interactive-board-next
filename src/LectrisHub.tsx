@@ -4,7 +4,7 @@ import type { AuthUser } from "./authStore";
 import type { BoardSummary } from "./boardStore";
 import { getStudentsForTeacher, type StudentRecord } from "./studentsStore";
 import { listScheduledLessons, type ScheduledLesson } from "./scheduleStore";
-import { flushLectrisOrganization, lectrisOrganizationSyncEnabled, loadLectrisOrganization, pendingLectrisOrganizationCount, queueLectrisBoardOrganization, queueLectrisCategory, readLectrisLocalCatalog, readLectrisLocalOrganization, type LectrisOrganization, type LectrisCategoryCatalog } from "./lectrisOrganizationStore";
+import { flushLectrisOrganization, lectrisOrganizationSyncEnabled, loadLectrisOrganization, pendingLectrisOrganizationCount, queueLectrisBoardOrganization, queueLectrisCategory, queueLectrisLocalImport, readLectrisLocalCatalog, readLectrisLocalOrganization, type LectrisOrganization, type LectrisCategoryCatalog } from "./lectrisOrganizationStore";
 
 type View = "home" | "subjects" | "groups";
 type Organization=LectrisOrganization;
@@ -68,6 +68,15 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
     window.addEventListener("focus",onFocus);
     return()=>window.removeEventListener("focus",onFocus);
   },[user.id,boardIds]);
+  const importLocalOrganization=()=>{
+    if(!teacher||!lectrisOrganizationSyncEnabled())return;
+    const owned=boards.filter(board=>board.role==="owner").map(board=>board.id);
+    if(!window.confirm("Перенести местные предметы, группы и привязки собственных досок в Lectris? Существующие связи на сервере не будут перезаписаны."))return;
+    const count=queueLectrisLocalImport(user.id,owned);
+    if(!count){window.alert("Новых локальных данных для переноса нет.");return}
+    setPendingCount(pendingLectrisOrganizationCount(user.id));
+    void sendOrganization();
+  };
   const sendOrganization=async()=>{
     if(!lectrisOrganizationSyncEnabled()){setSyncStatus("local");return}
     setSyncStatus("saving");
@@ -152,6 +161,7 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
       <span className={`lectris-hub-sync-dot status-${syncStatus}`}/>
       {syncStatus==="synced"?"Структура синхронизирована":syncStatus==="saving"?"Сохраняем структуру…":syncStatus==="error"?"Не удалось синхронизировать":"Предметы и группы сохраняются на этом устройстве"}
       {pendingCount>0&&<span> · ожидает отправки: {pendingCount}</span>}
+      {lectrisOrganizationSyncEnabled()&&teacher&&<button type="button" disabled={syncStatus==="saving"} onClick={importLocalOrganization}>Перенести локальные метки</button>}
       {lectrisOrganizationSyncEnabled()&&<button type="button" disabled={syncStatus==="saving"} onClick={()=>void sendOrganization()}>Повторить синхронизацию</button>}
     </div>
     {view==="home"?<>
