@@ -619,3 +619,70 @@
   .lectris-command-input-row{padding:9px 11px}
   .lectris-command-results>button{min-height:44px}
 }
+
+
+/* 10. Second pass: meaningful visual grouping inside all seven editors */
+:is(.graph-editor-form,.formula-editor-compose,.flashcard-editor-compose,
+    .quiz-question-editor,.quiz-explanation-editor,.checklist-editor-settings){
+  box-sizing:border-box;min-width:0;
+  background:#f8faff;border:1px solid #e3eaf5;border-radius:13px;
+  padding:13px;
+}
+:is(.graph-editor-form,.formula-editor-compose,.flashcard-editor-compose,
+    .quiz-question-editor,.quiz-explanation-editor,.checklist-editor-settings):focus-within{
+  border-color:#c6d7f5;
+}
+:is(.graph-editor-form,.flashcard-editor-compose,.quiz-question-editor,
+    .quiz-explanation-editor) label{
+  font-size:12px;font-weight:730;color:#526783;
+}
+:is(.quiz-options-editor,.checklist-editor-list,.flashcard-editor-settings,
+    .formula-editor-main,.graph-editor-body){min-width:0}
+:is(.graph-editor-preview,.flashcard-editor-preview,.quiz-editor-preview){
+  background:#fff;border:1px solid #e0e8f4;
+  border-radius:13px;box-shadow:0 3px 15px rgba(30,55,90,.035);
+}
+.checklist-editor-list{display:grid;gap:7px}
+.checklist-editor-row{
+  background:#fff;border:1px solid #e3eaf4;
+  border-radius:11px;padding:8px;
+}
+.checklist-editor-row:focus-within{border-color:#b7caf2}
+.quiz-options-editor-head{color:#526884;font-weight:750}
+.quiz-options-editor>div{
+  background:#fff;border:1px solid #e4ebf5;
+  padding:8px;border-radius:11px;
+}
+.quiz-options-editor>div:focus-within{border-color:#b9cef3}
+.table-editor-controls{
+  padding:13px;background:#f8faff;
+  border-bottom:1px solid #e3ebf5;
+}
+.table-editor-grid{
+  background:#fff;box-shadow:inset 0 0 0 1px #edf1f8;
+}
+.table-editor-grid :is(input,textarea){
+  background:#fff!important;min-width:50px;
+}
+:is(.formula-editor-compose,.formula-palette-panel) button{
+  border-radius:9px;
+}
+.lectris-tools-customize-section h3,.lectris-panel-settings-field legend{
+  color:#385574;
+}
+.lectris-panel-settings-segments label.active{color:#284faa}
+.lectris-tools-customize footer,.lectris-panel-settings-dialog footer{
+  background:#fff;border-top-color:#e4ebf6;
+}
+.workspace :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+  .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal) :is(button,input,select,textarea):focus-visible{
+  outline:2px solid #7697eb!important;outline-offset:1px!important;
+}
+@media(max-width:700px){
+  :is(.graph-editor-form,.formula-editor-compose,.flashcard-editor-compose,
+      .quiz-question-editor,.quiz-explanation-editor,.checklist-editor-settings){
+    padding:10px;border-radius:11px;
+  }
+  .table-editor-controls{padding:9px}
+  .checklist-editor-row{padding:6px}
+}
