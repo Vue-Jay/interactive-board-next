@@ -6326,9 +6326,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               return <div className="tool-wrap" key={t.id}>
                 <button aria-label={t.label} className={`tool-button ${tool===t.id?"active":""}`} onClick={()=>{finishEdit();if(t.id==="eraser")setSpace(false);setTool(t.id);setMobileToolsOpen(false)}}>
                   <span className="tool-icon"><Icon name={t.icon} size={18}/></span><span className="tool-tooltip">{toolShortLabel[t.id]}</span>
-                </button>{t.id==="eraser"&&<GeometryInstruments view={view} boardRef={board} />}{t.dividerAfter&&<span className="tool-divider" aria-hidden="true"/>}
+                </button>{t.dividerAfter&&<span className="tool-divider" aria-hidden="true"/>}
               </div>;
             })}
+          </div>
+          <div className="lektrus-toolbar-measure" aria-label="Измерительные инструменты">
+            <GeometryInstruments view={view} boardRef={board}/>
           </div>
           <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Закрыть меню инструментов":"Открыть все инструменты"} title={desktopToolsExpanded?"Закрыть меню инструментов":"Ещё инструменты"} aria-controls="lektrus-tool-overflow" aria-haspopup="dialog" onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>

@@ -287,3 +287,33 @@
   .lektrus-tool-overflow-popover{animation:none}
   .lektrus-tool-overflow-grid>button{transition:none}
 }
+
+/* The measurement instruments remain mounted even when the eraser is
+   moved into the overflow menu. Its own picker and board overlays retain state. */
+.workspace .toolbar.compact-toolbar .lektrus-toolbar-measure{
+  display:flex!important;
+  justify-content:center;
+  align-items:center;
+  flex:0 0 auto;
+  width:100%;
+  min-height:38px;
+  border-top:1px solid var(--lt-line);
+  padding-top:4px;
+}
+.workspace .toolbar.compact-toolbar .lektrus-toolbar-measure .geometry-tools{
+  display:inline-flex;
+  position:relative;
+  pointer-events:auto;
+}
+.workspace .toolbar.compact-toolbar .lektrus-toolbar-measure .geometry-trigger{
+  display:grid;place-items:center;width:36px;height:36px;
+  color:var(--lt-secondary)!important;
+  background:var(--lt-subtle)!important;
+  border:1px solid var(--lt-line)!important;
+  border-radius:10px;
+}
+.workspace .toolbar.compact-toolbar .lektrus-toolbar-measure .geometry-trigger:hover,
+.workspace .toolbar.compact-toolbar .lektrus-toolbar-measure .geometry-trigger.active{
+  background:var(--lt-hover)!important;color:var(--lt-text)!important;
+  border-color:var(--lt-line-strong)!important;
+}
