@@ -107,7 +107,18 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
       <aside className="lectris-workspace-sidebar" aria-label="Основная навигация">
         <div className="lectris-sidebar-head"><span>РАЗДЕЛЫ</span><button className="lectris-collapse-button" type="button" aria-label={collapsed?"Развернуть меню":"Свернуть меню"} title={collapsed?"Развернуть меню":"Свернуть меню"} onClick={toggle}><NavGlyph name={collapsed?"menu":"chevron"}/></button></div>
         <nav className="lectris-workspace-links">
-          {available.filter(x=>!["profile","settings","admin"].includes(x.id)).map(x=>navButton(x))}
+          <div className="lectris-nav-group">
+            <span className="lectris-nav-group-title">Рабочий стол</span>
+            {available.filter(x=>["","boards","subjects","groups"].includes(x.id)).map(x=>navButton(x))}
+          </div>
+          <div className="lectris-nav-group">
+            <span className="lectris-nav-group-title">Учебный процесс</span>
+            {available.filter(x=>["students","assignments","schedule","progress"].includes(x.id)).map(x=>navButton(x))}
+          </div>
+          <div className="lectris-nav-group">
+            <span className="lectris-nav-group-title">Библиотека и события</span>
+            {available.filter(x=>["materials","templates","notifications"].includes(x.id)).map(x=>navButton(x))}
+          </div>
         </nav>
         <div className="lectris-sidebar-footer">
           {available.filter(x=>["profile","settings","admin"].includes(x.id)).map(x=>navButton(x))}
