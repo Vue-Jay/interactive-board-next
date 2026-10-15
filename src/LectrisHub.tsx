@@ -183,6 +183,7 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
       <div className="lectris-hub-hero">
         <div className="lectris-hub-hero-copy">
           <span className="lectris-hub-hero-chip">{teacher?"✦ Пространство преподавателя":"✦ Пространство ученика"}</span>
+          <span className="lectris-hub-hero-metric">{teacher?`${students.length} учеников · ${boards.length} досок`:`${boards.length} доступных досок`}</span>
           <h2>{teacher?"Создавайте уроки, которые увлекают":"Учитесь, исследуйте и открывайте новое"}</h2>
           <p>{teacher?"Превратите идеи в наглядные занятия. Доски, ученики и учебные материалы всегда под рукой.":"Все ваши доски, задания и ближайшие занятия собраны в одном пространстве."}</p>
           <div className="lectris-hub-hero-actions">
