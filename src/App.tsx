@@ -15,6 +15,7 @@ import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./r
 import "./App.css";
 import AuthScreen from "./AuthScreen";
 import GeometryInstruments from "./GeometryInstruments";
+import LektrusToolOverflow from "./LektrusToolOverflow";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
@@ -6327,16 +6328,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
           <span className="toolbar-section-line" aria-hidden="true"/>
           <div className="toolbar-list">
-            {lectrisToolbarOrder.map(id=>tools.find(t=>t.id===id)!).filter(t=>t&&toolAllowedForRole(t.id)).map((t)=>{
-              const secondary=!lectrisPinned.includes(t.id);
-              return <div className={`tool-wrap ${secondary?"secondary-tool":""}`} key={t.id}>
+            {lectrisPinned.map(id=>tools.find(t=>t.id===id)!).filter(t=>t&&toolAllowedForRole(t.id)).map((t)=>{
+              return <div className="tool-wrap" key={t.id}>
                 <button aria-label={t.label} className={`tool-button ${tool===t.id?"active":""}`} onClick={()=>{finishEdit();if(t.id==="eraser")setSpace(false);setTool(t.id);setMobileToolsOpen(false)}}>
                   <span className="tool-icon"><Icon name={t.icon} size={18}/></span><span className="tool-tooltip">{toolShortLabel[t.id]}</span>
                 </button>{t.id==="eraser"&&<GeometryInstruments view={view} boardRef={board} />}{t.dividerAfter&&<span className="tool-divider" aria-hidden="true"/>}
               </div>;
             })}
           </div>
-          <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты, включая скрытые при уменьшении окна"} title={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты"} onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
+          <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Закрыть меню инструментов":"Открыть все инструменты"} title={desktopToolsExpanded?"Закрыть меню инструментов":"Ещё инструменты"} aria-controls="lektrus-tool-overflow" aria-haspopup="dialog" onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
           </button>
           {lectrisSubjectTools.length>0&&<details className="lectris-subject-toolbox">
@@ -6357,6 +6357,32 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             <Icon name="settings" size={17}/><span className="tool-tooltip">Настроить</span>
           </button>
         </aside>
+        {desktopToolsExpanded&&<LektrusToolOverflow anchor={adaptiveToolbarRef.current} onClose={()=>setDesktopToolsExpanded(false)}>
+          <header className="lektrus-tool-overflow-head">
+            <div><strong>Инструменты</strong><small>Выберите нужный инструмент</small></div>
+            <button type="button" aria-label="Закрыть меню инструментов" onClick={()=>setDesktopToolsExpanded(false)}><Icon name="close" size={17}/></button>
+          </header>
+          <div className="lektrus-tool-overflow-content">
+            {([
+              {label:"Основные",ids:lectrisPinned},
+              {label:"Дополнительные",ids:lectrisToolbarOrder.filter(id=>!lectrisPinned.includes(id))},
+            ] as {label:string;ids:Tool[]}[]).map(group=>{
+              const available=group.ids.filter(toolAllowedForRole);
+              return available.length>0&&<div key={group.label} className="lektrus-tool-overflow-group">
+                <div className="lektrus-tool-overflow-group-title">{group.label}</div>
+                <div className="lektrus-tool-overflow-grid">
+                  {available.map(id=>{const t=tools.find(x=>x.id===id)!;return <button
+                    key={id} type="button" title={t.label} aria-label={t.label}
+                    className={tool===id?"active":""}
+                    onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false);setDesktopToolsExpanded(false)}}>
+                    <span className="lektrus-tool-overflow-icon"><Icon name={t.icon} size={20}/></span>
+                    <span>{toolShortLabel[id]}</span>
+                  </button>})}
+                </div>
+              </div>;
+            })}
+          </div>
+        </LektrusToolOverflow>}
         {lectrisCustomizeOpen&&<LectrisToolbarSettings
           tools={tools.filter(t=>t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
           pinned={lectrisPinned} defaults={lectrisDefaultPinned}

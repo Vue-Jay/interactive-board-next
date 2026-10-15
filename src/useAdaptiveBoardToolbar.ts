@@ -47,7 +47,7 @@ export function useAdaptiveBoardToolbar(expanded:boolean,pinnedSignature:string)
         availableHeight,rest+railPad+12,itemHeight,gap,items.length
       );
       items.forEach((item,index)=>{
-        const hidden=!expanded&&index>=count;
+        const hidden=index>=count;
         item.classList.toggle("lektrus-auto-overflow",hidden);
         const button=item.querySelector<HTMLButtonElement>(".tool-button");
         if(button){

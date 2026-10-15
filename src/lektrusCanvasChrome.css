@@ -95,7 +95,7 @@
 /* Gradual adaptive disappearance as height decreases. The original More
    expands the rail to expose tools; no tool or handler is removed. */
 @media (pointer:fine) {
-  .workspace .toolbar.compact-toolbar:not(.expanded) .toolbar-list>.tool-wrap.lektrus-auto-overflow {
+  .workspace .toolbar.compact-toolbar .toolbar-list>.tool-wrap.lektrus-auto-overflow {
     display:block!important;
     min-height:0!important;
     max-height:0!important;
@@ -191,4 +191,99 @@
   .topbar :is(.board-home-button,.compact-top-action){
     transition:none!important;
   }
+}
+
+/* Lektrus floating tool catalog, never expands the primary rail. */
+.lektrus-tool-overflow-popover {
+  position:fixed;
+  z-index:1600;
+  width:min(354px,calc(100vw - 24px));
+  max-width:calc(100vw - 24px);
+  max-height:min(586px,calc(100dvh - 24px));
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  box-sizing:border-box;
+  background:var(--lt-raised,#fff);
+  color:var(--lt-text,#1b2940);
+  border:1px solid var(--lt-line,#d0d9e7);
+  border-radius:16px;
+  box-shadow:var(--lt-pop-shadow,0 18px 50px rgba(17,38,66,.23));
+  animation:lektrus-overflow-arrive .16s ease-out both;
+}
+.lektrus-tool-overflow-head {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  flex:0 0 auto;
+  min-height:62px;
+  padding:12px 13px 11px 16px;
+  background:var(--lt-subtle,#f1f5fb);
+  border-bottom:1px solid var(--lt-line,#d0d9e7);
+}
+.lektrus-tool-overflow-head>div{display:grid;gap:3px;min-width:0}
+.lektrus-tool-overflow-head strong{font-size:14px;line-height:1.2;color:var(--lt-text)}
+.lektrus-tool-overflow-head small{font-size:11px;line-height:1.25;color:var(--lt-muted)}
+.lektrus-tool-overflow-head button{
+  display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;
+  color:var(--lt-secondary);background:var(--lt-raised);
+  border:1px solid var(--lt-line);border-radius:9px;cursor:pointer;
+}
+.lektrus-tool-overflow-head button:hover{background:var(--lt-hover);color:var(--lt-text)}
+.lektrus-tool-overflow-content {
+  min-height:0;
+  padding:12px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:var(--lt-line-strong) transparent;
+}
+.lektrus-tool-overflow-group+.lektrus-tool-overflow-group{
+  margin-top:13px;padding-top:12px;border-top:1px solid var(--lt-line);
+}
+.lektrus-tool-overflow-group-title {
+  margin:0 0 9px 3px;
+  color:var(--lt-muted);
+  font-size:10px;font-weight:800;letter-spacing:.075em;text-transform:uppercase;
+}
+.lektrus-tool-overflow-grid{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;
+}
+.lektrus-tool-overflow-grid>button {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-width:0;min-height:76px;padding:8px 5px;gap:5px;
+  color:var(--lt-secondary);background:var(--lt-surface);
+  border:1px solid var(--lt-line);border-radius:11px;
+  cursor:pointer;font:inherit;font-size:10px;font-weight:700;line-height:1.25;
+  text-align:center;overflow-wrap:anywhere;
+  transition:background .16s,border-color .16s,color .16s;
+}
+.lektrus-tool-overflow-grid>button:hover {
+  background:var(--lt-hover);color:var(--lt-text);border-color:var(--lt-line-strong);
+}
+.lektrus-tool-overflow-grid>button.active {
+  background:var(--lt-selected);color:var(--lt-selected-ink);border-color:var(--lt-primary);
+}
+.lektrus-tool-overflow-icon{
+  display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;
+  border-radius:9px;background:var(--lt-subtle);color:inherit;
+}
+.lektrus-tool-overflow-icon svg{stroke-width:1.9}
+.lektrus-tool-overflow-grid>button.active .lektrus-tool-overflow-icon{background:var(--lt-raised)}
+.lektrus-tool-overflow-popover button:focus-visible{
+  outline:2px solid var(--lt-focus,#7396ea);outline-offset:2px;
+}
+@keyframes lektrus-overflow-arrive {
+  from{opacity:0;transform:translateX(-5px) scale(.985)}
+  to{opacity:1;transform:translateX(0) scale(1)}
+}
+@media(max-width:470px){
+  .lektrus-tool-overflow-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .lektrus-tool-overflow-grid>button{min-height:67px}
+}
+@media(prefers-reduced-motion:reduce){
+  .lektrus-tool-overflow-popover{animation:none}
+  .lektrus-tool-overflow-grid>button{transition:none}
 }
