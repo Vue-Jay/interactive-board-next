@@ -75,7 +75,7 @@ import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
 import { readInkPreferences, writeInkPreferences, withInkSetting } from "./inkPreferences";
-import { renderBoardPreview, cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument, scheduleBackgroundBoardPreview } from "./boardPreview";
+import { cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument, scheduleBackgroundBoardPreview } from "./boardPreview";
 import { getBoardHistoryVersion, listBoardHistory, type BoardHistoryEntry } from "./historyStore";
 import { changesSinceLastVisit, recentBoardHistory } from "./boardHistoryUtils";
 import { createBoardComment, listBoardComments, listBoardCommentParticipants, setBoardCommentResolved, type BoardCommentParticipant, type BoardCommentThread } from "./commentThreadsStore";
@@ -7243,7 +7243,9 @@ export default function App() {
           // Backfill a preview of migrated boards on first open, without
           // creating a remote revision or a conflict with other participants.
           if(!cachedBoardPreview(board.id)){
-            void renderBoardPreview(parsed,board.id).then(value=>{if(value)cacheBoardPreview(board.id,value)}).catch(()=>{});
+            // Old boards also get their first preview in browser idle time.
+            // Do not block opening a board to paint a thumbnail.
+            scheduleBackgroundBoardPreview(board.id,parsed,null);
           }
           setRemoteVersion(remote.version);
         } else {
