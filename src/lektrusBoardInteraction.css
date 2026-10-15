@@ -1,0 +1,48 @@
+/* Lektrus desktop pointer model: arrow idle, temporary hand on held right mouse. */
+.workspace .board.board-tool-select:not(.board-hand-active):not(.board-panning){
+  cursor:default;
+}
+.workspace .board.board-right-hand,
+.workspace .board.board-right-hand *,
+.workspace .board.board-right-hand.board-panning,
+.workspace .board.board-right-hand.board-panning *{
+  cursor:grabbing!important;
+}
+.workspace .board.board-hand-active:not(.board-right-hand){
+  cursor:grab;
+}
+.workspace .lektrus-selection-marquee{
+  position:absolute;
+  z-index:165;
+  pointer-events:none;
+  box-sizing:border-box;
+  border:1.5px solid #315fce;
+  border-radius:2px;
+  background:rgba(58,111,223,.13);
+  box-shadow:0 0 0 1px rgba(255,255,255,.3) inset;
+  will-change:width,height,left,top;
+}
+.board-context-menu.lektrus-context-portal{
+  position:fixed!important;
+  z-index:2147482400!important;
+  box-sizing:border-box;
+  width:min(232px,calc(100vw - 16px));
+  max-height:min(440px,calc(100dvh - 16px));
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border:1px solid #d4e0f0;
+  background:#fff;
+  box-shadow:0 20px 65px rgba(15,29,54,.30);
+}
+.board-context-menu.lektrus-context-portal button{
+  min-height:34px;
+  text-align:left;
+}
+.board-context-menu.lektrus-context-portal button:focus-visible{
+  outline:2px solid #4c78d9;outline-offset:-2px;
+}
+@media(max-width:700px){
+  .board-context-menu.lektrus-context-portal{
+    max-height:min(440px,calc(100dvh - 25px));
+  }
+}
