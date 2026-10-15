@@ -150,10 +150,10 @@ const iconBody = (name: IconName) => {
     case "pen": return <><path d="m4.5 19.5 4.8-1.1L19 8.7a2.15 2.15 0 0 0-3-3L6.3 15.4l-1.8 4.1Z"/><path d="m13.7 7.9 3.3 3.3M7.1 15.2l2.6 2.6"/><path d="M3.7 21h6" opacity=".5"/></>;
     case "marker": return <><path d="m4.5 15.6 9.9-10a1.9 1.9 0 0 1 2.7 0l2 2a1.9 1.9 0 0 1 0 2.7l-9.8 9.8H4.5v-4.5Z"/><path d="m13.1 7 4.6 4.5M6.2 16.6l2.2 2.2"/><path d="M3 21h11" strokeWidth="2.6"/></>;
     case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
-    case "section-arrows": return <><path d="M2.8 17.5C6.7 17.5 6.6 11 11 11s4.4 6 7.7-1.9"/><path d="m14.9 6.7 4.3 2.1-1.3-4.6"/><circle cx="2.8" cy="17.5" r="1.65"/><circle cx="11" cy="11" r="1.65"/></>;
-    case "section-create": return <><path d="M2.5 5h8M6.5 5v14M3.6 19h5.8"/><rect x="13.2" y="3.6" width="8.3" height="8.3" rx=".8"/><circle cx="17.5" cy="18" r="3.5"/></>;
-    case "section-studies": return <><rect x="2.2" y="3" width="11" height="16" rx="1.1"/><path d="M2.3 8h10.8M2.3 13.5h10.8M7.6 3v16"/><path d="M15.6 10.5c1.5-.4 3.8-1.9 3.6-4.3-.15-1.5-2-.9-2.2.4l-2.1 11.3c-.2 1.1-.7 2-1.7 2.5M14.1 12.3h7.1M18.6 11.1l2.4 5.8M21.1 11.1l-2.8 5.7"/></>;
-    case "section-media": return <><rect x="2.5" y="3.4" width="14" height="13.8" rx="1.5"/><circle cx="6.7" cy="7.5" r="1.3"/><path d="m3.9 14 4-4 3.1 2.8 2.4-2.2"/><rect x="13.3" y="12.1" width="8.1" height="8.1" rx="1.2" fill="var(--lt-raised,#fff)"/><path d="m16.4 14.3 3.1 1.9-3.1 1.8Z"/></>;
+    case "section-arrows": return <><path d="M4 24C9 24 8 15 14 15S20 22 27 7"/><path d="m20.5 9 7-3-1 7"/><circle cx="4" cy="24" r="2.3" fill="var(--lt-raised,#fff)"/><circle cx="14" cy="15" r="2.3" fill="var(--lt-raised,#fff)"/></>;
+    case "section-create": return <><path d="M2.5 5h12M8.5 5v21M5 26h7"/><rect x="18" y="3.5" width="11.5" height="11.5" rx=".7"/><circle cx="23.5" cy="24" r="5.5"/></>;
+    case "section-studies": return <><rect x="2.5" y="3.5" width="15" height="21.5" rx="1.5"/><path d="M2.5 10.5h15M2.5 17.5h15M10 3.5v21.5"/><text x="18.8" y="28" fill="currentColor" stroke="none" fontFamily="Georgia,serif" fontSize="20" fontWeight="bold" fontStyle="italic">ƒx</text></>;
+    case "section-media": return <><rect x="2.5" y="3.5" width="18" height="19" rx="2"/><circle cx="8" cy="9.5" r="2"/><path d="m4.5 19 5.5-6 4.2 4.4 3.6-3.4"/><rect x="17.8" y="16" width="11.5" height="11.5" rx="2" fill="var(--lt-raised,#fff)"/><path d="m22 19 4.2 2.8-4.2 2.7Z"/></>;
     case "connector": return <><path d="M3.5 12h17"/><path d="M14.5 5.5 21 12l-6.5 6.5"/></>;
     case "frame": return <><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2"/><rect x="8" y="8" width="8" height="8" rx="1.2"/><path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/></>;
     case "comment": return <><path d="M5 4.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-14a2 2 0 0 1 1-2Z"/><path d="M8 9h9M8 13h6"/></>;
@@ -242,7 +242,7 @@ const iconBody = (name: IconName) => {
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   return (
-    <svg className="ui-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className="ui-icon" width={size} height={size} viewBox={name.startsWith("section-")?"0 0 32 32":"0 0 24 24"} fill="none" stroke="currentColor" strokeWidth={name.startsWith("section-")?2.4:1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {iconBody(name)}
     </svg>
   );
