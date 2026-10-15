@@ -1702,6 +1702,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const snapshot = useRef<DocumentData | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastLocalSerialized = useRef<string | null>(null);
+  const localBackupValid = useRef(true);
+  // Assets already referenced by a remotely loaded document must never be
+  // re-downloaded just because the teacher drew another pencil stroke.
+  const trustedAssetIds = useRef(new Set(initial.data.items
+    .filter(item => item.kind === "image" || item.kind === "pdf")
+    .map(item => item.assetId).filter((id): id is string => Boolean(id))));
+  const saveFailure = useRef<{step:string;message:string}|null>(null);
+  const saveStep = useRef("ожидание");
   const lastBoardTouchAt = useRef(0);
   const lastBoardTouchTitle = useRef(title);
   const remoteVersion = useRef<number | null>(initialRemoteVersion);
@@ -1839,8 +1847,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     remoteSaveInFlight.current = true;
     try {
-      await ensureBoardAssets(boardSummary.id, data);
+      // Verify/upload ONLY newly introduced attachments. Existing references
+      // are already part of the previously persisted board, and checking them
+      // via Storage GET used to download each full PDF/image before every save.
+      const unsyncedAssets = data.items.filter(item =>
+        (item.kind === "image" || item.kind === "pdf") &&
+        item.assetId && !trustedAssetIds.current.has(item.assetId));
+      if (unsyncedAssets.length) {
+        saveStep.current = "проверка новых вложений";
+        await ensureBoardAssets(boardSummary.id,{...data,items:unsyncedAssets});
+        for(const item of unsyncedAssets)if(item.assetId)trustedAssetIds.current.add(item.assetId);
+      }
       if (!boardMounted.current) return;
+      saveStep.current = "ответ Supabase";
       const expectedVersion = remoteVersion.current ?? 0;
       // Do not block the real board save with canvas rendering or loading media.
       // Use the last prepared preview; refresh it separately after acknowledgement.
@@ -1857,6 +1876,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       remoteVersion.current = result.version;
       acknowledgedDocument.current = fingerprint;
       remoteSaveFailures.current = 0;
+      saveFailure.current = null;
+      saveStep.current = "сохранено";
       if (remoteRetryTimer.current) {
         clearTimeout(remoteRetryTimer.current);
         remoteRetryTimer.current = null;
@@ -1865,7 +1886,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       // The thumbnail is decorative metadata, not an autosave prerequisite.
       // It can finish even if the editor unmounts when returning to the dashboard.
       scheduleBackgroundBoardPreview(boardSummary.id,data,result.version);
-    } catch {
+    } catch (error) {
+      const message=error instanceof Error?error.message:String(error);
+      saveFailure.current={step:saveStep.current,message:message.slice(0,260)};
       // A short Supabase/network hiccup must not permanently leave the board in
       // a scary "server unavailable" state. The local copy is already safe,
       // so retry the latest snapshot quietly with a small exponential backoff.
@@ -1902,12 +1925,24 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       // local save, fingerprint checks and metadata touches, which caused visible stalls.
       const serialized = JSON.stringify(data);
       if (serialized !== lastLocalSerialized.current) {
-        localStorage.setItem(storageKey, serialized);
-        lastLocalSerialized.current = serialized;
+        try {
+          localStorage.setItem(storageKey,serialized);
+          lastLocalSerialized.current=serialized;
+          localBackupValid.current=true;
+        } catch(error) {
+          // localStorage is often limited to 5 MB. A full quota must NEVER
+          // prevent a remote save. Keep the explicit backup warning for exit.
+          localBackupValid.current=false;
+          saveFailure.current={step:"локальная копия",message:error instanceof Error?error.message:String(error)};
+        }
       }
       if (!boardMounted.current) return;
       const fingerprint = documentFingerprint(data);
-      if (isRemoteBackendEnabled() && (pendingRemote.current || fingerprint === acknowledgedDocument.current)) return;
+      if (isRemoteBackendEnabled() && pendingRemote.current) return;
+      if(isRemoteBackendEnabled() && fingerprint === acknowledgedDocument.current){
+        setSaveStatus("Сохранено на сервере");
+        return;
+      }
 
       // Board-list metadata does not need a PATCH on every board edit. Throttling this
       // removes a second request (and for collaborators sometimes a role lookup) from
@@ -1922,6 +1957,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         }).catch(() => {});
       }
       if (isRemoteBackendEnabled()) {
+        saveStep.current="подготовка";
         setSaveStatus("Сохранение на сервер…");
         const pending=pushRemoteSnapshot(data,fingerprint);
         remoteSavePromise.current=pending;
@@ -1929,11 +1965,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           if(remoteSavePromise.current===pending)remoteSavePromise.current=null;
         });
       } else {
-        setSaveStatus("Сохранено в браузере");
-        scheduleBackgroundBoardPreview(boardSummary.id,data,null);
+        setSaveStatus(localBackupValid.current?"Сохранено в браузере":"Недостаточно места для локальной копии");
+        if(localBackupValid.current)scheduleBackgroundBoardPreview(boardSummary.id,data,null);
       }
-    } catch {
-      setSaveStatus("Не удалось сохранить — скачайте копию");
+    } catch(error) {
+      saveFailure.current={step:"подготовка документа",message:error instanceof Error?error.message:String(error)};
+      setSaveStatus("Не удалось подготовить документ к сохранению");
     }
   }, [authUser.id, boardSummary.id, onBoardChanged, storageKey, canEdit, pushRemoteSnapshot]);
 
