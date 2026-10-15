@@ -1674,6 +1674,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [panning, setPanning] = useState(false);
   const touchPoints = useRef(new Map<number, Point>());
   const pinchState = useRef<{ distance:number; center:Point; view:View } | null>(null);
+  const consumedTouchIds=useRef(new Set<number>());
   const [mobileToolsOpen,setMobileToolsOpen]=useState(false);
   const [colorMenuOpen,setColorMenuOpen]=useState(false);
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
@@ -2786,9 +2787,46 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     return () => element.removeEventListener("wheel", wheel);
   });
 
-  const touchStart=(e: PE<HTMLElement>)=>{if(e.pointerType!=="touch")return;touchPoints.current.set(e.pointerId,local(e.clientX,e.clientY));if(touchPoints.current.size===2){end(true);const pts=[...touchPoints.current.values()];const dx=pts[1].x-pts[0].x,dy=pts[1].y-pts[0].y;pinchState.current={distance:Math.max(1,Math.hypot(dx,dy)),center:{x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2},view:{...view}};setPanning(true)}};
-  const touchMove=(e: PE<HTMLElement>)=>{if(e.pointerType!=="touch"||!touchPoints.current.has(e.pointerId))return;touchPoints.current.set(e.pointerId,local(e.clientX,e.clientY));const pinch=pinchState.current;if(!pinch||touchPoints.current.size<2)return;e.preventDefault();const pts=[...touchPoints.current.values()];const center={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};const distance=Math.max(1,Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y));const z=Math.max(.1,Math.min(8,pinch.view.zoom*distance/pinch.distance));const wx=(pinch.center.x-pinch.view.x)/pinch.view.zoom,wy=(pinch.center.y-pinch.view.y)/pinch.view.zoom;scheduleViewerPan({zoom:z,x:center.x-wx*z,y:center.y-wy*z})};
-  const touchEnd=(e: PE<HTMLElement>)=>{if(e.pointerType!=="touch")return;touchPoints.current.delete(e.pointerId);if(touchPoints.current.size<2){pinchState.current=null;setPanning(false)}};
+  const touchStart=(e:PE<HTMLElement>)=>{
+    if(e.pointerType!=="touch")return;
+    touchPoints.current.set(e.pointerId,local(e.clientX,e.clientY));
+    if(touchPoints.current.size===2){
+      // Cancel any single-finger object edit before beginning a navigation gesture.
+      end(true);
+      for(const id of touchPoints.current.keys())consumedTouchIds.current.add(id);
+      const pts=[...touchPoints.current.values()];
+      const center={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+      pinchState.current={distance:Math.max(1,Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y)),center,view:{...view}};
+      setPanning(true);
+    }
+  };
+  const touchMove=(e:PE<HTMLElement>)=>{
+    if(e.pointerType!=="touch"||!touchPoints.current.has(e.pointerId))return false;
+    touchPoints.current.set(e.pointerId,local(e.clientX,e.clientY));
+    const pinch=pinchState.current;
+    if(!pinch||touchPoints.current.size<2)return consumedTouchIds.current.has(e.pointerId);
+    e.preventDefault();
+    const pts=[...touchPoints.current.values()];
+    const center={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+    const distance=Math.max(1,Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y));
+    const zoom=Math.max(.1,Math.min(8,pinch.view.zoom*distance/pinch.distance));
+    const anchoredX=(pinch.center.x-pinch.view.x)/pinch.view.zoom;
+    const anchoredY=(pinch.center.y-pinch.view.y)/pinch.view.zoom;
+    scheduleViewerPan({zoom,x:center.x-anchoredX*zoom,y:center.y-anchoredY*zoom});
+    return true;
+  };
+  const touchEnd=(e:PE<HTMLElement>)=>{
+    if(e.pointerType!=="touch")return false;
+    const consumed=consumedTouchIds.current.delete(e.pointerId);
+    touchPoints.current.delete(e.pointerId);
+    if(touchPoints.current.size<2){
+      pinchState.current=null;
+      setPanning(false);
+      const pending=viewerPendingPan.current;
+      if(pending){viewerPendingPan.current=null;setView(pending)}
+    }
+    return consumed;
+  };
 
   const end = (cancel = false) => {
     if (viewerPanFrame.current !== null) {
@@ -2871,7 +2909,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const screen=local(clientX,clientY);
     const at=world(screen);
     const domIndex=domId?itemsRef.current.findIndex(item=>item.id===domId):-1;
-    const ink=hitTestInk(itemsRef.current,at,7/Math.max(.1,view.zoom),domIndex);
+    const ink=hitTestInk(itemsRef.current,at,12/Math.max(.1,view.zoom),domIndex);
     const id=ink?.id??domId;
     const hit=itemsRef.current.find(item=>item.id===id);
     if(hit){
@@ -2935,7 +2973,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       // The Canvas layer is not a DOM object. Resolve a pen stroke only when
       // clicked, in its original stacking order above a hit DOM object.
       const domIndex=id?itemsRef.current.findIndex(item=>item.id===id):-1;
-      const picked=hitTestInk(itemsRef.current,p,7/Math.max(0.1,view.zoom),domIndex);
+      const picked=hitTestInk(itemsRef.current,p,(e.pointerType==="touch"?18:10)/Math.max(0.1,view.zoom),domIndex);
       if(picked)id=picked.id;
     }
     const hit=itemsRef.current.find(item=>item.id===id);
@@ -6419,6 +6457,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             backgroundImage:backgroundAppearance.backgroundImage,
           } as CSSProperties}
           onPointerDownCapture={(e) => {
+            if(e.pointerType==="touch"){touchStart(e);if(pinchState.current){e.preventDefault();e.stopPropagation();return;}}
             if((tool==="pen"||tool==="marker")&&!space&&!rightPointerActive&&e.button===0)moveInkCursor(e.clientX,e.clientY,e.pointerType);
             // A held RMB is always temporary hand/pan, even while drawing.
             // Short click opens the custom menu only on release.
@@ -6459,6 +6498,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             board.current?.setPointerCapture(e.pointerId);
           }}
           onPointerMoveCapture={(e) => {
+            if(e.pointerType==="touch"&&touchMove(e)){e.stopPropagation();return;}
             if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType);
             if(rightPress.current?.pointer===e.pointerId){
               const p=local(e.clientX,e.clientY),start=rightPress.current.start;
@@ -6507,8 +6547,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             e.preventDefault();e.stopPropagation();
             finishEraser(null);
           }}
-          onPointerDown={(e) => { if(tool==="eraser")return; touchStart(e); if(touchPoints.current.size>=2)return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
-          onPointerMove={(e) => { if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;} if(eraserSession.current)return; touchMove(e); if(pinchState.current)return; const localPoint = local(e.clientX, e.clientY); const worldPoint = world(localPoint); if(!adminHidden) cursorChannel.current?.sendCursor(worldPoint.x, worldPoint.y); if (presentation) { if (presentationLaser) setPresentationLaserPos(localPoint); if (presentationSpotlight) setPresentationSpotlightPos(localPoint); } move(e); }}
+          onPointerDown={(e) => { if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
+          onPointerMove={(e) => { if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;} if(eraserSession.current)return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; const localPoint = local(e.clientX, e.clientY); const worldPoint = world(localPoint); if(!adminHidden) cursorChannel.current?.sendCursor(worldPoint.x, worldPoint.y); if (presentation) { if (presentationLaser) setPresentationLaserPos(localPoint); if (presentationSpotlight) setPresentationSpotlightPos(localPoint); } move(e); }}
           onContextMenu={(e) => {
             e.preventDefault();
             // Mouse RMB is handled on pointerup. Prevent the native menu from
@@ -6545,13 +6585,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y); } }}
           onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; }}
           onPointerUp={(e) => {
-            touchEnd(e);
+            if(touchEnd(e))return;
             if (e.pointerId === gesture.current?.pointer) {
               move(e);
               end();
             }
           }}
-          onPointerCancel={(e) => { touchEnd(e); if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} end(true); }}
+          onPointerCancel={(e) => { if(touchEnd(e))return; if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} end(true); }}
           onLostPointerCapture={() => { if(eraserSession.current)finishEraser(null);else end(true); }}
         >
           {isAppAdmin && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
