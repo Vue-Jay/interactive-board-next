@@ -10,7 +10,8 @@ import {
   type PointerEvent as PE,
   type CSSProperties,
 } from "react";
-import { flushSync } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
+import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import "./App.css";
 import AuthScreen from "./AuthScreen";
 import GeometryInstruments from "./GeometryInstruments";
@@ -327,7 +328,7 @@ type Gesture = {
   restore?: Item[];
   ids: string[];
   path: Point[];
-  mode: "pan" | "hand-smart" | "drag" | "lasso" | "draw" | "erase" | "resize" | "rotate" | "connector" | "connector-end";
+  mode: "pan" | "hand-smart" | "marquee" | "drag" | "lasso" | "draw" | "erase" | "resize" | "rotate" | "connector" | "connector-end";
   handHitIds?: string[];
   handMoveSelection?: boolean;
   handle?: string;
@@ -340,8 +341,7 @@ type Gesture = {
   connectorEndBinding?: ConnectorBinding;
 };
 const tools: { id: Tool; icon: IconName; label: string; dividerAfter?: boolean }[] = [
-  { id: "select", icon: "select", label: "Выделение · V / М" },
-  { id: "hand", icon: "hand", label: "Рука · H / Р", dividerAfter: true },
+  { id: "select", icon: "select", label: "Выделение прямоугольником · V / М", dividerAfter: true },
   { id: "lasso", icon: "lasso", label: "Петля · выделение всех объектов · Q / Й" },
   { id: "pen", icon: "pen", label: "Карандаш · P / З" },
   { id: "marker", icon: "marker", label: "Маркер · M / Ь" },
@@ -368,24 +368,23 @@ const toolShortLabel: Record<Tool, string> = {
   table:"Таблица",formula:"Формула",graph:"График",checklist:"Чек-лист",quiz:"Тест",flashcard:"Карточка",
   cover:"Шторка",media:"Фото / PDF",linkmedia:"Видео / аудио",
 };
-const primaryDesktopTools = new Set<Tool>(["select","hand","lasso","pen","marker","eraser","connector","text","sticky","shape","media"]);
+const primaryDesktopTools = new Set<Tool>(["select","lasso","pen","marker","eraser","connector","text","sticky","shape","media"]);
 type LectrisSavedLayout={id:string;name:string;mode:"standard"|"lesson"|"focus";pinned:Tool[];panels?:LectrisPanelLayout};
 const mobileToolGroups: { label:string; tools:Tool[] }[] = [
-  { label:"Навигация", tools:["hand","select","lasso"] },
+  { label:"Навигация", tools:["select","lasso"] },
   { label:"Рисование", tools:["pen","marker","eraser"] },
   { label:"Создание", tools:["sticky","text","shape","connector"] },
   { label:"Материалы", tools:["media","linkmedia","frame"] },
   { label:"Задания", tools:["checklist","quiz","flashcard"] },
   { label:"Интерактив", tools:["table","formula","graph","cover","comment"] },
 ];
-const mobileDockTools: Tool[] = ["hand","select","lasso","pen","eraser","sticky","text","shape"];
+const mobileDockTools: Tool[] = ["select","lasso","pen","eraser","sticky","text","shape"];
 const STUDENT_BLOCKED_CREATE_TOOLS = new Set<Tool>(["frame","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"]);
 const STUDENT_PROTECTED_KINDS = new Set<Item["kind"]>(["frame","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"]);
 
 
 const keyTools: Record<string, Tool> = {
   KeyV: "select",
-  KeyH: "hand",
   KeyQ: "lasso",
   KeyT: "text",
   KeyS: "sticky",
@@ -1494,7 +1493,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [commandPaletteQuery, setCommandPaletteQuery] = useState("");
   const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
   const [preview, setPreview] = useState<Item | null>(null);
-  const [tool, setTool] = useState<Tool>("hand");
+  const [tool, setTool] = useState<Tool>("select");
+  const [marqueeRect,setMarqueeRect] = useState<SelectionRect|null>(null);
+  const [rightPointerActive,setRightPointerActive] = useState(false);
+  const rightPress = useRef<{pointer:number;start:Point;dragged:boolean}|null>(null);
   const lectrisLayoutKey="lectris.board-layout.v1."+authUser.id+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
   const lectrisToolbarKey="lectris.toolbar.v2."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
   const lectrisDefaultPinned=useMemo<Tool[]>(()=>(
@@ -1516,7 +1518,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     ...lectrisPinned,
     ...tools.map(t=>t.id).filter(id=>!lectrisPinned.includes(id)&&id!=="hand"&&id!=="select"&&id!=="lasso")
   ],[lectrisPinned]);
-  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["hand","select","lasso",...lectrisPinned.filter(toolAllowedForRole)],[lectrisPinned,isStudent]);
+  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(toolAllowedForRole)],[lectrisPinned,isStudent]);
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
@@ -5712,7 +5714,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         )}
         {commandPaletteOpen && (() => {
           const commands: [string,string,()=>void,Tool?][] = [
-            ["Рука","Навигация",() => setTool("hand"),"hand"],["Выделение","Инструмент",() => setTool("select"),"select"],["Петля","Инструмент",() => setTool("lasso"),"lasso"],
+            ["Выделение прямоугольником","Навигация",() => setTool("select"),"select"],["Петля","Инструмент",() => setTool("lasso"),"lasso"],
             ["Карандаш","Рисование",() => setTool("pen"),"pen"],["Маркер","Рисование",() => setTool("marker"),"marker"],["Ластик","Рисование",() => setTool("eraser"),"eraser"],
             ["Текст","Создание",() => setTool("text"),"text"],["Стикер","Создание",() => setTool("sticky"),"sticky"],["Фигура","Создание",() => setTool("shape"),"shape"],
             ["Связь","Создание",() => setTool("connector"),"connector"],["Фрейм","Создание",() => setTool("frame"),"frame"],["Таблица","Интерактив",() => setTool("table"),"table"],
@@ -6284,8 +6286,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
         </section>}
         <aside className={`toolbar compact-toolbar ${mobileToolsOpen?"mobile-open":""} ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
-          <div className="toolbar-pinned" aria-label="Навигация: выбор, рука, петля">
-            {(["select","hand","lasso"] as Tool[]).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} aria-label={t.label} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><span className="tool-icon"><Icon name={t.icon} size={18}/></span><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
+          <div className="toolbar-pinned" aria-label="Навигация: выделение и петля">
+            {(["select","lasso"] as Tool[]).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} aria-label={t.label} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><span className="tool-icon"><Icon name={t.icon} size={18}/></span><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
           </div>
           <span className="toolbar-section-line" aria-hidden="true"/>
           <div className="toolbar-list">
@@ -6355,7 +6357,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         <section
           ref={board}
           aria-label="Доска"
-          className={`board board-bg-${gridMode} board-tool-${tool} ${space || tool === "hand" ? "board-hand-active" : ""} ${panning ? "board-panning" : ""}`}
+          className={`board board-bg-${gridMode} board-tool-${tool} ${space || rightPointerActive ? "board-hand-active" : ""} ${rightPointerActive ? "board-right-hand" : ""} ${panning ? "board-panning" : ""}`}
           style={{
             backgroundSize: `${24 * view.zoom}px ${24 * view.zoom}px`,
             backgroundPosition: `${view.x}px ${view.y}px`,
