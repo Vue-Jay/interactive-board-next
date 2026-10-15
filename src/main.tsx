@@ -20,6 +20,7 @@ import "./lektrusResponsive.css";
 import "./lektrusColors.css";
 import "./lektrusBoardInteraction.css";
 import "./lektrusThemes.css";
+import "./lektrusContrast.css";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
 

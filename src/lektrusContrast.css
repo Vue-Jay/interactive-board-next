@@ -1,0 +1,272 @@
+/* Lektrus: final contrast layer. Only UI chrome, never canvas pixels or object colors. */
+:root{
+ color-scheme:light;
+ --lt-page:#edf2f8;--lt-sidebar:#f8fbff;--lt-surface:#fff;--lt-raised:#fff;
+ --lt-subtle:#eff4fa;--lt-hover:#e6eef8;--lt-line:#cbd7e6;--lt-line-strong:#9fb2cb;
+ --lt-text:#192a43;--lt-secondary:#405672;--lt-muted:#60738a;
+ --lt-primary:#3254bc;--lt-primary-hover:#2744a5;--lt-on-primary:#fff;
+ --lt-selected:#e7efff;--lt-selected-ink:#244b9a;--lt-focus:#5477d5;
+ --lt-success:#17674a;--lt-success-soft:#e4f6eb;
+ --lt-warning:#875211;--lt-warning-soft:#fff2db;
+ --lt-danger:#a33040;--lt-danger-soft:#fff0f1;
+ --lt-shadow:0 3px 14px rgba(24,42,67,.08);
+ --lt-pop-shadow:0 24px 60px rgba(20,39,70,.23);
+}
+:root[data-lectris-palette="jade"]{
+ --lt-primary:#0c7168;--lt-primary-hover:#095a53;
+ --lt-selected:#dff4ee;--lt-selected-ink:#0a5b52;--lt-focus:#13877c;
+}
+:root[data-lectris-palette="violet"]{
+ --lt-primary:#6042a2;--lt-primary-hover:#4c3583;
+ --lt-selected:#eee8fb;--lt-selected-ink:#51368e;--lt-focus:#8063c4;
+}
+:root[data-lectris-palette="sunset"]{
+ --lt-primary:#a84638;--lt-primary-hover:#8d382e;
+ --lt-selected:#fceae4;--lt-selected-ink:#90382d;--lt-focus:#c36654;
+}
+:root[data-theme="dark"]{
+ color-scheme:dark;
+ --lt-page:#0d1625;--lt-sidebar:#142133;--lt-surface:#1b2b3e;--lt-raised:#26374c;
+ --lt-subtle:#223349;--lt-hover:#304761;--lt-line:#435a74;--lt-line-strong:#7087a2;
+ --lt-text:#f3f7ff;--lt-secondary:#d2deef;--lt-muted:#b0bfd4;
+ --lt-selected:#2a4166;--lt-selected-ink:#d9e6ff;--lt-focus:#adbeff;
+ --lt-success:#86e3b0;--lt-success-soft:#1b4338;
+ --lt-warning:#ffd294;--lt-warning-soft:#533d25;
+ --lt-danger:#ffadbb;--lt-danger-soft:#51313d;
+ --lt-shadow:0 7px 22px rgba(0,0,0,.23);
+ --lt-pop-shadow:0 26px 62px rgba(0,0,0,.51);
+}
+:root[data-theme="dark"][data-lectris-palette="jade"]{
+ --lt-selected:#204c48;--lt-selected-ink:#baf7e7;--lt-focus:#84ddce;
+}
+:root[data-theme="dark"][data-lectris-palette="violet"]{
+ --lt-selected:#42345d;--lt-selected-ink:#eadbff;--lt-focus:#c6aeef;
+}
+:root[data-theme="dark"][data-lectris-palette="sunset"]{
+ --lt-selected:#50392f;--lt-selected-ink:#ffcfbf;--lt-focus:#f3aa96;
+}
+/* Layer hierarchy: clearly separated shell, cards, and raised controls. */
+.lectris-workspace{background:var(--lt-page)!important;color:var(--lt-text)}
+.lectris-workspace-header{background:var(--lt-surface)!important;border-bottom:1px solid var(--lt-line)!important}
+.lectris-workspace-sidebar{background:var(--lt-sidebar)!important;border-right:1px solid var(--lt-line)!important}
+.lectris-mobile-bottom,.lectris-mobile-more{
+ background:var(--lt-sidebar)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+}
+.lectris-workspace-stage :is(.lectris-hub-section,.lectris-library-card,.lektrus-category-panel,
+ .lektrus-collection-boards,.board-card,.student-card,.students-list,.assignment-card,
+ .material-card,.template-card,.notification-card,.progress-panel,.schedule-day,
+ .settings-row-card,.profile-card,.lectris-hub-tile,.lectris-hub-stats>div){
+ background:var(--lt-surface)!important;border-color:var(--lt-line)!important;
+ color:var(--lt-text);box-shadow:var(--lt-shadow);
+}
+.lectris-workspace-stage :is(.lectris-hub-board,.board-card,.material-card,.lectris-library-card):hover{
+ border-color:var(--lt-line-strong)!important;
+}
+.lectris-workspace-stage :is(.settings-row-card,.lektrus-category-panel,.lectris-library-card) small{
+ color:var(--lt-muted);
+}
+.lectris-workspace :is(.lectris-header-icon,.lectris-header-account,.lectris-nav-link){
+ color:var(--lt-secondary)!important;
+}
+.lectris-workspace .lectris-nav-link.is-active{
+ background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;
+ border-color:var(--lt-line-strong)!important;
+}
+.lectris-workspace .lectris-nav-link:hover:not(.is-active){
+ background:var(--lt-hover)!important;color:var(--lt-text)!important;
+}
+.lectris-workspace-stage :is(.lektrus-category-strip>button,.lektrus-view-switch,
+ .lectris-hub-categories,.lectris-library-filters,.lektrus-category-form){
+ background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-secondary)!important;
+}
+.lectris-workspace-stage :is(.lektrus-category-strip>button.selected,.lektrus-view-switch button.selected,
+ .lectris-hub-categories button.selected,.lectris-library-filters button.active){
+ background:var(--lt-selected)!important;border-color:var(--lt-primary)!important;
+ color:var(--lt-selected-ink)!important;
+}
+.lectris-workspace-stage :is(.settings-row-card>button,.settings-row-card>select,
+ .boards-secondary,.lektrus-page-secondary,.material-actions button){
+ background:var(--lt-raised)!important;color:var(--lt-secondary)!important;
+ border-color:var(--lt-line)!important;
+}
+.lectris-workspace-stage :is(.settings-row-card>button,.boards-secondary,.material-actions button):hover:not(:disabled){
+ background:var(--lt-hover)!important;color:var(--lt-text)!important;
+}
+.lectris-workspace-stage :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),
+ select,textarea){background:var(--lt-raised);color:var(--lt-text);border-color:var(--lt-line)}
+.lectris-workspace-stage :is(input,textarea)::placeholder{color:var(--lt-muted);opacity:1}
+.lectris-workspace-stage :is(.boards-create,.students-primary,.lectris-library-new,
+ .lektrus-category-create,.lektrus-collection-add,.lectris-hub-primary){
+ background:var(--lt-primary)!important;border-color:var(--lt-primary)!important;
+ color:var(--lt-on-primary)!important;
+}
+.lectris-workspace-stage :is(.boards-create,.students-primary,.lectris-library-new,
+ .lektrus-category-create,.lektrus-collection-add,.lectris-hub-primary):hover:not(:disabled){
+ background:var(--lt-primary-hover)!important;border-color:var(--lt-primary-hover)!important;
+}
+/* Board controls only. Canvas, drawings, exported content and ink colors are untouched. */
+.topbar:not(.update-banner),.workspace .toolbar.compact-toolbar,.workspace .mobile-board-tools,
+.workspace .mobile-tools-sheet,
+.workspace :is(.ink-settings,.shape-settings,.eraser-settings,.connector-settings,.selection-toolbar-screen,
+ .lectris-quick-properties,.lectris-object-inspector,.search-panel,.layers-panel,.comments-panel),
+.topbar-more-popover,.board-context-menu,.context-menu,.lectris-layout-menu,
+.lectris-subject-toolbox-menu,.lektrus-colors-popup,.lectris-panel-settings-dialog,
+.lectris-tools-customize,.lectris-hub-dialog{
+ background:var(--lt-raised)!important;border-color:var(--lt-line)!important;
+ color:var(--lt-text)!important;box-shadow:var(--lt-pop-shadow)!important;
+}
+.topbar:not(.update-banner),.workspace .toolbar.compact-toolbar,
+.workspace .mobile-board-tools{box-shadow:var(--lt-shadow)!important}
+.workspace :is(.ink-settings,.shape-settings,.eraser-settings,.connector-settings,
+ .selection-toolbar-screen,.lectris-object-inspector,.lectris-quick-properties)
+ :is(input:not([type=color]):not([type=range]):not([type=checkbox]),select,textarea){
+ background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button:not(.active),
+.workspace .mobile-board-tools button:not(.active),
+.topbar :is(.top-button,.topbar-more-trigger,.board-home-button):not(.active){
+ color:var(--lt-secondary)!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button:hover:not(.active),
+.workspace .mobile-board-tools button:hover:not(.active),
+.topbar :is(.top-button,.topbar-more-trigger,.board-home-button):hover:not(.active){
+ background:var(--lt-hover)!important;color:var(--lt-text)!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button.active,
+.workspace .mobile-board-tools button.active{
+ background:var(--lt-primary)!important;border-color:var(--lt-primary)!important;
+ color:var(--lt-on-primary)!important;
+}
+.topbar-more-popover button,.board-context-menu button,.context-menu button,
+.lectris-layout-menu button,.lectris-subject-toolbox-menu button{color:var(--lt-secondary)!important}
+.topbar-more-popover button:hover,.board-context-menu button:hover:not(.context-danger),
+.context-menu button:hover:not(.context-danger),.lectris-layout-menu button:hover,
+.lectris-subject-toolbox-menu button:hover{
+ background:var(--lt-hover)!important;color:var(--lt-text)!important;
+}
+.workspace .lectris-inspector-head,
+.workspace :is(.graph-editor-header,.formula-editor-header,.table-editor-header,
+ .notes-editor-header,.checklist-editor-header,.quiz-editor-header,.flashcard-editor-header){
+ background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+}
+.workspace :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+ .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
+ background:var(--lt-raised)!important;border-color:var(--lt-line)!important;
+ color:var(--lt-text)!important;box-shadow:var(--lt-pop-shadow)!important;
+}
+.workspace :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+ .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal)
+ :is(input:not([type=color]),select,textarea){
+ background:var(--lt-subtle)!important;color:var(--lt-text)!important;border-color:var(--lt-line)!important;
+}
+.lektrus-color-current,.lektrus-color-wheel,
+.lektrus-color-add-row>button,.lektrus-color-add-row>label{
+ background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-secondary)!important;
+}
+/* Semantics are independent of the selected accent. */
+.lectris-workspace-stage .access-notice{
+ background:var(--lt-success-soft)!important;color:var(--lt-success)!important;border-color:var(--lt-success)!important;
+}
+:is(.lectris-workspace-stage,.workspace) :is(.danger,.lectris-danger,.context-danger){
+ color:var(--lt-danger)!important;
+}
+:is(.lectris-workspace-stage,.workspace) :is(.danger,.lectris-danger,.context-danger):hover{
+ background:var(--lt-danger-soft)!important;
+}
+.lectris-workspace-stage .assignment-card.urgency-overdue{border-left-color:var(--lt-danger)!important}
+.lectris-workspace-stage .assignment-card.urgency-soon{border-left-color:var(--lt-warning)!important}
+/* Theme and palette selectors: previews show separate sidebar / content / action. */
+.lectris-workspace-stage .settings-row-card:is(.lektrus-theme-setting,.lectris-palette-setting){
+ display:grid;grid-template-columns:minmax(160px,1fr) minmax(0,2fr);align-items:center;gap:14px;
+}
+.lectris-workspace-stage .lektrus-theme-options>button{
+ background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;
+ color:var(--lt-secondary)!important;
+}
+.lectris-workspace-stage .lektrus-theme-options>button.selected{
+ background:var(--lt-selected)!important;border-color:var(--lt-primary)!important;
+}
+.lektrus-theme-preview.is-light{background:#eaf1f9;border-color:#9cafc7}
+.lektrus-theme-preview.is-light::before{background:#f6f9fd;border-color:#bfcbdb}
+.lektrus-theme-preview.is-light::after{background:#fff;border-color:#9cafc7}
+.lektrus-theme-preview.is-dark{background:#0d1625;border-color:#6e849d}
+.lektrus-theme-preview.is-dark::before{background:#142133;border-color:#53687e}
+.lektrus-theme-preview.is-dark::after{background:#26374c;border-color:#7087a2}
+.lectris-workspace-stage .lectris-palette-options{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;min-width:0;
+}
+.lectris-workspace-stage .lectris-palette-options>button{
+ display:flex;flex-direction:column;align-items:stretch;gap:8px;
+ min-width:0;height:auto;min-height:100px;padding:8px;
+ background:var(--lt-subtle)!important;color:var(--lt-text)!important;
+ border:1px solid var(--lt-line)!important;border-radius:12px;box-shadow:none!important;
+}
+.lectris-workspace-stage .lectris-palette-options>button:hover{
+ background:var(--lt-hover)!important;border-color:var(--lt-line-strong)!important;
+}
+.lectris-workspace-stage .lectris-palette-options>button.selected{
+ background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;
+ border-color:var(--lt-primary)!important;box-shadow:inset 0 0 0 1px var(--lt-primary)!important;
+}
+.lectris-palette-options>button:nth-child(1){--preview-primary:#3254bc}
+.lectris-palette-options>button:nth-child(2){--preview-primary:#0c7168}
+.lectris-palette-options>button:nth-child(3){--preview-primary:#6042a2}
+.lectris-palette-options>button:nth-child(4){--preview-primary:#a84638}
+.lektrus-palette-preview{
+ display:flex;position:relative;width:100%;height:48px;overflow:hidden;
+ border-radius:7px;border:1px solid #b9c5d4;background:#eef3fa;
+}
+.lektrus-palette-preview>i:first-child{
+ display:block;width:23%;background:#dbe5f1;border-right:1px solid #bbc9da;
+}
+.lektrus-palette-preview>i:nth-child(2){
+ position:absolute;left:33%;top:7px;width:54%;height:34px;
+ border:1px solid #bbc9da;border-radius:5px;background:#fff;
+}
+.lektrus-palette-preview>i:nth-child(3){
+ position:absolute;bottom:8px;right:16%;width:27%;height:8px;
+ border-radius:4px;background:var(--preview-primary);
+}
+.lektrus-palette-label{display:flex;align-items:center;gap:7px;min-width:0;font-size:11px;font-weight:750}
+.lektrus-palette-label .lectris-palette-swatch{
+ width:15px;height:15px;flex:0 0 15px;border-radius:5px;
+ background:var(--preview-primary)!important;
+}
+.lektrus-palette-check{margin-left:auto;min-width:12px;font-weight:850;color:var(--lt-selected-ink)}
+:root[data-theme="dark"] .lektrus-palette-preview{background:#152235;border-color:#657c95}
+:root[data-theme="dark"] .lektrus-palette-preview>i:first-child{background:#23374e;border-color:#566d88}
+:root[data-theme="dark"] .lektrus-palette-preview>i:nth-child(2){background:#293b51;border-color:#7087a2}
+/* Keyboard focus and disabled states. */
+:root :is(.lectris-workspace,.workspace,.lectris-panel-settings-dialog,.lektrus-colors-popup)
+ :is(button,input,select,textarea,summary):focus-visible{
+ outline:2px solid var(--lt-focus)!important;outline-offset:2px!important;
+}
+:root :is(.lectris-workspace,.workspace) :is(input[type=range],input[type=checkbox],input[type=radio]){
+ accent-color:var(--lt-primary);
+}
+:root :is(.lectris-workspace,.workspace) :is(button,input,select,textarea):disabled{
+ opacity:.58;cursor:not-allowed;
+}
+:root[data-theme="dark"] :is(.lectris-workspace,.workspace,.lektrus-colors-popup){
+ scrollbar-color:var(--lt-line-strong) var(--lt-sidebar);
+}
+@media(max-width:730px){
+ .lectris-workspace-stage .settings-row-card:is(.lektrus-theme-setting,.lectris-palette-setting){
+  grid-template-columns:minmax(0,1fr);
+ }
+ .lectris-workspace-stage .lectris-palette-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .lectris-workspace-stage .lectris-palette-options>button{min-height:90px}
+}
+@media(max-width:390px){
+ .lectris-workspace-stage .lectris-palette-options>button{padding:6px}
+ .lektrus-palette-preview{height:42px}
+ .lektrus-palette-preview>i:nth-child(2){height:28px;top:6px}
+}
+@media(prefers-reduced-motion:reduce){
+ .lectris-workspace-stage :is(.lektrus-theme-options,.lectris-palette-options)>button{transition:none}
+}
+@media(forced-colors:active){
+ .lectris-workspace-stage :is(.lektrus-theme-options,.lectris-palette-options)>button.selected{
+  outline:2px solid Highlight!important;outline-offset:-2px;
+ }
+}

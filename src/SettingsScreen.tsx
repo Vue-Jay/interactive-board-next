@@ -39,7 +39,10 @@ export default function SettingsScreen({user,onBack,onLogout,installAvailable,is
       <div className="lectris-palette-options" role="group" aria-label="Цветовое оформление Lektrus">
         {([["sapphire","Синий"],["jade","Бирюзовый"],["violet","Фиолетовый"],["sunset","Коралловый"]] as const).map(([key,label])=>
           <button type="button" key={key} className={palette===key?"selected":""} aria-pressed={palette===key}
-            onClick={()=>changePalette(key)}><span className={`lectris-palette-swatch is-${key}`}/>{label}</button>)}
+            onClick={()=>changePalette(key)}>
+            <span className="lektrus-palette-preview" aria-hidden="true"><i/><i/><i/></span>
+            <span className="lektrus-palette-label"><span className={`lectris-palette-swatch is-${key}`}/>{label}<span className="lektrus-palette-check" aria-hidden="true">{palette===key?"✓":""}</span></span>
+          </button>)}
       </div>
     </section>
     <section className="settings-row-card"><div><b>Компактный интерфейс</b><small>Меньше отступов и крупности элементов</small></div><input type="checkbox" checked={s.compactUi} onChange={e=>patch("compactUi",e.target.checked)}/></section>
