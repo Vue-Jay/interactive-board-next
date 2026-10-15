@@ -711,3 +711,216 @@
 [data-lectris-palette="sunset"] :is(.lectris-hub-tile-blue .lectris-hub-tile-icon,.lectris-library-create-icon){background:#fff0e8;color:#b96750}
 /* The light editor remains readable when system colour scheme is dark;
    legacy dark-theme overrides continue to govern their existing components. */
+
+
+/* V3.1. A dashboard, not a landing page: one compact welcome at the very top.
+   Keeps the useful tools, navigation, synchronization status and all accents. */
+.lectris-hub:has(.lectris-hub-hero-compact){
+  padding-top:18px;
+  padding-bottom:46px;
+}
+.lectris-hub .lectris-hub-hero.lectris-hub-hero-compact{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  min-height:0;
+  height:auto;
+  padding:21px 28px;
+  border-radius:18px;
+  background:linear-gradient(110deg,#203a7d 0%,#2c50a6 62%,#4869c3 100%);
+  border:1px solid #294b9d;
+  box-shadow:0 10px 26px rgba(29,57,126,.135);
+}
+.lectris-hub-hero-compact .lectris-hub-hero-copy{
+  flex:1 1 auto;
+  min-width:0;
+}
+.lectris-hub-hero-topline{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px 15px;
+}
+.lectris-hub-hero-compact .lectris-hub-hero-chip{
+  padding:0;
+  background:none;
+  border:0;
+  border-radius:0;
+  backdrop-filter:none;
+  font-size:10px;
+  letter-spacing:.12em;
+  color:#bfd2ff;
+}
+.lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-metric{
+  display:inline;
+  margin:0;
+  font-size:11px;
+  font-weight:620;
+  color:#d6e3ff;
+}
+.lectris-hub .lectris-hub-hero-compact h1{
+  margin:9px 0 4px;
+  max-width:740px;
+  font-size:clamp(22px,2.3vw,30px);
+  font-weight:840;
+  line-height:1.16;
+  letter-spacing:-.038em;
+  color:#fff;
+}
+.lectris-hub .lectris-hub-hero-compact p{
+  margin:0;
+  max-width:720px;
+  font-size:12px;
+  line-height:1.45;
+  color:#e0e9ff;
+}
+.lectris-hub .lectris-hub-hero-compact .lectris-hub-sync{
+  display:flex;
+  min-height:0;
+  width:fit-content;
+  max-width:100%;
+  flex-wrap:wrap;
+  margin:10px 0 0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#c6d7ff;
+  font-size:10px;
+  font-weight:550;
+  gap:5px 8px;
+}
+.lectris-hub-hero-compact .lectris-hub-sync-dot{
+  width:7px;
+  height:7px;
+  flex-basis:7px;
+}
+.lectris-hub-hero-compact .lectris-hub-sync button{
+  min-height:25px;
+  padding:3px 7px;
+  border:1px solid #ffffff48;
+  color:#fff;
+  background:#ffffff1b;
+  font-size:10px;
+  margin:0;
+}
+.lectris-hub-hero-compact .lectris-hub-sync button:hover{
+  background:#ffffff31;
+}
+.lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions{
+  flex:0 0 auto;
+  justify-content:flex-end;
+  align-self:center;
+  margin:0;
+  gap:9px;
+}
+.lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions button{
+  min-height:39px;
+  padding:8px 13px;
+  font-size:12px;
+  font-weight:740;
+  border-radius:10px;
+  white-space:nowrap;
+}
+.lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions .lectris-hub-primary{
+  background:#fff;
+  color:#24499c;
+  border-color:#fff;
+  box-shadow:0 5px 14px #071d493b;
+}
+.lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions .lectris-hub-primary:hover:not(:disabled){
+  background:#eaf1ff;
+  color:#24499c;
+}
+.lectris-hub .lectris-hub-section-label{
+  margin-top:17px;
+  margin-bottom:12px;
+}
+.lectris-hub .lectris-hub-section-label h2{
+  font-size:20px;
+  margin:2px 0 0;
+}
+.lectris-hub .lectris-hub-section-label-secondary{
+  margin-top:23px;
+}
+.lectris-hub .lectris-hub-tile{
+  min-height:153px;
+  padding:16px 17px;
+  gap:9px;
+  border-radius:17px;
+}
+.lectris-hub .lectris-hub-tile-icon{
+  width:41px;
+  height:41px;
+  font-size:22px;
+  border-radius:12px;
+}
+.lectris-hub .lectris-hub-tile-copy{
+  gap:3px;
+}
+.lectris-hub .lectris-hub-tile-copy strong{
+  font-size:20px;
+}
+.lectris-hub .lectris-hub-tile-copy small{
+  font-size:9px;
+}
+.lectris-hub .lectris-hub-tile-count{
+  bottom:10px;
+  right:11px;
+}
+[data-lectris-palette="jade"] .lectris-hub .lectris-hub-hero-compact{
+  background:linear-gradient(110deg,#12525b,#197e83 68%,#34a29a);
+  border-color:#18777a;
+}
+[data-lectris-palette="violet"] .lectris-hub .lectris-hub-hero-compact{
+  background:linear-gradient(110deg,#453271,#674fa0 68%,#9676c9);
+  border-color:#654a9a;
+}
+[data-lectris-palette="sunset"] .lectris-hub .lectris-hub-hero-compact{
+  background:linear-gradient(110deg,#633b62,#a45372 68%,#d17b6c);
+  border-color:#a45b68;
+}
+@media(max-width:1023px){
+  .lectris-hub .lectris-hub-hero-compact{padding:18px 20px;gap:16px}
+  .lectris-hub .lectris-hub-hero-compact h1{font-size:23px}
+  .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions{gap:6px}
+  .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions button{padding:7px 10px}
+}
+@media(max-width:760px){
+  .lectris-hub:has(.lectris-hub-hero-compact){padding-top:12px}
+  .lectris-hub .lectris-hub-hero.lectris-hub-hero-compact{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:12px;
+    padding:17px;
+    border-radius:16px;
+  }
+  .lectris-hub .lectris-hub-hero-compact h1{font-size:23px;margin:7px 0 4px}
+  .lectris-hub .lectris-hub-hero-compact p{font-size:11px}
+  .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions{
+    align-self:stretch;
+    flex-wrap:nowrap;
+    justify-content:flex-start;
+  }
+  .lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-actions button{
+    flex:1 1 0;
+    min-width:0;
+    min-height:37px;
+    padding:7px 10px;
+    white-space:normal;
+  }
+  .lectris-hub .lectris-hub-section-label{margin-top:17px;margin-bottom:10px}
+  .lectris-hub .lectris-hub-section-label-secondary{margin-top:19px}
+  .lectris-hub .lectris-hub-tile{min-height:137px;padding:12px;gap:7px}
+  .lectris-hub .lectris-hub-tile-icon{width:36px;height:36px;font-size:20px}
+  .lectris-hub .lectris-hub-tile-copy strong{font-size:18px}
+}
+@media(max-width:430px){
+  .lectris-hub-hero-topline{gap:4px 10px}
+  .lectris-hub .lectris-hub-hero-compact h1{font-size:21px}
+  .lectris-hub .lectris-hub-hero-compact .lectris-hub-sync{font-size:9px}
+  .lectris-hub .lectris-hub-tile{min-height:127px}
+}
