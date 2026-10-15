@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Item } from "./boardModel";
+import LektrusColorPicker from "./LektrusColorPicker";
 
 const itemNames: Record<Item["kind"], string> = {
   pen:"Карандаш", marker:"Маркер", shape:"Фигура", text:"Текст",
@@ -10,13 +11,7 @@ const itemNames: Record<Item["kind"], string> = {
 };
 const colorKinds = new Set<Item["kind"]>(["pen","marker","shape","text","sticky","connector","comment","formula","graph","checklist","quiz","flashcard","frame"]);
 const advancedKinds = new Set<Item["kind"]>(["text","sticky","frame","comment","graph","formula","table","checklist","quiz","flashcard","linkmedia"]);
-const palette = ["#1f2937","#365fd0","#7c3aed","#0f766e","#d97706","#dc2626","#ec4899","#ffffff"];
-const inkPalette = ["#1f2937","#365fd0","#7c3aed","#0f766e","#eab308","#ea580c","#dc2626","#ffffff"];
-const sizeOptions: Record<"pen"|"marker"|"eraser", number[]> = {
-  pen: [1,2,3,5,8,12],
-  marker: [8,12,18,24,32,44],
-  eraser: [8,16,24,40,64,96],
-};
+
 
 type QuickProps = {
   item: Item | null;
@@ -38,13 +33,13 @@ type QuickProps = {
   onWeight: (value: number) => void;
   onMarkerWeight: (value: number) => void;
   onEraserSize: (value: number) => void;
+  userId: string;
 };
 
 export function LectrisQuickProperties(props: QuickProps) {
   const { item, selectionCount, tool, color, weight, markerWeight, eraserSize, canModify } = props;
   const [expanded,setExpanded]=useState(false);
-  const [presetsOpen,setPresetsOpen]=useState(false);
-  useEffect(()=>{setExpanded(false);setPresetsOpen(false)},[tool,item?.id]);
+  useEffect(()=>setExpanded(false),[tool,item?.id]);
   const drawing=tool==="pen"||tool==="marker";
   const erasing=tool==="eraser";
   if(!selectionCount&&!drawing&&!erasing)return null;
@@ -53,14 +48,12 @@ export function LectrisQuickProperties(props: QuickProps) {
       {selectionCount>0 ? item?itemNames[item.kind]:"Выбрано: "+selectionCount : erasing?"Ластик":tool==="marker"?"Маркер":"Карандаш"}
     </span>
     <button className="lectris-quick-expand" type="button" aria-expanded={expanded}
-      onClick={()=>{setExpanded(v=>!v);setPresetsOpen(false)}}>{expanded?"Свернуть ▲":"Настройки ▼"}</button>
+      onClick={()=>setExpanded(v=>!v)}>{expanded?"Свернуть ▲":"Настройки ▼"}</button>
     <div className="lectris-quick-details">
       {selectionCount>0?<>
-        {item&&colorKinds.has(item.kind)&&canModify&&<label className="lectris-inline-color">Цвет
-          <input type="color" aria-label="Цвет выбранного объекта"
-            value={/^#[0-9a-fA-F]{6}$/.test(item.color||"")?item.color:"#365fd0"}
-            onChange={e=>props.onPatch({color:e.target.value})}/>
-        </label>}
+        {item&&colorKinds.has(item.kind)&&canModify&&
+          <LektrusColorPicker compact userId={props.userId} label="Цвет"
+            value={item.color||"#365fd0"} onChange={value=>props.onPatch({color:value})}/>}
         {item&&<span className="lectris-quick-metric">{Math.round(item.width)} × {Math.round(item.height)}</span>}
         {item&&item.kind!=="pen"&&item.kind!=="marker"&&<button type="button" onClick={props.onInspectorOpen} aria-pressed={props.inspectorOpen}>Свойства</button>}
         {item&&canModify&&advancedKinds.has(item.kind)&&<button type="button" onClick={props.onEdit}>Редактировать</button>}
@@ -68,53 +61,23 @@ export function LectrisQuickProperties(props: QuickProps) {
         {canModify&&<button type="button" className="lectris-danger" onClick={props.onDelete}>Удалить</button>}
         <button type="button" onClick={props.onDeselect} aria-label="Снять выделение">×</button>
       </>:<>
-        {drawing&&<label className="lectris-inline-color">Цвет
-          <input type="color" aria-label="Цвет рисования" value={color} onChange={e=>props.onColor(e.target.value)}/>
-        </label>}
+        {drawing&&<LektrusColorPicker compact userId={props.userId} label="Цвет"
+          value={color} onChange={props.onColor}/>} 
         <label className="lectris-quick-slider">{erasing?"Размер":"Толщина"}
           <input type="range" min={erasing?8:tool==="marker"?8:1} max={erasing?96:tool==="marker"?48:16}
             step={erasing?2:1} value={erasing?eraserSize:tool==="marker"?markerWeight:weight}
             onChange={e=>{const n=Number(e.target.value);if(erasing)props.onEraserSize(n);else if(tool==="marker")props.onMarkerWeight(n);else props.onWeight(n);}}/>
           <span>{erasing?eraserSize:tool==="marker"?markerWeight:weight} px</span>
         </label>
-        <button type="button" className="lektrus-presets-trigger" aria-expanded={presetsOpen}
-          aria-controls="lektrus-brush-presets" onClick={()=>setPresetsOpen(value=>!value)}>
-          {presetsOpen?"Скрыть":"Быстрый выбор"} <span aria-hidden="true">⌄</span>
-        </button>
       </>}
     </div>
-    {!selectionCount&&(drawing||erasing)&&presetsOpen&&
-      <div className="lektrus-brush-presets" id="lektrus-brush-presets" role="group"
-        aria-label={erasing?"Быстрый выбор размера ластика":"Быстрый выбор цвета и толщины"}>
-        {drawing&&<div className="lektrus-brush-presets-row">
-          <span>Цвет</span>
-          <div className="lektrus-brush-colors" role="group" aria-label="Готовые цвета">
-            {inkPalette.map(value=><button type="button" key={value}
-              className={color.toLowerCase()===value?"selected":""} style={{backgroundColor:value}}
-              aria-label={"Цвет "+value} title={value} aria-pressed={color.toLowerCase()===value}
-              onClick={()=>props.onColor(value)}/>)}
-          </div>
-        </div>}
-        <div className="lektrus-brush-presets-row">
-          <span>{erasing?"Размер":"Толщина"}</span>
-          <div className="lektrus-brush-sizes" role="group" aria-label="Готовые размеры">
-            {sizeOptions[erasing?"eraser":tool==="marker"?"marker":"pen"].map(value=>{
-              const current=erasing?eraserSize:tool==="marker"?markerWeight:weight;
-              return <button type="button" key={value} className={current===value?"selected":""}
-                aria-pressed={current===value}
-                onClick={()=>{if(erasing)props.onEraserSize(value);else if(tool==="marker")props.onMarkerWeight(value);else props.onWeight(value)}}>
-                {value}
-              </button>;
-            })}
-          </div>
-        </div>
-      </div>}
   </section>;
 }
 
 type InspectorProps = {
   item: Item;
   canModify: boolean;
+  userId: string;
   canToggleLock: boolean;
   onClose: () => void;
   onPatch: (patch: Partial<Item>) => void;
@@ -140,7 +103,7 @@ function NumberField({label,value,minimum=-100000,maximum=100000,disabled,onComm
   </label>;
 }
 
-export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
+export function LectrisObjectInspector({item,canModify,userId,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
   const editable=advancedKinds.has(item.kind);
   const [advancedOpen,setAdvancedOpen]=useState(false);
   const [locationOpen,setLocationOpen]=useState(false);
@@ -189,17 +152,8 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
       </section>}
       {colorKinds.has(item.kind) && <section className="lectris-inspector-section">
         <h3>Оформление</h3>
-        <label className="lectris-inspector-color"><span>Цвет объекта</span>
-          <input type="color" value={currentColor} disabled={!canModify} aria-label="Выбрать произвольный цвет"
-            onChange={e=>onPatch({color:e.target.value})}/>
-        </label>
-        <div className="lectris-inspector-palette" role="group" aria-label="Готовые цвета">
-          {palette.map(swatch=><button key={swatch} type="button" disabled={!canModify}
-            className={swatch.toLowerCase()===currentColor?.toLowerCase()?"selected":""}
-            aria-label={`Цвет ${swatch}`} aria-pressed={swatch.toLowerCase()===currentColor?.toLowerCase()}
-            style={{backgroundColor:swatch}} title={swatch}
-            onClick={()=>onPatch({color:swatch})}/>)}
-        </div>
+        <LektrusColorPicker userId={userId} label="Цвет объекта" value={currentColor}
+          disabled={!canModify} onChange={color=>onPatch({color})}/>
         {typeof item.fontSize==="number" && <NumberField label="Размер текста" value={item.fontSize} minimum={8} maximum={144} disabled={!canModify} onCommit={fontSize=>onPatch({fontSize})}/>}
       </section>}
       <section className="lectris-inspector-section">
