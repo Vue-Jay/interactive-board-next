@@ -4833,13 +4833,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, connectorRouting: routing } : item));
   };
 
-  const renameSelectedConnector = () => {
-    if (!singleSelected || singleSelected.kind !== "connector" || selectionLocked) return;
-    const value = window.prompt("Подпись линии", singleSelected.text ?? "");
-    if (value == null) return;
-    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, text: value.replace(/\s+/g, " ").trim().slice(0, 80) } : item));
-  };
-
   const detachSelectedConnector = () => {
     if (!singleSelected || singleSelected.kind !== "connector" || selectionLocked) return;
     if (!singleSelected.connectorStartBinding && !singleSelected.connectorEndBinding) {
@@ -6985,7 +6978,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   <details className="connector-quick-menu"><summary title="Толщина линии" aria-label="Толщина линии"><Icon name="line" size={16}/><span>{singleSelected.weight??3}px</span></summary><div className="connector-quick-popover"><strong>Толщина линии</strong><label><input type="range" min={1} max={16} value={singleSelected.weight??3} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,weight:Number(e.target.value)}:item))}/><output>{singleSelected.weight??3}px</output></label></div></details>
                   {singleSelected.connectorStyle!=="line"&&<><details className="connector-quick-menu"><summary title="Форма наконечника" aria-label="Форма наконечника"><Icon name="arrow-one" size={16}/><span>Конец</span></summary><div className="connector-quick-popover"><strong>Форма наконечника</strong><select value={singleSelected.arrowHeadStyle??"triangle"} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadStyle:e.target.value as ArrowHeadStyle}:item))}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select></div></details>
                   <details className="connector-quick-menu"><summary title="Размер наконечника" aria-label="Размер наконечника"><Icon name="arrow-double" size={16}/><span>Размер</span></summary><div className="connector-quick-popover"><strong>Размер наконечника</strong><label><input type="range" min={4} max={24} value={singleSelected.arrowHeadSize??8} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadSize:Number(e.target.value)}:item))}/><output>{singleSelected.arrowHeadSize??8}px</output></label></div></details></>}
-                  <button className="connector-quick-label" type="button" title="Подпись линии" onClick={renameSelectedConnector}><Icon name="label" size={16}/></button>
                 </span>}
               {(singleSelected?.kind === "image" || singleSelected?.kind === "pdf") && (
                 <span className="media-selection-controls">
@@ -7126,7 +7118,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     <label>Цвет <input type="color" aria-label="Цвет выбранной линии" value={singleSelected.color??"#5355c9"} onChange={e=>recolorSelected(e.target.value)}/></label>
                     {singleSelected.connectorStyle!=="line"&&<><label>Наконечник <select value={singleSelected.arrowHeadStyle??"triangle"} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadStyle:e.target.value as ArrowHeadStyle}:item))}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select></label>
                     <label>Размер конца <input aria-label="Размер наконечника" type="range" min={4} max={24} value={singleSelected.arrowHeadSize??8} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadSize:Number(e.target.value)}:item))}/><span>{singleSelected.arrowHeadSize??8}px</span></label></>}
-                    <div className="lektrus-connector-context-extra"><button onClick={()=>{renameSelectedConnector();setContextMenu(null)}}>Подпись</button><button onClick={()=>{detachSelectedConnector();setContextMenu(null)}}>Отвязать</button></div>
+                    <div className="lektrus-connector-context-extra"><button onClick={()=>{detachSelectedConnector();setContextMenu(null)}}>Отвязать</button></div>
                   </section>}
                   {singleSelected?.kind === "table" && !selectionLocked && <button onClick={() => { openTableEditor(singleSelected); setContextMenu(null); }}>Редактировать таблицу</button>}
                   {singleSelected?.kind === "formula" && !selectionLocked && <button onClick={() => { openFormulaEditor(singleSelected); setContextMenu(null); }}>Редактировать формулу</button>}
