@@ -18,6 +18,7 @@ import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
 import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { LectrisQuickProperties, LectrisObjectInspector } from "./LectrisObjectEditor";
+import LektrusColorPicker from "./LektrusColorPicker";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
 import LectrisPanelSettings from "./LectrisPanelSettings";
 import { defaultLectrisPanelLayout, normalizeLectrisPanelLayout, readLectrisPanelLayout, type LectrisPanelLayout } from "./lectrisPanelLayout";
@@ -5639,7 +5640,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       <main className={`workspace lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
         {lectrisPanelSettingsOpen&&<LectrisPanelSettings value={lectrisPanelLayout} onChange={setLectrisPanelLayout} onClose={()=>setLectrisPanelSettingsOpen(false)}/>}
 
-        {!objectEditorOpen && !presentation && <LectrisQuickProperties
+        {!objectEditorOpen && !presentation && <LectrisQuickProperties userId={authUser.id}
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
           weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
@@ -5652,7 +5653,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           onWeight={setWeight}
           onMarkerWeight={setMarkerWeight} onEraserSize={setEraserSize}/>}
         {lectrisInspectorOpen && singleSelected && !isInkItem(singleSelected) && !objectEditorOpen && !presentation &&
-          <LectrisObjectInspector key={singleSelected.id} item={singleSelected}
+          <LectrisObjectInspector key={singleSelected.id} item={singleSelected} userId={authUser.id}
             canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected))}
             canToggleLock={canEdit && !(isStudent && structurallyLockedForStudent(singleSelected))}
             onClose={()=>setLectrisInspectorOpen(false)} onPatch={lectrisPatchSelected}
@@ -5912,7 +5913,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
         )}
         
-        {graphEditorId && graphDraft && (<div className="graph-editor-backdrop" onPointerDown={()=>saveGraphEditor()}><div className="graph-editor-modal compact-editor" role="dialog" aria-modal="false" onPointerDown={e=>e.stopPropagation()}><div className="graph-editor-header"><div><strong>График и координатная плоскость</strong><span>Пустое поле функции = только система координат</span></div><button onClick={()=>saveGraphEditor()}><Icon name="close" size={17}/></button></div><div className="graph-editor-body"><div className="graph-editor-form"><label><span>Функция</span><input value={graphDraft.expression} onChange={e=>setGraphDraft({...graphDraft,expression:e.target.value})} placeholder="Например: x^2 - 4*x + 3"/></label><small>Поддерживаются + − × ÷ ^, скобки, sin, cos, tan, sqrt, abs, exp, ln, log.</small><div className="graph-ranges"><label>X min<input type="number" value={graphDraft.xMin} onChange={e=>setGraphDraft({...graphDraft,xMin:Number(e.target.value)})}/></label><label>X max<input type="number" value={graphDraft.xMax} onChange={e=>setGraphDraft({...graphDraft,xMax:Number(e.target.value)})}/></label><label>Y min<input type="number" value={graphDraft.yMin} onChange={e=>setGraphDraft({...graphDraft,yMin:Number(e.target.value)})}/></label><label>Y max<input type="number" value={graphDraft.yMax} onChange={e=>setGraphDraft({...graphDraft,yMax:Number(e.target.value)})}/></label></div><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.grid} onChange={e=>setGraphDraft({...graphDraft,grid:e.target.checked})}/> Сетка</label><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.axisLabels} onChange={e=>setGraphDraft({...graphDraft,axisLabels:e.target.checked})}/> Числа на осях</label><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.snap} onChange={e=>setGraphDraft({...graphDraft,snap:e.target.checked})}/> Привязка точек к сетке</label><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.connectPoints} onChange={e=>setGraphDraft({...graphDraft,connectPoints:e.target.checked})}/> Соединять точки линией</label><label><span>Шаг сетки</span><select value={graphDraft.gridStep} onChange={e=>setGraphDraft({...graphDraft,gridStep:Number(e.target.value)})}><option value={0.5}>0,5</option><option value={1}>1</option><option value={2}>2</option><option value={5}>5</option></select></label><div className="graph-points-head"><strong>Точки</strong><button type="button" onClick={()=>setGraphDraft({...graphDraft,points:[...graphDraft.points,{x:0,y:0,label:"",color:"#111111"}]})}>+ Точка</button></div>{graphDraft.points.map((p,i)=><div className="graph-point-editor" key={i}><input type="number" step="0.5" value={p.x} onChange={e=>setGraphDraft({...graphDraft,points:graphDraft.points.map((q,j)=>j===i?{...q,x:Number(e.target.value)}:q)})}/><input type="number" step="0.5" value={p.y} onChange={e=>setGraphDraft({...graphDraft,points:graphDraft.points.map((q,j)=>j===i?{...q,y:Number(e.target.value)}:q)})}/><input className="graph-point-color" type="color" value={p.color??"#111111"} aria-label="Цвет точки" onChange={e=>setGraphDraft({...graphDraft,points:graphDraft.points.map((q,j)=>j===i?{...q,color:e.target.value}:q)})}/><button onClick={()=>setGraphDraft({...graphDraft,points:graphDraft.points.filter((_,j)=>j!==i)})}>×</button></div>)}</div><div className="graph-editor-preview"><GraphView item={{id:"preview",kind:"graph",x:0,y:0,width:600,height:360,text:"",graphExpression:graphDraft.expression,graphConnectPoints:graphDraft.connectPoints,graphXMin:graphDraft.xMin,graphXMax:graphDraft.xMax,graphYMin:graphDraft.yMin,graphYMax:graphDraft.yMax,graphGrid:graphDraft.grid,graphPoints:graphDraft.points,graphShowLabels:graphDraft.showLabels,graphSnap:graphDraft.snap,graphAxisLabels:graphDraft.axisLabels,graphGridStep:graphDraft.gridStep}} onPointMove={(i,x,y)=>setGraphDraft(current=>current?{...current,points:current.points.map((p,j)=>j===i?{...p,x,y}:p)}:current)} onAddPoint={(x,y)=>setGraphDraft(current=>current?{...current,points:[...current.points,{x,y,label:"",color:"#111111"}]}:current)} onRemovePoint={(index)=>setGraphDraft(current=>current?{...current,points:current.points.filter((_,i)=>i!==index)}:current)}/><span className="graph-preview-hint">Двойное нажатие: пустое место — добавить точку, точка — удалить</span></div></div><div className="graph-editor-footer"><span>{graphDraft.expression.trim()?"Функция будет построена":"Будет сохранена пустая система координат"}</span><div><button className="secondary" onClick={closeGraphEditor}>Отмена</button><button className="primary" onClick={saveGraphEditor}>Сохранить</button></div></div></div></div>)}
+        {graphEditorId && graphDraft && (<div className="graph-editor-backdrop" onPointerDown={()=>saveGraphEditor()}><div className="graph-editor-modal compact-editor" role="dialog" aria-modal="false" onPointerDown={e=>e.stopPropagation()}><div className="graph-editor-header"><div><strong>График и координатная плоскость</strong><span>Пустое поле функции = только система координат</span></div><button onClick={()=>saveGraphEditor()}><Icon name="close" size={17}/></button></div><div className="graph-editor-body"><div className="graph-editor-form"><label><span>Функция</span><input value={graphDraft.expression} onChange={e=>setGraphDraft({...graphDraft,expression:e.target.value})} placeholder="Например: x^2 - 4*x + 3"/></label><small>Поддерживаются + − × ÷ ^, скобки, sin, cos, tan, sqrt, abs, exp, ln, log.</small><div className="graph-ranges"><label>X min<input type="number" value={graphDraft.xMin} onChange={e=>setGraphDraft({...graphDraft,xMin:Number(e.target.value)})}/></label><label>X max<input type="number" value={graphDraft.xMax} onChange={e=>setGraphDraft({...graphDraft,xMax:Number(e.target.value)})}/></label><label>Y min<input type="number" value={graphDraft.yMin} onChange={e=>setGraphDraft({...graphDraft,yMin:Number(e.target.value)})}/></label><label>Y max<input type="number" value={graphDraft.yMax} onChange={e=>setGraphDraft({...graphDraft,yMax:Number(e.target.value)})}/></label></div><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.grid} onChange={e=>setGraphDraft({...graphDraft,grid:e.target.checked})}/> Сетка</label><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.axisLabels} onChange={e=>setGraphDraft({...graphDraft,axisLabels:e.target.checked})}/> Числа на осях</label><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.snap} onChange={e=>setGraphDraft({...graphDraft,snap:e.target.checked})}/> Привязка точек к сетке</label><label className="graph-grid-toggle"><input type="checkbox" checked={graphDraft.connectPoints} onChange={e=>setGraphDraft({...graphDraft,connectPoints:e.target.checked})}/> Соединять точки линией</label><label><span>Шаг сетки</span><select value={graphDraft.gridStep} onChange={e=>setGraphDraft({...graphDraft,gridStep:Number(e.target.value)})}><option value={0.5}>0,5</option><option value={1}>1</option><option value={2}>2</option><option value={5}>5</option></select></label><div className="graph-points-head"><strong>Точки</strong><button type="button" onClick={()=>setGraphDraft({...graphDraft,points:[...graphDraft.points,{x:0,y:0,label:"",color:"#111111"}]})}>+ Точка</button></div>{graphDraft.points.map((p,i)=><div className="graph-point-editor" key={i}><input type="number" step="0.5" value={p.x} onChange={e=>setGraphDraft({...graphDraft,points:graphDraft.points.map((q,j)=>j===i?{...q,x:Number(e.target.value)}:q)})}/><input type="number" step="0.5" value={p.y} onChange={e=>setGraphDraft({...graphDraft,points:graphDraft.points.map((q,j)=>j===i?{...q,y:Number(e.target.value)}:q)})}/><LektrusColorPicker userId={authUser.id} compact label="" value={p.color??"#111111"} onChange={value=>setGraphDraft({...graphDraft,points:graphDraft.points.map((q,j)=>j===i?{...q,color:value}:q)})}/><button onClick={()=>setGraphDraft({...graphDraft,points:graphDraft.points.filter((_,j)=>j!==i)})}>×</button></div>)}</div><div className="graph-editor-preview"><GraphView item={{id:"preview",kind:"graph",x:0,y:0,width:600,height:360,text:"",graphExpression:graphDraft.expression,graphConnectPoints:graphDraft.connectPoints,graphXMin:graphDraft.xMin,graphXMax:graphDraft.xMax,graphYMin:graphDraft.yMin,graphYMax:graphDraft.yMax,graphGrid:graphDraft.grid,graphPoints:graphDraft.points,graphShowLabels:graphDraft.showLabels,graphSnap:graphDraft.snap,graphAxisLabels:graphDraft.axisLabels,graphGridStep:graphDraft.gridStep}} onPointMove={(i,x,y)=>setGraphDraft(current=>current?{...current,points:current.points.map((p,j)=>j===i?{...p,x,y}:p)}:current)} onAddPoint={(x,y)=>setGraphDraft(current=>current?{...current,points:[...current.points,{x,y,label:"",color:"#111111"}]}:current)} onRemovePoint={(index)=>setGraphDraft(current=>current?{...current,points:current.points.filter((_,i)=>i!==index)}:current)}/><span className="graph-preview-hint">Двойное нажатие: пустое место — добавить точку, точка — удалить</span></div></div><div className="graph-editor-footer"><span>{graphDraft.expression.trim()?"Функция будет построена":"Будет сохранена пустая система координат"}</span><div><button className="secondary" onClick={closeGraphEditor}>Отмена</button><button className="primary" onClick={saveGraphEditor}>Сохранить</button></div></div></div></div>)}
         {formulaEditorId && formulaDraft && (
           <div
             className="formula-editor-backdrop"
@@ -6041,7 +6042,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <label className="checklist-title-input"><span>Название</span><input value={checklistDraft.title} maxLength={200} onChange={(e) => setChecklistDraft({ ...checklistDraft, title: e.target.value })}/></label>
                 <div className="checklist-editor-style-row">
                   <label><span>Размер</span><input type="range" min="10" max="32" value={checklistDraft.fontSize} onChange={(e) => setChecklistDraft({ ...checklistDraft, fontSize: Number(e.target.value) })}/><strong>{checklistDraft.fontSize}px</strong></label>
-                  <label><span>Цвет</span><input type="color" value={checklistDraft.color} onChange={(e) => setChecklistDraft({ ...checklistDraft, color: e.target.value })}/></label>
+                  <LektrusColorPicker userId={authUser.id} compact label="Цвет" value={checklistDraft.color} onChange={value=>setChecklistDraft({ ...checklistDraft, color: value })}/>
                 </div>
               </div>
               <div className="checklist-editor-list">
@@ -6071,7 +6072,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   <label><span>Ответ / обратная сторона</span><textarea value={flashcardDraft.back} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, back: e.target.value })} placeholder="Ответ или пояснение"/></label>
                   <div className="flashcard-editor-settings">
                     <label><span>Размер текста</span><input type="range" min="10" max="48" value={flashcardDraft.fontSize} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, fontSize: Number(e.target.value) })}/><strong>{flashcardDraft.fontSize}px</strong></label>
-                    <label><span>Цвет</span><input type="color" value={flashcardDraft.color} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, color: e.target.value })}/></label>
+                    <LektrusColorPicker userId={authUser.id} compact label="Цвет" value={flashcardDraft.color} onChange={value=>setFlashcardDraft({ ...flashcardDraft, color: value })}/>
                   </div>
                 </section>
                 <aside className="flashcard-editor-preview">
@@ -6126,7 +6127,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   </div>
                   <div className="quiz-preview-settings">
                     <label><span>Размер</span><input type="range" min="10" max="32" value={quizDraft.fontSize} onChange={(e) => setQuizDraft({ ...quizDraft, fontSize: Number(e.target.value) })}/><strong>{quizDraft.fontSize}px</strong></label>
-                    <label><span>Цвет</span><input type="color" value={quizDraft.color} onChange={(e) => setQuizDraft({ ...quizDraft, color: e.target.value })}/></label>
+                    <LektrusColorPicker userId={authUser.id} compact label="Цвет" value={quizDraft.color} onChange={value=>setQuizDraft({ ...quizDraft, color: value })}/>
                   </div>
                 </aside>
               </div>
@@ -6198,14 +6199,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           )}
         {(tool === "pen" || tool === "marker") && (
           <div className="ink-settings">
-            <label>
-              Цвет{" "}
-              <input
-                type="color"
-                value={tool === "marker" ? markerColor : penColor}
-                onChange={(e) => (tool === "marker" ? setMarkerColor : setPenColor)(e.target.value)}
-              />
-            </label>
+            <LektrusColorPicker userId={authUser.id} compact label="Цвет"
+              value={tool === "marker" ? markerColor : penColor}
+              onChange={tool === "marker" ? setMarkerColor : setPenColor}/>
             <label>
               Толщина{" "}
               <input
@@ -6238,7 +6234,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               <button className={connectorRouting === "straight" ? "active" : ""} onClick={() => setConnectorRouting("straight")} title="Прямая связь"><Icon name="line" size={17} /></button>
               <button className={connectorRouting === "elbow" ? "active" : ""} onClick={() => setConnectorRouting("elbow")} title="Ломаная связь"><Icon name="elbow" size={17} /></button>
             </div>
-            <label>Цвет <input type="color" value={color} onChange={(e) => setColor(e.target.value)} /></label>
+            <LektrusColorPicker userId={authUser.id} compact label="Цвет" value={color} onChange={setColor}/>
             <label>Толщина <input type="range" min={1} max={8} value={connectorWeight} onChange={(e) => setConnectorWeight(Number(e.target.value))} /><span>{connectorWeight}px</span></label>
             <span className="connector-hint">Тяните мышью · Shift — угол 45°</span>
           </div>
