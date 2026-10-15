@@ -1496,7 +1496,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [tool, setTool] = useState<Tool>("select");
   const [marqueeRect,setMarqueeRect] = useState<SelectionRect|null>(null);
   const [rightPointerActive,setRightPointerActive] = useState(false);
-  const rightPress = useRef<{pointer:number;start:Point;dragged:boolean}|null>(null);
+  const rightPress = useRef<{pointer:number;start:Point;dragged:boolean;domId?:string}|null>(null);
   const lectrisLayoutKey="lectris.board-layout.v1."+authUser.id+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
   const lectrisToolbarKey="lectris.toolbar.v2."+authUser.id+"."+accountRole+"."+(window.matchMedia?.("(pointer:coarse)").matches?"touch":"desktop");
   const lectrisDefaultPinned=useMemo<Tool[]>(()=>(
@@ -6397,6 +6397,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             backgroundPosition: `${view.x}px ${view.y}px`,
           }}
           onPointerDownCapture={(e) => {
+            // A held RMB is always temporary hand/pan, even while drawing.
+            // Short click opens the custom menu only on release.
+            if(e.button===2 && e.pointerType==="mouse" && !presentation){
+              e.preventDefault();e.stopPropagation();
+              if(gesture.current||eraserSession.current)return;
+              const start=local(e.clientX,e.clientY);
+              rightPress.current={pointer:e.pointerId,start,dragged:false,
+                domId:(e.target as HTMLElement).closest<HTMLElement>("[data-object]")?.dataset.object};
+              setContextMenu(null);
+              setRightPointerActive(true);
+              setPanning(true);
+              gesture.current={pointer:e.pointerId,mode:"pan",start,view,
+                before:itemsRef.current,ids:[],path:[world(start)],additive:false};
+              e.currentTarget.setPointerCapture(e.pointerId);
+              return;
+            }
             if(tool!=="eraser"||presentation||e.button!==0)return;
             if(!canEdit){setNotice("У вас доступ только для просмотра");return;}
             e.preventDefault();e.stopPropagation();
@@ -6411,6 +6427,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             board.current?.setPointerCapture(e.pointerId);
           }}
           onPointerMoveCapture={(e) => {
+            if(rightPress.current?.pointer===e.pointerId){
+              const p=local(e.clientX,e.clientY),start=rightPress.current.start;
+              if(Math.hypot(p.x-start.x,p.y-start.y)>5)rightPress.current.dragged=true;
+            }
             const g=eraserSession.current;
             if(!g||g.pointer!==e.pointerId)return;
             e.preventDefault();e.stopPropagation();
@@ -6421,6 +6441,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setLiveEraserCursor(screen.x,screen.y);
           }}
           onPointerUpCapture={(e) => {
+            const right=rightPress.current;
+            if(right?.pointer===e.pointerId){
+              e.preventDefault();e.stopPropagation();
+              const p=local(e.clientX,e.clientY);
+              const dragged=right.dragged||Math.hypot(p.x-right.start.x,p.y-right.start.y)>5;
+              // The pan was a pure view movement, not a modification to board data.
+              move(e);
+              end();
+              rightPress.current=null;
+              setRightPointerActive(false);
+              if(!dragged)openBoardContextMenu(e.clientX,e.clientY,right.domId);
+              return;
+            }
             const g=eraserSession.current;
             if(!g||g.pointer!==e.pointerId)return;
             e.preventDefault();e.stopPropagation();
@@ -6431,6 +6464,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if(board.current?.hasPointerCapture(e.pointerId))board.current.releasePointerCapture(e.pointerId);
           }}
           onPointerCancelCapture={(e) => {
+            if(rightPress.current?.pointer===e.pointerId){
+              rightPress.current=null;
+              setRightPointerActive(false);
+              end(true);
+              return;
+            }
             if(eraserSession.current?.pointer!==e.pointerId)return;
             e.preventDefault();e.stopPropagation();
             finishEraser(null);
@@ -6439,20 +6478,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           onPointerMove={(e) => { if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;} if(eraserSession.current)return; touchMove(e); if(pinchState.current)return; const localPoint = local(e.clientX, e.clientY); const worldPoint = world(localPoint); if(!adminHidden) cursorChannel.current?.sendCursor(worldPoint.x, worldPoint.y); if (presentation) { if (presentationLaser) setPresentationLaserPos(localPoint); if (presentationSpotlight) setPresentationSpotlightPos(localPoint); } move(e); }}
           onContextMenu={(e) => {
             e.preventDefault();
-            finishEdit();
-            const point = local(e.clientX, e.clientY);
-            let id=(e.target as HTMLElement).closest<HTMLElement>("[data-object]")?.dataset.object;
-            const domIndex=id?itemsRef.current.findIndex(item=>item.id===id):-1;
-            const strokeHit=hitTestInk(itemsRef.current,world(point),7/Math.max(.1,view.zoom),domIndex);
-            if(strokeHit)id=strokeHit.id;
-            const hit=itemsRef.current.find(item=>item.id===id);
-            if (hit) {
-              const family = familyIdsFor(hit);
-              if (!family.every((member) => selected.includes(member))) setSelected(family);
-            } else {
-              setSelected([]);
+            // Mouse RMB is handled on pointerup. Prevent the native menu from
+            // appearing during a drag or reopening after release.
+            if(e.nativeEvent.detail===0){
+              openBoardContextMenu(e.clientX,e.clientY,
+                (e.target as HTMLElement).closest<HTMLElement>("[data-object]")?.dataset.object);
             }
-            setContextMenu({ x: point.x, y: point.y });
           }}
           onDragOver={(e) => {
             if (Array.from(e.dataTransfer.types).includes("Files")) {
@@ -6487,7 +6518,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               end();
             }
           }}
-          onPointerCancel={(e) => { touchEnd(e); end(true); }}
+          onPointerCancel={(e) => { touchEnd(e); if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} end(true); }}
           onLostPointerCapture={() => { if(eraserSession.current)finishEraser(null);else end(true); }}
         >
           {isAppAdmin && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
@@ -7115,6 +7146,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           {tool === "eraser" && (
             <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true" style={{ left:-1000, top:-1000, width:eraserSize, height:eraserSize, visibility:"hidden" }} />
           )}
+          {marqueeRect&&<div className="lektrus-selection-marquee" aria-hidden="true"
+            style={{left:marqueeRect.x,top:marqueeRect.y,
+              width:marqueeRect.width,height:marqueeRect.height}}/>}
           {path.length > 0 && (
             <svg className="lasso-overlay">
               <polygon
