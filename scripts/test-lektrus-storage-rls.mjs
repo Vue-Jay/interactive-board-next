@@ -1,0 +1,26 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
+const sql=read("supabase/lectris_fix_board_assets_rls.sql");
+const audit=read("supabase/lectris_board_assets_rls_audit.sql");
+const backend=read("src/backend.ts");
+const app=read("src/App.tsx");
+
+assert.match(sql,/begin;/i);
+assert.match(sql,/commit;/i);
+assert.match(sql,/to_regprocedure\('public\.can_edit_board\(uuid\)'\)/);
+assert.match(sql,/to_regprocedure\('public\.admin_can_maintain_boards\(\)'\)/);
+assert.match(sql,/create policy board_assets_insert on storage\.objects[\s\S]*?for insert to authenticated[\s\S]*?with check \(bucket_id='board-assets'[\s\S]*?public\.can_edit_board\(public\.board_asset_board_id\(name\)\)/);
+assert.match(sql,/create policy board_assets_read on storage\.objects[\s\S]*?for select to authenticated/);
+assert.match(sql,/create policy board_assets_update on storage\.objects[\s\S]*?for update to authenticated/);
+assert.match(sql,/create policy board_assets_delete on storage\.objects[\s\S]*?for delete to authenticated/);
+assert.match(sql,/admin maintenance upload board assets/);
+assert.doesNotMatch(sql,/alter table\s+storage\.objects\s+disable\s+row\s+level\s+security/i);
+assert.doesNotMatch(sql,/create\s+policy\s+\w+\s+on\s+storage\.objects\s+for\s+insert\s+to\s+public\b/i);
+assert.doesNotMatch(sql,/grant\s+.*service_role/i);
+assert.doesNotMatch(sql,/update\s+storage\.buckets\s+set\s+public\s*=\s*true/i);
+assert.match(audit,/pg_policies/);
+assert.match(audit,/to_regprocedure/);
+assert.match(backend,/remoteAssetRequest/);
+assert.match(app,/await putAsset\(id, isPdf \? file\.slice/);
+console.log("Lectris: private board-assets upload RLS policy repair contracts OK.");

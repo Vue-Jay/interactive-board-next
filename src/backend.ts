@@ -281,7 +281,21 @@ export const remoteAssetRequest = async (path: string, blob?: Blob): Promise<Blo
     },
     ...(blob ? { body: blob } : {}),
   });
-  if (!response.ok) throw new Error(await errorMessage(response));
+  if (!response.ok) {
+    const message = await errorMessage(response);
+    // Storage inserts are independently protected by RLS. Keep the original
+    // server message, but identify the policy/bucket so a valid editor can
+    // distinguish a missing migrated policy from an unsupported image.
+    if (blob && /row.level security|\brls\b/i.test(message)) {
+      throw new Error(
+        "Supabase Storage отклонил загрузку файла в board-assets (RLS). " +
+        "Проверьте права владельца/редактора доски и политики Storage нового проекта. " +
+        "Инструкция: supabase/lectris_fix_board_assets_rls.sql. " +
+        "Ответ сервера: " + message
+      );
+    }
+    throw new Error(message);
+  }
   return blob ? null : response.blob();
 };
 
