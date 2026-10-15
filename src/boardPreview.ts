@@ -276,6 +276,6 @@ export function scheduleBackgroundBoardPreview(
     }else{
       void run();
     }
-  },850);
+  },2800);
   previewTasks.set(boardId,{token,timer});
 }
