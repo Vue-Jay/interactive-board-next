@@ -663,3 +663,51 @@
   .lectris-workspace-stage .students-list{padding:6px}
   .lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article span{font-size:10px}
 }
+
+
+/* Four selectable visual accents. Only interface chrome changes. */
+.lectris-workspace-stage .lectris-palette-setting{
+  display:grid;grid-template-columns:minmax(160px,1fr) minmax(0,2fr);
+  grid-column:1/-1;align-items:center;gap:16px;
+}
+.lectris-palette-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.lectris-palette-options button{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  min-height:43px;padding:7px 9px;background:#f7f9fd;border:1px solid #e1e8f3;
+  border-radius:11px;color:#586c88;cursor:pointer;font:inherit;font-size:11px;font-weight:750;
+}
+.lectris-palette-options button.selected{
+  border-color:#809eec;background:#eff4ff;color:#294f9d;box-shadow:0 0 0 1px #d0def8;
+}
+.lectris-palette-swatch{width:17px;height:17px;flex:0 0 17px;border-radius:7px}
+.lectris-palette-swatch.is-sapphire{background:linear-gradient(135deg,#5481f7,#264ab3)}
+.lectris-palette-swatch.is-jade{background:linear-gradient(135deg,#42bcae,#087269)}
+.lectris-palette-swatch.is-violet{background:linear-gradient(135deg,#a27beb,#6540af)}
+.lectris-palette-swatch.is-sunset{background:linear-gradient(135deg,#f1a381,#b84f46)}
+@media(max-width:730px){
+  .lectris-workspace-stage .lectris-palette-setting{grid-template-columns:1fr}
+  .lectris-palette-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+[data-lectris-palette="jade"] .lectris-hub-hero{background:radial-gradient(circle at 90% 17%,#37b4b2 0,#137b85 40%,transparent 72%),linear-gradient(120deg,#063e54,#086c76 76%,#19958d)}
+[data-lectris-palette="violet"] .lectris-hub-hero{background:radial-gradient(circle at 89% 18%,#a280e1 0,#634da8 40%,transparent 72%),linear-gradient(120deg,#33275d,#5548a3 77%,#8874df)}
+[data-lectris-palette="sunset"] .lectris-hub-hero{background:radial-gradient(circle at 88% 18%,#f0a073 0,#c25f61 40%,transparent 72%),linear-gradient(120deg,#562d5a,#a44f64 75%,#d5745c)}
+[data-lectris-palette="jade"] .lectris-workspace{--lectris-accent:#0f807d}
+[data-lectris-palette="violet"] .lectris-workspace{--lectris-accent:#7451be}
+[data-lectris-palette="sunset"] .lectris-workspace{--lectris-accent:#b9604e}
+[data-lectris-palette="jade"] :is(.lectris-library-new,.lectris-library-card .board-card-actions .lectris-library-open,.lectris-hub .lectris-hub-primary,.lectris-workspace-stage .students-primary){background:#10847e!important;border-color:#10847e!important}
+[data-lectris-palette="violet"] :is(.lectris-library-new,.lectris-library-card .board-card-actions .lectris-library-open,.lectris-hub .lectris-hub-primary,.lectris-workspace-stage .students-primary){background:#7353be!important;border-color:#7353be!important}
+[data-lectris-palette="sunset"] :is(.lectris-library-new,.lectris-library-card .board-card-actions .lectris-library-open,.lectris-hub .lectris-hub-primary,.lectris-workspace-stage .students-primary){background:#c06450!important;border-color:#c06450!important}
+[data-lectris-palette="jade"] :is(.lectris-nav-link.is-active,.lectris-library-filters button.active){color:#096e6c;background:#e7f6f2;border-color:#d2eae5}
+[data-lectris-palette="violet"] :is(.lectris-nav-link.is-active,.lectris-library-filters button.active){color:#694db5;background:#f0ebff;border-color:#e4d9ff}
+[data-lectris-palette="sunset"] :is(.lectris-nav-link.is-active,.lectris-library-filters button.active){color:#ab5a48;background:#fff1ed;border-color:#f9ded4}
+[data-lectris-palette="jade"] .lectris-brand-mark{background:#0b847b}
+[data-lectris-palette="violet"] .lectris-brand-mark{background:#7252be}
+[data-lectris-palette="sunset"] .lectris-brand-mark{background:#bd614f}
+[data-lectris-palette="jade"] .workspace .toolbar.compact-toolbar .tool-button.active{background:#0d8079!important}
+[data-lectris-palette="violet"] .workspace .toolbar.compact-toolbar .tool-button.active{background:#7353c0!important}
+[data-lectris-palette="sunset"] .workspace .toolbar.compact-toolbar .tool-button.active{background:#bf604f!important}
+[data-lectris-palette="jade"] :is(.lectris-hub-tile-blue .lectris-hub-tile-icon,.lectris-library-create-icon){background:#e1f4ef;color:#0b847b}
+[data-lectris-palette="violet"] :is(.lectris-hub-tile-blue .lectris-hub-tile-icon,.lectris-library-create-icon){background:#f0eaff;color:#7556bf}
+[data-lectris-palette="sunset"] :is(.lectris-hub-tile-blue .lectris-hub-tile-icon,.lectris-library-create-icon){background:#fff0e8;color:#b96750}
+/* The light editor remains readable when system colour scheme is dark;
+   legacy dark-theme overrides continue to govern their existing components. */
