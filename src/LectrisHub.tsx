@@ -13,6 +13,7 @@ type Props = {
   role: AccountRole;
   view: View;
   boards: BoardSummary[];
+  previews: Record<string,string>;
   loading: boolean;
   creating: boolean;
   onOpenBoard: (board: BoardSummary) => void;
@@ -22,7 +23,7 @@ const commonSubjects = ["Математика","Русский язык","Физ
 const shortDate=(iso:string)=>new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 const navigate=(section:string)=>{window.history.pushState({},"",section?"/?section="+encodeURIComponent(section):"/");window.dispatchEvent(new PopStateEvent("popstate"))};
 
-export default function LectrisHub({user,role,view,boards,loading,creating,onOpenBoard,onCreateBoard}:Props){
+export default function LectrisHub({user,role,view,boards,previews,loading,creating,onOpenBoard,onCreateBoard}:Props){
   const teacher=role==="teacher";
   const [organization,setOrganization]=useState<Record<string,Organization>>(()=>readLectrisLocalOrganization(user.id));
   const [editing,setEditing]=useState<string|null>(null);
@@ -152,7 +153,11 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
   const label=(board:BoardSummary)=>getOrg(board);
   const boardTile=(board:BoardSummary)=> <article className="lectris-hub-board" key={board.id}>
     <button type="button" className="lectris-hub-board-main" onClick={()=>onOpenBoard(board)}>
-      <span className="lectris-hub-board-cover" aria-hidden="true"><span className="lectris-hub-board-glyph">✦</span><span className="lectris-hub-board-lines"><i/><i/><i/></span></span>
+      <span className="lectris-hub-board-cover" aria-hidden="true">
+        {previews[board.id]
+          ?<img src={previews[board.id]} alt="" decoding="async" className="lectris-hub-board-thumbnail"/>
+          :<span className="lectris-hub-board-placeholder">Пустой холст</span>}
+      </span>
       <span className="lectris-hub-board-info">
         <span className="lectris-hub-board-kind">{label(board).subject||"Рабочая доска"}{label(board).group?" · "+label(board).group:""}</span>
         <strong>{board.title}</strong>
