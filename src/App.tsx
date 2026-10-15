@@ -1503,7 +1503,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
   const [preview, setPreview] = useState<Item | null>(null);
   const [tool, setTool] = useState<Tool>("select");
-  const drawingCursor=useMemo(()=>drawingCursorForBackground(boardBackground,tool==="marker"?markerWeight:weight,view.zoom),[boardBackground,tool,markerWeight,weight,view.zoom]);
   const [marqueeRect,setMarqueeRect] = useState<SelectionRect|null>(null);
   const [rightPointerActive,setRightPointerActive] = useState(false);
   const rightPress = useRef<{pointer:number;start:Point;dragged:boolean;domId?:string}|null>(null);
@@ -1594,6 +1593,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     } catch {/* Fall back to the view stored in the board document. */}
     return initial.data.view;
   });
+  const drawingCursor=useMemo(()=>drawingCursorForBackground(boardBackground,tool==="marker"?markerWeight:weight,view.zoom),[boardBackground,tool,markerWeight,weight,view.zoom]);
   const viewerPanFrame = useRef<number | null>(null);
   const viewerPendingPan = useRef<View | null>(null);
   const scheduleViewerPan = (next: View) => {
