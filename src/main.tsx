@@ -19,7 +19,9 @@ import "./lektrusRefresh.css";
 import "./lektrusResponsive.css";
 import "./lektrusColors.css";
 import "./lektrusBoardInteraction.css";
+import "./lektrusThemes.css";
 import { initLectrisPalette } from "./lectrisPalette";
+import { initProfileAppearance } from "./profileStore";
 
 type ErrorBoundaryState = { error: Error | null };
 
@@ -47,6 +49,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 }
 
 initLectrisPalette();
+initProfileAppearance();
 
 const root = document.getElementById("root");
 if (!root) {
