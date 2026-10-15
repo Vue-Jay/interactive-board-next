@@ -4,6 +4,8 @@ const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const app=read("src/App.tsx"),model=read("src/boardModel.ts");
 const util=read("src/boardBackground.ts"),css=read("src/lektrusBoardBackground.css"),main=read("src/main.tsx");
 assert.match(model,/background:normalizeBoardBackground\(d\.background\)/);
+assert.match(model,/export function normalizeBoardBackground/);
+assert.doesNotMatch(model,/from "\.\/boardBackground"/);
 assert.match(model,/background:normalizeBoardBackground\(data\.background\)/);
 assert.match(app,/const canChangeBoardBackground=canEdit&&!isStudent/);
 assert.match(app,/setBoardBackground\(normalizeBoardBackground\(data\.background\)\)/);

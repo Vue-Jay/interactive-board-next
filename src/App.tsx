@@ -72,9 +72,11 @@ import {
   type View,
   type Item,
   type DocumentData,
+  type BoardBackground,
+  normalizeBoardBackground,
 } from "./boardModel";
 
-import {boardBackgroundAppearance,drawingCursorForBackground,normalizeBoardBackground,type BoardBackground} from "./boardBackground";
+import {boardBackgroundAppearance,drawingCursorForBackground} from "./boardBackground";
 import { eraseInkAlongPath } from "./inkEraser";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";

@@ -1,13 +1,4 @@
-export type BoardBackground={mode:"dots"|"grid"|"plain";color:string;opacity:number};
-export const DEFAULT_BOARD_BACKGROUND:BoardBackground={mode:"dots",color:"#f7f7f8",opacity:100};
-export function normalizeBoardBackground(value:unknown):BoardBackground{
-  const v=value&&typeof value==="object"?value as Partial<BoardBackground>:{};
-  return {
-    mode:v.mode==="grid"||v.mode==="plain"||v.mode==="dots"?v.mode:"dots",
-    color:typeof v.color==="string"&&/^#[0-9a-f]{6}$/i.test(v.color)?v.color.toLowerCase():"#f7f7f8",
-    opacity:typeof v.opacity==="number"&&Number.isFinite(v.opacity)?Math.max(0,Math.min(100,Math.round(v.opacity))):100
-  };
-}
+import {normalizeBoardBackground,type BoardBackground} from "./boardModel";
 const rgb=(hex:string)=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
 const luminance=(channels:number[])=>channels.map(n=>n/255).map(v=>v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
 export function boardBackgroundAppearance(input:BoardBackground){

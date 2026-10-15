@@ -1,4 +1,14 @@
-import {normalizeBoardBackground} from "./boardBackground";
+export type BoardBackground={mode:"dots"|"grid"|"plain";color:string;opacity:number};
+export const DEFAULT_BOARD_BACKGROUND:BoardBackground={mode:"dots",color:"#f7f7f8",opacity:100};
+export function normalizeBoardBackground(value:unknown):BoardBackground{
+  const v=value&&typeof value==="object"?value as Partial<BoardBackground>:{};
+  return {
+    mode:v.mode==="grid"||v.mode==="plain"||v.mode==="dots"?v.mode:"dots",
+    color:typeof v.color==="string"&&/^#[0-9a-f]{6}$/i.test(v.color)?v.color.toLowerCase():"#f7f7f8",
+    opacity:typeof v.opacity==="number"&&Number.isFinite(v.opacity)?Math.max(0,Math.min(100,Math.round(v.opacity))):100
+  };
+}
+
 export type Point = { x: number; y: number };
 export type View = Point & { zoom: number };
 export type ShapeType = "rectangle" | "square" | "rounded" | "ellipse" | "circle" | "diamond" | "triangle" | "rightTriangle" | "parallelogram" | "trapezoid" | "pentagon" | "hexagon" | "star" | "arrow";
@@ -85,7 +95,7 @@ export type Item = {
 // Ink is stored in its own drawing collection, not in regular board objects.
 // "after" preserves its visual position relative to normal items on old boards.
 export type InkEntry = { after: number; stroke: Item };
-export type DocumentData = { version: 1; title: string; view: View; items: Item[]; ink?: InkEntry[]; background?: import("./boardBackground").BoardBackground };
+export type DocumentData = { version: 1; title: string; view: View; items: Item[]; ink?: InkEntry[]; background?: BoardBackground };
 export const isInkItem = (item: Item): boolean => item.kind === "pen" || item.kind === "marker";
 
 export function expandDocumentInk(data: DocumentData): Item[] {
