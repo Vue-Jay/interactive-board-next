@@ -465,3 +465,201 @@
 @media(prefers-reduced-motion:reduce){
   .lectris-hub-tile,.lectris-library-card,.lectris-hub-board{transition:none}
 }
+
+
+/* V3 shared educational screens: a recognisable product, not seven unrelated forms */
+.lectris-workspace-stage :is(.students-header){
+  background:linear-gradient(107deg,#fff 0%,#fff 66%,#eef3ff 100%);
+  border-bottom:1px solid #e2eaf5;min-height:106px;
+  padding:24px clamp(22px,3vw,48px);
+  gap:13px;
+}
+.lectris-workspace-stage .students-header>div:first-child{
+  display:flex;gap:15px;align-items:center;min-width:0;
+}
+.lectris-workspace-stage .students-header>div:first-child>div{
+  display:grid;gap:5px;min-width:0;
+}
+.lectris-workspace-stage .students-header strong{
+  font-size:clamp(24px,2.6vw,30px);font-weight:870;letter-spacing:-.052em;
+  color:#1d355b;
+}
+.lectris-workspace-stage .students-header span{
+  font-size:12px;color:#7588a5;
+}
+.lectris-workspace-stage .students-header .boards-secondary{
+  border-color:#e0e8f4!important;background:#fff!important;color:#3d5c90!important;
+  min-height:38px;box-shadow:0 3px 8px #284b7910;
+}
+.lectris-workspace-stage .students-header .boards-create{
+  min-height:43px;padding:10px 16px;border-radius:11px;box-shadow:0 7px 18px #305bd325;
+}
+.lectris-workspace-stage :is(.students-content,.assignments-content,.schedule-content,.progress-content,.materials-content,.notifications-content,.templates-content){
+  width:min(1360px,calc(100% - 64px));max-width:none;
+  margin:0 auto;padding:28px 0 65px;
+}
+.lectris-workspace-stage :is(.students-toolbar,.assignment-controls,.schedule-toolbar,
+  .materials-toolbar,.templates-toolbar,.progress-toolbar,.notification-filters,.notification-kind-filter){
+  background:#fff;border:1px solid #e0e8f3;border-radius:15px;
+  padding:12px;gap:9px;box-shadow:0 5px 18px #2046760d;
+}
+.lectris-workspace-stage :is(.students-toolbar,.assignment-controls,.schedule-toolbar,
+  .materials-toolbar,.templates-toolbar,.progress-toolbar,.notification-filters,.notification-kind-filter) :is(input,select){
+  background:#f8faff;color:#324d77;border-radius:10px;border:1px solid #dce5f1;
+  min-height:39px;padding:8px 12px;
+}
+.lectris-workspace-stage :is(.students-toolbar,.assignment-controls,.schedule-toolbar,
+  .materials-toolbar,.templates-toolbar,.progress-toolbar,.notification-filters,.notification-kind-filter) button{
+  border-radius:9px;min-height:35px;font-weight:730;
+}
+.lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis){
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;
+}
+.lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article{
+  position:relative;min-width:0;min-height:114px;display:flex;flex-direction:column;gap:10px;
+  justify-content:center;padding:20px 22px;border-radius:17px;
+  background:#fff;border:1px solid #e0e8f4;
+  box-shadow:0 7px 24px #2345740d;overflow:hidden;
+}
+.lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article::after{
+  content:"";position:absolute;right:-27px;top:-27px;width:85px;height:85px;
+  border-radius:50%;background:#edf2ff;
+}
+.lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article:nth-child(2)::after{background:#efeaff}
+.lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article:nth-child(3)::after{background:#fff0e9}
+.lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article:nth-child(4)::after{background:#e9f8f2}
+.lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article b{
+  font-size:27px;font-weight:850;letter-spacing:-.055em;line-height:1;color:#213c70;
+  z-index:1;
+}
+.lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article span{
+  font-size:12px;color:#7489a6;z-index:1;line-height:1.4;
+}
+.lectris-workspace-stage :is(.assignment-card,.material-card,.template-card,.notification-card,.progress-panel,.student-card,.students-list,.schedule-side,.next-card){
+  border:1px solid #e0e8f4;border-radius:18px;background:#fff;
+  box-shadow:0 8px 28px rgba(29,51,92,.055);
+}
+.lectris-workspace-stage :is(.assignment-card,.material-card,.template-card,.notification-card,.student-card){
+  transition:transform .15s,border-color .15s,box-shadow .15s;
+}
+.lectris-workspace-stage :is(.assignment-card,.material-card,.template-card,.notification-card,.student-card):hover{
+  border-color:#bbceef;box-shadow:0 12px 32px #20447c18;
+}
+.lectris-workspace-stage .students-list{padding:10px}
+.lectris-workspace-stage .student-row{
+  border:1px solid transparent;border-radius:12px;padding:12px;
+  min-height:69px;margin-bottom:4px;
+}
+.lectris-workspace-stage .student-row.active{
+  background:#eaf0ff;border-color:#cbd9f5;box-shadow:inset 3px 0 #4268d8;
+}
+.lectris-workspace-stage .student-avatar{
+  border-radius:13px;background:#e8f0ff;color:#345cbd;font-weight:850;
+}
+.lectris-workspace-stage .student-card-head{
+  border-bottom:1px solid #e8edf6;padding-bottom:16px;
+}
+.lectris-workspace-stage .student-stat-grid>div{
+  border-radius:12px;background:#f6f9ff;border:1px solid #e1eaf6;
+}
+.lectris-workspace-stage .assignment-list{gap:10px}
+.lectris-workspace-stage .assignment-card{
+  background:#fff;border-radius:16px;overflow:hidden;
+}
+.lectris-workspace-stage .assignment-status{font-size:11px;font-weight:800;border-radius:99px}
+.lectris-workspace-stage .materials-folders{
+  border:1px solid #e0e9f5;border-radius:17px;background:#fff;
+  box-shadow:0 7px 24px #18365f0b;
+}
+.lectris-workspace-stage .materials-folder-row{
+  min-height:43px;border-radius:11px;margin:3px;
+}
+.lectris-workspace-stage .materials-folder-row.active{
+  background:#eaf0ff;color:#3157b1;
+}
+.lectris-workspace-stage .materials-grid{
+  display:grid;gap:14px;
+}
+.lectris-workspace-stage .material-card{
+  min-height:142px;padding:15px;
+}
+.lectris-workspace-stage .material-icon{
+  background:#eaf0ff;color:#315bc1;border-radius:13px;
+}
+.lectris-workspace-stage .templates-grid{
+  display:grid;gap:16px;
+}
+.lectris-workspace-stage .template-card{overflow:hidden}
+.lectris-workspace-stage .template-preview{
+  border-radius:15px;background:linear-gradient(145deg,#e6edff,#f7faff);
+  border:1px solid #dfe8f6;min-height:130px;
+}
+.lectris-workspace-stage .week-grid{
+  gap:9px;background:transparent;
+}
+.lectris-workspace-stage .schedule-day{
+  border:1px solid #e0e8f3;border-radius:15px;
+  background:#fff;box-shadow:0 6px 20px #233f6a0e;
+  padding:10px;
+}
+.lectris-workspace-stage .schedule-day.today{
+  border-color:#90afeb;background:#f9fbff;box-shadow:inset 0 3px #5278da;
+}
+.lectris-workspace-stage .schedule-event{
+  border-radius:11px;border:1px solid #dfe7f5;background:#f4f7fe;
+  box-shadow:none;
+}
+.lectris-workspace-stage :is(.progress-panel,.progress-table-panel){
+  background:#fff;border-radius:18px;overflow:hidden;
+}
+.lectris-workspace-stage .progress-panel-head{
+  border-bottom:1px solid #e8edf5;padding-bottom:10px;
+}
+.lectris-workspace-stage .notification-card{
+  background:#fff;padding:16px 19px;border-radius:14px;
+}
+.lectris-workspace-stage .notification-card.unread{
+  background:#f5f8ff;border-color:#b8cef8;box-shadow:inset 4px 0 #5479d9;
+}
+.lectris-workspace-stage .notification-kind-filter button.active,
+.lectris-workspace-stage .notification-filters button.active{
+  background:#eaf0ff;color:#3159ba;border-color:#cddaf6;
+}
+.lectris-workspace-stage :is(.students-primary,.boards-create){
+  background:#315bd4;border:1px solid #315bd4;color:#fff;border-radius:11px;
+  box-shadow:0 6px 16px #315bd424;
+}
+.lectris-workspace-stage :is(.students-primary,.boards-create):hover:not(:disabled){
+  background:#244cba;
+}
+@media(max-width:1100px){
+  .lectris-workspace-stage :is(.students-content,.assignments-content,.schedule-content,.progress-content,.materials-content,.notifications-content,.templates-content){
+    width:calc(100% - 32px);
+  }
+}
+@media(max-width:850px){
+  .lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis){
+    grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;
+  }
+  .lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article{
+    padding:15px;min-height:95px;
+  }
+  .lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article b{font-size:23px}
+}
+@media(max-width:700px){
+  .lectris-workspace-stage .students-header{
+    padding:17px 15px;min-height:0;align-items:flex-start;gap:12px;
+    background:linear-gradient(120deg,#fff,#f6f9ff);
+  }
+  .lectris-workspace-stage .students-header strong{font-size:23px}
+  .lectris-workspace-stage .students-header>div:first-child{gap:8px}
+  .lectris-workspace-stage .students-header>div:first-child .boards-secondary{min-height:32px;font-size:11px}
+  .lectris-workspace-stage :is(.students-content,.assignments-content,.schedule-content,.progress-content,.materials-content,.notifications-content,.templates-content){
+    width:calc(100% - 26px);padding:15px 0 40px;
+  }
+  .lectris-workspace-stage :is(.students-toolbar,.assignment-controls,.schedule-toolbar,.materials-toolbar,.templates-toolbar,.progress-toolbar,.notification-filters,.notification-kind-filter){
+    padding:9px;
+  }
+  .lectris-workspace-stage .students-list{padding:6px}
+  .lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article span{font-size:10px}
+}
