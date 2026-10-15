@@ -1,0 +1,146 @@
+/* Lektrus color controls: a saved-swatch square plus free-color palette icon. */
+.lektrus-color-picker{
+  display:inline-flex;align-items:center;gap:8px;min-width:0;
+  vertical-align:middle;flex:0 0 auto;color:inherit;
+  font-size:12px;line-height:1.25;
+}
+.lektrus-color-caption{font-weight:700;white-space:nowrap;font-size:11px;color:inherit}
+.lektrus-color-controls{display:inline-flex;align-items:center;gap:5px;min-width:0}
+.lektrus-color-current,.lektrus-color-wheel{
+  position:relative;box-sizing:border-box;
+  width:34px;height:34px;min-height:34px;
+  flex:0 0 34px;
+  display:grid;place-items:center;
+  background:#fff;color:#3b5384;
+  border:1px solid #d7e2f3;border-radius:9px;
+  box-shadow:0 2px 6px #18335d0a;
+  padding:3px;cursor:pointer;
+  transition:background .12s,border-color .12s,box-shadow .12s;
+}
+.lektrus-color-current>span{
+  display:block;width:100%;height:100%;
+  border-radius:6px;background:var(--selected-color,#365fd0);
+  box-shadow:inset 0 0 0 1px #00000020;
+}
+.lektrus-color-current:hover,.lektrus-color-wheel:hover{
+  border-color:#9eb8eb;background:#f1f5ff;
+}
+.lektrus-color-current[aria-expanded="true"]{
+  border-color:#789de7;box-shadow:0 0 0 2px #cadafc;
+}
+.lektrus-color-wheel svg{pointer-events:none;display:block}
+.lektrus-color-wheel input[type=color]{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  opacity:0;cursor:pointer;
+  border:0;margin:0;padding:0;
+}
+.lektrus-color-wheel:focus-within,.lektrus-color-current:focus-visible{
+  outline:2px solid #537adc;outline-offset:2px;
+}
+.lektrus-color-current:disabled,.lektrus-color-wheel.is-disabled{
+  opacity:.5;cursor:not-allowed;filter:grayscale(.2);
+}
+.lektrus-color-wheel input:disabled{cursor:not-allowed}
+.lektrus-color-picker.is-compact{gap:6px}
+.lektrus-color-picker.is-compact .lektrus-color-controls{gap:4px}
+.lektrus-color-picker.is-compact :is(.lektrus-color-current,.lektrus-color-wheel){
+  width:31px;height:31px;min-height:31px;flex-basis:31px;border-radius:8px;
+}
+.lektrus-colors-popup{
+  box-sizing:border-box;position:fixed;
+  z-index:2147482000;
+  background:#fff;color:#2d4263;
+  border:1px solid #d8e4f4;border-radius:15px;
+  padding:11px;box-shadow:0 17px 55px #102a5360;
+  max-height:calc(100dvh - 16px);
+  overflow:auto;overscroll-behavior:contain;
+  font-family:inherit;font-size:12px;
+}
+.lektrus-colors-popup header{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-bottom:11px;padding:0 1px;
+}
+.lektrus-colors-popup header strong{font-weight:810;font-size:12px}
+.lektrus-colors-popup header button{
+  border:0;background:#f1f5fc;color:#6981a3;
+  width:24px;height:24px;min-height:24px;padding:0;
+  border-radius:7px;cursor:pointer;font-size:19px;
+}
+.lektrus-colors-grid{
+  display:grid;grid-template-columns:repeat(8,minmax(0,1fr));
+  gap:8px 5px;
+  padding:0 1px 12px;
+}
+.lektrus-color-cell{position:relative;min-width:0;aspect-ratio:1}
+.lektrus-color-cell>button:first-child{
+  display:block;width:100%;height:100%;
+  min-height:0;border:1px solid #aebed7;border-radius:7px;
+  padding:0;cursor:pointer;
+}
+.lektrus-color-cell>button:first-child.is-selected{
+  outline:2px solid #3769d4;outline-offset:2px;
+  border-color:#fff;
+}
+.lektrus-color-cell>button:first-child:hover{filter:brightness(.94)}
+.lektrus-color-cell .lektrus-color-remove{
+  position:absolute;top:-6px;right:-6px;
+  width:16px;height:16px;min-height:16px;
+  display:grid;place-items:center;
+  font-size:12px;line-height:1;
+  padding:0;border-radius:50%;
+  border:1px solid #e3e6ee;background:#fff;color:#657b98;
+  box-shadow:0 1px 5px #19305330;cursor:pointer;
+}
+.lektrus-color-cell .lektrus-color-remove:hover{color:#ba4351;background:#fff0f2}
+.lektrus-color-add-row{
+  border-top:1px solid #e8edf6;
+  padding-top:10px;
+  display:flex;align-items:stretch;gap:6px;
+}
+.lektrus-color-add-row>button,.lektrus-color-add-row>label{
+  display:flex;align-items:center;justify-content:center;
+  position:relative;flex:1 1 0;min-width:0;min-height:34px;
+  border:1px solid #dbe5f4;border-radius:8px;
+  background:#f5f8fd;color:#405d90;
+  font-weight:750;text-align:center;font-size:10px;
+  padding:6px 5px;line-height:1.25;
+  cursor:pointer;
+}
+.lektrus-color-add-row>button:disabled{
+  opacity:.5;cursor:not-allowed;
+}
+.lektrus-color-add-row>label{
+  border-color:#b7cbf1;color:#2955b7;background:#eaf1ff;
+}
+.lektrus-color-add-row input[type=color]{
+  position:absolute;inset:0;
+  width:100%;height:100%;opacity:0;cursor:pointer;
+  border:0;padding:0;margin:0;
+}
+.lektrus-color-limit{
+  display:block;margin-top:8px;
+  color:#8a6c56;font-size:10px;line-height:1.35;
+}
+/* Quick settings, inspector, and specialty editors use precisely the same buttons. */
+.lectris-quick-details{gap:9px}
+.lectris-quick-properties .lektrus-color-current,
+.lectris-quick-properties .lektrus-color-wheel{
+  padding:3px;min-width:31px;
+}
+.lectris-object-inspector .lektrus-color-picker{justify-content:space-between;width:100%}
+.lectris-object-inspector .lektrus-color-controls{margin-left:auto}
+.graph-point-editor .lektrus-color-picker{min-width:0}
+:is(.checklist-editor-style-row,.quiz-editor-style-row,.flashcard-editor-style-row) .lektrus-color-picker{
+  min-width:0;max-width:100%;align-self:center;
+}
+.workspace .connector-controls .lektrus-color-picker{align-self:center}
+@media(max-width:700px){
+  .lektrus-color-caption{font-size:10px}
+  .lektrus-color-picker{gap:5px}
+  .lektrus-colors-popup{border-radius:12px;padding:9px}
+  .lektrus-colors-grid{gap:7px 5px}
+}
+@media(prefers-reduced-motion:reduce){
+  .lektrus-color-current,.lektrus-color-wheel{transition:none}
+}
