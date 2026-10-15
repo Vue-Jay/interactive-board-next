@@ -152,3 +152,10 @@
   top:54px!important;max-height:calc(100dvh - 62px)!important;
  }
 }
+
+
+/* The button already contains a textual back arrow; suppress legacy pseudo-arrows. */
+html body .topbar .board-home-button::before,
+html body .topbar .board-home-button::after{
+ content:none!important;display:none!important;
+}
