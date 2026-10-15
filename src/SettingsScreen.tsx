@@ -4,6 +4,7 @@ import {applyProfileAppearance,getProfileSettings,saveProfileSettings,type Profi
 import {getAccountAccess,requestTeacherAccess,setStudentRole,type AccountAccess} from "./accountRoleStore";
 import {getPlan} from "./billingStore";
 import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
+import { applyLectrisPalette,readLectrisPalette,type LectrisPalette } from "./lectrisPalette";
 
 type Props={user:AuthUser;onBack:()=>void;onLogout:()=>void;installAvailable:boolean;isInstalled:boolean;onInstall:()=>void;onBilling:()=>void};
 
@@ -12,6 +13,8 @@ export default function SettingsScreen({user,onBack,onLogout,installAvailable,is
  const [s,setS]=useState(defaults),[initial,setInitial]=useState(defaults),[notice,setNotice]=useState("");
  const [access,setAccess]=useState<AccountAccess>({role:"student",teacherStatus:"none",isAdmin:false,requestedAt:null,reviewedAt:null,subscriptionPlan:"free",subscriptionUntil:null}),[roleBusy,setRoleBusy]=useState(false);
  const plan=getPlan(access.subscriptionPlan);
+ const [palette,setPalette]=useState<LectrisPalette>(readLectrisPalette);
+ const changePalette=(next:LectrisPalette)=>{setPalette(next);applyLectrisPalette(next)};
  const [developerPrefs,setDeveloperPrefs]=useState(readDeveloperPreferences);
  const updateDeveloperPref=(key:keyof typeof developerPrefs,checked:boolean)=>{const next={...developerPrefs,[key]:checked};setDeveloperPrefs(next);writeDeveloperPreferences(next)};
  useEffect(()=>{void getProfileSettings(user).then(x=>{setS(x);setInitial(x);applyProfileAppearance(x)});const sync=()=>void getAccountAccess().then(setAccess);sync();window.addEventListener("onlinerepetitor:account-access",sync);window.addEventListener("focus",sync);return()=>{window.removeEventListener("onlinerepetitor:account-access",sync);window.removeEventListener("focus",sync)}},[user.id]);
@@ -23,6 +26,13 @@ export default function SettingsScreen({user,onBack,onLogout,installAvailable,is
   <section className="settings-compact-content">{notice&&<div className="access-notice">{notice}</div>}
    <div className="settings-compact-grid">
     <section className="settings-row-card"><div><b>Тема</b><small>Оформление приложения</small></div><select value={s.theme} onChange={e=>patch("theme",e.target.value as ProfileSettings["theme"])}><option value="system">Системная</option><option value="light">Светлая</option><option value="dark">Тёмная</option></select></section>
+    <section className="settings-row-card lectris-palette-setting"><div><b>Цвет Lectris</b><small>Основной акцент приложения · сохраняется на этом устройстве</small></div>
+      <div className="lectris-palette-options" role="group" aria-label="Цветовое оформление Lectris">
+        {([["sapphire","Синий"],["jade","Бирюзовый"],["violet","Фиолетовый"],["sunset","Коралловый"]] as const).map(([key,label])=>
+          <button type="button" key={key} className={palette===key?"selected":""} aria-pressed={palette===key}
+            onClick={()=>changePalette(key)}><span className={`lectris-palette-swatch is-${key}`}/>{label}</button>)}
+      </div>
+    </section>
     <section className="settings-row-card"><div><b>Компактный интерфейс</b><small>Меньше отступов и крупности элементов</small></div><input type="checkbox" checked={s.compactUi} onChange={e=>patch("compactUi",e.target.checked)}/></section>
     <section className="settings-row-card"><div><b>Масштаб новых досок</b><small>Стартовое значение</small></div><select value={s.defaultBoardZoom} onChange={e=>patch("defaultBoardZoom",Number(e.target.value))}><option value={75}>75%</option><option value={90}>90%</option><option value={100}>100%</option><option value={110}>110%</option><option value={125}>125%</option></select></section>
     <section className="settings-row-card settings-plan-row"><div><b>Тариф · {plan.name}</b><small>{access.subscriptionUntil&&access.subscriptionPlan!=="free"?`${plan.description} · до ${new Date(access.subscriptionUntil).toLocaleDateString("ru-RU")}`:plan.description}</small></div><button onClick={onBilling}>Тарифы</button></section><section className="settings-row-card"><div><b>AI-студия</b><small>Задания, тесты и карточки</small></div><button onClick={()=>{window.history.pushState({},"","/?section=ai");window.dispatchEvent(new PopStateEvent("popstate"))}}>Открыть</button></section>
