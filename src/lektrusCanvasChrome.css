@@ -97,8 +97,6 @@
 @media (pointer:fine) {
   .workspace .toolbar.compact-toolbar:not(.expanded) .toolbar-list>.tool-wrap.lektrus-auto-overflow {
     display:block!important;
-    flex:0 0 0px!important;
-    height:0!important;
     min-height:0!important;
     max-height:0!important;
     margin:0!important;
@@ -108,10 +106,13 @@
     overflow:hidden!important;
     pointer-events:none!important;
     transform:translateY(-7px) scale(.92);
-    transition:height .2s ease,opacity .18s ease,transform .2s ease,visibility 0s linear .2s;
+    transition:max-height .23s ease,opacity .2s ease,transform .23s ease,visibility 0s linear .23s;
   }
   .workspace .toolbar.compact-toolbar .toolbar-list>.tool-wrap:not(.secondary-tool) {
-    transition:max-height .22s ease,opacity .2s ease,transform .2s ease;
+    max-height:70px!important;
+    min-height:0!important;
+    opacity:1;
+    transition:max-height .23s ease,opacity .2s ease,transform .23s ease;
   }
   .workspace .toolbar.compact-toolbar.lektrus-overflowing .toolbar-more {
     border-color:var(--lt-line-strong)!important;

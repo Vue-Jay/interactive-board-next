@@ -29,11 +29,11 @@ export function useAdaptiveBoardToolbar(expanded:boolean,pinnedSignature:string)
       const availableHeight=Number.isFinite(maxH)
         ? Math.min(maxH,Math.max(0,window.innerHeight-24))
         : Math.max(0,window.innerHeight-105);
-      const visible=item=>getComputedStyle(item).display!=="none";
+      const visible=(item:HTMLElement)=>getComputedStyle(item).display!=="none";
       const otherChildren=Array.from(rail.children).filter((node):node is HTMLElement=>node instanceof HTMLElement&&node!==list&&visible(node));
       const size=(node:HTMLElement)=>{
         const computed=getComputedStyle(node);
-        const n=v=>parseFloat(v)||0;
+        const n=(v:string)=>parseFloat(v)||0;
         return node.getBoundingClientRect().height+n(computed.marginTop)+n(computed.marginBottom);
       };
       const rest=otherChildren.reduce((sum,node)=>sum+size(node),0);
