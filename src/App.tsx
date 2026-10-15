@@ -4854,12 +4854,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setNotice("Связь отвязана от объектов");
   };
 
-  const changeSelectedConnectorWeight = (delta: number) => {
-    if (!singleSelected || singleSelected.kind !== "connector" || selectionLocked) return;
-    const nextWeight = Math.max(1, Math.min(12, (singleSelected.weight ?? 3) + delta));
-    commit(itemsRef.current.map((item) => item.id === singleSelected.id ? { ...item, weight: nextWeight } : item));
-  };
-
   const visibleItems = useMemo(() => items.filter((item) => !item.hidden), [items]);
   const visibleObjects = visibleItems;
   const objectCount = items.length;
