@@ -74,6 +74,7 @@ import { eraseInkAlongPath } from "./inkEraser";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
+import { renderBoardPreview, cacheBoardPreview, previewFromRemoteDocument } from "./boardPreview";
 import { getBoardHistoryVersion, listBoardHistory, type BoardHistoryEntry } from "./historyStore";
 import { changesSinceLastVisit, recentBoardHistory } from "./boardHistoryUtils";
 import { createBoardComment, listBoardComments, listBoardCommentParticipants, setBoardCommentResolved, type BoardCommentParticipant, type BoardCommentThread } from "./commentThreadsStore";
@@ -1831,8 +1832,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       await ensureBoardAssets(boardSummary.id, data);
       if (!boardMounted.current) return;
       const expectedVersion = remoteVersion.current ?? 0;
+      // Generate a tiny snapshot from occupied content, not the viewport.
+      // It is stored as JSONB metadata in the existing board document, so
+      // the dashboard retrieves only the preview property, not the full board.
+      let preview:string|null = cachedBoardPreview(boardSummary.id);
+      try { preview=await renderBoardPreview(data,boardSummary.id) } catch { /* Autosave must win. */ }
+      if(!boardMounted.current)return;
       lastAttempt.current = { version: expectedVersion + 1, fingerprint };
-      const result = await (adminMaintenance ? adminSaveRemoteBoardDocument : saveRemoteBoardDocument)(boardSummary.id, data, expectedVersion);
+      const payload = {...data, preview};
+      const result = await (adminMaintenance ? adminSaveRemoteBoardDocument : saveRemoteBoardDocument)(boardSummary.id, payload, expectedVersion);
       if (!boardMounted.current) return;
       if (result.conflict) {
         const row = { board_id: boardSummary.id, version: result.version, document: result.document, updated_at: result.updated_at ?? "" };
@@ -1840,6 +1848,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         return;
       }
       remoteVersion.current = result.version;
+      cacheBoardPreview(boardSummary.id,preview);
       acknowledgedDocument.current = fingerprint;
       remoteSaveFailures.current = 0;
       if (remoteRetryTimer.current) {
@@ -7213,6 +7222,9 @@ export default function App() {
         if (!isCurrent()) return;
         const key = boardStorageKey(board.id);
         if (remote?.document) {
+          // Cache preview before parsing: strict document parsing strips UI metadata.
+          const preview=previewFromRemoteDocument(remote.document);
+          if(preview)cacheBoardPreview(board.id,preview);
           const parsed = parseDocument(JSON.stringify(remote.document));
           localStorage.setItem(key, JSON.stringify(parsed));
           setRemoteVersion(remote.version);
