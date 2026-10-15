@@ -1,6 +1,7 @@
 import { getDisplayAsset } from "./assetStore";
 import { remoteRequest, isRemoteBackendEnabled } from "./backend";
-import { expandDocumentInk, type DocumentData, type Item } from "./boardModel";
+import { expandDocumentInk, parseDocument, type DocumentData, type Item } from "./boardModel";
+import { boardStorageKey } from "./boardStore";
 
 // Lightweight board snapshots embedded in the existing board_documents JSONB.
 // A small JSONB projection lets the gallery load previews WITHOUT entire boards.
@@ -40,6 +41,22 @@ export async function loadBoardPreviews(ids:string[]):Promise<Record<string,stri
     }catch{/* Cached results still work offline. */}
   }
   return output;
+}
+// For migrated boards, reuse a *small* local document without another
+// heavy network download. Remote thumbnails will be created on subsequent edits.
+export async function backfillCachedBoardPreviews(ids:string[]):Promise<Record<string,string>> {
+  const result:Record<string,string>={};
+  for(const id of ids.slice(0,6)){
+    if(cachedBoardPreview(id))continue;
+    try{
+      const raw=localStorage.getItem(boardStorageKey(id));
+      if(!raw||raw.length>2_000_000)continue;
+      const parsed=parseDocument(raw);
+      const image=await renderBoardPreview(parsed,id);
+      if(image){cacheBoardPreview(id,image);result[id]=image}
+    }catch{/* Damaged/stale local data is not authoritative. */}
+  }
+  return result;
 }
 type Bounds={left:number;top:number;right:number;bottom:number};
 function itemBounds(item:Item):Bounds{
