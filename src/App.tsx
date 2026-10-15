@@ -7065,13 +7065,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               aria-hidden="true"
             />
           )}
-          {contextMenu && (
+          {contextMenu && createPortal(
             <div
-              className="board-context-menu"
+              className="board-context-menu lektrus-context-portal"
               data-context-menu
+              role="menu"
               style={{
-                left: Math.min(contextMenu.x, Math.max(8, (board.current?.clientWidth ?? 1200) - 230)),
-                top: Math.min(contextMenu.y, Math.max(8, (board.current?.clientHeight ?? 800) - 390)),
+                position:"fixed",
+                left: Math.max(8,Math.min(
+                  (board.current?.getBoundingClientRect().left??0)+contextMenu.x,
+                  window.innerWidth-250)),
+                top: Math.max(8,Math.min(
+                  (board.current?.getBoundingClientRect().top??0)+contextMenu.y,
+                  window.innerHeight-Math.min(440,window.innerHeight-16)-8)),
               }}
               onPointerDown={(e) => e.stopPropagation()}
             >
@@ -7141,7 +7147,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   <button onClick={() => { setView({ x: 0, y: 0, zoom: 1 }); setContextMenu(null); }}>Масштаб 100%</button>
                 </>
               )}
-            </div>
+            </div>, document.body
           )}
           {tool === "eraser" && (
             <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true" style={{ left:-1000, top:-1000, width:eraserSize, height:eraserSize, visibility:"hidden" }} />
@@ -7167,7 +7173,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             ? selectionLocked
               ? `Выделено: ${selected.length} · объект заблокирован · разблокируйте для редактирования`
               : `Выделено: ${selected.length} · Alt+перетаскивание — копия · стрелки — сдвиг · Shift+стрелка — 10 px`
-            : `Сейчас: ${toolShortLabel[tool]} · правый клик — меню · колесо мыши — масштаб`}
+            : `Сейчас: ${toolShortLabel[tool]} · ЛКМ — выделение областью · удерживать ПКМ — рука · ПКМ — меню`}
         </div>
         <div className="board-controls">
           <button aria-label="Уменьшить" title="Уменьшить" onClick={() => zoom(0.8)}><Icon name="zoom-out" size={16} /></button>
