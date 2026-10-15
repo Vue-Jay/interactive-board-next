@@ -541,3 +541,22 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
 @media(max-width:700px),(pointer:coarse){
  .workspace .toolbar.compact-toolbar .lektrus-desktop-sections{display:none!important}
 }
+
+
+/* Each category symbol previews its actual contents with two familiar pictograms. */
+@media(min-width:701px) and (pointer:fine){
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections>.tool-button{
+  position:relative;display:grid!important;place-items:center!important;
+  width:39px!important;height:39px!important;min-height:39px!important;
+ }
+ .workspace .lektrus-section-icon{position:relative;display:grid;place-items:center;width:25px;height:25px;color:inherit}
+ .workspace .lektrus-section-icon-secondary{
+  position:absolute;display:grid;place-items:center;right:-4px;bottom:-4px;
+  width:15px;height:15px;box-sizing:border-box;
+  border:1px solid var(--lt-line,#dae3f0);border-radius:5px;
+  background:var(--lt-raised,#fff);color:var(--lt-secondary,#415575);
+ }
+ .workspace .lektrus-desktop-sections>.tool-button.active .lektrus-section-icon-secondary{
+  background:var(--lt-raised,#fff);color:var(--lt-primary,#315fce);
+ }
+}
