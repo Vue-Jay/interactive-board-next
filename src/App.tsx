@@ -1839,7 +1839,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       try { preview=await renderBoardPreview(data,boardSummary.id) } catch { /* Autosave must win. */ }
       if(!boardMounted.current)return;
       lastAttempt.current = { version: expectedVersion + 1, fingerprint };
-      const payload = {...data, preview};
+      const payload = {...data, preview: preview??""};
       const result = await (adminMaintenance ? adminSaveRemoteBoardDocument : saveRemoteBoardDocument)(boardSummary.id, payload, expectedVersion);
       if (!boardMounted.current) return;
       if (result.conflict) {
@@ -1921,6 +1921,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         });
       } else {
         setSaveStatus("Сохранено в браузере");
+        void renderBoardPreview(data,boardSummary.id).then(value=>cacheBoardPreview(boardSummary.id,value)).catch(()=>{});
       }
     } catch {
       setSaveStatus("Не удалось сохранить — скачайте копию");
