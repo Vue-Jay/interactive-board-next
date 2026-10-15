@@ -40,6 +40,15 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
   const [lessons,setLessons]=useState<ScheduledLesson[]>([]);
   const [dataLoading,setDataLoading]=useState(true);
   const [boardSearch,setBoardSearch]=useState("");
+  const [collectionSearch,setCollectionSearch]=useState("");
+  const [categorySearch,setCategorySearch]=useState("");
+  const [collectionMode,setCollectionMode]=useState<"tiles"|"list">(()=>{
+    try{return localStorage.getItem("lektrus.collection-view")==="list"?"list":"tiles"}catch{return "tiles"}
+  });
+  const changeCollectionMode=(mode:"tiles"|"list")=>{
+    setCollectionMode(mode);
+    try{localStorage.setItem("lektrus.collection-view",mode)}catch{/* Display preferences are optional. */}
+  };
   useEffect(()=>{
     setOrganization(readLectrisLocalOrganization(user.id));
     setCategoryCatalog(readLectrisLocalCatalog(user.id));
@@ -150,6 +159,12 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
   };
   const chosenBoards=scope===null?boards:boards.filter(b=>getOrg(b)[view==="subjects"?"subject":"group"]===scope);
   const named=(v:string)=>v||(view==="subjects"?"Без предмета":"Без группы");
+  const collectionCategories=groupBy(view==="subjects"?"subject":"group").filter(value=>
+    named(value).toLocaleLowerCase("ru-RU").includes(categorySearch.trim().toLocaleLowerCase("ru-RU")));
+  const collectionBoards=chosenBoards.filter(board=>
+    [board.title,getOrg(board).subject,getOrg(board).group].some(value=>
+      value.toLocaleLowerCase("ru-RU").includes(collectionSearch.trim().toLocaleLowerCase("ru-RU"))));
+
   const label=(board:BoardSummary)=>getOrg(board);
   const boardTile=(board:BoardSummary)=> <article className="lectris-hub-board" key={board.id}>
     <button type="button" className="lectris-hub-board-main" onClick={()=>onOpenBoard(board)}>
@@ -241,37 +256,76 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
         </div>
       </div>
     </>:<>
-      <div className="lectris-hub-list-heading">
-        <div><span className="lectris-hub-overline">ЕДИНОЕ РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>{view==="subjects"?"Предметы":"Группы и классы"}</h1>
-          <p>Одна доска может отображаться в разных разделах. Новые копии при этом не создаются.</p></div>
-        <button type="button" onClick={()=>navigate("boards")}>Все доски →</button>
-      </div>
-      <div className="lectris-hub-collection">
-        <div className="lectris-hub-categories" role="group" aria-label={view==="subjects"?"Выбор предмета":"Выбор группы"}>
-          <button type="button" className={scope===null?"selected":""} onClick={()=>setScope(null)}>Все <span>{boards.length}</span></button>
-          {groupBy(view==="subjects"?"subject":"group").map(value=><button type="button" key={value||"-"} className={scope===value?"selected":""} onClick={()=>setScope(value)}>{named(value)}
-            <span>{boards.filter(b=>getOrg(b)[view==="subjects"?"subject":"group"]===value).length}</span>
-          </button>)}
-          {teacher&&<div className="lectris-hub-new-category">
-            {categoryEntryOpen?<form onSubmit={e=>{e.preventDefault();createCategory()}}>
-              <input aria-label={view==="subjects"?"Название предмета":"Название группы"} maxLength={80}
-                placeholder={view==="subjects"?"Название предмета":"Название группы"}
-                value={categoryDraft} onChange={e=>setCategoryDraft(e.target.value)}
-                onKeyDown={e=>e.stopPropagation()}/>
-              <div><button type="submit" disabled={!categoryDraft.trim()}>Создать</button>
-                <button type="button" onClick={()=>{setCategoryEntryOpen(false);setCategoryDraft("")}}>Отмена</button></div>
-            </form>:<button type="button" className="lectris-hub-new-category-trigger"
-              onClick={()=>setCategoryEntryOpen(true)}>+ {view==="subjects"?"Новый предмет":"Новая группа"}</button>}
-          </div>}
-        </div>
-        <section className="lectris-hub-section lectris-hub-collection-content">
-          <div className="lectris-hub-section-head"><div><small>{chosenBoards.length} досок</small><h2>{scope===null?"Все доски":named(scope)}</h2></div>
-            {teacher&&<button type="button" disabled={creating}
-              onClick={()=>onCreateBoard(scope===null?undefined:view==="subjects"?{subject:scope}:{group:scope})}>+ Доска</button>}
+      <div className="lektrus-collection">
+        <div className="lektrus-page-heading">
+          <div>
+            <span className="lectris-hub-overline">ОРГАНИЗАЦИЯ ЗАНЯТИЙ</span>
+            <h1>{view==="subjects"?"Предметы":"Группы и классы"}</h1>
+            <p>{view==="subjects"?"Быстрый доступ к доскам по учебным предметам.":"Объединяйте доски по классам и учебным группам."}</p>
           </div>
-          {loading?<p className="lectris-hub-placeholder">Загружаем…</p>:chosenBoards.length?<div className="lectris-hub-board-list">{chosenBoards.map(boardTile)}</div>:
-            <div className="lectris-hub-empty"><strong>Здесь пока пусто</strong><p>Откройте меню «⋯» у доски и укажите предмет или группу.</p></div>}
-          <p className="lectris-hub-local-note">{lectrisOrganizationSyncEnabled()?"Структура сохраняется в отдельном Supabase Lektrus. Изменения досок остаются в прежней системе совместной работы.":"Сейчас предметы и группы сохраняются в этом браузере. Для синхронизации потребуется отдельный проект Supabase Lektrus."}</p>
+          <div className="lektrus-page-heading-actions">
+            {teacher&&<button type="button" className="lektrus-category-create" onClick={()=>setCategoryEntryOpen(true)}>
+              <span aria-hidden="true">＋</span> {view==="subjects"?"Добавить предмет":"Добавить группу"}
+            </button>}
+            <button type="button" className="lektrus-page-secondary" onClick={()=>navigate("boards")}>Все доски ↗</button>
+          </div>
+        </div>
+        <section className="lektrus-category-panel" aria-label={view==="subjects"?"Каталог предметов":"Каталог групп"}>
+          <div className="lektrus-category-panel-heading">
+            <div><strong>{view==="subjects"?"Выберите предмет":"Выберите группу"}</strong><small>{groupBy(view==="subjects"?"subject":"group").length} разделов</small></div>
+            <input type="search" aria-label="Поиск по разделам" placeholder={view==="subjects"?"Найти предмет":"Найти группу"}
+              value={categorySearch} onChange={event=>setCategorySearch(event.target.value)}/>
+          </div>
+          <div className="lektrus-category-strip" role="group" aria-label="Фильтр по категории">
+            <button type="button" aria-pressed={scope===null} className={scope===null?"selected":""} onClick={()=>setScope(null)}>
+              <span className="lektrus-category-symbol" aria-hidden="true">▦</span><span className="lektrus-category-name">Все доски</span><b>{boards.length}</b>
+            </button>
+            {collectionCategories.map((value,index)=><button type="button" key={value||"-"} aria-pressed={scope===value} className={scope===value?"selected":""} onClick={()=>setScope(value)}>
+              <span className={`lektrus-category-symbol lektrus-category-color-${index%4}`} aria-hidden="true">{view==="subjects"?"▤":"♧"}</span>
+              <span className="lektrus-category-name">{named(value)}</span>
+              <b>{boards.filter(board=>getOrg(board)[view==="subjects"?"subject":"group"]===value).length}</b>
+            </button>)}
+            {categorySearch&&!collectionCategories.length&&<div className="lektrus-category-no-results">Ничего не найдено</div>}
+          </div>
+          {teacher&&categoryEntryOpen&&<form className="lektrus-category-form" onSubmit={event=>{event.preventDefault();createCategory()}}>
+            <input autoFocus aria-label={view==="subjects"?"Название предмета":"Название группы"} maxLength={80}
+              placeholder={view==="subjects"?"Новый предмет, например химия":"Новая группа, например 9А"}
+              value={categoryDraft} onChange={event=>setCategoryDraft(event.target.value)}
+              onKeyDown={event=>event.stopPropagation()}/>
+            <button type="submit" disabled={!categoryDraft.trim()}>Добавить</button>
+            <button type="button" onClick={()=>{setCategoryEntryOpen(false);setCategoryDraft("")}}>Отмена</button>
+          </form>}
+        </section>
+        <section className="lektrus-collection-boards" aria-label="Доски выбранной категории">
+          <div className="lektrus-collection-topline">
+            <div><span className="lectris-hub-overline">РАБОЧИЕ ДОСКИ</span>
+              <h2>{scope===null?"Все доски":named(scope)} <span className="lektrus-collection-count">{chosenBoards.length}</span></h2>
+            </div>
+            <div className="lektrus-collection-actions">
+              <input type="search" aria-label="Поиск досок в категории" placeholder="Найти доску"
+                value={collectionSearch} onChange={event=>setCollectionSearch(event.target.value)}/>
+              <div className="lektrus-view-switch" role="group" aria-label="Представление досок">
+                <button type="button" aria-label="Плитки" title="Плитки" aria-pressed={collectionMode==="tiles"}
+                  className={collectionMode==="tiles"?"selected":""} onClick={()=>changeCollectionMode("tiles")}>▦</button>
+                <button type="button" aria-label="Список" title="Список" aria-pressed={collectionMode==="list"}
+                  className={collectionMode==="list"?"selected":""} onClick={()=>changeCollectionMode("list")}>☰</button>
+              </div>
+              {teacher&&<button type="button" className="lektrus-collection-add" disabled={creating}
+                onClick={()=>onCreateBoard(scope===null?undefined:view==="subjects"?{subject:scope}:{group:scope})}>+ Доска</button>}
+            </div>
+          </div>
+          {loading?<p className="lectris-hub-placeholder">Загружаем доски…</p>:
+            collectionBoards.length?<div className={`lectris-hub-board-list lektrus-collection-gallery ${collectionMode==="list"?"is-list":"is-tiles"}`}>
+              {collectionBoards.map(boardTile)}
+            </div>:<div className="lektrus-collection-empty">
+              <strong>{collectionSearch?"Ничего не найдено":"В этом разделе пока нет досок"}</strong>
+              <p>{collectionSearch?"Попробуйте изменить запрос.":"Откройте настройки доски и укажите предмет или группу."}</p>
+              {collectionSearch&&<button type="button" onClick={()=>setCollectionSearch("")}>Очистить поиск</button>}
+              {!collectionSearch&&teacher&&<button type="button" disabled={creating} onClick={()=>onCreateBoard(scope===null?undefined:view==="subjects"?{subject:scope}:{group:scope})}>Создать доску</button>}
+            </div>}
+          <p className="lektrus-collection-sync-note">{lectrisOrganizationSyncEnabled()?
+            "Предметы и группы синхронизируются с сервером Lektrus.":
+            "Категории пока сохраняются в этом браузере. Содержимое досок сохраняется отдельно."}</p>
         </section>
       </div>
     </>}
