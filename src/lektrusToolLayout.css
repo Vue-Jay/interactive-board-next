@@ -598,3 +598,17 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
 @media(max-width:700px),(pointer:coarse){
  .workspace .toolbar.compact-toolbar>.lektrus-direct-comment{display:none!important}
 }
+
+
+/* Use the full silhouette of the approved 32-unit vector artwork. */
+@media(min-width:701px) and (pointer:fine){
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections .lektrus-section-icon{
+   width:29px!important;height:29px!important;
+ }
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections .lektrus-section-icon svg{
+   display:block!important;width:29px!important;height:29px!important;
+   min-width:29px!important;min-height:29px!important;
+   max-width:29px!important;max-height:29px!important;
+   overflow:visible;
+ }
+}
