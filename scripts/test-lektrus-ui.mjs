@@ -27,6 +27,6 @@ assert.match(hub,/changeCollectionMode\("list"\)/);
 assert.match(hub,/collectionBoards\.map\(boardTile\)/);
 assert.match(styles,/\.lektrus-collection-gallery\.is-list/);
 assert.match(styles,/@media\(max-width:700px\)/);
-assert.match(styles,/\.lectris-hub-hero-compact/,"compact home must remain");
+assert.match(read("src/lectrisV3.css"),/\.lectris-hub-hero-compact/,"compact home must remain");
 assert.match(app,/saveRemoteBoardDocument/,"board save must remain present");
 console.log("Lektrus UI: correct visible brand, searchable categories, gallery modes and responsive styles.");
