@@ -168,41 +168,31 @@ export default function LectrisHub({user,role,view,boards,loading,creating,onOpe
     {id:"schedule",icon:"◷",eyebrow:"ПЛАНИРОВАНИЕ",title:"Занятия",description:"Расписание уроков",count:upcoming.length,theme:"coral"},
     {id:"notifications",icon:"✧",eyebrow:"НОВОСТИ И СОБЫТИЯ",title:"События",description:"Обновления и уведомления",count:null,theme:"mint"},
   ];
+  const syncIndicator=<div className="lectris-hub-sync" role="status">
+    <span className={`lectris-hub-sync-dot status-${syncStatus}`}/>
+    {syncStatus==="synced"?"Структура синхронизирована":syncStatus==="saving"?"Сохраняем структуру…":syncStatus==="error"?"Не удалось синхронизировать":"Предметы и группы сохраняются на этом устройстве"}
+    {pendingCount>0&&<span> · ожидает отправки: {pendingCount}</span>}
+    {lectrisOrganizationSyncEnabled()&&teacher&&<button type="button" disabled={syncStatus==="saving"} onClick={importLocalOrganization}>Перенести локальные метки</button>}
+    {lectrisOrganizationSyncEnabled()&&<button type="button" disabled={syncStatus==="saving"} onClick={()=>void sendOrganization()}>Повторить синхронизацию</button>}
+  </div>;
   return <section className="lectris-hub" aria-label="Рабочее пространство Lectris">
-    <div className="lectris-hub-sync" role="status">
-      <span className={`lectris-hub-sync-dot status-${syncStatus}`}/>
-      {syncStatus==="synced"?"Структура синхронизирована":syncStatus==="saving"?"Сохраняем структуру…":syncStatus==="error"?"Не удалось синхронизировать":"Предметы и группы сохраняются на этом устройстве"}
-      {pendingCount>0&&<span> · ожидает отправки: {pendingCount}</span>}
-      {lectrisOrganizationSyncEnabled()&&teacher&&<button type="button" disabled={syncStatus==="saving"} onClick={importLocalOrganization}>Перенести локальные метки</button>}
-      {lectrisOrganizationSyncEnabled()&&<button type="button" disabled={syncStatus==="saving"} onClick={()=>void sendOrganization()}>Повторить синхронизацию</button>}
-    </div>
+    {view!=="home"&&syncIndicator}
     {view==="home"?<>
-      <div className="lectris-hub-intro"><div><span className="lectris-hub-overline">ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО</span><h1>Добро пожаловать в Lectris</h1><p>Всё необходимое для занятий на одной странице.</p></div>
-        <button className="lectris-hub-intro-link" type="button" onClick={()=>navigate("schedule")}>Посмотреть расписание <span>↗</span></button>
-      </div>
-      <div className="lectris-hub-hero">
+      <header className="lectris-hub-hero lectris-hub-hero-compact">
         <div className="lectris-hub-hero-copy">
-          <span className="lectris-hub-hero-chip">{teacher?"✦ Пространство преподавателя":"✦ Пространство ученика"}</span>
-          <span className="lectris-hub-hero-metric">{teacher?`${students.length} учеников · ${boards.length} досок`:`${boards.length} доступных досок`}</span>
-          <h2>{teacher?"Создавайте уроки, которые увлекают":"Учитесь, исследуйте и открывайте новое"}</h2>
-          <p>{teacher?"Превратите идеи в наглядные занятия. Доски, ученики и учебные материалы всегда под рукой.":"Все ваши доски, задания и ближайшие занятия собраны в одном пространстве."}</p>
-          <div className="lectris-hub-hero-actions">
-            {teacher&&<button type="button" className="lectris-hub-primary" onClick={()=>onCreateBoard()} disabled={creating}>+ Создать доску <span aria-hidden="true">↗</span></button>}
-            <button type="button" onClick={()=>navigate("boards")}>Открыть доски <span aria-hidden="true">→</span></button>
+          <div className="lectris-hub-hero-topline">
+            <span className="lectris-hub-hero-chip">{teacher?"РАБОЧЕЕ МЕСТО ПРЕПОДАВАТЕЛЯ":"МОЁ ОБУЧЕНИЕ"}</span>
+            <span className="lectris-hub-hero-metric">{teacher?`Доски: ${boards.length} · Ученики: ${students.length}`:`Доступные доски: ${boards.length}`}</span>
           </div>
+          <h1>{teacher?"Всё для ваших занятий":"Ваше учебное пространство"}</h1>
+          <p>{teacher?"Создавайте доски, готовьте уроки и продолжайте с того места, где остановились.":"Доски, задания и занятия собраны в одном месте."}</p>
+          {syncIndicator}
         </div>
-        <div className="lectris-hub-hero-art" aria-hidden="true">
-          <span className="lectris-hero-orbit lectris-hero-orbit-one"/>
-          <span className="lectris-hero-orbit lectris-hero-orbit-two"/>
-          <div className="lectris-hero-sheet">
-            <div className="lectris-hero-sheet-head"><i/><i/><i/></div>
-            <div className="lectris-hero-sheet-equation">a² + b² = c²</div>
-            <div className="lectris-hero-sheet-drawing"><span/><span/><span/></div>
-            <div className="lectris-hero-sheet-footer"><i/><i/><i/></div>
-          </div>
-          <div className="lectris-hero-note">✦ <span>Здесь рождаются идеи</span></div>
+        <div className="lectris-hub-hero-actions">
+          {teacher&&<button type="button" className="lectris-hub-primary" onClick={()=>onCreateBoard()} disabled={creating}>+ Новая доска</button>}
+          <button type="button" onClick={()=>navigate("schedule")}>Расписание <span aria-hidden="true">↗</span></button>
         </div>
-      </div>
+      </header>
       <div className="lectris-hub-section-label"><div><span className="lectris-hub-overline">БЫСТРЫЙ ДОСТУП</span><h2>Ваш рабочий стол</h2></div><span>Выберите, с чего начать</span></div>
       <div className="lectris-hub-tiles" aria-label="Основные разделы">
         {quickTiles.map(tile=><button type="button" key={tile.id} className={`lectris-hub-tile lectris-hub-tile-${tile.theme}`} onClick={()=>navigate(tile.id)}>
