@@ -43,7 +43,7 @@ export default function AuthScreen({ onAuthenticated }: Props) {
   const changeMode = (next: Mode) => { setMode(next);setError("");setPassword(""); };
 
   return <main className="auth-shell"><section className="auth-card" aria-labelledby="auth-title">
-    <div className="auth-brand-row"><div className="auth-logo" aria-label="Lectris">L</div><div><div className="auth-brand">Lectris</div><div className="auth-subtitle">Интерактивная доска для занятий</div></div></div>
+    <div className="auth-brand-row"><div className="auth-logo" aria-label="Lektrus">L</div><div><div className="auth-brand">Lektrus</div><div className="auth-subtitle">Интерактивная доска для занятий</div></div></div>
     {!isRemoteBackendEnabled() && <div className="access-notice" role="alert">Сервер Supabase не подключён. Сейчас доступен только локальный вход с аккаунтами, созданными в этом браузере. Для входа под существующим аккаунтом добавьте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в файл .env.local и перезапустите npm run dev.</div>}
     {joining && <div className="access-notice">Откройте доску по приглашению: войдите в аккаунт или продолжите без регистрации.</div>}
     {mode==="login"&&remembered&&<div className="auth-remembered"><div className="auth-remembered-avatar">{remembered.name.charAt(0).toUpperCase()}</div><div className="auth-remembered-copy"><strong>{remembered.name}</strong><span>{remembered.email}</span></div><button className="auth-remembered-login" type="button" disabled={busy} onClick={()=>void quickLogin()}>{busy?"Входим…":"Войти"}</button><button className="auth-remembered-forget" type="button" disabled={busy} onClick={()=>void forgetQuickLogin()} title="Забыть сохранённый аккаунт">×</button></div>}
