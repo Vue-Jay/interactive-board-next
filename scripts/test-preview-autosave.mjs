@@ -16,7 +16,12 @@ assert.ok(save.indexOf("setSaveStatus(\"Сохранено на сервере\"
   save.indexOf("scheduleBackgroundBoardPreview("));
 assert.ok(save.indexOf("const payload = {...data, preview: previousPreview??\"\"}") <
   save.indexOf("await (adminMaintenance"));
-assert.ok(app.includes('setSaveStatus("Сохранено в браузере");\n        scheduleBackgroundBoardPreview(boardSummary.id,data,null);'));
+assert.ok(app.includes('setSaveStatus(localBackupValid.current?"Сохранено в браузере":"Недостаточно места для локальной копии");'));
+assert.ok(app.includes('if(localBackupValid.current)scheduleBackgroundBoardPreview(boardSummary.id,data,null);'));
+assert.ok(app.includes('try {\n          localStorage.setItem(storageKey,serialized);'), "local storage failure must be isolated");
+assert.ok(app.includes('localBackupValid.current=false;'), "quota error should be tracked");
+assert.ok(app.includes('await ensureBoardAssets(boardSummary.id,{...data,items:unsyncedAssets});'),
+  "only newly added assets should be verified, not downloaded on every stroke");
 
 // Update only the JSON document metadata after rendering; preserve version and audit history.
 assert.match(preview, /method:"PATCH"/);
