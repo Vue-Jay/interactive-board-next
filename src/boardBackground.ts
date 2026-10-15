@@ -14,12 +14,14 @@ export function boardBackgroundAppearance(input:BoardBackground){
 }
 export function drawingCursorForBackground(background:BoardBackground){
   const {foreground,outline}=boardBackgroundAppearance(background);
-  // Double-contour crosshair stays legible over a photo even if its color
-  // differs from the board background. Inner color flips with the board.
-  const path="M16 2v10M16 20v10M2 16h10M20 16h10";
-  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">'+
-    '<path d="'+path+'" stroke="'+outline+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+
-    '<path d="'+path+'" stroke="'+foreground+'" stroke-width="2" fill="none" stroke-linecap="round"/>'+
-    '<circle cx="16" cy="16" r="2.5" fill="'+outline+'"/><circle cx="16" cy="16" r="1" fill="'+foreground+'"/></svg>';
-  return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") 16 16, crosshair';
+  // Lektrus Point: a crisp 18px broken ring with a true 9,9 drawing hotspot.
+  // Contrasting double strokes keep the cursor readable on light/dark boards
+  // and over images, without obscuring fine strokes with long crosshair arms.
+  const ring='<circle cx="9" cy="9" r="5.3" fill="none" stroke-dasharray="5 3.325" stroke-dashoffset="1.3" stroke-linecap="round"';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">'+
+    ring+' stroke="'+outline+'" stroke-width="3.1"/>'+
+    ring+' stroke="'+foreground+'" stroke-width="1.45"/>'+
+    '<circle cx="9" cy="9" r="1.45" fill="'+outline+'"/>'+
+    '<circle cx="9" cy="9" r=".9" fill="'+foreground+'"/></svg>';
+  return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") 9 9, crosshair';
 }
