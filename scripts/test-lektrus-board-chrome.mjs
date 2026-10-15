@@ -13,7 +13,7 @@ assert.match(app,/useAdaptiveBoardToolbar\(desktopToolsExpanded,lectrisPinned\.j
 // a runtime ReferenceError and renders the entire board unusable.
 const desktopStatePos=app.indexOf("const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(");
 const adaptiveCallPos=app.indexOf("const adaptiveToolbarRef=useAdaptiveBoardToolbar(");
-const pinnedStatePos=app.indexOf("const [lectrisPinned,setLectrisPinned]=useState(");
+const pinnedStatePos=app.indexOf("const [lectrisPinned,setLectrisPinned]=useState");
 assert.ok(desktopStatePos>=0 && pinnedStatePos>=0 && adaptiveCallPos>desktopStatePos && adaptiveCallPos>pinnedStatePos,
   "Adaptive toolbar hook must be called AFTER all state arguments are initialized");
 assert.match(app,/setDesktopToolsExpanded\(v=>!v\)/);
