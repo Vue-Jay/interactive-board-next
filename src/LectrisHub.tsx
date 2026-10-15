@@ -73,7 +73,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
   const importLocalOrganization=()=>{
     if(!teacher||!lectrisOrganizationSyncEnabled())return;
     const owned=boards.filter(board=>board.role==="owner").map(board=>board.id);
-    if(!window.confirm("Перенести местные предметы, группы и привязки собственных досок в Lectris? Существующие связи на сервере не будут перезаписаны."))return;
+    if(!window.confirm("Перенести местные предметы, группы и привязки собственных досок в Lektrus? Существующие связи на сервере не будут перезаписаны."))return;
     const count=queueLectrisLocalImport(user.id,owned);
     if(!count){window.alert("Новых локальных данных для переноса нет.");return}
     setPendingCount(pendingLectrisOrganizationCount(user.id));
@@ -180,7 +180,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
     {lectrisOrganizationSyncEnabled()&&teacher&&<button type="button" disabled={syncStatus==="saving"} onClick={importLocalOrganization}>Перенести локальные метки</button>}
     {lectrisOrganizationSyncEnabled()&&<button type="button" disabled={syncStatus==="saving"} onClick={()=>void sendOrganization()}>Повторить синхронизацию</button>}
   </div>;
-  return <section className="lectris-hub" aria-label="Рабочее пространство Lectris">
+  return <section className="lectris-hub" aria-label="Рабочее пространство Lektrus">
     {view!=="home"&&syncIndicator}
     {view==="home"?<>
       <header className="lectris-hub-hero lectris-hub-hero-compact">
@@ -271,7 +271,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
           </div>
           {loading?<p className="lectris-hub-placeholder">Загружаем…</p>:chosenBoards.length?<div className="lectris-hub-board-list">{chosenBoards.map(boardTile)}</div>:
             <div className="lectris-hub-empty"><strong>Здесь пока пусто</strong><p>Откройте меню «⋯» у доски и укажите предмет или группу.</p></div>}
-          <p className="lectris-hub-local-note">{lectrisOrganizationSyncEnabled()?"Структура сохраняется в отдельном Supabase Lectris. Изменения досок остаются в прежней системе совместной работы.":"Сейчас предметы и группы сохраняются в этом браузере. Для синхронизации потребуется отдельный проект Supabase Lectris."}</p>
+          <p className="lectris-hub-local-note">{lectrisOrganizationSyncEnabled()?"Структура сохраняется в отдельном Supabase Lektrus. Изменения досок остаются в прежней системе совместной работы.":"Сейчас предметы и группы сохраняются в этом браузере. Для синхронизации потребуется отдельный проект Supabase Lektrus."}</p>
         </section>
       </div>
     </>}
@@ -282,7 +282,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
         <label>Предмет<input list="lectris-subject-suggestions" placeholder="Например, химия" maxLength={80} value={subjectDraft} onChange={e=>setSubjectDraft(e.target.value)}/></label>
         <datalist id="lectris-subject-suggestions">{commonSubjects.map(x=><option value={x} key={x}/>)}</datalist>
         <label>Группа или класс<input placeholder="Например, 9А" maxLength={80} value={groupDraft} onChange={e=>setGroupDraft(e.target.value)}/></label>
-        <p className="lectris-hub-local-note">{lectrisOrganizationSyncEnabled()?"Метаданные синхронизируются с сервером Lectris.":"Метки сохраняются локально и не изменяют общую базу Supabase."}</p>
+        <p className="lectris-hub-local-note">{lectrisOrganizationSyncEnabled()?"Метаданные синхронизируются с сервером Lektrus.":"Метки сохраняются локально и не изменяют общую базу Supabase."}</p>
         <footer><button type="button" onClick={()=>setEditing(null)}>Отмена</button><button type="button" className="lectris-hub-primary" onClick={saveEdit}>Сохранить</button></footer>
       </section>
     </div>}
