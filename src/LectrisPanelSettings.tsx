@@ -21,7 +21,7 @@ export default function LectrisPanelSettings({value,onChange,onClose}:Props){
   return <div className="lectris-panel-settings-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <section className="lectris-panel-settings-dialog" role="dialog" aria-modal="true" aria-label="Расположение панелей"
       onKeyDown={e=>{if(e.key==="Escape"){e.stopPropagation();onClose()}}}>
-      <header><div><small>LECTRIS · РАБОЧАЯ РАСКЛАДКА</small><h2>Расположение панелей</h2></div>
+      <header><div><small>LEKTRUS · РАБОЧАЯ РАСКЛАДКА</small><h2>Расположение панелей</h2></div>
         <button type="button" onClick={onClose} aria-label="Закрыть">×</button></header>
       <p>Закрепите панели там, где ими удобно пользоваться. Это не изменяет масштаб и расположение объектов на доске.</p>
       <div className="lectris-panel-settings-form">
