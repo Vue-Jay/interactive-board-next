@@ -5539,6 +5539,37 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           {boardSummary.role === "owner" && (liveLesson ? <div className="live-lesson-chip"><span className="live-lesson-dot"/><button className="live-lesson-main" onClick={()=>setLessonPanelOpen(true)} title="Открыть панель урока"><span><b>{liveLesson.studentName}</b><small>{liveLesson.topic||"Урок"} · {lessonTime}</small></span></button><button onClick={()=>setLessonFinishOpen(true)}>Завершить</button></div> : <button className="lesson-button start-live-lesson compact-top-action" aria-label="Начать урок" title="Начать урок" onClick={()=>{setLessonStudentId(lessonStudents[0]?.userId||"");setLessonOpen(true)}}><svg className="top-action-svg play-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5 18 12 8 18.5Z"/></svg></button>)}
           {boardSummary.role === "owner" && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
           {isRemoteBackendEnabled() && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
+          <details className="lektrus-board-actions-menu">
+            <summary aria-label="Действия с доской" title="Действия с доской" aria-haspopup="menu">
+              <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2"/>
+                <path d="M7 9h7M7 13h4m3 2 2 2 4-4"/>
+              </svg>
+            </summary>
+            <div className="lektrus-board-actions-popover" role="group" aria-label="Действия с доской">
+              <div className="lektrus-board-actions-title">Действия с доской</div>
+              <div className="lektrus-board-actions-items">
+                {boardSummary.role==="owner"&&<button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);liveLesson?setLessonPanelOpen(true):setLessonOpen(true)}}>
+                  <Icon name="play" size={18}/><span>{liveLesson?"Управление уроком":"Начать урок"}</span>
+                </button>}
+                {boardSummary.role==="owner"&&<button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);setSharing(true)}}>
+                  <Icon name="add-person" size={18}/><span>Участники</span>
+                </button>}
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);void openHistory()}}>
+                  <Icon name="reset" size={18}/><span>История изменений</span>
+                </button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);setPresentation(true);setPresentationFrameIndex(0)}}>
+                  <Icon name="slides" size={18}/><span>Презентация</span>
+                </button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);void exportBoard()}}>
+                  <Icon name="download" size={18}/><span>Скачать копию</span>
+                </button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);void openDiscussions()}}>
+                  <Icon name="comments" size={18}/><span>Чат</span>
+                </button>
+              </div>
+            </div>
+          </details>
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
             <div className="topbar-more-popover">
@@ -6306,14 +6337,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}
             </div></div>}
             {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(toolAllowedForRole)})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span><div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div></div>)}
-            <div className="mobile-tools-group"><span>Действия с доской</span><div>
-              {boardSummary.role==="owner"&&<button type="button" onClick={()=>{setMobileToolsOpen(false);liveLesson?setLessonPanelOpen(true):setLessonOpen(true)}}><Icon name="play" size={19}/><small>{liveLesson?"Управление уроком":"Начать урок"}</small></button>}
-              {boardSummary.role==="owner"&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setSharing(true)}}><Icon name="add-person" size={19}/><small>Участники</small></button>}
-              <button type="button" onClick={()=>{setMobileToolsOpen(false);void openHistory()}}><Icon name="reset" size={19}/><small>История</small></button>
-              <button type="button" onClick={()=>{setMobileToolsOpen(false);setPresentation(true);setPresentationFrameIndex(0)}}><Icon name="slides" size={19}/><small>Презентация</small></button>
-              <button type="button" onClick={()=>{setMobileToolsOpen(false);void exportBoard()}}><Icon name="download" size={19}/><small>Скачать</small></button>
-              <button type="button" onClick={()=>{setMobileToolsOpen(false);void openDiscussions()}}><Icon name="comments" size={19}/><small>Чат</small></button>
-            </div></div>
           </div>
         </section>}
         <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">

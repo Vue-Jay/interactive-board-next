@@ -319,3 +319,209 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
   body .workspace nav.mobile-board-tools,
   body .workspace section.mobile-tools-sheet {transition:none!important;animation:none!important}
 }
+
+
+/* Lektrus mobile catalogue: consistent grid, clear separation from sticky
+   title/actions, and fixed-size tiles even on incomplete rows. */
+@media screen and (max-width:1100px){
+  body .workspace .mobile-tools-sheet .mobile-tools-sheet-head{
+    position:sticky!important;
+    top:-10px!important;
+    z-index:3!important;
+    min-height:46px!important;
+    padding:7px 7px 12px!important;
+    margin:0!important;
+    border-bottom:1px solid var(--lt-line)!important;
+    background:var(--lt-raised)!important;
+  }
+  body .workspace .mobile-tools-sheet .mobile-tools-groups{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    align-content:start!important;
+    gap:16px!important;
+    margin-top:12px!important;
+    padding-top:8px!important;
+  }
+  body .workspace .mobile-tools-sheet .mobile-tools-group{
+    display:grid!important;
+    min-width:0!important;
+    gap:9px!important;
+    align-content:start!important;
+  }
+  body .workspace .mobile-tools-sheet .mobile-tools-group>span{
+    display:block!important;
+    padding:0 4px!important;
+    margin:0!important;
+    font-size:10px!important;
+    font-weight:800!important;
+    line-height:1.45!important;
+    letter-spacing:.07em!important;
+  }
+  body .workspace .mobile-tools-sheet .mobile-tools-group>div{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    grid-auto-rows:66px!important;
+    align-items:stretch!important;
+    justify-items:stretch!important;
+    gap:8px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+  body .workspace .mobile-tools-sheet .mobile-tools-group button{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:5px!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:66px!important;
+    min-height:66px!important;
+    max-height:66px!important;
+    margin:0!important;
+    padding:7px 5px!important;
+    box-sizing:border-box!important;
+    border-radius:11px!important;
+  }
+  body .workspace .mobile-tools-sheet .mobile-tools-group button svg{
+    display:block;
+    width:19px!important;
+    height:19px!important;
+    flex:0 0 19px!important;
+  }
+  body .workspace .mobile-tools-sheet .mobile-tools-group button small{
+    display:-webkit-box!important;
+    -webkit-box-orient:vertical!important;
+    -webkit-line-clamp:2!important;
+    line-clamp:2;
+    max-width:100%!important;
+    min-width:0!important;
+    white-space:normal!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    overflow-wrap:anywhere!important;
+    text-align:center!important;
+    font-size:11px!important;
+    font-weight:700!important;
+    line-height:1.25!important;
+  }
+  /* Separate board actions button in the HEADER, invisible on desktop. */
+  body .topbar .lektrus-board-actions-menu{
+    display:block!important;
+    position:relative!important;
+    flex:0 0 34px!important;
+    width:34px!important;
+    min-width:34px!important;
+    height:34px!important;
+    z-index:3!important;
+  }
+  body .topbar .lektrus-board-actions-menu>summary{
+    display:grid!important;
+    place-items:center!important;
+    width:34px!important;
+    height:34px!important;
+    padding:0!important;
+    margin:0!important;
+    cursor:pointer;
+    list-style:none;
+    background:var(--lt-subtle)!important;
+    color:var(--lt-secondary)!important;
+    border:1px solid var(--lt-line)!important;
+    border-radius:10px!important;
+  }
+  body .topbar .lektrus-board-actions-menu>summary::-webkit-details-marker{display:none}
+  body .topbar .lektrus-board-actions-menu[open]>summary,
+  body .topbar .lektrus-board-actions-menu>summary:hover{
+    background:var(--lt-selected)!important;
+    color:var(--lt-selected-ink)!important;
+    border-color:var(--lt-line-strong)!important;
+  }
+  body .topbar .lektrus-board-actions-menu>summary:focus-visible,
+  body .topbar .lektrus-board-actions-items>button:focus-visible{
+    outline:2px solid var(--lt-focus)!important;
+    outline-offset:2px!important;
+  }
+  body .topbar .lektrus-board-actions-popover{
+    position:fixed!important;
+    right:max(8px,env(safe-area-inset-right,0px))!important;
+    left:auto!important;
+    top:calc(52px + env(safe-area-inset-top,0px))!important;
+    bottom:auto!important;
+    z-index:1200!important;
+    box-sizing:border-box!important;
+    width:min(282px,calc(100vw - 16px))!important;
+    max-height:calc(100dvh - 62px - env(safe-area-inset-top,0px))!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior:contain!important;
+    padding:7px!important;
+    background:var(--lt-raised)!important;
+    color:var(--lt-text)!important;
+    border:1px solid var(--lt-line)!important;
+    border-radius:14px!important;
+    box-shadow:var(--lt-pop-shadow)!important;
+    scrollbar-width:thin!important;
+  }
+  body .topbar .lektrus-board-actions-title{
+    padding:10px 10px 11px!important;
+    font-size:12px!important;
+    line-height:1.3!important;
+    font-weight:800!important;
+    color:var(--lt-text)!important;
+    border-bottom:1px solid var(--lt-line)!important;
+  }
+  body .topbar .lektrus-board-actions-items{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:3px!important;
+    padding-top:6px!important;
+  }
+  body .topbar .lektrus-board-actions-items>button{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:11px!important;
+    padding:10px 11px!important;
+    min-height:43px!important;
+    width:100%!important;
+    border:0!important;
+    border-radius:9px!important;
+    background:transparent!important;
+    color:var(--lt-secondary)!important;
+    text-align:left!important;
+    font-size:12px!important;
+    font-weight:680!important;
+    cursor:pointer;
+  }
+  body .topbar .lektrus-board-actions-items>button svg{
+    flex:0 0 18px!important;
+  }
+  body .topbar .lektrus-board-actions-items>button:hover{
+    background:var(--lt-hover)!important;
+    color:var(--lt-text)!important;
+  }
+}
+@media screen and (min-width:1101px){
+  body .topbar .lektrus-board-actions-menu{display:none!important}
+}
+@media screen and (max-width:350px){
+  body .workspace .mobile-tools-sheet .mobile-tools-group>div{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media screen and (max-width:1100px) and (max-height:420px) and (orientation:landscape){
+  body .workspace .mobile-tools-sheet .mobile-tools-group>div{
+    grid-auto-rows:58px!important;
+  }
+  body .workspace .mobile-tools-sheet .mobile-tools-group button{
+    height:58px!important;
+    min-height:58px!important;
+    max-height:58px!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  body .topbar .lektrus-board-actions-menu,
+  body .workspace .mobile-tools-sheet .mobile-tools-group button{transition:none!important}
+}
