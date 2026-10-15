@@ -74,6 +74,7 @@ import { eraseInkAlongPath } from "./inkEraser";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
+import { readInkPreferences, writeInkPreferences, withInkSetting } from "./inkPreferences";
 import { renderBoardPreview, cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument } from "./boardPreview";
 import { getBoardHistoryVersion, listBoardHistory, type BoardHistoryEntry } from "./historyStore";
 import { changesSinceLastVisit, recentBoardHistory } from "./boardHistoryUtils";
@@ -1470,9 +1471,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [, setSaveStatus] = useState(
     initial.error || "Сохранено в браузере",
   );
-  const [color, setColor] = useState("#5355c9");
-  const [weight, setWeight] = useState(3);
-  const [markerWeight, setMarkerWeight] = useState(22);
+  const [color, setColor] = useState("#5355c9"); // Keep connector/shape color independent.
+  const [inkPreferences, setInkPreferences] = useState(() => readInkPreferences(authUser.id));
+  // Per-user defaults apply to both existing and new boards, independently per tool.
+  const penColor = inkPreferences.pen.color;
+  const markerColor = inkPreferences.marker.color;
+  const weight = inkPreferences.pen.size;
+  const markerWeight = inkPreferences.marker.size;
+  const setPenColor = (value: string) => setInkPreferences(current => withInkSetting(current, "pen", { color: value }));
+  const setMarkerColor = (value: string) => setInkPreferences(current => withInkSetting(current, "marker", { color: value }));
+  const setWeight = (value: number) => setInkPreferences(current => withInkSetting(current, "pen", { size: value }));
+  const setMarkerWeight = (value: number) => setInkPreferences(current => withInkSetting(current, "marker", { size: value }));
+  useEffect(() => { writeInkPreferences(authUser.id, inkPreferences); }, [authUser.id, inkPreferences]);
   const [eraserSize, setEraserSize] = useState(32);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [guides, setGuides] = useState<GuideState>({});
@@ -3157,7 +3167,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           ? {
               id: createId(),
               kind: tool,
-              color,
+              color: tool === "marker" ? markerColor : penColor,
               weight: tool === "marker" ? markerWeight : weight,
             }
           : undefined,
@@ -5587,12 +5597,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
         {!objectEditorOpen && !presentation && <LectrisQuickProperties
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
-          color={color} weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
+          color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
+          weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
           canModify={canEdit && !selectionLocked && !(singleSelected && isStudent && structurallyLockedForStudent(singleSelected))}
           inspectorOpen={lectrisInspectorOpen} onInspectorOpen={()=>setLectrisInspectorOpen(v=>!v)}
           onDeselect={()=>{setSelected([]);setLectrisInspectorOpen(false)}}
           onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}
-          onPatch={lectrisPatchSelected} onColor={setColor} onWeight={setWeight}
+          onPatch={lectrisPatchSelected}
+          onColor={tool === "marker" ? setMarkerColor : tool === "pen" ? setPenColor : setColor}
+          onWeight={setWeight}
           onMarkerWeight={setMarkerWeight} onEraserSize={setEraserSize}/>}
         {lectrisInspectorOpen && singleSelected && !isInkItem(singleSelected) && !objectEditorOpen && !presentation &&
           <LectrisObjectInspector key={singleSelected.id} item={singleSelected}
@@ -6145,8 +6158,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               Цвет{" "}
               <input
                 type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
+                value={tool === "marker" ? markerColor : penColor}
+                onChange={(e) => (tool === "marker" ? setMarkerColor : setPenColor)(e.target.value)}
               />
             </label>
             <label>
