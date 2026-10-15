@@ -41,7 +41,7 @@ export function useAdaptiveBoardToolbar(expanded:boolean,pinnedSignature:string)
       const listStyle=getComputedStyle(list);
       const gap=parseFloat(listStyle.rowGap)||3;
       const sample=items[0]?.querySelector<HTMLElement>(".tool-button");
-      const itemHeight=sample?.getBoundingClientRect().height||44;
+      const itemHeight=(sample?.getBoundingClientRect().height||40)+3; // include internal row spacing; .toolbar-list gap is zero
       // Small safety margin accounts for flex gaps and separators.
       const count=calculateToolbarCapacity(
         availableHeight,rest+railPad+12,itemHeight,gap,items.length

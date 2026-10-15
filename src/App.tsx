@@ -140,13 +140,13 @@ const iconBody = (name: IconName) => {
   switch (name) {
     case "settings": return <><circle cx="12" cy="12" r="3"/><path d="M10 3h4l.6 2.2 1.7.9 2.1-.7 2 3.5-1.6 1.6v2l1.6 1.6-2 3.5-2.1-.7-1.7.9L14 21h-4l-.6-2.2-1.7-.9-2.1.7-2-3.5 1.6-1.6v-2L3.6 9.9l2-3.5 2.1.7 1.7-.9L10 3Z"/></>;
     case "add-person": return <><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.5-3.5 2.5-5.5 5.5-5.5s5 2 5.5 5.5M18 8v8M14 12h8"/></>;
-    case "select": return <><path d="M5 3.7 18 11l-6 1.6-2.4 6.1L5 3.7Z"/><path d="m12.1 12.6 4.7 4.8"/><path d="M18.5 4.5h2v2M20.5 9v2.5" strokeDasharray="1.5 2"/></>;
+    case "select": return <path d="M4.5 3.5 18.8 11.4l-6.5 1.2-2.7 6.1L4.5 3.5Z"/>;
     case "hand": return <><path d="M7.5 11V7.7a1.5 1.5 0 0 1 3 0V10"/><path d="M10.5 10V6.2a1.5 1.5 0 0 1 3 0V10"/><path d="M13.5 10V7a1.5 1.5 0 0 1 3 0v5"/><path d="M7.5 10.2 6.4 9.1a1.6 1.6 0 0 0-2.3 2.2l4.5 6.1A4 4 0 0 0 11.8 19h1.7a5 5 0 0 0 5-5v-3a1.5 1.5 0 0 0-3 0v1"/></>;
     case "lasso": return <><path d="M18.6 9.2c.6 3.3-2.5 6.2-7.1 6.7C7 16.4 3.6 14.5 3.5 11.7c-.2-3.1 2.8-5.9 7.4-6.2 4.1-.3 7.1 1.2 7.7 3.7Z" strokeDasharray="3 2"/><path d="M11.3 15.9c.6 2.8 2.7 4.6 4.9 3.9 1.6-.5 2-2.5.7-3.2-1.3-.7-2.7.2-2.2 1.1"/></>;
     case "pen": return <><path d="m4.5 19.5 4.8-1.1L19 8.7a2.15 2.15 0 0 0-3-3L6.3 15.4l-1.8 4.1Z"/><path d="m13.7 7.9 3.3 3.3M7.1 15.2l2.6 2.6"/><path d="M3.7 21h6" opacity=".5"/></>;
     case "marker": return <><path d="m4.5 15.6 9.9-10a1.9 1.9 0 0 1 2.7 0l2 2a1.9 1.9 0 0 1 0 2.7l-9.8 9.8H4.5v-4.5Z"/><path d="m13.1 7 4.6 4.5M6.2 16.6l2.2 2.2"/><path d="M3 21h11" strokeWidth="2.6"/></>;
     case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
-    case "connector": return <><rect x="3" y="15" width="6" height="6" rx="1.5"/><rect x="15" y="3" width="6" height="6" rx="1.5"/><path d="M9 16.3 16.3 9M12.5 9H17v4.5"/></>;
+    case "connector": return <><path d="M3.5 12h17"/><path d="M14.5 5.5 21 12l-6.5 6.5"/></>;
     case "frame": return <><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2"/><rect x="8" y="8" width="8" height="8" rx="1.2"/><path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/></>;
     case "comment": return <><path d="M5 4.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-14a2 2 0 0 1 1-2Z"/><path d="M8 9h9M8 13h6"/></>;
     case "table": return <><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M9.5 9.5v10M15.5 9.5v10"/><path d="M6.5 7h2" strokeWidth="2"/></>;
