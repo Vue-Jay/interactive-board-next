@@ -2810,6 +2810,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         setTool("select");
       }
     }
+    else if(g.mode==="marquee"){
+      const startWorld={x:(g.start.x-g.view.x)/g.view.zoom,y:(g.start.y-g.view.y)/g.view.zoom};
+      const last=g.path[g.path.length-1]??startWorld;
+      const distance=Math.hypot((last.x-startWorld.x)*g.view.zoom,(last.y-startWorld.y)*g.view.zoom);
+      const found=distance>4?itemsInsideRect(itemsRef.current,startWorld,last):[];
+      setSelected(g.additive?[...new Set([...g.ids,...found])]:found);
+    }
     else if (g.mode === "lasso") {
       // Lasso is a *selection* tool, never destructive. Ink is stored as
       // individual objects and uses geometric stroke/polygon intersection.
@@ -2834,11 +2841,26 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       setSelected(g.additive ? [...new Set([...g.ids,...hits])] : hits);
     }
     setPath([]);
+    setMarqueeRect(null);
     setPreview(null);
     setPanning(false);
     setGuides({});
     if (board.current?.hasPointerCapture(g.pointer))
       board.current.releasePointerCapture(g.pointer);
+  };
+  const openBoardContextMenu = (clientX:number,clientY:number,domId?:string) => {
+    finishEdit();
+    const screen=local(clientX,clientY);
+    const at=world(screen);
+    const domIndex=domId?itemsRef.current.findIndex(item=>item.id===domId):-1;
+    const ink=hitTestInk(itemsRef.current,at,7/Math.max(.1,view.zoom),domIndex);
+    const id=ink?.id??domId;
+    const hit=itemsRef.current.find(item=>item.id===id);
+    if(hit){
+      const family=familyIdsFor(hit);
+      if(!family.every(member=>selected.includes(member)))setSelected(family);
+    }else setSelected([]);
+    setContextMenu({x:screen.x,y:screen.y});
   };
   const down = (e: PE<HTMLElement>) => {
     if (gesture.current || eraserSession.current || (e.target as HTMLElement).closest("textarea"))
@@ -3165,6 +3187,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       setSelected(ids);
       if (structurallyLockedForStudent(hit)) return;
       if (!ids.includes(id) || ids.some((member) => itemsRef.current.find((item) => item.id === member)?.locked)) return;
+    } else if(tool==="select" && !space && e.button===0){
+      // Dragging from empty canvas selects all objects intersecting a rectangle.
+      // It is a viewport-only gesture and never creates a board document revision.
+      mode="marquee";
+      ids=selected;
+      setMarqueeRect(null);
     } else {
       setSelected([]);
       return;
@@ -3257,6 +3285,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const p = local(e.clientX, e.clientY);
     const dx = p.x - g.start.x,
       dy = p.y - g.start.y;
+    if(g.mode==="marquee"){
+      const now=world(p);
+      g.path=[now];
+      setMarqueeRect(Math.hypot(dx,dy)>4?normalizeSelectionRect(g.start,p):null);
+      return;
+    }
     if ((g.mode === "drag" || g.mode === "hand-smart") && !g.dragging) {
       if (Math.hypot(dx, dy) < 5) return;
       g.dragging = true;
