@@ -346,3 +346,112 @@
     stroke:none!important;
   }
 }
+
+
+/* Lektrus 2026 header refresh: compact groups without changing event handlers. */
+html body .topbar:not(.update-banner){
+  height:56px;
+  min-height:56px;
+  padding:0 clamp(8px,1.2vw,16px);
+  gap:clamp(7px,1vw,14px);
+  background:var(--lt-raised,#fff)!important;
+  box-shadow:0 2px 12px rgba(20,39,68,.055)!important;
+}
+html body .topbar .topbar-left{
+  flex:1 1 auto;
+  min-width:0;
+  gap:8px;
+  overflow:hidden;
+}
+html body .topbar .topbar-right{
+  flex:0 1 auto;
+  min-width:0;
+  gap:5px;
+}
+html body .topbar .board-home-button{
+  flex:0 0 auto;
+  min-height:34px!important;
+  height:34px!important;
+  padding:0 11px!important;
+  background:var(--lt-subtle,#f3f6fa)!important;
+  border:1px solid var(--lt-line,#dee5ee)!important;
+  border-radius:9px!important;
+  color:var(--lt-secondary,#40536b)!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  white-space:nowrap;
+}
+html body .topbar .board-title{
+  box-sizing:border-box;
+  flex:0 1 250px;
+  min-width:95px;
+  width:clamp(95px,18vw,250px);
+  height:35px!important;
+  padding:6px 9px!important;
+  border:1px solid transparent!important;
+  border-radius:8px!important;
+  font-size:14px!important;
+  font-weight:750!important;
+  text-overflow:ellipsis;
+  transition:background .15s,border-color .15s;
+}
+html body .topbar .board-title:hover{background:var(--lt-subtle,#f4f6fa)!important;border-color:var(--lt-line,#dae2ec)!important}
+html body .topbar .board-title:focus{background:var(--lt-raised,#fff)!important;border-color:var(--lt-primary,#5374d6)!important}
+html body .topbar .lectris-board-context{
+  flex:0 1 auto;
+  max-width:150px;
+  min-width:0;
+  padding:5px 8px;
+  background:var(--lt-subtle,#f2f5fb);
+  border-color:var(--lt-line,#dae2ef);
+  border-radius:7px;
+  font-size:10px;
+}
+html body .topbar .topbar-right :is(.compact-top-action,.topbar-more-trigger,.board-chat-button,.lectris-layout-picker>summary,.lektrus-board-actions-menu>summary){
+  box-sizing:border-box;
+  min-width:34px!important;
+  width:34px!important;
+  min-height:34px!important;
+  height:34px!important;
+  padding:0!important;
+  border-radius:9px!important;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 34px;
+}
+html body .topbar .board-chat-button{gap:5px!important;width:auto!important;min-width:34px!important;padding:0 9px!important}
+html body .topbar .topbar-right .presence-menu>summary{
+  box-sizing:border-box;
+  min-height:34px;
+  height:34px;
+  border-radius:9px;
+}
+html body .topbar .topbar-right :is(.compact-top-action,.topbar-more-trigger,.board-chat-button,.lectris-layout-picker>summary,.lektrus-board-actions-menu>summary):hover{
+  background:var(--lt-hover,#edf2f9)!important;
+}
+html body .topbar .topbar-right>details{flex:0 0 auto;min-width:0}
+html body .topbar .topbar-right>details[open]{z-index:1200}
+html body .topbar .topbar-right>details :is(.lectris-layout-menu,.topbar-more-popover,.lektrus-board-actions-popover,.presence-popover){
+  z-index:1250;
+}
+@media(max-width:1050px){
+  html body .topbar .lectris-board-context{display:none}
+  html body .topbar .topbar-left{gap:5px}
+  html body .topbar .topbar-right{gap:3px}
+}
+@media(max-width:700px){
+  html body .topbar:not(.update-banner){height:52px;min-height:52px;padding:0 7px;gap:5px}
+  html body .topbar .board-home-button{padding:0 7px!important;font-size:11px!important}
+  html body .topbar .board-title{flex:1 1 90px;width:auto;min-width:55px;font-size:12px!important;padding:4px 5px!important}
+  html body .topbar .topbar-right :is(.compact-top-action,.topbar-more-trigger,.board-chat-button,.lectris-layout-picker>summary,.lektrus-board-actions-menu>summary){
+    min-width:30px!important;width:30px!important;height:30px!important;min-height:30px!important;flex-basis:30px
+  }
+  html body .topbar .topbar-right .board-chat-button{padding:0 5px!important;width:auto!important}
+}
+@media(max-width:470px){
+  html body .topbar .topbar-right{gap:2px}
+  html body .topbar .topbar-left{gap:3px}
+  html body .topbar .board-title{min-width:45px}
+  html body .topbar .topbar-right .board-chat-button span{display:none}
+}
