@@ -1533,10 +1533,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   });
   const [lectrisCustomizeOpen,setLectrisCustomizeOpen]=useState(false);
   useEffect(()=>{try{localStorage.setItem(lectrisToolbarKey,JSON.stringify(lectrisPinned))}catch{}},[lectrisToolbarKey,lectrisPinned]);
-  const lectrisToolbarOrder=useMemo(()=>[
-    ...lectrisPinned,
-    ...tools.map(t=>t.id).filter(id=>!lectrisPinned.includes(id)&&id!=="hand"&&id!=="select"&&id!=="lasso")
-  ],[lectrisPinned]);
   const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(toolAllowedForRole)],[lectrisPinned,isStudent]);
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
