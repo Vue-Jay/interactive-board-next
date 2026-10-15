@@ -644,3 +644,140 @@
     left:50%;
   }
 }
+
+
+/* Lektrus configuration dialogs: keep actions reachable and prevent long tool
+   names or two-column content from pushing buttons off-screen. */
+.lectris-tools-customize-backdrop,
+.lectris-panel-settings-overlay{
+  box-sizing:border-box;
+  padding:clamp(8px,2vw,16px);
+}
+.lectris-tools-customize{
+  box-sizing:border-box;
+  width:min(660px,calc(100vw - 24px));
+  max-height:calc(100dvh - 24px);
+  min-width:0;overflow:hidden;
+  border-radius:17px;
+}
+.lectris-tools-customize header,
+.lectris-panel-settings-dialog>header{
+  flex:0 0 auto;min-width:0;
+  gap:10px;padding:15px 17px 10px;
+}
+.lectris-tools-customize header>div,
+.lectris-panel-settings-dialog>header>div{
+  min-width:0;flex:1 1 auto;
+}
+.lectris-tools-customize header h2,
+.lectris-panel-settings-dialog>header h2{
+  font-size:clamp(17px,2vw,21px);
+  overflow-wrap:anywhere;
+}
+.lectris-tools-customize header button,
+.lectris-panel-settings-dialog>header button{
+  flex:0 0 34px;
+}
+.lectris-tools-customize>p{
+  font-size:11px;margin:0 17px 11px;line-height:1.45;
+}
+.lectris-tools-customize-sections{
+  min-width:0;max-width:100%;
+  gap:10px;padding:0 16px 13px;
+  overflow-y:auto;overscroll-behavior:contain;
+}
+.lectris-tools-customize-section{min-width:0;padding:9px}
+.lectris-tools-customize-section h3{margin:3px 5px 9px}
+.lectris-tools-customize-list{gap:5px;min-width:0}
+.lectris-tools-customize-row{
+  gap:6px;min-width:0;min-height:38px;
+  padding:5px 7px;
+}
+.lectris-tools-customize-row>span{
+  flex:1 1 auto;min-width:0;
+  font-size:11px;
+  overflow:hidden;text-overflow:ellipsis;
+  line-height:1.35;
+}
+.lectris-tools-customize-row>div{
+  flex:0 0 auto;
+  display:flex;gap:3px;
+}
+.lectris-tools-customize-row button{
+  flex:0 0 28px;min-width:28px;
+  width:28px;height:28px;
+  padding:2px;
+}
+.lectris-tools-customize footer{
+  flex:0 0 auto;
+  min-width:0;
+  gap:8px;padding:10px 16px;
+  background:#fff;
+}
+.lectris-tools-customize footer>div{min-width:0;display:flex;flex-wrap:wrap;gap:6px}
+.lectris-tools-customize footer button{
+  white-space:normal;min-height:35px;
+  padding:7px 10px;font-size:11px;
+}
+.lectris-panel-settings-dialog{
+  width:min(500px,calc(100vw - 24px));
+  max-height:calc(100dvh - 24px);
+  overflow-y:auto;
+}
+.lectris-panel-settings-dialog>p{
+  min-width:0;
+  padding:0 17px 11px;
+  font-size:11px;line-height:1.5;
+}
+.lectris-panel-settings-form{
+  min-width:0;max-width:100%;
+  gap:10px;padding:0 17px 13px;
+}
+.lectris-panel-settings-field{min-width:0;padding:8px}
+.lectris-panel-settings-segments{
+  flex-wrap:wrap;gap:3px;
+}
+.lectris-panel-settings-segments label{
+  flex:1 1 90px;
+  min-width:0;min-height:34px;
+  padding:5px 7px;
+  font-size:11px;overflow-wrap:anywhere;
+}
+.lectris-panel-settings-range{
+  min-width:0;gap:8px;padding:10px;
+}
+.lectris-panel-settings-hint{
+  min-width:0;max-width:calc(100% - 34px);
+  margin:0 17px 12px;padding:10px 11px;
+  line-height:1.45;
+}
+.lectris-panel-settings-dialog footer{
+  gap:8px;padding:10px 17px;
+}
+.lectris-panel-settings-dialog footer>div{min-width:0;gap:6px}
+.lectris-panel-settings-dialog footer button{
+  min-height:35px;
+  padding:7px 10px;
+  font-size:11px;
+}
+@media(max-width:700px){
+  .lectris-tools-customize-sections{grid-template-columns:1fr;padding:0 10px 11px}
+  .lectris-tools-customize>p{margin:0 11px 9px}
+  .lectris-tools-customize header,
+  .lectris-panel-settings-dialog>header{padding:11px 12px 9px}
+  .lectris-tools-customize footer{padding:9px 12px;flex-wrap:wrap}
+  .lectris-tools-customize footer>div{margin-left:auto}
+  .lectris-panel-settings-dialog>p{padding:0 12px 10px}
+  .lectris-panel-settings-form{grid-template-columns:1fr;padding:0 12px 12px}
+  .lectris-panel-settings-hint{margin:0 12px 10px;max-width:calc(100% - 24px)}
+  .lectris-panel-settings-dialog footer{padding:9px 12px}
+}
+@media(max-height:560px){
+  .lectris-tools-customize,.lectris-panel-settings-dialog{
+    max-height:calc(100dvh - 12px);
+    border-radius:12px;
+  }
+  .lectris-tools-customize-sections{
+    overflow-y:auto;
+  }
+}
