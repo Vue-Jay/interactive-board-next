@@ -1,0 +1,408 @@
+/*
+ * Lektrus visual themes.
+ * Final presentation layer only: no canvas pixels, object colors, geometry,
+ * pointer events, z-indices or realtime logic are changed.
+ * Primary = action, tint = selection, surface = content, edge = separation.
+ */
+:root {
+  color-scheme:light;
+  --lt-page:#f2f5fa;
+  --lt-surface:#fff;
+  --lt-raised:#fff;
+  --lt-sidebar:#fff;
+  --lt-subtle:#f6f8fc;
+  --lt-hover:#edf2fa;
+  --lt-line:#d5dfed;
+  --lt-line-strong:#b8c9e0;
+  --lt-text:#172a45;
+  --lt-secondary:#425a78;
+  --lt-muted:#617590;
+  --lt-primary:#3056c8;
+  --lt-primary-hover:#2345ad;
+  --lt-on-primary:#fff;
+  --lt-selected:#e6eeff;
+  --lt-selected-ink:#244da9;
+  --lt-focus:#6486ed;
+  --lt-shadow:0 8px 26px rgba(20,39,72,.09);
+  --lt-pop-shadow:0 22px 56px rgba(16,32,61,.22);
+}
+:root[data-lectris-palette="jade"] {
+  --lt-primary:#08786b;--lt-primary-hover:#076154;
+  --lt-selected:#dff4ef;--lt-selected-ink:#075f54;--lt-focus:#168f81;
+}
+:root[data-lectris-palette="violet"] {
+  --lt-primary:#6743ae;--lt-primary-hover:#53348f;
+  --lt-selected:#f0e9ff;--lt-selected-ink:#55369b;--lt-focus:#9978e0;
+}
+:root[data-lectris-palette="sunset"] {
+  --lt-primary:#b54d3a;--lt-primary-hover:#96392c;
+  --lt-selected:#fff0e9;--lt-selected-ink:#9b3c2f;--lt-focus:#d67860;
+}
+:root[data-theme="dark"] {
+  color-scheme:dark;
+  --lt-page:#101a29;
+  --lt-surface:#19283b;
+  --lt-raised:#213249;
+  --lt-sidebar:#142235;
+  --lt-subtle:#223249;
+  --lt-hover:#2a3e56;
+  --lt-line:#3a506a;
+  --lt-line-strong:#5b7391;
+  --lt-text:#f2f6ff;
+  --lt-secondary:#d2dff0;
+  --lt-muted:#a9bbd2;
+  --lt-selected:#293c64;
+  --lt-selected-ink:#bdd0ff;
+  --lt-focus:#9ab4ff;
+  --lt-shadow:0 8px 28px rgba(0,0,0,.19);
+  --lt-pop-shadow:0 24px 60px rgba(0,0,0,.48);
+}
+:root[data-theme="dark"][data-lectris-palette="jade"] {
+  --lt-selected:#1c4947;--lt-selected-ink:#a1eee0;--lt-focus:#66d3c0;
+}
+:root[data-theme="dark"][data-lectris-palette="violet"] {
+  --lt-selected:#3e315b;--lt-selected-ink:#dfc9ff;--lt-focus:#c5a6fa;
+}
+:root[data-theme="dark"][data-lectris-palette="sunset"] {
+  --lt-selected:#54372f;--lt-selected-ink:#ffc5b2;--lt-focus:#ffa890;
+}
+
+/* Workspace hierarchy: stage, navigation and content never share a surface. */
+.lectris-workspace {
+  --lx-accent:var(--lt-primary);
+  --lx-accent-hover:var(--lt-primary-hover);
+  --lx-accent-soft:var(--lt-selected);
+  --lx-ink:var(--lt-text);
+  --lx-muted:var(--lt-muted);
+  --lx-border:var(--lt-line);
+  --lx-surface:var(--lt-surface);
+  --lx-soft:var(--lt-subtle);
+  --lectris-bg:var(--lt-page);
+  --lectris-fg:var(--lt-text);
+  --lectris-muted:var(--lt-muted);
+  --lectris-line:var(--lt-line);
+  --lectris-paper:var(--lt-surface);
+  --lectris-accent:var(--lt-primary);
+  --lektrus-text:var(--lt-text);
+  --lektrus-muted:var(--lt-muted);
+  --lektrus-border:var(--lt-line);
+  background:var(--lt-page)!important;
+  color:var(--lt-text);
+}
+.lectris-workspace-header,
+.lectris-workspace-sidebar,
+.lectris-workspace-stage .students-header {
+  background:var(--lt-sidebar)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text)!important;
+}
+.lectris-workspace-header {box-shadow:0 2px 12px rgba(10,26,52,.06)!important}
+.lectris-brand strong,
+.lectris-header-page>span,
+.lectris-workspace-stage .students-header strong {
+  color:var(--lt-text)!important;
+}
+.lectris-header-page small,
+.lectris-workspace-stage .students-header span,
+.lectris-sidebar-head>span,
+.lectris-nav-group-title {color:var(--lt-muted)!important}
+.lectris-workspace .lectris-header-icon,
+.lectris-workspace .lectris-header-account,
+.lectris-workspace .lectris-nav-link {
+  color:var(--lt-secondary)!important;
+}
+.lectris-workspace .lectris-nav-link svg {color:inherit!important}
+.lectris-workspace .lectris-nav-link:hover:not(.is-active),
+.lectris-workspace :is(.lectris-header-icon,.lectris-header-account,.lectris-collapse-button):hover {
+  color:var(--lt-text)!important;
+  background:var(--lt-hover)!important;
+}
+.lectris-workspace .lectris-nav-link.is-active,
+.lectris-workspace .lectris-mobile-tab.is-active {
+  background:var(--lt-selected)!important;
+  border-color:var(--lt-line-strong)!important;
+  color:var(--lt-selected-ink)!important;
+  box-shadow:inset 3px 0 var(--lt-primary)!important;
+}
+.lectris-workspace .lectris-nav-link.is-active svg {color:inherit!important}
+.lectris-workspace :is(.lectris-collapse-button,.lectris-header-search,.lectris-avatar) {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-secondary)!important;
+}
+.lectris-workspace :is(.lectris-header-search,.lectris-header-icon):hover {
+  background:var(--lt-hover)!important;
+  color:var(--lt-text)!important;
+}
+.lectris-workspace .lectris-brand-mark {
+  color:#fff!important;
+  background:var(--lt-primary)!important;
+  box-shadow:0 4px 12px rgba(20,39,72,.13)!important;
+}
+.lectris-workspace-stage :is(.lectris-hub-section,.lectris-hub-stats>div,.lectris-hub-board,.lectris-hub-tile,
+  .lectris-library-card,.lektrus-category-panel,.lektrus-collection-boards,.board-card,
+  .student-card,.students-list,.assignment-card,.material-card,.template-card,
+  .notification-card,.progress-panel,.schedule-side,.schedule-day,.next-card,
+  .settings-row-card,.profile-card,.lectris-overview) {
+  background:var(--lt-surface)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text);
+}
+.lectris-workspace-stage :is(.lectris-hub-section,.lectris-library-card,.lektrus-category-panel,.lektrus-collection-boards,.assignment-card,.material-card,.settings-row-card) {
+  box-shadow:var(--lt-shadow);
+}
+.lectris-workspace-stage :is(.lectris-hub-board,.board-card,.material-card,.assignment-card):hover {
+  border-color:var(--lt-line-strong)!important;
+}
+.lectris-workspace-stage :is(.lectris-hub-intro h1,.lectris-hub-section-head h2,.lektrus-page-heading h1,
+  .lektrus-collection-topline h2,.lektrus-category-panel-heading strong,
+  .lectris-hub-board-info strong,.lektrus-collection-empty strong,
+  .student-card h2,.assignment-card h3,.material-card b,
+  .settings-row-card b,.profile-card h2) {color:var(--lt-text)!important}
+.lectris-workspace-stage :is(.lectris-hub-intro p,.lektrus-page-heading p,.lektrus-category-panel-heading small,
+  .lectris-hub-board-info small,.lektrus-collection-empty p,.settings-row-card small,
+  .lectris-hub-stats span,.lectris-hub-sync,.lectris-hub-local-note) {
+  color:var(--lt-muted)!important;
+}
+.lectris-workspace-stage :is(.lektrus-collection,.lektrus-collection-empty) {color:var(--lt-text)}
+.lectris-workspace-stage :is(.lektrus-category-strip>button,.lektrus-view-switch,
+  .lectris-hub-categories,.students-toolbar,.materials-toolbar,.assignment-controls) {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-secondary)!important;
+}
+.lectris-workspace-stage :is(.lektrus-category-strip>button.selected,.lektrus-view-switch button.selected,
+  .lectris-library-filters button.active,.lectris-hub-categories button.selected) {
+  background:var(--lt-selected)!important;
+  border-color:var(--lt-line-strong)!important;
+  color:var(--lt-selected-ink)!important;
+}
+.lectris-workspace-stage :is(.lectris-library-new,.lektrus-collection-add,.lektrus-category-create,
+  .lectris-hub .lectris-hub-primary,.boards-create,.students-primary) {
+  background:var(--lt-primary)!important;
+  border-color:var(--lt-primary)!important;
+  color:var(--lt-on-primary)!important;
+}
+.lectris-workspace-stage :is(.lectris-library-new,.lektrus-collection-add,.lektrus-category-create,
+  .lectris-hub .lectris-hub-primary,.boards-create,.students-primary):hover:not(:disabled) {
+  background:var(--lt-primary-hover)!important;
+  border-color:var(--lt-primary-hover)!important;
+}
+.lectris-workspace-stage :is(.boards-secondary,.lektrus-page-secondary,.material-actions button,
+  .settings-row-card>button,.settings-row-card>select,.settings-row-card>input:not([type=checkbox])) {
+  background:var(--lt-raised)!important;
+  color:var(--lt-secondary)!important;
+  border-color:var(--lt-line)!important;
+}
+.lectris-workspace-stage :is(.boards-secondary,.lektrus-page-secondary,.material-actions button,.settings-row-card>button):hover:not(:disabled) {
+  background:var(--lt-hover)!important;
+  color:var(--lt-text)!important;
+}
+.lectris-workspace-stage :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),textarea,select) {
+  background:var(--lt-raised);
+  border-color:var(--lt-line);
+  color:var(--lt-text);
+}
+.lectris-workspace-stage :is(input,textarea)::placeholder {color:var(--lt-muted)}
+.lectris-workspace-stage :is(.lectris-hub-sync,.lectris-command-dialog,.lectris-mobile-more,
+  .lectris-hub-dialog,.lectris-tools-customize,.lectris-panel-settings-dialog) {
+  background:var(--lt-raised)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text)!important;
+}
+.lectris-mobile-bottom,
+.lectris-mobile-more,
+.lectris-mobile-more-search {
+  background:var(--lt-sidebar)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text)!important;
+}
+.lectris-mobile-bottom .lectris-mobile-tab {color:var(--lt-secondary)!important}
+.lectris-mobile-more .lectris-nav-link {color:var(--lt-secondary)!important}
+.lectris-command-overlay {background:rgba(6,16,31,.52)}
+.lectris-command-dialog {background:var(--lt-raised)!important;color:var(--lt-text)!important;border:1px solid var(--lt-line)!important}
+.lectris-command-input-row,
+.lectris-command-hint {border-color:var(--lt-line)!important;color:var(--lt-muted)!important}
+.lectris-command-input-row input {background:transparent!important;color:var(--lt-text)!important}
+.lectris-command-results>button {color:var(--lt-secondary)!important}
+.lectris-command-results>button:hover,.lectris-command-results>button:focus-visible {
+  background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;
+}
+
+/* Board chrome only. The drawing layer intentionally remains paper-white. */
+.topbar:not(.update-banner),
+.workspace .toolbar.compact-toolbar,
+.workspace .mobile-board-tools,
+.workspace .mobile-tools-sheet,
+.workspace :is(.ink-settings,.shape-settings,.eraser-settings,.connector-settings,.selection-toolbar-screen),
+.workspace .lectris-quick-properties,
+.workspace .lectris-object-inspector,
+.workspace :is(.search-panel,.layers-panel,.comments-panel,.shortcuts-panel,.templates-panel,.presentation-slides-panel),
+.lectris-layout-menu,.lectris-subject-toolbox-menu,.lektrus-colors-popup {
+  background:var(--lt-raised)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text)!important;
+  box-shadow:var(--lt-shadow)!important;
+}
+.topbar:not(.update-banner) {border-bottom-color:var(--lt-line)!important}
+.topbar .board-title {color:var(--lt-text)!important}
+.topbar :is(.top-button,.compact-top-action,.topbar-more-trigger,.board-invite-button,.board-home-button),
+.workspace .toolbar.compact-toolbar :is(.tool-button,.toolbar-more),
+.workspace .mobile-board-tools button {
+  color:var(--lt-secondary)!important;
+}
+.topbar .board-home-button,.topbar .lectris-board-context,
+.workspace .toolbar.compact-toolbar .toolbar-more,.lectris-layout-picker>summary {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-secondary)!important;
+}
+.topbar :is(.top-button,.compact-top-action,.topbar-more-trigger,.board-home-button):hover,
+.workspace .toolbar.compact-toolbar .tool-button:hover:not(.active),
+.workspace .mobile-board-tools button:hover:not(.active) {
+  color:var(--lt-text)!important;
+  background:var(--lt-hover)!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button.active,
+.workspace .mobile-board-tools button.active,
+.workspace .mobile-tools-group button.active {
+  color:#fff!important;
+  background:var(--lt-primary)!important;
+  border-color:var(--lt-primary)!important;
+  box-shadow:0 3px 10px rgba(10,28,59,.17)!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button.active svg {color:#fff!important}
+.workspace :is(.ink-settings,.shape-settings,.eraser-settings,.connector-settings,.selection-toolbar-screen) :is(label,span) {
+  color:var(--lt-secondary);
+}
+.workspace .lectris-inspector-head,
+.workspace :is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+  .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header) {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text)!important;
+}
+.workspace :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+  .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal),
+.lectris-panel-settings-dialog,.lectris-tools-customize,.lectris-hub-dialog {
+  background:var(--lt-raised)!important;
+  color:var(--lt-text)!important;
+  border-color:var(--lt-line)!important;
+  box-shadow:var(--lt-pop-shadow)!important;
+}
+.workspace :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+  .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal) :is(input,select,textarea),
+.lectris-panel-settings-dialog :is(input:not([type=range]),select,textarea),
+.lektrus-colors-popup input:not([type=color]) {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text)!important;
+}
+.workspace :is(.lectris-inspector-section,.lectris-inspector-field,.lectris-inspector-head) {border-color:var(--lt-line)!important}
+.workspace .lectris-inspector-head {color:var(--lt-text)!important}
+.workspace .lectris-inspector-section h3,
+.lectris-panel-settings-field legend {color:var(--lt-secondary)!important}
+.workspace .lectris-inspector-text,
+.lectris-panel-settings-hint,
+.lectris-panel-settings-segments,
+.lectris-panel-settings-field {
+  background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-secondary)!important;
+}
+.lectris-panel-settings-segments label {color:var(--lt-secondary)!important}
+.lectris-panel-settings-segments label.active {
+  background:var(--lt-selected)!important;
+  color:var(--lt-selected-ink)!important;
+  border-color:var(--lt-line-strong)!important;
+}
+.lectris-panel-settings-dialog footer,
+.lectris-panel-settings-dialog header {border-color:var(--lt-line)!important}
+.lectris-panel-settings-dialog footer button,
+.lectris-panel-settings-dialog>header button,
+.lektrus-colors-popup header button {
+  background:var(--lt-subtle)!important;color:var(--lt-secondary)!important;border-color:var(--lt-line)!important;
+}
+.lectris-panel-settings-dialog footer .lectris-panel-settings-primary {
+  background:var(--lt-primary)!important;border-color:var(--lt-primary)!important;color:#fff!important;
+}
+.lektrus-colors-popup {box-shadow:var(--lt-pop-shadow)!important}
+.lektrus-color-current,.lektrus-color-wheel {
+  background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-secondary)!important;
+}
+.lektrus-color-add-row>button,.lektrus-color-add-row>label {
+  background:var(--lt-subtle)!important;border-color:var(--lt-line)!important;color:var(--lt-secondary)!important;
+}
+.lektrus-colors-popup header strong {color:var(--lt-text)!important}
+.lektrus-color-limit {color:var(--lt-muted)!important}
+
+/* Theme chooser has a recognizable preview, not just three ambiguous names. */
+.lectris-workspace-stage .settings-row-card.lektrus-theme-setting {
+  display:grid;grid-template-columns:minmax(145px,1fr) minmax(0,2fr);
+  align-items:center;gap:14px;
+}
+.lektrus-theme-options {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lectris-workspace-stage .lektrus-theme-options>button {
+  min-width:0;height:auto;min-height:92px;display:flex;flex-direction:column;align-items:stretch;
+  gap:5px;padding:8px;border:1px solid var(--lt-line)!important;border-radius:12px;
+  background:var(--lt-subtle)!important;color:var(--lt-secondary)!important;
+  cursor:pointer;text-align:left;box-shadow:none!important;
+}
+.lektrus-theme-options>button>strong {font-size:11px;color:var(--lt-text);font-weight:800}
+.lektrus-theme-options>button>small {font-size:10px;color:var(--lt-muted);line-height:1.2}
+.lectris-workspace-stage .lektrus-theme-options>button:hover {
+  background:var(--lt-hover)!important;border-color:var(--lt-line-strong)!important;
+}
+.lectris-workspace-stage .lektrus-theme-options>button.selected {
+  background:var(--lt-selected)!important;border-color:var(--lt-primary)!important;
+  box-shadow:0 0 0 1px var(--lt-primary)!important;
+}
+.lektrus-theme-preview {
+  position:relative;display:block;width:100%;height:34px;overflow:hidden;
+  border-radius:7px;border:1px solid #cbd6e6;background:#eff4fa;
+}
+.lektrus-theme-preview::before {
+  content:"";position:absolute;inset:0 auto 0 0;width:23%;background:#dbe5f1;border-right:1px solid #c6d4e5;
+}
+.lektrus-theme-preview::after {
+  content:"";position:absolute;left:34%;top:7px;width:51%;height:19px;
+  background:#fff;border:1px solid #cad6e8;border-radius:4px;box-shadow:0 2px 3px #1d385014;
+}
+.lektrus-theme-preview.is-dark {background:#101a29;border-color:#53677f}
+.lektrus-theme-preview.is-dark::before{background:#24344b;border-color:#43576f}
+.lektrus-theme-preview.is-dark::after{background:#263b55;border-color:#506884}
+.lektrus-theme-preview.is-system {background:linear-gradient(90deg,#edf3fb 50%,#18283d 50%)}
+.lektrus-theme-preview.is-system::before{background:#d6e2f0;border-color:#b4c6dc}
+.lektrus-theme-preview.is-system::after{background:linear-gradient(90deg,#fff 50%,#273a53 50%);border-color:#9baaba}
+.lectris-workspace-stage .lectris-palette-options>button {
+  background:var(--lt-subtle)!important;
+  color:var(--lt-secondary)!important;
+  border-color:var(--lt-line)!important;
+}
+.lectris-workspace-stage .lectris-palette-options>button.selected {
+  background:var(--lt-selected)!important;
+  color:var(--lt-selected-ink)!important;
+  border-color:var(--lt-primary)!important;
+  box-shadow:inset 0 0 0 1px var(--lt-primary)!important;
+}
+.lectris-workspace-stage .lectris-palette-options>button:hover {
+  border-color:var(--lt-line-strong)!important;
+}
+:root :is(.lectris-workspace,.workspace,.lectris-panel-settings-dialog,.lektrus-colors-popup)
+ :is(button,input,select,textarea,summary):focus-visible {
+  outline:2px solid var(--lt-focus)!important;outline-offset:2px!important;
+}
+:root :is(.lectris-workspace,.workspace,.lectris-panel-settings-dialog) :is(input[type=range],input[type=checkbox],input[type=radio]) {
+  accent-color:var(--lt-primary);
+}
+@media(max-width:730px){
+  .lectris-workspace-stage .settings-row-card.lektrus-theme-setting {grid-template-columns:1fr}
+  .lektrus-theme-options {grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .lectris-workspace-stage .lektrus-theme-options>button {padding:6px;min-height:85px}
+}
+@media(max-width:390px){
+  .lektrus-theme-options {grid-template-columns:repeat(3,minmax(0,1fr))}
+  .lektrus-theme-preview {height:28px}
+  .lektrus-theme-options>button>small {font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+  .lektrus-theme-options>button{transition:none!important}
+}
