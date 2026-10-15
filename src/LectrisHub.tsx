@@ -101,7 +101,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
   const boardById=useMemo(()=>new Map(boards.map(b=>[b.id,b])),[boards]);
   const upcoming=useMemo(()=>lessons.filter(l=>l.status==="planned"&&Date.parse(l.startsAt)>=Date.now()-30*60*1000)
     .sort((a,b)=>a.startsAt.localeCompare(b.startsAt)),[lessons]);
-  const recent=useMemo(()=>[...boards].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,6),[boards]);
+  const recent=useMemo(()=>[...boards].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,3),[boards]);
   const getOrg=(board:BoardSummary):Organization=>organization[board.id]||{subject:"",group:""};
   const visibleHomeBoards=useMemo(()=>{
     const query=boardSearch.trim().toLocaleLowerCase("ru-RU");
