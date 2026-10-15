@@ -11,6 +11,12 @@ const itemNames: Record<Item["kind"], string> = {
 const colorKinds = new Set<Item["kind"]>(["pen","marker","shape","text","sticky","connector","comment","formula","graph","checklist","quiz","flashcard","frame"]);
 const advancedKinds = new Set<Item["kind"]>(["text","sticky","frame","comment","graph","formula","table","checklist","quiz","flashcard","linkmedia"]);
 const palette = ["#1f2937","#365fd0","#7c3aed","#0f766e","#d97706","#dc2626","#ec4899","#ffffff"];
+const inkPalette = ["#1f2937","#365fd0","#7c3aed","#0f766e","#eab308","#ea580c","#dc2626","#ffffff"];
+const sizeOptions: Record<"pen"|"marker"|"eraser", number[]> = {
+  pen: [1,2,3,5,8,12],
+  marker: [8,12,18,24,32,44],
+  eraser: [8,16,24,40,64,96],
+};
 
 type QuickProps = {
   item: Item | null;
@@ -37,7 +43,8 @@ type QuickProps = {
 export function LectrisQuickProperties(props: QuickProps) {
   const { item, selectionCount, tool, color, weight, markerWeight, eraserSize, canModify } = props;
   const [expanded,setExpanded]=useState(false);
-  useEffect(()=>setExpanded(false),[tool,item?.id]);
+  const [presetsOpen,setPresetsOpen]=useState(false);
+  useEffect(()=>{setExpanded(false);setPresetsOpen(false)},[tool,item?.id]);
   const drawing=tool==="pen"||tool==="marker";
   const erasing=tool==="eraser";
   if(!selectionCount&&!drawing&&!erasing)return null;
@@ -46,7 +53,7 @@ export function LectrisQuickProperties(props: QuickProps) {
       {selectionCount>0 ? item?itemNames[item.kind]:"Выбрано: "+selectionCount : erasing?"Ластик":tool==="marker"?"Маркер":"Карандаш"}
     </span>
     <button className="lectris-quick-expand" type="button" aria-expanded={expanded}
-      onClick={()=>setExpanded(v=>!v)}>{expanded?"Свернуть ▲":"Настройки ▼"}</button>
+      onClick={()=>{setExpanded(v=>!v);setPresetsOpen(false)}}>{expanded?"Свернуть ▲":"Настройки ▼"}</button>
     <div className="lectris-quick-details">
       {selectionCount>0?<>
         {item&&colorKinds.has(item.kind)&&canModify&&<label className="lectris-inline-color">Цвет
@@ -70,8 +77,38 @@ export function LectrisQuickProperties(props: QuickProps) {
             onChange={e=>{const n=Number(e.target.value);if(erasing)props.onEraserSize(n);else if(tool==="marker")props.onMarkerWeight(n);else props.onWeight(n);}}/>
           <span>{erasing?eraserSize:tool==="marker"?markerWeight:weight} px</span>
         </label>
+        <button type="button" className="lektrus-presets-trigger" aria-expanded={presetsOpen}
+          aria-controls="lektrus-brush-presets" onClick={()=>setPresetsOpen(value=>!value)}>
+          {presetsOpen?"Скрыть":"Быстрый выбор"} <span aria-hidden="true">⌄</span>
+        </button>
       </>}
     </div>
+    {!selectionCount&&(drawing||erasing)&&presetsOpen&&
+      <div className="lektrus-brush-presets" id="lektrus-brush-presets" role="group"
+        aria-label={erasing?"Быстрый выбор размера ластика":"Быстрый выбор цвета и толщины"}>
+        {drawing&&<div className="lektrus-brush-presets-row">
+          <span>Цвет</span>
+          <div className="lektrus-brush-colors" role="group" aria-label="Готовые цвета">
+            {inkPalette.map(value=><button type="button" key={value}
+              className={color.toLowerCase()===value?"selected":""} style={{backgroundColor:value}}
+              aria-label={"Цвет "+value} title={value} aria-pressed={color.toLowerCase()===value}
+              onClick={()=>props.onColor(value)}/>)}
+          </div>
+        </div>}
+        <div className="lektrus-brush-presets-row">
+          <span>{erasing?"Размер":"Толщина"}</span>
+          <div className="lektrus-brush-sizes" role="group" aria-label="Готовые размеры">
+            {sizeOptions[erasing?"eraser":tool==="marker"?"marker":"pen"].map(value=>{
+              const current=erasing?eraserSize:tool==="marker"?markerWeight:weight;
+              return <button type="button" key={value} className={current===value?"selected":""}
+                aria-pressed={current===value}
+                onClick={()=>{if(erasing)props.onEraserSize(value);else if(tool==="marker")props.onMarkerWeight(value);else props.onWeight(value)}}>
+                {value}
+              </button>;
+            })}
+          </div>
+        </div>
+      </div>}
   </section>;
 }
 
@@ -106,6 +143,7 @@ function NumberField({label,value,minimum=-100000,maximum=100000,disabled,onComm
 export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onPatch,onEdit,onDuplicate,onDelete}:InspectorProps) {
   const editable=advancedKinds.has(item.kind);
   const [advancedOpen,setAdvancedOpen]=useState(false);
+  const [locationOpen,setLocationOpen]=useState(false);
   const [textDraft,setTextDraft]=useState(item.text);
   useEffect(()=>setTextDraft(item.text),[item.id,item.text]);
   const textEditable=["text","sticky","frame","comment"].includes(item.kind);
@@ -113,15 +151,21 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
   const currentColor = /^#[0-9a-fA-F]{6}$/.test(item.color||"") ? item.color : "#365fd0";
   const rotation=item.rotation??0;
   const rotateBy=(degrees:number)=>onPatch({rotation:((rotation+degrees)%360+360)%360});
-  return <aside className="lectris-object-inspector" aria-label="Свойства объекта" onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+  return <aside className="lectris-object-inspector" aria-label="Свойства объекта"
+    onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
+    onKeyDown={e=>{if(e.key==="Escape"&&!advancedOpen){e.stopPropagation();onClose()}}}>
     <header className="lectris-inspector-head">
       <div><small>СВОЙСТВА ОБЪЕКТА</small><strong>{itemNames[item.kind]}</strong>
-        <span className="lectris-inspector-state">{item.locked?"Объект заблокирован":canModify?"Можно редактировать":"Только просмотр"}</span></div>
+        <span className="lectris-inspector-state">{item.locked?"Объект заблокирован":canModify?"Можно редактировать":"Только просмотр"} · {Math.round(item.width)} × {Math.round(item.height)}</span></div>
       <button type="button" onClick={onClose} aria-label="Закрыть свойства">×</button>
     </header>
     <div className="lectris-inspector-scroll">
-      <section className="lectris-inspector-section">
-        <h3>Расположение</h3>
+      <section className="lectris-inspector-section lektrus-inspector-position">
+        <button className="lektrus-inspector-section-toggle" type="button" aria-expanded={locationOpen}
+          onClick={()=>setLocationOpen(value=>!value)}>
+          <span>Расположение и размеры</span><span aria-hidden="true">{locationOpen?"−":"+"}</span>
+        </button>
+        {locationOpen&&<div className="lektrus-inspector-position-content">
         <div className="lectris-inspector-grid">
           <NumberField label="X" value={item.x} disabled={!canModify} onCommit={x=>onPatch({x})}/>
           <NumberField label="Y" value={item.y} disabled={!canModify} onCommit={y=>onPatch({y})}/>
@@ -134,6 +178,7 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
           <button type="button" disabled={!canModify} onClick={()=>onPatch({rotation:0})} title="Убрать поворот">0°</button>
           <button type="button" disabled={!canModify} onClick={()=>rotateBy(90)} title="Повернуть на 90 градусов вправо">+90° ↷</button>
         </div>
+        </div>}
       </section>
       {textEditable && <section className="lectris-inspector-section">
         <h3>{item.kind==="frame"?"Название фрейма":"Содержимое"}</h3>
@@ -170,7 +215,7 @@ export function LectrisObjectInspector({item,canModify,canToggleLock,onClose,onP
     {advancedOpen&&<div className="lectris-advanced-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget)setAdvancedOpen(false)}}>
       <section role="dialog" aria-modal="true" aria-label="Дополнительные параметры объекта" className="lectris-advanced-modal"
         onKeyDown={e=>{if(e.key==="Escape"){e.stopPropagation();setAdvancedOpen(false)}}}>
-        <header><div><small>LECTRIS · ДОПОЛНИТЕЛЬНО</small><strong>{itemNames[item.kind]}</strong></div>
+        <header><div><small>LEKTRUS · ДОПОЛНИТЕЛЬНО</small><strong>{itemNames[item.kind]}</strong></div>
           <button type="button" onClick={()=>setAdvancedOpen(false)} aria-label="Закрыть дополнительные настройки">×</button></header>
         <div className="lectris-advanced-body">
           <p>Дополнительные операции с выбранным объектом.</p>
