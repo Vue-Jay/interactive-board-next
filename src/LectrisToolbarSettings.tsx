@@ -24,7 +24,7 @@ export default function LectrisToolbarSettings({tools,pinned,defaults,onChange,o
   const toggle=(id:string)=>setDraft(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id]);
   return <div className="lectris-tools-customize-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <section className="lectris-tools-customize" role="dialog" aria-modal="true" aria-label="Настройка панели инструментов" onKeyDown={e=>{if(e.key==="Escape"){e.stopPropagation();onClose()}}}>
-      <header><div><small>LECTRIS · РАБОЧЕЕ МЕСТО</small><h2>Настройка инструментов</h2></div><button type="button" onClick={onClose} aria-label="Закрыть">×</button></header>
+      <header><div><small>LEKTRUS · РАБОЧЕЕ МЕСТО</small><h2>Настройка инструментов</h2></div><button type="button" onClick={onClose} aria-label="Закрыть">×</button></header>
       <p>Основные инструменты доступны сразу. Остальные остаются в меню «Ещё». Навигация, рука и петля всегда доступны отдельно.</p>
       <div className="lectris-tools-customize-sections">
         <div className="lectris-tools-customize-section">
