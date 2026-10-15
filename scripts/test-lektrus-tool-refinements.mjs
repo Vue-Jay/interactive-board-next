@@ -12,6 +12,7 @@ assert.doesNotMatch(app,/case "select": return [^\n]*strokeDasharray/);
 assert.match(app,/case "connector": return <><path d="M3\.5 12h17"/);
 assert.doesNotMatch(app,/case "connector": return [^\n]*<rect/);
 assert.match(hook,/const itemHeight=\(sample\?\.getBoundingClientRect\(\)\.height\|\|40\)\+3/);
+assert.doesNotMatch(hook,/!finePointer\|\|style\.display/);
 for(const token of ["grid-auto-rows:54px!important","height:54px!important",
   "gap:11px!important","top:112px!important","max-width:calc(100vw - 84px)",
   "flex:0 0 96px!important","white-space:normal!important",

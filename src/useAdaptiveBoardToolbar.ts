@@ -21,8 +21,9 @@ export function useAdaptiveBoardToolbar(expanded:boolean,pinnedSignature:string)
     };
     const update=()=>{
       const style=getComputedStyle(rail);
-      const finePointer=window.matchMedia?.("(pointer: fine)").matches ?? true;
-      if(!finePointer||style.display==="none"){items.forEach(restore);return}
+      // Responsive CSS controls whether the desktop rail exists. Avoid
+      // relying on pointer type: touch-enabled laptops need overflow too.
+      if(style.display==="none"){items.forEach(restore);return}
       const list=rail.querySelector<HTMLElement>(".toolbar-list");
       if(!list)return;
       const maxH=parseFloat(style.maxHeight);
