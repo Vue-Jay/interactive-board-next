@@ -137,29 +137,66 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
  return <main className="boards-shell">
  {!isBoardListView&&<LectrisHub user={user} role={accountRole} view={hubView} boards={boards}
     loading={loading} creating={busy} onCreateBoard={association=>void add(association)} onOpenBoard={onOpenBoard}/>}
-  {isBoardListView&&<section className="boards-content">{user.isGuest&&<div className="guest-lifecycle-note"><strong>Гостевой режим</strong><span>Это временная анонимная сессия. Доступ к доскам сохранится только пока действует эта гостевая сессия. Для постоянного аккаунта выйдите и зарегистрируйтесь.</span></div>}<div className="boards-heading-row"><div><h1>Мои доски</h1><p>{isRemoteBackendEnabled()?"Уроки, материалы и совместные доски в одном месте.":"Сейчас данные хранятся в этом браузере. Ссылки доступа появятся после подключения сервера."}</p></div><div className="boards-heading-actions">{accountRole==="teacher"?<><label className={`boards-secondary boards-import ${busy?"disabled":""}`}>Импортировать<input type="file" hidden disabled={busy} accept=".orboard,.json,application/json,application/vnd.onlinerepetitor.board+json" onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(f)void chooseImport(f)}}/></label><button className="boards-create" disabled={busy} onClick={()=>void add()}>+ Новая доска</button></>:<span className="student-board-note">Ученик работает только с досками, которые предоставил преподаватель.</span>}</div></div>
-
- <div className="boards-toolbar">
-   <input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск по названию доски"/>
-   <select value={filter} onChange={e=>setFilter(e.target.value as BoardFilter)} aria-label="Фильтр досок">
-     <option value="all">Все доски</option>
-     <option value="mine">Мои</option>
-     <option value="shared">Общие со мной</option>
-   </select>
-   <select value={sort} onChange={e=>setSort(e.target.value as BoardSort)} aria-label="Сортировка досок">
-     <option value="recent">Сначала недавние</option>
-     <option value="name">По названию</option>
-     <option value="oldest">Сначала давние</option>
-   </select>
-   <span>{loading?"Загрузка…":`${visible.length} из ${boards.length}`}</span><div className="backup-menu"><button className="boards-secondary" disabled={busy} onClick={()=>void downloadWorkspace()}>{workspaceProgress||"Скачать все мои"}</button><label className={`boards-secondary boards-import ${busy?"disabled":""}`}>Восстановить набор<input type="file" hidden disabled={busy} accept=".orworkspace,application/json" onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(f)void chooseWorkspace(f)}}/></label></div><button className="boards-secondary trash-open-button" disabled={!isRemoteBackendEnabled()} onClick={()=>{setTrashOpen(true);void loadTrash()}}>Корзина</button>
- </div>
-
- {notice&&<div className="access-notice" style={{marginBottom:12}}>{notice}</div>}
-
- {!loading&&visible.length===0
-   ? <div className="boards-empty"><strong>{boards.length?"Ничего не найдено":"Пока нет досок"}</strong><span>{boards.length?"Попробуйте изменить поиск или фильтр.":"Создайте первую доску и начните занятие."}</span></div>
-   : <div className="boards-grid">{visible.map(b=><article className="board-card" key={b.id}><button className="board-card-preview" onClick={()=>onOpenBoard(b)}><span className="board-card-grid"/><span className="board-card-letter">L</span></button><div className="board-card-body">{editingId===b.id?<input className="board-card-rename" value={draftTitle} onChange={e=>setDraftTitle(e.target.value)} onBlur={()=>void saveRename(b)} onKeyDown={e=>{if(e.key==="Enter")void saveRename(b);if(e.key==="Escape")setEditingId(null)}} autoFocus/>:<button className="board-card-title" onClick={()=>onOpenBoard(b)}>{b.title}</button>}<div className="board-card-meta"><span>{BOARD_ROLE_LABELS[b.role]}</span><span>Изменено {fmt(b.updatedAt)}</span></div><div className="board-card-actions">{b.role==="owner"&&<><button onClick={()=>{setEditingId(b.id);setDraftTitle(b.title)}}>Переименовать</button><button onClick={()=>{setManage(b);setNotice("");setCreatedUrl("")}}>Пригласить</button><button className="danger" onClick={async()=>{if(confirm(`Переместить доску «${b.title}» в корзину? Её можно будет восстановить.`)){await deleteBoard(user.id,b.id);setNotice("Доска перемещена в корзину");await refresh()}}}>Удалить</button></>} {b.role!=="owner"&&<button onClick={()=>onOpenBoard(b)}>Открыть</button>}</div></div></article>)}</div>}
- </section>}
+  {isBoardListView&&<section className="boards-content lectris-library">
+    {user.isGuest&&<div className="guest-lifecycle-note"><strong>Гостевой режим</strong><span>Доступ к доскам сохраняется в пределах этой гостевой сессии. Для постоянного аккаунта зарегистрируйтесь.</span></div>}
+    <div className="lectris-library-intro">
+      <div className="lectris-library-heading"><span className="lectris-library-eyebrow">ВАШИ РАБОЧИЕ ПРОСТРАНСТВА</span>
+        <h1>Доски</h1>
+        <p>Ваши идеи, уроки и совместная работа в одном месте. Откройте доску или создайте новую.</p>
+        <div className="lectris-library-metrics"><span><strong>{boards.length}</strong> Всего досок</span><span><strong>{boards.filter(b=>b.role==="owner").length}</strong> Мои</span><span><strong>{boards.filter(b=>b.role!=="owner").length}</strong> Общие</span></div>
+      </div>
+      <div className="lectris-library-hero-art" aria-hidden="true">
+        <span className="lectris-library-hero-note">A + B = C</span><span className="lectris-library-hero-card"><i/><i/><i/><i/></span><span className="lectris-library-hero-orbit"/>
+      </div>
+      {accountRole==="teacher"&&<button className="lectris-library-new" disabled={busy} onClick={()=>void add()}><span>＋</span> Создать доску <span aria-hidden="true">↗</span></button>}
+      {accountRole!=="teacher"&&<span className="student-board-note">Доски доступны по приглашению преподавателя</span>}
+    </div>
+    <div className="lectris-library-section-title"><div><span>БИБЛИОТЕКА ДОСОК</span><h2>Все рабочие пространства</h2></div><small>{loading?"Загрузка…":`Найдено: ${visible.length}`}</small></div>
+    <div className="boards-toolbar lectris-library-toolbar">
+      <div className="lectris-library-search">
+        <span aria-hidden="true">⌕</span>
+        <input type="search" aria-label="Поиск досок" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск по названию"/>
+        {query&&<button type="button" title="Очистить поиск" aria-label="Очистить поиск" onClick={()=>setQuery("")}>×</button>}
+      </div>
+      <div className="lectris-library-filters" role="group" aria-label="Показать доски">
+        {([["all","Все"],["mine","Мои"],["shared","Общие"]] as const).map(([id,label])=><button type="button" key={id} aria-pressed={filter===id} className={filter===id?"active":""} onClick={()=>setFilter(id)}>{label}</button>)}
+      </div>
+      <label className="lectris-library-sort">Сортировка <select value={sort} onChange={e=>setSort(e.target.value as BoardSort)} aria-label="Сортировка досок">
+        <option value="recent">Недавно изменённые</option><option value="name">По названию</option><option value="oldest">Давние</option>
+      </select></label>
+      <div className="lectris-library-extras">
+        {accountRole==="teacher"&&<label className={`boards-secondary boards-import ${busy?"disabled":""}`}>Импорт<input type="file" hidden disabled={busy} accept=".orboard,.json,application/json,application/vnd.onlinerepetitor.board+json" onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(f)void chooseImport(f)}}/></label>}
+        <div className="backup-menu"><button className="boards-secondary" disabled={busy} onClick={()=>void downloadWorkspace()}>{workspaceProgress||"Скачать набор"}</button><label className={`boards-secondary boards-import ${busy?"disabled":""}`}>Восстановить<input type="file" hidden disabled={busy} accept=".orworkspace,application/json" onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(f)void chooseWorkspace(f)}}/></label></div>
+        <button className="boards-secondary trash-open-button" disabled={!isRemoteBackendEnabled()} onClick={()=>{setTrashOpen(true);void loadTrash()}}>Корзина</button>
+      </div>
+    </div>
+    {notice&&<div className="access-notice" style={{marginBottom:12}}>{notice}</div>}
+    {!loading&&visible.length===0
+      ?<div className="boards-empty"><strong>{boards.length?"Ничего не найдено":"Пока нет досок"}</strong><span>{boards.length?"Измените поиск или выберите другой фильтр.":"Создайте первую доску и начните занятие."}</span><button type="button" onClick={()=>{setQuery("");setFilter("all")}}>Показать все</button></div>
+      :<div className="boards-grid lectris-library-grid">
+        {accountRole==="teacher"&&filter!=="shared"&&!query&&<button type="button" className="lectris-library-create-tile" disabled={busy} onClick={()=>void add()}>
+          <span className="lectris-library-create-icon">＋</span><strong>Новая доска</strong>
+          <small>Чистый холст для следующей идеи</small><span className="lectris-library-create-action">Создать ↗</span>
+        </button>}
+        {visible.map((b,index)=><article className={`board-card lectris-library-card lectris-library-card-${index%5}`} key={b.id}>
+          <button className="board-card-preview lectris-library-preview" onClick={()=>onOpenBoard(b)} aria-label={`Открыть доску ${b.title}`}>
+            <span className="board-card-grid"/>
+            <span className="lectris-library-preview-note" aria-hidden="true"><i/><i/><i/></span>
+            <span className="lectris-library-preview-geometry" aria-hidden="true"><i/><i/><i/></span>
+            <span className="lectris-library-preview-label">{b.role==="owner"?"Моя доска":"Совместная работа"}</span>
+            <span className="lectris-library-preview-open" aria-hidden="true">↗</span>
+          </button>
+          <div className="board-card-body lectris-library-card-body">
+            {editingId===b.id?<input className="board-card-rename" value={draftTitle} onChange={e=>setDraftTitle(e.target.value)} onBlur={()=>void saveRename(b)} onKeyDown={e=>{if(e.key==="Enter")void saveRename(b);if(e.key==="Escape")setEditingId(null)}} autoFocus/>:<button className="board-card-title" onClick={()=>onOpenBoard(b)}>{b.title}</button>}
+            <div className="board-card-meta"><span>{BOARD_ROLE_LABELS[b.role]}</span><span>{fmt(b.updatedAt)}</span></div>
+            <div className="board-card-actions">
+              <button className="lectris-library-open" onClick={()=>onOpenBoard(b)}>Открыть <span aria-hidden="true">↗</span></button>
+              {b.role==="owner"&&<><button onClick={()=>{setEditingId(b.id);setDraftTitle(b.title)}}>Название</button><button onClick={()=>{setManage(b);setNotice("");setCreatedUrl("")}}>Доступ</button><button className="danger" onClick={async()=>{if(confirm(`Переместить доску «${b.title}» в корзину? Её можно будет восстановить.`)){await deleteBoard(user.id,b.id);setNotice("Доска перемещена в корзину");await refresh()}}}>Удалить</button></>}
+            </div>
+          </div>
+        </article>)}
+      </div>}
+  </section>}
 
  {workspacePreview&&<div className="access-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setWorkspacePreview(null)}}><section className="access-modal workspace-modal"><div className="access-head"><div><h2>Восстановить набор досок</h2><p>Копия от {fmt(workspacePreview.exportedAt)}</p></div><button disabled={busy} onClick={()=>setWorkspacePreview(null)}>×</button></div><div className="workspace-summary"><strong>{workspacePreview.boards.length}</strong><span>досок будет создано как новые</span></div><div className="workspace-board-list">{workspacePreview.boards.slice(0,12).map((board,index)=><div key={index}><strong>{board.title}</strong><span>{board.document.items.length} объектов · {board.assets.length} вложений</span></div>)}{workspacePreview.boards.length>12&&<small>И ещё {workspacePreview.boards.length-12}…</small>}</div><p className="share-note">Существующие доски не перезаписываются. Каждая доска из копии будет создана отдельно.</p>{workspaceProgress&&<div className="access-notice">{workspaceProgress}</div>}<div className="access-actions"><button disabled={busy} onClick={()=>setWorkspacePreview(null)}>Отмена</button><button className="boards-create" disabled={busy} onClick={()=>void restoreWorkspace()}>{busy?"Восстанавливаем…":"Восстановить все"}</button></div></section></div>}
 
