@@ -1,0 +1,193 @@
+/* Lektrus whiteboard chrome v1. No canvas, document or interaction styles. */
+.topbar:not(.update-banner){
+  background:var(--lt-raised)!important;
+  border-bottom:1px solid var(--lt-line)!important;
+  color:var(--lt-text)!important;
+  box-shadow:0 3px 14px rgba(15,31,58,.07)!important;
+}
+.topbar :is(.board-title,.topbar-title) {color:var(--lt-text)!important}
+.topbar :is(.board-home-button,.compact-top-action,.topbar-more-trigger,
+  .board-chat-button,.follow-teacher-button,.lesson-button,.board-invite-button){
+  border-radius:10px!important;
+  transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s;
+}
+.topbar :is(.board-home-button,.compact-top-action,.topbar-more-trigger):hover{
+  background:var(--lt-hover)!important;color:var(--lt-text)!important;
+}
+.topbar :is(.board-home-button,.compact-top-action,.topbar-more-trigger):focus-visible,
+.workspace .toolbar.compact-toolbar button:focus-visible,
+.workspace .mobile-board-tools button:focus-visible{
+  outline:2px solid var(--lt-focus)!important;outline-offset:2px!important;
+}
+/* Floating tool rail */
+.workspace .toolbar.compact-toolbar {
+  background:var(--lt-raised)!important;
+  border:1px solid var(--lt-line)!important;
+  border-radius:16px!important;
+  box-shadow:var(--lt-pop-shadow)!important;
+  padding:6px 5px!important;
+  scrollbar-width:thin;
+  scrollbar-color:var(--lt-line-strong) transparent;
+}
+.workspace .toolbar.compact-toolbar .toolbar-pinned {
+  border-color:var(--lt-line)!important;
+}
+.workspace .toolbar.compact-toolbar .toolbar-section-line,
+.workspace .toolbar.compact-toolbar .tool-divider{
+  background:var(--lt-line)!important;
+  border-color:var(--lt-line)!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button {
+  position:relative;
+  background:transparent!important;
+  color:var(--lt-secondary)!important;
+  border:1px solid transparent!important;
+  border-radius:10px!important;
+  transition:background-color .17s,color .17s,box-shadow .17s,transform .17s;
+}
+.workspace .toolbar.compact-toolbar .tool-button:hover:not(.active) {
+  background:var(--lt-hover)!important;
+  color:var(--lt-text)!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button.active {
+  background:var(--lt-primary)!important;
+  color:#fff!important;
+  border-color:var(--lt-primary)!important;
+  box-shadow:0 4px 11px rgba(28,57,112,.18)!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button.active .ui-icon{
+  color:#fff!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button:active {
+  transform:scale(.96);
+}
+.workspace .toolbar.compact-toolbar :is(.toolbar-more,.toolbar-ai-button,
+ .toolbar-command-search,.lectris-tools-configure,.lectris-subject-toolbox>summary){
+  background:var(--lt-subtle)!important;
+  color:var(--lt-secondary)!important;
+  border:1px solid var(--lt-line)!important;
+  border-radius:10px!important;
+  transition:background .17s,border-color .17s,color .17s;
+}
+.workspace .toolbar.compact-toolbar :is(.toolbar-more,.toolbar-ai-button,
+ .toolbar-command-search,.lectris-tools-configure,.lectris-subject-toolbox>summary):hover{
+  background:var(--lt-hover)!important;
+  color:var(--lt-text)!important;
+  border-color:var(--lt-line-strong)!important;
+}
+.workspace .toolbar.compact-toolbar .lektrus-overflow-indicator {
+  width:5px;height:5px;border-radius:50%;background:var(--lt-primary);
+}
+.workspace .toolbar.compact-toolbar .ui-icon {
+  width:20px;height:20px;stroke-width:1.9;
+  vector-effect:non-scaling-stroke;
+}
+.workspace .toolbar.compact-toolbar .tool-tooltip{
+  background:var(--lt-raised)!important;
+  color:var(--lt-text)!important;
+  border:1px solid var(--lt-line)!important;
+  border-radius:9px!important;
+  box-shadow:var(--lt-pop-shadow)!important;
+  font-size:11px!important;
+  white-space:nowrap;
+  pointer-events:none;
+}
+/* Gradual adaptive disappearance as height decreases. The original More
+   expands the rail to expose tools; no tool or handler is removed. */
+@media (pointer:fine) {
+  .workspace .toolbar.compact-toolbar:not(.expanded) .toolbar-list>.tool-wrap.lektrus-auto-overflow {
+    display:block!important;
+    flex:0 0 0px!important;
+    height:0!important;
+    min-height:0!important;
+    max-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    opacity:0!important;
+    visibility:hidden!important;
+    overflow:hidden!important;
+    pointer-events:none!important;
+    transform:translateY(-7px) scale(.92);
+    transition:height .2s ease,opacity .18s ease,transform .2s ease,visibility 0s linear .2s;
+  }
+  .workspace .toolbar.compact-toolbar .toolbar-list>.tool-wrap:not(.secondary-tool) {
+    transition:max-height .22s ease,opacity .2s ease,transform .2s ease;
+  }
+  .workspace .toolbar.compact-toolbar.lektrus-overflowing .toolbar-more {
+    border-color:var(--lt-line-strong)!important;
+    box-shadow:inset 3px 0 var(--lt-primary)!important;
+  }
+}
+/* Object property menus and drawing settings */
+.workspace :is(.ink-settings,.shape-settings,.eraser-settings,.connector-settings,
+  .selection-toolbar-screen,.lectris-quick-properties,.lectris-object-inspector) {
+  color:var(--lt-text)!important;
+  background:var(--lt-raised)!important;
+  border:1px solid var(--lt-line)!important;
+  border-radius:14px!important;
+  box-shadow:var(--lt-pop-shadow)!important;
+}
+.workspace :is(.ink-settings,.shape-settings,.eraser-settings,.connector-settings,
+  .selection-toolbar-screen) :is(button,select,input:not([type=color]):not([type=range])) {
+  border-radius:9px;
+}
+.workspace :is(.ink-settings,.shape-settings,.eraser-settings,.connector-settings,
+  .selection-toolbar-screen) :is(label,small) {color:var(--lt-secondary)}
+.workspace .lectris-inspector-head {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;
+}
+.workspace .lectris-inspector-field input:not([type=color]){
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text)!important;
+}
+.workspace .lectris-inspector-actions button {
+  background:var(--lt-subtle)!important;
+  color:var(--lt-secondary)!important;
+  border-color:var(--lt-line)!important;
+}
+.workspace .lectris-inspector-actions button:hover:not(:disabled) {
+  background:var(--lt-hover)!important;color:var(--lt-text)!important;
+}
+.workspace .lectris-inspector-actions button.lectris-inspector-primary {
+  background:var(--lt-primary)!important;
+  color:#fff!important;border-color:var(--lt-primary)!important;
+}
+/* Mobile dock shares icons and tokens, but its existing touch layout stays. */
+.workspace .mobile-board-tools {
+  background:var(--lt-raised)!important;
+  color:var(--lt-text)!important;
+  border:1px solid var(--lt-line)!important;
+  border-radius:14px!important;
+  box-shadow:var(--lt-pop-shadow)!important;
+}
+.workspace .mobile-board-tools button {
+  color:var(--lt-secondary)!important;
+  background:transparent!important;
+  border-radius:10px!important;
+}
+.workspace .mobile-board-tools button:hover:not(.active) {
+  background:var(--lt-hover)!important;color:var(--lt-text)!important;
+}
+.workspace .mobile-board-tools button.active {
+  background:var(--lt-primary)!important;color:#fff!important;
+}
+.workspace .mobile-board-tools .ui-icon {
+  stroke-width:1.9;
+}
+.topbar-more-popover,.lectris-layout-menu,.lectris-subject-toolbox-menu,
+.board-context-menu,.context-menu {
+  border:1px solid var(--lt-line)!important;
+  color:var(--lt-text)!important;
+  background:var(--lt-raised)!important;
+  border-radius:12px!important;
+  box-shadow:var(--lt-pop-shadow)!important;
+}
+@media(prefers-reduced-motion:reduce){
+  .workspace .toolbar.compact-toolbar :is(.tool-button,.toolbar-more,.tool-wrap),
+  .workspace .mobile-board-tools button,
+  .topbar :is(.board-home-button,.compact-top-action){
+    transition:none!important;
+  }
+}

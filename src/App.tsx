@@ -15,6 +15,7 @@ import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./r
 import "./App.css";
 import AuthScreen from "./AuthScreen";
 import GeometryInstruments from "./GeometryInstruments";
+import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
 import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
@@ -138,29 +139,29 @@ const iconBody = (name: IconName) => {
   switch (name) {
     case "settings": return <><circle cx="12" cy="12" r="3"/><path d="M10 3h4l.6 2.2 1.7.9 2.1-.7 2 3.5-1.6 1.6v2l1.6 1.6-2 3.5-2.1-.7-1.7.9L14 21h-4l-.6-2.2-1.7-.9-2.1.7-2-3.5 1.6-1.6v-2L3.6 9.9l2-3.5 2.1.7 1.7-.9L10 3Z"/></>;
     case "add-person": return <><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.5-3.5 2.5-5.5 5.5-5.5s5 2 5.5 5.5M18 8v8M14 12h8"/></>;
-    case "select": return <><path d="M5 3.8 18.2 11l-6.1 1.7-2.6 6.1L5 3.8Z"/><path d="m12.2 12.7 4.4 4.4"/></>;
+    case "select": return <><path d="M5 3.7 18 11l-6 1.6-2.4 6.1L5 3.7Z"/><path d="m12.1 12.6 4.7 4.8"/><path d="M18.5 4.5h2v2M20.5 9v2.5" strokeDasharray="1.5 2"/></>;
     case "hand": return <><path d="M7.5 11V7.7a1.5 1.5 0 0 1 3 0V10"/><path d="M10.5 10V6.2a1.5 1.5 0 0 1 3 0V10"/><path d="M13.5 10V7a1.5 1.5 0 0 1 3 0v5"/><path d="M7.5 10.2 6.4 9.1a1.6 1.6 0 0 0-2.3 2.2l4.5 6.1A4 4 0 0 0 11.8 19h1.7a5 5 0 0 0 5-5v-3a1.5 1.5 0 0 0-3 0v1"/></>;
-    case "lasso": return <><path d="M18.7 8.8c.5 3.1-2.4 6.4-6.8 7-4.5.6-7.9-1.3-8.3-4.1-.4-3 2.8-5.9 7.1-6.4 4-.5 7.3 1 8 3.5Z"/><path d="M12.5 15.7c.5 2.1 2.2 3.8 4.3 3.4 1.7-.3 2.6-1.8 1.7-2.8-.8-.9-2.8-.3-2.8 1.1"/></>;
-    case "pen": return <><path d="m5 19 3.2-.8L18 8.4a2 2 0 0 0-2.8-2.8l-9.8 9.8L5 19Z"/><path d="m13.7 7.1 3.2 3.2"/></>;
-    case "marker": return <><path d="m6 15 7.9-9a1.8 1.8 0 0 1 2.6-.1l1.6 1.5a1.8 1.8 0 0 1 0 2.6L10 18H6v-3Z"/><path d="M4 20h10"/><path d="m12.2 8 3.8 3.8"/></>;
-    case "eraser": return <><path d="m7.3 17.5-2.8-2.8a2 2 0 0 1 0-2.8l6.7-6.7a2 2 0 0 1 2.8 0l4.8 4.8a2 2 0 0 1 0 2.8l-4.7 4.7H7.3Z"/><path d="m9.2 8.2 6.6 6.6"/><path d="M13.8 17.5H20"/></>;
-    case "connector": return <><path d="M5 17 17 5"/><path d="M11 5h6v6"/><circle cx="5" cy="17" r="2"/><circle cx="17" cy="5" r="2"/></>;
-    case "frame": return <><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 5v14M16 5v14M4 9h16M4 15h16" opacity=".45"/></>;
-    case "comment": return <><path d="M5 5h14v10H9l-4 4V5Z"/><path d="M8 9h8M8 12h5"/></>;
-    case "table": return <><rect x="4" y="5" width="16" height="14" rx="1.5"/><path d="M4 10h16M4 14.5h16M10 5v14M15 5v14"/></>;
-    case "formula": return <><path d="M5 7h7l-5 10h7"/><path d="M16 8c1.8 0 3 1.2 3 3s-1.2 3-3 3M18.5 7.5l1.5-1.5"/></>;
-    case "graph": return <><path d="M4 19V5M4 12h16"/><path d="M6 16c3-1 4-8 7-8s3 5 7 3"/></>;
-    case "checklist": return <><rect x="4" y="4" width="16" height="16" rx="2"/><path d="m7 9 1.5 1.5L11 8M13.5 9H17M7 14l1.5 1.5L11 13M13.5 14H17"/></>;
-    case "quiz": return <><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9.2 9.1a2.9 2.9 0 1 1 4.7 2.3c-1.1.8-1.9 1.3-1.9 2.6"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/></>;
+    case "lasso": return <><path d="M18.6 9.2c.6 3.3-2.5 6.2-7.1 6.7C7 16.4 3.6 14.5 3.5 11.7c-.2-3.1 2.8-5.9 7.4-6.2 4.1-.3 7.1 1.2 7.7 3.7Z" strokeDasharray="3 2"/><path d="M11.3 15.9c.6 2.8 2.7 4.6 4.9 3.9 1.6-.5 2-2.5.7-3.2-1.3-.7-2.7.2-2.2 1.1"/></>;
+    case "pen": return <><path d="m4.5 19.5 4.8-1.1L19 8.7a2.15 2.15 0 0 0-3-3L6.3 15.4l-1.8 4.1Z"/><path d="m13.7 7.9 3.3 3.3M7.1 15.2l2.6 2.6"/><path d="M3.7 21h6" opacity=".5"/></>;
+    case "marker": return <><path d="m4.5 15.6 9.9-10a1.9 1.9 0 0 1 2.7 0l2 2a1.9 1.9 0 0 1 0 2.7l-9.8 9.8H4.5v-4.5Z"/><path d="m13.1 7 4.6 4.5M6.2 16.6l2.2 2.2"/><path d="M3 21h11" strokeWidth="2.6"/></>;
+    case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
+    case "connector": return <><rect x="3" y="15" width="6" height="6" rx="1.5"/><rect x="15" y="3" width="6" height="6" rx="1.5"/><path d="M9 16.3 16.3 9M12.5 9H17v4.5"/></>;
+    case "frame": return <><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2"/><rect x="8" y="8" width="8" height="8" rx="1.2"/><path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/></>;
+    case "comment": return <><path d="M5 4.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-14a2 2 0 0 1 1-2Z"/><path d="M8 9h9M8 13h6"/></>;
+    case "table": return <><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M9.5 9.5v10M15.5 9.5v10"/><path d="M6.5 7h2" strokeWidth="2"/></>;
+    case "formula": return <><path d="M11.2 5H5l4.5 7L5 19h6.2"/><path d="M14 10.2h6M17 7.2v6"/><path d="m14 18 2-2 2 2 2-2"/></>;
+    case "graph": return <><path d="M4 4v16h17M7 15c2.2-1 2.7-7 5.5-7 2.9 0 3.1 6 6.5 3"/><circle cx="12.5" cy="8" r="1.2" fill="currentColor" stroke="none"/><path d="M4 12h17" opacity=".35"/></>;
+    case "checklist": return <><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="m7.1 9 1.6 1.6 2.4-2.8M13.6 9.5h3.5M7 15l1.6 1.6 2.5-2.8M13.6 15.4h3.5"/></>;
+    case "quiz": return <><rect x="4.3" y="3.5" width="15.4" height="17" rx="3"/><path d="M9.3 9a2.75 2.75 0 1 1 4.3 2.3c-1.3.9-1.7 1.6-1.7 2.9"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></>;
     case "robot": return <><rect x="4.5" y="7" width="15" height="12" rx="3"/><path d="M12 7V4M9.5 4h5"/><circle cx="9" cy="12" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.15" fill="currentColor" stroke="none"/><path d="M8.5 16h7M2.5 11v4M21.5 11v4"/></>;
-    case "flashcard": return <><rect x="5" y="4" width="14" height="16" rx="2.5"/><path d="M8 8h8M8 12h5"/><path d="m15 16 2 2 3-4"/></>;
-    case "cover": return <><rect x="4" y="5" width="16" height="14" rx="2.5"/><path d="M7 9h10M7 12h7"/><path d="M17 15.5 20 12.5M20 12.5 17 9.5"/></>;
+    case "flashcard": return <><rect x="6" y="3.5" width="13" height="16" rx="2"/><path d="M6 7H4.8A1.8 1.8 0 0 0 3 8.8v10A1.8 1.8 0 0 0 4.8 20H14"/><path d="M9.3 8.5h6M9.3 12h4"/><path d="m12.2 16 1.5 1.5 2.5-3"/></>;
+    case "cover": return <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 11h18M7 8h10"/><path d="m9 15 3 2 3-2" strokeWidth="2"/></>;
     case "flip": return <><path d="M6 7h9a5 5 0 0 1 5 5v1"/><path d="m16 9 4 4 4-4" transform="translate(-4 0)"/><path d="M18 17H9a5 5 0 0 1-5-5v-1"/><path d="m8 15-4-4-4 4" transform="translate(4 0)"/></>;
-    case "text": return <><path d="M5 6h14M12 6v13M8.5 19h7"/></>;
-    case "sticky": return <><path d="M5 4h14v11l-5 5H5V4Z"/><path d="M14 20v-5h5"/></>;
-    case "shape": return <><rect x="4.5" y="5" width="7" height="7" rx="1.5"/><circle cx="16.5" cy="8.5" r="3.5"/><path d="m8 19 3.5-5 3.5 5H8Z"/></>;
-    case "media": return <><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m5.5 17 4.2-4 3.1 2.8 2.3-2.2 3.4 3.4"/></>;
-    case "linkmedia": return <><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/><path d="M6 18 18 6"/></>;
+    case "text": return <><path d="M4 5.5h16M7 5.5v2.8M17 5.5v2.8M12 6v13M8 19h8"/></>;
+    case "sticky": return <><path d="M5 4h14v11.4L14.4 20H5V4Z"/><path d="M14.4 20v-4.6H19M8 9h8M8 12h5"/></>;
+    case "shape": return <><rect x="3.5" y="4.5" width="8" height="8" rx="1.4"/><circle cx="17.5" cy="8.5" r="3.5"/><path d="m9 20 4.2-6.6L17.5 20H9Z"/></>;
+    case "media": return <><rect x="3" y="4.5" width="18" height="15" rx="2"/><circle cx="8" cy="9" r="1.7"/><path d="m4.5 17 5-5 3.5 3 3-2.5 3.6 4.5"/></>;
+    case "linkmedia": return <><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="m9.5 8.5 5.5 3.5-5.5 3.5v-7Z"/><path d="m17 5 3.5 3.5M20.5 5 17 8.5" opacity=".65"/></>;
     case "search": return <><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></>;
     case "present": return <><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M12 16v4M8.5 20h7"/><path d="m10 9 5 2.5-5 2.5V9Z"/></>;
     case "layers": return <><path d="m12 4 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4M4 16l8 4 8-4"/></>;
@@ -232,7 +233,7 @@ const iconBody = (name: IconName) => {
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   return (
-    <svg className="ui-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className="ui-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {iconBody(name)}
     </svg>
   );
@@ -1519,6 +1520,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     ...tools.map(t=>t.id).filter(id=>!lectrisPinned.includes(id)&&id!=="hand"&&id!=="select"&&id!=="lasso")
   ],[lectrisPinned]);
   const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(toolAllowedForRole)],[lectrisPinned,isStudent]);
+  const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,lectrisPinned.join("|"));
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
@@ -6319,7 +6321,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div></div>
           </div>
         </section>}
-        <aside className={`toolbar compact-toolbar ${mobileToolsOpen?"mobile-open":""} ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
+        <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${mobileToolsOpen?"mobile-open":""} ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
           <div className="toolbar-pinned" aria-label="Навигация: выделение и петля">
             {(["select","lasso"] as Tool[]).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} aria-label={t.label} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><span className="tool-icon"><Icon name={t.icon} size={18}/></span><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
           </div>
@@ -6334,7 +6336,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               </div>;
             })}
           </div>
-          <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты"} title={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты"} onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
+          <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты, включая скрытые при уменьшении окна"} title={desktopToolsExpanded?"Скрыть дополнительные инструменты":"Показать дополнительные инструменты"} onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
           </button>
           {lectrisSubjectTools.length>0&&<details className="lectris-subject-toolbox">

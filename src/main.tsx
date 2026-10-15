@@ -22,6 +22,7 @@ import "./lektrusBoardInteraction.css";
 import "./lektrusThemes.css";
 import "./lektrusContrast.css";
 import "./lektrusPolish.css";
+import "./lektrusCanvasChrome.css";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
 
