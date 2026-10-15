@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import LectrisHub from "./LectrisHub";
 import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectrisOrganizationStore";
+import { cachedBoardPreview, loadBoardPreviews } from "./boardPreview";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
 import { createBoard, deleteBoard, deleteBoardForever, ensureUserBoards, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
 import { boardShareUrl, clearPendingShareToken, createBoardShareLink, listBoardShareLinks, pendingShareToken, redeemBoardShareLink, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
@@ -19,7 +20,25 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
  const section=new URLSearchParams(window.location.search).get("section");
  const isBoardListView=section==="boards";
  const hubView=section==="subjects"?"subjects":section==="groups"&&accountRole==="teacher"?"groups":"home";
- const [boards,setBoards]=useState<BoardSummary[]>(()=>getCachedUserBoards(user)); const [loading,setLoading]=useState(()=>getCachedUserBoards(user).length===0); const [query,setQuery]=useState(""); const [editingId,setEditingId]=useState<string|null>(null); const [draftTitle,setDraftTitle]=useState("");
+ const [boards,setBoards]=useState<BoardSummary[]>(()=>getCachedUserBoards(user)); const [loading,setLoading]=useState(()=>getCachedUserBoards(user).length===0); const [query,setQuery]=useState("");
+ const [previews,setPreviews]=useState<Record<string,string>>(()=>{
+   const cached:Record<string,string>={};
+   for(const board of getCachedUserBoards(user)){
+     const value=cachedBoardPreview(board.id);if(value)cached[board.id]=value;
+   }
+   return cached;
+ });
+ const previewIds=useMemo(()=>boards.map(board=>board.id).sort().join(","),[boards]);
+ useEffect(()=>{
+   let alive=true;
+   const ids=previewIds.split(",").filter(Boolean);
+   // Display instantly from browser cache. Refresh from small server metadata fields.
+   const cached:Record<string,string>={};
+   for(const id of ids){const value=cachedBoardPreview(id);if(value)cached[id]=value}
+   setPreviews(cached);
+   void loadBoardPreviews(ids).then(result=>{if(alive)setPreviews(result)}).catch(()=>{});
+   return()=>{alive=false};
+ },[previewIds,user.id]); const [editingId,setEditingId]=useState<string|null>(null); const [draftTitle,setDraftTitle]=useState("");
  const [filter,setFilter]=useState<BoardFilter>("all"); const [sort,setSort]=useState<BoardSort>("recent"); const [trashOpen,setTrashOpen]=useState(false); const [trash,setTrash]=useState<BoardSummary[]>([]);
  const [manage,setManage]=useState<BoardSummary|null>(null); const [notice,setNotice]=useState(""); const [busy,setBusy]=useState(false);
  const [access,setAccess]=useState<{members:BoardAccessMember[];invites:BoardInvitation[]}>({members:[],invites:[]});
@@ -136,7 +155,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
 
  return <main className="boards-shell">
  {!isBoardListView&&<LectrisHub user={user} role={accountRole} view={hubView} boards={boards}
-    loading={loading} creating={busy} onCreateBoard={association=>void add(association)} onOpenBoard={onOpenBoard}/>}
+    loading={loading} creating={busy} previews={previews} onCreateBoard={association=>void add(association)} onOpenBoard={onOpenBoard}/>}
   {isBoardListView&&<section className="boards-content lectris-library">
     {user.isGuest&&<div className="guest-lifecycle-note"><strong>Гостевой режим</strong><span>Доступ к доскам сохраняется в пределах этой гостевой сессии. Для постоянного аккаунта зарегистрируйтесь.</span></div>}
     <div className="lectris-library-intro">
@@ -180,9 +199,9 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
         </button>}
         {visible.map((b,index)=><article className={`board-card lectris-library-card lectris-library-card-${index%5}`} key={b.id}>
           <button className="board-card-preview lectris-library-preview" onClick={()=>onOpenBoard(b)} aria-label={`Открыть доску ${b.title}`}>
-            <span className="board-card-grid"/>
-            <span className="lectris-library-preview-note" aria-hidden="true"><i/><i/><i/></span>
-            <span className="lectris-library-preview-geometry" aria-hidden="true"><i/><i/><i/></span>
+            {previews[b.id]
+              ?<img className="lectris-library-preview-image" src={previews[b.id]} alt="" decoding="async"/>
+              :<><span className="board-card-grid"/><span className="lectris-library-preview-empty" aria-hidden="true">Пустой холст</span></>}
             <span className="lectris-library-preview-label">{b.role==="owner"?"Моя доска":"Совместная работа"}</span>
             <span className="lectris-library-preview-open" aria-hidden="true">↗</span>
           </button>
