@@ -21,4 +21,5 @@ jobs:
       - run: node scripts/test-ink-preferences.mjs
       - run: node scripts/test-preview-autosave.mjs
       - run: node scripts/test-board-history.mjs
+      - run: node scripts/test-lektrus-ui.mjs
       - run: npm run build
