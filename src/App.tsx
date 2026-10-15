@@ -65,6 +65,7 @@ import {
   stroke,
   type ShapeType,
   type ConnectorStyle,
+  type ArrowHeadStyle,
   type ConnectorRouting,
   type ConnectorBinding,
   type Point,
@@ -599,6 +600,8 @@ const connectorItemFromPoints = (
   connectorStartBinding?: ConnectorBinding,
   connectorEndBinding?: ConnectorBinding,
   text = "",
+  arrowHeadStyle:ArrowHeadStyle="triangle",
+  arrowHeadSize=8,
 ): Item => {
   const pad = Math.max(12, weight * 3);
   const x = Math.min(start.x, end.x) - pad;
@@ -609,7 +612,7 @@ const connectorItemFromPoints = (
     id,
     kind: "connector",
     x, y, width, height, text,
-    color, weight, connectorStyle, connectorRouting,
+    color, weight, connectorStyle, connectorRouting,arrowHeadStyle,arrowHeadSize,
     connectorStart: { x: start.x - x, y: start.y - y },
     connectorEnd: { x: end.x - x, y: end.y - y },
     ...(connectorStartBinding ? { connectorStartBinding: { ...connectorStartBinding } } : {}),
@@ -700,14 +703,17 @@ function Connector({ item }: { item: Item }) {
   const markerId = `arrow-${item.id.replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const markerStartId = `arrow-start-${item.id.replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const lineColor = item.color ?? "#5355c9";
+  const headSize=Math.max(4,Math.min(24,item.arrowHeadSize??8));
+  const headStyle=item.arrowHeadStyle??"triangle";
+  const headPath=headStyle==="open"?"M0 0 L8 4 L0 8":headStyle==="stealth"?"M0 0 L8 4 L0 8 L2.5 4 Z":headStyle==="diamond"?"M0 4 L4 0 L8 4 L4 8 Z":headStyle==="oval"?"M4 1 A3 3 0 1 1 4 7 A3 3 0 1 1 4 1 Z":"M0 0 L8 4 L0 8 Z";
   return (
     <svg className="connector-svg" width={item.width} height={item.height} viewBox={`0 0 ${item.width} ${item.height}`}>
       <defs>
-        <marker id={markerId} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
-          <path d="M0,0 L8,4 L0,8 z" fill={lineColor} />
+        <marker id={markerId} markerWidth={headSize} markerHeight={headSize} refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 8 8">
+          <path d={headPath} fill={headStyle==="open"?"none":lineColor} stroke={headStyle==="open"?lineColor:"none"} strokeWidth="1.35"/>
         </marker>
-        <marker id={markerStartId} markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
-          <path d="M8,0 L0,4 L8,8 z" fill={lineColor} />
+        <marker id={markerStartId} markerWidth={headSize} markerHeight={headSize} refX="1" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse" viewBox="0 0 8 8">
+          <path d={headPath} fill={headStyle==="open"?"none":lineColor} stroke={headStyle==="open"?lineColor:"none"} strokeWidth="1.35"/>
         </marker>
       </defs>
       {item.connectorRouting === "elbow" ? (
@@ -1412,6 +1418,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [shapeType, setShapeType] = useState<ShapeType>("rounded");
   const [connectorStyle, setConnectorStyle] = useState<ConnectorStyle>("arrow");
   const [connectorWeight, setConnectorWeight] = useState(3);
+  const [arrowHeadStyle,setArrowHeadStyle]=useState<ArrowHeadStyle>("triangle");
+  const [arrowHeadSize,setArrowHeadSize]=useState(8);
   const [connectorRouting, setConnectorRouting] = useState<ConnectorRouting>("straight");
   const [notice, setNotice] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -2813,7 +2821,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const startPoint = g.path[0];
       const endPoint = g.path[g.path.length - 1] ?? startPoint;
       if (Math.hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y) > 5 / g.view.zoom) {
-        const connector = connectorItemFromPoints(startPoint, endPoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, g.connectorStartBinding, g.connectorEndBinding);
+        const connector = connectorItemFromPoints(startPoint, endPoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, g.connectorStartBinding, g.connectorEndBinding, "",arrowHeadStyle,arrowHeadSize);
         commit([...g.before, connector]);
         setSelected([connector.id]);
         setTool("select");
@@ -3262,7 +3270,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       cursorChannel.current?.sendInk({id:ink.id,kind:ink.kind,color:ink.color,weight:ink.weight,points:[p],finished:false});
     }
     if (mode === "connector") {
-      setPreview(connectorItemFromPoints(gesturePoint, gesturePoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, connectorStartHit?.binding));
+      setPreview(connectorItemFromPoints(gesturePoint, gesturePoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, connectorStartHit?.binding,undefined,"",arrowHeadStyle,arrowHeadSize));
     }
     // Desktop mouse drag keeps double-click semantics. Touch must be captured immediately,
     // otherwise Android may retarget/cancel the pointer before selection drag starts.
@@ -3283,7 +3291,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       } else if (active.mode === "connector") {
         const startPoint = active.path[0];
         const endPoint = active.path[active.path.length - 1] ?? startPoint;
-        setPreview(connectorItemFromPoints(startPoint, endPoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, active.connectorStartBinding, active.connectorEndBinding));
+        setPreview(connectorItemFromPoints(startPoint, endPoint, connectorStyle, color, connectorWeight, createId(), connectorRouting, active.connectorStartBinding, active.connectorEndBinding,"",arrowHeadStyle,arrowHeadSize));
       }
     });
   };
@@ -6292,7 +6300,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>
             <LektrusColorPicker userId={authUser.id} compact label="Цвет" value={color} onChange={setColor}/>
             <label>Толщина <input type="range" min={1} max={8} value={connectorWeight} onChange={(e) => setConnectorWeight(Number(e.target.value))} /><span>{connectorWeight}px</span></label>
-            <span className="connector-hint">Тяните мышью · Shift — угол 45°</span>
+            <label>Наконечник <select aria-label="Форма наконечника" value={arrowHeadStyle} onChange={e=>setArrowHeadStyle(e.target.value as ArrowHeadStyle)}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select></label><label>Размер наконечника <input aria-label="Размер наконечника" type="range" min={4} max={24} value={arrowHeadSize} onChange={e=>setArrowHeadSize(Number(e.target.value))}/><span>{arrowHeadSize}px</span></label><span className="connector-hint">Тяните мышью · Shift — угол 45°</span>
           </div>
         )}
         {tool === "shape" && (
@@ -6988,7 +6996,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   {["#5355c9","#2f855a","#d97706","#dc4c64","#1f2937"].map((value) => (
                     <button type="button" key={value} className="connector-color-button" style={{ background: value }} onClick={() => recolorSelected(value)} aria-label={`Цвет линии ${value}`} />
                   ))}
-                  <button type="button" onClick={() => changeSelectedConnectorWeight(-1)} title="Тоньше">−</button>
+                  <select aria-label="Тип наконечника выбранной стрелки" value={singleSelected.arrowHeadStyle??"triangle"} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadStyle:e.target.value as ArrowHeadStyle}:item))}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select><label>Наконечник <input type="range" min={4} max={24} aria-label="Размер наконечника выбранной стрелки" value={singleSelected.arrowHeadSize??8} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadSize:Number(e.target.value)}:item))}/></label><button type="button" onClick={() => changeSelectedConnectorWeight(-1)} title="Тоньше">−</button>
                   <span className="connector-weight-value">{singleSelected.weight ?? 3}px</span>
                   <button type="button" onClick={() => changeSelectedConnectorWeight(1)} title="Толще">+</button>
                 </span>
