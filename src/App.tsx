@@ -1658,15 +1658,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const pinchState = useRef<{ distance:number; center:Point; view:View } | null>(null);
   const [mobileToolsOpen,setMobileToolsOpen]=useState(false);
   const [colorMenuOpen,setColorMenuOpen]=useState(false);
-  const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(()=>{
-    try { return localStorage.getItem("lectris.desktopToolsExpanded") === "1"; }
-    catch { return false; }
-  });
+  // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
+  const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,lectrisPinned.join("|"));
-  useEffect(()=>{
-    try { localStorage.setItem("lectris.desktopToolsExpanded", desktopToolsExpanded ? "1" : "0"); }
-    catch {/* Private browsing/storage restrictions: keep session state only. */}
-  },[desktopToolsExpanded]);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
   useEffect(()=>{const mq=window.matchMedia?.("(pointer: coarse)");if(!mq)return;const sync=()=>setIsCoarsePointer(mq.matches);sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync)},[]);
   useEffect(()=>{

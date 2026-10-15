@@ -32,4 +32,21 @@ for (const name of ["select","lasso","pen","marker","eraser","sticky","shape","f
  assert.match(app,new RegExp('case "'+name+'": return '),"Missing custom icon "+name);
 }
 assert.doesNotMatch(css, /\.board-object\b|\.viewer-ink-canvas\b|\.canvas\b|\.board\.eraser-live\b/);
+
+const overflow=read("src/LektrusToolOverflow.tsx");
+assert.match(app,/lectrisPinned\.map\(id=>tools\.find\(t=>t\.id===id\)!\)/,
+  "Only pinned tools belong in the narrow rail");
+assert.match(app,/desktopToolsExpanded&&<LektrusToolOverflow/,
+  "Extra tools must appear in the floating dialog");
+assert.match(app,/setTool\(id\);setMobileToolsOpen\(false\);setDesktopToolsExpanded\(false\)/,
+  "Overflow items must retain click actions and close the dialog");
+assert.match(app,/const \[desktopToolsExpanded,setDesktopToolsExpanded\]=useState\(false\)/,
+  "The More dialog should not unexpectedly open when a board is reopened");
+assert.match(overflow,/maxHeight|Math\.min\(586,viewportHeight-24\)/,
+  "Floating dialog should fit into the viewport");
+assert.match(overflow,/dialogRef\.current\?\.contains\(target\)/);
+assert.match(overflow,/Escape/);
+assert.match(css,/\.lektrus-tool-overflow-popover/);
+assert.match(css,/max-height:min\(586px,calc\(100dvh - 24px\)\)/);
+assert.match(hook,/const hidden=index>=count;/);
 console.log("Lektrus board chrome and adaptive toolbar source contracts pass.");
