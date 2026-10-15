@@ -224,7 +224,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
           <section className="lectris-hub-section">
             <div className="lectris-hub-section-head"><div><small>ПЛАН</small><h2>Ближайшие занятия</h2></div><button type="button" onClick={()=>navigate("schedule")}>Календарь →</button></div>
             {dataLoading?<p className="lectris-hub-placeholder">Загружаем расписание…</p>:upcoming.length?
-              upcoming.slice(0,4).map(lesson=><div className="lectris-hub-lesson" key={lesson.id}><div><strong>{lesson.title}</strong><small>{shortDate(lesson.startsAt)} · {lesson.durationMinutes} мин</small>{teacher&&<small>{lesson.studentName}</small>}</div>
+              upcoming.slice(0,2).map(lesson=><div className="lectris-hub-lesson" key={lesson.id}><div><strong>{lesson.title}</strong><small>{shortDate(lesson.startsAt)} · {lesson.durationMinutes} мин</small>{teacher&&<small>{lesson.studentName}</small>}</div>
                 {boardById.has(lesson.boardId)&&<button type="button" onClick={()=>onOpenBoard(boardById.get(lesson.boardId)!)}>Открыть</button>}
               </div>):
               <p className="lectris-hub-placeholder">Предстоящих занятий пока нет.</p>}
