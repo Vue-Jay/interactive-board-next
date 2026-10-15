@@ -5096,6 +5096,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const data = parseDocument(JSON.stringify(row.document));
     // Normalize connector positions before setting the clean baseline.
     data.items = syncBoundConnectors(data.items);
+    // Background-only revisions must not reset the active pen, zoom, current
+    // selection or object editor on a student device. They are shared document
+    // data, but not drawing gestures.
+    const localDoc=currentDocument();
+    const onlyBackgroundChanged=
+      documentFingerprint({...localDoc,background:data.background})===documentFingerprint(data) &&
+      JSON.stringify(localDoc.background)!==JSON.stringify(data.background);
     remoteVersion.current = row.version;
     acknowledgedDocument.current = documentFingerprint(data);
     pendingRemote.current = null;
@@ -5103,6 +5110,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     remoteSaveFailures.current = 0;
     if (remoteRetryTimer.current) { clearTimeout(remoteRetryTimer.current); remoteRetryTimer.current = null; }
     setRemoteConflict(null);
+    if(onlyBackgroundChanged){
+      setBoardBackground(normalizeBoardBackground(data.background));
+      snapshot.current=data;
+      try {localStorage.setItem(storageKey,JSON.stringify(data))}catch{}
+      setSaveStatus("Общий фон обновлён");
+      return;
+    }
     setTableEditorId(null); setChecklistEditorId(null); setQuizEditorId(null);
     setFlashcardEditorId(null); setFormulaEditorId(null); setFrameNotesEditorId(null);
     applyDocument(data, true);

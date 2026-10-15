@@ -7,6 +7,9 @@ assert.match(model,/background:normalizeBoardBackground\(d\.background\)/);
 assert.match(model,/background:normalizeBoardBackground\(data\.background\)/);
 assert.match(app,/const canChangeBoardBackground=canEdit&&!isStudent/);
 assert.match(app,/setBoardBackground\(normalizeBoardBackground\(data\.background\)\)/);
+assert.match(app,/const onlyBackgroundChanged=/);
+assert.match(app,/if\(onlyBackgroundChanged\)\{[\s\S]*?setBoardBackground\(normalizeBoardBackground\(data\.background\)\)/);
+
 assert.match(app,/background:boardBackground/);
 assert.match(app,/backgroundAppearance\.backgroundImage/);
 assert.match(app,/drawingCursorForBackground\(boardBackground\)/);
