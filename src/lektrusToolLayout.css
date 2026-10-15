@@ -612,3 +612,30 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
    overflow:visible;
  }
 }
+
+
+/* Category art scales to the existing 40px rail buttons, not beyond them. */
+@media(min-width:701px) and (pointer:fine){
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections .lektrus-section-icon{width:21px!important;height:21px!important}
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections .lektrus-section-icon svg{
+  width:21px!important;height:21px!important;min-width:21px!important;min-height:21px!important;
+  max-width:21px!important;max-height:21px!important;overflow:visible
+ }
+}
+.board-context-menu.lektrus-context-portal:has(.lektrus-connector-context){
+ width:min(278px,calc(100vw - 16px))!important;
+ max-height:min(510px,calc(100dvh - 20px))!important;
+ overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;
+ box-sizing:border-box;
+}
+.lektrus-connector-context{display:grid;gap:8px;padding:7px 5px 12px;min-width:0}
+.lektrus-connector-context>strong{font-size:13px;font-weight:800;padding:3px 4px;color:var(--lt-text,#20344d)}
+.lektrus-connector-context-types{display:flex;gap:5px}
+.board-context-menu .lektrus-connector-context-types>button{display:grid;place-items:center;flex:1;height:34px!important;padding:0!important;background:var(--lt-subtle,#f3f6fb);border:1px solid var(--lt-line,#d6e0ee);border-radius:8px}
+.board-context-menu .lektrus-connector-context-types>button.active{color:var(--lt-primary,#426bdb);border-color:var(--lt-primary,#426bdb);background:var(--lt-selected,#eaf0ff)}
+.lektrus-connector-context>label{display:grid;grid-template-columns:80px minmax(0,1fr) auto;align-items:center;gap:7px;font-size:11px;font-weight:650;min-width:0}
+.lektrus-connector-context>label select{grid-column:2 / 4;min-width:0;max-width:100%;height:31px;border:1px solid var(--lt-line,#d6e0ee);border-radius:7px;background:var(--lt-raised,#fff);color:var(--lt-text,#20344d)}
+.lektrus-connector-context>label input[type=range]{width:100%;min-width:0;accent-color:var(--lt-primary,#426bdb)}
+.lektrus-connector-context>label input[type=color]{grid-column:2 / 4;width:45px;height:29px;min-width:0;padding:2px;border:1px solid var(--lt-line,#d6e0ee);border-radius:7px}
+.lektrus-connector-context-extra{display:flex;gap:6px}
+.board-context-menu .lektrus-connector-context-extra>button{flex:1;text-align:center!important;border:1px solid var(--lt-line,#d6e0ee)!important;border-radius:8px!important;padding:7px 5px!important;font-size:11px!important}
