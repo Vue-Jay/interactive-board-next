@@ -1,0 +1,321 @@
+/* Lektrus board toolbar geometry v2. Imported LAST.
+   Layout only: board drawing, tool handlers and document content are untouched.
+   Modes: desktop >1100, compact vertical touch dock at <=1100 landscape
+   or 701-1100 portrait, and the single bottom dock at <=700 portrait. */
+
+/* Prevent historic justify-content:space-between, which stretched the rail. */
+body .workspace .toolbar.compact-toolbar {
+  box-sizing:border-box!important;
+  justify-content:flex-start!important;
+  align-content:start!important;
+  gap:3px!important;
+}
+body .workspace .toolbar.compact-toolbar .toolbar-pinned,
+body .workspace .toolbar.compact-toolbar .toolbar-section-line,
+body .workspace .toolbar.compact-toolbar .lektrus-toolbar-measure,
+body .workspace .toolbar.compact-toolbar .toolbar-more,
+body .workspace .toolbar.compact-toolbar .lectris-subject-toolbox,
+body .workspace .toolbar.compact-toolbar .toolbar-ai-button,
+body .workspace .toolbar.compact-toolbar .toolbar-command-search,
+body .workspace .toolbar.compact-toolbar .lectris-tools-configure {
+  flex-shrink:0!important;
+}
+body .workspace .toolbar.compact-toolbar .toolbar-pinned {
+  display:flex!important;flex-direction:column!important;
+  align-items:center!important;justify-content:flex-start!important;gap:3px!important;
+}
+body .workspace .toolbar.compact-toolbar .toolbar-list {
+  display:flex!important;flex-direction:column!important;
+  align-items:center!important;justify-content:flex-start!important;
+  flex:0 1 auto!important;min-height:0!important;min-width:0!important;
+  gap:3px!important;overflow:hidden!important;
+}
+
+@media screen and (min-width:1101px) {
+  body .workspace .toolbar.compact-toolbar {
+    display:flex!important;visibility:visible!important;opacity:1!important;
+    pointer-events:auto!important;
+    position:absolute!important;left:10px!important;right:auto!important;
+    top:10px!important;bottom:auto!important;transform:none!important;
+    width:54px!important;min-width:54px!important;max-width:54px!important;
+    height:max-content!important;max-height:calc(100% - 20px)!important;
+    padding:6px 5px!important;
+    flex-direction:column!important;align-items:center!important;
+    overflow-x:hidden!important;overflow-y:auto!important;
+    overscroll-behavior:contain!important;scrollbar-width:none!important;
+    border-radius:15px!important;
+  }
+  body .workspace .toolbar.compact-toolbar::-webkit-scrollbar{display:none}
+  body .workspace .toolbar.compact-toolbar .tool-wrap {
+    display:block!important;flex:0 0 auto!important;
+    width:42px!important;min-width:42px!important;max-width:42px!important;
+    margin:0!important;
+  }
+  body .workspace .toolbar.compact-toolbar .tool-button {
+    display:grid!important;place-items:center!important;
+    width:42px!important;min-width:42px!important;
+    height:40px!important;min-height:40px!important;
+    margin:0!important;padding:0!important;
+  }
+  body .workspace .toolbar.compact-toolbar .toolbar-more {
+    position:relative!important;bottom:auto!important;
+    flex:0 0 40px!important;
+    width:42px!important;min-width:42px!important;
+    height:40px!important;min-height:40px!important;
+    margin:1px 0!important;
+  }
+  body .workspace nav.mobile-board-tools,
+  body .workspace section.mobile-tools-sheet {display:none!important}
+}
+
+/* A viewport never shows both the old desktop rail and the mobile dock.
+   Width is deliberate: pointer:fine can occur on a real phone with a mouse. */
+@media screen and (max-width:1100px) {
+  body .workspace .toolbar.compact-toolbar,
+  body .workspace .toolbar.compact-toolbar.mobile-open,
+  body .workspace .toolbar.compact-toolbar.expanded,
+  body .workspace .mobile-quick-tools,
+  body .workspace .mobile-tools-toggle {
+    display:none!important;visibility:hidden!important;pointer-events:none!important;
+  }
+  body .workspace nav.mobile-board-tools{
+    display:flex!important;visibility:visible!important;pointer-events:auto!important;
+    box-sizing:border-box!important;
+    border:1px solid var(--lt-line)!important;
+    background:var(--lt-raised)!important;color:var(--lt-text)!important;
+    box-shadow:var(--lt-pop-shadow)!important;
+  }
+  body .workspace nav.mobile-board-tools button{color:var(--lt-secondary)!important}
+  body .workspace nav.mobile-board-tools button.active{
+    background:var(--lt-primary)!important;color:#fff!important;
+    box-shadow:none!important;
+  }
+  body .workspace section.mobile-tools-sheet{
+    box-sizing:border-box!important;background:var(--lt-raised)!important;
+    color:var(--lt-text)!important;
+    border:1px solid var(--lt-line)!important;
+    box-shadow:var(--lt-pop-shadow)!important;
+    overscroll-behavior:contain!important;
+  }
+  body .workspace .mobile-tools-sheet-head{
+    background:var(--lt-raised)!important;color:var(--lt-text)!important;
+    border-color:var(--lt-line)!important;
+  }
+  body .workspace .mobile-tools-group>span{color:var(--lt-muted)!important;font-size:10px!important}
+  body .workspace .mobile-tools-group button{
+    color:var(--lt-secondary)!important;background:var(--lt-surface)!important;
+    border:1px solid var(--lt-line)!important;
+  }
+  body .workspace .mobile-tools-group button.active{
+    color:var(--lt-selected-ink)!important;background:var(--lt-selected)!important;
+    border-color:var(--lt-primary)!important;
+  }
+  body .workspace .mobile-tools-group button small{
+    color:inherit!important;font-size:10px!important;min-width:0!important;
+    line-height:1.25!important;
+  }
+  body .workspace nav.mobile-board-tools button:focus-visible,
+  body .workspace section.mobile-tools-sheet button:focus-visible {
+    outline:2px solid var(--lt-focus)!important;outline-offset:2px!important;
+  }
+}
+
+/* Landscape phone and portrait tablet: compact LEFT rail, never centered. */
+@media screen and (max-width:1100px) and (orientation:landscape),
+       screen and (min-width:701px) and (max-width:1100px) and (orientation:portrait) {
+  body .workspace nav.mobile-board-tools {
+    position:fixed!important;display:flex!important;
+    flex-direction:column!important;align-items:center!important;
+    justify-content:flex-start!important;
+    left:max(8px,env(safe-area-inset-left,0px))!important;
+    right:auto!important;
+    top:calc(58px + env(safe-area-inset-top,0px))!important;
+    bottom:auto!important;
+    transform:none!important;margin:0!important;
+    width:54px!important;min-width:54px!important;max-width:54px!important;
+    height:max-content!important;
+    max-height:calc(100dvh - 122px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
+    padding:5px 4px!important;gap:3px!important;
+    overflow:hidden!important;border-radius:15px!important;
+    z-index:240!important;
+  }
+  body .workspace nav.mobile-board-tools .mobile-tool-cluster{
+    display:flex!important;flex-direction:column!important;
+    align-items:center!important;justify-content:flex-start!important;
+    gap:3px!important;width:100%!important;min-width:0!important;
+    margin:0!important;
+  }
+  body .workspace nav.mobile-board-tools .mobile-tool-cluster-navigation{
+    position:static!important;flex:0 0 auto!important;
+    background:transparent!important;z-index:auto!important;order:1!important;
+  }
+  body .workspace nav.mobile-board-tools .mobile-tool-cluster-create{
+    order:3!important;flex:0 1 auto!important;
+    min-height:0!important;max-height:100%!important;
+    overflow-x:hidden!important;overflow-y:auto!important;
+    overscroll-behavior:contain!important;scrollbar-width:none!important;
+  }
+  body .workspace nav.mobile-board-tools .mobile-tool-cluster-create::-webkit-scrollbar{display:none!important}
+  body .workspace nav.mobile-board-tools .mobile-tool-with-geometry{
+    display:flex!important;flex-direction:column!important;align-items:center!important;
+    width:100%!important;min-width:0!important;flex:0 0 auto!important;gap:2px!important;
+  }
+  body .workspace nav.mobile-board-tools .mobile-tool-separator{
+    display:block!important;flex:0 0 1px!important;align-self:center!important;
+    width:32px!important;min-width:32px!important;
+    height:1px!important;min-height:1px!important;max-height:1px!important;
+    margin:3px 0!important;background:var(--lt-line)!important;
+  }
+  body .workspace nav.mobile-board-tools>.mobile-tool-separator:first-of-type{order:2!important}
+  body .workspace nav.mobile-board-tools>.mobile-tool-separator:last-of-type{order:4!important}
+  body .workspace nav.mobile-board-tools button,
+  body .workspace nav.mobile-board-tools .mobile-tool-with-geometry>button {
+    display:grid!important;place-items:center!important;
+    flex:0 0 40px!important;
+    width:42px!important;min-width:42px!important;max-width:42px!important;
+    height:40px!important;min-height:40px!important;max-height:40px!important;
+    padding:0!important;margin:0 auto!important;border-radius:10px!important;
+  }
+  body .workspace nav.mobile-board-tools>button.mobile-tools-more{
+    order:5!important;flex:0 0 40px!important;align-self:center!important;
+    width:42px!important;margin:0!important;
+    border:1px solid var(--lt-line)!important;background:var(--lt-subtle)!important;
+  }
+  body .workspace nav.mobile-board-tools>button.mobile-tools-more.active{
+    background:var(--lt-primary)!important;border-color:var(--lt-primary)!important;
+  }
+  body .workspace nav.mobile-board-tools .geometry-tools{
+    flex:0 0 auto!important;max-width:42px!important;
+  }
+  body .workspace nav.mobile-board-tools .geometry-trigger{
+    width:40px!important;min-width:40px!important;
+    height:40px!important;min-height:40px!important;
+    background:var(--lt-subtle)!important;color:var(--lt-secondary)!important;
+  }
+  /* The tool catalogue floats beside the rail and scrolls independently. */
+  body .workspace section.mobile-tools-sheet {
+    display:block!important;position:fixed!important;
+    left:calc(70px + env(safe-area-inset-left,0px))!important;right:auto!important;
+    top:calc(58px + env(safe-area-inset-top,0px))!important;bottom:auto!important;
+    transform:none!important;margin:0!important;
+    width:min(510px,calc(100vw - 82px - env(safe-area-inset-right,0px)))!important;
+    min-width:0!important;max-width:calc(100vw - 82px)!important;
+    height:auto!important;
+    max-height:calc(100dvh - 70px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
+    padding:10px!important;overflow-x:hidden!important;overflow-y:auto!important;
+    z-index:950!important;border-radius:14px!important;
+  }
+  body .workspace section.mobile-tools-sheet .mobile-tools-groups{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;
+  }
+  body .workspace section.mobile-tools-sheet .mobile-tools-group>div{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important;
+  }
+  body .workspace section.mobile-tools-sheet .mobile-tools-group button {
+    min-width:0!important;min-height:42px!important;height:auto!important;
+    padding:6px!important;white-space:normal!important;
+  }
+  body .workspace section.mobile-tools-sheet .mobile-tools-group button small{
+    white-space:normal!important;overflow-wrap:anywhere!important;text-overflow:clip!important;
+  }
+  /* Zoom and board navigation move to the opposite lower corner. */
+  body .workspace .board-controls {
+    position:fixed!important;left:auto!important;
+    right:max(9px,env(safe-area-inset-right,0px))!important;
+    bottom:max(9px,env(safe-area-inset-bottom,0px))!important;
+    transform:none!important;margin:0!important;
+    max-width:min(195px,calc(100vw - 100px))!important;
+    overflow-x:auto!important;overflow-y:hidden!important;
+    scrollbar-width:none!important;z-index:235!important;
+    justify-content:flex-start!important;
+  }
+  body .workspace .board-controls::-webkit-scrollbar{display:none!important}
+}
+
+/* Very short landscape: navigation and "+" stay put; middle tools scroll. */
+@media screen and (max-height:450px) and (max-width:1100px) and (orientation:landscape) {
+  body .workspace nav.mobile-board-tools{
+    width:49px!important;min-width:49px!important;max-width:49px!important;
+    padding:4px 3px!important;gap:2px!important;
+    max-height:calc(100dvh - 103px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
+  }
+  body .workspace nav.mobile-board-tools button,
+  body .workspace nav.mobile-board-tools .mobile-tool-with-geometry>button {
+    width:40px!important;min-width:40px!important;max-width:40px!important;
+    height:36px!important;min-height:36px!important;max-height:36px!important;flex-basis:36px!important;
+  }
+  body .workspace nav.mobile-board-tools>button.mobile-tools-more{
+    width:40px!important;height:36px!important;min-height:36px!important;flex-basis:36px!important;
+  }
+  body .workspace section.mobile-tools-sheet{
+    left:calc(64px + env(safe-area-inset-left,0px))!important;
+    width:min(510px,calc(100vw - 77px))!important;
+  }
+  body .workspace .board-controls .zoom-value{display:none!important}
+}
+
+/* Portrait phone: one bottom dock with the catalogue above it, no side rail. */
+@media screen and (max-width:700px) and (orientation:portrait) {
+  body .workspace .toolbar.compact-toolbar,
+  body .workspace .toolbar.compact-toolbar.mobile-open,
+  body .workspace .toolbar.compact-toolbar.expanded {
+    display:none!important;visibility:hidden!important;pointer-events:none!important;
+  }
+  body .workspace nav.mobile-board-tools{
+    display:flex!important;position:fixed!important;
+    flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;
+    left:50%!important;right:auto!important;top:auto!important;
+    bottom:max(10px,env(safe-area-inset-bottom,0px))!important;
+    transform:translateX(-50%)!important;margin:0!important;
+    width:max-content!important;max-width:calc(100vw - 18px)!important;
+    height:54px!important;max-height:54px!important;padding:5px!important;gap:3px!important;
+    overflow-x:auto!important;overflow-y:hidden!important;
+    scrollbar-width:none!important;border-radius:16px!important;z-index:240!important;
+  }
+  body .workspace nav.mobile-board-tools .mobile-tool-cluster{
+    display:flex!important;flex-direction:row!important;flex:0 0 auto!important;
+    align-items:center!important;gap:2px!important;overflow:visible!important;width:auto!important;
+  }
+  body .workspace nav.mobile-board-tools .mobile-tool-with-geometry{
+    width:auto!important;display:flex!important;flex-direction:row!important;
+  }
+  body .workspace nav.mobile-board-tools .mobile-tool-separator{
+    display:block!important;width:1px!important;min-width:1px!important;
+    height:28px!important;min-height:28px!important;flex:0 0 1px!important;
+    margin:0 3px!important;background:var(--lt-line)!important;
+  }
+  body .workspace nav.mobile-board-tools button{
+    flex:0 0 40px!important;width:40px!important;min-width:40px!important;
+    height:42px!important;min-height:42px!important;
+  }
+  body .workspace nav.mobile-board-tools button.mobile-tools-more{
+    order:5!important;flex:0 0 42px!important;
+    background:var(--lt-subtle)!important;border:1px solid var(--lt-line)!important;
+  }
+  body .workspace section.mobile-tools-sheet{
+    position:fixed!important;left:50%!important;right:auto!important;top:auto!important;
+    bottom:calc(74px + env(safe-area-inset-bottom,0px))!important;
+    transform:translateX(-50%)!important;margin:0!important;
+    width:min(520px,calc(100vw - 20px))!important;max-width:calc(100vw - 20px)!important;
+    height:auto!important;
+    max-height:min(65dvh,calc(100dvh - 132px - env(safe-area-inset-bottom,0px)))!important;
+    overflow-x:hidden!important;overflow-y:auto!important;border-radius:15px!important;z-index:950!important;
+  }
+  body .workspace section.mobile-tools-sheet .mobile-tools-groups{
+    grid-template-columns:minmax(0,1fr)!important;gap:8px!important;
+  }
+  body .workspace section.mobile-tools-sheet .mobile-tools-group>div{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  body .workspace section.mobile-tools-sheet .mobile-tools-group button{
+    min-width:0!important;min-height:46px!important;white-space:normal!important;padding:6px 4px!important;
+  }
+  body .workspace section.mobile-tools-sheet .mobile-tools-group button small{
+    white-space:normal!important;overflow-wrap:anywhere!important;text-overflow:clip!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  body .workspace .toolbar.compact-toolbar .tool-wrap,
+  body .workspace nav.mobile-board-tools,
+  body .workspace section.mobile-tools-sheet {transition:none!important;animation:none!important}
+}

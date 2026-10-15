@@ -23,6 +23,7 @@ import "./lektrusThemes.css";
 import "./lektrusContrast.css";
 import "./lektrusPolish.css";
 import "./lektrusCanvasChrome.css";
+import "./lektrusToolLayout.css";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
 
