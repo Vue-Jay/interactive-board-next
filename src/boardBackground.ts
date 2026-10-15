@@ -12,16 +12,18 @@ export function boardBackgroundAppearance(input:BoardBackground){
   return {backgroundColor:"rgba("+r+","+g+","+blue+","+alpha+")",backgroundImage:image,
     foreground:dark?"#ffffff":"#111827",outline:dark?"#111827":"#ffffff"};
 }
-export function drawingCursorForBackground(background:BoardBackground){
+export function drawingCursorForBackground(background:BoardBackground, thickness=3, zoom=1){
   const {foreground,outline}=boardBackgroundAppearance(background);
-  // Lektrus Point: a crisp 18px broken ring with a true 9,9 drawing hotspot.
-  // Contrasting double strokes keep the cursor readable on light/dark boards
-  // and over images, without obscuring fine strokes with long crosshair arms.
-  const ring='<circle cx="9" cy="9" r="5.3" fill="none" stroke-dasharray="5 3.325" stroke-dashoffset="1.3" stroke-linecap="round"';
-  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">'+
-    ring+' stroke="'+outline+'" stroke-width="3.1"/>'+
-    ring+' stroke="'+foreground+'" stroke-width="1.45"/>'+
-    '<circle cx="9" cy="9" r="1.45" fill="'+outline+'"/>'+
-    '<circle cx="9" cy="9" r=".9" fill="'+foreground+'"/></svg>';
-  return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") 9 9, crosshair';
+  // The outline follows the actual on-screen ink width (including zoom).
+  // Keep very thin strokes visible and cap dimensions for browser cursor limits.
+  const diameter=Math.max(8,Math.min(96,Math.round(thickness*zoom)));
+  const size=diameter+6;
+  const center=size/2;
+  const radius=diameter/2-1;
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">'+
+    '<circle cx="'+center+'" cy="'+center+'" r="'+radius+'" fill="none" stroke="'+outline+'" stroke-width="2.8"/>'+
+    '<circle cx="'+center+'" cy="'+center+'" r="'+radius+'" fill="none" stroke="'+foreground+'" stroke-width="1.4"/>'+
+    '<circle cx="'+center+'" cy="'+center+'" r="1.9" fill="'+outline+'"/>'+
+    '<circle cx="'+center+'" cy="'+center+'" r="1" fill="'+foreground+'"/></svg>';
+  return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") '+center+' '+center+', crosshair';
 }
