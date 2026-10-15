@@ -33,8 +33,15 @@ export default function LectrisPanelSettings({value,onChange,onClose}:Props){
             <label className={draft.quickPosition==="top"?"active":""}><input type="radio" name="quickPosition" checked={draft.quickPosition==="top"} onChange={()=>set("quickPosition","top")}/>Сверху</label>
           </div>
         </fieldset>
-        {side("inspectorSide","Панель редактора")}
-        <label className="lectris-panel-settings-range">Ширина редактора
+        {side("inspectorSide","Панель свойств")}
+        <fieldset className="lectris-panel-settings-field">
+          <legend>Редакторы формул, таблиц и заданий</legend>
+          <div className="lectris-panel-settings-segments">
+            <label className={draft.editorPosition==="bottom"?"active":""}><input type="radio" name="editorPosition" checked={draft.editorPosition==="bottom"} onChange={()=>set("editorPosition","bottom")}/>Снизу</label>
+            <label className={draft.editorPosition==="side"?"active":""}><input type="radio" name="editorPosition" checked={draft.editorPosition==="side"} onChange={()=>set("editorPosition","side")}/>Сбоку</label>
+          </div>
+        </fieldset>
+        <label className="lectris-panel-settings-range">Ширина боковой панели
           <div><input type="range" min={280} max={460} step={10} value={draft.inspectorWidth}
             onChange={e=>set("inspectorWidth",Number(e.target.value))}/><strong>{draft.inspectorWidth} px</strong></div>
         </label>
