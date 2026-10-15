@@ -20,7 +20,7 @@ assert.ok(app.includes('setSaveStatus("Сохранено в браузере");
 
 // Update only the JSON document metadata after rendering; preserve version and audit history.
 assert.match(preview, /method:"PATCH"/);
-assert.match(preview, /"version=eq\.\+"\+encodeURIComponent\(String\(savedServerVersion\)\)/);
+assert.ok(preview.includes('"&version=eq."+encodeURIComponent(String(savedServerVersion))'),"thumbnail update must match the saved revision");
 assert.ok(preview.includes('JSON.stringify({document:payload})'));
 assert.equal(preview.includes('JSON.stringify({document:payload,version:'), false);
 assert.ok(preview.includes("requestIdleCallback"));
