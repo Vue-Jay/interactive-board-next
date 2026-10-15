@@ -2789,6 +2789,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   const touchStart=(e:PE<HTMLElement>)=>{
     if(e.pointerType!=="touch")return;
+    if(touchPoints.current.has(e.pointerId))return;
     touchPoints.current.set(e.pointerId,local(e.clientX,e.clientY));
     if(touchPoints.current.size===2){
       // Cancel any single-finger object edit before beginning a navigation gesture.
@@ -6479,8 +6480,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // viewers and selection handles. Start the existing stroke gesture
             // during capture, before any embedded component handles the event.
             if((tool==="pen"||tool==="marker") && !presentation && !space && e.button===0){
-              touchStart(e);
-              if(touchPoints.current.size<2)down(e);
+              if(!pinchState.current&&!consumedTouchIds.current.has(e.pointerId))down(e);
               e.stopPropagation();
               return;
             }
