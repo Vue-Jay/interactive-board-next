@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:eraser": "node scripts/test-eraser.mjs"
+    "test:eraser": "node scripts/test-eraser.mjs",
+    "test:ui": "node scripts/test-lektrus-ui.mjs && node scripts/test-lektrus-responsive.mjs && node scripts/test-lektrus-polish.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
