@@ -144,3 +144,44 @@
 @media(prefers-reduced-motion:reduce){
   .lektrus-color-current,.lektrus-color-wheel{transition:none}
 }
+
+
+/* Specialist editors previously reserved exactly 38px for one color input.
+   The new two-button selector needs a real column, never an overlap. */
+.graph-point-editor{
+  grid-template-columns:minmax(44px,1fr) minmax(44px,1fr) minmax(71px,max-content) 34px;
+  align-items:center;
+  min-width:0;
+}
+.graph-point-editor>input[type=number]{min-width:0;width:100%}
+.graph-point-editor>.lektrus-color-picker{
+  width:max-content;min-width:0;max-width:100%;
+}
+.graph-point-editor>.lektrus-color-picker .lektrus-color-controls{gap:3px}
+.graph-point-editor>.lektrus-color-picker :is(.lektrus-color-current,.lektrus-color-wheel){
+  width:30px;min-width:30px;flex-basis:30px;height:30px;min-height:30px;
+}
+.checklist-editor-style-row,
+.quiz-editor-style-row,
+.flashcard-editor-style-row{
+  min-width:0;
+  gap:9px;
+}
+.checklist-editor-style-row>.lektrus-color-picker,
+.quiz-editor-style-row>.lektrus-color-picker,
+.flashcard-editor-style-row>.lektrus-color-picker{
+  flex:0 0 auto;
+}
+@media(max-width:700px){
+  .checklist-editor-style-row,
+  .quiz-editor-style-row,
+  .flashcard-editor-style-row{flex-wrap:wrap!important}
+  .graph-point-editor{
+    grid-template-columns:minmax(43px,1fr) minmax(43px,1fr) minmax(71px,max-content) 32px;
+    gap:4px;
+  }
+}
+@media(max-width:390px){
+  .graph-point-editor{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 32px}
+  .graph-point-editor>.lektrus-color-picker{grid-column:1 / 3;grid-row:auto}
+}
