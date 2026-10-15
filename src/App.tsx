@@ -2081,9 +2081,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           }
         }
         if(acknowledgedDocument.current!==expected){
+          const reason=saveFailure.current;
+          const detail=reason
+            ? "Последняя ошибка ("+reason.step+"): "+reason.message
+            : "Текущий этап: "+saveStep.current+". Соединение или сервер могут отвечать медленно.";
+          const localMessage=localBackupValid.current
+            ? "Локальная копия записана."
+            : "Внимание: локальную копию записать не удалось, возможно, заполнено хранилище браузера!";
           const confirmed=window.confirm(
-            "Сервер ещё не подтвердил последнее сохранение. Локальная копия сохранена. "+
-            "Выйти всё равно? Для сохранения истории на сервере лучше дождаться соединения."
+            "Сервер ещё не подтвердил последнее сохранение.\n"+
+            localMessage+"\n"+detail+"\n\n"+
+            "Выйти всё равно? Если выйти до подтверждения, последние изменения могут не попасть в историю на сервере."
           );
           if(!confirmed)return;
         }
