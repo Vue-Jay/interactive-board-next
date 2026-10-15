@@ -560,3 +560,27 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
   background:var(--lt-raised,#fff);color:var(--lt-primary,#315fce);
  }
 }
+
+
+/* Clean desktop category buttons: one pictogram, no overlapping badges. */
+@media (min-width:701px) and (pointer:fine){
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections{
+  display:flex!important;flex-direction:column!important;align-items:center!important;
+  width:100%!important;gap:6px!important;padding:6px 0!important;
+ }
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections>.tool-button{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  flex:0 0 40px!important;width:40px!important;height:40px!important;min-height:40px!important;
+  padding:0!important;margin:0 auto!important;position:relative!important;overflow:visible!important;
+  border-radius:10px!important;
+ }
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections .lektrus-section-icon{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:24px!important;height:24px!important;position:static!important;line-height:1!important;
+ }
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections .lektrus-section-icon-secondary{display:none!important}
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections .lektrus-section-icon svg{
+  width:22px!important;height:22px!important;max-width:22px!important;max-height:22px!important;
+  flex:none!important;display:block!important;
+ }
+}
