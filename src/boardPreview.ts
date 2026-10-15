@@ -4,7 +4,7 @@ import { expandDocumentInk, type DocumentData, type Item } from "./boardModel";
 
 // Lightweight board snapshots embedded in the existing board_documents JSONB.
 // A small JSONB projection lets the gallery load previews WITHOUT entire boards.
-const W=480,H=270,MAX_CHARS=100_000;
+const MAX_CHARS=100_000;
 const KEY="lectris.board-preview.v1."+
   String(import.meta.env.VITE_SUPABASE_URL??"local").replace(/[^a-z0-9]/gi,"").slice(-40)+".";
 const valid=(v:unknown):v is string=>typeof v==="string"&&v.length<MAX_CHARS&&
@@ -34,7 +34,8 @@ export async function loadBoardPreviews(ids:string[]):Promise<Record<string,stri
       for(const row of rows){
         if(!batch.includes(row.board_id))continue;
         if(valid(row.preview)){output[row.board_id]=row.preview;cacheBoardPreview(row.board_id,row.preview)}
-        else{delete output[row.board_id];cacheBoardPreview(row.board_id,null)}
+        // NULL means a migrated board without remote thumbnail. Keep local backfill.
+        else if(row.preview===""){delete output[row.board_id];cacheBoardPreview(row.board_id,null)}
       }
     }catch{/* Cached results still work offline. */}
   }
@@ -177,7 +178,7 @@ export async function renderBoardPreview(data:DocumentData,boardId:string):Promi
         new Promise(resolve=>setTimeout(()=>resolve(null),450))
       ]);
       if(blob&&blob.type.startsWith("image/")&&typeof createImageBitmap==="function"){
-        bitmap=await createImageBitmap(blob);
+        bitmap=await createImageBitmap(blob,{resizeWidth:Math.min(480,Math.max(2,Math.round(item.width*scale)))});
         ctx.save();ctx.translate(item.x,item.y);
         if(item.rotation){ctx.translate(item.width/2,item.height/2);ctx.rotate(item.rotation*Math.PI/180);ctx.translate(-item.width/2,-item.height/2)}
         ctx.drawImage(bitmap,0,0,item.width,item.height);ctx.restore();
