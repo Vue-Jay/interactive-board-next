@@ -1,40 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
-const DEFAULT_COLORS = ["#1f2937","#365fd0","#7c3aed","#0f766e","#eab308","#ea580c","#dc2626","#ffffff"] as const;
-const PREFIX = "lektrus.saved-colors.v1.";
-const EVENT = "lektrus-saved-colors-updated";
-const LIMIT = 24;
-const HEX = /^#[0-9a-fA-F]{6}$/;
+import { DEFAULT_COLORS, MAX_SAVED_COLORS, validHexColor, colorLibraryKey,
+  sanitizeSavedColors, decodeSavedColors, addSavedColor, removeSavedColor } from "./lektrusSavedColors";
 
-export function sanitizeSavedColors(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  const clean: string[] = [];
-  for (const item of value) {
-    if (typeof item !== "string" || !HEX.test(item)) continue;
-    const color = item.toLowerCase();
-    if (!DEFAULT_COLORS.includes(color as typeof DEFAULT_COLORS[number]) && !clean.includes(color)) clean.push(color);
-    if (clean.length >= LIMIT) break;
-  }
-  return clean;
-}
-export function decodeSavedColors(value: string | null): string[] {
-  if (!value) return [];
-  try { return sanitizeSavedColors(JSON.parse(value)); } catch { return []; }
-}
-export function colorLibraryKey(userId: string): string {
-  return PREFIX + encodeURIComponent(userId);
-}
-export function addSavedColor(existing: string[], raw: string): string[] {
-  if (!HEX.test(raw)) return existing;
-  const color = raw.toLowerCase();
-  if (DEFAULT_COLORS.includes(color as typeof DEFAULT_COLORS[number]) || existing.includes(color)) return existing;
-  if (existing.length >= LIMIT) return existing;
-  return [...existing, color];
-}
-export function removeSavedColor(existing: string[], raw: string): string[] {
-  return existing.filter(color => color !== raw.toLowerCase());
-}
+const EVENT = "lektrus-saved-colors-updated";
 const notify = () => window.dispatchEvent(new Event(EVENT));
 function subscribe(listener: () => void): () => void {
   window.addEventListener(EVENT, listener);
@@ -75,7 +45,7 @@ export default function LektrusColorPicker({
   const popup = useRef<HTMLDivElement>(null);
   const raw = useSyncExternalStore(subscribe, () => readRaw(userId), () => "");
   const custom = useMemo(() => decodeSavedColors(raw), [raw]);
-  const current = HEX.test(value) ? value.toLowerCase() : "#365fd0";
+  const current = validHexColor(value) ? value.toLowerCase() : "#365fd0";
   const colors = [...DEFAULT_COLORS, ...custom];
 
   useLayoutEffect(() => {
@@ -159,16 +129,16 @@ export default function LektrusColorPicker({
           </div>)}
         </div>
         <div className="lektrus-color-add-row">
-          <button type="button" disabled={custom.includes(current)||custom.length>=LIMIT||DEFAULT_COLORS.includes(current as typeof DEFAULT_COLORS[number])}
+          <button type="button" disabled={custom.includes(current)||custom.length>=MAX_SAVED_COLORS||DEFAULT_COLORS.some(value=>value===current)}
             onClick={()=>store(userId,addSavedColor(custom,current))}>☆ Сохранить текущий</button>
           <label title="Выбрать новый цвет и добавить в избранное">
             + Добавить цвет
             <input type="color" aria-label="Новый цвет для избранного"
-              value={current} disabled={custom.length>=LIMIT}
+              value={current} disabled={custom.length>=MAX_SAVED_COLORS}
               onChange={e=>{onChange(e.target.value);store(userId,addSavedColor(custom,e.target.value))}}/>
           </label>
         </div>
-        {custom.length>=LIMIT&&<small className="lektrus-color-limit">Максимум {LIMIT} своих цветов. Чтобы добавить ещё, удалите один из сохранённых.</small>}
+        {custom.length>=MAX_SAVED_COLORS&&<small className="lektrus-color-limit">Максимум {MAX_SAVED_COLORS} своих цветов. Чтобы добавить ещё, удалите один из сохранённых.</small>}
       </div>,
       document.body
     )}
