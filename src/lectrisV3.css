@@ -362,7 +362,7 @@
 /* All seven specialist editors: desktop bottom-docked creative studio.
    Actual input fields, callbacks and save handlers are unchanged. */
 @media(min-width:1101px) and (pointer:fine){
-  .workspace :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+  .workspace.lectris-editor-bottom :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
     .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
     left:50%!important;right:auto!important;top:auto!important;bottom:12px!important;
     transform:translateX(-50%)!important;
@@ -371,21 +371,21 @@
     border-radius:21px!important;box-shadow:0 -10px 56px #132b5352!important;
     border:1px solid #bfcfeb!important;
   }
-  .workspace:has(:is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+  .workspace.lectris-editor-bottom:has(:is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
     .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal)) .lectris-quick-properties{
     display:none!important;
   }
-  .workspace.lectris-inspector-left :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+  .workspace.lectris-editor-bottom.lectris-inspector-left :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
     .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal),
-  .workspace.lectris-inspector-right.lectris-tools-right :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+  .workspace.lectris-editor-bottom.lectris-inspector-right.lectris-tools-right :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
     .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
     left:50%!important;right:auto!important;
   }
-  .workspace.lectris-quick-bottom :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+  .workspace.lectris-editor-bottom.lectris-quick-bottom :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
     .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
     bottom:12px!important;max-height:min(420px,50dvh)!important;
   }
-  .workspace.lectris-quick-top :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+  .workspace.lectris-editor-bottom.lectris-quick-top :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
     .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
     top:auto!important;bottom:12px!important;max-height:min(420px,50dvh)!important;
   }
