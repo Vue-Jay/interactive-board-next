@@ -1520,7 +1520,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     ...tools.map(t=>t.id).filter(id=>!lectrisPinned.includes(id)&&id!=="hand"&&id!=="select"&&id!=="lasso")
   ],[lectrisPinned]);
   const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(toolAllowedForRole)],[lectrisPinned,isStudent]);
-  const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,lectrisPinned.join("|"));
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
@@ -1662,6 +1661,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     try { return localStorage.getItem("lectris.desktopToolsExpanded") === "1"; }
     catch { return false; }
   });
+  const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,lectrisPinned.join("|"));
   useEffect(()=>{
     try { localStorage.setItem("lectris.desktopToolsExpanded", desktopToolsExpanded ? "1" : "0"); }
     catch {/* Private browsing/storage restrictions: keep session state only. */}
