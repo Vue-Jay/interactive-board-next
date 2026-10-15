@@ -317,3 +317,32 @@
   background:var(--lt-hover)!important;color:var(--lt-text)!important;
   border-color:var(--lt-line-strong)!important;
 }
+
+
+/* Phone portrait has one tool dock and one catalogue. The legacy desktop rail
+   must never appear behind "+" regardless of pointer type or mobile-open. */
+@media screen and (max-width:700px) and (orientation:portrait) {
+  html body .workspace .toolbar.compact-toolbar,
+  html body .workspace .toolbar.compact-toolbar.mobile-open,
+  html body .workspace .toolbar.compact-toolbar.expanded {
+    display:none!important;
+    visibility:hidden!important;
+    opacity:0!important;
+    pointer-events:none!important;
+  }
+  /* Preserve the real play SVG, remove only duplicate legacy pseudo icons. */
+  html body .topbar .start-live-lesson::before,
+  html body .topbar .start-live-lesson::after {
+    content:none!important;
+    display:none!important;
+  }
+  html body .topbar .start-live-lesson .play-svg {
+    display:block!important;
+    width:20px!important;
+    height:20px!important;
+    flex:none!important;
+    margin:0!important;
+    fill:currentColor!important;
+    stroke:none!important;
+  }
+}

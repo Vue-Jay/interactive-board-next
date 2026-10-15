@@ -49,4 +49,19 @@ assert.match(overflow,/Escape/);
 assert.match(css,/\.lektrus-tool-overflow-popover/);
 assert.match(css,/max-height:min\(586px,calc\(100dvh - 24px\)\)/);
 assert.match(hook,/const hidden=index>=count;/);
+
+// Phone portrait regression: the "+" catalogue must not expose the desktop rail.
+const legacyBoardCss=read("src/App.css");
+assert.doesNotMatch(app,/className=\{[^\n]*mobileToolsOpen\?"mobile-open"/,
+  "The mobile menu must not toggle the legacy desktop rail");
+assert.match(app,/<nav className="mobile-board-tools"/);
+assert.match(app,/\{mobileToolsOpen&&<section className="mobile-tools-sheet"/);
+assert.match(css,/@media screen and \(max-width:700px\) and \(orientation:portrait\)/);
+assert.match(css,/html body \.workspace \.toolbar\.compact-toolbar\.mobile-open/);
+assert.match(css,/display:none!important/);
+// The real play SVG is retained. Never draw a second triangle in CSS.
+assert.doesNotMatch(legacyBoardCss,/\.topbar-right>\.start-live-lesson::after\{content:"▶"/);
+assert.match(app,/<svg className="top-action-svg play-svg"[^>]*><path d="M8 5\.5 18 12 8 18\.5Z"\/><\/svg>/);
+assert.match(css,/\.start-live-lesson::after\s*\{\s*content:none!important/);
+
 console.log("Lektrus board chrome and adaptive toolbar source contracts pass.");

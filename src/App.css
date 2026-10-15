@@ -5122,7 +5122,7 @@ option{background:#fff;color:#343741}
   .presence-menu summary span:not(.presence-live-dot){display:none!important}
   .topbar-right>.lesson-button:not(.start-live-lesson){display:none!important}
   .topbar-right>.start-live-lesson{width:38px!important;height:38px!important;padding:0!important;font-size:0!important}
-  .topbar-right>.start-live-lesson::after{content:"▶";font-size:13px!important}
+  /* Start lesson already renders a single SVG play icon. */
   .topbar-more-trigger{width:38px!important;height:38px!important}
   .topbar-more-popover{
     position:fixed!important;top:54px!important;right:7px!important;left:auto!important;
