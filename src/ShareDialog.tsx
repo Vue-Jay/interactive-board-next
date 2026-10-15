@@ -6,7 +6,9 @@ import { createShareLink, listShareLinks, revokeShareLink, type ShareLink } from
 
 export default function ShareDialog({ board, user, onClose }: { board: BoardSummary; user: AuthUser; onClose: () => void }) {
   const [links, setLinks] = useState<ShareLink[]>([]);
-  const [created, setCreated] = useState<{ id: string; url: string; presentationUrl?: string } | null>(null);
+  const [created, setCreated] = useState<{ id: string; url: string; presentationUrl?: string } | null>(()=>{
+    try { const value=localStorage.getItem("lektrus.share-link."+user.id+"."+board.id);return value?JSON.parse(value):null; } catch {return null;}
+  });
   const [access, setAccess] = useState<Awaited<ReturnType<typeof getBoardAccess>>>({ members: [], invites: [] });
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Exclude<BoardRole, "owner">>("viewer");
@@ -25,7 +27,7 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
   const create = (linkRole: ShareLink["role"]) => run(async () => {
     const expiresAt=expiry==="never"?null:new Date(Date.now()+({"1d":1,"7d":7,"30d":30}[expiry])*86400000).toISOString();
     const link = await createShareLink(board.id, linkRole,{expiresAt,maxUses:maxUses>0?maxUses:null,password:linkPassword.trim()||null});
-    const url=`${window.location.origin}/join/${link.token}`; setCreated({ id: link.id, url, ...(linkRole==="viewer"?{presentationUrl:`${url}?present=1`}:{}) }); setNotice("Ссылка создана. Скопируйте её и отправьте участнику."); setSection("link"); await reload();
+    const url=`${window.location.origin}/join/${link.token}`; const saved={ id: link.id, url, ...(linkRole==="viewer"?{presentationUrl:`${url}?present=1`}:{}) };setCreated(saved);try{localStorage.setItem("lektrus.share-link."+user.id+"."+board.id,JSON.stringify(saved));}catch{/* private browsing */} setNotice("Ссылка создана. Скопируйте её и отправьте участнику."); setSection("link"); await reload();
   });
   if (board.role !== "owner") return null;
   return <div className="access-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -66,7 +68,7 @@ export default function ShareDialog({ board, user, onClose }: { board: BoardSumm
       {section==="manage"&&<div className="lektrus-share-content">
         <h3>Действующие ссылки</h3>
         {links.filter(l=>!l.revoked_at&&(!l.expires_at||Date.parse(l.expires_at)>Date.now())).length===0&&<p className="share-note">Активных ссылок пока нет. Создайте первую во вкладке «Ссылка».</p>}
-        {links.filter(l=>!l.revoked_at&&(!l.expires_at||Date.parse(l.expires_at)>Date.now())).map(link=><div className="access-person invite-link-row" key={link.id}><div><strong>{BOARD_ROLE_LABELS[link.role]}</strong><span>Создана {new Date(link.created_at).toLocaleDateString("ru-RU")}{link.expires_at?` · до ${new Date(link.expires_at).toLocaleDateString("ru-RU")}`:" · без срока"} · входов {link.use_count}{link.max_uses?`/${link.max_uses}`:""}{link.protected?" · с паролем":""}</span></div><button disabled={busy} onClick={()=>void run(async()=>{await revokeShareLink(link.id);if(created?.id===link.id)setCreated(null);await reload();setNotice("Ссылка отозвана")})}>Отозвать</button></div>)}
+        {links.filter(l=>!l.revoked_at&&(!l.expires_at||Date.parse(l.expires_at)>Date.now())).map(link=><div className="access-person invite-link-row" key={link.id}><div><strong>{BOARD_ROLE_LABELS[link.role]}</strong><span>Создана {new Date(link.created_at).toLocaleDateString("ru-RU")}{link.expires_at?` · до ${new Date(link.expires_at).toLocaleDateString("ru-RU")}`:" · без срока"} · входов {link.use_count}{link.max_uses?`/${link.max_uses}`:""}{link.protected?" · с паролем":""}</span></div><button disabled={busy} onClick={()=>void run(async()=>{await revokeShareLink(link.id);if(created?.id===link.id){setCreated(null);try{localStorage.removeItem("lektrus.share-link."+user.id+"."+board.id)}catch{/* unavailable */}}await reload();setNotice("Ссылка отозвана")})}>Отозвать</button></div>)}
         <p className="share-note">Отзыв запрещает новые входы по ссылке. Уже подключённым участникам доступ отменяется отдельно.</p>
       </div>}
       {notice && <div className="access-notice" role="status">{notice}</div>}
