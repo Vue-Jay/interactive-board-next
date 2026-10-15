@@ -1,8 +1,35 @@
 /* Board background controls are part of the shared board, not viewport state. */
-.workspace .board.board-tool-pen,
-.workspace .board.board-tool-marker,
-.workspace .board.board-tool-pen *,
-.workspace .board.board-tool-marker *{cursor:var(--lektrus-drawing-cursor,crosshair)!important}
+/* Match the true SVG stroke diameter at every zoom and tool size.
+   The overlay never intercepts drawing or object interactions. */
+@media (pointer:fine) {
+  .workspace .board:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+  .workspace .board:is(.board-tool-pen,.board-tool-marker):not(.board-right-hand):not(.board-panning):not(.board-hand-active) * {
+    cursor:none!important;
+  }
+}
+.workspace .lektrus-ink-cursor {
+  position:absolute;
+  z-index:1100;
+  pointer-events:none!important;
+  box-sizing:border-box;
+  transform:translate(-50%,-50%);
+  border:1px solid currentColor;
+  border-radius:50%;
+  background:transparent;
+  box-shadow:0 0 0 1px var(--ink-cursor-outline,#fff),inset 0 0 0 .5px var(--ink-cursor-outline,#fff);
+  will-change:left,top;
+}
+.workspace .lektrus-ink-cursor::after {
+  content:"";
+  position:absolute;
+  left:50%;top:50%;
+  width:2px;height:2px;
+  transform:translate(-50%,-50%);
+  background:currentColor;
+  border-radius:50%;
+  box-shadow:0 0 0 1px var(--ink-cursor-outline,#fff);
+}
+
 .workspace .board.board-right-hand,
 .workspace .board.board-right-hand *,
 .workspace .board.board-panning,
