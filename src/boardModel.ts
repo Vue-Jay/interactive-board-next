@@ -13,6 +13,7 @@ export type Point = { x: number; y: number };
 export type View = Point & { zoom: number };
 export type ShapeType = "rectangle" | "square" | "rounded" | "ellipse" | "circle" | "diamond" | "triangle" | "rightTriangle" | "parallelogram" | "trapezoid" | "pentagon" | "hexagon" | "star" | "arrow";
 export type ConnectorStyle = "line" | "arrow" | "double";
+export type ArrowHeadStyle = "triangle" | "open" | "stealth" | "diamond" | "oval";
 export type ConnectorRouting = "straight" | "elbow";
 export type ConnectorBinding = { itemId: string; nx: number; ny: number };
 export type Item = {
@@ -45,6 +46,8 @@ export type Item = {
   connectorStart?: Point;
   connectorEnd?: Point;
   connectorStyle?: ConnectorStyle;
+  arrowHeadStyle?: ArrowHeadStyle;
+  arrowHeadSize?: number;
   connectorRouting?: ConnectorRouting;
   connectorStartBinding?: ConnectorBinding;
   connectorEndBinding?: ConnectorBinding;
@@ -275,6 +278,8 @@ export function parseDocument(raw: string): DocumentData {
         connectorStart: { ...i.connectorStart! },
         connectorEnd: { ...i.connectorEnd! },
         connectorStyle: i.connectorStyle ?? "arrow",
+        arrowHeadStyle: i.arrowHeadStyle ?? "triangle",
+        arrowHeadSize: Number.isFinite(i.arrowHeadSize) ? Math.max(4,Math.min(24,i.arrowHeadSize!)) : 8,
         connectorRouting: i.connectorRouting ?? "straight",
         ...(binding(i.connectorStartBinding) ? { connectorStartBinding: { ...i.connectorStartBinding } } : {}),
         ...(binding(i.connectorEndBinding) ? { connectorEndBinding: { ...i.connectorEndBinding } } : {}),
