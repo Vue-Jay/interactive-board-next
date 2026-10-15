@@ -30,7 +30,6 @@ assert.ok(!app.includes('{ id: "hand", icon: "hand"'),"no hand in tools");
 assert.ok(!app.includes('KeyH: "hand"'),"no hand shortcut");
 assert.ok(!app.includes('setTool("hand")'),"no hand command");
 assert.ok(app.includes('["select","lasso"] as Tool[]'));
-assert.ok(app.includes('mode="marquee"')===false);
 assert.ok(app.includes('mode="marquee";'));
 assert.ok(app.includes('itemsInsideRect(itemsRef.current,startWorld,last)'));
 assert.ok(app.includes('e.button===2 && e.pointerType==="mouse"'));
