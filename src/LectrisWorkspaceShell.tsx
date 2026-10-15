@@ -92,11 +92,11 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
   const navButton=(entry:NavItem, className="")=><button key={entry.id} type="button" className={["lectris-nav-link",className,active===entry.id?"is-active":""].filter(Boolean).join(" ")} title={entry.label} aria-label={entry.label} aria-current={active===entry.id?"page":undefined} onClick={()=>move(entry.id)}><NavGlyph name={entry.icon}/><span>{entry.label}</span>{entry.id==="notifications"&&unreadCount>0&&<b className="lectris-unread-badge">{unreadCount>99?"99+":unreadCount}</b>}</button>;
   return <div className={`lectris-workspace ${collapsed?"is-collapsed":""}`}>
     <header className="lectris-workspace-header">
-      <button className="lectris-brand" type="button" onClick={()=>move("")} aria-label="Lectris, главная"><span className="lectris-brand-mark" aria-hidden="true">L</span><strong>Lectris</strong></button>
+      <button className="lectris-brand" type="button" onClick={()=>move("")} aria-label="Lektrus, главная"><span className="lectris-brand-mark" aria-hidden="true">L</span><strong>Lektrus</strong></button>
       <span className="lectris-header-divider" aria-hidden="true"/>
       <div className="lectris-header-page"><span>{available.find(x=>x.id===active)?.label||"Главная"}</span><small>{role==="teacher"?"Преподаватель":"Ученик"}</small></div>
       <div className="lectris-header-actions">
-        <button type="button" className="lectris-header-search" title="Найти раздел (Ctrl+K)" aria-label="Поиск по разделам Lectris" onClick={()=>setCommandOpen(true)}>
+        <button type="button" className="lectris-header-search" title="Найти раздел (Ctrl+K)" aria-label="Поиск по разделам Lektrus" onClick={()=>setCommandOpen(true)}>
           <NavGlyph name="search"/><span>Поиск по разделам</span><kbd>Ctrl K</kbd>
         </button>
         <button type="button" className="lectris-header-icon" title="Уведомления" aria-label="Уведомления" onClick={()=>move("notifications")}><NavGlyph name="notification"/>{unreadCount>0&&<span className="lectris-unread-dot" aria-label={"Непрочитанных уведомлений: "+unreadCount}/>}</button>
@@ -126,7 +126,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
       </aside>
       <div className="lectris-workspace-stage">{children}</div>
     </div>
-    <nav className="lectris-mobile-bottom" aria-label="Навигация Lectris">
+    <nav className="lectris-mobile-bottom" aria-label="Навигация Lektrus">
       {mainTabs.map(x=>navButton(x,"lectris-mobile-tab"))}
       <button type="button" className={`lectris-nav-link lectris-mobile-tab ${moreOpen||!mainTabs.some(tab=>tab.id===active)?"is-active":""}`} aria-label="Ещё разделы" aria-expanded={moreOpen} onClick={()=>setMoreOpen(v=>!v)}><NavGlyph name="menu"/><span>Ещё</span></button>
     </nav>
@@ -151,7 +151,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
       <button type="button" tabIndex={-1} aria-label="Закрыть меню разделов"
         className="lectris-mobile-more-backdrop" onClick={()=>setMoreOpen(false)}/>
       <div className="lectris-mobile-more" role="dialog" aria-modal="true" aria-label="Другие разделы">
-        <div className="lectris-mobile-more-head"><strong>Разделы Lectris</strong><button type="button" onClick={()=>setMoreOpen(false)} aria-label="Закрыть">×</button></div>
+        <div className="lectris-mobile-more-head"><strong>Разделы Lektrus</strong><button type="button" onClick={()=>setMoreOpen(false)} aria-label="Закрыть">×</button></div>
         <input type="search" className="lectris-mobile-more-search" placeholder="Найти раздел"
           value={menuQuery} onChange={event=>setMenuQuery(event.target.value)} aria-label="Поиск раздела"/>
         {available.filter(x=>!mainTabs.some(tab=>tab.id===x.id)&&x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU"))).map(x=>navButton(x))}
