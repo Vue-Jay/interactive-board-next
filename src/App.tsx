@@ -76,7 +76,7 @@ import {
   normalizeBoardBackground,
 } from "./boardModel";
 
-import {boardBackgroundAppearance,drawingCursorForBackground} from "./boardBackground";
+import {boardBackgroundAppearance} from "./boardBackground";
 import { eraseInkAlongPath } from "./inkEraser";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
@@ -1503,6 +1503,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
   const [preview, setPreview] = useState<Item | null>(null);
   const [tool, setTool] = useState<Tool>("select");
+  const inkCursorElement=useRef<HTMLDivElement|null>(null);
+  const moveInkCursor=(clientX:number,clientY:number,pointerType:string)=>{
+    const indicator=inkCursorElement.current,rect=board.current?.getBoundingClientRect();
+    if(!indicator||!rect)return;
+    if(pointerType!=="mouse" && pointerType!=="pen"){indicator.style.visibility="hidden";return;}
+    indicator.style.left=`${clientX-rect.left}px`;
+    indicator.style.top=`${clientY-rect.top}px`;
+    indicator.style.visibility="visible";
+  };
   const [marqueeRect,setMarqueeRect] = useState<SelectionRect|null>(null);
   const [rightPointerActive,setRightPointerActive] = useState(false);
   const rightPress = useRef<{pointer:number;start:Point;dragged:boolean;domId?:string}|null>(null);
@@ -1593,7 +1602,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     } catch {/* Fall back to the view stored in the board document. */}
     return initial.data.view;
   });
-  const drawingCursor=useMemo(()=>drawingCursorForBackground(boardBackground,tool==="marker"?markerWeight:weight,view.zoom),[boardBackground,tool,markerWeight,weight,view.zoom]);
   const viewerPanFrame = useRef<number | null>(null);
   const viewerPendingPan = useRef<View | null>(null);
   const scheduleViewerPan = (next: View) => {
@@ -6464,9 +6472,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             backgroundPosition: `${view.x}px ${view.y}px`,
             backgroundColor:backgroundAppearance.backgroundColor,
             backgroundImage:backgroundAppearance.backgroundImage,
-            "--lektrus-drawing-cursor":drawingCursor,
           } as CSSProperties}
           onPointerDownCapture={(e) => {
+            if((tool==="pen"||tool==="marker")&&!space&&!rightPointerActive&&e.button===0)moveInkCursor(e.clientX,e.clientY,e.pointerType);
             // A held RMB is always temporary hand/pan, even while drawing.
             // Short click opens the custom menu only on release.
             if(e.button===2 && e.pointerType==="mouse" && !presentation){
@@ -6506,6 +6514,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             board.current?.setPointerCapture(e.pointerId);
           }}
           onPointerMoveCapture={(e) => {
+            if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType);
             if(rightPress.current?.pointer===e.pointerId){
               const p=local(e.clientX,e.clientY),start=rightPress.current.start;
               if(Math.hypot(p.x-start.x,p.y-start.y)>5)rightPress.current.dragged=true;
@@ -6588,8 +6597,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setNotice(error instanceof Error ? error.message : "Не удалось добавить файл");
             }
           }}
-          onPointerEnter={(e) => { if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y); } }}
-          onPointerLeave={() => { if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; }}
+          onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y); } }}
+          onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; }}
           onPointerUp={(e) => {
             touchEnd(e);
             if (e.pointerId === gesture.current?.pointer) {
@@ -7228,6 +7237,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               )}
             </div>, document.body
           )}
+          {(tool==="pen"||tool==="marker")&&!presentation&&!space&&!rightPointerActive&&!panning&&<div ref={inkCursorElement} className="lektrus-ink-cursor" aria-hidden="true" style={{left:-1000,top:-1000,width:Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom),height:Math.max(1,(tool==="marker"?markerWeight:weight)*view.zoom),visibility:"hidden",color:backgroundAppearance.foreground,"--ink-cursor-outline":backgroundAppearance.outline} as CSSProperties}/>}
           {tool === "eraser" && (
             <div ref={eraserCursorElement} className="eraser-cursor" aria-hidden="true" style={{ left:-1000, top:-1000, width:eraserSize, height:eraserSize, visibility:"hidden" }} />
           )}
