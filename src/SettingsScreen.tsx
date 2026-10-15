@@ -26,8 +26,8 @@ export default function SettingsScreen({user,onBack,onLogout,installAvailable,is
   <section className="settings-compact-content">{notice&&<div className="access-notice">{notice}</div>}
    <div className="settings-compact-grid">
     <section className="settings-row-card"><div><b>Тема</b><small>Оформление приложения</small></div><select value={s.theme} onChange={e=>patch("theme",e.target.value as ProfileSettings["theme"])}><option value="system">Системная</option><option value="light">Светлая</option><option value="dark">Тёмная</option></select></section>
-    <section className="settings-row-card lectris-palette-setting"><div><b>Цвет Lectris</b><small>Основной акцент приложения · сохраняется на этом устройстве</small></div>
-      <div className="lectris-palette-options" role="group" aria-label="Цветовое оформление Lectris">
+    <section className="settings-row-card lectris-palette-setting"><div><b>Цвет Lektrus</b><small>Основной акцент приложения · сохраняется на этом устройстве</small></div>
+      <div className="lectris-palette-options" role="group" aria-label="Цветовое оформление Lektrus">
         {([["sapphire","Синий"],["jade","Бирюзовый"],["violet","Фиолетовый"],["sunset","Коралловый"]] as const).map(([key,label])=>
           <button type="button" key={key} className={palette===key?"selected":""} aria-pressed={palette===key}
             onClick={()=>changePalette(key)}><span className={`lectris-palette-swatch is-${key}`}/>{label}</button>)}
