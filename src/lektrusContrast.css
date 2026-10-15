@@ -270,3 +270,213 @@
   outline:2px solid Highlight!important;outline-offset:-2px;
  }
 }
+
+
+/* Lektrus dark UI repairs: dashboard + legacy modules
+   Target interface chrome only, never change drawing canvas, object colors or preview image pixels.
+*/
+:root[data-theme="dark"] {
+  --lt-page:#0e1828;
+  --lt-sidebar:#172639;
+  --lt-surface:#203249;
+  --lt-raised:#293f59;
+  --lt-subtle:#2b415a;
+  --lt-hover:#36506b;
+  --lt-line:#506b88;
+  --lt-line-strong:#7692b2;
+  --lt-text:#f4f7ff;
+  --lt-secondary:#d8e4f4;
+  --lt-muted:#b6c8de;
+  --lt-link:#b7caff;
+  --lt-selected:#315079;
+  --lt-selected-ink:#edf3ff;
+  --lt-shadow:0 8px 26px rgba(0,0,0,.17);
+  --lt-pop-shadow:0 22px 54px rgba(0,0,0,.48);
+}
+:root[data-theme="dark"][data-lectris-palette="jade"] {
+  --lt-link:#9deee1;--lt-selected:#275650;--lt-selected-ink:#d0fff2;
+}
+:root[data-theme="dark"][data-lectris-palette="violet"] {
+  --lt-link:#d0b8ff;--lt-selected:#493a68;--lt-selected-ink:#f0e4ff;
+}
+:root[data-theme="dark"][data-lectris-palette="sunset"] {
+  --lt-link:#ffc7b5;--lt-selected:#5a3d38;--lt-selected-ink:#ffe8dd;
+}
+/* A white gradient in V3 had survived inside the sidebar footer. */
+:root[data-theme="dark"] .lectris-workspace,
+:root[data-theme="dark"] .lectris-workspace-stage>main {
+  background:var(--lt-page)!important;color:var(--lt-text)!important;
+}
+:root[data-theme="dark"] .lectris-workspace-header,
+:root[data-theme="dark"] .lectris-workspace-sidebar,
+:root[data-theme="dark"] .lectris-mobile-bottom,
+:root[data-theme="dark"] .lectris-mobile-more {
+  background:var(--lt-sidebar)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-text)!important;
+}
+:root[data-theme="dark"] .lectris-workspace-sidebar .lectris-sidebar-footer {
+  background:transparent!important;background-image:none!important;
+  border-top:1px solid var(--lt-line)!important;
+}
+:root[data-theme="dark"] .lectris-sidebar-footer .lectris-nav-link {
+  background:transparent!important;border-color:transparent!important;color:var(--lt-secondary)!important;
+}
+:root[data-theme="dark"] .lectris-sidebar-footer .lectris-nav-link:hover {
+  color:var(--lt-text)!important;background:var(--lt-hover)!important;
+}
+:root[data-theme="dark"] .lectris-sidebar-footer .lectris-nav-link.is-active {
+  color:var(--lt-selected-ink)!important;background:var(--lt-selected)!important;
+  border-color:var(--lt-line-strong)!important;
+}
+/* Fixed navy headings and tile labels became almost invisible in dark mode. */
+:root[data-theme="dark"] .lectris-workspace-stage :is(h1,h2,h3,h4) {
+  color:var(--lt-text)!important;
+}
+:root[data-theme="dark"] .lectris-workspace-stage :is(
+  .lectris-hub-section-label h2,.lectris-hub-section-head h2,
+  .lectris-hub-tile-copy strong,.lectris-hub-board-info strong,
+  .lektrus-page-heading h1,.lektrus-collection-topline h2,
+  .lektrus-category-panel-heading strong,.lectris-library-card-body strong
+) {color:var(--lt-text)!important}
+:root[data-theme="dark"] .lectris-workspace-stage :is(
+  .lectris-hub-section-label>span,.lectris-hub-tile-copy small,
+  .lectris-hub-tile-copy>span,.lectris-hub-board-kind,
+  .lectris-hub-board-info small,.lectris-hub-placeholder,
+  .lectris-hub-lesson small,.lectris-hub-stats span,
+  .lektrus-collection-empty p,.settings-row-card small
+) {color:var(--lt-muted)!important}
+:root[data-theme="dark"] .lectris-hub :is(
+  .lectris-hub-overline,.lectris-hub-section-head small,
+  .lectris-hub-tile-arrow,.lectris-hub-board-arrow
+) {color:var(--lt-link)!important}
+/* More separation for cards; the card and the page must not share a shade. */
+:root[data-theme="dark"] .lectris-workspace-stage :is(
+  .lectris-hub-section,.lectris-hub-tile,.lectris-hub-stats>div,
+  .lectris-hub-board,.lectris-library-card,.lektrus-category-panel,
+  .lektrus-collection-boards,.board-card,.assignment-card,
+  .material-card,.notification-card,.student-card,.schedule-side,
+  .schedule-day,.progress-panel,.settings-row-card,.profile-card
+) {
+  background:var(--lt-surface)!important;
+  border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+  box-shadow:var(--lt-shadow)!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-tile:hover,
+:root[data-theme="dark"] .lectris-hub .lectris-hub-board:hover {
+  background:var(--lt-raised)!important;border-color:var(--lt-line-strong)!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-tile-count {
+  background:var(--lt-subtle)!important;color:var(--lt-text)!important;
+  border-color:var(--lt-line)!important;
+}
+/* Hero stays vivid, while all text and secondary controls remain readable. */
+:root[data-theme="dark"] .lectris-hub .lectris-hub-hero {
+  background:linear-gradient(115deg,#253a78 0%,#3456ab 54%,#456bc8 100%)!important;
+  border:1px solid #678ad6!important;color:#fff!important;
+  box-shadow:0 14px 34px rgba(5,13,32,.25)!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-hero :is(
+  h1,h2,p,.lectris-hub-hero-chip,.lectris-hub-hero-metric,
+  .lectris-hub-sync,.lectris-hub-sync span
+) {color:#fff!important}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-hero-actions button:not(.lectris-hub-primary) {
+  background:rgba(255,255,255,.12)!important;
+  border:1px solid rgba(255,255,255,.42)!important;color:#fff!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-hero-actions button:not(.lectris-hub-primary):hover {
+  background:rgba(255,255,255,.22)!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-hero .lectris-hub-primary {
+  background:#264baf!important;border-color:#7195f6!important;color:#fff!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-hero .lectris-hub-primary:hover {
+  background:#1d3f9b!important;
+}
+/* Right column white shortcuts and scattered light-only secondary buttons. */
+:root[data-theme="dark"] .lectris-hub .lectris-hub-shortcuts button,
+:root[data-theme="dark"] .lectris-workspace-stage :is(
+  .assignment-stats>button,.notification-filters button,
+  .lectris-library-filters button,.lektrus-page-secondary,
+  .boards-secondary,.lektrus-collection-empty button
+) {
+  background:var(--lt-raised)!important;
+  border-color:var(--lt-line)!important;color:var(--lt-secondary)!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-shortcuts button:hover,
+:root[data-theme="dark"] .lectris-workspace-stage :is(
+  .assignment-stats>button,.notification-filters button,
+  .lectris-library-filters button,.lektrus-page-secondary,.boards-secondary
+):hover {
+  background:var(--lt-hover)!important;
+  border-color:var(--lt-line-strong)!important;color:var(--lt-text)!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-shortcuts button span,
+:root[data-theme="dark"] .lectris-workspace-stage :is(
+  .lectris-hub-section-head>button,.lektrus-page-heading-actions>a,
+  .lectris-hub-board-arrow
+) {color:var(--lt-link)!important}
+:root[data-theme="dark"] .lectris-workspace-stage :is(
+  .assignment-stats>button.active,.notification-filters button.active,
+  .lectris-library-filters button.active,.lektrus-view-switch button.selected,
+  .lektrus-category-strip>button.selected
+) {
+  background:var(--lt-selected)!important;
+  color:var(--lt-selected-ink)!important;border-color:var(--lt-line-strong)!important;
+}
+/* Search controls and context surfaces, scoped so they cannot recolor canvas objects. */
+:root[data-theme="dark"] .lectris-hub .lectris-hub-board-search input,
+:root[data-theme="dark"] .lectris-workspace-stage :is(
+  .lectris-library-search input,.lektrus-collection-actions input,
+  .lektrus-category-panel-heading input,.lektrus-category-form input
+) {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+}
+:root[data-theme="dark"] .lectris-workspace-stage :is(input,textarea)::placeholder {
+  color:var(--lt-muted)!important;opacity:1;
+}
+:root[data-theme="dark"] .lectris-workspace-stage :is(
+  .lektrus-category-form,.lektrus-category-strip>button,
+  .lektrus-collection-empty,.lectris-library-filters,
+  .students-toolbar,.materials-toolbar,.assignment-controls
+) {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;color:var(--lt-secondary)!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-lesson {
+  border-bottom-color:var(--lt-line)!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-lesson button {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;color:var(--lt-link)!important;
+}
+/* Board thumbnails deliberately retain their white paper (real ink previews). */
+:root[data-theme="dark"] .lectris-workspace-stage :is(
+  .lectris-hub-board-cover,.lectris-library-preview
+) {
+  background:#fff!important;border-color:var(--lt-line)!important;
+}
+:root[data-theme="dark"] .lectris-hub .lectris-hub-board-edit {
+  background:var(--lt-raised)!important;
+  color:var(--lt-text)!important;border:1px solid var(--lt-line)!important;
+}
+:root[data-theme="dark"] :is(
+  .lectris-command-dialog,.lectris-hub-dialog,.lectris-panel-settings-dialog,
+  .lectris-tools-customize,.lektrus-colors-popup,
+  .context-menu,.board-context-menu,.topbar-more-popover
+) {
+  background:var(--lt-raised)!important;
+  color:var(--lt-text)!important;border-color:var(--lt-line)!important;
+}
+:root[data-theme="dark"] :is(
+  .lectris-command-dialog,.lectris-panel-settings-dialog,
+  .lectris-tools-customize,.lektrus-colors-popup
+) :is(input:not([type=color]),textarea,select) {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+}
+:root[data-theme="dark"] .workspace .tool-tooltip {
+  background:var(--lt-raised)!important;
+  border-color:var(--lt-line)!important;color:var(--lt-text)!important;
+}
