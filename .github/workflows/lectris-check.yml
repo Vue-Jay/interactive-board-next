@@ -1,4 +1,4 @@
-name: Lectris build check
+name: Lektrus build check
 on:
   push:
     branches: [main]
