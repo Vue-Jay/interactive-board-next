@@ -111,7 +111,7 @@ export function LectrisObjectInspector({item,canModify,userId,canToggleLock,onCl
   useEffect(()=>setTextDraft(item.text),[item.id,item.text]);
   const textEditable=["text","sticky","frame","comment"].includes(item.kind);
   const saveText=()=>{if(!canModify||textDraft===item.text)return;onPatch({text:item.kind==="frame"?textDraft.replace(/\s*\n+\s*/g," ").trim().slice(0,120):textDraft});};
-  const currentColor = /^#[0-9a-fA-F]{6}$/.test(item.color||"") ? item.color : "#365fd0";
+  const currentColor = /^#[0-9a-fA-F]{6}$/.test(item.color||"") ? (item.color ?? "#365fd0") : "#365fd0";
   const rotation=item.rotation??0;
   const rotateBy=(degrees:number)=>onPatch({rotation:((rotation+degrees)%360+360)%360});
   return <aside className="lectris-object-inspector" aria-label="Свойства объекта"
