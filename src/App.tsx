@@ -152,7 +152,7 @@ const iconBody = (name: IconName) => {
     case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
     case "section-arrows": return <><path d="M2.8 17.5C6.7 17.5 6.6 11 11 11s4.4 6 7.7-1.9"/><path d="m14.9 6.7 4.3 2.1-1.3-4.6"/><circle cx="2.8" cy="17.5" r="1.65"/><circle cx="11" cy="11" r="1.65"/></>;
     case "section-create": return <><path d="M2.5 5h8M6.5 5v14M3.6 19h5.8"/><rect x="13.2" y="3.6" width="8.3" height="8.3" rx=".8"/><circle cx="17.5" cy="18" r="3.5"/></>;
-    case "section-studies": return <><rect x="2.4" y="3.2" width="11" height="16.5" rx="1.2"/><path d="M2.5 8.5h11M2.5 14h11M7.8 3.2v16.5"/><path d="m15.2 10 2.1 3-2.1 3M20.7 9.5l-3.5 7M17.6 18h4"/></>;
+    case "section-studies": return <><rect x="2.2" y="3" width="11" height="16" rx="1.1"/><path d="M2.3 8h10.8M2.3 13.5h10.8M7.6 3v16"/><path d="M15.6 10.5c1.5-.4 3.8-1.9 3.6-4.3-.15-1.5-2-.9-2.2.4l-2.1 11.3c-.2 1.1-.7 2-1.7 2.5M14.1 12.3h7.1M18.6 11.1l2.4 5.8M21.1 11.1l-2.8 5.7"/></>;
     case "section-media": return <><rect x="2.5" y="3.4" width="14" height="13.8" rx="1.5"/><circle cx="6.7" cy="7.5" r="1.3"/><path d="m3.9 14 4-4 3.1 2.8 2.4-2.2"/><rect x="13.3" y="12.1" width="8.1" height="8.1" rx="1.2" fill="var(--lt-raised,#fff)"/><path d="m16.4 14.3 3.1 1.9-3.1 1.8Z"/></>;
     case "connector": return <><path d="M3.5 12h17"/><path d="M14.5 5.5 21 12l-6.5 6.5"/></>;
     case "frame": return <><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2"/><rect x="8" y="8" width="8" height="8" rx="1.2"/><path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/></>;
