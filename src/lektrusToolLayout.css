@@ -681,3 +681,11 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
    flex:0 0 auto!important;
  }
 }
+
+
+/* No visible separator, but preserve its spacing between pinned tools and sections. */
+@media(min-width:701px) and (pointer:fine){
+ body .workspace .toolbar.compact-toolbar .toolbar-section-line{
+   background:transparent!important;border:0!important;box-shadow:none!important;
+ }
+}
