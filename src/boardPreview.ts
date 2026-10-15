@@ -208,3 +208,74 @@ export async function renderBoardPreview(data:DocumentData,boardId:string):Promi
   canvas.width=0;canvas.height=0;
   return valid(preview)?preview:null;
 }
+
+
+/**
+ * Snapshot rendering is deliberately NOT part of autosave.
+ * Run it during idle time and publish it with a version-guarded JSONB update,
+ * leaving version/updated_at/updated_by unchanged, so this does not make a
+ * revision in the board-history trigger or block leaving the board.
+ *
+ * The WHERE version=... guard prevents overwriting a newer collaborative edit.
+ */
+type PreviewIdleWindow=Window & {
+  requestIdleCallback?: (callback:()=>void,opts?:{timeout:number})=>number;
+  cancelIdleCallback?: (id:number)=>void;
+};
+type PreviewTask={token:number;timer:ReturnType<typeof setTimeout>;cancelIdle?:()=>void};
+const previewTasks=new Map<string,PreviewTask>();
+let previewToken=0;
+export function scheduleBackgroundBoardPreview(
+  boardId:string,
+  data:DocumentData,
+  savedServerVersion:number|null,
+):void{
+  if(typeof window==="undefined")return;
+  const old=previewTasks.get(boardId);
+  if(old){clearTimeout(old.timer);old.cancelIdle?.()}
+  const token=++previewToken;
+  const run=async()=>{
+    if(previewTasks.get(boardId)?.token!==token)return;
+    try{
+      const image=await renderBoardPreview(data,boardId);
+      if(previewTasks.get(boardId)?.token!==token)return;
+      cacheBoardPreview(boardId,image);
+      if(savedServerVersion===null||!isRemoteBackendEnabled())return;
+      const payload={...data,preview:image??""};
+      // A second full document upload for very heavy boards isn't worth it.
+      // The following normal content save will include the cached preview.
+      const body=JSON.stringify({document:payload});
+      if(body.length>3_000_000)return;
+      if(previewTasks.get(boardId)?.token!==token)return;
+      await remoteRequest<unknown>(
+        "/rest/v1/board_documents?board_id=eq."+encodeURIComponent(boardId)+
+        "&version=eq."+encodeURIComponent(String(savedServerVersion)),{
+          method:"PATCH",
+          headers:{"Content-Type":"application/json","Prefer":"return=minimal"},
+          body,
+        },
+      );
+      // A zero-row match means another participant saved newer content.
+      // That is fine: the actual board was already saved, never overwritten.
+    }catch{
+      // Thumbnail is optional. Network/storage failures must not delay autosave,
+      // increment revision numbers or display a false board-save warning.
+    }finally{
+      if(previewTasks.get(boardId)?.token===token)previewTasks.delete(boardId);
+    }
+  };
+  const timer=setTimeout(()=>{
+    if(previewTasks.get(boardId)?.token!==token)return;
+    const idleWindow=window as PreviewIdleWindow;
+    if(typeof idleWindow.requestIdleCallback==="function"){
+      const handle=idleWindow.requestIdleCallback(()=>{void run()},{timeout:3000});
+      const current=previewTasks.get(boardId);
+      if(current?.token===token){
+        current.cancelIdle=()=>idleWindow.cancelIdleCallback?.(handle);
+      }
+    }else{
+      void run();
+    }
+  },850);
+  previewTasks.set(boardId,{token,timer});
+}
