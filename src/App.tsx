@@ -1669,7 +1669,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [colorMenuOpen,setColorMenuOpen]=useState(false);
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
-  const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,lectrisPinned.join("|"));
+  const [desktopToolSection,setDesktopToolSection]=useState("create");
+  const desktopToolSections=[{id:"arrows",label:"Линии и стрелки",icon:"connector" as IconName,ids:["connector"] as Tool[]},{id:"create",label:"Текст и фигуры",icon:"shape" as IconName,ids:["text","sticky","shape","frame"] as Tool[]},{id:"studies",label:"Учебные инструменты",icon:"formula" as IconName,ids:["table","formula","graph","checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Файлы и медиа",icon:"media" as IconName,ids:["media","linkmedia"] as Tool[]},{id:"discuss",label:"Комментарии",icon:"comment" as IconName,ids:["comment"] as Tool[]}];
+  const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
   useEffect(()=>{const mq=window.matchMedia?.("(pointer: coarse)");if(!mq)return;const sync=()=>setIsCoarsePointer(mq.matches);sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync)},[]);
   useEffect(()=>{
@@ -6330,18 +6332,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
         </section>}
         <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
-          <div className="toolbar-pinned" aria-label="Навигация: выделение и петля">
-            {(["select","lasso"] as Tool[]).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} aria-label={t.label} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><span className="tool-icon"><Icon name={t.icon} size={18}/></span><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
+          <div className="toolbar-pinned" aria-label="Основные инструменты">
+            {(["select","lasso","pen","marker","eraser"] as Tool[]).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} aria-label={t.label} title={toolShortLabel[id]} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setDesktopToolsExpanded(false)}}><Icon name={t.icon} size={19}/><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
           </div>
           <span className="toolbar-section-line" aria-hidden="true"/>
-          <div className="toolbar-list">
-            {lectrisPinned.map(id=>tools.find(t=>t.id===id)!).filter(t=>t&&toolAllowedForRole(t.id)).map((t)=>{
-              return <div className="tool-wrap" key={t.id}>
-                <button aria-label={t.label} className={`tool-button ${tool===t.id?"active":""}`} onClick={()=>{finishEdit();if(t.id==="eraser")setSpace(false);setTool(t.id);setMobileToolsOpen(false)}}>
-                  <span className="tool-icon"><Icon name={t.icon} size={18}/></span><span className="tool-tooltip">{toolShortLabel[t.id]}</span>
-                </button>{t.dividerAfter&&<span className="tool-divider" aria-hidden="true"/>}
-              </div>;
-            })}
+          <div className="lektrus-desktop-sections" aria-label="Разделы инструментов">
+            {desktopToolSections.filter(g=>g.ids.some(toolAllowedForRole)).map(group=><button key={group.id} type="button" className={`tool-button ${desktopToolsExpanded&&desktopToolSection===group.id?"active":""}`} aria-label={group.label} title={group.label} aria-expanded={desktopToolsExpanded&&desktopToolSection===group.id} onClick={()=>{if(desktopToolSection===group.id)setDesktopToolsExpanded(v=>!v);else{setDesktopToolSection(group.id);setDesktopToolsExpanded(true)}}}><Icon name={group.icon} size={19}/><span className="tool-tooltip">{group.label}</span></button>)}
           </div>
           <div className="lektrus-toolbar-measure" aria-label="Измерительные инструменты">
             <GeometryInstruments view={view} boardRef={board}/>
@@ -6373,24 +6369,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             <button type="button" aria-label="Закрыть меню инструментов" onClick={()=>setDesktopToolsExpanded(false)}><Icon name="close" size={17}/></button>
           </header>
           <div className="lektrus-tool-overflow-content">
-            {([
-              {label:"Основные",ids:lectrisPinned},
-              {label:"Дополнительные",ids:lectrisToolbarOrder.filter(id=>!lectrisPinned.includes(id))},
-            ] as {label:string;ids:Tool[]}[]).map(group=>{
-              const available=group.ids.filter(toolAllowedForRole);
-              return available.length>0&&<div key={group.label} className="lektrus-tool-overflow-group">
-                <div className="lektrus-tool-overflow-group-title">{group.label}</div>
-                <div className="lektrus-tool-overflow-grid">
-                  {available.map(id=>{const t=tools.find(x=>x.id===id)!;return <button
-                    key={id} type="button" title={t.label} aria-label={t.label}
-                    className={tool===id?"active":""}
-                    onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false);setDesktopToolsExpanded(false)}}>
-                    <span className="lektrus-tool-overflow-icon"><Icon name={t.icon} size={20}/></span>
-                    <span>{toolShortLabel[id]}</span>
-                  </button>})}
-                </div>
-              </div>;
-            })}
+            {desktopToolSections.filter(g=>g.id===desktopToolSection).map(group=><div className="lektrus-tool-overflow-group" key={group.id}>
+              <div className="lektrus-tool-overflow-group-title">{group.label}</div>
+              <div className="lektrus-tool-overflow-grid">
+                {group.ids.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" title={t.label} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);if(id==="connector")setConnectorStyle("arrow");setDesktopToolsExpanded(false)}}><span className="lektrus-tool-overflow-icon"><Icon name={t.icon} size={20}/></span><span>{toolShortLabel[id]}</span></button>})}
+                {group.id==="arrows"&&(["line","arrow","double"] as ConnectorStyle[]).map((type)=><button key={type} type="button" className={tool==="connector"&&connectorStyle===type?"active":""} onClick={()=>{finishEdit();setTool("connector");setConnectorStyle(type);setDesktopToolsExpanded(false)}}><span className="lektrus-tool-overflow-icon"><Icon name={type==="line"?"line":type==="arrow"?"arrow-one":"arrow-double"} size={20}/></span><span>{type==="line"?"Линия":type==="arrow"?"Стрелка":"Двусторонняя"}</span></button>)}
+              </div>
+            </div>)}
           </div>
         </LektrusToolOverflow>}
         {lectrisCustomizeOpen&&<LectrisToolbarSettings
