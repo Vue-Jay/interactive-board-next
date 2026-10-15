@@ -267,3 +267,201 @@
   .lectris-hub-categories{gap:8px}
 }
 @media(prefers-reduced-motion:reduce){.lectris-hub-tile,.lectris-hub-board,.lectris-library-card{transition:none}}
+
+
+/* Navigation V3: grouped sections with their own rhythm */
+.lectris-workspace-body{grid-template-columns:248px minmax(0,1fr)}
+.lectris-workspace.is-collapsed .lectris-workspace-body{grid-template-columns:76px minmax(0,1fr)}
+.lectris-workspace-sidebar{padding:22px 12px 17px;gap:7px}
+.lectris-sidebar-head{padding:0 10px 7px}
+.lectris-workspace-links{display:grid;gap:12px}
+.lectris-nav-group{display:flex;flex-direction:column;gap:3px;border-bottom:1px solid #edf1f8;padding:5px 0 13px}
+.lectris-nav-group:last-child{border-bottom:0}
+.lectris-nav-group-title{display:block;padding:0 11px 9px;font-size:9px;font-weight:850;letter-spacing:.14em;text-transform:uppercase;color:#8b9bb4}
+.lectris-workspace-sidebar .lectris-nav-link{min-height:43px;font-size:13px;border-radius:11px;padding:10px 12px;font-weight:680}
+.lectris-workspace-sidebar .lectris-nav-link svg{width:19px;height:19px}
+.lectris-workspace-sidebar .lectris-nav-link.is-active{background:#e9efff;color:#2c52b9;border:1px solid #d9e5ff}
+.lectris-workspace-sidebar .lectris-nav-link.is-active::before{height:22px;top:calc(50% - 11px);bottom:auto;left:-7px;width:3px;background:#4b6bdf;border-radius:8px}
+.lectris-sidebar-footer{margin-top:auto;padding-top:12px;background:linear-gradient(#fff,#fbfcff)}
+.lectris-workspace-header{height:73px}
+.lectris-workspace-body{min-height:calc(100dvh - 73px)}
+.lectris-workspace-sidebar{top:73px;height:calc(100dvh - 73px)}
+.lectris-brand-mark{background:#2c56d6;border-radius:12px;box-shadow:0 6px 18px #2147b12a}
+.lectris-workspace.is-collapsed .lectris-nav-group{padding:6px 0 12px}
+.lectris-workspace.is-collapsed .lectris-nav-group-title{display:none}
+.lectris-workspace.is-collapsed .lectris-workspace-links{gap:7px}
+.lectris-workspace.is-collapsed .lectris-sidebar-footer{padding-top:7px}
+@media(max-width:1080px){
+  .lectris-workspace-body{grid-template-columns:78px minmax(0,1fr)}
+  .lectris-nav-group-title{display:none}
+  .lectris-workspace-links{gap:7px}
+  .lectris-workspace-sidebar .lectris-nav-link{justify-content:center;gap:0;padding:10px 2px}
+  .lectris-workspace-sidebar .lectris-nav-link span{display:none}
+}
+@media(max-width:700px){
+  .lectris-workspace-header{height:58px}
+  .lectris-workspace-body{display:block}
+  .lectris-workspace-sidebar{display:none}
+}
+
+/* Hero shows real data while preserving role contexts */
+.lectris-hub-hero-metric{display:block;margin-top:9px;color:#bfd0fb;font-size:12px;font-weight:680}
+
+/* Board V3: clear writing canvas and dedicated groups */
+.topbar:not(.update-banner){
+  background:#fcfdff!important;
+  box-shadow:0 6px 26px rgba(24,49,89,.09)!important;
+  border-bottom:1px solid #dce5f3!important;
+}
+.topbar .topbar-left{gap:10px}
+.topbar .board-home-button{
+  border-radius:12px!important;min-height:37px;
+  color:#294b88!important;background:#ebf2ff!important;border-color:#d6e2fb!important;
+}
+.topbar .board-title{font-size:15px!important;color:#162c51!important}
+.topbar .lectris-board-context{background:#eaf0fd;border:1px solid #dce7fa;color:#4f6ca0}
+.topbar .topbar-right button{transition:background-color .15s,color .15s}
+.workspace .toolbar.compact-toolbar{
+  background:rgba(255,255,255,.985)!important;
+  border:1px solid #cedcf0!important;border-radius:21px!important;
+  padding:8px 6px!important;box-shadow:0 18px 42px #1e3c6a26!important;
+}
+.workspace .toolbar.compact-toolbar .toolbar-pinned{
+  padding-bottom:8px!important;margin-bottom:6px!important;border-color:#edf0f8!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button{
+  border-radius:11px!important;min-width:38px;min-height:38px;
+}
+.workspace .toolbar.compact-toolbar .tool-button.active{
+  background:#315bd4!important;color:#fff!important;box-shadow:0 4px 13px #2f58b73b!important;
+}
+.workspace .toolbar.compact-toolbar .tool-button.active :is(svg,path){
+  color:inherit;
+}
+.workspace .toolbar.compact-toolbar .tool-button:hover:not(.active){background:#eef3fd!important}
+.workspace :is(.ink-settings,.shape-settings,.connector-settings,.selection-toolbar-screen){
+  background:#fff!important;border:1px solid #dce4f3!important;
+  border-radius:18px!important;box-shadow:0 16px 40px #173c7626!important;
+}
+.workspace :is(.search-panel,.layers-panel,.comments-panel,.shortcuts-panel,.templates-panel,.presentation-slides-panel){
+  border:1px solid #dce6f4!important;border-radius:18px!important;box-shadow:0 18px 45px #213b6a1c!important;
+}
+.workspace .lectris-quick-properties{
+  border-radius:18px!important;border:1px solid #d7e3f4!important;
+  background:#fff!important;box-shadow:0 17px 42px #193c7226!important;
+}
+.workspace .lectris-object-inspector{
+  border:1px solid #d7e3f4!important;border-radius:20px!important;
+  box-shadow:0 24px 56px #16315b26!important;
+}
+.workspace .lectris-inspector-head{
+  border-bottom-color:#e4eafa;background:#f8faff;
+}
+.workspace .lectris-inspector-section{border-bottom-color:#e7edf8}
+
+/* All seven specialist editors: desktop bottom-docked creative studio.
+   Actual input fields, callbacks and save handlers are unchanged. */
+@media(min-width:1101px) and (pointer:fine){
+  .workspace :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
+    left:50%!important;right:auto!important;top:auto!important;bottom:12px!important;
+    transform:translateX(-50%)!important;
+    width:min(980px,calc(100vw - 192px))!important;
+    height:min(420px,50dvh)!important;max-height:min(420px,50dvh)!important;
+    border-radius:21px!important;box-shadow:0 -10px 56px #132b5352!important;
+    border:1px solid #bfcfeb!important;
+  }
+  .workspace:has(:is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal)) .lectris-quick-properties{
+    display:none!important;
+  }
+  .workspace.lectris-inspector-left :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal),
+  .workspace.lectris-inspector-right.lectris-tools-right :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
+    left:50%!important;right:auto!important;
+  }
+  .workspace.lectris-quick-bottom :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
+    bottom:12px!important;max-height:min(420px,50dvh)!important;
+  }
+  .workspace.lectris-quick-top :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
+    top:auto!important;bottom:12px!important;max-height:min(420px,50dvh)!important;
+  }
+}
+:is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+    .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
+  border:1px solid #d2dff1!important;
+  background:#fff!important;
+}
+:is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header){
+  background:linear-gradient(110deg,#eff4ff,#fff)!important;
+  padding:15px 19px!important;
+  border-bottom:1px solid #dce6f6!important;
+}
+:is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header)::before{
+  content:"✦";width:39px;height:39px;display:grid;place-items:center;flex:0 0 39px;
+  background:#e1eafe;border:1px solid #d1def9;border-radius:12px;
+  color:#3962d3;font-size:22px;font-weight:800;
+}
+.graph-editor-header::before{content:"ƒ"}
+.formula-editor-header::before{content:"∑"}
+.table-editor-header::before{content:"▦"}
+.notes-editor-header::before{content:"✎"}
+.checklist-editor-header::before{content:"✓"}
+.quiz-editor-header::before{content:"?"}
+.flashcard-editor-header::before{content:"◇"}
+:is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header) strong{
+  color:#18345e!important;font-size:16px!important;
+}
+:is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header) span{
+  color:#7589a7!important;
+}
+:is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+    .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer){
+  background:#f8faff!important;border-top:1px solid #e1eafa!important;
+}
+:is(.graph-editor-footer,.formula-editor-footer,.table-editor-footer,.notes-editor-footer,
+    .checklist-editor-footer,.quiz-editor-footer,.flashcard-editor-footer) button.primary{
+  background:#305ad3!important;border-radius:11px!important;
+  box-shadow:0 5px 12px #305ad327;
+}
+:is(.graph-editor-form,.formula-editor-compose,.quiz-question-editor,.quiz-explanation-editor,
+    .checklist-editor-settings,.flashcard-editor-compose){
+  background:#f6f9ff!important;border-color:#e0eafa!important;border-radius:14px!important;
+}
+:is(.graph-editor-preview,.flashcard-editor-preview,.quiz-editor-preview){
+  border:1px solid #dce6f5!important;
+  box-shadow:0 4px 18px #213f7514;
+}
+:is(.quiz-options-editor,.checklist-editor-list,.table-editor-grid) input:focus-visible{
+  outline:2px solid #9cb7f7!important;
+}
+/* Keep touch landscape tools on the left and use side editor, per mobile survey. */
+@media(max-width:1100px) and (pointer:coarse) and (orientation:landscape){
+  .workspace .mobile-board-tools{border-radius:15px!important}
+  .workspace .mobile-board-tools button.active{
+    background:#315bd4!important;color:#fff!important;
+  }
+  .workspace :is(.graph-editor-modal,.formula-editor-modal,.table-editor-modal,.notes-editor-modal,
+      .checklist-editor-modal,.quiz-editor-modal,.flashcard-editor-modal){
+    width:min(430px,calc(100vw - 76px))!important;right:5px!important;left:auto!important;
+    top:53px!important;bottom:5px!important;transform:none!important;
+    height:auto!important;max-height:calc(100dvh - 58px)!important;
+  }
+}
+@media(max-width:700px) and (orientation:portrait){
+  :is(.graph-editor-header,.formula-editor-header,.table-editor-header,.notes-editor-header,
+    .checklist-editor-header,.quiz-editor-header,.flashcard-editor-header)::before{
+    width:33px;height:33px;flex-basis:33px;font-size:18px;border-radius:10px;
+  }
+}
+/* Reduced-motion and high contrast */
+@media(prefers-reduced-motion:reduce){
+  .lectris-hub-tile,.lectris-library-card,.lectris-hub-board{transition:none}
+}
