@@ -12,6 +12,9 @@ assert.match(app,/backgroundAppearance\.backgroundImage/);
 assert.match(app,/drawingCursorForBackground\(boardBackground\)/);
 assert.match(app,/role="group" aria-label="Настройки фона доски"/);
 assert.match(app,/boardBackground,\s*editing,\s*draft,/);
+const sync=read("src/boardSync.ts");
+assert.match(sync,/background: document\.background/);
+
 assert.match(css,/cursor:var\(--lektrus-drawing-cursor,crosshair\)!important/);
 assert.match(util,/encodeURIComponent\(svg\)/);
 assert.ok(main.indexOf("lektrusToolRefinements.css")<main.indexOf("lektrusBoardBackground.css"));
