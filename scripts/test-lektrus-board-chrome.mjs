@@ -9,6 +9,13 @@ const entry=read("src/main.tsx");
 assert.match(entry,/import "\.\/lektrusPolish\.css";\s*import "\.\/lektrusCanvasChrome\.css";/);
 assert.match(app,/ref=\{adaptiveToolbarRef\}/);
 assert.match(app,/useAdaptiveBoardToolbar\(desktopToolsExpanded,lectrisPinned\.join\("\|"\)\)/);
+// Regression: referencing a let/const state before its initialization causes
+// a runtime ReferenceError and renders the entire board unusable.
+const desktopStatePos=app.indexOf("const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(");
+const adaptiveCallPos=app.indexOf("const adaptiveToolbarRef=useAdaptiveBoardToolbar(");
+const pinnedStatePos=app.indexOf("const [lectrisPinned,setLectrisPinned]=useState(");
+assert.ok(desktopStatePos>=0 && pinnedStatePos>=0 && adaptiveCallPos>desktopStatePos && adaptiveCallPos>pinnedStatePos,
+  "Adaptive toolbar hook must be called AFTER all state arguments are initialized");
 assert.match(app,/setDesktopToolsExpanded\(v=>!v\)/);
 assert.match(app,/GeometryInstruments view=\{view\} boardRef=\{board\}/);
 assert.match(hook,/ResizeObserver/);
