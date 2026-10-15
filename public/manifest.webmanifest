@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Lectris — интерактивная доска",
-  "short_name": "Lectris",
+  "name": "Lektrus — интерактивная доска",
+  "short_name": "Lektrus",
   "description": "Интерактивная доска для онлайн-занятий, совместной работы и учебных материалов.",
   "lang": "ru",
   "start_url": "/?source=pwa",
