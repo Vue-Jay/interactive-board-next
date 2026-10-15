@@ -406,3 +406,96 @@
 @media(prefers-reduced-motion:reduce){
   .lektrus-theme-options>button{transition:none!important}
 }
+
+/* Legacy popovers and smaller controls share the same palette. */
+:root{
+  --ui-violet:var(--lt-primary);
+  --ui-violet-soft:var(--lt-selected);
+  --ui-line:var(--lt-line);
+  --ui-ink:var(--lt-text);
+  --ui-muted:var(--lt-muted);
+  --ui-panel:var(--lt-raised);
+  --floating-panel:var(--lt-raised);
+  --floating-shadow:var(--lt-shadow);
+  --next-brand:var(--lt-primary);
+  --next-brand-hover:var(--lt-primary-hover);
+  --next-ink:var(--lt-text);
+  --next-muted:var(--lt-muted);
+  --next-surface:var(--lt-surface);
+  --next-surface-soft:var(--lt-subtle);
+  --next-outline:var(--lt-line);
+}
+.lectris-workspace-stage :is(.boards-shell,.students-shell,.assignments-shell,.progress-shell,
+  .schedule-shell,.materials-shell,.templates-shell,.notifications-shell,.profile-shell,
+  .billing-page,.ai-studio) {
+  background:transparent!important;
+  color:var(--lt-text)!important;
+}
+.lectris-workspace-stage :is(.material-actions,.students-toolbar,.materials-toolbar,
+  .assignment-controls,.profile-compact-wrap,.settings-compact-content) {
+  color:var(--lt-text);
+}
+.topbar-more-popover,.board-context-menu,.context-menu,
+.lectris-layout-menu,.lectris-subject-toolbox-menu,
+.workspace :is(.shape-palette,.connector-palette,.mobile-tools-group),
+.workspace :is(.bottom-controls,.zoom-controls,.board-controls) {
+  background:var(--lt-raised)!important;
+  color:var(--lt-text)!important;
+  border-color:var(--lt-line)!important;
+  box-shadow:var(--lt-shadow)!important;
+}
+.topbar-menu-account strong,
+.topbar-menu-section button,
+.board-context-menu button,
+.context-menu button {color:var(--lt-text)!important}
+.topbar-menu-account small,
+.board-context-menu button span,
+.topbar .save-status {color:var(--lt-muted)!important}
+.topbar-menu-section,.context-separator {border-color:var(--lt-line)!important}
+.context-separator {background:var(--lt-line)!important}
+.topbar-menu-section button:hover,
+.board-context-menu button:not(.context-danger):hover,
+.context-menu button:not(.context-danger):hover,
+.lectris-layout-menu button:hover,
+.lectris-subject-toolbox-menu button:hover {
+  background:var(--lt-hover)!important;
+  color:var(--lt-text)!important;
+}
+.topbar .lesson-button,.topbar .presence-menu>summary,
+.topbar .back-to-boards {
+  background:var(--lt-subtle)!important;
+  border-color:var(--lt-line)!important;
+  color:var(--lt-secondary)!important;
+}
+.topbar .top-button.active,.topbar-more-menu[open]>.topbar-more-trigger {
+  background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;
+}
+.topbar .start-live-lesson {
+  background:var(--lt-primary)!important;color:#fff!important;
+  border-color:var(--lt-primary)!important;
+}
+.workspace .tool-divider,.workspace .mobile-tool-separator {
+  background:var(--lt-line)!important;
+}
+.workspace .tool-tooltip {
+  background:var(--lt-raised)!important;
+  color:var(--lt-text)!important;
+  border:1px solid var(--lt-line)!important;
+}
+.lectris-layout-menu :is(button,strong,small),
+.lectris-subject-toolbox-menu :is(button,strong) {color:var(--lt-secondary)!important}
+.lectris-layout-menu button.active {
+  background:var(--lt-selected)!important;color:var(--lt-selected-ink)!important;
+}
+.lectris-panel-settings-dialog>p,
+.lectris-panel-settings-hint {color:var(--lt-muted)!important}
+:root[data-theme="dark"] .lectris-workspace-stage :is(.lectris-hub-board-info,.lectris-hub-stats,
+  .lektrus-category-strip,.settings-compact-grid,.lectris-library-filters) {
+  color:var(--lt-secondary);
+}
+:root[data-theme="dark"] .lectris-workspace-stage :is(.student-row.active,.materials-folder-row.active,
+  .assignment-stats>button.active,.notification-filters button.active) {
+  background:var(--lt-selected)!important;
+  color:var(--lt-selected-ink)!important;
+  border-color:var(--lt-line-strong)!important;
+}
