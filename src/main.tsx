@@ -18,6 +18,7 @@ import "./lectrisV3.css";
 import "./lektrusRefresh.css";
 import "./lektrusResponsive.css";
 import "./lektrusColors.css";
+import "./lektrusBoardInteraction.css";
 import { initLectrisPalette } from "./lectrisPalette";
 
 type ErrorBoundaryState = { error: Error | null };
