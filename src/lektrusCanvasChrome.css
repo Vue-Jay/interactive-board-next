@@ -455,3 +455,73 @@ html body .topbar .topbar-right>details :is(.lectris-layout-menu,.topbar-more-po
   html body .topbar .board-title{min-width:45px}
   html body .topbar .topbar-right .board-chat-button span{display:none}
 }
+
+
+/* Top bar v2: a single-row icon rail, even when many actions are enabled. */
+html body .topbar:not(.update-banner){
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,max-content)!important;
+  align-items:center!important;
+  column-gap:12px!important;
+  width:100%;
+  box-sizing:border-box;
+}
+html body .topbar .topbar-left{min-width:0!important;max-width:100%;width:100%;overflow:hidden!important}
+html body .topbar .topbar-right{
+  display:flex!important;flex-wrap:nowrap!important;
+  min-width:0!important;max-width:min(72vw,900px);
+  width:max-content!important;
+  gap:4px!important;
+  justify-content:flex-end!important;align-items:center!important;
+  white-space:nowrap!important;
+}
+html body .topbar .topbar-right>button,
+html body .topbar .topbar-right>details,
+html body .topbar .topbar-right>.collab-editing-status{
+  flex-shrink:0!important;
+}
+html body .topbar .topbar-right :is(button,summary){
+  font-size:12px;
+}
+html body .topbar .topbar-right :is(.compact-top-action,.topbar-more-trigger,.board-chat-button,.lectris-layout-picker>summary,.lektrus-board-actions-menu>summary){
+  border:1px solid var(--lt-line,#dce4ef)!important;
+  background:var(--lt-subtle,#f6f8fc)!important;
+  color:var(--lt-secondary,#465d7d)!important;
+  box-shadow:none!important;
+}
+html body .topbar .topbar-right :is(.compact-top-action,.topbar-more-trigger,.board-chat-button,.lectris-layout-picker>summary,.lektrus-board-actions-menu>summary) svg{
+  width:17px!important;height:17px!important;stroke-width:1.8;
+}
+html body .topbar .topbar-right :is(.board-invite-button,.board-chat-button.active){
+  border-color:var(--lt-line-strong,#bdd0ec)!important;
+  color:var(--lt-primary,#385fca)!important;
+}
+html body .topbar .topbar-right .presence-menu>summary{
+  display:flex;align-items:center;justify-content:center;gap:5px;padding:0 8px!important;
+  border:1px solid var(--lt-line,#dce4ef)!important;
+  background:var(--lt-subtle,#f6f8fc)!important;
+}
+html body .topbar .topbar-right .topbar-more-menu>summary{
+  display:grid!important;place-items:center;
+}
+html body .topbar .lektrus-board-actions-menu{display:block!important}
+html body .topbar .topbar-right .board-chat-button>span{display:none!important}
+@media(max-width:1320px){
+  html body .topbar .topbar-right :is(.install-app-button,.collab-editing-status){display:none!important}
+  html body .topbar .topbar-right{max-width:66vw}
+}
+@media(max-width:1080px){
+  html body .topbar .topbar-right>button:not(.board-invite-button):not(.board-chat-button),
+  html body .topbar .topbar-right>.lectris-layout-picker{display:none!important}
+  html body .topbar .topbar-right{max-width:58vw}
+}
+@media(max-width:700px){
+  html body .topbar:not(.update-banner){column-gap:5px!important}
+  html body .topbar .topbar-right{max-width:56vw;gap:3px!important}
+  html body .topbar .topbar-right>.board-invite-button{display:none!important}
+  html body .topbar .board-home-button{max-width:73px;overflow:hidden;text-overflow:ellipsis}
+}
+@media(max-width:400px){
+  html body .topbar .topbar-right>.presence-menu{display:none!important}
+  html body .topbar .topbar-right{max-width:47vw}
+}
