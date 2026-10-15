@@ -663,3 +663,21 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
  .selection-toolbar-screen .connector-quick-menu>summary{padding:0 5px;font-size:10px}
  .selection-toolbar-screen .lektrus-connector-quick{gap:2px}
 }
+
+
+/* Keep the line/arrow category immediately below the five always-visible tools. */
+@media (min-width:701px) and (pointer:fine){
+ body .workspace .toolbar.compact-toolbar .toolbar-section-line{
+   display:block!important;position:static!important;flex:0 0 1px!important;
+   height:1px!important;min-height:1px!important;max-height:1px!important;
+   width:31px!important;margin:2px auto!important;padding:0!important;
+ }
+ body .workspace .toolbar.compact-toolbar .lektrus-desktop-sections{
+   margin:0!important;padding:1px 0!important;gap:4px!important;
+   flex:0 0 auto!important;align-self:center!important;
+ }
+ body .workspace .toolbar.compact-toolbar .toolbar-pinned{
+   margin:0!important;padding:0!important;gap:3px!important;
+   flex:0 0 auto!important;
+ }
+}
