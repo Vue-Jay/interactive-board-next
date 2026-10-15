@@ -74,7 +74,7 @@ import { eraseInkAlongPath } from "./inkEraser";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
 import { ensureBoardAssets, getAsset, getDisplayAsset, putAsset } from "./assetStore";
-import { renderBoardPreview, cacheBoardPreview, previewFromRemoteDocument } from "./boardPreview";
+import { renderBoardPreview, cacheBoardPreview, cachedBoardPreview, previewFromRemoteDocument } from "./boardPreview";
 import { getBoardHistoryVersion, listBoardHistory, type BoardHistoryEntry } from "./historyStore";
 import { changesSinceLastVisit, recentBoardHistory } from "./boardHistoryUtils";
 import { createBoardComment, listBoardComments, listBoardCommentParticipants, setBoardCommentResolved, type BoardCommentParticipant, type BoardCommentThread } from "./commentThreadsStore";
@@ -7227,6 +7227,11 @@ export default function App() {
           if(preview)cacheBoardPreview(board.id,preview);
           const parsed = parseDocument(JSON.stringify(remote.document));
           localStorage.setItem(key, JSON.stringify(parsed));
+          // Backfill a preview of migrated boards on first open, without
+          // creating a remote revision or a conflict with other participants.
+          if(!cachedBoardPreview(board.id)){
+            void renderBoardPreview(parsed,board.id).then(value=>{if(value)cacheBoardPreview(board.id,value)}).catch(()=>{});
+          }
           setRemoteVersion(remote.version);
         } else {
           const raw = localStorage.getItem(key);
