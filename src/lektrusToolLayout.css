@@ -584,3 +584,17 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
   flex:none!important;display:block!important;
  }
 }
+
+
+/* Direct comment tool lives alongside desktop section buttons. */
+@media(min-width:701px) and (pointer:fine){
+ .workspace .toolbar.compact-toolbar>.lektrus-direct-comment{
+  flex:0 0 40px!important;display:flex!important;align-items:center!important;justify-content:center!important;
+  width:40px!important;height:40px!important;min-height:40px!important;
+  margin:0 auto!important;padding:0!important;border-radius:10px!important;
+ }
+ .workspace .toolbar.compact-toolbar .lektrus-desktop-sections .lektrus-section-icon svg{width:24px!important;height:24px!important;max-width:24px!important;max-height:24px!important}
+}
+@media(max-width:700px),(pointer:coarse){
+ .workspace .toolbar.compact-toolbar>.lektrus-direct-comment{display:none!important}
+}
