@@ -46,3 +46,27 @@
     max-height:min(440px,calc(100dvh - 25px));
   }
 }
+
+
+/* Paint tools are ink-only. Existing images, PDF iframes, text, graphs,
+   selected bounds and resize handles remain visible but cannot swallow
+   pointer input. All drawing starts at .board; normal "select" behavior is
+   unaffected. Eraser continues to use the board's capture erase handler. */
+.workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser) .world .board-object,
+.workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser) .world .board-object *,
+.workspace .board:is(.board-tool-pen,.board-tool-marker,.board-tool-eraser) :is(
+  .screen-transform-overlay,
+  .screen-transform-overlay *,
+  .connector-endpoint-overlay,
+  .connector-endpoint-overlay *,
+  .selection-toolbar-screen,
+  .selection-toolbar-screen *
+) {
+  pointer-events:none!important;
+  -webkit-user-select:none!important;
+  user-select:none!important;
+}
+.workspace .board:is(.board-tool-pen,.board-tool-marker) .world :is(img,iframe) {
+  pointer-events:none!important;
+  -webkit-user-drag:none!important;
+}

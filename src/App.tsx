@@ -2870,7 +2870,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (contextMenu && !target.closest("[data-context-menu]")) setContextMenu(null);
     const connectorEndpointEl = target.closest<HTMLElement>("[data-connector-endpoint]");
     const connectorEndpoint = connectorEndpointEl?.dataset.connectorEndpoint;
-    if (connectorEndpoint && selected.length === 1) {
+    if ((tool === "select" || tool === "hand") && connectorEndpoint && selected.length === 1) {
       const connector = itemsRef.current.find((item) => item.id === selected[0] && item.kind === "connector");
       if (connector && !connector.locked) {
         e.preventDefault();
@@ -2885,7 +2885,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     const groupHandleEl = target.closest<HTMLElement>("[data-group-transform-handle]");
     const groupHandle = groupHandleEl?.dataset.groupTransformHandle;
-    if (groupHandle && selected.length > 1 && !itemsRef.current.some((i) => selected.includes(i.id) && i.locked)) {
+    if ((tool === "select" || tool === "hand") && groupHandle && selected.length > 1 && !itemsRef.current.some((i) => selected.includes(i.id) && i.locked)) {
       const bases = itemsRef.current.filter((i) => selected.includes(i.id)).map((i) => ({ ...i, points: i.points?.map((p) => ({ ...p })) }));
       const groupBounds = boundsOf(bases);
       if (groupBounds) {
@@ -2964,7 +2964,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     const handleEl = target.closest<HTMLElement>("[data-transform-handle]");
     const transformHandle = handleEl?.dataset.transformHandle;
-    if (transformHandle && hit && !hit.locked && !structurallyLockedForStudent(hit) && selected.length === 1 && selected[0] === hit.id) {
+    if ((tool === "select" || tool === "hand") && transformHandle && hit && !hit.locked && !structurallyLockedForStudent(hit) && selected.length === 1 && selected[0] === hit.id) {
       e.preventDefault();
       e.stopPropagation();
       gesture.current = {
@@ -6459,6 +6459,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               gesture.current={pointer:e.pointerId,mode:"pan",start,view,
                 before:itemsRef.current,ids:[],path:[world(start)],additive:false};
               e.currentTarget.setPointerCapture(e.pointerId);
+              return;
+            }
+            // Painting never selects or drags objects, including photos, PDF
+            // viewers and selection handles. Start the existing stroke gesture
+            // during capture, before any embedded component handles the event.
+            if((tool==="pen"||tool==="marker") && !presentation && !space && e.button===0){
+              touchStart(e);
+              if(touchPoints.current.size<2)down(e);
+              e.stopPropagation();
               return;
             }
             if(tool!=="eraser"||presentation||e.button!==0)return;

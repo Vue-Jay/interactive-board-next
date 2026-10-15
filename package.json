@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:eraser": "node scripts/test-eraser.mjs",
-    "test:ui": "node scripts/test-lektrus-ui.mjs && node scripts/test-lektrus-responsive.mjs && node scripts/test-lektrus-polish.mjs && node scripts/test-lektrus-board-chrome.mjs && node scripts/test-lektrus-tool-layout.mjs && node scripts/test-lektrus-tool-refinements.mjs"
+    "test:ui": "node scripts/test-lektrus-ui.mjs && node scripts/test-lektrus-responsive.mjs && node scripts/test-lektrus-polish.mjs && node scripts/test-lektrus-board-chrome.mjs && node scripts/test-lektrus-tool-layout.mjs && node scripts/test-lektrus-tool-refinements.mjs && node scripts/test-lektrus-draw-over-objects.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
