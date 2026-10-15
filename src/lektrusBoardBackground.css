@@ -110,3 +110,45 @@
     width:min(290px,calc(100vw - 84px));
   }
 }
+
+
+/* Compact-height touch screens: avoid clipped header and oversized floating dock. */
+@media screen and (max-width:1100px){
+ html body .topbar:not(.update-banner){
+  box-sizing:border-box!important;height:48px!important;min-height:48px!important;
+  max-height:48px!important;display:flex!important;align-items:center!important;
+  padding:0 8px!important;gap:6px!important;overflow:visible!important;
+ }
+ html body .topbar .topbar-left{display:flex!important;flex:1 1 auto!important;align-items:center!important;min-width:0!important;overflow:hidden!important}
+ html body .topbar .board-home-button{
+  box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;
+  justify-content:center!important;flex:0 0 auto!important;
+  width:65px!important;min-width:65px!important;max-width:65px!important;
+  height:32px!important;min-height:32px!important;max-height:32px!important;
+  margin:0!important;padding:0 5px!important;
+  font-size:11px!important;line-height:1!important;white-space:nowrap!important;overflow:hidden!important;
+ }
+ html body .topbar .board-title{min-width:0!important;flex:1 1 auto!important;height:32px!important;max-height:32px!important;margin:0!important}
+ html body .topbar .topbar-right{flex:0 1 auto!important;min-width:0!important;max-width:48vw!important;overflow:visible!important}
+}
+/* In short landscape viewports the touch tools must fit vertically rather
+   than extending below the screen or overlapping the fixed top bar. */
+@media screen and (max-width:1100px) and (max-height:620px) and (orientation:landscape){
+ body .workspace nav.mobile-board-tools{
+  top:6px!important;bottom:auto!important;
+  max-height:calc(100dvh - 62px - env(safe-area-inset-bottom,0px))!important;
+  height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;
+  padding:5px 3px!important;gap:2px!important;
+ }
+ body .workspace nav.mobile-board-tools .mobile-tool-cluster-create{
+  flex:0 1 auto!important;overflow-y:auto!important;min-height:0!important;
+ }
+ body .workspace nav.mobile-board-tools button,
+ body .workspace nav.mobile-board-tools .mobile-tool-with-geometry>button{
+  width:38px!important;min-width:38px!important;max-width:38px!important;
+  height:36px!important;min-height:36px!important;max-height:36px!important;flex-basis:36px!important;
+ }
+ body .workspace section.mobile-tools-sheet{
+  top:54px!important;max-height:calc(100dvh - 62px)!important;
+ }
+}
