@@ -151,7 +151,7 @@ const iconBody = (name: IconName) => {
     case "marker": return <><path d="m4.5 15.6 9.9-10a1.9 1.9 0 0 1 2.7 0l2 2a1.9 1.9 0 0 1 0 2.7l-9.8 9.8H4.5v-4.5Z"/><path d="m13.1 7 4.6 4.5M6.2 16.6l2.2 2.2"/><path d="M3 21h11" strokeWidth="2.6"/></>;
     case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
     case "section-arrows": return <><path d="M4 24C9 24 8 15 14 15S20 22 27 7"/><path d="m20.5 9 7-3-1 7"/><circle cx="4" cy="24" r="2.3" fill="var(--lt-raised,#fff)"/><circle cx="14" cy="15" r="2.3" fill="var(--lt-raised,#fff)"/></>;
-    case "section-create": return <><path d="M2.5 5h12M8.5 5v21M5 26h7"/><rect x="18" y="3.5" width="11.5" height="11.5" rx=".7"/><circle cx="23.5" cy="24" r="5.5"/></>;
+    case "section-create": return <><path d="M2 3.5h14M9 3.5v25M5 28.5h8"/><rect x="19" y="3.5" width="10" height="10" rx=".7"/><circle cx="24" cy="24" r="5"/></>;
     case "section-studies": return <><rect x="2.5" y="3.5" width="15" height="21.5" rx="1.5"/><path d="M2.5 10.5h15M2.5 17.5h15M10 3.5v21.5"/><text x="18.8" y="28" fill="currentColor" stroke="none" fontFamily="Georgia,serif" fontSize="20" fontWeight="bold" fontStyle="italic">ƒx</text></>;
     case "section-media": return <><rect x="2.5" y="3.5" width="18" height="19" rx="2"/><circle cx="8" cy="9.5" r="2"/><path d="m4.5 19 5.5-6 4.2 4.4 3.6-3.4"/><rect x="17.8" y="16" width="11.5" height="11.5" rx="2" fill="var(--lt-raised,#fff)"/><path d="m22 19 4.2 2.8-4.2 2.7Z"/></>;
     case "connector": return <><path d="M3.5 12h17"/><path d="M14.5 5.5 21 12l-6.5 6.5"/></>;
@@ -6985,24 +6985,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   
                 </span>
               )}
-              {singleSelected?.kind === "connector" && !selectionLocked && (
-                <span className="connector-selection-controls">
-                  <button type="button" className={singleSelected.connectorStyle === "line" ? "active" : ""} onClick={() => setSelectedConnectorStyle("line")} title="Линия"><Icon name="line" size={16} /></button>
-                  <button type="button" className={(singleSelected.connectorStyle ?? "arrow") === "arrow" ? "active" : ""} onClick={() => setSelectedConnectorStyle("arrow")} title="Стрелка"><Icon name="arrow-one" size={16} /></button>
-                  <button type="button" className={singleSelected.connectorStyle === "double" ? "active" : ""} onClick={() => setSelectedConnectorStyle("double")} title="Двусторонняя стрелка"><Icon name="arrow-double" size={16} /></button>
-                  <span className="connector-control-separator" />
-                  <button type="button" className={(singleSelected.connectorRouting ?? "straight") === "straight" ? "active" : ""} onClick={() => setSelectedConnectorRouting("straight")} title="Прямая"><Icon name="line" size={16} /></button>
-                  <button type="button" className={singleSelected.connectorRouting === "elbow" ? "active" : ""} onClick={() => setSelectedConnectorRouting("elbow")} title="Ломаная"><Icon name="elbow" size={16} /></button>
-                  <button type="button" onClick={renameSelectedConnector} title="Подпись линии"><Icon name="label" size={16} /></button>
-                  <button type="button" className={(singleSelected.connectorStartBinding || singleSelected.connectorEndBinding) ? "linked" : ""} onClick={detachSelectedConnector} title="Отвязать концы от объектов"><Icon name={(singleSelected.connectorStartBinding || singleSelected.connectorEndBinding) ? "link" : "unlink"} size={16} /></button>
-                  {["#5355c9","#2f855a","#d97706","#dc4c64","#1f2937"].map((value) => (
-                    <button type="button" key={value} className="connector-color-button" style={{ background: value }} onClick={() => recolorSelected(value)} aria-label={`Цвет линии ${value}`} />
-                  ))}
-                  <select aria-label="Тип наконечника выбранной стрелки" value={singleSelected.arrowHeadStyle??"triangle"} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadStyle:e.target.value as ArrowHeadStyle}:item))}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select><label>Наконечник <input type="range" min={4} max={24} aria-label="Размер наконечника выбранной стрелки" value={singleSelected.arrowHeadSize??8} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadSize:Number(e.target.value)}:item))}/></label><button type="button" onClick={() => changeSelectedConnectorWeight(-1)} title="Тоньше">−</button>
-                  <span className="connector-weight-value">{singleSelected.weight ?? 3}px</span>
-                  <button type="button" onClick={() => changeSelectedConnectorWeight(1)} title="Толще">+</button>
-                </span>
-              )}
+              {singleSelected?.kind==="connector"&&!selectionLocked&&<button type="button" className="icon-action" title="Настройки линии или стрелки" onClick={e=>{const box=board.current?.getBoundingClientRect();const rect=e.currentTarget.getBoundingClientRect();if(box)setContextMenu({x:rect.left-box.left,y:rect.bottom-box.top+6})}}><Icon name="settings" size={16}/><span>Настроить</span></button>}
               {(singleSelected?.kind === "image" || singleSelected?.kind === "pdf") && (
                 <span className="media-selection-controls">
                   {singleSelected.kind === "pdf" && (
@@ -7120,10 +7103,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 position:"fixed",
                 left: Math.max(8,Math.min(
                   (board.current?.getBoundingClientRect().left??0)+contextMenu.x,
-                  window.innerWidth-250)),
+                  window.innerWidth-286)),
                 top: Math.max(8,Math.min(
                   (board.current?.getBoundingClientRect().top??0)+contextMenu.y,
-                  window.innerHeight-Math.min(440,window.innerHeight-16)-8)),
+                  window.innerHeight-Math.min(510,window.innerHeight-16)-8)),
               }}
               onPointerDown={(e) => e.stopPropagation()}
             >
@@ -7132,6 +7115,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   <button onClick={() => { duplicateSelected(); setContextMenu(null); }}>Дублировать <span>Ctrl+D</span></button>
                   <button onClick={() => { copySelected(); setContextMenu(null); }}>Копировать <span>Ctrl+C</span></button>
                   {singleSelected?.kind !== "comment" && <button onClick={() => { addCommentToSelection(); setContextMenu(null); }}>Добавить комментарий</button>}
+                  {singleSelected?.kind==="connector"&&!selectionLocked&&<section className="lektrus-connector-context" role="group" aria-label="Редактирование линии и стрелки">
+                    <strong>Линия и стрелка</strong>
+                    <div className="lektrus-connector-context-types" role="group" aria-label="Тип линии">
+                      {(["line","arrow","double"] as ConnectorStyle[]).map(style=><button key={style} className={(singleSelected.connectorStyle??"arrow")===style?"active":""} onClick={()=>setSelectedConnectorStyle(style)} title={style==="line"?"Линия":style==="arrow"?"Стрелка":"Двусторонняя стрелка"}><Icon name={style==="line"?"line":style==="arrow"?"arrow-one":"arrow-double"} size={17}/></button>)}
+                    </div>
+                    <label>Направление <select value={singleSelected.connectorRouting??"straight"} onChange={e=>setSelectedConnectorRouting(e.target.value as ConnectorRouting)}><option value="straight">Прямая</option><option value="elbow">Ломаная</option></select></label>
+                    <label>Толщина <input aria-label="Толщина выбранной линии" type="range" min={1} max={16} value={singleSelected.weight??3} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,weight:Number(e.target.value)}:item))}/><span>{singleSelected.weight??3}px</span></label>
+                    <label>Цвет <input type="color" aria-label="Цвет выбранной линии" value={singleSelected.color??"#5355c9"} onChange={e=>recolorSelected(e.target.value)}/></label>
+                    {singleSelected.connectorStyle!=="line"&&<><label>Наконечник <select value={singleSelected.arrowHeadStyle??"triangle"} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadStyle:e.target.value as ArrowHeadStyle}:item))}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select></label>
+                    <label>Размер конца <input aria-label="Размер наконечника" type="range" min={4} max={24} value={singleSelected.arrowHeadSize??8} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadSize:Number(e.target.value)}:item))}/><span>{singleSelected.arrowHeadSize??8}px</span></label></>}
+                    <div className="lektrus-connector-context-extra"><button onClick={()=>{renameSelectedConnector();setContextMenu(null)}}>Подпись</button><button onClick={()=>{detachSelectedConnector();setContextMenu(null)}}>Отвязать</button></div>
+                  </section>}
                   {singleSelected?.kind === "table" && !selectionLocked && <button onClick={() => { openTableEditor(singleSelected); setContextMenu(null); }}>Редактировать таблицу</button>}
                   {singleSelected?.kind === "formula" && !selectionLocked && <button onClick={() => { openFormulaEditor(singleSelected); setContextMenu(null); }}>Редактировать формулу</button>}
                   {singleSelected?.kind === "checklist" && !selectionLocked && <button onClick={() => { openChecklistEditor(singleSelected); setContextMenu(null); }}>Редактировать чек-лист</button>}
