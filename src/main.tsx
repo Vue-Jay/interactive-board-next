@@ -15,6 +15,7 @@ import "./lectrisCustomize.css";
 import "./lectrisPanelSettings.css";
 import "./lectrisRedesign.css";
 import "./lectrisV3.css";
+import { initLectrisPalette } from "./lectrisPalette";
 
 type ErrorBoundaryState = { error: Error | null };
 
@@ -40,6 +41,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
     return this.props.children;
   }
 }
+
+initLectrisPalette();
 
 const root = document.getElementById("root");
 if (!root) {
