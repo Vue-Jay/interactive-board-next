@@ -1,3 +1,4 @@
+import {normalizeBoardBackground} from "./boardBackground";
 export type Point = { x: number; y: number };
 export type View = Point & { zoom: number };
 export type ShapeType = "rectangle" | "square" | "rounded" | "ellipse" | "circle" | "diamond" | "triangle" | "rightTriangle" | "parallelogram" | "trapezoid" | "pentagon" | "hexagon" | "star" | "arrow";
@@ -84,7 +85,7 @@ export type Item = {
 // Ink is stored in its own drawing collection, not in regular board objects.
 // "after" preserves its visual position relative to normal items on old boards.
 export type InkEntry = { after: number; stroke: Item };
-export type DocumentData = { version: 1; title: string; view: View; items: Item[]; ink?: InkEntry[] };
+export type DocumentData = { version: 1; title: string; view: View; items: Item[]; ink?: InkEntry[]; background?: import("./boardBackground").BoardBackground };
 export const isInkItem = (item: Item): boolean => item.kind === "pen" || item.kind === "marker";
 
 export function expandDocumentInk(data: DocumentData): Item[] {
@@ -105,7 +106,7 @@ export function expandDocumentInk(data: DocumentData): Item[] {
 // so logical objects do not imply thousands of SVG/DOM nodes.
 export function packDocumentInk(data: DocumentData): DocumentData {
   const all = expandDocumentInk(data);
-  return { version: 1, title: data.title, view: data.view, items: all };
+  return { version: 1, title: data.title, view: data.view, items: all, background:normalizeBoardBackground(data.background) };
 }
 export const STORAGE_KEY = "lesson-board.document.v1";
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 1e9;
@@ -248,6 +249,7 @@ export function parseDocument(raw: string): DocumentData {
     version: 1,
     title: d.title,
     view: { x: d.view.x, y: d.view.y, zoom: d.view.zoom },
+    background:normalizeBoardBackground(d.background),
     items: d.items.map((i: Item) => ({
       id: i.id,
       kind: i.kind,

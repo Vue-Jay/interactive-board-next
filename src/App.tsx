@@ -74,6 +74,7 @@ import {
   type DocumentData,
 } from "./boardModel";
 
+import {boardBackgroundAppearance,drawingCursorForBackground,normalizeBoardBackground,type BoardBackground} from "./boardBackground";
 import { eraseInkAlongPath } from "./inkEraser";
 import { inkIdsInLasso } from "./inkLasso";
 import { hitTestInk } from "./inkHitTest";
@@ -1457,10 +1458,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [presentationCountdownTotal, setPresentationCountdownTotal] = useState(300);
   const [presentationCountdownRemaining, setPresentationCountdownRemaining] = useState(300);
   const [presentationBlackout, setPresentationBlackout] = useState(false);
-  const [gridMode, setGridMode] = useState<"dots" | "grid" | "plain">(() => {
-    const saved = localStorage.getItem("lesson-board.grid-mode");
-    return saved === "grid" || saved === "plain" ? saved : "dots";
-  });
+  const [boardBackground,setBoardBackground]=useState<BoardBackground>(()=>normalizeBoardBackground(initial.data.background));
+  const [backgroundMenuOpen,setBackgroundMenuOpen]=useState(false);
+  const backgroundAppearance=useMemo(()=>boardBackgroundAppearance(boardBackground),[boardBackground]);
+  const drawingCursor=useMemo(()=>drawingCursorForBackground(boardBackground),[boardBackground]);
+  const canChangeBoardBackground=canEdit&&!isStudent;
+  const updateBoardBackground=(patch:Partial<BoardBackground>)=>{
+    if(!canChangeBoardBackground)return;
+    setBoardBackground(current=>normalizeBoardBackground({...current,...patch}));
+  };
   const [previous, setPrevious] = useState<DocumentData | null>(() => {
     try {
       const raw = localStorage.getItem(storageKey + ".before-import");
@@ -1772,10 +1778,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     return()=>{markSeen();window.removeEventListener("pagehide",markSeen)};
   },[historyVisitKey]);
 
-  useEffect(() => {
-    localStorage.setItem("lesson-board.grid-mode", gridMode);
-  }, [gridMode]);
-
   // Viewport is personal UI state, not shared board content. Persist it separately
   // so reopening or refreshing a board returns this user to the exact same place
   // without broadcasting pan/zoom changes as document revisions.
@@ -1981,6 +1983,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       version: 1,
       title,
       view: viewRef.current,
+      background:boardBackground,
       items: editing
         ? items.map((i) => (i.id === editing ? { ...i, text: draft } : i))
         : items,
@@ -1995,6 +1998,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   }, [
     items,
     title,
+    boardBackground,
     editing,
     draft,
     saveBlocked,
@@ -2127,6 +2131,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       version: 1,
       title,
       view,
+      background:boardBackground,
       items: editing
         ? itemsRef.current.map((i) =>
             i.id === editing ? { ...i, text: draft } : i,
@@ -2295,6 +2300,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     version: 1,
     title,
     view,
+    background:boardBackground,
     items: editing
       ? itemsRef.current.map((i) =>
           i.id === editing ? { ...i, text: draftRef.current } : i,
@@ -2309,6 +2315,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setSpace(false);
     setTool("select");
     setTitle(data.title);
+    setBoardBackground(normalizeBoardBackground(data.background));
     if (!fromRemote) setView(data.view);
     const allItems = expandDocumentInk(data);
     display(allItems);
@@ -4765,10 +4772,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     fitToBounds(boundsOf(family), 180);
   };
 
-  const cycleGrid = () => {
-    setGridMode((mode) => mode === "dots" ? "grid" : mode === "grid" ? "plain" : "dots");
-  };
-
   const recolorSelected = (value: string) => {
     if (!selected.length || selectionLocked) return;
     commit(itemsRef.current.map((item) =>
@@ -6439,11 +6442,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         <section
           ref={board}
           aria-label="Доска"
-          className={`board board-bg-${gridMode} board-tool-${tool} ${space || rightPointerActive ? "board-hand-active" : ""} ${rightPointerActive ? "board-right-hand" : ""} ${panning ? "board-panning" : ""}`}
+          className={`board board-bg-${boardBackground.mode} board-tool-${tool} ${space || rightPointerActive ? "board-hand-active" : ""} ${rightPointerActive ? "board-right-hand" : ""} ${panning ? "board-panning" : ""}`}
           style={{
             backgroundSize: `${24 * view.zoom}px ${24 * view.zoom}px`,
             backgroundPosition: `${view.x}px ${view.y}px`,
-          }}
+            backgroundColor:backgroundAppearance.backgroundColor,
+            backgroundImage:backgroundAppearance.backgroundImage,
+            "--lektrus-drawing-cursor":drawingCursor,
+          } as CSSProperties}
           onPointerDownCapture={(e) => {
             // A held RMB is always temporary hand/pan, even while drawing.
             // Short click opens the custom menu only on release.
@@ -7232,6 +7238,33 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               : `Выделено: ${selected.length} · Alt+перетаскивание — копия · стрелки — сдвиг · Shift+стрелка — 10 px`
             : `Сейчас: ${toolShortLabel[tool]} · ЛКМ — выделение областью · удерживать ПКМ — рука · ПКМ — меню`}
         </div>
+        {backgroundMenuOpen&&<div id="lektrus-background-settings" className="lektrus-background-settings"
+          role="group" aria-label="Настройки фона доски" onPointerDown={e=>e.stopPropagation()}>
+          <div className="lektrus-background-head"><strong>Фон доски</strong>
+            <button type="button" aria-label="Закрыть настройки фона" onClick={()=>setBackgroundMenuOpen(false)}><Icon name="close" size={16}/></button></div>
+          <div className="lektrus-background-modes" aria-label="Тип фона">
+            {(["dots","grid","plain"] as const).map(mode=><button type="button" key={mode}
+              disabled={!canChangeBoardBackground} aria-pressed={boardBackground.mode===mode}
+              className={boardBackground.mode===mode?"active":""} onClick={()=>updateBoardBackground({mode})}>
+              <Icon name={mode==="dots"?"dots":mode==="grid"?"grid":"plain"} size={17}/>
+              {mode==="dots"?"Точки":mode==="grid"?"Клетки":"Чистый"}</button>)}
+          </div>
+          <label className="lektrus-background-color">Цвет фона
+            <span><input aria-label="Цвет фона доски" type="color" disabled={!canChangeBoardBackground}
+              value={boardBackground.color} onChange={e=>updateBoardBackground({color:e.target.value})}/>
+              <output>{boardBackground.color.toUpperCase()}</output></span></label>
+          <label className="lektrus-background-opacity">Непрозрачность
+            <span><input aria-label="Непрозрачность фона доски" type="range" min="0" max="100" step="5"
+              disabled={!canChangeBoardBackground} value={boardBackground.opacity}
+              onChange={e=>updateBoardBackground({opacity:Number(e.target.value)})}/>
+              <output>{boardBackground.opacity}%</output></span></label>
+          <div className="lektrus-background-footer">
+            {canChangeBoardBackground
+              ?<button type="button" onClick={()=>setBoardBackground(normalizeBoardBackground(null))}>Сбросить фон</button>
+              :<small>Настройки задаёт преподаватель</small>}
+            <small>Общий фон для всех участников</small>
+          </div>
+        </div>}
         <div className="board-controls">
           <button aria-label="Уменьшить" title="Уменьшить" onClick={() => zoom(0.8)}><Icon name="zoom-out" size={16} /></button>
           <button
@@ -7243,12 +7276,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </button>
           <button aria-label="Увеличить" title="Увеличить" onClick={() => zoom(1.25)}><Icon name="zoom-in" size={16} /></button>
           <span className="board-controls-separator" />
-          <button
-            className="grid-toggle"
-            onClick={cycleGrid}
-            title={gridMode === "dots" ? "Фон: точки · переключить на сетку" : gridMode === "grid" ? "Фон: сетка · переключить на чистый" : "Фон: чистый · переключить на точки"}
-          >
-            <Icon name={gridMode === "dots" ? "dots" : gridMode === "grid" ? "grid" : "plain"} size={16} />
+          <button type="button" className={"grid-toggle lektrus-background-toggle"+(backgroundMenuOpen?" active":"")}
+            aria-label="Настройки фона доски" aria-expanded={backgroundMenuOpen} aria-controls="lektrus-background-settings"
+            onClick={()=>setBackgroundMenuOpen(x=>!x)} title="Фон доски: узор, цвет и прозрачность">
+            <Icon name={boardBackground.mode==="dots"?"dots":boardBackground.mode==="grid"?"grid":"plain"} size={16}/>
           </button>
           <button
             className={`snap-toggle ${snapEnabled ? "active" : ""}`}

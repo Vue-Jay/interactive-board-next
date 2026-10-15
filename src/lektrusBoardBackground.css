@@ -1,0 +1,85 @@
+/* Board background controls are part of the shared board, not viewport state. */
+.workspace .board.board-tool-pen,
+.workspace .board.board-tool-marker,
+.workspace .board.board-tool-pen *,
+.workspace .board.board-tool-marker *{cursor:var(--lektrus-drawing-cursor,crosshair)!important}
+.workspace .board.board-right-hand,
+.workspace .board.board-right-hand *,
+.workspace .board.board-panning,
+.workspace .board.board-panning *{cursor:grabbing!important}
+.workspace .lektrus-background-settings{
+  position:absolute;z-index:600;right:10px;bottom:64px;
+  width:min(290px,calc(100vw - 20px));max-height:min(435px,calc(100dvh - 95px));
+  overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;padding:11px;
+  background:var(--lt-raised,#fff);color:var(--lt-text,#1a2940);
+  border:1px solid var(--lt-line,#d7dfe9);border-radius:14px;
+  box-shadow:var(--lt-pop-shadow,0 14px 40px rgba(0,0,0,.2));
+}
+.workspace .lektrus-background-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  border-bottom:1px solid var(--lt-line,#ddd);padding-bottom:9px;font-size:13px;
+}
+.workspace .lektrus-background-head button{
+  display:grid;place-items:center;width:29px;height:29px;flex:none;
+  background:var(--lt-subtle,#f4f6fa);color:var(--lt-secondary,#43566b);
+  border:1px solid var(--lt-line,#ddd);border-radius:8px;
+}
+.workspace .lektrus-background-modes{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:11px 0;
+}
+.workspace .lektrus-background-modes button{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  min-width:0;min-height:58px;padding:7px 3px;font-size:11px;
+  color:var(--lt-secondary,#43566b);background:var(--lt-surface,#fff);
+  border:1px solid var(--lt-line,#ddd);border-radius:9px;
+}
+.workspace .lektrus-background-modes button.active{
+  background:var(--lt-selected,#e6ebff);color:var(--lt-selected-ink,#233d7b);
+  border-color:var(--lt-primary,#486de0);
+}
+.workspace .lektrus-background-settings>label{
+  display:grid;gap:7px;margin:10px 0;font-size:11px;font-weight:750;
+  color:var(--lt-secondary,#43566b);
+}
+.workspace .lektrus-background-settings>label>span{
+  display:flex;align-items:center;gap:10px;padding:6px 9px;
+  background:var(--lt-subtle,#f4f6fa);border:1px solid var(--lt-line,#ddd);border-radius:9px;
+}
+.workspace .lektrus-background-settings input[type=color]{
+  width:38px;height:28px;flex:none;padding:2px;border:1px solid var(--lt-line,#ddd);
+  border-radius:7px;background:transparent;
+}
+.workspace .lektrus-background-settings input[type=range]{
+  min-width:0;flex:1;accent-color:var(--lt-primary,#486de0);
+}
+.workspace .lektrus-background-settings output{
+  flex:0 0 auto;min-width:42px;font-size:11px;color:var(--lt-text,#17263b);
+}
+.workspace .lektrus-background-footer{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+  gap:8px;border-top:1px solid var(--lt-line,#ddd);padding-top:9px;
+}
+.workspace .lektrus-background-footer button{
+  padding:6px 9px;border:1px solid var(--lt-line,#ddd);border-radius:8px;
+  color:var(--lt-secondary,#43566b);background:var(--lt-subtle,#f4f6fa);font-size:11px;
+}
+.workspace .lektrus-background-footer small{color:var(--lt-muted,#64768a);font-size:10px}
+.workspace .lektrus-background-settings button:disabled,
+.workspace .lektrus-background-settings input:disabled{opacity:.5;cursor:default}
+.workspace .lektrus-background-settings button:focus-visible,
+.workspace .lektrus-background-settings input:focus-visible{
+  outline:2px solid var(--lt-focus,#7396e9);outline-offset:2px;
+}
+@media(max-width:1100px){
+  .workspace .lektrus-background-settings{
+    position:fixed;z-index:970;right:8px;
+    bottom:max(72px,calc(65px + env(safe-area-inset-bottom,0px)));
+    max-height:calc(100dvh - 110px);
+  }
+}
+@media(max-width:1100px) and (orientation:landscape){
+  .workspace .lektrus-background-settings{
+    right:8px;bottom:58px;max-height:calc(100dvh - 118px);
+    width:min(290px,calc(100vw - 84px));
+  }
+}
