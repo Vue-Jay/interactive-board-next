@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import LectrisHub from "./LectrisHub";
 import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectrisOrganizationStore";
-import { cachedBoardPreview, loadBoardPreviews } from "./boardPreview";
+import { cachedBoardPreview, loadBoardPreviews, backfillCachedBoardPreviews } from "./boardPreview";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
 import { createBoard, deleteBoard, deleteBoardForever, ensureUserBoards, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
 import { boardShareUrl, clearPendingShareToken, createBoardShareLink, listBoardShareLinks, pendingShareToken, redeemBoardShareLink, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
@@ -36,7 +36,16 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
    const cached:Record<string,string>={};
    for(const id of ids){const value=cachedBoardPreview(id);if(value)cached[id]=value}
    setPreviews(cached);
-   void loadBoardPreviews(ids).then(result=>{if(alive)setPreviews(result)}).catch(()=>{});
+   void loadBoardPreviews(ids).then(result=>{
+     if(!alive)return;
+     setPreviews(result);
+     // Old documents may predate snapshots. Only use small already-local files:
+     // never fetch every heavy board document just to populate a gallery.
+     const missing=ids.filter(id=>!result[id]);
+     if(missing.length)void backfillCachedBoardPreviews(missing).then(next=>{
+       if(alive&&Object.keys(next).length)setPreviews(current=>({...current,...next}));
+     }).catch(()=>{});
+   }).catch(()=>{});
    return()=>{alive=false};
  },[previewIds,user.id]); const [editingId,setEditingId]=useState<string|null>(null); const [draftTitle,setDraftTitle]=useState("");
  const [filter,setFilter]=useState<BoardFilter>("all"); const [sort,setSort]=useState<BoardSort>("recent"); const [trashOpen,setTrashOpen]=useState(false); const [trash,setTrash]=useState<BoardSummary[]>([]);
