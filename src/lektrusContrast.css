@@ -380,6 +380,19 @@
   h1,h2,p,.lectris-hub-hero-chip,.lectris-hub-hero-metric,
   .lectris-hub-sync,.lectris-hub-sync span
 ) {color:#fff!important}
+/* Keep accent choice meaningful in dark mode instead of forcing a blue hero. */
+:root[data-theme="dark"][data-lectris-palette="jade"] .lectris-hub .lectris-hub-hero {
+  background:linear-gradient(115deg,#0e4b4b 0%,#136361 54%,#19766d 100%)!important;
+  border-color:#429c94!important;
+}
+:root[data-theme="dark"][data-lectris-palette="violet"] .lectris-hub .lectris-hub-hero {
+  background:linear-gradient(115deg,#35285c 0%,#4c357d 54%,#654499 100%)!important;
+  border-color:#9072c6!important;
+}
+:root[data-theme="dark"][data-lectris-palette="sunset"] .lectris-hub .lectris-hub-hero {
+  background:linear-gradient(115deg,#68332c 0%,#803b34 54%,#9b5043 100%)!important;
+  border-color:#c78072!important;
+}
 :root[data-theme="dark"] .lectris-hub .lectris-hub-hero-actions button:not(.lectris-hub-primary) {
   background:rgba(255,255,255,.12)!important;
   border:1px solid rgba(255,255,255,.42)!important;color:#fff!important;
@@ -388,10 +401,10 @@
   background:rgba(255,255,255,.22)!important;
 }
 :root[data-theme="dark"] .lectris-hub .lectris-hub-hero .lectris-hub-primary {
-  background:#264baf!important;border-color:#7195f6!important;color:#fff!important;
+  background:var(--lt-primary)!important;border-color:rgba(255,255,255,.55)!important;color:#fff!important;
 }
 :root[data-theme="dark"] .lectris-hub .lectris-hub-hero .lectris-hub-primary:hover {
-  background:#1d3f9b!important;
+  background:var(--lt-primary-hover)!important;
 }
 /* Right column white shortcuts and scattered light-only secondary buttons. */
 :root[data-theme="dark"] .lectris-hub .lectris-hub-shortcuts button,
