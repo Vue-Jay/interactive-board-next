@@ -735,41 +735,53 @@ body .workspace .lektrus-board-subject-picker select{min-width:0;max-width:135px
 @media(max-width:700px){body .workspace .lektrus-board-subject-picker{max-width:118px}body .workspace .lektrus-board-subject-picker>span{display:none}body .workspace .lektrus-board-subject-picker select{max-width:115px;font-size:11px}}
 
 
-/* Single source of truth for the subject field; no stacked style overrides. */
-body .workspace .topbar-left{display:flex;align-items:center;gap:14px;min-width:0}
-body .workspace .lektrus-board-subject-picker{
- display:flex!important;align-items:center!important;gap:12px!important;
- flex:0 1 252px!important;max-width:252px!important;min-width:0!important;
- margin:0 0 0 18px!important;padding:5px 6px 5px 13px!important;
- box-sizing:border-box!important;border:1px solid var(--lt-line,#d9e2ef)!important;
- border-radius:11px!important;background:var(--lt-subtle,#f0f4fa)!important;
- box-shadow:none!important;color:var(--lt-text,#1c2d47)!important;
+
+/* Subject picker: one consistent Lektrus control, with its own list instead of native datalist. */
+body .workspace .topbar-left{display:flex!important;align-items:center!important;gap:16px!important;min-width:0!important}
+body .workspace .lektrus-subject-combobox{
+ position:relative;display:flex;align-items:center;gap:16px;
+ margin-left:clamp(12px,1.5vw,24px);flex:0 1 290px;min-width:185px;max-width:290px;
+ font-family:inherit;color:var(--lt-text,#20324e);z-index:310;
 }
-body .workspace .lektrus-board-subject-picker>span{
- display:block!important;flex:0 0 auto!important;margin:0!important;
- font-family:inherit!important;font-weight:650!important;font-size:12px!important;line-height:1.3!important;color:var(--lt-muted,#687a93)!important;
- white-space:nowrap!important;
+body .workspace .lektrus-subject-label{font-size:12px;line-height:1.3;font-weight:700;color:var(--lt-muted,#677991);flex:none}
+body .workspace .lektrus-subject-field{
+ display:flex;align-items:center;flex:1 1 auto;min-width:0;height:36px;
+ border:1px solid var(--lt-line,#cfdcf0);border-radius:10px;
+ background:var(--lt-subtle,#f1f5fb);transition:border-color .15s,box-shadow .15s;
 }
-body .workspace .lektrus-board-subject-picker input{
- box-sizing:border-box!important;display:block!important;flex:1 1 auto!important;
- min-width:0!important;width:100%!important;height:31px!important;min-height:31px!important;
- margin:0!important;padding:5px 9px!important;border:1px solid transparent!important;
- border-radius:7px!important;appearance:none!important;
- background:var(--lt-surface,#fff)!important;
- color:var(--lt-text,#1c2d47)!important;font-family:inherit!important;font-weight:650!important;font-size:13px!important;line-height:1.3!important;
- box-shadow:none!important;outline:none!important;
+body .workspace .lektrus-subject-field:focus-within{border-color:var(--lt-primary,#365fd0);box-shadow:0 0 0 3px color-mix(in srgb,var(--lt-primary,#365fd0) 10%,transparent)}
+body .workspace .lektrus-subject-field input{
+ display:block!important;flex:1;min-width:0;width:100%;height:100%!important;min-height:0!important;
+ border:0!important;outline:none!important;box-shadow:none!important;
+ background:transparent!important;color:var(--lt-text,#20324e)!important;
+ font-family:inherit!important;font-weight:600!important;font-size:13px!important;line-height:1.3!important;padding:0 0 0 11px!important;margin:0!important;
 }
-body .workspace .lektrus-board-subject-picker:focus-within{
- border-color:var(--lt-primary,#365fd0)!important;
- box-shadow:0 0 0 2px color-mix(in srgb,var(--lt-primary,#365fd0) 12%,transparent)!important;
+body .workspace .lektrus-subject-field input:focus{border:0!important;outline:none!important;box-shadow:none!important;background:transparent!important}
+body .workspace .lektrus-subject-field>button{
+ display:grid;place-items:center;flex:0 0 34px;width:34px;height:32px;padding:7px;border:0;
+ border-radius:7px;background:transparent;color:var(--lt-secondary,#50617b);cursor:pointer;
 }
-body .workspace .lektrus-board-subject-picker input:focus{border-color:transparent!important;outline:none!important}
+body .workspace .lektrus-subject-field>button svg{width:18px;height:18px}
+body .workspace .lektrus-subject-field>button:hover{color:var(--lt-primary,#365fd0);background:var(--lt-hover,#e8eef9)}
+body .workspace .lektrus-subject-options{
+ position:absolute;left:73px;top:calc(100% + 8px);width:max(100% - 73px,180px);max-width:min(300px,calc(100vw - 20px));
+ max-height:min(300px,55dvh);overflow-y:auto;display:grid;gap:2px;padding:6px;z-index:500;
+ border:1px solid var(--lt-line,#d6e0ef);border-radius:12px;background:var(--lt-surface,#fff);
+ box-shadow:0 18px 42px rgba(20,36,69,.18);overscroll-behavior:contain;
+}
+body .workspace .lektrus-subject-options button{
+ text-align:left;min-height:34px;border:0;border-radius:7px;padding:8px 11px;
+ background:transparent;color:var(--lt-text,#20324e);font-family:inherit;font-weight:600;font-size:12px;line-height:1.35;cursor:pointer;
+}
+body .workspace .lektrus-subject-options button:hover,
+body .workspace .lektrus-subject-options button.focused{background:var(--lt-subtle,#edf3fc);color:var(--lt-primary,#365fd0)}
+body .workspace .lektrus-subject-options button.selected{font-weight:800;color:var(--lt-primary,#365fd0)}
 @media(max-width:850px){
  body .workspace .topbar-left{gap:8px!important}
- body .workspace .lektrus-board-subject-picker{
-   flex:0 1 126px!important;max-width:126px!important;min-width:0!important;
-   margin-left:4px!important;padding:3px!important;gap:0!important;border-radius:9px!important;
- }
- body .workspace .lektrus-board-subject-picker>span{display:none!important}
- body .workspace .lektrus-board-subject-picker input{height:30px!important;min-height:30px!important;padding:5px 7px!important;font-size:11px!important}
+ body .workspace .lektrus-subject-combobox{margin-left:7px;min-width:92px;flex:0 1 152px;max-width:152px;gap:0}
+ body .workspace .lektrus-subject-label{display:none}
+ body .workspace .lektrus-subject-field{height:32px}
+ body .workspace .lektrus-subject-field input{font-size:11px!important;padding-left:7px!important}
+ body .workspace .lektrus-subject-field>button{flex-basis:26px;width:26px;height:28px;padding:4px}
+ body .workspace .lektrus-subject-options{left:0;right:auto;width:210px;max-width:calc(100vw - 20px)}
 }
