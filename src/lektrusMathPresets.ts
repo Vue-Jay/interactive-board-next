@@ -15,9 +15,9 @@ export const mathPresets:MathPreset[]=[
   {id:"quadratic",title:"Парабола",subtitle:"y = x² − 4x + 3",group:"Функции"},
   {id:"sine",title:"Синусоида",subtitle:"y = sin(x)",group:"Функции"},
   {id:"cosine",title:"Косинусоида",subtitle:"y = cos(x)",group:"Функции"},
-  {id:"triangle",title:"Треугольник",subtitle:"Подвижные вершины и периметр",group:"Геометрия"},
-  {id:"quadrilateral",title:"Четырёхугольник",subtitle:"Четыре вершины и периметр",group:"Геометрия"},
-  {id:"angle",title:"Угол",subtitle:"Луч, вершина и градусы",group:"Геометрия"},
+  {id:"triangle",title:"Треугольник",subtitle:"Подвижные вершины и заданные стороны",group:"Геометрия"},
+  {id:"quadrilateral",title:"Четырёхугольник",subtitle:"Четыре вершины и параметры условия",group:"Геометрия"},
+  {id:"angle",title:"Угол",subtitle:"Лучи и угол, заданный в условии",group:"Геометрия"},
   {id:"circle",title:"Окружность",subtitle:"Центр и изменяемый радиус",group:"Геометрия"},
   {id:"unit-circle",title:"Единичная окружность",subtitle:"π, sin, cos и угол в радианах",group:"Тригонометрия"}
 ];
