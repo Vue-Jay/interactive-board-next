@@ -202,3 +202,16 @@
 .lektrus-group-remove{border:0;background:transparent;padding:8px 11px;font-size:20px;cursor:pointer;color:var(--lt-muted,#6b7e94)}
 .lektrus-group-storage-note{display:block;margin-top:12px;color:var(--lt-muted,#6b7e94);font-size:11px}
 @media(max-width:800px){.lektrus-group-layout{grid-template-columns:minmax(0,1fr)}.lektrus-group-students{max-height:none}}
+
+/* Subject details remain inside the catalogue, no secondary board gallery. */
+.lektrus-subject-details{margin-top:14px;padding:15px;border:1px solid var(--lt-line,#dbe3ef);border-radius:13px;background:var(--lt-surface,#fff)}
+.lektrus-subject-details-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.lektrus-subject-details-head strong{font-size:17px}
+.lektrus-subject-details-head span{font-size:12px;color:var(--lt-muted,#6b7d94)}
+.lektrus-subject-board-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
+.lektrus-subject-board-list button{display:flex;align-items:center;gap:11px;min-width:0;padding:10px;text-align:left;border:1px solid var(--lt-line,#dbe3ef);background:var(--lt-surface,#fff);border-radius:10px;cursor:pointer;color:var(--lt-text,#23344c)}
+.lektrus-subject-board-list button>span:nth-child(2){flex:1;min-width:0;display:grid;gap:3px}
+.lektrus-subject-board-list strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lektrus-subject-board-list small{font-size:11px;color:var(--lt-muted,#6b7d94)}
+.lektrus-subject-board-avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:9px;background:var(--lt-subtle,#eff3fb);color:var(--lt-primary,#365fd0)}
+.lektrus-subject-create-board{margin-top:12px;border:1px solid var(--lt-line,#dbe3ef);background:var(--lt-subtle,#eff3fb);border-radius:9px;padding:9px 12px;font-size:12px;font-weight:700;color:var(--lt-primary,#365fd0);cursor:pointer}
