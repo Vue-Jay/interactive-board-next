@@ -258,7 +258,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>{mode==="geometry"?"Фигура":"Построение"}</button>
         {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>Размеры</button>}
         {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Элементы <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>}
-        {!roundSolid&&<button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.points.length}</span></button>}
+        {!isSolid&&<button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.points.length}</span></button>}
       </nav>
       <div className="graph-editor-body lektrus-graph-content">
         <div className="graph-editor-form lektrus-graph-settings">
@@ -379,6 +379,20 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                   </div>
                 </details>
               </div>)}
+            </div>}
+            {draft.figureId==="ray"&&draft.points.length>=2&&<div className="lektrus-geometry-givens">
+              <strong>Направление луча</strong>
+              <small>Захватите линию на рисунке, чтобы свободно повернуть луч. Здесь можно точно указать угол направления.</small>
+              <label className="lektrus-graph-field"><span>Направление относительно горизонтали, °</span>
+                <input inputMode="decimal" type="number" step="any"
+                  value={Number((Math.atan2(draft.points[1].y-draft.points[0].y,draft.points[1].x-draft.points[0].x)*180/Math.PI).toFixed(1))}
+                  onChange={e=>{
+                    const degrees=Number(e.target.value),origin=draft.points[0];
+                    if(!Number.isFinite(degrees)||!origin)return;
+                    const radians=degrees*Math.PI/180;
+                    patch({points:draft.points.map((p,i)=>i===1?{...p,x:origin.x+5*Math.cos(radians),y:origin.y+5*Math.sin(radians)}:p)});
+                  }}/>
+              </label>
             </div>}
             {!isSolid&&draft.angles.length>0&&<div className="lektrus-geometry-givens">
               <strong>Величина угла</strong>
