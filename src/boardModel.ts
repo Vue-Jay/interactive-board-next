@@ -60,6 +60,7 @@ export type Item = {
   tableCompact?: boolean;
   // Subject objects keep their teaching purpose, title and visible axes.
   graphPurpose?: "function" | "coordinates" | "geometry" | "unit-circle" | "number-line";
+  graphFigureId?: string;
   fractionMode?: "circle" | "bar";
   fractionNumerator?: number;
   fractionDenominator?: number;
@@ -203,10 +204,11 @@ export function parseDocument(raw: string): DocumentData {
       if (!Number.isInteger(i.fractionDenominator) || i.fractionDenominator! < 1 || !Number.isInteger(i.fractionNumerator) || i.fractionNumerator! < 0 || i.fractionNumerator! > i.fractionDenominator!) throw new Error("Повреждена дробь");
     }
     if (i.kind === "graph") {
+      if(i.graphFigureId!=null&&(typeof i.graphFigureId!=="string"||i.graphFigureId.length>64))throw new Error("Некорректный тип геометрической фигуры");
       if (i.graphIntervalStartClosed != null && typeof i.graphIntervalStartClosed !== "boolean") throw new Error("Повреждена левая граница промежутка");
       if (i.graphIntervalEndClosed != null && typeof i.graphIntervalEndClosed !== "boolean") throw new Error("Повреждена правая граница промежутка");
-      if(i.graphGivenSides != null && (!Array.isArray(i.graphGivenSides)||i.graphGivenSides.length>4||i.graphGivenSides.some((v:unknown)=>typeof v!=="string"||v.length>32))) throw new Error("Повреждены заданные стороны");
-      if(i.graphGivenAngles != null && (!Array.isArray(i.graphGivenAngles)||i.graphGivenAngles.length>4||i.graphGivenAngles.some((v:unknown)=>typeof v!=="string"||v.length>32))) throw new Error("Повреждены заданные углы");
+      if(i.graphGivenSides != null && (!Array.isArray(i.graphGivenSides)||i.graphGivenSides.length>20||i.graphGivenSides.some((v:unknown)=>typeof v!=="string"||v.length>32))) throw new Error("Повреждены заданные стороны");
+      if(i.graphGivenAngles != null && (!Array.isArray(i.graphGivenAngles)||i.graphGivenAngles.length>20||i.graphGivenAngles.some((v:unknown)=>typeof v!=="string"||v.length>32))) throw new Error("Повреждены заданные углы");
       if(i.graphTriangleInputMode!=null && !["SSS","SAS","ASA"].includes(i.graphTriangleInputMode)) throw new Error("Некорректный тип построения");
       if (i.graphTriangleVertex != null && ![0,1,2].includes(i.graphTriangleVertex)) throw new Error("Некорректная вершина треугольника");
       if (i.graphShowArea != null && typeof i.graphShowArea !== "boolean") throw new Error("Некорректные настройки площади");
