@@ -68,8 +68,13 @@ export default function LektrusFractionEditor({item,onSave,onCancel}:{
       <div className="lektrus-fraction-editor-body">
         <section className="lektrus-fraction-fields">
           <label>Название<input value={draft.title} maxLength={100} onChange={e=>change({title:e.target.value})}/></label>
-          <label>Модель дроби<select value={draft.mode} onChange={e=>change({mode:e.target.value as FractionMode})}>
-            <option value="circle">Круг</option><option value="bar">Полоска</option></select></label>
+          <div className="lektrus-fraction-mode" role="group" aria-label="Вид дроби">
+            <strong>Вид дроби</strong>
+            <div className="lektrus-fraction-mode-tabs">
+              <button type="button" aria-pressed={draft.mode==="circle"} className={draft.mode==="circle"?"active":""} onClick={()=>change({mode:"circle"})}>◉ Круг</button>
+              <button type="button" aria-pressed={draft.mode==="bar"} className={draft.mode==="bar"?"active":""} onClick={()=>change({mode:"bar"})}>▤ Полоска</button>
+            </div>
+          </div>
           <div className="lektrus-fraction-numbers">
             <label>Числитель<input type="number" min="0" max={draft.denominator} step="1" value={draft.numerator}
               onChange={e=>change({numerator:clamp(Number(e.target.value),0,draft.denominator)})}/></label>
