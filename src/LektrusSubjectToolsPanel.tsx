@@ -1,7 +1,7 @@
 import {useLayoutEffect,useRef,useState,type CSSProperties,type ReactNode} from "react";
 import {createPortal} from "react-dom";
 
-export type SubjectToolOption={id:string;label:string;icon:ReactNode};
+export type SubjectToolOption={id:string;label:string;description?:string;icon:ReactNode};
 type Props={
   anchor:HTMLElement|null;
   subject:string;
@@ -82,7 +82,7 @@ export default function LektrusSubjectToolsPanel({anchor,subject,subjects,tools,
         {tools.length>0?
           <div className="lektrus-subject-tools-list" role="group" aria-label={subject+" инструменты"}>
             {tools.map(t=><button type="button" key={t.id} onClick={()=>onChoose(t.id)}>
-              <span className="lektrus-subject-tools-icon">{t.icon}</span><span>{t.label}</span>
+              <span className="lektrus-subject-tools-icon">{t.icon}</span><span className="lektrus-subject-tools-name">{t.label}</span>{t.description&&<small>{t.description}</small>}
             </button>)}
           </div>:
           <div className="lektrus-subject-tools-empty">
