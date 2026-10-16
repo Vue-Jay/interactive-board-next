@@ -8272,3 +8272,83 @@ option{background:#fff;color:#343741}
 .lektrus-subject-tools-group h3{margin:0;padding:0 2px;font-size:11px;font-weight:750;color:#62718e;letter-spacing:.025em}
 .lektrus-subject-tools-group .lektrus-subject-tools-list{min-width:0}
 .lektrus-subject-tools-group .lektrus-subject-tools-list button{min-width:0}
+
+/* Fixed viewport centering: do not depend on board panel or flex alignment.
+   These rules intentionally override old graph-modal mobile styles. */
+.lektrus-graph-overlay.graph-editor-backdrop{
+  position:fixed!important;top:0!important;left:0!important;
+  right:0!important;bottom:0!important;
+  width:100vw!important;height:100dvh!important;min-width:0!important;
+  padding:0!important;margin:0!important;
+  display:block!important;overflow:hidden!important;
+  transform:none!important;box-sizing:border-box!important;
+}
+.lektrus-graph-overlay .lektrus-graph-dialog{
+  position:fixed!important;
+  left:50vw!important;top:50dvh!important;
+  right:auto!important;bottom:auto!important;
+  transform:translate(-50%,-50%)!important;
+  margin:0!important;
+  width:min(1020px,calc(100vw - 32px))!important;
+  max-width:min(1020px,calc(100vw - 32px))!important;
+  max-height:min(88dvh,850px)!important;
+  box-sizing:border-box!important;
+}
+.lektrus-fraction-view{width:100%;height:100%;min-width:0;min-height:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  gap:4px;padding:12px 14px;box-sizing:border-box;
+  background:#fff;border:1px solid #e7ecf7;border-radius:12px;overflow:hidden}
+.lektrus-fraction-heading{display:flex;flex-direction:column;align-items:center;gap:2px;max-width:100%;color:#243556}
+.lektrus-fraction-heading strong{font-size:13px;font-weight:760;text-align:center;overflow-wrap:anywhere}
+.lektrus-fraction-heading span{font-size:13px;font-weight:730;color:#476ad1}
+.lektrus-fraction-view svg{display:block;min-height:0;flex:1;max-width:100%;max-height:100%}
+.lektrus-fraction-caption{font-size:10px;text-align:center;color:#73819b}
+.lektrus-fraction-overlay{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;
+  z-index:2147482001!important;background:rgba(21,28,46,.5);backdrop-filter:blur(3px);
+  overflow:hidden;box-sizing:border-box}
+.lektrus-fraction-dialog{
+  position:fixed!important;left:50vw!important;top:50dvh!important;
+  transform:translate(-50%,-50%)!important;margin:0!important;
+  display:flex;flex-direction:column;box-sizing:border-box;
+  width:min(780px,calc(100vw - 30px));max-height:88dvh;
+  border:1px solid #e3e9f5;background:#fff;border-radius:17px;
+  box-shadow:0 25px 80px rgba(17,27,57,.28);overflow:hidden;
+}
+.lektrus-fraction-dialog>header{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;gap:10px;border-bottom:1px solid #e7ecf7;background:#f8faff}
+.lektrus-fraction-dialog>header div{display:flex;flex-direction:column;gap:3px}
+.lektrus-fraction-dialog>header strong{font-weight:760;color:#293b5c;font-size:17px}
+.lektrus-fraction-dialog>header small{color:#74829b;font-size:11px}
+.lektrus-fraction-dialog>header button{border:0;background:#edf1f9;border-radius:9px;font-size:24px;color:#58677e;width:33px;height:33px;cursor:pointer}
+.lektrus-fraction-editor-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1fr);overflow:hidden}
+.lektrus-fraction-fields{min-width:0;min-height:0;display:flex;flex-direction:column;gap:15px;padding:20px;overflow:auto}
+.lektrus-fraction-fields label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:650;color:#384965}
+.lektrus-fraction-fields input,.lektrus-fraction-fields select{min-width:0;width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid #d9e1ef;border-radius:9px;background:#fff;color:#263751}
+.lektrus-fraction-fields input[type=range]{padding:0;accent-color:#5575d5}
+.lektrus-fraction-fields small{font-size:11px;color:#72819d;line-height:1.5}
+.lektrus-fraction-numbers{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lektrus-fraction-shortcuts{display:flex;flex-wrap:wrap;gap:5px}
+.lektrus-fraction-shortcuts button{padding:5px 8px;border:1px solid #dde4f0;border-radius:8px;background:#f7f9ff;font-size:11px;cursor:pointer}
+.lektrus-fraction-shortcuts button.active{background:#e4ebff;border-color:#6984dd;color:#3457bc}
+.lektrus-fraction-preview{min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;padding:17px;background:#f3f6fc;border-left:1px solid #e7ecf7}
+.lektrus-fraction-preview>.lektrus-fraction-view{flex:1}
+.lektrus-fraction-preview>small{text-align:center;font-size:10px;line-height:1.4;color:#75839a}
+.lektrus-fraction-dialog>footer{flex:none;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:11px 17px;border-top:1px solid #e8edf6}
+.lektrus-fraction-dialog>footer button{padding:9px 15px;border:0;border-radius:9px;background:#eff2f9;color:#394864;font-size:12px;font-weight:700;cursor:pointer}
+.lektrus-fraction-dialog>footer button.primary{background:#5070d7;color:#fff}
+@media(max-width:840px){
+  .lektrus-graph-overlay .lektrus-graph-dialog{
+    position:fixed!important;left:50vw!important;top:50dvh!important;
+    transform:translate(-50%,-50%)!important;
+    width:calc(100vw - 18px)!important;max-width:calc(100vw - 18px)!important;
+    max-height:calc(100dvh - 20px)!important;
+  }
+  .lektrus-fraction-dialog{max-height:calc(100dvh - 20px);width:calc(100vw - 18px)}
+}
+@media(max-width:620px){
+  .lektrus-fraction-editor-body{grid-template-columns:1fr;grid-template-rows:minmax(175px,43%) minmax(0,1fr)}
+  .lektrus-fraction-preview{order:-1;padding:8px;border-left:0;border-bottom:1px solid #e7ecf7}
+  .lektrus-fraction-preview>small{display:none}
+  .lektrus-fraction-fields{padding:12px;gap:10px}
+  .lektrus-fraction-dialog>header{padding:10px 13px}
+}
