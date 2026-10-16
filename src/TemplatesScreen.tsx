@@ -1,6 +1,6 @@
 import { useEffect,useMemo,useState } from "react";
 import type { AuthUser } from "./authStore";
-import { createBoard,type BoardSummary } from "./boardStore";
+import { boardStorageKey,createBoard,type BoardSummary } from "./boardStore";
 import type { DocumentData, Item } from "./boardModel";
 import { deleteTemplate,listTemplates,markTemplateUsed,type BoardTemplate } from "./templatesStore";
 export const starterTemplates=[
@@ -28,9 +28,9 @@ export default function TemplatesScreen({user,onBack,onOpenBoard}:Props){
  const load=async()=>{try{setRows(await listTemplates(user.id))}catch(e){setNotice(e instanceof Error?e.message:"Не удалось загрузить шаблоны")}};useEffect(()=>{void load()},[user.id]);
  const cats=useMemo(()=>[...new Set([...rows.map(x=>x.category).filter(Boolean),...starterTemplates.map(t=>t.category)])].sort((a,b)=>a.localeCompare(b,"ru")),[rows]);
  const visible=rows.filter(x=>(cat==="all"||x.category===cat)&&(!q.trim()||`${x.title} ${x.description} ${x.category}`.toLowerCase().includes(q.toLowerCase())));
- const useStarter=async(t:typeof starterTemplates[number])=>{if(busy)return;setBusy(true);try{const b=await createBoard(user,t.title,false);sessionStorage.setItem("onlinerepetitor.template.apply",JSON.stringify({templateId:"builtin:"+t.id,document:starterDocument(t)}));onOpenBoard(b)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось создать доску")}finally{setBusy(false)}};
+ const useStarter=async(t:typeof starterTemplates[number])=>{if(busy)return;setBusy(true);try{const b=await createBoard(user,t.title,false);sessionStorage.setItem("onlinerepetitor.template.apply",JSON.stringify({boardId:b.id,templateId:"builtin:"+t.id,document:starterDocument(t)}));localStorage.setItem(boardStorageKey(b.id),JSON.stringify({...starterDocument(t),title:b.title}));onOpenBoard(b)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось создать доску")}finally{setBusy(false)}};
  const visibleStarters=starterTemplates.filter(t=>(cat==="all"||t.category===cat)&&(!q.trim()||`${t.title} ${t.description} ${t.category}`.toLowerCase().includes(q.toLowerCase())));
- const use=async(t:BoardTemplate)=>{if(busy)return;setBusy(true);try{const b=await createBoard(user,`${t.title} — копия`,false);sessionStorage.setItem("onlinerepetitor.template.apply",JSON.stringify({templateId:t.id,document:t.document}));await markTemplateUsed(t.id);onOpenBoard(b)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось создать доску")}finally{setBusy(false)}};
+ const use=async(t:BoardTemplate)=>{if(busy)return;setBusy(true);try{const b=await createBoard(user,`${t.title} — копия`,false);sessionStorage.setItem("onlinerepetitor.template.apply",JSON.stringify({boardId:b.id,templateId:t.id,document:t.document}));localStorage.setItem(boardStorageKey(b.id),JSON.stringify({...t.document,title:b.title}));await markTemplateUsed(t.id);onOpenBoard(b)}catch(e){setNotice(e instanceof Error?e.message:"Не удалось создать доску")}finally{setBusy(false)}};
  return <main className="templates-shell"><header className="students-header"><div><button className="boards-secondary" onClick={onBack}>← Доски</button><div><strong>Шаблоны</strong><span>Готовые макеты для уроков и ваши сохранённые шаблоны</span></div></div></header><section className="templates-content">
  
  {notice&&<div className="access-notice">{notice}</div>}<div className="templates-toolbar"><input type="search" placeholder="Поиск шаблонов" value={q} onChange={e=>setQ(e.target.value)}/><select value={cat} onChange={e=>setCat(e.target.value)}><option value="all">Все категории</option>{cats.map(x=><option key={x}>{x}</option>)}</select><span>{visible.length+visibleStarters.length} шаблонов</span></div>
