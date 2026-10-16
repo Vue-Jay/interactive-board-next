@@ -24,21 +24,21 @@ const items: NavItem[] = [
 const icons: Record<NavIcon, ReactNode> = {
   search:<><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></>,
   home:<><path d="m3 10 9-7 9 7v11H3z"/><path d="M9 21v-8h6v8"/></>,
-  boards:<><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M10 10v10"/></>,
+  boards:<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></>,
   subjects:<><path d="M4 4h8a4 4 0 0 1 4 4v12H8a4 4 0 0 0-4 1V4z"/><path d="M16 8a4 4 0 0 1 4-4v17a4 4 0 0 0-4-1"/></>,
-  groups:<><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 14h8M8 17h5"/></>,
+  groups:<><circle cx="8" cy="8" r="2"/><circle cx="16" cy="8" r="2"/><path d="M3 19v-2a5 5 0 0 1 10 0v2M13 19v-2a5 5 0 0 1 8 0v2"/></>,
   users:<><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 6a3 3 0 0 1 0 6M19 15a5 5 0 0 1 2 4v1"/></>,
-  assignments:<><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 11h6M9 16h6"/></>,
+  assignments:<><rect x="4" y="3" width="16" height="19" rx="2"/><path d="m8 9 2 2 4-4M8 16h8"/></>,
   schedule:<><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 15h3"/></>,
   progress:<><path d="M4 20V13M10 20V8M16 20V11M22 20V4"/></>,
-  materials:<><path d="M4 4h10l2 3h4v13H4z"/><path d="M4 10h16"/></>,
-  templates:<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 10h18M10 10v11"/></>,
+  materials:<><path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 11h18"/></>,
+  templates:<><path d="M4 3h12v15H4zM8 7h12v14H8M7 11h6M7 14h4"/></>,
   notification:<><path d="M6 9a6 6 0 1 1 12 0v5l2 3H4l2-3zM10 21h4"/></>,
   profile:<><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
   settings:<><circle cx="12" cy="12" r="3"/><path d="m10 2-.4 2.2-2 1-2.1-.8-2 3.4 1.7 1.5v2.4l-1.7 1.5 2 3.4 2.1-.8 2 1 .4 2.2h4l.4-2.2 2-1 2.1.8 2-3.4-1.7-1.5V9.3l1.7-1.5-2-3.4-2.1.8-2-1L14 2z"/></>,
   admin:<><path d="M12 2 3 6v6c0 5 4 8 9 10 5-2 9-5 9-10V6z"/><path d="m9 12 2 2 4-4"/></>,
   menu:<><path d="M4 6h16M4 12h16M4 18h16"/></>,
-  chevron:<><path d="m9 5 7 7-7 7"/></>,
+  chevron:<><path d="m15 5-7 7 7 7"/></>,
 };
 function NavGlyph({ name }: { name:NavIcon }) {
   return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icons[name]}</svg>;
