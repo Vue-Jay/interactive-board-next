@@ -208,6 +208,48 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           {mode==="geometry"&&tab==="givens"&&<div className="lektrus-graph-section lektrus-geometry-guided">
             <div className="lektrus-graph-section-head"><strong>Размеры и подписи</strong></div>
             <small>{roundSolid?"Настройте радиус основания и высоту.":isSolid?"Размеры и оформление объёмной фигуры.":"Для треугольника можно задать стороны и углы. Готовые ответы не выводятся."}</small>
+            {!isSolid&&draft.circles.length>0&&<div className="lektrus-geometry-givens">
+              <strong>Радиус окружности</strong>
+              {draft.circles.map((circle,i)=><label key={i}>Радиус {i+1}
+                <input type="number" min="0.1" step="any" inputMode="decimal"
+                  value={draft.givenSides[i]??String(Math.hypot((draft.points[circle.edge]?.x??3)-(draft.points[circle.center]?.x??0),(draft.points[circle.edge]?.y??0)-(draft.points[circle.center]?.y??0)).toFixed(2))}
+                  onChange={e=>patch({givenSides:Array.from({length:Math.max(i+1,draft.givenSides.length)},(_,j)=>j===i?e.target.value:draft.givenSides[j]??"")})}/>
+              </label>)}
+              <button type="button" onClick={()=>{
+                const points=draft.points.map(p=>({...p}));
+                for(let i=0;i<draft.circles.length;i++){
+                  const c=draft.circles[i],radius=Number((draft.givenSides[i]??"3").replace(",","."));
+                  if(!(radius>0&&Number.isFinite(radius))){setGeometryError("Радиус должен быть положительным.");return}
+                  const center=points[c.center],edge=points[c.edge];if(!center||!edge)continue;
+                  const theta=Math.atan2(edge.y-center.y,edge.x-center.x);
+                  points[c.edge]={...edge,x:center.x+radius*Math.cos(theta),y:center.y+radius*Math.sin(theta)};
+                }
+                patch({points});setGeometryError("");
+              }}>Применить радиус</button>
+              {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
+            </div>}
+            {!isSolid&&draft.polygons.some(p=>p.points.length===4)&&<div className="lektrus-geometry-givens">
+              <strong>Стороны четырёхугольника</strong>
+              <small>Задайте длину и ширину для прямоугольной основы. Подписи можно изменить на вкладке «Точки».</small>
+              <div className="lektrus-geometry-given-grid">
+                {(["Длина","Ширина"] as const).map((label,i)=><label key={label}>{label}
+                  <input type="number" min="0.1" step="any" value={draft.givenSides[i]??"6"}
+                    onChange={e=>patch({givenSides:[0,1].map(j=>j===i?e.target.value:draft.givenSides[j]??"6")})}/>
+                </label>)}
+              </div>
+              <button type="button" onClick={()=>{
+                const length=Number(draft.givenSides[0]??"6"),width=Number(draft.givenSides[1]??"6");
+                if(!Number.isFinite(length)||!Number.isFinite(width)||length<=0||width<=0){setGeometryError("Укажите положительные размеры.");return}
+                const poly=draft.polygons.find(p=>p.points.length===4);
+                if(!poly)return;
+                const factor=7/Math.max(length,width);
+                const coords=[[-length/2,-width/2],[length/2,-width/2],[length/2,width/2],[-length/2,width/2]];
+                patch({points:draft.points.map((point,index)=>{
+                  const k=poly.points.indexOf(index);return k<0?point:{...point,x:coords[k][0]*factor,y:coords[k][1]*factor};
+                })});setGeometryError("");
+              }}>Применить размеры</button>
+              {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
+            </div>}
             {isSolid&&!roundSolid&&<div className="lektrus-geometry-givens">
               <strong>Длина, ширина и высота</strong>
               <small>Задайте пропорции объёмной фигуры; готовые формулы и ответы не выводятся.</small>
