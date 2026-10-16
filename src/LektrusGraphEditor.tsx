@@ -150,7 +150,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
             {draft.points.map((p,i)=><div className="lektrus-graph-point-row" key={i}>
               <input aria-label={"Название точки "+(i+1)} maxLength={24} value={p.label} placeholder="Имя" onChange={e=>editPoint(i,{label:e.target.value})}/>
               <input aria-label={"X точки "+(i+1)} type="number" step=".25" value={p.x} onChange={e=>editPoint(i,{x:finiteNumber(e.target.value,p.x)})}/>
-              <input aria-label={"Y точки "+(i+1)} type="number" step=".25" value={p.y} onChange={e=>editPoint(i,{y:finiteNumber(e.target.value,p.y)})}/>
+              <input aria-label={"Y точки "+(i+1)} title={draft.purpose==="number-line"?"На числовой прямой все точки имеют Y = 0":undefined} disabled={draft.purpose==="number-line"} type="number" step=".25" value={draft.purpose==="number-line"?0:p.y} onChange={e=>editPoint(i,{y:finiteNumber(e.target.value,p.y)})}/>
               <LektrusColorPicker userId={userId} label="" compact value={p.color??"#111111"} onChange={color=>editPoint(i,{color})}/>
               <button type="button" aria-label={"Удалить точку "+(i+1)} title="Удалить точку и связанные с ней построения" onClick={()=>onChange(removeGraphPoint(draft,i))}>×</button>
             </div>)}
