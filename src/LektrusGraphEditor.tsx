@@ -219,6 +219,14 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
               <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("angle")}>+ Угол</button>
             </div>
             <small>Каждая кнопка добавляет готовые подвижные опорные точки и построение. Связи можно уточнить ниже.</small>
+            {draft.polygons.some(p=>p.points.length===3)&&<div className="lektrus-graph-construction">
+              <strong>Линии треугольника</strong>
+              <small>Построения автоматически перестраиваются при движении вершин первого треугольника.</small>
+              {([{id:"median",label:"Медиана"},{id:"altitude",label:"Высота"},{id:"bisector",label:"Биссектриса"}] as const).map(option=>
+                <label key={option.id} className="lektrus-graph-check"><input type="checkbox" checked={draft.triangleLines.includes(option.id)}
+                  onChange={e=>patch({triangleLines:e.target.checked?[...draft.triangleLines,option.id]:draft.triangleLines.filter(v=>v!==option.id)})}/>{option.label} из вершины A</label>)}
+            </div>}
+
             {draft.circles.map((c,i)=><div className="lektrus-graph-construction" key={"circle"+i}>
               <div className="lektrus-graph-section-head"><strong>Окружность {i+1}</strong><button type="button" onClick={()=>patch({circles:draft.circles.filter((_,j)=>j!==i)})}>Удалить</button></div>
               <label>Центр<select value={c.center} onChange={e=>patch({circles:draft.circles.map((v,j)=>j===i?{...v,center:Number(e.target.value)}:v)})}>{pointOptions()}</select></label>
