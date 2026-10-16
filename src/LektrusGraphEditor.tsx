@@ -74,6 +74,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"]);
   const isSolid=solidPresetIds.has(draft.figureId as MathPresetId);
   const roundSolid=draft.figureId==="cone"||draft.figureId==="cylinder";
+  const equalSideFigure=["square","rhombus","pentagon","hexagon","octagon"].includes(draft.figureId);
+  const rectangleFigure=["square","rectangle"].includes(draft.figureId);
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onClose()}
@@ -311,16 +313,17 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <strong>Подписи сторон и углов</strong>
               <small>Значения, которые вы впишете, будут показаны непосредственно у соответствующей стороны или вершины. Они не являются ответами и не вычисляются автоматически.</small>
               {draft.polygons.slice(0,1).map((poly,pi)=><div key={pi}>
-                <div className="lektrus-geometry-given-grid">
+                {!rectangleFigure&&<div className="lektrus-geometry-given-grid">
                   {poly.points.map((index,i)=>{
+                    if(equalSideFigure&&i>0)return null;
                     const next=poly.points[(i+1)%poly.points.length];
                     const name=(draft.points[index]?.label||String.fromCharCode(65+i))+(draft.points[next]?.label||String.fromCharCode(65+(i+1)%poly.points.length));
-                    return <label key={i}>Сторона {name}
+                    return <label key={i}>{equalSideFigure?"Длина каждой стороны":"Сторона "+name}
                       <input aria-label={"Длина стороны "+name} inputMode="decimal" maxLength={32} placeholder="Например, 5 см"
-                        value={draft.givenSides[i]??""} onChange={e=>patch({givenSides:Array.from({length:Math.max(poly.points.length,draft.givenSides.length)},(_,j)=>j===i?e.target.value:draft.givenSides[j]??"")})}/>
+                        value={draft.givenSides[i]??""} onChange={e=>patch({givenSides:Array.from({length:Math.max(poly.points.length,draft.givenSides.length)},(_,j)=>equalSideFigure?e.target.value:j===i?e.target.value:draft.givenSides[j]??"")})}/>
                     </label>;
                   })}
-                </div>
+                </div>}
                 <details className="lektrus-geometry-extra-labels"><summary>Подписать углы</summary>
                   <div className="lektrus-geometry-given-grid">
                     {poly.points.map((index,i)=><label key={i}>Угол {draft.points[index]?.label||String.fromCharCode(65+i)}
@@ -378,17 +381,17 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               }}>Применить радиус</button>
               {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
             </div>}
-            {!isSolid&&["quadrilateral","rectangle","square"].includes(draft.figureId)&&draft.polygons.some(p=>p.points.length===4)&&<div className="lektrus-geometry-givens">
-              <strong>Стороны четырёхугольника</strong>
+            {!isSolid&&rectangleFigure&&draft.polygons.some(p=>p.points.length===4)&&<div className="lektrus-geometry-givens">
+              <strong>{draft.figureId==="square"?"Сторона квадрата":"Длина и ширина прямоугольника"}</strong>
               <small>Задайте длину и ширину для прямоугольной основы. Подписи можно изменить на вкладке «Точки».</small>
               <div className="lektrus-geometry-given-grid">
-                {(["Длина","Ширина"] as const).map((label,i)=><label key={label}>{label}
+                {(draft.figureId==="square"?["Сторона"]:["Длина","Ширина"]).map((label,i)=><label key={label}>{label}
                   <input type="number" min="0.1" step="any" value={draft.givenSides[i]??"6"}
-                    onChange={e=>patch({givenSides:[0,1].map(j=>j===i?e.target.value:draft.givenSides[j]??"6")})}/>
+                    onChange={e=>{const v=e.target.value;patch({givenSides:draft.figureId==="square"?[v,v,v,v]:[v===undefined?"":i===0?v:draft.givenSides[0]??"6",i===1?v:draft.givenSides[1]??"6",i===0?v:draft.givenSides[0]??"6",i===1?v:draft.givenSides[1]??"6"]})}}/>
                 </label>)}
               </div>
               <button type="button" onClick={()=>{
-                const length=Number(draft.givenSides[0]??"6"),width=Number(draft.givenSides[1]??"6");
+                const length=Number(draft.givenSides[0]??"6"),width=draft.figureId==="square"?length:Number(draft.givenSides[1]??"6");
                 if(!Number.isFinite(length)||!Number.isFinite(width)||length<=0||width<=0){setGeometryError("Укажите положительные размеры.");return}
                 const poly=draft.polygons.find(p=>p.points.length===4);
                 if(!poly)return;
