@@ -18,6 +18,7 @@ import GeometryInstruments from "./GeometryInstruments";
 import LektrusSubjectPicker from "./LektrusSubjectPicker";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
+import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
@@ -1698,6 +1699,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const pinchSelectionSnapshot=useRef<string[]|null>(null);
   const suppressTouchClickUntil=useRef(0);
   const [mobileToolsOpen,setMobileToolsOpen]=useState(false);
+  const [subjectToolsOpen,setSubjectToolsOpen]=useState(false);
+  const [subjectToolsAnchor,setSubjectToolsAnchor]=useState<HTMLElement|null>(null);
+  const toggleSubjectTools=(anchor:HTMLElement)=>{setSubjectToolsAnchor(anchor);setSubjectToolsOpen(open=>!open);setMobileToolsOpen(false);setDesktopToolsExpanded(false)};
   const [colorMenuOpen,setColorMenuOpen]=useState(false);
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
@@ -6307,16 +6311,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             {lectrisTouchDockTools.slice(2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board} />}</div>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
+          <button type="button" className={`lektrus-mobile-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" aria-expanded={subjectToolsOpen} onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg></button>
           <button type="button" className={`mobile-tools-more ${mobileToolsOpen?"active":""}`} aria-label="Все инструменты" title="Все инструменты" aria-expanded={mobileToolsOpen} onClick={()=>setMobileToolsOpen(v=>!v)}><Icon name={mobileToolsOpen?"chevron-left":"plus"} size={20}/></button>
         </nav>
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
           <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiOpen(true);setBoardAiPreview([])}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
-            {lectrisSubjectTools.length>0&&<details className="mobile-tools-group lektrus-subject-mobile-group"><summary>Предметные инструменты · {lectrisBoardOrganization.subject}</summary><div>
-              {lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""}
-                onClick={()=>{finishEdit();setTool(id);setMobileToolsOpen(false)}}>
-                <Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}
-            </div></details>}
             {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(toolAllowedForRole)})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span><div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div></div>)}
           </div>
         </section>}
@@ -6328,6 +6328,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <div className="lektrus-desktop-sections" aria-label="Разделы инструментов">
             {desktopToolSections.filter(g=>g.ids.some(toolAllowedForRole)).map(group=><button key={group.id} type="button" className={`tool-button ${desktopToolsExpanded&&desktopToolSection===group.id?"active":""}`} aria-label={group.label} title={group.label} aria-expanded={desktopToolsExpanded&&desktopToolSection===group.id} onClick={()=>{if(desktopToolSection===group.id)setDesktopToolsExpanded(v=>!v);else{setDesktopToolSection(group.id);setDesktopToolsExpanded(true)}}}><span className="lektrus-section-icon" aria-hidden="true"><Icon name={group.icon} size={22}/></span><span className="tool-tooltip">{group.label}</span></button>)}
           </div>
+          <button type="button" className={`tool-button lektrus-desktop-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-expanded={subjectToolsOpen} aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg><span className="tool-tooltip">Предметные инструменты</span></button>
           {toolAllowedForRole("comment")&&<button type="button" className={`tool-button lektrus-direct-comment ${tool==="comment"?"active":""}`} title="Комментарий" aria-label="Комментарий" onClick={()=>{finishEdit();setTool("comment");setDesktopToolsExpanded(false)}}><Icon name="comment" size={20}/><span className="tool-tooltip">Комментарий</span></button>}
           <div className="lektrus-toolbar-measure" aria-label="Измерительные инструменты">
             <GeometryInstruments view={view} boardRef={board}/>
@@ -6335,14 +6336,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Закрыть меню инструментов":"Открыть все инструменты"} title={desktopToolsExpanded?"Закрыть меню инструментов":"Ещё инструменты"} aria-controls="lektrus-tool-overflow" aria-haspopup="dialog" onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
           </button>
-          {lectrisSubjectTools.length>0&&<details className="lectris-subject-toolbox">
-            <summary title={"Инструменты: "+lectrisBoardOrganization.subject} aria-label={"Инструменты предмета "+lectrisBoardOrganization.subject}>∑</summary>
-            <div className="lectris-subject-toolbox-menu"><strong>{lectrisBoardOrganization.subject}</strong>
-              {lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return <button type="button" key={id}
-                onClick={e=>{finishEdit();setTool(id);e.currentTarget.closest("details")?.removeAttribute("open")}}>
-                <Icon name={t.icon} size={16}/>{toolShortLabel[id]}</button>})}
-            </div>
-          </details>}
           {!isStudent&&<button type="button" className="toolbar-ai-button" title="AI-помощник" aria-label="AI-помощник" onClick={()=>{finishEdit();setBoardAiOpen(true);setBoardAiPreview([])}}>
             <Icon name="robot" size={18}/><span className="tool-tooltip">AI-помощник</span>
           </button>}
@@ -6358,7 +6351,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             <div><strong>Инструменты</strong><small>Выберите нужный инструмент</small></div>
             <button type="button" aria-label="Закрыть меню инструментов" onClick={()=>setDesktopToolsExpanded(false)}><Icon name="close" size={17}/></button>
           </header>
-          <div className="lektrus-subject-overflow-settings"><label>Предмет доски<select aria-label="Сменить предмет доски" value={lectrisBoardOrganization.subject} disabled={!canEdit} onChange={e=>changeBoardSubject(e.target.value)}><option value="">Без предмета</option>{subjectCategories.filter(Boolean).map(subject=><option key={subject} value={subject}>{subject}</option>)}{lectrisBoardOrganization.subject&&!subjectCategories.includes(lectrisBoardOrganization.subject)&&<option value={lectrisBoardOrganization.subject}>{lectrisBoardOrganization.subject}</option>}</select></label>{lectrisSubjectTools.length>0&&<details><summary>Предметные инструменты</summary><div className="lektrus-tool-overflow-grid">{lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return <button type="button" key={id} onClick={()=>{finishEdit();setTool(id);setDesktopToolsExpanded(false)}}><span className="lektrus-tool-overflow-icon"><Icon name={t.icon} size={20}/></span><span>{toolShortLabel[id]}</span></button>})}</div></details>}</div>
           <div className="lektrus-tool-overflow-content">
             {desktopToolSections.filter(g=>g.id===desktopToolSection).map(group=><div className="lektrus-tool-overflow-group" key={group.id}>
               <div className="lektrus-tool-overflow-group-title">{group.label}</div>
@@ -6369,6 +6361,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>)}
           </div>
         </LektrusToolOverflow>}
+        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} subjects={subjectCategories.filter(Boolean)} tools={lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{finishEdit();setTool(id as Tool);setSubjectToolsOpen(false)}}/>}
         {lectrisCustomizeOpen&&<LectrisToolbarSettings
           tools={tools.filter(t=>t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
           pinned={lectrisPinned} defaults={lectrisDefaultPinned}
