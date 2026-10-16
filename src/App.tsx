@@ -1189,32 +1189,6 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small>y = {expression.replace(/^y\s*=\s*/i,"")}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onDoubleClick={e=>{if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
-      {solid&&<g className="lektrus-orbit-control" role="button" tabIndex={onRotate?0:-1}
-        aria-label="Повернуть объёмную фигуру: перетащите манипулятор в углу"
-        onPointerDown={beginOrbit}
-        onDoubleClick={e=>{e.preventDefault();e.stopPropagation();onRotate?.(25,-35)}}
-        onKeyDown={e=>{
-          if(!onRotate)return;
-          let x=orbitX,y=orbitY;
-          if(e.key==="ArrowLeft")y-=15;
-          else if(e.key==="ArrowRight")y+=15;
-          else if(e.key==="ArrowUp")x=Math.min(85,x+15);
-          else if(e.key==="ArrowDown")x=Math.max(-85,x-15);
-          else return;
-          e.preventDefault();e.stopPropagation();onRotate(x,y);
-        }}
-        style={{cursor:onRotate?"grab":"default",touchAction:"none"}}>
-        <circle cx="551" cy="50" r="37" fill="#fff" fillOpacity=".95" stroke="#9cacc1" strokeWidth="1.7"/>
-        {(["x","y","z"] as const).map((axis,i)=>{
-          const dir=axis==="x"?projectSolidAxis(1,0,0,orbitX,orbitY):axis==="y"?projectSolidAxis(0,1,0,orbitX,orbitY):projectSolidAxis(0,0,1,orbitX,orbitY);
-          const x=551+dir.x*23,y=50-dir.y*23;
-          const colors=["#e36d65","#4e9b76","#567bdd"];
-          return <g key={axis} pointerEvents="none"><line x1="551" y1="50" x2={x} y2={y} stroke={colors[i]} strokeWidth="2.7" strokeLinecap="round"/>
-            <text x={x+3} y={y-3} fontSize="11" fontWeight="750" fill={colors[i]}>{axis.toUpperCase()}</text></g>;
-        })}
-        <circle cx="551" cy="50" r="4" fill="#31435b" pointerEvents="none"/>
-        <circle cx="551" cy="50" r="37" fill="transparent" stroke="none"/>
-      </g>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#667085" strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid">
         {gridX.map(x=><line key={`x${x}`} x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
@@ -1294,7 +1268,27 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
         })()}
         {Array.from(item.graphPolygons??[],(poly,i)=>{const pts=poly.points.map(point).filter((p):p is NonNullable<typeof p>=>!!p);if(pts.length<3)return null;const center={x:pts.reduce((v,p)=>v+p.x,0)/pts.length,y:pts.reduce((v,p)=>v+p.y,0)/pts.length};return <g key={`polygon-${i}`}><polygon points={pts.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")} className="graph-polygon"/>{poly.label&&<text className="graph-figure-label" x={sx(center.x)} y={sy(center.y)} textAnchor="middle">{poly.label}</text>}</g>})}
         {(item.graphCircles??[]).map((circle,i)=>{const center=point(circle.center),edge=point(circle.edge);if(!center||!edge)return null;const radius=distance(center,edge);const given=(item.graphGivenSides??[])[i]?.trim();const isSphere=item.graphFigureId==="sphere";return <g key={`circle-${i}`}><circle className="graph-circle" cx={sx(center.x)} cy={sy(center.y)} r={radius*scale}/>{isSphere&&<ellipse cx={sx(center.x)} cy={sy(center.y)} rx={radius*scale} ry={radius*scale*.28} fill="none" stroke="#5074dc" strokeDasharray="5 4" strokeWidth="1.5"/>}{given&&purpose==="geometry"&&<g className="graph-radius-dimension"><line x1={sx(center.x)} y1={sy(center.y)} x2={sx(edge.x)} y2={sy(edge.y)} stroke="#57677b" strokeWidth="1.3"/><text x={sx((center.x+edge.x)/2)} y={sy((center.y+edge.y)/2)-12} textAnchor="middle" style={{paintOrder:"stroke",stroke:"#fff",strokeWidth:4,fontWeight:650,fill:"#1c293a"}}>{`r = ${given}`}</text></g>}{circle.label&&!/^r\s*=/.test(circle.label)&&<text className="graph-figure-label" x={sx(center.x)+radius*scale+8} y={sy(center.y)-8}>{circle.label}</text>}</g>})}
-        {(item.graphSegments??[]).map((seg,i)=>{const a=point(seg.a),b=point(seg.b);if(!a||!b)return null;const vx=b.x-a.x,vy=b.y-a.y;if(Math.hypot(vx,vy)<.001)return null;const start=seg.kind==="line"?{x:a.x-vx*100,y:a.y-vy*100}:a,end=seg.kind!=="segment"?{x:b.x+vx*100,y:b.y+vy*100}:b;return <g key={`segment-${i}`}><line className="graph-segment" x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}/>{seg.label&&<text className="graph-figure-label" x={sx((a.x+b.x)/2)+6} y={sy((a.y+b.y)/2)-7}>{seg.label}</text>}</g>})}
+        {(item.graphSegments??[]).map((seg,i)=>{
+          const a=point(seg.a),b=point(seg.b);if(!a||!b)return null;
+          const vx=b.x-a.x,vy=b.y-a.y,length=Math.hypot(vx,vy);if(length<.001)return null;
+          const start=seg.kind==="line"?{x:a.x-vx*100,y:a.y-vy*100}:a;
+          let end=seg.kind!=="segment"?{x:b.x+vx*100,y:b.y+vy*100}:b;
+          if(seg.kind==="ray"){
+            const tx=vx>0?(xMax-a.x)/vx:vx<0?(xMin-a.x)/vx:Infinity;
+            const ty=vy>0?(yMax-a.y)/vy:vy<0?(yMin-a.y)/vy:Infinity;
+            const t=Math.max(0,Math.min(tx,ty)-.14/length);
+            end={x:a.x+vx*t,y:a.y+vy*t};
+          }
+          const rayControl=rayFigure&&seg.kind==="ray"&&i===0;
+          return <g key={`segment-${i}`}>
+            <line className="graph-segment" x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}
+              markerEnd={seg.kind==="ray"&&Math.hypot(end.x-start.x,end.y-start.y)>.5?`url(#graph-arrow-${item.id})`:undefined}/>
+            {rayControl&&onRayChange&&<line x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}
+              stroke="transparent" strokeWidth="24" style={{cursor:"grab",touchAction:"none"}} onPointerDown={beginRayDrag}
+              aria-label="Перетащите луч, чтобы изменить направление"/>}
+            {seg.label&&<text className="graph-figure-label" x={sx((a.x+b.x)/2)+6} y={sy((a.y+b.y)/2)-7}>{seg.label}</text>}
+          </g>;
+        })}
         {(item.graphAngles??[]).map((angle,i)=>{const a=point(angle.a),v=point(angle.vertex),b=point(angle.b);if(!a||!v||!b)return null;const start=Math.atan2(sy(a.y)-sy(v.y),sx(a.x)-sx(v.x)),end=Math.atan2(sy(b.y)-sy(v.y),sx(b.x)-sx(v.x));let diff=end-start;if(purpose==="unit-circle"){while(diff>0)diff-=2*Math.PI;while(diff<=-2*Math.PI)diff+=2*Math.PI;}else{while(diff>Math.PI)diff-=2*Math.PI;while(diff< -Math.PI)diff+=2*Math.PI;}const radius=26;const p1={x:sx(v.x)+radius*Math.cos(start),y:sy(v.y)+radius*Math.sin(start)},p2={x:sx(v.x)+radius*Math.cos(start+diff),y:sy(v.y)+radius*Math.sin(start+diff)};const isRight=purpose!=="unit-circle"&&Math.abs(Math.abs(diff)-Math.PI/2)<.015;const corner={x:p1.x+radius*Math.cos(start+diff),y:p1.y+radius*Math.sin(start+diff)};const arcPath=isRight?`M ${p1.x} ${p1.y} L ${corner.x} ${corner.y} L ${p2.x} ${p2.y}`:`M ${p1.x} ${p1.y} A ${radius} ${radius} 0 ${Math.abs(diff)>Math.PI?1:0} ${diff>0?1:0} ${p2.x} ${p2.y}`;return <g key={`angle-${i}`}><path className="graph-angle" d={arcPath}/>{<text className="graph-figure-label" x={sx(v.x)+(radius+13)*Math.cos(start+diff/2)} y={sy(v.y)+(radius+13)*Math.sin(start+diff/2)}>{purpose==="unit-circle"?formatPiRadians(Math.abs(diff)):angle.label ? (/°$/.test(angle.label)?angle.label:/^\d+(?:[.,]\d+)?$/.test(angle.label)?angle.label+"°":angle.label) : ""}</text>}</g>})}
         {purpose==="geometry"&&["cube","rectangular-prism","prism","pyramid","triangular-pyramid"].includes(item.graphFigureId??"")&&
           (item.graphGivenSides??[]).slice(0,3).map((value,i)=>{
@@ -1314,13 +1308,39 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
         {(item.graphMidpoints??[]).map((m,i)=>{const a=point(m.a),b=point(m.b);if(!a||!b)return null;const x=(a.x+b.x)/2,y=(a.y+b.y)/2;return <g key={`mid-${i}`}><circle className="graph-midpoint" cx={sx(x)} cy={sy(y)} r="4"/>{m.label&&<text className="graph-figure-label" x={sx(x)+8} y={sy(y)-7}>{m.label}</text>}</g>})}
       </g>
       {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={(purpose==="number-line"?gp.slice(0,2):gp).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
-      {(purpose==="geometry"&&(["cone","cylinder"].includes(item.graphFigureId??"")||title==="Конус"||title==="Цилиндр")?[]:gp).map((p,i)=>{const pointColor=p.color??"#111111";const movable=!!onPointMove&&(purpose!=="unit-circle"||i>=5);return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
+      {(purpose==="geometry"&&(["cone","cylinder"].includes(item.graphFigureId??"")||title==="Конус"||title==="Цилиндр")?[]:gp).map((p,i)=>{if(rayFigure&&i!==0)return null;return ({const pointColor=p.color??"#111111";const movable=!!onPointMove&&(purpose!=="unit-circle"||i>=5);return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
         onDoubleClick={onRemovePoint&&(purpose!=="unit-circle"||i>5)?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint?.(i)}:undefined}
         onPointerDown={movable?(e)=>{e.preventDefault();e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove?.(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up)}:undefined}>
         {movable&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r="20"/>}
         <circle cx={sx(p.x)} cy={sy(p.y)} r={movable?"5":"4"} style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>
         {item.graphShowLabels!==false&&(purpose==="number-line"||purpose==="unit-circle"&&i>0||p.label)&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
-      </g>})}
+      </g>)})}
+      {solid&&<g className="lektrus-orbit-control" role="button" tabIndex={onRotate?0:-1}
+        aria-label="Повернуть объёмную фигуру: перетащите манипулятор в углу"
+        onPointerDown={beginOrbit}
+        onDoubleClick={e=>{e.preventDefault();e.stopPropagation();onRotate?.(25,-35)}}
+        onKeyDown={e=>{
+          if(!onRotate)return;
+          let x=orbitX,y=orbitY;
+          if(e.key==="ArrowLeft")y-=15;
+          else if(e.key==="ArrowRight")y+=15;
+          else if(e.key==="ArrowUp")x=Math.min(85,x+15);
+          else if(e.key==="ArrowDown")x=Math.max(-85,x-15);
+          else return;
+          e.preventDefault();e.stopPropagation();onRotate(x,y);
+        }}
+        style={{cursor:onRotate?"grab":"default",touchAction:"none"}}>
+        <circle cx="551" cy="50" r="37" fill="#fff" fillOpacity=".95" stroke="#9cacc1" strokeWidth="1.7"/>
+        {(["x","y","z"] as const).map((axis,i)=>{
+          const dir=axis==="x"?projectSolidAxis(1,0,0,orbitX,orbitY):axis==="y"?projectSolidAxis(0,1,0,orbitX,orbitY):projectSolidAxis(0,0,1,orbitX,orbitY);
+          const x=551+dir.x*23,y=50-dir.y*23;
+          const colors=["#e36d65","#4e9b76","#567bdd"];
+          return <g key={axis} pointerEvents="none"><line x1="551" y1="50" x2={x} y2={y} stroke={colors[i]} strokeWidth="2.7" strokeLinecap="round"/>
+            <text x={x+3} y={y-3} fontSize="11" fontWeight="750" fill={colors[i]}>{axis.toUpperCase()}</text></g>;
+        })}
+        <circle cx="551" cy="50" r="4" fill="#31435b" pointerEvents="none"/>
+        <circle cx="551" cy="50" r="37" fill="transparent" stroke="none"/>
+      </g>}
     </svg>
   </div>;
 }
