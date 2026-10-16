@@ -194,7 +194,7 @@ export function parseDocument(raw: string): DocumentData {
     }
     if (i.kind === "fraction") {
       if (i.fractionMode != null && !["circle","bar"].includes(i.fractionMode)) throw new Error("Неверный вид дроби");
-      if (!Number.isInteger(i.fractionDenominator) || i.fractionDenominator! < 1 || i.fractionDenominator! > 24 || !Number.isInteger(i.fractionNumerator) || i.fractionNumerator! < 0 || i.fractionNumerator! > i.fractionDenominator!) throw new Error("Повреждена дробь");
+      if (!Number.isInteger(i.fractionDenominator) || i.fractionDenominator! < 1 || !Number.isInteger(i.fractionNumerator) || i.fractionNumerator! < 0 || i.fractionNumerator! > i.fractionDenominator!) throw new Error("Повреждена дробь");
     }
     if (i.kind === "graph") {
       if (i.graphIntervalStartClosed != null && typeof i.graphIntervalStartClosed !== "boolean") throw new Error("Повреждена левая граница промежутка");
