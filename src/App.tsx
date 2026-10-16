@@ -1521,6 +1521,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [studyCardIndex, setStudyCardIndex] = useState(0);
   const [graphEditorId, setGraphEditorId] = useState<string | null>(null);
   const [fractionEditorId, setFractionEditorId] = useState<string | null>(null);
+  const [pendingMathItem,setPendingMathItem] = useState<Item|null>(null);
   const [graphDraft, setGraphDraft] = useState<GraphDraft|null>(null);
   const [formulaEditorId, setFormulaEditorId] = useState<string | null>(null);
   const [formulaDraft, setFormulaDraft] = useState<{ text: string; fontSize: number; color: string } | null>(null);
@@ -3294,8 +3295,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     } else if (tool === "graph") {
       e.preventDefault();
       const item=makeMathPresetItem("blank",p.x,p.y,createId());
-      commit([...itemsRef.current,item]);
-      setSelected([item.id]);setTool("select");
+      setPendingMathItem(item);
+      setSelected([]);setTool("select");
       window.setTimeout(()=>openGraphEditor(item),0);
       return;
     } else if (tool === "formula") {
@@ -4470,11 +4471,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const openGraphEditor = (item: Item) => {
-    if(item.kind!=="graph"||item.locked)return; setSelected([item.id]); setGraphEditorId(item.id);
+    if(item.kind!=="graph"||item.locked)return; if(pendingMathItem?.id!==item.id)setSelected([item.id]); setGraphEditorId(item.id);
     setGraphDraft({title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPoints??[]).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(item.graphSegments??[]).map(s=>({...s})),angles:(item.graphAngles??[]).map(g=>({...g})),circles:(item.graphCircles??[]).map(g=>({...g})),polygons:(item.graphPolygons??[]).map(g=>({...g,points:[...g.points]})),midpoints:(item.graphMidpoints??[]).map(g=>({...g}))});
   };
-  const closeGraphEditor=()=>{setGraphEditorId(null);setGraphDraft(null)};
-  const saveGraphEditor=()=>{if(!graphEditorId||!graphDraft){closeGraphEditor();return} const d={...graphDraft,xMin:Math.min(graphDraft.xMin,graphDraft.xMax-1),xMax:Math.max(graphDraft.xMax,graphDraft.xMin+1),yMin:Math.min(graphDraft.yMin,graphDraft.yMax-1),yMax:Math.max(graphDraft.yMax,graphDraft.yMin+1)}; commit(itemsRef.current.map(item=>item.id===graphEditorId?{...item,text:d.title.slice(0,100),graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints}:item)); closeGraphEditor(); setNotice("График сохранён")};
+  const closeGraphEditor=()=>{setGraphEditorId(null);setGraphDraft(null);setPendingMathItem(null)};
+  const saveGraphEditor=()=>{if(!graphEditorId||!graphDraft){closeGraphEditor();return} const d={...graphDraft,xMin:Math.min(graphDraft.xMin,graphDraft.xMax-1),xMax:Math.max(graphDraft.xMax,graphDraft.xMin+1),yMin:Math.min(graphDraft.yMin,graphDraft.yMax-1),yMax:Math.max(graphDraft.yMax,graphDraft.yMin+1)}; commit((pendingMathItem?.kind==="graph"&&pendingMathItem.id===graphEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map(item=>item.id===graphEditorId?{...item,text:d.title.slice(0,100),graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints}:item)); closeGraphEditor(); setNotice("График сохранён")};
 
   const openFormulaEditor = (item: Item) => {
     if (!canEdit || structurallyLockedForStudent(item)) return;
@@ -6067,23 +6068,28 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
         )}
         
-        {fractionEditorId && items.find(item=>item.id===fractionEditorId && item.kind==="fraction") && createPortal(
+        {fractionEditorId && (pendingMathItem?.id===fractionEditorId||items.some(item=>item.id===fractionEditorId && item.kind==="fraction")) && createPortal(
           <LektrusFractionEditor
             key={fractionEditorId}
-            item={items.find(item=>item.id===fractionEditorId)!}
-            onCancel={()=>setFractionEditorId(null)}
+            item={pendingMathItem?.id===fractionEditorId?pendingMathItem:items.find(item=>item.id===fractionEditorId)!}
+            onCancel={()=>{setFractionEditorId(null);setPendingMathItem(null)}}
+            onClose={draft=>{
+              if(pendingMathItem?.id===fractionEditorId){setFractionEditorId(null);setPendingMathItem(null);return;}
+              commit((pendingMathItem?.id===fractionEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map(item=>item.id===fractionEditorId?{...item,text:draft.title.slice(0,100),fractionMode:draft.mode,fractionNumerator:draft.numerator,fractionDenominator:draft.denominator}:item));
+              setFractionEditorId(null);
+            }}
             onSave={draft=>{
               commit(itemsRef.current.map(item=>item.id===fractionEditorId?{
                 ...item,text:draft.title.slice(0,100),fractionMode:draft.mode,
                 fractionNumerator:draft.numerator,fractionDenominator:draft.denominator
               }:item));
-              setFractionEditorId(null);
+              setFractionEditorId(null);setPendingMathItem(null);
             }}
           />,document.body)}
         {graphEditorId && graphDraft && createPortal(
           <LektrusGraphEditor
             draft={graphDraft} userId={authUser.id}
-            onChange={setGraphDraft} onCancel={closeGraphEditor} onSave={saveGraphEditor}
+            onChange={setGraphDraft} onCancel={closeGraphEditor} onSave={saveGraphEditor} onClose={pendingMathItem?.id===graphEditorId?closeGraphEditor:saveGraphEditor}
             preview={<GraphView item={{
               id:"preview",kind:"graph",x:0,y:0,width:600,height:360,text:graphDraft.title,
               graphPurpose:graphDraft.purpose,graphAxisMode:graphDraft.axisMode,graphIntervalStartClosed:graphDraft.intervalStartClosed,graphIntervalEndClosed:graphDraft.intervalEndClosed,
@@ -6514,8 +6520,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
             const centerY=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
             const item=makeSubjectToolItem(id as SubjectToolId,centerX,centerY,createId);
-            commit([...itemsRef.current,item]);
-            setSelected([item.id]);
+            setPendingMathItem(item);
+            setSelected([]);
             setTool("select");
             setSubjectToolsOpen(false);
             window.setTimeout(()=>item.kind==="fraction"?setFractionEditorId(item.id):openGraphEditor(item),0);
