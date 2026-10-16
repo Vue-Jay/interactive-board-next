@@ -91,7 +91,7 @@ export function formatPiRadians(radians:number):string {
   const tau=2*Math.PI;
   const normalized=((radians%tau)+tau)%tau;
   if(normalized<.015||Math.abs(tau-normalized)<.015)return "0";
-  const fractions:[[number,number],...Array<[number,number]>]=[
+  const fractions:Array<[number,number]>=[
     [1,6],[1,4],[1,3],[1,2],[2,3],[3,4],[5,6],[1,1],
     [7,6],[5,4],[4,3],[3,2],[5,3],[7,4],[11,6]
   ];
