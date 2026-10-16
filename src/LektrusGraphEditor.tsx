@@ -5,6 +5,8 @@ import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "
 
 export type GraphDraft = {
   title: string; figureId:string;
+  rotationX:number; rotationY:number;
+  parallelMarks:NonNullable<Item["graphParallelMarks"]>;
   intervalStartClosed: boolean;
   intervalEndClosed: boolean;
   purpose: NonNullable<Item["graphPurpose"]>;
@@ -91,7 +93,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     setGeometryError("");
     if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");if(tab==="givens"&&id!=="triangle")setTab("presets")}
     patch({
-      figureId:id,title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
+      figureId:id,rotationX:sample.graphRotationX??25,rotationY:sample.graphRotationY??-35,parallelMarks:[],title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
       type:sample.graphType??"quadratic",expression:sample.graphExpression??"",
       connectPoints:sample.graphConnectPoints===true,grid:sample.graphGrid!==false,
       gridStep:sample.graphGridStep??1,xMin:sample.graphXMin??-10,xMax:sample.graphXMax??10,
@@ -235,7 +237,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const figureSections=mode!=="geometry"?
     ["Числа и координаты","Функции","Тригонометрия"].map(name=>({name,presets:mathPresets.filter(p=>p.group===name)})):
     figureCategory==="Геометрия"?[
-      {name:"Треугольники",ids:["triangle","triangle-right","triangle-isosceles","triangle-equilateral","triangle-obtuse"]},
+      {name:"Треугольники",ids:["triangle","triangle-right","triangle-isosceles","triangle-equilateral"]},
       {name:"Четырёхугольники",ids:["quadrilateral","square","rectangle","parallelogram","rhombus","kite","trapezoid","trapezoid-isosceles","trapezoid-right"]},
       {name:"Правильные многоугольники",ids:["pentagon","hexagon","octagon"]},
       {name:"Окружность и углы",ids:["circle","angle"]},
