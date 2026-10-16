@@ -73,6 +73,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">(()=>["Куб","Треугольная призма","Четырёхугольная пирамида","Цилиндр","Конус"].includes(draft.title)?"Объёмные фигуры":"Геометрия");
   const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","cylinder","cone"]);
   const isSolid=solidPresetIds.has(mathPresets.find(p=>p.title===draft.title)?.id??"triangle");
+  const hasTriangleParameters=mode==="geometry"&&!isSolid&&draft.polygons.some(p=>p.points.length===3);
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onClose()}
@@ -85,7 +86,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
     setGeometryError("");
-    if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия")}
+    if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");if(tab==="givens"&&id!=="triangle")setTab("presets")}
     patch({
       title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
       type:sample.graphType??"quadratic",expression:sample.graphExpression??"",
@@ -151,7 +152,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       </header>
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>{mode==="geometry"?"Фигура":"Построение"}</button>
-        {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>Размеры и подписи</button>}
+        {hasTriangleParameters&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>Размеры и подписи</button>}
         {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Линии <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>}
         <button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.points.length}</span></button>
       </nav>
