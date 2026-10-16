@@ -747,7 +747,7 @@ body .workspace .lektrus-board-subject-picker{
 }
 body .workspace .lektrus-board-subject-picker>span{
  display:block!important;flex:0 0 auto!important;margin:0!important;
- font:650 12px/1.3 inherit!important;color:var(--lt-muted,#687a93)!important;
+ font-family:inherit!important;font-weight:650!important;font-size:12px!important;line-height:1.3!important;color:var(--lt-muted,#687a93)!important;
  white-space:nowrap!important;
 }
 body .workspace .lektrus-board-subject-picker input{
@@ -756,7 +756,7 @@ body .workspace .lektrus-board-subject-picker input{
  margin:0!important;padding:5px 9px!important;border:1px solid transparent!important;
  border-radius:7px!important;appearance:none!important;
  background:var(--lt-surface,#fff)!important;
- color:var(--lt-text,#1c2d47)!important;font:650 13px/1.3 inherit!important;
+ color:var(--lt-text,#1c2d47)!important;font-family:inherit!important;font-weight:650!important;font-size:13px!important;line-height:1.3!important;
  box-shadow:none!important;outline:none!important;
 }
 body .workspace .lektrus-board-subject-picker:focus-within{
