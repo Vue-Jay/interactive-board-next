@@ -1274,7 +1274,7 @@ const itemLabel = (item: Item) => {
   if (item.kind === "comment") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Комментарий";
   if (item.kind === "table") return `Таблица ${item.tableRows ?? 3}×${item.tableCols ?? 3}`;
   if (item.kind === "formula") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Формула";
-  if (item.kind === "graph") return item.text.trim().replace(/\\s+/g," ").slice(0,44) || (item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрическое построение":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции");
+  if (item.kind === "graph") return item.text.trim().slice(0,44) || (item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрическое построение":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции");
   if (item.kind === "checklist") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Чек-лист";
   if (item.kind === "quiz") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Вопрос";
   if (item.kind === "flashcard") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Карточка";
@@ -6461,7 +6461,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>)}
           </div>
         </LektrusToolOverflow>}
-        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(()=>canEdit&&toolAllowedForRole("graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,icon:<Icon name={entry.id==="math-function"?"graph":entry.id==="math-trigonometry"?"formula":"shape"} size={21}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
+        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(()=>canEdit&&toolAllowedForRole("graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:["math-function","math-linear","math-sine"].includes(entry.id)?"Графики функций":entry.id==="math-coordinate"?"Координаты":"Геометрия и тригонометрия",icon:<Icon name={["math-function","math-linear","math-sine"].includes(entry.id)?"graph":entry.id==="math-trigonometry"?"formula":"shape"} size={21}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
             if(!canEdit||!toolAllowedForRole("graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
