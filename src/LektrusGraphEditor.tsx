@@ -106,8 +106,9 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
   };
   const editPoint=(i:number,change:Partial<GraphDraft["points"][number]>)=>
     patch({points:draft.points.map((p,j)=>j===i?{...p,...change}:p)});
-  const pointOptions=(exclude=-1)=>draft.points.map((p,i)=>i===exclude?null:<option key={i} value={i}>{p.label||"Точка "+(i+1)} ({p.x}; {p.y})</option>);
+  const pointOptions=(exclude=-1)=>draft.points.map((p,i)=>i===exclude?null:<option key={i} value={i}>{p.label||`Точка ${i+1}`} ({p.x}; {p.y})</option>);
   const addPoint=()=>{
+    if(draft.points.length>=40||draft.purpose==="unit-circle")return;
     const label=draft.purpose==="geometry"?String.fromCharCode(65+(draft.points.length%26)):"";
     patch({points:[...draft.points,{x:0,y:0,label}]});
   };
@@ -119,7 +120,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
       kind==="angle"?[{x:3,y:0,label:"A"},{x:0,y:0,label:"O"},{x:2,y:3,label:"B"}]:
       [{x:-3,y:0,label:"A"},{x:3,y:0,label:"B"}];
     patch({
-      purpose:"geometry",showCurve:false,
+      purpose:"geometry",title:draft.purpose==="geometry"?draft.title:"Геометрическое построение",showCurve:false,
       points:[...draft.points,...points],
       circles:kind==="circle"?[...draft.circles,{center:index,edge:index+1,label:"",measure:true}]:draft.circles,
       polygons:kind==="polygon"?[...draft.polygons,{points:[index,index+1,index+2],label:"ABC",measure:true}]:draft.polygons,
@@ -213,7 +214,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
               </div>
             </div>
           </>}
-          {tab==="points"&&<div className="lektrus-graph-section"><div className="lektrus-graph-section-head"><strong>Редактируемые точки</strong><button type="button" disabled={draft.purpose==="unit-circle"} onClick={addPoint}>+ Точка</button></div>
+          {tab==="points"&&<div className="lektrus-graph-section"><div className="lektrus-graph-section-head"><strong>Редактируемые точки</strong><button type="button" disabled={draft.purpose==="unit-circle"||draft.points.length>=40} onClick={addPoint}>+ Точка</button></div>
             <small>{draft.purpose==="unit-circle"?
               "Контрольные точки единичной окружности фиксированы. Угол меняйте во вкладке «Настройки» или перемещайте радиус.":
               "Точки можно перемещать прямо на рисунке. На мобильном для точного положения используйте поля X и Y."}</small>
