@@ -6,7 +6,7 @@ import {markTemplateUsed} from "./templatesStore";
 import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectrisOrganizationStore";
 import { cachedBoardPreview, loadBoardPreviews, backfillCachedBoardPreviews } from "./boardPreview";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
-import { createBoard, deleteBoard, deleteBoardForever, ensureUserBoards, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
+import { boardStorageKey, createBoard, deleteBoard, deleteBoardForever, ensureUserBoards, getCachedUserBoards, getTrashedBoards, getUserBoards, restoreBoard, renameBoard, getBoardAccess, changeMemberRole, removeMember, type BoardAccessMember, type BoardInvitation, type BoardSummary } from "./boardStore";
 import { boardShareUrl, clearPendingShareToken, createBoardShareLink, listBoardShareLinks, pendingShareToken, redeemBoardShareLink, revokeBoardShareLink, type BoardShareLink, type ShareRole } from "./shareLinks";
 
 type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;onOpenBoard:(b:BoardSummary)=>void;onLogout:()=>void};
@@ -134,7 +134,8 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
        void flushLectrisOrganization(user.id).catch(()=>{});
      }
      if(options.template){
-       sessionStorage.setItem("onlinerepetitor.template.apply",JSON.stringify({templateId:options.template.id,document:options.template.document}));
+       sessionStorage.setItem("onlinerepetitor.template.apply",JSON.stringify({boardId:b.id,templateId:options.template.id,document:options.template.document}));
+       localStorage.setItem(boardStorageKey(b.id),JSON.stringify({...options.template.document,title:b.title}));
        void markTemplateUsed(options.template.id).catch(()=>{});
      }
      if(options.studentEmail.trim()){
