@@ -221,6 +221,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
     {lectrisOrganizationSyncEnabled()&&teacher&&<button type="button" disabled={syncStatus==="saving"} onClick={importLocalOrganization}>Перенести локальные метки</button>}
     {lectrisOrganizationSyncEnabled()&&<button type="button" disabled={syncStatus==="saving"} onClick={()=>void sendOrganization()}>Повторить синхронизацию</button>}
   </div>;
+  void setCollectionSearch; void collectionMode; void changeCollectionMode; void upcoming; void collectionBoards;
   return <section className="lectris-hub" aria-label="Рабочее пространство Lektrus">
     {view!=="home"&&syncIndicator}
     {view==="home"?<>
