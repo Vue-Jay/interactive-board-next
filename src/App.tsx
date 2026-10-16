@@ -1178,7 +1178,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
           const pts=poly.points.map(point);if(pts.length<3||pts.some(p=>!p))return null;
           const sides=item.graphGivenSides??[],angles=item.graphGivenAngles??[];
           const centroid={x:pts.reduce((sum,p)=>sum+p!.x,0)/pts.length,y:pts.reduce((sum,p)=>sum+p!.y,0)/pts.length};
-          const note=(value:string)=>({paintOrder:"stroke" as const,stroke:"#fff",strokeWidth:5,strokeLinejoin:"round" as const,fill:"#1c293a",fontSize:15,fontWeight:650});
+          const note=()=>({paintOrder:"stroke" as const,stroke:"#fff",strokeWidth:5,strokeLinejoin:"round" as const,fill:"#1c293a",fontSize:15,fontWeight:650});
           return <g key={`dimensions-${i}`} className="graph-dimension-labels">
             {sides.slice(0,pts.length).map((raw,j)=>{
               const value=raw?.trim();if(!value)return null;
@@ -1186,7 +1186,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
               const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
               let nx=-dy/len,ny=dx/len;
               if((mx+nx*.3-centroid.x)**2+(my+ny*.3-centroid.y)**2<(mx-nx*.3-centroid.x)**2+(my-ny*.3-centroid.y)**2){nx=-nx;ny=-ny}
-              return <text key={j} x={sx(mx)+nx*17} y={sy(my)+(-ny)*17} dy="0.35em" style={note(value)} textAnchor="middle">{value}</text>;
+              return <text key={j} x={sx(mx)+nx*17} y={sy(my)+(-ny)*17} dy="0.35em" style={note()} textAnchor="middle">{value}</text>;
             })}
             {angles.slice(0,pts.length).map((raw,j)=>{
               const value=raw?.trim();if(!value)return null;
