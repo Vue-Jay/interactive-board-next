@@ -3,10 +3,10 @@ import type {Item} from "./boardModel";
 export type MathPresetId =
   | "blank" | "linear" | "quadratic" | "sine" | "cosine"
   | "number-line" | "triangle" | "quadrilateral" | "angle"
-  | "circle" | "unit-circle";
+  | "circle" | "unit-circle" | "cube" | "prism" | "pyramid" | "cone" | "cylinder";
 
 export type MathPreset = {
-  id:MathPresetId; title:string; subtitle:string; group:"Функции"|"Числа и координаты"|"Геометрия"|"Тригонометрия";
+  id:MathPresetId; title:string; subtitle:string; group:"Функции"|"Числа и координаты"|"Геометрия"|"Тригонометрия"|"Объёмные фигуры";
 };
 export const mathPresets:MathPreset[]=[
   {id:"blank",title:"Чистая плоскость",subtitle:"Оси, сетка и свободные точки",group:"Числа и координаты"},
@@ -19,6 +19,11 @@ export const mathPresets:MathPreset[]=[
   {id:"quadrilateral",title:"Четырёхугольник",subtitle:"Четыре вершины и параметры условия",group:"Геометрия"},
   {id:"angle",title:"Угол",subtitle:"Лучи и угол, заданный в условии",group:"Геометрия"},
   {id:"circle",title:"Окружность",subtitle:"Центр и изменяемый радиус",group:"Геометрия"},
+  {id:"cube",title:"Куб",subtitle:"Вершины и рёбра в изометрии",group:"Объёмные фигуры"},
+  {id:"prism",title:"Треугольная призма",subtitle:"Два основания и боковые рёбра",group:"Объёмные фигуры"},
+  {id:"pyramid",title:"Четырёхугольная пирамида",subtitle:"Основание, вершина и рёбра",group:"Объёмные фигуры"},
+  {id:"cylinder",title:"Цилиндр",subtitle:"Круглые основания и образующие",group:"Объёмные фигуры"},
+  {id:"cone",title:"Конус",subtitle:"Основание, вершина и образующие",group:"Объёмные фигуры"},
   {id:"unit-circle",title:"Единичная окружность",subtitle:"π, sin, cos и угол в радианах",group:"Тригонометрия"}
 ];
 
@@ -36,6 +41,29 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
     graphPolygons:[],graphMidpoints:[],
     graphIntervalStartClosed:true,graphIntervalEndClosed:true,color:"#4267ce"
   };
+  if(["cube","prism","pyramid","cone","cylinder"].includes(id)){
+    // Editable 2D projections: teacher can drag vertices and label dimensions; no numerical answers.
+    const pt=(x:number,y:number,label="")=>({x,y,label});
+    const segment=(a:number,b:number)=>({a,b,kind:"segment" as const,label:"",measure:false});
+    const cube=[pt(-4,-3,"A"),pt(1,-3,"B"),pt(3,-1,"C"),pt(-2,-1,"D"),pt(-4,2,"A₁"),pt(1,2,"B₁"),pt(3,4,"C₁"),pt(-2,4,"D₁")];
+    const cubeEdges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+    const prism=[pt(-4,-3,"A"),pt(2,-3,"B"),pt(-1,0,"C"),pt(-2,1,"A₁"),pt(4,1,"B₁"),pt(1,4,"C₁")];
+    const prismEdges=[[0,1],[1,2],[2,0],[3,4],[4,5],[5,3],[0,3],[1,4],[2,5]];
+    const pyramid=[pt(-4,-3,"A"),pt(2,-3,"B"),pt(4,-1,"C"),pt(-2,-1,"D"),pt(0,4,"S")];
+    const pyramidEdges=[[0,1],[1,2],[2,3],[3,0],[0,4],[1,4],[2,4],[3,4]];
+    const arc=(cy:number)=>Array.from({length:17},(_,i)=>pt(3.2*Math.cos(2*Math.PI*i/16),cy+1.1*Math.sin(2*Math.PI*i/16)));
+    const circular=id==="cylinder"||id==="cone";
+    const bottom=circular?arc(-3):[];
+    const upper=id==="cylinder"?arc(3):id==="cone"?[pt(0,4,"S")]:[];
+    const points=id==="cube"?cube:id==="prism"?prism:id==="pyramid"?pyramid:[...bottom,...upper];
+    const edges=id==="cube"?cubeEdges:id==="prism"?prismEdges:id==="pyramid"?pyramidEdges:
+      id==="cylinder"?[...Array.from({length:16},(_,i)=>[i,i+1]),...Array.from({length:16},(_,i)=>[17+i,17+i+1]),[0,17],[8,25]]:
+      [...Array.from({length:16},(_,i)=>[i,i+1]),[0,17],[8,17]];
+    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+      graphShowLabels:id!=="cylinder"&&id!=="cone",graphSnap:false,
+      graphPoints:points,graphSegments:edges.map(([a,b])=>segment(a,b)),
+      graphXMin:-7,graphXMax:7,graphYMin:-5,graphYMax:6};
+  }
   if(id==="blank")return {...graph,text:"Координатная плоскость"};
   if(id==="linear")return {...graph,graphPurpose:"function",graphType:"linear",graphExpression:"2*x + 1",graphShowCurve:true};
   if(id==="quadratic")return {...graph,graphPurpose:"function",graphType:"quadratic",graphExpression:"x^2 - 4*x + 3",graphShowCurve:true};
