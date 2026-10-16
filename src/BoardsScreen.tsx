@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import LectrisHub from "./LectrisHub";
+import LektrusCreateBoardDialog, {type NewBoardOptions} from "./LektrusCreateBoardDialog";
+import {inviteToBoard} from "./boardStore";
+import {markTemplateUsed} from "./templatesStore";
 import { flushLectrisOrganization, queueLectrisBoardOrganization } from "./lectrisOrganizationStore";
 import { cachedBoardPreview, loadBoardPreviews, backfillCachedBoardPreviews } from "./boardPreview";
 import { BOARD_ROLE_LABELS, isRemoteBackendEnabled, type AuthUser, type BoardRole } from "./authStore";
@@ -49,6 +52,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
    return()=>{alive=false};
  },[previewIds,user.id]); const [editingId,setEditingId]=useState<string|null>(null); const [draftTitle,setDraftTitle]=useState("");
  const [filter,setFilter]=useState<BoardFilter>("all"); const [sort,setSort]=useState<BoardSort>("recent"); const [trashOpen,setTrashOpen]=useState(false); const [trash,setTrash]=useState<BoardSummary[]>([]);
+ const [createOpen,setCreateOpen]=useState(false); const [createAssociation,setCreateAssociation]=useState<{subject?:string;group?:string}>({});
  const [manage,setManage]=useState<BoardSummary|null>(null); const [notice,setNotice]=useState(""); const [busy,setBusy]=useState(false);
  const [access,setAccess]=useState<{members:BoardAccessMember[];invites:BoardInvitation[]}>({members:[],invites:[]});
  const [shareLinks,setShareLinks]=useState<BoardShareLink[]>([]); const [createdUrl,setCreatedUrl]=useState("");
@@ -120,21 +124,24 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
 
  useEffect(()=>{if(manage){void loadAccess(manage);void loadLinks(manage)}else{setAccess({members:[],invites:[]});setShareLinks([]);setCreatedUrl("")}},[manage?.id]);
 
- const add=async(association?:{subject?:string;group?:string})=>{
-   if(busy)return;
-   setBusy(true);
+ const add=(association?:{subject?:string;group?:string})=>{setCreateAssociation(association||{});setCreateOpen(true)};
+ const confirmCreate=async(options:NewBoardOptions)=>{
+   if(busy)return;setBusy(true);
    try{
-     const b=await createBoard(user);
-     if(association&&(association.subject||association.group)){
-       try{
-         queueLectrisBoardOrganization(user.id,b.id,{
-           subject:association.subject||"",group:association.group||""
-         });
-         void flushLectrisOrganization(user.id).catch(()=>{});
-       }catch{/* Organization can be recovered without blocking board creation. */}
+     const b=await createBoard(user,options.title);
+     if(options.subject||options.group){
+       queueLectrisBoardOrganization(user.id,b.id,{subject:options.subject,group:options.group});
+       void flushLectrisOrganization(user.id).catch(()=>{});
      }
-     await refresh();
-     onOpenBoard(b);
+     if(options.template){
+       sessionStorage.setItem("onlinerepetitor.template.apply",JSON.stringify({templateId:options.template.id,document:options.template.document}));
+       void markTemplateUsed(options.template.id).catch(()=>{});
+     }
+     if(options.studentEmail.trim()){
+       try{await inviteToBoard(user.id,b.id,options.studentEmail.trim(),"editor")}
+       catch{setNotice("Доска создана, но приглашение ученику не отправлено. Повторите в настройках доступа.")}
+     }
+     setCreateOpen(false);await refresh();onOpenBoard(b);
    }catch(e){setNotice(e instanceof Error?e.message:"Не удалось создать доску")}
    finally{setBusy(false)}
  };
@@ -163,8 +170,9 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
  const copyCreated=async()=>{if(!createdUrl)return;try{await navigator.clipboard.writeText(createdUrl);setNotice("Ссылка скопирована")}catch{setNotice("Не удалось скопировать автоматически. Выделите ссылку вручную.")}};
 
  return <main className="boards-shell">
+ {createOpen&&<LektrusCreateBoardDialog user={user} initial={createAssociation} busy={busy} onClose={()=>setCreateOpen(false)} onCreate={options=>void confirmCreate(options)}/>}
  {!isBoardListView&&<LectrisHub user={user} role={accountRole} view={hubView} boards={boards}
-    loading={loading} creating={busy} previews={previews} onCreateBoard={association=>void add(association)} onOpenBoard={onOpenBoard}/>}
+    loading={loading} creating={busy} previews={previews} onCreateBoard={association=>add(association)} onOpenBoard={onOpenBoard}/>}
   {isBoardListView&&<section className="boards-content lectris-library">
     {user.isGuest&&<div className="guest-lifecycle-note"><strong>Гостевой режим</strong><span>Доступ к доскам сохраняется в пределах этой гостевой сессии. Для постоянного аккаунта зарегистрируйтесь.</span></div>}
     <div className="lectris-library-intro">
