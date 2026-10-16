@@ -6296,14 +6296,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               graphAngles:graphDraft.angles,graphCircles:graphDraft.circles,
               graphPolygons:graphDraft.polygons,graphMidpoints:graphDraft.midpoints,graphTriangleLines:graphDraft.triangleLines,graphTriangleVertex:graphDraft.triangleVertex,graphShowArea:false,graphGivenSides:graphDraft.givenSides,graphGivenAngles:graphDraft.givenAngles,graphTriangleInputMode:graphDraft.triangleInputMode
             }}
+            onRotate={(rotationX,rotationY)=>setGraphDraft(current=>current?{...current,rotationX,rotationY}:current)}
+            onRayChange={(x,y)=>setGraphDraft(current=>current&&current.figureId==="ray"&&current.points[1]?
+              {...current,points:current.points.map((point,i)=>i===1?{...point,x,y}:point)}:current)}
             onPointMove={(i,x,y)=>setGraphDraft(current=>{
               if(!current||current.purpose==="unit-circle"&&i<5)return current;
               const trig=current.purpose==="unit-circle"&&i===5;
               const angle=Math.atan2(y,x),xx=trig?Number(Math.cos(angle).toFixed(6)):x,yy=trig?Number(Math.sin(angle).toFixed(6)):current.purpose==="number-line"?0:y;
               return {...current,points:current.points.map((p,j)=>j===i?{...p,x:xx,y:yy,label:trig?formatPiRadians(angle):p.label}:p)};
             })}
-            onAddPoint={(x,y)=>setGraphDraft(current=>current&&current.purpose!=="unit-circle"&&current.points.length<40?{...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:current.purpose==="geometry"?String.fromCharCode(65+(current.points.length%26)):""}]}:current)}
-            onRemovePoint={i=>setGraphDraft(current=>current&&!(current.purpose==="unit-circle"&&i<=5)?removeGraphPoint(current,i):current)}
+            onAddPoint={(x,y)=>setGraphDraft(current=>current&&current.purpose!=="unit-circle"&&current.figureId!=="ray"&&!isSolidFigure(current.figureId)&&current.points.length<40?{...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:current.purpose==="geometry"?String.fromCharCode(65+(current.points.length%26)):""}]}:current)}
+            onRemovePoint={i=>setGraphDraft(current=>current&&current.figureId!=="ray"&&!isSolidFigure(current.figureId)&&!(current.purpose==="unit-circle"&&i<=5)?removeGraphPoint(current,i):current)}
             />}
           />,document.body)}
         {formulaEditorId && formulaDraft && (
@@ -7045,7 +7048,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "table" && <TableView item={item} />}
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
-                {item.kind === "graph" && <GraphView item={item} onAddPoint={!item.locked && canEdit ? (x,y)=>{if((item.graphPoints?.length??0)>=40)return;const next={x,y:item.graphPurpose==="number-line"?0:y,label:"",color:"#111111"};commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:[...(candidate.graphPoints??[]),next]}:candidate));setSelected([item.id]);} : undefined} onRemovePoint={!item.locked && canEdit ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/>}
+                {item.kind === "graph" && <GraphView item={item}
+                  onRotate={!item.locked&&canEdit&&(isSolidFigure(item.graphFigureId))?(rotationX,rotationY)=>{
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphRotationX:rotationX,graphRotationY:rotationY}:candidate));
+                  }:undefined}
+                  onRayChange={!item.locked&&canEdit&&item.graphFigureId==="ray"?(x,y)=>{
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:(candidate.graphPoints??[]).map((p,i)=>i===1?{...p,x,y}:p)}:candidate));
+                  }:undefined}
+                  onAddPoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{if((item.graphPoints?.length??0)>=40)return;const next={x,y:item.graphPurpose==="number-line"?0:y,label:"",color:"#111111"};commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:[...(candidate.graphPoints??[]),next]}:candidate));setSelected([item.id]);} : undefined} onRemovePoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/>}
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
