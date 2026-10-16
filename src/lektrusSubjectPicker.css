@@ -1,0 +1,166 @@
+/* Lektrus board subject chooser. Header is a sibling of .workspace, not its child.
+   Keep this stylesheet last so old board styles cannot reset the combobox. */
+body .topbar .topbar-left{gap:12px!important}
+body .topbar .lektrus-subject-combobox{
+  position:relative!important;
+  display:flex!important;
+  flex:0 1 285px!important;
+  align-items:center!important;
+  gap:14px!important;
+  min-width:175px!important;
+  max-width:285px!important;
+  margin:0 0 0 8px!important;
+  padding:0!important;
+  color:var(--lt-text,#1d2b46)!important;
+  font-family:inherit!important;
+}
+body .topbar .lektrus-subject-label{
+  display:block!important;
+  flex:0 0 auto!important;
+  margin:0!important;
+  color:var(--lt-muted,#667894)!important;
+  font-family:inherit!important;
+  font-size:12px!important;
+  line-height:1.3!important;
+  font-weight:650!important;
+}
+body .topbar .lektrus-subject-field{
+  display:flex!important;
+  align-items:center!important;
+  flex:1 1 auto!important;
+  width:100%!important;
+  min-width:0!important;
+  height:36px!important;
+  padding:3px!important;
+  border:1px solid var(--lt-line,#d3deed)!important;
+  border-radius:10px!important;
+  box-sizing:border-box!important;
+  background:var(--lt-subtle,#f1f5fb)!important;
+  box-shadow:0 1px 2px rgba(18,41,78,.035)!important;
+  transition:border-color .15s ease,box-shadow .15s ease;
+}
+body .topbar .lektrus-subject-field:focus-within{
+  border-color:var(--lt-primary,#385fca)!important;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--lt-primary,#385fca) 12%,transparent)!important;
+}
+body .topbar .lektrus-subject-field>input{
+  display:block!important;
+  flex:1 1 0!important;
+  width:100%!important;
+  min-width:0!important;
+  height:28px!important;
+  min-height:28px!important;
+  margin:0!important;
+  padding:0 8px!important;
+  border:none!important;
+  border-radius:7px!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  color:var(--lt-text,#1d2b46)!important;
+  font-family:inherit!important;
+  font-size:12px!important;
+  line-height:1.35!important;
+  font-weight:650!important;
+  -webkit-appearance:none!important;
+  appearance:none!important;
+}
+body .topbar .lektrus-subject-field>input:focus{
+  border:none!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+}
+body .topbar .lektrus-subject-field>input::placeholder{
+  color:var(--lt-muted,#8492a9)!important;
+  opacity:1!important;
+  font-weight:500!important;
+}
+body .topbar .lektrus-subject-field>button{
+  flex:0 0 27px!important;
+  display:grid!important;
+  place-items:center!important;
+  width:27px!important;
+  min-width:27px!important;
+  height:27px!important;
+  min-height:27px!important;
+  margin:0!important;
+  padding:4px!important;
+  border:0!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  color:var(--lt-muted,#526685)!important;
+  cursor:pointer!important;
+}
+body .topbar .lektrus-subject-field>button:hover,
+body .topbar .lektrus-subject-field>button[aria-expanded="true"]{
+  background:var(--lt-hover,#e3ebf8)!important;
+  color:var(--lt-primary,#385fca)!important;
+}
+body .topbar .lektrus-subject-field>button svg{display:block;width:16px;height:16px;pointer-events:none}
+/* Popup is portaled to document.body to avoid clipping on tablet and mobile. */
+body>.lektrus-subject-options{
+  position:fixed!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:2px!important;
+  box-sizing:border-box!important;
+  max-height:min(320px,57dvh)!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain!important;
+  padding:6px!important;
+  margin:0!important;
+  z-index:100000!important;
+  border:1px solid var(--lt-line,#d4dfef)!important;
+  border-radius:12px!important;
+  background:var(--lt-surface,#fff)!important;
+  box-shadow:0 16px 44px rgba(20,35,66,.19),0 3px 12px rgba(20,35,66,.06)!important;
+  scrollbar-width:thin!important;
+}
+body>.lektrus-subject-options>button{
+  display:block!important;
+  flex:0 0 auto!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:36px!important;
+  height:auto!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+  padding:9px 11px!important;
+  border:0!important;
+  border-radius:8px!important;
+  background:transparent!important;
+  color:var(--lt-text,#1d2b46)!important;
+  font-family:inherit!important;
+  font-size:12px!important;
+  font-weight:600!important;
+  line-height:1.4!important;
+  text-align:left!important;
+  white-space:normal!important;
+  cursor:pointer!important;
+}
+body>.lektrus-subject-options>button:hover,
+body>.lektrus-subject-options>button.is-focused{
+  background:var(--lt-subtle,#eff4fc)!important;
+  color:var(--lt-primary,#385fca)!important;
+}
+body>.lektrus-subject-options>button.is-selected{
+  color:var(--lt-primary,#385fca)!important;
+  font-weight:800!important;
+}
+@media(max-width:900px){
+  body .topbar .topbar-left{gap:7px!important}
+  body .topbar .lektrus-subject-combobox{
+    flex:0 1 158px!important;
+    min-width:90px!important;
+    max-width:158px!important;
+    gap:0!important;
+    margin-left:3px!important;
+  }
+  body .topbar .lektrus-subject-label{display:none!important}
+  body .topbar .lektrus-subject-field{height:32px!important}
+  body .topbar .lektrus-subject-field>input{font-size:11px!important}
+  body .topbar .lektrus-subject-field>button{width:24px!important;min-width:24px!important;flex-basis:24px!important;height:24px!important;min-height:24px!important}
+}
