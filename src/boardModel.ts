@@ -210,7 +210,7 @@ export function parseDocument(raw: string): DocumentData {
       if(i.graphTriangleInputMode!=null && !["SSS","SAS","ASA"].includes(i.graphTriangleInputMode)) throw new Error("Некорректный тип построения");
       if (i.graphTriangleVertex != null && ![0,1,2].includes(i.graphTriangleVertex)) throw new Error("Некорректная вершина треугольника");
       if (i.graphShowArea != null && typeof i.graphShowArea !== "boolean") throw new Error("Некорректные настройки площади");
-      if (i.graphTriangleLines != null && (!Array.isArray(i.graphTriangleLines) || i.graphTriangleLines.length>3 || i.graphTriangleLines.some((v:unknown)=>!["median","altitude","bisector"].includes(v)))) throw new Error("Повреждены построения треугольника");
+      if (i.graphTriangleLines != null && (!Array.isArray(i.graphTriangleLines) || i.graphTriangleLines.length>3 || i.graphTriangleLines.some((v:unknown)=>typeof v!=="string"||!["median","altitude","bisector"].includes(v)))) throw new Error("Повреждены построения треугольника");
       if (i.graphPurpose != null && !["function","coordinates","geometry","unit-circle","number-line"].includes(i.graphPurpose)) throw new Error("Повреждён тип учебного объекта");
       if (i.graphAxisMode != null && !["both","x","y","none"].includes(i.graphAxisMode)) throw new Error("Повреждён режим осей");
       if (i.graphType != null && !["linear","quadratic","sin","cos"].includes(i.graphType)) throw new Error("Повреждён тип графика");
