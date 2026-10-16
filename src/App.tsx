@@ -1093,6 +1093,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
   const step = Math.max(.1,item.graphGridStep ?? 1);
   const values = (a:number,b:number) => { const first=Math.ceil(a/step)*step,count=Math.min(101,Math.max(0,Math.floor((b-first)/step)+1));return Array.from({length:count},(_,i)=>Number((first+i*step).toFixed(6))); };
   const gridX = values(xMin,xMax), gridY = values(yMin,yMax), gp = (item.graphPoints ?? []).map(p=>purpose==="number-line"?{...p,y:0}:p);
+  const intervalEnds=purpose==="number-line"&&gp.length>=2?[gp[0],gp[1]].sort((p,q)=>p.x-q.x):null;
   const axes = item.graphAxisMode ?? "both";
   const hasX = axes === "both" || axes === "x", hasY = axes === "both" || axes === "y";
   const point = (index:number) => gp[index];
@@ -1108,7 +1109,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
     return {x:Number(x.toFixed(4)),y:Number(y.toFixed(4))};
   };
   return <div className={`graph-view graph-purpose-${purpose} ${onPointMove?"graph-interactive":""}`}>
-    <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&gp.length>=2&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{gp[0].x}; {gp[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small>y = {expression.replace(/^y\s*=\s*/i,"")}</small>}</div>
+    <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small>y = {expression.replace(/^y\s*=\s*/i,"")}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onDoubleClick={e=>{if(onAddPoint){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#667085" strokeWidth="1.3"/></marker></defs>
@@ -1135,12 +1136,12 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
         {(item.graphAngles??[]).map((angle,i)=>{const a=point(angle.a),v=point(angle.vertex),b=point(angle.b);if(!a||!v||!b)return null;const start=Math.atan2(sy(a.y)-sy(v.y),sx(a.x)-sx(v.x)),end=Math.atan2(sy(b.y)-sy(v.y),sx(b.x)-sx(v.x));let diff=end-start;while(diff>Math.PI)diff-=2*Math.PI;while(diff< -Math.PI)diff+=2*Math.PI;const radius=26;const p1={x:sx(v.x)+radius*Math.cos(start),y:sy(v.y)+radius*Math.sin(start)},p2={x:sx(v.x)+radius*Math.cos(start+diff),y:sy(v.y)+radius*Math.sin(start+diff)};return <g key={`angle-${i}`}><path className="graph-angle" d={`M ${p1.x} ${p1.y} A ${radius} ${radius} 0 0 ${diff>0?1:0} ${p2.x} ${p2.y}`}/>{<text className="graph-figure-label" x={sx(v.x)+(radius+13)*Math.cos(start+diff/2)} y={sy(v.y)+(radius+13)*Math.sin(start+diff/2)}>{angle.label&&!/^[0-9.,]+°$/.test(angle.label)?angle.label+" · ":""}{Number((Math.abs(diff)*180/Math.PI).toFixed(1))}°</text>}</g>})}
         {(item.graphMidpoints??[]).map((m,i)=>{const a=point(m.a),b=point(m.b);if(!a||!b)return null;const x=(a.x+b.x)/2,y=(a.y+b.y)/2;return <g key={`mid-${i}`}><circle className="graph-midpoint" cx={sx(x)} cy={sy(y)} r="4"/>{m.label&&<text className="graph-figure-label" x={sx(x)+8} y={sy(y)-7}>{m.label}</text>}</g>})}
       </g>
-      {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={gp.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
+      {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={(purpose==="number-line"?gp.slice(0,2):gp).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
       {gp.map((p,i)=>{const pointColor=p.color??"#111111";return <g className={`graph-point ${onPointMove?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
         onDoubleClick={onRemovePoint?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint(i)}:undefined}
         onPointerDown={onPointMove?(e)=>{e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up)}:undefined}>
-        <circle cx={sx(p.x)} cy={sy(p.y)} r={onPointMove?"5":"4"} style={{fill:purpose==="number-line"&&i<2&&(i===0?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>
-        {item.graphShowLabels!==false&&p.label&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{p.label}</text>}
+        <circle cx={sx(p.x)} cy={sy(p.y)} r={onPointMove?"5":"4"} style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>
+        {item.graphShowLabels!==false&&p.label&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{purpose==="number-line"?p.x:p.label}</text>}
       </g>})}
     </svg>
   </div>;
