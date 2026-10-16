@@ -752,7 +752,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             </button>
           </div>
           <div className="lektrus-graph-canvas">{preview}</div>
-          <div className="lektrus-graph-preview-hint">Перетаскивайте точки мышью или пальцем. Двойное нажатие добавляет или удаляет точку.</div>
+          <div className="lektrus-graph-preview-hint">{isSolid?"Поворачивайте фигуру, перетаскивая оси X, Y, Z в правом верхнем углу. Двойное нажатие на оси возвращает стандартный вид.":draft.figureId==="ray"?"Изменяйте направление луча, захватив его линию. На рисунке остаётся одна начальная точка.":"Перетаскивайте точки мышью или пальцем. Двойное нажатие добавляет или удаляет точку."}</div>
         </aside>
       </div>
       <footer className="graph-editor-footer lektrus-graph-footer"><span>Изменения сохраняются на доске после подтверждения</span>
