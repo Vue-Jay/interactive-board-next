@@ -21,3 +21,5 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: TypeScript and Vite build
         run: npm run build
+      - name: School geometry regression
+        run: node scripts/test-school-geometry.mjs
