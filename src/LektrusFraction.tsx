@@ -68,23 +68,23 @@ export function LektrusFractionView({item,onSelect}:{item:Item;onSelect?:(value:
   </div>;
 }
 
-export default function LektrusFractionEditor({item,onSave,onCancel}:{
-  item:Item;onSave:(data:FractionData)=>void;onCancel:()=>void;
+export default function LektrusFractionEditor({item,onSave,onCancel,onClose}:{
+  item:Item;onSave:(data:FractionData)=>void;onCancel:()=>void;onClose:(data:FractionData)=>void;
 }){
   const [draft,setDraft]=useState<FractionData>(()=>fractionFrom(item));
   const change=(next:Partial<FractionData>)=>setDraft(current=>({...current,...next}));
   const preview:Item={...item,text:draft.title,fractionMode:draft.mode,fractionNumerator:draft.numerator,fractionDenominator:draft.denominator};
   useEffect(()=>{
     const onKey=(e:KeyboardEvent)=>{
-      if(e.key==="Escape"){e.stopPropagation();e.preventDefault();onCancel()}
+      if(e.key==="Escape"){e.stopPropagation();e.preventDefault();onClose(draft)}
     };
     document.addEventListener("keydown",onKey,true);
     return()=>document.removeEventListener("keydown",onKey,true);
   },[onCancel]);
-  return <div className="lektrus-fraction-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)onCancel()}}>
+  return <div className="lektrus-fraction-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)onClose(draft)}}>
     <div className="lektrus-fraction-dialog" role="dialog" aria-modal="true" aria-label="Редактор дробей" onPointerDown={e=>e.stopPropagation()}>
       <header><div><strong>Наглядные дроби</strong><small>Доли целого и сравнение дробей</small></div>
-        <button type="button" aria-label="Закрыть" onClick={onCancel}>×</button></header>
+        <button type="button" aria-label="Закрыть" onClick={()=>onClose(draft)}>×</button></header>
       <div className="lektrus-fraction-editor-body">
         <section className="lektrus-fraction-fields">
           <label>Название<input value={draft.title} maxLength={100} onChange={e=>change({title:e.target.value})}/></label>
