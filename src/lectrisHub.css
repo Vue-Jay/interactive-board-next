@@ -165,3 +165,40 @@
 .lektrus-collection .lektrus-category-strip{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(155px,1fr))!important;gap:8px!important}
 .lektrus-collection .lektrus-category-strip>button{text-align:left!important}
 @media(max-width:1050px){.lectris-hub .lectris-hub-columns{grid-template-columns:minmax(0,1fr)!important}.lectris-hub .lectris-hub-aside{max-width:520px}}
+
+
+/* Groups and classes: directory on the left, editable student roster on the right. */
+.lektrus-group-layout{display:grid;grid-template-columns:minmax(260px,.85fr) minmax(0,1.5fr);gap:15px;align-items:start}
+.lektrus-group-list-panel,.lektrus-group-details{border:1px solid var(--lt-line,#d7dfeb);border-radius:16px;background:var(--lt-surface,#fff);padding:16px;min-width:0}
+.lektrus-group-controls{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.lektrus-group-controls input{flex:1 1 150px;min-width:0}
+.lektrus-group-controls select{flex:0 1 170px;min-width:135px}
+.lektrus-group-controls :is(input,select),.lektrus-group-add select{min-height:37px;border:1px solid var(--lt-line,#cad5e7);border-radius:9px;background:var(--lt-surface,#fff);color:var(--lt-text,#243651);padding:7px 10px;font-size:13px}
+.lektrus-group-list{display:grid;gap:5px}
+.lektrus-group-list>button{display:flex;align-items:center;width:100%;text-align:left;gap:10px;min-height:62px;padding:9px;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--lt-text,#243651);cursor:pointer}
+.lektrus-group-list>button:hover{background:var(--lt-hover,#eef3fa)}
+.lektrus-group-list>button.is-active{background:var(--lt-selected,#edf2ff);border-color:var(--lt-line-strong,#aebfe3)}
+.lektrus-group-symbol{display:grid;place-items:center;background:var(--lt-subtle,#edf2f8);width:36px;height:36px;border-radius:9px;font-size:17px}
+.lektrus-group-list-name{display:grid;gap:3px;flex:1;min-width:0}
+.lektrus-group-list-name strong{font-size:14px}
+.lektrus-group-list-name small{font-size:12px;color:var(--lt-muted,#687991)}
+.lektrus-group-details{min-height:280px}
+.lektrus-group-details-heading{margin-bottom:13px}
+.lektrus-group-details-heading small{font-size:10px;letter-spacing:.09em;color:var(--lt-primary,#365fd0);font-weight:800}
+.lektrus-group-details-heading h2{font-size:22px;margin:5px 0}
+.lektrus-group-details-heading p,.lektrus-group-placeholder p{margin:0;color:var(--lt-muted,#6b7e94);font-size:12px}
+.lektrus-group-placeholder{display:grid;place-content:center;text-align:center;min-height:240px;gap:10px}
+.lektrus-group-add{display:flex;gap:8px;margin-bottom:12px}
+.lektrus-group-add select{flex:1;min-width:0}
+.lektrus-group-add button{padding:7px 12px;border:0;border-radius:9px;background:var(--lt-primary,#365fd0);color:white;font-weight:700;cursor:pointer}
+.lektrus-group-add button:disabled{opacity:.45;cursor:default}
+.lektrus-group-students{display:grid;gap:7px;max-height:min(500px,55vh);overflow:auto}
+.lektrus-group-student{display:flex;border:1px solid var(--lt-line,#d7dfeb);border-radius:10px;align-items:center;gap:4px}
+.lektrus-group-student>button:first-child{flex:1;min-width:0;display:flex;align-items:center;text-align:left;gap:10px;padding:9px;border:0;background:transparent;cursor:pointer;color:inherit}
+.lektrus-group-student>button:first-child>span:nth-child(2){flex:1;min-width:0;display:grid;gap:3px}
+.lektrus-group-student strong{font-size:13px}
+.lektrus-group-student small{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--lt-muted,#6b7e94)}
+.lektrus-group-student-avatar{width:35px;height:35px;border-radius:10px;background:var(--lt-subtle,#eef3f8);display:grid;place-items:center;color:var(--lt-primary,#365fd0);font-weight:800}
+.lektrus-group-remove{border:0;background:transparent;padding:8px 11px;font-size:20px;cursor:pointer;color:var(--lt-muted,#6b7e94)}
+.lektrus-group-storage-note{display:block;margin-top:12px;color:var(--lt-muted,#6b7e94);font-size:11px}
+@media(max-width:800px){.lektrus-group-layout{grid-template-columns:minmax(0,1fr)}.lektrus-group-students{max-height:none}}
