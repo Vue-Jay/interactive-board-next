@@ -19,16 +19,18 @@ type Props = {
   creating: boolean;
   onOpenBoard: (board: BoardSummary) => void;
   onCreateBoard: (association?:Partial<Organization>) => void;
+  onDeleteBoard: (board:BoardSummary) => void;
 };
 const commonSubjects = ["Математика","Русский язык","Литература","Английский язык","Физика","Химия","Биология","География","История","Обществознание","Информатика","Геометрия","Алгебра","Окружающий мир","Физическая культура"];
 const dayKey=(date:Date)=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
 const shortDate=(iso:string)=>new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 const navigate=(section:string)=>{window.history.pushState({},"",section?"/?section="+encodeURIComponent(section):"/");window.dispatchEvent(new PopStateEvent("popstate"))};
 
-export default function LectrisHub({user,role,view,boards,previews,loading,creating,onOpenBoard,onCreateBoard}:Props){
+export default function LectrisHub({user,role,view,boards,previews,loading,creating,onOpenBoard,onCreateBoard,onDeleteBoard}:Props){
   const teacher=role==="teacher";
   const [organization,setOrganization]=useState<Record<string,Organization>>(()=>readLectrisLocalOrganization(user.id));
   const [editing,setEditing]=useState<string|null>(null);
+  const [boardMenu,setBoardMenu]=useState<string|null>(null);
   const [subjectDraft,setSubjectDraft]=useState("");
   const [groupDraft,setGroupDraft]=useState("");
   const [scope,setScope]=useState<string|null>(null);
@@ -204,7 +206,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
       </span>
       <span className="lectris-hub-board-arrow" aria-hidden="true">↗</span>
     </button>
-    {teacher&&board.role==="owner"&&<button type="button" className="lectris-hub-board-edit" onClick={()=>openEdit(board)} aria-label={"Организация доски "+board.title} title="Предмет и группа">⋯</button>}
+    {teacher&&board.role==="owner"&&<div className="lektrus-home-board-menu"><button type="button" className="lectris-hub-board-edit" aria-label={"Действия с доской "+board.title} aria-expanded={boardMenu===board.id} onClick={()=>setBoardMenu(v=>v===board.id?null:board.id)}>⋯</button>{boardMenu===board.id&&<div className="lektrus-home-board-actions"><button type="button" onClick={()=>{setBoardMenu(null);openEdit(board)}}>Предмет и группа</button><button type="button" className="danger" onClick={()=>{setBoardMenu(null);onDeleteBoard(board)}}>Удалить доску</button></div>}</div>}
   </article>;
   const quickTiles=[
     {id:"students",icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M19 20v-3a5 5 0 0 0-3-4.6"/></svg>,eyebrow:"УЧАСТНИКИ",title:"Ученики",description:"Ученики и приглашения",count:null,theme:"violet"},
