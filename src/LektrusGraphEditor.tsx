@@ -229,6 +229,19 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     if(points.length===draft.points.length&&segments.length===draft.segments.length&&circles.length===draft.circles.length&&midpoints.length===draft.midpoints.length)return;
     patch({points,segments,circles,midpoints});setGeometryError("");
   };
+  const figureSections=mode!=="geometry"?
+    ["Числа и координаты","Функции","Тригонометрия"].map(name=>({name,presets:mathPresets.filter(p=>p.group===name)})):
+    figureCategory==="Геометрия"?[
+      {name:"Треугольники",ids:["triangle","triangle-right","triangle-isosceles","triangle-equilateral","triangle-obtuse"]},
+      {name:"Четырёхугольники",ids:["quadrilateral","square","rectangle","parallelogram","rhombus","kite","trapezoid","trapezoid-isosceles","trapezoid-right"]},
+      {name:"Правильные многоугольники",ids:["pentagon","hexagon","octagon"]},
+      {name:"Окружность и углы",ids:["circle","angle"]},
+      {name:"Прямые и отрезки",ids:["segment","ray","line","parallel","perpendicular"]}
+    ].map(section=>({name:section.name,presets:mathPresets.filter(p=>section.ids.includes(p.id))})):
+    [
+      {name:"Многогранники",ids:["cube","rectangular-prism","prism","pyramid","triangular-pyramid"]},
+      {name:"Тела вращения",ids:["cylinder","cone","sphere"]}
+    ].map(section=>({name:section.name,presets:mathPresets.filter(p=>section.ids.includes(p.id))}));
   return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""}`} onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
@@ -251,10 +264,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <button type="button" className={figureCategory==="Геометрия"?"active":""} aria-pressed={figureCategory==="Геометрия"} onClick={()=>setFigureCategory("Геометрия")}>Плоские фигуры</button>
               <button type="button" className={figureCategory==="Объёмные фигуры"?"active":""} aria-pressed={figureCategory==="Объёмные фигуры"} onClick={()=>setFigureCategory("Объёмные фигуры")}>Объёмные фигуры</button>
             </div>}
-            {(mode==="geometry"?[figureCategory]:["Числа и координаты","Функции","Тригонометрия"] as const).map(group=>
-              <div className="lektrus-math-preset-group" key={group}>
-                {mode!=="geometry"&&<h4>{group}</h4>}
-                <div className="lektrus-math-preset-grid">{mathPresets.filter(p=>p.group===group).map(p=>
+            {figureSections.map(section=>
+              <div className="lektrus-math-preset-group" key={section.name}>
+                <h4>{section.name}</h4>
+                <div className="lektrus-math-preset-grid">{section.presets.map(p=>
                   <button type="button" key={p.id} className={draft.figureId===p.id||!draft.figureId&&draft.title===p.title?"active":""}
                     onClick={()=>loadPreset(p.id)}><strong>{p.title}</strong><small>{p.subtitle}</small></button>
                 )}</div>
