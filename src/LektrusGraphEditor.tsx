@@ -59,10 +59,9 @@ type Props = {
 const formulas:Record<GraphDraft["type"],string>={
   linear:"2*x + 1",quadratic:"x^2 - 4*x + 3",sin:"sin(x)",cos:"cos(x)"
 };
-const finiteNumber=(input:string,fallback:number)=>Number.isFinite(Number(input))?Number(input):fallback;
 
 export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave,onCancel}:Props) {
-  const [tab,setTab]=useState<"presets"|"settings"|"points"|"geometry">("presets");
+  const [tab,setTab]=useState<"presets"|"points"|"geometry">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
@@ -129,10 +128,6 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
       angles:kind==="angle"?[...draft.angles,{a:index,vertex:index+1,b:index+2,label:"∠AOB"}]:draft.angles
     });
   };
-  const axisChoices:{id:GraphDraft["axisMode"];label:string;detail:string}[]=[
-    {id:"none",label:"0",detail:"Без осей"}, {id:"x",label:"X",detail:"1 ось"},
-    {id:"y",label:"Y",detail:"1 ось"}, {id:"both",label:"X + Y",detail:"2 оси"}
-  ];
   return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""}`} onPointerDown={e=>{if(e.target===e.currentTarget)onSave()}}>
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
@@ -142,7 +137,6 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
       </header>
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>Построить</button>
-        <button type="button" className={tab==="settings"?"active":""} onClick={()=>setTab("settings")}>Настройки</button>
         <button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.points.length}</span></button>
         <button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Фигуры <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>
       </nav>
@@ -159,12 +153,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
                     onClick={()=>loadPreset(p.id)}><strong>{p.title}</strong><small>{p.subtitle}</small></button>
                 )}</div>
               </div>)}
-          </div>}
-          {tab==="settings"&&<>
-            <label className="lektrus-graph-field"><span>Название на доске</span>
-              <input value={draft.title} maxLength={100} placeholder="Название учебного объекта" onChange={e=>patch({title:e.target.value})}/>
-            </label>
-            <p className="lektrus-graph-note">Текущий режим: {draft.purpose==="function"?"График функции":draft.purpose==="number-line"?"Числовая прямая":draft.purpose==="unit-circle"?"Тригонометрия":draft.purpose==="geometry"?"Геометрия":"Координаты"}. Для другого построения откройте вкладку «Построить».</p>
+            <label className="lektrus-graph-field"><span>Название построения</span><input value={draft.title} maxLength={100} onChange={e=>patch({title:e.target.value})}/></label>
             {draft.purpose==="function"&&<div className="lektrus-graph-section"><strong>Функция</strong>
               <label className="lektrus-graph-field"><span>Шаблон построения</span>
                 <select value={draft.type} onChange={e=>{const type=e.target.value as GraphDraft["type"];patch({type,expression:formulas[type],showCurve:true})}}>
@@ -199,24 +188,10 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
               <div className="lektrus-math-angle-shortcuts">{[0,30,45,60,90,120,135,150,180,225,270,315,330].map(v=>
                 <button key={v} type="button" onClick={()=>setCircleAngle(v)}>{formatPiRadians(v*Math.PI/180)}</button>)}</div>
             </div>}
-            <div className="lektrus-graph-section"><strong>Оси координат</strong><span className="lektrus-graph-note">Выберите 0, 1 или 2 оси. Третья ось требует отдельного 3D-инструмента.</span>
-              <div className="lektrus-graph-axis-options">{axisChoices.map(axis=><button key={axis.id} type="button" className={draft.axisMode===axis.id?"active":""} title={axis.detail} onClick={()=>patch({axisMode:axis.id})}>{axis.label}<small>{axis.detail}</small></button>)}</div>
-            </div>
-            <div className="lektrus-graph-section"><strong>Координатные пределы</strong>
-              <div className="graph-ranges">{(["xMin","xMax","yMin","yMax"] as const).map(key=><label key={key}>{key.replace("Min"," min").replace("Max"," max")}
-                <input type="number" step=".5" value={draft[key]} onChange={e=>patch({[key]:finiteNumber(e.target.value,draft[key])})}/></label>)}</div>
-              <label className="lektrus-graph-field"><span>Шаг сетки</span><select value={draft.gridStep} onChange={e=>patch({gridStep:Number(e.target.value)})}><option value={.25}>0,25</option><option value={.5}>0,5</option><option value={1}>1</option><option value={2}>2</option><option value={5}>5</option></select></label>
-              <div className="lektrus-graph-checks">
-                <label><input type="checkbox" checked={draft.grid} onChange={e=>patch({grid:e.target.checked})}/> Сетка</label>
-                <label><input type="checkbox" checked={draft.axisLabels} onChange={e=>patch({axisLabels:e.target.checked})}/> Деления осей</label>
-                <label><input type="checkbox" checked={draft.snap} onChange={e=>patch({snap:e.target.checked})}/> Привязка к сетке</label>
-                <label><input type="checkbox" checked={draft.showLabels} onChange={e=>patch({showLabels:e.target.checked})}/> Подписи точек</label>
-              </div>
-            </div>
-          </>}
+          </div>}
           {tab==="points"&&<div className="lektrus-graph-section"><div className="lektrus-graph-section-head"><strong>Редактируемые точки</strong><button type="button" disabled={draft.purpose==="unit-circle"||draft.points.length>=40} onClick={addPoint}>+ Точка</button></div>
             <small>{draft.purpose==="unit-circle"?
-              "Контрольные точки единичной окружности фиксированы. Угол меняйте во вкладке «Настройки» или перемещайте радиус.":
+              "Контрольные точки единичной окружности фиксированы. Угол можно задать во вкладке «Построить» или переместить радиус.":
               "Точки можно перемещать прямо на рисунке. На мобильном для точного положения используйте поля X и Y."}</small>
             {draft.points.length===0&&<p className="lektrus-graph-empty">Пока нет точек. Добавьте первую.</p>}
             {draft.points.map((p,i)=><div className="lektrus-graph-point-row" key={i}>
