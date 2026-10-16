@@ -4,7 +4,7 @@ export type MathPresetId =
   | "blank" | "linear" | "quadratic" | "sine" | "cosine"
   | "number-line" | "triangle" | "quadrilateral" | "angle"
   | "circle" | "unit-circle" | "cube" | "prism" | "pyramid" | "cone" | "cylinder"
-  | "triangle-right" | "triangle-equilateral" | "triangle-isosceles" | "triangle-obtuse"
+  | "triangle-right" | "triangle-equilateral" | "triangle-isosceles"
   | "square" | "rectangle" | "parallelogram" | "rhombus" | "kite"
   | "trapezoid" | "trapezoid-isosceles" | "trapezoid-right"
   | "pentagon" | "hexagon" | "octagon" | "segment" | "ray" | "line"
@@ -25,7 +25,6 @@ export const mathPresets:MathPreset[]=[
   {id:"triangle-right",title:"Прямоугольный треугольник",subtitle:"Катеты и прямой угол",group:"Геометрия"},
   {id:"triangle-isosceles",title:"Равнобедренный треугольник",subtitle:"Основание и равные стороны",group:"Геометрия"},
   {id:"triangle-equilateral",title:"Равносторонний треугольник",subtitle:"Три равные стороны",group:"Геометрия"},
-  {id:"triangle-obtuse",title:"Тупоугольный треугольник",subtitle:"Угол больше 90°",group:"Геометрия"},
   {id:"square",title:"Квадрат",subtitle:"Четыре равные стороны",group:"Геометрия"},
   {id:"rectangle",title:"Прямоугольник",subtitle:"Длина и ширина",group:"Геометрия"},
   {id:"parallelogram",title:"Параллелограмм",subtitle:"Параллельные стороны",group:"Геометрия"},
@@ -73,7 +72,6 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
     "triangle-right":[[-4,-3],[4,-3],[-4,3]],
     "triangle-isosceles":[[-4,-3],[4,-3],[0,3]],
     "triangle-equilateral":[[-4,-3],[4,-3],[0,3.928]],
-    "triangle-obtuse":[[-4,-3],[4,-3],[-2.5,1]],
     square:[[-3,-3],[3,-3],[3,3],[-3,3]],
     rectangle:[[-4,-2.5],[4,-2.5],[4,2.5],[-4,2.5]],
     parallelogram:[[-4,-3],[2,-3],[4,3],[-2,3]],
