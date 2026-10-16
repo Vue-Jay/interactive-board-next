@@ -83,7 +83,7 @@ export type Item = {
   graphShowArea?: boolean;
   graphGivenSides?: string[];
   graphGivenAngles?: string[];
-  graphTriangleInputMode?: "SSS"|"SAS";
+  graphTriangleInputMode?: "SSS"|"SAS"|"ASA";
   graphMidpoints?: { a:number; b:number; label:string }[];
   graphSnap?: boolean;
   graphAxisLabels?: boolean;
@@ -207,7 +207,7 @@ export function parseDocument(raw: string): DocumentData {
       if (i.graphIntervalEndClosed != null && typeof i.graphIntervalEndClosed !== "boolean") throw new Error("Повреждена правая граница промежутка");
       if(i.graphGivenSides != null && (!Array.isArray(i.graphGivenSides)||i.graphGivenSides.length>4||i.graphGivenSides.some(v=>typeof v!=="string"||v.length>32))) throw new Error("Повреждены заданные стороны");
       if(i.graphGivenAngles != null && (!Array.isArray(i.graphGivenAngles)||i.graphGivenAngles.length>4||i.graphGivenAngles.some(v=>typeof v!=="string"||v.length>32))) throw new Error("Повреждены заданные углы");
-      if(i.graphTriangleInputMode!=null && !["SSS","SAS"].includes(i.graphTriangleInputMode)) throw new Error("Некорректный тип построения");
+      if(i.graphTriangleInputMode!=null && !["SSS","SAS","ASA"].includes(i.graphTriangleInputMode)) throw new Error("Некорректный тип построения");
       if (i.graphTriangleVertex != null && ![0,1,2].includes(i.graphTriangleVertex)) throw new Error("Некорректная вершина треугольника");
       if (i.graphShowArea != null && typeof i.graphShowArea !== "boolean") throw new Error("Некорректные настройки площади");
       if (i.graphTriangleLines != null && (!Array.isArray(i.graphTriangleLines) || i.graphTriangleLines.length>3 || i.graphTriangleLines.some(v=>!["median","altitude","bisector"].includes(v)))) throw new Error("Повреждены построения треугольника");
