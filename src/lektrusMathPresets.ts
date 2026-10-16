@@ -84,3 +84,19 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
     graphProjections:true
   };
 }
+
+/** Render angles in radians with standard exact π fractions when appropriate. */
+export function formatPiRadians(radians:number):string {
+  if(!Number.isFinite(radians))return "";
+  const tau=2*Math.PI;
+  const normalized=((radians%tau)+tau)%tau;
+  if(normalized<.015||Math.abs(tau-normalized)<.015)return "0";
+  const fractions:[[number,number],...Array<[number,number]>]=[
+    [1,6],[1,4],[1,3],[1,2],[2,3],[3,4],[5,6],[1,1],
+    [7,6],[5,4],[4,3],[3,2],[5,3],[7,4],[11,6]
+  ];
+  for(const [n,d] of fractions)if(Math.abs(normalized-n*Math.PI/d)<.025){
+    return n===1?(d===1?"π":`π/${d}`):d===1?`${n}π`:`${n}π/${d}`;
+  }
+  return `≈ ${(normalized/Math.PI).toFixed(2)}π`;
+}
