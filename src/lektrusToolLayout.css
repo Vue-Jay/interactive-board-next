@@ -689,3 +689,33 @@ body .workspace .toolbar.compact-toolbar .toolbar-list {
    background:transparent!important;border:0!important;box-shadow:none!important;
  }
 }
+
+
+/* Mobile tools "More": only the catalogue scrolls. The header never moves. */
+@media screen and (max-width:1100px){
+ body .workspace section.mobile-tools-sheet{
+   display:flex!important;
+   flex-direction:column!important;
+   overflow:hidden!important;
+   overscroll-behavior:contain!important;
+   min-height:0!important;
+ }
+ body .workspace .mobile-tools-sheet .mobile-tools-sheet-head{
+   position:relative!important;
+   top:auto!important;
+   left:auto!important;
+   transform:none!important;
+   flex:0 0 auto!important;
+   z-index:4!important;
+   margin:0!important;
+ }
+ body .workspace .mobile-tools-sheet .mobile-tools-groups{
+   flex:0 1 auto!important;
+   min-height:0!important;
+   overflow-x:hidden!important;
+   overflow-y:auto!important;
+   overscroll-behavior:contain!important;
+   -webkit-overflow-scrolling:touch;
+   scrollbar-width:thin;
+ }
+}
