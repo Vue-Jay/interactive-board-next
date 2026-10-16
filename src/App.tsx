@@ -7205,6 +7205,23 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               : `Выделено: ${selected.length} · Alt+перетаскивание — копия · стрелки — сдвиг · Shift+стрелка — 10 px`
             : `Сейчас: ${toolShortLabel[tool]} · ЛКМ — выделение областью · удерживать ПКМ — рука · ПКМ — меню`}
         </div>
+        <div className="board-controls">
+          <button aria-label="Уменьшить" title="Уменьшить" onClick={() => zoom(0.8)}><Icon name="zoom-out" size={16} /></button>
+          <button
+            className="zoom-value"
+            onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
+            title="Вернуть масштаб 100%"
+          >
+            {Math.round(view.zoom * 100)}%
+          </button>
+          <button aria-label="Увеличить" title="Увеличить" onClick={() => zoom(1.25)}><Icon name="zoom-in" size={16} /></button>
+          <span className="board-controls-separator" />
+          <div className="lektrus-background-anchor">
+          <button type="button" className={"grid-toggle lektrus-background-toggle"+(backgroundMenuOpen?" active":"")}
+            aria-label="Настройки фона доски" aria-expanded={backgroundMenuOpen} aria-controls="lektrus-background-settings"
+            onClick={()=>setBackgroundMenuOpen(x=>!x)} title="Фон доски: узор, цвет и прозрачность">
+            <Icon name={boardBackground.mode==="dots"?"dots":boardBackground.mode==="grid"?"grid":"plain"} size={16}/>
+          </button>
         {backgroundMenuOpen&&<div id="lektrus-background-settings" className="lektrus-background-settings"
           role="group" aria-label="Настройки фона доски" onPointerDown={e=>e.stopPropagation()}>
           <div className="lektrus-background-head"><strong>Фон доски</strong>
@@ -7232,22 +7249,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             <small>Общий фон для всех участников</small>
           </div>
         </div>}
-        <div className="board-controls">
-          <button aria-label="Уменьшить" title="Уменьшить" onClick={() => zoom(0.8)}><Icon name="zoom-out" size={16} /></button>
-          <button
-            className="zoom-value"
-            onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
-            title="Вернуть масштаб 100%"
-          >
-            {Math.round(view.zoom * 100)}%
-          </button>
-          <button aria-label="Увеличить" title="Увеличить" onClick={() => zoom(1.25)}><Icon name="zoom-in" size={16} /></button>
-          <span className="board-controls-separator" />
-          <button type="button" className={"grid-toggle lektrus-background-toggle"+(backgroundMenuOpen?" active":"")}
-            aria-label="Настройки фона доски" aria-expanded={backgroundMenuOpen} aria-controls="lektrus-background-settings"
-            onClick={()=>setBackgroundMenuOpen(x=>!x)} title="Фон доски: узор, цвет и прозрачность">
-            <Icon name={boardBackground.mode==="dots"?"dots":boardBackground.mode==="grid"?"grid":"plain"} size={16}/>
-          </button>
+          </div>
           <button
             className={`snap-toggle ${snapEnabled ? "active" : ""}`}
             onClick={() => { setSnapEnabled((value) => !value); setGuides({}); }}
