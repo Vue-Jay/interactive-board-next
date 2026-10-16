@@ -23,6 +23,6 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
  };
  if(id==="math-function")return {...common,graphExpression:"x^2 - 4*x + 3"};
  if(id==="math-coordinate")return {...common,graphExpression:"",graphPoints:[{x:2,y:3,label:"A",color:"#111111"},{x:-3,y:1,label:"B",color:"#111111"}]};
- if(id==="math-trigonometry")return {...common,graphXMin:-1.6,graphXMax:1.6,graphYMin:-1.6,graphYMax:1.6,graphGridStep:.5,graphCircles:[{x:0,y:0,r:1,color:"#365fc8"}],graphPoints:[{x:1,y:0,label:"0",color:"#111111"},{x:0,y:1,label:"π/2",color:"#111111"},{x:-1,y:0,label:"π",color:"#111111"},{x:0,y:-1,label:"3π/2",color:"#111111"}]};
- return {...common,graphXMin:-8,graphXMax:8,graphYMin:-6,graphYMax:6,graphPoints:[{x:-4,y:-3,label:"A",color:"#111111"},{x:4,y:-3,label:"B",color:"#111111"},{x:0,y:3,label:"C",color:"#111111"}],graphPolygons:[{points:[0,1,2],color:"#365fc8"}]};
+ if(id==="math-trigonometry")return {...common,graphXMin:-1.6,graphXMax:1.6,graphYMin:-1.6,graphYMax:1.6,graphGridStep:.5,graphCircles:[{center:0,edge:1,label:"Единичная окружность",measure:false}],graphPoints:[{x:0,y:0,label:"O",color:"#111111"},{x:1,y:0,label:"0",color:"#111111"},{x:0,y:1,label:"π/2",color:"#111111"},{x:-1,y:0,label:"π",color:"#111111"},{x:0,y:-1,label:"3π/2",color:"#111111"}]};
+ return {...common,graphXMin:-8,graphXMax:8,graphYMin:-6,graphYMax:6,graphPoints:[{x:-4,y:-3,label:"A",color:"#111111"},{x:4,y:-3,label:"B",color:"#111111"},{x:0,y:3,label:"C",color:"#111111"}],graphPolygons:[{points:[0,1,2],label:"ABC",measure:false}]};
 }
