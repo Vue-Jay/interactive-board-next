@@ -5603,6 +5603,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             <div className="lektrus-board-actions-popover" role="group" aria-label="Действия с доской">
               <div className="lektrus-board-actions-title">Действия с доской</div>
               <div className="lektrus-board-actions-items">
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setControlSettingsOpen(true)}}><Icon name="settings" size={18}/><span>Управление доской</span></button>
                 {boardSummary.role==="owner"&&<button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);setSharing(true)}}>
                   <Icon name="add-person" size={18}/><span>Участники</span>
                 </button>}
@@ -5624,6 +5625,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
             <div className="topbar-more-popover">
+              <button type="button" className="lektrus-controls-menu-entry" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setControlSettingsOpen(true)}}><Icon name="settings" size={17}/><span>Управление доской</span></button>
               <div className="topbar-menu-account">
                 <span className="account-avatar" aria-hidden="true">{authUser.name.trim().charAt(0).toUpperCase() || "U"}</span>
                 <span><strong>{authUser.name}</strong><small>{BOARD_ROLE_LABELS[boardSummary.role]}{authUser.email?` · ${authUser.email}`:""}</small></span>
