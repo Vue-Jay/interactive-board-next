@@ -241,3 +241,42 @@
  .lectris-workspace-stage .lectris-library-toolbar{gap:5px!important}
  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort select{width:112px!important}
 }
+
+
+/* Lektrus refinements: predictable spacing at all desktop widths */
+.lectris-workspace-stage .lectris-library-toolbar {column-gap:10px!important;row-gap:10px!important;padding:10px 12px!important}
+.lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort {gap:8px!important;min-width:0!important}
+.lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort select {min-width:0!important;box-sizing:border-box!important}
+.lectris-workspace-stage .lectris-library-toolbar .lectris-library-extras{gap:7px!important}
+.lectris-workspace-stage .lectris-library-toolbar .backup-menu{gap:7px!important}
+@media(min-width:1100px){
+ .lectris-workspace-stage .lectris-library-toolbar{flex-wrap:wrap!important}
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-search{width:180px!important;max-width:225px!important;flex:1 1 165px!important}
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort{flex:0 1 auto!important}
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-extras{margin-left:auto!important}
+}
+.lectris-workspace-stage .materials-content :is(button,input,select,.materials-folders,.materials-folder-row,.materials-toolbar,.materials-stats,.material-card){font-size:13px!important}
+.lectris-workspace-stage .materials-content :is(.material-card small,.materials-folders small,.materials-stats span){font-size:12px!important}
+.lectris-workspace-stage .materials-content .materials-toolbar{display:flex!important;gap:10px!important;flex-wrap:wrap!important;align-items:center!important}
+.lectris-workspace-stage .materials-content .materials-toolbar input[type="search"]{flex:1 1 220px!important;width:auto!important;min-width:165px!important;max-width:none!important}
+.lectris-workspace-stage .materials-content .materials-toolbar button{font-size:13px!important}
+.lectris-workspace-stage .materials-content .materials-toolbar button:has(+span){font-size:14px!important}
+.lectris-workspace-stage .templates-content .templates-toolbar{display:flex!important;gap:12px!important;padding:12px!important;align-items:center!important;flex-wrap:wrap!important}
+.lectris-workspace-stage .templates-toolbar input[type="search"]{flex:1 1 220px!important;min-width:165px!important;max-width:370px!important}
+.lectris-workspace-stage .templates-toolbar select{min-width:150px!important}
+.lectris-workspace-stage .templates-toolbar>span{margin-left:auto!important;font-size:12px!important}
+.lectris-workspace-stage .schedule-side{align-content:start!important}
+.lectris-workspace-stage .schedule-day header{padding:0!important}
+.lectris-workspace-stage .lektrus-schedule-day-select{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;width:100%!important;min-height:55px!important;border:0!important;border-bottom:1px solid var(--lt-line,#dae2ef)!important;border-radius:10px 10px 0 0!important;background:transparent!important;color:inherit!important;cursor:pointer!important}
+.lectris-workspace-stage .lektrus-schedule-day-select:hover{background:var(--lt-hover,#edf2ff)!important}
+.lectris-workspace-stage .schedule-day.is-selected{border-color:var(--lt-primary,#365fd0)!important;box-shadow:inset 0 0 0 1px var(--lt-primary,#365fd0)!important}
+.lectris-workspace-stage .schedule-day.is-selected .lektrus-schedule-day-select{color:var(--lt-primary,#365fd0)!important;background:var(--lt-subtle,#f0f3fd)!important}
+.lectris-workspace-stage .schedule-add-day{display:none!important}
+.lektrus-day-editor{display:grid;gap:8px;border:1px solid var(--lt-line,#d9e0ed);border-radius:12px;padding:12px;background:var(--lt-surface,#fff);margin:10px 0}
+.lektrus-day-editor h3{margin:0 0 4px!important;font-size:14px!important}
+.lektrus-day-editor label{display:grid;gap:4px;font-size:11px;font-weight:700}
+.lektrus-day-editor :is(input,select){width:100%;min-width:0;border:1px solid var(--lt-line,#cdd8ea);border-radius:7px;background:var(--lt-surface,#fff);color:var(--lt-text,#192944);min-height:32px;padding:5px 8px;font:inherit;font-size:12px}
+.lektrus-day-editor-actions{display:flex;gap:8px;flex-wrap:wrap}
+.lektrus-day-editor-actions button{padding:8px 12px;border-radius:7px;border:1px solid var(--lt-line,#cad4e5);cursor:pointer}
+.lektrus-day-editor-actions button:first-child{background:var(--lt-primary,#365fd0);color:white}
+@media(max-width:740px){.lectris-workspace-stage .templates-toolbar input[type="search"]{max-width:none!important}}
