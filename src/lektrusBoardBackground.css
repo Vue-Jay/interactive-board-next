@@ -183,3 +183,62 @@ html body .topbar .board-home-button::after{
 .lektrus-control-settings>footer button{min-height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--lt-line,#d6dfeb);cursor:pointer}
 .lektrus-control-settings>footer .primary{background:var(--lt-primary,#416dd8);color:#fff;border-color:transparent}
 @media(max-width:460px){.lektrus-controls-modes{grid-template-columns:1fr}.lektrus-controls-body>label:not(.lektrus-controls-check){grid-template-columns:minmax(0,1fr) 35px}.lektrus-controls-body>label:not(.lektrus-controls-check) input{grid-column:1}}
+
+
+/* Board actions must be an anchored popup on every desktop/tablet breakpoint.
+   Earlier desktop rules exposed <details> but only styled its menu on mobile. */
+html body .topbar .lektrus-board-actions-menu{
+ position:relative!important;display:block!important;flex:0 0 34px!important;
+ width:34px!important;min-width:34px!important;max-width:34px!important;
+ height:34px!important;margin:0!important;z-index:1600!important;
+}
+html body .topbar .lektrus-board-actions-menu>summary{
+ box-sizing:border-box!important;display:grid!important;place-items:center!important;
+ width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;
+ padding:0!important;list-style:none!important;border:1px solid var(--lt-line,#d8e0eb)!important;
+ border-radius:9px!important;background:var(--lt-subtle,#f5f7fb)!important;
+ color:var(--lt-secondary,#405775)!important;cursor:pointer!important;
+}
+html body .topbar .lektrus-board-actions-menu>summary::-webkit-details-marker{display:none!important}
+html body .topbar .lektrus-board-actions-menu:not([open])>.lektrus-board-actions-popover{display:none!important}
+html body .topbar .lektrus-board-actions-menu[open]>.lektrus-board-actions-popover{
+ display:block!important;position:fixed!important;
+ left:auto!important;right:12px!important;top:calc(54px + env(safe-area-inset-top,0px))!important;bottom:auto!important;
+ z-index:5000!important;width:min(290px,calc(100vw - 24px))!important;
+ max-height:calc(100dvh - 66px - env(safe-area-inset-top,0px))!important;
+ overflow-x:hidden!important;overflow-y:auto!important;
+ box-sizing:border-box!important;padding:7px!important;margin:0!important;
+ border:1px solid var(--lt-line,#d7e0ec)!important;
+ border-radius:12px!important;background:var(--lt-raised,#fff)!important;
+ color:var(--lt-text,#25364a)!important;box-shadow:0 12px 36px rgba(23,40,68,.18)!important;
+}
+html body .topbar .lektrus-board-actions-popover .lektrus-board-actions-title{
+ display:block!important;padding:10px 11px!important;border-bottom:1px solid var(--lt-line,#d8e0eb)!important;
+ font-size:12px!important;font-weight:800!important;white-space:nowrap!important;
+}
+html body .topbar .lektrus-board-actions-popover .lektrus-board-actions-items{
+ display:flex!important;flex-direction:column!important;align-items:stretch!important;
+ gap:2px!important;padding:5px 0 0!important;
+}
+html body .topbar .lektrus-board-actions-popover .lektrus-board-actions-items>button{
+ display:flex!important;align-items:center!important;justify-content:flex-start!important;flex:0 0 auto!important;
+ gap:10px!important;width:100%!important;height:auto!important;min-height:40px!important;
+ padding:8px 10px!important;margin:0!important;border:0!important;border-radius:8px!important;
+ background:transparent!important;color:var(--lt-text,#25364a)!important;
+ font-size:12px!important;font-weight:600!important;text-align:left!important;
+ white-space:normal!important;cursor:pointer!important;
+}
+html body .topbar .lektrus-board-actions-popover .lektrus-board-actions-items>button:hover{background:var(--lt-hover,#edf2fa)!important}
+html body .topbar .lektrus-board-actions-popover .lektrus-board-actions-items>button svg{flex:0 0 18px!important;width:18px!important;height:18px!important}
+html body .topbar .topbar-more-popover .lektrus-controls-menu-entry{
+ display:flex!important;align-items:center!important;gap:9px!important;
+ width:100%!important;padding:10px 12px!important;border:0!important;border-radius:8px!important;
+ background:transparent!important;color:inherit!important;text-align:left!important;font-size:12px!important;cursor:pointer!important;
+}
+html body .topbar .topbar-more-popover .lektrus-controls-menu-entry:hover{background:var(--lt-hover,#edf2fa)!important}
+@media(max-width:700px){
+ html body .topbar .lektrus-board-actions-menu[open]>.lektrus-board-actions-popover{
+ top:calc(50px + env(safe-area-inset-top,0px))!important;right:8px!important;
+ max-height:calc(100dvh - 60px - env(safe-area-inset-top,0px))!important;
+ }
+}
