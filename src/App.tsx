@@ -1361,6 +1361,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [remoteInk, setRemoteInk] = useState<Record<string, LiveInkMessage>>({});
   const [inkDiagnostics, setInkDiagnostics] = useState("подключается");
   const [developerSettingsOpen, setDeveloperSettingsOpen] = useState(false);
+  const [controlSettingsOpen,setControlSettingsOpen]=useState(false);
+  type ControlSettings={wheel:"scroll"|"zoom";zoomSpeed:number;panSpeed:number;invertZoom:boolean;horizontalShift:boolean};
+  const controlSettingsKey="lektrus.controls.v1."+authUser.id;
+  const [controlSettings,setControlSettings]=useState<ControlSettings>(()=>{
+    try{const v=JSON.parse(localStorage.getItem(controlSettingsKey)||"null") as Partial<ControlSettings>|null;
+      return {wheel:v?.wheel==="zoom"?"zoom":"scroll",zoomSpeed:Math.max(.4,Math.min(3,Number(v?.zoomSpeed)||1)),panSpeed:Math.max(.4,Math.min(3,Number(v?.panSpeed)||1)),invertZoom:v?.invertZoom===true,horizontalShift:v?.horizontalShift!==false};
+    }catch{return {wheel:"scroll",zoomSpeed:1,panSpeed:1,invertZoom:false,horizontalShift:true}}
+  });
+  useEffect(()=>{try{localStorage.setItem(controlSettingsKey,JSON.stringify(controlSettings))}catch{}},[controlSettingsKey,controlSettings]);
+  const controlSettingsRef=useRef(controlSettings);
+  controlSettingsRef.current=controlSettings;
   const [developerPrefs, setDeveloperPrefs] = useState(readDeveloperPreferences);
   const {showInkDiagnostics,showBoardDiagnostics,showPerformanceDiagnostics} = developerPrefs;
   const changeDeveloperPref=(key:keyof typeof developerPrefs,value:boolean)=>{
@@ -2774,16 +2785,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if ((e.target as HTMLElement).closest("textarea")) return;
       e.preventDefault();
       if (gesture.current) return;
-      const unit =
-        e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? element.clientHeight : 1;
-      if (e.ctrlKey || e.metaKey)
-        zoom(Math.exp(-e.deltaY * unit * 0.002), local(e.clientX, e.clientY));
-      else
-        setView((v) => ({
-          ...v,
-          x: v.x - e.deltaX * unit,
-          y: v.y - e.deltaY * unit,
-        }));
+      const settings=controlSettingsRef.current;
+      const unit=e.deltaMode===1?16:e.deltaMode===2?element.clientHeight:1;
+      const ctrl=e.ctrlKey||e.metaKey;
+      const useZoom=ctrl ? settings.wheel!=="zoom" : settings.wheel==="zoom";
+      if(useZoom){
+        const direction=settings.invertZoom?-1:1;
+        zoom(Math.exp(-e.deltaY*unit*.002*settings.zoomSpeed*direction),local(e.clientX,e.clientY));
+      }else{
+        const dx=e.deltaX*unit*settings.panSpeed,dy=e.deltaY*unit*settings.panSpeed;
+        const shiftHorizontal=settings.horizontalShift&&e.shiftKey&&Math.abs(dx)<Math.abs(dy);
+        setView(v=>({...v,x:v.x-(shiftHorizontal?dy:dx),y:v.y-(shiftHorizontal?0:dy)}));
+      }
     };
     element.addEventListener("wheel", wheel, { passive: false });
     return () => element.removeEventListener("wheel", wheel);
@@ -5490,6 +5503,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         <div className="topbar-right"><details className="lectris-layout-picker">
             <summary title="Рабочая раскладка" aria-label="Выбрать раскладку доски"><Icon name="settings" size={17}/></summary>
             <div className="lectris-layout-menu">
+              <button type="button" className="lectris-panel-entry" onClick={e=>{setControlSettingsOpen(true);e.currentTarget.closest("details")?.removeAttribute("open")}}>Управление доской…</button>
               <strong>Рабочая раскладка</strong>
               {([["standard","Стандартная"],["lesson","Проведение урока"],["focus","Фокус на доске"]] as const).map(([id,label])=>
                 <button type="button" key={id} className={lectrisLayout===id?"active":""}
@@ -5739,6 +5753,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         </div>
       </header>
       <main className={`workspace lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
+        {controlSettingsOpen&&<div className="access-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget)setControlSettingsOpen(false)}}><section className="access-modal lektrus-control-settings" role="dialog" aria-modal="true" aria-label="Настройки управления доской" onPointerDown={e=>e.stopPropagation()}>
+          <header className="lektrus-controls-head"><div><small>ЛИЧНЫЕ НАСТРОЙКИ</small><h2>Управление доской</h2><p>Не влияет на управление других участников</p></div><button type="button" aria-label="Закрыть" onClick={()=>setControlSettingsOpen(false)}>×</button></header>
+          <div className="lektrus-controls-body">
+            <strong>Колесо мыши</strong>
+            <div className="lektrus-controls-modes">{([["scroll","Прокрутка","Колесо перемещает доску, Ctrl + колесо меняет масштаб"],["zoom","Масштаб","Колесо увеличивает или уменьшает, Ctrl + колесо перемещает доску"]] as const).map(([value,label,description])=><button type="button" key={value} className={controlSettings.wheel===value?"active":""} onClick={()=>setControlSettings(v=>({...v,wheel:value}))}><b>{label}</b><span>{description}</span></button>)}</div>
+            <label>Скорость масштабирования <input type="range" min=".4" max="3" step=".2" value={controlSettings.zoomSpeed} onChange={e=>setControlSettings(v=>({...v,zoomSpeed:Number(e.target.value)}))}/><output>{controlSettings.zoomSpeed.toFixed(1)}×</output></label>
+            <label>Скорость прокрутки <input type="range" min=".4" max="3" step=".2" value={controlSettings.panSpeed} onChange={e=>setControlSettings(v=>({...v,panSpeed:Number(e.target.value)}))}/><output>{controlSettings.panSpeed.toFixed(1)}×</output></label>
+            <label className="lektrus-controls-check"><input type="checkbox" checked={controlSettings.invertZoom} onChange={e=>setControlSettings(v=>({...v,invertZoom:e.target.checked}))}/> Обратное направление масштабирования</label>
+            <label className="lektrus-controls-check"><input type="checkbox" checked={controlSettings.horizontalShift} onChange={e=>setControlSettings(v=>({...v,horizontalShift:e.target.checked}))}/> Shift + колесо: горизонтальная прокрутка</label>
+            <p className="lektrus-controls-note">Тачпад подчиняется этим настройкам. Жест двумя пальцами на сенсорном экране остаётся независимым.</p>
+          </div>
+          <footer><button type="button" onClick={()=>setControlSettings({wheel:"scroll",zoomSpeed:1,panSpeed:1,invertZoom:false,horizontalShift:true})}>Сбросить</button><button type="button" className="primary" onClick={()=>setControlSettingsOpen(false)}>Готово</button></footer>
+        </section></div>}
         {lectrisPanelSettingsOpen&&<LectrisPanelSettings value={lectrisPanelLayout} onChange={setLectrisPanelLayout} onClose={()=>setLectrisPanelSettingsOpen(false)}/>}
 
         {!objectEditorOpen && !presentation && <LectrisQuickProperties userId={authUser.id}
