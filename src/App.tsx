@@ -15,6 +15,7 @@ import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./r
 import "./App.css";
 import AuthScreen from "./AuthScreen";
 import GeometryInstruments from "./GeometryInstruments";
+import LektrusSubjectPicker from "./LektrusSubjectPicker";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
@@ -152,7 +153,7 @@ const iconBody = (name: IconName) => {
     case "marker": return <><path d="m4.5 15.6 9.9-10a1.9 1.9 0 0 1 2.7 0l2 2a1.9 1.9 0 0 1 0 2.7l-9.8 9.8H4.5v-4.5Z"/><path d="m13.1 7 4.6 4.5M6.2 16.6l2.2 2.2"/><path d="M3 21h11" strokeWidth="2.6"/></>;
     case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
     case "section-arrows": return <><path d="M4 24C9 24 8 15 14 15S20 22 27 7"/><path d="m20.5 9 7-3-1 7"/><circle cx="4" cy="24" r="2.3" fill="var(--lt-raised,#fff)"/><circle cx="14" cy="15" r="2.3" fill="var(--lt-raised,#fff)"/></>;
-    case "section-create": return <><path d="M3 6H14M8.5 6V28" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/><path d="M23.5 3.5 16.5 16h14z" strokeLinejoin="round"/><circle cx="19" cy="24" r="4.4"/><rect x="25" y="20" width="6" height="8" rx=".6"/></>;
+    case "section-create": return <><path d="M2 4.5H15.2M8.6 4.5V27.5" strokeWidth="2.5" strokeLinecap="round"/><path d="M24 4.2 18.5 14.3h11Z" strokeLinejoin="round"/><circle cx="22.3" cy="23" r="4.1"/><rect x="27.9" y="18.9" width="4.1" height="8.2" rx=".5"/></>;
     case "section-studies": return <><rect x="2.5" y="3.5" width="15" height="21.5" rx="1.5"/><path d="M2.5 10.5h15M2.5 17.5h15M10 3.5v21.5"/><text x="18.8" y="28" fill="currentColor" stroke="none" fontFamily="Georgia,serif" fontSize="20" fontWeight="bold" fontStyle="italic">ƒx</text></>;
     case "section-media": return <><rect x="2.5" y="3.5" width="18" height="19" rx="2"/><circle cx="8" cy="9.5" r="2"/><path d="m4.5 19 5.5-6 4.2 4.4 3.6-3.4"/><rect x="17.8" y="16" width="11.5" height="11.5" rx="2" fill="var(--lt-raised,#fff)"/><path d="m22 19 4.2 2.8-4.2 2.7Z"/></>;
     case "connector": return <><path d="M3.5 12h17"/><path d="M14.5 5.5 21 12l-6.5 6.5"/></>;
@@ -5506,7 +5507,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             readOnly={!canEdit}
           />
           {authUser.isGuest&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
-          <label className="lektrus-board-subject-picker" title="Введите первые буквы предмета"><span>Предмет</span><input type="text" list="lektrus-board-subject-list" aria-label="Найти или сменить предмет доски" placeholder="Выбрать предмет" value={lectrisBoardOrganization.subject} disabled={!canEdit} maxLength={80} onChange={e=>changeBoardSubject(e.target.value)}/><datalist id="lektrus-board-subject-list">{subjectCategories.filter(Boolean).map(subject=><option key={subject} value={subject}/>)}</datalist></label>
+          <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={!canEdit} onChange={changeBoardSubject}/>
         </div>
         <div className="topbar-right"><details className="lectris-layout-picker">
             <summary title="Рабочая раскладка" aria-label="Выбрать раскладку доски"><Icon name="settings" size={17}/></summary>
