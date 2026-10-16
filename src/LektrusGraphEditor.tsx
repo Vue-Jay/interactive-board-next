@@ -605,6 +605,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <div className="lektrus-graph-inline"><select aria-label="Начало" value={segment.a} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,a:Number(e.target.value)}:v)})}>{pointOptions()}</select>
                 <select aria-label="Конец" value={segment.b} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,b:Number(e.target.value)}:v)})}>{pointOptions()}</select>
                 <select aria-label="Тип линии" value={segment.kind} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,kind:e.target.value as typeof segment.kind}:v)})}><option value="segment">Отрезок</option><option value="ray">Луч</option><option value="line">Прямая</option></select></div>
+              <label className="lektrus-graph-field"><span>Подпись или заданная длина</span><input aria-label={"Подпись или длина линии "+(i+1)} placeholder="Например, 5 см или a" maxLength={32} value={segment.label} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/></label>
+            </div>)}
+            {draft.midpoints.map((midpoint,i)=><div className="lektrus-graph-construction" key={"midpoint"+i}>
+              <div className="lektrus-graph-section-head"><strong>Середина отрезка {i+1}</strong><button type="button" onClick={()=>patch({midpoints:draft.midpoints.filter((_,j)=>j!==i)})}>Удалить</button></div>
+              <label className="lektrus-graph-field"><span>Название точки</span><input maxLength={24} value={midpoint.label} onChange={e=>patch({midpoints:draft.midpoints.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/></label>
             </div>)}
             {draft.angles.map((angle,i)=><div className="lektrus-graph-construction" key={"angle"+i}>
               <div className="lektrus-graph-section-head"><strong>Угол {i+1}</strong><button type="button" onClick={()=>patch({angles:draft.angles.filter((_,j)=>j!==i)})}>Удалить</button></div>
