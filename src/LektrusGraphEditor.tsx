@@ -79,7 +79,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const equalSideFigure=["square","rhombus","pentagon","hexagon","octagon"].includes(draft.figureId);
   const rectangleFigure=["square","rectangle"].includes(draft.figureId);
   const parameterQuadrilateral=["parallelogram","rhombus","trapezoid","trapezoid-isosceles","trapezoid-right"].includes(draft.figureId);
-  const hasTransversal=draft.figureId==="parallel"&&draft.points.length>=6&&draft.segments.some(seg=>seg.a===4&&seg.b===5);
+  const transversal=draft.figureId==="parallel"?draft.segments.find((seg,i)=>i>=2&&seg.kind==="line"):undefined;
+  const hasTransversal=!!transversal&&!!draft.points[transversal.a]&&!!draft.points[transversal.b];
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onClose()}
@@ -643,7 +644,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                       angles:[...draft.angles,{a:0,vertex:n+1,b:n,label:"90°"}]});
                   }}>+ Перпендикуляр между прямыми</button>
                   <button type="button" disabled={draft.points.length>37} onClick={()=>{
-                    const a=draft.points[0],b=draft.points[1],c=draft.points[4],d=draft.points[5];
+                    const a=draft.points[0],b=draft.points[1],c=transversal?draft.points[transversal.a]:undefined,d=transversal?draft.points[transversal.b]:undefined;
                     if(!a||!b||!c||!d)return;
                     const u={x:b.x-a.x,y:b.y-a.y},v={x:d.x-c.x,y:d.y-c.y};
                     const det=u.x*v.y-u.y*v.x;if(Math.abs(det)<.001){setGeometryError("Секущая должна пересекать параллельные прямые.");return}
@@ -661,8 +662,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                   }}>+ Биссектриса угла при секущей</button>
                 </div>
                 <button type="button" onClick={()=>{
-                  const second=removeGraphPoint(removeGraphPoint(draft,5),4);
-                  onChange({...second,parallelMarks:[],givenAngles:[]});
+                  if(!transversal)return;
+                  const sorted=[transversal.a,transversal.b].sort((a,b)=>b-a);
+                  const cleaned=sorted.reduce((state,index)=>removeGraphPoint(state,index),draft);
+                  onChange({...cleaned,parallelMarks:[],givenAngles:[]});
                 }}>Убрать секущую</button>
               </>}
             </div>}
