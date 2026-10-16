@@ -6,7 +6,7 @@ const itemNames: Record<Item["kind"], string> = {
   pen:"Карандаш", marker:"Маркер", shape:"Фигура", text:"Текст",
   sticky:"Стикер", image:"Изображение", pdf:"PDF", frame:"Фрейм",
   connector:"Линия", comment:"Комментарий", table:"Таблица",
-  formula:"Формула", graph:"График", checklist:"Чек-лист",
+  formula:"Формула", graph:"График", fraction:"Дробь", checklist:"Чек-лист",
   quiz:"Тест", flashcard:"Карточка", cover:"Шторка", linkmedia:"Медиа",
 };
 const colorKinds = new Set<Item["kind"]>(["pen","marker","shape","text","sticky","connector","comment","formula","graph","checklist","quiz","flashcard","frame"]);
