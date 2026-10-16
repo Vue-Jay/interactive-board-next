@@ -19,6 +19,7 @@ import LektrusSubjectPicker from "./LektrusSubjectPicker";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
+import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
@@ -1622,6 +1623,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setLectrisBoardOrganization(next);
     queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
   };
+  const mathematicalSubjectTools=useMemo(()=>subjectToolsFor(lectrisBoardOrganization.subject),[lectrisBoardOrganization.subject]);
   const lectrisSubjectTools=useMemo<Tool[]>(()=>{
     const v=lectrisBoardOrganization.subject.toLocaleLowerCase("ru");
     if(!v)return [];
@@ -6387,7 +6389,21 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>)}
           </div>
         </LektrusToolOverflow>}
-        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} subjects={subjectCategories.filter(Boolean)} tools={lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{finishEdit();setTool(id as Tool);setSubjectToolsOpen(false)}}/>}
+        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(()=>canEdit&&toolAllowedForRole("graph")).map(entry=>({id:entry.id,label:entry.label,icon:<Icon name={entry.id==="math-function"?"graph":entry.id==="math-trigonometry"?"formula":"shape"} size={21}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
+          finishEdit();
+          if(mathematicalSubjectTools.some(entry=>entry.id===id)){
+            if(!canEdit||!toolAllowedForRole("graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
+            const rect=board.current?.getBoundingClientRect();
+            const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
+            const centerY=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
+            const item=makeSubjectToolItem(id as SubjectToolId,centerX,centerY,createId);
+            commit([...itemsRef.current,item]);
+            setSelected([item.id]);
+            setTool("select");
+            setSubjectToolsOpen(false);
+            window.setTimeout(()=>openGraphEditor(item),0);
+          }else{setTool(id as Tool);setSubjectToolsOpen(false)}
+        }}/>}
         {lectrisCustomizeOpen&&<LectrisToolbarSettings
           tools={tools.filter(t=>t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
           pinned={lectrisPinned} defaults={lectrisDefaultPinned}
