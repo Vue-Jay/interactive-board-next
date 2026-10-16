@@ -2330,7 +2330,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setEditing(null);
     setSelected([]);
     setSpace(false);
-    setTool("select");
+    // Applying local or remote board data must never change the chosen tool.
     setTitle(data.title);
     setBoardBackground(normalizeBoardBackground(data.background));
     if (!fromRemote) setView(data.view);
@@ -3661,6 +3661,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         return;
       }
       if (!mod && !e.altKey && keyTools[e.code]) {
+        // A held drawing gesture owns its tool until pointer release.
+        if(gesture.current || eraserSession.current || e.repeat)return;
         e.preventDefault();
         const shortcutTool=keyTools[e.code];
         if(!toolAllowedForRole(shortcutTool)){setNotice("Этот инструмент доступен преподавателю");return}
