@@ -128,3 +128,22 @@
 }
 .lectris-hub-sync button:hover:not(:disabled){background:#e4edff}
 .lectris-hub-sync button:disabled{opacity:.55;cursor:wait}
+
+/* Home timetable: compact interactive month selector */
+.lektrus-calendar-panel{min-width:0}
+.lektrus-calendar-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:13px 0 9px}
+.lektrus-calendar-toolbar>strong{font-size:13px;text-transform:capitalize}
+.lektrus-calendar-toolbar>div{display:flex;gap:3px}
+.lektrus-calendar-toolbar button{border:1px solid var(--lt-line,#d4dce8);border-radius:8px;background:var(--lt-surface,#fff);color:var(--lt-text,#1c2940);min-height:29px;padding:0 8px;cursor:pointer}
+.lektrus-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.lektrus-calendar-weekday{text-align:center;color:var(--lt-muted,#7a879a);font-size:10px;font-weight:700;padding:4px 0}
+.lektrus-calendar-grid button{min-width:0;aspect-ratio:1.2;position:relative;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--lt-text,#1c2940);font-size:11px;cursor:pointer}
+.lektrus-calendar-grid button.is-other-month{opacity:.32}
+.lektrus-calendar-grid button.is-today{border-color:var(--lt-primary,#365fd0)}
+.lektrus-calendar-grid button.is-selected{background:var(--lt-primary,#365fd0);color:#fff!important}
+.lektrus-calendar-grid button:hover:not(.is-selected){background:var(--lt-hover,#eef2fa)}
+.lektrus-calendar-grid button i{position:absolute;width:4px;height:4px;border-radius:50%;background:var(--lt-primary,#365fd0);bottom:3px;left:calc(50% - 2px)}
+.lektrus-calendar-grid button.is-selected i{background:white}
+.lektrus-calendar-day-heading{margin:12px 0 7px;padding-top:10px;border-top:1px solid var(--lt-line,#d4dce8);display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.lektrus-calendar-day-heading span{font-size:10px;color:var(--lt-muted,#7a879a)}
+@media(max-width:500px){.lektrus-calendar-grid button{min-height:33px;aspect-ratio:auto}}
