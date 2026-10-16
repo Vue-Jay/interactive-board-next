@@ -22,7 +22,7 @@ import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusGraphEditor, {removeGraphPoint, removeGraphBoardPoint, type GraphDraft} from "./LektrusGraphEditor";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
-import {formatPiRadians} from "./lektrusMathPresets";
+import {formatPiRadians,makeMathPresetItem} from "./lektrusMathPresets";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
@@ -3284,7 +3284,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       setTableDraft({ rows, cols, cells: [...cells], header: true, fontSize: 13, align: "left", stripe: false, compact: false });
       return;
     } else if (tool === "graph") {
-      e.preventDefault(); const item: Item={id:createId(),kind:"graph",x:p.x-260,y:p.y-170,width:520,height:340,text:"",graphType:"quadratic",graphExpression:"",graphConnectPoints:true,graphA:1,graphB:0,graphC:0,graphXMin:-10,graphXMax:10,graphYMin:-10,graphYMax:10,graphGrid:true,graphPoints:[],graphShowLabels:true,graphSnap:true,graphAxisLabels:true,graphGridStep:1,graphShowCurve:true,graphProjections:false,graphSegments:[],graphAngles:[],graphCircles:[],graphPolygons:[],graphMidpoints:[],color:"#5355c9"}; commit([...itemsRef.current,item]);setSelected([item.id]);setTool("select");window.setTimeout(()=>openGraphEditor(item),0);return;
+      e.preventDefault();
+      const item=makeMathPresetItem("blank",p.x,p.y,createId());
+      commit([...itemsRef.current,item]);
+      setSelected([item.id]);setTool("select");
+      window.setTimeout(()=>openGraphEditor(item),0);
+      return;
     } else if (tool === "formula") {
       e.preventDefault();
       const item: Item = { id: createId(), kind: "formula", x: p.x - 190, y: p.y - 70, width: 380, height: 140, text: "x^2 + y^2 = r^2", fontSize: 28, color: "#20242c" };
