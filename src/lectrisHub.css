@@ -147,3 +147,21 @@
 .lektrus-calendar-day-heading{margin:12px 0 7px;padding-top:10px;border-top:1px solid var(--lt-line,#d4dce8);display:flex;justify-content:space-between;align-items:center;font-size:12px}
 .lektrus-calendar-day-heading span{font-size:10px;color:var(--lt-muted,#7a879a)}
 @media(max-width:500px){.lektrus-calendar-grid button{min-height:33px;aspect-ratio:auto}}
+
+
+/* Compact dashboard calendar and one-screen spacing */
+.lectris-hub .lectris-hub-columns{grid-template-columns:minmax(0,1.75fr) minmax(270px,.85fr)!important;align-items:start!important;gap:12px!important}
+.lectris-hub .lectris-hub-aside{gap:0!important}
+.lectris-hub .lektrus-calendar-panel{padding:12px 14px!important;border-radius:13px!important}
+.lektrus-calendar-panel .lectris-hub-section-head{margin-bottom:2px!important}
+.lektrus-calendar-panel .lectris-hub-section-head h2{font-size:15px!important}
+.lektrus-calendar-panel .lektrus-calendar-toolbar{margin:6px 0 3px!important}
+.lektrus-calendar-panel .lektrus-calendar-grid{gap:1px!important}
+.lektrus-calendar-panel .lektrus-calendar-weekday{padding:1px 0!important;font-size:9px!important}
+.lektrus-calendar-panel .lektrus-calendar-grid button{aspect-ratio:auto!important;height:28px!important;min-height:0!important;padding:0!important;font-size:10px!important}
+.lektrus-calendar-panel .lektrus-calendar-day-heading{margin:6px 0 3px!important;padding-top:6px!important}
+.lektrus-calendar-panel .lectris-hub-placeholder{margin:3px 0!important;font-size:11px!important}
+.lectris-hub .lectris-hub-board-list{min-height:0!important}
+.lektrus-collection .lektrus-category-strip{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(155px,1fr))!important;gap:8px!important}
+.lektrus-collection .lektrus-category-strip>button{text-align:left!important}
+@media(max-width:1050px){.lectris-hub .lectris-hub-columns{grid-template-columns:minmax(0,1fr)!important}.lectris-hub .lectris-hub-aside{max-width:520px}}
