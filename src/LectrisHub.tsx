@@ -198,10 +198,10 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
     {teacher&&board.role==="owner"&&<button type="button" className="lectris-hub-board-edit" onClick={()=>openEdit(board)} aria-label={"Организация доски "+board.title} title="Предмет и группа">⋯</button>}
   </article>;
   const quickTiles=[
-    {id:"boards",icon:"▤",eyebrow:"РАБОЧИЕ ПРОСТРАНСТВА",title:"Доски",description:"Рисуйте и работайте вместе",count:boards.length,theme:"blue"},
-    {id:"students",icon:"♙",eyebrow:"УЧАСТНИКИ",title:"Ученики",description:"Ваши ученики и группы",count:teacher?students.length:null,theme:"violet"},
-    {id:"subjects",icon:"▧",eyebrow:"УЧЕБНЫЕ МАТЕРИАЛЫ",title:"Предметы",description:"Материалы по предметам",count:null,theme:"mint"},
-    {id:"schedule",icon:"▦",eyebrow:"ПЛАНИРОВАНИЕ",title:"Расписание",description:"Календарь занятий",count:upcoming.length,theme:"coral"},
+    {id:"students",icon:"👥",eyebrow:"УЧАСТНИКИ",title:"Ученики",description:"Ученики и приглашения",count:teacher?students.length:null,theme:"violet"},
+    {id:"subjects",icon:"▣",eyebrow:"УЧЕБНЫЙ КАТАЛОГ",title:"Предметы",description:"Учебные дисциплины",count:null,theme:"mint"},
+    {id:"groups",icon:"♧",eyebrow:"ОРГАНИЗАЦИЯ",title:"Группы и классы",description:"Классы и учебные группы",count:null,theme:"blue"},
+    {id:"assignments",icon:"☑",eyebrow:"УЧЕБНЫЙ ПРОЦЕСС",title:"Задания",description:"Проверка и выполнение",count:null,theme:"coral"},
   ];
   const syncIndicator=<div className="lectris-hub-sync" role="status">
     <span className={`lectris-hub-sync-dot status-${syncStatus}`}/>
