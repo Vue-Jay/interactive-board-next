@@ -137,7 +137,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
       <header className="graph-editor-header lektrus-graph-head">
-        <div><strong>{mode==="geometry"?"Геометрический конструктор":"Координатная плоскость"}</strong><span>{mode==="geometry"?"Фигуры, измерения и построения":"Графики функций, координаты и числовая прямая"}</span></div>
+        <div><strong>{mode==="geometry"?"Геометрический конструктор":"Координатная плоскость"}</strong><span>{mode==="geometry"?"Фигуры и геометрические построения":"Графики, координаты и тригонометрия"}</span></div>
         <button type="button" aria-label="Закрыть редактор" onClick={onClose}>×</button>
       </header>
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
@@ -150,7 +150,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           {tab==="presets"&&<div className="lektrus-graph-section lektrus-math-presets">
             <strong>Построить на плоскости</strong>
             <small>Выберите учебную конструкцию. Точки и фигуры можно двигать прямо в предпросмотре. Новый образец заменит текущую конструкцию в редакторе, но не изменит доску до сохранения.</small>
-            {(mode==="geometry"?["Геометрия","Тригонометрия"] as const:["Числа и координаты","Функции"] as const).map(group=>
+            {(mode==="geometry"?["Геометрия"] as const:["Числа и координаты","Функции","Тригонометрия"] as const).map(group=>
               <div className="lektrus-math-preset-group" key={group}>
                 <h4>{group}</h4>
                 <div className="lektrus-math-preset-grid">{mathPresets.filter(p=>p.group===group).map(p=>
@@ -181,12 +181,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             </div>}
             {draft.purpose==="unit-circle"&&<div className="lektrus-graph-section lektrus-unit-circle-controls">
               <strong>Угол на единичной окружности</strong>
-              <small>Перемещайте радиус или задавайте угол. Синус и косинус вычисляются по координатам точки.</small>
-              <div className="lektrus-circle-readouts">
-                <span><b>{formatPiRadians(activeAngle()*Math.PI/180)}</b><small>{Math.round(activeAngle())}°</small></span>
-                <span><b>{Math.cos(activeAngle()*Math.PI/180).toFixed(3)}</b><small>cos α</small></span>
-                <span><b>{Math.sin(activeAngle()*Math.PI/180).toFixed(3)}</b><small>sin α</small></span>
-              </div>
+              <small>Перемещайте радиус или задавайте угол. Подписи углов показаны в радианах без готовых значений тригонометрических функций.</small>
               <label className="lektrus-graph-field">Угол, градусы
                 <input type="range" min="0" max="360" step="1" value={Math.round(activeAngle())} onChange={e=>setCircleAngle(Number(e.target.value))}/>
               </label>
@@ -248,7 +243,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <div className="lektrus-graph-section-head"><strong>Многоугольник {i+1}</strong><button type="button" onClick={()=>patch({polygons:draft.polygons.filter((_,j)=>j!==i)})}>Удалить</button></div>
               <input aria-label="Название многоугольника" value={p.label} onChange={e=>patch({polygons:draft.polygons.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/>
               <label>Вершины (номера точек от 1, через запятую)<input value={p.points.map(v=>v+1).join(", ")} onChange={e=>{const parsed=e.target.value.split(",").map(v=>Number(v.trim())-1);if(parsed.length>=3&&parsed.length<=20&&parsed.every(v=>Number.isInteger(v)&&v>=0&&v<draft.points.length))patch({polygons:draft.polygons.map((v,j)=>j===i?{...v,points:parsed}:v)})}}/></label>
-              <label className="lektrus-graph-check"><input type="checkbox" checked={p.measure} onChange={e=>patch({polygons:draft.polygons.map((v,j)=>j===i?{...v,measure:e.target.checked}:v)})}/> Вычислять периметр</label>
+              <label className="lektrus-graph-check"><input type="checkbox" checked={p.measure} onChange={e=>patch({polygons:draft.polygons.map((v,j)=>j===i?{...v,measure:e.target.checked}:v)})}/> Показывать подпись фигуры</label>
             </div>)}
             {draft.segments.map((segment,i)=><div className="lektrus-graph-construction" key={"segment"+i}>
               <div className="lektrus-graph-section-head"><strong>Отрезок / прямая {i+1}</strong><button type="button" onClick={()=>patch({segments:draft.segments.filter((_,j)=>j!==i)})}>Удалить</button></div>
