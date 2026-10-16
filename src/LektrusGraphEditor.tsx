@@ -70,6 +70,9 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   const [geometryError,setGeometryError]=useState("");
+  const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">("Геометрия");
+  const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","cylinder","cone"]);
+  const isSolid=solidPresetIds.has(mathPresets.find(p=>p.title===draft.title)?.id??"triangle");
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onClose()}
@@ -82,7 +85,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
     setGeometryError("");
-    if(mode==="geometry")setTab("givens");
+    if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");setTab(id==="triangle"?"givens":"presets")}
     patch({
       title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
       type:sample.graphType??"quadratic",expression:sample.graphExpression??"",
@@ -148,7 +151,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       </header>
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>{mode==="geometry"?"1. Фигура":"Построение"}</button>
-        {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>2. Стороны и углы</button>}
+        {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>2. Размеры и подписи</button>}
         {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>3. Элементы <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>}
         <button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>{mode==="geometry"?"4. Точки":"Точки"} <span>{draft.points.length}</span></button>
       </nav>
@@ -157,14 +160,21 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           {tab==="presets"&&<div className="lektrus-graph-section lektrus-math-presets">
             <strong>{mode==="geometry"?"Выберите фигуру":"Выберите построение"}</strong>
             <small>Шаблон можно изменить до сохранения. У объёмных фигур показана редактируемая проекция, вершины и рёбра можно перемещать вручную. Готовых вычислений нет.</small>
-            {(mode==="geometry"?["Геометрия","Объёмные фигуры"] as const:["Числа и координаты","Функции","Тригонометрия"] as const).map(group=>
+            {mode==="geometry"&&<div className="lektrus-math-figure-categories" role="group" aria-label="Тип фигур">
+              <button type="button" className={figureCategory==="Геометрия"?"active":""} aria-pressed={figureCategory==="Геометрия"} onClick={()=>setFigureCategory("Геометрия")}>Плоские фигуры</button>
+              <button type="button" className={figureCategory==="Объёмные фигуры"?"active":""} aria-pressed={figureCategory==="Объёмные фигуры"} onClick={()=>setFigureCategory("Объёмные фигуры")}>Объёмные фигуры</button>
+            </div>}
+            {(mode==="geometry"?[figureCategory]:["Числа и координаты","Функции","Тригонометрия"] as const).map(group=>
               <div className="lektrus-math-preset-group" key={group}>
-                <h4>{group}</h4>
+                {mode!=="geometry"&&<h4>{group}</h4>}
                 <div className="lektrus-math-preset-grid">{mathPresets.filter(p=>p.group===group).map(p=>
                   <button type="button" key={p.id} className={draft.title===p.title||p.id==="blank"&&draft.title==="Координатная плоскость"?"active":""}
                     onClick={()=>loadPreset(p.id)}><strong>{p.title}</strong><small>{p.subtitle}</small></button>
                 )}</div>
               </div>)}
+            {mode==="geometry"&&<div className="lektrus-geometry-next">
+              <button type="button" onClick={()=>setTab("givens")}>Настроить размеры и подписи →</button>
+            </div>}
             <label className="lektrus-graph-field"><span>Название построения</span><input value={draft.title} maxLength={100} onChange={e=>patch({title:e.target.value})}/></label>
             {draft.purpose==="function"&&<div className="lektrus-graph-section"><strong>Функция</strong>
               <label className="lektrus-graph-field"><span>Шаблон построения</span>
@@ -198,8 +208,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           </div>}
           {mode==="geometry"&&tab==="givens"&&<div className="lektrus-graph-section lektrus-geometry-guided">
             <div className="lektrus-graph-section-head"><strong>Стороны и углы фигуры</strong><button type="button" onClick={()=>setTab("presets")}>Изменить фигуру</button></div>
-            <small>Заполните условие задачи. Для изменения формы треугольника укажите необходимые параметры и нажмите «Построить». Остальные подписи можно оставить для оформления.</small>
-            {draft.polygons.some(p=>p.points.length===3)?<>
+            <small>{isSolid?"Укажите название и при необходимости измените вершины на рисунке. Это наглядная проекция объёмной фигуры, без вычислений.":"Для треугольника можно задать стороны и углы. Размеры служат для построения и оформления условия, готовые ответы не выводятся."}</small>
+            {!isSolid&&draft.polygons.some(p=>p.points.length===3)?<>
               <div className="lektrus-geometry-givens">
                 <strong>Дано в условии задачи</strong>
                 <small>Значения указываются на рисунке. Автоматические ответы и вычисления не показываются.</small>
@@ -267,7 +277,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               </div>
 
               <div className="lektrus-geometry-next"><button type="button" onClick={()=>setTab("geometry")}>Дополнительные элементы →</button></div>
-            </>:<div className="lektrus-graph-empty">Для построения по сторонам и углам выберите треугольник во вкладке «Фигура».</div>}
+            </>:<div className="lektrus-graph-empty">{isSolid?"Габариты проекции настраиваются перемещением вершин в предпросмотре или на вкладке «Точки».":"Построение по заданным сторонам и углам доступно для треугольника. Выберите его во вкладке «Фигура»."}<button type="button" onClick={()=>setTab("points")}>Перейти к точкам →</button></div>}
             <label className="lektrus-graph-field"><span>Название построения</span><input value={draft.title} maxLength={100} onChange={e=>patch({title:e.target.value})}/></label>
           </div>}
           {tab==="points"&&<div className="lektrus-graph-section"><div className="lektrus-graph-section-head"><strong>Редактируемые точки</strong><button type="button" disabled={draft.purpose==="unit-circle"||draft.points.length>=40} onClick={addPoint}>+ Точка</button></div>
