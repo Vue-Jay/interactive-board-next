@@ -5593,35 +5593,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </span>}
           {boardSummary.role === "owner" && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
           {isRemoteBackendEnabled() && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
-          <details className="lektrus-board-actions-menu">
-            <summary aria-label="Действия с доской" title="Действия с доской" aria-haspopup="menu">
-              <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="16" rx="2"/>
-                <path d="M7 9h7M7 13h4m3 2 2 2 4-4"/>
-              </svg>
-            </summary>
-            <div className="lektrus-board-actions-popover" role="group" aria-label="Действия с доской">
-              <div className="lektrus-board-actions-title">Действия с доской</div>
-              <div className="lektrus-board-actions-items">
-                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setControlSettingsOpen(true)}}><Icon name="settings" size={18}/><span>Управление доской</span></button>
-                {boardSummary.role==="owner"&&<button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);setSharing(true)}}>
-                  <Icon name="add-person" size={18}/><span>Участники</span>
-                </button>}
-                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);void openHistory()}}>
-                  <Icon name="reset" size={18}/><span>История изменений</span>
-                </button>
-                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);setPresentation(true);setPresentationFrameIndex(0)}}>
-                  <Icon name="slides" size={18}/><span>Презентация</span>
-                </button>
-                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);void exportBoard()}}>
-                  <Icon name="download" size={18}/><span>Скачать копию</span>
-                </button>
-                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setMobileToolsOpen(false);void openDiscussions()}}>
-                  <Icon name="comments" size={18}/><span>Чат</span>
-                </button>
-              </div>
-            </div>
-          </details>
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
             <div className="topbar-more-popover">
@@ -5632,8 +5603,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               </div>
               <div className="topbar-menu-section">
                 {(quizItems.length>0||flashcardItems.length>0)&&<button onClick={()=>setStudyOpen(true)}><Icon name="quiz" size={16}/><span>Учебный режим</span><b>{quizItems.length+flashcardItems.length}</b></button>}
-                <button onClick={()=>void openDiscussions()}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b>{chatUnread}</b>}</button>
-                <button onClick={()=>void openHistory()}><Icon name="reset" size={16}/><span>История изменений</span></button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void openHistory()}}><Icon name="reset" size={16}/><span>История изменений</span></button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");startPresentation()}}><Icon name="present" size={16}/><span>Презентация</span></button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");void exportItemsToPng("all")}}><Icon name="download" size={16}/><span>Экспорт PNG</span></button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setTemplatesOpen(v=>!v);setSearchOpen(false)}}><Icon name="templates" size={16}/><span>Шаблоны</span></button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setShortcutsOpen(v=>!v)}}><Icon name="keyboard" size={16}/><span>Горячие клавиши</span></button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setCommentsOpen(v=>!v)}}><Icon name="comments" size={16}/><span>Комментарии</span>{openComments.length>0&&<b>{openComments.length}</b>}</button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setSearchOpen(v=>!v)}}><Icon name="search" size={16}/><span>Поиск по доске</span></button>
+                <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setLayersOpen(v=>!v)}}><Icon name="layers" size={16}/><span>Слои и объекты</span></button>
+                <button type="button" disabled={index.current===0} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(-1)}}><Icon name="undo" size={16}/><span>Отменить</span><b>Ctrl+Z</b></button>
+                <button type="button" disabled={index.current===history.current.length-1} onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");undo(1)}}><Icon name="redo" size={16}/><span>Повторить</span><b>Ctrl+Y</b></button>
               </div>
               <div className="topbar-menu-section">
                 <button onClick={()=>{finishEdit();fileInput.current?.click()}}><Icon name="open" size={16}/><span>Импорт доски</span></button>
@@ -5679,79 +5658,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               if (file) void importBoard(file);
             }}
           />
-          <button
-            className="top-button"
-            onClick={() => void exportItemsToPng("all")}
-            title="Экспорт всей доски в PNG · Ctrl+Shift+E без выделения"
-            aria-label="Экспорт всей доски в PNG"
-          >
-            <Icon name="download" />
-          </button>
-          <button
-            className={`top-button ${templatesOpen ? "active" : ""}`}
-            onClick={() => { setTemplatesOpen((value) => !value); setSearchOpen(false); setLayersOpen(false); setCommentsOpen(false); setShortcutsOpen(false); }}
-            title="Шаблоны уроков и схем"
-            aria-label="Шаблоны"
-          >
-            <Icon name="templates" />
-          </button>
-          <button
-            className={`top-button ${shortcutsOpen ? "active" : ""}`}
-            onClick={() => { setShortcutsOpen((value) => !value); setSearchOpen(false); setLayersOpen(false); setCommentsOpen(false); setTemplatesOpen(false); }}
-            title="Горячие клавиши · F1"
-            aria-label="Горячие клавиши"
-          >
-            <Icon name="keyboard" />
-          </button>
-          <button
-            className={`top-button comments-top-button ${commentsOpen ? "active" : ""}`}
-            onClick={() => { setCommentsOpen((value) => !value); setSearchOpen(false); setLayersOpen(false); setTemplatesOpen(false); setShortcutsOpen(false); }}
-            title="Комментарии"
-            aria-label={`Комментарии${openComments.length ? ` · открыто ${openComments.length}` : ""}`}
-          >
-            <Icon name="comments" />
-            {openComments.length > 0 && <span className="top-badge">{Math.min(99, openComments.length)}</span>}
-          </button>
-          <button
-            className={`top-button ${searchOpen ? "active" : ""}`}
-            onClick={() => { setSearchOpen((value) => !value); setLayersOpen(false); setTemplatesOpen(false); setCommentsOpen(false); setShortcutsOpen(false); }}
-            title="Поиск по доске · Ctrl+F"
-            aria-label="Поиск по доске"
-          >
-            <Icon name="search" />
-          </button>
-          <button
-            className="top-button"
-            onClick={startPresentation}
-            title="Режим показа"
-            aria-label="Режим показа"
-          >
-            <Icon name="present" />
-          </button>
-          <button
-            className={`top-button ${layersOpen ? "active" : ""}`}
-            onClick={() => { setLayersOpen((value) => !value); setSearchOpen(false); setTemplatesOpen(false); setCommentsOpen(false); setShortcutsOpen(false); }}
-            title="Слои и объекты"
-            aria-label="Открыть панель слоёв"
-          >
-            <Icon name="layers" />
-          </button>
-          <button
-            className="top-button"
-            disabled={index.current === 0}
-            onClick={() => undo(-1)}
-            title="Отменить · Ctrl+Z"
-          >
-            <Icon name="undo" />
-          </button>
-          <button
-            className="top-button"
-            disabled={index.current === history.current.length - 1}
-            onClick={() => undo(1)}
-            title="Повторить · Ctrl+Y"
-          >
-            <Icon name="redo" />
-          </button>
         </div>
       </header>
       <main className={`workspace lectris-layout-${lectrisLayout} lectris-tools-${lectrisPanelLayout.toolbarSide} lectris-quick-${lectrisPanelLayout.quickPosition} lectris-inspector-${lectrisPanelLayout.inspectorSide} lectris-editor-${lectrisPanelLayout.editorPosition}`} style={{"--lectris-inspector-width":`${lectrisPanelLayout.inspectorWidth}px`} as CSSProperties}>
