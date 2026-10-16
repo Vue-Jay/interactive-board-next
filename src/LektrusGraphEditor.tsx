@@ -22,6 +22,7 @@ export type GraphDraft = {
   polygons: NonNullable<Item["graphPolygons"]>;
   midpoints: NonNullable<Item["graphMidpoints"]>;
   triangleLines: NonNullable<Item["graphTriangleLines"]>;
+  givenSides:string[]; givenAngles:string[]; triangleInputMode:"SSS"|"SAS";
   triangleVertex: 0|1|2;
   showArea: boolean;
 };
@@ -66,6 +67,7 @@ const formulas:Record<GraphDraft["type"],string>={
 export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,onSave,onCancel,onClose}:Props) {
   const [tab,setTab]=useState<"presets"|"points"|"geometry">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
+  const [geometryError,setGeometryError]=useState("");
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onClose()}
@@ -89,7 +91,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       circles:(sample.graphCircles??[]).map(v=>({...v})),
       polygons:(sample.graphPolygons??[]).map(v=>({...v,points:[...v.points]})),
       midpoints:(sample.graphMidpoints??[]).map(v=>({...v})),
-      triangleLines:[...(sample.graphTriangleLines??[])],
+      triangleLines:[...(sample.graphTriangleLines??[])],givenSides:[],givenAngles:[],triangleInputMode:"SSS",
       triangleVertex:sample.graphTriangleVertex??0,showArea:sample.graphShowArea!==false,
       intervalStartClosed:sample.graphIntervalStartClosed!==false,
       intervalEndClosed:sample.graphIntervalEndClosed!==false,
@@ -225,8 +227,46 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                     <option key={index} value={index}>{draft.points[pointIndex]?.label||["A","B","C"][index]}</option>)}
                 </select>
               </label>
-              <label className="lektrus-graph-check"><input type="checkbox" checked={draft.showArea} onChange={e=>patch({showArea:e.target.checked})}/> Показывать площадь фигуры</label>
 
+
+              <div className="lektrus-geometry-givens">
+                <strong>Дано в условии задачи</strong>
+                <small>Значения указываются на рисунке. Автоматические ответы и вычисления не показываются.</small>
+                <label>Способ построения
+                  <select value={draft.triangleInputMode} onChange={e=>patch({triangleInputMode:e.target.value as "SSS"|"SAS"})}>
+                    <option value="SSS">По трём сторонам (AB, BC, CA)</option>
+                    <option value="SAS">По двум сторонам AB, CA и углу A</option>
+                  </select>
+                </label>
+                <div className="lektrus-geometry-given-grid">
+                {["AB","BC","CA"].map((side,i)=><label key={side}>{side}
+                  <input inputMode="decimal" placeholder="Длина" value={draft.givenSides[i]??""} onChange={e=>patch({givenSides:[0,1,2].map(j=>j===i?e.target.value.slice(0,32):draft.givenSides[j]??"")})}/>
+                </label>)}
+                {["∠A","∠B","∠C"].map((angle,i)=><label key={angle}>{angle}
+                  <input inputMode="decimal" placeholder="Градусы" value={draft.givenAngles[i]??""} onChange={e=>patch({givenAngles:[0,1,2].map(j=>j===i?e.target.value.slice(0,32):draft.givenAngles[j]??"")})}/>
+                </label>)}
+                </div>
+                <button type="button" onClick={()=>{
+                  const parse=(text:string)=>{const n=Number(text.replace(",",".").trim());return text.trim()!==""&&Number.isFinite(n)&&n>0?n:NaN};
+                  const ab=parse(draft.givenSides[0]??""),bc=parse(draft.givenSides[1]??""),ca=parse(draft.givenSides[2]??"");
+                  let ax=0,ay=0,bx=0,by=0,cx=0,cy=0;
+                  if(draft.triangleInputMode==="SSS"){
+                    if(![ab,bc,ca].every(Number.isFinite)||ab+bc<=ca||ab+ca<=bc||bc+ca<=ab){setGeometryError("Укажите три положительные стороны, удовлетворяющие неравенству треугольника.");return}
+                    bx=ab;cx=(ab*ab+ca*ca-bc*bc)/(2*ab);cy=Math.sqrt(Math.max(0,ca*ca-cx*cx));
+                  }else{
+                    const degrees=parse(draft.givenAngles[0]??"");
+                    if(!Number.isFinite(ab)||!Number.isFinite(ca)||!Number.isFinite(degrees)||degrees>=180){setGeometryError("Для построения укажите AB, CA и угол A от 0° до 180°.");return}
+                    bx=ab;cx=ca*Math.cos(degrees*Math.PI/180);cy=ca*Math.sin(degrees*Math.PI/180);
+                  }
+                  const triangle=draft.polygons.find(p=>p.points.length===3);
+                  if(!triangle){setGeometryError("Сначала выберите шаблон треугольника.");return}
+                  const max=Math.max(ab,ca,Math.abs(cx),Math.abs(cy),1),factor=5/max;
+                  const coords=[{x:ax,y:ay},{x:bx*factor,y:by},{x:cx*factor,y:cy*factor}];
+                  patch({points:draft.points.map((p,i)=>{const k=triangle.points.indexOf(i);return k<0?p:{...p,...coords[k]}})});
+                  setGeometryError("");
+                }}>Построить по заданным значениям</button>
+                {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
+              </div>
               <small>Построения автоматически перестраиваются при движении вершин первого треугольника.</small>
               {([{id:"median",label:"Медиана"},{id:"altitude",label:"Высота"},{id:"bisector",label:"Биссектриса"}] as const).map(option=>
                 <label key={option.id} className="lektrus-graph-check"><input type="checkbox" checked={draft.triangleLines.includes(option.id)}
