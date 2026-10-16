@@ -7412,7 +7412,32 @@ export default function App() {
         const remote = await getRemoteBoardDocument(board.id);
         if (!isCurrent()) return;
         const key = boardStorageKey(board.id);
-        if (remote?.document) {
+        // A newly created board can carry a template. Apply it BEFORE the normal
+        // remote-cache branch, which would otherwise replace it with an empty doc.
+        let appliedTemplate = false;
+        try {
+          const pendingRaw = sessionStorage.getItem("onlinerepetitor.template.apply");
+          if (pendingRaw && board.role === "owner") {
+            const pending = JSON.parse(pendingRaw) as {boardId?:string;document?:DocumentData};
+            if (pending.boardId === board.id && pending.document) {
+              const document = parseDocument(JSON.stringify({...pending.document,title:board.title}));
+              localStorage.setItem(key,JSON.stringify(document));
+              const saved = await saveRemoteBoardDocument(board.id,document,remote?.version ?? 0);
+              if (!isCurrent()) return;
+              if (!saved.conflict) {
+                setRemoteVersion(saved.version);
+                sessionStorage.removeItem("onlinerepetitor.template.apply");
+                appliedTemplate = true;
+              }
+            }
+          }
+        } catch (error) {
+          // Do not silently discard the template; leave it pending for a retry.
+          console.warn("Template initialization was not saved yet",error);
+        }
+        if (appliedTemplate) {
+          // Already persisted as the board's initial document.
+        } else if (remote?.document) {
           // Cache preview before parsing: strict document parsing strips UI metadata.
           const preview=previewFromRemoteDocument(remote.document);
           if(preview)cacheBoardPreview(board.id,preview);
