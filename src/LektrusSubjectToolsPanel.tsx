@@ -80,10 +80,19 @@ export default function LektrusSubjectToolsPanel({anchor,subject,subjects,tools,
           </select>
         </label>
         {tools.length>0?
-          <div className="lektrus-subject-tools-list" role="group" aria-label={subject+" инструменты"}>
-            {tools.map(t=><button type="button" key={t.id} onClick={()=>onChoose(t.id)}>
-              <span className="lektrus-subject-tools-icon">{t.icon}</span><span className="lektrus-subject-tools-name">{t.label}</span>{t.description&&<small>{t.description}</small>}
-            </button>)}
+          <div className="lektrus-subject-tools-groups" role="group" aria-label={subject+" инструменты"}>
+            {Array.from(new Set(tools.map(t=>t.group||"Инструменты"))).map(group=>
+              <section className="lektrus-subject-tools-group" key={group}>
+                <h3>{group}</h3>
+                <div className="lektrus-subject-tools-list">
+                  {tools.filter(t=>(t.group||"Инструменты")===group).map(t=>
+                    <button type="button" key={t.id} onClick={()=>onChoose(t.id)}>
+                      <span className="lektrus-subject-tools-icon">{t.icon}</span>
+                      <span className="lektrus-subject-tools-name">{t.label}</span>
+                      {t.description&&<small>{t.description}</small>}
+                    </button>)}
+                </div>
+              </section>)}
           </div>:
           <div className="lektrus-subject-tools-empty">
             <strong>Выберите учебный предмет</strong>
