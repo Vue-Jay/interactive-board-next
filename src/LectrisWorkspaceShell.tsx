@@ -35,7 +35,7 @@ const icons: Record<NavIcon, ReactNode> = {
   templates:<><path d="M4 3h12v15H4zM8 7h12v14H8M7 11h6M7 14h4"/></>,
   notification:<><path d="M6 9a6 6 0 1 1 12 0v5l2 3H4l2-3zM10 21h4"/></>,
   profile:<><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
-  settings:<><circle cx="12" cy="12" r="3"/><path d="m10 2-.4 2.2-2 1-2.1-.8-2 3.4 1.7 1.5v2.4l-1.7 1.5 2 3.4 2.1-.8 2 1 .4 2.2h4l.4-2.2 2-1 2.1.8 2-3.4-1.7-1.5V9.3l1.7-1.5-2-3.4-2.1.8-2-1L14 2z"/></>,
+  settings:<><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M12 1v2.5M12 20.5V23M1 12h2.5M20.5 12H23M4.2 4.2l1.8 1.8M18 18l1.8 1.8M19.8 4.2 18 6M6 18l-1.8 1.8"/></>,
   admin:<><path d="M12 2 3 6v6c0 5 4 8 9 10 5-2 9-5 9-10V6z"/><path d="m9 12 2 2 4-4"/></>,
   menu:<><path d="M4 6h16M4 12h16M4 18h16"/></>,
   chevron:<><path d="m15 5-7 7 7 7"/></>,
