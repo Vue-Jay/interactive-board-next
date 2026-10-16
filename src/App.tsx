@@ -5506,7 +5506,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             readOnly={!canEdit}
           />
           {authUser.isGuest&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
-          <label className="lektrus-board-subject-picker" title="Предметные инструменты доски"><span>Предмет</span><select aria-label="Предмет доски" value={lectrisBoardOrganization.subject} disabled={!canEdit} onChange={e=>changeBoardSubject(e.target.value)}><option value="">Без предмета</option>{subjectCategories.filter(Boolean).map(subject=><option key={subject} value={subject}>{subject}</option>)}{lectrisBoardOrganization.subject&&!subjectCategories.includes(lectrisBoardOrganization.subject)&&<option value={lectrisBoardOrganization.subject}>{lectrisBoardOrganization.subject}</option>}</select></label>
+          <label className="lektrus-board-subject-picker" title="Введите первые буквы предмета"><span>Предмет</span><input type="text" list="lektrus-board-subject-list" aria-label="Найти или сменить предмет доски" placeholder="Выбрать предмет" value={lectrisBoardOrganization.subject} disabled={!canEdit} maxLength={80} onChange={e=>changeBoardSubject(e.target.value)}/><datalist id="lektrus-board-subject-list">{subjectCategories.filter(Boolean).map(subject=><option key={subject} value={subject}/>)}</datalist></label>
         </div>
         <div className="topbar-right"><details className="lectris-layout-picker">
             <summary title="Рабочая раскладка" aria-label="Выбрать раскладку доски"><Icon name="settings" size={17}/></summary>
