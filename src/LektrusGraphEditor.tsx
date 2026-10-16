@@ -155,9 +155,9 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       <div className="graph-editor-body lektrus-graph-content">
         <div className="graph-editor-form lektrus-graph-settings">
           {tab==="presets"&&<div className="lektrus-graph-section lektrus-math-presets">
-            <strong>Построить на плоскости</strong>
-            <small>Выберите учебную конструкцию. Точки и фигуры можно двигать прямо в предпросмотре. Новый образец заменит текущую конструкцию в редакторе, но не изменит доску до сохранения.</small>
-            {(mode==="geometry"?["Геометрия"] as const:["Числа и координаты","Функции","Тригонометрия"] as const).map(group=>
+            <strong>{mode==="geometry"?"Выберите фигуру":"Выберите построение"}</strong>
+            <small>Шаблон можно изменить до сохранения. У объёмных фигур показана редактируемая проекция, вершины и рёбра можно перемещать вручную. Готовых вычислений нет.</small>
+            {(mode==="geometry"?["Геометрия","Объёмные фигуры"] as const:["Числа и координаты","Функции","Тригонометрия"] as const).map(group=>
               <div className="lektrus-math-preset-group" key={group}>
                 <h4>{group}</h4>
                 <div className="lektrus-math-preset-grid">{mathPresets.filter(p=>p.group===group).map(p=>
