@@ -172,7 +172,7 @@ export default function BoardsScreen({user,accountRole,onOpenBoard,onLogout:_onL
  return <main className="boards-shell">
  {createOpen&&<LektrusCreateBoardDialog user={user} initial={createAssociation} busy={busy} onClose={()=>setCreateOpen(false)} onCreate={options=>void confirmCreate(options)}/>}
  {!isBoardListView&&<LectrisHub user={user} role={accountRole} view={hubView} boards={boards}
-    loading={loading} creating={busy} previews={previews} onCreateBoard={association=>add(association)} onOpenBoard={onOpenBoard}/>}
+    loading={loading} creating={busy} previews={previews} onCreateBoard={association=>add(association)} onOpenBoard={onOpenBoard} onDeleteBoard={board=>{if(!confirm(`Переместить доску «${board.title}» в корзину? Её можно восстановить.`))return;void (async()=>{try{await deleteBoard(user.id,board.id);setNotice("Доска перемещена в корзину");await refresh()}catch(e){setNotice(e instanceof Error?e.message:"Не удалось удалить доску")}})()}}/>}
   {isBoardListView&&<section className="boards-content lectris-library">
     {user.isGuest&&<div className="guest-lifecycle-note"><strong>Гостевой режим</strong><span>Доступ к доскам сохраняется в пределах этой гостевой сессии. Для постоянного аккаунта зарегистрируйтесь.</span></div>}
     <div className="lectris-library-intro">
