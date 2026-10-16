@@ -147,3 +147,8 @@ body>.lektrus-subject-tools-panel{
     max-height:calc(100dvh - 88px)!important;
   }
 }
+
+/* Compact explanatory cards for the first subject-specific tool set. */
+.lektrus-subject-tools-list button{min-height:108px!important;gap:5px!important;padding:10px 8px!important}
+.lektrus-subject-tools-list .lektrus-subject-tools-name{font-size:12px!important;font-weight:750!important;line-height:1.25!important}
+.lektrus-subject-tools-list button>small{font-size:10px!important;font-weight:450!important;line-height:1.35!important;color:var(--lt-muted,#6a7e97)!important}
