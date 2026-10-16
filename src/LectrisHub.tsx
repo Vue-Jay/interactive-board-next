@@ -325,6 +325,11 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
             <button type="submit" disabled={!categoryDraft.trim()}>Добавить</button>
             <button type="button" onClick={()=>{setCategoryEntryOpen(false);setCategoryDraft("")}}>Отмена</button>
           </form>}
+          {view==="subjects"&&scope!==null&&<div className="lektrus-subject-details">
+             <div className="lektrus-subject-details-head"><strong>{scope}</strong><span>{chosenBoards.length} досок</span></div>
+             {chosenBoards.length?<div className="lektrus-subject-board-list">{chosenBoards.map(board=><button type="button" key={board.id} onClick={()=>onOpenBoard(board)}><span className="lektrus-subject-board-avatar">▤</span><span><strong>{board.title}</strong><small>Открыть доску</small></span><span aria-hidden="true">↗</span></button>)}</div>:<p className="lectris-hub-placeholder">Пока нет досок этого предмета.</p>}
+             {teacher&&<button className="lektrus-subject-create-board" type="button" disabled={creating} onClick={()=>onCreateBoard({subject:scope})}>+ Новая доска по предмету</button>}
+           </div>}
         </section></>}
 
       </div>
