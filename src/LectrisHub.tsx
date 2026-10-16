@@ -19,7 +19,7 @@ type Props = {
   onOpenBoard: (board: BoardSummary) => void;
   onCreateBoard: (association?:Partial<Organization>) => void;
 };
-const commonSubjects = ["Математика","Русский язык","Физика","Химия","Биология","География","История","Английский язык","Информатика","Литература"];
+const commonSubjects = ["Математика","Русский язык","Литература","Английский язык","Физика","Химия","Биология","География","История","Обществознание","Информатика","Геометрия","Алгебра","Окружающий мир","Физическая культура"];
 const dayKey=(date:Date)=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
 const shortDate=(iso:string)=>new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 const navigate=(section:string)=>{window.history.pushState({},"",section?"/?section="+encodeURIComponent(section):"/");window.dispatchEvent(new PopStateEvent("popstate"))};
@@ -261,8 +261,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
             <div className="lektrus-calendar-day-heading"><strong>{new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long"}).format(new Date(calendarDay+"T12:00:00"))}</strong><span>{selectedLessons.length?selectedLessons.length+" зан.":"Нет занятий"}</span></div>
             {dataLoading?<p className="lectris-hub-placeholder">Загружаем расписание…</p>:selectedLessons.length?selectedLessons.map(lesson=><div className="lectris-hub-lesson" key={lesson.id}><div><strong>{lesson.title}</strong><small>{new Intl.DateTimeFormat("ru-RU",{hour:"2-digit",minute:"2-digit"}).format(new Date(lesson.startsAt))} · {lesson.durationMinutes} мин</small>{teacher&&<small>{lesson.studentName}</small>}</div>{boardById.has(lesson.boardId)&&<button type="button" onClick={()=>onOpenBoard(boardById.get(lesson.boardId)!)}>Доска ↗</button>}</div>):<p className="lectris-hub-placeholder">На выбранный день занятий нет.</p>}
           </section>
-          <section className="lectris-hub-section">
-            <div className="lectris-hub-section-head"><div><small>ОРГАНИЗАЦИЯ</small><h2>Разделы</h2></div></div>
+          <section className="lectris-hub-section" hidden><div className="lectris-hub-section-head"><div><small>ОРГАНИЗАЦИЯ</small><h2>Разделы</h2></div></div>
             <div className="lectris-hub-shortcuts">
               <button type="button" onClick={()=>navigate("subjects")}>Предметы <span>→</span></button>
               {teacher&&<button type="button" onClick={()=>navigate("groups")}>Группы и классы <span>→</span></button>}
@@ -278,13 +277,13 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
           <div>
             <span className="lectris-hub-overline">ОРГАНИЗАЦИЯ ЗАНЯТИЙ</span>
             <h1>{view==="subjects"?"Предметы":"Группы и классы"}</h1>
-            <p>{view==="subjects"?"Быстрый доступ к доскам по учебным предметам.":"Объединяйте доски по классам и учебным группам."}</p>
+            <p>{view==="subjects"?"Каталог основных учебных предметов. Специальные инструменты появятся здесь позже.":"Список учебных групп и классов."}</p>
           </div>
           <div className="lektrus-page-heading-actions">
             {teacher&&<button type="button" className="lektrus-category-create" onClick={()=>setCategoryEntryOpen(true)}>
               <span aria-hidden="true">＋</span> {view==="subjects"?"Добавить предмет":"Добавить группу"}
             </button>}
-            <button type="button" className="lektrus-page-secondary" onClick={()=>navigate("boards")}>Все доски ↗</button>
+
           </div>
         </div>
         <section className="lektrus-category-panel" aria-label={view==="subjects"?"Каталог предметов":"Каталог групп"}>
@@ -295,12 +294,12 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
           </div>
           <div className="lektrus-category-strip" role="group" aria-label="Фильтр по категории">
             <button type="button" aria-pressed={scope===null} className={scope===null?"selected":""} onClick={()=>setScope(null)}>
-              <span className="lektrus-category-symbol" aria-hidden="true">▦</span><span className="lektrus-category-name">Все доски</span><b>{boards.length}</b>
+              <span className="lektrus-category-symbol" aria-hidden="true">▦</span><span className="lektrus-category-name">Все {view==="subjects"?"предметы":"группы"}</span>
             </button>
             {collectionCategories.map((value,index)=><button type="button" key={value||"-"} aria-pressed={scope===value} className={scope===value?"selected":""} onClick={()=>setScope(value)}>
               <span className={`lektrus-category-symbol lektrus-category-color-${index%4}`} aria-hidden="true">{view==="subjects"?"▤":"♧"}</span>
               <span className="lektrus-category-name">{named(value)}</span>
-              <b>{boards.filter(board=>getOrg(board)[view==="subjects"?"subject":"group"]===value).length}</b>
+
             </button>)}
             {categorySearch&&!collectionCategories.length&&<div className="lektrus-category-no-results">Ничего не найдено</div>}
           </div>
@@ -313,37 +312,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
             <button type="button" onClick={()=>{setCategoryEntryOpen(false);setCategoryDraft("")}}>Отмена</button>
           </form>}
         </section>
-        <section className="lektrus-collection-boards" aria-label="Доски выбранной категории">
-          <div className="lektrus-collection-topline">
-            <div><span className="lectris-hub-overline">РАБОЧИЕ ДОСКИ</span>
-              <h2>{scope===null?"Все доски":named(scope)} <span className="lektrus-collection-count">{chosenBoards.length}</span></h2>
-            </div>
-            <div className="lektrus-collection-actions">
-              <input type="search" aria-label="Поиск досок в категории" placeholder="Найти доску"
-                value={collectionSearch} onChange={event=>setCollectionSearch(event.target.value)}/>
-              <div className="lektrus-view-switch" role="group" aria-label="Представление досок">
-                <button type="button" aria-label="Плитки" title="Плитки" aria-pressed={collectionMode==="tiles"}
-                  className={collectionMode==="tiles"?"selected":""} onClick={()=>changeCollectionMode("tiles")}>▦</button>
-                <button type="button" aria-label="Список" title="Список" aria-pressed={collectionMode==="list"}
-                  className={collectionMode==="list"?"selected":""} onClick={()=>changeCollectionMode("list")}>☰</button>
-              </div>
-              {teacher&&<button type="button" className="lektrus-collection-add" disabled={creating}
-                onClick={()=>onCreateBoard(scope===null?undefined:view==="subjects"?{subject:scope}:{group:scope})}>+ Доска</button>}
-            </div>
-          </div>
-          {loading?<p className="lectris-hub-placeholder">Загружаем доски…</p>:
-            collectionBoards.length?<div className={`lectris-hub-board-list lektrus-collection-gallery ${collectionMode==="list"?"is-list":"is-tiles"}`}>
-              {collectionBoards.map(boardTile)}
-            </div>:<div className="lektrus-collection-empty">
-              <strong>{collectionSearch?"Ничего не найдено":"В этом разделе пока нет досок"}</strong>
-              <p>{collectionSearch?"Попробуйте изменить запрос.":"Откройте настройки доски и укажите предмет или группу."}</p>
-              {collectionSearch&&<button type="button" onClick={()=>setCollectionSearch("")}>Очистить поиск</button>}
-              {!collectionSearch&&teacher&&<button type="button" disabled={creating} onClick={()=>onCreateBoard(scope===null?undefined:view==="subjects"?{subject:scope}:{group:scope})}>Создать доску</button>}
-            </div>}
-          <p className="lektrus-collection-sync-note">{lectrisOrganizationSyncEnabled()?
-            "Предметы и группы синхронизируются с сервером Lektrus.":
-            "Категории пока сохраняются в этом браузере. Содержимое досок сохраняется отдельно."}</p>
-        </section>
+
       </div>
     </>}
     {editing&&<div className="lectris-hub-dialog-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget)setEditing(null)}}>
