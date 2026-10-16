@@ -18,7 +18,7 @@ export type ConnectorRouting = "straight" | "elbow";
 export type ConnectorBinding = { itemId: string; nx: number; ny: number };
 export type Item = {
   id: string;
-  kind: "sticky" | "text" | "shape" | "pen" | "marker" | "image" | "pdf" | "frame" | "connector" | "comment" | "table" | "formula" | "graph" | "checklist" | "quiz" | "flashcard" | "cover" | "linkmedia";
+  kind: "sticky" | "text" | "shape" | "pen" | "marker" | "image" | "pdf" | "frame" | "connector" | "comment" | "table" | "formula" | "graph" | "fraction" | "checklist" | "quiz" | "flashcard" | "cover" | "linkmedia";
   x: number;
   y: number;
   width: number;
@@ -59,7 +59,10 @@ export type Item = {
   tableStripe?: boolean;
   tableCompact?: boolean;
   // Subject objects keep their teaching purpose, title and visible axes.
-  graphPurpose?: "function" | "coordinates" | "geometry" | "unit-circle";
+  graphPurpose?: "function" | "coordinates" | "geometry" | "unit-circle" | "number-line";
+  fractionMode?: "circle" | "bar";
+  fractionNumerator?: number;
+  fractionDenominator?: number;
   graphAxisMode?: "both" | "x" | "y" | "none";
   graphType?: "linear" | "quadratic" | "sin" | "cos";
   graphExpression?: string;
@@ -152,7 +155,7 @@ export function parseDocument(raw: string): DocumentData {
     }
     d.items = expandDocumentInk(d as DocumentData);
   }
-  const allowedKinds = ["sticky","text","shape","pen","marker","image","pdf","frame","connector","comment","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"];
+  const allowedKinds = ["sticky","text","shape","pen","marker","image","pdf","frame","connector","comment","table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia"];
   if (!d || d.version !== 1 || typeof d.title !== "string" || d.title.length > 10000 || !point(d.view) || !finite(d.view.zoom) || d.view.zoom < .1 || d.view.zoom > 8 || !Array.isArray(d.items) || d.items.length > 10000) throw new Error("Неверный формат доски");
   const ids = new Set<string>();
   let pointCount = 0;
@@ -187,8 +190,12 @@ export function parseDocument(raw: string): DocumentData {
       if (i.lineHeight != null && (!finite(i.lineHeight) || i.lineHeight < 1 || i.lineHeight > 2.5)) throw new Error("Повреждён межстрочный интервал");
       if (i.color != null && !color(i.color)) throw new Error("Повреждён цвет текста");
     }
+    if (i.kind === "fraction") {
+      if (i.fractionMode != null && !["circle","bar"].includes(i.fractionMode)) throw new Error("Неверный вид дроби");
+      if (!Number.isInteger(i.fractionDenominator) || i.fractionDenominator! < 1 || i.fractionDenominator! > 24 || !Number.isInteger(i.fractionNumerator) || i.fractionNumerator! < 0 || i.fractionNumerator! > i.fractionDenominator!) throw new Error("Повреждена дробь");
+    }
     if (i.kind === "graph") {
-      if (i.graphPurpose != null && !["function","coordinates","geometry","unit-circle"].includes(i.graphPurpose)) throw new Error("Повреждён тип учебного объекта");
+      if (i.graphPurpose != null && !["function","coordinates","geometry","unit-circle","number-line"].includes(i.graphPurpose)) throw new Error("Повреждён тип учебного объекта");
       if (i.graphAxisMode != null && !["both","x","y","none"].includes(i.graphAxisMode)) throw new Error("Повреждён режим осей");
       if (i.graphType != null && !["linear","quadratic","sin","cos"].includes(i.graphType)) throw new Error("Повреждён тип графика");
       if (i.graphExpression != null && (typeof i.graphExpression !== "string" || i.graphExpression.length > 500)) throw new Error("Повреждена функция графика");
