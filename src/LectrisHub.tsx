@@ -4,6 +4,7 @@ import type { AuthUser } from "./authStore";
 import type { BoardSummary } from "./boardStore";
 import { getStudentsForTeacher, type StudentRecord } from "./studentsStore";
 import { listScheduledLessons, type ScheduledLesson } from "./scheduleStore";
+import { readGroupMembership, setGroupMembership } from "./lektrusGroupMembers";
 import { flushLectrisOrganization, lectrisOrganizationSyncEnabled, loadLectrisOrganization, pendingLectrisOrganizationCount, queueLectrisBoardOrganization, queueLectrisCategory, queueLectrisLocalImport, readLectrisLocalCatalog, readLectrisLocalOrganization, type LectrisOrganization, type LectrisCategoryCatalog } from "./lectrisOrganizationStore";
 
 type View = "home" | "subjects" | "groups";
@@ -31,6 +32,9 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
   const [subjectDraft,setSubjectDraft]=useState("");
   const [groupDraft,setGroupDraft]=useState("");
   const [scope,setScope]=useState<string|null>(null);
+  const [groupSort,setGroupSort]=useState<"name"|"size">("name");
+  const [groupMembers,setGroupMembers]=useState(()=>readGroupMembership(user.id));
+  const [memberToAdd,setMemberToAdd]=useState("");
   const [categoryCatalog,setCategoryCatalog]=useState<LectrisCategoryCatalog>(()=>readLectrisLocalCatalog(user.id));
   const [categoryEntryOpen,setCategoryEntryOpen]=useState(false);
   const [categoryDraft,setCategoryDraft]=useState("");
@@ -138,6 +142,11 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
   },[boardSearch,boards,organization,recent]);
   const subjectList=useMemo(()=>[...new Set([...commonSubjects,...categoryCatalog.subjects,...boards.map(b=>organization[b.id]?.subject||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.subjects]);
   const groupList=useMemo(()=>[...new Set([...categoryCatalog.groups,...boards.map(b=>organization[b.id]?.group||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.groups]);
+  const visibleGroups=useMemo(()=>groupList.filter(name=>name.toLocaleLowerCase("ru-RU").includes(categorySearch.trim().toLocaleLowerCase("ru-RU"))).sort((a,b)=>groupSort==="size"?(groupMembers[b]?.length||0)-(groupMembers[a]?.length||0)||a.localeCompare(b,"ru"):a.localeCompare(b,"ru")),[groupList,categorySearch,groupSort,groupMembers]);
+  const selectedGroupStudents=students.filter(s=>scope!==null&&(groupMembers[scope]||[]).includes(s.userId)).sort((a,b)=>a.name.localeCompare(b.name,"ru"));
+  const availableGroupStudents=students.filter(s=>scope!==null&&!(groupMembers[scope]||[]).includes(s.userId));
+  const updateGroupMembers=(group:string,ids:string[])=>{try{setGroupMembers(setGroupMembership(user.id,group,ids))}catch{window.alert("Не удалось сохранить состав группы на этом устройстве.")}};
+  const openStudentFromGroup=(studentId:string)=>{sessionStorage.setItem("lektrus.students.open",studentId);navigate("students")};
   const openEdit=(board:BoardSummary)=>{
     const current=getOrg(board);setEditing(board.id);setSubjectDraft(current.subject);setGroupDraft(current.group);
   };
@@ -279,6 +288,18 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
 
           </div>
         </div>
+        {view==="groups"?<div className="lektrus-group-layout">
+          <section className="lektrus-group-list-panel" aria-label="Список групп">
+            <div className="lektrus-group-controls"><input type="search" placeholder="Найти группу или класс" aria-label="Поиск групп" value={categorySearch} onChange={event=>setCategorySearch(event.target.value)}/><select value={groupSort} onChange={event=>setGroupSort(event.target.value as "name"|"size")} aria-label="Сортировка групп"><option value="name">По названию</option><option value="size">По числу учеников</option></select></div>
+            <div className="lektrus-group-list">{visibleGroups.length?visibleGroups.map(group=><button type="button" key={group} className={scope===group?"is-active":""} aria-pressed={scope===group} onClick={()=>{setScope(group);setMemberToAdd("")}}><span className="lektrus-group-symbol" aria-hidden="true">👥</span><span className="lektrus-group-list-name"><strong>{group}</strong><small>{(groupMembers[group]||[]).length} учеников</small></span><span aria-hidden="true">›</span></button>):<p className="lectris-hub-placeholder">Группы не найдены. Создайте новую группу.</p>}</div>
+            {teacher&&categoryEntryOpen&&<form className="lektrus-category-form" onSubmit={event=>{event.preventDefault();createCategory()}}><input autoFocus placeholder="Название группы" maxLength={80} value={categoryDraft} onChange={event=>setCategoryDraft(event.target.value)}/><button type="submit" disabled={!categoryDraft.trim()}>Добавить</button><button type="button" onClick={()=>setCategoryEntryOpen(false)}>Отмена</button></form>}
+          </section>
+          <section className="lektrus-group-details" aria-label="Состав группы">
+            {scope===null?<div className="lektrus-group-placeholder"><strong>Выберите группу слева</strong><p>Здесь появится список её учеников.</p></div>:<><div className="lektrus-group-details-heading"><div><small>СОСТАВ ГРУППЫ</small><h2>{scope}</h2><p>{selectedGroupStudents.length} учеников</p></div></div>
+              {teacher&&<div className="lektrus-group-add"><select value={memberToAdd} aria-label="Добавить ученика в группу" onChange={event=>setMemberToAdd(event.target.value)}><option value="">Выберите ученика</option>{availableGroupStudents.map(s=><option key={s.userId} value={s.userId}>{s.name}</option>)}</select><button type="button" disabled={!memberToAdd} onClick={()=>{updateGroupMembers(scope,[...(groupMembers[scope]||[]),memberToAdd]);setMemberToAdd("")}}>Добавить</button></div>}
+              <div className="lektrus-group-students">{selectedGroupStudents.length?selectedGroupStudents.map(student=><div className="lektrus-group-student" key={student.userId}><button type="button" onClick={()=>openStudentFromGroup(student.userId)}><span className="lektrus-group-student-avatar">{student.name.slice(0,1).toUpperCase()}</span><span><strong>{student.name}</strong><small>{student.email||"Открыть карточку ученика"}</small></span><span aria-hidden="true">↗</span></button>{teacher&&<button className="lektrus-group-remove" type="button" title="Убрать из группы" aria-label={"Убрать "+student.name+" из группы"} onClick={()=>updateGroupMembers(scope,(groupMembers[scope]||[]).filter(id=>id!==student.userId))}>×</button>}</div>):<p className="lectris-hub-placeholder">В группе пока нет учеников. Добавьте их через список выше.</p>}</div><small className="lektrus-group-storage-note">Состав групп пока сохраняется на этом устройстве.</small></>}
+          </section>
+        </div>:<>
         <section className="lektrus-category-panel" aria-label={view==="subjects"?"Каталог предметов":"Каталог групп"}>
           <div className="lektrus-category-panel-heading">
             <div><strong>{view==="subjects"?"Выберите предмет":"Выберите группу"}</strong><small>{groupBy(view==="subjects"?"subject":"group").length} разделов</small></div>
@@ -304,7 +325,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
             <button type="submit" disabled={!categoryDraft.trim()}>Добавить</button>
             <button type="button" onClick={()=>{setCategoryEntryOpen(false);setCategoryDraft("")}}>Отмена</button>
           </form>}
-        </section>
+        </section></>}
 
       </div>
     </>}
