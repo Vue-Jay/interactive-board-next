@@ -215,3 +215,14 @@
 .lektrus-subject-board-list small{font-size:11px;color:var(--lt-muted,#6b7d94)}
 .lektrus-subject-board-avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:9px;background:var(--lt-subtle,#eff3fb);color:var(--lt-primary,#365fd0)}
 .lektrus-subject-create-board{margin-top:12px;border:1px solid var(--lt-line,#dbe3ef);background:var(--lt-subtle,#eff3fb);border-radius:9px;padding:9px 12px;font-size:12px;font-weight:700;color:var(--lt-primary,#365fd0);cursor:pointer}
+
+
+/* Home board context menu */
+.lectris-hub-board{position:relative}
+.lektrus-home-board-menu{position:absolute;top:9px;right:9px;z-index:12}
+.lektrus-home-board-menu .lectris-hub-board-edit{position:relative!important;top:auto!important;right:auto!important;z-index:1}
+.lektrus-home-board-actions{position:absolute;right:0;top:calc(100% + 5px);width:175px;z-index:70;display:grid;gap:3px;padding:5px;background:var(--lt-surface,#fff);border:1px solid var(--lt-line,#d6e0ee);border-radius:10px;box-shadow:0 12px 32px #14213d23}
+.lektrus-home-board-actions button{font:inherit;text-align:left;padding:10px;border:0;background:transparent;color:var(--lt-text,#243650);border-radius:7px;font-size:12px;font-weight:700;cursor:pointer}
+.lektrus-home-board-actions button:hover{background:var(--lt-subtle,#edf2fa)}
+.lektrus-home-board-actions button.danger{color:#c23c42}
+.lektrus-home-board-actions button.danger:hover{background:#fff0f0}
