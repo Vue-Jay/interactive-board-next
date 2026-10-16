@@ -1191,7 +1191,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
             {angles.slice(0,pts.length).map((raw,j)=>{
               const value=raw?.trim();if(!value)return null;
               const p=pts[j]!,dx=p.x-centroid.x,dy=p.y-centroid.y,d=Math.hypot(dx,dy)||1;
-              return <text key={j} x={sx(p.x)+dx/d*25} y={sy(p.y)-dy/d*25} textAnchor="middle" style={note(value)}>{/°$/.test(value)?value:`${value}°`}</text>;
+              return <text key={j} x={sx(p.x)+dx/d*25} y={sy(p.y)-dy/d*25} textAnchor="middle" style={note()}>{/°$/.test(value)?value:`${value}°`}</text>;
             })}
           </g>;
         })}
