@@ -1,6 +1,7 @@
 import {useEffect, useState, type ReactNode} from "react";
 import type {Item} from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
+import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "./lektrusMathPresets";
 
 export type GraphDraft = {
   title: string;
@@ -55,20 +56,13 @@ type Props = {
   onSave:()=>void; onCancel:()=>void;
 };
 
-const purposes:{id:GraphDraft["purpose"];label:string;description:string}[]=[
-  {id:"function",label:"График функции",description:"Построение по формуле"},
-  {id:"coordinates",label:"Координатная плоскость",description:"Оси и точки"},
-  {id:"number-line",label:"Числовая прямая",description:"Числа и промежутки"},
-  {id:"geometry",label:"Геометрическое построение",description:"Фигуры и измерения"},
-  {id:"unit-circle",label:"Окружность",description:"Центр, радиус, углы"}
-];
 const formulas:Record<GraphDraft["type"],string>={
   linear:"2*x + 1",quadratic:"x^2 - 4*x + 3",sin:"sin(x)",cos:"cos(x)"
 };
 const finiteNumber=(input:string,fallback:number)=>Number.isFinite(Number(input))?Number(input):fallback;
 
 export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave,onCancel}:Props) {
-  const [tab,setTab]=useState<"settings"|"points"|"geometry">("settings");
+  const [tab,setTab]=useState<"presets"|"settings"|"points"|"geometry">("presets");
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onCancel()}
@@ -78,20 +72,44 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
     return ()=>document.removeEventListener("keydown",key,true);
   },[onCancel,onSave]);
   const patch=(next:Partial<GraphDraft>)=>onChange({...draft,...next});
-  const selectPurpose=(purpose:GraphDraft["purpose"])=>{
-    if(purpose==="unit-circle"&&!draft.circles.length){
-      const center=draft.points.length,edge=center+1;
-      patch({purpose,title:draft.title||"Единичная окружность",expression:"",showCurve:false,
-        points:[...draft.points,{x:0,y:0,label:"O"},{x:1,y:0,label:"R"}],
-        circles:[...draft.circles,{center,edge,label:"r = 1",measure:true}]});
-      return;
-    }
-    patch({purpose,axisMode:purpose==="number-line"?"x":draft.axisMode,grid:purpose==="number-line"?false:draft.grid,showCurve:purpose==="function",expression:purpose==="function"?(draft.expression||formulas[draft.type]):"",connectPoints:purpose==="number-line"});
+  const loadPreset=(id:MathPresetId)=>{
+    const sample=makeMathPresetItem(id,0,0,"editor");
+    patch({
+      title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
+      type:sample.graphType??"quadratic",expression:sample.graphExpression??"",
+      connectPoints:sample.graphConnectPoints===true,grid:sample.graphGrid!==false,
+      gridStep:sample.graphGridStep??1,xMin:sample.graphXMin??-10,xMax:sample.graphXMax??10,
+      yMin:sample.graphYMin??-6,yMax:sample.graphYMax??6,
+      points:(sample.graphPoints??[]).map(p=>({...p})),
+      segments:(sample.graphSegments??[]).map(v=>({...v})),
+      angles:(sample.graphAngles??[]).map(v=>({...v})),
+      circles:(sample.graphCircles??[]).map(v=>({...v})),
+      polygons:(sample.graphPolygons??[]).map(v=>({...v,points:[...v.points]})),
+      midpoints:(sample.graphMidpoints??[]).map(v=>({...v})),
+      intervalStartClosed:sample.graphIntervalStartClosed!==false,
+      intervalEndClosed:sample.graphIntervalEndClosed!==false,
+      showCurve:sample.graphShowCurve===true,projections:sample.graphProjections===true,
+      snap:sample.graphSnap!==false,axisLabels:sample.graphAxisLabels!==false,showLabels:sample.graphShowLabels!==false
+    });
+  };
+  const activeAngle=()=>{
+    const point=draft.points[5];
+    if(draft.purpose!=="unit-circle"||!point)return 0;
+    return (Math.atan2(point.y,point.x)*180/Math.PI+360)%360;
+  };
+  const setCircleAngle=(degrees:number)=>{
+    const theta=degrees*Math.PI/180;
+    const x=Number(Math.cos(theta).toFixed(6)),y=Number(Math.sin(theta).toFixed(6));
+    if(draft.points.length>5)patch({points:draft.points.map((p,i)=>i===5?{...p,x,y,label:formatPiRadians(theta)}:p)});
+    else loadPreset("unit-circle");
   };
   const editPoint=(i:number,change:Partial<GraphDraft["points"][number]>)=>
     patch({points:draft.points.map((p,j)=>j===i?{...p,...change}:p)});
   const pointOptions=(exclude=-1)=>draft.points.map((p,i)=>i===exclude?null:<option key={i} value={i}>{p.label||"Точка "+(i+1)} ({p.x}; {p.y})</option>);
-  const addPoint=()=>patch({points:[...draft.points,{x:0,y:0,label:String.fromCharCode(65+(draft.points.length%26))}]});
+  const addPoint=()=>{
+    const label=draft.purpose==="geometry"?String.fromCharCode(65+(draft.points.length%26)):"";
+    patch({points:[...draft.points,{x:0,y:0,label}]});
+  };
   const axisChoices:{id:GraphDraft["axisMode"];label:string;detail:string}[]=[
     {id:"none",label:"0",detail:"Без осей"}, {id:"x",label:"X",detail:"1 ось"},
     {id:"y",label:"Y",detail:"1 ось"}, {id:"both",label:"X + Y",detail:"2 оси"}
@@ -104,22 +122,30 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
         <button type="button" aria-label="Закрыть редактор" onClick={onSave}>×</button>
       </header>
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
-        <button type="button" className={tab==="settings"?"active":""} onClick={()=>setTab("settings")}>Основное</button>
+        <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>Построить</button>
+        <button type="button" className={tab==="settings"?"active":""} onClick={()=>setTab("settings")}>Настройки</button>
         <button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.points.length}</span></button>
-        <button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Построения <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>
+        <button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Фигуры <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>
       </nav>
       <div className="graph-editor-body lektrus-graph-content">
         <div className="graph-editor-form lektrus-graph-settings">
+          {tab==="presets"&&<div className="lektrus-graph-section lektrus-math-presets">
+            <strong>Построить на плоскости</strong>
+            <small>Выберите учебную конструкцию. Точки и фигуры можно двигать прямо в предпросмотре. Новый образец заменит текущую конструкцию в редакторе, но не изменит доску до сохранения.</small>
+            {(["Числа и координаты","Функции","Геометрия","Тригонометрия"] as const).map(group=>
+              <div className="lektrus-math-preset-group" key={group}>
+                <h4>{group}</h4>
+                <div className="lektrus-math-preset-grid">{mathPresets.filter(p=>p.group===group).map(p=>
+                  <button type="button" key={p.id} className={draft.title===p.title||p.id==="blank"&&draft.title==="Координатная плоскость"?"active":""}
+                    onClick={()=>loadPreset(p.id)}><strong>{p.title}</strong><small>{p.subtitle}</small></button>
+                )}</div>
+              </div>)}
+          </div>}
           {tab==="settings"&&<>
             <label className="lektrus-graph-field"><span>Название на доске</span>
               <input value={draft.title} maxLength={100} placeholder="Название учебного объекта" onChange={e=>patch({title:e.target.value})}/>
             </label>
-            <div className="lektrus-graph-section"><strong>Тип объекта</strong>
-              <div className="lektrus-graph-kind-grid">
-                {purposes.map(p=><button key={p.id} type="button" className={draft.purpose===p.id?"active":""} onClick={()=>selectPurpose(p.id)}>
-                  <b>{p.label}</b><small>{p.description}</small></button>)}
-              </div>
-            </div>
+            <p className="lektrus-graph-note">Текущий режим: {draft.purpose==="function"?"График функции":draft.purpose==="number-line"?"Числовая прямая":draft.purpose==="unit-circle"?"Тригонометрия":draft.purpose==="geometry"?"Геометрия":"Координаты"}. Для другого построения откройте вкладку «Построить».</p>
             {draft.purpose==="function"&&<div className="lektrus-graph-section"><strong>Функция</strong>
               <label className="lektrus-graph-field"><span>Шаблон построения</span>
                 <select value={draft.type} onChange={e=>{const type=e.target.value as GraphDraft["type"];patch({type,expression:formulas[type],showCurve:true})}}>
@@ -140,6 +166,20 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
               </div>
               {draft.points.length>=2&&<strong>{draft.intervalStartClosed?"[":"("}{Math.min(draft.points[0].x,draft.points[1].x)}; {Math.max(draft.points[0].x,draft.points[1].x)}{draft.intervalEndClosed?"]":")"}</strong>}
             </div>}
+            {draft.purpose==="unit-circle"&&<div className="lektrus-graph-section lektrus-unit-circle-controls">
+              <strong>Угол на единичной окружности</strong>
+              <small>Перемещайте радиус или задавайте угол. Синус и косинус вычисляются по координатам точки.</small>
+              <div className="lektrus-circle-readouts">
+                <span><b>{formatPiRadians(activeAngle()*Math.PI/180)}</b><small>{Math.round(activeAngle())}°</small></span>
+                <span><b>{Math.cos(activeAngle()*Math.PI/180).toFixed(3)}</b><small>cos α</small></span>
+                <span><b>{Math.sin(activeAngle()*Math.PI/180).toFixed(3)}</b><small>sin α</small></span>
+              </div>
+              <label className="lektrus-graph-field">Угол, градусы
+                <input type="range" min="0" max="360" step="1" value={Math.round(activeAngle())} onChange={e=>setCircleAngle(Number(e.target.value))}/>
+              </label>
+              <div className="lektrus-math-angle-shortcuts">{[0,30,45,60,90,120,135,150,180,225,270,315,330].map(v=>
+                <button key={v} type="button" onClick={()=>setCircleAngle(v)}>{formatPiRadians(v*Math.PI/180)}</button>)}</div>
+            </div>}
             <div className="lektrus-graph-section"><strong>Оси координат</strong><span className="lektrus-graph-note">Выберите 0, 1 или 2 оси. Третья ось требует отдельного 3D-инструмента.</span>
               <div className="lektrus-graph-axis-options">{axisChoices.map(axis=><button key={axis.id} type="button" className={draft.axisMode===axis.id?"active":""} title={axis.detail} onClick={()=>patch({axisMode:axis.id})}>{axis.label}<small>{axis.detail}</small></button>)}</div>
             </div>
@@ -159,7 +199,10 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
             <small>Перемещайте точки прямо на рисунке. Двойное нажатие по пустому месту добавляет точку.</small>
             {draft.points.length===0&&<p className="lektrus-graph-empty">Пока нет точек. Добавьте первую.</p>}
             {draft.points.map((p,i)=><div className="lektrus-graph-point-row" key={i}>
-              <input aria-label={"Название точки "+(i+1)} maxLength={24} value={p.label} placeholder="Имя" onChange={e=>editPoint(i,{label:e.target.value})}/>
+              <input aria-label={"Подпись точки "+(i+1)} maxLength={24}
+                value={draft.purpose==="unit-circle"&&i>0?(i===5?formatPiRadians(Math.atan2(p.y,p.x)):p.label):draft.purpose==="number-line"?"":p.label}
+                placeholder={draft.purpose==="geometry"?"A, B, C…":"Без подписи"} disabled={draft.purpose==="unit-circle"&&i>0||draft.purpose==="number-line"}
+                onChange={e=>editPoint(i,{label:e.target.value})}/>
               <input aria-label={"X точки "+(i+1)} type="number" step=".25" value={p.x} onChange={e=>editPoint(i,{x:finiteNumber(e.target.value,p.x)})}/>
               <input aria-label={"Y точки "+(i+1)} title={draft.purpose==="number-line"?"На числовой прямой все точки имеют Y = 0":undefined} disabled={draft.purpose==="number-line"} type="number" step=".25" value={draft.purpose==="number-line"?0:p.y} onChange={e=>editPoint(i,{y:finiteNumber(e.target.value,p.y)})}/>
               <LektrusColorPicker userId={userId} label="" compact value={p.color??"#111111"} onChange={color=>editPoint(i,{color})}/>
