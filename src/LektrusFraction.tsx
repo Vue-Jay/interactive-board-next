@@ -1,9 +1,9 @@
-import {useEffect,useState} from "react";
+import {useEffect,useState,type MouseEvent} from "react";
 import type {Item} from "./boardModel";
 
 type FractionMode="circle"|"bar";
 type FractionData={title:string;mode:FractionMode;numerator:number;denominator:number};
-const normalizeCount=(n:number,min:number)=>Number.isFinite(n)?Math.max(min,Math.trunc(n)):min;
+const normalizeCount=(n:number,min:number)=>Number.isFinite(n)?Math.max(min,Math.min(Number.MAX_SAFE_INTEGER,Math.trunc(n))):min;
 const fractionFrom=(item:Item):FractionData=>({
   title:item.text||"Дробная модель",
   mode:item.fractionMode==="bar"?"bar":"circle",
@@ -27,14 +27,14 @@ export function LektrusFractionView({item,onSelect}:{item:Item;onSelect?:(value:
   const proportion=numerator/denominator;
   const arcEnd=-Math.PI/2+2*Math.PI*proportion;
   const endX=180+100*Math.cos(arcEnd),endY=125+100*Math.sin(arcEnd);
-  const onBarClick=(event:React.MouseEvent<SVGSVGElement>)=>{
+  const onBarClick=(event:MouseEvent<SVGSVGElement>)=>{
     if(!onSelect)return;
     const rect=event.currentTarget.getBoundingClientRect();
     const px=(event.clientX-rect.left)/rect.width*360;
     const part=Math.floor(Math.max(0,Math.min(.999999,(px-22)/316))*denominator);
     onSelect(part<numerator?part:part+1);
   };
-  const onCircleClick=(event:React.MouseEvent<SVGSVGElement>)=>{
+  const onCircleClick=(event:MouseEvent<SVGSVGElement>)=>{
     if(!onSelect)return;
     const rect=event.currentTarget.getBoundingClientRect();
     const x=(event.clientX-rect.left)/rect.width*360-180;
