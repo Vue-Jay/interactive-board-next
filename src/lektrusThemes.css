@@ -518,3 +518,46 @@
 @media(hover:hover){.lectris-hub-tile:hover{transform:translateY(-2px);box-shadow:0 9px 23px rgba(30,48,88,.10)!important}}
 @media(max-width:700px){.lectris-brand{gap:6px!important}.lectris-brand .lectris-brand-mark{width:37px!important;height:37px!important;min-width:37px!important}.lectris-brand .lektrus-brand-wordmark{font-size:19px!important}.lectris-workspace-header{min-height:58px!important}.lektrus-hero-identity img{width:28px;height:28px}}
 @media(prefers-reduced-motion:reduce){.lectris-hub-tile{transition:none!important}}
+
+
+/* Lektrus workspace: compact editorial welcome, no banner or repeated wordmark. */
+.lectris-brand .lektrus-brand-lockup{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;min-width:0}
+.lectris-brand .lektrus-brand-tagline{font-size:10px;line-height:1.2;font-weight:650;color:var(--lt-muted,#6b7890);letter-spacing:.005em;white-space:nowrap}
+.lectris-hub .lectris-hub-hero-compact{
+  position:relative;isolation:isolate;overflow:hidden;
+  min-height:128px!important;padding:20px 24px!important;
+  background:var(--lt-surface,#fff)!important;border:1px solid var(--lt-line,#d9e1ef)!important;
+  color:var(--lt-text,#192944)!important;
+  box-shadow:0 5px 18px rgba(23,42,80,.045)!important;
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:22px!important;
+}
+.lectris-hub .lectris-hub-hero-compact:before{
+ content:"";position:absolute;inset:0 auto 0 0;width:4px;
+ background:var(--lt-primary,#4368bb);border-radius:14px 0 0 14px;
+}
+.lectris-hub .lectris-hub-hero-compact:after{
+ content:"";position:absolute;z-index:-1;right:-44px;top:-90px;
+ width:260px;height:260px;border-radius:50%;pointer-events:none;
+ border:38px solid var(--lt-subtle,#eef3fc);opacity:.55;
+}
+.lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-copy{min-width:0;flex:1}
+.lectris-hub .lectris-hub-hero-compact :is(h1,p,.lectris-hub-hero-chip,.lectris-hub-hero-metric){color:var(--lt-text,#192944)!important}
+.lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-topline{margin-bottom:7px!important;gap:10px!important;flex-wrap:wrap}
+.lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-chip{background:var(--lt-subtle,#eef3fc)!important;color:var(--lt-primary,#365fd0)!important;border:1px solid var(--lt-line,#d9e1ef)!important;border-radius:6px!important;padding:4px 7px!important;letter-spacing:.07em!important}
+.lectris-hub .lectris-hub-hero-compact .lectris-hub-hero-metric{opacity:.68!important}
+.lectris-hub .lectris-hub-hero-compact h1{font-size:clamp(22px,2.4vw,29px)!important;line-height:1.13!important;margin:4px 0 6px!important;letter-spacing:-.035em!important}
+.lectris-hub .lectris-hub-hero-compact p{color:var(--lt-secondary,#6b7890)!important;max-width:620px!important;font-size:12px!important;line-height:1.45!important}
+.lectris-hub .lectris-hub-hero-actions{position:relative;z-index:1;flex-shrink:0}
+.lectris-hub .lectris-hub-hero-actions button:not(.lectris-hub-primary){background:var(--lt-subtle,#edf2f8)!important;color:var(--lt-text,#22364d)!important;border-color:var(--lt-line,#cfdae8)!important}
+.lectris-hub .lectris-hub-section-label{margin-top:16px!important}
+@media(max-width:850px){
+ .lectris-hub .lectris-hub-hero-compact{padding:17px!important;gap:12px!important;flex-wrap:wrap}
+ .lectris-hub .lectris-hub-hero-actions{justify-content:flex-start!important}
+}
+@media(max-width:600px){
+ .lectris-brand .lektrus-brand-tagline{font-size:8px;max-width:122px;overflow:hidden;text-overflow:ellipsis}
+ .lectris-hub .lectris-hub-hero-compact{min-height:0!important;padding:15px!important}
+ .lectris-hub .lectris-hub-hero-compact:after{opacity:.25}
+ .lectris-hub .lectris-hub-hero-compact h1{font-size:21px!important}
+}
