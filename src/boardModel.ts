@@ -79,6 +79,8 @@ export type Item = {
   graphCircles?: { center:number; edge:number; label:string; measure:boolean }[];
   graphPolygons?: { points:number[]; label:string; measure:boolean }[];
   graphTriangleLines?: ("median"|"altitude"|"bisector")[];
+  graphTriangleVertex?: 0|1|2;
+  graphShowArea?: boolean;
   graphMidpoints?: { a:number; b:number; label:string }[];
   graphSnap?: boolean;
   graphAxisLabels?: boolean;
@@ -200,6 +202,8 @@ export function parseDocument(raw: string): DocumentData {
     if (i.kind === "graph") {
       if (i.graphIntervalStartClosed != null && typeof i.graphIntervalStartClosed !== "boolean") throw new Error("Повреждена левая граница промежутка");
       if (i.graphIntervalEndClosed != null && typeof i.graphIntervalEndClosed !== "boolean") throw new Error("Повреждена правая граница промежутка");
+      if (i.graphTriangleVertex != null && ![0,1,2].includes(i.graphTriangleVertex)) throw new Error("Некорректная вершина треугольника");
+      if (i.graphShowArea != null && typeof i.graphShowArea !== "boolean") throw new Error("Некорректные настройки площади");
       if (i.graphTriangleLines != null && (!Array.isArray(i.graphTriangleLines) || i.graphTriangleLines.length>3 || i.graphTriangleLines.some(v=>!["median","altitude","bisector"].includes(v)))) throw new Error("Повреждены построения треугольника");
       if (i.graphPurpose != null && !["function","coordinates","geometry","unit-circle","number-line"].includes(i.graphPurpose)) throw new Error("Повреждён тип учебного объекта");
       if (i.graphAxisMode != null && !["both","x","y","none"].includes(i.graphAxisMode)) throw new Error("Повреждён режим осей");
