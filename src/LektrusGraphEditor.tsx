@@ -76,6 +76,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const roundSolid=draft.figureId==="cone"||draft.figureId==="cylinder";
   const equalSideFigure=["square","rhombus","pentagon","hexagon","octagon"].includes(draft.figureId);
   const rectangleFigure=["square","rectangle"].includes(draft.figureId);
+  const parameterQuadrilateral=["parallelogram","rhombus","trapezoid","trapezoid-isosceles","trapezoid-right"].includes(draft.figureId);
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onClose()}
@@ -309,11 +310,54 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           {mode==="geometry"&&tab==="givens"&&<div className="lektrus-graph-section lektrus-geometry-guided">
             <div className="lektrus-graph-section-head"><strong>Размеры и подписи</strong></div>
             <small>{roundSolid?"Настройте радиус основания и высоту.":isSolid?"Размеры и оформление объёмной фигуры.":"Для треугольника можно задать стороны и углы. Готовые ответы не выводятся."}</small>
+            {parameterQuadrilateral&&<div className="lektrus-geometry-givens">
+              <strong>Построить фигуру по размерам</strong>
+              <small>Стороны и высота указываются в единицах условия. Пропорции чертежа соответствуют введённым значениям, готовые расчёты не показываются.</small>
+              <div className="lektrus-geometry-given-grid">
+                {(draft.figureId.startsWith("trapezoid")?
+                  [{label:"Нижнее основание AB",index:0},{label:"Верхнее основание CD",index:2},{label:"Высота h",index:4}]:
+                  draft.figureId==="rhombus"?
+                  [{label:"Сторона a",index:0},{label:"Угол A, °",index:-1}]:
+                  [{label:"Основание AB",index:0},{label:"Боковая сторона BC",index:1},{label:"Угол A, °",index:-1}]
+                ).map(field=><label key={field.index}>{field.label}
+                  <input inputMode="decimal" placeholder={field.index===-1?"Например, 60":"Например, 5"}
+                    value={field.index===-1?draft.givenAngles[0]??"":draft.givenSides[field.index]??""}
+                    onChange={e=>field.index===-1?patch({givenAngles:[e.target.value,...draft.givenAngles.slice(1)]}):patch({givenSides:Array.from({length:Math.max(5,draft.givenSides.length)},(_,j)=>j===field.index?e.target.value:draft.givenSides[j]??"")})}/>
+                </label>)}
+              </div>
+              <button type="button" onClick={()=>{
+                const parse=(value:string|undefined)=>Number((value??"").trim().replace(",","."));
+                const a=parse(draft.givenSides[0]),b=parse(draft.givenSides[draft.figureId.startsWith("trapezoid")?2:draft.figureId==="rhombus"?0:1]);
+                const h=draft.figureId.startsWith("trapezoid")?parse(draft.givenSides[4]):0;
+                const angle=draft.figureId.startsWith("trapezoid")?0:parse(draft.givenAngles[0]);
+                if(!(a>0&&b>0)||draft.figureId.startsWith("trapezoid")&&!(h>0)||!draft.figureId.startsWith("trapezoid")&&!(angle>0&&angle<180)){
+                  setGeometryError("Заполните все размеры положительными числами. Угол должен быть от 0° до 180°.");return;
+                }
+                let coords:[number,number][];
+                if(draft.figureId.startsWith("trapezoid")){
+                  const shift=draft.figureId==="trapezoid-right"?0:draft.figureId==="trapezoid-isosceles"?(a-b)/2:(a-b)*.3;
+                  coords=[[0,0],[a,0],[shift+b,h],[shift,h]];
+                }else{
+                  const side=draft.figureId==="rhombus"?a:b,theta=angle*Math.PI/180;
+                  const dx=side*Math.cos(theta),dy=side*Math.sin(theta);
+                  coords=[[0,0],[a,0],[a+dx,dy],[dx,dy]];
+                }
+                const scaleFactor=7/Math.max(...coords.flat().map(Math.abs),1);
+                const poly=draft.polygons.find(p=>p.points.length===4);if(!poly)return;
+                const sides=draft.figureId==="rhombus"?[draft.givenSides[0],draft.givenSides[0],draft.givenSides[0],draft.givenSides[0]]:
+                  draft.figureId==="parallelogram"?[draft.givenSides[0],draft.givenSides[1],draft.givenSides[0],draft.givenSides[1]]:draft.givenSides;
+                patch({points:draft.points.map((point,i)=>{
+                  const position=poly.points.indexOf(i);return position<0?point:{...point,x:coords[position][0]*scaleFactor-3,y:coords[position][1]*scaleFactor-2};
+                }),givenSides:[...sides]});
+                setGeometryError("");
+              }}>Построить по размерам</button>
+              {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
+            </div>}
             {!isSolid&&draft.polygons.some(p=>p.points.length!==3)&&<div className="lektrus-geometry-givens">
               <strong>Подписи сторон и углов</strong>
               <small>Значения, которые вы впишете, будут показаны непосредственно у соответствующей стороны или вершины. Они не являются ответами и не вычисляются автоматически.</small>
               {draft.polygons.slice(0,1).map((poly,pi)=><div key={pi}>
-                {!rectangleFigure&&<div className="lektrus-geometry-given-grid">
+                {!rectangleFigure&&!parameterQuadrilateral&&<div className="lektrus-geometry-given-grid">
                   {poly.points.map((index,i)=>{
                     if(equalSideFigure&&i>0)return null;
                     const next=poly.points[(i+1)%poly.points.length];
