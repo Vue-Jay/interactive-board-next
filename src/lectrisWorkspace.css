@@ -185,3 +185,25 @@
   .lectris-mobile-more-empty{font-size:13px;color:#72839b;text-align:center;padding:18px 8px;margin:0}
   .lectris-mobile-more .lectris-nav-link{min-height:43px}
 }
+
+/* Allow boards sorting, actions and filters to wrap without overlapping */
+.lectris-workspace-stage .lectris-library-toolbar{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:9px!important;height:auto!important;min-height:54px!important}
+.lectris-library-toolbar>*{position:relative!important;flex-shrink:0!important}
+.lectris-library-toolbar .lectris-library-search{flex:1 1 230px!important;min-width:180px!important}
+.lectris-library-toolbar .lectris-library-sort{display:flex!important;gap:5px!important;align-items:center!important;min-width:170px!important;max-width:100%!important}
+.lectris-library-toolbar .lectris-library-sort select{min-width:125px!important;width:auto!important;max-width:100%!important}
+.lectris-library-toolbar .lectris-library-extras{display:flex!important;gap:6px!important;flex-wrap:wrap!important;min-width:0!important}
+.lectris-library-toolbar .backup-menu{display:flex!important;gap:6px!important;flex-wrap:wrap!important}
+@media(max-width:700px){.lectris-library-toolbar>*{flex:1 1 auto!important}.lectris-library-toolbar .lectris-library-search{flex-basis:100%!important}}
+/* Scroll only when content exceeds the viewport: no minimum-height overflow. */
+.lectris-workspace-stage{min-height:0!important;overscroll-behavior:contain}
+.lectris-workspace-stage :is(.schedule-shell,.progress-shell){min-height:0!important}
+.lectris-workspace-stage :is(.schedule-content,.progress-content){padding-top:12px!important;padding-bottom:12px!important}
+.lectris-workspace-stage .schedule-summary{gap:8px!important;margin-bottom:9px!important}
+.lectris-workspace-stage .schedule-summary article{padding:10px 12px!important;min-height:65px!important}
+.lectris-workspace-stage :is(.schedule-toolbar,.students-toolbar,.progress-toolbar){margin-bottom:8px!important}
+.lectris-workspace-stage .schedule-day{min-height:180px!important}
+.lectris-workspace-stage .progress-kpis{gap:8px!important;margin-bottom:9px!important}
+.lectris-workspace-stage .progress-kpis article{padding:12px!important}
+.lectris-workspace-stage .progress-panel{padding:12px!important}
+.lectris-workspace-stage .progress-grid{gap:9px!important;margin-bottom:9px!important}
