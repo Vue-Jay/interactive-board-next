@@ -1482,12 +1482,42 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [presentationBlackout, setPresentationBlackout] = useState(false);
   const [boardBackground,setBoardBackground]=useState<BoardBackground>(()=>normalizeBoardBackground(initial.data.background));
   const [backgroundMenuOpen,setBackgroundMenuOpen]=useState(false);
-  const backgroundAppearance=useMemo(()=>boardBackgroundAppearance(boardBackground),[boardBackground]);
-  const canChangeBoardBackground=canEdit&&!isStudent;
+  // A personal background is viewport preference, never part of the shared board document.
+  const personalBackgroundKey="lektrus.personal-background.v1."+authUser.id+"."+boardSummary.id;
+  const [personalBackground,setPersonalBackground]=useState<BoardBackground|null>(()=>{
+    try{
+      const raw=localStorage.getItem("lektrus.personal-background.v1."+authUser.id+"."+boardSummary.id);
+      return raw?normalizeBoardBackground(JSON.parse(raw)):null;
+    }catch{return null}
+  });
+  const [backgroundIsShared,setBackgroundIsShared]=useState(()=>{
+    try{return localStorage.getItem("lektrus.personal-background.v1."+authUser.id+"."+boardSummary.id)===null}
+    catch{return true}
+  });
+  const visibleBoardBackground=backgroundIsShared?boardBackground:(personalBackground??boardBackground);
+  const backgroundAppearance=useMemo(()=>boardBackgroundAppearance(visibleBoardBackground),[visibleBoardBackground]);
+  const canChangeBoardBackground=backgroundIsShared?(canEdit&&!isStudent):true;
   const updateBoardBackground=(patch:Partial<BoardBackground>)=>{
     if(!canChangeBoardBackground)return;
-    setBoardBackground(current=>normalizeBoardBackground({...current,...patch}));
+    if(backgroundIsShared)setBoardBackground(current=>normalizeBoardBackground({...current,...patch}));
+    else setPersonalBackground(current=>normalizeBoardBackground({...(current??boardBackground),...patch}));
   };
+  const changeBackgroundSharing=(shared:boolean)=>{
+    if(shared){
+      setBackgroundIsShared(true);
+      setPersonalBackground(null);
+      try{localStorage.removeItem(personalBackgroundKey)}catch{/* Storage blocked */}
+    }else{
+      const copy=normalizeBoardBackground(boardBackground);
+      setPersonalBackground(copy);
+      setBackgroundIsShared(false);
+      try{localStorage.setItem(personalBackgroundKey,JSON.stringify(copy))}catch{/* Storage blocked */}
+    }
+  };
+  useEffect(()=>{
+    if(backgroundIsShared||!personalBackground)return;
+    try{localStorage.setItem(personalBackgroundKey,JSON.stringify(personalBackground))}catch{/* Storage blocked */}
+  },[backgroundIsShared,personalBackground,personalBackgroundKey]);
   const [previous, setPrevious] = useState<DocumentData | null>(() => {
     try {
       const raw = localStorage.getItem(storageKey + ".before-import");
@@ -6398,7 +6428,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         <section
           ref={board}
           aria-label="Доска"
-          className={`board board-bg-${boardBackground.mode} board-tool-${tool} ${space || rightPointerActive ? "board-hand-active" : ""} ${rightPointerActive ? "board-right-hand" : ""} ${panning ? "board-panning" : ""}`}
+          className={`board board-bg-${visibleBoardBackground.mode} board-tool-${tool} ${space || rightPointerActive ? "board-hand-active" : ""} ${rightPointerActive ? "board-right-hand" : ""} ${panning ? "board-panning" : ""}`}
           style={{
             backgroundSize: `${24 * view.zoom}px ${24 * view.zoom}px`,
             backgroundPosition: `${view.x}px ${view.y}px`,
@@ -7226,27 +7256,31 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           role="group" aria-label="Настройки фона доски" onPointerDown={e=>e.stopPropagation()}>
           <div className="lektrus-background-head"><strong>Фон доски</strong>
             <button type="button" aria-label="Закрыть настройки фона" onClick={()=>setBackgroundMenuOpen(false)}><Icon name="close" size={16}/></button></div>
+          <label className="lektrus-background-sharing">
+            <span><strong>Сделать общим</strong><small>{backgroundIsShared?"Виден всем участникам":"Только для вас"}</small></span>
+            <input type="checkbox" role="switch" aria-label="Сделать фон общим для всех" checked={backgroundIsShared} onChange={e=>changeBackgroundSharing(e.target.checked)}/>
+          </label>
           <div className="lektrus-background-modes" aria-label="Тип фона">
             {(["dots","grid","plain"] as const).map(mode=><button type="button" key={mode}
-              disabled={!canChangeBoardBackground} aria-pressed={boardBackground.mode===mode}
-              className={boardBackground.mode===mode?"active":""} onClick={()=>updateBoardBackground({mode})}>
+              disabled={!canChangeBoardBackground} aria-pressed={visibleBoardBackground.mode===mode}
+              className={visibleBoardBackground.mode===mode?"active":""} onClick={()=>updateBoardBackground({mode})}>
               <Icon name={mode==="dots"?"dots":mode==="grid"?"grid":"plain"} size={17}/>
               {mode==="dots"?"Точки":mode==="grid"?"Клетки":"Чистый"}</button>)}
           </div>
           <label className="lektrus-background-color">Цвет фона
             <span><input aria-label="Цвет фона доски" type="color" disabled={!canChangeBoardBackground}
-              value={boardBackground.color} onChange={e=>updateBoardBackground({color:e.target.value})}/>
+              value={visibleBoardBackground.color} onChange={e=>updateBoardBackground({color:e.target.value})}/>
               <output>{boardBackground.color.toUpperCase()}</output></span></label>
           <label className="lektrus-background-opacity">Непрозрачность
             <span><input aria-label="Непрозрачность фона доски" type="range" min="0" max="100" step="5"
-              disabled={!canChangeBoardBackground} value={boardBackground.opacity}
+              disabled={!canChangeBoardBackground} value={visibleBoardBackground.opacity}
               onChange={e=>updateBoardBackground({opacity:Number(e.target.value)})}/>
               <output>{boardBackground.opacity}%</output></span></label>
           <div className="lektrus-background-footer">
             {canChangeBoardBackground
-              ?<button type="button" onClick={()=>setBoardBackground(normalizeBoardBackground(null))}>Сбросить фон</button>
+              ?<button type="button" onClick={()=>updateBoardBackground({mode:"dots",color:"#f7f7f8",opacity:100})}>Сбросить фон</button>
               :<small>Настройки задаёт преподаватель</small>}
-            <small>Общий фон для всех участников</small>
+            <small>{backgroundIsShared?"Фон для всех участников":"Личный фон"}</small>
           </div>
         </div>}
           </div>
