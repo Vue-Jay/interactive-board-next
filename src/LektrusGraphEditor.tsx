@@ -138,7 +138,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
                 <label><input type="checkbox" checked={draft.intervalStartClosed} onChange={e=>patch({intervalStartClosed:e.target.checked})}/> Левая граница включена</label>
                 <label><input type="checkbox" checked={draft.intervalEndClosed} onChange={e=>patch({intervalEndClosed:e.target.checked})}/> Правая граница включена</label>
               </div>
-              {draft.points.length>=2&&<strong>{draft.intervalStartClosed?"[":"("}{draft.points[0].x}; {draft.points[1].x}{draft.intervalEndClosed?"]":")"}</strong>}
+              {draft.points.length>=2&&<strong>{draft.intervalStartClosed?"[":"("}{Math.min(draft.points[0].x,draft.points[1].x)}; {Math.max(draft.points[0].x,draft.points[1].x)}{draft.intervalEndClosed?"]":")"}</strong>}
             </div>}
             <div className="lektrus-graph-section"><strong>Оси координат</strong><span className="lektrus-graph-note">Выберите 0, 1 или 2 оси. Третья ось требует отдельного 3D-инструмента.</span>
               <div className="lektrus-graph-axis-options">{axisChoices.map(axis=><button key={axis.id} type="button" className={draft.axisMode===axis.id?"active":""} title={axis.detail} onClick={()=>patch({axisMode:axis.id})}>{axis.label}<small>{axis.detail}</small></button>)}</div>
