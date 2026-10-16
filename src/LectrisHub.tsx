@@ -200,6 +200,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
     {view==="home"?<>
       <header className="lectris-hub-hero lectris-hub-hero-compact">
         <div className="lectris-hub-hero-copy">
+          <div className="lektrus-hero-identity"><img src={`/lektrus-logo-${document.documentElement.dataset.lectrisPalette||"sapphire"}.png`} alt="" aria-hidden="true" /><span>LEKTRUS <small>ИНТЕРАКТИВНОЕ ОБУЧЕНИЕ</small></span></div>
           <div className="lectris-hub-hero-topline">
             <span className="lectris-hub-hero-chip">{teacher?"РАБОЧЕЕ МЕСТО ПРЕПОДАВАТЕЛЯ":"МОЁ ОБУЧЕНИЕ"}</span>
             <span className="lectris-hub-hero-metric">{teacher?`Доски: ${boards.length} · Ученики: ${students.length}`:`Доступные доски: ${boards.length}`}</span>
