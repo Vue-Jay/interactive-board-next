@@ -6095,7 +6095,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               const trig=current.purpose==="unit-circle"&&i===5;
               const angle=Math.atan2(y,x),xx=trig?Number(Math.cos(angle).toFixed(6)):x,yy=trig?Number(Math.sin(angle).toFixed(6)):current.purpose==="number-line"?0:y;
               return {...current,points:current.points.map((p,j)=>j===i?{...p,x:xx,y:yy,label:trig?formatPiRadians(angle):p.label}:p)};
-            }}
+            })}
             onAddPoint={(x,y)=>setGraphDraft(current=>current&&current.purpose!=="unit-circle"&&current.points.length<40?{...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:current.purpose==="geometry"?String.fromCharCode(65+(current.points.length%26)):""}]}:current)}
             onRemovePoint={i=>setGraphDraft(current=>current&&!(current.purpose==="unit-circle"&&i<=5)?removeGraphPoint(current,i):current)}
             />}
