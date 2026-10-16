@@ -60,6 +60,8 @@ type Props = {
   onSave:()=>void; onCancel:()=>void; onClose:()=>void;
 };
 
+const finiteNumber=(text:string,fallback:number)=>{const value=Number(text);return Number.isFinite(value)?value:fallback};
+
 const formulas:Record<GraphDraft["type"],string>={
   linear:"2*x + 1",quadratic:"x^2 - 4*x + 3",sin:"sin(x)",cos:"cos(x)"
 };
