@@ -1497,7 +1497,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     return()=>document.removeEventListener("pointerdown",finishCropFromOutside,true);
   },[imageCropEditorId]);
   const imageTapRef=useRef<{id:string;at:number;x:number;y:number}|null>(null);
-  const [shapeType, setShapeType] = useState<ShapeType>("rounded");
+  const [shapeType, setShapeType] = useState<ShapeType | null>(null);
   const [connectorStyle, setConnectorStyle] = useState<ConnectorStyle>("arrow");
   const [connectorWeight, setConnectorWeight] = useState(3);
   const [arrowHeadStyle,setArrowHeadStyle]=useState<ArrowHeadStyle>("triangle");
@@ -1609,6 +1609,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [commandPaletteIndex, setCommandPaletteIndex] = useState(0);
   const [preview, setPreview] = useState<Item | null>(null);
   const [tool, setTool] = useState<Tool>("select");
+  // Opening the shape palette does not arm a previously chosen figure.
+  useEffect(() => { if (tool === "shape") setShapeType(null); }, [tool]);
   const inkCursorElement=useRef<HTMLDivElement|null>(null);
   const moveInkCursor=(clientX:number,clientY:number,pointerType:string)=>{
     const indicator=inkCursorElement.current,rect=board.current?.getBoundingClientRect();
@@ -3048,6 +3050,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (gesture.current || eraserSession.current || (e.target as HTMLElement).closest("textarea"))
       return;
     if (e.button !== 0 && e.button !== 1) return;
+    // A click outside an unselected shape palette only dismisses the tool.
+    if (tool === "shape" && shapeType === null) {
+      e.preventDefault();
+      setTool("select");
+      return;
+    }
     const target = e.target as HTMLElement;
     finishEdit();
     const start = local(e.clientX, e.clientY);
@@ -3352,7 +3360,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         width,
         height,
         text: "",
-        ...(tool === "shape" ? { shapeType, color: "#6064d4" } : {}),
+        ...(tool === "shape" ? { shapeType: shapeType ?? "rectangle", color: "#6064d4" } : {}),
         ...(tool === "sticky" ? { color: "#fff3a6", fontSize: 20, textAlign: "left" as const, fontWeight: "normal" as const, fontStyle: "normal" as const, textDecoration: "none" as const, textList: "none" as const, lineHeight: 1.45 } : {}),
         ...(tool === "text" ? { color: "#202124", fontSize: 20, textAlign: "left" as const, fontWeight: "normal" as const, fontStyle: "normal" as const, textDecoration: "none" as const, textList: "none" as const, lineHeight: 1.45 } : {}),
       };
@@ -6426,13 +6434,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
         )}
         {tool === "shape" && (
-          <div className="shape-palette">
+          <div className="shape-palette" role="group" aria-label="Выбрать фигуру" onPointerDown={e=>e.stopPropagation()}>
             {([
               ["rectangle","Прямоугольник"], ["square","Квадрат"], ["circle","Круг"], ["ellipse","Овал"],
               ["triangle","Треугольник"], ["rightTriangle","Прямоугольный треугольник"], ["diamond","Ромб"], ["parallelogram","Параллелограмм"],
               ["trapezoid","Трапеция"], ["pentagon","Пятиугольник"], ["hexagon","Шестиугольник"],
             ] as [ShapeType,string][]).map(([id,label]) => (
-              <button key={id} title={label} className={shapeType === id ? "active" : ""} onClick={() => setShapeType(id)}>
+              <button type="button" key={id} title={label} aria-pressed={shapeType===id} className={shapeType === id ? "active" : ""} onClick={(e) => { e.stopPropagation(); setShapeType(id); }}>
                 <span className="shape-palette-icon"><ShapeIcon type={id} /></span>
                 <span className={id === "rightTriangle" ? "shape-label-two-line" : undefined}>{id === "rightTriangle" ? <>Прямоугольный<br/>треугольник</> : label}</span>
               </button>
