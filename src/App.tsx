@@ -23,6 +23,7 @@ import LektrusGraphEditor, {removeGraphPoint, removeGraphBoardPoint, type GraphD
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {formatPiRadians,makeMathPresetItem} from "./lektrusMathPresets";
+import {isSolidFigure,projectSolid,projectSolidAxis} from "./lektrusSolid3d";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
@@ -1080,7 +1081,21 @@ function evaluateGraphExpression(source: string, x: number): number {
   const expr=():number=>{let v=term();while(tokens[pos]==="+"||tokens[pos]==="-"){const op=tokens[pos++];const q=term();v=op==="+"?v+q:v-q}return v};
   try{const value=expr();return pos===tokens.length&&Number.isFinite(value)?value:NaN}catch{return NaN}
 }
-function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Item; onPointMove?: (index:number,x:number,y:number)=>void; onAddPoint?: (x:number,y:number)=>void; onRemovePoint?: (index:number)=>void }) {
+function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange }: {
+  item: Item;
+  onPointMove?: (index:number,x:number,y:number)=>void;
+  onAddPoint?: (x:number,y:number)=>void;
+  onRemovePoint?: (index:number)=>void;
+  onRotate?: (rotationX:number,rotationY:number)=>void;
+  onRayChange?: (x:number,y:number)=>void;
+}) {
+  const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
+  const [liveRay,setLiveRay]=useState<{x:number;y:number}|null>(null);
+  const orbitX=liveSpin?.[0]??item.graphRotationX??25;
+  const orbitY=liveSpin?.[1]??item.graphRotationY??-35;
+  const solid=isSolidFigure(item.graphFigureId);
+  const rayFigure=item.graphFigureId==="ray";
+
   // A legacy or partially synchronized board may contain objects instead of arrays.
   // Normalize before rendering so a damaged construction cannot crash the entire board.
   item = {...item,
@@ -1106,7 +1121,8 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
   const ux = (p:number) => cx+(p-W/2)/scale, uy = (p:number) => cy-(p-H/2)/scale;
   const step = Math.max(.1,item.graphGridStep ?? 1);
   const values = (a:number,b:number) => { const first=Math.ceil(a/step)*step,count=Math.min(101,Math.max(0,Math.floor((b-first)/step)+1));return Array.from({length:count},(_,i)=>Number((first+i*step).toFixed(6))); };
-  const gridX = values(xMin,xMax), gridY = values(yMin,yMax), gp = (item.graphPoints ?? []).map(p=>purpose==="number-line"?{...p,y:0}:p);
+  const gridX = values(xMin,xMax), gridY = values(yMin,yMax);
+  const gp = (solid?projectSolid(item,orbitX,orbitY):(item.graphPoints??[])).map((p,i)=>purpose==="number-line"?{...p,y:0}:rayFigure&&i===1&&liveRay?{...p,...liveRay}:p);
   const intervalEnds=purpose==="number-line"&&gp.length>=2?[gp[0],gp[1]].sort((p,q)=>p.x-q.x):null;
   const axes = item.graphAxisMode ?? "both";
   const hasX = axes === "both" || axes === "x", hasY = axes === "both" || axes === "y";
@@ -1122,10 +1138,83 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
     if(item.graphSnap!==false&&purpose!=="unit-circle"){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
     return {x:Number(x.toFixed(4)),y:Number(y.toFixed(4))};
   };
+  const beginOrbit=(e:PE<SVGGElement>)=>{
+    if(!onRotate)return;
+    e.preventDefault();e.stopPropagation();
+    const start={x:e.clientX,y:e.clientY,rx:orbitX,ry:orbitY};
+    let value:[number,number]=[orbitX,orbitY];
+    const move=(ev:PointerEvent)=>{
+      value=[Math.max(-85,Math.min(85,start.rx-(ev.clientY-start.y)*.6)),
+        ((start.ry+(ev.clientX-start.x)*.65+540)%360)-180];
+      setLiveSpin(value);
+    };
+    const done=()=>{
+      window.removeEventListener("pointermove",move);
+      window.removeEventListener("pointerup",done);
+      window.removeEventListener("pointercancel",done);
+      setLiveSpin(null);
+      onRotate(value[0],value[1]);
+    };
+    window.addEventListener("pointermove",move);
+    window.addEventListener("pointerup",done,{once:true});
+    window.addEventListener("pointercancel",done,{once:true});
+  };
+  const beginRayDrag=(e:PE<SVGLineElement>)=>{
+    if(!onRayChange||!gp[0])return;
+    e.preventDefault();e.stopPropagation();
+    const svg=e.currentTarget.ownerSVGElement;
+    if(!svg)return;
+    let aim:{x:number;y:number}|null=null;
+    const move=(ev:PointerEvent)=>{
+      const p=coord(ev.clientX,ev.clientY,svg);
+      const origin=gp[0];
+      const diffX=p.x-origin.x,diffY=p.y-origin.y;
+      const distance=Math.hypot(diffX,diffY);
+      if(distance<.15)return;
+      aim={x:origin.x+diffX/distance*5,y:origin.y+diffY/distance*5};
+      setLiveRay(aim);
+    };
+    const done=()=>{
+      window.removeEventListener("pointermove",move);
+      window.removeEventListener("pointerup",done);
+      window.removeEventListener("pointercancel",done);
+      setLiveRay(null);
+      if(aim)onRayChange(aim.x,aim.y);
+    };
+    window.addEventListener("pointermove",move);
+    window.addEventListener("pointerup",done,{once:true});
+    window.addEventListener("pointercancel",done,{once:true});
+  };
   return <div className={`graph-view graph-purpose-${purpose} ${onPointMove?"graph-interactive":""}`}>
     <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small>y = {expression.replace(/^y\s*=\s*/i,"")}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onDoubleClick={e=>{if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
+      {solid&&<g className="lektrus-orbit-control" role="button" tabIndex={onRotate?0:-1}
+        aria-label="Повернуть объёмную фигуру: перетащите манипулятор в углу"
+        onPointerDown={beginOrbit}
+        onDoubleClick={e=>{e.preventDefault();e.stopPropagation();onRotate?.(25,-35)}}
+        onKeyDown={e=>{
+          if(!onRotate)return;
+          let x=orbitX,y=orbitY;
+          if(e.key==="ArrowLeft")y-=15;
+          else if(e.key==="ArrowRight")y+=15;
+          else if(e.key==="ArrowUp")x=Math.min(85,x+15);
+          else if(e.key==="ArrowDown")x=Math.max(-85,x-15);
+          else return;
+          e.preventDefault();e.stopPropagation();onRotate(x,y);
+        }}
+        style={{cursor:onRotate?"grab":"default",touchAction:"none"}}>
+        <circle cx="551" cy="50" r="37" fill="#fff" fillOpacity=".95" stroke="#9cacc1" strokeWidth="1.7"/>
+        {(["x","y","z"] as const).map((axis,i)=>{
+          const dir=axis==="x"?projectSolidAxis(1,0,0,orbitX,orbitY):axis==="y"?projectSolidAxis(0,1,0,orbitX,orbitY):projectSolidAxis(0,0,1,orbitX,orbitY);
+          const x=551+dir.x*23,y=50-dir.y*23;
+          const colors=["#e36d65","#4e9b76","#567bdd"];
+          return <g key={axis} pointerEvents="none"><line x1="551" y1="50" x2={x} y2={y} stroke={colors[i]} strokeWidth="2.7" strokeLinecap="round"/>
+            <text x={x+3} y={y-3} fontSize="11" fontWeight="750" fill={colors[i]}>{axis.toUpperCase()}</text></g>;
+        })}
+        <circle cx="551" cy="50" r="4" fill="#31435b" pointerEvents="none"/>
+        <circle cx="551" cy="50" r="37" fill="transparent" stroke="none"/>
+      </g>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#667085" strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid">
         {gridX.map(x=><line key={`x${x}`} x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
