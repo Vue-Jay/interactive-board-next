@@ -7270,12 +7270,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <label className="lektrus-background-color">Цвет фона
             <span><input aria-label="Цвет фона доски" type="color" disabled={!canChangeBoardBackground}
               value={visibleBoardBackground.color} onChange={e=>updateBoardBackground({color:e.target.value})}/>
-              <output>{boardBackground.color.toUpperCase()}</output></span></label>
+              <output>{visibleBoardBackground.color.toUpperCase()}</output></span></label>
           <label className="lektrus-background-opacity">Непрозрачность
             <span><input aria-label="Непрозрачность фона доски" type="range" min="0" max="100" step="5"
               disabled={!canChangeBoardBackground} value={visibleBoardBackground.opacity}
               onChange={e=>updateBoardBackground({opacity:Number(e.target.value)})}/>
-              <output>{boardBackground.opacity}%</output></span></label>
+              <output>{visibleBoardBackground.opacity}%</output></span></label>
           <div className="lektrus-background-footer">
             {canChangeBoardBackground
               ?<button type="button" onClick={()=>updateBoardBackground({mode:"dots",color:"#f7f7f8",opacity:100})}>Сбросить фон</button>
