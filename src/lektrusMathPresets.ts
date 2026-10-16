@@ -93,7 +93,8 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
     const names="ABCDEFGHIJKLMNOPQRST";
     return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
       graphPoints:vertices.map(([px,py],i)=>({x:px,y:py,label:names[i]})),
-      graphPolygons:[{points:vertices.map((_,i)=>i),label:"",measure:true}]};
+      graphPolygons:[{points:vertices.map((_,i)=>i),label:"",measure:true}],
+      graphAngles:["triangle-right","square","rectangle","trapezoid-right"].includes(id)?[{a:vertices.length===3?2:vertices.length-1,vertex:0,b:1,label:""}]:[]};
   }
   if(["segment","ray","line","parallel","perpendicular"].includes(id)){
     const pts=id==="parallel"?[[-4,-2],[4,-2],[-4,2],[4,2]]:
@@ -102,7 +103,8 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
     const segs=id==="parallel"||id==="perpendicular"?[[0,1],[2,3]]:[[0,1]];
     return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
       graphPoints:pts.map(([px,py],i)=>({x:px,y:py,label:["A","B","C","D"][i]})),
-      graphSegments:segs.map(([a,b])=>({a,b,kind:id==="ray"?"ray" as const:id==="segment"?"segment" as const:"line" as const,label:"",measure:false}))};
+      graphSegments:segs.map(([a,b])=>({a,b,kind:id==="ray"?"ray" as const:id==="segment"?"segment" as const:"line" as const,label:"",measure:false})),
+      ...(id==="perpendicular"?{graphPoints:[...pts.map(([px,py],i)=>({x:px,y:py,label:["A","B","C","D"][i]})),{x:0,y:0,label:"O"}],graphAngles:[{a:1,vertex:4,b:3,label:""}]}:{})};
   }
   if(id==="triangular-pyramid"){
     const pts=[[-4,-2],[4,-2],[0,1],[0,4]];
