@@ -56,6 +56,7 @@ type Props = {
 const purposes:{id:GraphDraft["purpose"];label:string;description:string}[]=[
   {id:"function",label:"График функции",description:"Построение по формуле"},
   {id:"coordinates",label:"Координатная плоскость",description:"Оси и точки"},
+  {id:"number-line",label:"Числовая прямая",description:"Числа и промежутки"},
   {id:"geometry",label:"Геометрическое построение",description:"Фигуры и измерения"},
   {id:"unit-circle",label:"Окружность",description:"Центр, радиус, углы"}
 ];
@@ -83,7 +84,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
         circles:[...draft.circles,{center,edge,label:"r = 1",measure:true}]});
       return;
     }
-    patch({purpose,showCurve:purpose==="function",expression:purpose==="function"?(draft.expression||formulas[draft.type]):"",connectPoints:false});
+    patch({purpose,axisMode:purpose==="number-line"?"x":draft.axisMode,grid:purpose==="number-line"?false:draft.grid,showCurve:purpose==="function",expression:purpose==="function"?(draft.expression||formulas[draft.type]):"",connectPoints:purpose==="number-line"});
   };
   const editPoint=(i:number,change:Partial<GraphDraft["points"][number]>)=>
     patch({points:draft.points.map((p,j)=>j===i?{...p,...change}:p)});
@@ -153,6 +154,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
               <LektrusColorPicker userId={userId} label="" compact value={p.color??"#111111"} onChange={color=>editPoint(i,{color})}/>
               <button type="button" aria-label={"Удалить точку "+(i+1)} title="Удалить точку и связанные с ней построения" onClick={()=>onChange(removeGraphPoint(draft,i))}>×</button>
             </div>)}
+            {draft.purpose==="number-line"&&<p className="lektrus-graph-note">Точки на числовой прямой обозначают числа. Соедините две точки, чтобы показать промежуток. Положение точек можно менять в предпросмотре.</p>}
             <label className="lektrus-graph-check"><input type="checkbox" checked={draft.connectPoints} onChange={e=>patch({connectPoints:e.target.checked})}/> Соединять все точки по порядку</label>
             <label className="lektrus-graph-check"><input type="checkbox" checked={draft.projections} onChange={e=>patch({projections:e.target.checked})}/> Строить проекции точек на оси</label>
           </div>}
