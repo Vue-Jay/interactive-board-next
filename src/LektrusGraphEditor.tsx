@@ -52,7 +52,7 @@ export function removeGraphBoardPoint(item:Item,index:number):Item {
 }
 
 type Props = {
-  draft:GraphDraft; userId:string; preview:ReactNode;
+  draft:GraphDraft; userId:string; preview:ReactNode; mode:"coordinates"|"geometry";
   onChange:(value:GraphDraft)=>void;
   onSave:()=>void; onCancel:()=>void; onClose:()=>void;
 };
@@ -61,7 +61,7 @@ const formulas:Record<GraphDraft["type"],string>={
   linear:"2*x + 1",quadratic:"x^2 - 4*x + 3",sin:"sin(x)",cos:"cos(x)"
 };
 
-export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave,onCancel,onClose}:Props) {
+export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,onSave,onCancel,onClose}:Props) {
   const [tab,setTab]=useState<"presets"|"points"|"geometry">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   useEffect(()=>{
@@ -71,7 +71,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
     };
     document.addEventListener("keydown",key,true);
     return ()=>document.removeEventListener("keydown",key,true);
-  },[onCancel,onSave]);
+  },[onClose,onSave]);
   const patch=(next:Partial<GraphDraft>)=>onChange({...draft,...next});
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
@@ -134,20 +134,20 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
       <header className="graph-editor-header lektrus-graph-head">
-        <div><strong>Редактор учебного объекта</strong><span>Графики, координаты и геометрические построения</span></div>
+        <div><strong>{mode==="geometry"?"Геометрический конструктор":"Координатная плоскость"}</strong><span>{mode==="geometry"?"Фигуры, измерения и построения":"Графики функций, координаты и числовая прямая"}</span></div>
         <button type="button" aria-label="Закрыть редактор" onClick={onClose}>×</button>
       </header>
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>Построить</button>
         <button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.points.length}</span></button>
-        <button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Фигуры <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>
+        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Фигуры <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>}
       </nav>
       <div className="graph-editor-body lektrus-graph-content">
         <div className="graph-editor-form lektrus-graph-settings">
           {tab==="presets"&&<div className="lektrus-graph-section lektrus-math-presets">
             <strong>Построить на плоскости</strong>
             <small>Выберите учебную конструкцию. Точки и фигуры можно двигать прямо в предпросмотре. Новый образец заменит текущую конструкцию в редакторе, но не изменит доску до сохранения.</small>
-            {(["Числа и координаты","Функции","Геометрия","Тригонометрия"] as const).map(group=>
+            {(mode==="geometry"?["Геометрия","Тригонометрия"] as const:["Числа и координаты","Функции"] as const).map(group=>
               <div className="lektrus-math-preset-group" key={group}>
                 <h4>{group}</h4>
                 <div className="lektrus-math-preset-grid">{mathPresets.filter(p=>p.group===group).map(p=>
@@ -210,7 +210,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
             <label className="lektrus-graph-check"><input type="checkbox" checked={draft.connectPoints} onChange={e=>patch({connectPoints:e.target.checked})}/> Соединять все точки по порядку</label>
             <label className="lektrus-graph-check"><input type="checkbox" checked={draft.projections} onChange={e=>patch({projections:e.target.checked})}/> Строить проекции точек на оси</label>
           </div>}
-          {tab==="geometry"&&<div className="lektrus-graph-section">
+          {mode==="geometry"&&tab==="geometry"&&<div className="lektrus-graph-section">
             <strong>Геометрические построения</strong><small>Каждое построение связано с точками. При перемещении вершин фигуры перестраиваются автоматически.</small>
             <div className="lektrus-graph-construct-actions">
               <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("circle")}>+ Окружность</button>
