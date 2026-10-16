@@ -284,3 +284,24 @@
 .lectris-workspace-stage .materials-fav{display:inline-flex!important;gap:7px!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important;font-size:13px!important}
 .lectris-workspace-stage .lektrus-material-favorite-star{font-size:21px!important;line-height:1!important;color:var(--lt-primary,#365fd0)}
 .lectris-hub-tile-icon svg{display:block;width:22px;height:22px;stroke-linecap:round;stroke-linejoin:round}
+
+/* New board flow */
+.lektrus-create-backdrop{position:fixed;inset:0;z-index:1500;display:grid;place-items:center;background:rgba(16,28,51,.49);padding:16px;overflow:auto}
+.lektrus-create-dialog{width:min(640px,100%);max-height:calc(100dvh - 32px);overflow:auto;border:1px solid var(--lt-line,#dbe3ef);border-radius:20px;background:var(--lt-surface,#fff);box-shadow:0 24px 80px rgba(15,31,65,.23);padding:25px;color:var(--lt-text,#1f3048)}
+.lektrus-create-dialog>header{display:flex;justify-content:space-between;align-items:start;gap:15px;margin-bottom:22px}
+.lektrus-create-dialog>header small{color:var(--lt-primary,#365fd0);font-size:10px;letter-spacing:.12em;font-weight:850}
+.lektrus-create-dialog>header h2{font-size:25px;line-height:1.2;margin:7px 0}
+.lektrus-create-dialog>header p{font-size:13px;color:var(--lt-muted,#71809a);margin:0;line-height:1.5}
+.lektrus-create-dialog>header button{border:1px solid var(--lt-line,#dbe3ef);border-radius:9px;background:var(--lt-subtle,#f0f3f9);color:var(--lt-text,#1f3048);font-size:22px;cursor:pointer;width:34px;height:34px;flex:none}
+.lektrus-create-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.lektrus-create-fields label{display:grid;gap:7px;min-width:0}
+.lektrus-create-fields label.wide{grid-column:1/-1}
+.lektrus-create-fields label>span{font-size:12px;font-weight:750}
+.lektrus-create-fields label>span small{font-size:11px;color:var(--lt-muted,#71809a);font-weight:450}
+.lektrus-create-fields :is(input,select){box-sizing:border-box;width:100%;min-width:0;min-height:43px;padding:10px 12px;border-radius:10px;border:1px solid var(--lt-line,#dbe3ef);background:var(--lt-surface,#fff);color:var(--lt-text,#1f3048);font-family:inherit;font-size:13px}
+.lektrus-create-fields :is(input,select):focus{outline:2px solid color-mix(in srgb,var(--lt-primary,#365fd0) 19%,transparent);border-color:var(--lt-primary,#365fd0)}
+.lektrus-create-dialog>footer{display:flex;justify-content:flex-end;gap:10px;padding-top:22px;margin-top:22px;border-top:1px solid var(--lt-line,#dbe3ef)}
+.lektrus-create-dialog>footer button{font-family:inherit;padding:11px 18px;border-radius:10px;border:1px solid var(--lt-line,#dbe3ef);background:var(--lt-surface,#fff);color:var(--lt-text,#1f3048);font-size:13px;font-weight:750;cursor:pointer}
+.lektrus-create-dialog>footer button[type=submit]{background:var(--lt-primary,#365fd0);color:#fff;border-color:var(--lt-primary,#365fd0)}
+.lektrus-create-dialog button:disabled{opacity:.6;cursor:wait}
+@media(max-width:560px){.lektrus-create-dialog{padding:18px;border-radius:16px}.lektrus-create-fields{grid-template-columns:minmax(0,1fr);gap:13px}.lektrus-create-dialog>header h2{font-size:22px}.lektrus-create-dialog>footer button{flex:1}}
