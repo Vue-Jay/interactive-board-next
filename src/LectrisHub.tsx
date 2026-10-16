@@ -136,7 +136,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
         value.toLocaleLowerCase("ru-RU").includes(query));
     }).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
   },[boardSearch,boards,organization,recent]);
-  const subjectList=useMemo(()=>[...new Set([...categoryCatalog.subjects,...boards.map(b=>organization[b.id]?.subject||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.subjects]);
+  const subjectList=useMemo(()=>[...new Set([...commonSubjects,...categoryCatalog.subjects,...boards.map(b=>organization[b.id]?.subject||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.subjects]);
   const groupList=useMemo(()=>[...new Set([...categoryCatalog.groups,...boards.map(b=>organization[b.id]?.group||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.groups]);
   const openEdit=(board:BoardSummary)=>{
     const current=getOrg(board);setEditing(board.id);setSubjectDraft(current.subject);setGroupDraft(current.group);
