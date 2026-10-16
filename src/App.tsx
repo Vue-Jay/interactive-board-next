@@ -1078,21 +1078,70 @@ function evaluateGraphExpression(source: string, x: number): number {
   try{const value=expr();return pos===tokens.length&&Number.isFinite(value)?value:NaN}catch{return NaN}
 }
 function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Item; onPointMove?: (index:number,x:number,y:number)=>void; onAddPoint?: (x:number,y:number)=>void; onRemovePoint?: (index:number)=>void }) {
-  const expression=item.graphExpression?.trim()??"";
-  const xMin=item.graphXMin??-10,xMax=item.graphXMax??10,yMin=item.graphYMin??-10,yMax=item.graphYMax??10,W=600,H=360;
-  const sx=(x:number)=>(x-xMin)/(xMax-xMin)*W,sy=(y:number)=>H-(y-yMin)/(yMax-yMin)*H,ux=(p:number)=>xMin+p/W*(xMax-xMin),uy=(p:number)=>yMax-p/H*(yMax-yMin);
-  const step=Math.max(.1,item.graphGridStep??1), values=(a:number,b:number)=>{const first=Math.ceil(a/step)*step,count=Math.min(101,Math.max(0,Math.floor((b-first)/step)+1));return Array.from({length:count},(_,i)=>Number((first+i*step).toFixed(6)))};
-  const gridX=values(xMin,xMax),gridY=values(yMin,yMax),gp=item.graphPoints??[];
-  const curve=expression?Array.from({length:401},(_,i)=>{const x=xMin+(xMax-xMin)*i/400,y=evaluateGraphExpression(expression,x);return {x:sx(x),y:sy(y),ok:Number.isFinite(y)&&y>=yMin-(yMax-yMin)*2&&y<=yMax+(yMax-yMin)*2}}):[];
-  let path="",pen=false;for(const p of curve){if(!p.ok){pen=false;continue}path+=`${pen?"L":"M"}${p.x.toFixed(1)} ${p.y.toFixed(1)} `;pen=true}
-  const coord=(clientX:number,clientY:number,svg:SVGSVGElement)=>{const r=svg.getBoundingClientRect();let x=ux((clientX-r.left)/r.width*W),y=uy((clientY-r.top)/r.height*H);if(item.graphSnap!==false){x=Math.round(x/step)*step;y=Math.round(y/step)*step}return{x:Number(x.toFixed(4)),y:Number(y.toFixed(4))}};
-  return <div className={`graph-view ${onPointMove?"graph-interactive":""}`}><div className="graph-label">{expression?`y = ${expression.replace(/^y\s*=\s*/i,"")}`:"Координатная плоскость"}</div><svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" onDoubleClick={e=>{if(onAddPoint){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
-    {item.graphGrid!==false&&<g className="graph-grid">{gridX.map(x=><line key={`x${x}`} x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}{gridY.map(y=><line key={`y${y}`} x1="0" x2={W} y1={sy(y)} y2={sy(y)}/>)}</g>}
-    <g className="graph-axes">{xMin<=0&&xMax>=0&&<line x1={sx(0)} x2={sx(0)} y1="0" y2={H}/>} {yMin<=0&&yMax>=0&&<line x1="0" x2={W} y1={sy(0)} y2={sy(0)}/>}</g>
-    {item.graphAxisLabels!==false&&<g className="graph-axis-labels">{gridX.filter(x=>x!==0).map(x=><text key={`xl${x}`} x={sx(x)+2} y={Math.min(H-4,Math.max(12,sy(0)+14))}>{x}</text>)}{gridY.filter(y=>y!==0).map(y=><text key={`yl${y}`} x={Math.min(W-22,Math.max(3,sx(0)+5))} y={sy(y)-3}>{y}</text>)}</g>}
-    {expression&&path&&<path className="graph-curve" d={path}/>} {item.graphConnectPoints!==false&&gp.length>1&&<polyline className="graph-point-line" points={gp.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>} 
-    {gp.map((p,i)=>{const pointColor=p.color??"#111111";return <g className={`graph-point ${onPointMove?"draggable":""} ${onRemovePoint?"removable":""}`} key={i} onDoubleClick={onRemovePoint?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint(i)}:undefined} onPointerDown={onPointMove?(e)=>{e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;e.currentTarget.setPointerCapture?.(e.pointerId);const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up)}:undefined}><circle cx={sx(p.x)} cy={sy(p.y)} r={onPointMove?"4.5":"3.5"} style={{fill:pointColor,stroke:pointColor}}/>{item.graphShowLabels!==false&&p.label&&<text x={sx(p.x)+7} y={sy(p.y)-7} style={{fill:pointColor}}>{p.label}</text>}</g>})}
-  </svg></div>;
+  const expression = item.graphExpression?.trim() ?? "";
+  const purpose = item.graphPurpose ?? (item.graphCircles?.length ? "unit-circle" : item.graphPolygons?.length ? "geometry" : expression ? "function" : "coordinates");
+  const title = item.text?.trim() || (purpose === "unit-circle" ? "Единичная окружность" : purpose === "geometry" ? "Геометрическое построение" : purpose === "coordinates" ? "Координатная плоскость" : "График функции");
+  const xMin = item.graphXMin ?? -10, xMax = item.graphXMax ?? 10, yMin = item.graphYMin ?? -10, yMax = item.graphYMax ?? 10;
+  const W = 600, H = 360;
+  // A single unit scale on both axes keeps circles circular and geometry measurable.
+  const scale = Math.min(W / Math.max(.01,xMax-xMin), H / Math.max(.01,yMax-yMin));
+  const cx = (xMin+xMax)/2, cy = (yMin+yMax)/2;
+  const sx = (x:number) => W/2+(x-cx)*scale, sy = (y:number) => H/2-(y-cy)*scale;
+  const ux = (p:number) => cx+(p-W/2)/scale, uy = (p:number) => cy-(p-H/2)/scale;
+  const step = Math.max(.1,item.graphGridStep ?? 1);
+  const values = (a:number,b:number) => { const first=Math.ceil(a/step)*step,count=Math.min(101,Math.max(0,Math.floor((b-first)/step)+1));return Array.from({length:count},(_,i)=>Number((first+i*step).toFixed(6))); };
+  const gridX = values(xMin,xMax), gridY = values(yMin,yMax), gp = item.graphPoints ?? [];
+  const axes = item.graphAxisMode ?? "both";
+  const hasX = axes === "both" || axes === "x", hasY = axes === "both" || axes === "y";
+  const point = (index:number) => gp[index];
+  const distance = (a:{x:number;y:number},b:{x:number;y:number}) => Math.hypot(a.x-b.x,a.y-b.y);
+  const curve = purpose === "function" && item.graphShowCurve !== false && expression ? Array.from({length:401},(_,i)=>{const x=xMin+(xMax-xMin)*i/400,y=evaluateGraphExpression(expression,x);return {x:sx(x),y:sy(y),ok:Number.isFinite(y)&&y>=yMin-(yMax-yMin)*2&&y<=yMax+(yMax-yMin)*2};}) : [];
+  let curvePath="",drawing=false;
+  for(const p of curve){if(!p.ok){drawing=false;continue}curvePath+=`${drawing?"L":"M"}${p.x.toFixed(1)} ${p.y.toFixed(1)} `;drawing=true}
+  const coord = (clientX:number,clientY:number,svg:SVGSVGElement) => {
+    const r=svg.getBoundingClientRect(),factor=Math.min(r.width/W,r.height/H)||1;
+    const left=r.left+(r.width-W*factor)/2,top=r.top+(r.height-H*factor)/2;
+    let x=ux((clientX-left)/factor),y=uy((clientY-top)/factor);
+    if(item.graphSnap!==false){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
+    return {x:Number(x.toFixed(4)),y:Number(y.toFixed(4))};
+  };
+  return <div className={`graph-view graph-purpose-${purpose} ${onPointMove?"graph-interactive":""}`}>
+    <div className="graph-label"><strong>{title}</strong>{purpose==="function"&&expression&&<small>y = {expression.replace(/^y\s*=\s*/i,"")}</small>}</div>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
+      onDoubleClick={e=>{if(onAddPoint){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
+      <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#667085" strokeWidth="1.3"/></marker></defs>
+      {item.graphGrid!==false&&<g className="graph-grid">
+        {gridX.map(x=><line key={`x${x}`} x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
+        {gridY.map(y=><line key={`y${y}`} x1="0" x2={W} y1={sy(y)} y2={sy(y)}/>)}
+      </g>}
+      <g className="graph-axes">
+        {hasY&&xMin<=0&&xMax>=0&&<line x1={sx(0)} x2={sx(0)} y1={H} y2="5" markerEnd={`url(#graph-arrow-${item.id})`}/>}
+        {hasX&&yMin<=0&&yMax>=0&&<line x1="0" x2={W-5} y1={sy(0)} y2={sy(0)} markerEnd={`url(#graph-arrow-${item.id})`}/>}
+      </g>
+      {item.graphAxisLabels!==false&&<g className="graph-axis-labels">
+        {hasX&&gridX.filter(x=>x!==0).map(x=><text key={`xl${x}`} x={sx(x)+3} y={Math.min(H-4,Math.max(13,sy(0)+14))}>{x}</text>)}
+        {hasY&&gridY.filter(y=>y!==0).map(y=><text key={`yl${y}`} x={Math.min(W-25,Math.max(3,sx(0)+6))} y={sy(y)-4}>{y}</text>)}
+        {hasX&&<text x={W-17} y={Math.max(14,Math.min(H-8,sy(0)-9))}>x</text>}
+        {hasY&&<text x={Math.max(5,Math.min(W-18,sx(0)+9))} y="13">y</text>}
+      </g>}
+      {curvePath&&<path className="graph-curve" d={curvePath}/>}
+      {item.graphProjections&&<g className="graph-projections">{gp.map((p,i)=><g key={i}><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(p.x)} y2={sy(0)}/><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(0)} y2={sy(p.y)}/></g>)}</g>}
+      <g className="graph-constructions">
+        {(item.graphPolygons??[]).map((poly,i)=>{const pts=poly.points.map(point).filter((p):p is NonNullable<typeof p>=>!!p);if(pts.length<3)return null;const perimeter=pts.reduce((sum,p,j)=>sum+distance(p,pts[(j+1)%pts.length]),0);const center={x:pts.reduce((v,p)=>v+p.x,0)/pts.length,y:pts.reduce((v,p)=>v+p.y,0)/pts.length};return <g key={`polygon-${i}`}><polygon points={pts.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")} className="graph-polygon"/>{(poly.label||poly.measure)&&<text className="graph-figure-label" x={sx(center.x)} y={sy(center.y)} textAnchor="middle">{poly.label}{poly.measure?` · P = ${perimeter.toFixed(2)}`:""}</text>}</g>})}
+        {(item.graphCircles??[]).map((circle,i)=>{const center=point(circle.center),edge=point(circle.edge);if(!center||!edge)return null;const radius=distance(center,edge);return <g key={`circle-${i}`}><circle className="graph-circle" cx={sx(center.x)} cy={sy(center.y)} r={radius*scale}/>{(circle.label||circle.measure)&&<text className="graph-figure-label" x={sx(center.x)+radius*scale+8} y={sy(center.y)-8}>{circle.label||`r = ${radius.toFixed(2)}`}</text>}</g>})}
+        {(item.graphSegments??[]).map((seg,i)=>{const a=point(seg.a),b=point(seg.b);if(!a||!b)return null;const vx=b.x-a.x,vy=b.y-a.y;if(Math.hypot(vx,vy)<.001)return null;const start=seg.kind==="line"?{x:a.x-vx*100,y:a.y-vy*100}:a,end=seg.kind!=="segment"?{x:b.x+vx*100,y:b.y+vy*100}:b;return <g key={`segment-${i}`}><line className="graph-segment" x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}/>{(seg.label||seg.measure)&&<text className="graph-figure-label" x={sx((a.x+b.x)/2)+6} y={sy((a.y+b.y)/2)-7}>{seg.label}{seg.measure?` ${distance(a,b).toFixed(2)}`:""}</text>}</g>})}
+        {(item.graphAngles??[]).map((angle,i)=>{const a=point(angle.a),v=point(angle.vertex),b=point(angle.b);if(!a||!v||!b)return null;const start=Math.atan2(sy(a.y)-sy(v.y),sx(a.x)-sx(v.x)),end=Math.atan2(sy(b.y)-sy(v.y),sx(b.x)-sx(v.x));let diff=end-start;while(diff>Math.PI)diff-=2*Math.PI;while(diff< -Math.PI)diff+=2*Math.PI;const radius=26;const p1={x:sx(v.x)+radius*Math.cos(start),y:sy(v.y)+radius*Math.sin(start)},p2={x:sx(v.x)+radius*Math.cos(start+diff),y:sy(v.y)+radius*Math.sin(start+diff)};return <g key={`angle-${i}`}><path className="graph-angle" d={`M ${p1.x} ${p1.y} A ${radius} ${radius} 0 0 ${diff>0?1:0} ${p2.x} ${p2.y}`}/>{angle.label&&<text className="graph-figure-label" x={sx(v.x)+(radius+13)*Math.cos(start+diff/2)} y={sy(v.y)+(radius+13)*Math.sin(start+diff/2)}>{angle.label}</text>}</g>})}
+        {(item.graphMidpoints??[]).map((m,i)=>{const a=point(m.a),b=point(m.b);if(!a||!b)return null;const x=(a.x+b.x)/2,y=(a.y+b.y)/2;return <g key={`mid-${i}`}><circle className="graph-midpoint" cx={sx(x)} cy={sy(y)} r="4"/>{m.label&&<text className="graph-figure-label" x={sx(x)+8} y={sy(y)-7}>{m.label}</text>}</g>})}
+      </g>
+      {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={gp.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
+      {gp.map((p,i)=>{const pointColor=p.color??"#111111";return <g className={`graph-point ${onPointMove?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
+        onDoubleClick={onRemovePoint?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint(i)}:undefined}
+        onPointerDown={onPointMove?(e)=>{e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up)}:undefined}>
+        <circle cx={sx(p.x)} cy={sy(p.y)} r={onPointMove?"5":"4"} style={{fill:pointColor,stroke:pointColor}}/>
+        {item.graphShowLabels!==false&&p.label&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{p.label}</text>}
+      </g>})}
+    </svg>
+  </div>;
 }
 
 function TableView({ item }: { item: Item }) {
