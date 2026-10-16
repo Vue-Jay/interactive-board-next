@@ -79,6 +79,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const equalSideFigure=["square","rhombus","pentagon","hexagon","octagon"].includes(draft.figureId);
   const rectangleFigure=["square","rectangle"].includes(draft.figureId);
   const parameterQuadrilateral=["parallelogram","rhombus","trapezoid","trapezoid-isosceles","trapezoid-right"].includes(draft.figureId);
+  const hasTransversal=draft.figureId==="parallel"&&draft.points.length>=6&&draft.segments.some(seg=>seg.a===4&&seg.b===5);
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onClose()}
@@ -605,7 +606,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             {draft.figureId==="parallel"&&<div className="lektrus-graph-construction lektrus-parallel-construction">
               <strong>Параллельные прямые и секущая</strong>
               <small>Здесь можно показать признаки и свойства параллельных прямых: соответственные, накрест лежащие, односторонние, вертикальные и смежные углы. Числовые ответы не рассчитываются.</small>
-              {draft.segments.length<3?<button type="button" onClick={()=>{
+              {!hasTransversal?<button type="button" onClick={()=>{
                 if(draft.points.length>38)return;
                 const n=draft.points.length;
                 patch({points:[...draft.points,{x:-2,y:-4,label:""},{x:2,y:4,label:""}],
@@ -629,8 +630,40 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                       value={draft.givenAngles[i]??""} onChange={e=>patch({givenAngles:[0,1].map(j=>j===i?e.target.value:draft.givenAngles[j]??"")})}/>
                   </label>)}
                 </div>
-                <button type="button" onClick={()=>patch({segments:draft.segments.slice(0,2),
-                  points:draft.points.filter((_,i)=>i!==draft.segments[2].a&&i!==draft.segments[2].b),parallelMarks:[],givenAngles:[]})}>Убрать секущую</button>
+                <div className="lektrus-graph-construct-actions">
+                  <button type="button" disabled={draft.points.length>37} onClick={()=>{
+                    const a=draft.points[0],b=draft.points[1],c=draft.points[2],d=draft.points[3];
+                    if(!a||!b||!c||!d)return;
+                    const vx=b.x-a.x,vy=b.y-a.y,len=vx*vx+vy*vy;
+                    if(len<.001)return;
+                    const top={x:(c.x+d.x)/2,y:(c.y+d.y)/2},t=((top.x-a.x)*vx+(top.y-a.y)*vy)/len;
+                    const foot={x:a.x+vx*t,y:a.y+vy*t},n=draft.points.length;
+                    patch({points:[...draft.points,{...top,label:"H₁"},{...foot,label:"H"}],
+                      segments:[...draft.segments,{a:n,b:n+1,kind:"segment",label:"h",measure:false}],
+                      angles:[...draft.angles,{a:0,vertex:n+1,b:n,label:"90°"}]});
+                  }}>+ Перпендикуляр между прямыми</button>
+                  <button type="button" disabled={draft.points.length>37} onClick={()=>{
+                    const a=draft.points[0],b=draft.points[1],c=draft.points[4],d=draft.points[5];
+                    if(!a||!b||!c||!d)return;
+                    const u={x:b.x-a.x,y:b.y-a.y},v={x:d.x-c.x,y:d.y-c.y};
+                    const det=u.x*v.y-u.y*v.x;if(Math.abs(det)<.001){setGeometryError("Секущая должна пересекать параллельные прямые.");return}
+                    const delta={x:c.x-a.x,y:c.y-a.y};
+                    const factor=(delta.x*v.y-delta.y*v.x)/det;
+                    const center={x:a.x+factor*u.x,y:a.y+factor*u.y};
+                    const su=Math.hypot(u.x,u.y),sv=Math.hypot(v.x,v.y);if(su<.001||sv<.001)return;
+                    let dx=u.x/su+v.x/sv,dy=u.y/su+v.y/sv;
+                    const length=Math.hypot(dx,dy);if(length<.001){dx=-u.y/su;dy=u.x/su}
+                    else {dx/=length;dy/=length}
+                    const n=draft.points.length;
+                    patch({points:[...draft.points,{...center,label:"O"},{x:center.x+dx*3,y:center.y+dy*3,label:"K"}],
+                      segments:[...draft.segments,{a:n,b:n+1,kind:"ray",label:"",measure:false}]});
+                    setGeometryError("");
+                  }}>+ Биссектриса угла при секущей</button>
+                </div>
+                <button type="button" onClick={()=>{
+                  const second=removeGraphPoint(removeGraphPoint(draft,5),4);
+                  onChange({...second,parallelMarks:[],givenAngles:[]});
+                }}>Убрать секущую</button>
               </>}
             </div>}
             <div className="lektrus-graph-construct-actions">
