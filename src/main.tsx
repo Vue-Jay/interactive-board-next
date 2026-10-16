@@ -27,6 +27,7 @@ import "./lektrusToolLayout.css";
 import "./lektrusToolRefinements.css";
 import "./lektrusBoardBackground.css";
 import "./lektrusSubjectPicker.css";
+import "./lektrusSubjectTools.css";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
 
