@@ -21,6 +21,7 @@ export type GraphDraft = {
   circles: NonNullable<Item["graphCircles"]>;
   polygons: NonNullable<Item["graphPolygons"]>;
   midpoints: NonNullable<Item["graphMidpoints"]>;
+  triangleLines: NonNullable<Item["graphTriangleLines"]>;
 };
 
 export function removeGraphPoint(draft:GraphDraft,index:number):GraphDraft {
@@ -86,6 +87,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
       circles:(sample.graphCircles??[]).map(v=>({...v})),
       polygons:(sample.graphPolygons??[]).map(v=>({...v,points:[...v.points]})),
       midpoints:(sample.graphMidpoints??[]).map(v=>({...v})),
+      triangleLines:[...(sample.graphTriangleLines??[])],
       intervalStartClosed:sample.graphIntervalStartClosed!==false,
       intervalEndClosed:sample.graphIntervalEndClosed!==false,
       showCurve:sample.graphShowCurve===true,projections:sample.graphProjections===true,
