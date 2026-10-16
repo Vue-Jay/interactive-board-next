@@ -354,3 +354,49 @@ html body .topbar .topbar-more-popover .lektrus-controls-menu-entry:hover{backgr
   max-height:calc(100dvh - 135px)!important;
  }
 }
+
+
+/* Shared/personal background preference, visually integrated in the anchored popover. */
+.workspace .board-controls .lektrus-background-settings .lektrus-background-sharing{
+  display:flex!important;flex-direction:row!important;align-items:center!important;
+  justify-content:space-between!important;gap:12px!important;
+  margin:8px 0 12px!important;padding:9px 10px!important;
+  min-width:0!important;border:1px solid var(--lt-line,#d7e0ed)!important;
+  border-radius:10px!important;background:var(--lt-subtle,#f1f5fa)!important;
+}
+.workspace .board-controls .lektrus-background-sharing>span{
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+  gap:3px!important;min-width:0!important;flex:1 1 auto!important;
+  margin:0!important;padding:0!important;border:0!important;background:transparent!important;
+}
+.workspace .board-controls .lektrus-background-sharing strong{
+  font-size:12px!important;font-weight:750!important;line-height:1.25!important;
+  color:var(--lt-text,#1c2d46)!important;
+}
+.workspace .board-controls .lektrus-background-sharing small{
+  font-size:10px!important;font-weight:500!important;line-height:1.35!important;
+  color:var(--lt-muted,#677a95)!important;
+}
+.workspace .board-controls .lektrus-background-sharing input[type=checkbox]{
+  appearance:none!important;-webkit-appearance:none!important;
+  position:relative!important;flex:0 0 36px!important;
+  display:block!important;width:36px!important;min-width:36px!important;
+  max-width:36px!important;height:21px!important;min-height:21px!important;
+  max-height:21px!important;margin:0!important;padding:0!important;
+  background:var(--lt-line,#ccd7e5)!important;border:1px solid transparent!important;
+  border-radius:999px!important;cursor:pointer!important;
+}
+.workspace .board-controls .lektrus-background-sharing input[type=checkbox]::before{
+  content:"";position:absolute;left:2px;top:2px;width:15px;height:15px;
+  background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.18);
+  transition:transform .14s ease;
+}
+.workspace .board-controls .lektrus-background-sharing input[type=checkbox]:checked{
+  background:var(--lt-primary,#365fd0)!important;
+}
+.workspace .board-controls .lektrus-background-sharing input[type=checkbox]:checked::before{
+  transform:translateX(15px);
+}
+.workspace .board-controls .lektrus-background-sharing input[type=checkbox]:focus-visible{
+  outline:2px solid var(--lt-primary,#365fd0)!important;outline-offset:2px!important;
+}
