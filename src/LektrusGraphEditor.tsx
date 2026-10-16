@@ -110,6 +110,23 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
     const label=draft.purpose==="geometry"?String.fromCharCode(65+(draft.points.length%26)):"";
     patch({points:[...draft.points,{x:0,y:0,label}]});
   };
+  const addConstruction=(kind:"circle"|"polygon"|"segment"|"angle")=>{
+    const index=draft.points.length;
+    if(index>34)return;
+    const points=kind==="circle"?[{x:0,y:0,label:"O"},{x:3,y:0,label:"R"}]:
+      kind==="polygon"?[{x:-3,y:-2,label:"A"},{x:3,y:-2,label:"B"},{x:0,y:3,label:"C"}]:
+      kind==="angle"?[{x:3,y:0,label:"A"},{x:0,y:0,label:"O"},{x:2,y:3,label:"B"}]:
+      [{x:-3,y:0,label:"A"},{x:3,y:0,label:"B"}];
+    patch({
+      purpose:"geometry",showCurve:false,
+      points:[...draft.points,...points],
+      circles:kind==="circle"?[...draft.circles,{center:index,edge:index+1,label:"",measure:true}]:draft.circles,
+      polygons:kind==="polygon"?[...draft.polygons,{points:[index,index+1,index+2],label:"ABC",measure:true}]:draft.polygons,
+      segments:kind==="segment"?[...draft.segments,{a:index,b:index+1,kind:"segment",label:"",measure:true}]:
+        kind==="angle"?[...draft.segments,{a:index+1,b:index,kind:"ray",label:"",measure:false},{a:index+1,b:index+2,kind:"ray",label:"",measure:false}]:draft.segments,
+      angles:kind==="angle"?[...draft.angles,{a:index,vertex:index+1,b:index+2,label:"∠AOB"}]:draft.angles
+    });
+  };
   const axisChoices:{id:GraphDraft["axisMode"];label:string;detail:string}[]=[
     {id:"none",label:"0",detail:"Без осей"}, {id:"x",label:"X",detail:"1 ось"},
     {id:"y",label:"Y",detail:"1 ось"}, {id:"both",label:"X + Y",detail:"2 оси"}
@@ -215,12 +232,12 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
           {tab==="geometry"&&<div className="lektrus-graph-section">
             <strong>Геометрические построения</strong><small>Каждое построение связано с точками. При перемещении вершин фигуры перестраиваются автоматически.</small>
             <div className="lektrus-graph-construct-actions">
-              <button type="button" disabled={draft.points.length<2} onClick={()=>patch({circles:[...draft.circles,{center:0,edge:1,label:"Окружность",measure:true}]})}>+ Окружность</button>
-              <button type="button" disabled={draft.points.length<3} onClick={()=>patch({polygons:[...draft.polygons,{points:[0,1,2],label:"ABC",measure:true}]})}>+ Многоугольник</button>
-              <button type="button" disabled={draft.points.length<2} onClick={()=>patch({segments:[...draft.segments,{a:0,b:1,kind:"segment",label:"",measure:true}]})}>+ Отрезок</button>
-              <button type="button" disabled={draft.points.length<3} onClick={()=>patch({angles:[...draft.angles,{a:0,vertex:1,b:2,label:"Угол"}]})}>+ Угол</button>
+              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("circle")}>+ Окружность</button>
+              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("polygon")}>+ Треугольник</button>
+              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("segment")}>+ Отрезок</button>
+              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("angle")}>+ Угол</button>
             </div>
-            {draft.points.length<2&&<p className="lektrus-graph-empty">Для построений сначала добавьте точки во вкладке «Точки».</p>}
+            <small>Каждая кнопка добавляет готовые подвижные опорные точки и построение. Связи можно уточнить ниже.</small>
             {draft.circles.map((c,i)=><div className="lektrus-graph-construction" key={"circle"+i}>
               <div className="lektrus-graph-section-head"><strong>Окружность {i+1}</strong><button type="button" onClick={()=>patch({circles:draft.circles.filter((_,j)=>j!==i)})}>Удалить</button></div>
               <label>Центр<select value={c.center} onChange={e=>patch({circles:draft.circles.map((v,j)=>j===i?{...v,center:Number(e.target.value)}:v)})}>{pointOptions()}</select></label>
