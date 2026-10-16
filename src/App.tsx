@@ -4481,7 +4481,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (!canEdit || structurallyLockedForStudent(item)) return;
     if (item.kind !== "formula" || item.locked) return;
     if (editing) finishEdit();
-    setSelected([item.id]);
+    setSelected(pendingMathItem?.id===item.id?[]:[item.id]);
     setTool("select");
     setFormulaEditorId(item.id);
     setFormulaDraft({ text: item.text, fontSize: Math.max(12, Math.min(96, item.fontSize ?? 28)), color: item.color ?? "#20242c" });
@@ -4489,7 +4489,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const closeFormulaEditor = (save = true) => {
-    if (save && formulaEditorId && formulaDraft) {
+    if (save && formulaEditorId && formulaDraft && pendingMathItem?.id!==formulaEditorId) {
       commit(itemsRef.current.map((item) => item.id === formulaEditorId ? {
         ...item,
         text: formulaDraft.text.slice(0, 10000),
@@ -4499,6 +4499,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     setFormulaEditorId(null);
     setFormulaDraft(null);
+    setPendingMathItem(null);
   };
 
   const saveFormulaEditor = () => {
@@ -4506,7 +4507,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const textValue = formulaDraft.text.slice(0, 10000);
     const fontSize = Math.max(12, Math.min(96, Math.round(formulaDraft.fontSize)));
     if (textValue.trim()) { const history=[textValue,...formulaHistory.filter((value)=>value!==textValue)].slice(0,12); setFormulaHistory(history); localStorage.setItem("onlinerepetitor.formula-history.v54",JSON.stringify(history)); }
-    commit(itemsRef.current.map((item) => item.id === formulaEditorId ? {
+    commit((pendingMathItem?.kind==="formula"&&pendingMathItem.id===formulaEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map((item) => item.id === formulaEditorId ? {
       ...item,
       text: textValue,
       fontSize,
