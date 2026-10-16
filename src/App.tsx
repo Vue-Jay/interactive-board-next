@@ -1308,13 +1308,13 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
         {(item.graphMidpoints??[]).map((m,i)=>{const a=point(m.a),b=point(m.b);if(!a||!b)return null;const x=(a.x+b.x)/2,y=(a.y+b.y)/2;return <g key={`mid-${i}`}><circle className="graph-midpoint" cx={sx(x)} cy={sy(y)} r="4"/>{m.label&&<text className="graph-figure-label" x={sx(x)+8} y={sy(y)-7}>{m.label}</text>}</g>})}
       </g>
       {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={(purpose==="number-line"?gp.slice(0,2):gp).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
-      {(purpose==="geometry"&&(["cone","cylinder"].includes(item.graphFigureId??"")||title==="Конус"||title==="Цилиндр")?[]:gp).map((p,i)=>{if(rayFigure&&i!==0)return null;return ({const pointColor=p.color??"#111111";const movable=!!onPointMove&&(purpose!=="unit-circle"||i>=5);return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
+      {(purpose==="geometry"&&(["cone","cylinder"].includes(item.graphFigureId??"")||title==="Конус"||title==="Цилиндр")?[]:gp).map((p,i)=>{if(rayFigure&&i!==0)return null;const pointColor=p.color??"#111111";const movable=!!onPointMove&&(purpose!=="unit-circle"||i>=5);return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
         onDoubleClick={onRemovePoint&&(purpose!=="unit-circle"||i>5)?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint?.(i)}:undefined}
         onPointerDown={movable?(e)=>{e.preventDefault();e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove?.(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up)}:undefined}>
         {movable&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r="20"/>}
         <circle cx={sx(p.x)} cy={sy(p.y)} r={movable?"5":"4"} style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>
         {item.graphShowLabels!==false&&(purpose==="number-line"||purpose==="unit-circle"&&i>0||p.label)&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
-      </g>)})}
+      </g>})}
       {solid&&<g className="lektrus-orbit-control" role="button" tabIndex={onRotate?0:-1}
         aria-label="Повернуть объёмную фигуру: перетащите манипулятор в углу"
         onPointerDown={beginOrbit}
