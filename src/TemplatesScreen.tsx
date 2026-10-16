@@ -12,7 +12,7 @@ export const starterTemplates=[
  {id:"reflection",title:"Итоги занятия",category:"Рефлексия",description:"Что узнали, что осталось непонятным",labels:["ЧТО УЗНАЛИ","ЧТО ПОЛУЧИЛОСЬ","ВОПРОСЫ","СЛЕДУЮЩИЙ ШАГ"]},
 ];
 export function starterDocument(t:typeof starterTemplates[number]):DocumentData{
- const items:Item[]=t.labels.map((text,index)=>({id:crypto.randomUUID(),kind:"sticky",x:80+(index%3)*350,y:100+Math.floor(index/3)*240,width:300,height:190,text,color:["#e9f0ff","#e7f6ef","#fff2df","#f3ebff"][index%4],fontSize:25}));
+ const items:Item[]=t.labels.map((text,index)=>({id:`starter-${t.id}-${index}`,kind:"sticky",x:80+(index%3)*350,y:100+Math.floor(index/3)*240,width:300,height:190,text,color:["#e9f0ff","#e7f6ef","#fff2df","#f3ebff"][index%4],fontSize:25}));
  return {version:1,title:t.title,view:{x:0,y:0,zoom:1},items,background:{mode:"dots",color:"#f7f7f8",opacity:100}};
 }
 
