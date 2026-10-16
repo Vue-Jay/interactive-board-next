@@ -8361,3 +8361,90 @@ option{background:#fff;color:#343741}
 .graph-purpose-number-line .graph-point circle{stroke-width:3.1}
 .graph-purpose-number-line .graph-axis-labels text{font-size:11px;font-weight:600}
 .lektrus-graph-settings input:disabled{opacity:.65;background:#f3f6fc!important;cursor:not-allowed}
+
+/* Unified mathematics workbench */
+.lektrus-math-presets{gap:13px!important}
+.lektrus-math-preset-group{display:flex;flex-direction:column;gap:7px}
+.lektrus-math-preset-group h4{margin:0;font-size:11px;color:#62718b;font-weight:750}
+.lektrus-math-preset-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.lektrus-math-preset-grid button{min-width:0;min-height:62px;display:flex;flex-direction:column;
+  align-items:flex-start;justify-content:center;gap:4px;padding:10px;
+  border:1px solid #dde5f3;border-radius:11px;background:#fff;
+  text-align:left;color:#253d6b;cursor:pointer}
+.lektrus-math-preset-grid button strong{font-size:12px;font-weight:730;line-height:1.3}
+.lektrus-math-preset-grid button small{color:#71809a;font-size:10px;line-height:1.4}
+.lektrus-math-preset-grid button:hover,.lektrus-math-preset-grid button:focus-visible{
+  background:#edf2ff;border-color:#5878d3}
+.lektrus-math-preset-grid button.active{border-color:#4d70d5;background:#ecf2ff}
+.lektrus-circle-readouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.lektrus-circle-readouts span{display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:11px 5px;background:white;border:1px solid #e1e8f5;border-radius:10px;min-width:0}
+.lektrus-circle-readouts b{font-size:14px;color:#344fc0;white-space:nowrap}
+.lektrus-circle-readouts small{font-size:10px;color:#75849c}
+.lektrus-unit-circle-controls input[type=range]{width:100%;accent-color:#4b70d8}
+.lektrus-math-angle-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.lektrus-math-angle-shortcuts button{min-width:0;min-height:37px;border:1px solid #d9e2f1;
+  border-radius:9px;background:#fff;font-size:11px;font-weight:680;color:#435e9c;cursor:pointer}
+.lektrus-math-angle-shortcuts button:hover{background:#eaf0ff;border-color:#8ca1e2}
+.lektrus-graph-tabs{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;flex-wrap:nowrap!important}
+.lektrus-graph-tabs::-webkit-scrollbar{display:none}
+.lektrus-graph-tabs button{flex:1 0 auto;min-height:44px;touch-action:manipulation}
+.lektrus-graph-dialog .lektrus-graph-settings{scrollbar-gutter:stable;overscroll-behavior:contain}
+.lektrus-graph-dialog .lektrus-graph-preview{overscroll-behavior:contain}
+.lektrus-graph-canvas,.lektrus-graph-canvas svg,.lektrus-graph-canvas .graph-point{
+  touch-action:none}
+.graph-view .graph-point .graph-point-hit{fill:transparent!important;stroke:transparent!important;
+  pointer-events:all;touch-action:none;cursor:grab}
+.graph-view .graph-point .graph-point-hit:active{cursor:grabbing}
+.graph-trigonometry text{fill:#335fae;font-size:11px;font-weight:680;
+  paint-order:stroke;stroke:white;stroke-width:3px;pointer-events:none}
+.lektrus-fraction-mode{display:flex;flex-direction:column;gap:8px}
+.lektrus-fraction-mode strong{font-size:12px;color:#34455f}
+.lektrus-fraction-mode-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:4px;padding:4px;background:#edf1f9;border-radius:12px}
+.lektrus-fraction-mode-tabs button{min-height:44px;border:1px solid transparent;background:transparent;
+  border-radius:9px;color:#63718a;font-size:12px;font-weight:750;cursor:pointer;touch-action:manipulation}
+.lektrus-fraction-mode-tabs button.active{background:#fff;border-color:#dbe4f6;
+  color:#3c5fb6;box-shadow:0 2px 6px rgba(28,49,93,.09)}
+.lektrus-fraction-view svg{touch-action:manipulation}
+.lektrus-fraction-view svg path,.lektrus-fraction-view svg rect{touch-action:manipulation}
+@media(max-width:840px){
+  .lektrus-graph-dialog .lektrus-graph-content{grid-template-rows:minmax(160px,34%) minmax(0,1fr)!important}
+  .lektrus-graph-dialog .lektrus-graph-preview{min-height:0!important;height:auto!important}
+  .lektrus-graph-dialog .lektrus-graph-settings{min-height:0!important}
+  .lektrus-math-preset-grid button{min-height:56px}
+  .lektrus-graph-footer button{min-height:44px!important}
+  .lektrus-fraction-dialog>footer button{min-height:44px}
+  .lektrus-fraction-shortcuts button{min-height:37px}
+}
+@media(max-width:480px){
+  .lektrus-graph-overlay .lektrus-graph-dialog{
+    width:calc(100vw - 12px)!important;max-width:calc(100vw - 12px)!important;
+    max-height:calc(100dvh - 12px)!important;
+  }
+  .lektrus-graph-dialog .lektrus-graph-content{grid-template-rows:minmax(130px,30%) minmax(0,1fr)!important}
+  .lektrus-graph-dialog .lektrus-graph-head strong{font-size:14px}
+  .lektrus-graph-dialog .lektrus-graph-head span{font-size:10px}
+  .lektrus-math-preset-grid button{min-height:58px;padding:9px}
+  .lektrus-math-preset-grid button strong{font-size:11px}
+  .lektrus-math-preset-grid button small{font-size:10px}
+  .lektrus-graph-dialog .lektrus-graph-settings{padding:8px!important}
+  .lektrus-math-angle-shortcuts{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .lektrus-circle-readouts b{font-size:12px}
+  .lektrus-graph-tabs button{padding:8px 11px!important;font-size:11px}
+  .lektrus-fraction-dialog{width:calc(100vw - 12px);max-height:calc(100dvh - 12px)}
+}
+@media(max-height:500px) and (orientation:landscape){
+  .lektrus-graph-overlay .lektrus-graph-dialog{max-height:calc(100dvh - 8px)!important}
+  .lektrus-graph-dialog .lektrus-graph-head{min-height:42px!important;padding:6px 12px!important}
+  .lektrus-graph-dialog .lektrus-graph-head span{display:none}
+  .lektrus-graph-tabs button{min-height:34px;padding:4px 9px!important}
+  .lektrus-graph-dialog .lektrus-graph-content{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    grid-template-rows:1fr!important}
+  .lektrus-graph-dialog .lektrus-graph-preview{order:0;padding:8px!important;border-left:1px solid #e7ebf3}
+  .lektrus-graph-dialog .lektrus-graph-settings{padding:8px!important}
+  .lektrus-graph-dialog .lektrus-graph-footer{min-height:43px!important;padding:4px 10px!important}
+  .lektrus-graph-footer button{min-height:34px!important}
+  .lektrus-fraction-editor-body{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+  .lektrus-fraction-preview{order:0}
+}
