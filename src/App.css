@@ -8352,3 +8352,12 @@ option{background:#fff;color:#343741}
   .lektrus-fraction-fields{padding:12px;gap:10px}
   .lektrus-fraction-dialog>header{padding:10px 13px}
 }
+
+/* Lesson-ready number-line options: aligned without affecting modal layout */
+.lektrus-graph-intervals{display:flex;flex-direction:column;gap:8px}
+.lektrus-graph-intervals label{display:flex!important;flex-direction:row!important;
+  align-items:center;gap:9px;font-size:11px;font-weight:600;color:#3f526c}
+.graph-purpose-number-line .graph-point-line{stroke:#4569dc;stroke-width:5;stroke-linecap:round}
+.graph-purpose-number-line .graph-point circle{stroke-width:3.1}
+.graph-purpose-number-line .graph-axis-labels text{font-size:11px;font-weight:600}
+.lektrus-graph-settings input:disabled{opacity:.65;background:#f3f6fc!important;cursor:not-allowed}
