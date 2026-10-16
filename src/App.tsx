@@ -1092,7 +1092,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
   const ux = (p:number) => cx+(p-W/2)/scale, uy = (p:number) => cy-(p-H/2)/scale;
   const step = Math.max(.1,item.graphGridStep ?? 1);
   const values = (a:number,b:number) => { const first=Math.ceil(a/step)*step,count=Math.min(101,Math.max(0,Math.floor((b-first)/step)+1));return Array.from({length:count},(_,i)=>Number((first+i*step).toFixed(6))); };
-  const gridX = values(xMin,xMax), gridY = values(yMin,yMax), gp = item.graphPoints ?? [];
+  const gridX = values(xMin,xMax), gridY = values(yMin,yMax), gp = (item.graphPoints ?? []).map(p=>purpose==="number-line"?{...p,y:0}:p);
   const axes = item.graphAxisMode ?? "both";
   const hasX = axes === "both" || axes === "x", hasY = axes === "both" || axes === "y";
   const point = (index:number) => gp[index];
@@ -6077,8 +6077,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               graphAngles:graphDraft.angles,graphCircles:graphDraft.circles,
               graphPolygons:graphDraft.polygons,graphMidpoints:graphDraft.midpoints
             }}
-            onPointMove={(i,x,y)=>setGraphDraft(current=>current?{...current,points:current.points.map((p,j)=>j===i?{...p,x,y}:p)}:current)}
-            onAddPoint={(x,y)=>setGraphDraft(current=>current?{...current,points:[...current.points,{x,y,label:String.fromCharCode(65+(current.points.length%26))}]}:current)}
+            onPointMove={(i,x,y)=>setGraphDraft(current=>current?{...current,points:current.points.map((p,j)=>j===i?{...p,x,y:current.purpose==="number-line"?0:y}:p)}:current)}
+            onAddPoint={(x,y)=>setGraphDraft(current=>current?{...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:String.fromCharCode(65+(current.points.length%26))}]}:current)}
             onRemovePoint={i=>setGraphDraft(current=>current?removeGraphPoint(current,i):current)}
             />}
           />,document.body)}
@@ -6821,7 +6821,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "table" && <TableView item={item} />}
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
-                {item.kind === "graph" && <GraphView item={item} onAddPoint={!item.locked && canEdit ? (x,y)=>{const next={x,y,label:"",color:"#111111"};commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:[...(candidate.graphPoints??[]),next]}:candidate));setSelected([item.id]);} : undefined} onRemovePoint={!item.locked && canEdit ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/>}
+                {item.kind === "graph" && <GraphView item={item} onAddPoint={!item.locked && canEdit ? (x,y)=>{const next={x,y:item.graphPurpose==="number-line"?0:y,label:"",color:"#111111"};commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:[...(candidate.graphPoints??[]),next]}:candidate));setSelected([item.id]);} : undefined} onRemovePoint={!item.locked && canEdit ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/>}
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
