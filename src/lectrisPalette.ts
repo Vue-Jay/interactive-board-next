@@ -12,8 +12,8 @@ export function readLectrisPalette():LectrisPalette {
 }
 export function applyLectrisPalette(palette:LectrisPalette):void {
   document.documentElement.dataset.lectrisPalette=palette;
-  window.dispatchEvent(new CustomEvent("lektrus:palette-change",{detail:palette}));
   try{window.localStorage.setItem(key,palette)}catch{/* Storage might be blocked. */}
+  window.dispatchEvent(new CustomEvent("lektrus:palette-change",{detail:palette}));
 }
 export function initLectrisPalette():void {
   applyLectrisPalette(readLectrisPalette());
