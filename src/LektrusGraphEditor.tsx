@@ -260,7 +260,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>{mode==="geometry"?"Фигура":"Построение"}</button>
         {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>Размеры</button>}
         {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Элементы <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>}
-        {!isSolid&&<button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.points.length}</span></button>}
+        {!isSolid&&<button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
       </nav>
       <div className="graph-editor-body lektrus-graph-content">
         <div className="graph-editor-form lektrus-graph-settings">
