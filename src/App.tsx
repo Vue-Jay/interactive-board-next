@@ -393,7 +393,7 @@ const mobileToolGroups: { label:string; tools:Tool[] }[] = [
   { label:"Создание", tools:["sticky","text","shape","connector"] },
   { label:"Материалы", tools:["media","linkmedia","frame"] },
   { label:"Задания", tools:["checklist","quiz","flashcard"] },
-  { label:"Интерактив", tools:["table","formula","graph","cover","comment"] },
+  { label:"Интерактив", tools:["table","cover","comment"] },
 ];
 const mobileDockTools: Tool[] = ["select","lasso","pen","eraser","sticky","text","shape"];
 const STUDENT_BLOCKED_CREATE_TOOLS = new Set<Tool>(["frame","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"]);
@@ -1636,12 +1636,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     try{
       const parsed:unknown=JSON.parse(localStorage.getItem(lectrisToolbarKey)||"null");
       if(!Array.isArray(parsed))return defaults;
-      return parsed.filter((id,index):id is Tool=>typeof id==="string"&&tools.some(t=>t.id===id)&&id!=="select"&&id!=="hand"&&id!=="lasso"&&parsed.indexOf(id)===index&&toolAllowedForRole(id as Tool));
+      return parsed.filter((id,index):id is Tool=>typeof id==="string"&&tools.some(t=>t.id===id)&&id!=="select"&&id!=="hand"&&id!=="lasso"&&parsed.indexOf(id)===index&&id!=="formula"&&id!=="graph"&&toolAllowedForRole(id as Tool));
     }catch{return defaults}
   });
   const [lectrisCustomizeOpen,setLectrisCustomizeOpen]=useState(false);
   useEffect(()=>{try{localStorage.setItem(lectrisToolbarKey,JSON.stringify(lectrisPinned))}catch{}},[lectrisToolbarKey,lectrisPinned]);
-  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(toolAllowedForRole)],[lectrisPinned,isStudent]);
+  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))],[lectrisPinned,isStudent]);
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
@@ -1693,7 +1693,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const lectrisSubjectTools=useMemo<Tool[]>(()=>{
     const v=lectrisBoardOrganization.subject.toLocaleLowerCase("ru");
     if(!v)return [];
-    if(/матем|алгеб|геом|информ/.test(v))return ["formula","graph","shape","table"];
+    if(/матем|алгеб|геом|информ/.test(v))return ["shape","table"];
     if(/хими/.test(v))return ["formula","table","text","shape"];
     if(/физик/.test(v))return ["graph","formula","connector","shape"];
     if(/биол|географ/.test(v))return ["media","shape","text","table"];
@@ -1796,7 +1796,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
   const [desktopToolSection,setDesktopToolSection]=useState("create");
-  const desktopToolSections=[{id:"arrows",label:"Линии и стрелки",icon:"section-arrows" as IconName,ids:["connector"] as Tool[]},{id:"create",label:"Текст и фигуры",icon:"section-create" as IconName,ids:["text","sticky","shape","frame"] as Tool[]},{id:"studies",label:"Таблицы, формулы и задания",icon:"section-studies" as IconName,ids:["table","formula","graph","checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
+  const desktopToolSections=[{id:"arrows",label:"Линии и стрелки",icon:"section-arrows" as IconName,ids:["connector"] as Tool[]},{id:"create",label:"Текст и фигуры",icon:"section-create" as IconName,ids:["text","sticky","shape","frame"] as Tool[]},{id:"studies",label:"Таблицы и задания",icon:"section-studies" as IconName,ids:["table","checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
   useEffect(()=>{const mq=window.matchMedia?.("(pointer: coarse)");if(!mq)return;const sync=()=>setIsCoarsePointer(mq.matches);sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync)},[]);
@@ -6468,7 +6468,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
           <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiOpen(true);setBoardAiPreview([])}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
-            {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(toolAllowedForRole)})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span><div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div></div>)}
+            {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span><div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div></div>)}
           </div>
         </section>}
         <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
@@ -6506,16 +6506,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             {desktopToolSections.filter(g=>g.id===desktopToolSection).map(group=><div className="lektrus-tool-overflow-group" key={group.id}>
               <div className="lektrus-tool-overflow-group-title">{group.label}</div>
               <div className="lektrus-tool-overflow-grid">
-                {group.ids.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" title={t.label} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);if(id==="connector")setConnectorStyle("arrow");setDesktopToolsExpanded(false)}}><span className="lektrus-tool-overflow-icon"><Icon name={t.icon} size={20}/></span><span>{toolShortLabel[id]}</span></button>})}
+                {group.ids.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id)).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" title={t.label} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);if(id==="connector")setConnectorStyle("arrow");setDesktopToolsExpanded(false)}}><span className="lektrus-tool-overflow-icon"><Icon name={t.icon} size={20}/></span><span>{toolShortLabel[id]}</span></button>})}
                 {group.id==="arrows"&&(["line","arrow","double"] as ConnectorStyle[]).map((type)=><button key={type} type="button" className={tool==="connector"&&connectorStyle===type?"active":""} onClick={()=>{finishEdit();setTool("connector");setConnectorStyle(type);setDesktopToolsExpanded(false)}}><span className="lektrus-tool-overflow-icon"><Icon name={type==="line"?"line":type==="arrow"?"arrow-one":"arrow-double"} size={20}/></span><span>{type==="line"?"Линия":type==="arrow"?"Стрелка":"Двусторонняя"}</span></button>)}
               </div>
             </div>)}
           </div>
         </LektrusToolOverflow>}
-        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(()=>canEdit&&toolAllowedForRole("graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<Icon name={entry.id==="math-coordinate"?"graph":"shape"} size={21}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
+        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<Icon name={entry.id==="math-coordinate"?"graph":entry.id==="math-formula"?"formula":"shape"} size={21}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
-            if(!canEdit||!toolAllowedForRole("graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
+            if(!canEdit||!toolAllowedForRole(id==="math-formula"?"formula":"graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
             const rect=board.current?.getBoundingClientRect();
             const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
             const centerY=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
@@ -6524,13 +6524,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSelected([]);
             setTool("select");
             setSubjectToolsOpen(false);
-            window.setTimeout(()=>item.kind==="fraction"?setFractionEditorId(item.id):openGraphEditor(item),0);
+            window.setTimeout(()=>item.kind==="fraction"?setFractionEditorId(item.id):item.kind==="formula"?openFormulaEditor(item):openGraphEditor(item),0);
           }else{setTool(id as Tool);setSubjectToolsOpen(false)}
         }}/>}
         {lectrisCustomizeOpen&&<LectrisToolbarSettings
-          tools={tools.filter(t=>t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
+          tools={tools.filter(t=>t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso"&&t.id!=="graph"&&t.id!=="formula").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}
           pinned={lectrisPinned} defaults={lectrisDefaultPinned}
-          onChange={next=>setLectrisPinned(next.filter((id):id is Tool=>tools.some(t=>t.id===id)))}
+          onChange={next=>setLectrisPinned(next.filter((id):id is Tool=>id!=="formula"&&id!=="graph"&&tools.some(t=>t.id===id)))}
           onClose={()=>setLectrisCustomizeOpen(false)}/>}
         {isStudent&&<div className="student-board-mode" title="Можно писать и решать задания. Создание заданий доступно преподавателю.">Режим ученика</div>}
         {!isStudent&&attachmentRequests.length>0&&(()=>{
