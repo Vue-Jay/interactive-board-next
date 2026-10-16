@@ -1,7 +1,7 @@
 import {useLayoutEffect,useRef,useState,type CSSProperties,type ReactNode} from "react";
 import {createPortal} from "react-dom";
 
-export type SubjectToolOption={id:string;label:string;description?:string;icon:ReactNode};
+export type SubjectToolOption={id:string;label:string;description?:string;group?:string;icon:ReactNode};
 type Props={
   anchor:HTMLElement|null;
   subject:string;
