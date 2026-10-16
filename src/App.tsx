@@ -22,6 +22,7 @@ import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusGraphEditor, {removeGraphPoint, removeGraphBoardPoint, type GraphDraft} from "./LektrusGraphEditor";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
+import {formatPiRadians} from "./lektrusMathPresets";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
@@ -1094,6 +1095,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
   const values = (a:number,b:number) => { const first=Math.ceil(a/step)*step,count=Math.min(101,Math.max(0,Math.floor((b-first)/step)+1));return Array.from({length:count},(_,i)=>Number((first+i*step).toFixed(6))); };
   const gridX = values(xMin,xMax), gridY = values(yMin,yMax), gp = (item.graphPoints ?? []).map(p=>purpose==="number-line"?{...p,y:0}:p);
   const intervalEnds=purpose==="number-line"&&gp.length>=2?[gp[0],gp[1]].sort((p,q)=>p.x-q.x):null;
+  const activeTrigPoint=purpose==="unit-circle"&&gp.length>5?gp[5]:null;
   const axes = item.graphAxisMode ?? "both";
   const hasX = axes === "both" || axes === "x", hasY = axes === "both" || axes === "y";
   const point = (index:number) => gp[index];
@@ -1128,7 +1130,11 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
         {hasY&&<text x={Math.max(5,Math.min(W-18,sx(0)+9))} y="13">y</text>}
       </g>}
       {curvePath&&<path className="graph-curve" d={curvePath}/>}
-      {item.graphProjections&&<g className="graph-projections">{gp.map((p,i)=><g key={i}><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(p.x)} y2={sy(0)}/><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(0)} y2={sy(p.y)}/></g>)}</g>}
+      {purpose==="unit-circle"&&activeTrigPoint&&<g className="graph-trigonometry">
+        <text x={sx(activeTrigPoint.x)+10} y={sy(0)-9}>cos α = {activeTrigPoint.x.toFixed(2)}</text>
+        <text x={sx(0)+12} y={sy(activeTrigPoint.y)-12}>sin α = {activeTrigPoint.y.toFixed(2)}</text>
+      </g>}
+      {item.graphProjections&&<g className="graph-projections">{(purpose==="unit-circle"?gp.slice(5,6):gp).map((p,i)=><g key={i}><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(p.x)} y2={sy(0)}/><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(0)} y2={sy(p.y)}/></g>)}</g>}
       <g className="graph-constructions">
         {(item.graphPolygons??[]).map((poly,i)=>{const pts=poly.points.map(point).filter((p):p is NonNullable<typeof p>=>!!p);if(pts.length<3)return null;const perimeter=pts.reduce((sum,p,j)=>sum+distance(p,pts[(j+1)%pts.length]),0);const center={x:pts.reduce((v,p)=>v+p.x,0)/pts.length,y:pts.reduce((v,p)=>v+p.y,0)/pts.length};return <g key={`polygon-${i}`}><polygon points={pts.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")} className="graph-polygon"/>{(poly.label||poly.measure)&&<text className="graph-figure-label" x={sx(center.x)} y={sy(center.y)} textAnchor="middle">{poly.label}{poly.measure?` · P = ${perimeter.toFixed(2)}`:""}</text>}</g>})}
         {(item.graphCircles??[]).map((circle,i)=>{const center=point(circle.center),edge=point(circle.edge);if(!center||!edge)return null;const radius=distance(center,edge);return <g key={`circle-${i}`}><circle className="graph-circle" cx={sx(center.x)} cy={sy(center.y)} r={radius*scale}/>{(circle.label||circle.measure)&&<text className="graph-figure-label" x={sx(center.x)+radius*scale+8} y={sy(center.y)-8}>{circle.measure?`${circle.label&&!/^r\s*=/.test(circle.label)?circle.label+" · ":""}r = ${Number(radius.toFixed(2))}`:circle.label}</text>}</g>})}
@@ -1137,11 +1143,12 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
         {(item.graphMidpoints??[]).map((m,i)=>{const a=point(m.a),b=point(m.b);if(!a||!b)return null;const x=(a.x+b.x)/2,y=(a.y+b.y)/2;return <g key={`mid-${i}`}><circle className="graph-midpoint" cx={sx(x)} cy={sy(y)} r="4"/>{m.label&&<text className="graph-figure-label" x={sx(x)+8} y={sy(y)-7}>{m.label}</text>}</g>})}
       </g>
       {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={(purpose==="number-line"?gp.slice(0,2):gp).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
-      {gp.map((p,i)=>{const pointColor=p.color??"#111111";return <g className={`graph-point ${onPointMove?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
-        onDoubleClick={onRemovePoint?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint(i)}:undefined}
-        onPointerDown={onPointMove?(e)=>{e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up)}:undefined}>
-        <circle cx={sx(p.x)} cy={sy(p.y)} r={onPointMove?"5":"4"} style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>
-        {item.graphShowLabels!==false&&(purpose==="number-line"||p.label)&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{purpose==="number-line"?p.x:p.label}</text>}
+      {gp.map((p,i)=>{const pointColor=p.color??"#111111";const movable=!!onPointMove&&(purpose!=="unit-circle"||i>=5);return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
+        onDoubleClick={onRemovePoint&&(purpose!=="unit-circle"||i>5)?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint(i)}:undefined}
+        onPointerDown={movable?(e)=>{e.preventDefault();e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up)}:undefined}>
+        {movable&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r="20"/>}
+        <circle cx={sx(p.x)} cy={sy(p.y)} r={movable?"5":"4"} style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>
+        {item.graphShowLabels!==false&&(purpose==="number-line"||p.label)&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
       </g>})}
     </svg>
   </div>;
@@ -6078,9 +6085,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               graphAngles:graphDraft.angles,graphCircles:graphDraft.circles,
               graphPolygons:graphDraft.polygons,graphMidpoints:graphDraft.midpoints
             }}
-            onPointMove={(i,x,y)=>setGraphDraft(current=>current?{...current,points:current.points.map((p,j)=>j===i?{...p,x,y:current.purpose==="number-line"?0:y}:p)}:current)}
-            onAddPoint={(x,y)=>setGraphDraft(current=>current?{...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:String.fromCharCode(65+(current.points.length%26))}]}:current)}
-            onRemovePoint={i=>setGraphDraft(current=>current?removeGraphPoint(current,i):current)}
+            onPointMove={(i,x,y)=>setGraphDraft(current=>{
+              if(!current||current.purpose==="unit-circle"&&i<5)return current;
+              const trig=current.purpose==="unit-circle"&&i===5;
+              const angle=Math.atan2(y,x),xx=trig?Number(Math.cos(angle).toFixed(6)):x,yy=trig?Number(Math.sin(angle).toFixed(6)):current.purpose==="number-line"?0:y;
+              return {...current,points:current.points.map((p,j)=>j===i?{...p,x:xx,y:yy,label:trig?formatPiRadians(angle):p.label}:p)};
+            }}
+            onAddPoint={(x,y)=>setGraphDraft(current=>current&&current.purpose!=="unit-circle"?{...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:current.purpose==="geometry"?String.fromCharCode(65+(current.points.length%26)):""}]}:current)}
+            onRemovePoint={i=>setGraphDraft(current=>current&&!(current.purpose==="unit-circle"&&i<=5)?removeGraphPoint(current,i):current)}
             />}
           />,document.body)}
         {formulaEditorId && formulaDraft && (
