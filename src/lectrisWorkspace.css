@@ -224,3 +224,20 @@
  .lectris-workspace-stage .schedule-day{min-height:145px!important}
  .lectris-workspace-stage .progress-kpis article{padding:9px!important}
 }
+
+/* Boards toolbar: search yields space to controls instead of covering sort/actions. */
+@media(min-width:1100px){
+ .lectris-workspace-stage .lectris-library-toolbar{display:flex!important;flex-wrap:nowrap!important;gap:7px!important}
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-search{flex:1 1 130px!important;width:clamp(130px,17vw,245px)!important;min-width:110px!important;max-width:245px!important}
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-search input{width:100%!important;min-width:0!important}
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-filters{flex:0 0 auto!important}
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort{flex:0 0 auto!important;min-width:0!important;white-space:nowrap!important}
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort select{width:132px!important;min-width:0!important}
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-extras{flex:0 0 auto!important;flex-wrap:nowrap!important;gap:5px!important}
+ .lectris-workspace-stage .lectris-library-toolbar .backup-menu{flex-wrap:nowrap!important;gap:5px!important}
+}
+@media(min-width:1100px) and (max-width:1460px){
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-search{width:125px!important;max-width:160px!important}
+ .lectris-workspace-stage .lectris-library-toolbar{gap:5px!important}
+ .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort select{width:112px!important}
+}
