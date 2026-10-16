@@ -4471,7 +4471,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const openGraphEditor = (item: Item) => {
-    if(item.kind!=="graph"||item.locked)return; if(pendingMathItem?.id!==item.id)setSelected([item.id]); setGraphEditorId(item.id);
+    if(item.kind!=="graph"||item.locked)return; if(itemsRef.current.some(existing=>existing.id===item.id))setSelected([item.id]); setGraphEditorId(item.id);
     setGraphDraft({title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPoints??[]).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(item.graphSegments??[]).map(s=>({...s})),angles:(item.graphAngles??[]).map(g=>({...g})),circles:(item.graphCircles??[]).map(g=>({...g})),polygons:(item.graphPolygons??[]).map(g=>({...g,points:[...g.points]})),midpoints:(item.graphMidpoints??[]).map(g=>({...g}))});
   };
   const closeGraphEditor=()=>{setGraphEditorId(null);setGraphDraft(null);setPendingMathItem(null)};
@@ -6075,11 +6075,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             onCancel={()=>{setFractionEditorId(null);setPendingMathItem(null)}}
             onClose={draft=>{
               if(pendingMathItem?.id===fractionEditorId){setFractionEditorId(null);setPendingMathItem(null);return;}
-              commit((pendingMathItem?.id===fractionEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map(item=>item.id===fractionEditorId?{...item,text:draft.title.slice(0,100),fractionMode:draft.mode,fractionNumerator:draft.numerator,fractionDenominator:draft.denominator}:item));
+              commit(itemsRef.current.map(item=>item.id===fractionEditorId?{...item,text:draft.title.slice(0,100),fractionMode:draft.mode,fractionNumerator:draft.numerator,fractionDenominator:draft.denominator}:item));
               setFractionEditorId(null);
             }}
             onSave={draft=>{
-              commit(itemsRef.current.map(item=>item.id===fractionEditorId?{
+              commit((pendingMathItem?.kind==="fraction"&&pendingMathItem.id===fractionEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map(item=>item.id===fractionEditorId?{
                 ...item,text:draft.title.slice(0,100),fractionMode:draft.mode,
                 fractionNumerator:draft.numerator,fractionDenominator:draft.denominator
               }:item));
