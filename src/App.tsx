@@ -1301,7 +1301,8 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
         })}
         {item.graphFigureId==="parallel"&&item.graphParallelMarks?.[0]&&gp.length>=6&&(()=>{
           const firstA=point(0),firstB=point(1),secondA=point(2),secondB=point(3);
-          const crossA=point(4),crossB=point(5);
+          const transversal=item.graphSegments?.find((seg,i)=>i>=2&&seg.kind==="line");
+          const crossA=transversal?point(transversal.a):undefined,crossB=transversal?point(transversal.b):undefined;
           if(!firstA||!firstB||!secondA||!secondB||!crossA||!crossB)return null;
           const bx=firstB.x-firstA.x,by=firstB.y-firstA.y,tx=crossB.x-crossA.x,ty=crossB.y-crossA.y;
           const blen=Math.hypot(bx,by),tlen=Math.hypot(tx,ty),det=bx*ty-by*tx;
