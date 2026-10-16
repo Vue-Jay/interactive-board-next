@@ -20,6 +20,7 @@ import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusGraphEditor, {removeGraphPoint, removeGraphBoardPoint, type GraphDraft} from "./LektrusGraphEditor";
+import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
@@ -1274,6 +1275,7 @@ const itemLabel = (item: Item) => {
   if (item.kind === "comment") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Комментарий";
   if (item.kind === "table") return `Таблица ${item.tableRows ?? 3}×${item.tableCols ?? 3}`;
   if (item.kind === "formula") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Формула";
+  if (item.kind === "fraction") return item.text.trim().slice(0,44) || "Дробная модель";
   if (item.kind === "graph") return item.text.trim().slice(0,44) || (item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрическое построение":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции");
   if (item.kind === "checklist") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Чек-лист";
   if (item.kind === "quiz") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Вопрос";
@@ -1289,7 +1291,8 @@ const itemKindLabel = (item: Item) => {
   if (item.kind === "comment") return item.resolved ? "Комментарий · решён" : "Комментарий";
   if (item.kind === "table") return "Таблица";
   if (item.kind === "formula") return "Формула";
-  if (item.kind === "graph") return item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрия":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции";
+  if (item.kind === "fraction") return "Дробная модель";
+  if (item.kind === "graph") return item.graphPurpose==="number-line"?"Числовая прямая":item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрия":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции";
   if (item.kind === "checklist") return "Чек-лист / задание";
   if (item.kind === "quiz") return "Вопрос / мини-тест";
   if (item.kind === "flashcard") return item.flashcardFlipped ? "Карточка · ответ" : "Карточка · вопрос";
@@ -1314,6 +1317,7 @@ const itemIconName = (item: Item): IconName => {
   if (item.kind === "table") return "table";
   if (item.kind === "formula") return "formula";
   if (item.kind === "graph") return "graph";
+  if (item.kind === "fraction") return "shape";
   if (item.kind === "checklist") return "checklist";
   if (item.kind === "quiz") return "quiz";
   if (item.kind === "flashcard") return "flashcard";
@@ -1508,6 +1512,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [studyTab, setStudyTab] = useState<"quiz"|"flashcards">("quiz");
   const [studyCardIndex, setStudyCardIndex] = useState(0);
   const [graphEditorId, setGraphEditorId] = useState<string | null>(null);
+  const [fractionEditorId, setFractionEditorId] = useState<string | null>(null);
   const [graphDraft, setGraphDraft] = useState<GraphDraft|null>(null);
   const [formulaEditorId, setFormulaEditorId] = useState<string | null>(null);
   const [formulaDraft, setFormulaDraft] = useState<{ text: string; fontSize: number; color: string } | null>(null);
@@ -3892,6 +3897,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       case "text": case "sticky": case "frame": case "comment": startEdit(singleSelected); break;
       case "formula": openFormulaEditor(singleSelected); break;
       case "graph": openGraphEditor(singleSelected); break;
+      case "fraction": setFractionEditorId(singleSelected.id); break;
       case "table": openTableEditor(singleSelected); break;
       case "checklist": openChecklistEditor(singleSelected); break;
       case "quiz": openQuizEditor(singleSelected); break;
@@ -6040,6 +6046,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
         )}
         
+        {fractionEditorId && items.find(item=>item.id===fractionEditorId && item.kind==="fraction") && createPortal(
+          <LektrusFractionEditor
+            key={fractionEditorId}
+            item={items.find(item=>item.id===fractionEditorId)!}
+            onCancel={()=>setFractionEditorId(null)}
+            onSave={draft=>{
+              commit(itemsRef.current.map(item=>item.id===fractionEditorId?{
+                ...item,text:draft.title.slice(0,100),fractionMode:draft.mode,
+                fractionNumerator:draft.numerator,fractionDenominator:draft.denominator
+              }:item));
+              setFractionEditorId(null);
+            }}
+          />,document.body)}
         {graphEditorId && graphDraft && createPortal(
           <LektrusGraphEditor
             draft={graphDraft} userId={authUser.id}
@@ -6461,7 +6480,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>)}
           </div>
         </LektrusToolOverflow>}
-        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(()=>canEdit&&toolAllowedForRole("graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:["math-function","math-linear","math-sine"].includes(entry.id)?"Графики функций":entry.id==="math-coordinate"?"Координаты":"Геометрия и тригонометрия",icon:<Icon name={["math-function","math-linear","math-sine"].includes(entry.id)?"graph":entry.id==="math-trigonometry"?"formula":"shape"} size={21}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
+        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(()=>canEdit&&toolAllowedForRole("graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<Icon name={entry.id==="math-coordinate"||entry.id==="math-numberline"?"graph":entry.id==="math-trigonometry"?"formula":"shape"} size={21}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
             if(!canEdit||!toolAllowedForRole("graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
@@ -6473,7 +6492,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSelected([item.id]);
             setTool("select");
             setSubjectToolsOpen(false);
-            window.setTimeout(()=>openGraphEditor(item),0);
+            window.setTimeout(()=>item.kind==="fraction"?setFractionEditorId(item.id):openGraphEditor(item),0);
           }else{setTool(id as Tool);setSubjectToolsOpen(false)}
         }}/>}
         {lectrisCustomizeOpen&&<LectrisToolbarSettings
@@ -6770,6 +6789,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     setSelected([item.id]);
                     openChecklistEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "graph") { setSelected([item.id]); openGraphEditor(item);
+                  } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); setFractionEditorId(item.id);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "quiz") {
                     setSelected([item.id]);
                     openQuizEditor(item);
@@ -6800,6 +6820,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "comment" && editing !== item.id && <CommentCard item={item} />}
                 {item.kind === "table" && <TableView item={item} />}
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
+                {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item} onAddPoint={!item.locked && canEdit ? (x,y)=>{const next={x,y,label:"",color:"#111111"};commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:[...(candidate.graphPoints??[]),next]}:candidate));setSelected([item.id]);} : undefined} onRemovePoint={!item.locked && canEdit ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/>}
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
@@ -7047,6 +7068,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               {singleSelected?.kind === "cover" && !isStudent && !selectionLocked && (
                 <span className="cover-selection-controls"><button type="button" className={singleSelected.coverOpen ? "active" : ""} onClick={() => toggleCover(singleSelected)} title="Прозрачность шторки"><Icon name={singleSelected.coverOpen ? "eye-off" : "eye"} size={15}/><span>{singleSelected.coverOpen ? "Закрыть" : "Прозрачная"}</span></button><input type="range" min="0" max="100" value={Math.round((singleSelected.coverOpen?0:(singleSelected.coverOpacity??1))*100)} onChange={e=>{const opacity=Number(e.target.value)/100;commit(itemsRef.current.map(i=>i.id===singleSelected.id?{...i,coverOpen:opacity===0,coverOpacity:opacity}:i))}} aria-label="Непрозрачность шторки"/></span>
               )}
+              {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>setFractionEditorId(singleSelected.id)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
               {singleSelected?.kind === "graph" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>openGraphEditor(singleSelected)} title="Параметры графика"><Icon name="graph" size={15}/><span>График</span></button></span>)}
               {singleSelected?.kind === "formula" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
                 <span className="formula-selection-controls">
