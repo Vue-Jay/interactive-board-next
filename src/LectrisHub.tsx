@@ -261,14 +261,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
             <div className="lektrus-calendar-day-heading"><strong>{new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long"}).format(new Date(calendarDay+"T12:00:00"))}</strong><span>{selectedLessons.length?selectedLessons.length+" зан.":"Нет занятий"}</span></div>
             {dataLoading?<p className="lectris-hub-placeholder">Загружаем расписание…</p>:selectedLessons.length?selectedLessons.map(lesson=><div className="lectris-hub-lesson" key={lesson.id}><div><strong>{lesson.title}</strong><small>{new Intl.DateTimeFormat("ru-RU",{hour:"2-digit",minute:"2-digit"}).format(new Date(lesson.startsAt))} · {lesson.durationMinutes} мин</small>{teacher&&<small>{lesson.studentName}</small>}</div>{boardById.has(lesson.boardId)&&<button type="button" onClick={()=>onOpenBoard(boardById.get(lesson.boardId)!)}>Доска ↗</button>}</div>):<p className="lectris-hub-placeholder">На выбранный день занятий нет.</p>}
           </section>
-          <section className="lectris-hub-section" hidden><div className="lectris-hub-section-head"><div><small>ОРГАНИЗАЦИЯ</small><h2>Разделы</h2></div></div>
-            <div className="lectris-hub-shortcuts">
-              <button type="button" onClick={()=>navigate("subjects")}>Предметы <span>→</span></button>
-              {teacher&&<button type="button" onClick={()=>navigate("groups")}>Группы и классы <span>→</span></button>}
-              {teacher&&<button type="button" onClick={()=>navigate("students")}>Ученики <span>→</span></button>}
-              <button type="button" onClick={()=>navigate("assignments")}>Задания <span>→</span></button>
-            </div>
-          </section>
+
         </div>
       </div>
     </>:<>
