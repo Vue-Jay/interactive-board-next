@@ -143,6 +143,92 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       angles:kind==="angle"?[...draft.angles,{a:index,vertex:index+1,b:index+2,label:"∠AOB"}]:draft.angles
     });
   };
+  const addSchoolElement=(kind:"diagonal"|"midpoint"|"midline"|"perpendicular-bisector"|"incircle"|"circumcircle"|"radius"|"diameter"|"chord"|"tangent"|"secant"|"axis")=>{
+    const points=draft.points.map(p=>({...p}));
+    const segments=draft.segments.map(v=>({...v}));
+    const circles=draft.circles.map(v=>({...v}));
+    const midpoints=draft.midpoints.map(v=>({...v}));
+    const push=(x:number,y:number,label="")=>{
+      if(points.length>=40)return -1;
+      points.push({x,y,label});return points.length-1;
+    };
+    const line=(a:number,b:number,lineKind:"segment"|"line"="segment")=>{
+      if(a>=0&&b>=0&&a!==b&&segments.length<60)segments.push({a,b,kind:lineKind,label:"",measure:false});
+    };
+    const poly=draft.polygons.find(p=>p.points.length>=3);
+    const circle=draft.circles[0];
+    const get=(index:number)=>points[index];
+    if(["diagonal","midpoint","midline","perpendicular-bisector","incircle","circumcircle"].includes(kind)){
+      if(!poly){setGeometryError("Сначала выберите многоугольник.");return}
+      const ids=poly.points;
+      const a=get(ids[0]),b=get(ids[1]),c=get(ids[2]);
+      if(!a||!b||!c)return;
+      const midpoint=(p:typeof a,q:typeof a)=>({x:(p.x+q.x)/2,y:(p.y+q.y)/2});
+      if(kind==="diagonal"){
+        if(ids.length<4){setGeometryError("Диагональ можно построить у фигуры с четырьмя и более вершинами.");return}
+        line(ids[0],ids[2]);
+      }
+      if(kind==="midpoint"&&midpoints.length<40)midpoints.push({a:ids[0],b:ids[1],label:"M"});
+      if(kind==="midline"){
+        const m=midpoint(a,b),n=midpoint(a,c);
+        line(push(m.x,m.y,"M"),push(n.x,n.y,"N"));
+      }
+      if(kind==="perpendicular-bisector"){
+        const m=midpoint(a,b),dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+        const p=push(m.x-dy/len*3,m.y+dx/len*3,""),q=push(m.x+dy/len*3,m.y-dx/len*3,"");
+        line(p,q,"line");
+        if(midpoints.length<40)midpoints.push({a:ids[0],b:ids[1],label:"M"});
+      }
+      if((kind==="incircle"||kind==="circumcircle")&&ids.length===3){
+        let cx=0,cy=0,radius=0;
+        if(kind==="incircle"){
+          const aa=Math.hypot(b.x-c.x,b.y-c.y),bb=Math.hypot(a.x-c.x,a.y-c.y),cc=Math.hypot(a.x-b.x,a.y-b.y);
+          const total=aa+bb+cc;if(total<.0001)return;
+          cx=(aa*a.x+bb*b.x+cc*c.x)/total;cy=(aa*a.y+bb*b.y+cc*c.y)/total;
+          radius=Math.abs((b.x-a.x)*(a.y-cy)-(a.x-cx)*(b.y-a.y))/Math.max(.0001,Math.hypot(b.x-a.x,b.y-a.y));
+        }else{
+          const det=2*(a.x*(b.y-c.y)+b.x*(c.y-a.y)+c.x*(a.y-b.y));
+          if(Math.abs(det)<.00001){setGeometryError("У этих вершин нельзя построить описанную окружность.");return}
+          const q=a.x*a.x+a.y*a.y,w=b.x*b.x+b.y*b.y,z=c.x*c.x+c.y*c.y;
+          cx=(q*(b.y-c.y)+w*(c.y-a.y)+z*(a.y-b.y))/det;
+          cy=(q*(c.x-b.x)+w*(a.x-c.x)+z*(b.x-a.x))/det;
+          radius=Math.hypot(cx-a.x,cy-a.y);
+        }
+        const center=push(cx,cy,"O"),edge=push(cx+radius,cy,"");
+        if(center>=0&&edge>=0&&circles.length<30)circles.push({center,edge,label:"",measure:false});
+      }
+    }else if(kind==="axis"&&roundSolid){
+      if(points.length>=38){setGeometryError("Достигнут предел опорных точек.");return}
+      const bottom=points[0],top=points[17];
+      if(!bottom||!top)return;
+      const a=push(0,bottom.y,"O"),b=push(0,top.y,"O₁");
+      line(a,b);
+    }else{
+      if(!circle){setGeometryError("Сначала добавьте окружность.");return}
+      const origin=get(circle.center),edge=get(circle.edge);
+      if(!origin||!edge)return;
+      const dx=edge.x-origin.x,dy=edge.y-origin.y,r=Math.hypot(dx,dy);
+      if(r<.0001)return;
+      const nx=dx/r,ny=dy/r;
+      if(kind==="radius")line(circle.center,circle.edge);
+      if(kind==="diameter"){
+        const opposite=push(origin.x-dx,origin.y-dy,"B");
+        line(circle.edge,opposite);
+      }
+      if(kind==="chord"||kind==="secant"){
+        const offset=.4*r,span=(kind==="chord"?.9165:1.4)*r;
+        const a=push(origin.x+nx*offset-ny*span,origin.y+ny*offset+nx*span,"A");
+        const b=push(origin.x+nx*offset+ny*span,origin.y+ny*offset-nx*span,"B");
+        line(a,b,kind==="secant"?"line":"segment");
+      }
+      if(kind==="tangent"){
+        const a=push(edge.x-ny*r,edge.y+nx*r,""),b=push(edge.x+ny*r,edge.y-nx*r,"");
+        line(a,b,"line");
+      }
+    }
+    if(points.length===draft.points.length&&segments.length===draft.segments.length&&circles.length===draft.circles.length&&midpoints.length===draft.midpoints.length)return;
+    patch({points,segments,circles,midpoints});setGeometryError("");
+  };
   return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""}`} onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
@@ -442,7 +528,31 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("segment")}>+ Отрезок</button>
               <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("angle")}>+ Угол</button>
             </div>
-            <small>Каждая кнопка добавляет готовые подвижные опорные точки и построение. Связи можно уточнить ниже.</small>
+            <small>Элементы привязываются к опорным точкам фигуры. Размеры задаются во вкладке «Размеры».</small>
+            {draft.polygons.length>0&&<div className="lektrus-graph-construction">
+              <strong>Школьные построения на многоугольнике</strong>
+              <div className="lektrus-graph-construct-actions">
+                {draft.polygons.some(p=>p.points.length>=4)&&<button type="button" onClick={()=>addSchoolElement("diagonal")}>+ Диагональ</button>}
+                <button type="button" onClick={()=>addSchoolElement("midpoint")}>+ Середина стороны</button>
+                <button type="button" onClick={()=>addSchoolElement("midline")}>+ Средняя линия</button>
+                <button type="button" onClick={()=>addSchoolElement("perpendicular-bisector")}>+ Серединный перпендикуляр</button>
+                {draft.polygons.some(p=>p.points.length===3)&&<>
+                  <button type="button" onClick={()=>addSchoolElement("incircle")}>+ Вписанная окружность</button>
+                  <button type="button" onClick={()=>addSchoolElement("circumcircle")}>+ Описанная окружность</button>
+                </>}
+              </div>
+            </div>}
+            {draft.circles.length>0&&!roundSolid&&<div className="lektrus-graph-construction">
+              <strong>Элементы окружности</strong>
+              <div className="lektrus-graph-construct-actions">
+                {(["radius","diameter","chord","tangent","secant"] as const).map((kind,i)=><button type="button" key={kind} onClick={()=>addSchoolElement(kind)}>+ {["Радиус","Диаметр","Хорда","Касательная","Секущая"][i]}</button>)}
+              </div>
+            </div>}
+            {roundSolid&&<div className="lektrus-graph-construction"><strong>Элементы тела вращения</strong>
+              <button type="button" onClick={()=>addSchoolElement("axis")}>+ Ось симметрии</button>
+            </div>}
+            {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
+
             {draft.polygons.some(p=>p.points.length===3)&&<div className="lektrus-graph-construction">
               <strong>Медиана, высота и биссектриса</strong>
               <label className="lektrus-graph-field">Вершина построений
