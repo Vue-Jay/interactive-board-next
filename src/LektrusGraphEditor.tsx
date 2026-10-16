@@ -73,7 +73,6 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">(()=>["Куб","Треугольная призма","Четырёхугольная пирамида","Цилиндр","Конус"].includes(draft.title)?"Объёмные фигуры":"Геометрия");
   const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","cylinder","cone"]);
   const isSolid=solidPresetIds.has(mathPresets.find(p=>p.title===draft.title)?.id??"triangle");
-  const hasTriangleParameters=mode==="geometry"&&!isSolid&&draft.polygons.some(p=>p.points.length===3);
   const roundSolid=draft.title==="Конус"||draft.title==="Цилиндр";
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
@@ -209,6 +208,30 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           {mode==="geometry"&&tab==="givens"&&<div className="lektrus-graph-section lektrus-geometry-guided">
             <div className="lektrus-graph-section-head"><strong>Размеры и подписи</strong></div>
             <small>{roundSolid?"Настройте радиус основания и высоту.":isSolid?"Размеры и оформление объёмной фигуры.":"Для треугольника можно задать стороны и углы. Готовые ответы не выводятся."}</small>
+            {isSolid&&!roundSolid&&<div className="lektrus-geometry-givens">
+              <strong>Длина, ширина и высота</strong>
+              <small>Задайте пропорции объёмной фигуры; готовые формулы и ответы не выводятся.</small>
+              <div className="lektrus-geometry-given-grid">
+                {(["Длина","Ширина","Высота"] as const).map((label,i)=><label key={label}>{label}
+                  <input type="number" min="0.1" step="any" inputMode="decimal" value={draft.givenSides[i]??"4"} onChange={e=>patch({givenSides:[0,1,2].map(j=>j===i?e.target.value:draft.givenSides[j]??"4")})}/>
+                </label>)}
+              </div>
+              <button type="button" onClick={()=>{
+                const dimensions=[0,1,2].map(i=>Number((draft.givenSides[i]??"4").replace(",",".")));
+                if(dimensions.some(n=>!Number.isFinite(n)||n<=0)){setGeometryError("Все размеры должны быть положительными.");return}
+                const [length,width,height]=dimensions;
+                const max=Math.max(...dimensions);
+                const lx=length/max*5,wy=width/max*2,h=height/max*6;
+                const vertices=draft.title==="Куб"?
+                  [[-lx/2-wy/2,-h/2-wy/2],[lx/2-wy/2,-h/2-wy/2],[lx/2+wy/2,-h/2+wy/2],[-lx/2+wy/2,-h/2+wy/2],[-lx/2-wy/2,h/2-wy/2],[lx/2-wy/2,h/2-wy/2],[lx/2+wy/2,h/2+wy/2],[-lx/2+wy/2,h/2+wy/2]]:
+                  draft.title==="Треугольная призма"?
+                  [[-lx/2,-h/2],[lx/2,-h/2],[0,-h/2+wy],[-lx/2+wy/2,h/2],[lx/2+wy/2,h/2],[wy/2,h/2+wy]]:
+                  [[-lx/2,-h/2],[lx/2,-h/2],[lx/2+wy/2,-h/2+wy/2],[-lx/2+wy/2,-h/2+wy/2],[wy/4,h/2]];
+                patch({points:draft.points.map((p,i)=>vertices[i]?{...p,x:vertices[i][0],y:vertices[i][1]}:p)});
+                setGeometryError("");
+              }}>Применить размеры</button>
+              {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
+            </div>}
             {roundSolid&&<div className="lektrus-geometry-givens">
               <strong>Размеры основания и высоты</strong>
               <small>Задайте радиус и высоту, не редактируя точки окружностей.</small>
