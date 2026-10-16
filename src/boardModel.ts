@@ -64,6 +64,8 @@ export type Item = {
   fractionNumerator?: number;
   fractionDenominator?: number;
   graphAxisMode?: "both" | "x" | "y" | "none";
+  graphIntervalStartClosed?: boolean;
+  graphIntervalEndClosed?: boolean;
   graphType?: "linear" | "quadratic" | "sin" | "cos";
   graphExpression?: string;
   graphConnectPoints?: boolean;
@@ -195,6 +197,8 @@ export function parseDocument(raw: string): DocumentData {
       if (!Number.isInteger(i.fractionDenominator) || i.fractionDenominator! < 1 || i.fractionDenominator! > 24 || !Number.isInteger(i.fractionNumerator) || i.fractionNumerator! < 0 || i.fractionNumerator! > i.fractionDenominator!) throw new Error("Повреждена дробь");
     }
     if (i.kind === "graph") {
+      if (i.graphIntervalStartClosed != null && typeof i.graphIntervalStartClosed !== "boolean") throw new Error("Повреждена левая граница промежутка");
+      if (i.graphIntervalEndClosed != null && typeof i.graphIntervalEndClosed !== "boolean") throw new Error("Повреждена правая граница промежутка");
       if (i.graphPurpose != null && !["function","coordinates","geometry","unit-circle","number-line"].includes(i.graphPurpose)) throw new Error("Повреждён тип учебного объекта");
       if (i.graphAxisMode != null && !["both","x","y","none"].includes(i.graphAxisMode)) throw new Error("Повреждён режим осей");
       if (i.graphType != null && !["linear","quadratic","sin","cos"].includes(i.graphType)) throw new Error("Повреждён тип графика");
