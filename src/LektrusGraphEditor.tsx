@@ -22,7 +22,7 @@ export type GraphDraft = {
   polygons: NonNullable<Item["graphPolygons"]>;
   midpoints: NonNullable<Item["graphMidpoints"]>;
   triangleLines: NonNullable<Item["graphTriangleLines"]>;
-  givenSides:string[]; givenAngles:string[]; triangleInputMode:"SSS"|"SAS";
+  givenSides:string[]; givenAngles:string[]; triangleInputMode:"SSS"|"SAS"|"ASA";
   triangleVertex: 0|1|2;
   showArea: boolean;
 };
@@ -233,9 +233,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 <strong>Дано в условии задачи</strong>
                 <small>Значения указываются на рисунке. Автоматические ответы и вычисления не показываются.</small>
                 <label>Способ построения
-                  <select value={draft.triangleInputMode} onChange={e=>patch({triangleInputMode:e.target.value as "SSS"|"SAS"})}>
+                  <select value={draft.triangleInputMode} onChange={e=>patch({triangleInputMode:e.target.value as "SSS"|"SAS"|"ASA"})}>
                     <option value="SSS">По трём сторонам (AB, BC, CA)</option>
                     <option value="SAS">По двум сторонам AB, CA и углу A</option>
+                    <option value="ASA">По стороне AB и двум углам A, B</option>
                   </select>
                 </label>
                 <div className="lektrus-geometry-given-grid">
@@ -253,14 +254,22 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                   if(draft.triangleInputMode==="SSS"){
                     if(![ab,bc,ca].every(Number.isFinite)||ab+bc<=ca||ab+ca<=bc||bc+ca<=ab){setGeometryError("Укажите три положительные стороны, удовлетворяющие неравенству треугольника.");return}
                     bx=ab;cx=(ab*ab+ca*ca-bc*bc)/(2*ab);cy=Math.sqrt(Math.max(0,ca*ca-cx*cx));
-                  }else{
+                  }else if(draft.triangleInputMode==="SAS"){
                     const degrees=parse(draft.givenAngles[0]??"");
                     if(!Number.isFinite(ab)||!Number.isFinite(ca)||!Number.isFinite(degrees)||degrees>=180){setGeometryError("Для построения укажите AB, CA и угол A от 0° до 180°.");return}
                     bx=ab;cx=ca*Math.cos(degrees*Math.PI/180);cy=ca*Math.sin(degrees*Math.PI/180);
+                  }else{
+                    const angleA=parse(draft.givenAngles[0]??""),angleB=parse(draft.givenAngles[1]??"");
+                    if(!Number.isFinite(ab)||!Number.isFinite(angleA)||!Number.isFinite(angleB)||angleA+angleB>=180){
+                      setGeometryError("Для построения укажите сторону AB и два положительных угла A и B, сумма которых меньше 180°.");return;
+                    }
+                    const a=angleA*Math.PI/180,b=angleB*Math.PI/180,c=Math.PI-a-b;
+                    const ac=ab*Math.sin(b)/Math.sin(c);
+                    bx=ab;cx=ac*Math.cos(a);cy=ac*Math.sin(a);
                   }
                   const triangle=draft.polygons.find(p=>p.points.length===3);
                   if(!triangle){setGeometryError("Сначала выберите шаблон треугольника.");return}
-                  const max=Math.max(ab,ca,Math.abs(cx),Math.abs(cy),1),factor=5/max;
+                  const max=Math.max(ab,Number.isFinite(ca)?ca:0,Math.abs(cx),Math.abs(cy),1),factor=5/max;
                   const coords=[{x:ax,y:ay},{x:bx*factor,y:by},{x:cx*factor,y:cy*factor}];
                   patch({points:draft.points.map((p,i)=>{const k=triangle.points.indexOf(i);return k<0?p:{...p,...coords[k]}})});
                   setGeometryError("");
