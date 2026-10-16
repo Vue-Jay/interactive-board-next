@@ -25,16 +25,6 @@ export default function SettingsScreen({user,onBack,onLogout,installAvailable,is
   <header className="students-header compact-settings-header"><div><button className="boards-secondary" onClick={onBack}>← Доски</button><div><strong>Настройки</strong><span>Интерфейс, доска, роль и приложение</span></div></div><button className="boards-create" disabled={!dirty} onClick={()=>void save()}>Сохранить</button></header>
   <section className="settings-compact-content">{notice&&<div className="access-notice">{notice}</div>}
    <div className="settings-compact-grid">
-    <section className="settings-row-card lektrus-theme-setting"><div><b>Тема оформления</b><small>Светлая, тёмная или автоматическая по настройкам устройства</small></div>
-     <div className="lektrus-theme-options" role="group" aria-label="Тема оформления Lektrus">
-      {([["system","Системная","Автоматически"],["light","Светлая","Чётко и легко"],["dark","Тёмная","Спокойный контраст"]] as const).map(([value,label,description])=>
-       <button type="button" key={value} className={s.theme===value?"selected":""} aria-pressed={s.theme===value}
-        onClick={()=>patch("theme",value)}>
-        <span className={`lektrus-theme-preview is-${value}`} aria-hidden="true"/>
-        <strong>{label}</strong><small>{description}</small>
-       </button>)}
-     </div>
-    </section>
     <section className="settings-row-card lectris-palette-setting"><div><b>Цвет Lektrus</b><small>Основной акцент приложения · сохраняется на этом устройстве</small></div>
       <div className="lectris-palette-options" role="group" aria-label="Цветовое оформление Lektrus">
         {([["sapphire","Синий"],["jade","Бирюзовый"],["violet","Фиолетовый"],["sunset","Коралловый"]] as const).map(([key,label])=>
