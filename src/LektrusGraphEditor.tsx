@@ -63,6 +63,7 @@ const finiteNumber=(input:string,fallback:number)=>Number.isFinite(Number(input)
 
 export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave,onCancel}:Props) {
   const [tab,setTab]=useState<"presets"|"settings"|"points"|"geometry">("presets");
+  const [previewExpanded,setPreviewExpanded]=useState(false);
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onCancel()}
@@ -131,7 +132,7 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
     {id:"none",label:"0",detail:"Без осей"}, {id:"x",label:"X",detail:"1 ось"},
     {id:"y",label:"Y",detail:"1 ось"}, {id:"both",label:"X + Y",detail:"2 оси"}
   ];
-  return <div className="graph-editor-backdrop lektrus-graph-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)onSave()}}>
+  return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""}`} onPointerDown={e=>{if(e.target===e.currentTarget)onSave()}}>
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
       <header className="graph-editor-header lektrus-graph-head">
@@ -212,18 +213,20 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
               </div>
             </div>
           </>}
-          {tab==="points"&&<div className="lektrus-graph-section"><div className="lektrus-graph-section-head"><strong>Редактируемые точки</strong><button type="button" onClick={addPoint}>+ Точка</button></div>
-            <small>Перемещайте точки прямо на рисунке. Двойное нажатие по пустому месту добавляет точку.</small>
+          {tab==="points"&&<div className="lektrus-graph-section"><div className="lektrus-graph-section-head"><strong>Редактируемые точки</strong><button type="button" disabled={draft.purpose==="unit-circle"} onClick={addPoint}>+ Точка</button></div>
+            <small>{draft.purpose==="unit-circle"?
+              "Контрольные точки единичной окружности фиксированы. Угол меняйте во вкладке «Настройки» или перемещайте радиус.":
+              "Точки можно перемещать прямо на рисунке. На мобильном для точного положения используйте поля X и Y."}</small>
             {draft.points.length===0&&<p className="lektrus-graph-empty">Пока нет точек. Добавьте первую.</p>}
             {draft.points.map((p,i)=><div className="lektrus-graph-point-row" key={i}>
               <input aria-label={"Подпись точки "+(i+1)} maxLength={24}
                 value={draft.purpose==="unit-circle"&&i>0?(i===5?formatPiRadians(Math.atan2(p.y,p.x)):p.label):draft.purpose==="number-line"?"":p.label}
-                placeholder={draft.purpose==="geometry"?"A, B, C…":"Без подписи"} disabled={draft.purpose==="unit-circle"&&i>0||draft.purpose==="number-line"}
+                placeholder={draft.purpose==="geometry"?"A, B, C…":"Без подписи"} disabled={draft.purpose==="unit-circle"||draft.purpose==="number-line"}
                 onChange={e=>editPoint(i,{label:e.target.value})}/>
-              <input aria-label={"X точки "+(i+1)} type="number" step=".25" value={p.x} onChange={e=>editPoint(i,{x:finiteNumber(e.target.value,p.x)})}/>
-              <input aria-label={"Y точки "+(i+1)} title={draft.purpose==="number-line"?"На числовой прямой все точки имеют Y = 0":undefined} disabled={draft.purpose==="number-line"} type="number" step=".25" value={draft.purpose==="number-line"?0:p.y} onChange={e=>editPoint(i,{y:finiteNumber(e.target.value,p.y)})}/>
+              <input aria-label={"X точки "+(i+1)} disabled={draft.purpose==="unit-circle"} type="number" step=".25" value={p.x} onChange={e=>editPoint(i,{x:finiteNumber(e.target.value,p.x)})}/>
+              <input aria-label={"Y точки "+(i+1)} title={draft.purpose==="number-line"?"На числовой прямой все точки имеют Y = 0":undefined} disabled={draft.purpose==="number-line"||draft.purpose==="unit-circle"} type="number" step=".25" value={draft.purpose==="number-line"?0:p.y} onChange={e=>editPoint(i,{y:finiteNumber(e.target.value,p.y)})}/>
               <LektrusColorPicker userId={userId} label="" compact value={p.color??"#111111"} onChange={color=>editPoint(i,{color})}/>
-              <button type="button" aria-label={"Удалить точку "+(i+1)} title="Удалить точку и связанные с ней построения" onClick={()=>onChange(removeGraphPoint(draft,i))}>×</button>
+              <button type="button" disabled={draft.purpose==="unit-circle"} aria-label={"Удалить точку "+(i+1)} title="Удалить точку и связанные с ней построения" onClick={()=>onChange(removeGraphPoint(draft,i))}>×</button>
             </div>)}
             {draft.purpose==="number-line"&&<p className="lektrus-graph-note">Точки на числовой прямой обозначают числа. Соедините две точки, чтобы показать промежуток. Положение точек можно менять в предпросмотре.</p>}
             <label className="lektrus-graph-check"><input type="checkbox" checked={draft.connectPoints} onChange={e=>patch({connectPoints:e.target.checked})}/> Соединять все точки по порядку</label>
@@ -266,7 +269,11 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
           </div>}
         </div>
         <aside className="graph-editor-preview lektrus-graph-preview">
-          <div className="lektrus-graph-preview-title"><strong>Предпросмотр</strong><span>Изменения видны сразу</span></div>
+          <div className="lektrus-graph-preview-title"><strong>Предпросмотр</strong><span>Изменения видны сразу</span>
+            <button type="button" className="lektrus-preview-expand" aria-pressed={previewExpanded} onClick={()=>setPreviewExpanded(value=>!value)}>
+              {previewExpanded?"К настройкам":"Развернуть"}
+            </button>
+          </div>
           <div className="lektrus-graph-canvas">{preview}</div>
           <div className="lektrus-graph-preview-hint">Перетаскивайте точки мышью или пальцем. Двойное нажатие добавляет или удаляет точку.</div>
         </aside>
