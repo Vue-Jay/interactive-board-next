@@ -58,6 +58,9 @@ export type Item = {
   tableAlign?: "left" | "center" | "right";
   tableStripe?: boolean;
   tableCompact?: boolean;
+  // Subject objects keep their teaching purpose, title and visible axes.
+  graphPurpose?: "function" | "coordinates" | "geometry" | "unit-circle";
+  graphAxisMode?: "both" | "x" | "y" | "none";
   graphType?: "linear" | "quadratic" | "sin" | "cos";
   graphExpression?: string;
   graphConnectPoints?: boolean;
@@ -185,6 +188,8 @@ export function parseDocument(raw: string): DocumentData {
       if (i.color != null && !color(i.color)) throw new Error("Повреждён цвет текста");
     }
     if (i.kind === "graph") {
+      if (i.graphPurpose != null && !["function","coordinates","geometry","unit-circle"].includes(i.graphPurpose)) throw new Error("Повреждён тип учебного объекта");
+      if (i.graphAxisMode != null && !["both","x","y","none"].includes(i.graphAxisMode)) throw new Error("Повреждён режим осей");
       if (i.graphType != null && !["linear","quadratic","sin","cos"].includes(i.graphType)) throw new Error("Повреждён тип графика");
       if (i.graphExpression != null && (typeof i.graphExpression !== "string" || i.graphExpression.length > 500)) throw new Error("Повреждена функция графика");
       if (i.graphConnectPoints != null && typeof i.graphConnectPoints !== "boolean") throw new Error("Повреждено соединение точек");
