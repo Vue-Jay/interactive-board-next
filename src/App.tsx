@@ -1289,6 +1289,55 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
             {seg.label&&<text className="graph-figure-label" x={sx((a.x+b.x)/2)+6} y={sy((a.y+b.y)/2)-7}>{seg.label}</text>}
           </g>;
         })}
+        {item.graphFigureId==="parallel"&&item.graphParallelMarks?.[0]&&gp.length>=6&&(()=>{
+          const firstA=point(0),firstB=point(1),secondA=point(2),secondB=point(3);
+          const crossA=point(4),crossB=point(5);
+          if(!firstA||!firstB||!secondA||!secondB||!crossA||!crossB)return null;
+          const bx=firstB.x-firstA.x,by=firstB.y-firstA.y,tx=crossB.x-crossA.x,ty=crossB.y-crossA.y;
+          const blen=Math.hypot(bx,by),tlen=Math.hypot(tx,ty),det=bx*ty-by*tx;
+          if(blen<.01||tlen<.01||Math.abs(det)<.02)return null;
+          const intersection=(origin:{x:number;y:number})=>{
+            const rx=origin.x-crossA.x,ry=origin.y-crossA.y;
+            const factor=(ry*tx-rx*ty)/det;
+            return {x:origin.x+bx*factor,y:origin.y+by*factor};
+          };
+          const centers=[intersection(firstA),intersection(secondA)];
+          const kind=item.graphParallelMarks[0];
+          const pairs:Record<NonNullable<Item["graphParallelMarks"]>[number], [number,number,number][]> = {
+            corresponding:[[0,1,1],[1,1,1]],
+            "alternate-interior":[[0,1,1],[1,-1,-1]],
+            "alternate-exterior":[[0,1,-1],[1,-1,1]],
+            "same-side-interior":[[0,1,1],[1,1,-1]],
+            vertical:[[0,1,1],[0,-1,-1]],
+            adjacent:[[0,1,1],[0,1,-1]]
+          };
+          const selected=pairs[kind];
+          if(!selected)return null;
+          return <g className="graph-parallel-theorem" style={{pointerEvents:"none"}}>
+            {selected.map(([intersectionIndex,baseDirection,transDirection],i)=>{
+              const at=centers[intersectionIndex];
+              const v1={x:bx/blen*baseDirection,y:by/blen*baseDirection};
+              const v2={x:tx/tlen*transDirection,y:ty/tlen*transDirection};
+              const start=Math.atan2(-v1.y,v1.x),end=Math.atan2(-v2.y,v2.x);
+              let sweep=end-start;
+              while(sweep>Math.PI)sweep-=2*Math.PI;
+              while(sweep< -Math.PI)sweep+=2*Math.PI;
+              const radius=30+6*i;
+              const path=`M ${sx(at.x)+radius*Math.cos(start)} ${sy(at.y)+radius*Math.sin(start)}
+                A ${radius} ${radius} 0 0 ${sweep>=0?1:0}
+                ${sx(at.x)+radius*Math.cos(start+sweep)} ${sy(at.y)+radius*Math.sin(start+sweep)}`;
+              const mid=start+sweep/2,mark=item.graphGivenAngles?.[i]?.trim();
+              return <g key={i}>
+                <path d={path} fill="none" stroke={i?"#db7744":"#356cc9"} strokeWidth="3.6" strokeLinecap="round"/>
+                <text x={sx(at.x)+(radius+16)*Math.cos(mid)} y={sy(at.y)+(radius+16)*Math.sin(mid)}
+                  textAnchor="middle" dominantBaseline="middle"
+                  style={{fill:"#24354e",fontWeight:700,fontSize:14,paintOrder:"stroke",stroke:"#fff",strokeWidth:5}}>
+                  {mark?(/°$/.test(mark)?mark:`${mark}°`):`∠${i+1}`}
+                </text>
+              </g>;
+            })}
+          </g>;
+        })()}
         {(item.graphAngles??[]).map((angle,i)=>{const a=point(angle.a),v=point(angle.vertex),b=point(angle.b);if(!a||!v||!b)return null;const start=Math.atan2(sy(a.y)-sy(v.y),sx(a.x)-sx(v.x)),end=Math.atan2(sy(b.y)-sy(v.y),sx(b.x)-sx(v.x));let diff=end-start;if(purpose==="unit-circle"){while(diff>0)diff-=2*Math.PI;while(diff<=-2*Math.PI)diff+=2*Math.PI;}else{while(diff>Math.PI)diff-=2*Math.PI;while(diff< -Math.PI)diff+=2*Math.PI;}const radius=26;const p1={x:sx(v.x)+radius*Math.cos(start),y:sy(v.y)+radius*Math.sin(start)},p2={x:sx(v.x)+radius*Math.cos(start+diff),y:sy(v.y)+radius*Math.sin(start+diff)};const isRight=purpose!=="unit-circle"&&Math.abs(Math.abs(diff)-Math.PI/2)<.015;const corner={x:p1.x+radius*Math.cos(start+diff),y:p1.y+radius*Math.sin(start+diff)};const arcPath=isRight?`M ${p1.x} ${p1.y} L ${corner.x} ${corner.y} L ${p2.x} ${p2.y}`:`M ${p1.x} ${p1.y} A ${radius} ${radius} 0 ${Math.abs(diff)>Math.PI?1:0} ${diff>0?1:0} ${p2.x} ${p2.y}`;return <g key={`angle-${i}`}><path className="graph-angle" d={arcPath}/>{<text className="graph-figure-label" x={sx(v.x)+(radius+13)*Math.cos(start+diff/2)} y={sy(v.y)+(radius+13)*Math.sin(start+diff/2)}>{purpose==="unit-circle"?formatPiRadians(Math.abs(diff)):angle.label ? (/°$/.test(angle.label)?angle.label:/^\d+(?:[.,]\d+)?$/.test(angle.label)?angle.label+"°":angle.label) : ""}</text>}</g>})}
         {purpose==="geometry"&&["cube","rectangular-prism","prism","pyramid","triangular-pyramid"].includes(item.graphFigureId??"")&&
           (item.graphGivenSides??[]).slice(0,3).map((value,i)=>{
