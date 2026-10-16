@@ -33,6 +33,20 @@ export function removeGraphPoint(draft:GraphDraft,index:number):GraphDraft {
   };
 }
 
+// Keep point-index references consistent when a point is removed directly on the board.
+export function removeGraphBoardPoint(item:Item,index:number):Item {
+  const shift=(v:number)=>v>index?v-1:v;
+  return {
+    ...item,
+    graphPoints:(item.graphPoints??[]).filter((_,i)=>i!==index),
+    graphSegments:(item.graphSegments??[]).filter(v=>v.a!==index&&v.b!==index).map(v=>({...v,a:shift(v.a),b:shift(v.b)})),
+    graphCircles:(item.graphCircles??[]).filter(v=>v.center!==index&&v.edge!==index).map(v=>({...v,center:shift(v.center),edge:shift(v.edge)})),
+    graphAngles:(item.graphAngles??[]).filter(v=>v.a!==index&&v.vertex!==index&&v.b!==index).map(v=>({...v,a:shift(v.a),vertex:shift(v.vertex),b:shift(v.b)})),
+    graphMidpoints:(item.graphMidpoints??[]).filter(v=>v.a!==index&&v.b!==index).map(v=>({...v,a:shift(v.a),b:shift(v.b)})),
+    graphPolygons:(item.graphPolygons??[]).map(v=>({...v,points:v.points.filter(i=>i!==index).map(shift)})).filter(v=>v.points.length>=3)
+  };
+}
+
 type Props = {
   draft:GraphDraft; userId:string; preview:ReactNode;
   onChange:(value:GraphDraft)=>void;
