@@ -280,3 +280,7 @@
 .lektrus-day-editor-actions button{padding:8px 12px;border-radius:7px;border:1px solid var(--lt-line,#cad4e5);cursor:pointer}
 .lektrus-day-editor-actions button:first-child{background:var(--lt-primary,#365fd0);color:white}
 @media(max-width:740px){.lectris-workspace-stage .templates-toolbar input[type="search"]{max-width:none!important}}
+
+.lectris-workspace-stage .materials-fav{display:inline-flex!important;gap:7px!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important;font-size:13px!important}
+.lectris-workspace-stage .lektrus-material-favorite-star{font-size:21px!important;line-height:1!important;color:var(--lt-primary,#365fd0)}
+.lectris-hub-tile-icon svg{display:block;width:22px;height:22px;stroke-linecap:round;stroke-linejoin:round}
