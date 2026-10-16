@@ -1277,7 +1277,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
                 return `${sx(center.x+projected.x)},${sy(center.y+projected.y)}`;
               });
               return <polyline key={ring} points={points.join(" ")} fill="none" stroke="#537cc5" strokeDasharray={ring==="equator"?"6 4":"3 5"} strokeWidth="1.4" pointerEvents="none"/>;
-            })}}{given&&purpose==="geometry"&&<g className="graph-radius-dimension"><line x1={sx(center.x)} y1={sy(center.y)} x2={sx(edge.x)} y2={sy(edge.y)} stroke="#57677b" strokeWidth="1.3"/><text x={sx((center.x+edge.x)/2)} y={sy((center.y+edge.y)/2)-12} textAnchor="middle" style={{paintOrder:"stroke",stroke:"#fff",strokeWidth:4,fontWeight:650,fill:"#1c293a"}}>{`r = ${given}`}</text></g>}{circle.label&&!/^r\s*=/.test(circle.label)&&<text className="graph-figure-label" x={sx(center.x)+radius*scale+8} y={sy(center.y)-8}>{circle.label}</text>}</g>})}
+            })}{given&&purpose==="geometry"&&<g className="graph-radius-dimension"><line x1={sx(center.x)} y1={sy(center.y)} x2={sx(edge.x)} y2={sy(edge.y)} stroke="#57677b" strokeWidth="1.3"/><text x={sx((center.x+edge.x)/2)} y={sy((center.y+edge.y)/2)-12} textAnchor="middle" style={{paintOrder:"stroke",stroke:"#fff",strokeWidth:4,fontWeight:650,fill:"#1c293a"}}>{`r = ${given}`}</text></g>}{circle.label&&!/^r\s*=/.test(circle.label)&&<text className="graph-figure-label" x={sx(center.x)+radius*scale+8} y={sy(center.y)-8}>{circle.label}</text>}</g>})}
         {(item.graphSegments??[]).map((seg,i)=>{
           const a=point(seg.a),b=point(seg.b);if(!a||!b)return null;
           const vx=b.x-a.x,vy=b.y-a.y,length=Math.hypot(vx,vy);if(length<.001)return null;
