@@ -4,6 +4,8 @@ import LektrusColorPicker from "./LektrusColorPicker";
 
 export type GraphDraft = {
   title: string;
+  intervalStartClosed: boolean;
+  intervalEndClosed: boolean;
   purpose: NonNullable<Item["graphPurpose"]>;
   axisMode: NonNullable<Item["graphAxisMode"]>;
   type: NonNullable<Item["graphType"]>;
@@ -128,6 +130,15 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
               <label className="lektrus-graph-field"><span>Формула y =</span><input value={draft.expression} onChange={e=>patch({expression:e.target.value})} placeholder="Например: x^2 - 4*x + 3"/></label>
               <small>Можно менять формулу вручную. Доступны +, −, *, /, ^, sin, cos, sqrt, abs, exp, ln.</small>
               <label className="lektrus-graph-check"><input type="checkbox" checked={draft.showCurve} onChange={e=>patch({showCurve:e.target.checked})}/> Показывать график функции</label>
+            </div>}
+            {draft.purpose==="number-line"&&<div className="lektrus-graph-section">
+              <strong>Промежуток на числовой прямой</strong>
+              <small>Первые две точки задают границы. Пустая точка означает, что число не входит в промежуток.</small>
+              <div className="lektrus-graph-intervals">
+                <label><input type="checkbox" checked={draft.intervalStartClosed} onChange={e=>patch({intervalStartClosed:e.target.checked})}/> Левая граница включена</label>
+                <label><input type="checkbox" checked={draft.intervalEndClosed} onChange={e=>patch({intervalEndClosed:e.target.checked})}/> Правая граница включена</label>
+              </div>
+              {draft.points.length>=2&&<strong>{draft.intervalStartClosed?"[":"("}{draft.points[0].x}; {draft.points[1].x}{draft.intervalEndClosed?"]":")"}</strong>}
             </div>}
             <div className="lektrus-graph-section"><strong>Оси координат</strong><span className="lektrus-graph-note">Выберите 0, 1 или 2 оси. Третья ось требует отдельного 3D-инструмента.</span>
               <div className="lektrus-graph-axis-options">{axisChoices.map(axis=><button key={axis.id} type="button" className={draft.axisMode===axis.id?"active":""} title={axis.detail} onClick={()=>patch({axisMode:axis.id})}>{axis.label}<small>{axis.detail}</small></button>)}</div>
