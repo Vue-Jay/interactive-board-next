@@ -211,13 +211,31 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                   </select>
                 </label>
                 <div className="lektrus-geometry-given-grid">
-                {["AB","BC","CA"].map((side,i)=><label key={side}>{side}
-                  <input inputMode="decimal" placeholder="Длина" value={draft.givenSides[i]??""} onChange={e=>patch({givenSides:[0,1,2].map(j=>j===i?e.target.value.slice(0,32):draft.givenSides[j]??"")})}/>
-                </label>)}
-                {["∠A","∠B","∠C"].map((angle,i)=><label key={angle}>{angle}
-                  <input inputMode="decimal" placeholder="Градусы" value={draft.givenAngles[i]??""} onChange={e=>patch({givenAngles:[0,1,2].map(j=>j===i?e.target.value.slice(0,32):draft.givenAngles[j]??"")})}/>
-                </label>)}
+                  {["AB","BC","CA"].map((side,i)=>{
+                    const required=draft.triangleInputMode==="SSS"||i===0||draft.triangleInputMode==="SAS"&&i===2;
+                    return required?<label key={side}>{side} <small>длина</small>
+                      <input inputMode="decimal" placeholder="Например, 5" value={draft.givenSides[i]??""} onChange={e=>patch({givenSides:[0,1,2].map(j=>j===i?e.target.value.slice(0,32):draft.givenSides[j]??"")})}/>
+                    </label>:null;
+                  })}
+                  {["∠A","∠B","∠C"].map((angle,i)=>{
+                    const required=draft.triangleInputMode==="SAS"&&i===0||draft.triangleInputMode==="ASA"&&i<2;
+                    return required?<label key={angle}>{angle} <small>градусы</small>
+                      <input inputMode="decimal" placeholder="Например, 60" value={draft.givenAngles[i]??""} onChange={e=>patch({givenAngles:[0,1,2].map(j=>j===i?e.target.value.slice(0,32):draft.givenAngles[j]??"")})}/>
+                    </label>:null;
+                  })}
                 </div>
+                <details className="lektrus-geometry-extra-labels">
+                  <summary>Остальные подписи для условия задачи</summary>
+                  <small>Необязательные значения подписываются на чертеже, но не используются для построения.</small>
+                  <div className="lektrus-geometry-given-grid">
+                    {["AB","BC","CA"].map((side,i)=><label key={side}>{side}
+                      <input inputMode="decimal" placeholder="Подпись стороны" value={draft.givenSides[i]??""} onChange={e=>patch({givenSides:[0,1,2].map(j=>j===i?e.target.value.slice(0,32):draft.givenSides[j]??"")})}/>
+                    </label>)}
+                    {["∠A","∠B","∠C"].map((angle,i)=><label key={angle}>{angle}
+                      <input inputMode="decimal" placeholder="Подпись угла" value={draft.givenAngles[i]??""} onChange={e=>patch({givenAngles:[0,1,2].map(j=>j===i?e.target.value.slice(0,32):draft.givenAngles[j]??"")})}/>
+                    </label>)}
+                  </div>
+                </details>
                 <button type="button" onClick={()=>{
                   const parse=(text:string)=>{const n=Number(text.replace(",",".").trim());return text.trim()!==""&&Number.isFinite(n)&&n>0?n:NaN};
                   const ab=parse(draft.givenSides[0]??""),bc=parse(draft.givenSides[1]??""),ca=parse(draft.givenSides[2]??"");
