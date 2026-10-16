@@ -208,6 +208,57 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           {mode==="geometry"&&tab==="givens"&&<div className="lektrus-graph-section lektrus-geometry-guided">
             <div className="lektrus-graph-section-head"><strong>Размеры и подписи</strong></div>
             <small>{roundSolid?"Настройте радиус основания и высоту.":isSolid?"Размеры и оформление объёмной фигуры.":"Для треугольника можно задать стороны и углы. Готовые ответы не выводятся."}</small>
+            {!isSolid&&draft.polygons.some(p=>p.points.length!==3)&&<div className="lektrus-geometry-givens">
+              <strong>Подписи сторон и углов</strong>
+              <small>Значения, которые вы впишете, будут показаны непосредственно у соответствующей стороны или вершины. Они не являются ответами и не вычисляются автоматически.</small>
+              {draft.polygons.slice(0,1).map((poly,pi)=><div key={pi}>
+                <div className="lektrus-geometry-given-grid">
+                  {poly.points.map((index,i)=>{
+                    const next=poly.points[(i+1)%poly.points.length];
+                    const name=(draft.points[index]?.label||String.fromCharCode(65+i))+(draft.points[next]?.label||String.fromCharCode(65+(i+1)%poly.points.length));
+                    return <label key={i}>Сторона {name}
+                      <input aria-label={"Длина стороны "+name} inputMode="decimal" maxLength={32} placeholder="Например, 5 см"
+                        value={draft.givenSides[i]??""} onChange={e=>patch({givenSides:Array.from({length:Math.max(poly.points.length,draft.givenSides.length)},(_,j)=>j===i?e.target.value:draft.givenSides[j]??"")})}/>
+                    </label>;
+                  })}
+                </div>
+                <details className="lektrus-geometry-extra-labels"><summary>Подписать углы</summary>
+                  <div className="lektrus-geometry-given-grid">
+                    {poly.points.map((index,i)=><label key={i}>Угол {draft.points[index]?.label||String.fromCharCode(65+i)}
+                      <input aria-label={"Величина угла "+(draft.points[index]?.label||i+1)} inputMode="decimal" maxLength={32} placeholder="Например, 60"
+                        value={draft.givenAngles[i]??""} onChange={e=>patch({givenAngles:Array.from({length:Math.max(poly.points.length,draft.givenAngles.length)},(_,j)=>j===i?e.target.value:draft.givenAngles[j]??"")})}/>
+                    </label>)}
+                  </div>
+                </details>
+              </div>)}
+            </div>}
+            {!isSolid&&draft.angles.length>0&&<div className="lektrus-geometry-givens">
+              <strong>Величина угла</strong>
+              <small>Введите градусы. На чертеже величина появится возле дуги угла.</small>
+              {draft.angles.map((angle,i)=><div key={i} className="lektrus-geometry-given-grid">
+                <label>Угол {i+1}, °
+                  <input inputMode="decimal" placeholder="Например, 45" value={angle.label.replace(/°$/,"")}
+                    onChange={e=>patch({angles:draft.angles.map((a,j)=>j===i?{...a,label:e.target.value.slice(0,30)}:a)})}/>
+                </label>
+                <button type="button" onClick={()=>{
+                  const value=Number(angle.label.replace("°","").replace(",","."));
+                  if(!(value>0&&value<180)){setGeometryError("Введите угол больше 0° и меньше 180°.");return}
+                  const origin=draft.points[angle.vertex],start=draft.points[angle.a],end=draft.points[angle.b];
+                  if(!origin||!start||!end)return;
+                  const radians=(Math.atan2(start.y-origin.y,start.x-origin.x)+value*Math.PI/180);
+                  const length=Math.max(2,Math.hypot(end.x-origin.x,end.y-origin.y));
+                  patch({points:draft.points.map((p,j)=>j===angle.b?{...p,x:origin.x+length*Math.cos(radians),y:origin.y+length*Math.sin(radians)}:p)});
+                  setGeometryError("");
+                }}>Построить угол</button>
+              </div>)}
+              {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
+            </div>}
+            {!isSolid&&draft.segments.length>0&&draft.polygons.length===0&&draft.angles.length===0&&<div className="lektrus-geometry-givens">
+              <strong>Обозначения отрезков и прямых</strong>
+              {draft.segments.map((seg,i)=><label key={i}>Отрезок или прямая {i+1}
+                <input placeholder="Длина или обозначение" value={seg.label} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,label:e.target.value.slice(0,32)}:v)})}/>
+              </label>)}
+            </div>}
             {!isSolid&&draft.circles.length>0&&<div className="lektrus-geometry-givens">
               <strong>Радиус окружности</strong>
               {draft.circles.map((circle,i)=><label key={i}>Радиус {i+1}
