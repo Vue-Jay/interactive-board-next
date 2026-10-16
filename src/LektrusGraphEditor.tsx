@@ -22,6 +22,8 @@ export type GraphDraft = {
   polygons: NonNullable<Item["graphPolygons"]>;
   midpoints: NonNullable<Item["graphMidpoints"]>;
   triangleLines: NonNullable<Item["graphTriangleLines"]>;
+  triangleVertex: 0|1|2;
+  showArea: boolean;
 };
 
 export function removeGraphPoint(draft:GraphDraft,index:number):GraphDraft {
@@ -88,6 +90,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       polygons:(sample.graphPolygons??[]).map(v=>({...v,points:[...v.points]})),
       midpoints:(sample.graphMidpoints??[]).map(v=>({...v})),
       triangleLines:[...(sample.graphTriangleLines??[])],
+      triangleVertex:sample.graphTriangleVertex??0,showArea:sample.graphShowArea!==false,
       intervalStartClosed:sample.graphIntervalStartClosed!==false,
       intervalEndClosed:sample.graphIntervalEndClosed!==false,
       showCurve:sample.graphShowCurve===true,projections:sample.graphProjections===true,
@@ -221,10 +224,18 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             <small>Каждая кнопка добавляет готовые подвижные опорные точки и построение. Связи можно уточнить ниже.</small>
             {draft.polygons.some(p=>p.points.length===3)&&<div className="lektrus-graph-construction">
               <strong>Линии треугольника</strong>
+              <label className="lektrus-graph-field">Вершина построений
+                <select value={draft.triangleVertex} onChange={e=>patch({triangleVertex:Number(e.target.value) as 0|1|2})}>
+                  {draft.polygons.find(p=>p.points.length===3)?.points.map((pointIndex,index)=>
+                    <option key={index} value={index}>{draft.points[pointIndex]?.label||["A","B","C"][index]}</option>)}
+                </select>
+              </label>
+              <label className="lektrus-graph-check"><input type="checkbox" checked={draft.showArea} onChange={e=>patch({showArea:e.target.checked})}/> Показывать площадь фигуры</label>
+
               <small>Построения автоматически перестраиваются при движении вершин первого треугольника.</small>
               {([{id:"median",label:"Медиана"},{id:"altitude",label:"Высота"},{id:"bisector",label:"Биссектриса"}] as const).map(option=>
                 <label key={option.id} className="lektrus-graph-check"><input type="checkbox" checked={draft.triangleLines.includes(option.id)}
-                  onChange={e=>patch({triangleLines:e.target.checked?[...draft.triangleLines,option.id]:draft.triangleLines.filter(v=>v!==option.id)})}/>{option.label} из вершины A</label>)}
+                  onChange={e=>patch({triangleLines:e.target.checked?[...draft.triangleLines,option.id]:draft.triangleLines.filter(v=>v!==option.id)})}/>{option.label} из выбранной вершины</label>)}
             </div>}
 
             {draft.circles.map((c,i)=><div className="lektrus-graph-construction" key={"circle"+i}>
