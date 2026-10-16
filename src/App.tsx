@@ -19,7 +19,7 @@ import LektrusSubjectPicker from "./LektrusSubjectPicker";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
-import LektrusGraphEditor, {removeGraphPoint, type GraphDraft} from "./LektrusGraphEditor";
+import LektrusGraphEditor, {removeGraphPoint, removeGraphBoardPoint, type GraphDraft} from "./LektrusGraphEditor";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
@@ -6800,7 +6800,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "comment" && editing !== item.id && <CommentCard item={item} />}
                 {item.kind === "table" && <TableView item={item} />}
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
-                {item.kind === "graph" && <GraphView item={item} onAddPoint={!item.locked && canEdit ? (x,y)=>{const next={x,y,label:"",color:"#111111"};commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:[...(candidate.graphPoints??[]),next]}:candidate));setSelected([item.id]);} : undefined} onRemovePoint={!item.locked && canEdit ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:(candidate.graphPoints??[]).filter((_,i)=>i!==index)}:candidate));setSelected([item.id]);} : undefined}/>}
+                {item.kind === "graph" && <GraphView item={item} onAddPoint={!item.locked && canEdit ? (x,y)=>{const next={x,y,label:"",color:"#111111"};commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:[...(candidate.graphPoints??[]),next]}:candidate));setSelected([item.id]);} : undefined} onRemovePoint={!item.locked && canEdit ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/>}
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
