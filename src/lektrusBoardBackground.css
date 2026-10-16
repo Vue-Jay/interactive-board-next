@@ -242,3 +242,38 @@ html body .topbar .topbar-more-popover .lektrus-controls-menu-entry:hover{backgr
  max-height:calc(100dvh - 60px - env(safe-area-inset-top,0px))!important;
  }
 }
+
+
+/* The background menu belongs to its button, not the edge of the board. */
+.workspace .board-controls .lektrus-background-anchor{
+  position:relative!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  flex:0 0 auto!important;
+  min-width:0!important;
+}
+.workspace .board-controls .lektrus-background-anchor>.lektrus-background-settings{
+  position:absolute!important;
+  left:0!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:calc(100% + 10px)!important;
+  transform:none!important;
+  width:min(290px,calc(100vw - 26px))!important;
+  max-width:min(290px,calc(100vw - 26px))!important;
+  max-height:min(435px,calc(100dvh - 115px))!important;
+  margin:0!important;
+  z-index:1100!important;
+}
+@media(max-width:1100px){
+  .workspace .board-controls .lektrus-background-anchor>.lektrus-background-settings{
+    position:absolute!important;
+    left:0!important;
+    right:auto!important;
+    top:auto!important;
+    bottom:calc(100% + 10px)!important;
+    width:min(290px,calc(100vw - 90px))!important;
+    max-width:min(290px,calc(100vw - 90px))!important;
+    max-height:min(435px,calc(100dvh - 110px))!important;
+  }
+}
