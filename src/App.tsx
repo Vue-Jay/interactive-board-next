@@ -1141,7 +1141,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint }: { item: Ite
         onDoubleClick={onRemovePoint?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint(i)}:undefined}
         onPointerDown={onPointMove?(e)=>{e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up)}:undefined}>
         <circle cx={sx(p.x)} cy={sy(p.y)} r={onPointMove?"5":"4"} style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>
-        {item.graphShowLabels!==false&&p.label&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{purpose==="number-line"?p.x:p.label}</text>}
+        {item.graphShowLabels!==false&&(purpose==="number-line"||p.label)&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{purpose==="number-line"?p.x:p.label}</text>}
       </g>})}
     </svg>
   </div>;
