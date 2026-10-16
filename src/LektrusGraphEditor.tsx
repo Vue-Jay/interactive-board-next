@@ -53,19 +53,19 @@ export function removeGraphBoardPoint(item:Item,index:number):Item {
 type Props = {
   draft:GraphDraft; userId:string; preview:ReactNode;
   onChange:(value:GraphDraft)=>void;
-  onSave:()=>void; onCancel:()=>void;
+  onSave:()=>void; onCancel:()=>void; onClose:()=>void;
 };
 
 const formulas:Record<GraphDraft["type"],string>={
   linear:"2*x + 1",quadratic:"x^2 - 4*x + 3",sin:"sin(x)",cos:"cos(x)"
 };
 
-export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave,onCancel}:Props) {
+export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave,onCancel,onClose}:Props) {
   const [tab,setTab]=useState<"presets"|"points"|"geometry">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
-      if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onCancel()}
+      if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onClose()}
       if((event.ctrlKey||event.metaKey)&&event.key==="Enter"){event.preventDefault();event.stopPropagation();onSave()}
     };
     document.addEventListener("keydown",key,true);
@@ -128,12 +128,12 @@ export default function LektrusGraphEditor({draft,userId,preview,onChange,onSave
       angles:kind==="angle"?[...draft.angles,{a:index,vertex:index+1,b:index+2,label:"∠AOB"}]:draft.angles
     });
   };
-  return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""}`} onPointerDown={e=>{if(e.target===e.currentTarget)onSave()}}>
+  return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""}`} onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
       <header className="graph-editor-header lektrus-graph-head">
         <div><strong>Редактор учебного объекта</strong><span>Графики, координаты и геометрические построения</span></div>
-        <button type="button" aria-label="Закрыть редактор" onClick={onSave}>×</button>
+        <button type="button" aria-label="Закрыть редактор" onClick={onClose}>×</button>
       </header>
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>Построить</button>
