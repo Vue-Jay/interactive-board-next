@@ -67,7 +67,7 @@ const formulas:Record<GraphDraft["type"],string>={
 };
 
 export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,onSave,onCancel,onClose}:Props) {
-  const [tab,setTab]=useState<"presets"|"points"|"geometry">("presets");
+  const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   const [geometryError,setGeometryError]=useState("");
   useEffect(()=>{
@@ -81,6 +81,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const patch=(next:Partial<GraphDraft>)=>onChange({...draft,...next});
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
+    setGeometryError("");
+    if(mode==="geometry")setTab("givens");
     patch({
       title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
       type:sample.graphType??"quadratic",expression:sample.graphExpression??"",
@@ -145,9 +147,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         <button type="button" aria-label="Закрыть редактор" onClick={onClose}>×</button>
       </header>
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
-        <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>Построить</button>
-        <button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.points.length}</span></button>
-        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Фигуры <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>}
+        <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>{mode==="geometry"?"1. Фигура":"Построение"}</button>
+        {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>2. Стороны и углы</button>}
+        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>3. Элементы <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>}
+        <button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>{mode==="geometry"?"4. Точки":"Точки"} <span>{draft.points.length}</span></button>
       </nav>
       <div className="graph-editor-body lektrus-graph-content">
         <div className="graph-editor-form lektrus-graph-settings">
@@ -193,44 +196,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 <button key={v} type="button" onClick={()=>setCircleAngle(v)}>{formatPiRadians(v*Math.PI/180)}</button>)}</div>
             </div>}
           </div>}
-          {tab==="points"&&<div className="lektrus-graph-section"><div className="lektrus-graph-section-head"><strong>Редактируемые точки</strong><button type="button" disabled={draft.purpose==="unit-circle"||draft.points.length>=40} onClick={addPoint}>+ Точка</button></div>
-            <small>{draft.purpose==="unit-circle"?
-              "Контрольные точки единичной окружности фиксированы. Угол можно задать во вкладке «Построить» или переместить радиус.":
-              "Точки можно перемещать прямо на рисунке. На мобильном для точного положения используйте поля X и Y."}</small>
-            {draft.points.length===0&&<p className="lektrus-graph-empty">Пока нет точек. Добавьте первую.</p>}
-            {draft.points.map((p,i)=><div className="lektrus-graph-point-row" key={i}>
-              <input aria-label={"Подпись точки "+(i+1)} maxLength={24}
-                value={draft.purpose==="unit-circle"&&i>0?(i===5?formatPiRadians(Math.atan2(p.y,p.x)):p.label):draft.purpose==="number-line"?"":p.label}
-                placeholder={draft.purpose==="geometry"?"A, B, C…":"Без подписи"} disabled={draft.purpose==="unit-circle"||draft.purpose==="number-line"}
-                onChange={e=>editPoint(i,{label:e.target.value})}/>
-              <input aria-label={"X точки "+(i+1)} disabled={draft.purpose==="unit-circle"} type="number" step=".25" value={p.x} onChange={e=>editPoint(i,{x:finiteNumber(e.target.value,p.x)})}/>
-              <input aria-label={"Y точки "+(i+1)} title={draft.purpose==="number-line"?"На числовой прямой все точки имеют Y = 0":undefined} disabled={draft.purpose==="number-line"||draft.purpose==="unit-circle"} type="number" step=".25" value={draft.purpose==="number-line"?0:p.y} onChange={e=>editPoint(i,{y:finiteNumber(e.target.value,p.y)})}/>
-              <LektrusColorPicker userId={userId} label="" compact value={p.color??"#111111"} onChange={color=>editPoint(i,{color})}/>
-              <button type="button" disabled={draft.purpose==="unit-circle"} aria-label={"Удалить точку "+(i+1)} title="Удалить точку и связанные с ней построения" onClick={()=>onChange(removeGraphPoint(draft,i))}>×</button>
-            </div>)}
-            {draft.purpose==="number-line"&&<p className="lektrus-graph-note">Точки на числовой прямой обозначают числа. Соедините две точки, чтобы показать промежуток. Положение точек можно менять в предпросмотре.</p>}
-            <label className="lektrus-graph-check"><input type="checkbox" checked={draft.connectPoints} onChange={e=>patch({connectPoints:e.target.checked})}/> Соединять все точки по порядку</label>
-            <label className="lektrus-graph-check"><input type="checkbox" checked={draft.projections} onChange={e=>patch({projections:e.target.checked})}/> Строить проекции точек на оси</label>
-          </div>}
-          {mode==="geometry"&&tab==="geometry"&&<div className="lektrus-graph-section">
-            <strong>Геометрические построения</strong><small>Каждое построение связано с точками. При перемещении вершин фигуры перестраиваются автоматически.</small>
-            <div className="lektrus-graph-construct-actions">
-              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("circle")}>+ Окружность</button>
-              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("polygon")}>+ Треугольник</button>
-              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("segment")}>+ Отрезок</button>
-              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("angle")}>+ Угол</button>
-            </div>
-            <small>Каждая кнопка добавляет готовые подвижные опорные точки и построение. Связи можно уточнить ниже.</small>
-            {draft.polygons.some(p=>p.points.length===3)&&<div className="lektrus-graph-construction">
-              <strong>Линии треугольника</strong>
-              <label className="lektrus-graph-field">Вершина построений
-                <select value={draft.triangleVertex} onChange={e=>patch({triangleVertex:Number(e.target.value) as 0|1|2})}>
-                  {draft.polygons.find(p=>p.points.length===3)?.points.map((pointIndex,index)=>
-                    <option key={index} value={index}>{draft.points[pointIndex]?.label||["A","B","C"][index]}</option>)}
-                </select>
-              </label>
-
-
+          {mode==="geometry"&&tab==="givens"&&<div className="lektrus-graph-section lektrus-geometry-guided">
+            <div className="lektrus-graph-section-head"><strong>Стороны и углы фигуры</strong><button type="button" onClick={()=>setTab("presets")}>Изменить фигуру</button></div>
+            <small>Заполните условие задачи. Для изменения формы треугольника укажите необходимые параметры и нажмите «Построить». Остальные подписи можно оставить для оформления.</small>
+            {draft.polygons.some(p=>p.points.length===3)?<>
               <div className="lektrus-geometry-givens">
                 <strong>Дано в условии задачи</strong>
                 <small>Значения указываются на рисунке. Автоматические ответы и вычисления не показываются.</small>
@@ -278,6 +247,49 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 }}>Построить по заданным значениям</button>
                 {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
               </div>
+
+              <div className="lektrus-geometry-next"><button type="button" onClick={()=>setTab("geometry")}>Дополнительные элементы →</button></div>
+            </>:<div className="lektrus-graph-empty">Для построения по сторонам и углам выберите треугольник во вкладке «Фигура».</div>}
+            <label className="lektrus-graph-field"><span>Название построения</span><input value={draft.title} maxLength={100} onChange={e=>patch({title:e.target.value})}/></label>
+          </div>}
+          {tab==="points"&&<div className="lektrus-graph-section"><div className="lektrus-graph-section-head"><strong>Редактируемые точки</strong><button type="button" disabled={draft.purpose==="unit-circle"||draft.points.length>=40} onClick={addPoint}>+ Точка</button></div>
+            <small>{draft.purpose==="unit-circle"?
+              "Контрольные точки единичной окружности фиксированы. Угол можно задать во вкладке «Построить» или переместить радиус.":
+              "Точки можно перемещать прямо на рисунке. На мобильном для точного положения используйте поля X и Y."}</small>
+            {draft.points.length===0&&<p className="lektrus-graph-empty">Пока нет точек. Добавьте первую.</p>}
+            {draft.points.map((p,i)=><div className="lektrus-graph-point-row" key={i}>
+              <input aria-label={"Подпись точки "+(i+1)} maxLength={24}
+                value={draft.purpose==="unit-circle"&&i>0?(i===5?formatPiRadians(Math.atan2(p.y,p.x)):p.label):draft.purpose==="number-line"?"":p.label}
+                placeholder={draft.purpose==="geometry"?"A, B, C…":"Без подписи"} disabled={draft.purpose==="unit-circle"||draft.purpose==="number-line"}
+                onChange={e=>editPoint(i,{label:e.target.value})}/>
+              <input aria-label={"X точки "+(i+1)} disabled={draft.purpose==="unit-circle"} type="number" step=".25" value={p.x} onChange={e=>editPoint(i,{x:finiteNumber(e.target.value,p.x)})}/>
+              <input aria-label={"Y точки "+(i+1)} title={draft.purpose==="number-line"?"На числовой прямой все точки имеют Y = 0":undefined} disabled={draft.purpose==="number-line"||draft.purpose==="unit-circle"} type="number" step=".25" value={draft.purpose==="number-line"?0:p.y} onChange={e=>editPoint(i,{y:finiteNumber(e.target.value,p.y)})}/>
+              <LektrusColorPicker userId={userId} label="" compact value={p.color??"#111111"} onChange={color=>editPoint(i,{color})}/>
+              <button type="button" disabled={draft.purpose==="unit-circle"} aria-label={"Удалить точку "+(i+1)} title="Удалить точку и связанные с ней построения" onClick={()=>onChange(removeGraphPoint(draft,i))}>×</button>
+            </div>)}
+            {draft.purpose==="number-line"&&<p className="lektrus-graph-note">Точки на числовой прямой обозначают числа. Соедините две точки, чтобы показать промежуток. Положение точек можно менять в предпросмотре.</p>}
+            <label className="lektrus-graph-check"><input type="checkbox" checked={draft.connectPoints} onChange={e=>patch({connectPoints:e.target.checked})}/> Соединять все точки по порядку</label>
+            <label className="lektrus-graph-check"><input type="checkbox" checked={draft.projections} onChange={e=>patch({projections:e.target.checked})}/> Строить проекции точек на оси</label>
+          </div>}
+          {mode==="geometry"&&tab==="geometry"&&<div className="lektrus-graph-section">
+            <strong>Дополнительные элементы</strong><small>Добавьте окружности, отрезки, углы и вспомогательные линии. Для ввода сторон и углов используйте вкладку «Стороны и углы».</small>
+            <div className="lektrus-graph-construct-actions">
+              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("circle")}>+ Окружность</button>
+              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("polygon")}>+ Треугольник</button>
+              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("segment")}>+ Отрезок</button>
+              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("angle")}>+ Угол</button>
+            </div>
+            <small>Каждая кнопка добавляет готовые подвижные опорные точки и построение. Связи можно уточнить ниже.</small>
+            {draft.polygons.some(p=>p.points.length===3)&&<div className="lektrus-graph-construction">
+              <strong>Медиана, высота и биссектриса</strong>
+              <label className="lektrus-graph-field">Вершина построений
+                <select value={draft.triangleVertex} onChange={e=>patch({triangleVertex:Number(e.target.value) as 0|1|2})}>
+                  {draft.polygons.find(p=>p.points.length===3)?.points.map((pointIndex,index)=>
+                    <option key={index} value={index}>{draft.points[pointIndex]?.label||["A","B","C"][index]}</option>)}
+                </select>
+              </label>
+
+
               <small>Построения автоматически перестраиваются при движении вершин первого треугольника.</small>
               {([{id:"median",label:"Медиана"},{id:"altitude",label:"Высота"},{id:"bisector",label:"Биссектриса"}] as const).map(option=>
                 <label key={option.id} className="lektrus-graph-check"><input type="checkbox" checked={draft.triangleLines.includes(option.id)}
