@@ -61,6 +61,9 @@ export type Item = {
   // Subject objects keep their teaching purpose, title and visible axes.
   graphPurpose?: "function" | "coordinates" | "geometry" | "unit-circle" | "number-line";
   graphFigureId?: string;
+  graphRotationX?: number;
+  graphRotationY?: number;
+  graphParallelMarks?: ("corresponding"|"alternate-interior"|"alternate-exterior"|"same-side-interior"|"vertical"|"adjacent")[];
   fractionMode?: "circle" | "bar";
   fractionNumerator?: number;
   fractionDenominator?: number;
@@ -205,6 +208,9 @@ export function parseDocument(raw: string): DocumentData {
     }
     if (i.kind === "graph") {
       if(i.graphFigureId!=null&&(typeof i.graphFigureId!=="string"||i.graphFigureId.length>64))throw new Error("Некорректный тип геометрической фигуры");
+      if(i.graphRotationX!=null&&(!Number.isFinite(i.graphRotationX)||Math.abs(i.graphRotationX)>3600))throw new Error("Повреждён угол поворота фигуры");
+      if(i.graphRotationY!=null&&(!Number.isFinite(i.graphRotationY)||Math.abs(i.graphRotationY)>3600))throw new Error("Повреждён угол поворота фигуры");
+      if(i.graphParallelMarks!=null&&(!Array.isArray(i.graphParallelMarks)||i.graphParallelMarks.length>6||i.graphParallelMarks.some((v:unknown)=>typeof v!=="string"||!["corresponding","alternate-interior","alternate-exterior","same-side-interior","vertical","adjacent"].includes(v))))throw new Error("Повреждены обозначения углов параллельных прямых");
       if (i.graphIntervalStartClosed != null && typeof i.graphIntervalStartClosed !== "boolean") throw new Error("Повреждена левая граница промежутка");
       if (i.graphIntervalEndClosed != null && typeof i.graphIntervalEndClosed !== "boolean") throw new Error("Повреждена правая граница промежутка");
       if(i.graphGivenSides != null && (!Array.isArray(i.graphGivenSides)||i.graphGivenSides.length>20||i.graphGivenSides.some((v:unknown)=>typeof v!=="string"||v.length>32))) throw new Error("Повреждены заданные стороны");
