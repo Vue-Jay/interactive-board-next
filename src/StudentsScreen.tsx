@@ -21,6 +21,7 @@ export default function StudentsScreen({user,onBack,onOpenBoard}:Props){
  const [students,setStudents]=useState<StudentRecord[]>([]),[boards,setBoards]=useState<BoardSummary[]>([]);
  const [assignments,setAssignments]=useState<Assignment[]>([]),[schedule,setSchedule]=useState<ScheduledLesson[]>([]);
  const [loading,setLoading]=useState(true),[query,setQuery]=useState(""),[selected,setSelected]=useState<string|null>(null);
+ useEffect(()=>{try{const id=sessionStorage.getItem("lektrus.students.open");if(id){sessionStorage.removeItem("lektrus.students.open");setSelected(id)}}catch{}},[]);
  const [note,setNote]=useState(""),[tags,setTags]=useState(""),[notice,setNotice]=useState("");
  const [linkedMaterials,setLinkedMaterials]=useState<MaterialLink[]>([]);
  const [sessionOpen,setSessionOpen]=useState(false),[sessionId,setSessionId]=useState<string|null>(null);
