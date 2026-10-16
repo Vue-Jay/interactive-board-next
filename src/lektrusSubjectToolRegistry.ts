@@ -47,6 +47,7 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
     ...item,graphPurpose:"number-line",graphAxisMode:"x",graphGrid:false,
     graphAxisLabels:true,graphXMin:-10,graphXMax:10,
     graphYMin:-3,graphYMax:3,graphConnectPoints:true,
+    graphIntervalStartClosed:false,graphIntervalEndClosed:true,
     graphPoints:[{x:-2,y:0,label:"−2"},{x:3,y:0,label:"3"}]
   };
   if(id==="math-geometry")return{
