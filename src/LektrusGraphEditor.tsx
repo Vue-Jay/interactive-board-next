@@ -4,7 +4,7 @@ import LektrusColorPicker from "./LektrusColorPicker";
 import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "./lektrusMathPresets";
 
 export type GraphDraft = {
-  title: string;
+  title: string; figureId:string;
   intervalStartClosed: boolean;
   intervalEndClosed: boolean;
   purpose: NonNullable<Item["graphPurpose"]>;
@@ -70,10 +70,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   const [geometryError,setGeometryError]=useState("");
-  const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">(()=>["Куб","Треугольная призма","Четырёхугольная пирамида","Цилиндр","Конус"].includes(draft.title)?"Объёмные фигуры":"Геометрия");
-  const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","cylinder","cone"]);
-  const isSolid=solidPresetIds.has(mathPresets.find(p=>p.title===draft.title)?.id??"triangle");
-  const roundSolid=draft.title==="Конус"||draft.title==="Цилиндр";
+  const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">(()=>["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"].includes(draft.figureId)?"Объёмные фигуры":"Геометрия");
+  const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"]);
+  const isSolid=solidPresetIds.has(draft.figureId as MathPresetId);
+  const roundSolid=draft.figureId==="cone"||draft.figureId==="cylinder";
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onClose()}
@@ -88,7 +88,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     setGeometryError("");
     if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");if(tab==="givens"&&id!=="triangle")setTab("presets")}
     patch({
-      title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
+      figureId:id,title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
       type:sample.graphType??"quadratic",expression:sample.graphExpression??"",
       connectPoints:sample.graphConnectPoints===true,grid:sample.graphGrid!==false,
       gridStep:sample.graphGridStep??1,xMin:sample.graphXMin??-10,xMax:sample.graphXMax??10,
@@ -169,7 +169,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <div className="lektrus-math-preset-group" key={group}>
                 {mode!=="geometry"&&<h4>{group}</h4>}
                 <div className="lektrus-math-preset-grid">{mathPresets.filter(p=>p.group===group).map(p=>
-                  <button type="button" key={p.id} className={draft.title===p.title||p.id==="blank"&&draft.title==="Координатная плоскость"?"active":""}
+                  <button type="button" key={p.id} className={draft.figureId===p.id||!draft.figureId&&draft.title===p.title?"active":""}
                     onClick={()=>loadPreset(p.id)}><strong>{p.title}</strong><small>{p.subtitle}</small></button>
                 )}</div>
               </div>)}
@@ -264,9 +264,9 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 const [length,width,height]=dimensions;
                 const max=Math.max(...dimensions);
                 const lx=length/max*5,wy=width/max*2,h=height/max*6;
-                const vertices=draft.title==="Куб"?
+                const vertices=(draft.figureId==="cube"||draft.figureId==="rectangular-prism")?
                   [[-lx/2-wy/2,-h/2-wy/2],[lx/2-wy/2,-h/2-wy/2],[lx/2+wy/2,-h/2+wy/2],[-lx/2+wy/2,-h/2+wy/2],[-lx/2-wy/2,h/2-wy/2],[lx/2-wy/2,h/2-wy/2],[lx/2+wy/2,h/2+wy/2],[-lx/2+wy/2,h/2+wy/2]]:
-                  draft.title==="Треугольная призма"?
+                  draft.figureId==="prism"?
                   [[-lx/2,-h/2],[lx/2,-h/2],[0,-h/2+wy],[-lx/2+wy/2,h/2],[lx/2+wy/2,h/2],[wy/2,h/2+wy]]:
                   [[-lx/2,-h/2],[lx/2,-h/2],[lx/2+wy/2,-h/2+wy/2],[-lx/2+wy/2,-h/2+wy/2],[wy/4,h/2]];
                 patch({points:draft.points.map((p,i)=>vertices[i]?{...p,x:vertices[i][0],y:vertices[i][1]}:p)});
@@ -287,7 +287,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 if(!Number.isFinite(radius)||!Number.isFinite(height)||radius<=0||height<=0){setGeometryError("Укажите положительные радиус и высоту.");return}
                 const radiusView=4*radius/Math.max(radius,height),heightView=7*height/Math.max(radius,height);
                 const arc=(cy:number)=>Array.from({length:17},(_,i)=>({x:Number((radiusView*Math.cos(2*Math.PI*i/16)).toFixed(5)),y:Number((cy+radiusView*.34*Math.sin(2*Math.PI*i/16)).toFixed(5)),label:""}));
-                patch({points:[...arc(-heightView/2),...(draft.title==="Цилиндр"?arc(heightView/2):[{x:0,y:heightView/2,label:"S"}])]});
+                patch({points:[...arc(-heightView/2),...(draft.figureId==="cylinder"?arc(heightView/2):[{x:0,y:heightView/2,label:"S"}])]});
                 setGeometryError("");
               }}>Применить размеры</button>
               {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
