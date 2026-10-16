@@ -99,7 +99,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       circles:(sample.graphCircles??[]).map(v=>({...v})),
       polygons:(sample.graphPolygons??[]).map(v=>({...v,points:[...v.points]})),
       midpoints:(sample.graphMidpoints??[]).map(v=>({...v})),
-      triangleLines:[...(sample.graphTriangleLines??[])],givenSides:[],givenAngles:[],triangleInputMode:"SSS",
+      triangleLines:[...(sample.graphTriangleLines??[])],givenSides:[],givenAngles:id==="triangle-right"?["90","",""]:[],triangleInputMode:id==="triangle-right"?"SAS":"SSS",
       triangleVertex:sample.graphTriangleVertex??0,showArea:sample.graphShowArea!==false,
       intervalStartClosed:sample.graphIntervalStartClosed!==false,
       intervalEndClosed:sample.graphIntervalEndClosed!==false,
@@ -448,22 +448,25 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <div className="lektrus-geometry-givens">
                 <strong>Дано в условии задачи</strong>
                 <small>Значения указываются на рисунке. Автоматические ответы и вычисления не показываются.</small>
-                <label>Способ построения
+                {!["triangle-right","triangle-equilateral","triangle-isosceles"].includes(draft.figureId)&&<label>Способ построения
                   <select value={draft.triangleInputMode} onChange={e=>patch({triangleInputMode:e.target.value as "SSS"|"SAS"|"ASA"})}>
                     <option value="SSS">По трём сторонам (AB, BC, CA)</option>
                     <option value="SAS">По двум сторонам AB, CA и углу A</option>
                     <option value="ASA">По стороне AB и двум углам A, B</option>
                   </select>
-                </label>
+                </label>}
+                {draft.figureId==="triangle-right"&&<small>Прямой угол A = 90°. Введите катеты AB и AC.</small>}
+                {draft.figureId==="triangle-equilateral"&&<small>Введите одну сторону. Остальные равны ей.</small>}
+                {draft.figureId==="triangle-isosceles"&&<small>Введите основание AB и равную боковую сторону BC = CA.</small>}
                 <div className="lektrus-geometry-given-grid">
                   {["AB","BC","CA"].map((side,i)=>{
-                    const required=draft.triangleInputMode==="SSS"||i===0||draft.triangleInputMode==="SAS"&&i===2;
+                    const required=draft.figureId==="triangle-equilateral"?i===0:draft.figureId==="triangle-isosceles"?i<2:draft.figureId==="triangle-right"?i!==1:draft.triangleInputMode==="SSS"||i===0||draft.triangleInputMode==="SAS"&&i===2;
                     return required?<label key={side}>{side} <small>длина</small>
-                      <input inputMode="decimal" placeholder="Например, 5" value={draft.givenSides[i]??""} onChange={e=>patch({givenSides:[0,1,2].map(j=>j===i?e.target.value.slice(0,32):draft.givenSides[j]??"")})}/>
+                      <input inputMode="decimal" placeholder="Например, 5" value={draft.givenSides[i]??""} onChange={e=>{const value=e.target.value.slice(0,32);const sides=draft.figureId==="triangle-equilateral"?[value,value,value]:[0,1,2].map(j=>j===i?value:draft.givenSides[j]??"");if(draft.figureId==="triangle-isosceles"&&i===1)sides[2]=value;patch({givenSides:sides})}}/>
                     </label>:null;
                   })}
                   {["∠A","∠B","∠C"].map((angle,i)=>{
-                    const required=draft.triangleInputMode==="SAS"&&i===0||draft.triangleInputMode==="ASA"&&i<2;
+                    const required=["triangle-right","triangle-isosceles","triangle-equilateral"].includes(draft.figureId)?false:draft.triangleInputMode==="SAS"&&i===0||draft.triangleInputMode==="ASA"&&i<2;
                     return required?<label key={angle}>{angle} <small>градусы</small>
                       <input inputMode="decimal" placeholder="Например, 60" value={draft.givenAngles[i]??""} onChange={e=>patch({givenAngles:[0,1,2].map(j=>j===i?e.target.value.slice(0,32):draft.givenAngles[j]??"")})}/>
                     </label>:null;
