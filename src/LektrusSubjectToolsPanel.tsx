@@ -63,7 +63,7 @@ export default function LektrusSubjectToolsPanel({anchor,subject,subjects,tools,
     };
   },[anchor,onClose]);
   return createPortal(
-    <section ref={panelRef} className="lektrus-subject-tools-panel" role="dialog"
+    <section id="lektrus-subject-tools-panel" ref={panelRef} className="lektrus-subject-tools-panel" role="dialog"
       aria-modal="false" aria-label="Предметные инструменты"
       style={position} onPointerDown={e=>e.stopPropagation()} onContextMenu={e=>e.stopPropagation()}>
       <header className="lektrus-subject-tools-head">
