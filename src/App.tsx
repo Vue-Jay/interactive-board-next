@@ -23,7 +23,7 @@ import LektrusGraphEditor, {removeGraphPoint, removeGraphBoardPoint, type GraphD
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {formatPiRadians,makeMathPresetItem} from "./lektrusMathPresets";
-import {isSolidFigure,projectSolid,projectSolidAxis,projectSolidSurfaces} from "./lektrusSolid3d";
+import {isSolidFigure,projectSolid,projectSolidAxis,projectSolidSurfaces,projectSolidEdges} from "./lektrusSolid3d";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
@@ -1209,11 +1209,32 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
       {item.graphProjections&&<g className="graph-projections">{(purpose==="unit-circle"?gp.slice(5,6):gp).map((p,i)=><g key={i}><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(p.x)} y2={sy(0)}/><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(0)} y2={sy(p.y)}/></g>)}</g>}
       <g className="graph-constructions">
         {solid&&item.graphFigureId!=="sphere"&&<g className="lektrus-solid-faces" pointerEvents="none">
-          {projectSolidSurfaces(item,orbitX,orbitY).map((face,index)=>
-            <polygon key={index} points={face.points.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}
-              fill={face.fill} stroke={face.outline?"#466b97":face.fill}
-              strokeLinejoin="round" strokeWidth={face.outline?1.8:1}/>
-          )}
+          {/* Translucent fills preserve the 3D shape while leaving rear edges visible. */}
+          <g className="lektrus-solid-translucent-fill">
+            {projectSolidSurfaces(item,orbitX,orbitY).map((face,index)=>
+              <polygon key={index} points={face.points.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}
+                fill={face.fill}
+                fillOpacity={item.graphFigureId==="cylinder"||item.graphFigureId==="cone"?.20:.32}
+                stroke="none"/>
+            )}
+          </g>
+          {/* Draw hidden edges through the faces as subtle dashed lines; front edges stay solid. */}
+          <g className="lektrus-solid-hidden-edges">
+            {projectSolidEdges(item,orbitX,orbitY).filter(edge=>edge.hidden).map((edge,index)=>
+              <line key={index}
+                x1={sx(edge.start.x)} y1={sy(edge.start.y)} x2={sx(edge.end.x)} y2={sy(edge.end.y)}
+                stroke="#7892b3" strokeWidth="1.35" strokeOpacity=".72" strokeDasharray="5 5"
+                strokeLinecap="round" vectorEffect="non-scaling-stroke"/>
+            )}
+          </g>
+          <g className="lektrus-solid-front-edges">
+            {projectSolidEdges(item,orbitX,orbitY).filter(edge=>!edge.hidden).map((edge,index)=>
+              <line key={index}
+                x1={sx(edge.start.x)} y1={sy(edge.start.y)} x2={sx(edge.end.x)} y2={sy(edge.end.y)}
+                stroke="#345e91" strokeWidth="2.1" strokeOpacity=".96"
+                strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>
+            )}
+          </g>
           {item.graphShowLabels!==false&&gp.map((p,i)=>{
             if(!p.label)return null;
             return <text key={i} className="graph-figure-label"
