@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
 const read=path=>fs.readFileSync(new URL("../"+path,import.meta.url),"utf8");
-const stripImports=src=>src.replace(/^import .*?;\s*$/gm,"");
+const stripImports=src=>src.replace(/^import .*?;\s*$/gm,"")
+ .replace(/\bexport\s+(?=(?:type|interface|const|let|function|class)\b)/g,"");
 const compile=src=>ts.transpileModule(stripImports(src),{
  compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}
 }).outputText;
