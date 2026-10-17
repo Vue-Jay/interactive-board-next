@@ -96,7 +96,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
           <div className="lektrus-periodic-preview">
             <div className="lektrus-periodic-preview-header"><strong>Периодическая система</strong>
               <span>Щелчок выделяет элемент · повторный щелчок отменяет</span></div>
-            <div className={"lektrus-periodic-table-scroll lektrus-periodic-stage "+(layout==="school"?"is-school":"is-modern")} ref={previewAnchor}>
+            <div className={"lektrus-periodic-table-scroll lektrus-periodic-stage "+(layout==="school"?"is-school":"is-modern")+(opened.length?" has-info":"")} ref={previewAnchor}>
               <LektrusPeriodicTableView selected={selected} active={active}
                 showNames={showNames} familyFilter={family} onPick={pick} layout={layout}
                 onDoublePick={number=>setSelected(v=>v.includes(number)?v.filter(n=>n!==number):[...v,number].sort((a,b)=>a-b))}/>
@@ -105,7 +105,6 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
                   anchor={previewAnchor.current} selected={selected.includes(number)}
                   onClose={()=>setOpened(v=>v.filter(n=>n!==number))}
                   onToggle={()=>setSelected(current=>current.includes(number)?current.filter(n=>n!==number):[...current,number].sort((a,b)=>a-b))}/>)}
-                {layout==="school"&&!opened.length&&<span className="lektrus-periodic-info-hint">Нажмите на элемент, чтобы посмотреть его свойства</span>}
               </div>
             </div>
             <div className="lektrus-periodic-preview-actions">
