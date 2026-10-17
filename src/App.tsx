@@ -1103,7 +1103,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange }: {
+function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
@@ -1112,6 +1112,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   onRayChange?: (x:number,y:number)=>void;
   onGridChange?: (enabled:boolean)=>void;
   onPeriodicChange?: (selected:number[])=>void;
+  onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
   const [liveRay,setLiveRay]=useState<{x:number;y:number}|null>(null);
@@ -1222,7 +1223,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   }
   if(item.graphFigureId==="chem-periodic")return <div className="graph-view lektrus-periodic-board-view">
     <LektrusPeriodicBoard selected={item.sciencePeriodicHighlights??[]}
-      showNames={item.sciencePeriodicShowNames!==false} layout={item.sciencePeriodicLayout??"school"} onChange={onPeriodicChange}/>
+      showNames={item.sciencePeriodicShowNames!==false} layout={item.sciencePeriodicLayout??"school"} onChange={onPeriodicChange} onLayoutChange={onPeriodicLayoutChange}/>
   </div>;
   const scienceCaptionLayout=item.graphFigureId?.startsWith("physics-")?
     layoutScienceLabels(item.graphPoints??[],item.graphSegments??[],p=>({x:sx(p.x),y:sy(p.y)}),W,H):null;
@@ -7396,6 +7397,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item}
+                  onPeriodicLayoutChange={canEdit&&!item.locked&&item.graphFigureId==="chem-periodic"?(nextLayout)=>{
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,sciencePeriodicLayout:nextLayout}:candidate));
+                  }:undefined}
                   onPeriodicChange={canEdit&&!item.locked&&item.graphFigureId==="chem-periodic"?(marked)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,sciencePeriodicHighlights:marked}:candidate));
                   }:undefined}
