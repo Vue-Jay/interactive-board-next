@@ -8,7 +8,11 @@ export type SciencePresetId=
   |"physics-optics"|"physics-refraction"|"physics-lens"|"physics-diverging-lens"|"physics-plane-mirror"|"physics-total-reflection"|"physics-prism"
   |"physics-motion"|"physics-speed"|"physics-accelerated-speed"|"physics-acceleration"|"physics-braking"|"physics-rest"
   |"physics-circuit-series"|"physics-circuit-meters"|"physics-circuit-free"
-  |"chem-water"|"chem-carbon-dioxide"|"chem-methane"|"chem-ammonia"|"chem-oxygen"|"chem-atom";
+  |"chem-water"|"chem-carbon-dioxide"|"chem-methane"|"chem-ammonia"|"chem-oxygen"|"chem-atom"
+  |"chem-organic-ethane"|"chem-organic-ethene"|"chem-organic-ethyne"
+  |"chem-organic-ethanol"|"chem-organic-ethanoic"|"chem-organic-benzene"|"chem-organic-free"
+  |"chem-formula-water"|"chem-formula-combustion"|"chem-formula-neutralization"|"chem-formula-free"
+  |"chem-experiment-salt"|"chem-experiment-litmus"|"chem-experiment-lime";
 
 type Vertex={x:number;y:number;label:string;color?:string};
 type Edge={a:number;b:number;kind:"segment"|"ray"|"line";label:string;measure:boolean;bondOrder?:1|2|3;scienceArrow?:boolean;scienceCircuitSymbol?:CircuitSymbol};
@@ -47,6 +51,23 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
   let segments:Edge[]=[];
   let polygons:NonNullable<Item["graphPolygons"]>=[];
   let circles:NonNullable<Item["graphCircles"]>=[];
+  const formulaPresets:Partial<Record<SciencePresetId,{title:string;expression:string}>>={
+    "chem-formula-water":{title:"Молекулярная формула · вода",expression:"H2O"},
+    "chem-formula-combustion":{title:"Горение метана",expression:"CH4 + 2O2 → CO2 + 2H2O"},
+    "chem-formula-neutralization":{title:"Нейтрализация",expression:"HCl + NaOH → NaCl + H2O"},
+    "chem-formula-free":{title:"Химическая формула",expression:"C2H6O"}
+  };
+  if(formulaPresets[id]){
+    const entry=formulaPresets[id]!;
+    return {...base,text:entry.title,graphExpression:entry.expression,width:590,height:240};
+  }
+  const experimentPresets:Partial<Record<SciencePresetId,string>>={
+    "chem-experiment-salt":"Растворение хлорида натрия в воде",
+    "chem-experiment-litmus":"Действие кислой среды на лакмус",
+    "chem-experiment-lime":"Реакция CO₂ с известковой водой"
+  };
+  if(experimentPresets[id])
+    return {...base,text:experimentPresets[id],scienceExperimentStage:0,width:630,height:390};
   switch(id){
 
     case "physics-circuit-series":
@@ -151,6 +172,33 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
         V(4,5,"Внутри призмы"),V(5,6,"Выходящий луч")];
       polygons=[{points:[0,1,2],label:"",measure:false}];
       break;
+    case "chem-organic-free":
+      title="Органическая структура · новый чертёж";
+      points=[A(-1.7,0,"C"),A(1.7,0,"C")];segments=[B(0,1)];break;
+    case "chem-organic-ethane":
+      title="Этан · C₂H₆";
+      points=[A(-1.7,0,"C"),A(1.7,0,"C")];segments=[B(0,1)];break;
+    case "chem-organic-ethene":
+      title="Этен · C₂H₄";
+      points=[A(-1.7,0,"C"),A(1.7,0,"C")];segments=[B(0,1,2)];break;
+    case "chem-organic-ethyne":
+      title="Этин · C₂H₂";
+      points=[A(-1.7,0,"C"),A(1.7,0,"C")];segments=[B(0,1,3)];break;
+    case "chem-organic-ethanol":
+      title="Этанол · C₂H₆O";
+      points=[A(-3,0,"C"),A(0,0,"C"),A(3,0,"O"),A(5,1.4,"H")];
+      segments=[B(0,1),B(1,2),B(2,3)];break;
+    case "chem-organic-ethanoic":
+      title="Этановая кислота · C₂H₄O₂";
+      points=[A(-3.1,0,"C"),A(-.2,0,"C"),A(2.2,2.2,"O"),A(2.5,-2,"O"),A(4.8,-2.2,"H")];
+      segments=[B(0,1),B(1,2,2),B(1,3),B(3,4)];break;
+    case "chem-organic-benzene":
+      title="Бензол · C₆H₆";
+      points=Array.from({length:6},(_,i)=>{
+       const angle=-Math.PI/2+i*Math.PI/3;
+       return A(3.3*Math.cos(angle),3.3*Math.sin(angle),"C");
+      });
+      segments=Array.from({length:6},(_,i)=>B(i,(i+1)%6,i%2===0?2:1));break;
     case "chem-water":
       title="Молекула воды · H₂O";
       points=[A(0,1,"O"),A(-2.7,-1.5,"H"),A(2.7,-1.5,"H")];
