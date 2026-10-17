@@ -33,5 +33,5 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
     id:createId(),kind:"fraction",text:"Дроби",x:x-180,y:y-130,width:360,height:260,
     fractionMode:"circle",fractionNumerator:3,fractionDenominator:4,color:"#5074dc"
   };
-  return makeMathPresetItem(id==="math-geometry"?"triangle":"blank",x,y,createId());
+  return makeMathPresetItem(id==="math-geometry"?"free":"blank",x,y,createId());
 }
