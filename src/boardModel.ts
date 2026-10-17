@@ -1,3 +1,4 @@
+import {circuitIsDocument} from "./lektrusCircuitModel";
 export type BoardBackground={mode:"dots"|"grid"|"plain";color:string;opacity:number};
 export const DEFAULT_BOARD_BACKGROUND:BoardBackground={mode:"dots",color:"#f7f7f8",opacity:100};
 export function normalizeBoardBackground(value:unknown):BoardBackground{
@@ -61,6 +62,7 @@ export type Item = {
   // Subject objects keep their teaching purpose, title and visible axes.
   graphPurpose?: "function" | "coordinates" | "geometry" | "unit-circle" | "number-line";
   graphFigureId?: string;
+  scienceCircuit?: import("./lektrusCircuitModel").CircuitDocument;
   sciencePeriodicHighlights?: number[];
   sciencePeriodicShowNames?: boolean;
   graphRotationX?: number;
@@ -223,6 +225,7 @@ export function parseDocument(raw: string): DocumentData {
       }
 
       if (Array.isArray(i.graphSegments)&&i.graphSegments.some((seg:{bondOrder?:unknown;scienceArrow?:unknown;scienceCircuitSymbol?:unknown})=>(seg.bondOrder!=null&&(typeof seg.bondOrder!=="number"||![1,2,3].includes(seg.bondOrder)))||(seg.scienceArrow!=null&&typeof seg.scienceArrow!=="boolean")||(seg.scienceCircuitSymbol!=null&&typeof seg.scienceCircuitSymbol!=="string"))) throw new Error("Повреждены связи предметной схемы");
+      if(i.scienceCircuit!=null&&!circuitIsDocument(i.scienceCircuit))throw new Error("Повреждена схема электрической цепи");
       if(i.sciencePeriodicHighlights!=null&&(!Array.isArray(i.sciencePeriodicHighlights)||i.sciencePeriodicHighlights.length>24||i.sciencePeriodicHighlights.some((value:unknown)=>typeof value!=="number"||!Number.isInteger(value)||value<1||value>118)))throw new Error("Некорректно выделены элементы периодической таблицы");
       if(i.sciencePeriodicShowNames!=null&&typeof i.sciencePeriodicShowNames!=="boolean")throw new Error("Некорректны подписи периодической таблицы");
       if(i.graphRotationX!=null&&(!Number.isFinite(i.graphRotationX)||Math.abs(i.graphRotationX)>3600))throw new Error("Повреждён угол поворота фигуры");
