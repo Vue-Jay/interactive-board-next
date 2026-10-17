@@ -9,7 +9,9 @@ type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:
 export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose}:Props){
   const previewAnchor=useRef<HTMLDivElement>(null);
   const [selected,setSelected]=useState<number[]>(()=>[...(item.sciencePeriodicHighlights??[])]);
-  const [active,setActive]=useState<number|null>(selected[0]??8);
+  const [opened,setOpened]=useState<number[]>([]);
+  const [multi,setMulti]=useState(false);
+  const active=opened.at(-1)??null;
   const [query,setQuery]=useState("");
   const [family,setFamily]=useState<ElementFamily|"all">("all");
   const [layout,setLayout]=useState<"school"|"long">(()=>item.sciencePeriodicLayout==="long"?"long":"school");
@@ -31,7 +33,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
       return [...current,number].sort((a,b)=>a-b);
     });
   };
-  const focusElement=(number:number)=>{setActive(number);setQuery("")};
+  const focusElement=(number:number)=>{setOpened([number]);setQuery("")};
   return createPortal(
     <div className="lektrus-periodic-backdrop" onPointerDown={e=>{if(e.currentTarget===e.target)(onClose??onCancel)(updateItem())}}>
       <section className="lektrus-periodic-dialog" role="dialog" aria-modal="true" aria-label="Редактор периодической таблицы"
@@ -96,11 +98,12 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
               <span>Щелчок выделяет элемент · повторный щелчок отменяет</span></div>
             <div className="lektrus-periodic-table-scroll" ref={previewAnchor}>
               <LektrusPeriodicTableView selected={selected} active={active}
-                showNames={showNames} familyFilter={family} onPick={pick} layout={layout} showInfo={active!==null} onCloseInfo={()=>setActive(null)} onToggleInfo={()=>{if(active!==null)pick(active)}}/>
-              <LektrusPeriodicFloatingInfo number={active} layout={layout} anchor={previewAnchor.current}
-                selected={active!==null&&selected.includes(active)} onClose={()=>setActive(null)}
-                onToggle={()=>{if(active!==null)pick(active)}}/>
+                showNames={showNames} familyFilter={family} onPick={pick} layout={layout} showInfo={active!==null} onCloseInfo={()=>setOpened([])} onToggleInfo={()=>{if(active!==null)pick(active)}}/>
+              {opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i} fixed layout={layout} anchor={previewAnchor.current}
+                selected={selected.includes(number)} onClose={()=>setOpened(v=>v.filter(n=>n!==number))}
+                onToggle={()=>pick(number,{ctrlKey:true})}/>)}
             </div>
+            <div style={{display:"flex",justifyContent:"flex-end",padding:"3px 8px"}}><button type="button" aria-pressed={multi} onClick={()=>setMulti(v=>!v)}>Несколько окон: {multi?"вкл":"выкл"}</button></div>
             <div className="lektrus-periodic-legend">
               {periodicFamilies.map(group=><span key={group.id}><i style={{background:group.color}}/>{group.name}</span>)}
             </div>
