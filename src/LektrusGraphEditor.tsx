@@ -675,7 +675,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <small>Дважды нажмите на чертёж, чтобы поставить точку. Следующая точка автоматически соединится с предыдущей. Перетаскивайте точки для изменения фигуры.</small>
               <div className="lektrus-graph-construct-actions">
                 <button type="button" onClick={addPoint} disabled={draft.points.length>=40}>+ Поставить точку</button>
-                <button type="button" disabled={draft.points.length-(draft.polygons.reduce((highest,poly)=>Math.max(highest,...poly.points),-1)+1)<3}
+                <button type="button" disabled={closeFreeSketch(draft)===draft}
                   onClick={()=>onChange(closeFreeSketch(draft))}>Замкнуть фигуру</button>
               </div>
             </div>}
