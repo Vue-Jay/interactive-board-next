@@ -39,3 +39,7 @@ iOS собирается на macOS 26/Xcode 26 через GitHub Actions. Ар�
 - Интерфейс и редакторы входят в APK/iOS App; совместное редактирование и сохранение на сервере **требуют интернет**.
 - Нативная сборка сама не развертывает сайт, не меняет Supabase SQL и не включает старые Vercel/Tuqo workflow.
 - Для публикации в магазинах нужны производственные иконки/скриншоты, подпись, политика конфиденциальности и тестирование на реальных устройствах.
+
+## Подписанная iOS-сборка в GitHub Actions
+
+Есть отдельный ручной workflow [Lektrus signed iPhone IPA](https://github.com/Vue-Jay/interactive-board-next/actions/workflows/native-ios-signed.yml). Он **не запускается автоматически**, так как требует приватные сертификаты Apple. После добавления защищённых GitHub Actions Secrets `APPLE_TEAM_ID`, `IOS_PROFILE_NAME`, `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64` (и двух публичных параметров Supabase) запустите workflow вручную. Он создаст archive и попытается экспортировать IPA для App Store Connect. Используйте provisioning profile типа App Store Distribution, соответствующий `ru.lektrus.board`. Для установки через TestFlight загрузите IPA в App Store Connect и завершите требуемую Apple обработку/проверки. Сам файл IPA не обходит подпись Apple.
