@@ -1,0 +1,116 @@
+/* Consistent Today controls on desktop and mobile. */
+.lectris-workspace-stage .schedule-toolbar>button:nth-child(2),
+.lectris-workspace-stage .lektrus-calendar-toolbar>div>button:nth-child(2){
+  box-sizing:border-box!important;
+  border:0!important;
+  background:transparent!important;
+  color:var(--lt-primary,#365fd0)!important;
+  box-shadow:none!important;
+  border-radius:8px!important;
+  font-weight:750!important;
+  min-width:0!important;
+  width:auto!important;
+  max-width:100%!important;
+  padding:5px 9px!important;
+  white-space:nowrap!important;
+  line-height:1.3!important;
+}
+.lectris-workspace-stage .schedule-toolbar>button:nth-child(2):hover,
+.lectris-workspace-stage .lektrus-calendar-toolbar>div>button:nth-child(2):hover{
+  background:var(--lt-hover,#edf3ff)!important;
+}
+.lectris-workspace-stage .schedule-toolbar{min-width:0!important}
+.lectris-workspace-stage .schedule-toolbar>button:nth-child(2){font-size:clamp(11px,1vw,13px)!important}
+.lectris-workspace-stage .lektrus-calendar-toolbar>div{align-items:center!important;min-width:0}
+.lectris-workspace-stage .lektrus-calendar-toolbar>div>button:nth-child(2){font-size:12px!important}
+
+/* Tablet/mobile landscape shell: expand the real sidebar and reduce stage
+   width through CSS grid instead of painting the sidebar over content.
+   The old <=1080px rules hid all text independently of collapsed state. */
+@media (min-width:701px) and (max-width:1100px){
+  .lectris-workspace .lectris-workspace-body{
+    display:grid!important;
+    grid-template-columns:216px minmax(0,1fr)!important;
+    min-width:0!important;
+    width:100%!important;
+    transition:grid-template-columns .16s ease;
+  }
+  .lectris-workspace.is-collapsed .lectris-workspace-body{
+    grid-template-columns:76px minmax(0,1fr)!important;
+  }
+  .lectris-workspace .lectris-workspace-sidebar{
+    box-sizing:border-box!important;
+    display:flex!important;
+    min-width:0!important;width:100%!important;
+    overflow-x:hidden!important;
+    padding:12px 9px!important;
+  }
+  .lectris-workspace:not(.is-collapsed) .lectris-sidebar-head{
+    display:flex!important;justify-content:space-between!important;
+    padding:0 7px 4px!important;
+  }
+  .lectris-workspace:not(.is-collapsed) .lectris-sidebar-head>span{
+    display:block!important;
+  }
+  .lectris-workspace:not(.is-collapsed) .lectris-workspace-sidebar .lectris-nav-link{
+    display:flex!important;
+    justify-content:flex-start!important;
+    gap:10px!important;padding:9px 10px!important;
+    min-width:0!important;min-height:38px!important;
+    font-size:12px!important;
+  }
+  .lectris-workspace:not(.is-collapsed) .lectris-workspace-sidebar .lectris-nav-link>span{
+    display:inline!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+    text-overflow:ellipsis!important;
+    min-width:0!important;
+  }
+  .lectris-workspace:not(.is-collapsed) .lectris-nav-group-title{
+    display:block!important;
+  }
+  .lectris-workspace.is-collapsed .lectris-workspace-sidebar .lectris-nav-link{
+    justify-content:center!important;gap:0!important;padding:9px 2px!important;
+  }
+  .lectris-workspace.is-collapsed .lectris-workspace-sidebar .lectris-nav-link>span{
+    display:none!important;
+  }
+  .lectris-workspace .lectris-workspace-stage{
+    min-width:0!important;max-width:100%!important;
+    overflow-x:hidden!important;
+  }
+  .lectris-workspace .lectris-collapse-button{
+    flex:0 0 30px!important;cursor:pointer!important;
+  }
+  .lectris-workspace .lectris-library-intro,
+  .lectris-workspace .lektrus-page-heading{
+    max-width:100%!important;min-width:0!important;
+  }
+  .lectris-workspace .lectris-library-new,
+  .lectris-workspace .lektrus-category-create{
+    max-width:100%!important;
+  }
+}
+@media (min-width:701px) and (max-width:850px){
+  .lectris-workspace:not(.is-collapsed) .lectris-workspace-body{
+    grid-template-columns:192px minmax(0,1fr)!important;
+  }
+}
+@media (max-width:1100px) and (pointer:coarse) and (orientation:landscape){
+  .lectris-workspace:not(.is-collapsed) .lectris-workspace-stage .schedule-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .lectris-workspace:not(.is-collapsed) .lectris-workspace-stage .lectris-library-intro{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .lectris-workspace:not(.is-collapsed) .lectris-workspace-stage .lectris-library-new{
+    grid-column:1!important;grid-row:auto!important;
+    justify-self:start!important;min-width:0!important;
+  }
+  .lectris-workspace:not(.is-collapsed) .lectris-workspace-stage .lektrus-page-heading{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .lectris-workspace:not(.is-collapsed) .lectris-workspace-stage .lektrus-page-heading-actions{
+    grid-column:1!important;grid-row:auto!important;justify-self:start!important;
+  }
+}
