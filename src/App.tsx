@@ -6823,8 +6823,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         )}
 <nav className="mobile-board-tools" aria-label="Основные инструменты">
           <div className="mobile-tool-cluster mobile-tool-cluster-navigation" aria-label="Навигация">
+            {lectrisTouchDockTools.slice(0,1).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
             <button type="button" className={tool==="hand"?"active":""} aria-label="Рука — перемещать доску одним пальцем" title="Рука" aria-pressed={tool==="hand"} onClick={()=>{finishEdit();setTool("hand");setMobileToolsOpen(false);setSelected([])}}><Icon name="hand" size={20}/></button>
-            {lectrisTouchDockTools.slice(0,2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
+            {lectrisTouchDockTools.slice(1,2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
           <div className="mobile-tool-cluster mobile-tool-cluster-create" aria-label="Создание">

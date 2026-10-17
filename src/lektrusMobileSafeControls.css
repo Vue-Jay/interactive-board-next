@@ -1,0 +1,83 @@
+/* Mobile board chrome, after all legacy responsive overrides.
+   Preserve board actions on phones and account for Android camera cutouts. */
+@media screen and (max-width:1100px) {
+  html body .topbar:not(.update-banner) {
+    box-sizing:border-box!important;
+    padding-left:max(4px,env(safe-area-inset-left,0px))!important;
+    padding-right:max(18px,env(safe-area-inset-right,0px))!important;
+  }
+  html body .topbar .topbar-right {
+    margin-right:0!important;
+    padding-right:0!important;
+    max-width:calc(54vw - 12px)!important;
+  }
+  html body .topbar .board-home-button {
+    margin-left:0!important;
+  }
+  body .workspace .board-controls {
+    display:flex!important;
+    position:fixed!important;
+    left:calc(65px + env(safe-area-inset-left,0px))!important;
+    right:auto!important;
+    bottom:calc(14px + env(safe-area-inset-bottom,0px))!important;
+    top:auto!important;
+    transform:none!important;
+    margin:0!important;
+    width:max-content!important;
+    max-width:calc(100vw - 85px - env(safe-area-inset-right,0px))!important;
+    align-items:center!important;
+    flex-wrap:nowrap!important;
+    gap:2px!important;
+    padding:4px!important;
+    overflow-x:auto!important;
+    overflow-y:visible!important;
+    scrollbar-width:none!important;
+    z-index:250!important;
+  }
+  body .workspace .board-controls::-webkit-scrollbar{display:none}
+  body .workspace .board-controls>button {
+    flex-shrink:0!important;
+    min-width:32px!important;
+    width:34px!important;
+    min-height:34px!important;
+    height:34px!important;
+    padding:0!important;
+  }
+  body .workspace .board-controls .zoom-value {
+    width:43px!important;
+    min-width:43px!important;
+    font-size:11px!important;
+  }
+  body .workspace .board-controls .fit-selection-button {
+    margin-left:2px!important;
+  }
+  body .workspace .board-controls .fit-button + .fit-button::before{
+    display:none!important;
+  }
+  body .workspace .board-controls .board-controls-separator{
+    flex-shrink:0!important;
+  }
+}
+/* Landscape mobile: toolbar starts below header and moves toward the safe left edge. */
+@media screen and (max-width:1100px) and (orientation:landscape) {
+  body .workspace nav.mobile-board-tools {
+    left:max(3px,env(safe-area-inset-left,0px))!important;
+    top:calc(72px + env(safe-area-inset-top,0px))!important;
+    max-height:calc(100dvh - 88px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
+  }
+  body .workspace section.mobile-tools-sheet {
+    top:calc(72px + env(safe-area-inset-top,0px))!important;
+  }
+  body .workspace .board-controls {
+    left:calc(61px + env(safe-area-inset-left,0px))!important;
+  }
+}
+/* Portrait phones: zoom and remaining board actions above the bottom tool dock. */
+@media screen and (max-width:700px) and (orientation:portrait) {
+  body .workspace .board-controls {
+    left:max(6px,env(safe-area-inset-left,0px))!important;
+    right:auto!important;
+    bottom:calc(78px + env(safe-area-inset-bottom,0px))!important;
+    max-width:calc(100vw - 12px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px))!important;
+  }
+}
