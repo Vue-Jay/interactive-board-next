@@ -4,8 +4,10 @@ import {makeMathPresetItem} from "./lektrusMathPresets";
 
 /** School diagrams only: symbols and qualitative constructions, never solved work. */
 export type SciencePresetId=
-  |"physics-forces"|"physics-incline"|"physics-optics"|"physics-refraction"|"physics-lens"
-  |"physics-motion"|"physics-speed"|"physics-circuit-series"|"physics-circuit-meters"|"physics-circuit-free"
+  |"physics-forces"|"physics-incline"|"physics-friction"|"physics-lever"|"physics-spring"|"physics-equilibrium"
+  |"physics-optics"|"physics-refraction"|"physics-lens"|"physics-diverging-lens"|"physics-plane-mirror"|"physics-total-reflection"|"physics-prism"
+  |"physics-motion"|"physics-speed"|"physics-accelerated-speed"|"physics-acceleration"|"physics-braking"|"physics-rest"
+  |"physics-circuit-series"|"physics-circuit-meters"|"physics-circuit-free"
   |"chem-water"|"chem-carbon-dioxide"|"chem-methane"|"chem-ammonia"|"chem-oxygen"|"chem-atom";
 
 type Vertex={x:number;y:number;label:string;color?:string};
@@ -24,12 +26,20 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
     graphShowCurve:false,graphConnectPoints:false,graphExpression:"",
     graphSegments:[],graphAngles:[],graphCircles:[],graphPolygons:[],graphMidpoints:[],
     graphXMin:-7,graphXMax:7,graphYMin:-5,graphYMax:5,width:500,height:360};
-  if(id==="physics-motion"||id==="physics-speed"){
-    const speed=id==="physics-speed";
-    return {...base,text:speed?"График скорости v(t)":"График пути s(t)",
+  const motionPresets:Partial<Record<SciencePresetId,{name:string;points:number[][]}>>={
+    "physics-motion":{name:"Равномерное движение · s(t)",points:[[0,0],[3,2],[6,4],[9,6],[12,8]]},
+    "physics-speed":{name:"Постоянная скорость · v(t)",points:[[0,4],[3,4],[6,4],[9,4],[12,4]]},
+    "physics-accelerated-speed":{name:"Разгон · v(t)",points:[[0,0],[3,2],[6,4],[9,6],[12,8]]},
+    "physics-acceleration":{name:"Постоянное ускорение · a(t)",points:[[0,3],[3,3],[6,3],[9,3],[12,3]]},
+    "physics-braking":{name:"Торможение · v(t)",points:[[0,9],[3,7],[6,5],[9,2],[12,0]]},
+    "physics-rest":{name:"Остановка и движение · s(t)",points:[[0,1],[3,3],[6,3],[9,6],[12,6]]}
+  };
+  const motion=motionPresets[id];
+  if(motion){
+    return {...base,text:motion.name,
       graphPurpose:"coordinates",graphAxisMode:"both",graphGrid:true,
       graphConnectPoints:true,graphAxisLabels:true,graphXMin:0,graphXMax:12,
-      graphYMin:0,graphYMax:10,graphPoints:(speed?[[0,2],[3,2],[7,5],[10,5]]:[[0,0],[3,2],[7,6],[10,8]]).map(([px,py])=>P(px,py))};
+      graphYMin:0,graphYMax:10,graphPoints:motion.points.map(([px,py])=>P(px,py))};
   }
   if(id==="physics-circuit-free")return {...base,text:"Электрическая цепь · новый чертёж",graphGrid:true,graphSnap:true};
   let title="";
@@ -71,6 +81,32 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
       segments=[S(0,1),S(1,2),S(2,0),V(3,4),V(3,5),V(3,6)];
       polygons=[{points:[0,1,2],label:"",measure:false}];
       break;
+    case "physics-friction":
+      title="Механика · трение скольжения";
+      points=[P(-5,-2.2,""),P(5,-2.2,""),P(0,-2.2,"O"),P(0,2.0,"N"),
+        P(0,-4.2,"mg"),P(4,0,"F"),P(-3.6,0,"Fтр")];
+      segments=[S(0,1),V(2,3),V(2,4),V(2,5),V(2,6)];
+      break;
+    case "physics-lever":
+      title="Механика · рычаг и опора";
+      points=[P(-5,0,"A"),P(5,0,"B"),P(0,0,"O"),P(-4,-3.0,"F₁"),
+        P(4,-2.2,"F₂"),P(0,2.6,"N"),P(-.7,-1.5,""),P(.7,-1.5,"")];
+      segments=[S(0,1),V(0,3),V(1,4),V(2,5),S(6,2),S(2,7),S(6,7)];
+      break;
+    case "physics-spring":
+      title="Механика · пружина и сила упругости";
+      points=[P(-4,3.6,""),P(-2.8,3.6,""),P(-2.8,2.6,""),
+        P(-4,2.0,""),P(-1.6,1.35,""),P(-4,.7,""),P(-1.6,0,""),
+        P(-4,-.7,""),P(-2.8,-1.4,""),P(-2.8,-2.3,"O"),
+        P(-2.8,1.6,"Fупр"),P(-2.8,-4.1,"mg")];
+      segments=[S(0,1),S(1,2),S(2,3),S(3,4),S(4,5),S(5,6),
+        S(6,7),S(7,8),S(8,9),V(9,10),V(9,11)];
+      break;
+    case "physics-equilibrium":
+      title="Механика · равновесие сил";
+      points=[P(0,0,"O"),P(0,3.4,"F₁"),P(-3,-2.1,"F₂"),P(3,-2.1,"F₃")];
+      segments=[V(0,1),V(0,2),V(0,3)];
+      break;
     case "physics-optics":
       title="Оптика · отражение света";
       points=[P(-4,3.5,"A"),P(0,0,"O"),P(4,3.5,"B"),P(-5,0,""),P(5,0,""),P(0,4.6,"N")];
@@ -85,6 +121,35 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
       title="Оптика · собирающая линза";
       points=[P(-5,0,""),P(5,0,""),P(0,-4,""),P(0,4,""),P(-3,0,"F₁"),P(3,0,"F₂"),P(-5,2.2,"A"),P(0,2.2,"O"),P(4,-.8,"B")];
       segments=[S(0,1,"Главная оптическая ось"),S(2,3,"Линза"),V(6,7,"Падающий луч"),V(7,8,"После линзы")];
+      break;
+    case "physics-diverging-lens":
+      title="Оптика · рассеивающая линза";
+      points=[P(-5,0,""),P(5,0,""),P(0,-4,""),P(0,4,""),
+        P(-3,0,"F₁"),P(3,0,"F₂"),P(-5,2.6,"A"),P(0,2.6,""),P(5,4.1,"B")];
+      segments=[S(0,1,"Оптическая ось"),S(2,3,"Линза"),
+        V(6,7,"Падающий луч"),V(7,8,"Преломлённый луч")];
+      break;
+    case "physics-plane-mirror":
+      title="Оптика · изображение в плоском зеркале";
+      points=[P(0,-4.2,""),P(0,4.2,""),P(-3,-2.5,"A"),P(-3,1.8,"B"),
+        P(3,-2.5,"A′"),P(3,1.8,"B′"),P(-5,-3.5,""),P(5,-3.5,"")];
+      segments=[S(0,1,"Зеркало"),S(2,3,"Предмет"),S(4,5,"Мнимое изображение"),
+        S(2,4),S(3,5)];
+      break;
+    case "physics-total-reflection":
+      title="Оптика · полное внутреннее отражение";
+      points=[P(-5,0,""),P(5,0,""),P(0,0,"O"),P(0,4.2,"N"),
+        P(-4,-3.4,"A"),P(4,-3.4,"B")];
+      segments=[S(0,1,"Граница сред"),S(2,3,"Нормаль"),
+        V(4,2,"Падающий луч"),V(2,5,"Отражённый луч")];
+      break;
+    case "physics-prism":
+      title="Оптика · преломление через призму";
+      points=[P(-2.8,-2.9,""),P(0,3,""),P(2.8,-2.9,""),
+        P(-5,.6,"A"),P(-1.5,.6,""),P(1.7,-.65,""),P(5,-2.1,"B")];
+      segments=[S(0,1),S(1,2),S(2,0),V(3,4,"Падающий луч"),
+        V(4,5,"Внутри призмы"),V(5,6,"Выходящий луч")];
+      polygons=[{points:[0,1,2],label:"",measure:false}];
       break;
     case "chem-water":
       title="Молекула воды · H₂O";

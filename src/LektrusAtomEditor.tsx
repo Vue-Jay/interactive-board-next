@@ -36,7 +36,7 @@ export default function LektrusAtomEditor({item,onSave,onCancel,onClose}:Props){
       <ellipse cx="20" cy="20" rx="16" ry="7" stroke="#247c86" strokeWidth="1.7" fill="none" transform="rotate(35 20 20)"/></svg>
    </div><div><small>ХИМИЯ · АТОМ</small><h2>Строение атома</h2></div>
    <button type="button" onClick={close} title="Закрыть">×</button></header>
-   <div className="lektrus-atom-content">
+   <div className={"lektrus-atom-content"+(showList?" choosing-element":"")}>
     <aside className="lektrus-atom-controls">
      <label>Название на доске
        <input value={name} onChange={e=>setName(e.target.value)} maxLength={100}/>
@@ -81,7 +81,9 @@ export default function LektrusAtomEditor({item,onSave,onCancel,onClose}:Props){
       <div className="lektrus-atom-preview-head"><b>{atomViews.find(v=>v.id===model.mode)?.name}</b>
         <span>Подпись можно перемещать мышью</span></div>
       <div className="lektrus-atom-stage"><LektrusAtomView model={model} onLabelMove={(x,y)=>change({labelX:x,labelY:y})}/></div>
-      <p>Упрощённая школьная модель. Пространственные орбиты и размеры частиц условны, вычисления не выполняются.</p>
+      <p>{model.mode==="orbital"||model.mode==="lewis"?
+        "Орбитальные ячейки построены по электронной конфигурации. Стрелки отображают противоположные направления спинов; расчёты не выполняются.":
+        "Упрощённая школьная модель. Пространственные орбиты и размеры частиц условны, вычисления не выполняются."}</p>
     </div>
    </div>
    <footer><span>Один инструмент · четыре модели · 118 элементов</span>

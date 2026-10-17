@@ -21,6 +21,7 @@ import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
+import {layoutScienceLabels} from "./lektrusScienceLabelLayout";
 import LektrusCircuitEditor from "./LektrusCircuitEditor";
 import LektrusCircuitView from "./LektrusCircuitView";
 import {circuitFromLegacyItem} from "./lektrusCircuitModel";
@@ -1215,6 +1216,8 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     <LektrusPeriodicBoard selected={item.sciencePeriodicHighlights??[]}
       showNames={item.sciencePeriodicShowNames!==false} onChange={onPeriodicChange}/>
   </div>;
+  const scienceCaptionLayout=item.graphFigureId?.startsWith("physics-")?
+    layoutScienceLabels(item.graphPoints??[],item.graphSegments??[],p=>({x:sx(p.x),y:sy(p.y)}),W,H):null;
   return <div className={`graph-view graph-purpose-${purpose} ${item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")?"science-graph":""} ${onPointMove?"graph-interactive":""}`}>
     <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small>y = {expression.replace(/^y\s*=\s*/i,"")}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
@@ -1428,8 +1431,8 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
               stroke="transparent" strokeWidth="24" style={{cursor:"grab",touchAction:"none"}} onPointerDown={beginRayDrag}
               aria-label="Перетащите луч, чтобы изменить направление"/>}
             {seg.label&&<text className="graph-figure-label"
-              x={sx((a.x+b.x)/2+(seg.labelDx??0))+(seg.labelDx==null?6:0)}
-              y={sy((a.y+b.y)/2+(seg.labelDy??0))-(seg.labelDy==null?7:0)}>{seg.label}</text>}
+              x={scienceCaptionLayout?.lines[i]?.x??(sx((a.x+b.x)/2+(seg.labelDx??0))+(seg.labelDx==null?6:0))}
+              y={scienceCaptionLayout?.lines[i]?.y??(sy((a.y+b.y)/2+(seg.labelDy??0))-(seg.labelDy==null?7:0))}>{seg.label}</text>}
           </g>;
         })}
         {item.graphFigureId==="parallel"&&item.graphParallelMarks?.[0]&&gp.length>=6&&(()=>{
@@ -1504,8 +1507,8 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
            r={(item.graphFigureId??"").startsWith("physics-")?2.5:movable?5:4}
            style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>}
         {item.graphShowLabels!==false&&(purpose==="number-line"||purpose==="unit-circle"&&i>0||p.label)&&
-          <text x={sx(p.x+(item.graphPoints?.[i]?.labelDx??(p.label==="O"&&(item.graphFigureId??"").startsWith("physics-") ? 0.5 : 0)))+(item.graphPoints?.[i]?.labelDx==null&&p.label!=="O"?8:0)}
-           y={sy(p.y+(item.graphPoints?.[i]?.labelDy??(p.label==="O"&&(item.graphFigureId??"").startsWith("physics-") ? 0.62 : 0)))-(item.graphPoints?.[i]?.labelDy==null&&p.label!=="O"?9:0)}
+          <text x={scienceCaptionLayout?.points[i]?.x??(sx(p.x+(item.graphPoints?.[i]?.labelDx??0))+8)}
+           y={scienceCaptionLayout?.points[i]?.y??(sy(p.y+(item.graphPoints?.[i]?.labelDy??0))-9)}
            style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
       </g>})}
       {purpose==="geometry"&&onGridChange&&<g role="button" tabIndex={0}

@@ -343,7 +343,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
               {Array.from({length:19},(_,i)=><path key={"h"+i} d={"M0 "+(i*20)+"H520"}/>)}
             </g>}
             {motion&&<g className="lektrus-science-axes" pointerEvents="none">
-              <path d="M 58 28 V 334 H 500"/><text x="60" y="18">{currentVariant==="physics-speed"?"v":"s"}</text><text x="494" y="326">t</text>
+              <path d="M 58 28 V 334 H 500"/><text x="60" y="18">{currentVariant==="physics-acceleration"?"a":currentVariant==="physics-speed"||currentVariant==="physics-accelerated-speed"||currentVariant==="physics-braking"?"v":"s"}</text><text x="494" y="326">t</text>
             </g>}
             {(draft.graphPolygons??[]).map((polygon,i)=>{
               const vertices=polygon.points.map(index=>points[index]).filter(Boolean);

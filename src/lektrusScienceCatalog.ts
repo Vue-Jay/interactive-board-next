@@ -10,23 +10,35 @@ export type ScienceToolGroup={
 };
 export const scienceToolGroups:ScienceToolGroup[]=[
   {id:"physics-mechanics",subject:"physics",label:"Механика",
-   description:"Силы, свободное тело и наклонная плоскость в одном редакторе",
+   description:"Силы, трение, рычаг, пружина и равновесие в одном редакторе",
    group:"Физика · движение и силы",templates:[
      {id:"physics-forces",label:"Силы на тело",hint:"Векторы действующих сил с подписями"},
-     {id:"physics-incline",label:"Наклонная плоскость",hint:"Силы и геометрия наклонной поверхности"}
+     {id:"physics-incline",label:"Наклонная плоскость",hint:"Силы и геометрия наклонной поверхности"},
+     {id:"physics-friction",label:"Сила трения",hint:"Силы на горизонтальной поверхности"},
+     {id:"physics-lever",label:"Рычаг",hint:"Плечи сил и опора рычага"},
+     {id:"physics-spring",label:"Пружина и упругость",hint:"Пружина и направления сил"},
+     {id:"physics-equilibrium",label:"Равновесие сил",hint:"Схема равнодействующей и условий равновесия"}
    ]},
   {id:"physics-optics",subject:"physics",label:"Оптика",
-   description:"Отражение, преломление и построение лучей",
+   description:"Отражение, линзы, зеркало, призма и преломление",
    group:"Физика · свет",templates:[
      {id:"physics-optics",label:"Отражение света",hint:"Падающий и отражённый лучи"},
      {id:"physics-refraction",label:"Преломление",hint:"Граница двух сред и нормаль"},
-     {id:"physics-lens",label:"Линза",hint:"Оптическая ось и построение лучей"}
+     {id:"physics-lens",label:"Собирающая линза",hint:"Оптическая ось и построение лучей"},
+     {id:"physics-diverging-lens",label:"Рассеивающая линза",hint:"Ход лучей через рассеивающую линзу"},
+     {id:"physics-plane-mirror",label:"Плоское зеркало",hint:"Предмет и его мнимое изображение"},
+     {id:"physics-total-reflection",label:"Полное отражение",hint:"Отражение света от границы сред"},
+     {id:"physics-prism",label:"Призма",hint:"Преломление луча при прохождении призмы"}
    ]},
   {id:"physics-graphs",subject:"physics",label:"Графики движения",
-   description:"Путь и скорость от времени с редактируемыми точками, без решения задач",
+   description:"Путь, скорость, ускорение, разгон и торможение без готовых решений",
    group:"Физика · движение и силы",templates:[
      {id:"physics-motion",label:"Путь от времени · s(t)",hint:"Точки и участки графика пути"},
-     {id:"physics-speed",label:"Скорость от времени · v(t)",hint:"Точки и участки графика скорости"}
+     {id:"physics-speed",label:"Скорость от времени · v(t)",hint:"Равномерное движение"},
+     {id:"physics-accelerated-speed",label:"Разгон · v(t)",hint:"Возрастание скорости со временем"},
+     {id:"physics-acceleration",label:"Ускорение · a(t)",hint:"Постоянное ускорение"},
+     {id:"physics-braking",label:"Торможение · v(t)",hint:"Убывание скорости со временем"},
+     {id:"physics-rest",label:"Остановка на пути · s(t)",hint:"Постоянный путь во время остановки"}
    ]},
   {id:"physics-circuits",subject:"physics",label:"Электрические цепи",
    description:"Источники питания, провода, лампы, резисторы, выключатели и приборы",

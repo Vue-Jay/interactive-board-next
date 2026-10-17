@@ -16,7 +16,7 @@ export default function LektrusPeriodicBoard({selected,showNames,onChange}:Props
     <section className="lektrus-element-popover" role="dialog" aria-modal="true" aria-label="Сведения об элементе"
       onPointerDown={e=>e.stopPropagation()}>
       <LektrusElementInfo number={opened} isSelected={selected.includes(opened)}
-        onToggle={onChange?change:undefined} onClose={()=>setOpened(null)}/>
+        onToggle={onChange?change:undefined} onClose={()=>setOpened(null)} compact summary/>
     </section>
    </div>,document.body)}
  </>;

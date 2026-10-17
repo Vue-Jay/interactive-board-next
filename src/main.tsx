@@ -45,6 +45,7 @@ import "./lektrusFormulaWindow.css";
 import "./lektrusPeriodicTable.css";
 import "./lektrusChemistryNext.css";
 import "./lektrusScienceInteractionNext.css";
+import "./lektrusSubjectPolish2026.css";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";

@@ -1,6 +1,6 @@
 import {elementFacts} from "./lektrusElementFacts";
 import {periodicElements} from "./lektrusPeriodicElements";
-export type AtomViewMode="shell"|"orbit"|"lewis"|"nucleus";
+export type AtomViewMode="shell"|"orbit"|"orbital"|"nucleus"|"lewis";
 export type AtomModel={
  atomicNumber:number;mode:AtomViewMode;
  labelX:number;labelY:number;showElectronConfiguration:boolean;
@@ -8,7 +8,7 @@ export type AtomModel={
 export const atomViews:{id:AtomViewMode;name:string;description:string}[]=[
  {id:"shell",name:"Модель Бора",description:"Электроны на концентрических оболочках"},
  {id:"orbit",name:"Планетарная модель",description:"Наглядная модель Резерфорда с орбитами"},
- {id:"lewis",name:"Схема Льюиса",description:"Символ и электроны внешнего уровня"},
+ {id:"orbital",name:"Орбитальная диаграмма",description:"Энергетическая лесенка: s, p, d, f и спины электронов"},
  {id:"nucleus",name:"Состав атома",description:"Протоны, нейтроны и электроны"}
 ];
 export const defaultAtomModel:AtomModel={atomicNumber:8,mode:"shell",labelX:0,labelY:0,showElectronConfiguration:true};
@@ -42,5 +42,39 @@ export function atomShells(number:number):number[]{
   fallback.push(fill);rest-=fill;
  }
  return fallback;
+}
+
+/** A school orbital box diagram. Ground-state counts are parsed from reference
+ * configurations, preserving exceptions such as Cr/Cu rather than filling blindly. */
+export type OrbitalSublevel={
+ name:string;n:number;letter:"s"|"p"|"d"|"f"|"g";
+ electrons:number;orbitals:number;spins:("↑"|"↓")[][];
+};
+const aufbauOrder=[
+ "1s","2s","2p","3s","3p","4s","3d","4p","5s","4d","5p",
+ "6s","4f","5d","6p","7s","5f","6d","7p","8s","5g"
+];
+const subshellOrbitals:Record<OrbitalSublevel["letter"],number>={s:1,p:3,d:5,f:7,g:9};
+export function orbitalSublevels(number:number):OrbitalSublevel[]{
+ if(!Number.isInteger(number)||number<1||number>118)return [];
+ const config=expandConfiguration(number);
+ const occupations=new Map<string,number>();
+ for(const match of config.matchAll(/(\d+)\s*([spdfg])\s*(\d+)/g)){
+   const key=match[1]+match[2];
+   occupations.set(key,(occupations.get(key)??0)+Number(match[3]));
+ }
+ if([...occupations.values()].reduce((sum,n)=>sum+n,0)!==number)return [];
+ const order=[...aufbauOrder,...occupations.keys()].filter((name,index,all)=>all.indexOf(name)===index);
+ return order.filter(name=>(occupations.get(name)??0)>0).map(name=>{
+   const electrons=occupations.get(name)??0;
+   const letter=name.slice(-1) as OrbitalSublevel["letter"];
+   const orbitals=subshellOrbitals[letter],slots:("↑"|"↓")[][]=Array.from({length:orbitals},()=>[]);
+   // Hund: occupy each degenerate orbital singly with parallel spins,
+   // then pair, respecting Pauli's exclusion principle.
+   for(let i=0;i<Math.min(electrons,orbitals*2);i++){
+     slots[i<orbitals?i:i-orbitals].push(i<orbitals?"↑":"↓");
+   }
+   return {name,n:Number(name.slice(0,-1)),letter,electrons,orbitals,spins:slots};
+ });
 }
 export const elementByNumber=(number:number)=>periodicElements[number-1]??periodicElements[7];

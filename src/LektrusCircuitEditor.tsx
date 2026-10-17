@@ -62,6 +62,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
   const [cursor,setCursor]=useState<{x:number;y:number}|null>(null);
   const [dragging,setDragging]=useState<Dragging|null>(null);
   const [notice,setNotice]=useState("");
+  const [confirmAction,setConfirmAction]=useState<{kind:"template";id:TemplateId}|{kind:"clear"}|null>(null);
   const doc=history.present;
   const currentComponent=selection?.kind==="component"?
     doc.components.find(x=>x.id===selection.id):undefined;
@@ -107,12 +108,25 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
   const changeTool=(next:CircuitTool)=>{
     setTool(next);setPending(null);setDragging(null);setNotice("");
   };
-  const startTemplate=(id:TemplateId)=>{
-    if(doc.components.length+doc.junctions.length+doc.wires.length>0&&
-      !window.confirm("Заменить текущий чертёж выбранным шаблоном?"))return;
+  const applyTemplate=(id:TemplateId)=>{
     commit(circuitTemplate(id));
     setPending(null);setSelection(null);setDragging(null);
     setTool("select");setNotice("Шаблон открыт. Все элементы можно перемещать и изменять.");
+  };
+  const startTemplate=(id:TemplateId)=>{
+    if(doc.components.length+doc.junctions.length+doc.wires.length>0){
+      setConfirmAction({kind:"template",id});return;
+    }
+    applyTemplate(id);
+  };
+  const confirmProceed=()=>{
+    if(!confirmAction)return;
+    if(confirmAction.kind==="template")applyTemplate(confirmAction.id);
+    else{
+      commit(createCircuitDocument());setSelection(null);setPending(null);setTool("select");
+      setNotice("Чертёж очищен");
+    }
+    setConfirmAction(null);
   };
   const dropSymbol=(type:CircuitComponent["type"],point:{x:number;y:number})=>{
     if(doc.components.length>=120){setNotice("Достигнут предел 120 элементов.");return}
@@ -238,6 +252,10 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
     "Выберите элемент или провод. Перетаскивание элемента сохраняет его соединения.";
   useEffect(()=>{
     const keyboard=(event:KeyboardEvent)=>{
+      if(confirmAction){
+        if(event.key==="Escape"){event.preventDefault();event.stopPropagation();setConfirmAction(null)}
+        return;
+      }
       const target=event.target as HTMLElement;
       if(target?.closest("input,textarea,select,[contenteditable]"))return;
       const modifier=event.ctrlKey||event.metaKey;
@@ -414,13 +432,31 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
               <p>У всех элементов сохраняются положение, поворот, подписи и подключения.</p>
             </div>}
             <div className="lektrus-circuit-inspector-footer">
-              <button type="button" onClick={()=>{
-                if(!window.confirm("Очистить все элементы и соединения?"))return;
-                commit(createCircuitDocument());setSelection(null);setPending(null);setTool("select");
-              }}>Очистить чертёж</button>
+              <button type="button" onClick={()=>setConfirmAction({kind:"clear"})}>Очистить чертёж</button>
             </div>
           </aside>
         </div>
+        {confirmAction&&<div className="lektrus-circuit-confirm-backdrop" role="presentation"
+          onPointerDown={e=>{e.stopPropagation();if(e.target===e.currentTarget)setConfirmAction(null)}}>
+          <section className="lektrus-circuit-confirm" role="alertdialog" aria-modal="true"
+            aria-labelledby="lektrus-circuit-confirm-title"
+            aria-describedby="lektrus-circuit-confirm-description">
+            <div className="lektrus-circuit-confirm-icon" aria-hidden="true">?</div>
+            <h3 id="lektrus-circuit-confirm-title">
+              {confirmAction.kind==="clear"?"Очистить чертёж?":"Заменить текущую схему?"}
+            </h3>
+            <p id="lektrus-circuit-confirm-description">
+              {confirmAction.kind==="clear"?
+                "Все элементы, провода и узлы будут удалены. Действие можно отменить в истории редактора.":
+                "Текущая схема будет заменена выбранным школьным примером. Предыдущий чертёж можно вернуть кнопкой отмены."}
+            </p>
+            <div className="lektrus-circuit-confirm-actions">
+              <button type="button" autoFocus onClick={()=>setConfirmAction(null)}>Отмена</button>
+              <button type="button" className={confirmAction.kind==="clear"?"danger":"primary"}
+                onClick={confirmProceed}>{confirmAction.kind==="clear"?"Очистить":"Заменить схему"}</button>
+            </div>
+          </section>
+        </div>}
         <footer className="lektrus-circuit-footer">
           <span role="status">{notice||"Редактирование на компьютере · без автоматического решения задач"}</span>
           <button type="button" className="secondary" onClick={onCancel}>Отмена</button>

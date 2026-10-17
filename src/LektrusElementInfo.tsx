@@ -1,9 +1,11 @@
+import {useState} from "react";
 import {elementFacts} from "./lektrusElementFacts";
 import {periodicElements,periodicFamilies} from "./lektrusPeriodicElements";
-type Props={number:number;isSelected?:boolean;onToggle?:()=>void;onClose?:()=>void;compact?:boolean};
+type Props={number:number;isSelected?:boolean;onToggle?:()=>void;onClose?:()=>void;compact?:boolean;summary?:boolean};
 const show=(value:unknown)=>value==null||value===""?"—":String(value);
 const phases:Record<string,string>={solid:"Твёрдое",liquid:"Жидкое",gas:"Газ",Solid:"Твёрдое",Liquid:"Жидкое",Gas:"Газ"};
-export default function LektrusElementInfo({number,isSelected=false,onToggle,onClose,compact=false}:Props){
+export default function LektrusElementInfo({number,isSelected=false,onToggle,onClose,compact=false,summary=false}:Props){
+ const [expanded,setExpanded]=useState(false);
  const el=periodicElements[number-1],fact=elementFacts[number-1];
  if(!el||!fact)return null;
  const family=periodicFamilies.find(f=>f.id===el.family);
@@ -31,9 +33,10 @@ export default function LektrusElementInfo({number,isSelected=false,onToggle,onC
    {onClose&&<button type="button" className="lektrus-element-info-close" onClick={onClose} aria-label="Закрыть">×</button>}
   </div>
   <div className="lektrus-element-info-fields">
-   {fields.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}
+   {(summary&&!expanded?fields.filter((_,i)=>[0,1,2,3,5,7].includes(i)):fields).map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}
   </div>
-  <small className="lektrus-element-disclaimer">* Плотность приведена из справочника, единицы для газов могут отличаться. Данные справочные; неизвестные величины обозначены «—».</small>
+  {summary&&<button type="button" className="lektrus-element-details-toggle" onClick={()=>setExpanded(value=>!value)} aria-expanded={expanded}>{expanded?"Свернуть сведения":"Все характеристики"} <span aria-hidden="true">{expanded?"⌃":"⌄"}</span></button>}
+  {(!summary||expanded)&&<small className="lektrus-element-disclaimer">* Плотность приведена из справочника, единицы для газов могут отличаться. Данные справочные; неизвестные величины обозначены «—».</small>}
   {onToggle&&<button className="lektrus-element-info-toggle" type="button" onClick={onToggle}>
    {isSelected?"Снять выделение":"Выделить на таблице"}</button>}
  </div>;

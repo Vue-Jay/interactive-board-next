@@ -1,5 +1,5 @@
 import {useRef,useState,type PointerEvent} from "react";
-import {atomShells,elementByNumber,type AtomModel} from "./lektrusAtomModel";
+import {atomShells,elementByNumber,orbitalSublevels,type AtomModel} from "./lektrusAtomModel";
 import {elementFacts} from "./lektrusElementFacts";
 type Props={model:AtomModel;onLabelMove?:(x:number,y:number)=>void};
 const cx=350,cy=207;
@@ -76,20 +76,56 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
     {nucleus}
     <text x="350" y="355" textAnchor="middle" fontSize="12" fill="#7e90aa">Орбиты условные, не масштабные</text>
   </>}
-  {model.mode==="lewis"&&(()=>{
-    const valence=shells[shells.length-1]??0;
-    const dots=Math.min(8,valence);
+  {(model.mode==="orbital"||model.mode==="lewis")&&(()=>{
+    const subs=orbitalSublevels(element.number);
+    const step=Math.min(34,294/Math.max(1,subs.length-1));
+    const yBottom=350;
+    const locations=subs.map((sub,index)=>({
+      x:156+(sub.n-1)*24+({s:0,p:48,d:106,f:166,g:214}[sub.letter]),
+      y:yBottom-index*step,
+      sub
+    }));
+    const stair=locations.map(p=>(p.x-20)+","+(p.y+3)).join(" ");
     return <g>
-      <rect x="274" y="131" width="152" height="152" rx="24" fill="#f6f9ff"
-        stroke="#dce6f4" strokeWidth="1.4"/>
-      <text x={cx} y="234" textAnchor="middle" fontSize="70" fontWeight="720" fill="#3a618d">{element.symbol}</text>
-      {Array.from({length:dots},(_,j)=>{
-        const angle=-Math.PI/2+j*Math.PI/4,p=rotationPoint(98,angle);
-        return <circle key={j} cx={p.x} cy={p.y} r="5" fill="#3f81bd"/>;
-      })}
-      <text x="350" y="355" textAnchor="middle" fontSize="12" fill="#7e90aa">Электроны внешнего уровня: {valence}</text>
-      {valence>8&&<text x="350" y="371" textAnchor="middle" fontSize="10" fill="#a47d48">Для данного элемента запись Льюиса условная</text>}
-     </g>;
+      <rect x="65" y="22" width="570" height="365" rx="11"
+        fill="#fbfdff" stroke="#e6edf7"/>
+      <text x="84" y="47" fontSize="13" fontWeight="700" fill="#3c638b">
+        Орбитальная диаграмма · {element.symbol}
+      </text>
+      <text x="84" y="66" fontSize="10.5" fill="#8194ae">
+        Уровни по энергии снизу вверх · ↑↓ направления спинов
+      </text>
+      <path d="M100 366V100m-5 8l5-8 5 8" stroke="#8fa8c9" strokeWidth="1.5"
+        strokeLinecap="round" fill="none"/>
+      <text x="83" y="97" fontSize="10" textAnchor="middle" fill="#7391b4">E</text>
+      {stair&&<polyline points={stair} stroke="#cfdaeb" strokeWidth="1.2"
+        strokeDasharray="4 4" fill="none" pointerEvents="none"/>}
+      {locations.map(({x,y,sub})=><g key={sub.name}>
+        <text x={x-13} y={y+4.2} textAnchor="end" fontSize="12.5"
+          fontWeight="700" fill="#41638b">{sub.name}</text>
+        {sub.spins.map((arrows,j)=>{
+          const left=x+j*18.5;
+          return <g key={j}>
+           <rect x={left} y={y-11} width="17" height="18" rx="1"
+             fill="#fff" stroke="#8fa9cd" strokeWidth="1.05"/>
+           {arrows.map((spin,k)=><text key={k}
+             x={left+(arrows.length===1?8.5:k===0?5:12)}
+             y={y+3} textAnchor="middle" fontSize={arrows.length===1?16:12.8}
+             fontWeight="650" fill={spin==="↑"?"#2465b3":"#c16d47"}>
+             {spin}
+           </text>)}
+          </g>;
+        })}
+        <text x={x+sub.orbitals*18.5+6} y={y+3.5} fontSize="10" fill="#8196aa">
+          {sub.electrons}
+        </text>
+      </g>)}
+      <g fontSize="10" fill="#6d84a0">
+        <text x="164" y="402">Правило Хунда: сначала ↑ в разные орбитали, затем ↓.</text>
+      </g>
+      {subs.length===0&&<text x="350" y="225" textAnchor="middle"
+        fontSize="13" fill="#aa6b57">Нет достоверной конфигурации для построения</text>}
+    </g>;
   })()}
   {model.mode==="nucleus"&&<>
     <circle cx={cx} cy={cy} r="150" stroke="#b9cee7" strokeWidth="1.2" fill="none" strokeDasharray="5 6"/>

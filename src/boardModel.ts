@@ -276,7 +276,7 @@ export function parseDocument(raw: string): DocumentData {
       if(i.scienceAtomModel!=null){
         const model=i.scienceAtomModel;
         if(!model||!Number.isInteger(model.atomicNumber)||model.atomicNumber<1||model.atomicNumber>118||
-          !["shell","orbit","lewis","nucleus"].includes(model.mode)||
+          !["shell","orbit","orbital","lewis","nucleus"].includes(model.mode)||
           typeof model.showElectronConfiguration!=="boolean"||
           !Number.isFinite(model.labelX)||Math.abs(model.labelX)>235||
           !Number.isFinite(model.labelY)||model.labelY< -90||model.labelY>20)
