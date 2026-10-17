@@ -1,7 +1,7 @@
 import type {SciencePresetId} from "./lektrusSciencePresets";
 
 export type ScienceToolId =
-  "physics-mechanics"|"physics-optics"|"physics-graphs"|"physics-circuits"|"chem-molecules"|"chem-atoms";
+  "physics-mechanics"|"physics-optics"|"physics-graphs"|"physics-circuits"|"chem-molecules"|"chem-atoms"|"chem-organic"|"chem-formulas"|"chem-experiments";
 
 export type ScienceToolGroup={
   id:ScienceToolId; subject:"physics"|"chem";
