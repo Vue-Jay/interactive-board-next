@@ -95,3 +95,110 @@
   .lektrus-element-popover{width:min(100%,360px);max-height:55dvh}
   .lektrus-atom-element-list>div[role="listbox"]{height:clamp(170px,27dvh,260px)}
 }
+
+
+/* Periodic table: an editor-owned detail dock and a separate, clean board footer. */
+.lektrus-periodic-dialog .lektrus-periodic-stage{
+  position:relative;box-sizing:border-box;isolation:isolate;
+  overflow:hidden;justify-content:center;gap:8px;
+}
+.lektrus-periodic-dialog .lektrus-periodic-stage.is-school{
+  --lektrus-periodic-dock:210px;
+  padding:8px;align-items:center;
+}
+.lektrus-periodic-dialog .lektrus-periodic-stage.is-school>.lektrus-periodic-svg{
+  flex:0 1 calc(100% - var(--lektrus-periodic-dock) - 8px)!important;
+  width:calc(100% - var(--lektrus-periodic-dock) - 8px)!important;
+  max-width:calc(100% - var(--lektrus-periodic-dock) - 8px)!important;
+  min-width:0!important;object-fit:contain;
+}
+.lektrus-periodic-info-dock{box-sizing:border-box;min-width:0}
+.lektrus-periodic-stage.is-school .lektrus-periodic-info-dock{
+  flex:0 0 var(--lektrus-periodic-dock);width:var(--lektrus-periodic-dock);
+  max-height:100%;overflow-y:auto;overscroll-behavior:contain;
+  display:flex;flex-direction:column;gap:9px;align-self:flex-start;
+  padding:2px 2px 5px;
+}
+.lektrus-periodic-info-hint{
+  display:block;padding:12px 10px;border:1px dashed #cfdaee;
+  background:#f7faff;border-radius:9px;color:#8398b4;
+  font-size:11px;line-height:1.5;
+}
+.lektrus-periodic-stage.is-modern .lektrus-periodic-info-dock{
+  position:absolute;top:5.5%;left:21%;width:47%;
+  display:flex;gap:9px;align-items:flex-start;overflow-x:auto;
+  scrollbar-width:thin;padding:3px;max-height:39%;min-width:0;
+}
+.lektrus-periodic-stage.is-modern .lektrus-floating-element-card{
+  flex:0 0 min(220px,100%);max-width:220px;
+}
+.lektrus-periodic-stage .lektrus-floating-element-card{
+  box-shadow:0 4px 13px #17375b12!important;
+  border-radius:9px!important;line-height:1.3;
+}
+.lektrus-periodic-stage .lektrus-floating-element-card button{
+  min-height:24px;
+}
+.lektrus-periodic-preview-actions{
+  display:flex;justify-content:flex-end;flex:0 0 auto;
+  padding:0 3px;
+}
+.lektrus-periodic-preview-actions>button{
+  min-height:27px;padding:3px 9px;border-radius:7px;
+  border:1px solid #d6e2f1;background:#fff;
+  color:#4d6689;cursor:pointer;font-size:10px;font-weight:650;
+}
+.lektrus-periodic-preview-actions>button>span{
+  color:#8a9bb1;margin-left:5px;
+}
+.lektrus-periodic-preview-actions>button.active{
+  background:#eaf2ff;border-color:#a8c2ec;color:#315faf;
+}
+.lektrus-periodic-preview-actions>button.active>span{color:#315faf}
+.graph-view.lektrus-periodic-board-view .lektrus-periodic-board{
+  display:flex;flex-direction:column;position:relative;
+  min-width:0;min-height:0;width:100%;height:100%;
+}
+.graph-view.lektrus-periodic-board-view .lektrus-periodic-board>.lektrus-periodic-svg{
+  height:calc(100% - 36px)!important;
+  max-height:calc(100% - 36px)!important;
+  width:100%!important;flex:1 1 auto!important;min-height:0;
+}
+.lektrus-periodic-board-footer{
+  box-sizing:border-box;flex:0 0 36px;height:36px;min-width:0;
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;
+  padding:3px 14px;border-top:1px solid #e1e8f4;
+  background:#f9fbff;color:#395371;
+  user-select:none;
+}
+.lektrus-periodic-board-tabs{
+  display:inline-flex;align-items:stretch;gap:0;padding:2px;
+  border:1px solid #d2deee;border-radius:8px;background:#f0f5fc;
+}
+.lektrus-periodic-board-tabs button{
+  padding:4px 10px;border:0;background:transparent;
+  border-radius:6px;font-size:11px;line-height:1.35;
+  font-weight:630;color:#667d9b;cursor:pointer;white-space:nowrap;
+}
+.lektrus-periodic-board-tabs button[aria-pressed="true"]{
+  color:#225bb5;background:white;box-shadow:0 1px 3px #264b7a22;
+}
+.lektrus-periodic-board-tabs button:disabled{opacity:.5;cursor:default}
+.lektrus-periodic-multi-toggle{
+  border:1px solid #d2deee;background:#fff;border-radius:7px;
+  padding:5px 9px;font-size:11px;line-height:1.3;color:#536d8e;
+  font-weight:650;cursor:pointer;white-space:nowrap;
+}
+.lektrus-periodic-multi-toggle span{font-size:10px;color:#8498b1;margin-left:4px}
+.lektrus-periodic-multi-toggle[aria-pressed="true"]{
+  border-color:#9cbaed;background:#eaf2ff;color:#245bb7;
+}
+.lektrus-periodic-multi-toggle[aria-pressed="true"] span{color:#245bb7}
+@media(max-width:900px){
+  .lektrus-periodic-dialog .lektrus-periodic-stage.is-school{
+    --lektrus-periodic-dock:172px;
+  }
+  .lektrus-periodic-board-footer{padding:3px 6px;gap:4px}
+  .lektrus-periodic-board-tabs button{padding:4px 6px;font-size:10px}
+  .lektrus-periodic-multi-toggle{padding:5px 6px;font-size:10px}
+}
