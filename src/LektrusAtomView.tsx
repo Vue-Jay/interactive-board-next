@@ -103,7 +103,8 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactI
     </g>;
    })}
    {nucleus}
-   {svgText("Оболочки: "+shells.join(" · ")+" e⁻",28,13)}
+   <text x="13" y="22" textAnchor="start" fontSize={12*labelScale}
+      fill="#456a95">Оболочки: {shells.join(" · ")} e⁻</text>
   </>:model.mode==="orbit"?<>
    <g transform={`translate(${cx} ${cy})`} stroke="#a4bfe2" strokeWidth="1.7" fill="none">
     <ellipse rx="162" ry="65" transform="rotate(-32)"/>
