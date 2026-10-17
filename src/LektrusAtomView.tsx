@@ -6,7 +6,6 @@ type Props={model:AtomModel;onLabelMove?:(x:number,y:number)=>void;labelScale?:n
 const cx=250,cy=230;
 const shellRadius=(index:number)=>45+index*27;
 const sublevelX=(n:number,letter:string)=>118+(n-1)*10+({s:0,p:28,d:53,f:76,g:92}[letter]??0);
-const superscripts=(s:string)=>s.replace(/\d+/g,m=>m);
 
 export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactInPanel=false}:Props){
  const element=elementByNumber(model.atomicNumber);
