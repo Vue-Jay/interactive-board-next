@@ -26,7 +26,7 @@ export default function LektrusPeriodicTableView({
     {Array.from({length:7},(_,i)=><text key={"period"+i} className="lektrus-periodic-index"
       x="25" y={baseY+i*step+31} textAnchor="middle">{i+1}</text>)}
     <text className="lektrus-periodic-lanthanoid-label" x="52" y="474">Лантаноиды</text>
-    <text className="lektrus-periodic-lanthanoid-label" x="470" y="474">Актиноиды</text>
+    <text className="lektrus-periodic-lanthanoid-label" x="52" y="538">Актиноиды</text>
     {[{period:6,label:"57–71"},{period:7,label:"89–103"}].map(item=>{
       const x=baseX+2*step,y=baseY+(item.period-1)*step;
       return <g key={item.period} opacity=".62">
