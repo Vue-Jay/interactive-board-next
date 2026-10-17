@@ -59,7 +59,7 @@
 .lektrus-molecule-elements>button small{font-size:10px;color:#90a5ae}
 .lektrus-molecule-picker>small{font-size:10px;color:#81969b;line-height:1.45}
 .lektrus-science-backdrop.chemistry .lektrus-science-preview svg{
-  cursor:crosshair;
+  cursor:default;
 }
 .lektrus-science-backdrop.physics .lektrus-science-preview .lektrus-science-node.selected circle{
   r:3.8;
@@ -76,3 +76,12 @@
   .lektrus-science-preview{flex:0 0 auto;overflow:visible!important}
   .lektrus-science-preview svg{min-height:230px!important}
 }
+
+/* The drawing itself uses the standard pointer; draggable handles advertise the hand. */
+.lektrus-science-preview svg,
+.lektrus-science-preview svg :not(.lektrus-science-point-hit):not(.lektrus-science-label-handle){cursor:default}
+.lektrus-science-preview svg .lektrus-science-point-hit,
+.lektrus-science-preview svg .lektrus-science-label-handle,
+.lektrus-science-preview svg .lektrus-science-label-handle *{cursor:grab!important}
+.lektrus-science-preview svg .lektrus-science-point-hit:active,
+.lektrus-science-preview svg .lektrus-science-label-handle:active{cursor:grabbing!important}
