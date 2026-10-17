@@ -26,7 +26,7 @@ export default function LektrusPeriodicTableView({
     {Array.from({length:7},(_,i)=><text key={"period"+i} className="lektrus-periodic-index"
       x="25" y={baseY+i*step+31} textAnchor="middle">{i+1}</text>)}
     <text className="lektrus-periodic-lanthanoid-label" x="52" y="474">Лантаноиды</text>
-    <text className="lektrus-periodic-lanthanoid-label" x="52" y="538">Актиноиды</text>
+    <text className="lektrus-periodic-lanthanoid-label" x="52" y="549">Актиноиды</text>
     {[{period:6,label:"57–71"},{period:7,label:"89–103"}].map(item=>{
       const x=baseX+2*step,y=baseY+(item.period-1)*step;
       return <g key={item.period} opacity=".62">
@@ -36,7 +36,7 @@ export default function LektrusPeriodicTableView({
     })}
     {periodicElements.map(el=>{
       const left=baseX+(el.col-1)*step;
-      const top=el.row<=7?baseY+(el.row-1)*step:el.row===9?487:542;
+      const top=el.row<=7?baseY+(el.row-1)*step:el.row===9?487:557;
       const isSelected=highlighted.has(el.number);
       const isFocused=active===el.number;
       const muted=familyFilter!=="all"&&el.family!==familyFilter;
