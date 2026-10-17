@@ -1280,7 +1280,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
           </g>;
         })()}
         {Array.from(item.graphPolygons??[],(poly,i)=>{const pts=poly.points.map(point).filter((p):p is NonNullable<typeof p>=>!!p);if(pts.length<3)return null;const center={x:pts.reduce((v,p)=>v+p.x,0)/pts.length,y:pts.reduce((v,p)=>v+p.y,0)/pts.length};return <g key={`polygon-${i}`}><polygon points={pts.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")} className="graph-polygon"/>{poly.label&&<text className="graph-figure-label" x={sx(center.x)} y={sy(center.y)} textAnchor="middle">{poly.label}</text>}</g>})}
-        {(item.graphCircles??[]).map((circle,i)=>{const center=point(circle.center),edge=point(circle.edge);if(!center||!edge)return null;const radius=distance(center,edge);const given=(item.graphGivenSides??[])[i]?.trim();const isSphere=item.graphFigureId==="sphere";return <g key={`circle-${i}`}><circle className="graph-circle" cx={sx(center.x)} cy={sy(center.y)} r={radius*scale}/>{isSphere&&(["equator","meridian"] as const).map(ring=>{
+        {(item.graphCircles??[]).map((circle,i)=>{const center=point(circle.center),edge=point(circle.edge);if(!center||!edge)return null;const radius=distance(center,edge);const given=(circle.label.match(/^r\s*=\s*(.+)$/i)?.[1]??(item.graphGivenSides??[])[i])?.trim();const isSphere=item.graphFigureId==="sphere";return <g key={`circle-${i}`}><circle className="graph-circle" cx={sx(center.x)} cy={sy(center.y)} r={radius*scale}/>{isSphere&&(["equator","meridian"] as const).map(ring=>{
               const points=Array.from({length:65},(_,j)=>{
                 const t=2*Math.PI*j/64;
                 const x=ring==="equator"?radius*Math.cos(t):radius*Math.cos(t);
