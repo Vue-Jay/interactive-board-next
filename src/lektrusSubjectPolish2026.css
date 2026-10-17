@@ -356,3 +356,14 @@
    grid-template-columns:minmax(0,48%) minmax(0,52%)!important;
  }
 }
+
+/* Override older modern-table flex-basis, which incorrectly made each sheet 220px tall. */
+.lektrus-periodic-dialog .lektrus-periodic-stage.has-info .lektrus-periodic-info-dock>.lektrus-floating-element-card,
+.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info .lektrus-periodic-board-dock>.lektrus-floating-element-card{
+  flex:0 0 auto!important;
+  width:100%!important;max-width:100%!important;
+  min-width:0!important;
+}
+.lektrus-periodic-dialog .lektrus-periodic-stage.has-info .lektrus-periodic-info-dock{
+  align-items:stretch!important;
+}
