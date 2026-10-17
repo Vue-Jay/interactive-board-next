@@ -113,7 +113,7 @@ export function buildSchoolConstruction(original:GraphDraft,request:SchoolBuildR
   const verts=polygon?.points.map(i=>points[i]);
   const baseCircle=circles.find(c=>points[c.center]&&points[c.edge]);
 
-  if(["incircle","circumcircle","incenter","circumcenter","centroid","diagonals","trapezoid-midline","triangle-midline"].includes(request.kind)){
+  if(["incircle","circumcircle","incenter","circumcenter","centroid","diagonals","trapezoid-midline","triangle-midline","orthocenter","triangle-altitudes","triangle-medians","triangle-bisectors"].includes(request.kind)){
     if(!polygon||!verts||verts.some(v=>!v))return fail("Сначала выберите многоугольник.");
     const ids=polygon.points,n=ids.length;
     if(request.kind==="incircle"||request.kind==="circumcircle"||request.kind==="incenter"||request.kind==="circumcenter"){
@@ -126,6 +126,42 @@ export function buildSchoolConstruction(original:GraphDraft,request:SchoolBuildR
       if(!reserve(centerOnly?1:2,0,centerOnly?0:1))return fail("Превышен предел опорных точек построения.");
       if(centerOnly)point(result.center.x,result.center.y,inscribed?"I":"O");
       else circle(result.center.x,result.center.y,result.radius);
+    }else if(["orthocenter","triangle-altitudes","triangle-medians","triangle-bisectors"].includes(request.kind)){
+      if(n!==3)return fail("Построение высот, медиан и биссектрис доступно для треугольника.");
+      const [a,b,c]=verts;
+      const d=diff(b,c),den=d.x*d.x+d.y*d.y;
+      if(den<tiny)return fail("Сторона треугольника должна иметь положительную длину.");
+      const projection=(p:Pt,q:Pt,r:Pt)=>{
+        const v=diff(q,r),sum=v.x*v.x+v.y*v.y;
+        if(sum<tiny)return null;
+        const t=((p.x-q.x)*v.x+(p.y-q.y)*v.y)/sum;
+        return {x:q.x+t*v.x,y:q.y+t*v.y};
+      };
+      const altitudeA=projection(a,b,c),altitudeB=projection(b,a,c);
+      if(!altitudeA||!altitudeB)return fail("Вершины треугольника не должны совпадать.");
+      if(request.kind==="orthocenter"){
+        const u=diff(a,altitudeA as Pt),v=diff(b,altitudeB as Pt),denominator=cross(u,v);
+        if(Math.abs(denominator)<tiny)return fail("Невозможно построить ортоцентр вырожденного треугольника.");
+        const offset=diff(a,b),t=cross(offset,v)/denominator;
+        if(!reserve(1))return fail("Превышен предел точек.");
+        point(a.x+t*u.x,a.y+t*u.y,"H");
+      }else{
+        if(!reserve(3,3))return fail("Превышен предел точек или линий.");
+        for(let i=0;i<3;i++){
+          const origin=verts[i],left=verts[(i+1)%3],right=verts[(i+2)%3];
+          let target:{x:number;y:number}|null=null;
+          if(request.kind==="triangle-altitudes")target=projection(origin,left,right);
+          else if(request.kind==="triangle-medians")target=midpoint(left,right);
+          else{
+            const leftLength=hypot(origin,left),rightLength=hypot(origin,right);
+            if(leftLength+rightLength<tiny)return fail("Не удаётся провести биссектрису.");
+            target={x:(rightLength*left.x+leftLength*right.x)/(leftLength+rightLength),
+              y:(rightLength*left.y+leftLength*right.y)/(leftLength+rightLength)};
+          }
+          if(!target)return fail("Невозможно построить линию вырожденного треугольника.");
+          segment(ids[i],point(target.x,target.y,request.kind==="triangle-altitudes"?"H":request.kind==="triangle-medians"?"M":"K"));
+        }
+      }
     }else if(request.kind==="centroid"){
       if(n!==3)return fail("Точка пересечения медиан строится в треугольнике.");
       if(!reserve(1))return fail("Превышен предел точек.");
