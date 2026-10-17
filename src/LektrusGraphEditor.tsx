@@ -2,6 +2,7 @@ import {useEffect, useState, type ReactNode} from "react";
 import type {Item} from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
 import {removeConstruction,type ConstructionKind} from "./lektrusConstructionCleanup";
+import {isStructuralSolidSegment} from "./lektrusSolid3d";
 import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "./lektrusMathPresets";
 
 export type GraphDraft = {
@@ -466,6 +467,25 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               }}>Применить размеры</button>
               {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
             </div>}
+            {isSolid&&!roundSolid&&draft.figureId!=="sphere"&&draft.segments.some(seg=>isStructuralSolidSegment(draft.figureId,seg))&&
+              <div className="lektrus-geometry-givens lektrus-solid-edge-dimensions">
+                <strong>Размеры рёбер</strong>
+                <small>Впишите значение рядом с обозначением ребра. Оно сразу появится у ребра на чертеже и сохранится вместе с фигурой. Дополнительные элементы остаются в соседней вкладке.</small>
+                <div className="lektrus-solid-edge-grid">
+                  {draft.segments.map((segment,i)=>{
+                    if(!isStructuralSolidSegment(draft.figureId,segment))return null;
+                    const first=draft.points[segment.a]?.label||String.fromCharCode(65+segment.a%26);
+                    const second=draft.points[segment.b]?.label||String.fromCharCode(65+segment.b%26);
+                    const edgeName=first+second;
+                    return <label key={i} className="lektrus-school-element-row lektrus-solid-edge-row">
+                      <strong title={"Ребро "+edgeName}>{edgeName}</strong>
+                      <input inputMode="decimal" maxLength={32} placeholder="Длина"
+                        aria-label={"Размер ребра "+edgeName} value={segment.label}
+                        onChange={event=>patch({segments:draft.segments.map((value,j)=>j===i?{...value,label:event.target.value}:value)})}/>
+                    </label>;
+                  })}
+                </div>
+              </div>}
             {isSolid&&!roundSolid&&draft.figureId!=="sphere"&&<div className="lektrus-geometry-givens">
               <strong>{draft.figureId==="cube"?"Ребро куба":"Длина, ширина и высота"}</strong>
               <small>Задайте пропорции объёмной фигуры; готовые формулы и ответы не выводятся.</small>
@@ -604,7 +624,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             <label className="lektrus-graph-check"><input type="checkbox" checked={draft.projections} onChange={e=>patch({projections:e.target.checked})}/> Строить проекции точек на оси</label>
           </div>}
           {mode==="geometry"&&tab==="geometry"&&<div className="lektrus-graph-section">
-            <strong>Дополнительные элементы</strong><small>Добавьте окружности, отрезки, углы и вспомогательные линии. Для ввода сторон и углов используйте вкладку «Стороны и углы».</small>
+            <strong>Дополнительные элементы</strong><small>Добавьте вспомогательные фигуры и линии. Длины рёбер и углы задаются во вкладке «Размеры».</small>
             {draft.figureId==="parallel"&&<div className="lektrus-graph-construction lektrus-parallel-construction">
               <strong>Параллельные прямые и секущая</strong>
               <small>Здесь можно показать признаки и свойства параллельных прямых: соответственные, накрест лежащие, односторонние, вертикальные и смежные углы. Числовые ответы не рассчитываются.</small>
@@ -752,6 +772,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               </div>;
             })}
             {draft.segments.map((segment,i)=>{
+              if(isSolid&&isStructuralSolidSegment(draft.figureId,segment))return null;
               const pointA=draft.points[segment.a],pointB=draft.points[segment.b];
               const label=(pointA?.label||String.fromCharCode(65+segment.a%26))+(pointB?.label||String.fromCharCode(65+segment.b%26));
               return <div className="lektrus-graph-construction lektrus-school-element" key={"segment"+i}>
