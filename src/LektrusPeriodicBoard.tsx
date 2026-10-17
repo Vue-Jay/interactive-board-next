@@ -1,9 +1,10 @@
-import {useRef,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import LektrusPeriodicFloatingInfo from "./LektrusPeriodicFloatingInfo";
 import LektrusPeriodicTableView from "./LektrusPeriodicTableView";
-type Props={selected:number[];showNames:boolean;layout?:"school"|"long";onChange?:(numbers:number[])=>void;onLayoutChange?:(layout:"school"|"long")=>void};
-export default function LektrusPeriodicBoard({selected,showNames,layout="school",onChange,onLayoutChange}:Props){
+type Props={selected:number[];showNames:boolean;layout?:"school"|"long";onChange?:(numbers:number[])=>void;onLayoutChange?:(layout:"school"|"long")=>void;suspended?:boolean};
+export default function LektrusPeriodicBoard({selected,showNames,layout="school",onChange,onLayoutChange,suspended=false}:Props){
  const [opened,setOpened]=useState<number[]>([]);
+ useEffect(()=>{if(suspended)setOpened([])},[suspended]);
  const [multi,setMulti]=useState(false);
  const anchor=useRef<HTMLDivElement>(null);
  const pick=(number:number,event?:{ctrlKey:boolean;shiftKey:boolean})=>{
@@ -24,7 +25,7 @@ export default function LektrusPeriodicBoard({selected,showNames,layout="school"
    <button type="button" aria-pressed={layout==="long"} onClick={()=>onLayoutChange?.("long")}>Современная</button>
    <button type="button" aria-pressed={multi} onClick={()=>setMulti(v=>!v)} title="На сенсорном устройстве позволяет открыть несколько карточек">Несколько окон: {multi?"вкл":"выкл"}</button>
   </div>
-  {opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i} layout={layout} anchor={anchor.current}
+  {!suspended&&opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i} layout={layout} anchor={anchor.current}
    selected={selected.includes(number)} onClose={()=>setOpened(v=>v.filter(n=>n!==number))}
    onToggle={onChange?()=>toggle(number):undefined}/>)}
  </div>;
