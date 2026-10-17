@@ -13,20 +13,19 @@ export default function LektrusPeriodicTableView({
 }:Props){
  const marked=new Set(selected);
  const school=layout==="school";
- const groupOf=(col:number)=>col<=2?col:col<=12?(col<=7?col:col<=10?8:col-10):col-10;
- const schoolColumn=(col:number)=>col<=2?col-1:col>=13?col-11:col<=7?col-1:col<=10?7:col-11;
- const schoolRow=(el:(typeof periodicElements)[number])=>el.row>=9?el.row===9?10:11:el.period<=3?el.period-1:el.period===4?3:el.period===5?5:el.period===6?7:9;
- return <svg className="lektrus-periodic-svg" viewBox={school?"0 0 650 830":"0 0 1080 601"}
+ const schoolColumn=(col:number)=>col<=2?col-1:col>=13?col-11:col<=7?col-1:col<=10?col-1:col-11;
+ const schoolRow=(el:(typeof periodicElements)[number])=>el.period<=3?el.period-1:3+(el.period-4)*2;
+ return <svg className="lektrus-periodic-svg" viewBox={school?"0 0 650 820":"0 0 1080 601"}
    preserveAspectRatio="xMidYMid meet" role="img"
    aria-label="Интерактивная периодическая таблица 118 химических элементов">
-  <rect x="0" y="0" width={school?650:1080} height={school?830:601} rx="10" fill="#f9fbff"/>
+  <rect x="0" y="0" width={school?650:1080} height={school?820:601} rx="10" fill="#f9fbff"/>
   <text x={bx} y="30" className="lektrus-periodic-heading">Периодическая система химических элементов</text>
   {Array.from({length:school?8:18},(_,i)=><text key={i} className="lektrus-periodic-index"
     x={bx+i*step+cell/2} y={55} textAnchor="middle">{school?["I","II","III","IV","V","VI","VII","VIII"][i]:i+1}</text>)}
   {Array.from({length:7},(_,i)=><text key={i} className="lektrus-periodic-index"
-    x="23" y={school?by+(i<=2?i:i*2-3)*step+28:by+i*step+28} textAnchor="middle">{i+1}</text>)}
-  <text x="45" y={school?690:470} className="lektrus-periodic-lanthanoid-label">Лантаноиды</text>
-  <text x="45" y={school?745:527} className="lektrus-periodic-lanthanoid-label">Актиноиды</text>
+    x="23" y={school?by+(i<=2?i:3+(i-3)*2)*step+28:by+i*step+28} textAnchor="middle">{i+1}</text>)}
+  <text x="45" y={school?657:470} className="lektrus-periodic-lanthanoid-label">Лантаноиды</text>
+  <text x="45" y={school?711:527} className="lektrus-periodic-lanthanoid-label">Актиноиды</text>
   {!school&&[{period:6,label:"57–71"},{period:7,label:"89–103"}].map(v=>{
     const x=bx+2*step,y=by+(v.period-1)*step;
     return <g key={v.period} opacity=".7">
@@ -36,8 +35,8 @@ export default function LektrusPeriodicTableView({
   })}
   {periodicElements.map(el=>{
     const subgroupB=school&&el.col>=3&&el.col<=12&&el.row<=7;
-    const x=school?(el.row>=9?bx+(el.col-3)*30:bx+schoolColumn(el.col)*72+(subgroupB?0:0)):bx+(el.col-1)*step;
-    const y=school?(el.row>=9?(el.row===9?704:759):by+(schoolRow(el)+(subgroupB?1:0))*step):el.row<=7?by+(el.row-1)*step:el.row===9?480:535;
+    const x=school?(el.row>=9?bx+(el.col-3)*30:bx+schoolColumn(el.col)*54):bx+(el.col-1)*step;
+    const y=school?(el.row>=9?(el.row===9?662:716):by+(schoolRow(el)+(subgroupB?1:0))*step):el.row<=7?by+(el.row-1)*step:el.row===9?480:535;
     const chosen=marked.has(el.number),focused=el.number===active;
     const dim=familyFilter!=="all"&&familyFilter!==el.family&&!chosen;
     const compactMass=mass(el.number);
@@ -55,17 +54,17 @@ export default function LektrusPeriodicTableView({
         stroke={chosen?"#2d60c8":focused?"#5b82b9":"#c5d4e7"}
         strokeWidth={chosen?2.4:focused?1.75:.8} fill={colors[el.family]}/>
       <text x={x+4} y={y+9.5} fontSize="8.5" fontWeight="750" fill="#415d80">{el.number}</text>
-      <text x={x+cell/2} y={y+27} fontSize="19" textAnchor="middle"
+      <text x={x+cell/2} y={y+27} fontSize={school&&el.row>=9?12:19} textAnchor="middle"
         fontWeight="730" fill="#1d3558">{el.symbol}</text>
-      {showNames&&<text x={x+cell/2} y={y+37.1} fontSize="7.5"
+      {showNames&&!(school&&el.row>=9)&&<text x={x+cell/2} y={y+37.1} fontSize="7.5"
         textAnchor="middle" textLength={Math.min(44,Math.max(15,el.name.length*4.1))}
         lengthAdjust="spacingAndGlyphs" fill="#4c6483">{el.name}</text>}
-      <text x={x+cell/2} y={y+46} fontSize="7.5" fontWeight="650" textAnchor="middle"
+      {!(school&&el.row>=9)&&<text x={x+cell/2} y={y+46} fontSize="7.5" fontWeight="650" textAnchor="middle"
         textLength={Math.min(41,Math.max(14,readableMass.length*4))}
-        lengthAdjust="spacingAndGlyphs" fill="#54708d">{readableMass}</text>
+        lengthAdjust="spacingAndGlyphs" fill="#54708d">{readableMass}</text>}
       {chosen&&<circle cx={x+44} cy={y+5} r="3" fill="#2d60c8"/>}
     </g>;
   })}
-  <text x="47" y={school?823:597} fontSize="10" fill="#8a9bb0">Z · символ · название · относительная атомная масса</text>
+  <text x="47" y={school?811:597} fontSize="10" fill="#8a9bb0">Z · символ · название · относительная атомная масса</text>
  </svg>;
 }
