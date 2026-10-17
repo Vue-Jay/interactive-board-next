@@ -150,13 +150,13 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
       Электроны: {element.number} · нуклоны изображены условно
     </text>
   </>}
-  {selectedLabel&&onLabelMove&&<>
+  {!orbital&&selectedLabel&&onLabelMove&&<>
     <path d={"M"+cx+" "+(cy+Math.min(ringMax,120))+" L"+labelX+" "+(labelY-22)}
       stroke="#83a6d5" strokeDasharray="4 4" strokeWidth="1.2" fill="none" pointerEvents="none"/>
     <rect x={labelX-130} y={labelY-21} width="260" height={model.showElectronConfiguration?42:24}
       rx="6" fill="none" stroke="#5a87cb" strokeWidth="1.1" strokeDasharray="4 3" pointerEvents="none"/>
   </>}
-  <g onPointerDown={begin} onClick={e=>{e.stopPropagation();setSelectedLabel(true)}}
+  {!orbital&&<g onPointerDown={begin} onClick={e=>{e.stopPropagation();setSelectedLabel(true)}}
     style={{cursor:onLabelMove?"grab":"default"}}>
     <rect x={labelX-132} y={labelY-22} width="264" height={model.showElectronConfiguration?43:26}
       rx="5" fill="transparent"/>
@@ -166,6 +166,6 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
       fontSize="10.5" fill="#7890ab" pointerEvents="none">
       {config.length>65?config.slice(0,62)+"…":config}
     </text>}
-  </g>
+  </g>}
  </svg>;
 }
