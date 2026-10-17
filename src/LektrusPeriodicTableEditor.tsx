@@ -2,7 +2,7 @@ import {useRef,useState} from "react";
 import LektrusPeriodicFloatingInfo from "./LektrusPeriodicFloatingInfo";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
-import {periodicElements,periodicFamilies,type ElementFamily} from "./lektrusPeriodicElements";
+import {periodicElements,type ElementFamily} from "./lektrusPeriodicElements";
 import LektrusPeriodicTableView from "./LektrusPeriodicTableView";
 
 type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void};
@@ -112,9 +112,6 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
               <button className={multi?"active":""} type="button" aria-pressed={multi} onClick={()=>setMulti(v=>!v)}>
                 Несколько окон <span>{multi?"Включено":"Выключено"}</span>
               </button>
-            </div>
-            <div className="lektrus-periodic-legend">
-              {periodicFamilies.map(group=><span key={group.id}><i style={{background:group.color}}/>{group.name}</span>)}
             </div>
           </div>
         </div>
