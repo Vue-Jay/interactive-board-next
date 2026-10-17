@@ -241,5 +241,30 @@ export function buildSchoolConstruction(original:GraphDraft,request:SchoolBuildR
       segment(baseCircle.center,m);
     }else return fail("Построение пока недоступно.");
   }
-  return {draft:{...original,points,segments,polygons,circles,angles,midpoints}};
+  const names:Record<SchoolConstruction,string>={
+    incircle:"Вписанная окружность",circumcircle:"Описанная окружность",
+    incenter:"Центр вписанной окружности",circumcenter:"Центр описанной окружности",
+    centroid:"Центр тяжести",orthocenter:"Ортоцентр",
+    diagonals:"Диагонали", "trapezoid-midline":"Средняя линия трапеции",
+    "triangle-midline":"Средняя линия треугольника",
+    "triangle-medians":"Три медианы", "triangle-altitudes":"Три высоты",
+    "triangle-bisectors":"Три биссектрисы",radius:"Радиус",diameter:"Диаметр",
+    chord:"Хорда",tangent:"Касательная",secant:"Секущая",
+    "two-tangents":"Две касательные","central-angle":"Центральный угол",
+    "inscribed-angle":"Вписанный угол","circumference-midpoint":"Точка на окружности",
+    "inscribed-polygon":"Вписанный многоугольник",
+    "circumscribed-polygon":"Описанный многоугольник"
+  };
+  const schoolGroupId=`school-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`;
+  const schoolGroupLabel=names[request.kind]+(request.sides&&request.kind.includes("polygon")?` (${request.sides} сторон)`:"");
+  const mark=<T extends {schoolGroupId?:string;schoolGroupLabel?:string}>(list:T[],count:number):T[] =>
+    list.map((value,index)=>index<count?value:{...value,schoolGroupId,schoolGroupLabel});
+  return {draft:{...original,
+    points:mark(points,original.points.length),
+    segments:mark(segments,original.segments.length),
+    polygons:mark(polygons,original.polygons.length),
+    circles:mark(circles,original.circles.length),
+    angles:mark(angles,original.angles.length),
+    midpoints:mark(midpoints,original.midpoints.length)
+  }};
 }
