@@ -12,7 +12,7 @@
     max-width:calc(54vw - 12px)!important;
   }
   html body .topbar .board-home-button {
-    margin-left:0!important;
+    margin-left:18px!important;
   }
   body .workspace .board-controls {
     display:flex!important;
@@ -61,7 +61,7 @@
 /* Landscape mobile: toolbar starts below header and moves toward the safe left edge. */
 @media screen and (max-width:1100px) and (orientation:landscape) {
   body .workspace nav.mobile-board-tools {
-    left:max(3px,env(safe-area-inset-left,0px))!important;
+    left:calc(26px + env(safe-area-inset-left,0px))!important;
     top:calc(72px + env(safe-area-inset-top,0px))!important;
     max-height:calc(100dvh - 88px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
   }
