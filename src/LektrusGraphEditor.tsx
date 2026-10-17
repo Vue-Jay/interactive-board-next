@@ -1,6 +1,7 @@
 import {useEffect, useState, type ReactNode} from "react";
 import type {Item} from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
+import {removeConstruction,type ConstructionKind} from "./lektrusConstructionCleanup";
 import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "./lektrusMathPresets";
 
 export type GraphDraft = {
@@ -90,6 +91,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     return ()=>document.removeEventListener("keydown",key,true);
   },[onClose,onSave]);
   const patch=(next:Partial<GraphDraft>)=>onChange({...draft,...next});
+  const deleteConstruction=(kind:ConstructionKind,index:number)=>onChange(removeConstruction(draft,kind,index));
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
     setGeometryError("");
@@ -127,7 +129,6 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   };
   const editPoint=(i:number,change:Partial<GraphDraft["points"][number]>)=>
     patch({points:draft.points.map((p,j)=>j===i?{...p,...change}:p)});
-  const pointOptions=(exclude=-1)=>draft.points.map((p,i)=>i===exclude?null:<option key={i} value={i}>{p.label||`Точка ${i+1}`} ({p.x}; {p.y})</option>);
   const addPoint=()=>{
     if(draft.points.length>=40||draft.purpose==="unit-circle")return;
     const label=draft.purpose==="geometry"?String.fromCharCode(65+(draft.points.length%26)):"";
@@ -716,36 +717,74 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                   onChange={e=>patch({triangleLines:e.target.checked?[...draft.triangleLines,option.id]:draft.triangleLines.filter(v=>v!==option.id)})}/>{option.label} из выбранной вершины</label>)}
             </div>}
 
-            {draft.circles.map((c,i)=><div className="lektrus-graph-construction" key={"circle"+i}>
-              <div className="lektrus-graph-section-head"><strong>Окружность {i+1}</strong><button type="button" onClick={()=>patch({circles:draft.circles.filter((_,j)=>j!==i)})}>Удалить</button></div>
-              <label>Центр<select value={c.center} onChange={e=>patch({circles:draft.circles.map((v,j)=>j===i?{...v,center:Number(e.target.value)}:v)})}>{pointOptions()}</select></label>
-              <label>Точка на окружности<select value={c.edge} onChange={e=>patch({circles:draft.circles.map((v,j)=>j===i?{...v,edge:Number(e.target.value)}:v)})}>{pointOptions()}</select></label>
-              <input aria-label="Подпись окружности" placeholder="Подпись" value={c.label} onChange={e=>patch({circles:draft.circles.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/>
+            {draft.circles.map((c,i)=>{
+              const center=draft.points[c.center],edge=draft.points[c.edge];
+              const radius=c.label.match(/^r\s*=\s*(.*)$/i)?.[1]??draft.givenSides[i]??"";
+              return <div className="lektrus-graph-construction lektrus-school-element" key={"circle"+i}>
+                <div className="lektrus-school-element-row">
+                  <strong title="Радиус окружности">r{i>0?String(i+1):""}</strong>
+                  <input aria-label={"Радиус окружности "+(i+1)} placeholder="Радиус"
+                    value={radius} maxLength={32}
+                    onChange={e=>{
+                      const value=e.target.value;
+                      const numeric=Number(value.replace(",","."));
+                      const points=draft.points.map(p=>({...p}));
+                      if(center&&edge&&value.trim()!==""&&Number.isFinite(numeric)&&numeric>0){
+                        const angle=Math.atan2(edge.y-center.y,edge.x-center.x);
+                        points[c.edge]={...edge,x:center.x+numeric*Math.cos(angle),y:center.y+numeric*Math.sin(angle)};
+                      }
+                      patch({circles:draft.circles.map((circle,j)=>j===i?{...circle,label:value?"r = "+value:""}:circle),points});
+                    }}/>
+                  <button type="button" className="lektrus-school-element-delete" aria-label={"Удалить окружность "+(i+1)} onClick={()=>deleteConstruction("circle",i)}>Удалить</button>
+                </div>
+              </div>;
+            })}
+            {draft.polygons.map((polygon,i)=>{
+              const label=polygon.points.map(index=>draft.points[index]?.label||"").join("")||"Фигура";
+              return <div className="lektrus-graph-construction lektrus-school-element" key={"polygon"+i}>
+                <div className="lektrus-school-element-row">
+                  <strong title="Вершины фигуры">{label}</strong>
+                  <input aria-label={"Название фигуры "+label} placeholder="Подпись фигуры (необязательно)" maxLength={40}
+                    value={polygon.label} onChange={e=>patch({polygons:draft.polygons.map((p,j)=>j===i?{...p,label:e.target.value}:p)})}/>
+                  <button type="button" className="lektrus-school-element-delete" aria-label={"Удалить фигуру "+label} onClick={()=>deleteConstruction("polygon",i)}>Удалить</button>
+                </div>
+                <small>Длины сторон и углы можно указать во вкладке «Размеры».</small>
+              </div>;
+            })}
+            {draft.segments.map((segment,i)=>{
+              const pointA=draft.points[segment.a],pointB=draft.points[segment.b];
+              const label=(pointA?.label||String.fromCharCode(65+segment.a%26))+(pointB?.label||String.fromCharCode(65+segment.b%26));
+              return <div className="lektrus-graph-construction lektrus-school-element" key={"segment"+i}>
+                <div className="lektrus-school-element-row">
+                  <strong title={segment.kind==="segment"?"Отрезок":segment.kind==="ray"?"Луч":"Прямая"}>{label}</strong>
+                  <input aria-label={"Длина или обозначение "+label} placeholder={segment.kind==="segment"?"Длина":"Подпись"}
+                    maxLength={32} value={segment.label} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/>
+                  <button type="button" className="lektrus-school-element-delete" aria-label={"Удалить линию "+label} onClick={()=>deleteConstruction("segment",i)}>Удалить</button>
+                </div>
+              </div>;
+            })}
+            {draft.midpoints.map((midpoint,i)=><div className="lektrus-graph-construction lektrus-school-element" key={"midpoint"+i}>
+              <div className="lektrus-school-element-row">
+                <strong>Середина</strong>
+                <input aria-label={"Подпись середины "+(i+1)} placeholder="Название" maxLength={24} value={midpoint.label}
+                  onChange={e=>patch({midpoints:draft.midpoints.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/>
+                <button type="button" className="lektrus-school-element-delete" onClick={()=>deleteConstruction("midpoint",i)}>Удалить</button>
+              </div>
             </div>)}
-            {draft.polygons.map((p,i)=><div className="lektrus-graph-construction" key={"polygon"+i}>
-              <div className="lektrus-graph-section-head"><strong>Многоугольник {i+1}</strong><button type="button" onClick={()=>patch({polygons:draft.polygons.filter((_,j)=>j!==i)})}>Удалить</button></div>
-              <input aria-label="Название многоугольника" value={p.label} onChange={e=>patch({polygons:draft.polygons.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/>
-              <label>Вершины (номера точек от 1, через запятую)<input value={p.points.map(v=>v+1).join(", ")} onChange={e=>{const parsed=e.target.value.split(",").map(v=>Number(v.trim())-1);if(parsed.length>=3&&parsed.length<=20&&parsed.every(v=>Number.isInteger(v)&&v>=0&&v<draft.points.length))patch({polygons:draft.polygons.map((v,j)=>j===i?{...v,points:parsed}:v)})}}/></label>
-              <label className="lektrus-graph-check"><input type="checkbox" checked={p.measure} onChange={e=>patch({polygons:draft.polygons.map((v,j)=>j===i?{...v,measure:e.target.checked}:v)})}/> Показывать подпись фигуры</label>
-            </div>)}
-            {draft.segments.map((segment,i)=><div className="lektrus-graph-construction" key={"segment"+i}>
-              <div className="lektrus-graph-section-head"><strong>Отрезок / прямая {i+1}</strong><button type="button" onClick={()=>patch({segments:draft.segments.filter((_,j)=>j!==i)})}>Удалить</button></div>
-              <div className="lektrus-graph-inline"><select aria-label="Начало" value={segment.a} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,a:Number(e.target.value)}:v)})}>{pointOptions()}</select>
-                <select aria-label="Конец" value={segment.b} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,b:Number(e.target.value)}:v)})}>{pointOptions()}</select>
-                <select aria-label="Тип линии" value={segment.kind} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,kind:e.target.value as typeof segment.kind}:v)})}><option value="segment">Отрезок</option><option value="ray">Луч</option><option value="line">Прямая</option></select></div>
-              <label className="lektrus-graph-field"><span>Подпись или заданная длина</span><input aria-label={"Подпись или длина линии "+(i+1)} placeholder="Например, 5 см или a" maxLength={32} value={segment.label} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/></label>
-            </div>)}
-            {draft.midpoints.map((midpoint,i)=><div className="lektrus-graph-construction" key={"midpoint"+i}>
-              <div className="lektrus-graph-section-head"><strong>Середина отрезка {i+1}</strong><button type="button" onClick={()=>patch({midpoints:draft.midpoints.filter((_,j)=>j!==i)})}>Удалить</button></div>
-              <label className="lektrus-graph-field"><span>Название точки</span><input maxLength={24} value={midpoint.label} onChange={e=>patch({midpoints:draft.midpoints.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/></label>
-            </div>)}
-            {draft.angles.map((angle,i)=><div className="lektrus-graph-construction" key={"angle"+i}>
-              <div className="lektrus-graph-section-head"><strong>Угол {i+1}</strong><button type="button" onClick={()=>patch({angles:draft.angles.filter((_,j)=>j!==i)})}>Удалить</button></div>
-              <div className="lektrus-graph-inline"><select aria-label="Первый луч угла" value={angle.a} onChange={e=>patch({angles:draft.angles.map((v,j)=>j===i?{...v,a:Number(e.target.value)}:v)})}>{pointOptions()}</select>
-                <select aria-label="Вершина угла" value={angle.vertex} onChange={e=>patch({angles:draft.angles.map((v,j)=>j===i?{...v,vertex:Number(e.target.value)}:v)})}>{pointOptions()}</select>
-                <select aria-label="Второй луч угла" value={angle.b} onChange={e=>patch({angles:draft.angles.map((v,j)=>j===i?{...v,b:Number(e.target.value)}:v)})}>{pointOptions()}</select></div>
-              <input aria-label="Подпись угла" value={angle.label} onChange={e=>patch({angles:draft.angles.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/>
-            </div>)}
+            {draft.angles.map((angle,i)=>{
+              const a=draft.points[angle.a]?.label||"A",v=draft.points[angle.vertex]?.label||"O",b=draft.points[angle.b]?.label||"B";
+              const name="∠"+a+v+b;
+              return <div className="lektrus-graph-construction lektrus-school-element" key={"angle"+i}>
+                <div className="lektrus-school-element-row">
+                  <strong title="Величина угла">{name}</strong>
+                  <input aria-label={"Величина угла "+name} placeholder="Градусы" inputMode="decimal"
+                    maxLength={30} value={angle.label.replace(/°$/,"")}
+                    onChange={e=>patch({angles:draft.angles.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/>
+                  <span aria-hidden="true">°</span>
+                  <button type="button" className="lektrus-school-element-delete" aria-label={"Удалить угол "+name} onClick={()=>deleteConstruction("angle",i)}>Удалить</button>
+                </div>
+              </div>;
+            })}
           </div>}
         </div>
         <aside className="graph-editor-preview lektrus-graph-preview">
