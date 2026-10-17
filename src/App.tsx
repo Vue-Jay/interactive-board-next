@@ -1386,8 +1386,15 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
           }
           const rayControl=rayFigure&&seg.kind==="ray"&&i===0;
           return <g key={`segment-${i}`}>
-            <line className="graph-segment" x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}
-              markerEnd={seg.kind==="ray"&&Math.hypot(end.x-start.x,end.y-start.y)>.5?`url(#graph-arrow-${item.id})`:undefined}/>
+            {Array.from({length:seg.bondOrder??1},(_,bondIndex)=>{
+              const ax=sx(start.x),ay=sy(start.y),bx=sx(end.x),by=sy(end.y);
+              const screenLength=Math.hypot(bx-ax,by-ay)||1;
+              const shift=(bondIndex-((seg.bondOrder??1)-1)/2)*4;
+              const ox=-(by-ay)/screenLength*shift,oy=(bx-ax)/screenLength*shift;
+              return <line key={bondIndex} className="graph-segment"
+                x1={ax+ox} y1={ay+oy} x2={bx+ox} y2={by+oy}
+                markerEnd={(seg.scienceArrow||seg.kind==="ray")&&(seg.bondOrder??1)===1&&Math.hypot(end.x-start.x,end.y-start.y)>.5?`url(#graph-arrow-${item.id})`:undefined}/>;
+            })}
             {rayControl&&onRayChange&&<line x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}
               stroke="transparent" strokeWidth="24" style={{cursor:"grab",touchAction:"none"}} onPointerDown={beginRayDrag}
               aria-label="Перетащите луч, чтобы изменить направление"/>}
