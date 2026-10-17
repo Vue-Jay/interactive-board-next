@@ -16,8 +16,8 @@ export default function LektrusPeriodicTableView({
  const school=layout==="school";
  const schoolPosition=(el:(typeof periodicElements)[number]):[number,number]=>{
   const n=el.number,p=el.period;
-  if(n>=57&&n<=71)return [n-57,10];
-  if(n>=89&&n<=103)return [n-89,11];
+  if(n>=57&&n<=71)return [n-57,11];
+  if(n>=89&&n<=103)return [n-89,12];
   if(p<=3)return [el.col<=2?el.col-1:el.col-11,p-1];
   const offset=3+(p-4)*2;
   const top=p===4?[19,20,21,22,23,24,25,26,27,28]:
@@ -35,10 +35,10 @@ export default function LektrusPeriodicTableView({
  };
  const element=active==null?null:periodicElements[active-1];
  const facts=active==null?null:elementFacts[active-1];
- return <svg className="lektrus-periodic-svg" viewBox={school?"0 0 1080 790":"0 0 1080 665"}
+ return <svg className="lektrus-periodic-svg" viewBox={school?"0 0 1080 810":"0 0 1080 665"}
    preserveAspectRatio="xMidYMid meet" role="img"
    aria-label="Интерактивная периодическая таблица 118 химических элементов">
-  <rect x="0" y="0" width="1080" height={school?790:665} rx="10" fill="#f9fbff"/>
+  <rect x="0" y="0" width="1080" height={school?810:665} rx="10" fill="#f9fbff"/>
   <text x={bx} y="30" className="lektrus-periodic-heading">Периодическая система химических элементов</text>
   {Array.from({length:school?8:18},(_,i)=><text key={i} className="lektrus-periodic-index"
     x={school?bx+i*107:bx+i*step+cell/2} y={55} textAnchor="middle">{school?["I","II","III","IV","V","VI","VII","VIII"][i]:i+1}</text>)}
@@ -106,13 +106,13 @@ export default function LektrusPeriodicTableView({
       {onToggleInfo&&<button type="button" style={{border:"1px solid #b5c9ed",background:"#eff5ff",borderRadius:5,padding:4,fontSize:10,cursor:"pointer",marginTop:"auto"}} onClick={onToggleInfo}>{marked.has(active!)?"Снять выделение":"Выделить элемент"}</button>}
     </div>
   </foreignObject>}
-  <g transform={school?"translate(45 757)":"translate(45 615)"}>
+  <g transform={school?"translate(45 777)":"translate(45 615)"}>
    <text x="0" y="-10" fontSize="11" fill="#475569">Цветовая легенда</text>
    {periodicFamilies.map((family,i)=><g key={family.id} transform={"translate("+(i*144)+" 0)"}>
      <rect width="12" height="12" rx="2" fill={family.color} stroke="#cbd5e1"/>
      <text x="16" y="10" fontSize="10" fill="#475569">{family.name}</text>
    </g>)}
   </g>
-  <text x="47" y={school?787:655} fontSize="10" fill="#8a9bb0">Z · символ · название · относительная атомная масса</text>
+  <text x="47" y={school?806:655} fontSize="10" fill="#8a9bb0">Z · символ · название · относительная атомная масса</text>
  </svg>;
 }
