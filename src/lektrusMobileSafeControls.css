@@ -93,3 +93,27 @@
     max-width:calc(100vw - 145px - env(safe-area-inset-right,0px))!important;
   }
 }
+
+/* Native Android landscape: align the tool rail with the user's marked left guide.
+   Keep the back-to-boards button inset equal to the right-side "More" inset.
+   These rules deliberately override the older cutout offsets in lectrisBoard.css. */
+@media screen and (max-width:1100px) and (orientation:landscape) {
+  html.lektrus-android-app body .topbar:not(.update-banner) {
+    padding-left:max(22px,env(safe-area-inset-left,0px))!important;
+    padding-right:max(22px,env(safe-area-inset-right,0px))!important;
+  }
+  html.lektrus-android-app body .topbar .board-home-button {
+    margin-left:0!important;
+  }
+  html.lektrus-android-app body .workspace nav.mobile-board-tools {
+    left:40px!important;
+    right:auto!important;
+  }
+  html.lektrus-android-app body .workspace section.mobile-tools-sheet {
+    left:100px!important;
+    max-width:calc(100vw - 112px - env(safe-area-inset-right,0px))!important;
+  }
+  html.lektrus-android-app body .workspace .board-controls {
+    left:122px!important;
+  }
+}
