@@ -1,7 +1,7 @@
 import type {Item} from "./boardModel";
 
 export type MathPresetId =
-  | "blank" | "linear" | "quadratic" | "sine" | "cosine"
+  | "free" | "blank" | "linear" | "quadratic" | "sine" | "cosine"
   | "number-line" | "triangle" | "quadrilateral" | "angle"
   | "circle" | "unit-circle" | "cube" | "prism" | "pyramid" | "cone" | "cylinder"
   | "triangle-right" | "triangle-equilateral" | "triangle-isosceles"
@@ -14,6 +14,7 @@ export type MathPreset = {
   id:MathPresetId; title:string; subtitle:string; group:"Функции"|"Числа и координаты"|"Геометрия"|"Тригонометрия"|"Объёмные фигуры";
 };
 export const mathPresets:MathPreset[]=[
+  {id:"free",title:"По точкам",subtitle:"Расположите точки, соедините отрезками и замкните фигуру",group:"Геометрия"},
   {id:"blank",title:"Чистая плоскость",subtitle:"Оси, сетка и свободные точки",group:"Числа и координаты"},
   {id:"number-line",title:"Числовая прямая",subtitle:"Числа и границы промежутка",group:"Числа и координаты"},
   {id:"linear",title:"Линейная функция",subtitle:"y = 2x + 1",group:"Функции"},
@@ -147,6 +148,7 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
       graphPoints:points,graphSegments:edges.map(([a,b])=>segment(a,b)),
       graphXMin:-7,graphXMax:7,graphYMin:-5,graphYMax:6};
   }
+  if(id==="free")return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,graphSnap:false,graphShowLabels:true};
   if(id==="blank")return {...graph,text:"Координатная плоскость"};
   if(id==="linear")return {...graph,graphPurpose:"function",graphType:"linear",graphExpression:"2*x + 1",graphShowCurve:true};
   if(id==="quadratic")return {...graph,graphPurpose:"function",graphType:"quadratic",graphExpression:"x^2 - 4*x + 3",graphShowCurve:true};
