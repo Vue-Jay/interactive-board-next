@@ -16,8 +16,8 @@ export default function LektrusPeriodicTableView({
  const school=layout==="school";
  const schoolPosition=(el:(typeof periodicElements)[number]):[number,number]=>{
   const n=el.number,p=el.period;
-  if(n>=57&&n<=71)return [n-57,11];
-  if(n>=89&&n<=103)return [n-89,12];
+  if(n>=58&&n<=71)return [n-58,11];
+  if(n>=90&&n<=103)return [n-90,12];
   if(p<=3)return [el.col<=2?el.col-1:el.col-11,p-1];
   const offset=3+(p-4)*2;
   const top=p===4?[19,20,21,22,23,24,25,26,27,28]:
@@ -59,7 +59,7 @@ export default function LektrusPeriodicTableView({
   })}
   {periodicElements.map(el=>{
     const [shortCol,shortRow]=schoolPosition(el);
-    const x=school?bx+(el.row>=9?shortCol*61:shortCol*94):bx+(el.col-1)*step;
+    const x=school?bx+((el.row>=9&&el.number!==57&&el.number!==89)?shortCol*61:shortCol*94):bx+(el.col-1)*step;
     const y=school?by+shortRow*51:el.row<=7?by+(el.row-1)*step:el.row===9?480:535;
     const chosen=marked.has(el.number),focused=el.number===active;
     const dim=familyFilter!=="all"&&familyFilter!==el.family&&!chosen;
