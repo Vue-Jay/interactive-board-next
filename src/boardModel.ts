@@ -113,6 +113,7 @@ export type Item = {
   sciencePeriodicHighlights?: number[];
   sciencePeriodicShowNames?: boolean;
   sciencePeriodicLayout?: "school" | "long";
+  scienceExperimentStage?: 0 | 1;
   graphRotationX?: number;
   graphRotationY?: number;
   graphParallelMarks?: ("corresponding"|"alternate-interior"|"alternate-exterior"|"same-side-interior"|"vertical"|"adjacent")[];
