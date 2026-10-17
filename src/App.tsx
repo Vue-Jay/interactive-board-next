@@ -23,7 +23,7 @@ import LektrusGraphEditor, {removeGraphPoint, removeGraphBoardPoint, type GraphD
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {formatPiRadians,makeMathPresetItem} from "./lektrusMathPresets";
-import {isSolidFigure,projectSolid,projectSolidAxis} from "./lektrusSolid3d";
+import {isSolidFigure,projectSolid,projectSolidAxis,projectSolidSurfaces} from "./lektrusSolid3d";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
@@ -1208,6 +1208,19 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
 
       {item.graphProjections&&<g className="graph-projections">{(purpose==="unit-circle"?gp.slice(5,6):gp).map((p,i)=><g key={i}><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(p.x)} y2={sy(0)}/><line x1={sx(p.x)} y1={sy(p.y)} x2={sx(0)} y2={sy(p.y)}/></g>)}</g>}
       <g className="graph-constructions">
+        {solid&&item.graphFigureId!=="sphere"&&<g className="lektrus-solid-faces" pointerEvents="none">
+          {projectSolidSurfaces(item,orbitX,orbitY).map((face,index)=>
+            <polygon key={index} points={face.points.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}
+              fill={face.fill} stroke={face.outline?"#466b97":face.fill}
+              strokeLinejoin="round" strokeWidth={face.outline?1.8:1}/>
+          )}
+          {item.graphShowLabels!==false&&gp.map((p,i)=>{
+            if(!p.label||i>12)return null;
+            return <text key={i} className="graph-figure-label"
+              x={sx(p.x)+7} y={sy(p.y)-8}
+              style={{fill:"#293c59",stroke:"#fff",strokeWidth:4,paintOrder:"stroke",fontWeight:650}}>{p.label}</text>;
+          })}
+        </g>}
         {(()=>{const triangle=(item.graphPolygons??[]).find(poly=>poly.points.length===3);if(!triangle)return null;
           const trianglePoints=triangle.points.map(point);if(trianglePoints.some(p=>!p))return null;
           const vertexIndex=item.graphTriangleVertex??0;
@@ -1278,7 +1291,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
               });
               return <polyline key={ring} points={points.join(" ")} fill="none" stroke="#537cc5" strokeDasharray={ring==="equator"?"6 4":"3 5"} strokeWidth="1.4" pointerEvents="none"/>;
             })}{given&&purpose==="geometry"&&<g className="graph-radius-dimension"><line x1={sx(center.x)} y1={sy(center.y)} x2={sx(edge.x)} y2={sy(edge.y)} stroke="#57677b" strokeWidth="1.3"/><text x={sx((center.x+edge.x)/2)} y={sy((center.y+edge.y)/2)-12} textAnchor="middle" style={{paintOrder:"stroke",stroke:"#fff",strokeWidth:4,fontWeight:650,fill:"#1c293a"}}>{`r = ${given}`}</text></g>}{circle.label&&!/^r\s*=/.test(circle.label)&&<text className="graph-figure-label" x={sx(center.x)+radius*scale+8} y={sy(center.y)-8}>{circle.label}</text>}</g>})}
-        {(item.graphSegments??[]).map((seg,i)=>{
+        {(solid?[]:(item.graphSegments??[])).map((seg,i)=>{
           const a=point(seg.a),b=point(seg.b);if(!a||!b)return null;
           const vx=b.x-a.x,vy=b.y-a.y,length=Math.hypot(vx,vy);if(length<.001)return null;
           const start=seg.kind==="line"?{x:a.x-vx*100,y:a.y-vy*100}:a;
@@ -1368,7 +1381,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
         {(item.graphMidpoints??[]).map((m,i)=>{const a=point(m.a),b=point(m.b);if(!a||!b)return null;const x=(a.x+b.x)/2,y=(a.y+b.y)/2;return <g key={`mid-${i}`}><circle className="graph-midpoint" cx={sx(x)} cy={sy(y)} r="4"/>{m.label&&<text className="graph-figure-label" x={sx(x)+8} y={sy(y)-7}>{m.label}</text>}</g>})}
       </g>
       {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={(purpose==="number-line"?gp.slice(0,2):gp).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
-      {(purpose==="geometry"&&(["cone","cylinder"].includes(item.graphFigureId??"")||title==="Конус"||title==="Цилиндр")?[]:gp).map((p,i)=>{if(rayFigure&&i!==0)return null;const pointColor=p.color??"#111111";const movable=!!onPointMove&&(purpose!=="unit-circle"||i>=5);return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
+      {(solid?[]:gp).map((p,i)=>{if(rayFigure&&i!==0)return null;const pointColor=p.color??"#111111";const movable=!!onPointMove&&(purpose!=="unit-circle"||i>=5);return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
         onDoubleClick={onRemovePoint&&(purpose!=="unit-circle"||i>5)?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint?.(i)}:undefined}
         onPointerDown={movable?(e)=>{e.preventDefault();e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove?.(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up)}:undefined}>
         {movable&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r="20"/>}
