@@ -49,6 +49,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const [order,setOrder]=useState<1|2|3>(1);
   const [arrow,setArrow]=useState(true);
   const [component,setComponent]=useState<CircuitSymbol>("wire");
+  const [activeLink,setActiveLink]=useState<number|null>(null);
   const drag=useRef<{pointerId:number;index:number}|null>(null);
   const isPhysics=subject==="physics";
   const group=scienceToolGroupForId(draft.graphFigureId??"");
@@ -81,15 +82,15 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     const next=makeSciencePresetItem(id,item.x+item.width/2,item.y+item.height/2,()=>item.id);
     setDraft(previous=>({...copyItem(next),id:item.id,x:item.x,y:item.y,
       width:item.width,height:item.height,color:previous.color,graphGrid:previous.graphGrid}));
-    setSelected(0);setFirst(0);setSecond(1);
+    setSelected(0);setFirst(0);setSecond(1);setActiveLink(null);
   };
 
-  const addPoint=()=>{
+  const addPoint=(position?:{x:number;y:number})=>{
     if(points.length>=32)return;
     const parent=selectedPoint??{x:0,y:0,label:""};
     const nextPoint={
-      x:clamp(Math.round((parent.x+1.4)*10)/10,xMin,xMax),
-      y:clamp(Math.round((parent.y-1.3)*10)/10,yMin,yMax),
+      x:clamp(position?.x??Math.round((parent.x+1.4)*10)/10,xMin,xMax),
+      y:clamp(position?.y??Math.round((parent.y-1.3)*10)/10,yMin,yMax),
       label:atom?"e⁻":circuit?"":isPhysics?"P"+String(points.length+1):"C",
       color:atom?"#5579cc":isPhysics?"#2d5bad":"#40546e"
     };
@@ -99,7 +100,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const removeSelected=()=>{
     if(!points.length)return;
     setDraft(previous=>deletePoint(previous,selected));
-    setSelected(Math.max(0,selected-1));setFirst(0);setSecond(1);
+    setSelected(Math.max(0,selected-1));setFirst(0);setSecond(1);setActiveLink(null);
   };
   const addLink=()=>{
     if(first===second||!points[first]||!points[second]||segments.length>=64)return;
@@ -108,6 +109,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     setDraft(old=>{
       const all=old.graphSegments??[];
       const existing=all.findIndex(s=>(s.a===first&&s.b===second)||(s.a===second&&s.b===first));
+      setActiveLink(existing>=0?existing:all.length);
       return {...old,graphSegments:existing>=0?all.map((s,i)=>i===existing?link:s):[...all,link]};
     });
   };
@@ -115,6 +117,20 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     setDraft(old=>({...old,graphPoints:[],graphSegments:[],graphCircles:[],
       graphPolygons:[],graphAngles:[],graphMidpoints:[],graphConnectPoints:false}));
     setSelected(0);setFirst(0);setSecond(1);
+  };
+  const canvasToGraph=(clientX:number,clientY:number,element:SVGSVGElement)=>{
+    const rect=element.getBoundingClientRect();
+    const x=(clientX-rect.left)*520/rect.width;
+    const y=(clientY-rect.top)*370/rect.height;
+    const rawX=clamp(motion?(x-56)/440*12:(x-260)/31,xMin,xMax);
+    const rawY=clamp(motion?(330-y)/290*10:(185-y)/31,yMin,yMax);
+    const snap=draft.graphSnap===true&&!motion;
+    return {x:+(snap?Math.round(rawX*2)/2:rawX).toFixed(2),
+      y:+(snap?Math.round(rawY*2)/2:rawY).toFixed(2)};
+  };
+  const editLink=(index:number,update:Partial<Link>)=>{
+    setDraft(old=>({...old,graphSegments:(old.graphSegments??[]).map((link,i)=>
+      i===index?{...link,...update}:link)}));
   };
   const endDrag=(event:PointerEvent<SVGSVGElement>)=>{
     if(drag.current?.pointerId!==event.pointerId)return;
@@ -125,13 +141,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const move=(event:PointerEvent<SVGSVGElement>)=>{
     const moving=drag.current;if(!moving||moving.pointerId!==event.pointerId)return;
     event.preventDefault();
-    const rect=event.currentTarget.getBoundingClientRect();
-    const x=(event.clientX-rect.left)*520/rect.width;
-    const y=(event.clientY-rect.top)*370/rect.height;
-    patchPoint(moving.index,{
-      x:+clamp(motion?(x-56)/440*12:(x-260)/31,xMin,xMax).toFixed(2),
-      y:+clamp(motion?(330-y)/290*10:(185-y)/31,yMin,yMax).toFixed(2)
-    });
+    patchPoint(moving.index,canvasToGraph(event.clientX,event.clientY,event.currentTarget));
   };
 
   const pointName=(index:number)=>points[index]?.label?.trim()||"Точка "+(index+1);
@@ -180,7 +190,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
             {!points.length&&<span className="lektrus-science-empty">Добавьте первую точку</span>}
           </div>
           <div className="lektrus-science-point-actions">
-            <button type="button" onClick={addPoint} disabled={points.length>=32}>+ {isPhysics?"Точка":"Атом"}</button>
+            <button type="button" onClick={()=>addPoint()} disabled={points.length>=32}>+ {isPhysics?"Точка":"Атом"}</button>
             <button type="button" disabled={!points.length} onClick={removeSelected} title="Удалить выбранную точку со всеми связанными линиями">Удалить</button>
           </div>
           {selectedPoint&&<div className="lektrus-science-point-editor">
@@ -234,20 +244,45 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
               className="lektrus-science-add-link">+ {isPhysics?"Добавить линию":"Добавить связь"}</button>
           </div>
           {segments.length>0&&<div className="lektrus-science-links">
-            {segments.map((seg,i)=><div key={i}>
-              <span>{pointName(seg.a)} <b>{isPhysics?(seg.scienceArrow?"→":"—"):(seg.bondOrder===3?"≡":seg.bondOrder===2?"=":"—")}</b> {pointName(seg.b)}
+            {segments.map((seg,i)=><div key={i} className={activeLink===i?"active":""}>
+              <span onClick={()=>setActiveLink(i)} title="Изменить линию" role="button" tabIndex={0} onKeyDown={e=>{if(e.key==="Enter")setActiveLink(i)}}>{pointName(seg.a)} <b>{isPhysics?(seg.scienceArrow?"→":"—"):(seg.bondOrder===3?"≡":seg.bondOrder===2?"=":"—")}</b> {pointName(seg.b)}
               {seg.scienceCircuitSymbol&&seg.scienceCircuitSymbol!=="wire"&&<small> · {circuitSymbols.find(symbol=>symbol.id===seg.scienceCircuitSymbol)?.label}</small>}</span>
               <button type="button" aria-label={"Удалить связь "+(i+1)}
-                onClick={()=>setDraft(old=>({...old,graphSegments:(old.graphSegments??[]).filter((_,n)=>n!==i)}))}>×</button>
+                onClick={()=>{setDraft(old=>({...old,graphSegments:(old.graphSegments??[]).filter((_,n)=>n!==i)}));setActiveLink(null)}}>×</button>
             </div>)}
           </div>}
+          {activeLink!==null&&segments[activeLink]&&<section className="lektrus-science-selected-link">
+            <strong>Редактирование линии {activeLink+1}</strong>
+            {circuit?<label>Компонент
+              <select value={segments[activeLink].scienceCircuitSymbol??"wire"}
+                onChange={e=>editLink(activeLink,{scienceCircuitSymbol:e.target.value as CircuitSymbol})}>
+                {circuitSymbols.map(option=><option key={option.id} value={option.id}>{option.label}</option>)}
+              </select>
+            </label>:molecule?<label>Порядок связи
+              <select value={segments[activeLink].bondOrder??1}
+                onChange={e=>editLink(activeLink,{bondOrder:Number(e.target.value) as 1|2|3})}>
+                <option value={1}>Одинарная</option><option value={2}>Двойная</option><option value={3}>Тройная</option>
+              </select>
+            </label>:<label className="lektrus-science-check"><input type="checkbox"
+              checked={segments[activeLink].scienceArrow===true}
+              onChange={e=>editLink(activeLink,{scienceArrow:e.target.checked})}/> Стрелка направления</label>}
+            {isPhysics&&!circuit&&<label>Подпись линии
+              <input maxLength={40} value={segments[activeLink].label}
+                onChange={e=>editLink(activeLink,{label:e.target.value})}/></label>}
+          </section>}
           <label className="lektrus-science-check"><input type="checkbox" checked={draft.graphGrid===true}
             onChange={e=>setDraft(old=>({...old,graphGrid:e.target.checked}))}/> Сетка на чертеже</label>
           <button className="lektrus-science-clear" type="button" onClick={clear}>Очистить построение</button>
         </aside>
         <div className="lektrus-science-preview">
-          <div className="lektrus-science-preview-head"><strong>Чертёж</strong><span>Перемещайте точки мышью</span></div>
+          <div className="lektrus-science-preview-head"><strong>Чертёж</strong><span>Перетаскивайте точки · двойной щелчок добавляет</span></div>
           <svg viewBox="0 0 520 370" role="img" aria-label="Редактируемая схема"
+            onDoubleClick={event=>{
+              // Only blank canvas, not a node, symbol or existing line.
+              if(event.target!==event.currentTarget||points.length>=32)return;
+              event.preventDefault();
+              addPoint(canvasToGraph(event.clientX,event.clientY,event.currentTarget));
+            }}
             onPointerMove={move} onPointerUp={endDrag} onPointerCancel={endDrag}>
             <defs><marker id="science-arrow-end" viewBox="0 0 10 10" refX="8" refY="5"
               markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
@@ -277,8 +312,15 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                 fill="none" stroke="#356bd5" strokeWidth="3.5" strokeLinejoin="round" strokeLinecap="round"/>}
             {segments.map((seg,i)=>{
               const a=points[seg.a],b=points[seg.b];if(!a||!b)return null;
-              const p=xy(a),q=xy(b),len=Math.hypot(q.x-p.x,q.y-p.y)||1;
+              const p=canvasPoint(a),q=canvasPoint(b),len=Math.hypot(q.x-p.x,q.y-p.y)||1;
               return <g key={i}>
+                <line x1={p.x} y1={p.y} x2={q.x} y2={q.y}
+                  stroke="transparent" strokeWidth="17" style={{cursor:"pointer"}}
+                  pointerEvents="stroke" onClick={()=>setActiveLink(i)}
+                  aria-label={"Изменить линию "+(i+1)}/>
+                {activeLink===i&&<line x1={p.x} y1={p.y} x2={q.x} y2={q.y}
+                  stroke="#edac35" strokeWidth="9" strokeOpacity=".33"
+                  pointerEvents="none"/>}
                 {Array.from({length:seg.bondOrder??1},(_,index)=>{
                   const off=(index-((seg.bondOrder??1)-1)/2)*5.5;
                   const nx=-(q.y-p.y)/len*off,ny=(q.x-p.x)/len*off;
@@ -296,7 +338,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
               </g>;
             })}
             {points.map((point,i)=>{
-              const p=xy(point);
+              const p=canvasPoint(point);
               const pointColor=point.color??(isPhysics?"#3a6bc0":"#587f96");
               return <g key={i} className={"lektrus-science-node"+(selected===i?" selected":"")}>
                 <circle cx={p.x} cy={p.y} r={isPhysics?8:13}
