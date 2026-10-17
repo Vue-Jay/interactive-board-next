@@ -442,7 +442,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 {draft.circles.map((circle,i)=>{
                   const center=draft.points[circle.center],edge=draft.points[circle.edge];
                   const saved=circle.label.match(/^r\s*=\s*(.*)$/i)?.[1];
-                  const radius=saved??draft.givenSides[i]??String(Math.hypot((edge?.x??3)-(center?.x??0),(edge?.y??0)-(center?.y??0)).toFixed(2));
+                  const radius=saved??((draft.figureId==="circle"||draft.figureId==="sphere")?draft.givenSides[i]:undefined)??String(Math.hypot((edge?.x??3)-(center?.x??0),(edge?.y??0)-(center?.y??0)).toFixed(2));
                   return <label key={i}>r{i?i+1:""}
                     <input inputMode="decimal" maxLength={32} aria-label={"Радиус окружности "+(i+1)}
                       placeholder="Например, 3" value={radius}
@@ -454,7 +454,6 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                           points[circle.edge]={...edge,x:center.x+numeric*Math.cos(theta),y:center.y+numeric*Math.sin(theta)};
                         }
                         patch({
-                          givenSides:Array.from({length:Math.max(i+1,draft.givenSides.length)},(_,j)=>j===i?value:draft.givenSides[j]??""),
                           circles:draft.circles.map((c,j)=>j===i?{...c,label:value?"r = "+value:""}:c),
                           points
                         });
