@@ -1504,8 +1504,8 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
            r={(item.graphFigureId??"").startsWith("physics-")?2.5:movable?5:4}
            style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>}
         {item.graphShowLabels!==false&&(purpose==="number-line"||purpose==="unit-circle"&&i>0||p.label)&&
-          <text x={sx(p.x+(p.labelDx??(p.label==="O"&&(item.graphFigureId??"").startsWith("physics-") ? 0.5 : 0)))+(p.labelDx==null&&p.label!=="O"?8:0)}
-           y={sy(p.y+(p.labelDy??(p.label==="O"&&(item.graphFigureId??"").startsWith("physics-") ? 0.62 : 0)))-(p.labelDy==null&&p.label!=="O"?9:0)}
+          <text x={sx(p.x+(item.graphPoints?.[i]?.labelDx??(p.label==="O"&&(item.graphFigureId??"").startsWith("physics-") ? 0.5 : 0)))+(item.graphPoints?.[i]?.labelDx==null&&p.label!=="O"?8:0)}
+           y={sy(p.y+(item.graphPoints?.[i]?.labelDy??(p.label==="O"&&(item.graphFigureId??"").startsWith("physics-") ? 0.62 : 0)))-(item.graphPoints?.[i]?.labelDy==null&&p.label!=="O"?9:0)}
            style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
       </g>})}
       {purpose==="geometry"&&onGridChange&&<g role="button" tabIndex={0}
