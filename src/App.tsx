@@ -19,7 +19,7 @@ import LektrusSubjectPicker from "./LektrusSubjectPicker";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
-import LektrusGraphEditor, {removeGraphPoint, removeGraphBoardPoint, type GraphDraft} from "./LektrusGraphEditor";
+import LektrusGraphEditor, {appendFreeSketchPoint,removeGraphPoint, removeGraphBoardPoint, type GraphDraft} from "./LektrusGraphEditor";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {formatPiRadians,makeMathPresetItem} from "./lektrusMathPresets";
@@ -1081,13 +1081,14 @@ function evaluateGraphExpression(source: string, x: number): number {
   const expr=():number=>{let v=term();while(tokens[pos]==="+"||tokens[pos]==="-"){const op=tokens[pos++];const q=term();v=op==="+"?v+q:v-q}return v};
   try{const value=expr();return pos===tokens.length&&Number.isFinite(value)?value:NaN}catch{return NaN}
 }
-function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange }: {
+function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
   onRemovePoint?: (index:number)=>void;
   onRotate?: (rotationX:number,rotationY:number)=>void;
   onRayChange?: (x:number,y:number)=>void;
+  onGridChange?: (enabled:boolean)=>void;
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
   const [liveRay,setLiveRay]=useState<{x:number;y:number}|null>(null);
@@ -1191,7 +1192,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onDoubleClick={e=>{if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#667085" strokeWidth="1.3"/></marker></defs>
-      {item.graphGrid!==false&&<g className="graph-grid">
+      {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none" style={{opacity:purpose==="geometry"?.42:1}}>
         {gridX.map(x=><line key={`x${x}`} x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
         {gridY.map(y=><line key={`y${y}`} x1="0" x2={W} y1={sy(y)} y2={sy(y)}/>)}
       </g>}
@@ -1445,6 +1446,26 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
         <circle cx={sx(p.x)} cy={sy(p.y)} r={movable?"5":"4"} style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>
         {item.graphShowLabels!==false&&(purpose==="number-line"||purpose==="unit-circle"&&i>0||p.label)&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
       </g>})}
+      {purpose==="geometry"&&onGridChange&&<g role="button" tabIndex={0}
+        aria-label={item.graphGrid===false?"Включить фон в клетку":"Сделать фон белым"}
+        aria-pressed={item.graphGrid!==false}
+        className="lektrus-diagram-grid-toggle" style={{cursor:"pointer"}}
+        onPointerDown={event=>event.stopPropagation()}
+        onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}
+        onClick={event=>{event.preventDefault();event.stopPropagation();onGridChange(item.graphGrid===false)}}
+        onKeyDown={event=>{
+          if(event.key!=="Enter"&&event.key!==" ")return;
+          event.preventDefault();event.stopPropagation();onGridChange(item.graphGrid===false);
+        }}>
+        <rect x="474" y="319" width="116" height="32" rx="9" fill="#fff" stroke="#c4d1e7" strokeWidth="1.5"/>
+        <g stroke="#59749c" fill="none" strokeWidth="1">
+          <rect x="484" y="327" width="16" height="16" rx="1"/>
+          <path d="M489 327v16M495 327v16M484 332h16M484 338h16"/>
+        </g>
+        <text x="506" y="340" fontSize="12" fontWeight="700" fill="#30486d">
+          {item.graphGrid===false?"В клетку":"Белый фон"}
+        </text>
+      </g>}
       {solid&&<g className="lektrus-orbit-control" role="button" tabIndex={onRotate?0:-1}
         aria-label="Повернуть объёмную фигуру: перетащите манипулятор в углу"
         onPointerDown={beginOrbit}
@@ -6427,6 +6448,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               graphAngles:graphDraft.angles,graphCircles:graphDraft.circles,
               graphPolygons:graphDraft.polygons,graphMidpoints:graphDraft.midpoints,graphTriangleLines:graphDraft.triangleLines,graphTriangleVertex:graphDraft.triangleVertex,graphShowArea:false,graphGivenSides:graphDraft.givenSides,graphGivenAngles:graphDraft.givenAngles,graphTriangleInputMode:graphDraft.triangleInputMode
             }}
+            onGridChange={enabled=>setGraphDraft(current=>current?{...current,grid:enabled}:current)}
             onRotate={(rotationX,rotationY)=>setGraphDraft(current=>current?{...current,rotationX,rotationY}:current)}
             onRayChange={(x,y)=>setGraphDraft(current=>current&&current.figureId==="ray"&&current.points[1]?
               {...current,points:current.points.map((point,i)=>i===1?{...point,x,y}:point)}:current)}
@@ -6436,7 +6458,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               const angle=Math.atan2(y,x),xx=trig?Number(Math.cos(angle).toFixed(6)):x,yy=trig?Number(Math.sin(angle).toFixed(6)):current.purpose==="number-line"?0:y;
               return {...current,points:current.points.map((p,j)=>j===i?{...p,x:xx,y:yy,label:trig?formatPiRadians(angle):p.label}:p)};
             })}
-            onAddPoint={(x,y)=>setGraphDraft(current=>current&&current.purpose!=="unit-circle"&&current.figureId!=="ray"&&!isSolidFigure(current.figureId)&&current.points.length<40?{...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:current.purpose==="geometry"?String.fromCharCode(65+(current.points.length%26)):""}]}:current)}
+            onAddPoint={(x,y)=>setGraphDraft(current=>{
+              if(!current||current.purpose==="unit-circle"||current.figureId==="ray"||isSolidFigure(current.figureId)||current.points.length>=40)return current;
+              if(current.figureId==="free")return appendFreeSketchPoint(current,x,y);
+              return {...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:current.purpose==="geometry"?String.fromCharCode(65+(current.points.length%26)):""}]};
+            })}
             onRemovePoint={i=>setGraphDraft(current=>current&&current.figureId!=="ray"&&!isSolidFigure(current.figureId)&&!(current.purpose==="unit-circle"&&i<=5)?removeGraphPoint(current,i):current)}
             />}
           />,document.body)}
@@ -7180,6 +7206,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item}
+                  onGridChange={!item.locked&&canEdit?(enabled)=>{
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphGrid:enabled}:candidate));
+                  }:undefined}
                   onRotate={!item.locked&&canEdit&&(isSolidFigure(item.graphFigureId))?(rotationX,rotationY)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphRotationX:rotationX,graphRotationY:rotationY}:candidate));
                   }:undefined}
