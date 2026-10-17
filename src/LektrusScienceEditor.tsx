@@ -339,7 +339,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
             onPointerMove={move} onPointerUp={endDrag} onPointerCancel={endDrag}>
             <defs><marker id="science-arrow-end" viewBox="0 0 10 10" refX="8" refY="5"
               markerWidth="4.2" markerHeight="4.2" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#5879ac"/></marker></defs>
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/></marker></defs>
             {draft.graphGrid&&<g className="lektrus-science-grid" pointerEvents="none">
               {Array.from({length:27},(_,i)=><path key={"v"+i} d={"M"+(i*20)+" 0V370"}/>)}
               {Array.from({length:19},(_,i)=><path key={"h"+i} d={"M0 "+(i*20)+"H520"}/>)}
