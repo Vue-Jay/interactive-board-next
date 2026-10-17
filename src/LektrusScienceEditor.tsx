@@ -113,7 +113,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const addLink=()=>{
     if(first===second||!points[first]||!points[second]||segments.length>=64)return;
     const link:Link={a:first,b:second,kind:"segment",label:"",measure:false,
-      ...(circuit?{scienceCircuitSymbol:component}:isPhysics?{scienceArrow:arrow}:{bondOrder:order})};
+      ...(circuit?{scienceCircuitSymbol:component}:isPhysics?{scienceArrow:arrow,color:arrow?"#2563eb":"#475569"}:{bondOrder:order})};
     setDraft(old=>{
       const all=old.graphSegments??[];
       const existing=all.findIndex(s=>(s.a===first&&s.b===second)||(s.a===second&&s.b===first));
