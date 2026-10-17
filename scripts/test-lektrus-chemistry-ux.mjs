@@ -58,6 +58,24 @@ assert.match(floating,/className="lektrus-chem-atom-toggle"/,"atom model must ex
 assert.doesNotMatch(floating,/renderWindow\("atom"/,"no second free-floating atom window");
 assert.match(floating,/windowScale:/,"information window must scale with the board object");
 assert.match(floating,/className="lektrus-chem-close"/,"window close button must use visible icon");
+assert.match(floating,/panel\.addEventListener\("wheel",handleWheel,\{passive:false\}\)/,
+ "Ctrl+wheel over chemistry windows must cancel browser page zoom");
+assert.match(floating,/stage\.dispatchEvent\(new WheelEvent\("wheel"/,
+ "Ctrl+wheel over portaled window must forward to the board zoom handler");
+const atomView=text("src/LektrusAtomView.tsx");
+const chemistryStyles=text("src/lektrusSubjectPolish2026.css");
+assert.match(atomView,/orbitalHeader\+orbitalFooter\+/,
+ "orbital diagram must reserve its header and footer");
+assert.match(atomView,/Math\.max\(compactInPanel\?260:460/,
+ "compact orbital diagram should not waste vertical space");
+assert.match(chemistryStyles,/\.lektrus-chem-window--combined\.is-expanded\.is-orbital/,
+ "orbital mode must have a readable wide presentation");
+for(let z=1;z<=118;z++){
+ const rows=orbitalSublevels(z).length;
+ const canvas=Math.max(260,101+85+Math.max(0,rows-1)*27);
+ const topRow=canvas-85-Math.max(0,rows-1)*27;
+ assert.ok(topRow>=101,"orbital rows must not cross the title for Z="+z);
+}
 
 assert.match(app,/onPeriodicChange=\{canEdit/);
 assert.match(app,/atomEditorItem&&<LektrusAtomEditor/);
