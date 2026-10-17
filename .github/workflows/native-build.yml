@@ -71,7 +71,18 @@ jobs:
             cp android/app/build/outputs/apk/debug/app-debug.apk Lektrus-Android.apk
           fi
           test -s Lektrus-Android.apk
+          # A separate installable package bypasses conflicts with older APK
+          # signatures. The original release APK remains unchanged.
+          (cd android && ./gradlew :app:assembleDebug -PlektrusSideInstall --no-daemon --stacktrace)
+          cp android/app/build/outputs/apk/debug/app-debug.apk Lektrus-Android-fresh-install.apk
+          test -s Lektrus-Android-fresh-install.apk
           rm -f "$RUNNER_TEMP/lektrus-release.jks"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lektrus-Android-Fresh-Install
+          path: Lektrus-Android-fresh-install.apk
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: Lektrus-Android-APK
