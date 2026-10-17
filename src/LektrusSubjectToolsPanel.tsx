@@ -5,13 +5,14 @@ export type SubjectToolOption={id:string;label:string;description?:string;group?
 type Props={
   anchor:HTMLElement|null;
   subject:string;
+  canChangeSubject:boolean;
   subjects:string[];
   tools:SubjectToolOption[];
   onSubjectChange:(subject:string)=>void;
   onChoose:(id:string)=>void;
   onClose:()=>void;
 };
-export default function LektrusSubjectToolsPanel({anchor,subject,subjects,tools,onSubjectChange,onChoose,onClose}:Props){
+export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubject,subjects,tools,onSubjectChange,onChoose,onClose}:Props){
   const panelRef=useRef<HTMLElement>(null);
   const [position,setPosition]=useState<CSSProperties>({left:70,top:86});
   useLayoutEffect(()=>{
@@ -73,11 +74,12 @@ export default function LektrusSubjectToolsPanel({anchor,subject,subjects,tools,
       <div className="lektrus-subject-tools-body">
         <label className="lektrus-subject-tools-category">
           <span>Предмет доски</span>
-          <select aria-label="Предмет доски для набора инструментов" value={subject} onChange={e=>onSubjectChange(e.target.value)}>
+          <select aria-label="Предмет доски для набора инструментов" value={subject} disabled={!canChangeSubject} onChange={e=>onSubjectChange(e.target.value)}>
             <option value="">Выберите предмет</option>
             {subjects.filter(Boolean).map(name=><option key={name} value={name}>{name}</option>)}
             {subject&&!subjects.includes(subject)&&<option value={subject}>{subject}</option>}
           </select>
+          {!canChangeSubject&&<small>Предмет закреплён создателем доски</small>}
         </label>
         {tools.length>0?
           <div className="lektrus-subject-tools-groups" role="group" aria-label={subject+" инструменты"}>
