@@ -226,7 +226,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
             </div>
             <small>{elementNotice||"Выберите элемент в списке и укажите его место на чертеже."}</small>
           </section>}
-          <div className="lektrus-science-subhead"><strong>{isPhysics?"Опорные точки":"Атомы и точки"}</strong><span>{points.length}</span></div>
+          <div className="lektrus-science-subhead"><strong>{isPhysics?"Объекты и опорные точки":"Атомы и точки"}</strong><span>{points.length}</span></div>
           <p className="lektrus-science-description">{drawingHelp}</p>
           <div className="lektrus-science-points">
             {points.map((point,i)=><button type="button" key={i}
@@ -253,7 +253,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                 value={selectedPoint.y} onChange={e=>patchPoint(selected,{y:clamp(Number(e.target.value)||0,yMin,yMax)})}/></label>
             </div>
           </div>}
-          <div className="lektrus-science-subhead"><strong>{isPhysics?"Векторы и линии":"Химические связи"}</strong><span>{segments.length}</span></div>
+          <div className="lektrus-science-subhead"><strong>{isPhysics?"Силы и вспомогательные линии":"Химические связи"}</strong><span>{segments.length}</span></div>
           <div className="lektrus-science-link-form">
             <div className="lektrus-science-xy">
               <label>От точки
@@ -276,14 +276,14 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                 </select>
               </label>:isPhysics?
               <label className="lektrus-science-check"><input type="checkbox"
-                checked={arrow} onChange={e=>setArrow(e.target.checked)}/> Стрелка на конце линии</label>:
+                checked={arrow} onChange={e=>setArrow(e.target.checked)}/> Сила (синяя стрелка)</label>:
               <label>Порядок связи
                 <select value={order} onChange={e=>setOrder(Number(e.target.value) as 1|2|3)}>
                   <option value={1}>Одинарная</option><option value={2}>Двойная</option>
                   <option value={3}>Тройная</option>
                 </select></label>}
             <button type="button" onClick={addLink} disabled={!canLink||first===second||segments.length>=64}
-              className="lektrus-science-add-link">+ {isPhysics?"Добавить линию":"Добавить связь"}</button>
+              className="lektrus-science-add-link">+ {isPhysics?(arrow?"Добавить силу":"Добавить линию"):"Добавить связь"}</button>
           </div>
           {segments.length>0&&<div className="lektrus-science-links">
             {segments.map((seg,i)=><div key={i} className={activeLink===i?"active":""}>
@@ -380,7 +380,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                       seg.label==="Нормаль"?"lektrus-science-normal":
                       seg.label==="Граница сред"?"lektrus-science-boundary":
                       seg.label==="Главная оптическая ось"?"lektrus-science-optical-axis":
-                      "lektrus-science-vector"}
+                      seg.scienceArrow?"lektrus-science-force":"lektrus-science-object-line"}
                     markerEnd={seg.scienceArrow?"url(#science-arrow-end)":undefined}/>;
                 })}
                 {seg.scienceCircuitSymbol&&seg.scienceCircuitSymbol!=="wire"&&
