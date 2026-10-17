@@ -6,6 +6,9 @@ type Position={left:number;top:number;width:number};
 
 export default function LektrusSubjectPicker({value,options,disabled=false,onChange}:Props){
   const [draft,setDraft]=useState(value);
+  // The selected subject and the temporary search query are different things.
+  // A fresh opening always lists ALL subjects, even if one is already selected.
+  const [filter,setFilter]=useState("");
   const [open,setOpen]=useState(false);
   const [active,setActive]=useState(0);
   const [position,setPosition]=useState<Position>({left:0,top:0,width:256});
@@ -22,7 +25,7 @@ export default function LektrusSubjectPicker({value,options,disabled=false,onCha
     setPosition({left,top:rect.bottom+7,width});
   },[]);
 
-  useEffect(()=>{if(!open)setDraft(value)},[value,open]);
+  useEffect(()=>{if(!open){setDraft(value);setFilter("")}},[value,open]);
   useEffect(()=>{
     if(!open)return;
     placeMenu();
@@ -31,6 +34,7 @@ export default function LektrusSubjectPicker({value,options,disabled=false,onCha
       if(rootRef.current?.contains(target)||listRef.current?.contains(target))return;
       setOpen(false);
       setDraft(value);
+      setFilter("");
     };
     document.addEventListener("pointerdown",dismiss);
     window.addEventListener("resize",placeMenu);
@@ -42,16 +46,17 @@ export default function LektrusSubjectPicker({value,options,disabled=false,onCha
     };
   },[open,value,placeMenu]);
 
-  const normalized=draft.trim().toLocaleLowerCase("ru-RU");
-  const matches=options.filter(name=>!normalized||name.toLocaleLowerCase("ru-RU").startsWith(normalized));
+  const normalized=filter.trim().toLocaleLowerCase("ru-RU");
+  const matches=options.filter(name=>!normalized||name.toLocaleLowerCase("ru-RU").includes(normalized));
   const select=(name:string)=>{
     onChange(name);
     setDraft(name);
+    setFilter("");
     setOpen(false);
     inputRef.current?.blur();
   };
-  const close=()=>{setOpen(false);setDraft(value);inputRef.current?.blur()};
-  const show=()=>{placeMenu();setOpen(true);setActive(0)};
+  const close=()=>{setOpen(false);setDraft(value);setFilter("");inputRef.current?.blur()};
+  const show=(showAll=true)=>{placeMenu();if(showAll)setFilter("");setOpen(true);setActive(0)};
   return <div className="lektrus-subject-combobox" ref={rootRef}>
     <span className="lektrus-subject-label">Предмет</span>
     <div className="lektrus-subject-field" ref={fieldRef}>
@@ -61,8 +66,8 @@ export default function LektrusSubjectPicker({value,options,disabled=false,onCha
         aria-expanded={open} aria-controls="lektrus-subject-options"
         aria-haspopup="listbox" autoComplete="off" spellCheck={false}
         placeholder="Выбрать предмет" value={draft} disabled={disabled}
-        maxLength={80} onFocus={show}
-        onChange={event=>{setDraft(event.target.value);setActive(0);show()}}
+        maxLength={80} onFocus={()=>show(true)}
+        onChange={event=>{setDraft(event.target.value);setFilter(event.target.value);setActive(0);show(false)}}
         onKeyDown={event=>{
           event.stopPropagation();
           if(event.key==="Escape"){event.preventDefault();close()}
@@ -77,7 +82,7 @@ export default function LektrusSubjectPicker({value,options,disabled=false,onCha
       />
       <button type="button" aria-label={open?"Закрыть список предметов":"Открыть список предметов"} aria-expanded={open}
         disabled={disabled} onClick={()=>{
-          if(open){close()}else{inputRef.current?.focus();show()}
+          if(open){close()}else{inputRef.current?.focus();show(true)}
         }}>
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/></svg>
       </button>
@@ -89,7 +94,7 @@ export default function LektrusSubjectPicker({value,options,disabled=false,onCha
       {matches.map((name,index)=><button type="button" role="option" key={name} aria-selected={value===name}
         className={[active===index?"is-focused":"",value===name?"is-selected":""].filter(Boolean).join(" ")}
         onMouseEnter={()=>setActive(index)} onPointerDown={e=>e.preventDefault()} onClick={()=>select(name)}>{name}</button>)}
-      {!matches.length&&<button type="button" role="option" aria-selected={false}
+      {!matches.length&&draft.trim()&&<button type="button" role="option" aria-selected={false}
         onPointerDown={e=>e.preventDefault()} onClick={()=>select(draft.trim())}>Выбрать «{draft.trim()}»</button>}
     </div>,document.body)}
   </div>;
