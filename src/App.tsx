@@ -8218,7 +8218,7 @@ export default function App() {
           : section==="notifications"
           ? <NotificationsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="profile"
-          ? <ProfileScreen user={authUser} accountRole={accountRole} isAppAdmin={isAppAdmin} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <ProfileScreen user={authUser} accountRole={accountRole} isAppAdmin={isAppAdmin} onLogout={logout} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="settings"
           ? <SettingsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onLogout={logout} installAvailable={Boolean(globalInstallPrompt)} isInstalled={globalStandalone} onInstall={()=>void installGlobalApp()} onBilling={()=>{window.history.pushState({}, "", "/?section=billing");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="billing"
