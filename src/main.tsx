@@ -28,6 +28,7 @@ import "./lektrusToolRefinements.css";
 import "./lektrusBoardBackground.css";
 import "./lektrusSubjectPicker.css";
 import "./lektrusSubjectTools.css";
+import "./lektrusPlatform.css";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
 
@@ -80,26 +81,35 @@ createRoot(root).render(
     : <ErrorBoundary><App /></ErrorBoundary>
 );
 
-const UPDATE_RELOAD_GUARD = "onlinerepetitor.legacy-shell-cleanup.v246";
-
-async function clearLegacyAppShell() {
-  if (!("serviceWorker" in navigator)) return false;
-  const hadController = !!navigator.serviceWorker.controller;
-  const registrations = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(registrations.map((registration) => registration.unregister()));
-  if ("caches" in window) {
-    const keys = await caches.keys();
-    await Promise.all(keys.map((key) => caches.delete(key)));
-  }
-  return hadController || registrations.length > 0;
+// Register only in production so dev/HMR never reuses a cached app shell.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  let reloadAfterConfirmedUpdate = false;
+  window.addEventListener("lektrus:apply-update", () => { reloadAfterConfirmedUpdate = true; });
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    // Never reload an active lesson merely because a new version was downloaded.
+    if (reloadAfterConfirmedUpdate) window.location.reload();
+  });
+  window.addEventListener("load", () => {
+    if (!window.isSecureContext) return; // Production PWA requires HTTPS.
+    void navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" })
+      .then(registration => {
+        const notify = () => {
+          if (registration.waiting && navigator.serviceWorker.controller) {
+            window.dispatchEvent(new CustomEvent("or-sw-update", { detail: { registration } }));
+          }
+        };
+        if (registration.waiting) notify();
+        registration.addEventListener("updatefound", () => {
+          const installing = registration.installing;
+          if (!installing) return;
+          installing.addEventListener("statechange", () => {
+            if (installing.state === "installed") notify();
+          });
+        });
+        const refresh = () => { if (document.visibilityState === "visible") void registration.update().catch(() => {}); };
+        window.addEventListener("focus", refresh);
+        document.addEventListener("visibilitychange", refresh);
+      })
+      .catch(error => console.warn("Lektrus PWA registration failed", error));
+  }, { once: true });
 }
-
-window.addEventListener("load", () => {
-  // Clean up obsolete service workers/caches without force-reloading an active lesson.
-  // The next normal navigation will naturally use the clean app shell.
-  void clearLegacyAppShell()
-    .then((hadLegacyShell) => {
-      if (hadLegacyShell) sessionStorage.setItem(UPDATE_RELOAD_GUARD, "1");
-    })
-    .catch((error) => console.warn("Legacy app-shell cleanup failed", error));
-});

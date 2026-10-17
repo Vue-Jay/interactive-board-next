@@ -2181,13 +2181,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     return()=>{cancelled=true};
   },[isCoarsePointer]);
   const [installPrompt,setInstallPrompt]=useState<Event|null>(null);
-  const [isStandalone,setIsStandalone]=useState(()=>window.matchMedia?.("(display-mode: standalone)").matches===true);
+  const [isStandalone,setIsStandalone]=useState(()=>(window.matchMedia?.("(display-mode: standalone)").matches===true || (navigator as Navigator & {standalone?:boolean}).standalone===true));
   const [online,setOnline]=useState(()=>navigator.onLine);
   const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
   const gesture = useRef<Gesture | null>(null);
   useEffect(()=>{const ready=(e:Event)=>{e.preventDefault();setInstallPrompt(e)};const installed=()=>{setInstallPrompt(null);setIsStandalone(true)};window.addEventListener("beforeinstallprompt",ready);window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",ready);window.removeEventListener("appinstalled",installed)}},[]);
   useEffect(()=>{const sync=()=>setOnline(navigator.onLine);const update=((e:Event)=>setUpdateReady((e as CustomEvent<{registration:ServiceWorkerRegistration}>).detail.registration)) as EventListener;window.addEventListener("online",sync);window.addEventListener("offline",sync);window.addEventListener("or-sw-update",update);return()=>{window.removeEventListener("online",sync);window.removeEventListener("offline",sync);window.removeEventListener("or-sw-update",update)}},[]);
-  const applyUpdate=()=>{updateReady?.waiting?.postMessage({type:"SKIP_WAITING"})};
+  const applyUpdate=()=>{if(!updateReady?.waiting)return;window.dispatchEvent(new Event("lektrus:apply-update"));updateReady.waiting.postMessage({type:"SKIP_WAITING"})};
   const installApp=async()=>{const p=installPrompt as (Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>})|null;if(!p)return;await p.prompt();await p.userChoice;setInstallPrompt(null)};
   const clipboard = useRef<Item[]>([]);
   const history = useRef<Item[][]>([expandDocumentInk(initial.data)]);
@@ -7919,7 +7919,7 @@ export default function App() {
   const [remoteVersion, setRemoteVersion] = useState<number | null>(null);
   const [boardMountKey, setBoardMountKey] = useState(0);
   const [globalInstallPrompt,setGlobalInstallPrompt]=useState<Event|null>(null);
-  const [globalStandalone,setGlobalStandalone]=useState(()=>window.matchMedia?.("(display-mode: standalone)").matches===true);
+  const [globalStandalone,setGlobalStandalone]=useState(()=>(window.matchMedia?.("(display-mode: standalone)").matches===true || (navigator as Navigator & {standalone?:boolean}).standalone===true));
   useEffect(()=>{
     const ready=(e:Event)=>{e.preventDefault();setGlobalInstallPrompt(e)};
     const installed=()=>{setGlobalInstallPrompt(null);setGlobalStandalone(true)};
