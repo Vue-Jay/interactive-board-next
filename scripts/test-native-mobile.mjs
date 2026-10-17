@@ -54,7 +54,13 @@ assert.ok(activity.includes("else controller.show(WindowInsetsCompat.Type.status
 assert.ok(activity.includes("Math.max(status.top, cutout.top)"));
 assert.ok(activity.includes("getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars())"));
 assert.ok(activity.includes("ViewGroup.MarginLayoutParams"));
-assert.ok(activity.includes("margins.setMargins(cutout.left, top, cutout.right, bottom)"));
+assert.ok(activity.includes("margins.setMargins(horizontalLeft, top, horizontalRight, bottom)"));
+assert.ok(activity.includes("boardMode ? 0 : cutout.left"));
+assert.ok(activity.includes("boardMode ? 0 : cutout.right"));
+assert.ok(app.includes('aria-label="Рука — перемещать доску одним пальцем"'));
+assert.ok(app.includes('e.pointerType==="touch" && tool==="hand"'));
+assert.ok(app.includes('mode:"pan",start,view'));
+assert.ok(read("src/lectrisBoard.css").includes("left:max(16px, env(safe-area-inset-left"));
 assert.ok(app.includes("enabled: route.kind === \"board\""));
 assert.ok(read("android/app/src/main/java/ru/lektrus/board/LektrusSystemUiPlugin.java").includes('name = "LektrusSystemUi"'));
 assert.ok(activity.includes("lektrus:native-back"));

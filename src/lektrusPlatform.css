@@ -35,3 +35,8 @@ html.lektrus-android-app .topbar { padding-top: 0; }
 html.lektrus-android-app .lectris-mobile-nav,
 html.lektrus-android-app .lectris-bottom-nav { padding-bottom: 0; }
 html.lektrus-android-app body { overscroll-behavior-y: none; }
+
+/* Touch-only hand. On a mouse/desktop viewport there is no visible hand tool. */
+@media (pointer:fine) {
+  .mobile-board-tools .mobile-tool-cluster-navigation>button[aria-label^="Рука"] {display:none!important}
+}
