@@ -13,7 +13,7 @@ type Props={
 };
 type Geometry={left:number;top:number;width:number;height:number;scaleX:number;scaleY:number;localW:number;localH:number;windowScale:number};
 const BASE_STAGE_WIDTH=840,BASE_STAGE_HEIGHT=484;
-const DETAILS_WIDTH=220,ATOM_WIDTH=245;
+const DETAILS_WIDTH=220,ATOM_WIDTH=235;
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 const close=(a:number,b:number)=>Math.abs(a-b)<0.15;
 const sameGeometry=(a:Geometry|null,b:Geometry)=>!!a&&
@@ -43,7 +43,7 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
     if(r.width>0&&r.height>0&&localW>0&&localH>0){
      const next={left:r.left,top:r.top,width:r.width,height:r.height,
        scaleX:r.width/localW,scaleY:r.height/localH,localW,localH,
-       windowScale:Math.min(r.width/BASE_STAGE_WIDTH,r.height/BASE_STAGE_HEIGHT)};
+       windowScale:Math.sqrt((r.width/BASE_STAGE_WIDTH)*(r.height/BASE_STAGE_HEIGHT))};
      setGeometry(old=>sameGeometry(old,next)?old:next);
     }
    }
