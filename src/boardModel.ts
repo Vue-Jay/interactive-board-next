@@ -1,4 +1,50 @@
-import {circuitIsDocument} from "./lektrusCircuitModel";
+/** Self-contained persisted circuit validation.
+ * Keep this module import-free for whiteboard persistence and ink tests. */
+function circuitIsDocument(value:unknown):boolean{
+  if(!value||typeof value!=="object")return false;
+  const data=value as Record<string,unknown>;
+  if(data.version!==1||!Array.isArray(data.components)||!Array.isArray(data.junctions)||
+    !Array.isArray(data.wires)||typeof data.showGrid!=="boolean"||typeof data.snap!=="boolean"||
+    data.components.length>120||data.junctions.length>240||data.wires.length>400)return false;
+  const validXY=(x:unknown,y:unknown)=>typeof x==="number"&&Number.isFinite(x)&&x>=0&&x<=900&&
+    typeof y==="number"&&Number.isFinite(y)&&y>=0&&y<=580;
+  const symbols=new Set(["resistor","variable-resistor","photoresistor","lamp",
+    "source","cell","battery","ac-source","switch","push-button","fuse",
+    "ammeter","voltmeter","galvanometer","motor","diode","led",
+    "capacitor","capacitor-polarized","inductor","bell","ground"]);
+  const compIds=new Set<string>(),junctionIds=new Set<string>(),ids=new Set<string>();
+  const add=(id:unknown,section:Set<string>)=>{
+    if(typeof id!=="string"||!id||id.length>72||ids.has(id))return false;
+    section.add(id);ids.add(id);return true;
+  };
+  for(const part of data.components as Record<string,unknown>[]){
+    if(!part||typeof part!=="object"||!add(part.id,compIds)||
+      !symbols.has(part.type as string)||!validXY(part.x,part.y)||
+      ![0,90,180,270].includes(part.rotation as number)||
+      typeof part.label!=="string"||part.label.length>60||
+      typeof part.value!=="string"||part.value.length>60||
+      (part.closed!=null&&typeof part.closed!=="boolean"))return false;
+  }
+  for(const node of data.junctions as Record<string,unknown>[]){
+    if(!node||typeof node!=="object"||!add(node.id,junctionIds)||
+      !validXY(node.x,node.y))return false;
+  }
+  const validAnchor=(candidate:unknown)=>{
+    if(!candidate||typeof candidate!=="object")return false;
+    const a=candidate as Record<string,unknown>;
+    return a.kind==="terminal"&&typeof a.componentId==="string"&&
+        compIds.has(a.componentId)&&(a.side==="a"||a.side==="b")||
+      a.kind==="junction"&&typeof a.junctionId==="string"&&junctionIds.has(a.junctionId);
+  };
+  for(const wire of data.wires as Record<string,unknown>[]){
+    if(!wire||typeof wire!=="object"||!add(wire.id,new Set<string>())||
+      !validAnchor(wire.from)||!validAnchor(wire.to)||
+      !["hvh","vhv","straight"].includes(wire.route as string)||
+      JSON.stringify(wire.from)===JSON.stringify(wire.to))return false;
+  }
+  return true;
+}
+
 export type BoardBackground={mode:"dots"|"grid"|"plain";color:string;opacity:number};
 export const DEFAULT_BOARD_BACKGROUND:BoardBackground={mode:"dots",color:"#f7f7f8",opacity:100};
 export function normalizeBoardBackground(value:unknown):BoardBackground{
