@@ -10,7 +10,7 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
  const config=elementFacts[model.atomicNumber-1]?.electronConfiguration??"—";
  const [selectedLabel,setSelectedLabel]=useState(false);
  const dragging=useRef<{pointerId:number;startX:number;startY:number;originX:number;originY:number}|null>(null);
- const labelX=cx+model.labelX,labelY=423+model.labelY;
+ const labelX=cx+model.labelX,labelY=(model.mode==="orbital"||model.mode==="lewis"?Math.max(460,90+orbitalSublevels(element.number).length*29)-33:423)+model.labelY;
  const begin=(event:PointerEvent<SVGGElement>)=>{
   if(!onLabelMove)return;
   event.preventDefault();event.stopPropagation();
@@ -33,6 +33,9 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
  };
  const ringMax=45+(shells.length-1)*23;
+ const orbital= model.mode==="orbital"||model.mode==="lewis";
+ const orbitalRows=orbital?orbitalSublevels(element.number).length:0;
+ const orbitalCanvasHeight=Math.max(460,90+orbitalRows*29);
  const mass=Number((elementFacts[element.number-1]?.atomicMass??"").replace(/[^0-9.]/g,""));
  const neutronCount=Number.isFinite(mass)?Math.max(0,Math.round(mass)-element.number):null;
  const nucleus=<g pointerEvents="none">
@@ -43,7 +46,7 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
   <text x={cx} y={cy+12} textAnchor="middle" fontSize="10"
     fill="#68829f">Z={element.number}</text>
  </g>;
- return <svg className="lektrus-atom-svg" viewBox="0 0 700 460"
+ return <svg className={"lektrus-atom-svg"+(orbital?" orbital":"")} viewBox={"0 0 700 "+orbitalCanvasHeight}
     role="img" aria-label={"Строение атома "+element.name}
     onPointerMove={move} onPointerUp={end} onPointerCancel={end}>
   <rect width="700" height="460" rx="12" fill="#fff" onClick={()=>setSelectedLabel(false)}/>
@@ -78,8 +81,8 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
   </>}
   {(model.mode==="orbital"||model.mode==="lewis")&&(()=>{
     const subs=orbitalSublevels(element.number);
-    const step=Math.min(34,294/Math.max(1,subs.length-1));
-    const yBottom=350;
+    const step=29;
+    const yBottom=orbitalCanvasHeight-108;
     const locations=subs.map((sub,index)=>({
       x:156+(sub.n-1)*24+({s:0,p:48,d:106,f:166,g:214}[sub.letter]),
       y:yBottom-index*step,
@@ -87,7 +90,7 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
     }));
     const stair=locations.map(p=>(p.x-20)+","+(p.y+3)).join(" ");
     return <g>
-      <rect x="65" y="22" width="570" height="365" rx="11"
+      <rect x="65" y="22" width="570" height={orbitalCanvasHeight-58} rx="11"
         fill="#fbfdff" stroke="#e6edf7"/>
       <text x="84" y="47" fontSize="13" fontWeight="700" fill="#3c638b">
         Орбитальная диаграмма · {element.symbol}
@@ -95,7 +98,7 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
       <text x="84" y="66" fontSize="10.5" fill="#8194ae">
         Уровни по энергии снизу вверх · ↑↓ направления спинов
       </text>
-      <path d="M100 366V100m-5 8l5-8 5 8" stroke="#8fa8c9" strokeWidth="1.5"
+      <path d="M100 "+(orbitalCanvasHeight-79)+"V100m-5 8l5-8 5 8" stroke="#8fa8c9" strokeWidth="1.5"
         strokeLinecap="round" fill="none"/>
       <text x="83" y="97" fontSize="10" textAnchor="middle" fill="#7391b4">E</text>
       {stair&&<polyline points={stair} stroke="#cfdaeb" strokeWidth="1.2"
@@ -121,7 +124,7 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
         </text>
       </g>)}
       <g fontSize="10" fill="#6d84a0">
-        <text x="164" y="402">Правило Хунда: сначала ↑ в разные орбитали, затем ↓.</text>
+        <text x="164" y={orbitalCanvasHeight-47}>Правило Хунда: сначала ↑ в разные орбитали, затем ↓.</text>
       </g>
       {subs.length===0&&<text x="350" y="225" textAnchor="middle"
         fontSize="13" fill="#aa6b57">Нет достоверной конфигурации для построения</text>}
