@@ -86,3 +86,10 @@ if (nativeSourcesExpected) {
   assert.ok(existsSync("ios/App/App.xcodeproj"), "Missing Xcode project");
 }
 console.log("Lektrus: Capacitor source projects, native packaging, and safe auth redirect verified.");
+
+assert.ok(app.includes('id: "hand", icon: "hand"'));
+assert.ok(app.includes('["select","hand",...lectrisPinned'));
+assert.ok(app.includes('tool==="hand" && e.pointerType==="touch"'));
+assert.ok(activity.includes('boardMode ? 0 : cutout.left'));
+assert.ok(activity.includes('--lektrus-cutout-left'));
+assert.ok(read("src/lektrusPlatform.css").includes('html.lektrus-android-app body .workspace nav.mobile-board-tools'));

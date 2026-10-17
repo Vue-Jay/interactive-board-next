@@ -35,3 +35,35 @@ html.lektrus-android-app .topbar { padding-top: 0; }
 html.lektrus-android-app .lectris-mobile-nav,
 html.lektrus-android-app .lectris-bottom-nav { padding-bottom: 0; }
 html.lektrus-android-app body { overscroll-behavior-y: none; }
+
+/* Native board: canvas extends behind landscape corner cutouts (no white
+   vertical gutter); interactive controls are inset into safe territory.
+   WebView itself is edge-to-edge only on the board. */
+@media screen and (max-width:1100px) {
+  html.lektrus-android-app body .workspace .board {
+    inset:0!important;
+  }
+  html.lektrus-android-app body .workspace nav.mobile-board-tools {
+    left:calc(max(8px,env(safe-area-inset-left,0px)) + var(--lektrus-cutout-left,0px))!important;
+    top:calc(70px + max(0px,env(safe-area-inset-top,0px)))!important;
+    max-height:calc(100dvh - 86px - var(--lektrus-cutout-bottom,0px))!important;
+    background:var(--lt-raised)!important;
+  }
+  html.lektrus-android-app body .workspace section.mobile-tools-sheet {
+    left:calc(70px + var(--lektrus-cutout-left,0px))!important;
+    top:calc(70px + max(0px,env(safe-area-inset-top,0px)))!important;
+    max-width:calc(100vw - 86px - var(--lektrus-cutout-left,0px) - var(--lektrus-cutout-right,0px))!important;
+  }
+  html.lektrus-android-app body .topbar {
+    padding-left:max(12px,var(--lektrus-cutout-left,0px))!important;
+    padding-right:max(12px,var(--lektrus-cutout-right,0px))!important;
+  }
+  html.lektrus-android-app body .workspace .board-controls,
+  html.lektrus-android-app body .workspace .minimap {
+    right:calc(12px + var(--lektrus-cutout-right,0px))!important;
+  }
+}
+/* The hand tool is mobile-only; desktop retains RMB-to-pan. */
+@media (min-width:1101px) {
+  .workspace .board-tool-hand { cursor:default; }
+}
