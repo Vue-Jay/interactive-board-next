@@ -29,9 +29,8 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
     y:clamp((rect?.top??130)+14,8,Math.max(8,window.innerHeight-cardHeight-12))}
   :{x:clamp(modernX,8,Math.max(8,window.innerWidth-cardWidth-12)),
     y:clamp((rect?.top??130)+(rect?.height??600)*.085,8,Math.max(8,window.innerHeight-cardHeight-12))};
- const offset=slot*12;
- const placement:XY={x:clamp(defaultInfo.x+offset,8,Math.max(8,window.innerWidth-cardWidth-8)),
-   y:clamp(defaultInfo.y+offset,8,Math.max(8,window.innerHeight-cardHeight-8))};
+ const placement:XY={x:clamp(defaultInfo.x,8,Math.max(8,window.innerWidth-cardWidth-8)),
+   y:clamp(defaultInfo.y+slot*(cardHeight+10),8,Math.max(8,window.innerHeight-cardHeight-8))};
  const info=fixed?placement:position??placement;
  const atom=atomPosition??{x:clamp(info.x-110,12,window.innerWidth-530),y:clamp(info.y+168,12,window.innerHeight-450)};
  const move=(e:PointerEvent<HTMLDivElement>)=>{
