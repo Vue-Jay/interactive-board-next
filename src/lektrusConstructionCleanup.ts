@@ -11,10 +11,10 @@ export function removeConstruction<T extends Geometry>(geometry:T,kind:Construct
   const current=geometry[kind==="circle"?"circles":kind==="polygon"?"polygons":kind==="segment"?"segments":kind==="angle"?"angles":"midpoints"];
   if(!Number.isInteger(index)||index<0||index>=current.length)return geometry;
   let segments=geometry.segments.filter((_,i)=>kind!=="segment"||i!==index);
-  const circles=geometry.circles.filter((_,i)=>kind!=="circle"||i!==index);
-  const polygons=geometry.polygons.filter((_,i)=>kind!=="polygon"||i!==index);
-  const angles=geometry.angles.filter((_,i)=>kind!=="angle"||i!==index);
-  const midpoints=geometry.midpoints.filter((_,i)=>kind!=="midpoint"||i!==index);
+  let circles=geometry.circles.filter((_,i)=>kind!=="circle"||i!==index);
+  let polygons=geometry.polygons.filter((_,i)=>kind!=="polygon"||i!==index);
+  let angles=geometry.angles.filter((_,i)=>kind!=="angle"||i!==index);
+  let midpoints=geometry.midpoints.filter((_,i)=>kind!=="midpoint"||i!==index);
 
   // An independently created angle has two supporting rays. Only remove them
   // when there is no other angle that still needs the same rays.
@@ -26,6 +26,26 @@ export function removeConstruction<T extends Geometry>(geometry:T,kind:Construct
     segments=segments.filter(segment=>
       segment.kind!=="ray"||!pairs.some(([a,b])=>
         segment.a===a&&segment.b===b&&!shared(a,b)));
+  }
+
+  // A shape's schoolbook angle mark, edge or radius is part of that shape.
+  // Drop these dependent relations before computing which vertices are orphaned.
+  // A point that belongs to a different primary polygon or circle is protected.
+  if(kind==="polygon"||kind==="circle"||kind==="segment"){
+    const source=kind==="polygon"?geometry.polygons[index].points:
+      kind==="circle"?[geometry.circles[index].center,geometry.circles[index].edge]:
+      [geometry.segments[index].a,geometry.segments[index].b];
+    const owned=new Set(source);
+    const independentlyOwned=new Set<number>();
+    for(const polygon of polygons)for(const point of polygon.points)independentlyOwned.add(point);
+    for(const circle of circles){independentlyOwned.add(circle.center);independentlyOwned.add(circle.edge)}
+    const dependent=(points:number[])=>points.length>0&&
+      points.every(i=>owned.has(i))&&points.some(i=>!independentlyOwned.has(i));
+    if(kind!=="segment"){
+      segments=segments.filter(v=>!dependent([v.a,v.b]));
+    }
+    angles=angles.filter(v=>!dependent([v.a,v.vertex,v.b]));
+    midpoints=midpoints.filter(v=>!dependent([v.a,v.b]));
   }
 
   const refs=(data:Geometry)=>{
