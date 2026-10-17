@@ -2,7 +2,7 @@ import {useRef,useState} from "react";
 import LektrusPeriodicFloatingInfo from "./LektrusPeriodicFloatingInfo";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
-import {periodicElements,type ElementFamily} from "./lektrusPeriodicElements";
+import {periodicElements,periodicFamilies,type ElementFamily} from "./lektrusPeriodicElements";
 import LektrusPeriodicTableView from "./LektrusPeriodicTableView";
 
 type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void};
