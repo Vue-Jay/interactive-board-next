@@ -236,4 +236,9 @@ assert.match(editor,/Две касательные из точки/);
 assert.match(editor,/Центральный угол/);
 assert.match(editor,/Вписанный угол/);
 
+const radiusEditorBlock=editor.slice(editor.indexOf("Радиусы окружностей"),editor.indexOf("Радиусы окружностей")+2200);
+assert.ok(radiusEditorBlock.includes('circles:draft.circles.map'),"circle radius belongs to a circle annotation");
+assert.ok(!radiusEditorBlock.includes('givenSides:Array.from'),"circle edits must not overwrite triangle sides");
+assert.match(app,/\["circle","sphere"\]\.includes\(item\.graphFigureId/,"circle radius does not read other figures' side labels");
+
 console.log("School geometry: ray, transversal angles, solid rotation and dimension projections OK.");
