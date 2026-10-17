@@ -205,3 +205,20 @@
     right:max(18px, env(safe-area-inset-right, 0px))!important;
   }
 }
+
+/* Android landscape: clear the camera cutout and separate board controls. */
+@media (max-width:1100px) and (pointer:coarse) and (orientation:landscape) {
+  html.lektrus-android-app .topbar {
+    padding-left:max(104px, env(safe-area-inset-left, 0px))!important;
+  }
+  html.lektrus-android-app .mobile-board-tools {
+    left:max(104px, env(safe-area-inset-left, 0px))!important;
+    top:calc(64px + 12px)!important;
+    max-height:calc(100dvh - 96px)!important;
+  }
+  html.lektrus-android-app .mobile-tools-sheet {
+    left:max(166px, env(safe-area-inset-left, 0px))!important;
+    top:76px!important;
+    max-height:calc(100dvh - 96px)!important;
+  }
+}
