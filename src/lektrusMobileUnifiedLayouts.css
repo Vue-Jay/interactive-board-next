@@ -174,3 +174,40 @@
   .lectris-workspace-stage .lectris-library-section-title h2{font-size:20px!important}
   .lectris-workspace-stage .lektrus-collection{padding-top:6px!important}
 }
+
+/* Portrait screen uses a real non-overlapping content viewport between
+   the native header and the bottom navigation. The stage itself scrolls,
+   rather than leaving fixed navigation over the calendar or other cards. */
+@media screen and (max-width:700px) and (orientation:portrait){
+  .lectris-workspace{
+    display:flex!important;flex-direction:column!important;
+    height:100dvh!important;min-height:0!important;overflow:hidden!important;
+  }
+  .lectris-workspace>.lectris-workspace-header{
+    flex:0 0 58px!important;height:58px!important;min-height:58px!important;
+  }
+  .lectris-workspace>.lectris-workspace-body,
+  .lectris-workspace.is-collapsed>.lectris-workspace-body{
+    flex:1 1 auto!important;display:block!important;
+    height:auto!important;min-height:0!important;max-height:none!important;
+    overflow:hidden!important;
+    padding-bottom:var(--lektrus-mobile-dock-height,64px)!important;
+    box-sizing:border-box!important;
+  }
+  .lectris-workspace .lectris-workspace-stage{
+    height:100%!important;min-height:0!important;max-height:100%!important;
+    overflow-y:auto!important;overflow-x:hidden!important;
+    overscroll-behavior-y:contain;
+    padding-bottom:20px!important;scroll-padding-bottom:20px!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .lectris-workspace .lectris-workspace-stage>main{
+    min-height:0!important;height:auto!important;
+    padding-bottom:24px!important;overflow:visible!important;
+  }
+  .lectris-workspace .lectris-mobile-bottom{
+    position:fixed!important;bottom:0!important;z-index:200!important;
+    height:var(--lektrus-mobile-dock-height,64px)!important;
+    flex:0 0 auto!important;
+  }
+}
