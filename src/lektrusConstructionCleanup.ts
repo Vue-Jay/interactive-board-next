@@ -73,3 +73,35 @@ export function removeConstruction<T extends Geometry>(geometry:T,kind:Construct
     polygons:polygons.map(v=>({...v,points:v.points.map(indexOf)}))
   };
 }
+
+/** Delete an entire school construction, including its segments, arcs and
+ * private vertices, while preserving vertices reused by unrelated objects.
+ */
+export function removeSchoolConstructionGroup<T extends Geometry>(geometry:T,schoolGroupId:string):T {
+  if(!schoolGroupId||schoolGroupId.length>64)return geometry;
+  const remains=<V extends {schoolGroupId?:string}>(list:V[])=>list.filter(item=>item.schoolGroupId!==schoolGroupId);
+  const segments=remains(geometry.segments),circles=remains(geometry.circles),
+    polygons=remains(geometry.polygons),angles=remains(geometry.angles),
+    midpoints=remains(geometry.midpoints);
+  const referenced=new Set<number>();
+  for(const segment of segments){referenced.add(segment.a);referenced.add(segment.b)}
+  for(const circle of circles){referenced.add(circle.center);referenced.add(circle.edge)}
+  for(const polygon of polygons)for(const index of polygon.points)referenced.add(index);
+  for(const angle of angles){referenced.add(angle.a);referenced.add(angle.vertex);referenced.add(angle.b)}
+  for(const midpoint of midpoints){referenced.add(midpoint.a);referenced.add(midpoint.b)}
+  const remap=new Map<number,number>();
+  const points=geometry.points.flatMap((point,index)=>{
+    if(point.schoolGroupId===schoolGroupId&&!referenced.has(index))return [];
+    const next=point.schoolGroupId===schoolGroupId?{...point,schoolGroupId:undefined,schoolGroupLabel:undefined}:point;
+    remap.set(index,remap.size);
+    return [next];
+  });
+  const shift=(index:number)=>remap.get(index)??index;
+  return {...geometry,points,
+    segments:segments.map(s=>({...s,a:shift(s.a),b:shift(s.b)})),
+    circles:circles.map(c=>({...c,center:shift(c.center),edge:shift(c.edge)})),
+    polygons:polygons.map(p=>({...p,points:p.points.map(shift)})),
+    angles:angles.map(a=>({...a,a:shift(a.a),vertex:shift(a.vertex),b:shift(a.b)})),
+    midpoints:midpoints.map(m=>({...m,a:shift(m.a),b:shift(m.b)}))
+  };
+}
