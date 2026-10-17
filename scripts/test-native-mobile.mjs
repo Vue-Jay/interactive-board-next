@@ -45,12 +45,16 @@ assert.ok(settings.includes('!Capacitor.isNativePlatform()&&<section className="
 assert.ok(activity.includes("WindowInsetsCompat.Type.tappableElement()"));
 assert.ok(activity.includes("WindowInsetsCompat.Type.navigationBars()"));
 assert.ok(activity.includes("BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE"));
-assert.ok(activity.includes("bars.hide(WindowInsetsCompat.Type.statusBars())"));
+assert.ok(activity.includes("if (boardMode) controller.hide(WindowInsetsCompat.Type.statusBars())"));
+assert.ok(activity.includes("else controller.show(WindowInsetsCompat.Type.statusBars())"));
+assert.ok(activity.includes("Math.max(status.top, cutout.top)"));
+assert.ok(app.includes("enabled: route.kind === \"board\""));
+assert.ok(read("android/app/src/main/java/ru/lektrus/board/LektrusSystemUiPlugin.java").includes('name = "LektrusSystemUi"'));
 assert.ok(activity.includes("lektrus:native-back"));
 assert.ok(app.includes('window.addEventListener("lektrus:native-back"'));
 assert.ok(androidManifest.includes('android:enableOnBackInvokedCallback="false"'));
 assert.ok(activity.includes("WindowInsetsCompat.Type.displayCutout()"));
-assert.ok(activity.includes("view.setPadding(cutout.left, cutout.top,"));
+assert.ok(activity.includes("view.setPadding(cutout.left, top, cutout.right,"));
 assert.ok(read("src/lektrusPlatform.css").includes("html.lektrus-android-app"));
 assert.ok(androidManifest.includes('android:windowSoftInputMode="adjustResize"'));
 assert.ok(iosPlist.includes("UIRequiresFullScreen"));
