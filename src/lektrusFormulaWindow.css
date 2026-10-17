@@ -1,0 +1,377 @@
+/* Formula editor is a standalone desktop dialog, not the generic narrow
+   inspector dock. The panel is portaled to body to avoid canvas clipping. */
+body > .formula-editor-backdrop.lektrus-formula-window {
+  position:fixed!important;
+  inset:0!important;
+  z-index:16000!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-sizing:border-box!important;
+  padding:clamp(10px,2.5vh,24px)!important;
+  margin:0!important;
+  background:rgba(19,34,59,.53)!important;
+  backdrop-filter:blur(4px)!important;
+  pointer-events:auto!important;
+  overflow:hidden!important;
+}
+body > .lektrus-formula-window .formula-editor-modal {
+  position:relative!important;
+  inset:auto!important;
+  top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;
+  display:flex!important;
+  flex-direction:column!important;
+  flex:0 1 auto!important;
+  width:min(1050px,calc(100vw - 48px))!important;
+  height:min(744px,calc(100dvh - 48px))!important;
+  min-width:0!important;min-height:0!important;
+  max-width:calc(100vw - 24px)!important;
+  max-height:calc(100dvh - 24px)!important;
+  padding:0!important;margin:0!important;
+  transform:none!important;
+  overflow:hidden!important;
+  overscroll-behavior:contain!important;
+  border-radius:19px!important;
+  border:1px solid #d1def0!important;
+  background:#fff!important;
+  color:#1c304e!important;
+  box-shadow:0 28px 100px #07182b63!important;
+}
+body > .lektrus-formula-window .formula-editor-header {
+  position:relative!important;top:auto!important;
+  display:flex!important;align-items:center!important;
+  flex:0 0 auto!important;
+  min-height:62px!important;
+  padding:12px 18px!important;
+  gap:12px!important;
+  border-bottom:1px solid #dce6f4!important;
+  background:linear-gradient(104deg,#eaf1ff,#fff 85%)!important;
+  z-index:1!important;
+}
+body > .lektrus-formula-window .formula-editor-header::before {
+  content:"∑";
+  flex:0 0 40px;
+  display:grid;place-items:center;
+  height:40px;
+  border:1px solid #d0defa;
+  border-radius:11px;
+  background:#dfe9ff;
+  color:#315bc7;
+  font-size:24px;font-weight:800;
+}
+body > .lektrus-formula-window .formula-editor-header > div {
+  flex:1 1 auto;min-width:0!important;
+}
+body > .lektrus-formula-window .formula-editor-header strong {
+  display:block;color:#1d355a!important;
+  font-size:16px!important;font-weight:850;
+}
+body > .lektrus-formula-window .formula-editor-header span {
+  color:#71839d!important;font-size:11px!important;
+  line-height:1.4!important;overflow-wrap:anywhere;
+}
+body > .lektrus-formula-window .formula-editor-header > button {
+  flex:0 0 34px;min-width:34px!important;
+  width:34px!important;height:34px!important;
+  border:1px solid #dfe7f4!important;
+  border-radius:10px!important;
+  background:#f3f6fd!important;color:#4c6384!important;
+}
+body > .lektrus-formula-window .formula-editor-main {
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1.15fr) minmax(295px,.85fr)!important;
+  flex:1 1 0!important;
+  width:100%!important;
+  min-width:0!important;min-height:0!important;
+  max-width:100%!important;max-height:none!important;
+  gap:0!important;padding:0!important;
+  overflow:hidden!important;
+  background:#f6f9fe!important;
+}
+body > .lektrus-formula-window .formula-editor-compose,
+body > .lektrus-formula-window .formula-palette-panel {
+  box-sizing:border-box!important;
+  display:flex!important;flex-direction:column!important;
+  width:100%!important;min-width:0!important;min-height:0!important;
+  max-height:100%!important;max-width:100%!important;
+  margin:0!important;border-radius:0!important;
+  overflow-x:hidden!important;overflow-y:auto!important;
+  scrollbar-width:thin;
+  scrollbar-color:#c4d2e8 transparent;
+}
+body > .lektrus-formula-window .formula-editor-compose {
+  gap:10px!important;
+  padding:17px!important;
+  background:#f7faff!important;
+}
+body > .lektrus-formula-window .formula-source-head {
+  flex:0 0 auto;flex-wrap:wrap;
+  gap:9px!important;
+}
+body > .lektrus-formula-window .formula-source-head > label {
+  color:#37516f!important;font-size:12px!important;
+}
+body > .lektrus-formula-window .formula-size-editor {
+  flex:0 1 auto;min-width:0;
+  color:#667b9a!important;font-size:11px!important;
+}
+body > .lektrus-formula-window .formula-size-editor input[type="range"] {
+  flex:1 1 100px;
+  width:clamp(70px,8vw,126px)!important;
+  min-width:65px!important;
+  accent-color:#345fce!important;
+  padding:0!important;margin:0!important;
+}
+body > .lektrus-formula-window .formula-size-editor .formula-size-number {
+  box-sizing:border-box;width:54px!important;min-width:54px!important;
+  height:31px!important;min-height:31px!important;
+  padding:4px!important;text-align:center;
+  background:#fff!important;color:#294264!important;
+  border:1px solid #c9d8ed!important;border-radius:8px!important;
+  font-size:12px!important;
+}
+body > .lektrus-formula-window textarea.formula-source-input {
+  box-sizing:border-box!important;
+  flex:0 0 auto!important;
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;min-height:140px!important;
+  height:clamp(145px,22vh,220px)!important;
+  max-height:360px!important;
+  resize:vertical!important;
+  padding:12px 14px!important;
+  margin:0!important;
+  font:14px/1.55 "SFMono-Regular",Consolas,"Liberation Mono",monospace!important;
+  color:#24364e!important;
+  background:#fff!important;
+  border:1px solid #cedbed!important;
+  border-radius:11px!important;
+}
+body > .lektrus-formula-window textarea.formula-source-input:focus {
+  border-color:#6086de!important;
+  outline:2px solid #7294e440!important;
+}
+body > .lektrus-formula-window .formula-syntax-status {
+  flex:0 0 auto;min-height:18px;
+  margin:0!important;gap:12px!important;
+  flex-wrap:wrap;
+  font-size:11px!important;
+}
+body > .lektrus-formula-window .formula-syntax-status span {
+  margin-left:auto;color:#8596b0;font-size:10px!important;
+}
+body > .lektrus-formula-window .formula-preview-card {
+  flex:1 1 auto!important;
+  min-height:160px!important;
+  display:flex!important;flex-direction:column!important;
+  overflow:hidden!important;
+  border:1px solid #cfddf0!important;
+  background:#fff!important;
+  border-radius:12px!important;
+}
+body > .lektrus-formula-window .formula-preview-head{
+  box-sizing:border-box;flex:0 0 auto!important;
+  display:flex!important;flex-wrap:wrap!important;
+  min-height:39px!important;padding:7px 11px!important;
+  color:#445a7a!important;font-size:12px!important;
+  background:#f9fbff!important;
+}
+body > .lektrus-formula-window .formula-preview-surface {
+  box-sizing:border-box!important;
+  flex:1 1 auto!important;
+  height:auto!important;
+  min-height:90px!important;
+  max-height:none!important;
+  padding:0!important;
+  overflow:auto!important;
+  scrollbar-width:thin;
+  background:#fff!important;
+}
+body > .lektrus-formula-window .formula-preview-surface .formula-view{
+  box-sizing:border-box!important;
+  display:block!important;
+  min-height:100%!important;
+  min-width:100%!important;
+  width:max-content!important;
+  padding:17px 20px!important;
+  overflow:visible!important;
+}
+body > .lektrus-formula-window .formula-palette-panel{
+  border:0!important;
+  border-left:1px solid #dce6f4!important;
+  background:#fff!important;
+  overflow:hidden!important;
+}
+body > .lektrus-formula-window .formula-palette-tabs{
+  flex:0 0 auto!important;
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:wrap!important;
+  gap:5px!important;
+  padding:12px 13px!important;
+  border-bottom:1px solid #e2eaf6!important;
+  background:#fbfcff!important;
+}
+body > .lektrus-formula-window .formula-palette-tabs button{
+  box-sizing:border-box!important;
+  min-height:30px!important;height:auto!important;
+  padding:6px 9px!important;
+  border:1px solid transparent!important;
+  border-radius:9px!important;
+  background:#eef2fa!important;
+  color:#60748f!important;
+  font-size:11px!important;
+  font-weight:720!important;
+}
+body > .lektrus-formula-window .formula-palette-tabs button.active{
+  background:#dfe9ff!important;
+  color:#315dc7!important;
+  border-color:#b6c9f6!important;
+}
+body > .lektrus-formula-window .formula-palette-grid {
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  align-content:start!important;
+  gap:7px!important;
+  flex:1 1 auto!important;
+  min-height:70px!important;
+  max-height:none!important;
+  overflow-y:auto!important;overflow-x:hidden!important;
+  padding:12px!important;
+  scrollbar-width:thin;
+}
+body > .lektrus-formula-window .formula-palette-grid button {
+  min-height:41px!important;
+  min-width:0!important;
+  padding:7px 5px!important;
+  font-size:16px!important;
+  line-height:1.2!important;
+  border-radius:9px!important;
+  box-shadow:none!important;
+}
+body > .lektrus-formula-window .formula-palette-grid.templates {
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+body > .lektrus-formula-window .formula-palette-grid.templates button {
+  min-height:49px!important;
+  font:700 11px/1.3 Inter,system-ui,sans-serif!important;
+}
+body > .lektrus-formula-window .formula-history {
+  flex:0 0 auto!important;
+  min-height:0!important;
+  max-height:104px!important;
+  overflow-y:auto!important;
+  margin:0!important;padding:9px 12px!important;
+  border-top:1px solid #e5ecf7;
+}
+body > .lektrus-formula-window .formula-help {
+  flex:0 0 auto!important;
+  max-height:99px!important;
+  overflow-y:auto!important;
+  margin:0!important;
+  padding:9px 12px!important;
+  border-top:1px solid #e5ecf7!important;
+  background:#f7faff!important;
+  font-size:10px!important;
+}
+body > .lektrus-formula-window .formula-help strong {font-size:11px!important}
+body > .lektrus-formula-window .formula-help code {font-size:10px!important}
+body > .lektrus-formula-window .formula-editor-footer{
+  position:relative!important;
+  inset:auto!important;
+  bottom:auto!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  flex:0 0 auto!important;
+  min-width:0!important;
+  min-height:62px!important;
+  max-height:none!important;
+  padding:10px 15px!important;
+  gap:8px!important;
+  margin:0!important;
+  overflow-x:hidden!important;
+  border-top:1px solid #dbe5f3!important;
+  background:#fff!important;
+  z-index:2!important;
+}
+body > .lektrus-formula-window .formula-editor-footer > span {
+  flex:0 0 auto!important;
+  color:#7385a1!important;font-size:11px!important;
+  font-variant-numeric:tabular-nums;
+}
+body > .lektrus-formula-window .formula-editor-footer > div{
+  display:flex!important;flex-wrap:wrap!important;
+  align-items:center!important;justify-content:flex-end!important;
+  min-width:0!important;
+  gap:7px!important;
+}
+body > .lektrus-formula-window .formula-editor-footer button{
+  box-sizing:border-box!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-height:35px!important;height:auto!important;
+  max-width:100%!important;
+  padding:8px 12px!important;
+  border-radius:9px!important;
+  border:1px solid #e0e8f3!important;
+  font-size:11px!important;
+  white-space:normal!important;
+  line-height:1.2!important;
+}
+body > .lektrus-formula-window .formula-editor-footer button.primary{
+  background:#315dd3!important;border-color:#315dd3!important;color:#fff!important;
+}
+/* The form and the symbols each scroll on their own. Narrow screens retain
+   a normal vertical document flow inside a single scrollable main pane. */
+@media (max-width:840px){
+  body > .lektrus-formula-window .formula-editor-modal{
+    width:calc(100vw - 20px)!important;
+    height:calc(100dvh - 20px)!important;
+    max-height:calc(100dvh - 20px)!important;
+  }
+  body > .lektrus-formula-window .formula-editor-main {
+    display:flex!important;
+    flex-direction:column!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+  }
+  body > .lektrus-formula-window .formula-editor-compose,
+  body > .lektrus-formula-window .formula-palette-panel {
+    display:flex!important;
+    flex:0 0 auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+  body > .lektrus-formula-window .formula-palette-panel {
+    border:0!important;border-top:1px solid #e0e9f6!important;
+  }
+  body > .lektrus-formula-window textarea.formula-source-input {
+    height:132px!important;
+    min-height:110px!important;
+  }
+  body > .lektrus-formula-window .formula-preview-card{min-height:170px!important}
+  body > .lektrus-formula-window .formula-palette-grid {
+    flex:0 0 auto!important;
+    max-height:220px!important;
+    overflow-y:auto!important;
+  }
+  body > .lektrus-formula-window .formula-help{max-height:none!important}
+}
+@media (max-height:650px) and (min-width:841px){
+  body > .lektrus-formula-window .formula-editor-modal {
+    height:calc(100dvh - 20px)!important;
+  }
+  body > .lektrus-formula-window .formula-editor-header{
+    min-height:49px!important;padding:8px 13px!important;
+  }
+  body > .lektrus-formula-window .formula-editor-footer {
+    min-height:48px!important;padding:7px 10px!important;
+  }
+  body > .lektrus-formula-window textarea.formula-source-input {
+    height:112px!important;min-height:100px!important;
+  }
+  body > .lektrus-formula-window .formula-help{display:none!important}
+}
