@@ -6,6 +6,8 @@ import {makeSciencePresetItem,type SciencePresetId} from "./lektrusSciencePreset
 import ScienceCircuitGlyph,{circuitSymbols,type CircuitSymbol} from "./ScienceCircuitGlyph";
 import {periodicElements} from "./lektrusPeriodicElements";
 import {layoutScienceLabels} from "./lektrusScienceLabelLayout";
+import LektrusChemistryIllustration from "./LektrusChemistryIllustration";
+import {analyzeOrganicStructure,organicAtomColor} from "./lektrusOrganicFormula";
 
 type Props={
   item:Item;
@@ -65,7 +67,11 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const filteredElements=periodicElements.filter(e=>
     (e.name+" "+e.symbol+" "+e.number).toLocaleLowerCase("ru-RU")
       .includes(elementQuery.trim().toLocaleLowerCase("ru-RU")));
-  const molecule=group?.id==="chem-molecules";
+  const organic=group?.id==="chem-organic";
+  const formula=group?.id==="chem-formulas";
+  const experiment=group?.id==="chem-experiments";
+  const molecule=group?.id==="chem-molecules"||organic;
+  const organicFormula=organic?analyzeOrganicStructure(draft):null;
   const motion=group?.id==="physics-graphs";
   const atom=group?.id==="chem-atoms";
   const circuit=group?.id==="physics-circuits";
@@ -100,7 +106,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
       x:clamp(position?.x??Math.round((parent.x+1.4)*10)/10,xMin,xMax),
       y:clamp(position?.y??Math.round((parent.y-1.3)*10)/10,yMin,yMax),
       label:atom?"e⁻":circuit?"":isPhysics?"P"+String(points.length+1):placingElement??"C",
-      color:atom?"#5579cc":isPhysics?"#2d5bad":placingElement=== "O"?"#c65b66":placingElement==="N"?"#567dbc":"#40546e"
+      color:atom?"#5579cc":isPhysics?"#2d5bad":organicAtomColor(placingElement??"C")
     };
     setDraft(previous=>({...previous,graphPoints:[...(previous.graphPoints??[]),nextPoint]}));
     setSelected(points.length);setSecond(points.length);
@@ -166,7 +172,10 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const scienceLayout=isPhysics?layoutScienceLabels(points,segments,canvasPoint,520,370):null;
   const pointName=(index:number)=>points[index]?.label?.trim()||"Точка "+(index+1);
   const canLink=points.length>=2;
-  const drawingHelp=circuit?"Соединяйте узлы проводами; каждый отрезок может содержать элемент цепи.":motion
+  const drawingHelp=organic?"Стройте углеродные цепи, кольца и группы. Неявные атомы H рассчитываются для нейтральных C, N и O." :
+    formula?"Введите формулу или уравнение. Нижние индексы отображаются автоматически, коэффициенты остаются обычными." :
+    experiment?"Выберите учебный опыт и переключайте состояние «до»/«после». Схемы показывают наблюдение, а не готовую инструкцию." :
+    circuit?"Соединяйте узлы проводами; каждый отрезок может содержать элемент цепи.":motion
     ?"Постройте условие задачи точками; вычисления остаются ученику."
     :molecule?"Расставьте атомы, выберите порядок связи и соедините их."
     :atom?"Перемещайте ядро и электроны на схеме оболочки."
@@ -226,6 +235,29 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
             </div>
             <small>{elementNotice||"Выберите элемент в списке и укажите его место на чертеже."}</small>
           </section>}
+          {organic&&organicFormula&&<section className="lektrus-science-chem-feedback">
+            <strong>Расчётная молекулярная формула</strong>
+            <b>{organicFormula.valid?organicFormula.formula:"Не определена"}</b>
+            <small className={organicFormula.valid?"":"invalid"}>{organicFormula.note}</small>
+          </section>}
+          {formula&&<section className="lektrus-science-chem-feedback">
+            <strong>Химическая формула или уравнение</strong>
+            <textarea rows={4} maxLength={420} value={draft.graphExpression??""}
+              placeholder="Например: CH4 + 2O2 → CO2 + 2H2O"
+              onChange={e=>setDraft(old=>({...old,graphExpression:e.target.value}))}/>
+            <small>Форматирует индексы, но не проверяет автоматически баланс и химическую возможность реакции.</small>
+          </section>}
+          {experiment&&<section className="lektrus-science-chem-feedback">
+            <strong>Стадия опыта</strong>
+            <div className="lektrus-chem-experiment-stages">
+              <button type="button" aria-pressed={(draft.scienceExperimentStage??0)===0}
+                onClick={()=>setDraft(old=>({...old,scienceExperimentStage:0}))}>До</button>
+              <button type="button" aria-pressed={draft.scienceExperimentStage===1}
+                onClick={()=>setDraft(old=>({...old,scienceExperimentStage:1}))}>После</button>
+            </div>
+            <small>Наглядная концептуальная модель; не заменяет реальный опыт и технику безопасности.</small>
+          </section>}
+          {!(formula||experiment)&&<> 
           <div className="lektrus-science-subhead"><strong>{isPhysics?"Объекты и опорные точки":"Атомы и точки"}</strong><span>{points.length}</span></div>
           <p className="lektrus-science-description">{drawingHelp}</p>
           <div className="lektrus-science-points">
@@ -312,12 +344,15 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
               <input maxLength={40} value={segments[activeLink].label}
                 onChange={e=>editLink(activeLink,{label:e.target.value})}/></label>}
           </section>}
-          <label className="lektrus-science-check"><input type="checkbox" checked={draft.graphGrid===true}
-            onChange={e=>setDraft(old=>({...old,graphGrid:e.target.checked}))}/> Сетка на чертеже</label>
-          <button className="lektrus-science-clear" type="button" onClick={clear}>Очистить построение</button>
+          </>}
+          {!(formula||experiment)&&<label className="lektrus-science-check"><input type="checkbox" checked={draft.graphGrid===true}
+            onChange={e=>setDraft(old=>({...old,graphGrid:e.target.checked}))}/> Сетка на чертеже</label>}
+          {!(formula||experiment)&&<button className="lektrus-science-clear" type="button" onClick={clear}>Очистить построение</button>}
         </aside>
         <div className="lektrus-science-preview">
           <div className="lektrus-science-preview-head"><strong>Чертёж</strong><span>Перетаскивайте точки · двойной щелчок добавляет</span></div>
+          {formula||experiment?<LektrusChemistryIllustration item={draft}
+             onStageChange={experiment?(stage)=>setDraft(old=>({...old,scienceExperimentStage:stage})):undefined}/>:
           <svg viewBox="0 0 520 370" role="img" aria-label="Редактируемая схема"
             onClick={event=>{if(molecule&&placingElement&&event.target===event.currentTarget){
               addPoint(canvasToGraph(event.clientX,event.clientY,event.currentTarget));
@@ -448,7 +483,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                 </g>}
               </g>;
             })}
-          </svg>
+          </svg>}
           <div className="lektrus-science-hint">{drawingHelp}</div>
         </div>
       </div>
