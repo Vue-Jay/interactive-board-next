@@ -1,0 +1,32 @@
+name: Register native back-navigation plugin
+on:
+  push:
+    branches: [fix/android-immersive-insets-native-back]
+permissions:
+  contents: write
+jobs:
+  bootstrap:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npx cap sync android
+      - run: npx cap sync ios
+      - run: npm run native:check
+      - name: Commit native dependencies and remove one-shot bootstrap
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json android ios
+          git rm .github/workflows/native-back-bootstrap.yml
+          git diff --cached --quiet || git commit -m 'chore(native): sync Capacitor App plugin into native projects'
+          git push origin HEAD:${{ github.ref_name }}

@@ -55,6 +55,7 @@ import ShareDialog from "./ShareDialog";
 import { clearPendingShare, initialRoute, parseRoute, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
 import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { BOARD_ROLE_LABELS, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
 import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from "./boardStore";
@@ -7936,6 +7937,34 @@ export default function App() {
   const [sharePasswordRequired, setSharePasswordRequired] = useState(false);
   const [remoteVersion, setRemoteVersion] = useState<number | null>(null);
   const [boardMountKey, setBoardMountKey] = useState(0);
+
+  // System Back (buttons and gestures) follows Lektrus navigation.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let disposed = false;
+    const listener = CapacitorApp.addListener("backButton", () => {
+      if (disposed) return;
+      const back = new CustomEvent("lektrus:native-back", { cancelable: true });
+      window.dispatchEvent(back);
+      if (back.defaultPrevented) return;
+      if (activeBoard || route.kind === "board" || route.kind === "join") {
+        setActiveBoard(null);
+        setAdminInspecting(false);
+        navigate(adminInspecting ? "/?section=admin" : "/", true);
+        return;
+      }
+      const section = new URLSearchParams(window.location.search).get("section");
+      if (section) {
+        navigate(section === "billing" || section === "ai" ? "/?section=settings" : "/", true);
+        return;
+      }
+      if (window.confirm("Выйти из Lektrus?")) void CapacitorApp.exitApp();
+    });
+    return () => {
+      disposed = true;
+      void listener.then(handle => handle.remove()).catch(() => {});
+    };
+  }, [route.kind, activeBoard, adminInspecting, navigate]);
   const [globalInstallPrompt,setGlobalInstallPrompt]=useState<Event|null>(null);
   const [globalStandalone,setGlobalStandalone]=useState(()=>(window.matchMedia?.("(display-mode: standalone)").matches===true || (navigator as Navigator & {standalone?:boolean}).standalone===true));
   useEffect(()=>{

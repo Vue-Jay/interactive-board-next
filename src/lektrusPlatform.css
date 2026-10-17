@@ -35,3 +35,14 @@ html.lektrus-android-app .topbar { padding-top: 0; }
 html.lektrus-android-app .lectris-mobile-nav,
 html.lektrus-android-app .lectris-bottom-nav { padding-bottom: 0; }
 html.lektrus-android-app body { overscroll-behavior-y: none; }
+
+/* Native Android calculates the usable physical WebView viewport itself.
+   No duplicate padding on the fixed nav and header inside that viewport. */
+html.lektrus-android-app,
+html.lektrus-android-app body,
+html.lektrus-android-app #root { max-width: 100%; overflow-x: clip; }
+html.lektrus-android-app .lectris-workspace-header,
+html.lektrus-android-app .topbar { padding-top: 0; }
+html.lektrus-android-app .lectris-mobile-bottom,
+html.lektrus-android-app .lectris-mobile-nav,
+html.lektrus-android-app .lectris-bottom-nav { padding-bottom: 0; }
