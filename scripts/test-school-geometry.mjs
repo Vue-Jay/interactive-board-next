@@ -169,7 +169,7 @@ const perpendicularDistance=(p,a,b)=>{
   const vx=b.x-a.x,vy=b.y-a.y;
   return Math.abs(vx*(a.y-p.y)-(a.x-p.x)*vy)/Math.hypot(vx,vy);
 };
-for(const figure of ["triangle","triangle-right","square","rectangle","triangle-equilateral","pentagon","hexagon","octagon"]){
+for(const figure of ["triangle","triangle-right","square","triangle-equilateral","pentagon","hexagon","octagon"]){
   for(const kind of ["incircle","circumcircle"]){
     const draft=toDraft(figure);
     const result=buildSchoolConstruction(draft,{kind});
@@ -191,6 +191,12 @@ for(const kind of ["incircle","circumcircle"]){
   assert.equal(typeof result.error,"string","non-cyclic, non-tangential parallelogram cannot have "+kind);
   assert.equal(result.draft,draft,"impossible school construction does not mutate the editor");
 }
+const rectCirc=buildSchoolConstruction(toDraft("rectangle"),{kind:"circumcircle"});
+assert.equal(rectCirc.error,undefined,"every rectangle admits a circumcircle");
+const rectInc=buildSchoolConstruction(toDraft("rectangle"),{kind:"incircle"});
+assert.equal(typeof rectInc.error,"string","a non-square rectangle has no incircle tangent to all four sides");
+const rhombusInc=buildSchoolConstruction(toDraft("rhombus"),{kind:"incircle"});
+assert.equal(rhombusInc.error,undefined,"every nondegenerate rhombus admits an incircle");
 const cyclic=buildSchoolConstruction(toDraft("trapezoid-isosceles"),{kind:"circumcircle"});
 assert.equal(cyclic.error,undefined,"isosceles trapezoid admits circumcircle");
 for(const n of [3,4,5,6,8]){
