@@ -267,5 +267,11 @@ assert.match(editor,/closeFreeSketch\(draft\)/,"point contour can be closed");
 assert.match(app,/onGridChange=\{enabled=>setGraphDraft/,"preview grid toggle is connected");
 assert.match(app,/onGridChange=\{!item.locked&&canEdit/,"board grid toggle is connected");
 assert.match(app,/className="lektrus-diagram-grid-toggle"/,"the grid toggle appears on the diagram");
+assert.match(app,/className="lektrus-free-drawing-surface"/,"point placement uses the background directly");
+assert.match(app,/candidate.graphFigureId==="free"/,"board updates segment chain in free point mode");
+assert.match(app,/previouslyClosed/,"the next free point starts a new contour after closing");
+assert.match(editor,/schoolGroups\.map\(group=>/,"each grouped school construction has its own delete control");
+assert.match(editor,/deleteSchoolGroup\(group.id\)/,"group deletion is wired to the actual removal helper");
+
 
 console.log("School geometry: ray, transversal angles, solid rotation and dimension projections OK.");
