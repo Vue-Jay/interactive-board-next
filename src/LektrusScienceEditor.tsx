@@ -285,8 +285,8 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
             }}
             onPointerMove={move} onPointerUp={endDrag} onPointerCancel={endDrag}>
             <defs><marker id="science-arrow-end" viewBox="0 0 10 10" refX="8" refY="5"
-              markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#275eae"/></marker></defs>
+              markerWidth="4.2" markerHeight="4.2" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#5879ac"/></marker></defs>
             {draft.graphGrid&&<g className="lektrus-science-grid" pointerEvents="none">
               {Array.from({length:27},(_,i)=><path key={"v"+i} d={"M"+(i*20)+" 0V370"}/>)}
               {Array.from({length:19},(_,i)=><path key={"h"+i} d={"M0 "+(i*20)+"H520"}/>)}
@@ -315,7 +315,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
               const p=canvasPoint(a),q=canvasPoint(b),len=Math.hypot(q.x-p.x,q.y-p.y)||1;
               return <g key={i}>
                 {activeLink===i&&<line x1={p.x} y1={p.y} x2={q.x} y2={q.y}
-                  stroke="#edac35" strokeWidth="9" strokeOpacity=".33"
+                  stroke="#abc3ec" strokeWidth="6" strokeOpacity=".48"
                   pointerEvents="none"/>}
                 {Array.from({length:seg.bondOrder??1},(_,index)=>{
                   const off=(index-((seg.bondOrder??1)-1)/2)*5.5;
@@ -330,7 +330,9 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                     x={(p.x+q.x)/2} y={(p.y+q.y)/2}
                     angle={Math.atan2(q.y-p.y,q.x-p.x)*180/Math.PI}/>}
                 {seg.label&&<text className="lektrus-science-link-label"
-                  x={(p.x+q.x)/2+8} y={(p.y+q.y)/2-9}>{seg.label}</text>}
+                  x={p.x+(q.x-p.x)*(seg.label==="Зеркало"?.78:seg.scienceArrow?.36:.58)}
+                  y={p.y+(q.y-p.y)*(seg.label==="Зеркало"?.78:seg.scienceArrow?.36:.58)-13}
+                  textAnchor="middle">{seg.label}</text>}
                 <line x1={p.x} y1={p.y} x2={q.x} y2={q.y}
                   stroke="transparent" strokeWidth="17" style={{cursor:"pointer"}}
                   pointerEvents="stroke" onClick={()=>setActiveLink(i)}
@@ -341,16 +343,19 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
               const p=canvasPoint(point);
               const pointColor=point.color??(isPhysics?"#3a6bc0":"#587f96");
               return <g key={i} className={"lektrus-science-node"+(selected===i?" selected":"")}>
-                <circle cx={p.x} cy={p.y} r={isPhysics?8:13}
-                  fill={pointColor} stroke="#fff" strokeWidth={selected===i?4:2.5}
+                <circle cx={p.x} cy={p.y}
+                  r={isPhysics?(selected===i?6.3:4.1):(selected===i?10:8.5)}
+                  fill={isPhysics&&selected!==i?"#fff":pointColor}
+                  stroke={isPhysics?"#5277b0":"#fff"}
+                  strokeWidth={selected===i?2.2:1.4}
                   onPointerDown={event=>{
                     event.preventDefault();event.stopPropagation();
                     setSelected(i);
                     drag.current={pointerId:event.pointerId,index:i};
                     event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
                   }}/>
-                {point.label&&<text x={p.x} y={p.y-(isPhysics?18:23)}
-                  fontSize="13" fontWeight="750" textAnchor="middle" fill="#1b355b"
+                {point.label&&<text x={p.x} y={p.y+((optics&&Math.abs(point.x)<.05&&Math.abs(point.y)<.05)?19:-(isPhysics?13:20))}
+                  fontSize={isPhysics?11.5:12} fontWeight="600" textAnchor="middle" fill="#465e7e"
                   pointerEvents="none">{point.label}</text>}
               </g>;
             })}
