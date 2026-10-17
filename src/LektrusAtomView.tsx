@@ -1,10 +1,10 @@
 import {useRef,useState,type PointerEvent} from "react";
 import {atomShells,elementByNumber,orbitalSublevels,type AtomModel} from "./lektrusAtomModel";
 import {elementFacts} from "./lektrusElementFacts";
-type Props={model:AtomModel;onLabelMove?:(x:number,y:number)=>void};
+type Props={model:AtomModel;onLabelMove?:(x:number,y:number)=>void;labelScale?:number};
 const cx=350,cy=207;
 const rotationPoint=(radius:number,angle:number)=>({x:cx+radius*Math.cos(angle),y:cy+radius*Math.sin(angle)});
-export default function LektrusAtomView({model,onLabelMove}:Props){
+export default function LektrusAtomView({model,onLabelMove,labelScale=1}:Props){
  const element=elementByNumber(model.atomicNumber);
  const shells=atomShells(model.atomicNumber);
  const config=elementFacts[model.atomicNumber-1]?.electronConfiguration??"—";
@@ -41,9 +41,9 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
  const nucleus=<g pointerEvents="none">
   <circle cx={cx} cy={cy} r={model.mode==="nucleus"?58:20}
     fill="#f1f5fd" stroke="#9fb8d8" strokeWidth="1.2"/>
-  <text x={cx} y={cy-3} textAnchor="middle" fontSize={model.mode==="nucleus"?16:11}
+  <text x={cx} y={cy-3} textAnchor="middle" fontSize={(model.mode==="nucleus"?16:11)*labelScale}
     fontWeight="700" fill="#355a8a">{element.symbol}</text>
-  <text x={cx} y={cy+12} textAnchor="middle" fontSize="10"
+  <text x={cx} y={cy+12} textAnchor="middle" fontSize={10*labelScale}
     fill="#68829f">Z={element.number}</text>
  </g>;
  return <svg className={"lektrus-atom-svg"+(orbital?" orbital":"")} viewBox={"0 0 700 "+orbitalCanvasHeight}
@@ -77,7 +77,7 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
       return <circle key={angle} cx={x} cy={y} r="3.2" fill="#4c85c1"/>;
     })}
     {nucleus}
-    <text x="350" y="355" textAnchor="middle" fontSize="12" fill="#7e90aa">Орбиты условные, не масштабные</text>
+    <text x="350" y="355" textAnchor="middle" fontSize={12*labelScale} fill="#7e90aa">Орбиты условные, не масштабные</text>
   </>}
   {(model.mode==="orbital"||model.mode==="lewis")&&(()=>{
     const subs=orbitalSublevels(element.number);
@@ -92,19 +92,19 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
     return <g>
       <rect x="65" y="22" width="570" height={orbitalCanvasHeight-58} rx="11"
         fill="#fbfdff" stroke="#e6edf7"/>
-      <text x="84" y="47" fontSize="13" fontWeight="700" fill="#3c638b">
+      <text x="84" y="47" fontSize={13*labelScale} fontWeight="700" fill="#3c638b">
         Орбитальная диаграмма · {element.symbol}
       </text>
-      <text x="84" y="66" fontSize="10.5" fill="#8194ae">
+      <text x="84" y="66" fontSize={10.5*labelScale} fill="#8194ae">
         Уровни по энергии снизу вверх · ↑↓ направления спинов
       </text>
       <path d={"M100 "+(orbitalCanvasHeight-79)+"V100m-5 8l5-8 5 8"} stroke="#8fa8c9" strokeWidth="1.5"
         strokeLinecap="round" fill="none"/>
-      <text x="83" y="97" fontSize="10" textAnchor="middle" fill="#7391b4">E</text>
+      <text x="83" y="97" fontSize={10*labelScale} textAnchor="middle" fill="#7391b4">E</text>
       {stair&&<polyline points={stair} stroke="#cfdaeb" strokeWidth="1.2"
         strokeDasharray="4 4" fill="none" pointerEvents="none"/>}
       {locations.map(({x,y,sub})=><g key={sub.name}>
-        <text x={x-13} y={y+4.2} textAnchor="end" fontSize="12.5"
+        <text x={x-13} y={y+4.2} textAnchor="end" fontSize={12.5*labelScale}
           fontWeight="700" fill="#41638b">{sub.name}</text>
         {sub.spins.map((arrows,j)=>{
           const left=x+j*18.5;
@@ -119,15 +119,15 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
            </text>)}
           </g>;
         })}
-        <text x={x+sub.orbitals*18.5+6} y={y+3.5} fontSize="10" fill="#8196aa">
+        <text x={x+sub.orbitals*18.5+6} y={y+3.5} fontSize={10*labelScale} fill="#8196aa">
           {sub.electrons}
         </text>
       </g>)}
-      <g fontSize="10" fill="#6d84a0">
+      <g fontSize={10*labelScale} fill="#6d84a0">
         <text x="164" y={orbitalCanvasHeight-47}>Правило Хунда: сначала ↑ в разные орбитали, затем ↓.</text>
       </g>
       {subs.length===0&&<text x="350" y="225" textAnchor="middle"
-        fontSize="13" fill="#aa6b57">Нет достоверной конфигурации для построения</text>}
+        fontSize={13*labelScale} fill="#aa6b57">Нет достоверной конфигурации для построения</text>}
     </g>;
   })()}
   {model.mode==="nucleus"&&<>
@@ -143,10 +143,10 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
         fill="#7797b9" opacity=".66"/>;
     })}
     <rect x="238" y="334" width="224" height="45" rx="9" fill="#f5f8fd" stroke="#e4ebf5"/>
-    <text x="350" y="353" textAnchor="middle" fontSize="12" fill="#486687">
+    <text x="350" y="353" textAnchor="middle" fontSize={12*labelScale} fill="#486687">
       Протоны: {element.number} · нейтроны: {neutronCount??"—"}
     </text>
-    <text x="350" y="370" textAnchor="middle" fontSize="10" fill="#8196ac">
+    <text x="350" y="370" textAnchor="middle" fontSize={10*labelScale} fill="#8196ac">
       Электроны: {element.number} · нуклоны изображены условно
     </text>
   </>}
@@ -160,10 +160,10 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
     style={{cursor:onLabelMove?"grab":"default"}}>
     <rect x={labelX-132} y={labelY-22} width="264" height={model.showElectronConfiguration?43:26}
       rx="5" fill="transparent"/>
-    <text x={labelX} y={labelY-6} textAnchor="middle" fontSize="14" fontWeight="620"
+    <text x={labelX} y={labelY-6} textAnchor="middle" fontSize={14*labelScale} fontWeight="620"
       fill="#426080" pointerEvents="none">{element.name} ({element.symbol})</text>
     {model.showElectronConfiguration&&<text x={labelX} y={labelY+12} textAnchor="middle"
-      fontSize="10.5" fill="#7890ab" pointerEvents="none">
+      fontSize={10.5*labelScale} fill="#7890ab" pointerEvents="none">
       {config.length>65?config.slice(0,62)+"…":config}
     </text>}
   </g>}
