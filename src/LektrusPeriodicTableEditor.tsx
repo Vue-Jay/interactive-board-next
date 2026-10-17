@@ -99,7 +99,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
           <div className="lektrus-periodic-preview">
             <div className="lektrus-periodic-preview-header"><strong>Периодическая система</strong>
               <span>Клик открывает сведения · двойной клик выделяет · Ctrl+клик сравнивает</span></div>
-            <div className="lektrus-periodic-table-scroll lektrus-periodic-stage">
+            <div className={"lektrus-periodic-table-scroll lektrus-periodic-stage"+(opened.length?" has-element-window":"")}>
               <div className={"lektrus-periodic-window-stage "+(layout==="school"?"is-school":"is-modern")} ref={previewAnchor}>
                 <LektrusPeriodicTableView selected={selected} active={active}
                   showNames={showNames} familyFilter={family} onPick={pick} layout={layout}
