@@ -1,0 +1,33 @@
+.lektrus-science-backdrop{position:fixed;inset:0;z-index:100050;display:grid;place-items:center;padding:20px;box-sizing:border-box;background:#101b2fc0;backdrop-filter:blur(5px);font-family:Inter,system-ui,sans-serif}
+.lektrus-science-editor{--science:#3567c6;box-sizing:border-box;width:min(1100px,100%);max-height:calc(100dvh - 40px);display:flex;flex-direction:column;overflow:hidden;background:#f8faff;border:1px solid #d5e1f5;border-radius:20px;box-shadow:0 25px 90px #080f253b;color:#243757}
+.lektrus-science-backdrop.chemistry .lektrus-science-editor{--science:#168d83}
+.lektrus-science-header{display:flex;align-items:center;gap:14px;padding:17px 20px;background:#fff;border-bottom:1px solid #e0e8f4}
+.lektrus-science-symbol{flex:0 0 48px;height:48px;display:grid;place-items:center;background:color-mix(in srgb,var(--science) 12%,white);border:1px solid color-mix(in srgb,var(--science) 25%,white);color:var(--science);border-radius:13px;font-size:19px;font-weight:850}
+.lektrus-science-header>div:nth-child(2){flex:1;min-width:0}
+.lektrus-science-header small{display:block;color:var(--science);font-size:11px;font-weight:850;letter-spacing:.1em}
+.lektrus-science-header h2{margin:4px 0 0;font-size:21px;letter-spacing:-.03em}
+.lektrus-science-close{width:35px;height:35px;border:0;border-radius:9px;background:#edf2f9;font-size:25px;cursor:pointer}
+.lektrus-science-content{display:grid;grid-template-columns:290px minmax(0,1fr);gap:14px;padding:14px;min-height:0;overflow-y:auto}
+.lektrus-science-settings,.lektrus-science-preview{box-sizing:border-box;min-width:0;background:white;border:1px solid #dfe7f3;border-radius:14px;padding:16px}
+.lektrus-science-settings{display:flex;flex-direction:column;gap:12px}
+.lektrus-science-settings label{display:grid;gap:5px;font-size:12px;font-weight:750;color:#475a78}
+.lektrus-science-settings input:not([type=checkbox]){box-sizing:border-box;width:100%;min-width:0;min-height:35px;border:1px solid #d3e0ef;border-radius:8px;padding:7px 9px;font:inherit;font-size:13px;color:#1b3153}
+.lektrus-science-settings>strong{font-size:13px;margin-top:5px}
+.lektrus-science-settings>p{font-size:11px;line-height:1.55;color:#7786a0;margin:0}
+.lektrus-science-points{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:140px;overflow-y:auto}
+.lektrus-science-points button{min-width:0;display:flex;justify-content:space-between;align-items:center;gap:4px;border:1px solid #dce5f0;border-radius:8px;padding:8px;background:#f8faff;text-align:left;font:inherit;font-size:11px;cursor:pointer;overflow-wrap:anywhere}
+.lektrus-science-points button.active{border-color:var(--science);color:var(--science);background:#edf4ff}
+.lektrus-science-points button span{color:#8ba0bd}
+.lektrus-science-point-editor{display:grid;gap:8px;padding:11px;background:#f3f7fc;border-radius:10px}
+.lektrus-science-point-editor>div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lektrus-science-settings .lektrus-science-check{display:flex;align-items:center;gap:8px}
+.lektrus-science-preview{display:flex;flex-direction:column;gap:12px}
+.lektrus-science-preview-head{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.lektrus-science-preview-head strong{font-size:13px}
+.lektrus-science-preview-head span,.lektrus-science-hint{font-size:11px;color:#7c8aa0}
+.lektrus-science-preview svg{width:100%;min-height:230px;max-height:480px;aspect-ratio:520/370;touch-action:none;border:1px solid #e2e9f2;border-radius:12px;background:#fff;cursor:crosshair}
+.lektrus-science-preview svg g{cursor:grab}
+.lektrus-science-editor footer{display:flex;justify-content:flex-end;gap:9px;padding:12px 18px;background:#fff;border-top:1px solid #e1e8f2}
+.lektrus-science-editor footer button{min-height:39px;padding:8px 17px;border-radius:10px;border:1px solid #d6e2f1;background:#fff;color:#344968;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.lektrus-science-editor footer .lektrus-science-save{border-color:var(--science);background:var(--science);color:#fff}
+@media(max-width:760px){.lektrus-science-backdrop{padding:8px}.lektrus-science-content{grid-template-columns:1fr}.lektrus-science-preview svg{min-height:185px}.lektrus-science-editor{max-height:calc(100dvh - 16px)}}
