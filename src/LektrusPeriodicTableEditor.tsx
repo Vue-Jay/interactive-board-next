@@ -3,7 +3,6 @@ import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {periodicElements,periodicFamilies,type ElementFamily} from "./lektrusPeriodicElements";
 import LektrusPeriodicTableView from "./LektrusPeriodicTableView";
-import LektrusElementInfo from "./LektrusElementInfo";
 
 type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void};
 export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose}:Props){
@@ -15,7 +14,6 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
   const [showNames,setShowNames]=useState(item.sciencePeriodicShowNames!==false);
   const [title,setTitle]=useState(item.text||"Периодическая система элементов");
   const [notice,setNotice]=useState("");
-  const focused=periodicElements.find(el=>el.number===active);
   const results=query.trim()?periodicElements.filter(el=>
     (el.name+" "+el.symbol+" "+el.number).toLocaleLowerCase("ru-RU")
       .includes(query.trim().toLocaleLowerCase("ru-RU"))).slice(0,10):[];
@@ -92,7 +90,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
               <span>Щелчок выделяет элемент · повторный щелчок отменяет</span></div>
             <div className="lektrus-periodic-table-scroll">
               <LektrusPeriodicTableView selected={selected} active={active}
-                showNames={showNames} familyFilter={family} onPick={pick} layout={layout}/>
+                showNames={showNames} familyFilter={family} onPick={pick} layout={layout} showInfo={active!==null} onCloseInfo={()=>setActive(null)} onToggleInfo={()=>{if(active!==null)pick(active)}}/>
             </div>
             <div className="lektrus-periodic-legend">
               {periodicFamilies.map(group=><span key={group.id}><i style={{background:group.color}}/>{group.name}</span>)}
