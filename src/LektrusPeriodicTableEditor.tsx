@@ -24,8 +24,8 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
   const updateItem=():Item=>({...item,text:title.trim().slice(0,100)||"Периодическая система элементов",
     graphFigureId:"chem-periodic",sciencePeriodicHighlights:selected,
     sciencePeriodicLayout:layout,sciencePeriodicShowNames:showNames});
-  const pick=(number:number)=>{
-    setActive(number);
+  const pick=(number:number,event?:{ctrlKey:boolean;shiftKey:boolean})=>{
+    setOpened(current=>current.includes(number)?current.filter(n=>n!==number):(multi||event?.ctrlKey||event?.shiftKey)?[...current,number]:[number]);
     setSelected(current=>{
       if(current.includes(number)){setNotice("");return current.filter(n=>n!==number)}
       if(current.length>=24){setNotice("Для наглядности можно выделить до 24 элементов.");return current}
@@ -101,7 +101,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
                 showNames={showNames} familyFilter={family} onPick={pick} layout={layout} showInfo={active!==null} onCloseInfo={()=>setOpened([])} onToggleInfo={()=>{if(active!==null)pick(active)}}/>
               {opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i} fixed layout={layout} anchor={previewAnchor.current}
                 selected={selected.includes(number)} onClose={()=>setOpened(v=>v.filter(n=>n!==number))}
-                onToggle={()=>pick(number,{ctrlKey:true})}/>)}
+                onToggle={()=>setSelected(current=>current.includes(number)?current.filter(n=>n!==number):[...current,number].sort((a,b)=>a-b))}/>)}
             </div>
             <div style={{display:"flex",justifyContent:"flex-end",padding:"3px 8px"}}><button type="button" aria-pressed={multi} onClick={()=>setMulti(v=>!v)}>Несколько окон: {multi?"вкл":"выкл"}</button></div>
             <div className="lektrus-periodic-legend">
