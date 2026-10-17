@@ -87,9 +87,9 @@ export function projectSolidAxis(x:number,y:number,z:number,rotationX:number,rot
   return {x:u,y:z*Math.cos(pitch)+v*Math.sin(pitch)};
 }
 
-/** Painter-sorted opaque surfaces for school solids.
- * Faces are regenerated from physical dimensions instead of reusing the sparse
- * editable wireframe vertices, so a cone/cylinder stays smooth while orbiting.
+/** Painter-sorted translucent surfaces for school solids.
+ * Faces use real 3D dimensions, keeping cylinders and cones smooth when orbiting.
+ * Separate front/back outlines make hidden edges readable through the faces.
  */
 export type SolidSurface={
   points:{x:number;y:number}[];
@@ -154,4 +154,90 @@ export function projectSolidSurfaces(item:Item,rotationX:number,rotationY:number
   });
   // Greater camera depth is farther away. Opaque near faces cover hidden edges.
   return surfaces.sort((a,b)=>b.depth-a.depth);
+}
+
+export type SolidEdge={
+  start:{x:number;y:number};end:{x:number;y:number};hidden:boolean;
+};
+
+/** Project all actual solid edges, marking back edges as dashed construction lines.
+ * The same orientation and dimensions as projectSolidSurfaces are used.
+ */
+export function projectSolidEdges(item:Item,rotationX:number,rotationY:number):SolidEdge[] {
+  const id=item.graphFigureId;
+  if(!isSolidFigure(id)||id==="sphere")return [];
+  const [width,depth,height]=dimensions(item);
+  const zoom=8/Math.max(1,Math.hypot(width,depth,height));
+  const yaw=rotationY*Math.PI/180,pitch=rotationX*Math.PI/180;
+  const towardFar={
+    x:Math.sin(yaw)*Math.cos(pitch),
+    y:Math.cos(yaw)*Math.cos(pitch),
+    z:-Math.sin(pitch)
+  };
+  const proj=(point:SolidPoint)=>{
+    const value=projectSolidAxis(point.x,point.y,point.z,rotationX,rotationY);
+    return {x:value.x*zoom,y:value.y*zoom};
+  };
+  if(id==="cylinder"||id==="cone"){
+    const radius=width/2,half=height/2,count=64;
+    const edge:SolidEdge[]=[];
+    const ring=(z:number,i:number):SolidPoint=>{
+      const angle=2*Math.PI*i/count;
+      return {x:radius*Math.cos(angle),y:radius*Math.sin(angle),z};
+    };
+    for(const z of (id==="cylinder"?[-half,half]:[-half])){
+      for(let i=0;i<count;i++){
+        const a=ring(z,i),b=ring(z,i+1);
+        const radialDepth=(a.x+b.x)*towardFar.x+(a.y+b.y)*towardFar.y;
+        edge.push({start:proj(a),end:proj(b),hidden:radialDepth>0.00001});
+      }
+    }
+    // The two silhouette generators describe the round side without revealing
+    // the polygon mesh or adding artificial spokes through the body.
+    const tangent={x:-Math.cos(yaw),y:Math.sin(yaw)};
+    for(const direction of [-1,1]){
+      const x=direction*tangent.x*radius,y=direction*tangent.y*radius;
+      edge.push({
+        start:proj({x,y,z:-half}),
+        end:proj(id==="cylinder"?{x,y,z:half}:{x:0,y:0,z:half}),
+        hidden:false
+      });
+    }
+    return edge;
+  }
+
+  const faces: number[][] = id==="cube"||id==="rectangular-prism"?
+    [[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]]:
+    id==="prism"?
+    [[0,2,1],[3,4,5],[0,1,4,3],[1,2,5,4],[2,0,3,5]]:
+    id==="pyramid"?
+    [[0,3,2,1],[0,1,4],[1,2,4],[2,3,4],[3,0,4]]:
+    [[0,2,1],[0,1,3],[1,2,3],[2,0,3]];
+  const vertices=solidWorldPoints(item);
+  const edges=new Map<string,{a:number;b:number;visible:boolean}>();
+  for(const indices of faces){
+    const a=vertices[indices[0]],b=vertices[indices[1]],c=vertices[indices[2]];
+    const u={x:b.x-a.x,y:b.y-a.y,z:b.z-a.z};
+    const v={x:c.x-a.x,y:c.y-a.y,z:c.z-a.z};
+    const normal={
+      x:u.y*v.z-u.z*v.y,
+      y:u.z*v.x-u.x*v.z,
+      z:u.x*v.y-u.y*v.x
+    };
+    const centroid=indices.reduce((sum,i)=>({
+      x:sum.x+vertices[i].x,y:sum.y+vertices[i].y,z:sum.z+vertices[i].z
+    }),{x:0,y:0,z:0});
+    const outward=normal.x*centroid.x+normal.y*centroid.y+normal.z*centroid.z>=0?1:-1;
+    const front=outward*(normal.x*towardFar.x+normal.y*towardFar.y+normal.z*towardFar.z)<0;
+    for(let i=0;i<indices.length;i++){
+      const ia=indices[i],ib=indices[(i+1)%indices.length];
+      const key=ia<ib?`${ia}:${ib}`:`${ib}:${ia}`;
+      const existing=edges.get(key);
+      if(existing)existing.visible ||= front;
+      else edges.set(key,{a:ia,b:ib,visible:front});
+    }
+  }
+  return [...edges.values()].map(edge=>({
+    start:proj(vertices[edge.a]),end:proj(vertices[edge.b]),hidden:!edge.visible
+  }));
 }
