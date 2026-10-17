@@ -1190,12 +1190,24 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   return <div className={`graph-view graph-purpose-${purpose} ${onPointMove?"graph-interactive":""}`}>
     <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small>y = {expression.replace(/^y\s*=\s*/i,"")}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
-      onDoubleClick={e=>{if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
+      onDoubleClick={e=>{if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#667085" strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none" style={{opacity:purpose==="geometry"?.42:1}}>
         {gridX.map(x=><line key={`x${x}`} x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
         {gridY.map(y=><line key={`y${y}`} x1="0" x2={W} y1={sy(y)} y2={sy(y)}/>)}
       </g>}
+      {item.graphFigureId==="free"&&onAddPoint&&
+        <rect className="lektrus-free-drawing-surface" x="0" y="0" width={W} height={H}
+          fill="transparent" style={{cursor:"crosshair",touchAction:"manipulation"}}
+          onClick={event=>{
+            if(event.detail>1)return;
+            event.stopPropagation();
+            const svg=event.currentTarget.ownerSVGElement;
+            if(!svg)return;
+            const p=coord(event.clientX,event.clientY,svg);
+            onAddPoint(p.x,p.y);
+          }}/>
+      }
       <g className="graph-axes">
         {hasY&&xMin<=0&&xMax>=0&&<line x1={sx(0)} x2={sx(0)} y1={H} y2="5" markerEnd={`url(#graph-arrow-${item.id})`}/>}
         {hasX&&yMin<=0&&yMax>=0&&<line x1="0" x2={W-5} y1={sy(0)} y2={sy(0)} markerEnd={`url(#graph-arrow-${item.id})`}/>}
