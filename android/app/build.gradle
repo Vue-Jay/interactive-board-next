@@ -6,6 +6,9 @@ def signingAlias = System.getenv("LEKTRUS_SIGNING_KEY_ALIAS")
 def signingStorePassword = System.getenv("LEKTRUS_SIGNING_STORE_PASSWORD")
 def signingKeyPassword = System.getenv("LEKTRUS_SIGNING_KEY_PASSWORD")
 def hasReleaseSigning = signingFile && signingAlias && signingStorePassword && signingKeyPassword
+if (!hasReleaseSigning && gradle.startParameter.taskNames.any { it.toLowerCase().contains("assemblerelease") }) {
+    throw new GradleException("A stable keystore is required for APK updates. Configure LEKTRUS_SIGNING_* secrets.")
+}
 
 apply plugin: 'com.android.application'
 
@@ -14,12 +17,6 @@ android {
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "ru.lektrus.board"
-        // Optional one-time recovery APK: side-by-side installation when old
-        // debug signing certificates from ephemeral GitHub runners differ.
-        // This is NOT an upgrade of the original application or its local data.
-        if (project.hasProperty("lektrusSideInstall")) {
-            applicationId "ru.lektrus.board.fresh"
-        }
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Increase for every GitHub Actions run. App updates require a greater

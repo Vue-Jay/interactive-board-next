@@ -22,17 +22,17 @@ assert.match(backend, /saveNativeBackendConnection/);
 assert.match(backend, /NATIVE_BACKEND_KEY/);
 assert.match(entry, /NativeConnectionSetup/);
 assert.match(read("src/SettingsScreen.tsx"), /clearNativeBackendConnection/);
-assert.match(workflow, /:app:assembleDebug/);
+assert.doesNotMatch(workflow, /:app:assembleDebug/);
 assert.match(workflow, /:app:assembleRelease/);
 assert.match(workflow, /LEKTRUS_SIGNING_STORE_BASE64/);
 assert.match(workflow, /LEKTRUS_ANDROID_VERSION_CODE/);
 const gradle = read("android/app/build.gradle");
 assert.match(gradle,/LEKTRUS_ANDROID_VERSION_CODE/);
 assert.match(gradle,/hasReleaseSigning/);
-assert.match(gradle,/lektrusSideInstall/);
-assert.match(gradle,/ru\.lektrus\.board\.fresh/);
-assert.match(workflow,/Lektrus-Android-Fresh-Install/);
-assert.match(workflow,/-PlektrusSideInstall/);
+assert.doesNotMatch(gradle,/lektrusSideInstall/);
+assert.doesNotMatch(gradle,/ru\.lektrus\.board\.fresh/);
+assert.doesNotMatch(workflow,/Lektrus-Android-Fresh-Install/);
+assert.doesNotMatch(workflow,/-PlektrusSideInstall/);
 assert.match(workflow, /CODE_SIGNING_ALLOWED=NO build/);
 assert.match(workflow, /upload-artifact@v4/);
 const app = read("src/App.tsx");
@@ -92,3 +92,9 @@ if (nativeSourcesExpected) {
   assert.ok(existsSync("ios/App/App.xcodeproj"), "Missing Xcode project");
 }
 console.log("Lektrus: Capacitor source projects, native packaging, and safe auth redirect verified.");
+
+assert.match(workflow,/Require persistent Android signing credentials/);
+assert.match(workflow,/APK_SIGNER/);
+assert.match(workflow,/verify --verbose --print-certs/);
+assert.match(workflow,/Lektrus-Android-Update-APK/);
+assert.match(gradle,/A stable keystore is required for APK updates/);

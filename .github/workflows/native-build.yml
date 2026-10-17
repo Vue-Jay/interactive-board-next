@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   android:
-    name: Build installable Android debug APK
+    name: Build permanently signed Android update APK
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -54,38 +54,35 @@ jobs:
         run: npm run build
       - name: Sync Android native files
         run: npx cap sync android
-      - name: Build upgradeable release APK when stable signing exists
+      - name: Require persistent Android signing credentials
         shell: bash
         run: |
+          for key in LEKTRUS_SIGNING_STORE_BASE64 LEKTRUS_SIGNING_STORE_PASSWORD LEKTRUS_SIGNING_KEY_ALIAS LEKTRUS_SIGNING_KEY_PASSWORD; do
+            if [[ -z "${!key}" ]]; then
+              echo "::error::Missing $key. APK publication stopped: a temporary debug key would break upgrades and force re-login. Configure a permanent signing key in repository Actions secrets."
+              exit 1
+            fi
+          done
+      - name: Build permanently signed upgrade APK
+        shell: bash
+        run: |
+          set -euo pipefail
           chmod +x android/gradlew
-          if [[ -n "$LEKTRUS_SIGNING_STORE_BASE64" && -n "$LEKTRUS_SIGNING_STORE_PASSWORD" && -n "$LEKTRUS_SIGNING_KEY_ALIAS" && -n "$LEKTRUS_SIGNING_KEY_PASSWORD" ]]; then
-            export LEKTRUS_SIGNING_STORE_FILE="$RUNNER_TEMP/lektrus-release.jks"
-            printf '%s' "$LEKTRUS_SIGNING_STORE_BASE64" | base64 --decode > "$LEKTRUS_SIGNING_STORE_FILE"
-            chmod 600 "$LEKTRUS_SIGNING_STORE_FILE"
-            (cd android && ./gradlew :app:assembleRelease --no-daemon --stacktrace)
-            cp android/app/build/outputs/apk/release/app-release.apk Lektrus-Android.apk
-            echo "Stable release signing used for Android updates."
-          else
-            echo "::warning::No stable Android signing secrets configured. This debug APK cannot reliably update previous installs. Install fresh; set secrets for future upgradeable releases."
-            (cd android && ./gradlew :app:assembleDebug --no-daemon --stacktrace)
-            cp android/app/build/outputs/apk/debug/app-debug.apk Lektrus-Android.apk
-          fi
+          export LEKTRUS_SIGNING_STORE_FILE="$RUNNER_TEMP/lektrus-release.jks"
+          trap 'rm -f "$LEKTRUS_SIGNING_STORE_FILE"' EXIT
+          printf '%s' "$LEKTRUS_SIGNING_STORE_BASE64" | base64 --decode > "$LEKTRUS_SIGNING_STORE_FILE"
+          chmod 600 "$LEKTRUS_SIGNING_STORE_FILE"
+          (cd android && ./gradlew :app:assembleRelease --no-daemon --stacktrace)
+          cp android/app/build/outputs/apk/release/app-release.apk Lektrus-Android.apk
+          APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          "$APK_SIGNER" verify --verbose --print-certs Lektrus-Android.apk > signing-report.txt
+          grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' signing-report.txt
+          grep 'Signer #1 certificate SHA-256 digest:' signing-report.txt
+          echo "Package ru.lektrus.board, versionCode $LEKTRUS_ANDROID_VERSION_CODE"
           test -s Lektrus-Android.apk
-          # A separate installable package bypasses conflicts with older APK
-          # signatures. The original release APK remains unchanged.
-          (cd android && ./gradlew :app:assembleDebug -PlektrusSideInstall --no-daemon --stacktrace)
-          cp android/app/build/outputs/apk/debug/app-debug.apk Lektrus-Android-fresh-install.apk
-          test -s Lektrus-Android-fresh-install.apk
-          rm -f "$RUNNER_TEMP/lektrus-release.jks"
       - uses: actions/upload-artifact@v4
         with:
-          name: Lektrus-Android-Fresh-Install
-          path: Lektrus-Android-fresh-install.apk
-          if-no-files-found: error
-          retention-days: 14
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Lektrus-Android-APK
+          name: Lektrus-Android-Update-APK
           path: Lektrus-Android.apk
           if-no-files-found: error
           retention-days: 14
