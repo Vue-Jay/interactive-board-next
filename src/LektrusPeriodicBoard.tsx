@@ -18,7 +18,7 @@ export default function LektrusPeriodicBoard({selected,showNames,layout="school"
   onChange(selected.includes(number)?selected.filter(x=>x!==number):
    selected.length<24?[...selected,number].sort((a,b)=>a-b):selected);
  };
- return <div ref={anchor} className="lektrus-periodic-board" onDoubleClick={e=>e.stopPropagation()}>
+ return <div ref={anchor} className={"lektrus-periodic-board"+(opened.length&&!suspended?" has-info":"")} onDoubleClick={e=>e.stopPropagation()}>
   <LektrusPeriodicTableView selected={selected} showNames={showNames} layout={layout} active={opened.at(-1)??null} onPick={pick} onDoublePick={toggle}/>
   <div className="lektrus-periodic-board-footer" onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()}>
    <div className="lektrus-periodic-board-tabs" role="group" aria-label="Вариант таблицы">
@@ -32,8 +32,10 @@ export default function LektrusPeriodicBoard({selected,showNames,layout="school"
      Сравнить <span>{multi?"Вкл":"Выкл"}</span>
    </button>
   </div>
-  {!suspended&&opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i} layout={layout} anchor={anchor.current}
-   selected={selected.includes(number)} onClose={()=>setOpened(v=>v.filter(n=>n!==number))}
-   onToggle={onChange?()=>toggle(number):undefined}/>)}
+  {!suspended&&opened.length>0&&<div className="lektrus-periodic-board-dock" aria-label="Информация об элементах">
+   {opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i} inline layout={layout} anchor={anchor.current}
+    selected={selected.includes(number)} onClose={()=>setOpened(v=>v.filter(n=>n!==number))}
+    onToggle={onChange?()=>toggle(number):undefined}/>)}
+  </div>}
  </div>;
 }
