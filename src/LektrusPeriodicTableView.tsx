@@ -29,8 +29,8 @@ export default function LektrusPeriodicTableView({
   {!school&&[{period:6,label:"57–71"},{period:7,label:"89–103"}].map(v=>{
     const x=bx+2*step,y=by+(v.period-1)*step;
     return <g key={v.period} opacity=".7">
-      <rect x={x} y={y} width={school&&el.row>=9?28:cell} height={cell} rx="5" fill="#f0e2f6" stroke="#decce8"/>
-      <text x={x+(school&&el.row>=9?14:cell/2)} y={y+27} fontSize="9" textAnchor="middle" fill="#745b86">{v.label}</text>
+      <rect x={x} y={y} width={cell} height={cell} rx="5" fill="#f0e2f6" stroke="#decce8"/>
+      <text x={x+cell/2} y={y+27} fontSize="9" textAnchor="middle" fill="#745b86">{v.label}</text>
     </g>;
   })}
   {periodicElements.map(el=>{
