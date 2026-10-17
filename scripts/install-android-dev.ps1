@@ -47,7 +47,15 @@ $serial = ($deviceLines[0].ToString() -split '\s+')[0]
 Write-Host "Device: $serial" -ForegroundColor Green
 
 Write-Host "[2/5] Checking dependencies..." -ForegroundColor Cyan
-if (-not (Test-Path (Join-Path $root "node_modules\.package-lock.json"))) {
+# A node_modules lockfile can exist even if Capacitor packages are missing.
+# Verify installed packages, not just the existence of the lockfile.
+$needsInstall = -not (Test-Path (Join-Path $root "node_modules\.package-lock.json"))
+if (-not $needsInstall) {
+  & $npm ls --depth=0 --all=false --silent *> $null
+  $needsInstall = $LASTEXITCODE -ne 0
+}
+if ($needsInstall) {
+  Write-Host "Installing or repairing missing npm packages (including Capacitor)..." -ForegroundColor Yellow
   & $npm ci --no-audit --no-fund
   if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
 }
