@@ -3,6 +3,7 @@ import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {scienceToolGroupForId} from "./lektrusScienceCatalog";
 import {makeSciencePresetItem,type SciencePresetId} from "./lektrusSciencePresets";
+import ScienceCircuitGlyph,{circuitSymbols,type CircuitSymbol} from "./ScienceCircuitGlyph";
 
 type Props={
   item:Item;
@@ -47,6 +48,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const [second,setSecond]=useState(1);
   const [order,setOrder]=useState<1|2|3>(1);
   const [arrow,setArrow]=useState(true);
+  const [component,setComponent]=useState<CircuitSymbol>("wire");
   const drag=useRef<{pointerId:number;index:number}|null>(null);
   const isPhysics=subject==="physics";
   const group=scienceToolGroupForId(draft.graphFigureId??"");
@@ -57,6 +59,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const molecule=group?.id==="chem-molecules";
   const motion=group?.id==="physics-graphs";
   const atom=group?.id==="chem-atoms";
+  const circuit=group?.id==="physics-circuits";
   const optics=group?.id==="physics-optics";
   // Graphs use positive time/quantity axes; construction sketches use the centered sheet.
   const xMin=motion?0:-7,xMax=motion?12:7;
@@ -87,7 +90,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     const nextPoint={
       x:clamp(Math.round((parent.x+1.4)*10)/10,xMin,xMax),
       y:clamp(Math.round((parent.y-1.3)*10)/10,yMin,yMax),
-      label:atom?"e⁻":isPhysics?"P"+String(points.length+1):"C",
+      label:atom?"e⁻":circuit?"":isPhysics?"P"+String(points.length+1):"C",
       color:atom?"#5579cc":isPhysics?"#2d5bad":"#40546e"
     };
     setDraft(previous=>({...previous,graphPoints:[...(previous.graphPoints??[]),nextPoint]}));
@@ -101,7 +104,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const addLink=()=>{
     if(first===second||!points[first]||!points[second]||segments.length>=64)return;
     const link:Link={a:first,b:second,kind:"segment",label:"",measure:false,
-      ...(isPhysics?{scienceArrow:arrow}:{bondOrder:order})};
+      ...(circuit?{scienceCircuitSymbol:component}:isPhysics?{scienceArrow:arrow}:{bondOrder:order})};
     setDraft(old=>{
       const all=old.graphSegments??[];
       const existing=all.findIndex(s=>(s.a===first&&s.b===second)||(s.a===second&&s.b===first));
@@ -133,7 +136,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
 
   const pointName=(index:number)=>points[index]?.label?.trim()||"Точка "+(index+1);
   const canLink=points.length>=2;
-  const drawingHelp=motion
+  const drawingHelp=circuit?"Соединяйте узлы проводами; каждый отрезок может содержать элемент цепи.":motion
     ?"Постройте условие задачи точками; вычисления остаются ученику."
     :molecule?"Расставьте атомы, выберите порядок связи и соедините их."
     :atom?"Перемещайте ядро и электроны на схеме оболочки."
@@ -146,7 +149,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
       aria-label={isPhysics?"Редактор физики":"Редактор химии"}
       onPointerDown={e=>e.stopPropagation()}>
       <header className="lektrus-science-header">
-        <div className="lektrus-science-symbol" aria-hidden="true">{isPhysics?"F⃗":"⚛"}</div>
+        <div className="lektrus-science-symbol" aria-hidden="true">{circuit?"⏚":isPhysics?"F⃗":"⚛"}</div>
         <div><small>{isPhysics?"ФИЗИКА · КОНСТРУКТОР":"ХИМИЯ · КОНСТРУКТОР"}</small>
           <h2>{group?.label??(isPhysics?"Физическая схема":"Химическая структура")}</h2></div>
         <button type="button" className="lektrus-science-close"
@@ -214,7 +217,12 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                 </select>
               </label>
             </div>
-            {isPhysics?
+            {circuit?
+              <label>Элемент на линии
+                <select value={component} onChange={e=>setComponent(e.target.value as CircuitSymbol)}>
+                  {circuitSymbols.map(option=><option key={option.id} value={option.id}>{option.label}</option>)}
+                </select>
+              </label>:isPhysics?
               <label className="lektrus-science-check"><input type="checkbox"
                 checked={arrow} onChange={e=>setArrow(e.target.checked)}/> Стрелка на конце линии</label>:
               <label>Порядок связи
@@ -227,7 +235,8 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
           </div>
           {segments.length>0&&<div className="lektrus-science-links">
             {segments.map((seg,i)=><div key={i}>
-              <span>{pointName(seg.a)} <b>{isPhysics?(seg.scienceArrow?"→":"—"):(seg.bondOrder===3?"≡":seg.bondOrder===2?"=":"—")}</b> {pointName(seg.b)}</span>
+              <span>{pointName(seg.a)} <b>{isPhysics?(seg.scienceArrow?"→":"—"):(seg.bondOrder===3?"≡":seg.bondOrder===2?"=":"—")}</b> {pointName(seg.b)}
+              {seg.scienceCircuitSymbol&&seg.scienceCircuitSymbol!=="wire"&&<small> · {circuitSymbols.find(symbol=>symbol.id===seg.scienceCircuitSymbol)?.label}</small>}</span>
               <button type="button" aria-label={"Удалить связь "+(i+1)}
                 onClick={()=>setDraft(old=>({...old,graphSegments:(old.graphSegments??[]).filter((_,n)=>n!==i)}))}>×</button>
             </div>)}
@@ -278,6 +287,10 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                     className={isPhysics?"lektrus-science-vector":"lektrus-science-bond"}
                     markerEnd={seg.scienceArrow?"url(#science-arrow-end)":undefined}/>;
                 })}
+                {seg.scienceCircuitSymbol&&seg.scienceCircuitSymbol!=="wire"&&
+                  <ScienceCircuitGlyph type={seg.scienceCircuitSymbol}
+                    x={(p.x+q.x)/2} y={(p.y+q.y)/2}
+                    angle={Math.atan2(q.y-p.y,q.x-p.x)*180/Math.PI}/>}
                 {seg.label&&<text className="lektrus-science-link-label"
                   x={(p.x+q.x)/2+8} y={(p.y+q.y)/2-9}>{seg.label}</text>}
               </g>;
