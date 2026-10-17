@@ -3,9 +3,9 @@ import type {AuthUser} from "./authStore";
 import {applyProfileAppearance,getProfileSettings,saveProfileSettings,type ProfileSettings} from "./profileStore";
 import type {AccountRole} from "./accountRoleStore";
 
-type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;onBack:()=>void};
+type Props={user:AuthUser;accountRole:AccountRole;isAppAdmin:boolean;onBack:()=>void;onLogout:()=>void};
 
-export default function ProfileScreen({user,accountRole,isAppAdmin,onBack}:Props){
+export default function ProfileScreen({user,accountRole,isAppAdmin,onBack,onLogout}:Props){
  const [profile,setProfile]=useState<ProfileSettings>({displayName:user.name,theme:"system",compactUi:false,defaultBoardZoom:100});
  const [name,setName]=useState(user.name),[saved,setSaved]=useState("");
  useEffect(()=>{void getProfileSettings(user).then(x=>{setProfile(x);setName(x.displayName)})},[user.id]);
@@ -24,6 +24,7 @@ export default function ProfileScreen({user,accountRole,isAppAdmin,onBack}:Props
        {!valid&&<small className="profile-field-error">Минимум 2 символа.</small>}
        <div className="profile-inline-actions"><button className="boards-create" disabled={!valid||name.trim()===profile.displayName} onClick={()=>void save()}>Сохранить имя</button></div>
      </section>
+     <section className="profile-compact-card profile-logout-card"><div><strong>Аккаунт</strong><p>Завершить текущий сеанс на этом устройстве</p></div><button type="button" className="profile-logout-button" onClick={onLogout}>Выйти из аккаунта</button></section>
    </section>
  </main>
 }
