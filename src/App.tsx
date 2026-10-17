@@ -19,6 +19,7 @@ import LektrusSubjectPicker from "./LektrusSubjectPicker";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
+import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusGraphEditor, {appendFreeSketchPoint,removeGraphPoint, removeGraphBoardPoint, type GraphDraft} from "./LektrusGraphEditor";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
@@ -1879,6 +1880,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [studyTab, setStudyTab] = useState<"quiz"|"flashcards">("quiz");
   const [studyCardIndex, setStudyCardIndex] = useState(0);
   const [graphEditorId, setGraphEditorId] = useState<string | null>(null);
+  const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
   const [fractionEditorId, setFractionEditorId] = useState<string | null>(null);
   const [pendingMathItem,setPendingMathItem] = useState<Item|null>(null);
   const [graphDraft, setGraphDraft] = useState<GraphDraft|null>(null);
@@ -2035,6 +2037,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
 
   const [lectrisBoardOrganization,setLectrisBoardOrganization]=useState(()=>{
+    // The shared board document is the source of truth, not a per-user preference.
+    // Legacy labels are migrated only by the board owner.
+    const assigned=initial.data.subject;
+    if(typeof assigned==="string")return {subject:assigned,group:""};
+    if(boardSummary.role!=="owner")return {subject:"",group:""};
     try{
       const raw=JSON.parse(localStorage.getItem("lectris.board-organization.v1."+authUser.id)||"{}") as Record<string,{subject?:string;group?:string}>;
       const data=raw?.[boardSummary.id];
@@ -2043,7 +2050,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   });
   const subjectCategories=["","Математика","Алгебра","Геометрия","Физика","Химия","Биология","География","Русский язык","Литература","История","Обществознание","Информатика","Английский язык","Иностранный язык"];
   const changeBoardSubject=(subject:string)=>{
-    if(!canEdit)return;
+    if(boardSummary.role!=="owner"||boardSummary.ownerId!==authUser.id)return;
     const next={...lectrisBoardOrganization,subject};
     setLectrisBoardOrganization(next);
     queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
@@ -2475,6 +2482,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       view: viewRef.current,
       background:boardBackground,
       backgroundShared:backgroundIsShared,
+      subject:lectrisBoardOrganization.subject,
       items: editing
         ? items.map((i) => (i.id === editing ? { ...i, text: draft } : i))
         : items,
@@ -2491,6 +2499,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     title,
     boardBackground,
     backgroundIsShared,
+    lectrisBoardOrganization.subject,
     editing,
     draft,
     saveBlocked,
@@ -2810,6 +2819,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setTitle(data.title);
     setBoardBackground(normalizeBoardBackground(data.background));
     setBackgroundIsShared(data.backgroundShared!==false);
+    setLectrisBoardOrganization(current=>({...current,subject:typeof data.subject==="string"?data.subject:""}));
     if (!fromRemote) setView(data.view);
     const allItems = expandDocumentInk(data);
     display(allItems);
@@ -4830,7 +4840,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const openGraphEditor = (item: Item) => {
-    if(item.kind!=="graph"||item.locked)return; if(itemsRef.current.some(existing=>existing.id===item.id))setSelected([item.id]); setGraphEditorId(item.id);
+    if(item.kind!=="graph"||item.locked)return;
+    if(item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")){setScienceEditorItem(item);return;} if(itemsRef.current.some(existing=>existing.id===item.id))setSelected([item.id]); setGraphEditorId(item.id);
     setGraphDraft({figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(Array.isArray(item.graphPoints)?item.graphPoints:[]).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
   };
   const closeGraphEditor=()=>{setGraphEditorId(null);setGraphDraft(null);setPendingMathItem(null)};
@@ -5654,6 +5665,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setRemoteConflict(null);
     if(onlyBackgroundChanged){
       setBoardBackground(normalizeBoardBackground(data.background));
+      setLectrisBoardOrganization(current=>({...current,subject:typeof data.subject==="string"?data.subject:""}));
       snapshot.current=data;
       try {localStorage.setItem(storageKey,JSON.stringify(data))}catch{}
       setSaveStatus("Общий фон обновлён");
@@ -5977,7 +5989,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             readOnly={!canEdit}
           />
           {authUser.isGuest&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
-          <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={!canEdit} onChange={changeBoardSubject}/>
+          <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={boardSummary.role!=="owner"||boardSummary.ownerId!==authUser.id} onChange={changeBoardSubject}/>
         </div>
         <div className="topbar-right"><details className="lectris-layout-picker">
             <summary title="Рабочая раскладка" aria-label="Выбрать раскладку доски"><Icon name="settings" size={17}/></summary>
@@ -6446,6 +6458,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setFractionEditorId(null);setPendingMathItem(null);
             }}
           />,document.body)}
+        {scienceEditorItem&&<LektrusScienceEditor key={scienceEditorItem.id} item={scienceEditorItem}
+          subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
+          onCancel={()=>setScienceEditorItem(null)}
+          onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Предметная схема сохранена");}}/>}
         {graphEditorId && graphDraft && createPortal(
           <LektrusGraphEditor
             draft={graphDraft} userId={authUser.id} mode={graphDraft.purpose==="geometry"?"geometry":"coordinates"}
@@ -6890,11 +6906,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
             const centerY=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
             const item=makeSubjectToolItem(id as SubjectToolId,centerX,centerY,createId);
-            setPendingMathItem(item);
             setSelected([]);
             setTool("select");
             setSubjectToolsOpen(false);
-            window.setTimeout(()=>item.kind==="fraction"?setFractionEditorId(item.id):item.kind==="formula"?openFormulaEditor(item):openGraphEditor(item),0);
+            if(id.startsWith("physics-")||id.startsWith("chem-")){
+              setScienceEditorItem({...item,graphFigureId:id});
+            }else{
+              setPendingMathItem(item);
+              window.setTimeout(()=>item.kind==="fraction"?setFractionEditorId(item.id):item.kind==="formula"?openFormulaEditor(item):openGraphEditor(item),0);
+            }
           }else{setTool(id as Tool);setSubjectToolsOpen(false)}
         }}/>}
         {lectrisCustomizeOpen&&<LectrisToolbarSettings
