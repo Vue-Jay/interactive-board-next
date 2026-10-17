@@ -1,0 +1,45 @@
+name: Refresh official Lektrus icons
+on:
+  push:
+    branches: [chore/lektrus-repository-cleanup-brand]
+    paths:
+      - assets/lektrus-brand-source.png
+      - .github/workflows/refresh-brand-icons.yml
+permissions:
+  contents: write
+jobs:
+  regenerate:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Produce web and high-density native assets from supplied Lektrus artwork
+        shell: bash
+        run: |
+          cp assets/lektrus-brand-source.png public/lektrus-icon-192.png
+          sips -z 512 512 assets/lektrus-brand-source.png --out public/lektrus-icon-512.png
+          sips -z 1024 1024 assets/lektrus-brand-source.png --out assets/icon.png
+          npx --yes @capacitor/assets@3.0.5 generate --android --iconBackgroundColor '#edf5ff' --splashBackgroundColor '#edf5ff'
+          npx --yes @capacitor/assets@3.0.5 generate --ios --iconBackgroundColor '#edf5ff' --splashBackgroundColor '#edf5ff'
+      - name: Verify app image dimensions
+        run: |
+          test "$(sips -g pixelWidth public/lektrus-icon-192.png | awk '/pixelWidth/{print $2}')" = 192
+          test "$(sips -g pixelWidth public/lektrus-icon-512.png | awk '/pixelWidth/{print $2}')" = 512
+          test "$(sips -g pixelWidth assets/icon.png | awk '/pixelWidth/{print $2}')" = 1024
+      - name: Commit generated Android iOS and web icons
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/icon.png public/lektrus-icon-192.png public/lektrus-icon-512.png android/app/src/main/res ios/App/App/Assets.xcassets
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix(brand): regenerate every app icon from supplied Lektrus artwork'
+            git push origin HEAD:${{ github.ref_name }}
+          fi
