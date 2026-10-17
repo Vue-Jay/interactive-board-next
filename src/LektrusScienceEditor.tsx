@@ -58,6 +58,12 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const motion=group?.id==="physics-graphs";
   const atom=group?.id==="chem-atoms";
   const optics=group?.id==="physics-optics";
+  // Graphs use positive time/quantity axes; construction sketches use the centered sheet.
+  const xMin=motion?0:-7,xMax=motion?12:7;
+  const yMin=motion?0:-5,yMax=motion?10:5;
+  const canvasPoint=(point:{x:number;y:number})=>motion?
+    {x:56+point.x/12*440,y:330-point.y/10*290}:xy(point);
+
 
   useEffect(()=>{
     const escape=(event:KeyboardEvent)=>{if(event.key==="Escape"&&event.target instanceof HTMLElement&&!event.target.closest("input,select")){event.stopPropagation();(onClose??onCancel)(draft)}};
@@ -79,8 +85,8 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     if(points.length>=32)return;
     const parent=selectedPoint??{x:0,y:0,label:""};
     const nextPoint={
-      x:clamp(Math.round((parent.x+1.4)*10)/10,-7,7),
-      y:clamp(Math.round((parent.y-1.3)*10)/10,-5,5),
+      x:clamp(Math.round((parent.x+1.4)*10)/10,xMin,xMax),
+      y:clamp(Math.round((parent.y-1.3)*10)/10,yMin,yMax),
       label:atom?"e⁻":isPhysics?"P"+String(points.length+1):"C",
       color:atom?"#5579cc":isPhysics?"#2d5bad":"#40546e"
     };
@@ -120,8 +126,8 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     const x=(event.clientX-rect.left)*520/rect.width;
     const y=(event.clientY-rect.top)*370/rect.height;
     patchPoint(moving.index,{
-      x:+clamp((x-260)/31,-7,7).toFixed(2),
-      y:+clamp((185-y)/31,-5,5).toFixed(2)
+      x:+clamp(motion?(x-56)/440*12:(x-260)/31,xMin,xMax).toFixed(2),
+      y:+clamp(motion?(330-y)/290*10:(185-y)/31,yMin,yMax).toFixed(2)
     });
   };
 
@@ -186,10 +192,10 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                 onClick={()=>patchPoint(selected,{label:element,color:atomColors[element]})}>{element}</button>)}
             </div>}
             <div className="lektrus-science-xy">
-              <label>X<input type="number" step=".5" min="-7" max="7"
-                value={selectedPoint.x} onChange={e=>patchPoint(selected,{x:clamp(Number(e.target.value)||0,-7,7)})}/></label>
-              <label>Y<input type="number" step=".5" min="-5" max="5"
-                value={selectedPoint.y} onChange={e=>patchPoint(selected,{y:clamp(Number(e.target.value)||0,-5,5)})}/></label>
+              <label>X<input type="number" step=".5" min={xMin} max={xMax}
+                value={selectedPoint.x} onChange={e=>patchPoint(selected,{x:clamp(Number(e.target.value)||0,xMin,xMax)})}/></label>
+              <label>Y<input type="number" step=".5" min={yMin} max={yMax}
+                value={selectedPoint.y} onChange={e=>patchPoint(selected,{y:clamp(Number(e.target.value)||0,yMin,yMax)})}/></label>
             </div>
           </div>}
           <div className="lektrus-science-subhead"><strong>{isPhysics?"Векторы и линии":"Химические связи"}</strong><span>{segments.length}</span></div>
@@ -247,18 +253,18 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
             {(draft.graphPolygons??[]).map((polygon,i)=>{
               const vertices=polygon.points.map(index=>points[index]).filter(Boolean);
               if(vertices.length<3)return null;
-              return <polygon key={i} points={vertices.map(p=>{const q=xy(p);return q.x+","+q.y}).join(" ")}
+              return <polygon key={i} points={vertices.map(p=>{const q=canvasPoint(p);return q.x+","+q.y}).join(" ")}
                 fill={isPhysics?"#dbe8fc":"#cce9e2"} fillOpacity=".48" stroke="#aac3e9" strokeWidth="1.5"/>;
             })}
             {(draft.graphCircles??[]).map((circle,i)=>{
               const a=points[circle.center],b=points[circle.edge];if(!a||!b)return null;
-              const p=xy(a),q=xy(b);
+              const p=canvasPoint(a),q=canvasPoint(b);
               return <circle key={i} cx={p.x} cy={p.y}
                 r={Math.hypot(p.x-q.x,p.y-q.y)} stroke="#9eb8dd" strokeWidth="2"
                 fill="none" strokeDasharray="6 5"/>;
             })}
             {motion&&draft.graphConnectPoints&&points.length>1&&
-              <polyline points={points.map(point=>{const p=xy(point);return p.x+","+p.y}).join(" ")}
+              <polyline points={points.map(point=>{const p=canvasPoint(point);return p.x+","+p.y}).join(" ")}
                 fill="none" stroke="#356bd5" strokeWidth="3.5" strokeLinejoin="round" strokeLinecap="round"/>}
             {segments.map((seg,i)=>{
               const a=points[seg.a],b=points[seg.b];if(!a||!b)return null;
