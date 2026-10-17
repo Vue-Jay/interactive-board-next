@@ -151,6 +151,8 @@ for(const id of ["cone","cylinder"]){
 }
 assert.match(editor,/className="lektrus-geometry-givens lektrus-solid-edge-dimensions"/,"solid dimensions are in Sizes");
 assert.match(editor,/if\(isSolid&&isStructuralSolidSegment\(draft.figureId,segment\)\)return null/,"core solid edges are excluded from extra Elements");
+assert.match(editor,/extraElementCount/,"Element count excludes structural solid edges");
+assert.match(editor,/if\(draft.figureId==="sphere"&&i===0\)return null/,"sphere base circle stays out of Elements");
 assert.match(app,/className="lektrus-solid-edge-labels"/,"solid edge labels shown in preview and board");
 assert.match(app,/solidDimensionEdgePairs\(item.graphFigureId\)/,"main dimensions appear along corresponding solid edges");
 
