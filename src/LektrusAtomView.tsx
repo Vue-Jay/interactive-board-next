@@ -43,7 +43,7 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactI
  const orbitalFooter=compactInPanel?85:108;
  // Reserve an entire row for every occupied sublevel, including the highest
  // elements; the old formula placed the top boxes above the SVG's title.
- const orbitalCanvasHeight=Math.max(460,orbitalHeader+orbitalFooter+
+ const orbitalCanvasHeight=Math.max(compactInPanel?260:460,orbitalHeader+orbitalFooter+
    Math.max(0,orbitalRows-1)*orbitalStep);
  // In small periodic-table cards the old 700px SVG left hundreds of pixels unused.
  // Crop only the viewBox for this context. Geometry and all editor coordinates stay unchanged.
@@ -132,7 +132,7 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactI
              fill="#fff" stroke="#8fa9cd" strokeWidth="1.05"/>
            {arrows.map((spin,k)=><text key={k}
              x={left+(arrows.length===1?8.5:k===0?5:12)}
-             y={y+3} textAnchor="middle" fontSize={arrows.length===1?16:12.8}
+             y={y+3} textAnchor="middle" fontSize={compactInPanel?(arrows.length===1?17.5:14.5):(arrows.length===1?16:12.8)}
              fontWeight="650" fill={spin==="↑"?"#2465b3":"#c16d47"}>
              {spin}
            </text>)}
