@@ -1215,7 +1215,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
               strokeLinejoin="round" strokeWidth={face.outline?1.8:1}/>
           )}
           {item.graphShowLabels!==false&&gp.map((p,i)=>{
-            if(!p.label||i>12)return null;
+            if(!p.label)return null;
             return <text key={i} className="graph-figure-label"
               x={sx(p.x)+7} y={sy(p.y)-8}
               style={{fill:"#293c59",stroke:"#fff",strokeWidth:4,paintOrder:"stroke",fontWeight:650}}>{p.label}</text>;
@@ -1291,6 +1291,27 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
               });
               return <polyline key={ring} points={points.join(" ")} fill="none" stroke="#537cc5" strokeDasharray={ring==="equator"?"6 4":"3 5"} strokeWidth="1.4" pointerEvents="none"/>;
             })}{given&&purpose==="geometry"&&<g className="graph-radius-dimension"><line x1={sx(center.x)} y1={sy(center.y)} x2={sx(edge.x)} y2={sy(edge.y)} stroke="#57677b" strokeWidth="1.3"/><text x={sx((center.x+edge.x)/2)} y={sy((center.y+edge.y)/2)-12} textAnchor="middle" style={{paintOrder:"stroke",stroke:"#fff",strokeWidth:4,fontWeight:650,fill:"#1c293a"}}>{`r = ${given}`}</text></g>}{circle.label&&!/^r\s*=/.test(circle.label)&&<text className="graph-figure-label" x={sx(center.x)+radius*scale+8} y={sy(center.y)-8}>{circle.label}</text>}</g>})}
+        {solid&&<g className="lektrus-solid-auxiliary" pointerEvents="none">
+          {(item.graphSegments??[]).slice((()=>{
+            const id=item.graphFigureId;
+            if(id==="cube"||id==="rectangular-prism")return 12;
+            if(id==="prism")return 9;
+            if(id==="pyramid")return 8;
+            if(id==="triangular-pyramid")return 6;
+            if(id==="cylinder")return 34;
+            if(id==="cone")return 18;
+            return 0;
+          })()).map((seg,i)=>{
+            const a=point(seg.a),b=point(seg.b);
+            if(!a||!b)return null;
+            return <g key={i}>
+              <line x1={sx(a.x)} y1={sy(a.y)} x2={sx(b.x)} y2={sy(b.y)}
+                stroke="#3f5b84" strokeWidth="1.9" strokeDasharray={seg.label==="h"?"6 4":undefined}/>
+              {seg.label&&<text x={sx((a.x+b.x)/2)+7} y={sy((a.y+b.y)/2)-9}
+                className="graph-given-label">{seg.label}</text>}
+            </g>;
+          })}
+        </g>}
         {(solid?[]:(item.graphSegments??[])).map((seg,i)=>{
           const a=point(seg.a),b=point(seg.b);if(!a||!b)return null;
           const vx=b.x-a.x,vy=b.y-a.y,length=Math.hypot(vx,vy);if(length<.001)return null;
