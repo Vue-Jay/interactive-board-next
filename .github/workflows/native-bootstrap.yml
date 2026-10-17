@@ -2,7 +2,7 @@ name: Prepare Android and iOS native sources
 
 on:
   push:
-    branches: [feat/lektrus-native-android-ios]
+    branches: [fix/lektrus-native-ui-insets-icon-orientation]
 
 permissions:
   contents: write
@@ -31,6 +31,11 @@ jobs:
         run: |
           if [ ! -d ios/App ]; then npx cap add ios; fi
           npx cap sync ios
+      - name: Verify approved icon is the native icon source
+        run: |
+          test -s assets/icon.png
+          test ! -e assets/logo.svg
+          cmp assets/icon.png public/lektrus-icon-512.png
       - name: Generate branded Lektrus icons and splash screens
         shell: bash
         run: |

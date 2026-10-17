@@ -92,7 +92,9 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
   }
 }
 
-if (Capacitor.isNativePlatform()) document.documentElement.classList.add("lektrus-native-app");
+if (Capacitor.isNativePlatform()) {
+  document.documentElement.classList.add("lektrus-native-app", "lektrus-" + Capacitor.getPlatform() + "-app");
+}
 
 initLectrisPalette();
 initProfileAppearance();

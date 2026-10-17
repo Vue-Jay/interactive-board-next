@@ -54,6 +54,8 @@ import { materialBlob,markMaterialUsed,type Material } from "./materialsStore";
 import ShareDialog from "./ShareDialog";
 import { clearPendingShare, initialRoute, parseRoute, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
+import { Capacitor } from "@capacitor/core";
+import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { BOARD_ROLE_LABELS, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
 import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from "./boardStore";
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
@@ -6006,7 +6008,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <button type="button" onClick={()=>{setLectrisLayout("standard");setLectrisPinned(lectrisDefaultPinned);setLectrisPanelLayout({...defaultLectrisPanelLayout});setDesktopToolsExpanded(false)}}>Восстановить по умолчанию</button>
               </div>
             </div>
-          </details>{installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lektrus на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
+          </details>{!Capacitor.isNativePlatform()&&installPrompt&&!isStandalone&&<button type="button" className="install-app-button" onClick={()=>void installApp()} title="Установить Lektrus на устройство">{isCoarsePointer?"Установить приложение":"Установить"}</button>}
           {isRemoteBackendEnabled() && <details className="presence-menu">
             <summary title={realtimeStatus === "online" ? "Подключено · пользователи на доске" : realtimeStatus === "reconnecting" ? "Подключение к доске..." : "Нет подключения"}>
               <span className={`presence-live-dot connection-${realtimeStatus}`} aria-hidden="true"/>
@@ -7885,6 +7887,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(initialRoute);
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const apply = async () => {
+      try {
+        if (route.kind === "board") {
+          await ScreenOrientation.lock({ orientation: "landscape-primary" });
+        } else {
+          await ScreenOrientation.unlock();
+        }
+      } catch (error) {
+        console.warn("Unable to change Lektrus orientation", error);
+      }
+    };
+    void apply();
+  }, [route.kind]);
+
   const navigate = useCallback((path: string, replace = false) => {
     window.history[replace ? "replaceState" : "pushState"](null, "", path);
     const url = new URL(path, window.location.href);

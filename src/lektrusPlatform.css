@@ -28,3 +28,10 @@ html.lektrus-native-app .lectris-mobile-nav,
 html.lektrus-native-app .lectris-bottom-nav {
   padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
 }
+
+/* Android native WebView already consumes system-bar/cutout insets. */
+html.lektrus-android-app .lectris-workspace-header,
+html.lektrus-android-app .topbar { padding-top: 0; }
+html.lektrus-android-app .lectris-mobile-nav,
+html.lektrus-android-app .lectris-bottom-nav { padding-bottom: 0; }
+html.lektrus-android-app body { overscroll-behavior-y: none; }
