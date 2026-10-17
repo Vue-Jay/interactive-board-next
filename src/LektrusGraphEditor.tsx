@@ -1,7 +1,7 @@
 import {useEffect, useState, type ReactNode} from "react";
 import type {Item} from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
-import {removeConstruction,type ConstructionKind} from "./lektrusConstructionCleanup";
+import {removeConstruction,removeSchoolConstructionGroup,type ConstructionKind} from "./lektrusConstructionCleanup";
 import {isStructuralSolidSegment} from "./lektrusSolid3d";
 import {buildSchoolConstruction,type SchoolConstruction} from "./lektrusSchoolConstructions";
 import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "./lektrusMathPresets";
@@ -45,6 +45,30 @@ export function removeGraphPoint(draft:GraphDraft,index:number):GraphDraft {
   };
 }
 
+/** Simple geometry: a line is drawn between every two consecutive user points.
+ * Closing a shape replaces its linear outline with a true polygon.
+ */
+export function appendFreeSketchPoint(draft:GraphDraft,x:number,y:number):GraphDraft {
+  if(draft.figureId!=="free"||draft.points.length>=40||!Number.isFinite(x)||!Number.isFinite(y))return draft;
+  const n=draft.points.length;
+  const lastClosed=draft.polygons.some(poly=>poly.points.includes(n-1));
+  const label=String.fromCharCode(65+(n%26));
+  const segments=n>0&&!lastClosed&&draft.segments.length<60?
+    [...draft.segments,{a:n-1,b:n,kind:"segment" as const,label:"",measure:false}]:draft.segments;
+  return {...draft,points:[...draft.points,{x,y,label}],segments};
+}
+export function closeFreeSketch(draft:GraphDraft):GraphDraft {
+  if(draft.figureId!=="free"||draft.polygons.length>=20)return draft;
+  const last=draft.polygons.reduce((highest,poly)=>Math.max(highest,...poly.points),-1);
+  const first=last+1,count=draft.points.length-first;
+  if(count<3)return draft;
+  const polygonPoints=Array.from({length:count},(_,i)=>first+i);
+  const sections=draft.segments.filter(seg=>!(seg.a>=first&&seg.b>=first&&
+    Math.abs(seg.a-seg.b)===1&&seg.kind==="segment"));
+  return {...draft,segments:sections,
+    polygons:[...draft.polygons,{points:polygonPoints,label:"",measure:false}]};
+}
+
 // Keep point-index references consistent when a point is removed directly on the board.
 export function removeGraphBoardPoint(item:Item,index:number):Item {
   const shift=(v:number)=>v>index?v-1:v;
@@ -72,7 +96,7 @@ const formulas:Record<GraphDraft["type"],string>={
 };
 
 export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,onSave,onCancel,onClose}:Props) {
-  const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry">("presets");
+  const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry">(()=>mode==="geometry"&&draft.figureId==="free"?"points":"presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   const [geometryError,setGeometryError]=useState("");
   const [regularSides,setRegularSides]=useState<3|4|5|6|8>(6);
@@ -83,9 +107,15 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const equalSideFigure=["square","rhombus","pentagon","hexagon","octagon"].includes(draft.figureId);
   const rectangleFigure=["square","rectangle"].includes(draft.figureId);
   const parameterQuadrilateral=["parallelogram","rhombus","trapezoid","trapezoid-isosceles","trapezoid-right"].includes(draft.figureId);
-  const extraElementCount=draft.segments.filter(segment=>!isSolid||!isStructuralSolidSegment(draft.figureId,segment)).length+
-    draft.polygons.length+draft.angles.length+draft.midpoints.length+
-    draft.circles.filter((_,i)=>!(draft.figureId==="sphere"&&i===0)).length;
+  const schoolGroups=Array.from(new Map(
+    [...draft.points,...draft.segments,...draft.circles,...draft.polygons,...draft.angles,...draft.midpoints]
+      .filter(entry=>entry.schoolGroupId)
+      .map(entry=>[entry.schoolGroupId!,entry.schoolGroupLabel||"Школьное построение"] as const)
+  ),([id,label])=>({id,label}));
+
+  const extraElementCount=draft.segments.filter(segment=>!segment.schoolGroupId&&(!isSolid||!isStructuralSolidSegment(draft.figureId,segment))).length+
+    draft.polygons.filter(p=>!p.schoolGroupId).length+draft.angles.filter(a=>!a.schoolGroupId).length+draft.midpoints.filter(m=>!m.schoolGroupId).length+
+    draft.circles.filter((circle,i)=>!circle.schoolGroupId&&!(draft.figureId==="sphere"&&i===0)).length;
   const transversal=draft.figureId==="parallel"?draft.segments.find((seg,i)=>i>=2&&seg.kind==="line"):undefined;
   const hasTransversal=!!transversal&&!!draft.points[transversal.a]&&!!draft.points[transversal.b];
   useEffect(()=>{
@@ -103,10 +133,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     setGeometryError("");onChange(result.draft);
   };
   const deleteConstruction=(kind:ConstructionKind,index:number)=>onChange(removeConstruction(draft,kind,index));
+  const deleteSchoolGroup=(groupId:string)=>onChange(removeSchoolConstructionGroup(draft,groupId));
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
     setGeometryError("");
-    if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");if(tab==="givens"&&id!=="triangle")setTab("presets")}
+    if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");if(id==="free")setTab("points");else if(tab==="givens"&&id!=="triangle")setTab("presets")}
     patch({
       figureId:id,rotationX:sample.graphRotationX??25,rotationY:sample.graphRotationY??-35,parallelMarks:[],title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
       type:sample.graphType??"quadratic",expression:sample.graphExpression??"",
@@ -142,6 +173,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     patch({points:draft.points.map((p,j)=>j===i?{...p,...change}:p)});
   const addPoint=()=>{
     if(draft.points.length>=40||draft.purpose==="unit-circle")return;
+    if(draft.figureId==="free"){
+      const i=draft.points.length;
+      onChange(appendFreeSketchPoint(draft,-4+(i%5)*2,-2+Math.floor(i%8/5)*3));
+      return;
+    }
     const label=draft.purpose==="geometry"?String.fromCharCode(65+(draft.points.length%26)):"";
     patch({points:[...draft.points,{x:0,y:0,label}]});
   };
@@ -271,7 +307,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>{mode==="geometry"?"Фигура":"Построение"}</button>
         {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>Размеры</button>}
-        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Элементы <span>{extraElementCount}</span></button>}
+        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Элементы <span>{extraElementCount+schoolGroups.length}</span></button>}
         {!isSolid&&<button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
       </nav>
       <div className="graph-editor-body lektrus-graph-content">
@@ -490,6 +526,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 <small>Впишите значение рядом с обозначением ребра. Оно сразу появится у ребра на чертеже и сохранится вместе с фигурой. Дополнительные элементы остаются в соседней вкладке.</small>
                 <div className="lektrus-solid-edge-grid">
                   {draft.segments.map((segment,i)=>{
+              if(segment.schoolGroupId)return null;
                     if(!isStructuralSolidSegment(draft.figureId,segment))return null;
                     const first=draft.points[segment.a]?.label||String.fromCharCode(65+segment.a%26);
                     const second=draft.points[segment.b]?.label||String.fromCharCode(65+segment.b%26);
@@ -642,6 +679,16 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           </div>}
           {mode==="geometry"&&tab==="geometry"&&<div className="lektrus-graph-section">
             <strong>Дополнительные элементы</strong><small>Добавьте вспомогательные фигуры и линии. Длины рёбер и углы задаются во вкладке «Размеры».</small>
+            {schoolGroups.length>0&&<div className="lektrus-school-construction-list">
+              <strong>Добавленные школьные построения</strong>
+              <small>Каждое построение можно удалить целиком, вместе с его собственными опорными точками.</small>
+              {schoolGroups.map(group=><div key={group.id} className="lektrus-school-construction-row">
+                <span>{group.label}</span>
+                <button type="button" aria-label={"Удалить построение "+group.label}
+                  onClick={()=>deleteSchoolGroup(group.id)}>Удалить</button>
+              </div>)}
+            </div>}
+
             {draft.figureId==="parallel"&&<div className="lektrus-graph-construction lektrus-parallel-construction">
               <strong>Параллельные прямые и секущая</strong>
               <small>Здесь можно показать признаки и свойства параллельных прямых: соответственные, накрест лежащие, односторонние, вертикальные и смежные углы. Числовые ответы не рассчитываются.</small>
@@ -799,6 +846,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             </div>}
 
             {draft.circles.map((c,i)=>{
+              if(c.schoolGroupId)return null;
               if(draft.figureId==="sphere"&&i===0)return null;
               const name=draft.points[c.center]?.label||"O";
               return <div className="lektrus-graph-construction lektrus-school-element" key={"circle"+i}>
@@ -811,6 +859,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               </div>;
             })}
             {draft.polygons.map((polygon,i)=>{
+              if(polygon.schoolGroupId)return null;
               const label=polygon.points.map(index=>draft.points[index]?.label||"").join("")||"Фигура";
               return <div className="lektrus-graph-construction lektrus-school-element" key={"polygon"+i}>
                 <div className="lektrus-school-element-row">
@@ -835,7 +884,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 </div>
               </div>;
             })}
-            {draft.midpoints.map((midpoint,i)=><div className="lektrus-graph-construction lektrus-school-element" key={"midpoint"+i}>
+            {draft.midpoints.map((midpoint,i)=>midpoint.schoolGroupId?null:<div className="lektrus-graph-construction lektrus-school-element" key={"midpoint"+i}>
               <div className="lektrus-school-element-row">
                 <strong>Середина</strong>
                 <input aria-label={"Подпись середины "+(i+1)} placeholder="Название" maxLength={24} value={midpoint.label}
@@ -844,6 +893,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               </div>
             </div>)}
             {draft.angles.map((angle,i)=>{
+              if(angle.schoolGroupId)return null;
               const a=draft.points[angle.a]?.label||"A",v=draft.points[angle.vertex]?.label||"O",b=draft.points[angle.b]?.label||"B";
               const name="∠"+a+v+b;
               return <div className="lektrus-graph-construction lektrus-school-element" key={"angle"+i}>
