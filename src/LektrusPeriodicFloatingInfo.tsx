@@ -32,6 +32,31 @@ export default function LektrusPeriodicFloatingInfo({
  const drag=useRef<{id:number;startX:number;startY:number;origin:Point}|null>(null);
  const atomId=useId();
 
+ // The panel is portaled outside the board. Forward Ctrl+wheel to the
+ // board's existing non-passive wheel handler instead of zooming the browser.
+ useEffect(()=>{
+  const panel=cardRef.current;
+  if(!panel)return;
+  const handleWheel=(event:WheelEvent)=>{
+   if(!event.ctrlKey&&!event.metaKey)return;
+   event.preventDefault();
+   event.stopPropagation();
+   if(fixed)return;
+   const stage=stageRef.current;
+   if(!stage)return;
+   stage.dispatchEvent(new WheelEvent("wheel",{
+    bubbles:true,cancelable:true,
+    ctrlKey:event.ctrlKey,metaKey:event.metaKey,
+    altKey:event.altKey,shiftKey:event.shiftKey,
+    clientX:event.clientX,clientY:event.clientY,
+    deltaX:event.deltaX,deltaY:event.deltaY,deltaZ:event.deltaZ,
+    deltaMode:event.deltaMode
+   }));
+  };
+  panel.addEventListener("wheel",handleWheel,{passive:false});
+  return()=>panel.removeEventListener("wheel",handleWheel);
+ },[fixed,stageRef]);
+
  useEffect(()=>{setAtomOpen(false);setMode("shell");setOffset(null)},[number,layout]);
  useLayoutEffect(()=>{
   let alive=true,frame=0;
@@ -101,7 +126,7 @@ export default function LektrusPeriodicFloatingInfo({
   transformOrigin:"top right"
  };
  const content=<section ref={cardRef}
-   className={"lektrus-chem-window lektrus-chem-window--combined"+(atomOpen?" is-expanded":"")+(fixed?" is-editor":" is-board")}
+   className={"lektrus-chem-window lektrus-chem-window--combined"+(atomOpen?" is-expanded":"")+(atomOpen&&mode==="orbital"?" is-orbital":"")+(fixed?" is-editor":" is-board")}
    style={fixed?editorStyle:boardStyle}
    aria-label={"Информация об элементе "+element.name}
    onPointerDown={event=>event.stopPropagation()}
