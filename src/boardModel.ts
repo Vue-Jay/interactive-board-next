@@ -78,7 +78,7 @@ export type Item = {
   graphGrid?: boolean;
   graphPoints?: { x:number; y:number; label:string; color?: string; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphShowLabels?: boolean;
-  graphSegments?: { a:number; b:number; kind:"segment"|"line"|"ray"; label:string; measure:boolean; bondOrder?:1|2|3; scienceArrow?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphSegments?: { a:number; b:number; kind:"segment"|"line"|"ray"; label:string; measure:boolean; bondOrder?:1|2|3; scienceArrow?:boolean; scienceCircuitSymbol?:"wire"|"resistor"|"lamp"|"source"|"switch"|"ammeter"|"voltmeter"; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphAngles?: { a:number; vertex:number; b:number; label:string; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphCircles?: { center:number; edge:number; label:string; measure:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphPolygons?: { points:number[]; label:string; measure:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
@@ -220,7 +220,7 @@ export function parseDocument(raw: string): DocumentData {
         }
       }
 
-      if (Array.isArray(i.graphSegments)&&i.graphSegments.some((seg:{bondOrder?:unknown;scienceArrow?:unknown})=>(seg.bondOrder!=null&&(typeof seg.bondOrder!=="number"||![1,2,3].includes(seg.bondOrder)))||(seg.scienceArrow!=null&&typeof seg.scienceArrow!=="boolean"))) throw new Error("Повреждены связи предметной схемы");
+      if (Array.isArray(i.graphSegments)&&i.graphSegments.some((seg:{bondOrder?:unknown;scienceArrow?:unknown;scienceCircuitSymbol?:unknown})=>(seg.bondOrder!=null&&(typeof seg.bondOrder!=="number"||![1,2,3].includes(seg.bondOrder)))||(seg.scienceArrow!=null&&typeof seg.scienceArrow!=="boolean")||(seg.scienceCircuitSymbol!=null&&typeof seg.scienceCircuitSymbol!=="string"))) throw new Error("Повреждены связи предметной схемы");
       if(i.graphRotationX!=null&&(!Number.isFinite(i.graphRotationX)||Math.abs(i.graphRotationX)>3600))throw new Error("Повреждён угол поворота фигуры");
       if(i.graphRotationY!=null&&(!Number.isFinite(i.graphRotationY)||Math.abs(i.graphRotationY)>3600))throw new Error("Повреждён угол поворота фигуры");
       if(i.graphParallelMarks!=null&&(!Array.isArray(i.graphParallelMarks)||i.graphParallelMarks.length>6||i.graphParallelMarks.some((v:unknown)=>typeof v!=="string"||!["corresponding","alternate-interior","alternate-exterior","same-side-interior","vertical","adjacent"].includes(v))))throw new Error("Повреждены обозначения углов параллельных прямых");
