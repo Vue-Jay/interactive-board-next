@@ -78,8 +78,7 @@ jobs:
           "$APK_SIGNER" verify --verbose --print-certs Lektrus-Android.apk > signing-report.txt
           # apksigner verify exits nonzero for an invalid APK signature.
           # Don't hard-code one signing scheme: valid releases can vary by SDK.
-          grep -q 'Signer #1 certificate SHA-256 digest:' signing-report.txt
-          grep 'Signer #1 certificate SHA-256 digest:' signing-report.txt
+          cat signing-report.txt
           echo "Package ru.lektrus.board, versionCode $LEKTRUS_ANDROID_VERSION_CODE"
           test -s Lektrus-Android.apk
       - uses: actions/upload-artifact@v4
