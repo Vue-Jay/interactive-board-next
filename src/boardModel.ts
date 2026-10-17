@@ -199,6 +199,31 @@ const connectorStyles: ConnectorStyle[] = ["line","arrow","double"];
 const connectorRoutings: ConnectorRouting[] = ["straight","elbow"];
 const binding = (v: unknown): v is ConnectorBinding => !!v && typeof v === "object" && typeof (v as ConnectorBinding).itemId === "string" && finite((v as ConnectorBinding).nx) && finite((v as ConnectorBinding).ny) && (v as ConnectorBinding).nx >= 0 && (v as ConnectorBinding).nx <= 1 && (v as ConnectorBinding).ny >= 0 && (v as ConnectorBinding).ny <= 1;
 
+/** Preserve the complete, validated teaching-object payload when importing
+ * or reopening a board. Previously these fields were silently dropped and all
+ * subject diagrams rendered as a generic coordinate plane. */
+const persistedGraphKeys = [
+  "graphPurpose","graphFigureId","scienceCircuit","scienceAtomModel",
+  "sciencePeriodicHighlights","sciencePeriodicShowNames",
+  "graphRotationX","graphRotationY","graphParallelMarks",
+  "graphAxisMode","graphIntervalStartClosed","graphIntervalEndClosed",
+  "graphType","graphExpression","graphConnectPoints",
+  "graphA","graphB","graphC","graphXMin","graphXMax","graphYMin","graphYMax",
+  "graphGrid","graphPoints","graphShowLabels","graphSegments","graphAngles",
+  "graphCircles","graphPolygons","graphTriangleLines","graphTriangleVertex",
+  "graphShowArea","graphGivenSides","graphGivenAngles","graphTriangleInputMode",
+  "graphMidpoints","graphSnap","graphAxisLabels","graphGridStep",
+  "graphShowCurve","graphProjections"
+] as const satisfies readonly (keyof Item)[];
+function persistedGraphData(item:Item):Partial<Item>{
+  if(item.kind!=="graph")return {};
+  const result:Record<string,unknown>={};
+  for(const key of persistedGraphKeys){
+    if(item[key]!==undefined)result[key]=item[key];
+  }
+  return result as Partial<Item>;
+}
+
 export function parseDocument(raw: string): DocumentData {
   if (raw.length > 24 * 1024 * 1024) throw new Error("Файл слишком большой");
   const d = JSON.parse(raw);
@@ -381,6 +406,7 @@ export function parseDocument(raw: string): DocumentData {
   return packDocumentInk({
     version: 1,
     title: d.title,
+    subject:typeof d.subject==="string"?d.subject.trim().slice(0,80):"",
     view: { x: d.view.x, y: d.view.y, zoom: d.view.zoom },
     background:normalizeBoardBackground(d.background),
     backgroundShared:d.backgroundShared!==false,
@@ -392,6 +418,12 @@ export function parseDocument(raw: string): DocumentData {
       width: i.width,
       height: i.height,
       text: i.text,
+      ...persistedGraphData(i),
+      ...(i.kind === "fraction" ? {
+        fractionMode:i.fractionMode??"circle",
+        fractionNumerator:i.fractionNumerator,
+        fractionDenominator:i.fractionDenominator,
+      } : {}),
       ...(i.kind === "pen" || i.kind === "marker" ? { color: i.color, weight: i.weight, points: i.points!.map(p => ({ x: p.x, y: p.y })) } : {}),
       ...(i.kind === "shape" ? { shapeType: i.shapeType ?? "rounded", ...(color(i.color) ? { color: i.color } : {}) } : {}),
       ...(i.kind === "image" || i.kind === "pdf" ? { assetId: i.assetId, name: i.name, mime: i.mime, ...(i.kind === "pdf" && finite(i.pdfPage) ? { pdfPage: Math.max(1, Math.round(i.pdfPage)) } : {}) } : {}),
@@ -412,6 +444,9 @@ export function parseDocument(raw: string): DocumentData {
         tableCols: Math.max(1, Math.min(12, Math.round(i.tableCols ?? 3))),
         tableCells: Array.isArray(i.tableCells) ? i.tableCells.map((cell) => String(cell)) : [],
         tableHeader: i.tableHeader !== false,
+        tableAlign:i.tableAlign??"left",
+        tableStripe:i.tableStripe===true,
+        tableCompact:i.tableCompact===true,
         ...(finite(i.fontSize) && i.fontSize >= 9 && i.fontSize <= 32 ? { fontSize: i.fontSize } : {}),
       } : {}),
       ...(i.kind === "comment" ? {
