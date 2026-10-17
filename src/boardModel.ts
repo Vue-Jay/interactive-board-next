@@ -61,6 +61,8 @@ export type Item = {
   // Subject objects keep their teaching purpose, title and visible axes.
   graphPurpose?: "function" | "coordinates" | "geometry" | "unit-circle" | "number-line";
   graphFigureId?: string;
+  sciencePeriodicHighlights?: number[];
+  sciencePeriodicShowNames?: boolean;
   graphRotationX?: number;
   graphRotationY?: number;
   graphParallelMarks?: ("corresponding"|"alternate-interior"|"alternate-exterior"|"same-side-interior"|"vertical"|"adjacent")[];
@@ -221,6 +223,8 @@ export function parseDocument(raw: string): DocumentData {
       }
 
       if (Array.isArray(i.graphSegments)&&i.graphSegments.some((seg:{bondOrder?:unknown;scienceArrow?:unknown;scienceCircuitSymbol?:unknown})=>(seg.bondOrder!=null&&(typeof seg.bondOrder!=="number"||![1,2,3].includes(seg.bondOrder)))||(seg.scienceArrow!=null&&typeof seg.scienceArrow!=="boolean")||(seg.scienceCircuitSymbol!=null&&typeof seg.scienceCircuitSymbol!=="string"))) throw new Error("Повреждены связи предметной схемы");
+      if(i.sciencePeriodicHighlights!=null&&(!Array.isArray(i.sciencePeriodicHighlights)||i.sciencePeriodicHighlights.length>24||i.sciencePeriodicHighlights.some((value:unknown)=>typeof value!=="number"||!Number.isInteger(value)||value<1||value>118)))throw new Error("Некорректно выделены элементы периодической таблицы");
+      if(i.sciencePeriodicShowNames!=null&&typeof i.sciencePeriodicShowNames!=="boolean")throw new Error("Некорректны подписи периодической таблицы");
       if(i.graphRotationX!=null&&(!Number.isFinite(i.graphRotationX)||Math.abs(i.graphRotationX)>3600))throw new Error("Повреждён угол поворота фигуры");
       if(i.graphRotationY!=null&&(!Number.isFinite(i.graphRotationY)||Math.abs(i.graphRotationY)>3600))throw new Error("Повреждён угол поворота фигуры");
       if(i.graphParallelMarks!=null&&(!Array.isArray(i.graphParallelMarks)||i.graphParallelMarks.length>6||i.graphParallelMarks.some((v:unknown)=>typeof v!=="string"||!["corresponding","alternate-interior","alternate-exterior","same-side-interior","vertical","adjacent"].includes(v))))throw new Error("Повреждены обозначения углов параллельных прямых");
