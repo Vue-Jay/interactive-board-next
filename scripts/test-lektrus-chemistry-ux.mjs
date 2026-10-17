@@ -9,7 +9,7 @@ const clean=source=>source.replace(/^import .*?;\s*$/gm,"").replace(/\bexport\s+
 const js=ts.transpileModule(clean([periodic,facts,atom].join("\n")),{
  compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}
 }).outputText;
-const results=new Function(js+"\nreturn {periodicElements,elementFacts,atomShells,atomViews,orbitalSublevels,defaultAtomModel};")();
+const results=new Function(js+"\nreturn {periodicElements,elementFacts,atomShells,atomViews,orbitalSublevels,defaultAtomModel,exampleIsotope};")();
 const {periodicElements,elementFacts,atomShells,atomViews,orbitalSublevels}=results;
 assert.equal(periodicElements.length,118,"all 118 symbols and names");
 assert.equal(elementFacts.length,118,"each chemical element has offline reference data");
@@ -34,6 +34,9 @@ assert.equal(orbitalSublevels(8).find(level=>level.name==="2p")?.electrons,4);
 assert.equal(orbitalSublevels(24).find(level=>level.name==="3d")?.electrons,5);
 assert.equal(orbitalSublevels(29).find(level=>level.name==="3d")?.electrons,10);
 assert.equal(results.defaultAtomModel.atomicNumber,8);
+assert.deepEqual(results.exampleIsotope(6),{massNumber:12,neutrons:6},"carbon-12");
+assert.deepEqual(results.exampleIsotope(17),{massNumber:35,neutrons:18},"chlorine-35");
+assert.equal(results.exampleIsotope(43),null,"do not fabricate neutron count from atomic weight");
 
 const model=text("src/boardModel.ts"),editor=text("src/LektrusScienceEditor.tsx");
 const tableView=text("src/LektrusPeriodicTableView.tsx");
@@ -80,6 +83,23 @@ for(let z=1;z<=118;z++){
 }
 const organicSource=text("src/lektrusOrganicFormula.ts");
 assert.match(organicSource,/analyzeOrganicStructure/);
+const organicModule=ts.transpileModule(clean(organicSource),{
+ compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}
+}).outputText;
+const analyzeOrganic=new Function(organicModule+"\nreturn analyzeOrganicStructure;")();
+const organicCase=(labels,bonds)=>analyzeOrganic({
+ graphPoints:labels.map(label=>({label,x:0,y:0})),
+ graphSegments:bonds.map(([a,b,bondOrder])=>({a,b,bondOrder,kind:"segment",label:"",measure:false}))
+});
+assert.equal(organicCase(["C","C"],[[0,1,1]]).formula,"C2H6","ethane");
+assert.equal(organicCase(["C","C"],[[0,1,2]]).formula,"C2H4","ethene");
+assert.equal(organicCase(["C","C"],[[0,1,3]]).formula,"C2H2","ethyne");
+assert.equal(organicCase(["C","C","O","H"],[[0,1,1],[1,2,1],[2,3,1]]).formula,"C2H6O","ethanol");
+assert.equal(organicCase(["C","C","O","O","H"],[[0,1,1],[1,2,2],[1,3,1],[3,4,1]]).formula,"C2H4O2","ethanoic acid");
+const ring=Array.from({length:6},(_,i)=>[i,(i+1)%6,i%2===0?2:1]);
+assert.equal(organicCase(Array(6).fill("C"),ring).formula,"C6H6","benzene");
+assert.equal(organicCase(["C","C"],[[0,1,1],[0,1,3],[0,1,1]]).valid,false,
+ "carbon cannot have five bond orders");
 const organicPresets=text("src/lektrusSciencePresets.ts");
 assert.match(organicPresets,/chem-organic-benzene/);
 assert.match(organicPresets,/chem-organic-ethanol/);
