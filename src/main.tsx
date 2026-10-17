@@ -36,6 +36,7 @@ import "./lektrusPortraitPages.css";
 import "./lektrusCompactMobilePages.css";
 import "./lektrusMobileUnifiedLayouts.css";
 import "./lektrusAdaptiveSidebarAndToday.css";
+import "./lektrusMoreTab.css";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
