@@ -8558,3 +8558,15 @@ option{background:#fff;color:#343741}
   border-radius:7px!important;font-size:12px!important;
 }
 .graph-view .lektrus-solid-edge-labels text{pointer-events:none}
+
+.lektrus-school-readonly-note{flex:1 1 auto;min-width:0;color:#74849b;font-size:11px;font-weight:450}
+.lektrus-school-element-row:has(.lektrus-school-readonly-note)>strong{max-width:none;flex-basis:auto}
+.lektrus-school-free-constructions{margin:12px 0;padding:10px 12px;border:1px solid #dfe7f2;border-radius:11px;background:#fafcff}
+.lektrus-school-free-constructions>summary{cursor:pointer;color:#3f5375;font-size:12px;font-weight:700}
+.lektrus-school-free-constructions>small{display:block;font-size:11px;color:#7b8aa2;margin:8px 0}
+.lektrus-school-free-constructions .lektrus-graph-construct-actions{margin-top:10px}
+.lektrus-school-related{gap:9px}
+.lektrus-school-related>small{display:block;color:#71809b;font-size:11px;line-height:1.5}
+.lektrus-school-regular-controls{display:grid;gap:9px}
+.lektrus-school-regular-controls>label{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:12px}
+.lektrus-school-regular-controls select{flex:1 1 155px;min-width:0;min-height:36px;border-radius:8px;padding:6px}
