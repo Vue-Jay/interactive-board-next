@@ -22,8 +22,10 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
  if(!element||!facts)return null;
  const rect=anchor?.getBoundingClientRect();
  const defaultInfo:XY=layout==="school"
-  ?{x:Math.min(window.innerWidth-272,Math.max(12,(rect?.right??window.innerWidth*.75)+10)),y:Math.max(12,(rect?.top??130)+18)}
-  :{x:Math.max(12,(rect?.left??70)+Math.min(170,(rect?.width??700)*.17)),y:Math.max(12,(rect?.top??130)+52)};
+  ?{x:clamp((rect?.left??70)+(rect?.width??900)*.70,8,Math.max(8,window.innerWidth-268)),
+    y:clamp((rect?.top??130)+(rect?.height??620)*.025,8,Math.max(8,window.innerHeight-165))}
+  :{x:clamp((rect?.left??70)+(rect?.width??900)*.235,8,Math.max(8,window.innerWidth-268)),
+    y:clamp((rect?.top??130)+(rect?.height??600)*.09,8,Math.max(8,window.innerHeight-165))};
  const info=position??defaultInfo;
  const atom=atomPosition??{x:clamp(info.x-110,12,window.innerWidth-530),y:clamp(info.y+168,12,window.innerHeight-450)};
  const move=(e:PointerEvent<HTMLDivElement>)=>{
