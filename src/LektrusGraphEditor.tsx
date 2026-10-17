@@ -819,13 +819,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <strong>Вписанные и описанные многоугольники</strong>
               <small>Вписанный многоугольник имеет вершины на окружности, описанный касается её всеми сторонами.</small>
               <div className="lektrus-school-regular-controls">
-                <label>Число сторон
-                  <select value={regularSides} onChange={e=>setRegularSides(Number(e.target.value) as 3|4|5|6|8)}>
-                    <option value={3}>3, треугольник</option>
-                    <option value={4}>4, квадрат</option>
-                    <option value={5}>5, пятиугольник</option>
-                    <option value={6}>6, шестиугольник</option>
-                    <option value={8}>8, восьмиугольник</option>
+                <label className="lektrus-school-side-count"><span>Число сторон</span>
+                  <select aria-label="Число сторон многоугольника" value={regularSides}
+                    onChange={e=>setRegularSides(Number(e.target.value) as 3|4|5|6|8)}>
+                    {[3,4,5,6,8].map(n=><option key={n} value={n}>{n}</option>)}
                   </select>
                 </label>
                 <div className="lektrus-graph-construct-actions">
