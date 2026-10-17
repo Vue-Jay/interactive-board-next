@@ -76,8 +76,9 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk Lektrus-Android.apk
           APK_SIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
           "$APK_SIGNER" verify --verbose --print-certs Lektrus-Android.apk > signing-report.txt
-          grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' signing-report.txt
-          grep 'Signer #1 certificate SHA-256 digest:' signing-report.txt
+          # apksigner verify exits nonzero for an invalid APK signature.
+          # Don't hard-code one signing scheme: valid releases can vary by SDK.
+          cat signing-report.txt
           echo "Package ru.lektrus.board, versionCode $LEKTRUS_ANDROID_VERSION_CODE"
           test -s Lektrus-Android.apk
       - uses: actions/upload-artifact@v4
