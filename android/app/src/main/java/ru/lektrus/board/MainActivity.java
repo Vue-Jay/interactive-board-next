@@ -19,6 +19,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     private WebView boardWebView;
     private boolean boardMode = false;
+    private String lastCutoutInsets = "";
 
     public void setBoardMode(boolean enabled) {
         runOnUiThread(() -> {
@@ -49,6 +50,21 @@ public class MainActivity extends BridgeActivity {
         applyBars();
         ViewCompat.setOnApplyWindowInsetsListener(boardWebView, (view, insets) -> {
             Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+            // DisplayCutout insets are physical pixels; export them to CSS in
+            // CSS pixels after accounting for the WebView devicePixelRatio.
+            // Unlike hard-coded offsets, this responds to each device,
+            // display rotation, and camera/notch position.
+            String cutoutInsets = cutout.left + "," + cutout.top + "," + cutout.right + "," + cutout.bottom;
+            if (!cutoutInsets.equals(lastCutoutInsets)) {
+                lastCutoutInsets = cutoutInsets;
+                ((WebView) view).evaluateJavascript(
+                    "(function(){var r=window.devicePixelRatio||1;var s=document.documentElement.style;" +
+                    "s.setProperty('--lektrus-cutout-left',(" + cutout.left + "/r)+'px');" +
+                    "s.setProperty('--lektrus-cutout-top',(" + cutout.top + "/r)+'px');" +
+                    "s.setProperty('--lektrus-cutout-right',(" + cutout.right + "/r)+'px');" +
+                    "s.setProperty('--lektrus-cutout-bottom',(" + cutout.bottom + "/r)+'px');" +
+                    "})();", null);
+            }
             Insets navigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
             Insets tappable = insets.getInsets(WindowInsetsCompat.Type.tappableElement());
             // Use ignoring-visibility inset: status can be temporarily hidden by
