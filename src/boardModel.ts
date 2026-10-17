@@ -112,6 +112,7 @@ export type Item = {
   scienceAtomModel?: import("./lektrusAtomModel").AtomModel;
   sciencePeriodicHighlights?: number[];
   sciencePeriodicShowNames?: boolean;
+  sciencePeriodicLayout?: "school" | "long";
   graphRotationX?: number;
   graphRotationY?: number;
   graphParallelMarks?: ("corresponding"|"alternate-interior"|"alternate-exterior"|"same-side-interior"|"vertical"|"adjacent")[];
