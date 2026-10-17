@@ -729,7 +729,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                   <button type="button" onClick={()=>createSchool("trapezoid-midline")}>+ Средняя линия трапеции</button>}
                 {draft.polygons.some(p=>p.points.length===3)&&<>
                   <button type="button" onClick={()=>createSchool("triangle-midline")}>+ Средняя линия треугольника</button>
-                  <button type="button" onClick={()=>createSchool("centroid")}>+ Точка пересечения медиан</button>
+                  <button type="button" onClick={()=>createSchool("triangle-medians")}>+ Три медианы</button>
+                  <button type="button" onClick={()=>createSchool("triangle-altitudes")}>+ Три высоты</button>
+                  <button type="button" onClick={()=>createSchool("triangle-bisectors")}>+ Три биссектрисы</button>
+                  <button type="button" onClick={()=>createSchool("centroid")}>+ Центр тяжести (пересечение медиан)</button>
+                  <button type="button" onClick={()=>createSchool("orthocenter")}>+ Ортоцентр (пересечение высот)</button>
                 </>}
                 <button type="button" onClick={()=>addSchoolElement("midpoint")}>+ Середина стороны</button>
                 <button type="button" onClick={()=>addSchoolElement("perpendicular-bisector")}>+ Серединный перпендикуляр</button>
