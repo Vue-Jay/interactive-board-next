@@ -12,7 +12,7 @@
     max-width:calc(54vw - 12px)!important;
   }
   html body .topbar .board-home-button {
-    margin-left:92px!important;
+    margin-left:-8px!important;
   }
   body .workspace .board-controls {
     display:flex!important;
@@ -61,7 +61,7 @@
 /* Landscape mobile: toolbar starts below header and moves toward the safe left edge. */
 @media screen and (max-width:1100px) and (orientation:landscape) {
   body .workspace nav.mobile-board-tools {
-    left:calc(114px + env(safe-area-inset-left,0px))!important;
+    left:63px!important;
     top:calc(72px + env(safe-area-inset-top,0px))!important;
     max-height:calc(100dvh - 88px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
   }
@@ -69,7 +69,7 @@
     top:calc(72px + env(safe-area-inset-top,0px))!important;
   }
   body .workspace .board-controls {
-    left:calc(184px + env(safe-area-inset-left,0px))!important;
+    left:146px!important;
   }
 }
 /* Portrait phones: zoom and remaining board actions above the bottom tool dock. */
@@ -85,9 +85,9 @@
 /* Landscape phone: position the rail and flyout clear of the camera cutout. */
 @media screen and (max-width:1100px) and (orientation:landscape) {
   body .workspace section.mobile-tools-sheet {
-    left:calc(173px + env(safe-area-inset-left,0px))!important;
-    width:min(510px,calc(100vw - 185px - env(safe-area-inset-right,0px)))!important;
-    max-width:calc(100vw - 185px)!important;
+    left:123px!important;
+    width:min(510px,calc(100vw - 135px - env(safe-area-inset-right,0px)))!important;
+    max-width:calc(100vw - 135px)!important;
   }
   body .workspace .board-controls {
     max-width:calc(100vw - 145px - env(safe-area-inset-right,0px))!important;
