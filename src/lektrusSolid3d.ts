@@ -58,8 +58,12 @@ export function solidWorldPoints(item:Item):SolidPoint[] {
 }
 
 export function projectSolid(item:Item,rotationX:number,rotationY:number):ProjectedPoint[] {
-  const points=solidWorldPoints(item);
-  if(!points.length)return item.graphPoints??[];
+  const core=solidWorldPoints(item);
+  if(!core.length)return item.graphPoints??[];
+  // Auxiliary 2D editor elements lie in the model's X/Z plane and orbit together
+  // with the body. The original structural vertices always keep their 3D positions.
+  const extras=(item.graphPoints??[]).slice(core.length).map(p=>({x:p.x,y:0,z:p.y}));
+  const points=[...core,...extras];
   const [w,d,h]=dimensions(item);
   // Fixed normalization avoids jumps when orbiting and keeps all points inside the diagram.
   const extent=Math.max(1,Math.hypot(w,d,h));
