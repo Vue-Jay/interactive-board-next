@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState,type PointerEvent} from "react";
+import {useEffect,useRef,useState,type PointerEvent,type CSSProperties} from "react";
 import {createPortal} from "react-dom";
 import {periodicElements} from "./lektrusPeriodicElements";
 import {elementFacts} from "./lektrusElementFacts";
@@ -43,7 +43,7 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
   if(drag.current?.id===e.pointerId)drag.current=null;
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
  };
- const panel:React.CSSProperties={position:"fixed",zIndex:99999,background:"#fff",border:"1px solid #bed0e9",borderRadius:10,
+ const panel:CSSProperties={position:"fixed",zIndex:99999,background:"#fff",border:"1px solid #bed0e9",borderRadius:10,
   boxShadow:"0 8px 25px #12244333",color:"#263956",fontFamily:"Arial,sans-serif",boxSizing:"border-box",pointerEvents:"auto"};
  const btn:React.CSSProperties={border:"1px solid #b9ceee",background:"#f0f6ff",borderRadius:5,padding:"4px 6px",cursor:"pointer",fontSize:11};
  return createPortal(<>
