@@ -21,6 +21,8 @@ import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
+import LektrusChemistryIllustration,{isChemicalIllustration} from "./LektrusChemistryIllustration";
+import {analyzeOrganicStructure} from "./lektrusOrganicFormula";
 import {layoutScienceLabels} from "./lektrusScienceLabelLayout";
 import LektrusCircuitEditor from "./LektrusCircuitEditor";
 import LektrusCircuitView from "./LektrusCircuitView";
@@ -1136,6 +1138,9 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     graphGivenSides: Array.isArray(item.graphGivenSides) ? item.graphGivenSides : [],
     graphGivenAngles: Array.isArray(item.graphGivenAngles) ? item.graphGivenAngles : []
   };
+  if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
+    <LektrusChemistryIllustration item={item}/>
+  </div>;
   const expression = item.graphExpression?.trim() ?? "";
   const purpose = item.graphPurpose ?? (item.graphCircles?.length ? "unit-circle" : item.graphPolygons?.length ? "geometry" : expression ? "function" : "coordinates");
   const title = item.text?.trim() || (purpose === "unit-circle" ? "Единичная окружность" : purpose === "geometry" ? "Геометрическое построение" : purpose === "coordinates" ? "Координатная плоскость" : "График функции");
@@ -1229,7 +1234,11 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   const scienceCaptionLayout=item.graphFigureId?.startsWith("physics-")?
     layoutScienceLabels(item.graphPoints??[],item.graphSegments??[],p=>({x:sx(p.x),y:sy(p.y)}),W,H):null;
   return <div className={`graph-view graph-purpose-${purpose} ${item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")?"science-graph":""} ${onPointMove?"graph-interactive":""}`}>
-    <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}</div>
+    <div className="graph-label"><strong>{title}</strong>
+      {item.graphFigureId?.startsWith("chem-organic-")&&(()=>{
+        const analysis=analyzeOrganicStructure(item);
+        return analysis.valid?<small className="lektrus-organic-formula">{analysis.formula}</small>:null;
+      })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onDoubleClick={e=>{if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
