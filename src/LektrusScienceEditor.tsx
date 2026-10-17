@@ -5,6 +5,7 @@ import {scienceToolGroupForId} from "./lektrusScienceCatalog";
 import {makeSciencePresetItem,type SciencePresetId} from "./lektrusSciencePresets";
 import ScienceCircuitGlyph,{circuitSymbols,type CircuitSymbol} from "./ScienceCircuitGlyph";
 import {periodicElements} from "./lektrusPeriodicElements";
+import {layoutScienceLabels} from "./lektrusScienceLabelLayout";
 
 type Props={
   item:Item;
@@ -162,6 +163,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
       labelDy:clamp(+(mouse.y-(a.y+b.y)/2).toFixed(2),-4,4)});
   };
 
+  const scienceLayout=isPhysics?layoutScienceLabels(points,segments,canvasPoint,520,370):null;
   const pointName=(index:number)=>points[index]?.label?.trim()||"Точка "+(index+1);
   const canLink=points.length>=2;
   const drawingHelp=circuit?"Соединяйте узлы проводами; каждый отрезок может содержать элемент цепи.":motion
@@ -389,8 +391,8 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                   const anchor={x:(p.x+q.x)/2,y:(p.y+q.y)/2};
                   const defaultX=p.x+(q.x-p.x)*(seg.label==="Зеркало"?.78:seg.scienceArrow?.36:.58);
                   const defaultY=p.y+(q.y-p.y)*(seg.label==="Зеркало"?.78:seg.scienceArrow?.36:.58)-13;
-                  const lx=seg.labelDx!=null?anchor.x+seg.labelDx*31:defaultX;
-                  const ly=seg.labelDy!=null?anchor.y-seg.labelDy*31:defaultY;
+                  const lx=scienceLayout?.lines[i]?.x??(seg.labelDx!=null?anchor.x+seg.labelDx*31:defaultX);
+                  const ly=scienceLayout?.lines[i]?.y??(seg.labelDy!=null?anchor.y-seg.labelDy*31:defaultY);
                   return <g className="lektrus-science-label-handle" onPointerDown={e=>{
                     e.stopPropagation();e.preventDefault();setActiveLink(i);
                     drag.current={pointerId:e.pointerId,index:i,kind:"segment-label"};
@@ -417,8 +419,8 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
               const pxPer=motion?32:31;
               const defaultDx=(point.label==="O"&&isPhysics)?0.55:0;
               const defaultDy=(point.label==="O"&&isPhysics)?0.62:(isPhysics?0.45:0.62);
-              const lx=p.x+(point.labelDx??defaultDx)*pxPer;
-              const ly=p.y-(point.labelDy??defaultDy)*pxPer;
+              const lx=scienceLayout?.points[i]?.x??(p.x+(point.labelDx??defaultDx)*pxPer);
+              const ly=scienceLayout?.points[i]?.y??(p.y-(point.labelDy??defaultDy)*pxPer);
               return <g key={i} className={"lektrus-science-node"+(selected===i?" selected":"")}>
                 {(selected===i||isOrigin||(!isPhysics&&!tip))&&<circle cx={p.x} cy={p.y}
                   r={selected===i?4.5:isOrigin?2.7:atom?4.8:4}
