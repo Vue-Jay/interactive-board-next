@@ -18,7 +18,7 @@ export default function LektrusPeriodicBoard({selected,showNames,layout="school"
    selected.length<24?[...selected,number].sort((a,b)=>a-b):selected);
  };
  return <div ref={anchor} style={{width:"100%",height:"100%"}} onDoubleClick={e=>e.stopPropagation()}>
-  <LektrusPeriodicTableView selected={selected} showNames={showNames} layout={layout} active={opened.at(-1)??null} onPick={pick}/>
+  <LektrusPeriodicTableView selected={selected} showNames={showNames} layout={layout} active={opened.at(-1)??null} onPick={pick} onDoublePick={toggle}/>
   <div style={{display:"flex",gap:5,justifyContent:"center",alignItems:"center",padding:"2px 4px",fontSize:11}} onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
    <button type="button" aria-pressed={layout==="school"} onClick={()=>onLayoutChange?.("school")}>Российская</button>
    <button type="button" aria-pressed={layout==="long"} onClick={()=>onLayoutChange?.("long")}>Современная</button>
