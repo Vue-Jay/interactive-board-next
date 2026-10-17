@@ -72,7 +72,6 @@ export default function LektrusPeriodicTableView({
       onPointerDown={onPick?e=>e.stopPropagation():undefined}
       onClick={onPick?e=>{e.stopPropagation();onPick(el.number,{ctrlKey:e.ctrlKey||e.metaKey,shiftKey:e.shiftKey})}:undefined}
       onKeyDown={onPick?e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();onPick(el.number,{ctrlKey:e.ctrlKey||e.metaKey,shiftKey:e.shiftKey})}}:undefined}>
-      <title>{el.number+". "+el.name+" ("+el.symbol+"), Ar ≈ "+compactMass}</title>
       <rect x={x} y={y} width={school?(el.row>=9?57:89):cell} height={school?47:cell} rx="4"
         stroke={chosen?"#2d60c8":focused?"#5b82b9":"#c5d4e7"}
         strokeWidth={chosen?2.4:focused?1.75:.8} fill={colors[el.family]}/>
