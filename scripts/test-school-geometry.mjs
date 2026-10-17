@@ -156,4 +156,78 @@ assert.match(editor,/if\(draft.figureId==="sphere"&&i===0\)return null/,"sphere 
 assert.match(app,/className="lektrus-solid-edge-labels"/,"solid edge labels shown in preview and board");
 assert.match(app,/solidDimensionEdgePairs\(item.graphFigureId\)/,"main dimensions appear along corresponding solid edges");
 
+
+const {buildSchoolConstruction,polygonCircle}=await loadTs("src/lektrusSchoolConstructions.ts");
+const toDraft=id=>{
+  const item=makeMathPresetItem(id,0,0,"school-"+id);
+  return {figureId:id,points:item.graphPoints??[],segments:item.graphSegments??[],
+    circles:item.graphCircles??[],polygons:item.graphPolygons??[],
+    angles:item.graphAngles??[],midpoints:item.graphMidpoints??[]};
+};
+const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const perpendicularDistance=(p,a,b)=>{
+  const vx=b.x-a.x,vy=b.y-a.y;
+  return Math.abs(vx*(a.y-p.y)-(a.x-p.x)*vy)/Math.hypot(vx,vy);
+};
+for(const figure of ["triangle","triangle-right","square","rectangle","triangle-equilateral","pentagon","hexagon","octagon"]){
+  for(const kind of ["incircle","circumcircle"]){
+    const draft=toDraft(figure);
+    const result=buildSchoolConstruction(draft,{kind});
+    assert.equal(result.error,undefined,figure+" "+kind+" is geometrically valid");
+    const newest=result.draft.circles.at(-1),c=result.draft.points[newest.center];
+    const pointOnCircle=result.draft.points[newest.edge];
+    const radius=distance(c,pointOnCircle);
+    const vertices=draft.polygons[0].points.map(i=>draft.points[i]);
+    const measured=kind==="circumcircle"?
+      vertices.map(point=>distance(c,point)):
+      vertices.map((p,i)=>perpendicularDistance(c,p,vertices[(i+1)%vertices.length]));
+    assert.ok(measured.every(v=>Math.abs(v-radius)<.02),figure+" "+kind+" must touch every vertex/edge");
+    assert.equal(draft.circles.length,0,"construction must be immutable");
+  }
+}
+for(const kind of ["incircle","circumcircle"]){
+  const draft=toDraft("parallelogram");
+  const result=buildSchoolConstruction(draft,{kind});
+  assert.equal(typeof result.error,"string","non-cyclic, non-tangential parallelogram cannot have "+kind);
+  assert.equal(result.draft,draft,"impossible school construction does not mutate the editor");
+}
+const cyclic=buildSchoolConstruction(toDraft("trapezoid-isosceles"),{kind:"circumcircle"});
+assert.equal(cyclic.error,undefined,"isosceles trapezoid admits circumcircle");
+for(const n of [3,4,5,6,8]){
+  for(const kind of ["inscribed-polygon","circumscribed-polygon"]){
+    const d=toDraft("circle"),r=buildSchoolConstruction(d,{kind,sides:n});
+    assert.equal(r.error,undefined,kind+" with "+n+" sides");
+    const shape=r.draft.polygons.at(-1);
+    assert.equal(shape.points.length,n);
+    const center=d.points[d.circles[0].center],radius=distance(center,d.points[d.circles[0].edge]);
+    const pts=shape.points.map(i=>r.draft.points[i]);
+    if(kind==="inscribed-polygon"){
+      assert.ok(pts.every(p=>Math.abs(distance(center,p)-radius)<1e-5),"inscribed polygon vertices lie on circle");
+    }else{
+      assert.ok(pts.every((p,i)=>Math.abs(perpendicularDistance(center,p,pts[(i+1)%pts.length])-radius)<1e-5),
+        "circumscribed polygon sides touch the circle");
+    }
+  }
+}
+for(const kind of ["radius","diameter","chord","secant","tangent","two-tangents","central-angle","inscribed-angle"]){
+  const result=buildSchoolConstruction(toDraft("circle"),{kind});
+  assert.equal(result.error,undefined,kind+" produces valid school geometry");
+  assert.ok(result.draft.segments.length>0,kind+" produces supporting line(s)");
+}
+const external=buildSchoolConstruction(toDraft("circle"),{kind:"two-tangents"}).draft;
+const circleCenter=external.points[0],outer=external.points.at(-3),tangentA=external.points.at(-2),tangentB=external.points.at(-1);
+for(const tangent of [tangentA,tangentB]){
+  const radial={x:tangent.x-circleCenter.x,y:tangent.y-circleCenter.y};
+  const line={x:outer.x-tangent.x,y:outer.y-tangent.y};
+  assert.ok(Math.abs(radial.x*line.x+radial.y*line.y)<1e-6,"two external tangents touch at right angle to radius");
+}
+assert.equal(buildSchoolConstruction(toDraft("circle"),{kind:"incircle"}).draft.circles.length,1,"polygon-only constructions reject circle target");
+assert.match(editor,/Вписанная окружность/);
+assert.match(editor,/Описанная окружность/);
+assert.match(editor,/Вписанный многоугольник/);
+assert.match(editor,/Описанный многоугольник/);
+assert.match(editor,/Две касательные из точки/);
+assert.match(editor,/Центральный угол/);
+assert.match(editor,/Вписанный угол/);
+
 console.log("School geometry: ray, transversal angles, solid rotation and dimension projections OK.");
