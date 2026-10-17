@@ -64,18 +64,32 @@ assert.match(floating,/stage\.dispatchEvent\(new WheelEvent\("wheel"/,
  "Ctrl+wheel over portaled window must forward to the board zoom handler");
 const atomView=text("src/LektrusAtomView.tsx");
 const chemistryStyles=text("src/lektrusSubjectPolish2026.css");
-assert.match(atomView,/orbitalHeader\+orbitalFooter\+/,
- "orbital diagram must reserve its header and footer");
-assert.match(atomView,/Math\.max\(compactInPanel\?260:460/,
- "compact orbital diagram should not waste vertical space");
+assert.match(atomView,/const orbitalHeight=Math\.max\(260,102\+rows\.length\*rowHeight\+62\)/,
+ "orbital diagram height follows the number of occupied sublevels");
+assert.match(atomView,/exampleIsotope\(element\.number\)/,
+ "nuclear neutron count comes from a named isotope rather than rounded atomic mass");
+assert.match(atomView,/Число нейтронов зависит от выбранного изотопа/,
+ "unknown isotope cannot be shown as a fabricated neutron count");
 assert.match(chemistryStyles,/\.lektrus-chem-window--combined\.is-expanded\.is-orbital/,
  "orbital mode must have a readable wide presentation");
 for(let z=1;z<=118;z++){
  const rows=orbitalSublevels(z).length;
- const canvas=Math.max(260,101+85+Math.max(0,rows-1)*27);
- const topRow=canvas-85-Math.max(0,rows-1)*27;
- assert.ok(topRow>=101,"orbital rows must not cross the title for Z="+z);
+ const canvas=Math.max(260,102+rows*40+62);
+ const bottom=99+(Math.max(0,rows-1))*40+19;
+ assert.ok(bottom<canvas-42,"all orbital rows fit for Z="+z);
 }
+const organicSource=text("src/lektrusOrganicFormula.ts");
+assert.match(organicSource,/analyzeOrganicStructure/);
+const organicPresets=text("src/lektrusSciencePresets.ts");
+assert.match(organicPresets,/chem-organic-benzene/);
+assert.match(organicPresets,/chem-organic-ethanol/);
+assert.match(organicPresets,/chem-formula-combustion/);
+assert.match(organicPresets,/chem-experiment-lime/);
+const chemistryIllustrations=text("src/LektrusChemistryIllustration.tsx");
+assert.match(chemistryIllustrations,/onStageChange/);
+assert.match(chemistryIllustrations,/NaCl → Na⁺ \+ Cl⁻/);
+assert.match(editor,/scienceExperimentStage/);
+assert.match(app,/isChemicalIllustration\(item\)/);
 
 assert.match(app,/onPeriodicChange=\{canEdit/);
 assert.match(app,/atomEditorItem&&<LektrusAtomEditor/);
