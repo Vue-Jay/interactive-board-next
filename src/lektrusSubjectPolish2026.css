@@ -487,3 +487,38 @@
    width:300px!important;
  }
 }
+
+/* Heavy-element orbital staircase needs a full-width canvas and vertical room.
+   The SVG keeps its natural aspect ratio; excess rows scroll rather than clip. */
+.lektrus-chem-window--combined.is-expanded.is-orbital{
+ width:460px!important;
+ max-width:calc(100vw - 20px)!important;
+ max-height:94vh!important;
+}
+.lektrus-chem-window--combined.is-orbital .lektrus-chem-atom-drawing{
+ display:block!important;
+ width:100%;max-height:min(620px,calc(94vh - 165px))!important;
+ min-height:0!important;
+ overflow-y:auto!important;overflow-x:auto!important;
+ padding:0!important;
+}
+.lektrus-chem-window--combined.is-orbital .lektrus-chem-atom-drawing .lektrus-atom-svg{
+ width:100%!important;height:auto!important;max-height:none!important;
+ min-height:0!important;display:block!important;
+}
+.lektrus-periodic-dialog .lektrus-periodic-stage.has-element-window:has(.lektrus-chem-window--combined.is-orbital) .lektrus-periodic-window-stage>.lektrus-periodic-svg{
+ width:calc(100% - 470px)!important;
+ max-width:calc(100% - 470px)!important;
+}
+.lektrus-periodic-dialog .lektrus-periodic-stage.has-element-window .lektrus-periodic-window-stage>.lektrus-chem-window--combined.is-editor.is-orbital{
+ width:460px!important;
+ max-height:98%!important;
+}
+@media(max-width:940px){
+ .lektrus-chem-window--combined.is-expanded.is-orbital{width:390px!important}
+ .lektrus-periodic-dialog .lektrus-periodic-stage.has-element-window:has(.lektrus-chem-window--combined.is-orbital) .lektrus-periodic-window-stage>.lektrus-periodic-svg{
+  width:calc(100% - 400px)!important;
+  max-width:calc(100% - 400px)!important;
+ }
+ .lektrus-periodic-dialog .lektrus-periodic-stage.has-element-window .lektrus-periodic-window-stage>.lektrus-chem-window--combined.is-editor.is-orbital{width:390px!important}
+}
