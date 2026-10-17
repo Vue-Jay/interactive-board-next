@@ -1,6 +1,6 @@
 import {useId,type PointerEvent as ReactPointerEvent} from "react";
 import type {CircuitAnchor,CircuitComponent,CircuitDocument,CircuitJunction,CircuitWire} from "./lektrusCircuitModel";
-import {circuitId,circuitPolyline,circuitPolylineString,circuitTerminal} from "./lektrusCircuitModel";
+import {circuitPolyline,circuitPolylineString,circuitTerminal} from "./lektrusCircuitModel";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
 
 export type CircuitSelection=
