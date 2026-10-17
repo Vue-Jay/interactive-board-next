@@ -66,7 +66,7 @@ export default function LektrusPeriodicFloatingInfo({
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
  };
 
- return <div ref={cardRef} className="lektrus-floating-element-card" style={cardStyle}
+ return <div ref={cardRef} className={"lektrus-floating-element-card"+(dragPosition?" is-dragged":"")+(atomOpen?" atom-open":"")} style={cardStyle}
   onClick={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()}
   onPointerDown={e=>e.stopPropagation()}>
   <div className="lektrus-floating-element-head"
