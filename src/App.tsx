@@ -1230,7 +1230,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onDoubleClick={e=>{if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
-      <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
+      <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
         {gridX.map(x=><line key={`x${x}`} className={Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
           x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
@@ -1427,7 +1427,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
               const screenLength=Math.hypot(bx-ax,by-ay)||1;
               const shift=(bondIndex-((seg.bondOrder??1)-1)/2)*4;
               const ox=-(by-ay)/screenLength*shift,oy=(bx-ax)/screenLength*shift;
-              return <line key={bondIndex} className={seg.scienceArrow?"graph-segment graph-force-vector":"graph-segment graph-object-segment"}
+              return <line key={bondIndex} className={seg.scienceArrow&&item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("physics-optics")&&!["physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"graph-segment graph-force-vector":"graph-segment graph-object-segment"}
                 x1={ax+ox} y1={ay+oy} x2={bx+ox} y2={by+oy}
                 markerEnd={(seg.scienceArrow||seg.kind==="ray")&&(seg.bondOrder??1)===1&&Math.hypot(end.x-start.x,end.y-start.y)>.5?`url(#graph-arrow-${item.id})`:undefined}/>;
             })}
