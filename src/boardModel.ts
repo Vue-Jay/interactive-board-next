@@ -220,7 +220,7 @@ export function parseDocument(raw: string): DocumentData {
         }
       }
 
-      if (i.graphSegments?.some(seg=>seg.bondOrder!=null&&![1,2,3].includes(seg.bondOrder)||seg.scienceArrow!=null&&typeof seg.scienceArrow!=="boolean")) throw new Error("Повреждены связи предметной схемы");
+      if (Array.isArray(i.graphSegments)&&i.graphSegments.some((seg:{bondOrder?:unknown;scienceArrow?:unknown})=>(seg.bondOrder!=null&&(typeof seg.bondOrder!=="number"||![1,2,3].includes(seg.bondOrder)))||(seg.scienceArrow!=null&&typeof seg.scienceArrow!=="boolean"))) throw new Error("Повреждены связи предметной схемы");
       if(i.graphRotationX!=null&&(!Number.isFinite(i.graphRotationX)||Math.abs(i.graphRotationX)>3600))throw new Error("Повреждён угол поворота фигуры");
       if(i.graphRotationY!=null&&(!Number.isFinite(i.graphRotationY)||Math.abs(i.graphRotationY)>3600))throw new Error("Повреждён угол поворота фигуры");
       if(i.graphParallelMarks!=null&&(!Array.isArray(i.graphParallelMarks)||i.graphParallelMarks.length>6||i.graphParallelMarks.some((v:unknown)=>typeof v!=="string"||!["corresponding","alternate-interior","alternate-exterior","same-side-interior","vertical","adjacent"].includes(v))))throw new Error("Повреждены обозначения углов параллельных прямых");
