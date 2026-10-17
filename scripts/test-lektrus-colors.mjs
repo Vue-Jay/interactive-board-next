@@ -42,9 +42,11 @@ assert.ok(quick.includes('type="range"'));
 assert.ok(!quick.includes('type="color"'),"Colors should use the shared pair of buttons");
 assert.ok(!app.includes('type="color"'),"No old color controls should remain in board/editors");
 assert.ok(app.includes('userId={authUser.id}'));
-for(const name of ["graphDraft","checklistDraft","flashcardDraft","quizDraft"]){
- assert.ok(app.includes('value={'+(name==="graphDraft"?'p.color??"#111111"':name+'.color')+'}'),
-  "Editor "+name+" must use the common picker");
+const graphEditor=source("src/LektrusGraphEditor.tsx");
+assert.ok(graphEditor.includes('<LektrusColorPicker userId={userId}') && graphEditor.includes('value={p.color??"#111111"}'),
+  "Graph editor must use the common picker");
+for(const name of ["checklistDraft","flashcardDraft","quizDraft"]){
+ assert.ok(app.includes('value={'+name+'.color}'),"Editor "+name+" must use the common picker");
 }
 assert.ok(css.includes('grid-template-columns:minmax(44px,1fr)'));
 assert.ok(css.includes('flex-wrap:wrap!important'));

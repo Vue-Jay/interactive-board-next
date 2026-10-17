@@ -1,0 +1,17 @@
+/* Installed app refinements, isolated from the board's drawing geometry. */
+:root { -webkit-tap-highlight-color: transparent; }
+html { scroll-padding-bottom: env(safe-area-inset-bottom, 0px); }
+@media (display-mode: standalone) {
+  body, #root { min-height: 100dvh; }
+  /* Notches and the home gesture must not obscure global navigation. */
+  .lectris-workspace-header, .topbar {
+    padding-top: max(0px, env(safe-area-inset-top, 0px));
+  }
+  .lectris-mobile-nav, .lectris-bottom-nav {
+    padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
+  }
+}
+.lektrus-install-settings { min-width: 0; }
+.lektrus-install-settings > div { min-width: 0; }
+.lektrus-install-settings small { overflow-wrap: anywhere; }
+.lektrus-install-settings small + small { margin-top: 5px; }

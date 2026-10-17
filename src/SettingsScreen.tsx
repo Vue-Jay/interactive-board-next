@@ -6,6 +6,16 @@ import {getPlan} from "./billingStore";
 import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
 import { applyLectrisPalette,readLectrisPalette,type LectrisPalette } from "./lectrisPalette";
 
+// Browsers without beforeinstallprompt (notably iOS Safari) still support
+// installing via the browser menu. Do not present a disabled install button.
+function manualInstallHelp():string {
+ const ua=navigator.userAgent;
+ const isIOS=/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+ if(isIOS)return "Откройте Lektrus в Safari, нажмите «Поделиться» и выберите «На экран Домой».";
+ if(/Android/i.test(ua))return "Откройте меню браузера и выберите «Установить приложение» или «Добавить на главный экран».";
+ if(/Macintosh|Mac OS X/i.test(ua))return "В Safari выберите «Файл» → «Добавить в Dock»; в Chrome используйте установку в меню браузера.";
+ return "Откройте меню браузера и выберите «Установить Lektrus» или «Создать ярлык».";
+}
 type Props={user:AuthUser;onBack:()=>void;onLogout:()=>void;installAvailable:boolean;isInstalled:boolean;onInstall:()=>void;onBilling:()=>void};
 
 export default function SettingsScreen({user,onBack,onLogout,installAvailable,isInstalled,onInstall,onBilling}:Props){
@@ -39,7 +49,7 @@ export default function SettingsScreen({user,onBack,onLogout,installAvailable,is
     <section className="settings-row-card"><div><b>Масштаб новых досок</b><small>Стартовое значение</small></div><select value={s.defaultBoardZoom} onChange={e=>patch("defaultBoardZoom",Number(e.target.value))}><option value={75}>75%</option><option value={90}>90%</option><option value={100}>100%</option><option value={110}>110%</option><option value={125}>125%</option></select></section>
     <section className="settings-row-card settings-plan-row"><div><b>Тариф · {plan.name}</b><small>{access.subscriptionUntil&&access.subscriptionPlan!=="free"?`${plan.description} · до ${new Date(access.subscriptionUntil).toLocaleDateString("ru-RU")}`:plan.description}</small></div><button onClick={onBilling}>Тарифы</button></section><section className="settings-row-card"><div><b>AI-студия</b><small>Задания, тесты и карточки</small></div><button onClick={()=>{window.history.pushState({},"","/?section=ai");window.dispatchEvent(new PopStateEvent("popstate"))}}>Открыть</button></section>
     <section className="settings-row-card settings-role-row"><div><b>Роль</b><small>{access.isAdmin?"Администратор":access.role==="teacher"?"Преподаватель":access.teacherStatus==="pending"?"Заявка преподавателя рассматривается":"Ученик"}</small></div>{!access.isAdmin&&access.role!=="teacher"&&access.teacherStatus!=="pending"?<button disabled={roleBusy} onClick={async()=>{setRoleBusy(true);try{setAccess(await requestTeacherAccess());window.dispatchEvent(new Event("onlinerepetitor:account-access"))}finally{setRoleBusy(false)}}}>Стать преподавателем</button>:access.role==="teacher"&&!access.isAdmin?<button disabled={roleBusy} onClick={async()=>{if(!confirm("Перейти в роль ученика?"))return;setRoleBusy(true);try{setAccess(await setStudentRole());window.dispatchEvent(new Event("onlinerepetitor:account-access"))}finally{setRoleBusy(false)}}}>Роль ученика</button>:null}</section>
-    <section className="settings-row-card"><div><b>Приложение</b><small>{isInstalled?"Установлено на этом устройстве":"Можно установить для быстрого запуска"}</small></div>{!isInstalled&&<button disabled={!installAvailable} onClick={onInstall}>Установить</button>}</section>
+    <section className="settings-row-card lektrus-install-settings"><div><b>Приложение для вашего устройства</b><small>{isInstalled?"Lektrus запущен как приложение":installAvailable?"Установите Lektrus для запуска без вкладки браузера":manualInstallHelp()}</small><small>Для входа, совместной работы и синхронизации досок необходимо подключение к интернету.</small></div>{!isInstalled&&installAvailable&&<button type="button" onClick={onInstall}>Установить</button>}</section>
     {access.isAdmin&&<section className="settings-row-card" style={{gridColumn:"1/-1",display:"grid",gap:12}}><div><b>Настройки разработчика</b><small>Доступно только администратору. Диагностика включается на этом устройстве.</small></div>
      <label style={{display:"flex",alignItems:"center",gap:9}}><input type="checkbox" checked={developerPrefs.showInkDiagnostics} onChange={e=>updateDeveloperPref("showInkDiagnostics",e.target.checked)}/> Показывать отправку и получение штрихов</label>
      <label style={{display:"flex",alignItems:"center",gap:9}}><input type="checkbox" checked={developerPrefs.showBoardDiagnostics} onChange={e=>updateDeveloperPref("showBoardDiagnostics",e.target.checked)}/> Показывать состояние синхронизации и доски</label>

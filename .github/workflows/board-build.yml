@@ -26,4 +26,5 @@ jobs:
       - run: node scripts/test-lektrus-editor-ux.mjs
       - run: node scripts/test-lektrus-colors.mjs
       - run: node scripts/test-lektrus-pointer-interactions.mjs
+      - run: node scripts/test-lektrus-platform.mjs
       - run: npm run build

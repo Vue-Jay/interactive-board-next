@@ -1,0 +1,40 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
+const sw = read("public/sw.js");
+const main = read("src/main.tsx");
+const app = read("src/App.tsx");
+const settings = read("src/SettingsScreen.tsx");
+const manifest = JSON.parse(read("public/manifest.webmanifest"));
+const html = read("index.html");
+assert.equal(manifest.name, "Lektrus — интерактивная доска");
+assert.equal(manifest.display, "standalone");
+assert.equal(manifest.scope, "/");
+assert.equal(manifest.start_url.startsWith("/"), true);
+assert.ok(manifest.icons.some(icon => icon.purpose.includes("maskable")));
+for (const size of [192, 512]) {
+  const entry = manifest.icons.find(icon => icon.src === "/lektrus-icon-" + size + ".png");
+  assert.ok(entry && entry.sizes === size + "x" + size && entry.type === "image/png");
+  const image = readFileSync(new URL("../public/lektrus-icon-" + size + ".png", import.meta.url));
+  assert.equal(image.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(image.readUInt32BE(16), size);
+  assert.equal(image.readUInt32BE(20), size);
+}
+assert.match(html, /viewport-fit=cover/);
+assert.match(main, /import.meta.env.PROD/);
+assert.match(main, /serviceWorker.register\("\/sw.js"/);
+assert.match(main, /or-sw-update/);
+assert.doesNotMatch(main, /clearLegacyAppShell|registrations\.map\(.*unregister/);
+assert.match(app, /lektrus:apply-update/);
+assert.match(app, /navigator as Navigator & \{standalone\?:boolean\}/);
+assert.match(settings, /manualInstallHelp/);
+assert.doesNotMatch(settings, /disabled=\{!installAvailable\}/);
+assert.match(sw, /request\.method !== "GET"/);
+assert.match(sw, /url\.origin !== self\.location\.origin/);
+assert.match(sw, /request\.mode === "navigate"/);
+assert.match(sw, /url\.pathname\.startsWith\("\/assets\/"/);
+assert.match(sw, /SKIP_WAITING/);
+assert.doesNotMatch(sw, /\.unregister\(/);
+// Realtime, Supabase, private board/media endpoints must remain network-only.
+assert.doesNotMatch(sw, /supabase|board_documents|\/rest\/v1|\/auth\/v1|cache\.put\(request.*navigate/);
+console.log("Lektrus PWA: safe app-shell caching, platform installation and update handshake OK.");

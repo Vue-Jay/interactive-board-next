@@ -2181,13 +2181,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     return()=>{cancelled=true};
   },[isCoarsePointer]);
   const [installPrompt,setInstallPrompt]=useState<Event|null>(null);
-  const [isStandalone,setIsStandalone]=useState(()=>window.matchMedia?.("(display-mode: standalone)").matches===true);
+  const [isStandalone,setIsStandalone]=useState(()=>(window.matchMedia?.("(display-mode: standalone)").matches===true || (navigator as Navigator & {standalone?:boolean}).standalone===true));
   const [online,setOnline]=useState(()=>navigator.onLine);
   const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
   const gesture = useRef<Gesture | null>(null);
   useEffect(()=>{const ready=(e:Event)=>{e.preventDefault();setInstallPrompt(e)};const installed=()=>{setInstallPrompt(null);setIsStandalone(true)};window.addEventListener("beforeinstallprompt",ready);window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",ready);window.removeEventListener("appinstalled",installed)}},[]);
   useEffect(()=>{const sync=()=>setOnline(navigator.onLine);const update=((e:Event)=>setUpdateReady((e as CustomEvent<{registration:ServiceWorkerRegistration}>).detail.registration)) as EventListener;window.addEventListener("online",sync);window.addEventListener("offline",sync);window.addEventListener("or-sw-update",update);return()=>{window.removeEventListener("online",sync);window.removeEventListener("offline",sync);window.removeEventListener("or-sw-update",update)}},[]);
-  const applyUpdate=()=>{updateReady?.waiting?.postMessage({type:"SKIP_WAITING"})};
+  const applyUpdate=()=>{if(!updateReady?.waiting)return;window.dispatchEvent(new Event("lektrus:apply-update"));updateReady.waiting.postMessage({type:"SKIP_WAITING"})};
   const installApp=async()=>{const p=installPrompt as (Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>})|null;if(!p)return;await p.prompt();await p.userChoice;setInstallPrompt(null)};
   const clipboard = useRef<Item[]>([]);
   const history = useRef<Item[][]>([expandDocumentInk(initial.data)]);
@@ -7528,7 +7528,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               )}
               {singleSelected?.kind==="connector"&&!selectionLocked&&<span className="lektrus-connector-quick">
                   <details className="connector-quick-menu"><summary title="Тип линии и направление" aria-label="Тип линии и направление"><Icon name={(singleSelected.connectorStyle??"arrow")==="line"?"line":singleSelected.connectorStyle==="double"?"arrow-double":"arrow-one"} size={16}/><span>Тип</span></summary><div className="connector-quick-popover"><strong>Тип линии</strong><div className="connector-quick-choices">{(["line","arrow","double"] as ConnectorStyle[]).map(v=><button key={v} type="button" className={(singleSelected.connectorStyle??"arrow")===v?"active":""} onClick={()=>setSelectedConnectorStyle(v)} title={v==="line"?"Линия":v==="arrow"?"Стрелка":"Двусторонняя"}><Icon name={v==="line"?"line":v==="arrow"?"arrow-one":"arrow-double"} size={17}/></button>)}</div><label>Направление<select value={singleSelected.connectorRouting??"straight"} onChange={e=>setSelectedConnectorRouting(e.target.value as ConnectorRouting)}><option value="straight">Прямая</option><option value="elbow">Ломаная</option></select></label></div></details>
-                  <details className="connector-quick-menu"><summary title="Цвет линии" aria-label="Цвет линии"><span className="connector-quick-swatch" style={{background:singleSelected.color??"#5355c9"}}/><span>Цвет</span></summary><div className="connector-quick-popover"><strong>Цвет линии</strong><input type="color" aria-label="Выбрать цвет линии" value={singleSelected.color??"#5355c9"} onChange={e=>recolorSelected(e.target.value)}/><div className="connector-quick-choices">{["#5355c9","#2f855a","#d97706","#dc4c64","#1f2937"].map(v=><button key={v} title={v} aria-label={"Цвет "+v} style={{background:v}} onClick={()=>recolorSelected(v)}/>)}</div></div></details>
+                  <details className="connector-quick-menu"><summary title="Цвет линии" aria-label="Цвет линии"><span className="connector-quick-swatch" style={{background:singleSelected.color??"#5355c9"}}/><span>Цвет</span></summary><div className="connector-quick-popover"><strong>Цвет линии</strong><LektrusColorPicker userId={authUser.id} compact label="Цвет линии" value={singleSelected.color??"#5355c9"} onChange={recolorSelected}/></div></details>
                   <details className="connector-quick-menu"><summary title="Толщина линии" aria-label="Толщина линии"><Icon name="line" size={16}/><span>{singleSelected.weight??3}px</span></summary><div className="connector-quick-popover"><strong>Толщина линии</strong><label><input type="range" min={1} max={16} value={singleSelected.weight??3} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,weight:Number(e.target.value)}:item))}/><output>{singleSelected.weight??3}px</output></label></div></details>
                   {singleSelected.connectorStyle!=="line"&&<><details className="connector-quick-menu"><summary title="Форма наконечника" aria-label="Форма наконечника"><Icon name="arrow-one" size={16}/><span>Конец</span></summary><div className="connector-quick-popover"><strong>Форма наконечника</strong><select value={singleSelected.arrowHeadStyle??"triangle"} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadStyle:e.target.value as ArrowHeadStyle}:item))}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select></div></details>
                   <details className="connector-quick-menu"><summary title="Размер наконечника" aria-label="Размер наконечника"><Icon name="arrow-double" size={16}/><span>Размер</span></summary><div className="connector-quick-popover"><strong>Размер наконечника</strong><label><input type="range" min={4} max={24} value={singleSelected.arrowHeadSize??8} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadSize:Number(e.target.value)}:item))}/><output>{singleSelected.arrowHeadSize??8}px</output></label></div></details></>}
@@ -7669,7 +7669,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     </div>
                     <label>Направление <select value={singleSelected.connectorRouting??"straight"} onChange={e=>setSelectedConnectorRouting(e.target.value as ConnectorRouting)}><option value="straight">Прямая</option><option value="elbow">Ломаная</option></select></label>
                     <label>Толщина <input aria-label="Толщина выбранной линии" type="range" min={1} max={16} value={singleSelected.weight??3} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,weight:Number(e.target.value)}:item))}/><span>{singleSelected.weight??3}px</span></label>
-                    <label>Цвет <input type="color" aria-label="Цвет выбранной линии" value={singleSelected.color??"#5355c9"} onChange={e=>recolorSelected(e.target.value)}/></label>
+                    <LektrusColorPicker userId={authUser.id} compact label="Цвет" value={singleSelected.color??"#5355c9"} onChange={recolorSelected}/>
                     {singleSelected.connectorStyle!=="line"&&<><label>Наконечник <select value={singleSelected.arrowHeadStyle??"triangle"} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadStyle:e.target.value as ArrowHeadStyle}:item))}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select></label>
                     <label>Размер конца <input aria-label="Размер наконечника" type="range" min={4} max={24} value={singleSelected.arrowHeadSize??8} onChange={e=>commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,arrowHeadSize:Number(e.target.value)}:item))}/><span>{singleSelected.arrowHeadSize??8}px</span></label></>}
                     <div className="lektrus-connector-context-extra"><button onClick={()=>{detachSelectedConnector();setContextMenu(null)}}>Отвязать</button></div>
@@ -7797,8 +7797,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               {mode==="dots"?"Точки":mode==="grid"?"Клетки":"Чистый"}</button>)}
           </div>
           <label className="lektrus-background-color">Цвет фона
-            <span><input aria-label="Цвет фона доски" type="color" disabled={!canChangeBoardBackground}
-              value={visibleBoardBackground.color} onChange={e=>updateBoardBackground({color:e.target.value})}/>
+            <span><LektrusColorPicker userId={authUser.id} compact label="Цвет фона доски" disabled={!canChangeBoardBackground}
+              value={visibleBoardBackground.color} onChange={color=>updateBoardBackground({color})}/>
               <output>{visibleBoardBackground.color.toUpperCase()}</output></span></label>
           <label className="lektrus-background-opacity">Непрозрачность
             <span><input aria-label="Непрозрачность фона доски" type="range" min="0" max="100" step="5"
@@ -7919,7 +7919,7 @@ export default function App() {
   const [remoteVersion, setRemoteVersion] = useState<number | null>(null);
   const [boardMountKey, setBoardMountKey] = useState(0);
   const [globalInstallPrompt,setGlobalInstallPrompt]=useState<Event|null>(null);
-  const [globalStandalone,setGlobalStandalone]=useState(()=>window.matchMedia?.("(display-mode: standalone)").matches===true);
+  const [globalStandalone,setGlobalStandalone]=useState(()=>(window.matchMedia?.("(display-mode: standalone)").matches===true || (navigator as Navigator & {standalone?:boolean}).standalone===true));
   useEffect(()=>{
     const ready=(e:Event)=>{e.preventDefault();setGlobalInstallPrompt(e)};
     const installed=()=>{setGlobalInstallPrompt(null);setGlobalStandalone(true)};
