@@ -28,4 +28,5 @@ jobs:
       - run: node scripts/test-lektrus-pointer-interactions.mjs
       - run: node scripts/test-lektrus-platform.mjs
       - run: node scripts/test-native-mobile.mjs
+      - run: node scripts/test-repo-hygiene.mjs
       - run: npm run build

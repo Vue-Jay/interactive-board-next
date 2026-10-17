@@ -42,7 +42,19 @@ assert.ok(activity.includes("view.setPadding(bars.left, bars.top, bars.right, ba
 assert.ok(read("src/lektrusPlatform.css").includes("html.lektrus-android-app"));
 assert.ok(androidManifest.includes('android:windowSoftInputMode="adjustResize"'));
 assert.ok(iosPlist.includes("UIRequiresFullScreen"));
-assert.ok(readFileSync(new URL("../assets/icon.png", import.meta.url)).equals(readFileSync(new URL("../public/lektrus-icon-512.png", import.meta.url))), "Native icon must use approved logo");
+const icon192 = readFileSync(new URL("../public/lektrus-icon-192.png", import.meta.url));
+const sourceIcon = readFileSync(new URL("../assets/lektrus-brand-source.png", import.meta.url));
+const icon512 = readFileSync(new URL("../public/lektrus-icon-512.png", import.meta.url));
+const nativeSource = readFileSync(new URL("../assets/icon.png", import.meta.url));
+assert.ok(icon192.equals(sourceIcon), "192px icon must use the supplied Lektrus artwork");
+for (const [data, size] of [[icon192,192],[icon512,512],[nativeSource,1024]]) {
+  assert.equal(data.subarray(0,8).toString("hex"),"89504e470d0a1a0a");
+  assert.equal(data.readUInt32BE(16),size);
+  assert.equal(data.readUInt32BE(20),size);
+}
+assert.ok(icon512.length>10000,"A real rendered icon must be committed");
+assert.ok(read("src/LectrisWorkspaceShell.tsx").includes('src="/lektrus-icon-192.png"'));
+
 
 
 const nativeSourcesExpected = process.env.CI === "true" || existsSync("android") || existsSync("ios");

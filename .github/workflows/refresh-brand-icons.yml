@@ -1,10 +1,6 @@
 name: Refresh official Lektrus icons
 on:
-  push:
-    branches: [chore/lektrus-repository-cleanup-brand]
-    paths:
-      - assets/lektrus-brand-source.png
-      - .github/workflows/refresh-brand-icons.yml
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { AccountRole } from "./accountRoleStore";
 import { listNotifications } from "./notificationsStore";
-import { readLectrisPalette, type LectrisPalette } from "./lectrisPalette";
+
 
 type NavIcon = "search" | "home" | "subjects" | "groups" | "boards" | "users" | "assignments" | "schedule" | "progress" | "materials" | "templates" | "notification" | "profile" | "settings" | "admin" | "menu" | "chevron";
 type NavItem = { id: string; label: string; icon: NavIcon; teacher?: boolean; admin?: boolean };
@@ -45,8 +45,6 @@ function NavGlyph({ name }: { name:NavIcon }) {
 }
 type Props={children:ReactNode;section:string;role:AccountRole;isAdmin:boolean;name:string};
 export default function LectrisWorkspaceShell({children,section,role,isAdmin,name}:Props) {
-  const [logoPalette,setLogoPalette]=useState<LectrisPalette>(readLectrisPalette);
-  useEffect(()=>{const update=()=>setLogoPalette(readLectrisPalette());window.addEventListener("lektrus:palette-change",update);window.addEventListener("storage",update);return()=>{window.removeEventListener("lektrus:palette-change",update);window.removeEventListener("storage",update)}},[]);
   const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("lectris.shell.collapsed")==="1"}catch{return false}});
   const [moreOpen,setMoreOpen]=useState(false);
   const [menuQuery,setMenuQuery]=useState("");
@@ -95,7 +93,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
   const navButton=(entry:NavItem, className="")=><button key={entry.id} type="button" className={["lectris-nav-link",className,active===entry.id?"is-active":""].filter(Boolean).join(" ")} title={entry.label} aria-label={entry.label} aria-current={active===entry.id?"page":undefined} onClick={()=>move(entry.id)}><NavGlyph name={entry.icon}/><span>{entry.label}</span>{entry.id==="notifications"&&unreadCount>0&&<b className="lectris-unread-badge">{unreadCount>99?"99+":unreadCount}</b>}</button>;
   return <div className={`lectris-workspace ${collapsed?"is-collapsed":""}`}>
     <header className="lectris-workspace-header">
-      <button className="lectris-brand" type="button" onClick={()=>move("")} aria-label="Lektrus, главная"><span className="lectris-brand-mark" aria-hidden="true" style={{background:"transparent",boxShadow:"none",padding:0,overflow:"visible"}}><img src={`/lektrus-logo-${logoPalette}.png`} alt="" width="30" height="30" style={{display:"block",width:"100%",height:"100%",objectFit:"contain"}} /></span><span className="lektrus-brand-lockup"><strong className="lektrus-brand-wordmark">Lektrus</strong><small className="lektrus-brand-tagline">Пространство для обучения</small></span></button>
+      <button className="lectris-brand" type="button" onClick={()=>move("")} aria-label="Lektrus, главная"><span className="lectris-brand-mark" aria-hidden="true" style={{background:"transparent",boxShadow:"none",padding:0,overflow:"visible"}}><img src="/lektrus-icon-192.png" alt="" width="30" height="30" style={{display:"block",width:"100%",height:"100%",objectFit:"contain"}} /></span><span className="lektrus-brand-lockup"><strong className="lektrus-brand-wordmark">Lektrus</strong><small className="lektrus-brand-tagline">Пространство для обучения</small></span></button>
       <span className="lectris-header-divider" aria-hidden="true"/>
       <div className="lectris-header-page"><span>{available.find(x=>x.id===active)?.label||"Главная"}</span><small>{role==="teacher"?"Преподаватель":"Ученик"}</small></div>
       <div className="lectris-header-actions">
