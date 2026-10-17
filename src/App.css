@@ -8586,3 +8586,38 @@ option{background:#fff;color:#343741}
 .graph-view .lektrus-diagram-grid-toggle:focus-visible rect{stroke:#3365c6;stroke-width:3px}
 .graph-view .lektrus-diagram-grid-toggle:hover rect{fill:#edf4ff}
 @media(max-width:430px){.lektrus-school-point-builder>.lektrus-graph-construct-actions{grid-template-columns:1fr}.lektrus-school-construction-row{padding:6px}}
+
+/* School notebook grid: legible small cells with clearer five-cell guides. */
+.graph-view.graph-purpose-geometry .graph-grid line,
+.graph-view.graph-purpose-coordinates .graph-grid line,
+.graph-view.graph-purpose-function .graph-grid line,
+.graph-view.graph-purpose-number-line .graph-grid line {
+  stroke:#b9c9dd;
+  stroke-width:1;
+  opacity:.95;
+  vector-effect:non-scaling-stroke;
+}
+.graph-view .graph-grid line.graph-grid-major {
+  stroke:#94adcb;
+  stroke-width:1.35;
+  opacity:1;
+}
+/* Side count is one short number to the right, never a full-width, tall selector. */
+.lektrus-school-regular-controls>label.lektrus-school-side-count{
+  display:flex!important;align-items:center!important;justify-content:space-between;
+  flex-direction:row!important;flex-wrap:nowrap!important;
+  gap:12px;min-height:36px;max-width:100%;width:100%;
+  margin:0!important;padding:0!important;
+}
+.lektrus-school-regular-controls>.lektrus-school-side-count>span{
+  flex:1 1 auto;min-width:0;white-space:nowrap;font-size:12px;font-weight:650;
+}
+.lektrus-school-regular-controls>.lektrus-school-side-count>select{
+  flex:0 0 72px!important;display:block!important;
+  width:72px!important;min-width:72px!important;max-width:72px!important;
+  height:36px!important;min-height:36px!important;max-height:36px!important;
+  padding:5px 24px 5px 12px!important;
+  margin:0!important;
+  line-height:24px!important;font-size:13px!important;font-weight:700;
+  box-sizing:border-box!important;vertical-align:middle;
+}
