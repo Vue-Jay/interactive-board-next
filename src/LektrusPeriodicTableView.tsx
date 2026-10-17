@@ -16,10 +16,10 @@ export default function LektrusPeriodicTableView({
  const school=layout==="school";
  const schoolColumn=(col:number)=>col<=2?col===1?0:2:col>=13?col+(-1):col<=10?col+1:col===11?0:2;
  const schoolRow=(el:(typeof periodicElements)[number])=>el.period<=3?el.period-1:3+(el.period-4)*2;
- return <svg className="lektrus-periodic-svg" viewBox={school?"0 0 1080 795":"0 0 1080 660"}
+ return <svg className="lektrus-periodic-svg" viewBox={school?"0 0 1080 850":"0 0 1080 660"}
    preserveAspectRatio="xMidYMid meet" role="img"
    aria-label="Интерактивная периодическая таблица 118 химических элементов">
-  <rect x="0" y="0" width="1080" height={school?795:660} rx="10" fill="#f9fbff"/>
+  <rect x="0" y="0" width="1080" height={school?850:660} rx="10" fill="#f9fbff"/>
   <text x={bx} y="30" className="lektrus-periodic-heading">Периодическая система химических элементов</text>
   {Array.from({length:school?8:18},(_,i)=><text key={i} className="lektrus-periodic-index"
     x={bx+(school?[0,2,4,6,8,10,12,17][i]:i)*step+cell/2} y={55} textAnchor="middle">{school?["I","II","III","IV","V","VI","VII","VIII"][i]:i+1}</text>)}
@@ -75,13 +75,13 @@ export default function LektrusPeriodicTableView({
       <LektrusElementInfo key={active} number={active} compact summary onClose={onCloseInfo} onToggle={onToggleInfo} isSelected={marked.has(active)}/>
     </div>
   </foreignObject>}
-  <g transform={school?"translate(45 755)":"translate(45 615)"}>
+  <g transform={school?"translate(45 800)":"translate(45 615)"}>
    <text x="0" y="-10" fontSize="11" fill="#475569">Цветовая легенда</text>
    {periodicFamilies.map((family,i)=><g key={family.id} transform={"translate("+(i*144)+" 0)"}>
      <rect width="12" height="12" rx="2" fill={family.color} stroke="#cbd5e1"/>
      <text x="16" y="10" fontSize="10" fill="#475569">{family.name}</text>
    </g>)}
   </g>
-  <text x="47" y={school?790:655} fontSize="10" fill="#8a9bb0">Z · символ · название · относительная атомная масса</text>
+  <text x="47" y={school?846:655} fontSize="10" fill="#8a9bb0">Z · символ · название · относительная атомная масса</text>
  </svg>;
 }
