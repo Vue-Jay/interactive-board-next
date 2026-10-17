@@ -89,21 +89,21 @@ export default function LektrusPeriodicTableView({
       {chosen&&<circle cx={x+(school?(el.row>=9?52:83):44)} cy={y+5} r="3" fill="#2d60c8"/>}
     </g>;
   })}
-  {showInfo&&element&&facts&&<foreignObject x={school?770:185} y={school?75:78} width={school?284:385} height={school?180:170}>
-    <div style={{height:"100%",boxSizing:"border-box",padding:"8px 10px",border:"1px solid #c9d5e6",borderRadius:10,background:"#ffffff",fontFamily:"Arial,sans-serif",color:"#263956",display:"flex",flexDirection:"column",gap:6,overflow:"hidden"}}
+  {showInfo&&element&&facts&&<foreignObject x={school?785:210} y={school?88:84} width={school?266:342} height={school?150:145}>
+    <div style={{height:"100%",boxSizing:"border-box",padding:"5px 7px",border:"1px solid #c9d5e6",borderRadius:10,background:"#ffffff",fontFamily:"Arial,sans-serif",color:"#263956",display:"flex",flexDirection:"column",gap:3,overflow:"hidden"}}
       onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
       <div style={{display:"flex",alignItems:"center",gap:6}}>
-        <b style={{fontSize:25,lineHeight:1,color:"#234a81"}}>{element.symbol}</b>
-        <span style={{fontSize:12,fontWeight:700,flex:1}}>{element.name}</span>
+        <b style={{fontSize:21,lineHeight:1,color:"#234a81"}}>{element.symbol}</b>
+        <span style={{fontSize:11,fontWeight:700,flex:1}}>{element.name}</span>
         <button type="button" style={{border:0,background:"#edf2f9",borderRadius:5,cursor:"pointer"}} onClick={onCloseInfo} aria-label="Закрыть сведения">×</button>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 9px",fontSize:11,lineHeight:1.15}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"2px 7px",fontSize:10,lineHeight:1.15}}>
         <span>№ <b>{element.number}</b></span><span>Ar <b>{facts.atomicMass}</b></span>
         <span>Период <b>{element.period}</b></span><span>Группа <b>{school?["I","II","III","IV","V","VI","VII","VIII"][Math.min(7,Math.max(0,element.group===18?7:element.group<=2?element.group-1:element.group>=13?element.group-11:element.group-3))]:element.group}</b></span>
       </div>
-      <div style={{fontSize:10,lineHeight:1.2}}><span style={{color:"#61748f"}}>Конфигурация: </span>{facts.electronConfiguration}</div>
+      <div style={{fontSize:9,lineHeight:1.15}}><span style={{color:"#61748f"}}>Конфигурация: </span>{facts.electronConfiguration}</div>
       <div style={{fontSize:10,lineHeight:1.2}}><span style={{color:"#61748f"}}>Степени окисления: </span>{facts.oxidationStates}</div>
-      {onToggleInfo&&<button type="button" style={{border:"1px solid #b5c9ed",background:"#eff5ff",borderRadius:5,padding:4,fontSize:10,cursor:"pointer",marginTop:"auto"}} onClick={onToggleInfo}>{marked.has(active!)?"Снять выделение":"Выделить элемент"}</button>}
+      {onToggleInfo&&<button type="button" style={{border:"1px solid #b5c9ed",background:"#eff5ff",borderRadius:5,padding:3,fontSize:9,cursor:"pointer",marginTop:"auto"}} onClick={onToggleInfo}>{marked.has(active!)?"Снять выделение":"Выделить элемент"}</button>}
     </div>
   </foreignObject>}
   <g transform={school?"translate(45 777)":"translate(45 615)"}>
