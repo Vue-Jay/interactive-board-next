@@ -150,7 +150,7 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
   <div className="lektrus-chem-detail"><span>Конфигурация: </span>{facts.electronConfiguration}</div>
   <div className="lektrus-chem-detail"><span>Степени окисления: </span>{facts.oxidationStates}</div>
   <div className="lektrus-chem-actions">
-   <button type="button" aria-expanded={atomOpen} onClick={()=>setAtomOpen(v=>!v)}>Строение атома</button>
+   <button type="button" aria-expanded={atomOpen} onClick={()=>{if(!atomOpen)setAtomOffset(atomDefault());setAtomOpen(v=>!v)}}>Строение атома</button>
    {onToggle&&<button type="button" onClick={onToggle}>{selected?"Снять выделение":"Выделить"}</button>}
   </div>
  </>);
