@@ -339,3 +339,25 @@
  .lektrus-chem-window-head strong{font-size:10px}
  .lektrus-chem-detail{font-size:9px}
 }
+
+/* Fit the default detail card entirely above the fourth period, without hiding cells. */
+.lektrus-chem-window--details{
+  padding:6px 7px;
+  line-height:1.18;
+}
+.lektrus-chem-window--details .lektrus-chem-window-head{
+  min-height:18px;padding-bottom:3px;margin-bottom:4px;
+}
+.lektrus-chem-window--details .lektrus-chem-window-head>button{
+  height:19px;min-width:19px;flex-basis:19px;
+}
+.lektrus-chem-window--details .lektrus-chem-facts{
+  font-size:9px;gap:2px 6px;
+}
+.lektrus-chem-window--details .lektrus-chem-detail{
+  font-size:9px;margin-top:3px;
+}
+.lektrus-chem-window--details .lektrus-chem-actions{margin-top:5px}
+.lektrus-chem-window--details .lektrus-chem-actions button{
+  min-height:22px;font-size:9px;padding:2px 4px;
+}
