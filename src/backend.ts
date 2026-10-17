@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core";
+
 export type BackendSession = {
   access_token: string;
   refresh_token: string;
@@ -10,8 +12,44 @@ export type BackendSession = {
   };
 };
 
-const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim().replace(/\/$/, "") || "";
-const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() || "";
+const NATIVE_BACKEND_KEY = "lektrus.native.supabase.config.v1";
+const buildBackendUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() || "";
+const buildBackendKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() || "";
+const readNativeBackendConfig = (): { url: string; anonKey: string } | null => {
+  if (!Capacitor.isNativePlatform()) return null;
+  try {
+    const value = JSON.parse(localStorage.getItem(NATIVE_BACKEND_KEY) || "null") as unknown;
+    if (!value || typeof value !== "object") return null;
+    const record = value as Record<string, unknown>;
+    const address = typeof record.url === "string" ? record.url.trim() : "";
+    const publishable = typeof record.anonKey === "string" ? record.anonKey.trim() : "";
+    if (!address.startsWith("https://") || !publishable) return null;
+    return { url: address, anonKey: publishable };
+  } catch { return null; }
+};
+const nativeBackendConfig = readNativeBackendConfig();
+const url = (buildBackendUrl || nativeBackendConfig?.url || "").replace(/\/$/, "");
+const anonKey = buildBackendKey || nativeBackendConfig?.anonKey || "";
+
+export const nativeBackendIsBundled = () => Boolean(buildBackendUrl && buildBackendKey);
+export const clearNativeBackendConnection = (): void => {
+  if (Capacitor.isNativePlatform()) localStorage.removeItem(NATIVE_BACKEND_KEY);
+};
+export const saveNativeBackendConnection = (address: string, publishableKey: string): void => {
+  if (!Capacitor.isNativePlatform()) throw new Error("Настройка доступна только в мобильном приложении.");
+  let parsed: URL;
+  try { parsed = new URL(address.trim()); }
+  catch { throw new Error("Введите корректный адрес сервера, начинающийся с https://."); }
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error("Разрешён только HTTPS-адрес сервера без пароля и параметров.");
+  }
+  const key = publishableKey.trim();
+  if (key.length < 20 || /^sb_secret_/i.test(key)) {
+    throw new Error("Используйте только публичный anon/publishable ключ, не service_role или secret key.");
+  }
+  // The Supabase anon / publishable key is intended for client distribution.
+  localStorage.setItem(NATIVE_BACKEND_KEY, JSON.stringify({ url: parsed.origin + parsed.pathname.replace(/\/$/, ""), anonKey: key }));
+};
 const SESSION_KEY = "lesson-board.supabase.session.v1";
 const REMEMBERED_SESSION_KEY = "lesson-board.supabase.remembered-session.v1";
 const NETWORK_TIMEOUT_MS = 20000;
@@ -120,8 +158,19 @@ const normalizeSession = (data: any): BackendSession => ({
   user: data.user,
 });
 
+// Native WebViews run at localhost/capacitor://localhost: those origins must never
+// be used as Supabase email confirmation destinations. Return to the public
+// HTTPS confirmation page, then sign in normally inside the installed app.
+const getEmailConfirmationRedirect = (): string | null => {
+  if (!Capacitor.isNativePlatform()) return `${window.location.origin}/?email_confirmation=1`;
+  const configured = (import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined)?.trim();
+  if (!configured) return null; // Supabase Site URL is the safe fallback.
+  try { const parsed = new URL(configured); return parsed.protocol === "https:" ? parsed.href : null; }
+  catch { return null; }
+};
+
 export const signUpRemote = async (email: string, password: string, name: string) => {
-  const response = await fetchWithTimeout(`${url}/auth/v1/signup?redirect_to=${encodeURIComponent(`${window.location.origin}/?email_confirmation=1`)}`, {
+  const response = await fetchWithTimeout(`${url}/auth/v1/signup${getEmailConfirmationRedirect() ? `?redirect_to=${encodeURIComponent(getEmailConfirmationRedirect()!)}` : ""}`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({ email, password, data: { display_name: name } }),

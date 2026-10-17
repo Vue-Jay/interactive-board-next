@@ -36,3 +36,19 @@ db-backups/
 *.backup
 *.dump
 *.sql.gz
+
+# Generated Capacitor build outputs (native source projects are tracked)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+ios/DerivedData/
+ios/build/
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+*.xcuserstate
+**/xcuserdata/
+**/.DS_Store

@@ -1,5 +1,6 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, useState, type FormEvent, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { Capacitor } from "@capacitor/core";
 import "./index.css";
 import "./nextTheme.css";
 import App from "./App";
@@ -29,8 +30,42 @@ import "./lektrusBoardBackground.css";
 import "./lektrusSubjectPicker.css";
 import "./lektrusSubjectTools.css";
 import "./lektrusPlatform.css";
+import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
+
+function NativeConnectionSetup() {
+  const [endpoint, setEndpoint] = useState("");
+  const [publishableKey, setPublishableKey] = useState("");
+  const [error, setError] = useState("");
+  const connect = (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      saveNativeBackendConnection(endpoint, publishableKey);
+      window.location.reload();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Не удалось сохранить настройки.");
+    }
+  };
+  return (
+    <main style={{minHeight:"100dvh",padding:"max(24px, env(safe-area-inset-top, 0px)) 20px max(24px, env(safe-area-inset-bottom, 0px))",display:"grid",placeItems:"center",background:"#eef3fd",fontFamily:"system-ui,sans-serif",color:"#1d304b"}}>
+      <form onSubmit={connect} style={{width:"min(100%,440px)",display:"grid",gap:14,background:"#fff",padding:24,borderRadius:20,boxShadow:"0 12px 42px #1b376521"}}>
+        <img src="/lektrus-logo-sapphire.svg" width={68} height={68} alt="Lektrus" style={{margin:"auto"}} />
+        <h1 style={{fontSize:24,textAlign:"center",margin:0}}>Подключить Lektrus</h1>
+        <p style={{fontSize:14,lineHeight:1.55,margin:0}}>Для входа и совместных досок укажите публичные параметры вашего Supabase. Сделать это нужно один раз после установки приложения.</p>
+        <label style={{display:"grid",gap:6,fontSize:13,fontWeight:700}}>Адрес Supabase
+          <input required autoCapitalize="off" autoComplete="url" inputMode="url" placeholder="https://xxxxx.supabase.co" value={endpoint} onChange={e=>setEndpoint(e.target.value)} style={{width:"100%",fontSize:15,padding:"12px",border:"1px solid #bfcee6",borderRadius:10}}/>
+        </label>
+        <label style={{display:"grid",gap:6,fontSize:13,fontWeight:700}}>Публичный ключ anon / publishable
+          <textarea required autoCapitalize="off" autoComplete="off" spellCheck={false} placeholder="sb_publishable_… или JWT anon" value={publishableKey} onChange={e=>setPublishableKey(e.target.value)} rows={3} style={{width:"100%",fontSize:13,padding:12,border:"1px solid #bfcee6",borderRadius:10,resize:"vertical"}}/>
+        </label>
+        {error&&<p role="alert" style={{color:"#b42318",fontSize:13,margin:0}}>{error}</p>}
+        <button type="submit" style={{minHeight:45,background:"#365fd0",color:"#fff",fontSize:15,fontWeight:700,border:0,borderRadius:11}}>Подключиться</button>
+        <p style={{fontSize:12,lineHeight:1.5,color:"#667994",margin:0}}>Параметры можно взять из файла .env.local проекта. Никогда не вводите service_role или секретный ключ. После подключения потребуется интернет.</p>
+      </form>
+    </main>
+  );
+}
 
 type ErrorBoundaryState = { error: Error | null };
 
@@ -57,6 +92,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
   }
 }
 
+if (Capacitor.isNativePlatform()) document.documentElement.classList.add("lektrus-native-app");
+
 initLectrisPalette();
 initProfileAppearance();
 
@@ -71,7 +108,9 @@ const confirmParams = new URLSearchParams(window.location.search);
 const confirmHash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
 const confirmationError = confirmParams.get("error_description") || confirmHash.get("error_description");
 createRoot(root).render(
-  isConfirmationPage
+  Capacitor.isNativePlatform() && !isRemoteBackendEnabled()
+    ? <NativeConnectionSetup />
+    : isConfirmationPage
     ? <main style={{minHeight:"100dvh",display:"grid",placeItems:"center",background:"#f5f7fc",fontFamily:"system-ui,sans-serif",padding:24}}>
         <section style={{maxWidth:460,padding:36,borderRadius:20,background:"white",boxShadow:"0 8px 40px #14234d18",textAlign:"center"}}>
           <h1>{confirmationError ? "Не удалось подтвердить почту" : "Почта подтверждена"}</h1>
@@ -82,7 +121,7 @@ createRoot(root).render(
 );
 
 // Register only in production so dev/HMR never reuses a cached app shell.
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
+if (import.meta.env.PROD && !Capacitor.isNativePlatform() && "serviceWorker" in navigator) {
   let reloadAfterConfirmedUpdate = false;
   window.addEventListener("lektrus:apply-update", () => { reloadAfterConfirmedUpdate = true; });
   navigator.serviceWorker.addEventListener("controllerchange", () => {
