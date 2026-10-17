@@ -362,6 +362,7 @@ type Gesture = {
 };
 const tools: { id: Tool; icon: IconName; label: string; dividerAfter?: boolean }[] = [
   { id: "select", icon: "select", label: "Выделение прямоугольником · V / М", dividerAfter: true },
+  { id: "hand", icon: "hand", label: "Рука · перемещение одним пальцем" },
   { id: "lasso", icon: "lasso", label: "Петля · выделение всех объектов · Q / Й" },
   { id: "pen", icon: "pen", label: "Карандаш · P / З" },
   { id: "marker", icon: "marker", label: "Маркер · M / Ь" },
@@ -391,7 +392,7 @@ const toolShortLabel: Record<Tool, string> = {
 const primaryDesktopTools = new Set<Tool>(["select","lasso","pen","marker","eraser","connector","text","sticky","shape","media"]);
 type LectrisSavedLayout={id:string;name:string;mode:"standard"|"lesson"|"focus";pinned:Tool[];panels?:LectrisPanelLayout};
 const mobileToolGroups: { label:string; tools:Tool[] }[] = [
-  { label:"Навигация", tools:["select","lasso"] },
+  { label:"Навигация", tools:["select","hand","lasso"] },
   { label:"Рисование", tools:["pen","marker","eraser"] },
   { label:"Создание", tools:["sticky","text","shape","connector"] },
   { label:"Материалы", tools:["media","linkmedia","frame"] },
@@ -2000,7 +2001,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   });
   const [lectrisCustomizeOpen,setLectrisCustomizeOpen]=useState(false);
   useEffect(()=>{try{localStorage.setItem(lectrisToolbarKey,JSON.stringify(lectrisPinned))}catch{}},[lectrisToolbarKey,lectrisPinned]);
-  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))],[lectrisPinned,isStudent]);
+  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","hand",...lectrisPinned.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))],[lectrisPinned,isStudent]);
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
@@ -6954,6 +6955,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setPanning(true);
               gesture.current={pointer:e.pointerId,mode:"pan",start,view,
                 before:itemsRef.current,ids:[],path:[world(start)],additive:false};
+              e.currentTarget.setPointerCapture(e.pointerId);
+              return;
+            }
+            // Mobile hand is pure canvas panning even when the finger starts
+            // over a selected picture, frame, or graph: never move objects.
+            if (tool==="hand" && e.pointerType==="touch" && !presentation && !pinchState.current) {
+              e.preventDefault();
+              e.stopPropagation();
+              if(gesture.current)end(true);
+              const start=local(e.clientX,e.clientY);
+              gesture.current={pointer:e.pointerId,mode:"pan",start,view,
+                before:itemsRef.current,ids:[],path:[world(start)],additive:false};
+              setPanning(true);
               e.currentTarget.setPointerCapture(e.pointerId);
               return;
             }
