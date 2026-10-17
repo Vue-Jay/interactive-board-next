@@ -1,16 +1,20 @@
 import {useRef,useState,type PointerEvent} from "react";
 import {atomShells,elementByNumber,orbitalSublevels,type AtomModel} from "./lektrusAtomModel";
 import {elementFacts} from "./lektrusElementFacts";
-type Props={model:AtomModel;onLabelMove?:(x:number,y:number)=>void;labelScale?:number};
+type Props={model:AtomModel;onLabelMove?:(x:number,y:number)=>void;labelScale?:number;compactInPanel?:boolean};
 const cx=350,cy=207;
 const rotationPoint=(radius:number,angle:number)=>({x:cx+radius*Math.cos(angle),y:cy+radius*Math.sin(angle)});
-export default function LektrusAtomView({model,onLabelMove,labelScale=1}:Props){
+export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactInPanel=false}:Props){
  const element=elementByNumber(model.atomicNumber);
  const shells=atomShells(model.atomicNumber);
  const config=elementFacts[model.atomicNumber-1]?.electronConfiguration??"—";
  const [selectedLabel,setSelectedLabel]=useState(false);
  const dragging=useRef<{pointerId:number;startX:number;startY:number;originX:number;originY:number}|null>(null);
- const labelX=cx+model.labelX,labelY=(model.mode==="orbital"||model.mode==="lewis"?Math.max(460,90+orbitalSublevels(element.number).length*29)-33:423)+model.labelY;
+ const ringMax=45+(shells.length-1)*23;
+ const modelRadius=model.mode==="shell"?ringMax:model.mode==="nucleus"?150:165;
+ const labelX=cx+model.labelX,labelY=(model.mode==="orbital"||model.mode==="lewis"
+   ?Math.max(460,90+orbitalSublevels(element.number).length*29)-33
+   :compactInPanel?cy+modelRadius+45:423)+model.labelY;
  const begin=(event:PointerEvent<SVGGElement>)=>{
   if(!onLabelMove)return;
   event.preventDefault();event.stopPropagation();
@@ -32,10 +36,19 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1}:Props){
   dragging.current=null;
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
  };
- const ringMax=45+(shells.length-1)*23;
  const orbital= model.mode==="orbital"||model.mode==="lewis";
  const orbitalRows=orbital?orbitalSublevels(element.number).length:0;
  const orbitalCanvasHeight=Math.max(460,90+orbitalRows*29);
+ // In small periodic-table cards the old 700px SVG left hundreds of pixels unused.
+ // Crop only the viewBox for this context. Geometry and all editor coordinates stay unchanged.
+ const focusRadius=model.mode==="shell"?ringMax:model.mode==="nucleus"?150:165;
+ const focusWidth=Math.max(290,2*(focusRadius+22));
+ const focusTop=cy-focusRadius-25;
+ const focusHeight=labelY+27-focusTop;
+ const viewBox=compactInPanel
+   ?orbital?`50 8 600 ${orbitalCanvasHeight-16}`
+     :`${cx-focusWidth/2} ${focusTop} ${focusWidth} ${focusHeight}`
+   :`0 0 700 ${orbitalCanvasHeight}`;
  const mass=Number((elementFacts[element.number-1]?.atomicMass??"").replace(/[^0-9.]/g,""));
  const neutronCount=Number.isFinite(mass)?Math.max(0,Math.round(mass)-element.number):null;
  const nucleus=<g pointerEvents="none">
@@ -46,7 +59,7 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1}:Props){
   <text x={cx} y={cy+12} textAnchor="middle" fontSize={10*labelScale}
     fill="#68829f">Z={element.number}</text>
  </g>;
- return <svg className={"lektrus-atom-svg"+(orbital?" orbital":"")} viewBox={"0 0 700 "+orbitalCanvasHeight}
+ return <svg className={"lektrus-atom-svg"+(orbital?" orbital":"")} viewBox={viewBox}
     role="img" aria-label={"Строение атома "+element.name}
     onPointerMove={move} onPointerUp={end} onPointerCancel={end}>
   <rect width="700" height="460" rx="12" fill="#fff" onClick={()=>setSelectedLabel(false)}/>
@@ -57,7 +70,7 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1}:Props){
        <circle cx={cx} cy={cy} r={radius} stroke="#b8cee8" strokeWidth="1.15" fill="none"/>
        {Array.from({length:count},(_,j)=>{
         const p=rotationPoint(radius,-Math.PI/2+j/count*Math.PI*2);
-        return <circle key={j} cx={p.x} cy={p.y} r={Math.max(2,Math.min(3.1,22/(i+4)))}
+        return <circle key={j} cx={p.x} cy={p.y} r={compactInPanel?Math.max(2.8,Math.min(4.5,27/(i+4))):Math.max(2,Math.min(3.1,22/(i+4)))}
           fill="#4e86c5" stroke="#fff" strokeWidth=".5"/>;
        })}
       </g>;
