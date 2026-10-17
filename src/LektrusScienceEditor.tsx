@@ -314,10 +314,6 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
               const a=points[seg.a],b=points[seg.b];if(!a||!b)return null;
               const p=canvasPoint(a),q=canvasPoint(b),len=Math.hypot(q.x-p.x,q.y-p.y)||1;
               return <g key={i}>
-                <line x1={p.x} y1={p.y} x2={q.x} y2={q.y}
-                  stroke="transparent" strokeWidth="17" style={{cursor:"pointer"}}
-                  pointerEvents="stroke" onClick={()=>setActiveLink(i)}
-                  aria-label={"Изменить линию "+(i+1)}/>
                 {activeLink===i&&<line x1={p.x} y1={p.y} x2={q.x} y2={q.y}
                   stroke="#edac35" strokeWidth="9" strokeOpacity=".33"
                   pointerEvents="none"/>}
@@ -335,6 +331,10 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                     angle={Math.atan2(q.y-p.y,q.x-p.x)*180/Math.PI}/>}
                 {seg.label&&<text className="lektrus-science-link-label"
                   x={(p.x+q.x)/2+8} y={(p.y+q.y)/2-9}>{seg.label}</text>}
+                <line x1={p.x} y1={p.y} x2={q.x} y2={q.y}
+                  stroke="transparent" strokeWidth="17" style={{cursor:"pointer"}}
+                  pointerEvents="stroke" onClick={()=>setActiveLink(i)}
+                  aria-label={"Изменить линию "+(i+1)}/>
               </g>;
             })}
             {points.map((point,i)=>{
