@@ -35,7 +35,7 @@ export default function LektrusPeriodicTableView({
   })}
   {periodicElements.map(el=>{
     const subgroupB=school&&el.col>=3&&el.col<=12&&el.row<=7;
-    const x=school?(el.row>=9?bx+(el.col-3)*30:bx+schoolColumn(el.col)*54):bx+(el.col-1)*step;
+    const x=school?(el.row>=9?170+(el.col-3)*30:bx+schoolColumn(el.col)*54):bx+(el.col-1)*step;
     const y=school?(el.row>=9?(el.row===9?662:716):by+(schoolRow(el)+(subgroupB?1:0))*step):el.row<=7?by+(el.row-1)*step:el.row===9?480:535;
     const chosen=marked.has(el.number),focused=el.number===active;
     const dim=familyFilter!=="all"&&familyFilter!==el.family&&!chosen;
@@ -50,11 +50,11 @@ export default function LektrusPeriodicTableView({
       onClick={onPick?e=>{e.stopPropagation();onPick(el.number)}:undefined}
       onKeyDown={onPick?e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();onPick(el.number)}}:undefined}>
       <title>{el.number+". "+el.name+" ("+el.symbol+"), Ar ≈ "+compactMass}</title>
-      <rect x={x} y={y} width={cell} height={cell} rx="5"
+      <rect x={x} y={y} width={school&&el.row>=9?28:cell} height={cell} rx="5"
         stroke={chosen?"#2d60c8":focused?"#5b82b9":"#c5d4e7"}
         strokeWidth={chosen?2.4:focused?1.75:.8} fill={colors[el.family]}/>
       <text x={x+4} y={y+9.5} fontSize="8.5" fontWeight="750" fill="#415d80">{el.number}</text>
-      <text x={x+cell/2} y={y+27} fontSize={school&&el.row>=9?12:19} textAnchor="middle"
+      <text x={x+(school&&el.row>=9?14:cell/2)} y={y+27} fontSize={school&&el.row>=9?12:19} textAnchor="middle"
         fontWeight="730" fill="#1d3558">{el.symbol}</text>
       {showNames&&!(school&&el.row>=9)&&<text x={x+cell/2} y={y+37.1} fontSize="7.5"
         textAnchor="middle" textLength={Math.min(44,Math.max(15,el.name.length*4.1))}
@@ -62,7 +62,7 @@ export default function LektrusPeriodicTableView({
       {!(school&&el.row>=9)&&<text x={x+cell/2} y={y+46} fontSize="7.5" fontWeight="650" textAnchor="middle"
         textLength={Math.min(41,Math.max(14,readableMass.length*4))}
         lengthAdjust="spacingAndGlyphs" fill="#54708d">{readableMass}</text>}
-      {chosen&&<circle cx={x+44} cy={y+5} r="3" fill="#2d60c8"/>}
+      {chosen&&<circle cx={x+(school&&el.row>=9?24:44)} cy={y+5} r="3" fill="#2d60c8"/>}
     </g>;
   })}
   <text x="47" y={school?811:597} fontSize="10" fill="#8a9bb0">Z · символ · название · относительная атомная масса</text>
