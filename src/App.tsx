@@ -2854,6 +2854,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     view,
     background:boardBackground,
     backgroundShared:backgroundIsShared,
+    subject:lectrisBoardOrganization.subject,
     items: editing
       ? itemsRef.current.map((i) =>
           i.id === editing ? { ...i, text: draftRef.current } : i,
@@ -2975,6 +2976,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     while (history.current.length > historyLimit) history.current.shift();
     index.current = history.current.length - 1;
     display(normalized);
+    // React paints the committed items on the next frame. Keep the persistence
+    // snapshot synchronous so navigating away immediately cannot save the old
+    // document or make a new science object revert to generic coordinates.
+    if(snapshot.current && !saveBlocked){
+      snapshot.current=packDocumentInk({...snapshot.current,
+        subject:lectrisBoardOrganization.subject,items:normalized});
+    }
   };
   const finishEdit = () => {
     if (!editing) return;
