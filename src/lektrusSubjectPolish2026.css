@@ -377,3 +377,73 @@
 .lektrus-chem-window-head>button.lektrus-chem-close:hover{
  background:#e6f0ff;border-color:#88aee6;color:#245cba;
 }
+
+
+/* A single unified chemistry panel is attached to the right edge of the table.
+   Expanding the atom folds inside the SAME panel, not in a new floating window. */
+.lektrus-chem-window--combined{
+ width:238px!important;
+ max-height: min(620px, 88vh);
+ display:flex;flex-direction:column;
+ overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+ padding:9px 10px;
+}
+.lektrus-chem-window--combined .lektrus-chem-window-head{
+ flex:0 0 auto;
+}
+.lektrus-chem-window--combined .lektrus-chem-actions{
+ margin:7px 0 0;
+}
+.lektrus-chem-window--combined .lektrus-chem-actions button{
+ min-height:26px;font-size:10px;
+}
+.lektrus-chem-atom-toggle{
+ box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;
+ gap:8px;width:100%;min-height:32px;margin-top:8px;padding:6px 9px;
+ border:1px solid #c7d9f2;border-radius:7px;
+ background:#f4f8ff;color:#305d9d;font-size:11px;
+ font-weight:720;text-align:left;cursor:pointer;
+}
+.lektrus-chem-chevron{
+ font-size:17px;font-weight:650;line-height:1;transition:transform 160ms ease;
+}
+.lektrus-chem-chevron.is-open{transform:rotate(180deg)}
+.lektrus-chem-atom-panel{
+ display:flex;flex-direction:column;gap:7px;
+ padding:9px 0 1px;min-width:0;
+}
+.lektrus-chem-window--combined .lektrus-chem-atom-modes{
+ gap:5px;
+}
+.lektrus-chem-window--combined .lektrus-chem-atom-modes button{
+ min-height:34px;padding:5px 3px;
+ font-size:11px;font-weight:650;
+}
+.lektrus-chem-window--combined .lektrus-chem-atom-drawing{
+ min-height:170px;max-height:335px;margin-top:0;
+ overflow:auto;
+}
+.lektrus-chem-window--combined .lektrus-chem-atom-drawing .lektrus-atom-svg{
+ width:100%!important;min-height:170px!important;height:auto!important;
+}
+.lektrus-periodic-dialog .lektrus-periodic-stage.has-element-window .lektrus-periodic-window-stage>.lektrus-periodic-svg{
+ width:calc(100% - 248px)!important;
+ max-width:calc(100% - 248px)!important;
+ height:100%!important;
+}
+.lektrus-periodic-dialog .lektrus-periodic-stage.has-element-window .lektrus-periodic-window-stage>.lektrus-chem-window--combined.is-editor{
+ position:absolute;
+ top:1%;right:0;left:auto;
+ width:238px!important;
+ max-height:97%;
+}
+@media(max-width:760px){
+ .lektrus-periodic-dialog .lektrus-periodic-stage.has-element-window .lektrus-periodic-window-stage>.lektrus-periodic-svg{
+  width:calc(100% - 210px)!important;
+  max-width:calc(100% - 210px)!important;
+ }
+ .lektrus-chem-window--combined.is-editor{width:208px!important}
+ .lektrus-periodic-dialog .lektrus-periodic-stage.has-element-window .lektrus-periodic-window-stage>.lektrus-chem-window--combined.is-editor{
+  width:208px!important;
+ }
+}
