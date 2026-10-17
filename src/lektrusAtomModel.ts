@@ -78,3 +78,17 @@ export function orbitalSublevels(number:number):OrbitalSublevel[]{
  });
 }
 export const elementByNumber=(number:number)=>periodicElements[number-1]??periodicElements[7];
+
+/** A specifically named isotope for classroom diagrams, not atomic weight rounded to A.
+ * Other elements intentionally do not receive an invented neutron count. */
+export const exampleIsotopeMassNumbers:Readonly<Record<number,number>>={
+ 1:1,2:4,3:7,4:9,5:11,6:12,7:14,8:16,9:19,10:20,
+ 11:23,12:24,13:27,14:28,15:31,16:32,17:35,18:40,19:39,20:40,
+ 21:45,22:48,23:51,24:52,25:55,26:56,27:59,28:58,29:63,30:64,
+ 31:69,32:74,33:75,34:80,35:79,36:84,
+ 47:107,53:127,78:195,79:197,82:208,92:238
+};
+export function exampleIsotope(number:number):{massNumber:number;neutrons:number}|null{
+ const massNumber=exampleIsotopeMassNumbers[number];
+ return massNumber===undefined?null:{massNumber,neutrons:massNumber-number};
+}
