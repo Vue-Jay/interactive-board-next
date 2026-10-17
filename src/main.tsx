@@ -33,6 +33,7 @@ import "./lektrusPlatform.css";
 import "./lektrusMobileSafeControls.css";
 import "./lektrusMobileDialogs.css";
 import "./lektrusPortraitPages.css";
+import "./lektrusCompactMobilePages.css";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
