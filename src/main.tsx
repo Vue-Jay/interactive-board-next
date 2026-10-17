@@ -30,6 +30,7 @@ import "./lektrusBoardBackground.css";
 import "./lektrusSubjectPicker.css";
 import "./lektrusSubjectTools.css";
 import "./lektrusPlatform.css";
+import "./lektrusMobileSafeControls.css";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
