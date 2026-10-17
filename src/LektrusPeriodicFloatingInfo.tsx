@@ -1,4 +1,4 @@
-import {useEffect,useLayoutEffect,useRef,useState,type PointerEvent,type ReactNode} from "react";
+import {useEffect,useLayoutEffect,useRef,useState,type PointerEvent,type ReactNode,type CSSProperties} from "react";
 import {createPortal} from "react-dom";
 import {periodicElements} from "./lektrusPeriodicElements";
 import {elementFacts} from "./lektrusElementFacts";
@@ -56,9 +56,18 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
  const localW=geometry?.localW??stage?.clientWidth??840;
  const localH=geometry?.localH??stage?.clientHeight??520;
  const detailWidth=220,atomWidth=320;
- const detailPosition:Point=detailsOffset??(layout==="school"
-  ?{x:localW*.73,y:localH*.055+slot*28}
-  :{x:localW*.225+slot*22,y:localH*.095+slot*20});
+ const detailPosition:Point=detailsOffset??(()=>{
+  if(slot>0&&!fixed&&geometry){
+   const roomRight=window.innerWidth-(geometry.left+geometry.width);
+   const roomLeft=geometry.left;
+   const needed=detailWidth*geometry.scaleX+18;
+   if(roomRight>=needed)return{x:localW+15,y:localH*.04+(slot-1)*148};
+   if(roomLeft>=needed)return{x:-detailWidth-15,y:localH*.04+(slot-1)*148};
+  }
+  return layout==="school"
+    ?{x:localW*.73,y:localH*.018+slot*128}
+    :{x:localW*.225,y:localH*.035+slot*128};
+ })();
  const atomDefault=():Point=>{
   if(!geometry)return{x:localW+16,y:localH*.12};
   const leftSpace=geometry.left,rightSpace=window.innerWidth-(geometry.left+geometry.width);
@@ -108,7 +117,7 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
 
  const renderWindow=(kind:"details"|"atom",content:ReactNode)=>{
   const position=kind==="details"?detailPosition:atomPosition;
-  const boardStyle:React.CSSProperties=geometry?{
+  const boardStyle:CSSProperties=geometry?{
    position:"fixed",left:geometry.left+position.x*geometry.scaleX,
    top:geometry.top+position.y*geometry.scaleY,
    transform:"scale("+geometry.scaleX+","+geometry.scaleY+")",transformOrigin:"top left",
@@ -116,7 +125,7 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
   }:{visibility:"hidden"};
   const editorStyle:React.CSSProperties={
    position:"absolute",left:layout==="school"?(kind==="details"?"73%":"54%"):(kind==="details"?"22.5%":"53%"),
-   top:kind==="details"?"7%":"12%"
+   top:kind==="details"?"2%":"12%"
   };
   return <section ref={kind==="details"?detailsRef:atomRef}
     className={"lektrus-chem-window lektrus-chem-window--"+kind+(fixed?" is-editor":" is-board")}
