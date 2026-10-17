@@ -113,4 +113,22 @@ assert.equal(projectSolidSurfaces(makeMathPresetItem("sphere",0,0,"sphere"),25,3
 assert.match(editor,/lektrus-school-element-row/,"compact dimension rows");
 assert.doesNotMatch(editor,/pointOptions\(/,"no coordinate chooser in element cards");
 
+
+// Semi-transparent shaded solids must expose both visible and hidden outlines.
+const {projectSolidEdges}=await loadTs("src/lektrusSolid3d.ts");
+for(const id of ["cube","rectangular-prism","prism","pyramid","triangular-pyramid","cylinder","cone"]){
+  const item=makeMathPresetItem(id,0,0,"translucent-"+id);
+  const edgeList=projectSolidEdges(item,25,-35);
+  assert.ok(edgeList.some(edge=>edge.hidden),id+" has visible back edges");
+  assert.ok(edgeList.some(edge=>!edge.hidden),id+" has visible front edges");
+  assert.ok(edgeList.every(edge=>[edge.start.x,edge.start.y,edge.end.x,edge.end.y].every(Number.isFinite)),id+" stable projected outlines");
+  if(id==="cylinder")assert.ok(edgeList.length>120,"cylinder has smooth base rings");
+  if(id==="cone")assert.ok(edgeList.length>=64,"cone has smooth base ring");
+}
+assert.match(app,/className="lektrus-solid-translucent-fill"/,"all non-spherical solids render translucent faces");
+assert.match(app,/fillOpacity=\{item\.graphFigureId/,"solid opacity is explicitly controlled");
+assert.match(app,/className="lektrus-solid-hidden-edges"/,"hidden edges must be drawn separately");
+assert.match(app,/strokeDasharray="5 5"/,"hidden edges must be dashed");
+assert.match(app,/className="lektrus-solid-front-edges"/,"front contours stay solid");
+
 console.log("School geometry: ray, transversal angles, solid rotation and dimension projections OK.");
