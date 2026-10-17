@@ -1,6 +1,7 @@
 package ru.lektrus.board;
 
 import android.os.Bundle;
+import android.view.ViewGroup;
 import android.webkit.WebView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.core.graphics.Insets;
@@ -11,8 +12,9 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 
 /**
- * Workspace screens show a normal Android status bar.
- * Only the open board hides it, retaining swipe-to-show notification access.
+ * WebView padding does not reliably move its HTML viewport on Android 15+.
+ * Reserve actual physical space using WebView layout margins instead.
+ * In the workspace, status bar is hidden and the top margin is released.
  */
 public class MainActivity extends BridgeActivity {
     private WebView boardWebView;
@@ -39,9 +41,9 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    public void onCreate(Bundle state) {
+    public void onCreate(Bundle savedState) {
         registerPlugin(LektrusSystemUiPlugin.class);
-        super.onCreate(state);
+        super.onCreate(savedState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         boardWebView = getBridge().getWebView();
         applyBars();
@@ -49,20 +51,34 @@ public class MainActivity extends BridgeActivity {
             Insets cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
             Insets navigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
             Insets tappable = insets.getInsets(WindowInsetsCompat.Type.tappableElement());
-            Insets status = insets.getInsets(WindowInsetsCompat.Type.statusBars());
-            int bottom = tappable.bottom > 0 ? Math.max(navigation.bottom, tappable.bottom) : 0;
-            // Outside a board, start exactly below the visible Android status bar.
+            // Use ignoring-visibility inset: status can be temporarily hidden by
+            // rotation/transition even though home screens require the space.
+            Insets status = insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars());
             int top = boardMode ? cutout.top : Math.max(status.top, cutout.top);
-            view.setPadding(cutout.left, top, cutout.right, Math.max(bottom, cutout.bottom));
+            int bottom = tappable.bottom > 0 ? Math.max(navigation.bottom, tappable.bottom) : 0;
+            bottom = Math.max(bottom, cutout.bottom);
+
+            ViewGroup.LayoutParams original = view.getLayoutParams();
+            if (original instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) original;
+                if (margins.topMargin != top || margins.bottomMargin != bottom ||
+                    margins.leftMargin != cutout.left || margins.rightMargin != cutout.right) {
+                    margins.setMargins(cutout.left, top, cutout.right, bottom);
+                    view.setLayoutParams(margins);
+                }
+            }
+            // Never pad the WebView: its viewport origin can remain at y=0.
+            if (view.getPaddingTop() != 0 || view.getPaddingBottom() != 0 ||
+                view.getPaddingLeft() != 0 || view.getPaddingRight() != 0) {
+                view.setPadding(0, 0, 0, 0);
+            }
             return insets;
         });
         ViewCompat.requestApplyInsets(boardWebView);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {
-                if (boardWebView != null) {
-                    boardWebView.evaluateJavascript(
-                        "window.dispatchEvent(new Event('lektrus:native-back'))", null);
-                }
+                if (boardWebView != null) boardWebView.evaluateJavascript(
+                    "window.dispatchEvent(new Event('lektrus:native-back'))", null);
             }
         });
     }
@@ -70,6 +86,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onWindowFocusChanged(boolean focus) {
         super.onWindowFocusChanged(focus);
-        if (focus) applyBars();
+        if (focus) {
+            applyBars();
+            if (boardWebView != null) ViewCompat.requestApplyInsets(boardWebView);
+        }
     }
 }
