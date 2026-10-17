@@ -8,6 +8,7 @@ type Pt={x:number;y:number;label:string;color?:string};
 export type SchoolConstruction =
   | "incircle"|"circumcircle"|"centroid"|"incenter"|"circumcenter"
   | "diagonals"|"trapezoid-midline"|"triangle-midline"
+  | "orthocenter"|"triangle-altitudes"|"triangle-medians"|"triangle-bisectors"
   | "radius"|"diameter"|"chord"|"tangent"|"secant"|"two-tangents"
   | "central-angle"|"inscribed-angle"|"circumference-midpoint"
   | "inscribed-polygon"|"circumscribed-polygon";
@@ -113,7 +114,7 @@ export function buildSchoolConstruction(original:GraphDraft,request:SchoolBuildR
   const verts=polygon?.points.map(i=>points[i]);
   const baseCircle=circles.find(c=>points[c.center]&&points[c.edge]);
 
-  if(["incircle","circumcircle","incenter","circumcenter","centroid","diagonals","trapezoid-midline","triangle-midline","orthocenter","triangle-altitudes","triangle-medians","triangle-bisectors"].includes(request.kind)){
+  if(["incircle","circumcircle","incenter","circumcenter","centroid","diagonals","trapezoid-midline","triangle-midline","orthocenter","triangle-altitudes","triangle-medians","triangle-bisectors","orthocenter","triangle-altitudes","triangle-medians","triangle-bisectors"].includes(request.kind)){
     if(!polygon||!verts||verts.some(v=>!v))return fail("Сначала выберите многоугольник.");
     const ids=polygon.points,n=ids.length;
     if(request.kind==="incircle"||request.kind==="circumcircle"||request.kind==="incenter"||request.kind==="circumcenter"){
