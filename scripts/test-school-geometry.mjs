@@ -84,6 +84,19 @@ const fullCircle={
   circles:[{center:0,edge:1,label:"",measure:false}],polygons:[],angles:[],midpoints:[]
 };
 assert.equal(removeConstruction(fullCircle,"circle",0).points.length,0,"deleted circle takes center and radius point");
+const rightRectangle={
+  points:[point(0,0,"A"),point(4,0,"B"),point(4,3,"C"),point(0,3,"D")],
+  polygons:[{points:[0,1,2,3],label:"ABCD",measure:true}],
+  angles:[{a:3,vertex:0,b:1,label:"90°"}],
+  segments:[],circles:[],midpoints:[]
+};
+const withoutRectangle=removeConstruction(rightRectangle,"polygon",0);
+assert.equal(withoutRectangle.points.length,0,"right-angle vertex annotations must be removed with their rectangle");
+assert.equal(withoutRectangle.angles.length,0,"right-angle mark belongs to deleted rectangle");
+const circleWithRadius={...fullCircle,segments:[{a:0,b:1,kind:"segment",label:"r",measure:false}]};
+const withoutCircle=removeConstruction(circleWithRadius,"circle",0);
+assert.equal(withoutCircle.segments.length,0,"radius line belongs to deleted circle");
+assert.equal(withoutCircle.points.length,0,"circle deletion must not leave radius endpoints");
 const {projectSolidSurfaces}=await loadTs("src/lektrusSolid3d.ts");
 for(const id of ["cube","rectangular-prism","prism","pyramid","triangular-pyramid","cylinder","cone"]){
   const item=makeMathPresetItem(id,0,0,"mesh-"+id);
