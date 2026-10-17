@@ -42,6 +42,7 @@ export function LectrisQuickProperties(props: QuickProps) {
   useEffect(()=>setExpanded(false),[tool,item?.id]);
   const drawing=tool==="pen"||tool==="marker";
   const erasing=tool==="eraser";
+  if(item?.kind==="graph"&&item.graphFigureId==="chem-periodic")return null;
   if(!selectionCount&&!drawing&&!erasing)return null;
   return <section className={`lectris-quick-properties ${expanded?"is-expanded":""}`} aria-label="Быстрые настройки">
     <span className="lectris-quick-title">
