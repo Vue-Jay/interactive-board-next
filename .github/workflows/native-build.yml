@@ -18,6 +18,12 @@ jobs:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       VITE_AUTH_REDIRECT_URL: ${{ vars.LEKTRUS_AUTH_REDIRECT_URL }}
+      LEKTRUS_SIGNING_STORE_BASE64: ${{ secrets.LEKTRUS_SIGNING_STORE_BASE64 }}
+      LEKTRUS_SIGNING_STORE_PASSWORD: ${{ secrets.LEKTRUS_SIGNING_STORE_PASSWORD }}
+      LEKTRUS_SIGNING_KEY_ALIAS: ${{ secrets.LEKTRUS_SIGNING_KEY_ALIAS }}
+      LEKTRUS_SIGNING_KEY_PASSWORD: ${{ secrets.LEKTRUS_SIGNING_KEY_PASSWORD }}
+      LEKTRUS_ANDROID_VERSION_CODE: ${{ github.run_number }}
+      LEKTRUS_ANDROID_VERSION_NAME: 1.0.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,18 +54,28 @@ jobs:
         run: npm run build
       - name: Sync Android native files
         run: npx cap sync android
-      - name: Build signed debug APK
+      - name: Build upgradeable release APK when stable signing exists
         shell: bash
         run: |
           chmod +x android/gradlew
-          cd android
-          ./gradlew :app:assembleDebug --no-daemon --stacktrace
-      - name: Verify APK exists
-        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
+          if [[ -n "$LEKTRUS_SIGNING_STORE_BASE64" && -n "$LEKTRUS_SIGNING_STORE_PASSWORD" && -n "$LEKTRUS_SIGNING_KEY_ALIAS" && -n "$LEKTRUS_SIGNING_KEY_PASSWORD" ]]; then
+            export LEKTRUS_SIGNING_STORE_FILE="$RUNNER_TEMP/lektrus-release.jks"
+            printf '%s' "$LEKTRUS_SIGNING_STORE_BASE64" | base64 --decode > "$LEKTRUS_SIGNING_STORE_FILE"
+            chmod 600 "$LEKTRUS_SIGNING_STORE_FILE"
+            (cd android && ./gradlew :app:assembleRelease --no-daemon --stacktrace)
+            cp android/app/build/outputs/apk/release/app-release.apk Lektrus-Android.apk
+            echo "Stable release signing used for Android updates."
+          else
+            echo "::warning::No stable Android signing secrets configured. This debug APK cannot reliably update previous installs. Install fresh; set secrets for future upgradeable releases."
+            (cd android && ./gradlew :app:assembleDebug --no-daemon --stacktrace)
+            cp android/app/build/outputs/apk/debug/app-debug.apk Lektrus-Android.apk
+          fi
+          test -s Lektrus-Android.apk
+          rm -f "$RUNNER_TEMP/lektrus-release.jks"
       - uses: actions/upload-artifact@v4
         with:
-          name: Lektrus-Android-debug-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Lektrus-Android-APK
+          path: Lektrus-Android.apk
           if-no-files-found: error
           retention-days: 14
 
