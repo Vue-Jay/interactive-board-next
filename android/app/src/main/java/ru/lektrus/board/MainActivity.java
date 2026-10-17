@@ -54,16 +54,21 @@ public class MainActivity extends BridgeActivity {
             // Use ignoring-visibility inset: status can be temporarily hidden by
             // rotation/transition even though home screens require the space.
             Insets status = insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars());
-            int top = boardMode ? cutout.top : Math.max(status.top, cutout.top);
+            int top = boardMode ? 0 : Math.max(status.top, cutout.top);
             int bottom = tappable.bottom > 0 ? Math.max(navigation.bottom, tappable.bottom) : 0;
             bottom = Math.max(bottom, cutout.bottom);
 
+            // On landscape boards the entire canvas fills the screen. Cutout
+            // protection belongs to floating controls, not to the WebView
+            // itself (which otherwise leaves a blank stripe along the edge).
+            int horizontalLeft = boardMode ? 0 : cutout.left;
+            int horizontalRight = boardMode ? 0 : cutout.right;
             ViewGroup.LayoutParams original = view.getLayoutParams();
             if (original instanceof ViewGroup.MarginLayoutParams) {
                 ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) original;
                 if (margins.topMargin != top || margins.bottomMargin != bottom ||
-                    margins.leftMargin != cutout.left || margins.rightMargin != cutout.right) {
-                    margins.setMargins(cutout.left, top, cutout.right, bottom);
+                    margins.leftMargin != horizontalLeft || margins.rightMargin != horizontalRight) {
+                    margins.setMargins(horizontalLeft, top, horizontalRight, bottom);
                     view.setLayoutParams(margins);
                 }
             }

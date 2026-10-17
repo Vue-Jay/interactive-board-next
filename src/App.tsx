@@ -6823,6 +6823,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         )}
 <nav className="mobile-board-tools" aria-label="Основные инструменты">
           <div className="mobile-tool-cluster mobile-tool-cluster-navigation" aria-label="Навигация">
+            <button type="button" className={tool==="hand"?"active":""} aria-label="Рука — перемещать доску одним пальцем" title="Рука" aria-pressed={tool==="hand"} onClick={()=>{finishEdit();setTool("hand");setMobileToolsOpen(false);setSelected([])}}><Icon name="hand" size={20}/></button>
             {lectrisTouchDockTools.slice(0,2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
@@ -6940,6 +6941,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           } as CSSProperties}
           onPointerDownCapture={(e) => {
             if(e.pointerType==="touch"){touchStart(e);if(pinchState.current){e.preventDefault();e.stopPropagation();return;}}
+            // The phone/tablet hand always pans with ONE finger, including
+            // over selected objects. Desktop still uses RMB/space to pan.
+            if (e.pointerType==="touch" && tool==="hand" && !pinchState.current) {
+              e.preventDefault(); e.stopPropagation();
+              if(gesture.current || eraserSession.current) return;
+              const start=local(e.clientX,e.clientY);
+              gesture.current={pointer:e.pointerId,mode:"pan",start,view,
+                before:itemsRef.current,ids:[],path:[world(start)],additive:false};
+              setPanning(true);
+              e.currentTarget.setPointerCapture(e.pointerId);
+              return;
+            }
             if((tool==="pen"||tool==="marker")&&!space&&!rightPointerActive&&e.button===0)moveInkCursor(e.clientX,e.clientY,e.pointerType);
             // A held RMB is always temporary hand/pan, even while drawing.
             // Short click opens the custom menu only on release.

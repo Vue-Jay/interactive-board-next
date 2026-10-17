@@ -170,3 +170,38 @@
 .lectris-layout-save input{height:35px;border:1px solid #dce5f1;border-radius:9px;padding:7px 10px;background:#fff;color:#2c405e;font-size:12px}
 .lectris-layout-save button{justify-content:center!important;text-align:center!important;background:#eef3fd!important}
 .lectris-layout-save button:disabled{opacity:.45;cursor:default}
+
+/* Mobile landscape: the canvas extends to the physical edge; only interactive
+   controls avoid rounded corners and notches. Native Android already reports
+   a WebView viewport with navigation-button bottom inset. */
+@media (max-width:1100px) and (pointer:coarse) and (orientation:landscape) {
+  html.lektrus-android-app .workspace {
+    padding-left:0!important;padding-right:0!important;
+    margin-left:0!important;margin-right:0!important;
+  }
+  html.lektrus-android-app .workspace>.board {
+    inset:0!important;
+    width:100%!important;
+    max-width:100%!important;
+  }
+  html.lektrus-android-app .topbar {
+    box-sizing:border-box!important;
+    padding-left:max(22px, env(safe-area-inset-left, 0px))!important;
+    padding-right:max(22px, env(safe-area-inset-right, 0px))!important;
+  }
+  html.lektrus-android-app .mobile-board-tools {
+    left:max(16px, env(safe-area-inset-left, 0px))!important;
+    top:64px!important;
+    max-height:calc(100dvh - 82px)!important;
+  }
+  html.lektrus-android-app .mobile-tools-sheet {
+    left:max(77px, env(safe-area-inset-left, 0px))!important;
+    top:64px!important;
+    max-height:calc(100dvh - 82px)!important;
+  }
+  html.lektrus-android-app .board-controls,
+  html.lektrus-android-app .zoom-controls,
+  html.lektrus-android-app .minimap {
+    right:max(18px, env(safe-area-inset-right, 0px))!important;
+  }
+}
