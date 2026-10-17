@@ -32,7 +32,7 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
       x:x-420,y:y-260,width:840,height:520,
       graphFigureId:"chem-periodic",graphPurpose:"geometry",
       graphAxisMode:"none",graphGrid:false,graphSnap:false,
-      graphPoints:[],graphSegments:[],sciencePeriodicHighlights:[],sciencePeriodicShowNames:true};
+      graphPoints:[],graphSegments:[],sciencePeriodicHighlights:[],sciencePeriodicLayout:"school",sciencePeriodicShowNames:true};
   }
   if(id==="math-formula")return {id:createId(),kind:"formula",text:"x² + y² = r²",x:x-190,y:y-70,width:380,height:140,fontSize:28,color:"#20242c"};
   if(id==="math-fractions")return {
