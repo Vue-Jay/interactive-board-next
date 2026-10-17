@@ -7227,7 +7227,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onRayChange={!item.locked&&canEdit&&item.graphFigureId==="ray"?(x,y)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:(candidate.graphPoints??[]).map((p,i)=>i===1?{...p,x,y}:p)}:candidate));
                   }:undefined}
-                  onAddPoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{if((item.graphPoints?.length??0)>=40)return;const next={x,y:item.graphPurpose==="number-line"?0:y,label:"",color:"#111111"};commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:[...(candidate.graphPoints??[]),next]}:candidate));setSelected([item.id]);} : undefined} onRemovePoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/>}
+                  onAddPoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
+                    if((item.graphPoints?.length??0)>=40)return;
+                    commit(itemsRef.current.map(candidate=>{
+                      if(candidate.id!==item.id)return candidate;
+                      const points=candidate.graphPoints??[],n=points.length;
+                      const next={x,y:candidate.graphPurpose==="number-line"?0:y,
+                        label:candidate.graphFigureId==="free"?String.fromCharCode(65+n%26):"",color:"#111111"};
+                      if(candidate.graphFigureId!=="free")return {...candidate,graphPoints:[...points,next]};
+                      const previouslyClosed=(candidate.graphPolygons??[]).some(poly=>poly.points.includes(n-1));
+                      const nextSegments=n>0&&!previouslyClosed&&(candidate.graphSegments?.length??0)<60?
+                        [...(candidate.graphSegments??[]),{a:n-1,b:n,kind:"segment" as const,label:"",measure:false}]:
+                        candidate.graphSegments??[];
+                      return {...candidate,graphPoints:[...points,next],graphSegments:nextSegments};
+                    }));
+                    setSelected([item.id]);
+                  } : undefined} onRemovePoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/>}
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
