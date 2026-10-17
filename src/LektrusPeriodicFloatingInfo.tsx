@@ -6,10 +6,10 @@ import {atomViews,type AtomViewMode} from "./lektrusAtomModel";
 import LektrusAtomView from "./LektrusAtomView";
 
 type Props={number:number|null;layout:"school"|"long";anchor:HTMLElement|null;
- selected:boolean;onClose:()=>void;onToggle?:()=>void;fixed?:boolean;slot?:number};
+ selected:boolean;onClose:()=>void;onToggle?:()=>void;fixed?:boolean;slot?:number;inline?:boolean};
 type XY={x:number;y:number};
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
-export default function LektrusPeriodicFloatingInfo({number,layout,anchor,selected,onClose,onToggle,fixed=false,slot=0}:Props){
+export default function LektrusPeriodicFloatingInfo({number,layout,anchor,selected,onClose,onToggle,fixed=false,slot=0,inline=false}:Props){
  const [position,setPosition]=useState<XY|null>(null);
  const [atomOpen,setAtomOpen]=useState(false);
  const [mode,setMode]=useState<AtomViewMode>("shell");
@@ -22,7 +22,7 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
  if(!element||!facts)return null;
  const rect=anchor?.getBoundingClientRect();
  const cardWidth=260,cardHeight=150;
- const schoolX=(rect?.right??window.innerWidth*.7)+12;
+ const schoolX=(rect?.right??window.innerWidth*.7)+18;
  const modernX=(rect?.left??70)+(rect?.width??900)*.245;
  const defaultInfo:XY=layout==="school"
   ?{x:clamp(schoolX,8,Math.max(8,window.innerWidth-cardWidth-12)),
@@ -53,10 +53,10 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
  const panel:CSSProperties={position:"fixed",zIndex:99999,background:"#fff",border:"1px solid #bed0e9",borderRadius:10,
   boxShadow:"0 8px 25px #12244333",color:"#263956",fontFamily:"Arial,sans-serif",boxSizing:"border-box",pointerEvents:"auto"};
  const btn:CSSProperties={border:"1px solid #b9ceee",background:"#f0f6ff",borderRadius:5,padding:"4px 6px",cursor:"pointer",fontSize:11};
- return createPortal(<>
-  <div style={{...panel,left:info.x,top:info.y,width:260,minHeight:145,padding:8}} onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}>
+ const infoCard=<>
+  <div className="lektrus-floating-element-card" style={inline?{...panel,position:"relative",left:"auto",top:"auto",width:"100%",minHeight:0,padding:9,boxShadow:"none"}:{...panel,left:info.x,top:info.y,width:260,minHeight:145,padding:8}} onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}>
    <div onPointerDown={e=>begin(e,"info")} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
-     style={{touchAction:"none",display:"flex",alignItems:"center",gap:5,cursor:"grab",userSelect:"none",paddingBottom:4}}>
+     style={{touchAction:"none",display:"flex",alignItems:"center",gap:5,cursor:fixed?"default":"grab",userSelect:"none",paddingBottom:4}}>
     <strong style={{fontSize:19,color:"#2c5c99"}}>{element.symbol}</strong>
     <b style={{fontSize:11,flex:1}}>{element.name}</b>
     <span style={{fontSize:9,color:"#8293a9"}}>⠿</span>
@@ -72,8 +72,8 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
     <button style={{...btn,flex:1}} onClick={()=>setAtomOpen(v=>!v)}>Строение атома</button>
     {onToggle&&<button style={{...btn,flex:1}} onClick={onToggle}>{selected?"Снять выделение":"Выделить"}</button>}
    </div>
-  </div>
-  {atomOpen&&<div style={{...panel,left:atom.x,top:atom.y,width:510,padding:10}}
+  </div></>;
+ const atomCard=<div style={{...panel,left:atom.x,top:atom.y,width:510,padding:10}}
     onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}>
    <div onPointerDown={e=>begin(e,"atom")} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
     style={{touchAction:"none",cursor:"grab",userSelect:"none",display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
@@ -88,6 +88,6 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
    <div style={{maxHeight:"min(52vh,390px)",overflowY:"auto"}}>
     <LektrusAtomView model={{atomicNumber:number,mode,labelX:0,labelY:0,showElectronConfiguration:true}}/>
    </div>
-  </div>}
- </>,document.body);
+  </div>;
+ return <>{inline?infoCard:createPortal(infoCard,document.body)}{atomOpen&&createPortal(atomCard,document.body)}</>;
 }
