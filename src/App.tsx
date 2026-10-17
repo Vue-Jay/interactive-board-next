@@ -1094,6 +1094,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   const orbitX=liveSpin?.[0]??item.graphRotationX??25;
   const orbitY=liveSpin?.[1]??item.graphRotationY??-35;
   const solid=isSolidFigure(item.graphFigureId);
+  const solidEdges=solid&&item.graphFigureId!=="sphere"?projectSolidEdges(item,orbitX,orbitY):[];
   const rayFigure=item.graphFigureId==="ray";
 
   // A legacy or partially synchronized board may contain objects instead of arrays.
@@ -1220,7 +1221,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
           </g>
           {/* Draw hidden edges through the faces as subtle dashed lines; front edges stay solid. */}
           <g className="lektrus-solid-hidden-edges">
-            {projectSolidEdges(item,orbitX,orbitY).filter(edge=>edge.hidden).map((edge,index)=>
+            {solidEdges.filter(edge=>edge.hidden).map((edge,index)=>
               <line key={index}
                 x1={sx(edge.start.x)} y1={sy(edge.start.y)} x2={sx(edge.end.x)} y2={sy(edge.end.y)}
                 stroke="#7892b3" strokeWidth="1.35" strokeOpacity=".72" strokeDasharray="5 5"
@@ -1228,7 +1229,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
             )}
           </g>
           <g className="lektrus-solid-front-edges">
-            {projectSolidEdges(item,orbitX,orbitY).filter(edge=>!edge.hidden).map((edge,index)=>
+            {solidEdges.filter(edge=>!edge.hidden).map((edge,index)=>
               <line key={index}
                 x1={sx(edge.start.x)} y1={sy(edge.start.y)} x2={sx(edge.end.x)} y2={sy(edge.end.y)}
                 stroke="#345e91" strokeWidth="2.1" strokeOpacity=".96"
