@@ -8537,3 +8537,24 @@ option{background:#fff;color:#343741}
   .lektrus-school-element-row>strong{max-width:68px;flex-basis:52px}
   .lektrus-school-element-row>.lektrus-school-element-delete{padding:4px 6px!important}
 }
+
+/* The solid-geometry dimensions are real textbook edge labels, not element controls. */
+.lektrus-solid-edge-dimensions{gap:7px}
+.lektrus-solid-edge-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,168px),1fr));
+  gap:6px;min-width:0;
+}
+.lektrus-solid-edge-grid .lektrus-solid-edge-row{
+  display:flex;align-items:center;gap:7px;min-width:0;min-height:39px;
+  padding:5px 7px;border:1px solid #e0e7f3;border-radius:9px;background:#f8faff;
+}
+.lektrus-solid-edge-grid .lektrus-solid-edge-row>strong{
+  flex:0 0 auto;min-width:28px;max-width:65px;color:#273c59;
+  font-size:12px;font-weight:750;white-space:nowrap;
+}
+.lektrus-solid-edge-grid .lektrus-solid-edge-row>input{
+  flex:1 1 auto;width:0;min-width:0;min-height:31px;
+  padding:5px 8px!important;border:1px solid #d6e2f4!important;
+  border-radius:7px!important;font-size:12px!important;
+}
+.graph-view .lektrus-solid-edge-labels text{pointer-events:none}
