@@ -9,6 +9,42 @@ export function isSolidFigure(id:unknown):id is SolidFigureId {
   return typeof id==="string"&&(solidFigureIds as readonly string[]).includes(id);
 }
 
+/** Structural edges exist regardless of which auxiliary elements are present.
+ * They are dimensioned on the "Sizes" tab and cannot be removed individually
+ * from the extra-elements panel.
+ */
+export function solidStructuralEdgePairs(id:unknown):[number,number][] {
+  if(id==="cube"||id==="rectangular-prism")return [
+    [0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]
+  ];
+  if(id==="prism")return [[0,1],[1,2],[2,0],[3,4],[4,5],[5,3],[0,3],[1,4],[2,5]];
+  if(id==="pyramid")return [[0,1],[1,2],[2,3],[3,0],[0,4],[1,4],[2,4],[3,4]];
+  if(id==="triangular-pyramid")return [[0,1],[1,2],[2,0],[0,3],[1,3],[2,3]];
+  if(id==="cylinder")return [
+    ...Array.from({length:16},(_,i):[number,number]=>[i,i+1]),
+    ...Array.from({length:16},(_,i):[number,number]=>[17+i,18+i]),
+    [0,17],[8,25]
+  ];
+  if(id==="cone")return [...Array.from({length:16},(_,i):[number,number]=>[i,i+1]),[0,17],[8,17]];
+  return [];
+}
+export function isStructuralSolidSegment(id:unknown,segment:{a:number;b:number}):boolean {
+  return solidStructuralEdgePairs(id).some(([a,b])=>
+    (segment.a===a&&segment.b===b)||(segment.a===b&&segment.b===a));
+}
+
+/** The dimension controls define the physical body. The three main dimensions
+ * are placed on representative edges if no separate user-provided edge label
+ * overrides them.
+ */
+export function solidDimensionEdgePairs(id:unknown):[number,number][] {
+  if(id==="cube"||id==="rectangular-prism")return [[0,1],[1,2],[1,5]];
+  if(id==="prism")return [[0,1],[1,2],[1,4]];
+  if(id==="pyramid")return [[0,1],[1,2],[0,4]];
+  if(id==="triangular-pyramid")return [[0,1],[1,2],[0,3]];
+  return [];
+}
+
 export type SolidPoint = {x:number;y:number;z:number};
 export type ProjectedPoint={x:number;y:number;label:string;color?:string};
 
@@ -158,6 +194,7 @@ export function projectSolidSurfaces(item:Item,rotationX:number,rotationY:number
 
 export type SolidEdge={
   start:{x:number;y:number};end:{x:number;y:number};hidden:boolean;
+  a?:number;b?:number;
 };
 
 /** Project all actual solid edges, marking back edges as dashed construction lines.
@@ -238,6 +275,6 @@ export function projectSolidEdges(item:Item,rotationX:number,rotationY:number):S
     }
   }
   return [...edges.values()].map(edge=>({
-    start:proj(vertices[edge.a]),end:proj(vertices[edge.b]),hidden:!edge.visible
+    start:proj(vertices[edge.a]),end:proj(vertices[edge.b]),hidden:!edge.visible,a:edge.a,b:edge.b
   }));
 }
