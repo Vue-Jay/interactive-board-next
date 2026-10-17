@@ -6,6 +6,14 @@ import {isStructuralSolidSegment} from "./lektrusSolid3d";
 import {buildSchoolConstruction,type SchoolConstruction} from "./lektrusSchoolConstructions";
 import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "./lektrusMathPresets";
 
+/** Presentation-only: leave the parsed equation untouched for graph calculations. */
+const displayGraphFormula=(expression:string)=>"y = "+expression
+  .replace(/\s*\*\s*/g," · ")
+  .replace(/\^\s*([0-9]+)/g,(_,power:string)=>power.replace(/[0-9]/g,d=>"⁰¹²³⁴⁵⁶⁷⁸⁹"[Number(d)]))
+  .replace(/\b(sin|cos|sqrt|abs)\b/g,word=>({sin:"sin",cos:"cos",sqrt:"√",abs:"abs"} as Record<string,string>)[word])
+  .replace(/\s*([+\-])\s*/g," $1 ")
+  .replace(/\s+/g," ").trim();
+
 export type GraphDraft = {
   title: string; figureId:string;
   rotationX:number; rotationY:number;
@@ -350,6 +358,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               </label>
               <label className="lektrus-graph-field"><span>Формула y =</span><input value={draft.expression} onChange={e=>patch({expression:e.target.value})} placeholder="Например: x^2 - 4*x + 3"/></label>
               <small>Можно менять формулу вручную. Доступны +, −, *, /, ^, sin, cos, sqrt, abs, exp, ln.</small>
+              <div className="lektrus-graph-formula-typeset" aria-label="Математическая запись формулы">{displayGraphFormula(draft.expression)}</div>
               <label className="lektrus-graph-check"><input type="checkbox" checked={draft.showCurve} onChange={e=>patch({showCurve:e.target.checked})}/> Показывать график функции</label>
             </div>}
             {draft.purpose==="number-line"&&<div className="lektrus-graph-section">
