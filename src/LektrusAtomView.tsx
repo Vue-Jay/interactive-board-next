@@ -98,7 +98,7 @@ export default function LektrusAtomView({model,onLabelMove}:Props){
       <text x="84" y="66" fontSize="10.5" fill="#8194ae">
         Уровни по энергии снизу вверх · ↑↓ направления спинов
       </text>
-      <path d="M100 "+(orbitalCanvasHeight-79)+"V100m-5 8l5-8 5 8" stroke="#8fa8c9" strokeWidth="1.5"
+      <path d={"M100 "+(orbitalCanvasHeight-79)+"V100m-5 8l5-8 5 8"} stroke="#8fa8c9" strokeWidth="1.5"
         strokeLinecap="round" fill="none"/>
       <text x="83" y="97" fontSize="10" textAnchor="middle" fill="#7391b4">E</text>
       {stair&&<polyline points={stair} stroke="#cfdaeb" strokeWidth="1.2"
