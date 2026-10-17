@@ -45,7 +45,7 @@ export const scienceToolGroups:ScienceToolGroup[]=[
      {id:"chem-oxygen",label:"Кислород · O₂",hint:"Двойная связь O=O"}
    ]},
   {id:"chem-atoms",subject:"chem",label:"Строение атома",
-   description:"Отдельный редактор атомной модели, ядра и электронных оболочек",
+   description:"Модели Бора, Резерфорда, Льюиса и состав атома; 118 элементов",
    group:"Химия · атом",templates:[
      {id:"chem-atom",label:"Модель атома",hint:"Схема ядра и оболочки"}
    ]}

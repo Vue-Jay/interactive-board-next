@@ -1,0 +1,78 @@
+/* Desktop chemistry / physics drafting interactions. Anchors are shown only when selected. */
+.lektrus-science-header .lektrus-science-symbol{
+  width:44px;height:44px;flex:0 0 44px;
+  display:grid;place-items:center;
+  border-radius:12px;
+}
+.lektrus-science-header .lektrus-science-symbol svg{display:block}
+.lektrus-science-settings .lektrus-science-subhead strong{font-weight:700}
+.lektrus-science-preview svg .lektrus-science-label-handle{
+  cursor:grab!important;
+}
+.lektrus-science-preview svg .lektrus-science-label-handle:active{cursor:grabbing!important}
+.lektrus-science-preview svg .lektrus-science-label-handle text{
+  fill:#526d8c!important;
+  font-weight:540!important;
+  paint-order:stroke;
+  stroke:#fff;stroke-width:2.5px;
+  stroke-linejoin:round;
+  pointer-events:none;
+}
+.lektrus-science-preview svg .lektrus-science-point-hit{
+  cursor:grab!important;
+}
+.lektrus-science-preview svg .lektrus-science-point-hit:active{cursor:grabbing!important}
+.lektrus-science-preview svg .lektrus-science-label-handle path,
+.lektrus-science-preview svg .lektrus-science-label-handle line{
+  pointer-events:none!important;
+}
+/* Molecules: searchable list rather than a fixed handful of small buttons. */
+.lektrus-molecule-picker{
+  display:grid;gap:8px;
+  padding:10px;border-radius:11px;
+  border:1px solid #dbece9;background:#f5fbfa;
+  min-width:0;
+}
+.lektrus-molecule-picker>strong{font-size:12px;color:#277d76}
+.lektrus-molecule-picker>input{
+  box-sizing:border-box;width:100%;min-width:0;min-height:34px;
+  border:1px solid #c5ded9;border-radius:8px;
+  padding:7px 9px;font-size:11px;background:white;color:#284a52;
+}
+.lektrus-molecule-elements{
+  display:flex;flex-direction:column;gap:3px;
+  height:174px;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;padding:4px;border:1px solid #d9e8e4;border-radius:8px;background:#fff;
+}
+.lektrus-molecule-elements>button{
+  box-sizing:border-box;min-height:32px;
+  display:flex;align-items:center;gap:9px;
+  border:1px solid transparent;border-radius:7px;background:#fff;
+  padding:5px 7px;cursor:grab;color:#4c6372;text-align:left;
+}
+.lektrus-molecule-elements>button:hover,
+.lektrus-molecule-elements>button.active{
+  border-color:#a0d3ca;background:#e7f6f2;
+}
+.lektrus-molecule-elements>button b{font-size:12px;color:#257b77;min-width:28px}
+.lektrus-molecule-elements>button span{font-size:11px;min-width:0;flex:1}
+.lektrus-molecule-elements>button small{font-size:10px;color:#90a5ae}
+.lektrus-molecule-picker>small{font-size:10px;color:#81969b;line-height:1.45}
+.lektrus-science-backdrop.chemistry .lektrus-science-preview svg{
+  cursor:crosshair;
+}
+.lektrus-science-backdrop.physics .lektrus-science-preview .lektrus-science-node.selected circle{
+  r:3.8;
+}
+/* Make room for narrower window heights by keeping both columns scrollable. */
+.lektrus-science-content{
+  min-height:0!important;
+  height:auto!important;
+}
+.lektrus-science-preview{min-width:0;overflow:hidden!important}
+.lektrus-science-preview svg{min-height:0!important}
+@media(max-width:750px){
+  .lektrus-science-content{overflow-y:auto!important}
+  .lektrus-science-preview{flex:0 0 auto;overflow:visible!important}
+  .lektrus-science-preview svg{min-height:230px!important}
+}

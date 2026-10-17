@@ -1,68 +1,65 @@
 import {periodicElements,periodicFamilies,type ElementFamily} from "./lektrusPeriodicElements";
-
+import {elementFacts} from "./lektrusElementFacts";
 type Props={
-  selected?:number[];
-  active?:number|null;
-  showNames?:boolean;
-  familyFilter?:ElementFamily|"all";
-  onPick?:(number:number)=>void;
+ selected?:number[];active?:number|null;showNames?:boolean;
+ familyFilter?:ElementFamily|"all";onPick?:(number:number)=>void;
 };
-
-const baseX=52,baseY=84,step=54,cell=49;
-const familyColors=Object.fromEntries(periodicFamilies.map(item=>[item.id,item.color])) as Record<ElementFamily,string>;
-
-/** The same SVG is used in the editor and by the board's saved graph object. */
+const bx=45,by=68,step=54,cell=49;
+const colors=Object.fromEntries(periodicFamilies.map(f=>[f.id,f.color])) as Record<ElementFamily,string>;
+const mass=(n:number)=>elementFacts[n-1]?.atomicMass?.replace(/\(\d+\)/g,"").replace(/[\[\]]/g,"")??"";
 export default function LektrusPeriodicTableView({
-  selected=[],active=null,showNames=true,familyFilter="all",onPick
+ selected=[],active=null,showNames=true,familyFilter="all",onPick
 }:Props){
-  const highlighted=new Set(selected);
-  return <svg className="lektrus-periodic-svg" viewBox="0 0 1080 640"
-    preserveAspectRatio="xMidYMid meet" role="img"
-    aria-label="Периодическая таблица химических элементов с 118 элементами">
-    <rect width="1080" height="640" fill="#f8fbff" rx="12"/>
-    <text x={baseX} y="28" className="lektrus-periodic-heading">Периодическая система химических элементов</text>
-    {Array.from({length:18},(_,i)=><text className="lektrus-periodic-index"
-      key={"col"+i} x={baseX+i*step+cell/2} y="69" textAnchor="middle">{i+1}</text>)}
-    {Array.from({length:7},(_,i)=><text key={"period"+i} className="lektrus-periodic-index"
-      x="25" y={baseY+i*step+31} textAnchor="middle">{i+1}</text>)}
-    <text className="lektrus-periodic-lanthanoid-label" x="52" y="474">Лантаноиды</text>
-    <text className="lektrus-periodic-lanthanoid-label" x="52" y="549">Актиноиды</text>
-    {[{period:6,label:"57–71"},{period:7,label:"89–103"}].map(item=>{
-      const x=baseX+2*step,y=baseY+(item.period-1)*step;
-      return <g key={item.period} opacity=".62">
-        <rect x={x} y={y} width={cell} height={cell} rx="6" fill="#f0e2f2" stroke="#d9c2e2"/>
-        <text x={x+cell/2} y={y+29} className="lektrus-periodic-placeholder" textAnchor="middle">{item.label}</text>
-      </g>;
-    })}
-    {periodicElements.map(el=>{
-      const left=baseX+(el.col-1)*step;
-      const top=el.row<=7?baseY+(el.row-1)*step:el.row===9?487:557;
-      const isSelected=highlighted.has(el.number);
-      const isFocused=active===el.number;
-      const muted=familyFilter!=="all"&&el.family!==familyFilter;
-      const label=el.name.length>11?el.name.slice(0,10)+"…":el.name;
-      const description=el.number+". "+el.name+" ("+el.symbol+")";
-      return <g key={el.number} className={"lektrus-periodic-cell "+(onPick?"interactive":"")+
-        (isSelected?" selected":"")+(isFocused?" focused":"")+(muted?" dimmed":"")}
-        role={onPick?"button":undefined}
-        tabIndex={onPick?0:undefined}
-        aria-label={description+(isSelected?", выделен":"")}
-        onClick={onPick?()=>onPick(el.number):undefined}
-        onKeyDown={onPick?e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onPick(el.number)}}:undefined}>
-        <title>{description+", период "+el.period+(el.family!=="lanthanoid"&&el.family!=="actinoid"?", группа "+el.group:"")}</title>
-        <rect x={left} y={top} width={cell} height={cell} rx="6"
-          fill={familyColors[el.family]} stroke={isSelected?"#245bd2":isFocused?"#3a679f":"#c1d0e2"}
-          strokeWidth={isSelected?3:isFocused?2:1.1}/>
-        <text className="lektrus-periodic-number" x={left+5} y={top+11}>{el.number}</text>
-        <text className="lektrus-periodic-symbol" x={left+cell/2} y={top+31}
-          textAnchor="middle">{el.symbol}</text>
-        {showNames&&<text className="lektrus-periodic-name" x={left+cell/2} y={top+43}
-          textAnchor="middle">{label}</text>}
-        {isSelected&&<circle cx={left+cell-6} cy={top+6} r="3" fill="#1f56c8"/>}
-      </g>;
-    })}
-    <text x="52" y="623" className="lektrus-periodic-footnote">
-      Выделенные элементы отмечены синим. Значения и расчёты не подставляются автоматически.
-    </text>
-  </svg>;
+ const marked=new Set(selected);
+ return <svg className="lektrus-periodic-svg" viewBox="0 0 1080 601"
+   preserveAspectRatio="xMidYMid meet" role="img"
+   aria-label="Интерактивная периодическая таблица 118 химических элементов">
+  <rect x="0" y="0" width="1080" height="601" rx="10" fill="#f9fbff"/>
+  <text x={bx} y="30" className="lektrus-periodic-heading">Периодическая система химических элементов</text>
+  {Array.from({length:18},(_,i)=><text key={i} className="lektrus-periodic-index"
+    x={bx+i*step+cell/2} y={55} textAnchor="middle">{i+1}</text>)}
+  {Array.from({length:7},(_,i)=><text key={i} className="lektrus-periodic-index"
+    x="23" y={by+i*step+28} textAnchor="middle">{i+1}</text>)}
+  <text x="45" y="470" className="lektrus-periodic-lanthanoid-label">Лантаноиды</text>
+  <text x="45" y="527" className="lektrus-periodic-lanthanoid-label">Актиноиды</text>
+  {[{period:6,label:"57–71"},{period:7,label:"89–103"}].map(v=>{
+    const x=bx+2*step,y=by+(v.period-1)*step;
+    return <g key={v.period} opacity=".7">
+      <rect x={x} y={y} width={cell} height={cell} rx="5" fill="#f0e2f6" stroke="#decce8"/>
+      <text x={x+cell/2} y={y+27} fontSize="9" textAnchor="middle" fill="#745b86">{v.label}</text>
+    </g>;
+  })}
+  {periodicElements.map(el=>{
+    const x=bx+(el.col-1)*step;
+    const y=el.row<=7?by+(el.row-1)*step:el.row===9?480:535;
+    const chosen=marked.has(el.number),focused=el.number===active;
+    const dim=familyFilter!=="all"&&familyFilter!==el.family&&!chosen;
+    const compactMass=mass(el.number);
+    const readableMass=compactMass.length>8?Number(compactMass).toPrecision(5):compactMass;
+    return <g key={el.number}
+      className={"lektrus-periodic-cell"+(onPick?" interactive":"")+(chosen?" selected":"")+
+        (focused?" focused":"")+(dim?" dimmed":"")}
+      role={onPick?"button":undefined} tabIndex={onPick?0:undefined}
+      aria-label={el.number+". "+el.name+" ("+el.symbol+"), масса "+compactMass}
+      onPointerDown={onPick?e=>e.stopPropagation():undefined}
+      onClick={onPick?e=>{e.stopPropagation();onPick(el.number)}:undefined}
+      onKeyDown={onPick?e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();onPick(el.number)}}:undefined}>
+      <title>{el.number+". "+el.name+" ("+el.symbol+"), Ar ≈ "+compactMass}</title>
+      <rect x={x} y={y} width={cell} height={cell} rx="5"
+        stroke={chosen?"#2d60c8":focused?"#5b82b9":"#c5d4e7"}
+        strokeWidth={chosen?2.4:focused?1.75:.8} fill={colors[el.family]}/>
+      <text x={x+4} y={y+9.5} fontSize="8.5" fontWeight="750" fill="#415d80">{el.number}</text>
+      <text x={x+cell/2} y={y+27} fontSize="19" textAnchor="middle"
+        fontWeight="730" fill="#1d3558">{el.symbol}</text>
+      {showNames&&<text x={x+cell/2} y={y+37.1} fontSize="7.5"
+        textAnchor="middle" textLength={Math.min(44,Math.max(15,el.name.length*4.1))}
+        lengthAdjust="spacingAndGlyphs" fill="#4c6483">{el.name}</text>}
+      <text x={x+cell/2} y={y+46} fontSize="7.5" fontWeight="650" textAnchor="middle"
+        textLength={Math.min(41,Math.max(14,readableMass.length*4))}
+        lengthAdjust="spacingAndGlyphs" fill="#54708d">{readableMass}</text>
+      {chosen&&<circle cx={x+44} cy={y+5} r="3" fill="#2d60c8"/>}
+    </g>;
+  })}
+  <text x="47" y="597" fontSize="10" fill="#8a9bb0">Z · символ · название · относительная атомная масса</text>
+ </svg>;
 }

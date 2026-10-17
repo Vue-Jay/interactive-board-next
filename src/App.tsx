@@ -25,7 +25,10 @@ import LektrusCircuitEditor from "./LektrusCircuitEditor";
 import LektrusCircuitView from "./LektrusCircuitView";
 import {circuitFromLegacyItem} from "./lektrusCircuitModel";
 import LektrusPeriodicTableEditor from "./LektrusPeriodicTableEditor";
-import LektrusPeriodicTableView from "./LektrusPeriodicTableView";
+import LektrusPeriodicBoard from "./LektrusPeriodicBoard";
+import LektrusAtomEditor from "./LektrusAtomEditor";
+import LektrusAtomView from "./LektrusAtomView";
+import {defaultAtomModel} from "./lektrusAtomModel";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
 import LektrusGraphEditor, {appendFreeSketchPoint,removeGraphPoint, removeGraphBoardPoint, type GraphDraft} from "./LektrusGraphEditor";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
@@ -1091,7 +1094,7 @@ function evaluateGraphExpression(source: string, x: number): number {
   const expr=():number=>{let v=term();while(tokens[pos]==="+"||tokens[pos]==="-"){const op=tokens[pos++];const q=term();v=op==="+"?v+q:v-q}return v};
   try{const value=expr();return pos===tokens.length&&Number.isFinite(value)?value:NaN}catch{return NaN}
 }
-function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange }: {
+function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
@@ -1099,6 +1102,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   onRotate?: (rotationX:number,rotationY:number)=>void;
   onRayChange?: (x:number,y:number)=>void;
   onGridChange?: (enabled:boolean)=>void;
+  onPeriodicChange?: (selected:number[])=>void;
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
   const [liveRay,setLiveRay]=useState<{x:number;y:number}|null>(null);
@@ -1197,14 +1201,19 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     window.addEventListener("pointerup",done,{once:true});
     window.addEventListener("pointercancel",done,{once:true});
   };
+  if(item.scienceAtomModel||item.graphFigureId==="chem-atom"){
+    return <div className="graph-view lektrus-atom-board-view">
+      <LektrusAtomView model={item.scienceAtomModel??defaultAtomModel}/>
+    </div>;
+  }
   if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){
     return <div className="graph-view lektrus-circuit-board-view">
       <LektrusCircuitView doc={circuitFromLegacyItem(item)}/>
     </div>;
   }
   if(item.graphFigureId==="chem-periodic")return <div className="graph-view lektrus-periodic-board-view">
-    <LektrusPeriodicTableView selected={item.sciencePeriodicHighlights??[]}
-      showNames={item.sciencePeriodicShowNames!==false}/>
+    <LektrusPeriodicBoard selected={item.sciencePeriodicHighlights??[]}
+      showNames={item.sciencePeriodicShowNames!==false} onChange={onPeriodicChange}/>
   </div>;
   return <div className={`graph-view graph-purpose-${purpose} ${item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")?"science-graph":""} ${onPointMove?"graph-interactive":""}`}>
     <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small>y = {expression.replace(/^y\s*=\s*/i,"")}</small>}</div>
@@ -1418,7 +1427,9 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
             {rayControl&&onRayChange&&<line x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}
               stroke="transparent" strokeWidth="24" style={{cursor:"grab",touchAction:"none"}} onPointerDown={beginRayDrag}
               aria-label="Перетащите луч, чтобы изменить направление"/>}
-            {seg.label&&<text className="graph-figure-label" x={sx((a.x+b.x)/2)+6} y={sy((a.y+b.y)/2)-7}>{seg.label}</text>}
+            {seg.label&&<text className="graph-figure-label"
+              x={sx((a.x+b.x)/2+(seg.labelDx??0))+(seg.labelDx==null?6:0)}
+              y={sy((a.y+b.y)/2+(seg.labelDy??0))-(seg.labelDy==null?7:0)}>{seg.label}</text>}
           </g>;
         })}
         {item.graphFigureId==="parallel"&&item.graphParallelMarks?.[0]&&gp.length>=6&&(()=>{
@@ -1487,8 +1498,15 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
         onDoubleClick={onRemovePoint&&(purpose!=="unit-circle"||i>5)?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint?.(i)}:undefined}
         onPointerDown={movable?(e)=>{e.preventDefault();e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove?.(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up)}:undefined}>
         {movable&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r="20"/>}
-        <circle cx={sx(p.x)} cy={sy(p.y)} r={movable?"5":"4"} style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>
-        {item.graphShowLabels!==false&&(purpose==="number-line"||purpose==="unit-circle"&&i>0||p.label)&&<text x={sx(p.x)+8} y={sy(p.y)-9} style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
+        {!((item.graphFigureId??"").startsWith("physics-")&&
+          (item.graphSegments??[]).some(s=>s.scienceArrow&&s.b===i))&&
+          <circle cx={sx(p.x)} cy={sy(p.y)}
+           r={(item.graphFigureId??"").startsWith("physics-")?2.5:movable?5:4}
+           style={{fill:purpose==="number-line"&&i<2&&(p.x===intervalEnds?.[0].x?item.graphIntervalStartClosed===false:item.graphIntervalEndClosed===false)?"#ffffff":pointColor,stroke:pointColor}}/>}
+        {item.graphShowLabels!==false&&(purpose==="number-line"||purpose==="unit-circle"&&i>0||p.label)&&
+          <text x={sx(p.x+(p.labelDx??(p.label==="O"&&(item.graphFigureId??"").startsWith("physics-") ? 0.5 : 0)))+(p.labelDx==null&&p.label!=="O"?8:0)}
+           y={sy(p.y+(p.labelDy??(p.label==="O"&&(item.graphFigureId??"").startsWith("physics-") ? 0.62 : 0)))-(p.labelDy==null&&p.label!=="O"?9:0)}
+           style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
       </g>})}
       {purpose==="geometry"&&onGridChange&&<g role="button" tabIndex={0}
         aria-label={item.graphGrid===false?"Включить фон в клетку":"Сделать фон белым"}
@@ -1910,6 +1928,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
   const [circuitEditorItem,setCircuitEditorItem]=useState<Item|null>(null);
   const [periodicEditorItem,setPeriodicEditorItem]=useState<Item|null>(null);
+  const [atomEditorItem,setAtomEditorItem]=useState<Item|null>(null);
   const [fractionEditorId, setFractionEditorId] = useState<string | null>(null);
   const [pendingMathItem,setPendingMathItem] = useState<Item|null>(null);
   const [graphDraft, setGraphDraft] = useState<GraphDraft|null>(null);
@@ -4871,6 +4890,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const openGraphEditor = (item: Item) => {
     if(item.kind!=="graph"||item.locked)return;
     if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){setCircuitEditorItem(item);return;}
+    if(item.scienceAtomModel||item.graphFigureId==="chem-atom"){setAtomEditorItem(item);return;}
     if(item.graphFigureId==="chem-periodic"){setPeriodicEditorItem(item);return;}
     if(item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")){setScienceEditorItem(item);return;} if(itemsRef.current.some(existing=>existing.id===item.id))setSelected([item.id]); setGraphEditorId(item.id);
     setGraphDraft({figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(Array.isArray(item.graphPoints)?item.graphPoints:[]).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
@@ -6489,6 +6509,20 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setFractionEditorId(null);setPendingMathItem(null);
             }}
           />,document.body)}
+        {atomEditorItem&&<LektrusAtomEditor key={atomEditorItem.id} item={atomEditorItem}
+          onCancel={()=>setAtomEditorItem(null)}
+          onClose={next=>{
+            if(itemsRef.current.some(i=>i.id===next.id)){
+              commit(itemsRef.current.map(i=>i.id===next.id?next:i));
+              setNotice("Модель атома сохранена");
+            }
+            setAtomEditorItem(null);
+          }}
+          onSave={next=>{
+            commit(itemsRef.current.some(i=>i.id===next.id)?
+              itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
+            setAtomEditorItem(null);setNotice("Модель атома добавлена");
+          }}/>}
         {periodicEditorItem&&<LektrusPeriodicTableEditor key={periodicEditorItem.id}
           item={periodicEditorItem}
           onCancel={()=>setPeriodicEditorItem(null)}
@@ -6979,7 +7013,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSelected([]);
             setTool("select");
             setSubjectToolsOpen(false);
-            if(id==="physics-circuits"){
+            if(id==="chem-atoms"){setAtomEditorItem(item);
+            }else if(id==="physics-circuits"){
               setCircuitEditorItem(item);
             }else if(id==="chem-periodic-table"){
               setPeriodicEditorItem(item);
@@ -7330,6 +7365,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item}
+                  onPeriodicChange={canEdit&&!item.locked&&item.graphFigureId==="chem-periodic"?(marked)=>{
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,sciencePeriodicHighlights:marked}:candidate));
+                  }:undefined}
                   onGridChange={!item.locked&&canEdit?(enabled)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphGrid:enabled}:candidate));
                   }:undefined}

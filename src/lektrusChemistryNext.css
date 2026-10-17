@@ -1,0 +1,138 @@
+/* Consolidated subject-editor refinements. Non-interactive SVG assets remain scalable. */
+.lektrus-periodic-table-scroll{display:flex;align-items:center;justify-content:center}
+.lektrus-periodic-table-scroll .lektrus-periodic-svg{
+  flex:0 1 auto!important;min-width:0!important;
+  max-width:100%;max-height:100%;
+  height:auto!important;display:block;
+}
+.lektrus-periodic-heading{font-size:18px!important;font-weight:700!important}
+.lektrus-periodic-cell .lektrus-periodic-symbol{font-weight:710}
+.lektrus-periodic-cell.interactive{cursor:pointer}
+.lektrus-periodic-cell.interactive:focus-visible rect{stroke:#2357b6;stroke-width:3}
+.lektrus-periodic-panel .lektrus-element-info{
+  border:1px solid #dae6f6;
+  background:#f9fbff;margin:0;box-shadow:none;
+}
+.lektrus-periodic-panel:has(.lektrus-element-info){gap:9px}
+.lektrus-periodic-dialog .lektrus-periodic-preview{padding:8px}
+.lektrus-periodic-legend{gap:4px 8px}
+.lektrus-element-popover-backdrop{
+  position:fixed;inset:0;z-index:120000;display:flex;align-items:center;justify-content:center;
+  box-sizing:border-box;padding:16px;background:rgba(15,30,49,.45);backdrop-filter:blur(3px);
+}
+.lektrus-element-popover{
+  width:min(440px,calc(100vw - 32px));
+  max-height:calc(100dvh - 35px);
+  overflow:auto;scrollbar-width:thin;border-radius:17px;
+  box-shadow:0 24px 75px #071a3844;
+  background:white;border:1px solid #d7e3f1;
+}
+.lektrus-element-info{
+  box-sizing:border-box;background:#fff;padding:14px;
+  border-radius:13px;color:#213753;min-width:0;
+}
+.lektrus-element-info-header{
+  display:flex;align-items:center;gap:12px;min-width:0;margin-bottom:12px;
+}
+.lektrus-element-info-symbol{
+  flex:0 0 66px;width:66px;height:66px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;border-radius:11px;border:1px solid #cbdceb;
+}
+.lektrus-element-info-symbol small{font-size:11px;color:#60738e}
+.lektrus-element-info-symbol strong{font-size:28px;color:#243e60;font-weight:730;line-height:1}
+.lektrus-element-info-title{min-width:0;flex:1}
+.lektrus-element-info-title b{font-size:18px;display:block;overflow-wrap:anywhere}
+.lektrus-element-info-title small{display:block;font-size:11px;color:#768aa6;margin-top:4px}
+.lektrus-element-info-close{
+  width:31px;height:31px;flex:0 0 31px;border:1px solid #e0e8f3;
+  border-radius:8px;background:#f4f8ff;color:#4c6588;font-size:20px;cursor:pointer;
+  align-self:flex-start;
+}
+.lektrus-element-info-fields{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:1px;border:1px solid #dfe8f3;border-radius:9px;overflow:hidden;
+  background:#dfe8f3;
+}
+.lektrus-element-info-fields>div{
+  display:flex;flex-direction:column;gap:4px;min-width:0;
+  padding:8px;background:#fbfdff;
+}
+.lektrus-element-info-fields span{font-size:10px;color:#7186a3;line-height:1.4}
+.lektrus-element-info-fields strong{font-size:12px;font-weight:680;color:#294668;overflow-wrap:anywhere;line-height:1.45}
+.lektrus-element-info-fields>div:nth-child(6),.lektrus-element-info-fields>div:nth-child(8){grid-column:1/-1}
+.lektrus-element-disclaimer{display:block;margin-top:10px;color:#8497ad;font-size:9px;line-height:1.5}
+.lektrus-element-info-toggle{
+  display:block;width:100%;min-height:38px;margin-top:12px;
+  border:1px solid #b9cdf4;border-radius:9px;
+  background:#eaf1ff;color:#285ab9;font-weight:690;font-size:12px;cursor:pointer;
+}
+.lektrus-element-info.compact{padding:10px}
+.lektrus-element-info.compact .lektrus-element-info-symbol{width:43px;height:43px;flex-basis:43px}
+.lektrus-element-info.compact .lektrus-element-info-symbol strong{font-size:18px}
+.lektrus-element-info.compact .lektrus-element-info-title b{font-size:13px}
+.lektrus-element-info.compact .lektrus-element-info-fields{grid-template-columns:1fr}
+.lektrus-element-info.compact .lektrus-element-info-fields>div{grid-column:auto;padding:5px}
+.lektrus-element-info.compact .lektrus-element-info-fields strong{font-size:11px}
+/* Atom constructor */
+.lektrus-atom-backdrop{
+ position:fixed;inset:0;z-index:100060;display:flex;align-items:center;justify-content:center;
+ padding:clamp(8px,2vh,20px);box-sizing:border-box;
+ background:rgba(13,31,50,.66);backdrop-filter:blur(4px);
+ font-family:Inter,system-ui,sans-serif;
+}
+.lektrus-atom-dialog{
+ box-sizing:border-box;display:flex;flex-direction:column;min-width:0;min-height:0;
+ width:min(1160px,calc(100vw - 30px));height:min(805px,calc(100dvh - 30px));
+ border-radius:17px;overflow:hidden;background:#f5f9fd;border:1px solid #d4e2ef;
+ box-shadow:0 24px 85px #07192f45;color:#203954;
+}
+.lektrus-atom-dialog>header{
+ flex:0 0 auto;display:flex;align-items:center;gap:13px;padding:12px 17px;
+ background:linear-gradient(100deg,#e8f5f4,#fff 85%);border-bottom:1px solid #dbe8f1;
+}
+.lektrus-atom-icon{width:43px;height:43px;display:grid;place-items:center;border-radius:12px;background:#dff1ed;border:1px solid #c3e3db;flex:0 0 auto}
+.lektrus-atom-dialog>header>div:nth-child(2){flex:1;min-width:0}
+.lektrus-atom-dialog>header small{font-size:10px;font-weight:780;color:#287f81;letter-spacing:.08em}
+.lektrus-atom-dialog>header h2{font-size:19px;margin:3px 0;letter-spacing:-.03em}
+.lektrus-atom-dialog>header>button{width:35px;height:35px;border-radius:9px;background:#f4f8fd;border:1px solid #dce7f0;font-size:22px;color:#516781;cursor:pointer}
+.lektrus-atom-content{flex:1 1 auto;min-width:0;min-height:0;display:grid;grid-template-columns:275px minmax(0,1fr);gap:11px;padding:11px;overflow:hidden}
+.lektrus-atom-controls,.lektrus-atom-preview{background:#fff;border:1px solid #dae6f1;border-radius:13px;min-height:0;min-width:0}
+.lektrus-atom-controls{display:flex;flex-direction:column;gap:10px;padding:13px;overflow-y:auto;scrollbar-width:thin}
+.lektrus-atom-controls label{display:grid;gap:6px;font-size:11px;font-weight:700;color:#45647d}
+.lektrus-atom-controls input:not([type="checkbox"]){width:100%;box-sizing:border-box;min-width:0;height:35px;padding:7px 9px;border:1px solid #d4e2ef;border-radius:8px;background:#fbfdff;color:#253f59;font-size:12px}
+.lektrus-atom-choice{display:flex;align-items:center;gap:7px;min-height:37px;padding:7px 9px;border:1px solid #cfdfed;border-radius:9px;text-align:left;background:#f6fbfd;color:#284861;cursor:pointer}
+.lektrus-atom-choice>b{font-size:16px;color:#228989}
+.lektrus-atom-choice>span{margin-left:auto}
+.lektrus-atom-element-list{display:flex;flex-direction:column;gap:6px;padding:7px;background:#f8fbfd;border:1px solid #dceaf1;border-radius:9px;min-height:0}
+.lektrus-atom-element-list>div{display:flex;flex-direction:column;overflow-y:auto;max-height:155px;gap:3px;scrollbar-width:thin}
+.lektrus-atom-element-list button{min-height:29px;border:0;background:white;border-radius:5px;display:flex;align-items:center;gap:7px;padding:5px;color:#4a657d;font-size:11px;cursor:pointer}
+.lektrus-atom-element-list button[aria-selected="true"]{background:#ddf2ed}
+.lektrus-atom-element-list button>b{color:#217f7f;min-width:25px}
+.lektrus-atom-element-list button>span{flex:1;text-align:left}
+.lektrus-atom-element-list button>small{font-size:10px;color:#879aaa}
+.lektrus-atom-section-title{font-size:12px;font-weight:790;color:#2d5164;padding-top:9px;border-top:1px solid #e4ebf3}
+.lektrus-atom-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.lektrus-atom-modes button{min-width:0;min-height:80px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;text-align:left;padding:9px;border-radius:10px;background:#f7fbfd;color:#2e566c;border:1px solid #deebf1;cursor:pointer}
+.lektrus-atom-modes button.active{background:#e4f5f1;border-color:#8ccabc}
+.lektrus-atom-modes strong{font-size:11px;font-weight:740}
+.lektrus-atom-modes small{font-size:10px;color:#7b93a0;line-height:1.45}
+.lektrus-atom-controls .lektrus-atom-checkbox{display:flex;gap:8px;align-items:center;line-height:1.45}
+.lektrus-atom-checkbox input{margin:0;accent-color:#238781}
+.lektrus-atom-meta{display:grid;gap:6px;padding:10px;background:#f4f9fc;border-radius:10px;border:1px solid #e2ebf2}
+.lektrus-atom-meta strong{font-size:12px}
+.lektrus-atom-meta span{font-size:11px;color:#57728a}
+.lektrus-atom-meta button{min-height:31px;margin-top:4px;border:1px solid #c6dcdb;border-radius:8px;background:#e8f5f2;color:#247c78;font-size:11px;cursor:pointer}
+.lektrus-atom-preview{display:flex;flex-direction:column;gap:10px;padding:12px;overflow:hidden}
+.lektrus-atom-preview-head{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.lektrus-atom-preview-head b{font-size:12px}
+.lektrus-atom-preview-head span,.lektrus-atom-preview>p{font-size:10px;color:#8294a9;line-height:1.55}
+.lektrus-atom-preview>p{margin:0;flex:0 0 auto}
+.lektrus-atom-stage{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;background:white;border:1px solid #cbdfee;border-radius:11px;overflow:hidden}
+.lektrus-atom-svg{width:100%;height:100%;min-width:0;min-height:0;display:block;touch-action:none}
+.lektrus-atom-dialog>footer{flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:9px;padding:10px 14px;min-height:53px;background:#fff;border-top:1px solid #dfe9f2}
+.lektrus-atom-dialog>footer span{margin-right:auto;color:#899aab;font-size:10px}
+.lektrus-atom-dialog>footer button{min-height:35px;padding:8px 14px;border:1px solid #d4e4ed;border-radius:9px;background:#f6f9fc;color:#41627c;font-weight:680;font-size:11px;cursor:pointer}
+.lektrus-atom-dialog>footer button.primary{background:#178d83;color:#fff;border-color:#178d83}
+.graph-view.lektrus-atom-board-view{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:0!important;overflow:hidden;background:#fff}
+.graph-view.lektrus-atom-board-view .lektrus-atom-svg{height:100%!important;width:100%!important}
+@media(max-width:760px){.lektrus-atom-content{grid-template-columns:1fr;overflow-y:auto}.lektrus-atom-controls,.lektrus-atom-preview{flex:0 0 auto;overflow:visible}.lektrus-atom-preview{height:360px}.lektrus-atom-dialog>footer span{display:none}}

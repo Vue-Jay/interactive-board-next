@@ -43,6 +43,8 @@ import "./lektrusScienceDiagramRefinement.css";
 import "./lektrusEditorCursor.css";
 import "./lektrusFormulaWindow.css";
 import "./lektrusPeriodicTable.css";
+import "./lektrusChemistryNext.css";
+import "./lektrusScienceInteractionNext.css";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";

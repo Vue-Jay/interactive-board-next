@@ -4,6 +4,7 @@ import type {Item} from "./boardModel";
 import {scienceToolGroupForId} from "./lektrusScienceCatalog";
 import {makeSciencePresetItem,type SciencePresetId} from "./lektrusSciencePresets";
 import ScienceCircuitGlyph,{circuitSymbols,type CircuitSymbol} from "./ScienceCircuitGlyph";
+import {periodicElements} from "./lektrusPeriodicElements";
 
 type Props={
   item:Item;
@@ -16,7 +17,7 @@ type Link=NonNullable<Item["graphSegments"]>[number];
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const xy=(p:{x:number;y:number})=>({x:260+p.x*31,y:185-p.y*31});
 const atomColors:Record<string,string>={H:"#5676c8",C:"#40546e",O:"#d34d55",N:"#3975be",S:"#df9a2c",Cl:"#30a275","e⁻":"#5579cc"};
-const options=["H","C","O","N","S","Cl"];
+
 const copyItem=(value:Item):Item=>({
   ...value,
   graphPoints:(value.graphPoints??[]).map(p=>({...p})),
@@ -43,20 +44,26 @@ const deletePoint=(item:Item,index:number):Item=>{
 
 export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose}:Props){
   const [draft,setDraft]=useState<Item>(()=>copyItem(item));
-  const [selected,setSelected]=useState(0);
+  const [selected,setSelected]=useState(-1);
   const [first,setFirst]=useState(0);
   const [second,setSecond]=useState(1);
   const [order,setOrder]=useState<1|2|3>(1);
   const [arrow,setArrow]=useState(true);
   const [component,setComponent]=useState<CircuitSymbol>("wire");
   const [activeLink,setActiveLink]=useState<number|null>(null);
-  const drag=useRef<{pointerId:number;index:number}|null>(null);
+  const [elementQuery,setElementQuery]=useState("");
+  const [placingElement,setPlacingElement]=useState<string|null>(null);
+  const [elementNotice,setElementNotice]=useState("");
+  const drag=useRef<{pointerId:number;index:number;kind:"point"|"point-label"|"segment-label"}|null>(null);
   const isPhysics=subject==="physics";
   const group=scienceToolGroupForId(draft.graphFigureId??"");
   const currentVariant=draft.graphFigureId??group?.templates[0]?.id??"";
   const points=draft.graphPoints??[];
   const segments=draft.graphSegments??[];
   const selectedPoint=points[selected];
+  const filteredElements=periodicElements.filter(e=>
+    (e.name+" "+e.symbol+" "+e.number).toLocaleLowerCase("ru-RU")
+      .includes(elementQuery.trim().toLocaleLowerCase("ru-RU")));
   const molecule=group?.id==="chem-molecules";
   const motion=group?.id==="physics-graphs";
   const atom=group?.id==="chem-atoms";
@@ -82,17 +89,17 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     const next=makeSciencePresetItem(id,item.x+item.width/2,item.y+item.height/2,()=>item.id);
     setDraft(previous=>({...copyItem(next),id:item.id,x:item.x,y:item.y,
       width:item.width,height:item.height,color:previous.color,graphGrid:previous.graphGrid}));
-    setSelected(0);setFirst(0);setSecond(1);setActiveLink(null);
+    setSelected(-1);setFirst(0);setSecond(1);setActiveLink(null);
   };
 
   const addPoint=(position?:{x:number;y:number})=>{
-    if(points.length>=32)return;
+    if(points.length>=40)return;
     const parent=selectedPoint??{x:0,y:0,label:""};
     const nextPoint={
       x:clamp(position?.x??Math.round((parent.x+1.4)*10)/10,xMin,xMax),
       y:clamp(position?.y??Math.round((parent.y-1.3)*10)/10,yMin,yMax),
-      label:atom?"e⁻":circuit?"":isPhysics?"P"+String(points.length+1):"C",
-      color:atom?"#5579cc":isPhysics?"#2d5bad":"#40546e"
+      label:atom?"e⁻":circuit?"":isPhysics?"P"+String(points.length+1):placingElement??"C",
+      color:atom?"#5579cc":isPhysics?"#2d5bad":placingElement=== "O"?"#c65b66":placingElement==="N"?"#567dbc":"#40546e"
     };
     setDraft(previous=>({...previous,graphPoints:[...(previous.graphPoints??[]),nextPoint]}));
     setSelected(points.length);setSecond(points.length);
@@ -116,7 +123,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const clear=()=>{
     setDraft(old=>({...old,graphPoints:[],graphSegments:[],graphCircles:[],
       graphPolygons:[],graphAngles:[],graphMidpoints:[],graphConnectPoints:false}));
-    setSelected(0);setFirst(0);setSecond(1);
+    setSelected(-1);setFirst(0);setSecond(1);
   };
   const canvasToGraph=(clientX:number,clientY:number,element:SVGSVGElement)=>{
     const rect=element.getBoundingClientRect();
@@ -141,7 +148,18 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const move=(event:PointerEvent<SVGSVGElement>)=>{
     const moving=drag.current;if(!moving||moving.pointerId!==event.pointerId)return;
     event.preventDefault();
-    patchPoint(moving.index,canvasToGraph(event.clientX,event.clientY,event.currentTarget));
+    const mouse=canvasToGraph(event.clientX,event.clientY,event.currentTarget);
+    if(moving.kind==="point"){patchPoint(moving.index,mouse);return}
+    if(moving.kind==="point-label"){
+      const origin=points[moving.index];if(!origin)return;
+      patchPoint(moving.index,{labelDx:clamp(+(mouse.x-origin.x).toFixed(2),-6,6),
+        labelDy:clamp(+(mouse.y-origin.y).toFixed(2),-4,4)});
+      return;
+    }
+    const seg=segments[moving.index],a=seg&&points[seg.a],b=seg&&points[seg.b];
+    if(!a||!b)return;
+    editLink(moving.index,{labelDx:clamp(+(mouse.x-(a.x+b.x)/2).toFixed(2),-6,6),
+      labelDy:clamp(+(mouse.y-(a.y+b.y)/2).toFixed(2),-4,4)});
   };
 
   const pointName=(index:number)=>points[index]?.label?.trim()||"Точка "+(index+1);
@@ -159,7 +177,20 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
       aria-label={isPhysics?"Редактор физики":"Редактор химии"}
       onPointerDown={e=>e.stopPropagation()}>
       <header className="lektrus-science-header">
-        <div className="lektrus-science-symbol" aria-hidden="true">{circuit?"⏚":isPhysics?"F⃗":"⚛"}</div>
+        <div className="lektrus-science-symbol" aria-hidden="true">
+          <svg width="31" height="31" viewBox="0 0 40 40" fill="none">
+           {molecule?<><circle cx="11" cy="29" r="4.8" stroke="currentColor" strokeWidth="1.8"/>
+             <circle cx="29" cy="29" r="4.8" stroke="currentColor" strokeWidth="1.8"/>
+             <circle cx="20" cy="10" r="5.8" stroke="currentColor" strokeWidth="1.8"/>
+             <path d="M13 25L18 15M27 25L22 15" stroke="currentColor" strokeWidth="1.6"/></>:
+             optics?<><path d="M4 31h32M20 5v26" stroke="currentColor" strokeDasharray="3 3" strokeWidth="1.4"/>
+              <path d="M7 8l13 23L33 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M29 12l4-4-5 1" stroke="currentColor" strokeWidth="1.6"/></>:
+             <><circle cx="20" cy="20" r="3.4" fill="currentColor"/>
+              <path d="M20 20V4m0 16l13 11M20 20L7 31M20 20H36" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              <path d="M16 8l4-5 4 5M31 16l5 4-5 4" stroke="currentColor" strokeWidth="1.7"/></>}
+          </svg>
+        </div>
         <div><small>{isPhysics?"ФИЗИКА · КОНСТРУКТОР":"ХИМИЯ · КОНСТРУКТОР"}</small>
           <h2>{group?.label??(isPhysics?"Физическая схема":"Химическая структура")}</h2></div>
         <button type="button" className="lektrus-science-close"
@@ -180,6 +211,19 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
             <input maxLength={100} value={draft.text}
               onChange={e=>setDraft(old=>({...old,text:e.target.value}))}/>
           </label>
+          {molecule&&<section className="lektrus-molecule-picker">
+            <strong>Добавить химический элемент</strong>
+            <input value={elementQuery} onChange={e=>setElementQuery(e.target.value)}
+              placeholder="Поиск: название, символ или номер" aria-label="Поиск элемента"/>
+            <div className="lektrus-molecule-elements" role="listbox" aria-label="118 химических элементов">
+             {filteredElements.map(el=><button type="button" key={el.number}
+              draggable onDragStart={e=>{e.dataTransfer.setData("application/x-lektrus-element",el.symbol);e.dataTransfer.effectAllowed="copy";}}
+              className={placingElement===el.symbol?"active":""}
+              onClick={()=>{setPlacingElement(el.symbol);setElementNotice("Нажмите на поле чертежа или перетащите элемент на него.")}}>
+              <b>{el.symbol}</b><span>{el.name}</span><small>{el.number}</small></button>)}
+            </div>
+            <small>{elementNotice||"Выберите элемент в списке и укажите его место на чертеже."}</small>
+          </section>}
           <div className="lektrus-science-subhead"><strong>{isPhysics?"Опорные точки":"Атомы и точки"}</strong><span>{points.length}</span></div>
           <p className="lektrus-science-description">{drawingHelp}</p>
           <div className="lektrus-science-points">
@@ -190,8 +234,8 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
             {!points.length&&<span className="lektrus-science-empty">Добавьте первую точку</span>}
           </div>
           <div className="lektrus-science-point-actions">
-            <button type="button" onClick={()=>addPoint()} disabled={points.length>=32}>+ {isPhysics?"Точка":"Атом"}</button>
-            <button type="button" disabled={!points.length} onClick={removeSelected} title="Удалить выбранную точку со всеми связанными линиями">Удалить</button>
+            <button type="button" onClick={()=>addPoint()} disabled={points.length>=40}>+ {isPhysics?"Точка":"Атом"}</button>
+            <button type="button" disabled={!selectedPoint} onClick={removeSelected} title="Удалить выбранную точку со всеми связанными линиями">Удалить</button>
           </div>
           {selectedPoint&&<div className="lektrus-science-point-editor">
             <label>{isPhysics?"Подпись":"Элемент или подпись"}
@@ -199,11 +243,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                 onChange={e=>patchPoint(selected,{label:e.target.value,
                   ...(!isPhysics&&atomColors[e.target.value]?{color:atomColors[e.target.value]}:{})})}/>
             </label>
-            {!isPhysics&&<div className="lektrus-science-elements">
-              {options.map(element=><button type="button" key={element} title={"Атом "+element}
-                className={selectedPoint.label===element?"active":""}
-                onClick={()=>patchPoint(selected,{label:element,color:atomColors[element]})}>{element}</button>)}
-            </div>}
+
             <div className="lektrus-science-xy">
               <label>X<input type="number" step=".5" min={xMin} max={xMax}
                 value={selectedPoint.x} onChange={e=>patchPoint(selected,{x:clamp(Number(e.target.value)||0,xMin,xMax)})}/></label>
@@ -277,9 +317,20 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
         <div className="lektrus-science-preview">
           <div className="lektrus-science-preview-head"><strong>Чертёж</strong><span>Перетаскивайте точки · двойной щелчок добавляет</span></div>
           <svg viewBox="0 0 520 370" role="img" aria-label="Редактируемая схема"
+            onClick={event=>{if(molecule&&placingElement&&event.target===event.currentTarget){
+              addPoint(canvasToGraph(event.clientX,event.clientY,event.currentTarget));
+            }}}
+            onDragOver={molecule?event=>{event.preventDefault();event.dataTransfer.dropEffect="copy"}:undefined}
+            onDrop={molecule?event=>{event.preventDefault();
+              const label=event.dataTransfer.getData("application/x-lektrus-element");
+              if(!periodicElements.some(el=>el.symbol===label)||points.length>=40)return;
+              const pos=canvasToGraph(event.clientX,event.clientY,event.currentTarget);
+              setDraft(old=>({...old,graphPoints:[...(old.graphPoints??[]),{...pos,label,color:"#45687e"}]}));
+              setSelected(points.length);
+            }:undefined}
             onDoubleClick={event=>{
               // Only blank canvas, not a node, symbol or existing line.
-              if(event.target!==event.currentTarget||points.length>=32)return;
+              if(event.target!==event.currentTarget||points.length>=40||Boolean(placingElement))return;
               event.preventDefault();
               addPoint(canvasToGraph(event.clientX,event.clientY,event.currentTarget));
             }}
@@ -334,10 +385,25 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                   <ScienceCircuitGlyph type={seg.scienceCircuitSymbol}
                     x={(p.x+q.x)/2} y={(p.y+q.y)/2}
                     angle={Math.atan2(q.y-p.y,q.x-p.x)*180/Math.PI}/>}
-                {seg.label&&<text className="lektrus-science-link-label"
-                  x={p.x+(q.x-p.x)*(seg.label==="Зеркало"?.78:seg.scienceArrow?.36:.58)}
-                  y={p.y+(q.y-p.y)*(seg.label==="Зеркало"?.78:seg.scienceArrow?.36:.58)-13}
-                  textAnchor="middle">{seg.label}</text>}
+                {seg.label&&(()=>{
+                  const anchor={x:(p.x+q.x)/2,y:(p.y+q.y)/2};
+                  const defaultX=p.x+(q.x-p.x)*(seg.label==="Зеркало"?.78:seg.scienceArrow?.36:.58);
+                  const defaultY=p.y+(q.y-p.y)*(seg.label==="Зеркало"?.78:seg.scienceArrow?.36:.58)-13;
+                  const lx=seg.labelDx!=null?anchor.x+seg.labelDx*31:defaultX;
+                  const ly=seg.labelDy!=null?anchor.y-seg.labelDy*31:defaultY;
+                  return <g className="lektrus-science-label-handle" onPointerDown={e=>{
+                    e.stopPropagation();e.preventDefault();setActiveLink(i);
+                    drag.current={pointerId:e.pointerId,index:i,kind:"segment-label"};
+                    e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId);
+                  }}>
+                   {activeLink===i&&<path d={"M"+anchor.x+" "+anchor.y+"L"+lx+" "+(ly+3)}
+                    stroke="#89a7cf" strokeDasharray="3 3" strokeWidth=".9" pointerEvents="none"/>}
+                   <rect x={lx-Math.max(21,seg.label.length*3.5)} y={ly-11}
+                     width={Math.max(42,seg.label.length*7)} height="19" fill="transparent"/>
+                   <text className="lektrus-science-link-label"
+                    x={lx} y={ly} textAnchor="middle">{seg.label}</text>
+                  </g>;
+                })()}
                 <line x1={p.x} y1={p.y} x2={q.x} y2={q.y}
                   stroke="transparent" strokeWidth="17" style={{cursor:"pointer"}}
                   pointerEvents="stroke" onClick={()=>setActiveLink(i)}
@@ -346,22 +412,38 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
             })}
             {points.map((point,i)=>{
               const p=canvasPoint(point);
-              const pointColor=point.color??(isPhysics?"#3a6bc0":"#587f96");
+              const isOrigin=isPhysics&&Math.abs(point.x)<.12&&Math.abs(point.y)<.12;
+              const tip=isPhysics&&segments.some(seg=>seg.scienceArrow===true&&seg.b===i);
+              const pxPer=motion?32:31;
+              const defaultDx=(point.label==="O"&&isPhysics)?0.55:0;
+              const defaultDy=(point.label==="O"&&isPhysics)?0.62:(isPhysics?0.45:0.62);
+              const lx=p.x+(point.labelDx??defaultDx)*pxPer;
+              const ly=p.y-(point.labelDy??defaultDy)*pxPer;
               return <g key={i} className={"lektrus-science-node"+(selected===i?" selected":"")}>
-                <circle cx={p.x} cy={p.y}
-                  r={isPhysics?(selected===i?6.3:4.1):(selected===i?10:8.5)}
-                  fill={isPhysics&&selected!==i?"#fff":pointColor}
-                  stroke={isPhysics?"#5277b0":"#fff"}
-                  strokeWidth={selected===i?2.2:1.4}
-                  onPointerDown={event=>{
+                {(selected===i||isOrigin||(!isPhysics&&!tip))&&<circle cx={p.x} cy={p.y}
+                  r={selected===i?4.5:isOrigin?2.7:atom?4.8:4}
+                  fill={selected===i?"#f2f6fc":isOrigin?"#4b6ea3":point.color??"#53768a"}
+                  stroke={selected===i?"#557dbc":"#fff"} strokeWidth={selected===i?1.8:1}/>}
+                <circle cx={p.x} cy={p.y} r="13.5" fill="transparent"
+                  className="lektrus-science-point-hit" onPointerDown={event=>{
                     event.preventDefault();event.stopPropagation();
                     setSelected(i);
-                    drag.current={pointerId:event.pointerId,index:i};
+                    drag.current={pointerId:event.pointerId,index:i,kind:"point"};
                     event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
                   }}/>
-                {point.label&&<text x={p.x} y={p.y+((optics&&Math.abs(point.x)<.05&&Math.abs(point.y)<.05)?19:-(isPhysics?13:20))}
-                  fontSize={isPhysics?11.5:12} fontWeight="600" textAnchor="middle" fill="#465e7e"
-                  pointerEvents="none">{point.label}</text>}
+                {point.label&&<g className="lektrus-science-label-handle" onPointerDown={event=>{
+                  event.preventDefault();event.stopPropagation();setSelected(i);
+                  drag.current={pointerId:event.pointerId,index:i,kind:"point-label"};
+                  event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
+                }}>
+                  {selected===i&&<line x1={p.x} y1={p.y} x2={lx} y2={ly+3}
+                    stroke="#8daacf" strokeWidth=".9" strokeDasharray="3 3" pointerEvents="none"/>}
+                  <rect x={lx-Math.max(15,point.label.length*3.6)} y={ly-12}
+                    width={Math.max(30,point.label.length*7.2)} height="19" fill="transparent"/>
+                  <text x={lx} y={ly} fontSize={isPhysics?11.5:12}
+                    fontWeight="560" textAnchor="middle" fill="#506e8c"
+                    pointerEvents="none">{point.label}</text>
+                </g>}
               </g>;
             })}
           </svg>

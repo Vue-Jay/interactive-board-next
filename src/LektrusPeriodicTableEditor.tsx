@@ -3,6 +3,7 @@ import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {periodicElements,periodicFamilies,type ElementFamily} from "./lektrusPeriodicElements";
 import LektrusPeriodicTableView from "./LektrusPeriodicTableView";
+import LektrusElementInfo from "./LektrusElementInfo";
 
 type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void};
 export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose}:Props){
@@ -72,17 +73,12 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
                 return <button type="button" key={number} title={"Убрать "+el.name}
                   onClick={()=>pick(number)}><b>{el.symbol}</b><span>{el.name}</span><span aria-hidden="true">×</span></button>;
               })}
-              {!selected.length&&<p>Нажмите на элемент таблицы, чтобы выделить его.</p>}
+              {!selected.length&&<p>Нажмите на элемент таблицы, чтобы просмотреть и выделить его.</p>}
             </div>
             <button className="lektrus-periodic-reset" type="button" disabled={!selected.length} onClick={()=>{setSelected([]);setNotice("")}}>Сбросить выделение</button>
-            {focused&&<section className="lektrus-periodic-details">
-              <div><span>ЭЛЕМЕНТ № {focused.number}</span><strong>{focused.symbol}</strong></div>
-              <h3>{focused.name}</h3>
-              <p>{focused.period}-й период{focused.family==="lanthanoid"||focused.family==="actinoid"?"":", "+focused.group+"-я группа"}</p>
-              <button type="button" onClick={()=>pick(focused.number)}>
-                {selected.includes(focused.number)?"Снять выделение":"Выделить элемент"}
-              </button>
-            </section>}
+            {focused&&<LektrusElementInfo compact number={focused.number}
+              isSelected={selected.includes(focused.number)}
+              onToggle={()=>pick(focused.number)}/>}
           </aside>
           <div className="lektrus-periodic-preview">
             <div className="lektrus-periodic-preview-header"><strong>Периодическая система</strong>

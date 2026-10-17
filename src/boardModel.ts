@@ -109,6 +109,7 @@ export type Item = {
   graphPurpose?: "function" | "coordinates" | "geometry" | "unit-circle" | "number-line";
   graphFigureId?: string;
   scienceCircuit?: import("./lektrusCircuitModel").CircuitDocument;
+  scienceAtomModel?: import("./lektrusAtomModel").AtomModel;
   sciencePeriodicHighlights?: number[];
   sciencePeriodicShowNames?: boolean;
   graphRotationX?: number;
@@ -126,9 +127,9 @@ export type Item = {
   graphA?: number; graphB?: number; graphC?: number;
   graphXMin?: number; graphXMax?: number; graphYMin?: number; graphYMax?: number;
   graphGrid?: boolean;
-  graphPoints?: { x:number; y:number; label:string; color?: string; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphPoints?: { x:number; y:number; label:string; color?: string; labelDx?:number;labelDy?:number; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphShowLabels?: boolean;
-  graphSegments?: { a:number; b:number; kind:"segment"|"line"|"ray"; label:string; measure:boolean; bondOrder?:1|2|3; scienceArrow?:boolean; scienceCircuitSymbol?:import("./ScienceCircuitGlyph").CircuitSymbol; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphSegments?: { a:number; b:number; kind:"segment"|"line"|"ray"; label:string; measure:boolean; bondOrder?:1|2|3; scienceArrow?:boolean; scienceCircuitSymbol?:import("./ScienceCircuitGlyph").CircuitSymbol; labelDx?:number; labelDy?:number; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphAngles?: { a:number; vertex:number; b:number; label:string; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphCircles?: { center:number; edge:number; label:string; measure:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphPolygons?: { points:number[]; label:string; measure:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
@@ -272,6 +273,23 @@ export function parseDocument(raw: string): DocumentData {
 
       if (Array.isArray(i.graphSegments)&&i.graphSegments.some((seg:{bondOrder?:unknown;scienceArrow?:unknown;scienceCircuitSymbol?:unknown})=>(seg.bondOrder!=null&&(typeof seg.bondOrder!=="number"||![1,2,3].includes(seg.bondOrder)))||(seg.scienceArrow!=null&&typeof seg.scienceArrow!=="boolean")||(seg.scienceCircuitSymbol!=null&&typeof seg.scienceCircuitSymbol!=="string"))) throw new Error("Повреждены связи предметной схемы");
       if(i.scienceCircuit!=null&&!circuitIsDocument(i.scienceCircuit))throw new Error("Повреждена схема электрической цепи");
+      if(i.scienceAtomModel!=null){
+        const model=i.scienceAtomModel;
+        if(!model||!Number.isInteger(model.atomicNumber)||model.atomicNumber<1||model.atomicNumber>118||
+          !["shell","orbit","lewis","nucleus"].includes(model.mode)||
+          typeof model.showElectronConfiguration!=="boolean"||
+          !Number.isFinite(model.labelX)||Math.abs(model.labelX)>235||
+          !Number.isFinite(model.labelY)||model.labelY< -90||model.labelY>20)
+            throw new Error("Повреждена схема атома");
+      }
+      for(const list of [i.graphPoints,i.graphSegments]){
+        if(!list)continue;
+        if(!Array.isArray(list)||list.some(o=>!o||
+          (o.labelDx!=null&&(!Number.isFinite(o.labelDx)||Math.abs(o.labelDx)>6))||
+          (o.labelDy!=null&&(!Number.isFinite(o.labelDy)||Math.abs(o.labelDy)>4))))
+          throw new Error("Повреждено положение подписи");
+      }
+
       if(i.sciencePeriodicHighlights!=null&&(!Array.isArray(i.sciencePeriodicHighlights)||i.sciencePeriodicHighlights.length>24||i.sciencePeriodicHighlights.some((value:unknown)=>typeof value!=="number"||!Number.isInteger(value)||value<1||value>118)))throw new Error("Некорректно выделены элементы периодической таблицы");
       if(i.sciencePeriodicShowNames!=null&&typeof i.sciencePeriodicShowNames!=="boolean")throw new Error("Некорректны подписи периодической таблицы");
       if(i.graphRotationX!=null&&(!Number.isFinite(i.graphRotationX)||Math.abs(i.graphRotationX)>3600))throw new Error("Повреждён угол поворота фигуры");
