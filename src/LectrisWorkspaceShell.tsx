@@ -46,7 +46,7 @@ function NavGlyph({ name }: { name:NavIcon }) {
 type Props={children:ReactNode;section:string;role:AccountRole;isAdmin:boolean;name:string};
 export default function LectrisWorkspaceShell({children,section,role,isAdmin,name}:Props) {
   const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem("lectris.shell.collapsed")==="1"}catch{return false}});
-  const [moreOpen,setMoreOpen]=useState(false);
+  const [morePage,setMorePage]=useState(false);
   const [menuQuery,setMenuQuery]=useState("");
   const [commandOpen,setCommandOpen]=useState(false);
   const [commandQuery,setCommandQuery]=useState("");
@@ -63,7 +63,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
 
   const available=items.filter(x=>(!x.teacher||role==="teacher")&&(!x.admin||isAdmin));
   const active=available.some(x=>x.id===section)?section:"";
-  useEffect(()=>{setMoreOpen(false);setMenuQuery("");setCommandOpen(false);setCommandQuery("")},[section]);
+  useEffect(()=>{setMenuQuery("");setCommandOpen(false);setCommandQuery("")},[section]);
   useEffect(()=>{
     const onKey=(event:KeyboardEvent)=>{
       if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
@@ -73,14 +73,8 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
     window.addEventListener("keydown",onKey);
     return()=>window.removeEventListener("keydown",onKey);
   },[]);
-  useEffect(()=>{
-    if(!moreOpen)return;
-    const onEscape=(event:KeyboardEvent)=>{if(event.key==="Escape")setMoreOpen(false)};
-    window.addEventListener("keydown",onEscape);
-    return()=>window.removeEventListener("keydown",onEscape);
-  },[moreOpen]);
   const move=(target:string)=>{
-    setMoreOpen(false);
+    setMorePage(false);
     setMenuQuery("");
     setCommandOpen(false);
     setCommandQuery("");
@@ -88,6 +82,7 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
   const toggle=()=>setCollapsed(prev=>{const next=!prev;try{localStorage.setItem("lectris.shell.collapsed",next?"1":"0")}catch{}return next});
+  const moreItems=available.filter(x=>!["","boards","assignments","schedule"].includes(x.id));
   const mainTabs=available.filter(x=>["","boards","assignments","schedule"].includes(x.id));
   const commandResults=available.filter(entry=>entry.label.toLocaleLowerCase("ru-RU").includes(commandQuery.trim().toLocaleLowerCase("ru-RU")));
   const navButton=(entry:NavItem, className="")=><button key={entry.id} type="button" className={["lectris-nav-link",className,active===entry.id?"is-active":""].filter(Boolean).join(" ")} title={entry.label} aria-label={entry.label} aria-current={active===entry.id?"page":undefined} onClick={()=>move(entry.id)}><NavGlyph name={entry.icon}/><span>{entry.label}</span>{entry.id==="notifications"&&unreadCount>0&&<b className="lectris-unread-badge">{unreadCount>99?"99+":unreadCount}</b>}</button>;
@@ -123,11 +118,11 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
           {available.filter(x=>["profile","settings","admin"].includes(x.id)).map(x=>navButton(x))}
         </div>
       </aside>
-      <div className="lectris-workspace-stage">{children}</div>
+      <div className="lectris-workspace-stage">{morePage?<main className="lektrus-more-page"><header className="lektrus-more-page-title"><div><span>НАВИГАЦИЯ</span><h1>Ещё</h1><p>Все остальные разделы Lektrus</p></div></header><label className="lektrus-more-page-search"><NavGlyph name="search"/><input type="search" placeholder="Найти раздел" aria-label="Найти раздел" value={menuQuery} onChange={event=>setMenuQuery(event.target.value)}/></label><div className="lektrus-more-page-grid">{moreItems.filter(x=>x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU"))).map(entry=><button key={entry.id} type="button" className="lektrus-more-page-item" onClick={()=>move(entry.id)}><span className="lektrus-more-page-icon"><NavGlyph name={entry.icon}/></span><span className="lektrus-more-page-label">{entry.label}</span><span aria-hidden="true" className="lektrus-more-page-arrow">›</span>{entry.id==="notifications"&&unreadCount>0&&<b>{unreadCount}</b>}</button>)}</div>{!moreItems.some(x=>x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU")))&&<p className="lektrus-more-page-empty">Ничего не найдено</p>}</main>:children}</div>
     </div>
     <nav className="lectris-mobile-bottom" aria-label="Навигация Lektrus">
       {mainTabs.map(x=>navButton(x,"lectris-mobile-tab"))}
-      <button type="button" className={`lectris-nav-link lectris-mobile-tab ${moreOpen||!mainTabs.some(tab=>tab.id===active)?"is-active":""}`} aria-label="Ещё разделы" aria-expanded={moreOpen} onClick={()=>setMoreOpen(v=>!v)}><NavGlyph name="menu"/><span>Ещё</span></button>
+      <button type="button" className={`lectris-nav-link lectris-mobile-tab ${morePage||!mainTabs.some(tab=>tab.id===active)?"is-active":""}`} aria-label="Ещё разделы" aria-current={morePage?"page":undefined} onClick={()=>{setMenuQuery("");setMorePage(true)}}><NavGlyph name="menu"/><span>Ещё</span></button>
     </nav>
     {commandOpen&&<div className="lectris-command-overlay" onPointerDown={event=>{if(event.target===event.currentTarget)setCommandOpen(false)}}>
       <section className="lectris-command-dialog" role="dialog" aria-modal="true" aria-label="Быстрый переход по разделам">
@@ -146,16 +141,6 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
         <div className="lectris-command-hint">Enter: первый результат · Esc: закрыть</div>
       </section>
     </div>}
-    {moreOpen&&<>
-      <button type="button" tabIndex={-1} aria-label="Закрыть меню разделов"
-        className="lectris-mobile-more-backdrop lektrus-more-overlay" onClick={()=>setMoreOpen(false)}/>
-      <div className="lectris-mobile-more lektrus-more-dialog" role="dialog" aria-modal="true" aria-label="Другие разделы">
-        <div className="lectris-mobile-more-head"><strong>Разделы Lektrus</strong><button type="button" onClick={()=>setMoreOpen(false)} aria-label="Закрыть">×</button></div>
-        <input type="search" className="lectris-mobile-more-search" placeholder="Найти раздел"
-          value={menuQuery} onChange={event=>setMenuQuery(event.target.value)} aria-label="Поиск раздела"/>
-        {available.filter(x=>!mainTabs.some(tab=>tab.id===x.id)&&x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU"))).map(x=>navButton(x))}
-        {!available.some(x=>!mainTabs.some(tab=>tab.id===x.id)&&x.label.toLocaleLowerCase("ru-RU").includes(menuQuery.trim().toLocaleLowerCase("ru-RU")))&&<p className="lectris-mobile-more-empty">Разделы не найдены</p>}
-      </div>
-    </>}
+
   </div>;
 }
