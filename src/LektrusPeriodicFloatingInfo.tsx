@@ -101,7 +101,7 @@ export default function LektrusPeriodicFloatingInfo({
   transformOrigin:"top right"
  };
  const content=<section ref={cardRef}
-   className={"lektrus-chem-window lektrus-chem-window--combined"+(fixed?" is-editor":" is-board")}
+   className={"lektrus-chem-window lektrus-chem-window--combined"+(atomOpen?" is-expanded":"")+(fixed?" is-editor":" is-board")}
    style={fixed?editorStyle:boardStyle}
    aria-label={"Информация об элементе "+element.name}
    onPointerDown={event=>event.stopPropagation()}
@@ -148,7 +148,7 @@ export default function LektrusPeriodicFloatingInfo({
     </div>
     <div className="lektrus-chem-atom-drawing">
      <LektrusAtomView model={{atomicNumber:number,mode,labelX:0,labelY:0,showElectronConfiguration:true}}
-       labelScale={1.5}/>
+       labelScale={1.5} compactInPanel/>
     </div>
    </div>}
   </section>;
