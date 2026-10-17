@@ -8224,7 +8224,6 @@ export default function App() {
             if(savedRaw&&board.role!=="viewer"){
               const local=parseDocument(savedRaw);
               if(documentFingerprint(local)!==documentFingerprint(parsed)){
-                const remoteIds=new Set(parsed.items.map(item=>item.id));
                 parsed={...parsed,
                   subject:local.subject||parsed.subject,
                   items:[...local.items,...parsed.items.filter(item=>!local.items.some(own=>own.id===item.id))]};
