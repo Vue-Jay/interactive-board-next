@@ -24,6 +24,10 @@ export default function LektrusPeriodicTableView({
     x={bx+i*step+cell/2} y={55} textAnchor="middle">{school?["I","II","III","IV","V","VI","VII","VIII"][i]:i+1}</text>)}
   {Array.from({length:7},(_,i)=><text key={i} className="lektrus-periodic-index"
     x="23" y={school?by+(i<=2?i:3+(i-3)*2)*step+28:by+i*step+28} textAnchor="middle">{i+1}</text>)}
+  {school&&Array.from({length:4},(_,i)=><g key={"subgroup-"+i}>
+    <text x="8" y={by+(3+i*2)*step+12} fontSize="9" fill="#7485a2">А</text>
+    <text x="8" y={by+(4+i*2)*step+12} fontSize="9" fill="#7485a2">Б</text>
+  </g>)}
   <text x="45" y={school?657:470} className="lektrus-periodic-lanthanoid-label">Лантаноиды</text>
   <text x="45" y={school?711:527} className="lektrus-periodic-lanthanoid-label">Актиноиды</text>
   {!school&&[{period:6,label:"57–71"},{period:7,label:"89–103"}].map(v=>{
