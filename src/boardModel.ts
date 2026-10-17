@@ -116,7 +116,7 @@ export type Item = {
 // Ink is stored in its own drawing collection, not in regular board objects.
 // "after" preserves its visual position relative to normal items on old boards.
 export type InkEntry = { after: number; stroke: Item };
-export type DocumentData = { version: 1; title: string; view: View; items: Item[]; ink?: InkEntry[]; background?: BoardBackground; backgroundShared?: boolean };
+export type DocumentData = { version: 1; title: string; subject?: string; view: View; items: Item[]; ink?: InkEntry[]; background?: BoardBackground; backgroundShared?: boolean };
 export const isInkItem = (item: Item): boolean => item.kind === "pen" || item.kind === "marker";
 
 export function expandDocumentInk(data: DocumentData): Item[] {
@@ -137,7 +137,7 @@ export function expandDocumentInk(data: DocumentData): Item[] {
 // so logical objects do not imply thousands of SVG/DOM nodes.
 export function packDocumentInk(data: DocumentData): DocumentData {
   const all = expandDocumentInk(data);
-  return { version: 1, title: data.title, view: data.view, items: all, background:normalizeBoardBackground(data.background), backgroundShared:data.backgroundShared!==false };
+  return { version: 1, title: data.title, subject:typeof data.subject==="string"?data.subject.trim().slice(0,80):"", view: data.view, items: all, background:normalizeBoardBackground(data.background), backgroundShared:data.backgroundShared!==false };
 }
 export const STORAGE_KEY = "lesson-board.document.v1";
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 1e9;
@@ -169,6 +169,7 @@ export function parseDocument(raw: string): DocumentData {
   }
   const allowedKinds = ["sticky","text","shape","pen","marker","image","pdf","frame","connector","comment","table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia"];
   if (!d || d.version !== 1 || typeof d.title !== "string" || d.title.length > 10000 || !point(d.view) || !finite(d.view.zoom) || d.view.zoom < .1 || d.view.zoom > 8 || !Array.isArray(d.items) || d.items.length > 10000) throw new Error("Неверный формат доски");
+  if(d.subject!=null&&(typeof d.subject!=="string"||d.subject.length>80))throw new Error("Некорректный предмет доски");
   const ids = new Set<string>();
   let pointCount = 0;
   for (const i of d.items) {
