@@ -82,3 +82,72 @@ export function projectSolidAxis(x:number,y:number,z:number,rotationX:number,rot
   const u=x*Math.cos(yaw)-y*Math.sin(yaw),v=x*Math.sin(yaw)+y*Math.cos(yaw);
   return {x:u,y:z*Math.cos(pitch)+v*Math.sin(pitch)};
 }
+
+/** Painter-sorted opaque surfaces for school solids.
+ * Faces are regenerated from physical dimensions instead of reusing the sparse
+ * editable wireframe vertices, so a cone/cylinder stays smooth while orbiting.
+ */
+export type SolidSurface={
+  points:{x:number;y:number}[];
+  depth:number; fill:string; outline:boolean;
+};
+export function projectSolidSurfaces(item:Item,rotationX:number,rotationY:number):SolidSurface[] {
+  const id=item.graphFigureId;
+  if(!isSolidFigure(id)||id==="sphere")return [];
+  const [length,depth,height]=dimensions(item);
+  const half=height/2;
+  const faces:{vertices:SolidPoint[];outline:boolean}[]=[];
+  const vertices=solidWorldPoints(item);
+  const face=(indices:number[])=>faces.push({vertices:indices.map(i=>vertices[i]),outline:true});
+  if(id==="cube"||id==="rectangular-prism"){
+    [[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]].forEach(face);
+  }else if(id==="prism"){
+    [[0,2,1],[3,4,5],[0,1,4,3],[1,2,5,4],[2,0,3,5]].forEach(face);
+  }else if(id==="pyramid"){
+    [[0,3,2,1],[0,1,4],[1,2,4],[2,3,4],[3,0,4]].forEach(face);
+  }else if(id==="triangular-pyramid"){
+    [[0,2,1],[0,1,3],[1,2,3],[2,0,3]].forEach(face);
+  }else if(id==="cylinder"||id==="cone"){
+    const count=64,radius=length/2;
+    const ring=(z:number)=>Array.from({length:count},(_,i)=>{
+      const angle=i*2*Math.PI/count;
+      return {x:radius*Math.cos(angle),y:radius*Math.sin(angle),z};
+    });
+    const bottom=ring(-half),top=id==="cylinder"?ring(half):[];
+    // The outlines of the caps also describe the visible ellipse accurately.
+    faces.push({vertices:[...bottom].reverse(),outline:true});
+    if(id==="cylinder")faces.push({vertices:top,outline:true});
+    for(let i=0;i<count;i++){
+      const j=(i+1)%count;
+      faces.push({vertices:id==="cylinder"?
+        [bottom[i],bottom[j],top[j],top[i]]:
+        [bottom[i],bottom[j],{x:0,y:0,z:half}],outline:false});
+    }
+  }
+  const yaw=rotationY*Math.PI/180,pitch=rotationX*Math.PI/180;
+  const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  const extent=Math.max(1,Math.hypot(length,depth,height)),zoom=8/extent;
+  const transform=(v:SolidPoint)=>{
+    const x=v.x*cy-v.y*sy,t=v.x*sy+v.y*cy;
+    return {x:x*zoom,y:(v.z*cp+t*sp)*zoom,depth:t*cp-v.z*sp};
+  };
+  const light={x:-.5,y:-.6,z:.85};
+  const surfaces=faces.map((surface)=>{
+    const vertices=surface.vertices;
+    const a=vertices[0],b=vertices[1],c=vertices[2];
+    const u={x:b.x-a.x,y:b.y-a.y,z:b.z-a.z};
+    const v={x:c.x-a.x,y:c.y-a.y,z:c.z-a.z};
+    const n={x:u.y*v.z-u.z*v.y,y:u.z*v.x-u.x*v.z,z:u.x*v.y-u.y*v.x};
+    const magnitude=Math.hypot(n.x,n.y,n.z)||1;
+    const lambert=(n.x*light.x+n.y*light.y+n.z*light.z)/magnitude;
+    const tone=Math.round(57+19*Math.max(0,lambert));
+    const projection=vertices.map(transform);
+    return {
+      points:projection.map(p=>({x:p.x,y:p.y})),
+      depth:projection.reduce((sum,p)=>sum+p.depth,0)/projection.length,
+      fill:`hsl(211 58% ${tone}%)`,outline:surface.outline
+    };
+  });
+  // Greater camera depth is farther away. Opaque near faces cover hidden edges.
+  return surfaces.sort((a,b)=>b.depth-a.depth);
+}
