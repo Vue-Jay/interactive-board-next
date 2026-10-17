@@ -1,8 +1,8 @@
 /* Lektrus PWA: only the app shell and versioned public assets are cached.
    Board documents, invitations, authentication, Supabase and realtime are
    deliberately network-only. Offline access does NOT imply offline syncing. */
-const CACHE = "lektrus-shell-20261017-v1";
-const SHELL = ["/", "/manifest.webmanifest", "/pwa-icon.svg", "/lektrus-logo-sapphire.png"];
+const CACHE = "lektrus-shell-20261017-v2";
+const SHELL = ["/", "/manifest.webmanifest", "/pwa-icon.svg", "/lektrus-icon-192.png", "/lektrus-icon-512.png", "/lektrus-logo-sapphire.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
