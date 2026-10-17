@@ -94,6 +94,7 @@ if (nativeSourcesExpected) {
 console.log("Lektrus: Capacitor source projects, native packaging, and safe auth redirect verified.");
 
 assert.match(workflow,/Require persistent Android signing credentials/);
-assert.match(workflow,/apksigner.*verify/);
+assert.match(workflow,/APK_SIGNER/);
+assert.match(workflow,/verify --verbose --print-certs/);
 assert.match(workflow,/Lektrus-Android-Update-APK/);
 assert.match(gradle,/A stable keystore is required for APK updates/);
