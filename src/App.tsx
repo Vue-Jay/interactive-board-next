@@ -1206,7 +1206,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     <LektrusPeriodicTableView selected={item.sciencePeriodicHighlights??[]}
       showNames={item.sciencePeriodicShowNames!==false}/>
   </div>;
-  return <div className={`graph-view graph-purpose-${purpose} ${onPointMove?"graph-interactive":""}`}>
+  return <div className={`graph-view graph-purpose-${purpose} ${item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")?"science-graph":""} ${onPointMove?"graph-interactive":""}`}>
     <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small>y = {expression.replace(/^y\s*=\s*/i,"")}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onDoubleClick={e=>{if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
