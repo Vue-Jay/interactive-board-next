@@ -3,7 +3,7 @@ import {elementFacts} from "./lektrusElementFacts";
 
 type Props={
  selected?:number[];active?:number|null;showNames?:boolean;
- familyFilter?:ElementFamily|"all";onPick?:(number:number)=>void;
+ familyFilter?:ElementFamily|"all";onPick?:(number:number,event?:{ctrlKey:boolean;shiftKey:boolean})=>void;
  layout?:"school"|"long";showInfo?:boolean;onCloseInfo?:()=>void;onToggleInfo?:()=>void;
 };
 const bx=45,by=68,step=54,cell=49;
@@ -69,8 +69,8 @@ export default function LektrusPeriodicTableView({
       role={onPick?"button":undefined} tabIndex={onPick?0:undefined}
       aria-label={el.number+". "+el.name+" ("+el.symbol+"), масса "+compactMass}
       onPointerDown={onPick?e=>e.stopPropagation():undefined}
-      onClick={onPick?e=>{e.stopPropagation();onPick(el.number)}:undefined}
-      onKeyDown={onPick?e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();onPick(el.number)}}:undefined}>
+      onClick={onPick?e=>{e.stopPropagation();onPick(el.number,{ctrlKey:e.ctrlKey||e.metaKey,shiftKey:e.shiftKey})}:undefined}
+      onKeyDown={onPick?e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();onPick(el.number,{ctrlKey:e.ctrlKey||e.metaKey,shiftKey:e.shiftKey})}}:undefined}>
       <title>{el.number+". "+el.name+" ("+el.symbol+"), Ar ≈ "+compactMass}</title>
       <rect x={x} y={y} width={school?(el.row>=9?57:89):cell} height={school?47:cell} rx="4"
         stroke={chosen?"#2d60c8":focused?"#5b82b9":"#c5d4e7"}
