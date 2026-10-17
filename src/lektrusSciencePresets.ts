@@ -1,7 +1,6 @@
 import type {Item} from "./boardModel";
 import type {CircuitSymbol} from "./ScienceCircuitGlyph";
 import {makeMathPresetItem} from "./lektrusMathPresets";
-import {arrangeScienceLabels} from "./lektrusPhysicsLabelLayout";
 
 /** School diagrams only: symbols and qualitative constructions, never solved work. */
 export type SciencePresetId=
@@ -177,5 +176,5 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
       points=[A(0,0,"Ядро"),A(3.1,0,"e⁻"),A(0,3.1,"e⁻"),A(-3.1,0,"e⁻")];
       circles=[{center:0,edge:1,label:"Оболочка",measure:false}];break;
   }
-  return arrangeScienceLabels({...base,text:title,graphGrid:id.startsWith("physics-circuit-"),graphSnap:id.startsWith("physics-circuit-"),graphPoints:points,graphSegments:segments,graphPolygons:polygons,graphCircles:circles});
+  return {...base,text:title,graphGrid:id.startsWith("physics-circuit-"),graphSnap:id.startsWith("physics-circuit-"),graphPoints:points,graphSegments:segments,graphPolygons:polygons,graphCircles:circles};
 }
