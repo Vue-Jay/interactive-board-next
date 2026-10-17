@@ -21,12 +21,18 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
  const element=periodicElements[number-1],facts=elementFacts[number-1];
  if(!element||!facts)return null;
  const rect=anchor?.getBoundingClientRect();
+ const cardWidth=260,cardHeight=150;
+ const schoolX=(rect?.right??window.innerWidth*.7)+12;
+ const modernX=(rect?.left??70)+(rect?.width??900)*.245;
  const defaultInfo:XY=layout==="school"
-  ?{x:clamp((rect?.left??70)+(rect?.width??900)*.70,8,Math.max(8,window.innerWidth-268)),
-    y:clamp((rect?.top??130)+(rect?.height??620)*.025,8,Math.max(8,window.innerHeight-165))}
-  :{x:clamp((rect?.left??70)+(rect?.width??900)*.235,8,Math.max(8,window.innerWidth-268)),
-    y:clamp((rect?.top??130)+(rect?.height??600)*.09,8,Math.max(8,window.innerHeight-165))};
- const info=fixed?{...defaultInfo,x:defaultInfo.x+slot*13,y:defaultInfo.y+slot*15}:position??{...defaultInfo,x:defaultInfo.x+slot*18,y:defaultInfo.y+slot*23};
+  ?{x:clamp(schoolX,8,Math.max(8,window.innerWidth-cardWidth-12)),
+    y:clamp((rect?.top??130)+14,8,Math.max(8,window.innerHeight-cardHeight-12))}
+  :{x:clamp(modernX,8,Math.max(8,window.innerWidth-cardWidth-12)),
+    y:clamp((rect?.top??130)+(rect?.height??600)*.085,8,Math.max(8,window.innerHeight-cardHeight-12))};
+ const offset=slot*12;
+ const placement:XY={x:clamp(defaultInfo.x+offset,8,Math.max(8,window.innerWidth-cardWidth-8)),
+   y:clamp(defaultInfo.y+offset,8,Math.max(8,window.innerHeight-cardHeight-8))};
+ const info=fixed?placement:position??placement;
  const atom=atomPosition??{x:clamp(info.x-110,12,window.innerWidth-530),y:clamp(info.y+168,12,window.innerHeight-450)};
  const move=(e:PointerEvent<HTMLDivElement>)=>{
   const d=drag.current;if(!d||d.id!==e.pointerId)return;
