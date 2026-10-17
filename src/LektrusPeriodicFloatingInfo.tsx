@@ -6,10 +6,10 @@ import {atomViews,type AtomViewMode} from "./lektrusAtomModel";
 import LektrusAtomView from "./LektrusAtomView";
 
 type Props={number:number|null;layout:"school"|"long";anchor:HTMLElement|null;
- selected:boolean;onClose:()=>void;onToggle?:()=>void};
+ selected:boolean;onClose:()=>void;onToggle?:()=>void;fixed?:boolean;slot?:number};
 type XY={x:number;y:number};
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
-export default function LektrusPeriodicFloatingInfo({number,layout,anchor,selected,onClose,onToggle}:Props){
+export default function LektrusPeriodicFloatingInfo({number,layout,anchor,selected,onClose,onToggle,fixed=false,slot=0}:Props){
  const [position,setPosition]=useState<XY|null>(null);
  const [atomOpen,setAtomOpen]=useState(false);
  const [mode,setMode]=useState<AtomViewMode>("shell");
@@ -26,7 +26,7 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
     y:clamp((rect?.top??130)+(rect?.height??620)*.025,8,Math.max(8,window.innerHeight-165))}
   :{x:clamp((rect?.left??70)+(rect?.width??900)*.235,8,Math.max(8,window.innerWidth-268)),
     y:clamp((rect?.top??130)+(rect?.height??600)*.09,8,Math.max(8,window.innerHeight-165))};
- const info=position??defaultInfo;
+ const info=fixed?defaultInfo:position??{...defaultInfo,x:defaultInfo.x+slot*18,y:defaultInfo.y+slot*23};
  const atom=atomPosition??{x:clamp(info.x-110,12,window.innerWidth-530),y:clamp(info.y+168,12,window.innerHeight-450)};
  const move=(e:PointerEvent<HTMLDivElement>)=>{
   const d=drag.current;if(!d||d.id!==e.pointerId)return;
@@ -36,7 +36,7 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
   if(d.kind==="info")setPosition(next);else setAtomPosition(next);
  };
  const begin=(e:PointerEvent<HTMLDivElement>,kind:"info"|"atom")=>{
-  if((e.target as HTMLElement).closest("button"))return;
+  if((e.target as HTMLElement).closest("button")||(fixed&&kind==="info"))return;
   e.stopPropagation();e.preventDefault();
   drag.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,origin:kind==="info"?info:atom,kind};
   e.currentTarget.setPointerCapture(e.pointerId);
@@ -47,7 +47,7 @@ export default function LektrusPeriodicFloatingInfo({number,layout,anchor,select
  };
  const panel:CSSProperties={position:"fixed",zIndex:99999,background:"#fff",border:"1px solid #bed0e9",borderRadius:10,
   boxShadow:"0 8px 25px #12244333",color:"#263956",fontFamily:"Arial,sans-serif",boxSizing:"border-box",pointerEvents:"auto"};
- const btn:React.CSSProperties={border:"1px solid #b9ceee",background:"#f0f6ff",borderRadius:5,padding:"4px 6px",cursor:"pointer",fontSize:11};
+ const btn:CSSProperties={border:"1px solid #b9ceee",background:"#f0f6ff",borderRadius:5,padding:"4px 6px",cursor:"pointer",fontSize:11};
  return createPortal(<>
   <div style={{...panel,left:info.x,top:info.y,width:260,minHeight:145,padding:8}} onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}>
    <div onPointerDown={e=>begin(e,"info")} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
