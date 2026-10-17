@@ -1,14 +1,15 @@
 import type {Item} from "./boardModel";
+import type {CircuitSymbol} from "./ScienceCircuitGlyph";
 import {makeMathPresetItem} from "./lektrusMathPresets";
 
 /** School diagrams only: symbols and qualitative constructions, never solved work. */
 export type SciencePresetId=
   |"physics-forces"|"physics-incline"|"physics-optics"|"physics-refraction"|"physics-lens"
-  |"physics-motion"|"physics-speed"
+  |"physics-motion"|"physics-speed"|"physics-circuit-series"|"physics-circuit-meters"|"physics-circuit-free"
   |"chem-water"|"chem-carbon-dioxide"|"chem-methane"|"chem-ammonia"|"chem-oxygen"|"chem-atom";
 
 type Vertex={x:number;y:number;label:string;color?:string};
-type Edge={a:number;b:number;kind:"segment"|"ray"|"line";label:string;measure:boolean;bondOrder?:1|2|3;scienceArrow?:boolean};
+type Edge={a:number;b:number;kind:"segment"|"ray"|"line";label:string;measure:boolean;bondOrder?:1|2|3;scienceArrow?:boolean;scienceCircuitSymbol?:CircuitSymbol};
 const P=(x:number,y:number,label=""):Vertex=>({x,y,label});
 const elementColor:Record<string,string>={H:"#5177cc",O:"#d34c53",C:"#35485f",N:"#3973c9","e⁻":"#4169ba"};
 const A=(x:number,y:number,label:string):Vertex=>({...P(x,y,label),color:elementColor[label]??"#455b75"});
@@ -30,12 +31,35 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
       graphConnectPoints:true,graphAxisLabels:true,graphXMin:0,graphXMax:12,
       graphYMin:0,graphYMax:10,graphPoints:(speed?[[0,2],[3,2],[7,5],[10,5]]:[[0,0],[3,2],[7,6],[10,8]]).map(([px,py])=>P(px,py))};
   }
+  if(id==="physics-circuit-free")return {...base,text:"Электрическая цепь · новый чертёж",graphGrid:true,graphSnap:true};
   let title="";
   let points:Vertex[]=[];
   let segments:Edge[]=[];
   let polygons:NonNullable<Item["graphPolygons"]>=[];
   let circles:NonNullable<Item["graphCircles"]>=[];
   switch(id){
+
+    case "physics-circuit-series":
+      title="Электрическая цепь · последовательно";
+      points=[P(-4,-3,"A"),P(4,-3,"B"),P(4,3,"C"),P(-4,3,"D")];
+      segments=[
+        S(0,1,"",{scienceCircuitSymbol:"resistor"}),
+        S(1,2,"",{scienceCircuitSymbol:"lamp"}),
+        S(2,3,"",{scienceCircuitSymbol:"switch"}),
+        S(3,0,"",{scienceCircuitSymbol:"source"})
+      ];
+      break;
+    case "physics-circuit-meters":
+      title="Электрическая цепь · измерительные приборы";
+      points=[P(-5,-2,"A"),P(5,-2,"B"),P(5,2,"C"),P(-5,2,"D"),
+        P(-2,2,"E"),P(2,2,"F"),P(-2,4,"G"),P(2,4,"H")];
+      segments=[
+        S(0,1,"",{scienceCircuitSymbol:"source"}),
+        S(1,2),S(2,5),S(5,4,"",{scienceCircuitSymbol:"resistor"}),
+        S(4,3,"",{scienceCircuitSymbol:"ammeter"}),S(3,0),
+        S(4,6),S(6,7,"",{scienceCircuitSymbol:"voltmeter"}),S(7,5)
+      ];
+      break;
     case "physics-forces":
       title="Механика · силы на тело";
       points=[P(0,0,"O"),P(0,3.7,"N"),P(0,-3.7,"mg"),P(4,0,"F"),P(-3.7,0,"Fтр")];
@@ -87,5 +111,5 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
       points=[A(0,0,"Ядро"),A(3.1,0,"e⁻"),A(0,3.1,"e⁻"),A(-3.1,0,"e⁻")];
       circles=[{center:0,edge:1,label:"Оболочка",measure:false}];break;
   }
-  return {...base,text:title,graphPoints:points,graphSegments:segments,graphPolygons:polygons,graphCircles:circles};
+  return {...base,text:title,graphGrid:id.startsWith("physics-circuit-"),graphSnap:id.startsWith("physics-circuit-"),graphPoints:points,graphSegments:segments,graphPolygons:polygons,graphCircles:circles};
 }
