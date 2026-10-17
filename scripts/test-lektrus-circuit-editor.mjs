@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {transform} from "esbuild";
+import ts from "typescript";
 
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const circuitSource=read("src/lektrusCircuitModel.ts");
-const {code}=await transform(circuitSource,{loader:"ts",format:"esm",target:"es2022"});
+const code=ts.transpileModule(circuitSource,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
 const model=await import("data:text/javascript;base64,"+Buffer.from(code).toString("base64"));
 
 const templates=["physics-circuit-series","physics-circuit-parallel","physics-circuit-meters","physics-circuit-free"];
