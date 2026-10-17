@@ -280,13 +280,13 @@
   overflow-wrap:anywhere;scrollbar-width:thin;
   pointer-events:auto;
 }
-.lektrus-chem-window--atom{width:320px;max-height:min(480px,82vh)}
+.lektrus-chem-window--atom{width:245px;max-height:min(480px,82vh)}
 .lektrus-chem-window.is-editor{
   max-height:88%;box-shadow:0 4px 12px #142d4a20;
-  z-index:5;width:min(25%,220px);
+  z-index:5;width:220px;
 }
 .lektrus-chem-window.is-editor.lektrus-chem-window--atom{
-  width:min(39%,315px);max-height:85%;z-index:7;
+  width:245px;max-height:85%;z-index:7;
 }
 .lektrus-chem-window-head{
   display:flex;align-items:center;gap:6px;
@@ -316,9 +316,9 @@
 }
 .lektrus-chem-atom-modes{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .lektrus-chem-atom-modes button{
-  min-height:28px;padding:4px 3px;min-width:0;
+  min-height:32px;padding:5px 3px;min-width:0;
   border:1px solid #d2dfef;border-radius:6px;
-  background:#f8fbff;color:#526e90;font-size:10px;cursor:pointer;
+  background:#f8fbff;color:#526e90;font-size:11.5px;line-height:1.25;font-weight:650;cursor:pointer;
 }
 .lektrus-chem-atom-modes button[aria-pressed="true"]{
   background:#e4efff;border-color:#92b9ef;color:#245fba;
@@ -334,8 +334,8 @@
   touch-action:pan-y!important;
 }
 @media(max-width:760px){
- .lektrus-chem-window.is-editor{width:28%;padding:6px}
- .lektrus-chem-window.is-editor.lektrus-chem-window--atom{width:46%}
+ .lektrus-chem-window.is-editor{width:220px;padding:6px}
+ .lektrus-chem-window.is-editor.lektrus-chem-window--atom{width:245px}
  .lektrus-chem-window-head strong{font-size:10px}
  .lektrus-chem-detail{font-size:9px}
 }
@@ -360,4 +360,20 @@
 .lektrus-chem-window--details .lektrus-chem-actions{margin-top:5px}
 .lektrus-chem-window--details .lektrus-chem-actions button{
   min-height:22px;font-size:9px;padding:2px 4px;
+}
+
+/* The close affordance is the same crisp, centered X in both windows. */
+.lektrus-chem-window-head>button.lektrus-chem-close{
+ display:inline-flex;align-items:center;justify-content:center;
+ width:24px;height:24px;min-width:24px;min-height:24px;
+ flex:0 0 24px;box-sizing:border-box;padding:0;
+ border:1px solid #cbdcef;border-radius:6px;
+ background:#f4f8ff;color:#426387;
+ cursor:pointer;line-height:1;
+}
+.lektrus-chem-window-head>button.lektrus-chem-close svg{
+ display:block;width:14px;height:14px;flex:none;
+}
+.lektrus-chem-window-head>button.lektrus-chem-close:hover{
+ background:#e6f0ff;border-color:#88aee6;color:#245cba;
 }
