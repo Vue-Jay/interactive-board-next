@@ -1,4 +1,4 @@
-import { Component, useState, type ErrorInfo, type ReactNode } from "react";
+import { Component, useState, type FormEvent, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { Capacitor } from "@capacitor/core";
 import "./index.css";
@@ -38,7 +38,7 @@ function NativeConnectionSetup() {
   const [endpoint, setEndpoint] = useState("");
   const [publishableKey, setPublishableKey] = useState("");
   const [error, setError] = useState("");
-  const connect = (event: React.FormEvent) => {
+  const connect = (event: FormEvent) => {
     event.preventDefault();
     try {
       saveNativeBackendConnection(endpoint, publishableKey);
