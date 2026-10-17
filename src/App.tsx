@@ -23,7 +23,7 @@ import LektrusGraphEditor, {removeGraphPoint, removeGraphBoardPoint, type GraphD
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {formatPiRadians,makeMathPresetItem} from "./lektrusMathPresets";
-import {isSolidFigure,projectSolid,projectSolidAxis,projectSolidSurfaces,projectSolidEdges} from "./lektrusSolid3d";
+import {isSolidFigure,projectSolid,projectSolidAxis,projectSolidSurfaces,projectSolidEdges,solidDimensionEdgePairs} from "./lektrusSolid3d";
 import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
@@ -1236,6 +1236,27 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
                 strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>
             )}
           </g>
+          <g className="lektrus-solid-edge-labels" pointerEvents="none">
+            {solidEdges.map((edge,index)=>{
+              if(edge.a===undefined||edge.b===undefined)return null;
+              const matching=(item.graphSegments??[]).find(segment=>
+                segment.a===edge.a&&segment.b===edge.b||segment.a===edge.b&&segment.b===edge.a);
+              const manual=matching?.label?.trim();
+              const physicalEdges=solidDimensionEdgePairs(item.graphFigureId);
+              const dimensionIndex=physicalEdges.findIndex(([a,b])=>a===edge.a&&b===edge.b||a===edge.b&&b===edge.a);
+              const value=manual||(dimensionIndex>=0?item.graphGivenSides?.[dimensionIndex]?.trim():"");
+              if(!value)return null;
+              const ax=sx(edge.start.x),ay=sy(edge.start.y),bx=sx(edge.end.x),by=sy(edge.end.y);
+              const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy);
+              if(len<1)return null;
+              const normalX=-dy/len,normalY=dx/len;
+              return <text key={index} x={(ax+bx)/2+normalX*14} y={(ay+by)/2+normalY*14}
+                textAnchor="middle" dominantBaseline="middle" className="graph-given-label"
+                style={{fontSize:14,fontWeight:700,fill:edge.hidden?"#516987":"#243f67",stroke:"#fff",strokeWidth:5,strokeLinejoin:"round",paintOrder:"stroke"}}>
+                {value}
+              </text>;
+            })}
+          </g>
           {item.graphShowLabels!==false&&gp.map((p,i)=>{
             if(!p.label)return null;
             return <text key={i} className="graph-figure-label"
@@ -1406,13 +1427,6 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
           </g>;
         })()}
         {(item.graphAngles??[]).map((angle,i)=>{const a=point(angle.a),v=point(angle.vertex),b=point(angle.b);if(!a||!v||!b)return null;const start=Math.atan2(sy(a.y)-sy(v.y),sx(a.x)-sx(v.x)),end=Math.atan2(sy(b.y)-sy(v.y),sx(b.x)-sx(v.x));let diff=end-start;if(purpose==="unit-circle"){while(diff>0)diff-=2*Math.PI;while(diff<=-2*Math.PI)diff+=2*Math.PI;}else{while(diff>Math.PI)diff-=2*Math.PI;while(diff< -Math.PI)diff+=2*Math.PI;}const radius=26;const p1={x:sx(v.x)+radius*Math.cos(start),y:sy(v.y)+radius*Math.sin(start)},p2={x:sx(v.x)+radius*Math.cos(start+diff),y:sy(v.y)+radius*Math.sin(start+diff)};const isRight=purpose!=="unit-circle"&&Math.abs(Math.abs(diff)-Math.PI/2)<.015;const corner={x:p1.x+radius*Math.cos(start+diff),y:p1.y+radius*Math.sin(start+diff)};const arcPath=isRight?`M ${p1.x} ${p1.y} L ${corner.x} ${corner.y} L ${p2.x} ${p2.y}`:`M ${p1.x} ${p1.y} A ${radius} ${radius} 0 ${Math.abs(diff)>Math.PI?1:0} ${diff>0?1:0} ${p2.x} ${p2.y}`;return <g key={`angle-${i}`}><path className="graph-angle" d={arcPath}/>{<text className="graph-figure-label" x={sx(v.x)+(radius+13)*Math.cos(start+diff/2)} y={sy(v.y)+(radius+13)*Math.sin(start+diff/2)}>{purpose==="unit-circle"?formatPiRadians(Math.abs(diff)):angle.label ? (/°$/.test(angle.label)?angle.label:/^\d+(?:[.,]\d+)?$/.test(angle.label)?angle.label+"°":angle.label) : ""}</text>}</g>})}
-        {purpose==="geometry"&&["cube","rectangular-prism","prism","pyramid","triangular-pyramid"].includes(item.graphFigureId??"")&&
-          (item.graphGivenSides??[]).slice(0,3).map((value,i)=>{
-            if(!value?.trim())return null;
-            const pairs=item.graphFigureId==="triangular-pyramid"?[[0,1],[1,2],[2,3]]:item.graphFigureId==="pyramid"?[[0,1],[1,2],[0,4]]:[[0,1],[1,2],[1,item.graphFigureId==="prism"?4:5]];
-            const pair=pairs[i],a=point(pair[0]),b=point(pair[1]);if(!a||!b)return null;
-            return <text key={i} className="graph-given-label" textAnchor="middle" x={sx((a.x+b.x)/2)+8} y={sy((a.y+b.y)/2)-13} style={{paintOrder:"stroke",stroke:"#fff",strokeWidth:4,fontWeight:650}}>{value}</text>;
-          })}
         {purpose==="geometry"&&["cylinder","cone"].includes(item.graphFigureId??"")&&(()=>{
           const radius=(item.graphGivenSides??[])[0]?.trim(),height=(item.graphGivenSides??[])[1]?.trim();
           const base=point(0),side=point(8),top=point(item.graphFigureId==="cylinder"?17:17);
