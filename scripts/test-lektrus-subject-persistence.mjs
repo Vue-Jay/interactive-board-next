@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
 const source=fs.readFileSync(new URL("../src/boardModel.ts",import.meta.url),"utf8");
-const compiled=ts.transpileModule(source,{compilerOptions:{
+const stripped=source.replace(/^import .*?;\s*$/gm,"").replace(/\bexport\s+(?=(?:type|interface|const|let|function|class)\b)/g,"");
+const compiled=ts.transpileModule(stripped,{compilerOptions:{
  target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None
 }}).outputText.replace(/^\s*export\s*\{.*\};?\s*$/gm,"");
 const {parseDocument,packDocumentInk}=new Function(compiled+"\nreturn {parseDocument,packDocumentInk};")();
