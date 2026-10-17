@@ -11,12 +11,14 @@ type Props={
  number:number;layout:Layout;stageRef:{current:HTMLDivElement|null};
  selected:boolean;onClose:()=>void;onToggle?:()=>void;slot?:number;fixed?:boolean;
 };
-type Geometry={left:number;top:number;width:number;height:number;scaleX:number;scaleY:number;localW:number;localH:number};
+type Geometry={left:number;top:number;width:number;height:number;scaleX:number;scaleY:number;localW:number;localH:number;windowScale:number};
+const BASE_STAGE_WIDTH=840,BASE_STAGE_HEIGHT=484;
+const DETAILS_WIDTH=220,ATOM_WIDTH=245;
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 const close=(a:number,b:number)=>Math.abs(a-b)<0.15;
 const sameGeometry=(a:Geometry|null,b:Geometry)=>!!a&&
  close(a.left,b.left)&&close(a.top,b.top)&&close(a.width,b.width)&&close(a.height,b.height)&&
- close(a.scaleX,b.scaleX)&&close(a.scaleY,b.scaleY)&&close(a.localW,b.localW)&&close(a.localH,b.localH);
+ close(a.scaleX,b.scaleX)&&close(a.scaleY,b.scaleY)&&close(a.localW,b.localW)&&close(a.localH,b.localH)&&close(a.windowScale,b.windowScale);
 
 export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,selected,onClose,onToggle,slot=0,fixed=false}:Props){
  const element=periodicElements[number-1],facts=elementFacts[number-1];
@@ -32,7 +34,6 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
 
  useEffect(()=>{setAtomOpen(false);setMode("shell");setDetailsOffset(null);setAtomOffset(null)},[number,layout]);
  useLayoutEffect(()=>{
-  if(fixed)return;
   let frame=0,alive=true;
   const update=()=>{
    const stage=stageRef.current;
@@ -41,7 +42,8 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
     const localW=stage.clientWidth||r.width,localH=stage.clientHeight||r.height;
     if(r.width>0&&r.height>0&&localW>0&&localH>0){
      const next={left:r.left,top:r.top,width:r.width,height:r.height,
-       scaleX:r.width/localW,scaleY:r.height/localH,localW,localH};
+       scaleX:r.width/localW,scaleY:r.height/localH,localW,localH,
+       windowScale:Math.min(r.width/BASE_STAGE_WIDTH,r.height/BASE_STAGE_HEIGHT)};
      setGeometry(old=>sameGeometry(old,next)?old:next);
     }
    }
@@ -55,28 +57,19 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
  const stage=stageRef.current;
  const localW=geometry?.localW??stage?.clientWidth??840;
  const localH=geometry?.localH??stage?.clientHeight??520;
- const detailWidth=220,atomWidth=320;
- const detailPosition:Point=detailsOffset??(()=>{
-  if(slot>0&&!fixed&&geometry){
-   const roomRight=window.innerWidth-(geometry.left+geometry.width);
-   const roomLeft=geometry.left;
-   const needed=detailWidth*geometry.scaleX+18;
-   if(roomRight>=needed)return{x:localW+15,y:localH*.04+(slot-1)*148};
-   if(roomLeft>=needed)return{x:-detailWidth-15,y:localH*.04+(slot-1)*148};
-  }
-  return layout==="school"
-    ?{x:localW*.73,y:localH*.018+slot*128}
-    :{x:localW*.225,y:localH*.035+slot*128};
- })();
- const atomDefault=():Point=>{
-  if(!geometry)return{x:localW+16,y:localH*.12};
-  const leftSpace=geometry.left,rightSpace=window.innerWidth-(geometry.left+geometry.width);
-  const atomScreenWidth=atomWidth*geometry.scaleX;
-  if(rightSpace>=atomScreenWidth+18)return{x:localW+16,y:localH*.12};
-  if(leftSpace>=atomScreenWidth+18)return{x:-atomWidth-16,y:localH*.12};
-  return{x:clamp(detailPosition.x+detailWidth+12,0,Math.max(0,localW-atomWidth)),y:localH*.29};
- };
- const atomPosition=atomOffset??atomDefault();
+ // The original screenshot positions are normalized to the TABLE, not the browser.
+ const detailsDefault:Point=layout==="school"?{x:.727,y:.02}:{x:.258,y:.09};
+ // Additional cards go outside the cells and remain independently draggable.
+ const detailsDefaultForSlot:Point=slot===0?detailsDefault:
+   fixed?{x:detailsDefault.x,y:detailsDefault.y+slot*.28}:
+     {x:1.018,y:.02+(slot-1)*.32};
+ const detailRatio=detailsOffset??detailsDefaultForSlot;
+ const detailPosition:Point={x:detailRatio.x*localW,y:detailRatio.y*localH};
+ // Atom structure is ALWAYS opened immediately to the right of the periodic table.
+ // It never jumps to the left based on the browser's available screen width.
+ const atomDefaultRatio:Point={x:1.014,y:.02};
+ const atomRatio=atomOffset??atomDefaultRatio;
+ const atomPosition:Point={x:atomRatio.x*localW,y:atomRatio.y*localH};
 
  const dragHandlers=(kind:"details"|"atom")=>{
   const state=kind==="details"?detailDrag:atomDrag;
@@ -89,18 +82,19 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
     e.preventDefault();e.stopPropagation();
     const origin=getPosition();
     state.current={id:e.pointerId,x:e.clientX,y:e.clientY,origin};
+    // Only the header captures the drag; buttons retain their normal click behavior.
     e.currentTarget.setPointerCapture(e.pointerId);
    },
    onPointerMove:(e:PointerEvent<HTMLElement>)=>{
     const d=state.current,g=geometry;
     if(!d||d.id!==e.pointerId||!g||fixed)return;
-    const elementWidth=ref.current?.offsetWidth??(kind==="details"?detailWidth:atomWidth);
-    const elementHeight=ref.current?.offsetHeight??145;
-    const minX=(8-g.left)/g.scaleX,maxX=(window.innerWidth-8-g.left)/g.scaleX-elementWidth;
-    const minY=(8-g.top)/g.scaleY,maxY=(window.innerHeight-8-g.top)/g.scaleY-elementHeight;
+    const elementWidth=(ref.current?.offsetWidth??(kind==="details"?DETAILS_WIDTH:ATOM_WIDTH))*g.windowScale;
+    const elementHeight=(ref.current?.offsetHeight??145)*g.windowScale;
+    const minX=(8-g.left)/g.scaleX,maxX=(window.innerWidth-8-g.left-elementWidth)/g.scaleX;
+    const minY=(8-g.top)/g.scaleY,maxY=(window.innerHeight-8-g.top-elementHeight)/g.scaleY;
     setPosition({
-     x:clamp(d.origin.x+(e.clientX-d.x)/g.scaleX,minX,Math.max(minX,maxX)),
-     y:clamp(d.origin.y+(e.clientY-d.y)/g.scaleY,minY,Math.max(minY,maxY))
+     x:clamp(d.origin.x+(e.clientX-d.x)/g.scaleX,minX,Math.max(minX,maxX))/g.localW,
+     y:clamp(d.origin.y+(e.clientY-d.y)/g.scaleY,minY,Math.max(minY,maxY))/g.localH
     });
    },
    onPointerUp:(e:PointerEvent<HTMLElement>)=>{
@@ -123,9 +117,11 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
    transform:"scale("+geometry.scaleX+","+geometry.scaleY+")",transformOrigin:"top left",
    visibility:"visible"
   }:{visibility:"hidden"};
-  const editorStyle:React.CSSProperties={
-   position:"absolute",left:layout==="school"?(kind==="details"?"73%":"54%"):(kind==="details"?"22.5%":"53%"),
-   top:kind==="details"?"2%":"12%"
+  const editorStyle:CSSProperties={
+   position:"absolute",
+   left:layout==="school"?(kind==="details"?"72.7%":"55%"):(kind==="details"?"25.8%":"55%"),
+   top:kind==="details"?(layout==="school"?"2%":"9%"):"12%",
+   transform:"scale("+(geometry?.windowScale??1)+")",transformOrigin:"top left"
   };
   return <section ref={kind==="details"?detailsRef:atomRef}
     className={"lektrus-chem-window lektrus-chem-window--"+kind+(fixed?" is-editor":" is-board")}
@@ -141,7 +137,9 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
    <b className="lektrus-chem-element-symbol">{element.symbol}</b>
    <strong>{element.name}</strong>
    {!fixed&&<span aria-hidden="true" className="lektrus-chem-drag-handle">⠿</span>}
-   <button type="button" aria-label="Закрыть карточку" onClick={onClose}>×</button>
+   <button className="lektrus-chem-close" type="button" aria-label="Закрыть карточку" title="Закрыть карточку" onClick={onClose}>
+    <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="M4 4L16 16M16 4L4 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+   </button>
   </div>
   <div className="lektrus-chem-facts">
    <span>№ <b>{number}</b></span><span>A<sub>r</sub> <b>{facts.atomicMass}</b></span>
@@ -150,7 +148,7 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
   <div className="lektrus-chem-detail"><span>Конфигурация: </span>{facts.electronConfiguration}</div>
   <div className="lektrus-chem-detail"><span>Степени окисления: </span>{facts.oxidationStates}</div>
   <div className="lektrus-chem-actions">
-   <button type="button" aria-expanded={atomOpen} onClick={()=>{if(!atomOpen)setAtomOffset(atomDefault());setAtomOpen(v=>!v)}}>Строение атома</button>
+   <button type="button" aria-expanded={atomOpen} onClick={()=>{if(!atomOpen)setAtomOffset(null);setAtomOpen(v=>!v)}}>Строение атома</button>
    {onToggle&&<button type="button" onClick={onToggle}>{selected?"Снять выделение":"Выделить"}</button>}
   </div>
  </>);
@@ -158,14 +156,16 @@ export default function LektrusPeriodicFloatingInfo({number,layout,stageRef,sele
   <div className="lektrus-chem-window-head" {...handleAtom}>
    <strong>Строение атома {element.symbol}</strong>
    {!fixed&&<span aria-hidden="true" className="lektrus-chem-drag-handle">⠿</span>}
-   <button type="button" aria-label="Закрыть строение атома" onClick={()=>setAtomOpen(false)}>×</button>
+   <button className="lektrus-chem-close" type="button" aria-label="Закрыть строение атома" title="Закрыть строение атома" onClick={()=>setAtomOpen(false)}>
+    <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="M4 4L16 16M16 4L4 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+   </button>
   </div>
   <div className="lektrus-chem-atom-modes" role="group" aria-label="Модель атома">
    {atomViews.map(view=><button type="button" key={view.id} aria-pressed={mode===view.id}
      onClick={()=>setMode(view.id)}>{view.name}</button>)}
   </div>
   <div className="lektrus-chem-atom-drawing">
-   <LektrusAtomView model={{atomicNumber:number,mode,labelX:0,labelY:0,showElectronConfiguration:true}}/>
+   <LektrusAtomView model={{atomicNumber:number,mode,labelX:0,labelY:0,showElectronConfiguration:true}} labelScale={1.5}/>
   </div>
  </>):null;
  if(fixed)return <>{details}{atom}</>;
