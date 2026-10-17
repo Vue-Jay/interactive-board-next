@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core";
+
 export type BackendSession = {
   access_token: string;
   refresh_token: string;
@@ -120,8 +122,19 @@ const normalizeSession = (data: any): BackendSession => ({
   user: data.user,
 });
 
+// Native WebViews run at localhost/capacitor://localhost: those origins must never
+// be used as Supabase email confirmation destinations. Return to the public
+// HTTPS confirmation page, then sign in normally inside the installed app.
+const getEmailConfirmationRedirect = (): string | null => {
+  if (!Capacitor.isNativePlatform()) return `${window.location.origin}/?email_confirmation=1`;
+  const configured = (import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined)?.trim();
+  if (!configured) return null; // Supabase Site URL is the safe fallback.
+  try { const parsed = new URL(configured); return parsed.protocol === "https:" ? parsed.href : null; }
+  catch { return null; }
+};
+
 export const signUpRemote = async (email: string, password: string, name: string) => {
-  const response = await fetchWithTimeout(`${url}/auth/v1/signup?redirect_to=${encodeURIComponent(`${window.location.origin}/?email_confirmation=1`)}`, {
+  const response = await fetchWithTimeout(`${url}/auth/v1/signup${getEmailConfirmationRedirect() ? `?redirect_to=${encodeURIComponent(getEmailConfirmationRedirect()!)}` : ""}`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({ email, password, data: { display_name: name } }),

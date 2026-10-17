@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { Capacitor } from "@capacitor/core";
 import "./index.css";
 import "./nextTheme.css";
 import App from "./App";
@@ -82,7 +83,7 @@ createRoot(root).render(
 );
 
 // Register only in production so dev/HMR never reuses a cached app shell.
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
+if (import.meta.env.PROD && !Capacitor.isNativePlatform() && "serviceWorker" in navigator) {
   let reloadAfterConfirmedUpdate = false;
   window.addEventListener("lektrus:apply-update", () => { reloadAfterConfirmedUpdate = true; });
   navigator.serviceWorker.addEventListener("controllerchange", () => {
