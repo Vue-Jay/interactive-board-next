@@ -8489,3 +8489,51 @@ option{background:#fff;color:#343741}
 .lektrus-geometry-error{color:#c13f35!important}
 .graph-given-label{font-size:13px;font-weight:760;fill:#274b8f;paint-order:stroke;stroke:white;stroke-width:4px;stroke-linejoin:round;pointer-events:none}
 @media(max-width:420px){.lektrus-geometry-given-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.lektrus-geometry-givens{padding:8px}}
+
+/* Compact school geometry editor: notation, value, delete. */
+.lektrus-graph-construction.lektrus-school-element{
+  padding:7px 9px;min-width:0;margin:5px 0!important;
+  border-radius:10px;display:block;
+}
+.lektrus-school-element-row{
+  display:flex;align-items:center;gap:8px;min-width:0;
+}
+.lektrus-school-element-row>strong{
+  flex:0 1 76px;min-width:36px;max-width:108px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:13px;font-weight:750;color:var(--lt-text,#243650);
+}
+.lektrus-school-element-row>input{
+  flex:1 1 auto;width:0;min-width:0;min-height:34px;
+  padding:6px 9px!important;font-size:13px!important;
+  border-radius:8px!important;
+}
+.lektrus-school-element-row>span{flex:none;color:#627591;font-size:13px}
+.lektrus-school-element-row>.lektrus-school-element-delete{
+  flex:none;min-height:32px!important;height:32px;
+  padding:4px 9px!important;font-size:11px!important;
+  border-radius:8px!important;white-space:nowrap;
+}
+.lektrus-school-element>small{
+  display:block;margin:5px 0 0;font-size:10px;line-height:1.25;
+}
+.lektrus-geometry-guided .lektrus-geometry-given-grid{
+  grid-template-columns:1fr;gap:6px;
+}
+.lektrus-geometry-guided .lektrus-geometry-given-grid label{
+  display:flex;flex-direction:row;align-items:center;gap:9px;
+  min-width:0;min-height:34px;padding:0;
+  color:#344963;font-weight:650;font-size:12px;
+}
+.lektrus-geometry-guided .lektrus-geometry-given-grid label>input{
+  margin-left:auto;flex:1 1 48%;min-width:80px;width:50%;
+  min-height:34px;padding:6px 9px!important;border-radius:8px;
+}
+.lektrus-geometry-guided .lektrus-geometry-given-grid label>small{
+  font-size:10px;font-weight:450;color:#71829b;
+}
+@media(max-width:480px){
+  .lektrus-school-element-row{gap:5px}
+  .lektrus-school-element-row>strong{max-width:68px;flex-basis:52px}
+  .lektrus-school-element-row>.lektrus-school-element-delete{padding:4px 6px!important}
+}
