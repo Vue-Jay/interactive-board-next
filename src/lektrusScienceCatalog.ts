@@ -1,7 +1,7 @@
 import type {SciencePresetId} from "./lektrusSciencePresets";
 
 export type ScienceToolId =
-  "physics-mechanics"|"physics-optics"|"physics-graphs"|"chem-molecules"|"chem-atoms";
+  "physics-mechanics"|"physics-optics"|"physics-graphs"|"physics-circuits"|"chem-molecules"|"chem-atoms";
 
 export type ScienceToolGroup={
   id:ScienceToolId; subject:"physics"|"chem";
@@ -27,6 +27,13 @@ export const scienceToolGroups:ScienceToolGroup[]=[
    group:"Физика · движение и силы",templates:[
      {id:"physics-motion",label:"Путь от времени · s(t)",hint:"Точки и участки графика пути"},
      {id:"physics-speed",label:"Скорость от времени · v(t)",hint:"Точки и участки графика скорости"}
+   ]},
+  {id:"physics-circuits",subject:"physics",label:"Электрические цепи",
+   description:"Источники питания, провода, лампы, резисторы, выключатели и приборы",
+   group:"Физика · электричество",templates:[
+     {id:"physics-circuit-series",label:"Простая цепь",hint:"Источник, выключатель, резистор и лампа"},
+     {id:"physics-circuit-meters",label:"Измерительные приборы",hint:"Амперметр и вольтметр в схеме"},
+     {id:"physics-circuit-free",label:"Создать с нуля",hint:"Начните с чистого листа и добавьте компоненты"}
    ]},
   {id:"chem-molecules",subject:"chem",label:"Молекулы и связи",
    description:"Структурные схемы, атомы и связи: готовые молекулы внутри редактора",
