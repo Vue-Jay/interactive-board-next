@@ -145,3 +145,47 @@
   .lektrus-science-preview svg{min-height:200px}
   .lektrus-science-editor footer>span{display:none}
 }
+
+
+/* A selected connection opens one compact inspector instead of showing
+   controls for every line simultaneously. */
+.lektrus-science-links>div.active{
+  border-color:color-mix(in srgb,var(--science) 56%,#fff);
+  background:color-mix(in srgb,var(--science) 8%,white);
+}
+.lektrus-science-links>div>span[role="button"]{
+  flex:1 1 auto;
+  cursor:pointer;
+  outline-offset:2px;
+  line-height:1.5;
+}
+.lektrus-science-links>div>span[role="button"]:hover{
+  color:var(--science);
+}
+.lektrus-science-links>div>span[role="button"]:focus-visible {
+  outline:2px solid var(--science);
+  border-radius:4px;
+}
+.lektrus-science-selected-link{
+  display:grid;
+  gap:8px;
+  margin-top:1px;
+  padding:10px;
+  border:1px solid color-mix(in srgb,var(--science) 22%,#dce6f2);
+  border-radius:10px;
+  background:color-mix(in srgb,var(--science) 6%,#fff);
+}
+.lektrus-science-selected-link>strong{
+  font-size:12px;
+  font-weight:790;
+  color:var(--science);
+}
+.lektrus-science-preview .lektrus-science-node circle{
+  cursor:grab!important;
+}
+.lektrus-science-preview .lektrus-science-node circle:active{
+  cursor:grabbing!important;
+}
+.lektrus-science-preview .lektrus-science-link-label{
+  pointer-events:none;
+}
