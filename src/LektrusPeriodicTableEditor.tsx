@@ -57,12 +57,19 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
                 onClick={()=>focusElement(el.number)}><b>{el.symbol}</b><span>{el.name}</span><small>№ {el.number}</small></button>)}
             </div>}
             {query.trim()&&!results.length&&<span className="lektrus-periodic-notfound">Не найдено</span>}
-            <label>Форма таблицы
-              <select aria-label="Форма периодической таблицы" value={layout} onChange={e=>setLayout(e.target.value as "school"|"long")}>
-                <option value="school">Российская школьная (короткая)</option>
-                <option value="long">Современная (18 групп)</option>
-              </select>
-            </label>
+            <div className="lektrus-periodic-layout-switch" role="group" aria-label="Форма периодической таблицы" style={{display:"grid",gap:5}}>
+              <strong style={{fontSize:12}}>Форма таблицы</strong>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+                <button type="button" aria-pressed={layout==="school"}
+                  onClick={()=>setLayout("school")} style={{minWidth:0,padding:"8px 4px",fontSize:11,fontWeight:layout==="school"?700:500,
+                    border:"1px solid "+(layout==="school"?"#356bd5":"#d2dce9"),background:layout==="school"?"#e9f1ff":"#fff",
+                    borderRadius:7,cursor:"pointer"}}>Российская</button>
+                <button type="button" aria-pressed={layout==="long"}
+                  onClick={()=>setLayout("long")} style={{minWidth:0,padding:"8px 4px",fontSize:11,fontWeight:layout==="long"?700:500,
+                    border:"1px solid "+(layout==="long"?"#356bd5":"#d2dce9"),background:layout==="long"?"#e9f1ff":"#fff",
+                    borderRadius:7,cursor:"pointer"}}>Современная</button>
+              </div>
+            </div>
             <label>Подсветить семейство
               <select value={family} onChange={e=>setFamily(e.target.value as ElementFamily|"all")}>
                 <option value="all">Все семейства</option>
