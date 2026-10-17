@@ -1145,7 +1145,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   const sx = (x:number) => W/2+(x-cx)*scale, sy = (y:number) => H/2-(y-cy)*scale;
   const ux = (p:number) => cx+(p-W/2)/scale, uy = (p:number) => cy-(p-H/2)/scale;
   const step = Math.max(.1,item.graphGridStep ?? 1);
-  const values = (a:number,b:number) => { const first=Math.ceil(a/step)*step,count=Math.min(101,Math.max(0,Math.floor((b-first)/step)+1));return Array.from({length:count},(_,i)=>Number((first+i*step).toFixed(6))); };
+  const values = (a:number,b:number) => { const spacing=step*Math.max(1,Math.ceil((b-a)/(step*90))); const first=Math.ceil(a/spacing)*spacing,count=Math.min(101,Math.max(0,Math.floor((b-first)/spacing)+1));return Array.from({length:count},(_,i)=>Number((first+i*spacing).toFixed(6))); };
   const gridX = values(xMin,xMax), gridY = values(yMin,yMax);
   const gp = (solid?projectSolid(item,orbitX,orbitY):(item.graphPoints??[])).map((p,i)=>purpose==="number-line"?{...p,y:0}:rayFigure&&i===1&&liveRay?{...p,...liveRay}:p);
   const intervalEnds=purpose==="number-line"&&gp.length>=2?[gp[0],gp[1]].sort((p,q)=>p.x-q.x):null;
