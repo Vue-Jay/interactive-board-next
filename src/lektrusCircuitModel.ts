@@ -156,16 +156,28 @@ export function circuitTemplate(id:"physics-circuit-series"|"physics-circuit-met
       ["lamp","b","am","b"],["am","a","battery","b"]
     ].map(([from,fromSide,to,toSide],index)=>({id:"wire"+index,from:ca(from,fromSide as "a"|"b"),to:ca(to,toSide as "a"|"b"),route:"hvh" as const}));
   }else if(id==="physics-circuit-parallel"){
-    doc.components=[component("source","source",175,285,90),component("lamp1","lamp",450,180),
-      component("lamp2","lamp",450,395),component("switch","switch",700,285,90)];
-    doc.junctions=[{id:"left-top",x:300,y:180},{id:"left-bottom",x:300,y:395},
-      {id:"right-top",x:600,y:180},{id:"right-bottom",x:600,y:395}];
+    // Two parallel lamp branches fed by a separate source.
+    // The source spans the two bus rails; the switch is in the upper branch.
+    doc.components=[
+      component("source","battery",450,495),
+      component("lamp1","lamp",450,150),
+      component("lamp2","lamp",450,355),
+      component("switch","switch",640,255,90)
+    ];
+    doc.junctions=[
+      {id:"left-top",x:280,y:150},{id:"left-bottom",x:280,y:355},
+      {id:"right-top",x:640,y:150},{id:"right-bottom",x:640,y:355}
+    ];
     const wires:[CircuitAnchor,CircuitAnchor][]=[
-      [ca("source","a"),j("left-top")],[j("left-top"),ca("lamp1","a")],
-      [ca("lamp1","b"),j("right-top")],[j("right-top"),ca("switch","a")],
-      [ca("switch","b"),j("right-bottom")],[j("right-bottom"),ca("lamp2","b")],
-      [ca("lamp2","a"),j("left-bottom")],[j("left-bottom"),ca("source","b")],
-      [j("left-top"),j("left-bottom")],[j("right-top"),j("right-bottom")]
+      [ca("source","a"),j("left-bottom")],
+      [ca("source","b"),j("right-bottom")],
+      [j("left-top"),ca("lamp1","a")],
+      [ca("lamp1","b"),j("right-top")],
+      [j("left-bottom"),ca("lamp2","a")],
+      [ca("lamp2","b"),j("right-bottom")],
+      [j("left-top"),j("left-bottom")],
+      [j("right-top"),ca("switch","a")],
+      [ca("switch","b"),j("right-bottom")]
     ];
     doc.wires=wires.map(([from,to],index)=>({id:"wire"+index,from,to,route:"hvh"}));
   }else{
