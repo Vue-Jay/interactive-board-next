@@ -1,0 +1,223 @@
+/* Lektrus portrait layout: page-specific, collision-free mobile composition.
+   Loaded after the legacy screen styles. No changes to canvas or document data. */
+@media screen and (max-width:700px) and (orientation:portrait) {
+  .lectris-workspace-header {
+    gap:8px!important;padding-inline:clamp(10px,3vw,16px)!important;
+    min-width:0!important;
+  }
+  .lectris-workspace-header .lectris-brand {
+    flex:0 1 auto!important;min-width:0!important;max-width:44%!important;
+  }
+  .lectris-workspace-header .lektrus-brand-lockup {min-width:0}
+  .lectris-workspace-header .lektrus-brand-tagline {
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .lectris-workspace-header .lectris-header-page {
+    min-width:0!important;max-width:none!important;flex:1 1 auto!important;
+    overflow:hidden;white-space:nowrap;
+  }
+  .lectris-workspace-header .lectris-header-page>span {
+    font-size:12px;overflow:hidden;text-overflow:ellipsis;
+  }
+  .lectris-workspace-header .lectris-header-actions {
+    flex:0 0 auto!important;gap:3px!important;
+  }
+
+  /* Students, settings and schedule share this header component.
+     Split the primary action into its own row instead of squeezing it
+     beside the title and the back button. */
+  .lectris-workspace-stage .students-header {
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    align-items:start!important;justify-items:stretch!important;
+    padding:12px 14px!important;
+    min-height:0!important;gap:10px!important;
+  }
+  .lectris-workspace-stage .students-header>div:first-child {
+    display:grid!important;
+    grid-template-columns:auto minmax(0,1fr)!important;
+    align-items:center!important;gap:12px!important;
+    min-width:0!important;width:100%!important;
+  }
+  .lectris-workspace-stage .students-header>div:first-child>div {
+    min-width:0!important;gap:3px!important;
+  }
+  .lectris-workspace-stage .students-header strong {
+    display:block;font-size:clamp(19px,5vw,24px)!important;
+    line-height:1.15!important;overflow-wrap:anywhere;
+  }
+  .lectris-workspace-stage .students-header span {
+    display:block;font-size:11px!important;line-height:1.32!important;
+    overflow-wrap:anywhere;
+  }
+  .lectris-workspace-stage .students-header .boards-secondary {
+    width:auto!important;max-width:110px!important;
+    min-width:0!important;flex:none!important;
+    padding:9px 11px!important;white-space:nowrap!important;
+  }
+  .lectris-workspace-stage .students-header>.boards-create {
+    grid-column:1/-1!important;justify-self:stretch!important;
+    width:100%!important;max-width:100%!important;
+    min-width:0!important;min-height:42px!important;height:auto!important;
+    padding:10px 14px!important;
+    margin:0!important;position:static!important;transform:none!important;
+    white-space:normal!important;text-align:center;
+    font-size:13px!important;
+  }
+  .lectris-workspace-stage :is(.schedule-content,.settings-content,.students-content) {
+    min-width:0!important;max-width:100%!important;
+  }
+
+  /* Boards library: intentional rows, not flex-wrapped arbitrary order. */
+  .lectris-workspace-stage .boards-content.lectris-library {
+    width:calc(100% - 24px)!important;max-width:100%!important;
+    padding-top:12px!important;
+  }
+  .lectris-workspace-stage .lectris-library-intro {
+    min-width:0!important;padding:15px!important;
+    border-radius:17px!important;gap:10px!important;
+  }
+  .lectris-workspace-stage .lectris-library-heading h1 {
+    font-size:25px!important;line-height:1.1!important;margin:5px 0!important;
+  }
+  .lectris-workspace-stage .lectris-library-heading p {
+    font-size:12px!important;line-height:1.45!important;
+  }
+  .lectris-workspace-stage .lectris-library-metrics {
+    display:flex!important;flex-wrap:wrap!important;
+    gap:5px!important;margin-top:10px!important;
+  }
+  .lectris-workspace-stage .lectris-library-metrics>span {
+    flex:0 1 auto!important;min-width:0!important;
+    padding:6px 8px!important;font-size:11px!important;
+  }
+  .lectris-workspace-stage .lectris-library-new {
+    width:100%!important;max-width:100%!important;
+    min-width:0!important;min-height:44px!important;
+    margin:0!important;padding:10px 12px!important;
+    justify-content:center!important;gap:9px!important;
+    font-size:14px!important;
+  }
+  .lectris-workspace-stage .lectris-library-section-title {
+    display:flex;gap:8px;align-items:end;flex-wrap:wrap;
+    min-width:0;margin-block:15px 10px;
+  }
+  .lectris-workspace-stage .lectris-library-section-title h2 {
+    font-size:clamp(19px,5.2vw,24px)!important;overflow-wrap:anywhere;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar {
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    align-items:stretch!important;
+    justify-items:stretch!important;
+    width:100%!important;max-width:100%!important;
+    padding:10px!important;gap:9px!important;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar>* {
+    box-sizing:border-box!important;min-width:0!important;
+    width:100%!important;max-width:100%!important;
+    flex:none!important;margin:0!important;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-search {
+    width:100%!important;max-width:none!important;min-width:0!important;
+    min-height:42px!important;flex:none!important;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-search input {
+    box-sizing:border-box!important;min-width:0!important;width:100%!important;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-filters {
+    display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    width:100%!important;min-width:0!important;max-width:100%!important;
+    padding:3px!important;gap:3px!important;
+    flex:none!important;justify-content:stretch!important;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-filters button {
+    box-sizing:border-box!important;width:100%!important;min-width:0!important;
+    min-height:35px!important;padding:7px 3px!important;
+    font-size:12px!important;line-height:1.2!important;
+    flex:none!important;white-space:nowrap!important;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort {
+    display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;
+    gap:9px!important;align-items:center!important;
+    white-space:nowrap!important;min-width:0!important;
+    font-size:11px!important;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-sort select {
+    box-sizing:border-box!important;width:100%!important;min-width:0!important;
+    max-width:100%!important;min-height:38px!important;font-size:12px!important;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-extras {
+    display:flex!important;flex-wrap:wrap!important;
+    align-items:stretch!important;gap:6px!important;
+    width:100%!important;min-width:0!important;margin:0!important;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar .backup-menu {
+    display:contents!important;
+  }
+  .lectris-workspace-stage .lectris-library-toolbar .lectris-library-extras :is(button,label) {
+    box-sizing:border-box!important;
+    display:inline-flex!important;align-items:center!important;justify-content:center!important;
+    flex:1 1 calc(50% - 6px)!important;min-width:0!important;
+    width:auto!important;max-width:100%!important;
+    margin:0!important;min-height:37px!important;
+    padding:8px 6px!important;white-space:normal!important;
+    font-size:11px!important;line-height:1.2!important;text-align:center!important;
+  }
+
+  /* Schedule: date label gets a real flexible track, instead of
+     competing with fixed-width buttons at narrow resolutions. */
+  .lectris-workspace-stage .schedule-toolbar {
+    display:grid!important;
+    grid-template-columns:36px auto minmax(0,1fr) 36px!important;
+    gap:5px!important;padding:8px!important;
+    min-width:0!important;align-items:center!important;
+  }
+  .lectris-workspace-stage .schedule-toolbar>button {
+    box-sizing:border-box!important;
+    min-width:0!important;width:100%!important;height:36px!important;
+    min-height:36px!important;padding:5px!important;
+  }
+  .lectris-workspace-stage .schedule-toolbar>strong {
+    min-width:0!important;overflow-wrap:anywhere!important;
+    text-align:center!important;font-size:clamp(10px,2.8vw,12px)!important;
+    line-height:1.25!important;
+  }
+  .lectris-workspace-stage .schedule-toolbar>button:nth-child(2) {
+    min-width:0!important;padding-inline:6px!important;font-size:11px!important;
+  }
+  .lectris-workspace-stage .students-toolbar {
+    display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+    gap:7px!important;min-width:0!important;
+  }
+  .lectris-workspace-stage .students-toolbar>select {
+    width:100%!important;min-width:0!important;max-width:100%!important;
+  }
+  .lectris-workspace-stage .schedule-view-toggle {
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    width:100%!important;min-width:0!important;gap:5px!important;
+  }
+  .lectris-workspace-stage .schedule-view-toggle button {
+    min-width:0!important;width:100%!important;
+    padding:9px 5px!important;font-size:11px!important;
+    white-space:normal!important;line-height:1.2!important;
+  }
+  .lectris-workspace-stage .schedule-layout,
+  .lectris-workspace-stage .week-grid {min-width:0!important;max-width:100%!important}
+  .lectris-workspace-stage .week-grid {
+    overflow-x:auto!important;overscroll-behavior-x:contain;
+    grid-template-columns:repeat(7,minmax(112px,1fr))!important;
+  }
+}
+@media screen and (max-width:365px) and (orientation:portrait) {
+  .lectris-workspace-stage .students-header>div:first-child {
+    gap:8px!important;
+  }
+  .lectris-workspace-stage .students-header .boards-secondary {
+    max-width:95px!important;padding-inline:8px!important;font-size:11px!important;
+  }
+  .lectris-workspace-stage .schedule-toolbar {
+    grid-template-columns:32px auto minmax(0,1fr) 32px!important;
+  }
+  .lectris-workspace-stage .schedule-toolbar>button {height:33px!important;min-height:33px!important}
+}
