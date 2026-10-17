@@ -21,6 +21,9 @@ import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
+import LektrusCircuitEditor from "./LektrusCircuitEditor";
+import LektrusCircuitView from "./LektrusCircuitView";
+import {circuitFromLegacyItem} from "./lektrusCircuitModel";
 import LektrusPeriodicTableEditor from "./LektrusPeriodicTableEditor";
 import LektrusPeriodicTableView from "./LektrusPeriodicTableView";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
@@ -1194,6 +1197,11 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     window.addEventListener("pointerup",done,{once:true});
     window.addEventListener("pointercancel",done,{once:true});
   };
+  if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){
+    return <div className="graph-view lektrus-circuit-board-view">
+      <LektrusCircuitView doc={circuitFromLegacyItem(item)}/>
+    </div>;
+  }
   if(item.graphFigureId==="chem-periodic")return <div className="graph-view lektrus-periodic-board-view">
     <LektrusPeriodicTableView selected={item.sciencePeriodicHighlights??[]}
       showNames={item.sciencePeriodicShowNames!==false}/>
@@ -1900,6 +1908,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [studyCardIndex, setStudyCardIndex] = useState(0);
   const [graphEditorId, setGraphEditorId] = useState<string | null>(null);
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
+  const [circuitEditorItem,setCircuitEditorItem]=useState<Item|null>(null);
   const [periodicEditorItem,setPeriodicEditorItem]=useState<Item|null>(null);
   const [fractionEditorId, setFractionEditorId] = useState<string | null>(null);
   const [pendingMathItem,setPendingMathItem] = useState<Item|null>(null);
@@ -4861,6 +4870,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   const openGraphEditor = (item: Item) => {
     if(item.kind!=="graph"||item.locked)return;
+    if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){setCircuitEditorItem(item);return;}
     if(item.graphFigureId==="chem-periodic"){setPeriodicEditorItem(item);return;}
     if(item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")){setScienceEditorItem(item);return;} if(itemsRef.current.some(existing=>existing.id===item.id))setSelected([item.id]); setGraphEditorId(item.id);
     setGraphDraft({figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(Array.isArray(item.graphPoints)?item.graphPoints:[]).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
@@ -6495,6 +6505,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setPeriodicEditorItem(null);
             setNotice("Периодическая таблица добавлена на доску");
           }}/>}
+        {circuitEditorItem&&<LektrusCircuitEditor key={circuitEditorItem.id}
+          item={circuitEditorItem}
+          onCancel={()=>setCircuitEditorItem(null)}
+          onClose={next=>{
+            if(itemsRef.current.some(i=>i.id===next.id)){
+              commit(itemsRef.current.map(i=>i.id===next.id?next:i));
+              setNotice("Электрическая схема сохранена");
+            }
+            setCircuitEditorItem(null);
+          }}
+          onSave={next=>{
+            commit(itemsRef.current.some(i=>i.id===next.id)?
+              itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
+            setCircuitEditorItem(null);
+            setNotice("Электрическая схема добавлена на доску");
+          }}/>}
         {scienceEditorItem&&<LektrusScienceEditor key={scienceEditorItem.id} item={scienceEditorItem}
           subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
           onCancel={()=>setScienceEditorItem(null)}
@@ -6953,7 +6979,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSelected([]);
             setTool("select");
             setSubjectToolsOpen(false);
-            if(id==="chem-periodic-table"){
+            if(id==="physics-circuits"){
+              setCircuitEditorItem(item);
+            }else if(id==="chem-periodic-table"){
               setPeriodicEditorItem(item);
             }else if(id.startsWith("physics-")||id.startsWith("chem-")){
               setScienceEditorItem(item);
