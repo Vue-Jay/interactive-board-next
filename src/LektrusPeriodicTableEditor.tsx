@@ -1,4 +1,5 @@
-import {useState} from "react";
+import {useRef,useState} from "react";
+import LektrusPeriodicFloatingInfo from "./LektrusPeriodicFloatingInfo";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {periodicElements,periodicFamilies,type ElementFamily} from "./lektrusPeriodicElements";
@@ -6,6 +7,7 @@ import LektrusPeriodicTableView from "./LektrusPeriodicTableView";
 
 type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void};
 export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose}:Props){
+  const previewAnchor=useRef<HTMLDivElement>(null);
   const [selected,setSelected]=useState<number[]>(()=>[...(item.sciencePeriodicHighlights??[])]);
   const [active,setActive]=useState<number|null>(selected[0]??8);
   const [query,setQuery]=useState("");
@@ -85,9 +87,12 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
           <div className="lektrus-periodic-preview">
             <div className="lektrus-periodic-preview-header"><strong>Периодическая система</strong>
               <span>Щелчок выделяет элемент · повторный щелчок отменяет</span></div>
-            <div className="lektrus-periodic-table-scroll">
+            <div className="lektrus-periodic-table-scroll" ref={previewAnchor}>
               <LektrusPeriodicTableView selected={selected} active={active}
                 showNames={showNames} familyFilter={family} onPick={pick} layout={layout} showInfo={active!==null} onCloseInfo={()=>setActive(null)} onToggleInfo={()=>{if(active!==null)pick(active)}}/>
+              <LektrusPeriodicFloatingInfo number={active} layout={layout} anchor={previewAnchor.current}
+                selected={active!==null&&selected.includes(active)} onClose={()=>setActive(null)}
+                onToggle={()=>{if(active!==null)pick(active)}}/>
             </div>
             <div className="lektrus-periodic-legend">
               {periodicFamilies.map(group=><span key={group.id}><i style={{background:group.color}}/>{group.name}</span>)}
