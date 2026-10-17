@@ -1,0 +1,289 @@
+/* Independent desktop-first schematic workspace, not the generic geometry editor. */
+.lektrus-circuit-backdrop{
+  position:fixed;inset:0;z-index:100060;
+  display:flex;align-items:center;justify-content:center;
+  box-sizing:border-box;padding:clamp(8px,2vh,20px);
+  background:#15283eaf;backdrop-filter:blur(5px);
+  font-family:Inter,system-ui,sans-serif;
+}
+.lektrus-circuit-editor{
+  --line:#dfe8f3;--ink:#203754;--muted:#7d91ac;--accent:#315fb8;
+  box-sizing:border-box;width:min(1480px,calc(100vw - 30px));
+  height:min(850px,calc(100dvh - 30px));
+  min-height:0;min-width:0;display:flex;flex-direction:column;
+  border:1px solid #cddbec;border-radius:18px;
+  overflow:hidden;background:#f6f9fe;color:var(--ink);
+  box-shadow:0 25px 90px #0a1e3950;
+}
+.lektrus-circuit-editor button,
+.lektrus-circuit-editor input,
+.lektrus-circuit-editor select{font-family:inherit}
+.lektrus-circuit-header{
+  flex:0 0 auto;min-height:64px;box-sizing:border-box;
+  display:flex;align-items:center;gap:12px;
+  padding:11px 16px;background:linear-gradient(110deg,#eff5ff,#fff 78%);
+  border-bottom:1px solid var(--line);
+}
+.lektrus-circuit-mark{
+  flex:0 0 39px;height:39px;border-radius:11px;
+  background:#e1ebfc;border:1px solid #d0def5;
+  color:#315fbb;display:grid;place-items:center;
+  font-size:25px;font-weight:700;
+}
+.lektrus-circuit-title{flex:1 1 auto;min-width:0}
+.lektrus-circuit-title small{
+  color:#5179b5;font-size:10px;font-weight:810;letter-spacing:.085em;
+}
+.lektrus-circuit-title h2{
+  margin:3px 0 0;font-size:18px;letter-spacing:-.025em;
+  line-height:1.3;color:#203753;
+}
+.lektrus-circuit-header-actions{display:flex;align-items:center;gap:7px}
+.lektrus-circuit-header-actions button{
+  flex:0 0 35px;min-height:35px;min-width:35px;
+  display:grid;place-items:center;padding:0;
+  border:1px solid #dbe4f1;background:#f6f9ff;
+  border-radius:9px;color:#416183;font-size:22px;
+  cursor:pointer;
+}
+.lektrus-circuit-header-actions button:disabled{opacity:.35;cursor:default}
+.lektrus-circuit-editor-main{
+  flex:1 1 0;display:grid;grid-template-columns:minmax(196px,232px) minmax(0,1fr) minmax(195px,235px);
+  gap:10px;min-height:0;min-width:0;padding:11px;overflow:hidden;
+}
+.lektrus-circuit-palette,.lektrus-circuit-inspector,.lektrus-circuit-work{
+  min-width:0;min-height:0;box-sizing:border-box;
+  border:1px solid #dce6f2;border-radius:12px;
+  background:#fff;
+}
+.lektrus-circuit-palette,.lektrus-circuit-inspector{
+  display:flex;flex-direction:column;padding:12px;
+  overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  scrollbar-color:#c6d4e7 transparent;gap:10px;
+}
+.lektrus-circuit-palette-section{display:grid;gap:10px;padding-bottom:11px;border-bottom:1px solid #e6edf5}
+.lektrus-circuit-palette-section p{
+  margin:0;font-size:10px;line-height:1.45;color:#8294aa;
+}
+.lektrus-circuit-editor label{
+  display:grid;gap:5px;color:#4e6683;
+  font-size:11px;line-height:1.35;font-weight:710;
+}
+.lektrus-circuit-editor label small{font-size:10px;font-weight:500;color:#869bb4}
+.lektrus-circuit-editor :is(input:not([type="checkbox"]),select){
+  box-sizing:border-box;display:block;
+  width:100%;max-width:100%;min-width:0;min-height:35px;
+  padding:7px 9px;background:#f9fbff;
+  border:1px solid #d5e1f0;border-radius:8px;
+  color:#2d4464;font-size:11px;font-weight:550;
+}
+.lektrus-circuit-editor :is(input:not([type="checkbox"]),select):focus-visible,
+.lektrus-circuit-editor button:focus-visible{
+  outline:2px solid #6b92da;outline-offset:1px;
+}
+.lektrus-circuit-palette-heading,
+.lektrus-circuit-inspector-header{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+}
+.lektrus-circuit-palette-heading strong,
+.lektrus-circuit-inspector-header strong{font-size:12px;font-weight:780}
+.lektrus-circuit-palette-heading span,
+.lektrus-circuit-inspector-header span{
+  color:#7792b9;background:#edf3fc;
+  padding:3px 7px;border-radius:6px;font-size:10px;
+}
+.lektrus-circuit-categories{
+  display:flex;flex-wrap:wrap;gap:5px;
+}
+.lektrus-circuit-categories button{
+  min-height:27px;padding:5px 8px;border:1px solid #e0e9f4;
+  background:#f6f8fc;color:#70839d;border-radius:7px;
+  font-size:10px;font-weight:630;cursor:pointer;
+}
+.lektrus-circuit-categories button.active{
+  color:#2454ac;background:#e6efff;border-color:#a9c3f2;
+}
+.lektrus-circuit-parts{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;align-content:start;
+}
+.lektrus-circuit-parts>button{
+  min-width:0;min-height:90px;
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;
+  padding:7px 5px;background:#fff;
+  border:1px solid #dce5f1;border-radius:10px;
+  cursor:grab;color:#425875;
+  font-size:10px;line-height:1.25;text-align:center;
+  transition:background .1s,border-color .1s;
+}
+.lektrus-circuit-parts>button:hover{background:#f5f9ff;border-color:#9db9ed}
+.lektrus-circuit-parts>button.active{background:#e8f0ff;border-color:#4776ca;color:#224f9e}
+.lektrus-circuit-parts svg{width:95%;max-width:99px;height:40px;pointer-events:none}
+.lektrus-circuit-parts>button span{
+  display:block;width:100%;
+  min-width:0;overflow-wrap:anywhere;
+  font-size:10px;font-weight:690;
+}
+.lektrus-circuit-palette-note{
+  margin-top:auto;font-size:10px;line-height:1.5;color:#8092aa;
+  background:#f7f9fd;border-radius:8px;padding:9px;
+}
+.lektrus-circuit-work{
+  display:flex;flex-direction:column;gap:8px;padding:10px;
+  overflow:hidden;
+}
+.lektrus-circuit-toolbar{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:8px;min-height:34px;
+}
+.lektrus-circuit-toolgroup{
+  min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:4px;
+}
+.lektrus-circuit-toolgroup button{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:6px 10px;min-height:31px;
+  border:1px solid #dce6f3;border-radius:8px;
+  color:#637a96;background:#f6f9fd;
+  font-size:13px;font-weight:650;cursor:pointer;
+}
+.lektrus-circuit-toolgroup button span{font-size:11px}
+.lektrus-circuit-toolgroup button.active{
+  border-color:#acc5ed;color:#2555ab;background:#e9f1ff;
+}
+.lektrus-circuit-toggle{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.lektrus-circuit-editor .lektrus-circuit-toggle label{
+  display:flex;align-items:center;gap:6px;
+  white-space:nowrap;color:#6f839e;font-size:10px;
+}
+.lektrus-circuit-editor input[type="checkbox"]{accent-color:#2f5bc4;margin:0}
+.lektrus-circuit-canvas-container{
+  flex:1 1 auto;min-width:0;min-height:0;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;border:1px solid #d6e3f3;border-radius:10px;
+  background:#fff;
+}
+.lektrus-circuit-svg{
+  box-sizing:border-box;
+  display:block;width:100%;height:100%;
+  min-height:0;min-width:0;
+  touch-action:none;
+  background:#fff;
+}
+.lektrus-circuit-svg.mode-place{cursor:copy}
+.lektrus-circuit-svg.mode-wire{cursor:crosshair}
+.lektrus-circuit-svg.mode-junction{cursor:crosshair}
+.lektrus-circuit-svg.mode-select{cursor:default}
+.lektrus-circuit-component-body{cursor:grab}
+.lektrus-circuit-svg.mode-select .lektrus-circuit-component-body:active{cursor:grabbing}
+.lektrus-circuit-svg.mode-wire .lektrus-circuit-terminal-hit,
+.lektrus-circuit-svg.mode-wire .lektrus-circuit-junctions circle{cursor:crosshair}
+.lektrus-circuit-wire-hit{cursor:pointer}
+.lektrus-circuit-stage-bottom{
+  flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;
+  gap:8px;flex-wrap:wrap;
+  color:#7f90a7;font-size:10px;line-height:1.4;
+  padding:1px 3px;
+}
+.lektrus-circuit-stage-bottom span:first-child{flex:1 1 260px}
+.lektrus-circuit-stage-bottom span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}
+.lektrus-circuit-inspector-header{
+  padding-bottom:9px;border-bottom:1px solid #e5edf5;
+}
+.lektrus-circuit-inspector label{gap:5px}
+.lektrus-circuit-inspector p{margin:0;color:#8495a9;font-size:11px;line-height:1.5}
+.lektrus-circuit-inspector-preview{
+  display:flex;flex-direction:column;align-items:center;
+  border:1px solid #e2eaf4;background:#f9fbff;border-radius:10px;
+  padding:8px;gap:2px;
+}
+.lektrus-circuit-inspector-preview svg{height:65px;width:100%;max-width:150px}
+.lektrus-circuit-inspector-preview strong{font-size:12px;color:#314c6c}
+.lektrus-circuit-inspector-preview small{font-size:10px;color:#8b9aad}
+.lektrus-circuit-inspector-subtitle{
+  font-size:12px;font-weight:780;color:#314967;
+}
+.lektrus-circuit-checkbox{
+  display:flex!important;align-items:center!important;gap:7px!important;
+  background:#f5f8ff;border:1px solid #dfebf9;border-radius:8px;padding:9px;
+}
+.lektrus-circuit-rotate{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.lektrus-circuit-rotate button{
+  min-width:0;padding:8px 3px;
+  border:1px solid #dce4ef;border-radius:7px;
+  background:#f7f9fd;color:#526985;font-size:11px;
+  font-weight:710;cursor:pointer;
+}
+.lektrus-circuit-rotate button.active{color:#2456b4;background:#e9f1ff;border-color:#b7cbed}
+.lektrus-circuit-two-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.lektrus-circuit-inspector-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.lektrus-circuit-inspector-actions button,
+.lektrus-circuit-inspector-delete,.lektrus-circuit-inspector-footer button{
+  padding:8px 7px;min-height:32px;
+  border:1px solid #dce5f1;border-radius:8px;background:#f5f8fc;
+  color:#4a678b;font-size:11px;font-weight:720;cursor:pointer;
+}
+.lektrus-circuit-inspector-actions .danger,
+.lektrus-circuit-inspector-delete{background:#fff4f4;border-color:#f1d9db;color:#a95359}
+.lektrus-circuit-empty-inspector{
+  margin-top:10px;display:flex;flex-direction:column;
+  align-items:center;gap:11px;text-align:center;
+  background:#f9fbff;border:1px dashed #d4e1f0;
+  padding:16px 12px;border-radius:11px;
+}
+.lektrus-circuit-info-symbol{
+  width:56px;height:56px;display:grid;place-items:center;
+  border-radius:15px;background:#e4efff;color:#3563a9;font-size:32px;
+}
+.lektrus-circuit-empty-inspector strong{font-size:12px}
+.lektrus-circuit-empty-inspector p{font-size:10px}
+.lektrus-circuit-inspector-footer{
+  margin-top:auto;padding-top:12px;border-top:1px solid #e4ebf5;
+}
+.lektrus-circuit-inspector-footer button{width:100%}
+.lektrus-circuit-footer{
+  flex:0 0 auto;box-sizing:border-box;
+  display:flex;align-items:center;justify-content:flex-end;
+  flex-wrap:wrap;gap:8px;
+  min-height:55px;padding:9px 14px;
+  background:#fff;border-top:1px solid #dde6f2;
+}
+.lektrus-circuit-footer span{
+  flex:1 1 280px;min-width:0;
+  color:#798ca5;font-size:10px;line-height:1.35;
+}
+.lektrus-circuit-footer button{
+  min-height:36px;min-width:80px;
+  padding:8px 14px;border:1px solid #dae5f2;
+  border-radius:9px;background:#f5f8fd;color:#4c6787;
+  font-size:11px;font-weight:750;cursor:pointer;
+}
+.lektrus-circuit-footer button.primary{background:#315fc6;border-color:#315fc6;color:#fff}
+.graph-view.lektrus-circuit-board-view{
+  box-sizing:border-box;
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;min-height:0;
+  padding:0!important;margin:0!important;
+  background:#fff;overflow:hidden;
+}
+.graph-view.lektrus-circuit-board-view .lektrus-circuit-svg{
+  flex:1 1 auto;display:block;
+  width:100%!important;height:100%!important;
+  min-width:0!important;min-height:0!important;
+  max-width:100%;max-height:100%;
+}
+@media(max-width:1050px){
+  .lektrus-circuit-editor-main{grid-template-columns:minmax(175px,195px) minmax(0,1fr) minmax(180px,198px);gap:7px;padding:8px}
+  .lektrus-circuit-palette,.lektrus-circuit-inspector{padding:9px}
+  .lektrus-circuit-work{padding:7px}
+}
+@media(max-width:800px){
+  .lektrus-circuit-editor{width:calc(100vw - 12px);height:calc(100dvh - 12px)}
+  .lektrus-circuit-editor-main{grid-template-columns:185px minmax(0,1fr)}
+  .lektrus-circuit-inspector{grid-column:1/-1;max-height:180px}
+}
+@media(max-width:590px){
+  .lektrus-circuit-editor-main{display:flex;flex-direction:column;overflow-y:auto}
+  .lektrus-circuit-palette,.lektrus-circuit-inspector{flex:0 0 auto;max-height:300px}
+  .lektrus-circuit-work{flex:0 0 auto;height:380px}
+}
