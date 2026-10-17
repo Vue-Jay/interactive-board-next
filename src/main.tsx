@@ -38,6 +38,8 @@ import "./lektrusMobileUnifiedLayouts.css";
 import "./lektrusAdaptiveSidebarAndToday.css";
 import "./lektrusMoreTab.css";
 import "./lektrusScienceEditor.css";
+import "./lektrusCircuitEditor.css";
+import "./lektrusScienceDiagramRefinement.css";
 import "./lektrusEditorCursor.css";
 import "./lektrusFormulaWindow.css";
 import "./lektrusPeriodicTable.css";
