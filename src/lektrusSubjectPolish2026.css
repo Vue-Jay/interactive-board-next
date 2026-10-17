@@ -522,3 +522,67 @@
  }
  .lektrus-periodic-dialog .lektrus-periodic-stage.has-element-window .lektrus-periodic-window-stage>.lektrus-chem-window--combined.is-editor.is-orbital{width:390px!important}
 }
+
+/* Chemistry tools, phase one: readable formulas, organic valence and classroom experiment scenes. */
+.lektrus-science-chem-feedback{
+ display:flex;flex-direction:column;gap:7px;min-width:0;
+ margin:10px 0;padding:11px;border:1px solid #cbdcf0;
+ border-radius:10px;background:#f8fbff;color:#2b4566;
+}
+.lektrus-science-chem-feedback>strong{font-size:12px}
+.lektrus-science-chem-feedback>b{font-size:20px;color:#235b9b;overflow-wrap:anywhere}
+.lektrus-science-chem-feedback>small{font-size:11px;line-height:1.5;color:#6882a0}
+.lektrus-science-chem-feedback>small.invalid{color:#b14b55}
+.lektrus-science-chem-feedback textarea{
+ box-sizing:border-box;min-height:92px;width:100%;padding:9px;
+ border:1px solid #c6d8ed;border-radius:8px;
+ font:15px/1.6 ui-monospace,monospace;color:#273f5e;
+ background:white;resize:vertical;
+}
+.lektrus-chemical-illustration{
+ display:flex;min-width:0;min-height:0;align-items:center;
+ justify-content:center;padding:14px;box-sizing:border-box;
+ background:#fbfdff;
+}
+.lektrus-chem-formula-sheet,.lektrus-chem-experiment-sheet{
+ display:flex;flex-direction:column;justify-content:center;align-items:center;
+ gap:12px;width:100%;max-height:100%;min-height:0;
+ box-sizing:border-box;text-align:center;color:#2d476b;
+}
+.lektrus-chem-formula-sheet>strong,.lektrus-chem-experiment-sheet>strong{
+ font-size:clamp(11px,1.3vw,17px);line-height:1.4;
+}
+.lektrus-chem-formula-sheet>.lektrus-chemical-typeset{
+ font-size:clamp(18px,3.2vw,42px);font-weight:600;line-height:1.6;
+ word-break:break-word;letter-spacing:.02em;
+}
+.lektrus-chemical-typeset sub{font-size:.63em;vertical-align:sub}
+.lektrus-chem-formula-sheet>small,.lektrus-chem-experiment-sheet>small{
+ max-width:95%;font-size:clamp(9px,1vw,12px);line-height:1.4;color:#6983a2;
+}
+.lektrus-chem-experiment-stages{
+ display:flex;align-items:center;gap:4px;
+ padding:3px;border-radius:8px;border:1px solid #cbdcf1;background:#f1f6ff;
+}
+.lektrus-chem-experiment-stages button{
+ padding:5px 12px;border-radius:6px;border:0;
+ background:transparent;color:#6580a3;font-size:12px;font-weight:650;
+ cursor:pointer;
+}
+.lektrus-chem-experiment-stages button[aria-pressed="true"]{
+ background:white;color:#275fae;box-shadow:0 1px 4px #244a8020;
+}
+.lektrus-chem-experiment-sheet svg{
+ display:block;min-width:0;min-height:0;max-height:58%;width:100%;
+ preserveAspectRatio:xMidYMid meet;
+}
+.lektrus-chem-experiment-formula{
+ font-size:clamp(12px,2vw,20px);font-weight:650;overflow-wrap:anywhere;
+}
+.lektrus-organic-formula{
+ color:#2873b5;font-size:14px;font-weight:700;letter-spacing:.01em;
+}
+.lektrus-science-preview>.lektrus-chem-formula-sheet,
+.lektrus-science-preview>.lektrus-chem-experiment-sheet{
+ min-height:270px;max-height:65vh;padding:12px 18px;
+}
