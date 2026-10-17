@@ -1095,6 +1095,14 @@ function evaluateGraphExpression(source: string, x: number): number {
   const expr=():number=>{let v=term();while(tokens[pos]==="+"||tokens[pos]==="-"){const op=tokens[pos++];const q=term();v=op==="+"?v+q:v-q}return v};
   try{const value=expr();return pos===tokens.length&&Number.isFinite(value)?value:NaN}catch{return NaN}
 }
+function prettyGraphEquation(expression:string):string{
+  const plain=expression.replace(/^y\s*=\s*/i,"").trim();
+  return "y = "+plain.replace(/\^([0-9]+)/g,(_,digits:string)=>digits.replace(/[0-9]/g,d=>"⁰¹²³⁴⁵⁶⁷⁸⁹"[Number(d)]))
+    .replace(/(\d|\))\s*\*\s*(x|\()/g,"$1$2")
+    .replace(/x\s*\*\s*(x|\()/g,"x$1")
+    .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
+}
+
 function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
@@ -1214,15 +1222,15 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   }
   if(item.graphFigureId==="chem-periodic")return <div className="graph-view lektrus-periodic-board-view">
     <LektrusPeriodicBoard selected={item.sciencePeriodicHighlights??[]}
-      showNames={item.sciencePeriodicShowNames!==false} onChange={onPeriodicChange}/>
+      showNames={item.sciencePeriodicShowNames!==false} layout={item.sciencePeriodicLayout??"school"} onChange={onPeriodicChange}/>
   </div>;
   const scienceCaptionLayout=item.graphFigureId?.startsWith("physics-")?
     layoutScienceLabels(item.graphPoints??[],item.graphSegments??[],p=>({x:sx(p.x),y:sy(p.y)}),W,H):null;
   return <div className={`graph-view graph-purpose-${purpose} ${item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")?"science-graph":""} ${onPointMove?"graph-interactive":""}`}>
-    <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small>y = {expression.replace(/^y\s*=\s*/i,"")}</small>}</div>
+    <div className="graph-label"><strong>{title}</strong>{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onDoubleClick={e=>{if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
-      <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#667085" strokeWidth="1.3"/></marker></defs>
+      <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
         {gridX.map(x=><line key={`x${x}`} className={Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
           x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
@@ -1419,7 +1427,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
               const screenLength=Math.hypot(bx-ax,by-ay)||1;
               const shift=(bondIndex-((seg.bondOrder??1)-1)/2)*4;
               const ox=-(by-ay)/screenLength*shift,oy=(bx-ax)/screenLength*shift;
-              return <line key={bondIndex} className="graph-segment"
+              return <line key={bondIndex} className={seg.scienceArrow?"graph-segment graph-force-vector":"graph-segment graph-object-segment"}
                 x1={ax+ox} y1={ay+oy} x2={bx+ox} y2={by+oy}
                 markerEnd={(seg.scienceArrow||seg.kind==="ray")&&(seg.bondOrder??1)===1&&Math.hypot(end.x-start.x,end.y-start.y)>.5?`url(#graph-arrow-${item.id})`:undefined}/>;
             })}
