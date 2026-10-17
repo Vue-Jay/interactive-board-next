@@ -14,7 +14,7 @@ export default function LektrusPeriodicTableView({
 }:Props){
  const marked=new Set(selected);
  const school=layout==="school";
- const schoolColumn=(col:number)=>col<=2?col===1?0:2:col>=13?col===18?17:4+(col-13)*2:col<=10?col+1:col===11?0:2;
+ const schoolColumn=(col:number)=>col<=2?col===1?0:2:col>=13?col+(-1):col<=10?col+1:col===11?0:2;
  const schoolRow=(el:(typeof periodicElements)[number])=>el.period<=3?el.period-1:3+(el.period-4)*2;
  return <svg className="lektrus-periodic-svg" viewBox={school?"0 0 1080 795":"0 0 1080 660"}
    preserveAspectRatio="xMidYMid meet" role="img"
@@ -39,8 +39,8 @@ export default function LektrusPeriodicTableView({
     </g>;
   })}
   {periodicElements.map(el=>{
-    const subgroupB=school&&el.col>=3&&el.col<=12&&el.row<=7;
-    const x=school?(el.row>=9?bx+(el.col-3)*step:bx+schoolColumn(el.col)*step):bx+(el.col-1)*step;
+    const subgroupB=school&&el.period>=4&&(el.col===11||el.col===12||el.col>=13);
+    const x=school?(el.row>=9?145+(el.col-3)*step:bx+schoolColumn(el.col)*step):bx+(el.col-1)*step;
     const y=school?(el.row>=9?(el.row===9?662:716):by+(schoolRow(el)+(subgroupB?1:0))*step):el.row<=7?by+(el.row-1)*step:el.row===9?480:535;
     const chosen=marked.has(el.number),focused=el.number===active;
     const dim=familyFilter!=="all"&&familyFilter!==el.family&&!chosen;
@@ -70,7 +70,7 @@ export default function LektrusPeriodicTableView({
       {chosen&&<circle cx={x+44} cy={y+5} r="3" fill="#2d60c8"/>}
     </g>;
   })}
-  {showInfo&&active!==null&&<foreignObject x={school?215:200} y="67" width={school?390:430} height={school?154:162}>
+  {showInfo&&active!==null&&<foreignObject x={school?207:200} y={school?116:67} width={school?450:430} height={school?110:162}>
     <div style={{height:"100%",overflow:"auto",background:"white",border:"1px solid #c9d5e6",borderRadius:9,padding:5,boxSizing:"border-box",fontSize:10}} onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
       <LektrusElementInfo key={active} number={active} compact summary onClose={onCloseInfo} onToggle={onToggleInfo} isSelected={marked.has(active)}/>
     </div>
