@@ -54,7 +54,7 @@ assert.ok(activity.includes("lektrus:native-back"));
 assert.ok(app.includes('window.addEventListener("lektrus:native-back"'));
 assert.ok(androidManifest.includes('android:enableOnBackInvokedCallback="false"'));
 assert.ok(activity.includes("WindowInsetsCompat.Type.displayCutout()"));
-assert.ok(activity.includes("view.setPadding(cutout.left, cutout.top,"));
+assert.ok(activity.includes("view.setPadding(cutout.left, top, cutout.right,"));
 assert.ok(read("src/lektrusPlatform.css").includes("html.lektrus-android-app"));
 assert.ok(androidManifest.includes('android:windowSoftInputMode="adjustResize"'));
 assert.ok(iosPlist.includes("UIRequiresFullScreen"));
