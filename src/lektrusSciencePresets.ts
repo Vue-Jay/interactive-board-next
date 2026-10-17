@@ -1,68 +1,91 @@
 import type {Item} from "./boardModel";
 import {makeMathPresetItem} from "./lektrusMathPresets";
 
-/** Editable classroom diagrams. No simulations or solved numerical answers.
- * Each diagram is an ordinary graph object, retaining undo, saves and realtime.
- */
-export type SciencePresetId =
-  | "physics-forces" | "physics-incline" | "physics-optics" | "physics-motion"
-  | "chem-water" | "chem-carbon-dioxide" | "chem-methane" | "chem-atom";
+/** School diagrams only: symbols and qualitative constructions, never solved work. */
+export type SciencePresetId=
+  |"physics-forces"|"physics-incline"|"physics-optics"|"physics-refraction"|"physics-lens"
+  |"physics-motion"|"physics-speed"
+  |"chem-water"|"chem-carbon-dioxide"|"chem-methane"|"chem-ammonia"|"chem-oxygen"|"chem-atom";
 
-type Vertex=[number,number,string];
-type Edge=[number,number,"segment"|"ray"|"line",string?];
-const pt=(x:number,y:number,label:string):Vertex=>[x,y,label];
-const edge=(a:number,b:number,kind:"segment"|"ray"|"line"="segment",label=""):Edge=>[a,b,kind,label];
+type Vertex={x:number;y:number;label:string;color?:string};
+type Edge={a:number;b:number;kind:"segment"|"ray"|"line";label:string;measure:boolean;bondOrder?:1|2|3;scienceArrow?:boolean};
+const P=(x:number,y:number,label=""):Vertex=>({x,y,label});
+const elementColor:Record<string,string>={H:"#5177cc",O:"#d34c53",C:"#35485f",N:"#3973c9","e⁻":"#4169ba"};
+const A=(x:number,y:number,label:string):Vertex=>({...P(x,y,label),color:elementColor[label]??"#455b75"});
+const S=(a:number,b:number,label="",extras:Partial<Edge>={}):Edge=>({a,b,kind:"segment",label,measure:false,...extras});
+const V=(a:number,b:number,label=""):Edge=>S(a,b,label,{scienceArrow:true});
+const B=(a:number,b:number,order:1|2|3=1):Edge=>S(a,b,"",{bondOrder:order});
 
 export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,createId:()=>string):Item{
   const graph=makeMathPresetItem("blank",x,y,createId());
-  const base:Item={...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
-    graphSnap:false,graphShowLabels:true,graphShowCurve:false,
+  const base:Item={...graph,graphFigureId:id,graphPurpose:"geometry",graphAxisMode:"none",
+    graphGrid:false,graphGridStep:1,graphSnap:false,graphShowLabels:true,
+    graphShowCurve:false,graphConnectPoints:false,graphExpression:"",
     graphSegments:[],graphAngles:[],graphCircles:[],graphPolygons:[],graphMidpoints:[],
     graphXMin:-7,graphXMax:7,graphYMin:-5,graphYMax:5,width:500,height:360};
-  if(id==="physics-motion"){
-    return {...graph,text:"График движения",graphPurpose:"coordinates",
-      graphAxisMode:"both",graphType:"linear",graphShowCurve:false,
-      graphExpression:"",graphConnectPoints:true,graphGrid:true,
-      graphXMin:0,graphXMax:12,graphYMin:0,graphYMax:10,
-      graphPoints:[{x:0,y:0,label:""},{x:3,y:2,label:""},{x:7,y:6,label:""}],
-      graphSegments:[]};
+  if(id==="physics-motion"||id==="physics-speed"){
+    const speed=id==="physics-speed";
+    return {...base,text:speed?"График скорости v(t)":"График пути s(t)",
+      graphPurpose:"coordinates",graphAxisMode:"both",graphGrid:true,
+      graphConnectPoints:true,graphAxisLabels:true,graphXMin:0,graphXMax:12,
+      graphYMin:0,graphYMax:10,graphPoints:(speed?[[0,2],[3,2],[7,5],[10,5]]:[[0,0],[3,2],[7,6],[10,8]]).map(([px,py])=>P(px,py))};
   }
-  let title="",vertices:Vertex[]=[],edges:Edge[]=[],polygons:number[][]=[];
+  let title="";
+  let points:Vertex[]=[];
+  let segments:Edge[]=[];
+  let polygons:NonNullable<Item["graphPolygons"]>=[];
+  let circles:NonNullable<Item["graphCircles"]>=[];
   switch(id){
     case "physics-forces":
-      title="Механика: силы на тело";
-      vertices=[pt(0,0,"O"),pt(0,4,"N"),pt(0,-4,"mg"),pt(4,0,"F"),pt(-3,0,"Fтр")];
-      edges=[edge(0,1,"ray"),edge(0,2,"ray"),edge(0,3,"ray"),edge(0,4,"ray")];break;
-    case "physics-incline":
-      title="Механика: наклонная плоскость";
-      vertices=[pt(-5,-3,"A"),pt(5,-3,"B"),pt(5,3,"C"),pt(1,-.5,"O"),pt(1,3.8,"N"),pt(1,-4,"mg"),pt(4,1.5,"F")];
-      edges=[edge(0,1),edge(1,2),edge(2,0),edge(3,4,"ray"),edge(3,5,"ray"),edge(3,6,"ray")];break;
-    case "physics-optics":
-      title="Оптика: лучи и зеркало";
-      vertices=[pt(-5,0,"A"),pt(0,0,"O"),pt(4,4,"B"),pt(4,-4,"C"),pt(0,-4,""),pt(0,4,"")];
-      edges=[edge(0,1,"ray","Падающий луч"),edge(1,2,"ray","Отражённый луч"),
-        edge(1,3,"ray","Продолжение"),edge(4,5,"segment","Зеркало")];break;
-    case "chem-water":
-      title="Химическая структура: H₂O";
-      vertices=[pt(0,0,"O"),pt(-3,-2,"H"),pt(3,-2,"H")];
-      edges=[edge(0,1),edge(0,2)];break;
-    case "chem-carbon-dioxide":
-      title="Химическая структура: CO₂";
-      vertices=[pt(-4,0,"O"),pt(0,0,"C"),pt(4,0,"O"),pt(-4,.25,""),pt(0,.25,""),pt(4,.25,"")];
-      edges=[edge(0,1),edge(1,2),edge(3,4),edge(4,5)];break;
-    case "chem-methane":
-      title="Химическая структура: CH₄";
-      vertices=[pt(0,0,"C"),pt(-3,0,"H"),pt(3,0,"H"),pt(0,3.5,"H"),pt(0,-3.5,"H")];
-      edges=[edge(0,1),edge(0,2),edge(0,3),edge(0,4)];break;
-    case "chem-atom":
-      title="Строение атома: схема";
-      vertices=[pt(0,0,"Ядро"),pt(2.6,0,"e⁻"),pt(0,2.6,"e⁻"),pt(-2.6,0,"e⁻")];
-      edges=[];
+      title="Механика · силы на тело";
+      points=[P(0,0,"O"),P(0,3.7,"N"),P(0,-3.7,"mg"),P(4,0,"F"),P(-3.7,0,"Fтр")];
+      segments=[V(0,1),V(0,2),V(0,3),V(0,4)];
       break;
+    case "physics-incline":
+      title="Механика · наклонная плоскость";
+      points=[P(-5,-3,"A"),P(5,-3,"B"),P(5,2.5,"C"),P(0,-.25,"O"),P(-1.8,3,"N"),P(0,-4,"mg"),P(3.1,1.4,"F")];
+      segments=[S(0,1),S(1,2),S(2,0),V(3,4),V(3,5),V(3,6)];
+      polygons=[{points:[0,1,2],label:"",measure:false}];
+      break;
+    case "physics-optics":
+      title="Оптика · отражение света";
+      points=[P(-4,3.5,"A"),P(0,0,"O"),P(4,3.5,"B"),P(-5,0,""),P(5,0,""),P(0,4.6,"N")];
+      segments=[V(0,1,"Падающий луч"),V(1,2,"Отражённый луч"),S(3,4,"Зеркало"),S(1,5,"Нормаль")];
+      break;
+    case "physics-refraction":
+      title="Оптика · преломление света";
+      points=[P(-3.7,3.5,"A"),P(0,0,"O"),P(2,-3.7,"B"),P(-5,0,""),P(5,0,""),P(0,4.5,"N₁"),P(0,-4.5,"N₂")];
+      segments=[V(0,1,"Падающий луч"),V(1,2,"Преломлённый луч"),S(3,4,"Граница сред"),S(5,6,"Нормаль")];
+      break;
+    case "physics-lens":
+      title="Оптика · собирающая линза";
+      points=[P(-5,0,""),P(5,0,""),P(0,-4,""),P(0,4,""),P(-3,0,"F₁"),P(3,0,"F₂"),P(-5,2.2,"A"),P(0,2.2,"O"),P(4,-.8,"B")];
+      segments=[S(0,1,"Главная оптическая ось"),S(2,3,"Линза"),V(6,7,"Падающий луч"),V(7,8,"После линзы")];
+      break;
+    case "chem-water":
+      title="Молекула воды · H₂O";
+      points=[A(0,1,"O"),A(-2.7,-1.5,"H"),A(2.7,-1.5,"H")];
+      segments=[B(0,1),B(0,2)];break;
+    case "chem-carbon-dioxide":
+      title="Молекула углекислого газа · CO₂";
+      points=[A(-3.7,0,"O"),A(0,0,"C"),A(3.7,0,"O")];
+      segments=[B(0,1,2),B(1,2,2)];break;
+    case "chem-methane":
+      title="Молекула метана · CH₄";
+      points=[A(0,0,"C"),A(-3.3,0,"H"),A(3.3,0,"H"),A(0,3.3,"H"),A(0,-3.3,"H")];
+      segments=[B(0,1),B(0,2),B(0,3),B(0,4)];break;
+    case "chem-ammonia":
+      title="Молекула аммиака · NH₃";
+      points=[A(0,0.5,"N"),A(-3,-1.7,"H"),A(3,-1.7,"H"),A(0,3.6,"H")];
+      segments=[B(0,1),B(0,2),B(0,3)];break;
+    case "chem-oxygen":
+      title="Молекула кислорода · O₂";
+      points=[A(-2,0,"O"),A(2,0,"O")];
+      segments=[B(0,1,2)];break;
+    case "chem-atom":
+      title="Атом · ядро и электронная оболочка";
+      points=[A(0,0,"Ядро"),A(3.1,0,"e⁻"),A(0,3.1,"e⁻"),A(-3.1,0,"e⁻")];
+      circles=[{center:0,edge:1,label:"Оболочка",measure:false}];break;
   }
-  return {...base,text:title,
-    graphPoints:vertices.map(([px,py,label])=>({x:px,y:py,label})),
-    graphSegments:edges.map(([a,b,kind,label])=>({a,b,kind,label:label||"",measure:false})),
-    graphPolygons:polygons.map(points=>({points,label:"",measure:false})),
-    graphCircles:id==="chem-atom"?[{center:0,edge:1,label:"Электронная оболочка",measure:false}]:[]};
+  return {...base,text:title,graphPoints:points,graphSegments:segments,graphPolygons:polygons,graphCircles:circles};
 }
