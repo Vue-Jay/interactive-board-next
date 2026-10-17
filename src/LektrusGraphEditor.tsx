@@ -367,7 +367,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                     if(equalSideFigure&&i>0)return null;
                     const next=poly.points[(i+1)%poly.points.length];
                     const name=(draft.points[index]?.label||String.fromCharCode(65+i))+(draft.points[next]?.label||String.fromCharCode(65+(i+1)%poly.points.length));
-                    return <label key={i}>{equalSideFigure?"Длина каждой стороны":"Сторона "+name}
+                    return <label key={i}>{equalSideFigure?"Все стороны":name}
                       <input aria-label={"Длина стороны "+name} inputMode="decimal" maxLength={32} placeholder="Например, 5 см"
                         value={draft.givenSides[i]??""} onChange={e=>patch({givenSides:Array.from({length:Math.max(poly.points.length,draft.givenSides.length)},(_,j)=>equalSideFigure?e.target.value:j===i?e.target.value:draft.givenSides[j]??"")})}/>
                     </label>;
