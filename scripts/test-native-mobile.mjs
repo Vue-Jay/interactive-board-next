@@ -25,6 +25,25 @@ assert.match(read("src/SettingsScreen.tsx"), /clearNativeBackendConnection/);
 assert.match(workflow, /:app:assembleDebug/);
 assert.match(workflow, /CODE_SIGNING_ALLOWED=NO build/);
 assert.match(workflow, /upload-artifact@v4/);
+const app = read("src/App.tsx");
+const settings = read("src/SettingsScreen.tsx");
+const activity = read("android/app/src/main/java/ru/lektrus/board/MainActivity.java");
+const androidManifest = read("android/app/src/main/AndroidManifest.xml");
+const iosPlist = read("ios/App/App/Info.plist");
+assert.ok(pkg.dependencies["@capacitor/screen-orientation"]);
+assert.ok(app.includes('ScreenOrientation.lock({ orientation: "landscape-primary" })'));
+assert.ok(app.includes("ScreenOrientation.unlock()"));
+assert.ok(app.includes("[route.kind]"));
+assert.ok(app.includes("!Capacitor.isNativePlatform()&&installPrompt"));
+assert.ok(settings.includes('!Capacitor.isNativePlatform()&&<section className="settings-row-card lektrus-install-settings"'));
+assert.ok(activity.includes("WindowInsetsCompat.Type.systemBars()"));
+assert.ok(activity.includes("WindowInsetsCompat.Type.displayCutout()"));
+assert.ok(activity.includes("view.setPadding(bars.left, bars.top, bars.right, bars.bottom)"));
+assert.ok(read("src/lektrusPlatform.css").includes("html.lektrus-android-app"));
+assert.ok(androidManifest.includes('android:windowSoftInputMode="adjustResize"'));
+assert.ok(iosPlist.includes("UIRequiresFullScreen"));
+assert.ok(readFileSync(new URL("../assets/icon.png", import.meta.url)).equals(readFileSync(new URL("../public/lektrus-icon-512.png", import.meta.url))), "Native icon must use approved logo");
+
 
 const nativeSourcesExpected = process.env.CI === "true" || existsSync("android") || existsSync("ios");
 if (nativeSourcesExpected) {
