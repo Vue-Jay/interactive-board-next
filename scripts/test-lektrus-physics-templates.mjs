@@ -55,6 +55,70 @@ for(const group of scienceToolGroups.filter(x=>groupNames.includes(x.id))){
  }
 }
 assert.equal(total,19,"school template coverage: 6 mechanics, 6 motion, 7 optics");
+
+// Physical directions and incidence laws: do not regress school diagrams.
+const build=id=>makeSciencePresetItem(id,0,0,()=>id);
+const vector=(doc,n)=>{
+ const seg=doc.graphSegments[n],a=doc.graphPoints[seg.a],b=doc.graphPoints[seg.b];
+ return {dx:b.x-a.x,dy:b.y-a.y};
+};
+const approximate=(a,b,tolerance=.04)=>Math.abs(a-b)<=tolerance;
+{
+ const d=build("physics-forces"),up=vector(d,0),weight=vector(d,1),
+   applied=vector(d,2),friction=vector(d,3);
+ assert.ok(up.dy>0&&Math.abs(up.dx)<.01,"normal points upward");
+ assert.ok(weight.dy<0&&Math.abs(weight.dx)<.01,"weight points downward");
+ assert.ok(applied.dx>0&&Math.abs(applied.dy)<.01,"applied force points right");
+ assert.ok(friction.dx<0&&Math.abs(friction.dy)<.01,"friction opposes motion");
+}
+{
+ const d=build("physics-friction"),applied=vector(d,3),friction=vector(d,4);
+ assert.ok(approximate(applied.dy,0)&&applied.dx>0,"horizontal pull must remain horizontal");
+ assert.ok(approximate(friction.dy,0)&&friction.dx<0,"sliding friction must oppose pull");
+}
+{
+ const d=build("physics-incline"),normal=vector(d,3),gravity=vector(d,4),pull=vector(d,5);
+ const incline=vector(d,2); // diagonal side goes from top to bottom; normalized sign irrelevant.
+ assert.ok(normal.dx<0&&normal.dy>0,"normal must point outside incline");
+ assert.ok(gravity.dy<0&&approximate(gravity.dx,0),"gravity vertical down");
+ assert.ok(pull.dx>0&&pull.dy>0,"pull up the slope");
+ assert.ok(Math.abs(incline.dx*normal.dx+incline.dy*normal.dy)<5,
+   "normal approximately perpendicular to inclined plane");
+}
+{
+ const d=build("physics-lever");
+ assert.ok(approximate(vector(d,1).dx,0)&&vector(d,1).dy<0,
+   "left lever force must be vertical");
+ assert.ok(approximate(vector(d,2).dx,0)&&vector(d,2).dy<0,
+   "right lever force must be vertical");
+}
+{
+ const d=build("physics-optics"),incident=vector(d,0),reflection=vector(d,1);
+ assert.ok(incident.dy<0&&reflection.dy>0,"ray must approach and then leave mirror");
+ assert.ok(approximate(Math.abs(incident.dx/incident.dy),Math.abs(reflection.dx/reflection.dy)),
+   "angle of incidence must equal reflection");
+}
+{
+ const d=build("physics-refraction"),incident=vector(d,0),refracted=vector(d,1);
+ assert.ok(incident.dy<0&&refracted.dy<0,"light passes from upper to lower medium");
+ assert.ok(incident.dx>0&&refracted.dx>0,"ray direction remains forward");
+}
+{
+ const d=build("physics-total-reflection");
+ assert.ok(vector(d,2).dy>0&&vector(d,3).dy<0,"total reflection stays in incident medium");
+}
+{
+ const d=build("physics-diverging-lens");
+ const focus=d.graphPoints[4],through=d.graphPoints[7],out=d.graphPoints[8];
+ const a=(through.y-focus.y)/(through.x-focus.x),b=(out.y-through.y)/(out.x-through.x);
+ assert.ok(approximate(a,b,.04),"diverging lens outgoing ray backward extension passes through near focus");
+}
+{
+ const d=build("physics-braking"),p=d.graphPoints;
+ const changes=p.slice(1).map((pt,i)=>(pt.y-p[i].y)/(pt.x-p[i].x));
+ assert.ok(changes.every(v=>approximate(v,changes[0])),"uniform braking should be linear");
+}
+
 const editor=read("src/LektrusScienceEditor.tsx");
 const app=read("src/App.tsx");
 assert.match(editor,/layoutScienceLabels\(points,segments,canvasPoint,520,370\)/);
