@@ -11,6 +11,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
   const [active,setActive]=useState<number|null>(selected[0]??8);
   const [query,setQuery]=useState("");
   const [family,setFamily]=useState<ElementFamily|"all">("all");
+  const [layout,setLayout]=useState<"school"|"long">(()=>item.sciencePeriodicLayout==="long"?"long":"school");
   const [showNames,setShowNames]=useState(item.sciencePeriodicShowNames!==false);
   const [title,setTitle]=useState(item.text||"Периодическая система элементов");
   const [notice,setNotice]=useState("");
@@ -20,7 +21,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
       .includes(query.trim().toLocaleLowerCase("ru-RU"))).slice(0,10):[];
   const updateItem=():Item=>({...item,text:title.trim().slice(0,100)||"Периодическая система элементов",
     graphFigureId:"chem-periodic",sciencePeriodicHighlights:selected,
-    sciencePeriodicShowNames:showNames});
+    sciencePeriodicLayout:layout,sciencePeriodicShowNames:showNames});
   const pick=(number:number)=>{
     setActive(number);
     setSelected(current=>{
@@ -56,6 +57,12 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
                 onClick={()=>focusElement(el.number)}><b>{el.symbol}</b><span>{el.name}</span><small>№ {el.number}</small></button>)}
             </div>}
             {query.trim()&&!results.length&&<span className="lektrus-periodic-notfound">Не найдено</span>}
+            <label>Форма таблицы
+              <select aria-label="Форма периодической таблицы" value={layout} onChange={e=>setLayout(e.target.value as "school"|"long")}>
+                <option value="school">Российская школьная (короткая)</option>
+                <option value="long">Современная (18 групп)</option>
+              </select>
+            </label>
             <label>Подсветить семейство
               <select value={family} onChange={e=>setFamily(e.target.value as ElementFamily|"all")}>
                 <option value="all">Все семейства</option>
@@ -85,7 +92,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
               <span>Щелчок выделяет элемент · повторный щелчок отменяет</span></div>
             <div className="lektrus-periodic-table-scroll">
               <LektrusPeriodicTableView selected={selected} active={active}
-                showNames={showNames} familyFilter={family} onPick={pick}/>
+                showNames={showNames} familyFilter={family} onPick={pick} layout={layout}/>
             </div>
             <div className="lektrus-periodic-legend">
               {periodicFamilies.map(group=><span key={group.id}><i style={{background:group.color}}/>{group.name}</span>)}
