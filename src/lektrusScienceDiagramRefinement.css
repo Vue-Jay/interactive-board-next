@@ -89,3 +89,19 @@
 .lektrus-science-point-actions button{
   font-weight:650!important;
 }
+
+/* Physics: neutral thin construction/object strokes, blue forces. */
+.lektrus-science-backdrop.physics .lektrus-science-preview .lektrus-science-object-line{
+  stroke:#64748b!important;stroke-width:1.25!important;stroke-linecap:round;
+}
+.lektrus-science-backdrop.physics .lektrus-science-preview .lektrus-science-force{
+  stroke:#2563eb!important;stroke-width:1.9!important;stroke-linecap:round;
+}
+.lektrus-science-backdrop.physics .lektrus-science-preview .lektrus-science-force + text{
+  fill:#2563eb!important;
+}
+.lektrus-graph-formula-typeset{
+  font-size:17px;font-weight:550;letter-spacing:.01em;color:#233b65;
+  padding:7px 11px;border:1px solid #dce6f3;border-radius:8px;
+  background:#f7faff;margin-top:7px;overflow-wrap:anywhere;
+}
