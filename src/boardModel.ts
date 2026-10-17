@@ -76,19 +76,19 @@ export type Item = {
   graphA?: number; graphB?: number; graphC?: number;
   graphXMin?: number; graphXMax?: number; graphYMin?: number; graphYMax?: number;
   graphGrid?: boolean;
-  graphPoints?: { x:number; y:number; label:string; color?: string }[];
+  graphPoints?: { x:number; y:number; label:string; color?: string; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphShowLabels?: boolean;
-  graphSegments?: { a:number; b:number; kind:"segment"|"line"|"ray"; label:string; measure:boolean }[];
-  graphAngles?: { a:number; vertex:number; b:number; label:string }[];
-  graphCircles?: { center:number; edge:number; label:string; measure:boolean }[];
-  graphPolygons?: { points:number[]; label:string; measure:boolean }[];
+  graphSegments?: { a:number; b:number; kind:"segment"|"line"|"ray"; label:string; measure:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphAngles?: { a:number; vertex:number; b:number; label:string; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphCircles?: { center:number; edge:number; label:string; measure:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphPolygons?: { points:number[]; label:string; measure:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphTriangleLines?: ("median"|"altitude"|"bisector")[];
   graphTriangleVertex?: 0|1|2;
   graphShowArea?: boolean;
   graphGivenSides?: string[];
   graphGivenAngles?: string[];
   graphTriangleInputMode?: "SSS"|"SAS"|"ASA";
-  graphMidpoints?: { a:number; b:number; label:string }[];
+  graphMidpoints?: { a:number; b:number; label:string; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphSnap?: boolean;
   graphAxisLabels?: boolean;
   graphGridStep?: number;
@@ -208,6 +208,17 @@ export function parseDocument(raw: string): DocumentData {
     }
     if (i.kind === "graph") {
       if(i.graphFigureId!=null&&(typeof i.graphFigureId!=="string"||i.graphFigureId.length>64))throw new Error("Некорректный тип геометрической фигуры");
+      for(const list of [i.graphPoints,i.graphSegments,i.graphCircles,i.graphPolygons,i.graphAngles,i.graphMidpoints]){
+        if(!Array.isArray(list))continue;
+        for(const element of list){
+          if(element&&typeof element==="object"){
+            const ref=element as {schoolGroupId?:unknown;schoolGroupLabel?:unknown};
+            if(ref.schoolGroupId!=null&&(typeof ref.schoolGroupId!=="string"||ref.schoolGroupId.length>64))throw new Error("Повреждена группа школьного построения");
+            if(ref.schoolGroupLabel!=null&&(typeof ref.schoolGroupLabel!=="string"||ref.schoolGroupLabel.length>100))throw new Error("Повреждено название школьного построения");
+          }
+        }
+      }
+
       if(i.graphRotationX!=null&&(!Number.isFinite(i.graphRotationX)||Math.abs(i.graphRotationX)>3600))throw new Error("Повреждён угол поворота фигуры");
       if(i.graphRotationY!=null&&(!Number.isFinite(i.graphRotationY)||Math.abs(i.graphRotationY)>3600))throw new Error("Повреждён угол поворота фигуры");
       if(i.graphParallelMarks!=null&&(!Array.isArray(i.graphParallelMarks)||i.graphParallelMarks.length>6||i.graphParallelMarks.some((v:unknown)=>typeof v!=="string"||!["corresponding","alternate-interior","alternate-exterior","same-side-interior","vertical","adjacent"].includes(v))))throw new Error("Повреждены обозначения углов параллельных прямых");
