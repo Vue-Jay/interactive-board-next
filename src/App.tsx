@@ -16,6 +16,7 @@ import "./App.css";
 import AuthScreen from "./AuthScreen";
 import GeometryInstruments from "./GeometryInstruments";
 import LektrusSubjectPicker from "./LektrusSubjectPicker";
+import {LEKTRUS_SCHOOL_SUBJECTS,normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
@@ -2052,18 +2053,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // The shared board document is the source of truth, not a per-user preference.
     // Legacy labels are migrated only by the board owner.
     const assigned=initial.data.subject;
-    if(typeof assigned==="string")return {subject:assigned,group:""};
+    if(typeof assigned==="string")return {subject:normalizeLektrusSubject(assigned),group:""};
     if(boardSummary.role!=="owner")return {subject:"",group:""};
     try{
       const raw=JSON.parse(localStorage.getItem("lectris.board-organization.v1."+authUser.id)||"{}") as Record<string,{subject?:string;group?:string}>;
       const data=raw?.[boardSummary.id];
-      return {subject:typeof data?.subject==="string"?data.subject:"",group:typeof data?.group==="string"?data.group:""};
+      return {subject:typeof data?.subject==="string"?normalizeLektrusSubject(data.subject):"",group:typeof data?.group==="string"?data.group:""};
     }catch{return {subject:"",group:""}}
   });
-  const subjectCategories=["","Математика","Алгебра","Геометрия","Физика","Химия","Биология","География","Русский язык","Литература","История","Обществознание","Информатика","Английский язык","Иностранный язык"];
+  const subjectCategories=["",...LEKTRUS_SCHOOL_SUBJECTS];
   const changeBoardSubject=(subject:string)=>{
     if(boardSummary.role!=="owner"||boardSummary.ownerId!==authUser.id)return;
-    const next={...lectrisBoardOrganization,subject};
+    const next={...lectrisBoardOrganization,subject:normalizeLektrusSubject(subject)};
     setLectrisBoardOrganization(next);
     queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
   };
@@ -2831,7 +2832,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setTitle(data.title);
     setBoardBackground(normalizeBoardBackground(data.background));
     setBackgroundIsShared(data.backgroundShared!==false);
-    setLectrisBoardOrganization(current=>({...current,subject:typeof data.subject==="string"?data.subject:""}));
+    setLectrisBoardOrganization(current=>({...current,subject:typeof data.subject==="string"?normalizeLektrusSubject(data.subject):""}));
     if (!fromRemote) setView(data.view);
     const allItems = expandDocumentInk(data);
     display(allItems);
@@ -5677,7 +5678,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setRemoteConflict(null);
     if(onlyBackgroundChanged){
       setBoardBackground(normalizeBoardBackground(data.background));
-      setLectrisBoardOrganization(current=>({...current,subject:typeof data.subject==="string"?data.subject:""}));
+      setLectrisBoardOrganization(current=>({...current,subject:typeof data.subject==="string"?normalizeLektrusSubject(data.subject):""}));
       snapshot.current=data;
       try {localStorage.setItem(storageKey,JSON.stringify(data))}catch{}
       setSaveStatus("Общий фон обновлён");
@@ -6517,16 +6518,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             onRemovePoint={i=>setGraphDraft(current=>current&&current.figureId!=="ray"&&!isSolidFigure(current.figureId)&&!(current.purpose==="unit-circle"&&i<=5)?removeGraphPoint(current,i):current)}
             />}
           />,document.body)}
-        {formulaEditorId && formulaDraft && (
+        {formulaEditorId && formulaDraft && createPortal(
           <div
-            className="formula-editor-backdrop"
-            onPointerDown={() => closeFormulaEditor()}
+            className="formula-editor-backdrop lektrus-formula-window"
+            onPointerDown={(event) => { if(event.target===event.currentTarget)closeFormulaEditor(); }}
             onKeyDown={(e) => {
               if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFormulaEditor(); }
               if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveFormulaEditor(); }
             }}
           >
-            <div className="formula-editor-modal" role="dialog" aria-modal="false" aria-label="Редактор формулы" onPointerDown={(e) => e.stopPropagation()}>
+            <div className="formula-editor-modal" role="dialog" aria-modal="true" aria-label="Редактор формулы" onPointerDown={(e) => e.stopPropagation()}>
               <div className="formula-editor-header">
                 <div>
                   <strong>Редактор формулы</strong>
@@ -6630,12 +6631,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <span>{formulaDraft.text.length} / 10000</span>
                 <div>
                   <button className="secondary" onClick={() => void pasteFormulaSource()}>Вставить из буфера</button><button className="secondary" onClick={() => void copyFormulaSource()}><Icon name="copy" size={15}/> Копировать запись</button>
-                  <button className="secondary" onClick={() => closeFormulaEditor()}>Отмена</button>
+                  <button className="secondary" onClick={() => closeFormulaEditor(false)}>Отмена</button>
                   <button className="primary" onClick={saveFormulaEditor}><Icon name="check" size={15}/> Сохранить</button>
                 </div>
               </div>
             </div>
-          </div>
+          </div>,document.body
         )}
         {checklistEditorId && checklistDraft && (
           <div className="checklist-editor-backdrop" onPointerDown={() => { saveChecklistEditor(); }}>
