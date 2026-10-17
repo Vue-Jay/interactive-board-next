@@ -436,24 +436,32 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               </label>)}
             </div>}
             {(!isSolid||draft.figureId==="sphere")&&draft.circles.length>0&&<div className="lektrus-geometry-givens">
-              <strong>Радиус окружности</strong>
-              {draft.circles.map((circle,i)=><label key={i}>Радиус {i+1}
-                <input type="number" min="0.1" step="any" inputMode="decimal"
-                  value={draft.givenSides[i]??String(Math.hypot((draft.points[circle.edge]?.x??3)-(draft.points[circle.center]?.x??0),(draft.points[circle.edge]?.y??0)-(draft.points[circle.center]?.y??0)).toFixed(2))}
-                  onChange={e=>patch({givenSides:Array.from({length:Math.max(i+1,draft.givenSides.length)},(_,j)=>j===i?e.target.value:draft.givenSides[j]??"")})}/>
-              </label>)}
-              <button type="button" onClick={()=>{
-                const points=draft.points.map(p=>({...p}));
-                for(let i=0;i<draft.circles.length;i++){
-                  const c=draft.circles[i],radius=Number((draft.givenSides[i]??"3").replace(",","."));
-                  if(!(radius>0&&Number.isFinite(radius))){setGeometryError("Радиус должен быть положительным.");return}
-                  const center=points[c.center],edge=points[c.edge];if(!center||!edge)continue;
-                  const theta=Math.atan2(edge.y-center.y,edge.x-center.x);
-                  points[c.edge]={...edge,x:center.x+radius*Math.cos(theta),y:center.y+radius*Math.sin(theta)};
-                }
-                patch({points});setGeometryError("");
-              }}>Применить радиус</button>
-              {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
+              <strong>Радиусы окружностей</strong>
+              <small>Изменяйте значение здесь. Радиус сразу меняется и подписывается на рисунке.</small>
+              <div className="lektrus-geometry-given-grid">
+                {draft.circles.map((circle,i)=>{
+                  const center=draft.points[circle.center],edge=draft.points[circle.edge];
+                  const saved=circle.label.match(/^r\s*=\s*(.*)$/i)?.[1];
+                  const radius=saved??draft.givenSides[i]??String(Math.hypot((edge?.x??3)-(center?.x??0),(edge?.y??0)-(center?.y??0)).toFixed(2));
+                  return <label key={i}>r{i?i+1:""}
+                    <input inputMode="decimal" maxLength={32} aria-label={"Радиус окружности "+(i+1)}
+                      placeholder="Например, 3" value={radius}
+                      onChange={e=>{
+                        const value=e.target.value.slice(0,32),numeric=Number(value.replace(",","."));
+                        const points=draft.points.map(p=>({...p}));
+                        if(center&&edge&&value.trim()!==""&&Number.isFinite(numeric)&&numeric>0){
+                          const theta=Math.atan2(edge.y-center.y,edge.x-center.x);
+                          points[circle.edge]={...edge,x:center.x+numeric*Math.cos(theta),y:center.y+numeric*Math.sin(theta)};
+                        }
+                        patch({
+                          givenSides:Array.from({length:Math.max(i+1,draft.givenSides.length)},(_,j)=>j===i?value:draft.givenSides[j]??""),
+                          circles:draft.circles.map((c,j)=>j===i?{...c,label:value?"r = "+value:""}:c),
+                          points
+                        });
+                      }}/>
+                  </label>;
+                })}
+              </div>
             </div>}
             {!isSolid&&rectangleFigure&&draft.polygons.some(p=>p.points.length===4)&&<div className="lektrus-geometry-givens">
               <strong>{draft.figureId==="square"?"Сторона квадрата":"Длина и ширина прямоугольника"}</strong>
@@ -793,24 +801,13 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
 
             {draft.circles.map((c,i)=>{
               if(draft.figureId==="sphere"&&i===0)return null;
-              const center=draft.points[c.center],edge=draft.points[c.edge];
-              const radius=c.label.match(/^r\s*=\s*(.*)$/i)?.[1]??draft.givenSides[i]??"";
+              const name=draft.points[c.center]?.label||"O";
               return <div className="lektrus-graph-construction lektrus-school-element" key={"circle"+i}>
                 <div className="lektrus-school-element-row">
-                  <strong title="Радиус окружности">r{i>0?String(i+1):""}</strong>
-                  <input aria-label={"Радиус окружности "+(i+1)} placeholder="Радиус"
-                    value={radius} maxLength={32}
-                    onChange={e=>{
-                      const value=e.target.value;
-                      const numeric=Number(value.replace(",","."));
-                      const points=draft.points.map(p=>({...p}));
-                      if(center&&edge&&value.trim()!==""&&Number.isFinite(numeric)&&numeric>0){
-                        const angle=Math.atan2(edge.y-center.y,edge.x-center.x);
-                        points[c.edge]={...edge,x:center.x+numeric*Math.cos(angle),y:center.y+numeric*Math.sin(angle)};
-                      }
-                      patch({circles:draft.circles.map((circle,j)=>j===i?{...circle,label:value?"r = "+value:""}:circle),points});
-                    }}/>
-                  <button type="button" className="lektrus-school-element-delete" aria-label={"Удалить окружность "+(i+1)} onClick={()=>deleteConstruction("circle",i)}>Удалить</button>
+                  <strong title="Дополнительная окружность">Окружность {name}</strong>
+                  <span className="lektrus-school-readonly-note">Радиус во вкладке «Размеры»</span>
+                  <button type="button" className="lektrus-school-element-delete"
+                    aria-label={"Удалить окружность "+(i+1)} onClick={()=>deleteConstruction("circle",i)}>Удалить</button>
                 </div>
               </div>;
             })}
