@@ -95,14 +95,14 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
           </aside>
           <div className="lektrus-periodic-preview">
             <div className="lektrus-periodic-preview-header"><strong>Периодическая система</strong>
-              <span>Щелчок выделяет элемент · повторный щелчок отменяет</span></div>
-            <div className={"lektrus-periodic-table-scroll lektrus-periodic-stage "+(layout==="school"?"is-school":"is-modern")+(opened.length?" has-info":"")} ref={previewAnchor}>
-              <LektrusPeriodicTableView selected={selected} active={active}
-                showNames={showNames} familyFilter={family} onPick={pick} layout={layout}
-                onDoublePick={number=>setSelected(v=>v.includes(number)?v.filter(n=>n!==number):[...v,number].sort((a,b)=>a-b))}/>
-              <div className="lektrus-periodic-info-dock" aria-label="Карточки выбранных элементов">
-                {opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i} fixed inline layout={layout}
-                  anchor={previewAnchor.current} selected={selected.includes(number)}
+              <span>Нажмите на элемент, чтобы открыть карточку · Ctrl+клик для сравнения</span></div>
+            <div className="lektrus-periodic-table-scroll lektrus-periodic-stage">
+              <div className={"lektrus-periodic-window-stage "+(layout==="school"?"is-school":"is-modern")} ref={previewAnchor}>
+                <LektrusPeriodicTableView selected={selected} active={active}
+                  showNames={showNames} familyFilter={family} onPick={pick} layout={layout}
+                  onDoublePick={number=>setSelected(v=>v.includes(number)?v.filter(n=>n!==number):[...v,number].sort((a,b)=>a-b))}/>
+                {opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i}
+                  fixed layout={layout} stageRef={previewAnchor} selected={selected.includes(number)}
                   onClose={()=>setOpened(v=>v.filter(n=>n!==number))}
                   onToggle={()=>setSelected(current=>current.includes(number)?current.filter(n=>n!==number):[...current,number].sort((a,b)=>a-b))}/>)}
               </div>
