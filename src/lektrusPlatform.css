@@ -15,3 +15,16 @@ html { scroll-padding-bottom: env(safe-area-inset-bottom, 0px); }
 .lektrus-install-settings > div { min-width: 0; }
 .lektrus-install-settings small { overflow-wrap: anywhere; }
 .lektrus-install-settings small + small { margin-top: 5px; }
+
+/* Capacitor WebViews do not necessarily report display-mode: standalone. */
+html.lektrus-native-app,
+html.lektrus-native-app body,
+html.lektrus-native-app #root { min-height: 100dvh; }
+html.lektrus-native-app .lectris-workspace-header,
+html.lektrus-native-app .topbar {
+  padding-top: max(0px, env(safe-area-inset-top, 0px));
+}
+html.lektrus-native-app .lectris-mobile-nav,
+html.lektrus-native-app .lectris-bottom-nav {
+  padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
+}
