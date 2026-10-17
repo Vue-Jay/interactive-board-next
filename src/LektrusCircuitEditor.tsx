@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useRef,useState,type DragEvent,type PointerEvent as ReactPointerEvent} from "react";
+import {useEffect,useMemo,useState,type DragEvent,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {circuitSymbols,type CircuitCategory,type CircuitSymbol} from "./ScienceCircuitGlyph";
@@ -217,7 +217,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
   const drop=(event:DragEvent<SVGSVGElement>)=>{
     event.preventDefault();event.stopPropagation();
     const type=event.dataTransfer.getData("application/x-lektrus-circuit") as CircuitComponent["type"];
-    if(!circuitSymbols.some(x=>x.id===type&&type!=="wire"))return;
+    if(String(type)==="wire"||!circuitSymbols.some(x=>x.id===type))return;
     dropSymbol(type,circuitSvgCoords(event.clientX,event.clientY,event.currentTarget));
     changeTool("select");
   };
