@@ -657,10 +657,20 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
 
             </>:!roundSolid&&<div className="lektrus-graph-empty">{isSolid?"Габариты проекции настраиваются перемещением вершин в предпросмотре или на вкладке «Точки».":"Построение по заданным сторонам и углам доступно для треугольника. Выберите его во вкладке «Фигура»."}</div>}
           </div>}
-          {tab==="points"&&<div className="lektrus-graph-section"><div className="lektrus-graph-section-head"><strong>Редактируемые точки</strong><button type="button" disabled={draft.figureId==="ray"||isSolid||draft.purpose==="unit-circle"||draft.points.length>=40} onClick={addPoint}>+ Точка</button></div>
+          {tab==="points"&&<div className="lektrus-graph-section">
+            {draft.figureId==="free"&&<div className="lektrus-school-point-builder">
+              <strong>Простое построение по точкам</strong>
+              <small>Дважды нажмите на чертёж, чтобы поставить точку. Следующая точка автоматически соединится с предыдущей. Перетаскивайте точки для изменения фигуры.</small>
+              <div className="lektrus-graph-construct-actions">
+                <button type="button" onClick={addPoint} disabled={draft.points.length>=40}>+ Поставить точку</button>
+                <button type="button" disabled={draft.points.length-(draft.polygons.reduce((highest,poly)=>Math.max(highest,...poly.points),-1)+1)<3}
+                  onClick={()=>onChange(closeFreeSketch(draft))}>Замкнуть фигуру</button>
+              </div>
+            </div>}
+            <div className="lektrus-graph-section-head"><strong>Точки чертежа</strong>{draft.figureId!=="free"&&<button type="button" disabled={draft.figureId==="ray"||isSolid||draft.purpose==="unit-circle"||draft.points.length>=40} onClick={addPoint}>+ Точка</button>}</div>
             <small>{draft.purpose==="unit-circle"?
               "Контрольные точки единичной окружности фиксированы. Угол можно задать во вкладке «Построить» или переместить радиус.":
-              "Точки можно перемещать прямо на рисунке. На мобильном для точного положения используйте поля X и Y."}</small>
+              draft.figureId==="free"?"Здесь можно менять названия вершин и точные координаты. Для обычного построения достаточно нажимать на рисунок.":"Точки можно перемещать прямо на рисунке. На мобильном для точного положения используйте поля X и Y."}</small>
             {draft.figureId==="ray"&&<small>У луча только одна начальная точка. Чтобы повернуть луч, захватите линию на чертеже и перетащите в нужном направлении.</small>}
             {draft.points.length===0&&<p className="lektrus-graph-empty">Пока нет точек. Добавьте первую.</p>}
             {draft.points.map((p,i)=>draft.figureId==="ray"&&i===1?null:<div className="lektrus-graph-point-row" key={i}>
@@ -674,7 +684,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <button type="button" disabled={draft.figureId==="ray"||isSolid||draft.purpose==="unit-circle"} aria-label={"Удалить точку "+(i+1)} title="Удалить точку и связанные с ней построения" onClick={()=>onChange(removeGraphPoint(draft,i))}>×</button>
             </div>)}
             {draft.purpose==="number-line"&&<p className="lektrus-graph-note">Точки на числовой прямой обозначают числа. Соедините две точки, чтобы показать промежуток. Положение точек можно менять в предпросмотре.</p>}
-            <label className="lektrus-graph-check"><input type="checkbox" checked={draft.connectPoints} onChange={e=>patch({connectPoints:e.target.checked})}/> Соединять все точки по порядку</label>
+            {draft.figureId!=="free"&&<label className="lektrus-graph-check"><input type="checkbox" checked={draft.connectPoints} onChange={e=>patch({connectPoints:e.target.checked})}/> Соединять все точки по порядку</label>}
             <label className="lektrus-graph-check"><input type="checkbox" checked={draft.projections} onChange={e=>patch({projections:e.target.checked})}/> Строить проекции точек на оси</label>
           </div>}
           {mode==="geometry"&&tab==="geometry"&&<div className="lektrus-graph-section">
