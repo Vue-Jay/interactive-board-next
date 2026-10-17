@@ -1,0 +1,126 @@
+/* Compact landscape workspace and unobstructed portrait page scrolling.
+   Navigation remains fixed, page content scrolls above it. */
+@media screen and (max-width:1100px) and (orientation:landscape) and (pointer:coarse) {
+  .lectris-workspace-header{
+    height:60px!important;min-height:60px!important;
+    padding-block:4px!important;gap:10px!important;
+  }
+  .lectris-workspace-header .lectris-brand-mark{width:30px!important;height:30px!important}
+  .lectris-workspace-header .lektrus-brand-wordmark{font-size:18px!important}
+  .lectris-workspace-header .lektrus-brand-tagline{font-size:10px!important}
+  .lectris-workspace-body{min-height:calc(100dvh - 60px)!important}
+  .lectris-workspace-sidebar{top:60px!important;height:calc(100dvh - 60px)!important}
+  .lectris-workspace-stage>main{min-height:0!important}
+  .lectris-workspace-stage :is(.students-content,.assignments-content,.schedule-content,
+    .progress-content,.materials-content,.notifications-content,.templates-content,
+    .profile-compact-wrap,.settings-compact-content){
+    padding-top:10px!important;padding-bottom:20px!important;
+  }
+  .lectris-workspace-stage .students-header{
+    min-height:58px!important;padding:8px 14px!important;gap:8px!important;
+  }
+  .lectris-workspace-stage .students-header strong{font-size:17px!important}
+  .lectris-workspace-stage .students-header span{font-size:10px!important}
+  .lectris-workspace-stage .students-header .boards-create{min-height:34px!important;padding:7px 12px!important}
+  .lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis){
+    gap:7px!important;margin-bottom:8px!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+  .lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article{
+    min-width:0!important;min-height:67px!important;
+    padding:9px 12px!important;gap:3px!important;border-radius:12px!important;
+  }
+  .lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article b {
+    font-size:21px!important;line-height:1.1!important;
+  }
+  .lectris-workspace-stage :is(.assignment-overview,.schedule-summary,.materials-stats,.progress-kpis)>article span {
+    font-size:10px!important;line-height:1.25!important;
+  }
+  .lectris-workspace-stage :is(.schedule-toolbar,.students-toolbar,.materials-toolbar,.progress-toolbar){
+    padding:7px!important;gap:6px!important;margin-block:6px!important;
+  }
+  .lectris-workspace-stage .schedule-day{min-height:130px!important}
+  .lectris-workspace-stage .schedule-side{padding:10px!important}
+  .lectris-workspace-stage .profile-identity-card{padding:14px!important;gap:12px!important}
+  .lectris-workspace-stage .profile-big-avatar{
+    width:64px!important;height:64px!important;flex-basis:64px!important;
+    font-size:30px!important;
+  }
+  .lectris-workspace-stage .profile-identity-copy h1{font-size:25px!important;margin:0!important}
+  .lectris-workspace-stage .profile-compact-card{padding:13px 15px!important}
+  .lectris-workspace-stage .profile-compact-wrap{gap:10px!important}
+  .lectris-workspace-stage .lectris-hub{padding-top:9px!important}
+  .lectris-workspace-stage .lectris-hub .lectris-hub-hero.lectris-hub-hero-compact{
+    min-height:0!important;padding:12px 16px!important;gap:9px!important;
+  }
+  .lectris-workspace-stage .lectris-hub-tiles{gap:7px!important}
+  .lectris-workspace-stage .lectris-hub .lectris-hub-tile{
+    min-height:88px!important;padding:10px 12px!important;gap:5px!important;
+    border-radius:12px!important;
+  }
+  .lectris-workspace-stage .lectris-hub .lectris-hub-tile-copy strong{font-size:14px!important}
+  .lectris-workspace-stage .lectris-hub .lectris-hub-tile-copy small{font-size:9px!important}
+  .lectris-workspace-stage .lectris-hub-board-list{gap:7px!important}
+  .lectris-workspace-stage .lectris-hub-board{min-height:82px!important}
+  .lectris-workspace-stage .lectris-hub-board-cover{
+    height:82px!important;flex:0 0 100px!important;
+  }
+  .lectris-workspace-stage .lectris-hub-board-main{min-height:82px!important}
+  .lectris-workspace-stage .lectris-hub-board-info{padding:7px 42px 7px 10px!important;gap:2px!important}
+  .lectris-workspace-stage .lectris-hub-board-info strong{font-size:13px!important}
+  .lectris-workspace-stage .lectris-hub-board-info small{font-size:10px!important}
+  .lectris-workspace-stage .lectris-hub-section{padding:12px!important;border-radius:14px!important}
+  .lectris-workspace-stage .lectris-hub-columns{gap:10px!important}
+  .lectris-workspace-stage .lectris-hub-section-head{margin-bottom:8px!important}
+  .lectris-workspace-stage .lectris-hub-section-head h2{font-size:18px!important}
+}
+@media screen and (max-width:700px) and (orientation:portrait){
+  .lectris-workspace{
+    --lektrus-mobile-dock-height:calc(64px + env(safe-area-inset-bottom,0px));
+  }
+  .lectris-workspace-body{min-height:0!important}
+  .lectris-workspace-stage{
+    box-sizing:border-box!important;
+    min-height:calc(100dvh - 60px)!important;
+    padding-bottom:calc(var(--lektrus-mobile-dock-height) + 22px)!important;
+    scroll-padding-bottom:calc(var(--lektrus-mobile-dock-height) + 18px)!important;
+    overflow-x:clip!important;
+  }
+  .lectris-workspace-stage>main{
+    box-sizing:border-box!important;
+    min-height:0!important;
+    padding-bottom:calc(var(--lektrus-mobile-dock-height) + 26px)!important;
+  }
+  .lectris-workspace-stage :is(.lectris-hub,.lectris-library,.boards-content,
+    .schedule-content,.students-content,.settings-compact-content,.profile-compact-wrap,
+    .assignments-content,.materials-content,.progress-content,.notifications-content,
+    .templates-content){
+    scroll-margin-bottom:calc(var(--lektrus-mobile-dock-height) + 16px)!important;
+  }
+  .lectris-workspace-stage .lectris-hub{
+    padding-bottom:calc(var(--lektrus-mobile-dock-height) + 16px)!important;
+  }
+  .lectris-workspace .lectris-mobile-bottom {
+    box-sizing:border-box!important;
+    height:var(--lektrus-mobile-dock-height)!important;
+    min-height:64px!important;
+    bottom:0!important;
+    padding-bottom:env(safe-area-inset-bottom,0px)!important;
+  }
+}
+/* Logout must remain visible and reachable above the mobile dock. */
+.profile-logout-card{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;min-width:0;
+}
+.profile-logout-card>div{min-width:0;flex:1 1 175px}
+.profile-logout-card strong{font-size:14px;font-weight:780;color:var(--lt-text,#1d304c)}
+.profile-logout-card p{margin:4px 0 0;font-size:12px;color:var(--lt-muted,#6c7b92)}
+.profile-logout-card .profile-logout-button {
+  flex:0 1 auto;min-height:40px;min-width:0;
+  padding:9px 14px;border:1px solid #efd4d4;
+  border-radius:10px;background:#fff6f6;color:#a43a3a;
+  font-size:12px;font-weight:750;cursor:pointer;
+}
+.profile-logout-card .profile-logout-button:hover{background:#ffeded}
+@media(max-width:420px){.profile-logout-card .profile-logout-button{width:100%;flex:1 1 100%}}
