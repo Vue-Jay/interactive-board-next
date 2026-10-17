@@ -50,7 +50,7 @@ function NativeConnectionSetup() {
   return (
     <main style={{minHeight:"100dvh",padding:"max(24px, env(safe-area-inset-top, 0px)) 20px max(24px, env(safe-area-inset-bottom, 0px))",display:"grid",placeItems:"center",background:"#eef3fd",fontFamily:"system-ui,sans-serif",color:"#1d304b"}}>
       <form onSubmit={connect} style={{width:"min(100%,440px)",display:"grid",gap:14,background:"#fff",padding:24,borderRadius:20,boxShadow:"0 12px 42px #1b376521"}}>
-        <img src="/lektrus-logo-sapphire.svg" width={68} height={68} alt="Lektrus" style={{margin:"auto"}} />
+        <img src="/lektrus-icon-192.png" width={68} height={68} alt="Lektrus" style={{margin:"auto"}} />
         <h1 style={{fontSize:24,textAlign:"center",margin:0}}>Подключить Lektrus</h1>
         <p style={{fontSize:14,lineHeight:1.55,margin:0}}>Для входа и совместных досок укажите публичные параметры вашего Supabase. Сделать это нужно один раз после установки приложения.</p>
         <label style={{display:"grid",gap:6,fontSize:13,fontWeight:700}}>Адрес Supabase

@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import {readdirSync,existsSync,readFileSync} from "node:fs";
+const root = readdirSync(new URL("../",import.meta.url));
+assert.ok(!root.some(name=>/^README_v\d+.*\.txt$/.test(name)),"Old README copies returned");
+assert.ok(!root.some(name=>/^install_(?:v\d+|live_merge|collab_view|youtube)/.test(name)),"Obsolete installers returned");
+for(const p of ["vercel.json","netlify.toml","src/assets/vite.svg","src/assets/react.svg","public/pwa-icon.svg","public/favicon.svg"])assert.ok(!existsSync(new URL("../"+p,import.meta.url)),"Unused artifact remains: "+p);
+for(const p of ["README.md","assets/lektrus-brand-source.png","public/lektrus-icon-192.png","public/lektrus-icon-512.png"])assert.ok(existsSync(new URL("../"+p,import.meta.url)),"Missing essential file: "+p);
+const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+assert.ok(html.includes('href="/lektrus-icon-192.png"'));
+console.log("Lektrus repository cleanup and brand assets verified");
