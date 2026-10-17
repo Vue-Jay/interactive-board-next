@@ -31,7 +31,7 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
     "physics-speed":{name:"Постоянная скорость · v(t)",points:[[0,4],[3,4],[6,4],[9,4],[12,4]]},
     "physics-accelerated-speed":{name:"Разгон · v(t)",points:[[0,0],[3,2],[6,4],[9,6],[12,8]]},
     "physics-acceleration":{name:"Постоянное ускорение · a(t)",points:[[0,3],[3,3],[6,3],[9,3],[12,3]]},
-    "physics-braking":{name:"Торможение · v(t)",points:[[0,9],[3,7],[6,5],[9,2],[12,0]]},
+    "physics-braking":{name:"Равнозамедленное движение · v(t)",points:[[0,9],[3,6.75],[6,4.5],[9,2.25],[12,0]]},
     "physics-rest":{name:"Остановка и движение · s(t)",points:[[0,1],[3,3],[6,3],[9,6],[12,6]]}
   };
   const motion=motionPresets[id];
@@ -83,14 +83,14 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
       break;
     case "physics-friction":
       title="Механика · трение скольжения";
-      points=[P(-5,-2.2,""),P(5,-2.2,""),P(0,-2.2,"O"),P(0,2.0,"N"),
-        P(0,-4.2,"mg"),P(4,0,"F"),P(-3.6,0,"Fтр")];
+      points=[P(-5,-2.2,""),P(5,-2.2,""),P(0,-1,"O"),P(0,2.0,"N"),
+        P(0,-4.2,"mg"),P(4,-1,"F"),P(-3.6,-1,"Fтр")];
       segments=[S(0,1),V(2,3),V(2,4),V(2,5),V(2,6)];
       break;
     case "physics-lever":
       title="Механика · рычаг и опора";
-      points=[P(-5,0,"A"),P(5,0,"B"),P(0,0,"O"),P(-4,-3.0,"F₁"),
-        P(4,-2.2,"F₂"),P(0,2.6,"N"),P(-.7,-1.5,""),P(.7,-1.5,"")];
+      points=[P(-5,0,"A"),P(5,0,"B"),P(0,0,"O"),P(-5,-3.0,"F₁"),
+        P(5,-2.2,"F₂"),P(0,2.6,"N"),P(-.7,-1.5,""),P(.7,-1.5,"")];
       segments=[S(0,1),V(0,3),V(1,4),V(2,5),S(6,2),S(2,7),S(6,7)];
       break;
     case "physics-spring":
@@ -125,7 +125,7 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
     case "physics-diverging-lens":
       title="Оптика · рассеивающая линза";
       points=[P(-5,0,""),P(5,0,""),P(0,-4,""),P(0,4,""),
-        P(-3,0,"F₁"),P(3,0,"F₂"),P(-5,2.6,"A"),P(0,2.6,""),P(5,4.1,"B")];
+        P(-3,0,"F₁"),P(3,0,"F₂"),P(-5,2.6,"A"),P(0,2.6,""),P(2.2,4.5,"B")];
       segments=[S(0,1,"Оптическая ось"),S(2,3,"Линза"),
         V(6,7,"Падающий луч"),V(7,8,"Преломлённый луч")];
       break;
@@ -146,7 +146,7 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
     case "physics-prism":
       title="Оптика · преломление через призму";
       points=[P(-2.8,-2.9,""),P(0,3,""),P(2.8,-2.9,""),
-        P(-5,.6,"A"),P(-1.5,.6,""),P(1.7,-.65,""),P(5,-2.1,"B")];
+        P(-5,.6,"A"),P(-1.14,.6,""),P(1.7,-.65,""),P(5,-2.1,"B")];
       segments=[S(0,1),S(1,2),S(2,0),V(3,4,"Падающий луч"),
         V(4,5,"Внутри призмы"),V(5,6,"Выходящий луч")];
       polygons=[{points:[0,1,2],label:"",measure:false}];
