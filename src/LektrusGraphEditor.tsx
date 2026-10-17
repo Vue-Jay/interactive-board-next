@@ -359,6 +359,18 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <label className="lektrus-graph-field"><span>Формула y =</span><input value={draft.expression} onChange={e=>patch({expression:e.target.value})} placeholder="Например: x^2 - 4*x + 3"/></label>
               <small>Можно менять формулу вручную. Доступны +, −, *, /, ^, sin, cos, sqrt, abs, exp, ln.</small>
               <div className="lektrus-graph-formula-typeset" aria-label="Математическая запись формулы">{displayGraphFormula(draft.expression)}</div>
+              <div className="lektrus-graph-axis-ranges">
+                <strong>Длина координатных осей</strong>
+                <small>Задайте любое нужное значение начала и конца каждой оси. Увеличение диапазона не ограничивается фиксированным школьным масштабом.</small>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>
+                  {([["Начало X","xMin"],["Конец X","xMax"],["Начало Y","yMin"],["Конец Y","yMax"]] as const).map(([label,key])=>
+                    <label key={key} className="lektrus-graph-field"><span>{label}</span>
+                      <input type="number" step="any" value={draft[key]}
+                        onChange={e=>{const value=Number(e.target.value);if(Number.isFinite(value))patch({[key]:value})}}/>
+                    </label>)}
+                </div>
+                {(draft.xMin>=draft.xMax||draft.yMin>=draft.yMax)&&<small role="alert">Конец оси должен быть больше её начала.</small>}
+              </div>
               <label className="lektrus-graph-check"><input type="checkbox" checked={draft.showCurve} onChange={e=>patch({showCurve:e.target.checked})}/> Показывать график функции</label>
             </div>}
             {draft.purpose==="number-line"&&<div className="lektrus-graph-section">
