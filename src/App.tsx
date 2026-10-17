@@ -54,7 +54,7 @@ import { materialBlob,markMaterialUsed,type Material } from "./materialsStore";
 import ShareDialog from "./ShareDialog";
 import { clearPendingShare, initialRoute, parseRoute, rememberShareToken, type AppRoute } from "./routes";
 import { redeemShareLink } from "./shareLinks";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { BOARD_ROLE_LABELS, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
 import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from "./boardStore";
@@ -7887,6 +7887,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(initialRoute);
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== "android") return;
+    void registerPlugin<{setBoardMode(options:{enabled:boolean}):Promise<void>}>("LektrusSystemUi")
+      .setBoardMode({ enabled: route.kind === "board" })
+      .catch(error => console.warn("Lektrus Android status bar update failed", error));
+  }, [route.kind]);
+
   // Android system back should behave like Lektrus navigation, not dismiss the app.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
