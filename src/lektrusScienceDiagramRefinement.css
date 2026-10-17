@@ -1,0 +1,63 @@
+/* Technical-school diagrams: readable fine lines, no oversized ink-like handles. */
+.lektrus-science-backdrop.physics .lektrus-science-preview .lektrus-science-vector{
+  stroke:#5278aa!important;stroke-width:1.7!important;stroke-linecap:round;
+}
+.lektrus-science-backdrop.chemistry .lektrus-science-preview .lektrus-science-bond{
+  stroke:#568d8b!important;stroke-width:1.85!important;
+}
+.lektrus-science-preview .lektrus-science-grid path{
+  stroke:#e9eff7!important;stroke-width:.65!important;
+}
+.lektrus-science-preview .lektrus-science-link-label{
+  fill:#7187a5!important;
+  font-size:10.5px!important;
+  font-weight:480!important;
+  paint-order:stroke;
+  stroke:#fff!important;
+  stroke-width:3px!important;
+  stroke-linejoin:round;
+}
+.lektrus-science-preview .lektrus-science-node.selected circle{
+  filter:none!important;
+  stroke:#446db7!important;stroke-width:2.1!important;
+  fill:#eaf1fe;
+}
+.lektrus-science-preview .lektrus-science-node:not(.selected) circle{
+  filter:none!important;
+}
+.lektrus-science-preview .lektrus-science-node text{
+  font-size:11.5px!important;
+  font-weight:520!important;
+  fill:#566d8d!important;
+  paint-order:stroke;
+  stroke:#fff!important;stroke-width:3px!important;
+  stroke-linejoin:round;
+}
+.lektrus-science-preview .lektrus-science-axes path{
+  stroke:#a0acc0!important;stroke-width:1.1!important;
+}
+.lektrus-science-backdrop.physics .lektrus-science-editor{
+  --science:#406ca9;
+}
+.graph-view.science-graph .graph-segment{
+  stroke:#5076a8!important;
+  stroke-width:1.7px!important;
+  stroke-linecap:round;
+}
+.graph-view.science-graph .graph-point circle:not(.graph-point-hit){
+  r:3px;stroke-width:1.2px!important;
+  fill:#f7faff!important;stroke:#6688b2!important;
+}
+.graph-view.science-graph .graph-point text{
+  font-size:10px!important;font-weight:540!important;
+  fill:#536a89!important;
+  paint-order:stroke;stroke:#fff!important;stroke-width:3px!important;
+}
+.graph-view.science-graph .graph-figure-label{
+  fill:#687d99!important;
+  font-size:10.5px!important;font-weight:500!important;
+  paint-order:stroke;stroke:#fff!important;stroke-width:3px!important;
+}
+.graph-view.science-graph .graph-label strong{
+  font-size:11.5px!important;font-weight:620!important;
+}
