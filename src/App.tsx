@@ -2272,7 +2272,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const queuedRemoteSnapshot = useRef<DocumentData | null>(null);
   const remoteSaveFailures = useRef(0);
   const remoteRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const acknowledgedDocument = useRef<string | null>(initialRemoteVersion == null ? null : documentFingerprint(initial.data));
+  const acknowledgedDocument = useRef<string | null>(
+    initialRemoteVersion == null || (()=>{
+      try{return localStorage.getItem(storageKey+".pending-sync")==="1"}catch{return false}
+    })()?null:documentFingerprint(initial.data));
   const deferredRemote = useRef<RemoteBoardDocument | null>(null);
   const pendingRemote = useRef<RemoteBoardDocument | null>(null);
   const lastAttempt = useRef<{ version: number; fingerprint: string } | null>(null);
@@ -2425,6 +2428,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       remoteVersion.current = result.version;
       acknowledgedDocument.current = fingerprint;
+      // A newer local edit may already be queued. Never clear its pending flag
+      // merely because the previous remote revision finished.
+      if(snapshot.current&&documentFingerprint(snapshot.current)===fingerprint){
+        try{localStorage.removeItem(storageKey+".pending-sync")}catch{}
+      }
       remoteSaveFailures.current = 0;
       saveFailure.current = null;
       saveStep.current = "сохранено";
@@ -2479,6 +2487,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           localStorage.setItem(storageKey,serialized);
           lastLocalSerialized.current=serialized;
           localBackupValid.current=true;
+          if(isRemoteBackendEnabled()){
+            try{localStorage.setItem(storageKey+".pending-sync","1")}catch{}
+          }
         } catch(error) {
           // localStorage is often limited to 5 MB. A full quota must NEVER
           // prevent a remote save. Keep the explicit backup warning for exit.
@@ -2490,6 +2501,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const fingerprint = documentFingerprint(data);
       if (isRemoteBackendEnabled() && pendingRemote.current) return;
       if(isRemoteBackendEnabled() && fingerprint === acknowledgedDocument.current){
+        try{localStorage.removeItem(storageKey+".pending-sync")}catch{}
         setSaveStatus("Сохранено на сервере");
         return;
       }
@@ -8202,7 +8214,29 @@ export default function App() {
           // Cache preview before parsing: strict document parsing strips UI metadata.
           const preview=previewFromRemoteDocument(remote.document);
           if(preview)cacheBoardPreview(board.id,preview);
-          const parsed = parseDocument(JSON.stringify(remote.document));
+          let parsed = parseDocument(JSON.stringify(remote.document));
+          // If the board was closed before its last upload finished, the local
+          // snapshot is newer than the server revision. Recover it instead of
+          // overwriting newly created subject tools with stale remote objects.
+          try{
+            const pending=localStorage.getItem(key+".pending-sync")==="1";
+            const savedRaw=pending?localStorage.getItem(key):null;
+            if(savedRaw&&board.role!=="viewer"){
+              const local=parseDocument(savedRaw);
+              if(documentFingerprint(local)!==documentFingerprint(parsed)){
+                const remoteIds=new Set(parsed.items.map(item=>item.id));
+                parsed={...parsed,
+                  subject:local.subject||parsed.subject,
+                  items:[...local.items,...parsed.items.filter(item=>!local.items.some(own=>own.id===item.id))]};
+                // Keep the pending flag. Board mount will retry the remote save
+                // using the actual remote version and an unacknowledged fingerprint.
+              }else{
+                localStorage.removeItem(key+".pending-sync");
+              }
+            }
+          }catch(error){
+            console.warn("Unable to recover pending Lektrus board snapshot",error);
+          }
           localStorage.setItem(key, JSON.stringify(parsed));
           // Backfill a preview of migrated boards on first open, without
           // creating a remote revision or a conflict with other participants.
