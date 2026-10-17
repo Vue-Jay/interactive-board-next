@@ -18,12 +18,19 @@ export default function LektrusPeriodicBoard({selected,showNames,layout="school"
   onChange(selected.includes(number)?selected.filter(x=>x!==number):
    selected.length<24?[...selected,number].sort((a,b)=>a-b):selected);
  };
- return <div ref={anchor} style={{width:"100%",height:"100%",position:"relative"}} onDoubleClick={e=>e.stopPropagation()}>
+ return <div ref={anchor} className="lektrus-periodic-board" onDoubleClick={e=>e.stopPropagation()}>
   <LektrusPeriodicTableView selected={selected} showNames={showNames} layout={layout} active={opened.at(-1)??null} onPick={pick} onDoublePick={toggle}/>
-  <div style={{position:"absolute",bottom:"2.5%",right:"4%",zIndex:2,display:"flex",gap:5,justifyContent:"center",alignItems:"center",padding:"5px 7px",borderRadius:8,background:"rgba(255,255,255,.95)",border:"1px solid #d4e0f0",fontSize:11}} onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
-   <button type="button" aria-pressed={layout==="school"} onClick={()=>onLayoutChange?.("school")}>Российская</button>
-   <button type="button" aria-pressed={layout==="long"} onClick={()=>onLayoutChange?.("long")}>Современная</button>
-   <button type="button" aria-pressed={multi} onClick={()=>setMulti(v=>!v)} title="На сенсорном устройстве позволяет открыть несколько карточек">Несколько окон: {multi?"вкл":"выкл"}</button>
+  <div className="lektrus-periodic-board-footer" onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()}>
+   <div className="lektrus-periodic-board-tabs" role="group" aria-label="Вариант таблицы">
+    <button type="button" aria-pressed={layout==="school"} disabled={!onLayoutChange}
+      onClick={()=>onLayoutChange?.("school")}>Российская</button>
+    <button type="button" aria-pressed={layout==="long"} disabled={!onLayoutChange}
+      onClick={()=>onLayoutChange?.("long")}>Современная</button>
+   </div>
+   <button className="lektrus-periodic-multi-toggle" type="button" aria-pressed={multi}
+     onClick={()=>setMulti(v=>!v)} title="Для сенсорных устройств: открывать несколько карточек последовательно">
+     Сравнить <span>{multi?"Вкл":"Выкл"}</span>
+   </button>
   </div>
   {!suspended&&opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i} layout={layout} anchor={anchor.current}
    selected={selected.includes(number)} onClose={()=>setOpened(v=>v.filter(n=>n!==number))}
