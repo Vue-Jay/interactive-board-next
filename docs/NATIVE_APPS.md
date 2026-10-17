@@ -14,7 +14,7 @@ Lektrus использует **Capacitor 8.5.3** для сборки отдел�
 4. `npm run native:android`. После этого в Android Studio выберите Build APK либо соберите командой `cd android && gradlew.bat assembleDebug`.
 5. APK окажется в `android/app/build/outputs/apk/debug/`. Для установки по USB используйте `adb install -r app-debug.apk`.
 
-Для рабочей онлайн-сборки через Actions добавьте GitHub Actions Secrets `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY` **именно нового проекта Supabase**. Без них можно скомпилировать тестовую оболочку, но вход и синхронизация через Supabase не будут работать.
+Для рабочей онлайн-сборки через Actions добавьте GitHub Actions Secrets `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY` **именно нового проекта Supabase**. Если Secrets не указаны, при первом запуске APK откроется экран **«Подключить Lektrus»**. Введите `VITE_SUPABASE_URL` и публичный ключ `VITE_SUPABASE_ANON_KEY` из своей `.env.local`. Подключение сохранится на устройстве, после чего вход и синхронизация будут работать с выбранным проектом Supabase. Чтобы изменить сервер, откройте **Настройки → Сервер Lektrus → Изменить**. Для APK, уже собранных со встроенными GitHub Secrets, ручной ввод не требуется.
 
 ## iPhone и iPad: Xcode, TestFlight, IPA
 
