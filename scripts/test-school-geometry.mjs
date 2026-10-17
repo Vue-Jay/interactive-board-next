@@ -272,6 +272,16 @@ assert.match(app,/candidate.graphFigureId==="free"/,"board updates segment chain
 assert.match(app,/previouslyClosed/,"the next free point starts a new contour after closing");
 assert.match(editor,/schoolGroups\.map\(group=>/,"each grouped school construction has its own delete control");
 assert.match(editor,/deleteSchoolGroup\(group.id\)/,"group deletion is wired to the actual removal helper");
+const styles=read("src/App.css");
+assert.match(app,/className="graph-grid"/,"the grid remains rendered for school diagrams");
+assert.match(app,/graph-grid-major/,"a stronger guide line is drawn every five cells");
+assert.doesNotMatch(app,/style=\{\{opacity:purpose==="geometry"\?\.42:1\}\}/,"grid is not washed out on geometry diagrams");
+assert.match(styles,/\.graph-view\.graph-purpose-geometry \.graph-grid line/,"stronger school notebook grid style is present");
+assert.match(styles,/\.graph-view \.graph-grid line\.graph-grid-major/,"major grid guide styling is present");
+assert.match(editor,/className="lektrus-school-side-count"/,"side count appears in one compact row");
+assert.match(editor,/\{\[3,4,5,6,8\]\.map\(n=><option key=\{n\} value=\{n\}>\{n\}<\/option>\)\}/,"side selector shows numbers only");
+assert.match(styles,/\.lektrus-school-regular-controls>\.lektrus-school-side-count>select/,"side count selector width and height are constrained");
+
 
 
 console.log("School geometry: ray, transversal angles, solid rotation and dimension projections OK.");
