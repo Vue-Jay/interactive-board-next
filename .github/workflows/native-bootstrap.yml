@@ -31,6 +31,11 @@ jobs:
         run: |
           if [ ! -d ios/App ]; then npx cap add ios; fi
           npx cap sync ios
+      - name: Generate branded Lektrus icons and splash screens
+        shell: bash
+        run: |
+          npx --yes @capacitor/assets@3.0.5 generate --android --iconBackgroundColor '#edf5ff' --splashBackgroundColor '#edf5ff'
+          npx --yes @capacitor/assets@3.0.5 generate --ios --iconBackgroundColor '#edf5ff' --splashBackgroundColor '#edf5ff'
       - name: Check generated projects and native contract
         run: npm run native:check
       - name: Commit native projects and regenerated npm lockfile
