@@ -51,7 +51,9 @@ export function removeGraphPoint(draft:GraphDraft,index:number):GraphDraft {
 export function appendFreeSketchPoint(draft:GraphDraft,x:number,y:number):GraphDraft {
   if(draft.figureId!=="free"||draft.points.length>=40||!Number.isFinite(x)||!Number.isFinite(y))return draft;
   const n=draft.points.length;
-  const lastClosed=draft.polygons.some(poly=>poly.points.includes(n-1));
+  const lastClosed=draft.polygons.some(poly=>poly.points.includes(n-1))||
+    !!draft.points[n-1]?.schoolGroupId||
+    draft.circles.some(circle=>circle.center===n-1||circle.edge===n-1);
   const label=String.fromCharCode(65+(n%26));
   const segments=n>0&&!lastClosed&&draft.segments.length<60?
     [...draft.segments,{a:n-1,b:n,kind:"segment" as const,label:"",measure:false}]:draft.segments;
@@ -59,8 +61,18 @@ export function appendFreeSketchPoint(draft:GraphDraft,x:number,y:number):GraphD
 }
 export function closeFreeSketch(draft:GraphDraft):GraphDraft {
   if(draft.figureId!=="free"||draft.polygons.length>=20)return draft;
-  const last=draft.polygons.reduce((highest,poly)=>Math.max(highest,...poly.points),-1);
-  const first=last+1,count=draft.points.length-first;
+  const n=draft.points.length;
+  const protectedPoint=(index:number)=>!!draft.points[index]?.schoolGroupId||
+    draft.polygons.some(poly=>poly.points.includes(index))||
+    draft.circles.some(circle=>circle.center===index||circle.edge===index);
+  let first=n;
+  while(first>0){
+    const index=first-1;
+    if(protectedPoint(index))break;
+    if(index<n-1&&!draft.segments.some(seg=>seg.kind==="segment"&&seg.a===index&&seg.b===index+1))break;
+    first=index;
+  }
+  const count=n-first;
   if(count<3)return draft;
   const polygonPoints=Array.from({length:count},(_,i)=>first+i);
   const sections=draft.segments.filter(seg=>!(seg.a>=first&&seg.b>=first&&
