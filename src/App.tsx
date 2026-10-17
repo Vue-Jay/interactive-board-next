@@ -7887,6 +7887,26 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(initialRoute);
+  // Android system back should behave like Lektrus navigation, not dismiss the app.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const goBackInsideLektrus = () => {
+      const current = new URL(window.location.href);
+      if (current.pathname !== "/") {
+        window.history.pushState({}, "", "/");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      } else if (current.searchParams.has("section")) {
+        window.history.pushState({}, "", "/");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      } else {
+        // Root stays in Lektrus. Android's home gesture can minimize normally.
+        window.dispatchEvent(new CustomEvent("lektrus:root-back"));
+      }
+    };
+    window.addEventListener("lektrus:native-back", goBackInsideLektrus);
+    return () => window.removeEventListener("lektrus:native-back", goBackInsideLektrus);
+  }, []);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     const apply = async () => {
