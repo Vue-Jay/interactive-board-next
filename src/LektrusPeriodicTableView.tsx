@@ -4,13 +4,13 @@ import {elementFacts} from "./lektrusElementFacts";
 type Props={
  selected?:number[];active?:number|null;showNames?:boolean;
  familyFilter?:ElementFamily|"all";onPick?:(number:number,event?:{ctrlKey:boolean;shiftKey:boolean})=>void;onDoublePick?:(number:number)=>void;
- layout?:"school"|"long";showInfo?:boolean;onCloseInfo?:()=>void;onToggleInfo?:()=>void;
+ layout?:"school"|"long";
 };
 const bx=45,by=68,step=54,cell=49;
 const colors=Object.fromEntries(periodicFamilies.map(f=>[f.id,f.color])) as Record<ElementFamily,string>;
 const mass=(n:number)=>elementFacts[n-1]?.atomicMass?.replace(/\(\d+\)/g,"").replace(/[\[\]]/g,"")??"";
 export default function LektrusPeriodicTableView({
- selected=[],active=null,showNames=true,familyFilter="all",onPick,onDoublePick,layout="school",showInfo=false,onCloseInfo,onToggleInfo
+ selected=[],active=null,showNames=true,familyFilter="all",onPick,onDoublePick,layout="school"
 }:Props){
  const marked=new Set(selected);
  const school=layout==="school";
