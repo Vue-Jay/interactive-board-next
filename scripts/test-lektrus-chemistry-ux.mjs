@@ -50,7 +50,13 @@ assert.match(editor,/application\/x-lektrus-element/);
 assert.match(molecule,/lektrus-molecule-picker/);
 assert.match(tableView,/textLength=\{Math\.min\(44/);
 assert.match(tableView,/elementFacts/);
-assert.match(board,/onToggle=\{onChange\?change:undefined\}/);
+const floating=text("src/LektrusPeriodicFloatingInfo.tsx");
+assert.match(board,/onToggle=\{onChange\?/,"board must expose element selection from the floating card");
+assert.match(board,/onDoublePick=\{toggle\}/,"double-click must select without reopening editor");
+assert.match(floating,/const atomDefaultRatio:Point=\{x:1\.014,y:\.02\}/,"atom window must open to the right of the table");
+assert.match(floating,/windowScale:/,"information window must scale with the board object");
+assert.match(floating,/className="lektrus-chem-close"/,"window close button must use visible icon");
+
 assert.match(app,/onPeriodicChange=\{canEdit/);
 assert.match(app,/atomEditorItem&&<LektrusAtomEditor/);
 assert.match(school,/if\(lower==="физическая культура"/);
