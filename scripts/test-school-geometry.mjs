@@ -241,4 +241,31 @@ assert.ok(radiusEditorBlock.includes('circles:draft.circles.map'),"circle radius
 assert.ok(!radiusEditorBlock.includes('givenSides:Array.from'),"circle edits must not overwrite triangle sides");
 assert.match(app,/\["circle","sphere"\]\.includes\(item\.graphFigureId/,"circle radius does not read other figures' side labels");
 
+
+const {removeSchoolConstructionGroup}=await loadTs("src/lektrusConstructionCleanup.ts");
+const schoolBase=toDraft("triangle");
+const schoolBuilt=buildSchoolConstruction(schoolBase,{kind:"triangle-medians"});
+assert.equal(schoolBuilt.error,undefined,"three school medians should build");
+const added=schoolBuilt.draft.segments.slice(schoolBase.segments.length);
+assert.equal(added.length,3);
+const groupId=added[0].schoolGroupId;
+assert.ok(groupId&&added.every(segment=>segment.schoolGroupId===groupId),"all medians share one removable ID");
+assert.ok(schoolBuilt.draft.points.slice(schoolBase.points.length).every(p=>p.schoolGroupId===groupId));
+const withoutSchool=removeSchoolConstructionGroup(schoolBuilt.draft,groupId);
+assert.deepEqual(withoutSchool.points,schoolBase.points,"deleting all medians preserves original triangle points");
+assert.deepEqual(withoutSchool.segments,schoolBase.segments,"all medians removed as a group");
+const schoolCircle=buildSchoolConstruction(schoolBase,{kind:"incircle"}).draft;
+const circleId=schoolCircle.circles.at(-1).schoolGroupId;
+assert.deepEqual(removeSchoolConstructionGroup(schoolCircle,circleId).polygons,schoolBase.polygons);
+assert.equal(removeSchoolConstructionGroup(schoolCircle,circleId).circles.length,0,"removes a whole added circle and its points");
+const freePreset=makeMathPresetItem("free",0,0,"free");
+assert.equal(freePreset.graphPurpose,"geometry");
+assert.equal(freePreset.graphPoints.length,0);
+assert.equal(freePreset.graphGrid,false,"clean white background is the initial state");
+assert.match(editor,/export function appendFreeSketchPoint/,"free sketch algorithm is exported");
+assert.match(editor,/closeFreeSketch\(draft\)/,"point contour can be closed");
+assert.match(app,/onGridChange=\{enabled=>setGraphDraft/,"preview grid toggle is connected");
+assert.match(app,/onGridChange=\{!item.locked&&canEdit/,"board grid toggle is connected");
+assert.match(app,/className="lektrus-diagram-grid-toggle"/,"the grid toggle appears on the diagram");
+
 console.log("School geometry: ray, transversal angles, solid rotation and dimension projections OK.");
