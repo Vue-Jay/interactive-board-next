@@ -97,284 +97,173 @@
 }
 
 
-/* Periodic table: an editor-owned detail dock and a separate, clean board footer. */
+
+/* Periodic chemistry windows: screenshot-defined free areas inside the unchanged SVG. */
 .lektrus-periodic-dialog .lektrus-periodic-stage{
-  position:relative;box-sizing:border-box;isolation:isolate;
-  overflow:hidden;justify-content:center;gap:8px;
+  position:relative!important;flex:1 1 auto!important;
+  min-height:0!important;min-width:0!important;
+  display:flex!important;align-items:stretch!important;
+  justify-content:stretch!important;overflow:hidden!important;
+  padding:0!important;
 }
-.lektrus-periodic-dialog .lektrus-periodic-stage.is-school{
-  --lektrus-periodic-dock:210px;
-  padding:8px;align-items:center;
-}
-.lektrus-periodic-dialog .lektrus-periodic-stage.is-school>.lektrus-periodic-svg{
-  flex:0 1 calc(100% - var(--lektrus-periodic-dock) - 8px)!important;
-  width:calc(100% - var(--lektrus-periodic-dock) - 8px)!important;
-  max-width:calc(100% - var(--lektrus-periodic-dock) - 8px)!important;
-  min-width:0!important;object-fit:contain;
-}
-.lektrus-periodic-info-dock{box-sizing:border-box;min-width:0}
-.lektrus-periodic-stage.is-school .lektrus-periodic-info-dock{
-  flex:0 0 var(--lektrus-periodic-dock);width:var(--lektrus-periodic-dock);
-  max-height:100%;overflow-y:auto;overscroll-behavior:contain;
-  display:flex;flex-direction:column;gap:9px;align-self:flex-start;
-  padding:2px 2px 5px;
-}
-.lektrus-periodic-info-hint{
-  display:block;padding:12px 10px;border:1px dashed #cfdaee;
-  background:#f7faff;border-radius:9px;color:#8398b4;
-  font-size:11px;line-height:1.5;
-}
-.lektrus-periodic-stage.is-modern .lektrus-periodic-info-dock{
-  position:absolute;top:5.5%;left:21%;width:47%;
-  display:flex;gap:9px;align-items:flex-start;overflow-x:auto;
-  scrollbar-width:thin;padding:3px;max-height:39%;min-width:0;
-}
-.lektrus-periodic-stage.is-modern .lektrus-floating-element-card{
-  flex:0 0 min(220px,100%);max-width:220px;
-}
-.lektrus-periodic-stage .lektrus-floating-element-card{
-  box-shadow:0 4px 13px #17375b12!important;
-  border-radius:9px!important;line-height:1.3;
-}
-.lektrus-periodic-stage .lektrus-floating-element-card button{
-  min-height:24px;
-}
-.lektrus-periodic-preview-actions{
-  display:flex;justify-content:flex-end;flex:0 0 auto;
-  padding:0 3px;
-}
-.lektrus-periodic-preview-actions>button{
-  min-height:27px;padding:3px 9px;border-radius:7px;
-  border:1px solid #d6e2f1;background:#fff;
-  color:#4d6689;cursor:pointer;font-size:10px;font-weight:650;
-}
-.lektrus-periodic-preview-actions>button>span{
-  color:#8a9bb1;margin-left:5px;
-}
-.lektrus-periodic-preview-actions>button.active{
-  background:#eaf2ff;border-color:#a8c2ec;color:#315faf;
-}
-.lektrus-periodic-preview-actions>button.active>span{color:#315faf}
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board{
-  display:flex;flex-direction:column;position:relative;
+.lektrus-periodic-window-stage{
+  position:relative;isolation:isolate;
+  box-sizing:border-box;display:block;overflow:hidden;
   min-width:0;min-height:0;width:100%;height:100%;
+  flex:1 1 auto;
 }
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board>.lektrus-periodic-svg{
-  height:calc(100% - 36px)!important;
-  max-height:calc(100% - 36px)!important;
-  width:100%!important;flex:1 1 auto!important;min-height:0;
+.lektrus-periodic-window-stage>.lektrus-periodic-svg,
+.lektrus-periodic-dialog .lektrus-periodic-window-stage>.lektrus-periodic-svg,
+.graph-view.lektrus-periodic-board-view .lektrus-periodic-window-stage>.lektrus-periodic-svg{
+  display:block!important;box-sizing:border-box;
+  width:100%!important;height:100%!important;
+  min-width:0!important;max-width:100%!important;
+  min-height:0!important;max-height:100%!important;
+  flex:none!important;object-fit:contain;
+}
+.lektrus-periodic-dialog .lektrus-periodic-table-scroll .lektrus-periodic-window-stage{
+  width:100%;height:100%;flex:1 1 auto;
+}
+.graph-view.lektrus-periodic-board-view .lektrus-periodic-board{
+  position:relative;box-sizing:border-box;
+  display:flex!important;flex-direction:column!important;
+  min-width:0;min-height:0;width:100%;height:100%;
+  overflow:hidden;
+}
+.graph-view.lektrus-periodic-board-view .lektrus-periodic-board>.lektrus-periodic-window-stage{
+  flex:1 1 auto;min-height:0;
+}
+.lektrus-periodic-window{
+  position:absolute!important;box-sizing:border-box!important;
+  z-index:5;width:25%;max-width:235px;min-width:0;
+  min-height:0;max-height:90%;overflow-y:auto;
+  padding:8px!important;margin:0!important;
+  border:1px solid #c8d9ee;border-radius:9px;
+  background:rgba(255,255,255,.98);color:#2b3e58;
+  box-shadow:0 5px 15px #182f4e20;
+  font-family:Inter,system-ui,sans-serif;font-size:10px;
+  line-height:1.28;overflow-wrap:anywhere;
+  pointer-events:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;
+}
+.lektrus-periodic-window-stage.is-school>.lektrus-periodic-window{width:26%}
+.lektrus-periodic-window-stage.is-modern>.lektrus-periodic-window{width:25%}
+.lektrus-periodic-window.is-atom{
+  width:28%!important;max-width:265px;max-height:92%;
+}
+.lektrus-periodic-window>.lektrus-floating-element-head{
+  display:flex;gap:5px;align-items:center;
+  padding:0 0 5px;margin:0 0 5px;
+  border-bottom:1px solid #e6edf6;
+}
+.lektrus-periodic-window .lektrus-floating-element-symbol{
+  font-size:20px;line-height:1;color:#285eb5;
+}
+.lektrus-periodic-window .lektrus-floating-element-name{
+  min-width:0;flex:1;font-size:11px;font-weight:720;
+}
+.lektrus-periodic-window .lektrus-floating-element-drag{color:#95a6bb}
+.lektrus-periodic-window .lektrus-floating-element-head button{
+  display:inline-grid;place-items:center;
+  min-width:21px;height:21px;padding:0;
+  border:1px solid #d7e4f0;border-radius:5px;
+  background:#f5f9ff;color:#566d8d;cursor:pointer;
+}
+.lektrus-periodic-window .lektrus-floating-element-facts{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 7px;
+  font-size:10px;
+}
+.lektrus-periodic-window .lektrus-floating-element-facts b{
+  color:#2e4869;font-weight:730;
+}
+.lektrus-periodic-window .lektrus-floating-element-configuration,
+.lektrus-periodic-window .lektrus-floating-element-oxidation{
+  display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;
+  font-size:9.5px;line-height:1.25;
+}
+.lektrus-periodic-window .lektrus-floating-element-configuration span,
+.lektrus-periodic-window .lektrus-floating-element-oxidation span{color:#6a829d}
+.lektrus-periodic-window .lektrus-floating-element-configuration b,
+.lektrus-periodic-window .lektrus-floating-element-oxidation b{font-weight:690}
+.lektrus-periodic-window .lektrus-floating-element-actions{
+  display:flex;gap:5px;margin-top:7px;
+}
+.lektrus-periodic-window .lektrus-floating-element-actions button{
+  flex:1;min-width:0;min-height:24px;
+  padding:4px 3px;border:1px solid #bdd3ed;
+  border-radius:5px;background:#f0f6ff;color:#355fa0;
+  cursor:pointer;font-size:9px;
+}
+.lektrus-periodic-window .lektrus-periodic-atom-modes{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;
+}
+.lektrus-periodic-window .lektrus-periodic-atom-modes button{
+  border:1px solid #d3e0f2;border-radius:5px;
+  min-height:26px;padding:3px 2px;
+  font-size:9px;line-height:1.16;
+  background:#f7faff;color:#537093;cursor:pointer;
+}
+.lektrus-periodic-window .lektrus-periodic-atom-modes button[aria-pressed="true"]{
+  background:#e8f1ff;border-color:#9bbdf0;color:#235db3;
+}
+.lektrus-periodic-window .lektrus-periodic-atom-visual{
+  margin-top:6px;min-width:0;max-height:220px;overflow:auto;
+  border:1px solid #dbe7f5;border-radius:6px;
+  background:#fff;
+}
+.lektrus-periodic-window .lektrus-periodic-atom-visual .lektrus-atom-svg{
+  width:100%!important;height:auto!important;
+  min-width:0!important;max-height:none!important;
+  touch-action:pan-y!important;
 }
 .lektrus-periodic-board-footer{
-  box-sizing:border-box;flex:0 0 36px;height:36px;min-width:0;
-  display:flex;align-items:center;justify-content:flex-end;gap:10px;
-  padding:3px 14px;border-top:1px solid #e1e8f4;
-  background:#f9fbff;color:#395371;
-  user-select:none;
+  box-sizing:border-box;flex:0 0 36px;height:36px;
+  display:flex;align-items:center;justify-content:flex-end;gap:9px;
+  padding:3px 12px;border-top:1px solid #e1e8f4;
+  background:#f9fbff;user-select:none;min-width:0;
 }
 .lektrus-periodic-board-tabs{
-  display:inline-flex;align-items:stretch;gap:0;padding:2px;
-  border:1px solid #d2deee;border-radius:8px;background:#f0f5fc;
+  display:inline-flex;gap:0;align-items:center;
+  padding:2px;border:1px solid #d2deee;border-radius:8px;background:#f0f5fc;
 }
 .lektrus-periodic-board-tabs button{
-  padding:4px 10px;border:0;background:transparent;
-  border-radius:6px;font-size:11px;line-height:1.35;
-  font-weight:630;color:#667d9b;cursor:pointer;white-space:nowrap;
+  border:0;border-radius:6px;padding:4px 10px;
+  background:transparent;color:#667d9b;font-size:11px;
+  font-weight:630;white-space:nowrap;cursor:pointer;
 }
 .lektrus-periodic-board-tabs button[aria-pressed="true"]{
   color:#225bb5;background:white;box-shadow:0 1px 3px #264b7a22;
 }
 .lektrus-periodic-board-tabs button:disabled{opacity:.5;cursor:default}
 .lektrus-periodic-multi-toggle{
-  border:1px solid #d2deee;background:#fff;border-radius:7px;
-  padding:5px 9px;font-size:11px;line-height:1.3;color:#536d8e;
-  font-weight:650;cursor:pointer;white-space:nowrap;
+  border:1px solid #d2deee;border-radius:7px;
+  background:white;color:#536d8e;padding:5px 9px;
+  white-space:nowrap;font-size:11px;font-weight:650;cursor:pointer;
 }
-.lektrus-periodic-multi-toggle span{font-size:10px;color:#8498b1;margin-left:4px}
+.lektrus-periodic-multi-toggle span{margin-left:4px;color:#8294ad;font-size:10px}
 .lektrus-periodic-multi-toggle[aria-pressed="true"]{
-  border-color:#9cbaed;background:#eaf2ff;color:#245bb7;
+  color:#245bb7;background:#eaf2ff;border-color:#9cbaed;
 }
-.lektrus-periodic-multi-toggle[aria-pressed="true"] span{color:#245bb7}
+.lektrus-periodic-preview-actions{
+  display:flex;justify-content:flex-end;flex:0 0 auto;padding:0 3px;
+}
+.lektrus-periodic-preview-actions>button{
+  border:1px solid #d5e1f0;border-radius:7px;
+  background:#f9fbfe;color:#4d6689;padding:5px 10px;
+  font-size:10px;font-weight:650;cursor:pointer;
+}
+.lektrus-periodic-preview-actions>button.active{
+  border-color:#a8c2ec;background:#eaf2ff;color:#315faf;
+}
+.lektrus-periodic-preview-actions>button>span{margin-left:5px}
 @media(max-width:900px){
-  .lektrus-periodic-dialog .lektrus-periodic-stage.is-school{
-    --lektrus-periodic-dock:172px;
-  }
-  .lektrus-periodic-board-footer{padding:3px 6px;gap:4px}
+  .lektrus-periodic-board-footer{padding:3px 6px;gap:5px}
   .lektrus-periodic-board-tabs button{padding:4px 6px;font-size:10px}
   .lektrus-periodic-multi-toggle{padding:5px 6px;font-size:10px}
 }
-
-
-/* Chemistry workbench 2026-10-17: panels are children of the TABLE, not the browser window.
-   The table gets its own space; nothing floats over chemical cells by default. */
-.lektrus-periodic-dialog .lektrus-periodic-stage{
-  position:relative!important;box-sizing:border-box;
-  overflow:hidden!important;
-}
-.lektrus-periodic-dialog .lektrus-periodic-stage:not(.has-info)>.lektrus-periodic-svg{
-  width:100%!important;max-width:100%!important;flex:0 1 100%!important;
-}
-.lektrus-periodic-dialog .lektrus-periodic-stage:not(.has-info)>.lektrus-periodic-info-dock{
-  display:none!important;
-}
-.lektrus-periodic-dialog .lektrus-periodic-stage.has-info{
-  display:flex!important;flex-direction:row!important;
-  justify-content:flex-start!important;align-items:center!important;
-  padding:7px!important;gap:9px!important;
-}
-.lektrus-periodic-dialog .lektrus-periodic-stage.has-info>.lektrus-periodic-svg{
-  width:calc(74% - 5px)!important;max-width:calc(74% - 5px)!important;
-  flex:0 1 calc(74% - 5px)!important;height:auto!important;
-  max-height:100%!important;min-width:0!important;
-}
-.lektrus-periodic-dialog .lektrus-periodic-stage.has-info>.lektrus-periodic-info-dock{
-  position:static!important;inset:auto!important;
-  display:flex!important;flex:1 0 25%!important;
-  flex-direction:column!important;align-self:stretch!important;
-  box-sizing:border-box;min-width:0!important;width:25%!important;max-width:25%!important;
-  min-height:0!important;max-height:100%!important;
-  overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;
-  gap:8px;padding:2px!important;
-}
-.lektrus-periodic-dialog .lektrus-periodic-stage.has-info:has(.lektrus-periodic-atom-subpanel)>.lektrus-periodic-svg{
-  width:calc(51% - 6px)!important;max-width:calc(51% - 6px)!important;
-  flex-basis:calc(51% - 6px)!important;
-}
-.lektrus-periodic-dialog .lektrus-periodic-stage.has-info:has(.lektrus-periodic-atom-subpanel)>.lektrus-periodic-info-dock{
-  flex-basis:48%!important;width:48%!important;max-width:48%!important;
-}
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info{
-  display:grid!important;
-  grid-template-columns:minmax(0,74%) minmax(0,26%)!important;
-  grid-template-rows:minmax(0,1fr) 36px!important;
-  align-items:stretch!important;overflow:hidden!important;
-}
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info:has(.lektrus-periodic-atom-subpanel){
-  grid-template-columns:minmax(0,52%) minmax(0,48%)!important;
-}
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info>.lektrus-periodic-svg{
-  grid-column:1!important;grid-row:1!important;
-  width:100%!important;max-width:100%!important;
-  height:100%!important;max-height:100%!important;
-  align-self:stretch!important;min-width:0!important;min-height:0!important;
-}
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info>.lektrus-periodic-board-dock{
-  grid-column:2;grid-row:1;
-  position:static!important;display:flex;flex-direction:column;
-  gap:8px;min-width:0;min-height:0;
-  padding:8px 7px 8px 3px;box-sizing:border-box;
-  overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
-}
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info>.lektrus-periodic-board-footer{
-  grid-column:1 / -1;grid-row:2;
-  min-width:0;
-}
-.lektrus-floating-element-card{
-  box-sizing:border-box!important;flex:0 0 auto;min-width:0;
-  padding:9px!important;background:#fff;color:#263b58;
-  border:1px solid #cad9ed;border-radius:10px;
-  box-shadow:0 4px 13px #1a355b1a;
-  font:11px/1.3 Inter,system-ui,sans-serif;
-  overflow-wrap:anywhere;
-}
-.lektrus-floating-element-head{
-  display:flex;align-items:center;gap:5px;min-width:0;
-  border-bottom:1px solid #eaf0f7;padding:0 0 5px;margin:0 0 6px;
-}
-.lektrus-floating-element-symbol{font-size:21px;line-height:1;color:#2d5cb0}
-.lektrus-floating-element-name{flex:1;min-width:0;font-size:11px}
-.lektrus-floating-element-drag{color:#8fa3c0;font-size:12px}
-.lektrus-floating-element-head button,
-.lektrus-periodic-atom-heading button{
-  border:1px solid #d6e3f2;background:#f7faff;color:#557095;
-  border-radius:6px;cursor:pointer;min-width:22px;min-height:22px;
-}
-.lektrus-floating-element-facts{
-  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  gap:3px 6px;font-size:10px;
-}
-.lektrus-floating-element-facts b{font-weight:750;color:#243d60}
-.lektrus-floating-element-configuration,
-.lektrus-floating-element-oxidation{
-  display:flex;gap:4px;flex-wrap:wrap;font-size:10px;line-height:1.25;margin-top:5px;
-}
-.lektrus-floating-element-configuration span,
-.lektrus-floating-element-oxidation span{color:#657e9d}
-.lektrus-floating-element-configuration b,
-.lektrus-floating-element-oxidation b{font-weight:680;min-width:0}
-.lektrus-floating-element-actions{
-  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:5px;margin-top:8px;
-}
-.lektrus-floating-element-actions button{
-  min-width:0;min-height:27px;border-radius:6px;
-  border:1px solid #c2d4ef;background:#f1f6ff;color:#2b59a4;
-  padding:3px;font-size:10px;cursor:pointer;
-}
-.lektrus-floating-element-actions button:only-child{grid-column:1 / -1}
-.lektrus-periodic-atom-subpanel{
-  display:flex;flex-direction:column;gap:6px;
-  margin-top:9px;padding-top:8px;border-top:1px solid #d9e5f4;
-  min-width:0;max-width:100%;
-}
-.lektrus-periodic-atom-heading{display:flex;align-items:center;gap:6px}
-.lektrus-periodic-atom-heading strong{flex:1;font-size:11px}
-.lektrus-periodic-atom-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
-.lektrus-periodic-atom-modes button{
-  min-width:0;padding:5px 4px;min-height:29px;border:1px solid #d6e2f1;
-  border-radius:6px;background:#f8faff;color:#456381;cursor:pointer;
-  font-size:10px;line-height:1.2;
-}
-.lektrus-periodic-atom-modes button[aria-pressed="true"]{
-  background:#e5f0ff;color:#225dbe;border-color:#8db5ec;
-}
-.lektrus-periodic-atom-visual{
-  min-width:0;max-height:300px;overflow:auto;
-  background:#fff;border:1px solid #e0eaf5;border-radius:8px;
-  overscroll-behavior:contain;
-}
-.lektrus-periodic-atom-visual .lektrus-atom-svg{
-  width:100%!important;height:auto!important;max-height:none!important;
-  min-width:0!important;min-height:0!important;touch-action:pan-y!important;
-}
-@media(max-width:650px){
- .lektrus-periodic-dialog .lektrus-periodic-stage.has-info{
-   flex-direction:column!important;overflow-y:auto!important;justify-content:flex-start!important;
- }
- .lektrus-periodic-dialog .lektrus-periodic-stage.has-info>.lektrus-periodic-svg,
- .lektrus-periodic-dialog .lektrus-periodic-stage.has-info:has(.lektrus-periodic-atom-subpanel)>.lektrus-periodic-svg{
-   width:100%!important;max-width:100%!important;flex:0 0 auto!important;
- }
- .lektrus-periodic-dialog .lektrus-periodic-stage.has-info>.lektrus-periodic-info-dock,
- .lektrus-periodic-dialog .lektrus-periodic-stage.has-info:has(.lektrus-periodic-atom-subpanel)>.lektrus-periodic-info-dock{
-   width:100%!important;max-width:100%!important;flex:0 0 auto!important;
-   overflow:visible!important;
- }
- .graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info{
-   grid-template-columns:minmax(0,66%) minmax(0,34%)!important;
- }
- .graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info:has(.lektrus-periodic-atom-subpanel){
-   grid-template-columns:minmax(0,48%) minmax(0,52%)!important;
- }
-}
-
-/* Override older modern-table flex-basis, which incorrectly made each sheet 220px tall. */
-.lektrus-periodic-dialog .lektrus-periodic-stage.has-info .lektrus-periodic-info-dock>.lektrus-floating-element-card,
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info .lektrus-periodic-board-dock>.lektrus-floating-element-card{
-  flex:0 0 auto!important;
-  width:100%!important;max-width:100%!important;
-  min-width:0!important;
-}
-.lektrus-periodic-dialog .lektrus-periodic-stage.has-info .lektrus-periodic-info-dock{
-  align-items:stretch!important;
-}
-
-/* Dragging a card lifts only that card out of its scrollable dock, but not the table. */
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info .lektrus-periodic-board-dock>.lektrus-floating-element-card.is-dragged{
-  width:min(31%,250px)!important;max-width:min(31%,250px)!important;
-}
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info .lektrus-periodic-board-dock>.lektrus-floating-element-card.is-dragged.atom-open{
-  width:min(48%,475px)!important;max-width:min(48%,475px)!important;
-}
-.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info:has(.is-dragged) .lektrus-periodic-board-dock{
-  overflow:visible!important;
+@media(max-width:680px){
+ .lektrus-periodic-window{width:30%;font-size:9px}
+ .lektrus-periodic-window-stage.is-school>.lektrus-periodic-window{width:28%}
+ .lektrus-periodic-window.is-atom{width:34%!important}
+ .lektrus-periodic-window .lektrus-floating-element-actions{flex-direction:column}
 }
