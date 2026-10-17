@@ -28,7 +28,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      # ubuntu-latest already includes an Android SDK; the old setup action
+      # tries to install the retired SDK package named "tools" and fails.
+      - name: Confirm Android SDK is available
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          test -d "${ANDROID_HOME}/platforms"
+          ls "${ANDROID_HOME}/platforms" | tail -5
       - run: npm ci --no-audit --no-fund
       - name: Verify native project
         run: npm run native:check
