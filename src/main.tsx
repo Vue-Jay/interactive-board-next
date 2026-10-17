@@ -39,6 +39,7 @@ import "./lektrusAdaptiveSidebarAndToday.css";
 import "./lektrusMoreTab.css";
 import "./lektrusScienceEditor.css";
 import "./lektrusEditorCursor.css";
+import "./lektrusFormulaWindow.css";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
