@@ -81,6 +81,9 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const equalSideFigure=["square","rhombus","pentagon","hexagon","octagon"].includes(draft.figureId);
   const rectangleFigure=["square","rectangle"].includes(draft.figureId);
   const parameterQuadrilateral=["parallelogram","rhombus","trapezoid","trapezoid-isosceles","trapezoid-right"].includes(draft.figureId);
+  const extraElementCount=draft.segments.filter(segment=>!isSolid||!isStructuralSolidSegment(draft.figureId,segment)).length+
+    draft.polygons.length+draft.angles.length+draft.midpoints.length+
+    draft.circles.filter((_,i)=>!(draft.figureId==="sphere"&&i===0)).length;
   const transversal=draft.figureId==="parallel"?draft.segments.find((seg,i)=>i>=2&&seg.kind==="line"):undefined;
   const hasTransversal=!!transversal&&!!draft.points[transversal.a]&&!!draft.points[transversal.b];
   useEffect(()=>{
@@ -261,7 +264,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>{mode==="geometry"?"Фигура":"Построение"}</button>
         {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>Размеры</button>}
-        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Элементы <span>{draft.circles.length+draft.polygons.length+draft.segments.length+draft.angles.length}</span></button>}
+        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Элементы <span>{extraElementCount}</span></button>}
         {!isSolid&&<button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
       </nav>
       <div className="graph-editor-body lektrus-graph-content">
@@ -738,6 +741,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             </div>}
 
             {draft.circles.map((c,i)=>{
+              if(draft.figureId==="sphere"&&i===0)return null;
               const center=draft.points[c.center],edge=draft.points[c.edge];
               const radius=c.label.match(/^r\s*=\s*(.*)$/i)?.[1]??draft.givenSides[i]??"";
               return <div className="lektrus-graph-construction lektrus-school-element" key={"circle"+i}>
