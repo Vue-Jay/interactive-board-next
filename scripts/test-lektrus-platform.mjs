@@ -12,6 +12,14 @@ assert.equal(manifest.display, "standalone");
 assert.equal(manifest.scope, "/");
 assert.equal(manifest.start_url.startsWith("/"), true);
 assert.ok(manifest.icons.some(icon => icon.purpose.includes("maskable")));
+for (const size of [192, 512]) {
+  const entry = manifest.icons.find(icon => icon.src === "/lektrus-icon-" + size + ".png");
+  assert.ok(entry && entry.sizes === size + "x" + size && entry.type === "image/png");
+  const image = readFileSync(new URL("../public/lektrus-icon-" + size + ".png", import.meta.url));
+  assert.equal(image.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(image.readUInt32BE(16), size);
+  assert.equal(image.readUInt32BE(20), size);
+}
 assert.match(html, /viewport-fit=cover/);
 assert.match(main, /import.meta.env.PROD/);
 assert.match(main, /serviceWorker.register\("\/sw.js"/);
