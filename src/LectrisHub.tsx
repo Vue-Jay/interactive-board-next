@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import {LEKTRUS_SCHOOL_SUBJECTS,normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import type { AccountRole } from "./accountRoleStore";
 import type { AuthUser } from "./authStore";
 import type { BoardSummary } from "./boardStore";
@@ -21,7 +22,7 @@ type Props = {
   onCreateBoard: (association?:Partial<Organization>) => void;
   onDeleteBoard: (board:BoardSummary) => void;
 };
-const commonSubjects = ["Математика","Русский язык","Литература","Английский язык","Физика","Химия","Биология","География","История","Обществознание","Информатика","Геометрия","Алгебра","Окружающий мир","Физическая культура"];
+const commonSubjects=[...LEKTRUS_SCHOOL_SUBJECTS];
 const dayKey=(date:Date)=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
 const shortDate=(iso:string)=>new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(iso));
 const navigate=(section:string)=>{window.history.pushState({},"",section?"/?section="+encodeURIComponent(section):"/");window.dispatchEvent(new PopStateEvent("popstate"))};
@@ -142,7 +143,7 @@ export default function LectrisHub({user,role,view,boards,previews,loading,creat
         value.toLocaleLowerCase("ru-RU").includes(query));
     }).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
   },[boardSearch,boards,organization,recent]);
-  const subjectList=useMemo(()=>[...new Set([...commonSubjects,...categoryCatalog.subjects,...boards.map(b=>organization[b.id]?.subject||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.subjects]);
+  const subjectList=useMemo(()=>[...new Set([...commonSubjects,...categoryCatalog.subjects,...boards.map(b=>organization[b.id]?.subject||"").filter(Boolean)].map(normalizeLektrusSubject))].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.subjects]);
   const groupList=useMemo(()=>[...new Set([...categoryCatalog.groups,...boards.map(b=>organization[b.id]?.group||"").filter(Boolean)])].sort((a,b)=>a.localeCompare(b,"ru")),[boards,organization,categoryCatalog.groups]);
   const visibleGroups=useMemo(()=>groupList.filter(name=>name.toLocaleLowerCase("ru-RU").includes(categorySearch.trim().toLocaleLowerCase("ru-RU"))).sort((a,b)=>groupSort==="size"?(groupMembers[b]?.length||0)-(groupMembers[a]?.length||0)||a.localeCompare(b,"ru"):a.localeCompare(b,"ru")),[groupList,categorySearch,groupSort,groupMembers]);
   const selectedGroupStudents=students.filter(s=>scope!==null&&(groupMembers[scope]||[]).includes(s.userId)).sort((a,b)=>a.name.localeCompare(b.name,"ru"));
