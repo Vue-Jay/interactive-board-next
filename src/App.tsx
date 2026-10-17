@@ -20,6 +20,7 @@ import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
+import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
 import LektrusGraphEditor, {appendFreeSketchPoint,removeGraphPoint, removeGraphBoardPoint, type GraphDraft} from "./LektrusGraphEditor";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
@@ -1395,6 +1396,10 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
                 x1={ax+ox} y1={ay+oy} x2={bx+ox} y2={by+oy}
                 markerEnd={(seg.scienceArrow||seg.kind==="ray")&&(seg.bondOrder??1)===1&&Math.hypot(end.x-start.x,end.y-start.y)>.5?`url(#graph-arrow-${item.id})`:undefined}/>;
             })}
+            {seg.scienceCircuitSymbol&&seg.scienceCircuitSymbol!=="wire"&&
+              <ScienceCircuitGlyph type={seg.scienceCircuitSymbol}
+                x={(sx(a.x)+sx(b.x))/2} y={(sy(a.y)+sy(b.y))/2}
+                angle={Math.atan2(sy(b.y)-sy(a.y),sx(b.x)-sx(a.x))*180/Math.PI}/>}
             {rayControl&&onRayChange&&<line x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}
               stroke="transparent" strokeWidth="24" style={{cursor:"grab",touchAction:"none"}} onPointerDown={beginRayDrag}
               aria-label="Перетащите луч, чтобы изменить направление"/>}
