@@ -24,7 +24,7 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
       graphAxisMode:"both",graphType:"linear",graphShowCurve:false,
       graphExpression:"",graphConnectPoints:true,graphGrid:true,
       graphXMin:0,graphXMax:12,graphYMin:0,graphYMax:10,
-      graphPoints:[pt(0,0,"").slice(0,2),pt(3,2,"").slice(0,2),pt(7,6,"").slice(0,2)].map(([px,py])=>({x:px,y:py,label:""})),
+      graphPoints:[{x:0,y:0,label:""},{x:3,y:2,label:""},{x:7,y:6,label:""}],
       graphSegments:[]};
   }
   let title="",vertices:Vertex[]=[],edges:Edge[]=[],polygons:number[][]=[];
