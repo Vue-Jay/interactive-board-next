@@ -1,93 +1,112 @@
-import {useEffect,useRef,useState,type PointerEvent,type CSSProperties} from "react";
-import {createPortal} from "react-dom";
+import {useEffect,useRef,useState,type CSSProperties,type PointerEvent} from "react";
 import {periodicElements} from "./lektrusPeriodicElements";
 import {elementFacts} from "./lektrusElementFacts";
 import {atomViews,type AtomViewMode} from "./lektrusAtomModel";
 import LektrusAtomView from "./LektrusAtomView";
 
-type Props={number:number|null;layout:"school"|"long";anchor:HTMLElement|null;
- selected:boolean;onClose:()=>void;onToggle?:()=>void;fixed?:boolean;slot?:number;inline?:boolean};
-type XY={x:number;y:number};
-const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
-export default function LektrusPeriodicFloatingInfo({number,layout,anchor,selected,onClose,onToggle,fixed=false,slot=0,inline=false}:Props){
- const [position,setPosition]=useState<XY|null>(null);
- const [atomOpen,setAtomOpen]=useState(false);
+type Point={x:number;y:number};
+type Props={
+ number:number|null;layout:"school"|"long";anchor:HTMLElement|null;
+ selected:boolean;onClose:()=>void;onToggle?:()=>void;
+ fixed?:boolean;slot?:number;inline?:boolean;
+};
+const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
+
+/** All sheets belong to the periodic table's own coordinate system.
+ * Never use document.body / viewport-fixed positioning here. */
+export default function LektrusPeriodicFloatingInfo({
+ number,layout,anchor,selected,onClose,onToggle,fixed=false
+}:Props){
  const [mode,setMode]=useState<AtomViewMode>("shell");
- const [atomPosition,setAtomPosition]=useState<XY|null>(null);
- const drag=useRef<{id:number;startX:number;startY:number;origin:XY;kind:"info"|"atom"}|null>(null);
- useEffect(()=>{setPosition(null);setAtomOpen(false);setAtomPosition(null)},[layout,anchor]);
- useEffect(()=>{setAtomOpen(false);setMode("shell")},[number]);
+ const [atomOpen,setAtomOpen]=useState(false);
+ const [dragPosition,setDragPosition]=useState<Point|null>(null);
+ const dragging=useRef<{id:number;startX:number;startY:number;origin:Point}|null>(null);
+ const cardRef=useRef<HTMLDivElement>(null);
+
+ useEffect(()=>{
+  setMode("shell");setAtomOpen(false);
+ },[number]);
+ useEffect(()=>{setDragPosition(null)},[layout,anchor]);
+
  if(number==null)return null;
  const element=periodicElements[number-1],facts=elementFacts[number-1];
  if(!element||!facts)return null;
- const rect=anchor?.getBoundingClientRect();
- const cardWidth=260,cardHeight=150;
- const schoolX=(rect?.right??window.innerWidth*.7)+18;
- const modernX=(rect?.left??70)+(rect?.width??900)*.245;
- const defaultInfo:XY=layout==="school"
-  ?{x:clamp(schoolX,8,Math.max(8,window.innerWidth-cardWidth-12)),
-    y:clamp((rect?.top??130)+14,8,Math.max(8,window.innerHeight-cardHeight-12))}
-  :{x:clamp(modernX,8,Math.max(8,window.innerWidth-cardWidth-12)),
-    y:clamp((rect?.top??130)+(rect?.height??600)*.085,8,Math.max(8,window.innerHeight-cardHeight-12))};
- const placement:XY={x:clamp(defaultInfo.x,8,Math.max(8,window.innerWidth-cardWidth-8)),
-   y:clamp(defaultInfo.y+slot*(cardHeight+10),8,Math.max(8,window.innerHeight-cardHeight-8))};
- const info=fixed?placement:position??placement;
- const atom=atomPosition??{x:clamp(info.x-110,12,window.innerWidth-530),y:clamp(info.y+168,12,window.innerHeight-450)};
- const move=(e:PointerEvent<HTMLDivElement>)=>{
-  const d=drag.current;if(!d||d.id!==e.pointerId)return;
-  const w=d.kind==="info"?260:510,h=d.kind==="info"?152:425;
-  const next={x:clamp(d.origin.x+e.clientX-d.startX,8,Math.max(8,window.innerWidth-w-8)),
-   y:clamp(d.origin.y+e.clientY-d.startY,8,Math.max(8,window.innerHeight-h-8))};
-  if(d.kind==="info")setPosition(next);else setAtomPosition(next);
- };
- const begin=(e:PointerEvent<HTMLDivElement>,kind:"info"|"atom")=>{
-  if((e.target as HTMLElement).closest("button")||(fixed&&kind==="info"))return;
-  e.stopPropagation();e.preventDefault();
-  drag.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,origin:kind==="info"?info:atom,kind};
+
+ const cardStyle:CSSProperties=dragPosition?{
+   position:"absolute",left:dragPosition.x,top:dragPosition.y,
+   width:atomOpen?"min(48%, 475px)":"min(31%, 250px)",zIndex:6
+ }:{position:"relative",width:"100%"};
+ const begin=(e:PointerEvent<HTMLDivElement>)=>{
+  if(fixed||!anchor||(e.target as HTMLElement).closest("button"))return;
+  const panel=cardRef.current;
+  if(!panel)return;
+  const box=panel.getBoundingClientRect(),stage=anchor.getBoundingClientRect();
+  const scaleX=stage.width/Math.max(1,anchor.clientWidth);
+  const scaleY=stage.height/Math.max(1,anchor.clientHeight);
+  dragging.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,
+    origin:{x:(box.left-stage.left)/scaleX,y:(box.top-stage.top)/scaleY}};
   e.currentTarget.setPointerCapture(e.pointerId);
+  e.preventDefault();e.stopPropagation();
+ };
+ const move=(e:PointerEvent<HTMLDivElement>)=>{
+  const drag=dragging.current;
+  if(!drag||drag.id!==e.pointerId||!anchor)return;
+  const stage=anchor.getBoundingClientRect();
+  const scaleX=stage.width/Math.max(1,anchor.clientWidth);
+  const scaleY=stage.height/Math.max(1,anchor.clientHeight);
+  const w=cardRef.current?.offsetWidth??230,h=cardRef.current?.offsetHeight??140;
+  setDragPosition({
+    x:clamp(drag.origin.x+(e.clientX-drag.startX)/scaleX,4,Math.max(4,anchor.clientWidth-w-4)),
+    y:clamp(drag.origin.y+(e.clientY-drag.startY)/scaleY,4,Math.max(4,anchor.clientHeight-h-4))
+  });
  };
  const end=(e:PointerEvent<HTMLDivElement>)=>{
-  if(drag.current?.id===e.pointerId)drag.current=null;
+  if(dragging.current?.id!==e.pointerId)return;
+  dragging.current=null;
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
  };
- const panel:CSSProperties={position:"fixed",zIndex:99999,background:"#fff",border:"1px solid #bed0e9",borderRadius:10,
-  boxShadow:"0 8px 25px #12244333",color:"#263956",fontFamily:"Arial,sans-serif",boxSizing:"border-box",pointerEvents:"auto"};
- const btn:CSSProperties={border:"1px solid #b9ceee",background:"#f0f6ff",borderRadius:5,padding:"4px 6px",cursor:"pointer",fontSize:11};
- const infoCard=<>
-  <div className="lektrus-floating-element-card" style={inline?{...panel,position:"relative",left:"auto",top:"auto",width:"100%",minHeight:0,padding:9,boxShadow:"none"}:{...panel,left:info.x,top:info.y,width:260,minHeight:145,padding:8}} onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}>
-   <div onPointerDown={e=>begin(e,"info")} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
-     style={{touchAction:"none",display:"flex",alignItems:"center",gap:5,cursor:fixed?"default":"grab",userSelect:"none",paddingBottom:4}}>
-    <strong style={{fontSize:19,color:"#2c5c99"}}>{element.symbol}</strong>
-    <b style={{fontSize:11,flex:1}}>{element.name}</b>
-    <span style={{fontSize:9,color:"#8293a9"}}>⠿</span>
-    <button style={btn} onClick={onClose} aria-label="Закрыть сведения">×</button>
+
+ return <div ref={cardRef} className="lektrus-floating-element-card" style={cardStyle}
+  onClick={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()}
+  onPointerDown={e=>e.stopPropagation()}>
+  <div className="lektrus-floating-element-head"
+    onPointerDown={begin} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
+    style={{touchAction:"none",cursor:fixed?"default":"grab",userSelect:"none"}}>
+   <b className="lektrus-floating-element-symbol">{element.symbol}</b>
+   <strong className="lektrus-floating-element-name">{element.name}</strong>
+   {!fixed&&<span className="lektrus-floating-element-drag" aria-hidden="true">⠿</span>}
+   <button type="button" onClick={onClose} aria-label={"Закрыть "+element.name}>×</button>
+  </div>
+  <div className="lektrus-floating-element-facts">
+    <span>№ <b>{number}</b></span>
+    <span>A<sub>r</sub> <b>{facts.atomicMass}</b></span>
+    <span>Период <b>{element.period}</b></span>
+    <span>Группа <b>{element.group}</b></span>
+  </div>
+  <div className="lektrus-floating-element-configuration">
+   <span>Электронная конфигурация</span><b>{facts.electronConfiguration}</b>
+  </div>
+  <div className="lektrus-floating-element-oxidation">
+   <span>Степени окисления</span><b>{facts.oxidationStates}</b>
+  </div>
+  <div className="lektrus-floating-element-actions">
+   <button type="button" aria-expanded={atomOpen} onClick={()=>setAtomOpen(v=>!v)}>
+    {atomOpen?"Скрыть атом":"Строение атома"}
+   </button>
+   {onToggle&&<button type="button" onClick={onToggle}>{selected?"Снять выделение":"Выделить"}</button>}
+  </div>
+  {atomOpen&&<section className="lektrus-periodic-atom-subpanel" aria-label={"Строение атома "+element.name}>
+   <div className="lektrus-periodic-atom-heading">
+    <strong>Строение атома {element.symbol}</strong>
+    <button type="button" onClick={()=>setAtomOpen(false)} aria-label="Закрыть модель атома">×</button>
    </div>
-   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"2px 8px",fontSize:10}}>
-    <span>№ <b>{number}</b></span><span>Ar <b>{facts.atomicMass}</b></span>
-    <span>Период <b>{element.period}</b></span><span>Группа <b>{element.group}</b></span>
+   <div className="lektrus-periodic-atom-modes" role="group" aria-label="Модель атома">
+    {atomViews.map(view=><button key={view.id} type="button"
+      aria-pressed={mode===view.id} onClick={()=>setMode(view.id)}>{view.name}</button>)}
    </div>
-   <div style={{fontSize:10,marginTop:4}}>Конфигурация: {facts.electronConfiguration}</div>
-   <div style={{fontSize:10,marginTop:2}}>Степени окисления: {facts.oxidationStates}</div>
-   <div style={{display:"flex",gap:5,marginTop:7}}>
-    <button style={{...btn,flex:1}} onClick={()=>setAtomOpen(v=>!v)}>Строение атома</button>
-    {onToggle&&<button style={{...btn,flex:1}} onClick={onToggle}>{selected?"Снять выделение":"Выделить"}</button>}
-   </div>
-  </div></>;
- const atomCard=<div style={{...panel,left:atom.x,top:atom.y,width:510,padding:10}}
-    onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}>
-   <div onPointerDown={e=>begin(e,"atom")} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
-    style={{touchAction:"none",cursor:"grab",userSelect:"none",display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-    <b style={{fontSize:12,flex:1}}>Строение атома {element.name} · {element.symbol}</b>
-    <span style={{fontSize:10}}>⠿ Переместить</span>
-    <button style={btn} onClick={()=>setAtomOpen(false)}>×</button>
-   </div>
-   <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:7}}>
-    {atomViews.map(v=><button key={v.id} style={{...btn,background:mode===v.id?"#d9e7ff":"#f8fbff"}}
-      onClick={()=>setMode(v.id)}>{v.name}</button>)}
-   </div>
-   <div style={{maxHeight:"min(52vh,390px)",overflowY:"auto"}}>
+   <div className="lektrus-periodic-atom-visual">
     <LektrusAtomView model={{atomicNumber:number,mode,labelX:0,labelY:0,showElectronConfiguration:true}}/>
    </div>
-  </div>;
- return <>{inline?infoCard:createPortal(infoCard,document.body)}{atomOpen&&createPortal(atomCard,document.body)}</>;
+  </section>}
+ </div>;
 }
