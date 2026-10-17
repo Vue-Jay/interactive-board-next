@@ -13,7 +13,7 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactI
  const ringMax=45+(shells.length-1)*23;
  const modelRadius=model.mode==="shell"?ringMax:model.mode==="nucleus"?150:165;
  const labelX=cx+model.labelX,labelY=(model.mode==="orbital"||model.mode==="lewis"
-   ?Math.max(460,90+orbitalSublevels(element.number).length*29)-33
+   ?Math.max(460,110+108+Math.max(0,orbitalSublevels(element.number).length-1)*29)-33
    :compactInPanel?cy+modelRadius+45:423)+model.labelY;
  const begin=(event:PointerEvent<SVGGElement>)=>{
   if(!onLabelMove)return;
@@ -38,7 +38,13 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactI
  };
  const orbital= model.mode==="orbital"||model.mode==="lewis";
  const orbitalRows=orbital?orbitalSublevels(element.number).length:0;
- const orbitalCanvasHeight=Math.max(460,90+orbitalRows*29);
+ const orbitalStep=compactInPanel?27:29;
+ const orbitalHeader=compactInPanel?101:110;
+ const orbitalFooter=compactInPanel?85:108;
+ // Reserve an entire row for every occupied sublevel, including the highest
+ // elements; the old formula placed the top boxes above the SVG's title.
+ const orbitalCanvasHeight=Math.max(460,orbitalHeader+orbitalFooter+
+   Math.max(0,orbitalRows-1)*orbitalStep);
  // In small periodic-table cards the old 700px SVG left hundreds of pixels unused.
  // Crop only the viewBox for this context. Geometry and all editor coordinates stay unchanged.
  const focusRadius=model.mode==="shell"?ringMax:model.mode==="nucleus"?150:165;
@@ -46,7 +52,7 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactI
  const focusTop=cy-focusRadius-25;
  const focusHeight=labelY+27-focusTop;
  const viewBox=compactInPanel
-   ?orbital?`50 8 600 ${orbitalCanvasHeight-16}`
+   ?orbital?`60 14 580 ${orbitalCanvasHeight-28}`
      :`${cx-focusWidth/2} ${focusTop} ${focusWidth} ${focusHeight}`
    :`0 0 700 ${orbitalCanvasHeight}`;
  const mass=Number((elementFacts[element.number-1]?.atomicMass??"").replace(/[^0-9.]/g,""));
@@ -94,8 +100,8 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactI
   </>}
   {(model.mode==="orbital"||model.mode==="lewis")&&(()=>{
     const subs=orbitalSublevels(element.number);
-    const step=29;
-    const yBottom=orbitalCanvasHeight-108;
+    const step=orbitalStep;
+    const yBottom=orbitalCanvasHeight-orbitalFooter;
     const locations=subs.map((sub,index)=>({
       x:156+(sub.n-1)*24+({s:0,p:48,d:106,f:166,g:214}[sub.letter]),
       y:yBottom-index*step,
