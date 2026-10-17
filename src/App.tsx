@@ -1192,9 +1192,11 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onDoubleClick={e=>{if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#667085" strokeWidth="1.3"/></marker></defs>
-      {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none" style={{opacity:purpose==="geometry"?.42:1}}>
-        {gridX.map(x=><line key={`x${x}`} x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
-        {gridY.map(y=><line key={`y${y}`} x1="0" x2={W} y1={sy(y)} y2={sy(y)}/>)}
+      {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
+        {gridX.map(x=><line key={`x${x}`} className={Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
+          x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
+        {gridY.map(y=><line key={`y${y}`} className={Math.abs(y/(step*5)-Math.round(y/(step*5)))<1e-6?"graph-grid-major":undefined}
+          x1="0" x2={W} y1={sy(y)} y2={sy(y)}/>)}
       </g>}
       {item.graphFigureId==="free"&&onAddPoint&&
         <rect className="lektrus-free-drawing-surface" x="0" y="0" width={W} height={H}
