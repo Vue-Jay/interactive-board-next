@@ -25,7 +25,10 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
     graphFigureId:"chem-periodic",sciencePeriodicHighlights:selected,
     sciencePeriodicLayout:layout,sciencePeriodicShowNames:showNames});
   const pick=(number:number,event?:{ctrlKey:boolean;shiftKey:boolean})=>{
-    setOpened(current=>current.includes(number)?current.filter(n=>n!==number):(multi||event?.ctrlKey||event?.shiftKey)?[...current,number]:[number]);
+    setOpened(current=>current.includes(number)?current.filter(n=>n!==number)
+      :multi||event?.ctrlKey||event?.shiftKey?[...current,number]:[number]);
+  };
+  const toggleSelected=(number:number)=>{
     setSelected(current=>{
       if(current.includes(number)){setNotice("");return current.filter(n=>n!==number)}
       if(current.length>=24){setNotice("Для наглядности можно выделить до 24 элементов.");return current}
@@ -87,7 +90,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
               {selected.map(number=>{
                 const el=periodicElements[number-1];
                 return <button type="button" key={number} title={"Убрать "+el.name}
-                  onClick={()=>pick(number)}><b>{el.symbol}</b><span>{el.name}</span><span aria-hidden="true">×</span></button>;
+                  onClick={()=>toggleSelected(number)}><b>{el.symbol}</b><span>{el.name}</span><span aria-hidden="true">×</span></button>;
               })}
               {!selected.length&&<p>Нажмите на элемент таблицы, чтобы просмотреть и выделить его.</p>}
             </div>
@@ -95,16 +98,16 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
           </aside>
           <div className="lektrus-periodic-preview">
             <div className="lektrus-periodic-preview-header"><strong>Периодическая система</strong>
-              <span>Нажмите на элемент, чтобы открыть карточку · Ctrl+клик для сравнения</span></div>
+              <span>Клик открывает сведения · двойной клик выделяет · Ctrl+клик сравнивает</span></div>
             <div className="lektrus-periodic-table-scroll lektrus-periodic-stage">
               <div className={"lektrus-periodic-window-stage "+(layout==="school"?"is-school":"is-modern")} ref={previewAnchor}>
                 <LektrusPeriodicTableView selected={selected} active={active}
                   showNames={showNames} familyFilter={family} onPick={pick} layout={layout}
-                  onDoublePick={number=>setSelected(v=>v.includes(number)?v.filter(n=>n!==number):[...v,number].sort((a,b)=>a-b))}/>
+                  onDoublePick={toggleSelected}/>
                 {opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i}
                   fixed layout={layout} stageRef={previewAnchor} selected={selected.includes(number)}
                   onClose={()=>setOpened(v=>v.filter(n=>n!==number))}
-                  onToggle={()=>setSelected(current=>current.includes(number)?current.filter(n=>n!==number):[...current,number].sort((a,b)=>a-b))}/>)}
+                  onToggle={()=>toggleSelected(number)}/>)}
               </div>
             </div>
             <div className="lektrus-periodic-preview-actions">
