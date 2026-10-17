@@ -131,4 +131,27 @@ assert.match(app,/className="lektrus-solid-hidden-edges"/,"hidden edges must be 
 assert.match(app,/strokeDasharray="5 5"/,"hidden edges must be dashed");
 assert.match(app,/className="lektrus-solid-front-edges"/,"front contours stay solid");
 
+
+const {solidStructuralEdgePairs,isStructuralSolidSegment,solidDimensionEdgePairs}=await loadTs("src/lektrusSolid3d.ts");
+for(const id of ["cube","rectangular-prism","prism","pyramid","triangular-pyramid"]){
+  const model=makeMathPresetItem(id,0,0,"dimensions-"+id);
+  const structural=solidStructuralEdgePairs(id);
+  assert.ok(structural.length>=6,id+" structural school edges");
+  assert.ok(model.graphSegments.every(edge=>isStructuralSolidSegment(id,edge)),id+" shape segments belong in Sizes");
+  assert.ok(solidDimensionEdgePairs(id).every(([a,b])=>structural.some(([x,y])=>
+    x===a&&y===b||x===b&&y===a)),id+" dimensions match real solid edges");
+  const edge=projectSolidEdges(model,40,-20).find(e=>e.a!==undefined&&e.b!==undefined);
+  assert.ok(edge,id+" projected edge carries original endpoint identities");
+  assert.ok(model.graphSegments.some(segment=>segment.a===edge.a&&segment.b===edge.b||
+    segment.a===edge.b&&segment.b===edge.a),id+" edge annotations can be matched after rotation");
+}
+for(const id of ["cone","cylinder"]){
+  const model=makeMathPresetItem(id,0,0,"round-edges-"+id);
+  assert.ok(model.graphSegments.every(edge=>isStructuralSolidSegment(id,edge)),id+" technical ring segments remain out of Elements");
+}
+assert.match(editor,/className="lektrus-geometry-givens lektrus-solid-edge-dimensions"/,"solid dimensions are in Sizes");
+assert.match(editor,/if\(isSolid&&isStructuralSolidSegment\(draft.figureId,segment\)\)return null/,"core solid edges are excluded from extra Elements");
+assert.match(app,/className="lektrus-solid-edge-labels"/,"solid edge labels shown in preview and board");
+assert.match(app,/solidDimensionEdgePairs\(item.graphFigureId\)/,"main dimensions appear along corresponding solid edges");
+
 console.log("School geometry: ray, transversal angles, solid rotation and dimension projections OK.");
