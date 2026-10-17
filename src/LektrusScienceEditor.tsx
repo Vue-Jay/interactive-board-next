@@ -322,7 +322,12 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                   const nx=-(q.y-p.y)/len*off,ny=(q.x-p.x)/len*off;
                   return <line key={index} x1={p.x+nx} y1={p.y+ny}
                     x2={q.x+nx} y2={q.y+ny}
-                    className={isPhysics?"lektrus-science-vector":"lektrus-science-bond"}
+                    className={!isPhysics?"lektrus-science-bond":
+                      seg.label==="Зеркало"?"lektrus-science-mirror":
+                      seg.label==="Нормаль"?"lektrus-science-normal":
+                      seg.label==="Граница сред"?"lektrus-science-boundary":
+                      seg.label==="Главная оптическая ось"?"lektrus-science-optical-axis":
+                      "lektrus-science-vector"}
                     markerEnd={seg.scienceArrow?"url(#science-arrow-end)":undefined}/>;
                 })}
                 {seg.scienceCircuitSymbol&&seg.scienceCircuitSymbol!=="wire"&&
