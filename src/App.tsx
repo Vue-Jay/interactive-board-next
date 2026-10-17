@@ -6468,6 +6468,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {scienceEditorItem&&<LektrusScienceEditor key={scienceEditorItem.id} item={scienceEditorItem}
           subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
           onCancel={()=>setScienceEditorItem(null)}
+          onClose={next=>{
+            if(itemsRef.current.some(i=>i.id===next.id)){
+              commit(itemsRef.current.map(i=>i.id===next.id?next:i));
+              setNotice("Изменения схемы сохранены");
+            }
+            setScienceEditorItem(null);
+          }}
           onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Предметная схема сохранена");}}/>}
         {graphEditorId && graphDraft && createPortal(
           <LektrusGraphEditor
@@ -6917,7 +6924,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setTool("select");
             setSubjectToolsOpen(false);
             if(id.startsWith("physics-")||id.startsWith("chem-")){
-              setScienceEditorItem({...item,graphFigureId:id});
+              setScienceEditorItem(item);
             }else{
               setPendingMathItem(item);
               window.setTimeout(()=>item.kind==="fraction"?setFractionEditorId(item.id):item.kind==="formula"?openFormulaEditor(item):openGraphEditor(item),0);
