@@ -53,7 +53,9 @@ assert.match(tableView,/elementFacts/);
 const floating=text("src/LektrusPeriodicFloatingInfo.tsx");
 assert.match(board,/onToggle=\{onChange\?/,"board must expose element selection from the floating card");
 assert.match(board,/onDoublePick=\{toggle\}/,"double-click must select without reopening editor");
-assert.match(floating,/const atomDefaultRatio:Point=\{x:1\.014,y:\.02\}/,"atom window must open to the right of the table");
+assert.match(floating,/const defaultPosition:Point=\{x:1\.009,y:/,"element and atom card must open immediately to the right of the table");
+assert.match(floating,/className="lektrus-chem-atom-toggle"/,"atom model must expand inside the existing card");
+assert.doesNotMatch(floating,/renderWindow\("atom"/,"no second free-floating atom window");
 assert.match(floating,/windowScale:/,"information window must scale with the board object");
 assert.match(floating,/className="lektrus-chem-close"/,"window close button must use visible icon");
 
