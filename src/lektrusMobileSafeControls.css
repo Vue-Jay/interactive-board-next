@@ -94,26 +94,44 @@
   }
 }
 
-/* Native Android landscape: align the tool rail with the user's marked left guide.
-   Keep the back-to-boards button inset equal to the right-side "More" inset.
-   These rules deliberately override the older cutout offsets in lectrisBoard.css. */
+/* Native Android: real cutout geometry comes from WindowInsets in MainActivity.
+   env() remains a fallback for other WebViews. The canvas stays full-width,
+   only its floating controls are kept in the device's interactive safe area. */
+html.lektrus-android-app {
+  --lektrus-cutout-left: env(safe-area-inset-left, 0px);
+  --lektrus-cutout-right: env(safe-area-inset-right, 0px);
+  --lektrus-cutout-top: env(safe-area-inset-top, 0px);
+  --lektrus-cutout-bottom: env(safe-area-inset-bottom, 0px);
+  --lektrus-edge-gap: clamp(12px, 1.45vw, 22px);
+  --lektrus-tool-gap: clamp(10px, 2.6vw, 40px);
+}
 @media screen and (max-width:1100px) and (orientation:landscape) {
   html.lektrus-android-app body .topbar:not(.update-banner) {
-    padding-left:max(22px,env(safe-area-inset-left,0px))!important;
-    padding-right:max(22px,env(safe-area-inset-right,0px))!important;
+    padding-left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-edge-gap))!important;
+    padding-right:calc(max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) + var(--lektrus-edge-gap))!important;
   }
   html.lektrus-android-app body .topbar .board-home-button {
     margin-left:0!important;
   }
   html.lektrus-android-app body .workspace nav.mobile-board-tools {
-    left:40px!important;
+    left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-tool-gap))!important;
     right:auto!important;
+    top:calc(72px + max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)))!important;
+    max-height:calc(100dvh - 88px - max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)) - max(var(--lektrus-cutout-bottom), env(safe-area-inset-bottom,0px)))!important;
   }
   html.lektrus-android-app body .workspace section.mobile-tools-sheet {
-    left:100px!important;
-    max-width:calc(100vw - 112px - env(safe-area-inset-right,0px))!important;
+    left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-tool-gap) + 60px)!important;
+    top:calc(72px + max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)))!important;
+    width:min(510px,calc(100vw - max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) - max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) - var(--lektrus-tool-gap) - 74px))!important;
+    max-width:calc(100vw - max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) - max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) - var(--lektrus-tool-gap) - 74px)!important;
+    max-height:calc(100dvh - 88px - max(var(--lektrus-cutout-top), env(safe-area-inset-top,0px)) - max(var(--lektrus-cutout-bottom), env(safe-area-inset-bottom,0px)))!important;
   }
   html.lektrus-android-app body .workspace .board-controls {
-    left:122px!important;
+    left:calc(max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) + var(--lektrus-tool-gap) + 82px)!important;
+    max-width:calc(100vw - max(var(--lektrus-cutout-left), env(safe-area-inset-left,0px)) - max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) - var(--lektrus-tool-gap) - 96px)!important;
+  }
+  html.lektrus-android-app body .workspace .minimap,
+  html.lektrus-android-app body .workspace .zoom-controls {
+    right:calc(max(var(--lektrus-cutout-right), env(safe-area-inset-right,0px)) + var(--lektrus-edge-gap))!important;
   }
 }
