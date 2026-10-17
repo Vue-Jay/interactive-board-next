@@ -1,4 +1,5 @@
 import type {Item} from "./boardModel";
+import {normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import {makeMathPresetItem} from "./lektrusMathPresets";
 import {makeSciencePresetItem} from "./lektrusSciencePresets";
 import {scienceDefaultPreset,scienceToolGroups,type ScienceToolId} from "./lektrusScienceCatalog";
@@ -8,16 +9,16 @@ export type SubjectToolDefinition={id:SubjectToolId;label:string;description:str
 
 /** A tool is a distinct editing workflow; its examples are selected INSIDE the editor. */
 export const subjectToolRegistry:SubjectToolDefinition[]=[
-  {id:"math-formula",label:"Математическая формула",description:"Степени, корни и математические символы",group:"Математические инструменты",subjects:["математика","алгебра","геометрия"]},
-  {id:"math-geometry",label:"Построение фигур",description:"Плоские и объёмные фигуры, стороны и углы",group:"Математические инструменты",subjects:["математика","геометрия"]},
+  {id:"math-formula",label:"Математическая формула",description:"Степени, корни и математические символы",group:"Математические инструменты",subjects:["математика"]},
+  {id:"math-geometry",label:"Построение фигур",description:"Плоские и объёмные фигуры, стороны и углы",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-coordinate",label:"Координатная плоскость",description:"Функции, точки, числовая прямая и графики",group:"Математические инструменты",subjects:["математика","алгебра","геометрия"]},
-  {id:"math-fractions",label:"Дроби",description:"Круг и полоска с наглядными частями",group:"Математические инструменты",subjects:["математика","алгебра"]},
+  {id:"math-fractions",label:"Дроби",description:"Круг и полоска с наглядными частями",group:"Математические инструменты",subjects:["математика"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
 ];
 
 export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
-  const key=subject.trim().toLocaleLowerCase("ru-RU");
+  const key=normalizeLektrusSubject(subject).toLocaleLowerCase("ru-RU");
   return subjectToolRegistry.filter(tool=>tool.subjects.includes(key));
 }
 
