@@ -98,7 +98,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
               <span>Щелчок выделяет элемент · повторный щелчок отменяет</span></div>
             <div className="lektrus-periodic-table-scroll" ref={previewAnchor}>
               <LektrusPeriodicTableView selected={selected} active={active}
-                showNames={showNames} familyFilter={family} onPick={pick} layout={layout} showInfo={active!==null} onCloseInfo={()=>setOpened([])} onToggleInfo={()=>{if(active!==null)pick(active)}}/>
+                showNames={showNames} familyFilter={family} onPick={pick} onDoublePick={number=>setSelected(v=>v.includes(number)?v.filter(n=>n!==number):[...v,number].sort((a,b)=>a-b))} layout={layout} showInfo={active!==null} onCloseInfo={()=>setOpened([])} onToggleInfo={()=>{if(active!==null)pick(active)}}/>
               {opened.map((number,i)=><LektrusPeriodicFloatingInfo key={number} number={number} slot={i} fixed layout={layout} anchor={previewAnchor.current}
                 selected={selected.includes(number)} onClose={()=>setOpened(v=>v.filter(n=>n!==number))}
                 onToggle={()=>setSelected(current=>current.includes(number)?current.filter(n=>n!==number):[...current,number].sort((a,b)=>a-b))}/>)}
