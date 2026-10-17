@@ -3,14 +3,14 @@ import {elementFacts} from "./lektrusElementFacts";
 
 type Props={
  selected?:number[];active?:number|null;showNames?:boolean;
- familyFilter?:ElementFamily|"all";onPick?:(number:number,event?:{ctrlKey:boolean;shiftKey:boolean})=>void;
+ familyFilter?:ElementFamily|"all";onPick?:(number:number,event?:{ctrlKey:boolean;shiftKey:boolean})=>void;onDoublePick?:(number:number)=>void;
  layout?:"school"|"long";showInfo?:boolean;onCloseInfo?:()=>void;onToggleInfo?:()=>void;
 };
 const bx=45,by=68,step=54,cell=49;
 const colors=Object.fromEntries(periodicFamilies.map(f=>[f.id,f.color])) as Record<ElementFamily,string>;
 const mass=(n:number)=>elementFacts[n-1]?.atomicMass?.replace(/\(\d+\)/g,"").replace(/[\[\]]/g,"")??"";
 export default function LektrusPeriodicTableView({
- selected=[],active=null,showNames=true,familyFilter="all",onPick,layout="school",showInfo=false,onCloseInfo,onToggleInfo
+ selected=[],active=null,showNames=true,familyFilter="all",onPick,onDoublePick,layout="school",showInfo=false,onCloseInfo,onToggleInfo
 }:Props){
  const marked=new Set(selected);
  const school=layout==="school";
@@ -68,6 +68,7 @@ export default function LektrusPeriodicTableView({
         (focused?" focused":"")+(dim?" dimmed":"")}
       role={onPick?"button":undefined} tabIndex={onPick?0:undefined}
       aria-label={el.number+". "+el.name+" ("+el.symbol+"), масса "+compactMass}
+      onDoubleClick={e=>{e.preventDefault();e.stopPropagation();onDoublePick?.(el.number)}}
       onPointerDown={onPick?e=>e.stopPropagation():undefined}
       onClick={onPick?e=>{e.stopPropagation();onPick(el.number,{ctrlKey:e.ctrlKey||e.metaKey,shiftKey:e.shiftKey})}:undefined}
       onKeyDown={onPick?e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();onPick(el.number,{ctrlKey:e.ctrlKey||e.metaKey,shiftKey:e.shiftKey})}}:undefined}>
