@@ -94,8 +94,6 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
   return <div className={`lectris-workspace ${collapsed?"is-collapsed":""}`}>
     <header className="lectris-workspace-header">
       <button className="lectris-brand" type="button" onClick={()=>move("")} aria-label="Lektrus, главная"><span className="lectris-brand-mark" aria-hidden="true" style={{background:"transparent",boxShadow:"none",padding:0,overflow:"visible"}}><img src="/lektrus-icon-192.png" alt="" width="30" height="30" style={{display:"block",width:"100%",height:"100%",objectFit:"contain"}} /></span><span className="lektrus-brand-lockup"><strong className="lektrus-brand-wordmark">Lektrus</strong><small className="lektrus-brand-tagline">Пространство для обучения</small></span></button>
-      <span className="lectris-header-divider" aria-hidden="true"/>
-      <div className="lectris-header-page"><span>{available.find(x=>x.id===active)?.label||"Главная"}</span><small>{role==="teacher"?"Преподаватель":"Ученик"}</small></div>
       <div className="lectris-header-actions">
         <button type="button" className="lectris-header-search" title="Найти раздел (Ctrl+K)" aria-label="Поиск по разделам Lektrus" onClick={()=>setCommandOpen(true)}>
           <NavGlyph name="search"/><span>Поиск по разделам</span><kbd>Ctrl K</kbd>
@@ -150,8 +148,8 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
     </div>}
     {moreOpen&&<>
       <button type="button" tabIndex={-1} aria-label="Закрыть меню разделов"
-        className="lectris-mobile-more-backdrop" onClick={()=>setMoreOpen(false)}/>
-      <div className="lectris-mobile-more" role="dialog" aria-modal="true" aria-label="Другие разделы">
+        className="lectris-mobile-more-backdrop lektrus-more-overlay" onClick={()=>setMoreOpen(false)}/>
+      <div className="lectris-mobile-more lektrus-more-dialog" role="dialog" aria-modal="true" aria-label="Другие разделы">
         <div className="lectris-mobile-more-head"><strong>Разделы Lektrus</strong><button type="button" onClick={()=>setMoreOpen(false)} aria-label="Закрыть">×</button></div>
         <input type="search" className="lectris-mobile-more-search" placeholder="Найти раздел"
           value={menuQuery} onChange={event=>setMenuQuery(event.target.value)} aria-label="Поиск раздела"/>
