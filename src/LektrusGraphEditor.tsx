@@ -3,6 +3,7 @@ import type {Item} from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
 import {removeConstruction,type ConstructionKind} from "./lektrusConstructionCleanup";
 import {isStructuralSolidSegment} from "./lektrusSolid3d";
+import {buildSchoolConstruction,type SchoolConstruction} from "./lektrusSchoolConstructions";
 import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "./lektrusMathPresets";
 
 export type GraphDraft = {
@@ -74,6 +75,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   const [geometryError,setGeometryError]=useState("");
+  const [regularSides,setRegularSides]=useState<3|4|5|6|8>(6);
   const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">(()=>["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"].includes(draft.figureId)?"Объёмные фигуры":"Геометрия");
   const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"]);
   const isSolid=solidPresetIds.has(draft.figureId as MathPresetId);
@@ -95,6 +97,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     return ()=>document.removeEventListener("keydown",key,true);
   },[onClose,onSave]);
   const patch=(next:Partial<GraphDraft>)=>onChange({...draft,...next});
+  const createSchool=(kind:SchoolConstruction,sides?:3|4|5|6|8)=>{
+    const result=buildSchoolConstruction(draft,{kind,sides});
+    if(result.error){setGeometryError(result.error);return}
+    setGeometryError("");onChange(result.draft);
+  };
   const deleteConstruction=(kind:ConstructionKind,index:number)=>onChange(removeConstruction(draft,kind,index));
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
@@ -693,30 +700,70 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 }}>Убрать секущую</button>
               </>}
             </div>}
-            <div className="lektrus-graph-construct-actions">
-              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("circle")}>+ Окружность</button>
-              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("polygon")}>+ Треугольник</button>
-              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("segment")}>+ Отрезок</button>
-              <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("angle")}>+ Угол</button>
-            </div>
-            <small>Элементы привязываются к опорным точкам фигуры. Размеры задаются во вкладке «Размеры».</small>
-            {draft.polygons.length>0&&<div className="lektrus-graph-construction">
-              <strong>Школьные построения на многоугольнике</strong>
+            <details className="lektrus-school-free-constructions">
+              <summary>Свободные дополнительные фигуры и линии</summary>
+              <small>Добавляют отдельные объекты. Школьные связанные построения выбирайте выше.</small>
               <div className="lektrus-graph-construct-actions">
-                {draft.polygons.some(p=>p.points.length>=4)&&<button type="button" onClick={()=>addSchoolElement("diagonal")}>+ Диагональ</button>}
-                <button type="button" onClick={()=>addSchoolElement("midpoint")}>+ Середина стороны</button>
-                <button type="button" onClick={()=>addSchoolElement("midline")}>+ Средняя линия</button>
-                <button type="button" onClick={()=>addSchoolElement("perpendicular-bisector")}>+ Серединный перпендикуляр</button>
-                {draft.polygons.some(p=>p.points.length===3)&&<>
-                  <button type="button" onClick={()=>addSchoolElement("incircle")}>+ Вписанная окружность</button>
-                  <button type="button" onClick={()=>addSchoolElement("circumcircle")}>+ Описанная окружность</button>
-                </>}
+                <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("circle")}>+ Окружность</button>
+                <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("polygon")}>+ Треугольник</button>
+                <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("segment")}>+ Отрезок</button>
+                <button type="button" disabled={draft.points.length>34} onClick={()=>addConstruction("angle")}>+ Угол</button>
+              </div>
+            </details>
+            {!isSolid&&draft.polygons.length>0&&<div className="lektrus-graph-construction lektrus-school-related">
+              <strong>Окружность и многоугольник</strong>
+              <small>Построения выполняются точно по вершинам и сторонам. Не каждый четырёхугольник допускает вписанную или описанную окружность.</small>
+              <div className="lektrus-graph-construct-actions">
+                <button type="button" onClick={()=>createSchool("incircle")}>+ Вписанная окружность</button>
+                <button type="button" onClick={()=>createSchool("circumcircle")}>+ Описанная окружность</button>
+                <button type="button" onClick={()=>createSchool("incenter")}>+ Центр вписанной окружности</button>
+                <button type="button" onClick={()=>createSchool("circumcenter")}>+ Центр описанной окружности</button>
               </div>
             </div>}
-            {draft.circles.length>0&&!roundSolid&&<div className="lektrus-graph-construction">
-              <strong>Элементы окружности</strong>
+            {!isSolid&&draft.polygons.length>0&&<div className="lektrus-graph-construction lektrus-school-related">
+              <strong>Линии и замечательные точки</strong>
               <div className="lektrus-graph-construct-actions">
-                {(["radius","diameter","chord","tangent","secant"] as const).map((kind,i)=><button type="button" key={kind} onClick={()=>addSchoolElement(kind)}>+ {["Радиус","Диаметр","Хорда","Касательная","Секущая"][i]}</button>)}
+                {draft.polygons.some(p=>p.points.length>=4)&&
+                  <button type="button" onClick={()=>createSchool("diagonals")}>+ Все диагонали</button>}
+                {draft.figureId.startsWith("trapezoid")&&
+                  <button type="button" onClick={()=>createSchool("trapezoid-midline")}>+ Средняя линия трапеции</button>}
+                {draft.polygons.some(p=>p.points.length===3)&&<>
+                  <button type="button" onClick={()=>createSchool("triangle-midline")}>+ Средняя линия треугольника</button>
+                  <button type="button" onClick={()=>createSchool("centroid")}>+ Точка пересечения медиан</button>
+                </>}
+                <button type="button" onClick={()=>addSchoolElement("midpoint")}>+ Середина стороны</button>
+                <button type="button" onClick={()=>addSchoolElement("perpendicular-bisector")}>+ Серединный перпендикуляр</button>
+              </div>
+            </div>}
+            {!isSolid&&draft.circles.length>0&&<div className="lektrus-graph-construction lektrus-school-related">
+              <strong>Вписанные и описанные многоугольники</strong>
+              <small>Вписанный многоугольник имеет вершины на окружности, описанный касается её всеми сторонами.</small>
+              <div className="lektrus-school-regular-controls">
+                <label>Число сторон
+                  <select value={regularSides} onChange={e=>setRegularSides(Number(e.target.value) as 3|4|5|6|8)}>
+                    <option value={3}>3, треугольник</option>
+                    <option value={4}>4, квадрат</option>
+                    <option value={5}>5, пятиугольник</option>
+                    <option value={6}>6, шестиугольник</option>
+                    <option value={8}>8, восьмиугольник</option>
+                  </select>
+                </label>
+                <div className="lektrus-graph-construct-actions">
+                  <button type="button" onClick={()=>createSchool("inscribed-polygon",regularSides)}>+ Вписанный многоугольник</button>
+                  <button type="button" onClick={()=>createSchool("circumscribed-polygon",regularSides)}>+ Описанный многоугольник</button>
+                </div>
+              </div>
+            </div>}
+            {!isSolid&&draft.circles.length>0&&<div className="lektrus-graph-construction lektrus-school-related">
+              <strong>Хорды, касательные и углы окружности</strong>
+              <div className="lektrus-graph-construct-actions">
+                {([
+                  ["radius","Радиус"],["diameter","Диаметр"],["chord","Хорда"],
+                  ["tangent","Касательная"],["secant","Секущая"],
+                  ["two-tangents","Две касательные из точки"],
+                  ["central-angle","Центральный угол"],["inscribed-angle","Вписанный угол"]
+                ] as const).map(([kind,label])=>
+                  <button key={kind} type="button" onClick={()=>createSchool(kind)}>+ {label}</button>)}
               </div>
             </div>}
             {roundSolid&&<div className="lektrus-graph-construction"><strong>Элементы тела вращения</strong>
