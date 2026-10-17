@@ -8570,3 +8570,19 @@ option{background:#fff;color:#343741}
 .lektrus-school-regular-controls{display:grid;gap:9px}
 .lektrus-school-regular-controls>label{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:12px}
 .lektrus-school-regular-controls select{flex:1 1 155px;min-width:0;min-height:36px;border-radius:8px;padding:6px}
+
+/* Removable school geometry groups, free sketch and direct diagram background switch */
+.lektrus-school-construction-list{display:flex;flex-direction:column;gap:7px;margin:10px 0 14px;padding:11px;background:var(--lt-subtle,#f6f9ff);border:1px solid #d9e3f3;border-radius:11px}
+.lektrus-school-construction-list>strong{font-size:12px;color:#304767}
+.lektrus-school-construction-list>small{font-size:11px;color:#657995;line-height:1.45}
+.lektrus-school-construction-row{display:flex;align-items:center;justify-content:space-between;min-width:0;gap:10px;padding:7px 9px;background:#fff;border:1px solid #e1e8f3;border-radius:9px}
+.lektrus-school-construction-row>span{min-width:0;overflow-wrap:anywhere;font-weight:650;font-size:12px;color:#233b59}
+.lektrus-school-construction-row>button{flex:none;min-height:32px!important;padding:5px 10px!important;border-radius:8px!important;font-size:11px!important}
+.lektrus-school-point-builder{padding:10px 12px;margin-bottom:12px;border:1px solid #d5e2f8;border-radius:11px;background:#f5f8ff;display:flex;flex-direction:column;gap:7px}
+.lektrus-school-point-builder>strong{font-size:13px;color:#263d61}
+.lektrus-school-point-builder>small{font-size:11px;line-height:1.5;color:#61738e}
+.lektrus-school-point-builder>.lektrus-graph-construct-actions{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.lektrus-school-point-builder button{min-width:0;white-space:normal}
+.graph-view .lektrus-diagram-grid-toggle:focus-visible rect{stroke:#3365c6;stroke-width:3px}
+.graph-view .lektrus-diagram-grid-toggle:hover rect{fill:#edf4ff}
+@media(max-width:430px){.lektrus-school-point-builder>.lektrus-graph-construct-actions{grid-template-columns:1fr}.lektrus-school-construction-row{padding:6px}}
