@@ -1,3 +1,12 @@
+
+// Optional stable release signing. The keystore is supplied by GitHub secrets
+// at build time and is never stored in the repository or APK assets.
+def signingFile = System.getenv("LEKTRUS_SIGNING_STORE_FILE")
+def signingAlias = System.getenv("LEKTRUS_SIGNING_KEY_ALIAS")
+def signingStorePassword = System.getenv("LEKTRUS_SIGNING_STORE_PASSWORD")
+def signingKeyPassword = System.getenv("LEKTRUS_SIGNING_KEY_PASSWORD")
+def hasReleaseSigning = signingFile && signingAlias && signingStorePassword && signingKeyPassword
+
 apply plugin: 'com.android.application'
 
 android {
@@ -7,8 +16,11 @@ android {
         applicationId "ru.lektrus.board"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Increase for every GitHub Actions run. App updates require a greater
+        // versionCode AND the same signing certificate on every release.
+        versionCode Integer.parseInt(System.getenv("LEKTRUS_ANDROID_VERSION_CODE") ?: "1")
+        versionName System.getenv("LEKTRUS_ANDROID_VERSION_NAME") ?: "1.0"
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +28,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            lektrusRelease {
+                storeFile file(signingFile)
+                storePassword signingStorePassword
+                keyAlias signingAlias
+                keyPassword signingKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) signingConfig signingConfigs.lektrusRelease
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
