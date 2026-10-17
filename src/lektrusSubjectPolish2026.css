@@ -367,3 +367,14 @@
 .lektrus-periodic-dialog .lektrus-periodic-stage.has-info .lektrus-periodic-info-dock{
   align-items:stretch!important;
 }
+
+/* Dragging a card lifts only that card out of its scrollable dock, but not the table. */
+.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info .lektrus-periodic-board-dock>.lektrus-floating-element-card.is-dragged{
+  width:min(31%,250px)!important;max-width:min(31%,250px)!important;
+}
+.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info .lektrus-periodic-board-dock>.lektrus-floating-element-card.is-dragged.atom-open{
+  width:min(48%,475px)!important;max-width:min(48%,475px)!important;
+}
+.graph-view.lektrus-periodic-board-view .lektrus-periodic-board.has-info:has(.is-dragged) .lektrus-periodic-board-dock{
+  overflow:visible!important;
+}
