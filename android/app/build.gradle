@@ -42,6 +42,12 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // Install side-by-side with the permanently signed production APK.
+            // A normal debug certificate must never replace ru.lektrus.board.
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
         release {
             if (hasReleaseSigning) signingConfig signingConfigs.lektrusRelease
             minifyEnabled false
