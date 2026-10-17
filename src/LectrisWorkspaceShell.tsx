@@ -51,6 +51,15 @@ export default function LectrisWorkspaceShell({children,section,role,isAdmin,nam
   const [commandOpen,setCommandOpen]=useState(false);
   const [commandQuery,setCommandQuery]=useState("");
   const [unreadCount,setUnreadCount]=useState(0);
+  // Prefer dismissing open navigation overlays before leaving the page.
+  useEffect(() => {
+    const handle = (event: Event) => {
+      if (commandOpen) { setCommandOpen(false); event.preventDefault(); }
+      else if (moreOpen) { setMoreOpen(false); event.preventDefault(); }
+    };
+    window.addEventListener("lektrus:native-back", handle);
+    return () => window.removeEventListener("lektrus:native-back", handle);
+  }, [commandOpen, moreOpen]);
   useEffect(()=>{
     let active=true;
     const refresh=()=>{if(document.visibilityState==="hidden")return;void listNotifications().then(rows=>{if(active)setUnreadCount(rows.filter(x=>!x.readAt).length)}).catch(()=>{})};

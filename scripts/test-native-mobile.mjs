@@ -36,12 +36,24 @@ assert.ok(app.includes("ScreenOrientation.unlock()"));
 assert.ok(app.includes("[route.kind]"));
 assert.ok(app.includes("!Capacitor.isNativePlatform()&&installPrompt"));
 assert.ok(settings.includes('!Capacitor.isNativePlatform()&&<section className="settings-row-card lektrus-install-settings"'));
-assert.ok(activity.includes("WindowInsetsCompat.Type.systemBars()"));
+
 assert.ok(activity.includes("WindowInsetsCompat.Type.displayCutout()"));
-assert.ok(activity.includes("view.setPadding(bars.left, bars.top, bars.right, bars.bottom)"));
+
 assert.ok(read("src/lektrusPlatform.css").includes("html.lektrus-android-app"));
 assert.ok(androidManifest.includes('android:windowSoftInputMode="adjustResize"'));
 assert.ok(iosPlist.includes("UIRequiresFullScreen"));
+assert.ok(pkg.dependencies["@capacitor/app"]);
+assert.ok(app.includes('CapacitorApp.addListener("backButton"'));
+assert.ok(app.includes("CapacitorApp.exitApp()"));
+assert.ok(app.includes("lektrus:native-back"));
+assert.ok(read("src/LectrisWorkspaceShell.tsx").includes("lektrus:native-back"));
+assert.ok(activity.includes("BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE"));
+assert.ok(activity.includes("WindowInsetsCompat.Type.statusBars()"));
+assert.ok(activity.includes("WindowInsetsCompat.Type.tappableElement()"));
+assert.ok(activity.includes("boolean buttons"));
+assert.ok(activity.includes("ViewGroup.MarginLayoutParams"));
+assert.ok(activity.includes("view.setLayoutParams(params)"));
+
 const icon192 = readFileSync(new URL("../public/lektrus-icon-192.png", import.meta.url));
 const sourceIcon = readFileSync(new URL("../assets/lektrus-brand-source.png", import.meta.url));
 const icon512 = readFileSync(new URL("../public/lektrus-icon-512.png", import.meta.url));
