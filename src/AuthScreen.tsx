@@ -43,20 +43,20 @@ export default function AuthScreen({ onAuthenticated }: Props) {
   const changeMode = (next: Mode) => { setMode(next);setError("");setPassword(""); };
 
   return <main className="auth-shell"><section className="auth-card" aria-labelledby="auth-title">
-    <div className="auth-brand-row"><div className="auth-logo" aria-label="Lektrus">L</div><div><div className="auth-brand">Lektrus</div><div className="auth-subtitle">Интерактивная доска для занятий</div></div></div>
+    <div className="auth-brand-row"><div className="auth-logo" aria-label="Lektrus"><img src="/lektrus-icon-192.png" width="52" height="52" alt="" /></div><div><div className="auth-brand">Lektrus</div><div className="auth-subtitle">Пространство для обучения</div></div></div>
     {!isRemoteBackendEnabled() && <div className="access-notice" role="alert">Сервер Supabase не подключён. Сейчас доступен только локальный вход с аккаунтами, созданными в этом браузере. Для входа под существующим аккаунтом добавьте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в файл .env.local и перезапустите npm run dev.</div>}
     {joining && <div className="access-notice">Откройте доску по приглашению: войдите в аккаунт или продолжите без регистрации.</div>}
     {mode==="login"&&remembered&&<div className="auth-remembered"><div className="auth-remembered-avatar">{remembered.name.charAt(0).toUpperCase()}</div><div className="auth-remembered-copy"><strong>{remembered.name}</strong><span>{remembered.email}</span></div><button className="auth-remembered-login" type="button" disabled={busy} onClick={()=>void quickLogin()}>{busy?"Входим…":"Войти"}</button><button className="auth-remembered-forget" type="button" disabled={busy} onClick={()=>void forgetQuickLogin()} title="Забыть сохранённый аккаунт">×</button></div>}
     <div className="auth-tabs" role="tablist" aria-label="Вход или регистрация"><button type="button" className={mode==="login"?"active":""} onClick={()=>changeMode("login")}>Вход</button><button type="button" className={mode==="register"?"active":""} onClick={()=>changeMode("register")}>Регистрация</button></div>
     <form className="auth-form" onSubmit={submit}>
       <div><h1 id="auth-title">{mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?"Создайте аккаунт и начните работать с собственными досками.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
-      {mode==="register"&&<label className="auth-field"><span>Имя</span><input value={name} onChange={e=>setName(e.target.value)} autoComplete="name" placeholder="Введите ваше имя" maxLength={80} autoFocus/></label>}
-      <label className="auth-field"><span>Email</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="name@example.com" maxLength={180} autoFocus={mode==="login"}/></label>
+      {mode==="register"&&<label className="auth-field"><span>Имя</span><input value={name} onChange={e=>setName(e.target.value)} autoComplete="name" placeholder="Введите ваше имя" maxLength={80} /></label>}
+      <label className="auth-field"><span>Email</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="name@example.com" maxLength={180} /></label>
       <label className="auth-field"><span>Пароль</span><input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode==="register"?"new-password":"current-password"} placeholder={mode==="register"?"Минимум 6 символов":"Ваш пароль"} maxLength={200}/></label>
       {error&&<div className="auth-error" role="alert">{error}</div>}
       <button className="auth-submit" type="submit" disabled={busy}>{busy?"Подождите…":mode==="register"?"Зарегистрироваться":"Войти"}</button>
       {joining&&<><div className="auth-or"><span>или</span></div><label className="auth-field"><span>Ваше имя на доске</span><input value={guestName} onChange={e=>setGuestName(e.target.value)} placeholder="Например, Анна" maxLength={60}/></label><button className="auth-guest" type="button" disabled={busy||guestName.trim().length<2} onClick={async()=>{if(busy)return;setBusy(true);setError("");try{onAuthenticated(await loginGuest(guestName))}catch(value){setError(value instanceof Error?value.message:"Не удалось войти как гость")}finally{setBusy(false)}}}>Продолжить как гость</button><p className="auth-guest-note">Аккаунт создавать не нужно. Это имя увидят участники доски.</p></>}
     </form>
-    <div className="auth-role-note"><strong>Совместная работа:</strong> владелец управляет доступом, редактор изменяет содержимое, а режим просмотра защищает доску от случайных правок.</div>
+    <div className="auth-role-note">Одна доска, много возможностей. Учитесь, объясняйте и работайте вместе.</div>
   </section></main>;
 }
