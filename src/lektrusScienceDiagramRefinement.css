@@ -61,3 +61,31 @@
 .graph-view.science-graph .graph-label strong{
   font-size:11.5px!important;font-weight:620!important;
 }
+
+
+.lektrus-science-preview .lektrus-science-mirror{
+  stroke:#697b92;stroke-width:2.1;stroke-linecap:butt;
+}
+.lektrus-science-preview .lektrus-science-normal{
+  stroke:#b3bdcb;stroke-width:1.3;stroke-dasharray:6 6;
+}
+.lektrus-science-preview .lektrus-science-boundary{
+  stroke:#99b9ba;stroke-width:1.55;stroke-dasharray:9 4;
+}
+.lektrus-science-preview .lektrus-science-optical-axis{
+  stroke:#a3b4cc;stroke-width:1.1;stroke-dasharray:7 5;
+}
+/* Ease visual weight in editor settings without losing hierarchy. */
+.lektrus-science-settings .lektrus-science-subhead strong{
+  font-weight:680!important;
+}
+.lektrus-science-settings label{
+  font-weight:630!important;
+}
+.lektrus-science-points button{
+  font-weight:520!important;
+}
+.lektrus-science-link-form button,
+.lektrus-science-point-actions button{
+  font-weight:650!important;
+}
