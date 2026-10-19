@@ -107,8 +107,11 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
   }catch(error){setRemoteState((error instanceof Error?error.message:"Ошибка поиска")+
     ". Данные PubChem требуют доступа к интернету.");}
  };
- const toggle=(id:string)=>onChange({...item,scienceReagents:chosen.includes(id)?
-  chosen.filter(v=>v!==id):chosen.length<6?[...chosen,id]:chosen,scienceExperimentStage:0});
+ const toggle=(id:string)=>{
+  setStage(0);
+  onChange({...item,scienceReagents:chosen.includes(id)?
+   chosen.filter(v=>v!==id):chosen.length<6?[...chosen,id]:chosen,scienceExperimentStage:0});
+ };
  return createPortal(<div className="lektrus-reaction-lab-overlay"
   onPointerDown={e=>{if(e.target===e.currentTarget)onCancel()}}>
   <section className="lektrus-reaction-lab" role="dialog" aria-modal="true" aria-label="Моделирование химической реакции"
@@ -134,7 +137,7 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
       {remote&&<button type="button" className="lektrus-remote-result"
        onClick={()=>{
         if(!chosen.includes(remote.formula)&&chosen.length<6){
-         onChange({...item,scienceReagents:[...chosen,remote.formula],scienceExperimentStage:0});
+         setStage(0);onChange({...item,scienceReagents:[...chosen,remote.formula],scienceExperimentStage:0});
         }
         setRemote(null);
        }}>{remote.formula} · добавить после проверки</button>}
@@ -153,7 +156,7 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
     <div className="lektrus-reaction-simulator">
      <label>Условия
       <select value={item.scienceEnvironment??"aqueous"}
-        onChange={e=>onChange({...item,scienceEnvironment:e.target.value as ReactionEnvironment,scienceExperimentStage:0})}>
+        onChange={e=>{setStage(0);onChange({...item,scienceEnvironment:e.target.value as ReactionEnvironment,scienceExperimentStage:0})}}>
        {conditions.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}
       </select>
      </label>
