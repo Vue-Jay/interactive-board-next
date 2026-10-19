@@ -16,12 +16,12 @@ const normalizeTool = (value: unknown, kind: InkTool): InkToolSettings => {
   const fallback = DEFAULT_INK_PREFERENCES[kind];
   if (!value || typeof value !== "object") return { ...fallback };
   const candidate = value as Partial<InkToolSettings>;
-  const min = kind === "marker" ? 8 : 1;
+  const min = kind === "marker" ? 1 : 0.5;
   const max = kind === "marker" ? 48 : 16;
   return {
     color: colorValid(candidate.color) ? candidate.color : fallback.color,
     size: typeof candidate.size === "number" && Number.isFinite(candidate.size)
-      ? Math.max(min, Math.min(max, Math.round(candidate.size))) : fallback.size,
+      ? Math.max(min, Math.min(max, Math.round(candidate.size * 2) / 2)) : fallback.size,
   };
 };
 
