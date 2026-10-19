@@ -8,18 +8,19 @@ const css=file("src/lektrusResponsive.css");
 const layout=file("src/lectrisPanelLayout.ts");
 const workflow=file(".github/workflows/board-build.yml");
 
-// UI controls must use shared saved colors; stroke width stays on sliders only.
+// UI controls must use shared saved colors and five immediate stroke widths.
 assert.ok(editor.includes('const [locationOpen,setLocationOpen]=useState(false)'));
 assert.ok(editor.includes('aria-expanded={locationOpen}'));
 assert.ok(editor.includes('<LektrusColorPicker compact userId={props.userId} label="Цвет"'));
 assert.ok(editor.includes('value={color} onChange={props.onColor}'));
 assert.ok(editor.includes('onChange={value=>props.onPatch({color:value})}'));
 assert.ok(editor.includes('onChange={color=>onPatch({color})}'));
-assert.ok(editor.includes('type="range"'));
+assert.ok(editor.includes('export const INK_WIDTHS'));
 assert.ok(editor.includes('props.onMarkerWeight(n)'));
 assert.ok(editor.includes('props.onEraserSize(n)'));
 assert.ok(editor.includes('props.onWeight(n)'));
-assert.ok(!editor.includes('sizeOptions'),'No width preset buttons for pens or markers');
+assert.ok(editor.includes('lektrus-ink-five-widths'),'Width presets must be visible immediately');
+assert.ok(editor.includes('aria-pressed={inkWidthIndex(inkTool,currentWidth)===i}'));
 assert.ok(!editor.includes('presetsOpen'),'Old size presets should be removed');
 assert.ok(editor.includes('item.locked?"Объект заблокирован"'));
 // Previous editing actions, properties and access checks remain intact.
@@ -40,4 +41,4 @@ assert.ok(colorCss.includes('z-index:2147482000'));
 assert.ok(css.includes('.lektrus-inspector-position-content'));
 assert.ok(css.includes('max-height:calc(100dvh - 112px)'),"Short touch landscape must scroll safely");
 assert.ok(workflow.includes("test-lektrus-editor-ux.mjs"));
-console.log("Lektrus editor UX: shared two-button colors, slider-only stroke widths, keyboard and inspector contracts OK");
+console.log("Lektrus editor UX: palette, five immediate ink widths, keyboard and inspector contracts OK");
