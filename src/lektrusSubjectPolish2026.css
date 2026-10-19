@@ -586,3 +586,62 @@
 .lektrus-science-preview>.lektrus-chem-experiment-sheet{
  min-height:270px;max-height:65vh;padding:12px 18px;
 }
+
+
+/* Ink: the tool settings are visible immediately on desktop, tablet, and phone. */
+.workspace .lectris-quick-properties.is-ink-properties{
+ z-index:250;display:flex!important;align-items:center!important;justify-content:center;
+ gap:8px;overflow:visible!important;box-sizing:border-box;white-space:normal;
+}
+.workspace .lectris-quick-properties.is-ink-properties .lectris-quick-details{
+ display:flex!important;align-items:center!important;justify-content:center;
+ flex-wrap:nowrap;gap:10px;min-width:0;
+}
+.workspace .lectris-quick-properties.is-ink-properties .lectris-quick-title{
+ white-space:nowrap;flex:0 0 auto;
+}
+.workspace .lektrus-ink-five-widths{
+ display:flex;align-items:center;justify-content:center;gap:4px;
+ border:1px solid #dae5f4;border-radius:10px;padding:3px;
+ background:#f5f8fd;flex:0 0 auto;
+}
+.workspace .lektrus-ink-five-widths .lektrus-ink-width-button{
+ display:grid!important;place-items:center;flex:0 0 auto;
+ min-height:39px!important;width:43px!important;padding:6px!important;
+ border:1px solid transparent;border-radius:8px;background:transparent;
+ touch-action:manipulation;
+}
+.workspace .lektrus-ink-five-widths .lektrus-ink-width-button[aria-pressed=true]{
+ background:#e3efff;border:1px solid #8db7f0;
+}
+.workspace .lektrus-ink-width-line{
+ display:block;width:29px;max-height:13px;min-height:1px;
+ border-radius:20px;pointer-events:none;
+}
+@media (pointer:coarse), (max-width:850px){
+ .workspace .lectris-quick-properties.is-ink-properties{
+  left:50%!important;right:auto!important;
+  transform:translateX(-50%)!important;
+  max-width:calc(100vw - 14px)!important;
+  width:max-content;min-width:0;padding:5px 8px!important;
+  min-height:46px!important;box-shadow:0 5px 22px #233e5c27;
+ }
+ .workspace .lectris-quick-properties.is-ink-properties .lectris-quick-title{display:none}
+ .workspace .lectris-quick-properties.is-ink-properties .lectris-quick-details{gap:6px}
+ .workspace .lektrus-ink-five-widths{gap:1px;padding:2px}
+ .workspace .lektrus-ink-five-widths .lektrus-ink-width-button{
+  width:38px!important;min-height:36px!important;padding:5px!important;
+ }
+ .workspace .lektrus-ink-width-line{width:23px}
+}
+@media (max-width:700px) and (orientation:portrait){
+ .workspace .lectris-quick-properties.is-ink-properties{
+  bottom:calc(70px + env(safe-area-inset-bottom, 0px))!important;
+  border-radius:12px;
+ }
+}
+@media (max-width:700px) and (orientation:landscape){
+ .workspace .lectris-quick-properties.is-ink-properties{
+  bottom:max(5px,env(safe-area-inset-bottom,0px))!important;
+ }
+}
