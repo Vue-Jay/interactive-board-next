@@ -1,5 +1,6 @@
 import {useEffect,useState} from "react";
 import type {Item} from "./boardModel";
+import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 
 export const isChemicalIllustration=(item:Item)=>/^(chem-formula-|chem-experiment-)/.test(item.graphFigureId??"");
 export const chemicalFormulaParts=(value:string)=>value.split(/([A-Z][a-z]?|\)|\])([0-9]+)/g);
@@ -58,8 +59,8 @@ export default function LektrusChemistryIllustration({item,onStageChange}:{
  const setStage=(next:0|1)=>onStageChange?onStageChange(next):setLocalStage(next);
  if(!experiment)return <div className="lektrus-chem-formula-sheet">
   <strong>{item.text}</strong>
-  <Formula value={item.graphExpression??""}/>
-  <small>Числа после символов обозначены нижними индексами. Коэффициенты не изменяются.</small>
+  <LektrusChemicalEquationTypeset expression={item.graphExpression??""} conditions={item.scienceReactionConditions}/>
+
  </div>;
  const before=stage===0;
  const salt=item.graphFigureId==="chem-experiment-salt";
