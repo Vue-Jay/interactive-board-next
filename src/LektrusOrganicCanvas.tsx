@@ -153,6 +153,29 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   if(possible(points,segments,link.a,link.b,order))
    mutate(points,segments.map((b,i)=>i===index?{...b,bondOrder:order}:b));
  };
+ useEffect(()=>{
+  const key=(e:KeyboardEvent)=>{
+    const active=e.target;
+    if(active instanceof HTMLElement&&active.closest("input, textarea, select, [contenteditable='true']"))return;
+    const shortcut:Record<string,Tool>={"v":"select","1":"single","2":"double","3":"triple",
+      "c":"C","n":"N","o":"O","h":"H","s":"S","f":"F","b":"Br","l":"Cl",
+      "t":"ring6","g":"benzene","e":"erase"};
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){
+      e.preventDefault();undo();return;
+    }
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    const next=shortcut[e.key.toLowerCase()];
+    if(next){e.preventDefault();setTool(next);}
+    if((e.key==="Delete"||e.key==="Backspace")&&selected!==null){
+      e.preventDefault();
+      const kept=segments.filter(edge=>edge.a!==selected&&edge.b!==selected)
+        .map(edge=>({...edge,a:edge.a>selected?edge.a-1:edge.a,b:edge.b>selected?edge.b-1:edge.b}));
+      mutate(points.filter((_,i)=>i!==selected),kept);setSelected(null);
+    }
+  };
+  window.addEventListener("keydown",key);
+  return()=>window.removeEventListener("keydown",key);
+ },[selected,points,segments,tool]);
  const labels:{value:Tool;name:string}[]=[
   {value:"select",name:"Выбор"},{value:"single",name:"—"},{value:"double",name:"="},
   {value:"triple",name:"≡"},{value:"C",name:"C"},{value:"N",name:"N"},
@@ -219,7 +242,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
    {status&&<span role="status" className="lektrus-organic-status">{status}</span>}
    <div><strong>Формула: {info.valid?info.formula:"Проверьте валентности"}</strong>
     <small>{info.note}</small></div>
-   <small>Коснитесь атома выбранной связью, чтобы продолжить цепь. Нажмите на связь, чтобы изменить кратность. Перетаскивайте атом в режиме «Выбор».</small>
+   <small>Связь: касание атома добавляет звено; касание связи меняет кратность. Выбор: перетащите атом. Клавиши 1/2/3, C/O/N, T (цикл), G (бензол), Ctrl+Z.</small>
   </div>
  </div>;
 }
