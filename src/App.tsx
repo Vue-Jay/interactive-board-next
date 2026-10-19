@@ -8094,7 +8094,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
         )}
       </main>
-      {layoutEditing&&<LektrusInterfaceStudio onClose={onBackToBoards}/>}
+      {layoutEditing&&new URLSearchParams(window.location.search).get("layout-preview")!=="1"&&<LektrusInterfaceStudio onClose={onBackToBoards}/>}
     </div>
   );
 }
