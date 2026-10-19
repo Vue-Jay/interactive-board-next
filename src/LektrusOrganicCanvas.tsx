@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import type {Item} from "./boardModel";
 import {analyzeOrganicStructure,organicAtomColor,organicAtomCaption} from "./lektrusOrganicFormula";
+import LektrusOrganicHandwriting from "./LektrusOrganicHandwriting";
 
 type Point=NonNullable<Item["graphPoints"]>[number];
 type Bond=NonNullable<Item["graphSegments"]>[number];
@@ -27,6 +28,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  const [tool,setTool]=useState<Tool>("single");
  const [selected,setSelected]=useState<number|null>(null);
  const [carbonLabels,setCarbonLabels]=useState(false);
+ const [handwriting,setHandwriting]=useState(false);
  const [draftEnd,setDraftEnd]=useState<{x:number;y:number}|null>(null);
  const [status,setStatus]=useState("");
  const undoStack=useRef<{points:Point[];segments:Bond[]}[]>([]);
@@ -221,9 +223,11 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
     onClick={()=>setTool(o.value)}>{o.name}</button>)}
    <button type="button" onClick={undo} disabled={!undoStack.current.length}
       aria-label="Отменить построение" title="Отменить предыдущее изменение">↶ Отменить</button>
+   <button type="button" aria-pressed={handwriting} onClick={()=>setHandwriting(v=>!v)}>✍ Рисовать и распознать</button>
    <label><input type="checkbox" checked={carbonLabels} onChange={e=>setCarbonLabels(e.target.checked)}/> Показывать C</label>
   </div>
   <div className="lektrus-organic-canvas-scroll">
+   {handwriting&&<LektrusOrganicHandwriting item={item} onChange={onChange} onExit={()=>setHandwriting(false)}/>}
    <svg ref={svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Конструктор органических молекул"
     onPointerDown={e=>{if(e.target===e.currentTarget){e.preventDefault();handleBlank(e)}}}
     onPointerMove={onMove} onPointerUp={onEnd} onPointerCancel={e=>{
@@ -254,6 +258,12 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
      return <line x1={p.x} y1={p.y} x2={q.x} y2={q.y}
       stroke="#7aa3d8" strokeWidth="2" strokeDasharray="6 5" pointerEvents="none"/>;
     })()}
+    {(item.scienceOrganicAnnotations??[]).map((entry,index)=>{
+      const at=toSvg(entry);
+      return <text key={"note"+index} x={at.x} y={at.y}
+       textAnchor="middle" fill="#335e96" fontSize="18" fontWeight="730"
+       pointerEvents="none">{entry.text}</text>;
+    })}
     {points.map((atom,index)=>{
      const p=toSvg(atom),carbon=atom.label==="C";
      return <g key={index} onPointerDown={e=>handleAtom(e,index)} style={{cursor:tool==="select"?"grab":"crosshair"}}>
