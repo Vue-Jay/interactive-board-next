@@ -4042,7 +4042,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const base = g.transformItem;
         const minW = base.kind === "text" ? 100 : base.kind === "frame" ? 180 : base.kind === "comment" ? 180 : base.kind === "table" ? 220 : base.kind === "formula" ? 160 : base.kind === "checklist" ? 220 : base.kind === "quiz" ? 260 : base.kind === "flashcard" ? 220 : base.kind === "cover" ? 180 : base.kind === "connector" ? 24 : base.points ? 12 : 60;
         const minH = base.kind === "text" ? 44 : base.kind === "frame" ? 120 : base.kind === "comment" ? 96 : base.kind === "table" ? 120 : base.kind === "formula" ? 64 : base.kind === "checklist" ? 140 : base.kind === "quiz" ? 190 : base.kind === "flashcard" ? 150 : base.kind === "cover" ? 90 : base.kind === "connector" ? 24 : base.points ? 12 : 60;
-        const rect = resizedRect(base, g.handle, wx, wy, minW, minH, e.shiftKey);
+        // Resize handles rotate with the object: convert screen drag into its
+        // local axes. Without this a 90°/180° object resizes in reverse on touch.
+        const radians=-(base.rotation??0)*Math.PI/180;
+        const localWx=wx*Math.cos(radians)-wy*Math.sin(radians);
+        const localWy=wx*Math.sin(radians)+wy*Math.cos(radians);
+        const rect = resizedRect(base, g.handle, localWx, localWy, minW, minH, e.shiftKey);
         display(g.before.map((item) => item.id === base.id ? fitItemToRect(base, rect) : item));
       }
     } else if (g.mode === "rotate") {
