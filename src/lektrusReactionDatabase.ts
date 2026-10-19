@@ -182,6 +182,100 @@ none("HCl+NaCl","aqueous","При смешении разбавленных ра
 none("Cu+HCl","aqueous","Медь не вытесняет водород из разбавленной неокисляющей соляной кислоты без окислителя.");
 none("Ag+HCl","aqueous","Серебро не вытесняет водород из разбавленной соляной кислоты.");
 none("KCl+NaOH","aqueous","В водном растворе не образуются осадок, газ или слабый электролит.");
+
+/* Additional explicit classroom cases. Each equation is checked for element balance
+ * by scripts/test-lektrus-reaction-library.mjs. Never turn this table into
+ * a rule claiming to predict arbitrary mixtures or concentration effects. */
+const furtherKnownCases=`
+HCl+KOH|aqueous|HCl + KOH → KCl + H2O|heat|Нейтрализация щёлочи
+HCl+Ba(OH)2|aqueous|2HCl + Ba(OH)2 → BaCl2 + 2H2O|heat|Нейтрализация
+HNO3+KOH|aqueous|HNO3 + KOH → KNO3 + H2O|heat|Нейтрализация
+HNO3+Ca(OH)2|aqueous|2HNO3 + Ca(OH)2 → Ca(NO3)2 + 2H2O|heat|Нейтрализация
+HNO3+Ba(OH)2|aqueous|2HNO3 + Ba(OH)2 → Ba(NO3)2 + 2H2O|heat|Нейтрализация
+CH3COOH+KOH|aqueous|CH3COOH + KOH → CH3COOK + H2O|heat|Реакция уксусной кислоты со щёлочью
+CH3COOH+Ca(OH)2|aqueous|2CH3COOH + Ca(OH)2 → Ca(CH3COO)2 + 2H2O|heat|Образуется ацетат кальция
+H2SO4+NaOH|aqueous|H2SO4 + 2NaOH → Na2SO4 + 2H2O|heat|Нейтрализация разбавленной кислоты
+H2SO4+Ca(OH)2|aqueous|H2SO4 + Ca(OH)2 → CaSO4 + 2H2O|heat|Нейтрализация, малорастворимый сульфат кальция
+K2CO3+HCl|aqueous|K2CO3 + 2HCl → 2KCl + CO2↑ + H2O|gas|Карбонат с кислотой выделяет CO2
+K2CO3+HNO3|aqueous|K2CO3 + 2HNO3 → 2KNO3 + CO2↑ + H2O|gas|Выделение углекислого газа
+Na2CO3+HNO3|aqueous|Na2CO3 + 2HNO3 → 2NaNO3 + CO2↑ + H2O|gas|Выделение CO2
+NaHCO3+HNO3|aqueous|NaHCO3 + HNO3 → NaNO3 + CO2↑ + H2O|gas|Выделение CO2
+CaCO3+HNO3|aqueous|CaCO3 + 2HNO3 → Ca(NO3)2 + CO2↑ + H2O|gas|Карбонат кальция реагирует с кислотой
+MgCO3+HNO3|aqueous|MgCO3 + 2HNO3 → Mg(NO3)2 + CO2↑ + H2O|gas|Карбонат магния выделяет CO2
+BaCO3+HCl|aqueous|BaCO3 + 2HCl → BaCl2 + CO2↑ + H2O|gas|Карбонат бария выделяет CO2
+BaCO3+HNO3|aqueous|BaCO3 + 2HNO3 → Ba(NO3)2 + CO2↑ + H2O|gas|Карбонат бария выделяет CO2
+Na2CO3+CH3COOH|aqueous|Na2CO3 + 2CH3COOH → 2CH3COONa + CO2↑ + H2O|gas|Карбонат реагирует с уксусной кислотой
+K2CO3+CH3COOH|aqueous|K2CO3 + 2CH3COOH → 2CH3COOK + CO2↑ + H2O|gas|Карбонат реагирует с уксусной кислотой
+AgNO3+CaCl2|aqueous|2AgNO3 + CaCl2 → 2AgCl↓ + Ca(NO3)2|precipitate|Белый осадок AgCl
+AgNO3+BaCl2|aqueous|2AgNO3 + BaCl2 → 2AgCl↓ + Ba(NO3)2|precipitate|Белый осадок AgCl
+AgNO3+FeCl3|aqueous|3AgNO3 + FeCl3 → 3AgCl↓ + Fe(NO3)3|precipitate|Белый осадок AgCl
+AgNO3+FeCl2|aqueous|2AgNO3 + FeCl2 → 2AgCl↓ + Fe(NO3)2|precipitate|Белый осадок AgCl, возможны побочные окислительно-восстановительные процессы
+AgNO3+ZnCl2|aqueous|2AgNO3 + ZnCl2 → 2AgCl↓ + Zn(NO3)2|precipitate|Белый осадок AgCl
+AgNO3+NH4Cl|aqueous|AgNO3 + NH4Cl → AgCl↓ + NH4NO3|precipitate|Белый осадок AgCl
+AgNO3+CuCl2|aqueous|2AgNO3 + CuCl2 → 2AgCl↓ + Cu(NO3)2|precipitate|Белый осадок AgCl
+AgNO3+AlCl3|aqueous|3AgNO3 + AlCl3 → 3AgCl↓ + Al(NO3)3|precipitate|Белый осадок AgCl
+AgNO3+KI|aqueous|AgNO3 + KI → AgI↓ + KNO3|precipitate|Жёлтый осадок AgI
+AgNO3+KBr|aqueous|AgNO3 + KBr → AgBr↓ + KNO3|precipitate|Кремовый осадок AgBr
+AgNO3+Na2CO3|aqueous|2AgNO3 + Na2CO3 → Ag2CO3↓ + 2NaNO3|precipitate|Бледно-жёлтый осадок карбоната серебра
+BaCl2+CuSO4|aqueous|BaCl2 + CuSO4 → BaSO4↓ + CuCl2|precipitate|Белый осадок BaSO4
+BaCl2+ZnSO4|aqueous|BaCl2 + ZnSO4 → BaSO4↓ + ZnCl2|precipitate|Белый осадок BaSO4
+BaCl2+MgSO4|aqueous|BaCl2 + MgSO4 → BaSO4↓ + MgCl2|precipitate|Белый осадок BaSO4
+BaCl2+FeSO4|aqueous|BaCl2 + FeSO4 → BaSO4↓ + FeCl2|precipitate|Белый осадок BaSO4
+BaCl2+(NH4)2SO4|aqueous|BaCl2 + (NH4)2SO4 → BaSO4↓ + 2NH4Cl|precipitate|Белый осадок BaSO4
+CaCl2+K2CO3|aqueous|CaCl2 + K2CO3 → CaCO3↓ + 2KCl|precipitate|Белый осадок CaCO3
+BaCl2+K2CO3|aqueous|BaCl2 + K2CO3 → BaCO3↓ + 2KCl|precipitate|Белый осадок BaCO3
+Ca(NO3)2+Na2CO3|aqueous|Ca(NO3)2 + Na2CO3 → CaCO3↓ + 2NaNO3|precipitate|Белый осадок CaCO3
+CaCl2+Na3PO4|aqueous|3CaCl2 + 2Na3PO4 → Ca3(PO4)2↓ + 6NaCl|precipitate|Белый осадок фосфата кальция
+Pb(NO3)2+NaCl|aqueous|Pb(NO3)2 + 2NaCl → PbCl2↓ + 2NaNO3|precipitate|Белый малорастворимый хлорид свинца
+Pb(NO3)2+Na2SO4|aqueous|Pb(NO3)2 + Na2SO4 → PbSO4↓ + 2NaNO3|precipitate|Белый осадок сульфата свинца
+Pb(NO3)2+KBr|aqueous|Pb(NO3)2 + 2KBr → PbBr2↓ + 2KNO3|precipitate|Малорастворимый бромид свинца
+CuCl2+NaOH|aqueous|CuCl2 + 2NaOH → Cu(OH)2↓ + 2NaCl|precipitate|Голубой гидроксид меди(II)
+CuCl2+KOH|aqueous|CuCl2 + 2KOH → Cu(OH)2↓ + 2KCl|precipitate|Голубой осадок
+Cu(NO3)2+NaOH|aqueous|Cu(NO3)2 + 2NaOH → Cu(OH)2↓ + 2NaNO3|precipitate|Голубой осадок
+Cu(NO3)2+KOH|aqueous|Cu(NO3)2 + 2KOH → Cu(OH)2↓ + 2KNO3|precipitate|Голубой осадок
+FeCl2+NaOH|aqueous|FeCl2 + 2NaOH → Fe(OH)2↓ + 2NaCl|precipitate|Зеленоватый осадок Fe(OH)2
+FeCl2+KOH|aqueous|FeCl2 + 2KOH → Fe(OH)2↓ + 2KCl|precipitate|Зеленоватый осадок Fe(OH)2
+FeCl3+KOH|aqueous|FeCl3 + 3KOH → Fe(OH)3↓ + 3KCl|precipitate|Бурый осадок гидроксида железа(III)
+FeSO4+KOH|aqueous|FeSO4 + 2KOH → Fe(OH)2↓ + K2SO4|precipitate|Зеленоватый осадок
+ZnSO4+KOH|aqueous|ZnSO4 + 2KOH → Zn(OH)2↓ + K2SO4|precipitate|Белый амфотерный осадок
+MgSO4+NaOH|aqueous|MgSO4 + 2NaOH → Mg(OH)2↓ + Na2SO4|precipitate|Белый осадок Mg(OH)2
+MgSO4+KOH|aqueous|MgSO4 + 2KOH → Mg(OH)2↓ + K2SO4|precipitate|Белый осадок Mg(OH)2
+AlCl3+KOH|aqueous|AlCl3 + 3KOH → Al(OH)3↓ + 3KCl|precipitate|Белый амфотерный осадок
+CuO+HNO3|aqueous|CuO + 2HNO3 → Cu(NO3)2 + H2O|dissolution|Растворяется оксид меди(II)
+CuO+H2SO4|aqueous|CuO + H2SO4 → CuSO4 + H2O|dissolution|Растворяется оксид меди(II)
+Fe2O3+HCl|aqueous|Fe2O3 + 6HCl → 2FeCl3 + 3H2O|dissolution|Растворяется оксид железа(III)
+Fe2O3+H2SO4|aqueous|Fe2O3 + 3H2SO4 → Fe2(SO4)3 + 3H2O|dissolution|Оксид реагирует с серной кислотой
+MgO+H2SO4|aqueous|MgO + H2SO4 → MgSO4 + H2O|dissolution|Оксид реагирует с кислотой
+CaO+HCl|aqueous|CaO + 2HCl → CaCl2 + H2O|dissolution|Основный оксид реагирует с кислотой
+ZnO+HCl|aqueous|ZnO + 2HCl → ZnCl2 + H2O|dissolution|Амфотерный оксид реагирует с кислотой
+ZnO+H2SO4|aqueous|ZnO + H2SO4 → ZnSO4 + H2O|dissolution|Амфотерный оксид реагирует с кислотой
+CaO+H2O|aqueous|CaO + H2O → Ca(OH)2|heat|Гашение извести, выделяется тепло
+Fe+HCl|aqueous|Fe + 2HCl → FeCl2 + H2↑|gas|Железо вытесняет водород из разбавленной кислоты
+Fe+H2SO4|aqueous|Fe + H2SO4 → FeSO4 + H2↑|gas|Железо реагирует с разбавленной серной кислотой
+Al+HCl|aqueous|2Al + 6HCl → 2AlCl3 + 3H2↑|gas|При преодолении пассивирующей плёнки выделяется водород
+Mg+H2SO4|aqueous|Mg + H2SO4 → MgSO4 + H2↑|gas|Магний вытесняет водород из разбавленной кислоты
+CuCl2+Zn|aqueous|CuCl2 + Zn → ZnCl2 + Cu↓|color|Цинк вытесняет медь из раствора
+CuCl2+Fe|aqueous|CuCl2 + Fe → FeCl2 + Cu↓|color|Железо вытесняет медь из раствора
+FeSO4+Zn|aqueous|FeSO4 + Zn → ZnSO4 + Fe↓|color|Цинк вытесняет железо
+Cu(NO3)2+Zn|aqueous|Cu(NO3)2 + Zn → Zn(NO3)2 + Cu↓|color|Цинк вытесняет медь
+C2H6+O2|ignited|2C2H6 + 7O2 → 4CO2 + 6H2O|heat|Полное горение этана при достатке кислорода
+C2H4+O2|ignited|C2H4 + 3O2 → 2CO2 + 2H2O|heat|Полное горение этена
+C2H2+O2|ignited|2C2H2 + 5O2 → 4CO2 + 2H2O|heat|Полное горение этина
+H2+O2|ignited|2H2 + O2 → 2H2O|heat|Окисление водорода
+CO+O2|ignited|2CO + O2 → 2CO2|heat|Окисление монооксида углерода
+S+O2|ignited|S + O2 → SO2|heat|Горение серы в кислороде
+Al+O2|ignited|4Al + 3O2 → 2Al2O3|heat|Окисление алюминия при условиях преодоления защитной плёнки
+CuCO3|heated|CuCO3 → CuO + CO2↑|gas|Нагревание основного карбоната меди(II) имеет более сложный состав; эта схема относится к идеализированному карбонату
+MgCO3|heated|MgCO3 → MgO + CO2↑|gas|Разложение карбоната магния при достаточном нагревании
+NaHCO3|heated|2NaHCO3 → Na2CO3 + CO2↑ + H2O|gas|Термическое разложение гидрокарбоната натрия
+`;
+for(const line of furtherKnownCases.trim().split("\n")){
+ const [reagents,medium,equation,observation,description]=line.split("|");
+ const sorted=reagents.split("+").sort().join("|");
+ if(cases.some(c=>c.environment===medium&&c.reactants.slice().sort().join("|")===sorted))continue;
+ add(reagents,medium as ReactionEnvironment,equation,observation as Observation,description);
+}
+
 export const reviewedReactionCases=cases;
 const key=(ids:string[])=>ids.slice().sort().join("|");
 export const identifyReaction=(reagents:string[],environment:ReactionEnvironment):{
