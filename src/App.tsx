@@ -2614,7 +2614,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     try{await Promise.all([refreshDiscussions(),refreshDiscussionParticipants()])}catch(error){setDiscussionError(error instanceof Error?error.message:"Не удалось загрузить обсуждения")}finally{setDiscussionBusy(false)}
   };
   useEffect(()=>{
-    if(!isRemoteBackendEnabled())return;
+    if(layoutEditing||!isRemoteBackendEnabled())return;
     return subscribeBoardComments(boardSummary.id,()=>{
       if(!chatOpen)setChatUnread(value=>Math.min(99,value+1));
       void refreshDiscussions().catch(()=>{});
