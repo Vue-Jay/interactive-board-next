@@ -56,24 +56,15 @@ export const scienceToolGroups:ScienceToolGroup[]=[
      {id:"chem-ammonia",label:"Аммиак · NH₃",hint:"Три связи N—H"},
      {id:"chem-oxygen",label:"Кислород · O₂",hint:"Двойная связь O=O"}
    ]},
-  {id:"chem-organic",subject:"chem",label:"Органические соединения",
-   description:"Углеродные цепи, кольца и функциональные группы; редактируемые связи",
+  {id:"chem-organic",subject:"chem",label:"Органический редактор",
+   description:"Рисуйте углеродный скелет с атомами, связями, циклами и функциональными группами",
    group:"Химия · органика",templates:[
-    {id:"chem-organic-ethane",label:"Этан · C₂H₆",hint:"Одинарная связь C—C"},
-    {id:"chem-organic-ethene",label:"Этен · C₂H₄",hint:"Двойная связь C=C"},
-    {id:"chem-organic-ethyne",label:"Этин · C₂H₂",hint:"Тройная связь C≡C"},
-    {id:"chem-organic-ethanol",label:"Этанол · C₂H₆O",hint:"Гидроксильная группа —OH"},
-    {id:"chem-organic-ethanoic",label:"Этановая кислота · C₂H₄O₂",hint:"Карбоксильная группа —COOH"},
-    {id:"chem-organic-benzene",label:"Бензол · C₆H₆",hint:"Шестичленный цикл с чередующимися связями"},
-    {id:"chem-organic-free",label:"Свободная структура",hint:"Стройте углеродный скелет по точкам"}
+    {id:"chem-organic-free",label:"Новая структура",hint:"Чистый холст для построений"}
    ]},
-  {id:"chem-formulas",subject:"chem",label:"Химические формулы и уравнения",
-   description:"Формулы с нижними индексами и учебные уравнения реакций",
+  {id:"chem-formulas",subject:"chem",label:"Химические уравнения",
+   description:"Ввод формулы, условия над стрелкой, специальные символы и предпросмотр",
    group:"Химия · запись",templates:[
-    {id:"chem-formula-water",label:"Формула воды · H₂O",hint:"Молекулярная формула"},
-    {id:"chem-formula-combustion",label:"Горение метана",hint:"CH₄ + 2O₂ → CO₂ + 2H₂O"},
-    {id:"chem-formula-neutralization",label:"Нейтрализация",hint:"HCl + NaOH → NaCl + H₂O"},
-    {id:"chem-formula-free",label:"Своя формула или реакция",hint:"Введите формулу или уравнение"}
+    {id:"chem-formula-free",label:"Новая формула или уравнение",hint:"Чистый редактор"}
    ]},
   {id:"chem-experiments",subject:"chem",label:"Моделирование опытов",
    description:"Безопасные пошаговые схемы превращений и наблюдений, без лабораторных инструкций",
