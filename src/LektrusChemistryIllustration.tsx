@@ -58,7 +58,7 @@ export default function LektrusChemistryIllustration({item,onStageChange}:{
  useEffect(()=>setLocalStage(item.scienceExperimentStage??0),[item.scienceExperimentStage,item.id]);
  const stage=onStageChange?(item.scienceExperimentStage??0):localStage;
  const setStage=(next:0|1)=>onStageChange?onStageChange(next):setLocalStage(next);
- if(item.graphFigureId==="chem-experiment-free")return <LektrusReactionScene item={item} stage={stage} onStageChange={onStageChange}/>;
+ if(item.graphFigureId==="chem-experiment-free")return <LektrusReactionScene item={item} stage={stage} onStageChange={onStageChange??setLocalStage}/>;
  if(!experiment)return <div className="lektrus-chem-formula-sheet">
   <strong>{item.text}</strong>
   <LektrusChemicalEquationTypeset expression={item.graphExpression??""} conditions={item.scienceReactionConditions}/>
