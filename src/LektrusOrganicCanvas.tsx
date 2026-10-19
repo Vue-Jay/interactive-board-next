@@ -33,8 +33,8 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  const points=item.graphPoints??[],segments=item.graphSegments??[];
  const info=analyzeOrganicStructure(item);
  const selectedBond=(tool==="single"||tool==="double"||tool==="triple")?({single:1,double:2,triple:3} as const)[tool]:1;
- const svgPoint=(e:ReactPointerEvent<SVGSVGElement>)=>{
-  const r=e.currentTarget.getBoundingClientRect();
+ const svgPoint=(e:ReactPointerEvent<SVGElement>)=>{
+  const r=svg.current?.getBoundingClientRect()??e.currentTarget.getBoundingClientRect();
   return toGraph({x:(e.clientX-r.left)*W/Math.max(1,r.width),y:(e.clientY-r.top)*H/Math.max(1,r.height)});
  };
  const mutate=(points:Point[],segments:Bond[])=>onChange(old=>({...old,graphPoints:points,graphSegments:segments}));
@@ -75,7 +75,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   const ringBonds=Array.from({length:size},(_,i)=>bond(ids[i],ids[(i+1)%size],1));
   mutate(ringPts,[...segments,...ringBonds]);setSelected(ids[0]);
  };
- const handleBlank=(e:ReactPointerEvent<SVGSVGElement>)=>{
+ const handleBlank=(e:ReactPointerEvent<SVGElement>)=>{
   const pos=svgPoint(e);
   if(tool==="ring5"||tool==="ring6"){addRing(tool==="ring5"?5:6,pos);return;}
   if(tool==="select"){setSelected(null);return;}
