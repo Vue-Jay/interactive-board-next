@@ -7104,6 +7104,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           aria-label="Доска"
           className={`board board-bg-${visibleBoardBackground.mode} board-tool-${tool} ${space || rightPointerActive ? "board-hand-active" : ""} ${rightPointerActive ? "board-right-hand" : ""} ${panning ? "board-panning" : ""}`}
           style={{
+            touchAction:"none",
+            overscrollBehavior:"none",
             backgroundSize: `${24 * view.zoom}px ${24 * view.zoom}px`,
             backgroundPosition: `${view.x}px ${view.y}px`,
             backgroundColor:backgroundAppearance.backgroundColor,
@@ -8377,7 +8379,7 @@ export default function App() {
       const target=event.target as HTMLElement|null;
       if(!target)return;
       // Dashboard navigation must never steal drawing-tool buttons inside a board.
-      if(target.closest(".workspace, .lectris-workspace, .board, .ink-settings, .lectris-quick-properties"))return;
+      if(target.closest(".board, .ink-settings, .lectris-quick-properties, .mobile-board-tools, .lektrus-direct-ink-widths"))return;
       const profile=target.closest(".account-chip");
       if(profile){
         event.preventDefault();
