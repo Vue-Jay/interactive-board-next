@@ -92,7 +92,15 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   const vertices=Array.from({length:size},(_,i)=>({x:center.x+radius*Math.cos(-Math.PI/2+i*Math.PI*2/size),
    y:center.y+radius*Math.sin(-Math.PI/2+i*Math.PI*2/size)}));
   const old=attachment!=null?points[attachment]:null;
-  if(old){const dx=old.x-vertices[0].x,dy=old.y-vertices[0].y;for(const p of vertices){p.x+=dx;p.y+=dy;}}
+  if(old){
+   // Place the ring toward the pointer so it does not simply overlap its parent.
+   const direction=Math.atan2((origin?.y??old.y)-old.y,(origin?.x??(old.x+radius))-old.x);
+   const center={x:old.x+radius*Math.cos(direction),y:old.y+radius*Math.sin(direction)};
+   for(let i=0;i<size;i++){
+    vertices[i]={x:center.x+radius*Math.cos(direction+Math.PI+i*2*Math.PI/size),
+     y:center.y+radius*Math.sin(direction+Math.PI+i*2*Math.PI/size)};
+   }
+  }
   const ringPts=[...points,...vertices.slice(old?1:0).map(p=>({...p,label:"C",color:organicAtomColor("C")}))];
   const ids=vertices.map((_,i)=>old&&i===0?attachment!:points.length+i-(old?1:0));
   const ringBonds=Array.from({length:size},(_,i)=>bond(ids[i],ids[(i+1)%size],aromatic&&i%2===0?2:1));
@@ -104,7 +112,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   }
   mutate(ringPts,combined);setStatus("");setSelected(ids[0]);
  };
- const attachFunctionalGroup=(from:number,kind:"OH"|"NH2"|"COOH")=>{
+ const attachFunctionalGroup=(from:number,kind:"OH"|"NH2"|"COOH",target?:{x:number;y:number})=>{
    const point=points[from],degree=segments.filter(e=>e.a===from||e.b===from)
      .reduce((v,e)=>v+(e.bondOrder??1),0);
    if(!point||degree+1>(positions[point.label]??6))return setStatus("Недостаточно свободной валентности");
@@ -112,7 +120,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
      .map(e=>points[e.a===from?e.b:e.a]).filter(Boolean);
    const theta=neighbors.length?Math.atan2(point.y-neighbors[0].y,point.x-neighbors[0].x)+Math.PI/3:0;
    const at=(center:{x:number;y:number},r:number,t:number)=>({x:center.x+r*Math.cos(t),y:center.y+r*Math.sin(t)});
-   const next=at(point,2.15,theta);
+   const next=target?snapAngle(target,point):at(point,2.15,theta);
    if(points.some(p=>Math.hypot(p.x-next.x,p.y-next.y)<.9))return setStatus("Здесь уже есть атом");
    const add=(pos:{x:number;y:number},label:string)=>({...pos,label,color:organicAtomColor(label)});
    const index=points.length;
@@ -146,10 +154,10 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
    }else{mutate([{...pos,label:symbol,color:organicAtomColor(symbol)}],[]);setSelected(0);}
    setStatus("");return;
   }
-  const from=nearestAttachment(pos,tool==="double"?2:tool==="triple"?3:1);
+  const from=nearestAttachment(pos,ring?2:tool==="double"?2:tool==="triple"?3:1);
   if(from<0){setStatus("Нет свободных валентностей для присоединения");return;}
   if(ring){addRing(tool==="ring5"?5:6,pos,from,tool==="benzene");return;}
-  if(functional){attachFunctionalGroup(from,tool);return;}
+  if(functional){attachFunctionalGroup(from,tool,pos);return;}
   const symbol=(["C","N","O","H","S","F","Cl","Br"] as Tool[]).includes(tool)?tool:"C";
   if(points.length>=80){setStatus("Достигнут предел в 80 атомов");return;}
   addConnection(from,pos,null,symbol);
@@ -278,7 +286,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
      </g>;
     })}
     {hoverPoint!==null&&points.length>0&&tool!=="select"&&tool!=="erase"&&(()=>{
-     const required=tool==="double"?2:tool==="triple"?3:1;
+     const required=(tool==="ring5"||tool==="ring6"||tool==="benzene")?2:tool==="double"?2:tool==="triple"?3:1;
      const fromIndex=nearestAttachment(hoverPoint,required);
      if(fromIndex<0)return null;
      const from=toSvg(points[fromIndex]),to=toSvg(snapAngle(hoverPoint,points[fromIndex]));
