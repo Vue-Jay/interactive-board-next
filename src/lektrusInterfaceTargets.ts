@@ -57,13 +57,13 @@ export const safeInterfaceSelector=(selector:string)=>selector.length<380&&
 const num=(n:number)=>Math.max(-45,Math.min(45,Number.isFinite(n)?n:0));
 /** CSS is scoped to UI only; important protects the stored customization against
  * breakpoint styles without mutating JSX or impacting actual board drawing. */
-export function renderExtraLayoutCSS(extras:Record<string,Placement>,device:DeviceProfile){
+export function renderExtraLayoutCSS(extras:Record<string,Placement>){
  return Object.entries(extras).filter(([selector])=>safeInterfaceSelector(selector))
   .map(([selector,p])=>`${selector}{translate:${num(p.x)}vw ${num(p.y)}vh !important;scale:${Math.max(.65,Math.min(1.45,p.scale))} !important}`)
   .join("\n");
 }
-export function applyExtraLayout(doc:Document,extras:Record<string,Placement>,device:DeviceProfile){
+export function applyExtraLayout(doc:Document,extras:Record<string,Placement>,_device:DeviceProfile){
  let style=doc.getElementById("lektrus-interface-extras") as HTMLStyleElement|null;
  if(!style){style=doc.createElement("style");style.id="lektrus-interface-extras";doc.head.appendChild(style)}
- style.textContent=renderExtraLayoutCSS(extras,device);
+ style.textContent=renderExtraLayoutCSS(extras);
 }
