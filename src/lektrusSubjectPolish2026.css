@@ -738,3 +738,23 @@
   z-index:235!important;
  }
 }
+
+/* Mobile structure editor: the tools remain reachable without covering atoms. */
+.lektrus-organic-editor-toolbar{overflow-y:auto;max-height:110px;overscroll-behavior:contain;scrollbar-width:thin}
+.lektrus-organic-editor-toolbar>button{white-space:nowrap;min-width:43px;min-height:41px}
+.lektrus-organic-editor-toolbar>button:disabled{opacity:.4;cursor:default}
+.lektrus-organic-status{font-weight:700;font-size:11px;color:#aa5256}
+.lektrus-organic-canvas-scroll svg{touch-action:none;user-select:none;-webkit-user-select:none}
+.lektrus-observation-legend{gap:7px!important;justify-content:space-around!important}
+.lektrus-observation-legend>span{
+ display:flex;align-items:center;gap:5px;line-height:1.25;
+ padding:4px 7px;border:1px solid #e1e9f2;border-radius:7px;
+ color:#8294a8;opacity:.65;background:#f7faff;
+}
+.lektrus-observation-legend>span.active{
+ opacity:1;color:#375d83;border-color:#c9dcee;background:#fff;
+}
+@media(max-width:800px),(pointer:coarse){
+ .lektrus-organic-editor-toolbar{max-height:125px;gap:5px}
+ .lektrus-organic-editor-toolbar>button{min-width:45px;min-height:43px}
+}
