@@ -2,6 +2,16 @@ import { useEffect, useState } from "react";
 import type { Item } from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
 
+/** Five fixed widths for every inking tool, from hairline to broad stroke. */
+export const INK_WIDTHS = {
+  pen:[0.5,1.5,3,7,14],
+  marker:[1,4,10,22,44],
+  eraser:[4,10,22,44,86]
+} as const;
+const inkWidthIndex=(tool:"pen"|"marker"|"eraser",width:number)=>{
+ const values=INK_WIDTHS[tool];
+ return values.reduce((best,v,i)=>Math.abs(v-width)<Math.abs(values[best]-width)?i:best,0);
+};
 const itemNames: Record<Item["kind"], string> = {
   pen:"Карандаш", marker:"Маркер", shape:"Фигура", text:"Текст",
   sticky:"Стикер", image:"Изображение", pdf:"PDF", frame:"Фрейм",
@@ -44,12 +54,23 @@ export function LectrisQuickProperties(props: QuickProps) {
   const erasing=tool==="eraser";
   if(item?.kind==="graph"&&item.graphFigureId==="chem-periodic")return null;
   if(!selectionCount&&!drawing&&!erasing)return null;
-  return <section className={`lectris-quick-properties ${expanded?"is-expanded":""}`} aria-label="Быстрые настройки">
+  const inkTool=erasing?"eraser":tool==="marker"?"marker":"pen";
+  const inkSizes=INK_WIDTHS[inkTool];
+  const currentWidth=erasing?eraserSize:tool==="marker"?markerWeight:weight;
+  const updateWidth=(n:number)=>{
+    if(erasing)props.onEraserSize(n);
+    else if(tool==="marker")props.onMarkerWeight(n);
+    else props.onWeight(n);
+  };
+  return <section className={`lectris-quick-properties ${drawing||erasing?"is-ink-properties":""} ${expanded?"is-expanded":""}`}
+    aria-label={drawing||erasing?"Параметры инструмента":"Быстрые настройки"}
+    onPointerDown={e=>e.stopPropagation()} onPointerMove={e=>e.stopPropagation()}
+    onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
     <span className="lectris-quick-title">
       {selectionCount>0 ? item?itemNames[item.kind]:"Выбрано: "+selectionCount : erasing?"Ластик":tool==="marker"?"Маркер":"Карандаш"}
     </span>
-    <button className="lectris-quick-expand" type="button" aria-expanded={expanded}
-      onClick={()=>setExpanded(v=>!v)}>{expanded?"Свернуть ▲":"Настройки ▼"}</button>
+    {!(drawing||erasing)&&<button className="lectris-quick-expand" type="button" aria-expanded={expanded}
+      onClick={()=>setExpanded(v=>!v)}>{expanded?"Свернуть ▲":"Настройки ▼"}</button>}
     <div className="lectris-quick-details">
       {selectionCount>0?<>
         {item&&colorKinds.has(item.kind)&&canModify&&
@@ -63,13 +84,18 @@ export function LectrisQuickProperties(props: QuickProps) {
         <button type="button" onClick={props.onDeselect} aria-label="Снять выделение">×</button>
       </>:<>
         {drawing&&<LektrusColorPicker compact userId={props.userId} label="Цвет"
-          value={color} onChange={props.onColor}/>} 
-        <label className="lectris-quick-slider">{erasing?"Размер":"Толщина"}
-          <input type="range" min={erasing?8:tool==="marker"?8:1} max={erasing?96:tool==="marker"?48:16}
-            step={erasing?2:1} value={erasing?eraserSize:tool==="marker"?markerWeight:weight}
-            onChange={e=>{const n=Number(e.target.value);if(erasing)props.onEraserSize(n);else if(tool==="marker")props.onMarkerWeight(n);else props.onWeight(n);}}/>
-          <span>{erasing?eraserSize:tool==="marker"?markerWeight:weight} px</span>
-        </label>
+          value={color} onChange={props.onColor}/>}
+        <div className="lektrus-ink-five-widths" role="group"
+          aria-label={"Толщина: "+(erasing?"ластик":tool==="marker"?"маркер":"карандаш")}>
+          {inkSizes.map((size,i)=><button key={size} type="button"
+            className="lektrus-ink-width-button" aria-pressed={inkWidthIndex(inkTool,currentWidth)===i}
+            aria-label={["Очень тонко","Тонко","Средняя толщина","Толсто","Очень толсто"][i]+": "+size+" пикселей"}
+            title={size+" px"} onClick={()=>updateWidth(size)}>
+            <span className="lektrus-ink-width-line"
+              style={{height:Math.max(1,Math.min(13,size/3))+"px",
+                background:erasing?"#64748b":color}}/>
+          </button>)}
+        </div>
       </>}
     </div>
   </section>;
