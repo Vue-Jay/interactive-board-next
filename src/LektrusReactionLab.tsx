@@ -78,6 +78,8 @@ type Props={item:Item;onChange:(item:Item)=>void;onSave:()=>void;onCancel:()=>vo
 export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props){
  const [query,setQuery]=useState("");
  const [group,setGroup]=useState("Все классы");
+ const [remote,setRemote]=useState<{formula:string;name:string}|null>(null);
+ const [remoteState,setRemoteState]=useState("");
  const [stage,setStage]=useState<0|1>(item.scienceExperimentStage??0);
  const chosen=item.scienceReagents??[];
  const classes=useMemo(()=>["Все классы",...new Set(substances.map(s=>s.kind))],[]);
@@ -85,6 +87,21 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
   (group==="Все классы"||s.kind===group)&&
   (s.name+" "+s.formula+" "+s.kind).toLocaleLowerCase("ru").includes(query.toLocaleLowerCase("ru"))
  ).slice(0,250),[group,query]);
+ const findPubChem=async()=>{
+  if(query.trim().length<2)return;
+  setRemote(null);setRemoteState("Поиск в PubChem…");
+  try{
+   const response=await fetch("https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/"+
+     encodeURIComponent(query.trim())+"/property/MolecularFormula/JSON");
+   if(!response.ok)throw Error("Нет однозначного совпадения или сервис недоступен");
+   const data=await response.json() as {PropertyTable?:{Properties?:{MolecularFormula?:string}[]}};
+   const formula=data.PropertyTable?.Properties?.[0]?.MolecularFormula;
+   if(!formula||formula.length>70)throw Error("Невозможно получить формулу");
+   setRemote({formula,name:query.trim()});
+   setRemoteState("Найдено совпадение PubChem. Подтвердите формулу перед добавлением.");
+  }catch(error){setRemoteState((error instanceof Error?error.message:"Ошибка поиска")+
+    ". Данные PubChem требуют доступа к интернету.");}
+ };
  const toggle=(id:string)=>onChange({...item,scienceReagents:chosen.includes(id)?
   chosen.filter(v=>v!==id):chosen.length<6?[...chosen,id]:chosen,scienceExperimentStage:0});
  return createPortal(<div className="lektrus-reaction-lab-overlay"
@@ -104,6 +121,19 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
      </div>
      <input type="search" value={query} placeholder="Поиск по названию или формуле"
       onChange={e=>setQuery(e.target.value)} aria-label="Поиск веществ"/>
+     <div className="lektrus-remote-substance">
+      <button type="button" disabled={!query.trim()} onClick={()=>void findPubChem()}>
+       Найти в PubChem
+      </button>
+      {remoteState&&<small role="status">{remoteState}</small>}
+      {remote&&<button type="button" className="lektrus-remote-result"
+       onClick={()=>{
+        if(!chosen.includes(remote.formula)&&chosen.length<6){
+         onChange({...item,scienceReagents:[...chosen,remote.formula],scienceExperimentStage:0});
+        }
+        setRemote(null);
+       }}>{remote.formula} · добавить после проверки</button>}
+     </div>
      <select value={group} onChange={e=>setGroup(e.target.value)} aria-label="Класс вещества">
       {classes.map(g=><option key={g} value={g}>{g}</option>)}
      </select>
