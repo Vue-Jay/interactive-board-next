@@ -2032,7 +2032,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const setWeight = (value: number) => setInkPreferences(current => withInkSetting(current, "pen", { size: value }));
   const setMarkerWeight = (value: number) => setInkPreferences(current => withInkSetting(current, "marker", { size: value }));
   useEffect(() => { writeInkPreferences(authUser.id, inkPreferences); }, [authUser.id, inkPreferences]);
-  const [eraserSize, setEraserSize] = useState(32);
+  const [eraserSize, setEraserSize] = useState(22);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [guides, setGuides] = useState<GuideState>({});
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
