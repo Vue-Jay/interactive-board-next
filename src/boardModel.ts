@@ -114,6 +114,9 @@ export type Item = {
   sciencePeriodicShowNames?: boolean;
   sciencePeriodicLayout?: "school" | "long";
   scienceExperimentStage?: 0 | 1;
+  scienceReactionConditions?: string;
+  scienceReagents?: string[];
+  scienceEnvironment?: "aqueous" | "dry" | "heated" | "ignited";
   graphRotationX?: number;
   graphRotationY?: number;
   graphParallelMarks?: ("corresponding"|"alternate-interior"|"alternate-exterior"|"same-side-interior"|"vertical"|"adjacent")[];
