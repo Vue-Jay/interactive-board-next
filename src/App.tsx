@@ -43,7 +43,7 @@ import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
 import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
-import { LectrisQuickProperties, LectrisObjectInspector } from "./LectrisObjectEditor";
+import { LectrisQuickProperties, LectrisObjectInspector, INK_WIDTHS } from "./LectrisObjectEditor";
 import LektrusColorPicker from "./LektrusColorPicker";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
 import LectrisPanelSettings from "./LectrisPanelSettings";
@@ -6929,33 +6929,29 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               <kbd>Enter</kbd>
             </button>
           )}
-        {(tool === "pen" || tool === "marker") && (
-          <div className="ink-settings">
-            <LektrusColorPicker userId={authUser.id} compact label="Цвет"
-              value={tool === "marker" ? markerColor : penColor}
-              onChange={tool === "marker" ? setMarkerColor : setPenColor}/>
-            <label>
-              Толщина{" "}
-              <input
-                aria-label="Толщина штриха"
-                type="range"
-                min={tool === "marker" ? 8 : 1}
-                max={tool === "marker" ? 48 : 16}
-                value={tool === "marker" ? markerWeight : weight}
-                onChange={(e) =>
-                  (tool === "marker" ? setMarkerWeight : setWeight)(
-                    Number(e.target.value),
-                  )
-                }
-              />
-              {tool === "marker" ? markerWeight : weight}
-            </label>
+        {(tool === "pen" || tool === "marker" || tool === "eraser") && (
+          <div className="ink-settings lektrus-ink-settings-direct"
+            role="group" aria-label={"Параметры инструмента: "+(tool==="eraser"?"ластик":tool==="marker"?"маркер":"карандаш")}
+            onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+            <strong className="lektrus-ink-tool-name">{tool==="eraser"?"Ластик":tool==="marker"?"Маркер":"Карандаш"}</strong>
+            {tool!=="eraser"&&<LektrusColorPicker userId={authUser.id} compact label="Цвет"
+              value={tool==="marker"?markerColor:penColor}
+              onChange={tool==="marker"?setMarkerColor:setPenColor}/>}
+            <div className="lektrus-direct-ink-widths" role="group" aria-label="Толщина инструмента">
+              {(tool==="eraser"?INK_WIDTHS.eraser:tool==="marker"?INK_WIDTHS.marker:INK_WIDTHS.pen).map((size,index)=>{
+                const current=tool==="eraser"?eraserSize:tool==="marker"?markerWeight:weight;
+                const candidates=tool==="eraser"?INK_WIDTHS.eraser:tool==="marker"?INK_WIDTHS.marker:INK_WIDTHS.pen;
+                const nearest=candidates.reduce((best,value,i)=>Math.abs(value-current)<Math.abs(candidates[best]-current)?i:best,0);
+                return <button key={size} type="button" aria-pressed={nearest===index}
+                  aria-label={["Очень тонкий","Тонкий","Средний","Толстый","Очень толстый"][index]+" штрих, "+size+" пикселей"}
+                  onClick={()=>tool==="eraser"?setEraserSize(size):tool==="marker"?setMarkerWeight(size):setWeight(size)}>
+                  <span className="lektrus-direct-ink-sample" style={{height:Math.max(1,Math.min(13,size/3)),
+                    background:tool==="eraser"?"#64748b":tool==="marker"?markerColor:penColor}}/>
+                </button>;
+              })}
+            </div>
           </div>
         )}
-        {tool === "eraser" && <div className="ink-settings eraser-settings">
-          <label>Размер <input aria-label="Размер ластика" type="range" min={8} max={96} step={2} value={eraserSize} onChange={(e)=>setEraserSize(Number(e.target.value))}/><span className="eraser-size-value">{eraserSize}px</span></label>
-          <span>Стирает только карандаш и маркер · Ctrl+Z — отмена</span>
-        </div>}
         {tool === "connector" && (
           <div className="connector-settings">
             <div className="connector-style-buttons">
@@ -8380,6 +8376,8 @@ export default function App() {
     const onDashboardClick=(event:MouseEvent)=>{
       const target=event.target as HTMLElement|null;
       if(!target)return;
+      // Dashboard navigation must never steal drawing-tool buttons inside a board.
+      if(target.closest(".workspace, .lectris-workspace, .board, .ink-settings, .lectris-quick-properties"))return;
       const profile=target.closest(".account-chip");
       if(profile){
         event.preventDefault();
