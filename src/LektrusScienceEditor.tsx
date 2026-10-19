@@ -8,6 +8,7 @@ import {periodicElements} from "./lektrusPeriodicElements";
 import {layoutScienceLabels} from "./lektrusScienceLabelLayout";
 import LektrusChemistryIllustration from "./LektrusChemistryIllustration";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
+import LektrusReactionLab from "./LektrusReactionLab";
 import LektrusOrganicCanvas from "./LektrusOrganicCanvas";
 import {analyzeOrganicStructure,organicAtomColor} from "./lektrusOrganicFormula";
 
@@ -184,6 +185,9 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     :optics?"Перемещайте источники, лучи и оптические элементы."
     :"Расположите тело, подпишите силы и задайте направления векторов.";
 
+  if(experiment&&draft.graphFigureId==="chem-experiment-free")return <LektrusReactionLab
+   item={draft} onChange={setDraft} onSave={()=>onSave(draft)}
+   onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
   if(formula)return <LektrusChemicalEquationEditor item={draft} onChange={setDraft}
     onSave={()=>onSave(draft)} onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
   return createPortal(<div className={"lektrus-science-backdrop "+(isPhysics?"physics":"chemistry")}
