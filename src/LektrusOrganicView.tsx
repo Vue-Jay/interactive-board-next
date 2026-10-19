@@ -20,6 +20,9 @@ export default function LektrusOrganicView({item}:{item:Item}){
       stroke="#3b526a" strokeWidth="2.8" strokeLinecap="round"/>;
     })}</g>;
    })}
+   {(item.scienceOrganicAnnotations??[]).map((note,i)=><text key={"note"+i}
+     x={xy(note).x} y={xy(note).y} textAnchor="middle"
+     fontSize="18" fontWeight="750" fill="#315e9a">{note.text}</text>)}
    {points.map((p,i)=>{
     const degree=links.reduce((total,edge)=>total+(edge.a===i||edge.b===i?(edge.bondOrder??1):0),0);
     const caption=organicAtomCaption(p.label,degree);
