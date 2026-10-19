@@ -52,7 +52,7 @@ export function LectrisQuickProperties(props: QuickProps) {
   useEffect(()=>setExpanded(false),[tool,item?.id]);
   const drawing=tool==="pen"||tool==="marker";
   const erasing=tool==="eraser";
-  if(item?.kind==="graph"&&item.graphFigureId==="chem-periodic")return null;
+  if(item?.kind==="graph"&&item.graphFigureId==="chem-periodic"&&!drawing&&!erasing)return null;
   if(!selectionCount&&!drawing&&!erasing)return null;
   const inkTool=erasing?"eraser":tool==="marker"?"marker":"pen";
   const inkSizes=INK_WIDTHS[inkTool];
