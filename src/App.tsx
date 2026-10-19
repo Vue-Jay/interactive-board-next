@@ -3572,7 +3572,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const picked=hitTestInk(itemsRef.current,p,(e.pointerType==="touch"?18:10)/Math.max(0.1,view.zoom),domIndex);
       if(picked)id=picked.id;
     }
-    const hit=itemsRef.current.find(item=>item.id===id);
+    // Transform handles float above the objects, so they have no data-object ancestor.
+    // Resolve their target from the selected item on both touch and desktop.
+    const hit=itemsRef.current.find(item=>item.id===(target.closest("[data-transform-handle]") && selected.length===1 ? selected[0] : id));
     // Formula touch manipulation has its own direct drag path. Text spans and
     // nested fraction glyphs must not defer to browser text-selection gestures.
     if (hit?.kind === "formula" && (e.pointerType === "touch" || e.pointerType === "pen") &&
