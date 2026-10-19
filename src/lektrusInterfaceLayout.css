@@ -80,3 +80,29 @@
  font-size:12px;box-shadow:0 5px 20px #213b6c25;pointer-events:none}
 @media(max-width:600px){.lektrus-live-layout-actions{bottom:calc(5px + env(safe-area-inset-bottom));padding:5px}
  .lektrus-live-layout-actions button{min-width:80px;min-height:32px;padding:6px 9px;font-size:12px}}
+
+/* Real responsive board previews. The iframe itself runs BoardApp at the
+   chosen CSS viewport width; no fake controls or duplicated layout markup. */
+.lektrus-layout-device-backdrop{position:fixed;inset:0;z-index:0;
+ background:#eaf1f9;pointer-events:none;overflow:hidden}
+.lektrus-layout-device-frame{position:fixed;top:50%;left:50%;
+ transform-origin:center center;border:0;background:#f7fbff;
+ box-shadow:0 0 0 1px #acc2dd,0 4px 30px #24437130;pointer-events:none}
+.lektrus-live-layout-marquee{position:fixed;z-index:2;pointer-events:none;
+ border:1.5px solid #2f69d6;background:#3c76ec26;border-radius:2px}
+.lektrus-live-layout-actions{flex-wrap:wrap;max-width:calc(100vw - 16px);justify-content:center}
+.lektrus-live-layout-actions button:disabled{opacity:.43;cursor:not-allowed}
+.lektrus-live-layout-device-switch{display:flex;align-items:center;gap:2px;padding:2px;
+ border-radius:9px;background:#edf2f9}
+.lektrus-live-layout-device-switch button{min-width:0;padding:8px 10px;
+ background:transparent;border:0;font-size:12px;font-weight:600;color:#506885}
+.lektrus-live-layout-device-switch button.is-active{background:#fff;color:#2655a6;
+ box-shadow:0 1px 5px #254e7c25}
+.lektrus-live-layout-actions-divider{height:22px;width:1px;background:#d3dfef;margin:0 3px}
+@media(max-width:840px){
+ .lektrus-live-layout-actions{left:8px;right:8px;transform:none;bottom:max(5px,env(safe-area-inset-bottom));gap:3px}
+ .lektrus-live-layout-device-switch{width:100%;justify-content:center}
+ .lektrus-live-layout-device-switch button{flex:1}
+ .lektrus-live-layout-actions button{font-size:11px;padding:7px 8px;min-width:65px}
+ .lektrus-live-layout-actions-divider{display:none}
+}
