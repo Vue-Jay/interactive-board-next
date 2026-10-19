@@ -30,6 +30,7 @@ export default function LektrusOrganicHandwriting({
 }:{item:Item;onChange:(updater:(item:Item)=>Item)=>void;onExit:()=>void}){
  const svg=useRef<SVGSVGElement>(null),active=useRef<{id:number;stroke:P[]}|null>(null);
  const [strokes,setStrokes]=useState<P[][]>([]);
+ const [preview,setPreview]=useState<P[]>([]);
  const [choice,setChoice]=useState<string>("");
  const [notice,setNotice]=useState("Нарисуйте один символ или одну связь. Результат нужно подтвердить.");
  const xy=(e:PointerEvent<SVGSVGElement>):P=>{
@@ -41,6 +42,7 @@ export default function LektrusOrganicHandwriting({
   if(!writing||writing.id!==e.pointerId)return;
   active.current=null;
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  setPreview([]);
   if(writing.stroke.length<2)return;
   setStrokes(old=>{
    const next=[...old,writing.stroke];
@@ -84,7 +86,7 @@ export default function LektrusOrganicHandwriting({
   }else{
    onChange(old=>({...old,scienceOrganicAnnotations:[...(old.scienceOrganicAnnotations??[]),{...center,text:choice}]}));
   }
-  setStrokes([]);setChoice("");setNotice("Добавлено. Можно нарисовать следующий символ или связь.");
+  setStrokes([]);setPreview([]);setChoice("");setNotice("Добавлено. Можно нарисовать следующий символ или связь.");
  };
  const choices=[["bond","Одинарная связь"],["double","Двойная связь"],["triple","Тройная связь"],
  ...["C","N","O","H","S","F","Cl","Br","0","1","2","3","4","5","6","7","8","9"].map(x=>[x,x])];
@@ -93,11 +95,11 @@ export default function LektrusOrganicHandwriting({
    onPointerDown={e=>{e.preventDefault();e.stopPropagation();const p=xy(e);
     active.current={id:e.pointerId,stroke:[p]};e.currentTarget.setPointerCapture(e.pointerId)}}
    onPointerMove={e=>{if(active.current?.id!==e.pointerId)return;
-    active.current.stroke.push(xy(e));setStrokes(old=>[...old.slice(0,-1),active.current!.stroke.slice()]);}}
-   onPointerUp={finish} onPointerCancel={e=>{active.current=null;setNotice("Ввод прерван. Повторите штрих.");if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)}}
+    active.current.stroke.push(xy(e));setPreview(active.current.stroke.slice());}}
+   onPointerUp={finish} onPointerCancel={e=>{active.current=null;setPreview([]);setNotice("Ввод прерван. Повторите штрих.");if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)}}
    style={{touchAction:"none"}}>
    <rect width={W} height={H} fill="#fff" fillOpacity=".68"/>
-   {strokes.map((stroke,i)=><polyline key={i} points={stroke.map(p=>p.x+","+p.y).join(" ")}
+   {[...strokes,...(preview.length?[preview]:[])].map((stroke,i)=><polyline key={i} points={stroke.map(p=>p.x+","+p.y).join(" ")}
       stroke="#2b72c0" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>)}
   </svg>
   <div className="lektrus-organic-handwrite-controls">
