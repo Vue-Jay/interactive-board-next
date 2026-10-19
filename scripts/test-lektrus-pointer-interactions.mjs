@@ -45,4 +45,21 @@ assert.ok(css.includes('cursor:grabbing!important'));
 assert.ok(css.includes('pointer-events:none'));
 assert.ok(read("src/main.tsx").includes('import "./lektrusBoardInteraction.css";'));
 assert.ok(app.includes('saveRemoteBoardDocument'),"core persistence is unchanged");
+// Mobile gesture contract: interactive controls must never be treated as a
+// drawing pointer or first pinch contact.
+assert.match(app,/if\(touchControl\)return;/,"Mobile interactive controls bypass board pointer capture");
+assert.match(app,/touchPoints\.current\.size===2/,"Two touches start a pinch");
+assert.match(app,/setSelected\(pinchSelectionSnapshot\.current\?\?\[\]\)/,
+ "Pinch must not modify the user's selection");
+assert.match(app,/if\(touchEnd\(e\)\)return;/,"Touch cleanup happens on pointer release");
+assert.match(app,/aria-label="Рука — перемещать доску одним пальцем"/);
+const widths=read("src/LectrisObjectEditor.tsx");
+const mobile=read("src/lektrusSubjectPolish2026.css");
+assert.match(widths,/pen:\[0\.5,1\.5,3,7,14\]/);
+assert.match(widths,/marker:\[1,4,10,22,44\]/);
+assert.match(widths,/eraser:\[4,10,22,44,86\]/);
+assert.match(widths,/lektrus-ink-five-widths/);
+assert.match(widths,/!\(drawing\|\|erasing\)&&<button/,"Pen settings cannot require pressing a settings button");
+assert.match(mobile,/\.lectris-quick-properties\.is-ink-properties/);
+assert.match(mobile,/\.board-controls\{/,"Zoom controls need a separate mobile row");
 console.log("Lektrus pointers: marquee geometry and strokes, hand pan, context portal, default arrow passed.");
