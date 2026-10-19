@@ -44,39 +44,58 @@ export default function LektrusChemistryIllustration({item,onStageChange}:{
   <small>Числа после символов обозначены нижними индексами. Коэффициенты не изменяются.</small>
  </div>;
  const before=stage===0;
+ const salt=item.graphFigureId==="chem-experiment-salt";
+ const indicator=item.graphFigureId==="chem-experiment-litmus";
+ const lime=item.graphFigureId==="chem-experiment-lime";
+ const liquidColor=indicator?(before?"#4a83d1":"#d4566d"):(lime?(before?"#cfe5f5":"#dce4eb"):"#9ed0ed");
+ const gas=lime&&before;
+ const sediment=(salt&&before)||(lime&&!before);
+ const precipitate=lime&&!before;
+ const particles=(count:number)=>Array.from({length:count},(_,i)=>({
+   x:193+(i*37)%158,y:200+(i*17)%30,r:2+(i%3)
+ }));
  return <div className="lektrus-chem-experiment-sheet">
   <strong>{item.text}</strong>
   <div className="lektrus-chem-experiment-stages" role="group" aria-label="Этап учебного опыта">
    <button type="button" aria-pressed={before} onClick={()=>setStage(0)}>До</button>
    <button type="button" aria-pressed={!before} onClick={()=>setStage(1)}>После</button>
   </div>
-  <svg viewBox="0 0 540 280" role="img" aria-label={(before?experiment.before:experiment.after)}>
-   <defs><linearGradient id={"liquid-"+item.id} x1="0" x2="0" y1="0" y2="1">
-    <stop stopColor="#fff" offset="0"/><stop stopColor={before?experiment.colorBefore:experiment.colorAfter} offset="1"/>
-   </linearGradient></defs>
-   <rect x="54" y="22" width="432" height="234" rx="16" fill="#f8fbff" stroke="#d8e4f4"/>
-   <path d="M155 65 L155 208 Q155 236 182 236 L360 236 Q385 236 385 208 L385 65" stroke="#7096c5"
-     strokeWidth="6" fill="none" strokeLinecap="round"/>
-   <path d="M162 146 H378 V204 Q378 229 357 229 H185 Q162 229 162 204Z"
-     fill={before?experiment.colorBefore:experiment.colorAfter} fillOpacity=".65"/>
-   <path d="M162 146 H378" stroke="#86aed0" strokeWidth="2" strokeDasharray="8 5"/>
-   {item.graphFigureId==="chem-experiment-salt"?before?
-    <g>{Array.from({length:9},(_,i)=><rect key={i} x={225+(i%3)*24} y={173+Math.floor(i/3)*19}
-      width="18" height="14" fill="#f4fbff" stroke="#7492b7"/>)}</g>:
-    <g>{[["+","Na",205,176],["−","Cl",312,180],["+","Na",240,213],["−","Cl",341,210]].map(([sign,ion,x,y],i)=>
-      <g key={i}><circle cx={Number(x)} cy={Number(y)} r="16" fill={sign==="+"?"#cce4fa":"#eff5fb"} stroke="#719ac4"/>
-       <text x={Number(x)} y={Number(y)+4} textAnchor="middle" fill="#345f94" fontSize="13" fontWeight="700">{ion}{sign}</text></g>)}</g>
-   :item.graphFigureId==="chem-experiment-litmus"?
-    <g transform="rotate(12 280 160)"><rect x="266" y="86" width="26" height="145" rx="4" fill={before?"#4479cb":"#d45b6d"}
-      stroke="#38547a" strokeWidth="1.4"/></g>
-   :!before?<g>{Array.from({length:34},(_,i)=><circle key={i}
-       cx={185+(i*41)%171} cy={165+(i*13)%56} r={i%4===0?6:3.5}
-       fill="#f9fbfd" stroke="#afb9c6" strokeWidth=".7"/>)}</g>:null}
-   <text x="270" y="51" textAnchor="middle" fill="#385b86" fontSize="19" fontWeight="700">
+  <svg viewBox="0 0 540 310" role="img" aria-label={(before?experiment.before:experiment.after)}>
+   <rect x="48" y="15" width="444" height="273" rx="16" fill="#f8fbff" stroke="#dce7f5"/>
+   <text x="270" y="44" textAnchor="middle" fill="#365a85" fontWeight="700" fontSize="19">
     {before?experiment.before:experiment.after}
    </text>
+   <path d="M153 72V234 Q153 265 184 265H356 Q387 265 387 234V72"
+      stroke="#79a1c9" strokeWidth="6" fill="none" strokeLinecap="round"/>
+   <path d="M161 157H379V236 Q379 257 357 257H183Q161 257 161 236Z"
+      fill={liquidColor} fillOpacity=".63"/>
+   <path d="M161 157H379" stroke="#83a8cd" strokeWidth="2" fill="none"/>
+   {/* One symbol system is used for all experiments: circles=gas, grains=solid, fill=colour. */}
+   {gas&&Array.from({length:9},(_,i)=><circle key={"gas"+i}
+     cx={209+(i*31)%131} cy={135-(i*23)%95} r={4+i%3}
+     fill="none" stroke="#4592ca" strokeWidth="1.7"/>)}
+   {sediment&&particles(28).map((p,i)=><ellipse key={"solid"+i}
+     cx={p.x} cy={p.y+(precipitate?10:3)} rx={p.r+1} ry={p.r*.63}
+     fill={precipitate?"#8e9ba9":"#f6fbff"} stroke={precipitate?"#6a798b":"#7895b4"}
+     strokeWidth=".8"/>)}
+   {indicator&&<rect x="266" y="85" width="14" height="165" rx="3"
+     transform="rotate(11 273 165)" fill={before?"#3e71bd":"#bd4b62"}
+     stroke="#527395" strokeWidth="1.4"/>}
+   {salt&&!before&&Array.from({length:9},(_,i)=>{
+    const plus=i%2===0,x=195+(i*41)%154,y=170+(i*19)%69;
+    return <g key={"ion"+i}><circle cx={x} cy={y} r="12"
+      fill={plus?"#d2e7f8":"#e8f5fd"} stroke="#78a1c7"/>
+     <text x={x} y={y+4} textAnchor="middle" fill="#38679c" fontSize="10" fontWeight="700">
+      {plus?"Na⁺":"Cl⁻"}
+     </text></g>;
+   })}
   </svg>
+  <div className="lektrus-chem-experiment-legend" aria-label="Условные обозначения">
+   <span><i className="lektrus-legend-gas"/> Газ</span>
+   <span><i className="lektrus-legend-solid"/> {lime?"Осадок":"Твёрдое вещество"}</span>
+   <span><i className="lektrus-legend-liquid" style={{background:liquidColor}}/> Цвет раствора</span>
+  </div>
   <div className="lektrus-chem-experiment-formula"><Formula value={experiment.formula}/></div>
-  <small>{experiment.note} Учебная визуализация, не инструкция к лабораторному опыту.</small>
+  <small>{experiment.note} Схема качественная: размеры и количества частиц условны.</small>
  </div>;
 }
