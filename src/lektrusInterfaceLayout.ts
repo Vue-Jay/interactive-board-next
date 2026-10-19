@@ -90,6 +90,9 @@ export function saveInterfaceTemplates(templates:NamedInterfaceLayout[]){
  localStorage.setItem(INTERFACE_TEMPLATE_KEY,JSON.stringify(templates.slice(-30)));
 }
 export function currentDeviceProfile():DeviceProfile{
+ const forced=new URLSearchParams(window.location.search).get("lektrusLayoutDevice");
+ if(new URLSearchParams(window.location.search).get("lektrusInterfacePreview")==="1" &&
+  deviceProfiles.some(device=>device===forced))return forced as DeviceProfile;
  const width=window.innerWidth;
  const coarse=window.matchMedia?.("(pointer:coarse)").matches??false;
  if(coarse&&width<=950)return width<=600?"phone":"tablet";
@@ -97,10 +100,10 @@ export function currentDeviceProfile():DeviceProfile{
  if(width<=900)return "tablet";
  return width<1200?"laptop":"desktop";
 }
-export function applyInterfaceLayout(){
- const documentData=readInterfaceLayout();
- const selected=currentDeviceProfile(),placements=documentData.profiles[selected];
- const root=document.documentElement;
+export function applyInterfaceLayoutTo(
+ root:HTMLElement,documentData:InterfaceLayout,selected:DeviceProfile
+){
+ const placements=documentData.profiles[selected];
  for(const region of layoutRegions){
   const placement=placements[region];
   root.style.setProperty("--li-"+region+"-x",placement.x+"vw");
@@ -115,6 +118,10 @@ export function applyInterfaceLayout(){
  }
  root.dataset.interfaceLayoutDevice=selected;
 }
+export function applyInterfaceLayout(){
+ applyInterfaceLayoutTo(document.documentElement,readInterfaceLayout(),currentDeviceProfile());
+}
+
 let installed=false;
 export function installInterfaceLayout(){
  if(installed)return;
