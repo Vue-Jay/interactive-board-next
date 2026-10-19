@@ -1,0 +1,23 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const read=(file)=>readFileSync(new URL("../"+file,import.meta.url),"utf8");
+const app=read("src/App.tsx");
+const admin=read("src/AdminScreen.tsx");
+const editor=read("src/LektrusInterfaceStudio.tsx");
+const css=read("src/lektrusInterfaceLayout.css");
+assert.match(admin,/onOpenLayout/,"admin launches board editor as a route");
+assert.match(app,/navigate\(`\/board\/\$\{own\.id\}\?layout-editor=1`\)/);
+assert.match(app,/layoutEditing&&<LektrusInterfaceStudio onClose=\{onBackToBoards\}\/>/);
+assert.match(app,/if \(!canEdit \|\| layoutEditing\) return;/,"no content write from live layout mode");
+assert.match(app,/if \(!editingLayout && pendingRaw/,"avoid template initialization");
+assert.match(app,/if \(!editingLayout && raw && board\.role/,"avoid uploading cached board on entry");
+assert.doesNotMatch(editor,/li-stage-board|li-board-example|li-studio-inspector|<svg|<iframe/i,
+ "editor must never recreate a mock board or use an iframe");
+assert.match(editor,/document\.querySelectorAll/,"must select real DOM components");
+assert.match(editor,/createPortal/,"editing overlay must run over actual BoardApp");
+assert.match(editor,/onPointerDown=\{down\}/);
+assert.match(editor,/>Отмена<\/button>/);
+assert.match(editor,/>Сохранить<\/button>/);
+assert.doesNotMatch(editor,/Шаблоны|Управление интерфейсом|Ноутбук ·|Планшет ·/);
+assert.match(css,/\.lektrus-live-layout-hit-area/);
+console.log("Lektrus real-board editor: actual BoardApp DOM, full-screen editing, only Cancel/Save, document writes disabled.");

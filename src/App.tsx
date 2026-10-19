@@ -16,6 +16,7 @@ import "./App.css";
 import AuthScreen from "./AuthScreen";
 import GeometryInstruments from "./GeometryInstruments";
 import LektrusSubjectPicker from "./LektrusSubjectPicker";
+import LektrusInterfaceStudio from "./LektrusInterfaceStudio";
 import {LEKTRUS_SCHOOL_SUBJECTS,normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
@@ -72,7 +73,7 @@ import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { BOARD_ROLE_LABELS, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
-import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from "./boardStore";
+import { boardStorageKey, getBoardForUser, getUserBoards, touchBoard, type BoardSummary } from "./boardStore";
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
@@ -1778,6 +1779,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   onBoardChanged: (board: BoardSummary) => void;
   initialRemoteVersion?: number | null;
 }) {
+  const layoutEditing=isAppAdmin&&new URLSearchParams(window.location.search).get("layout-editor")==="1";
   const canEdit = boardSummary.role !== "viewer" || (isAppAdmin && adminMaintenance);
   const isStudent = accountRole === "student" && !adminMaintenance;
   const adminHidden = isAppAdmin && adminInvisible;
@@ -2412,7 +2414,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   }, [presentation, presentationTimerRunning, presentationTimerMode]);
 
   const pushRemoteSnapshot = useCallback(async (data: DocumentData, knownFingerprint?: string) => {
-    if (!isRemoteBackendEnabled() || !canEdit || !boardMounted.current || pendingRemote.current) return;
+    if (layoutEditing || !isRemoteBackendEnabled() || !canEdit || !boardMounted.current || pendingRemote.current) return;
     const fingerprint = knownFingerprint ?? documentFingerprint(data);
     if (fingerprint === acknowledgedDocument.current) return;
     if (remoteSaveInFlight.current) {
@@ -2491,10 +2493,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       queuedRemoteSnapshot.current = null;
       if (queued) void pushRemoteSnapshot(queued);
     }
-  }, [boardSummary.id, canEdit]);
+  }, [boardSummary.id, canEdit, layoutEditing]);
 
   const flushSave = useCallback(() => {
-    if (!canEdit) return;
+    if (!canEdit || layoutEditing) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = null;
     if (!snapshot.current) return;
@@ -2555,7 +2557,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       saveFailure.current={step:"подготовка документа",message:error instanceof Error?error.message:String(error)};
       setSaveStatus("Не удалось подготовить документ к сохранению");
     }
-  }, [authUser.id, boardSummary.id, onBoardChanged, storageKey, canEdit, pushRemoteSnapshot]);
+  }, [authUser.id, boardSummary.id, onBoardChanged, storageKey, canEdit, layoutEditing, pushRemoteSnapshot]);
 
   // A gesture is saved only when completed; in-progress text is saved too.
   useEffect(() => {
@@ -6061,8 +6063,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
            </div>
            <button type="button" className="board-recent-full" onClick={()=>{setRecentChangesOpen(false);void openHistory()}}>Вся история изменений</button>
          </aside>}
-      {adminMaintenance && <div className="viewer-banner" style={{background:"#fff3d6",color:"#805200"}}>Режим администратора · изменения сохраняются от вашего имени</div>}
-       {!canEdit && !publicPresentation && <div className="viewer-banner">Только просмотр</div>}
+      {!layoutEditing&&adminMaintenance && <div className="viewer-banner" style={{background:"#fff3d6",color:"#805200"}}>Режим администратора · изменения сохраняются от вашего имени</div>}
+       {!layoutEditing && !canEdit && !publicPresentation && <div className="viewer-banner">Только просмотр</div>}
       {publicPresentation&&<div className="public-presentation-badge">Публичная презентация · ← → для навигации · F — полный экран</div>}
       {!online&&<div className="offline-banner" role="status"><strong>Офлайн</strong><span>Можно продолжать работу с уже открытой локальной доской. Серверная синхронизация возобновится после подключения.</span></div>}{updateReady&&<div className="update-banner" role="status"><span>Доступна новая версия Lektrus.</span><button type="button" onClick={applyUpdate}>Обновить</button><button type="button" className="secondary" onClick={()=>setUpdateReady(null)}>Позже</button></div>}<header className={`topbar lectris-layout-${lectrisLayout}`}>
         <div className="topbar-left">
@@ -8092,6 +8094,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
         )}
       </main>
+      {layoutEditing&&<LektrusInterfaceStudio onClose={onBackToBoards}/>}
     </div>
   );
 }
@@ -8221,6 +8224,9 @@ export default function App() {
   };
 
   const openBoard = useCallback(async (board: BoardSummary, isCurrent: () => boolean) => {
+    // Interface editing is a read-only view of the REAL board, not a new
+    // board session: never initialize templates or upload unsaved snapshots.
+    const editingLayout=isAppAdmin&&new URLSearchParams(window.location.search).get("layout-editor")==="1";
     setBoardLoadError("");
     setBoardLoading(true);
     try {
@@ -8233,7 +8239,7 @@ export default function App() {
         let appliedTemplate = false;
         try {
           const pendingRaw = sessionStorage.getItem("onlinerepetitor.template.apply");
-          if (pendingRaw && board.role === "owner") {
+          if (!editingLayout && pendingRaw && board.role === "owner") {
             const pending = JSON.parse(pendingRaw) as {boardId?:string;document?:DocumentData};
             if (pending.boardId === board.id && pending.document) {
               const document = parseDocument(JSON.stringify({...pending.document,title:board.title}));
@@ -8282,7 +8288,7 @@ export default function App() {
           localStorage.setItem(key, JSON.stringify(parsed));
           // Backfill a preview of migrated boards on first open, without
           // creating a remote revision or a conflict with other participants.
-          if(!cachedBoardPreview(board.id)){
+          if(!editingLayout && !cachedBoardPreview(board.id)){
             // Old boards also get their first preview in browser idle time.
             // Do not block opening a board to paint a thumbnail.
             scheduleBackgroundBoardPreview(board.id,parsed,null);
@@ -8290,7 +8296,7 @@ export default function App() {
           setRemoteVersion(remote.version);
         } else {
           const raw = localStorage.getItem(key);
-          if (raw && board.role !== "viewer") {
+          if (!editingLayout && raw && board.role !== "viewer") {
             const localDocument = parseDocument(raw);
             try {
               await ensureBoardAssets(board.id, localDocument);
@@ -8318,7 +8324,7 @@ export default function App() {
     } finally {
       if (isCurrent()) setBoardLoading(false);
     }
-  }, []);
+  }, [isAppAdmin]);
 
   useEffect(() => {
     if (!authReady || !authUser) return;
@@ -8425,7 +8431,7 @@ export default function App() {
       <>
         <Suspense fallback={<div className="board-server-overlay"><div className="board-server-card"><strong>Открываем раздел…</strong><span>Загружаем только нужный модуль.</span></div></div>}>
         {route.kind === "home" && <LectrisWorkspaceShell section={new URLSearchParams(window.location.search).get("section")||""} role={accountRole} isAdmin={isAppAdmin} name={authUser.name}>{(()=>{const section=new URLSearchParams(window.location.search).get("section");return section==="admin" && isAppAdmin
-          ? <AdminScreen user={authUser} invisible={adminInvisible} onInvisibleChange={changeAdminInvisible} adminEdit={adminEdit} onAdminEditChange={changeAdminEdit} onOpenBoard={(board)=>{setAdminInspecting(true);void openBoard(board,()=>true)}} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <AdminScreen user={authUser} invisible={adminInvisible} onInvisibleChange={changeAdminInvisible} adminEdit={adminEdit} onAdminEditChange={changeAdminEdit} onOpenBoard={(board)=>{setAdminInspecting(true);void openBoard(board,()=>true)}} onOpenLayout={async()=>{const boards=await getUserBoards(authUser);const own=boards.find(b=>b.ownerId===authUser.id);if(!own)throw new Error("Для редактора интерфейса нужна одна из ваших досок. Создайте доску и повторите.");navigate(`/board/${own.id}?layout-editor=1`)}} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="students" && accountRole==="teacher"
           ? <StudentsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : section==="assignments"
@@ -8468,7 +8474,7 @@ export default function App() {
       adminInvisible={adminInvisible}
       initialRemoteVersion={remoteVersion}
       onBoardChanged={boardChanged}
-      onBackToBoards={() => { setActiveBoard(null); if(adminInspecting){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
+      onBackToBoards={() => { setActiveBoard(null); if(adminInspecting||new URLSearchParams(window.location.search).get("layout-editor")==="1"){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
       onLogout={logout}
     />
   );
