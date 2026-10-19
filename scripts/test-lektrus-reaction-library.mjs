@@ -12,7 +12,7 @@ const load=(path)=>{
 };
 const {substances,reviewedReactionCases,identifyReaction}=load("src/lektrusReactionDatabase.ts");
 assert.ok(substances.length>=100,"At least 100 named and classified substances");
-assert.ok(reviewedReactionCases.length>=40,"Maintain a reviewed set of at least 40 reaction/negative cases");
+assert.ok(reviewedReactionCases.length>=120,"Maintain at least 120 explicit condition-specific reaction/negative cases");
 const ids=new Set(substances.map(s=>s.id));
 assert.equal(ids.size,substances.length,"No duplicated formulas/identifiers");
 for(const row of substances)assert.ok(row.name&&row.kind&&row.formula);
