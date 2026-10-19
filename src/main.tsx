@@ -46,9 +46,13 @@ import "./lektrusPeriodicTable.css";
 import "./lektrusChemistryNext.css";
 import "./lektrusScienceInteractionNext.css";
 import "./lektrusSubjectPolish2026.css";
+import "./lektrusInterfaceLayout.css";
+import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
 import { initProfileAppearance } from "./profileStore";
+
+installInterfaceLayout();
 
 function NativeConnectionSetup() {
   const [endpoint, setEndpoint] = useState("");
