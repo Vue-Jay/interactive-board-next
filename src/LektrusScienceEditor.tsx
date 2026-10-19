@@ -7,6 +7,7 @@ import ScienceCircuitGlyph,{circuitSymbols,type CircuitSymbol} from "./ScienceCi
 import {periodicElements} from "./lektrusPeriodicElements";
 import {layoutScienceLabels} from "./lektrusScienceLabelLayout";
 import LektrusChemistryIllustration from "./LektrusChemistryIllustration";
+import LektrusOrganicCanvas from "./LektrusOrganicCanvas";
 import {analyzeOrganicStructure,organicAtomColor} from "./lektrusOrganicFormula";
 
 type Props={
@@ -257,7 +258,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
             </div>
             <small>Наглядная концептуальная модель; не заменяет реальный опыт и технику безопасности.</small>
           </section>}
-          {!(formula||experiment)&&<> 
+          {!(formula||experiment||organic)&&<> 
           <div className="lektrus-science-subhead"><strong>{isPhysics?"Объекты и опорные точки":"Атомы и точки"}</strong><span>{points.length}</span></div>
           <p className="lektrus-science-description">{drawingHelp}</p>
           <div className="lektrus-science-points">
@@ -345,13 +346,14 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                 onChange={e=>editLink(activeLink,{label:e.target.value})}/></label>}
           </section>}
           </>}
-          {!(formula||experiment)&&<label className="lektrus-science-check"><input type="checkbox" checked={draft.graphGrid===true}
+          {!(formula||experiment||organic)&&<label className="lektrus-science-check"><input type="checkbox" checked={draft.graphGrid===true}
             onChange={e=>setDraft(old=>({...old,graphGrid:e.target.checked}))}/> Сетка на чертеже</label>}
-          {!(formula||experiment)&&<button className="lektrus-science-clear" type="button" onClick={clear}>Очистить построение</button>}
+          {!(formula||experiment||organic)&&<button className="lektrus-science-clear" type="button" onClick={clear}>Очистить построение</button>}
         </aside>
         <div className="lektrus-science-preview">
           <div className="lektrus-science-preview-head"><strong>Чертёж</strong><span>Перетаскивайте точки · двойной щелчок добавляет</span></div>
-          {formula||experiment?<LektrusChemistryIllustration item={draft}
+          {organic?<LektrusOrganicCanvas item={draft} onChange={setDraft}/>:
+          formula||experiment?<LektrusChemistryIllustration item={draft}
              onStageChange={experiment?(stage)=>setDraft(old=>({...old,scienceExperimentStage:stage})):undefined}/>:
           <svg viewBox="0 0 520 370" role="img" aria-label="Редактируемая схема"
             onClick={event=>{if(molecule&&placingElement&&event.target===event.currentTarget){
