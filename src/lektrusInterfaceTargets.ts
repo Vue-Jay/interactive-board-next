@@ -54,7 +54,7 @@ export const safeInterfaceSelector=(selector:string)=>selector.length<380&&
  selector.startsWith(".lectris-layout-menu")||selector.startsWith(".lektrus-tool-overflow")||
  selector.startsWith(".mobile-board-bottom-panel")||selector.startsWith(".board-status")||
  selector.startsWith(".lektrus-subject-tools-trigger"));
-const num=(n:number)=>Math.max(-45,Math.min(45,Number.isFinite(n)?n:0));
+const num=(n:number)=>Math.max(-100,Math.min(100,Number.isFinite(n)?n:0));
 /** CSS is scoped to UI only; important protects the stored customization against
  * breakpoint styles without mutating JSX or impacting actual board drawing. */
 export function renderExtraLayoutCSS(extras:Record<string,Placement>){
