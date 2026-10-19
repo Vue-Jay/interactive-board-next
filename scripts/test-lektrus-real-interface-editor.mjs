@@ -8,7 +8,7 @@ const css=read("src/lektrusInterfaceLayout.css");
 const layout=read("src/lektrusInterfaceLayout.ts");
 assert.match(admin,/onOpenLayout/,"admin should open the layout mode on a real board");
 assert.match(app,/navigate\(`\/board\/\$\{own\.id\}\?layout-editor=1`\)/);
-assert.match(app,/layoutEditing&&new URLSearchParams/,"preview must not recursively mount another editor");
+assert.match(app,/layoutEditing&&isAppAdmin&&new URLSearchParams/,"preview must not recursively mount another editor");
 assert.match(app,/get\("layout-preview"\)!=="1"/);
 assert.match(app,/if \(!canEdit \|\| layoutEditing\) return;/,"no content write from interface editor");
 assert.match(app,/if \(!editingLayout && pendingRaw/,"no template initialization");
