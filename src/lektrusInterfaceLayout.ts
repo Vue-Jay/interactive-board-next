@@ -1,5 +1,6 @@
 /** Admin-only visual layout studio. Profiles are intentionally UI preferences,
  * never part of the collaborative board document or remote board history. */
+import {applyExtraLayout,safeInterfaceSelector} from "./lektrusInterfaceTargets";
 export const INTERFACE_LAYOUT_KEY="lektrus.interface-layout.v1";
 export const INTERFACE_LAYOUT_EVENT="lektrus-interface-layout-changed";
 export const INTERFACE_TEMPLATE_KEY="lektrus.interface-layout-templates.v1";
@@ -25,7 +26,8 @@ export const layoutRegionNames:Record<LayoutRegion,string>={
 };
 export type Placement={x:number;y:number;scale:number};
 export type InterfaceLayout={version:1;profiles:Record<DeviceProfile,Record<LayoutRegion,Placement>>;
- controls:Record<DeviceProfile,Record<LayoutControl,Placement>>};
+ controls:Record<DeviceProfile,Record<LayoutControl,Placement>>;
+ extras:Record<DeviceProfile,Record<string,Placement>>};
 export type NamedInterfaceLayout={id:string;name:string;layout:InterfaceLayout};
 const cleanNumber=(value:unknown,low:number,high:number,fallback:number)=>{
  const n=typeof value==="number"?value:NaN;
@@ -35,17 +37,18 @@ export function defaultInterfaceLayout():InterfaceLayout{
  const region=()=>Object.fromEntries(layoutRegions.map(key=>[key,{x:0,y:0,scale:1}])) as Record<LayoutRegion,Placement>;
  const control=()=>Object.fromEntries(layoutControls.map(key=>[key,{x:0,y:0,scale:1}])) as Record<LayoutControl,Placement>;
  return {version:1,profiles:{desktop:region(),laptop:region(),tablet:region(),phone:region()},
-  controls:{desktop:control(),laptop:control(),tablet:control(),phone:control()}};
+  controls:{desktop:control(),laptop:control(),tablet:control(),phone:control()},
+ extras:{desktop:{},laptop:{},tablet:{},phone:{}}};
 }
 export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
  const normal=defaultInterfaceLayout();
  if(!value||typeof value!=="object")return normal;
  const incoming=(value as {profiles?:Record<string,unknown>}).profiles;
  const incomingControls=(value as {controls?:Record<string,unknown>}).controls;
+ const extraControls=(value as {extras?:Record<string,unknown>}).extras;
  for(const device of deviceProfiles){
   const entries=incoming?.[device];
-  if(!entries||typeof entries!=="object")continue;
-  for(const region of layoutRegions){
+  if(entries&&typeof entries==="object")for(const region of layoutRegions){
    const raw=(entries as Record<string,unknown>)[region];
    if(!raw||typeof raw!=="object")continue;
    const object=raw as Record<string,unknown>;
@@ -56,8 +59,7 @@ export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
    };
   }
   const controls=incomingControls?.[device];
-  if(!controls||typeof controls!=="object")continue;
-  for(const id of layoutControls){
+  if(controls&&typeof controls==="object")for(const id of layoutControls){
    const raw=(controls as Record<string,unknown>)[id];
    if(!raw||typeof raw!=="object")continue;
    const object=raw as Record<string,unknown>;
@@ -66,6 +68,18 @@ export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
     y:cleanNumber(object.y,-45,45,0),
     scale:cleanNumber(object.scale,.65,1.45,1)
    };
+  }
+  const extra=extraControls?.[device];
+  if(extra&&typeof extra==="object"){
+   for(const [selector,raw] of Object.entries(extra).slice(0,700)){
+    if(!safeInterfaceSelector(selector)||!raw||typeof raw!=="object")continue;
+    const p=raw as Record<string,unknown>;
+    normal.extras[device][selector]={
+     x:cleanNumber(p.x,-45,45,0),
+     y:cleanNumber(p.y,-45,45,0),
+     scale:cleanNumber(p.scale,.65,1.45,1)
+    };
+   }
   }
  }
  return normal;
@@ -113,6 +127,7 @@ export function applyInterfaceLayout(){
   root.style.setProperty("--li-control-"+control+"-y",placement.y+"vh");
   root.style.setProperty("--li-control-"+control+"-scale",String(placement.scale));
  }
+ applyExtraLayout(document,documentData.extras[selected],selected);
  root.dataset.interfaceLayoutDevice=selected;
 }
 let installed=false;
