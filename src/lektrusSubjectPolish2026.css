@@ -996,3 +996,16 @@
  .lektrus-organic-handwrite-controls{padding:4px}
  .lektrus-organic-handwrite-controls>div{gap:3px}
 }
+
+
+.lektrus-remote-substance{
+ display:flex;gap:5px;align-items:center;flex-wrap:wrap;min-width:0;
+ padding:3px 0;
+}
+.lektrus-remote-substance button{
+ border:1px solid #c5d5ec;border-radius:7px;background:#edf4ff;
+ color:#375c91;padding:6px 9px;min-height:30px;font-size:11px;cursor:pointer;
+}
+.lektrus-remote-substance button:disabled{opacity:.45}
+.lektrus-remote-substance .lektrus-remote-result{background:#e7f9ef;border-color:#a9d6be;color:#326947}
+.lektrus-remote-substance small{flex:1;min-width:120px;color:#718ba8;font-size:10px;line-height:1.35}
