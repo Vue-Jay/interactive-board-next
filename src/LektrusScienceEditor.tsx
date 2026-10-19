@@ -10,6 +10,7 @@ import LektrusChemistryIllustration from "./LektrusChemistryIllustration";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 import LektrusReactionLab from "./LektrusReactionLab";
 import LektrusOrganicCanvas from "./LektrusOrganicCanvas";
+import LektrusOrganicEditorPanel from "./LektrusOrganicEditorPanel";
 import {analyzeOrganicStructure,organicAtomColor} from "./lektrusOrganicFormula";
 
 type Props={
@@ -185,6 +186,8 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     :optics?"Перемещайте источники, лучи и оптические элементы."
     :"Расположите тело, подпишите силы и задайте направления векторов.";
 
+  if(organic)return <LektrusOrganicEditorPanel item={draft} onChange={setDraft}
+    onSave={()=>onSave(draft)} onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
   if(experiment&&draft.graphFigureId==="chem-experiment-free")return <LektrusReactionLab
    item={draft} onChange={setDraft} onSave={()=>onSave(draft)}
    onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
