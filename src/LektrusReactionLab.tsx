@@ -25,7 +25,12 @@ export function LektrusReactionScene({item,stage,onStageChange}:{item:Item;stage
  const observation=stage===1&&matched.status==="reaction"?matchedCase?.observation??"none":"none";
  const reagentNames=ids.map(id=>substances.find(s=>s.id===id)?.name??id);
  const beforeColor=matchedCase?.beforeColor??"#bcdcf4";
- const afterColor=matchedCase?.afterColor??beforeColor;
+ // A coloured precipitate is NOT the colour of the remaining solution.
+ // Keep phase colours separate to avoid teaching the wrong observation.
+ const solidColor=matchedCase?.afterColor??"#bdc7d0";
+ const afterColor=observation==="precipitate"?"#d9eaf5":
+   observation==="color"?(matchedCase?.afterColor??"#d5b89e"):
+   matchedCase?.afterColor??beforeColor;
  const color=stage===1?afterColor:beforeColor;
  const theme=matched.status==="reaction"?"reaction":matched.status==="none"?"none":"unknown";
  return <div className={"lektrus-reaction-scene is-"+theme}>
@@ -49,7 +54,7 @@ export function LektrusReactionScene({item,stage,onStageChange}:{item:Item;stage
      cx={198+(i*37)%122} cy={123-(i*21)%89} r={4+(i%3)}
      fill="none" stroke="#347ac1" strokeWidth="2"/>)}
     {observation==="precipitate"&&Array.from({length:32},(_,i)=><ellipse key={i}
-     cx={181+(i*23)%160} cy={195+(i*11)%27} rx="4" ry="2.8" fill={afterColor==="#f4db54"?"#efcf40":afterColor==="#5aa6df"?"#5aa6df":"#b4a696"} stroke="#8c97a6"/>)}
+     cx={181+(i*23)%160} cy={195+(i*11)%27} rx="4" ry="2.8" fill={solidColor} stroke="#7c8794"/>)}
     {observation==="dissolution"&&Array.from({length:9},(_,i)=><circle key={i}
      cx={200+(i*39)%135} cy={156+(i*17)%55} r="3" fill="#8eafd0" opacity=".45"/>)}
     {observation==="heat"&&<g fill="none" stroke="#d68a44" strokeWidth="2">
