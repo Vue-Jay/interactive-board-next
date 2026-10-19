@@ -29,3 +29,14 @@ export function analyzeOrganicStructure(item:Item):{formula:string;valid:boolean
  const formula=order.filter((v,i)=>order.indexOf(v)===i).map(sym=>sym+(atoms[sym]===1?"":atoms[sym])).join("");
  return {formula,valid:true,note:"Указаны неявные H по типичной валентности C(IV), N(III), O(II), S(II). Для особых состояний и заряженных частиц требуется отдельная проверка."};
 }
+
+/** Conventional skeletal notation: unlabeled C corners, implicit H on heteroatoms. */
+export function organicAtomCaption(symbol:string,degree:number,showCarbon=false):string{
+ if(symbol==="C"&&!showCarbon)return "";
+ const typical=valence[symbol];
+ if(typical===undefined)return symbol;
+ const free=Math.max(0,typical-degree);
+ if(symbol==="H"||symbol==="F"||symbol==="Cl"||symbol==="Br"||symbol==="I")return symbol;
+ if(free===0)return symbol;
+ return symbol+"H"+(free===1?"":String(free).replace(/[0-9]/g,d=>"₀₁₂₃₄₅₆₇₈₉"[Number(d)]));
+}
