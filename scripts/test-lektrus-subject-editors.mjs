@@ -37,7 +37,7 @@ assert.match(formulaStyle,/grid-template-columns:minmax\(0,1\.15fr\) minmax\(295
 assert.match(formulaStyle,/formula-editor-footer/);
 assert.match(registry,/id:"chem-periodic-table"/);
 assert.match(registry,/\.\.\.scienceToolGroups\.map\(group=>/);
-const chemistryCatalog=text("src/lektrusScienceCatalog.ts");
+const chemistryCatalog=read("src/lektrusScienceCatalog.ts");
 assert.doesNotMatch(chemistryCatalog, /id:"chem-atoms"/, "atom model belongs in periodic table");
 assert.match(registry,/chem-periodic-table/);
 assert.doesNotMatch(subjects,/["']Алгебра["']/);
