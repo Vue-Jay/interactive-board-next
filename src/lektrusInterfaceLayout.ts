@@ -53,8 +53,8 @@ export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
    if(!raw||typeof raw!=="object")continue;
    const object=raw as Record<string,unknown>;
    normal.profiles[device][region]={
-    x:cleanNumber(object.x,-45,45,0),
-    y:cleanNumber(object.y,-45,45,0),
+    x:cleanNumber(object.x,-100,100,0),
+    y:cleanNumber(object.y,-100,100,0),
     scale:cleanNumber(object.scale,.65,1.45,1)
    };
   }
@@ -64,8 +64,8 @@ export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
    if(!raw||typeof raw!=="object")continue;
    const object=raw as Record<string,unknown>;
    normal.controls[device][id]={
-    x:cleanNumber(object.x,-45,45,0),
-    y:cleanNumber(object.y,-45,45,0),
+    x:cleanNumber(object.x,-100,100,0),
+    y:cleanNumber(object.y,-100,100,0),
     scale:cleanNumber(object.scale,.65,1.45,1)
    };
   }
@@ -75,8 +75,8 @@ export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
     if(!safeInterfaceSelector(selector)||!raw||typeof raw!=="object")continue;
     const p=raw as Record<string,unknown>;
     normal.extras[device][selector]={
-     x:cleanNumber(p.x,-45,45,0),
-     y:cleanNumber(p.y,-45,45,0),
+     x:cleanNumber(p.x,-100,100,0),
+     y:cleanNumber(p.y,-100,100,0),
      scale:cleanNumber(p.scale,.65,1.45,1)
     };
    }
