@@ -36,8 +36,8 @@ const panelSelectors:Record<LayoutRegion,string>={
 const specs:Record<DeviceProfile,{width:number;height:number;label:string}>={
  desktop:{width:1440,height:900,label:"ПК"},
  laptop:{width:1100,height:720,label:"Ноутбук"},
- tablet:{width:800,height:1000,label:"Планшет"},
- phone:{width:430,height:850,label:"Телефон"}
+ tablet:{width:820,height:600,label:"Планшет"},
+ phone:{width:560,height:320,label:"Телефон"}
 };
 const clone=(value:InterfaceLayout):InterfaceLayout=>structuredClone(value);
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
@@ -81,7 +81,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  const future=useRef<InterfaceLayout[]>([]);
  const alternate=device!==nativeDevice;
  const dimensions=specs[device];
- const fit=Math.min((viewport.width-12)/dimensions.width,(viewport.height-12)/dimensions.height,1.55);
+ const fit=Math.min((viewport.width-12)/dimensions.width,(viewport.height-70)/dimensions.height,2.2);
  const frameUrl=window.location.pathname+"?layout-editor=1&layout-preview=1";
  const activeDocument=()=>{
   if(!alternate)return document;
