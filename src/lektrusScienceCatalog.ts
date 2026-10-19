@@ -67,11 +67,9 @@ export const scienceToolGroups:ScienceToolGroup[]=[
     {id:"chem-formula-free",label:"Новая формула или уравнение",hint:"Чистый редактор"}
    ]},
   {id:"chem-experiments",subject:"chem",label:"Моделирование опытов",
-   description:"Безопасные пошаговые схемы превращений и наблюдений, без лабораторных инструкций",
+   description:"Каталог веществ, условия реакций и проверенные качественные результаты",
    group:"Химия · опыты",templates:[
-    {id:"chem-experiment-salt",label:"Растворение соли",hint:"Ионы в воде · до и после"},
-    {id:"chem-experiment-litmus",label:"Индикатор в кислоте",hint:"Синий лакмус становится красным"},
-    {id:"chem-experiment-lime",label:"Углекислый газ и известковая вода",hint:"Образование осадка CaCO₃"}
+    {id:"chem-experiment-free",label:"Смоделировать реакцию",hint:"Выбрать несколько веществ и условия"}
    ]}
 ];
 
