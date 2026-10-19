@@ -7,6 +7,7 @@ import ScienceCircuitGlyph,{circuitSymbols,type CircuitSymbol} from "./ScienceCi
 import {periodicElements} from "./lektrusPeriodicElements";
 import {layoutScienceLabels} from "./lektrusScienceLabelLayout";
 import LektrusChemistryIllustration from "./LektrusChemistryIllustration";
+import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 import LektrusOrganicCanvas from "./LektrusOrganicCanvas";
 import {analyzeOrganicStructure,organicAtomColor} from "./lektrusOrganicFormula";
 
@@ -183,6 +184,8 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     :optics?"Перемещайте источники, лучи и оптические элементы."
     :"Расположите тело, подпишите силы и задайте направления векторов.";
 
+  if(formula)return <LektrusChemicalEquationEditor item={draft} onChange={setDraft}
+    onSave={()=>onSave(draft)} onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
   return createPortal(<div className={"lektrus-science-backdrop "+(isPhysics?"physics":"chemistry")}
      onPointerDown={e=>{if(e.currentTarget===e.target)(onClose??onCancel)(draft)}}>
     <section className="lektrus-science-editor" role="dialog" aria-modal="true"
