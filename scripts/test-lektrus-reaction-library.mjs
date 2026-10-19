@@ -76,7 +76,7 @@ assert.match(catalog,/id:"chem-organic-free"/);
 assert.doesNotMatch(catalog,/id:"chem-organic-ethane"/,"No fixed organic templates in chooser");
 assert.doesNotMatch(catalog,/id:"chem-experiment-salt"/,"Reagent builder replaces preset experiment chooser");
 const scene=read("src/LektrusReactionLab.tsx");
-assert.match(scene,/status==="unknown"/);
+assert.match(scene,/matched\.status==="none"\?"none":"unknown"/);
 assert.match(scene,/scienceReagents/);
 const handwriting=read("src/LektrusOrganicHandwriting.tsx");
 assert.match(handwriting,/suggestHandwriting/);
