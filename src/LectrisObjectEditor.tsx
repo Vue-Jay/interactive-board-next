@@ -67,12 +67,12 @@ export function LectrisQuickProperties(props: QuickProps) {
     onPointerDown={e=>e.stopPropagation()} onPointerMove={e=>e.stopPropagation()}
     onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
     <span className="lectris-quick-title">
-      {selectionCount>0 ? item?itemNames[item.kind]:"Выбрано: "+selectionCount : erasing?"Ластик":tool==="marker"?"Маркер":"Карандаш"}
+      {selectionCount>0&&!drawing&&!erasing ? item?itemNames[item.kind]:"Выбрано: "+selectionCount : erasing?"Ластик":tool==="marker"?"Маркер":"Карандаш"}
     </span>
     {!(drawing||erasing)&&<button className="lectris-quick-expand" type="button" aria-expanded={expanded}
       onClick={()=>setExpanded(v=>!v)}>{expanded?"Свернуть ▲":"Настройки ▼"}</button>}
     <div className="lectris-quick-details">
-      {selectionCount>0?<>
+      {selectionCount>0&&!drawing&&!erasing?<>
         {item&&colorKinds.has(item.kind)&&canModify&&
           <LektrusColorPicker compact userId={props.userId} label="Цвет"
             value={item.color||"#365fd0"} onChange={value=>props.onPatch({color:value})}/>}
