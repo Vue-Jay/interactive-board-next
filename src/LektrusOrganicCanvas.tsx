@@ -262,6 +262,18 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   <div className="lektrus-organic-canvas-scroll">
    {handwriting&&<LektrusOrganicHandwriting item={item} onChange={update=>{remember();onChange(update)}} onExit={()=>setHandwriting(false)}/>}
    <svg ref={svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Конструктор органических молекул"
+    onContextMenu={e=>e.preventDefault()}
+    onPointerDownCapture={e=>{
+     if(e.button!==2)return;
+     e.preventDefault();e.stopPropagation();
+     // ПКМ abandons the pending radical/bond preview, but does NOT delete
+     // already committed atoms. Selection becomes the active tool immediately.
+     if(pointer.current&&svg.current?.hasPointerCapture(pointer.current.id))
+      svg.current.releasePointerCapture(pointer.current.id);
+     pointer.current=null;
+     setTool("select");setDraftEnd(null);setHoverPoint(null);
+     setStatus("Режим выбора · вставка отменена");
+    }}
     onPointerDown={e=>{if(e.target===e.currentTarget){e.preventDefault();handleBlank(e)}}}
     onPointerMove={onMove} onPointerLeave={()=>setHoverPoint(null)} onPointerUp={onEnd} onPointerCancel={e=>{
       if(pointer.current?.id===e.pointerId)pointer.current=null;
