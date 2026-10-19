@@ -1,5 +1,5 @@
 import type {Item} from "./boardModel";
-import {analyzeOrganicStructure,organicAtomColor} from "./lektrusOrganicFormula";
+import {analyzeOrganicStructure,organicAtomColor,organicAtomCaption} from "./lektrusOrganicFormula";
 const W=560,H=390,U=32;
 export default function LektrusOrganicView({item}:{item:Item}){
  const points=item.graphPoints??[],links=item.graphSegments??[];
@@ -20,11 +20,15 @@ export default function LektrusOrganicView({item}:{item:Item}){
       stroke="#3b526a" strokeWidth="2.8" strokeLinecap="round"/>;
     })}</g>;
    })}
-   {points.map((p,i)=>p.label!=="C"&&<g key={i} transform={`translate(${xy(p).x} ${xy(p).y})`}>
-    <rect x={-Math.max(9,p.label.length*5)} y="-11" width={Math.max(18,p.label.length*10)} height="23" rx="4" fill="#fff"/>
-    <text x="0" y="5" textAnchor="middle" fontSize="17" fontWeight="750"
-     fill={organicAtomColor(p.label)}>{p.label}</text>
-   </g>)}
+   {points.map((p,i)=>{
+    const degree=links.reduce((total,edge)=>total+(edge.a===i||edge.b===i?(edge.bondOrder??1):0),0);
+    const caption=organicAtomCaption(p.label,degree);
+    return caption?<g key={i} transform={`translate(${xy(p).x} ${xy(p).y})`}>
+     <rect x={-Math.max(10,caption.length*5.5)} y="-11" width={Math.max(20,caption.length*11)} height="23" rx="4" fill="#fff"/>
+     <text x="0" y="5" textAnchor="middle" fontSize="17" fontWeight="750"
+       fill={organicAtomColor(p.label)}>{caption}</text>
+    </g>:null;
+   })}
   </svg>
  </div>;
 }
