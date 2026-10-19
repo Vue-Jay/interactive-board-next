@@ -12,7 +12,7 @@ export type SciencePresetId=
   |"chem-organic-ethane"|"chem-organic-ethene"|"chem-organic-ethyne"
   |"chem-organic-ethanol"|"chem-organic-ethanoic"|"chem-organic-benzene"|"chem-organic-free"
   |"chem-formula-water"|"chem-formula-combustion"|"chem-formula-neutralization"|"chem-formula-free"
-  |"chem-experiment-salt"|"chem-experiment-litmus"|"chem-experiment-lime";
+  |"chem-experiment-salt"|"chem-experiment-litmus"|"chem-experiment-lime"|"chem-experiment-free";
 
 type Vertex={x:number;y:number;label:string;color?:string};
 type Edge={a:number;b:number;kind:"segment"|"ray"|"line";label:string;measure:boolean;bondOrder?:1|2|3;scienceArrow?:boolean;scienceCircuitSymbol?:CircuitSymbol};
@@ -55,7 +55,7 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
     "chem-formula-water":{title:"Молекулярная формула · вода",expression:"H2O"},
     "chem-formula-combustion":{title:"Горение метана",expression:"CH4 + 2O2 → CO2 + 2H2O"},
     "chem-formula-neutralization":{title:"Нейтрализация",expression:"HCl + NaOH → NaCl + H2O"},
-    "chem-formula-free":{title:"Химическая формула",expression:"C2H6O"}
+    "chem-formula-free":{title:"Химическое уравнение",expression:""}
   };
   if(formulaPresets[id]){
     const entry=formulaPresets[id]!;
@@ -66,6 +66,8 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
     "chem-experiment-litmus":"Действие кислой среды на лакмус",
     "chem-experiment-lime":"Реакция CO₂ с известковой водой"
   };
+  if(id==="chem-experiment-free")
+    return {...base,text:"Моделирование реакции",scienceReagents:[],scienceEnvironment:"aqueous",scienceExperimentStage:0,width:660,height:430};
   if(experimentPresets[id])
     return {...base,text:experimentPresets[id],scienceExperimentStage:0,width:630,height:390};
   switch(id){
