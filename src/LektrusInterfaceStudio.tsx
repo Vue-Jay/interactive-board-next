@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import {
- applyInterfaceLayout,currentDeviceProfile,layoutControls,layoutControlNames,layoutRegions,layoutRegionNames,
+ applyInterfaceLayout,currentDeviceProfile,layoutControls,layoutRegions,
  readInterfaceLayout,saveInterfaceLayout,type DeviceProfile,type InterfaceLayout,type LayoutControl,type LayoutRegion
 } from "./lektrusInterfaceLayout";
 
@@ -82,8 +82,8 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  const [layout,setLayout]=useState<InterfaceLayout>(readInterfaceLayout);
  const [device,setDevice]=useState<DeviceProfile>(currentDeviceProfile);
  const [selected,setSelected]=useState<Target|null>(null);
- const [history,setHistory]=useState<InterfaceLayout[]>([]);
- const [redoStack,setRedoStack]=useState<InterfaceLayout[]>([]);
+ const [,setHistory]=useState<InterfaceLayout[]>([]);
+ const [,setRedoStack]=useState<InterfaceLayout[]>([]);
  const [hint,setHint]=useState("");
  const [selectionBox,setSelectionBox]=useState<DOMRect|null>(null);
  const drag=useRef<PointerDrag|null>(null);
