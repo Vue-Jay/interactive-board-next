@@ -144,7 +144,7 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
     <aside className="lektrus-reaction-reagents">
      <strong>Вещества (до 6)</strong>
      <div className="lektrus-reaction-chosen" role="group" aria-label="Выбранные реагенты">
-      {chosen.length===0?<small>Нажмите на вещества ниже, чтобы добавить их в опыт.</small>:chosen.map((id,index)=>{
+      {chosen.length===0?<small>Нажмите на вещества ниже, чтобы добавить их в опыт.</small>:chosen.map(id=>{
        const reagent=substances.find(entry=>entry.id===id);
        const formula=reagent?.formula??id;
        return <button className="lektrus-reaction-selected-chip" key={id} type="button"
