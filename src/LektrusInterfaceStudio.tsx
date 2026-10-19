@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
+import {applyExtraLayout,getInterfaceElements} from "./lektrusInterfaceTargets";
 import {
  applyInterfaceLayout,currentDeviceProfile,deviceProfiles,layoutControls,layoutRegions,
  readInterfaceLayout,saveInterfaceLayout,type DeviceProfile,type InterfaceLayout,type LayoutControl,type LayoutRegion
@@ -7,10 +8,10 @@ import {
 
 /** Edit actual Lektrus board controls. Responsive previews also load the actual
  * BoardApp at the chosen viewport size: never recreate tool icons or panels. */
-type Target={kind:"panel";id:LayoutRegion}|{kind:"control";id:LayoutControl};
+type Target={kind:"panel";id:LayoutRegion}|{kind:"control";id:LayoutControl}|{kind:"extra";id:string};
 type Rectangle={left:number;top:number;width:number;height:number};
 type Gesture={
- id:number;x:number;y:number;mode:"drag"|"marquee"|"click";
+ id:number;x:number;y:number;mode:"drag"|"marquee"|"click"|"resize";
  before:InterfaceLayout;targets:Target[];moved:boolean;
 };
 const controlSelectors:Record<LayoutControl,string>={
@@ -36,14 +37,16 @@ const panelSelectors:Record<LayoutRegion,string>={
 const specs:Record<DeviceProfile,{width:number;height:number;label:string}>={
  desktop:{width:1440,height:900,label:"ПК"},
  laptop:{width:1100,height:720,label:"Ноутбук"},
- tablet:{width:820,height:600,label:"Планшет"},
- phone:{width:560,height:320,label:"Телефон"}
+ tablet:{width:900,height:650,label:"Планшет"},
+ phone:{width:600,height:390,label:"Телефон"}
 };
 const clone=(value:InterfaceLayout):InterfaceLayout=>structuredClone(value);
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 const same=(a:Target,b:Target)=>a.kind===b.kind&&a.id===b.id;
 const placement=(layout:InterfaceLayout,device:DeviceProfile,target:Target)=>
- target.kind==="panel"?layout.profiles[device][target.id]:layout.controls[device][target.id];
+ target.kind==="panel"?layout.profiles[device][target.id]:target.kind==="control"?
+ layout.controls[device][target.id]:(layout.extras[device][target.id]??=
+ {x:0,y:0,scale:1});
 const rectFromPoints=(ax:number,ay:number,bx:number,by:number):Rectangle=>({
  left:Math.min(ax,bx),top:Math.min(ay,by),
  width:Math.abs(ax-bx),height:Math.abs(ay-by)
@@ -64,6 +67,7 @@ function applyDraft(layout:InterfaceLayout,device:DeviceProfile,doc:Document){
   root.style.setProperty("--li-control-"+id+"-y",p.y+"vh");
   root.style.setProperty("--li-control-"+id+"-scale",String(p.scale));
  }
+ applyExtraLayout(doc,layout.extras[device],device);
 }
 export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  const [nativeDevice,setNativeDevice]=useState<DeviceProfile>(currentDeviceProfile);
@@ -72,6 +76,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  const [selected,setSelected]=useState<Target[]>([]);
  const [marquee,setMarquee]=useState<Rectangle|null>(null);
  const [message,setMessage]=useState("");
+ const [showGrid,setShowGrid]=useState(false);
  const [version,setVersion]=useState(0);
  const [viewport,setViewport]=useState({width:window.innerWidth,height:window.innerHeight});
  const frame=useRef<HTMLIFrameElement>(null);
@@ -81,7 +86,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  const future=useRef<InterfaceLayout[]>([]);
  const alternate=device!==nativeDevice;
  const dimensions=specs[device];
- const fit=Math.min((viewport.width-12)/dimensions.width,(viewport.height-70)/dimensions.height,2.2);
+ const fit=Math.max(.15,Math.min((viewport.width-24)/dimensions.width,(viewport.height-96)/dimensions.height));
  const frameUrl=window.location.pathname+"?layout-editor=1&layout-preview=1";
  const activeDocument=()=>{
   if(!alternate)return document;
@@ -110,6 +115,11 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   };
   for(const id of layoutRegions)add({kind:"panel",id},panelSelectors[id]);
   for(const id of layoutControls)add({kind:"control",id},controlSelectors[id]);
+  // Enumerate all remaining real controls and UI regions, including mobile
+  // toolbar groups and actions not previously known to the editor.
+  for(const item of getInterfaceElements(doc)){
+   found.push({target:{kind:"extra",id:item.selector},box:mapBox(item.rect)});
+  }
   return found;
  };
  const outlines=selected.flatMap(target=>candidates().filter(c=>same(c.target,target)).slice(0,1).map(c=>c.box));
@@ -192,8 +202,18 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   // panel moves the selected group, not just the button under the pointer.
   const alreadySelected=targets.find(c=>selected.some(t=>same(t,c.target)));
   const hit=alreadySelected??
-   (event.shiftKey?targets.find(c=>c.target.kind==="panel"):targets.find(c=>c.target.kind==="control"))??targets[0];
+   (event.shiftKey?targets.find(c=>c.target.kind==="panel"):
+    targets.find(c=>c.target.kind==="extra"||c.target.kind==="control"))??targets[0];
+  const resizeHit=selected.length>0&&outlines.some(box=>
+   Math.abs(event.clientX-(box.left+box.width))<=15&&
+   Math.abs(event.clientY-(box.top+box.height))<=15);
   const additive=event.ctrlKey||event.metaKey;
+  if(resizeHit){
+   gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,before:clone(latest.current),
+    mode:"resize",targets:selected,moved:false};
+   event.preventDefault();event.stopPropagation();
+   event.currentTarget.setPointerCapture(event.pointerId);return;
+  }
   if(!hit){
    if(!additive)setSelected([]);
    gesture.current={id:event.pointerId,x:event.clientX,y:event.clientY,before:clone(latest.current),
@@ -221,14 +241,25 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   if(current.mode==="marquee"){
    setMarquee(rectFromPoints(current.x,current.y,event.clientX,event.clientY));return;
   }
-  if(current.mode!=="drag"||!current.moved)return;
+  if((current.mode!=="drag"&&current.mode!=="resize")||!current.moved)return;
   const next=clone(current.before);
+  if(current.mode==="resize"){
+   const change=(dx+dy)/250;
+   for(const target of current.targets){
+    const p=placement(next,device,target),before=placement(current.before,device,target);
+    p.scale=clamp(Math.round((before.scale+change)*100)/100,.65,1.45);
+   }
+   apply(next);return;
+  }
   const viewWidth=alternate?dimensions.width*fit:viewport.width;
   const viewHeight=alternate?dimensions.height*fit:viewport.height;
+  const step=showGrid?16:0;
+  const moveX=step?Math.round(dx/step)*step:dx;
+  const moveY=step?Math.round(dy/step)*step:dy;
   for(const target of current.targets){
    const p=placement(next,device,target);
-   p.x=clamp(Math.round((p.x+dx/Math.max(viewWidth,1)*100)*10)/10,-45,45);
-   p.y=clamp(Math.round((p.y+dy/Math.max(viewHeight,1)*100)*10)/10,-45,45);
+   p.x=clamp(Math.round((p.x+moveX/Math.max(viewWidth,1)*100)*10)/10,-45,45);
+   p.y=clamp(Math.round((p.y+moveY/Math.max(viewHeight,1)*100)*10)/10,-45,45);
   }
   apply(next);
  };
@@ -248,7 +279,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
      [...selectedNow,...unique.filter(x=>!selectedNow.some(y=>same(x,y)))]:unique);
    }
    setMarquee(null);
-  }else if(current.mode==="drag"&&current.moved){
+  }else if((current.mode==="drag"||current.mode==="resize")&&current.moved){
    record(current.before);
   }
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
@@ -263,23 +294,32 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
    <iframe ref={frame} title={"Настоящая доска Lectrus: "+dimensions.label} src={frameUrl}
     className="lektrus-layout-device-frame"
     style={{width:dimensions.width,height:dimensions.height,
-     left:(viewport.width-dimensions.width*fit)/2,top:(viewport.height-dimensions.height*fit)/2,
+     left:(viewport.width-dimensions.width*fit)/2,top:(viewport.height-96-dimensions.height*fit)/2,
      transform:`scale(${fit})`}}
     onLoad={()=>{const doc=activeDocument();if(doc)applyDraft(latest.current,device,doc);setVersion(v=>v+1)}}/>
   </div>}
+  {showGrid&&<div className="lektrus-layout-alignment-grid" aria-hidden="true"
+   style={alternate?{width:dimensions.width*fit,height:dimensions.height*fit,
+    left:(viewport.width-dimensions.width*fit)/2,
+    top:(viewport.height-96-dimensions.height*fit)/2,
+    backgroundSize:"16px 16px"}:{}}/>}
   <div className="lektrus-live-layout-hit-area" onPointerDown={pointerDown} onPointerMove={pointerMove}
    onPointerUp={pointerUp} onPointerCancel={pointerUp}
    onClickCapture={event=>{event.preventDefault();event.stopPropagation()}}
    onContextMenu={event=>event.preventDefault()} onWheelCapture={event=>event.preventDefault()}
    title="Протяните прямоугольник по пустому месту для выделения нескольких панелей. Затем перетащите группу."/>
   {outlines.map((rect,index)=><div key={index} className="lektrus-live-layout-outline" aria-hidden="true"
-   style={{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}/>)}
+   style={{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}>
+   <span className="lektrus-layout-resize-grip"/>
+  </div>)}
   {marquee&&<div className="lektrus-live-layout-marquee" aria-hidden="true" style={marquee}/>}
   <div className="lektrus-live-layout-actions">
    <div className="lektrus-live-layout-device-switch" role="group" aria-label="Версия интерфейса">
     {deviceProfiles.map(id=><button key={id} type="button" className={device===id?"is-active":""}
      aria-pressed={device===id} onClick={()=>changingDevice(id)}>{specs[id].label}</button>)}
    </div>
+   <button type="button" className={showGrid?"is-active":""} aria-pressed={showGrid}
+    onClick={()=>setShowGrid(v=>!v)} title="Сетка и привязка элементов с шагом 16 пикселей">▦ Сетка</button>
    <span className="lektrus-live-layout-actions-divider"/>
    <button type="button" onClick={undo} disabled={!past.current.length} title="Отменить последнее изменение (Ctrl+Z)">↶ Отменить</button>
    <button type="button" onClick={redo} disabled={!future.current.length} title="Вернуть отменённое (Ctrl+Y)">↷ Вернуть</button>
