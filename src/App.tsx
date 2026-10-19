@@ -17,6 +17,7 @@ import AuthScreen from "./AuthScreen";
 import GeometryInstruments from "./GeometryInstruments";
 import LektrusSubjectPicker from "./LektrusSubjectPicker";
 import LektrusInterfaceStudio from "./LektrusInterfaceStudio";
+const INTERFACE_STUDIO_BOARD_ID="00000000-0000-4000-8000-00000000a11a";
 import {LEKTRUS_SCHOOL_SUBJECTS,normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
@@ -73,7 +74,7 @@ import { redeemShareLink } from "./shareLinks";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
 import { BOARD_ROLE_LABELS, getCachedCurrentUser, getCurrentUser, logoutUser, type AuthUser } from "./authStore";
-import { boardStorageKey, getBoardForUser, getUserBoards, touchBoard, type BoardSummary } from "./boardStore";
+import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from "./boardStore";
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
@@ -1896,9 +1897,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     keyDown:(event:KeyboardEvent)=>void; keyUp:(event:KeyboardEvent)=>void; blur:()=>void;
     pointerUp:()=>void; pointerCancel:()=>void; closeContextMenu:(event:PointerEvent)=>void; pasteFromSystem:(event:ClipboardEvent)=>void;
   } | null>(null);
-  const storageKey = boardStorageKey(boardSummary.id);
+  const storageKey = layoutEditing?boardStorageKey(INTERFACE_STUDIO_BOARD_ID):boardStorageKey(boardSummary.id);
   const viewStorageKey = `${storageKey}.view`;
-  const [initial] = useState(() => loadInitial(storageKey));
+  const [initial] = useState(() => layoutEditing?
+    {data:{version:1 as const,title:"Новая доска",view:{x:0,y:0,zoom:1},items:[] as Item[]},error:""}:
+    loadInitial(storageKey));
   const [saveBlocked, setSaveBlocked] = useState(!!initial.error);
   const fileInput = useRef<HTMLInputElement>(null);
   const mediaInput = useRef<HTMLInputElement>(null);
@@ -2321,7 +2324,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   }, []);
   // Read recent server revisions once on entry, without blocking board rendering.
   useEffect(()=>{
-    if(!isRemoteBackendEnabled())return;
+    if(layoutEditing||!isRemoteBackendEnabled())return;
     let active=true;
     let previousVersion:number|null=null;
     try{
@@ -3171,6 +3174,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       : [item.id];
 
   useEffect(()=>{
+    if(layoutEditing)return;
     const channel=connectAttachmentApprovalChannel(
       boardSummary.id,
       {userId:authUser.id,name:authUser.name},
@@ -5832,9 +5836,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       applyServerDocument(row);
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
-  useEffect(() => subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id]);
+  useEffect(() => layoutEditing?()=>{}:subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id,layoutEditing]);
 
-  useEffect(() => subscribeBoardPresence(
+  useEffect(() => layoutEditing?()=>{}:subscribeBoardPresence(
     boardSummary.id,
     { userId: authUser.id, name: authUser.name, role: boardSummary.role },
     setPresenceUsers,
@@ -5842,6 +5846,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   ), [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
 
   useEffect(() => {
+    if(layoutEditing)return;
     const channel = connectBoardCursorChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
@@ -5881,6 +5886,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name]);
 
   useEffect(() => {
+    if(layoutEditing)return;
     const channel = connectBoardViewControl(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name },
@@ -5912,6 +5918,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   }, [followTeacher]);
 
   useEffect(() => {
+    if(layoutEditing)return;
     const channel = connectBoardWorkChannel(
       boardSummary.id,
       { userId: authUser.id, name: authUser.name, role: boardSummary.role },
@@ -8346,6 +8353,15 @@ export default function App() {
           return;
         }
         setAdminInspecting(false);
+        if(route.boardId===INTERFACE_STUDIO_BOARD_ID){
+          if(!isAppAdmin||new URLSearchParams(window.location.search).get("layout-editor")!=="1")
+           throw new Error("Редактор интерфейса доступен только администратору.");
+          const board:BoardSummary={id:INTERFACE_STUDIO_BOARD_ID,title:"Новая доска",
+           ownerId:authUser.id,role:"owner",createdAt:new Date().toISOString(),
+           updatedAt:new Date().toISOString()};
+          setRemoteVersion(null);setActiveBoard(board);setBoardMountKey(key=>key+1);
+          setBoardLoading(false);return;
+        }
         const board = await getBoardForUser(authUser, route.boardId);
         if (!alive) return;
         if (!board) throw new Error("Доска недоступна. Попросите владельца прислать ссылку для доступа.");
@@ -8431,7 +8447,7 @@ export default function App() {
       <>
         <Suspense fallback={<div className="board-server-overlay"><div className="board-server-card"><strong>Открываем раздел…</strong><span>Загружаем только нужный модуль.</span></div></div>}>
         {route.kind === "home" && <LectrisWorkspaceShell section={new URLSearchParams(window.location.search).get("section")||""} role={accountRole} isAdmin={isAppAdmin} name={authUser.name}>{(()=>{const section=new URLSearchParams(window.location.search).get("section");return section==="admin" && isAppAdmin
-          ? <AdminScreen user={authUser} invisible={adminInvisible} onInvisibleChange={changeAdminInvisible} adminEdit={adminEdit} onAdminEditChange={changeAdminEdit} onOpenBoard={(board)=>{setAdminInspecting(true);void openBoard(board,()=>true)}} onOpenLayout={async()=>{const boards=await getUserBoards(authUser);const own=boards.find(b=>b.ownerId===authUser.id);if(!own)throw new Error("Для редактора интерфейса нужна одна из ваших досок. Создайте доску и повторите.");navigate(`/board/${own.id}?layout-editor=1`)}} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
+          ? <AdminScreen user={authUser} invisible={adminInvisible} onInvisibleChange={changeAdminInvisible} adminEdit={adminEdit} onAdminEditChange={changeAdminEdit} onOpenBoard={(board)=>{setAdminInspecting(true);void openBoard(board,()=>true)}} onOpenLayout={async()=>{navigate(`/board/${INTERFACE_STUDIO_BOARD_ID}?layout-editor=1`)}} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} />
           : section==="students" && accountRole==="teacher"
           ? <StudentsScreen user={authUser} onBack={()=>{window.history.pushState({}, "", "/");window.dispatchEvent(new PopStateEvent("popstate"))}} onOpenBoard={(board)=>navigate(`/board/${board.id}`)} />
           : section==="assignments"
