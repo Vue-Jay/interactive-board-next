@@ -23,8 +23,7 @@ export function LektrusReactionScene({item,stage,onStageChange}:{item:Item;stage
  const matched=identifyReaction(ids,item.scienceEnvironment??"aqueous");
  const matchedCase=matched.caseData;
  const observation=stage===1&&matched.status==="reaction"?matchedCase?.observation??"none":"none";
- const reagentNames=ids.map(id=>substances.find(s=>s.id===id)?.name??id);
- const selectedSubstances=ids.map(id=>substances.find(s=>s.id===id));
+ const reagentFormulas=ids.map(id=>substances.find(s=>s.id===id)?.formula??id);
  const beforeColor=matchedCase?.beforeColor??"#bcdcf4";
  // A coloured precipitate is NOT the colour of the remaining solution.
  // Keep phase colours separate to avoid teaching the wrong observation.
@@ -36,22 +35,13 @@ export function LektrusReactionScene({item,stage,onStageChange}:{item:Item;stage
  const theme=matched.status==="reaction"?"reaction":matched.status==="none"?"none":"unknown";
  return <div className={"lektrus-reaction-scene is-"+theme}>
   <div className="lektrus-reaction-scene-head">
-   <strong>{reagentNames.length?reagentNames.join(" + "):"Выберите вещества"}</strong>
+   <strong>{reagentFormulas.length?reagentFormulas.join(" + "):"Выберите вещества"}</strong>
    <span>{conditions.find(c=>c.id===(item.scienceEnvironment??"aqueous"))?.title}</span>
   </div>
   {onStageChange&&<div className="lektrus-chem-experiment-stages" role="group" aria-label="Этап реакции">
    <button type="button" aria-pressed={stage===0} onClick={()=>onStageChange(0)}>До</button>
    <button type="button" aria-pressed={stage===1} onClick={()=>onStageChange(1)}>После</button>
   </div>}
-  <div className="lektrus-reaction-addition" aria-label="Выбранные вещества">
-   {selectedSubstances.map((reagent,index)=><div className="lektrus-reaction-addition-vial" key={ids[index]+index}>
-    <span className="lektrus-reaction-addition-index">{index+1}</span>
-    <span className="lektrus-reaction-vial-icon" aria-hidden="true"><span/></span>
-    <strong>{reagent?.formula??ids[index]}</strong>
-    <small>{reagent?.name??"Справочное вещество"}</small>
-   </div>)}
-   {!ids.length&&<small>Добавьте реагенты слева, чтобы увидеть их в модели</small>}
-  </div>
   <svg viewBox="0 0 520 270" role="img" aria-label="Качественная модель смеси, пузырьков газа и осадка">
    <defs>
     <linearGradient id="lektrus-liquid-glow" x1="0%" y1="0%" x2="100%" y2="80%">
@@ -154,12 +144,13 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
     <aside className="lektrus-reaction-reagents">
      <strong>Вещества (до 6)</strong>
      <div className="lektrus-reaction-chosen" role="group" aria-label="Выбранные реагенты">
-      {chosen.length===0?<small>Выберите два или более вещества. Для некоторых термических разложений достаточно одного.</small>:chosen.map((id,index)=>{
-       const reagent=substances.find(s=>s.id===id);
-       return <button className="lektrus-reaction-selected-chip" key={id} type="button" onClick={()=>toggle(id)} title="Убрать реагент">
-        <span className="lektrus-reaction-selected-number">{index+1}</span>
-        <span><strong>{reagent?.formula??id}</strong><small>{reagent?.name??"Добавленный реагент"}</small></span>
-        <span className="lektrus-reaction-remove" aria-hidden="true">×</span>
+      {chosen.length===0?<small>Нажмите на вещества ниже, чтобы добавить их в опыт.</small>:chosen.map(id=>{
+       const reagent=substances.find(entry=>entry.id===id);
+       const formula=reagent?.formula??id;
+       return <button className="lektrus-reaction-selected-chip" key={id} type="button"
+        onClick={()=>toggle(id)} title={"Убрать "+(reagent?.name??formula)}
+        aria-label={"Убрать реагент "+formula+" из опыта"}>
+        <strong>{formula}</strong><span className="lektrus-reaction-remove" aria-hidden="true">×</span>
        </button>;
       })}
      </div>

@@ -138,6 +138,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
    setSelected(index);setStatus("");
  };
  const handleBlank=(e:ReactPointerEvent<SVGElement>)=>{
+  if(e.button!==0)return;
   const pos=svgPoint(e);
   if(tool==="select"){setSelected(null);return;}
   if(tool==="erase")return;
@@ -164,6 +165,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   setStatus("");
  };
  const handleAtom=(e:ReactPointerEvent<SVGGElement>,index:number)=>{
+  if(e.button!==0)return;
   e.stopPropagation();e.preventDefault();
   const p=toGraph({x:(e.clientX-(svg.current?.getBoundingClientRect().left??0))*W/Math.max(1,svg.current?.getBoundingClientRect().width??W),
    y:(e.clientY-(svg.current?.getBoundingClientRect().top??0))*H/Math.max(1,svg.current?.getBoundingClientRect().height??H)});
@@ -208,6 +210,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   }
  };
  const clickBond=(e:React.PointerEvent<SVGLineElement>,index:number)=>{
+  if(e.button!==0)return;
   e.preventDefault();e.stopPropagation();
   const link=segments[index];
   if(tool==="erase"){mutate(points,segments.filter((_,i)=>i!==index));return;}
@@ -262,7 +265,14 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   <div className="lektrus-organic-canvas-scroll">
    {handwriting&&<LektrusOrganicHandwriting item={item} onChange={update=>{remember();onChange(update)}} onExit={()=>setHandwriting(false)}/>}
    <svg ref={svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Конструктор органических молекул"
-    onPointerDown={e=>{if(e.target===e.currentTarget){e.preventDefault();handleBlank(e)}}}
+    onContextMenu={e=>{e.preventDefault();e.stopPropagation();setTool("select");setDraftEnd(null);setHoverPoint(null)}}
+    onPointerDownCapture={e=>{
+     if(e.button!==2)return;
+     e.preventDefault();e.stopPropagation();
+     pointer.current=null;setDraftEnd(null);setHoverPoint(null);
+     setTool("select");setStatus("Вставка отменена. Режим выбора.");
+    }}
+    onPointerDown={e=>{if(e.button===0&&e.target===e.currentTarget){e.preventDefault();handleBlank(e)}}}
     onPointerMove={onMove} onPointerLeave={()=>setHoverPoint(null)} onPointerUp={onEnd} onPointerCancel={e=>{
       if(pointer.current?.id===e.pointerId)pointer.current=null;
       setDraftEnd(null);
@@ -270,6 +280,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
     }}
     style={{touchAction:"none"}}>
     <rect width={W} height={H} fill="#fff" onPointerDown={e=>{
+     if(e.button!==0)return;
      e.preventDefault();e.stopPropagation();handleBlank(e);}}/>
     {segments.map((edge,index)=>{
      const a=points[edge.a],b=points[edge.b];if(!a||!b)return null;

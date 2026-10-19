@@ -7,6 +7,13 @@ export const deviceProfiles=["desktop","laptop","tablet","phone"] as const;
 export type DeviceProfile=typeof deviceProfiles[number];
 export const layoutRegions=["headerLeft","headerRight","toolbar","zoom","mobileTools","selection","subjectTools"] as const;
 export type LayoutRegion=typeof layoutRegions[number];
+export const layoutControls=["select","lasso","pen","marker","eraser","subject","zoomOut","zoomValue","zoomIn","boardSettings","participants","chat"] as const;
+export type LayoutControl=typeof layoutControls[number];
+export const layoutControlNames:Record<LayoutControl,string>={
+ select:"Стрелка (выбор)",lasso:"Лассо",pen:"Карандаш",marker:"Маркер",eraser:"Ластик",
+ subject:"Предметные инструменты",zoomOut:"Уменьшить масштаб",zoomValue:"Значение масштаба",
+ zoomIn:"Увеличить масштаб",boardSettings:"Настройки доски",participants:"Участники",chat:"Чат"
+};
 export const layoutRegionNames:Record<LayoutRegion,string>={
  headerLeft:"Заголовок и переход к доскам",
  headerRight:"Кнопки верхней панели",
@@ -17,7 +24,8 @@ export const layoutRegionNames:Record<LayoutRegion,string>={
  subjectTools:"Предметные инструменты"
 };
 export type Placement={x:number;y:number;scale:number};
-export type InterfaceLayout={version:1;profiles:Record<DeviceProfile,Record<LayoutRegion,Placement>>};
+export type InterfaceLayout={version:1;profiles:Record<DeviceProfile,Record<LayoutRegion,Placement>>;
+ controls:Record<DeviceProfile,Record<LayoutControl,Placement>>};
 export type NamedInterfaceLayout={id:string;name:string;layout:InterfaceLayout};
 const cleanNumber=(value:unknown,low:number,high:number,fallback:number)=>{
  const n=typeof value==="number"?value:NaN;
@@ -25,12 +33,15 @@ const cleanNumber=(value:unknown,low:number,high:number,fallback:number)=>{
 };
 export function defaultInterfaceLayout():InterfaceLayout{
  const region=()=>Object.fromEntries(layoutRegions.map(key=>[key,{x:0,y:0,scale:1}])) as Record<LayoutRegion,Placement>;
- return {version:1,profiles:{desktop:region(),laptop:region(),tablet:region(),phone:region()}};
+ const control=()=>Object.fromEntries(layoutControls.map(key=>[key,{x:0,y:0,scale:1}])) as Record<LayoutControl,Placement>;
+ return {version:1,profiles:{desktop:region(),laptop:region(),tablet:region(),phone:region()},
+  controls:{desktop:control(),laptop:control(),tablet:control(),phone:control()}};
 }
 export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
  const normal=defaultInterfaceLayout();
  if(!value||typeof value!=="object")return normal;
  const incoming=(value as {profiles?:Record<string,unknown>}).profiles;
+ const incomingControls=(value as {controls?:Record<string,unknown>}).controls;
  for(const device of deviceProfiles){
   const entries=incoming?.[device];
   if(!entries||typeof entries!=="object")continue;
@@ -39,6 +50,18 @@ export function normalizeInterfaceLayout(value:unknown):InterfaceLayout{
    if(!raw||typeof raw!=="object")continue;
    const object=raw as Record<string,unknown>;
    normal.profiles[device][region]={
+    x:cleanNumber(object.x,-45,45,0),
+    y:cleanNumber(object.y,-45,45,0),
+    scale:cleanNumber(object.scale,.65,1.45,1)
+   };
+  }
+  const controls=incomingControls?.[device];
+  if(!controls||typeof controls!=="object")continue;
+  for(const id of layoutControls){
+   const raw=(controls as Record<string,unknown>)[id];
+   if(!raw||typeof raw!=="object")continue;
+   const object=raw as Record<string,unknown>;
+   normal.controls[device][id]={
     x:cleanNumber(object.x,-45,45,0),
     y:cleanNumber(object.y,-45,45,0),
     scale:cleanNumber(object.scale,.65,1.45,1)
@@ -83,6 +106,12 @@ export function applyInterfaceLayout(){
   root.style.setProperty("--li-"+region+"-x",placement.x+"vw");
   root.style.setProperty("--li-"+region+"-y",placement.y+"vh");
   root.style.setProperty("--li-"+region+"-scale",String(placement.scale));
+ }
+ for(const control of layoutControls){
+  const placement=documentData.controls[selected][control];
+  root.style.setProperty("--li-control-"+control+"-x",placement.x+"vw");
+  root.style.setProperty("--li-control-"+control+"-y",placement.y+"vh");
+  root.style.setProperty("--li-control-"+control+"-scale",String(placement.scale));
  }
  root.dataset.interfaceLayoutDevice=selected;
 }
