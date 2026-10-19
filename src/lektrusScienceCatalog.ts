@@ -1,7 +1,7 @@
 import type {SciencePresetId} from "./lektrusSciencePresets";
 
 export type ScienceToolId =
-  "physics-mechanics"|"physics-optics"|"physics-graphs"|"physics-circuits"|"chem-molecules"|"chem-atoms"|"chem-organic"|"chem-formulas"|"chem-experiments";
+  "physics-mechanics"|"physics-optics"|"physics-graphs"|"physics-circuits"|"chem-molecules"|"chem-organic"|"chem-formulas"|"chem-experiments";
 
 export type ScienceToolGroup={
   id:ScienceToolId; subject:"physics"|"chem";
@@ -81,11 +81,6 @@ export const scienceToolGroups:ScienceToolGroup[]=[
     {id:"chem-experiment-salt",label:"Растворение соли",hint:"Ионы в воде · до и после"},
     {id:"chem-experiment-litmus",label:"Индикатор в кислоте",hint:"Синий лакмус становится красным"},
     {id:"chem-experiment-lime",label:"Углекислый газ и известковая вода",hint:"Образование осадка CaCO₃"}
-   ]},
-  {id:"chem-atoms",subject:"chem",label:"Строение атома",
-   description:"Модели Бора, Резерфорда, Льюиса и состав атома; 118 элементов",
-   group:"Химия · атом",templates:[
-     {id:"chem-atom",label:"Модель атома",hint:"Схема ядра и оболочки"}
    ]}
 ];
 
