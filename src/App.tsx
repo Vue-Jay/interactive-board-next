@@ -7226,7 +7226,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             e.preventDefault();e.stopPropagation();
             finishEraser(null);
           }}
-          onClickCapture={(e)=>{if(Date.now()<suppressTouchClickUntil.current){e.preventDefault();e.stopPropagation();}}}
+          onClickCapture={(e)=>{
+            // A synthetic click following pinch should not open an object editor,
+            // but actual toolbar and embedded button taps must still work.
+            if((e.target as HTMLElement).closest("button,input,select,textarea,[role='button'],[role='slider'],[data-board-interactive]"))return;
+            if(Date.now()<suppressTouchClickUntil.current){e.preventDefault();e.stopPropagation();}
+          }}
           onPointerDown={(e) => {
             if((e.target as HTMLElement).closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
             if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
