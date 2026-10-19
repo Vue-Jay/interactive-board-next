@@ -758,3 +758,49 @@
  .lektrus-organic-editor-toolbar{max-height:125px;gap:5px}
  .lektrus-organic-editor-toolbar>button{min-width:45px;min-height:43px}
 }
+
+
+/* Expanded atom panel on a phone must show its diagram immediately, not after scrolling.
+   Overrides scale inherited from the table object only while the panel is open. */
+@media(max-width:850px) and (pointer:coarse){
+ .lektrus-chem-window--combined.is-expanded.is-board{
+   position:fixed!important;
+   left:max(7px,env(safe-area-inset-left,7px))!important;
+   right:max(7px,env(safe-area-inset-right,7px))!important;
+   top:calc(7px + env(safe-area-inset-top,0px))!important;
+   bottom:calc(7px + env(safe-area-inset-bottom,0px))!important;
+   width:auto!important;max-width:none!important;max-height:none!important;
+   height:auto!important;transform:none!important;
+   z-index:2147482500!important;box-sizing:border-box;
+   display:flex!important;flex-direction:column!important;
+   overflow-y:auto;gap:5px;
+   padding:10px 12px!important;
+ }
+ .lektrus-chem-window--combined.is-expanded.is-editor{
+   position:fixed!important;inset:7px!important;
+   width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;
+   transform:none!important;z-index:2147482500!important;
+   display:flex!important;flex-direction:column!important;overflow:auto;
+ }
+ .lektrus-chem-window--combined.is-expanded .lektrus-chem-window-head{order:0;flex:0 0 auto}
+ .lektrus-chem-window--combined.is-expanded .lektrus-chem-atom-toggle{order:1;flex:0 0 auto;margin-top:2px}
+ .lektrus-chem-window--combined.is-expanded .lektrus-chem-atom-panel{
+   order:2;flex:0 0 auto;display:flex!important;min-height:0;gap:6px;padding-top:3px!important;
+ }
+ .lektrus-chem-window--combined.is-expanded .lektrus-chem-atom-modes{flex:0 0 auto}
+ .lektrus-chem-window--combined.is-expanded .lektrus-chem-atom-drawing{
+   flex:0 0 auto!important;display:block!important;min-height:0!important;
+   height:min(47dvh,340px)!important;max-height:min(47dvh,340px)!important;
+   overflow:auto!important;overscroll-behavior:contain;
+ }
+ .lektrus-chem-window--combined.is-expanded .lektrus-chem-atom-drawing .lektrus-atom-svg{
+   display:block!important;width:100%!important;min-height:0!important;
+   max-height:none!important;height:auto!important;
+ }
+ .lektrus-chem-window--combined.is-expanded.is-orbital .lektrus-chem-atom-drawing{
+   height:min(49dvh,425px)!important;max-height:min(49dvh,425px)!important;
+ }
+ .lektrus-chem-window--combined.is-expanded .lektrus-chem-facts{order:3;flex:0 0 auto}
+ .lektrus-chem-window--combined.is-expanded .lektrus-chem-detail{order:4;flex:0 0 auto}
+ .lektrus-chem-window--combined.is-expanded .lektrus-chem-actions{order:5;flex:0 0 auto}
+}
