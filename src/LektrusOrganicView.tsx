@@ -7,7 +7,7 @@ export default function LektrusOrganicView({item}:{item:Item}){
  const xy=(p:{x:number;y:number})=>({x:W/2+p.x*U,y:H/2-p.y*U});
  return <div className="lektrus-organic-board-view">
   <div className="lektrus-organic-board-caption"><strong>{item.text}</strong>
-   {formula.valid&&<span>{formula.formula.replace(/([A-Za-z\)])(\d+)/g,"$1 $2")}</span>}</div>
+   {formula.valid&&<span>{formula.formula.replace(/[0-9]/g,d=>"₀₁₂₃₄₅₆₇₈₉"[Number(d)])}</span>}</div>
   <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={"Структурная формула "+item.text}>
    <rect width={W} height={H} fill="#fff"/>
    {links.map((edge,i)=>{
