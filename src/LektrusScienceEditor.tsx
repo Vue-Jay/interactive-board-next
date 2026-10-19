@@ -74,7 +74,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const molecule=group?.id==="chem-molecules"||organic;
   const organicFormula=organic?analyzeOrganicStructure(draft):null;
   const motion=group?.id==="physics-graphs";
-  const atom=group?.id==="chem-atoms";
+  const atom=draft.graphFigureId==="chem-atom";
   const circuit=group?.id==="physics-circuits";
   const optics=group?.id==="physics-optics";
   // Graphs use positive time/quantity axes; construction sketches use the centered sheet.
