@@ -44,11 +44,9 @@ export default function LektrusOrganicHandwriting({
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   setPreview([]);
   if(writing.stroke.length<2)return;
-  setStrokes(old=>{
-   const next=[...old,writing.stroke];
-   setChoice(suggestHandwriting(next));
-   return next;
-  });
+  const next=[...strokes,writing.stroke];
+  setStrokes(next);
+  setChoice(suggestHandwriting(next));
  };
  const apply=()=>{
   const points=strokes.flat();
