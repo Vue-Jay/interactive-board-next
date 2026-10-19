@@ -8224,6 +8224,9 @@ export default function App() {
   };
 
   const openBoard = useCallback(async (board: BoardSummary, isCurrent: () => boolean) => {
+    // Interface editing is a read-only view of the REAL board, not a new
+    // board session: never initialize templates or upload unsaved snapshots.
+    const editingLayout=isAppAdmin&&new URLSearchParams(window.location.search).get("layout-editor")==="1";
     setBoardLoadError("");
     setBoardLoading(true);
     try {
@@ -8236,7 +8239,7 @@ export default function App() {
         let appliedTemplate = false;
         try {
           const pendingRaw = sessionStorage.getItem("onlinerepetitor.template.apply");
-          if (pendingRaw && board.role === "owner") {
+          if (!editingLayout && pendingRaw && board.role === "owner") {
             const pending = JSON.parse(pendingRaw) as {boardId?:string;document?:DocumentData};
             if (pending.boardId === board.id && pending.document) {
               const document = parseDocument(JSON.stringify({...pending.document,title:board.title}));
@@ -8285,7 +8288,7 @@ export default function App() {
           localStorage.setItem(key, JSON.stringify(parsed));
           // Backfill a preview of migrated boards on first open, without
           // creating a remote revision or a conflict with other participants.
-          if(!cachedBoardPreview(board.id)){
+          if(!editingLayout && !cachedBoardPreview(board.id)){
             // Old boards also get their first preview in browser idle time.
             // Do not block opening a board to paint a thumbnail.
             scheduleBackgroundBoardPreview(board.id,parsed,null);
@@ -8293,7 +8296,7 @@ export default function App() {
           setRemoteVersion(remote.version);
         } else {
           const raw = localStorage.getItem(key);
-          if (raw && board.role !== "viewer") {
+          if (!editingLayout && raw && board.role !== "viewer") {
             const localDocument = parseDocument(raw);
             try {
               await ensureBoardAssets(board.id, localDocument);
@@ -8321,7 +8324,7 @@ export default function App() {
     } finally {
       if (isCurrent()) setBoardLoading(false);
     }
-  }, []);
+  }, [isAppAdmin]);
 
   useEffect(() => {
     if (!authReady || !authUser) return;
