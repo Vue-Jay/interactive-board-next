@@ -86,7 +86,7 @@
 .lektrus-layout-device-backdrop{position:fixed;inset:0;z-index:0;
  background:#eaf1f9;pointer-events:none;overflow:hidden}
 .lektrus-layout-device-frame{position:fixed;top:50%;left:50%;
- transform-origin:center center;border:0;background:#f7fbff;
+ transform-origin:top left;border:0;background:#f7fbff;
  box-shadow:0 0 0 1px #acc2dd,0 4px 30px #24437130;pointer-events:none}
 .lektrus-live-layout-marquee{position:fixed;z-index:2;pointer-events:none;
  border:1.5px solid #2f69d6;background:#3c76ec26;border-radius:2px}
