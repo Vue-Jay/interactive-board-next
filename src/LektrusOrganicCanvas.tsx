@@ -31,11 +31,11 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  const [handwriting,setHandwriting]=useState(false);
  const [draftEnd,setDraftEnd]=useState<{x:number;y:number}|null>(null);
  const [status,setStatus]=useState("");
- const undoStack=useRef<{points:Point[];segments:Bond[]}[]>([]);
- const remember=()=>{undoStack.current.push({points:structuredClone(points),segments:structuredClone(segments)});
+ const undoStack=useRef<{points:Point[];segments:Bond[];notes:NonNullable<Item["scienceOrganicAnnotations"]>}[]>([]);
+ const remember=()=>{undoStack.current.push({points:structuredClone(points),segments:structuredClone(segments),notes:structuredClone(item.scienceOrganicAnnotations??[])});
     if(undoStack.current.length>35)undoStack.current.shift();};
  const undo=()=>{const previous=undoStack.current.pop();if(previous){
-    onChange(old=>({...old,graphPoints:previous.points,graphSegments:previous.segments}));
+    onChange(old=>({...old,graphPoints:previous.points,graphSegments:previous.segments,scienceOrganicAnnotations:previous.notes}));
     setSelected(null);setStatus("");
  }};
 
@@ -227,7 +227,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
    <label><input type="checkbox" checked={carbonLabels} onChange={e=>setCarbonLabels(e.target.checked)}/> Показывать C</label>
   </div>
   <div className="lektrus-organic-canvas-scroll">
-   {handwriting&&<LektrusOrganicHandwriting item={item} onChange={onChange} onExit={()=>setHandwriting(false)}/>}
+   {handwriting&&<LektrusOrganicHandwriting item={item} onChange={update=>{remember();onChange(update)}} onExit={()=>setHandwriting(false)}/>}
    <svg ref={svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Конструктор органических молекул"
     onPointerDown={e=>{if(e.target===e.currentTarget){e.preventDefault();handleBlank(e)}}}
     onPointerMove={onMove} onPointerUp={onEnd} onPointerCancel={e=>{
