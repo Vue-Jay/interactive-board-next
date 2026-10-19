@@ -106,3 +106,16 @@
  .lektrus-live-layout-actions button{font-size:11px;padding:7px 8px;min-width:65px}
  .lektrus-live-layout-actions-divider{display:none}
 }
+
+/* The temporary alignment grid belongs exclusively to the interface studio.
+   Turning it off removes both the pattern and snapping. */
+.lektrus-layout-alignment-grid{position:fixed;inset:0;z-index:1;pointer-events:none;
+ background-image:linear-gradient(to right,#4089dc36 1px,transparent 1px),
+ linear-gradient(to bottom,#4089dc36 1px,transparent 1px);
+ background-size:16px 16px;outline:1px solid #91b5e1}
+.lektrus-live-layout-outline .lektrus-layout-resize-grip{
+ position:absolute;right:-5px;bottom:-5px;width:11px;height:11px;
+ border:2px solid white;border-radius:3px;background:#2c6cd7;
+ box-shadow:0 0 0 1px #2c6cd7;pointer-events:none}
+.lektrus-live-layout-device-switch button.is-active,
+.lektrus-live-layout-actions>button.is-active{background:#dbeafe;color:#154eac;border-color:#91b4e9}
