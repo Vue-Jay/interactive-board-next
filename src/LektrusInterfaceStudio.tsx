@@ -1,4 +1,5 @@
-import {useRef,useState,type PointerEvent} from "react";
+import {useRef,useState,type PointerEvent,type ReactNode} from "react";
+import {createPortal} from "react-dom";
 import {
  currentDeviceProfile,defaultInterfaceLayout,deviceProfiles,layoutRegions,layoutRegionNames,
  normalizeInterfaceLayout,readInterfaceLayout,readInterfaceTemplates,saveInterfaceLayout,
@@ -13,8 +14,49 @@ const labels:Record<DeviceProfile,string>={
  desktop:"ПК · 1200+ px",laptop:"Ноутбук · 901–1199 px",
  tablet:"Планшет · 601–900 px",phone:"Телефон · до 600 px"
 };
+
+const previewGlyphs:Record<string,ReactNode>={
+ select:<path d="M4.5 3.5 18.8 11.4l-6.5 1.2-2.7 6.1L4.5 3.5Z"/>,
+ lasso:<><path strokeDasharray="3 2" d="M18.5 9c0 3.5-3.5 6-7.5 6S3.5 13.5 3.5 11s3.5-6 8-6 7 1.5 7 4Z"/><path d="M12 15c0 3 2 4 5 3"/></>,
+ pen:<><path d="M4 20l4.8-1.2 10-10a2.2 2.2 0 0 0-3.2-3.2l-10 10L4 20Z"/><path d="m13.5 8 3 3"/></>,
+ marker:<><path d="m4.5 15.6 9.9-10a2 2 0 0 1 2.8 0l2 2a2 2 0 0 1 0 2.8L9.3 20H4.5Z"/><path d="M3 21h12"/></>,
+ eraser:<><path d="m4 12 8-8a2 2 0 0 1 3 0l5 5a2 2 0 0 1 0 3l-7 7H9l-5-4a2 2 0 0 1 0-3Z"/><path d="m9 8 7 7M12 19h9"/></>,
+ connector:<><path d="M4 12h16m-5-5 5 5-5 5"/></>,
+ text:<><path d="M4 5h16M7 5v3m10-3v3M12 6v13M8 19h8"/></>,
+ shape:<><rect x="3" y="4" width="9" height="9" rx="1"/><circle cx="17" cy="9" r="4"/><path d="m9 21 4-6 4 6Z"/></>,
+ media:<><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="2"/><path d="m4 17 5-5 4 4 3-3 4 4"/></>,
+ subject:<><path d="M3 5.5Q8 4 12 7q4-3 9-1.5v13q-5-1.5-9 1.5-4-3-9-1.5Z"/><path d="M12 7v13M6 10h3m6 0h3"/></>,
+ table:<><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 10h16M10 4v16"/></>,
+ comment:<><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 3V6a2 2 0 0 1 1-2Z"/><path d="M8 9h9M8 13h6"/></>,
+ zoom:<><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></>,
+ settings:<><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2.4 2.4m9.2 9.2L19 19M19 5l-2.4 2.4M7.4 16.6 5 19"/></>,
+ more:<><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></>,
+ undo:<path d="M8 7 4 11l4 4M5 11h8a6 6 0 0 1 6 6"/>,
+ redo:<path d="m16 7 4 4-4 4M19 11h-8a6 6 0 0 0-6 6"/>,
+ lock:<><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></>,
+};
+function PreviewGlyph({name}:{name:string}){
+ return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{previewGlyphs[name]??previewGlyphs.shape}</svg>;
+}
+const previewToolIds=["select","lasso","pen","marker","eraser","connector","text","shape","table","media","subject","comment","more","settings"] as const;
+const previewOrigin:Record<DeviceProfile,Record<LayoutRegion,{x:number;y:number}>>={
+ desktop:{
+  headerLeft:{x:1,y:0},headerRight:{x:71,y:0},toolbar:{x:1,y:11},
+  zoom:{x:2,y:90},mobileTools:{x:28,y:90},selection:{x:40,y:78},subjectTools:{x:7,y:55}},
+ laptop:{
+  headerLeft:{x:1,y:0},headerRight:{x:65,y:0},toolbar:{x:1,y:12},
+  zoom:{x:2,y:89},mobileTools:{x:28,y:90},selection:{x:32,y:78},subjectTools:{x:8,y:56}},
+ tablet:{
+  headerLeft:{x:1,y:0},headerRight:{x:64,y:0},toolbar:{x:1,y:11},
+  zoom:{x:2,y:87},mobileTools:{x:25,y:91},selection:{x:35,y:76},subjectTools:{x:8,y:56}},
+ phone:{
+  headerLeft:{x:1,y:0},headerRight:{x:59,y:0},toolbar:{x:1,y:13},
+  zoom:{x:2,y:81},mobileTools:{x:18,y:90},selection:{x:28,y:72},subjectTools:{x:8,y:55}}
+};
+
 const copy=(v:InterfaceLayout):InterfaceLayout=>structuredClone(v);
-export default function LektrusInterfaceStudio(){
+export default function LektrusInterfaceStudio({onClose}:{onClose?:()=>void}={}){
  const [device,setDevice]=useState<DeviceProfile>(currentDeviceProfile);
  const [layout,setLayout]=useState<InterfaceLayout>(readInterfaceLayout);
  const [selected,setSelected]=useState<LayoutRegion>("toolbar");
@@ -40,7 +82,7 @@ export default function LektrusInterfaceStudio(){
  };
  const undo=()=>{const prev=past[past.length-1];if(!prev)return;setPast(x=>x.slice(0,-1));setFuture(x=>[...x.slice(-29),copy(layout)]);setLayout(copy(prev));setDirty(true)};
  const redo=()=>{const next=future[future.length-1];if(!next)return;setFuture(x=>x.slice(0,-1));setPast(x=>[...x.slice(-29),copy(layout)]);setLayout(copy(next));setDirty(true)};
- const beginDrag=(event:PointerEvent<HTMLButtonElement>,region:LayoutRegion)=>{
+ const beginDrag=(event:PointerEvent<HTMLDivElement>,region:LayoutRegion)=>{
   if(event.button!==0)return;
   const stage=event.currentTarget.closest(".li-studio-stage");
   if(!(stage instanceof HTMLElement))return;
@@ -107,67 +149,134 @@ export default function LektrusInterfaceStudio(){
  };
  const loadTemplate=(template:NamedInterfaceLayout)=>{update(copy(template.layout));setNotice("Шаблон открыт для редактирования. Примените его, когда будете готовы.")};
  const discard=()=>{setLayout(readInterfaceLayout());setPast([]);setFuture([]);setDirty(false);setNotice("Несохранённые изменения отменены.")};
- return <div className="li-studio">
-  <div className="li-studio-intro"><div><h2>Конструктор интерфейса доски</h2>
-   <p>Перетаскивайте панели в макете, меняйте масштаб и сохраняйте варианты для разных устройств. Макеты меняют только интерфейс, не объекты на доске.</p></div>
-   <span className="li-studio-local">Локальные настройки · перенос между устройствами через JSON</span></div>
-  <nav className="li-studio-devices" aria-label="Профиль устройства">
-   {deviceProfiles.map(id=><button key={id} type="button" aria-pressed={device===id}
-    className={device===id?"active":""} onClick={()=>{setDevice(id);setSelected("toolbar")}}>{labels[id]}</button>)}
-  </nav>
-  <div className="li-studio-workspace">
-   <div className="li-studio-stage-wrapper">
-    <div className={"li-studio-stage li-stage-"+device} aria-label="Интерактивный макет интерфейса">
-     <div className="li-stage-board"><span>Доска Lectrus</span><small>Перетаскивайте блоки</small></div>
-     {layoutRegions.map(region=>{
-      const p=layout.profiles[device][region],start=starts[region];
-      return <button key={region} type="button" className={"li-stage-panel "+(region===selected?"active":"")}
-       title={layoutRegionNames[region]} aria-label={"Переместить "+layoutRegionNames[region]}
-       style={{left:(start.x+p.x)+"%",top:(start.y+p.y)+"%",scale:String(p.scale)}}
-       onPointerDown={e=>beginDrag(e,region)} onPointerMove={moveDrag} onPointerUp={endDrag}
-       onPointerCancel={endDrag}>{region==="toolbar"?"✎  ▧  ◯":region==="zoom"?"−  100%  +":region==="mobileTools"?"◁  ✎  +":region==="selection"?"↶  ↷  ⋯":region==="subjectTools"?"⚗  ∑  ▱":region==="headerLeft"?"← Доски   Lectrus":"⚙  ♧  ⋯"}<small>{layoutRegionNames[region]}</small></button>;
-     })}
-    </div>
-    <small>Рамка предварительного просмотра показывает расположение групп, а не реальный масштаб элементов. Внешний вид применится к доске после сохранения.</small>
+
+ const [templatesOpen,setTemplatesOpen]=useState(false);
+ const preview=(region:LayoutRegion,body:ReactNode,extraClass="")=>{
+  if(region==="mobileTools" && device!=="phone"&&device!=="tablet")return null;
+  const p=layout.profiles[device][region],base=previewOrigin[device][region];
+  const style={left:`${base.x+p.x}%`,top:`${base.y+p.y}%`,scale:String(p.scale)} as const;
+  return <div key={region} role="button" tabIndex={0}
+   data-region={region} aria-label={"Переместить "+layoutRegionNames[region]}
+   title={layoutRegionNames[region]+" · перетащить"}
+   className={"li-preview-region li-preview-"+region+" "+extraClass+(selected===region?" active":"")}
+   style={style}
+   onPointerDown={e=>beginDrag(e,region)} onPointerMove={moveDrag}
+   onPointerUp={endDrag} onPointerCancel={endDrag}
+   onKeyDown={e=>{
+    const delta=e.shiftKey?5:1;
+    if(e.key==="ArrowLeft"||e.key==="ArrowRight"||e.key==="ArrowUp"||e.key==="ArrowDown"){
+     e.preventDefault();setSelected(region);
+     if(e.key==="ArrowLeft")patch(region,{x:p.x-delta});
+     if(e.key==="ArrowRight")patch(region,{x:p.x+delta});
+     if(e.key==="ArrowUp")patch(region,{y:p.y-delta});
+     if(e.key==="ArrowDown")patch(region,{y:p.y+delta});
+    }else if(e.key==="Enter"||e.key===" "){e.preventDefault();setSelected(region)}
+   }}>
+   {body}
+  </div>;
+ };
+ const compact=device==="phone"||device==="tablet";
+ const stage=<div className={"li-studio-stage li-stage-"+device} aria-label="Редактируемый интерфейс доски Lectrus">
+  <div className="li-mock-surface" aria-hidden="true"/>
+  <div className="li-mock-board-label" aria-hidden="true">Макет доски · инструменты отключены</div>
+  <div className="li-mock-header-bg"/>
+  {preview("headerLeft",<div className="li-mock-top-left">
+   <span className="li-mock-back">← Доски</span>
+   <strong>{compact?"Доска":"Новая доска"}</strong>
+   {!compact&&<span className="li-mock-subject">Предмет&nbsp; <b>Химия⌄</b></span>}
+  </div>)}
+  {preview("headerRight",<div className="li-mock-top-right">
+   <span><PreviewGlyph name="settings"/></span>
+   <span className="li-mock-online">● 1</span>
+   <span><PreviewGlyph name="comment"/></span>
+   <span><PreviewGlyph name="more"/></span>
+  </div>)}
+  {preview("toolbar",<div className="li-mock-toolbar">
+   {previewToolIds.filter(id=>id!=="subject").map((id,i)=>
+    <span key={id} className={i===0?"chosen":""}><PreviewGlyph name={id}/></span>)}
+  </div>)}
+  {preview("subjectTools",<div className="li-mock-subject-button">
+   <PreviewGlyph name="subject"/>
+  </div>)}
+  {preview("zoom",<div className="li-mock-zoom">
+   <span><PreviewGlyph name="zoom"/></span><span>78%</span><span>⊕</span><span>▦</span>
+  </div>)}
+  {preview("mobileTools",<div className="li-mock-mobile-dock">
+   {["select","pen","marker","eraser","subject","more"].map(id=><span key={id}><PreviewGlyph name={id}/></span>)}
+  </div>)}
+  {preview("selection",<div className="li-mock-selection">
+   <span><PreviewGlyph name="undo"/></span><span><PreviewGlyph name="redo"/></span>
+   <span>▱</span><span><PreviewGlyph name="lock"/></span><span><PreviewGlyph name="more"/></span>
+  </div>)}
+  <div className="li-mock-minimap" aria-hidden="true"><small>НАВИГАЦИЯ</small><div/></div>
+  <div className="li-mock-status" aria-hidden="true">Сейчас: Выбрать · ЛКМ — выделение областью</div>
+  <span className="li-mock-editor-watermark" aria-hidden="true">РЕДАКТОР ИНТЕРФЕЙСА</span>
+ </div>;
+ const interfacePage=<div className="li-editor-fullscreen" role="dialog" aria-modal="true" aria-label="Визуальный конструктор интерфейса Lectrus">
+  <div className="li-editor-top">
+   <div className="li-editor-top-start">
+    <button type="button" className="li-editor-back" onClick={onClose}>← Администрирование</button>
+    <strong>Редактор интерфейса</strong><span className="li-editor-hint">Перетаскивайте панели прямо на доске</span>
    </div>
-   <aside className="li-studio-inspector">
-    <h3>Выбранная панель</h3>
-    <select value={selected} onChange={e=>setSelected(e.target.value as LayoutRegion)}
-     aria-label="Выбрать панель">{layoutRegions.map(id=><option key={id} value={id}>{layoutRegionNames[id]}</option>)}</select>
-    <label>Сдвиг по горизонтали <span>{placement.x}% экрана</span>
-     <input type="range" min="-45" max="45" step=".5" value={placement.x} onChange={e=>patch(selected,{x:Number(e.target.value)})}/></label>
-    <label>Сдвиг по вертикали <span>{placement.y}% экрана</span>
-     <input type="range" min="-45" max="45" step=".5" value={placement.y} onChange={e=>patch(selected,{y:Number(e.target.value)})}/></label>
-    <label>Размер панели <span>{Math.round(placement.scale*100)}%</span>
+   <div className="li-editor-actions">
+    <button type="button" onClick={undo} disabled={!past.length} title="Отменить">↶</button>
+    <button type="button" onClick={redo} disabled={!future.length} title="Вернуть">↷</button>
+    <button type="button" onClick={discard} title="Вернуть сохранённую раскладку">Сброс</button>
+    <button type="button" onClick={()=>setTemplatesOpen(v=>!v)} aria-pressed={templatesOpen}>Шаблоны</button>
+    <button type="button" className="li-editor-save" onClick={apply}>{dirty?"Сохранить":"Сохранено"}</button>
+   </div>
+  </div>
+  <div className="li-editor-body">
+   <div className="li-editor-canvas">
+    <nav className="li-editor-devices" aria-label="Разрешение доски">
+     {deviceProfiles.map(id=><button key={id} type="button" className={device===id?"active":""}
+      aria-pressed={device===id} onClick={()=>{setDevice(id);setSelected("toolbar")}}>{labels[id]}</button>)}
+    </nav>
+    <div className="li-editor-board-container">{stage}</div>
+    <p className="li-editor-canvas-note">Это внешний вид доски. Рисование, добавление и удаление объектов здесь отключены. Выделите панель и перетащите её на новое место.</p>
+   </div>
+   <aside className="li-editor-sidebar">
+    <div className="li-editor-sidebar-head"><strong>Параметры интерфейса</strong><small>{labels[device]}</small></div>
+    <label>Элемент
+     <select value={selected} onChange={e=>setSelected(e.target.value as LayoutRegion)}
+      aria-label="Редактируемый элемент">{layoutRegions.map(id=><option key={id} value={id}>{layoutRegionNames[id]}</option>)}</select>
+    </label>
+    <label>Горизонталь <output>{placement.x}%</output>
+     <input type="range" min="-45" max="45" step=".5" value={placement.x} onChange={e=>patch(selected,{x:Number(e.target.value)})}/>
+    </label>
+    <label>Вертикаль <output>{placement.y}%</output>
+     <input type="range" min="-45" max="45" step=".5" value={placement.y} onChange={e=>patch(selected,{y:Number(e.target.value)})}/>
+    </label>
+    <label>Размер <output>{Math.round(placement.scale*100)}%</output>
      <input type="range" min="65" max="145" step="5" value={Math.round(placement.scale*100)}
-      onChange={e=>patch(selected,{scale:Number(e.target.value)/100})}/></label>
-    <div className="li-studio-inspector-actions"><button onClick={()=>patch(selected,{x:0,y:0,scale:1})}>Сбросить панель</button>
-     <button onClick={resetDevice}>Сбросить устройство</button></div>
-    <p>Профили переключаются автоматически по ширине экрана и типу указателя. Изменения в одном профиле не затрагивают остальные.</p>
+      onChange={e=>patch(selected,{scale:Number(e.target.value)/100})}/>
+    </label>
+    <div className="li-editor-reset-row"><button type="button" onClick={()=>patch(selected,{x:0,y:0,scale:1})}>Сбросить элемент</button>
+     <button type="button" onClick={resetDevice}>Сбросить устройство</button></div>
+    <p>Каждое разрешение сохраняется отдельно. Перемещаются сами панели, не содержимое урока.</p>
+    {notice&&<div className="li-editor-notice" role="status">{notice}</div>}
    </aside>
   </div>
-  <div className="li-studio-bar">
-   <button type="button" disabled={!past.length} onClick={undo}>↶ Отменить</button>
-   <button type="button" disabled={!future.length} onClick={redo}>↷ Вернуть</button>
-   <button type="button" onClick={discard}>Откатить к сохранённому</button>
-   <button type="button" className="students-primary" onClick={apply}>{dirty?"Применить изменения":"Сохранить макеты"}</button>
-  </div>
-  <div className="li-studio-templates">
-   <div><h3>Шаблоны и перенос настроек</h3>
-    <p>Шаблон содержит сразу четыре версии: ПК, ноутбук, планшет и телефон.</p></div>
-   <div className="li-studio-template-actions">
-    <input value={name} onChange={e=>setName(e.target.value)} placeholder="Название нового шаблона" maxLength={60} aria-label="Название шаблона"/>
-    <button type="button" onClick={createTemplate}>Сохранить шаблон</button>
+  {templatesOpen&&<div className="li-editor-templates" role="dialog" aria-label="Сохранённые шаблоны интерфейса">
+   <header><strong>Шаблоны раскладки</strong><button type="button" onClick={()=>setTemplatesOpen(false)} aria-label="Закрыть шаблоны">×</button></header>
+   <p>Шаблон включает все четыре профиля устройств. Настройки сохраняются в браузере, а JSON можно перенести на другой компьютер.</p>
+   <div className="li-editor-template-create">
+    <input aria-label="Название шаблона" value={name} onChange={e=>setName(e.target.value)} placeholder="Название шаблона" maxLength={60}/>
+    <button type="button" onClick={createTemplate}>+ Создать</button>
+   </div>
+   {templates.map(template=><div className="li-editor-template-row" key={template.id}>
+    <strong>{template.name}</strong>
+    <button onClick={()=>{loadTemplate(template);setTemplatesOpen(false)}}>Применить</button>
+    <button title="Удалить шаблон" onClick={()=>{const remaining=templates.filter(t=>t.id!==template.id);setTemplates(remaining);saveInterfaceTemplates(remaining)}}>×</button>
+   </div>)}
+   <div className="li-editor-template-create">
     <button type="button" onClick={exportLayout}>Экспорт JSON</button>
     <button type="button" onClick={()=>input.current?.click()}>Импорт JSON</button>
     <input ref={input} type="file" hidden accept=".json,application/json" onChange={e=>{
      const file=e.target.files?.[0];e.target.value="";if(file)void importLayout(file);
     }}/>
    </div>
-   {templates.length>0&&<div className="li-studio-template-list">{templates.map(template=>
-    <div key={template.id}><strong>{template.name}</strong><button onClick={()=>loadTemplate(template)}>Загрузить</button>
-     <button aria-label={"Удалить "+template.name} onClick={()=>{const remaining=templates.filter(t=>t.id!==template.id);setTemplates(remaining);saveInterfaceTemplates(remaining)}}>×</button></div>)}</div>}
-  </div>
-  {notice&&<p className="li-studio-notice" role="status">{notice}</p>}
+  </div>}
  </div>;
+ return createPortal(interfacePage,document.body);
 }
