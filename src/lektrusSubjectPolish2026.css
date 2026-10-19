@@ -926,3 +926,73 @@
  .lektrus-reaction-scene{gap:5px}
  .lektrus-reaction-disclaimer{font-size:9px}
 }
+
+
+/* Full work area for the chemical skeleton tool. All tool buttons are visible. */
+.lektrus-organic-overlay{
+ position:fixed;inset:0;z-index:2147482500;display:flex;
+ align-items:center;justify-content:center;
+ padding:clamp(5px,1vw,14px);box-sizing:border-box;background:#13294896;
+}
+.lektrus-organic-panel{
+ width:min(1180px,100%);height:min(830px,97dvh);min-height:0;
+ box-sizing:border-box;display:flex;flex-direction:column;gap:7px;
+ padding:12px;border:1px solid #c9d9ef;border-radius:16px;
+ background:#fff;box-shadow:0 17px 45px #10284055;overflow:hidden;color:#294a73;
+}
+.lektrus-organic-panel>header{display:flex;align-items:center;justify-content:space-between;gap:10px;
+ padding-bottom:6px;border-bottom:1px solid #e3edf7}
+.lektrus-organic-panel>header>div{display:flex;flex-direction:column;gap:3px}
+.lektrus-organic-panel>header strong{font-size:16px}
+.lektrus-organic-panel>header small{font-size:11px;color:#7689a2}
+.lektrus-organic-panel>header button{width:34px;min-width:34px;height:34px;font-size:24px;
+ border:1px solid #d6e3f2;border-radius:8px;color:#6580a1;background:#f6f9fd}
+.lektrus-organic-panel .lektrus-organic-name{display:flex;align-items:center;gap:10px;
+ color:#607b99;font-size:12px}
+.lektrus-organic-panel .lektrus-organic-name input{flex:1;min-width:0;
+ padding:7px 9px;border:1px solid #d2e1f1;border-radius:8px;font-size:13px}
+.lektrus-organic-panel>main{min-height:0;flex:1 1 auto;overflow:hidden}
+.lektrus-organic-panel>footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;
+ padding-top:7px;border-top:1px solid #e4edf6}
+.lektrus-organic-panel>footer>span{margin-right:auto;color:#4673a3;font-weight:700}
+.lektrus-organic-panel>footer>button{border:1px solid #c4d7ea;border-radius:8px;
+ background:#f5f9ff;padding:8px 13px;min-height:37px;color:#3b5e85;font-weight:750;cursor:pointer}
+.lektrus-organic-panel>footer>button.primary{color:#fff;background:#305dbc;border-color:#305dbc}
+.lektrus-organic-panel .lektrus-organic-editor-toolbar{
+ max-height:unset!important;min-height:0!important;overflow:visible!important;
+ display:flex;align-content:flex-start;flex:0 0 auto;flex-wrap:wrap;gap:5px;
+}
+.lektrus-organic-panel .lektrus-organic-editor-toolbar>button{
+ min-height:39px;min-width:39px;padding:5px 8px;flex:0 0 auto;
+}
+.lektrus-organic-panel .lektrus-organic-canvas-scroll{
+ position:relative;min-height:0;flex:1 1 auto;
+}
+.lektrus-organic-handwriting{
+ position:absolute;inset:0;z-index:5;display:flex;
+ flex-direction:column;align-items:stretch;
+ background:#ffffffb9;touch-action:none;
+}
+.lektrus-organic-handwriting>svg{width:100%;height:100%;min-height:80px;
+ flex:1 1 auto;touch-action:none;cursor:crosshair}
+.lektrus-organic-handwrite-controls{display:flex;flex-direction:column;gap:4px;
+ flex:0 0 auto;padding:7px;border:1px solid #d6e6f6;border-radius:8px;
+ background:#f9fbff;color:#436489;font-size:11px}
+.lektrus-organic-handwrite-controls>div{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.lektrus-organic-handwrite-controls label{display:flex;align-items:center;gap:6px;font-size:11px}
+.lektrus-organic-handwrite-controls select{min-height:34px;max-width:175px;
+ border:1px solid #b5cce6;background:#fff;border-radius:6px;padding:4px}
+.lektrus-organic-handwrite-controls button{border:1px solid #b8cee8;background:#edf5ff;
+ border-radius:7px;color:#315c91;min-height:34px;padding:5px 9px;cursor:pointer;touch-action:manipulation}
+.lektrus-organic-handwrite-controls button:disabled{opacity:.5}
+@media(max-width:950px),(pointer:coarse){
+ .lektrus-organic-panel{height:calc(100dvh - 8px);padding:7px;gap:4px}
+ .lektrus-organic-panel .lektrus-organic-editor-toolbar{gap:3px;max-height:30dvh!important;
+  overflow-y:auto!important}
+ .lektrus-organic-panel .lektrus-organic-editor-toolbar>button{min-height:36px;min-width:36px}
+ .lektrus-organic-panel .lektrus-organic-name input{min-height:30px}
+ .lektrus-organic-panel>footer{gap:4px}
+ .lektrus-organic-panel>footer>button{padding:7px 9px}
+ .lektrus-organic-handwrite-controls{padding:4px}
+ .lektrus-organic-handwrite-controls>div{gap:3px}
+}
