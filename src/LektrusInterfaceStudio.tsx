@@ -269,11 +269,23 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   if(current.mode==="marquee"){
    const area=rectFromPoints(current.x,current.y,event.clientX,event.clientY);
    if(area.width>5&&area.height>5){
-    const intersected=candidates().filter(c=>intersects(area,c.box));
-    // Selecting a panel also moves its child controls; avoid doubling the offset.
-    const chosen=intersected.some(c=>c.target.kind==="panel")?
-     intersected.filter(c=>c.target.kind==="panel"):intersected;
-    const unique=chosen.filter((item,index,all)=>all.findIndex(x=>same(item.target,x.target))===index)
+    const intersected=candidates().filter(c=>intersects(area,c.box)&&
+     c.box.left+c.box.width/2>=area.left&&
+     c.box.left+c.box.width/2<=area.left+area.width&&
+     c.box.top+c.box.height/2>=area.top&&
+     c.box.top+c.box.height/2<=area.top+area.height);
+    // Prefer the smallest real UI pieces inside the marquee. Selecting the
+    // whole toolbar as an ancestor would otherwise exclude every button.
+    const leaves=intersected.filter(item=>!intersected.some(other=>
+     !same(item.target,other.target)&&
+     item.box.width*item.box.height>other.box.width*other.box.height*1.05&&
+     other.box.left>=item.box.left-2&&other.box.top>=item.box.top-2&&
+     other.box.left+other.box.width<=item.box.left+item.box.width+2&&
+     other.box.top+other.box.height<=item.box.top+item.box.height+2));
+    const unique=leaves.filter((item,index,all)=>all.findIndex(x=>
+     same(item.target,x.target)||
+     (Math.abs(item.box.left-x.box.left)<2&&Math.abs(item.box.top-x.box.top)<2&&
+      Math.abs(item.box.width-x.box.width)<2&&Math.abs(item.box.height-x.box.height)<2))===index)
      .map(item=>item.target);
     setSelected(selectedNow=>event.ctrlKey||event.metaKey?
      [...selectedNow,...unique.filter(x=>!selectedNow.some(y=>same(x,y)))]:unique);
