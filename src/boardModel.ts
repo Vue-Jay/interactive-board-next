@@ -210,7 +210,9 @@ const binding = (v: unknown): v is ConnectorBinding => !!v && typeof v === "obje
  * subject diagrams rendered as a generic coordinate plane. */
 const persistedGraphKeys = [
   "graphPurpose","graphFigureId","scienceCircuit","scienceAtomModel",
-  "sciencePeriodicHighlights","sciencePeriodicShowNames",
+  "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
+  "scienceExperimentStage","scienceOrganicAnnotations","scienceReactionConditions",
+  "scienceReagents","scienceEnvironment",
   "graphRotationX","graphRotationY","graphParallelMarks",
   "graphAxisMode","graphIntervalStartClosed","graphIntervalEndClosed",
   "graphType","graphExpression","graphConnectPoints",
