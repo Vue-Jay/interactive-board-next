@@ -82,8 +82,8 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
  const [layout,setLayout]=useState<InterfaceLayout>(readInterfaceLayout);
  const [device,setDevice]=useState<DeviceProfile>(currentDeviceProfile);
  const [selected,setSelected]=useState<Target|null>(null);
- const [,setHistory]=useState<InterfaceLayout[]>([]);
- const [,setRedoStack]=useState<InterfaceLayout[]>([]);
+ const history=useRef<InterfaceLayout[]>([]);
+ const redoStack=useRef<InterfaceLayout[]>([]);
  const [hint,setHint]=useState("");
  const [selectionBox,setSelectionBox]=useState<DOMRect|null>(null);
  const drag=useRef<PointerDrag|null>(null);
@@ -114,20 +114,14 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   catch{setHint("Не удалось сохранить макет в браузере")}
  };
  const undo=useCallback(()=>{
-  setHistory(previous=>{
-   if(!previous.length)return previous;
-   const snapshot=previous[previous.length-1];
-   setRedoStack(next=>[...next.slice(-49),clone(latest.current)]);
-   commitDraft(clone(snapshot));return previous.slice(0,-1);
-  });
+  const snapshot=history.current.pop();if(!snapshot)return;
+  redoStack.current=[...redoStack.current.slice(-49),clone(latest.current)];
+  commitDraft(clone(snapshot));
  },[commitDraft]);
  const redo=useCallback(()=>{
-  setRedoStack(previous=>{
-   if(!previous.length)return previous;
-   const snapshot=previous[previous.length-1];
-   setHistory(next=>[...next.slice(-49),clone(latest.current)]);
-   commitDraft(clone(snapshot));return previous.slice(0,-1);
-  });
+  const snapshot=redoStack.current.pop();if(!snapshot)return;
+  history.current=[...history.current.slice(-49),clone(latest.current)];
+  commitDraft(clone(snapshot));
  },[commitDraft]);
  useEffect(()=>{
   const key=(event:KeyboardEvent)=>{
@@ -143,7 +137,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
     const next=clone(original);
     const p=targetValue(next,currentDeviceProfile(),selected);
     p.scale=clamp(Math.round((p.scale+(event.key==="-"?-.05:.05))*100)/100,.65,1.45);
-    setHistory(stack=>[...stack.slice(-49),original]);setRedoStack([]);
+    history.current=[...history.current.slice(-49),original];redoStack.current=[];
     commitDraft(next);return;
    }
    if(event.key==="Escape"){event.preventDefault();event.stopImmediatePropagation();cancel();return}
@@ -180,7 +174,7 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
   const current=drag.current;
   if(!current||e.pointerId!==current.id)return;
   if(current.moved){
-   setHistory(previous=>[...previous.slice(-49),current.previous]);setRedoStack([]);
+   history.current=[...history.current.slice(-49),current.previous];redoStack.current=[];
   }
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   drag.current=null;
