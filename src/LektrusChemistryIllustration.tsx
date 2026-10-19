@@ -1,6 +1,7 @@
 import {useEffect,useState} from "react";
 import type {Item} from "./boardModel";
 import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
+import {LektrusReactionScene} from "./LektrusReactionLab";
 
 export const isChemicalIllustration=(item:Item)=>/^(chem-formula-|chem-experiment-)/.test(item.graphFigureId??"");
 export const chemicalFormulaParts=(value:string)=>value.split(/([A-Z][a-z]?|\)|\])([0-9]+)/g);
@@ -57,6 +58,7 @@ export default function LektrusChemistryIllustration({item,onStageChange}:{
  useEffect(()=>setLocalStage(item.scienceExperimentStage??0),[item.scienceExperimentStage,item.id]);
  const stage=onStageChange?(item.scienceExperimentStage??0):localStage;
  const setStage=(next:0|1)=>onStageChange?onStageChange(next):setLocalStage(next);
+ if(item.graphFigureId==="chem-experiment-free")return <LektrusReactionScene item={item} stage={stage} onStageChange={onStageChange}/>;
  if(!experiment)return <div className="lektrus-chem-formula-sheet">
   <strong>{item.text}</strong>
   <LektrusChemicalEquationTypeset expression={item.graphExpression??""} conditions={item.scienceReactionConditions}/>
