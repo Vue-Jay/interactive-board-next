@@ -188,7 +188,11 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
    const r=c.box;
    return event.clientX>=r.left&&event.clientX<=r.left+r.width&&event.clientY>=r.top&&event.clientY<=r.top+r.height;
   }).sort((a,b)=>a.box.width*a.box.height-b.box.width*b.box.height);
-  const hit=(event.shiftKey?targets.find(c=>c.target.kind==="panel"):targets.find(c=>c.target.kind==="control"))??targets[0];
+  // When a selected panel contains buttons, dragging any point inside that
+  // panel moves the selected group, not just the button under the pointer.
+  const alreadySelected=targets.find(c=>selected.some(t=>same(t,c.target)));
+  const hit=alreadySelected??
+   (event.shiftKey?targets.find(c=>c.target.kind==="panel"):targets.find(c=>c.target.kind==="control"))??targets[0];
   const additive=event.ctrlKey||event.metaKey;
   if(!hit){
    if(!additive)setSelected([]);
@@ -259,7 +263,8 @@ export default function LektrusInterfaceStudio({onClose}:{onClose:()=>void}){
    <iframe ref={frame} title={"Настоящая доска Lectrus: "+dimensions.label} src={frameUrl}
     className="lektrus-layout-device-frame"
     style={{width:dimensions.width,height:dimensions.height,
-     transform:`translate(-50%,-50%) scale(${fit})`}}
+     left:(viewport.width-dimensions.width*fit)/2,top:(viewport.height-dimensions.height*fit)/2,
+     transform:`scale(${fit})`}}
     onLoad={()=>{const doc=activeDocument();if(doc)applyDraft(latest.current,device,doc);setVersion(v=>v+1)}}/>
   </div>}
   <div className="lektrus-live-layout-hit-area" onPointerDown={pointerDown} onPointerMove={pointerMove}
