@@ -25,3 +25,5 @@ jobs:
         run: npm run build
       - name: School geometry regression
         run: node scripts/test-school-geometry.mjs
+      - name: Subject tools and experiment persistence regression
+        run: node scripts/test-lektrus-subject-persistence.mjs
