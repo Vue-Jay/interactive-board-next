@@ -723,3 +723,18 @@
  .lektrus-organic-footer{padding:6px 8px}
  .lektrus-chem-experiment-legend{gap:7px}
 }
+
+
+/* Keep zoom, undo and drawing choices on separate touch rows. */
+@media(max-width:700px) and (orientation:portrait){
+ body .workspace:has(.lectris-quick-properties.is-ink-properties) .board-controls{
+  bottom:calc(142px + env(safe-area-inset-bottom,0px))!important;
+  z-index:235!important;
+ }
+}
+@media(max-width:1100px) and (orientation:landscape) and (pointer:coarse){
+ body .workspace:has(.lectris-quick-properties.is-ink-properties) .board-controls{
+  bottom:calc(62px + env(safe-area-inset-bottom,0px))!important;
+  z-index:235!important;
+ }
+}
