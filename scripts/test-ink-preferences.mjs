@@ -49,7 +49,8 @@ map.set(inkPreferencesKey(userA), JSON.stringify({
 }));
 const safe = readInkPreferences(userA);
 assert.deepEqual(safe.pen, { color: "#5355c9", size: 16 });
-assert.deepEqual(safe.marker, { color: "#123abc", size: 8 });
+assert.deepEqual(safe.marker, { color: "#123abc", size: 1 });
+assert.equal(withInkSetting(defaults,"pen",{size:.5}).pen.size,.5);
 assert.deepEqual(normalizeInkPreferences(null), defaults);
 map.set(inkPreferencesKey(userA), "{bad JSON");
 assert.deepEqual(readInkPreferences(userA), defaults);
