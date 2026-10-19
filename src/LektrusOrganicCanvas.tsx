@@ -1,10 +1,10 @@
 import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import type {Item} from "./boardModel";
-import {analyzeOrganicStructure,organicAtomColor} from "./lektrusOrganicFormula";
+import {analyzeOrganicStructure,organicAtomColor,organicAtomCaption} from "./lektrusOrganicFormula";
 
 type Point=NonNullable<Item["graphPoints"]>[number];
 type Bond=NonNullable<Item["graphSegments"]>[number];
-type Tool="select"|"single"|"double"|"triple"|"C"|"N"|"O"|"H"|"S"|"F"|"Cl"|"Br"|"erase"|"ring5"|"ring6"|"benzene"|"chain";
+type Tool="select"|"single"|"double"|"triple"|"C"|"N"|"O"|"H"|"S"|"F"|"Cl"|"Br"|"erase"|"ring5"|"ring6"|"benzene"|"chain"|"OH"|"NH2"|"COOH";
 type Props={item:Item;onChange:(updater:(item:Item)=>Item)=>void};
 const W=560,H=390,UNIT=32;
 const toSvg=(p:{x:number;y:number})=>({x:W/2+p.x*UNIT,y:H/2-p.y*UNIT});
@@ -90,11 +90,37 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   }
   mutate(ringPts,combined);setStatus("");setSelected(ids[0]);
  };
+ const attachFunctionalGroup=(from:number,kind:"OH"|"NH2"|"COOH")=>{
+   const point=points[from],degree=segments.filter(e=>e.a===from||e.b===from)
+     .reduce((v,e)=>v+(e.bondOrder??1),0);
+   if(!point||degree+1>(positions[point.label]??6))return setStatus("Недостаточно свободной валентности");
+   const neighbors=segments.filter(e=>e.a===from||e.b===from)
+     .map(e=>points[e.a===from?e.b:e.a]).filter(Boolean);
+   const theta=neighbors.length?Math.atan2(point.y-neighbors[0].y,point.x-neighbors[0].x)+Math.PI/3:0;
+   const at=(center:{x:number;y:number},r:number,t:number)=>({x:center.x+r*Math.cos(t),y:center.y+r*Math.sin(t)});
+   const next=at(point,2.15,theta);
+   if(points.some(p=>Math.hypot(p.x-next.x,p.y-next.y)<.9))return setStatus("Здесь уже есть атом");
+   const add=(pos:{x:number;y:number},label:string)=>({...pos,label,color:organicAtomColor(label)});
+   const index=points.length;
+   if(kind==="OH"||kind==="NH2"){
+     if(index+1>80)return;
+     mutate([...points,add(next,kind==="OH"?"O":"N")],[...segments,bond(from,index,1)]);
+   }else{
+     if(index+3>80)return;
+     const ox=at(next,2.05,theta+Math.PI/2);
+     const oh=at(next,2.05,theta-Math.PI/2);
+     const more=[add(next,"C"),add(ox,"O"),add(oh,"O")];
+     mutate([...points,...more],[...segments,bond(from,index,1),
+       bond(index,index+1,2),bond(index,index+2,1)]);
+   }
+   setSelected(index);setStatus("");
+ };
  const handleBlank=(e:ReactPointerEvent<SVGElement>)=>{
   const pos=svgPoint(e);
   if(tool==="ring5"||tool==="ring6"||tool==="benzene"){addRing(tool==="ring5"?5:6,pos,null,tool==="benzene");return;}
   if(tool==="select"){setSelected(null);return;}
   if(tool==="erase")return;
+  if(tool==="OH"||tool==="NH2"||tool==="COOH"){setStatus("Выберите атом, к которому нужно присоединить группу");return;}
   if(points.length>=80)return;
   const symbol=(["C","N","O","H","S","F","Cl","Br"] as Tool[]).includes(tool)?tool:"C";
   if(tool==="single"||tool==="double"||tool==="triple"||tool==="chain"){
@@ -132,6 +158,9 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
    const kept=segments.filter(l=>l.a!==index&&l.b!==index).map(l=>({...l,
     a:l.a>index?l.a-1:l.a,b:l.b>index?l.b-1:l.b}));
    mutate(points.filter((_,i)=>i!==index),kept);setSelected(null);return;
+  }
+  if(tool==="OH"||tool==="NH2"||tool==="COOH"){
+   attachFunctionalGroup(index,tool);return;
   }
   if((["C","N","O","H","S","F","Cl","Br"] as Tool[]).includes(tool)){
    mutate(points.map((v,i)=>i===index?{...v,label:tool,color:organicAtomColor(tool)}:v),segments);return;
@@ -183,6 +212,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   {value:"F",name:"F"},{value:"Cl",name:"Cl"},{value:"Br",name:"Br"},
   {value:"ring5",name:"Цикл C₅"},{value:"ring6",name:"Цикл C₆"},
   {value:"benzene",name:"Бензол"},{value:"chain",name:"Цепь"},
+  {value:"OH",name:"–OH"},{value:"NH2",name:"–NH₂"},{value:"COOH",name:"–COOH"},
   {value:"erase",name:"Удалить"}
  ];
  return <div className="lektrus-organic-editor">
@@ -229,9 +259,11 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
      return <g key={index} onPointerDown={e=>handleAtom(e,index)} style={{cursor:tool==="select"?"grab":"crosshair"}}>
       {(selected===index||!carbon||carbonLabels)&&<circle cx={p.x} cy={p.y} r="13"
        fill={selected===index?"#e5effe":"#fff"} stroke={selected===index?"#8cafe6":"transparent"}/>}
-      {(carbonLabels||!carbon)&&<text x={p.x} y={p.y+5} textAnchor="middle"
+      {(()=>{const degree=segments.reduce((total,link)=>total+(link.a===index||link.b===index?(link.bondOrder??1):0),0);
+       const caption=organicAtomCaption(atom.label,degree,carbonLabels);
+       return caption?<text x={p.x} y={p.y+5} textAnchor="middle"
         fill={organicAtomColor(atom.label)} fontSize="16" fontWeight="750"
-        pointerEvents="none">{atom.label}</text>}
+        pointerEvents="none">{caption}</text>:null;})()}
       {selected===index&&<circle cx={p.x} cy={p.y} r="5" fill="#93b6e4" pointerEvents="none"/>}
       <circle cx={p.x} cy={p.y} r="17" fill="transparent"/>
      </g>;
