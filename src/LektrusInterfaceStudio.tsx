@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState,type PointerEvent,type CSSProperties} from "react";
+import {useEffect,useRef,useState,type PointerEvent} from "react";
 import {
  currentDeviceProfile,defaultInterfaceLayout,deviceProfiles,layoutRegions,layoutRegionNames,
  layoutControls,layoutControlNames,normalizeInterfaceLayout,readInterfaceLayout,
