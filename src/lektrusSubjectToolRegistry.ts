@@ -14,7 +14,7 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"math-coordinate",label:"Координатная плоскость",description:"Функции, точки, числовая прямая и графики",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-fractions",label:"Дроби",description:"Круг и полоска с наглядными частями",group:"Математические инструменты",subjects:["математика"]},
   {id:"chem-periodic-table",label:"Периодическая система",description:"118 элементов, поиск, семейства и выделение элементов для урока",group:"Химия · элементы",subjects:["химия"]},
-  ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
+  ...scienceToolGroups.filter(group=>group.id!=="chem-atoms").map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
 ];
 
