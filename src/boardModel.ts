@@ -114,6 +114,7 @@ export type Item = {
   sciencePeriodicShowNames?: boolean;
   sciencePeriodicLayout?: "school" | "long";
   scienceExperimentStage?: 0 | 1;
+  scienceOrganicAnnotations?: {x:number;y:number;text:string}[];
   scienceReactionConditions?: string;
   scienceReagents?: string[];
   scienceEnvironment?: "aqueous" | "dry" | "heated" | "ignited";
