@@ -1779,7 +1779,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   onBoardChanged: (board: BoardSummary) => void;
   initialRemoteVersion?: number | null;
 }) {
-  const layoutEditing=isAppAdmin&&new URLSearchParams(window.location.search).get("layout-editor")==="1";
+  const layoutEditing=new URLSearchParams(window.location.search).get("layout-editor")==="1";
   const canEdit = boardSummary.role !== "viewer" || (isAppAdmin && adminMaintenance);
   const isStudent = accountRole === "student" && !adminMaintenance;
   const adminHidden = isAppAdmin && adminInvisible;
@@ -8094,7 +8094,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
         )}
       </main>
-      {layoutEditing&&<LektrusInterfaceStudio onClose={onBackToBoards}/>}
+      {layoutEditing&&isAppAdmin&&new URLSearchParams(window.location.search).get("layout-preview")!=="1"&&<LektrusInterfaceStudio onClose={onBackToBoards}/>}
     </div>
   );
 }
@@ -8226,7 +8226,7 @@ export default function App() {
   const openBoard = useCallback(async (board: BoardSummary, isCurrent: () => boolean) => {
     // Interface editing is a read-only view of the REAL board, not a new
     // board session: never initialize templates or upload unsaved snapshots.
-    const editingLayout=isAppAdmin&&new URLSearchParams(window.location.search).get("layout-editor")==="1";
+    const editingLayout=new URLSearchParams(window.location.search).get("layout-editor")==="1";
     setBoardLoadError("");
     setBoardLoading(true);
     try {
