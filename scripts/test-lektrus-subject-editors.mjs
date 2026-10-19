@@ -36,7 +36,9 @@ assert.match(formulaStyle,/body > \.lektrus-formula-window \.formula-editor-main
 assert.match(formulaStyle,/grid-template-columns:minmax\(0,1\.15fr\) minmax\(295px,\.85fr\)/);
 assert.match(formulaStyle,/formula-editor-footer/);
 assert.match(registry,/id:"chem-periodic-table"/);
-assert.match(registry,/scienceToolGroups\.filter\(group=>group\.id!=="chem-atoms"\)\.map/);
+assert.match(registry,/\.\.\.scienceToolGroups\.map\(group=>/);
+const chemistryCatalog=text("src/lektrusScienceCatalog.ts");
+assert.doesNotMatch(chemistryCatalog, /id:"chem-atoms"/, "atom model belongs in periodic table");
 assert.match(registry,/chem-periodic-table/);
 assert.doesNotMatch(subjects,/["']Алгебра["']/);
 assert.doesNotMatch(subjects,/["']Геометрия["']/);
