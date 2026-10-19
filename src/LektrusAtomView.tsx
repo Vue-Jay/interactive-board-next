@@ -85,9 +85,6 @@ export default function LektrusAtomView({model,onLabelMove,labelScale=1,compactI
        fontSize={11*labelScale} fill="#6982a0">{sub.electrons}e⁻</text>
     </g>;
    })}
-   <text x="50" y={orbitalHeight-22} fontSize={11*labelScale} fill="#577392">
-    ↑ и ↓: спины · сначала один электрон в орбиталь, затем пара
-   </text>
    {rows.length===0&&svgText("Конфигурация подуровней не установлена",130,14)}
   </>:model.mode==="shell"?<>
    {shells.map((count,index)=>{
