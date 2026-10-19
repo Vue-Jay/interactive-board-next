@@ -25,7 +25,7 @@ export default function LektrusOrganicView({item}:{item:Item}){
      fontSize="18" fontWeight="750" fill="#315e9a">{note.text}</text>)}
    {points.map((p,i)=>{
     const degree=links.reduce((total,edge)=>total+(edge.a===i||edge.b===i?(edge.bondOrder??1):0),0);
-    const caption=organicAtomCaption(p.label,degree);
+    const caption=organicAtomCaption(p.label,degree,true);
     return caption?<g key={i} transform={`translate(${xy(p).x} ${xy(p).y})`}>
      <rect x={-Math.max(10,caption.length*5.5)} y="-11" width={Math.max(20,caption.length*11)} height="23" rx="4" fill="#fff"/>
      <text x="0" y="5" textAnchor="middle" fontSize="17" fontWeight="750"

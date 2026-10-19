@@ -30,6 +30,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  const [carbonLabels,setCarbonLabels]=useState(false);
  const [handwriting,setHandwriting]=useState(false);
  const [draftEnd,setDraftEnd]=useState<{x:number;y:number}|null>(null);
+ const [hoverPoint,setHoverPoint]=useState<{x:number;y:number}|null>(null);
  const [status,setStatus]=useState("");
  const undoStack=useRef<{points:Point[];segments:Bond[];notes:NonNullable<Item["scienceOrganicAnnotations"]>}[]>([]);
  const remember=()=>{undoStack.current.push({points:structuredClone(points),segments:structuredClone(segments),notes:structuredClone(item.scienceOrganicAnnotations??[])});
@@ -49,12 +50,23 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   return toGraph({x:(e.clientX-r.left)*W/Math.max(1,r.width),y:(e.clientY-r.top)*H/Math.max(1,r.height)});
  };
  const mutate=(nextPoints:Point[],nextSegments:Bond[])=>{remember();onChange(old=>({...old,graphPoints:nextPoints,graphSegments:nextSegments}));};
- const addConnection=(from:number,target:{x:number;y:number},existing:number|null)=>{
-  if(points.length>=80)return;
+ // Add to the nearest atom with available valence; never start a second molecule.
+ const nearestAttachment=(pos:{x:number;y:number},required=1)=>{
+  let best=-1,distance=Infinity;
+  for(let i=0;i<points.length;i++){
+   const used=segments.reduce((sum,e)=>sum+(e.a===i||e.b===i?(e.bondOrder??1):0),0);
+   if(used+required>(positions[points[i].label]??0))continue;
+   const d=Math.hypot(pos.x-points[i].x,pos.y-points[i].y);
+   if(d<distance){distance=d;best=i;}
+  }
+  return best;
+ };
+ const addConnection=(from:number,target:{x:number;y:number},existing:number|null,symbol="C")=>{
+  if(points.length>=80&&existing===null)return;
   const snap=snapAngle(target,points[from]);
   let matched=existing;
   if(matched===null){matched=points.findIndex((p,i)=>i!==from&&Math.hypot(p.x-snap.x,p.y-snap.y)<.45);if(matched<0)matched=null;}
-  const nextPts=matched===null?[...points,{...snap,label:"C",color:organicAtomColor("C")}]:points;
+  const nextPts=matched===null?[...points,{...snap,label:symbol,color:organicAtomColor(symbol)}]:points;
   const to=matched??points.length;
   if(from===to)return;
   const existingIndex=segments.findIndex(b=>b.a===from&&b.b===to||b.b===from&&b.a===to);
@@ -80,7 +92,15 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   const vertices=Array.from({length:size},(_,i)=>({x:center.x+radius*Math.cos(-Math.PI/2+i*Math.PI*2/size),
    y:center.y+radius*Math.sin(-Math.PI/2+i*Math.PI*2/size)}));
   const old=attachment!=null?points[attachment]:null;
-  if(old){const dx=old.x-vertices[0].x,dy=old.y-vertices[0].y;for(const p of vertices){p.x+=dx;p.y+=dy;}}
+  if(old){
+   // Place the ring toward the pointer so it does not simply overlap its parent.
+   const direction=Math.atan2((origin?.y??old.y)-old.y,(origin?.x??(old.x+radius))-old.x);
+   const center={x:old.x+radius*Math.cos(direction),y:old.y+radius*Math.sin(direction)};
+   for(let i=0;i<size;i++){
+    vertices[i]={x:center.x+radius*Math.cos(direction+Math.PI+i*2*Math.PI/size),
+     y:center.y+radius*Math.sin(direction+Math.PI+i*2*Math.PI/size)};
+   }
+  }
   const ringPts=[...points,...vertices.slice(old?1:0).map(p=>({...p,label:"C",color:organicAtomColor("C")}))];
   const ids=vertices.map((_,i)=>old&&i===0?attachment!:points.length+i-(old?1:0));
   const ringBonds=Array.from({length:size},(_,i)=>bond(ids[i],ids[(i+1)%size],aromatic&&i%2===0?2:1));
@@ -92,7 +112,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   }
   mutate(ringPts,combined);setStatus("");setSelected(ids[0]);
  };
- const attachFunctionalGroup=(from:number,kind:"OH"|"NH2"|"COOH")=>{
+ const attachFunctionalGroup=(from:number,kind:"OH"|"NH2"|"COOH",target?:{x:number;y:number})=>{
    const point=points[from],degree=segments.filter(e=>e.a===from||e.b===from)
      .reduce((v,e)=>v+(e.bondOrder??1),0);
    if(!point||degree+1>(positions[point.label]??6))return setStatus("Недостаточно свободной валентности");
@@ -100,7 +120,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
      .map(e=>points[e.a===from?e.b:e.a]).filter(Boolean);
    const theta=neighbors.length?Math.atan2(point.y-neighbors[0].y,point.x-neighbors[0].x)+Math.PI/3:0;
    const at=(center:{x:number;y:number},r:number,t:number)=>({x:center.x+r*Math.cos(t),y:center.y+r*Math.sin(t)});
-   const next=at(point,2.15,theta);
+   const next=target?snapAngle(target,point):at(point,2.15,theta);
    if(points.some(p=>Math.hypot(p.x-next.x,p.y-next.y)<.9))return setStatus("Здесь уже есть атом");
    const add=(pos:{x:number;y:number},label:string)=>({...pos,label,color:organicAtomColor(label)});
    const index=points.length;
@@ -119,18 +139,29 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  };
  const handleBlank=(e:ReactPointerEvent<SVGElement>)=>{
   const pos=svgPoint(e);
-  if(tool==="ring5"||tool==="ring6"||tool==="benzene"){addRing(tool==="ring5"?5:6,pos,null,tool==="benzene");return;}
   if(tool==="select"){setSelected(null);return;}
   if(tool==="erase")return;
-  if(tool==="OH"||tool==="NH2"||tool==="COOH"){setStatus("Выберите атом, к которому нужно присоединить группу");return;}
-  if(points.length>=80)return;
+  const ring=tool==="ring5"||tool==="ring6"||tool==="benzene";
+  const functional=tool==="OH"||tool==="NH2"||tool==="COOH";
+  if(!points.length){
+   if(functional){setStatus("Сначала добавьте атом углерода");return;}
+   if(ring){addRing(tool==="ring5"?5:6,pos,null,tool==="benzene");return;}
+   const symbol=(["C","N","O","H","S","F","Cl","Br"] as Tool[]).includes(tool)?tool:"C";
+   if(tool==="single"||tool==="double"||tool==="triple"||tool==="chain"){
+    const end={x:clamp(pos.x+2.15,-8.2,8.2),y:pos.y};
+    mutate([{...pos,label:"C",color:organicAtomColor("C")},{...end,label:"C",color:organicAtomColor("C")}],
+     [bond(0,1,selectedBond)]);setSelected(1);
+   }else{mutate([{...pos,label:symbol,color:organicAtomColor(symbol)}],[]);setSelected(0);}
+   setStatus("");return;
+  }
+  const from=nearestAttachment(pos,ring?2:tool==="double"?2:tool==="triple"?3:1);
+  if(from<0){setStatus("Нет свободных валентностей для присоединения");return;}
+  if(ring){addRing(tool==="ring5"?5:6,pos,from,tool==="benzene");return;}
+  if(functional){attachFunctionalGroup(from,tool,pos);return;}
   const symbol=(["C","N","O","H","S","F","Cl","Br"] as Tool[]).includes(tool)?tool:"C";
-  if(tool==="single"||tool==="double"||tool==="triple"||tool==="chain"){
-   const from=points.length;const end={x:clamp(pos.x+2.15,-8.2,8.2),y:pos.y};
-   mutate([...points,{...pos,label:"C",color:organicAtomColor("C")},
-     {...end,label:"C",color:organicAtomColor("C")}],[...segments,bond(from,from+1,selectedBond)]);
-   setSelected(from+1);
-  }else{mutate([...points,{...pos,label:symbol,color:organicAtomColor(symbol)}],segments);setSelected(points.length)}
+  if(points.length>=80){setStatus("Достигнут предел в 80 атомов");return;}
+  addConnection(from,pos,null,symbol);
+  setStatus("");
  };
  const handleAtom=(e:ReactPointerEvent<SVGGElement>,index:number)=>{
   e.stopPropagation();e.preventDefault();
@@ -142,8 +173,10 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   el.setPointerCapture(e.pointerId);setSelected(index);
  };
  const onMove=(e:ReactPointerEvent<SVGSVGElement>)=>{
-  const ptr=pointer.current;if(!ptr||ptr.id!==e.pointerId)return;
   const pos=svgPoint(e);
+  if(!pointer.current){setHoverPoint(pos);return;}
+  const ptr=pointer.current;if(ptr.id!==e.pointerId)return;
+  setHoverPoint(null);
   if(Math.hypot(pos.x-ptr.start.x,pos.y-ptr.start.y)>.2)ptr.moving=true;
   if(tool==="select"&&ptr.from!==null&&ptr.moving){
    const moving=ptr.from;
@@ -230,7 +263,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
    {handwriting&&<LektrusOrganicHandwriting item={item} onChange={update=>{remember();onChange(update)}} onExit={()=>setHandwriting(false)}/>}
    <svg ref={svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Конструктор органических молекул"
     onPointerDown={e=>{if(e.target===e.currentTarget){e.preventDefault();handleBlank(e)}}}
-    onPointerMove={onMove} onPointerUp={onEnd} onPointerCancel={e=>{
+    onPointerMove={onMove} onPointerLeave={()=>setHoverPoint(null)} onPointerUp={onEnd} onPointerCancel={e=>{
       if(pointer.current?.id===e.pointerId)pointer.current=null;
       setDraftEnd(null);
       if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
@@ -252,6 +285,17 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
        onPointerDown={e=>clickBond(e,index)} style={{cursor:"pointer"}}/>
      </g>;
     })}
+    {hoverPoint!==null&&points.length>0&&tool!=="select"&&tool!=="erase"&&(()=>{
+     const required=(tool==="ring5"||tool==="ring6"||tool==="benzene")?2:tool==="double"?2:tool==="triple"?3:1;
+     const fromIndex=nearestAttachment(hoverPoint,required);
+     if(fromIndex<0)return null;
+     const from=toSvg(points[fromIndex]),to=toSvg(snapAngle(hoverPoint,points[fromIndex]));
+     return <g pointerEvents="none" aria-hidden="true">
+      <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="#3986d2" strokeWidth="2.4" strokeDasharray="6 5"/>
+      <circle cx={from.x} cy={from.y} r="20" fill="none" stroke="#3986d2" strokeWidth="1.6" strokeDasharray="4 4"/>
+      <circle cx={to.x} cy={to.y} r="10" fill="#dcecff" stroke="#3986d2" strokeDasharray="3 3"/>
+     </g>;
+    })()}
     {draftEnd!==null&&pointer.current?.from!=null&&(()=>{
      const from=points[pointer.current.from];if(!from)return null;
      const p=toSvg(from),q=toSvg(snapAngle(draftEnd,from));
@@ -284,7 +328,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
    {status&&<span role="status" className="lektrus-organic-status">{status}</span>}
    <div><strong>Формула: {info.valid?info.formula:"Проверьте валентности"}</strong>
     <small>{info.note}</small></div>
-   <small>Связь: касание атома добавляет звено; касание связи меняет кратность. Выбор: перетащите атом. Клавиши 1/2/3, C/O/N, T (цикл), G (бензол), Ctrl+Z.</small>
+   <small>Новый атом или группа присоединяются к ближайшему свободному атому. Пунктир показывает место соединения до вставки. Для продолжения цепи касайтесь атомов.</small>
   </div>
  </div>;
 }

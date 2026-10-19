@@ -1,0 +1,34 @@
+
+.lektrus-reaction-chosen{gap:7px;align-items:stretch}
+.lektrus-reaction-chosen .lektrus-reaction-selected-chip{
+ display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #bdd4f5;
+ border-radius:12px;background:linear-gradient(130deg,#f7fbff,#e9f3ff);color:#2d507e;
+ box-shadow:0 2px 5px #294d8310;min-width:0;text-align:left;
+}
+.lektrus-reaction-selected-chip>span:nth-child(2){display:flex;flex-direction:column;gap:3px;min-width:0}
+.lektrus-reaction-selected-chip strong{font-size:14px;line-height:1.1}
+.lektrus-reaction-selected-chip small{font-size:10px;max-width:125px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lektrus-reaction-selected-number{border-radius:50%;display:grid;place-items:center;min-width:22px;height:22px;
+ background:#d1e3ff;color:#285b9c;font-size:11px;font-weight:800}
+.lektrus-reaction-remove{margin-left:auto;color:#6686b2;font-size:21px;line-height:1}
+.lektrus-reaction-selected-chip:hover{background:#dceafe;border-color:#799dd1}
+.lektrus-reaction-addition{display:flex;justify-content:center;align-items:stretch;gap:9px;flex-wrap:wrap;
+ border-radius:12px;border:1px solid #d9e7fa;background:linear-gradient(180deg,#f5faff,#edf5ff);
+ padding:12px;min-height:72px}
+.lektrus-reaction-addition>small{align-self:center;color:#6883a3}
+.lektrus-reaction-addition-vial{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+ min-width:74px;max-width:126px;gap:3px;text-align:center;flex:0 1 auto}
+.lektrus-reaction-addition-vial strong{color:#274d83;font-size:12px}
+.lektrus-reaction-addition-vial>small{color:#6c82a0;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px}
+.lektrus-reaction-addition-index{position:absolute;left:0;top:0;border-radius:100px;background:#deeafb;
+ color:#426599;padding:2px 5px;font-size:10px;font-weight:800}
+.lektrus-reaction-vial-icon{display:block;width:27px;height:35px;border:2px solid #8eaed2;
+ border-top:0;border-radius:2px 2px 8px 8px;position:relative;overflow:hidden;
+ background:linear-gradient(90deg,#fff9,#fff0 42%,#8ab1d922)}
+.lektrus-reaction-vial-icon:before{content:"";position:absolute;top:0;left:-4px;right:-4px;border-top:3px solid #8eaed2}
+.lektrus-reaction-vial-icon span{position:absolute;bottom:2px;left:2px;right:2px;height:48%;
+ background:#83bce57a;border-radius:0 0 5px 5px;box-shadow:inset 3px 1px 4px #ffffff90}
+.lektrus-reaction-scene svg{display:block;width:100%;height:auto;min-height:210px;max-height:350px}
+.lektrus-reaction-scene svg .lektrus-reaction-bubble{filter:drop-shadow(0px 1px 1px #4873ad24)}
+@media(max-width:600px){.lektrus-reaction-chosen .lektrus-reaction-selected-chip{flex:1 1 130px}.lektrus-reaction-addition{gap:5px;padding:8px}
+ .lektrus-reaction-addition-vial{min-width:65px}.lektrus-reaction-addition-vial>small{max-width:80px}}
