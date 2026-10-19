@@ -7112,6 +7112,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             backgroundImage:backgroundAppearance.backgroundImage,
           } as CSSProperties}
           onPointerDownCapture={(e) => {
+            // Board overlays contain real controls. Do not hijack taps,
+            // focus, or the first finger of a pinch over those controls.
+            const touchControl=(e.target as HTMLElement).closest(
+              "button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"
+            );
+            if(touchControl)return;
             if(e.pointerType==="touch"){touchStart(e);if(pinchState.current){e.preventDefault();e.stopPropagation();return;}}
             // The phone/tablet hand always pans with ONE finger, including
             // over selected objects. Desktop still uses RMB/space to pan.
@@ -7164,6 +7170,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             board.current?.setPointerCapture(e.pointerId);
           }}
           onPointerMoveCapture={(e) => {
+            if(!touchPoints.current.has(e.pointerId)&&e.pointerType==="touch")return;
             if(e.pointerType==="touch"&&touchMove(e)){e.preventDefault();e.stopPropagation();return;}
             if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType);
             if(rightPress.current?.pointer===e.pointerId){
@@ -7220,7 +7227,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             finishEraser(null);
           }}
           onClickCapture={(e)=>{if(Date.now()<suppressTouchClickUntil.current){e.preventDefault();e.stopPropagation();}}}
-          onPointerDown={(e) => { if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
+          onPointerDown={(e) => {
+            if((e.target as HTMLElement).closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
+            if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
           onPointerMove={(e) => { if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;} if(eraserSession.current)return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; const localPoint = local(e.clientX, e.clientY); const worldPoint = world(localPoint); if(!adminHidden) cursorChannel.current?.sendCursor(worldPoint.x, worldPoint.y); if (presentation) { if (presentationLaser) setPresentationLaserPos(localPoint); if (presentationSpotlight) setPresentationSpotlightPos(localPoint); } move(e); }}
           onContextMenu={(e) => {
             e.preventDefault();
