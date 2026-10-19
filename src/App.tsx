@@ -115,6 +115,9 @@ import { subscribeBoardComments } from "./commentRealtime";
 import { LinkMediaPlayer, resolveLinkMedia } from "./linkMedia";
 import { safeBackupName, validatePortableBundle, type PortableBoardBundle } from "./backupStore";
 
+// The interface designer embeds the real board without permissions to mutate it.
+const isInterfacePreview = new URLSearchParams(window.location.search).get("lektrusInterfacePreview")==="1";
+
 const createId = (): string => {
   const native = globalThis.crypto?.randomUUID;
   if (typeof native === "function") {
@@ -1766,7 +1769,7 @@ const itemIconName = (item: Item): IconName => {
   return "marker";
 };
 
-function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null }: {
+function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adminMaintenance = false, adminInvisible = false, onBackToBoards, onLogout, onBoardChanged, initialRemoteVersion = null, previewDocument = null }: {
   authUser: AuthUser;
   boardSummary: BoardSummary;
   accountRole: AccountRole;
@@ -1777,6 +1780,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   onLogout: () => void;
   onBoardChanged: (board: BoardSummary) => void;
   initialRemoteVersion?: number | null;
+  previewDocument?: DocumentData | null;
 }) {
   const canEdit = boardSummary.role !== "viewer" || (isAppAdmin && adminMaintenance);
   const isStudent = accountRole === "student" && !adminMaintenance;
@@ -1896,7 +1900,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   } | null>(null);
   const storageKey = boardStorageKey(boardSummary.id);
   const viewStorageKey = `${storageKey}.view`;
-  const [initial] = useState(() => loadInitial(storageKey));
+  const [initial] = useState(() => previewDocument ? {data:previewDocument,error:""} : loadInitial(storageKey));
   const [saveBlocked, setSaveBlocked] = useState(!!initial.error);
   const fileInput = useRef<HTMLInputElement>(null);
   const mediaInput = useRef<HTMLInputElement>(null);
@@ -2412,7 +2416,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   }, [presentation, presentationTimerRunning, presentationTimerMode]);
 
   const pushRemoteSnapshot = useCallback(async (data: DocumentData, knownFingerprint?: string) => {
-    if (!isRemoteBackendEnabled() || !canEdit || !boardMounted.current || pendingRemote.current) return;
+    if (isInterfacePreview || !isRemoteBackendEnabled() || !canEdit || !boardMounted.current || pendingRemote.current) return;
     const fingerprint = knownFingerprint ?? documentFingerprint(data);
     if (fingerprint === acknowledgedDocument.current) return;
     if (remoteSaveInFlight.current) {
@@ -2494,7 +2498,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   }, [boardSummary.id, canEdit]);
 
   const flushSave = useCallback(() => {
-    if (!canEdit) return;
+    if (isInterfacePreview || !canEdit) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = null;
     if (!snapshot.current) return;
@@ -2559,7 +2563,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   // A gesture is saved only when completed; in-progress text is saved too.
   useEffect(() => {
-    if (saveBlocked || gesture.current || eraserSession.current) return;
+    if (isInterfacePreview || saveBlocked || gesture.current || eraserSession.current) return;
     const data: DocumentData = packDocumentInk({
       version: 1,
       title,
@@ -5830,9 +5834,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       applyServerDocument(row);
     } catch { setNotice("Не удалось прочитать новую серверную версию. Ваши изменения сохранены на доске."); }
   };
-  useEffect(() => subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id]);
+  useEffect(() => isInterfacePreview ? undefined : subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id]);
 
-  useEffect(() => subscribeBoardPresence(
+  useEffect(() => isInterfacePreview ? undefined : subscribeBoardPresence(
     boardSummary.id,
     { userId: authUser.id, name: authUser.name, role: boardSummary.role },
     setPresenceUsers,
@@ -8174,6 +8178,7 @@ export default function App() {
   const [sharePassword, setSharePassword] = useState("");
   const [sharePasswordRequired, setSharePasswordRequired] = useState(false);
   const [remoteVersion, setRemoteVersion] = useState<number | null>(null);
+  const [interfacePreviewDocument,setInterfacePreviewDocument]=useState<DocumentData|null>(null);
   const [boardMountKey, setBoardMountKey] = useState(0);
   const [globalInstallPrompt,setGlobalInstallPrompt]=useState<Event|null>(null);
   const [globalStandalone,setGlobalStandalone]=useState(()=>(window.matchMedia?.("(display-mode: standalone)").matches===true || (navigator as Navigator & {standalone?:boolean}).standalone===true));
@@ -8224,6 +8229,17 @@ export default function App() {
     setBoardLoadError("");
     setBoardLoading(true);
     try {
+      if (isInterfacePreview) {
+        const remote=isRemoteBackendEnabled()?await getRemoteBoardDocument(board.id):null;
+        if (!isCurrent()) return;
+        const fallback=loadInitial(boardStorageKey(board.id)).data;
+        const data=remote?.document?parseDocument(JSON.stringify(remote.document)):fallback;
+        setInterfacePreviewDocument(data);
+        setRemoteVersion(remote?.version??null);
+        setActiveBoard(board);
+        setBoardMountKey(value=>value+1);
+        return;
+      }
       if (isRemoteBackendEnabled()) {
         const remote = await getRemoteBoardDocument(board.id);
         if (!isCurrent()) return;
@@ -8467,6 +8483,7 @@ export default function App() {
       adminMaintenance={adminInspecting && isAppAdmin && adminEdit}
       adminInvisible={adminInvisible}
       initialRemoteVersion={remoteVersion}
+      previewDocument={isInterfacePreview?interfacePreviewDocument:null}
       onBoardChanged={boardChanged}
       onBackToBoards={() => { setActiveBoard(null); if(adminInspecting){setAdminInspecting(false);navigate("/?section=admin");}else navigate("/"); }}
       onLogout={logout}
