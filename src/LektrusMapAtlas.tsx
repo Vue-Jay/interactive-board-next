@@ -2,6 +2,7 @@ import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
+import {mineralGuide} from "./lektrusAtlasMineralGuide";
 import {loadLocalInfrastructure,loadMineralDeposits,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
  canLoadLocalRoads,canLoadMinerals,externalBBoxKey,type ExternalBounds} from "./lektrusAtlasExternal";
 import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
@@ -959,6 +960,13 @@ function AtlasMap({diagram:d,onChange}:Props){
      <small>{!mineralsAvailable?"Приблизьте территорию для загрузки месторождений.":
       mineralLoading?"Загрузка данных USGS…":
       mineralError||"Показано: "+visibleMinerals.length+" месторождений (не более 350 одновременно)."}</small>
+     {mineralGuide(mineralFilter)&&<div className="lektrus-atlas-city-data">
+      <strong>Справка: {mineralFilter}</strong>
+      <p><b>Группа:</b> {mineralGuide(mineralFilter)!.className}</p>
+      <p><b>Состав сырья:</b> {mineralGuide(mineralFilter)!.composition}</p>
+      <p><b>Применение:</b> {mineralGuide(mineralFilter)!.uses}</p>
+      <small>Общие школьные сведения о сырье, а не характеристика выбранного месторождения.</small>
+     </div>}
      <div className="lektrus-atlas-mineral-legend">{mineralTypes.map(item=><div key={item.name}>
       <span style={{background:item.color}}/>{item.name}</div>)}</div>
      <small>Историческая база USGS: покрытие за пределами США неполное.
@@ -1084,6 +1092,14 @@ function AtlasMap({diagram:d,onChange}:Props){
      <strong>Месторождение: {mineralCommodity(selectedMineral)?.name??"Полезное ископаемое"}</strong>
      <p>Источник: Геологическая служба США (USGS), сборник основных нерудных и рудных месторождений.</p>
      {mineralDepositFacts(selectedMineral).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+     {mineralGuide(mineralCommodity(selectedMineral)?.name??"")&&
+      <div className="lektrus-atlas-city-data">
+       <strong>Справка о минеральном сырье</strong>
+       <p>{mineralGuide(mineralCommodity(selectedMineral)!.name)!.className}</p>
+       <p><strong>Состав:</strong> {mineralGuide(mineralCommodity(selectedMineral)!.name)!.composition}</p>
+       <p><strong>Использование:</strong> {mineralGuide(mineralCommodity(selectedMineral)!.name)!.uses}</p>
+       <small>Генетический тип конкретного месторождения приводится отдельно, если он известен из USGS.</small>
+      </div>}
      <p>Координаты: {(()=>{
       const c=selectedMineral.geometry?.coordinates;
       return Array.isArray(c)?Number(c[1]).toFixed(4)+"°, "+Number(c[0]).toFixed(4)+"°":"не приведены";
