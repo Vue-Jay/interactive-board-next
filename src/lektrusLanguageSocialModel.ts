@@ -63,10 +63,16 @@ export function tokenizeSentence(sample:string):SentencePart[]{
 }
 export function initialScramble(parts:SentencePart[]):string[]{
  // Deterministic, stable across render/reopen and preserves exactly the multiset.
- if(parts.length<=2)return [...parts].reverse().map(x=>x.id);
- return [...parts].map((_,i)=>parts[(i*7+3)%parts.length]?.id??parts[i].id)
-  .filter((id,i,all)=>all.indexOf(id)===i).concat(parts.map(x=>x.id).filter(id=>
-   ![...parts].map((_,i)=>parts[(i*7+3)%parts.length]?.id??parts[i].id).includes(id)));
+ const order=parts.map(p=>p.id);
+ let seed=parts.reduce((sum,p)=>[...p.text].reduce((v,ch)=>((v*31+ch.charCodeAt(0))>>>0),sum),42);
+ for(let i=order.length-1;i>0;i--){
+  seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+  const j=seed%(i+1);[order[i],order[j]]=[order[j],order[i]];
+ }
+ if(order.every((id,i)=>id===parts[i].id)&&order.length>1){
+  [order[0],order[1]]=[order[1],order[0]];
+ }
+ return order;
 }
 export const isLanguageSocialId=(id:string|undefined):id is LanguageSocialId=>
  languageSocialIds.includes(id as LanguageSocialId);
