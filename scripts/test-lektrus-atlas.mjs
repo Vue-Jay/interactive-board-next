@@ -56,5 +56,6 @@ assert.match(data,/raw\.githubusercontent\.com/);
 assert.match(data,/BORDERPRECISION/);
 assert.match(reg,/id:"maps-atlas"/);
 assert.match(reg,/id:"history-atlas"/);
-assert.match(reg,/subjects:\["география","история","обществознание"\]/);
+assert.match(reg,/subjects:\["география"\]/);
+assert.match(reg,/subjects:\["история"\]/);
 console.log("Lektrus one map tool: five modes, source-backed dated boundaries, era slider, event descriptions, errors and board persistence verified.");
