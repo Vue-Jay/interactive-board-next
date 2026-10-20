@@ -431,6 +431,9 @@ function AtlasMap({diagram:d,onChange}:Props){
         </path>;
        })}
       </g>
+      {provincePaths.length>0&&<g className="lektrus-atlas-admin1" fill="none" stroke="#a0a7a5" strokeWidth=".48" vectorEffect="non-scaling-stroke" pointerEvents="none">
+       {provincePaths.map(f=><path key={"province-"+f.id} d={f.path}/>)}
+      </g>}
       {(mode==="physical"||mode==="relief")&&<g>
        {landforms.map(f=><path key={"landform-"+f.id} d={f.path}
         fill="#c6b093" fillOpacity=".48" stroke="#a68b72" strokeWidth=".4"
