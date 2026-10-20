@@ -73,7 +73,7 @@ assert.match(reg,/subjects:\["история"\]/);
 assert.match(data,/ne_10m_admin_0_countries\.geojson/);
 assert.match(data,/ne_10m_admin_0_countries_rus\.geojson/);
 assert.match(data,/ne_50m_admin_0_tiny_countries\.geojson/);
-assert.match(map,/MAX_ATLAS_ZOOM=256/);
+assert.match(map,/MAX_ATLAS_ZOOM=16384/);
 assert.match(map,/featureFocusBounds/);
 assert.match(map,/tinyPoints\.map/);
 assert.match(map,/Math\.log2\(scale\)/);
@@ -91,6 +91,13 @@ assert.ok(fit&&fit.width<0.1&&fit.height<0.1&&fit.x>0&&fit.y>0,
  "microstate bounds support deep focused zoom");
 assert.ok(geoExports.mapFeaturePath(tiny,.001).includes("L"),
  "deep-resolution geometry keeps the small boundary");
+const monacoPoint=geoExports.featureFocusBounds(tiny);
+assert.equal(geoExports.mapFeaturePath(tiny,.00015,{
+ left:monacoPoint.x-.15,right:monacoPoint.x+.15,
+ top:monacoPoint.y-.15,bottom:monacoPoint.y+.15}).length>0,true);
+assert.equal(geoExports.mapFeaturePath(tiny,.00015,{
+ left:0,right:20,top:0,bottom:20}),"",
+ "distant microstate polygons are skipped by viewport clipping");
 assert.equal(geoExports.borderPrecision(tiny),0,"missing precision is unknown, not approximate");
 const islandPoint={type:"Feature",properties:{NAME:"Island"},geometry:{
  type:"Point",coordinates:[180,0]
