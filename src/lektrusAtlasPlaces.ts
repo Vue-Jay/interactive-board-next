@@ -70,7 +70,11 @@ const CAPITAL_UPDATES=[
  {country:"TZ",old:"Dar es Salaam",current:"Dodoma",rus:"Додома",
   lon:35.750004,lat:-6.183306,
   note:"Столица Танзании Додома закреплена законом о столице 2018 года.",
-  document:"https://oagmis.oag.go.tz/portal/acts/52"}
+  document:"https://oagmis.oag.go.tz/portal/acts/52"},
+ {country:"BJ",old:"Cotonou",current:"Porto-Novo",rus:"Порто-Ново",
+  lon:2.616626,lat:6.483311,
+  note:"Конституционная столица Бенина Порто-Ново; Котону является местом пребывания правительства.",
+  document:"https://www.gouv.bj/article/935/allons--ensemble-decouverte-communes-benin/"}
 ] as const;
 export const verifiedCapitalUpdates2026=CAPITAL_UPDATES;
 export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCollection{
