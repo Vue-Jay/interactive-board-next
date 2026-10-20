@@ -1,9 +1,11 @@
 /** A single map tool for geography, history and social studies.
  * Coordinates are geographic WGS84, never invented "modern borders" for a past year. */
 export type AtlasMode="political"|"contour"|"physical"|"historical"|"events";
+export type AtlasSubject="geography"|"history";
+export const atlasModesFor=(subject:AtlasSubject)=>atlasModes.filter(m=>subject==="history"?m.id==="historical"||m.id==="events":m.id!=="historical"&&m.id!=="events");
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
 export type AtlasDocument={
- kind:"atlas";title:string;mode:AtlasMode;year:number;showLabels:boolean;
+ kind:"atlas";title:string;mode:AtlasMode;scope?:AtlasSubject;year:number;showLabels:boolean;
  showGrid:boolean;showEvents:boolean;markers:AtlasMarker[];
 };
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
@@ -104,8 +106,8 @@ export function eventsNearYear(year:number){
  const max=(next+historicalSnapshots[position].year)/2;
  return schoolHistoryEvents.filter(event=>event.year>=min&&event.year<=max);
 }
-export function createAtlasDocument():AtlasDocument{
- return {kind:"atlas",title:"Интерактивная карта",mode:"political",year:1914,
+export function createAtlasDocument(scope:AtlasSubject="geography"):AtlasDocument{
+ return {kind:"atlas",scope,title:scope==="history"?"Исторический атлас":"Географический атлас",mode:scope==="history"?"historical":"political",year:1914,
   showLabels:true,showGrid:false,showEvents:true,markers:[]};
 }
 const isText=(v:unknown,max:number,allowEmpty=false)=>typeof v==="string"&&v.length<=max&&(allowEmpty||v.trim().length>0);
@@ -113,6 +115,7 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
  if(!value||typeof value!=="object")return false;
  const v=value as Record<string,unknown>;
  if(v.kind!=="atlas"||!isText(v.title,120)||!atlasModes.some(m=>m.id===v.mode)||
+  (v.scope!==undefined&&((v.scope!=="geography"&&v.scope!=="history")||!atlasModesFor(v.scope).some(m=>m.id===v.mode)))||
   !historicalSnapshots.some(s=>s.year===v.year)||typeof v.showLabels!=="boolean"||
   typeof v.showGrid!=="boolean"||typeof v.showEvents!=="boolean"||
   !Array.isArray(v.markers)||v.markers.length>40)return false;
