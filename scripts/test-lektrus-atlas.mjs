@@ -9,8 +9,8 @@ const {
  atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,eventsNearYear,
  createAtlasDocument,validAtlasDocument,yearLabel
 }=exports;
-assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","hydrography","coordinates","historical","events"]);
-assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","hydrography","coordinates"]);
+assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","hydrography","relief","cities","coordinates","historical","events"]);
+assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","hydrography","relief","cities","coordinates"]);
 assert.deepEqual(atlasModesFor("history").map(m=>m.id),["historical","events"]);
 assert.ok(historicalSnapshots.length>=50,"historical atlas should have broad real snapshot coverage");
 assert.equal(new Set(historicalSnapshots.map(v=>v.year)).size,historicalSnapshots.length);
@@ -22,6 +22,8 @@ assert.equal(yearLabel(-323),"323 г. до н. э.");
 assert.equal(yearLabel(1914),"1914 г.");
 assert.equal(historicalSnapshots[nearestSnapshotIndex(1916)].year,1914);
 assert.ok(eventsNearYear(1914).some(v=>v.year===1914));
+assert.ok(eventsNearYear(1920).some(v=>v.year===1922));
+assert.ok(eventsNearYear(2000).some(v=>v.year===2004));
 const atlas=createAtlasDocument();
 assert.equal(validAtlasDocument(atlas),true);
 assert.equal(atlas.scope,"geography");
@@ -54,6 +56,15 @@ assert.match(map,/Карта недоступна/);
 assert.match(map,/licenseUrl/);
 assert.match(data,/raw\.githubusercontent\.com/);
 assert.match(data,/BORDERPRECISION/);
+for(const name of ["countries-detail","cities","elevation","regions","glaciers","land","coastline"])
+ assert.ok(data.includes(name),"real map dataset "+name);
+for(const mode of ["hydrography","relief","cities","coordinates"])
+ assert.equal(validAtlasDocument({...atlas,mode}),true);
+assert.match(map,/onPointerDown=\{onPointerDown\}/);
+assert.match(map,/featureSourceFacts/);
+assert.match(map,/setCompare/);
+assert.match(map,/pickCoordinates/);
+assert.match(map,/setSelectedMarker/);
 assert.match(reg,/id:"maps-atlas"/);
 assert.match(reg,/id:"history-atlas"/);
 assert.match(reg,/subjects:\["география"\]/);

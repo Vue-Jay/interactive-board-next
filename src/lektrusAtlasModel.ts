@@ -1,6 +1,6 @@
 /** A single map tool for geography, history and social studies.
  * Coordinates are geographic WGS84, never invented "modern borders" for a past year. */
-export type AtlasMode="political"|"contour"|"physical"|"hydrography"|"coordinates"|"historical"|"events";
+export type AtlasMode="political"|"contour"|"physical"|"hydrography"|"relief"|"cities"|"coordinates"|"historical"|"events";
 export type AtlasSubject="geography"|"history";
 export const atlasModesFor=(subject:AtlasSubject)=>atlasModes.filter(m=>subject==="history"?m.id==="historical"||m.id==="events":m.id!=="historical"&&m.id!=="events");
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
@@ -11,8 +11,10 @@ export type AtlasDocument={
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
  {id:"political",title:"Политическая",hint:"Современные государства, названия и границы"},
  {id:"contour",title:"Контурная",hint:"Неподписанная карта для упражнений"},
- {id:"physical",title:"Физическая",hint:"Суша и гидрографическая сеть (высоты пока не показаны)"},
+ {id:"physical",title:"Физическая",hint:"Природные объекты, водная сеть, ледники, крупные формы рельефа и высотные отметки"},
  {id:"hydrography",title:"Гидрографическая",hint:"Выделенные реки, озёра и береговые линии"},
+ {id:"relief",title:"Рельеф",hint:"Крупные формы рельефа, ледники и подписанные высотные отметки"},
+ {id:"cities",title:"Города",hint:"Населённые пункты и показатели населения по данным Natural Earth"},
  {id:"coordinates",title:"Географические координаты",hint:"Меридианы, параллели и определение координат по нажатию"},
  {id:"historical",title:"Историческая",hint:"Государства и границы по датированным снимкам"},
  {id:"events",title:"Карта событий",hint:"Исторические события по времени и координатам"}
@@ -54,6 +56,69 @@ export function nearestSnapshotIndex(year:number){
  return best;
 }
 export const schoolHistoryEvents=[
+ {year:-490,title:"Марафонская битва",lat:38.15,lon:24.00,
+  description:"Победа афинского войска над персидским в ходе греко-персидских войн. Отметка указывает район битвы.",
+  url:"https://ru.wikipedia.org/wiki/Марафонская_битва"},
+ {year:-44,title:"Убийство Юлия Цезаря",lat:41.895,lon:12.476,
+  description:"Гибель Цезаря в Риме 15 марта 44 года до н. э. и начало нового этапа кризиса Римской республики.",
+  url:"https://ru.wikipedia.org/wiki/Убийство_Юлия_Цезаря"},
+ {year:800,title:"Коронация Карла Великого",lat:41.90,lon:12.50,
+  description:"Коронация Карла Великого императором в Риме; имперские владения сформировались не в один год.",
+  url:"https://ru.wikipedia.org/wiki/Карл_Великий"},
+ {year:1066,title:"Нормандское завоевание Англии",lat:50.91,lon:0.49,
+  description:"Битва при Гастингсе и начало правления Вильгельма Завоевателя в Англии.",
+  url:"https://ru.wikipedia.org/wiki/Нормандское_завоевание_Англии"},
+ {year:1215,title:"Великая хартия вольностей",lat:51.43,lon:-0.56,
+  description:"Английский король Иоанн согласился на условия хартии в Раннимиде. Документ не изменил территориальные границы.",
+  url:"https://ru.wikipedia.org/wiki/Великая_хартия_вольностей"},
+ {year:1347,title:"Чёрная смерть достигает Европы",lat:45.1,lon:15.1,
+  description:"В середине XIV века эпидемия чумы распространилась по Европе. Маркер условно обозначает регион, а не очаг инфекции.",
+  url:"https://ru.wikipedia.org/wiki/Чёрная_смерть"},
+ {year:1517,title:"Начало Реформации",lat:51.87,lon:12.65,
+  description:"Публикация 95 тезисов Мартина Лютера в Виттенберге; религиозные и политические изменения развивались десятилетиями.",
+  url:"https://ru.wikipedia.org/wiki/Реформация"},
+ {year:1613,title:"Начало династии Романовых",lat:55.75,lon:37.62,
+  description:"Избрание Михаила Романова на царство Земским собором в Москве.",
+  url:"https://ru.wikipedia.org/wiki/Земский_собор_1613_года"},
+ {year:1703,title:"Основание Санкт-Петербурга",lat:59.94,lon:30.31,
+  description:"Начало строительства Санкт-Петербурга в устье Невы в годы Северной войны.",
+  url:"https://ru.wikipedia.org/wiki/История_Санкт-Петербурга"},
+ {year:1776,title:"Декларация независимости США",lat:39.95,lon:-75.16,
+  description:"Принятие Декларации независимости в Филадельфии. Международное признание и установление границ происходили позже.",
+  url:"https://ru.wikipedia.org/wiki/Декларация_независимости_США"},
+ {year:1804,title:"Коронация Наполеона",lat:48.85,lon:2.35,
+  description:"Наполеон Бонапарт коронован императором французов в Париже.",
+  url:"https://ru.wikipedia.org/wiki/Коронация_Наполеона"},
+ {year:1848,title:"Революции в Европе",lat:48.86,lon:2.35,
+  description:"Волна революционных выступлений охватила многие европейские страны; маркер не обозначает единый центр.",
+  url:"https://ru.wikipedia.org/wiki/Революции_1848—1849_годов"},
+ {year:1861,title:"Отмена крепостного права в России",lat:59.93,lon:30.32,
+  description:"Подписание манифеста об освобождении крестьян Александром II. Территориальные границы не изменились автоматически.",
+  url:"https://ru.wikipedia.org/wiki/Крестьянская_реформа_в_России"},
+ {year:1871,title:"Образование Германской империи",lat:48.80,lon:2.12,
+  description:"Провозглашение Германской империи в Версале после франко-прусской войны.",
+  url:"https://ru.wikipedia.org/wiki/Германская_империя"},
+ {year:1918,title:"Окончание Первой мировой войны",lat:49.43,lon:2.89,
+  description:"Компьенское перемирие завершило боевые действия на Западном фронте; послевоенные договоры изменили европейскую карту.",
+  url:"https://ru.wikipedia.org/wiki/Компьенское_перемирие_(1918)"},
+ {year:1922,title:"Образование СССР",lat:55.75,lon:37.62,
+  description:"Договор и декларация об образовании СССР были приняты в Москве 30 декабря 1922 года.",
+  url:"https://ru.wikipedia.org/wiki/Образование_СССР"},
+ {year:1949,title:"Провозглашение КНР",lat:39.90,lon:116.40,
+  description:"1 октября 1949 года в Пекине провозглашена Китайская Народная Республика. Конфликт вокруг Тайваня продолжился.",
+  url:"https://ru.wikipedia.org/wiki/Провозглашение_Китайской_Народной_Республики"},
+ {year:1957,title:"Первый искусственный спутник Земли",lat:45.92,lon:63.34,
+  description:"Запуск «Спутника-1» с космодрома Байконур; координаты показывают стартовую площадку, не орбиту.",
+  url:"https://ru.wikipedia.org/wiki/Спутник-1"},
+ {year:1961,title:"Первый полёт человека в космос",lat:45.92,lon:63.34,
+  description:"Полет Юрия Гагарина на корабле «Восток-1» 12 апреля 1961 года, старт с Байконура.",
+  url:"https://ru.wikipedia.org/wiki/Восток-1"},
+ {year:1989,title:"Падение Берлинской стены",lat:52.52,lon:13.40,
+  description:"9 ноября 1989 года открытие переходов через Берлинскую стену стало важным этапом объединения Германии.",
+  url:"https://ru.wikipedia.org/wiki/Падение_Берлинской_стены"},
+ {year:2004,title:"Расширение Европейского союза",lat:50.08,lon:14.42,
+  description:"Вступление десяти государств в ЕС 1 мая 2004 года; геометка указывает один из новых городов-членов и не является центром события.",
+  url:"https://ru.wikipedia.org/wiki/Расширение_Европейского_союза_(2004)"},
  {year:476,title:"Падение Западной Римской империи",lat:41.9,lon:12.5,
   description:"Традиционная дата завершения истории Западной Римской империи. Политические изменения были постепенными.",
   url:"https://ru.wikipedia.org/wiki/Падение_Западной_Римской_империи"},
@@ -106,7 +171,7 @@ export function eventsNearYear(year:number){
  const next=historicalSnapshots[Math.min(historicalSnapshots.length-1,position+1)].year;
  const min=(previous+historicalSnapshots[position].year)/2;
  const max=(next+historicalSnapshots[position].year)/2;
- return schoolHistoryEvents.filter(event=>event.year>=min&&event.year<=max);
+ return schoolHistoryEvents.filter(event=>event.year>=min&&event.year<=max).sort((a,b)=>a.year-b.year);
 }
 export function createAtlasDocument(scope:AtlasSubject="geography"):AtlasDocument{
  return {kind:"atlas",scope,title:scope==="history"?"Исторический атлас":"Географический атлас",mode:scope==="history"?"historical":"political",year:1914,

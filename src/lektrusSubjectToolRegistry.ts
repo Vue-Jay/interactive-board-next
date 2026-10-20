@@ -32,7 +32,7 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"ru-orthography",label:"Орфографический тренажёр",description:"Орфограммы с пропусками и проверкой ответов на доске",group:"Русский язык · орфография",subjects:["русский язык"]},
   {id:"ru-sentence-builder",label:"Конструктор предложений",description:"Сборка предложения из слов, проверка порядка и большой справочник синтаксических образцов",group:"Русский язык · синтаксис",subjects:["русский язык"]},
   {id:"civics-structure",label:"Схемы государства и общества",description:"Органы, понятия и отношения с указанием характера связей",group:"Обществознание · государство и общество",subjects:["обществознание","история"]},
-  {id:"maps-atlas",label:"Географические карты",description:"Единая подложка: современная политическая, контурная и физическая карты",group:"География · карты",subjects:["география"]},
+  {id:"maps-atlas",label:"Географические карты",description:"Единая подложка: страны, контурная, физическая карта, рельеф, воды и города",group:"География · карты",subjects:["география"]},
   {id:"history-atlas",label:"Исторические карты",description:"Единая подложка: границы эпох, исторические события и ползунок времени",group:"История · карты",subjects:["история"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
