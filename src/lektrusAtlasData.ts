@@ -91,6 +91,12 @@ export const historicDataProvider={
  license:"GPL-3.0; применимость лицензии к данным уточняется автором",
  licenseUrl:"https://github.com/aourednik/historical-basemaps/blob/master/LICENSE"
 };
+export const russianPovDataProvider={
+ name:"Natural Earth, Russia POV (современный справочный слой)",
+ url:"https://www.naturalearthdata.com/downloads/10m-cultural-vectors/",
+ license:"Public domain",
+ licenseUrl:"https://www.naturalearthdata.com/about/terms-of-use/"
+};
 export const modernDataProvider={
  name:"Natural Earth (общественное достояние, public domain)",
  url:"https://www.naturalearthdata.com/",
@@ -104,6 +110,11 @@ export function loadAtlasLayer(layer:GeoLayer){
 export function loadHistoricalSnapshot(year:number){
  const found=historicalSnapshots.find(s=>s.year===year);
  if(!found)return Promise.reject(new Error("Исторического снимка на этот год нет"));
+ if(year===2026){
+  // A modern reference, not a dated Historical Basemaps snapshot.
+  const name="ne_10m_admin_0_countries_rus.geojson";
+  return requestGeojson("modern-russia-pov-2026",[BASE+name,BACKUP+name]);
+ }
  return requestGeojson("historical-"+year,[HIST+found.file,HIST_BACKUP+found.file]);
 }
 const WIDTH=900,HEIGHT=450;
