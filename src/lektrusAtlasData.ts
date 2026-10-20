@@ -5,7 +5,7 @@ export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineSt
  coordinates:unknown};
 export type GeoFeature={type:"Feature";properties:Record<string,unknown>|null;geometry:GeoGeometry|null};
 export type GeoCollection={type:"FeatureCollection";features:GeoFeature[]};
-export type GeoLayer="countries"|"countries-detail"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers";
+export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers";
 const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/";
 const BACKUP="https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/";
 const HIST="https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/";
@@ -15,6 +15,9 @@ const names:Record<GeoLayer,string>={
  coastline:"ne_110m_coastline.geojson",
  countries:"ne_110m_admin_0_countries.geojson",
  "countries-detail":"ne_50m_admin_0_countries.geojson",
+ "countries-ultra":"ne_10m_admin_0_countries.geojson",
+ "countries-russian":"ne_10m_admin_0_countries_rus.geojson",
+ "tiny-countries":"ne_50m_admin_0_tiny_countries.geojson",
  rivers:"ne_110m_rivers_lake_centerlines.geojson",
  lakes:"ne_110m_lakes.geojson",
  cities:"ne_110m_populated_places.geojson",
@@ -83,7 +86,7 @@ export const geoFeatureName=(feature:GeoFeature)=>{
 };
 export const borderPrecision=(f:GeoFeature):number=>{
  const number=Number(f.properties?.BORDERPRECISION);
- return Number.isFinite(number)&&number>=1&&number<=3?number:1;
+ return Number.isFinite(number)&&number>=1&&number<=3?number:0;
 };
 export const historicDataProvider={
  name:"Historical Basemaps, A. Ourednik и участники",
@@ -102,7 +105,7 @@ export function loadAtlasLayer(layer:GeoLayer){
  return requestGeojson("modern-"+layer,[BASE+filename,BACKUP+filename]);
 }
 export function loadHistoricalSnapshot(year:number){
- if(year===2026)return loadAtlasLayer("countries-detail");
+ if(year===2026)return loadAtlasLayer("countries-detail"); // non-dated modern overview
  const found=historicalSnapshots.find(s=>s.year===year);
  if(!found)return Promise.reject(new Error("Исторического снимка на этот год нет"));
  return requestGeojson("historical-"+year,[HIST+found.file,HIST_BACKUP+found.file]);
@@ -172,7 +175,7 @@ function lines(f:GeoFeature):number[][][]{
 }
 /** Split antimeridian crossings instead of drawing an artificial line across the world.
  * Each fragment is clipped at ±180° and continues on the opposite edge. */
-function pathForRing(points:number[][],close:boolean):string{
+function pathForRing(points:number[][],close:boolean,minDistance=.62):string{
  if(points.length<2)return "";
  const valid=points.filter(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]))
   .map(p=>[Math.max(-180,Math.min(180,p[0])),Math.max(-90,Math.min(90,p[1]))]);
@@ -199,24 +202,25 @@ function pathForRing(points:number[][],close:boolean):string{
   for(let i=0;i<fragment.length;i++){
    const current=projectGeography(fragment[i][0],fragment[i][1]);
    const last=selected[selected.length-1];
-   if(!last||i===fragment.length-1||Math.abs(last[0]-current[0])+Math.abs(last[1]-current[1])>=.62)
+   if(!last||i===fragment.length-1||Math.abs(last[0]-current[0])+Math.abs(last[1]-current[1])>=minDistance)
     selected.push(current);
   }
   if(selected.length<2)return "";
   // Do not close a split fragment back across the world or to a false border.
   const shouldClose=close&&fragments.length===1;
-  return selected.map(([x,y],i)=>(i?"L":"M")+x.toFixed(1)+" "+y.toFixed(1)).join("")+(shouldClose?"Z":"");
+  const digits=minDistance<.01?4:minDistance<.15?3:1;
+  return selected.map(([x,y],i)=>(i?"L":"M")+x.toFixed(digits)+" "+y.toFixed(digits)).join("")+(shouldClose?"Z":"");
  }).filter(Boolean).join("");
 }
-export function mapFeaturePath(f:GeoFeature):string{
+export function mapFeaturePath(f:GeoFeature,minDistance=.62):string{
  const all:string[]=[];
  if(f.geometry?.type==="Polygon"||f.geometry?.type==="MultiPolygon"){
   for(const multi of polygons(f))for(const ring of multi){
-   const p=pathForRing(ring,true);
+   const p=pathForRing(ring,true,minDistance);
    if(p)all.push(p);
   }
  }else for(const line of lines(f)){
-  const p=pathForRing(line,false);
+  const p=pathForRing(line,false,minDistance);
   if(p)all.push(p);
  }
  return all.join("");
@@ -306,4 +310,35 @@ export function historicalFeatureFacts(feature:GeoFeature):Array<{label:string;v
   return (typeof value==="string"&&value.trim()||typeof value==="number"&&Number.isFinite(value))?
    [{label,value:String(value).slice(0,320)}]:[];
  });
+}
+
+/** Locate the largest contiguous polygon of a country. Bounding multipart features
+ * as a whole is unusable for island groups crossing the antimeridian. */
+export function featureFocusBounds(f:GeoFeature):{x:number;y:number;width:number;height:number}|null{
+ const g=f.geometry;
+ if(!g)return null;
+ if(g.type==="Point"||g.type==="MultiPoint"){
+  const p=featureMapPoint(f);
+  return p?{x:p[0],y:p[1],width:0,height:0}:null;
+ }
+ let best:{x:number;y:number;width:number;height:number;area:number}|null=null;
+ for(const polygon of polygons(f)){
+  const ring=polygon[0];
+  if(!ring||ring.length<3)continue;
+  const longitudes=ring.map(p=>p[0]).filter(Number.isFinite);
+  const latitudes=ring.map(p=>p[1]).filter(Number.isFinite);
+  if(!longitudes.length||!latitudes.length)continue;
+  const lo=Math.min(...longitudes),hi=Math.max(...longitudes);
+  if(hi-lo>180)continue;
+  const x0=projectGeography(lo,0)[0],x1=projectGeography(hi,0)[0];
+  const y0=projectGeography(0,Math.max(...latitudes))[1],y1=projectGeography(0,Math.min(...latitudes))[1];
+  const width=x1-x0,height=y1-y0,area=Math.max(.000001,width*height);
+  if(!best||area>best.area)best={x:(x0+x1)/2,y:(y0+y1)/2,width,height,area};
+ }
+ return best?{x:best.x,y:best.y,width:best.width,height:best.height}:null;
+}
+/** Safe minimum symbol size on overview maps for tiny country points.
+ * Symbols carry no historical claims and must not be shown on past-date layers. */
+export function isTinyMapFeature(f:GeoFeature):boolean{
+ return f.geometry?.type==="Point"||f.geometry?.type==="MultiPoint";
 }
