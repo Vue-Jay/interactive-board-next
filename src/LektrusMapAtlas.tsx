@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
+import LektrusAtlasTerrain,{type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
@@ -59,6 +60,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [tinyCountries,setTinyCountries]=useState<GeoCollection|null>(null);
  const [detailWarning,setDetailWarning]=useState("");
  const [layerWarning,setLayerWarning]=useState("");
+ const [terrainStatus,setTerrainStatus]=useState<TerrainStatus>({total:0,loaded:0,failed:0});
  const [compare,setCompare]=useState(false);
  const [selectedLayer,setSelectedLayer]=useState("Государство");
  const [selectedMarker,setSelectedMarker]=useState<string|null>(null);
@@ -99,6 +101,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const historical=scope==="history";
  const modernBorders=!historical||modernReference;
  const needsPoliticalGeometry=historical||mode==="political"||mode==="contour";
+ const terrainEnabled=(mode==="physical"||mode==="relief")&&d.hypsometry!==false;
  useEffect(()=>{
   if(!historical)return;
   let active=true;setIndexProblem("");
@@ -486,7 +489,9 @@ function AtlasMap({diagram:d,onChange}:Props){
      }}>
      <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
       <LektrusMapBase land={baseLand} coastline={baseCoastline}
-       grid={d.showGrid||mode==="coordinates"} scale={scale} viewport={viewport}/>
+       grid={d.showGrid||mode==="coordinates"} scale={scale} viewport={viewport}
+        terrain={<LektrusAtlasTerrain enabled={terrainEnabled} scale={scale} position={position}
+         onStatus={setTerrainStatus}/>}/>
       <g strokeLinejoin="round">
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
@@ -524,7 +529,7 @@ function AtlasMap({diagram:d,onChange}:Props){
       {(mode==="physical"||mode==="relief")&&<g>
        {landforms.map(f=>{const style=landformColors[landformClass(f.feature)];
         return <path key={"landform-"+f.id} d={f.path}
-         fill={style.fill} fillOpacity={style.opacity} stroke="#8b977d" strokeWidth=".35"
+         fill={style.fill} fillOpacity={terrainEnabled?style.opacity*.27:style.opacity} stroke="#8b977d" strokeWidth=".35"
          className="lektrus-atlas-country" onClick={()=>selectFeature(f.feature,"Природная область")}>
          <title>{geoFeatureName(f.feature)}</title></path>})}
        {ice.map(f=><path key={"ice-"+f.id} d={f.path}
@@ -680,12 +685,26 @@ function AtlasMap({diagram:d,onChange}:Props){
      <small>Единый российский картографический профиль: Natural Earth RUS, 1:10 млн. Обзорные данные не являются официальной административной картой на 20.10.2026.</small>
     </div>}
 
+    {(mode==="physical"||mode==="relief")&&<div className="lektrus-atlas-hypsometry-options">
+     <label><input type="checkbox" checked={terrainEnabled}
+      onChange={e=>onChange?.({...d,hypsometry:e.target.checked})}/>
+      Гипсометрическая карта: реальные высоты</label>
+     {terrainEnabled&&<small>{terrainStatus.total===0?"Для этого охвата данных нет":
+      "Высотная подложка: "+terrainStatus.loaded+" / "+terrainStatus.total+" фрагментов"}
+      {terrainStatus.failed>0?". Не загрузились: "+terrainStatus.failed+".":""}</small>}
+     {terrainEnabled&&<div className="lektrus-atlas-hypso-ramp" aria-label="Высотная шкала в метрах">
+      <span>−5000 м</span><span>0 м</span><span>500 м</span><span>2000 м</span><span>5000+ м</span>
+     </div>}
+     <small>Высоты из Mapzen Terrain Tiles, преобразованные из проекции Меркатора. Выше 85° широты покрытие отсутствует. При сбое источника используется обычная географическая карта.</small>
+     <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener noreferrer">Источник высот (Mapzen/AWS) ↗</a>
+     <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer">Авторы данных и условия использования ↗</a>
+    </div>}
     {(mode==="physical"||mode==="relief")&&<div className="lektrus-atlas-natural-legend">
      <strong>Условные обозначения</strong>
      {(["mountains","plateau","deserts","plains","basins"] as const).map(key=>
       <div key={key}><span className="lektrus-atlas-legend-swatch" style={{background:landformColors[key].fill}}/>
        {landformColors[key].label}</div>)}
-     <small>Цвет отражает класс природной области, но не абсолютную высоту. Отметки высот показываются отдельно.</small>
+     <small>{terrainEnabled?"Природные районы показаны поверх высотной карты. Абсолютные высоты показаны шкалой выше.":"Цвет отражает класс природной области, но не абсолютную высоту. Отметки высот показываются отдельно."}</small>
     </div>}
     {mode==="hydrography"&&<div className="lektrus-atlas-natural-legend">
      <strong>Условные обозначения</strong>
@@ -829,9 +848,9 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>:
     <div className="lektrus-atlas-description"><strong>{mapModeTitle(mode)}</strong>
      <p>{atlasModes.find(m=>m.id===mode)?.hint}.</p>
-     {mode==="physical"&&<p>Природные объекты, ледники, водная сеть и высотные отметки Natural Earth. Региональный масштаб использует подробнее проработанные реки, озёра и побережье. Сплошной цифровой модели высот нет.</p>}
+     {mode==="physical"&&<p>Природные объекты, ледники, водная сеть и высотные отметки Natural Earth. Региональный масштаб использует подробнее проработанные реки, озёра и побережье. Для высотной подложки используется отдельная модель рельефа Mapzen (при включении и доступности).</p>}
      {mode==="hydrography"&&<p>Реки, озёра и морские акватории Natural Earth. Для регионов используется детализация 1:50 млн. Нажмите на объект или найдите его по названию.</p>}
-     {mode==="relief"&&<p>Цвет обозначает географические области, а не точную высоту поверхности. Высотные отметки берутся из атрибутов источника.</p>}
+     {mode==="relief"&&<p>При включённой гипсометрии цвета рассчитаны по высотам DEM; без неё заливка обозначает тип природной области. Подписи высот берутся из атрибутов Natural Earth.</p>}
      {mode==="cities"&&<p>Населённые пункты Natural Earth. В регионах доступен подробный слой городов; оценки населения могут быть устаревшими, размер точки условный.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
     </div>}

@@ -227,3 +227,13 @@
 
 .lektrus-atlas-subregion{display:flex;flex-direction:column;gap:4px;font-size:10px;color:#527392}
 .lektrus-atlas-subregion select{width:100%;min-width:0;max-width:100%;padding:6px;font-size:10px}
+
+.lektrus-atlas-hypsometry-options{display:flex;flex-direction:column;gap:7px;padding:9px;
+ background:#eff5ed;border:1px solid #ccd9c6;border-radius:9px;font-size:11px;color:#3f6552}
+.lektrus-atlas-hypsometry-options label{display:flex;align-items:center;gap:6px;font-weight:700;cursor:pointer}
+.lektrus-atlas-hypsometry-options small{font-size:10px;line-height:1.4;color:#576a62}
+.lektrus-atlas-hypsometry-options a{font-size:10px;color:#246397}
+.lektrus-atlas-hypso-ramp{height:42px;border:1px solid #b1c8c1;border-radius:6px;
+ background:linear-gradient(to right,#205c9e 0%,#bde1f1 19%,#62a46d 20%,#bdcd80 39%,#d8c37e 58%,#a37558 78%,#fafaf9 100%);
+ display:flex;align-items:flex-end;justify-content:space-between;gap:1px;padding:0 3px 3px}
+.lektrus-atlas-hypso-ramp span{font-size:8px;color:#152b39;background:#ffffffcd;padding:1px 2px;border-radius:2px;white-space:nowrap}

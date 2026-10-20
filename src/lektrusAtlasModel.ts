@@ -6,7 +6,7 @@ export const atlasModesFor=(subject:AtlasSubject)=>atlasModes.filter(m=>subject=
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
 export type AtlasDocument={
  kind:"atlas";title:string;mode:AtlasMode;scope?:AtlasSubject;year:number;showLabels:boolean;
- showGrid:boolean;showEvents:boolean;markers:AtlasMarker[];borderView?:"source"|"russian";regionId?:string;paintedCountries?:Record<string,string>;
+ showGrid:boolean;showEvents:boolean;markers:AtlasMarker[];borderView?:"source"|"russian";regionId?:string;hypsometry?:boolean;paintedCountries?:Record<string,string>;
 };
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
  {id:"political",title:"Политическая",hint:"Современные государства, названия и границы"},
@@ -175,7 +175,7 @@ export function eventsNearYear(year:number){
 }
 export function createAtlasDocument(scope:AtlasSubject="geography"):AtlasDocument{
  return {kind:"atlas",scope,title:scope==="history"?"Исторический атлас":"Географический атлас",mode:scope==="history"?"historical":"political",year:1914,
-  showLabels:true,showGrid:false,showEvents:false,markers:[],borderView:"russian",regionId:"world",paintedCountries:{}};
+  showLabels:true,showGrid:false,showEvents:false,markers:[],borderView:"russian",regionId:"world",hypsometry:true,paintedCountries:{}};
 }
 const isText=(v:unknown,max:number,allowEmpty=false)=>typeof v==="string"&&v.length<=max&&(allowEmpty||v.trim().length>0);
 export function validAtlasDocument(value:unknown):value is AtlasDocument{
@@ -187,7 +187,8 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
   typeof v.showGrid!=="boolean"||typeof v.showEvents!=="boolean"||
   !Array.isArray(v.markers)||v.markers.length>40||
   (v.borderView!==undefined&&v.borderView!=="source"&&v.borderView!=="russian")||
-   (v.regionId!==undefined&&(typeof v.regionId!=="string"||v.regionId.length>65||!/^[-a-z0-9]+$/.test(v.regionId))))return false;
+   (v.regionId!==undefined&&(typeof v.regionId!=="string"||v.regionId.length>65||!/^[-a-z0-9]+$/.test(v.regionId)))||
+   (v.hypsometry!==undefined&&typeof v.hypsometry!=="boolean"))return false;
  if(v.paintedCountries!==undefined){
   if(!v.paintedCountries||typeof v.paintedCountries!=="object"||Array.isArray(v.paintedCountries))return false;
   const entries=Object.entries(v.paintedCountries as Record<string,unknown>);

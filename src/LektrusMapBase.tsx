@@ -1,6 +1,6 @@
-import {useMemo} from "react";
+import {useMemo,type ReactNode} from "react";
 import {mapFeaturePath,projectGeography,type MapWindow,type GeoCollection} from "./lektrusAtlasData";
-type Props={land:GeoCollection|null;coastline:GeoCollection|null;grid:boolean;scale?:number;viewport?:MapWindow};
+type Props={land:GeoCollection|null;coastline:GeoCollection|null;grid:boolean;scale?:number;viewport?:MapWindow;terrain?:ReactNode};
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 export function atlasGraticuleStep(scale:number){
  const target=30/Math.max(1,scale),power=Math.pow(10,Math.floor(Math.log10(target)));
@@ -8,7 +8,7 @@ export function atlasGraticuleStep(scale:number){
 }
 const label=(v:number,lat:boolean)=>Math.abs(v).toLocaleString("ru-RU",{maximumFractionDigits:4})+
  "°"+(Math.abs(v)<1e-9?"":lat?(v>0?" с. ш.":" ю. ш."):(v>0?" в. д.":" з. д."));
-export default function LektrusMapBase({land,coastline,grid,scale=1,viewport}:Props){
+export default function LektrusMapBase({land,coastline,grid,scale=1,viewport,terrain}:Props){
  const step=atlasGraticuleStep(scale),minDist=scale>=16?.004:scale>=5?.03:scale>=2?.16:.62;
  const landPaths=useMemo(()=>land?.features.map((f,i)=>({id:i,d:mapFeaturePath(f,minDist,viewport)}))
   .filter(f=>f.d)||[],[land,minDist,viewport]);
@@ -28,6 +28,7 @@ export default function LektrusMapBase({land,coastline,grid,scale=1,viewport}:Pr
   <g className="lektrus-atlas-base-land" pointerEvents="none">
    {landPaths.map(f=><path key={f.id} d={f.d} fill="#e4ebdf" fillRule="evenodd" stroke="none"/>)}
   </g>
+  {terrain}
   <g className="lektrus-atlas-base-coast" pointerEvents="none" stroke="#91a9ad"
    strokeWidth=".8" vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round">
    {coastPaths.map(f=><path key={f.id} d={f.d}/>)}
