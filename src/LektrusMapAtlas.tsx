@@ -4,11 +4,11 @@ import LektrusMapBase from "./LektrusMapBase";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
-historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
+historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl,normalizeHistoricalName} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference} from "./lektrusHistoricalReferences";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void};
-const MAX_ATLAS_ZOOM=256;
+const MAX_ATLAS_ZOOM=16384;
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
 const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
 const precisions=["Источник не указывает точность","Приблизительные границы","Средняя точность","Уточнённая граница"] as const;
@@ -146,10 +146,20 @@ function AtlasMap({diagram:d,onChange}:Props){
  const mapSource=historical||mode==="political"||mode==="contour"?
   (modernBorders&&detail&&scale>=5?detail:source):null;
  const highDetail=modernBorders&&(russianView||!!detail&&scale>=5);
- const precision=highDetail?.006:modernBorders?.13:.10;
- const shapes=useMemo(()=>mapSource?.features.map((feature,i)=>({
-  feature,path:mapFeaturePath(feature,precision),name:geoFeatureName(feature),i
- })).filter(f=>f.path)||[],[mapSource,precision]);
+ const precision=highDetail?(scale>=8?.00015:.08):modernBorders?.13:.10;
+ const mapSourceFeatures=useMemo(()=>mapSource?.features??[],[mapSource]);
+ // Quantized viewport tiles avoid rebuilding expensive high-resolution paths on every pointer move.
+ const tileScale=Math.pow(2,Math.floor(Math.log2(scale)));
+ const tileWidth=900/tileScale,tileHeight=450/tileScale;
+ const tileX=Math.round((450-position.x/scale)/tileWidth);
+ const tileY=Math.round((225-position.y/scale)/tileHeight);
+ const viewport=useMemo<MapWindow|undefined>(()=>highDetail&&scale>=8?
+  {left:(tileX-3)*tileWidth,right:(tileX+3)*tileWidth,
+   top:(tileY-3)*tileHeight,bottom:(tileY+3)*tileHeight}:undefined,
+  [highDetail,tileX,tileY,tileScale,scale>=8]);
+ const shapes=useMemo(()=>mapSourceFeatures.map((feature,i)=>({
+  feature,path:mapFeaturePath(feature,precision,viewport),name:geoFeatureName(feature),i
+ })).filter(f=>f.path),[mapSourceFeatures,precision,viewport]);
  const labels=useMemo(()=>shapes.map(s=>({...s,anchor:featureLabelAnchor(s.feature)}))
   .filter(s=>s.anchor&&s.anchor.area*scale*scale>360)
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
@@ -183,13 +193,13 @@ function AtlasMap({diagram:d,onChange}:Props){
  const namedFeatures=mode==="cities"?cityPoints.map(f=>f.feature):
   mode==="relief"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[])]:
-  [...shapes.map(f=>f.feature),...(modernBorders?tinyPoints.map(p=>p.feature):[])];
- const directoryEntries=useMemo(()=>historical?[...shapes.map(s=>({name:
-  !modernReference?(historicalRussianName(String(s.feature.properties?.NAME??""),snapshot.year)??
-   findHistoricalReference(String(s.feature.properties?.NAME??""),snapshot.year)?.title??s.name):s.name,
-  feature:s.feature})),...(modernReference?tinyPoints.map(p=>({name:p.name,feature:p.feature})):[])]
+  [...mapSourceFeatures,...(modernBorders?tinyPoints.map(p=>p.feature):[])];
+ const directoryEntries=useMemo(()=>historical?[...mapSourceFeatures.map(feature=>({name:
+  !modernReference?(historicalRussianName(String(feature.properties?.NAME??""),snapshot.year)??
+   findHistoricalReference(String(feature.properties?.NAME??""),snapshot.year)?.title??geoFeatureName(feature)):geoFeatureName(feature),
+  feature})),...(modernReference?tinyPoints.map(p=>({name:p.name,feature:p.feature})):[])]
   .filter(v=>v.name&&v.name!=="Объект без названия"&&v.name!=="Unknown"&&v.name!=="unknown")
-  .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],[historical,shapes,modernReference,snapshot.year,tinyPoints]);
+  .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],[historical,mapSourceFeatures,modernReference,snapshot.year,tinyPoints]);
  const visibleDirectory=directoryEntries.filter(entry=>entry.name.toLocaleLowerCase("ru")
   .includes(directoryFilter.trim().toLocaleLowerCase("ru")));
  const globalMatches=useMemo(()=>{
@@ -335,7 +345,8 @@ function AtlasMap({diagram:d,onChange}:Props){
   const point=bounds?[bounds.x,bounds.y]:featureMapPoint(f);
   if(!point)return;
   const target=bounds&&bounds.width+bounds.height>0?
-   Math.min(720/Math.max(bounds.width,.05),340/Math.max(bounds.height,.05)):48;
+   Math.min(720/Math.max(bounds.width,.005),340/Math.max(bounds.height,.005)):
+   mode==="cities"?48:4096;
   const s=clamp(Math.max(2,scale,target),1,MAX_ATLAS_ZOOM);
   setPosition(normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s));
   setScale(s);setSelected(f);if(historical)setHistoryTab("article");setSelectedLayer(mode==="cities"?"Населённый пункт":
@@ -479,7 +490,7 @@ function AtlasMap({diagram:d,onChange}:Props){
      <button type="button" onClick={reset} title="Сбросить положение">⌖</button>
      <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(scale/1.5)}>−</button>
      <label className="lektrus-atlas-zoom-slider">Масштаб
-      <input type="range" min="0" max="8" step=".25"
+      <input type="range" min="0" max="14" step=".25"
        aria-label="Уровень детализации карты"
        value={Math.log2(scale)} onChange={e=>zoomAt(Math.pow(2,Number(e.target.value)))}/>
      </label>
