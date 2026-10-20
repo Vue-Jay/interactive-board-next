@@ -255,3 +255,63 @@
  .lektrus-orthography-answers button{padding:5px 9px}
  .lektrus-orthography-nav button{padding:6px 3px}
 }
+
+/* Russian sentence-building exercise and responsive civics diagram editor. */
+.lektrus-social-token-input{flex:1;min-width:0;padding:8px 7px;
+ border:1px solid #ccdbed;border-radius:8px;color:#2a5175;background:#fff;
+ font:inherit;font-size:12px}
+.lektrus-social-node-editor{display:flex;flex-direction:column;gap:7px;
+ background:#f5f9ff;border:1px solid #dce7f4;border-radius:10px;padding:9px;min-width:0}
+.lektrus-social-node-editor input,.lektrus-social-node-editor select,
+.lektrus-social-edge-editor select{min-width:0;width:100%;font:inherit;font-size:11px;
+ color:#355779;border:1px solid #c9dbec;border-radius:7px;background:#fff;padding:7px 5px}
+.lektrus-social-node-editor .lektrus-russian-edit-header>input{flex:1}
+.lektrus-social-position-row{display:grid;grid-template-columns:1fr 1fr minmax(0,1.3fr);gap:5px;min-width:0}
+.lektrus-social-position-row label{display:flex;flex-direction:column;gap:4px;
+ color:#6a839f;font-size:10px;min-width:0}
+.lektrus-social-edge-editor{display:grid;grid-template-columns:21px minmax(0,1fr) minmax(0,1fr) 85px 25px;
+ gap:4px;align-items:center;padding:5px 0;border-bottom:1px solid #e2eaf3;min-width:0}
+.lektrus-social-edge-editor select{text-overflow:ellipsis;white-space:nowrap}
+.lektrus-social-edge-editor button{border:1px solid #d3e0f0;border-radius:6px;
+ background:#fff;min-width:24px;height:27px;color:#5e7f9f;cursor:pointer}
+/* Sentence exercises are interactive inside a graph object on the board. */
+.lektrus-sentence-on-board{display:flex;flex-direction:column;align-items:center;
+ justify-content:center;width:100%;height:100%;min-width:0;min-height:0;box-sizing:border-box;
+ overflow:hidden;gap:8px;background:#f9fbff;border:1px solid #dce6f1;border-radius:10px;
+ padding:14px;color:#2c4f75;font-family:inherit;touch-action:manipulation}
+.lektrus-sentence-on-board>strong{font-size:clamp(14px,2vw,25px);font-weight:800;
+ text-align:center;line-height:1.2}
+.lektrus-sentence-task{text-align:center;font-size:clamp(11px,1.2vw,16px);margin:0;color:#5d7596}
+.lektrus-sentence-tip{text-align:center;color:#6680a1;background:#eaf2ff;border-radius:8px;
+ padding:7px;margin:0;font-size:clamp(10px,1vw,12px);max-width:100%}
+.lektrus-sentence-parts{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;
+ align-content:center;width:100%;min-height:0;overflow-y:auto;flex:1;
+ border:1px dashed #d0dfee;border-radius:10px;padding:12px;box-sizing:border-box;
+ background:#fff}
+.lektrus-sentence-parts button{border:1px solid #b7cee9;background:#edf4ff;
+ color:#315d97;border-radius:9px;padding:8px 11px;cursor:pointer;
+ font:inherit;font-weight:700;font-size:clamp(12px,1.3vw,17px)}
+.lektrus-sentence-parts button.selected{background:#336dd0;color:#fff;border-color:#2556ac}
+.lektrus-sentence-parts button:focus-visible,.lektrus-sentence-actions button:focus-visible{
+ outline:2px solid #2b76d9;outline-offset:2px}
+.lektrus-sentence-status{color:#547699;font-size:clamp(10px,1.1vw,14px);text-align:center}
+.lektrus-sentence-actions{display:flex;gap:8px;justify-content:center;width:100%;flex:none}
+.lektrus-sentence-actions button{border:1px solid #bfd2e8;background:#fff;
+ color:#345f98;border-radius:9px;cursor:pointer;min-width:95px;
+ font:inherit;font-size:clamp(11px,1.1vw,14px);padding:9px}
+.lektrus-sentence-actions button:last-child{background:#3568c8;color:#fff;border-color:#3568c8}
+.lektrus-sentence-key{font-size:clamp(10px,1.1vw,13px);background:#e8f3ed;
+ border:1px solid #b8dbca;color:#36715a;border-radius:8px;padding:5px;text-align:center;
+ width:100%;box-sizing:border-box}
+.lektrus-sentence-key small{color:#5c8e7a}
+@media(max-width:760px){
+ .lektrus-social-node-editor{padding:6px;gap:5px}
+ .lektrus-social-edge-editor{grid-template-columns:17px minmax(0,1fr) minmax(0,1fr) 68px 20px;gap:3px}
+ .lektrus-social-edge-editor select{font-size:10px;padding:5px 2px}
+ .lektrus-social-position-row{gap:3px}
+ .lektrus-sentence-on-board{padding:6px;gap:4px}
+ .lektrus-sentence-parts{padding:6px;gap:4px}
+ .lektrus-sentence-parts button{padding:5px 7px}
+ .lektrus-sentence-actions button{min-width:74px;padding:6px}
+ .lektrus-sentence-tip{padding:4px}
+}

@@ -68,6 +68,35 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
   }
   return visited.size===nodes.length;
  }
+ if(d.kind==="sentence-builder"){
+  if(typeof d.instructions!=="string"||d.instructions.length>180||
+   typeof d.showKey!=="boolean"||typeof d.showHint!=="boolean"||
+   typeof d.patternId!=="string"||d.patternId.length>40||
+   !Array.isArray(d.parts)||d.parts.length<2||d.parts.length>24)return false;
+  const parts=d.parts as Record<string,unknown>[];
+  return parts.every(p=>p&&typeof p==="object"&&field(p.id,64)&&field(p.text,65))&&
+   new Set(parts.map(p=>p.id)).size===parts.length;
+ }
+ if(d.kind==="state-structure"){
+  if(typeof d.subtitle!=="string"||d.subtitle.length>160||
+   typeof d.templateId!=="string"||d.templateId.length>40||
+   typeof d.showRelationships!=="boolean"||typeof d.showLabels!=="boolean"||
+   !Array.isArray(d.nodes)||d.nodes.length<1||d.nodes.length>15||
+   !Array.isArray(d.edges)||d.edges.length>26)return false;
+  const nodes=d.nodes as Record<string,unknown>[],edges=d.edges as Record<string,unknown>[];
+  const kinds=["concept","institution","example"];
+  if(!nodes.every(n=>n&&typeof n==="object"&&field(n.id,64)&&field(n.text,62)&&
+   [0,1,2,3].includes(n.column as number)&&[0,1,2,3,4].includes(n.row as number)&&
+   kinds.includes(n.kind as string))||
+   new Set(nodes.map(n=>n.id)).size!==nodes.length||
+   new Set(nodes.map(n=>n.column+":"+n.row)).size!==nodes.length)return false;
+  const ids=new Set(nodes.map(n=>n.id)),relationships=["part","subordinate","interacts"];
+  return edges.every(e=>e&&typeof e==="object"&&field(e.id,64)&&
+   ids.has(e.from)&&ids.has(e.to)&&e.from!==e.to&&
+   relationships.includes(e.kind as string))&&
+   new Set(edges.map(e=>e.id)).size===edges.length&&
+   new Set(edges.map(e=>e.from+"|"+e.to+"|"+e.kind)).size===edges.length;
+ }
  if(d.kind==="morphology"){
   if(!field(d.word,65)||typeof d.sentence!=="string"||d.sentence.length>220||
    !["noun","adjective","verb","pronoun","numeral","adverb","participle","gerund","preposition",

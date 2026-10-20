@@ -30,6 +30,8 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"ru-morphology",label:"Морфологический разбор",description:"Часть речи, постоянные и непостоянные признаки, скрываемые ответы",group:"Русский язык · морфология",subjects:["русский язык"]},
   {id:"ru-phonetics",label:"Фонетический разбор",description:"Буквы, звуки, ударение и ручная транскрипция",group:"Русский язык · фонетика",subjects:["русский язык"]},
   {id:"ru-orthography",label:"Орфографический тренажёр",description:"Орфограммы с пропусками и проверкой ответов на доске",group:"Русский язык · орфография",subjects:["русский язык"]},
+  {id:"ru-sentence-builder",label:"Конструктор предложений",description:"Сборка предложения из слов, проверка порядка и большой справочник синтаксических образцов",group:"Русский язык · синтаксис",subjects:["русский язык"]},
+  {id:"civics-structure",label:"Схемы государства и общества",description:"Органы, понятия и отношения с указанием характера связей",group:"Обществознание · государство и общество",subjects:["обществознание","история"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
 ];
@@ -44,7 +46,8 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||id==="geo-relief-profile"||
      id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||
-     id==="ru-morphology"||id==="ru-phonetics"||id==="ru-orthography"){
+     id==="ru-morphology"||id==="ru-phonetics"||id==="ru-orthography"||
+     id==="ru-sentence-builder"||id==="civics-structure"){
     const diagram=makeSchoolDiagram(id);
     return {id:createId(),kind:"graph",text:diagram.title,
       x:x-405,y:y-225,width:810,height:450,graphFigureId:id,
