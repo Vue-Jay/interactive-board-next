@@ -30,6 +30,7 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"ru-morphology",label:"Морфологический разбор",description:"Часть речи, постоянные и непостоянные признаки, скрываемые ответы",group:"Русский язык · морфология",subjects:["русский язык"]},
   {id:"ru-phonetics",label:"Фонетический разбор",description:"Буквы, звуки, ударение и ручная транскрипция",group:"Русский язык · фонетика",subjects:["русский язык"]},
   {id:"ru-orthography",label:"Орфографический тренажёр",description:"Орфограммы с пропусками и проверкой ответов на доске",group:"Русский язык · орфография",subjects:["русский язык"]},
+  {id:"maps-atlas",label:"Интерактивные карты",description:"Политическая, контурная, физическая, историческая и карта событий с временной шкалой",group:"Карты и атласы",subjects:["география","история","обществознание"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
 ];
@@ -40,7 +41,7 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
-  if(id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
+  if(id==="maps-atlas"||id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||id==="geo-relief-profile"||
      id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||
