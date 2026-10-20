@@ -1,19 +1,24 @@
 import {historicalSnapshots} from "./lektrusAtlasModel";
 
 export type GeoPosition=[number,number];
-export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineString";
+export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineString"|"Point"|"MultiPoint";
  coordinates:unknown};
 export type GeoFeature={type:"Feature";properties:Record<string,unknown>|null;geometry:GeoGeometry|null};
 export type GeoCollection={type:"FeatureCollection";features:GeoFeature[]};
-export type GeoLayer="countries"|"rivers"|"lakes";
+export type GeoLayer="countries"|"countries-detail"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers";
 const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/";
 const BACKUP="https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/";
 const HIST="https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/";
 const HIST_BACKUP="https://cdn.jsdelivr.net/gh/aourednik/historical-basemaps@master/geojson/";
 const names:Record<GeoLayer,string>={
  countries:"ne_110m_admin_0_countries.geojson",
+ "countries-detail":"ne_50m_admin_0_countries.geojson",
  rivers:"ne_110m_rivers_lake_centerlines.geojson",
- lakes:"ne_110m_lakes.geojson"
+ lakes:"ne_110m_lakes.geojson",
+ cities:"ne_110m_populated_places.geojson",
+ elevation:"ne_110m_geography_regions_elevation_points.geojson",
+ regions:"ne_110m_geography_regions_polys.geojson",
+ glaciers:"ne_110m_glaciated_areas.geojson"
 };
 const cache=new Map<string,GeoCollection>();
 const pending=new Map<string,Promise<GeoCollection>>();
@@ -40,7 +45,7 @@ async function requestGeojson(key:string,urls:string[]):Promise<GeoCollection>{
     if(!validData(body))throw new Error("Некорректный GeoJSON");
     cache.set(key,body);
     // Keep memory bounded. Slow phones should not hold decades of geometry.
-    if(cache.size>5)cache.delete(cache.keys().next().value!);
+    if(cache.size>8)cache.delete(cache.keys().next().value!);
     return body;
    }catch(error){errors.push(error instanceof Error?error.message:String(error))}
   }
@@ -50,7 +55,7 @@ async function requestGeojson(key:string,urls:string[]):Promise<GeoCollection>{
  try{return await task}finally{pending.delete(key)}
 }
 export const geoFeatureName=(feature:GeoFeature)=>
- String(feature.properties?.NAME_RU||feature.properties?.NAME||feature.properties?.ADMIN||
+ String(feature.properties?.NAME_RU||feature.properties?.NAME||feature.properties?.NAMEASCII||feature.properties?.GEONAME||feature.properties?.ADMIN||
  feature.properties?.name||"Объект без названия");
 export const borderPrecision=(f:GeoFeature):number=>{
  const number=Number(f.properties?.BORDERPRECISION);
@@ -170,6 +175,44 @@ export function featureLabelAnchor(feature:GeoFeature):{x:number;y:number;area:n
  }
  return best;
 }
+/** A point from the source, not a guessed place or a calculated capital.
+ * Non-point features use their geographic label anchor when available. */
+export function featureMapPoint(feature:GeoFeature):GeoPosition|null{
+ const g=feature.geometry;
+ if(!g)return null;
+ if(g.type==="Point"){
+  const p=g.coordinates as number[];
+  return p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1])?projectGeography(p[0],p[1]):null;
+ }
+ if(g.type==="MultiPoint"){
+  const points=g.coordinates as number[][];
+  if(points.length&&points[0].length>=2&&Number.isFinite(points[0][0])&&Number.isFinite(points[0][1]))
+   return projectGeography(points[0][0],points[0][1]);
+ }
+ const anchor=featureLabelAnchor(feature);
+ return anchor?[anchor.x,anchor.y]:null;
+}
+/** Only output values present in a source property; do not infer elevations,
+ * population, capital status or administrative control from a feature's name. */
+export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value:string}>{
+ const p=feature.properties??{};
+ const fields:[string,string][]=[
+  ["ELEVATION","Высота, м"],["ELEV","Высота, м"],
+  ["POP_MAX","Население (оценка источника)"],["POP_MIN","Население (минимальная оценка)"],
+  ["SOVEREIGNT","Суверенное государство в источнике"],["ADM0NAME","Страна в источнике"],
+  ["FEATURECLA","Категория"],["FEATURECLASS","Категория"]];
+ const result:Array<{label:string;value:string}>=[];
+ const seen=new Set<string>();
+ for(const [key,label] of fields){
+  const value=p[key];
+  if((typeof value==="string"&&value.trim()!==""||
+   typeof value==="number"&&Number.isFinite(value))&&!seen.has(label)){
+   result.push({label,value:String(value)});seen.add(label);
+  }
+ }
+ return result;
+}
+
 export function summariseNamedChanges(prev:GeoCollection,next:GeoCollection){
  const names=(geo:GeoCollection)=>new Set(geo.features.map(geoFeatureName).filter(n=>n!=="Объект без названия"));
  const a=names(prev),b=names(next);

@@ -1,6 +1,6 @@
 /** A single map tool for geography, history and social studies.
  * Coordinates are geographic WGS84, never invented "modern borders" for a past year. */
-export type AtlasMode="political"|"contour"|"physical"|"historical"|"events";
+export type AtlasMode="political"|"contour"|"physical"|"waters"|"relief"|"cities"|"historical"|"events";
 export type AtlasSubject="geography"|"history";
 export const atlasModesFor=(subject:AtlasSubject)=>atlasModes.filter(m=>subject==="history"?m.id==="historical"||m.id==="events":m.id!=="historical"&&m.id!=="events");
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
@@ -11,7 +11,10 @@ export type AtlasDocument={
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
  {id:"political",title:"Политическая",hint:"Современные государства, названия и границы"},
  {id:"contour",title:"Контурная",hint:"Неподписанная карта для упражнений"},
- {id:"physical",title:"Физическая",hint:"Берега, озёра и реки на карте мира"},
+ {id:"physical",title:"Физическая",hint:"Суша, водоёмы, ледники, крупные формы рельефа и высотные отметки"},
+ {id:"waters",title:"Воды суши",hint:"Реки и озёра с выбором объектов и подписями"},
+ {id:"relief",title:"Рельеф",hint:"Крупные формы рельефа, ледники и подписанные высотные отметки"},
+ {id:"cities",title:"Города",hint:"Населённые пункты, столицы и численность по атрибутам источника"},
  {id:"historical",title:"Историческая",hint:"Государства и границы по датированным снимкам"},
  {id:"events",title:"Карта событий",hint:"Исторические события по времени и координатам"}
 ];
