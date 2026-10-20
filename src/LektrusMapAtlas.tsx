@@ -5,15 +5,16 @@ import {atlasModes,atlasModesFor,eventsNearYear,historicalSnapshots,nearestSnaps
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
  type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
-type Props={diagram:AtlasDocument};
+type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void};
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
 const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
 const precisions=["Неизвестная точность","Приблизительные границы","Средняя точность","Уточнённая граница"] as const;
 const mapModeTitle=(v:AtlasMode)=>atlasModes.find(m=>m.id===v)!.title;
-function AtlasMap({diagram:d}:Props){
+function AtlasMap({diagram:d,onChange}:Props){
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":d.mode);
  const [paintColor,setPaintColor]=useState("#f3b778");
- const [painted,setPainted]=useState<Record<string,string>>({});
+ const painted=d.paintedCountries??{};
+ const savePaint=(next:Record<string,string>)=>onChange?.({...d,paintedCountries:next});
  const isContourTool=d.title==="Контурная карта";
  const [index,setIndex]=useState(nearestSnapshotIndex(d.year));
  const [source,setSource]=useState<GeoCollection|null>(null);
@@ -220,7 +221,7 @@ function AtlasMap({diagram:d}:Props){
   if(mode==="contour"){
    if(dragged.current)return;
    const key=String(feature.properties?.ADM0_A3||feature.properties?.ISO_A3||geoFeatureName(feature));
-   setPainted(old=>({...old,[key]:paintColor}));
+   savePaint({...painted,[key]:paintColor});
    return;
   }
   selectFeature(feature,historical?"Историческая территория":"Государство");
@@ -382,8 +383,8 @@ function AtlasMap({diagram:d}:Props){
      <label>Цвет маркера <input type="color" value={paintColor}
       onChange={e=>setPaintColor(e.target.value)} aria-label="Цвет закраски"/></label>
      <button type="button" onClick={()=>setPaintColor("#fafcfb")}>Ластик заливки</button>
-     <button type="button" onClick={()=>setPainted({})}>Очистить все заливки</button>
-     <small>Выберите цвет и нажимайте на территории. Закраска пока действует только в открытой карте.</small>
+     <button type="button" onClick={()=>savePaint({})}>Очистить все заливки</button>
+     <small>Выберите цвет и нажимайте на территории. Закраска сохраняется вместе с объектом доски.</small>
     </div>}
     {mode!=="contour"&&<label>Поиск объектов
      <input value={search} onChange={e=>setSearch(e.target.value)}
@@ -485,4 +486,4 @@ function AtlasMap({diagram:d}:Props){
   </div>}
  </div>;
 }
-export default function LektrusMapAtlas({diagram}:Props){return <AtlasMap diagram={diagram}/>};
+export default function LektrusMapAtlas({diagram,onChange}:Props){return <AtlasMap diagram={diagram} onChange={onChange}/>};
