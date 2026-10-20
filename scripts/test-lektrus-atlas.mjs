@@ -78,6 +78,27 @@ assert.equal(createAtlasDocument().borderView,"russian");
 assert.equal(createAtlasDocument().regionId,"world");
 assert.equal(validAtlasDocument({...atlas,regionId:"rf-siberia"}),true);
 assert.equal(validAtlasDocument({...atlas,regionId:"..wrong"}),false);
+assert.equal(createAtlasDocument().hypsometry,true);
+assert.equal(validAtlasDocument({...atlas,hypsometry:false}),true);
+assert.equal(validAtlasDocument({...atlas,hypsometry:"no"}),false);
+const terrainSource=fs.readFileSync(new URL("../src/lektrusAtlasTerrainMath.ts",import.meta.url),"utf8");
+const terrainCode=ts.transpileModule(terrainSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const terrain={};new Function("exports",terrainCode)(terrain);
+assert.equal(terrain.decodeTerrarium(128,0,0),0,"Mapzen Terrarium sea-level decoding");
+assert.equal(terrain.decodeTerrarium(127,255,0),-1);
+assert.equal(terrain.decodeTerrarium(128,0,128),.5);
+assert.ok(Math.abs(terrain.terrainLatitude(2,2))<1e-9);
+assert.ok(Math.abs(terrain.terrainMercatorY(0,2)-2)<1e-9);
+assert.deepEqual(terrain.atlasTerrainTiles(1,{x:0,y:0}).length,16);
+const detailedTiles=terrain.atlasTerrainTiles(60,{x:-12000,y:-3800});
+assert.ok(detailedTiles.length<=24,"DEM must load only bounded visible tiles");
+assert.ok(detailedTiles.every(t=>t.width>0&&t.height>0&&t.x>=0&&t.y>=0));
+assert.ok(terrain.hypsometricRGB(2000)[0]>terrain.hypsometricRGB(-2000)[0]);
+assert.match(map,/LektrusAtlasTerrain/);
+assert.match(map,/Гипсометрическая карта/);
+assert.match(fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url),"utf8"),/\{terrain\}/);
+
 const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url),"utf8");
 assert.match(data,/ne_50m_geography_marine_polys/);
 const reg=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
