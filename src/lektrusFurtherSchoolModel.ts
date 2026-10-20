@@ -52,7 +52,7 @@ export function validFurtherDiagram(value:unknown):value is FurtherDiagram{
  if(!text(d.title,120))return false;
  if(d.kind==="organs"){
   if(d.system!=="digestive"&&d.system!=="respiratory"||!Array.isArray(d.labels))return false;
-  const known=new Set(organOptions[d.system].map(x=>x.id));
+  const known=new Set<string>(organOptions[d.system].map(x=>x.id));
   return d.labels.length<=known.size&&d.labels.every(v=>typeof v==="string"&&known.has(v))&&
    new Set(d.labels).size===d.labels.length;
  }
