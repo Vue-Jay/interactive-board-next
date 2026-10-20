@@ -90,11 +90,16 @@ function FamilyGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kind:
 function FlashcardGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kind:"flashcards"}>}){
  const [index,setIndex]=useState(0),[revealed,setRevealed]=useState(false);
  const card=d.cards[Math.min(index,d.cards.length-1)];
- const front=d.direction==="foreign-first"?card.term:card.translation;
- const back=d.direction==="foreign-first"?card.translation:card.term;
+ const front=card?(d.direction==="foreign-first"?card.term:card.translation):"";
+ const back=card?(d.direction==="foreign-first"?card.translation:card.term):"";
  useEffect(()=>{setIndex(0);setRevealed(false)},[d.cards,d.direction]);
  const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
  const navigation=(to:number)=>{setIndex(to);setRevealed(false)};
+ if(!card)return <div className="lektrus-flashcards-on-board" role="status"
+  onPointerDown={stop} onPointerUp={stop} onClick={stop}>
+  <div className="lektrus-flashcard-heading">{d.title}</div>
+  <p>Карточек пока нет. Добавьте слова и перевод в редакторе.</p>
+ </div>;
  return <div className="lektrus-flashcards-on-board" aria-label={d.title}
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   <div className="lektrus-flashcard-heading">{d.title}</div>
