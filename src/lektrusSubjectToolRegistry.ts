@@ -32,7 +32,8 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"ru-orthography",label:"Орфографический тренажёр",description:"Орфограммы с пропусками и проверкой ответов на доске",group:"Русский язык · орфография",subjects:["русский язык"]},
   {id:"ru-sentence-builder",label:"Конструктор предложений",description:"Сборка предложения из слов, проверка порядка и большой справочник синтаксических образцов",group:"Русский язык · синтаксис",subjects:["русский язык"]},
   {id:"civics-structure",label:"Схемы государства и общества",description:"Органы, понятия и отношения с указанием характера связей",group:"Обществознание · государство и общество",subjects:["обществознание","история"]},
-  {id:"maps-atlas",label:"Интерактивные карты",description:"Политическая, контурная, физическая, историческая и карта событий с временной шкалой",group:"Карты и атласы",subjects:["география","история","обществознание"]},
+  {id:"maps-atlas",label:"Географические карты",description:"Единая подложка: современная политическая, контурная и физическая карты",group:"География · карты",subjects:["география"]},
+  {id:"history-atlas",label:"Исторические карты",description:"Единая подложка: границы эпох, исторические события и ползунок времени",group:"История · карты",subjects:["история"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
 ];
@@ -43,7 +44,7 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
-  if(id==="maps-atlas"||id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
+  if(id==="maps-atlas"||id==="history-atlas"||id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||id==="geo-relief-profile"||
      id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||
