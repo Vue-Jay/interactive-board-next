@@ -29,5 +29,7 @@ jobs:
         run: node scripts/test-lektrus-subject-persistence.mjs
       - name: Russian and informatics diagrams regression
         run: node scripts/test-lektrus-next-school.mjs
+      - name: Biology organ systems and relief regression
+        run: node scripts/test-lektrus-further-school.mjs
       - name: Real board interface studio regression
         run: node scripts/test-lektrus-real-interface-editor.mjs
