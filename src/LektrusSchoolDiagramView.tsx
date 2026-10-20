@@ -1,5 +1,6 @@
 import type {SchoolDiagram,CellOrganelle} from "./lektrusSchoolDiagramModel";
 import {months,organelleTitles,prettyYear} from "./lektrusSchoolDiagramModel";
+import LektrusNextSchoolView from "./LektrusNextSchoolView";
 
 type Props={diagram:SchoolDiagram};
 const trim=(s:string,n=20)=>s.length>n?s.slice(0,n-1)+"…":s;
@@ -161,5 +162,6 @@ export default function LektrusSchoolDiagramView({diagram}:Props){
   case "food-chain":return <ChainGraphic diagram={diagram}/>;
   case "climate":return <ClimateGraphic diagram={diagram}/>;
   case "timeline":return <TimelineGraphic diagram={diagram}/>;
+  case "syntax":case "flowchart":case "place-value":return <LektrusNextSchoolView diagram={diagram}/>;
  }
 }
