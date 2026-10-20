@@ -27,23 +27,30 @@ const memo=(id:string,work:()=>Promise<GeoCollection>)=>{
  return promise;
 };
 /** OSM Overpass geometry for a SMALL map viewport. This is not a full street map. */
-export function loadLocalInfrastructure(b:ExternalBounds):Promise<GeoCollection>{
+export function loadLocalInfrastructure(b:ExternalBounds,kind:"roads"|"waterways"="roads"):Promise<GeoCollection>{
  if(!canLoadLocalRoads(b))return Promise.resolve({type:"FeatureCollection",features:[]});
  const box=[b.south,b.west,b.north,b.east].map(x=>Number(x.toFixed(5))).join(",");
  const overpass='[out:json][timeout:15];('+
-  'way["highway"~"^(motorway|trunk|primary)$"]('+box+');'+
-  'way["waterway"~"^(river|stream|canal)$"]["name:ru"]('+box+');'+
+  (kind==="roads"?'way["highway"~"^(motorway|trunk|primary)$"]('+box+');':
+   'way["waterway"~"^(river|stream|canal)$"]["name:ru"]('+box+');')+
   ');out geom;';
- const url="https://overpass.kumi.systems/api/interpreter?data="+encodeURIComponent(overpass);
- return memo("osm:"+externalBBoxKey(b),async()=>{
-  const json=await safeFetch(url);
+ const servers=["https://overpass.kumi.systems/api/interpreter?data=",
+  "https://overpass-api.de/api/interpreter?data="];
+ return memo("osm:"+kind+":"+externalBBoxKey(b),async()=>{
+  let json:unknown=null,lastError:unknown=null;
+  for(const endpoint of servers){
+   try{json=await safeFetch(endpoint+encodeURIComponent(overpass));break}
+   catch(e){lastError=e}
+  }
+  if(!json)throw lastError instanceof Error?lastError:new Error("Overpass недоступен");
+  const overpassData=json as {elements?:Array<{type:string;geometry?:Array<{lon:number;lat:number}>;tags?:Record<string,string>;id:number}>};
   const features:GeoFeature[]=[];
-  for(const item of json.elements??[]){
+  for(const item of overpassData.elements??[]){
    if(features.length>=MAX_EXTERNAL_FEATURES)break;
    if(item.type!=="way"||!Array.isArray(item.geometry)||item.geometry.length<2)continue;
    const tags=item.tags??{},road=typeof tags.highway==="string";
    const ru=String(tags["name:ru"]??"").trim();
-   if(!road&&!/[А-ЯЁа-яё]/.test(ru))continue;
+   if(kind==="roads"&&!road||kind==="waterways"&&(road||!/[А-ЯЁа-яё]/.test(ru)))continue;
    const coords=item.geometry.filter((v:{lon:number;lat:number})=>Number.isFinite(v.lon)&&Number.isFinite(v.lat))
     .map((v:{lon:number;lat:number})=>[v.lon,v.lat]);
    if(coords.length<2)continue;

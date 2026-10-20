@@ -306,7 +306,7 @@ function AtlasMap({diagram:d,onChange}:Props){
   if(!["cities","hydrography","physical"].includes(mode)||!roadsAvailable){
    setInfrastructure(null);setInfrastructureError("");return()=>{active=false};
   }
-  loadLocalInfrastructure(externalBounds).then(v=>{if(active){
+  loadLocalInfrastructure(externalBounds,mode==="cities"?"roads":"waterways").then(v=>{if(active){
    setInfrastructure(v);setInfrastructureError("");
   }}).catch(()=>{if(active){setInfrastructure(null);
    setInfrastructureError("Дополнительные дороги и водотоки сейчас недоступны.")}});

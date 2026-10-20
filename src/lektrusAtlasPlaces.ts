@@ -35,11 +35,12 @@ export function chooseCityLabels<T extends PlacePoint>(points:readonly T[],scale
   .sort((a,b)=>cityRank(a.feature)-cityRank(b.feature)||
    cityPopulation(b.feature)-cityPopulation(a.feature)||a.id-b.id);
  const placed:{x:number;y:number;w:number}[]=[],out:T[]=[];
+ const fontPx=Math.min(15.5,9.2+Math.log2(Math.max(1,scale))*1.05);
  for(const item of sorted){
   const text=russianPlaceName(item.feature)!;
   const x=item.point![0]*scale,y=item.point![1]*scale;
-  const w=Math.min(170,Math.max(24,text.length*4.2));
-  const overlap=placed.some(p=>Math.abs(p.y-y)<12&&x<=p.x+p.w+8&&p.x<=x+w+8);
+  const w=Math.min(260,Math.max(24,text.length*fontPx*.56));
+  const overlap=placed.some(p=>Math.abs(p.y-y)<fontPx*1.3&&x<=p.x+p.w+8&&p.x<=x+w+8);
   if(overlap)continue;
   placed.push({x,y,w});out.push(item);
   if(out.length>=maxCount)break;
