@@ -97,6 +97,21 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
    new Set(edges.map(e=>e.id)).size===edges.length&&
    new Set(edges.map(e=>e.from+"|"+e.to+"|"+e.kind)).size===edges.length;
  }
+ if(d.kind==="atlas"){
+  const modes=["political","contour","physical","historical","events"];
+  const dates=[-123000,-10000,-8000,-5000,-4000,-3000,-2000,-1500,-1000,-700,-500,-400,-323,-300,-200,-100,-1,
+   100,200,300,400,500,600,700,800,900,1000,1100,1200,1279,1300,1400,1492,1500,1530,1600,1650,1700,1715,
+   1783,1800,1815,1878,1880,1900,1914,1920,1930,1938,1945,1960,1994,2000,2010];
+  if(!modes.includes(d.mode as string)||!dates.includes(d.year as number)||
+   typeof d.showLabels!=="boolean"||typeof d.showGrid!=="boolean"||
+   typeof d.showEvents!=="boolean"||!Array.isArray(d.markers)||d.markers.length>40)return false;
+  const markers=d.markers as Record<string,unknown>[];
+  return markers.every(m=>m&&typeof m==="object"&&field(m.id,64)&&field(m.title,80)&&
+   typeof m.description==="string"&&m.description.length<=300&&
+   finiteIn(m.lat,-90,90)&&finiteIn(m.lon,-180,180)&&
+   Number.isInteger(m.year)&&finiteIn(m.year,-123000,2100))&&
+   new Set(markers.map(m=>m.id)).size===markers.length;
+ }
  if(d.kind==="morphology"){
   if(!field(d.word,65)||typeof d.sentence!=="string"||d.sentence.length>220||
    !["noun","adjective","verb","pronoun","numeral","adverb","participle","gerund","preposition",
