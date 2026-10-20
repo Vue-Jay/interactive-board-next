@@ -163,10 +163,12 @@ function AtlasMap({diagram:d,onChange}:Props){
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
  const namedFeatures=mode==="cities"?cityPoints.map(f=>f.feature):
   mode==="relief"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature)]:
-  mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[])]:shapes.map(f=>f.feature);
- const directoryEntries=useMemo(()=>historical?shapes.map(s=>({name:s.name,feature:s.feature}))
+  mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[])]:
+  [...shapes.map(f=>f.feature),...(modernBorders?tinyPoints.map(p=>p.feature):[])];
+ const directoryEntries=useMemo(()=>historical?[...shapes.map(s=>({name:s.name,feature:s.feature})),
+  ...(modernReference?tinyPoints.map(p=>({name:p.name,feature:p.feature})):[])]
   .filter(v=>v.name&&v.name!=="Объект без названия"&&v.name!=="Unknown"&&v.name!=="unknown")
-  .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],[historical,shapes]);
+  .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],[historical,shapes,tinyPoints,modernReference]);
  const visibleDirectory=directoryEntries.filter(entry=>entry.name.toLocaleLowerCase("ru")
   .includes(directoryFilter.trim().toLocaleLowerCase("ru")));
  const results=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU")
@@ -412,11 +414,29 @@ function AtlasMap({diagram:d,onChange}:Props){
      <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(scale*1.5)}>+</button>
      <button type="button" onClick={reset} title="Сбросить положение">⌖</button>
      <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(scale/1.5)}>−</button>
+     <label className="lektrus-atlas-zoom-slider">Масштаб
+      <input type="range" min="0" max="8" step=".25"
+       aria-label="Уровень детализации карты"
+       value={Math.log2(scale)} onChange={e=>zoomAt(Math.pow(2,Number(e.target.value)))}/>
+     </label>
     </div>}
     <div className="lektrus-atlas-precision">×{scale.toFixed(1)} · {highDetail?"детали 1:10 млн":modernBorders?"страны 1:50 млн":"историческая реконструкция"} · {coord?
      `${coord.lat.toFixed(2)}°, ${coord.lon.toFixed(2)}°`:objectMoveMode?"режим перемещения объекта":"обзорные геоданные"}</div>
    </div>
    <aside className="lektrus-atlas-sidebar">
+    {modernBorders&&<div className="lektrus-atlas-source-note">
+     <strong>Покрытие: {source?.features.length??0} территорий</strong>
+     <small>Малые, островные государства и отдельные зависимости по данным Natural Earth. Детали границ: 1:10 млн при приближении, не кадастровая точность.</small>
+     <label>Картографическая позиция
+      <select value={d.borderView??"source"} disabled={!onChange}
+       onChange={e=>onChange?.({...d,borderView:e.target.value as "source"|"russian"})}>
+       <option value="source">Базовая версия Natural Earth</option>
+       <option value="russian">Российская версия Natural Earth</option>
+      </select>
+     </label>
+     {russianView&&<small>Российская версия отражает издание исходного набора, но не подтверждает актуальность каждого спорного участка на 2026 год.</small>}
+    </div>}
+
     {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
      <strong>Закраска стран</strong>
      <label>Цвет маркера <input type="color" value={paintColor}
@@ -511,11 +531,11 @@ function AtlasMap({diagram:d,onChange}:Props){
      {mode==="cities"&&<p>Показаны населённые пункты по данным Natural Earth. Оценки населения могут быть устаревшими; размер точки условный.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
     </div>}
-    {historical&&index>0&&<label className="lektrus-atlas-compare">
+    {historical&&!modernReference&&index>0&&<label className="lektrus-atlas-compare">
      <input type="checkbox" checked={compare} onChange={e=>setCompare(e.target.checked)}/>
      <span>Границы предыдущего снимка <small>(красный пунктир)</small></span>
     </label>}
-    {historical&&changes&&<div className="lektrus-atlas-changes">
+    {historical&&!modernReference&&changes&&<div className="lektrus-atlas-changes">
      <strong>Отличия от предыдущего снимка</strong>
      <small>{yearLabel(historicalSnapshots[index-1].year)} → {yearLabel(snapshot.year)}</small>
      <p>Новые наименования в базе: {changes.appeared.length?changes.appeared.join(", "):"не обнаружены"}.</p>
