@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import {atlasModes,atlasModesFor,eventsNearYear,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
- modernDataProvider,historicDataProvider,projectGeography,summariseNamedChanges,
+ modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
  type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 type Props={diagram:AtlasDocument};
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
@@ -17,6 +17,16 @@ function AtlasMap({diagram:d}:Props){
  const [previous,setPrevious]=useState<GeoCollection|null>(null);
  const [rivers,setRivers]=useState<GeoCollection|null>(null);
  const [lakes,setLakes]=useState<GeoCollection|null>(null);
+ const [cities,setCities]=useState<GeoCollection|null>(null);
+ const [regions,setRegions]=useState<GeoCollection|null>(null);
+ const [elevations,setElevations]=useState<GeoCollection|null>(null);
+ const [glaciers,setGlaciers]=useState<GeoCollection|null>(null);
+ const [detail,setDetail]=useState<GeoCollection|null>(null);
+ const [layerWarning,setLayerWarning]=useState("");
+ const [compare,setCompare]=useState(false);
+ const [selectedLayer,setSelectedLayer]=useState("Государство");
+ const [selectedMarker,setSelectedMarker]=useState<string|null>(null);
+ const [coord,setCoord]=useState<{lat:number;lon:number}|null>(null);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState("");
  const [refresh,setRefresh]=useState(0);
@@ -26,6 +36,9 @@ function AtlasMap({diagram:d}:Props){
  const [scale,setScale]=useState(1);
  const [position,setPosition]=useState({x:0,y:0});
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
+ const points=useRef(new Map<number,{x:number;y:number}>());
+ const pinch=useRef<{distance:number;scale:number;position:{x:number;y:number};mid:{x:number;y:number}}|null>(null);
+ const dragged=useRef(false);
  const snapshot=historicalSnapshots[index];
  const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
  const availableModes=atlasModesFor(scope);
@@ -36,30 +49,68 @@ function AtlasMap({diagram:d}:Props){
   [d.mode,d.year]);
  useEffect(()=>{
   let active=true;
-  setError("");setLoading(true);setSource(null);setSelected(null);setPrevious(null);
+  setError("");setLayerWarning("");setLoading(true);setSource(null);setSelected(null);
+  setPrevious(null);setSelectedMarker(null);
   const modern=loadAtlasLayer("countries");
   const main=historical?loadHistoricalSnapshot(snapshot.year):modern;
   const before=historical&&index>0?loadHistoricalSnapshot(historicalSnapshots[index-1].year).catch(()=>null):Promise.resolve(null);
-  const water=mode==="physical"?Promise.all([loadAtlasLayer("rivers").catch(()=>null),loadAtlasLayer("lakes").catch(()=>null)]):
-   Promise.resolve([null,null] as [GeoCollection|null,GeoCollection|null]);
-  Promise.all([main,before,water,modern]).then(([geo,prev,w,base])=>{
+  // Optional thematic layers never replace the original geographic geometry.
+  const thematic:ReadonlyArray<[string,boolean]>=[
+   ["rivers",mode==="physical"||mode==="waters"],
+   ["lakes",mode==="physical"||mode==="waters"],
+   ["cities",mode==="cities"],
+   ["regions",mode==="physical"||mode==="relief"],
+   ["elevation",mode==="physical"||mode==="relief"],
+   ["glaciers",mode==="physical"||mode==="relief"]
+  ];
+  Promise.all([main,before,modern]).then(async([geo,prev,base])=>{
    if(!active)return;
-   setSource(geo);setBasemap(base);setPrevious(prev);setRivers(w[0]);setLakes(w[1]);setLoading(false);
+   setSource(geo);setPrevious(prev);setBasemap(base);setLoading(false);
+   const requested=thematic.filter(([,needed])=>needed);
+   const result=await Promise.allSettled(requested.map(([layer])=>loadAtlasLayer(layer as
+    "rivers"|"lakes"|"cities"|"regions"|"elevation"|"glaciers")));
+   if(!active)return;
+   const missing:string[]=[];
+   const found=new Map<string,GeoCollection>();
+   requested.forEach(([layer],i)=>{
+    const layerResult=result[i];
+    if(layerResult.status==="fulfilled")found.set(layer,layerResult.value);
+    else missing.push(layer);
+   });
+   setRivers(found.get("rivers")??null);setLakes(found.get("lakes")??null);
+   setCities(found.get("cities")??null);setRegions(found.get("regions")??null);
+   setElevations(found.get("elevation")??null);setGlaciers(found.get("glaciers")??null);
+   setLayerWarning(missing.length?"Не удалось загрузить некоторые слои: "+missing.join(", "):"");
   }).catch(e=>{
    if(!active)return;
    setError(e instanceof Error?e.message:String(e));setLoading(false);
   });
   return()=>{active=false};
  },[mode,index,refresh,historical,snapshot.year]);
- const shapes=useMemo(()=>source?.features.map((feature,i)=>({
+ useEffect(()=>{
+  let active=true;
+  if(historical||scale<2){setDetail(null);return}
+  loadAtlasLayer("countries-detail").then(geo=>{if(active)setDetail(geo)}).catch(()=>{if(active)setDetail(null)});
+  return()=>{active=false};
+ },[historical,scale]);
+ const mapSource=(!historical&&detail&&scale>=2)?detail:source;
+ const shapes=useMemo(()=>mapSource?.features.map((feature,i)=>({
   feature,path:mapFeaturePath(feature),name:geoFeatureName(feature),i
- })).filter(f=>f.path)||[],[source]);
+ })).filter(f=>f.path)||[],[mapSource]);
  const labels=useMemo(()=>shapes.map(s=>({...s,anchor:featureLabelAnchor(s.feature)}))
   .filter(s=>s.anchor&&s.anchor.area>380)
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
   .slice(0,45),[shapes]);
- const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f)})).filter(v=>v.path)||[],[rivers]);
- const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f)})).filter(v=>v.path)||[],[lakes]);
+ const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f})).filter(v=>v.path)||[],[rivers]);
+ const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f})).filter(v=>v.path)||[],[lakes]);
+ const landforms=useMemo(()=>regions?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f}))
+  .filter(v=>v.path)||[],[regions]);
+ const ice=useMemo(()=>glaciers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f}))
+  .filter(v=>v.path)||[],[glaciers]);
+ const peakPoints=useMemo(()=>elevations?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f}))
+  .filter(v=>v.point)||[],[elevations]);
+ const cityPoints=useMemo(()=>cities?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f}))
+  .filter(v=>v.point)||[],[cities]);
  const changes=useMemo(()=>source&&previous?summariseNamedChanges(previous,source):null,[source,previous]);
  const eventList=useMemo(()=>eventsNearYear(snapshot.year),[snapshot.year]);
  const userMarkers=d.markers.filter(marker=>!historical||
@@ -68,16 +119,95 @@ function AtlasMap({diagram:d}:Props){
  const isEventVisible=historical&&d.showEvents;
  const activeEvent=eventIndex===null?null:schoolHistoryEvents[eventIndex]??null;
  const selectedTitle=selected?geoFeatureName(selected):"";
- const filteredCount=shapes.filter(s=>s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"))).length;
- const onMove=(e:ReactPointerEvent<SVGSVGElement>)=>{
-  const p=pointer.current;if(!p||p.id!==e.pointerId)return;
-  const bounds=e.currentTarget.getBoundingClientRect();
-  setPosition({x:p.fromX+(e.clientX-p.x)*900/Math.max(1,bounds.width),
-   y:p.fromY+(e.clientY-p.y)*450/Math.max(1,bounds.height)});
+ const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
+ const namedFeatures=mode==="cities"?cityPoints.map(f=>f.feature):
+  mode==="relief"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature)]:
+  mode==="waters"?[...ponds.map(f=>f.feature),...(rivers?.features??[])]:shapes.map(f=>f.feature);
+ const results=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU")
+   .includes(search.trim().toLocaleLowerCase("ru-RU"))).slice(0,18):[];
+ const filteredCount=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU").includes(search.trim().toLocaleLowerCase("ru-RU"))).length:0;
+ const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
+ const normalizePosition=(p:{x:number;y:number},s:number)=>{
+  const limitX=450*(s-1)+40,limitY=225*(s-1)+25;
+  return {x:clamp(p.x,-limitX,limitX),y:clamp(p.y,-limitY,limitY)};
  };
- const reset=()=>{setScale(1);setPosition({x:0,y:0});setSelected(null)};
- const showCountry=(feature:GeoFeature)=>{if(mode==="contour")return;setSelected(feature);setEventIndex(null)};
- const onMode=(value:AtlasMode)=>{if(!availableModes.some(m=>m.id===value))return;setMode(value);setSelected(null);setEventIndex(null)};
+ // SVG's own viewport is letterboxed on many mobile screens; browser pixels
+ // are never used directly as coordinates in the 900x450 world.
+ const localPoint=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  const rect=e.currentTarget.getBoundingClientRect(),factor=Math.min(rect.width/900,rect.height/450)||1;
+  return {x:(e.clientX-rect.left-(rect.width-900*factor)/2)/factor,
+   y:(e.clientY-rect.top-(rect.height-450*factor)/2)/factor};
+ };
+ const worldPoint=(p:{x:number;y:number})=>({
+  x:450+(p.x-450-position.x)/scale,y:225+(p.y-225-position.y)/scale
+ });
+ const zoomAt=(next:number,point={x:450,y:225})=>{
+  const s=clamp(next,1,7);
+  setPosition(p=>normalizePosition({
+   x:p.x+(scale-s)*(point.x-450-p.x)/scale,
+   y:p.y+(scale-s)*(point.y-225-p.y)/scale
+  },s));
+  setScale(s);
+ };
+ const onPointerDown=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  const pt=localPoint(e);
+  points.current.set(e.pointerId,pt);
+  if(points.current.size===1){
+   dragged.current=false;
+   pointer.current={id:e.pointerId,x:pt.x,y:pt.y,fromX:position.x,fromY:position.y};
+  }else if(points.current.size===2){
+   dragged.current=true;
+   const [a,b]=[...points.current.values()];
+   pinch.current={distance:Math.hypot(a.x-b.x,a.y-b.y)||1,scale,
+    position,mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
+  }
+  e.currentTarget.setPointerCapture(e.pointerId);
+ };
+ const onMove=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  const pt=localPoint(e);
+  if(!points.current.has(e.pointerId))return;
+  points.current.set(e.pointerId,pt);
+  if(points.current.size===2&&pinch.current){
+   const [a,b]=[...points.current.values()],g=pinch.current;
+   const next=clamp(g.scale*Math.hypot(a.x-b.x,a.y-b.y)/g.distance,1,7);
+   const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+   const focus={x:450+(g.mid.x-450-g.position.x)/g.scale,
+    y:225+(g.mid.y-225-g.position.y)/g.scale};
+   setScale(next);
+   setPosition(normalizePosition({x:mid.x-450-(focus.x-450)*next,
+    y:mid.y-225-(focus.y-225)*next},next));
+   return;
+  }
+  const p=pointer.current;if(!p||p.id!==e.pointerId)return;
+  if(Math.hypot(pt.x-p.x,pt.y-p.y)>3)dragged.current=true;
+  setPosition(normalizePosition({x:p.fromX+pt.x-p.x,y:p.fromY+pt.y-p.y},scale));
+ };
+ const onPointerEnd=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  points.current.delete(e.pointerId);pinch.current=null;
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  const next=[...points.current.entries()][0];
+  pointer.current=next?{id:next[0],x:next[1].x,y:next[1].y,
+   fromX:position.x,fromY:position.y}:null;
+ };
+ const reset=()=>{setScale(1);setPosition({x:0,y:0});setSelected(null);setCoord(null)};
+ const selectFeature=(feature:GeoFeature,layer:string)=>{
+  if(dragged.current||mode==="contour")return;
+  setSelected(feature);setSelectedLayer(layer);setEventIndex(null);setSelectedMarker(null);
+ };
+ const showCountry=(feature:GeoFeature)=>selectFeature(feature,historical?"Историческая территория":"Государство");
+ const onMode=(value:AtlasMode)=>{
+  if(!availableModes.some(m=>m.id===value))return;
+  setMode(value);setSelected(null);setSearch("");setSelectedMarker(null);setEventIndex(null);
+ };
+ const focusFeature=(f:GeoFeature)=>{
+  const point=featureMapPoint(f);
+  if(!point)return;
+  const s=Math.max(2,scale);
+  setPosition(normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s));
+  setScale(s);selectFeature(f,mode==="cities"?"Населённый пункт":mode==="relief"?"Форма рельефа":
+   mode==="waters"?"Водный объект":"Государство");
+ };
  return <div className="lektrus-atlas" aria-label={d.title}
   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
   onClick={e=>e.stopPropagation()} onWheel={e=>{e.stopPropagation();
@@ -99,15 +229,21 @@ function AtlasMap({diagram:d}:Props){
      <small>Границы не заменяются вымышленными. Для доступа необходим интернет.</small>
     </div>}
     <svg viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
+     onClick={e=>{if(dragged.current)return;const p=worldPoint(localPoint(e as ReactPointerEvent<SVGSVGElement>));
+      if(p.x>=0&&p.x<=900&&p.y>=0&&p.y<=450)
+       setCoord({lon:p.x/900*360-180,lat:90-p.y/450*180});
+     }}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
-     onPointerDown={e=>{if(e.button!==0)return;pointer.current={id:e.pointerId,x:e.clientX,y:e.clientY,fromX:position.x,fromY:position.y};e.currentTarget.setPointerCapture(e.pointerId)}}
-     onPointerMove={onMove}
-     onPointerUp={e=>{pointer.current=null;if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)}}
-     onPointerCancel={()=>{pointer.current=null}}>
+     onPointerDown={onPointerDown} onPointerMove={onMove}
+     onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd}
+     onWheel={e=>{
+      e.stopPropagation();e.preventDefault();
+      zoomAt(scale*(e.deltaY<0?1.16:1/1.16),localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
+     }}>
      <rect width="900" height="450" fill="#e3eff9"/>
      <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
       {d.showGrid&&<g stroke="#bdcedf" strokeWidth=".6" opacity=".78">
-       {Array.from({length:11},(_,i)=><line key={"x"+i} x1={i*90} y1="0" x2={i*90} y2="450"/>)}
+       {Array.from({length:13},(_,i)=><line key={"x"+i} x1={i*75} y1="0" x2={i*75} y2="450"/>)}
        {Array.from({length:7},(_,i)=><line key={"y"+i} x1="0" y1={i*75} x2="900" y2={i*75}/>)}
       </g>}
       <g pointerEvents="none" fill="#e8eee4" stroke="#a4bdc6" strokeWidth=".45">
@@ -117,7 +253,7 @@ function AtlasMap({diagram:d}:Props){
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
-        const fill=mode==="contour"?"#fafcfb":mode==="physical"?"#d2e5c8":
+        const fill=mode==="contour"?"#fafcfb":mode==="physical"||mode==="relief"?"#d2e5c8":mode==="waters"||mode==="cities"?"#e6eee2":
          palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
          stroke={highlighted||s.name===selectedTitle?"#df793e":mode==="contour"?"#839fb2":"#819fb2"}
@@ -128,19 +264,60 @@ function AtlasMap({diagram:d}:Props){
         </path>;
        })}
       </g>
+      {(mode==="physical"||mode==="relief")&&<g>
+       {landforms.map(f=><path key={"landform-"+f.id} d={f.path}
+        fill="#c6b093" fillOpacity=".48" stroke="#a68b72" strokeWidth=".4"
+        className="lektrus-atlas-country" onClick={()=>selectFeature(f.feature,"Форма рельефа")}>
+        <title>{geoFeatureName(f.feature)}</title></path>)}
+       {ice.map(f=><path key={"ice-"+f.id} d={f.path}
+        fill="#f8fcff" stroke="#9dbdd0" strokeWidth=".6"
+        className="lektrus-atlas-country" onClick={()=>selectFeature(f.feature,"Ледниковая область")}>
+        <title>{geoFeatureName(f.feature)}</title></path>)}
+      </g>}
+      {historical&&compare&&previous&&<g fill="none" stroke="#d64646"
+       strokeWidth="1.1" strokeDasharray="4 2" pointerEvents="none">
+       {previous.features.map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)}/>)}
+      </g>}
       {d.showLabels&&mode!=="contour"&&<g fill="#44566a" fontSize="8" fontWeight="650"
        textAnchor="middle" pointerEvents="none" stroke="#fff" strokeWidth="1.5" paintOrder="stroke">
        {labels.map(s=><text key={s.i} x={s.anchor!.x} y={s.anchor!.y}>{s.name.slice(0,23)}</text>)}
       </g>}
-      {mode==="physical"&&<g pointerEvents="none">
-       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#87bfe6" stroke="#65a3ce" strokeWidth=".65"/>)}
-       {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none" stroke="#6aadd7" strokeWidth=".8"/>)}
+      {(mode==="physical"||mode==="waters")&&<g>
+       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#87bfe6" stroke="#65a3ce" strokeWidth=".65"
+        onClick={()=>selectFeature(l.feature,"Озеро")} className="lektrus-atlas-country">
+        <title>{geoFeatureName(l.feature)}</title></path>)}
+       {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none" stroke="#328fc9"
+        strokeWidth={mode==="waters"?1.4:.9} pointerEvents="stroke" strokeLinecap="round"
+        onClick={()=>selectFeature(l.feature,"Река")} className="lektrus-atlas-country">
+        <title>{geoFeatureName(l.feature)}</title></path>)}
+      </g>}
+      {(mode==="physical"||mode==="relief")&&<g>
+       {peakPoints.map(f=><g key={"elevation-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]})`}
+        className="lektrus-atlas-event" onClick={()=>selectFeature(f.feature,"Высотная отметка")}>
+        <path d="M0 -4L4 3H-4Z" fill="#816245" stroke="#fff" strokeWidth=".7"/>
+        <title>{geoFeatureName(f.feature)}</title>
+       </g>)}
+      </g>}
+      {mode==="cities"&&<g>
+       {cityPoints.map(f=><g key={"city-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]})`}
+        className="lektrus-atlas-event" onClick={()=>selectFeature(f.feature,"Населённый пункт")}>
+        <circle r={Math.max(2.5,Math.min(4.5,2.5+Number(f.feature.properties?.POP_MAX||0)/1e7))}
+         fill="#c05745" stroke="#fff" strokeWidth=".8"/>
+        <title>{geoFeatureName(f.feature)}</title>
+       </g>)}
+       {d.showLabels&&cityPoints.filter(f=>Number(f.feature.properties?.POP_MAX||0)>=2500000)
+        .slice(0,60).map(f=><text key={"city-label-"+f.id}
+         x={f.point![0]+5} y={f.point![1]-5} fontSize="7"
+         fill="#764b3c" stroke="#fff" strokeWidth="1.7" paintOrder="stroke"
+         pointerEvents="none">{geoFeatureName(f.feature)}</text>)}
       </g>}
       {isEventVisible&&eventList.map(event=>{
        const point=projectGeography(event.lon,event.lat),key=schoolHistoryEvents.indexOf(event);
        return <g key={event.year} transform={`translate(${point[0]} ${point[1]})`}
         className="lektrus-atlas-event" role="button" tabIndex={0}
-        onClick={()=>{setEventIndex(key);setSelected(null)}}
+        onClick={()=>{if(dragged.current)return;setEventIndex(key);setSelected(null);setSelectedMarker(null)}}
         onKeyDown={e=>{if(e.key==="Enter"){setEventIndex(key);setSelected(null)}}}>
         <circle r="8" fill="#fff" opacity=".88"/>
         <circle r="5.5" fill="#dd7656" stroke="#fff" strokeWidth="1.5"/>
@@ -149,7 +326,10 @@ function AtlasMap({diagram:d}:Props){
       })}
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
-       return <g key={marker.id} transform={`translate(${point[0]} ${point[1]})`}>
+       return <g key={marker.id} transform={`translate(${point[0]} ${point[1]})`}
+        className="lektrus-atlas-event" role="button" tabIndex={0}
+        onClick={()=>{if(dragged.current)return;setSelectedMarker(marker.id);setSelected(null);setEventIndex(null)}}
+        onKeyDown={e=>{if(e.key==="Enter"){setSelectedMarker(marker.id);setSelected(null);setEventIndex(null)}}}>
         <circle r="6" fill="#426fbd" stroke="#fff" strokeWidth="2"/>
         <title>{marker.title} ({yearLabel(marker.year)})</title>
        </g>;
@@ -157,27 +337,44 @@ function AtlasMap({diagram:d}:Props){
      </g>
     </svg>
     <div className="lektrus-atlas-zoom" role="group" aria-label="Масштаб">
-     <button type="button" onClick={()=>setScale(s=>Math.min(5,Math.round((s+.4)*10)/10))}>+</button>
+     <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(scale*1.5)}>+</button>
      <button type="button" onClick={reset} title="Сбросить положение">⌖</button>
-     <button type="button" onClick={()=>setScale(s=>Math.max(1,Math.round((s-.4)*10)/10))}>−</button>
+     <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(scale/1.5)}>−</button>
     </div>
+    <div className="lektrus-atlas-precision">×{scale.toFixed(1)} · {coord?
+     `${coord.lat.toFixed(2)}°, ${coord.lon.toFixed(2)}°`:"обзорные геоданные"}</div>
    </div>
    <aside className="lektrus-atlas-sidebar">
-    {mode==="political"&&<label>Найти государство
-     <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Название страны"/>
-     {search&&<small>Совпадений в данных: {filteredCount}</small>}
+    {mode!=="contour"&&<label>Поиск объектов
+     <input value={search} onChange={e=>setSearch(e.target.value)}
+      placeholder={mode==="cities"?"Название города":mode==="waters"?"Река или озеро":
+       mode==="relief"?"Горы, пустыня, вершина":"Страна или территория"}/>
+     {search.trim()&&<small>Найдено: {filteredCount}</small>}
     </label>}
+    {search.trim()&&mode!=="contour"&&<div className="lektrus-atlas-search-results">
+     {results.length?results.map((f,i)=><button key={i} type="button"
+      onClick={()=>focusFeature(f)}>{geoFeatureName(f)}</button>):
+      <small>Совпадений нет. Названия в данных могут быть на английском.</small>}
+    </div>}
+    {layerWarning&&<p className="lektrus-atlas-layer-warning" role="status">
+     {layerWarning}. Доступные слои отображаются без подмены.</p>}
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}</strong>
      <small>Датированный снимок границ, не интерполяция</small>
     </div>}
-    {activeEvent?<div className="lektrus-atlas-description">
+    {markerDetails?<div className="lektrus-atlas-description">
+     <strong>{markerDetails.title}</strong>
+     <p>{markerDetails.description||"Маркер преподавателя"}</p>
+     <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
+     {historical&&<p>Дата: {yearLabel(markerDetails.year)}</p>}
+    </div>:activeEvent?<div className="lektrus-atlas-description">
      <strong>{activeEvent.title} · {activeEvent.year} г.</strong>
      <p>{activeEvent.description}</p>
      <a href={activeEvent.url} target="_blank" rel="noopener noreferrer">Подробнее об историческом событии ↗</a>
     </div>:
     selected?<div className="lektrus-atlas-description">
-     <strong>{selectedTitle}</strong>
+     <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
+     {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
      {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
       <p>Указанная территория показана по состоянию на {yearLabel(snapshot.year)} согласно выбранной базе.</p>
       {selected.properties?.SUBJECTO&&<p>Административная принадлежность в источнике: {String(selected.properties.SUBJECTO)}</p>}
@@ -190,7 +387,10 @@ function AtlasMap({diagram:d}:Props){
     </div>:
     <div className="lektrus-atlas-description"><strong>{mapModeTitle(mode)}</strong>
      <p>{atlasModes.find(m=>m.id===mode)?.hint}.</p>
-     {mode==="physical"&&<p>Нанесены контуры суши, реки и озёра. Данных о высотах и рельефной окраске в этом слое пока нет.</p>}
+     {mode==="physical"&&<p>Показаны природные объекты из Natural Earth: реки, озёра, ледники, крупные формы рельефа и высотные отметки. Сплошной цифровой модели высот здесь нет.</p>}
+     {mode==="waters"&&<p>Нажмите на реку или озеро, чтобы изучить объект. Показаны крупные водотоки и озёра обзорного масштаба.</p>}
+     {mode==="relief"&&<p>Цвет обозначает географические области, а не точную высоту поверхности. Высотные отметки берутся из атрибутов источника.</p>}
+     {mode==="cities"&&<p>Показаны населённые пункты по данным Natural Earth. Оценки населения могут быть устаревшими; размер точки условный.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
     </div>}
     {historical&&<div className="lektrus-atlas-history-events">
@@ -200,6 +400,10 @@ function AtlasMap({diagram:d}:Props){
       onClick={()=>{setEventIndex(schoolHistoryEvents.indexOf(event));setSelected(null)}}>
       {yearLabel(event.year)} · {event.title}</button>):<p>В учебной подборке для этого промежутка события пока не описаны.</p>}
     </div>}
+    {historical&&index>0&&<label className="lektrus-atlas-compare">
+     <input type="checkbox" checked={compare} onChange={e=>setCompare(e.target.checked)}/>
+     <span>Границы предыдущего снимка <small>(красный пунктир)</small></span>
+    </label>}
     {historical&&changes&&<div className="lektrus-atlas-changes">
      <strong>Отличия от предыдущего снимка</strong>
      <small>{yearLabel(historicalSnapshots[index-1].year)} → {yearLabel(snapshot.year)}</small>
@@ -230,6 +434,7 @@ function AtlasMap({diagram:d}:Props){
    <button type="button" disabled={index===historicalSnapshots.length-1} title="Следующий доступный период"
     onClick={()=>setIndex(i=>Math.min(historicalSnapshots.length-1,i+1))}>›</button>
    <strong>{yearLabel(snapshot.year)}</strong>
+   <span className="lektrus-atlas-timeline-count">{index+1}/{historicalSnapshots.length}</span>
   </div>}
  </div>;
 }

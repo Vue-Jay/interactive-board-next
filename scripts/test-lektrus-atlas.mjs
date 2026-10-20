@@ -9,8 +9,8 @@ const {
  atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,eventsNearYear,
  createAtlasDocument,validAtlasDocument,yearLabel
 }=exports;
-assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","historical","events"]);
-assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical"]);
+assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","waters","relief","cities","historical","events"]);
+assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","waters","relief","cities"]);
 assert.deepEqual(atlasModesFor("history").map(m=>m.id),["historical","events"]);
 assert.ok(historicalSnapshots.length>=50,"historical atlas should have broad real snapshot coverage");
 assert.equal(new Set(historicalSnapshots.map(v=>v.year)).size,historicalSnapshots.length);
@@ -54,6 +54,14 @@ assert.match(map,/Карта недоступна/);
 assert.match(map,/licenseUrl/);
 assert.match(data,/raw\.githubusercontent\.com/);
 assert.match(data,/BORDERPRECISION/);
+for(const name of ["countries-detail","cities","elevation","regions","glaciers"])
+ assert.ok(data.includes(name),"real dataset layer "+name+" must be wired");
+for(const mode of ["waters","relief","cities"])
+ assert.equal(validAtlasDocument({...atlas,mode}),true);
+assert.match(map,/onPointerDown=\{onPointerDown\}/);
+assert.match(map,/featureSourceFacts/);
+assert.match(map,/setCompare/);
+assert.match(map,/setSelectedMarker/);
 assert.match(reg,/id:"maps-atlas"/);
 assert.match(reg,/id:"history-atlas"/);
 assert.match(reg,/subjects:\["география"\]/);

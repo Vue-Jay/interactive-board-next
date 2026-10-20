@@ -98,3 +98,26 @@
  .lektrus-atlas-zoom button{min-width:22px;min-height:22px;font-size:13px}
  .lektrus-atlas-timeline strong{min-width:60px;font-size:9px}
 }
+
+/* Atlas overlays and inspectors stay inside the movable whiteboard card. */
+.lektrus-atlas-precision{position:absolute;left:8px;bottom:7px;max-width:calc(100% - 18px);
+ background:#ffffffea;border:1px solid #d0deeb;border-radius:7px;padding:4px 7px;
+ pointer-events:none;color:#57738e;font-size:10px;box-shadow:0 1px 5px #24456818}
+.lektrus-atlas-search-results{display:flex;flex-direction:column;max-height:135px;overflow-y:auto;
+ border:1px solid #d5e3ef;border-radius:7px;background:#fff;padding:3px;gap:2px}
+.lektrus-atlas-search-results button{padding:5px;text-align:left;background:#fff;color:#3b628e;
+ border:0;border-radius:5px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lektrus-atlas-search-results button:hover,.lektrus-atlas-search-results button:focus-visible{background:#eaf3ff}
+.lektrus-atlas-search-results small{padding:6px;color:#68849c;font-size:10px}
+.lektrus-atlas-layer-warning{margin:0;color:#8d5c2c;background:#fff5e4;border:1px solid #f0ddbe;
+ border-radius:7px;padding:6px;font-size:10px;line-height:1.4}
+.lektrus-atlas-compare{display:flex;gap:6px;align-items:center;font-size:10px;color:#4f7595;line-height:1.35}
+.lektrus-atlas-compare input{width:auto;min-width:13px;accent-color:#bc4d4d}
+.lektrus-atlas-compare small{display:block;color:#a46a63}
+.lektrus-atlas-timeline-count{font-size:10px;color:#8ba0ba;white-space:nowrap;font-variant-numeric:tabular-nums}
+.lektrus-atlas-description>small{font-size:10px;color:#8da2b5}
+@media(max-width:520px){
+ .lektrus-atlas-precision{font-size:8px;left:3px;bottom:3px;padding:2px 4px}
+ .lektrus-atlas-timeline-count{display:none}
+ .lektrus-atlas-search-results{max-height:90px}
+}

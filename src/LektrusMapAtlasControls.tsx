@@ -31,7 +31,7 @@ export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
     <button type="button" disabled={index===historicalSnapshots.length-1}
      onClick={()=>patch({year:historicalSnapshots[index+1].year})}>Позже ›</button>
    </div>
-   <p className="lektrus-school-hint">Доступны {historicalSnapshots.length} картографических снимка от древних эпох до 2010 года. Каждый снимок имеет самостоятельные границы. В промежутках не строятся вымышленные границы и не предполагается непрерывная точность.</p>
+   <p className="lektrus-school-hint">Доступны {historicalSnapshots.length} датированных картографических снимков от древних эпох до 2010 года. Каждый снимок имеет самостоятельные границы. В промежутках не строятся вымышленные границы и не предполагается непрерывная точность.</p>
    <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showEvents}
     onChange={e=>patch({showEvents:e.target.checked})}/> Показывать важные исторические события</label>
    <div className="lektrus-school-controls-heading">События из учебной подборки</div>
@@ -74,9 +74,9 @@ export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
    onClick={()=>patch({markers:[...d.markers,{id:makeId(),title:"Новый маркер",lat:55.75,lon:37.62,
     year:d.year,description:""}]})}>+ Добавить маркер</button>
   <p className="lektrus-school-hint">Исторические границы: Historical Basemaps (А. Оуредник и участники; GPL-3.0).
-   Современные границы, реки и озёра: Natural Earth (public domain).
+   Современные границы, города, реки, озёра и объекты рельефа: Natural Earth (public domain).
    Полные исторические данные загружаются из внешнего источника по мере просмотра.
-   Не все даты и территории одинаково достоверны; перед коммерческим распространением необходимо
+   Это обзорные данные: не используйте их вместо высокоточных карт и не считайте границы в древности бесспорными. Перед коммерческим распространением необходимо
    проверить лицензионные условия исторического набора.</p>
  </>;
 }
