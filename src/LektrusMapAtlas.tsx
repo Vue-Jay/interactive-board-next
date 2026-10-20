@@ -5,7 +5,7 @@ import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDi
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
-historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
+historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl,normalizeHistoricalName} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference} from "./lektrusHistoricalReferences";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void};
@@ -218,12 +218,14 @@ function AtlasMap({diagram:d,onChange}:Props){
   area:featureLabelAnchor(s.feature)?.area??Infinity,i:s.i
  })).filter(s=>s.point&&s.area*scale*scale<18):[],[modernBorders,shapes,scale]);
  const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.09:.62,viewport),feature:f})).filter(v=>v.path)||[],[rivers,detailedGeography,viewport]);
+ const riverNames=useMemo(()=>rivers?.features.map((f,i)=>({id:i,point:featureLineMidpoint(f),feature:f}))
+  .filter(f=>f.point&&geoFeatureName(f.feature)!=="Объект без названия")||[],[rivers]);
  const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.09:.62,viewport),feature:f})).filter(v=>v.path)||[],[lakes,detailedGeography,viewport]);
  const provincePaths=useMemo(()=>administrative?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,.12,viewport),feature:f})).filter(f=>f.path)||[],[administrative,viewport]);
- const landforms=useMemo(()=>regions?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f}))
-  .filter(v=>v.path)||[],[regions]);
- const ice=useMemo(()=>glaciers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f}))
-  .filter(v=>v.path)||[],[glaciers]);
+ const landforms=useMemo(()=>regions?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
+  .filter(v=>v.path)||[],[regions,detailedGeography,viewport]);
+ const ice=useMemo(()=>glaciers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
+  .filter(v=>v.path)||[],[glaciers,detailedGeography,viewport]);
  const marineAreas=useMemo(()=>marine?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.08:.5,viewport),feature:f})).filter(f=>f.path)||[],[marine,detailedGeography,viewport]);
  const marineNames=useMemo(()=>marine?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f})).filter(f=>f.point)||[],[marine]);
  const natureNames=useMemo(()=>physicalLabels?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f})).filter(f=>f.point)||[],[physicalLabels]);
@@ -239,10 +241,11 @@ function AtlasMap({diagram:d,onChange}:Props){
   pt[1]>=visibleWorld.top-12/scale&&pt[1]<=visibleWorld.bottom+12/scale;
  const shownCities=cityPoints.filter(f=>visiblePoint(f.point));
  const shownPeaks=peakPoints.filter(f=>visiblePoint(f.point));
+ const shownRiverNames=riverNames.filter(f=>visiblePoint(f.point));
  const shownMarineNames=marineNames.filter(f=>visiblePoint(f.point));
  const shownNatureNames=natureNames.filter(f=>visiblePoint(f.point));
- const provinceLabels=provincePaths.map(f=>({...f,anchor:featureLabelAnchor(f.feature)}))
-  .filter(f=>f.anchor&&f.anchor.area*scale*scale>160&&visiblePoint(f.anchor?[f.anchor.x,f.anchor.y]:null))
+ const provinceAnchors=useMemo(()=>provincePaths.map(f=>({...f,anchor:featureLabelAnchor(f.feature)})),[provincePaths]);
+ const provinceLabels=provinceAnchors.filter(f=>f.anchor&&f.anchor.area*scale*scale>160&&visiblePoint(f.anchor?[f.anchor.x,f.anchor.y]:null))
   .sort((a,b)=>(b.anchor?.area??0)-(a.anchor?.area??0)).slice(0,70);
  const subregions=useMemo(()=>{
   if(!administrative||regionId==="world")return [];
