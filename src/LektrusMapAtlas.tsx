@@ -46,6 +46,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [globalQuery,setGlobalQuery]=useState("");
  const [historyTab,setHistoryTab]=useState<"directory"|"article"|"changes">("directory");
  const [historyIndex,setHistoryIndex]=useState<HistoricalIndexRecord[]>([]);
+ const [sourceYear,setSourceYear]=useState<number|null>(null);
  const [indexProblem,setIndexProblem]=useState("");
  const pendingJump=useRef<{year:number;raw:string}|null>(null);
  const [scale,setScale]=useState(1);
@@ -83,7 +84,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  },[refresh]);
  useEffect(()=>{
   let active=true;
-  setError("");setLayerWarning("");setLoading(true);setSource(null);setSelected(null);
+  setError("");setLayerWarning("");setLoading(true);setSource(null);setSourceYear(null);setSelected(null);
   setPrevious(null);setSelectedMarker(null);
   const modern=loadAtlasLayer("countries");
   const main=historical?loadHistoricalSnapshot(snapshot.year):modern;
@@ -99,7 +100,7 @@ function AtlasMap({diagram:d,onChange}:Props){
   ];
   Promise.all([main,before]).then(async([geo,prev])=>{
    if(!active)return;
-   setSource(geo);setPrevious(prev);setLoading(false);
+   setSource(geo);setSourceYear(snapshot.year);setPrevious(prev);setLoading(false);
    const requested=thematic.filter(([,needed])=>needed);
    const result=await Promise.allSettled(requested.map(([layer])=>loadAtlasLayer(layer as
     "rivers"|"lakes"|"cities"|"regions"|"elevation"|"glaciers")));
@@ -275,14 +276,15 @@ function AtlasMap({diagram:d,onChange}:Props){
   if(index===next&&raw){
    const feature=source?.features.find(f=>normalizeHistoricalName(String(f.properties?.NAME??""))===
     normalizeHistoricalName(raw));
-   if(feature)focusFeature(feature);
+   if(feature){pendingJump.current=null;focusFeature(feature)}
    return;
   }
-  setIndex(next);setSelected(null);setHistoryTab(raw?"article":"directory");
+  setIndex(next);if(onChange)onChange({...d,year:historicalSnapshots[next].year});
+  setSelected(null);setHistoryTab(raw?"article":"directory");
  };
  useEffect(()=>{
   const target=pendingJump.current;
-  if(!target||!source||target.year!==snapshot.year)return;
+  if(!target||!source||target.year!==snapshot.year||sourceYear!==snapshot.year)return;
   const match=source.features.find(f=>normalizeHistoricalName(String(f.properties?.NAME??""))===
    normalizeHistoricalName(target.raw));
   if(!match)return;
@@ -292,7 +294,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    setPosition({x:Math.max(-450*(zoom-1),Math.min(450*(zoom-1),-(point[0]-450)*zoom)),
     y:Math.max(-225*(zoom-1),Math.min(225*(zoom-1),-(point[1]-225)*zoom))})}
   setSelected(match);setSelectedLayer("Историческая территория");setHistoryTab("article");
- },[source,snapshot.year]);
+ },[source,sourceYear,snapshot.year]);
  const onMode=(value:AtlasMode)=>{
   if(!availableModes.some(m=>m.id===value))return;
   setMode(value);setSelected(null);setSearch("");setSelectedMarker(null);
@@ -587,7 +589,7 @@ function AtlasMap({diagram:d,onChange}:Props){
   </div>
   {historical&&<div className="lektrus-atlas-timeline">
    <button type="button" disabled={index===0} title="Предыдущий доступный период"
-    onClick={()=>setIndex(i=>Math.max(0,i-1))}>‹</button>
+    onClick={()=>jumpToPeriod(historicalSnapshots[Math.max(0,index-1)].year)}>‹</button>
    <select aria-label="Выбрать год исторической карты" className="lektrus-history-period-select"
     value={snapshot.year} onChange={e=>jumpToPeriod(Number(e.target.value))}>
     {historicalSnapshots.map(period=><option key={period.year} value={period.year}>
@@ -595,9 +597,9 @@ function AtlasMap({diagram:d,onChange}:Props){
    </select>
    <input aria-label="Исторический период" type="range" min={0}
     max={historicalSnapshots.length-1} step={1} value={index}
-    onChange={e=>{setIndex(Number(e.target.value));setSelected(null)}}/>
+    onChange={e=>jumpToPeriod(historicalSnapshots[Number(e.target.value)].year)}/>
    <button type="button" disabled={index===historicalSnapshots.length-1} title="Следующий доступный период"
-    onClick={()=>setIndex(i=>Math.min(historicalSnapshots.length-1,i+1))}>›</button>
+    onClick={()=>jumpToPeriod(historicalSnapshots[Math.min(historicalSnapshots.length-1,index+1)].year)}>›</button>
    <strong>{yearLabel(snapshot.year)}</strong>
    <span className="lektrus-atlas-timeline-count">{index+1}/{historicalSnapshots.length}</span>
   </div>}
