@@ -32,7 +32,8 @@ export function loadLocalInfrastructure(b:ExternalBounds,kind:"roads"|"waterways
  const box=[b.south,b.west,b.north,b.east].map(x=>Number(x.toFixed(5))).join(",");
  const overpass='[out:json][timeout:15];('+
   (kind==="roads"?'way["highway"~"^(motorway|trunk|primary)$"]('+box+');':
-   'way["waterway"~"^(river|stream|canal)$"]["name:ru"]('+box+');')+
+   'way["waterway"~"^(river|stream|canal)$"]["name:ru"]('+box+');'+
+   'way["waterway"~"^(river|stream|canal)$"]["name"]('+box+');')+
   ');out geom;';
  // The Russian full-planet mirror is preferred; overloaded public servers
  // remain fallbacks. Never draw invented roads when all mirrors fail.
@@ -48,11 +49,15 @@ export function loadLocalInfrastructure(b:ExternalBounds,kind:"roads"|"waterways
   if(!json)throw lastError instanceof Error?lastError:new Error("Overpass недоступен");
   const overpassData=json as {elements?:Array<{type:string;geometry?:Array<{lon:number;lat:number}>;tags?:Record<string,string>;id:number}>};
   const features:GeoFeature[]=[];
+  const usedIds=new Set<number>();
   for(const item of overpassData.elements??[]){
    if(features.length>=MAX_EXTERNAL_FEATURES)break;
-   if(item.type!=="way"||!Array.isArray(item.geometry)||item.geometry.length<2)continue;
+   if(item.type!=="way"||usedIds.has(item.id)||!Array.isArray(item.geometry)||item.geometry.length<2)continue;
+   usedIds.add(item.id);
    const tags=item.tags??{},road=typeof tags.highway==="string";
-   const ru=String(tags["name:ru"]??"").trim();
+   const ruSource=String(tags["name:ru"]??"").trim();
+   const alternate=String(tags.name??"").trim();
+   const ru=/[А-ЯЁа-яё]/.test(ruSource)?ruSource:/[А-ЯЁа-яё]/.test(alternate)?alternate:"";
    if(kind==="roads"&&!road||kind==="waterways"&&(road||!/[А-ЯЁа-яё]/.test(ru)))continue;
    const coords=item.geometry.filter((v:{lon:number;lat:number})=>Number.isFinite(v.lon)&&Number.isFinite(v.lat))
     .map((v:{lon:number;lat:number})=>[v.lon,v.lat]);

@@ -327,9 +327,13 @@ function AtlasMap({diagram:d,onChange}:Props){
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[mode,externalKey,mineralsAvailable]);
  const auxiliaryLines=useMemo(()=>infrastructure?.features.flatMap((feature,id)=>{
-  const path=mapFeaturePath(feature,.018);
+  const path=mapFeaturePath(feature,Math.max(.00008,.55/Math.max(1,scale)),viewport);
   return path?[{id,path,feature}]:[];
- })??[],[infrastructure]);
+ })??[],[infrastructure,scale,viewport]);
+ const auxiliaryRiverLabels=useMemo(()=>infrastructure?.features
+  .filter(f=>f.properties?.ATLAS_KIND==="waterway")
+  .map((feature,id)=>({id,feature,point:featureLineMidpoint(feature)}))
+  .filter(f=>f.point).slice(0,80)??[],[infrastructure]);
  const mineralPoints=useMemo(()=>minerals?.features.flatMap((feature,id)=>{
   const point=featureMapPoint(feature),commodity=mineralCommodity(feature);
   return point&&commodity?[{id,point,feature,commodity}]:[];
@@ -786,6 +790,16 @@ function AtlasMap({diagram:d,onChange}:Props){
          strokeWidth={line.feature.properties?.ATLAS_KIND==="road"?.67:.48}
          strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
          strokeDasharray={line.feature.properties?.ATLAS_KIND==="road"?"2.5 1":undefined}/>)}
+       </g>}
+      {(mode==="hydrography"||mode==="physical")&&d.showLabels&&scale>=64&&
+       <g className="lektrus-atlas-small-river-labels" pointerEvents="none"
+        textAnchor="middle" fontSize={mapText(8.2)} fill="#237099"
+        stroke="#fff" strokeWidth={2/scale} paintOrder="stroke">
+        {auxiliaryRiverLabels.filter(f=>f.point&&
+         f.point[0]>=visibleWorld.left&&f.point[0]<=visibleWorld.right&&
+         f.point[1]>=visibleWorld.top&&f.point[1]<=visibleWorld.bottom)
+         .slice(0,40).map(f=><text key={"osm-stream-label-"+f.id}
+          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,26)}</text>)}
        </g>}
       {mode==="minerals"&&<g className="lektrus-atlas-mineral-points">
        {visibleMinerals.map(item=><g key={"mineral-"+item.id}
