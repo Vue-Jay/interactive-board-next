@@ -29,8 +29,8 @@ export default function LektrusMapBase({land,coastline,grid,scale=1,viewport,ter
    {landPaths.map(f=><path key={f.id} d={f.d} fill="#e4ebdf" fillRule="evenodd" stroke="none"/>)}
   </g>
   {terrain}
-  <g className="lektrus-atlas-base-coast" pointerEvents="none" stroke="#91a9ad"
-   strokeWidth=".8" vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round">
+  <g className="lektrus-atlas-base-coast" pointerEvents="none" stroke="#9bb6bc"
+   strokeWidth=".48" vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round">
    {coastPaths.map(f=><path key={f.id} d={f.d}/>)}
   </g>
   {grid&&<g className="lektrus-atlas-graticule" pointerEvents="none">

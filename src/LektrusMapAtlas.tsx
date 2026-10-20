@@ -3,6 +3,7 @@ import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
 import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
+import {atlasRiverStroke,atlasLakeStroke,atlasGlacierStroke,atlasWaterGeometryTolerance,atlasRiverLabelRank} from "./lektrusAtlasHydro";
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
@@ -233,10 +234,16 @@ function AtlasMap({diagram:d,onChange}:Props){
   .filter(s=>s.anchor&&s.anchor.area*scale*scale>360)
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
   .slice(0,scale>=12?220:scale>=3?105:45),[shapes,scale]);
- const streams=useMemo(()=>rivers?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.09:.62,viewport),feature:f})).filter(v=>v.path)||[],[rivers,detailedGeography,viewport]);
- const riverNames=useMemo(()=>rivers?.features.filter(hasAtlasName).map((f,i)=>({id:i,point:featureLineMidpoint(f),feature:f}))
-  .filter(f=>f.point)||[],[rivers]);
- const ponds=useMemo(()=>lakes?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.09:.62,viewport),feature:f})).filter(v=>v.path)||[],[lakes,detailedGeography,viewport]);
+ const waterTolerance=atlasWaterGeometryTolerance(Math.pow(2,Math.floor(Math.log2(scale))),detailedGeography);
+ const streams=useMemo(()=>rivers?.features.filter(hasAtlasName).map((f,i)=>({
+  id:i,path:mapFeaturePath(f,waterTolerance,viewport),feature:f
+ })).filter(v=>v.path)||[],[rivers,waterTolerance,viewport]);
+ const riverNames=useMemo(()=>rivers?.features.filter(hasAtlasName).map((f,i)=>({
+  id:i,point:featureLineMidpoint(f),feature:f
+ })).filter(f=>f.point).sort((a,b)=>atlasRiverLabelRank(a.feature)-atlasRiverLabelRank(b.feature))||[],[rivers]);
+ const ponds=useMemo(()=>lakes?.features.filter(hasAtlasName).map((f,i)=>({
+  id:i,path:mapFeaturePath(f,waterTolerance*.7,viewport),feature:f
+ })).filter(v=>v.path)||[],[lakes,waterTolerance,viewport]);
  const provincePaths=useMemo(()=>administrative?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,.12,viewport),feature:f})).filter(f=>f.path)||[],[administrative,viewport]);
  const landforms=useMemo(()=>regions?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
   .filter(v=>v.path)||[],[regions,detailedGeography,viewport]);
@@ -572,12 +579,12 @@ function AtlasMap({diagram:d,onChange}:Props){
       {(mode==="physical"||mode==="relief")&&<g>
        {landforms.map(f=>{const style=landformColors[landformClass(f.feature)];
         return <path key={"landform-"+f.id} d={f.path}
-         fill={style.fill} fillOpacity={terrainEnabled?style.opacity*.27:style.opacity} stroke="#8b977d" strokeWidth=".35"
-         className="lektrus-atlas-country" onClick={()=>selectFeature(f.feature,"Природная область")}>
+         fill={style.fill} fillOpacity={terrainEnabled?style.opacity*.20:style.opacity*.75} stroke="none"
+         className="lektrus-atlas-landform" onClick={()=>selectFeature(f.feature,"Природная область")}>
          <title>{geoFeatureName(f.feature)}</title></path>})}
        {ice.map(f=><path key={"ice-"+f.id} d={f.path}
-        fill="#f8fcff" stroke="#9dbdd0" strokeWidth=".6"
-        className="lektrus-atlas-country" onClick={()=>selectFeature(f.feature,"Ледниковая область")}>
+        fill="#f4faff" fillOpacity=".84" stroke="#a4c5d4" strokeWidth={atlasGlacierStroke()}
+        vectorEffect="non-scaling-stroke" className="lektrus-atlas-landform" onClick={()=>selectFeature(f.feature,"Ледниковая область")}>
         <title>{geoFeatureName(f.feature)}</title></path>)}
       </g>}
       {(mode==="coordinates"||terrainEnabled)&&coord&&<g transform={`translate(${projectGeography(coord.lon,coord.lat)[0]} ${projectGeography(coord.lon,coord.lat)[1]})`}
@@ -593,16 +600,17 @@ function AtlasMap({diagram:d,onChange}:Props){
        {labels.map(s=><text key={s.i} x={s.anchor!.x} y={s.anchor!.y}>{s.name.slice(0,23)}</text>)}
       </g>}
       {(mode==="physical"||mode==="hydrography")&&<g>
-       {marineAreas.map(f=><path key={"marine-"+f.id} d={f.path} fill="none"
-        stroke="#90b5d1" strokeWidth=".33" strokeDasharray="1.5 1.3"
-        className="lektrus-atlas-country" onClick={()=>selectFeature(f.feature,"Морская акватория")}>
+       {marineAreas.map(f=><path key={"marine-"+f.id} d={f.path} fill="transparent" stroke="none" vectorEffect="non-scaling-stroke"
+        className="lektrus-atlas-water-feature" onClick={()=>selectFeature(f.feature,"Морская акватория")}>
         <title>{geoFeatureName(f.feature)}</title></path>)}
-       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#87bfe6" stroke="#65a3ce" strokeWidth=".65"
-        onClick={()=>selectFeature(l.feature,"Озеро")} className="lektrus-atlas-country">
+       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#a7d5ed" fillRule="evenodd" stroke="#7bb5d1"
+        strokeWidth={atlasLakeStroke()} strokeLinejoin="round" vectorEffect="non-scaling-stroke"
+        onClick={()=>selectFeature(l.feature,"Озеро")} className="lektrus-atlas-water-feature lektrus-atlas-lake">
         <title>{geoFeatureName(l.feature)}</title></path>)}
-       {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none" stroke="#328fc9"
-        strokeWidth={mode==="hydrography"?1.4:.9} pointerEvents="stroke" strokeLinecap="round"
-        onClick={()=>selectFeature(l.feature,"Река")} className="lektrus-atlas-country">
+       {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none" stroke="#4c9bc8"
+        strokeWidth={atlasRiverStroke(l.feature,mode==="hydrography")} pointerEvents="stroke"
+        strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
+        onClick={()=>selectFeature(l.feature,"Река")} className="lektrus-atlas-water-feature lektrus-atlas-river">
         <title>{geoFeatureName(l.feature)}</title></path>)}
       </g>}
       {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=3&&
@@ -768,10 +776,10 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>}
     {mode==="hydrography"&&<div className="lektrus-atlas-natural-legend">
      <strong>Условные обозначения</strong>
-     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#328fc9"}}/>Реки и водотоки</div>
-     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#87bfe6"}}/>Озёра и водохранилища</div>
+     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#4c9bc8"}}/>Реки и водотоки</div>
+     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#a7d5ed"}}/>Озёра и водохранилища</div>
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#dfedf9",borderColor:"#90b5d1"}}/>Морские акватории</div>
-     <small>Морские подписи и границы акваторий условны. Это картографический справочный слой, не морской навигационный документ.</small>
+     <small>Толщина линий показывает картографическую значимость реки в Natural Earth, но не её расход воды. Условные границы морских акваторий не рисуются.</small>
     </div>}
     {mode==="political"&&<div className="lektrus-atlas-natural-legend">
      <strong>Столицы государств</strong>
