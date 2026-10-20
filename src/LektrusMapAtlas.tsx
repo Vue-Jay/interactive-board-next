@@ -269,11 +269,16 @@ function AtlasMap({diagram:d,onChange}:Props){
   findHistoricalArticle(selectedRaw,snapshot.year):undefined;
  const fallbackReference=selected&&historical&&!modernReference&&!selectedArticle?
   findHistoricalReference(selectedRaw,snapshot.year):undefined;
- const selectedTitle=selected?(selectedArticle?.name??fallbackReference?.title??geoFeatureName(selected)):"";
+ const selectedIsCity=!!selected&&["Populated place","Admin-0 capital","Admin-0 capital alt",
+  "Admin-0 region capital","Admin-1 capital","Admin-1 region capital"]
+  .includes(String(selected.properties?.FEATURECLA??selected.properties?.featurecla??""));
+ const selectedTitle=selected?(selectedIsCity?
+  (russianPlaceName(selected)??"Населённый пункт без проверенного русского названия"):
+  (selectedArticle?.name??fallbackReference?.title??geoFeatureName(selected))):"";
  const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
   normalizeHistoricalName(name)===normalizeHistoricalName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
- const namedFeatures=mode==="cities"?cityPoints.map(f=>f.feature):
+ const namedFeatures=mode==="cities"?cityPoints.filter(f=>russianPlaceName(f.feature)).map(f=>f.feature):
   mode==="relief"||mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[]),...marineNames.map(f=>f.feature)]:
   mode==="political"?[...mapSourceFeatures,...(administrative?.features??[]),...cityPoints.filter(p=>nationalCapital(p.feature)).map(p=>p.feature)]:
@@ -782,7 +787,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     {search.trim()&&mode!=="contour"&&!historical&&<div className="lektrus-atlas-search-results">
      {results.length?results.map((f,i)=><button key={i} type="button"
       onClick={()=>focusFeature(f)}>{geoFeatureName(f)}</button>):
-      <small>Совпадений нет. Названия в данных могут быть на английском.</small>}
+      <small>Совпадений нет среди названий из картографической базы. Попробуйте уточнить запрос.</small>}
     </div>}
     {detailWarning&&<p className="lektrus-atlas-layer-warning" role="status">{detailWarning}</p>}
     {layerWarning&&<p className="lektrus-atlas-layer-warning" role="status">
@@ -894,7 +899,7 @@ function AtlasMap({diagram:d,onChange}:Props){
      {mode==="physical"&&<p>Природные объекты, ледники, водная сеть и высотные отметки Natural Earth. Региональный масштаб использует подробнее проработанные реки, озёра и побережье. Для высотной подложки используется отдельная модель рельефа Mapzen (при включении и доступности).</p>}
      {mode==="hydrography"&&<p>Реки, озёра и морские акватории Natural Earth. Для регионов используется детализация 1:50 млн. Нажмите на объект или найдите его по названию.</p>}
      {mode==="relief"&&<p>При включённой гипсометрии цвета рассчитаны по высотам DEM; без неё заливка обозначает тип природной области. Подписи высот берутся из атрибутов Natural Earth.</p>}
-     {mode==="cities"&&<p>Населённые пункты Natural Earth. В регионах доступен подробный слой городов; оценки населения могут быть устаревшими, размер точки условный.</p>}
+     {mode==="cities"&&<p>Города и другие населённые пункты из Natural Earth, включая не являющиеся административными центрами. Подробный слой подключается при приближении; численность населения дана по оценке источника и может устареть.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
     </div>}
     {historical&&historyTab==="changes"&&index>0&&<label className="lektrus-atlas-compare">
