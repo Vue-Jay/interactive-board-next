@@ -99,6 +99,19 @@ const docs=[
   kind:"orthography",title:"Орфографический тренажёр",showExplanation:true,questions:[
    {id:"q1",prompt:"Вставьте букву: тр□ва",options:["а","о"],correct:0,
     explanation:"Проверочное слово: травы."}]}}),
+ item("sentence-builder","graph",{graphFigureId:"ru-sentence-builder",graphPurpose:"geometry",schoolDiagram:{
+  kind:"sentence-builder",title:"Конструктор предложений",
+  instructions:"Составьте предложение",showKey:false,showHint:true,patternId:"simple",
+  parts:[{id:"w1",text:"Ребята"},{id:"w2",text:"читают"},{id:"w3",text:"книгу."}]}}),
+ item("state-structure","graph",{graphFigureId:"civics-structure",graphPurpose:"geometry",schoolDiagram:{
+  kind:"state-structure",title:"Форма государства",subtitle:"Учебная структура",templateId:"stateForms",
+  showRelationships:true,showLabels:false,nodes:[
+   {id:"root",text:"Форма государства",row:0,column:1,kind:"concept"},
+   {id:"rule",text:"Форма правления",row:2,column:0,kind:"concept"},
+   {id:"regime",text:"Политический режим",row:2,column:2,kind:"concept"}
+  ],edges:[
+   {id:"e1",from:"root",to:"rule",kind:"part"},
+   {id:"e2",from:"root",to:"regime",kind:"part"}]}}),
  item("fraction","fraction",{fractionNumerator:1,fractionDenominator:3,fractionMode:"circle"}),
  item("table","table",{tableRows:2,tableCols:2,tableCells:["a","b","c","d"],
   tableHeader:true,tableAlign:"right",tableStripe:true,tableCompact:true})
@@ -142,6 +155,8 @@ invalidItem("ru-phonetics",{letters:[{id:"l1",letter:"к",sounds:["к"],characte
  {id:"l2",letter:"о",sounds:["о"],characteristic:"",stressed:true}]});
 invalidItem("ru-orthography",{questions:[{id:"q1",prompt:"Без пропуска",options:["о","а"],
  correct:1,explanation:""}]});
+invalidItem("sentence-builder",{parts:[{id:"duplicate",text:"Слово"},{id:"duplicate",text:"Слово"}]});
+invalidItem("state-structure",{edges:[{id:"bad",from:"root",to:"root",kind:"subordinate"}]});
 
 
 
