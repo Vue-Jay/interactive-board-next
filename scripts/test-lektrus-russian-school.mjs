@@ -18,10 +18,10 @@ assert.equal(validateRussianSchoolDiagram({...m,rows:[{id:"a",group:"variable",f
 const p=createRussianSchoolDiagram("ru-phonetics");
 assert.equal(totalSounds(p.letters),0);
 assert.equal(p.showSounds,false,"answers hidden until instructor enables");
-assert.equal(validateRussianSchoolDiagram({...p,letters:p.letters.map(x=>({...x,stressed:true}))}),false);
+assert.equal(validateRussianSchoolDiagram({...p,word:"аб",letters:[{id:"a",letter:"а",sounds:["а"],characteristic:"",stressed:true},{id:"b",letter:"б",sounds:["б"],characteristic:"",stressed:true}]}),false);
 assert.equal(validateRussianSchoolDiagram({...p,word:"котик"}),false,
  "phoneme mapping must match the authored word");
-assert.equal(validateRussianSchoolDiagram({...p,letters:p.letters.map(x=>({...x,sounds:["а","б","в"]}))}),false);
+assert.equal(validateRussianSchoolDiagram({...p,word:"а",letters:[{id:"a",letter:"а",sounds:["а","б","в"],characteristic:"",stressed:false}]}),false);
 const silent={...p,word:"конь",letters:[
  {id:"1",letter:"к",sounds:["к"],characteristic:"",stressed:false},
  {id:"2",letter:"о",sounds:["о"],characteristic:"",stressed:true},
