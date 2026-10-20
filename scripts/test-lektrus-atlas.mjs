@@ -51,6 +51,14 @@ assert.match(map,/lektrus-atlas-linear-scale/);
 assert.match(map,/regions-regional/);
 assert.match(map,/elevation-regional/);
 assert.match(map,/glaciers-regional/);
+const regionalExports={};
+new Function("exports",ts.transpileModule(regions,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(regionalExports);
+assert.equal(regionalExports.atlasRegions.length>=50,true);
+assert.equal(regionalExports.atlasRegionCamera(regionalExports.findAtlasRegion("world")).scale,1);
+assert.ok(regionalExports.atlasRegionCamera(regionalExports.findAtlasRegion("rf-siberia")).scale>1);
+const distance=regionalExports.atlasDistanceScale(3,0);
+assert.ok(distance.width>0&&distance.width<=115&&distance.label.includes("км"));
 assert.match(regions,/Сибирский федеральный округ/);
 assert.match(regions,/Чукотка: западное полушарие/);
 assert.match(map,/atlasRegionCamera/);
@@ -109,6 +117,12 @@ assert.equal(validAtlasDocument({...atlas,borderView:"invalid"}),false);
 const geoJs=ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const geoExports={};
 new Function("exports","require",geoJs)(geoExports,()=>({historicalSnapshots}));
+const river={type:"Feature",properties:{NAME:"Sample river"},geometry:{
+ type:"LineString",coordinates:[[30,60],[40,60]]
+}};
+const riverCenter=geoExports.featureLineMidpoint(river);
+assert.ok(riverCenter&&Math.abs(riverCenter[0]-537.5)<.01&&Math.abs(riverCenter[1]-75)<.01,
+ "river labels should derive from actual line geometry");
 const tiny={type:"Feature",properties:{NAME:"Microstate"},geometry:{
  type:"Polygon",coordinates:[[[7.41,43.73],[7.42,43.73],[7.42,43.74],[7.41,43.74],[7.41,43.73]]]
 }};
