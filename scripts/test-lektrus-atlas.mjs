@@ -70,9 +70,40 @@ assert.match(reg,/id:"history-atlas"/);
 assert.match(reg,/subjects:\["география"\]/);
 assert.match(reg,/subjects:\["история"\]/);
 
+assert.match(data,/ne_10m_admin_0_countries\.geojson/);
+assert.match(data,/ne_10m_admin_0_countries_rus\.geojson/);
+assert.match(data,/ne_50m_admin_0_tiny_countries\.geojson/);
+assert.match(map,/MAX_ATLAS_ZOOM=16384/);
+assert.match(map,/featureFocusBounds/);
+assert.match(map,/tinyPoints\.map/);
+assert.match(map,/Math\.log2\(scale\)/);
+assert.equal(validAtlasDocument({...atlas,borderView:"source"}),true);
+assert.equal(validAtlasDocument({...atlas,borderView:"russian"}),true);
+assert.equal(validAtlasDocument({...atlas,borderView:"invalid"}),false);
 const geoJs=ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const geoExports={};
 new Function("exports","require",geoJs)(geoExports,()=>({historicalSnapshots}));
+const tiny={type:"Feature",properties:{NAME:"Microstate"},geometry:{
+ type:"Polygon",coordinates:[[[7.41,43.73],[7.42,43.73],[7.42,43.74],[7.41,43.74],[7.41,43.73]]]
+}};
+const fit=geoExports.featureFocusBounds(tiny);
+assert.ok(fit&&fit.width<0.1&&fit.height<0.1&&fit.x>0&&fit.y>0,
+ "microstate bounds support deep focused zoom");
+assert.ok(geoExports.mapFeaturePath(tiny,.001).includes("L"),
+ "deep-resolution geometry keeps the small boundary");
+const monacoPoint=geoExports.featureFocusBounds(tiny);
+assert.equal(geoExports.mapFeaturePath(tiny,.00015,{
+ left:monacoPoint.x-.15,right:monacoPoint.x+.15,
+ top:monacoPoint.y-.15,bottom:monacoPoint.y+.15}).length>0,true);
+assert.equal(geoExports.mapFeaturePath(tiny,.00015,{
+ left:0,right:20,top:0,bottom:20}),"",
+ "distant microstate polygons are skipped by viewport clipping");
+assert.equal(geoExports.borderPrecision(tiny),0,"missing precision is unknown, not approximate");
+const islandPoint={type:"Feature",properties:{NAME:"Island"},geometry:{
+ type:"Point",coordinates:[180,0]
+}};
+assert.equal(geoExports.isTinyMapFeature(islandPoint),true);
+assert.ok(geoExports.featureFocusBounds(islandPoint)?.x===900);
 const crossing={type:"Feature",properties:{NAME:"Crossing"},geometry:{
  type:"LineString",coordinates:[[179,10],[-179,11]]
 }};
