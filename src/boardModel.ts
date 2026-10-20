@@ -68,6 +68,45 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
   }
   return visited.size===nodes.length;
  }
+ if(d.kind==="morphology"){
+  if(!field(d.word,65)||typeof d.sentence!=="string"||d.sentence.length>220||
+   !["noun","adjective","verb","pronoun","numeral","adverb","participle","gerund","preposition",
+    "conjunction","particle","interjection","other"].includes(d.partOfSpeech as string)||
+   typeof d.showAnalysis!=="boolean"||!Array.isArray(d.rows)||
+   d.rows.length<1||d.rows.length>18)return false;
+  const rows=d.rows as Record<string,unknown>[];
+  return rows.every(row=>row&&typeof row==="object"&&field(row.id,64)&&
+   ["permanent","variable","syntax"].includes(row.group as string)&&
+   field(row.feature,52)&&field(row.value,90))&&
+   new Set(rows.map(row=>row.id)).size===rows.length;
+ }
+ if(d.kind==="phonetics"){
+  if(!field(d.word,36)||typeof d.showSounds!=="boolean"||
+   typeof d.showCharacteristics!=="boolean"||!Array.isArray(d.letters)||
+   d.letters.length<1||d.letters.length>24)return false;
+  const letters=d.letters as Record<string,unknown>[];
+  return letters.every(l=>l&&typeof l==="object"&&field(l.id,64)&&
+   field(l.letter,4)&&Array.isArray(l.sounds)&&l.sounds.length<=2&&
+   l.sounds.every((x:unknown)=>field(x,12))&&typeof l.characteristic==="string"&&
+   l.characteristic.length<=100&&typeof l.stressed==="boolean")&&
+   new Set(letters.map(l=>l.id)).size===letters.length&&
+   letters.filter(l=>l.stressed).length<=1&&
+   letters.every(l=>!l.stressed||(l.sounds as unknown[]).length>0)&&
+   letters.map(l=>l.letter).join("")===d.word;
+ }
+ if(d.kind==="orthography"){
+  if(typeof d.showExplanation!=="boolean"||!Array.isArray(d.questions)||
+   d.questions.length<1||d.questions.length>20)return false;
+  const questions=d.questions as Record<string,unknown>[];
+  return questions.every(q=>q&&typeof q==="object"&&field(q.id,64)&&
+   field(q.prompt,180)&&(q.prompt as string).split("□").length===2&&
+   Array.isArray(q.options)&&q.options.length>=2&&q.options.length<=4&&
+   q.options.every((o:unknown)=>field(o,24))&&
+   new Set((q.options as string[]).map(o=>o.trim())).size===q.options.length&&
+   Number.isInteger(q.correct)&&(q.correct as number)>=0&&(q.correct as number)<q.options.length&&
+   typeof q.explanation==="string"&&q.explanation.length<=250)&&
+   new Set(questions.map(q=>q.id)).size===questions.length;
+ }
  if(d.kind==="morphemes"){
   if(typeof d.showMarks!=="boolean"||typeof d.showBase!=="boolean"||
    typeof d.zeroEnding!=="boolean"||!Array.isArray(d.segments)||

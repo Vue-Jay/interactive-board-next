@@ -27,6 +27,9 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"ru-morphemes",label:"Разбор слова по составу",description:"Приставки, корни, суффиксы и окончания, основа и задания без ответов",group:"Русский язык · морфемика",subjects:["русский язык"]},
   {id:"history-family-tree",label:"Генеалогическое дерево",description:"Поколения, два родителя и редактируемые родственные связи",group:"История и обществознание · родословные",subjects:["история","обществознание"]},
   {id:"language-flashcards",label:"Карточки слов",description:"Иностранные слова, перевод, транскрипция и переворот карточки",group:"Иностранные языки · лексика",subjects:["английский язык","иностранный язык"]},
+  {id:"ru-morphology",label:"Морфологический разбор",description:"Часть речи, постоянные и непостоянные признаки, скрываемые ответы",group:"Русский язык · морфология",subjects:["русский язык"]},
+  {id:"ru-phonetics",label:"Фонетический разбор",description:"Буквы, звуки, ударение и ручная транскрипция",group:"Русский язык · фонетика",subjects:["русский язык"]},
+  {id:"ru-orthography",label:"Орфографический тренажёр",description:"Орфограммы с пропусками и проверкой ответов на доске",group:"Русский язык · орфография",subjects:["русский язык"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
 ];
@@ -40,7 +43,8 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
   if(id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||id==="geo-relief-profile"||
-     id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"){
+     id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||
+     id==="ru-morphology"||id==="ru-phonetics"||id==="ru-orthography"){
     const diagram=makeSchoolDiagram(id);
     return {id:createId(),kind:"graph",text:diagram.title,
       x:x-405,y:y-225,width:810,height:450,graphFigureId:id,

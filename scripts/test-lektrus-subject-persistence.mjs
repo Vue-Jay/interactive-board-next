@@ -85,6 +85,20 @@ const docs=[
  item("foreign","graph",{graphPurpose:"geometry",graphFigureId:"language-flashcards",schoolDiagram:{
   kind:"flashcards",title:"Слова",showTranslation:false,showTranscription:true,
   direction:"foreign-first",cards:[{id:"c",term:"book",translation:"книга",transcription:"[bʊk]"}]}}),
+ item("ru-morphology","graph",{graphFigureId:"ru-morphology",graphPurpose:"geometry",schoolDiagram:{
+  kind:"morphology",title:"Морфологический разбор",word:"лес",sentence:"Ветер шумит в лесу.",
+  partOfSpeech:"noun",showAnalysis:false,
+  rows:[{id:"r1",group:"permanent",feature:"Род",value:"Мужской"},
+   {id:"r2",group:"variable",feature:"Падеж",value:"Предложный"}]}}),
+ item("ru-phonetics","graph",{graphFigureId:"ru-phonetics",graphPurpose:"geometry",schoolDiagram:{
+  kind:"phonetics",title:"Фонетический разбор",word:"кот",showSounds:false,showCharacteristics:false,
+  letters:[{id:"l1",letter:"к",sounds:["к"],characteristic:"согласный, глухой",stressed:false},
+   {id:"l2",letter:"о",sounds:["о"],characteristic:"гласный",stressed:true},
+   {id:"l3",letter:"т",sounds:["т"],characteristic:"согласный",stressed:false}]}}),
+ item("ru-orthography","graph",{graphFigureId:"ru-orthography",graphPurpose:"geometry",schoolDiagram:{
+  kind:"orthography",title:"Орфографический тренажёр",showExplanation:true,questions:[
+   {id:"q1",prompt:"Вставьте букву: тр□ва",options:["а","о"],correct:0,
+    explanation:"Проверочное слово: травы."}]}}),
  item("fraction","fraction",{fractionNumerator:1,fractionDenominator:3,fractionMode:"circle"}),
  item("table","table",{tableRows:2,tableCols:2,tableCells:["a","b","c","d"],
   tableHeader:true,tableAlign:"right",tableStripe:true,tableCompact:true})
@@ -123,6 +137,11 @@ invalidItem("family",{people:[
  {id:"p",name:"Родитель",parents:["c"]},{id:"c",name:"Ребёнок",parents:["p"]}]});
 invalidItem("foreign",{cards:[{id:"same",term:"cat",translation:"кот",transcription:""},
  {id:"same",term:"dog",translation:"собака",transcription:""}]});
+invalidItem("ru-morphology",{partOfSpeech:"unknown"});
+invalidItem("ru-phonetics",{letters:[{id:"l1",letter:"к",sounds:["к"],characteristic:"",stressed:true},
+ {id:"l2",letter:"о",sounds:["о"],characteristic:"",stressed:true}]});
+invalidItem("ru-orthography",{questions:[{id:"q1",prompt:"Без пропуска",options:["о","а"],
+ correct:1,explanation:""}]});
 
 
 

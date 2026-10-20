@@ -1,9 +1,10 @@
 /** Curriculum-aligned, editable teaching illustrations. Only the school content
  * explicitly entered by a teacher is represented; no invented lab measurements. */
+import {createRussianSchoolDiagram,isRussianToolId,validateRussianSchoolDiagram,type RussianSchoolDiagram,type RussianToolId} from "./lektrusRussianSchoolModel";
 import {createApprovedSchoolDiagram,isApprovedSchoolId,validateApprovedSchoolDiagram,type ApprovedSchoolDiagram,type ApprovedSchoolId} from "./lektrusApprovedSchoolModel";
 import {defaultFurtherDiagram,isFurtherId,validFurtherDiagram,type FurtherDiagram,type FurtherSchoolId} from "./lektrusFurtherSchoolModel";
 import {defaultNextSchoolDiagram,isNextSchoolId,validNextSchoolDiagram,type NextSchoolDiagram,type NextSchoolId} from "./lektrusNextSchoolModel";
-export type SchoolDiagramId="bio-cell"|"bio-food-chain"|"geo-climate"|"history-timeline"|NextSchoolId|FurtherSchoolId|ApprovedSchoolId;
+export type SchoolDiagramId="bio-cell"|"bio-food-chain"|"geo-climate"|"history-timeline"|NextSchoolId|FurtherSchoolId|ApprovedSchoolId|RussianToolId;
 export type CellOrganelle="wall"|"membrane"|"cytoplasm"|"nucleus"|"vacuole"|"chloroplast"|"mitochondria";
 export type FoodRole="producer"|"consumer"|"decomposer";
 export type SchoolDiagram=
@@ -11,17 +12,18 @@ export type SchoolDiagram=
  |{kind:"food-chain";title:string;organisms:{id:string;name:string;role:FoodRole}[];showRoles:boolean}
  |{kind:"climate";title:string;months:{temperature:number;precipitation:number}[];showLegend:boolean}
  |{kind:"timeline";title:string;events:{id:string;year:number;label:string}[];showEra:boolean}
- |NextSchoolDiagram|FurtherDiagram|ApprovedSchoolDiagram;
+ |NextSchoolDiagram|FurtherDiagram|ApprovedSchoolDiagram|RussianSchoolDiagram;
 export const months=["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"] as const;
 export const organelleTitles:Record<CellOrganelle,string>={
  wall:"Клеточная стенка",membrane:"Клеточная мембрана",cytoplasm:"Цитоплазма",
  nucleus:"Ядро",vacuole:"Вакуоль",chloroplast:"Хлоропласты",mitochondria:"Митохондрии"
 };
-export const ids:SchoolDiagramId[]=["bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile","ru-morphemes","history-family-tree","language-flashcards"];
+export const ids:SchoolDiagramId[]=["bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile","ru-morphemes","history-family-tree","language-flashcards","ru-morphology","ru-phonetics","ru-orthography"];
 export function isSchoolDiagramId(value:string|undefined):value is SchoolDiagramId{
  return ids.includes(value as SchoolDiagramId);
 }
 export function makeSchoolDiagram(id:SchoolDiagramId):SchoolDiagram{
+ if(isRussianToolId(id))return createRussianSchoolDiagram(id);
  if(isApprovedSchoolId(id))return createApprovedSchoolDiagram(id);
  if(isFurtherId(id))return defaultFurtherDiagram(id);
  if(isNextSchoolId(id))return defaultNextSchoolDiagram(id);
@@ -69,7 +71,7 @@ export function isSchoolDiagram(value:unknown):value is SchoolDiagram{
      Number.isInteger((v as {year:number}).year)&&
      number((v as {year:number}).year,-3000,2100)&&(v as {year:number}).year!==0)&&
     new Set(d.events.map((v:{id:string})=>v.id)).size===d.events.length;
-  default:return validNextSchoolDiagram(value)||validFurtherDiagram(value)||validateApprovedSchoolDiagram(value);
+  default:return validNextSchoolDiagram(value)||validFurtherDiagram(value)||validateApprovedSchoolDiagram(value)||validateRussianSchoolDiagram(value);
  }
 }
 export function safeSchoolDiagram(value:unknown,id:SchoolDiagramId):SchoolDiagram{
