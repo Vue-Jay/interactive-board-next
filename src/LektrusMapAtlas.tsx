@@ -1,10 +1,13 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import {atlasModes,atlasModesFor,eventsNearYear,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
+import LektrusMapBase from "./LektrusMapBase";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,summariseNamedChanges,
  type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 type Props={diagram:AtlasDocument};
+const getAtlasScope=(d:AtlasDocument)=>d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
+const isHistoricalAtlasMode=(m:AtlasMode)=>m==="historical"||m==="events";
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
 const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
 const precisions=["Неизвестная точность","Приблизительные границы","Средняя точность","Уточнённая граница"] as const;
@@ -12,8 +15,13 @@ const mapModeTitle=(v:AtlasMode)=>atlasModes.find(m=>m.id===v)!.title;
 function AtlasMap({diagram:d}:Props){
  const [mode,setMode]=useState<AtlasMode>(d.mode);
  const [index,setIndex]=useState(nearestSnapshotIndex(d.year));
+ const scope=getAtlasScope(d);
+ const availableModes=atlasModesFor(scope);
+ const [baseLand,setBaseLand]=useState<GeoCollection|null>(null);
+ const [baseCoastline,setBaseCoastline]=useState<GeoCollection|null>(null);
+ const [baseLoading,setBaseLoading]=useState(true);
+ const [baseError,setBaseError]=useState("");
  const [source,setSource]=useState<GeoCollection|null>(null);
- const [basemap,setBasemap]=useState<GeoCollection|null>(null);
  const [previous,setPrevious]=useState<GeoCollection|null>(null);
  const [rivers,setRivers]=useState<GeoCollection|null>(null);
  const [lakes,setLakes]=useState<GeoCollection|null>(null);
@@ -23,34 +31,49 @@ function AtlasMap({diagram:d}:Props){
  const [selected,setSelected]=useState<GeoFeature|null>(null);
  const [eventIndex,setEventIndex]=useState<number|null>(null);
  const [search,setSearch]=useState("");
+ const [chosenCoordinates,setChosenCoordinates]=useState<{lon:number;lat:number}|null>(null);
+ const mapGroupRef=useRef<SVGGElement|null>(null);
  const [scale,setScale]=useState(1);
  const [position,setPosition]=useState({x:0,y:0});
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
  const snapshot=historicalSnapshots[index];
- const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
- const availableModes=atlasModesFor(scope);
- const historical=scope==="history";
- const sharedBase=useMemo(()=>basemap?.features.map((feature,i)=>({path:mapFeaturePath(feature),i}))
-  .filter(f=>f.path)||[],[basemap]);
- useEffect(()=>{setMode(d.mode);setIndex(nearestSnapshotIndex(d.year));setSelected(null);setEventIndex(null)},
-  [d.mode,d.year]);
+ const historical=isHistoricalAtlasMode(mode);
+ const waterMode=mode==="physical"||mode==="hydrography";
+ useEffect(()=>{
+  setMode(atlasModesFor(getAtlasScope(d)).some(m=>m.id===d.mode)?
+   d.mode:scope==="history"?"historical":"political");
+  setIndex(nearestSnapshotIndex(d.year));setSelected(null);setEventIndex(null);
+ },[d.mode,d.year,d.scope,scope]);
+ useEffect(()=>{
+  let active=true;
+  setBaseError("");setBaseLoading(true);
+  Promise.all([loadAtlasLayer("land"),loadAtlasLayer("coastline")])
+   .then(([land,coast])=>{
+    if(!active)return;
+    setBaseLand(land);setBaseCoastline(coast);setBaseLoading(false);
+   }).catch(e=>{
+    if(!active)return;
+    setBaseError(e instanceof Error?e.message:String(e));setBaseLoading(false);
+   });
+  return()=>{active=false};
+ },[refresh]);
  useEffect(()=>{
   let active=true;
   setError("");setLoading(true);setSource(null);setSelected(null);setPrevious(null);
-  const modern=loadAtlasLayer("countries");
-  const main=historical?loadHistoricalSnapshot(snapshot.year):modern;
+  const main=historical?loadHistoricalSnapshot(snapshot.year):
+   mode==="political"||mode==="contour"?loadAtlasLayer("countries"):Promise.resolve(null);
   const before=historical&&index>0?loadHistoricalSnapshot(historicalSnapshots[index-1].year).catch(()=>null):Promise.resolve(null);
-  const water=mode==="physical"?Promise.all([loadAtlasLayer("rivers").catch(()=>null),loadAtlasLayer("lakes").catch(()=>null)]):
+  const water=waterMode?Promise.all([loadAtlasLayer("rivers"),loadAtlasLayer("lakes")]):
    Promise.resolve([null,null] as [GeoCollection|null,GeoCollection|null]);
-  Promise.all([main,before,water,modern]).then(([geo,prev,w,base])=>{
+  Promise.all([main,before,water]).then(([geo,prev,w])=>{
    if(!active)return;
-   setSource(geo);setBasemap(base);setPrevious(prev);setRivers(w[0]);setLakes(w[1]);setLoading(false);
+   setSource(geo);setPrevious(prev);setRivers(w[0]);setLakes(w[1]);setLoading(false);
   }).catch(e=>{
    if(!active)return;
    setError(e instanceof Error?e.message:String(e));setLoading(false);
   });
   return()=>{active=false};
- },[mode,index,refresh,historical,snapshot.year]);
+ },[mode,index,refresh,historical,waterMode,snapshot.year]);
  const shapes=useMemo(()=>source?.features.map((feature,i)=>({
   feature,path:mapFeaturePath(feature),name:geoFeatureName(feature),i
  })).filter(f=>f.path)||[],[source]);
@@ -58,8 +81,8 @@ function AtlasMap({diagram:d}:Props){
   .filter(s=>s.anchor&&s.anchor.area>380)
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
   .slice(0,45),[shapes]);
- const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f)})).filter(v=>v.path)||[],[rivers]);
- const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f)})).filter(v=>v.path)||[],[lakes]);
+ const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f})).filter(v=>v.path)||[],[rivers]);
+ const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f})).filter(v=>v.path)||[],[lakes]);
  const changes=useMemo(()=>source&&previous?summariseNamedChanges(previous,source):null,[source,previous]);
  const eventList=useMemo(()=>eventsNearYear(snapshot.year),[snapshot.year]);
  const userMarkers=d.markers.filter(marker=>!historical||
@@ -77,11 +100,25 @@ function AtlasMap({diagram:d}:Props){
  };
  const reset=()=>{setScale(1);setPosition({x:0,y:0});setSelected(null)};
  const showCountry=(feature:GeoFeature)=>{if(mode==="contour")return;setSelected(feature);setEventIndex(null)};
- const onMode=(value:AtlasMode)=>{if(!availableModes.some(m=>m.id===value))return;setMode(value);setSelected(null);setEventIndex(null)};
+ const onMode=(value:AtlasMode)=>{
+  if(!availableModes.some(candidate=>candidate.id===value))return;
+  setMode(value);setSelected(null);setEventIndex(null);setChosenCoordinates(null);
+ };
+ const pickCoordinates=(event:React.MouseEvent<SVGSVGElement>)=>{
+  if(mode!=="coordinates"||!mapGroupRef.current)return;
+  const matrix=mapGroupRef.current.getScreenCTM();
+  if(!matrix)return;
+  const click=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());
+  if(click.x<0||click.x>900||click.y<0||click.y>450)return;
+  setChosenCoordinates({
+   lon:Math.round((click.x/900*360-180)*100)/100,
+   lat:Math.round((90-click.y/450*180)*100)/100
+  });
+ };
  return <div className="lektrus-atlas" aria-label={d.title}
   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
   onClick={e=>e.stopPropagation()} onWheel={e=>{e.stopPropagation();
-   setScale(s=>Math.max(1,Math.min(5,Math.round((s+(e.deltaY<0?.2:-.2))*10)/10)));}}>
+   setScale(z=>Math.max(1,Math.min(5,Math.round((z+(e.deltaY<0?.2:-.2))*10)/10)));}}>
   <header className="lektrus-atlas-header">
    <strong title={d.title}>{d.title}</strong>
    <nav role="group" aria-label="Тип карты">
@@ -92,33 +129,27 @@ function AtlasMap({diagram:d}:Props){
   </header>
   <div className="lektrus-atlas-body">
    <div className="lektrus-atlas-map-box">
-    {loading&&<div className="lektrus-atlas-overlay" role="status">Загружаются реальные картографические данные…</div>}
-    {!loading&&error&&<div className="lektrus-atlas-overlay lektrus-atlas-failure" role="alert">
-     <strong>Карта недоступна</strong><span>{error}</span>
+    {(loading||baseLoading)&&<div className="lektrus-atlas-overlay" role="status">Загружается общая подложка и картографические слои…</div>}
+    {!loading&&!baseLoading&&(error||baseError)&&<div className="lektrus-atlas-overlay lektrus-atlas-failure" role="alert">
+     <strong>Карта недоступна</strong><span>{error||baseError}</span>
      <button type="button" onClick={()=>setRefresh(i=>i+1)}>Повторить загрузку</button>
      <small>Границы не заменяются вымышленными. Для доступа необходим интернет.</small>
     </div>}
     <svg viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
+     onClick={pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
      onPointerDown={e=>{if(e.button!==0)return;pointer.current={id:e.pointerId,x:e.clientX,y:e.clientY,fromX:position.x,fromY:position.y};e.currentTarget.setPointerCapture(e.pointerId)}}
      onPointerMove={onMove}
      onPointerUp={e=>{pointer.current=null;if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)}}
      onPointerCancel={()=>{pointer.current=null}}>
-     <rect width="900" height="450" fill="#e3eff9"/>
-     <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
-      {d.showGrid&&<g stroke="#bdcedf" strokeWidth=".6" opacity=".78">
-       {Array.from({length:11},(_,i)=><line key={"x"+i} x1={i*90} y1="0" x2={i*90} y2="450"/>)}
-       {Array.from({length:7},(_,i)=><line key={"y"+i} x1="0" y1={i*75} x2="900" y2={i*75}/>)}
-      </g>}
-      <g pointerEvents="none" fill="#e8eee4" stroke="#a4bdc6" strokeWidth=".45">
-       {sharedBase.map(part=><path key={"base-"+part.i} d={part.path} fillRule="evenodd"/>)}
-      </g>
+     
+     <g ref={mapGroupRef} transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
+      <LektrusMapBase land={baseLand} coastline={baseCoastline} grid={d.showGrid||mode==="coordinates"}/>
       <g strokeLinejoin="round">
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
-        const fill=mode==="contour"?"#fafcfb":mode==="physical"?"#d2e5c8":
-         palettes[hash(s.name)%palettes.length];
+        const fill=mode==="contour"?"transparent":palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
          stroke={highlighted||s.name===selectedTitle?"#df793e":mode==="contour"?"#839fb2":"#819fb2"}
          strokeWidth={highlighted||s.name===selectedTitle?1.9:historical&&precise===1?.75:.48}
@@ -132,9 +163,25 @@ function AtlasMap({diagram:d}:Props){
        textAnchor="middle" pointerEvents="none" stroke="#fff" strokeWidth="1.5" paintOrder="stroke">
        {labels.map(s=><text key={s.i} x={s.anchor!.x} y={s.anchor!.y}>{s.name.slice(0,23)}</text>)}
       </g>}
-      {mode==="physical"&&<g pointerEvents="none">
-       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#87bfe6" stroke="#65a3ce" strokeWidth=".65"/>)}
-       {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none" stroke="#6aadd7" strokeWidth=".8"/>)}
+      {waterMode&&<g>
+       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#87bfe6"
+        stroke="#5c9fc9" strokeWidth={mode==="hydrography"?1.4:.65}
+        pointerEvents={mode==="hydrography"?"auto":"none"}
+        onClick={()=>{setSelected(l.feature);setEventIndex(null)}}>
+        <title>{mode==="hydrography"?geoFeatureName(l.feature):"Озеро"}</title>
+       </path>)}
+       {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none"
+        stroke={mode==="hydrography"?"#348aca":"#6aadd7"}
+        strokeWidth={mode==="hydrography"?2:.8}
+        pointerEvents={mode==="hydrography"?"stroke":"none"}
+        onClick={()=>{setSelected(l.feature);setEventIndex(null)}}>
+        <title>{mode==="hydrography"?geoFeatureName(l.feature):"Река"}</title>
+       </path>)}
+      </g>}
+      {mode==="coordinates"&&chosenCoordinates&&<g pointerEvents="none">
+       <circle cx={(chosenCoordinates.lon+180)/360*900}
+        cy={(90-chosenCoordinates.lat)/180*450} r="5" fill="#e57642"
+        stroke="white" strokeWidth="2"/>
       </g>}
       {isEventVisible&&eventList.map(event=>{
        const point=projectGeography(event.lon,event.lat),key=schoolHistoryEvents.indexOf(event);
@@ -167,6 +214,13 @@ function AtlasMap({diagram:d}:Props){
      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Название страны"/>
      {search&&<small>Совпадений в данных: {filteredCount}</small>}
     </label>}
+    {mode==="coordinates"&&<div className="lektrus-atlas-description">
+     <strong>Географические координаты</strong>
+     <p>Нажмите на карту, чтобы узнать широту и долготу точки.</p>
+     {chosenCoordinates?<p><b>{Math.abs(chosenCoordinates.lat).toFixed(2)}° {chosenCoordinates.lat>=0?"с. ш.":"ю. ш."},
+      {" "}{Math.abs(chosenCoordinates.lon).toFixed(2)}° {chosenCoordinates.lon>=0?"в. д.":"з. д."}</b></p>:
+      <p>Точка пока не выбрана.</p>}
+    </div>}
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}</strong>
      <small>Датированный снимок границ, не интерполяция</small>
@@ -190,7 +244,7 @@ function AtlasMap({diagram:d}:Props){
     </div>:
     <div className="lektrus-atlas-description"><strong>{mapModeTitle(mode)}</strong>
      <p>{atlasModes.find(m=>m.id===mode)?.hint}.</p>
-     {mode==="physical"&&<p>Нанесены контуры суши, реки и озёра. Данных о высотах и рельефной окраске в этом слое пока нет.</p>}
+     {waterMode&&<p>Общая подложка суши и морей дополнена реками и озёрами. Это не рельеф высот.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
     </div>}
     {historical&&<div className="lektrus-atlas-history-events">
@@ -216,7 +270,8 @@ function AtlasMap({diagram:d}:Props){
     <div className="lektrus-atlas-source">
      <a href={(historical?historicDataProvider:modernDataProvider).url}
       target="_blank" rel="noopener noreferrer">Источник: {(historical?historicDataProvider:modernDataProvider).name} ↗</a>
-     {historical&&<><small>Границы могут быть приблизительными, спорными или неполными.</small>
+     <small>Общая географическая основа всех режимов: современная береговая линия и суша Natural Earth.</small>
+     {historical&&<><small>Исторические границы нанесены на современную географическую основу; они могут быть приблизительными, спорными или неполными.</small>
       <a href={historicDataProvider.licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия исходных данных: GPL-3.0 ↗</a></>}
     </div>
    </aside>
