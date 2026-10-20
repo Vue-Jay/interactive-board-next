@@ -279,6 +279,8 @@ assert.ok(hydroExports.atlasWaterGeometryTolerance(32,true)<
 assert.ok(map.includes('strokeWidth={atlasRiverStroke(l.feature,mode==="hydrography")}'));
 assert.ok(map.includes('className="lektrus-atlas-water-feature lektrus-atlas-river"'));
 assert.ok(map.includes('strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"'));
+assert.ok(map.includes('strokeWidth="8"'),"thin rivers need an invisible mobile-friendly hit area");
+assert.ok(map.includes('className="lektrus-atlas-river-ink" pointerEvents="none"'));
 assert.match(map,/stroke="none"\s*className="lektrus-atlas-landform"/);
 assert.ok(map.includes("rivers-ultra")&&map.includes("lakes-ultra"));
 assert.ok(data.includes("ne_10m_rivers_lake_centerlines.geojson"));

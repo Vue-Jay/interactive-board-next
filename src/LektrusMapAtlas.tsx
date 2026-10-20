@@ -627,11 +627,18 @@ function AtlasMap({diagram:d,onChange}:Props){
         strokeWidth={atlasLakeStroke()} strokeLinejoin="round" vectorEffect="non-scaling-stroke"
         onClick={()=>selectFeature(l.feature,"Озеро")} className="lektrus-atlas-water-feature lektrus-atlas-lake">
         <title>{geoFeatureName(l.feature)}</title></path>)}
-       {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none" stroke="#4c9bc8"
-        strokeWidth={atlasRiverStroke(l.feature,mode==="hydrography")} pointerEvents="stroke"
-        strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
-        onClick={()=>selectFeature(l.feature,"Река")} className="lektrus-atlas-water-feature lektrus-atlas-river">
-        <title>{geoFeatureName(l.feature)}</title></path>)}
+       {streams.map(l=><g key={"river-"+l.id} role="button" tabIndex={0}
+        className="lektrus-atlas-water-feature lektrus-atlas-river"
+        onClick={e=>{e.stopPropagation();selectFeature(l.feature,"Река")}}
+        onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();selectFeature(l.feature,"Река")}}}>
+        <path d={l.path} fill="none" stroke="transparent" strokeWidth="8"
+         vectorEffect="non-scaling-stroke" pointerEvents="stroke"
+         strokeLinecap="round" strokeLinejoin="round"/>
+        <path d={l.path} fill="none" stroke="#4c9bc8"
+         strokeWidth={atlasRiverStroke(l.feature,mode==="hydrography")}
+         strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
+         className="lektrus-atlas-river-ink" pointerEvents="none"/>
+        <title>{geoFeatureName(l.feature)}</title></g>)}
       </g>}
       {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=3&&
        <g pointerEvents="none" fontSize={8/scale} fill="#31799d" stroke="#fff"

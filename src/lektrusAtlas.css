@@ -24,7 +24,7 @@
 .lektrus-atlas-landform{cursor:pointer;transition:fill-opacity .12s}
 .lektrus-atlas-landform:hover{fill-opacity:.82}
 .lektrus-atlas-water-feature{cursor:pointer}
-.lektrus-atlas-river:hover{stroke:#287eaf}
+.lektrus-atlas-river:hover .lektrus-atlas-river-ink{stroke:#287eaf}
 .lektrus-atlas-lake:hover{fill:#9ad0e9;stroke:#519ac4}
 .lektrus-atlas-event{cursor:pointer}
 .lektrus-atlas-zoom{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:3px}
