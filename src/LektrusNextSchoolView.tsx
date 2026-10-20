@@ -113,7 +113,7 @@ function FlowView({d}:{d:Extract<NextSchoolDiagram,{kind:"flowchart"}>}){
  </svg>;
 }
 function PlaceValueView({d}:{d:Extract<NextSchoolDiagram,{kind:"place-value"}>}){
- const count=d.digits.length,cellWidth=Math.min(90,805/count),left=450-count*cellWidth/2;
+ const count=d.digits.length,cellWidth=Math.min(90,805/Math.max(1,count)),left=450-count*cellWidth/2;
  const displayBase=d.base.toString();
  return <svg viewBox="0 0 900 500" className="lektrus-school-svg" role="img" aria-label={d.title}>
   <rect width="900" height="500" rx="20" fill="#fcfdff"/>

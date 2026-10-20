@@ -76,9 +76,14 @@ function OrthographyBoard({d}:{d:Extract<RussianSchoolDiagram,{kind:"orthography
  const [checked,setChecked]=useState(false);
  useEffect(()=>{setIndex(0);setPicked(null);setChecked(false)},[d.questions]);
  const question=d.questions[Math.min(index,d.questions.length-1)];
- const ok=checked&&picked===question.correct;
+ const ok=checked&&question!==undefined&&picked===question.correct;
  const next=(i:number)=>{setIndex(i);setPicked(null);setChecked(false)};
  const stop=(e:SyntheticEvent)=>e.stopPropagation();
+ if(!question)return <div className="lektrus-orthography-board" role="status"
+  onPointerDown={stop} onPointerUp={stop} onClick={stop}>
+  <strong className="lektrus-orthography-title">{d.title}</strong>
+  <p>Заданий пока нет. Добавьте слова и варианты ответов в редакторе.</p>
+ </div>;
  return <div className="lektrus-orthography-board" role="group" aria-label={d.title}
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   <strong className="lektrus-orthography-title">{d.title}</strong>
