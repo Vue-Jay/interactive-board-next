@@ -5,7 +5,7 @@ export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineSt
  coordinates:unknown};
 export type GeoFeature={type:"Feature";properties:Record<string,unknown>|null;geometry:GeoGeometry|null};
 export type GeoCollection={type:"FeatureCollection";features:GeoFeature[]};
-export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers";
+export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"cities-regional"|"admin-regional";
 const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/";
 const BACKUP="https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/";
 const HIST="https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/";
@@ -13,6 +13,12 @@ const HIST_BACKUP="https://cdn.jsdelivr.net/gh/aourednik/historical-basemaps@mas
 const names:Record<GeoLayer,string>={
  land:"ne_110m_land.geojson",
  coastline:"ne_110m_coastline.geojson",
+ "land-detail":"ne_50m_land.geojson",
+ "coastline-detail":"ne_50m_coastline.geojson",
+ "rivers-regional":"ne_50m_rivers_lake_centerlines.geojson",
+ "lakes-regional":"ne_50m_lakes.geojson",
+ "cities-regional":"ne_50m_populated_places.geojson",
+ "admin-regional":"ne_50m_admin_1_states_provinces.geojson",
  countries:"ne_110m_admin_0_countries.geojson",
  "countries-detail":"ne_50m_admin_0_countries.geojson",
  "countries-ultra":"ne_10m_admin_0_countries.geojson",
@@ -105,7 +111,7 @@ export function loadAtlasLayer(layer:GeoLayer){
  return requestGeojson("modern-"+layer,[BASE+filename,BACKUP+filename]);
 }
 export function loadHistoricalSnapshot(year:number){
- if(year===2026)return loadAtlasLayer("countries-detail"); // non-dated modern overview
+ if(year===2026)return loadAtlasLayer("countries-russian"); // contemporary Russian POV, not a dated historical snapshot
  const found=historicalSnapshots.find(s=>s.year===year);
  if(!found)return Promise.reject(new Error("Исторического снимка на этот год нет"));
  return requestGeojson("historical-"+year,[HIST+found.file,HIST_BACKUP+found.file]);
