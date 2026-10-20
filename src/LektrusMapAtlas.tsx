@@ -103,6 +103,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
  const distanceBar=atlasDistanceScale(scale,position.y);
+ const mapText=(base:number)=>Math.min(15.5,base+Math.log2(Math.max(1,scale))*1.05)/scale;
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
  const points=useRef(new Map<number,{x:number;y:number}>());
  const pinch=useRef<{distance:number;scale:number;position:{x:number;y:number};mid:{x:number;y:number}}|null>(null);
@@ -498,7 +499,7 @@ function AtlasMap({diagram:d,onChange}:Props){
   onChange?.({...d,mode:value});
  };
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
-  if(dragged.current)return;
+  if(dragged.current||(mode!=="coordinates"&&!terrainEnabled))return;
   const p=worldPoint(localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
   if(p.x>=0&&p.x<=900&&p.y>=0&&p.y<=450){
    const lon=Math.round((p.x/900*360-180)*10000)/10000;
@@ -613,15 +614,23 @@ function AtlasMap({diagram:d,onChange}:Props){
         vectorEffect="non-scaling-stroke" className="lektrus-atlas-landform" onClick={()=>selectFeature(f.feature,"Ледниковая область")}>
         <title>{geoFeatureName(f.feature)}</title></path>)}
       </g>}
-      {(mode==="coordinates"||terrainEnabled)&&coord&&<g transform={`translate(${projectGeography(coord.lon,coord.lat)[0]} ${projectGeography(coord.lon,coord.lat)[1]})`}
-       pointerEvents="none" stroke="#dd653e" strokeWidth=".9">
-       <circle r="5.5" fill="#fff" fillOpacity=".7"/><path d="M-10 0H10M0 -10V10"/>
+      {(mode==="coordinates"||terrainEnabled)&&coord&&<g className="lektrus-atlas-coordinate-pin"
+       transform={`translate(${projectGeography(coord.lon,coord.lat)[0]} ${projectGeography(coord.lon,coord.lat)[1]}) scale(${1/scale})`}
+       onClick={e=>e.stopPropagation()}
+       onDoubleClick={e=>{e.preventDefault();e.stopPropagation();setCoord(null);setTerrainPick(null)}}
+       onContextMenu={e=>{e.preventDefault();e.stopPropagation();setCoord(null);setTerrainPick(null)}}
+       role="button" aria-label="Удалить метку двойным нажатием или правой кнопкой мыши" tabIndex={0}
+       onKeyDown={e=>{if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();setCoord(null);setTerrainPick(null)}}}>
+       <circle r="12" fill="transparent" pointerEvents="all"/>
+       <circle r="3.5" fill="#fff" stroke="#d56540" strokeWidth="1.4"/>
+       <circle r="1.3" fill="#d56540" stroke="none"/>
+       <title>Метка координат. Двойной щелчок или правая кнопка для удаления</title>
       </g>}
       {historical&&compare&&previous&&<g fill="none" stroke="#d64646"
        strokeWidth="1.1" strokeDasharray="4 2" pointerEvents="none">
        {previous.features.filter(f=>!!atlasDisplayName(f,historicalSnapshots[Math.max(0,index-1)].year,true)).map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)} vectorEffect="non-scaling-stroke"/>)}
       </g>}
-      {d.showLabels&&mode!=="contour"&&<g fill="#44566a" fontSize={8/scale} fontWeight="650"
+      {d.showLabels&&mode!=="contour"&&<g fill="#44566a" fontSize={mapText(9.2)} fontWeight="700"
        textAnchor="middle" pointerEvents="none" stroke="#fff" strokeWidth={1.5/scale} paintOrder="stroke">
        {labels.map(s=><text key={s.i} x={s.anchor!.x} y={s.anchor!.y}>{s.name.slice(0,23)}</text>)}
       </g>}
@@ -647,25 +656,25 @@ function AtlasMap({diagram:d,onChange}:Props){
         <title>{geoFeatureName(l.feature)}</title></g>)}
       </g>}
       {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=2&&
-       <g pointerEvents="none" fontSize={7.7/scale} fill="#23678e" stroke="#fff"
+       <g pointerEvents="none" fontSize={mapText(8.4)} fill="#235d86" stroke="#fff"
         strokeWidth={1.8/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
         {shownLakeNames.slice(0,85).map(f=><text key={"lake-label-"+f.id}
          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,32)}</text>)}
        </g>}
       {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=3&&
-       <g pointerEvents="none" fontSize={8/scale} fill="#31799d" stroke="#fff"
+       <g pointerEvents="none" fontSize={mapText(8.6)} fill="#256c99" stroke="#fff"
         strokeWidth={2/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
         {shownRiverNames.slice(0,90).map(f=><text key={"river-name-"+f.id}
          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,26)}</text>)}
        </g>}
       {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=2&&
-       <g pointerEvents="none" fontSize={9/scale} fill="#2d759f" stroke="#fff"
+       <g pointerEvents="none" fontSize={mapText(9.5)} fill="#2d759f" stroke="#fff"
         strokeWidth={2/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
         {shownMarineNames.slice(0,65).map(f=><text key={"marine-name-"+f.id}
          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,28)}</text>)}
        </g>}
       {d.showLabels&&(mode==="physical"||mode==="relief")&&scale>=2&&
-       <g pointerEvents="none" fontSize={8/scale} fill="#79633d" stroke="#fff"
+       <g pointerEvents="none" fontSize={mapText(9.1)} fill="#5d492e" stroke="#fff"
         strokeWidth={2/scale} paintOrder="stroke" textAnchor="middle" fontWeight="650">
         {shownNatureNames.slice(0,110).map(f=><text key={"nature-name-"+f.id}
          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,28)}</text>)}
@@ -693,7 +702,7 @@ function AtlasMap({diagram:d,onChange}:Props){
          fill="#263c55" stroke="#fff" strokeWidth="1.15"/>
         <title>{russianPlaceName(f.feature)}: {alternateCapital(f.feature)?"дополнительная столица":"столица"}</title>
        </g>)}
-       {d.showLabels&&<g pointerEvents="none" fontSize={8/scale} fill="#203e59"
+       {d.showLabels&&<g pointerEvents="none" fontSize={mapText(9.4)} fill="#203e59"
         stroke="#fff" strokeWidth={2/scale} paintOrder="stroke" fontWeight="700">
         {capitalLabels.map(f=><text key={"capital-label-"+f.id}
          x={f.point![0]+6/scale} y={f.point![1]-5/scale}>{russianPlaceName(f.feature)}</text>)}
@@ -712,7 +721,7 @@ function AtlasMap({diagram:d,onChange}:Props){
         <title>{russianPlaceName(f.feature)}{cityPopulation(f.feature)>0?
          " · население (оценка): "+cityPopulation(f.feature).toLocaleString("ru-RU"):""}</title>
        </g>)}
-       {d.showLabels&&<g pointerEvents="none" fontSize={7.6/scale} fill="#334e65"
+       {d.showLabels&&<g pointerEvents="none" fontSize={mapText(9.2)} fill="#28445e"
         stroke="#fff" strokeWidth={1.9/scale} paintOrder="stroke" fontWeight="650">
         {cityLabels.map(f=><text key={"city-label-"+f.id}
          x={f.point![0]+5/scale} y={f.point![1]-4/scale}>{russianPlaceName(f.feature)}</text>)}

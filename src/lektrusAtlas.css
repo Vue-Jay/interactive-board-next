@@ -264,3 +264,10 @@
  background:#fff;color:#27435c;font-size:11px;cursor:pointer}
 .lektrus-atlas-country-capitals button:hover{background:#e7f3ff}
 .lektrus-atlas-country-capitals button span{font-size:9px;color:#4077a2;white-space:nowrap}
+
+/* Dragging and pinch-zooming must never select geographical SVG labels. */
+.lektrus-atlas-map-box,.lektrus-atlas-map-box *,.lektrus-atlas-svg,.lektrus-atlas-svg text{
+ user-select:none!important;-webkit-user-select:none!important;-webkit-touch-callout:none;
+}
+.lektrus-atlas-svg text{pointer-events:none}
+.lektrus-atlas-coordinate-pin{cursor:pointer}
