@@ -1,5 +1,5 @@
 import type {ApprovedSchoolDiagram,MorphemeRole} from "./lektrusApprovedSchoolModel";
-import {morphemeNames,validateApprovedSchoolDiagram} from "./lektrusApprovedSchoolModel";
+import {morphemeNames} from "./lektrusApprovedSchoolModel";
 type Props={diagram:ApprovedSchoolDiagram;onChange:(diagram:ApprovedSchoolDiagram)=>void};
 const createId=()=>crypto.randomUUID();
 export default function LektrusApprovedSchoolControls({diagram:d,onChange}:Props){
