@@ -46,6 +46,11 @@ assert.equal(validAtlasDocument({...atlas,markers:Array.from({length:41},(_,i)=>
 }))}),false);
 const map=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
 const regions=fs.readFileSync(new URL("../src/lektrusAtlasRegions.ts",import.meta.url),"utf8");
+assert.match(regions,/atlasDistanceScale/);
+assert.match(map,/lektrus-atlas-linear-scale/);
+assert.match(map,/regions-regional/);
+assert.match(map,/elevation-regional/);
+assert.match(map,/glaciers-regional/);
 assert.match(regions,/Сибирский федеральный округ/);
 assert.match(regions,/Чукотка: западное полушарие/);
 assert.match(map,/atlasRegionCamera/);

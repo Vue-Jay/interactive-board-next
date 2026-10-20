@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
-import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera} from "./lektrusAtlasRegions";
+import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
@@ -60,6 +60,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const detailedGeography=scale>=3||regionId!=="world";
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
+ const distanceBar=atlasDistanceScale(scale,position.y);
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
  const points=useRef(new Map<number,{x:number;y:number}>());
  const pinch=useRef<{distance:number;scale:number;position:{x:number;y:number};mid:{x:number;y:number}}|null>(null);
@@ -113,16 +114,19 @@ function AtlasMap({diagram:d,onChange}:Props){
    ["cities",!detailedGeography&&mode==="cities"],
    ["cities-regional",detailedGeography&&mode==="cities"],
    ["admin-regional",regionId!=="world"&&(mode==="political"||mode==="contour"||mode==="cities")],
-   ["regions",mode==="physical"||mode==="relief"],
-   ["elevation",mode==="physical"||mode==="relief"],
-   ["glaciers",mode==="physical"||mode==="relief"]
+   ["regions",!detailedGeography&&(mode==="physical"||mode==="relief")],
+   ["regions-regional",detailedGeography&&(mode==="physical"||mode==="relief")],
+   ["elevation",!detailedGeography&&(mode==="physical"||mode==="relief")],
+   ["elevation-regional",detailedGeography&&(mode==="physical"||mode==="relief")],
+   ["glaciers",!detailedGeography&&(mode==="physical"||mode==="relief")],
+   ["glaciers-regional",detailedGeography&&(mode==="physical"||mode==="relief")]
   ];
   Promise.all([main,before]).then(async([geo,prev])=>{
    if(!active)return;
    setSource(geo);setSourceYear(snapshot.year);setPrevious(prev);setLoading(false);
    const requested=thematic.filter(([,needed])=>needed);
    const result=await Promise.allSettled(requested.map(([layer])=>loadAtlasLayer(layer as
-    "rivers"|"rivers-regional"|"lakes"|"lakes-regional"|"cities"|"cities-regional"|"admin-regional"|"regions"|"elevation"|"glaciers")));
+    "rivers"|"rivers-regional"|"lakes"|"lakes-regional"|"cities"|"cities-regional"|"admin-regional"|"regions"|"regions-regional"|"elevation"|"elevation-regional"|"glaciers"|"glaciers-regional")));
    if(!active)return;
    const missing:string[]=[];
    const found=new Map<string,GeoCollection>();
@@ -134,8 +138,10 @@ function AtlasMap({diagram:d,onChange}:Props){
    setRivers(found.get("rivers-regional")??found.get("rivers")??null);
    setLakes(found.get("lakes-regional")??found.get("lakes")??null);
    setCities(found.get("cities-regional")??found.get("cities")??null);
-   setAdministrative(found.get("admin-regional")??null);setRegions(found.get("regions")??null);
-   setElevations(found.get("elevation")??null);setGlaciers(found.get("glaciers")??null);
+   setAdministrative(found.get("admin-regional")??null);
+   setRegions(found.get("regions-regional")??found.get("regions")??null);
+   setElevations(found.get("elevation-regional")??found.get("elevation")??null);
+   setGlaciers(found.get("glaciers-regional")??found.get("glaciers")??null);
    setLayerWarning(missing.length?"Не удалось загрузить некоторые слои: "+missing.join(", "):"");
   }).catch(e=>{
    if(!active)return;
@@ -518,6 +524,12 @@ function AtlasMap({diagram:d,onChange}:Props){
         <title>{marker.title} ({yearLabel(marker.year)})</title>
        </g>;
       })}
+     </g>
+     <g className="lektrus-atlas-linear-scale" pointerEvents="none" role="presentation">
+      <rect x="757" y="405" width="131" height="37" rx="6" fill="#fff" fillOpacity=".9" stroke="#b7c9d9" strokeWidth=".8"/>
+      <text x="766" y="417" fontSize="8.4" fontWeight="650" fill="#385d7a">{distanceBar.label}</text>
+      <path d={`M766 421V431H${766+distanceBar.width}V421`} fill="none" stroke="#2f5874" strokeWidth="1.8"/>
+      <text x="766" y="438" fontSize="5.8" fill="#607f99">На широте центра · приближённо</text>
      </g>
     </svg>
     {!objectMoveMode&&<div className="lektrus-atlas-zoom" role="group" aria-label="Масштаб">

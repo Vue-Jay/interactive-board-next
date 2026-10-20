@@ -5,7 +5,7 @@ export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineSt
  coordinates:unknown};
 export type GeoFeature={type:"Feature";properties:Record<string,unknown>|null;geometry:GeoGeometry|null};
 export type GeoCollection={type:"FeatureCollection";features:GeoFeature[]};
-export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"cities-regional"|"admin-regional";
+export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"cities-regional"|"admin-regional"|"regions-regional"|"elevation-regional"|"glaciers-regional";
 const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/";
 const BACKUP="https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/";
 const HIST="https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/";
@@ -19,6 +19,9 @@ const names:Record<GeoLayer,string>={
  "lakes-regional":"ne_50m_lakes.geojson",
  "cities-regional":"ne_50m_populated_places.geojson",
  "admin-regional":"ne_50m_admin_1_states_provinces.geojson",
+ "regions-regional":"ne_50m_geography_regions_polys.geojson",
+ "elevation-regional":"ne_50m_geography_regions_elevation_points.geojson",
+ "glaciers-regional":"ne_50m_glaciated_areas.geojson",
  countries:"ne_110m_admin_0_countries.geojson",
  "countries-detail":"ne_50m_admin_0_countries.geojson",
  "countries-ultra":"ne_10m_admin_0_countries.geojson",

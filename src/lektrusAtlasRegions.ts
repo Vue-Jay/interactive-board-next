@@ -66,3 +66,18 @@ export function atlasRegionCamera(region:AtlasRegion){
  const cx=(w+e+360)/360*900,cy=(90-(s+n)/2)/180*450;
  return {scale,position:{x:-(cx-450)*scale,y:-(cy-225)*scale}};
 }
+
+/** Horizontal distances in a cylindrical equirectangular school map are
+ * latitude dependent. This bar is an estimate at the viewport centre. */
+export function atlasDistanceScale(scale:number,offsetY:number,maxWidth=115){
+ const worldY=225-offsetY/Math.max(1,scale);
+ const latitude=Math.max(-89.9,Math.min(89.9,90-worldY*.4));
+ const kmPerUnit=(40075.016686/900)*Math.cos(latitude*Math.PI/180)/Math.max(1,scale);
+ const limit=Math.max(1e-10,kmPerUnit*maxWidth);
+ const magnitude=Math.pow(10,Math.floor(Math.log10(limit)));
+ const tick=[1,2,5,10].filter(n=>n*magnitude<=limit+1e-12).at(-1)??1;
+ const kilometres=tick*magnitude;
+ return {width:kilometres/kmPerUnit,label:kilometres<1?
+  Math.round(kilometres*1000)+" м":Number(kilometres.toPrecision(3)).toLocaleString("ru-RU")+" км",
+  latitude};
+}
