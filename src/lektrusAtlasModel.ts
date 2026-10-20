@@ -175,7 +175,7 @@ export function eventsNearYear(year:number){
 }
 export function createAtlasDocument(scope:AtlasSubject="geography"):AtlasDocument{
  return {kind:"atlas",scope,title:scope==="history"?"Исторический атлас":"Географический атлас",mode:scope==="history"?"historical":"political",year:1914,
-  showLabels:true,showGrid:false,showEvents:true,markers:[],paintedCountries:{}};
+  showLabels:true,showGrid:false,showEvents:false,markers:[],paintedCountries:{}};
 }
 const isText=(v:unknown,max:number,allowEmpty=false)=>typeof v==="string"&&v.length<=max&&(allowEmpty||v.trim().length>0);
 export function validAtlasDocument(value:unknown):value is AtlasDocument{
