@@ -6,7 +6,7 @@ import {createRussianSchoolDiagram,isRussianToolId,validateRussianSchoolDiagram,
 import {createApprovedSchoolDiagram,isApprovedSchoolId,validateApprovedSchoolDiagram,type ApprovedSchoolDiagram,type ApprovedSchoolId} from "./lektrusApprovedSchoolModel";
 import {defaultFurtherDiagram,isFurtherId,validFurtherDiagram,type FurtherDiagram,type FurtherSchoolId} from "./lektrusFurtherSchoolModel";
 import {defaultNextSchoolDiagram,isNextSchoolId,validNextSchoolDiagram,type NextSchoolDiagram,type NextSchoolId} from "./lektrusNextSchoolModel";
-export type SchoolDiagramId="maps-atlas"|"bio-cell"|"bio-food-chain"|"geo-climate"|"history-timeline"|NextSchoolId|FurtherSchoolId|ApprovedSchoolId|RussianToolId|LanguageSocialId;
+export type SchoolDiagramId="maps-atlas"|"geo-atlas"|"history-atlas"|"bio-cell"|"bio-food-chain"|"geo-climate"|"history-timeline"|NextSchoolId|FurtherSchoolId|ApprovedSchoolId|RussianToolId|LanguageSocialId;
 export type CellOrganelle="wall"|"membrane"|"cytoplasm"|"nucleus"|"vacuole"|"chloroplast"|"mitochondria";
 export type FoodRole="producer"|"consumer"|"decomposer";
 export type SchoolDiagram=
@@ -20,11 +20,13 @@ export const organelleTitles:Record<CellOrganelle,string>={
  wall:"Клеточная стенка",membrane:"Клеточная мембрана",cytoplasm:"Цитоплазма",
  nucleus:"Ядро",vacuole:"Вакуоль",chloroplast:"Хлоропласты",mitochondria:"Митохондрии"
 };
-export const ids:SchoolDiagramId[]=["maps-atlas","bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile","ru-morphemes","history-family-tree","language-flashcards","ru-morphology","ru-phonetics","ru-orthography","ru-sentence-builder","civics-structure"];
+export const ids:SchoolDiagramId[]=["geo-atlas","history-atlas","maps-atlas","bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile","ru-morphemes","history-family-tree","language-flashcards","ru-morphology","ru-phonetics","ru-orthography","ru-sentence-builder","civics-structure"];
 export function isSchoolDiagramId(value:string|undefined):value is SchoolDiagramId{
  return ids.includes(value as SchoolDiagramId);
 }
 export function makeSchoolDiagram(id:SchoolDiagramId):SchoolDiagram{
+ if(id==="geo-atlas")return createAtlasDocument("geography");
+ if(id==="history-atlas")return createAtlasDocument("history");
  if(id==="maps-atlas")return createAtlasDocument();
  if(isLanguageSocialId(id))return newLanguageSocialDiagram(id);
  if(isRussianToolId(id))return createRussianSchoolDiagram(id);
