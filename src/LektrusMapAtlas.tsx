@@ -2,6 +2,8 @@ import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
+import {loadLocalInfrastructure,loadMineralDeposits,mineralCommodity,mineralTypes,
+ canLoadLocalRoads,canLoadMinerals,externalBBoxKey,type ExternalBounds} from "./lektrusAtlasExternal";
 import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRiverStroke,atlasLakeStroke,atlasGlacierStroke,atlasWaterGeometryTolerance,atlasRiverLabelRank} from "./lektrusAtlasHydro";
@@ -89,6 +91,13 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [cityArea,setCityArea]=useState<AtlasCityArea|null>(null);
  const [cityAreaLoading,setCityAreaLoading]=useState(false);
  const [cityAreaMessage,setCityAreaMessage]=useState("");
+ const [infrastructure,setInfrastructure]=useState<GeoCollection|null>(null);
+ const [infrastructureError,setInfrastructureError]=useState("");
+ const [minerals,setMinerals]=useState<GeoCollection|null>(null);
+ const [mineralError,setMineralError]=useState("");
+ const [mineralLoading,setMineralLoading]=useState(false);
+ const [mineralFilter,setMineralFilter]=useState("Все виды");
+ const [selectedMineral,setSelectedMineral]=useState<GeoFeature|null>(null);
  const [search,setSearch]=useState("");
  const [focusedUnit,setFocusedUnit]=useState("");
  const [directoryFilter,setDirectoryFilter]=useState("");
@@ -511,7 +520,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  },[source,sourceYear,snapshot.year]);
  const onMode=(value:AtlasMode)=>{
   if(!availableModes.some(m=>m.id===value))return;
-  setMode(value);setSelected(null);setSearch("");setSelectedMarker(null);
+  setMode(value);setSelected(null);setSelectedMineral(null);setSearch("");setSelectedMarker(null);
   onChange?.({...d,mode:value});
  };
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
