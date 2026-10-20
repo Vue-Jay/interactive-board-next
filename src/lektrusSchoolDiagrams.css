@@ -103,3 +103,21 @@
  .lektrus-next-edge-row select{font-size:10px;padding:5px 1px}
  .lektrus-next-node-row .lektrus-school-edit-content{gap:4px}
 }
+
+/* Anatomy labels and geographic profiles follow the existing school editor. */
+.lektrus-school-inspector-quick{display:flex;flex-wrap:wrap;gap:7px}
+.lektrus-school-inspector-quick button{flex:1 1 120px;padding:9px 8px;border:1px solid #b9cee7;
+ border-radius:8px;background:#f1f7ff;font:inherit;font-size:11px;color:#38618c;cursor:pointer}
+.lektrus-relief-head{grid-template-columns:minmax(0,1fr) 79px 83px 22px;gap:5px}
+.lektrus-relief-row{display:grid;grid-template-columns:minmax(0,1fr) 79px 83px 22px;
+ align-items:center;gap:5px;padding:4px 0;border-bottom:1px solid #e6edf5;min-width:0}
+.lektrus-relief-row input{width:100%;min-width:0;padding:8px 5px;border-radius:8px;
+ border:1px solid #cfdbeb;color:#355476;font:inherit;font-size:12px;background:white}
+.lektrus-relief-label{min-width:0}
+.lektrus-relief-row button{height:30px;width:22px;border-radius:6px;border:1px solid #d2deed;
+ background:#f6f9fd;color:#496b93;cursor:pointer}
+.lektrus-relief-row button:disabled{opacity:.32;cursor:not-allowed}
+@media(max-width:760px){
+ .lektrus-relief-head,.lektrus-relief-row{grid-template-columns:minmax(0,1fr) 60px 67px 20px;gap:4px}
+ .lektrus-relief-row input{font-size:11px;padding:6px 2px}
+}
