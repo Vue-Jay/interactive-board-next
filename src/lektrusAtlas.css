@@ -237,3 +237,8 @@
  background:linear-gradient(to right,#205c9e 0%,#bde1f1 19%,#62a46d 20%,#bdcd80 39%,#d8c37e 58%,#a37558 78%,#fafaf9 100%);
  display:flex;align-items:flex-end;justify-content:space-between;gap:1px;padding:0 3px 3px}
 .lektrus-atlas-hypso-ramp span{font-size:8px;color:#152b39;background:#ffffffcd;padding:1px 2px;border-radius:2px;white-space:nowrap}
+
+.lektrus-atlas-official-sources{display:flex;flex-direction:column;gap:4px;margin-top:7px;padding:8px;background:#eef5fc;border:1px solid #ccdfef;border-radius:7px}
+.lektrus-atlas-official-sources strong{font-size:11px;color:#315675}
+.lektrus-atlas-official-sources a{color:#245e95;font-size:10px;overflow-wrap:anywhere}
+.lektrus-atlas-official-sources small{font-size:9px;color:#5b7187;line-height:1.4}

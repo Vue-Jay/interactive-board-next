@@ -689,7 +689,7 @@ function AtlasMap({diagram:d,onChange}:Props){
       <a href="https://rosreestr.gov.ru/activity/geodeziya-i-kartografiya/edinaya-elektronnaya-kartograficheskaya-osnova/"
        target="_blank" rel="noopener noreferrer">Единая электронная картографическая основа (ЕЭКО) ↗</a>
       <small>Проверочные источники доступны по ссылкам, но данные ЕЭКО не импортированы в этот атлас. Нельзя считать их уже сверенными с нашим GeoJSON, особенно для спорных территорий.</small>
-     </div><small>Источник слоя: Natural Earth</small>
+     </div>
     </div>}
 
     {(mode==="physical"||mode==="relief")&&<div className="lektrus-atlas-hypsometry-options">
