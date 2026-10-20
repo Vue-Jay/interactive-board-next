@@ -6,6 +6,7 @@ import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHis
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
 historicalFeatureFacts,loadHistoricalIndex,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl,normalizeHistoricalName} from "./lektrusHistoryEncyclopedia";
+import {findHistoricalReference} from "./lektrusHistoricalReferences";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void};
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
 const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
@@ -154,7 +155,9 @@ function AtlasMap({diagram:d,onChange}:Props){
  const selectedRaw=String(selected?.properties?.NAME??selected?.properties?.ADMIN??"");
  const selectedArticle=selected&&historical&&!modernReference?
   findHistoricalArticle(selectedRaw,snapshot.year):undefined;
- const selectedTitle=selected?(selectedArticle?.name??geoFeatureName(selected)):"";
+ const fallbackReference=selected&&historical&&!modernReference&&!selectedArticle?
+  findHistoricalReference(selectedRaw,snapshot.year):undefined;
+ const selectedTitle=selected?(selectedArticle?.name??fallbackReference?.title??geoFeatureName(selected)):"";
  const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
   normalizeHistoricalName(name)===normalizeHistoricalName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
@@ -162,7 +165,8 @@ function AtlasMap({diagram:d,onChange}:Props){
   mode==="relief"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[])]:shapes.map(f=>f.feature);
  const directoryEntries=useMemo(()=>historical?shapes.map(s=>({name:
-  !modernReference?historicalRussianName(String(s.feature.properties?.NAME??""),snapshot.year)??s.name:s.name,
+  !modernReference?(historicalRussianName(String(s.feature.properties?.NAME??""),snapshot.year)??
+   findHistoricalReference(String(s.feature.properties?.NAME??""),snapshot.year)?.title??s.name):s.name,
   feature:s.feature}))
   .filter(v=>v.name&&v.name!=="Объект без названия"&&v.name!=="Unknown"&&v.name!=="unknown")
   .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],[historical,shapes,modernReference,snapshot.year]);
@@ -174,7 +178,7 @@ function AtlasMap({diagram:d,onChange}:Props){
   const found=new Map<string,{name:string;raw:string;years:number[]}>();
   for(const record of historyIndex){
    for(const raw of record.countries){
-    const title=historicalRussianName(raw,record.year)??raw;
+    const title=historicalRussianName(raw,record.year)??findHistoricalReference(raw,record.year)?.title??raw;
     if(!title.toLocaleLowerCase("ru").includes(query)&&
      !raw.toLocaleLowerCase("en").includes(query))continue;
     const key=normalizeHistoricalName(raw);
@@ -531,7 +535,15 @@ function AtlasMap({diagram:d,onChange}:Props){
         Открыть обзорную статью на русском ↗</a>
        <small>Учебная справка подготовлена отдельно от картографической базы; исторические границы и датировки необходимо сверять с дополнительными источниками.</small>
       </div>}
-      {!selectedArticle&&!modernReference&&<p>Для этой территории ещё нет отдельной энциклопедической карточки. Ниже приведены только сведения исходного картографического набора.</p>}
+      {fallbackReference&&<div className="lektrus-history-article">
+       <p><strong>{fallbackReference.title}</strong></p>
+       {fallbackReference.capital&&<p><strong>Центры:</strong> {fallbackReference.capital}</p>}
+       {fallbackReference.formation&&<p><strong>Образование:</strong> {fallbackReference.formation}</p>}
+       <p>{fallbackReference.description}</p>
+       <p><strong>Изменения:</strong> {fallbackReference.change}</p>
+       <a href={fallbackReference.sourceUrl} target="_blank" rel="noopener noreferrer">Подробнее: {fallbackReference.sourceTitle} ↗</a>
+      </div>}
+      {!selectedArticle&&!fallbackReference&&!modernReference&&<p>Для этой территории ещё нет отдельной энциклопедической карточки. Ниже приведены только сведения исходного картографического набора.</p>}
       {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
       {!modernReference&&selectedYears.length>0&&<div className="lektrus-history-observed">
        <strong>Название встречается на датированных картах</strong>
