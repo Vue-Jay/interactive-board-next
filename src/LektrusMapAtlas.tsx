@@ -11,7 +11,10 @@ const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8
 const precisions=["Неизвестная точность","Приблизительные границы","Средняя точность","Уточнённая граница"] as const;
 const mapModeTitle=(v:AtlasMode)=>atlasModes.find(m=>m.id===v)!.title;
 function AtlasMap({diagram:d}:Props){
- const [mode,setMode]=useState<AtlasMode>(d.mode);
+ const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":d.mode);
+ const [paintColor,setPaintColor]=useState("#f3b778");
+ const [painted,setPainted]=useState<Record<string,string>>({});
+ const isContourTool=d.title==="Контурная карта";
  const [index,setIndex]=useState(nearestSnapshotIndex(d.year));
  const [source,setSource]=useState<GeoCollection|null>(null);
  const [baseLand,setBaseLand]=useState<GeoCollection|null>(null);
@@ -45,9 +48,10 @@ function AtlasMap({diagram:d}:Props){
  const dragged=useRef(false);
  const snapshot=historicalSnapshots[index];
  const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
- const availableModes=atlasModesFor(scope);
+ const availableModes=isContourTool?atlasModesFor(scope).filter(m=>m.id==="contour"):
+  atlasModesFor(scope).filter(m=>m.id!=="contour");
  const historical=scope==="history";
- useEffect(()=>{setMode(d.mode);setIndex(nearestSnapshotIndex(d.year));setSelected(null);setEventIndex(null)},
+ useEffect(()=>{setMode(d.title==="Контурная карта"?"contour":d.mode);setIndex(nearestSnapshotIndex(d.year));setSelected(null);setEventIndex(null)},
   [d.mode,d.year]);
  useEffect(()=>{
   let active=true;
@@ -212,7 +216,15 @@ function AtlasMap({diagram:d}:Props){
   if(dragged.current||mode==="contour")return;
   setSelected(feature);setSelectedLayer(layer);setEventIndex(null);setSelectedMarker(null);
  };
- const showCountry=(feature:GeoFeature)=>selectFeature(feature,historical?"Историческая территория":"Государство");
+ const showCountry=(feature:GeoFeature)=>{
+  if(mode==="contour"){
+   if(dragged.current)return;
+   const key=String(feature.properties?.ADM0_A3||feature.properties?.ISO_A3||geoFeatureName(feature));
+   setPainted(old=>({...old,[key]:paintColor}));
+   return;
+  }
+  selectFeature(feature,historical?"Историческая территория":"Государство");
+ };
  const onMode=(value:AtlasMode)=>{
   if(!availableModes.some(m=>m.id===value))return;
   setMode(value);setSelected(null);setSearch("");setSelectedMarker(null);setEventIndex(null);
@@ -269,7 +281,7 @@ function AtlasMap({diagram:d}:Props){
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
-        const fill=mode==="contour"?"#fafcfb":mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"||mode==="cities"?"#e6eee2":
+        const fill=mode==="contour"?(painted[String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name)]||"#fafcfb"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"||mode==="cities"?"#e6eee2":
          palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
          stroke={highlighted||s.name===selectedTitle?"#df793e":mode==="contour"?"#839fb2":"#819fb2"}
@@ -365,6 +377,14 @@ function AtlasMap({diagram:d}:Props){
      `${coord.lat.toFixed(2)}°, ${coord.lon.toFixed(2)}°`:"обзорные геоданные"}</div>
    </div>
    <aside className="lektrus-atlas-sidebar">
+    {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
+     <strong>Закраска стран</strong>
+     <label>Цвет маркера <input type="color" value={paintColor}
+      onChange={e=>setPaintColor(e.target.value)} aria-label="Цвет закраски"/></label>
+     <button type="button" onClick={()=>setPaintColor("#fafcfb")}>Ластик заливки</button>
+     <button type="button" onClick={()=>setPainted({})}>Очистить все заливки</button>
+     <small>Выберите цвет и нажимайте на территории. Закраска пока действует только в открытой карте.</small>
+    </div>}
     {mode!=="contour"&&<label>Поиск объектов
      <input value={search} onChange={e=>setSearch(e.target.value)}
       placeholder={mode==="cities"?"Название города":mode==="hydrography"?"Река или озеро":

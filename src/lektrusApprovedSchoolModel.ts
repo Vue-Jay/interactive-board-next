@@ -22,24 +22,12 @@ export function isApprovedSchoolId(v:string|undefined):v is ApprovedSchoolId{
 export function createApprovedSchoolDiagram(id:ApprovedSchoolId):ApprovedSchoolDiagram{
  switch(id){
   case "ru-morphemes":return {kind:"morphemes",title:"Разбор слова по составу",
-   segments:[
-    {id:"m1",text:"под",role:"prefix"},
-    {id:"m2",text:"снеж",role:"root"},
-    {id:"m3",text:"ник",role:"suffix"}
-   ],zeroEnding:true,showMarks:true,showBase:true};
+   segments:[],zeroEnding:true,showMarks:true,showBase:true};
   case "history-family-tree":return {kind:"family-tree",title:"Генеалогическое дерево",showGenerations:true,
-   people:[
-    {id:"p1",name:"Родитель 1",parents:[]},
-    {id:"p2",name:"Родитель 2",parents:[]},
-    {id:"p3",name:"Ребёнок",parents:["p1","p2"]}
-   ]};
+   people:[]};
   case "language-flashcards":return {kind:"flashcards",title:"Карточки иностранных слов",
    showTranslation:false,showTranscription:true,direction:"foreign-first",
-   cards:[
-    {id:"c1",term:"apple",translation:"яблоко",transcription:"[ˈæpəl]"},
-    {id:"c2",term:"book",translation:"книга",transcription:"[bʊk]"},
-    {id:"c3",term:"school",translation:"школа",transcription:"[skuːl]"}
-   ]};
+   cards:[]};
  }
 }
 export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiagram{
@@ -49,14 +37,14 @@ export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiag
  if(d.kind==="morphemes"){
   if(typeof d.showMarks!=="boolean"||typeof d.showBase!=="boolean"||
    typeof d.zeroEnding!=="boolean"||!Array.isArray(d.segments)||
-   d.segments.length<1||d.segments.length>10)return false;
+   d.segments.length>10)return false;
   const entries=d.segments as Morpheme[];
   if(entries.some(m=>!m||!okString(m.id,64)||!okString(m.text,24)||
    !Object.prototype.hasOwnProperty.call(morphemeNames,m.role))||
    new Set(entries.map(m=>m.id)).size!==entries.length)return false;
   const roots=entries.filter(m=>m.role==="root");
   const endings=entries.filter(m=>m.role==="ending");
-  if(!roots.length||roots.length>2||endings.length>1||
+  if((entries.length>0&&!roots.length)||roots.length>2||endings.length>1||
    (endings.length>0&&d.zeroEnding))return false;
   // Prefixes precede roots, suffixes/ending follow; postfix after inflexion.
   const firstRoot=entries.findIndex(m=>m.role==="root");
@@ -72,7 +60,7 @@ export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiag
  }
  if(d.kind==="family-tree"){
   if(typeof d.showGenerations!=="boolean"||!Array.isArray(d.people)||
-   d.people.length<1||d.people.length>12)return false;
+   d.people.length>12)return false;
   const people=d.people as FamilyPerson[];
   if(people.some(p=>!p||!okString(p.id,64)||!okString(p.name,35)||
    !Array.isArray(p.parents)||p.parents.length>2||
@@ -96,7 +84,7 @@ export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiag
  if(d.kind==="flashcards"){
   if(typeof d.showTranslation!=="boolean"||typeof d.showTranscription!=="boolean"||
    !["foreign-first","russian-first"].includes(d.direction as string)||
-   !Array.isArray(d.cards)||d.cards.length<1||d.cards.length>30)return false;
+   !Array.isArray(d.cards)||d.cards.length>30)return false;
   const cards=d.cards as LanguageCard[];
   return cards.every(c=>c&&okString(c.id,64)&&okString(c.term,65)&&
    okString(c.translation,80)&&okString(c.transcription,75,true))&&
