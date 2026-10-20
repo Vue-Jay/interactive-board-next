@@ -22,22 +22,11 @@ export function isNextSchoolId(id:string|undefined):id is NextSchoolId{
  return nextSchoolIds.includes(id as NextSchoolId);
 }
 export function defaultNextSchoolDiagram(id:NextSchoolId):NextSchoolDiagram{
- if(id==="ru-syntax")return {kind:"syntax",title:"Разбор предложения",showMarks:true,words:[
-  {id:"w1",text:"Маленький",role:"none"},
-  {id:"w2",text:"кот",role:"none"},
-  {id:"w3",text:"спит.",role:"none"}]};
- if(id==="info-flowchart")return {kind:"flowchart",title:"Алгоритм с условием",showEdgeLabels:true,nodes:[
-  {id:"n1",kind:"start",label:"Начало",lane:0},
-  {id:"n2",kind:"process",label:"Выполнить действие",lane:0},
-  {id:"n3",kind:"decision",label:"Условие выполнено?",lane:0},
-  {id:"n4",kind:"end",label:"Конец",lane:0}
- ],edges:[
-  {id:"e1",from:"n1",to:"n2",label:""},
-  {id:"e2",from:"n2",to:"n3",label:""},
-  {id:"e3",from:"n3",to:"n4",label:"да"},
-  {id:"e4",from:"n3",to:"n2",label:"нет"}
- ]};
- return {kind:"place-value",title:"Разрядная таблица",base:2,digits:"101101",showPowers:true};
+ if(id==="ru-syntax")return {kind:"syntax",title:"Разбор предложения",showMarks:true,words:[{id:"w1",text:"Слово",role:"none"}]};
+ if(id==="info-flowchart")return {kind:"flowchart",title:"Блок-схема",showEdgeLabels:true,
+  nodes:[{id:"n1",kind:"start",label:"Начало",lane:0},{id:"n2",kind:"end",label:"Конец",lane:0}],
+  edges:[{id:"e1",from:"n1",to:"n2",label:""}]};
+ return {kind:"place-value",title:"Системы счисления",base:10,digits:"0",showPowers:true};
 }
 const label=(s:unknown,length:number)=>typeof s==="string"&&s.length<=length&&s.trim().length>0;
 const unique=(list:{id:string}[])=>new Set(list.map(v=>v.id)).size===list.length;
