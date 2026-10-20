@@ -24,6 +24,9 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"info-place-value",label:"Системы счисления",description:"Разряды в системах с основаниями 2, 8, 10 и 16",group:"Информатика · информация",subjects:["информатика"]},
   {id:"bio-organ-systems",label:"Системы органов",description:"Пищеварительная и дыхательная системы, скрываемые подписи",group:"Биология · человек",subjects:["биология"]},
   {id:"geo-relief-profile",label:"Профиль рельефа",description:"Расстояния, высоты, условный профиль местности",group:"География · рельеф",subjects:["география"]},
+  {id:"ru-morphemes",label:"Разбор слова по составу",description:"Приставки, корни, суффиксы и окончания, основа и задания без ответов",group:"Русский язык · морфемика",subjects:["русский язык"]},
+  {id:"history-family-tree",label:"Генеалогическое дерево",description:"Поколения, два родителя и редактируемые родственные связи",group:"История и обществознание · родословные",subjects:["история","обществознание"]},
+  {id:"language-flashcards",label:"Карточки слов",description:"Иностранные слова, перевод, транскрипция и переворот карточки",group:"Иностранные языки · лексика",subjects:["английский язык","иностранный язык"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
 ];
@@ -36,7 +39,8 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
   if(id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
-     id==="bio-organ-systems"||id==="geo-relief-profile"){
+     id==="bio-organ-systems"||id==="geo-relief-profile"||
+     id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"){
     const diagram=makeSchoolDiagram(id);
     return {id:createId(),kind:"graph",text:diagram.title,
       x:x-405,y:y-225,width:810,height:450,graphFigureId:id,
