@@ -687,6 +687,18 @@ function AtlasMap({diagram:d,onChange}:Props){
        {landformColors[key].label}</div>)}
      <small>Цвет отражает класс природной области, но не абсолютную высоту. Отметки высот показываются отдельно.</small>
     </div>}
+    {mode==="hydrography"&&<div className="lektrus-atlas-natural-legend">
+     <strong>Условные обозначения</strong>
+     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#328fc9"}}/>Реки и водотоки</div>
+     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#87bfe6"}}/>Озёра и водохранилища</div>
+     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#dfedf9",borderColor:"#90b5d1"}}/>Морские акватории</div>
+     <small>Морские подписи и границы акваторий условны. Это картографический справочный слой, не морской навигационный документ.</small>
+    </div>}
+    {mode==="cities"&&<div className="lektrus-atlas-natural-legend">
+     <strong>Обозначения населённых пунктов</strong>
+     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#c05745"}}/>Город или населённый пункт</div>
+     <small>Размер точки зависит от оценки населения POP_MAX в Natural Earth. Сами точки не показывают площадь города; численность в источнике может быть устаревшей.</small>
+    </div>}
     {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
      <strong>Контурная карта</strong>
      {administrative&&<label className="lektrus-atlas-compare">
