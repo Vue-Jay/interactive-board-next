@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
-import {atlasModes,eventsNearYear,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
+import {atlasModes,atlasModesForScope,getAtlasScope,isHistoricalAtlasMode,eventsNearYear,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
+import LektrusMapBase from "./LektrusMapBase";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,summariseNamedChanges,
  type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
@@ -12,6 +13,12 @@ const mapModeTitle=(v:AtlasMode)=>atlasModes.find(m=>m.id===v)!.title;
 function AtlasMap({diagram:d}:Props){
  const [mode,setMode]=useState<AtlasMode>(d.mode);
  const [index,setIndex]=useState(nearestSnapshotIndex(d.year));
+ const scope=getAtlasScope(d);
+ const availableModes=atlasModesForScope(scope);
+ const [baseLand,setBaseLand]=useState<GeoCollection|null>(null);
+ const [baseCoastline,setBaseCoastline]=useState<GeoCollection|null>(null);
+ const [baseLoading,setBaseLoading]=useState(true);
+ const [baseError,setBaseError]=useState("");
  const [source,setSource]=useState<GeoCollection|null>(null);
  const [previous,setPrevious]=useState<GeoCollection|null>(null);
  const [rivers,setRivers]=useState<GeoCollection|null>(null);
@@ -26,15 +33,33 @@ function AtlasMap({diagram:d}:Props){
  const [position,setPosition]=useState({x:0,y:0});
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
  const snapshot=historicalSnapshots[index];
- const historical=mode==="historical"||mode==="events";
- useEffect(()=>{setMode(d.mode);setIndex(nearestSnapshotIndex(d.year));setSelected(null);setEventIndex(null)},
-  [d.mode,d.year]);
+ const historical=isHistoricalAtlasMode(mode);
+ const waterMode=mode==="physical"||mode==="hydrography";
+ useEffect(()=>{
+  setMode(atlasModesForScope(getAtlasScope(d)).some(m=>m.id===d.mode)?
+   d.mode:scope==="history"?"historical":"political");
+  setIndex(nearestSnapshotIndex(d.year));setSelected(null);setEventIndex(null);
+ },[d.mode,d.year,d.scope,scope]);
+ useEffect(()=>{
+  let active=true;
+  setBaseError("");setBaseLoading(true);
+  Promise.all([loadAtlasLayer("land"),loadAtlasLayer("coastline")])
+   .then(([land,coast])=>{
+    if(!active)return;
+    setBaseLand(land);setBaseCoastline(coast);setBaseLoading(false);
+   }).catch(e=>{
+    if(!active)return;
+    setBaseError(e instanceof Error?e.message:String(e));setBaseLoading(false);
+   });
+  return()=>{active=false};
+ },[refresh]);
  useEffect(()=>{
   let active=true;
   setError("");setLoading(true);setSource(null);setSelected(null);setPrevious(null);
-  const main=historical?loadHistoricalSnapshot(snapshot.year):loadAtlasLayer("countries");
+  const main=historical?loadHistoricalSnapshot(snapshot.year):
+   mode==="political"||mode==="contour"?loadAtlasLayer("countries"):Promise.resolve(null);
   const before=historical&&index>0?loadHistoricalSnapshot(historicalSnapshots[index-1].year).catch(()=>null):Promise.resolve(null);
-  const water=mode==="physical"?Promise.all([loadAtlasLayer("rivers").catch(()=>null),loadAtlasLayer("lakes").catch(()=>null)]):
+  const water=waterMode?Promise.all([loadAtlasLayer("rivers"),loadAtlasLayer("lakes")]):
    Promise.resolve([null,null] as [GeoCollection|null,GeoCollection|null]);
   Promise.all([main,before,water]).then(([geo,prev,w])=>{
    if(!active)return;
@@ -44,7 +69,7 @@ function AtlasMap({diagram:d}:Props){
    setError(e instanceof Error?e.message:String(e));setLoading(false);
   });
   return()=>{active=false};
- },[mode,index,refresh,historical,snapshot.year]);
+ },[mode,index,refresh,historical,waterMode,snapshot.year]);
  const shapes=useMemo(()=>source?.features.map((feature,i)=>({
   feature,path:mapFeaturePath(feature),name:geoFeatureName(feature),i
  })).filter(f=>f.path)||[],[source]);
@@ -69,23 +94,26 @@ function AtlasMap({diagram:d}:Props){
  };
  const reset=()=>{setScale(1);setPosition({x:0,y:0});setSelected(null)};
  const showCountry=(feature:GeoFeature)=>{if(mode==="contour")return;setSelected(feature);setEventIndex(null)};
- const onMode=(value:AtlasMode)=>{setMode(value);setSelected(null);setEventIndex(null)};
+ const onMode=(value:AtlasMode)=>{
+  if(!availableModes.some(candidate=>candidate.id===value))return;
+  setMode(value);setSelected(null);setEventIndex(null);
+ };
  return <div className="lektrus-atlas" aria-label={d.title}
   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
   onClick={e=>e.stopPropagation()} onWheel={e=>e.stopPropagation()}>
   <header className="lektrus-atlas-header">
    <strong title={d.title}>{d.title}</strong>
    <nav role="group" aria-label="Тип карты">
-    {atlasModes.map(m=><button key={m.id} type="button" title={m.hint}
+    {availableModes.map(m=><button key={m.id} type="button" title={m.hint}
      aria-pressed={mode===m.id} className={mode===m.id?"selected":""}
      onClick={()=>onMode(m.id)}>{m.title}</button>)}
    </nav>
   </header>
   <div className="lektrus-atlas-body">
    <div className="lektrus-atlas-map-box">
-    {loading&&<div className="lektrus-atlas-overlay" role="status">Загружаются реальные картографические данные…</div>}
-    {!loading&&error&&<div className="lektrus-atlas-overlay lektrus-atlas-failure" role="alert">
-     <strong>Карта недоступна</strong><span>{error}</span>
+    {(loading||baseLoading)&&<div className="lektrus-atlas-overlay" role="status">Загружается общая подложка и картографические слои…</div>}
+    {!loading&&!baseLoading&&(error||baseError)&&<div className="lektrus-atlas-overlay lektrus-atlas-failure" role="alert">
+     <strong>Карта недоступна</strong><span>{error||baseError}</span>
      <button type="button" onClick={()=>setRefresh(i=>i+1)}>Повторить загрузку</button>
      <small>Границы не заменяются вымышленными. Для доступа необходим интернет.</small>
     </div>}
@@ -95,18 +123,14 @@ function AtlasMap({diagram:d}:Props){
      onPointerMove={onMove}
      onPointerUp={e=>{pointer.current=null;if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)}}
      onPointerCancel={()=>{pointer.current=null}}>
-     <rect width="900" height="450" fill="#e3eff9"/>
+     
      <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
-      {d.showGrid&&<g stroke="#bdcedf" strokeWidth=".6" opacity=".78">
-       {Array.from({length:11},(_,i)=><line key={"x"+i} x1={i*90} y1="0" x2={i*90} y2="450"/>)}
-       {Array.from({length:7},(_,i)=><line key={"y"+i} x1="0" y1={i*75} x2="900" y2={i*75}/>)}
-      </g>}
+      <LektrusMapBase land={baseLand} coastline={baseCoastline} grid={d.showGrid}/>
       <g strokeLinejoin="round">
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
-        const fill=mode==="contour"?"#fafcfb":mode==="physical"?"#d2e5c8":
-         palettes[hash(s.name)%palettes.length];
+        const fill=mode==="contour"?"transparent":palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
          stroke={highlighted||s.name===selectedTitle?"#df793e":mode==="contour"?"#839fb2":"#819fb2"}
          strokeWidth={highlighted||s.name===selectedTitle?1.9:historical&&precise===1?.75:.48}
@@ -120,7 +144,7 @@ function AtlasMap({diagram:d}:Props){
        textAnchor="middle" pointerEvents="none" stroke="#fff" strokeWidth="1.5" paintOrder="stroke">
        {labels.map(s=><text key={s.i} x={s.anchor!.x} y={s.anchor!.y}>{s.name.slice(0,23)}</text>)}
       </g>}
-      {mode==="physical"&&<g pointerEvents="none">
+      {waterMode&&<g pointerEvents="none">
        {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#87bfe6" stroke="#65a3ce" strokeWidth=".65"/>)}
        {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none" stroke="#6aadd7" strokeWidth=".8"/>)}
       </g>}
@@ -178,7 +202,7 @@ function AtlasMap({diagram:d}:Props){
     </div>:
     <div className="lektrus-atlas-description"><strong>{mapModeTitle(mode)}</strong>
      <p>{atlasModes.find(m=>m.id===mode)?.hint}.</p>
-     {mode==="physical"&&<p>Нанесены контуры суши, реки и озёра. Данных о высотах и рельефной окраске в этом слое пока нет.</p>}
+     {waterMode&&<p>Общая подложка суши и морей дополнена реками и озёрами. Это не рельеф высот.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
     </div>}
     {historical&&<div className="lektrus-atlas-history-events">
@@ -204,7 +228,8 @@ function AtlasMap({diagram:d}:Props){
     <div className="lektrus-atlas-source">
      <a href={(historical?historicDataProvider:modernDataProvider).url}
       target="_blank" rel="noopener noreferrer">Источник: {(historical?historicDataProvider:modernDataProvider).name} ↗</a>
-     {historical&&<><small>Границы могут быть приблизительными, спорными или неполными.</small>
+     <small>Общая географическая основа всех режимов: современная береговая линия и суша Natural Earth.</small>
+     {historical&&<><small>Исторические границы нанесены на современную географическую основу; они могут быть приблизительными, спорными или неполными.</small>
       <a href={historicDataProvider.licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия исходных данных: GPL-3.0 ↗</a></>}
     </div>
    </aside>
