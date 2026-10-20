@@ -1,7 +1,8 @@
 /** Curriculum-aligned, editable teaching illustrations. Only the school content
  * explicitly entered by a teacher is represented; no invented lab measurements. */
+import {defaultFurtherDiagram,isFurtherId,validFurtherDiagram,type FurtherDiagram,type FurtherSchoolId} from "./lektrusFurtherSchoolModel";
 import {defaultNextSchoolDiagram,isNextSchoolId,validNextSchoolDiagram,type NextSchoolDiagram,type NextSchoolId} from "./lektrusNextSchoolModel";
-export type SchoolDiagramId="bio-cell"|"bio-food-chain"|"geo-climate"|"history-timeline"|NextSchoolId;
+export type SchoolDiagramId="bio-cell"|"bio-food-chain"|"geo-climate"|"history-timeline"|NextSchoolId|FurtherSchoolId;
 export type CellOrganelle="wall"|"membrane"|"cytoplasm"|"nucleus"|"vacuole"|"chloroplast"|"mitochondria";
 export type FoodRole="producer"|"consumer"|"decomposer";
 export type SchoolDiagram=
@@ -9,17 +10,18 @@ export type SchoolDiagram=
  |{kind:"food-chain";title:string;organisms:{id:string;name:string;role:FoodRole}[];showRoles:boolean}
  |{kind:"climate";title:string;months:{temperature:number;precipitation:number}[];showLegend:boolean}
  |{kind:"timeline";title:string;events:{id:string;year:number;label:string}[];showEra:boolean}
- |NextSchoolDiagram;
+ |NextSchoolDiagram|FurtherDiagram;
 export const months=["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"] as const;
 export const organelleTitles:Record<CellOrganelle,string>={
  wall:"Клеточная стенка",membrane:"Клеточная мембрана",cytoplasm:"Цитоплазма",
  nucleus:"Ядро",vacuole:"Вакуоль",chloroplast:"Хлоропласты",mitochondria:"Митохондрии"
 };
-export const ids:SchoolDiagramId[]=["bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value"];
+export const ids:SchoolDiagramId[]=["bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile"];
 export function isSchoolDiagramId(value:string|undefined):value is SchoolDiagramId{
  return ids.includes(value as SchoolDiagramId);
 }
 export function makeSchoolDiagram(id:SchoolDiagramId):SchoolDiagram{
+ if(isFurtherId(id))return defaultFurtherDiagram(id);
  if(isNextSchoolId(id))return defaultNextSchoolDiagram(id);
  switch(id){
   case "bio-cell":return {kind:"cell",cell:"plant",showLabels:true,title:"Растительная клетка",
@@ -65,7 +67,7 @@ export function isSchoolDiagram(value:unknown):value is SchoolDiagram{
      Number.isInteger((v as {year:number}).year)&&
      number((v as {year:number}).year,-3000,2100)&&(v as {year:number}).year!==0)&&
     new Set(d.events.map((v:{id:string})=>v.id)).size===d.events.length;
-  default:return validNextSchoolDiagram(value);
+  default:return validNextSchoolDiagram(value)||validFurtherDiagram(value);
  }
 }
 export function safeSchoolDiagram(value:unknown,id:SchoolDiagramId):SchoolDiagram{
