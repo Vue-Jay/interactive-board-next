@@ -599,41 +599,41 @@ function AtlasMap({diagram:d,onChange}:Props){
         <title>{geoFeatureName(f.feature)}</title>
        </g>)}
       </g>}
-      {mode==="cities"&&<g>
+      {mode==="political"&&<g className="lektrus-atlas-capitals">
+       {shownCapitals.map(f=><g key={"capital-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
+        className="lektrus-atlas-event" role="button" tabIndex={0}
+        onClick={e=>{e.stopPropagation();selectFeature(f.feature,alternateCapital(f.feature)?"Дополнительная столица по данным источника":"Столица государства")}}
+        onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Столица государства")}}}>
+        <path d="M0 -4.4L4.4 0L0 4.4L-4.4 0Z"
+         fill="#263c55" stroke="#fff" strokeWidth="1.15"/>
+        <title>{russianPlaceName(f.feature)??"Название не переведено"}: {alternateCapital(f.feature)?"дополнительная столица":"столица"}</title>
+       </g>)}
+       {d.showLabels&&<g pointerEvents="none" fontSize={8/scale} fill="#203e59"
+        stroke="#fff" strokeWidth={2/scale} paintOrder="stroke" fontWeight="700">
+        {capitalLabels.map(f=><text key={"capital-label-"+f.id}
+         x={f.point![0]+6/scale} y={f.point![1]-5/scale}>{russianPlaceName(f.feature)}</text>)}
+       </g>}
+      </g>}
+      {mode==="cities"&&<g className="lektrus-atlas-cities">
        {shownCities.map(f=><g key={"city-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
-        className="lektrus-atlas-event" onClick={()=>selectFeature(f.feature,"Населённый пункт")}>
-        <circle r={Math.max(2.5,Math.min(4.5,2.5+Number(f.feature.properties?.POP_MAX||0)/1e7))}
-         fill="#c05745" stroke="#fff" strokeWidth=".8"/>
-        <title>{geoFeatureName(f.feature)}</title>
+        className="lektrus-atlas-event" role="button" tabIndex={0}
+        onClick={e=>{e.stopPropagation();selectFeature(f.feature,nationalCapital(f.feature)?"Столица":"Населённый пункт")}}
+        onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Населённый пункт")}}}>
+        {nationalCapital(f.feature)?
+         <path d="M0 -4.4L4.4 0L0 4.4L-4.4 0Z" fill="#263c55" stroke="#fff" strokeWidth="1"/>:
+         <circle r={Math.max(1.8,Math.min(4,1.8+Math.sqrt(cityPopulation(f.feature))/1200))}
+          fill="#386e8d" stroke="#fff" strokeWidth=".7"/>}
+        <title>{russianPlaceName(f.feature)??"Название не переведено"}{cityPopulation(f.feature)>0?
+         " · население (оценка): "+cityPopulation(f.feature).toLocaleString("ru-RU"):""}</title>
        </g>)}
-       {d.showLabels&&shownCities.filter(f=>Number(f.feature.properties?.POP_MAX||0)>=(scale>=12?50000:scale>=5?250000:2500000))
-        .slice(0,95).map(f=><text key={"city-label-"+f.id}
-         x={f.point![0]+5/scale} y={f.point![1]-5/scale} fontSize={7/scale}
-         fill="#764b3c" stroke="#fff" strokeWidth={1.7/scale} paintOrder="stroke"
-         pointerEvents="none">{geoFeatureName(f.feature)}</text>)}
+       {d.showLabels&&<g pointerEvents="none" fontSize={7.6/scale} fill="#334e65"
+        stroke="#fff" strokeWidth={1.9/scale} paintOrder="stroke" fontWeight="650">
+        {cityLabels.map(f=><text key={"city-label-"+f.id}
+         x={f.point![0]+5/scale} y={f.point![1]-4/scale}>{russianPlaceName(f.feature)}</text>)}
+       </g>}
       </g>}
-      {historicalSmallStates.map(p=><g key={"historical-small-"+p.i}
-       transform={`translate(${p.point![0]} ${p.point![1]})`}
-       className="lektrus-atlas-event" role="button" tabIndex={0}
-       onClick={e=>{e.stopPropagation();focusFeature(p.feature)}}
-       onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();focusFeature(p.feature)}}}>
-       <circle r={3.5/scale} strokeWidth={1/scale} fill="#8b663a" stroke="white"/>
-       <title>{p.name}: территория из исторического источника</title>
-      </g>)}
-      {modernBorders&&scale<=28&&tinyPoints.map(p=><g key={"tiny-"+p.i}
-       transform={`translate(${p.point![0]} ${p.point![1]})`}
-       className="lektrus-atlas-event" role="button" tabIndex={0}
-       onClick={e=>{e.stopPropagation();if(dragged.current)return;
-        const code=String(p.feature.properties?.ADM0_A3||p.feature.properties?.ISO_A3||"");
-        const found=shapes.find(s=>code&&String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||"")===code)
-         ||shapes.find(s=>s.name===p.name);
-        focusFeature(found?.feature??p.feature);
-       }}
-       onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();focusFeature(p.feature)}}}>
-       <circle r={4/scale} strokeWidth={1.2/scale} fill="#ad583b" stroke="white"/>
-       <title>{p.name}: показать маленькое государство</title>
-      </g>)}
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
        return <g key={marker.id} transform={`translate(${point[0]} ${point[1]})`}
