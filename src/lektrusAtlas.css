@@ -271,3 +271,6 @@
 }
 .lektrus-atlas-svg text{pointer-events:none}
 .lektrus-atlas-coordinate-pin{cursor:pointer}
+
+.lektrus-atlas-city-data{display:flex;flex-direction:column;gap:3px;padding:7px;background:#fff;border:1px solid #d7e3f0;border-radius:7px}
+.lektrus-atlas-city-data small{font-size:9px;color:#637d95}

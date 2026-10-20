@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
+import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
 import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRiverStroke,atlasLakeStroke,atlasGlacierStroke,atlasWaterGeometryTolerance,atlasRiverLabelRank} from "./lektrusAtlasHydro";
@@ -85,6 +86,9 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [error,setError]=useState("");
  const [refresh,setRefresh]=useState(0);
  const [selected,setSelected]=useState<GeoFeature|null>(null);
+ const [cityArea,setCityArea]=useState<AtlasCityArea|null>(null);
+ const [cityAreaLoading,setCityAreaLoading]=useState(false);
+ const [cityAreaMessage,setCityAreaMessage]=useState("");
  const [search,setSearch]=useState("");
  const [focusedUnit,setFocusedUnit]=useState("");
  const [directoryFilter,setDirectoryFilter]=useState("");
@@ -327,6 +331,18 @@ function AtlasMap({diagram:d,onChange}:Props){
  const selectedIsCity=!!selected&&["Populated place","Admin-0 capital","Admin-0 capital alt",
   "Admin-0 region capital","Admin-1 capital","Admin-1 region capital"]
   .includes(String(selected.properties?.FEATURECLA??selected.properties?.featurecla??""));
+ const cityWikidata=selectedIsCity?cityAreaId(selected?.properties??null):null;
+ useEffect(()=>{
+  let active=true;setCityArea(null);setCityAreaMessage("");
+  if(!selectedIsCity){setCityAreaLoading(false);return()=>{active=false}};
+  if(!cityWikidata){setCityAreaLoading(false);setCityAreaMessage("Площадь не указана в доступном источнике.");return()=>{active=false}};
+  setCityAreaLoading(true);
+  fetchCityArea(cityWikidata).then(area=>{if(active){
+   setCityArea(area);setCityAreaLoading(false);
+   if(!area)setCityAreaMessage("Площадь города отсутствует в Викиданных.");
+  }}).catch(()=>{if(active){setCityAreaLoading(false);setCityAreaMessage("Не удалось получить сведения о площади.")}});
+  return()=>{active=false};
+ },[selectedIsCity,cityWikidata]);
  const russianSourceName=(value:unknown)=>{
   if(typeof value!=="string")return "";
   return geoFeatureName({type:"Feature",geometry:null,properties:{NAME:value}});
@@ -714,10 +730,12 @@ function AtlasMap({diagram:d,onChange}:Props){
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={e=>{e.stopPropagation();selectFeature(f.feature,nationalCapital(f.feature)?"Столица":"Населённый пункт")}}
         onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Населённый пункт")}}}>
+        {selected===f.feature&&<circle r="10" fill="#fff5d8" fillOpacity=".92"
+         stroke="#e77a24" strokeWidth="2.2" pointerEvents="none"/>}
         {nationalCapital(f.feature)?
          <path d="M0 -4.4L4.4 0L0 4.4L-4.4 0Z" fill="#263c55" stroke="#fff" strokeWidth="1"/>:
          <circle r={Math.max(1.8,Math.min(4,1.8+Math.sqrt(cityPopulation(f.feature))/1200))}
-          fill="#386e8d" stroke="#fff" strokeWidth=".7"/>}
+          fill={selected===f.feature?"#ed7e27":"#275a82"} stroke="#fff" strokeWidth={selected===f.feature?1.7:.85}/>}
         <title>{russianPlaceName(f.feature)}{cityPopulation(f.feature)>0?
          " · население (оценка): "+cityPopulation(f.feature).toLocaleString("ru-RU"):""}</title>
        </g>)}
@@ -960,6 +978,13 @@ function AtlasMap({diagram:d,onChange}:Props){
         ◆ {russianPlaceName(capital)}
         <span>Показать на карте ↗</span>
        </button>)}
+     </div>}
+     {selectedIsCity&&<div className="lektrus-atlas-city-data">
+      <strong>Площадь города</strong>
+      {cityArea?<p>{cityArea.km2.toLocaleString("ru-RU",{maximumFractionDigits:2})} км²
+       <small> Значение из Викиданных, может относиться к административной или городской территории.</small></p>:
+       <p>{cityAreaLoading?"Получение площади из источника…":cityAreaMessage}</p>}
+      {cityArea&&<a href={cityArea.url} target="_blank" rel="noopener noreferrer">Источник площади ↗</a>}
      </div>}
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
       {typeof selected.properties?.CAPITAL_CORRECTION_URL==="string"&&<a href={selected.properties.CAPITAL_CORRECTION_URL}
