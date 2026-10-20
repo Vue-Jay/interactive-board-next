@@ -40,6 +40,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [refresh,setRefresh]=useState(0);
  const [selected,setSelected]=useState<GeoFeature|null>(null);
  const [search,setSearch]=useState("");
+ const [directoryOpen,setDirectoryOpen]=useState(true);
  const [scale,setScale]=useState(1);
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
@@ -48,6 +49,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const pinch=useRef<{distance:number;scale:number;position:{x:number;y:number};mid:{x:number;y:number}}|null>(null);
  const dragged=useRef(false);
  const snapshot=historicalSnapshots[index];
+ const modernReference=snapshot.year===2026;
  const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
  const availableModes=isContourTool?atlasModesFor(scope).filter(m=>m.id==="contour"):
   atlasModesFor(scope).filter(m=>m.id!=="contour");
@@ -139,6 +141,9 @@ function AtlasMap({diagram:d,onChange}:Props){
  const namedFeatures=mode==="cities"?cityPoints.map(f=>f.feature):
   mode==="relief"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[])]:shapes.map(f=>f.feature);
+ const directoryEntries=useMemo(()=>historical?shapes.map(s=>({name:s.name,feature:s.feature}))
+  .filter(v=>v.name&&v.name!=="Объект без названия"&&v.name!=="Unknown"&&v.name!=="unknown")
+  .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],[historical,shapes]);
  const results=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU")
    .includes(search.trim().toLocaleLowerCase("ru-RU"))).slice(0,18):[];
  const filteredCount=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU").includes(search.trim().toLocaleLowerCase("ru-RU"))).length:0;
@@ -400,8 +405,22 @@ function AtlasMap({diagram:d,onChange}:Props){
       <p>Точка пока не выбрана.</p>}
     </div>}
     {historical&&<div className="lektrus-atlas-year-header">
-     <strong>{yearLabel(snapshot.year)}</strong>
-     <small>Датированный снимок границ, не интерполяция</small>
+     <strong>{yearLabel(snapshot.year)}{modernReference?" · современный обзор":""}</strong>
+     <small>{modernReference?"Современный справочный слой Natural Earth, не точный снимок 2026 года":
+      "Датированный исторический снимок, не интерполяция"}</small>
+    </div>}
+    {historical&&<div className="lektrus-atlas-directory">
+     <button type="button" aria-expanded={directoryOpen} onClick={()=>setDirectoryOpen(v=>!v)}>
+      Справочник государств и территорий ({directoryEntries.length}) {directoryOpen?"▾":"▸"}
+     </button>
+     {directoryOpen&&<div className="lektrus-atlas-directory-list" style={{maxHeight:180,overflowY:"auto"}}>
+      {directoryEntries.length?directoryEntries.map((entry,i)=><button type="button" key={i}
+       onClick={()=>focusFeature(entry.feature)} title={"Показать на карте: "+entry.name}
+       style={{display:"block",width:"100%",textAlign:"left",padding:"5px 8px",
+        background:selected===entry.feature?"#e2edff":"transparent",border:0,cursor:"pointer"}}>
+       {entry.name}
+      </button>):<p>Нет подписанных объектов за этот период.</p>}
+     </div>}
     </div>}
     {markerDetails?<div className="lektrus-atlas-description">
      <strong>{markerDetails.title}</strong>
@@ -413,14 +432,18 @@ function AtlasMap({diagram:d,onChange}:Props){
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
      {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
-      <p>Указанная территория показана по состоянию на {yearLabel(snapshot.year)} согласно выбранной базе.</p>
+      <p>{modernReference?
+       "Современная геометрия из Natural Earth. Дата публикации набора не равна точной исторической обстановке 2026 года.":
+       "Территория представлена в историческом наборе для "+yearLabel(snapshot.year)+". Границы могут отражать реконструкцию."}</p>
+      <p>Названия и границы исходной базы не означают одобрение какой-либо территориальной претензии.</p>
       {selected.properties?.SUBJECTO&&<p>Административная принадлежность в источнике: {String(selected.properties.SUBJECTO)}</p>}
       {selected.properties?.PARTOF&&String(selected.properties.PARTOF)!==selectedTitle&&
        <p>Регион/группа: {String(selected.properties.PARTOF)}</p>}</>}
     </div>:
     historical?<div className="lektrus-atlas-description">
-     <strong>Исторический обзор</strong>
-     <p>Выберите государство на карте или событие. Для древности границы часто условны и не являются юридическими линиями.</p>
+     <strong>Исторический справочник</strong>
+     <p>Выберите период, затем территорию на карте либо запись в алфавитном списке. Нажатие на название приближает карту к объекту.</p>
+     <p>Справочник показывает только территории из датированного набора. Неизвестные объекты не получают выдуманных названий и описаний.</p>
     </div>:
     <div className="lektrus-atlas-description"><strong>{mapModeTitle(mode)}</strong>
      <p>{atlasModes.find(m=>m.id===mode)?.hint}.</p>
@@ -448,10 +471,10 @@ function AtlasMap({diagram:d,onChange}:Props){
      </div>)}
     </div>}
     <div className="lektrus-atlas-source">
-     <a href={(historical?historicDataProvider:modernDataProvider).url}
-      target="_blank" rel="noopener noreferrer">Источник: {(historical?historicDataProvider:modernDataProvider).name} ↗</a>
-     {historical&&<><small>Границы могут быть приблизительными, спорными или неполными.</small>
-      <a href={historicDataProvider.licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия исходных данных: GPL-3.0 ↗</a></>}
+     <a href={(historical&&!modernReference?historicDataProvider:modernDataProvider).url}
+      target="_blank" rel="noopener noreferrer">Источник: {(historical&&!modernReference?historicDataProvider:modernDataProvider).name} ↗</a>
+     {historical&&<><small>Границы могут быть приблизительными, спорными или неполными. Современные спорные территории требуют указания картографической позиции.</small>
+      <a href={(modernReference?modernDataProvider:historicDataProvider).licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия / условия использования ↗</a></>}
     </div>
    </aside>
   </div>
