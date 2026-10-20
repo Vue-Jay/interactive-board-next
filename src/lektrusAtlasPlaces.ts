@@ -27,18 +27,18 @@ export function cityRank(feature:GeoFeature):number{
  const raw=Number(p.LABELRANK??p.labelrank??p.SCALERANK??p.scalerank??10);
  return Number.isFinite(raw)?raw:10;
 }
-export type PlacePoint={id:number;point:[number,number];feature:GeoFeature};
+export type PlacePoint={id:number;point:[number,number]|null;feature:GeoFeature};
 /** Deterministic screen-space collision filter: the visible labels have no
  * overlap at the selected zoom. All points remain searchable/selectable. */
 export function chooseCityLabels<T extends PlacePoint>(points:readonly T[],scale:number,
  maxCount:number):T[]{
- const sorted=[...points].filter(f=>russianPlaceName(f.feature))
+ const sorted=[...points].filter(f=>f.point&&russianPlaceName(f.feature))
   .sort((a,b)=>cityRank(a.feature)-cityRank(b.feature)||
    cityPopulation(b.feature)-cityPopulation(a.feature)||a.id-b.id);
  const placed:{x:number;y:number;w:number}[]=[],out:T[]=[];
  for(const item of sorted){
   const text=russianPlaceName(item.feature)!;
-  const x=item.point[0]*scale,y=item.point[1]*scale;
+  const x=item.point![0]*scale,y=item.point![1]*scale;
   const w=Math.min(170,Math.max(24,text.length*4.2));
   const overlap=placed.some(p=>Math.abs(p.y-y)<12&&x<=p.x+p.w+8&&p.x<=x+w+8);
   if(overlap)continue;
