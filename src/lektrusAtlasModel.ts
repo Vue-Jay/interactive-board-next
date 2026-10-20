@@ -189,7 +189,7 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
   (v.borderView!==undefined&&v.borderView!=="source"&&v.borderView!=="russian")||
    (v.regionId!==undefined&&(typeof v.regionId!=="string"||v.regionId.length>65||!/^[-a-z0-9]+$/.test(v.regionId)))||
    (v.hypsometry!==undefined&&typeof v.hypsometry!=="boolean")||
-   (v.cityMinPopulation!==undefined&&![0,50000,250000,1000000].includes(Number(v.cityMinPopulation))))return false;
+   (v.cityMinPopulation!==undefined&&(typeof v.cityMinPopulation!=="number"||![0,50000,250000,1000000].includes(v.cityMinPopulation))))return false;
  if(v.paintedCountries!==undefined){
   if(!v.paintedCountries||typeof v.paintedCountries!=="object"||Array.isArray(v.paintedCountries))return false;
   const entries=Object.entries(v.paintedCountries as Record<string,unknown>);
