@@ -188,6 +188,14 @@ assert.equal(places.nationalCapital(fixed("Dodoma")),true);
 assert.equal(places.applyVerifiedCapitalUpdates2026(updatedPlaces).features.length,updatedPlaces.features.length,
  "corrections must not duplicate a capital");
 assert.equal(places.nationalCapital(worldPlaces.features[0]),true,"source must not be mutated");
+assert.equal(places.matchesCityCategory(kazan,"regional"),true);
+assert.equal(places.matchesCityCategory(small,"ordinary"),true);
+assert.equal(places.matchesCityCategory(moscow,"capitals"),true);
+assert.equal(places.matchesCityCategory(small,"regional"),false);
+assert.equal(places.matchesCityCategory(kazan,"ordinary"),false);
+assert.equal(validAtlasDocument({...atlas,cityCategory:"ordinary"}),true);
+assert.equal(validAtlasDocument({...atlas,cityCategory:"wrong"}),false);
+assert.match(map,/Категория городов/);
 assert.match(map,/applyVerifiedCapitalUpdates2026/);
 assert.match(map,/scale>=4/);
 const benin=places.applyVerifiedCapitalUpdates2026({type:"FeatureCollection",features:[

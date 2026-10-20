@@ -119,3 +119,12 @@ export function capitalsForCountry(country:GeoFeature,places:readonly GeoFeature
  }).sort((a,b)=>cityRank(a)-cityRank(b)||
   (russianPlaceName(a)??"").localeCompare(russianPlaceName(b)??"","ru"));
 }
+
+export type CityCategory="all"|"capitals"|"regional"|"ordinary";
+export function matchesCityCategory(feature:GeoFeature,category:CityCategory):boolean{
+ if(category==="all")return true;
+ if(category==="capitals")return nationalCapital(feature);
+ const cls=String(feature.properties?.FEATURECLA??feature.properties?.featurecla??"");
+ if(category==="regional")return /^Admin-(?:0 region|1(?: region)?) capital$/i.test(cls);
+ return /^Populated place$/i.test(cls);
+}

@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
-import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry} from "./lektrusAtlasPlaces";
+import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
@@ -55,6 +55,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [cities,setCities]=useState<GeoCollection|null>(null);
  const [cityResolution,setCityResolution]=useState("не загружен");
  const [minCityPopulation,setMinCityPopulation]=useState(d.cityMinPopulation??0);
+ const [cityCategory,setCityCategory]=useState<CityCategory>(d.cityCategory??"all");
  const [regions,setRegions]=useState<GeoCollection|null>(null);
  const [administrative,setAdministrative]=useState<GeoCollection|null>(null);
  const [elevations,setElevations]=useState<GeoCollection|null>(null);
@@ -100,6 +101,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
  useEffect(()=>{setRegionId(d.regionId??"world")},[d.regionId]);
  useEffect(()=>{setMinCityPopulation(d.cityMinPopulation??0)},[d.cityMinPopulation]);
+ useEffect(()=>{setCityCategory(d.cityCategory??"all")},[d.cityCategory]);
  useEffect(()=>{const camera=atlasRegionCamera(findAtlasRegion(regionId));setScale(camera.scale);
   setPosition(camera.position);setSelected(null);setCoord(null)},[regionId]);
  const availableModes=isContourTool?atlasModesFor(scope).filter(m=>m.id==="contour"):
@@ -241,7 +243,7 @@ function AtlasMap({diagram:d,onChange}:Props){
   pt[0]>=visibleWorld.left-12/scale&&pt[0]<=visibleWorld.right+12/scale&&
   pt[1]>=visibleWorld.top-12/scale&&pt[1]<=visibleWorld.bottom+12/scale;
  const eligibleCities=cityPoints.filter(f=>visiblePoint(f.point)&&
-  (cityPopulation(f.feature)>=minCityPopulation||f.feature===selected));
+  ((cityPopulation(f.feature)>=minCityPopulation&&matchesCityCategory(f.feature,cityCategory))||f.feature===selected));
  const visibleCitySymbols=limitCitySymbols(eligibleCities,scale,850);
  const focusCity=eligibleCities.find(f=>f.feature===selected);
  const shownCities=focusCity&&!visibleCitySymbols.some(f=>f.feature===selected)?
@@ -290,7 +292,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
   normalizeHistoricalName(name)===normalizeHistoricalName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
- const namedFeatures=mode==="cities"?cityPoints.filter(f=>russianPlaceName(f.feature)).map(f=>f.feature):
+ const namedFeatures=mode==="cities"?cityPoints.filter(f=>russianPlaceName(f.feature)&&matchesCityCategory(f.feature,cityCategory)).map(f=>f.feature):
   mode==="relief"||mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[]),...marineNames.map(f=>f.feature)]:
   mode==="political"?[...mapSourceFeatures,...(administrative?.features??[]),...cityPoints.filter(p=>nationalCapital(p.feature)).map(p=>p.feature)]:
@@ -766,6 +768,16 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>}
     {mode==="cities"&&<div className="lektrus-atlas-natural-legend">
      <strong>Обозначения населённых пунктов</strong>
+     <label className="lektrus-atlas-city-filter">Тип населённого пункта
+      <select aria-label="Категория городов" value={cityCategory}
+       onChange={e=>{const value=e.target.value as CityCategory;
+        setCityCategory(value);onChange?.({...d,cityCategory:value})}}>
+       <option value="all">Все населённые пункты</option>
+       <option value="capitals">Столицы государств</option>
+       <option value="regional">Административные центры регионов</option>
+       <option value="ordinary">Другие города и посёлки</option>
+      </select>
+     </label>
      <label className="lektrus-atlas-city-filter">Численность населения
       <select aria-label="Фильтр городов по численности населения" value={minCityPopulation}
        onChange={e=>{const value=Number(e.target.value);setMinCityPopulation(value);onChange?.({...d,cityMinPopulation:value})}}>
@@ -778,7 +790,7 @@ function AtlasMap({diagram:d,onChange}:Props){
      <small>Объектов в базе: {cities?.features.length??0}; с русским названием: {cities?.features.filter(f=>russianPlaceName(f)).length??0}. В видимой области показано: {shownCities.length}. Фактически загруженный слой: {cityResolution}.</small>
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#386e8d"}}/>● Населённый пункт</div>
      <div><span className="lektrus-atlas-legend-swatch lektrus-atlas-legend-capital"/>◆ Столица государства</div>
-     <small>Показаны не только административные центры, но и другие города и посёлки из базы Natural Earth. Начиная с увеличения ×4 включается более подробный набор 1:10 млн.</small>
+     <small>В фильтре «Другие города и посёлки» отображаются не административные центры, а населённые пункты категории Populated place. Начиная с увеличения ×4 подключается база 1:10 млн.</small>
      <small>Размер символа зависит от оценочной численности населения. Русские названия берутся непосредственно из атрибутов источника. Непереведённые названия не выдаются за проверенные русские.</small>
     </div>}
     {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
