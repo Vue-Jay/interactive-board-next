@@ -14,6 +14,24 @@ const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(
 const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
 const precisions=["Источник не указывает точность","Приблизительные границы","Средняя точность","Уточнённая граница"] as const;
 const mapModeTitle=(v:AtlasMode)=>atlasModes.find(m=>m.id===v)!.title;
+const landformColors={
+ mountains:{fill:"#b79877",opacity:.62,label:"Горные районы"},
+ plateau:{fill:"#cdb39a",opacity:.55,label:"Плоскогорья и нагорья"},
+ deserts:{fill:"#ecd6a6",opacity:.72,label:"Пустыни"},
+ plains:{fill:"#c8e0b0",opacity:.6,label:"Равнины"},
+ basins:{fill:"#b9ddc9",opacity:.54,label:"Низменности и котловины"},
+ other:{fill:"#d4dcc5",opacity:.22,label:"Другие природные области"}
+} as const;
+const landformClass=(f:GeoFeature):keyof typeof landformColors=>{
+ const raw=String(f.properties?.FEATURECLA??f.properties?.FEATURECLASS??"").toLowerCase();
+ if(/range\/mtn|mountain|highland/.test(raw))return "mountains";
+ if(/plateau|upland/.test(raw))return "plateau";
+ if(/desert/.test(raw))return "deserts";
+ if(/plain|steppe|lowland/.test(raw))return "plains";
+ if(/basin|depression|valley/.test(raw))return "basins";
+ return "other";
+};
+
 function AtlasMap({diagram:d,onChange}:Props){
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":d.mode);
  const [paintColor,setPaintColor]=useState("#f3b778");
@@ -485,10 +503,11 @@ function AtlasMap({diagram:d,onChange}:Props){
          {geoFeatureName(f.feature).slice(0,27)}</text>)}
        </g>}
       {(mode==="physical"||mode==="relief")&&<g>
-       {landforms.map(f=><path key={"landform-"+f.id} d={f.path}
-        fill="#c6b093" fillOpacity=".48" stroke="#a68b72" strokeWidth=".4"
-        className="lektrus-atlas-country" onClick={()=>selectFeature(f.feature,"Форма рельефа")}>
-        <title>{geoFeatureName(f.feature)}</title></path>)}
+       {landforms.map(f=>{const style=landformColors[landformClass(f.feature)];
+        return <path key={"landform-"+f.id} d={f.path}
+         fill={style.fill} fillOpacity={style.opacity} stroke="#8b977d" strokeWidth=".35"
+         className="lektrus-atlas-country" onClick={()=>selectFeature(f.feature,"Природная область")}>
+         <title>{geoFeatureName(f.feature)}</title></path>})}
        {ice.map(f=><path key={"ice-"+f.id} d={f.path}
         fill="#f8fcff" stroke="#9dbdd0" strokeWidth=".6"
         className="lektrus-atlas-country" onClick={()=>selectFeature(f.feature,"Ледниковая область")}>
@@ -622,6 +641,13 @@ function AtlasMap({diagram:d,onChange}:Props){
      <small>Единый российский картографический профиль: Natural Earth RUS, 1:10 млн. Обзорные данные не являются официальной административной картой на 20.10.2026.</small>
     </div>}
 
+    {(mode==="physical"||mode==="relief")&&<div className="lektrus-atlas-natural-legend">
+     <strong>Условные обозначения</strong>
+     {(["mountains","plateau","deserts","plains","basins"] as const).map(key=>
+      <div key={key}><span className="lektrus-atlas-legend-swatch" style={{background:landformColors[key].fill}}/>
+       {landformColors[key].label}</div>)}
+     <small>Цвет отражает класс природной области, но не абсолютную высоту. Отметки высот показываются отдельно.</small>
+    </div>}
     {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
      <strong>Контурная карта</strong>
      {administrative&&<label className="lektrus-atlas-compare">
