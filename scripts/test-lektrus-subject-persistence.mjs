@@ -41,6 +41,19 @@ const docs=[
   graphGrid:false,graphPoints:[{x:0,y:0,label:"A"},{x:4,y:0,label:"B"},{x:1,y:3,label:"C"}],
   graphSegments:[],graphPolygons:[{points:[0,1,2],label:"",measure:false}],
   graphGivenSides:["4","",""],graphGivenAngles:[],graphTriangleInputMode:"SSS"}),
+ item("bio-cell","graph",{graphFigureId:"bio-cell",graphPurpose:"geometry",schoolDiagram:{
+  kind:"cell",title:"Растительная клетка",cell:"plant",showLabels:true,
+  visible:["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]}}),
+ item("bio-food","graph",{graphFigureId:"bio-food-chain",graphPurpose:"geometry",schoolDiagram:{
+  kind:"food-chain",title:"Цепь питания",showRoles:false,organisms:[
+   {id:"a",name:"Трава",role:"producer"},{id:"b",name:"Полёвка",role:"consumer"},
+   {id:"c",name:"Сова",role:"consumer"}]}}),
+ item("geo-climate","graph",{graphFigureId:"geo-climate",graphPurpose:"geometry",schoolDiagram:{
+  kind:"climate",title:"Учебная климатограмма",showLegend:true,
+  months:Array.from({length:12},(_,i)=>({temperature:i-6,precipitation:20+i*5}))}}),
+ item("hist-timeline","graph",{graphFigureId:"history-timeline",graphPurpose:"geometry",schoolDiagram:{
+  kind:"timeline",title:"Лента времени",showEra:true,events:[
+   {id:"a",year:988,label:"Крещение Руси"},{id:"b",year:1380,label:"Куликовская битва"}]}}),
  item("fraction","fraction",{fractionNumerator:1,fractionDenominator:3,fractionMode:"circle"}),
  item("table","table",{tableRows:2,tableCols:2,tableCells:["a","b","c","d"],
   tableHeader:true,tableAlign:"right",tableStripe:true,tableCompact:true})
