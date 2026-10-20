@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
-import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026} from "./lektrusAtlasPlaces";
+import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
@@ -279,6 +279,8 @@ function AtlasMap({diagram:d,onChange}:Props){
   findHistoricalArticle(selectedRaw,snapshot.year):undefined;
  const fallbackReference=selected&&historical&&!modernReference&&!selectedArticle?
   findHistoricalReference(selectedRaw,snapshot.year):undefined;
+ const selectedCountryCapitals=selected&&mode==="political"?
+  capitalsForCountry(selected,cityPoints.map(c=>c.feature)):[];
  const selectedIsCity=!!selected&&["Populated place","Admin-0 capital","Admin-0 capital alt",
   "Admin-0 region capital","Admin-1 capital","Admin-1 region capital"]
   .includes(String(selected.properties?.FEATURECLA??selected.properties?.featurecla??""));
@@ -865,6 +867,14 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>:
     selected?<div className="lektrus-atlas-description">
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
+     {selectedCountryCapitals.length>0&&<div className="lektrus-atlas-country-capitals">
+      <strong>Столицы государства</strong>
+      {selectedCountryCapitals.map((capital,i)=>
+       <button key={i} type="button" onClick={()=>focusFeature(capital,"Столица государства")}>
+        ◆ {russianPlaceName(capital)??"Русское название не найдено"}
+        <span>Показать на карте ↗</span>
+       </button>)}
+     </div>}
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
       {typeof selected.properties?.CAPITAL_CORRECTION_URL==="string"&&<a href={selected.properties.CAPITAL_CORRECTION_URL}
        target="_blank" rel="noopener noreferrer">Правовой источник уточнения столицы ↗</a>}

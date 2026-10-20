@@ -190,6 +190,19 @@ assert.equal(places.applyVerifiedCapitalUpdates2026(updatedPlaces).features.leng
 assert.equal(places.nationalCapital(worldPlaces.features[0]),true,"source must not be mutated");
 assert.match(map,/applyVerifiedCapitalUpdates2026/);
 assert.match(map,/scale>=4/);
+const benin=places.applyVerifiedCapitalUpdates2026({type:"FeatureCollection",features:[
+ {...place("Cotonou",1,"Admin-0 capital"),properties:{
+  ...place("Cotonou",1,"Admin-0 capital").properties,NAME:"Cotonou",ISO_A2:"BJ"}},
+ {...place("Porto-Novo",0,"Admin-0 capital alt"),properties:{
+  ...place("Porto-Novo",0,"Admin-0 capital alt").properties,NAME:"Porto-Novo",NAME_RU:"Порто-Ново",ISO_A2:"BJ"}}
+]});
+assert.equal(places.nationalCapital(benin.features[0]),false);
+assert.equal(places.nationalCapital(benin.features[1]),true);
+const eguinea={type:"Feature",properties:{ISO_A2:"GQ",ADM0_A3:"GNQ"},geometry:null};
+assert.equal(places.capitalsForCountry(eguinea,updatedPlaces.features).length,1);
+assert.equal(places.russianPlaceName(places.capitalsForCountry(eguinea,updatedPlaces.features)[0]),"Сьюдад-де-ла-Пас");
+assert.match(map,/Столицы государства/);
+
 const testCities=[{id:0,point:[100,100],feature:kazan},{id:1,point:[102,101],feature:small},
  {id:2,point:[400,100],feature:moscow}];
 assert.equal(places.chooseCityLabels(testCities,1,20).length,2,

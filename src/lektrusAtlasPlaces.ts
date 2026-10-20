@@ -104,3 +104,18 @@ export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCol
  }
  return {...collection,features:items};
 }
+
+/** National capitals matched by actual country codes, not polygon centroids. */
+export function capitalsForCountry(country:GeoFeature,places:readonly GeoFeature[]):GeoFeature[]{
+ const p=country.properties??{};
+ const iso=String(p.ISO_A2??p.ISO_A2_EH??"").toUpperCase();
+ const a3=String(p.ADM0_A3??p.ISO_A3??"").toUpperCase();
+ if(!/^[A-Z]{2}$/.test(iso)&&!/^[A-Z]{3}$/.test(a3))return [];
+ return places.filter(place=>{
+  if(!nationalCapital(place))return false;
+  const q=place.properties??{};
+  return /^[A-Z]{2}$/.test(iso)&&String(q.ISO_A2??"").toUpperCase()===iso||
+   /^[A-Z]{3}$/.test(a3)&&String(q.ADM0_A3??"").toUpperCase()===a3;
+ }).sort((a,b)=>cityRank(a)-cityRank(b)||
+  (russianPlaceName(a)??"").localeCompare(russianPlaceName(b)??"","ru"));
+}
