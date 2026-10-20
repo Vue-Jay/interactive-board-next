@@ -17,6 +17,7 @@ const mapModeTitle=(v:AtlasMode)=>atlasModes.find(m=>m.id===v)!.title;
 function AtlasMap({diagram:d,onChange}:Props){
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":d.mode);
  const [paintColor,setPaintColor]=useState("#f3b778");
+ const [paintRegions,setPaintRegions]=useState(false);
  const painted=d.paintedCountries??{};
  const savePaint=(next:Record<string,string>)=>onChange?.({...d,paintedCountries:next});
  const isContourTool=d.title==="Контурная карта";
@@ -338,6 +339,12 @@ function AtlasMap({diagram:d,onChange}:Props){
  };
  const reset=()=>{const camera=atlasRegionCamera(selectedRegion);setScale(camera.scale);setPosition(camera.position);setSelected(null);setCoord(null)};
  const changeRegion=(id:string)=>{setRegionId(id);onChange?.({...d,regionId:id})};
+ const paintProvince=(feature:GeoFeature)=>{
+  if(mode!=="contour"||!paintRegions||dragged.current)return;
+  const key="region:"+String(feature.properties?.ADM1_CODE||feature.properties?.NAME_RU||
+   feature.properties?.NAME||geoFeatureName(feature));
+  savePaint({...painted,[key]:paintColor});
+ };
  const selectFeature=(feature:GeoFeature,layer:string)=>{
   if(historical)setHistoryTab("article");
   if(dragged.current||mode==="contour")return;
@@ -345,7 +352,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  };
  const showCountry=(feature:GeoFeature)=>{
   if(mode==="contour"){
-   if(dragged.current)return;
+   if(dragged.current||paintRegions)return;
    const key=String(feature.properties?.ADM0_A3||feature.properties?.ISO_A3||geoFeatureName(feature));
    savePaint({...painted,[key]:paintColor});
    return;
@@ -384,6 +391,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const onMode=(value:AtlasMode)=>{
   if(!availableModes.some(m=>m.id===value))return;
   setMode(value);setSelected(null);setSearch("");setSelectedMarker(null);
+  onChange?.({...d,mode:value});
  };
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
   if(dragged.current)return;
@@ -459,8 +467,16 @@ function AtlasMap({diagram:d,onChange}:Props){
         </path>;
        })}
       </g>
-      {provincePaths.length>0&&<g className="lektrus-atlas-admin1" fill="none" stroke="#a0a7a5" strokeWidth=".48" vectorEffect="non-scaling-stroke" pointerEvents="none">
-       {provincePaths.map(f=><path key={"province-"+f.id} d={f.path}/>)}
+      {provincePaths.length>0&&<g className="lektrus-atlas-admin1" stroke="#a0a7a5"
+       strokeWidth=".48" vectorEffect="non-scaling-stroke"
+       pointerEvents={mode==="contour"&&paintRegions?"visiblePainted":"none"}>
+       {provincePaths.map(f=>{
+        const key="region:"+String(f.feature.properties?.ADM1_CODE||f.feature.properties?.NAME_RU||
+         f.feature.properties?.NAME||geoFeatureName(f.feature));
+        return <path key={"province-"+f.id} d={f.path}
+         fill={mode==="contour"&&paintRegions?(painted[key]??"#fafcfb"):"none"}
+         onClick={()=>paintProvince(f.feature)}><title>{geoFeatureName(f.feature)}</title></path>;
+       })}
       </g>}
       {d.showLabels&&provincePaths.length>0&&mode==="political"&&scale>=4&&
        <g pointerEvents="none" textAnchor="middle" fontWeight="600" fill="#516c83"
@@ -607,12 +623,16 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>}
 
     {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
-     <strong>Закраска стран</strong>
+     <strong>Контурная карта</strong>
+     {administrative&&<label className="lektrus-atlas-compare">
+      <input type="checkbox" checked={paintRegions} onChange={e=>setPaintRegions(e.target.checked)}/>
+      Закрашивать регионы вместо стран
+     </label>}
      <label>Цвет маркера <input type="color" value={paintColor}
       onChange={e=>setPaintColor(e.target.value)} aria-label="Цвет закраски"/></label>
      <button type="button" onClick={()=>setPaintColor("#fafcfb")}>Ластик заливки</button>
      <button type="button" onClick={()=>savePaint({})}>Очистить все заливки</button>
-     <small>Выберите цвет и нажимайте на территории. Закраска сохраняется вместе с объектом доски.</small>
+     <small>Выберите цвет и нажимайте на страну или регион. Для работы с регионами сначала выберите территорию. Заливки сохраняются с доской.</small>
     </div>}
     {mode!=="contour"&&!historical&&<label>Поиск объектов
      <input value={search} onChange={e=>setSearch(e.target.value)}

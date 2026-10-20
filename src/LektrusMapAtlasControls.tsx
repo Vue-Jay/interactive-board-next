@@ -38,7 +38,7 @@ export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showGrid}
    onChange={e=>patch({showGrid:e.target.checked})}/> Меридианы и параллели</label>
   {d.mode!=="contour"&&<label className="lektrus-school-toggle"><input type="checkbox" checked={d.showLabels}
-   onChange={e=>patch({showLabels:e.target.checked})}/> Названия крупных государств на карте</label>}
+   onChange={e=>patch({showLabels:e.target.checked})}/> Географические подписи на карте</label>}
   <div className="lektrus-school-controls-heading">Маркеры преподавателя ({d.markers.length}/40)</div>
   <p className="lektrus-school-hint">Добавляйте места и события с реальными координатами. Значения долготы от −180 до 180°, широты от −90 до 90°. Маркеры сохраняются с доской, их можно использовать для исторических заданий.</p>
   {d.markers.map((marker,i)=><div key={marker.id} className="lektrus-atlas-marker-editor">

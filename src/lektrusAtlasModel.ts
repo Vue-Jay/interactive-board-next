@@ -191,7 +191,7 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
  if(v.paintedCountries!==undefined){
   if(!v.paintedCountries||typeof v.paintedCountries!=="object"||Array.isArray(v.paintedCountries))return false;
   const entries=Object.entries(v.paintedCountries as Record<string,unknown>);
-  if(entries.length>350||entries.some(([key,color])=>key.length<1||key.length>90||typeof color!=="string"||!/^#[0-9a-fA-F]{6}$/.test(color)))return false;
+  if(entries.length>2000||entries.some(([key,color])=>key.length<1||key.length>90||typeof color!=="string"||!/^#[0-9a-fA-F]{6}$/.test(color)))return false;
  }
  const markers=v.markers as AtlasMarker[];
  return markers.every(m=>m&&isText(m.id,64)&&isText(m.title,80)&&isText(m.description,300,true)&&
