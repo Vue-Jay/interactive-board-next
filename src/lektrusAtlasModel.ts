@@ -6,7 +6,7 @@ export const atlasModesFor=(subject:AtlasSubject)=>atlasModes.filter(m=>subject=
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
 export type AtlasDocument={
  kind:"atlas";title:string;mode:AtlasMode;scope?:AtlasSubject;year:number;showLabels:boolean;
- showGrid:boolean;showEvents:boolean;markers:AtlasMarker[];
+ showGrid:boolean;showEvents:boolean;markers:AtlasMarker[];paintedCountries?:Record<string,string>;
 };
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
  {id:"political",title:"Политическая",hint:"Современные государства, названия и границы"},
@@ -175,7 +175,7 @@ export function eventsNearYear(year:number){
 }
 export function createAtlasDocument(scope:AtlasSubject="geography"):AtlasDocument{
  return {kind:"atlas",scope,title:scope==="history"?"Исторический атлас":"Географический атлас",mode:scope==="history"?"historical":"political",year:1914,
-  showLabels:true,showGrid:false,showEvents:true,markers:[]};
+  showLabels:true,showGrid:false,showEvents:true,markers:[],paintedCountries:{}};
 }
 const isText=(v:unknown,max:number,allowEmpty=false)=>typeof v==="string"&&v.length<=max&&(allowEmpty||v.trim().length>0);
 export function validAtlasDocument(value:unknown):value is AtlasDocument{
@@ -186,6 +186,11 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
   !historicalSnapshots.some(s=>s.year===v.year)||typeof v.showLabels!=="boolean"||
   typeof v.showGrid!=="boolean"||typeof v.showEvents!=="boolean"||
   !Array.isArray(v.markers)||v.markers.length>40)return false;
+ if(v.paintedCountries!==undefined){
+  if(!v.paintedCountries||typeof v.paintedCountries!=="object"||Array.isArray(v.paintedCountries))return false;
+  const entries=Object.entries(v.paintedCountries as Record<string,unknown>);
+  if(entries.length>350||entries.some(([key,color])=>key.length<1||key.length>90||typeof color!=="string"||!/^#[0-9a-fA-F]{6}$/.test(color)))return false;
+ }
  const markers=v.markers as AtlasMarker[];
  return markers.every(m=>m&&isText(m.id,64)&&isText(m.title,80)&&isText(m.description,300,true)&&
   Number.isFinite(m.lat)&&m.lat>=-90&&m.lat<=90&&
