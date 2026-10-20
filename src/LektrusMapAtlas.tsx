@@ -292,6 +292,52 @@ function AtlasMap({diagram:d,onChange}:Props){
  // Clip dense regional point layers to the actual visible world rectangle.
  const visibleWorld={left:450+(-450-position.x)/scale,right:450+(450-position.x)/scale,
   top:225+(-225-position.y)/scale,bottom:225+(225-position.y)/scale};
+ const externalBounds:ExternalBounds={
+  west:Math.max(-180,visibleWorld.left/2.5-180),
+  east:Math.min(180,visibleWorld.right/2.5-180),
+  south:Math.max(-85,90-visibleWorld.bottom/2.5),
+  north:Math.min(85,90-visibleWorld.top/2.5)
+ };
+ const externalKey=externalBBoxKey(externalBounds);
+ const roadsAvailable=canLoadLocalRoads(externalBounds);
+ const mineralsAvailable=canLoadMinerals(externalBounds);
+ useEffect(()=>{
+  let active=true;
+  if(!["cities","hydrography","physical"].includes(mode)||!roadsAvailable){
+   setInfrastructure(null);setInfrastructureError("");return()=>{active=false};
+  }
+  loadLocalInfrastructure(externalBounds).then(v=>{if(active){
+   setInfrastructure(v);setInfrastructureError("");
+  }}).catch(()=>{if(active){setInfrastructure(null);
+   setInfrastructureError("Дополнительные дороги и водотоки сейчас недоступны.")}});
+  return()=>{active=false};
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[mode,externalKey,roadsAvailable]);
+ useEffect(()=>{
+  let active=true;
+  if(mode!=="minerals"||!mineralsAvailable){
+   setMinerals(null);setMineralLoading(false);setMineralError("");return()=>{active=false};
+  }
+  setMineralLoading(true);
+  loadMineralDeposits(externalBounds).then(v=>{if(active){
+   setMinerals(v);setMineralLoading(false);setMineralError("");
+  }}).catch(()=>{if(active){setMinerals(null);setMineralLoading(false);
+   setMineralError("Не удалось получить сведения о месторождениях из USGS.")}});
+  return()=>{active=false};
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[mode,externalKey,mineralsAvailable]);
+ const auxiliaryLines=useMemo(()=>infrastructure?.features.flatMap((feature,id)=>{
+  const path=mapFeaturePath(feature,.018);
+  return path?[{id,path,feature}]:[];
+ })??[],[infrastructure]);
+ const mineralPoints=useMemo(()=>minerals?.features.flatMap((feature,id)=>{
+  const point=featureMapPoint(feature),commodity=mineralCommodity(feature);
+  return point&&commodity?[{id,point,feature,commodity}]:[];
+ })??[],[minerals]);
+ const visibleMinerals=mineralPoints.filter(f=>
+  (mineralFilter==="Все виды"||f.commodity.name===mineralFilter)&&
+  f.point[0]>=visibleWorld.left&&f.point[0]<=visibleWorld.right&&
+  f.point[1]>=visibleWorld.top&&f.point[1]<=visibleWorld.bottom).slice(0,350);
  const visiblePoint=(pt:readonly number[]|null|undefined)=>!!pt&&
   pt[0]>=visibleWorld.left-12/scale&&pt[0]<=visibleWorld.right+12/scale&&
   pt[1]>=visibleWorld.top-12/scale&&pt[1]<=visibleWorld.bottom+12/scale;
