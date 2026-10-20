@@ -80,7 +80,8 @@ function AtlasMap({diagram:d}:Props){
  const onMode=(value:AtlasMode)=>{if(!availableModes.some(m=>m.id===value))return;setMode(value);setSelected(null);setEventIndex(null)};
  return <div className="lektrus-atlas" aria-label={d.title}
   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
-  onClick={e=>e.stopPropagation()} onWheel={e=>e.stopPropagation()}>
+  onClick={e=>e.stopPropagation()} onWheel={e=>{e.stopPropagation();
+   setScale(s=>Math.max(1,Math.min(5,Math.round((s+(e.deltaY<0?.2:-.2))*10)/10)));}}>
   <header className="lektrus-atlas-header">
    <strong title={d.title}>{d.title}</strong>
    <nav role="group" aria-label="Тип карты">
