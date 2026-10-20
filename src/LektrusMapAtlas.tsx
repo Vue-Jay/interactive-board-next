@@ -779,6 +779,26 @@ function AtlasMap({diagram:d,onChange}:Props){
          x={f.point![0]+6/scale} y={f.point![1]-5/scale}>{russianPlaceName(f.feature)}</text>)}
        </g>}
       </g>}
+      {(mode==="cities"||mode==="hydrography"||mode==="physical")&&
+       <g className="lektrus-atlas-auxiliary-lines" pointerEvents="none">
+        {auxiliaryLines.map(line=><path key={"infra-"+line.id} d={line.path} fill="none"
+         stroke={line.feature.properties?.ATLAS_KIND==="road"?"#c6a995":"#61a9cc"}
+         strokeWidth={line.feature.properties?.ATLAS_KIND==="road"?.67:.48}
+         strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
+         strokeDasharray={line.feature.properties?.ATLAS_KIND==="road"?"2.5 1":undefined}/>)}
+       </g>}
+      {mode==="minerals"&&<g className="lektrus-atlas-mineral-points">
+       {visibleMinerals.map(item=><g key={"mineral-"+item.id}
+        transform={`translate(${item.point[0]} ${item.point[1]}) scale(${1/scale})`}
+        onClick={e=>{e.stopPropagation();setSelectedMineral(item.feature);setSelected(null)}}
+        className="lektrus-atlas-event" role="button" tabIndex={0}
+        onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();setSelectedMineral(item.feature);setSelected(null)}}}>
+        {selectedMineral===item.feature&&<circle r="10" fill="none" stroke="#b25e2e"
+         strokeWidth="2" pointerEvents="none"/>}
+        <circle r="4.1" fill={item.commodity.color} stroke="#fff" strokeWidth="1.1"/>
+        <title>{item.commodity.name}, источник USGS</title>
+       </g>)}
+      </g>}
       {mode==="cities"&&<g className="lektrus-atlas-cities">
        {shownCities.map(f=><g key={"city-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
