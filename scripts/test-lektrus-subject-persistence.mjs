@@ -75,6 +75,16 @@ const docs=[
   kind:"relief",title:"Профиль рельефа",showGrid:true,showLabels:true,
   points:[{id:"a",distance:0,height:120,label:"Начало"},{id:"b",distance:12,height:280,label:"Вершина"},
    {id:"c",distance:25,height:-50,label:"Ниже уровня моря"}]}}),
+ item("ru-morphemes","graph",{graphPurpose:"geometry",graphFigureId:"ru-morphemes",schoolDiagram:{
+  kind:"morphemes",title:"Разбор слова",showMarks:true,showBase:true,zeroEnding:true,
+  segments:[{id:"a",text:"под",role:"prefix"},{id:"b",text:"снеж",role:"root"},
+   {id:"c",text:"ник",role:"suffix"}]}}),
+ item("family","graph",{graphPurpose:"geometry",graphFigureId:"history-family-tree",schoolDiagram:{
+  kind:"family-tree",title:"Родословная",showGenerations:true,
+  people:[{id:"p",name:"Родитель",parents:[]},{id:"c",name:"Ребёнок",parents:["p"]}]}}),
+ item("foreign","graph",{graphPurpose:"geometry",graphFigureId:"language-flashcards",schoolDiagram:{
+  kind:"flashcards",title:"Слова",showTranslation:false,showTranscription:true,
+  direction:"foreign-first",cards:[{id:"c",term:"book",translation:"книга",transcription:"[bʊk]"}]}}),
  item("fraction","fraction",{fractionNumerator:1,fractionDenominator:3,fractionMode:"circle"}),
  item("table","table",{tableRows:2,tableCols:2,tableCells:["a","b","c","d"],
   tableHeader:true,tableAlign:"right",tableStripe:true,tableCompact:true})
@@ -107,6 +117,13 @@ invalidItem("flowchart",{edges:[{id:"e1",from:"n1",to:"n3",label:""}]});
 invalidItem("place-value",{base:2,digits:"102"});
 invalidItem("bio-organs",{system:"respiratory",labels:["stomach"]});
 invalidItem("geo-relief",{points:[{id:"a",distance:0,height:25,label:""},{id:"b",distance:0,height:100,label:""}]});
+invalidItem("ru-morphemes",{zeroEnding:true,segments:[
+ {id:"a",text:"дом",role:"root"},{id:"b",text:"а",role:"ending"}]});
+invalidItem("family",{people:[
+ {id:"p",name:"Родитель",parents:["c"]},{id:"c",name:"Ребёнок",parents:["p"]}]});
+invalidItem("foreign",{cards:[{id:"same",term:"cat",translation:"кот",transcription:""},
+ {id:"same",term:"dog",translation:"собака",transcription:""}]});
+
 
 
 const second=parseDocument(JSON.stringify(packDocumentInk(loaded)));
