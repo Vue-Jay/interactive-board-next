@@ -121,3 +121,23 @@
  .lektrus-atlas-timeline-count{display:none}
  .lektrus-atlas-search-results{max-height:90px}
 }
+
+/* Deep-zoom control stays small instead of covering island groups. */
+.lektrus-atlas-zoom{z-index:1;max-width:92px}
+.lektrus-atlas-zoom-slider{display:flex;flex-direction:column;gap:3px;
+ padding:5px;background:#fffefefa;border:1px solid #cbdceb;border-radius:7px;
+ font-size:10px;color:#51718c;text-align:center}
+.lektrus-atlas-zoom-slider input{width:76px;min-width:0;accent-color:#3779c2}
+.lektrus-atlas-source-note{display:flex;flex-direction:column;gap:5px;padding:8px;
+ background:#f5f9fd;border:1px solid #dbe6f2;border-radius:9px}
+.lektrus-atlas-source-note strong{font-size:11px;color:#365e82}
+.lektrus-atlas-source-note small{font-size:10px;color:#69849b;line-height:1.35}
+.lektrus-atlas-source-note label{display:flex;flex-direction:column;gap:4px;
+ font-size:10px;color:#426989}
+.lektrus-atlas-source-note select{width:100%;min-width:0;padding:6px 4px;
+ font-size:10px;color:#305c81;border:1px solid #c5d8e8;border-radius:6px;
+ background:#fff}
+.lektrus-atlas-country:hover{stroke:#cb793d}
+@media(max-width:520px){.lektrus-atlas-zoom-slider{font-size:9px;padding:3px}
+ .lektrus-atlas-zoom-slider input{width:58px}
+ .lektrus-atlas-source-note{padding:5px}}
