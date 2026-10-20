@@ -68,6 +68,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [refresh,setRefresh]=useState(0);
  const [selected,setSelected]=useState<GeoFeature|null>(null);
  const [search,setSearch]=useState("");
+ const [focusedUnit,setFocusedUnit]=useState("");
  const [directoryFilter,setDirectoryFilter]=useState("");
  const [searchAcrossYears,setSearchAcrossYears]=useState(false);
  const [historyTab,setHistoryTab]=useState<"directory"|"article"|"changes">("directory");
@@ -134,7 +135,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    ["lakes-regional",detailedGeography&&(mode==="physical"||mode==="hydrography")],
    ["cities",!detailedGeography&&mode==="cities"],
    ["cities-regional",detailedGeography&&mode==="cities"],
-   ["admin-regional",regionId!=="world"&&(mode==="political"||mode==="contour"||mode==="cities")],
+   ["admin-regional",regionId!=="world"&&!historical],
    ["regions",!detailedGeography&&(mode==="physical"||mode==="relief")],
    ["regions-regional",detailedGeography&&(mode==="physical"||mode==="relief")],
    ["elevation",!detailedGeography&&(mode==="physical"||mode==="relief")],
@@ -242,6 +243,19 @@ function AtlasMap({diagram:d,onChange}:Props){
  const provinceLabels=provincePaths.map(f=>({...f,anchor:featureLabelAnchor(f.feature)}))
   .filter(f=>f.anchor&&f.anchor.area*scale*scale>160&&visiblePoint(f.anchor?[f.anchor.x,f.anchor.y]:null))
   .sort((a,b)=>(b.anchor?.area??0)-(a.anchor?.area??0)).slice(0,70);
+ const subregions=useMemo(()=>{
+  if(!administrative||regionId==="world")return [];
+  const [west,south,east,north]=selectedRegion.bounds;
+  return administrative.features.flatMap((feature,i)=>{
+   const point=featureMapPoint(feature);if(!point)return [];
+   const lon=point[0]/2.5-180,lat=90-point[1]/2.5;
+   if(lon<west||lon>east||lat<south||lat>north)return [];
+   const name=geoFeatureName(feature);if(name==="Объект без названия")return [];
+   const key=String(feature.properties?.adm1_code??feature.properties?.ADM1_CODE??
+    feature.properties?.iso_3166_2??feature.properties?.name??i);
+   return [{key,name,feature}];
+  }).sort((a,b)=>a.name.localeCompare(b.name,"ru")).slice(0,450);
+ },[administrative,selectedRegion,regionId]);
  const changes=useMemo(()=>source&&previous?summariseNamedChanges(previous,source):null,[source,previous]);
  const userMarkers=d.markers.filter(marker=>!historical||
   Math.abs(marker.year-snapshot.year)<=Math.max(10,(historicalSnapshots[Math.min(index+1,historicalSnapshots.length-1)].year-
@@ -356,11 +370,11 @@ function AtlasMap({diagram:d,onChange}:Props){
    fromX:position.x,fromY:position.y}:null;
  };
  const reset=()=>{const camera=atlasRegionCamera(selectedRegion);setScale(camera.scale);setPosition(camera.position);setSelected(null);setCoord(null)};
- const changeRegion=(id:string)=>{setRegionId(id);onChange?.({...d,regionId:id})};
+ const changeRegion=(id:string)=>{setRegionId(id);setFocusedUnit("");onChange?.({...d,regionId:id})};
  const paintProvince=(feature:GeoFeature)=>{
   if(mode!=="contour"||!paintRegions||dragged.current)return;
-  const key="region:"+String(feature.properties?.ADM1_CODE||feature.properties?.NAME_RU||
-   feature.properties?.NAME||geoFeatureName(feature));
+  const key="region:"+String(feature.properties?.adm1_code||feature.properties?.ADM1_CODE||feature.properties?.iso_3166_2||
+   feature.properties?.name_ru||feature.properties?.name||geoFeatureName(feature));
   savePaint({...painted,[key]:paintColor});
  };
  const selectFeature=(feature:GeoFeature,layer:string)=>{
@@ -487,13 +501,14 @@ function AtlasMap({diagram:d,onChange}:Props){
       </g>
       {provincePaths.length>0&&<g className="lektrus-atlas-admin1" stroke="#a0a7a5"
        strokeWidth=".48" vectorEffect="non-scaling-stroke"
-       pointerEvents={mode==="contour"&&paintRegions?"visiblePainted":"none"}>
+       pointerEvents={mode==="contour"&&paintRegions||mode==="political"?"visiblePainted":"none"}>
        {provincePaths.map(f=>{
-        const key="region:"+String(f.feature.properties?.ADM1_CODE||f.feature.properties?.NAME_RU||
-         f.feature.properties?.NAME||geoFeatureName(f.feature));
+        const key="region:"+String(f.feature.properties?.adm1_code||f.feature.properties?.ADM1_CODE||f.feature.properties?.iso_3166_2||
+         f.feature.properties?.name_ru||f.feature.properties?.name||geoFeatureName(f.feature));
         return <path key={"province-"+f.id} d={f.path}
-         fill={mode==="contour"&&paintRegions?(painted[key]??"#fafcfb"):"none"}
-         onClick={()=>paintProvince(f.feature)}><title>{geoFeatureName(f.feature)}</title></path>;
+         fill={mode==="contour"&&paintRegions?(painted[key]??"#fafcfb"):mode==="political"?"transparent":"none"}
+         onClick={e=>{e.stopPropagation();if(mode==="political")selectFeature(f.feature,"Административная единица");
+          else paintProvince(f.feature)}}><title>{geoFeatureName(f.feature)}</title></path>;
        })}
       </g>}
       {d.showLabels&&provincePaths.length>0&&mode==="political"&&scale>=4&&
