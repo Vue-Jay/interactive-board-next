@@ -256,6 +256,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  };
  const reset=()=>{setScale(1);setPosition({x:0,y:0});setSelected(null);setCoord(null)};
  const selectFeature=(feature:GeoFeature,layer:string)=>{
+  if(historical)setHistoryTab("article");
   if(dragged.current||mode==="contour")return;
   setSelected(feature);setSelectedLayer(layer);setSelectedMarker(null);
  };
@@ -268,6 +269,30 @@ function AtlasMap({diagram:d,onChange}:Props){
   }
   selectFeature(feature,historical?"Историческая территория":"Государство");
  };
+ const jumpToPeriod=(year:number,raw?:string)=>{
+  if(raw)pendingJump.current={year,raw};
+  const next=nearestSnapshotIndex(year);
+  if(index===next&&raw){
+   const feature=source?.features.find(f=>normalizeHistoricalName(String(f.properties?.NAME??""))===
+    normalizeHistoricalName(raw));
+   if(feature)focusFeature(feature);
+   return;
+  }
+  setIndex(next);setSelected(null);setHistoryTab(raw?"article":"directory");
+ };
+ useEffect(()=>{
+  const target=pendingJump.current;
+  if(!target||!source||target.year!==snapshot.year)return;
+  const match=source.features.find(f=>normalizeHistoricalName(String(f.properties?.NAME??""))===
+   normalizeHistoricalName(target.raw));
+  if(!match)return;
+  pendingJump.current=null;
+  const point=featureMapPoint(match);
+  if(point){const zoom=2.35;setScale(zoom);
+   setPosition({x:Math.max(-450*(zoom-1),Math.min(450*(zoom-1),-(point[0]-450)*zoom)),
+    y:Math.max(-225*(zoom-1),Math.min(225*(zoom-1),-(point[1]-225)*zoom))})}
+  setSelected(match);setSelectedLayer("Историческая территория");setHistoryTab("article");
+ },[source,snapshot.year]);
  const onMode=(value:AtlasMode)=>{
   if(!availableModes.some(m=>m.id===value))return;
   setMode(value);setSelected(null);setSearch("");setSelectedMarker(null);
@@ -284,11 +309,11 @@ function AtlasMap({diagram:d,onChange}:Props){
   if(!point)return;
   const s=Math.max(2,scale);
   setPosition(normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s));
-  setScale(s);setSelected(f);setSelectedLayer(mode==="cities"?"Населённый пункт":
+  setScale(s);setSelected(f);if(historical)setHistoryTab("article");setSelectedLayer(mode==="cities"?"Населённый пункт":
    mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство");
   setSelectedMarker(null);
  };
- return <div className="lektrus-atlas" aria-label={d.title}
+ return <div className={"lektrus-atlas "+(historical?"lektrus-atlas-history":"")} aria-label={d.title}
   onPointerDown={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onPointerUp={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onClick={e=>{if(!objectMoveMode)e.stopPropagation()}} onWheel={e=>{if(objectMoveMode)return;e.stopPropagation();
@@ -424,13 +449,13 @@ function AtlasMap({diagram:d,onChange}:Props){
      <button type="button" onClick={()=>savePaint({})}>Очистить все заливки</button>
      <small>Выберите цвет и нажимайте на территории. Закраска сохраняется вместе с объектом доски.</small>
     </div>}
-    {mode!=="contour"&&<label>Поиск объектов
+    {mode!=="contour"&&!historical&&<label>Поиск объектов
      <input value={search} onChange={e=>setSearch(e.target.value)}
       placeholder={mode==="cities"?"Название города":mode==="hydrography"?"Река или озеро":
        mode==="relief"?"Горы, пустыня, вершина":"Страна или территория"}/>
      {search.trim()&&<small>Найдено: {filteredCount}</small>}
     </label>}
-    {search.trim()&&mode!=="contour"&&<div className="lektrus-atlas-search-results">
+    {search.trim()&&mode!=="contour"&&!historical&&<div className="lektrus-atlas-search-results">
      {results.length?results.map((f,i)=><button key={i} type="button"
       onClick={()=>focusFeature(f)}>{geoFeatureName(f)}</button>):
       <small>Совпадений нет. Названия в данных могут быть на английском.</small>}
