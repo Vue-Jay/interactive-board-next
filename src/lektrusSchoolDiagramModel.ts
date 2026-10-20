@@ -68,7 +68,7 @@ export function isSchoolDiagram(value:unknown):value is SchoolDiagram{
      number((m as {temperature:number}).temperature,-70,60)&&
      number((m as {precipitation:number}).precipitation,0,1000));
   case "timeline":
-   return typeof d.showEra==="boolean"&&Array.isArray(d.events)&&d.events.length>=2&&d.events.length<=8&&
+   return typeof d.showEra==="boolean"&&Array.isArray(d.events)&&d.events.length<=8&&
     d.events.every((v:unknown)=>!!v&&typeof v==="object"&&
      label((v as {id:unknown}).id,64)&&label((v as {label:unknown}).label,90)&&
      (v as {label:string}).label.trim().length>0&&

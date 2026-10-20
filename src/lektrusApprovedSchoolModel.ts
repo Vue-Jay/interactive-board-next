@@ -37,14 +37,14 @@ export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiag
  if(d.kind==="morphemes"){
   if(typeof d.showMarks!=="boolean"||typeof d.showBase!=="boolean"||
    typeof d.zeroEnding!=="boolean"||!Array.isArray(d.segments)||
-   d.segments.length<1||d.segments.length>10)return false;
+   d.segments.length>10)return false;
   const entries=d.segments as Morpheme[];
   if(entries.some(m=>!m||!okString(m.id,64)||!okString(m.text,24)||
    !Object.prototype.hasOwnProperty.call(morphemeNames,m.role))||
    new Set(entries.map(m=>m.id)).size!==entries.length)return false;
   const roots=entries.filter(m=>m.role==="root");
   const endings=entries.filter(m=>m.role==="ending");
-  if(!roots.length||roots.length>2||endings.length>1||
+  if((entries.length>0&&!roots.length)||roots.length>2||endings.length>1||
    (endings.length>0&&d.zeroEnding))return false;
   // Prefixes precede roots, suffixes/ending follow; postfix after inflexion.
   const firstRoot=entries.findIndex(m=>m.role==="root");
@@ -60,7 +60,7 @@ export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiag
  }
  if(d.kind==="family-tree"){
   if(typeof d.showGenerations!=="boolean"||!Array.isArray(d.people)||
-   d.people.length<1||d.people.length>12)return false;
+   d.people.length>12)return false;
   const people=d.people as FamilyPerson[];
   if(people.some(p=>!p||!okString(p.id,64)||!okString(p.name,35)||
    !Array.isArray(p.parents)||p.parents.length>2||
@@ -84,7 +84,7 @@ export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiag
  if(d.kind==="flashcards"){
   if(typeof d.showTranslation!=="boolean"||typeof d.showTranscription!=="boolean"||
    !["foreign-first","russian-first"].includes(d.direction as string)||
-   !Array.isArray(d.cards)||d.cards.length<1||d.cards.length>30)return false;
+   !Array.isArray(d.cards)||d.cards.length>30)return false;
   const cards=d.cards as LanguageCard[];
   return cards.every(c=>c&&okString(c.id,64)&&okString(c.term,65)&&
    okString(c.translation,80)&&okString(c.transcription,75,true))&&

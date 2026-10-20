@@ -44,19 +44,19 @@ export function validateRussianSchoolDiagram(value:unknown):value is RussianScho
  const v=value as Record<string,unknown>;
  if(!text(v.title,120))return false;
  if(v.kind==="morphology"){
-  if(!text(v.word,65)||!text(v.sentence,220,true)||
+  if(!text(v.word,65,true)||!text(v.sentence,220,true)||
    !Object.prototype.hasOwnProperty.call(posNames,v.partOfSpeech as string)||
    typeof v.showAnalysis!=="boolean"||!Array.isArray(v.rows)||
-   v.rows.length<1||v.rows.length>18)return false;
+   v.rows.length>18)return false;
   const rows=v.rows as MorphologyRow[];
   return unique(rows)&&rows.every(r=>r&&id(r.id)&&
    Object.prototype.hasOwnProperty.call(traitGroupNames,r.group)&&
    text(r.feature,52)&&text(r.value,90));
  }
  if(v.kind==="phonetics"){
-  if(!text(v.word,36)||typeof v.showSounds!=="boolean"||
+  if(!text(v.word,36,true)||typeof v.showSounds!=="boolean"||
    typeof v.showCharacteristics!=="boolean"||!Array.isArray(v.letters)||
-   v.letters.length<1||v.letters.length>24)return false;
+   v.letters.length>24)return false;
   const letters=v.letters as PhoneticLetter[];
   if(!unique(letters)||letters.some(l=>!l||!id(l.id)||
    !text(l.letter,4)||!Array.isArray(l.sounds)||l.sounds.length>2||
@@ -69,7 +69,7 @@ export function validateRussianSchoolDiagram(value:unknown):value is RussianScho
  }
  if(v.kind==="orthography"){
   if(typeof v.showExplanation!=="boolean"||!Array.isArray(v.questions)||
-   v.questions.length<1||v.questions.length>20)return false;
+   v.questions.length>20)return false;
   const questions=v.questions as OrthographyQuestion[];
   return unique(questions)&&questions.every(q=>q&&id(q.id)&&text(q.prompt,180)&&
    q.prompt.split("□").length===2&&Array.isArray(q.options)&&

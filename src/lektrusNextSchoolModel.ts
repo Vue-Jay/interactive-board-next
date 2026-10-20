@@ -33,17 +33,17 @@ export function validNextSchoolDiagram(value:unknown):value is NextSchoolDiagram
  const d=value as Record<string,unknown>;
  if(!label(d.title,120))return false;
  if(d.kind==="syntax"){
-  if(typeof d.showMarks!=="boolean"||!Array.isArray(d.words)||d.words.length<1||d.words.length>14)return false;
+  if(typeof d.showMarks!=="boolean"||!Array.isArray(d.words)||d.words.length>14)return false;
   const words=d.words as {id:string;text:string;role:string}[];
   return unique(words)&&words.every(w=>w&&label(w.id,64)&&label(w.text,28)&&
    Object.hasOwn(grammarRoles,w.role));
  }
  if(d.kind==="flowchart"){
   if(typeof d.showEdgeLabels!=="boolean"||!Array.isArray(d.nodes)||!Array.isArray(d.edges)||
-   d.nodes.length<2||d.nodes.length>7||d.edges.length>18)return false;
+   d.nodes.length>7||d.edges.length>18)return false;
   const nodes=d.nodes as AlgorithmNode[],edges=d.edges as AlgorithmEdge[];
   if(!unique(nodes)||!unique(edges))return false;
-  if(nodes.filter(n=>n.kind==="start").length!==1||nodes.filter(n=>n.kind==="end").length!==1)return false;
+  if(nodes.length>0&&(nodes.filter(n=>n.kind==="start").length!==1||nodes.filter(n=>n.kind==="end").length!==1))return false;
   if(!nodes.every(n=>n&&label(n.id,64)&&label(n.label,48)&&Object.hasOwn(flowNodeNames,n.kind)&&
    [-1,0,1].includes(n.lane)))return false;
   const known=new Set(nodes.map(n=>n.id));
@@ -58,6 +58,7 @@ export function validNextSchoolDiagram(value:unknown):value is NextSchoolDiagram
     !outgoing.some(e=>e.label==="да")||!outgoing.some(e=>e.label==="нет")))return false;
    if(node.kind!=="decision"&&outgoing.length>1)return false;
   }
+  if(nodes.length===0)return true;
   // Every node must be reachable from the start. Loops are allowed.
   const start=nodes.find(n=>n.kind==="start")!.id,visited=new Set([start]),queue=[start];
   while(queue.length){const current=queue.shift()!;for(const edge of edges.filter(e=>e.from===current))
@@ -66,8 +67,8 @@ export function validNextSchoolDiagram(value:unknown):value is NextSchoolDiagram
  }
  if(d.kind==="place-value"){
   if(!baseOptions.includes(d.base as 2|8|10|16)||typeof d.showPowers!=="boolean"||
-   typeof d.digits!=="string"||d.digits.length<1||d.digits.length>10)return false;
-  return /^[0-9A-F]+$/.test(d.digits)&&
+   typeof d.digits!=="string"||d.digits.length>10)return false;
+  return (d.digits===""||/^[0-9A-F]+$/.test(d.digits))&&
    [...d.digits].every(v=>parseInt(v,16)<(d.base as number));
  }
  return false;
