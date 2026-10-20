@@ -71,7 +71,9 @@ function AtlasMap({diagram:d}:Props){
  const filteredCount=shapes.filter(s=>s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"))).length;
  const onMove=(e:ReactPointerEvent<SVGSVGElement>)=>{
   const p=pointer.current;if(!p||p.id!==e.pointerId)return;
-  setPosition({x:p.fromX+(e.clientX-p.x),y:p.fromY+(e.clientY-p.y)});
+  const bounds=e.currentTarget.getBoundingClientRect();
+  setPosition({x:p.fromX+(e.clientX-p.x)*900/Math.max(1,bounds.width),
+   y:p.fromY+(e.clientY-p.y)*450/Math.max(1,bounds.height)});
  };
  const reset=()=>{setScale(1);setPosition({x:0,y:0});setSelected(null)};
  const showCountry=(feature:GeoFeature)=>{if(mode==="contour")return;setSelected(feature);setEventIndex(null)};
