@@ -183,6 +183,8 @@ assert.equal(validAtlasDocument({...atlas,borderView:"invalid"}),false);
 const geoJs=ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const geoExports={};
 new Function("exports","require",geoJs)(geoExports,()=>({historicalSnapshots}));
+assert.equal(geoExports.featureSourceFacts(moscow).find(f=>f.label==="Категория")?.value,"Столица государства");
+assert.equal(geoExports.featureSourceFacts(kazan).find(f=>f.label==="Категория")?.value,"Административный центр региона");
 const river={type:"Feature",properties:{NAME:"Sample river"},geometry:{
  type:"LineString",coordinates:[[30,60],[40,60]]
 }};
