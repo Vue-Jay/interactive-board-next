@@ -68,6 +68,13 @@ const docs=[
    {id:"e3",from:"n3",to:"n4",label:"да"},{id:"e4",from:"n3",to:"n2",label:"нет"}]}}),
  item("place-value","graph",{graphFigureId:"info-place-value",graphPurpose:"geometry",schoolDiagram:{
   kind:"place-value",title:"Разрядная таблица",showPowers:true,base:16,digits:"2AF"}}),
+ item("bio-organs","graph",{graphFigureId:"bio-organ-systems",graphPurpose:"geometry",schoolDiagram:{
+  kind:"organs",title:"Пищеварительная система человека",system:"digestive",
+  labels:["mouth","esophagus","stomach","liver","pancreas","small-intestine","large-intestine"]}}),
+ item("geo-relief","graph",{graphFigureId:"geo-relief-profile",graphPurpose:"geometry",schoolDiagram:{
+  kind:"relief",title:"Профиль рельефа",showGrid:true,showLabels:true,
+  points:[{id:"a",distance:0,height:120,label:"Начало"},{id:"b",distance:12,height:280,label:"Вершина"},
+   {id:"c",distance:25,height:-50,label:"Ниже уровня моря"}]}}),
  item("fraction","fraction",{fractionNumerator:1,fractionDenominator:3,fractionMode:"circle"}),
  item("table","table",{tableRows:2,tableCols:2,tableCells:["a","b","c","d"],
   tableHeader:true,tableAlign:"right",tableStripe:true,tableCompact:true})
@@ -98,6 +105,9 @@ invalidItem("hist-timeline",{events:[{id:"a",year:0,label:"Ошибка"},{id:"b
 invalidItem("syntax",{words:[{id:"w",text:"",role:"subject"}]});
 invalidItem("flowchart",{edges:[{id:"e1",from:"n1",to:"n3",label:""}]});
 invalidItem("place-value",{base:2,digits:"102"});
+invalidItem("bio-organs",{system:"respiratory",labels:["stomach"]});
+invalidItem("geo-relief",{points:[{id:"a",distance:0,height:25,label:""},{id:"b",distance:0,height:100,label:""}]});
+
 
 const second=parseDocument(JSON.stringify(packDocumentInk(loaded)));
 assert.deepEqual(second,loaded,"board must be stable after repeated reopening");
