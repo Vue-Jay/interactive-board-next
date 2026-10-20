@@ -18,13 +18,13 @@ function MorphemeGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kin
   }
  };
  const coords=d.segments.map((s,i)=>{const cx=x,w=widths[i]*ratio;x+=w;return {s,i,x:cx,w}});
- const left=coords[0]?.x??120,right=coords[coords.length-1];
+ const left=coords[0]?.x??120;
  const baseEnd=[...coords].reverse().find(v=>v.s.role!=="ending"&&v.s.role!=="postfix");
  return <svg viewBox="0 0 900 500" role="img" aria-label={d.title} className="lektrus-school-svg">
   <rect width="900" height="500" rx="20" fill="#fcfdff"/>
   <text x="450" y="48" fill="#25486d" textAnchor="middle" fontWeight="750" fontSize="24">{d.title}</text>
   <text x="450" y="99" textAnchor="middle" fill="#7992a9" fontSize="15">Разбор слова по составу</text>
-  {coords.map(({s,i,x:x0,w})=><g key={s.id}>
+  {coords.map(({s,x:x0,w})=><g key={s.id}>
    <text x={x0+w/2} y="273" textAnchor="middle" fill="#233e5c" fontWeight="700" fontSize={Math.min(33,36*ratio+5)}>{s.text}</text>
    {d.showMarks&&sign(s.role,x0,w)}
    {d.showMarks&&<text x={x0+w/2} y="324" fontSize="12" textAnchor="middle" fill="#718eaa">{morphemeNames[s.role]}</text>}
