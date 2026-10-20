@@ -70,6 +70,17 @@ for(const expected of docs){
   assert.deepEqual(actual[key],value,expected.id+"."+key+" must survive reopen");
  }
 }
+// Damaged scientific content must be rejected rather than silently altered.
+const invalidItem=(id,patch)=>{
+ const sample=structuredClone(docs.find(v=>v.id===id));
+ Object.assign(sample.schoolDiagram,patch);
+ const payload={version:1,title:"Неверная схема",view:{x:0,y:0,zoom:1},items:[sample]};
+ assert.throws(()=>parseDocument(JSON.stringify(payload)),/Повреждена предметная учебная схема/);
+};
+invalidItem("bio-cell",{cell:"animal",visible:["chloroplast"]});
+invalidItem("bio-food",{organisms:[{id:"a",name:"Трава",role:"producer"},{id:"a",name:"Сова",role:"consumer"}]});
+invalidItem("geo-climate",{months:Array.from({length:12},()=>({temperature:120,precipitation:23}))});
+invalidItem("hist-timeline",{events:[{id:"a",year:0,label:"Ошибка"},{id:"b",year:100,label:"Второе"}]});
 const second=parseDocument(JSON.stringify(packDocumentInk(loaded)));
 assert.deepEqual(second,loaded,"board must be stable after repeated reopening");
 const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
