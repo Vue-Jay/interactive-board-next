@@ -392,6 +392,17 @@ export function featureMapPoint(feature:GeoFeature):GeoPosition|null{
 }
 /** Only output values present in a source property; do not infer elevations,
  * population, capital status or administrative control from a feature's name. */
+/** Only standard category values are translated; unknown values are retained
+ * as source metadata rather than replaced by an imagined classification. */
+const localizedFeatureClasses:Record<string,string>={
+ "Admin-0 capital":"Столица государства",
+ "Admin-0 capital alt":"Альтернативная столица государства",
+ "Admin-0 region capital":"Столица территории",
+ "Admin-1 capital":"Административный центр региона",
+ "Admin-1 region capital":"Административный центр региона",
+ "Populated place":"Населённый пункт",
+ "Scientific station":"Научная станция"
+};
 export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value:string}>{
  const p=feature.properties??{};
  const fields:[string,string][]=[
@@ -405,7 +416,15 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
   const value=p[key];
   if((typeof value==="string"&&value.trim()!==""||
    typeof value==="number"&&Number.isFinite(value))&&!seen.has(label)){
-   result.push({label,value:String(value)});seen.add(label);
+   let display=String(value);
+   if(key==="FEATURECLA"||key==="FEATURECLASS")
+    display=localizedFeatureClasses[display]??display;
+   if((key==="ADM0NAME"||key==="SOVEREIGNT")&&typeof p.ISO_A2==="string"&&
+    /^[A-Z]{2}$/.test(p.ISO_A2)){
+    const translated=russianCountryNames.of(p.ISO_A2);
+    if(translated&&translated!==p.ISO_A2)display=translated;
+   }
+   result.push({label,value:display});seen.add(label);
   }
  }
  return result;
