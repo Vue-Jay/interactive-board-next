@@ -432,17 +432,17 @@ function AtlasMap({diagram:d,onChange}:Props){
    setCoord({lon:Math.round((p.x/900*360-180)*100)/100,
     lat:Math.round((90-p.y/450*180)*100)/100});
  };
- const focusFeature=(f:GeoFeature)=>{
+ const focusFeature=(f:GeoFeature,explicitLayer?:string)=>{
   const bounds=featureFocusBounds(f);
   const point=bounds?[bounds.x,bounds.y]:featureMapPoint(f);
   if(!point)return;
   const target=bounds&&bounds.width+bounds.height>0?
    Math.min(720/Math.max(bounds.width,.005),340/Math.max(bounds.height,.005)):
    mode==="cities"?48:4096;
-  const s=clamp(Math.max(2,scale,target),1,MAX_ATLAS_ZOOM);
+  const s=clamp(Math.max(2,target),1,MAX_ATLAS_ZOOM);
   setPosition(normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s));
-  setScale(s);setSelected(f);if(historical)setHistoryTab("article");setSelectedLayer(mode==="cities"?"Населённый пункт":
-   mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство");
+  setScale(s);setSelected(f);if(historical)setHistoryTab("article");setSelectedLayer(explicitLayer??(mode==="cities"?"Населённый пункт":
+   mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство"));
   setSelectedMarker(null);
  };
  return <div className={"lektrus-atlas "+(historical?"lektrus-atlas-history":"")} aria-label={d.title}
@@ -647,6 +647,15 @@ function AtlasMap({diagram:d,onChange}:Props){
        {atlasRegions.filter(region=>region.group===group).map(region=><option key={region.id} value={region.id}>{region.title}</option>)}
       </optgroup>)}
      </select>
+     {subregions.length>0&&!historical&&<label className="lektrus-atlas-subregion">
+      Административные единицы региона
+      <select aria-label="Административная единица на карте" value={focusedUnit}
+       onChange={e=>{const match=subregions.find(f=>f.key===e.target.value);
+        setFocusedUnit(e.target.value);if(match)focusFeature(match.feature,"Административная единица")}}>
+       <option value="">Выберите для приближения</option>
+       {subregions.map(f=><option key={f.key} value={f.key}>{f.name}</option>)}
+      </select>
+     </label>}
      <small>{regionId==="russia"||regionId==="rf-far-east"?"Россия пересекает 180-й меридиан, части её территории представлены у обоих краёв мировой проекции.":
       "Регион изменяет область просмотра, но не подменяет географические границы."}</small>
     </div>
