@@ -31,7 +31,7 @@ export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
     <button type="button" disabled={index===historicalSnapshots.length-1}
      onClick={()=>patch({year:historicalSnapshots[index+1].year})}>Позже ›</button>
    </div>
-   <p className="lektrus-school-hint">Доступны {historicalSnapshots.length} датированных картографических снимков от древних эпох до 2010 года. Данные за 2011–2026 годы отсутствуют в историческом источнике и не подменяются современным слоем. Каждый снимок имеет самостоятельные границы. В промежутках не строятся вымышленные границы и не предполагается непрерывная точность.</p>
+   <p className="lektrus-school-hint">Доступны {historicalSnapshots.length} датированных картографических снимков от древних эпох до современного обзорного слоя 2026 года. Данные за 2011–2026 годы отсутствуют в историческом источнике и не подменяются современным слоем. Исторические снимки имеют самостоятельные границы; запись 2026 года показывает современный источник Natural Earth, не подтверждает состояние границ на конкретную дату. В промежутках не строятся вымышленные границы и не предполагается непрерывная точность.</p>
    <p className="lektrus-school-hint">События добавляются преподавателем вручную в разделе маркеров ниже. Автоматических подборок событий нет.</p>
   </>}
   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showGrid}
