@@ -970,7 +970,7 @@ function AtlasMap({diagram:d,onChange}:Props){
      <div className="lektrus-atlas-mineral-legend">{mineralTypes.map(item=><div key={item.name}>
       <span style={{background:item.color}}/>{item.name}</div>)}</div>
      <small>Историческая база USGS: покрытие за пределами США неполное.
-      Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются.
+      Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются. Основа каталога USGS включает исторические сведения и не является актуальным кадастром на 2026 год.
       Показываются только месторождения с распознаваемым типом сырья.</small>
      <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
       target="_blank" rel="noopener noreferrer">Исходная база USGS и метаданные ↗</a>
@@ -979,6 +979,8 @@ function AtlasMap({diagram:d,onChange}:Props){
      <strong>Обозначения населённых пунктов</strong>
      <small>{!roadsAvailable?"Приблизьте к городу, чтобы появились основные дороги.":
       infrastructureError||"Основные дороги: OpenStreetMap (локальные данные, не навигационная карта)."}</small>
+     <a href="https://www.openstreetmap.org/copyright" target="_blank"
+      rel="noopener noreferrer">© участники OpenStreetMap, лицензия ODbL ↗</a>
      <label className="lektrus-atlas-city-filter">Тип населённого пункта
       <select aria-label="Категория городов" value={cityCategory}
        onChange={e=>{const value=e.target.value as CityCategory;
