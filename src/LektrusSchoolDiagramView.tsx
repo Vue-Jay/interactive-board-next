@@ -3,6 +3,7 @@ import {months,organelleTitles,prettyYear} from "./lektrusSchoolDiagramModel";
 import LektrusNextSchoolView from "./LektrusNextSchoolView";
 import LektrusFurtherSchoolView from "./LektrusFurtherSchoolView";
 import LektrusApprovedSchoolView from "./LektrusApprovedSchoolView";
+import LektrusRussianSchoolView from "./LektrusRussianSchoolView";
 
 type Props={diagram:SchoolDiagram};
 const trim=(s:string,n=20)=>s.length>n?s.slice(0,n-1)+"…":s;
@@ -167,5 +168,6 @@ export default function LektrusSchoolDiagramView({diagram}:Props){
   case "syntax":case "flowchart":case "place-value":return <LektrusNextSchoolView diagram={diagram}/>;
   case "organs":case "relief":return <LektrusFurtherSchoolView diagram={diagram}/>;
   case "morphemes":case "family-tree":case "flashcards":return <LektrusApprovedSchoolView diagram={diagram}/>;
+  case "morphology":case "phonetics":case "orthography":return <LektrusRussianSchoolView diagram={diagram}/>;
  }
 }
