@@ -28,6 +28,8 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [baseError,setBaseError]=useState("");
  const [previous,setPrevious]=useState<GeoCollection|null>(null);
  const [rivers,setRivers]=useState<GeoCollection|null>(null);
+ const [marine,setMarine]=useState<GeoCollection|null>(null);
+ const [physicalLabels,setPhysicalLabels]=useState<GeoCollection|null>(null);
  const [lakes,setLakes]=useState<GeoCollection|null>(null);
  const [cities,setCities]=useState<GeoCollection|null>(null);
  const [regions,setRegions]=useState<GeoCollection|null>(null);
@@ -119,14 +121,16 @@ function AtlasMap({diagram:d,onChange}:Props){
    ["elevation",!detailedGeography&&(mode==="physical"||mode==="relief")],
    ["elevation-regional",detailedGeography&&(mode==="physical"||mode==="relief")],
    ["glaciers",!detailedGeography&&(mode==="physical"||mode==="relief")],
-   ["glaciers-regional",detailedGeography&&(mode==="physical"||mode==="relief")]
+   ["glaciers-regional",detailedGeography&&(mode==="physical"||mode==="relief")],
+   ["marine",mode==="physical"||mode==="hydrography"],
+   ["physical-labels",mode==="physical"||mode==="relief"]
   ];
   Promise.all([main,before]).then(async([geo,prev])=>{
    if(!active)return;
    setSource(geo);setSourceYear(snapshot.year);setPrevious(prev);setLoading(false);
    const requested=thematic.filter(([,needed])=>needed);
    const result=await Promise.allSettled(requested.map(([layer])=>loadAtlasLayer(layer as
-    "rivers"|"rivers-regional"|"lakes"|"lakes-regional"|"cities"|"cities-regional"|"admin-regional"|"regions"|"regions-regional"|"elevation"|"elevation-regional"|"glaciers"|"glaciers-regional")));
+    "rivers"|"rivers-regional"|"lakes"|"lakes-regional"|"cities"|"cities-regional"|"admin-regional"|"regions"|"regions-regional"|"elevation"|"elevation-regional"|"glaciers"|"glaciers-regional"|"marine"|"physical-labels")));
    if(!active)return;
    const missing:string[]=[];
    const found=new Map<string,GeoCollection>();
@@ -136,6 +140,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     else missing.push(layer);
    });
    setRivers(found.get("rivers-regional")??found.get("rivers")??null);
+   setMarine(found.get("marine")??null);setPhysicalLabels(found.get("physical-labels")??null);
    setLakes(found.get("lakes-regional")??found.get("lakes")??null);
    setCities(found.get("cities-regional")??found.get("cities")??null);
    setAdministrative(found.get("admin-regional")??null);
@@ -198,10 +203,26 @@ function AtlasMap({diagram:d,onChange}:Props){
   .filter(v=>v.path)||[],[regions]);
  const ice=useMemo(()=>glaciers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f}))
   .filter(v=>v.path)||[],[glaciers]);
+ const marineAreas=useMemo(()=>marine?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.08:.5,viewport),feature:f})).filter(f=>f.path)||[],[marine,detailedGeography,viewport]);
+ const marineNames=useMemo(()=>marine?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f})).filter(f=>f.point)||[],[marine]);
+ const natureNames=useMemo(()=>physicalLabels?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f})).filter(f=>f.point)||[],[physicalLabels]);
  const peakPoints=useMemo(()=>elevations?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f}))
   .filter(v=>v.point)||[],[elevations]);
  const cityPoints=useMemo(()=>cities?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f}))
   .filter(v=>v.point)||[],[cities]);
+ // Clip dense regional point layers to the actual visible world rectangle.
+ const visibleWorld={left:450+(-450-position.x)/scale,right:450+(450-position.x)/scale,
+  top:225+(-225-position.y)/scale,bottom:225+(225-position.y)/scale};
+ const visiblePoint=(pt:readonly number[]|null|undefined)=>!!pt&&
+  pt[0]>=visibleWorld.left-12/scale&&pt[0]<=visibleWorld.right+12/scale&&
+  pt[1]>=visibleWorld.top-12/scale&&pt[1]<=visibleWorld.bottom+12/scale;
+ const shownCities=cityPoints.filter(f=>visiblePoint(f.point));
+ const shownPeaks=peakPoints.filter(f=>visiblePoint(f.point));
+ const shownMarineNames=marineNames.filter(f=>visiblePoint(f.point));
+ const shownNatureNames=natureNames.filter(f=>visiblePoint(f.point));
+ const provinceLabels=provincePaths.map(f=>({...f,anchor:featureLabelAnchor(f.feature)}))
+  .filter(f=>f.anchor&&f.anchor.area*scale*scale>160&&visiblePoint(f.anchor?[f.anchor.x,f.anchor.y]:null))
+  .sort((a,b)=>(b.anchor?.area??0)-(a.anchor?.area??0)).slice(0,70);
  const changes=useMemo(()=>source&&previous?summariseNamedChanges(previous,source):null,[source,previous]);
  const userMarkers=d.markers.filter(marker=>!historical||
   Math.abs(marker.year-snapshot.year)<=Math.max(10,(historicalSnapshots[Math.min(index+1,historicalSnapshots.length-1)].year-
@@ -216,8 +237,9 @@ function AtlasMap({diagram:d,onChange}:Props){
   normalizeHistoricalName(name)===normalizeHistoricalName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
  const namedFeatures=mode==="cities"?cityPoints.map(f=>f.feature):
-  mode==="relief"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature)]:
-  mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[])]:
+  mode==="relief"||mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature)]:
+  mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[]),...marineNames.map(f=>f.feature)]:
+  mode==="political"?[...mapSourceFeatures,...(administrative?.features??[])]:
   [...mapSourceFeatures,...(modernBorders?tinyPoints.map(p=>p.feature):[])];
  const directoryEntries=useMemo(()=>historical?[...mapSourceFeatures.map(feature=>({name:
   !modernReference?(historicalRussianName(String(feature.properties?.NAME??""),snapshot.year)??
