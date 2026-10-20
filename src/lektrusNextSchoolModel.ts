@@ -23,9 +23,9 @@ export function isNextSchoolId(id:string|undefined):id is NextSchoolId{
 }
 export function defaultNextSchoolDiagram(id:NextSchoolId):NextSchoolDiagram{
  if(id==="ru-syntax")return {kind:"syntax",title:"Разбор предложения",showMarks:true,words:[
-  {id:"w1",text:"Маленький",role:"attribute"},
-  {id:"w2",text:"кот",role:"subject"},
-  {id:"w3",text:"спит.",role:"predicate"}]};
+  {id:"w1",text:"Маленький",role:"none"},
+  {id:"w2",text:"кот",role:"none"},
+  {id:"w3",text:"спит.",role:"none"}]};
  if(id==="info-flowchart")return {kind:"flowchart",title:"Алгоритм с условием",showEdgeLabels:true,nodes:[
   {id:"n1",kind:"start",label:"Начало",lane:0},
   {id:"n2",kind:"process",label:"Выполнить действие",lane:0},
