@@ -517,24 +517,24 @@ function AtlasMap({diagram:d,onChange}:Props){
        </g>}
       {(mode==="physical"||mode==="relief")&&<g>
        {shownPeaks.map(f=><g key={"elevation-"+f.id}
-        transform={`translate(${f.point![0]} ${f.point![1]})`}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" onClick={()=>selectFeature(f.feature,"Высотная отметка")}>
         <path d="M0 -4L4 3H-4Z" fill="#816245" stroke="#fff" strokeWidth=".7"/>
         <title>{geoFeatureName(f.feature)}</title>
        </g>)}
       </g>}
       {mode==="cities"&&<g>
-       {cityPoints.map(f=><g key={"city-"+f.id}
-        transform={`translate(${f.point![0]} ${f.point![1]})`}
+       {shownCities.map(f=><g key={"city-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" onClick={()=>selectFeature(f.feature,"Населённый пункт")}>
         <circle r={Math.max(2.5,Math.min(4.5,2.5+Number(f.feature.properties?.POP_MAX||0)/1e7))}
          fill="#c05745" stroke="#fff" strokeWidth=".8"/>
         <title>{geoFeatureName(f.feature)}</title>
        </g>)}
-       {d.showLabels&&cityPoints.filter(f=>Number(f.feature.properties?.POP_MAX||0)>=2500000)
-        .slice(0,60).map(f=><text key={"city-label-"+f.id}
-         x={f.point![0]+5} y={f.point![1]-5} fontSize="7"
-         fill="#764b3c" stroke="#fff" strokeWidth="1.7" paintOrder="stroke"
+       {d.showLabels&&shownCities.filter(f=>Number(f.feature.properties?.POP_MAX||0)>=(scale>=12?50000:scale>=5?250000:2500000))
+        .slice(0,95).map(f=><text key={"city-label-"+f.id}
+         x={f.point![0]+5/scale} y={f.point![1]-5/scale} fontSize={7/scale}
+         fill="#764b3c" stroke="#fff" strokeWidth={1.7/scale} paintOrder="stroke"
          pointerEvents="none">{geoFeatureName(f.feature)}</text>)}
       </g>}
       {historicalSmallStates.map(p=><g key={"historical-small-"+p.i}
@@ -564,7 +564,7 @@ function AtlasMap({diagram:d,onChange}:Props){
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={()=>{if(dragged.current)return;setSelectedMarker(marker.id);setSelected(null)}}
         onKeyDown={e=>{if(e.key==="Enter"){setSelectedMarker(marker.id);setSelected(null)}}}>
-        <circle r="6" fill="#426fbd" stroke="#fff" strokeWidth="2"/>
+        <circle r={6/scale} fill="#426fbd" stroke="#fff" strokeWidth={2/scale}/>
         <title>{marker.title} ({yearLabel(marker.year)})</title>
        </g>;
       })}
@@ -733,7 +733,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     <div className="lektrus-atlas-description"><strong>{mapModeTitle(mode)}</strong>
      <p>{atlasModes.find(m=>m.id===mode)?.hint}.</p>
      {mode==="physical"&&<p>Природные объекты, ледники, водная сеть и высотные отметки Natural Earth. Региональный масштаб использует подробнее проработанные реки, озёра и побережье. Сплошной цифровой модели высот нет.</p>}
-     {mode==="hydrography"&&<p>Нажмите на реку или озеро, чтобы изучить объект. Показаны крупные водотоки и озёра обзорного масштаба.</p>}
+     {mode==="hydrography"&&<p>Реки, озёра и морские акватории Natural Earth. Для регионов используется детализация 1:50 млн. Нажмите на объект или найдите его по названию.</p>}
      {mode==="relief"&&<p>Цвет обозначает географические области, а не точную высоту поверхности. Высотные отметки берутся из атрибутов источника.</p>}
      {mode==="cities"&&<p>Населённые пункты Natural Earth. В регионах доступен подробный слой городов; оценки населения могут быть устаревшими, размер точки условный.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
