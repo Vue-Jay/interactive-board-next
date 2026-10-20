@@ -51,7 +51,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const availableModes=isContourTool?atlasModesFor(scope).filter(m=>m.id==="contour"):
   atlasModesFor(scope).filter(m=>m.id!=="contour");
  const historical=scope==="history";
- useEffect(()=>{setMode(d.title==="Контурная карта"?"contour":d.mode);setIndex(nearestSnapshotIndex(d.year));setSelected(null);setEventIndex(null)},
+ useEffect(()=>{setMode(d.title==="Контурная карта"?"contour":d.mode);setIndex(nearestSnapshotIndex(d.year));setSelected(null)},
   [d.mode,d.year]);
  useEffect(()=>{
   let active=true;
@@ -346,8 +346,8 @@ function AtlasMap({diagram:d,onChange}:Props){
        const point=projectGeography(marker.lon,marker.lat);
        return <g key={marker.id} transform={`translate(${point[0]} ${point[1]})`}
         className="lektrus-atlas-event" role="button" tabIndex={0}
-        onClick={()=>{if(dragged.current)return;setSelectedMarker(marker.id);setSelected(null);setEventIndex(null)}}
-        onKeyDown={e=>{if(e.key==="Enter"){setSelectedMarker(marker.id);setSelected(null);setEventIndex(null)}}}>
+        onClick={()=>{if(dragged.current)return;setSelectedMarker(marker.id);setSelected(null)}}
+        onKeyDown={e=>{if(e.key==="Enter"){setSelectedMarker(marker.id);setSelected(null)}}}>
         <circle r="6" fill="#426fbd" stroke="#fff" strokeWidth="2"/>
         <title>{marker.title} ({yearLabel(marker.year)})</title>
        </g>;
