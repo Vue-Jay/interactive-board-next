@@ -4,7 +4,8 @@ import LektrusMapBase from "./LektrusMapBase";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
- historicalFeatureFacts,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
+historicalFeatureFacts,loadHistoricalIndex,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
+import {findHistoricalArticle,historicalRussianName,historyArticleUrl,normalizeHistoricalName} from "./lektrusHistoryEncyclopedia";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void};
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
 const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
@@ -42,6 +43,11 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [search,setSearch]=useState("");
  const [directoryOpen,setDirectoryOpen]=useState(true);
  const [directoryFilter,setDirectoryFilter]=useState("");
+ const [globalQuery,setGlobalQuery]=useState("");
+ const [historyTab,setHistoryTab]=useState<"directory"|"article"|"changes">("directory");
+ const [historyIndex,setHistoryIndex]=useState<HistoricalIndexRecord[]>([]);
+ const [indexProblem,setIndexProblem]=useState("");
+ const pendingJump=useRef<{year:number;raw:string}|null>(null);
  const [scale,setScale]=useState(1);
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
@@ -55,6 +61,13 @@ function AtlasMap({diagram:d,onChange}:Props){
  const availableModes=isContourTool?atlasModesFor(scope).filter(m=>m.id==="contour"):
   atlasModesFor(scope).filter(m=>m.id!=="contour");
  const historical=scope==="history";
+ useEffect(()=>{
+  if(!historical)return;
+  let active=true;setIndexProblem("");
+  loadHistoricalIndex().then(rows=>{if(active)setHistoryIndex(rows)})
+   .catch(error=>{if(active)setIndexProblem(error instanceof Error?error.message:String(error))});
+  return()=>{active=false};
+ },[historical,refresh]);
  useEffect(()=>{setMode(d.title==="Контурная карта"?"contour":d.mode);setIndex(nearestSnapshotIndex(d.year));setSelected(null)},
   [d.mode,d.year]);
  useEffect(()=>{
@@ -137,16 +150,40 @@ function AtlasMap({diagram:d,onChange}:Props){
  const userMarkers=d.markers.filter(marker=>!historical||
   Math.abs(marker.year-snapshot.year)<=Math.max(10,(historicalSnapshots[Math.min(index+1,historicalSnapshots.length-1)].year-
    historicalSnapshots[Math.max(0,index-1)].year)/2));
- const selectedTitle=selected?geoFeatureName(selected):"";
+ const selectedRaw=String(selected?.properties?.NAME??selected?.properties?.ADMIN??"");
+ const selectedArticle=selected&&historical&&!modernReference?
+  findHistoricalArticle(selectedRaw,snapshot.year):undefined;
+ const selectedTitle=selected?(selectedArticle?.name??geoFeatureName(selected)):"";
+ const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
+  normalizeHistoricalName(name)===normalizeHistoricalName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
  const namedFeatures=mode==="cities"?cityPoints.map(f=>f.feature):
   mode==="relief"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[])]:shapes.map(f=>f.feature);
- const directoryEntries=useMemo(()=>historical?shapes.map(s=>({name:s.name,feature:s.feature}))
+ const directoryEntries=useMemo(()=>historical?shapes.map(s=>({name:
+  !modernReference?historicalRussianName(String(s.feature.properties?.NAME??""),snapshot.year)??s.name:s.name,
+  feature:s.feature}))
   .filter(v=>v.name&&v.name!=="Объект без названия"&&v.name!=="Unknown"&&v.name!=="unknown")
-  .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],[historical,shapes]);
+  .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],[historical,shapes,modernReference,snapshot.year]);
  const visibleDirectory=directoryEntries.filter(entry=>entry.name.toLocaleLowerCase("ru")
   .includes(directoryFilter.trim().toLocaleLowerCase("ru")));
+ const globalMatches=useMemo(()=>{
+  const query=globalQuery.trim().toLocaleLowerCase("ru");
+  if(query.length<2)return [];
+  const found=new Map<string,{name:string;raw:string;years:number[]}>();
+  for(const record of historyIndex){
+   for(const raw of record.countries){
+    const title=historicalRussianName(raw,record.year)??raw;
+    if(!title.toLocaleLowerCase("ru").includes(query)&&
+     !raw.toLocaleLowerCase("en").includes(query))continue;
+    const key=normalizeHistoricalName(raw);
+    const old=found.get(key);
+    if(old)old.years.push(record.year);
+    else found.set(key,{name:title,raw,years:[record.year]});
+   }
+  }
+  return [...found.values()].sort((a,b)=>a.name.localeCompare(b.name,"ru")).slice(0,30);
+ },[globalQuery,historyIndex]);
  const results=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU")
    .includes(search.trim().toLocaleLowerCase("ru-RU"))).slice(0,18):[];
  const filteredCount=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU").includes(search.trim().toLocaleLowerCase("ru-RU"))).length:0;
