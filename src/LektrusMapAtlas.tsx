@@ -54,7 +54,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [lakes,setLakes]=useState<GeoCollection|null>(null);
  const [cities,setCities]=useState<GeoCollection|null>(null);
  const [cityResolution,setCityResolution]=useState("не загружен");
- const [minCityPopulation,setMinCityPopulation]=useState(0);
+ const [minCityPopulation,setMinCityPopulation]=useState(d.cityMinPopulation??0);
  const [regions,setRegions]=useState<GeoCollection|null>(null);
  const [administrative,setAdministrative]=useState<GeoCollection|null>(null);
  const [elevations,setElevations]=useState<GeoCollection|null>(null);
@@ -99,6 +99,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const russianView=true; // Modern map: fixed Russian Natural Earth POV.
  const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
  useEffect(()=>{setRegionId(d.regionId??"world")},[d.regionId]);
+ useEffect(()=>{setMinCityPopulation(d.cityMinPopulation??0)},[d.cityMinPopulation]);
  useEffect(()=>{const camera=atlasRegionCamera(findAtlasRegion(regionId));setScale(camera.scale);
   setPosition(camera.position);setSelected(null);setCoord(null)},[regionId]);
  const availableModes=isContourTool?atlasModesFor(scope).filter(m=>m.id==="contour"):
@@ -757,7 +758,7 @@ function AtlasMap({diagram:d,onChange}:Props){
      <strong>Обозначения населённых пунктов</strong>
      <label className="lektrus-atlas-city-filter">Численность населения
       <select aria-label="Фильтр городов по численности населения" value={minCityPopulation}
-       onChange={e=>setMinCityPopulation(Number(e.target.value))}>
+       onChange={e=>{const value=Number(e.target.value);setMinCityPopulation(value);onChange?.({...d,cityMinPopulation:value})}}>
        <option value="0">Все населённые пункты</option>
        <option value="50000">От 50 тысяч</option>
        <option value="250000">От 250 тысяч</option>
