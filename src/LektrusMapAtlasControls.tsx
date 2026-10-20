@@ -1,5 +1,5 @@
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
-import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
+import {atlasModesFor,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
 type Props={diagram:AtlasDocument;onChange:(diagram:AtlasDocument)=>void};
 const makeId=()=>crypto.randomUUID();
 export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
