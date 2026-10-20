@@ -1,4 +1,4 @@
-import {useId} from "react";
+import {useId,useState} from "react";
 import type {NextSchoolDiagram,WordRole,AlgorithmNode} from "./lektrusNextSchoolModel";
 import type {SchoolDiagram} from "./lektrusSchoolDiagramModel";
 type Props={diagram:NextSchoolDiagram;onChange?:(value:SchoolDiagram)=>void};
@@ -28,7 +28,24 @@ function SyntaxView({d,onChange}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>;o
    strokeDasharray="11 4 2 4" strokeWidth="2.6"/>;
  };
  const startY=lines.length===1?205:155;
- return <svg viewBox="0 0 900 500" className="lektrus-school-svg" role="img" aria-label={d.title}>
+ return <div className="lektrus-inline-lesson"
+  onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+  {onChange&&<div className="lektrus-inline-lesson-controls">
+   <label>Блок <select value={node.id} onChange={e=>setFocus(e.target.value)}>
+    {d.nodes.map(n=><option value={n.id} key={n.id}>{n.kind==="start"?"Начало":n.kind==="end"?"Конец":n.label}</option>)}
+   </select></label>
+   <label>Надпись <input maxLength={48} value={node.label}
+    onChange={e=>{if(e.target.value.trim())onChange({...d,nodes:d.nodes.map(n=>n.id===node.id?
+     {...n,label:e.target.value}:n)})}}/></label>
+   <label>Положение <select value={node.lane}
+    onChange={e=>onChange({...d,nodes:d.nodes.map(n=>n.id===node.id?
+     {...n,lane:Number(e.target.value) as -1|0|1}:n)})}>
+    <option value={-1}>Слева</option><option value={0}>Центр</option><option value={1}>Справа</option>
+   </select></label>
+   <button type="button" disabled={d.nodes.length>=7||d.nodes.some(n=>n.kind==="decision")}
+    onClick={appendStep}>+ Действие</button>
+  </div>}
+  <svg viewBox="0 0 900 500" className="lektrus-school-svg" role="img" aria-label={d.title}>
   <rect width="900" height="500" rx="20" fill="#fcfdff"/>
   <text x="450" y="52" textAnchor="middle" fill="#254568" fontSize="24" fontWeight="750">{d.title}</text>
   {lines.map((line,li)=>{
@@ -62,14 +79,29 @@ function SyntaxView({d,onChange}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>;o
  </svg>;
 }
 type P={x:number;y:number};
-function FlowView({d}:{d:Extract<NextSchoolDiagram,{kind:"flowchart"}>}){
+function FlowView({d,onChange}:{d:Extract<NextSchoolDiagram,{kind:"flowchart"}>;onChange?:(v:SchoolDiagram)=>void}){
+ const [focus,setFocus]=useState("n1");
+ const node=d.nodes.find(n=>n.id===focus)??d.nodes[0];
+ const appendStep=()=>{
+  if(!onChange||d.nodes.length>=7||d.nodes.some(n=>n.kind==="decision"))return;
+  const end=d.nodes.find(n=>n.kind==="end");
+  const edge=d.edges.find(e=>e.to===end?.id&&e.label==="");
+  if(!end||!edge)return;
+  const id=crypto.randomUUID();
+  const next={id,kind:"process" as const,label:"Действие",lane:0 as const};
+  onChange({...d,nodes:d.nodes.filter(n=>n.id!==end.id).concat([next,end]),
+   edges:d.edges.map(e=>e.id===edge.id?{...e,to:id}:e)
+    .concat([{id:crypto.randomUUID(),from:id,to:end.id,label:"" as const}])});
+  setFocus(id);
+ };
  const uid=useId().replace(/:/g,"");
  const centers=new Map(d.nodes.map((node,i)=>[node.id,{x:450+node.lane*220,y:106+i*59}]));
  const shape=(n:AlgorithmNode,p:P)=>{
   const selected=n.kind==="decision",io=n.kind==="input"||n.kind==="output";
   const stroke=n.kind==="start"||n.kind==="end"?"#49967f":selected?"#b78940":"#5b8cb9";
   const fill=n.kind==="start"||n.kind==="end"?"#e4f5ee":selected?"#fff4db":"#eef5ff";
-  return <g key={n.id}>
+  return <g key={n.id} onClick={e=>{e.stopPropagation();setFocus(n.id)}}
+   style={onChange?{cursor:"pointer"}:undefined}>
    {selected?<polygon points={`${p.x} ${p.y-27} ${p.x+104} ${p.y} ${p.x} ${p.y+27} ${p.x-104} ${p.y}`}
     fill={fill} stroke={stroke} strokeWidth="2.1"/>:
     io?<path d={`M${p.x-96} ${p.y-23}H${p.x+108}L${p.x+96} ${p.y+23}H${p.x-108}Z`}
@@ -116,7 +148,8 @@ function FlowView({d}:{d:Extract<NextSchoolDiagram,{kind:"flowchart"}>}){
   <text x="450" y="486" fill="#8196ac" textAnchor="middle" fontSize="12">
    Учебная блок-схема · стрелки задаются вручную · алгоритм не выполняется
   </text>
- </svg>;
+ </svg>
+ </div>;
 }
 function PlaceValueView({d}:{d:Extract<NextSchoolDiagram,{kind:"place-value"}>}){
  const count=d.digits.length,cellWidth=Math.min(90,805/count),left=450-count*cellWidth/2;
@@ -151,6 +184,6 @@ function PlaceValueView({d}:{d:Extract<NextSchoolDiagram,{kind:"place-value"}>})
 }
 export default function LektrusNextSchoolView({diagram:d,onChange}:Props){
  if(d.kind==="syntax")return <SyntaxView d={d} onChange={onChange}/>;
- if(d.kind==="flowchart")return <FlowView d={d}/>;
+ if(d.kind==="flowchart")return <FlowView d={d} onChange={onChange}/>;
  return <PlaceValueView d={d}/>;
 }

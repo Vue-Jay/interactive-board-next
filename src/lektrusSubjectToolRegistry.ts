@@ -28,6 +28,7 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"ru-morphology",label:"Морфологический разбор",description:"Часть речи, постоянные и непостоянные признаки, скрываемые ответы",group:"Русский язык · морфология",subjects:["русский язык"]},
   {id:"ru-phonetics",label:"Фонетический разбор",description:"Буквы, звуки, ударение и ручная транскрипция",group:"Русский язык · фонетика",subjects:["русский язык"]},
   {id:"ru-orthography",label:"Орфографический тренажёр",description:"Орфограммы с пропусками и проверкой ответов на доске",group:"Русский язык · орфография",subjects:["русский язык"]},
+  {id:"common-chart",label:"Диаграммы",description:"Столбчатые, линейные и круговые диаграммы с вводом своих данных",group:"Общие цифровые инструменты",subjects:[]},
   {id:"maps-contour",label:"Контурная карта",description:"Раскрашивание стран и задания на карте",group:"География · карты",subjects:["география"]},
   {id:"maps-atlas",label:"Географические карты",description:"Единая подложка: страны, контурная, физическая карта, рельеф, воды и города",group:"География · карты",subjects:["география"]},
   {id:"history-atlas",label:"Исторические карты",description:"Единая подложка: границы эпох, исторические события и ползунок времени",group:"История · карты",subjects:["история"]},
@@ -41,7 +42,7 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
-  if(id==="maps-contour"||id==="maps-atlas"||id==="history-atlas"||id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
+  if(id==="common-chart"||id==="maps-contour"||id==="maps-atlas"||id==="history-atlas"||id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||id==="geo-relief-profile"||
      id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||

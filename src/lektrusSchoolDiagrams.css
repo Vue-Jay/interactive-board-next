@@ -315,3 +315,18 @@
  .lektrus-sentence-actions button{min-width:74px;padding:6px}
  .lektrus-sentence-tip{padding:4px}
 }
+
+.lektrus-inline-lesson,.lektrus-data-chart{display:flex;flex-direction:column;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;background:#fff}
+.lektrus-inline-lesson>.lektrus-school-svg,.lektrus-data-chart>.lektrus-school-svg{flex:1;min-height:0;width:100%}
+.lektrus-inline-lesson-controls,.lektrus-data-chart-editor{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 10px;border-bottom:1px solid #dbe7f4;background:#f8fbff;flex-shrink:0;font-size:12px;color:#486985}
+.lektrus-inline-lesson-controls label{display:flex;align-items:center;gap:5px}
+.lektrus-inline-lesson-controls input,.lektrus-data-chart-fields input{border:1px solid #c8d8e9;border-radius:6px;padding:5px;min-width:0;max-width:130px;color:#355777;background:#fff;font:inherit}
+.lektrus-inline-lesson-controls button,.lektrus-data-chart-editor button{background:white;border:1px solid #cedff0;border-radius:6px;padding:5px 9px;color:#36618c;cursor:pointer;font:inherit}
+.lektrus-data-chart-editor{align-items:flex-start;flex-wrap:nowrap;max-height:42%;overflow:auto}
+.lektrus-data-chart-types{display:flex;flex-direction:column;gap:4px;flex:0 0 auto}
+.lektrus-data-chart-types button.active{background:#dceaff;border-color:#77a8e0}
+.lektrus-data-chart-fields{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.lektrus-data-chart-fields>div{display:flex;gap:4px}
+.lektrus-data-chart-fields input:first-child{flex:2;max-width:none}
+.lektrus-data-chart-fields input:nth-child(2){flex:1;max-width:90px}
+@media(max-width:650px){.lektrus-inline-lesson-controls,.lektrus-data-chart-editor{padding:3px;gap:3px;font-size:10px}.lektrus-inline-lesson-controls input{max-width:70px}.lektrus-data-chart-editor{max-height:38%}}

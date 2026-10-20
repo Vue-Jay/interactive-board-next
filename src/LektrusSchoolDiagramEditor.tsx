@@ -17,7 +17,7 @@ const keys=(cell:"plant"|"animal"):CellOrganelle[]=>cell==="plant"?
  ["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]:
  ["membrane","cytoplasm","nucleus","mitochondria"];
 const titles:Record<SchoolDiagramId,string>={
- "bio-cell":"Строение клетки","bio-food-chain":"Цепь питания",
+ "common-chart":"Диаграммы","bio-cell":"Строение клетки","bio-food-chain":"Цепь питания",
  "geo-climate":"Климатограмма","history-timeline":"Лента времени",
  "ru-syntax":"Разбор предложения","info-flowchart":"Блок-схема алгоритма",
  "info-place-value":"Разрядная таблица",
@@ -62,6 +62,25 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
    <div className="lektrus-school-body">
     <div className="lektrus-school-controls">
      {title}
+     {draft.kind==="data-chart"&&<>
+      <label className="lektrus-school-field">Тип диаграммы
+       <select value={draft.variant} onChange={e=>set({...draft,variant:e.target.value as "bar"|"line"|"pie"})}>
+        <option value="bar">Столбчатая</option><option value="line">Линейная</option>
+        <option value="pie">Круговая</option>
+       </select>
+      </label>
+      {draft.points.map(p=><div key={p.id} className="lektrus-atlas-marker-editor">
+       <label>Название<input maxLength={50} value={p.label}
+        onChange={e=>set({...draft,points:draft.points.map(v=>v.id===p.id?{...v,label:e.target.value}:v)})}/></label>
+       <label>Значение<input type="number" min="0" max="1000000000" value={p.value}
+        onChange={e=>set({...draft,points:draft.points.map(v=>v.id===p.id?
+         {...v,value:Math.max(0,Math.min(1000000000,Number(e.target.value)||0))}:v)})}/></label>
+       <button type="button" onClick={()=>set({...draft,points:draft.points.filter(v=>v.id!==p.id)})}>Удалить</button>
+      </div>)}
+      <button type="button" className="lektrus-school-add" disabled={draft.points.length>=12}
+       onClick={()=>set({...draft,points:[...draft.points,{id:newKey(),label:"",value:0}]})}>
+       + Данные</button>
+     </>}
      {draft.kind==="atlas"&&<LektrusMapAtlasControls diagram={draft} onChange={set}/>}
      {(draft.kind==="syntax"||draft.kind==="flowchart"||draft.kind==="place-value")&&<LektrusNextSchoolControls diagram={draft} onChange={set}/>}
      {(draft.kind==="organs"||draft.kind==="relief")&&<LektrusFurtherSchoolControls diagram={draft} onChange={set}/>}
@@ -144,7 +163,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
       </div>)}
       <button type="button" className="lektrus-school-add" disabled={draft.events.length>=8}
        onClick={()=>set({...draft,events:[...draft.events,{id:newKey(),year:1900,label:"Новое событие"}]})}>
-       + Добавить событие ({draft.events.length}/8)</button>
+       + Добавить событие ({draft.events.length}/12)</button>
       <label className="lektrus-school-toggle"><input type="checkbox" checked={draft.showEra}
        onChange={e=>set({...draft,showEra:e.target.checked})}/> Подписи эры (до н. э. / г.)</label>
       <p className="lektrus-school-hint">События автоматически упорядочиваются по годам. Для дат до нашей эры вводите отрицательный год, например −500. Нулевого года нет. Длина интервалов на рисунке условна.</p>

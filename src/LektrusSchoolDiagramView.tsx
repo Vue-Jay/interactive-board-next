@@ -6,6 +6,7 @@ import LektrusApprovedSchoolView from "./LektrusApprovedSchoolView";
 import LektrusRussianSchoolView from "./LektrusRussianSchoolView";
 import LektrusLanguageSocialView from "./LektrusLanguageSocialView";
 import LektrusMapAtlas from "./LektrusMapAtlas";
+import LektrusDataChart from "./LektrusDataChart";
 
 type Props={diagram:SchoolDiagram;onChange?:(value:SchoolDiagram)=>void};
 const trim=(s:string,n=20)=>s.length>n?s.slice(0,n-1)+"…":s;
@@ -173,5 +174,6 @@ export default function LektrusSchoolDiagramView({diagram,onChange}:Props){
   case "morphology":case "phonetics":case "orthography":return <LektrusRussianSchoolView diagram={diagram} onChange={onChange}/>;
   case "sentence-builder":case "state-structure":return <LektrusLanguageSocialView diagram={diagram}/>;
   case "atlas":return <LektrusMapAtlas diagram={diagram} onChange={onChange}/>;
+  case "data-chart":return <LektrusDataChart diagram={diagram} onChange={onChange}/>;
  }
 }
