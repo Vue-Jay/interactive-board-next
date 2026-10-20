@@ -125,6 +125,27 @@ export function mapFeaturePath(f:GeoFeature):string{
  }
  return all.join("");
 }
+/** A conservative label anchor computed from the largest polygon ring; there is
+ * intentionally no claim of a politically defined capital or country centroid. */
+export function featureLabelAnchor(feature:GeoFeature):{x:number;y:number;area:number}|null{
+ if(!feature.geometry||!["Polygon","MultiPolygon"].includes(feature.geometry.type))return null;
+ let best:{x:number;y:number;area:number}|null=null;
+ for(const part of polygons(feature)){
+  const ring=part[0]??[];
+  if(ring.length<3)continue;
+  const xs:number[]=[],ys:number[]=[];
+  for(const [lon,lat] of ring){
+   if(!Number.isFinite(lon)||!Number.isFinite(lat))continue;
+   const [x,y]=projectGeography(lon,lat);xs.push(x);ys.push(y);
+  }
+  if(xs.length<3)continue;
+  const a=Math.min(...xs),b=Math.max(...xs),c=Math.min(...ys),d=Math.max(...ys);
+  if(b-a>520)continue; // Antimeridian: a center would be misleading.
+  const area=(b-a)*(d-c);
+  if(!best||area>best.area)best={x:(a+b)/2,y:(c+d)/2,area};
+ }
+ return best;
+}
 export function summariseNamedChanges(prev:GeoCollection,next:GeoCollection){
  const names=(geo:GeoCollection)=>new Set(geo.features.map(geoFeatureName).filter(n=>n!=="Объект без названия"));
  const a=names(prev),b=names(next);
