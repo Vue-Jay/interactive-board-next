@@ -5,7 +5,7 @@ export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineSt
  coordinates:unknown};
 export type GeoFeature={type:"Feature";properties:Record<string,unknown>|null;geometry:GeoGeometry|null};
 export type GeoCollection={type:"FeatureCollection";features:GeoFeature[]};
-export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"cities-regional"|"cities-local"|"admin-regional"|"regions-regional"|"elevation-regional"|"glaciers-regional"|"marine"|"physical-labels";
+export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"rivers-ultra"|"lakes-ultra"|"cities-regional"|"cities-local"|"admin-regional"|"regions-regional"|"elevation-regional"|"glaciers-regional"|"marine"|"physical-labels";
 // Pin the dataset snapshots used by school lessons.
 const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/";
 const BACKUP="https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@ca96624a56bd078437bca8184e78163e5039ad19/geojson/";
@@ -18,6 +18,8 @@ const names:Record<GeoLayer,string>={
  "coastline-detail":"ne_50m_coastline.geojson",
  "rivers-regional":"ne_50m_rivers_lake_centerlines.geojson",
  "lakes-regional":"ne_50m_lakes.geojson",
+ "rivers-ultra":"ne_10m_rivers_lake_centerlines.geojson",
+ "lakes-ultra":"ne_10m_lakes.geojson",
  "cities-regional":"ne_50m_populated_places.geojson",
  "cities-local":"ne_10m_populated_places.geojson",
  "admin-regional":"ne_50m_admin_1_states_provinces.geojson",
