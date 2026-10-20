@@ -31,5 +31,7 @@ jobs:
         run: node scripts/test-lektrus-next-school.mjs
       - name: Biology organ systems and relief regression
         run: node scripts/test-lektrus-further-school.mjs
+      - name: Approved morphemes genealogy and vocabulary regression
+        run: node scripts/test-lektrus-approved-school.mjs
       - name: Real board interface studio regression
         run: node scripts/test-lektrus-real-interface-editor.mjs
