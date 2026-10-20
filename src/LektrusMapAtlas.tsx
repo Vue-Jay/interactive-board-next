@@ -41,6 +41,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [selected,setSelected]=useState<GeoFeature|null>(null);
  const [search,setSearch]=useState("");
  const [scale,setScale]=useState(1);
+ const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
  const points=useRef(new Map<number,{x:number;y:number}>());
@@ -243,11 +244,17 @@ function AtlasMap({diagram:d,onChange}:Props){
   setSelectedMarker(null);
  };
  return <div className="lektrus-atlas" aria-label={d.title}
-  onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
-  onClick={e=>e.stopPropagation()} onWheel={e=>{e.stopPropagation();
+  onPointerDown={e=>{if(!objectMoveMode)e.stopPropagation()}}
+  onPointerUp={e=>{if(!objectMoveMode)e.stopPropagation()}}
+  onClick={e=>{if(!objectMoveMode)e.stopPropagation()}} onWheel={e=>{if(objectMoveMode)return;e.stopPropagation();
    setScale(s=>Math.max(1,Math.min(5,Math.round((s+(e.deltaY<0?.2:-.2))*10)/10)));}}>
   <header className="lektrus-atlas-header">
    <strong title={d.title}>{d.title}</strong>
+   <button type="button" aria-pressed={objectMoveMode}
+    title={objectMoveMode?"Переключить на перемещение внутри карты":"Перемещать объект карты по доске"}
+    onClick={()=>{setObjectMoveMode(v=>!v);points.current.clear();pointer.current=null;pinch.current=null;dragged.current=false}}>
+    {objectMoveMode?"▣ Объект":"✥ Карта"}
+   </button>
    <nav role="group" aria-label="Тип карты">
     {availableModes.map(m=><button key={m.id} type="button" title={m.hint}
      aria-pressed={mode===m.id} className={mode===m.id?"selected":""}
@@ -263,11 +270,12 @@ function AtlasMap({diagram:d,onChange}:Props){
      <small>Границы не заменяются вымышленными. Для доступа необходим интернет.</small>
     </div>}
     <svg viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
-     onClick={pickCoordinates}
+     onClick={objectMoveMode?undefined:pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
-     onPointerDown={onPointerDown} onPointerMove={onMove}
-     onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd}
+     onPointerDown={objectMoveMode?undefined:onPointerDown} onPointerMove={objectMoveMode?undefined:onMove}
+     onPointerUp={objectMoveMode?undefined:onPointerEnd} onPointerCancel={objectMoveMode?undefined:onPointerEnd}
      onWheel={e=>{
+      if(objectMoveMode)return;
       e.stopPropagation();e.preventDefault();
       zoomAt(scale*(e.deltaY<0?1.16:1/1.16),localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
      }}>
@@ -354,13 +362,13 @@ function AtlasMap({diagram:d,onChange}:Props){
       })}
      </g>
     </svg>
-    <div className="lektrus-atlas-zoom" role="group" aria-label="Масштаб">
+    {!objectMoveMode&&<div className="lektrus-atlas-zoom" role="group" aria-label="Масштаб">
      <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(scale*1.5)}>+</button>
      <button type="button" onClick={reset} title="Сбросить положение">⌖</button>
      <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(scale/1.5)}>−</button>
-    </div>
+    </div>}
     <div className="lektrus-atlas-precision">×{scale.toFixed(1)} · {coord?
-     `${coord.lat.toFixed(2)}°, ${coord.lon.toFixed(2)}°`:"обзорные геоданные"}</div>
+     `${coord.lat.toFixed(2)}°, ${coord.lon.toFixed(2)}°`:objectMoveMode?"режим перемещения объекта":"обзорные геоданные"}</div>
    </div>
    <aside className="lektrus-atlas-sidebar">
     {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
