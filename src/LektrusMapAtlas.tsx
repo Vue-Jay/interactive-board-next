@@ -520,7 +520,23 @@ function AtlasMap({diagram:d,onChange}:Props){
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
      {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
+      {selectedArticle&&<div className="lektrus-history-article">
+       <p className="lektrus-history-period">{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</p>
+       <p><strong>Столица и важные центры:</strong> {selectedArticle.capital}</p>
+       <p>{selectedArticle.summary}</p>
+       <p><strong>Важное изменение:</strong> {selectedArticle.turn}</p>
+       <a target="_blank" rel="noopener noreferrer" href={historyArticleUrl(selectedArticle)}>
+        Открыть обзорную статью на русском ↗</a>
+       <small>Учебная справка подготовлена отдельно от картографической базы; исторические границы и датировки необходимо сверять с дополнительными источниками.</small>
+      </div>}
+      {!selectedArticle&&!modernReference&&<p>Для этой территории ещё нет отдельной энциклопедической карточки. Ниже приведены только сведения исходного картографического набора.</p>}
       {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+      {!modernReference&&selectedYears.length>0&&<div className="lektrus-history-observed">
+       <strong>Название встречается на датированных картах</strong>
+       <div>{selectedYears.map(y=><button type="button" key={y}
+        className={snapshot.year===y?"selected":""} onClick={()=>jumpToPeriod(y,selectedRaw)}>{yearLabel(y)}</button>)}</div>
+       <small>Это только присутствие названия в наборе, не даты основания и распада.</small>
+      </div>}
       <p><strong>Период карты:</strong> {yearLabel(snapshot.year)}. Это дата слоя, а не подтверждённые даты существования государства.</p>
       <p>Столица, правители и причины территориальных изменений не указываются без проверенного источника.</p>
       <p>{modernReference?
@@ -572,6 +588,11 @@ function AtlasMap({diagram:d,onChange}:Props){
   {historical&&<div className="lektrus-atlas-timeline">
    <button type="button" disabled={index===0} title="Предыдущий доступный период"
     onClick={()=>setIndex(i=>Math.max(0,i-1))}>‹</button>
+   <select aria-label="Выбрать год исторической карты" className="lektrus-history-period-select"
+    value={snapshot.year} onChange={e=>jumpToPeriod(Number(e.target.value))}>
+    {historicalSnapshots.map(period=><option key={period.year} value={period.year}>
+     {yearLabel(period.year)}{period.year===2026?" · современный обзор":""}</option>)}
+   </select>
    <input aria-label="Исторический период" type="range" min={0}
     max={historicalSnapshots.length-1} step={1} value={index}
     onChange={e=>{setIndex(Number(e.target.value));setSelected(null)}}/>
