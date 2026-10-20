@@ -1,26 +1,46 @@
 import {useEffect,useMemo,useState} from "react";
 import {atlasTerrainTiles,decodeTerrarium,hypsometricRGB,terrainMercatorY,terrainTileURL,
- type TerrainTile} from "./lektrusAtlasTerrainMath";
+ type TerrainTile,terrainPixelAddress} from "./lektrusAtlasTerrainMath";
 
 export type TerrainStatus={total:number;loaded:number;failed:number};
 type Props={scale:number;position:{x:number;y:number};enabled:boolean;
  onStatus:(status:TerrainStatus)=>void};
 const rasterCache=new Map<string,Promise<string>>();
-/** CORS failures show a visible warning; no misleading synthetic DEM is drawn. */
-async function getColorizedTile(tile:TerrainTile):Promise<string>{
- const cached=rasterCache.get(tile.key);if(cached)return cached;
+const elevationPixels=new Map<string,Promise<Uint8ClampedArray>>();
+type TileKey=Pick<TerrainTile,"key"|"z"|"x"|"y">;
+async function getElevationPixels(tile:TileKey):Promise<Uint8ClampedArray>{
+ const cached=elevationPixels.get(tile.key);if(cached)return cached;
  const task=(async()=>{
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),18000);
   try{
    const response=await fetch(terrainTileURL(tile),{signal:controller.signal,mode:"cors"});
    if(!response.ok)throw new Error("Terrain HTTP "+response.status);
    const bitmap=await createImageBitmap(await response.blob());
-   const input=document.createElement("canvas");input.width=256;input.height=256;
-   const sourceContext=input.getContext("2d",{willReadFrequently:true});
-   if(!sourceContext)throw new Error("Canvas 2D недоступен");
-   sourceContext.drawImage(bitmap,0,0,256,256);bitmap.close();
-   const pixels=sourceContext.getImageData(0,0,256,256).data;
-   const output=document.createElement("canvas");output.width=256;output.height=256;
+   const canvas=document.createElement("canvas");canvas.width=256;canvas.height=256;
+   const context=canvas.getContext("2d",{willReadFrequently:true});
+   if(!context)throw new Error("Canvas 2D недоступен");
+   try{context.drawImage(bitmap,0,0,256,256)}finally{bitmap.close()}
+   return context.getImageData(0,0,256,256).data;
+  }finally{clearTimeout(timer)}
+ })().catch(error=>{elevationPixels.delete(tile.key);throw error});
+ elevationPixels.set(tile.key,task);
+ if(elevationPixels.size>48)elevationPixels.delete(elevationPixels.keys().next().value!);
+ return task;
+}
+/** Sample a measured terrain height, not a rendered colour. */
+export async function sampleTerrainElevation(lon:number,lat:number,z=9):Promise<number|null>{
+ const address=terrainPixelAddress(lon,lat,z);if(!address)return null;
+ const pixels=await getElevationPixels(address);
+ const start=(address.py*256+address.px)*4;
+ const height=decodeTerrarium(pixels[start],pixels[start+1],pixels[start+2]);
+ return pixels[start+3]===0||height<-12000||height>9500?null:height;
+}
+/** CORS failures show a visible warning; no misleading synthetic DEM is drawn. */
+async function getColorizedTile(tile:TerrainTile):Promise<string>{
+ const cached=rasterCache.get(tile.key);if(cached)return cached;
+ const task=(async()=>{
+  const pixels=await getElevationPixels(tile);
+  const output=document.createElement("canvas");output.width=256;output.height=256;
    const outputContext=output.getContext("2d");
    if(!outputContext)throw new Error("Canvas 2D недоступен");
    const colored=outputContext.createImageData(256,256);
@@ -39,7 +59,6 @@ async function getColorizedTile(tile:TerrainTile):Promise<string>{
    }
    outputContext.putImageData(colored,0,0);
    return output.toDataURL("image/png");
-  }finally{clearTimeout(timer)}
  })().catch(error=>{rasterCache.delete(tile.key);throw error});
  rasterCache.set(tile.key,task);
  if(rasterCache.size>56)rasterCache.delete(rasterCache.keys().next().value!);
