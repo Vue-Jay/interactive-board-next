@@ -175,11 +175,21 @@ function lines(f:GeoFeature):number[][][]{
 }
 /** Split antimeridian crossings instead of drawing an artificial line across the world.
  * Each fragment is clipped at ±180° and continues on the opposite edge. */
-function pathForRing(points:number[][],close:boolean,minDistance=.62):string{
+export type MapWindow={left:number;right:number;top:number;bottom:number};
+function pathForRing(points:number[][],close:boolean,minDistance=.62,viewport?:MapWindow):string{
  if(points.length<2)return "";
  const valid=points.filter(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]))
   .map(p=>[Math.max(-180,Math.min(180,p[0])),Math.max(-90,Math.min(90,p[1]))]);
  if(valid.length<2)return "";
+ if(viewport){
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for(const [lon,lat] of valid){
+   const [x,y]=projectGeography(lon,lat);
+   minX=Math.min(minX,x);maxX=Math.max(maxX,x);
+   minY=Math.min(minY,y);maxY=Math.max(maxY,y);
+  }
+  if(maxX<viewport.left||minX>viewport.right||maxY<viewport.top||minY>viewport.bottom)return "";
+ }
  // Polygon segments are closed explicitly so every crossing can be clipped at the map edge.
  if(close&&valid.length>2&&(valid[0][0]!==valid[valid.length-1][0]||valid[0][1]!==valid[valid.length-1][1]))
   valid.push([...valid[0]]);
@@ -212,15 +222,15 @@ function pathForRing(points:number[][],close:boolean,minDistance=.62):string{
   return selected.map(([x,y],i)=>(i?"L":"M")+x.toFixed(digits)+" "+y.toFixed(digits)).join("")+(shouldClose?"Z":"");
  }).filter(Boolean).join("");
 }
-export function mapFeaturePath(f:GeoFeature,minDistance=.62):string{
+export function mapFeaturePath(f:GeoFeature,minDistance=.62,viewport?:MapWindow):string{
  const all:string[]=[];
  if(f.geometry?.type==="Polygon"||f.geometry?.type==="MultiPolygon"){
   for(const multi of polygons(f))for(const ring of multi){
-   const p=pathForRing(ring,true,minDistance);
+   const p=pathForRing(ring,true,minDistance,viewport);
    if(p)all.push(p);
   }
  }else for(const line of lines(f)){
-  const p=pathForRing(line,false,minDistance);
+  const p=pathForRing(line,false,minDistance,viewport);
   if(p)all.push(p);
  }
  return all.join("");
@@ -325,13 +335,15 @@ export function featureFocusBounds(f:GeoFeature):{x:number;y:number;width:number
  for(const polygon of polygons(f)){
   const ring=polygon[0];
   if(!ring||ring.length<3)continue;
-  const longitudes=ring.map(p=>p[0]).filter(Number.isFinite);
-  const latitudes=ring.map(p=>p[1]).filter(Number.isFinite);
-  if(!longitudes.length||!latitudes.length)continue;
-  const lo=Math.min(...longitudes),hi=Math.max(...longitudes);
-  if(hi-lo>180)continue;
+  let lo=Infinity,hi=-Infinity,latMin=Infinity,latMax=-Infinity;
+  for(const p of ring){
+   if(!Number.isFinite(p[0])||!Number.isFinite(p[1]))continue;
+   lo=Math.min(lo,p[0]);hi=Math.max(hi,p[0]);
+   latMin=Math.min(latMin,p[1]);latMax=Math.max(latMax,p[1]);
+  }
+  if(!Number.isFinite(lo)||!Number.isFinite(latMin)||hi-lo>180)continue;
   const x0=projectGeography(lo,0)[0],x1=projectGeography(hi,0)[0];
-  const y0=projectGeography(0,Math.max(...latitudes))[1],y1=projectGeography(0,Math.min(...latitudes))[1];
+  const y0=projectGeography(0,latMax)[1],y1=projectGeography(0,latMin)[1];
   const width=x1-x0,height=y1-y0,area=Math.max(.000001,width*height);
   if(!best||area>best.area)best={x:(x0+x1)/2,y:(y0+y1)/2,width,height,area};
  }
