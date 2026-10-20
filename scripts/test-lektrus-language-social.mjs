@@ -53,7 +53,7 @@ assert.equal(validateLanguageSocialDiagram({...civics,edges:[
  {id:"e1",from:"leg",to:"missing",kind:"part"}]}),false);
 const registry=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
 for(const id of ["ru-sentence-builder","civics-structure"])
- assert.match(registry,new RegExp('id:"'+id+'"'));
+ assert.doesNotMatch(registry,new RegExp('id:"'+id+'"'),"retired dedicated tool hidden from menu");
 const view=fs.readFileSync(new URL("../src/LektrusLanguageSocialView.tsx",import.meta.url),"utf8");
 assert.match(view,/picked|chosen/);
 assert.match(view,/onPointerDown=\{stop\}/);

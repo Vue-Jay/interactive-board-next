@@ -14,9 +14,9 @@ const m=createRussianSchoolDiagram("ru-morphology");
 assert.equal(m.showAnalysis,false,"never expose prefilled grammatical answers");
 assert.equal(validateRussianSchoolDiagram({...m,partOfSpeech:"unknown"}),false);
 assert.equal(validateRussianSchoolDiagram({...m,rows:[{id:"a",group:"variable",feature:"",value:"Падеж"}]}),false);
-assert.equal(validateRussianSchoolDiagram({...m,rows:[...m.rows,m.rows[0]]}),false);
+assert.equal(validateRussianSchoolDiagram({...m,rows:[{id:"a",group:"variable",feature:"Падеж",value:"И."},{id:"a",group:"syntax",feature:"Роль",value:"Подлежащее"}]}),false);
 const p=createRussianSchoolDiagram("ru-phonetics");
-assert.equal(totalSounds(p.letters),3);
+assert.equal(totalSounds(p.letters),0);
 assert.equal(p.showSounds,false,"answers hidden until instructor enables");
 assert.equal(validateRussianSchoolDiagram({...p,letters:p.letters.map(x=>({...x,stressed:true}))}),false);
 assert.equal(validateRussianSchoolDiagram({...p,word:"котик"}),false,
@@ -29,7 +29,9 @@ const silent={...p,word:"конь",letters:[
  {id:"4",letter:"ь",sounds:[],characteristic:"нет звука",stressed:false}
 ]};
 assert.equal(validateRussianSchoolDiagram(silent),true,"soft signs may have zero sounds");
-const o=createRussianSchoolDiagram("ru-orthography");
+const blankO=createRussianSchoolDiagram("ru-orthography");
+assert.deepEqual(blankO.questions,[]);
+const o={...blankO,questions:[{id:"q1",prompt:"тр□ва",options:["а","о"],correct:0,explanation:"травы"}]};
 assert.equal(o.questions[0].prompt.split("□").length,2);
 assert.equal(validateRussianSchoolDiagram({...o,questions:[{...o.questions[0],prompt:"слово"}]}),false);
 assert.equal(validateRussianSchoolDiagram({...o,questions:[{...o.questions[0],correct:8}]}),false);

@@ -15,7 +15,7 @@ for(const id of ["ru-syntax","info-flowchart","info-place-value"]){
 }
 const sentence=defaultNextSchoolDiagram("ru-syntax");
 assert.equal(sentence.words.every(w=>w.role==="none"),true,"never assign pupil's grammar answers automatically");
-assert.equal(validNextSchoolDiagram({...sentence,words:[...sentence.words,{...sentence.words[0]}]}),false,"no repeated token ids");
+assert.equal(validNextSchoolDiagram({...sentence,words:[{id:"a",text:"Кот",role:"none"},{id:"a",text:"спит",role:"predicate"}]}),false,"no repeated token ids");
 assert.equal(validNextSchoolDiagram({...sentence,words:[{id:"a",text:"",role:"none"}]}),false,"empty words rejected");
 assert.equal(validNextSchoolDiagram({...sentence,words:[{id:"a",text:"Кот",role:"unknown"}]}),false,"unknown grammatical roles rejected");
 
@@ -29,8 +29,20 @@ assert.equal(validNextSchoolDiagram({...digits,base:16,digits:"2AF"}),true);
 assert.equal(validNextSchoolDiagram({...digits,base:2,digits:"102"}),false);
 assert.equal(validNextSchoolDiagram({...digits,base:10,digits:"0000"}),true);
 
-const flow=defaultNextSchoolDiagram("info-flowchart");
-assert.equal(flow.nodes.find(n=>n.kind==="decision")!==undefined,true,"default shows conditional branching");
+const blankFlow=defaultNextSchoolDiagram("info-flowchart");
+assert.deepEqual(blankFlow.nodes,[],"new flowcharts must start blank");
+const flow={...blankFlow,nodes:[
+ {id:"n1",kind:"start",label:"Начало",lane:0},
+ {id:"n2",kind:"process",label:"Действие",lane:0},
+ {id:"n3",kind:"decision",label:"Условие",lane:0},
+ {id:"n4",kind:"end",label:"Конец",lane:0}
+],edges:[
+ {id:"e1",from:"n1",to:"n2",label:""},
+ {id:"e2",from:"n2",to:"n3",label:""},
+ {id:"e3",from:"n3",to:"n4",label:"да"},
+ {id:"e4",from:"n3",to:"n2",label:"нет"}
+]};
+assert.equal(validNextSchoolDiagram(flow),true);
 assert.equal(validNextSchoolDiagram({...flow,edges:flow.edges.filter(e=>e.label!=="нет")}),false,
  "decisions must have both outgoing labels");
 assert.equal(validNextSchoolDiagram({...flow,edges:flow.edges.map(e=>({...e,to:"n1"}))}),false,
