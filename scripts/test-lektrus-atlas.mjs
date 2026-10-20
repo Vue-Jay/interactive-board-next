@@ -144,7 +144,35 @@ assert.match(data,/ne_10m_admin_0_countries_rus\.geojson/);
 assert.match(data,/ne_50m_admin_0_tiny_countries\.geojson/);
 assert.match(map,/MAX_ATLAS_ZOOM=16384/);
 assert.match(map,/featureFocusBounds/);
-assert.match(map,/tinyPoints\.map/);
+assert.doesNotMatch(map,/tinyPoints\\.map/,"small countries must not be drawn as colored pins");
+assert.doesNotMatch(map,/historicalSmallStates\\.map/,"historical small countries must not be artificial pins");
+assert.match(map,/lektrus-atlas-capitals/);
+assert.match(map,/Столицы государств/);
+assert.match(map,/Фильтр городов по численности населения/);
+assert.match(data,/ne_10m_populated_places\\.geojson/);
+const placeSource=fs.readFileSync(new URL("../src/lektrusAtlasPlaces.ts",import.meta.url),"utf8");
+const places={};
+new Function("exports",ts.transpileModule(placeSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(places);
+const place=(name,cap,role="Populated place",pop=100000)=>({type:"Feature",
+ properties:{NAME:name,NAME_RU:name,ADM0CAP:cap,FEATURECLA:role,POP_MAX:pop,LABELRANK:3},
+ geometry:{type:"Point",coordinates:[30,55]}});
+const moscow=place("Москва",1,"Admin-0 capital",13000000);
+const kazan=place("Казань",0,"Admin-1 capital",1300000);
+const small=place("Димитровград",0,"Populated place",105000);
+assert.equal(places.nationalCapital(moscow),true);
+assert.equal(places.nationalCapital(kazan),false,"regional centre is not a national capital");
+assert.equal(places.nationalCapital(small),false,"ordinary town is not a capital");
+assert.equal(places.russianPlaceName(small),"Димитровград");
+assert.equal(places.russianPlaceName({...small,properties:{NAME:"Unknown"}}),null);
+assert.equal(places.cityPopulation(small),105000);
+assert.equal(places.nationalCapital(place("Тест",1,"Populated place")),false);
+const testCities=[{id:0,point:[100,100],feature:kazan},{id:1,point:[102,101],feature:small},
+ {id:2,point:[400,100],feature:moscow}];
+assert.equal(places.chooseCityLabels(testCities,1,20).length,2,
+ "city labels should avoid overlaps without inventing coordinates");
+assert.equal(places.limitCitySymbols(testCities,1,2).length,2);
+
 assert.match(map,/Math\.log2\(scale\)/);
 assert.equal(validAtlasDocument({...atlas,borderView:"source"}),true);
 assert.equal(validAtlasDocument({...atlas,borderView:"russian"}),true);
