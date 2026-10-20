@@ -60,7 +60,7 @@ for(const name of ["countries-detail","cities","elevation","regions","glaciers",
  assert.ok(data.includes(name),"real map dataset "+name);
 for(const mode of ["hydrography","relief","cities","coordinates"])
  assert.equal(validAtlasDocument({...atlas,mode}),true);
-assert.match(map,/onPointerDown=\{onPointerDown\}/);
+assert.match(map,/onPointerDown=\{objectMoveMode\?undefined:onPointerDown\}/);
 assert.match(map,/featureSourceFacts/);
 assert.match(map,/setCompare/);
 assert.match(map,/pickCoordinates/);
