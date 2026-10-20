@@ -1,18 +1,27 @@
 /** A single map tool for geography, history and social studies.
  * Coordinates are geographic WGS84, never invented "modern borders" for a past year. */
-export type AtlasMode="political"|"contour"|"physical"|"historical"|"events";
+export type AtlasScope="geography"|"history";
+export type AtlasMode="political"|"contour"|"physical"|"hydrography"|"historical"|"events";
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
 export type AtlasDocument={
- kind:"atlas";title:string;mode:AtlasMode;year:number;showLabels:boolean;
+ kind:"atlas";title:string;scope?:AtlasScope;mode:AtlasMode;year:number;showLabels:boolean;
  showGrid:boolean;showEvents:boolean;markers:AtlasMarker[];
 };
-export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
- {id:"political",title:"Политическая",hint:"Современные государства, названия и границы"},
- {id:"contour",title:"Контурная",hint:"Неподписанная карта для упражнений"},
- {id:"physical",title:"Физическая",hint:"Берега, озёра и реки на карте мира"},
- {id:"historical",title:"Историческая",hint:"Государства и границы по датированным снимкам"},
- {id:"events",title:"Карта событий",hint:"Исторические события по времени и координатам"}
+export const geographyMapModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
+ {id:"political",title:"Современная политическая",hint:"Страны и их современные границы по Natural Earth"},
+ {id:"physical",title:"Физическая",hint:"Общая подложка суши с реками и озёрами (без высот)"},
+ {id:"hydrography",title:"Водные объекты",hint:"Озёра, реки и береговая линия"},
+ {id:"contour",title:"Контурная",hint:"Неподписанная карта для самостоятельных заданий"}
 ];
+export const historyMapModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
+ {id:"historical",title:"Исторические границы",hint:"Реальные датированные снимки государств"},
+ {id:"events",title:"Исторические события",hint:"Даты, описания, географическая привязка событий"}
+];
+export const atlasModes=[...geographyMapModes,...historyMapModes];
+export const atlasModesForScope=(scope:AtlasScope)=>scope==="history"?historyMapModes:geographyMapModes;
+export const isHistoricalAtlasMode=(mode:AtlasMode)=>mode==="historical"||mode==="events";
+export const getAtlasScope=(document:AtlasDocument):AtlasScope=>
+ document.scope??(isHistoricalAtlasMode(document.mode)?"history":"geography");
 export const historicalSnapshots=[
  {year:-123000,file:"world_bc123000.geojson"},{year:-10000,file:"world_bc10000.geojson"},
  {year:-8000,file:"world_bc8000.geojson"},{year:-5000,file:"world_bc5000.geojson"},
@@ -104,8 +113,9 @@ export function eventsNearYear(year:number){
  const max=(next+historicalSnapshots[position].year)/2;
  return schoolHistoryEvents.filter(event=>event.year>=min&&event.year<=max);
 }
-export function createAtlasDocument():AtlasDocument{
- return {kind:"atlas",title:"Интерактивная карта",mode:"political",year:1914,
+export function createAtlasDocument(scope:AtlasScope="geography"):AtlasDocument{
+ return {kind:"atlas",scope,title:scope==="history"?"Историческая карта":"Географический атлас",
+  mode:scope==="history"?"historical":"political",year:scope==="history"?1914:2010,
   showLabels:true,showGrid:false,showEvents:true,markers:[]};
 }
 const isText=(v:unknown,max:number,allowEmpty=false)=>typeof v==="string"&&v.length<=max&&(allowEmpty||v.trim().length>0);
@@ -113,6 +123,9 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
  if(!value||typeof value!=="object")return false;
  const v=value as Record<string,unknown>;
  if(v.kind!=="atlas"||!isText(v.title,120)||!atlasModes.some(m=>m.id===v.mode)||
+  (v.scope!==undefined&&
+   (v.scope!=="geography"&&v.scope!=="history"||
+    !atlasModesForScope(v.scope).some(m=>m.id===v.mode)))||
   !historicalSnapshots.some(s=>s.year===v.year)||typeof v.showLabels!=="boolean"||
   typeof v.showGrid!=="boolean"||typeof v.showEvents!=="boolean"||
   !Array.isArray(v.markers)||v.markers.length>40)return false;
