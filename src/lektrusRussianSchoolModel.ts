@@ -57,6 +57,7 @@ export function validateRussianSchoolDiagram(value:unknown):value is RussianScho
   if(!text(v.word,36,true)||typeof v.showSounds!=="boolean"||
    typeof v.showCharacteristics!=="boolean"||!Array.isArray(v.letters)||
    v.letters.length>24)return false;
+  if(v.letters.length===0)return v.word==="";
   const letters=v.letters as PhoneticLetter[];
   if(!unique(letters)||letters.some(l=>!l||!id(l.id)||
    !text(l.letter,4)||!Array.isArray(l.sounds)||l.sounds.length>2||
