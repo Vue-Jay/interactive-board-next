@@ -1,6 +1,5 @@
 import {useId} from "react";
 import type {NextSchoolDiagram,WordRole,AlgorithmNode} from "./lektrusNextSchoolModel";
-import {grammarRoles} from "./lektrusNextSchoolModel";
 type Props={diagram:NextSchoolDiagram};
 function SyntaxView({d}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>}){
  const widths=d.words.map(w=>Math.min(230,Math.max(75,20+w.text.length*13)));
