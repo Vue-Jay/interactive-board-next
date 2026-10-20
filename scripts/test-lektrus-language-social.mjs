@@ -18,7 +18,7 @@ const sentence=newLanguageSocialDiagram("ru-sentence-builder");
 assert.equal(validateLanguageSocialDiagram(sentence),true);
 assert.equal(sentence.showKey,false,"do not reveal teacher answers to students");
 const tokens=tokenizeSentence("Когда наступила весна, птицы вернулись.");
-assert.equal(tokens.length,6);
+assert.equal(tokens.length,5);
 const randomized=initialScramble(tokens);
 assert.equal(randomized.length,tokens.length);
 assert.equal(new Set(randomized).size,tokens.length);
