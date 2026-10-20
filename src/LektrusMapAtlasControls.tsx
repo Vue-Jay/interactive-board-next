@@ -1,19 +1,21 @@
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
-import {atlasModes,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
+import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
 type Props={diagram:AtlasDocument;onChange:(diagram:AtlasDocument)=>void};
 const makeId=()=>crypto.randomUUID();
 export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
- const historic=d.mode==="historical"||d.mode==="events";
+ const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
+ const modes=atlasModesFor(scope);
+ const historic=scope==="history";
  const index=nearestSnapshotIndex(d.year);
  const patch=(next:Partial<AtlasDocument>)=>onChange({...d,...next});
  return <>
   <label className="lektrus-school-field">Тип карты
-   <select value={d.mode} onChange={e=>patch({mode:e.target.value as AtlasMode})}>
-    {atlasModes.map(m=><option key={m.id} value={m.id}>{m.title}</option>)}
+   <select value={d.mode} onChange={e=>patch({scope,mode:e.target.value as AtlasMode})}>
+    {modes.map(m=><option key={m.id} value={m.id}>{m.title}</option>)}
    </select>
   </label>
-  <p className="lektrus-school-hint">{atlasModes.find(m=>m.id===d.mode)?.hint}.
-   Все режимы работают в одном инструменте, новую карту для переключения создавать не нужно.</p>
+  <p className="lektrus-school-hint">{modes.find(m=>m.id===d.mode)?.hint}.
+   Все виды этого предмета используют одну картографическую подложку. Исторические границы и события доступны только в разделе истории.</p>
   {historic&&<>
    <div className="lektrus-school-controls-heading">Временная шкала</div>
    <label className="lektrus-school-field">Доступный датированный снимок
