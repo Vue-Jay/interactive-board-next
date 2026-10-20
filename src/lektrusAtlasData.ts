@@ -98,19 +98,43 @@ function lines(f:GeoFeature):number[][][]{
  if(geometry.type==="MultiLineString")return geometry.coordinates as number[][][];
  return [];
 }
+/** Split antimeridian crossings instead of drawing an artificial line across the world.
+ * Each fragment is clipped at ±180° and continues on the opposite edge. */
 function pathForRing(points:number[][],close:boolean):string{
  if(points.length<2)return "";
- const selected:GeoPosition[]=[];
- for(let i=0;i<points.length;i++){
-  const p=points[i];
-  if(!Array.isArray(p)||!Number.isFinite(p[0])||!Number.isFinite(p[1]))continue;
-  const current=projectGeography(p[0],p[1]);
-  const last=selected[selected.length-1];
-  if(!last||i===points.length-1||Math.abs(last[0]-current[0])+Math.abs(last[1]-current[1])>=.62)
-   selected.push(current);
+ const valid=points.filter(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]))
+  .map(p=>[Math.max(-180,Math.min(180,p[0])),Math.max(-90,Math.min(90,p[1]))]);
+ if(valid.length<2)return "";
+ // Polygon segments are closed explicitly so every crossing can be clipped at the map edge.
+ if(close&&valid.length>2&&(valid[0][0]!==valid[valid.length-1][0]||valid[0][1]!==valid[valid.length-1][1]))
+  valid.push([...valid[0]]);
+ const fragments:number[][][]=[];
+ let fragment:number[][]=[valid[0]];
+ for(let i=1;i<valid.length;i++){
+  const a=valid[i-1],b=valid[i],dx=b[0]-a[0];
+  if(Math.abs(dx)>180){
+   const edge=dx>0?-180:180;
+   const adjusted=dx>0?b[0]-360:b[0]+360;
+   const t=(edge-a[0])/(adjusted-a[0]);
+   const lat=a[1]+t*(b[1]-a[1]);
+   fragment.push([edge,lat]);fragments.push(fragment);
+   fragment=[[-edge,lat],b];
+  }else fragment.push(b);
  }
- if(selected.length<2)return "";
- return selected.map(([x,y],i)=>(i?"L":"M")+x.toFixed(1)+" "+y.toFixed(1)).join("")+(close?"Z":"");
+ fragments.push(fragment);
+ return fragments.map(fragment=>{
+  const selected:GeoPosition[]=[];
+  for(let i=0;i<fragment.length;i++){
+   const current=projectGeography(fragment[i][0],fragment[i][1]);
+   const last=selected[selected.length-1];
+   if(!last||i===fragment.length-1||Math.abs(last[0]-current[0])+Math.abs(last[1]-current[1])>=.62)
+    selected.push(current);
+  }
+  if(selected.length<2)return "";
+  // Do not close a split fragment back across the world or to a false border.
+  const shouldClose=close&&fragments.length===1;
+  return selected.map(([x,y],i)=>(i?"L":"M")+x.toFixed(1)+" "+y.toFixed(1)).join("")+(shouldClose?"Z":"");
+ }).filter(Boolean).join("");
 }
 export function mapFeaturePath(f:GeoFeature):string{
  const all:string[]=[];
