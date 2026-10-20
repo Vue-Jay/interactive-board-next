@@ -141,6 +141,7 @@ const naturalNames:Record<string,string>={
  "English Channel": "Ла-Манш",
  "Strait of Malacca": "Малаккский пролив"
 };
+Object.assign(naturalNames,{"Yenisey":"Енисей","Yenisei River":"Енисей","Volga River":"Волга","Lena River":"Лена","Ob River":"Обь","Ob'":"Обь","Irtysh":"Иртыш","Kama":"Кама","Angara":"Ангара","Pechora":"Печора","Northern Dvina":"Северная Двина","Oka":"Ока","Kolyma":"Колыма","Indigirka":"Индигирка","Aldan":"Алдан","Amur River":"Амур","Ussuri":"Уссури","Don River":"Дон","Nile River":"Нил","Congo":"Конго","Congo River":"Конго","Zambezi":"Замбези","Mekong":"Меконг","Ganges":"Ганг","Brahmaputra":"Брахмапутра","Huang He":"Хуанхэ","Yangtze":"Янцзы","Missouri":"Миссури","Parana":"Парана","Paraná":"Парана","Orinoco":"Ориноко","Rhine":"Рейн","Rhone":"Рона","Loire":"Луара","Seine":"Сена","Elbe":"Эльба","Vistula":"Висла","Dniester":"Днестр","Lake Victoria":"озеро Виктория","Lake Tanganyika":"озеро Танганьика","Lake Superior":"Верхнее озеро","Lake Michigan":"озеро Мичиган","Lake Huron":"озеро Гурон","Lake Erie":"озеро Эри","Lake Ontario":"озеро Онтарио","Aral Sea":"Аральское море","Lake Balkhash":"Балхаш","Lake Issyk-Kul":"Иссык-Куль"});
 const historicNames:Record<string,string>={
  "Roman Empire":"Римская империя","Eastern Roman Empire":"Восточная Римская империя",
  "Byzantine Empire":"Византийская империя","Soviet Union":"Советский Союз",
@@ -338,6 +339,39 @@ export function featureLabelAnchor(feature:GeoFeature):{x:number;y:number;area:n
  }
  return best;
 }
+/** A river label at half the length of the longest component.
+ * The function uses source coordinates and avoids invented river centres. */
+export function featureLineMidpoint(feature:GeoFeature):GeoPosition|null{
+ const paths=lines(feature);
+ if(!paths.length)return featureMapPoint(feature);
+ let longest:GeoPosition[]=[];let maximum=0;
+ for(const line of paths){
+  const points=line.filter(p=>p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1]))
+   .map(p=>projectGeography(p[0],p[1]));
+  if(points.length<2)continue;
+  let distance=0;
+  for(let i=1;i<points.length;i++){
+   const dx=Math.abs(points[i][0]-points[i-1][0]);
+   if(dx>450)continue;
+   distance+=Math.hypot(dx,points[i][1]-points[i-1][1]);
+  }
+  if(distance>maximum){maximum=distance;longest=points}
+ }
+ if(maximum<=0)return null;
+ const half=maximum/2;let travelled=0;
+ for(let i=1;i<longest.length;i++){
+  const a=longest[i-1],b=longest[i];
+  const dx=Math.abs(b[0]-a[0]);if(dx>450)continue;
+  const segment=Math.hypot(dx,b[1]-a[1]);
+  if(travelled+segment>=half){
+   const t=(half-travelled)/Math.max(1e-9,segment);
+   return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+  }
+  travelled+=segment;
+ }
+ return longest[Math.floor(longest.length/2)]??null;
+}
+
 /** A point from the source, not a guessed place or a calculated capital.
  * Non-point features use their geographic label anchor when available. */
 export function featureMapPoint(feature:GeoFeature):GeoPosition|null{
