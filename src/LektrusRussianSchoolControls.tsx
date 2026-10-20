@@ -51,7 +51,7 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
      placeholder="Введите слово"/></label>
    <button type="button" className="lektrus-school-add" onClick={()=>{
     const chars=Array.from(d.word.trim()).slice(0,24);
-    onChange({...d,word:chars.join(""),letters:chars.map((letter,i)=>({
+    onChange({...d,word:chars.join(""),letters:chars.map(letter=>({
      id:makeId(),letter,sounds:[],characteristic:"",stressed:false
     }))});
    }}>Создать пустую таблицу букв из слова</button>
