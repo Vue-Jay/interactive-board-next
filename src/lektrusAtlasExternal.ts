@@ -57,15 +57,22 @@ export function loadLocalInfrastructure(b:ExternalBounds):Promise<GeoCollection>
 const mineralWords:ReadonlyArray<[RegExp,string,string]>=[
  [/gold|aurum|золот/i,"Золото","#dfb345"],[/silver|argent|серебр/i,"Серебро","#aab8c4"],
  [/copper|медн|cupr/i,"Медь","#c2794f"],[/iron|желез|ferrous/i,"Железная руда","#ab6252"],
- [/coal|угол/i,"Уголь","#4b525a"],[/petroleum|oil|нефт/i,"Нефть","#585453"],
- [/natural gas|gas field|газов/i,"Природный газ","#a3a7bb"],
+ // This USGS major-deposit source does not index petroleum or coal fields.
+ // Never advertise unavailable fossil-fuel layers as if populated.
  [/uranium|уран/i,"Уран","#92a750"],[/diamonds?|алмаз/i,"Алмазы","#8ccad6"],
  [/lithium|литий/i,"Литий","#a782ba"],[/nickel|никел/i,"Никель","#7f9697"],
  [/bauxite|aluminum|aluminium|боксит/i,"Бокситы и алюминий","#c99987"],
  [/tin\b|олов/i,"Олово","#95b1b2"],[/lead|свин/i,"Свинец","#858f9b"],
  [/zinc|цинк/i,"Цинк","#94a694"],[/potash|potassium|калийн/i,"Калийные соли","#c1a3cc"],
  [/phosphate|фосфат/i,"Фосфориты","#7cb394"],[/tungsten|вольфрам/i,"Вольфрам","#9f8e80"],
- [/manganese|марганец/i,"Марганец","#9c8fba"],[/rare earth|редкозем/i,"Редкоземельные элементы","#8baab8"]
+ [/manganese|марганец/i,"Марганец","#9c8fba"],[/rare earth|редкозем/i,"Редкоземельные элементы","#8baab8"],
+ [/molybdenum|молибден/i,"Молибден","#7b99a6"],[/cobalt|кобальт/i,"Кобальт","#7696b5"],
+ [/beryllium|берил/i,"Бериллий","#a6bf98"],[/titanium|титан/i,"Титан","#969db0"],
+ [/chromium|chromite|хром/i,"Хромиты","#779c90"],[/platinum|платин/i,"Платина","#c6b4cb"],
+ [/barite|baryte|барит/i,"Барит","#ae9aa6"],[/gypsum|гипс/i,"Гипс","#d2c5a2"],
+ [/salt|halite|галит/i,"Каменная соль","#d9bba1"],
+ [/boron|borate|борн/i,"Борные минералы","#c9aa81"],
+ [/kaolin|каолин/i,"Каолин","#c2c5ae"],[/fluorite|fluorspar|флюорит/i,"Флюорит","#9cafc9"]
 ];
 export const mineralTypes=mineralWords.map(x=>({name:x[1],color:x[2]}));
 export function mineralCommodity(feature:GeoFeature):{name:string;color:string}|null{
@@ -99,4 +106,28 @@ export function loadMineralDeposits(b:ExternalBounds):Promise<GeoCollection>{
   }
   return {type:"FeatureCollection",features};
  });
+}
+
+/** Known geological genesis classes, never inferred from the deposit name. */
+const mineralOriginRu:Record<string,string>={
+ Hydrothermal:"Гидротермальное",Igneous:"Магматическое",
+ Metamorphic:"Метаморфогенное",Sedimentary:"Осадочное",
+ Surficial:"Приповерхностное",Gemstone:"Месторождение драгоценных камней",
+ Unclassified:"Тип происхождения в источнике не установлен"
+};
+export function mineralDepositFacts(feature:GeoFeature):Array<{label:string;value:string}>{
+ const p=feature.properties??{},result:Array<{label:string;value:string}>=[];
+ const type=String(p.dep_type??"").trim();
+ if(mineralOriginRu[type])result.push({label:"Генетический тип",value:mineralOriginRu[type]});
+ const code=String(p.model_code??"").trim();
+ if(code&&/^[A-Za-z0-9 ._/-]{1,16}$/.test(code))
+  result.push({label:"Код геологической модели USGS",value:code});
+ const ref=Number(p.rec_id);
+ if(Number.isInteger(ref)&&ref>0)result.push({label:"Номер записи USGS",value:String(ref)});
+ return result;
+}
+export function mineralDepositSource(feature:GeoFeature):string|null{
+ const url=String(feature.properties?.url??"").trim();
+ if(/^https:\/\/[^\s]+$/i.test(url)&&/^https:\/\/(?:[^/]+\.)?(?:usgs\.gov|mrdata\.usgs\.gov)\//i.test(url))return url;
+ return null;
 }
