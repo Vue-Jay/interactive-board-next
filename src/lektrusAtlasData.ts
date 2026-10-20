@@ -56,9 +56,31 @@ async function requestGeojson(key:string,urls:string[]):Promise<GeoCollection>{
  pending.set(key,task);
  try{return await task}finally{pending.delete(key)}
 }
-export const geoFeatureName=(feature:GeoFeature)=>
- String(feature.properties?.NAME_RU||feature.properties?.NAME||feature.properties?.NAMEASCII||feature.properties?.GEONAME||feature.properties?.ADMIN||
- feature.properties?.name||"Объект без названия");
+const russianCountryNames=new Intl.DisplayNames(["ru"],{type:"region"});
+const historicNames:Record<string,string>={
+ "Roman Empire":"Римская империя","Eastern Roman Empire":"Восточная Римская империя",
+ "Byzantine Empire":"Византийская империя","Soviet Union":"Советский Союз",
+ "USSR":"СССР","Russian Empire":"Российская империя",
+ "Mongol Empire":"Монгольская империя","Ottoman Empire":"Османская империя",
+ "Holy Roman Empire":"Священная Римская империя","British Empire":"Британская империя",
+ "Kingdom of France":"Королевство Франция","Kingdom of England":"Королевство Англия",
+ "Persian Empire":"Персидская империя","Ancient Egypt":"Древний Египет",
+ "Caliphate":"Халифат","Golden Horde":"Золотая Орда",
+ "Kievan Rus":"Древняя Русь","Muscovy":"Московское государство"
+};
+export const geoFeatureName=(feature:GeoFeature)=>{
+ const p=feature.properties??{};
+ const named=p.NAME_RU||p.NAME_ru||p.name_ru;
+ if(typeof named==="string"&&named.trim())return named.trim();
+ const english=String(p.NAME||p.NAMEASCII||p.GEONAME||p.ADMIN||p.name||"").trim();
+ if(historicNames[english])return historicNames[english];
+ const iso=String(p.ISO_A2||p.ISO_A2_EH||"");
+ if(/^[A-Z]{2}$/.test(iso)){
+  const localized=russianCountryNames.of(iso);
+  if(localized&&localized!==iso)return localized;
+ }
+ return english||"Объект без названия";
+};
 export const borderPrecision=(f:GeoFeature):number=>{
  const number=Number(f.properties?.BORDERPRECISION);
  return Number.isFinite(number)&&number>=1&&number<=3?number:1;
