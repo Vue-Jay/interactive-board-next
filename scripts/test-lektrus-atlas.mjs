@@ -45,6 +45,18 @@ assert.equal(validAtlasDocument({...atlas,markers:Array.from({length:41},(_,i)=>
  id:String(i),title:"Метка",lat:0,lon:0,year:1914,description:""
 }))}),false);
 const map=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
+const regions=fs.readFileSync(new URL("../src/lektrusAtlasRegions.ts",import.meta.url),"utf8");
+assert.match(regions,/Сибирский федеральный округ/);
+assert.match(regions,/Чукотка: западное полушарие/);
+assert.match(map,/atlasRegionCamera/);
+assert.match(map,/admin-regional/);
+assert.match(map,/rivers-regional/);
+assert.match(map,/Регион школьного атласа/);
+assert.doesNotMatch(map,/Базовая версия Natural Earth/);
+assert.equal(createAtlasDocument().borderView,"russian");
+assert.equal(createAtlasDocument().regionId,"world");
+assert.equal(validAtlasDocument({...atlas,regionId:"rf-siberia"}),true);
+assert.equal(validAtlasDocument({...atlas,regionId:"..wrong"}),false);
 const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url),"utf8");
 const reg=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
 assert.match(map,/loadHistoricalSnapshot/);

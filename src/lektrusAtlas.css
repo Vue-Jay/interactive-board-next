@@ -210,3 +210,11 @@
 @media(max-width:520px){.lektrus-atlas-zoom-slider{font-size:9px;padding:3px}
  .lektrus-atlas-zoom-slider input{width:58px}
  .lektrus-atlas-source-note{padding:5px}}
+
+/* School atlas regional navigation shared between geography, history and contours. */
+.lektrus-atlas-region-picker{display:flex;flex-direction:column;gap:5px;padding:8px;background:#eaf3fb;border:1px solid #ccdfee;border-radius:9px}
+.lektrus-atlas-region-picker strong{font-size:12px;color:#345e87}
+.lektrus-atlas-region-picker select{width:100%;max-width:100%;min-width:0;background:white;border:1px solid #bdd4e9;border-radius:7px;padding:7px 4px;font-size:11px;color:#305c81}
+.lektrus-atlas-region-picker small{color:#69849b;font-size:10px;line-height:1.4}
+.lektrus-atlas-admin1{opacity:.8}
+@media(max-width:520px){.lektrus-atlas-region-picker{padding:4px;gap:3px}.lektrus-atlas-region-picker select{font-size:10px;padding:4px 2px}}

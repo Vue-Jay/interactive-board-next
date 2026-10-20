@@ -34,6 +34,7 @@ export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
    <p className="lektrus-school-hint">Доступны {historicalSnapshots.length} датированных картографических снимков от древних эпох до современного обзорного слоя 2026 года. Данные за 2011–2026 годы отсутствуют в историческом источнике и не подменяются современным слоем. Исторические снимки имеют самостоятельные границы; запись 2026 года показывает современный источник Natural Earth, не подтверждает состояние границ на конкретную дату. В промежутках не строятся вымышленные границы и не предполагается непрерывная точность.</p>
    <p className="lektrus-school-hint">События добавляются преподавателем вручную в разделе маркеров ниже. Автоматических подборок событий нет.</p>
   </>}
+  <p className="lektrus-school-hint">Во всех типах карт регион и увеличение выбираются непосредственно на карте. Выбранная территория сохраняется с доской. В современном политическом слое используется российский вариант Natural Earth RUS; исторические эпохи показываются по датированным реконструкциям.</p>
   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showGrid}
    onChange={e=>patch({showGrid:e.target.checked})}/> Меридианы и параллели</label>
   {d.mode!=="contour"&&<label className="lektrus-school-toggle"><input type="checkbox" checked={d.showLabels}
