@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
+import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
@@ -30,6 +31,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [lakes,setLakes]=useState<GeoCollection|null>(null);
  const [cities,setCities]=useState<GeoCollection|null>(null);
  const [regions,setRegions]=useState<GeoCollection|null>(null);
+ const [administrative,setAdministrative]=useState<GeoCollection|null>(null);
  const [elevations,setElevations]=useState<GeoCollection|null>(null);
  const [glaciers,setGlaciers]=useState<GeoCollection|null>(null);
  const [detail,setDetail]=useState<GeoCollection|null>(null);
@@ -53,6 +55,9 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [indexProblem,setIndexProblem]=useState("");
  const pendingJump=useRef<{year:number;raw:string}|null>(null);
  const [scale,setScale]=useState(1);
+ const [regionId,setRegionId]=useState(d.regionId??"world");
+ const selectedRegion=findAtlasRegion(regionId);
+ const detailedGeography=scale>=3||regionId!=="world";
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
@@ -61,8 +66,11 @@ function AtlasMap({diagram:d,onChange}:Props){
  const dragged=useRef(false);
  const snapshot=historicalSnapshots[index];
  const modernReference=snapshot.year===2026;
- const russianView=(d.borderView??"source")==="russian";
+ const russianView=true; // Modern map: fixed Russian Natural Earth POV.
  const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
+ useEffect(()=>{setRegionId(d.regionId??"world")},[d.regionId]);
+ useEffect(()=>{const camera=atlasRegionCamera(findAtlasRegion(regionId));setScale(camera.scale);
+  setPosition(camera.position);setSelected(null);setCoord(null)},[regionId]);
  const availableModes=isContourTool?atlasModesFor(scope).filter(m=>m.id==="contour"):
   atlasModesFor(scope).filter(m=>m.id!=="contour");
  const historical=scope==="history";
@@ -79,14 +87,15 @@ function AtlasMap({diagram:d,onChange}:Props){
  useEffect(()=>{
   let active=true;
   setBaseError("");setBaseLoading(true);
-  Promise.all([loadAtlasLayer("land"),loadAtlasLayer("coastline")]).then(([land,coastline])=>{
+  Promise.all([loadAtlasLayer(detailedGeography?"land-detail":"land"),
+   loadAtlasLayer(detailedGeography?"coastline-detail":"coastline")]).then(([land,coastline])=>{
    if(!active)return;
    setBaseLand(land);setBaseCoastline(coastline);setBaseLoading(false);
   }).catch(e=>{if(!active)return;
    setBaseError(e instanceof Error?e.message:String(e));setBaseLoading(false);
   });
   return()=>{active=false};
- },[refresh]);
+ },[refresh,detailedGeography]);
  useEffect(()=>{
   let active=true;
   setError("");setLayerWarning("");setLoading(true);setSource(null);setSourceYear(null);setSelected(null);
@@ -97,9 +106,13 @@ function AtlasMap({diagram:d,onChange}:Props){
    loadHistoricalSnapshot(historicalSnapshots[index-1].year).catch(()=>null):Promise.resolve(null);
   // Optional thematic layers never replace the original geographic geometry.
   const thematic:ReadonlyArray<[string,boolean]>=[
-   ["rivers",mode==="physical"||mode==="hydrography"],
-   ["lakes",mode==="physical"||mode==="hydrography"],
-   ["cities",mode==="cities"],
+   ["rivers",!detailedGeography&&(mode==="physical"||mode==="hydrography")],
+   ["rivers-regional",detailedGeography&&(mode==="physical"||mode==="hydrography")],
+   ["lakes",!detailedGeography&&(mode==="physical"||mode==="hydrography")],
+   ["lakes-regional",detailedGeography&&(mode==="physical"||mode==="hydrography")],
+   ["cities",!detailedGeography&&mode==="cities"],
+   ["cities-regional",detailedGeography&&mode==="cities"],
+   ["admin-regional",regionId!=="world"&&(mode==="political"||mode==="contour"||mode==="cities")],
    ["regions",mode==="physical"||mode==="relief"],
    ["elevation",mode==="physical"||mode==="relief"],
    ["glaciers",mode==="physical"||mode==="relief"]
@@ -109,7 +122,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    setSource(geo);setSourceYear(snapshot.year);setPrevious(prev);setLoading(false);
    const requested=thematic.filter(([,needed])=>needed);
    const result=await Promise.allSettled(requested.map(([layer])=>loadAtlasLayer(layer as
-    "rivers"|"lakes"|"cities"|"regions"|"elevation"|"glaciers")));
+    "rivers"|"rivers-regional"|"lakes"|"lakes-regional"|"cities"|"cities-regional"|"admin-regional"|"regions"|"elevation"|"glaciers")));
    if(!active)return;
    const missing:string[]=[];
    const found=new Map<string,GeoCollection>();
@@ -118,8 +131,10 @@ function AtlasMap({diagram:d,onChange}:Props){
     if(layerResult.status==="fulfilled")found.set(layer,layerResult.value);
     else missing.push(layer);
    });
-   setRivers(found.get("rivers")??null);setLakes(found.get("lakes")??null);
-   setCities(found.get("cities")??null);setRegions(found.get("regions")??null);
+   setRivers(found.get("rivers-regional")??found.get("rivers")??null);
+   setLakes(found.get("lakes-regional")??found.get("lakes")??null);
+   setCities(found.get("cities-regional")??found.get("cities")??null);
+   setAdministrative(found.get("admin-regional")??null);setRegions(found.get("regions")??null);
    setElevations(found.get("elevation")??null);setGlaciers(found.get("glaciers")??null);
    setLayerWarning(missing.length?"Не удалось загрузить некоторые слои: "+missing.join(", "):"");
   }).catch(e=>{
@@ -127,7 +142,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    setError(e instanceof Error?e.message:String(e));setLoading(false);
   });
   return()=>{active=false};
- },[mode,index,refresh,historical,snapshot.year,modernBorders,russianView,modernReference]);
+ },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,regionId]);
  useEffect(()=>{
   let active=true;
   if(!modernBorders||scale<5||russianView){setDetail(null);setDetailWarning("");return}
@@ -143,8 +158,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    .catch(()=>{if(active)setTinyCountries(null)});
   return()=>{active=false};
  },[modernBorders,refresh]);
- const mapSource=historical||mode==="political"||mode==="contour"?
-  (modernBorders&&detail&&scale>=5?detail:source):null;
+ const mapSource=historical||mode==="political"||mode==="contour"?source:null;
  const highDetail=modernBorders&&(russianView||!!detail&&scale>=5);
  const precision=highDetail?(scale>=8?.00015:.08):modernBorders?.13:.10;
  const mapSourceFeatures=useMemo(()=>mapSource?.features??[],[mapSource]);
@@ -171,8 +185,9 @@ function AtlasMap({diagram:d,onChange}:Props){
   feature:s.feature,point:featureMapPoint(s.feature),name:s.name,
   area:featureLabelAnchor(s.feature)?.area??Infinity,i:s.i
  })).filter(s=>s.point&&s.area*scale*scale<18):[],[modernBorders,shapes,scale]);
- const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f})).filter(v=>v.path)||[],[rivers]);
- const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f})).filter(v=>v.path)||[],[lakes]);
+ const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.09:.62,viewport),feature:f})).filter(v=>v.path)||[],[rivers,detailedGeography,viewport]);
+ const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.09:.62,viewport),feature:f})).filter(v=>v.path)||[],[lakes,detailedGeography,viewport]);
+ const provincePaths=useMemo(()=>administrative?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,.12,viewport),feature:f})).filter(f=>f.path)||[],[administrative,viewport]);
  const landforms=useMemo(()=>regions?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f}))
   .filter(v=>v.path)||[],[regions]);
  const ice=useMemo(()=>glaciers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f}))
@@ -293,7 +308,8 @@ function AtlasMap({diagram:d,onChange}:Props){
   pointer.current=next?{id:next[0],x:next[1].x,y:next[1].y,
    fromX:position.x,fromY:position.y}:null;
  };
- const reset=()=>{setScale(1);setPosition({x:0,y:0});setSelected(null);setCoord(null)};
+ const reset=()=>{const camera=atlasRegionCamera(selectedRegion);setScale(camera.scale);setPosition(camera.position);setSelected(null);setCoord(null)};
+ const changeRegion=(id:string)=>{setRegionId(id);onChange?.({...d,regionId:id})};
  const selectFeature=(feature:GeoFeature,layer:string)=>{
   if(historical)setHistoryTab("article");
   if(dragged.current||mode==="contour")return;
