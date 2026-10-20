@@ -1,9 +1,18 @@
 /** A single map tool for geography, history and social studies.
  * Coordinates are geographic WGS84, never invented "modern borders" for a past year. */
 export type AtlasMode="political"|"contour"|"physical"|"historical"|"events";
+export type AtlasSubject="geography"|"history";
+/** Older saved atlases lack atlasSubject; their historical layers are preserved. */
+export function atlasSubjectFor(d:Pick<AtlasDocument,"mode"|"atlasSubject">):AtlasSubject{
+ return d.atlasSubject??(d.mode==="historical"||d.mode==="events"?"history":"geography");
+}
+export function atlasModesForSubject(subject:AtlasSubject){
+ return subject==="history"?atlasModes.filter(m=>m.id==="historical"||m.id==="events"):
+  atlasModes.filter(m=>m.id==="political");
+}
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
 export type AtlasDocument={
- kind:"atlas";title:string;mode:AtlasMode;year:number;showLabels:boolean;
+ kind:"atlas";title:string;mode:AtlasMode;atlasSubject?:AtlasSubject;year:number;showLabels:boolean;
  showGrid:boolean;showEvents:boolean;markers:AtlasMarker[];
 };
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
@@ -104,8 +113,9 @@ export function eventsNearYear(year:number){
  const max=(next+historicalSnapshots[position].year)/2;
  return schoolHistoryEvents.filter(event=>event.year>=min&&event.year<=max);
 }
-export function createAtlasDocument():AtlasDocument{
- return {kind:"atlas",title:"Интерактивная карта",mode:"political",year:1914,
+export function createAtlasDocument(subject:AtlasSubject="geography"):AtlasDocument{
+ return {kind:"atlas",atlasSubject:subject,title:subject==="history"?"Историческая карта":"Политическая карта мира",
+  mode:subject==="history"?"historical":"political",year:1914,
   showLabels:true,showGrid:false,showEvents:true,markers:[]};
 }
 const isText=(v:unknown,max:number,allowEmpty=false)=>typeof v==="string"&&v.length<=max&&(allowEmpty||v.trim().length>0);
@@ -113,6 +123,7 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
  if(!value||typeof value!=="object")return false;
  const v=value as Record<string,unknown>;
  if(v.kind!=="atlas"||!isText(v.title,120)||!atlasModes.some(m=>m.id===v.mode)||
+  (v.atlasSubject!==undefined&&!["geography","history"].includes(v.atlasSubject as string))||
   !historicalSnapshots.some(s=>s.year===v.year)||typeof v.showLabels!=="boolean"||
   typeof v.showGrid!=="boolean"||typeof v.showEvents!=="boolean"||
   !Array.isArray(v.markers)||v.markers.length>40)return false;
