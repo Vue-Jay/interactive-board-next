@@ -46,7 +46,8 @@ export const historicalSnapshots=[
  {year:1920,file:"world_1920.geojson"},{year:1930,file:"world_1930.geojson"},
  {year:1938,file:"world_1938.geojson"},{year:1945,file:"world_1945.geojson"},
  {year:1960,file:"world_1960.geojson"},{year:1994,file:"world_1994.geojson"},
- {year:2000,file:"world_2000.geojson"},{year:2010,file:"world_2010.geojson"}
+ {year:2000,file:"world_2000.geojson"},{year:2010,file:"world_2010.geojson"},
+ {year:2026,file:"modern-russia-pov"}
 ] as const;
 export const yearLabel=(year:number)=>year<0?Math.abs(year)+" г. до н. э.":year+" г.";
 export function nearestSnapshotIndex(year:number){
