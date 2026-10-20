@@ -5,11 +5,12 @@ export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineSt
  coordinates:unknown};
 export type GeoFeature={type:"Feature";properties:Record<string,unknown>|null;geometry:GeoGeometry|null};
 export type GeoCollection={type:"FeatureCollection";features:GeoFeature[]};
-export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"cities-regional"|"admin-regional"|"regions-regional"|"elevation-regional"|"glaciers-regional";
-const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/";
-const BACKUP="https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/";
-const HIST="https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/";
-const HIST_BACKUP="https://cdn.jsdelivr.net/gh/aourednik/historical-basemaps@master/geojson/";
+export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"cities-regional"|"admin-regional"|"regions-regional"|"elevation-regional"|"glaciers-regional"|"marine"|"physical-labels";
+// Pin the dataset snapshots used by school lessons.
+const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/";
+const BACKUP="https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@ca96624a56bd078437bca8184e78163e5039ad19/geojson/";
+const HIST="https://raw.githubusercontent.com/aourednik/historical-basemaps/da7a4b735ecef70aebdc9c73e409d8a2500d50f3/geojson/";
+const HIST_BACKUP="https://cdn.jsdelivr.net/gh/aourednik/historical-basemaps@da7a4b735ecef70aebdc9c73e409d8a2500d50f3/geojson/";
 const names:Record<GeoLayer,string>={
  land:"ne_110m_land.geojson",
  coastline:"ne_110m_coastline.geojson",
@@ -22,6 +23,8 @@ const names:Record<GeoLayer,string>={
  "regions-regional":"ne_50m_geography_regions_polys.geojson",
  "elevation-regional":"ne_50m_geography_regions_elevation_points.geojson",
  "glaciers-regional":"ne_50m_glaciated_areas.geojson",
+ marine:"ne_50m_geography_marine_polys.geojson",
+ "physical-labels":"ne_50m_geography_regions_points.geojson",
  countries:"ne_110m_admin_0_countries.geojson",
  "countries-detail":"ne_50m_admin_0_countries.geojson",
  "countries-ultra":"ne_10m_admin_0_countries.geojson",
@@ -69,6 +72,75 @@ async function requestGeojson(key:string,urls:string[]):Promise<GeoCollection>{
  try{return await task}finally{pending.delete(key)}
 }
 const russianCountryNames=new Intl.DisplayNames(["ru"],{type:"region"});
+/** Conventional school names for objects present in the actual map source. */
+const naturalNames:Record<string,string>={
+ "Black Sea": "Чёрное море",
+ "Caspian Sea": "Каспийское море",
+ "Baltic Sea": "Балтийское море",
+ "Azov Sea": "Азовское море",
+ "Mediterranean Sea": "Средиземное море",
+ "Red Sea": "Красное море",
+ "White Sea": "Белое море",
+ "Barents Sea": "Баренцево море",
+ "Kara Sea": "Карское море",
+ "Laptev Sea": "Море Лаптевых",
+ "East Siberian Sea": "Восточно-Сибирское море",
+ "Chukchi Sea": "Чукотское море",
+ "Bering Sea": "Берингово море",
+ "Okhotsk Sea": "Охотское море",
+ "Sea of Japan": "Японское море",
+ "North Sea": "Северное море",
+ "Norwegian Sea": "Норвежское море",
+ "Arabian Sea": "Аравийское море",
+ "Coral Sea": "Коралловое море",
+ "Caribbean Sea": "Карибское море",
+ "Philippine Sea": "Филиппинское море",
+ "Sargasso Sea": "Саргассово море",
+ "Atlantic Ocean": "Атлантический океан",
+ "Pacific Ocean": "Тихий океан",
+ "Indian Ocean": "Индийский океан",
+ "Arctic Ocean": "Северный Ледовитый океан",
+ "Southern Ocean": "Южный океан",
+ "Lake Baikal": "Байкал",
+ "Baikal": "Байкал",
+ "Lake Ladoga": "Ладожское озеро",
+ "Lake Onega": "Онежское озеро",
+ "Volga": "Волга",
+ "Ob": "Обь",
+ "Yenisei": "Енисей",
+ "Lena": "Лена",
+ "Amur": "Амур",
+ "Don": "Дон",
+ "Dnieper": "Днепр",
+ "Danube": "Дунай",
+ "Nile": "Нил",
+ "Amazon": "Амазонка",
+ "Mississippi": "Миссисипи",
+ "Ural Mountains": "Уральские горы",
+ "Caucasus Mountains": "Кавказские горы",
+ "Greater Caucasus": "Большой Кавказ",
+ "Alps": "Альпы",
+ "Himalayas": "Гималаи",
+ "Andes": "Анды",
+ "Altai Mountains": "Алтайские горы",
+ "Altai": "Алтай",
+ "Sayan Mountains": "Саяны",
+ "Tian Shan": "Тянь-Шань",
+ "East European Plain": "Восточно-Европейская равнина",
+ "West Siberian Plain": "Западно-Сибирская равнина",
+ "Central Siberian Plateau": "Среднесибирское плоскогорье",
+ "Gobi Desert": "пустыня Гоби",
+ "Sahara": "Сахара",
+ "Sahara Desert": "Сахара",
+ "Arabian Peninsula": "Аравийский полуостров",
+ "Kamchatka Peninsula": "полуостров Камчатка",
+ "Crimean Peninsula": "Крымский полуостров",
+ "Iberian Peninsula": "Пиренейский полуостров",
+ "Bering Strait": "Берингов пролив",
+ "Gibraltar Strait": "Гибралтарский пролив",
+ "English Channel": "Ла-Манш",
+ "Strait of Malacca": "Малаккский пролив"
+};
 const historicNames:Record<string,string>={
  "Roman Empire":"Римская империя","Eastern Roman Empire":"Восточная Римская империя",
  "Byzantine Empire":"Византийская империя","Soviet Union":"Советский Союз",
@@ -86,6 +158,7 @@ export const geoFeatureName=(feature:GeoFeature)=>{
  if(typeof named==="string"&&named.trim())return named.trim();
  const english=String(p.NAME||p.NAMEASCII||p.GEONAME||p.ADMIN||p.name||"").trim();
  if(historicNames[english])return historicNames[english];
+ if(naturalNames[english])return naturalNames[english];
  const iso=String(p.ISO_A2||p.ISO_A2_EH||"");
  if(/^[A-Z]{2}$/.test(iso)){
   const localized=russianCountryNames.of(iso);
@@ -128,8 +201,8 @@ export function loadHistoricalIndex():Promise<HistoricalIndexRecord[]>{
  indexPromise=(async()=>{
   let failure="";
   for(const url of [
-   "https://raw.githubusercontent.com/aourednik/historical-basemaps/master/index.json",
-   "https://cdn.jsdelivr.net/gh/aourednik/historical-basemaps@master/index.json"
+   "https://raw.githubusercontent.com/aourednik/historical-basemaps/da7a4b735ecef70aebdc9c73e409d8a2500d50f3/index.json",
+   "https://cdn.jsdelivr.net/gh/aourednik/historical-basemaps@da7a4b735ecef70aebdc9c73e409d8a2500d50f3/index.json"
   ]){
    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),16000);
    try{
