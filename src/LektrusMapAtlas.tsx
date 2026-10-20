@@ -53,6 +53,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [physicalLabels,setPhysicalLabels]=useState<GeoCollection|null>(null);
  const [lakes,setLakes]=useState<GeoCollection|null>(null);
  const [cities,setCities]=useState<GeoCollection|null>(null);
+ const [cityResolution,setCityResolution]=useState("не загружен");
  const [minCityPopulation,setMinCityPopulation]=useState(0);
  const [regions,setRegions]=useState<GeoCollection|null>(null);
  const [administrative,setAdministrative]=useState<GeoCollection|null>(null);
@@ -158,8 +159,9 @@ function AtlasMap({diagram:d,onChange}:Props){
    if(!active)return;
    setSource(geo);setSourceYear(snapshot.year);setPrevious(prev);setLoading(false);
    const requested=thematic.filter(([,needed])=>needed);
+   let localCityLoaded=false;
    const result=await Promise.allSettled(requested.map(([layer])=>layer==="cities-local"?
-    loadAtlasLayer("cities-local").catch(()=>loadAtlasLayer("cities-regional")):loadAtlasLayer(layer as
+    loadAtlasLayer("cities-local").then(geo=>{localCityLoaded=true;return geo}).catch(()=>loadAtlasLayer("cities-regional")):loadAtlasLayer(layer as
     "rivers"|"rivers-regional"|"lakes"|"lakes-regional"|"cities"|"cities-regional"|"cities-local"|"admin-regional"|"regions"|"regions-regional"|"elevation"|"elevation-regional"|"glaciers"|"glaciers-regional"|"marine"|"physical-labels")));
    if(!active)return;
    const missing:string[]=[];
@@ -173,6 +175,8 @@ function AtlasMap({diagram:d,onChange}:Props){
    setMarine(found.get("marine")??null);setPhysicalLabels(found.get("physical-labels")??null);
    setLakes(found.get("lakes-regional")??found.get("lakes")??null);
    setCities(found.get("cities-local")??found.get("cities-regional")??found.get("cities")??null);
+   setCityResolution(found.has("cities-local")?(localCityLoaded?"1:10 млн":"1:50 млн, резервный"):
+    found.has("cities-regional")?"1:50 млн":found.has("cities")?"1:110 млн":"не загружен");
    setAdministrative(found.get("admin-regional")??null);
    setRegions(found.get("regions-regional")??found.get("regions")??null);
    setElevations(found.get("elevation-regional")??found.get("elevation")??null);
@@ -760,7 +764,7 @@ function AtlasMap({diagram:d,onChange}:Props){
        <option value="1000000">От 1 миллиона</option>
       </select>
      </label>
-     <small>Объектов в базе: {cities?.features.length??0}; показано в видимой области: {shownCities.length}. {detailedCities?"Подробный слой 1:10 млн.":"Региональный слой 1:50 млн."}</small>
+     <small>Объектов в базе: {cities?.features.length??0}; с русским названием: {cities?.features.filter(f=>russianPlaceName(f)).length??0}. В видимой области показано: {shownCities.length}. Фактически загруженный слой: {cityResolution}.</small>
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#386e8d"}}/>● Населённый пункт</div>
      <div><span className="lektrus-atlas-legend-swatch lektrus-atlas-legend-capital"/>◆ Столица государства</div>
      <small>На карте представлены не только административные центры, но и другие населённые пункты из Natural Earth. При приближении подключается более подробный набор.</small>
