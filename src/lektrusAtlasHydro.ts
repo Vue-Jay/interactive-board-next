@@ -10,7 +10,7 @@ export function atlasRiverStroke(feature:GeoFeature,hydrography=false):number{
  const zoom=Number(p.min_zoom??p.MIN_ZOOM);
  const level=Number.isFinite(rank)&&rank>=0?rank:Number.isFinite(zoom)&&zoom>=0?zoom:5;
  const emphasis=clamp((7-level)/7,0,1);
- return Number((hydrography?.54:.43)+emphasis*(hydrography?.47:.35)).toFixed(2);
+ return Number(((hydrography?.54:.43)+emphasis*(hydrography?.47:.35)).toFixed(2));
 }
 export const atlasLakeStroke=()=>.38;
 export const atlasShoreStroke=()=>.48;
