@@ -58,4 +58,21 @@ assert.match(reg,/id:"maps-atlas"/);
 assert.match(reg,/id:"history-atlas"/);
 assert.match(reg,/subjects:\["география"\]/);
 assert.match(reg,/subjects:\["история"\]/);
+
+const geoJs=ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const geoExports={};
+new Function("exports","require",geoJs)(geoExports,()=>({historicalSnapshots}));
+const crossing={type:"Feature",properties:{NAME:"Crossing"},geometry:{
+ type:"LineString",coordinates:[[179,10],[-179,11]]
+}};
+const crossingPath=geoExports.mapFeaturePath(crossing);
+assert.match(crossingPath,/M/);
+assert.equal((crossingPath.match(/M/g)||[]).length,2,
+ "antimeridian line must be split at both map edges");
+const polygon={type:"Feature",properties:{NAME:"Dateline island"},geometry:{
+ type:"Polygon",coordinates:[[[179,-10],[-179,-10],[-179,10],[179,10],[179,-10]]]
+}};
+const polygonPath=geoExports.mapFeaturePath(polygon);
+assert.ok((polygonPath.match(/M/g)||[]).length>=2,
+ "dateline polygons must not stretch across the entire world");
 console.log("Lektrus one map tool: five modes, source-backed dated boundaries, era slider, event descriptions, errors and board persistence verified.");
