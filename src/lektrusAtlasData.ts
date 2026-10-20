@@ -107,6 +107,48 @@ export function loadHistoricalSnapshot(year:number){
  if(!found)return Promise.reject(new Error("Исторического снимка на этот год нет"));
  return requestGeojson("historical-"+year,[HIST+found.file,HIST_BACKUP+found.file]);
 }
+/** Lightweight per-year name index supplied by Historical Basemaps.
+ * A name appearing on a dated map does NOT establish founding/dissolution dates. */
+export type HistoricalIndexRecord={year:number;filename:string;countries:string[]};
+let indexPromise:Promise<HistoricalIndexRecord[]>|null=null;
+export function loadHistoricalIndex():Promise<HistoricalIndexRecord[]>{
+ if(indexPromise)return indexPromise;
+ indexPromise=(async()=>{
+  let failure="";
+  for(const url of [
+   "https://raw.githubusercontent.com/aourednik/historical-basemaps/master/index.json",
+   "https://cdn.jsdelivr.net/gh/aourednik/historical-basemaps@master/index.json"
+  ]){
+   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),16000);
+   try{
+    const response=await fetch(url,{signal:controller.signal,cache:"force-cache",mode:"cors"});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    const json:unknown=await response.json();
+    const list=(json&&typeof json==="object"&&"years" in json)?
+     (json as {years:unknown}).years:undefined;
+    if(!Array.isArray(list))throw new Error("Неправильный формат справочника");
+    const available=new Map<number,string>(historicalSnapshots.map(s=>[s.year,s.file]));
+    const rows:HistoricalIndexRecord[]=[];
+    for(const row of list){
+     if(!row||typeof row!=="object")continue;
+     const item=row as Partial<HistoricalIndexRecord>;
+     if(typeof item.year!=="number"||typeof item.filename!=="string"||
+      !Array.isArray(item.countries)||item.countries.length>20000||
+      item.countries.some(name=>typeof name!=="string"||name.length>160))continue;
+     if(available.get(item.year)!==item.filename||item.year===2026)continue;
+     rows.push({year:item.year,filename:item.filename,
+      countries:[...new Set(item.countries.filter(name=>name.trim()))]});
+    }
+    if(rows.length<35)throw new Error("Неполный индекс периодов");
+    return rows.sort((a,b)=>a.year-b.year);
+   }catch(e){failure=e instanceof Error?e.message:String(e)}
+   finally{clearTimeout(timer)}
+  }
+  throw new Error("Индекс исторических наименований недоступен: "+failure);
+ })().catch(e=>{indexPromise=null;throw e});
+ return indexPromise;
+}
+
 const WIDTH=900,HEIGHT=450;
 /** World equirectangular projection. Longitude/latitude are clipped to WGS84. */
 export function projectGeography(lon:number,lat:number):GeoPosition{
