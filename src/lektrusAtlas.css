@@ -1,0 +1,100 @@
+/* A genuine atlas panel inside a movable board object. No map if remote
+ * geometry failed to load: an explicit error appears instead of fake borders. */
+.lektrus-atlas{width:100%;height:100%;display:flex;flex-direction:column;min-width:0;min-height:0;
+ background:#f8fbfe;color:#2d4e72;font-family:inherit;overflow:hidden;border:1px solid #d3e1ef;
+ border-radius:12px;box-sizing:border-box;touch-action:pan-x pan-y}
+.lektrus-atlas *{box-sizing:border-box}
+.lektrus-atlas button{font-family:inherit;cursor:pointer}
+.lektrus-atlas button:disabled{opacity:.36;cursor:default}
+.lektrus-atlas-header{display:flex;align-items:center;gap:8px;padding:6px 9px;flex:0 0 auto;
+ background:#fff;border-bottom:1px solid #dce8f5;min-width:0}
+.lektrus-atlas-header>strong{font-size:clamp(11px,1.2vw,15px);white-space:nowrap;overflow:hidden;
+ text-overflow:ellipsis;max-width:30%;color:#345879}
+.lektrus-atlas-header nav{display:flex;flex:1;gap:3px;min-width:0;overflow-x:auto;scrollbar-width:thin}
+.lektrus-atlas-header nav button{font-size:clamp(9px,.9vw,12px);font-weight:700;border:1px solid transparent;
+ background:transparent;color:#637e9d;padding:6px 7px;border-radius:7px;white-space:nowrap}
+.lektrus-atlas-header nav button.selected{color:#245ba7;background:#dfeefe;border-color:#bbd4f3}
+.lektrus-atlas-body{flex:1;min-height:0;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,25%)}
+.lektrus-atlas-map-box{position:relative;min-width:0;min-height:0;overflow:hidden;background:#e3eff9;
+ touch-action:none}
+.lektrus-atlas-svg{display:block;width:100%;height:100%;min-height:0;max-height:100%;cursor:grab}
+.lektrus-atlas-svg:active{cursor:grabbing}
+.lektrus-atlas-country{cursor:pointer;transition:stroke-width .08s}
+.lektrus-atlas-country:hover{stroke:#cb793d;stroke-width:1.4}
+.lektrus-atlas-event{cursor:pointer}
+.lektrus-atlas-zoom{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:3px}
+.lektrus-atlas-zoom button{min-width:27px;min-height:27px;background:#fffffff5;
+ border:1px solid #bed0e2;color:#335f91;box-shadow:0 1px 5px #34577520;
+ border-radius:7px;font-size:17px;font-weight:750}
+.lektrus-atlas-overlay{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;
+ flex-direction:column;gap:10px;padding:18px;background:#e7f2fdef;text-align:center;
+ font-size:clamp(11px,1vw,15px);color:#4d7498;line-height:1.4}
+.lektrus-atlas-failure{color:#a14c43}
+.lektrus-atlas-failure span{max-width:95%;font-size:12px;overflow-wrap:anywhere}
+.lektrus-atlas-failure small{font-size:11px}
+.lektrus-atlas-failure button{background:#fff;border:1px solid #c6dced;border-radius:8px;
+ padding:8px 12px;color:#2a629b}
+.lektrus-atlas-sidebar{overflow:auto;border-left:1px solid #d9e7f4;min-width:0;
+ padding:9px;display:flex;flex-direction:column;gap:9px;background:#f7fbff;scrollbar-width:thin}
+.lektrus-atlas-sidebar>label{display:flex;flex-direction:column;gap:4px;font-size:11px;
+ font-weight:700;color:#607d9b}
+.lektrus-atlas-sidebar input{min-width:0;width:100%;border:1px solid #cadaea;background:#fff;
+ border-radius:7px;padding:7px;font-size:12px;color:#335675}
+.lektrus-atlas-year-header{display:flex;flex-direction:column;gap:3px;background:#e8f1ff;
+ padding:7px;border-radius:9px}
+.lektrus-atlas-year-header strong{font-size:clamp(14px,1.2vw,19px);color:#2c5d9f}
+.lektrus-atlas-year-header small{font-size:10px;color:#6284a4}
+.lektrus-atlas-description,.lektrus-atlas-history-events,.lektrus-atlas-changes,
+.lektrus-atlas-user-markers{display:flex;flex-direction:column;gap:5px;font-size:11px;
+ color:#597594;line-height:1.45}
+.lektrus-atlas-description strong,.lektrus-atlas-history-events>strong,
+.lektrus-atlas-changes>strong,.lektrus-atlas-user-markers>strong{font-size:12px;color:#355f88}
+.lektrus-atlas-description p,.lektrus-atlas-changes p,.lektrus-atlas-history-events p{margin:0;font-size:11px}
+.lektrus-atlas-description a{font-size:10px;color:#326bb3}
+.lektrus-atlas-history-events{border-top:1px solid #deebf6;padding-top:8px}
+.lektrus-atlas-history-events button{font-size:10px;color:#315e90;border:1px solid #d4e4f3;
+ border-radius:7px;text-align:left;background:#fff;padding:7px}
+.lektrus-atlas-history-events button.selected{background:#e1ecfb;border-color:#7eb2e8}
+.lektrus-atlas-changes{border-top:1px solid #dce8f4;padding-top:8px}
+.lektrus-atlas-changes small{font-size:10px;color:#849ab0}
+.lektrus-atlas-source{margin-top:auto;border-top:1px solid #d9e6f3;padding-top:8px;
+ display:flex;flex-direction:column;gap:3px;font-size:9px;color:#849ab0;line-height:1.4}
+.lektrus-atlas-source a{color:#4f7da9;font-size:10px;overflow-wrap:anywhere}
+.lektrus-atlas-source small{color:#9b685b}
+.lektrus-atlas-timeline{display:flex;align-items:center;gap:7px;min-height:38px;
+ padding:5px 10px;background:#fff;border-top:1px solid #d7e5f3;flex:0 0 auto}
+.lektrus-atlas-timeline input[type=range]{flex:1;min-width:0;accent-color:#3175ce}
+.lektrus-atlas-timeline button{border:1px solid #c5d8ef;background:#f1f7ff;
+ border-radius:6px;color:#3d679c;min-width:28px;min-height:24px}
+.lektrus-atlas-timeline strong{font-size:12px;white-space:nowrap;color:#345e91;min-width:88px;text-align:center}
+.lektrus-atlas-curriculum-event{display:flex;flex-direction:column;gap:4px;background:#f2f8ff;
+ padding:8px;border:1px solid #dceaf6;border-radius:8px}
+.lektrus-atlas-curriculum-event strong{font-size:11px;color:#456b92}
+.lektrus-atlas-curriculum-event small{font-size:10px;color:#7891ac}
+.lektrus-atlas-marker-editor{display:flex;flex-direction:column;gap:6px;background:#f4f9fe;
+ padding:8px;border:1px solid #d9e7f3;border-radius:9px}
+.lektrus-atlas-marker-editor strong{flex:1;font-size:11px;color:#416991}
+.lektrus-atlas-marker-editor label{display:flex;flex-direction:column;gap:4px;font-size:10px;
+ color:#627e98;font-weight:650}
+.lektrus-atlas-marker-editor input,.lektrus-atlas-marker-editor textarea{min-width:0;width:100%;
+ padding:7px;border:1px solid #ccdfef;border-radius:7px;font-family:inherit;
+ color:#325776;background:#fff;font-size:12px}
+.lektrus-atlas-marker-numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+@media(max-width:850px){
+ .lektrus-atlas-header{padding:3px 5px;gap:4px}
+ .lektrus-atlas-header>strong{max-width:24%;font-size:10px}
+ .lektrus-atlas-header nav button{padding:4px;font-size:9px}
+ .lektrus-atlas-body{grid-template-columns:minmax(0,1fr) minmax(122px,27%)}
+ .lektrus-atlas-sidebar{padding:5px;gap:6px}
+ .lektrus-atlas-timeline{min-height:30px;padding:4px;gap:4px}
+ .lektrus-atlas-timeline strong{font-size:10px;min-width:74px}
+ .lektrus-atlas-description p,.lektrus-atlas-history-events button,
+ .lektrus-atlas-source a{font-size:9px}
+}
+@media(max-width:520px){
+ .lektrus-atlas-body{grid-template-columns:minmax(0,1fr) minmax(105px,30%)}
+ .lektrus-atlas-header>strong{display:none}
+ .lektrus-atlas-zoom{right:3px;top:3px}
+ .lektrus-atlas-zoom button{min-width:22px;min-height:22px;font-size:13px}
+ .lektrus-atlas-timeline strong{min-width:60px;font-size:9px}
+}
