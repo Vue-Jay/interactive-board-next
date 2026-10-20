@@ -90,19 +90,19 @@ function FamilyGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kind:
 function FlashcardGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kind:"flashcards"}>}){
  const [index,setIndex]=useState(0),[revealed,setRevealed]=useState(false);
  const card=d.cards[Math.min(index,d.cards.length-1)];
- const front=d.direction==="foreign-first"?card.term:card.translation;
- const back=d.direction==="foreign-first"?card.translation:card.term;
+ const front=d.direction==="foreign-first"?(card?.term??""):(card?.translation??"");
+ const back=d.direction==="foreign-first"?(card?.translation??""):(card?.term??"");
  useEffect(()=>{setIndex(0);setRevealed(false)},[d.cards,d.direction]);
  const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
  const navigation=(to:number)=>{setIndex(to);setRevealed(false)};
  return <div className="lektrus-flashcards-on-board" aria-label={d.title}
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   <div className="lektrus-flashcard-heading">{d.title}</div>
-  <div className="lektrus-flashcard-counter">{index+1} / {d.cards.length}</div>
+  <div className="lektrus-flashcard-counter">{d.cards.length?index+1:0} / {d.cards.length}</div>
   <button type="button" className="lektrus-flashcard-surface"
    onClick={()=>setRevealed(v=>!v)} aria-label={revealed?"Вернуть лицевую сторону":"Перевернуть карточку"}>
-   <span className="lektrus-flashcard-word">{revealed?back:front}</span>
-   {!revealed&&d.showTranscription&&d.direction==="foreign-first"&&card.transcription&&
+   <span className="lektrus-flashcard-word">{card?(revealed?back:front):"Добавьте слова в редакторе карточек"}</span>
+   {!revealed&&d.showTranscription&&d.direction==="foreign-first"&&card?.transcription&&
     <span className="lektrus-flashcard-pronunciation">{card.transcription}</span>}
    {!revealed&&d.showTranslation&&<span className="lektrus-flashcard-hint">{back}</span>}
    <span className="lektrus-flashcard-interaction-hint">{revealed?"Нажмите, чтобы закрыть":"Нажмите, чтобы перевернуть"}</span>

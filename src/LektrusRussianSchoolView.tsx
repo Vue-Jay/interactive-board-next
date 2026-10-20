@@ -76,29 +76,29 @@ function OrthographyBoard({d}:{d:Extract<RussianSchoolDiagram,{kind:"orthography
  const [checked,setChecked]=useState(false);
  useEffect(()=>{setIndex(0);setPicked(null);setChecked(false)},[d.questions]);
  const question=d.questions[Math.min(index,d.questions.length-1)];
- const ok=checked&&picked===question.correct;
+ const ok=checked&&picked===question?.correct;
  const next=(i:number)=>{setIndex(i);setPicked(null);setChecked(false)};
  const stop=(e:SyntheticEvent)=>e.stopPropagation();
  return <div className="lektrus-orthography-board" role="group" aria-label={d.title}
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   <strong className="lektrus-orthography-title">{d.title}</strong>
-  <div className="lektrus-orthography-count">Задание {index+1} из {d.questions.length}</div>
-  <div className="lektrus-orthography-prompt">{question.prompt.split("□")[0]}
-   <span className="lektrus-orthography-gap">{picked===null?"□":question.options[picked]}</span>
-   {question.prompt.split("□")[1]}</div>
+  <div className="lektrus-orthography-count">Задание {d.questions.length?index+1:0} из {d.questions.length}</div>
+  <div className="lektrus-orthography-prompt">{question?question.prompt.split("□")[0]:"Добавьте задания в редакторе"}
+   <span className="lektrus-orthography-gap">{!question?"":picked===null?"□":question.options[picked]}</span>
+   {question?.prompt.split("□")[1]??""}</div>
   <div className="lektrus-orthography-answers" aria-label="Варианты ответа">
-   {question.options.map((option,i)=><button key={i} type="button" disabled={checked}
+   {(question?.options??[]).map((option,i)=><button key={i} type="button" disabled={checked}
     aria-pressed={picked===i} className={picked===i?"selected":""}
     onClick={()=>setPicked(i)}>{option}</button>)}
   </div>
   {checked?<div className={"lektrus-orthography-feedback "+(ok?"correct":"incorrect")} role="status">
    {ok?"Верно!":"Попробуйте ещё раз."}
-   {d.showExplanation&&ok&&question.explanation&&<small>{question.explanation}</small>}
+   {d.showExplanation&&ok&&question?.explanation&&<small>{question.explanation}</small>}
   </div>:<div className="lektrus-orthography-feedback neutral">Выберите ответ, затем нажмите «Проверить».</div>}
   <div className="lektrus-orthography-nav">
    <button type="button" disabled={index===0} onClick={()=>next(index-1)}>← Назад</button>
    {checked&&!ok?<button type="button" onClick={()=>{setPicked(null);setChecked(false)}}>Повторить</button>:
-    <button type="button" disabled={picked===null||checked} onClick={()=>setChecked(true)}>Проверить</button>}
+    <button type="button" disabled={!question||picked===null||checked} onClick={()=>setChecked(true)}>Проверить</button>}
    <button type="button" disabled={index===d.questions.length-1}
     onClick={()=>next(index+1)}>Дальше →</button>
   </div>

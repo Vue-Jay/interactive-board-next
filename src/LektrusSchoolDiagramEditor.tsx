@@ -26,7 +26,7 @@ const titles:Record<SchoolDiagramId,string>={
  "language-flashcards":"Карточки иностранных слов",
  "ru-morphology":"Морфологический разбор","ru-phonetics":"Фонетический разбор",
  "ru-orthography":"Орфографический тренажёр",
- "maps-atlas":"Географические карты","history-atlas":"Исторические карты",
+ "maps-atlas":"Географические карты","maps-contour":"Контурная карта","history-atlas":"Исторические карты",
  "ru-sentence-builder":"Конструктор предложений","civics-structure":"Государственное устройство и общество"
 };
 const newKey=()=>crypto.randomUUID();
