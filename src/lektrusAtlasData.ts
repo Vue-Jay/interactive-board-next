@@ -247,3 +247,21 @@ export function summariseNamedChanges(prev:GeoCollection,next:GeoCollection){
   before:a.size,after:b.size
  };
 }
+
+/** Descriptive historical atlas metadata. Fields are copied from the selected
+ * source feature, never guessed from modern nation names. */
+export function historicalFeatureFacts(feature:GeoFeature):Array<{label:string;value:string}>{
+ const p=feature.properties??{};
+ const fields:[string,string][]=[
+  ["NAME","Название в исходной базе"],["SUBJECTO","Подчинение / принадлежность в базе"],
+  ["PARTOF","В составе / историческая область"],["BORDERPRECISION","Условная точность границ"],
+  ["BORDER_PRECISION","Точность границ"],["TYPE","Тип исторической территории"],
+  ["ENTITY","Историческое образование"],["CAPITAL","Столица (по источнику)"],
+  ["START","Начало периода (по источнику)"],["END","Конец периода (по источнику)"],
+  ["SOURCE","Источник атрибута"],["NOTES","Примечания источника"]];
+ return fields.flatMap(([key,label])=>{
+  const value=p[key];
+  return (typeof value==="string"&&value.trim()||typeof value==="number"&&Number.isFinite(value))?
+   [{label,value:String(value).slice(0,320)}]:[];
+ });
+}

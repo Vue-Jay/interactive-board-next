@@ -4,7 +4,7 @@ import LektrusMapBase from "./LektrusMapBase";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
- type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
+ historicalFeatureFacts,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void};
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
 const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
@@ -41,6 +41,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [selected,setSelected]=useState<GeoFeature|null>(null);
  const [search,setSearch]=useState("");
  const [directoryOpen,setDirectoryOpen]=useState(true);
+ const [directoryFilter,setDirectoryFilter]=useState("");
  const [scale,setScale]=useState(1);
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
@@ -144,6 +145,8 @@ function AtlasMap({diagram:d,onChange}:Props){
  const directoryEntries=useMemo(()=>historical?shapes.map(s=>({name:s.name,feature:s.feature}))
   .filter(v=>v.name&&v.name!=="Объект без названия"&&v.name!=="Unknown"&&v.name!=="unknown")
   .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],[historical,shapes]);
+ const visibleDirectory=directoryEntries.filter(entry=>entry.name.toLocaleLowerCase("ru")
+  .includes(directoryFilter.trim().toLocaleLowerCase("ru")));
  const results=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU")
    .includes(search.trim().toLocaleLowerCase("ru-RU"))).slice(0,18):[];
  const filteredCount=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU").includes(search.trim().toLocaleLowerCase("ru-RU"))).length:0;
@@ -413,14 +416,17 @@ function AtlasMap({diagram:d,onChange}:Props){
      <button type="button" aria-expanded={directoryOpen} onClick={()=>setDirectoryOpen(v=>!v)}>
       Справочник государств и территорий ({directoryEntries.length}) {directoryOpen?"▾":"▸"}
      </button>
-     {directoryOpen&&<div className="lektrus-atlas-directory-list" style={{maxHeight:180,overflowY:"auto"}}>
-      {directoryEntries.length?directoryEntries.map((entry,i)=><button type="button" key={i}
+     {directoryOpen&&<><label>Поиск в справочнике
+      <input value={directoryFilter} onChange={e=>setDirectoryFilter(e.target.value)}
+       placeholder="Государство или историческая область" aria-label="Поиск по справочнику"/>
+     </label><div className="lektrus-atlas-directory-list" style={{maxHeight:210,overflowY:"auto"}}>
+      {visibleDirectory.length?visibleDirectory.map((entry,i)=><button type="button" key={i}
        onClick={()=>focusFeature(entry.feature)} title={"Показать на карте: "+entry.name}
        style={{display:"block",width:"100%",textAlign:"left",padding:"5px 8px",
         background:selected===entry.feature?"#e2edff":"transparent",border:0,cursor:"pointer"}}>
        {entry.name}
       </button>):<p>Нет подписанных объектов за этот период.</p>}
-     </div>}
+     </div></>}
     </div>}
     {markerDetails?<div className="lektrus-atlas-description">
      <strong>{markerDetails.title}</strong>
@@ -432,6 +438,9 @@ function AtlasMap({diagram:d,onChange}:Props){
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
      {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
+      {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+      <p><strong>Период карты:</strong> {yearLabel(snapshot.year)}. Это дата слоя, а не подтверждённые даты существования государства.</p>
+      <p>Столица, правители и причины территориальных изменений не указываются без проверенного источника.</p>
       <p>{modernReference?
        "Современная геометрия из Natural Earth. Дата публикации набора не равна точной исторической обстановке 2026 года.":
        "Территория представлена в историческом наборе для "+yearLabel(snapshot.year)+". Границы могут отражать реконструкцию."}</p>
