@@ -153,10 +153,14 @@ assert.match(map,/lektrus-atlas-capitals/);
 assert.match(map,/Столицы государств/);
 assert.match(map,/Фильтр городов по численности населения/);
 assert.ok(data.includes("ne_10m_populated_places.geojson"));
+const geoJs=ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const geoExports={};
+new Function("exports","require",geoJs)(geoExports,()=>({historicalSnapshots}));
 const placeSource=fs.readFileSync(new URL("../src/lektrusAtlasPlaces.ts",import.meta.url),"utf8");
 const places={};
-new Function("exports",ts.transpileModule(placeSource,{compilerOptions:{
- module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(places);
+new Function("exports","require",ts.transpileModule(placeSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(places,
+ id=>{if(id.includes("lektrusAtlasData"))return geoExports;throw Error("Unexpected import: "+id)});
 const place=(name,cap,role="Populated place",pop=100000)=>({type:"Feature",
  properties:{NAME:name,NAME_RU:name,ADM0CAP:cap,FEATURECLA:role,POP_MAX:pop,LABELRANK:3},
  geometry:{type:"Point",coordinates:[30,55]}});
@@ -168,6 +172,30 @@ assert.equal(places.nationalCapital(kazan),false,"regional centre is not a natio
 assert.equal(places.nationalCapital(small),false,"ordinary town is not a capital");
 assert.equal(places.russianPlaceName(small),"Димитровград");
 assert.equal(places.russianPlaceName({...small,properties:{NAME:"Unknown"}}),null);
+const named=(p,geometry={type:"Point",coordinates:[0,0]})=>
+ ({type:"Feature",properties:p,geometry});
+assert.equal(geoExports.geoFeatureName(named({NAME_RU:"Озеро Байкал",NAME:"Baikal"})),"Озеро Байкал");
+assert.equal(geoExports.geoFeatureName(named({NAME:"Black Sea"})),"Чёрное море");
+assert.equal(geoExports.geoFeatureName(named({name_ru:"река Кама",NAME:"Kama"})),"река Кама");
+assert.equal(geoExports.geoFeatureName(named({NAME:"Unknown"})),"");
+assert.equal(geoExports.geoFeatureName(named({NAME:"Unnamed"})),"");
+assert.equal(geoExports.geoFeatureName(named({NAME:"No name"})),"");
+assert.equal(geoExports.geoFeatureName(named({NAME_RU:"Объект без названия"})),"");
+assert.equal(geoExports.geoFeatureName(named({ISO_A2:"RU"})),"",
+ "Unnamed city cannot become a country just because it has an ISO code");
+assert.equal(geoExports.geoFeatureName(named({ISO_A2:"RU",adm1_code:"RU-PER",ADMIN:"Russia"},
+ {type:"Polygon",coordinates:[]})),"",
+ "Unnamed province cannot be labelled with the country name");
+assert.equal(geoExports.geoFeatureName(named({ISO_A2:"RU",ADMIN:"Russia",SOVEREIGNT:"Russia"},
+ {type:"Polygon",coordinates:[]})),"Россия","A real country may use the official ISO Russian name");
+assert.equal(geoExports.hasAtlasName(named({NAME:"Unknown"})),false);
+assert.equal(places.russianPlaceName(named({NAME_RU:"Неизвестно"})),null);
+assert.ok(!map.includes('!=="Объект без названия"'),"the UI must not use placeholder text");
+for(const dataset of ["rivers","lakes","administrative","regions","glaciers","marine","physicalLabels","elevations"])
+ assert.ok(map.includes(dataset+"?.features.filter(hasAtlasName)"),
+  "the "+dataset+" map layer must omit every unnamed feature");
+assert.match(map,/atlasDisplayName/);
+assert.match(map,/historicalRussianName/);
 assert.equal(places.cityPopulation(small),105000);
 assert.equal(places.nationalCapital(place("Тест",1,"Populated place")),false);
 const worldPlaces={type:"FeatureCollection",features:[
@@ -221,9 +249,6 @@ assert.match(map,/Math\.log2\(scale\)/);
 assert.equal(validAtlasDocument({...atlas,borderView:"source"}),true);
 assert.equal(validAtlasDocument({...atlas,borderView:"russian"}),true);
 assert.equal(validAtlasDocument({...atlas,borderView:"invalid"}),false);
-const geoJs=ts.transpileModule(data,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const geoExports={};
-new Function("exports","require",geoJs)(geoExports,()=>({historicalSnapshots}));
 assert.equal(geoExports.featureSourceFacts(moscow).find(f=>f.label==="Категория")?.value,"Столица государства");
 assert.equal(geoExports.featureSourceFacts(kazan).find(f=>f.label==="Категория")?.value,"Административный центр региона");
 const river={type:"Feature",properties:{NAME:"Sample river"},geometry:{
