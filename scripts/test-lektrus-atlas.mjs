@@ -133,8 +133,8 @@ const common=fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url
 assert.match(common,/lektrus-atlas-base-land/);
 assert.match(common,/lektrus-atlas-base-coast/);
 assert.ok(map.includes("LektrusMapBase land={baseLand}"));
-assert.ok(map.includes('loadAtlasLayer("land")'));
-assert.ok(map.includes('loadAtlasLayer("coastline")'));
+assert.ok(map.includes('loadAtlasLayer(detailedGeography?"land-detail":"land")'));
+assert.ok(map.includes('loadAtlasLayer(detailedGeography?"coastline-detail":"coastline")'));
 assert.match(map,/pickCoordinates/);
 assert.match(data,/ne_110m_land.geojson/);
 assert.match(data,/ne_110m_coastline.geojson/);
