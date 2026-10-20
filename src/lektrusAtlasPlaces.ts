@@ -51,8 +51,9 @@ export function chooseCityLabels<T extends PlacePoint>(points:readonly T[],scale
  * actual cities or their availability in the name search. */
 export function limitCitySymbols<T extends PlacePoint>(points:readonly T[],
  scale:number,limit=850):T[]{
- if(points.length<=limit)return [...points];
+ const cap=Math.max(120,Math.min(limit,Math.round(limit*(scale>=4?1:scale>=2?.7:.4))));
+ if(points.length<=cap)return [...points];
  const ranked=[...points].sort((a,b)=>cityRank(a.feature)-cityRank(b.feature)||
   cityPopulation(b.feature)-cityPopulation(a.feature)||a.id-b.id);
- return ranked.slice(0,limit);
+ return ranked.slice(0,cap);
 }
