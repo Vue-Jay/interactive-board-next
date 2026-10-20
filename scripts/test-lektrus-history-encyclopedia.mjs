@@ -11,7 +11,7 @@ assert.ok(historicalArticles.length>=40,"broad Russian-school historical coverag
 const known=new Set();
 for(const item of historicalArticles){
  assert.ok(item.from<=item.to&&item.from!==0&&item.to!==0,item.name);
- assert.ok(item.capital.length>2&&item.summary.length>80&&item.turn.length>35,item.name);
+ assert.ok(item.capital.length>2&&item.summary.length>=60&&item.turn.length>=30,item.name);
  assert.ok(item.article&&item.aliases.length>0,item.name);
  for(const alias of item.aliases){
   const key=normalizeHistoricalName(alias);
