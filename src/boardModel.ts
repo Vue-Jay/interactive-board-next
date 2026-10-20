@@ -7,6 +7,24 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  if(typeof d.title!=="string"||d.title.length>120)return false;
  const finiteIn=(x:unknown,lo:number,hi:number)=>typeof x==="number"&&Number.isFinite(x)&&x>=lo&&x<=hi;
  const field=(x:unknown,n:number)=>typeof x==="string"&&x.length<=n&&x.trim().length>0;
+ if(d.kind==="organs"){
+  if(d.system!=="digestive"&&d.system!=="respiratory"||!Array.isArray(d.labels))return false;
+  const allowed=d.system==="digestive"?
+   ["mouth","esophagus","stomach","liver","pancreas","small-intestine","large-intestine"]:
+   ["nasal-cavity","larynx","trachea","bronchi","lungs","diaphragm"];
+  return d.labels.length<=allowed.length&&d.labels.every((v:unknown)=>
+   typeof v==="string"&&allowed.includes(v))&&new Set(d.labels).size===d.labels.length;
+ }
+ if(d.kind==="relief"){
+  if(typeof d.showGrid!=="boolean"||typeof d.showLabels!=="boolean"||!Array.isArray(d.points)||
+   d.points.length<2||d.points.length>10)return false;
+  const points=d.points as Record<string,unknown>[];
+  if(!points.every(p=>p&&typeof p==="object"&&field(p.id,64)&&
+   typeof p.label==="string"&&p.label.length<=40&&
+   finiteIn(p.distance,0,5000)&&finiteIn(p.height,-500,9000)))return false;
+  return new Set(points.map(p=>p.id)).size===points.length&&
+   new Set(points.map(p=>p.distance)).size===points.length;
+ }
  if(d.kind==="syntax"){
   if(typeof d.showMarks!=="boolean"||!Array.isArray(d.words)||d.words.length<1||d.words.length>14)return false;
   const roles=["subject","predicate","attribute","object","adverbial","none"];
