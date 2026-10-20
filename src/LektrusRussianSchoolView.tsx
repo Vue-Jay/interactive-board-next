@@ -1,7 +1,7 @@
 import {useEffect,useState,type SyntheticEvent} from "react";
 import type {RussianSchoolDiagram} from "./lektrusRussianSchoolModel";
 import {posNames,totalSounds,traitGroupNames} from "./lektrusRussianSchoolModel";
-type Props={diagram:RussianSchoolDiagram};
+type Props={diagram:RussianSchoolDiagram;onChange?:(next:RussianSchoolDiagram)=>void};
 function MorphologyGraphic({d}:{d:Extract<RussianSchoolDiagram,{kind:"morphology"}>}){
  const sections=["permanent","variable","syntax"] as const;
  return <svg viewBox="0 0 900 500" role="img" aria-label={d.title} className="lektrus-school-svg">
@@ -109,8 +109,41 @@ function OrthographyBoard({d}:{d:Extract<RussianSchoolDiagram,{kind:"orthography
   </div>
  </div>;
 }
-export default function LektrusRussianSchoolView({diagram}:Props){
- if(diagram.kind==="morphology")return <MorphologyGraphic d={diagram}/>;
- if(diagram.kind==="phonetics")return <PhoneticsGraphic d={diagram}/>;
- return <OrthographyBoard d={diagram}/>;
+const stopInline=(e:React.SyntheticEvent)=>e.stopPropagation();
+export default function LektrusRussianSchoolView({diagram,onChange}:Props){
+ if(diagram.kind==="orthography")return <OrthographyBoard d={diagram}/>;
+ const inline=onChange&&<div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",
+  padding:"6px 9px",background:"#f5f9ff",fontSize:12,borderBottom:"1px solid #d8e5f2"}}>
+  <label>Слово <input aria-label="Слово для разбора" value={diagram.word} maxLength={diagram.kind==="phonetics"?24:65}
+   style={{border:"1px solid #c9dced",borderRadius:6,padding:5,maxWidth:160}}
+   onChange={e=>{
+    const word=e.target.value;
+    if(diagram.kind==="morphology")onChange({...diagram,word});
+    else onChange({...diagram,word,letters:[...word].map((letter,i)=>({
+     id:diagram.letters[i]?.id??crypto.randomUUID(),letter,
+     sounds:diagram.letters[i]?.letter===letter?diagram.letters[i].sounds:[],
+     characteristic:diagram.letters[i]?.letter===letter?diagram.letters[i].characteristic:"",
+     stressed:diagram.letters[i]?.letter===letter&&diagram.letters[i].stressed
+    }))});
+   }}/></label>
+  {diagram.kind==="morphology"?<>
+   <label>Часть речи <select value={diagram.partOfSpeech} onChange={e=>onChange({...diagram,
+    partOfSpeech:e.target.value as typeof diagram.partOfSpeech})}>
+    {Object.entries(posNames).map(([key,name])=><option value={key} key={key}>{name}</option>)}
+   </select></label>
+   <label><input type="checkbox" checked={diagram.showAnalysis}
+    onChange={e=>onChange({...diagram,showAnalysis:e.target.checked})}/> Показать разбор</label>
+  </>:<>
+   <label><input type="checkbox" checked={diagram.showSounds}
+    onChange={e=>onChange({...diagram,showSounds:e.target.checked})}/> Показать звуки</label>
+   <label><input type="checkbox" checked={diagram.showCharacteristics}
+    onChange={e=>onChange({...diagram,showCharacteristics:e.target.checked})}/> Характеристики</label>
+  </>}
+ </div>;
+ return <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%"}}
+  onPointerDown={stopInline} onPointerUp={stopInline} onClick={stopInline}>
+  {inline}<div style={{flex:1,minHeight:0}}>
+   {diagram.kind==="morphology"?<MorphologyGraphic d={diagram}/>:<PhoneticsGraphic d={diagram}/>}
+  </div>
+ </div>;
 }
