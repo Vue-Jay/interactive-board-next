@@ -116,6 +116,12 @@ const docs=[
   kind:"atlas",title:"Историческая карта",mode:"historical",year:1914,showLabels:true,
   showGrid:false,showEvents:true,markers:[{id:"e1",title:"Сараево",lat:43.86,lon:18.42,
     year:1914,description:"Событие урока"}]}}),
+ item("geo-hydro","graph",{graphFigureId:"maps-atlas",graphPurpose:"geometry",schoolDiagram:{
+  kind:"atlas",title:"Гидрографическая карта",scope:"geography",mode:"hydrography",year:1914,
+  showLabels:true,showGrid:false,showEvents:false,markers:[]}}),
+ item("geo-coordinates","graph",{graphFigureId:"maps-atlas",graphPurpose:"geometry",schoolDiagram:{
+  kind:"atlas",title:"Географические координаты",scope:"geography",mode:"coordinates",year:1914,
+  showLabels:false,showGrid:true,showEvents:false,markers:[]}}),
  item("fraction","fraction",{fractionNumerator:1,fractionDenominator:3,fractionMode:"circle"}),
  item("table","table",{tableRows:2,tableCols:2,tableCells:["a","b","c","d"],
   tableHeader:true,tableAlign:"right",tableStripe:true,tableCompact:true})
@@ -159,6 +165,8 @@ invalidItem("ru-phonetics",{letters:[{id:"l1",letter:"к",sounds:["к"],characte
  {id:"l2",letter:"о",sounds:["о"],characteristic:"",stressed:true}]});
 invalidItem("ru-orthography",{questions:[{id:"q1",prompt:"Без пропуска",options:["о","а"],
  correct:1,explanation:""}]});
+invalidItem("geo-hydro",{scope:"history"});
+invalidItem("geo-coordinates",{mode:"historical"});
 invalidItem("maps-atlas",{mode:"unknown"});
 invalidItem("maps-atlas",{year:1776});
 invalidItem("maps-atlas",{markers:[{id:"e1",title:"Ошибка",lat:99,lon:0,year:1914,description:""}]});
