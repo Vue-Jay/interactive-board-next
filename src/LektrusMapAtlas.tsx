@@ -584,7 +584,7 @@ function AtlasMap({diagram:d,onChange}:Props){
        {provincePaths.map(f=>{
         const key="region:"+String(f.feature.properties?.adm1_code||f.feature.properties?.ADM1_CODE||f.feature.properties?.iso_3166_2||
          f.feature.properties?.name_ru||f.feature.properties?.name||geoFeatureName(f.feature));
-        return <path key={"province-"+f.id} d={f.path}
+        return <path key={"province-"+f.id} d={f.path} vectorEffect="non-scaling-stroke"
          fill={mode==="contour"&&paintRegions?(painted[key]??"#fafcfb"):mode==="political"?"transparent":"none"}
          onClick={e=>{e.stopPropagation();if(mode==="political")selectFeature(f.feature,"Административная единица");
           else paintProvince(f.feature)}}><title>{geoFeatureName(f.feature)}</title></path>;
@@ -613,7 +613,7 @@ function AtlasMap({diagram:d,onChange}:Props){
       </g>}
       {historical&&compare&&previous&&<g fill="none" stroke="#d64646"
        strokeWidth="1.1" strokeDasharray="4 2" pointerEvents="none">
-       {previous.features.filter(f=>!!atlasDisplayName(f,historicalSnapshots[Math.max(0,index-1)].year,true)).map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)}/>)}
+       {previous.features.filter(f=>!!atlasDisplayName(f,historicalSnapshots[Math.max(0,index-1)].year,true)).map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)} vectorEffect="non-scaling-stroke"/>)}
       </g>}
       {d.showLabels&&mode!=="contour"&&<g fill="#44566a" fontSize={8/scale} fontWeight="650"
        textAnchor="middle" pointerEvents="none" stroke="#fff" strokeWidth={1.5/scale} paintOrder="stroke">

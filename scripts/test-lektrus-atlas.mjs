@@ -286,6 +286,10 @@ assert.ok(map.includes("rivers-ultra")&&map.includes("lakes-ultra"));
 assert.ok(data.includes("ne_10m_rivers_lake_centerlines.geojson"));
 assert.ok(data.includes("ne_10m_lakes.geojson"));
 assert.ok(!map.includes('strokeWidth={mode==="hydrography"?1.4:.9}'));
+const mapBase=fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url),"utf8");
+assert.ok(mapBase.includes('d={f.d} vectorEffect="non-scaling-stroke"'),
+ "coastline must not grow into a thick stroke as the teacher zooms");
+assert.ok(map.includes('key={"province-"+f.id} d={f.path} vectorEffect="non-scaling-stroke"'));
 const river={type:"Feature",properties:{NAME:"Sample river"},geometry:{
  type:"LineString",coordinates:[[30,60],[40,60]]
 }};

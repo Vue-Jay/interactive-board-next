@@ -31,14 +31,14 @@ export default function LektrusMapBase({land,coastline,grid,scale=1,viewport,ter
   {terrain}
   <g className="lektrus-atlas-base-coast" pointerEvents="none" stroke="#9bb6bc"
    strokeWidth=".48" vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round">
-   {coastPaths.map(f=><path key={f.id} d={f.d}/>)}
+   {coastPaths.map(f=><path key={f.id} d={f.d} vectorEffect="non-scaling-stroke"/>)}
   </g>
   {grid&&<g className="lektrus-atlas-graticule" pointerEvents="none">
    <g stroke="#96afc4" strokeWidth=".65" vectorEffect="non-scaling-stroke" opacity=".78">
     {meridians.map(v=><line key={"lon"+v} x1={projectGeography(v,0)[0]} y1="0"
-     x2={projectGeography(v,0)[0]} y2="450"/>)}
+     x2={projectGeography(v,0)[0]} y2="450" vectorEffect="non-scaling-stroke"/>)}
     {parallels.map(v=><line key={"lat"+v} x1="0" y1={projectGeography(0,v)[1]}
-     x2="900" y2={projectGeography(0,v)[1]}/>)}
+     x2="900" y2={projectGeography(0,v)[1]} vectorEffect="non-scaling-stroke"/>)}
    </g>
    <g fill="#426a90" fontSize={8/scale} stroke="#fff" strokeWidth={1.5/scale}
     paintOrder="stroke" fontWeight="650">
