@@ -320,6 +320,12 @@ function AtlasMap({diagram:d,onChange}:Props){
  const selectedIsCity=!!selected&&["Populated place","Admin-0 capital","Admin-0 capital alt",
   "Admin-0 region capital","Admin-1 capital","Admin-1 region capital"]
   .includes(String(selected.properties?.FEATURECLA??selected.properties?.featurecla??""));
+ const russianSourceName=(value:unknown)=>{
+  if(typeof value!=="string")return "";
+  return geoFeatureName({type:"Feature",geometry:null,properties:{NAME:value}});
+ };
+ const historicalSubject=selected?russianSourceName(selected.properties?.SUBJECTO):"";
+ const historicalPart=selected?russianSourceName(selected.properties?.PARTOF):"";
  const selectedTitle=selected?(selectedIsCity?
   (russianPlaceName(selected)??""):
   (selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))):"";
@@ -666,7 +672,7 @@ function AtlasMap({diagram:d,onChange}:Props){
         onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Столица государства")}}}>
         <path d="M0 -4.4L4.4 0L0 4.4L-4.4 0Z"
          fill="#263c55" stroke="#fff" strokeWidth="1.15"/>
-        <title>{russianPlaceName(f.feature)??"Название не переведено"}: {alternateCapital(f.feature)?"дополнительная столица":"столица"}</title>
+        <title>{russianPlaceName(f.feature)}: {alternateCapital(f.feature)?"дополнительная столица":"столица"}</title>
        </g>)}
        {d.showLabels&&<g pointerEvents="none" fontSize={8/scale} fill="#203e59"
         stroke="#fff" strokeWidth={2/scale} paintOrder="stroke" fontWeight="700">
@@ -684,7 +690,7 @@ function AtlasMap({diagram:d,onChange}:Props){
          <path d="M0 -4.4L4.4 0L0 4.4L-4.4 0Z" fill="#263c55" stroke="#fff" strokeWidth="1"/>:
          <circle r={Math.max(1.8,Math.min(4,1.8+Math.sqrt(cityPopulation(f.feature))/1200))}
           fill="#386e8d" stroke="#fff" strokeWidth=".7"/>}
-        <title>{russianPlaceName(f.feature)??"Название не переведено"}{cityPopulation(f.feature)>0?
+        <title>{russianPlaceName(f.feature)}{cityPopulation(f.feature)>0?
          " · население (оценка): "+cityPopulation(f.feature).toLocaleString("ru-RU"):""}</title>
        </g>)}
        {d.showLabels&&<g pointerEvents="none" fontSize={7.6/scale} fill="#334e65"
@@ -923,7 +929,7 @@ function AtlasMap({diagram:d,onChange}:Props){
       <strong>Столицы государства</strong>
       {selectedCountryCapitals.map((capital,i)=>
        <button key={i} type="button" onClick={()=>focusFeature(capital,"Столица государства")}>
-        ◆ {russianPlaceName(capital)??"Русское название не найдено"}
+        ◆ {russianPlaceName(capital)}
         <span>Показать на карте ↗</span>
        </button>)}
      </div>}
@@ -964,9 +970,9 @@ function AtlasMap({diagram:d,onChange}:Props){
        "Современная геометрия из Natural Earth. Дата публикации набора не равна точной исторической обстановке 2026 года.":
        "Территория представлена в историческом наборе для "+yearLabel(snapshot.year)+". Границы могут отражать реконструкцию."}</p>
       <p>Историческая реконструкция принадлежит авторам снимка. Российская позиция применяется к современному политическому слою, но не подменяет исторические эпохи.</p>
-      {selected.properties?.SUBJECTO&&<p>Административная принадлежность в источнике: {String(selected.properties.SUBJECTO)}</p>}
-      {selected.properties?.PARTOF&&String(selected.properties.PARTOF)!==selectedTitle&&
-       <p>Регион/группа: {String(selected.properties.PARTOF)}</p>}</>}
+      {historicalSubject&&<p>Административная принадлежность в источнике: {historicalSubject}</p>}
+      {historicalPart&&historicalPart!==selectedTitle&&
+       <p>Регион/группа: {historicalPart}</p>}</>}
     </div>:
     historical?<div className="lektrus-atlas-description">
      <strong>Исторический справочник</strong>
