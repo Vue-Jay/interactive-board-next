@@ -287,7 +287,7 @@ function AtlasMap({diagram:d,onChange}:Props){
        grid={d.showGrid||mode==="coordinates"}/>
       <g strokeLinejoin="round">
        {shapes.map(s=>{
-        const precise=historical?borderPrecision(s.feature):3;
+        const precise=historical&&snapshot.year!==2026?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
         const fill=mode==="contour"?(d.painted??[]).find(p=>p.key===geoFeatureKey(s.feature))?.color??"#ffffff":
          mode==="physical"||mode==="relief"?"#e4ebdf":
@@ -426,10 +426,14 @@ function AtlasMap({diagram:d,onChange}:Props){
     selected?<div className="lektrus-atlas-description">
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
-     {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
+     {historical&&<><p>Точность: {snapshot.year===2026?
+       "справочный современный слой, без подтверждения границ на каждую дату":
+       precisions[borderPrecision(selected)]}.</p>
       <p>Указанная территория показана по состоянию на {yearLabel(snapshot.year)} согласно выбранной базе.</p>
-      {selected.properties?.SUBJECTO&&<p>Административная принадлежность в источнике: {String(selected.properties.SUBJECTO)}</p>}
-      {selected.properties?.PARTOF&&String(selected.properties.PARTOF)!==selectedTitle&&
+      {typeof selected.properties?.SUBJECTO==="string"&&/[А-Яа-яЁё]/.test(selected.properties.SUBJECTO)&&
+       <p>Административная принадлежность в источнике: {String(selected.properties.SUBJECTO)}</p>}
+      {typeof selected.properties?.PARTOF==="string"&&/[А-Яа-яЁё]/.test(selected.properties.PARTOF)&&
+       String(selected.properties.PARTOF)!==selectedTitle&&
        <p>Регион/группа: {String(selected.properties.PARTOF)}</p>}</>}
     </div>:
     historical?<div className="lektrus-atlas-description">
@@ -469,10 +473,19 @@ function AtlasMap({diagram:d,onChange}:Props){
      </div>)}
     </div>}
     <div className="lektrus-atlas-source">
-     <a href={(historical?historicDataProvider:modernDataProvider).url}
-      target="_blank" rel="noopener noreferrer">Источник: {(historical?historicDataProvider:modernDataProvider).name} ↗</a>
-     {historical&&<><small>Границы могут быть приблизительными, спорными или неполными.</small>
-      <a href={historicDataProvider.licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия исходных данных: GPL-3.0 ↗</a></>}
+     <a href={(historical&&snapshot.year!==2026?historicDataProvider:modernDataProvider).url}
+      target="_blank" rel="noopener noreferrer">Источник:
+      {(historical&&snapshot.year!==2026?historicDataProvider:modernDataProvider).name} ↗</a>
+     {historical&&snapshot.year!==2026&&<><small>Исторические границы могут быть условными, спорными и неполными.</small>
+      <a href={historicDataProvider.licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия: GPL-3.0 ↗</a></>}
+     {historical&&snapshot.year===2026&&<>
+      <small>Данные Natural Earth не являются российской государственной картой 2026 года.</small>
+      <a href="https://www.minjust.gov.ru/ru/documents/8011/" target="_blank" rel="noopener noreferrer">
+       Конституция РФ, статья 65: российская правовая позиция ↗</a>
+      <a href="https://press.un.org/en/2022/ga12458.doc.htm" target="_blank" rel="noopener noreferrer">
+       Генассамблея ООН: международно-правовая позиция ↗</a>
+      <small>Для ряда территорий расходятся юридическая позиция РФ, международное признание и фактический контроль.</small>
+     </>}
     </div>
    </aside>
   </div>

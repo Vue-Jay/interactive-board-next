@@ -43,7 +43,7 @@ const exampleQuestion={id:"q1",prompt:"сл□во",options:["о","а"],correct:
 assert.equal(validateRussianSchoolDiagram({...o,questions:[{...exampleQuestion,prompt:"слово"}]}),false);
 assert.equal(validateRussianSchoolDiagram({...o,questions:[{...exampleQuestion,correct:8}]}),false);
 assert.equal(validateRussianSchoolDiagram({...o,questions:[{...exampleQuestion,options:["а","а"]}]}),false);
-assert.equal(validateRussianSchoolDiagram({...o,questions:[...o.questions,exampleQuestion]}),false);
+assert.equal(validateRussianSchoolDiagram({...o,questions:[exampleQuestion,exampleQuestion]}),false);
 const registry=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
 for(const id of russianToolIds)assert.ok(registry.includes('id:"'+id+'"'),id+" missing subject menu");
 const view=fs.readFileSync(new URL("../src/LektrusRussianSchoolView.tsx",import.meta.url),"utf8");

@@ -259,7 +259,11 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
   const value=p[key];
   if((typeof value==="string"&&value.trim()!==""||
    typeof value==="number"&&Number.isFinite(value))&&!seen.has(label)){
-   result.push({label,value:String(value)});seen.add(label);
+   const raw=String(value);
+   const output=typeof value==="number"?raw:
+    /[А-Яа-яЁё]/.test(raw)?raw:rusNames[raw.toLowerCase()]??"";
+   if(!output)continue;
+   result.push({label,value:output});seen.add(label);
   }
  }
  return result;
