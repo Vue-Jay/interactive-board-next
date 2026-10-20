@@ -73,6 +73,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [detail,setDetail]=useState<GeoCollection|null>(null);
  const [detailWarning,setDetailWarning]=useState("");
  const [layerWarning,setLayerWarning]=useState("");
+ const [hydroResolution,setHydroResolution]=useState("обзорный слой");
  const [terrainStatus,setTerrainStatus]=useState<TerrainStatus>({total:0,loaded:0,failed:0});
  const [terrainPick,setTerrainPick]=useState<{lat:number;lon:number;metres:number|null;pending:boolean;error:boolean}|null>(null);
  const heightRequest=useRef(0);
@@ -97,6 +98,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [regionId,setRegionId]=useState(d.regionId??"world");
  const selectedRegion=findAtlasRegion(regionId);
  const detailedGeography=scale>=3||regionId!=="world";
+ const veryDetailedHydro=(mode==="physical"||mode==="hydrography")&&scale>=24;
  const detailedCities=mode==="cities"&&scale>=4;
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
@@ -152,9 +154,11 @@ function AtlasMap({diagram:d,onChange}:Props){
   // Optional thematic layers never replace the original geographic geometry.
   const thematic:ReadonlyArray<[string,boolean]>=[
    ["rivers",!detailedGeography&&(mode==="physical"||mode==="hydrography")],
-   ["rivers-regional",detailedGeography&&(mode==="physical"||mode==="hydrography")],
+   ["rivers-regional",detailedGeography&&!veryDetailedHydro&&(mode==="physical"||mode==="hydrography")],
+   ["rivers-ultra",veryDetailedHydro],
    ["lakes",!detailedGeography&&(mode==="physical"||mode==="hydrography")],
-   ["lakes-regional",detailedGeography&&(mode==="physical"||mode==="hydrography")],
+   ["lakes-regional",detailedGeography&&!veryDetailedHydro&&(mode==="physical"||mode==="hydrography")],
+   ["lakes-ultra",veryDetailedHydro],
    ["cities",mode==="political"],
    ["cities-regional",mode==="cities"&&!detailedCities],
    ["cities-local",detailedCities],
@@ -172,10 +176,16 @@ function AtlasMap({diagram:d,onChange}:Props){
    if(!active)return;
    setSource(geo);setSourceYear(snapshot.year);setPrevious(prev);setLoading(false);
    const requested=thematic.filter(([,needed])=>needed);
-   let localCityLoaded=false;
-   const result=await Promise.allSettled(requested.map(([layer])=>layer==="cities-local"?
+   let localCityLoaded=false,highRiversLoaded=false,highLakesLoaded=false;
+   const result=await Promise.allSettled(requested.map(([layer])=>layer==="rivers-ultra"?
+    loadAtlasLayer("rivers-ultra").then(geo=>{highRiversLoaded=true;return geo})
+     .catch(()=>loadAtlasLayer("rivers-regional")):
+    layer==="lakes-ultra"?
+    loadAtlasLayer("lakes-ultra").then(geo=>{highLakesLoaded=true;return geo})
+     .catch(()=>loadAtlasLayer("lakes-regional")):
+    layer==="cities-local"?
     loadAtlasLayer("cities-local").then(geo=>{localCityLoaded=true;return geo}).catch(()=>loadAtlasLayer("cities-regional")):loadAtlasLayer(layer as
-    "rivers"|"rivers-regional"|"lakes"|"lakes-regional"|"cities"|"cities-regional"|"cities-local"|"admin-regional"|"regions"|"regions-regional"|"elevation"|"elevation-regional"|"glaciers"|"glaciers-regional"|"marine"|"physical-labels")));
+    "rivers"|"rivers-regional"|"rivers-ultra"|"lakes"|"lakes-regional"|"lakes-ultra"|"cities"|"cities-regional"|"cities-local"|"admin-regional"|"regions"|"regions-regional"|"elevation"|"elevation-regional"|"glaciers"|"glaciers-regional"|"marine"|"physical-labels")));
    if(!active)return;
    const missing:string[]=[];
    const found=new Map<string,GeoCollection>();
@@ -184,9 +194,13 @@ function AtlasMap({diagram:d,onChange}:Props){
     if(layerResult.status==="fulfilled")found.set(layer,layerResult.value);
     else missing.push(layer);
    });
-   setRivers(found.get("rivers-regional")??found.get("rivers")??null);
+   setRivers(found.get("rivers-ultra")??found.get("rivers-regional")??found.get("rivers")??null);
    setMarine(found.get("marine")??null);setPhysicalLabels(found.get("physical-labels")??null);
-   setLakes(found.get("lakes-regional")??found.get("lakes")??null);
+   setLakes(found.get("lakes-ultra")??found.get("lakes-regional")??found.get("lakes")??null);
+   setHydroResolution(veryDetailedHydro?
+    "Реки: "+(highRiversLoaded?"1:10 млн":"1:50 млн (резервный)")+
+    "; озёра: "+(highLakesLoaded?"1:10 млн":"1:50 млн (резервный)"):
+    detailedGeography?"1:50 млн":"1:110 млн");
    const citySource=found.get("cities-local")??found.get("cities-regional")??found.get("cities")??null;
    setCities(citySource?applyVerifiedCapitalUpdates2026(citySource):null);
    setCityResolution(found.has("cities-local")?(localCityLoaded?"1:10 млн":"1:50 млн, резервный"):
@@ -201,7 +215,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    setError(e instanceof Error?e.message:String(e));setLoading(false);
   });
   return()=>{active=false};
- },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,detailedCities,regionId,needsPoliticalGeometry]);
+ },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,detailedCities,veryDetailedHydro,regionId,needsPoliticalGeometry]);
  useEffect(()=>{
   let active=true;
   if(!modernBorders||scale<5||russianView){setDetail(null);setDetailWarning("");return}
@@ -769,6 +783,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>}
     {(mode==="physical"||mode==="relief")&&<div className="lektrus-atlas-natural-legend">
      <strong>Условные обозначения</strong>
+     <small>Природные контуры не обводятся жирными линиями. Водная сеть: {hydroResolution}.</small>
      {(["mountains","plateau","deserts","plains","basins"] as const).map(key=>
       <div key={key}><span className="lektrus-atlas-legend-swatch" style={{background:landformColors[key].fill}}/>
        {landformColors[key].label}</div>)}
@@ -776,6 +791,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>}
     {mode==="hydrography"&&<div className="lektrus-atlas-natural-legend">
      <strong>Условные обозначения</strong>
+     <small>Детализация гидрографии: {hydroResolution}</small>
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#4c9bc8"}}/>Реки и водотоки</div>
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#a7d5ed"}}/>Озёра и водохранилища</div>
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#dfedf9",borderColor:"#90b5d1"}}/>Морские акватории</div>
@@ -960,7 +976,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     <div className="lektrus-atlas-description"><strong>{mapModeTitle(mode)}</strong>
      <p>{atlasModes.find(m=>m.id===mode)?.hint}.</p>
      {mode==="physical"&&<p>Природные объекты, ледники, водная сеть и высотные отметки Natural Earth. Региональный масштаб использует подробнее проработанные реки, озёра и побережье. Для высотной подложки используется отдельная модель рельефа Mapzen (при включении и доступности).</p>}
-     {mode==="hydrography"&&<p>Реки, озёра и морские акватории Natural Earth. Для регионов используется детализация 1:50 млн. Нажмите на объект или найдите его по названию.</p>}
+     {mode==="hydrography"&&<p>Реки, озёра и морские акватории Natural Earth. При сильном приближении автоматически подключается детализация 1:10 млн; если источник недоступен, сохраняется слой 1:50 млн. Нажмите на объект или найдите его по названию.</p>}
      {mode==="relief"&&<p>При включённой гипсометрии цвета рассчитаны по высотам DEM; без неё заливка обозначает тип природной области. Подписи высот берутся из атрибутов Natural Earth.</p>}
      {mode==="cities"&&<p>Города и другие населённые пункты из Natural Earth, включая не являющиеся административными центрами. Подробный слой подключается при приближении; численность населения дана по оценке источника и может устареть.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
