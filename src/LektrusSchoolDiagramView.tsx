@@ -5,6 +5,7 @@ import LektrusFurtherSchoolView from "./LektrusFurtherSchoolView";
 import LektrusApprovedSchoolView from "./LektrusApprovedSchoolView";
 import LektrusRussianSchoolView from "./LektrusRussianSchoolView";
 import LektrusLanguageSocialView from "./LektrusLanguageSocialView";
+import LektrusMapAtlas from "./LektrusMapAtlas";
 
 type Props={diagram:SchoolDiagram};
 const trim=(s:string,n=20)=>s.length>n?s.slice(0,n-1)+"…":s;
