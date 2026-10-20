@@ -1,7 +1,7 @@
 /** A single map tool for geography, history and social studies.
  * Coordinates are geographic WGS84, never invented "modern borders" for a past year. */
 export type AtlasScope="geography"|"history";
-export type AtlasMode="political"|"contour"|"physical"|"hydrography"|"historical"|"events";
+export type AtlasMode="political"|"contour"|"physical"|"hydrography"|"coordinates"|"historical"|"events";
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
 export type AtlasDocument={
  kind:"atlas";title:string;scope?:AtlasScope;mode:AtlasMode;year:number;showLabels:boolean;
@@ -10,7 +10,8 @@ export type AtlasDocument={
 export const geographyMapModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
  {id:"political",title:"Современная политическая",hint:"Страны и их современные границы по Natural Earth"},
  {id:"physical",title:"Физическая",hint:"Общая подложка суши с реками и озёрами (без высот)"},
- {id:"hydrography",title:"Водные объекты",hint:"Озёра, реки и береговая линия"},
+ {id:"hydrography",title:"Гидрографическая",hint:"Реки, озёра и береговая линия с выбором объектов"},
+ {id:"coordinates",title:"Географические координаты",hint:"Меридианы, параллели и определение координат нажатием"},
  {id:"contour",title:"Контурная",hint:"Неподписанная карта для самостоятельных заданий"}
 ];
 export const historyMapModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
