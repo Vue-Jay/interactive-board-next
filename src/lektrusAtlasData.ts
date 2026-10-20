@@ -411,6 +411,10 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
   ["SOVEREIGNT","Суверенное государство в источнике"],["ADM0NAME","Страна в источнике"],
   ["FEATURECLA","Категория"],["FEATURECLASS","Категория"]];
  const result:Array<{label:string;value:string}>=[];
+ if(typeof p.CAPITAL_CORRECTION_RU==="string")
+  result.push({label:"Уточнение столицы",value:p.CAPITAL_CORRECTION_RU});
+ if(typeof p.LOCATION_SOURCE_RU==="string")
+  result.push({label:"Точность координат",value:p.LOCATION_SOURCE_RU});
  const seen=new Set<string>();
  for(const [key,label] of fields){
   const value=p[key];

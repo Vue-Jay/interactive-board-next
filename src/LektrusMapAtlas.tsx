@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
-import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols} from "./lektrusAtlasPlaces";
+import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
@@ -86,7 +86,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [regionId,setRegionId]=useState(d.regionId??"world");
  const selectedRegion=findAtlasRegion(regionId);
  const detailedGeography=scale>=3||regionId!=="world";
- const detailedCities=mode==="cities"&&scale>=8;
+ const detailedCities=mode==="cities"&&scale>=4;
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
  const distanceBar=atlasDistanceScale(scale,position.y);
@@ -175,7 +175,8 @@ function AtlasMap({diagram:d,onChange}:Props){
    setRivers(found.get("rivers-regional")??found.get("rivers")??null);
    setMarine(found.get("marine")??null);setPhysicalLabels(found.get("physical-labels")??null);
    setLakes(found.get("lakes-regional")??found.get("lakes")??null);
-   setCities(found.get("cities-local")??found.get("cities-regional")??found.get("cities")??null);
+   const citySource=found.get("cities-local")??found.get("cities-regional")??found.get("cities")??null;
+   setCities(citySource?applyVerifiedCapitalUpdates2026(citySource):null);
    setCityResolution(found.has("cities-local")?(localCityLoaded?"1:10 млн":"1:50 млн, резервный"):
     found.has("cities-regional")?"1:50 млн":found.has("cities")?"1:110 млн":"не загружен");
    setAdministrative(found.get("admin-regional")??null);
@@ -756,7 +757,10 @@ function AtlasMap({diagram:d,onChange}:Props){
      <strong>Столицы государств</strong>
      <div><span className="lektrus-atlas-legend-swatch lektrus-atlas-legend-capital"/>◆ Столица по данным Natural Earth</div>
      <small>Столиц в слое: {totalCapitals}. На карте они отмечены тёмными ромбами; это не маркеры маленьких государств.</small>
-     <small>Данные Natural Earth не гарантируют юридическую актуальность всех столиц на 2026 год. Дополнительные столицы помечены по классификации источника.</small>
+     <small>Столицы показаны по Natural Earth, кроме подтверждённых исправлений: Додома (Танзания) и Сьюдад-де-ла-Пас (Экваториальная Гвинея). Для остальных стран ещё требуется актуализация по официальным сведениям.</small>
+     <a href="https://oagmis.oag.go.tz/portal/acts/52" target="_blank" rel="noopener noreferrer">Закон Танзании о столице ↗</a>
+     <a href="https://www.guineaecuatorialpress.com/noticias/decreto_ley_por_el_que_se_declara_la_ciudad_de_la_paz_djibloho_capital_de_la_republica_de_guinea_ecuatorial"
+      target="_blank" rel="noopener noreferrer">Декрет о столице Экваториальной Гвинеи, 2026 ↗</a>
     </div>}
     {mode==="cities"&&<div className="lektrus-atlas-natural-legend">
      <strong>Обозначения населённых пунктов</strong>
@@ -772,7 +776,7 @@ function AtlasMap({diagram:d,onChange}:Props){
      <small>Объектов в базе: {cities?.features.length??0}; с русским названием: {cities?.features.filter(f=>russianPlaceName(f)).length??0}. В видимой области показано: {shownCities.length}. Фактически загруженный слой: {cityResolution}.</small>
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#386e8d"}}/>● Населённый пункт</div>
      <div><span className="lektrus-atlas-legend-swatch lektrus-atlas-legend-capital"/>◆ Столица государства</div>
-     <small>На карте представлены не только административные центры, но и другие населённые пункты из Natural Earth. При приближении подключается более подробный набор.</small>
+     <small>Показаны не только административные центры, но и другие города и посёлки из базы Natural Earth. Начиная с увеличения ×4 включается более подробный набор 1:10 млн.</small>
      <small>Размер символа зависит от оценочной численности населения. Русские названия берутся непосредственно из атрибутов источника. Непереведённые названия не выдаются за проверенные русские.</small>
     </div>}
     {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
@@ -862,6 +866,10 @@ function AtlasMap({diagram:d,onChange}:Props){
     selected?<div className="lektrus-atlas-description">
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+      {typeof selected.properties?.CAPITAL_CORRECTION_URL==="string"&&<a href={selected.properties.CAPITAL_CORRECTION_URL}
+       target="_blank" rel="noopener noreferrer">Правовой источник уточнения столицы ↗</a>}
+      {typeof selected.properties?.LOCATION_SOURCE_URL==="string"&&<a href={selected.properties.LOCATION_SOURCE_URL}
+       target="_blank" rel="noopener noreferrer">Географический источник координат ↗</a>}
      {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
       {selectedArticle&&<div className="lektrus-history-article">
        <p className="lektrus-history-period">{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</p>

@@ -170,6 +170,26 @@ assert.equal(places.russianPlaceName(small),"Димитровград");
 assert.equal(places.russianPlaceName({...small,properties:{NAME:"Unknown"}}),null);
 assert.equal(places.cityPopulation(small),105000);
 assert.equal(places.nationalCapital(place("Тест",1,"Populated place")),false);
+const worldPlaces={type:"FeatureCollection",features:[
+ {...place("Malabo",1,"Admin-0 capital"),properties:{
+  ...place("Malabo",1,"Admin-0 capital").properties,NAME:"Malabo",NAME_RU:"Малабо",ISO_A2:"GQ"}},
+ {...place("Dar es Salaam",1,"Admin-0 capital"),properties:{
+  ...place("Dar es Salaam",1,"Admin-0 capital").properties,NAME:"Dar es Salaam",NAME_RU:"Дар-эс-Салам",ISO_A2:"TZ"}},
+ {...place("Dodoma",0,"Admin-0 capital alt"),properties:{
+  ...place("Dodoma",0,"Admin-0 capital alt").properties,NAME:"Dodoma",NAME_RU:"Додома",ISO_A2:"TZ"}}
+]};
+const updatedPlaces=places.applyVerifiedCapitalUpdates2026(worldPlaces);
+const fixed=(name)=>updatedPlaces.features.find(f=>f.properties?.NAME===name);
+assert.equal(places.nationalCapital(fixed("Malabo")),false,"new Equatorial Guinea capital in 2026");
+assert.equal(places.nationalCapital(fixed("Ciudad de la Paz")),true);
+assert.equal(places.russianPlaceName(fixed("Ciudad de la Paz")),"Сьюдад-де-ла-Пас");
+assert.equal(places.nationalCapital(fixed("Dar es Salaam")),false,"Tanzania law declares Dodoma capital");
+assert.equal(places.nationalCapital(fixed("Dodoma")),true);
+assert.equal(places.applyVerifiedCapitalUpdates2026(updatedPlaces).features.length,updatedPlaces.features.length,
+ "corrections must not duplicate a capital");
+assert.equal(places.nationalCapital(worldPlaces.features[0]),true,"source must not be mutated");
+assert.match(map,/applyVerifiedCapitalUpdates2026/);
+assert.match(map,/scale>=4/);
 const testCities=[{id:0,point:[100,100],feature:kazan},{id:1,point:[102,101],feature:small},
  {id:2,point:[400,100],feature:moscow}];
 assert.equal(places.chooseCityLabels(testCities,1,20).length,2,
