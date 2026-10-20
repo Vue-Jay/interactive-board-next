@@ -1,10 +1,10 @@
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
-import {atlasModesFor,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
+import {atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 type Props={diagram:AtlasDocument;onChange:(diagram:AtlasDocument)=>void};
 const makeId=()=>crypto.randomUUID();
 export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
  const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
- const modes=atlasModesFor(scope);
+ const modes=atlasModesFor(scope).filter(m=>d.mode==="contour"?m.id==="contour":m.id!=="contour");
  const historic=scope==="history";
  const index=nearestSnapshotIndex(d.year);
  const patch=(next:Partial<AtlasDocument>)=>onChange({...d,...next});
@@ -31,15 +31,9 @@ export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
     <button type="button" disabled={index===historicalSnapshots.length-1}
      onClick={()=>patch({year:historicalSnapshots[index+1].year})}>Позже ›</button>
    </div>
-   <p className="lektrus-school-hint">Доступны {historicalSnapshots.length} датированных картографических снимков от древних эпох до 2010 года. Каждый снимок имеет самостоятельные границы. В промежутках не строятся вымышленные границы и не предполагается непрерывная точность.</p>
+   <p className="lektrus-school-hint">Доступны {historicalSnapshots.length-1} исторических снимков и справочная современная карта 2026 года. Современный слой не подтверждает точность границ на каждый день 2026 года. Каждый снимок имеет самостоятельные границы. В промежутках не строятся вымышленные границы и не предполагается непрерывная точность.</p>
    <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showEvents}
-    onChange={e=>patch({showEvents:e.target.checked})}/> Показывать важные исторические события</label>
-   <div className="lektrus-school-controls-heading">События из учебной подборки</div>
-   {schoolHistoryEvents.filter(ev=>Math.abs(ev.year-d.year)<70).map(ev=>
-    <div key={ev.year} className="lektrus-atlas-curriculum-event">
-     <strong>{yearLabel(ev.year)} · {ev.title}</strong>
-     <small>{ev.description}</small>
-    </div>)}
+    onChange={e=>patch({showEvents:e.target.checked})}/> Показывать добавленные маркеры</label>
   </>}
   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showGrid}
    onChange={e=>patch({showGrid:e.target.checked})}/> Меридианы и параллели</label>

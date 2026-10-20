@@ -27,5 +27,5 @@ assert.equal(validFurtherDiagram({...geography,points:[{id:"a",distance:0,height
  {id:"b",distance:40,height:20,label:""}]}),false,"height beyond supported range rejected");
 const registry=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
 assert.match(registry,/id:"bio-organ-systems"/);
-assert.match(registry,/id:"geo-relief-profile"/);
+assert.doesNotMatch(registry,/id:"geo-relief-profile"/);
 console.log("Lektrus organs and geographic relief: validated default, hidden labels, negative heights and measurement limits.");

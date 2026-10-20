@@ -24,7 +24,7 @@ import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
-import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
+import {isSchoolDiagramId,isSchoolDiagram,type SchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration,{isChemicalIllustration} from "./LektrusChemistryIllustration";
@@ -150,6 +150,8 @@ type Tool =
   | "table"
   | "formula"
   | "graph"
+  | "flowchart"
+  | "diagram"
   | "checklist"
   | "quiz"
   | "flashcard"
@@ -189,6 +191,8 @@ const iconBody = (name: IconName) => {
     case "comment": return <><path d="M5 4.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-14a2 2 0 0 1 1-2Z"/><path d="M8 9h9M8 13h6"/></>;
     case "table": return <><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M9.5 9.5v10M15.5 9.5v10"/><path d="M6.5 7h2" strokeWidth="2"/></>;
     case "formula": return <><path d="M11.2 5H5l4.5 7L5 19h6.2"/><path d="M14 10.2h6M17 7.2v6"/><path d="m14 18 2-2 2 2 2-2"/></>;
+    case "diagram": return <><path d="M4 20V5M4 20h17M8 16v-6h3v6M13 16V7h3v9M18 16v-9h3v9"/></>;
+    case "flowchart": return <><rect x="2" y="3" width="8" height="6" rx="1"/><path d="M6 9v4m0 0l5 3 5-3m-5 3v3M16 10l5 4-5 4-5-4z"/></>;
     case "graph": return <><path d="M4 4v16h17M7 15c2.2-1 2.7-7 5.5-7 2.9 0 3.1 6 6.5 3"/><circle cx="12.5" cy="8" r="1.2" fill="currentColor" stroke="none"/><path d="M4 12h17" opacity=".35"/></>;
     case "checklist": return <><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="m7.1 9 1.6 1.6 2.4-2.8M13.6 9.5h3.5M7 15l1.6 1.6 2.5-2.8M13.6 15.4h3.5"/></>;
     case "quiz": return <><rect x="4.3" y="3.5" width="15.4" height="17" rx="3"/><path d="M9.3 9a2.75 2.75 0 1 1 4.3 2.3c-1.3.9-1.7 1.6-1.7 2.9"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></>;
@@ -395,6 +399,8 @@ const tools: { id: Tool; icon: IconName; label: string; dividerAfter?: boolean }
   { id: "table", icon: "table", label: "Таблица · B / И" },
   { id: "formula", icon: "formula", label: "Формула · X / Ч" },
   { id: "graph", icon: "graph", label: "График функции · Y / Н" },
+  { id: "diagram", icon: "diagram", label: "Диаграммы · столбцы, линии, круги" },
+  { id: "flowchart", icon: "flowchart", label: "Блок-схемы · общие" },
   { id: "checklist", icon: "checklist", label: "Чек-лист / задание · K / Л" },
   { id: "quiz", icon: "quiz", label: "Вопрос / мини-тест · G / П" },
   { id: "flashcard", icon: "flashcard", label: "Карточка вопрос–ответ · J / О" },
@@ -405,7 +411,7 @@ const tools: { id: Tool; icon: IconName; label: string; dividerAfter?: boolean }
 const toolShortLabel: Record<Tool, string> = {
   select:"Выбрать",hand:"Двигать",lasso:"Петля",pen:"Карандаш",marker:"Маркер",eraser:"Ластик",
   connector:"Стрелка",frame:"Фрейм",comment:"Комментарий",text:"Текст",sticky:"Стикер",shape:"Фигуры",
-  table:"Таблица",formula:"Формула",graph:"График",checklist:"Чек-лист",quiz:"Тест",flashcard:"Карточка",
+  table:"Таблица",formula:"Формула",graph:"График",diagram:"Диаграмма",flowchart:"Блок-схема",checklist:"Чек-лист",quiz:"Тест",flashcard:"Карточка",
   cover:"Шторка",media:"Фото / PDF",linkmedia:"Видео / аудио",
 };
 const primaryDesktopTools = new Set<Tool>(["select","lasso","pen","marker","eraser","connector","text","sticky","shape","media"]);
@@ -1111,7 +1117,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
@@ -1121,6 +1127,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   onGridChange?: (enabled:boolean)=>void;
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
+  onSchoolDiagramChange?: (diagram:SchoolDiagram)=>void;
   suspendPeriodicWindows?: boolean;
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
@@ -1145,7 +1152,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     graphGivenAngles: Array.isArray(item.graphGivenAngles) ? item.graphGivenAngles : []
   };
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
-    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram}/></div>;
+    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
   if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
     <LektrusChemistryIllustration item={item}/>
@@ -3766,6 +3773,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       setTool("select");
       setTableEditorId(item.id);
       setTableDraft({ rows, cols, cells: [...cells], header: true, fontSize: 13, align: "left", stripe: false, compact: false });
+      return;
+    } else if (tool === "diagram" || tool === "flowchart") {
+      e.preventDefault();
+      const id=tool==="diagram"?"common-chart":"info-flowchart";
+      const item=makeSubjectToolItem(id,p.x,p.y,createId);
+      commit([...itemsRef.current,item]);
+      setSelected([item.id]);
+      setTool("select");
       return;
     } else if (tool === "graph") {
       e.preventDefault();
@@ -7454,6 +7469,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item} suspendPeriodicWindows={periodicEditorItem?.id===item.id}
+                  onSchoolDiagramChange={!item.locked&&canEdit?(diagram)=>{
+                    if(!isSchoolDiagram(diagram))return;
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?
+                      {...candidate,schoolDiagram:diagram,text:diagram.title}:candidate));
+                  }:undefined}
                   onPeriodicLayoutChange={canEdit&&!item.locked&&item.graphFigureId==="chem-periodic"?(nextLayout)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,sciencePeriodicLayout:nextLayout}:candidate));
                   }:undefined}

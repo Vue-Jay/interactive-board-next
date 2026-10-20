@@ -6,8 +6,9 @@ import LektrusApprovedSchoolView from "./LektrusApprovedSchoolView";
 import LektrusRussianSchoolView from "./LektrusRussianSchoolView";
 import LektrusLanguageSocialView from "./LektrusLanguageSocialView";
 import LektrusMapAtlas from "./LektrusMapAtlas";
+import LektrusDataChart from "./LektrusDataChart";
 
-type Props={diagram:SchoolDiagram};
+type Props={diagram:SchoolDiagram;onChange?:(value:SchoolDiagram)=>void};
 const trim=(s:string,n=20)=>s.length>n?s.slice(0,n-1)+"…":s;
 const labelText=(s:string,max=19)=>{
  const words=s.split(/\s+/),lines:string[]=[];let line="";
@@ -161,17 +162,18 @@ function TimelineGraphic({diagram:d}:{diagram:Extract<SchoolDiagram,{kind:"timel
   <text x="450" y="463" textAnchor="middle" fontSize="13" fill="#8193a4">События расположены по порядку. Промежутки между датами не в масштабе.</text>
  </svg>;
 }
-export default function LektrusSchoolDiagramView({diagram}:Props){
+export default function LektrusSchoolDiagramView({diagram,onChange}:Props){
  switch(diagram.kind){
   case "cell":return <CellGraphic diagram={diagram}/>;
   case "food-chain":return <ChainGraphic diagram={diagram}/>;
   case "climate":return <ClimateGraphic diagram={diagram}/>;
   case "timeline":return <TimelineGraphic diagram={diagram}/>;
-  case "syntax":case "flowchart":case "place-value":return <LektrusNextSchoolView diagram={diagram}/>;
+  case "syntax":case "flowchart":case "place-value":return <LektrusNextSchoolView diagram={diagram} onChange={onChange}/>;
   case "organs":case "relief":return <LektrusFurtherSchoolView diagram={diagram}/>;
-  case "morphemes":case "family-tree":case "flashcards":return <LektrusApprovedSchoolView diagram={diagram}/>;
-  case "morphology":case "phonetics":case "orthography":return <LektrusRussianSchoolView diagram={diagram}/>;
+  case "morphemes":case "family-tree":case "flashcards":return <LektrusApprovedSchoolView diagram={diagram} onChange={onChange}/>;
+  case "morphology":case "phonetics":case "orthography":return <LektrusRussianSchoolView diagram={diagram} onChange={onChange}/>;
   case "sentence-builder":case "state-structure":return <LektrusLanguageSocialView diagram={diagram}/>;
-  case "atlas":return <LektrusMapAtlas diagram={diagram}/>;
+  case "atlas":return <LektrusMapAtlas diagram={diagram} onChange={onChange}/>;
+  case "data-chart":return <LektrusDataChart diagram={diagram} onChange={onChange}/>;
  }
 }

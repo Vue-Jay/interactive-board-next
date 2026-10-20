@@ -22,24 +22,11 @@ export function isApprovedSchoolId(v:string|undefined):v is ApprovedSchoolId{
 export function createApprovedSchoolDiagram(id:ApprovedSchoolId):ApprovedSchoolDiagram{
  switch(id){
   case "ru-morphemes":return {kind:"morphemes",title:"Разбор слова по составу",
-   segments:[
-    {id:"m1",text:"под",role:"prefix"},
-    {id:"m2",text:"снеж",role:"root"},
-    {id:"m3",text:"ник",role:"suffix"}
-   ],zeroEnding:true,showMarks:true,showBase:true};
-  case "history-family-tree":return {kind:"family-tree",title:"Генеалогическое дерево",showGenerations:true,
-   people:[
-    {id:"p1",name:"Родитель 1",parents:[]},
-    {id:"p2",name:"Родитель 2",parents:[]},
-    {id:"p3",name:"Ребёнок",parents:["p1","p2"]}
-   ]};
+   segments:[{id:"m1",text:"Слово",role:"root"}],zeroEnding:false,showMarks:false,showBase:false};
+  case "history-family-tree":return {kind:"family-tree",title:"Генеалогическое дерево",
+   showGenerations:true,people:[]};
   case "language-flashcards":return {kind:"flashcards",title:"Карточки иностранных слов",
-   showTranslation:false,showTranscription:true,direction:"foreign-first",
-   cards:[
-    {id:"c1",term:"apple",translation:"яблоко",transcription:"[ˈæpəl]"},
-    {id:"c2",term:"book",translation:"книга",transcription:"[bʊk]"},
-    {id:"c3",term:"school",translation:"школа",transcription:"[skuːl]"}
-   ]};
+   showTranslation:false,showTranscription:false,direction:"foreign-first",cards:[]};
  }
 }
 export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiagram{
@@ -72,7 +59,7 @@ export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiag
  }
  if(d.kind==="family-tree"){
   if(typeof d.showGenerations!=="boolean"||!Array.isArray(d.people)||
-   d.people.length<1||d.people.length>12)return false;
+   d.people.length>12)return false;
   const people=d.people as FamilyPerson[];
   if(people.some(p=>!p||!okString(p.id,64)||!okString(p.name,35)||
    !Array.isArray(p.parents)||p.parents.length>2||
@@ -96,7 +83,7 @@ export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiag
  if(d.kind==="flashcards"){
   if(typeof d.showTranslation!=="boolean"||typeof d.showTranscription!=="boolean"||
    !["foreign-first","russian-first"].includes(d.direction as string)||
-   !Array.isArray(d.cards)||d.cards.length<1||d.cards.length>30)return false;
+   !Array.isArray(d.cards)||d.cards.length>30)return false;
   const cards=d.cards as LanguageCard[];
   return cards.every(c=>c&&okString(c.id,64)&&okString(c.term,65)&&
    okString(c.translation,80)&&okString(c.transcription,75,true))&&

@@ -1,17 +1,17 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
+import type {SchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusMapBase from "./LektrusMapBase";
 import {atlasModes,atlasModesFor,eventsNearYear,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
- modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
+ modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,geoFeatureKey,summariseNamedChanges,
  type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
-type Props={diagram:AtlasDocument};
-const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
-const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
+type Props={diagram:AtlasDocument;onChange?:(value:SchoolDiagram)=>void};
 const precisions=["Неизвестная точность","Приблизительные границы","Средняя точность","Уточнённая граница"] as const;
 const mapModeTitle=(v:AtlasMode)=>atlasModes.find(m=>m.id===v)!.title;
-function AtlasMap({diagram:d}:Props){
+function AtlasMap({diagram:d,onChange}:Props){
  const [mode,setMode]=useState<AtlasMode>(d.mode);
+ const [paintColor,setPaintColor]=useState("#f6c98c");
  const [index,setIndex]=useState(nearestSnapshotIndex(d.year));
  const [source,setSource]=useState<GeoCollection|null>(null);
  const [baseLand,setBaseLand]=useState<GeoCollection|null>(null);
@@ -45,7 +45,7 @@ function AtlasMap({diagram:d}:Props){
  const dragged=useRef(false);
  const snapshot=historicalSnapshots[index];
  const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
- const availableModes=atlasModesFor(scope);
+ const availableModes=atlasModesFor(scope).filter(m=>d.mode==="contour"?m.id==="contour":m.id!=="contour");
  const historical=scope==="history";
  useEffect(()=>{setMode(d.mode);setIndex(nearestSnapshotIndex(d.year));setSelected(null);setEventIndex(null)},
   [d.mode,d.year]);
@@ -126,7 +126,8 @@ function AtlasMap({diagram:d}:Props){
  const cityPoints=useMemo(()=>cities?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f}))
   .filter(v=>v.point)||[],[cities]);
  const changes=useMemo(()=>source&&previous?summariseNamedChanges(previous,source):null,[source,previous]);
- const eventList=useMemo(()=>eventsNearYear(snapshot.year),[snapshot.year]);
+ // Curated event markers are not populated automatically: lessons start empty.
+ const eventList=useMemo(()=>eventsNearYear(snapshot.year).filter(()=>false),[snapshot.year]);
  const userMarkers=d.markers.filter(marker=>!historical||
   Math.abs(marker.year-snapshot.year)<=Math.max(10,(historicalSnapshots[Math.min(index+1,historicalSnapshots.length-1)].year-
    historicalSnapshots[Math.max(0,index-1)].year)/2));
@@ -212,7 +213,18 @@ function AtlasMap({diagram:d}:Props){
   if(dragged.current||mode==="contour")return;
   setSelected(feature);setSelectedLayer(layer);setEventIndex(null);setSelectedMarker(null);
  };
- const showCountry=(feature:GeoFeature)=>selectFeature(feature,historical?"Историческая территория":"Государство");
+ const showCountry=(feature:GeoFeature)=>{
+  if(mode==="contour"){
+   const key=geoFeatureKey(feature);
+   if(!key||!onChange)return;
+   const entries=(d.painted??[]).filter(p=>p.key!==key);
+   onChange({...d,painted:paintColor==="#ffffff"?entries:
+    [...entries,{key,color:paintColor}].slice(-300)});
+   return;
+  }
+  if(!geoFeatureName(feature))return;
+  selectFeature(feature,historical?"Историческая территория":"Государство");
+ };
  const onMode=(value:AtlasMode)=>{
   if(!availableModes.some(m=>m.id===value))return;
   setMode(value);setSelected(null);setSearch("");setSelectedMarker(null);setEventIndex(null);
@@ -244,6 +256,14 @@ function AtlasMap({diagram:d}:Props){
      aria-pressed={mode===m.id} className={mode===m.id?"selected":""}
      onClick={()=>onMode(m.id)}>{m.title}</button>)}
    </nav>
+   {mode==="contour"&&<div className="lektrus-atlas-palette" role="group" aria-label="Раскрашивание карты">
+    {["#f6c98c","#bed8f1","#bde5ce","#e6c9e9","#ffe7a9","#f6bcc5","#ffffff"].map(color=>
+     <button key={color} type="button" disabled={!onChange}
+      className={paintColor===color?"selected":""}
+      title={color==="#ffffff"?"Стереть заливку":"Раскрасить область"}
+      aria-label={color==="#ffffff"?"Стереть цвет":"Цвет "+color}
+      style={{background:color}} onClick={()=>setPaintColor(color)} />)}
+   </div>}
   </header>
   <div className="lektrus-atlas-body">
    <div className="lektrus-atlas-map-box">
@@ -267,16 +287,18 @@ function AtlasMap({diagram:d}:Props){
        grid={d.showGrid||mode==="coordinates"}/>
       <g strokeLinejoin="round">
        {shapes.map(s=>{
-        const precise=historical?borderPrecision(s.feature):3;
+        const precise=historical&&snapshot.year!==2026?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
-        const fill=mode==="contour"?"#fafcfb":mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"||mode==="cities"?"#e6eee2":
-         palettes[hash(s.name)%palettes.length];
+        const fill=mode==="contour"?(d.painted??[]).find(p=>p.key===geoFeatureKey(s.feature))?.color??"#ffffff":
+         mode==="physical"||mode==="relief"?"#e4ebdf":
+         mode==="hydrography"||mode==="cities"?"#e6eee2":
+         historical?"#e2dfc9":"#dde7d8";
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
          stroke={highlighted||s.name===selectedTitle?"#df793e":mode==="contour"?"#839fb2":"#819fb2"}
          strokeWidth={highlighted||s.name===selectedTitle?1.9:historical&&precise===1?.75:.48}
          strokeDasharray={historical&&precise===1?"2.2 1.7":undefined}
          onClick={()=>showCountry(s.feature)} className="lektrus-atlas-country">
-         <title>{mode==="contour"?"Граница государства":s.name}</title>
+         <title>{mode==="contour"?"Область для раскрашивания":s.name||"Территория без подтверждённого названия"}</title>
         </path>;
        })}
       </g>
@@ -387,7 +409,9 @@ function AtlasMap({diagram:d}:Props){
     </div>}
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}</strong>
-     <small>Датированный снимок границ, не интерполяция</small>
+     <small>{snapshot.year===2026?
+      "Современный справочный слой Natural Earth. Не официальная историческая карта и не юридическая фиксация границ 2026 года.":
+      "Исторический датированный снимок. Оценочная точность зависит от эпохи."}</small>
     </div>}
     {markerDetails?<div className="lektrus-atlas-description">
      <strong>{markerDetails.title}</strong>
@@ -402,10 +426,14 @@ function AtlasMap({diagram:d}:Props){
     selected?<div className="lektrus-atlas-description">
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
-     {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
+     {historical&&<><p>Точность: {snapshot.year===2026?
+       "справочный современный слой, без подтверждения границ на каждую дату":
+       precisions[borderPrecision(selected)]}.</p>
       <p>Указанная территория показана по состоянию на {yearLabel(snapshot.year)} согласно выбранной базе.</p>
-      {selected.properties?.SUBJECTO&&<p>Административная принадлежность в источнике: {String(selected.properties.SUBJECTO)}</p>}
-      {selected.properties?.PARTOF&&String(selected.properties.PARTOF)!==selectedTitle&&
+      {typeof selected.properties?.SUBJECTO==="string"&&/[А-Яа-яЁё]/.test(selected.properties.SUBJECTO)&&
+       <p>Административная принадлежность в источнике: {String(selected.properties.SUBJECTO)}</p>}
+      {typeof selected.properties?.PARTOF==="string"&&/[А-Яа-яЁё]/.test(selected.properties.PARTOF)&&
+       String(selected.properties.PARTOF)!==selectedTitle&&
        <p>Регион/группа: {String(selected.properties.PARTOF)}</p>}</>}
     </div>:
     historical?<div className="lektrus-atlas-description">
@@ -418,7 +446,7 @@ function AtlasMap({diagram:d}:Props){
      {mode==="hydrography"&&<p>Нажмите на реку или озеро, чтобы изучить объект. Показаны крупные водотоки и озёра обзорного масштаба.</p>}
      {mode==="relief"&&<p>Цвет обозначает географические области, а не точную высоту поверхности. Высотные отметки берутся из атрибутов источника.</p>}
      {mode==="cities"&&<p>Показаны населённые пункты по данным Natural Earth. Оценки населения могут быть устаревшими; размер точки условный.</p>}
-     {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
+     {mode==="contour"&&<p>Выберите цвет в палитре и нажимайте на страны. Белый цвет стирает заливку. Изменения сохраняются с доской.</p>}
     </div>}
     {historical&&<div className="lektrus-atlas-history-events">
      <strong>Важные события периода</strong>
@@ -427,11 +455,11 @@ function AtlasMap({diagram:d}:Props){
       onClick={()=>{setEventIndex(schoolHistoryEvents.indexOf(event));setSelected(null)}}>
       {yearLabel(event.year)} · {event.title}</button>):<p>В учебной подборке для этого промежутка события пока не описаны.</p>}
     </div>}
-    {historical&&index>0&&<label className="lektrus-atlas-compare">
+    {historical&&index>0&&snapshot.year!==2026&&<label className="lektrus-atlas-compare">
      <input type="checkbox" checked={compare} onChange={e=>setCompare(e.target.checked)}/>
      <span>Границы предыдущего снимка <small>(красный пунктир)</small></span>
     </label>}
-    {historical&&changes&&<div className="lektrus-atlas-changes">
+    {historical&&snapshot.year!==2026&&changes&&<div className="lektrus-atlas-changes">
      <strong>Отличия от предыдущего снимка</strong>
      <small>{yearLabel(historicalSnapshots[index-1].year)} → {yearLabel(snapshot.year)}</small>
      <p>Новые наименования в базе: {changes.appeared.length?changes.appeared.join(", "):"не обнаружены"}.</p>
@@ -445,10 +473,19 @@ function AtlasMap({diagram:d}:Props){
      </div>)}
     </div>}
     <div className="lektrus-atlas-source">
-     <a href={(historical?historicDataProvider:modernDataProvider).url}
-      target="_blank" rel="noopener noreferrer">Источник: {(historical?historicDataProvider:modernDataProvider).name} ↗</a>
-     {historical&&<><small>Границы могут быть приблизительными, спорными или неполными.</small>
-      <a href={historicDataProvider.licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия исходных данных: GPL-3.0 ↗</a></>}
+     <a href={(historical&&snapshot.year!==2026?historicDataProvider:modernDataProvider).url}
+      target="_blank" rel="noopener noreferrer">Источник:
+      {(historical&&snapshot.year!==2026?historicDataProvider:modernDataProvider).name} ↗</a>
+     {historical&&snapshot.year!==2026&&<><small>Исторические границы могут быть условными, спорными и неполными.</small>
+      <a href={historicDataProvider.licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия: GPL-3.0 ↗</a></>}
+     {historical&&snapshot.year===2026&&<>
+      <small>Данные Natural Earth не являются российской государственной картой 2026 года.</small>
+      <a href="https://www.minjust.gov.ru/ru/documents/8011/" target="_blank" rel="noopener noreferrer">
+       Конституция РФ, статья 65: российская правовая позиция ↗</a>
+      <a href="https://press.un.org/en/2022/ga12458.doc.htm" target="_blank" rel="noopener noreferrer">
+       Генассамблея ООН: международно-правовая позиция ↗</a>
+      <small>Для ряда территорий расходятся юридическая позиция РФ, международное признание и фактический контроль.</small>
+     </>}
     </div>
    </aside>
   </div>
@@ -465,4 +502,4 @@ function AtlasMap({diagram:d}:Props){
   </div>}
  </div>;
 }
-export default function LektrusMapAtlas({diagram}:Props){return <AtlasMap diagram={diagram}/>};
+export default function LektrusMapAtlas({diagram,onChange}:Props){return <AtlasMap diagram={diagram} onChange={onChange}/>};

@@ -17,21 +17,19 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"chem-periodic-table",label:"Периодическая система",description:"118 элементов, поиск, семейства и выделение элементов для урока",group:"Химия · элементы",subjects:["химия"]},
   {id:"bio-cell",label:"Строение клетки",description:"Растительная и животная клетки с подписями органоидов",group:"Биология · клетка",subjects:["биология"]},
   {id:"bio-food-chain",label:"Цепь питания",description:"Организмы и стрелки переноса вещества и энергии",group:"Биология · экосистемы",subjects:["биология"]},
-  {id:"geo-climate",label:"Климатограмма",description:"Температура и осадки за 12 месяцев, оси и подписи",group:"География · климат",subjects:["география"]},
   {id:"history-timeline",label:"Лента времени",description:"События и даты в хронологическом порядке",group:"История · хронология",subjects:["история"]},
   {id:"ru-syntax",label:"Разбор предложения",description:"Школьное подчёркивание членов предложения, без автоматического анализа",group:"Русский язык · синтаксис",subjects:["русский язык"]},
   {id:"info-flowchart",label:"Блок-схема алгоритма",description:"Начало, действие, ввод, вывод, условия и направленные стрелки",group:"Информатика · алгоритмы",subjects:["информатика"]},
   {id:"info-place-value",label:"Системы счисления",description:"Разряды в системах с основаниями 2, 8, 10 и 16",group:"Информатика · информация",subjects:["информатика"]},
   {id:"bio-organ-systems",label:"Системы органов",description:"Пищеварительная и дыхательная системы, скрываемые подписи",group:"Биология · человек",subjects:["биология"]},
-  {id:"geo-relief-profile",label:"Профиль рельефа",description:"Расстояния, высоты, условный профиль местности",group:"География · рельеф",subjects:["география"]},
   {id:"ru-morphemes",label:"Разбор слова по составу",description:"Приставки, корни, суффиксы и окончания, основа и задания без ответов",group:"Русский язык · морфемика",subjects:["русский язык"]},
   {id:"history-family-tree",label:"Генеалогическое дерево",description:"Поколения, два родителя и редактируемые родственные связи",group:"История и обществознание · родословные",subjects:["история","обществознание"]},
-  {id:"language-flashcards",label:"Карточки слов",description:"Иностранные слова, перевод, транскрипция и переворот карточки",group:"Иностранные языки · лексика",subjects:["английский язык","иностранный язык"]},
+  {id:"language-flashcards",label:"Карточки слов",description:"Иностранные слова, перевод, транскрипция и переворот карточки",group:"Иностранные языки · лексика",subjects:["иностранный язык"]},
   {id:"ru-morphology",label:"Морфологический разбор",description:"Часть речи, постоянные и непостоянные признаки, скрываемые ответы",group:"Русский язык · морфология",subjects:["русский язык"]},
   {id:"ru-phonetics",label:"Фонетический разбор",description:"Буквы, звуки, ударение и ручная транскрипция",group:"Русский язык · фонетика",subjects:["русский язык"]},
   {id:"ru-orthography",label:"Орфографический тренажёр",description:"Орфограммы с пропусками и проверкой ответов на доске",group:"Русский язык · орфография",subjects:["русский язык"]},
-  {id:"ru-sentence-builder",label:"Конструктор предложений",description:"Сборка предложения из слов, проверка порядка и большой справочник синтаксических образцов",group:"Русский язык · синтаксис",subjects:["русский язык"]},
-  {id:"civics-structure",label:"Схемы государства и общества",description:"Органы, понятия и отношения с указанием характера связей",group:"Обществознание · государство и общество",subjects:["обществознание","история"]},
+  {id:"common-chart",label:"Диаграммы",description:"Столбчатые, линейные и круговые диаграммы с вводом своих данных",group:"Общие цифровые инструменты",subjects:[]},
+  {id:"maps-contour",label:"Контурная карта",description:"Раскрашивание стран и задания на карте",group:"География · карты",subjects:["география"]},
   {id:"maps-atlas",label:"Географические карты",description:"Единая подложка: страны, контурная, физическая карта, рельеф, воды и города",group:"География · карты",subjects:["география"]},
   {id:"history-atlas",label:"Исторические карты",description:"Единая подложка: границы эпох, исторические события и ползунок времени",group:"История · карты",subjects:["история"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
@@ -44,7 +42,7 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
-  if(id==="maps-atlas"||id==="history-atlas"||id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
+  if(id==="common-chart"||id==="maps-contour"||id==="maps-atlas"||id==="history-atlas"||id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||id==="geo-relief-profile"||
      id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||

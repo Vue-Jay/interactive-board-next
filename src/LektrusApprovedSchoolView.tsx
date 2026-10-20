@@ -1,5 +1,6 @@
 import {useEffect,useState} from "react";
 import type {ApprovedSchoolDiagram,FamilyPerson,MorphemeRole} from "./lektrusApprovedSchoolModel";
+import type {SchoolDiagram} from "./lektrusSchoolDiagramModel";
 import {familyGenerations,morphemeNames} from "./lektrusApprovedSchoolModel";
 
 function MorphemeGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kind:"morphemes"}>}){
@@ -90,19 +91,19 @@ function FamilyGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kind:
 function FlashcardGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kind:"flashcards"}>}){
  const [index,setIndex]=useState(0),[revealed,setRevealed]=useState(false);
  const card=d.cards[Math.min(index,d.cards.length-1)];
- const front=d.direction==="foreign-first"?card.term:card.translation;
- const back=d.direction==="foreign-first"?card.translation:card.term;
+ const front=d.direction==="foreign-first"?(card?.term??""):(card?.translation??"");
+ const back=d.direction==="foreign-first"?(card?.translation??""):(card?.term??"");
  useEffect(()=>{setIndex(0);setRevealed(false)},[d.cards,d.direction]);
  const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
  const navigation=(to:number)=>{setIndex(to);setRevealed(false)};
  return <div className="lektrus-flashcards-on-board" aria-label={d.title}
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   <div className="lektrus-flashcard-heading">{d.title}</div>
-  <div className="lektrus-flashcard-counter">{index+1} / {d.cards.length}</div>
+  <div className="lektrus-flashcard-counter">{d.cards.length?index+1:0} / {d.cards.length}</div>
   <button type="button" className="lektrus-flashcard-surface"
    onClick={()=>setRevealed(v=>!v)} aria-label={revealed?"Вернуть лицевую сторону":"Перевернуть карточку"}>
-   <span className="lektrus-flashcard-word">{revealed?back:front}</span>
-   {!revealed&&d.showTranscription&&d.direction==="foreign-first"&&card.transcription&&
+   <span className="lektrus-flashcard-word">{card?(revealed?back:front):"Добавьте слова в редакторе карточек"}</span>
+   {!revealed&&d.showTranscription&&d.direction==="foreign-first"&&card?.transcription&&
     <span className="lektrus-flashcard-pronunciation">{card.transcription}</span>}
    {!revealed&&d.showTranslation&&<span className="lektrus-flashcard-hint">{back}</span>}
    <span className="lektrus-flashcard-interaction-hint">{revealed?"Нажмите, чтобы закрыть":"Нажмите, чтобы перевернуть"}</span>
@@ -116,8 +117,22 @@ function FlashcardGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{ki
   </div>
  </div>;
 }
-export default function LektrusApprovedSchoolView({diagram}: {diagram:ApprovedSchoolDiagram}){
- if(diagram.kind==="morphemes")return <MorphemeGraphic diagram={diagram}/>;
+export default function LektrusApprovedSchoolView({diagram,onChange}: {diagram:ApprovedSchoolDiagram;onChange?:(v:SchoolDiagram)=>void}){
+ if(diagram.kind==="morphemes")return <div className="lektrus-inline-lesson"
+  onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+  {onChange&&<div className="lektrus-inline-lesson-controls">
+   <button type="button" onClick={()=>onChange({...diagram,showMarks:!diagram.showMarks})}>
+    {diagram.showMarks?"Скрыть обозначения":"Показать обозначения"}</button>
+   <button type="button" onClick={()=>onChange({...diagram,showBase:!diagram.showBase})}>
+    {diagram.showBase?"Скрыть основу":"Показать основу"}</button>
+   {diagram.segments.length===1&&<label>Слово <input maxLength={24}
+    value={diagram.segments[0].text}
+    onChange={e=>{const value=e.target.value.trim();
+     if(value)onChange({...diagram,segments:[{...diagram.segments[0],text:value}]});
+    }}/></label>}
+  </div>}
+  <MorphemeGraphic diagram={diagram}/>
+ </div>;
  if(diagram.kind==="family-tree")return <FamilyGraphic diagram={diagram}/>;
  return <FlashcardGraphic diagram={diagram}/>;
 }

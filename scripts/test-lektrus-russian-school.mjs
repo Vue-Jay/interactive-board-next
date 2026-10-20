@@ -14,14 +14,22 @@ const m=createRussianSchoolDiagram("ru-morphology");
 assert.equal(m.showAnalysis,false,"never expose prefilled grammatical answers");
 assert.equal(validateRussianSchoolDiagram({...m,partOfSpeech:"unknown"}),false);
 assert.equal(validateRussianSchoolDiagram({...m,rows:[{id:"a",group:"variable",feature:"",value:"Падеж"}]}),false);
-assert.equal(validateRussianSchoolDiagram({...m,rows:[...m.rows,m.rows[0]]}),false);
+assert.equal(validateRussianSchoolDiagram({...m,rows:[
+ {id:"a",group:"variable",feature:"Падеж",value:"именительный"},
+ {id:"a",group:"syntax",feature:"Роль",value:"подлежащее"}]}),false);
 const p=createRussianSchoolDiagram("ru-phonetics");
-assert.equal(totalSounds(p.letters),3);
+assert.equal(totalSounds(p.letters),0,"blank phonetic task must not reveal sounds");
 assert.equal(p.showSounds,false,"answers hidden until instructor enables");
-assert.equal(validateRussianSchoolDiagram({...p,letters:p.letters.map(x=>({...x,stressed:true}))}),false);
+assert.equal(validateRussianSchoolDiagram({...p,word:"аба",letters:[
+ {id:"1",letter:"а",sounds:["а"],characteristic:"",stressed:true},
+ {id:"2",letter:"б",sounds:["б"],characteristic:"",stressed:true},
+ {id:"3",letter:"а",sounds:["а"],characteristic:"",stressed:false}
+]}),false);
 assert.equal(validateRussianSchoolDiagram({...p,word:"котик"}),false,
  "phoneme mapping must match the authored word");
-assert.equal(validateRussianSchoolDiagram({...p,letters:p.letters.map(x=>({...x,sounds:["а","б","в"]}))}),false);
+assert.equal(validateRussianSchoolDiagram({...p,word:"а",letters:[
+ {id:"1",letter:"а",sounds:["а","б","в"],characteristic:"",stressed:false}
+]}),false);
 const silent={...p,word:"конь",letters:[
  {id:"1",letter:"к",sounds:["к"],characteristic:"",stressed:false},
  {id:"2",letter:"о",sounds:["о"],characteristic:"",stressed:true},
@@ -30,15 +38,16 @@ const silent={...p,word:"конь",letters:[
 ]};
 assert.equal(validateRussianSchoolDiagram(silent),true,"soft signs may have zero sounds");
 const o=createRussianSchoolDiagram("ru-orthography");
-assert.equal(o.questions[0].prompt.split("□").length,2);
-assert.equal(validateRussianSchoolDiagram({...o,questions:[{...o.questions[0],prompt:"слово"}]}),false);
-assert.equal(validateRussianSchoolDiagram({...o,questions:[{...o.questions[0],correct:8}]}),false);
-assert.equal(validateRussianSchoolDiagram({...o,questions:[{...o.questions[0],options:["а","а"]}]}),false);
-assert.equal(validateRussianSchoolDiagram({...o,questions:[...o.questions,o.questions[0]]}),false);
+assert.equal(o.questions.length,0,"new exercises must not contain ready-made problems");
+const exampleQuestion={id:"q1",prompt:"сл□во",options:["о","а"],correct:0,explanation:""};
+assert.equal(validateRussianSchoolDiagram({...o,questions:[{...exampleQuestion,prompt:"слово"}]}),false);
+assert.equal(validateRussianSchoolDiagram({...o,questions:[{...exampleQuestion,correct:8}]}),false);
+assert.equal(validateRussianSchoolDiagram({...o,questions:[{...exampleQuestion,options:["а","а"]}]}),false);
+assert.equal(validateRussianSchoolDiagram({...o,questions:[exampleQuestion,exampleQuestion]}),false);
 const registry=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
 for(const id of russianToolIds)assert.ok(registry.includes('id:"'+id+'"'),id+" missing subject menu");
 const view=fs.readFileSync(new URL("../src/LektrusRussianSchoolView.tsx",import.meta.url),"utf8");
 assert.match(view,/onClick=\{\(\)=>setChecked\(true\)\}/,"exercise must have check button");
-assert.match(view,/picked===question\.correct/,"exercise evaluates teacher's correct answer");
+assert.match(view,/picked===question\?\.correct/,"exercise evaluates teacher's correct answer");
 assert.match(view,/onPointerDown=\{stop\}/,"answer interactions must not paint the board");
 console.log("Lektrus Russian grammar: morphology traits, silent sounds and stress, spelling quizzes all validated.");

@@ -1,7 +1,8 @@
-import {useId} from "react";
+import {useId,useState} from "react";
 import type {NextSchoolDiagram,WordRole,AlgorithmNode} from "./lektrusNextSchoolModel";
-type Props={diagram:NextSchoolDiagram};
-function SyntaxView({d}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>}){
+import type {SchoolDiagram} from "./lektrusSchoolDiagramModel";
+type Props={diagram:NextSchoolDiagram;onChange?:(value:SchoolDiagram)=>void};
+function SyntaxView({d,onChange}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>;onChange?:(value:SchoolDiagram)=>void}){
  const widths=d.words.map(w=>Math.min(230,Math.max(75,20+w.text.length*13)));
  const lines:{indices:number[];width:number}[]=[{indices:[],width:0}];
  widths.forEach((width,index)=>{
@@ -34,7 +35,12 @@ function SyntaxView({d}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>}){
    let x=450-line.width/2;
    return <g key={li}>{line.indices.map(i=>{
     const word=d.words[i],width=widths[i],pos=x,y=startY+li*95;x+=width;
-    return <g key={word.id}>
+    return <g key={word.id} style={onChange?{cursor:"pointer"}:undefined}
+      onClick={e=>{e.stopPropagation();if(!onChange)return;
+       const roles:WordRole[]=["none","subject","predicate","attribute","object","adverbial"];
+       const role=roles[(roles.indexOf(word.role)+1)%roles.length];
+       onChange({...d,words:d.words.map(w=>w.id===word.id?{...w,role}:w)});
+      }}>
      <text x={pos+width/2} y={y} textAnchor="middle" fill="#293e57" fontSize={word.text.length>18?18:23} fontWeight="600">
       {word.text}
      </text>
@@ -56,14 +62,29 @@ function SyntaxView({d}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>}){
  </svg>;
 }
 type P={x:number;y:number};
-function FlowView({d}:{d:Extract<NextSchoolDiagram,{kind:"flowchart"}>}){
+function FlowView({d,onChange}:{d:Extract<NextSchoolDiagram,{kind:"flowchart"}>;onChange?:(v:SchoolDiagram)=>void}){
+ const [focus,setFocus]=useState("n1");
+ const node=d.nodes.find(n=>n.id===focus)??d.nodes[0];
+ const appendStep=()=>{
+  if(!onChange||d.nodes.length>=7||d.nodes.some(n=>n.kind==="decision"))return;
+  const end=d.nodes.find(n=>n.kind==="end");
+  const edge=d.edges.find(e=>e.to===end?.id&&e.label==="");
+  if(!end||!edge)return;
+  const id=crypto.randomUUID();
+  const next={id,kind:"process" as const,label:"Действие",lane:0 as const};
+  onChange({...d,nodes:d.nodes.filter(n=>n.id!==end.id).concat([next,end]),
+   edges:d.edges.map(e=>e.id===edge.id?{...e,to:id}:e)
+    .concat([{id:crypto.randomUUID(),from:id,to:end.id,label:"" as const}])});
+  setFocus(id);
+ };
  const uid=useId().replace(/:/g,"");
  const centers=new Map(d.nodes.map((node,i)=>[node.id,{x:450+node.lane*220,y:106+i*59}]));
  const shape=(n:AlgorithmNode,p:P)=>{
   const selected=n.kind==="decision",io=n.kind==="input"||n.kind==="output";
   const stroke=n.kind==="start"||n.kind==="end"?"#49967f":selected?"#b78940":"#5b8cb9";
   const fill=n.kind==="start"||n.kind==="end"?"#e4f5ee":selected?"#fff4db":"#eef5ff";
-  return <g key={n.id}>
+  return <g key={n.id} onClick={e=>{e.stopPropagation();setFocus(n.id)}}
+   style={onChange?{cursor:"pointer"}:undefined}>
    {selected?<polygon points={`${p.x} ${p.y-27} ${p.x+104} ${p.y} ${p.x} ${p.y+27} ${p.x-104} ${p.y}`}
     fill={fill} stroke={stroke} strokeWidth="2.1"/>:
     io?<path d={`M${p.x-96} ${p.y-23}H${p.x+108}L${p.x+96} ${p.y+23}H${p.x-108}Z`}
@@ -87,7 +108,24 @@ function FlowView({d}:{d:Extract<NextSchoolDiagram,{kind:"flowchart"}>}){
   return {d:`M${from.x} ${from.y+27}V${mid}H${to.x}V${to.y-29}`,
    label:{x:(from.x+to.x)/2,y:mid-7}};
  };
- return <svg viewBox="0 0 900 500" className="lektrus-school-svg" role="img" aria-label={d.title}>
+ return <div className="lektrus-inline-lesson"
+  onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+  {onChange&&<div className="lektrus-inline-lesson-controls">
+   <label>Блок <select value={node.id} onChange={e=>setFocus(e.target.value)}>
+    {d.nodes.map(n=><option value={n.id} key={n.id}>{n.kind==="start"?"Начало":n.kind==="end"?"Конец":n.label}</option>)}
+   </select></label>
+   <label>Надпись <input maxLength={48} value={node.label}
+    onChange={e=>{if(e.target.value.trim())onChange({...d,nodes:d.nodes.map(n=>n.id===node.id?
+     {...n,label:e.target.value}:n)})}}/></label>
+   <label>Положение <select value={node.lane}
+    onChange={e=>onChange({...d,nodes:d.nodes.map(n=>n.id===node.id?
+     {...n,lane:Number(e.target.value) as -1|0|1}:n)})}>
+    <option value={-1}>Слева</option><option value={0}>Центр</option><option value={1}>Справа</option>
+   </select></label>
+   <button type="button" disabled={d.nodes.length>=7||d.nodes.some(n=>n.kind==="decision")}
+    onClick={appendStep}>+ Действие</button>
+  </div>}
+  <svg viewBox="0 0 900 500" className="lektrus-school-svg" role="img" aria-label={d.title}>
   <defs><marker id={"arrow-"+uid} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
    <path d="M0 0L8 4L0 8Z" fill="#6386ae"/></marker></defs>
   <rect width="900" height="500" rx="20" fill="#fcfdff"/>
@@ -110,7 +148,8 @@ function FlowView({d}:{d:Extract<NextSchoolDiagram,{kind:"flowchart"}>}){
   <text x="450" y="486" fill="#8196ac" textAnchor="middle" fontSize="12">
    Учебная блок-схема · стрелки задаются вручную · алгоритм не выполняется
   </text>
- </svg>;
+ </svg>
+ </div>;
 }
 function PlaceValueView({d}:{d:Extract<NextSchoolDiagram,{kind:"place-value"}>}){
  const count=d.digits.length,cellWidth=Math.min(90,805/count),left=450-count*cellWidth/2;
@@ -143,8 +182,8 @@ function PlaceValueView({d}:{d:Extract<NextSchoolDiagram,{kind:"place-value"}>})
   </text>
  </svg>;
 }
-export default function LektrusNextSchoolView({diagram:d}:Props){
- if(d.kind==="syntax")return <SyntaxView d={d}/>;
- if(d.kind==="flowchart")return <FlowView d={d}/>;
+export default function LektrusNextSchoolView({diagram:d,onChange}:Props){
+ if(d.kind==="syntax")return <SyntaxView d={d} onChange={onChange}/>;
+ if(d.kind==="flowchart")return <FlowView d={d} onChange={onChange}/>;
  return <PlaceValueView d={d}/>;
 }

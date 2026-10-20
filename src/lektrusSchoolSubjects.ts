@@ -2,8 +2,7 @@
 export const LEKTRUS_SCHOOL_SUBJECTS=[
   "Математика","Физика","Химия","Биология","География",
   "Русский язык","Литература","История","Обществознание",
-  "Информатика","Английский язык","Иностранный язык",
-  "Окружающий мир"
+  "Информатика","Иностранный язык"
 ] as const;
 
 /** Old boards must keep their tools, but Algebra/Geometry are no longer subjects. */

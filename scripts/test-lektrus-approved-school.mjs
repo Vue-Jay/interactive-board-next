@@ -13,8 +13,8 @@ for(const id of ["ru-morphemes","history-family-tree","language-flashcards"]){
  assert.equal(validateApprovedSchoolDiagram(createApprovedSchoolDiagram(id)),true,id+" default must pass");
 }
 const morphemes=createApprovedSchoolDiagram("ru-morphemes");
-assert.equal(morphemes.segments.map(m=>m.text).join(""),"подснежник");
-assert.equal(morphemes.zeroEnding,true);
+assert.equal(morphemes.segments.map(m=>m.text).join(""),"Слово");
+assert.equal(morphemes.zeroEnding,false);
 assert.equal(validateApprovedSchoolDiagram({...morphemes,segments:[
  {id:"a",text:"дом",role:"root"},{id:"b",text:"а",role:"ending"}],zeroEnding:true}),false);
 assert.equal(validateApprovedSchoolDiagram({...morphemes,segments:[
@@ -24,7 +24,7 @@ assert.equal(validateApprovedSchoolDiagram({...morphemes,segments:[
 assert.equal(validateApprovedSchoolDiagram({...morphemes,segments:[
  {id:"a",text:"дом",role:"root"},{id:"a",text:"а",role:"suffix"}]}),false);
 const family=createApprovedSchoolDiagram("history-family-tree");
-assert.equal(familyGenerations(family.people).get("p3"),1);
+assert.equal(familyGenerations(family.people).size,0,"no fabricated relatives");
 assert.equal(validateApprovedSchoolDiagram({...family,people:[
  {id:"p1",name:"A",parents:["p3"]},
  {id:"p2",name:"B",parents:[]},
@@ -46,5 +46,6 @@ const registry=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",im
 for(const id of ["ru-morphemes","history-family-tree","language-flashcards"])
  assert.ok(registry.includes('id:"'+id+'"'),id+" available in subject menu");
 assert.match(registry,/subjects:\["история","обществознание"\]/);
-assert.match(registry,/subjects:\["английский язык","иностранный язык"\]/);
+assert.match(registry,/subjects:\["иностранный язык"\]/);
+assert.doesNotMatch(registry,/subjects:\["английский язык"/);
 console.log("Approved school tools: morpheme order and zero endings, family acyclicity and foreign vocabulary answer hiding verified.");

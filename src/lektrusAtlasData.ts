@@ -56,9 +56,58 @@ async function requestGeojson(key:string,urls:string[]):Promise<GeoCollection>{
  pending.set(key,task);
  try{return await task}finally{pending.delete(key)}
 }
-export const geoFeatureName=(feature:GeoFeature)=>
- String(feature.properties?.NAME_RU||feature.properties?.NAME||feature.properties?.NAMEASCII||feature.properties?.GEONAME||feature.properties?.ADMIN||
- feature.properties?.name||"Объект без названия");
+/** Russian-only school labels. Untranslated / unidentified source features
+ * remain geometrically visible but are not presented as verified place names. */
+const rusNames:Record<string,string>={
+ "russia":"Россия","ukraine":"Украина","belarus":"Беларусь","united states of america":"США",
+ "united states":"США","united kingdom":"Великобритания","germany":"Германия",
+ "france":"Франция","italy":"Италия","spain":"Испания","china":"Китай",
+ "india":"Индия","japan":"Япония","poland":"Польша","turkey":"Турция",
+ "iran":"Иран","egypt":"Египет","brazil":"Бразилия","canada":"Канада",
+ "kazakhstan":"Казахстан","mongolia":"Монголия","georgia":"Грузия",
+ "soviet union":"СССР","ussr":"СССР","russian empire":"Российская империя",
+ "roman empire":"Римская империя","byzantine empire":"Византия",
+ "eastern roman empire":"Византия","ottoman empire":"Османская империя",
+ "mongol empire":"Монгольская империя","persian empire":"Персидская империя",
+ "holy roman empire":"Священная Римская империя","frankish empire":"Франкское государство",
+ "france kingdom":"Королевство Франция","kingdom of france":"Французское королевство",
+ "british empire":"Британская империя","austro-hungarian empire":"Австро-Венгрия",
+ "austria-hungary":"Австро-Венгрия","kingdom of prussia":"Пруссия",
+ "prussia":"Пруссия","kievan rus":"Древнерусское государство",
+ "novgorod":"Новгород","muscovy":"Московское государство",
+ "golden horde":"Золотая Орда","germany empire":"Германская империя",
+ "german empire":"Германская империя","chinese empire":"Китайская империя",
+ "lake victoria":"озеро Виктория","lake baikal":"озеро Байкал",
+ "lake superior":"озеро Верхнее","caspian sea":"Каспийское море",
+ "nile":"Нил","amazon":"Амазонка","volga":"Волга","danube":"Дунай",
+ "yangtze":"Янцзы","mississippi":"Миссисипи","ob":"Обь","yenisei":"Енисей",
+ "lena":"Лена","amur":"Амур","ganges":"Ганг",
+ "moscow":"Москва","saint petersburg":"Санкт-Петербург","st. petersburg":"Санкт-Петербург",
+ "paris":"Париж","london":"Лондон","rome":"Рим","berlin":"Берлин",
+ "beijing":"Пекин","tokyo":"Токио","new york":"Нью-Йорк",
+ "mount everest":"Эверест","everest":"Эверест","himalayas":"Гималаи",
+ "alps":"Альпы","andes":"Анды","sahara":"Сахара","ural mountains":"Уральские горы",
+ "urals":"Уральские горы","tibet":"Тибет","greenland":"Гренландия"
+};
+const regionNames=new Intl.DisplayNames(["ru"],{type:"region"});
+export function geoFeatureName(feature:GeoFeature):string{
+ const p=feature.properties??{};
+ const direct=p.NAME_RU||p.name_ru||p.NAME_RUS;
+ if(typeof direct==="string"&&direct.trim())return direct.trim();
+ const code=p.ISO_A2||p.ISO_A2_EH||p.iso_a2;
+ if(typeof code==="string"&&/^[A-Z]{2}$/i.test(code)){
+  const ru=regionNames.of(code.toUpperCase());
+  if(ru&&ru.toUpperCase()!==code.toUpperCase())return ru;
+ }
+ const name=String(p.NAME||p.NAMEASCII||p.GEONAME||p.ADMIN||p.name||"").trim();
+ if(!name)return "";
+ if(/[А-Яа-яЁё]/.test(name))return name;
+ return rusNames[name.toLocaleLowerCase("en-US")]??"";
+}
+export function geoFeatureKey(feature:GeoFeature):string{
+ const p=feature.properties??{};
+ return String(p.ISO_A3||p.ADM0_A3||p.NAME||p.name||"").slice(0,90);
+}
 export const borderPrecision=(f:GeoFeature):number=>{
  const number=Number(f.properties?.BORDERPRECISION);
  return Number.isFinite(number)&&number>=1&&number<=3?number:1;
@@ -82,6 +131,7 @@ export function loadAtlasLayer(layer:GeoLayer){
 export function loadHistoricalSnapshot(year:number){
  const found=historicalSnapshots.find(s=>s.year===year);
  if(!found)return Promise.reject(new Error("Исторического снимка на этот год нет"));
+ if(year===2026)return loadAtlasLayer("countries-detail");
  return requestGeojson("historical-"+year,[HIST+found.file,HIST_BACKUP+found.file]);
 }
 const WIDTH=900,HEIGHT=450;
@@ -209,14 +259,18 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
   const value=p[key];
   if((typeof value==="string"&&value.trim()!==""||
    typeof value==="number"&&Number.isFinite(value))&&!seen.has(label)){
-   result.push({label,value:String(value)});seen.add(label);
+   const raw=String(value);
+   const output=typeof value==="number"?raw:
+    /[А-Яа-яЁё]/.test(raw)?raw:rusNames[raw.toLowerCase()]??"";
+   if(!output)continue;
+   result.push({label,value:output});seen.add(label);
   }
  }
  return result;
 }
 
 export function summariseNamedChanges(prev:GeoCollection,next:GeoCollection){
- const names=(geo:GeoCollection)=>new Set(geo.features.map(geoFeatureName).filter(n=>n!=="Объект без названия"));
+ const names=(geo:GeoCollection)=>new Set(geo.features.map(geoFeatureName).filter(Boolean));
  const a=names(prev),b=names(next);
  return {
   appeared:[...b].filter(n=>!a.has(n)).sort().slice(0,24),

@@ -7,6 +7,7 @@ export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:numbe
 export type AtlasDocument={
  kind:"atlas";title:string;mode:AtlasMode;scope?:AtlasSubject;year:number;showLabels:boolean;
  showGrid:boolean;showEvents:boolean;markers:AtlasMarker[];
+ painted?:{key:string;color:string}[];
 };
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
  {id:"political",title:"Политическая",hint:"Современные государства, названия и границы"},
@@ -46,7 +47,7 @@ export const historicalSnapshots=[
  {year:1920,file:"world_1920.geojson"},{year:1930,file:"world_1930.geojson"},
  {year:1938,file:"world_1938.geojson"},{year:1945,file:"world_1945.geojson"},
  {year:1960,file:"world_1960.geojson"},{year:1994,file:"world_1994.geojson"},
- {year:2000,file:"world_2000.geojson"},{year:2010,file:"world_2010.geojson"}
+ {year:2000,file:"world_2000.geojson"},{year:2010,file:"world_2010.geojson"},{year:2026,file:"natural-earth-current"}
 ] as const;
 export const yearLabel=(year:number)=>year<0?Math.abs(year)+" г. до н. э.":year+" г.";
 export function nearestSnapshotIndex(year:number){
@@ -175,7 +176,7 @@ export function eventsNearYear(year:number){
 }
 export function createAtlasDocument(scope:AtlasSubject="geography"):AtlasDocument{
  return {kind:"atlas",scope,title:scope==="history"?"Исторический атлас":"Географический атлас",mode:scope==="history"?"historical":"political",year:1914,
-  showLabels:true,showGrid:false,showEvents:true,markers:[]};
+  showLabels:true,showGrid:false,showEvents:false,markers:[],painted:[]};
 }
 const isText=(v:unknown,max:number,allowEmpty=false)=>typeof v==="string"&&v.length<=max&&(allowEmpty||v.trim().length>0);
 export function validAtlasDocument(value:unknown):value is AtlasDocument{
@@ -185,7 +186,10 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
   (v.scope!==undefined&&((v.scope!=="geography"&&v.scope!=="history")||!atlasModesFor(v.scope).some(m=>m.id===v.mode)))||
   !historicalSnapshots.some(s=>s.year===v.year)||typeof v.showLabels!=="boolean"||
   typeof v.showGrid!=="boolean"||typeof v.showEvents!=="boolean"||
-  !Array.isArray(v.markers)||v.markers.length>40)return false;
+  !Array.isArray(v.markers)||v.markers.length>40||
+  v.painted!==undefined&&(!Array.isArray(v.painted)||v.painted.length>300||
+   !(v.painted as {key:unknown;color:unknown}[]).every(p=>p&&isText(p.key,90)&&
+    typeof p.color==="string"&&/^#[0-9a-fA-F]{6}$/.test(p.color))))return false;
  const markers=v.markers as AtlasMarker[];
  return markers.every(m=>m&&isText(m.id,64)&&isText(m.title,80)&&isText(m.description,300,true)&&
   Number.isFinite(m.lat)&&m.lat>=-90&&m.lat<=90&&
