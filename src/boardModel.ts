@@ -7,6 +7,49 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  if(typeof d.title!=="string"||d.title.length>120)return false;
  const finiteIn=(x:unknown,lo:number,hi:number)=>typeof x==="number"&&Number.isFinite(x)&&x>=lo&&x<=hi;
  const field=(x:unknown,n:number)=>typeof x==="string"&&x.length<=n&&x.trim().length>0;
+ if(d.kind==="syntax"){
+  if(typeof d.showMarks!=="boolean"||!Array.isArray(d.words)||d.words.length<1||d.words.length>14)return false;
+  const roles=["subject","predicate","attribute","object","adverbial","none"];
+  const words=d.words as Record<string,unknown>[];
+  return words.every(w=>w&&typeof w==="object"&&field(w.id,64)&&field(w.text,28)&&
+   roles.includes(w.role as string))&&new Set(words.map(w=>w.id)).size===words.length;
+ }
+ if(d.kind==="place-value"){
+  const base=d.base as number,numberDigits=d.digits;
+  return [2,8,10,16].includes(base)&&typeof d.showPowers==="boolean"&&
+   typeof numberDigits==="string"&&/^[0-9A-F]{1,10}$/.test(numberDigits)&&
+   [...numberDigits].every(ch=>parseInt(ch,16)<base);
+ }
+ if(d.kind==="flowchart"){
+  if(typeof d.showEdgeLabels!=="boolean"||!Array.isArray(d.nodes)||!Array.isArray(d.edges)||
+   d.nodes.length<2||d.nodes.length>7||d.edges.length>18)return false;
+  const nodes=d.nodes as Record<string,unknown>[],edges=d.edges as Record<string,unknown>[];
+  const kinds=["start","end","process","decision","input","output"],labels=["","да","нет"];
+  if(!nodes.every(n=>n&&typeof n==="object"&&field(n.id,64)&&field(n.label,48)&&
+   kinds.includes(n.kind as string)&&[-1,0,1].includes(n.lane as number)))return false;
+  if(new Set(nodes.map(n=>n.id)).size!==nodes.length||
+   nodes.filter(n=>n.kind==="start").length!==1||nodes.filter(n=>n.kind==="end").length!==1)return false;
+  const known=new Set(nodes.map(n=>n.id));
+  if(!edges.every(e=>e&&typeof e==="object"&&field(e.id,64)&&
+   known.has(e.from)&&known.has(e.to)&&e.from!==e.to&&labels.includes(e.label as string))||
+   new Set(edges.map(e=>e.id)).size!==edges.length||
+   new Set(edges.map(e=>String(e.from)+"->"+String(e.to))).size!==edges.length)return false;
+  for(const node of nodes){
+   const out=edges.filter(e=>e.from===node.id);
+   if(node.kind==="end"&&out.length)return false;
+   if(node.kind==="decision"){
+    if(out.length!==2||!out.some(e=>e.label==="да")||!out.some(e=>e.label==="нет"))return false;
+   }else if(out.length>1)return false;
+  }
+  const start=nodes.find(n=>n.kind==="start")!.id,visited=new Set<unknown>([start]),stack=[start];
+  while(stack.length){
+   const current=stack.pop();
+   for(const edge of edges.filter(e=>e.from===current))if(!visited.has(edge.to)){
+    visited.add(edge.to);stack.push(edge.to);
+   }
+  }
+  return visited.size===nodes.length;
+ }
  if(d.kind==="cell"){
   const types=["plant","animal"];
   const allowed=d.cell==="plant"?["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]:

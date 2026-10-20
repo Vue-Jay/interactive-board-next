@@ -54,6 +54,20 @@ const docs=[
  item("hist-timeline","graph",{graphFigureId:"history-timeline",graphPurpose:"geometry",schoolDiagram:{
   kind:"timeline",title:"Лента времени",showEra:true,events:[
    {id:"a",year:988,label:"Крещение Руси"},{id:"b",year:1380,label:"Куликовская битва"}]}}),
+ item("syntax","graph",{graphFigureId:"ru-syntax",graphPurpose:"geometry",schoolDiagram:{
+  kind:"syntax",title:"Разбор предложения",showMarks:true,words:[
+   {id:"w1",text:"Маленький",role:"attribute"},{id:"w2",text:"кот",role:"subject"},
+   {id:"w3",text:"спит.",role:"predicate"}]}}),
+ item("flowchart","graph",{graphFigureId:"info-flowchart",graphPurpose:"geometry",schoolDiagram:{
+  kind:"flowchart",title:"Алгоритм с условием",showEdgeLabels:true,nodes:[
+   {id:"n1",kind:"start",label:"Начало",lane:0},
+   {id:"n2",kind:"process",label:"Действие",lane:0},
+   {id:"n3",kind:"decision",label:"Условие?",lane:0},
+   {id:"n4",kind:"end",label:"Конец",lane:0}],
+  edges:[{id:"e1",from:"n1",to:"n2",label:""},{id:"e2",from:"n2",to:"n3",label:""},
+   {id:"e3",from:"n3",to:"n4",label:"да"},{id:"e4",from:"n3",to:"n2",label:"нет"}]}}),
+ item("place-value","graph",{graphFigureId:"info-place-value",graphPurpose:"geometry",schoolDiagram:{
+  kind:"place-value",title:"Разрядная таблица",showPowers:true,base:16,digits:"2AF"}}),
  item("fraction","fraction",{fractionNumerator:1,fractionDenominator:3,fractionMode:"circle"}),
  item("table","table",{tableRows:2,tableCols:2,tableCells:["a","b","c","d"],
   tableHeader:true,tableAlign:"right",tableStripe:true,tableCompact:true})
@@ -81,6 +95,10 @@ invalidItem("bio-cell",{cell:"animal",visible:["chloroplast"]});
 invalidItem("bio-food",{organisms:[{id:"a",name:"Трава",role:"producer"},{id:"a",name:"Сова",role:"consumer"}]});
 invalidItem("geo-climate",{months:Array.from({length:12},()=>({temperature:120,precipitation:23}))});
 invalidItem("hist-timeline",{events:[{id:"a",year:0,label:"Ошибка"},{id:"b",year:100,label:"Второе"}]});
+invalidItem("syntax",{words:[{id:"w",text:"",role:"subject"}]});
+invalidItem("flowchart",{edges:[{id:"e1",from:"n1",to:"n3",label:""}]});
+invalidItem("place-value",{base:2,digits:"102"});
+
 const second=parseDocument(JSON.stringify(packDocumentInk(loaded)));
 assert.deepEqual(second,loaded,"board must be stable after repeated reopening");
 const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
