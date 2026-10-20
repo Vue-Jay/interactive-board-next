@@ -37,6 +37,8 @@ jobs:
         run: node scripts/test-lektrus-russian-school.mjs
       - name: Unified geography and historical atlas regression
         run: node scripts/test-lektrus-atlas.mjs
+      - name: Historical reference directory regression
+        run: node scripts/test-lektrus-historical-references.mjs
       - name: Sentence builder and civics reference regression
         run: node scripts/test-lektrus-language-social.mjs
       - name: Real board interface studio regression
