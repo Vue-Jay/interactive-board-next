@@ -12,6 +12,17 @@ export const terrainMercatorY=(lat:number,z:number)=>{
  const phi=bound(lat,-85.05112878,85.05112878)*Math.PI/180;
  return (1-Math.asinh(Math.tan(phi))/Math.PI)/2*Math.pow(2,z);
 };
+/** Address the exact DEM pixel under a geographic location for classroom
+ * point-height queries. No sample outside the supported WebMercator domain. */
+export function terrainPixelAddress(lon:number,lat:number,z:number){
+ if(!Number.isFinite(lon)||!Number.isFinite(lat)||lat>85.05112878||lat< -85.05112878||
+  lon>180||lon< -180||z<0||z>13)return null;
+ const count=2**z,xx=bound((lon+180)/360*count,0,count-1e-9);
+ const yy=bound(terrainMercatorY(lat,z),0,count-1e-9);
+ const x=Math.floor(xx),y=Math.floor(yy);
+ const px=bound(Math.floor((xx-x)*256),0,255),py=bound(Math.floor((yy-y)*256),0,255);
+ return {key:z+"/"+x+"/"+y,z,x,y,px,py};
+}
 export const decodeTerrarium=(red:number,green:number,blue:number)=>red*256+green+blue/256-32768;
 export const terrainTileURL=(tile:Pick<TerrainTile,"z"|"x"|"y">)=>
  TERRARIUM_SOURCE+tile.z+"/"+tile.x+"/"+tile.y+".png";
