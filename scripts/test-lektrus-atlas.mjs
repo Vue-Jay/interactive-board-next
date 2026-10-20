@@ -9,8 +9,8 @@ const {
  atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,eventsNearYear,
  createAtlasDocument,validAtlasDocument,yearLabel
 }=exports;
-assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","hydrography","relief","cities","coordinates","historical","events"]);
-assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","hydrography","relief","cities","coordinates"]);
+assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","hydrography","relief","cities","minerals","coordinates","historical","events"]);
+assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","hydrography","relief","cities","minerals","coordinates"]);
 assert.deepEqual(atlasModesFor("history").map(m=>m.id),["historical","events"]);
 assert.ok(historicalSnapshots.length>=50,"historical atlas should have broad real snapshot coverage");
 assert.equal(new Set(historicalSnapshots.map(v=>v.year)).size,historicalSnapshots.length);
@@ -40,6 +40,19 @@ for(const mode of atlasModesFor("history").map(v=>v.id))
 assert.equal(validAtlasDocument({...atlas,scope:undefined,mode:"historical"}),true);
 assert.equal(validAtlasDocument({...atlas,year:1917}),false,"no fictitious 1917 border state");
 assert.equal(validAtlasDocument({...atlas,mode:"fictitious"}),false);
+const externalSource=fs.readFileSync(new URL("../src/lektrusAtlasExternal.ts",import.meta.url),"utf8");
+assert.match(externalSource,/OpenStreetMap|overpass/gi);
+assert.match(externalSource,/Major_mineral_deposits/);
+assert.match(externalSource,/esriGeometryEnvelope/);
+assert.match(externalSource,/resultRecordCount:"350"/);
+assert.match(externalSource,/MAX_EXTERNAL_FEATURES/);
+assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/Фильтр полезных ископаемых/);
+assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/onDoubleClick/);
+assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/mapText\(9\.2\)/);
+assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/selected===f\.feature/);
+assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/cityAreaLoading/);
+assert.match(fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8"),/user-select:none!important/);
+
 assert.equal(validAtlasDocument({...atlas,markers:[{id:"a",title:"Точка",lat:55.7,lon:37.6,
  year:1914,description:"Пояснение"}]}),true);
 assert.equal(validAtlasDocument({...atlas,markers:[{id:"a",title:"Точка",lat:180,lon:37.6,
