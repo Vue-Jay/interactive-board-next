@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
-import {atlasModes,eventsNearYear,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
+import {atlasModes,atlasModesFor,eventsNearYear,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,summariseNamedChanges,
  type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
@@ -13,6 +13,7 @@ function AtlasMap({diagram:d}:Props){
  const [mode,setMode]=useState<AtlasMode>(d.mode);
  const [index,setIndex]=useState(nearestSnapshotIndex(d.year));
  const [source,setSource]=useState<GeoCollection|null>(null);
+ const [basemap,setBasemap]=useState<GeoCollection|null>(null);
  const [previous,setPrevious]=useState<GeoCollection|null>(null);
  const [rivers,setRivers]=useState<GeoCollection|null>(null);
  const [lakes,setLakes]=useState<GeoCollection|null>(null);
@@ -26,19 +27,24 @@ function AtlasMap({diagram:d}:Props){
  const [position,setPosition]=useState({x:0,y:0});
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
  const snapshot=historicalSnapshots[index];
- const historical=mode==="historical"||mode==="events";
+ const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
+ const availableModes=atlasModesFor(scope);
+ const historical=scope==="history";
+ const sharedBase=useMemo(()=>basemap?.features.map((feature,i)=>({path:mapFeaturePath(feature),i}))
+  .filter(f=>f.path)||[],[basemap]);
  useEffect(()=>{setMode(d.mode);setIndex(nearestSnapshotIndex(d.year));setSelected(null);setEventIndex(null)},
   [d.mode,d.year]);
  useEffect(()=>{
   let active=true;
   setError("");setLoading(true);setSource(null);setSelected(null);setPrevious(null);
-  const main=historical?loadHistoricalSnapshot(snapshot.year):loadAtlasLayer("countries");
+  const modern=loadAtlasLayer("countries");
+  const main=historical?loadHistoricalSnapshot(snapshot.year):modern;
   const before=historical&&index>0?loadHistoricalSnapshot(historicalSnapshots[index-1].year).catch(()=>null):Promise.resolve(null);
   const water=mode==="physical"?Promise.all([loadAtlasLayer("rivers").catch(()=>null),loadAtlasLayer("lakes").catch(()=>null)]):
    Promise.resolve([null,null] as [GeoCollection|null,GeoCollection|null]);
-  Promise.all([main,before,water]).then(([geo,prev,w])=>{
+  Promise.all([main,before,water,modern]).then(([geo,prev,w,base])=>{
    if(!active)return;
-   setSource(geo);setPrevious(prev);setRivers(w[0]);setLakes(w[1]);setLoading(false);
+   setSource(geo);setBasemap(base);setPrevious(prev);setRivers(w[0]);setLakes(w[1]);setLoading(false);
   }).catch(e=>{
    if(!active)return;
    setError(e instanceof Error?e.message:String(e));setLoading(false);
@@ -69,14 +75,14 @@ function AtlasMap({diagram:d}:Props){
  };
  const reset=()=>{setScale(1);setPosition({x:0,y:0});setSelected(null)};
  const showCountry=(feature:GeoFeature)=>{if(mode==="contour")return;setSelected(feature);setEventIndex(null)};
- const onMode=(value:AtlasMode)=>{setMode(value);setSelected(null);setEventIndex(null)};
+ const onMode=(value:AtlasMode)=>{if(!availableModes.some(m=>m.id===value))return;setMode(value);setSelected(null);setEventIndex(null)};
  return <div className="lektrus-atlas" aria-label={d.title}
   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
   onClick={e=>e.stopPropagation()} onWheel={e=>e.stopPropagation()}>
   <header className="lektrus-atlas-header">
    <strong title={d.title}>{d.title}</strong>
    <nav role="group" aria-label="Тип карты">
-    {atlasModes.map(m=><button key={m.id} type="button" title={m.hint}
+    {availableModes.map(m=><button key={m.id} type="button" title={m.hint}
      aria-pressed={mode===m.id} className={mode===m.id?"selected":""}
      onClick={()=>onMode(m.id)}>{m.title}</button>)}
    </nav>
@@ -101,6 +107,9 @@ function AtlasMap({diagram:d}:Props){
        {Array.from({length:11},(_,i)=><line key={"x"+i} x1={i*90} y1="0" x2={i*90} y2="450"/>)}
        {Array.from({length:7},(_,i)=><line key={"y"+i} x1="0" y1={i*75} x2="900" y2={i*75}/>)}
       </g>}
+      <g pointerEvents="none" fill="#e8eee4" stroke="#a4bdc6" strokeWidth=".45">
+       {sharedBase.map(part=><path key={"base-"+part.i} d={part.path} fillRule="evenodd"/>)}
+      </g>
       <g strokeLinejoin="round">
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
