@@ -102,6 +102,7 @@ export function loadAtlasLayer(layer:GeoLayer){
  return requestGeojson("modern-"+layer,[BASE+filename,BACKUP+filename]);
 }
 export function loadHistoricalSnapshot(year:number){
+ if(year===2026)return loadAtlasLayer("countries-detail");
  const found=historicalSnapshots.find(s=>s.year===year);
  if(!found)return Promise.reject(new Error("Исторического снимка на этот год нет"));
  return requestGeojson("historical-"+year,[HIST+found.file,HIST_BACKUP+found.file]);

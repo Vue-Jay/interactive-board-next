@@ -50,7 +50,7 @@ const reg=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.
 assert.match(map,/loadHistoricalSnapshot/);
 assert.match(map,/input aria-label="Исторический период"/);
 assert.match(map,/summariseNamedChanges/);
-assert.match(map,/Исторический обзор/);
+assert.match(map,/Исторический справочник/);
 assert.match(map,/могут быть приблизительными/);
 assert.match(map,/Карта недоступна/);
 assert.match(map,/licenseUrl/);
