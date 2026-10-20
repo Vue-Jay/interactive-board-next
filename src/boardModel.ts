@@ -68,6 +68,60 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
   }
   return visited.size===nodes.length;
  }
+ if(d.kind==="morphemes"){
+  if(typeof d.showMarks!=="boolean"||typeof d.showBase!=="boolean"||
+   typeof d.zeroEnding!=="boolean"||!Array.isArray(d.segments)||
+   d.segments.length<1||d.segments.length>10)return false;
+  const morphemes=d.segments as Record<string,unknown>[];
+  const kinds=["prefix","root","suffix","ending","postfix"];
+  if(!morphemes.every(m=>m&&typeof m==="object"&&field(m.id,64)&&field(m.text,24)&&
+   kinds.includes(m.role as string))||
+   new Set(morphemes.map(m=>m.id)).size!==morphemes.length)return false;
+  const roots=morphemes.filter(m=>m.role==="root").length;
+  const ends=morphemes.filter(m=>m.role==="ending").length;
+  if(roots<1||roots>2||ends>1||ends>0&&d.zeroEnding||
+   morphemes.filter(m=>m.role==="postfix").length>1)return false;
+  const first=morphemes.findIndex(m=>m.role==="root"),last=morphemes.map(m=>m.role).lastIndexOf("root");
+  if(morphemes.some((m,i)=>m.role==="prefix"&&i>first||
+   ["suffix","ending","postfix"].includes(m.role as string)&&i<last))return false;
+  const endingIndex=morphemes.findIndex(m=>m.role==="ending");
+  const postIndex=morphemes.findIndex(m=>m.role==="postfix");
+  if(endingIndex>=0&&morphemes.slice(endingIndex+1).some(m=>m.role!=="postfix"))return false;
+  if(postIndex>=0&&postIndex!==morphemes.length-1)return false;
+  return true;
+ }
+ if(d.kind==="family-tree"){
+  if(typeof d.showGenerations!=="boolean"||!Array.isArray(d.people)||
+   d.people.length<1||d.people.length>12)return false;
+  const people=d.people as Record<string,unknown>[];
+  if(people.some(p=>!p||typeof p!=="object"||!field(p.id,64)||!field(p.name,35)||
+   !Array.isArray(p.parents)||p.parents.length>2||
+   p.parents.some((parent:unknown)=>!field(parent,64))||
+   new Set(p.parents).size!==p.parents.length)||
+   new Set(people.map(p=>p.id)).size!==people.length)return false;
+  const byId=new Map(people.map(p=>[p.id,p]));
+  if(people.some(p=>(p.parents as string[]).includes(p.id as string)||
+   (p.parents as string[]).some(id=>!byId.has(id))))return false;
+  const states=new Map<unknown,0|1|2>();
+  const visit=(id:unknown):boolean=>{
+   const state=states.get(id)??0;
+   if(state===1)return false;
+   if(state===2)return true;
+   states.set(id,1);
+   for(const parent of byId.get(id)!.parents as string[])if(!visit(parent))return false;
+   states.set(id,2);return true;
+  };
+  return people.every(p=>visit(p.id));
+ }
+ if(d.kind==="flashcards"){
+  if(typeof d.showTranslation!=="boolean"||typeof d.showTranscription!=="boolean"||
+   !["foreign-first","russian-first"].includes(d.direction as string)||
+   !Array.isArray(d.cards)||d.cards.length<1||d.cards.length>30)return false;
+  const cards=d.cards as Record<string,unknown>[];
+  return cards.every(c=>c&&typeof c==="object"&&field(c.id,64)&&field(c.term,65)&&
+   field(c.translation,80)&&typeof c.transcription==="string"&&c.transcription.length<=75)&&
+   new Set(cards.map(c=>c.id)).size===cards.length;
+ }
  if(d.kind==="cell"){
   const types=["plant","animal"];
   const allowed=d.cell==="plant"?["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]:

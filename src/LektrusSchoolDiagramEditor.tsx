@@ -6,6 +6,7 @@ import {isSchoolDiagram,isSchoolDiagramId,makeSchoolDiagram,months,organelleTitl
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
 import LektrusNextSchoolControls from "./LektrusNextSchoolControls";
 import LektrusFurtherSchoolControls from "./LektrusFurtherSchoolControls";
+import LektrusApprovedSchoolControls from "./LektrusApprovedSchoolControls";
 type Props={item:Item;existing:boolean;onCancel:()=>void;onSave:(item:Item)=>void};
 const max=(s:string,n:number)=>s.slice(0,n);
 const roleNames:Record<FoodRole,string>={producer:"Продуцент",consumer:"Консумент",decomposer:"Редуцент"};
@@ -17,7 +18,9 @@ const titles:Record<SchoolDiagramId,string>={
  "geo-climate":"Климатограмма","history-timeline":"Лента времени",
  "ru-syntax":"Разбор предложения","info-flowchart":"Блок-схема алгоритма",
  "info-place-value":"Разрядная таблица",
- "bio-organ-systems":"Системы органов","geo-relief-profile":"Профиль рельефа"
+ "bio-organ-systems":"Системы органов","geo-relief-profile":"Профиль рельефа",
+ "ru-morphemes":"Разбор слова по составу","history-family-tree":"Генеалогическое дерево",
+ "language-flashcards":"Карточки иностранных слов"
 };
 const newKey=()=>crypto.randomUUID();
 export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSave}:Props){
@@ -46,7 +49,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
  return createPortal(<div className="lektrus-school-backdrop" role="presentation" onPointerDown={e=>e.stopPropagation()}>
   <section className="lektrus-school-editor" role="dialog" aria-modal="true" aria-label={"Редактор: "+titles[id]}>
    <header className="lektrus-school-header">
-    <div><h2>{titles[id]}</h2><span>{id==="bio-cell"?"Биология · 5–6 класс":id==="bio-food-chain"?"Биология · 5–9 класс":id==="geo-climate"?"География · 6–8 класс":id==="history-timeline"?"История · 5–9 класс":id==="ru-syntax"?"Русский язык · 5–9 класс":id.startsWith("info-")?"Информатика · 5–9 класс":id==="bio-organ-systems"?"Биология · 8 класс":"География · 6–8 класс"}</span></div>
+    <div><h2>{titles[id]}</h2><span>{id==="bio-cell"?"Биология · 5–6 класс":id==="bio-food-chain"?"Биология · 5–9 класс":id==="geo-climate"?"География · 6–8 класс":id==="history-timeline"?"История · 5–9 класс":id==="ru-syntax"?"Русский язык · 5–9 класс":id.startsWith("info-")?"Информатика · 5–9 класс":id==="bio-organ-systems"?"Биология · 8 класс":id==="ru-morphemes"?"Русский язык · 5–6 класс":id==="history-family-tree"?"История и обществознание · 5–9 класс":id==="language-flashcards"?"Иностранный язык · 2–11 класс":"География · 6–8 класс"}</span></div>
     <button type="button" className="lektrus-school-close" onClick={close} aria-label={existing?"Сохранить и закрыть":"Отменить создание"}>×</button>
    </header>
    <div className="lektrus-school-body">
@@ -54,6 +57,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
      {title}
      {(draft.kind==="syntax"||draft.kind==="flowchart"||draft.kind==="place-value")&&<LektrusNextSchoolControls diagram={draft} onChange={set}/>}
      {(draft.kind==="organs"||draft.kind==="relief")&&<LektrusFurtherSchoolControls diagram={draft} onChange={set}/>}
+     {(draft.kind==="morphemes"||draft.kind==="family-tree"||draft.kind==="flashcards")&&<LektrusApprovedSchoolControls diagram={draft} onChange={set}/>}
      {draft.kind==="cell"&&<>
       <label className="lektrus-school-field">Тип клетки
        <select value={draft.cell} onChange={e=>{
