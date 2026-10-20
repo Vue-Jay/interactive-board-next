@@ -158,7 +158,8 @@ function AtlasMap({diagram:d,onChange}:Props){
    if(!active)return;
    setSource(geo);setSourceYear(snapshot.year);setPrevious(prev);setLoading(false);
    const requested=thematic.filter(([,needed])=>needed);
-   const result=await Promise.allSettled(requested.map(([layer])=>loadAtlasLayer(layer as
+   const result=await Promise.allSettled(requested.map(([layer])=>layer==="cities-local"?
+    loadAtlasLayer("cities-local").catch(()=>loadAtlasLayer("cities-regional")):loadAtlasLayer(layer as
     "rivers"|"rivers-regional"|"lakes"|"lakes-regional"|"cities"|"cities-regional"|"cities-local"|"admin-regional"|"regions"|"regions-regional"|"elevation"|"elevation-regional"|"glaciers"|"glaciers-regional"|"marine"|"physical-labels")));
    if(!active)return;
    const missing:string[]=[];
@@ -236,6 +237,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const shownCities=limitCitySymbols(cityPoints.filter(f=>visiblePoint(f.point)&&
   cityPopulation(f.feature)>=minCityPopulation),scale,850);
  const shownCapitals=cityPoints.filter(f=>visiblePoint(f.point)&&nationalCapital(f.feature));
+ const totalCapitals=cityPoints.filter(f=>nationalCapital(f.feature)).length;
  const cityLabels=chooseCityLabels(shownCities,scale,scale>=20?190:scale>=5?115:55);
  const capitalLabels=chooseCityLabels(shownCapitals,scale,scale>=8?110:scale>=3?65:38);
  const shownPeaks=peakPoints.filter(f=>visiblePoint(f.point));
@@ -736,10 +738,28 @@ function AtlasMap({diagram:d,onChange}:Props){
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#dfedf9",borderColor:"#90b5d1"}}/>Морские акватории</div>
      <small>Морские подписи и границы акваторий условны. Это картографический справочный слой, не морской навигационный документ.</small>
     </div>}
+    {mode==="political"&&<div className="lektrus-atlas-natural-legend">
+     <strong>Столицы государств</strong>
+     <div><span className="lektrus-atlas-legend-swatch lektrus-atlas-legend-capital"/>◆ Столица по данным Natural Earth</div>
+     <small>Столиц в слое: {totalCapitals}. На карте они отмечены тёмными ромбами; это не маркеры маленьких государств.</small>
+     <small>Данные Natural Earth не гарантируют юридическую актуальность всех столиц на 2026 год. Дополнительные столицы помечены по классификации источника.</small>
+    </div>}
     {mode==="cities"&&<div className="lektrus-atlas-natural-legend">
      <strong>Обозначения населённых пунктов</strong>
-     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#c05745"}}/>Город или населённый пункт</div>
-     <small>Размер точки зависит от оценки населения POP_MAX в Natural Earth. Сами точки не показывают площадь города; численность в источнике может быть устаревшей.</small>
+     <label className="lektrus-atlas-city-filter">Численность населения
+      <select aria-label="Фильтр городов по численности населения" value={minCityPopulation}
+       onChange={e=>setMinCityPopulation(Number(e.target.value))}>
+       <option value="0">Все населённые пункты</option>
+       <option value="50000">От 50 тысяч</option>
+       <option value="250000">От 250 тысяч</option>
+       <option value="1000000">От 1 миллиона</option>
+      </select>
+     </label>
+     <small>Объектов в базе: {cities?.features.length??0}; показано в видимой области: {shownCities.length}. {detailedCities?"Подробный слой 1:10 млн.":"Региональный слой 1:50 млн."}</small>
+     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#386e8d"}}/>● Населённый пункт</div>
+     <div><span className="lektrus-atlas-legend-swatch lektrus-atlas-legend-capital"/>◆ Столица государства</div>
+     <small>На карте представлены не только административные центры, но и другие населённые пункты из Natural Earth. При приближении подключается более подробный набор.</small>
+     <small>Размер символа зависит от оценочной численности населения. Русские названия берутся непосредственно из атрибутов источника. Непереведённые названия не выдаются за проверенные русские.</small>
     </div>}
     {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
      <strong>Контурная карта</strong>
@@ -755,7 +775,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>}
     {mode!=="contour"&&!historical&&<label>Поиск объектов
      <input value={search} onChange={e=>setSearch(e.target.value)}
-      placeholder={mode==="cities"?"Название города":mode==="hydrography"?"Река или озеро":
+      placeholder={mode==="cities"?"Название населённого пункта":mode==="political"?"Страна или столица":mode==="hydrography"?"Река или озеро":
        mode==="relief"?"Горы, пустыня, вершина":"Страна или территория"}/>
      {search.trim()&&<small>Найдено: {filteredCount}</small>}
     </label>}
