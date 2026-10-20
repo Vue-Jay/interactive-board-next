@@ -46,6 +46,30 @@ assert.match(externalSource,/Major_mineral_deposits/);
 assert.match(externalSource,/esriGeometryEnvelope/);
 assert.match(externalSource,/resultRecordCount:"350"/);
 assert.match(externalSource,/MAX_EXTERNAL_FEATURES/);
+const externalExports={};
+new Function("exports",ts.transpileModule(externalSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(externalExports);
+assert.equal(externalExports.canLoadLocalRoads({west:30,east:32,south:54,north:56}),true);
+assert.equal(externalExports.canLoadLocalRoads({west:10,east:100,south:40,north:56}),false);
+assert.equal(externalExports.canLoadMinerals({west:30,east:55,south:40,north:60}),true);
+assert.equal(externalExports.canLoadMinerals({west:-180,east:180,south:-85,north:85}),false);
+const copperDeposit={properties:{commodity:"Copper",dep_type:"Hydrothermal",rec_id:12,model_code:"22c"},geometry:null};
+assert.equal(externalExports.mineralCommodity(copperDeposit)?.name,"Медь");
+assert.equal(externalExports.mineralDepositFacts(copperDeposit).find(x=>x.label==="Генетический тип")?.value,"Гидротермальное");
+assert.equal(externalExports.mineralDepositSource({properties:{url:"http://unknown.example/"} ,geometry:null}),null);
+const guideSource=fs.readFileSync(new URL("../src/lektrusAtlasMineralGuide.ts",import.meta.url),"utf8");
+const mineralGuides={};
+new Function("exports",ts.transpileModule(guideSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(mineralGuides);
+assert.ok(mineralGuides.mineralGuides.length>=24);
+assert.equal(mineralGuides.mineralGuide("Железная руда")?.uses,"Получение железа и стали");
+const areaSource=fs.readFileSync(new URL("../src/lektrusAtlasCityArea.ts",import.meta.url),"utf8");
+const cityAreaExports={};
+new Function("exports",ts.transpileModule(areaSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(cityAreaExports);
+assert.equal(cityAreaExports.cityAreaId({WIKIDATAID:"Q649"}),"Q649");
+assert.equal(cityAreaExports.cityAreaId({WIKIDATAID:"invalid"}),null);
+
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/Фильтр полезных ископаемых/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/onDoubleClick/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/mapText\(9\.2\)/);
