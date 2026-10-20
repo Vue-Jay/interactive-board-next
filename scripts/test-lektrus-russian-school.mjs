@@ -14,7 +14,9 @@ const m=createRussianSchoolDiagram("ru-morphology");
 assert.equal(m.showAnalysis,false,"never expose prefilled grammatical answers");
 assert.equal(validateRussianSchoolDiagram({...m,partOfSpeech:"unknown"}),false);
 assert.equal(validateRussianSchoolDiagram({...m,rows:[{id:"a",group:"variable",feature:"",value:"Падеж"}]}),false);
-assert.equal(validateRussianSchoolDiagram({...m,rows:[...m.rows,m.rows[0]]}),false);
+assert.equal(validateRussianSchoolDiagram({...m,rows:[
+ {id:"a",group:"variable",feature:"Падеж",value:"именительный"},
+ {id:"a",group:"syntax",feature:"Роль",value:"подлежащее"}]}),false);
 const p=createRussianSchoolDiagram("ru-phonetics");
 assert.equal(totalSounds(p.letters),0,"blank phonetic task must not reveal sounds");
 assert.equal(p.showSounds,false,"answers hidden until instructor enables");

@@ -26,7 +26,7 @@ export const traitGroupNames:Record<TraitGroup,string>={
 };
 const id=(v:unknown)=>typeof v==="string"&&v.length>0&&v.length<=64;
 const text=(v:unknown,max:number,allowEmpty=false)=>typeof v==="string"&&v.length<=max&&(allowEmpty||v.trim().length>0);
-const unique=(rows:{id:string}[])=>new Set(rows.map(r=>r.id)).size===rows.length;
+const unique=(rows:{id:string}[])=>rows.every(Boolean)&&new Set(rows.map(r=>r.id)).size===rows.length;
 export function isRussianToolId(v:string|undefined):v is RussianToolId{
  return russianToolIds.includes(v as RussianToolId);
 }
