@@ -8,6 +8,7 @@ import LektrusNextSchoolControls from "./LektrusNextSchoolControls";
 import LektrusFurtherSchoolControls from "./LektrusFurtherSchoolControls";
 import LektrusApprovedSchoolControls from "./LektrusApprovedSchoolControls";
 import LektrusRussianSchoolControls from "./LektrusRussianSchoolControls";
+import LektrusLanguageSocialControls from "./LektrusLanguageSocialControls";
 type Props={item:Item;existing:boolean;onCancel:()=>void;onSave:(item:Item)=>void};
 const max=(s:string,n:number)=>s.slice(0,n);
 const roleNames:Record<FoodRole,string>={producer:"Продуцент",consumer:"Консумент",decomposer:"Редуцент"};
@@ -23,7 +24,8 @@ const titles:Record<SchoolDiagramId,string>={
  "ru-morphemes":"Разбор слова по составу","history-family-tree":"Генеалогическое дерево",
  "language-flashcards":"Карточки иностранных слов",
  "ru-morphology":"Морфологический разбор","ru-phonetics":"Фонетический разбор",
- "ru-orthography":"Орфографический тренажёр"
+ "ru-orthography":"Орфографический тренажёр",
+ "ru-sentence-builder":"Конструктор предложений","civics-structure":"Государственное устройство и общество"
 };
 const newKey=()=>crypto.randomUUID();
 export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSave}:Props){
@@ -52,7 +54,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
  return createPortal(<div className="lektrus-school-backdrop" role="presentation" onPointerDown={e=>e.stopPropagation()}>
   <section className="lektrus-school-editor" role="dialog" aria-modal="true" aria-label={"Редактор: "+titles[id]}>
    <header className="lektrus-school-header">
-    <div><h2>{titles[id]}</h2><span>{id==="bio-cell"?"Биология · 5–6 класс":id==="bio-food-chain"?"Биология · 5–9 класс":id==="geo-climate"?"География · 6–8 класс":id==="history-timeline"?"История · 5–9 класс":id==="ru-syntax"?"Русский язык · 5–9 класс":id.startsWith("info-")?"Информатика · 5–9 класс":id==="bio-organ-systems"?"Биология · 8 класс":id==="ru-morphemes"?"Русский язык · 5–6 класс":id.startsWith("ru-")?"Русский язык · 5–9 класс":id==="history-family-tree"?"История и обществознание · 5–9 класс":id==="language-flashcards"?"Иностранный язык · 2–11 класс":"География · 6–8 класс"}</span></div>
+    <div><h2>{titles[id]}</h2><span>{id==="bio-cell"?"Биология · 5–6 класс":id==="bio-food-chain"?"Биология · 5–9 класс":id==="geo-climate"?"География · 6–8 класс":id==="history-timeline"?"История · 5–9 класс":id==="ru-syntax"?"Русский язык · 5–9 класс":id.startsWith("info-")?"Информатика · 5–9 класс":id==="bio-organ-systems"?"Биология · 8 класс":id==="ru-morphemes"?"Русский язык · 5–6 класс":id.startsWith("ru-")?"Русский язык · 5–9 класс":id==="history-family-tree"?"История и обществознание · 5–9 класс":id==="civics-structure"?"Обществознание · 6–11 класс":id==="language-flashcards"?"Иностранный язык · 2–11 класс":"География · 6–8 класс"}</span></div>
     <button type="button" className="lektrus-school-close" onClick={close} aria-label={existing?"Сохранить и закрыть":"Отменить создание"}>×</button>
    </header>
    <div className="lektrus-school-body">
@@ -62,6 +64,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
      {(draft.kind==="organs"||draft.kind==="relief")&&<LektrusFurtherSchoolControls diagram={draft} onChange={set}/>}
      {(draft.kind==="morphemes"||draft.kind==="family-tree"||draft.kind==="flashcards")&&<LektrusApprovedSchoolControls diagram={draft} onChange={set}/>}
      {(draft.kind==="morphology"||draft.kind==="phonetics"||draft.kind==="orthography")&&<LektrusRussianSchoolControls diagram={draft} onChange={set}/>}
+     {(draft.kind==="sentence-builder"||draft.kind==="state-structure")&&<LektrusLanguageSocialControls diagram={draft} onChange={set}/>}
      {draft.kind==="cell"&&<>
       <label className="lektrus-school-field">Тип клетки
        <select value={draft.cell} onChange={e=>{
