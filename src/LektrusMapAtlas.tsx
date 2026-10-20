@@ -167,6 +167,10 @@ function AtlasMap({diagram:d,onChange}:Props){
  const tinyPoints=useMemo(()=>tinyCountries?.features.map((feature,i)=>({
   feature,point:featureMapPoint(feature),name:geoFeatureName(feature),i
  })).filter(f=>f.point)||[],[tinyCountries]);
+ const historicalSmallStates=useMemo(()=>!modernBorders&&scale<28?shapes.map(s=>({
+  feature:s.feature,point:featureMapPoint(s.feature),name:s.name,
+  area:featureLabelAnchor(s.feature)?.area??Infinity,i:s.i
+ })).filter(s=>s.point&&s.area*scale*scale<18):[],[modernBorders,shapes,scale]);
  const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f})).filter(v=>v.path)||[],[rivers]);
  const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f})).filter(v=>v.path)||[],[lakes]);
  const landforms=useMemo(()=>regions?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f}))
@@ -324,9 +328,13 @@ function AtlasMap({diagram:d,onChange}:Props){
   if(!match)return;
   pendingJump.current=null;
   const point=featureMapPoint(match);
-  if(point){const zoom=2.35;setScale(zoom);
-   setPosition({x:Math.max(-450*(zoom-1),Math.min(450*(zoom-1),-(point[0]-450)*zoom)),
-    y:Math.max(-225*(zoom-1),Math.min(225*(zoom-1),-(point[1]-225)*zoom))})}
+  if(point){const box=featureFocusBounds(match);
+   const target=box&&box.width+box.height>0?
+    Math.min(720/Math.max(box.width,.005),340/Math.max(box.height,.005)):4096;
+   const zoom=Math.min(MAX_ATLAS_ZOOM,Math.max(2.35,target));
+   const center=box?[box.x,box.y]:point;
+   setScale(zoom);setPosition({x:Math.max(-450*(zoom-1),Math.min(450*(zoom-1),-(center[0]-450)*zoom)),
+    y:Math.max(-225*(zoom-1),Math.min(225*(zoom-1),-(center[1]-225)*zoom))})}
   setSelected(match);setSelectedLayer("Историческая территория");setHistoryTab("article");
  },[source,sourceYear,snapshot.year]);
  const onMode=(value:AtlasMode)=>{
@@ -460,6 +468,14 @@ function AtlasMap({diagram:d,onChange}:Props){
          fill="#764b3c" stroke="#fff" strokeWidth="1.7" paintOrder="stroke"
          pointerEvents="none">{geoFeatureName(f.feature)}</text>)}
       </g>}
+      {historicalSmallStates.map(p=><g key={"historical-small-"+p.i}
+       transform={`translate(${p.point![0]} ${p.point![1]})`}
+       className="lektrus-atlas-event" role="button" tabIndex={0}
+       onClick={e=>{e.stopPropagation();focusFeature(p.feature)}}
+       onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();focusFeature(p.feature)}}}>
+       <circle r={3.5/scale} strokeWidth={1/scale} fill="#8b663a" stroke="white"/>
+       <title>{p.name}: территория из исторического источника</title>
+      </g>)}
       {modernBorders&&scale<=28&&tinyPoints.map(p=><g key={"tiny-"+p.i}
        transform={`translate(${p.point![0]} ${p.point![1]})`}
        className="lektrus-atlas-event" role="button" tabIndex={0}
