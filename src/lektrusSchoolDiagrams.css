@@ -84,3 +84,22 @@
  .lektrus-school-preview-heading{font-size:11px}
  .lektrus-school-preview-heading span{display:none}
 }
+
+/* New language and informatics editors extend the same responsive school UI. */
+.lektrus-next-node-row{align-items:flex-start;padding:6px 0;border-bottom:1px solid #e6edf6}
+.lektrus-next-edge-row{display:grid;grid-template-columns:22px minmax(0,1fr) 14px minmax(0,1fr) 53px 25px;
+ align-items:center;gap:4px;min-width:0;background:#f7faff;border:1px solid #e4edf6;
+ border-radius:9px;padding:6px 4px}
+.lektrus-next-edge-row select{font:inherit;color:#355779;font-size:11px;min-width:0;
+ border:1px solid #ccdcf0;background:white;border-radius:6px;padding:6px 2px;width:100%;
+ overflow:hidden;text-overflow:ellipsis}
+.lektrus-next-edge-row>span:nth-child(3){font-size:13px;text-align:center;color:#6e92b5}
+.lektrus-next-edge-row button{border:1px solid #d0dfed;border-radius:6px;background:#f4f8fd;
+ color:#416a94;padding:6px;cursor:pointer}
+.lektrus-school-input-error{margin:0;border:1px solid #eab6a8;background:#fff4f1;color:#ae4c34;
+ padding:9px 11px;border-radius:9px;font-size:12px}
+@media(max-width:760px){
+ .lektrus-next-edge-row{grid-template-columns:19px minmax(0,1fr) 11px minmax(0,1fr) 43px 22px;gap:3px;padding:4px}
+ .lektrus-next-edge-row select{font-size:10px;padding:5px 1px}
+ .lektrus-next-node-row .lektrus-school-edit-content{gap:4px}
+}
