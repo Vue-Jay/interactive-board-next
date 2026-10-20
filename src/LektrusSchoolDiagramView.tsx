@@ -172,5 +172,6 @@ export default function LektrusSchoolDiagramView({diagram}:Props){
   case "morphemes":case "family-tree":case "flashcards":return <LektrusApprovedSchoolView diagram={diagram}/>;
   case "morphology":case "phonetics":case "orthography":return <LektrusRussianSchoolView diagram={diagram}/>;
   case "sentence-builder":case "state-structure":return <LektrusLanguageSocialView diagram={diagram}/>;
+  case "atlas":return <LektrusMapAtlas diagram={diagram}/>;
  }
 }
