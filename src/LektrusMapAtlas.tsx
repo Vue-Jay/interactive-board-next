@@ -239,8 +239,12 @@ function AtlasMap({diagram:d,onChange}:Props){
  const visiblePoint=(pt:readonly number[]|null|undefined)=>!!pt&&
   pt[0]>=visibleWorld.left-12/scale&&pt[0]<=visibleWorld.right+12/scale&&
   pt[1]>=visibleWorld.top-12/scale&&pt[1]<=visibleWorld.bottom+12/scale;
- const shownCities=limitCitySymbols(cityPoints.filter(f=>visiblePoint(f.point)&&
-  cityPopulation(f.feature)>=minCityPopulation),scale,850);
+ const eligibleCities=cityPoints.filter(f=>visiblePoint(f.point)&&
+  (cityPopulation(f.feature)>=minCityPopulation||f.feature===selected));
+ const visibleCitySymbols=limitCitySymbols(eligibleCities,scale,850);
+ const focusCity=eligibleCities.find(f=>f.feature===selected);
+ const shownCities=focusCity&&!visibleCitySymbols.some(f=>f.feature===selected)?
+  [...visibleCitySymbols,focusCity]:visibleCitySymbols;
  const shownCapitals=cityPoints.filter(f=>visiblePoint(f.point)&&nationalCapital(f.feature));
  const totalCapitals=cityPoints.filter(f=>nationalCapital(f.feature)).length;
  const cityLabels=chooseCityLabels(shownCities,scale,scale>=20?190:scale>=5?115:55);
