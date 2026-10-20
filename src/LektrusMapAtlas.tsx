@@ -503,7 +503,7 @@ function AtlasMap({diagram:d,onChange}:Props){
         </path>;
        })}
       </g>
-      {provincePaths.length>0&&<g className="lektrus-atlas-admin1" stroke="#a0a7a5"
+      {provincePaths.length>0&&(mode==="political"||mode==="contour"||mode==="cities"||mode==="coordinates")&&<g className="lektrus-atlas-admin1" stroke="#a0a7a5"
        strokeWidth=".48" vectorEffect="non-scaling-stroke"
        pointerEvents={mode==="contour"&&paintRegions||mode==="political"?"visiblePainted":"none"}>
        {provincePaths.map(f=>{
