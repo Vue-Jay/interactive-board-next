@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
-import {loadLocalInfrastructure,loadMineralDeposits,mineralCommodity,mineralTypes,
+import {loadLocalInfrastructure,loadMineralDeposits,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
  canLoadLocalRoads,canLoadMinerals,externalBBoxKey,type ExternalBounds} from "./lektrusAtlasExternal";
 import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
@@ -948,7 +948,7 @@ function AtlasMap({diagram:d,onChange}:Props){
      <div className="lektrus-atlas-mineral-legend">{mineralTypes.map(item=><div key={item.name}>
       <span style={{background:item.color}}/>{item.name}</div>)}</div>
      <small>Историческая база USGS: покрытие за пределами США неполное.
-      Наличие точки не означает действующую добычу или подтверждённые запасы.
+      Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются.
       Показываются только месторождения с распознаваемым типом сырья.</small>
      <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
       target="_blank" rel="noopener noreferrer">Исходная база USGS и метаданные ↗</a>
@@ -1068,7 +1068,8 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>:
     selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
      <strong>Месторождение: {mineralCommodity(selectedMineral)?.name??"Полезное ископаемое"}</strong>
-     <p>Источник: Геологическая служба США (USGS).</p>
+     <p>Источник: Геологическая служба США (USGS), сборник основных нерудных и рудных месторождений.</p>
+     {mineralDepositFacts(selectedMineral).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
      <p>Координаты: {(()=>{
       const c=selectedMineral.geometry?.coordinates;
       return Array.isArray(c)?Number(c[1]).toFixed(4)+"°, "+Number(c[0]).toFixed(4)+"°":"не приведены";
@@ -1077,8 +1078,10 @@ function AtlasMap({diagram:d,onChange}:Props){
       selectedMineral.properties?.objectid??selectedMineral.properties?.gid??"не указан")}</p>
      <small>Название месторождения, разновидности минералов, геология, оценка запасов и статус добычи
       приводятся в исходной базе, если они опубликованы. Значения не вычисляются из точки карты.</small>
+     {mineralDepositSource(selectedMineral)&&<a href={mineralDepositSource(selectedMineral)!}
+      target="_blank" rel="noopener noreferrer">Исходная карточка месторождения USGS ↗</a>}
      <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
-      target="_blank" rel="noopener noreferrer">Открыть первичные сведения USGS ↗</a>
+      target="_blank" rel="noopener noreferrer">Открыть набор геологических данных USGS ↗</a>
     </div>:
     selected?<div className="lektrus-atlas-description">
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
