@@ -121,3 +121,62 @@
  .lektrus-atlas-timeline-count{display:none}
  .lektrus-atlas-search-results{max-height:90px}
 }
+
+/* Compact historical encyclopedia: navigation and reference details never overlap the map. */
+.lektrus-atlas-history .lektrus-atlas-body{grid-template-columns:minmax(0,1fr) minmax(235px,33%)}
+.lektrus-atlas-history .lektrus-atlas-sidebar{gap:8px}
+.lektrus-history-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;
+ padding:3px;background:#e8f0f9;border-radius:9px}
+.lektrus-history-tabs button{min-width:0;padding:7px 3px;border-radius:7px;
+ border:1px solid transparent;background:transparent;font-size:10px;
+ color:#52708e;font-weight:700}
+.lektrus-history-tabs button.selected{background:#fff;color:#245e9c;
+ border-color:#d3e2ef;box-shadow:0 1px 3px #29466b12}
+.lektrus-history-all-periods,.lektrus-history-article,.lektrus-history-observed{
+ display:flex;flex-direction:column;gap:6px;font-size:11px;line-height:1.5}
+.lektrus-history-all-periods>strong,.lektrus-history-observed>strong{font-size:12px;color:#345f89}
+.lektrus-history-all-periods input{width:100%;max-width:100%}
+.lektrus-history-all-periods small,.lektrus-history-observed small,
+.lektrus-history-article small{font-size:10px;color:#728ca4}
+.lektrus-history-results{max-height:195px;overflow-y:auto;border:1px solid #dce9f4;
+ border-radius:8px;background:#fff}
+.lektrus-history-result{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 6px;
+ align-items:center;padding:7px;border-bottom:1px solid #edf2f8}
+.lektrus-history-result:last-child{border-bottom:0}
+.lektrus-history-result strong{grid-column:1/-1;font-size:11px;color:#335c85;
+ overflow-wrap:anywhere}
+.lektrus-history-result small{font-size:10px}
+.lektrus-history-result button{font-size:10px;padding:4px 6px;color:#2865a9;background:#eaf3ff;
+ border:1px solid #cfe2f5;border-radius:6px}
+.lektrus-history-article{background:#fff;border:1px solid #dce8f4;
+ border-radius:9px;padding:9px}
+.lektrus-history-article .lektrus-history-period{font-weight:700;color:#285d95}
+.lektrus-history-article a{overflow-wrap:anywhere;color:#2867aa}
+.lektrus-history-observed{padding:7px 0;border-top:1px solid #dae7f2}
+.lektrus-history-observed>div{display:flex;flex-wrap:wrap;gap:4px;max-height:110px;overflow:auto}
+.lektrus-history-observed button{background:#fff;color:#51779d;border:1px solid #cbdceb;
+ border-radius:6px;padding:4px;font-size:10px}
+.lektrus-history-observed button.selected{background:#dfeeff;color:#205ea1}
+.lektrus-history-period-select{max-width:135px;min-width:90px;font-size:11px;
+ background:#f5f9ff;color:#365e88;border:1px solid #cadaee;border-radius:7px;padding:5px}
+.lektrus-atlas-history .lektrus-atlas-directory{display:flex;flex-direction:column;gap:5px}
+.lektrus-atlas-history .lektrus-atlas-directory>button{font-size:11px;font-weight:700;
+ color:#325e8e;background:#ecf4ff;border:1px solid #d4e4f3;border-radius:7px;padding:6px;text-align:left}
+.lektrus-atlas-history .lektrus-atlas-directory label{font-size:10px;color:#577b9e}
+.lektrus-atlas-history .lektrus-atlas-directory-list{border:1px solid #dce7f3;
+ border-radius:7px;background:#fff}
+.lektrus-atlas-history .lektrus-atlas-directory-list button:hover,
+.lektrus-atlas-history .lektrus-atlas-directory-list button:focus-visible{background:#e8f2ff!important}
+@media(max-width:760px){
+ .lektrus-atlas-history .lektrus-atlas-body{grid-template-columns:minmax(0,1fr) minmax(178px,38%)}
+ .lektrus-history-period-select{max-width:106px;font-size:10px}
+}
+@media(max-width:520px){
+ .lektrus-atlas-history .lektrus-atlas-body{display:flex;flex-direction:column}
+ .lektrus-atlas-history .lektrus-atlas-map-box{flex:1 1 53%;min-height:110px}
+ .lektrus-atlas-history .lektrus-atlas-sidebar{flex:1 1 47%;border-left:0;
+  border-top:1px solid #dce7f2;min-height:95px}
+ .lektrus-atlas-history .lektrus-atlas-timeline{gap:3px}
+ .lektrus-atlas-history .lektrus-atlas-timeline strong{display:none}
+ .lektrus-history-period-select{max-width:96px;min-width:68px;font-size:9px}
+}
