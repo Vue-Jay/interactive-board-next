@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
+import {findHistoricalReference} from "./lektrusHistoricalReferences";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
@@ -138,6 +139,7 @@ function AtlasMap({diagram:d,onChange}:Props){
   Math.abs(marker.year-snapshot.year)<=Math.max(10,(historicalSnapshots[Math.min(index+1,historicalSnapshots.length-1)].year-
    historicalSnapshots[Math.max(0,index-1)].year)/2));
  const selectedTitle=selected?geoFeatureName(selected):"";
+ const reference=historical&&selected?findHistoricalReference(selectedTitle,snapshot.year):undefined;
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
  const namedFeatures=mode==="cities"?cityPoints.map(f=>f.feature):
   mode==="relief"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature)]:
@@ -437,7 +439,17 @@ function AtlasMap({diagram:d,onChange}:Props){
     selected?<div className="lektrus-atlas-description">
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
-     {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
+     {historical&&<>{reference&&<div className="lektrus-atlas-reference">
+      <strong>Историческая справка</strong>
+      <p>{reference.description}</p>
+      {reference.capital&&<p><b>Столица / центры:</b> {reference.capital}</p>}
+      {reference.formation&&<p><b>Образование:</b> {reference.formation}</p>}
+      <p><b>Изменения:</b> {reference.change}</p>
+      <a href={reference.sourceUrl} target="_blank" rel="noopener noreferrer">
+       Читать подробнее: {reference.sourceTitle} ↗</a>
+      <small>Справка об истории государства. Её временные рамки не подтверждают точность границ конкретного года.</small>
+     </div>}
+     <p>Точность: {precisions[borderPrecision(selected)]}.</p>
       {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
       <p><strong>Период карты:</strong> {yearLabel(snapshot.year)}. Это дата слоя, а не подтверждённые даты существования государства.</p>
       <p>Столица, правители и причины территориальных изменений не указываются без проверенного источника.</p>
