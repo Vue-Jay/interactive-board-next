@@ -33,6 +33,6 @@ for(const keyword of ["loadHistoricalIndex","Все эпохи","lektrus-history
  assert.ok(atlas.includes(keyword),keyword);
 }
 const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url),"utf8");
-assert.match(data,/master\/index\.json/);
+assert.match(data,/aourednik\/historical-basemaps\/[0-9a-f]{40}\/index\.json/);
 assert.match(data,/available\.get\(item\.year\)!==item\.filename/);
 console.log("Historical reference encyclopedia: 41 dated Russian-language entries, alias guards, sources, and cross-era UI checked.");
