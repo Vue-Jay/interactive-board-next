@@ -162,7 +162,8 @@ function AtlasMap({diagram:d}:Props){
    pinch.current={distance:Math.hypot(a.x-b.x,a.y-b.y)||1,scale,
     position,mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
   }
-  e.currentTarget.setPointerCapture(e.pointerId);
+  // Capture only after dragging. Immediate capture would steal click/tap
+  // events from countries, rivers, cities and historical markers.
  };
  const onMove=(e:ReactPointerEvent<SVGSVGElement>)=>{
   const pt=localPoint(e);
@@ -181,6 +182,8 @@ function AtlasMap({diagram:d}:Props){
   }
   const p=pointer.current;if(!p||p.id!==e.pointerId)return;
   if(Math.hypot(pt.x-p.x,pt.y-p.y)>3)dragged.current=true;
+  if(dragged.current&&!e.currentTarget.hasPointerCapture(e.pointerId))
+   e.currentTarget.setPointerCapture(e.pointerId);
   setPosition(normalizePosition({x:p.fromX+pt.x-p.x,y:p.fromY+pt.y-p.y},scale));
  };
  const onPointerEnd=(e:ReactPointerEvent<SVGSVGElement>)=>{
@@ -205,8 +208,9 @@ function AtlasMap({diagram:d}:Props){
   if(!point)return;
   const s=Math.max(2,scale);
   setPosition(normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s));
-  setScale(s);selectFeature(f,mode==="cities"?"Населённый пункт":mode==="relief"?"Форма рельефа":
-   mode==="waters"?"Водный объект":"Государство");
+  setScale(s);setSelected(f);setSelectedLayer(mode==="cities"?"Населённый пункт":
+   mode==="relief"?"Форма рельефа":mode==="waters"?"Водный объект":"Государство");
+  setEventIndex(null);setSelectedMarker(null);
  };
  return <div className="lektrus-atlas" aria-label={d.title}
   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}

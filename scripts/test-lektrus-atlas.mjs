@@ -22,6 +22,8 @@ assert.equal(yearLabel(-323),"323 г. до н. э.");
 assert.equal(yearLabel(1914),"1914 г.");
 assert.equal(historicalSnapshots[nearestSnapshotIndex(1916)].year,1914);
 assert.ok(eventsNearYear(1914).some(v=>v.year===1914));
+assert.ok(eventsNearYear(1920).some(v=>v.year===1922));
+assert.ok(eventsNearYear(2000).some(v=>v.year===2004));
 const atlas=createAtlasDocument();
 assert.equal(validAtlasDocument(atlas),true);
 assert.equal(atlas.scope,"geography");
