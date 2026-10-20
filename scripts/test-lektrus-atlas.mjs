@@ -69,6 +69,8 @@ assert.match(map,/www.nspd.gov.ru/);
 assert.match(map,/Единая электронная картографическая основа/);
 assert.match(map,/НЕ подтверждена/);
 assert.match(map,/shownRiverNames/);
+assert.match(map,/shownLakeNames/);
+assert.match(map,/lake-label-/);
 assert.match(map,/Административные единицы региона/);
 assert.ok(map.includes("onChange?.({...d,mode:value})"));
 assert.match(map,/paintRegions/);

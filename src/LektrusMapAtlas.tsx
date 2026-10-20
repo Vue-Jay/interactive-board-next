@@ -258,6 +258,11 @@ function AtlasMap({diagram:d,onChange}:Props){
  const ponds=useMemo(()=>lakes?.features.filter(hasAtlasName).map((f,i)=>({
   id:i,path:mapFeaturePath(f,waterTolerance*.7,viewport),feature:f
  })).filter(v=>v.path)||[],[lakes,waterTolerance,viewport]);
+ const lakeNames=useMemo(()=>lakes?.features.filter(hasAtlasName).map((f,i)=>({
+  id:i,point:featureMapPoint(f),feature:f
+ })).filter(f=>f.point).sort((a,b)=>
+  Number(a.feature.properties?.scalerank??a.feature.properties?.SCALERANK??9)-
+  Number(b.feature.properties?.scalerank??b.feature.properties?.SCALERANK??9))||[],[lakes]);
  const provincePaths=useMemo(()=>administrative?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,.12,viewport),feature:f})).filter(f=>f.path)||[],[administrative,viewport]);
  const landforms=useMemo(()=>regions?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
   .filter(v=>v.path)||[],[regions,detailedGeography,viewport]);
@@ -288,6 +293,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const capitalLabels=chooseCityLabels(shownCapitals,scale,scale>=8?110:scale>=3?65:38);
  const shownPeaks=peakPoints.filter(f=>visiblePoint(f.point));
  const shownRiverNames=riverNames.filter(f=>visiblePoint(f.point));
+ const shownLakeNames=lakeNames.filter(f=>visiblePoint(f.point));
  const shownMarineNames=marineNames.filter(f=>visiblePoint(f.point));
  const shownNatureNames=natureNames.filter(f=>visiblePoint(f.point));
  const provinceAnchors=useMemo(()=>provincePaths.map(f=>({...f,anchor:featureLabelAnchor(f.feature)})),[provincePaths]);
@@ -640,6 +646,12 @@ function AtlasMap({diagram:d,onChange}:Props){
          className="lektrus-atlas-river-ink" pointerEvents="none"/>
         <title>{geoFeatureName(l.feature)}</title></g>)}
       </g>}
+      {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=2&&
+       <g pointerEvents="none" fontSize={7.7/scale} fill="#23678e" stroke="#fff"
+        strokeWidth={1.8/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
+        {shownLakeNames.slice(0,85).map(f=><text key={"lake-label-"+f.id}
+         x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,32)}</text>)}
+       </g>}
       {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=3&&
        <g pointerEvents="none" fontSize={8/scale} fill="#31799d" stroke="#fff"
         strokeWidth={2/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
