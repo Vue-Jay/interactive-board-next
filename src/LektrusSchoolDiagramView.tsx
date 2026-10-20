@@ -167,7 +167,7 @@ export default function LektrusSchoolDiagramView({diagram,onChange}:Props){
   case "food-chain":return <ChainGraphic diagram={diagram}/>;
   case "climate":return <ClimateGraphic diagram={diagram}/>;
   case "timeline":return <TimelineGraphic diagram={diagram}/>;
-  case "syntax":case "flowchart":case "place-value":return <LektrusNextSchoolView diagram={diagram}/>;
+  case "syntax":case "flowchart":case "place-value":return <LektrusNextSchoolView diagram={diagram} onChange={onChange}/>;
   case "organs":case "relief":return <LektrusFurtherSchoolView diagram={diagram}/>;
   case "morphemes":case "family-tree":case "flashcards":return <LektrusApprovedSchoolView diagram={diagram}/>;
   case "morphology":case "phonetics":case "orthography":return <LektrusRussianSchoolView diagram={diagram}/>;
