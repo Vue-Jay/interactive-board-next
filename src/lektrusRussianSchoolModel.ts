@@ -32,29 +32,12 @@ export function isRussianToolId(v:string|undefined):v is RussianToolId{
 }
 export function createRussianSchoolDiagram(tool:RussianToolId):RussianSchoolDiagram{
  if(tool==="ru-morphology")return {
-  kind:"morphology",title:"Морфологический разбор",word:"Лес",sentence:"Тихий лес шумит.",
-  partOfSpeech:"noun",showAnalysis:false,rows:[
-   {id:"p1",group:"permanent",feature:"Одушевлённость",value:"Неодушевлённое"},
-   {id:"p2",group:"permanent",feature:"Род",value:"Мужской"},
-   {id:"p3",group:"permanent",feature:"Склонение",value:"2-е"},
-   {id:"p4",group:"variable",feature:"Падеж",value:"Именительный"},
-   {id:"p5",group:"variable",feature:"Число",value:"Единственное"},
-   {id:"p6",group:"syntax",feature:"Член предложения",value:"Подлежащее"}
-  ]};
+  kind:"morphology",title:"Морфологический разбор",word:"",sentence:"",
+  partOfSpeech:"noun",showAnalysis:false,rows:[]};
  if(tool==="ru-phonetics")return{
-  kind:"phonetics",title:"Фонетический разбор",word:"кот",
-  showSounds:false,showCharacteristics:false,letters:[
-   {id:"l1",letter:"к",sounds:["к"],characteristic:"[к] — согласный, глухой, твёрдый",stressed:false},
-   {id:"l2",letter:"о",sounds:["о"],characteristic:"[о] — гласный, ударный",stressed:true},
-   {id:"l3",letter:"т",sounds:["т"],characteristic:"[т] — согласный, глухой, твёрдый",stressed:false}
-  ]};
- return{kind:"orthography",title:"Орфографический тренажёр",showExplanation:true,
-  questions:[
-   {id:"q1",prompt:"Вставьте букву: тр□ва",options:["а","о"],correct:0,
-    explanation:"Проверочное слово: травы."},
-   {id:"q2",prompt:"Вставьте букву: в□да",options:["а","о"],correct:1,
-    explanation:"Проверочное слово: воды."}
-  ]};
+  kind:"phonetics",title:"Фонетический разбор",word:"",
+  showSounds:false,showCharacteristics:false,letters:[]};
+ return{kind:"orthography",title:"Орфографический тренажёр",showExplanation:true,questions:[]};
 }
 export function validateRussianSchoolDiagram(value:unknown):value is RussianSchoolDiagram{
  if(!value||typeof value!=="object")return false;

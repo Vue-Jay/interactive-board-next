@@ -22,24 +22,12 @@ export function isApprovedSchoolId(v:string|undefined):v is ApprovedSchoolId{
 export function createApprovedSchoolDiagram(id:ApprovedSchoolId):ApprovedSchoolDiagram{
  switch(id){
   case "ru-morphemes":return {kind:"morphemes",title:"Разбор слова по составу",
-   segments:[
-    {id:"m1",text:"под",role:"prefix"},
-    {id:"m2",text:"снеж",role:"root"},
-    {id:"m3",text:"ник",role:"suffix"}
-   ],zeroEnding:true,showMarks:true,showBase:true};
+   segments:[],zeroEnding:true,showMarks:true,showBase:true};
   case "history-family-tree":return {kind:"family-tree",title:"Генеалогическое дерево",showGenerations:true,
-   people:[
-    {id:"p1",name:"Родитель 1",parents:[]},
-    {id:"p2",name:"Родитель 2",parents:[]},
-    {id:"p3",name:"Ребёнок",parents:["p1","p2"]}
-   ]};
+   people:[]};
   case "language-flashcards":return {kind:"flashcards",title:"Карточки иностранных слов",
    showTranslation:false,showTranscription:true,direction:"foreign-first",
-   cards:[
-    {id:"c1",term:"apple",translation:"яблоко",transcription:"[ˈæpəl]"},
-    {id:"c2",term:"book",translation:"книга",transcription:"[bʊk]"},
-    {id:"c3",term:"school",translation:"школа",transcription:"[skuːl]"}
-   ]};
+   cards:[]};
  }
 }
 export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiagram{
