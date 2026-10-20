@@ -250,3 +250,12 @@
  background:#fff;color:#294d68;border:1px solid #bdcfde;border-radius:6px;font:inherit}
 .lektrus-atlas-legend-capital{background:#263c55!important;transform:rotate(45deg);
  width:10px!important;height:10px!important;flex-basis:10px!important;margin-inline:4px 5px}
+
+.lektrus-atlas-country-capitals{display:flex;flex-direction:column;gap:5px;padding:8px;
+ margin:7px 0;background:#f1f5f9;border:1px solid #d6e0e8;border-radius:7px}
+.lektrus-atlas-country-capitals>strong{font-size:11px;color:#375777}
+.lektrus-atlas-country-capitals button{display:flex;justify-content:space-between;align-items:center;
+ gap:8px;text-align:left;padding:7px 8px;border:1px solid #d3e1ee;border-radius:6px;
+ background:#fff;color:#27435c;font-size:11px;cursor:pointer}
+.lektrus-atlas-country-capitals button:hover{background:#e7f3ff}
+.lektrus-atlas-country-capitals button span{font-size:9px;color:#4077a2;white-space:nowrap}
