@@ -98,6 +98,7 @@ function AtlasMap({diagram:d,onChange}:Props){
   atlasModesFor(scope).filter(m=>m.id!=="contour");
  const historical=scope==="history";
  const modernBorders=!historical||modernReference;
+ const needsPoliticalGeometry=historical||mode==="political"||mode==="contour";
  useEffect(()=>{
   if(!historical)return;
   let active=true;setIndexProblem("");
@@ -123,7 +124,7 @@ function AtlasMap({diagram:d,onChange}:Props){
   let active=true;
   setError("");setLayerWarning("");setLoading(true);setSource(null);setSourceYear(null);setSelected(null);
   setPrevious(null);setSelectedMarker(null);
-  const modern=loadAtlasLayer(russianView?"countries-russian":"countries-detail");
+  const modern=needsPoliticalGeometry?loadAtlasLayer("countries-russian"):Promise.resolve(null);
   const main=modernBorders?modern:loadHistoricalSnapshot(snapshot.year);
   const before=historical&&!modernReference&&index>0?
    loadHistoricalSnapshot(historicalSnapshots[index-1].year).catch(()=>null):Promise.resolve(null);
@@ -173,7 +174,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    setError(e instanceof Error?e.message:String(e));setLoading(false);
   });
   return()=>{active=false};
- },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,regionId]);
+ },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,regionId,needsPoliticalGeometry]);
  useEffect(()=>{
   let active=true;
   if(!modernBorders||scale<5||russianView){setDetail(null);setDetailWarning("");return}
@@ -184,11 +185,11 @@ function AtlasMap({diagram:d,onChange}:Props){
  },[modernBorders,scale>=5,russianView,refresh]);
  useEffect(()=>{
   let active=true;
-  if(!modernBorders){setTinyCountries(null);return}
+  if(!modernBorders||!needsPoliticalGeometry){setTinyCountries(null);return}
   loadAtlasLayer("tiny-countries").then(geo=>{if(active)setTinyCountries(geo)})
    .catch(()=>{if(active)setTinyCountries(null)});
   return()=>{active=false};
- },[modernBorders,refresh]);
+ },[modernBorders,needsPoliticalGeometry,refresh]);
  const mapSource=historical||mode==="political"||mode==="contour"?source:null;
  const highDetail=modernBorders&&(russianView||!!detail&&scale>=5);
  const precision=highDetail?(scale>=8?.00015:.08):modernBorders?.13:.10;
@@ -659,7 +660,7 @@ function AtlasMap({diagram:d,onChange}:Props){
      <small>{regionId==="russia"||regionId==="rf-far-east"?"Россия пересекает 180-й меридиан, части её территории представлены у обоих краёв мировой проекции.":
       "Регион изменяет область просмотра, но не подменяет географические границы."}</small>
     </div>
-    {modernBorders&&<div className="lektrus-atlas-source-note">
+    {modernBorders&&needsPoliticalGeometry&&<div className="lektrus-atlas-source-note">
      <strong>Покрытие: {source?.features.length??0} территорий</strong>
      <small>Малые, островные государства и отдельные зависимости по данным Natural Earth. Границы 1:10 млн при приближении, не кадастровая точность.</small>
      <small>Единый российский картографический профиль: Natural Earth RUS, 1:10 млн. Обзорные данные не являются официальной административной картой на 20.10.2026.</small>
