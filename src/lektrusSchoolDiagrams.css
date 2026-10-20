@@ -179,3 +179,79 @@
  .lektrus-flashcard-actions button{padding:5px 3px}
  .lektrus-flashcard-interaction-hint{font-size:9px}
 }
+
+/* Russian-language curriculum editors share the established school modal. */
+.lektrus-school-field textarea,.lektrus-russian-question textarea{
+ width:100%;min-width:0;max-width:100%;resize:vertical;font:inherit;
+ color:#2b5073;border:1px solid #cbdbea;border-radius:8px;padding:8px;box-sizing:border-box;
+ background:#fff;font-size:12px}
+.lektrus-russian-edit-row,.lektrus-russian-phonetic-row,.lektrus-russian-question{
+ background:#f7faff;border:1px solid #dbe7f4;border-radius:10px;padding:10px;
+ display:flex;flex-direction:column;gap:7px;min-width:0}
+.lektrus-russian-edit-header{display:flex;align-items:center;gap:7px;min-width:0}
+.lektrus-russian-edit-header>b{color:#527292;font-size:12px;flex:1}
+.lektrus-russian-edit-header select{flex:1;min-width:0}
+.lektrus-russian-edit-header button,.lektrus-russian-options button{
+ border:1px solid #cedef0;border-radius:7px;background:#fff;color:#55799d;cursor:pointer;
+ min-width:26px;height:28px}
+.lektrus-russian-edit-header button:disabled,.lektrus-russian-options button:disabled{opacity:.35;cursor:not-allowed}
+.lektrus-russian-edit-row input,.lektrus-russian-edit-row select,
+.lektrus-russian-phonetic-row input,.lektrus-russian-question input,
+.lektrus-russian-question select{
+ width:100%;min-width:0;background:#fff;border:1px solid #cbdbea;border-radius:8px;
+ padding:8px;font:inherit;color:#2c4b6b;font-size:12px;box-sizing:border-box}
+.lektrus-russian-phonetic-row{display:grid;grid-template-columns:25px 56px minmax(0,1fr);
+ align-items:center;gap:7px}
+.lektrus-russian-phonetic-row>label{display:flex;min-width:0;flex-direction:column;
+ gap:3px;font-size:11px;color:#58799b;font-weight:700}
+.lektrus-russian-phonetic-row>.lektrus-russian-stress{flex-direction:row;
+ align-items:center;grid-column:2/-1}
+.lektrus-russian-stress input{height:17px;width:17px;flex:none;accent-color:#2b68b7}
+.lektrus-russian-characteristic{grid-column:1/-1}
+.lektrus-russian-question>label{display:flex;flex-direction:column;min-width:0;
+ gap:5px;color:#577797;font-size:11px;font-weight:700}
+.lektrus-russian-question>button{padding:7px;border:1px solid #cbdff2;border-radius:7px;
+ background:#eef5ff;color:#416c9d;font-size:11px;cursor:pointer}
+.lektrus-russian-options{display:flex;flex-wrap:wrap;gap:5px}
+.lektrus-russian-options>label{display:flex;align-items:center;gap:4px;min-width:0;
+ flex:1 1 42%;max-width:100%}
+.lektrus-russian-options>label input[type="radio"]{width:17px;height:17px;flex:none;accent-color:#4177d7}
+.lektrus-russian-options>label input:not([type="radio"]){flex:1;min-width:0}
+.lektrus-russian-validation{color:#b05940;font-size:11px}
+/* The orthography card is interactive on the board; its decisions remain local
+   component state and never alter the board document. */
+.lektrus-orthography-board{width:100%;height:100%;box-sizing:border-box;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ border-radius:12px;border:1px solid #dae5f3;background:#fbfdff;
+ color:#335579;padding:13px;gap:10px;overflow:hidden;min-height:0;min-width:0;
+ font-family:inherit;touch-action:manipulation}
+.lektrus-orthography-title{font-size:clamp(14px,2vw,24px);text-align:center}
+.lektrus-orthography-count{font-size:clamp(11px,1vw,14px);color:#8197b0}
+.lektrus-orthography-prompt{text-align:center;font-size:clamp(19px,2.6vw,39px);
+ font-weight:760;line-height:1.2;max-width:100%;overflow-wrap:anywhere}
+.lektrus-orthography-gap{display:inline-flex;min-width:1.1em;align-items:center;
+ justify-content:center;border-bottom:3px solid #4c82c8;color:#3565ab;background:#e6f1ff}
+.lektrus-orthography-answers{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;max-width:100%}
+.lektrus-orthography-answers button{padding:8px 17px;min-width:42px;
+ border:1px solid #c9dbee;border-radius:9px;color:#3c628a;background:#fff;
+ font-size:clamp(13px,1.5vw,21px);font-weight:700;cursor:pointer}
+.lektrus-orthography-answers button.selected{border-color:#3f78d4;background:#daeaff;color:#255cad}
+.lektrus-orthography-answers button:disabled{opacity:.75;cursor:default}
+.lektrus-orthography-feedback{font-size:clamp(11px,1.2vw,14px);text-align:center;
+ display:flex;flex-direction:column;gap:3px;align-items:center;color:#426b98}
+.lektrus-orthography-feedback.correct{color:#2b8560}
+.lektrus-orthography-feedback.incorrect{color:#b35f49}
+.lektrus-orthography-feedback.neutral{color:#8598ad}
+.lektrus-orthography-feedback small{font-size:11px;color:#5a7997}
+.lektrus-orthography-nav{width:100%;display:flex;justify-content:space-around;gap:6px}
+.lektrus-orthography-nav button{flex:1;min-width:0;padding:8px 7px;border-radius:8px;
+ border:1px solid #c7d9ef;color:#36649d;background:#fff;font:inherit;font-size:clamp(10px,1.1vw,13px);
+ cursor:pointer}
+.lektrus-orthography-nav button:disabled{opacity:.35;cursor:default}
+@media(max-width:760px){
+ .lektrus-russian-phonetic-row{grid-template-columns:19px 42px minmax(0,1fr);gap:4px;padding:7px}
+ .lektrus-russian-edit-row,.lektrus-russian-question{padding:7px;gap:5px}
+ .lektrus-orthography-board{padding:6px;gap:5px}
+ .lektrus-orthography-answers button{padding:5px 9px}
+ .lektrus-orthography-nav button{padding:6px 3px}
+}
