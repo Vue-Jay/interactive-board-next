@@ -251,6 +251,37 @@ assert.equal(validAtlasDocument({...atlas,borderView:"russian"}),true);
 assert.equal(validAtlasDocument({...atlas,borderView:"invalid"}),false);
 assert.equal(geoExports.featureSourceFacts(moscow).find(f=>f.label==="Категория")?.value,"Столица государства");
 assert.equal(geoExports.featureSourceFacts(kazan).find(f=>f.label==="Категория")?.value,"Административный центр региона");
+const geographyWithEnglishMetadata={...moscow,properties:{...moscow.properties,
+ SOVEREIGNT:"Imaginary state name",ADM0NAME:"Imaginary state name",FEATURECLA:"untranslated-map-code"}};
+assert.equal(geoExports.featureSourceFacts(geographyWithEnglishMetadata).some(f=>
+ /Imaginary|untranslated-map-code/.test(f.value)),false,
+ "no untranslated English metadata may appear in a place card");
+const historicalEnglish={type:"Feature",properties:{
+ NAME:"Imaginary empire",SUBJECTO:"An English subject",PARTOF:"Foreign Region",
+ SOURCE:"Some old source",NOTES:"Not translated notes",START:1914},geometry:null};
+assert.ok(geoExports.historicalFeatureFacts(historicalEnglish).every(f=>
+ !/[A-Za-z]/.test(f.value)),"historical metadata must be Russian or numeric");
+assert.equal(geoExports.summariseNamedChanges(
+ {type:"FeatureCollection",features:[{type:"Feature",properties:{NAME:"Unknown"},geometry:null}]},
+ {type:"FeatureCollection",features:[{type:"Feature",properties:{NAME:"Unnamed"},geometry:null}]}
+).after,0);
+const hydroSource=fs.readFileSync(new URL("../src/lektrusAtlasHydro.ts",import.meta.url),"utf8");
+const hydroExports={};
+new Function("exports",ts.transpileModule(hydroSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(hydroExports);
+assert.ok(hydroExports.atlasRiverStroke({properties:{scalerank:1}},false)<1.2);
+assert.ok(hydroExports.atlasRiverStroke({properties:{scalerank:7}},true)<
+ hydroExports.atlasRiverStroke({properties:{scalerank:1}},true));
+assert.ok(hydroExports.atlasRiverStroke({properties:{scalerank:1}},true)<=1.2);
+assert.equal(hydroExports.atlasLakeStroke(),.38);
+assert.ok(hydroExports.atlasWaterGeometryTolerance(32,true)<
+ hydroExports.atlasWaterGeometryTolerance(1,true));
+assert.match(map,/vectorEffect="non-scaling-stroke"[^\n]*className="lektrus-atlas-water-feature lektrus-atlas-river"/);
+assert.match(map,/stroke="none"\s*className="lektrus-atlas-landform"/);
+assert.ok(map.includes("rivers-ultra")&&map.includes("lakes-ultra"));
+assert.ok(data.includes("ne_10m_rivers_lake_centerlines.geojson"));
+assert.ok(data.includes("ne_10m_lakes.geojson"));
+assert.ok(!map.includes('strokeWidth={mode==="hydrography"?1.4:.9}'));
 const river={type:"Feature",properties:{NAME:"Sample river"},geometry:{
  type:"LineString",coordinates:[[30,60],[40,60]]
 }};
