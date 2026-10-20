@@ -19,6 +19,9 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"bio-food-chain",label:"Цепь питания",description:"Организмы и стрелки переноса вещества и энергии",group:"Биология · экосистемы",subjects:["биология"]},
   {id:"geo-climate",label:"Климатограмма",description:"Температура и осадки за 12 месяцев, оси и подписи",group:"География · климат",subjects:["география"]},
   {id:"history-timeline",label:"Лента времени",description:"События и даты в хронологическом порядке",group:"История · хронология",subjects:["история"]},
+  {id:"ru-syntax",label:"Разбор предложения",description:"Школьное подчёркивание членов предложения, без автоматического анализа",group:"Русский язык · синтаксис",subjects:["русский язык"]},
+  {id:"info-flowchart",label:"Блок-схема алгоритма",description:"Начало, действие, ввод, вывод, условия и направленные стрелки",group:"Информатика · алгоритмы",subjects:["информатика"]},
+  {id:"info-place-value",label:"Системы счисления",description:"Разряды в системах с основаниями 2, 8, 10 и 16",group:"Информатика · информация",subjects:["информатика"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
 ];
@@ -29,7 +32,8 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
-  if(id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"){
+  if(id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"||
+     id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"){
     const diagram=makeSchoolDiagram(id);
     return {id:createId(),kind:"graph",text:diagram.title,
       x:x-405,y:y-225,width:810,height:450,graphFigureId:id,
