@@ -26,7 +26,7 @@ const titles:Record<SchoolDiagramId,string>={
  "language-flashcards":"Карточки иностранных слов",
  "ru-morphology":"Морфологический разбор","ru-phonetics":"Фонетический разбор",
  "ru-orthography":"Орфографический тренажёр",
- "maps-atlas":"Интерактивные карты",
+ "maps-atlas":"Политическая карта мира","history-atlas":"Исторические карты",
  "ru-sentence-builder":"Конструктор предложений","civics-structure":"Государственное устройство и общество"
 };
 const newKey=()=>crypto.randomUUID();
@@ -56,7 +56,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
  return createPortal(<div className="lektrus-school-backdrop" role="presentation" onPointerDown={e=>e.stopPropagation()}>
   <section className="lektrus-school-editor" role="dialog" aria-modal="true" aria-label={"Редактор: "+titles[id]}>
    <header className="lektrus-school-header">
-    <div><h2>{titles[id]}</h2><span>{id==="maps-atlas"?"География / история / обществознание · 5–11 класс":id==="bio-cell"?"Биология · 5–6 класс":id==="bio-food-chain"?"Биология · 5–9 класс":id==="geo-climate"?"География · 6–8 класс":id==="history-timeline"?"История · 5–9 класс":id==="ru-syntax"?"Русский язык · 5–9 класс":id.startsWith("info-")?"Информатика · 5–9 класс":id==="bio-organ-systems"?"Биология · 8 класс":id==="ru-morphemes"?"Русский язык · 5–6 класс":id.startsWith("ru-")?"Русский язык · 5–9 класс":id==="history-family-tree"?"История и обществознание · 5–9 класс":id==="civics-structure"?"Обществознание · 6–11 класс":id==="language-flashcards"?"Иностранный язык · 2–11 класс":"География · 6–8 класс"}</span></div>
+    <div><h2>{titles[id]}</h2><span>{id==="maps-atlas"?"География · современная политическая карта":id==="history-atlas"?"История · карты эпох и событий":id==="bio-cell"?"Биология · 5–6 класс":id==="bio-food-chain"?"Биология · 5–9 класс":id==="geo-climate"?"География · 6–8 класс":id==="history-timeline"?"История · 5–9 класс":id==="ru-syntax"?"Русский язык · 5–9 класс":id.startsWith("info-")?"Информатика · 5–9 класс":id==="bio-organ-systems"?"Биология · 8 класс":id==="ru-morphemes"?"Русский язык · 5–6 класс":id.startsWith("ru-")?"Русский язык · 5–9 класс":id==="history-family-tree"?"История и обществознание · 5–9 класс":id==="civics-structure"?"Обществознание · 6–11 класс":id==="language-flashcards"?"Иностранный язык · 2–11 класс":"География · 6–8 класс"}</span></div>
     <button type="button" className="lektrus-school-close" onClick={close} aria-label={existing?"Сохранить и закрыть":"Отменить создание"}>×</button>
    </header>
    <div className="lektrus-school-body">
