@@ -154,20 +154,42 @@ const historicNames:Record<string,string>={
  "Caliphate":"Халифат","Golden Horde":"Золотая Орда",
  "Kievan Rus":"Древняя Русь","Muscovy":"Московское государство"
 };
-export const geoFeatureName=(feature:GeoFeature)=>{
+/** Only real, meaningful Russian proper names may appear on the map.
+ * Unnamed / placeholder entries must not acquire invented titles. */
+const atlasUnnamed=/^(?:unknown|unnamed|no[ -]?name|name[ -]?unknown|none|null|undefined|n\\/?a|not applicable|unassigned|untitled|без названия|неизвестно|объект без названия|безымянн(?:ый|ая|ое)|[-?.\\s]+)$/i;
+export function isRussianAtlasName(value:unknown):value is string{
+ return typeof value==="string"&&value.trim().length>1&&
+  /[А-ЯЁа-яё]/.test(value)&&!atlasUnnamed.test(value.trim());
+}
+/** Read all documented Russian name fields before consulting school-name dictionaries.
+ * No English fallback or nation-name substitution for anonymous city / admin units. */
+export function geoFeatureName(feature:GeoFeature):string{
  const p=feature.properties??{};
- const named=p.NAME_RU||p.NAME_ru||p.name_ru||p.name_rus;
- if(typeof named==="string"&&named.trim())return named.trim();
- const english=String(p.NAME||p.NAMEASCII||p.GEONAME||p.ADMIN||p.name||"").trim();
- if(historicNames[english])return historicNames[english];
- if(naturalNames[english])return naturalNames[english];
- const iso=String(p.ISO_A2||p.ISO_A2_EH||"");
- if(/^[A-Z]{2}$/.test(iso)){
-  const localized=russianCountryNames.of(iso);
-  if(localized&&localized!==iso)return localized;
+ for(const key of ["NAME_RU","NAME_ru","name_ru","name_rus","NAME_RUS","NAME_RUSSIAN","name_russian","NAME_CYR","NAMEALT_RU"]){
+  if(isRussianAtlasName(p[key]))return String(p[key]).trim();
  }
- return english||"Объект без названия";
-};
+ const sourceNames=["NAME","NAMEASCII","NAME_EN","GEONAME","NAME_LONG","ADMIN","name","name_en","NAMEALT"];
+ for(const key of sourceNames){
+  const raw=p[key];
+  if(typeof raw!=="string"||!raw.trim()||atlasUnnamed.test(raw.trim()))continue;
+  if(isRussianAtlasName(raw))return raw.trim();
+  const school=historicNames[raw.trim()]??naturalNames[raw.trim()];
+  if(isRussianAtlasName(school))return school;
+ }
+ // Translate ISO names only for actual country polygons. Admin-1 regions and
+ // point settlements also carry their country's ISO code: it is NOT their name.
+ const g=feature.geometry?.type??"";
+ const isCountry=(g==="Polygon"||g==="MultiPolygon")&&
+  (typeof p.SOVEREIGNT==="string"||typeof p.ADMIN==="string")&&
+  p.adm1_code===undefined&&p.ADM1_CODE===undefined;
+ const iso=String(p.ISO_A2??p.ISO_A2_EH??"").toUpperCase();
+ if(isCountry&&/^[A-Z]{2}$/.test(iso)){
+  const localized=russianCountryNames.of(iso);
+  if(isRussianAtlasName(localized))return localized;
+ }
+ return "";
+}
+export const hasAtlasName=(feature:GeoFeature)=>geoFeatureName(feature).length>0;
 export const borderPrecision=(f:GeoFeature):number=>{
  const number=Number(f.properties?.BORDERPRECISION);
  return Number.isFinite(number)&&number>=1&&number<=3?number:0;

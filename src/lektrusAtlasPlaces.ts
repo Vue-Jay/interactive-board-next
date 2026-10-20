@@ -1,10 +1,9 @@
-import type {GeoFeature,GeoCollection} from "./lektrusAtlasData";
+import {geoFeatureName,isRussianAtlasName,type GeoFeature,type GeoCollection} from "./lektrusAtlasData";
 
 /** Exact Russian labels from the mapped source, not guessed translations. */
 export function russianPlaceName(feature:GeoFeature):string|null{
- const p=feature.properties??{};
- const name=p.NAME_RU??p.NAME_ru??p.name_ru??p.name_rus;
- return typeof name==="string"&&/[А-ЯЁа-яё]/.test(name)?name.trim():null;
+ const name=geoFeatureName(feature);
+ return isRussianAtlasName(name)?name:null;
 }
 /** Natural Earth national capital attribute. Region and local capitals are
  * never silently promoted to capitals of sovereign states. */
