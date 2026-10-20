@@ -22,6 +22,9 @@ import {LEKTRUS_SCHOOL_SUBJECTS,normalizeLektrusSubject} from "./lektrusSchoolSu
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
+import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
+import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
+import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration,{isChemicalIllustration} from "./LektrusChemistryIllustration";
@@ -1141,6 +1144,8 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     graphGivenSides: Array.isArray(item.graphGivenSides) ? item.graphGivenSides : [],
     graphGivenAngles: Array.isArray(item.graphGivenAngles) ? item.graphGivenAngles : []
   };
+  if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
+    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
   if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
     <LektrusChemistryIllustration item={item}/>
@@ -1955,6 +1960,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [studyCardIndex, setStudyCardIndex] = useState(0);
   const [graphEditorId, setGraphEditorId] = useState<string | null>(null);
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
+  const [schoolEditorItem,setSchoolEditorItem]=useState<Item|null>(null);
   const [circuitEditorItem,setCircuitEditorItem]=useState<Item|null>(null);
   const [periodicEditorItem,setPeriodicEditorItem]=useState<Item|null>(null);
   const [atomEditorItem,setAtomEditorItem]=useState<Item|null>(null);
@@ -4946,6 +4952,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   const openGraphEditor = (item: Item) => {
     if(item.kind!=="graph"||item.locked)return;
+    if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}
     if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){setCircuitEditorItem(item);return;}
     if(item.scienceAtomModel||item.graphFigureId==="chem-atom"){setAtomEditorItem(item);return;}
     if(item.graphFigureId==="chem-periodic"){setPeriodicEditorItem(item);return;}
@@ -6615,6 +6622,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setCircuitEditorItem(null);
             setNotice("Электрическая схема добавлена на доску");
           }}/>}
+        {schoolEditorItem&&<LektrusSchoolDiagramEditor key={schoolEditorItem.id}
+          item={schoolEditorItem} existing={itemsRef.current.some(i=>i.id===schoolEditorItem.id)}
+          onCancel={()=>setSchoolEditorItem(null)}
+          onSave={next=>{
+            commit(itemsRef.current.some(i=>i.id===next.id)?
+              itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
+            setSchoolEditorItem(null);setNotice("Учебная схема сохранена");
+          }}/>}
         {scienceEditorItem&&<LektrusScienceEditor key={scienceEditorItem.id} item={scienceEditorItem}
           subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
           onCancel={()=>setScienceEditorItem(null)}
@@ -7058,7 +7073,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>)}
           </div>
         </LektrusToolOverflow>}
-        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<Icon name={entry.id==="math-coordinate"||entry.id==="physics-graphs"?"graph":entry.id==="math-formula"?"formula":"shape"} size={21}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
+        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<Icon name={entry.id==="math-coordinate"||entry.id==="physics-graphs"||entry.id==="geo-climate"?"graph":entry.id==="math-formula"?"formula":entry.id==="history-timeline"?"text":"shape"} size={21}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
             if(!canEdit||!toolAllowedForRole(id==="math-formula"?"formula":"graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
@@ -7074,6 +7089,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setCircuitEditorItem(item);
             }else if(id==="chem-periodic-table"){
               setPeriodicEditorItem(item);
+            }else if(isSchoolDiagramId(id)){
+              setSchoolEditorItem(item);
             }else if(id.startsWith("physics-")||id.startsWith("chem-")){
               setScienceEditorItem(item);
             }else{
