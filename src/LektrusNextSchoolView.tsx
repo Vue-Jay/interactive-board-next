@@ -28,24 +28,7 @@ function SyntaxView({d,onChange}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>;o
    strokeDasharray="11 4 2 4" strokeWidth="2.6"/>;
  };
  const startY=lines.length===1?205:155;
- return <div className="lektrus-inline-lesson"
-  onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
-  {onChange&&<div className="lektrus-inline-lesson-controls">
-   <label>Блок <select value={node.id} onChange={e=>setFocus(e.target.value)}>
-    {d.nodes.map(n=><option value={n.id} key={n.id}>{n.kind==="start"?"Начало":n.kind==="end"?"Конец":n.label}</option>)}
-   </select></label>
-   <label>Надпись <input maxLength={48} value={node.label}
-    onChange={e=>{if(e.target.value.trim())onChange({...d,nodes:d.nodes.map(n=>n.id===node.id?
-     {...n,label:e.target.value}:n)})}}/></label>
-   <label>Положение <select value={node.lane}
-    onChange={e=>onChange({...d,nodes:d.nodes.map(n=>n.id===node.id?
-     {...n,lane:Number(e.target.value) as -1|0|1}:n)})}>
-    <option value={-1}>Слева</option><option value={0}>Центр</option><option value={1}>Справа</option>
-   </select></label>
-   <button type="button" disabled={d.nodes.length>=7||d.nodes.some(n=>n.kind==="decision")}
-    onClick={appendStep}>+ Действие</button>
-  </div>}
-  <svg viewBox="0 0 900 500" className="lektrus-school-svg" role="img" aria-label={d.title}>
+ return <svg viewBox="0 0 900 500" className="lektrus-school-svg" role="img" aria-label={d.title}>
   <rect width="900" height="500" rx="20" fill="#fcfdff"/>
   <text x="450" y="52" textAnchor="middle" fill="#254568" fontSize="24" fontWeight="750">{d.title}</text>
   {lines.map((line,li)=>{
@@ -125,7 +108,24 @@ function FlowView({d,onChange}:{d:Extract<NextSchoolDiagram,{kind:"flowchart"}>;
   return {d:`M${from.x} ${from.y+27}V${mid}H${to.x}V${to.y-29}`,
    label:{x:(from.x+to.x)/2,y:mid-7}};
  };
- return <svg viewBox="0 0 900 500" className="lektrus-school-svg" role="img" aria-label={d.title}>
+ return <div className="lektrus-inline-lesson"
+  onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+  {onChange&&<div className="lektrus-inline-lesson-controls">
+   <label>Блок <select value={node.id} onChange={e=>setFocus(e.target.value)}>
+    {d.nodes.map(n=><option value={n.id} key={n.id}>{n.kind==="start"?"Начало":n.kind==="end"?"Конец":n.label}</option>)}
+   </select></label>
+   <label>Надпись <input maxLength={48} value={node.label}
+    onChange={e=>{if(e.target.value.trim())onChange({...d,nodes:d.nodes.map(n=>n.id===node.id?
+     {...n,label:e.target.value}:n)})}}/></label>
+   <label>Положение <select value={node.lane}
+    onChange={e=>onChange({...d,nodes:d.nodes.map(n=>n.id===node.id?
+     {...n,lane:Number(e.target.value) as -1|0|1}:n)})}>
+    <option value={-1}>Слева</option><option value={0}>Центр</option><option value={1}>Справа</option>
+   </select></label>
+   <button type="button" disabled={d.nodes.length>=7||d.nodes.some(n=>n.kind==="decision")}
+    onClick={appendStep}>+ Действие</button>
+  </div>}
+  <svg viewBox="0 0 900 500" className="lektrus-school-svg" role="img" aria-label={d.title}>
   <defs><marker id={"arrow-"+uid} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
    <path d="M0 0L8 4L0 8Z" fill="#6386ae"/></marker></defs>
   <rect width="900" height="500" rx="20" fill="#fcfdff"/>
