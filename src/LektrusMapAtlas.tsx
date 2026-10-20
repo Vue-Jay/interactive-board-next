@@ -1,14 +1,14 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
-import {atlasModes,atlasModesFor,eventsNearYear,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
+import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
  type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void};
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
 const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
-const precisions=["Неизвестная точность","Приблизительные границы","Средняя точность","Уточнённая граница"] as const;
+const precisions=["Источник не указывает точность","Приблизительные границы","Средняя точность","Уточнённая граница"] as const;
 const mapModeTitle=(v:AtlasMode)=>atlasModes.find(m=>m.id===v)!.title;
 function AtlasMap({diagram:d,onChange}:Props){
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":d.mode);
@@ -39,7 +39,6 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [error,setError]=useState("");
  const [refresh,setRefresh]=useState(0);
  const [selected,setSelected]=useState<GeoFeature|null>(null);
- const [eventIndex,setEventIndex]=useState<number|null>(null);
  const [search,setSearch]=useState("");
  const [scale,setScale]=useState(1);
  const [position,setPosition]=useState({x:0,y:0});
@@ -131,12 +130,9 @@ function AtlasMap({diagram:d,onChange}:Props){
  const cityPoints=useMemo(()=>cities?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f}))
   .filter(v=>v.point)||[],[cities]);
  const changes=useMemo(()=>source&&previous?summariseNamedChanges(previous,source):null,[source,previous]);
- const eventList=useMemo(()=>eventsNearYear(snapshot.year),[snapshot.year]);
  const userMarkers=d.markers.filter(marker=>!historical||
   Math.abs(marker.year-snapshot.year)<=Math.max(10,(historicalSnapshots[Math.min(index+1,historicalSnapshots.length-1)].year-
    historicalSnapshots[Math.max(0,index-1)].year)/2));
- const isEventVisible=historical&&d.showEvents;
- const activeEvent=eventIndex===null?null:schoolHistoryEvents[eventIndex]??null;
  const selectedTitle=selected?geoFeatureName(selected):"";
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
  const namedFeatures=mode==="cities"?cityPoints.map(f=>f.feature):
@@ -215,7 +211,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const reset=()=>{setScale(1);setPosition({x:0,y:0});setSelected(null);setCoord(null)};
  const selectFeature=(feature:GeoFeature,layer:string)=>{
   if(dragged.current||mode==="contour")return;
-  setSelected(feature);setSelectedLayer(layer);setEventIndex(null);setSelectedMarker(null);
+  setSelected(feature);setSelectedLayer(layer);setSelectedMarker(null);
  };
  const showCountry=(feature:GeoFeature)=>{
   if(mode==="contour"){
@@ -228,7 +224,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  };
  const onMode=(value:AtlasMode)=>{
   if(!availableModes.some(m=>m.id===value))return;
-  setMode(value);setSelected(null);setSearch("");setSelectedMarker(null);setEventIndex(null);
+  setMode(value);setSelected(null);setSearch("");setSelectedMarker(null);
  };
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
   if(dragged.current)return;
@@ -244,7 +240,7 @@ function AtlasMap({diagram:d,onChange}:Props){
   setPosition(normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s));
   setScale(s);setSelected(f);setSelectedLayer(mode==="cities"?"Населённый пункт":
    mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство");
-  setEventIndex(null);setSelectedMarker(null);
+  setSelectedMarker(null);
  };
  return <div className="lektrus-atlas" aria-label={d.title}
   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
@@ -346,17 +342,6 @@ function AtlasMap({diagram:d,onChange}:Props){
          fill="#764b3c" stroke="#fff" strokeWidth="1.7" paintOrder="stroke"
          pointerEvents="none">{geoFeatureName(f.feature)}</text>)}
       </g>}
-      {isEventVisible&&eventList.map(event=>{
-       const point=projectGeography(event.lon,event.lat),key=schoolHistoryEvents.indexOf(event);
-       return <g key={event.year} transform={`translate(${point[0]} ${point[1]})`}
-        className="lektrus-atlas-event" role="button" tabIndex={0}
-        onClick={()=>{if(dragged.current)return;setEventIndex(key);setSelected(null);setSelectedMarker(null)}}
-        onKeyDown={e=>{if(e.key==="Enter"){setEventIndex(key);setSelected(null)}}}>
-        <circle r="8" fill="#fff" opacity=".88"/>
-        <circle r="5.5" fill="#dd7656" stroke="#fff" strokeWidth="1.5"/>
-        <title>{event.year}: {event.title}</title>
-       </g>;
-      })}
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
        return <g key={marker.id} transform={`translate(${point[0]} ${point[1]})`}
@@ -415,10 +400,6 @@ function AtlasMap({diagram:d,onChange}:Props){
      <p>{markerDetails.description||"Маркер преподавателя"}</p>
      <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
      {historical&&<p>Дата: {yearLabel(markerDetails.year)}</p>}
-    </div>:activeEvent?<div className="lektrus-atlas-description">
-     <strong>{activeEvent.title} · {activeEvent.year} г.</strong>
-     <p>{activeEvent.description}</p>
-     <a href={activeEvent.url} target="_blank" rel="noopener noreferrer">Подробнее об историческом событии ↗</a>
     </div>:
     selected?<div className="lektrus-atlas-description">
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
@@ -440,13 +421,6 @@ function AtlasMap({diagram:d,onChange}:Props){
      {mode==="relief"&&<p>Цвет обозначает географические области, а не точную высоту поверхности. Высотные отметки берутся из атрибутов источника.</p>}
      {mode==="cities"&&<p>Показаны населённые пункты по данным Natural Earth. Оценки населения могут быть устаревшими; размер точки условный.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
-    </div>}
-    {historical&&<div className="lektrus-atlas-history-events">
-     <strong>Важные события периода</strong>
-     {eventList.length?eventList.map(event=><button key={event.year}
-      type="button" className={eventIndex!==null&&schoolHistoryEvents[eventIndex]===event?"selected":""}
-      onClick={()=>{setEventIndex(schoolHistoryEvents.indexOf(event));setSelected(null)}}>
-      {yearLabel(event.year)} · {event.title}</button>):<p>В учебной подборке для этого промежутка события пока не описаны.</p>}
     </div>}
     {historical&&index>0&&<label className="lektrus-atlas-compare">
      <input type="checkbox" checked={compare} onChange={e=>setCompare(e.target.checked)}/>
@@ -478,7 +452,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     onClick={()=>setIndex(i=>Math.max(0,i-1))}>‹</button>
    <input aria-label="Исторический период" type="range" min={0}
     max={historicalSnapshots.length-1} step={1} value={index}
-    onChange={e=>{setIndex(Number(e.target.value));setEventIndex(null);setSelected(null)}}/>
+    onChange={e=>{setIndex(Number(e.target.value));setSelected(null)}}/>
    <button type="button" disabled={index===historicalSnapshots.length-1} title="Следующий доступный период"
     onClick={()=>setIndex(i=>Math.min(historicalSnapshots.length-1,i+1))}>›</button>
    <strong>{yearLabel(snapshot.year)}</strong>
