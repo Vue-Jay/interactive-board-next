@@ -224,3 +224,6 @@
 .lektrus-atlas-natural-legend>div{display:flex;gap:7px;align-items:center}
 .lektrus-atlas-legend-swatch{width:17px;height:10px;flex:0 0 17px;border-radius:2px;border:1px solid #778b7660}
 .lektrus-atlas-natural-legend small{font-size:9px;color:#70816f;line-height:1.35}
+
+.lektrus-atlas-subregion{display:flex;flex-direction:column;gap:4px;font-size:10px;color:#527392}
+.lektrus-atlas-subregion select{width:100%;min-width:0;max-width:100%;padding:6px;font-size:10px}

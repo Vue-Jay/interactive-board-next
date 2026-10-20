@@ -557,6 +557,12 @@ function AtlasMap({diagram:d,onChange}:Props){
         onClick={()=>selectFeature(l.feature,"Река")} className="lektrus-atlas-country">
         <title>{geoFeatureName(l.feature)}</title></path>)}
       </g>}
+      {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=3&&
+       <g pointerEvents="none" fontSize={8/scale} fill="#31799d" stroke="#fff"
+        strokeWidth={2/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
+        {shownRiverNames.slice(0,90).map(f=><text key={"river-name-"+f.id}
+         x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,26)}</text>)}
+       </g>}
       {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=2&&
        <g pointerEvents="none" fontSize={9/scale} fill="#2d759f" stroke="#fff"
         strokeWidth={2/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
@@ -574,6 +580,11 @@ function AtlasMap({diagram:d,onChange}:Props){
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" onClick={()=>selectFeature(f.feature,"Высотная отметка")}>
         <path d="M0 -4L4 3H-4Z" fill="#816245" stroke="#fff" strokeWidth=".7"/>
+        {d.showLabels&&scale>=3&&<text x="6" y="-5" fontSize="8" fill="#725c46"
+         stroke="#fff" strokeWidth="1.8" paintOrder="stroke" fontWeight="650">
+         {geoFeatureName(f.feature).slice(0,25)}
+         {Number.isFinite(Number(f.feature.properties?.ELEVATION??f.feature.properties?.ELEV))?
+          " · "+String(f.feature.properties?.ELEVATION??f.feature.properties?.ELEV)+" м":""}</text>}
         <title>{geoFeatureName(f.feature)}</title>
        </g>)}
       </g>}
