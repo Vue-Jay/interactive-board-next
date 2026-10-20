@@ -144,12 +144,12 @@ assert.match(data,/ne_10m_admin_0_countries_rus\.geojson/);
 assert.match(data,/ne_50m_admin_0_tiny_countries\.geojson/);
 assert.match(map,/MAX_ATLAS_ZOOM=16384/);
 assert.match(map,/featureFocusBounds/);
-assert.doesNotMatch(map,/tinyPoints\\.map/,"small countries must not be drawn as colored pins");
-assert.doesNotMatch(map,/historicalSmallStates\\.map/,"historical small countries must not be artificial pins");
+assert.ok(!map.includes("tinyPoints.map"),"tiny country pins must not be drawn");
+assert.ok(!map.includes("historicalSmallStates.map"),"historical small-state pins must not be drawn");
 assert.match(map,/lektrus-atlas-capitals/);
 assert.match(map,/Столицы государств/);
 assert.match(map,/Фильтр городов по численности населения/);
-assert.match(data,/ne_10m_populated_places\\.geojson/);
+assert.ok(data.includes("ne_10m_populated_places.geojson"));
 const placeSource=fs.readFileSync(new URL("../src/lektrusAtlasPlaces.ts",import.meta.url),"utf8");
 const places={};
 new Function("exports",ts.transpileModule(placeSource,{compilerOptions:{
