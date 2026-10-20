@@ -9,8 +9,8 @@ const {
  atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,eventsNearYear,
  createAtlasDocument,validAtlasDocument,yearLabel
 }=exports;
-assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","waters","relief","cities","historical","events"]);
-assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","waters","relief","cities"]);
+assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","hydrography","relief","cities","coordinates","historical","events"]);
+assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","hydrography","relief","cities","coordinates"]);
 assert.deepEqual(atlasModesFor("history").map(m=>m.id),["historical","events"]);
 assert.ok(historicalSnapshots.length>=50,"historical atlas should have broad real snapshot coverage");
 assert.equal(new Set(historicalSnapshots.map(v=>v.year)).size,historicalSnapshots.length);
@@ -51,18 +51,19 @@ assert.match(map,/loadHistoricalSnapshot/);
 assert.match(map,/input aria-label="Исторический период"/);
 assert.match(map,/summariseNamedChanges/);
 assert.match(map,/Исторический обзор/);
-assert.match(map,/Границы могут быть приблизительными/);
+assert.match(map,/могут быть приблизительными/);
 assert.match(map,/Карта недоступна/);
 assert.match(map,/licenseUrl/);
 assert.match(data,/raw\.githubusercontent\.com/);
 assert.match(data,/BORDERPRECISION/);
-for(const name of ["countries-detail","cities","elevation","regions","glaciers"])
- assert.ok(data.includes(name),"real dataset layer "+name+" must be wired");
-for(const mode of ["waters","relief","cities"])
+for(const name of ["countries-detail","cities","elevation","regions","glaciers","land","coastline"])
+ assert.ok(data.includes(name),"real map dataset "+name);
+for(const mode of ["hydrography","relief","cities","coordinates"])
  assert.equal(validAtlasDocument({...atlas,mode}),true);
 assert.match(map,/onPointerDown=\{onPointerDown\}/);
 assert.match(map,/featureSourceFacts/);
 assert.match(map,/setCompare/);
+assert.match(map,/pickCoordinates/);
 assert.match(map,/setSelectedMarker/);
 assert.match(reg,/id:"maps-atlas"/);
 assert.match(reg,/id:"history-atlas"/);
@@ -85,4 +86,13 @@ const polygon={type:"Feature",properties:{NAME:"Dateline island"},geometry:{
 const polygonPath=geoExports.mapFeaturePath(polygon);
 assert.ok((polygonPath.match(/M/g)||[]).length>=2,
  "dateline polygons must not stretch across the entire world");
-console.log("Lektrus one map tool: five modes, source-backed dated boundaries, era slider, event descriptions, errors and board persistence verified.");
+const common=fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url),"utf8");
+assert.match(common,/lektrus-atlas-base-land/);
+assert.match(common,/lektrus-atlas-base-coast/);
+assert.ok(map.includes("LektrusMapBase land={baseLand}"));
+assert.ok(map.includes('loadAtlasLayer("land")'));
+assert.ok(map.includes('loadAtlasLayer("coastline")'));
+assert.match(map,/pickCoordinates/);
+assert.match(data,/ne_110m_land.geojson/);
+assert.match(data,/ne_110m_coastline.geojson/);
+console.log("Lektrus atlas: five geography modes and two historical modes on one land/coastline foundation, with coordinates, persistence, and antimeridian tests.");

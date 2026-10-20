@@ -5,12 +5,14 @@ export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineSt
  coordinates:unknown};
 export type GeoFeature={type:"Feature";properties:Record<string,unknown>|null;geometry:GeoGeometry|null};
 export type GeoCollection={type:"FeatureCollection";features:GeoFeature[]};
-export type GeoLayer="countries"|"countries-detail"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers";
+export type GeoLayer="countries"|"countries-detail"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers";
 const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/";
 const BACKUP="https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/";
 const HIST="https://raw.githubusercontent.com/aourednik/historical-basemaps/master/geojson/";
 const HIST_BACKUP="https://cdn.jsdelivr.net/gh/aourednik/historical-basemaps@master/geojson/";
 const names:Record<GeoLayer,string>={
+ land:"ne_110m_land.geojson",
+ coastline:"ne_110m_coastline.geojson",
  countries:"ne_110m_admin_0_countries.geojson",
  "countries-detail":"ne_50m_admin_0_countries.geojson",
  rivers:"ne_110m_rivers_lake_centerlines.geojson",
