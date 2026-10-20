@@ -172,8 +172,9 @@ export function geoFeatureName(feature:GeoFeature):string{
  for(const key of sourceNames){
   const raw=p[key];
   if(typeof raw!=="string"||!raw.trim()||atlasUnnamed.test(raw.trim()))continue;
-  if(isRussianAtlasName(raw))return raw.trim();
-  const school=historicNames[raw.trim()]??naturalNames[raw.trim()];
+  const candidate=raw.trim();
+  const school=historicNames[candidate]??naturalNames[candidate];
+  if(isRussianAtlasName(candidate))return candidate;
   if(isRussianAtlasName(school))return school;
  }
  // Translate ISO names only for actual country polygons. Admin-1 regions and
