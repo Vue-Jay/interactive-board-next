@@ -1,10 +1,11 @@
 import type {Item} from "./boardModel";
 import {normalizeLektrusSubject} from "./lektrusSchoolSubjects";
+import {makeSchoolDiagram,type SchoolDiagramId} from "./lektrusSchoolDiagramModel";
 import {makeMathPresetItem} from "./lektrusMathPresets";
 import {makeSciencePresetItem} from "./lektrusSciencePresets";
 import {scienceDefaultPreset,scienceToolGroups,type ScienceToolId} from "./lektrusScienceCatalog";
 
-export type SubjectToolId="math-coordinate"|"math-fractions"|"math-formula"|"math-geometry"|"chem-periodic-table"|ScienceToolId;
+export type SubjectToolId="math-coordinate"|"math-fractions"|"math-formula"|"math-geometry"|"chem-periodic-table"|ScienceToolId|SchoolDiagramId;
 export type SubjectToolDefinition={id:SubjectToolId;label:string;description:string;subjects:string[];group:string};
 
 /** A tool is a distinct editing workflow; its examples are selected INSIDE the editor. */
@@ -14,6 +15,10 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"math-coordinate",label:"Координатная плоскость",description:"Функции, точки, числовая прямая и графики",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-fractions",label:"Дроби",description:"Круг и полоска с наглядными частями",group:"Математические инструменты",subjects:["математика"]},
   {id:"chem-periodic-table",label:"Периодическая система",description:"118 элементов, поиск, семейства и выделение элементов для урока",group:"Химия · элементы",subjects:["химия"]},
+  {id:"bio-cell",label:"Строение клетки",description:"Растительная и животная клетки с подписями органоидов",group:"Биология · клетка",subjects:["биология"]},
+  {id:"bio-food-chain",label:"Цепь питания",description:"Организмы и стрелки переноса вещества и энергии",group:"Биология · экосистемы",subjects:["биология"]},
+  {id:"geo-climate",label:"Климатограмма",description:"Температура и осадки за 12 месяцев, оси и подписи",group:"География · климат",subjects:["география"]},
+  {id:"history-timeline",label:"Лента времени",description:"События и даты в хронологическом порядке",group:"История · хронология",subjects:["история"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
 ];
@@ -24,6 +29,13 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
+  if(id==="bio-cell"||id==="bio-food-chain"||id==="geo-climate"||id==="history-timeline"){
+    const diagram=makeSchoolDiagram(id);
+    return {id:createId(),kind:"graph",text:diagram.title,
+      x:x-405,y:y-225,width:810,height:450,graphFigureId:id,
+      graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,graphSnap:false,
+      graphPoints:[],graphSegments:[],schoolDiagram:diagram};
+  }
   const sciencePreset=scienceDefaultPreset(id);
   if(sciencePreset)return makeSciencePresetItem(sciencePreset,x,y,createId);
   if(id==="chem-periodic-table"){

@@ -41,6 +41,19 @@ const docs=[
   graphGrid:false,graphPoints:[{x:0,y:0,label:"A"},{x:4,y:0,label:"B"},{x:1,y:3,label:"C"}],
   graphSegments:[],graphPolygons:[{points:[0,1,2],label:"",measure:false}],
   graphGivenSides:["4","",""],graphGivenAngles:[],graphTriangleInputMode:"SSS"}),
+ item("bio-cell","graph",{graphFigureId:"bio-cell",graphPurpose:"geometry",schoolDiagram:{
+  kind:"cell",title:"Растительная клетка",cell:"plant",showLabels:true,
+  visible:["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]}}),
+ item("bio-food","graph",{graphFigureId:"bio-food-chain",graphPurpose:"geometry",schoolDiagram:{
+  kind:"food-chain",title:"Цепь питания",showRoles:false,organisms:[
+   {id:"a",name:"Трава",role:"producer"},{id:"b",name:"Полёвка",role:"consumer"},
+   {id:"c",name:"Сова",role:"consumer"}]}}),
+ item("geo-climate","graph",{graphFigureId:"geo-climate",graphPurpose:"geometry",schoolDiagram:{
+  kind:"climate",title:"Учебная климатограмма",showLegend:true,
+  months:Array.from({length:12},(_,i)=>({temperature:i-6,precipitation:20+i*5}))}}),
+ item("hist-timeline","graph",{graphFigureId:"history-timeline",graphPurpose:"geometry",schoolDiagram:{
+  kind:"timeline",title:"Лента времени",showEra:true,events:[
+   {id:"a",year:988,label:"Крещение Руси"},{id:"b",year:1380,label:"Куликовская битва"}]}}),
  item("fraction","fraction",{fractionNumerator:1,fractionDenominator:3,fractionMode:"circle"}),
  item("table","table",{tableRows:2,tableCols:2,tableCells:["a","b","c","d"],
   tableHeader:true,tableAlign:"right",tableStripe:true,tableCompact:true})
@@ -57,6 +70,17 @@ for(const expected of docs){
   assert.deepEqual(actual[key],value,expected.id+"."+key+" must survive reopen");
  }
 }
+// Damaged scientific content must be rejected rather than silently altered.
+const invalidItem=(id,patch)=>{
+ const sample=structuredClone(docs.find(v=>v.id===id));
+ Object.assign(sample.schoolDiagram,patch);
+ const payload={version:1,title:"Неверная схема",view:{x:0,y:0,zoom:1},items:[sample]};
+ assert.throws(()=>parseDocument(JSON.stringify(payload)),/Повреждена предметная учебная схема/);
+};
+invalidItem("bio-cell",{cell:"animal",visible:["chloroplast"]});
+invalidItem("bio-food",{organisms:[{id:"a",name:"Трава",role:"producer"},{id:"a",name:"Сова",role:"consumer"}]});
+invalidItem("geo-climate",{months:Array.from({length:12},()=>({temperature:120,precipitation:23}))});
+invalidItem("hist-timeline",{events:[{id:"a",year:0,label:"Ошибка"},{id:"b",year:100,label:"Второе"}]});
 const second=parseDocument(JSON.stringify(packDocumentInk(loaded)));
 assert.deepEqual(second,loaded,"board must be stable after repeated reopening");
 const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
