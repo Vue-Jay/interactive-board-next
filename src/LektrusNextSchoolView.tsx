@@ -1,6 +1,6 @@
 import {useId} from "react";
 import type {NextSchoolDiagram,WordRole,AlgorithmNode} from "./lektrusNextSchoolModel";
-type Props={diagram:NextSchoolDiagram};
+type Props={diagram:NextSchoolDiagram;onChange?:(next:NextSchoolDiagram)=>void};
 function SyntaxView({d}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>}){
  const widths=d.words.map(w=>Math.min(230,Math.max(75,20+w.text.length*13)));
  const lines:{indices:number[];width:number}[]=[{indices:[],width:0}];
@@ -143,8 +143,41 @@ function PlaceValueView({d}:{d:Extract<NextSchoolDiagram,{kind:"place-value"}>})
   </text>
  </svg>;
 }
-export default function LektrusNextSchoolView({diagram:d}:Props){
- if(d.kind==="syntax")return <SyntaxView d={d}/>;
+const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
+const panelStyle:React.CSSProperties={display:"flex",gap:5,alignItems:"center",flexWrap:"wrap",
+ padding:6,background:"#f5f9ff",borderBottom:"1px solid #d8e5f2",fontSize:12};
+const entryStyle:React.CSSProperties={fontSize:12,padding:"5px 7px",minWidth:0,border:"1px solid #c9dced",borderRadius:6};
+export default function LektrusNextSchoolView({diagram:d,onChange}:Props){
+ if(d.kind==="syntax")return <div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column"}}
+  onPointerDown={stop} onPointerUp={stop} onClick={stop}>
+  {onChange&&<div style={panelStyle}>
+   <label>Предложение <input style={entryStyle} value={d.words.map(w=>w.text).join(" ")}
+    placeholder="Введите предложение" onChange={e=>{
+     const words=e.target.value.trim().split(/\s+/).filter(Boolean).slice(0,14);
+     onChange({...d,words:words.map((text,i)=>({id:d.words[i]?.id??crypto.randomUUID(),
+      text:text.slice(0,28),role:d.words[i]?.text===text?d.words[i].role:"none"}))});
+    }}/></label>
+   {d.words.map(w=><label key={w.id}>{w.text}
+    <select style={entryStyle} value={w.role} onChange={e=>onChange({...d,
+     words:d.words.map(word=>word.id===w.id?{...word,role:e.target.value as WordRole}:word)})}>
+     {Object.entries({none:"Без отметки",subject:"Подлежащее",predicate:"Сказуемое",
+      attribute:"Определение",object:"Дополнение",adverbial:"Обстоятельство"})
+      .map(([role,label])=><option value={role} key={role}>{label}</option>)}
+    </select></label>)}
+  </div>}
+  <div style={{flex:1,minHeight:0}}><SyntaxView d={d}/></div></div>;
  if(d.kind==="flowchart")return <FlowView d={d}/>;
- return <PlaceValueView d={d}/>;
+ return <div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column"}}
+  onPointerDown={stop} onPointerUp={stop} onClick={stop}>
+  {onChange&&<div style={panelStyle}>
+   <label>Основание <select style={entryStyle} value={d.base}
+    onChange={e=>onChange({...d,base:Number(e.target.value) as 2|8|10|16,digits:""})}>
+    {[2,8,10,16].map(v=><option value={v} key={v}>{v}</option>)}</select></label>
+   <label>Число <input style={entryStyle} value={d.digits} maxLength={10}
+    placeholder="Введите число" onChange={e=>{
+     const value=e.target.value.toUpperCase();
+     if([...value].every(c=>/[0-9A-F]/.test(c)&&parseInt(c,16)<d.base))onChange({...d,digits:value});
+    }}/></label>
+  </div>}
+  <div style={{flex:1,minHeight:0}}><PlaceValueView d={d}/></div></div>;
 }
