@@ -64,7 +64,7 @@ assert.match(regions,/Чукотка: западное полушарие/);
 assert.match(map,/atlasRegionCamera/);
 assert.match(map,/shownRiverNames/);
 assert.match(map,/Административные единицы региона/);
-assert.match(map,/onChange\\?\\.\\(\\{\\.\\.\\.d,mode:value\\}\\)/);
+assert.ok(map.includes("onChange?.({...d,mode:value})"));
 assert.match(map,/paintRegions/);
 assert.match(map,/Условные обозначения/);
 assert.match(map,/landformClass/);
