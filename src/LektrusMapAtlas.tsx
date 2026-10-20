@@ -252,7 +252,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    <strong title={d.title}>{d.title}</strong>
    <button type="button" aria-pressed={objectMoveMode}
     title={objectMoveMode?"Переключить на перемещение внутри карты":"Перемещать объект карты по доске"}
-    onClick={()=>{setObjectMoveMode(v=>!v);points.current.clear();pointer.current=null;pinch.current=null;dragged.current=false}}>
+    onPointerDown={e=>e.stopPropagation()} onClick={()=>{setObjectMoveMode(v=>!v);points.current.clear();pointer.current=null;pinch.current=null;dragged.current=false}}>
     {objectMoveMode?"▣ Объект":"✥ Карта"}
    </button>
    <nav role="group" aria-label="Тип карты">
