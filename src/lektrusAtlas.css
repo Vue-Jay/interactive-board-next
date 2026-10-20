@@ -180,3 +180,13 @@
  .lektrus-atlas-history .lektrus-atlas-timeline strong{display:none}
  .lektrus-history-period-select{max-width:96px;min-width:68px;font-size:9px}
 }
+
+.lektrus-history-scope{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;background:#e8f1fc;
+ padding:3px;border-radius:8px}
+.lektrus-history-scope button{border:1px solid transparent;border-radius:6px;
+ color:#577799;background:transparent;font-size:11px;font-weight:700;padding:6px 2px}
+.lektrus-history-scope button.selected{background:#fff;color:#235d9e;border-color:#cddff2}
+.lektrus-history-all-periods .lektrus-atlas-directory-list{background:#fff;
+ border:1px solid #dce7f3;border-radius:8px}
+.lektrus-history-all-periods .lektrus-atlas-directory-list button:hover,
+.lektrus-history-all-periods .lektrus-atlas-directory-list button:focus-visible{background:#e8f2ff!important}

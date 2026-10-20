@@ -42,9 +42,8 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [refresh,setRefresh]=useState(0);
  const [selected,setSelected]=useState<GeoFeature|null>(null);
  const [search,setSearch]=useState("");
- const [directoryOpen,setDirectoryOpen]=useState(true);
  const [directoryFilter,setDirectoryFilter]=useState("");
- const [globalQuery,setGlobalQuery]=useState("");
+ const [searchAcrossYears,setSearchAcrossYears]=useState(false);
  const [historyTab,setHistoryTab]=useState<"directory"|"article"|"changes">("directory");
  const [historyIndex,setHistoryIndex]=useState<HistoricalIndexRecord[]>([]);
  const [sourceYear,setSourceYear]=useState<number|null>(null);
@@ -173,7 +172,7 @@ function AtlasMap({diagram:d,onChange}:Props){
  const visibleDirectory=directoryEntries.filter(entry=>entry.name.toLocaleLowerCase("ru")
   .includes(directoryFilter.trim().toLocaleLowerCase("ru")));
  const globalMatches=useMemo(()=>{
-  const query=globalQuery.trim().toLocaleLowerCase("ru");
+  const query=directoryFilter.trim().toLocaleLowerCase("ru");
   if(query.length<2)return [];
   const found=new Map<string,{name:string;raw:string;years:number[]}>();
   for(const record of historyIndex){
@@ -188,7 +187,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    }
   }
   return [...found.values()].sort((a,b)=>a.name.localeCompare(b.name,"ru")).slice(0,30);
- },[globalQuery,historyIndex]);
+ },[directoryFilter,historyIndex]);
  const results=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU")
    .includes(search.trim().toLocaleLowerCase("ru-RU"))).slice(0,18):[];
  const filteredCount=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU").includes(search.trim().toLocaleLowerCase("ru-RU"))).length:0;
@@ -487,34 +486,38 @@ function AtlasMap({diagram:d,onChange}:Props){
        onClick={()=>setHistoryTab(key)}>{title}</button>)}
     </div>}
     {historical&&historyTab==="directory"&&<div className="lektrus-history-all-periods">
-     <strong>Поиск по всем эпохам</strong>
-     <input type="search" value={globalQuery} onChange={e=>setGlobalQuery(e.target.value)}
-      placeholder="Например, Римская империя" aria-label="Исторические названия во всех эпохах"/>
-     {indexProblem&&<small>Поиск по эпохам временно недоступен: {indexProblem}</small>}
-     {globalQuery.trim().length>=2&&<div className="lektrus-history-results">
-      {globalMatches.length?globalMatches.map(item=><div key={item.raw} className="lektrus-history-result">
-       <strong>{item.name}</strong><small>{item.years.length} датированных карт</small>
-       <button type="button" onClick={()=>jumpToPeriod(item.years[item.years.length-1],item.raw)}>
-        Показать · {yearLabel(item.years[item.years.length-1])}</button>
-      </div>):<small>Совпадений в индексированных периодах нет.</small>}
-     </div>}
-     <small>Поиск охватывает все доступные снимки, но не устанавливает время существования государств.</small>
-    </div>}
-    {historical&&historyTab==="directory"&&<div className="lektrus-atlas-directory">
-     <button type="button" aria-expanded={directoryOpen} onClick={()=>setDirectoryOpen(v=>!v)}>
-      Справочник государств и территорий ({directoryEntries.length}) {directoryOpen?"▾":"▸"}
-     </button>
-     {directoryOpen&&<><label>Поиск в справочнике
-      <input value={directoryFilter} onChange={e=>setDirectoryFilter(e.target.value)}
-       placeholder="Государство или историческая область" aria-label="Поиск по справочнику"/>
-     </label><div className="lektrus-atlas-directory-list" style={{maxHeight:210,overflowY:"auto"}}>
-      {visibleDirectory.length?visibleDirectory.map((entry,i)=><button type="button" key={i}
-       onClick={()=>focusFeature(entry.feature)} title={"Показать на карте: "+entry.name}
-       style={{display:"block",width:"100%",textAlign:"left",padding:"5px 8px",
-        background:selected===entry.feature?"#e2edff":"transparent",border:0,cursor:"pointer"}}>
-       {entry.name}
-      </button>):<p>Нет подписанных объектов за этот период.</p>}
-     </div></>}
+     <strong>Исторические территории</strong>
+     <div className="lektrus-history-scope" role="group" aria-label="Где искать">
+      <button type="button" className={!searchAcrossYears?"selected":""} aria-pressed={!searchAcrossYears}
+       onClick={()=>setSearchAcrossYears(false)}>Этот период</button>
+      <button type="button" className={searchAcrossYears?"selected":""} aria-pressed={searchAcrossYears}
+       onClick={()=>setSearchAcrossYears(true)}>Все эпохи</button>
+     </div>
+     <input type="search" value={directoryFilter} onChange={e=>setDirectoryFilter(e.target.value)}
+      placeholder="Название государства или территории" aria-label="Поиск исторического государства"/>
+     {searchAcrossYears?<>
+      <small>{historyIndex.length?historyIndex.length+" датированных карт в индексе":"Загрузка указателя периодов"}</small>
+      {indexProblem&&<small>Индекс временно недоступен: {indexProblem}</small>}
+      {directoryFilter.trim().length>=2?<div className="lektrus-history-results">
+       {globalMatches.length?globalMatches.map(item=><div key={item.raw} className="lektrus-history-result">
+        <strong>{item.name}</strong><small>{item.years.length} снимков</small>
+        <button type="button" onClick={()=>jumpToPeriod(item.years[item.years.length-1],item.raw)}>
+         Показать · {yearLabel(item.years[item.years.length-1])}</button>
+       </div>):<small>Совпадений нет. Попробуйте исходное написание названия.</small>}
+      </div>:<small>Введите минимум две буквы для поиска по всем эпохам.</small>}
+      <small>Периоды присутствия названия не устанавливают даты существования государства.</small>
+     </>:<>
+      <div className="lektrus-atlas-directory-list" style={{maxHeight:230,overflowY:"auto"}}>
+       {visibleDirectory.length?visibleDirectory.slice(0,120).map((entry,i)=><button type="button" key={i}
+        onClick={()=>focusFeature(entry.feature)} title={"Показать на карте: "+entry.name}
+        style={{display:"block",width:"100%",textAlign:"left",padding:"6px 8px",
+         background:selected===entry.feature?"#e2edff":"transparent",border:0,cursor:"pointer"}}>
+        {entry.name}
+       </button>):<p>Нет названных территорий. Уточните запрос.</p>}
+      </div>
+      <small>Найдено: {visibleDirectory.length} из {directoryEntries.length}.
+       {visibleDirectory.length>120?" Показаны первые 120. Уточните поиск.":""}</small>
+     </>}
     </div>}
     {historical&&historyTab!=="article"?null:markerDetails?<div className="lektrus-atlas-description">
      <strong>{markerDetails.title}</strong>
@@ -552,7 +555,7 @@ function AtlasMap({diagram:d,onChange}:Props){
        <small>Это только присутствие названия в наборе, не даты основания и распада.</small>
       </div>}
       <p><strong>Период карты:</strong> {yearLabel(snapshot.year)}. Это дата слоя, а не подтверждённые даты существования государства.</p>
-      <p>Столица, правители и причины территориальных изменений не указываются без проверенного источника.</p>
+      {!selectedArticle&&!fallbackReference&&<p>Столица, правители и причины территориальных изменений не указаны, если их нет в подтверждённых данных.</p>}
       <p>{modernReference?
        "Современная геометрия из Natural Earth. Дата публикации набора не равна точной исторической обстановке 2026 года.":
        "Территория представлена в историческом наборе для "+yearLabel(snapshot.year)+". Границы могут отражать реконструкцию."}</p>

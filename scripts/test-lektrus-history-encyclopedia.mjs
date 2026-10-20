@@ -28,7 +28,7 @@ assert.equal(findHistoricalArticle("India",1800),undefined);
 assert.equal(findHistoricalArticle("Kievan Rus",1000).name,"Древняя Русь");
 assert.equal(findHistoricalArticle("unknown historical state",1900),undefined);
 const atlas=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
-for(const keyword of ["loadHistoricalIndex","Поиск по всем эпохам","lektrus-history-tabs",
+for(const keyword of ["loadHistoricalIndex","Все эпохи","lektrus-history-tabs","lektrus-history-scope",
  "historyArticleUrl","selectedYears","jumpToPeriod","sourceYear"]){
  assert.ok(atlas.includes(keyword),keyword);
 }
