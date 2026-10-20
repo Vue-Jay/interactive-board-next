@@ -29,6 +29,8 @@ function AtlasMap({diagram:d}:Props){
  const [selected,setSelected]=useState<GeoFeature|null>(null);
  const [eventIndex,setEventIndex]=useState<number|null>(null);
  const [search,setSearch]=useState("");
+ const [chosenCoordinates,setChosenCoordinates]=useState<{lon:number;lat:number}|null>(null);
+ const mapGroupRef=useRef<SVGGElement|null>(null);
  const [scale,setScale]=useState(1);
  const [position,setPosition]=useState({x:0,y:0});
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
@@ -77,8 +79,8 @@ function AtlasMap({diagram:d}:Props){
   .filter(s=>s.anchor&&s.anchor.area>380)
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
   .slice(0,45),[shapes]);
- const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f)})).filter(v=>v.path)||[],[rivers]);
- const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f)})).filter(v=>v.path)||[],[lakes]);
+ const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f})).filter(v=>v.path)||[],[rivers]);
+ const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f),feature:f})).filter(v=>v.path)||[],[lakes]);
  const changes=useMemo(()=>source&&previous?summariseNamedChanges(previous,source):null,[source,previous]);
  const eventList=useMemo(()=>eventsNearYear(snapshot.year),[snapshot.year]);
  const userMarkers=d.markers.filter(marker=>!historical||
@@ -96,7 +98,18 @@ function AtlasMap({diagram:d}:Props){
  const showCountry=(feature:GeoFeature)=>{if(mode==="contour")return;setSelected(feature);setEventIndex(null)};
  const onMode=(value:AtlasMode)=>{
   if(!availableModes.some(candidate=>candidate.id===value))return;
-  setMode(value);setSelected(null);setEventIndex(null);
+  setMode(value);setSelected(null);setEventIndex(null);setChosenCoordinates(null);
+ };
+ const pickCoordinates=(event:React.MouseEvent<SVGSVGElement>)=>{
+  if(mode!=="coordinates"||!mapGroupRef.current)return;
+  const matrix=mapGroupRef.current.getScreenCTM();
+  if(!matrix)return;
+  const click=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());
+  if(click.x<0||click.x>900||click.y<0||click.y>450)return;
+  setChosenCoordinates({
+   lon:Math.round((click.x/900*360-180)*100)/100,
+   lat:Math.round((90-click.y/450*180)*100)/100
+  });
  };
  return <div className="lektrus-atlas" aria-label={d.title}
   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
@@ -118,14 +131,15 @@ function AtlasMap({diagram:d}:Props){
      <small>Границы не заменяются вымышленными. Для доступа необходим интернет.</small>
     </div>}
     <svg viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
+     onClick={pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
      onPointerDown={e=>{if(e.button!==0)return;pointer.current={id:e.pointerId,x:e.clientX,y:e.clientY,fromX:position.x,fromY:position.y};e.currentTarget.setPointerCapture(e.pointerId)}}
      onPointerMove={onMove}
      onPointerUp={e=>{pointer.current=null;if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)}}
      onPointerCancel={()=>{pointer.current=null}}>
      
-     <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
-      <LektrusMapBase land={baseLand} coastline={baseCoastline} grid={d.showGrid}/>
+     <g ref={mapGroupRef} transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
+      <LektrusMapBase land={baseLand} coastline={baseCoastline} grid={d.showGrid||mode==="coordinates"}/>
       <g strokeLinejoin="round">
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
@@ -144,9 +158,25 @@ function AtlasMap({diagram:d}:Props){
        textAnchor="middle" pointerEvents="none" stroke="#fff" strokeWidth="1.5" paintOrder="stroke">
        {labels.map(s=><text key={s.i} x={s.anchor!.x} y={s.anchor!.y}>{s.name.slice(0,23)}</text>)}
       </g>}
-      {waterMode&&<g pointerEvents="none">
-       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#87bfe6" stroke="#65a3ce" strokeWidth=".65"/>)}
-       {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none" stroke="#6aadd7" strokeWidth=".8"/>)}
+      {waterMode&&<g>
+       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#87bfe6"
+        stroke="#5c9fc9" strokeWidth={mode==="hydrography"?1.4:.65}
+        pointerEvents={mode==="hydrography"?"auto":"none"}
+        onClick={()=>{setSelected(l.feature);setEventIndex(null)}}>
+        <title>{mode==="hydrography"?geoFeatureName(l.feature):"Озеро"}</title>
+       </path>)}
+       {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none"
+        stroke={mode==="hydrography"?"#348aca":"#6aadd7"}
+        strokeWidth={mode==="hydrography"?2:.8}
+        pointerEvents={mode==="hydrography"?"stroke":"none"}
+        onClick={()=>{setSelected(l.feature);setEventIndex(null)}}>
+        <title>{mode==="hydrography"?geoFeatureName(l.feature):"Река"}</title>
+       </path>)}
+      </g>}
+      {mode==="coordinates"&&chosenCoordinates&&<g pointerEvents="none">
+       <circle cx={(chosenCoordinates.lon+180)/360*900}
+        cy={(90-chosenCoordinates.lat)/180*450} r="5" fill="#e57642"
+        stroke="white" strokeWidth="2"/>
       </g>}
       {isEventVisible&&eventList.map(event=>{
        const point=projectGeography(event.lon,event.lat),key=schoolHistoryEvents.indexOf(event);
@@ -179,6 +209,13 @@ function AtlasMap({diagram:d}:Props){
      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Название страны"/>
      {search&&<small>Совпадений в данных: {filteredCount}</small>}
     </label>}
+    {mode==="coordinates"&&<div className="lektrus-atlas-description">
+     <strong>Географические координаты</strong>
+     <p>Нажмите на карту, чтобы узнать широту и долготу точки.</p>
+     {chosenCoordinates?<p><b>{Math.abs(chosenCoordinates.lat).toFixed(2)}° {chosenCoordinates.lat>=0?"с. ш.":"ю. ш."},
+      {" "}{Math.abs(chosenCoordinates.lon).toFixed(2)}° {chosenCoordinates.lon>=0?"в. д.":"з. д."}</b></p>:
+      <p>Точка пока не выбрана.</p>}
+    </div>}
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}</strong>
      <small>Датированный снимок границ, не интерполяция</small>
