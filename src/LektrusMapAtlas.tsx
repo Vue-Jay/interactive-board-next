@@ -682,7 +682,14 @@ function AtlasMap({diagram:d,onChange}:Props){
     {modernBorders&&needsPoliticalGeometry&&<div className="lektrus-atlas-source-note">
      <strong>Покрытие: {source?.features.length??0} территорий</strong>
      <small>Малые, островные государства и отдельные зависимости по данным Natural Earth. Границы 1:10 млн при приближении, не кадастровая точность.</small>
-     <small>Единый российский картографический профиль: Natural Earth RUS, 1:10 млн. Обзорные данные не являются официальной административной картой на 20.10.2026.</small>
+     <small>Российская картографическая позиция Natural Earth RUS (архивная геометрия, ревизия 02.06.2022). Полная актуальность границ на 2026 год по Росреестру НЕ подтверждена.</small>
+     <div className="lektrus-atlas-official-sources">
+      <strong>Официальные российские источники для сверки</strong>
+      <a href="https://www.nspd.gov.ru/" target="_blank" rel="noopener noreferrer">НСПД Росреестра: современная карта ↗</a>
+      <a href="https://rosreestr.gov.ru/activity/geodeziya-i-kartografiya/edinaya-elektronnaya-kartograficheskaya-osnova/"
+       target="_blank" rel="noopener noreferrer">Единая электронная картографическая основа (ЕЭКО) ↗</a>
+      <small>Проверочные источники доступны по ссылкам, но данные ЕЭКО не импортированы в этот атлас. Нельзя считать их уже сверенными с нашим GeoJSON, особенно для спорных территорий.</small>
+     </div><small>Источник слоя: Natural Earth</small>
     </div>}
 
     {(mode==="physical"||mode==="relief")&&<div className="lektrus-atlas-hypsometry-options">
@@ -753,7 +760,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>}
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}{modernReference?" · современный обзор":""}</strong>
-     <small>{modernReference?"Современный справочный слой Natural Earth, не точный снимок 2026 года":
+     <small>{modernReference?"Современный обзор в российском профиле Natural Earth, не официальный снимок 2026 года":
       "Датированный исторический снимок, не интерполяция"}</small>
     </div>}
     {historical&&<div className="lektrus-history-tabs" role="tablist" aria-label="Разделы исторического справочника">
