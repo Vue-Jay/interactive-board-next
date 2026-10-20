@@ -424,7 +424,14 @@ const localizedFeatureClasses:Record<string,string>={
  "Admin-1 capital":"Административный центр региона",
  "Admin-1 region capital":"Административный центр региона",
  "Populated place":"Населённый пункт",
- "Scientific station":"Научная станция"
+ "Scientific station":"Научная станция",
+ "River":"Река","Lake":"Озеро","Reservoir":"Водохранилище",
+ "Lake Centerline":"Ось водоёма","Marine Area":"Морская акватория",
+ "mountain":"Горная вершина","depression":"Низменность",
+ "glacier":"Ледник","Glacier":"Ледник",
+ "Range/mtn":"Горная система","Plateau":"Плоскогорье",
+ "Plain":"Равнина","Desert":"Пустыня",
+ "Admin-0 country":"Государство","Admin-1 state":"Административная единица"
 };
 export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value:string}>{
  const p=feature.properties??{};
@@ -443,14 +450,18 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
   const value=p[key];
   if((typeof value==="string"&&value.trim()!==""||
    typeof value==="number"&&Number.isFinite(value))&&!seen.has(label)){
-   let display=String(value);
-   if(key==="FEATURECLA"||key==="FEATURECLASS")
-    display=localizedFeatureClasses[display]??display;
-   if((key==="ADM0NAME"||key==="SOVEREIGNT")&&typeof p.ISO_A2==="string"&&
-    /^[A-Z]{2}$/.test(p.ISO_A2)){
-    const translated=russianCountryNames.of(p.ISO_A2);
-    if(translated&&translated!==p.ISO_A2)display=translated;
+   let display=String(value).trim();
+   if(key==="FEATURECLA"||key==="FEATURECLASS"){
+    // An unknown English source category is metadata, not a translated legend.
+    display=localizedFeatureClasses[display]??"";
+   }else if(key==="ADM0NAME"||key==="SOVEREIGNT"){
+    // Do not confuse a dependent territory's ISO code with its sovereign state.
+    display=geoFeatureName({type:"Feature",geometry:null,properties:{NAME:display}});
    }
+   // The map, selection card and export must never show untranslated
+   // source-place names or opaque source category codes as Russian labels.
+   if(!display||(typeof value==="string"&&!isRussianAtlasName(display)&&
+     key!=="ELEVATION"&&key!=="ELEV"&&key!=="POP_MAX"&&key!=="POP_MIN"))continue;
    result.push({label,value:display});seen.add(label);
   }
  }
@@ -458,7 +469,7 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
 }
 
 export function summariseNamedChanges(prev:GeoCollection,next:GeoCollection){
- const names=(geo:GeoCollection)=>new Set(geo.features.map(geoFeatureName).filter(n=>n!=="Объект без названия"));
+ const names=(geo:GeoCollection)=>new Set(geo.features.map(geoFeatureName).filter(Boolean));
  const a=names(prev),b=names(next);
  return {
   appeared:[...b].filter(n=>!a.has(n)).sort().slice(0,24),
@@ -480,8 +491,15 @@ export function historicalFeatureFacts(feature:GeoFeature):Array<{label:string;v
   ["SOURCE","Источник атрибута"],["NOTES","Примечания источника"]];
  return fields.flatMap(([key,label])=>{
   const value=p[key];
-  return (typeof value==="string"&&value.trim()||typeof value==="number"&&Number.isFinite(value))?
-   [{label,value:String(value).slice(0,320)}]:[];
+  if(typeof value==="number"&&Number.isFinite(value))
+   return [{label,value:String(value)}];
+  if(typeof value!=="string"||!value.trim())return [];
+  if(key==="NAME"||key==="SUBJECTO"||key==="PARTOF"||key==="CAPITAL"){
+   const translated=geoFeatureName({type:"Feature",properties:{NAME:value},geometry:null});
+   return translated?[{label,value:translated}]:[];
+  }
+  // Retain a source description only if it is already written in Russian.
+  return isRussianAtlasName(value)?[{label,value:value.slice(0,320)}]:[];
  });
 }
 
