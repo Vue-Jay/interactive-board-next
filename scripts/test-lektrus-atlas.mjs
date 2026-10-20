@@ -78,9 +78,9 @@ assert.ok((polygonPath.match(/M/g)||[]).length>=2,
 const common=fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url),"utf8");
 assert.match(common,/lektrus-atlas-base-land/);
 assert.match(common,/lektrus-atlas-base-coast/);
-assert.match(map,/LektrusMapBase land=\\{baseLand\\}/);
-assert.match(map,/loadAtlasLayer\\("land"\\)/);
-assert.match(map,/loadAtlasLayer\\("coastline"\\)/);
+assert.ok(map.includes("LektrusMapBase land={baseLand}"));
+assert.ok(map.includes('loadAtlasLayer("land")'));
+assert.ok(map.includes('loadAtlasLayer("coastline")'));
 assert.match(map,/pickCoordinates/);
 assert.match(data,/ne_110m_land.geojson/);
 assert.match(data,/ne_110m_coastline.geojson/);
