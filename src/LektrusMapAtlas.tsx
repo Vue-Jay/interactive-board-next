@@ -5,7 +5,7 @@ import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseC
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
-import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
+import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
 historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl,normalizeHistoricalName} from "./lektrusHistoryEncyclopedia";
@@ -34,6 +34,15 @@ const landformClass=(f:GeoFeature):keyof typeof landformColors=>{
  return "other";
 };
 
+/** Only source-backed Russian titles; historical lookups are period-specific. */
+export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean):string{
+ const direct=geoFeatureName(feature);
+ if(!history)return direct;
+ const raw=String(feature.properties?.NAME??feature.properties?.name??"").trim();
+ const found=historicalRussianName(raw,year)??findHistoricalArticle(raw,year)?.name??
+  findHistoricalReference(raw,year)?.title;
+ return isRussianAtlasName(found)?found.trim():direct;
+}
 function AtlasMap({diagram:d,onChange}:Props){
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":d.mode);
  const [paintColor,setPaintColor]=useState("#f3b778");
@@ -203,7 +212,10 @@ function AtlasMap({diagram:d,onChange}:Props){
  const mapSource=historical||mode==="political"||mode==="contour"?source:null;
  const highDetail=modernBorders&&(russianView||!!detail&&scale>=5);
  const precision=highDetail?(scale>=8?.00015:.08):modernBorders?.13:.10;
- const mapSourceFeatures=useMemo(()=>mapSource?.features??[],[mapSource]);
+ // Land and coastlines remain cartographic background; selectable territories need names.
+ const mapSourceFeatures=useMemo(()=>mapSource?.features.filter(f=>
+  !!atlasDisplayName(f,snapshot.year,historical&&!modernReference))??[],
+  [mapSource,snapshot.year,historical,modernReference]);
  // Quantized viewport tiles avoid rebuilding expensive high-resolution paths on every pointer move.
  const tileScale=Math.pow(2,Math.floor(Math.log2(scale)));
  const tileWidth=900/tileScale,tileHeight=450/tileScale;
@@ -214,27 +226,28 @@ function AtlasMap({diagram:d,onChange}:Props){
    top:(tileY-3)*tileHeight,bottom:(tileY+3)*tileHeight}:undefined,
   [highDetail,tileX,tileY,tileScale,scale>=8]);
  const shapes=useMemo(()=>mapSourceFeatures.map((feature,i)=>({
-  feature,path:mapFeaturePath(feature,precision,viewport),name:geoFeatureName(feature),i
- })).filter(f=>f.path),[mapSourceFeatures,precision,viewport]);
+  feature,path:mapFeaturePath(feature,precision,viewport),
+  name:atlasDisplayName(feature,snapshot.year,historical&&!modernReference),i
+ })).filter(f=>f.path&&f.name),[mapSourceFeatures,precision,viewport,snapshot.year,historical,modernReference]);
  const labels=useMemo(()=>shapes.map(s=>({...s,anchor:featureLabelAnchor(s.feature)}))
   .filter(s=>s.anchor&&s.anchor.area*scale*scale>360)
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
   .slice(0,scale>=12?220:scale>=3?105:45),[shapes,scale]);
- const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.09:.62,viewport),feature:f})).filter(v=>v.path)||[],[rivers,detailedGeography,viewport]);
- const riverNames=useMemo(()=>rivers?.features.map((f,i)=>({id:i,point:featureLineMidpoint(f),feature:f}))
-  .filter(f=>f.point&&geoFeatureName(f.feature)!=="Объект без названия")||[],[rivers]);
- const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.09:.62,viewport),feature:f})).filter(v=>v.path)||[],[lakes,detailedGeography,viewport]);
- const provincePaths=useMemo(()=>administrative?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,.12,viewport),feature:f})).filter(f=>f.path)||[],[administrative,viewport]);
- const landforms=useMemo(()=>regions?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
+ const streams=useMemo(()=>rivers?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.09:.62,viewport),feature:f})).filter(v=>v.path)||[],[rivers,detailedGeography,viewport]);
+ const riverNames=useMemo(()=>rivers?.features.filter(hasAtlasName).map((f,i)=>({id:i,point:featureLineMidpoint(f),feature:f}))
+  .filter(f=>f.point)||[],[rivers]);
+ const ponds=useMemo(()=>lakes?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.09:.62,viewport),feature:f})).filter(v=>v.path)||[],[lakes,detailedGeography,viewport]);
+ const provincePaths=useMemo(()=>administrative?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,.12,viewport),feature:f})).filter(f=>f.path)||[],[administrative,viewport]);
+ const landforms=useMemo(()=>regions?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
   .filter(v=>v.path)||[],[regions,detailedGeography,viewport]);
- const ice=useMemo(()=>glaciers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
+ const ice=useMemo(()=>glaciers?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
   .filter(v=>v.path)||[],[glaciers,detailedGeography,viewport]);
- const marineAreas=useMemo(()=>marine?.features.map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.08:.5,viewport),feature:f})).filter(f=>f.path)||[],[marine,detailedGeography,viewport]);
- const marineNames=useMemo(()=>marine?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f})).filter(f=>f.point)||[],[marine]);
- const natureNames=useMemo(()=>physicalLabels?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f})).filter(f=>f.point)||[],[physicalLabels]);
- const peakPoints=useMemo(()=>elevations?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f}))
+ const marineAreas=useMemo(()=>marine?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.08:.5,viewport),feature:f})).filter(f=>f.path)||[],[marine,detailedGeography,viewport]);
+ const marineNames=useMemo(()=>marine?.features.filter(hasAtlasName).map((f,i)=>({id:i,point:featureMapPoint(f),feature:f})).filter(f=>f.point)||[],[marine]);
+ const natureNames=useMemo(()=>physicalLabels?.features.filter(hasAtlasName).map((f,i)=>({id:i,point:featureMapPoint(f),feature:f})).filter(f=>f.point)||[],[physicalLabels]);
+ const peakPoints=useMemo(()=>elevations?.features.filter(hasAtlasName).map((f,i)=>({id:i,point:featureMapPoint(f),feature:f}))
   .filter(v=>v.point)||[],[elevations]);
- const cityPoints=useMemo(()=>cities?.features.map((f,i)=>({id:i,point:featureMapPoint(f),feature:f}))
+ const cityPoints=useMemo(()=>cities?.features.filter(f=>!!russianPlaceName(f)).map((f,i)=>({id:i,point:featureMapPoint(f),feature:f}))
   .filter(v=>v.point)||[],[cities]);
  // Clip dense regional point layers to the actual visible world rectangle.
  const visibleWorld={left:450+(-450-position.x)/scale,right:450+(450-position.x)/scale,
@@ -266,7 +279,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    const point=featureMapPoint(feature);if(!point)return [];
    const lon=point[0]/2.5-180,lat=90-point[1]/2.5;
    if(lon<west||lon>east||lat<south||lat>north)return [];
-   const name=geoFeatureName(feature);if(name==="Объект без названия")return [];
+   const name=geoFeatureName(feature);if(!name)return [];
    const key=String(feature.properties?.adm1_code??feature.properties?.ADM1_CODE??
     feature.properties?.iso_3166_2??feature.properties?.name??i);
    return [{key,name,feature}];
@@ -287,22 +300,21 @@ function AtlasMap({diagram:d,onChange}:Props){
   "Admin-0 region capital","Admin-1 capital","Admin-1 region capital"]
   .includes(String(selected.properties?.FEATURECLA??selected.properties?.featurecla??""));
  const selectedTitle=selected?(selectedIsCity?
-  (russianPlaceName(selected)??"Населённый пункт без проверенного русского названия"):
-  (selectedArticle?.name??fallbackReference?.title??geoFeatureName(selected))):"";
+  (russianPlaceName(selected)??""):
+  (selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))):"";
  const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
   normalizeHistoricalName(name)===normalizeHistoricalName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
  const namedFeatures=mode==="cities"?cityPoints.filter(f=>russianPlaceName(f.feature)&&matchesCityCategory(f.feature,cityCategory)).map(f=>f.feature):
   mode==="relief"||mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature)]:
-  mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features??[]),...marineNames.map(f=>f.feature)]:
-  mode==="political"?[...mapSourceFeatures,...(administrative?.features??[]),...cityPoints.filter(p=>nationalCapital(p.feature)).map(p=>p.feature)]:
+  mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
+  mode==="political"?[...mapSourceFeatures,...(administrative?.features.filter(hasAtlasName)??[]),...cityPoints.filter(p=>nationalCapital(p.feature)).map(p=>p.feature)]:
   mapSourceFeatures;
- const directoryEntries=useMemo(()=>historical?mapSourceFeatures.map(feature=>({name:
-  !modernReference?(historicalRussianName(String(feature.properties?.NAME??""),snapshot.year)??
-   findHistoricalReference(String(feature.properties?.NAME??""),snapshot.year)?.title??geoFeatureName(feature)):geoFeatureName(feature),
-  feature}))
-  .filter(v=>v.name&&v.name!=="Объект без названия"&&v.name!=="Unknown"&&v.name!=="unknown")
-  .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],[historical,mapSourceFeatures,modernReference,snapshot.year]);
+ const directoryEntries=useMemo(()=>historical?mapSourceFeatures.map(feature=>({
+  name:atlasDisplayName(feature,snapshot.year,!modernReference),feature}))
+  .filter(v=>isRussianAtlasName(v.name))
+  .sort((a,b)=>a.name.localeCompare(b.name,"ru")):[],
+  [historical,mapSourceFeatures,modernReference,snapshot.year]);
  const visibleDirectory=directoryEntries.filter(entry=>entry.name.toLocaleLowerCase("ru")
   .includes(directoryFilter.trim().toLocaleLowerCase("ru")));
  const globalMatches=useMemo(()=>{
@@ -311,7 +323,8 @@ function AtlasMap({diagram:d,onChange}:Props){
   const found=new Map<string,{name:string;raw:string;years:number[]}>();
   for(const record of historyIndex){
    for(const raw of record.countries){
-    const title=historicalRussianName(raw,record.year)??findHistoricalReference(raw,record.year)?.title??raw;
+    const title=historicalRussianName(raw,record.year)??findHistoricalArticle(raw,record.year)?.name??findHistoricalReference(raw,record.year)?.title??"";
+    if(!isRussianAtlasName(title))continue;
     if(!title.toLocaleLowerCase("ru").includes(query)&&
      !raw.toLocaleLowerCase("en").includes(query))continue;
     const key=normalizeHistoricalName(raw);
@@ -322,9 +335,12 @@ function AtlasMap({diagram:d,onChange}:Props){
   }
   return [...found.values()].sort((a,b)=>a.name.localeCompare(b.name,"ru")).slice(0,30);
  },[directoryFilter,historyIndex]);
- const results=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU")
-   .includes(search.trim().toLocaleLowerCase("ru-RU"))).slice(0,18):[];
- const filteredCount=search.trim()?namedFeatures.filter(f=>geoFeatureName(f).toLocaleLowerCase("ru-RU").includes(search.trim().toLocaleLowerCase("ru-RU"))).length:0;
+ const matchingFeatures=search.trim()?namedFeatures.filter(f=>{
+  const title=atlasDisplayName(f,snapshot.year,historical&&!modernReference);
+  return title&&title.toLocaleLowerCase("ru-RU").includes(search.trim().toLocaleLowerCase("ru-RU"));
+ }):[];
+ const results=matchingFeatures.slice(0,18);
+ const filteredCount=matchingFeatures.length;
  const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
  const normalizePosition=(p:{x:number;y:number},s:number)=>{
   const limitX=450*(s-1)+40,limitY=225*(s-1)+25;
@@ -570,7 +586,7 @@ function AtlasMap({diagram:d,onChange}:Props){
       </g>}
       {historical&&compare&&previous&&<g fill="none" stroke="#d64646"
        strokeWidth="1.1" strokeDasharray="4 2" pointerEvents="none">
-       {previous.features.map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)}/>)}
+       {previous.features.filter(f=>!!atlasDisplayName(f,historicalSnapshots[Math.max(0,index-1)].year,true)).map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)}/>)}
       </g>}
       {d.showLabels&&mode!=="contour"&&<g fill="#44566a" fontSize={8/scale} fontWeight="650"
        textAnchor="middle" pointerEvents="none" stroke="#fff" strokeWidth={1.5/scale} paintOrder="stroke">
@@ -707,7 +723,7 @@ function AtlasMap({diagram:d,onChange}:Props){
       "Регион изменяет область просмотра, но не подменяет географические границы."}</small>
     </div>
     {modernBorders&&needsPoliticalGeometry&&<div className="lektrus-atlas-source-note">
-     <strong>Покрытие: {source?.features.length??0} территорий</strong>
+     <strong>Покрытие: {mapSourceFeatures.length} поименованных территорий</strong>
      <small>Малые, островные государства и отдельные зависимости по данным Natural Earth. Границы 1:10 млн при приближении, не кадастровая точность.</small>
      <small>Российская картографическая позиция Natural Earth RUS (архивная геометрия, ревизия 02.06.2022). Полная актуальность границ на 2026 год по Росреестру НЕ подтверждена.</small>
      <div className="lektrus-atlas-official-sources">
@@ -791,7 +807,7 @@ function AtlasMap({diagram:d,onChange}:Props){
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#386e8d"}}/>● Населённый пункт</div>
      <div><span className="lektrus-atlas-legend-swatch lektrus-atlas-legend-capital"/>◆ Столица государства</div>
      <small>В фильтре «Другие города и посёлки» отображаются не административные центры, а населённые пункты категории Populated place. Начиная с увеличения ×4 подключается база 1:10 млн.</small>
-     <small>Размер символа зависит от оценочной численности населения. Русские названия берутся непосредственно из атрибутов источника. Непереведённые названия не выдаются за проверенные русские.</small>
+     <small>Размер символа зависит от оценочной численности населения. Русские названия берутся из атрибутов источника. Элементы без установленного русского названия не показываются.</small>
     </div>}
     {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
      <strong>Контурная карта</strong>
@@ -813,7 +829,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     </label>}
     {search.trim()&&mode!=="contour"&&!historical&&<div className="lektrus-atlas-search-results">
      {results.length?results.map((f,i)=><button key={i} type="button"
-      onClick={()=>focusFeature(f)}>{geoFeatureName(f)}</button>):
+      onClick={()=>focusFeature(f)}>{atlasDisplayName(f,snapshot.year,historical&&!modernReference)}</button>):
       <small>Совпадений нет среди названий из картографической базы. Попробуйте уточнить запрос.</small>}
     </div>}
     {detailWarning&&<p className="lektrus-atlas-layer-warning" role="status">{detailWarning}</p>}
