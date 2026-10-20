@@ -1,7 +1,8 @@
 import {useId} from "react";
 import type {NextSchoolDiagram,WordRole,AlgorithmNode} from "./lektrusNextSchoolModel";
-type Props={diagram:NextSchoolDiagram};
-function SyntaxView({d}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>}){
+import type {SchoolDiagram} from "./lektrusSchoolDiagramModel";
+type Props={diagram:NextSchoolDiagram;onChange?:(value:SchoolDiagram)=>void};
+function SyntaxView({d,onChange}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>;onChange?:(value:SchoolDiagram)=>void}){
  const widths=d.words.map(w=>Math.min(230,Math.max(75,20+w.text.length*13)));
  const lines:{indices:number[];width:number}[]=[{indices:[],width:0}];
  widths.forEach((width,index)=>{
@@ -34,7 +35,12 @@ function SyntaxView({d}:{d:Extract<NextSchoolDiagram,{kind:"syntax"}>}){
    let x=450-line.width/2;
    return <g key={li}>{line.indices.map(i=>{
     const word=d.words[i],width=widths[i],pos=x,y=startY+li*95;x+=width;
-    return <g key={word.id}>
+    return <g key={word.id} style={onChange?{cursor:"pointer"}:undefined}
+      onClick={e=>{e.stopPropagation();if(!onChange)return;
+       const roles:WordRole[]=["none","subject","predicate","attribute","object","adverbial"];
+       const role=roles[(roles.indexOf(word.role)+1)%roles.length];
+       onChange({...d,words:d.words.map(w=>w.id===word.id?{...w,role}:w)});
+      }}>
      <text x={pos+width/2} y={y} textAnchor="middle" fill="#293e57" fontSize={word.text.length>18?18:23} fontWeight="600">
       {word.text}
      </text>
@@ -143,8 +149,8 @@ function PlaceValueView({d}:{d:Extract<NextSchoolDiagram,{kind:"place-value"}>})
   </text>
  </svg>;
 }
-export default function LektrusNextSchoolView({diagram:d}:Props){
- if(d.kind==="syntax")return <SyntaxView d={d}/>;
+export default function LektrusNextSchoolView({diagram:d,onChange}:Props){
+ if(d.kind==="syntax")return <SyntaxView d={d} onChange={onChange}/>;
  if(d.kind==="flowchart")return <FlowView d={d}/>;
  return <PlaceValueView d={d}/>;
 }

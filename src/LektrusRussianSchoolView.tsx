@@ -1,7 +1,8 @@
 import {useEffect,useState,type SyntheticEvent} from "react";
 import type {RussianSchoolDiagram} from "./lektrusRussianSchoolModel";
+import type {SchoolDiagram} from "./lektrusSchoolDiagramModel";
 import {posNames,totalSounds,traitGroupNames} from "./lektrusRussianSchoolModel";
-type Props={diagram:RussianSchoolDiagram};
+type Props={diagram:RussianSchoolDiagram;onChange?:(diagram:SchoolDiagram)=>void};
 function MorphologyGraphic({d}:{d:Extract<RussianSchoolDiagram,{kind:"morphology"}>}){
  const sections=["permanent","variable","syntax"] as const;
  return <svg viewBox="0 0 900 500" role="img" aria-label={d.title} className="lektrus-school-svg">
@@ -104,8 +105,28 @@ function OrthographyBoard({d}:{d:Extract<RussianSchoolDiagram,{kind:"orthography
   </div>
  </div>;
 }
-export default function LektrusRussianSchoolView({diagram}:Props){
- if(diagram.kind==="morphology")return <MorphologyGraphic d={diagram}/>;
- if(diagram.kind==="phonetics")return <PhoneticsGraphic d={diagram}/>;
- return <OrthographyBoard d={diagram}/>;
+export default function LektrusRussianSchoolView({diagram,onChange}:Props){
+ const stop=(e:SyntheticEvent)=>e.stopPropagation();
+ if(diagram.kind==="orthography")return <OrthographyBoard d={diagram}/>;
+ return <div className="lektrus-inline-lesson" onPointerDown={stop}
+  onPointerUp={stop} onClick={stop}>
+  {onChange&&<div className="lektrus-inline-lesson-controls">
+   <label>Слово <input value={diagram.word} maxLength={diagram.kind==="morphology"?65:36}
+    placeholder="Введите слово" onChange={e=>{
+     const word=e.target.value;
+     if(diagram.kind==="morphology")onChange({...diagram,word});
+     else onChange({...diagram,word,letters:Array.from(word).map((letter,i)=>({
+      id:"буква-"+i,letter,sounds:[],characteristic:"",stressed:false
+     }))});
+    }}/></label>
+   {diagram.kind==="morphology"?
+    <button type="button" onClick={()=>onChange({...diagram,showAnalysis:!diagram.showAnalysis})}>
+     {diagram.showAnalysis?"Скрыть разбор":"Показать разбор"}</button>:
+    <><button type="button" onClick={()=>onChange({...diagram,showSounds:!diagram.showSounds})}>
+     {diagram.showSounds?"Скрыть звуки":"Показать звуки"}</button>
+     <button type="button" onClick={()=>onChange({...diagram,showCharacteristics:!diagram.showCharacteristics})}>
+      {diagram.showCharacteristics?"Скрыть признаки":"Показать признаки"}</button></>}
+  </div>}
+  {diagram.kind==="morphology"?<MorphologyGraphic d={diagram}/>:<PhoneticsGraphic d={diagram}/>}
+ </div>;
 }

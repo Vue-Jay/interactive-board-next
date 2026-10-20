@@ -121,3 +121,8 @@
  .lektrus-atlas-timeline-count{display:none}
  .lektrus-atlas-search-results{max-height:90px}
 }
+
+.lektrus-atlas-palette{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.lektrus-atlas-palette button{height:23px;width:23px;min-width:23px;border-radius:7px;border:2px solid #afc0d2;padding:0}
+.lektrus-atlas-palette button.selected{outline:2px solid #346bac;outline-offset:1px}
+.lektrus-atlas-palette button:disabled{opacity:.5}

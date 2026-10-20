@@ -24,7 +24,7 @@ import LektrusToolOverflow from "./LektrusToolOverflow";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
-import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
+import {isSchoolDiagramId,isSchoolDiagram,type SchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration,{isChemicalIllustration} from "./LektrusChemistryIllustration";
@@ -1111,7 +1111,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
@@ -1121,6 +1121,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   onGridChange?: (enabled:boolean)=>void;
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
+  onSchoolDiagramChange?: (diagram:SchoolDiagram)=>void;
   suspendPeriodicWindows?: boolean;
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
@@ -1145,7 +1146,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     graphGivenAngles: Array.isArray(item.graphGivenAngles) ? item.graphGivenAngles : []
   };
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
-    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram}/></div>;
+    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
   if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
     <LektrusChemistryIllustration item={item}/>
@@ -7454,6 +7455,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item} suspendPeriodicWindows={periodicEditorItem?.id===item.id}
+                  onSchoolDiagramChange={!item.locked&&canEdit?(diagram)=>{
+                    if(!isSchoolDiagram(diagram))return;
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?
+                      {...candidate,schoolDiagram:diagram,text:diagram.title}:candidate));
+                  }:undefined}
                   onPeriodicLayoutChange={canEdit&&!item.locked&&item.graphFigureId==="chem-periodic"?(nextLayout)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,sciencePeriodicLayout:nextLayout}:candidate));
                   }:undefined}

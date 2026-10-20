@@ -1,5 +1,6 @@
 import {useEffect,useState} from "react";
 import type {ApprovedSchoolDiagram,FamilyPerson,MorphemeRole} from "./lektrusApprovedSchoolModel";
+import type {SchoolDiagram} from "./lektrusSchoolDiagramModel";
 import {familyGenerations,morphemeNames} from "./lektrusApprovedSchoolModel";
 
 function MorphemeGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{kind:"morphemes"}>}){
@@ -116,8 +117,22 @@ function FlashcardGraphic({diagram:d}:{diagram:Extract<ApprovedSchoolDiagram,{ki
   </div>
  </div>;
 }
-export default function LektrusApprovedSchoolView({diagram}: {diagram:ApprovedSchoolDiagram}){
- if(diagram.kind==="morphemes")return <MorphemeGraphic diagram={diagram}/>;
+export default function LektrusApprovedSchoolView({diagram,onChange}: {diagram:ApprovedSchoolDiagram;onChange?:(v:SchoolDiagram)=>void}){
+ if(diagram.kind==="morphemes")return <div className="lektrus-inline-lesson"
+  onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+  {onChange&&<div className="lektrus-inline-lesson-controls">
+   <button type="button" onClick={()=>onChange({...diagram,showMarks:!diagram.showMarks})}>
+    {diagram.showMarks?"Скрыть обозначения":"Показать обозначения"}</button>
+   <button type="button" onClick={()=>onChange({...diagram,showBase:!diagram.showBase})}>
+    {diagram.showBase?"Скрыть основу":"Показать основу"}</button>
+   {diagram.segments.length===1&&<label>Слово <input maxLength={24}
+    value={diagram.segments[0].text}
+    onChange={e=>{const value=e.target.value.trim();
+     if(value)onChange({...diagram,segments:[{...diagram.segments[0],text:value}]});
+    }}/></label>}
+  </div>}
+  <MorphemeGraphic diagram={diagram}/>
+ </div>;
  if(diagram.kind==="family-tree")return <FamilyGraphic diagram={diagram}/>;
  return <FlashcardGraphic diagram={diagram}/>;
 }
