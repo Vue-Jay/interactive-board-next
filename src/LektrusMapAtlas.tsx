@@ -450,7 +450,7 @@ function AtlasMap({diagram:d,onChange}:Props){
      }}>
      <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
       <LektrusMapBase land={baseLand} coastline={baseCoastline}
-       grid={d.showGrid||mode==="coordinates"}/>
+       grid={d.showGrid||mode==="coordinates"} scale={scale} viewport={viewport}/>
       <g strokeLinejoin="round">
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
