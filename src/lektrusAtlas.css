@@ -274,3 +274,7 @@
 
 .lektrus-atlas-city-data{display:flex;flex-direction:column;gap:3px;padding:7px;background:#fff;border:1px solid #d7e3f0;border-radius:7px}
 .lektrus-atlas-city-data small{font-size:9px;color:#637d95}
+
+.lektrus-atlas-mineral-legend{display:grid;grid-template-columns:1fr 1fr;gap:3px 5px;font-size:10px}
+.lektrus-atlas-mineral-legend>div{display:flex;align-items:center;gap:5px}
+.lektrus-atlas-mineral-legend span{display:inline-block;width:9px;height:9px;border-radius:50%;border:1px solid #fff;flex-shrink:0}

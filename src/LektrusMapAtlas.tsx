@@ -933,8 +933,30 @@ function AtlasMap({diagram:d,onChange}:Props){
      <a href="https://www.guineaecuatorialpress.com/noticias/decreto_ley_por_el_que_se_declara_la_ciudad_de_la_paz_djibloho_capital_de_la_republica_de_guinea_ecuatorial"
       target="_blank" rel="noopener noreferrer">Декрет о столице Экваториальной Гвинеи, 2026 ↗</a>
     </div>}
+    {mode==="minerals"&&<div className="lektrus-atlas-natural-legend">
+     <strong>Карта полезных ископаемых</strong>
+     <label className="lektrus-atlas-city-filter">Группа сырья
+      <select aria-label="Фильтр полезных ископаемых" value={mineralFilter}
+       onChange={e=>{setMineralFilter(e.target.value);setSelectedMineral(null)}}>
+       <option>Все виды</option>
+       {mineralTypes.map(item=><option key={item.name}>{item.name}</option>)}
+      </select>
+     </label>
+     <small>{!mineralsAvailable?"Приблизьте территорию для загрузки месторождений.":
+      mineralLoading?"Загрузка данных USGS…":
+      mineralError||"Показано: "+visibleMinerals.length+" месторождений (не более 350 одновременно)."}</small>
+     <div className="lektrus-atlas-mineral-legend">{mineralTypes.map(item=><div key={item.name}>
+      <span style={{background:item.color}}/>{item.name}</div>)}</div>
+     <small>Историческая база USGS: покрытие за пределами США неполное.
+      Наличие точки не означает действующую добычу или подтверждённые запасы.
+      Показываются только месторождения с распознаваемым типом сырья.</small>
+     <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
+      target="_blank" rel="noopener noreferrer">Исходная база USGS и метаданные ↗</a>
+    </div>}
     {mode==="cities"&&<div className="lektrus-atlas-natural-legend">
      <strong>Обозначения населённых пунктов</strong>
+     <small>{!roadsAvailable?"Приблизьте к городу, чтобы появились основные дороги.":
+      infrastructureError||"Основные дороги: OpenStreetMap (локальные данные, не навигационная карта)."}</small>
      <label className="lektrus-atlas-city-filter">Тип населённого пункта
       <select aria-label="Категория городов" value={cityCategory}
        onChange={e=>{const value=e.target.value as CityCategory;
@@ -1043,6 +1065,20 @@ function AtlasMap({diagram:d,onChange}:Props){
      <p>{markerDetails.description||"Маркер преподавателя"}</p>
      <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
      {historical&&<p>Дата: {yearLabel(markerDetails.year)}</p>}
+    </div>:
+    selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
+     <strong>Месторождение: {mineralCommodity(selectedMineral)?.name??"Полезное ископаемое"}</strong>
+     <p>Источник: Геологическая служба США (USGS).</p>
+     <p>Координаты: {(()=>{
+      const c=selectedMineral.geometry?.coordinates;
+      return Array.isArray(c)?Number(c[1]).toFixed(4)+"°, "+Number(c[0]).toFixed(4)+"°":"не приведены";
+     })()}</p>
+     <p>Идентификатор источника: {String(selectedMineral.properties?.OBJECTID??
+      selectedMineral.properties?.objectid??selectedMineral.properties?.gid??"не указан")}</p>
+     <small>Название месторождения, разновидности минералов, геология, оценка запасов и статус добычи
+      приводятся в исходной базе, если они опубликованы. Значения не вычисляются из точки карты.</small>
+     <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
+      target="_blank" rel="noopener noreferrer">Открыть первичные сведения USGS ↗</a>
     </div>:
     selected?<div className="lektrus-atlas-description">
      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
