@@ -474,7 +474,27 @@ function AtlasMap({diagram:d,onChange}:Props){
      <small>{modernReference?"Современный справочный слой Natural Earth, не точный снимок 2026 года":
       "Датированный исторический снимок, не интерполяция"}</small>
     </div>}
-    {historical&&<div className="lektrus-atlas-directory">
+    {historical&&<div className="lektrus-history-tabs" role="tablist" aria-label="Разделы исторического справочника">
+     {([["directory","Территории"],["article","Справка"],["changes","Изменения"]] as const)
+      .map(([key,title])=><button type="button" key={key} role="tab"
+       aria-selected={historyTab===key} className={historyTab===key?"selected":""}
+       onClick={()=>setHistoryTab(key)}>{title}</button>)}
+    </div>}
+    {historical&&historyTab==="directory"&&<div className="lektrus-history-all-periods">
+     <strong>Поиск по всем эпохам</strong>
+     <input type="search" value={globalQuery} onChange={e=>setGlobalQuery(e.target.value)}
+      placeholder="Например, Римская империя" aria-label="Исторические названия во всех эпохах"/>
+     {indexProblem&&<small>Поиск по эпохам временно недоступен: {indexProblem}</small>}
+     {globalQuery.trim().length>=2&&<div className="lektrus-history-results">
+      {globalMatches.length?globalMatches.map(item=><div key={item.raw} className="lektrus-history-result">
+       <strong>{item.name}</strong><small>{item.years.length} датированных карт</small>
+       <button type="button" onClick={()=>jumpToPeriod(item.years[item.years.length-1],item.raw)}>
+        Показать · {yearLabel(item.years[item.years.length-1])}</button>
+      </div>):<small>Совпадений в индексированных периодах нет.</small>}
+     </div>}
+     <small>Поиск охватывает все доступные снимки, но не устанавливает время существования государств.</small>
+    </div>}
+    {historical&&historyTab==="directory"&&<div className="lektrus-atlas-directory">
      <button type="button" aria-expanded={directoryOpen} onClick={()=>setDirectoryOpen(v=>!v)}>
       Справочник государств и территорий ({directoryEntries.length}) {directoryOpen?"▾":"▸"}
      </button>
@@ -490,7 +510,7 @@ function AtlasMap({diagram:d,onChange}:Props){
       </button>):<p>Нет подписанных объектов за этот период.</p>}
      </div></>}
     </div>}
-    {markerDetails?<div className="lektrus-atlas-description">
+    {historical&&historyTab!=="article"?null:markerDetails?<div className="lektrus-atlas-description">
      <strong>{markerDetails.title}</strong>
      <p>{markerDetails.description||"Маркер преподавателя"}</p>
      <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
@@ -524,11 +544,11 @@ function AtlasMap({diagram:d,onChange}:Props){
      {mode==="cities"&&<p>Показаны населённые пункты по данным Natural Earth. Оценки населения могут быть устаревшими; размер точки условный.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
     </div>}
-    {historical&&index>0&&<label className="lektrus-atlas-compare">
+    {historical&&historyTab==="changes"&&index>0&&<label className="lektrus-atlas-compare">
      <input type="checkbox" checked={compare} onChange={e=>setCompare(e.target.checked)}/>
      <span>Границы предыдущего снимка <small>(красный пунктир)</small></span>
     </label>}
-    {historical&&changes&&<div className="lektrus-atlas-changes">
+    {historical&&historyTab==="changes"&&changes&&<div className="lektrus-atlas-changes">
      <strong>Отличия от предыдущего снимка</strong>
      <small>{yearLabel(historicalSnapshots[index-1].year)} → {yearLabel(snapshot.year)}</small>
      <p>Новые наименования в базе: {changes.appeared.length?changes.appeared.join(", "):"не обнаружены"}.</p>
