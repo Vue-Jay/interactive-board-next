@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import {atlasModes,eventsNearYear,historicalSnapshots,nearestSnapshotIndex,schoolHistoryEvents,yearLabel} from "./lektrusAtlasModel";
-import {borderPrecision,geoFeatureName,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
+import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,summariseNamedChanges,
  type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 type Props={diagram:AtlasDocument};
@@ -48,6 +48,10 @@ function AtlasMap({diagram:d}:Props){
  const shapes=useMemo(()=>source?.features.map((feature,i)=>({
   feature,path:mapFeaturePath(feature),name:geoFeatureName(feature),i
  })).filter(f=>f.path)||[],[source]);
+ const labels=useMemo(()=>shapes.map(s=>({...s,anchor:featureLabelAnchor(s.feature)}))
+  .filter(s=>s.anchor&&s.anchor.area>380)
+  .sort((a,b)=>b.anchor!.area-a.anchor!.area)
+  .slice(0,45),[shapes]);
  const streams=useMemo(()=>rivers?.features.map((f,i)=>({id:i,path:mapFeaturePath(f)})).filter(v=>v.path)||[],[rivers]);
  const ponds=useMemo(()=>lakes?.features.map((f,i)=>({id:i,path:mapFeaturePath(f)})).filter(v=>v.path)||[],[lakes]);
  const changes=useMemo(()=>source&&previous?summariseNamedChanges(previous,source):null,[source,previous]);
@@ -112,6 +116,10 @@ function AtlasMap({diagram:d}:Props){
         </path>;
        })}
       </g>
+      {d.showLabels&&mode!=="contour"&&<g fill="#44566a" fontSize="8" fontWeight="650"
+       textAnchor="middle" pointerEvents="none" stroke="#fff" strokeWidth="1.5" paintOrder="stroke">
+       {labels.map(s=><text key={s.i} x={s.anchor!.x} y={s.anchor!.y}>{s.name.slice(0,23)}</text>)}
+      </g>}
       {mode==="physical"&&<g pointerEvents="none">
        {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#87bfe6" stroke="#65a3ce" strokeWidth=".65"/>)}
        {streams.map(l=><path key={"river-"+l.id} d={l.path} fill="none" stroke="#6aadd7" strokeWidth=".8"/>)}
