@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import LektrusMapBase from "./LektrusMapBase";
-import LektrusAtlasTerrain,{type TerrainStatus} from "./LektrusAtlasTerrain";
+import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale} from "./lektrusAtlasRegions";
 import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
@@ -61,6 +61,8 @@ function AtlasMap({diagram:d,onChange}:Props){
  const [detailWarning,setDetailWarning]=useState("");
  const [layerWarning,setLayerWarning]=useState("");
  const [terrainStatus,setTerrainStatus]=useState<TerrainStatus>({total:0,loaded:0,failed:0});
+ const [terrainPick,setTerrainPick]=useState<{lat:number;lon:number;metres:number|null;pending:boolean;error:boolean}|null>(null);
+ const heightRequest=useRef(0);
  const [compare,setCompare]=useState(false);
  const [selectedLayer,setSelectedLayer]=useState("Государство");
  const [selectedMarker,setSelectedMarker]=useState<string|null>(null);
@@ -435,9 +437,20 @@ function AtlasMap({diagram:d,onChange}:Props){
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
   if(dragged.current)return;
   const p=worldPoint(localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
-  if(p.x>=0&&p.x<=900&&p.y>=0&&p.y<=450)
-   setCoord({lon:Math.round((p.x/900*360-180)*100)/100,
-    lat:Math.round((90-p.y/450*180)*100)/100});
+  if(p.x>=0&&p.x<=900&&p.y>=0&&p.y<=450){
+   const lon=Math.round((p.x/900*360-180)*10000)/10000;
+   const lat=Math.round((90-p.y/450*180)*10000)/10000;
+   setCoord({lon,lat});
+   if(terrainEnabled){
+    const request=++heightRequest.current;
+    setTerrainPick({lon,lat,metres:null,pending:true,error:false});
+    sampleTerrainElevation(lon,lat,Math.max(8,Math.min(11,Math.floor(Math.log2(scale))+4)))
+     .then(metres=>{if(heightRequest.current===request)
+      setTerrainPick({lon,lat,metres,pending:false,error:false})})
+     .catch(()=>{if(heightRequest.current===request)
+      setTerrainPick({lon,lat,metres:null,pending:false,error:true})});
+   }
+  }
  };
  const focusFeature=(f:GeoFeature,explicitLayer?:string)=>{
   const bounds=featureFocusBounds(f);
@@ -537,7 +550,7 @@ function AtlasMap({diagram:d,onChange}:Props){
         className="lektrus-atlas-country" onClick={()=>selectFeature(f.feature,"Ледниковая область")}>
         <title>{geoFeatureName(f.feature)}</title></path>)}
       </g>}
-      {mode==="coordinates"&&coord&&<g transform={`translate(${projectGeography(coord.lon,coord.lat)[0]} ${projectGeography(coord.lon,coord.lat)[1]})`}
+      {(mode==="coordinates"||terrainEnabled)&&coord&&<g transform={`translate(${projectGeography(coord.lon,coord.lat)[0]} ${projectGeography(coord.lon,coord.lat)[1]})`}
        pointerEvents="none" stroke="#dd653e" strokeWidth=".9">
        <circle r="5.5" fill="#fff" fillOpacity=".7"/><path d="M-10 0H10M0 -10V10"/>
       </g>}
@@ -692,6 +705,16 @@ function AtlasMap({diagram:d,onChange}:Props){
      </div>
     </div>}
 
+    {terrainEnabled&&terrainPick&&<div className="lektrus-atlas-description">
+     <strong>Высота выбранной точки</strong>
+     <p>{Math.abs(terrainPick.lat).toFixed(4)}° {terrainPick.lat>=0?"с. ш.":"ю. ш."},
+      {" "}{Math.abs(terrainPick.lon).toFixed(4)}° {terrainPick.lon>=0?"в. д.":"з. д."}</p>
+     <p>{terrainPick.pending?"Получение значения из DEM…":
+      terrainPick.error?"Не удалось загрузить высоту из источника.":
+      terrainPick.metres===null?"Нет данных о высоте для этой точки.":
+      Math.round(terrainPick.metres)+" м относительно уровня моря (приблизительно)"}</p>
+     <small>Нажмите на другую точку карты, чтобы проверить высоту.</small>
+    </div>}
     {(mode==="physical"||mode==="relief")&&<div className="lektrus-atlas-hypsometry-options">
      <label><input type="checkbox" checked={terrainEnabled}
       onChange={e=>onChange?.({...d,hypsometry:e.target.checked})}/>
