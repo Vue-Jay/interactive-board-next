@@ -1,5 +1,40 @@
 /** Self-contained persisted circuit validation.
  * Keep this module import-free for whiteboard persistence and ink tests. */
+/** Import-free validation prevents corrupt school objects from breaking board loads. */
+function validSchoolTeachingDiagram(value:unknown):boolean{
+ if(!value||typeof value!=="object")return false;
+ const d=value as Record<string,unknown>;
+ if(typeof d.title!=="string"||d.title.length>120)return false;
+ const finiteIn=(x:unknown,lo:number,hi:number)=>typeof x==="number"&&Number.isFinite(x)&&x>=lo&&x<=hi;
+ const field=(x:unknown,n:number)=>typeof x==="string"&&x.length<=n&&x.trim().length>0;
+ if(d.kind==="cell"){
+  const types=["plant","animal"];
+  const allowed=d.cell==="plant"?["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]:
+   ["membrane","cytoplasm","nucleus","mitochondria"];
+  return types.includes(d.cell as string)&&typeof d.showLabels==="boolean"&&Array.isArray(d.visible)&&
+   d.visible.length<=7&&d.visible.every((v:unknown)=>allowed.includes(v as string))&&
+   new Set(d.visible).size===d.visible.length;
+ }
+ if(d.kind==="food-chain")return typeof d.showRoles==="boolean"&&Array.isArray(d.organisms)&&
+  d.organisms.length>=2&&d.organisms.length<=6&&d.organisms.every((v:unknown)=>{
+   if(!v||typeof v!=="object")return false;
+   const o=v as Record<string,unknown>;
+   return field(o.id,64)&&field(o.name,45)&&["producer","consumer","decomposer"].includes(o.role as string);
+  })&&new Set(d.organisms.map((v:{id:string})=>v.id)).size===d.organisms.length;
+ if(d.kind==="climate")return typeof d.showLegend==="boolean"&&Array.isArray(d.months)&&
+  d.months.length===12&&d.months.every((v:unknown)=>{
+   if(!v||typeof v!=="object")return false;
+   const m=v as Record<string,unknown>;
+   return finiteIn(m.temperature,-70,60)&&finiteIn(m.precipitation,0,1000);
+  });
+ if(d.kind==="timeline")return typeof d.showEra==="boolean"&&Array.isArray(d.events)&&
+  d.events.length>=2&&d.events.length<=8&&d.events.every((v:unknown)=>{
+   if(!v||typeof v!=="object")return false;
+   const o=v as Record<string,unknown>;
+   return field(o.id,64)&&field(o.label,90)&&Number.isInteger(o.year)&&finiteIn(o.year,-3000,2100)&&o.year!==0;
+  })&&new Set(d.events.map((v:{id:string})=>v.id)).size===d.events.length;
+ return false;
+}
 function circuitIsDocument(value:unknown):boolean{
   if(!value||typeof value!=="object")return false;
   const data=value as Record<string,unknown>;
@@ -118,6 +153,7 @@ export type Item = {
   scienceReactionConditions?: string;
   scienceReagents?: string[];
   scienceEnvironment?: "aqueous" | "dry" | "heated" | "ignited";
+  schoolDiagram?: import("./lektrusSchoolDiagramModel").SchoolDiagram;
   graphRotationX?: number;
   graphRotationY?: number;
   graphParallelMarks?: ("corresponding"|"alternate-interior"|"alternate-exterior"|"same-side-interior"|"vertical"|"adjacent")[];
@@ -212,7 +248,7 @@ const persistedGraphKeys = [
   "graphPurpose","graphFigureId","scienceCircuit","scienceAtomModel",
   "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
   "scienceExperimentStage","scienceOrganicAnnotations","scienceReactionConditions",
-  "scienceReagents","scienceEnvironment",
+  "scienceReagents","scienceEnvironment","schoolDiagram",
   "graphRotationX","graphRotationY","graphParallelMarks",
   "graphAxisMode","graphIntervalStartClosed","graphIntervalEndClosed",
   "graphType","graphExpression","graphConnectPoints",
@@ -305,6 +341,8 @@ export function parseDocument(raw: string): DocumentData {
       }
 
       if (Array.isArray(i.graphSegments)&&i.graphSegments.some((seg:{bondOrder?:unknown;scienceArrow?:unknown;scienceCircuitSymbol?:unknown})=>(seg.bondOrder!=null&&(typeof seg.bondOrder!=="number"||![1,2,3].includes(seg.bondOrder)))||(seg.scienceArrow!=null&&typeof seg.scienceArrow!=="boolean")||(seg.scienceCircuitSymbol!=null&&typeof seg.scienceCircuitSymbol!=="string"))) throw new Error("Повреждены связи предметной схемы");
+      if(i.schoolDiagram!=null&&!validSchoolTeachingDiagram(i.schoolDiagram))
+        throw new Error("Повреждена предметная учебная схема");
       if(i.scienceCircuit!=null&&!circuitIsDocument(i.scienceCircuit))throw new Error("Повреждена схема электрической цепи");
       if(i.scienceAtomModel!=null){
         const model=i.scienceAtomModel;
