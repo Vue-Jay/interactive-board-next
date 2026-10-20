@@ -156,7 +156,7 @@ const historicNames:Record<string,string>={
 };
 /** Only real, meaningful Russian proper names may appear on the map.
  * Unnamed / placeholder entries must not acquire invented titles. */
-const atlasUnnamed=/^(?:unknown|unnamed|no[ -]?name|name[ -]?unknown|none|null|undefined|n\\/?a|not applicable|unassigned|untitled|без названия|неизвестно|объект без названия|безымянн(?:ый|ая|ое)|[-?.\\s]+)$/i;
+const atlasUnnamed=/^(?:unknown|unnamed|no[ -]?name|name[ -]?unknown|none|null|undefined|n.a|not applicable|unassigned|untitled|без названия|неизвестно|объект без названия|безымянн(?:ый|ая|ое)|[-?.\s]+)$/i;
 export function isRussianAtlasName(value:unknown):value is string{
  return typeof value==="string"&&value.trim().length>1&&
   /[А-ЯЁа-яё]/.test(value)&&!atlasUnnamed.test(value.trim());
