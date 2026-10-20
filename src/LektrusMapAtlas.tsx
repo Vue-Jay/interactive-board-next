@@ -519,7 +519,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     </svg>
     {!objectMoveMode&&<div className="lektrus-atlas-zoom" role="group" aria-label="Масштаб">
      <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(scale*1.5)}>+</button>
-     <button type="button" onClick={reset} title="Сбросить положение">⌖</button>
+     <button type="button" onClick={reset} title="Вписать выбранный регион">⌖</button>
      <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(scale/1.5)}>−</button>
      <label className="lektrus-atlas-zoom-slider">Масштаб
       <input type="range" min="0" max="14" step=".25"
@@ -527,21 +527,24 @@ function AtlasMap({diagram:d,onChange}:Props){
        value={Math.log2(scale)} onChange={e=>zoomAt(Math.pow(2,Number(e.target.value)))}/>
      </label>
     </div>}
-    <div className="lektrus-atlas-precision">×{scale.toFixed(1)} · {highDetail?"детали 1:10 млн":modernBorders?"страны 1:50 млн":"историческая реконструкция"} · {coord?
+    <div className="lektrus-atlas-precision">Увеличение ×{scale.toFixed(scale>=10?0:1)} · {highDetail?"геоданные 1:10 млн":modernBorders?"обзорный слой":"историческая реконструкция"} · {coord?
      `${coord.lat.toFixed(2)}°, ${coord.lon.toFixed(2)}°`:objectMoveMode?"режим перемещения объекта":"обзорные геоданные"}</div>
    </div>
    <aside className="lektrus-atlas-sidebar">
+    <div className="lektrus-atlas-region-picker">
+     <strong>Территория карты</strong>
+     <select aria-label="Регион школьного атласа" value={regionId} onChange={e=>changeRegion(e.target.value)}>
+      {atlasRegionGroups.map(group=><optgroup label={group} key={group}>
+       {atlasRegions.filter(region=>region.group===group).map(region=><option key={region.id} value={region.id}>{region.title}</option>)}
+      </optgroup>)}
+     </select>
+     <small>{regionId==="russia"||regionId==="rf-far-east"?"Россия пересекает 180-й меридиан, части её территории представлены у обоих краёв мировой проекции.":
+      "Регион изменяет область просмотра, но не подменяет географические границы."}</small>
+    </div>
     {modernBorders&&<div className="lektrus-atlas-source-note">
      <strong>Покрытие: {source?.features.length??0} территорий</strong>
      <small>Малые, островные государства и отдельные зависимости по данным Natural Earth. Границы 1:10 млн при приближении, не кадастровая точность.</small>
-     <label>Картографическая позиция
-      <select value={d.borderView??"source"} disabled={!onChange}
-       onChange={e=>onChange?.({...d,borderView:e.target.value as "source"|"russian"})}>
-       <option value="source">Базовая версия Natural Earth</option>
-       <option value="russian">Российская версия Natural Earth</option>
-      </select>
-     </label>
-     {russianView&&<small>Российская версия показывает позицию исходного набора, но не подтверждает актуальность каждого спорного участка на 2026 год.</small>}
+     <small>Единый российский картографический профиль: Natural Earth RUS, 1:10 млн. Обзорные данные не являются официальной административной картой на 20.10.2026.</small>
     </div>}
 
     {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
@@ -658,7 +661,7 @@ function AtlasMap({diagram:d,onChange}:Props){
       <p>{modernReference?
        "Современная геометрия из Natural Earth. Дата публикации набора не равна точной исторической обстановке 2026 года.":
        "Территория представлена в историческом наборе для "+yearLabel(snapshot.year)+". Границы могут отражать реконструкцию."}</p>
-      <p>Названия и границы исходной базы не означают одобрение какой-либо территориальной претензии.</p>
+      <p>Историческая реконструкция принадлежит авторам снимка. Российская позиция применяется к современному политическому слою, но не подменяет исторические эпохи.</p>
       {selected.properties?.SUBJECTO&&<p>Административная принадлежность в источнике: {String(selected.properties.SUBJECTO)}</p>}
       {selected.properties?.PARTOF&&String(selected.properties.PARTOF)!==selectedTitle&&
        <p>Регион/группа: {String(selected.properties.PARTOF)}</p>}</>}
@@ -670,10 +673,10 @@ function AtlasMap({diagram:d,onChange}:Props){
     </div>:
     <div className="lektrus-atlas-description"><strong>{mapModeTitle(mode)}</strong>
      <p>{atlasModes.find(m=>m.id===mode)?.hint}.</p>
-     {mode==="physical"&&<p>Показаны природные объекты из Natural Earth: реки, озёра, ледники, крупные формы рельефа и высотные отметки. Сплошной цифровой модели высот здесь нет.</p>}
+     {mode==="physical"&&<p>Природные объекты, ледники, водная сеть и высотные отметки Natural Earth. Региональный масштаб использует подробнее проработанные реки, озёра и побережье. Сплошной цифровой модели высот нет.</p>}
      {mode==="hydrography"&&<p>Нажмите на реку или озеро, чтобы изучить объект. Показаны крупные водотоки и озёра обзорного масштаба.</p>}
      {mode==="relief"&&<p>Цвет обозначает географические области, а не точную высоту поверхности. Высотные отметки берутся из атрибутов источника.</p>}
-     {mode==="cities"&&<p>Показаны населённые пункты по данным Natural Earth. Оценки населения могут быть устаревшими; размер точки условный.</p>}
+     {mode==="cities"&&<p>Населённые пункты Natural Earth. В регионах доступен подробный слой городов; оценки населения могут быть устаревшими, размер точки условный.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
     </div>}
     {historical&&historyTab==="changes"&&index>0&&<label className="lektrus-atlas-compare">
@@ -696,7 +699,7 @@ function AtlasMap({diagram:d,onChange}:Props){
     <div className="lektrus-atlas-source">
      <a href={(historical&&!modernReference?historicDataProvider:modernDataProvider).url}
       target="_blank" rel="noopener noreferrer">Источник: {(historical&&!modernReference?historicDataProvider:modernDataProvider).name} ↗</a>
-     {historical&&<><small>Границы могут быть приблизительными, спорными или неполными. Современные спорные территории требуют указания картографической позиции.</small>
+     {historical&&<><small>Исторические реконструкции могут быть приблизительными; современный обзор отображён в версии RUS.</small>
       <a href={(modernReference?modernDataProvider:historicDataProvider).licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия / условия использования ↗</a></>}
     </div>
    </aside>
