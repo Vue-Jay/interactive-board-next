@@ -68,7 +68,7 @@ function AtlasMap({diagram:d}:Props){
   setPosition({x:p.fromX+(e.clientX-p.x),y:p.fromY+(e.clientY-p.y)});
  };
  const reset=()=>{setScale(1);setPosition({x:0,y:0});setSelected(null)};
- const showCountry=(feature:GeoFeature)=>{setSelected(feature);setEventIndex(null)};
+ const showCountry=(feature:GeoFeature)=>{if(mode==="contour")return;setSelected(feature);setEventIndex(null)};
  const onMode=(value:AtlasMode)=>{setMode(value);setSelected(null);setEventIndex(null)};
  return <div className="lektrus-atlas" aria-label={d.title}
   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
