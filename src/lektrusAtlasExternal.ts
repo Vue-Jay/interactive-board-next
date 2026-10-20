@@ -34,8 +34,11 @@ export function loadLocalInfrastructure(b:ExternalBounds,kind:"roads"|"waterways
   (kind==="roads"?'way["highway"~"^(motorway|trunk|primary)$"]('+box+');':
    'way["waterway"~"^(river|stream|canal)$"]["name:ru"]('+box+');')+
   ');out geom;';
- const servers=["https://overpass.kumi.systems/api/interpreter?data=",
-  "https://overpass-api.de/api/interpreter?data="];
+ // The Russian full-planet mirror is preferred; overloaded public servers
+ // remain fallbacks. Never draw invented roads when all mirrors fail.
+ const servers=["https://maps.mail.ru/osm/tools/overpass/api/interpreter?data=",
+  "https://overpass-api.de/api/interpreter?data=",
+  "https://overpass.kumi.systems/api/interpreter?data="];
  return memo("osm:"+kind+":"+externalBBoxKey(b),async()=>{
   let json:unknown=null,lastError:unknown=null;
   for(const endpoint of servers){
