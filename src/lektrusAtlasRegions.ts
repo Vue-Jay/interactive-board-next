@@ -68,6 +68,18 @@ export function atlasRegionCamera(region:AtlasRegion){
  return {scale,position:{x:(450-cx)*scale,y:(225-cy)*scale}};
 }
 
+/** Keep the geographical point below an SVG cursor fixed during zoom.
+ * Camera offsets are screen-map units around the 900×450 viewport centre.
+ */
+export function zoomAtlasCamera(camera:{scale:number;position:{x:number;y:number}},nextScale:number,
+ anchor:{x:number;y:number}={x:450,y:225}){
+ const scale=Math.max(1,Math.min(16384,nextScale)),ratio=scale/camera.scale;
+ const x=anchor.x-450-(anchor.x-450-camera.position.x)*ratio;
+ const y=anchor.y-225-(anchor.y-225-camera.position.y)*ratio;
+ const limitX=450*(scale-1)+40,limitY=225*(scale-1)+25;
+ return {scale,position:{x:Math.max(-limitX,Math.min(limitX,x)),y:Math.max(-limitY,Math.min(limitY,y))}};
+}
+
 /** Horizontal distances in a cylindrical equirectangular school map are
  * latitude dependent. This bar is an estimate at the viewport centre. */
 export function atlasDistanceScale(scale:number,offsetY:number,maxWidth=115){
