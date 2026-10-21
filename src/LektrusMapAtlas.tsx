@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
+import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
 import LektrusMapBase from "./LektrusMapBase";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
@@ -42,7 +43,13 @@ const landformClass=(f:GeoFeature):keyof typeof landformColors=>{
 /** Only source-backed Russian titles; historical lookups are period-specific. */
 export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean):string{
  const direct=geoFeatureName(feature);
- if(!history)return direct;
+ if(!history){
+  const props=feature.properties??{},geo=feature.geometry?.type;
+  const sovereign=(geo==="Polygon"||geo==="MultiPolygon")&&
+   (typeof props.ADMIN==="string"||typeof props.SOVEREIGNT==="string")&&
+   props.adm1_code===undefined&&props.ADM1_CODE===undefined;
+  return sovereign?schoolCountryName(direct,String(props.ISO_A2??props.ISO_A2_EH??"")):direct;
+ }
  const raw=String(feature.properties?.NAME??feature.properties?.name??"").trim();
  const found=historicalRussianName(raw,year)??findHistoricalArticle(raw,year)?.name??
   findHistoricalReference(raw,year)?.title;
