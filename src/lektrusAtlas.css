@@ -380,3 +380,13 @@
 .lektrus-atlas-contour-mark:focus-visible{outline:none;filter:drop-shadow(0 0 2px #286baf)}
 .lektrus-atlas-contour-work text{user-select:none}
 .lektrus-atlas-graticule{pointer-events:none}
+
+.lektrus-atlas-own-markers{padding:9px;border:1px solid #d6e3ed;border-radius:10px;background:#fff}
+.lektrus-atlas-own-markers summary{font-size:12px;font-weight:750;cursor:pointer;color:#285679}
+.lektrus-atlas-own-markers>small{display:block;margin:6px 0;color:#7790a6}
+.lektrus-atlas-own-marker{padding:8px 0;display:grid;gap:7px;border-top:1px solid #e4ecf3}
+.lektrus-atlas-own-marker label{font-size:11px;display:grid;gap:3px;color:#4b6881}
+.lektrus-atlas-own-marker input,.lektrus-atlas-own-marker textarea{
+ border:1px solid #d0deeb;border-radius:6px;padding:5px;background:#fff;width:100%;min-width:0}
+.lektrus-atlas-own-markers button{border:1px solid #c6dbe9;background:#fff;border-radius:7px;
+ padding:7px 9px;color:#335e82;margin-top:5px}
