@@ -1,5 +1,5 @@
 /** Isolated executable: never evaluate student code in the Lectrus document. */
-const WORKER_SOURCE=String.raw\`
+const WORKER_SOURCE=String.raw`
 const maxLines=150;
 let lines=0;
 let totalChars=0;
@@ -26,7 +26,7 @@ self.onmessage=async function(event){
    try{self[key]=undefined}catch{}
   }
   const input=typeof data.stdin==="string"?data.stdin:"";
-  const inputLines=input.split(/\\r?\\n/);
+  const inputLines=input.split(/\r?\n/);
   let index=0;
   const readLine=()=>inputLines[index++]??"";
   const captured={
@@ -38,7 +38,7 @@ self.onmessage=async function(event){
   self.console=captured;
   const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
   const task=new AsyncFunction("console","print","input","readLine","prompt",
-   '"use strict";\\n'+data.code);
+   '"use strict";\n'+data.code);
   await task(captured,(...args)=>captured.log(...args),input,readLine,
    (message)=>{if(message)captured.log(message);return readLine()});
   self.postMessage({kind:"done",status:"success"});
@@ -47,13 +47,13 @@ self.onmessage=async function(event){
   self.postMessage({kind:"done",status:"error"});
  }
 };
-\`;
-export const PROGRAM_SANDBOX_HTML=\`<!doctype html><html lang="ru"><head><meta charset="utf-8">
+`;
+export const PROGRAM_SANDBOX_HTML=`<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; worker-src blob:; connect-src 'none'; img-src 'none'; style-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'"></head>
 <body><script>
 (function(){
  "use strict";
- const workerText=\${JSON.stringify(WORKER_SOURCE)};
+ const workerText=${JSON.stringify(WORKER_SOURCE)};
  const originChannel="lektrus-program-runner";
  let worker=null,timer=null,activeId=null,activeToken=null;
  function send(message){parent.postMessage(Object.assign({channel:originChannel},message),"*")}
@@ -108,4 +108,4 @@ export const PROGRAM_SANDBOX_HTML=\`<!doctype html><html lang="ru"><head><meta c
  });
  send({type:"ready"});
 })();
-</script></body></html>\`;
+</script></body></html>`;
