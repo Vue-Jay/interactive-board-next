@@ -239,8 +239,12 @@ assert.match(reg,/subjects:\["история"\]/);
 assert.match(data,/ne_10m_admin_0_countries\.geojson/);
 assert.match(data,/ne_10m_admin_0_countries_rus\.geojson/);
 assert.match(data,/ne_50m_admin_0_tiny_countries\.geojson/);
-assert.match(data,/ne_10m_admin_1_states_provinces_lines\\.geojson/,"global regions must not rely on North America only");
-assert.match(map,/loadAtlasLayer\\("admin-world-lines"\\)/);
+assert.ok(data.includes('"admin-world-overview":"ne_50m_admin_1_states_provinces_lines.geojson"'),
+ "world regional overview must cover countries on every continent");
+assert.ok(data.includes('"admin-world-lines":"ne_10m_admin_1_states_provinces_lines.geojson"'),
+ "detailed regional atlas requires global 10m line coverage");
+assert.ok(map.includes('loadAtlasLayer(selectedLayer)'),"atlas must actually load the selected global administrative lines");
+assert.ok(map.includes('loadAtlasLayer("admin-world-overview")'),"detailed boundary source needs a 50m fallback");
 assert.match(map,/worldAdminLinePaths\\.map/);
 assert.match(map,/MAX_ATLAS_ZOOM=16384/);
 assert.match(map,/featureFocusBounds/);
@@ -322,6 +326,13 @@ assert.equal(astana.properties.NAME_RU,"Астана");
 assert.equal(astana.properties.NAME,"Astana");
 assert.equal(places.nationalCapital(astana),true);
 assert.ok(String(astana.properties.CAPITAL_CORRECTION_URL).includes("akorda.kz"));
+const isoMissingCapital={...legacyKazakhstan,properties:{
+ ...legacyKazakhstan.properties,ISO_A2:"-99",ADM0_A3:"-99",
+ NAME:"Nur Sultan",NAME_RU:"Нур-Султан"}};
+assert.equal(places.russianPlaceName(isoMissingCapital),"Астана",
+ "old Kazakhstan capital must be correct even when Natural Earth omits the country ISO code");
+assert.equal(places.applyVerifiedCapitalUpdates2026({type:"FeatureCollection",
+ features:[isoMissingCapital]}).features[0].properties.NAME_RU,"Астана");
 const fixed=(name)=>updatedPlaces.features.find(f=>f.properties?.NAME===name);
 assert.equal(places.nationalCapital(fixed("Malabo")),false,"new Equatorial Guinea capital in 2026");
 assert.equal(places.nationalCapital(fixed("Ciudad de la Paz")),true);
