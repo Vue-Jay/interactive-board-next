@@ -1324,6 +1324,33 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <small>{regionId==="russia"||regionId==="rf-far-east"?"Россия пересекает 180-й меридиан, части её территории представлены у обоих краёв мировой проекции.":
       "Регион изменяет область просмотра, но не подменяет географические границы."}</small>
     </div>
+    {(historical||d.markers.length>0)&&onChange&&<details className="lektrus-atlas-own-markers">
+     <summary>Мои метки и события ({d.markers.length})</summary>
+     <small>Метки с географическими координатами хранятся с доской. Их можно исправлять и удалять.</small>
+     {d.markers.map(mark=><div key={mark.id} className="lektrus-atlas-own-marker">
+      <label>Название <input maxLength={80} value={mark.title}
+       onChange={e=>onChange({...d,markers:d.markers.map(m=>m.id===mark.id?{...m,title:e.target.value}:m)})}/></label>
+      <div className="lektrus-atlas-marker-numbers">
+       {(["lat","lon","year"] as const).map(key=><label key={key}>
+        {key==="lat"?"Широта":key==="lon"?"Долгота":"Год"}
+        <input type="number" step={key==="year"?1:.01} value={mark[key]}
+         min={key==="lat"?-90:key==="lon"?-180:-123000}
+         max={key==="lat"?90:key==="lon"?180:2100}
+         onChange={e=>{const value=Number(e.target.value);if(!Number.isFinite(value))return;
+          const limit=key==="lat"?90:key==="lon"?180:2100;
+          const minimum=key==="lat"?-90:key==="lon"?-180:-123000;
+          onChange({...d,markers:d.markers.map(m=>m.id===mark.id?{...m,[key]:
+           Math.max(minimum,Math.min(limit,key==="year"?Math.round(value):value))}:m)})}}/>
+       </label>)}
+      </div>
+      <label>Пояснение <textarea rows={2} maxLength={300} value={mark.description}
+       onChange={e=>onChange({...d,markers:d.markers.map(m=>m.id===mark.id?{...m,description:e.target.value}:m)})}/></label>
+      <button type="button" onClick={()=>onChange({...d,markers:d.markers.filter(m=>m.id!==mark.id)})}>Удалить метку</button>
+     </div>)}
+     <button type="button" disabled={d.markers.length>=40}
+      onClick={()=>onChange({...d,markers:[...d.markers,{id:globalThis.crypto?.randomUUID?.()??String(Date.now()),
+       title:"Новая метка",lat:0,lon:0,year:snapshot.year,description:""}]})}>+ Добавить метку</button>
+    </details>}
     {terrainEnabled&&terrainPick&&<div className="lektrus-atlas-description">
      <strong>Высота выбранной точки</strong>
      <p>{Math.abs(terrainPick.lat).toFixed(4)}° {terrainPick.lat>=0?"с. ш.":"ю. ш."},
