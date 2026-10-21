@@ -1,3 +1,4 @@
+import {compatibleRandomUUID} from "./cryptoUuidCompatibility";
 import {useEffect,useRef,useState,type CSSProperties,type SyntheticEvent} from "react";
 import type {ProgrammingDiagram,ProgrammingTest} from "./lektrusProgrammingModel";
 import {normalizeProgramOutput,programmingLanguageLabels} from "./lektrusProgrammingModel";
@@ -16,7 +17,7 @@ const statusNames:Record<RunStatus,string>={
 };
 export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingDiagram}){
  const iframe=useRef<HTMLIFrameElement>(null);
- const token=useRef(crypto.randomUUID());
+ const token=useRef(compatibleRandomUUID());
  const sequence=useRef(0);
  const batch=useRef<Batch|null>(null);
  const [ready,setReady]=useState(false);
