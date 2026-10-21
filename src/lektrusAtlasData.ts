@@ -23,6 +23,7 @@ const names:Record<GeoLayer,string>={
  "cities-regional":"ne_50m_populated_places.geojson",
  "cities-local":"ne_10m_populated_places.geojson",
  "admin-regional":"ne_50m_admin_1_states_provinces.geojson",
+ "admin-world-overview":"ne_50m_admin_1_states_provinces_lines.geojson",
  "admin-world-lines":"ne_10m_admin_1_states_provinces_lines.geojson",
  "regions-regional":"ne_50m_geography_regions_polys.geojson",
  "elevation-regional":"ne_50m_geography_regions_elevation_points.geojson",
