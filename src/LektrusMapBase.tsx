@@ -1,6 +1,6 @@
 import {useMemo,type ReactNode} from "react";
 import {mapFeaturePath,projectGeography,type MapWindow,type GeoCollection} from "./lektrusAtlasData";
-type Props={land:GeoCollection|null;coastline:GeoCollection|null;grid:boolean;scale?:number;viewport?:MapWindow;terrain?:ReactNode};
+type Props={land:GeoCollection|null;coastline:GeoCollection|null;grid:boolean;scale?:number;viewport?:MapWindow;terrain?:ReactNode;theme?:"default"|"minerals"};
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 export function atlasGraticuleStep(scale:number){
  const target=30/Math.max(1,scale),power=Math.pow(10,Math.floor(Math.log10(target)));
@@ -8,7 +8,7 @@ export function atlasGraticuleStep(scale:number){
 }
 const label=(v:number,lat:boolean)=>Math.abs(v).toLocaleString("ru-RU",{maximumFractionDigits:4})+
  "°"+(Math.abs(v)<1e-9?"":lat?(v>0?" с. ш.":" ю. ш."):(v>0?" в. д.":" з. д."));
-export default function LektrusMapBase({land,coastline,grid,scale=1,viewport,terrain}:Props){
+export default function LektrusMapBase({land,coastline,grid,scale=1,viewport,terrain,theme="default"}:Props){
  const step=atlasGraticuleStep(scale),minDist=scale>=16?.004:scale>=5?.03:scale>=2?.16:.62;
  const landPaths=useMemo(()=>land?.features.map((f,i)=>({id:i,d:mapFeaturePath(f,minDist,viewport)}))
   .filter(f=>f.d)||[],[land,minDist,viewport]);
@@ -24,12 +24,12 @@ export default function LektrusMapBase({land,coastline,grid,scale=1,viewport,ter
  const top=clamp((viewport?.top??0)+10/scale,5/scale,450-5/scale);
  const left=clamp((viewport?.left??0)+5/scale,4/scale,900-4/scale);
  return <>
-  <rect width="900" height="450" fill="#dfedf9"/>
+  <rect width="900" height="450" fill={theme==="minerals"?"#e6eef0":"#dfedf9"}/>
   <g className="lektrus-atlas-base-land" pointerEvents="none">
-   {landPaths.map(f=><path key={f.id} d={f.d} fill="#e4ebdf" fillRule="evenodd" stroke="none"/>)}
+   {landPaths.map(f=><path key={f.id} d={f.d} fill={theme==="minerals"?"#f4ecd6":"#e4ebdf"} fillRule="evenodd" stroke="none"/>)}
   </g>
   {terrain}
-  <g className="lektrus-atlas-base-coast" pointerEvents="none" stroke="#9bb6bc"
+  <g className="lektrus-atlas-base-coast" pointerEvents="none" stroke={theme==="minerals"?"#a2aaa0":"#9bb6bc"}
    strokeWidth=".48" vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round">
    {coastPaths.map(f=><path key={f.id} d={f.d} vectorEffect="non-scaling-stroke"/>)}
   </g>
