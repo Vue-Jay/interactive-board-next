@@ -13,10 +13,18 @@ export const atlasModesFor=(subject:AtlasSubject)=>atlasModes.filter(m=>subject=
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
 export type ContourMark={id:string;lat:number;lon:number;text:string;kind:"label"|"point";color:string};
 export type ContourStroke={id:string;points:Array<[number,number]>;color:string};
+export type ContourAssignment={
+ showBorders:boolean;showRegions:boolean;showCoastline:boolean;showRivers:boolean;showLakes:boolean;
+ showGrid:boolean;allowLabels:boolean;allowPoints:boolean;allowDrawing:boolean;allowFill:boolean;
+};
+export const defaultContourAssignment:ContourAssignment={
+ showBorders:true,showRegions:false,showCoastline:true,showRivers:true,showLakes:true,
+ showGrid:true,allowLabels:true,allowPoints:true,allowDrawing:true,allowFill:true
+};
 export type AtlasDocument={
  kind:"atlas";title:string;mode:AtlasMode;scope?:AtlasSubject;year:number;showLabels:boolean;
  showGrid:boolean;showCoordinates?:boolean;showCities?:boolean;showEvents:boolean;markers:AtlasMarker[];borderView?:"source"|"russian";regionId?:string;hypsometry?:boolean;cityMinPopulation?:number;cityCategory?:"all"|"capitals"|"regional"|"ordinary";paintedCountries?:Record<string,string>;
- contourMarks?:ContourMark[];contourStrokes?:ContourStroke[];contourTask?:string;contourLegend?:Array<{id:string;symbol:string;meaning:string}>;
+ contourMarks?:ContourMark[];contourStrokes?:ContourStroke[];contourTask?:string;contourAssignment?:ContourAssignment;contourLegend?:Array<{id:string;symbol:string;meaning:string}>;
 };
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
  {id:"political",title:"Политическая",hint:"Современные государства, названия и границы"},
@@ -182,7 +190,7 @@ export function eventsNearYear(year:number){
 }
 export function createAtlasDocument(scope:AtlasSubject="geography"):AtlasDocument{
  return {kind:"atlas",scope,title:scope==="history"?"Исторический атлас":"Географический атлас",mode:scope==="history"?"historical":"political",year:1914,
-  showLabels:true,showGrid:false,showCoordinates:false,showCities:true,showEvents:false,markers:[],borderView:"russian",regionId:"world",hypsometry:true,cityMinPopulation:0,cityCategory:"all",paintedCountries:{}};
+  showLabels:true,showGrid:false,showCoordinates:false,showCities:true,showEvents:false,markers:[],borderView:"russian",regionId:"world",hypsometry:true,cityMinPopulation:0,cityCategory:"all",paintedCountries:{},contourAssignment:{...defaultContourAssignment}};
 }
 const isText=(v:unknown,max:number,allowEmpty=false)=>typeof v==="string"&&v.length<=max&&(allowEmpty||v.trim().length>0);
 export function validAtlasDocument(value:unknown):value is AtlasDocument{
@@ -199,6 +207,12 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
    (v.cityMinPopulation!==undefined&&(typeof v.cityMinPopulation!=="number"||![0,50000,250000,1000000].includes(v.cityMinPopulation)))||
    (v.cityCategory!==undefined&&!["all","capitals","regional","ordinary"].includes(String(v.cityCategory))))return false;
  if(v.contourTask!==undefined&&!isText(v.contourTask,240,true))return false;
+ if(v.contourAssignment!==undefined){
+  if(!v.contourAssignment||typeof v.contourAssignment!=="object"||Array.isArray(v.contourAssignment))return false;
+  const options=v.contourAssignment as Record<string,unknown>;
+  if(Object.keys(options).some(key=>!(key in defaultContourAssignment))||
+   Object.values(options).some(value=>typeof value!=="boolean"))return false;
+ }
  if(v.contourMarks!==undefined){
   if(!Array.isArray(v.contourMarks)||v.contourMarks.length>150)return false;
   if(v.contourMarks.some((m:ContourMark)=>!m||!isText(m.id,64)||
