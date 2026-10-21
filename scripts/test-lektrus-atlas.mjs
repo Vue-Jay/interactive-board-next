@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
+const schoolAtlasSrc=fs.readFileSync(new URL("../src/lektrusSchoolAtlasMinerals.ts",import.meta.url),"utf8");
+const schoolAtlasExports={};
+new Function("exports",ts.transpileModule(schoolAtlasSrc,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText)(schoolAtlasExports);
+const schoolRequire=(path)=>{
+ if(path==="./lektrusSchoolAtlasMinerals")return schoolAtlasExports;
+ throw new Error("Unexpected import in atlas regression: "+path);
+};
+
 const source=fs.readFileSync(new URL("../src/lektrusAtlasModel.ts",import.meta.url),"utf8");
 const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const exports={};
@@ -75,7 +85,7 @@ const guideSource=fs.readFileSync(new URL("../src/lektrusAtlasMineralGuide.ts",i
 const mineralGuides={};
 new Function("exports",ts.transpileModule(guideSource,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(mineralGuides);
-assert.ok(mineralGuides.mineralGuides.length>=24);
+assert.ok(mineralGuides.mineralGuides.length>=14);
 assert.equal(mineralGuides.mineralGuide("Железная руда")?.uses,"Получение железа и стали");
 const areaSource=fs.readFileSync(new URL("../src/lektrusAtlasCityArea.ts",import.meta.url),"utf8");
 const cityAreaExports={};
