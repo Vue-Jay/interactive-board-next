@@ -15,6 +15,13 @@ const {defaultProgrammingDiagram,validateProgrammingDiagram,programmingPresets}=
 const original=defaultProgrammingDiagram();
 assert.equal(validateProgrammingDiagram(original),true);
 assert.equal(original.kind,"programming");
+assert.equal(original.tests?.length,2,"initial lesson contains two teacher test cases");
+assert.equal(validateProgrammingDiagram({...original,tests:[]}),true);
+assert.equal(validateProgrammingDiagram({...original,tests:[...original.tests,{...original.tests[0],id:"repeat"}]}),true);
+assert.equal(validateProgrammingDiagram({...original,tests:[...original.tests,original.tests[0]]}),false);
+assert.equal(validateProgrammingDiagram({...original,tests:[{id:"bad",name:"",stdin:"",expected:""}]}),false);
+assert.equal(validateProgrammingDiagram({...original,tests:[{id:"bad",name:"test",stdin:"",expected:"x".repeat(4001)}]}),false);
+assert.equal(model.normalizeProgramOutput("A\r\nB\r\n"),"A\nB");
 assert.match(original.code,/const name/,"Default JS program must not contain Python");
 assert.equal(new Set(programmingPresets.map(v=>v.id)).size,programmingPresets.length);
 for(const lang of ["python","javascript","typescript"]){
@@ -78,5 +85,10 @@ const view=fs.readFileSync(new URL("../src/LektrusSchoolDiagramView.tsx",import.
 assert.match(view,/LektrusProgrammingView/);
 const component=fs.readFileSync(new URL("../src/LektrusProgrammingView.tsx",import.meta.url),"utf8");
 assert.match(component,/sandbox="allow-scripts"/);
+assert.match(component,/setSource/,"students can edit their own code");
+assert.match(component,/setStdin/,"students can try their own inputs");
+assert.match(component,/normalizeProgramOutput/,"compare normalized output for test cases");
+assert.match(component,/Проверить тесты/);
+assert.match(component,/batch\.current/);
 assert.doesNotMatch(component,/allow-same-origin/);
 console.log("Programming tools: three languages, validated model, JS/TS execution, console errors, and sandbox wiring passed.");
