@@ -349,7 +349,10 @@ assert.equal(places.limitCitySymbols(nearbyCities,8,10).length,3,
 assert.match(map,/Math\.log2\(Math\.max\(1,scale\)\)/);
 assert.match(map,/lektrus-atlas-coordinate-toggle/);
 assert.match(map,/mode:normalizeAtlasMode\(d\.mode\),showCoordinates:enabled/,"legacy coordinate overlay can be disabled");
-assert.match(map,/infoTab==="sources"/);
+assert.match(map,/lektrus-atlas-source-details/);
+assert.doesNotMatch(map,/lektrus-atlas-info-tabs/,"Information is a single unified panel");
+assert.match(map,/fetchAtlasSchoolReference/);
+assert.match(map,/scale>=2\.6\)capitalLabels/,"Country names appear before capital labels");
 assert.match(map,/zoomAtlasCamera\(cameraRef\.current,next,point\)/);
 assert.match(map,/scale<1\.6\?75/,"world overview should not render hundreds of city markers");
 assert.equal(validAtlasDocument({...atlas,borderView:"source"}),true);
