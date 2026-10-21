@@ -6,7 +6,7 @@ export type MineralMapCluster<T=unknown>={
 };
 export function clusterMineralMapPoints<T>(points:MineralMapPoint<T>[],scale:number,filter:string,
  limit=170):MineralMapCluster<T>[]{
- const cell=scale<2?24:scale<4?29:36;
+ const cell=scale<2?38:scale<4?42:36;
  const bins=new Map<string,{sumX:number;sumY:number;members:MineralMapPoint<T>[];names:Map<string,number>}>();
  for(const p of points){
   if(filter!=="Все виды"&&p.commodity.name!==filter)continue;
