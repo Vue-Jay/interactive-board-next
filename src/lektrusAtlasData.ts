@@ -333,7 +333,38 @@ function pathForRing(points:number[][],close:boolean,minDistance=.62,viewport?:M
   return selected.map(([x,y],i)=>(i?"L":"M")+x.toFixed(digits)+" "+y.toFixed(digits)).join("")+(shouldClose?"Z":"");
  }).filter(Boolean).join("");
 }
+// Cached geographic extents let us reject offscreen geometries BEFORE their
+// potentially tens of thousands of vertices are projected into SVG paths.
+const extentMemo=new WeakMap<GeoFeature,[number,number,number,number]>();
+function geographicExtent(f:GeoFeature):[number,number,number,number]{
+ const cached=extentMemo.get(f);if(cached)return cached;
+ if(f.bbox?.length===4&&f.bbox.every(Number.isFinite)){
+  const b=f.bbox as [number,number,number,number];extentMemo.set(f,b);return b;
+ }
+ let west=Infinity,east=-Infinity,south=Infinity,north=-Infinity;
+ const traverse=(value:unknown):void=>{
+  if(!Array.isArray(value))return;
+  if(value.length>=2&&typeof value[0]==="number"&&typeof value[1]==="number"){
+   const lon=value[0],lat=value[1];
+   if(Number.isFinite(lon)&&Number.isFinite(lat)){
+    west=Math.min(west,lon);east=Math.max(east,lon);
+    south=Math.min(south,lat);north=Math.max(north,lat);
+   }
+  }else for(const child of value)traverse(child);
+ };
+ traverse(f.geometry?.coordinates);
+ const result:[number,number,number,number]=[west,south,east,north];
+ extentMemo.set(f,result);return result;
+}
+export function featureIntersectsViewport(f:GeoFeature,view:MapWindow):boolean{
+ const [west,south,east,north]=geographicExtent(f);
+ if(!Number.isFinite(west))return false;
+ const left=(west+180)*2.5,right=(east+180)*2.5;
+ const top=(90-north)*2.5,bottom=(90-south)*2.5;
+ return right>=view.left&&left<=view.right&&bottom>=view.top&&top<=view.bottom;
+}
 export function mapFeaturePath(f:GeoFeature,minDistance=.62,viewport?:MapWindow):string{
+ if(viewport&&!featureIntersectsViewport(f,viewport))return "";
  const all:string[]=[];
  if(f.geometry?.type==="Polygon"||f.geometry?.type==="MultiPolygon"){
   for(const multi of polygons(f))for(const ring of multi){
