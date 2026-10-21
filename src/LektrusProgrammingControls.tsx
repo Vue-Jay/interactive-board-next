@@ -50,7 +50,7 @@ export default function LektrusProgrammingControls({diagram:d,onChange}:{
    Показывать исходный код ученикам на доске
   </label>
   <div className="lektrus-school-controls-heading">Проверочные примеры ({tests.length}/8)</div>
-  <p className="lektrus-school-hint">Учитель задаёт вход и ожидаемый вывод. Ученик сможет запустить программу на всех наборах и увидеть результаты проверки. При смене языка или загрузке нового шаблона тесты очищаются.</p>
+  <p className="lektrus-school-hint">Учитель задаёт вход и ожидаемый вывод. Ученик сможет запустить программу на всех наборах и увидеть результаты проверки. При смене языка или загрузке нового шаблона тесты очищаются. Скрытие ответов только визуальное: тесты сохраняются в общем объекте доски, поэтому не подходят для секретной экзаменационной проверки.</p>
   {tests.map((test,i)=><div key={test.id} style={{border:"1px solid #d5e2ef",borderRadius:10,padding:10,marginBottom:9}}>
    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
     <span style={{fontWeight:700}}>Тест {i+1}</span>
