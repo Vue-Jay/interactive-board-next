@@ -3,9 +3,10 @@ import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
 import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} from "./lektrusAtlasSchoolFacts";
 import LektrusMapBase from "./LektrusMapBase";
+import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
-import {loadLocalInfrastructure,loadMineralDeposits,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
+import {loadLocalInfrastructure,loadCityBoundaries,canLoadCityBoundaries,loadMineralDeposits,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
  canLoadLocalRoads,canLoadMinerals,externalBBoxKey,type ExternalBounds} from "./lektrusAtlasExternal";
 import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
@@ -83,6 +84,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [cityCategory,setCityCategory]=useState<CityCategory>(d.cityCategory??"all");
  const [regions,setRegions]=useState<GeoCollection|null>(null);
  const [administrative,setAdministrative]=useState<GeoCollection|null>(null);
+ const [cityBoundaries,setCityBoundaries]=useState<GeoCollection|null>(null);
+ const [cityBoundaryError,setCityBoundaryError]=useState("");
  const [elevations,setElevations]=useState<GeoCollection|null>(null);
  const [glaciers,setGlaciers]=useState<GeoCollection|null>(null);
  const [detail,setDetail]=useState<GeoCollection|null>(null);
@@ -205,7 +208,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    ["cities",mode==="political"],
    ["cities-regional",mode==="cities"&&!detailedCities],
    ["cities-local",detailedCities],
-   ["admin-regional",regionId!=="world"&&!historical],
+   ["admin-regional",!historical&&(regionId!=="world"||mode==="cities"&&scale>=2.5)],
    ["regions",!detailedGeography&&(mode==="physical"||mode==="relief")],
    ["regions-regional",detailedGeography&&(mode==="physical"||mode==="relief")],
    ["elevation",!detailedGeography&&(mode==="physical"||mode==="relief")],
@@ -258,7 +261,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    setError(e instanceof Error?e.message:String(e));setLoading(false);
   });
   return()=>{active=false};
- },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,detailedCities,veryDetailedHydro,regionId,needsPoliticalGeometry]);
+ },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,detailedCities,veryDetailedHydro,regionId,needsPoliticalGeometry,scale>=2.5]);
  useEffect(()=>{
   let active=true;
   if(!modernBorders||scale<5||russianView){setDetail(null);setDetailWarning("");return}
@@ -283,6 +286,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   {left:(tileX-3)*tileWidth,right:(tileX+3)*tileWidth,
    top:(tileY-3)*tileHeight,bottom:(tileY+3)*tileHeight}:undefined,
   [highDetail,tileX,tileY,tileScale,scale>=8]);
+ const politicalColors=useMemo(()=>colorPoliticalCountries(mapSourceFeatures),[mapSourceFeatures]);
  const shapes=useMemo(()=>mapSourceFeatures.map((feature,i)=>({
   feature,path:mapFeaturePath(feature,precision,viewport),
   name:atlasDisplayName(feature,snapshot.year,historical&&!modernReference),i
@@ -308,7 +312,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  })).filter(f=>f.point).sort((a,b)=>
   Number(a.feature.properties?.scalerank??a.feature.properties?.SCALERANK??9)-
   Number(b.feature.properties?.scalerank??b.feature.properties?.SCALERANK??9))||[],[lakes]);
- const provincePaths=useMemo(()=>administrative?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,.12,viewport),feature:f})).filter(f=>f.path)||[],[administrative,viewport]);
+ const provincePaths=useMemo(()=>administrative?.features.filter(f=>f.geometry&&(f.geometry.type==="Polygon"||f.geometry.type==="MultiPolygon")).map((f,i)=>({id:i,path:mapFeaturePath(f,.12,viewport),feature:f})).filter(f=>f.path)||[],[administrative,viewport]);
  const landforms=useMemo(()=>regions?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
   .filter(v=>v.path)||[],[regions,detailedGeography,viewport]);
  const ice=useMemo(()=>glaciers?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
@@ -366,6 +370,21 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   .filter(f=>f.properties?.ATLAS_KIND==="waterway")
   .map((feature,id)=>({id,feature,point:featureLineMidpoint(feature)}))
   .filter(f=>f.point).slice(0,80)??[],[infrastructure]);
+ useEffect(()=>{
+  let active=true;
+  if(mode!=="cities"||!canLoadCityBoundaries(externalBounds)){
+   setCityBoundaries(null);setCityBoundaryError("");return()=>{active=false};
+  }
+  loadCityBoundaries(externalBounds).then(data=>{if(active){
+   setCityBoundaries(data);setCityBoundaryError("");
+  }}).catch(()=>{if(active){setCityBoundaries(null);
+   setCityBoundaryError("Границы городов OpenStreetMap временно недоступны.");}});
+  return()=>{active=false};
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[mode,externalKey]);
+ const cityBoundaryPaths=useMemo(()=>cityBoundaries?.features.map((f,id)=>({
+  id,feature:f,path:mapFeaturePath(f,Math.max(.0001,.32/Math.max(1,scale)),viewport)
+ })).filter(f=>f.path)??[],[cityBoundaries,viewport,Math.floor(Math.log2(scale))]);
  const mineralPoints=useMemo(()=>minerals?.features.flatMap((feature,id)=>{
   const point=featureMapPoint(feature),commodity=mineralCommodity(feature);
   return point&&commodity?[{id,point,feature,commodity}]:[];
@@ -740,7 +759,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       zoomAt(cameraRef.current.scale*(e.deltaY<0?1.16:1/1.16),anchor);
      }}>
      <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
-      <LektrusMapBase land={baseLand} coastline={baseCoastline}
+      <LektrusMapBase land={baseLand} coastline={baseCoastline} theme={mode==="minerals"?"minerals":"default"}
        grid={d.showGrid||coordinatesEnabled} scale={scale} viewport={viewport}
         terrain={<LektrusAtlasTerrain enabled={terrainEnabled} scale={scale} position={position}
          onStatus={setTerrainStatus}/>}/>
