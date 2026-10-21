@@ -99,6 +99,14 @@ export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCol
   const p=feature.properties??{};
   const iso=String(p.ISO_A2??p.iso_a2??"").toUpperCase();
   const raw=String(p.NAME??p.name??"");
+  const nameCandidates=[raw,String(p.NAME_RU??""),String(p.NAMEASCII??"")];
+  if(iso==="KZ"&&nameCandidates.some(v=>/^(?:nur[-\\s]?sultan|нур[-\\s]?султан|astana|астана)$/iu.test(v.trim()))){
+   return {...feature,properties:{...p,NAME:"Astana",NAMEASCII:"Astana",
+    NAME_RU:"Астана",NAME_ALT:"Нур-Султан",ADM0CAP:1,CAPALT:0,
+    FEATURECLA:"Admin-0 capital",
+    CAPITAL_CORRECTION_RU:"Столица Казахстана вновь называется Астана с 17 сентября 2022 года.",
+    CAPITAL_CORRECTION_URL:"https://akorda.kz/ru/o-pereimenovanii-goroda-nur-sultana-stolicy-respubliki-kazahstan-v-gorod-astanu-stolicu-respubliki-kazahstan-1782457"}};
+  }
   const relevant=CAPITAL_UPDATES.find(c=>c.country===iso&&(c.old===raw||c.current===raw));
   if(!relevant)return feature;
   const isNew=relevant.current===raw;
