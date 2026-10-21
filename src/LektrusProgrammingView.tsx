@@ -24,6 +24,7 @@ export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingD
  const [source,setSource]=useState(d.code);
  const [stdin,setStdin]=useState(d.stdin);
  const [output,setOutput]=useState<OutputLine[]>([]);
+ const [progress,setProgress]=useState("");
  const [outcomes,setOutcomes]=useState<Outcome[]>([]);
  const running=status==="running"||status==="compiling";
  const tests=d.tests??[];
@@ -34,6 +35,7 @@ export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingD
   setSource(d.code);
   setStdin(d.stdin);
   setOutput([]);
+  setProgress("");
   setOutcomes([]);
   setStatus("idle");
  },[d.code,d.stdin,d.language,d.tests]);
@@ -46,6 +48,7 @@ export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingD
    if(!msg||msg.channel!==CHANNEL)return;
    if(msg.type==="ready"){setReady(true);return}
    if(msg.token!==token.current||msg.runId!==sequence.current)return;
+   if(msg.type==="progress"&&typeof msg.text==="string"){setProgress(msg.text.slice(0,200));return}
    if(msg.type==="line"&&typeof msg.text==="string"){
     const level=msg.level==="warning"||msg.level==="error"?msg.level:"log";
     const active=batch.current;
@@ -57,6 +60,7 @@ export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingD
     }
    }
    if(msg.type!=="done")return;
+   setProgress("");
    const resultStatus:RunStatus=["success","error","timeout","stopped"].includes(msg.status||"")?
     msg.status as RunStatus:"error";
    const active=batch.current;
@@ -114,6 +118,7 @@ export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingD
   const startId=++sequence.current;
   batch.current=null;
   setOutput([]);
+  setProgress("");
   setOutcomes([]);
   setStatus(d.language==="typescript"?"compiling":"running");
   const compiled=await compile();
@@ -134,6 +139,7 @@ export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingD
   },"*");
   sequence.current++;
   batch.current=null;
+  setProgress("");
   setStatus("stopped");
  };
  const reset=()=>{
@@ -141,6 +147,7 @@ export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingD
   setSource(d.code);
   setStdin(d.stdin);
   setOutput([]);
+  setProgress("");
   setOutcomes([]);
   setStatus("idle");
  };
@@ -188,7 +195,7 @@ export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingD
   </label>
   <div style={{fontSize:13,fontWeight:700,display:"flex",gap:10,alignItems:"center"}}>
    Консоль <span role="status" style={{fontWeight:500,color:status==="error"?"#b04e4e":"#6082a1"}}>
-    {statusNames[status]}</span>
+    {statusNames[status]}</span>{progress&&<span style={{fontSize:12,fontWeight:400}}>{progress}</span>}
   </div>
   <div role="log" aria-live="polite" aria-label="Результат выполнения"
    style={{flex:"1 1 70px",minHeight:70,maxHeight:200,
