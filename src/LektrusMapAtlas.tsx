@@ -357,14 +357,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   pt[1]>=visibleWorld.top-12/scale&&pt[1]<=visibleWorld.bottom+12/scale;
  const eligibleCities=cityPoints.filter(f=>visiblePoint(f.point)&&
   ((cityPopulation(f.feature)>=minCityPopulation&&matchesCityCategory(f.feature,cityCategory))||f.feature===selected));
- const visibleCitySymbols=limitCitySymbols(eligibleCities,scale,850);
+ const visibleCitySymbols=limitCitySymbols(eligibleCities,scale,scale<1.6?75:scale<3?130:scale<8?240:scale<24?440:720);
  const focusCity=eligibleCities.find(f=>f.feature===selected);
  const shownCities=focusCity&&!visibleCitySymbols.some(f=>f.feature===selected)?
   [...visibleCitySymbols,focusCity]:visibleCitySymbols;
  const shownCapitals=cityPoints.filter(f=>visiblePoint(f.point)&&nationalCapital(f.feature));
  const totalCapitals=cityPoints.filter(f=>nationalCapital(f.feature)).length;
- const cityLabels=chooseCityLabels(shownCities,scale,scale>=20?190:scale>=5?115:55);
- const capitalLabels=chooseCityLabels(shownCapitals,scale,scale>=8?110:scale>=3?65:38);
+ const cityLabels=chooseCityLabels(shownCities,scale,scale>=20?145:scale>=7?75:scale>=3?40:15);
+ const capitalLabels=chooseCityLabels(shownCapitals,scale,scale>=8?90:scale>=3?40:18);
  const shownPeaks=peakPoints.filter(f=>visiblePoint(f.point));
  const shownRiverNames=riverNames.filter(f=>visiblePoint(f.point));
  const shownLakeNames=lakeNames.filter(f=>visiblePoint(f.point));
@@ -725,7 +725,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        strokeWidth="1.1" strokeDasharray="4 2" pointerEvents="none">
        {previous.features.filter(f=>!!atlasDisplayName(f,historicalSnapshots[Math.max(0,index-1)].year,true)).map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)} vectorEffect="non-scaling-stroke"/>)}
       </g>}
-      {d.showLabels&&mode!=="contour"&&<g fill="#44566a" fontSize={mapText(9.2)} fontWeight="700"
+      {d.showLabels&&mode!=="contour"&&<g fill="#44566a" fontSize={mapText(mode==="physical"?7.5:8.5)} fontWeight="650"
        textAnchor="middle" pointerEvents="none" stroke="#fff" strokeWidth={1.5/scale} paintOrder="stroke">
        {labels.map(s=><text key={s.i} x={s.anchor!.x} y={s.anchor!.y}>{s.name.slice(0,23)}</text>)}
       </g>}
@@ -775,7 +775,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,28)}</text>)}
        </g>}
       {(mode==="physical"||mode==="relief")&&<g>
-       {shownPeaks.map(f=><g key={"elevation-"+f.id}
+       {shownPeaks.filter((_,i)=>scale>=4||i%5===0).map(f=><g key={"elevation-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" onClick={()=>selectFeature(f.feature,"Высотная отметка")}>
         <path d="M0 -4L4 3H-4Z" fill="#816245" stroke="#fff" strokeWidth=".7"/>
