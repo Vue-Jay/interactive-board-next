@@ -68,25 +68,24 @@ export function loadLocalInfrastructure(b:ExternalBounds,kind:"roads"|"waterways
   return {type:"FeatureCollection",features};
  });
 }
+/** Only types in the Russian school atlas. Specialized USGS commodities stay
+ * in the source database but are not rendered as extra school map symbols. */
 const mineralWords:ReadonlyArray<[RegExp,string,string]>=[
- [/gold|aurum|золот/i,"Золото","#dfb345"],[/silver|argent|серебр/i,"Серебро","#aab8c4"],
- [/copper|медн|cupr/i,"Медь","#c2794f"],[/iron|желез|ferrous/i,"Железная руда","#ab6252"],
- // This USGS major-deposit source does not index petroleum or coal fields.
- // Never advertise unavailable fossil-fuel layers as if populated.
- [/uranium|уран/i,"Уран","#92a750"],[/diamonds?|алмаз/i,"Алмазы","#8ccad6"],
- [/lithium|литий/i,"Литий","#a782ba"],[/nickel|никел/i,"Никель","#7f9697"],
- [/bauxite|aluminum|aluminium|боксит/i,"Бокситы и алюминий","#c99987"],
- [/tin\b|олов/i,"Олово","#95b1b2"],[/lead|свин/i,"Свинец","#858f9b"],
- [/zinc|цинк/i,"Цинк","#94a694"],[/potash|potassium|калийн/i,"Калийные соли","#c1a3cc"],
- [/phosphate|фосфат/i,"Фосфориты","#7cb394"],[/tungsten|вольфрам/i,"Вольфрам","#9f8e80"],
- [/manganese|марганец/i,"Марганец","#9c8fba"],[/rare earth|редкозем/i,"Редкоземельные элементы","#8baab8"],
- [/molybdenum|молибден/i,"Молибден","#7b99a6"],[/cobalt|кобальт/i,"Кобальт","#7696b5"],
- [/beryllium|берил/i,"Бериллий","#a6bf98"],[/titanium|титан/i,"Титан","#969db0"],
- [/chromium|chromite|хром/i,"Хромиты","#779c90"],[/platinum|платин/i,"Платина","#c6b4cb"],
- [/barite|baryte|барит/i,"Барит","#ae9aa6"],[/gypsum|гипс/i,"Гипс","#d2c5a2"],
- [/salt|halite|галит/i,"Каменная соль","#d9bba1"],
- [/boron|borate|борн/i,"Борные минералы","#c9aa81"],
- [/kaolin|каолин/i,"Каолин","#c2c5ae"],[/fluorite|fluorspar|флюорит/i,"Флюорит","#9cafc9"]
+ [/iron\b|iron ore|железн|ferrous/i,"Железная руда","#ab6252"],
+ [/manganese|марганц/i,"Марганец","#9c8fba"],
+ [/chromium|chromite|хромит/i,"Хромиты","#779c90"],
+ [/nickel|никел/i,"Никель","#7f9697"],
+ [/tungsten|вольфрам/i,"Вольфрам","#9f8e80"],
+ [/molybdenum|молибден/i,"Молибден","#7b99a6"],
+ [/bauxite|alumini?um|боксит|алюмини/i,"Бокситы и алюминий","#c99987"],
+ [/copper|медн|cupr/i,"Медь","#c2794f"],
+ [/polymetallic|lead|zinc|свинц|цинк|полиметал/i,"Полиметаллические руды","#858f9b"],
+ [/\btin\b|олов/i,"Олово","#95b1b2"],
+ [/gold|aurum|золот/i,"Золото","#dfb345"],
+ [/diamonds?|алмаз/i,"Алмазы","#8ccad6"],
+ [/apatite|phosphate|phosphorite|апатит|фосфат|фосфорит/i,"Апатиты и фосфориты","#7cb394"],
+ [/potash|potassium|калийн|калийн?\s*сол/i,"Калийные соли","#c1a3cc"],
+ [/halite|rock salt|каменн(?:ая|ой)\s*сол|поваренн(?:ая|ой)\s*сол/i,"Каменная соль","#d9bba1"]
 ];
 export const mineralTypes=mineralWords.map(x=>({name:x[1],color:x[2]}));
 export function mineralCommodity(feature:GeoFeature):{name:string;color:string}|null{
