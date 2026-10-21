@@ -1362,7 +1362,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        mode==="physical"?"Изучайте материки, океаны, горные системы, реки, озёра и высоты. Приближайте территорию, чтобы увидеть больше подписей и водных объектов.":
        
        mode==="minerals"?"Условные знаки показывают документированные месторождения. Крупные города, реки и приглушённый рельеф помогают определить положение объектов; подложка не обозначает запасы сырья.":
-       mode==="contour"?"Наносите подписи, условные знаки, линии и тематическую заливку, работайте с легендой. Карту можно приближать и перемещать.":
        "Выберите период и территорию, чтобы изучить исторические изменения. Границы исторических эпох являются научными реконструкциями."}</p>
       {modernBorders&&mode==="political"&&<p className="lektrus-atlas-study-note">
        Государственные границы показаны по российскому варианту картографической базы Natural Earth RUS.
@@ -1558,13 +1557,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <small>В фильтре «Другие города и посёлки» отображаются не административные центры, а населённые пункты категории Populated place. Начиная с увеличения ×4 подключается база 1:10 млн.</small>
      <small>Размер символа зависит от оценочной численности населения. Русские названия берутся из атрибутов источника. Элементы без установленного русского названия не показываются.</small>
     </div>}
-    {mode!=="contour"&&!historical&&<label>Поиск объектов
+    {!historical&&<label>Поиск объектов
      <input value={search} onChange={e=>setSearch(e.target.value)}
       placeholder={mode==="political"?"Страна, регион или город":mode==="hydrography"?"Река или озеро":
        mode==="relief"?"Горы, пустыня, вершина":"Страна или территория"}/>
      {search.trim()&&<small>Найдено: {filteredCount}</small>}
     </label>}
-    {search.trim()&&mode!=="contour"&&!historical&&<div className="lektrus-atlas-search-results">
+    {search.trim()&&!historical&&<div className="lektrus-atlas-search-results">
      {results.length?results.map((f,i)=><button key={i} type="button"
       onClick={()=>focusFeature(f)}>{atlasDisplayName(f,snapshot.year,historical&&!modernReference)}</button>):
       <small>Совпадений нет среди названий из картографической базы. Попробуйте уточнить запрос.</small>}
@@ -1751,7 +1750,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      {mode==="hydrography"&&<p>Реки, озёра и морские акватории Natural Earth. При сильном приближении автоматически подключается детализация 1:10 млн; если источник недоступен, сохраняется слой 1:50 млн. Нажмите на объект или найдите его по названию.</p>}
      {mode==="relief"&&<p>При включённой гипсометрии цвета рассчитаны по высотам DEM; без неё заливка обозначает тип природной области. Подписи высот берутся из атрибутов Natural Earth.</p>}
      {citiesOn&&<p>На политической карте столицы появляются после стран, регионы и города постепенно показываются при приближении. Городские границы берутся из OSM там, где доступны геометрии.</p>}
-     {mode==="contour"&&<p>Школьная контурная карта: готовые названия скрыты. Подписывайте объекты, наносите условные знаки и маршруты, выполняйте цветовую заливку и оформляйте легенду непосредственно на карте.</p>}
     </div>}
     {historical&&historyTab==="changes"&&index>0&&<label className="lektrus-atlas-compare">
      <input type="checkbox" checked={compare} onChange={e=>setCompare(e.target.checked)}/>
