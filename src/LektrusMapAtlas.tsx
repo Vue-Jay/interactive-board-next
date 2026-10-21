@@ -6,7 +6,7 @@ import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} f
 import LektrusMapBase from "./LektrusMapBase";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
-import {SCHOOL_ATLAS_GROUPS,SCHOOL_ATLAS_MINERALS} from "./lektrusSchoolAtlasMinerals";
+import {SCHOOL_ATLAS_GROUPS,SCHOOL_ATLAS_MINERALS,SCHOOL_ATLAS_FUEL_MINERALS} from "./lektrusSchoolAtlasMinerals";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
 import {atlasOSMCoverageTiles,loadAtlasOSMCoverage,loadMineralDeposits,loadWorldMineralOverview,mineralCommodity,mineralDepositFacts,mineralDepositSource,
@@ -1173,7 +1173,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>}
     {mode==="minerals"&&<div className="lektrus-atlas-natural-legend">
      <strong>Карта полезных ископаемых</strong>
-      <small>Знаки соответствуют принятым обозначениям школьных географических атласов для распространённых видов сырья: железная руда — треугольник, медь — прямоугольник, золото — полукруг. Для редких видов без общего знака показано буквенное сокращение.</small>
+      <small>Все условные знаки повторяют присланную легенду школьного атласа. Обозначения нарисованы геометрическими символами, а не текстовыми сокращениями.</small>
      <label className="lektrus-atlas-city-filter">Группа сырья
       <select aria-label="Фильтр полезных ископаемых" value={mineralFilter}
        onChange={e=>{setMineralFilter(e.target.value);setSelectedMineral(null)}}>
@@ -1181,6 +1181,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        {SCHOOL_ATLAS_MINERALS.map(name=><option key={name}>{name}</option>)}
       </select>
      </label>
+     {SCHOOL_ATLAS_FUEL_MINERALS.some(name=>name===mineralFilter)&&
+      <small>Знак включён в школьную легенду, но используемая база USGS не содержит нефтяные, газовые и угольные месторождения. Их координаты не создаются искусственно.</small>}
      <small>{!localMineralDetail?
       worldMineralsLoading?"Загрузка мирового обзора месторождений USGS…":
       mineralsAvailable&&mineralLoading?"Загрузка подробных месторождений выбранного региона…":
