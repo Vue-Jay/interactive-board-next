@@ -4,7 +4,7 @@ export type AtlasMode="political"|"contour"|"physical"|"hydrography"|"relief"|"c
 export type AtlasSubject="geography"|"history";
 export const legacyAtlasModes=["hydrography","relief","coordinates"] as const;
 export function normalizeAtlasMode(mode:AtlasMode):AtlasMode{return mode==="hydrography"||mode==="relief"?"physical":mode==="coordinates"?"political":mode}
-export function normalizeAtlasDocument<T extends AtlasDocument>(document:T):T{
+export function normalizeAtlasDocument(document:AtlasDocument):AtlasDocument{
  return {...document,mode:normalizeAtlasMode(document.mode),
   showCoordinates:document.showCoordinates===true||document.mode==="coordinates"};
 }
