@@ -34,7 +34,7 @@ for(const oldMode of ["hydrography","relief","coordinates","cities"]){
  const legacy={...atlas,mode:oldMode};
  assert.equal(validAtlasDocument(legacy),true,"old saved atlas must load: "+oldMode);
  const migrated=normalizeAtlasDocument(legacy);
- assert.equal(migrated.mode,oldMode==="coordinates"?"political":"physical");
+ assert.equal(migrated.mode,oldMode==="coordinates"||oldMode==="cities"?"political":"physical");
  assert.equal(migrated.showCoordinates,oldMode==="coordinates");
 }
 assert.equal(normalizeAtlasMode("historical"),"historical");
