@@ -1,3 +1,4 @@
+import {compatibleRandomUUID} from "./cryptoUuidCompatibility";
 import {useEffect,useState} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
@@ -37,7 +38,7 @@ const titles:Record<SchoolDiagramId,string>={
  "maps-atlas":"Географические карты","contour-atlas":"Контурная карта","history-atlas":"Исторические карты",
  "ru-sentence-builder":"Конструктор предложений","language-sentence-builder":"Составление предложений","civics-structure":"Государственное устройство и общество","literature-analysis":"Анализ произведения"
 };
-const newKey=()=>crypto.randomUUID();
+const newKey=()=>compatibleRandomUUID();
 export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSave}:Props){
  const id=isSchoolDiagramId(item.graphFigureId)?item.graphFigureId:"bio-cell";
  const [draft,setDraft]=useState<SchoolDiagram>(()=>{
