@@ -96,7 +96,7 @@ function CivicsView({d}:{d:Extract<LanguageSocialDiagram,{kind:"state-structure"
    </g>;
   })}
   <text x="450" y="483" textAnchor="middle" fontSize="12" fill="#8498aa">
-   Типы и направления связей задаёт преподаватель. Это учебная модель, а не официальная организационная схема.
+   {d.templateId.startsWith("lit-")?"Содержание и связи определяет преподаватель по тексту произведения.":"Типы и направления связей задаёт преподаватель. Это учебная модель."}
   </text>
  </svg>;
 }
