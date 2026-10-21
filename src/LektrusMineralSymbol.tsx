@@ -6,6 +6,7 @@ import type {ReactNode} from "react";
  * Rare minerals lack one universal atlas sign and use an explicit abbreviation.
  */
 const codes:Record<string,string>={
+ "Каменный уголь":"C","Бурый уголь":"C","Нефть":"Н","Природный газ":"Г",
  "Золото":"Au","Серебро":"Ag","Медь":"Cu","Железная руда":"Fe",
  "Уран":"U","Алмазы":"◆","Литий":"Li","Никель":"Ni",
  "Бокситы и алюминий":"Al","Олово":"Sn","Свинец":"Pb","Цинк":"Zn",
@@ -15,17 +16,17 @@ const codes:Record<string,string>={
  "Барит":"Ba","Гипс":"Ca","Каменная соль":"NaCl",
  "Борные минералы":"B","Каолин":"Ka","Флюорит":"F"
 };
-type SchoolMineralGlyph="iron"|"copper"|"gold"|"bauxite"|"nickel"|"manganese"|
- "chromium"|"tungsten"|"molybdenum"|"tin"|"uranium"|"diamonds"|"potash"|
- "phosphates"|"lead-zinc"|"silver"|"generic";
+type SchoolMineralGlyph="coal"|"brown-coal"|"oil"|"gas"|"iron"|"copper"|"gold"|"bauxite"|"nickel"|"manganese"|
+ "chromium"|"tungsten"|"molybdenum"|"tin"|"diamonds"|"lead-zinc"|"generic";
 const atlasSigns:Record<string,SchoolMineralGlyph>={
+ "Каменный уголь":"coal","Бурый уголь":"brown-coal",
+ "Нефть":"oil","Природный газ":"gas",
  "Железная руда":"iron","Медь":"copper","Золото":"gold",
  "Бокситы и алюминий":"bauxite","Никель":"nickel",
  "Марганец":"manganese","Хромиты":"chromium",
  "Вольфрам":"tungsten","Молибден":"molybdenum",
- "Олово":"tin","Уран":"uranium","Алмазы":"diamonds",
- "Калийные соли":"potash","Фосфориты":"phosphates",
- "Свинец":"lead-zinc","Цинк":"lead-zinc","Серебро":"silver"
+ "Олово":"tin","Алмазы":"diamonds",
+ "Свинец":"lead-zinc","Цинк":"lead-zinc"
 };
 const nonmetalNames=new Set([
  "Алмазы","Калийные соли","Фосфориты","Барит","Гипс","Каменная соль",
@@ -44,6 +45,12 @@ export const mineralMapSymbol=(name:string)=>{
 export function MineralAtlasGlyph({name}:{name:string}):ReactNode{
  const sym=mineralMapSymbol(name),ink="#20292e";
  switch(sym.glyph){
+  case "coal":return <rect x="-9" y="-9" width="18" height="18" fill={ink}/>;
+  case "brown-coal":return <><rect x="-9" y="-9" width="18" height="18" fill="#fff"
+   stroke={ink} strokeWidth="1.8"/><path d="M-12 4L4 -12M-7 10L10 -7M-1 12L12 -1"
+   stroke={ink} strokeWidth="2.5"/></>;
+  case "oil":return <path d="M0 -9L8.5 9H-8.5Z" fill={ink}/>;
+  case "gas":return <path d="M0 -9L8.5 9H-8.5Z" fill="#fff" stroke={ink} strokeWidth="2.2"/>;
   case "iron":return <path d="M0 -9L9.1 8H-9.1Z" fill={ink}/>;
   case "copper":return <rect x="-9.5" y="-4.8" width="19" height="9.6" fill={ink}/>;
   case "gold":return <><circle r="8.2" stroke={ink} strokeWidth="1.9" fill="#fff"/>
@@ -62,17 +69,10 @@ export function MineralAtlasGlyph({name}:{name:string}):ReactNode{
    <rect x="-4.2" y="-4.2" width="8.4" height="8.4" fill="#fff"/></>;
   case "tin":return <rect x="-9" y="-5.5" width="18" height="11"
    rx="4.5" fill="#fff" stroke={ink} strokeWidth="3"/>;
-  case "uranium":return <circle r="7.2" fill="#ae775d" stroke={ink} strokeWidth="1.5"/>;
   case "diamonds":return <path d="M0 -9.5L9.5 0L0 9.5L-9.5 0Z" fill={ink}/>;
-  case "potash":return <rect x="-8.4" y="-8.4" width="16.8" height="16.8"
-   fill="#fff" stroke="#398967" strokeWidth="2.7"/>;
-  case "phosphates":return <><circle r="8.2" fill="#398967"/>
-   <circle r="4" fill="#fff"/></>;
   case "lead-zinc":return <><circle r="8.4" fill={ink}/>
    <circle r="3.1" fill="#fff"/>
    <path d="M-8 0H8M0 -8V8" stroke="#fff" strokeWidth="1.6"/></>;
-  case "silver":return <><circle r="8.2" fill="#f2f5f6" stroke={ink} strokeWidth="1.7"/>
-   <path d="M-7.2 0H7.2" stroke={ink} strokeWidth="3"/></>;
   default:return <><rect x="-9" y="-9" width="18" height="18" rx="2.1"
    fill="#fff" stroke={ink} strokeWidth="1.8"/>
    <text x="0" y="3" fontSize={sym.code.length>2?6:9} textAnchor="middle"
