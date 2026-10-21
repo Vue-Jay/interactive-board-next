@@ -246,6 +246,18 @@ assert.ok(data.includes('"admin-world-lines":"ne_10m_admin_1_states_provinces_li
 assert.ok(map.includes('loadAtlasLayer(selectedLayer)'),"atlas must actually load the selected global administrative lines");
 assert.ok(map.includes('loadAtlasLayer("admin-world-overview")'),"detailed boundary source needs a 50m fallback");
 assert.ok(map.includes("worldAdminLinePaths.map"),"world admin-1 polylines are rendered");
+assert.match(map,/selectedLayer=scale>=12\?"admin-world-lines":"admin-world-overview"/,
+ "region boundaries should use global overview first and 10m linework after zoom");
+assert.ok(map.includes('loadAtlasLayer("admin-world-overview")'),
+ "a failed detailed boundary fetch must fall back to the global overview");
+const mineralGlyphSource=fs.readFileSync(new URL("../src/LektrusMineralSymbol.tsx",import.meta.url),"utf8");
+for(const schoolGlyph of ["coal","brown-coal","oil","gas","iron","copper","gold",
+ "bauxite","nickel","chromium","tungsten","molybdenum","tin"]){
+ assert.ok(mineralGlyphSource.includes('case "'+schoolGlyph+'":'),
+  schoolGlyph+" should have an explicit pictogram matching the school atlas legend");
+}
+assert.ok(map.includes("Условные знаки горючих ископаемых"),
+ "fuel signs are available for education without fabricated mine locations");
 assert.match(map,/MAX_ATLAS_ZOOM=16384/);
 assert.match(map,/featureFocusBounds/);
 assert.ok(!map.includes("tinyPoints.map"),"tiny country pins must not be drawn");
