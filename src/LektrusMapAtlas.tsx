@@ -924,7 +924,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {mode==="minerals"&&!localMineralDetail&&<g className="lektrus-atlas-mineral-clusters">
        {mineralGroups.filter(group=>group.point[0]>=visibleWorld.left&&group.point[0]<=visibleWorld.right&&
         group.point[1]>=visibleWorld.top&&group.point[1]<=visibleWorld.bottom).map(group=>{
-        const symbol=mineralMapSymbol(group.dominant),radius=group.count>=20?13:group.count>=8?11:9;
+        const symbol=mineralMapSymbol(group.dominant),radius=8;
         const choose=()=>{
          if(group.count===1){setSelectedMineral(group.representative.feature);setSelected(null)}
          else {
@@ -939,11 +939,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          role="button" tabIndex={0}
          onClick={e=>{e.stopPropagation();choose()}}
          onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();choose()}}}>
-         <circle r={radius+2} fill="#fff" fillOpacity=".94" stroke="#d9bf91" strokeWidth="1.4"/>
-         <circle r={radius} fill={symbol.fill} stroke="#fff" strokeWidth=".7"/>
-         <text x="0" y="3.3" textAnchor="middle" fontSize={group.count>=10?9:10}
-          fill="#fff" stroke="#193c3b" strokeWidth=".25" paintOrder="stroke" fontWeight="800">
-          {group.count>1?String(group.count):symbol.code}</text>
+         <circle r={radius+1.2} fill="#fff" fillOpacity=".95" stroke="#b4b9a6" strokeWidth="1.1"/>
+         {symbol.group==="Нерудные"?
+          <path d="M0 -7.6L7.6 0 0 7.6 -7.6 0Z" fill={symbol.fill} stroke="#fff" strokeWidth=".8"/>:
+          <path d="M0 -7.6L8 6.5 -8 6.5Z" fill={symbol.fill} stroke="#fff" strokeWidth=".8"/>}
+         <text x="0" y="3" textAnchor="middle" fontSize={symbol.code.length>3?4.4:symbol.code.length>2?5.3:6.7}
+          fill="#fff" fontWeight="800">{symbol.code}</text>
+         {group.count>1&&<g transform="translate(7 -7)">
+          <circle r="4.9" fill="#344e6a" stroke="#fff" strokeWidth="1"/>
+          <text x="0" y="1.9" textAnchor="middle" fontSize={group.count>=100?4.1:5.2}
+           fontWeight="750" fill="#fff">{group.count>99?"99+":group.count}</text>
+         </g>}
          <title>{group.count>1?
           group.count+" записей о месторождениях в обзорной выборке USGS. Нажмите для приближения.":
           group.dominant+" (USGS)"}</title>
