@@ -146,3 +146,54 @@ export function mineralDepositSource(feature:GeoFeature):string|null{
  if(/^https:\/\/[^\s]+$/i.test(url)&&/^https:\/\/(?:[^/]+\.)?(?:usgs\.gov|mrdata\.usgs\.gov)\//i.test(url))return url;
  return null;
 }
+
+/** Real administrative boundaries for cities across the world, queried for the
+ * current small viewport. Coverage depends on locally mapped OSM relations.
+ * No guessed municipality outlines are ever drawn. */
+export const canLoadCityBoundaries=(b:ExternalBounds)=>
+ sane(b)&&b.east-b.west<=3.5&&b.north-b.south<=3;
+export function loadCityBoundaries(b:ExternalBounds):Promise<GeoCollection>{
+ if(!canLoadCityBoundaries(b))return Promise.resolve({type:"FeatureCollection",features:[]});
+ const bbox=[b.south,b.west,b.north,b.east].map(n=>n.toFixed(5)).join(",");
+ const query='[out:json][timeout:18];('+
+  'relation["boundary"="administrative"]["admin_level"~"^(7|8|9)$"]('+bbox+');'+
+  'way["place"~"^(city|town)$"]('+bbox+');'+
+  ');out geom;';
+ const endpoints=["https://overpass-api.de/api/interpreter?data=",
+  "https://overpass.kumi.systems/api/interpreter?data="];
+ return memo("city-boundaries:"+externalBBoxKey(b),async()=>{
+  let data:unknown=null,error:unknown;
+  for(const endpoint of endpoints){
+   try{data=await safeFetch(endpoint+encodeURIComponent(query));break}catch(e){error=e}
+  }
+  if(!data)throw error instanceof Error?error:new Error("Сервис границ городов недоступен");
+  type Node={lon:number;lat:number};
+  type Member={type:string;role?:string;geometry?:Node[]};
+  type Element={type:string;id:number;tags?:Record<string,string>;geometry?:Node[];members?:Member[]};
+  const elements=(data as {elements?:Element[]}).elements??[];
+  const features:GeoFeature[]=[];
+  const append=(nodes:Node[]|undefined,element:Element,role="outer")=>{
+   if(!nodes||nodes.length<3||features.length>=450)return;
+   const coordinates=nodes.filter(n=>Number.isFinite(n.lon)&&Number.isFinite(n.lat)&&
+    n.lon>=-180&&n.lon<=180&&n.lat>=-90&&n.lat<=90).map(n=>[n.lon,n.lat]);
+   if(coordinates.length<3)return;
+   const tags=element.tags??{},ru=tags["name:ru"]??tags.name??"";
+   features.push({type:"Feature",geometry:{type:"LineString",coordinates},
+    properties:{NAME_RU:/[А-ЯЁа-яё]/.test(ru)?ru:"",
+     ATLAS_KIND:"city-boundary",OSM_ID:element.id,
+     ADMIN_LEVEL:tags.admin_level??"",OSM_ROLE:role,OSM_TYPE:element.type}});
+  };
+  for(const item of elements){
+   if(features.length>=450)break;
+   if(item.type==="way")append(item.geometry,item);
+   if(item.type==="relation"){
+    for(const member of item.members??[]){
+     if(features.length>=450)break;
+     if(member.type==="way"&&(member.role==="outer"||member.role==="inner"))
+      append(member.geometry,item,member.role);
+    }
+   }
+  }
+  return {type:"FeatureCollection",features};
+ });
+}
