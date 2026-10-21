@@ -12,7 +12,7 @@ export default function LektrusLanguageSocialControls({diagram:d,onChange}:Props
    <label className="lektrus-school-field">Инструкция ученику
     <textarea rows={2} maxLength={180} value={d.instructions}
      onChange={e=>onChange({...d,instructions:e.target.value})}/></label>
-   <div className="lektrus-school-controls-heading">Справочник синтаксических конструкций</div>
+   {d.patternId!==""&&<><div className="lektrus-school-controls-heading">Справочник синтаксических конструкций</div>
    <label className="lektrus-school-field">Выберите учебный пример
     <select value={d.patternId} onChange={e=>onChange({...d,patternId:e.target.value})}>
      {groups.map(group=><optgroup key={group} label={group}>
@@ -28,6 +28,7 @@ export default function LektrusLanguageSocialControls({diagram:d,onChange}:Props
     onChange({...d,parts,patternId:selected.id,showKey:false});
    }}>Загрузить пример в конструктор</button>
    <p className="lektrus-school-hint">Вы можете ввести любое своё предложение. Справочник содержит примеры пунктуационных конструкций, но не оценивает грамматику введённого текста. Знаки препинания можно прикреплять к словам или делать отдельными элементами.</p>
+   </>}
    <div className="lektrus-school-controls-heading">Элементы в правильном порядке (ключ ответа)</div>
    {d.parts.map((part,i)=><div className="lektrus-school-edit-row" key={part.id}>
     <span className="lektrus-school-number">{i+1}</span>
@@ -47,8 +48,8 @@ export default function LektrusLanguageSocialControls({diagram:d,onChange}:Props
    <button type="button" className="lektrus-school-add" disabled={d.parts.length>=24}
     onClick={()=>onChange({...d,parts:[...d.parts,{id:newId(),text:"слово"}]})}>
     + Добавить элемент ({d.parts.length}/24)</button>
-   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showHint}
-    onChange={e=>onChange({...d,showHint:e.target.checked})}/> Показывать подсказку о конструкции</label>
+   {d.patternId!==""&&<label className="lektrus-school-toggle"><input type="checkbox" checked={d.showHint}
+    onChange={e=>onChange({...d,showHint:e.target.checked})}/> Показывать подсказку о конструкции</label>}
    <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showKey}
     onChange={e=>onChange({...d,showKey:e.target.checked})}/> Показать правильный порядок на доске</label>
    <p className="lektrus-school-hint">На доске элементы перемешиваются. Ученик меняет местами две выбранные карточки и проверяет порядок. Правильный ответ по умолчанию скрыт. Это проверка последовательности, а не автоматический лингвистический разбор.</p>
