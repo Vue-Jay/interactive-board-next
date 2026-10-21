@@ -1308,6 +1308,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         className={contourAction===id?"active":""} onClick={()=>setContourAction(id)}>{title}</button>)}
       <button type="button" title="Отменить последнюю правку" disabled={!contourHistory.length}
        onClick={contourUndo}>↶</button>
+      <button type="button" title="Перемещать объект карты по доске" aria-pressed={objectMoveMode}
+       className={objectMoveMode?"active":""} onClick={()=>{
+        setObjectMoveMode(value=>!value);points.current.clear();pointer.current=null;pinch.current=null;
+       }}>↔ Объект</button>
      </div>
      <div className="lektrus-contour-workspace-options">
       {(contourAction==="label"||contourAction==="point")&&
