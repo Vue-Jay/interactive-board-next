@@ -390,3 +390,41 @@
  border:1px solid #d0deeb;border-radius:6px;padding:5px;background:#fff;width:100%;min-width:0}
 .lektrus-atlas-own-markers button{border:1px solid #c6dbe9;background:#fff;border-radius:7px;
  padding:7px 9px;color:#335e82;margin-top:5px}
+
+/* A contour assignment on the board is a worksheet, not an atlas directory. */
+.lektrus-atlas--worksheet .lektrus-atlas-body{grid-template-columns:minmax(0,1fr)}
+.lektrus-atlas--worksheet .lektrus-atlas-precision{display:none}
+.lektrus-atlas--worksheet .lektrus-atlas-map-box{background:#f9fcff}
+.lektrus-contour-workspace{position:absolute;left:12px;top:10px;z-index:10;
+ width:min(420px,calc(100% - 85px));padding:9px 11px;display:flex;flex-direction:column;
+ gap:7px;border:1px solid #c5d7e7;background:#fffffff1;box-shadow:0 4px 14px #1e466b23;
+ border-radius:11px;color:#315672;user-select:none}
+.lektrus-contour-workspace-head{display:flex;align-items:center;gap:9px;justify-content:space-between}
+.lektrus-contour-workspace-head strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lektrus-contour-workspace details{position:relative;font-size:11px}
+.lektrus-contour-workspace summary{cursor:pointer;font-weight:700}
+.lektrus-contour-workspace-head p{position:absolute;top:12px;left:-120px;
+ min-width:200px;max-width:290px;padding:10px;border:1px solid #c5d7e7;
+ background:white;border-radius:9px;z-index:12;box-shadow:0 5px 14px #23476620;
+ line-height:1.5;white-space:normal}
+.lektrus-contour-workspace-tools{display:flex;gap:4px;flex-wrap:wrap}
+.lektrus-contour-workspace-tools button{padding:6px 7px;border:1px solid #d1deeb;
+ border-radius:7px;background:white;color:#345e82;font-size:11px;cursor:pointer}
+.lektrus-contour-workspace-tools button.active{border-color:#669bcf;background:#dcecff;color:#164e8f}
+.lektrus-contour-workspace-tools button:disabled{opacity:.45}
+.lektrus-contour-workspace-options{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.lektrus-contour-workspace-options>input:not([type="color"]){flex:1;min-width:110px}
+.lektrus-contour-workspace-options input:not([type="checkbox"]){border:1px solid #cbdcea;
+ background:#fff;border-radius:7px;padding:6px;font-size:11px;color:#315572}
+.lektrus-contour-workspace-options input[type="color"]{width:34px;height:29px;padding:2px}
+.lektrus-contour-workspace-options label{display:flex;gap:4px;align-items:center;font-size:11px}
+.lektrus-contour-workspace-legend{position:absolute;left:auto;right:0;top:20px;
+ display:flex;flex-direction:column;gap:5px;padding:10px;width:255px;
+ background:#fff;border:1px solid #d5e3ef;border-radius:9px;z-index:15;
+ box-shadow:0 8px 20px #34577520}
+.lektrus-contour-workspace-legend button{border:1px solid #cbd9e6;border-radius:7px;
+ background:white;padding:5px;color:#315f83}
+.lektrus-atlas-camera-layer{will-change:transform}
+.lektrus-atlas-svg.is-atlas-panning .lektrus-atlas-event,
+.lektrus-atlas-svg.is-atlas-panning .lektrus-atlas-country,
+.lektrus-atlas-svg.is-atlas-panning .lektrus-atlas-river{pointer-events:none!important}
