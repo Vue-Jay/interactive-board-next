@@ -358,7 +358,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  },[citiesOn,scale>=2.5,scale>=3.5,refresh]);
  const mapSource=historical||mode==="political"||mode==="contour"||mode==="minerals"?source:null;
  const highDetail=modernBorders&&(russianView||!!detail&&scale>=5);
- const precision=highDetail?(scale>=8?.00015:.08):modernBorders?.13:.10;
+ // Simplify country paths to roughly a fraction of a display pixel. The old
+ // fixed 0.00015 world-unit tolerance produced excessive SVG geometry at ×8.
+ const precision=highDetail?(scale>=8?Math.max(.00015,.4/scale):.08):modernBorders?.13:.10;
  // Land and coastlines remain cartographic background; selectable territories need names.
  const mapSourceFeatures=useMemo(()=>mapSource?.features.filter(f=>
   !!atlasDisplayName(f,snapshot.year,historical&&!modernReference))??[],
@@ -860,13 +862,16 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   }
   const p=pointer.current;if(!p||p.id!==e.pointerId)return;
   if(Math.hypot(pt.x-p.x,pt.y-p.y)>3)dragged.current=true;
-  if(dragged.current&&!e.currentTarget.hasPointerCapture(e.pointerId))
+  if(dragged.current&&!e.currentTarget.hasPointerCapture(e.pointerId)){
    e.currentTarget.setPointerCapture(e.pointerId);
+   e.currentTarget.classList.add("is-atlas-panning");
+  }
   scheduleCamera({scale:cameraRef.current.scale,position:normalizePosition({x:p.fromX+pt.x-p.x,y:p.fromY+pt.y-p.y},cameraRef.current.scale)});
  };
  const onPointerEnd=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(cameraFrame.current!==null||cameraIdleRef.current!==null)commitCamera(cameraRef.current);
   points.current.delete(e.pointerId);pinch.current=null;
+  if(!points.current.size)e.currentTarget.classList.remove("is-atlas-panning");
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const next=[...points.current.entries()][0];
   pointer.current=next?{id:next[0],x:next[1].x,y:next[1].y,
