@@ -117,6 +117,39 @@ export const civicsTemplates={
    {id:"e1",from:"society",to:"family",kind:"part"},
    {id:"e2",from:"society",to:"education",kind:"part"},
    {id:"e3",from:"society",to:"state",kind:"part"}
+  ]},
+ economy:{label:"Участники экономики",subtitle:"Упрощённая схема экономических взаимодействий",
+  nodes:[
+   {id:"economy",text:"Экономика",column:1,row:0,kind:"concept"},
+   {id:"households",text:"Домохозяйства",column:0,row:2,kind:"institution"},
+   {id:"firms",text:"Предприятия",column:1,row:2,kind:"institution"},
+   {id:"government",text:"Государство",column:2,row:2,kind:"institution"}
+  ],edges:[
+   {id:"e1",from:"economy",to:"households",kind:"part"},
+   {id:"e2",from:"economy",to:"firms",kind:"part"},
+   {id:"e3",from:"economy",to:"government",kind:"part"}
+  ]},
+ law:{label:"Отрасли права",subtitle:"Примеры отраслей права в школьном курсе",
+  nodes:[
+   {id:"law",text:"Право",column:1,row:0,kind:"concept"},
+   {id:"civil",text:"Гражданское право",column:0,row:2,kind:"example"},
+   {id:"criminal",text:"Уголовное право",column:1,row:2,kind:"example"},
+   {id:"labor",text:"Трудовое право",column:2,row:2,kind:"example"}
+  ],edges:[
+   {id:"e1",from:"law",to:"civil",kind:"part"},
+   {id:"e2",from:"law",to:"criminal",kind:"part"},
+   {id:"e3",from:"law",to:"labor",kind:"part"}
+  ]},
+ socialStructure:{label:"Социальная структура",subtitle:"Примеры понятий социальной структуры общества",
+  nodes:[
+   {id:"root",text:"Социальная структура",column:1,row:0,kind:"concept"},
+   {id:"groups",text:"Социальные группы",column:0,row:2,kind:"concept"},
+   {id:"status",text:"Социальный статус",column:1,row:2,kind:"concept"},
+   {id:"roles",text:"Социальные роли",column:2,row:2,kind:"concept"}
+  ],edges:[
+   {id:"e1",from:"root",to:"groups",kind:"part"},
+   {id:"e2",from:"root",to:"status",kind:"part"},
+   {id:"e3",from:"root",to:"roles",kind:"part"}
   ]}
 } as const;
 const good=(s:unknown,max:number,allowEmpty=false)=>typeof s==="string"&&s.length<=max&&
