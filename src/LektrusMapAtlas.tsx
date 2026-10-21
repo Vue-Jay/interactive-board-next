@@ -8,8 +8,8 @@ import {loadLocalInfrastructure,loadMineralDeposits,mineralCommodity,mineralType
 import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRiverStroke,atlasLakeStroke,atlasGlacierStroke,atlasWaterGeometryTolerance,atlasRiverLabelRank} from "./lektrusAtlasHydro";
-import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale} from "./lektrusAtlasRegions";
-import {atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
+import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDistanceScale,zoomAtlasCamera} from "./lektrusAtlasRegions";
+import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
 historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
@@ -50,7 +50,8 @@ export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean)
 }
 function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
- const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":d.mode);
+ const [infoTab,setInfoTab]=useState<"overview"|"object"|"sources">("overview");
+ const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":normalizeAtlasMode(d.mode));
  const [paintColor,setPaintColor]=useState("#f3b778");
  const [paintRegions,setPaintRegions]=useState(false);
  const painted=d.paintedCountries??{};
@@ -117,6 +118,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const detailedCities=mode==="cities"&&scale>=4;
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
+ const cameraRef=useRef({scale:1,position:{x:0,y:0}});
+ const lastPointer=useRef({x:450,y:225});
+ const commitCamera=(camera:{scale:number;position:{x:number;y:number}})=>{
+  cameraRef.current=camera;setScale(camera.scale);setPosition(camera.position);
+ };
  const distanceBar=atlasDistanceScale(scale,position.y);
  const mapText=(base:number)=>Math.min(15.5,base+Math.log2(Math.max(1,scale))*1.05)/scale;
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
@@ -130,8 +136,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  useEffect(()=>{setRegionId(d.regionId??"world")},[d.regionId]);
  useEffect(()=>{setMinCityPopulation(d.cityMinPopulation??0)},[d.cityMinPopulation]);
  useEffect(()=>{setCityCategory(d.cityCategory??"all")},[d.cityCategory]);
- useEffect(()=>{const camera=atlasRegionCamera(findAtlasRegion(regionId));setScale(camera.scale);
-  setPosition(camera.position);setSelected(null);setCoord(null)},[regionId]);
+ useEffect(()=>{const camera=atlasRegionCamera(findAtlasRegion(regionId));commitCamera(camera);
+  setSelected(null);setCoord(null)},[regionId]);
  const availableModes=isContourTool?atlasModesFor(scope).filter(m=>m.id==="contour"):
   atlasModesFor(scope).filter(m=>m.id!=="contour");
  const historical=scope==="history";
@@ -145,7 +151,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    .catch(error=>{if(active)setIndexProblem(error instanceof Error?error.message:String(error))});
   return()=>{active=false};
  },[historical,refresh]);
- useEffect(()=>{setMode(d.title==="Контурная карта"?"contour":d.mode);setIndex(nearestSnapshotIndex(d.year));setSelected(null)},
+ useEffect(()=>{setMode(d.title==="Контурная карта"?"contour":normalizeAtlasMode(d.mode));setIndex(nearestSnapshotIndex(d.year));setSelected(null)},
   [d.mode,d.year]);
  useEffect(()=>{
   let active=true;
@@ -467,17 +473,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const worldPoint=(p:{x:number;y:number})=>({
   x:450+(p.x-450-position.x)/scale,y:225+(p.y-225-position.y)/scale
  });
- const zoomAt=(next:number,point={x:450,y:225})=>{
-  const s=clamp(next,1,MAX_ATLAS_ZOOM);
-  setPosition(p=>normalizePosition({
-   x:p.x+(scale-s)*(point.x-450-p.x)/scale,
-   y:p.y+(scale-s)*(point.y-225-p.y)/scale
-  },s));
-  setScale(s);
+ const zoomAt=(next:number,point=lastPointer.current)=>{
+  commitCamera(zoomAtlasCamera(cameraRef.current,next,point));
  };
  const onPointerDown=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
   const pt=localPoint(e);
+  lastPointer.current=pt;
   points.current.set(e.pointerId,pt);
   if(points.current.size===1){
    dragged.current=false;
@@ -493,6 +495,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  };
  const onMove=(e:ReactPointerEvent<SVGSVGElement>)=>{
   const pt=localPoint(e);
+  lastPointer.current=pt;
   if(!points.current.has(e.pointerId))return;
   points.current.set(e.pointerId,pt);
   if(points.current.size===2&&pinch.current){
@@ -501,16 +504,15 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
    const focus={x:450+(g.mid.x-450-g.position.x)/g.scale,
     y:225+(g.mid.y-225-g.position.y)/g.scale};
-   setScale(next);
-   setPosition(normalizePosition({x:mid.x-450-(focus.x-450)*next,
-    y:mid.y-225-(focus.y-225)*next},next));
+   commitCamera({scale:next,position:normalizePosition({x:mid.x-450-(focus.x-450)*next,
+    y:mid.y-225-(focus.y-225)*next},next)});
    return;
   }
   const p=pointer.current;if(!p||p.id!==e.pointerId)return;
   if(Math.hypot(pt.x-p.x,pt.y-p.y)>3)dragged.current=true;
   if(dragged.current&&!e.currentTarget.hasPointerCapture(e.pointerId))
    e.currentTarget.setPointerCapture(e.pointerId);
-  setPosition(normalizePosition({x:p.fromX+pt.x-p.x,y:p.fromY+pt.y-p.y},scale));
+  commitCamera({scale:cameraRef.current.scale,position:normalizePosition({x:p.fromX+pt.x-p.x,y:p.fromY+pt.y-p.y},cameraRef.current.scale)});
  };
  const onPointerEnd=(e:ReactPointerEvent<SVGSVGElement>)=>{
   points.current.delete(e.pointerId);pinch.current=null;
@@ -519,7 +521,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   pointer.current=next?{id:next[0],x:next[1].x,y:next[1].y,
    fromX:position.x,fromY:position.y}:null;
  };
- const reset=()=>{const camera=atlasRegionCamera(selectedRegion);setScale(camera.scale);setPosition(camera.position);setSelected(null);setCoord(null)};
+ const reset=()=>{commitCamera(atlasRegionCamera(selectedRegion));setSelected(null);setCoord(null)};
  const changeRegion=(id:string)=>{setRegionId(id);setFocusedUnit("");onChange?.({...d,regionId:id})};
  const paintProvince=(feature:GeoFeature)=>{
   if(mode!=="contour"||!paintRegions||dragged.current)return;
@@ -601,8 +603,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    Math.min(720/Math.max(bounds.width,.005),340/Math.max(bounds.height,.005)):
    mode==="cities"?48:4096;
   const s=clamp(Math.max(2,target),1,MAX_ATLAS_ZOOM);
-  setPosition(normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s));
-  setScale(s);setSelected(f);if(historical)setHistoryTab("article");setSelectedLayer(explicitLayer??(mode==="cities"?"Населённый пункт":
+  commitCamera({scale:s,position:normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s)});setSelected(f);if(historical)setHistoryTab("article");setSelectedLayer(explicitLayer??(mode==="cities"?"Населённый пункт":
    mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство"));
   setSelectedMarker(null);
  };
