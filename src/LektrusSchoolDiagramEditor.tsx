@@ -17,6 +17,7 @@ const keys=(cell:"plant"|"animal"):CellOrganelle[]=>cell==="plant"?
  ["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]:
  ["membrane","cytoplasm","nucleus","mitochondria"];
 const titles:Record<SchoolDiagramId,string>={
+ "bio-genetics":"Генетические скрещивания","info-logic":"Таблица истинности",
  "bio-cell":"Строение клетки","bio-food-chain":"Цепь питания",
  "geo-climate":"Климатограмма","history-timeline":"Лента времени",
  "ru-syntax":"Разбор предложения","info-flowchart":"Блок-схема алгоритма",
@@ -56,7 +57,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
  return createPortal(<div className="lektrus-school-backdrop" role="presentation" onPointerDown={e=>e.stopPropagation()}>
   <section className="lektrus-school-editor" role="dialog" aria-modal="true" aria-label={"Редактор: "+titles[id]}>
    <header className="lektrus-school-header">
-    <div><h2>{titles[id]}</h2><span>{id==="history-atlas"?"История · 5–11 класс":id==="maps-atlas"?"География · 5–11 класс":id==="bio-cell"?"Биология · 5–6 класс":id==="bio-food-chain"?"Биология · 5–9 класс":id==="geo-climate"?"География · 6–8 класс":id==="history-timeline"?"История · 5–9 класс":id==="ru-syntax"?"Русский язык · 5–9 класс":id.startsWith("info-")?"Информатика · 5–9 класс":id==="bio-organ-systems"?"Биология · 8 класс":id==="ru-morphemes"?"Русский язык · 5–6 класс":id.startsWith("ru-")?"Русский язык · 5–9 класс":id==="history-family-tree"?"История и обществознание · 5–9 класс":id==="literature-analysis"?"Литература · 5–11 класс":id==="civics-structure"?"Обществознание · 6–11 класс":(id==="language-flashcards"||id==="language-sentence-builder")?"Иностранный язык · 2–11 класс":"География · 6–8 класс"}</span></div>
+    <div><h2>{titles[id]}</h2><span>{id==="history-atlas"?"История · 5–11 класс":id==="maps-atlas"?"География · 5–11 класс":id==="bio-genetics"?"Биология · 9–11 класс":id==="info-logic"?"Информатика · 8–11 класс":id==="bio-cell"?"Биология · 5–6 класс":id==="bio-food-chain"?"Биология · 5–9 класс":id==="geo-climate"?"География · 6–8 класс":id==="history-timeline"?"История · 5–9 класс":id==="ru-syntax"?"Русский язык · 5–9 класс":id.startsWith("info-")?"Информатика · 5–9 класс":id==="bio-organ-systems"?"Биология · 8 класс":id==="ru-morphemes"?"Русский язык · 5–6 класс":id.startsWith("ru-")?"Русский язык · 5–9 класс":id==="history-family-tree"?"История и обществознание · 5–9 класс":id==="literature-analysis"?"Литература · 5–11 класс":id==="civics-structure"?"Обществознание · 6–11 класс":(id==="language-flashcards"||id==="language-sentence-builder")?"Иностранный язык · 2–11 класс":"География · 6–8 класс"}</span></div>
     <button type="button" className="lektrus-school-close" onClick={close} aria-label={existing?"Сохранить и закрыть":"Отменить создание"}>×</button>
    </header>
    <div className="lektrus-school-body">
@@ -68,6 +69,8 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
      {(draft.kind==="morphemes"||draft.kind==="family-tree"||draft.kind==="flashcards")&&<LektrusApprovedSchoolControls diagram={draft} onChange={set}/>}
      {(draft.kind==="morphology"||draft.kind==="phonetics"||draft.kind==="orthography")&&<LektrusRussianSchoolControls diagram={draft} onChange={set}/>}
      {(draft.kind==="sentence-builder"||draft.kind==="state-structure")&&<LektrusLanguageSocialControls diagram={draft} onChange={set}/>}
+     {draft.kind==="genetics"&&<><label className="lektrus-school-field">Первый родитель (два аллеля одного гена)<input maxLength={2} value={draft.parentA} onChange={e=>set({...draft,parentA:e.target.value})}/></label><label className="lektrus-school-field">Второй родитель<input maxLength={2} value={draft.parentB} onChange={e=>set({...draft,parentB:e.target.value})}/></label><p className="lektrus-school-hint">Модель моногибридного скрещивания для одного гена. Примеры: AA, Aa, aa. Родительские генотипы должны содержать аллели одного гена.</p><label className="lektrus-school-toggle"><input type="checkbox" checked={draft.showAnswers} onChange={e=>set({...draft,showAnswers:e.target.checked})}/>Показывать генотипы потомства</label></>}
+     {draft.kind==="logic"&&<><label className="lektrus-school-field">Логическая операция<select value={draft.operation} onChange={e=>set({...draft,operation:e.target.value as typeof draft.operation})}>{[["and","И (конъюнкция)"],["or","ИЛИ (дизъюнкция)"],["xor","Исключающее ИЛИ"],["implication","Импликация"],["equivalence","Эквивалентность"]].map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><label className="lektrus-school-toggle"><input type="checkbox" checked={draft.showAnswers} onChange={e=>set({...draft,showAnswers:e.target.checked})}/>Показать столбец ответов</label></>}
      {draft.kind==="cell"&&<>
       <label className="lektrus-school-field">Тип клетки
        <select value={draft.cell} onChange={e=>{
