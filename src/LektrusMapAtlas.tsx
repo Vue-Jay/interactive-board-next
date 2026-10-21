@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
+import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} from "./lektrusAtlasSchoolFacts";
 import LektrusMapBase from "./LektrusMapBase";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
@@ -57,7 +58,6 @@ export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean)
 }
 function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
- const [infoTab,setInfoTab]=useState<"overview"|"object"|"sources">("overview");
  const [coordinatesEnabled,setCoordinatesEnabled]=useState(d.showCoordinates===true||d.mode==="coordinates");
  useEffect(()=>setCoordinatesEnabled(d.showCoordinates===true||d.mode==="coordinates"),[d.showCoordinates,d.mode]);
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":normalizeAtlasMode(d.mode));
@@ -462,8 +462,21 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const fallbackReference=selected&&historical&&!modernReference&&!selectedArticle?
   findHistoricalReference(selectedRaw,snapshot.year):undefined;
  useEffect(()=>{
-  if(selected||selectedMineral||selectedMarker){setInspectorOpen(true);setInfoTab("object")}
+  if(selected||selectedMineral||selectedMarker)setInspectorOpen(true)
  },[selected,selectedMineral,selectedMarker]);
+ const selectedReferenceId=!historical&&selected?atlasFactEntityId(selected.properties):null;
+ const [schoolReference,setSchoolReference]=useState<AtlasSchoolReference|null>(null);
+ const [schoolReferenceLoading,setSchoolReferenceLoading]=useState(false);
+ const [schoolReferenceError,setSchoolReferenceError]=useState("");
+ useEffect(()=>{
+  let active=true;setSchoolReference(null);setSchoolReferenceError("");
+  if(!selectedReferenceId){setSchoolReferenceLoading(false);return()=>{active=false}}
+  setSchoolReferenceLoading(true);
+  fetchAtlasSchoolReference(selectedReferenceId)
+   .then(value=>{if(active){setSchoolReference(value);setSchoolReferenceLoading(false)}})
+   .catch(()=>{if(active){setSchoolReferenceError("Дополнительные сведения сейчас недоступны.");setSchoolReferenceLoading(false)}});
+  return()=>{active=false};
+ },[selectedReferenceId]);
  const selectedCountryCapitals=selected&&mode==="political"?
   capitalsForCountry(selected,cityPoints.map(c=>c.feature)):[];
  const selectedIsCity=!!selected&&["Populated place","Admin-0 capital","Admin-0 capital alt",
@@ -905,15 +918,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    </div>
    <aside className="lektrus-atlas-sidebar">
     <div className="lektrus-atlas-info-heading">
-     <strong>Сведения</strong>
+     <strong>Сведения об объектах</strong>
      <button type="button" aria-label="Скрыть панель сведений" onClick={()=>setInspectorOpen(false)}>×</button>
     </div>
-    <div className="lektrus-atlas-info-tabs" role="tablist" aria-label="Сведения о карте">
-     {([["overview","Обзор"],["object","Объект"],["sources","Источники"]] as const).map(([tab,label])=>
-      <button key={tab} type="button" role="tab" aria-selected={infoTab===tab}
-       className={infoTab===tab?"selected":""} onClick={()=>setInfoTab(tab)}>{label}</button>)}
-    </div>
-    {infoTab==="overview"&&<div className="lektrus-atlas-info-content">
+    <div className="lektrus-atlas-info-content lektrus-atlas-info-overview">
      <div className="lektrus-atlas-study-card"><strong>{mapModeTitle(mode)}</strong>
       <p>{mode==="political"?"На политической карте показаны страны и столицы. Выберите государство, чтобы прочитать сведения о нём, а затем приблизьте карту для изучения его соседей.":
        mode==="physical"?"Изучайте материки, океаны, горные системы, реки, озёра и высоты. Приближайте территорию, чтобы увидеть больше подписей и водных объектов.":
@@ -1082,8 +1090,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {" "}{Math.abs(coord.lon).toFixed(2)}° {coord.lon>=0?"в. д.":"з. д."}</p>:
       <p>Точка пока не выбрана.</p>}
     </div>}
-    </div>}
-    {infoTab==="object"&&<div className="lektrus-atlas-info-content">
+    </div>
+    <div className="lektrus-atlas-info-content lektrus-atlas-info-object">
      {!selected&&!selectedMineral&&!selectedMarker&&!historical&&<div className="lektrus-atlas-study-card">
       <strong>Выберите объект на карте</strong><p>Нажмите на страну, город, реку, озеро, гору или месторождение. Здесь появятся доступные сведения из базы и ссылки на источники.</p>
      </div>}
@@ -1181,6 +1189,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {cityArea&&<a href={cityArea.url} target="_blank" rel="noopener noreferrer">Источник площади ↗</a>}
      </div>}
      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+     {!historical&&<div className="lektrus-atlas-study-card lektrus-atlas-reference-card">
+      <strong>Справка об объекте</strong>
+      {schoolReferenceLoading&&<small>Загрузка дополнительных сведений…</small>}
+      {schoolReference?.description&&<p>{schoolReference.description}</p>}
+      {schoolReference?.facts.map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+      {schoolReference&&<a href={schoolReference.url} target="_blank" rel="noopener noreferrer">Данные Wikidata, открытая база ↗</a>}
+      {schoolReferenceError&&<small>{schoolReferenceError}</small>}
+      {!schoolReferenceLoading&&!schoolReferenceError&&!schoolReference&&
+       <small>Для этого объекта дополнительные сведения в подключённом справочнике отсутствуют. Показаны атрибуты картографического источника.</small>}
+      <small>Значения из открытого справочника могут быть разного года и не всегда актуальны. Для учебного использования проверяйте дату и первоисточник.</small>
+     </div>}
       {typeof selected.properties?.CAPITAL_CORRECTION_URL==="string"&&<a href={selected.properties.CAPITAL_CORRECTION_URL}
        target="_blank" rel="noopener noreferrer">Правовой источник уточнения столицы ↗</a>}
       {typeof selected.properties?.LOCATION_SOURCE_URL==="string"&&<a href={selected.properties.LOCATION_SOURCE_URL}
@@ -1251,8 +1270,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {marker.title} · {yearLabel(marker.year)}
      </div>)}
     </div>}
-    </div>}
-    {infoTab==="sources"&&<div className="lektrus-atlas-info-content">
+    </div>
+    <details className="lektrus-atlas-source-details"><summary>Источники и точность данных</summary>
+    <div className="lektrus-atlas-info-content">
      <div className="lektrus-atlas-study-card"><strong>Картографические источники</strong>
       <p>Данные разных масштабов и лет могут отличаться. Исторические границы основаны на реконструкциях, а современные границы нуждаются в проверке по официальным данным.</p>
      </div>
@@ -1277,7 +1297,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       <a href={(modernReference?modernDataProvider:historicDataProvider).licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия / условия использования ↗</a></>}
     </div>
 
-    </div>}
+    </div></details>
    </aside>
   </div>
   {historical&&<div className="lektrus-atlas-timeline">
