@@ -29,7 +29,7 @@ export const programmingLanguageLabels:Record<ProgrammingLanguage,string>={
 };
 export const defaultProgrammingDiagram=():ProgrammingDiagram=>({
  kind:"programming",title:"Практикум программирования",language:"javascript",
- code:programmingPresets[0].code,stdin:programmingPresets[0].stdin,showCode:true
+ code:programmingPresets.find(p=>p.id==="js-hello")!.code,stdin:programmingPresets.find(p=>p.id==="js-hello")!.stdin,showCode:true
 });
 export function validateProgrammingDiagram(value:unknown):value is ProgrammingDiagram{
  if(!value||typeof value!=="object")return false;
