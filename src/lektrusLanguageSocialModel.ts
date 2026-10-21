@@ -1,6 +1,6 @@
 /** Approved classroom tools. Sentence patterns are curated examples, not a
  * morphological analyzer; civics diagrams are editable concepts, not legal advice. */
-export type LanguageSocialId="ru-sentence-builder"|"language-sentence-builder"|"civics-structure";
+export type LanguageSocialId="ru-sentence-builder"|"language-sentence-builder"|"civics-structure"|"literature-analysis";
 export type SentencePart={id:string;text:string};
 export type SentencePattern={id:string;group:string;label:string;sample:string;tip:string};
 export type StateNode={id:string;text:string;column:0|1|2|3;row:0|1|2|3|4;kind:"concept"|"institution"|"example"};
@@ -10,7 +10,7 @@ export type LanguageSocialDiagram=
    showKey:boolean;showHint:boolean;patternId:string}
  |{kind:"state-structure";title:string;subtitle:string;nodes:StateNode[];
    edges:StateEdge[];showRelationships:boolean;showLabels:boolean;templateId:string};
-export const languageSocialIds:LanguageSocialId[]=["ru-sentence-builder","language-sentence-builder","civics-structure"];
+export const languageSocialIds:LanguageSocialId[]=["ru-sentence-builder","language-sentence-builder","civics-structure","literature-analysis"];
 export const stateEdgeNames:Record<StateEdge["kind"],string>={
  part:"Состав / классификация",subordinate:"Подчинение",interacts:"Взаимодействие"
 };
@@ -78,6 +78,7 @@ export const isLanguageSocialId=(id:string|undefined):id is LanguageSocialId=>
  languageSocialIds.includes(id as LanguageSocialId);
 export function newLanguageSocialDiagram(id:LanguageSocialId):LanguageSocialDiagram{
  if(id==="language-sentence-builder")return {kind:"sentence-builder",title:"Составление предложений",instructions:"Расположите слова в правильном порядке.",showKey:false,showHint:false,patternId:"",parts:tokenizeSentence("I read a book.")};
+ if(id==="literature-analysis")return {kind:"state-structure",title:"Анализ произведения",subtitle:"Составьте схему на основе прочитанного текста",templateId:"lit-analysis",showRelationships:true,showLabels:true,nodes:[{id:"work",text:"Произведение",column:1,row:0,kind:"concept"},{id:"theme",text:"Тема",column:0,row:2,kind:"concept"},{id:"idea",text:"Основная мысль",column:1,row:2,kind:"concept"},{id:"characters",text:"Герои",column:2,row:2,kind:"concept"}],edges:[{id:"e1",from:"work",to:"theme",kind:"part"},{id:"e2",from:"work",to:"idea",kind:"part"},{id:"e3",from:"work",to:"characters",kind:"part"}]};
  if(id==="ru-sentence-builder")return {kind:"sentence-builder",title:"Конструктор предложений",
   instructions:"Составьте предложение из слов и проверьте порядок.",showKey:false,showHint:true,
   patternId:"simple",parts:tokenizeSentence("Ученики читают книгу.")};
@@ -150,7 +151,10 @@ export const civicsTemplates={
    {id:"e1",from:"root",to:"groups",kind:"part"},
    {id:"e2",from:"root",to:"status",kind:"part"},
    {id:"e3",from:"root",to:"roles",kind:"part"}
-  ]}
+  ]},
+ "lit-analysis":{label:"Анализ произведения",subtitle:"Тема, основная мысль и герои заполняются по тексту",nodes:[{id:"work",text:"Произведение",column:1,row:0,kind:"concept"},{id:"theme",text:"Тема",column:0,row:2,kind:"concept"},{id:"idea",text:"Основная мысль",column:1,row:2,kind:"concept"},{id:"characters",text:"Герои",column:2,row:2,kind:"concept"}],edges:[{id:"e1",from:"work",to:"theme",kind:"part"},{id:"e2",from:"work",to:"idea",kind:"part"},{id:"e3",from:"work",to:"characters",kind:"part"}]},
+ "lit-plot":{label:"Композиция сюжета",subtitle:"Учитель заполняет этапы сюжета по конкретному произведению",nodes:[{id:"start",text:"Экспозиция",column:0,row:0,kind:"concept"},{id:"knot",text:"Завязка",column:1,row:1,kind:"concept"},{id:"climax",text:"Кульминация",column:2,row:2,kind:"concept"},{id:"end",text:"Развязка",column:3,row:3,kind:"concept"}],edges:[{id:"e1",from:"start",to:"knot",kind:"part"},{id:"e2",from:"knot",to:"climax",kind:"part"},{id:"e3",from:"climax",to:"end",kind:"part"}]},
+ "lit-characters":{label:"Сравнение героев",subtitle:"Заполните особенности и общие черты персонажей",nodes:[{id:"compare",text:"Сравнение персонажей",column:1,row:0,kind:"concept"},{id:"first",text:"Первый герой",column:0,row:2,kind:"example"},{id:"shared",text:"Общие черты",column:1,row:2,kind:"concept"},{id:"second",text:"Второй герой",column:2,row:2,kind:"example"}],edges:[{id:"e1",from:"compare",to:"first",kind:"part"},{id:"e2",from:"compare",to:"shared",kind:"part"},{id:"e3",from:"compare",to:"second",kind:"part"}]}
 } as const;
 const good=(s:unknown,max:number,allowEmpty=false)=>typeof s==="string"&&s.length<=max&&
  (allowEmpty||s.trim().length>0);
