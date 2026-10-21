@@ -6,11 +6,11 @@ const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.Common
 const exports={};
 new Function("exports",js)(exports);
 const {
- atlasModes,atlasModesFor,historicalSnapshots,nearestSnapshotIndex,eventsNearYear,
+ atlasModes,atlasModesFor,normalizeAtlasMode,normalizeAtlasDocument,historicalSnapshots,nearestSnapshotIndex,eventsNearYear,
  createAtlasDocument,validAtlasDocument,yearLabel
 }=exports;
-assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","hydrography","relief","cities","minerals","coordinates","historical","events"]);
-assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","hydrography","relief","cities","minerals","coordinates"]);
+assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","cities","minerals","historical","events"]);
+assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","cities","minerals"]);
 assert.deepEqual(atlasModesFor("history").map(m=>m.id),["historical","events"]);
 assert.ok(historicalSnapshots.length>=50,"historical atlas should have broad real snapshot coverage");
 assert.equal(new Set(historicalSnapshots.map(v=>v.year)).size,historicalSnapshots.length);
@@ -27,6 +27,17 @@ assert.ok(eventsNearYear(2000).some(v=>v.year===2004));
 const atlas=createAtlasDocument();
 assert.equal(validAtlasDocument(atlas),true);
 assert.equal(atlas.cityMinPopulation,0);
+assert.equal(atlas.showCoordinates,false);
+assert.equal(validAtlasDocument({...atlas,showCoordinates:true}),true);
+assert.equal(validAtlasDocument({...atlas,showCoordinates:"yes"}),false);
+for(const oldMode of ["hydrography","relief","coordinates"]){
+ const legacy={...atlas,mode:oldMode};
+ assert.equal(validAtlasDocument(legacy),true,"old saved atlas must load: "+oldMode);
+ const migrated=normalizeAtlasDocument(legacy);
+ assert.equal(migrated.mode,oldMode==="coordinates"?"political":"physical");
+ assert.equal(migrated.showCoordinates,oldMode==="coordinates");
+}
+assert.equal(normalizeAtlasMode("historical"),"historical");
 assert.equal(validAtlasDocument({...atlas,cityMinPopulation:50000}),true);
 assert.equal(validAtlasDocument({...atlas,cityMinPopulation:17}),false);
 assert.equal(atlas.scope,"geography");
@@ -72,7 +83,7 @@ assert.equal(cityAreaExports.cityAreaId({WIKIDATAID:"invalid"}),null);
 
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/Фильтр полезных ископаемых/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/onDoubleClick/);
-assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/mapText\(9\.2\)/);
+assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/mapText\(7\.5\)/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/selected===f\.feature/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/cityAreaLoading/);
 assert.match(fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8"),/user-select:none!important/);
@@ -96,6 +107,14 @@ new Function("exports",ts.transpileModule(regions,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(regionalExports);
 assert.equal(regionalExports.atlasRegions.length>=50,true);
 assert.equal(regionalExports.atlasRegionCamera(regionalExports.findAtlasRegion("world")).scale,1);
+for(const start of [{scale:1,position:{x:0,y:0}},{scale:5,position:{x:-780,y:120}}]){
+ for(const anchor of [{x:450,y:225},{x:250,y:175},{x:720,y:330}]){
+  const before={x:450+(anchor.x-450-start.position.x)/start.scale,y:225+(anchor.y-225-start.position.y)/start.scale};
+  const next=regionalExports.zoomAtlasCamera(start,start.scale*1.3,anchor);
+  const after={x:450+(anchor.x-450-next.position.x)/next.scale,y:225+(anchor.y-225-next.position.y)/next.scale};
+  assert.ok(Math.abs(after.x-before.x)<1e-8&&Math.abs(after.y-before.y)<1e-8,"zoom must preserve cursor location");
+ }
+}
 const wholeWorldCamera=regionalExports.atlasRegionCamera(regionalExports.findAtlasRegion("world"));
 assert.deepEqual(wholeWorldCamera.position,{x:0,y:0},
  "Full-world atlas must open centred, without losing the western hemisphere");
@@ -318,6 +337,10 @@ assert.equal(places.chooseCityLabels(testCities,1,20).length,2,
 assert.ok(places.limitCitySymbols(testCities,1,2).length<=2);
 
 assert.match(map,/Math\.log2\(scale\)/);
+assert.match(map,/lektrus-atlas-coordinate-toggle/);
+assert.match(map,/infoTab==="sources"/);
+assert.match(map,/zoomAtlasCamera\(cameraRef\.current,next,point\)/);
+assert.match(map,/scale<1\.6\?75/,"world overview should not render hundreds of city markers");
 assert.equal(validAtlasDocument({...atlas,borderView:"source"}),true);
 assert.equal(validAtlasDocument({...atlas,borderView:"russian"}),true);
 assert.equal(validAtlasDocument({...atlas,borderView:"invalid"}),false);
@@ -411,4 +434,4 @@ assert.ok(map.includes('loadAtlasLayer(detailedGeography?"coastline-detail":"coa
 assert.match(map,/pickCoordinates/);
 assert.match(data,/ne_110m_land.geojson/);
 assert.match(data,/ne_110m_coastline.geojson/);
-console.log("Lektrus atlas: five geography modes and two historical modes on one land/coastline foundation, with coordinates, persistence, and antimeridian tests.");
+console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
