@@ -1116,6 +1116,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      </label>
      <small>{!localMineralDetail?
       worldMineralsLoading?"Загрузка мирового обзора месторождений USGS…":
+      mineralsAvailable&&mineralLoading?"Загрузка подробных месторождений выбранного региона…":
       worldMineralError||"Обзорная выборка: "+worldMineralPoints.length+
        " записей, сгруппированных в "+mineralGroups.length+" обозначений. Числа внутри значков показывают записи выборки, а не все месторождения мира. Нажмите на скопление для приближения.":
       mineralError||"Подробные месторождения в выбранной области: "+visibleMinerals.length+"."}</small>
