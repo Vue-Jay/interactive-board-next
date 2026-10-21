@@ -80,7 +80,7 @@ export function layoutAtlasLabels(candidates:readonly AtlasLabelCandidate[],scal
   const x=c.x*scale+(c.dx??0),y=c.y*scale+(c.dy??0);
   // 7% safety margin accommodates different Cyrillic font metrics.
   const width=Math.max(10,Math.min(340,[...c.text].reduce((n,ch)=>
-    n+(ch===" "?0.33:/[.,·-()]/.test(ch)?0.34:/[MWШЩЖЮЫ]/.test(ch)?0.85:0.63,0)*font*1.07));
+    n+(ch===" "?0.33:/[.,·()\\-]/.test(ch)?0.34:/[MWШЩЖЮЫ]/.test(ch)?0.85:0.63),0)*font*1.07));
   const height=font*1.35;
   const x1=(c.align==="start"?x:x-width/2)-4,x2=x1+width+8;
   const y1=y-height-3,y2=y+4;
