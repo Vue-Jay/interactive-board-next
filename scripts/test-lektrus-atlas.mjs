@@ -472,7 +472,8 @@ assert.ok(hydroExports.atlasRiverStroke({properties:{scalerank:1}},true)<=1.2);
 assert.equal(hydroExports.atlasLakeStroke(),.38);
 assert.ok(hydroExports.atlasWaterGeometryTolerance(32,true)<
  hydroExports.atlasWaterGeometryTolerance(1,true));
-assert.ok(map.includes('strokeWidth={atlasRiverStroke(l.feature,mode==="hydrography")}'));
+assert.ok(map.includes('mineralContext?atlasRiverStroke(l.feature)*.85:atlasRiverStroke(l.feature,mode==="hydrography")'),
+ "Physical river widths are retained; mineral context makes water lines subtler");
 assert.ok(map.includes('className="lektrus-atlas-water-feature lektrus-atlas-river"'));
 assert.ok(map.includes('strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"'));
 assert.ok(map.includes('strokeWidth="8"'),"thin rivers need an invisible mobile-friendly hit area");
