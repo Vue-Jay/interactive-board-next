@@ -62,4 +62,56 @@ assert.match(map,/citiesOn&&scale>=4\.2/);
 assert.match(map,/citiesOn&&scale>=2\.5/);
 assert.match(model,/mode==="coordinates"\|\|mode==="cities"\?"political"/);
 assert.doesNotMatch(model,/\{id:"cities",title:"Города"/);
+
+// Different types in the same map cell must remain different school-atlas signs.
+const adjacent=[
+ {id:1,point:[100,100],commodity:{name:"Золото",color:"#222"},feature:{}},
+ {id:2,point:[101,101],commodity:{name:"Медные руды",color:"#222"},feature:{}}
+];
+assert.equal(clustered.clusterMineralMapPoints(adjacent,1,"Все виды").length,2);
+const dense=Array.from({length:12},(_,i)=>({
+ id:i,point:[20+i*20,50],commodity:{name:"Золото",color:"#222"},feature:{}
+}));
+const sparse={id:999,point:[850,400],commodity:{name:"Золото",color:"#222"},feature:{}};
+const fair=clustered.clusterMineralMapPoints([...dense,sparse],1,"Все виды",2);
+assert.ok(fair.some(g=>g.point[0]===850),"Sparse continents must keep overview glyphs");
+
+const mrds={};const mrdsNetwork=[];
+const fakeMrdsFetch=async(url)=>{
+ mrdsNetwork.push(url);
+ const params=new URL(url).searchParams;
+ const [west,south,east,north]=params.get("geometry").split(",").map(Number);
+ assert.equal(params.get("outSR"),"4326");
+ assert.ok(Number(params.get("resultRecordCount"))<=1200);
+ return {ok:true,json:async()=>({features:[
+  {attributes:{objectid_1:mrdsNetwork.length,dep_id:"D"+mrdsNetwork.length,
+   code_list:"AU, FE",site_name:"Verified point"},
+   geometry:{x:(west+east)/2,y:(south+north)/2}},
+  {attributes:{objectid_1:-1,code_list:"LI"},geometry:{x:1,y:1}}
+ ]})};
+};
+new Function("exports","fetch","AbortController","setTimeout","clearTimeout",
+ "URLSearchParams",compile("lektrusAtlasMRDS.ts"))(
+ mrds,fakeMrdsFetch,AbortController,setTimeout,clearTimeout,URLSearchParams);
+const goldPoint={type:"Feature",geometry:null,properties:{ATLAS_DATASET:"MRDS",code_list:"AU, AG"}};
+assert.equal(mrds.mrdsMineralCommodity(goldPoint)?.name,"Золото");
+assert.equal(mrds.mrdsMineralCommodity({...goldPoint,properties:{ATLAS_DATASET:"MRDS",code_list:"AG"}}),null);
+assert.equal(mrds.mrdsMineralCommodity({...goldPoint,properties:{ATLAS_DATASET:"MRDS",code_list:"PB, ZN"}})?.name,"Полиметаллические руды");
+assert.equal(mrds.mrdsMineralCommodity({...goldPoint,properties:{ATLAS_DATASET:"MRDS",code_list:"CU2"}}),null);
+const mrdsOverview=await mrds.loadMRDSWorldOverview();
+assert.equal(mrdsNetwork.length,12,"MRDS must query all 12 world sectors");
+assert.equal(mrdsOverview.features.length,12,"Each valid sector is retained");
+assert.ok(mrdsOverview.features.every(f=>f.properties.ATLAS_DATASET==="MRDS"));
+await mrds.loadMRDSWorldOverview();
+assert.equal(mrdsNetwork.length,12,"World MRDS sample is cached");
+const region=await mrds.loadMRDSRegionalDeposits({west:30,east:35,south:40,north:45});
+assert.equal(region.features.length,1,"Non-school commodities never enter the mineral layer");
+assert.equal(mrdsNetwork.length,13);
+assert.equal((await mrds.loadMRDSRegionalDeposits({west:30,east:35,south:40,north:45})).features.length,1);
+assert.equal(mrdsNetwork.length,13);
+const stylesheet=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
+assert.ok(stylesheet.includes('g[role="button"]:focus{outline:none}'));
+assert.ok(map.includes("lektrus-atlas-user-pin"));
+assert.ok(map.includes("loadMRDSWorldOverview("));
+
 console.log("Atlas overview: six-world-zone USGS sampling, genuine mineral groups and city-political merger passed.");

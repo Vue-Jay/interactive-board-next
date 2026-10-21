@@ -2,6 +2,7 @@ import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
 import {clusterMineralMapPoints} from "./lektrusAtlasMineralClusters";
+import {loadMRDSRegionalDeposits,loadMRDSWorldOverview,mrdsMineralCommodity} from "./lektrusAtlasMRDS";
 import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} from "./lektrusAtlasSchoolFacts";
 import LektrusMapBase from "./LektrusMapBase";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
@@ -116,6 +117,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [infrastructureError,setInfrastructureError]=useState("");
  const [minerals,setMinerals]=useState<GeoCollection|null>(null);
  const [worldMinerals,setWorldMinerals]=useState<GeoCollection|null>(null);
+ const [mrdsWorld,setMrdsWorld]=useState<GeoCollection|null>(null);
+ const [mrdsRegion,setMrdsRegion]=useState<GeoCollection|null>(null);
+ const [mrdsWorldLoading,setMrdsWorldLoading]=useState(false);
+ const [mrdsWorldError,setMrdsWorldError]=useState("");
+ const [mrdsRegionLoading,setMrdsRegionLoading]=useState(false);
  const [worldMineralError,setWorldMineralError]=useState("");
  const [worldMineralsLoading,setWorldMineralsLoading]=useState(false);
  const [mineralError,setMineralError]=useState("");
@@ -427,6 +433,24 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   return()=>{active=false};
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[mode,externalKey,mineralsAvailable]);
+ // Source-aware MRDS is complementary to the smaller major-deposits catalogue.
+ // Debounce moving-camera queries so panning doesn't flood USGS requests.
+ useEffect(()=>{
+  let active=true;
+  if(mode!=="minerals"||!mineralsAvailable){
+   setMrdsRegion(null);setMrdsRegionLoading(false);return()=>{active=false};
+  }
+  const timer=setTimeout(()=>{
+   if(!active)return;
+   setMrdsRegionLoading(true);
+   loadMRDSRegionalDeposits(externalBounds)
+    .then(geo=>{if(active)setMrdsRegion(geo)})
+    .catch(()=>{if(active)setMrdsRegion(null)})
+    .finally(()=>{if(active)setMrdsRegionLoading(false)});
+  },260);
+  return()=>{active=false;clearTimeout(timer)};
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[mode,externalKey,mineralsAvailable]);
  const auxiliaryDetailZoom=Math.pow(2,Math.floor(Math.log2(scale)));
  const auxiliaryLines=useMemo(()=>infrastructure?.features.flatMap((feature,id)=>{
   const path=mapFeaturePath(feature,Math.max(.00003,.22/auxiliaryDetailZoom),viewport);
@@ -465,22 +489,37 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   }});
   return()=>{active=false};
  },[mode,refresh]);
- const worldMineralPoints=useMemo(()=>worldMinerals?.features.flatMap((feature,id)=>{
-  const point=featureMapPoint(feature),commodity=mineralCommodity(feature);
-  return point&&commodity?[{id,point,feature,commodity}]:[];
- })??[],[worldMinerals]);
- const mineralPoints=useMemo(()=>minerals?.features.flatMap((feature,id)=>{
-  const point=featureMapPoint(feature),commodity=mineralCommodity(feature);
-  return point&&commodity?[{id,point,feature,commodity}]:[];
- })??[],[minerals]);
+ useEffect(()=>{
+  let active=true;
+  if(mode!=="minerals"){
+   setMrdsWorld(null);setMrdsWorldError("");setMrdsWorldLoading(false);
+   return()=>{active=false};
+  }
+  setMrdsWorldLoading(true);setMrdsWorldError("");
+  loadMRDSWorldOverview()
+   .then(data=>{if(active)setMrdsWorld(data)})
+   .catch(()=>{if(active){setMrdsWorld(null);setMrdsWorldError("Дополнительный каталог MRDS недоступен.");}})
+   .finally(()=>{if(active)setMrdsWorldLoading(false)});
+  return()=>{active=false};
+ },[mode,refresh]);
+ const worldMineralPoints=useMemo(()=>[...(worldMinerals?.features??[]),...(mrdsWorld?.features??[])]
+  .flatMap((feature,id)=>{
+   const point=featureMapPoint(feature),commodity=mineralCommodity(feature)??mrdsMineralCommodity(feature);
+   return point&&commodity?[{id,point,feature,commodity}]:[];
+  }),[worldMinerals,mrdsWorld]);
+ const mineralPoints=useMemo(()=>[...(minerals?.features??[]),...(mrdsRegion?.features??[])]
+  .flatMap((feature,id)=>{
+   const point=featureMapPoint(feature),commodity=mineralCommodity(feature)??mrdsMineralCommodity(feature);
+   return point&&commodity?[{id,point,feature,commodity}]:[];
+  }),[minerals,mrdsRegion]);
  const localMineralDetail=mineralsAvailable&&scale>=6&&mineralPoints.length>0;
  const mineralGroups=useMemo(()=>clusterMineralMapPoints(
-  localMineralDetail?mineralPoints:worldMineralPoints,scale,mineralFilter,140
+  localMineralDetail?mineralPoints:worldMineralPoints,scale,mineralFilter,420
  ),[localMineralDetail,mineralPoints,worldMineralPoints,scale,mineralFilter]);
   const visibleMinerals=(localMineralDetail?mineralPoints:[]).filter(f=>
   (mineralFilter==="Все виды"||f.commodity.name===mineralFilter)&&
   f.point[0]>=visibleWorld.left&&f.point[0]<=visibleWorld.right&&
-  f.point[1]>=visibleWorld.top&&f.point[1]<=visibleWorld.bottom).slice(0,350);
+  f.point[1]>=visibleWorld.top&&f.point[1]<=visibleWorld.bottom).slice(0,750);
  const visiblePoint=(pt:readonly number[]|null|undefined)=>!!pt&&
   pt[0]>=visibleWorld.left-12/scale&&pt[0]<=visibleWorld.right+12/scale&&
   pt[1]>=visibleWorld.top-12/scale&&pt[1]<=visibleWorld.bottom+12/scale;
@@ -849,7 +888,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      }}>
      <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
       <LektrusMapBase land={baseLand} coastline={baseCoastline} theme={mode==="minerals"?"minerals":"default"}
-       grid={d.showGrid||coordinatesEnabled} scale={scale} viewport={viewport}
+       grid={d.showGrid||coordinatesEnabled||mode==="minerals"} scale={scale} viewport={viewport}
         terrain={<LektrusAtlasTerrain enabled={terrainEnabled} scale={scale} position={position}
          onStatus={setTerrainStatus}/>}/>
       <g strokeLinejoin="round">
@@ -918,8 +957,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        role="button" aria-label="Удалить метку двойным нажатием или правой кнопкой мыши" tabIndex={0}
        onKeyDown={e=>{if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();setCoord(null);setTerrainPick(null)}}}>
        <circle r="12" fill="transparent" pointerEvents="all"/>
-       <circle r="3.5" fill="#fff" stroke="#d56540" strokeWidth="1.4"/>
-       <circle r="1.3" fill="#d56540" stroke="none"/>
+       <circle r="4.5" fill="#426fbd" stroke="#fff" strokeWidth="1.7"/>
+       <circle r="1.25" fill="#fff" stroke="none"/>
        <title>Метка координат. Двойной щелчок или правая кнопка для удаления</title>
       </g>}
       {historical&&compare&&previous&&<g fill="none" stroke="#d64646"
@@ -980,10 +1019,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
           strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>;
         })}
        </g>}
-      {mode==="minerals"&&!localMineralDetail&&<g className="lektrus-atlas-mineral-clusters">
+      {mode==="minerals"&&(!localMineralDetail||scale<12)&&<g className="lektrus-atlas-mineral-clusters">
        {mineralGroups.filter(group=>group.point[0]>=visibleWorld.left&&group.point[0]<=visibleWorld.right&&
         group.point[1]>=visibleWorld.top&&group.point[1]<=visibleWorld.bottom).map(group=>{
-        const radius=10;
+        const radius=9;
         const choose=()=>{
          if(group.count===1){setSelectedMineral(group.representative.feature);setSelected(null)}
          else {
@@ -998,20 +1037,16 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          role="button" tabIndex={0}
          onClick={e=>{e.stopPropagation();choose()}}
          onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();choose()}}}>
-         <circle r={radius+1.3} fill="#fff" fillOpacity=".95" stroke="#b4b9a6" strokeWidth="1.1"/>
-         <MineralAtlasGlyph name={group.dominant}/>
-         {group.count>1&&<g transform="translate(7 -7)">
-          <circle r="4.9" fill="#344e6a" stroke="#fff" strokeWidth="1"/>
-          <text x="0" y="1.9" textAnchor="middle" fontSize={group.count>=100?4.1:5.2}
-           fontWeight="750" fill="#fff">{group.count>99?"99+":group.count}</text>
-         </g>}
+         <circle r={radius+1.3} fill="#fffdf5" fillOpacity=".73"
+          stroke="#9a9585" strokeWidth=".65"/>
+         <g transform="scale(.74)"><MineralAtlasGlyph name={group.dominant}/></g>
          <title>{group.count>1?
           group.count+" записей о месторождениях в обзорной выборке USGS. Нажмите для приближения.":
           group.dominant+" (USGS)"}</title>
         </g>;
        })}
       </g>}
-      {mode==="minerals"&&<g className="lektrus-atlas-mineral-points">
+      {mode==="minerals"&&localMineralDetail&&scale>=12&&<g className="lektrus-atlas-mineral-points">
        {visibleMinerals.map(item=><g key={"mineral-"+item.id}
         transform={`translate(${item.point[0]} ${item.point[1]}) scale(${1/scale})`}
         onClick={e=>{e.stopPropagation();setSelectedMineral(item.feature);setSelected(null)}}
@@ -1019,8 +1054,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();setSelectedMineral(item.feature);setSelected(null)}}}>
         {selectedMineral===item.feature&&<circle r="10" fill="none" stroke="#b25e2e"
          strokeWidth="2" pointerEvents="none"/>}
-        <circle r="11.2" fill="#fffffff0" stroke="#b8c4c6" strokeWidth=".8"/>
-        <MineralAtlasGlyph name={item.commodity.name}/>
+        <circle r="9.4" fill="#fffdf5" fillOpacity=".75" stroke="#9a9585" strokeWidth=".7"/>
+        <g transform="scale(.78)"><MineralAtlasGlyph name={item.commodity.name}/></g>
         <title>{item.commodity.name}, источник USGS</title>
        </g>)}
       </g>}
@@ -1052,11 +1087,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       </g>}
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
-       return <g key={marker.id} transform={`translate(${point[0]} ${point[1]})`}
-        className="lektrus-atlas-event" role="button" tabIndex={0}
-        onClick={()=>{if(dragged.current)return;setSelectedMarker(marker.id);setSelected(null)}}
-        onKeyDown={e=>{if(e.key==="Enter"){setSelectedMarker(marker.id);setSelected(null)}}}>
-        <circle r={6/scale} fill="#426fbd" stroke="#fff" strokeWidth={2/scale}/>
+       return <g key={marker.id} transform={`translate(${point[0]} ${point[1]}) scale(${1/scale})`}
+        className="lektrus-atlas-event lektrus-atlas-user-pin" role="button" tabIndex={0}
+        onClick={e=>{e.stopPropagation();if(dragged.current)return;setSelectedMarker(marker.id);setSelected(null)}}
+        onDoubleClick={e=>{e.stopPropagation();onChange?.({...d,markers:d.markers.filter(m=>m.id!==marker.id)});
+         setSelectedMarker(null)}}
+        onContextMenu={e=>{e.preventDefault();e.stopPropagation();onChange?.({...d,markers:d.markers.filter(m=>m.id!==marker.id)});
+         setSelectedMarker(null)}}
+        onKeyDown={e=>{if(e.key==="Enter"){setSelectedMarker(marker.id);setSelected(null)}
+         if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();
+          onChange?.({...d,markers:d.markers.filter(m=>m.id!==marker.id)});setSelectedMarker(null)}}}>
+        <circle r="4.5" fill="#426fbd" stroke="#fff" strokeWidth="1.7"/>
         <title>{marker.title} ({yearLabel(marker.year)})</title>
        </g>;
       })}
@@ -1091,7 +1132,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       <p>{mode==="political"?"На политической карте сначала показаны государства, затем столицы, регионы и населённые пункты. Приближайте карту для подробных границ городов и дополнительных названий.":
        mode==="physical"?"Изучайте материки, океаны, горные системы, реки, озёра и высоты. Приближайте территорию, чтобы увидеть больше подписей и водных объектов.":
        
-       mode==="minerals"?"Приблизьте область для просмотра месторождений. Цвет означает вид минерального сырья, а не количество его запасов.":
+       mode==="minerals"?"Школьные условные знаки показывают документированные месторождения. Цвет фона служит для чтения карты, а не обозначает тип месторождения или величину запасов.":
        mode==="contour"?"Используйте контурную карту для заданий по расположению государств и объектов. Можно включать координаты и раскрашивать территории.":
        "Выберите период и территорию, чтобы изучить исторические изменения. Границы исторических эпох являются научными реконструкциями."}</p>
       {modernBorders&&mode==="political"&&<p className="lektrus-atlas-study-note">
@@ -1173,7 +1214,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>}
     {mode==="minerals"&&<div className="lektrus-atlas-natural-legend">
      <strong>Карта полезных ископаемых</strong>
-      <small>Все условные знаки повторяют присланную легенду школьного атласа. Обозначения нарисованы геометрическими символами, а не текстовыми сокращениями.</small>
+      <small>Школьные картографические знаки из присланной легенды. Обозначения ставятся по опубликованным координатам USGS, а не по примерному размещению из рисунков.</small>
      <label className="lektrus-atlas-city-filter">Группа сырья
       <select aria-label="Фильтр полезных ископаемых" value={mineralFilter}
        onChange={e=>{setMineralFilter(e.target.value);setSelectedMineral(null)}}>
@@ -1182,13 +1223,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       </select>
      </label>
      {SCHOOL_ATLAS_FUEL_MINERALS.some(name=>name===mineralFilter)&&
-      <small>Знак включён в школьную легенду, но используемая база USGS не содержит нефтяные, газовые и угольные месторождения. Их координаты не создаются искусственно.</small>}
+      <small>Этот вид сырья присутствует в школьном атласе, но текущие подключённые каталоги USGS не содержат его координат. Пустая карта не означает отсутствие месторождений.</small>}
      <small>{!localMineralDetail?
-      worldMineralsLoading?"Загрузка мирового обзора месторождений USGS…":
+      worldMineralsLoading||mrdsWorldLoading?"Загрузка каталогов USGS, обзорных и MRDS…":
       mineralsAvailable&&mineralLoading?"Загрузка подробных месторождений выбранного региона…":
-      worldMineralError||"Обзорная выборка: "+worldMineralPoints.length+
-       " записей, сгруппированных в "+mineralGroups.length+" обозначений. Числа внутри значков показывают записи выборки, а не все месторождения мира. Нажмите на скопление для приближения.":
-      mineralError||"Подробные месторождения в выбранной области: "+visibleMinerals.length+"."}</small>
+      (worldMineralError&&mrdsWorldError?worldMineralError+" "+mrdsWorldError:"")||"Обзорная выборка: "+worldMineralPoints.length+
+       " записей, представленных "+mineralGroups.length+" знаками. Один знак соответствует одному виду сырья и может объединять несколько записей. Нажмите для приближения.":
+      mineralError||"Подробные месторождения в выбранной области: "+visibleMinerals.length+
+       (mrdsRegionLoading?" · обновление MRDS…":".")}</small>
      {mineralGuide(mineralFilter)&&<div className="lektrus-atlas-city-data">
       <strong>Справка: {mineralFilter}</strong>
       <p><b>Группа:</b> {mineralGuide(mineralFilter)!.className}</p>
@@ -1204,11 +1246,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        </div>)}
       </div>)}
      </div>
-     <small>Обозначения повторяют присланную школьную легенду. Месторождения горючих ископаемых отсутствуют в подключённой базе USGS и не создаются искусственно.</small>
+     <small>Условные знаки повторяют школьную легенду. Мировой обзор составлен из географических выборок двух каталогов USGS: «Крупные месторождения» и MRDS.
+      На далёком масштабе один знак может представлять несколько записей одного вида сырья. Нажмите на него для приближения.
+      База историческая и неполная, особенно за пределами США. Нефть, газ и уголь в этих каталогах не представлены.</small>
      <a href="https://special-edu.kz/TEXTBOOKS/1RAZDEL/book/pdf/geog9Methods.pdf"
       target="_blank" rel="noopener noreferrer">Примеры условных знаков из школьного учебного материала ↗</a>
      <small>Используются условные обозначения из присланной школьной легенды, сгруппированные по типу полезного ископаемого.
-       Историческая база USGS: покрытие за пределами США неполное.
+       Каталоги USGS: покрытие за пределами США неполное.
       Обзорные группы построены по выборке, а не по полному кадастру месторождений. Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются. Основа каталога USGS включает исторические сведения и не является актуальным кадастром на 2026 год.
       Показываются только месторождения с распознаваемым типом сырья.</small>
      <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
@@ -1340,15 +1384,24 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      {historical&&<p>Дата: {yearLabel(markerDetails.year)}</p>}
     </div>:
     selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
-     <strong>Месторождение: {mineralCommodity(selectedMineral)?.name??"Полезное ископаемое"}</strong>
-     <p>Источник: Геологическая служба США (USGS), сборник основных нерудных и рудных месторождений.</p>
+     <strong>Запись о минеральном сырье: {(mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"Полезное ископаемое"}</strong>
+     <p>Источник: Геологическая служба США, {selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
+      "архивный каталог минеральных ресурсов MRDS":"каталог крупных месторождений"}.</p>
+     {selectedMineral.properties?.ATLAS_DATASET==="MRDS"&&<>
+      {typeof selectedMineral.properties.site_name==="string"&&
+       <p><strong>Название в оригинальном каталоге:</strong> {selectedMineral.properties.site_name}</p>}
+      {selectedMineral.properties.dep_id&&
+       <p><strong>Номер записи MRDS:</strong> {String(selectedMineral.properties.dep_id)}</p>}
+      {selectedMineral.properties.dev_stat&&
+       <p><strong>Статус в архивной базе (не подтверждён на 2026 год):</strong> {String(selectedMineral.properties.dev_stat)}</p>}
+     </>}
      {mineralDepositFacts(selectedMineral).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
-     {mineralGuide(mineralCommodity(selectedMineral)?.name??"")&&
+     {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"")&&
       <div className="lektrus-atlas-city-data">
        <strong>Справка о минеральном сырье</strong>
-       <p>{mineralGuide(mineralCommodity(selectedMineral)!.name)!.className}</p>
-       <p><strong>Состав:</strong> {mineralGuide(mineralCommodity(selectedMineral)!.name)!.composition}</p>
-       <p><strong>Использование:</strong> {mineralGuide(mineralCommodity(selectedMineral)!.name)!.uses}</p>
+       <p>{mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.className}</p>
+       <p><strong>Состав:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.composition}</p>
+       <p><strong>Использование:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.uses}</p>
        <small>Генетический тип конкретного месторождения приводится отдельно, если он известен из USGS.</small>
       </div>}
      <p>Координаты: {(()=>{
@@ -1356,12 +1409,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       return Array.isArray(c)?Number(c[1]).toFixed(4)+"°, "+Number(c[0]).toFixed(4)+"°":"не приведены";
      })()}</p>
      <p>Идентификатор источника: {String(selectedMineral.properties?.OBJECTID??
-      selectedMineral.properties?.objectid??selectedMineral.properties?.gid??"не указан")}</p>
+      selectedMineral.properties?.objectid??selectedMineral.properties?.objectid_1??selectedMineral.properties?.gid??"не указан")}</p>
      <small>Название месторождения, разновидности минералов, геология, оценка запасов и статус добычи
       приводятся в исходной базе, если они опубликованы. Значения не вычисляются из точки карты.</small>
      {mineralDepositSource(selectedMineral)&&<a href={mineralDepositSource(selectedMineral)!}
       target="_blank" rel="noopener noreferrer">Исходная карточка месторождения USGS ↗</a>}
-     <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
+     <a href={selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
+      "https://energy.usgs.gov/arcgis/rest/services/Hosted/Mineral_Resource_Data_System/FeatureServer/0":
+      "https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"}
       target="_blank" rel="noopener noreferrer">Открыть набор геологических данных USGS ↗</a>
     </div>:
     selected?<div className="lektrus-atlas-description">
