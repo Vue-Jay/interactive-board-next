@@ -4,7 +4,7 @@ import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasL
 import {clusterMineralMapPoints} from "./lektrusAtlasMineralClusters";
 import {loadMRDSRegionalDeposits,loadMRDSWorldOverview,mrdsMineralCommodity} from "./lektrusAtlasMRDS";
 import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} from "./lektrusAtlasSchoolFacts";
-import LektrusMapBase from "./LektrusMapBase";
+import LektrusMapBase,{LektrusAtlasGraticule} from "./LektrusMapBase";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
 import {SCHOOL_ATLAS_GROUPS,SCHOOL_ATLAS_MINERALS,SCHOOL_ATLAS_FUEL_MINERALS} from "./lektrusSchoolAtlasMinerals";
@@ -69,7 +69,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const citiesOn=mode==="political"&&d.showCities!==false;
  const mineralContext=mode==="minerals";
  const landmarkCities=citiesOn||mineralContext;
- const hydroContext=mode==="physical"||mode==="hydrography"||mineralContext;
+ const hydroContext=mode==="physical"||mode==="hydrography"||mineralContext||mode==="contour";
  const reliefContext=mode==="physical"||mode==="relief"||mineralContext;
  // This reuses the measured relief tiles, without turning every click on
  // the mineral map into an elevation/coordinate query.
@@ -154,22 +154,36 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [position,setPosition]=useState({x:0,y:0});
  const cameraRef=useRef({scale:1,position:{x:0,y:0}});
  const cameraFrame=useRef<number|null>(null);
+ const cameraLayerRef=useRef<SVGGElement|null>(null);
+ const cameraIdleRef=useRef<ReturnType<typeof setTimeout>|null>(null);
+ const cameraTransform=(cam:{scale:number;position:{x:number;y:number}})=>
+  `translate(${cam.position.x} ${cam.position.y}) translate(450 225) scale(${cam.scale}) translate(-450 -225)`;
+ const paintCamera=(cam:{scale:number;position:{x:number;y:number}})=>{
+  cameraLayerRef.current?.setAttribute("transform",cameraTransform(cam));
+ };
+
  const lastPointer=useRef({x:450,y:225});
  const commitCamera=(camera:{scale:number;position:{x:number;y:number}})=>{
   if(cameraFrame.current!==null){cancelAnimationFrame(cameraFrame.current);cameraFrame.current=null}
-  cameraRef.current=camera;setScale(camera.scale);setPosition(camera.position);
+  if(cameraIdleRef.current!==null){clearTimeout(cameraIdleRef.current);cameraIdleRef.current=null}
+  cameraRef.current=camera;paintCamera(camera);
+  setScale(camera.scale);setPosition(camera.position);
  };
- // Dragging and wheel events can fire far more often than the monitor refresh rate.
- // Render the newest camera at most once per animation frame.
+ // Crucial performance fix: live gesture moves ONE SVG transform, not thousands
+ // of React paths, labels and DEM tiles every animation frame. Recompute complex
+ // geometry only after the interaction becomes idle.
  const scheduleCamera=(camera:{scale:number;position:{x:number;y:number}})=>{
   cameraRef.current=camera;
-  if(cameraFrame.current!==null)return;
-  cameraFrame.current=requestAnimationFrame(()=>{
-   cameraFrame.current=null;
-   setScale(cameraRef.current.scale);setPosition(cameraRef.current.position);
+  if(cameraFrame.current===null)cameraFrame.current=requestAnimationFrame(()=>{
+   cameraFrame.current=null;paintCamera(cameraRef.current);
   });
+  if(cameraIdleRef.current!==null)clearTimeout(cameraIdleRef.current);
+  cameraIdleRef.current=setTimeout(()=>{
+   cameraIdleRef.current=null;commitCamera(cameraRef.current);
+  },145);
  };
- useEffect(()=>()=>{if(cameraFrame.current!==null)cancelAnimationFrame(cameraFrame.current)},[]);
+ useEffect(()=>()=>{if(cameraFrame.current!==null)cancelAnimationFrame(cameraFrame.current);
+  if(cameraIdleRef.current!==null)clearTimeout(cameraIdleRef.current)},[]);
  const distanceBar=atlasDistanceScale(scale,position.y);
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
  const points=useRef(new Map<number,{x:number;y:number}>());
@@ -741,7 +755,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    y:(e.clientY-rect.top-(rect.height-450*factor)/2)/factor};
  };
  const worldPoint=(p:{x:number;y:number})=>({
-  x:450+(p.x-450-position.x)/scale,y:225+(p.y-225-position.y)/scale
+  x:450+(p.x-450-cameraRef.current.position.x)/cameraRef.current.scale,
+  y:225+(p.y-225-cameraRef.current.position.y)/cameraRef.current.scale
  });
  const zoomAt=(next:number,point=lastPointer.current)=>{
   scheduleCamera(zoomAtlasCamera(cameraRef.current,next,point));
@@ -753,12 +768,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   points.current.set(e.pointerId,pt);
   if(points.current.size===1){
    dragged.current=false;
-   pointer.current={id:e.pointerId,x:pt.x,y:pt.y,fromX:position.x,fromY:position.y};
+   pointer.current={id:e.pointerId,x:pt.x,y:pt.y,
+    fromX:cameraRef.current.position.x,fromY:cameraRef.current.position.y};
   }else if(points.current.size===2){
    dragged.current=true;
    const [a,b]=[...points.current.values()];
-   pinch.current={distance:Math.hypot(a.x-b.x,a.y-b.y)||1,scale,
-    position,mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
+   pinch.current={distance:Math.hypot(a.x-b.x,a.y-b.y)||1,scale:cameraRef.current.scale,
+    position:cameraRef.current.position,mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
   }
   // Capture only after dragging. Immediate capture would steal click/tap
   // events from countries, rivers, cities and historical markers.
@@ -785,12 +801,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   scheduleCamera({scale:cameraRef.current.scale,position:normalizePosition({x:p.fromX+pt.x-p.x,y:p.fromY+pt.y-p.y},cameraRef.current.scale)});
  };
  const onPointerEnd=(e:ReactPointerEvent<SVGSVGElement>)=>{
-  if(cameraFrame.current!==null)commitCamera(cameraRef.current);
+  if(cameraFrame.current!==null||cameraIdleRef.current!==null)commitCamera(cameraRef.current);
   points.current.delete(e.pointerId);pinch.current=null;
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const next=[...points.current.entries()][0];
   pointer.current=next?{id:next[0],x:next[1].x,y:next[1].y,
-   fromX:position.x,fromY:position.y}:null;
+   fromX:cameraRef.current.position.x,fromY:cameraRef.current.position.y}:null;
  };
  const reset=()=>{commitCamera(atlasRegionCamera(selectedRegion));setSelected(null);setCoord(null)};
  const changeRegion=(id:string)=>{setRegionId(id);setFocusedUnit("");onChange?.({...d,regionId:id})};
@@ -926,9 +942,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       lastPointer.current=anchor;
       zoomAt(cameraRef.current.scale*(e.deltaY<0?1.16:1/1.16),anchor);
      }}>
-     <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
+     <g ref={cameraLayerRef} transform={cameraTransform({scale,position})}>
       <LektrusMapBase land={baseLand} coastline={baseCoastline} theme={mode==="minerals"?"minerals":"default"}
-       grid={d.showGrid||coordinatesEnabled||mode==="minerals"} scale={scale} viewport={viewport}
+       scale={scale} viewport={viewport}
         terrain={<LektrusAtlasTerrain enabled={terrainEnabled||mineralTerrainEnabled} scale={scale} position={position}
          onStatus={setTerrainStatus}/>}/>
       <g strokeLinejoin="round">
@@ -1138,6 +1154,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <title>{item.commodity.name}, источник USGS</title>
        </g>)}
       </g>}
+      {(d.showGrid||mode==="contour")&&<LektrusAtlasGraticule scale={scale} viewport={viewport}/>}
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
        return <g key={marker.id} transform={`translate(${point[0]} ${point[1]}) scale(${1/scale})`}
@@ -1166,6 +1183,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(cameraRef.current.scale*1.5)}>+</button>
      <button type="button" onClick={reset} title="Вписать выбранный регион">⌖</button>
      <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(cameraRef.current.scale/1.5)}>−</button>
+     <button type="button" className={d.showGrid||mode==="contour"?"active":""}
+      title="Меридианы и параллели поверх карты" aria-label="Меридианы и параллели"
+      aria-pressed={d.showGrid||mode==="contour"}
+      onClick={()=>onChange?.({...d,showGrid:!d.showGrid})}>▦</button>
      <label className="lektrus-atlas-zoom-slider">Масштаб
       <input type="range" min="0" max="14" step=".25"
        aria-label="Уровень детализации карты"
