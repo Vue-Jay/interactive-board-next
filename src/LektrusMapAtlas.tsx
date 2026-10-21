@@ -562,8 +562,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
   normalizeHistoricalName(name)===normalizeHistoricalName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
- const namedFeatures=mode==="cities"?cityPoints.filter(f=>russianPlaceName(f.feature)&&matchesCityCategory(f.feature,cityCategory)).map(f=>f.feature):
-  mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature),...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
+ const namedFeatures=mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature),...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
   mode==="political"?[...mapSourceFeatures,...(administrative?.features.filter(hasAtlasName)??[]),...cityPoints.filter(p=>russianPlaceName(p.feature)&&matchesCityCategory(p.feature,cityCategory)).map(p=>p.feature)]:
   mapSourceFeatures;
@@ -744,7 +743,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    Math.min(720/Math.max(bounds.width,.005),340/Math.max(bounds.height,.005)):
    selectedIsCity?48:4096;
   const s=clamp(Math.max(2,target),1,MAX_ATLAS_ZOOM);
-  commitCamera({scale:s,position:normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s)});setSelected(f);if(historical)setHistoryTab("article");setSelectedLayer(explicitLayer??(mode==="cities"?"Населённый пункт":
+  commitCamera({scale:s,position:normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s)});setSelected(f);if(historical)setHistoryTab("article");setSelectedLayer(explicitLayer??(nationalCapital(f)?"Столица":
+   String(f.properties?.FEATURECLA??"").includes("Populated place")?"Населённый пункт":
    mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство"));
   setSelectedMarker(null);
  };
