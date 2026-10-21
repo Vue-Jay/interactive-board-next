@@ -77,7 +77,7 @@ export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingD
   setStatus("running");
   iframe.current.contentWindow.postMessage({
    channel:CHANNEL,type:"execute",token:token.current,runId:id,
-   code,stdin:d.stdin
+   code,language:d.language,stdin:d.stdin
   },"*");
  };
  const stop=()=>{
@@ -97,7 +97,7 @@ export default function LektrusProgrammingView({diagram:d}:{diagram:ProgrammingD
   <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",justifyContent:"space-between"}}>
    <div><strong style={{fontSize:18}}>{d.title}</strong>
     <div style={{fontSize:12,color:"#637f9b"}}>{programmingLanguageLabels[d.language]}
-     {d.language==="typescript"?" · компиляция в JavaScript":""}</div></div>
+     {d.language==="typescript"?" · компиляция в JavaScript":d.language==="python"?" · Python (Pyodide)":""}</div></div>
    <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
     <button type="button" disabled={!ready||running}
      style={{...actionStyle,opacity:!ready||running?.5:1}}
