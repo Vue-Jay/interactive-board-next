@@ -1019,10 +1019,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
           strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>;
         })}
        </g>}
-      {mode==="minerals"&&!localMineralDetail&&<g className="lektrus-atlas-mineral-clusters">
+      {mode==="minerals"&&(!localMineralDetail||scale<12)&&<g className="lektrus-atlas-mineral-clusters">
        {mineralGroups.filter(group=>group.point[0]>=visibleWorld.left&&group.point[0]<=visibleWorld.right&&
         group.point[1]>=visibleWorld.top&&group.point[1]<=visibleWorld.bottom).map(group=>{
-        const radius=10;
+        const radius=9;
         const choose=()=>{
          if(group.count===1){setSelectedMineral(group.representative.feature);setSelected(null)}
          else {
@@ -1037,20 +1037,16 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          role="button" tabIndex={0}
          onClick={e=>{e.stopPropagation();choose()}}
          onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();choose()}}}>
-         <circle r={radius+1.3} fill="#fff" fillOpacity=".95" stroke="#b4b9a6" strokeWidth="1.1"/>
-         <MineralAtlasGlyph name={group.dominant}/>
-         {group.count>1&&<g transform="translate(7 -7)">
-          <circle r="4.9" fill="#344e6a" stroke="#fff" strokeWidth="1"/>
-          <text x="0" y="1.9" textAnchor="middle" fontSize={group.count>=100?4.1:5.2}
-           fontWeight="750" fill="#fff">{group.count>99?"99+":group.count}</text>
-         </g>}
+         <circle r={radius+1.3} fill="#fffdf5" fillOpacity=".73"
+          stroke="#9a9585" strokeWidth=".65"/>
+         <g transform="scale(.74)"><MineralAtlasGlyph name={group.dominant}/></g>
          <title>{group.count>1?
           group.count+" записей о месторождениях в обзорной выборке USGS. Нажмите для приближения.":
           group.dominant+" (USGS)"}</title>
         </g>;
        })}
       </g>}
-      {mode==="minerals"&&<g className="lektrus-atlas-mineral-points">
+      {mode==="minerals"&&localMineralDetail&&scale>=12&&<g className="lektrus-atlas-mineral-points">
        {visibleMinerals.map(item=><g key={"mineral-"+item.id}
         transform={`translate(${item.point[0]} ${item.point[1]}) scale(${1/scale})`}
         onClick={e=>{e.stopPropagation();setSelectedMineral(item.feature);setSelected(null)}}
@@ -1058,8 +1054,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();setSelectedMineral(item.feature);setSelected(null)}}}>
         {selectedMineral===item.feature&&<circle r="10" fill="none" stroke="#b25e2e"
          strokeWidth="2" pointerEvents="none"/>}
-        <circle r="11.2" fill="#fffffff0" stroke="#b8c4c6" strokeWidth=".8"/>
-        <MineralAtlasGlyph name={item.commodity.name}/>
+        <circle r="9.4" fill="#fffdf5" fillOpacity=".75" stroke="#9a9585" strokeWidth=".7"/>
+        <g transform="scale(.78)"><MineralAtlasGlyph name={item.commodity.name}/></g>
         <title>{item.commodity.name}, источник USGS</title>
        </g>)}
       </g>}
@@ -1218,7 +1214,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>}
     {mode==="minerals"&&<div className="lektrus-atlas-natural-legend">
      <strong>Карта полезных ископаемых</strong>
-      <small>Все условные знаки повторяют присланную легенду школьного атласа. Обозначения нарисованы геометрическими символами, а не текстовыми сокращениями.</small>
+      <small>Школьные картографические знаки из присланной легенды. Обозначения ставятся по опубликованным координатам USGS, а не по примерному размещению из рисунков.</small>
      <label className="lektrus-atlas-city-filter">Группа сырья
       <select aria-label="Фильтр полезных ископаемых" value={mineralFilter}
        onChange={e=>{setMineralFilter(e.target.value);setSelectedMineral(null)}}>
@@ -1227,12 +1223,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       </select>
      </label>
      {SCHOOL_ATLAS_FUEL_MINERALS.some(name=>name===mineralFilter)&&
-      <small>Знак включён в школьную легенду, но используемая база USGS не содержит нефтяные, газовые и угольные месторождения. Их координаты не создаются искусственно.</small>}
+      <small>Этот вид сырья присутствует в школьном атласе, но текущие подключённые каталоги USGS не содержат его координат. Пустая карта не означает отсутствие месторождений.</small>}
      <small>{!localMineralDetail?
       worldMineralsLoading||mrdsWorldLoading?"Загрузка каталогов USGS, обзорных и MRDS…":
       mineralsAvailable&&mineralLoading?"Загрузка подробных месторождений выбранного региона…":
       (worldMineralError&&mrdsWorldError?worldMineralError+" "+mrdsWorldError:"")||"Обзорная выборка: "+worldMineralPoints.length+
-       " записей, сгруппированных в "+mineralGroups.length+" обозначений. Числа внутри значков показывают записи выборки, а не все месторождения мира. Нажмите на скопление для приближения.":
+       " записей, представленных "+mineralGroups.length+" знаками. Один знак соответствует одному виду сырья и может объединять несколько записей. Нажмите для приближения.":
       mineralError||"Подробные месторождения в выбранной области: "+visibleMinerals.length+
        (mrdsRegionLoading?" · обновление MRDS…":".")}</small>
      {mineralGuide(mineralFilter)&&<div className="lektrus-atlas-city-data">
@@ -1250,11 +1246,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        </div>)}
       </div>)}
      </div>
-     <small>Обозначения повторяют присланную школьную легенду. Месторождения горючих ископаемых отсутствуют в подключённой базе USGS и не создаются искусственно.</small>
+     <small>Условные знаки повторяют школьную легенду. Мировой обзор составлен из географических выборок двух каталогов USGS: «Крупные месторождения» и MRDS.
+      На далёком масштабе один знак может представлять несколько записей одного вида сырья. Нажмите на него для приближения.
+      База историческая и неполная, особенно за пределами США. Нефть, газ и уголь в этих каталогах не представлены.</small>
      <a href="https://special-edu.kz/TEXTBOOKS/1RAZDEL/book/pdf/geog9Methods.pdf"
       target="_blank" rel="noopener noreferrer">Примеры условных знаков из школьного учебного материала ↗</a>
      <small>Используются условные обозначения из присланной школьной легенды, сгруппированные по типу полезного ископаемого.
-       Историческая база USGS: покрытие за пределами США неполное.
+       Каталоги USGS: покрытие за пределами США неполное.
       Обзорные группы построены по выборке, а не по полному кадастру месторождений. Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются. Основа каталога USGS включает исторические сведения и не является актуальным кадастром на 2026 год.
       Показываются только месторождения с распознаваемым типом сырья.</small>
      <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
