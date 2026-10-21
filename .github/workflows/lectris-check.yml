@@ -49,6 +49,8 @@ jobs:
         run: node scripts/test-lektrus-http-uuid.mjs
       - name: Programming editor compiler and sandbox regression
         run: node scripts/test-lektrus-programming.mjs
+      - name: Russian atlas encyclopedia and school facts regression
+        run: node scripts/test-lektrus-atlas-school-facts.mjs
       - name: Atlas labels and performance regression
         run: node scripts/test-lektrus-atlas-labels.mjs
       - name: Real board interface studio regression
