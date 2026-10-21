@@ -341,3 +341,13 @@
  font-size:11px;line-height:1.4;overflow-wrap:normal;word-break:normal;
  white-space:normal;color:#314b65
 }
+
+/* Native atlas markers are small; browser focus rectangles around kilometres-long
+   SVG river paths were mistaken for giant map pins. Preserve keyboard indication
+   with a subtle glow on the geometry itself, never a black bounding box. */
+.lektrus-atlas-map-box .lektrus-atlas-svg g[role="button"]:focus{outline:none}
+.lektrus-atlas-map-box .lektrus-atlas-svg g[role="button"]:focus-visible{
+ outline:none;filter:drop-shadow(0 0 2px #3f83b8)
+}
+.lektrus-atlas-mineral-group{cursor:zoom-in}
+.lektrus-atlas-mineral-points g[role="button"]{cursor:pointer}
