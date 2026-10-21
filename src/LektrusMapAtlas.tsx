@@ -369,6 +369,22 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   return()=>{active=false};
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[mode,roadTileKey,externalKey,citiesOn]);
+ useEffect(()=>{
+  let active=true;
+  if(mode!=="minerals"||!mineralsAvailable){
+   setMinerals(null);setMineralLoading(false);setMineralError("");
+   return()=>{active=false};
+  }
+  setMineralLoading(true);
+  loadMineralDeposits(externalBounds).then(v=>{if(active){
+   setMinerals(v);setMineralLoading(false);setMineralError("");
+  }}).catch(()=>{if(active){
+   setMinerals(null);setMineralLoading(false);
+   setMineralError("Не удалось получить сведения о месторождениях из USGS.");
+  }});
+  return()=>{active=false};
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[mode,externalKey,mineralsAvailable]);
  const auxiliaryDetailZoom=Math.pow(2,Math.floor(Math.log2(scale)));
  const auxiliaryLines=useMemo(()=>infrastructure?.features.flatMap((feature,id)=>{
   const path=mapFeaturePath(feature,Math.max(.00008,.55/auxiliaryDetailZoom),viewport);
