@@ -812,3 +812,49 @@
  .lektrus-ink-settings-direct{justify-content:flex-start}
  .lektrus-direct-ink-widths>button{flex:0 0 39px}
 }
+
+/* Board preferences: grouped and self-explanatory, not an undifferentiated list. */
+.lektrus-control-settings{width:min(620px,calc(100vw - 24px));max-height:min(89dvh,780px);
+ display:flex;flex-direction:column;overflow:hidden;border-radius:17px}
+.lektrus-control-settings .lektrus-controls-head{padding:18px 20px 15px;border-bottom:1px solid #dde6ee}
+.lektrus-control-settings .lektrus-controls-head small{font-size:10px;letter-spacing:1.2px}
+.lektrus-control-settings .lektrus-controls-head h2{margin:4px 0;font-size:21px}
+.lektrus-control-settings .lektrus-controls-head p{margin:0;line-height:1.5;font-size:12px;opacity:.78}
+.lektrus-control-settings .lektrus-controls-body{min-height:0;overflow:auto;display:flex;flex-direction:column;
+ gap:12px;padding:14px 19px;scrollbar-width:thin}
+.lektrus-controls-section{padding:13px;background:#fff;border:1px solid #d9e5f0;border-radius:12px;
+ display:flex;flex-direction:column;gap:11px}
+.lektrus-controls-section-title{display:flex;gap:10px;align-items:flex-start}
+.lektrus-controls-section-title>span{flex:none;background:#e7f1ff;color:#356a9e;
+ font-weight:800;width:25px;height:25px;display:grid;place-items:center;border-radius:8px;font-size:12px}
+.lektrus-controls-section-title>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lektrus-controls-section-title strong{font-size:13px;color:#274f71}
+.lektrus-controls-section-title small{font-size:11px;color:#738ba0;line-height:1.5}
+.lektrus-controls-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.lektrus-controls-modes button{background:#f8fbff;border:1px solid #cfdfea;border-radius:10px;
+ padding:11px;text-align:left;display:flex;flex-direction:column;gap:5px;color:#365f82;cursor:pointer}
+.lektrus-controls-modes button.active{background:#e7f1ff;border-color:#6e9fd0;box-shadow:0 0 0 1px #a2c6ec}
+.lektrus-controls-modes button b{font-size:12px}
+.lektrus-controls-modes button span{font-size:11px;font-weight:400;line-height:1.5;color:#68839b}
+.lektrus-controls-sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.lektrus-controls-sliders label{display:flex;flex-direction:column;gap:9px;font-size:12px;font-weight:600;color:#416180}
+.lektrus-controls-sliders label>span{display:flex;justify-content:space-between;gap:8px}
+.lektrus-controls-sliders output{font-variant-numeric:tabular-nums;font-size:12px;font-weight:800;color:#2568ad}
+.lektrus-controls-sliders input{width:100%;accent-color:#3477bf}
+.lektrus-controls-section .lektrus-controls-check{display:flex;align-items:flex-start;gap:10px;
+ padding:6px 0;font-weight:normal;font-size:12px}
+.lektrus-controls-section .lektrus-controls-check input{width:17px;height:17px;flex:none;accent-color:#3575bd}
+.lektrus-controls-section .lektrus-controls-check span{display:flex;flex-direction:column;gap:3px}
+.lektrus-controls-section .lektrus-controls-check b{font-size:12px}
+.lektrus-controls-section .lektrus-controls-check small{font-size:11px;color:#71879c}
+.lektrus-controls-layout-entry{border:1px solid #c8ddec;background:#f5f9ff;border-radius:9px;
+ padding:10px 12px;color:#2a5c92;display:flex;align-items:center;justify-content:space-between;
+ font-weight:700;font-size:12px;cursor:pointer}
+.lektrus-control-settings .lektrus-controls-note{color:#70869c;font-size:11px;line-height:1.5;margin:3px}
+.lektrus-control-settings footer{display:flex;justify-content:space-between;gap:10px;
+ padding:13px 19px;border-top:1px solid #e0e9f1}
+@media(max-width:570px){
+ .lektrus-controls-modes,.lektrus-controls-sliders{grid-template-columns:1fr}
+ .lektrus-control-settings .lektrus-controls-body{padding:10px}
+ .lektrus-controls-section{padding:10px}
+}

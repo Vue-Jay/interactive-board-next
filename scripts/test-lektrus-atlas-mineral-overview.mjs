@@ -119,7 +119,7 @@ assert.ok(map.includes("loadMRDSWorldOverview("));
 assert.ok(map.includes('const landmarkCities=citiesOn||mineralContext'));
 assert.ok(map.includes('const hydroContext=mode==="physical"||mode==="hydrography"||mineralContext'));
 assert.ok(map.includes('const reliefContext=mode==="physical"||mode==="relief"||mineralContext'));
-assert.ok(map.includes('["rivers",!detailedGeography&&hydroContext]'));
+assert.ok(map.includes('["rivers",!detailedGeography&&hydroContext&&(!isWorksheet||contourConfig.showRivers)]'));
 assert.ok(map.includes('["cities",landmarkCities&&!detailedGeography]'));
 assert.ok(map.includes('["regions",!detailedGeography&&reliefContext]'));
 assert.ok(map.includes('cityPopulation(f.feature)>=mineralCityFloor'));

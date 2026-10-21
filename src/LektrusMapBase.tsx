@@ -3,7 +3,7 @@ import {mapFeaturePath,projectGeography,type MapWindow,type GeoCollection} from 
 type Props={land:GeoCollection|null;coastline:GeoCollection|null;scale?:number;viewport?:MapWindow;terrain?:ReactNode;theme?:"default"|"minerals"};
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 export function atlasGraticuleStep(scale:number){
- const target=30/Math.max(1,scale),power=Math.pow(10,Math.floor(Math.log10(target)));
+ const target=10/Math.max(1,scale),power=Math.pow(10,Math.floor(Math.log10(target)));
  return ([1,2,5,10].find(v=>v*power>=target-1e-12)??10)*power;
 }
 const label=(v:number,lat:boolean)=>Math.abs(v).toLocaleString("ru-RU",{maximumFractionDigits:4})+

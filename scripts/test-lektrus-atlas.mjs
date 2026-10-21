@@ -262,7 +262,7 @@ assert.ok(map.includes('onPointerUp={objectMoveMode?undefined:contourFreehand?en
 assert.ok(map.includes('const cameraLayerRef=useRef<SVGGElement|null>(null)'));
 assert.ok(map.includes('cameraLayerRef.current?.setAttribute("transform"'));
 assert.ok(map.includes('cameraIdleRef.current=setTimeout('));
-assert.ok(map.includes('LektrusAtlasGraticule scale={scale} viewport={viewport}'));
+assert.ok(map.includes('LektrusAtlasGraticule scale={scale} viewport={gridViewport}'));
 assert.ok(!map.includes('grid={d.showGrid||coordinatesEnabled'));
 assert.ok(map.includes('aria-label="Меридианы и параллели"'));
 assert.match(map,/featureSourceFacts/);
@@ -579,10 +579,35 @@ const atlasEditorNoSettings=fs.readFileSync(new URL("../src/LektrusSchoolDiagram
 assert.ok(!atlasEditorNoSettings.includes('lektrus-atlas-settings-toggle'));
 assert.ok(!atlasEditorNoSettings.includes('atlasSettingsOpen'));
 assert.ok(map.includes('contourMarks:contourMarks.filter'));
-assert.ok(map.includes('setContourAction(key)'));
+assert.ok(map.includes('onClick={()=>setContourAction(id)}'));
 assert.ok(map.includes('Контурная карта')||map.includes('контурной карты'));
 assert.ok(common.includes('export function LektrusAtlasGraticule'));
 assert.ok(common.indexOf('export function LektrusAtlasGraticule')<
  common.indexOf('export default function LektrusMapBase'));
+
+const teacher=fs.readFileSync(new URL("../src/LektrusContourAssignmentSetup.tsx",import.meta.url),"utf8");
+assert.ok(teacher.includes("Создание задания"));
+assert.ok(teacher.includes("Подложка карты"));
+assert.ok(teacher.includes("Инструменты ученика"));
+assert.ok(teacher.includes("atlasRegions.filter"));
+assert.ok(atlasEditorNoSettings.includes("LektrusContourAssignmentSetup value={draft}"));
+assert.ok(map.includes('lektrus-atlas--worksheet'));
+assert.ok(map.includes('isWorksheet&&!editorMode&&<div className="lektrus-contour-workspace"'));
+assert.ok(map.includes('!isWorksheet&&<aside className="lektrus-atlas-sidebar"'));
+assert.ok(map.includes('!isWorksheet&&<header className="lektrus-atlas-header"'));
+assert.ok(map.includes('contourConfig.showRivers')&&map.includes('contourConfig.showLakes'));
+assert.ok(map.includes('if(points.current.size===0)cameraIdleRef.current=setTimeout('));
+assert.ok(map.includes('Math.max(.00015,.4/scale)'));
+const modelContents=fs.readFileSync(new URL("../src/lektrusAtlasModel.ts",import.meta.url),"utf8");
+assert.ok(modelContents.includes('export const defaultContourAssignment'));
+assert.ok(data.includes('export function featureIntersectsViewport'));
+assert.ok(common.includes('const target=10/Math.max(1,scale)'));
+const boardSettings=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+assert.ok(boardSettings.includes("Управление и интерфейс"));
+assert.ok(boardSettings.includes("Настроить расположение панелей"));
+assert.ok(boardSettings.includes("Колесо мыши и тачпад"));
+const modelOptions={...validWork,contourAssignment:{showBorders:false,showRivers:true,allowFill:false}};
+assert.equal(validAtlasDocument(modelOptions),true);
+assert.equal(validAtlasDocument({...modelOptions,contourAssignment:{showRivers:"off"}}),false);
 
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
