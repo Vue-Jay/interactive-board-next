@@ -313,7 +313,15 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  })).filter(f=>f.point).sort((a,b)=>
   Number(a.feature.properties?.scalerank??a.feature.properties?.SCALERANK??9)-
   Number(b.feature.properties?.scalerank??b.feature.properties?.SCALERANK??9))||[],[lakes]);
- const provincePaths=useMemo(()=>administrative?.features.filter(f=>f.geometry&&(f.geometry.type==="Polygon"||f.geometry.type==="MultiPolygon")).map((f,i)=>({id:i,path:mapFeaturePath(f,.12,viewport),feature:f})).filter(f=>f.path)||[],[administrative,viewport]);
+ const provinceViewport=useMemo<MapWindow|undefined>(()=>
+  mode==="cities"&&scale>=4?
+   {left:(tileX-2)*tileWidth,right:(tileX+2)*tileWidth,
+    top:(tileY-2)*tileHeight,bottom:(tileY+2)*tileHeight}:viewport,
+  [mode,scale>=4,tileX,tileY,tileWidth,tileHeight,viewport]);
+ const provincePaths=useMemo(()=>administrative?.features
+  .filter(f=>f.geometry&&(f.geometry.type==="Polygon"||f.geometry.type==="MultiPolygon"))
+  .map((f,i)=>({id:i,path:mapFeaturePath(f,.2,provinceViewport),feature:f}))
+  .filter(f=>f.path)||[],[administrative,provinceViewport]);
  const landforms=useMemo(()=>regions?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
   .filter(v=>v.path)||[],[regions,detailedGeography,viewport]);
  const ice=useMemo(()=>glaciers?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
