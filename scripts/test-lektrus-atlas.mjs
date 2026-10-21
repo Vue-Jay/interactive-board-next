@@ -279,6 +279,14 @@ assert.equal(geoExports.geoFeatureName(named({ISO_A2:"RU",adm1_code:"RU-PER",ADM
  "Unnamed province cannot be labelled with the country name");
 assert.equal(geoExports.geoFeatureName(named({ISO_A2:"RU",ADMIN:"Russia",SOVEREIGNT:"Russia"},
  {type:"Polygon",coordinates:[]})),"Россия","A real country may use the official ISO Russian name");
+const schoolCountryFacts=geoExports.featureSourceFacts(named({
+ NAME_RU:"Тестовая страна",CONTINENT:"Asia",SUBREGION:"Central Asia",
+ POP_EST:1200000,POP_YEAR:2024,GDP_MD:15000,GDP_YEAR:2022
+},{type:"Polygon",coordinates:[]}));
+assert.equal(schoolCountryFacts.find(f=>f.label==="Часть света")?.value,"Азия");
+assert.equal(schoolCountryFacts.find(f=>f.label==="Регион мира")?.value,"Центральная Азия");
+assert.match(schoolCountryFacts.find(f=>f.label==="Население (оценка картографического источника)")?.value??"",/2024/);
+assert.match(schoolCountryFacts.find(f=>f.label==="ВВП (оценка источника)")?.value??"",/2022/);
 assert.equal(geoExports.hasAtlasName(named({NAME:"Unknown"})),false);
 assert.equal(places.russianPlaceName(named({NAME_RU:"Неизвестно"})),null);
 assert.ok(!map.includes('!=="Объект без названия"'),"the UI must not use placeholder text");
