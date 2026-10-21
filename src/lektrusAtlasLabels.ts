@@ -45,6 +45,7 @@ const shortCountryNames:Record<string,string>={
  "Сирийская Арабская Республика":"Сирия",
  "Республика Союз Мьянма":"Мьянма"
 };
+const localizedCountries=new Intl.DisplayNames(["ru"],{type:"region"});
 const isoShortNames:Record<string,string>={
  CN:"Китай",CD:"ДР Конго",CG:"Конго",RU:"Россия",US:"США",
  GB:"Великобритания",KP:"КНДР",KR:"Южная Корея",
@@ -56,8 +57,18 @@ const isoShortNames:Record<string,string>={
 };
 /** Apply only to modern sovereign country polygons. Never alias cities or historical empires. */
 export function schoolCountryName(fullName:string,iso?:string):string{
- const fromISO=isoShortNames[(iso||"").toUpperCase()];
- return fromISO??shortCountryNames[fullName.trim()]??fullName;
+ const countryCode=(iso||"").toUpperCase();
+ const fromISO=isoShortNames[countryCode];
+ if(fromISO)return fromISO;
+ const fromDictionary=shortCountryNames[fullName.trim()];
+ if(fromDictionary)return fromDictionary;
+ // CLDR provides conventional Russian names for additional countries without
+ // maintaining 200 hand-written guesses. Only use a shorter Cyrillic name.
+ if(/^[A-Z]{2}$/.test(countryCode)){
+  const localized=localizedCountries.of(countryCode);
+  if(localized&&/[А-ЯЁа-яё]/.test(localized)&&localized.length<fullName.length)return localized;
+ }
+ return fullName;
 }
 export type AtlasLabelKind="country"|"capital"|"city"|"province"|"lake"|"river"|"sea"|"nature"|"stream"|"peak";
 export type AtlasLabelCandidate={
