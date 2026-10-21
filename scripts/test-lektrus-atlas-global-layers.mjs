@@ -1,13 +1,23 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
+const schoolAtlasSrc=fs.readFileSync(new URL("../src/lektrusSchoolAtlasMinerals.ts",import.meta.url),"utf8");
+const schoolAtlasExports={};
+new Function("exports",ts.transpileModule(schoolAtlasSrc,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText)(schoolAtlasExports);
+const schoolRequire=(path)=>{
+ if(path==="./lektrusSchoolAtlasMinerals")return schoolAtlasExports;
+ throw new Error("Unexpected import in atlas regression: "+path);
+};
+
 
 const load=(filename,globals={})=>{
  const source=fs.readFileSync(new URL("../src/"+filename,import.meta.url),"utf8");
  const transpiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,
   module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const exports={};
- new Function("exports",...Object.keys(globals),transpiled)(exports,...Object.values(globals));
+ new Function("exports","require",...Object.keys(globals),transpiled)(exports,schoolRequire,...Object.values(globals));
  return exports;
 };
 const {politicalAtlasPalette,colorPoliticalCountries}=load("lektrusAtlasPoliticalColors.ts");
