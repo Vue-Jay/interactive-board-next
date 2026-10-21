@@ -87,6 +87,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [cityCategory,setCityCategory]=useState<CityCategory>(d.cityCategory??"all");
  const [regions,setRegions]=useState<GeoCollection|null>(null);
  const [administrative,setAdministrative]=useState<GeoCollection|null>(null);
+ const [worldAdminLines,setWorldAdminLines]=useState<GeoCollection|null>(null);
+ const [worldAdminError,setWorldAdminError]=useState("");
  const [cityBoundaries,setCityBoundaries]=useState<GeoCollection|null>(null);
  const [cityBoundaryError,setCityBoundaryError]=useState("");
  const [elevations,setElevations]=useState<GeoCollection|null>(null);
@@ -276,6 +278,19 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    .catch(()=>{if(active){setDetail(null);setDetailWarning("Слой 1:10 млн не загрузился, остаётся обзорный масштаб.")}});
   return()=>{active=false};
  },[modernBorders,scale>=5,russianView,refresh]);
+ useEffect(()=>{
+  let active=true;
+  if(!citiesOn||scale<2.5){
+   setWorldAdminLines(null);setWorldAdminError("");return()=>{active=false};
+  }
+  loadAtlasLayer("admin-world-lines").then(result=>{if(active){
+   setWorldAdminLines(result);setWorldAdminError("");
+  }}).catch(()=>{if(active){
+   setWorldAdminLines(null);
+   setWorldAdminError("Подробные границы регионов мира временно недоступны.");
+  }});
+  return()=>{active=false};
+ },[citiesOn,scale>=2.5,refresh]);
  const mapSource=historical||mode==="political"||mode==="contour"||mode==="minerals"?source:null;
  const highDetail=modernBorders&&(russianView||!!detail&&scale>=5);
  const precision=highDetail?(scale>=8?.00015:.08):modernBorders?.13:.10;
@@ -327,7 +342,20 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   .filter(f=>f.geometry&&(f.geometry.type==="Polygon"||f.geometry.type==="MultiPolygon"))
   .map((f,i)=>({id:i,path:mapFeaturePath(f,.2,provinceViewport),feature:f}))
   .filter(f=>f.path)||[],[administrative,provinceViewport]);
- const landforms=useMemo(()=>regions?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
+ const adminLineViewport=useMemo<MapWindow|undefined>(()=>citiesOn&&scale>=2.5?
+  {left:(tileX-2)*tileWidth,right:(tileX+2)*tileWidth,
+   top:(tileY-2)*tileHeight,bottom:(tileY+2)*tileHeight}:undefined,
+  [citiesOn,scale>=2.5,tileX,tileY,tileWidth,tileHeight]);
+ const worldAdminLinePaths=useMemo(()=>{
+  if(!worldAdminLines||!adminLineViewport)return [];
+  const west=adminLineViewport.left/2.5-180,east=adminLineViewport.right/2.5-180;
+  const south=90-adminLineViewport.bottom/2.5,north=90-adminLineViewport.top/2.5;
+  return worldAdminLines.features
+   .filter(f=>!f.bbox||f.bbox[2]>=west&&f.bbox[0]<=east&&f.bbox[3]>=south&&f.bbox[1]<=north)
+   .map((feature,i)=>({id:i,path:mapFeaturePath(feature,.13,adminLineViewport),feature}))
+   .filter(f=>f.path);
+ },[worldAdminLines,adminLineViewport]);
+  const landforms=useMemo(()=>regions?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
   .filter(v=>v.path)||[],[regions,detailedGeography,viewport]);
  const ice=useMemo(()=>glaciers?.features.filter(hasAtlasName).map((f,i)=>({id:i,path:mapFeaturePath(f,detailedGeography?.05:.62,viewport),feature:f}))
   .filter(v=>v.path)||[],[glaciers,detailedGeography,viewport]);
@@ -826,7 +854,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         </path>;
        })}
       </g>
-      {provincePaths.length>0&&(mode==="contour"||mode==="coordinates"||citiesOn&&scale>=2.5)&&<g className="lektrus-atlas-admin1" stroke="#a0a7a5"
+      {citiesOn&&scale>=2.5&&worldAdminLinePaths.length>0&&
+       <g className="lektrus-atlas-global-admin1" fill="none" pointerEvents="none"
+        stroke="#84999e" strokeWidth=".58" strokeLinecap="round" strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke" opacity=".93">
+        {worldAdminLinePaths.map(line=><path key={"world-admin-"+line.id}
+         d={line.path} fill="none" vectorEffect="non-scaling-stroke"/>)}
+       </g>}
+      {provincePaths.length>0&&(mode==="contour"||mode==="coordinates"||citiesOn&&scale>=2.5&&!worldAdminLinePaths.length)&&<g className="lektrus-atlas-admin1" stroke="#a0a7a5"
        strokeWidth=".48" vectorEffect="non-scaling-stroke"
        pointerEvents={mode==="contour"&&paintRegions||mode==="political"?"visiblePainted":"none"}>
        {provincePaths.map(f=>{
