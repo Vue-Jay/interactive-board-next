@@ -2,23 +2,23 @@
  * Coordinates are geographic WGS84, never invented "modern borders" for a past year. */
 export type AtlasMode="political"|"contour"|"physical"|"hydrography"|"relief"|"cities"|"minerals"|"coordinates"|"historical"|"events";
 export type AtlasSubject="geography"|"history";
-export const legacyAtlasModes=["hydrography","relief","coordinates"] as const;
-export function normalizeAtlasMode(mode:AtlasMode):AtlasMode{return mode==="hydrography"||mode==="relief"?"physical":mode==="coordinates"?"political":mode}
+export const legacyAtlasModes=["hydrography","relief","coordinates","cities"] as const;
+export function normalizeAtlasMode(mode:AtlasMode):AtlasMode{return mode==="hydrography"||mode==="relief"?"physical":mode==="coordinates"||mode==="cities"?"political":mode}
 export function normalizeAtlasDocument(document:AtlasDocument):AtlasDocument{
  return {...document,mode:normalizeAtlasMode(document.mode),
-  showCoordinates:document.showCoordinates===true||document.mode==="coordinates"};
+  showCoordinates:document.showCoordinates===true||document.mode==="coordinates",
+  showCities:document.showCities!==false};
 }
 export const atlasModesFor=(subject:AtlasSubject)=>atlasModes.filter(m=>subject==="history"?m.id==="historical"||m.id==="events":m.id!=="historical"&&m.id!=="events");
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
 export type AtlasDocument={
  kind:"atlas";title:string;mode:AtlasMode;scope?:AtlasSubject;year:number;showLabels:boolean;
- showGrid:boolean;showCoordinates?:boolean;showEvents:boolean;markers:AtlasMarker[];borderView?:"source"|"russian";regionId?:string;hypsometry?:boolean;cityMinPopulation?:number;cityCategory?:"all"|"capitals"|"regional"|"ordinary";paintedCountries?:Record<string,string>;
+ showGrid:boolean;showCoordinates?:boolean;showCities?:boolean;showEvents:boolean;markers:AtlasMarker[];borderView?:"source"|"russian";regionId?:string;hypsometry?:boolean;cityMinPopulation?:number;cityCategory?:"all"|"capitals"|"regional"|"ordinary";paintedCountries?:Record<string,string>;
 };
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
  {id:"political",title:"Политическая",hint:"Современные государства, названия и границы"},
  {id:"contour",title:"Контурная",hint:"Неподписанная карта для упражнений"},
  {id:"physical",title:"Физическая",hint:"Природные объекты, водная сеть, ледники, крупные формы рельефа и высотные отметки"},
- {id:"cities",title:"Города",hint:"Населённые пункты и показатели населения по данным Natural Earth"},
  {id:"minerals",title:"Полезные ископаемые",hint:"Месторождения в базе USGS, группы минерального сырья и географическое распространение"},
  {id:"historical",title:"Историческая",hint:"Государства и границы по датированным снимкам"},
  {id:"events",title:"Карта событий",hint:"Исторические события по времени и координатам"}
@@ -179,7 +179,7 @@ export function eventsNearYear(year:number){
 }
 export function createAtlasDocument(scope:AtlasSubject="geography"):AtlasDocument{
  return {kind:"atlas",scope,title:scope==="history"?"Исторический атлас":"Географический атлас",mode:scope==="history"?"historical":"political",year:1914,
-  showLabels:true,showGrid:false,showCoordinates:false,showEvents:false,markers:[],borderView:"russian",regionId:"world",hypsometry:true,cityMinPopulation:0,cityCategory:"all",paintedCountries:{}};
+  showLabels:true,showGrid:false,showCoordinates:false,showCities:true,showEvents:false,markers:[],borderView:"russian",regionId:"world",hypsometry:true,cityMinPopulation:0,cityCategory:"all",paintedCountries:{}};
 }
 const isText=(v:unknown,max:number,allowEmpty=false)=>typeof v==="string"&&v.length<=max&&(allowEmpty||v.trim().length>0);
 export function validAtlasDocument(value:unknown):value is AtlasDocument{
@@ -188,7 +188,7 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
  if(v.kind!=="atlas"||!isText(v.title,120)||!(atlasModes.some(m=>m.id===v.mode)||legacyAtlasModes.some(mode=>mode===v.mode))||
   (v.scope!==undefined&&((v.scope!=="geography"&&v.scope!=="history")||!(atlasModesFor(v.scope).some(m=>m.id===v.mode)||(v.scope==="geography"&&legacyAtlasModes.some(mode=>mode===v.mode)))))||
   !historicalSnapshots.some(s=>s.year===v.year)||typeof v.showLabels!=="boolean"||
-  typeof v.showGrid!=="boolean"||(v.showCoordinates!==undefined&&typeof v.showCoordinates!=="boolean")||typeof v.showEvents!=="boolean"||
+  typeof v.showGrid!=="boolean"||(v.showCoordinates!==undefined&&typeof v.showCoordinates!=="boolean")||(v.showCities!==undefined&&typeof v.showCities!=="boolean")||typeof v.showEvents!=="boolean"||
   !Array.isArray(v.markers)||v.markers.length>40||
   (v.borderView!==undefined&&v.borderView!=="source"&&v.borderView!=="russian")||
    (v.regionId!==undefined&&(typeof v.regionId!=="string"||v.regionId.length>65||!/^[-a-z0-9]+$/.test(v.regionId)))||
