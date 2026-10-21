@@ -196,3 +196,50 @@ export function loadCityBoundaries(b:ExternalBounds):Promise<GeoCollection>{
   return {type:"FeatureCollection",features};
  });
 }
+
+/** Worldwide overview uses a bounded, geographically distributed sample of real
+ * USGS records. Six geographic partitions prevent a worldwide first-page query
+ * from showing deposits only near a single region. Counts represent records in
+ * this sample, not all deposits or reserves on Earth.
+ */
+export function loadWorldMineralOverview():Promise<GeoCollection>{
+ return memo("usgs:world-overview:v2",async()=>{
+  const longitudes=[[-180,-60],[-60,60],[60,180]];
+  const latitudes=[[-60,0],[0,85]];
+  const tiles=longitudes.flatMap(([west,east])=>latitudes.map(([south,north])=>({west,east,south,north})));
+  const results=await Promise.allSettled(tiles.map(async b=>{
+   const params=new URLSearchParams({
+    where:"1=1",geometry:[b.west,b.south,b.east,b.north].join(","),
+    geometryType:"esriGeometryEnvelope",inSR:"4326",outSR:"4326",
+    spatialRel:"esriSpatialRelIntersects",
+    outFields:"gid,rec_id,dep_name,commod1,commod2,commod3,dep_type",
+    returnGeometry:"true",resultRecordCount:"350",f:"json"
+   });
+   const endpoint="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0/query?"+params.toString();
+   const response=await safeFetch(endpoint);
+   if(response.error)throw Error(String(response.error.message));
+   const features:GeoFeature[]=[];
+   for(const row of response.features??[]){
+    const properties=row.attributes??{},lat=Number(row.geometry?.y),lon=Number(row.geometry?.x);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat<-90||lat>90||lon<-180||lon>180)continue;
+    const feature:GeoFeature={type:"Feature",geometry:{type:"Point",coordinates:[lon,lat]},properties};
+    if(mineralCommodity(feature))features.push(feature);
+   }
+   return features;
+  }));
+  const combined:GeoFeature[]=[],ids=new Set<string>();
+  let successful=0;
+  for(const result of results){
+   if(result.status!=="fulfilled")continue;
+   successful++;
+   for(const f of result.value){
+    const id=String(f.properties?.gid??f.properties?.rec_id??"")+":"+
+     JSON.stringify(f.geometry?.coordinates);
+    if(ids.has(id))continue;
+    ids.add(id);combined.push(f);
+   }
+  }
+  if(!successful)throw Error("Обзорные месторождения USGS недоступны");
+  return {type:"FeatureCollection",features:combined};
+ });
+}
