@@ -17,7 +17,7 @@ export type SchoolDiagram=
  |{kind:"division";title:string;phase:"interphase"|"prophase"|"metaphase"|"anaphase"|"telophase";showLabels:boolean}
  |{kind:"encoding";title:string;message:string;mode:"unicode"|"utf8";showCodes:boolean}
  |{kind:"genetics";title:string;parentA:string;parentB:string;showAnswers:boolean}
- |{kind:"logic";title:string;operation:"and"|"or"|"xor"|"implication"|"equivalence";showAnswers:boolean}
+ |{kind:"logic";title:string;operation:"and"|"or"|"xor"|"implication"|"equivalence";showAnswers:boolean;inputA?:0|1;inputB?:0|1}
  |{kind:"timeline";title:string;events:{id:string;year:number;label:string}[];showEra:boolean}
  |BiologyExtensionDiagram|NextSchoolDiagram|FurtherDiagram|ApprovedSchoolDiagram|RussianSchoolDiagram|LanguageSocialDiagram|AtlasDocument;
 export const months=["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"] as const;
@@ -43,7 +43,7 @@ export function makeSchoolDiagram(id:SchoolDiagramId):SchoolDiagram{
   case "bio-division":return {kind:"division",title:"Митоз",phase:"metaphase",showLabels:true};
   case "info-encoding":return {kind:"encoding",title:"Кодирование текста",message:"АБВ",mode:"unicode",showCodes:true};
   case "bio-genetics":return {kind:"genetics",title:"Решётка Пеннета",parentA:"Aa",parentB:"Aa",showAnswers:false};
-  case "info-logic":return {kind:"logic",title:"Таблица истинности",operation:"and",showAnswers:false};
+  case "info-logic":return {kind:"logic",title:"Таблица истинности",operation:"and",showAnswers:false,inputA:1,inputB:0};
   case "bio-cell":return {kind:"cell",cell:"plant",showLabels:true,title:"Растительная клетка",
    visible:["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]};
   case "bio-food-chain":return {kind:"food-chain",title:"Цепь питания",showRoles:false,organisms:[
@@ -63,7 +63,9 @@ export function isSchoolDiagram(value:unknown):value is SchoolDiagram{
   case "division":return ["interphase","prophase","metaphase","anaphase","telophase"].includes(d.phase as string)&&typeof d.showLabels==="boolean";
   case "encoding":return typeof d.message==="string"&&[...d.message].length<=12&&["unicode","utf8"].includes(d.mode as string)&&typeof d.showCodes==="boolean";
   case "genetics":return typeof d.showAnswers==="boolean"&&typeof d.parentA==="string"&&typeof d.parentB==="string"&&/^[A-Za-z]{2}$/.test(d.parentA)&&/^[A-Za-z]{2}$/.test(d.parentB)&&d.parentA.toLowerCase()===d.parentB.toLowerCase()&&d.parentA[0].toLowerCase()===d.parentA[1].toLowerCase()&&d.parentB[0].toLowerCase()===d.parentB[1].toLowerCase();
-  case "logic":return typeof d.showAnswers==="boolean"&&["and","or","xor","implication","equivalence"].includes(d.operation as string);
+  case "logic":return typeof d.showAnswers==="boolean"&&["and","or","xor","implication","equivalence"].includes(d.operation as string)&&
+   (d.inputA===undefined||d.inputA===0||d.inputA===1)&&
+   (d.inputB===undefined||d.inputB===0||d.inputB===1);
   case "cell":{
    if(d.cell!=="plant"&&d.cell!=="animal"||typeof d.showLabels!=="boolean"||
       !Array.isArray(d.visible)||d.visible.length>7)return false;
