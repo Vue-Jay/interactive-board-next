@@ -9,8 +9,8 @@ const {
  atlasModes,atlasModesFor,normalizeAtlasMode,normalizeAtlasDocument,historicalSnapshots,nearestSnapshotIndex,eventsNearYear,
  createAtlasDocument,validAtlasDocument,yearLabel
 }=exports;
-assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","cities","minerals","historical","events"]);
-assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","cities","minerals"]);
+assert.deepEqual(atlasModes.map(m=>m.id),["political","contour","physical","minerals","historical","events"]);
+assert.deepEqual(atlasModesFor("geography").map(m=>m.id),["political","contour","physical","minerals"]);
 assert.deepEqual(atlasModesFor("history").map(m=>m.id),["historical","events"]);
 assert.ok(historicalSnapshots.length>=50,"historical atlas should have broad real snapshot coverage");
 assert.equal(new Set(historicalSnapshots.map(v=>v.year)).size,historicalSnapshots.length);
@@ -30,7 +30,7 @@ assert.equal(atlas.cityMinPopulation,0);
 assert.equal(atlas.showCoordinates,false);
 assert.equal(validAtlasDocument({...atlas,showCoordinates:true}),true);
 assert.equal(validAtlasDocument({...atlas,showCoordinates:"yes"}),false);
-for(const oldMode of ["hydrography","relief","coordinates"]){
+for(const oldMode of ["hydrography","relief","coordinates","cities"]){
  const legacy={...atlas,mode:oldMode};
  assert.equal(validAtlasDocument(legacy),true,"old saved atlas must load: "+oldMode);
  const migrated=normalizeAtlasDocument(legacy);
@@ -38,6 +38,9 @@ for(const oldMode of ["hydrography","relief","coordinates"]){
  assert.equal(migrated.showCoordinates,oldMode==="coordinates");
 }
 assert.equal(normalizeAtlasMode("historical"),"historical");
+assert.equal(normalizeAtlasMode("cities"),"political");
+assert.equal(normalizeAtlasDocument({...atlas,mode:"cities"}).mode,"political");
+assert.equal(normalizeAtlasDocument({...atlas,mode:"cities"}).showCities,true);
 assert.equal(validAtlasDocument({...atlas,cityMinPopulation:50000}),true);
 assert.equal(validAtlasDocument({...atlas,cityMinPopulation:17}),false);
 assert.equal(atlas.scope,"geography");
