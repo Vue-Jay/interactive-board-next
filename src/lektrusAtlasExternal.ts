@@ -212,7 +212,7 @@ export function loadWorldMineralOverview():Promise<GeoCollection>{
     where:"1=1",geometry:[b.west,b.south,b.east,b.north].join(","),
     geometryType:"esriGeometryEnvelope",inSR:"4326",outSR:"4326",
     spatialRel:"esriSpatialRelIntersects",
-    outFields:"gid,rec_id,dep_name,commod1,commod2,commod3,dep_type",
+    outFields:"gid,rec_id,dep_name,commodity,dep_type",
     returnGeometry:"true",resultRecordCount:"350",f:"json"
    });
    const endpoint="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0/query?"+params.toString();
