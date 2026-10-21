@@ -1190,6 +1190,16 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      </div>}
      <div className="lektrus-atlas-mineral-legend">{mineralTypes.map(item=><div key={item.name}>
       <LektrusMineralSymbol name={item.name} size={21}/>{item.name}</div>)}</div>
+     <details className="lektrus-atlas-school-symbols">
+      <summary>Условные знаки горючих ископаемых</summary>
+      <div className="lektrus-atlas-mineral-legend">
+       {["Каменный уголь","Бурый уголь","Нефть","Природный газ"].map(name=>
+        <div key={name}><LektrusMineralSymbol name={name} size={21}/>{name}</div>)}
+      </div>
+      <small>Это примеры школьной легенды. Месторождения топлива не нанесены: подключённая база USGS не включает нефть, газ и уголь.</small>
+     </details>
+     <a href="https://special-edu.kz/TEXTBOOKS/1RAZDEL/book/pdf/geog9Methods.pdf"
+      target="_blank" rel="noopener noreferrer">Примеры условных знаков из школьного учебного материала ↗</a>
      <small>Условные знаки распространённых минералов сверены со школьными атласными легендами. Обозначения редких видов могут различаться между издательствами.
        Историческая база USGS: покрытие за пределами США неполное.
       Обзорные группы построены по выборке, а не по полному кадастру месторождений. Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются. Основа каталога USGS включает исторические сведения и не является актуальным кадастром на 2026 год.
