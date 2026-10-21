@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import ts from "typescript";
+const schoolAtlasSrc=fs.readFileSync(new URL("../src/lektrusSchoolAtlasMinerals.ts",import.meta.url),"utf8");
+const schoolAtlasExports={};
+new Function("exports",ts.transpileModule(schoolAtlasSrc,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText)(schoolAtlasExports);
+const schoolRequire=(path)=>{
+ if(path==="./lektrusSchoolAtlasMinerals")return schoolAtlasExports;
+ throw new Error("Unexpected import in atlas regression: "+path);
+};
+
 const compile=(file)=>ts.transpileModule(
  fs.readFileSync(new URL("../src/"+file,import.meta.url),"utf8"),
  {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}
@@ -34,9 +44,9 @@ const mockFetch=async(url)=>{
    geometry:{x,y}}]})};
 };
 const external={};
-new Function("exports","fetch","AbortController","setTimeout","clearTimeout",
+new Function("exports","require","fetch","AbortController","setTimeout","clearTimeout",
  "URLSearchParams",compile("lektrusAtlasExternal.ts"))(
- external,mockFetch,AbortController,setTimeout,clearTimeout,URLSearchParams);
+ external,schoolRequire,mockFetch,AbortController,setTimeout,clearTimeout,URLSearchParams);
 const world=await external.loadWorldMineralOverview();
 assert.equal(network.length,6,"World mineral samples should cover six actual source regions");
 assert.equal(world.features.length,6);
