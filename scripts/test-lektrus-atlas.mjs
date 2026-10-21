@@ -239,6 +239,9 @@ assert.match(reg,/subjects:\["история"\]/);
 assert.match(data,/ne_10m_admin_0_countries\.geojson/);
 assert.match(data,/ne_10m_admin_0_countries_rus\.geojson/);
 assert.match(data,/ne_50m_admin_0_tiny_countries\.geojson/);
+assert.match(data,/ne_10m_admin_1_states_provinces_lines\\.geojson/,"global regions must not rely on North America only");
+assert.match(map,/loadAtlasLayer\\("admin-world-lines"\\)/);
+assert.match(map,/worldAdminLinePaths\\.map/);
 assert.match(map,/MAX_ATLAS_ZOOM=16384/);
 assert.match(map,/featureFocusBounds/);
 assert.ok(!map.includes("tinyPoints.map"),"tiny country pins must not be drawn");
@@ -309,6 +312,16 @@ const worldPlaces={type:"FeatureCollection",features:[
   ...place("Dodoma",0,"Admin-0 capital alt").properties,NAME:"Dodoma",NAME_RU:"Додома",ISO_A2:"TZ"}}
 ]};
 const updatedPlaces=places.applyVerifiedCapitalUpdates2026(worldPlaces);
+const legacyKazakhstan={type:"Feature",geometry:{type:"Point",coordinates:[71.43,51.13]},
+ properties:{NAME:"Nur-Sultan",NAME_RU:"Нур-Султан",ISO_A2:"KZ",
+ FEATURECLA:"Admin-0 capital",ADM0CAP:1}};
+const astana=places.applyVerifiedCapitalUpdates2026({
+ type:"FeatureCollection",features:[legacyKazakhstan]
+}).features[0];
+assert.equal(astana.properties.NAME_RU,"Астана");
+assert.equal(astana.properties.NAME,"Astana");
+assert.equal(places.nationalCapital(astana),true);
+assert.ok(String(astana.properties.CAPITAL_CORRECTION_URL).includes("akorda.kz"));
 const fixed=(name)=>updatedPlaces.features.find(f=>f.properties?.NAME===name);
 assert.equal(places.nationalCapital(fixed("Malabo")),false,"new Equatorial Guinea capital in 2026");
 assert.equal(places.nationalCapital(fixed("Ciudad de la Paz")),true);
