@@ -52,10 +52,26 @@ export function chooseCityLabels<T extends PlacePoint>(points:readonly T[],scale
 export function limitCitySymbols<T extends PlacePoint>(points:readonly T[],
  scale:number,limit=850):T[]{
  const cap=Math.max(1,Math.min(limit,Math.round(limit*(scale>=4?1:scale>=2?.7:.4))));
- if(points.length<=cap)return [...points];
  const ranked=[...points].sort((a,b)=>cityRank(a.feature)-cityRank(b.feature)||
   cityPopulation(b.feature)-cityPopulation(a.feature)||a.id-b.id);
- return ranked.slice(0,cap);
+ // Major settlements stay visible; close neighbours wait until zooming in.
+ // Spatial grid avoids quadratic overlap checks on dense city layers.
+ const separation=scale<3?10:7,grid=new Map<string,{x:number;y:number}>();
+ const visible:T[]=[];
+ for(const city of ranked){
+  if(!city.point)continue;
+  const x=city.point[0]*scale,y=city.point[1]*scale;
+  const gx=Math.floor(x/separation),gy=Math.floor(y/separation);
+  let crowded=false;
+  for(let dx=-1;dx<=1&&!crowded;dx++)for(let dy=-1;dy<=1;dy++){
+   const near=grid.get((gx+dx)+":"+(gy+dy));
+   if(near&&Math.hypot(near.x-x,near.y-y)<separation){crowded=true;break}
+  }
+  if(crowded)continue;
+  grid.set(gx+":"+gy,{x,y});visible.push(city);
+  if(visible.length>=cap)break;
+ }
+ return visible;
 }
 
 /** Explicit, dated corrections to the static Natural Earth capital attributes.
