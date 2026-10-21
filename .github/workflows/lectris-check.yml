@@ -51,6 +51,8 @@ jobs:
         run: node scripts/test-lektrus-programming.mjs
       - name: Russian atlas encyclopedia and school facts regression
         run: node scripts/test-lektrus-atlas-school-facts.mjs
+      - name: World city boundaries, political colors and mineral map regression
+        run: node scripts/test-lektrus-atlas-global-layers.mjs
       - name: Atlas labels and performance regression
         run: node scripts/test-lektrus-atlas-labels.mjs
       - name: Real board interface studio regression
