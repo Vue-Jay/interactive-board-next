@@ -164,3 +164,70 @@
 @media(prefers-reduced-motion:reduce){
  .lektrus-atlas--editor .lektrus-atlas-header nav button{transition:none}
 }
+
+
+/* Atlas school reference: compact cards that preserve map space. */
+.lektrus-atlas-info-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;
+ padding:2px 1px 1px;color:#233f61;font-size:15px;font-weight:800}
+.lektrus-atlas-info-heading button{border:1px solid #d0e0ee;background:#f2f7fd;
+ color:#6481a0;border-radius:8px;min-width:27px;height:27px;font-size:17px}
+.lektrus-atlas-info-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;
+ background:#e8f0fa;border:1px solid #dce7f2;padding:4px;border-radius:12px}
+.lektrus-atlas-info-tabs button{font-size:11px;color:#5b7591;font-weight:750;border:0;
+ border-radius:9px;padding:9px 4px;background:transparent;white-space:nowrap}
+.lektrus-atlas-info-tabs button.selected{background:#fff;color:#285d9f;
+ box-shadow:0 2px 7px #23538118}
+.lektrus-atlas-info-content{display:flex;flex-direction:column;gap:11px;min-width:0;
+ overflow-wrap:anywhere;min-height:min-content}
+.lektrus-atlas-study-card{border:1px solid #d7e4f0;background:#fff;
+ box-shadow:0 2px 7px #315a790b;border-radius:12px;padding:13px 12px;
+ display:flex;flex-direction:column;gap:8px;color:#4a6783}
+.lektrus-atlas-study-card strong{font-size:14px;line-height:1.3;color:#294c70}
+.lektrus-atlas-study-card p{font-size:11.5px;line-height:1.65;margin:0;color:#4c6a87}
+.lektrus-atlas-study-card .lektrus-atlas-study-note{font-size:10.5px;color:#7793ad;
+ padding-top:8px;border-top:1px solid #e8eef6}
+.lektrus-atlas--editor .lektrus-atlas-sidebar{padding:13px;gap:12px;
+ background:#f8fbff;scrollbar-gutter:stable}
+.lektrus-atlas--editor .lektrus-atlas-info-content .lektrus-atlas-region-picker,
+.lektrus-atlas--editor .lektrus-atlas-info-content .lektrus-atlas-natural-legend,
+.lektrus-atlas--editor .lektrus-atlas-info-content .lektrus-atlas-hypsometry-options,
+.lektrus-atlas--editor .lektrus-atlas-info-content .lektrus-atlas-description,
+.lektrus-atlas--editor .lektrus-atlas-info-content .lektrus-atlas-city-data{
+ background:#fff;border:1px solid #d7e4f0;border-radius:12px;padding:12px;
+ color:#4b6988;line-height:1.55}
+.lektrus-atlas--editor .lektrus-atlas-info-content .lektrus-atlas-source-note,
+.lektrus-atlas--editor .lektrus-atlas-info-content .lektrus-atlas-source{
+ background:#fff;border:1px solid #d9e6f1;border-radius:12px;
+ padding:12px;margin:0;font-size:11px}
+.lektrus-atlas--editor .lektrus-atlas-info-content .lektrus-atlas-source>a{
+ color:#28649d;text-decoration:underline;text-underline-offset:2px}
+.lektrus-atlas--editor .lektrus-atlas-info-content strong{line-height:1.4}
+.lektrus-atlas--editor .lektrus-atlas-info-content select,
+.lektrus-atlas--editor .lektrus-atlas-info-content input{font-size:11.5px}
+.lektrus-atlas--editor .lektrus-atlas-description p{font-size:11px;line-height:1.55}
+.lektrus-atlas-coordinate-toggle{border:1px solid #d1dfef;background:#f6f9fc;
+ color:#4e7196;font-size:11px;font-weight:750;min-width:0;flex:none;
+ white-space:nowrap;padding:7px 10px;border-radius:9px}
+.lektrus-atlas-coordinate-toggle.active{background:#e4f1ff;border-color:#86b6e6;color:#235e9a}
+.lektrus-atlas-coordinate-toggle:hover{background:#e4effb}
+.lektrus-atlas--editor .lektrus-atlas-header nav{scrollbar-width:thin}
+.lektrus-atlas--editor .lektrus-atlas-header nav button{font-size:12px}
+.lektrus-atlas-cities .lektrus-atlas-event circle,
+.lektrus-atlas-capitals .lektrus-atlas-event path{
+ filter:drop-shadow(0 0 .8px #1f37513c)
+}
+.lektrus-atlas-cities .lektrus-atlas-event:hover circle,
+.lektrus-atlas-capitals .lektrus-atlas-event:hover path{stroke:#f4a64f;stroke-width:2}
+.lektrus-atlas-cities .lektrus-atlas-event,
+.lektrus-atlas-capitals .lektrus-atlas-event{cursor:pointer}
+@media(max-width:850px){
+ .lektrus-atlas-coordinate-toggle{font-size:10px;padding:6px 7px}
+ .lektrus-atlas--editor .lektrus-atlas-sidebar{padding:8px;gap:9px}
+ .lektrus-atlas-study-card{padding:9px}
+ .lektrus-atlas-study-card p{font-size:10.5px}
+}
+@media(max-width:590px){
+ .lektrus-atlas--editor .lektrus-atlas-header{flex-wrap:wrap;gap:5px}
+ .lektrus-atlas--editor .lektrus-atlas-header nav{order:3;flex:1 0 100%}
+ .lektrus-atlas--editor .lektrus-atlas-info-tabs button{font-size:10px}
+}
