@@ -20,7 +20,7 @@ export const organelleTitles:Record<CellOrganelle,string>={
  wall:"Клеточная стенка",membrane:"Клеточная мембрана",cytoplasm:"Цитоплазма",
  nucleus:"Ядро",vacuole:"Вакуоль",chloroplast:"Хлоропласты",mitochondria:"Митохондрии"
 };
-export const ids:SchoolDiagramId[]=["history-atlas","maps-atlas","contour-atlas","bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile","ru-morphemes","history-family-tree","language-flashcards","ru-morphology","ru-phonetics","ru-orthography","ru-sentence-builder","civics-structure"];
+export const ids:SchoolDiagramId[]=["history-atlas","maps-atlas","contour-atlas","bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile","ru-morphemes","history-family-tree","language-flashcards","ru-morphology","ru-phonetics","ru-orthography","ru-sentence-builder","language-sentence-builder","civics-structure"];
 export function isSchoolDiagramId(value:string|undefined):value is SchoolDiagramId{
  return ids.includes(value as SchoolDiagramId);
 }
