@@ -4,6 +4,7 @@ import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasL
 import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} from "./lektrusAtlasSchoolFacts";
 import LektrusMapBase from "./LektrusMapBase";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
+import {LektrusMineralSymbol,mineralMapSymbol} from "./LektrusMineralSymbol";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
 import {loadLocalInfrastructure,loadCityBoundaries,canLoadCityBoundaries,loadMineralDeposits,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
@@ -768,7 +769,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         const precise=historical?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
         const fill=mode==="contour"?(painted[String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name)]||"#fafcfb"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"||mode==="cities"?"#e6eee2":
-         palettes[hash(s.name)%palettes.length];
+         mode==="political"?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
          stroke={highlighted||s.name===selectedTitle?"#df793e":mode==="contour"?"#839fb2":"#819fb2"}
          strokeWidth={highlighted||s.name===selectedTitle?1.9:historical&&precise===1?.75:.65}
@@ -791,6 +792,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
           else paintProvince(f.feature)}}><title>{geoFeatureName(f.feature)}</title></path>;
        })}
       </g>}
+      {mode==="cities"&&cityBoundaryPaths.length>0&&
+       <g className="lektrus-atlas-city-boundaries" fill="none" stroke="#937b61"
+        strokeWidth=".95" vectorEffect="non-scaling-stroke"
+        pointerEvents="none" strokeLinejoin="round" opacity=".9">
+        {cityBoundaryPaths.map(f=><path key={"city-outline-"+f.id} d={f.path}
+         fill="none" vectorEffect="non-scaling-stroke"
+         strokeDasharray={f.feature.properties?.OSM_ROLE==="inner"?"3 3":undefined}/>)}
+       </g>}
       {(mode==="physical"||mode==="relief")&&<g>
        {landforms.map(f=>{const style=landformColors[landformClass(f.feature)];
         return <path key={"landform-"+f.id} d={f.path}
@@ -874,7 +883,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();setSelectedMineral(item.feature);setSelected(null)}}}>
         {selectedMineral===item.feature&&<circle r="10" fill="none" stroke="#b25e2e"
          strokeWidth="2" pointerEvents="none"/>}
-        <circle r="4.1" fill={item.commodity.color} stroke="#fff" strokeWidth="1.1"/>
+        {mineralMapSymbol(item.commodity.name).group==="Нерудные"?
+          <path d="M0 -8L8 0 0 8 -8 0Z" fill="#337a70" stroke="#fff" strokeWidth="1.4"/>:
+          <path d="M0 -8L9 7 -9 7Z" fill="#a94e3c" stroke="#fff" strokeWidth="1.4"/>}
+         <text x="0" y="3.2" fontSize={mineralMapSymbol(item.commodity.name).code.length>2?6:7.5}
+          textAnchor="middle" fontWeight="800" stroke="#173034" strokeWidth=".2" paintOrder="stroke" fill="#fff">
+          {mineralMapSymbol(item.commodity.name).code}</text>
         <title>{item.commodity.name}, источник USGS</title>
        </g>)}
       </g>}
@@ -1024,6 +1038,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>}
     {mode==="minerals"&&<div className="lektrus-atlas-natural-legend">
      <strong>Карта полезных ископаемых</strong>
+      <small>Светлая нейтральная подложка. Треугольники обозначают рудные месторождения, ромбы нерудные. Химические символы и сокращения поясняются в легенде.</small>
      <label className="lektrus-atlas-city-filter">Группа сырья
       <select aria-label="Фильтр полезных ископаемых" value={mineralFilter}
        onChange={e=>{setMineralFilter(e.target.value);setSelectedMineral(null)}}>
@@ -1042,7 +1057,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       <small>Общие школьные сведения о сырье, а не характеристика выбранного месторождения.</small>
      </div>}
      <div className="lektrus-atlas-mineral-legend">{mineralTypes.map(item=><div key={item.name}>
-      <span style={{background:item.color}}/>{item.name}</div>)}</div>
+      <LektrusMineralSymbol name={item.name} size={21}/>{item.name}</div>)}</div>
      <small>Историческая база USGS: покрытие за пределами США неполное.
       Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются. Основа каталога USGS включает исторические сведения и не является актуальным кадастром на 2026 год.
       Показываются только месторождения с распознаваемым типом сырья.</small>
@@ -1051,6 +1066,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>}
     {mode==="cities"&&<div className="lektrus-atlas-natural-legend">
      <strong>Обозначения населённых пунктов</strong>
+     <small>Тонкие линии показывают регионы из Natural Earth по всему миру.
+      Границы городов подгружаются из OpenStreetMap при большом увеличении и могут отсутствовать там, где они не внесены в базу.
+      {cityBoundaryError?" "+cityBoundaryError:""}</small>
+     <div><span className="lektrus-atlas-legend-swatch" style={{background:"#ead5b8",borderColor:"#937b61"}}/>Границы городов</div>
      <small>{!roadsAvailable?"Приблизьте к городу, чтобы появились основные дороги.":
       infrastructureError||"Основные дороги: OpenStreetMap (локальные данные, не навигационная карта)."}</small>
      <a href="https://www.openstreetmap.org/copyright" target="_blank"
