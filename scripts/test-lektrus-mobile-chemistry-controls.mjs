@@ -11,9 +11,10 @@ const chemistry=read("src/LektrusChemistryIllustration.tsx");
 
 assert.doesNotMatch(catalog,/id:"chem-atoms"/,"do not show a second atom model tool");
 assert.doesNotMatch(atom,/спины · сначала один электрон/,"remove clipping orbital explanation");
-assert.match(app,/onDashboardClick/);
-assert.match(app,/target\.closest\("\.board, \.ink-settings, \.lectris-quick-properties/,
- "dashboard must not intercept tool-settings taps");
+// Section routing belongs to the sidebar; modal buttons need no global guard.
+assert.doesNotMatch(app,/onDashboardClick/);
+assert.doesNotMatch(app,/textContent\?\.trim\(\)\.includes\("Настройки"\)/,
+ "Local tool-settings buttons must never be hijacked by the application");
 assert.match(app,/touchAction:"none",\s*overscrollBehavior:"none"/,"touch board owns its pan and pinch");
 assert.match(app,/onPointerCancelCapture/,"touch cancellation must be handled");
 assert.match(app,/pinchState\.current/,"two-finger zoom remains active");

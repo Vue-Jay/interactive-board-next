@@ -7,6 +7,20 @@ type Props={scale:number;position:{x:number;y:number};enabled:boolean;
  onStatus:(status:TerrainStatus)=>void};
 const rasterCache=new Map<string,Promise<string>>();
 const elevationPixels=new Map<string,Promise<Uint8ClampedArray>>();
+// Pixel-by-pixel palette interpolation allocated several arrays per pixel.
+// Quantize elevation to one metre for a reusable 63 KiB RGB lookup table.
+// This preserves school hypsometric colour stops within subpixel accuracy.
+let elevationPalette:Uint8Array|null=null;
+function terrainPalette():Uint8Array{
+ if(elevationPalette)return elevationPalette;
+ const colors=new Uint8Array((9500+12000+1)*3);
+ for(let metres=-12000;metres<=9500;metres++){
+  const [red,green,blue]=hypsometricRGB(metres),offset=(metres+12000)*3;
+  colors[offset]=red;colors[offset+1]=green;colors[offset+2]=blue;
+ }
+ elevationPalette=colors;
+ return colors;
+}
 type TileKey=Pick<TerrainTile,"key"|"z"|"x"|"y">;
 async function getElevationPixels(tile:TileKey):Promise<Uint8ClampedArray>{
  const cached=elevationPixels.get(tile.key);if(cached)return cached;
@@ -44,6 +58,7 @@ async function getColorizedTile(tile:TerrainTile):Promise<string>{
    const outputContext=output.getContext("2d");
    if(!outputContext)throw new Error("Canvas 2D недоступен");
    const colored=outputContext.createImageData(256,256);
+   const palette=terrainPalette();
    for(let row=0;row<256;row++){
     // Raster rows are Web Mercator: invert projection before drawing in lat/lon.
     const latitude=tile.north-(tile.north-tile.south)*(row+.5)/256;
@@ -52,9 +67,11 @@ async function getColorizedTile(tile:TerrainTile):Promise<string>{
      const offset=(sourceRow*256+col)*4,destination=(row*256+col)*4;
      const metres=decodeTerrarium(pixels[offset],pixels[offset+1],pixels[offset+2]);
      if(metres<-12000||metres>9500||pixels[offset+3]===0)continue;
-     const [r,g,b]=hypsometricRGB(metres);
-     colored.data[destination]=r;colored.data[destination+1]=g;
-     colored.data[destination+2]=b;colored.data[destination+3]=255;
+     const offsetColor=(Math.max(-12000,Math.min(9500,Math.round(metres)))+12000)*3;
+     colored.data[destination]=palette[offsetColor];
+     colored.data[destination+1]=palette[offsetColor+1];
+     colored.data[destination+2]=palette[offsetColor+2];
+     colored.data[destination+3]=255;
     }
    }
    outputContext.putImageData(colored,0,0);
@@ -77,13 +94,24 @@ export default function LektrusAtlasTerrain({scale,position,enabled,onStatus}:Pr
   let loaded=0,failed=0;
   onStatus({total:tiles.length,loaded:0,failed:0});
   setPainted(old=>Object.fromEntries(Object.entries(old).filter(([key])=>keys.includes(key))));
-  for(const tile of tiles){
-   getColorizedTile(tile).then(url=>{
-    if(!active)return;
-    loaded++;setPainted(prev=>({...prev,[tile.key]:url}));
+  // Only four DEM fetch/decode tasks at once. Abandoned camera views stop
+  // enqueueing new work; shared caches still deduplicate in-flight tiles.
+  let next=0;
+  const worker=async()=>{
+   while(active&&next<tiles.length){
+    const tile=tiles[next++];
+    try{
+     const url=await getColorizedTile(tile);
+     if(!active)return;
+     loaded++;setPainted(prev=>({...prev,[tile.key]:url}));
+    }catch{
+     if(!active)return;
+     failed++;
+    }
     onStatus({total:tiles.length,loaded,failed});
-   }).catch(()=>{if(!active)return;failed++;onStatus({total:tiles.length,loaded,failed})});
-  }
+   }
+  };
+  for(let i=0;i<Math.min(4,tiles.length);i++)void worker();
   return()=>{active=false};
  // key is stable between render steps so minor panning does not restart tile loading.
  // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -536,4 +536,27 @@ assert.ok(map.includes('loadAtlasLayer(detailedGeography?"coastline-detail":"coa
 assert.match(map,/pickCoordinates/);
 assert.match(data,/ne_110m_land.geojson/);
 assert.match(data,/ne_110m_coastline.geojson/);
+
+// Explicit app navigation must never globally hijack every "Настройки"
+// button in an atlas, notifications dialog, or other subject tool.
+const application=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+const workspace=fs.readFileSync(new URL("../src/LectrisWorkspaceShell.tsx",import.meta.url),"utf8");
+const notificationPage=fs.readFileSync(new URL("../src/NotificationsScreen.tsx",import.meta.url),"utf8");
+assert.ok(!application.includes('textContent?.trim().includes("Настройки")'));
+assert.ok(!application.includes('document.addEventListener("click",onDashboardClick,true)'));
+assert.ok(workspace.includes('onClick={()=>move(entry.id)}'));
+assert.ok(workspace.includes('id:"settings", label:"Настройки"'));
+assert.ok(notificationPage.includes('onClick={()=>setSettingsOpen(true)}'));
+assert.ok(map.includes('const mineralClusterScale=Math.pow(2'));
+assert.ok(map.includes('mineralClusterScale,mineralFilter,420'));
+assert.ok(map.includes('const countryAnchorCache=useMemo'));
+assert.ok(map.includes('const provinceAnchorCache=useMemo'));
+assert.ok(common.includes('const LandGeometry=memo('));
+assert.ok(common.includes('const CoastGeometry=memo('));
+assert.ok(common.includes('d={f.d} vectorEffect="non-scaling-stroke"'));
+const terrainPerf=fs.readFileSync(new URL("../src/LektrusAtlasTerrain.tsx",import.meta.url),"utf8");
+assert.ok(terrainPerf.includes('const palette=terrainPalette()'));
+assert.ok(terrainPerf.includes('Math.min(4,tiles.length)'),"Terrain decoding must be concurrency-limited");
+assert.ok(terrainPerf.includes('while(active&&next<tiles.length)'),"Discarded camera views must stop queueing new tile work");
+
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");

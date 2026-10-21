@@ -334,8 +334,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   feature,path:mapFeaturePath(feature,precision,viewport),
   name:atlasDisplayName(feature,snapshot.year,historical&&!modernReference),i
  })).filter(f=>f.path&&f.name),[mapSourceFeatures,precision,viewport,snapshot.year,historical,modernReference]);
- const shapeAnchors=useMemo(()=>shapes.map(s=>({...s,anchor:featureLabelAnchor(s.feature)}))
-  .filter(s=>s.anchor),[shapes]);
+ // Feature label anchors depend only on immutable source geometry.
+ // Reuse them when a deep-zoom viewport pans to the next clipping tile.
+ const countryAnchorCache=useMemo(()=>mapSourceFeatures.map(feature=>featureLabelAnchor(feature)),
+  [mapSourceFeatures]);
+ const shapeAnchors=useMemo(()=>shapes.map(s=>({...s,anchor:countryAnchorCache[s.i]}))
+  .filter(s=>s.anchor),[shapes,countryAnchorCache]);
  const labels=useMemo(()=>shapeAnchors
   .filter(s=>s.anchor!.area*scale*scale>190)
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
@@ -520,9 +524,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    return point&&commodity?[{id,point,feature,commodity}]:[];
   }),[minerals,mrdsRegion]);
  const localMineralDetail=mineralsAvailable&&scale>=6&&mineralPoints.length>0;
+ // Continuous wheel/pinch zoom previously regrouped thousands of deposits on
+ // every animation frame. Grouping is screen-space approximate, so quarter-
+ // octave levels preserve symbol density while avoiding redundant work.
+ const mineralClusterScale=Math.pow(2,Math.floor(Math.log2(Math.max(1,scale))*4)/4);
  const mineralGroups=useMemo(()=>clusterMineralMapPoints(
-  localMineralDetail?mineralPoints:worldMineralPoints,scale,mineralFilter,420
- ),[localMineralDetail,mineralPoints,worldMineralPoints,scale,mineralFilter]);
+  localMineralDetail?mineralPoints:worldMineralPoints,mineralClusterScale,mineralFilter,420
+ ),[localMineralDetail,mineralPoints,worldMineralPoints,mineralClusterScale,mineralFilter]);
   const visibleMinerals=(localMineralDetail?mineralPoints:[]).filter(f=>
   (mineralFilter==="Все виды"||f.commodity.name===mineralFilter)&&
   f.point[0]>=visibleWorld.left&&f.point[0]<=visibleWorld.right&&
@@ -557,7 +565,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const shownLakeNames=lakeNames.filter(f=>visiblePoint(f.point));
  const shownMarineNames=marineNames.filter(f=>visiblePoint(f.point));
  const shownNatureNames=natureNames.filter(f=>visiblePoint(f.point));
- const provinceAnchors=useMemo(()=>provincePaths.map(f=>({...f,anchor:featureLabelAnchor(f.feature)})),[provincePaths]);
+ const provinceAnchorCache=useMemo(()=>administrative?.features.map(feature=>featureLabelAnchor(feature))??[],
+  [administrative]);
+ const provinceAnchors=useMemo(()=>provincePaths.map(f=>({...f,anchor:provinceAnchorCache[f.id]})),
+  [provincePaths,provinceAnchorCache]);
  const provinceLabels=provinceAnchors.filter(f=>f.anchor&&f.anchor.area*scale*scale>160&&visiblePoint(f.anchor?[f.anchor.x,f.anchor.y]:null))
   .sort((a,b)=>(b.anchor?.area??0)-(a.anchor?.area??0)).slice(0,70);
  // Unified screen-space label placement. Shared occupancy prevents a city label

@@ -8426,33 +8426,9 @@ export default function App() {
     return()=>{alive=false;window.removeEventListener("onlinerepetitor:account-access",listener);window.removeEventListener("focus",refresh);window.removeEventListener("online",refresh);document.removeEventListener("visibilitychange",onVisibility)}
   },[authUser?.id]);
 
-  useEffect(()=>{
-    const openSection=(section:string)=>{
-      window.history.pushState({}, "", `/?section=${section}`);
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    };
-    const onDashboardClick=(event:MouseEvent)=>{
-      const target=event.target as HTMLElement|null;
-      if(!target)return;
-      // Dashboard navigation must never steal drawing-tool buttons inside a board.
-      if(target.closest(".board, .ink-settings, .lectris-quick-properties, .mobile-board-tools, .lektrus-direct-ink-widths"))return;
-      const profile=target.closest(".account-chip");
-      if(profile){
-        event.preventDefault();
-        event.stopPropagation();
-        openSection("profile");
-        return;
-      }
-      const button=target.closest("button");
-      if(button?.textContent?.trim().includes("Настройки")){
-        event.preventDefault();
-        event.stopPropagation();
-        openSection("settings");
-      }
-    };
-    document.addEventListener("click",onDashboardClick,true);
-    return()=>document.removeEventListener("click",onDashboardClick,true);
-  },[]);
+  // Navigation is owned by LectrisWorkspaceShell (explicit section IDs).
+  // Do not intercept page clicks by their Russian button labels: "Настройки"
+  // also occurs inside atlas, notifications and local tool dialogs.
 
   if (!authReady) {
     return <main className="auth-shell"><section className="auth-card"><div className="auth-brand-row"><div className="auth-logo">B</div><div><div className="auth-brand">Учебная доска</div><div className="auth-subtitle">Проверяем сессию…</div></div></div></section></main>;
