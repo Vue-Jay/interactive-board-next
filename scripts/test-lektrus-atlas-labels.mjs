@@ -28,7 +28,7 @@ assert.equal(schoolCountryName("Конго", "CD"),"ДР Конго");
 const label=(id,text,x,y,priority=0)=>({id,kind:"country",text,x,y,priority,fontSize:12,align:"middle"});
 const pair=[
  label("china","Китай",200,200,0),
- label("other","ДР Конго",204,200,1),
+ label("other","ДР Конго",218,200,1),
  label("far","Россия",470,190,2)
 ];
 const placed=layoutAtlasLabels(pair,1,10);
