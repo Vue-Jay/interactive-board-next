@@ -6,10 +6,10 @@ import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} f
 import LektrusMapBase from "./LektrusMapBase";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
-import {SCHOOL_ATLAS_GROUPS,SCHOOL_ATLAS_MINERALS,SCHOOL_ATLAS_FUEL_MINERALS} from "./lektrusSchoolAtlasMinerals";
+import {SCHOOL_ATLAS_GROUPS,SCHOOL_ATLAS_MINERALS} from "./lektrusSchoolAtlasMinerals";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
-import {atlasOSMCoverageTiles,loadAtlasOSMCoverage,loadMineralDeposits,loadWorldMineralOverview,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
+import {atlasOSMCoverageTiles,loadAtlasOSMCoverage,loadMineralDeposits,loadWorldMineralOverview,mineralCommodity,mineralDepositFacts,mineralDepositSource,
  canLoadMinerals,externalBBoxKey,type ExternalBounds} from "./lektrusAtlasExternal";
 import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
@@ -328,13 +328,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
   .slice(0,scale>=12?220:scale>=3?145:85),[shapeAnchors,scale]);
  const waterTolerance=atlasWaterGeometryTolerance(Math.pow(2,Math.floor(Math.log2(scale))),detailedGeography);
- const streams=useMemo(()=>rivers?.features.filter(hasAtlasName).map((f,i)=>({
+ // Draw even unnamed waterways; only labels require Russian names.
+ const streams=useMemo(()=>rivers?.features.map((f,i)=>({
   id:i,path:mapFeaturePath(f,waterTolerance,viewport),feature:f
  })).filter(v=>v.path)||[],[rivers,waterTolerance,viewport]);
  const riverNames=useMemo(()=>rivers?.features.filter(hasAtlasName).map((f,i)=>({
   id:i,point:featureLineMidpoint(f),feature:f
  })).filter(f=>f.point).sort((a,b)=>atlasRiverLabelRank(a.feature)-atlasRiverLabelRank(b.feature))||[],[rivers]);
- const ponds=useMemo(()=>lakes?.features.filter(hasAtlasName).map((f,i)=>({
+ const ponds=useMemo(()=>lakes?.features.map((f,i)=>({
   id:i,path:mapFeaturePath(f,waterTolerance*.7,viewport),feature:f
  })).filter(v=>v.path)||[],[lakes,waterTolerance,viewport]);
  const lakeNames=useMemo(()=>lakes?.features.filter(hasAtlasName).map((f,i)=>({
