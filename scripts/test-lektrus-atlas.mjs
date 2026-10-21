@@ -344,9 +344,17 @@ assert.match(schoolCountryFacts.find(f=>f.label==="ВВП (оценка исто
 assert.equal(geoExports.hasAtlasName(named({NAME:"Unknown"})),false);
 assert.equal(places.russianPlaceName(named({NAME_RU:"Неизвестно"})),null);
 assert.ok(!map.includes('!=="Объект без названия"'),"the UI must not use placeholder text");
-for(const dataset of ["rivers","lakes","administrative","regions","glaciers","marine","physicalLabels","elevations"])
+for(const dataset of ["administrative","regions","glaciers","marine","physicalLabels","elevations"])
  assert.ok(map.includes(dataset+"?.features.filter(hasAtlasName)"),
-  "the "+dataset+" map layer must omit every unnamed feature");
+  "the "+dataset+" named labels must omit unnamed entries");
+assert.ok(map.includes("rivers?.features.map((f,i)=>("),
+ "unnamed small rivers must retain their visible line geometry");
+assert.ok(map.includes("lakes?.features.map((f,i)=>("),
+ "small lakes must remain visible when there is no label");
+assert.ok(map.includes("veryDetailedHydro=(mode===")||map.includes("veryDetailedHydro=(mode"),
+ "zoom-dependent small river layer must remain available");
+assert.ok(map.includes("loadAtlasOSMCoverage(externalBounds,\"waterways\""),
+ "small OSM tributaries are available on the physical map");
 assert.match(map,/atlasDisplayName/);
 assert.match(map,/historicalRussianName/);
 assert.equal(places.cityPopulation(small),105000);
