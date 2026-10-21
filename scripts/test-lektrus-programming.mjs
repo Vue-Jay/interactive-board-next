@@ -15,6 +15,7 @@ const {defaultProgrammingDiagram,validateProgrammingDiagram,programmingPresets}=
 const original=defaultProgrammingDiagram();
 assert.equal(validateProgrammingDiagram(original),true);
 assert.equal(original.kind,"programming");
+assert.match(original.code,/const name/,"Default JS program must not contain Python");
 assert.equal(new Set(programmingPresets.map(v=>v.id)).size,programmingPresets.length);
 for(const lang of ["python","javascript","typescript"]){
  const examples=programmingPresets.filter(v=>v.language===lang);
@@ -39,7 +40,8 @@ const matched=runner.match(/const workerText=("(?:\\.|[^"\\])*");/);
 assert.ok(matched,"worker executable embedded as a serialized literal");
 const code=JSON.parse(matched[1]);
 assert.match(code,/AsyncFunction/);
-assert.match(code,/importScripts\("https:\/\/cdn\.jsdelivr\.net\/pyodide\/v/);
+assert.match(code,/import\("https:\/\/cdn\.jsdelivr\.net\/pyodide\/v314\.0\.7\/full\/pyodide\.mjs"\)/);
+assert.match(runner,/type:"module"/);
 const run=async(source,stdin)=>{
  const messages=[];
  const self={postMessage:m=>messages.push(m)};
