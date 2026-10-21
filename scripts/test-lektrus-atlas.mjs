@@ -159,7 +159,7 @@ assert.match(map,/Единая электронная картографичес
 assert.match(map,/НЕ подтверждена/);
 assert.match(map,/shownRiverNames/);
 assert.match(map,/shownLakeNames/);
-assert.match(map,/"lake-"+f\.id/);
+assert.ok(map.includes('add("lake-"+f.id'));
 assert.match(map,/Административные единицы региона/);
 assert.ok(map.includes("onChange?.({...d,mode:value})"));
 assert.match(map,/paintRegions/);
