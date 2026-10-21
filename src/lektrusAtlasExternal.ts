@@ -1,4 +1,5 @@
 import type {GeoCollection,GeoFeature} from "./lektrusAtlasData";
+import {SCHOOL_ATLAS_USGS_MINERALS} from "./lektrusSchoolAtlasMinerals";
 
 export type ExternalBounds={west:number;south:number;east:number;north:number};
 export const externalBBoxKey=(b:ExternalBounds)=>
@@ -87,7 +88,12 @@ const mineralWords:ReadonlyArray<[RegExp,string,string]>=[
  [/potash|potassium|калийн|калийн?\s*сол/i,"Калийные соли","#c1a3cc"],
  [/halite|rock salt|каменн(?:ая|ой)\s*сол|поваренн(?:ая|ой)\s*сол/i,"Каменная соль","#d9bba1"]
 ];
-export const mineralTypes=mineralWords.map(x=>({name:x[1],color:x[2]}));
+// Keep filter order and legend exactly aligned to the school curriculum.
+export const mineralTypes=SCHOOL_ATLAS_USGS_MINERALS.map(name=>{
+ const entry=mineralWords.find(([,label])=>label===name);
+ if(!entry)throw Error("Отсутствует школьный тип полезного ископаемого: "+name);
+ return {name,color:entry[2]};
+});
 export function mineralCommodity(feature:GeoFeature):{name:string;color:string}|null{
  const p=feature.properties??{};
  const candidates=["commod1","commod2","commod3","commodities","commodity","COMMOD1","COMMODITIES",
