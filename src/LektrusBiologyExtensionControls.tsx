@@ -18,7 +18,7 @@ export default function LektrusBiologyExtensionControls({diagram:d,onChange}:{
  </>;
  const changeGroup=(group:TaxonomyGroup)=>{
   const sample=taxonomyExample(group);
-  onChange({...sample,title:d.title,showRanks:d.showRanks});
+  onChange({...sample,showRanks:d.showRanks});
  };
  return <>
   <label className="lektrus-school-field">Группа организмов
