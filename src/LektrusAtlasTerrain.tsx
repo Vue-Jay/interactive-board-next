@@ -108,7 +108,10 @@ export default function LektrusAtlasTerrain({scale,position,enabled,onStatus}:Pr
      if(!active)return;
      failed++;
     }
-    onStatus({total:tiles.length,loaded,failed});
+    // Raster progress remains local to the terrain child. Reporting every tile
+    // to the parent re-rendered the entire GIS scene up to 24 times per camera
+    // view, including thousands of SVG paths and mineral symbols.
+    if(loaded+failed===tiles.length)onStatus({total:tiles.length,loaded,failed});
    }
   };
   for(let i=0;i<Math.min(4,tiles.length);i++)void worker();
