@@ -47,6 +47,8 @@ const matched=runner.match(/const workerText=("(?:\\.|[^"\\])*");/);
 assert.ok(matched,"worker executable embedded as a serialized literal");
 const code=JSON.parse(matched[1]);
 assert.match(code,/AsyncFunction/);
+assert.match(code,/kind:"progress"/);
+assert.doesNotMatch(code,/report\("log","Загрузка Python/,"runtime download progress must not pollute judged stdout");
 assert.match(code,/import\("https:\/\/cdn\.jsdelivr\.net\/pyodide\/v314\.0\.7\/full\/pyodide\.mjs"\)/);
 assert.match(runner,/type:"module"/);
 const run=async(source,stdin)=>{
@@ -89,6 +91,7 @@ assert.match(component,/setSource/,"students can edit their own code");
 assert.match(component,/setStdin/,"students can try their own inputs");
 assert.match(component,/normalizeProgramOutput/,"compare normalized output for test cases");
 assert.match(component,/Проверить тесты/);
+assert.match(component,/setProgress/);
 assert.match(component,/batch\.current/);
 assert.doesNotMatch(component,/allow-same-origin/);
 console.log("Programming tools: three languages, validated model, JS/TS execution, console errors, and sandbox wiring passed.");
