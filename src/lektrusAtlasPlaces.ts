@@ -1,7 +1,25 @@
 import {geoFeatureName,isRussianAtlasName,type GeoFeature,type GeoCollection} from "./lektrusAtlasData";
 
+/** Natural Earth snapshots use old names and sometimes omit a valid ISO_A2.
+ * Check known historical aliases against the geographical location, not only ISO.
+ */
+export function isAstanaCapitalFeature(feature:GeoFeature):boolean{
+ const p=feature.properties??{};
+ const names=[p.NAME,p.name,p.NAME_RU,p.NAMEASCII,p.NAMEASCII_RU,p.NAMEALT_RU]
+  .map(v=>String(v??"").trim());
+ if(!names.some(v=>/^(?:nur[-–\s]?sultan|нур[-–\s]?султан|нұр[-–\s]?сұлтан|astana|астана)$/iu.test(v)))return false;
+ const iso=String(p.ISO_A2??p.iso_a2??"").toUpperCase();
+ const a3=String(p.ADM0_A3??p.adm0_a3??p.SOV_A3??"").toUpperCase();
+ if(iso==="KZ"||a3==="KAZ")return true;
+ if(feature.geometry?.type==="Point"&&Array.isArray(feature.geometry.coordinates)){
+  const point=feature.geometry.coordinates as number[];
+  return Math.abs(point[0]-71.43)<.6&&Math.abs(point[1]-51.17)<.6;
+ }
+ return false;
+}
 /** Exact Russian labels from the mapped source, not guessed translations. */
 export function russianPlaceName(feature:GeoFeature):string|null{
+ if(isAstanaCapitalFeature(feature))return "Астана";
  const name=geoFeatureName(feature);
  return isRussianAtlasName(name)?name:null;
 }
@@ -99,8 +117,7 @@ export function applyVerifiedCapitalUpdates2026(collection:GeoCollection):GeoCol
   const p=feature.properties??{};
   const iso=String(p.ISO_A2??p.iso_a2??"").toUpperCase();
   const raw=String(p.NAME??p.name??"");
-  const nameCandidates=[raw,String(p.NAME_RU??""),String(p.NAMEASCII??"")];
-  if(iso==="KZ"&&nameCandidates.some(v=>/^(?:nur[-\\s]?sultan|нур[-\\s]?султан|astana|астана)$/iu.test(v.trim()))){
+  if(isAstanaCapitalFeature(feature)){
    return {...feature,properties:{...p,NAME:"Astana",NAMEASCII:"Astana",
     NAME_RU:"Астана",NAME_ALT:"Нур-Султан",ADM0CAP:1,CAPALT:0,
     FEATURECLA:"Admin-0 capital",
