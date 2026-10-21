@@ -742,12 +742,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
           else paintProvince(f.feature)}}><title>{geoFeatureName(f.feature)}</title></path>;
        })}
       </g>}
-      {d.showLabels&&provincePaths.length>0&&mode==="political"&&scale>=4&&
-       <g pointerEvents="none" textAnchor="middle" fontWeight="600" fill="#516c83"
-        stroke="#fff" strokeWidth={2/scale} paintOrder="stroke" fontSize={8/scale}>
-        {provinceLabels.map(f=><text key={"admin-label-"+f.id} x={f.anchor!.x} y={f.anchor!.y}>
-         {geoFeatureName(f.feature).slice(0,27)}</text>)}
-       </g>}
       {(mode==="physical"||mode==="relief")&&<g>
        {landforms.map(f=>{const style=landformColors[landformClass(f.feature)];
         return <path key={"landform-"+f.id} d={f.path}
@@ -775,10 +769,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        strokeWidth="1.1" strokeDasharray="4 2" pointerEvents="none">
        {previous.features.filter(f=>!!atlasDisplayName(f,historicalSnapshots[Math.max(0,index-1)].year,true)).map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)} vectorEffect="non-scaling-stroke"/>)}
       </g>}
-      {d.showLabels&&mode!=="contour"&&<g fill="#44566a" fontSize={mapText(mode==="physical"?7.5:8.5)} fontWeight="650"
-       textAnchor="middle" pointerEvents="none" stroke="#fff" strokeWidth={1.5/scale} paintOrder="stroke">
-       {labels.map(s=><text key={s.i} x={s.anchor!.x} y={s.anchor!.y}>{s.name.slice(0,23)}</text>)}
-      </g>}
       {(mode==="physical"||mode==="hydrography")&&<g>
        {marineAreas.map(f=><path key={"marine-"+f.id} d={f.path} fill="transparent" stroke="none" vectorEffect="non-scaling-stroke"
         className="lektrus-atlas-water-feature" onClick={()=>selectFeature(f.feature,"Морская акватория")}>
@@ -800,40 +790,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          className="lektrus-atlas-river-ink" pointerEvents="none"/>
         <title>{geoFeatureName(l.feature)}</title></g>)}
       </g>}
-      {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=2&&
-       <g pointerEvents="none" fontSize={mapText(7)} fill="#235d86" stroke="#fff"
-        strokeWidth={1.8/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
-        {shownLakeNames.slice(0,85).map(f=><text key={"lake-label-"+f.id}
-         x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,32)}</text>)}
-       </g>}
-      {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=3&&
-       <g pointerEvents="none" fontSize={mapText(7)} fill="#256c99" stroke="#fff"
-        strokeWidth={2/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
-        {shownRiverNames.slice(0,90).map(f=><text key={"river-name-"+f.id}
-         x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,26)}</text>)}
-       </g>}
-      {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=2&&
-       <g pointerEvents="none" fontSize={mapText(7.4)} fill="#2d759f" stroke="#fff"
-        strokeWidth={2/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
-        {shownMarineNames.slice(0,65).map(f=><text key={"marine-name-"+f.id}
-         x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,28)}</text>)}
-       </g>}
-      {d.showLabels&&(mode==="physical"||mode==="relief")&&scale>=2&&
-       <g pointerEvents="none" fontSize={mapText(7.3)} fill="#5d492e" stroke="#fff"
-        strokeWidth={2/scale} paintOrder="stroke" textAnchor="middle" fontWeight="650">
-        {shownNatureNames.slice(0,110).map(f=><text key={"nature-name-"+f.id}
-         x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,28)}</text>)}
-       </g>}
       {(mode==="physical"||mode==="relief")&&<g>
        {shownPeaks.filter((_,i)=>scale>=4||i%5===0).map(f=><g key={"elevation-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" onClick={()=>selectFeature(f.feature,"Высотная отметка")}>
         <path d="M0 -4L4 3H-4Z" fill="#816245" stroke="#fff" strokeWidth=".7"/>
-        {d.showLabels&&scale>=3&&<text x="6" y="-5" fontSize="8" fill="#725c46"
-         stroke="#fff" strokeWidth="1.8" paintOrder="stroke" fontWeight="650">
-         {geoFeatureName(f.feature).slice(0,25)}
-         {Number.isFinite(Number(f.feature.properties?.ELEVATION??f.feature.properties?.ELEV))?
-          " · "+String(f.feature.properties?.ELEVATION??f.feature.properties?.ELEV)+" м":""}</text>}
         <title>{geoFeatureName(f.feature)}</title>
        </g>)}
       </g>}
@@ -847,11 +808,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          fill="#263c55" stroke="#fff" strokeWidth="1.15"/>
         <title>{russianPlaceName(f.feature)}: {alternateCapital(f.feature)?"дополнительная столица":"столица"}</title>
        </g>)}
-       {d.showLabels&&<g pointerEvents="none" fontSize={mapText(7.5)} fill="#203e59"
-        stroke="#fff" strokeWidth={1.6/scale} paintOrder="stroke" fontWeight="650">
-        {capitalLabels.map(f=><text key={"capital-label-"+f.id}
-         x={f.point![0]+6/scale} y={f.point![1]-5/scale}>{russianPlaceName(f.feature)}</text>)}
-       </g>}
+      </g>}
       </g>}
       {(mode==="cities"||mode==="hydrography"||mode==="physical")&&
        <g className="lektrus-atlas-auxiliary-lines" pointerEvents="none">
@@ -860,16 +817,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          strokeWidth={line.feature.properties?.ATLAS_KIND==="road"?.67:.48}
          strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
          strokeDasharray={line.feature.properties?.ATLAS_KIND==="road"?"2.5 1":undefined}/>)}
-       </g>}
-      {(mode==="hydrography"||mode==="physical")&&d.showLabels&&scale>=64&&
-       <g className="lektrus-atlas-small-river-labels" pointerEvents="none"
-        textAnchor="middle" fontSize={mapText(7.2)} fill="#237099"
-        stroke="#fff" strokeWidth={2/scale} paintOrder="stroke">
-        {auxiliaryRiverLabels.filter(f=>f.point&&
-         f.point[0]>=visibleWorld.left&&f.point[0]<=visibleWorld.right&&
-         f.point[1]>=visibleWorld.top&&f.point[1]<=visibleWorld.bottom)
-         .slice(0,40).map(f=><text key={"osm-stream-label-"+f.id}
-          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,26)}</text>)}
        </g>}
       {mode==="minerals"&&<g className="lektrus-atlas-mineral-points">
        {visibleMinerals.map(item=><g key={"mineral-"+item.id}
@@ -898,11 +845,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <title>{russianPlaceName(f.feature)}{cityPopulation(f.feature)>0?
          " · население (оценка): "+cityPopulation(f.feature).toLocaleString("ru-RU"):""}</title>
        </g>)}
-       {d.showLabels&&<g pointerEvents="none" fontSize={mapText(7.5)} fill="#28445e"
-        stroke="#fff" strokeWidth={1.4/scale} paintOrder="stroke" fontWeight="600">
-        {cityLabels.map(f=><text key={"city-label-"+f.id}
-         x={f.point![0]+5/scale} y={f.point![1]-4/scale}>{russianPlaceName(f.feature)}</text>)}
-       </g>}
+      </g>}
+      </g>}
+      {placedMapLabels.length>0&&<g className="lektrus-atlas-map-labels" pointerEvents="none">
+       {placedMapLabels.map(label=><text key={label.id}
+        textAnchor={label.align??"middle"}
+        x={label.x+(label.dx??0)/scale} y={label.y+(label.dy??0)/scale}
+        fontSize={label.fontSize/scale}
+        fill={label.kind==="river"||label.kind==="lake"||label.kind==="sea"||label.kind==="stream"?"#286c97":
+         label.kind==="nature"||label.kind==="peak"?"#6b4f39":"#284765"}
+        stroke="#fff" strokeWidth={1.5/scale} strokeLinejoin="round" paintOrder="stroke"
+        fontWeight={label.kind==="country"?"680":"630"}>{label.text}</text>)}
       </g>}
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
