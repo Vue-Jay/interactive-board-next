@@ -1530,7 +1530,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        onClick={()=>onChange?.({...d,contourLegend:contourLegend.filter(v=>v.id!==item.id)})}>×</button>
      </div>)}
      <small>Подписи, линии, легенда и заливки сохраняются с объектом доски. Для удаления подписи можно также дважды нажать или использовать ПКМ.</small>
-    </div>
+    </div>}
     {mode!=="contour"&&!historical&&<label>Поиск объектов
      <input value={search} onChange={e=>setSearch(e.target.value)}
       placeholder={mode==="political"?"Страна, регион или город":mode==="hydrography"?"Река или озеро":
