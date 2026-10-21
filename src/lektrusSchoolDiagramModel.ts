@@ -1,5 +1,6 @@
 /** Curriculum-aligned, editable teaching illustrations. Only the school content
  * explicitly entered by a teacher is represented; no invented lab measurements. */
+import {defaultLogicCircuit,validateLogicCircuit,type LogicCircuitDiagram} from "./lektrusLogicCircuitModel";
 import {newBiologyExtension,isBiologyExtensionId,validateBiologyExtension,type BiologyExtensionDiagram,type BiologyExtensionId} from "./lektrusBiologyExtensionModel";
 import {createAtlasDocument,validAtlasDocument,type AtlasDocument} from "./lektrusAtlasModel";
 import {newLanguageSocialDiagram,isLanguageSocialId,validateLanguageSocialDiagram,type LanguageSocialDiagram,type LanguageSocialId} from "./lektrusLanguageSocialModel";
@@ -7,7 +8,7 @@ import {createRussianSchoolDiagram,isRussianToolId,validateRussianSchoolDiagram,
 import {createApprovedSchoolDiagram,isApprovedSchoolId,validateApprovedSchoolDiagram,type ApprovedSchoolDiagram,type ApprovedSchoolId} from "./lektrusApprovedSchoolModel";
 import {defaultFurtherDiagram,isFurtherId,validFurtherDiagram,type FurtherDiagram,type FurtherSchoolId} from "./lektrusFurtherSchoolModel";
 import {defaultNextSchoolDiagram,isNextSchoolId,validNextSchoolDiagram,type NextSchoolDiagram,type NextSchoolId} from "./lektrusNextSchoolModel";
-export type SchoolDiagramId=BiologyExtensionId|"bio-division"|"info-encoding"|"bio-genetics"|"info-logic"|"history-atlas"|"maps-atlas"|"contour-atlas"|"bio-cell"|"bio-food-chain"|"geo-climate"|"history-timeline"|NextSchoolId|FurtherSchoolId|ApprovedSchoolId|RussianToolId|LanguageSocialId;
+export type SchoolDiagramId="info-circuit"|BiologyExtensionId|"bio-division"|"info-encoding"|"bio-genetics"|"info-logic"|"history-atlas"|"maps-atlas"|"contour-atlas"|"bio-cell"|"bio-food-chain"|"geo-climate"|"history-timeline"|NextSchoolId|FurtherSchoolId|ApprovedSchoolId|RussianToolId|LanguageSocialId;
 export type CellOrganelle="wall"|"membrane"|"cytoplasm"|"nucleus"|"vacuole"|"chloroplast"|"mitochondria";
 export type FoodRole="producer"|"consumer"|"decomposer";
 export type SchoolDiagram=
@@ -19,13 +20,13 @@ export type SchoolDiagram=
  |{kind:"genetics";title:string;parentA:string;parentB:string;showAnswers:boolean}
  |{kind:"logic";title:string;operation:"and"|"or"|"xor"|"implication"|"equivalence";showAnswers:boolean;inputA?:0|1;inputB?:0|1}
  |{kind:"timeline";title:string;events:{id:string;year:number;label:string}[];showEra:boolean}
- |BiologyExtensionDiagram|NextSchoolDiagram|FurtherDiagram|ApprovedSchoolDiagram|RussianSchoolDiagram|LanguageSocialDiagram|AtlasDocument;
+ |LogicCircuitDiagram|BiologyExtensionDiagram|NextSchoolDiagram|FurtherDiagram|ApprovedSchoolDiagram|RussianSchoolDiagram|LanguageSocialDiagram|AtlasDocument;
 export const months=["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"] as const;
 export const organelleTitles:Record<CellOrganelle,string>={
  wall:"Клеточная стенка",membrane:"Клеточная мембрана",cytoplasm:"Цитоплазма",
  nucleus:"Ядро",vacuole:"Вакуоль",chloroplast:"Хлоропласты",mitochondria:"Митохондрии"
 };
-export const ids:SchoolDiagramId[]=["bio-dna","bio-taxonomy","bio-division","info-encoding","bio-genetics","info-logic","history-atlas","maps-atlas","contour-atlas","bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile","ru-morphemes","history-family-tree","language-flashcards","ru-morphology","ru-phonetics","ru-orthography","ru-sentence-builder","language-sentence-builder","civics-structure","literature-analysis"];
+export const ids:SchoolDiagramId[]=["info-circuit","bio-dna","bio-taxonomy","bio-division","info-encoding","bio-genetics","info-logic","history-atlas","maps-atlas","contour-atlas","bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile","ru-morphemes","history-family-tree","language-flashcards","ru-morphology","ru-phonetics","ru-orthography","ru-sentence-builder","language-sentence-builder","civics-structure","literature-analysis"];
 export function isSchoolDiagramId(value:string|undefined):value is SchoolDiagramId{
  return ids.includes(value as SchoolDiagramId);
 }
@@ -33,6 +34,7 @@ export function makeSchoolDiagram(id:SchoolDiagramId):SchoolDiagram{
  if(id==="history-atlas")return createAtlasDocument("history");
  if(id==="maps-atlas")return createAtlasDocument("geography");
  if(id==="contour-atlas")return {...createAtlasDocument("geography"),title:"Контурная карта",mode:"contour"};
+ if(id==="info-circuit")return defaultLogicCircuit();
  if(isBiologyExtensionId(id))return newBiologyExtension(id);
  if(isLanguageSocialId(id))return newLanguageSocialDiagram(id);
  if(isRussianToolId(id))return createRussianSchoolDiagram(id);
@@ -91,7 +93,7 @@ export function isSchoolDiagram(value:unknown):value is SchoolDiagram{
      Number.isInteger((v as {year:number}).year)&&
      number((v as {year:number}).year,-3000,2100)&&(v as {year:number}).year!==0)&&
     new Set(d.events.map((v:{id:string})=>v.id)).size===d.events.length;
-  default:return validateBiologyExtension(value)||validNextSchoolDiagram(value)||validFurtherDiagram(value)||validateApprovedSchoolDiagram(value)||validateRussianSchoolDiagram(value)||validateLanguageSocialDiagram(value)||validAtlasDocument(value);
+  default:return validateLogicCircuit(value)||validateBiologyExtension(value)||validNextSchoolDiagram(value)||validFurtherDiagram(value)||validateApprovedSchoolDiagram(value)||validateRussianSchoolDiagram(value)||validateLanguageSocialDiagram(value)||validAtlasDocument(value);
  }
 }
 export function safeSchoolDiagram(value:unknown,id:SchoolDiagramId):SchoolDiagram{
