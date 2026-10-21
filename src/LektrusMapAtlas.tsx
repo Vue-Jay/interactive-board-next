@@ -51,6 +51,8 @@ export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean)
 function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
  const [infoTab,setInfoTab]=useState<"overview"|"object"|"sources">("overview");
+ const [coordinatesEnabled,setCoordinatesEnabled]=useState(d.showCoordinates===true||d.mode==="coordinates");
+ useEffect(()=>setCoordinatesEnabled(d.showCoordinates===true||d.mode==="coordinates"),[d.showCoordinates,d.mode]);
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":normalizeAtlasMode(d.mode));
  const [paintColor,setPaintColor]=useState("#f3b778");
  const [paintRegions,setPaintRegions]=useState(false);
@@ -578,7 +580,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   onChange?.({...d,mode:value});
  };
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
-  if(dragged.current||(mode!=="coordinates"&&!terrainEnabled))return;
+  if(dragged.current&&mode!=="coordinates"||(!coordinatesEnabled&&!terrainEnabled))return;
   const p=worldPoint(localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
   if(p.x>=0&&p.x<=900&&p.y>=0&&p.y<=450){
    const lon=Math.round((p.x/900*360-180)*10000)/10000;
@@ -623,6 +625,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      aria-pressed={mode===m.id} className={mode===m.id?"selected":""}
      onClick={()=>onMode(m.id)}>{m.title}</button>)}
    </nav>
+   <button type="button" className={"lektrus-atlas-coordinate-toggle"+(coordinatesEnabled?" active":"")}
+    title="Определять широту и долготу на любой карте"
+    aria-pressed={coordinatesEnabled}
+    onClick={()=>{
+     const enabled=!coordinatesEnabled;setCoordinatesEnabled(enabled);setCoord(null);
+     onChange?.({...d,showCoordinates:enabled});
+    }}>⌖ Координаты</button>
    <button type="button" className="lektrus-atlas-inspector-toggle" aria-expanded={inspectorOpen}
     title={inspectorOpen?"Скрыть сведения и открыть карту во всю ширину":"Открыть сведения и поиск по карте"}
     onClick={()=>setInspectorOpen(open=>!open)}>{inspectorOpen?"Скрыть сведения":"☷ Сведения"}</button>
@@ -643,11 +652,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      onWheel={e=>{
       if(objectMoveMode)return;
       e.stopPropagation();e.preventDefault();
-      zoomAt(scale*(e.deltaY<0?1.16:1/1.16),localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
+      const anchor=localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>);
+      lastPointer.current=anchor;
+      zoomAt(cameraRef.current.scale*(e.deltaY<0?1.16:1/1.16),anchor);
      }}>
      <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
       <LektrusMapBase land={baseLand} coastline={baseCoastline}
-       grid={d.showGrid||mode==="coordinates"} scale={scale} viewport={viewport}
+       grid={d.showGrid||coordinatesEnabled} scale={scale} viewport={viewport}
         terrain={<LektrusAtlasTerrain enabled={terrainEnabled} scale={scale} position={position}
          onStatus={setTerrainStatus}/>}/>
       <g strokeLinejoin="round">
@@ -695,7 +706,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         vectorEffect="non-scaling-stroke" className="lektrus-atlas-landform" onClick={()=>selectFeature(f.feature,"Ледниковая область")}>
         <title>{geoFeatureName(f.feature)}</title></path>)}
       </g>}
-      {(mode==="coordinates"||terrainEnabled)&&coord&&<g className="lektrus-atlas-coordinate-pin"
+      {(coordinatesEnabled||terrainEnabled)&&coord&&<g className="lektrus-atlas-coordinate-pin"
        transform={`translate(${projectGeography(coord.lon,coord.lat)[0]} ${projectGeography(coord.lon,coord.lat)[1]}) scale(${1/scale})`}
        onClick={e=>e.stopPropagation()}
        onDoubleClick={e=>{e.preventDefault();e.stopPropagation();setCoord(null);setTerrainPick(null)}}
@@ -737,25 +748,25 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <title>{geoFeatureName(l.feature)}</title></g>)}
       </g>}
       {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=2&&
-       <g pointerEvents="none" fontSize={mapText(8.4)} fill="#235d86" stroke="#fff"
+       <g pointerEvents="none" fontSize={mapText(7)} fill="#235d86" stroke="#fff"
         strokeWidth={1.8/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
         {shownLakeNames.slice(0,85).map(f=><text key={"lake-label-"+f.id}
          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,32)}</text>)}
        </g>}
       {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=3&&
-       <g pointerEvents="none" fontSize={mapText(8.6)} fill="#256c99" stroke="#fff"
+       <g pointerEvents="none" fontSize={mapText(7)} fill="#256c99" stroke="#fff"
         strokeWidth={2/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
         {shownRiverNames.slice(0,90).map(f=><text key={"river-name-"+f.id}
          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,26)}</text>)}
        </g>}
       {d.showLabels&&(mode==="physical"||mode==="hydrography")&&scale>=2&&
-       <g pointerEvents="none" fontSize={mapText(9.5)} fill="#2d759f" stroke="#fff"
+       <g pointerEvents="none" fontSize={mapText(7.4)} fill="#2d759f" stroke="#fff"
         strokeWidth={2/scale} paintOrder="stroke" fontWeight="650" textAnchor="middle">
         {shownMarineNames.slice(0,65).map(f=><text key={"marine-name-"+f.id}
          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,28)}</text>)}
        </g>}
       {d.showLabels&&(mode==="physical"||mode==="relief")&&scale>=2&&
-       <g pointerEvents="none" fontSize={mapText(9.1)} fill="#5d492e" stroke="#fff"
+       <g pointerEvents="none" fontSize={mapText(7.3)} fill="#5d492e" stroke="#fff"
         strokeWidth={2/scale} paintOrder="stroke" textAnchor="middle" fontWeight="650">
         {shownNatureNames.slice(0,110).map(f=><text key={"nature-name-"+f.id}
          x={f.point![0]} y={f.point![1]}>{geoFeatureName(f.feature).slice(0,28)}</text>)}
@@ -774,17 +785,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        </g>)}
       </g>}
       {mode==="political"&&<g className="lektrus-atlas-capitals">
-       {shownCapitals.map(f=><g key={"capital-"+f.id}
+       {shownCapitals.filter(f=>scale>=3||capitalLabels.some(c=>c.feature===f.feature)).map(f=><g key={"capital-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={e=>{e.stopPropagation();selectFeature(f.feature,alternateCapital(f.feature)?"Дополнительная столица по данным источника":"Столица государства")}}
         onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Столица государства")}}}>
-        <path d="M0 -4.4L4.4 0L0 4.4L-4.4 0Z"
+        <path d="M0 -2.6L2.6 0L0 2.6L-2.6 0Z"
          fill="#263c55" stroke="#fff" strokeWidth="1.15"/>
         <title>{russianPlaceName(f.feature)}: {alternateCapital(f.feature)?"дополнительная столица":"столица"}</title>
        </g>)}
-       {d.showLabels&&<g pointerEvents="none" fontSize={mapText(9.4)} fill="#203e59"
-        stroke="#fff" strokeWidth={2/scale} paintOrder="stroke" fontWeight="700">
+       {d.showLabels&&<g pointerEvents="none" fontSize={mapText(7.5)} fill="#203e59"
+        stroke="#fff" strokeWidth={1.6/scale} paintOrder="stroke" fontWeight="650">
         {capitalLabels.map(f=><text key={"capital-label-"+f.id}
          x={f.point![0]+6/scale} y={f.point![1]-5/scale}>{russianPlaceName(f.feature)}</text>)}
        </g>}
@@ -799,7 +810,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        </g>}
       {(mode==="hydrography"||mode==="physical")&&d.showLabels&&scale>=64&&
        <g className="lektrus-atlas-small-river-labels" pointerEvents="none"
-        textAnchor="middle" fontSize={mapText(8.2)} fill="#237099"
+        textAnchor="middle" fontSize={mapText(7.2)} fill="#237099"
         stroke="#fff" strokeWidth={2/scale} paintOrder="stroke">
         {auxiliaryRiverLabels.filter(f=>f.point&&
          f.point[0]>=visibleWorld.left&&f.point[0]<=visibleWorld.right&&
@@ -825,17 +836,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={e=>{e.stopPropagation();selectFeature(f.feature,nationalCapital(f.feature)?"Столица":"Населённый пункт")}}
         onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Населённый пункт")}}}>
-        {selected===f.feature&&<circle r="10" fill="#fff5d8" fillOpacity=".92"
+        {selected===f.feature&&<circle r="7.5" fill="#fff5d8" fillOpacity=".92"
          stroke="#e77a24" strokeWidth="2.2" pointerEvents="none"/>}
         {nationalCapital(f.feature)?
          <path d="M0 -4.4L4.4 0L0 4.4L-4.4 0Z" fill="#263c55" stroke="#fff" strokeWidth="1"/>:
-         <circle r={Math.max(1.8,Math.min(4,1.8+Math.sqrt(cityPopulation(f.feature))/1200))}
+         <circle r={Math.max(1.65,Math.min(3,1.6+Math.sqrt(cityPopulation(f.feature))/2400))}
           fill={selected===f.feature?"#ed7e27":"#275a82"} stroke="#fff" strokeWidth={selected===f.feature?1.7:.85}/>}
         <title>{russianPlaceName(f.feature)}{cityPopulation(f.feature)>0?
          " · население (оценка): "+cityPopulation(f.feature).toLocaleString("ru-RU"):""}</title>
        </g>)}
-       {d.showLabels&&<g pointerEvents="none" fontSize={mapText(9.2)} fill="#28445e"
-        stroke="#fff" strokeWidth={1.9/scale} paintOrder="stroke" fontWeight="650">
+       {d.showLabels&&<g pointerEvents="none" fontSize={mapText(7.5)} fill="#28445e"
+        stroke="#fff" strokeWidth={1.4/scale} paintOrder="stroke" fontWeight="600">
         {cityLabels.map(f=><text key={"city-label-"+f.id}
          x={f.point![0]+5/scale} y={f.point![1]-4/scale}>{russianPlaceName(f.feature)}</text>)}
        </g>}
@@ -859,9 +870,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      </g>
     </svg>
     {!objectMoveMode&&<div className="lektrus-atlas-zoom" role="group" aria-label="Масштаб">
-     <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(scale*1.5)}>+</button>
+     <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(cameraRef.current.scale*1.5)}>+</button>
      <button type="button" onClick={reset} title="Вписать выбранный регион">⌖</button>
-     <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(scale/1.5)}>−</button>
+     <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(cameraRef.current.scale/1.5)}>−</button>
      <label className="lektrus-atlas-zoom-slider">Масштаб
       <input type="range" min="0" max="14" step=".25"
        aria-label="Уровень детализации карты"
