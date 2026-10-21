@@ -133,7 +133,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   cameraRef.current=camera;setScale(camera.scale);setPosition(camera.position);
  };
  const distanceBar=atlasDistanceScale(scale,position.y);
- const mapText=(base:number)=>Math.min(15.5,base+Math.log2(Math.max(1,scale))*1.05)/scale;
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
  const points=useRef(new Map<number,{x:number;y:number}>());
  const pinch=useRef<{distance:number;scale:number;position:{x:number;y:number};mid:{x:number;y:number}}|null>(null);
