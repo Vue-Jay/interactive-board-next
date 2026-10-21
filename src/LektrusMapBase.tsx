@@ -1,4 +1,4 @@
-import {useMemo,type ReactNode} from "react";
+import {memo,useMemo,type ReactNode} from "react";
 import {mapFeaturePath,projectGeography,type MapWindow,type GeoCollection} from "./lektrusAtlasData";
 type Props={land:GeoCollection|null;coastline:GeoCollection|null;grid:boolean;scale?:number;viewport?:MapWindow;terrain?:ReactNode;theme?:"default"|"minerals"};
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
@@ -8,12 +8,32 @@ export function atlasGraticuleStep(scale:number){
 }
 const label=(v:number,lat:boolean)=>Math.abs(v).toLocaleString("ru-RU",{maximumFractionDigits:4})+
  "°"+(Math.abs(v)<1e-9?"":lat?(v>0?" с. ш.":" ю. ш."):(v>0?" в. д.":" з. д."));
+// The physical terrain image moves with the camera; land and coast geometry do
+// not. Memoize these vector layers independently to avoid hundreds of SVG diffs
+// on every pan animation frame.
+const LandGeometry=memo(function LandGeometry({land,minDist,viewport,theme}:{
+ land:GeoCollection|null;minDist:number;viewport?:MapWindow;theme:"default"|"minerals"
+}){
+ const paths=useMemo(()=>land?.features.map((f,id)=>({id,d:mapFeaturePath(f,minDist,viewport)}))
+  .filter(f=>f.d)??[],[land,minDist,viewport]);
+ return <g className="lektrus-atlas-base-land" pointerEvents="none">
+  {paths.map(f=><path key={f.id} d={f.d} fill={theme==="minerals"?"#f4ecd6":"#e4ebdf"}
+   fillRule="evenodd" stroke="none"/>)}
+ </g>;
+});
+const CoastGeometry=memo(function CoastGeometry({coastline,minDist,viewport,theme}:{
+ coastline:GeoCollection|null;minDist:number;viewport?:MapWindow;theme:"default"|"minerals"
+}){
+ const paths=useMemo(()=>coastline?.features.map((f,id)=>({id,d:mapFeaturePath(f,minDist,viewport)}))
+  .filter(f=>f.d)??[],[coastline,minDist,viewport]);
+ return <g className="lektrus-atlas-base-coast" pointerEvents="none"
+  stroke={theme==="minerals"?"#a2aaa0":"#9bb6bc"} strokeWidth=".48"
+  vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round">
+  {paths.map(f=><path key={f.id} d={f.d} vectorEffect="non-scaling-stroke"/>)}
+ </g>;
+});
 export default function LektrusMapBase({land,coastline,grid,scale=1,viewport,terrain,theme="default"}:Props){
  const step=atlasGraticuleStep(scale),minDist=scale>=16?.004:scale>=5?.03:scale>=2?.16:.62;
- const landPaths=useMemo(()=>land?.features.map((f,i)=>({id:i,d:mapFeaturePath(f,minDist,viewport)}))
-  .filter(f=>f.d)||[],[land,minDist,viewport]);
- const coastPaths=useMemo(()=>coastline?.features.map((f,i)=>({id:i,d:mapFeaturePath(f,minDist,viewport)}))
-  .filter(f=>f.d)||[],[coastline,minDist,viewport]);
  const lonW=clamp((viewport?.left??0)/2.5-180,-180,180),lonE=clamp((viewport?.right??900)/2.5-180,-180,180);
  const latS=clamp(90-(viewport?.bottom??450)/2.5,-90,90),latN=clamp(90-(viewport?.top??0)/2.5,-90,90);
  const meridians:number[]=[],parallels:number[]=[];
@@ -25,14 +45,9 @@ export default function LektrusMapBase({land,coastline,grid,scale=1,viewport,ter
  const left=clamp((viewport?.left??0)+5/scale,4/scale,900-4/scale);
  return <>
   <rect width="900" height="450" fill={theme==="minerals"?"#e6eef0":"#dfedf9"}/>
-  <g className="lektrus-atlas-base-land" pointerEvents="none">
-   {landPaths.map(f=><path key={f.id} d={f.d} fill={theme==="minerals"?"#f4ecd6":"#e4ebdf"} fillRule="evenodd" stroke="none"/>)}
-  </g>
+  <LandGeometry land={land} minDist={minDist} viewport={viewport} theme={theme}/>
   {terrain}
-  <g className="lektrus-atlas-base-coast" pointerEvents="none" stroke={theme==="minerals"?"#a2aaa0":"#9bb6bc"}
-   strokeWidth=".48" vectorEffect="non-scaling-stroke" fill="none" strokeLinejoin="round">
-   {coastPaths.map(f=><path key={f.id} d={f.d} vectorEffect="non-scaling-stroke"/>)}
-  </g>
+  <CoastGeometry coastline={coastline} minDist={minDist} viewport={viewport} theme={theme}/>
   {grid&&<g className="lektrus-atlas-graticule" pointerEvents="none">
    <g stroke="#96afc4" strokeWidth=".65" vectorEffect="non-scaling-stroke" opacity=".78">
     {meridians.map(v=><line key={"lon"+v} x1={projectGeography(v,0)[0]} y1="0"
