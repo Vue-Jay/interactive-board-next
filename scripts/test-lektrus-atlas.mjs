@@ -78,11 +78,11 @@ assert.equal(externalExports.canLoadLocalRoads({west:10,east:100,south:40,north:
 assert.equal(externalExports.canLoadMinerals({west:30,east:55,south:40,north:60}),true);
 assert.equal(externalExports.canLoadMinerals({west:-180,east:180,south:-85,north:85}),false);
 const copperDeposit={properties:{commodity:"Copper",dep_type:"Hydrothermal",rec_id:12,model_code:"22c"},geometry:null};
-assert.equal(externalExports.mineralCommodity(copperDeposit)?.name,"Медь");
+assert.equal(externalExports.mineralCommodity(copperDeposit)?.name,"Медные руды");
 const schoolSymbols=schoolAtlasExports.SCHOOL_ATLAS_MINERALS;
 const schoolDeposits=schoolAtlasExports.SCHOOL_ATLAS_USGS_MINERALS;
-assert.equal(schoolSymbols.length,19,"School atlas includes fuels and standard school ore/nonmetal types");
-assert.equal(schoolDeposits.length,15,"USGS school legend must exclude unavailable fuel fields");
+assert.equal(schoolSymbols.length,26,"Legend includes exactly 26 pictograms from the supplied school atlas");
+assert.equal(schoolDeposits.length,21,"USGS atlas legend excludes the five unsupported fuel-resource types");
 assert.deepEqual(externalExports.mineralTypes.map(v=>v.name),schoolDeposits,
  "map dropdown uses exactly the school resource names and order");
 for(const specialized of ["Литий","Уран","Редкоземельные элементы","Кобальт","Бериллий",
@@ -93,8 +93,9 @@ for(const specialized of ["Литий","Уран","Редкоземельные 
 }
 for(const [raw,schoolName] of [
  ["Lead","Полиметаллические руды"],["Zinc","Полиметаллические руды"],
- ["Apatite","Апатиты и фосфориты"],["Phosphate","Апатиты и фосфориты"],
- ["Gold","Золото"],["Iron","Железная руда"],["Bauxite","Бокситы и алюминий"]
+ ["Apatite","Апатиты"],["Phosphate","Фосфориты"],
+ ["Gold","Золото"],["Iron","Железные руды"],["Bauxite","Алюминиевые руды"],
+ ["Copper","Медные руды"],["Mercury","Ртутные руды"],["Graphite","Графит"]
 ]){
  assert.equal(externalExports.mineralCommodity({properties:{commodity:raw},geometry:null})?.name,
   schoolName,raw+" should receive the appropriate school-atlas glyph");
@@ -106,7 +107,7 @@ const mineralGuides={};
 new Function("exports",ts.transpileModule(guideSource,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(mineralGuides);
 assert.ok(mineralGuides.mineralGuides.length>=14);
-assert.equal(mineralGuides.mineralGuide("Железная руда")?.uses,"Получение железа и стали");
+assert.equal(mineralGuides.mineralGuide("Железные руды")?.uses,"Получение железа и стали");
 const areaSource=fs.readFileSync(new URL("../src/lektrusAtlasCityArea.ts",import.meta.url),"utf8");
 const cityAreaExports={};
 new Function("exports",ts.transpileModule(areaSource,{compilerOptions:{
@@ -276,17 +277,18 @@ assert.ok(data.includes('"admin-world-lines":"ne_10m_admin_1_states_provinces_li
 assert.ok(map.includes('loadAtlasLayer(selectedLayer)'),"atlas must actually load the selected global administrative lines");
 assert.ok(map.includes('loadAtlasLayer("admin-world-overview")'),"detailed boundary source needs a 50m fallback");
 assert.ok(map.includes("worldAdminLinePaths.map"),"world admin-1 polylines are rendered");
-assert.match(map,/selectedLayer=scale>=12\?"admin-world-lines":"admin-world-overview"/,
+assert.match(map,/selectedLayer=scale>=3\.5\?"admin-world-lines":"admin-world-overview"/,
  "region boundaries should use global overview first and 10m linework after zoom");
 assert.ok(map.includes('loadAtlasLayer("admin-world-overview")'),
  "a failed detailed boundary fetch must fall back to the global overview");
 const mineralGlyphSource=fs.readFileSync(new URL("../src/LektrusMineralSymbol.tsx",import.meta.url),"utf8");
-for(const schoolGlyph of ["coal","brown-coal","oil","gas","iron","copper","gold",
- "bauxite","nickel","chromium","tungsten","molybdenum","tin"]){
+for(const schoolGlyph of ["coal","brown","shale","oil","gas","iron","manganese","copper","gold",
+ "bauxite","nickel","chromium","tungsten","molybdenum","tin","polymetal",
+ "mercury","asbestos","graphite","mica","apatite","phosphate","potash","salt","glauber","diamonds"]){
  assert.ok(mineralGlyphSource.includes('case "'+schoolGlyph+'":'),
   schoolGlyph+" should have an explicit pictogram matching the school atlas legend");
 }
-assert.ok(map.includes("Условные знаки горючих ископаемых"),
+assert.ok(map.includes("SCHOOL_ATLAS_GROUPS.map"),
  "fuel signs are available for education without fabricated mine locations");
 assert.match(map,/MAX_ATLAS_ZOOM=16384/);
 assert.match(map,/featureFocusBounds/);
