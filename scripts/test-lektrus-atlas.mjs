@@ -96,6 +96,39 @@ new Function("exports",ts.transpileModule(regions,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(regionalExports);
 assert.equal(regionalExports.atlasRegions.length>=50,true);
 assert.equal(regionalExports.atlasRegionCamera(regionalExports.findAtlasRegion("world")).scale,1);
+const wholeWorldCamera=regionalExports.atlasRegionCamera(regionalExports.findAtlasRegion("world"));
+assert.deepEqual(wholeWorldCamera.position,{x:0,y:0},
+ "Full-world atlas must open centred, without losing the western hemisphere");
+for(const region of regionalExports.atlasRegions){
+ const camera=regionalExports.atlasRegionCamera(region);
+ const [west,south,east,north]=region.bounds;
+ const centreX=(west+east+360)/720*900;
+ const centreY=(90-(south+north)/2)/180*450;
+ assert.ok(Math.abs(camera.position.x+(centreX-450)*camera.scale)<1e-7,
+  region.id+" has a horizontally centred camera");
+ assert.ok(Math.abs(camera.position.y+(centreY-225)*camera.scale)<1e-7,
+  region.id+" has a vertically centred camera");
+}
+const atlasEditor=fs.readFileSync(new URL("../src/LektrusSchoolDiagramEditor.tsx",import.meta.url),"utf8");
+const atlasView=fs.readFileSync(new URL("../src/LektrusSchoolDiagramView.tsx",import.meta.url),"utf8");
+const atlasUi=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
+const atlasEditorCss=fs.readFileSync(new URL("../src/lektrusAtlasEditor.css",import.meta.url),"utf8");
+const appBootstrap=fs.readFileSync(new URL("../src/main.tsx",import.meta.url),"utf8");
+assert.match(atlasEditor,/onChange=\{isAtlas\?set:undefined\} editorMode=\{isAtlas\}/,
+ "Selections in atlas preview should persist when added to board");
+assert.match(atlasView,/editorMode=\{editorMode\}/,
+ "School diagram view must forward atlas mode");
+assert.match(atlasUi,/editorMode=\{editorMode\}/,
+ "Map view must forward immersive editor mode to the atlas");
+assert.match(atlasUi,/lektrus-atlas--inspector-hidden/,
+ "Map inspector must be collapsible");
+assert.match(atlasEditorCss,/lektrus-school-editor--atlas .lektrus-school-preview .lektrus-atlas-svg/,
+ "The atlas SVG must not inherit 9\/5 school diagram preview sizing");
+assert.match(atlasEditorCss,/height:100%;max-height:none;min-height:0;aspect-ratio:auto/,
+ "Atlas should occupy the entire preview canvas");
+assert.match(appBootstrap,/import "\.\/lektrusAtlasEditor\.css";/,
+ "Atlas editor visual styles should load");
+
 assert.ok(regionalExports.atlasRegionCamera(regionalExports.findAtlasRegion("rf-siberia")).scale>1);
 const distance=regionalExports.atlasDistanceScale(3,0);
 assert.ok(distance.width>0&&distance.width<=115&&distance.label.includes("км"));
