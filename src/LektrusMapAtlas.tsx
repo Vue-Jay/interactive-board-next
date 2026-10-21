@@ -128,10 +128,23 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
  const cameraRef=useRef({scale:1,position:{x:0,y:0}});
+ const cameraFrame=useRef<number|null>(null);
  const lastPointer=useRef({x:450,y:225});
  const commitCamera=(camera:{scale:number;position:{x:number;y:number}})=>{
+  if(cameraFrame.current!==null){cancelAnimationFrame(cameraFrame.current);cameraFrame.current=null}
   cameraRef.current=camera;setScale(camera.scale);setPosition(camera.position);
  };
+ // Dragging and wheel events can fire far more often than the monitor refresh rate.
+ // Render the newest camera at most once per animation frame.
+ const scheduleCamera=(camera:{scale:number;position:{x:number;y:number}})=>{
+  cameraRef.current=camera;
+  if(cameraFrame.current!==null)return;
+  cameraFrame.current=requestAnimationFrame(()=>{
+   cameraFrame.current=null;
+   setScale(cameraRef.current.scale);setPosition(cameraRef.current.position);
+  });
+ };
+ useEffect(()=>()=>{if(cameraFrame.current!==null)cancelAnimationFrame(cameraFrame.current)},[]);
  const distanceBar=atlasDistanceScale(scale,position.y);
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
  const points=useRef(new Map<number,{x:number;y:number}>());
@@ -274,10 +287,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   feature,path:mapFeaturePath(feature,precision,viewport),
   name:atlasDisplayName(feature,snapshot.year,historical&&!modernReference),i
  })).filter(f=>f.path&&f.name),[mapSourceFeatures,precision,viewport,snapshot.year,historical,modernReference]);
- const labels=useMemo(()=>shapes.map(s=>({...s,anchor:featureLabelAnchor(s.feature)}))
-  .filter(s=>s.anchor&&s.anchor.area*scale*scale>360)
+ const shapeAnchors=useMemo(()=>shapes.map(s=>({...s,anchor:featureLabelAnchor(s.feature)}))
+  .filter(s=>s.anchor),[shapes]);
+ const labels=useMemo(()=>shapeAnchors
+  .filter(s=>s.anchor!.area*scale*scale>360)
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
-  .slice(0,scale>=12?220:scale>=3?105:45),[shapes,scale]);
+  .slice(0,scale>=12?220:scale>=3?105:45),[shapeAnchors,scale]);
  const waterTolerance=atlasWaterGeometryTolerance(Math.pow(2,Math.floor(Math.log2(scale))),detailedGeography);
  const streams=useMemo(()=>rivers?.features.filter(hasAtlasName).map((f,i)=>({
   id:i,path:mapFeaturePath(f,waterTolerance,viewport),feature:f
@@ -342,10 +357,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   return()=>{active=false};
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[mode,externalKey,mineralsAvailable]);
+ const auxiliaryDetailZoom=Math.pow(2,Math.floor(Math.log2(scale)));
  const auxiliaryLines=useMemo(()=>infrastructure?.features.flatMap((feature,id)=>{
-  const path=mapFeaturePath(feature,Math.max(.00008,.55/Math.max(1,scale)),viewport);
+  const path=mapFeaturePath(feature,Math.max(.00008,.55/auxiliaryDetailZoom),viewport);
   return path?[{id,path,feature}]:[];
- })??[],[infrastructure,scale,viewport]);
+ })??[],[infrastructure,auxiliaryDetailZoom,viewport]);
  const auxiliaryRiverLabels=useMemo(()=>infrastructure?.features
   .filter(f=>f.properties?.ATLAS_KIND==="waterway")
   .map((feature,id)=>({id,feature,point:featureLineMidpoint(feature)}))
@@ -528,7 +544,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   x:450+(p.x-450-position.x)/scale,y:225+(p.y-225-position.y)/scale
  });
  const zoomAt=(next:number,point=lastPointer.current)=>{
-  commitCamera(zoomAtlasCamera(cameraRef.current,next,point));
+  scheduleCamera(zoomAtlasCamera(cameraRef.current,next,point));
  };
  const onPointerDown=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
@@ -558,7 +574,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
    const focus={x:450+(g.mid.x-450-g.position.x)/g.scale,
     y:225+(g.mid.y-225-g.position.y)/g.scale};
-   commitCamera({scale:next,position:normalizePosition({x:mid.x-450-(focus.x-450)*next,
+   scheduleCamera({scale:next,position:normalizePosition({x:mid.x-450-(focus.x-450)*next,
     y:mid.y-225-(focus.y-225)*next},next)});
    return;
   }
@@ -566,9 +582,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(Math.hypot(pt.x-p.x,pt.y-p.y)>3)dragged.current=true;
   if(dragged.current&&!e.currentTarget.hasPointerCapture(e.pointerId))
    e.currentTarget.setPointerCapture(e.pointerId);
-  commitCamera({scale:cameraRef.current.scale,position:normalizePosition({x:p.fromX+pt.x-p.x,y:p.fromY+pt.y-p.y},cameraRef.current.scale)});
+  scheduleCamera({scale:cameraRef.current.scale,position:normalizePosition({x:p.fromX+pt.x-p.x,y:p.fromY+pt.y-p.y},cameraRef.current.scale)});
  };
  const onPointerEnd=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(cameraFrame.current!==null)commitCamera(cameraRef.current);
   points.current.delete(e.pointerId);pinch.current=null;
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const next=[...points.current.entries()][0];
