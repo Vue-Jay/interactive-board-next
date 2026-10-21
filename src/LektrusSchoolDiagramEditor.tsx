@@ -4,6 +4,7 @@ import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import type {CellOrganelle,FoodRole,SchoolDiagram,SchoolDiagramId} from "./lektrusSchoolDiagramModel";
 import {isSchoolDiagram,isSchoolDiagramId,makeSchoolDiagram,months,organelleTitles} from "./lektrusSchoolDiagramModel";
+import {normalizeAtlasDocument} from "./lektrusAtlasModel";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
 import LektrusNextSchoolControls from "./LektrusNextSchoolControls";
 import LektrusFurtherSchoolControls from "./LektrusFurtherSchoolControls";
@@ -42,7 +43,10 @@ const newKey=()=>compatibleRandomUUID();
 export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSave}:Props){
  const id=isSchoolDiagramId(item.graphFigureId)?item.graphFigureId:"bio-cell";
  const [draft,setDraft]=useState<SchoolDiagram>(()=>{
-  if(isSchoolDiagram(item.schoolDiagram))return structuredClone(item.schoolDiagram);
+  if(isSchoolDiagram(item.schoolDiagram)){
+   const saved=structuredClone(item.schoolDiagram);
+   return saved.kind==="atlas"?normalizeAtlasDocument(saved):saved;
+  }
   return makeSchoolDiagram(id);
  });
  const isAtlas=id==="maps-atlas"||id==="contour-atlas"||id==="history-atlas";
