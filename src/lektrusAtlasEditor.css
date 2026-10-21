@@ -1,0 +1,166 @@
+/* Immersive school atlas workspace. Scoped so ordinary teaching editors and
+ * map objects already placed on a whiteboard keep their own dimensions. */
+.lektrus-school-backdrop:has(.lektrus-school-editor--atlas){
+ padding:12px;background:rgba(19,36,60,.68);backdrop-filter:blur(8px);
+}
+.lektrus-school-editor--atlas{
+ width:min(1920px,calc(100vw - 24px));
+ max-width:none;height:calc(100dvh - 24px);max-height:none;
+ min-height:0;min-width:0;overflow:hidden;border-radius:20px;
+ border:1px solid #b8d0e6;background:#f6faff;
+ box-shadow:0 28px 100px #071e3f65;
+}
+.lektrus-school-editor--atlas>.lektrus-school-header{
+ flex:0 0 auto;display:flex;align-items:center;gap:12px;
+ padding:12px clamp(13px,2vw,27px);
+ border-bottom:1px solid #d3e2f1;background:linear-gradient(115deg,#fff,#f0f6ff);
+}
+.lektrus-atlas-editor-heading{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.lektrus-atlas-editor-kicker{font-size:9px;letter-spacing:1.5px;font-weight:850;color:#4478ac}
+.lektrus-school-editor--atlas .lektrus-school-header h2{
+ font-size:clamp(17px,1.4vw,23px);font-weight:800;line-height:1.15;margin:0;color:#213e61
+}
+.lektrus-school-editor--atlas .lektrus-school-header span{font-size:11px;color:#718dab}
+.lektrus-atlas-settings-toggle{
+ display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
+ height:39px;min-width:142px;border:1px solid #b9cfe9;border-radius:11px;
+ padding:0 13px;background:#fff;color:#365e89;font-size:12px;font-weight:750;
+ box-shadow:0 2px 8px #17416b12;cursor:pointer;
+}
+.lektrus-atlas-settings-toggle[aria-expanded="true"]{background:#deecff;color:#255e9e;border-color:#87b0df}
+.lektrus-atlas-settings-toggle:hover,.lektrus-school-editor--atlas .lektrus-school-close:hover{
+ background:#e6f1ff;border-color:#88b6e8;
+}
+.lektrus-school-editor--atlas .lektrus-school-close{width:39px;height:39px;border-radius:11px;
+ background:#fff;font-size:22px}
+.lektrus-school-editor--atlas .lektrus-school-body{
+ position:relative;flex:1;min-height:0;min-width:0;display:flex;overflow:hidden;background:#dfeefa
+}
+.lektrus-school-editor--atlas .lektrus-school-controls{display:none}
+.lektrus-school-editor--atlas-settings-open .lektrus-school-controls{
+ position:absolute;z-index:15;display:flex;flex-direction:column;
+ left:0;top:0;bottom:0;width:min(370px,calc(100% - 45px));
+ padding:18px;overflow-y:auto;min-height:0;
+ border-right:1px solid #cadbec;background:#fbfdff;
+ box-shadow:10px 0 36px #13365b38;
+}
+.lektrus-school-editor--atlas .lektrus-school-preview-area{
+ flex:1;display:flex;min-width:0;min-height:0;padding:0;gap:0;
+ background:#dfeefa;order:initial;height:auto
+}
+.lektrus-school-editor--atlas .lektrus-school-preview{
+ flex:1;display:block;min-height:0;min-width:0;width:100%;height:100%;
+ border:0;border-radius:0;overflow:hidden;background:#dfedf9;
+}
+.lektrus-school-editor--atlas .lektrus-atlas{
+ height:100%;width:100%;border:0;border-radius:0;min-height:0
+}
+.lektrus-school-editor--atlas .lektrus-school-preview .lektrus-atlas-svg{
+ width:100%;height:100%;max-height:none;min-height:0;aspect-ratio:auto;
+}
+.lektrus-school-editor--atlas .lektrus-atlas-map-box{background:#dfedf9}
+.lektrus-school-editor--atlas .lektrus-school-footer{
+ flex:none;min-height:62px;gap:10px;padding:10px clamp(12px,2vw,25px);
+ border-top:1px solid #d3e2f1;background:#fff
+}
+.lektrus-school-editor--atlas .lektrus-school-footer>span{
+ display:block;flex:1;color:#6784a2;line-height:1.4;font-size:11px
+}
+.lektrus-school-editor--atlas .lektrus-school-footer button{
+ border-radius:10px;padding:11px 16px;font-size:12px
+}
+.lektrus-school-editor--atlas .lektrus-school-primary{
+ background:linear-gradient(125deg,#356bc9,#2354aa);box-shadow:0 4px 11px #275db52e
+}
+.lektrus-school-editor--atlas .lektrus-school-field{
+ gap:6px;font-size:12px;color:#496885
+}
+.lektrus-school-editor--atlas .lektrus-school-hint{
+ border:1px solid #e2ebf7;background:#f0f6fd;color:#69809b;
+ border-radius:11px;padding:11px;font-size:11px;line-height:1.48
+}
+/* Map fills the canvas; the informational reference panel is opt-in,
+ * rather than stealing a quarter of every atlas before the lesson begins. */
+.lektrus-atlas--inspector-hidden .lektrus-atlas-body,
+.lektrus-atlas-history.lektrus-atlas--inspector-hidden .lektrus-atlas-body{
+ grid-template-columns:minmax(0,1fr);
+}
+.lektrus-atlas--inspector-hidden .lektrus-atlas-sidebar{display:none}
+.lektrus-atlas-header .lektrus-atlas-inspector-toggle{
+ flex:none;background:#f1f6fc;color:#3b658e;
+ border:1px solid #d3e3f1;border-radius:9px;
+ font-size:11px;font-weight:750;padding:7px 10px;white-space:nowrap
+}
+.lektrus-atlas-header .lektrus-atlas-inspector-toggle:hover{background:#e4f0ff;color:#245a99}
+.lektrus-atlas--editor .lektrus-atlas-header{
+ flex:0 0 auto;min-height:49px;padding:7px clamp(7px,1.1vw,17px);
+ border-bottom:1px solid #d1e1f0;background:#fff;gap:12px
+}
+.lektrus-atlas--editor .lektrus-atlas-header>strong{
+ font-size:13px;font-weight:800;max-width:24%;color:#2a527b
+}
+.lektrus-atlas--editor .lektrus-atlas-header nav{gap:5px;align-items:center}
+.lektrus-atlas--editor .lektrus-atlas-header nav button{
+ font-size:12px;padding:8px 11px;border-radius:9px;
+ transition:background .15s,border-color .15s
+}
+.lektrus-atlas--editor .lektrus-atlas-header nav button:hover{background:#edf5fd}
+.lektrus-atlas--editor .lektrus-atlas-header nav button.selected{
+ background:#e4efff;border-color:#9fc5f0;color:#245caa
+}
+.lektrus-atlas--editor .lektrus-atlas-body{
+ flex:1;min-height:0;min-width:0;grid-template-columns:minmax(0,1fr) minmax(245px,23%)
+}
+.lektrus-atlas--editor.lektrus-atlas--inspector-hidden .lektrus-atlas-body{
+ grid-template-columns:minmax(0,1fr)
+}
+.lektrus-atlas--editor .lektrus-atlas-sidebar{
+ padding:15px;gap:13px;background:#f9fbfe
+}
+.lektrus-atlas--editor .lektrus-atlas-sidebar>div{
+ border-radius:10px
+}
+.lektrus-atlas--editor .lektrus-atlas-zoom{
+ right:15px;top:15px;gap:5px;filter:drop-shadow(0 4px 14px #1e527027)
+}
+.lektrus-atlas--editor .lektrus-atlas-zoom button{
+ min-width:35px;min-height:35px;border-radius:10px;font-size:18px
+}
+.lektrus-atlas--editor .lektrus-atlas-zoom-slider{
+ padding:8px;border-radius:10px;font-size:11px
+}
+.lektrus-atlas--editor .lektrus-atlas-precision{
+ left:15px;bottom:12px;border-radius:10px;padding:7px 10px;
+ font-size:11px;box-shadow:0 3px 12px #2445681e
+}
+@media(max-width:850px){
+ .lektrus-school-backdrop:has(.lektrus-school-editor--atlas){padding:5px}
+ .lektrus-school-editor--atlas{width:calc(100vw - 10px);height:calc(100dvh - 10px);border-radius:12px}
+ .lektrus-school-editor--atlas>.lektrus-school-header{padding:7px 10px;gap:7px}
+ .lektrus-atlas-settings-toggle{min-width:auto;padding:0 10px;height:35px;font-size:11px}
+ .lektrus-school-editor--atlas .lektrus-school-close{width:35px;height:35px}
+ .lektrus-school-editor--atlas .lektrus-school-footer{padding:6px 10px;min-height:48px}
+ .lektrus-school-editor--atlas .lektrus-school-footer button{padding:8px 10px;font-size:11px}
+ .lektrus-school-editor--atlas .lektrus-school-footer>span{display:none}
+ .lektrus-atlas--editor .lektrus-atlas-header{gap:6px;min-height:37px;padding:4px 7px}
+ .lektrus-atlas--editor .lektrus-atlas-header>strong{display:none}
+ .lektrus-atlas--editor .lektrus-atlas-header nav button{font-size:10px;padding:6px 8px}
+ .lektrus-atlas--editor .lektrus-atlas-body{grid-template-columns:minmax(0,1fr) minmax(205px,29%)}
+ .lektrus-atlas--editor .lektrus-atlas-zoom{right:7px;top:7px}
+ .lektrus-atlas--editor .lektrus-atlas-precision{left:5px;bottom:5px;font-size:9px}
+}
+@media(max-width:570px){
+ .lektrus-school-editor--atlas .lektrus-school-header h2{font-size:15px}
+ .lektrus-atlas-editor-kicker{font-size:8px}
+ .lektrus-school-editor--atlas-settings-open .lektrus-school-controls{
+  width:min(340px,calc(100% - 32px));padding:12px
+ }
+ .lektrus-atlas--editor .lektrus-atlas-body{display:flex;flex-direction:column}
+ .lektrus-atlas--editor .lektrus-atlas-map-box{flex:1 1 60%;min-height:0}
+ .lektrus-atlas--editor .lektrus-atlas-sidebar{flex:1 1 40%;min-height:80px;
+  border-left:0;border-top:1px solid #d3e2f1}
+ .lektrus-atlas--editor.lektrus-atlas--inspector-hidden .lektrus-atlas-map-box{flex:1 1 100%}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-atlas--editor .lektrus-atlas-header nav button{transition:none}
+}
