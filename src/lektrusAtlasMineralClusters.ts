@@ -35,7 +35,7 @@ export function clusterMineralMapPoints<T>(points:MineralMapPoint<T>[],scale:num
   const row=sectors.get(region);
   if(row)row.push(group);else sectors.set(region,[group]);
  }
- const keys=[...sectors.keys()].sort();
+ const keys=[...sectors.keys()].sort((a,b)=>sectors.get(a)!.length-sectors.get(b)!.length||a.localeCompare(b));
  const selected:MineralMapCluster<T>[]=[];
  let pass=0;
  while(selected.length<limit){
