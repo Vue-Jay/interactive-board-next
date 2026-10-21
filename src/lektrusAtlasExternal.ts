@@ -253,7 +253,12 @@ export function atlasOSMCoverageTiles(bounds:ExternalBounds,kind:AtlasOSMCoverag
  if(!sane(bounds))return [];
  const width=bounds.east-bounds.west,height=bounds.north-bounds.south;
  if(kind==="roads"?(width>46||height>29):(width>27||height>17))return [];
- const stepLon=kind==="roads"?10:6,stepLat=kind==="roads"?7:5;
+ // Smaller tiles at high zoom avoid querying entire regions when a teacher
+ // needs only city blocks or the immediate road network.
+ const stepLon=kind==="roads"?(width<=9?3:width<=22?5:10):
+  width<=7?1.5:width<=15?3:6;
+ const stepLat=kind==="roads"?(height<=7?2:height<=15?4:7):
+  height<=5?1:height<=11?2.5:5;
  const cx=(bounds.west+bounds.east)/2,cy=(bounds.south+bounds.north)/2;
  const tiles:ExternalBounds[]=[];
  const firstX=Math.floor(bounds.west/stepLon),lastX=Math.floor((bounds.east-1e-8)/stepLon);
@@ -287,6 +292,7 @@ export function loadAtlasOSMCoverage(bounds:ExternalBounds,kind:AtlasOSMCoverage
     if(result.status!=="fulfilled")continue;
     successful++;
     for(const feature of result.value.features){
+     if(loaded.length>=(kind==="roads"?2600:1800))break;
      const props=feature.properties??{};
      const code=String(props.OSM_TYPE??"way")+":"+String(props.OSM_ID??"")+":"+
       String(props.OSM_ROLE??"")+":"+JSON.stringify(
