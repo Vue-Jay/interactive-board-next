@@ -11,6 +11,7 @@ import LektrusRussianSchoolControls from "./LektrusRussianSchoolControls";
 import LektrusLanguageSocialControls from "./LektrusLanguageSocialControls";
 import LektrusMapAtlasControls from "./LektrusMapAtlasControls";
 import LektrusBiologyExtensionControls from "./LektrusBiologyExtensionControls";
+import LektrusLogicCircuitControls from "./LektrusLogicCircuitControls";
 type Props={item:Item;existing:boolean;onCancel:()=>void;onSave:(item:Item)=>void};
 const max=(s:string,n:number)=>s.slice(0,n);
 const roleNames:Record<FoodRole,string>={producer:"Продуцент",consumer:"Консумент",decomposer:"Редуцент"};
@@ -18,6 +19,7 @@ const keys=(cell:"plant"|"animal"):CellOrganelle[]=>cell==="plant"?
  ["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]:
  ["membrane","cytoplasm","nucleus","mitochondria"];
 const titles:Record<SchoolDiagramId,string>={
+ "info-circuit":"Логические схемы",
  "bio-dna":"Строение ДНК","bio-taxonomy":"Классификация организмов",
  "bio-division":"Деление клетки","info-encoding":"Кодирование текста",
  "bio-genetics":"Генетические скрещивания","info-logic":"Таблица истинности",
@@ -66,6 +68,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
    <div className="lektrus-school-body">
     <div className="lektrus-school-controls">
      {title}
+     {draft.kind==="logic-circuit"&&<LektrusLogicCircuitControls diagram={draft} onChange={set}/>}
      {(draft.kind==="dna"||draft.kind==="taxonomy")&&<LektrusBiologyExtensionControls diagram={draft} onChange={set}/>}
      {draft.kind==="atlas"&&<LektrusMapAtlasControls diagram={draft} onChange={set}/>}
      {(draft.kind==="syntax"||draft.kind==="flowchart"||draft.kind==="place-value")&&<LektrusNextSchoolControls diagram={draft} onChange={set}/>}
