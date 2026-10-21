@@ -1,3 +1,4 @@
+import {compatibleRandomUUID} from "./cryptoUuidCompatibility";
 import type {ProgrammingDiagram,ProgrammingLanguage} from "./lektrusProgrammingModel";
 import {programmingPresets,programmingLanguageLabels} from "./lektrusProgrammingModel";
 
@@ -66,7 +67,7 @@ export default function LektrusProgrammingControls({diagram:d,onChange}:{
    </label>
   </div>)}
   <button type="button" className="lektrus-school-add" disabled={tests.length>=8}
-   onClick={()=>onChange({...d,tests:[...tests,{id:crypto.randomUUID(),name:"Новый тест",stdin:"",expected:""}]})}>
+   onClick={()=>onChange({...d,tests:[...tests,{id:compatibleRandomUUID(),name:"Новый тест",stdin:"",expected:""}]})}>
    + Добавить тест</button>
   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showExpected??false}
    onChange={e=>onChange({...d,showExpected:e.target.checked})}/>Показывать ученику ожидаемый вывод тестов</label>
