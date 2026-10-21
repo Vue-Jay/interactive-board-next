@@ -395,6 +395,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   findHistoricalArticle(selectedRaw,snapshot.year):undefined;
  const fallbackReference=selected&&historical&&!modernReference&&!selectedArticle?
   findHistoricalReference(selectedRaw,snapshot.year):undefined;
+ useEffect(()=>{
+  if(selected||selectedMineral||selectedMarker){setInspectorOpen(true);setInfoTab("object")}
+ },[selected,selectedMineral,selectedMarker]);
  const selectedCountryCapitals=selected&&mode==="political"?
   capitalsForCountry(selected,cityPoints.map(c=>c.feature)):[];
  const selectedIsCity=!!selected&&["Populated place","Admin-0 capital","Admin-0 capital alt",
@@ -425,7 +428,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   normalizeHistoricalName(name)===normalizeHistoricalName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
  const namedFeatures=mode==="cities"?cityPoints.filter(f=>russianPlaceName(f.feature)&&matchesCityCategory(f.feature,cityCategory)).map(f=>f.feature):
-  mode==="relief"||mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature)]:
+  mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature),...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
   mode==="political"?[...mapSourceFeatures,...(administrative?.features.filter(hasAtlasName)??[]),...cityPoints.filter(p=>nationalCapital(p.feature)).map(p=>p.feature)]:
   mapSourceFeatures;
@@ -580,7 +583,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   onChange?.({...d,mode:value});
  };
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
-  if(dragged.current&&mode!=="coordinates"||(!coordinatesEnabled&&!terrainEnabled))return;
+  if(dragged.current||(!coordinatesEnabled&&!terrainEnabled))return;
   const p=worldPoint(localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
   if(p.x>=0&&p.x<=900&&p.y>=0&&p.y<=450){
    const lon=Math.round((p.x/900*360-180)*10000)/10000;
@@ -883,6 +886,25 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      `${coord.lat.toFixed(2)}°, ${coord.lon.toFixed(2)}°`:objectMoveMode?"режим перемещения объекта":"обзорные геоданные"}</div>
    </div>
    <aside className="lektrus-atlas-sidebar">
+    <div className="lektrus-atlas-info-heading">
+     <strong>Сведения</strong>
+     <button type="button" aria-label="Скрыть панель сведений" onClick={()=>setInspectorOpen(false)}>×</button>
+    </div>
+    <div className="lektrus-atlas-info-tabs" role="tablist" aria-label="Сведения о карте">
+     {([["overview","Обзор"],["object","Объект"],["sources","Источники"]] as const).map(([tab,label])=>
+      <button key={tab} type="button" role="tab" aria-selected={infoTab===tab}
+       className={infoTab===tab?"selected":""} onClick={()=>setInfoTab(tab)}>{label}</button>)}
+    </div>
+    {infoTab==="overview"&&<div className="lektrus-atlas-info-content">
+     <div className="lektrus-atlas-study-card"><strong>{mapModeTitle(mode)}</strong>
+      <p>{mode==="political"?"На политической карте показаны страны и столицы. Выберите государство, чтобы прочитать сведения о нём, а затем приблизьте карту для изучения его соседей.":
+       mode==="physical"?"Изучайте материки, океаны, горные системы, реки, озёра и высоты. Приближайте территорию, чтобы увидеть больше подписей и водных объектов.":
+       mode==="cities"?"Основные города видны сразу, небольшие появляются при приближении. Нажмите на точку, чтобы узнать статус, население и доступные сведения о площади.":
+       mode==="minerals"?"Приблизьте область для просмотра месторождений. Цвет означает вид минерального сырья, а не количество его запасов.":
+       mode==="contour"?"Используйте контурную карту для заданий по расположению государств и объектов. Можно включать координаты и раскрашивать территории.":
+       "Выберите период и территорию, чтобы изучить исторические изменения. Границы исторических эпох являются научными реконструкциями."}</p>
+      <p className="lektrus-atlas-study-note">Перемещение: перетаскивание. Масштаб: колесо мыши или два пальца. Кнопка «Координаты» включает определение широты и долготы на любой карте.</p>
+     </div>
     <div className="lektrus-atlas-region-picker">
      <strong>Территория карты</strong>
      <select aria-label="Регион школьного атласа" value={regionId} onChange={e=>changeRegion(e.target.value)}>
@@ -902,19 +924,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <small>{regionId==="russia"||regionId==="rf-far-east"?"Россия пересекает 180-й меридиан, части её территории представлены у обоих краёв мировой проекции.":
       "Регион изменяет область просмотра, но не подменяет географические границы."}</small>
     </div>
-    {modernBorders&&needsPoliticalGeometry&&<div className="lektrus-atlas-source-note">
-     <strong>Покрытие: {mapSourceFeatures.length} поименованных территорий</strong>
-     <small>Малые, островные государства и отдельные зависимости по данным Natural Earth. Границы 1:10 млн при приближении, не кадастровая точность.</small>
-     <small>Российская картографическая позиция Natural Earth RUS (архивная геометрия, ревизия 02.06.2022). Полная актуальность границ на 2026 год по Росреестру НЕ подтверждена.</small>
-     <div className="lektrus-atlas-official-sources">
-      <strong>Официальные российские источники для сверки</strong>
-      <a href="https://www.nspd.gov.ru/" target="_blank" rel="noopener noreferrer">НСПД Росреестра: современная карта ↗</a>
-      <a href="https://rosreestr.gov.ru/activity/geodeziya-i-kartografiya/edinaya-elektronnaya-kartograficheskaya-osnova/"
-       target="_blank" rel="noopener noreferrer">Единая электронная картографическая основа (ЕЭКО) ↗</a>
-      <small>Проверочные источники доступны по ссылкам, но данные ЕЭКО не импортированы в этот атлас. Нельзя считать их уже сверенными с нашим GeoJSON, особенно для спорных территорий.</small>
-     </div>
-    </div>}
-
     {terrainEnabled&&terrainPick&&<div className="lektrus-atlas-description">
      <strong>Высота выбранной точки</strong>
      <p>{Math.abs(terrainPick.lat).toFixed(4)}° {terrainPick.lat>=0?"с. ш.":"ю. ш."},
@@ -1048,13 +1057,18 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     {detailWarning&&<p className="lektrus-atlas-layer-warning" role="status">{detailWarning}</p>}
     {layerWarning&&<p className="lektrus-atlas-layer-warning" role="status">
      {layerWarning}. Доступные слои отображаются без подмены.</p>}
-    {mode==="coordinates"&&<div className="lektrus-atlas-description">
+    {coordinatesEnabled&&<div className="lektrus-atlas-description">
      <strong>Географические координаты</strong>
      <p>Нажмите на карту: широта и долгота определяются с учётом масштаба и перемещения.</p>
      {coord?<p>{Math.abs(coord.lat).toFixed(2)}° {coord.lat>=0?"с. ш.":"ю. ш."},
       {" "}{Math.abs(coord.lon).toFixed(2)}° {coord.lon>=0?"в. д.":"з. д."}</p>:
       <p>Точка пока не выбрана.</p>}
     </div>}
+    </div>}
+    {infoTab==="object"&&<div className="lektrus-atlas-info-content">
+     {!selected&&!selectedMineral&&!selectedMarker&&!historical&&<div className="lektrus-atlas-study-card">
+      <strong>Выберите объект на карте</strong><p>Нажмите на страну, город, реку, озеро, гору или месторождение. Здесь появятся доступные сведения из базы и ссылки на источники.</p>
+     </div>}
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}{modernReference?" · современный обзор":""}</strong>
      <small>{modernReference?"Современный обзор в российском профиле Natural Earth, не официальный снимок 2026 года":
@@ -1219,12 +1233,33 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {marker.title} · {yearLabel(marker.year)}
      </div>)}
     </div>}
+    </div>}
+    {infoTab==="sources"&&<div className="lektrus-atlas-info-content">
+     <div className="lektrus-atlas-study-card"><strong>Картографические источники</strong>
+      <p>Данные разных масштабов и лет могут отличаться. Исторические границы основаны на реконструкциях, а современные границы нуждаются в проверке по официальным данным.</p>
+     </div>
+    {modernBorders&&needsPoliticalGeometry&&<div className="lektrus-atlas-source-note">
+     <strong>Покрытие: {mapSourceFeatures.length} поименованных территорий</strong>
+     <small>Малые, островные государства и отдельные зависимости по данным Natural Earth. Границы 1:10 млн при приближении, не кадастровая точность.</small>
+     <small>Российская картографическая позиция Natural Earth RUS (архивная геометрия, ревизия 02.06.2022). Полная актуальность границ на 2026 год по Росреестру НЕ подтверждена.</small>
+     <div className="lektrus-atlas-official-sources">
+      <strong>Официальные российские источники для сверки</strong>
+      <a href="https://www.nspd.gov.ru/" target="_blank" rel="noopener noreferrer">НСПД Росреестра: современная карта ↗</a>
+      <a href="https://rosreestr.gov.ru/activity/geodeziya-i-kartografiya/edinaya-elektronnaya-kartograficheskaya-osnova/"
+       target="_blank" rel="noopener noreferrer">Единая электронная картографическая основа (ЕЭКО) ↗</a>
+      <small>Проверочные источники доступны по ссылкам, но данные ЕЭКО не импортированы в этот атлас. Нельзя считать их уже сверенными с нашим GeoJSON, особенно для спорных территорий.</small>
+     </div>
+    </div>}
+
+
     <div className="lektrus-atlas-source">
      <a href={(historical&&!modernReference?historicDataProvider:modernDataProvider).url}
       target="_blank" rel="noopener noreferrer">Источник: {(historical&&!modernReference?historicDataProvider:modernDataProvider).name} ↗</a>
      {historical&&<><small>Исторические реконструкции могут быть приблизительными; современный обзор отображён в версии RUS.</small>
       <a href={(modernReference?modernDataProvider:historicDataProvider).licenseUrl} target="_blank" rel="noopener noreferrer">Лицензия / условия использования ↗</a></>}
     </div>
+
+    </div>}
    </aside>
   </div>
   {historical&&<div className="lektrus-atlas-timeline">
