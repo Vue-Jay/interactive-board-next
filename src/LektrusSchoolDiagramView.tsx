@@ -8,6 +8,7 @@ import LektrusLanguageSocialView from "./LektrusLanguageSocialView";
 import LektrusMapAtlas from "./LektrusMapAtlas";
 import LektrusBiologyExtensionView from "./LektrusBiologyExtensionView";
 import LektrusMitosisView from "./LektrusMitosisView";
+import LektrusLogicCircuitView from "./LektrusLogicCircuitView";
 
 type Props={diagram:SchoolDiagram;onChange?:(diagram:SchoolDiagram)=>void};
 const trim=(s:string,n=20)=>s.length>n?s.slice(0,n-1)+"…":s;
@@ -165,6 +166,7 @@ function TimelineGraphic({diagram:d}:{diagram:Extract<SchoolDiagram,{kind:"timel
 }
 export default function LektrusSchoolDiagramView({diagram,onChange}:Props){
  switch(diagram.kind){
+  case "logic-circuit":return <LektrusLogicCircuitView diagram={diagram}/>;
   case "dna":case "taxonomy":return <LektrusBiologyExtensionView diagram={diagram}/>;
   case "division":return <LektrusMitosisView diagram={diagram}/>;
   case "encoding":{const chars=[...diagram.message].slice(0,12);const encoder=new TextEncoder();return <div style={{padding:20,background:"#fcfdff",height:"100%",boxSizing:"border-box",overflow:"auto",color:"#284968"}}><h2 style={{textAlign:"center"}}>{diagram.title}</h2><p style={{textAlign:"center"}}>{diagram.mode==="unicode"?"Кодовые точки Unicode":"Кодирование UTF-8"}</p><div style={{display:"flex",flexWrap:"wrap",gap:10,justifyContent:"center"}}>{chars.map((char,i)=><div key={i} style={{border:"1px solid #9bbbd7",borderRadius:10,padding:12,minWidth:82,textAlign:"center",background:"#eef5ff"}}><strong style={{fontSize:25}}>{char===" "?"␣":char}</strong><div style={{marginTop:8,fontSize:13}}>{diagram.showCodes?(diagram.mode==="unicode"?`U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4,"0")}`:Array.from(encoder.encode(char)).map(b=>b.toString(16).toUpperCase().padStart(2,"0")).join(" ")):"?"}</div></div>)}</div><p style={{textAlign:"center",fontSize:12}}>В режиме UTF-8 показаны шестнадцатеричные значения байтов</p></div>}
