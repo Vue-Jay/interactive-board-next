@@ -45,6 +45,8 @@ jobs:
         run: node scripts/test-lektrus-biology-extension.mjs
       - name: Interactive logic circuit regression
         run: node scripts/test-lektrus-logic-circuit.mjs
+      - name: HTTP local network UUID compatibility regression
+        run: node scripts/test-lektrus-http-uuid.mjs
       - name: Programming editor compiler and sandbox regression
         run: node scripts/test-lektrus-programming.mjs
       - name: Real board interface studio regression
