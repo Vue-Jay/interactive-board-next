@@ -67,11 +67,11 @@ export default function LektrusLanguageSocialControls({diagram:d,onChange}:Props
   onChange({...d,title:template.label,subtitle:template.subtitle,nodes,edges,templateId:id});
  };
  return <>
-  <div className="lektrus-school-controls-heading">Готовые понятия обществознания</div>
+  <div className="lektrus-school-controls-heading">{d.templateId.startsWith("lit-")?"Схемы анализа произведения":"Готовые понятия обществознания"}</div>
   <label className="lektrus-school-field">Основа схемы
    <select value={d.templateId in civicsTemplates?d.templateId:"separation"}
     onChange={e=>onChange({...d,templateId:e.target.value})}>
-    {Object.entries(civicsTemplates).map(([id,template])=>
+    {Object.entries(civicsTemplates).filter(([id])=>d.templateId.startsWith("lit-")?id.startsWith("lit-"):!id.startsWith("lit-")).map(([id,template])=>
      <option key={id} value={id}>{template.label}</option>)}
    </select></label>
   <button type="button" className="lektrus-school-add"
@@ -80,7 +80,7 @@ export default function LektrusLanguageSocialControls({diagram:d,onChange}:Props
   <label className="lektrus-school-field">Пояснение к схеме
    <textarea rows={2} value={d.subtitle} maxLength={160}
     onChange={e=>onChange({...d,subtitle:e.target.value})}/></label>
-  <p className="lektrus-school-hint">В базе находятся общие школьные понятия, а не официальные организационные схемы конкретного государства. Разделение ветвей власти означает независимость их функций, не подчинение одной ветви другой. Полномочия и структура органов зависят от страны и периода.</p>
+  {!d.templateId.startsWith("lit-")&&<p className="lektrus-school-hint">В базе находятся общие школьные понятия, а не официальные организационные схемы конкретного государства. Разделение ветвей власти означает независимость их функций, не подчинение одной ветви другой. Полномочия и структура органов зависят от страны и периода.</p>}
   <div className="lektrus-school-controls-heading">Блоки схемы ({d.nodes.length}/15)</div>
   {d.nodes.map((n,i)=><div className="lektrus-social-node-editor" key={n.id}>
    <div className="lektrus-russian-edit-header"><span className="lektrus-school-number">{i+1}</span>
