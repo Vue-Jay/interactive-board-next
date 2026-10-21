@@ -38,6 +38,10 @@ export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
   <div className="lektrus-school-controls-heading">Отображение карты</div>
   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showCoordinates??d.mode==="coordinates"}
    onChange={e=>patch({showCoordinates:e.target.checked})}/> Координаты: сетка и определение широты и долготы по нажатию</label>
+  {(normalizeAtlasMode(d.mode)==="political"&&scope==="geography")&&
+   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showCities!==false}
+    onChange={e=>patch({mode:"political",showCities:e.target.checked})}/>
+    Показывать столицы, города и административные границы при приближении</label>}
   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showGrid}
    onChange={e=>patch({showGrid:e.target.checked})}/> Меридианы и параллели</label>
   {d.mode!=="contour"&&<label className="lektrus-school-toggle"><input type="checkbox" checked={d.showLabels}
