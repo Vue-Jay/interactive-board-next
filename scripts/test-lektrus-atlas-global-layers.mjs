@@ -59,7 +59,7 @@ assert.match(map,/loadAtlasOSMCoverage\(externalBounds,"roads"\)/);
 assert.match(map,/loadAtlasOSMCoverage\(externalBounds,"city-boundaries"\)/);
 assert.match(map,/cityBoundaryError/);
 assert.match(map,/LektrusMineralSymbol name=/);
-assert.match(map,/mineralMapSymbol\(item\.commodity\.name\)/);
+assert.match(map,/MineralAtlasGlyph name=\{item\.commodity\.name\}/);
 const basemap=fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url),"utf8");
 assert.match(basemap,/theme==="minerals"/);
 assert.match(map,/citiesOn&&scale>=2\.5/);
