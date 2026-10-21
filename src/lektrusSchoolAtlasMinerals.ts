@@ -1,23 +1,25 @@
-/** School geography atlas legend. Restrict the resource map to the
- * types actually taught and used in Russian 7–9 grade geography atlases.
- * Sources: the Russian eighth-grade atlas resources classification and
- * standard teaching map conventions for mineral resources.
- * The current USGS deposit service does not contain the four fuel layers;
- * these are displayed only as reference symbols, never invented deposits.
+/** Standard mineral signs from the school atlas legend supplied by the user.
+ * Keep this single list shared by filtering, map, and legend.
+ * A legend entry does not imply that the USGS point dataset covers this class.
  */
-export const SCHOOL_ATLAS_MINERALS=[
- "Нефть","Природный газ","Каменный уголь","Бурый уголь",
- "Железная руда","Марганец","Хромиты","Никель","Вольфрам",
- "Молибден","Бокситы и алюминий","Медь","Полиметаллические руды",
- "Олово","Золото","Алмазы","Апатиты и фосфориты",
- "Калийные соли","Каменная соль"
+export const SCHOOL_ATLAS_GROUPS=[
+ {title:"Горючие",names:["Каменный уголь","Бурый уголь","Горючие сланцы","Нефть","Природный газ"]},
+ {title:"Металлические",names:[
+  "Железные руды","Марганцевые руды","Хромовые руды","Никелевые руды",
+  "Вольфрамовые руды","Молибденовые руды","Алюминиевые руды","Медные руды",
+  "Полиметаллические руды","Оловянные руды","Золото","Ртутные руды"
+ ]},
+ {title:"Неметаллические",names:[
+  "Асбест","Графит","Слюда","Апатиты","Фосфориты",
+  "Калийные соли","Поваренная соль","Глауберова соль","Алмазы"
+ ]}
 ] as const;
-export type SchoolAtlasMineral=typeof SCHOOL_ATLAS_MINERALS[number];
+export const SCHOOL_ATLAS_MINERALS=SCHOOL_ATLAS_GROUPS.flatMap(g=>[...g.names]);
+export type SchoolAtlasMineral=(typeof SCHOOL_ATLAS_GROUPS)[number]["names"][number];
 export const SCHOOL_ATLAS_FUEL_MINERALS=[
- "Нефть","Природный газ","Каменный уголь","Бурый уголь"
-] as const satisfies ReadonlyArray<SchoolAtlasMineral>;
-export const SCHOOL_ATLAS_USGS_MINERALS=SCHOOL_ATLAS_MINERALS
- .filter((name):name is Exclude<SchoolAtlasMineral,typeof SCHOOL_ATLAS_FUEL_MINERALS[number]> =>
-  !SCHOOL_ATLAS_FUEL_MINERALS.some(fuel=>fuel===name));
+ "Каменный уголь","Бурый уголь","Горючие сланцы","Нефть","Природный газ"
+] as const;
+export const SCHOOL_ATLAS_USGS_MINERALS=SCHOOL_ATLAS_MINERALS.filter(name=>
+ !SCHOOL_ATLAS_FUEL_MINERALS.some(f=>f===name));
 export const isSchoolAtlasMineral=(name:string):name is SchoolAtlasMineral=>
- (SCHOOL_ATLAS_MINERALS as readonly string[]).includes(name);
+ SCHOOL_ATLAS_MINERALS.includes(name as SchoolAtlasMineral);
