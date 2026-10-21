@@ -1,8 +1,10 @@
 /** Teacher-authored programs. Code is data until explicitly run inside the sandbox. */
 export type ProgrammingLanguage="python"|"javascript"|"typescript";
+export type ProgrammingTest={id:string;name:string;stdin:string;expected:string};
+export function normalizeProgramOutput(text:string):string{return text.replace(/\r\n?/g,"\n").replace(/\n+$/,"")}
 export type ProgrammingDiagram={
  kind:"programming";title:string;language:ProgrammingLanguage;
- code:string;stdin:string;showCode:boolean;
+ code:string;stdin:string;showCode:boolean;tests?:ProgrammingTest[];showExpected?:boolean;
 };
 export type ProgrammingPreset={id:string;label:string;language:ProgrammingLanguage;code:string;stdin:string};
 export const programmingPresets:ProgrammingPreset[]=[
@@ -29,7 +31,9 @@ export const programmingLanguageLabels:Record<ProgrammingLanguage,string>={
 };
 export const defaultProgrammingDiagram=():ProgrammingDiagram=>({
  kind:"programming",title:"Практикум программирования",language:"javascript",
- code:programmingPresets.find(p=>p.id==="js-hello")!.code,stdin:programmingPresets.find(p=>p.id==="js-hello")!.stdin,showCode:true
+ code:programmingPresets.find(p=>p.id==="js-hello")!.code,stdin:programmingPresets.find(p=>p.id==="js-hello")!.stdin,showCode:true,
+ tests:[{id:"case-1",name:"Обычное имя",stdin:"Ученик",expected:"Привет, Ученик!"},
+ {id:"case-2",name:"Другое имя",stdin:"Мир",expected:"Привет, Мир!"}],showExpected:false
 });
 export function validateProgrammingDiagram(value:unknown):value is ProgrammingDiagram{
  if(!value||typeof value!=="object")return false;
@@ -39,5 +43,16 @@ export function validateProgrammingDiagram(value:unknown):value is ProgrammingDi
    (d.language==="python"||d.language==="javascript"||d.language==="typescript")&&
    typeof d.code==="string"&&d.code.length<=20000&&
    typeof d.stdin==="string"&&d.stdin.length<=2000&&
-   typeof d.showCode==="boolean";
+   typeof d.showCode==="boolean"&&
+   (d.showExpected===undefined||typeof d.showExpected==="boolean")&&
+   (d.tests===undefined||(Array.isArray(d.tests)&&d.tests.length<=8&&
+    new Set(d.tests.map((t:{id?:unknown})=>t?.id)).size===d.tests.length&&
+    d.tests.every((t:unknown)=>{
+     if(!t||typeof t!=="object")return false;
+     const c=t as Record<string,unknown>;
+     return typeof c.id==="string"&&c.id.length>0&&c.id.length<=64&&
+      typeof c.name==="string"&&c.name.trim().length>0&&c.name.length<=60&&
+      typeof c.stdin==="string"&&c.stdin.length<=2000&&
+      typeof c.expected==="string"&&c.expected.length<=4000;
+    })));
 }
