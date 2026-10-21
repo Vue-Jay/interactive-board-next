@@ -15,7 +15,7 @@ import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLa
 historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl,normalizeHistoricalName} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference} from "./lektrusHistoricalReferences";
-type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void};
+type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean};
 const MAX_ATLAS_ZOOM=16384;
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
 const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
@@ -48,7 +48,8 @@ export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean)
   findHistoricalReference(raw,year)?.title;
  return isRussianAtlasName(found)?found.trim():direct;
 }
-function AtlasMap({diagram:d,onChange}:Props){
+function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
+ const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":d.mode);
  const [paintColor,setPaintColor]=useState("#f3b778");
  const [paintRegions,setPaintRegions]=useState(false);
@@ -605,7 +606,7 @@ function AtlasMap({diagram:d,onChange}:Props){
    mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство"));
   setSelectedMarker(null);
  };
- return <div className={"lektrus-atlas "+(historical?"lektrus-atlas-history":"")} aria-label={d.title}
+ return <div className={"lektrus-atlas "+(historical?"lektrus-atlas-history ":"")+(editorMode?"lektrus-atlas--editor ":"")+(inspectorOpen?"":"lektrus-atlas--inspector-hidden")} aria-label={d.title}
   onPointerDown={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onPointerUp={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onClick={e=>{if(!objectMoveMode)e.stopPropagation()}}>
@@ -621,6 +622,9 @@ function AtlasMap({diagram:d,onChange}:Props){
      aria-pressed={mode===m.id} className={mode===m.id?"selected":""}
      onClick={()=>onMode(m.id)}>{m.title}</button>)}
    </nav>
+   <button type="button" className="lektrus-atlas-inspector-toggle" aria-expanded={inspectorOpen}
+    title={inspectorOpen?"Скрыть сведения и открыть карту во всю ширину":"Открыть сведения и поиск по карте"}
+    onClick={()=>setInspectorOpen(open=>!open)}>{inspectorOpen?"Скрыть сведения":"☷ Сведения"}</button>
   </header>
   <div className="lektrus-atlas-body">
    <div className="lektrus-atlas-map-box">
