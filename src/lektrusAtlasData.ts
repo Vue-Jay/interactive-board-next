@@ -5,7 +5,7 @@ export type GeoGeometry={type:"Polygon"|"MultiPolygon"|"LineString"|"MultiLineSt
  coordinates:unknown};
 export type GeoFeature={type:"Feature";properties:Record<string,unknown>|null;geometry:GeoGeometry|null;bbox?:number[]};
 export type GeoCollection={type:"FeatureCollection";features:GeoFeature[]};
-export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"rivers-ultra"|"lakes-ultra"|"cities-regional"|"cities-local"|"admin-regional"|"admin-world-lines"|"regions-regional"|"elevation-regional"|"glaciers-regional"|"marine"|"physical-labels";
+export type GeoLayer="countries"|"countries-detail"|"countries-ultra"|"countries-russian"|"tiny-countries"|"land"|"coastline"|"rivers"|"lakes"|"cities"|"elevation"|"regions"|"glaciers"|"land-detail"|"coastline-detail"|"rivers-regional"|"lakes-regional"|"rivers-ultra"|"lakes-ultra"|"cities-regional"|"cities-local"|"admin-regional"|"admin-world-overview"|"admin-world-lines"|"regions-regional"|"elevation-regional"|"glaciers-regional"|"marine"|"physical-labels";
 // Pin the dataset snapshots used by school lessons.
 const BASE="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/ca96624a56bd078437bca8184e78163e5039ad19/geojson/";
 const BACKUP="https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@ca96624a56bd078437bca8184e78163e5039ad19/geojson/";
