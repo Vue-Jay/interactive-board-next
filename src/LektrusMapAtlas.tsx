@@ -1191,8 +1191,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>}
     {citiesOn&&scale>=2.5&&<div className="lektrus-atlas-natural-legend">
      <strong>Обозначения населённых пунктов</strong>
-     <small>Тонкие линии показывают регионы из Natural Earth по всему миру.
-      Границы городов подгружаются из OpenStreetMap при большом увеличении и могут отсутствовать там, где они не внесены в базу.
+     <small>Границы регионов мира: глобальные линии Natural Earth масштаба 1:10 млн.
+      Включаются с увеличения ×2,5. Для городских и муниципальных границ используются подробные данные OpenStreetMap при более крупном масштабе.
+      {worldAdminError?" "+worldAdminError:""}
       {cityBoundaryError?" "+cityBoundaryError:""}</small>
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#ead5b8",borderColor:"#937b61"}}/>Границы городов</div>
      <small>{!roadsAvailable?"Приблизьте к городу, чтобы появились основные дороги.":
