@@ -71,8 +71,8 @@ assert.match(externalSource,/esriGeometryEnvelope/);
 assert.match(externalSource,/resultRecordCount:"350"/);
 assert.match(externalSource,/MAX_EXTERNAL_FEATURES/);
 const externalExports={};
-new Function("exports",ts.transpileModule(externalSource,{compilerOptions:{
- module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(externalExports);
+new Function("exports","require",ts.transpileModule(externalSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(externalExports,schoolRequire);
 assert.equal(externalExports.canLoadLocalRoads({west:30,east:32,south:54,north:56}),true);
 assert.equal(externalExports.canLoadLocalRoads({west:10,east:100,south:40,north:56}),false);
 assert.equal(externalExports.canLoadMinerals({west:30,east:55,south:40,north:60}),true);
