@@ -3,7 +3,13 @@
  * at any particular USGS point. */
 export type MineralGuide={title:string;className:string;composition:string;uses:string};
 const ore="Рудное минеральное сырьё",nonmetal="Нерудное минеральное сырьё";
+const fuel="Горючие полезные ископаемые";
 export const mineralGuides:ReadonlyArray<MineralGuide>=[
+ {title:"Каменный уголь",className:fuel,composition:"Ископаемый уголь с высоким содержанием углерода",uses:"Энергетика, коксохимическое производство"},
+ {title:"Бурый уголь",className:fuel,composition:"Уголь с меньшей степенью углефикации",uses:"Топливо для электростанций"},
+ {title:"Горючие сланцы",className:fuel,composition:"Осадочные породы, содержащие органическое вещество",uses:"Топливное и химическое сырьё"},
+ {title:"Нефть",className:fuel,composition:"Природная смесь жидких углеводородов",uses:"Топливо, нефтехимическая промышленность"},
+ {title:"Природный газ",className:fuel,composition:"Газообразная смесь преимущественно метана",uses:"Энергетика, отопление, химическая промышленность"},
  {title:"Золото",className:ore,composition:"Самородное золото (Au), золотосодержащие руды",uses:"Ювелирное дело, электронные контакты, финансовые резервы"},
  {title:"Медные руды",className:ore,composition:"Медные руды, в том числе халькопирит CuFeS₂",uses:"Электропроводка, электроника, трубопроводы, сплавы"},
  {title:"Железные руды",className:ore,composition:"Гематит Fe₂O₃, магнетит Fe₃O₄ и другие руды",uses:"Получение железа и стали"},
