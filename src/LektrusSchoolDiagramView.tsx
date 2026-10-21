@@ -9,6 +9,7 @@ import LektrusMapAtlas from "./LektrusMapAtlas";
 import LektrusBiologyExtensionView from "./LektrusBiologyExtensionView";
 import LektrusMitosisView from "./LektrusMitosisView";
 import LektrusLogicCircuitView from "./LektrusLogicCircuitView";
+import LektrusProgrammingView from "./LektrusProgrammingView";
 
 type Props={diagram:SchoolDiagram;onChange?:(diagram:SchoolDiagram)=>void};
 const trim=(s:string,n=20)=>s.length>n?s.slice(0,n-1)+"…":s;
@@ -166,6 +167,7 @@ function TimelineGraphic({diagram:d}:{diagram:Extract<SchoolDiagram,{kind:"timel
 }
 export default function LektrusSchoolDiagramView({diagram,onChange}:Props){
  switch(diagram.kind){
+  case "programming":return <LektrusProgrammingView diagram={diagram}/>;
   case "logic-circuit":return <LektrusLogicCircuitView diagram={diagram}/>;
   case "dna":case "taxonomy":return <LektrusBiologyExtensionView diagram={diagram}/>;
   case "division":return <LektrusMitosisView diagram={diagram}/>;
