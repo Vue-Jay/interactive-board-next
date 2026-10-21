@@ -45,5 +45,7 @@ jobs:
         run: node scripts/test-lektrus-biology-extension.mjs
       - name: Interactive logic circuit regression
         run: node scripts/test-lektrus-logic-circuit.mjs
+      - name: Programming editor compiler and sandbox regression
+        run: node scripts/test-lektrus-programming.mjs
       - name: Real board interface studio regression
         run: node scripts/test-lektrus-real-interface-editor.mjs
