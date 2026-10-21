@@ -1,6 +1,6 @@
 /** Approved classroom tools. Sentence patterns are curated examples, not a
  * morphological analyzer; civics diagrams are editable concepts, not legal advice. */
-export type LanguageSocialId="ru-sentence-builder"|"civics-structure";
+export type LanguageSocialId="ru-sentence-builder"|"language-sentence-builder"|"civics-structure";
 export type SentencePart={id:string;text:string};
 export type SentencePattern={id:string;group:string;label:string;sample:string;tip:string};
 export type StateNode={id:string;text:string;column:0|1|2|3;row:0|1|2|3|4;kind:"concept"|"institution"|"example"};
@@ -10,7 +10,7 @@ export type LanguageSocialDiagram=
    showKey:boolean;showHint:boolean;patternId:string}
  |{kind:"state-structure";title:string;subtitle:string;nodes:StateNode[];
    edges:StateEdge[];showRelationships:boolean;showLabels:boolean;templateId:string};
-export const languageSocialIds:LanguageSocialId[]=["ru-sentence-builder","civics-structure"];
+export const languageSocialIds:LanguageSocialId[]=["ru-sentence-builder","language-sentence-builder","civics-structure"];
 export const stateEdgeNames:Record<StateEdge["kind"],string>={
  part:"Состав / классификация",subordinate:"Подчинение",interacts:"Взаимодействие"
 };
@@ -77,6 +77,7 @@ export function initialScramble(parts:SentencePart[]):string[]{
 export const isLanguageSocialId=(id:string|undefined):id is LanguageSocialId=>
  languageSocialIds.includes(id as LanguageSocialId);
 export function newLanguageSocialDiagram(id:LanguageSocialId):LanguageSocialDiagram{
+ if(id==="language-sentence-builder")return {kind:"sentence-builder",title:"Составление предложений",instructions:"Расположите слова в правильном порядке.",showKey:false,showHint:false,patternId:"",parts:tokenizeSentence("I read a book.")};
  if(id==="ru-sentence-builder")return {kind:"sentence-builder",title:"Конструктор предложений",
   instructions:"Составьте предложение из слов и проверьте порядок.",showKey:false,showHint:true,
   patternId:"simple",parts:tokenizeSentence("Ученики читают книгу.")};
