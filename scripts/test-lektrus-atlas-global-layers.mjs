@@ -42,6 +42,9 @@ assert.ok(tiles.every(tile=>tile.east>tile.west&&tile.north>tile.south));
 assert.equal(external.atlasOSMCoverageTiles({west:-180,east:180,south:-85,north:85},"roads").length,0,
  "do not query worldwide geometry in a single Overpass call");
 assert.ok(external.atlasOSMCoverageTiles({west:1,east:35,south:38,north:59},"roads").length>0);
+const shiftedA=external.atlasOSMCoverageTiles({west:30.2,east:31.1,south:55.1,north:55.8},"city-boundaries");
+const shiftedB=external.atlasOSMCoverageTiles({west:30.3,east:31.2,south:55.2,north:55.9},"city-boundaries");
+assert.deepEqual(shiftedA,shiftedB,"small map drags within one OSM tile must reuse its cached data");
 const collection=await external.loadCityBoundaries(bounds);
 assert.equal(collection.features.length,2);
 assert.equal(collection.features[0].properties.NAME_RU,"Тестовый город");
@@ -61,5 +64,9 @@ const basemap=fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.ur
 assert.match(basemap,/theme==="minerals"/);
 assert.match(map,/citiesOn&&scale>=2\.5/);
 assert.match(map,/rivers-ultra/);
+assert.match(map,/cls==="motorway"\?1\.65/,"motorways must stand out against ordinary roads");
+const legend=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
+assert.match(legend,/\.lektrus-atlas-natural-legend>\.lektrus-atlas-mineral-legend/);
+assert.match(legend,/grid-template-columns:minmax\(0,1fr\)/,"mineral names must not become vertical letters");
 assert.match(map,/lektrus-atlas-mineral-clusters/);
 console.log("Atlas improvements: neighboring country colors, worldwide OSM city boundaries, mineral signs and map layers passed.");
