@@ -10,8 +10,6 @@ export function normalizeLektrusSubject(value:string):string{
   const name=value.trim();
   const lower=name.toLocaleLowerCase("ru-RU");
   if(lower==="алгебра"||lower==="геометрия")return "Математика";
-  if(lower==="окружающий мир")return "Естественные науки";
-  if(lower==="английский язык")return "Иностранный язык";
-  if(lower==="физическая культура"||lower==="физкультура")return "";
+  if(lower==="физическая культура"||lower==="физкультура"||lower==="окружающий мир"||lower==="английский язык")return "";
   return name;
 }
