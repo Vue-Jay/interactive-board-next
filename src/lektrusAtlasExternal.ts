@@ -72,7 +72,7 @@ export function loadLocalInfrastructure(b:ExternalBounds,kind:"roads"|"waterways
 /** Only types in the Russian school atlas. Specialized USGS commodities stay
  * in the source database but are not rendered as extra school map symbols. */
 const mineralWords:ReadonlyArray<[RegExp,string,string]>=[
- [/iron(?:\\s+ore)?|железн|ferrous/i,"Железные руды","#333"],
+ [/iron(?:\s+ore)?|железн|ferrous/i,"Железные руды","#333"],
  [/manganese|марганц/i,"Марганцевые руды","#333"],
  [/chromium|chromite|хромит/i,"Хромовые руды","#333"],
  [/nickel|никел/i,"Никелевые руды","#333"],
@@ -81,7 +81,7 @@ const mineralWords:ReadonlyArray<[RegExp,string,string]>=[
  [/bauxite|alumini?um|боксит|алюмини/i,"Алюминиевые руды","#333"],
  [/copper|медн|cupr/i,"Медные руды","#333"],
  [/polymetallic|lead|zinc|свинц|цинк|полиметал/i,"Полиметаллические руды","#333"],
- [/\\btin\\b|олов/i,"Оловянные руды","#333"],
+ [/\btin\b|олов/i,"Оловянные руды","#333"],
  [/gold|aurum|золот/i,"Золото","#333"],
  [/mercury|cinnabar|ртут|киновар/i,"Ртутные руды","#333"],
  [/asbestos|асбест/i,"Асбест","#333"],
@@ -90,7 +90,7 @@ const mineralWords:ReadonlyArray<[RegExp,string,string]>=[
  [/apatite|апатит/i,"Апатиты","#333"],
  [/phosphate|phosphorite|фосфат|фосфорит/i,"Фосфориты","#333"],
  [/potash|potassium|калийн/i,"Калийные соли","#333"],
- [/halite|rock salt|каменн(?:ая|ой)\\s*сол|поваренн(?:ая|ой)\\s*сол/i,"Поваренная соль","#333"],
+ [/halite|rock salt|каменн(?:ая|ой)\s*сол|поваренн(?:ая|ой)\s*сол/i,"Поваренная соль","#333"],
  [/glauber|mirabilite|глаубер|мирабилит/i,"Глауберова соль","#333"],
  [/diamonds?|алмаз/i,"Алмазы","#333"]
 ];
