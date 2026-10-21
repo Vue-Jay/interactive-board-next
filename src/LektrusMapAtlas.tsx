@@ -67,6 +67,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  useEffect(()=>setCoordinatesEnabled(d.showCoordinates===true||d.mode==="coordinates"),[d.showCoordinates,d.mode]);
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":normalizeAtlasMode(d.mode));
  const citiesOn=mode==="political"&&d.showCities!==false;
+ const mineralContext=mode==="minerals";
+ const landmarkCities=citiesOn||mineralContext;
+ const hydroContext=mode==="physical"||mode==="hydrography"||mineralContext;
+ const reliefContext=mode==="physical"||mode==="relief"||mineralContext;
+ // This reuses the measured relief tiles, without turning every click on
+ // the mineral map into an elevation/coordinate query.
+ const mineralTerrainEnabled=mineralContext&&d.hypsometry!==false;
  const [paintColor,setPaintColor]=useState("#f3b778");
  const [paintRegions,setPaintRegions]=useState(false);
  const painted=d.paintedCountries??{};
@@ -142,7 +149,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const selectedRegion=findAtlasRegion(regionId);
  const detailedGeography=scale>=3||regionId!=="world";
  const veryDetailedHydro=(mode==="physical"||mode==="hydrography")&&scale>=4;
- const detailedCities=citiesOn&&scale>=4;
+ const detailedCities=landmarkCities&&scale>=4;
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
  const cameraRef=useRef({scale:1,position:{x:0,y:0}});
@@ -214,24 +221,24 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    loadHistoricalSnapshot(historicalSnapshots[index-1].year).catch(()=>null):Promise.resolve(null);
   // Optional thematic layers never replace the original geographic geometry.
   const thematic:ReadonlyArray<[string,boolean]>=[
-   ["rivers",!detailedGeography&&(mode==="physical"||mode==="hydrography")],
-   ["rivers-regional",detailedGeography&&!veryDetailedHydro&&(mode==="physical"||mode==="hydrography")],
+   ["rivers",!detailedGeography&&hydroContext],
+   ["rivers-regional",detailedGeography&&!veryDetailedHydro&&hydroContext],
    ["rivers-ultra",veryDetailedHydro],
-   ["lakes",!detailedGeography&&(mode==="physical"||mode==="hydrography")],
-   ["lakes-regional",detailedGeography&&!veryDetailedHydro&&(mode==="physical"||mode==="hydrography")],
+   ["lakes",!detailedGeography&&hydroContext],
+   ["lakes-regional",detailedGeography&&!veryDetailedHydro&&hydroContext],
    ["lakes-ultra",veryDetailedHydro],
-   ["cities",citiesOn&&!detailedGeography],
-   ["cities-regional",citiesOn&&detailedGeography&&!detailedCities],
+   ["cities",landmarkCities&&!detailedGeography],
+   ["cities-regional",landmarkCities&&detailedGeography&&!detailedCities],
    ["cities-local",detailedCities],
    ["admin-regional",!historical&&(regionId!=="world"||citiesOn&&scale>=2.5)],
-   ["regions",!detailedGeography&&(mode==="physical"||mode==="relief")],
-   ["regions-regional",detailedGeography&&(mode==="physical"||mode==="relief")],
+   ["regions",!detailedGeography&&reliefContext],
+   ["regions-regional",detailedGeography&&reliefContext],
    ["elevation",!detailedGeography&&(mode==="physical"||mode==="relief")],
    ["elevation-regional",detailedGeography&&(mode==="physical"||mode==="relief")],
    ["glaciers",!detailedGeography&&(mode==="physical"||mode==="relief")],
    ["glaciers-regional",detailedGeography&&(mode==="physical"||mode==="relief")],
    ["marine",mode==="physical"||mode==="hydrography"],
-   ["physical-labels",mode==="physical"||mode==="relief"]
+   ["physical-labels",reliefContext]
   ];
   Promise.all([main,before]).then(async([geo,prev])=>{
    if(!active)return;
@@ -276,7 +283,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    setError(e instanceof Error?e.message:String(e));setLoading(false);
   });
   return()=>{active=false};
- },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,detailedCities,veryDetailedHydro,regionId,needsPoliticalGeometry,scale>=2.5,citiesOn]);
+ },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,detailedCities,veryDetailedHydro,regionId,needsPoliticalGeometry,scale>=2.5,citiesOn,landmarkCities,hydroContext,reliefContext]);
  useEffect(()=>{
   let active=true;
   if(!modernBorders||scale<5||russianView){setDetail(null);setDetailWarning("");return}
@@ -523,6 +530,18 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const visiblePoint=(pt:readonly number[]|null|undefined)=>!!pt&&
   pt[0]>=visibleWorld.left-12/scale&&pt[0]<=visibleWorld.right+12/scale&&
   pt[1]>=visibleWorld.top-12/scale&&pt[1]<=visibleWorld.bottom+12/scale;
+ // Only large, source-backed cities are orientation points on the minerals
+ // layer. The density grows with zoom, but neither roads nor town boundaries
+ // are loaded just to show these reference points.
+ const mineralCityFloor=scale<2?2500000:scale<5?1000000:scale<14?350000:150000;
+ const mineralLandmarkCities=useMemo(()=>mineralContext?
+  limitCitySymbols(cityPoints.filter(f=>cityPopulation(f.feature)>=mineralCityFloor&&
+   f.point&&visiblePoint(f.point)),scale,scale<2?95:scale<5?150:260):[],
+  // Viewport is intentionally included: changing the camera changes its visible cities.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [mineralContext,cityPoints,mineralCityFloor,scale,position.x,position.y]);
+ const mineralCityLabels=useMemo(()=>chooseCityLabels(mineralLandmarkCities,scale,
+  scale<2?34:scale<5?60:120),[mineralLandmarkCities,scale]);
  const eligibleCities=cityPoints.filter(f=>visiblePoint(f.point)&&
   ((cityPopulation(f.feature)>=minCityPopulation&&matchesCityCategory(f.feature,cityCategory))||f.feature===selected));
  const visibleCitySymbols=limitCitySymbols(eligibleCities,scale,scale<1.6?75:scale<3?130:scale<8?240:scale<24?440:720);
@@ -553,7 +572,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   };
   if(mode==="political"||mode==="minerals"||historical){
    labels.forEach((f,i)=>add("country-"+f.i,"country",f.name,
-    f.anchor!.x,f.anchor!.y,i/500,8.2));
+    f.anchor!.x,f.anchor!.y,(mineralContext?1.7:0)+i/500,8.2));
    if(mode==="political"){
     // Read countries before capitals: first show the political geography itself.
     if(scale>=2.6)capitalLabels.forEach((f,i)=>add("capital-"+f.id,"capital",russianPlaceName(f.feature)??"",
@@ -564,6 +583,16 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   }
   if(citiesOn&&scale>=4.2)cityLabels.filter(f=>!nationalCapital(f.feature)).forEach((f,i)=>add("city-"+f.id,"city",
    russianPlaceName(f.feature)??"",f.point![0],f.point![1],i/500,7.6,"start",6,-5));
+  if(mineralContext){
+   mineralCityLabels.forEach((f,i)=>add("mineral-city-"+f.id,"city",
+    russianPlaceName(f.feature)??"",f.point![0],f.point![1],-.8+i/500,7.4,"start",6,-4));
+   shownRiverNames.slice(0,scale<2?20:scale<6?42:65).forEach((f,i)=>
+    add("mineral-river-"+f.id,"river",geoFeatureName(f.feature),
+     f.point![0],f.point![1],.4+i/500,7.1));
+   if(scale>=2)shownNatureNames.slice(0,scale<6?18:32).forEach((f,i)=>
+    add("mineral-relief-"+f.id,"nature",geoFeatureName(f.feature),
+     f.point![0],f.point![1],1.2+i/500,7));
+  }
   if(mode==="physical"){
    if(scale>=2){
     shownMarineNames.slice(0,52).forEach((f,i)=>add("sea-"+f.id,"sea",geoFeatureName(f.feature),
@@ -582,7 +611,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      f.point![0],f.point![1],5+i/500,6.8));
   }
   return layoutAtlasLabels(candidates,scale,scale>=16?225:scale>=3?155:90);
- },[d.showLabels,mode,historical,citiesOn,labels,capitalLabels,cityLabels,provinceLabels,
+ },[d.showLabels,mode,historical,citiesOn,mineralContext,labels,capitalLabels,cityLabels,mineralCityLabels,provinceLabels,
   shownMarineNames,shownLakeNames,shownRiverNames,shownNatureNames,shownPeaks,
   auxiliaryRiverLabels,scale,position.x,position.y]);
  const visibleMapLabels=useMemo(()=>new Set(placedMapLabels.map(v=>v.id)),[placedMapLabels]);
@@ -889,7 +918,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
       <LektrusMapBase land={baseLand} coastline={baseCoastline} theme={mode==="minerals"?"minerals":"default"}
        grid={d.showGrid||coordinatesEnabled||mode==="minerals"} scale={scale} viewport={viewport}
-        terrain={<LektrusAtlasTerrain enabled={terrainEnabled} scale={scale} position={position}
+        terrain={<LektrusAtlasTerrain enabled={terrainEnabled||mineralTerrainEnabled} scale={scale} position={position}
          onStatus={setTerrainStatus}/>}/>
       <g strokeLinejoin="round">
        {shapes.map(s=>{
@@ -898,8 +927,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         const fill=mode==="contour"?(painted[String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name)]||"#fafcfb"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
          mode==="political"?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
-         stroke={highlighted||s.name===selectedTitle?"#df793e":mode==="contour"?"#839fb2":"#819fb2"}
-         strokeWidth={highlighted||s.name===selectedTitle?1.9:historical&&precise===1?.75:.65}
+         fillOpacity={mineralTerrainEnabled?.56:1}
+         stroke={highlighted||s.name===selectedTitle?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#839fb2":"#819fb2"}
+         strokeWidth={highlighted||s.name===selectedTitle?1.9:mode==="minerals"?.4:historical&&precise===1?.75:.65}
          vectorEffect="non-scaling-stroke"
          strokeDasharray={historical&&!modernReference&&precise===1?"2.2 1.7":undefined}
          onClick={()=>showCountry(s.feature)} className="lektrus-atlas-country">
@@ -938,10 +968,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          <title>{String(f.feature.properties?.NAME_RU||"Городская или муниципальная граница OSM")}</title>
         </path>)}
        </g>}
-      {(mode==="physical"||mode==="relief")&&<g>
+      {reliefContext&&<g pointerEvents={mineralContext?"none":undefined}>
        {landforms.map(f=>{const style=landformColors[landformClass(f.feature)];
         return <path key={"landform-"+f.id} d={f.path}
-         fill={style.fill} fillOpacity={terrainEnabled?style.opacity*.20:style.opacity*.75} stroke="none"
+         fill={style.fill} fillOpacity={mineralContext?style.opacity*.27:terrainEnabled?style.opacity*.20:style.opacity*.75} stroke="none"
          className="lektrus-atlas-landform" onClick={()=>selectFeature(f.feature,"Природная область")}>
          <title>{geoFeatureName(f.feature)}</title></path>})}
        {ice.map(f=><path key={"ice-"+f.id} d={f.path}
@@ -965,11 +995,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        strokeWidth="1.1" strokeDasharray="4 2" pointerEvents="none">
        {previous.features.filter(f=>!!atlasDisplayName(f,historicalSnapshots[Math.max(0,index-1)].year,true)).map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)} vectorEffect="non-scaling-stroke"/>)}
       </g>}
-      {(mode==="physical"||mode==="hydrography")&&<g>
+      {hydroContext&&<g>
        {marineAreas.map(f=><path key={"marine-"+f.id} d={f.path} fill="transparent" stroke="none" vectorEffect="non-scaling-stroke"
         className="lektrus-atlas-water-feature" onClick={()=>selectFeature(f.feature,"Морская акватория")}>
         <title>{geoFeatureName(f.feature)}</title></path>)}
-       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill="#a7d5ed" fillRule="evenodd" stroke="#7bb5d1"
+       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill={mineralContext?"#c4e5ed":"#a7d5ed"} fillRule="evenodd" stroke="#7bb5d1"
         strokeWidth={atlasLakeStroke()} strokeLinejoin="round" vectorEffect="non-scaling-stroke"
         onClick={()=>selectFeature(l.feature,"Озеро")} className="lektrus-atlas-water-feature lektrus-atlas-lake">
         <title>{geoFeatureName(l.feature)}</title></path>)}
@@ -980,8 +1010,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <path d={l.path} fill="none" stroke="transparent" strokeWidth="8"
          vectorEffect="non-scaling-stroke" pointerEvents="stroke"
          strokeLinecap="round" strokeLinejoin="round"/>
-        <path d={l.path} fill="none" stroke="#4c9bc8"
-         strokeWidth={atlasRiverStroke(l.feature,mode==="hydrography")}
+        <path d={l.path} fill="none" stroke={mineralContext?"#64a5be":"#4c9bc8"} opacity={mineralContext?.85:1}
+         strokeWidth={mineralContext?atlasRiverStroke(l.feature)*.85:atlasRiverStroke(l.feature,mode==="hydrography")}
          strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
          className="lektrus-atlas-river-ink" pointerEvents="none"/>
         <title>{geoFeatureName(l.feature)}</title></g>)}
@@ -992,6 +1022,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         className="lektrus-atlas-event" onClick={()=>selectFeature(f.feature,"Высотная отметка")}>
         <path d="M0 -4L4 3H-4Z" fill="#816245" stroke="#fff" strokeWidth=".7"/>
         <title>{geoFeatureName(f.feature)}</title>
+       </g>)}
+      </g>}
+      {mineralContext&&<g className="lektrus-atlas-mineral-landmarks">
+       {mineralLandmarkCities.map(f=><g key={"mineral-city-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
+        role="button" tabIndex={0} className="lektrus-atlas-event"
+        onClick={e=>{e.stopPropagation();selectFeature(f.feature,nationalCapital(f.feature)?"Столица":"Крупный город")}}
+        onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Крупный город")}}}>
+        <circle r={selected===f.feature?4.4:2.5}
+         fill={selected===f.feature?"#dc863b":"#355971"} stroke="#fff" strokeWidth="1.1"/>
+        <title>{russianPlaceName(f.feature)} · ориентир, население по Natural Earth</title>
        </g>)}
       </g>}
       {citiesOn&&<g className="lektrus-atlas-capitals">
@@ -1132,7 +1173,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       <p>{mode==="political"?"На политической карте сначала показаны государства, затем столицы, регионы и населённые пункты. Приближайте карту для подробных границ городов и дополнительных названий.":
        mode==="physical"?"Изучайте материки, океаны, горные системы, реки, озёра и высоты. Приближайте территорию, чтобы увидеть больше подписей и водных объектов.":
        
-       mode==="minerals"?"Школьные условные знаки показывают документированные месторождения. Цвет фона служит для чтения карты, а не обозначает тип месторождения или величину запасов.":
+       mode==="minerals"?"Условные знаки показывают документированные месторождения. Крупные города, реки и приглушённый рельеф помогают определить положение объектов; подложка не обозначает запасы сырья.":
        mode==="contour"?"Используйте контурную карту для заданий по расположению государств и объектов. Можно включать координаты и раскрашивать территории.":
        "Выберите период и территорию, чтобы изучить исторические изменения. Границы исторических эпох являются научными реконструкциями."}</p>
       {modernBorders&&mode==="political"&&<p className="lektrus-atlas-study-note">
@@ -1214,6 +1255,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>}
     {mode==="minerals"&&<div className="lektrus-atlas-natural-legend">
      <strong>Карта полезных ископаемых</strong>
+     <small>Географические ориентиры: крупные города (Natural Earth, {cityResolution}), реки и озёра ({hydroResolution}), высотная подложка и формы рельефа. Названия по-русски; при приближении появляется больше ориентиров.</small>
+     <label className="lektrus-atlas-compare">
+      <input type="checkbox" checked={d.hypsometry!==false}
+       onChange={e=>onChange?.({...d,hypsometry:e.target.checked})}/>
+      Показывать высотный рельеф
+     </label>
+     {mineralTerrainEnabled&&terrainStatus.failed>0&&
+      <small>Часть высотных плиток не загрузилась. Реки, города и месторождения доступны без них.</small>}
       <small>Школьные картографические знаки из присланной легенды. Обозначения ставятся по опубликованным координатам USGS, а не по примерному размещению из рисунков.</small>
      <label className="lektrus-atlas-city-filter">Группа сырья
       <select aria-label="Фильтр полезных ископаемых" value={mineralFilter}
