@@ -5,7 +5,7 @@ import {clusterMineralMapPoints} from "./lektrusAtlasMineralClusters";
 import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} from "./lektrusAtlasSchoolFacts";
 import LektrusMapBase from "./LektrusMapBase";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
-import {LektrusMineralSymbol,mineralMapSymbol} from "./LektrusMineralSymbol";
+import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
 import {loadLocalInfrastructure,atlasOSMCoverageTiles,loadAtlasOSMCoverage,loadMineralDeposits,loadWorldMineralOverview,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
@@ -969,7 +969,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {mode==="minerals"&&!localMineralDetail&&<g className="lektrus-atlas-mineral-clusters">
        {mineralGroups.filter(group=>group.point[0]>=visibleWorld.left&&group.point[0]<=visibleWorld.right&&
         group.point[1]>=visibleWorld.top&&group.point[1]<=visibleWorld.bottom).map(group=>{
-        const symbol=mineralMapSymbol(group.dominant),radius=8;
+        const radius=10;
         const choose=()=>{
          if(group.count===1){setSelectedMineral(group.representative.feature);setSelected(null)}
          else {
@@ -984,12 +984,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          role="button" tabIndex={0}
          onClick={e=>{e.stopPropagation();choose()}}
          onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();choose()}}}>
-         <circle r={radius+1.2} fill="#fff" fillOpacity=".95" stroke="#b4b9a6" strokeWidth="1.1"/>
-         {symbol.group==="Нерудные"?
-          <path d="M0 -7.6L7.6 0 0 7.6 -7.6 0Z" fill={symbol.fill} stroke="#fff" strokeWidth=".8"/>:
-          <path d="M0 -7.6L8 6.5 -8 6.5Z" fill={symbol.fill} stroke="#fff" strokeWidth=".8"/>}
-         <text x="0" y="3" textAnchor="middle" fontSize={symbol.code.length>3?4.4:symbol.code.length>2?5.3:6.7}
-          fill="#fff" fontWeight="800">{symbol.code}</text>
+         <circle r={radius+1.3} fill="#fff" fillOpacity=".95" stroke="#b4b9a6" strokeWidth="1.1"/>
+         <MineralAtlasGlyph name={group.dominant}/>
          {group.count>1&&<g transform="translate(7 -7)">
           <circle r="4.9" fill="#344e6a" stroke="#fff" strokeWidth="1"/>
           <text x="0" y="1.9" textAnchor="middle" fontSize={group.count>=100?4.1:5.2}
@@ -1009,12 +1005,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();setSelectedMineral(item.feature);setSelected(null)}}}>
         {selectedMineral===item.feature&&<circle r="10" fill="none" stroke="#b25e2e"
          strokeWidth="2" pointerEvents="none"/>}
-        {mineralMapSymbol(item.commodity.name).group==="Нерудные"?
-          <path d="M0 -8L8 0 0 8 -8 0Z" fill="#337a70" stroke="#fff" strokeWidth="1.4"/>:
-          <path d="M0 -8L9 7 -9 7Z" fill="#a94e3c" stroke="#fff" strokeWidth="1.4"/>}
-         <text x="0" y="3.2" fontSize={mineralMapSymbol(item.commodity.name).code.length>2?6:7.5}
-          textAnchor="middle" fontWeight="800" stroke="#173034" strokeWidth=".2" paintOrder="stroke" fill="#fff">
-          {mineralMapSymbol(item.commodity.name).code}</text>
+        <circle r="11.2" fill="#fffffff0" stroke="#b8c4c6" strokeWidth=".8"/>
+        <MineralAtlasGlyph name={item.commodity.name}/>
         <title>{item.commodity.name}, источник USGS</title>
        </g>)}
       </g>}
@@ -1167,7 +1159,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>}
     {mode==="minerals"&&<div className="lektrus-atlas-natural-legend">
      <strong>Карта полезных ископаемых</strong>
-      <small>Светлая нейтральная подложка. Треугольники обозначают рудные месторождения, ромбы нерудные. Химические символы и сокращения поясняются в легенде.</small>
+      <small>Знаки соответствуют принятым обозначениям школьных географических атласов для распространённых видов сырья: железная руда — треугольник, медь — прямоугольник, золото — полукруг. Для редких видов без общего знака показано буквенное сокращение.</small>
      <label className="lektrus-atlas-city-filter">Группа сырья
       <select aria-label="Фильтр полезных ископаемых" value={mineralFilter}
        onChange={e=>{setMineralFilter(e.target.value);setSelectedMineral(null)}}>
@@ -1190,7 +1182,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      </div>}
      <div className="lektrus-atlas-mineral-legend">{mineralTypes.map(item=><div key={item.name}>
       <LektrusMineralSymbol name={item.name} size={21}/>{item.name}</div>)}</div>
-     <small>Историческая база USGS: покрытие за пределами США неполное.
+     <small>Условные знаки распространённых минералов сверены со школьными атласными легендами. Обозначения редких видов могут различаться между издательствами.
+       Историческая база USGS: покрытие за пределами США неполное.
       Обзорные группы построены по выборке, а не по полному кадастру месторождений. Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются. Основа каталога USGS включает исторические сведения и не является актуальным кадастром на 2026 год.
       Показываются только месторождения с распознаваемым типом сырья.</small>
      <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
