@@ -79,6 +79,26 @@ assert.equal(externalExports.canLoadMinerals({west:30,east:55,south:40,north:60}
 assert.equal(externalExports.canLoadMinerals({west:-180,east:180,south:-85,north:85}),false);
 const copperDeposit={properties:{commodity:"Copper",dep_type:"Hydrothermal",rec_id:12,model_code:"22c"},geometry:null};
 assert.equal(externalExports.mineralCommodity(copperDeposit)?.name,"Медь");
+const schoolSymbols=schoolAtlasExports.SCHOOL_ATLAS_MINERALS;
+const schoolDeposits=schoolAtlasExports.SCHOOL_ATLAS_USGS_MINERALS;
+assert.equal(schoolSymbols.length,19,"School atlas includes fuels and standard school ore/nonmetal types");
+assert.equal(schoolDeposits.length,15,"USGS school legend must exclude unavailable fuel fields");
+assert.deepEqual(externalExports.mineralTypes.map(v=>v.name),schoolDeposits,
+ "map dropdown uses exactly the school resource names and order");
+for(const specialized of ["Литий","Уран","Редкоземельные элементы","Кобальт","Бериллий",
+ "Титан","Барит","Гипс","Флюорит","Каолин","Борные минералы","Платина","Серебро"]){
+ assert.equal(schoolSymbols.includes(specialized),false,specialized+" is not part of selected school symbols");
+ assert.equal(externalExports.mineralCommodity({properties:{commodity:specialized},geometry:null}),null,
+  specialized+" must not appear on the mineral map");
+}
+for(const [raw,schoolName] of [
+ ["Lead","Полиметаллические руды"],["Zinc","Полиметаллические руды"],
+ ["Apatite","Апатиты и фосфориты"],["Phosphate","Апатиты и фосфориты"],
+ ["Gold","Золото"],["Iron","Железная руда"],["Bauxite","Бокситы и алюминий"]
+]){
+ assert.equal(externalExports.mineralCommodity({properties:{commodity:raw},geometry:null})?.name,
+  schoolName,raw+" should receive the appropriate school-atlas glyph");
+}
 assert.equal(externalExports.mineralDepositFacts(copperDeposit).find(x=>x.label==="Генетический тип")?.value,"Гидротермальное");
 assert.equal(externalExports.mineralDepositSource({properties:{url:"http://unknown.example/"} ,geometry:null}),null);
 const guideSource=fs.readFileSync(new URL("../src/lektrusAtlasMineralGuide.ts",import.meta.url),"utf8");
