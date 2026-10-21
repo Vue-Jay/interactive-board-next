@@ -30,7 +30,7 @@ const fetch=async(url)=>{
     {lon:30.4,lat:55.1},{lon:30.4,lat:55.4},{lon:30.1,lat:55.1}]}]},
   {type:"way",id:24,tags:{place:"town",name:"Test town"},
    geometry:[{lon:30.5,lat:55.4},{lon:30.8,lat:55.4},{lon:30.8,lat:55.6},{lon:30.5,lat:55.4}]}
- ])})};
+ ]})};
 };
 const external=load("lektrusAtlasExternal.ts",{fetch,AbortController,setTimeout,clearTimeout,URLSearchParams});
 assert.equal(external.canLoadCityBoundaries(bounds),true);
