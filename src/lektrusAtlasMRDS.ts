@@ -53,3 +53,64 @@ export function mrdsRequestUrl(west:number,south:number,east:number,north:number
  });
  return MRDS_SERVICE+"?"+params.toString();
 }
+
+type MRDSBounds={west:number;south:number;east:number;north:number};
+const cache=new Map<string,Promise<GeoCollection>>();
+function cached(key:string,loader:()=>Promise<GeoCollection>):Promise<GeoCollection>{
+ const existing=cache.get(key);if(existing)return existing;
+ const request=loader().catch(error=>{cache.delete(key);throw error});
+ cache.set(key,request);if(cache.size>32)cache.delete(cache.keys().next().value!);
+ return request;
+}
+async function fetchMRDSTile(b:MRDSBounds,count:number):Promise<GeoCollection>{
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+ try{
+  const response=await fetch(mrdsRequestUrl(b.west,b.south,b.east,b.north,count),
+   {signal:controller.signal,mode:"cors"});
+  if(!response.ok)throw new Error("USGS MRDS: HTTP "+response.status);
+  const data=await response.json();
+  if(data.error)throw new Error("USGS MRDS: "+String(data.error.message));
+  return parseMRDSFeatures(data);
+ }finally{clearTimeout(timer)}
+}
+export function loadMRDSRegionalDeposits(b:MRDSBounds):Promise<GeoCollection>{
+ if(![b.west,b.south,b.east,b.north].every(Number.isFinite)||
+  b.east<=b.west||b.north<=b.south||b.east-b.west>56||b.north-b.south>31)
+  return Promise.resolve({type:"FeatureCollection",features:[]});
+ const key="local:"+[b.west,b.south,b.east,b.north].map(n=>Math.round(n*2)/2).join(":");
+ return cached(key,()=>fetchMRDSTile(b,1000));
+}
+/** Geographic slices prevent the full-world limit from returning nearly
+ * all records from a few densely documented US states. Still a sample.
+ */
+export function loadMRDSWorldOverview():Promise<GeoCollection>{
+ return cached("world:12:v1",async()=>{
+  const longitudes=[-180,-120,-60,0,60,120,180];
+  const latitudes=[-60,5,85];
+  const tiles:MRDSBounds[]=[];
+  for(let y=0;y<latitudes.length-1;y++)
+   for(let x=0;x<longitudes.length-1;x++)
+    tiles.push({west:longitudes[x],east:longitudes[x+1],
+     south:latitudes[y],north:latitudes[y+1]});
+  const records:GeoFeature[]=[],ids=new Set<string>();let successful=0;
+  // Four concurrent requests: avoids a burst of 12 expensive GIS queries.
+  let next=0;
+  await Promise.all(Array.from({length:4},async()=>{
+   while(next<tiles.length){
+    const tile=tiles[next++];
+    try{
+     const result=await fetchMRDSTile(tile,650);
+     successful++;
+     for(const feature of result.features){
+      const key=String(feature.properties?.dep_id??feature.properties?.objectid_1??"")+
+       ":"+JSON.stringify(feature.geometry?.coordinates);
+      if(ids.has(key))continue;
+      ids.add(key);records.push(feature);
+     }
+    }catch{/* Other slices may still be available. */}
+   }
+  }));
+  if(!successful)throw new Error("USGS MRDS недоступна");
+  return {type:"FeatureCollection",features:records};
+ });
+}
