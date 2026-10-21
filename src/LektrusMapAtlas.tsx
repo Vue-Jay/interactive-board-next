@@ -380,6 +380,49 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const provinceAnchors=useMemo(()=>provincePaths.map(f=>({...f,anchor:featureLabelAnchor(f.feature)})),[provincePaths]);
  const provinceLabels=provinceAnchors.filter(f=>f.anchor&&f.anchor.area*scale*scale>160&&visiblePoint(f.anchor?[f.anchor.x,f.anchor.y]:null))
   .sort((a,b)=>(b.anchor?.area??0)-(a.anchor?.area??0)).slice(0,70);
+ // Unified screen-space label placement. Shared occupancy prevents a city label
+ // from covering another capital or state and avoids overlapping physical names.
+ const placedMapLabels=useMemo(()=>{
+  if(!d.showLabels||mode==="contour")return [] as AtlasLabelCandidate[];
+  const candidates:AtlasLabelCandidate[]=[];
+  const font=(base:number)=>Math.min(13,base+Math.log2(Math.max(1,scale))*.68);
+  const add=(id:string,kind:AtlasLabelKind,text:string,x:number,y:number,
+   priority:number,base:number,align:"middle"|"start"="middle",dx=0,dy=0)=>{
+   if(text)candidates.push({id,kind,text,x,y,priority,fontSize:font(base),align,dx,dy});
+  };
+  if(mode==="political"||historical){
+   labels.forEach((f,i)=>add("country-"+f.i,"country",f.name,
+    f.anchor!.x,f.anchor!.y,i/500,8.2));
+   if(mode==="political"){
+    capitalLabels.forEach((f,i)=>add("capital-"+f.id,"capital",russianPlaceName(f.feature)??"",
+     f.point![0],f.point![1],1+i/500,7.4,"start",6,-5));
+    if(scale>=4)provinceLabels.forEach((f,i)=>add("province-"+f.id,"province",geoFeatureName(f.feature),
+     f.anchor!.x,f.anchor!.y,2+i/500,7.1));
+   }
+  }
+  if(mode==="cities")cityLabels.forEach((f,i)=>add("city-"+f.id,"city",
+   russianPlaceName(f.feature)??"",f.point![0],f.point![1],i/500,7.6,"start",6,-5));
+  if(mode==="physical"){
+   if(scale>=2){
+    shownMarineNames.slice(0,52).forEach((f,i)=>add("sea-"+f.id,"sea",geoFeatureName(f.feature),
+     f.point![0],f.point![1],i/500,7.3));
+    shownLakeNames.slice(0,65).forEach((f,i)=>add("lake-"+f.id,"lake",geoFeatureName(f.feature),
+     f.point![0],f.point![1],1+i/500,7));
+    shownNatureNames.slice(0,85).forEach((f,i)=>add("nature-"+f.id,"nature",geoFeatureName(f.feature),
+     f.point![0],f.point![1],2+i/500,7.1));
+   }
+   if(scale>=3)shownRiverNames.slice(0,70).forEach((f,i)=>
+    add("river-"+f.id,"river",geoFeatureName(f.feature),f.point![0],f.point![1],3+i/500,7));
+   if(scale>=16)shownPeaks.slice(0,50).forEach((f,i)=>
+    add("peak-"+f.id,"peak",geoFeatureName(f.feature),f.point![0],f.point![1],4+i/500,7,"start",6,-5));
+   if(scale>=64)auxiliaryRiverLabels.filter(f=>f.point&&visiblePoint(f.point))
+    .slice(0,40).forEach((f,i)=>add("stream-"+f.id,"stream",geoFeatureName(f.feature),
+     f.point![0],f.point![1],5+i/500,6.8));
+  }
+  return layoutAtlasLabels(candidates,scale,scale>=16?210:scale>=3?110:60);
+ },[d.showLabels,mode,historical,labels,capitalLabels,cityLabels,provinceLabels,
+  shownMarineNames,shownLakeNames,shownRiverNames,shownNatureNames,shownPeaks,
+  auxiliaryRiverLabels,scale,position.x,position.y]);
  const subregions=useMemo(()=>{
   if(!administrative||regionId==="world")return [];
   const [west,south,east,north]=selectedRegion.bounds;
