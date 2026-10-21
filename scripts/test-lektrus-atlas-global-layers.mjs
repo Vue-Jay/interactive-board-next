@@ -50,6 +50,7 @@ assert.match(map,/LektrusMineralSymbol name=/);
 assert.match(map,/mineralMapSymbol\(item\.commodity\.name\)/);
 const basemap=fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url),"utf8");
 assert.match(basemap,/theme==="minerals"/);
-assert.match(map,/mode==="cities"&&scale>=2\.5/);
+assert.match(map,/citiesOn&&scale>=2\.5/);
 assert.match(map,/rivers-ultra/);
+assert.match(map,/lektrus-atlas-mineral-clusters/);
 console.log("Atlas improvements: neighboring country colors, worldwide OSM city boundaries, mineral signs and map layers passed.");
