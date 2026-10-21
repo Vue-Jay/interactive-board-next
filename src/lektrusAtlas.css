@@ -351,3 +351,32 @@
 }
 .lektrus-atlas-mineral-group{cursor:zoom-in}
 .lektrus-atlas-mineral-points g[role="button"]{cursor:pointer}
+
+/* School contour worksheets: tools remain inside the map, not in application settings. */
+.lektrus-atlas-zoom{z-index:9}
+.lektrus-atlas-zoom button.active{background:#dcecff;border-color:#5f96cd;color:#1e558e}
+.lektrus-atlas-contour-panel{display:flex;flex-direction:column;gap:9px}
+.lektrus-atlas-contour-panel>label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:700}
+.lektrus-atlas-contour-panel textarea,
+.lektrus-atlas-contour-panel select,
+.lektrus-atlas-contour-panel input:not([type="color"]){width:100%;min-width:0;
+ border:1px solid #ccdae6;border-radius:7px;padding:7px;background:#fff;color:#294864}
+.lektrus-contour-toolstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.lektrus-contour-toolstrip button{padding:7px 3px;font-size:11px;border:1px solid #cbd9e6;
+ background:#fff;border-radius:7px;color:#2e5475}
+.lektrus-contour-toolstrip button.active{background:#dceaff;border-color:#72a1d5;color:#174e87}
+.lektrus-contour-palette{display:flex!important;flex-direction:row!important;align-items:center;gap:5px;flex-wrap:wrap}
+.lektrus-contour-palette input[type="color"]{width:36px;height:30px;flex:none;padding:1px}
+.lektrus-contour-palette button,.lektrus-contour-edit-actions button,.lektrus-contour-legend-add button{
+ padding:6px 8px;border:1px solid #cbd9e6;border-radius:7px;background:#fff;color:#2f557b}
+.lektrus-contour-edit-actions{display:flex;gap:7px;flex-wrap:wrap}
+.lektrus-contour-edit-actions button:disabled{opacity:.45}
+.lektrus-contour-legend-add{display:grid;grid-template-columns:48px minmax(0,1fr) 32px;gap:5px}
+.lektrus-contour-legend-row{display:grid;grid-template-columns:32px 1fr 28px;gap:5px;align-items:center;
+ border-bottom:1px solid #e0e9f0;padding:4px 0;font-size:11px}
+.lektrus-contour-legend-row b{font-size:14px;text-align:center}
+.lektrus-contour-legend-row button{background:none;border:0;color:#925d56;cursor:pointer}
+.lektrus-atlas-contour-mark{cursor:pointer}
+.lektrus-atlas-contour-mark:focus-visible{outline:none;filter:drop-shadow(0 0 2px #286baf)}
+.lektrus-atlas-contour-work text{user-select:none}
+.lektrus-atlas-graticule{pointer-events:none}
