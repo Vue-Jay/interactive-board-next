@@ -110,8 +110,8 @@ assert.equal(mrdsNetwork.length,13);
 assert.equal((await mrds.loadMRDSRegionalDeposits({west:30,east:35,south:40,north:45})).features.length,1);
 assert.equal(mrdsNetwork.length,13);
 const stylesheet=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
-assert.match(stylesheet,/g\\[role="button"\\]:focus\\{outline:none\\}/);
-assert.match(map,/lektrus-atlas-user-pin/);
-assert.match(map,/loadMRDSWorldOverview\\(/);
+assert.ok(stylesheet.includes('g[role="button"]:focus{outline:none}'));
+assert.ok(map.includes("lektrus-atlas-user-pin"));
+assert.ok(map.includes("loadMRDSWorldOverview("));
 
 console.log("Atlas overview: six-world-zone USGS sampling, genuine mineral groups and city-political merger passed.");
