@@ -494,6 +494,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  },[d.showLabels,mode,historical,citiesOn,labels,capitalLabels,cityLabels,provinceLabels,
   shownMarineNames,shownLakeNames,shownRiverNames,shownNatureNames,shownPeaks,
   auxiliaryRiverLabels,scale,position.x,position.y]);
+ const visibleMapLabels=useMemo(()=>new Set(placedMapLabels.map(v=>v.id)),[placedMapLabels]);
  const subregions=useMemo(()=>{
   if(!administrative||regionId==="world")return [];
   const [west,south,east,north]=selectedRegion.bounds;
@@ -892,7 +893,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        </g>)}
       </g>}
       {citiesOn&&<g className="lektrus-atlas-capitals">
-       {shownCapitals.filter(f=>scale>=2.6&&(scale>=4||capitalLabels.some(c=>c.feature===f.feature))).map(f=><g key={"capital-"+f.id}
+       {shownCapitals.filter(f=>scale>=2.6&&(visibleMapLabels.has("capital-"+f.id)||scale>=12&&capitalLabels.some(c=>c.feature===f.feature))).map(f=><g key={"capital-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={e=>{e.stopPropagation();selectFeature(f.feature,alternateCapital(f.feature)?"Дополнительная столица по данным источника":"Столица государства")}}
@@ -957,7 +958,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        </g>)}
       </g>}
       {citiesOn&&scale>=4.2&&<g className="lektrus-atlas-cities">
-       {shownCities.filter(f=>!nationalCapital(f.feature)).map(f=><g key={"city-"+f.id}
+       {shownCities.filter(f=>!nationalCapital(f.feature)&&(visibleMapLabels.has("city-"+f.id)||scale>=16&&cityLabels.some(c=>c.feature===f.feature))).map(f=><g key={"city-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={e=>{e.stopPropagation();selectFeature(f.feature,nationalCapital(f.feature)?"Столица":"Населённый пункт")}}
