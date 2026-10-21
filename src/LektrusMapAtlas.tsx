@@ -8,7 +8,7 @@ import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,mineralMapSymbol} from "./LektrusMineralSymbol";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
-import {loadLocalInfrastructure,loadCityBoundaries,canLoadCityBoundaries,loadMineralDeposits,loadWorldMineralOverview,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
+import {loadLocalInfrastructure,atlasOSMCoverageTiles,loadAtlasOSMCoverage,loadMineralDeposits,loadWorldMineralOverview,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
  canLoadLocalRoads,canLoadMinerals,externalBBoxKey,type ExternalBounds} from "./lektrusAtlasExternal";
 import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
@@ -348,33 +348,27 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   north:Math.min(85,90-visibleWorld.top/2.5)
  };
  const externalKey=externalBBoxKey(externalBounds);
- const roadsAvailable=canLoadLocalRoads(externalBounds);
+ const roadTiles=citiesOn?atlasOSMCoverageTiles(externalBounds,"roads"):[];
+ const cityTiles=citiesOn?atlasOSMCoverageTiles(externalBounds,"city-boundaries"):[];
+ const roadTileKey=roadTiles.map(externalBBoxKey).sort().join("|");
+ const cityTileKey=cityTiles.map(externalBBoxKey).sort().join("|");
+ const roadsAvailable=roadTiles.length>0;
  const mineralsAvailable=canLoadMinerals(externalBounds);
  useEffect(()=>{
   let active=true;
-  if(!(citiesOn||mode==="hydrography"||mode==="physical")||!roadsAvailable){
+  const loadRoads=citiesOn&&!!roadTileKey;
+  const loadWaterways=(mode==="hydrography"||mode==="physical")&&canLoadLocalRoads(externalBounds);
+  if(!loadRoads&&!loadWaterways){
    setInfrastructure(null);setInfrastructureError("");return()=>{active=false};
   }
-  loadLocalInfrastructure(externalBounds,citiesOn?"roads":"waterways").then(v=>{if(active){
-   setInfrastructure(v);setInfrastructureError("");
-  }}).catch(()=>{if(active){setInfrastructure(null);
-   setInfrastructureError("Дополнительные дороги и водотоки сейчас недоступны.")}});
+  const request=loadRoads?loadAtlasOSMCoverage(externalBounds,"roads"):
+   loadLocalInfrastructure(externalBounds,"waterways");
+  request.then(v=>{if(active){setInfrastructure(v);setInfrastructureError("")}})
+   .catch(()=>{if(active){setInfrastructure(null);
+    setInfrastructureError("Основные дороги или водотоки OSM сейчас недоступны.")}});
   return()=>{active=false};
  // eslint-disable-next-line react-hooks/exhaustive-deps
- },[mode,externalKey,roadsAvailable,citiesOn]);
- useEffect(()=>{
-  let active=true;
-  if(mode!=="minerals"||!mineralsAvailable){
-   setMinerals(null);setMineralLoading(false);setMineralError("");return()=>{active=false};
-  }
-  setMineralLoading(true);
-  loadMineralDeposits(externalBounds).then(v=>{if(active){
-   setMinerals(v);setMineralLoading(false);setMineralError("");
-  }}).catch(()=>{if(active){setMinerals(null);setMineralLoading(false);
-   setMineralError("Не удалось получить сведения о месторождениях из USGS.")}});
-  return()=>{active=false};
- // eslint-disable-next-line react-hooks/exhaustive-deps
- },[mode,externalKey,mineralsAvailable]);
+ },[mode,roadTileKey,externalKey,citiesOn]);
  const auxiliaryDetailZoom=Math.pow(2,Math.floor(Math.log2(scale)));
  const auxiliaryLines=useMemo(()=>infrastructure?.features.flatMap((feature,id)=>{
   const path=mapFeaturePath(feature,Math.max(.00008,.55/auxiliaryDetailZoom),viewport);
@@ -386,16 +380,16 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   .filter(f=>f.point).slice(0,80)??[],[infrastructure]);
  useEffect(()=>{
   let active=true;
-  if(!citiesOn||!canLoadCityBoundaries(externalBounds)){
+  if(!citiesOn||!cityTileKey){
    setCityBoundaries(null);setCityBoundaryError("");return()=>{active=false};
   }
-  loadCityBoundaries(externalBounds).then(data=>{if(active){
+  loadAtlasOSMCoverage(externalBounds,"city-boundaries").then(data=>{if(active){
    setCityBoundaries(data);setCityBoundaryError("");
   }}).catch(()=>{if(active){setCityBoundaries(null);
-   setCityBoundaryError("Границы городов OpenStreetMap временно недоступны.");}});
+   setCityBoundaryError("Данные городских границ OSM сейчас недоступны.");}});
   return()=>{active=false};
  // eslint-disable-next-line react-hooks/exhaustive-deps
- },[mode,externalKey,citiesOn]);
+ },[mode,cityTileKey,citiesOn]);
  const cityBoundaryPaths=useMemo(()=>cityBoundaries?.features.map((f,id)=>({
   id,feature:f,path:mapFeaturePath(f,Math.max(.0001,.32/Math.max(1,scale)),viewport)
  })).filter(f=>f.path)??[],[cityBoundaries,viewport,Math.floor(Math.log2(scale))]);
