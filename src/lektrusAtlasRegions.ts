@@ -65,7 +65,7 @@ export function atlasRegionCamera(region:AtlasRegion){
  const scale=Math.max(1,Math.min(16384,Math.min(790/width,390/height)));
  // (west + east) is twice the centre longitude, not the longitude itself.
  const cx=(w+e+360)/720*900,cy=(90-(s+n)/2)/180*450;
- return {scale,position:{x:-(cx-450)*scale,y:-(cy-225)*scale}};
+ return {scale,position:{x:(450-cx)*scale,y:(225-cy)*scale}};
 }
 
 /** Horizontal distances in a cylindrical equirectangular school map are
