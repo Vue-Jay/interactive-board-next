@@ -825,7 +825,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <title>{russianPlaceName(f.feature)}: {alternateCapital(f.feature)?"дополнительная столица":"столица"}</title>
        </g>)}
       </g>}
-      </g>}
       {(mode==="cities"||mode==="hydrography"||mode==="physical")&&
        <g className="lektrus-atlas-auxiliary-lines" pointerEvents="none">
         {auxiliaryLines.map(line=><path key={"infra-"+line.id} d={line.path} fill="none"
@@ -861,7 +860,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <title>{russianPlaceName(f.feature)}{cityPopulation(f.feature)>0?
          " · население (оценка): "+cityPopulation(f.feature).toLocaleString("ru-RU"):""}</title>
        </g>)}
-      </g>}
       </g>}
       {placedMapLabels.length>0&&<g className="lektrus-atlas-map-labels" pointerEvents="none">
        {placedMapLabels.map(label=><text key={label.id}
