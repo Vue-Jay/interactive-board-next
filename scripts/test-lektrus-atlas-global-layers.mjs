@@ -52,6 +52,10 @@ assert.ok(tiles.every(tile=>tile.east>tile.west&&tile.north>tile.south));
 assert.equal(external.atlasOSMCoverageTiles({west:-180,east:180,south:-85,north:85},"roads").length,0,
  "do not query worldwide geometry in a single Overpass call");
 assert.ok(external.atlasOSMCoverageTiles({west:1,east:35,south:38,north:59},"roads").length>0);
+assert.ok(external.atlasOSMCoverageTiles({west:0,east:64,south:0,north:40},"waterways").length>0,
+ "unnamed tributaries must be retrievable before extreme zoom");
+assert.equal(external.atlasOSMCoverageTiles({west:-180,east:180,south:-85,north:85},"waterways").length,0,
+ "world-scale waterways must not overload public OSM queries");
 const shiftedA=external.atlasOSMCoverageTiles({west:30.2,east:31.1,south:55.1,north:55.8},"city-boundaries");
 const shiftedB=external.atlasOSMCoverageTiles({west:30.3,east:31.2,south:55.2,north:55.9},"city-boundaries");
 assert.deepEqual(shiftedA,shiftedB,"small map drags within one OSM tile must reuse its cached data");
@@ -65,7 +69,10 @@ assert.equal((await external.loadCityBoundaries(bounds)).features.length,2,"view
 const map=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
 assert.match(map,/politicalColors\[s\.i\]/);
 assert.match(map,/cityBoundaryPaths\.map/);
-assert.match(map,/loadAtlasOSMCoverage\(externalBounds,"roads"\)/);
+assert.ok(map.includes('selectedLayer=scale>=3.5?"admin-world-lines":"admin-world-overview"'),
+ "worldwide admin-1 boundaries must switch to 10m before close zoom");
+assert.match(map,/loadAtlasOSMCoverage\(externalBounds,"roads",onPartial\)/);
+assert.match(map,/loadAtlasOSMCoverage\(externalBounds,"waterways",onPartial\)/);
 assert.match(map,/loadAtlasOSMCoverage\(externalBounds,"city-boundaries"\)/);
 assert.match(map,/cityBoundaryError/);
 assert.match(map,/LektrusMineralSymbol name=/);
