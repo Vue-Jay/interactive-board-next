@@ -63,7 +63,8 @@ export function atlasRegionCamera(region:AtlasRegion){
  const [w,s,e,n]=region.bounds;
  const width=Math.max(.1,(e-w)/360*900),height=Math.max(.1,(n-s)/180*450);
  const scale=Math.max(1,Math.min(16384,Math.min(790/width,390/height)));
- const cx=(w+e+360)/360*900,cy=(90-(s+n)/2)/180*450;
+ // (west + east) is twice the centre longitude, not the longitude itself.
+ const cx=(w+e+360)/720*900,cy=(90-(s+n)/2)/180*450;
  return {scale,position:{x:-(cx-450)*scale,y:-(cy-225)*scale}};
 }
 
