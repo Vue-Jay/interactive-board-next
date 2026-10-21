@@ -435,6 +435,22 @@ const localizedFeatureClasses:Record<string,string>={
  "Plain":"Равнина","Desert":"Пустыня",
  "Admin-0 country":"Государство","Admin-1 state":"Административная единица"
 };
+const continentSchoolNames:Record<string,string>={
+ "Africa":"Африка","Asia":"Азия","Europe":"Европа",
+ "North America":"Северная Америка","South America":"Южная Америка",
+ "Oceania":"Океания","Antarctica":"Антарктида",
+ "Seven seas (open ocean)":"Мировой океан",
+ "Central Asia":"Центральная Азия","Eastern Asia":"Восточная Азия",
+ "Western Asia":"Западная Азия","South Asia":"Южная Азия",
+ "Southeast Asia":"Юго-Восточная Азия","Northern Europe":"Северная Европа",
+ "Southern Europe":"Южная Европа","Eastern Europe":"Восточная Европа",
+ "Western Europe":"Западная Европа","Northern Africa":"Северная Африка",
+ "Eastern Africa":"Восточная Африка","Western Africa":"Западная Африка",
+ "Central Africa":"Центральная Африка","Southern Africa":"Южная Африка",
+ "Middle Africa":"Центральная Африка","Central America":"Центральная Америка",
+ "Caribbean":"Карибский регион","Australia and New Zealand":"Австралия и Новая Зеландия",
+ "Melanesia":"Меланезия","Micronesia":"Микронезия","Polynesia":"Полинезия"
+};
 export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value:string}>{
  const p=feature.properties??{};
  const fields:[string,string][]=[
@@ -443,6 +459,23 @@ export function featureSourceFacts(feature:GeoFeature):Array<{label:string;value
   ["SOVEREIGNT","Суверенное государство в источнике"],["ADM0NAME","Страна в источнике"],
   ["FEATURECLA","Категория"],["FEATURECLASS","Категория"]];
  const result:Array<{label:string;value:string}>=[];
+ const population=Number(p.POP_EST??p.pop_est);
+ if(Number.isFinite(population)&&population>0){
+  const year=Number(p.POP_YEAR??p.pop_year);
+  result.push({label:"Население (оценка картографического источника)",
+   value:Math.round(population).toLocaleString("ru-RU")+
+    (Number.isFinite(year)&&year>1900&&year<=2100?" ("+year+" г.)":" (год не указан)")});
+ }
+ for(const [property,label] of [["CONTINENT","Часть света"],["SUBREGION","Регион мира"],["REGION_UN","Регион ООН"]] as const){
+  const value=String(p[property]??"");
+  if(continentSchoolNames[value])result.push({label,value:continentSchoolNames[value]});
+ }
+ const gdp=Number(p.GDP_MD??p.gdp_md);
+ if(Number.isFinite(gdp)&&gdp>0&&gdp<1e10){
+  const year=Number(p.GDP_YEAR??p.gdp_year);
+  result.push({label:"ВВП (оценка источника)",value:gdp.toLocaleString("ru-RU")+
+   " млн долл. США"+(Number.isFinite(year)&&year>1900&&year<=2100?" ("+year+" г.)":" (год не указан)")});
+ }
  if(typeof p.CAPITAL_CORRECTION_RU==="string")
   result.push({label:"Уточнение столицы",value:p.CAPITAL_CORRECTION_RU});
  if(typeof p.LOCATION_SOURCE_RU==="string")
