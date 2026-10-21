@@ -22,8 +22,13 @@ self.onmessage=async function(event){
  try{
   const input=typeof data.stdin==="string"?data.stdin:"";
   if(data.language==="python"){
-   report("log","Загрузка Python (Pyodide). При первом запуске необходим интернет…");
-   const {loadPyodide}=await import("https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs");
+   self.postMessage({kind:"progress",text:"Загрузка Python. При первом запуске необходим интернет…"});
+   let loadPyodide;
+   try{
+    ({loadPyodide}=await import("https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs"));
+   }catch{
+    throw new Error("Python не загрузился. Проверьте подключение к интернету и доступ к jsDelivr.");
+   }
    const py=await loadPyodide({
     indexURL:"https://cdn.jsdelivr.net/pyodide/v314.0.7/full/"
    });
@@ -100,6 +105,7 @@ export const PROGRAM_SANDBOX_HTML=`<!doctype html><html lang="ru"><head><meta ch
    URL.revokeObjectURL(uri);
    worker.onmessage=function(e){
     if(!e.data||activeId!==data.runId)return;
+    if(e.data.kind==="progress")send({type:"progress",runId:activeId,token:activeToken,text:String(e.data.text).slice(0,200)});
     if(e.data.kind==="line")send({type:"line",runId:activeId,token:activeToken,
      level:e.data.level,text:String(e.data.text).slice(0,2500)});
     if(e.data.kind==="done")finish(e.data.status==="success"?"success":"error");
