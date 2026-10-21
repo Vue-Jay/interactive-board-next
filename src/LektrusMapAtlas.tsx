@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode,ContourStroke} from "./lektrusAtlasModel";
+import {defaultContourAssignment} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
 import {clusterMineralMapPoints} from "./lektrusAtlasMineralClusters";
 import {loadMRDSRegionalDeposits,loadMRDSWorldOverview,mrdsMineralCommodity} from "./lektrusAtlasMRDS";
@@ -66,10 +67,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [coordinatesEnabled,setCoordinatesEnabled]=useState(d.showCoordinates===true||d.mode==="coordinates");
  useEffect(()=>setCoordinatesEnabled(d.showCoordinates===true||d.mode==="coordinates"),[d.showCoordinates,d.mode]);
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":normalizeAtlasMode(d.mode));
+ const isWorksheet=mode==="contour";
+ const contourConfig={...defaultContourAssignment,...d.contourAssignment};
  const citiesOn=mode==="political"&&d.showCities!==false;
  const mineralContext=mode==="minerals";
  const landmarkCities=citiesOn||mineralContext;
- const hydroContext=mode==="physical"||mode==="hydrography"||mineralContext||mode==="contour";
+ const hydroContext=mode==="physical"||mode==="hydrography"||mineralContext||isWorksheet&&(contourConfig.showRivers||contourConfig.showLakes);
  const reliefContext=mode==="physical"||mode==="relief"||mineralContext;
  // This reuses the measured relief tiles, without turning every click on
  // the mineral map into an elevation/coordinate query.
@@ -195,10 +198,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(cameraFrame.current===null)cameraFrame.current=requestAnimationFrame(()=>{
    cameraFrame.current=null;paintCamera(cameraRef.current);
   });
-  if(cameraIdleRef.current!==null)clearTimeout(cameraIdleRef.current);
-  cameraIdleRef.current=setTimeout(()=>{
+  // A held pointer must not trigger expensive scene reconstruction between
+  // slow drag events. Only mouse wheel/trackpad zoom needs an idle commit.
+  if(cameraIdleRef.current!==null){clearTimeout(cameraIdleRef.current);cameraIdleRef.current=null}
+  if(points.current.size===0)cameraIdleRef.current=setTimeout(()=>{
    cameraIdleRef.current=null;commitCamera(cameraRef.current);
-  },145);
+  },190);
  };
  useEffect(()=>()=>{if(cameraFrame.current!==null)cancelAnimationFrame(cameraFrame.current);
   if(cameraIdleRef.current!==null)clearTimeout(cameraIdleRef.current)},[]);
@@ -220,7 +225,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   atlasModesFor(scope).filter(m=>m.id!=="contour");
  const historical=scope==="history";
  const modernBorders=!historical||modernReference;
- const needsPoliticalGeometry=historical||mode==="political"||mode==="contour"||mode==="minerals";
+ const needsPoliticalGeometry=historical||mode==="political"||isWorksheet&&(contourConfig.showBorders||contourConfig.allowFill||contourConfig.showRegions)||mode==="minerals";
  const terrainEnabled=(mode==="physical"||mode==="relief")&&d.hypsometry!==false;
  useEffect(()=>{
   if(!historical)return;
@@ -253,16 +258,16 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    loadHistoricalSnapshot(historicalSnapshots[index-1].year).catch(()=>null):Promise.resolve(null);
   // Optional thematic layers never replace the original geographic geometry.
   const thematic:ReadonlyArray<[string,boolean]>=[
-   ["rivers",!detailedGeography&&hydroContext],
-   ["rivers-regional",detailedGeography&&!veryDetailedHydro&&hydroContext],
+   ["rivers",!detailedGeography&&hydroContext&&(!isWorksheet||contourConfig.showRivers)],
+   ["rivers-regional",detailedGeography&&!veryDetailedHydro&&hydroContext&&(!isWorksheet||contourConfig.showRivers)],
    ["rivers-ultra",veryDetailedHydro],
-   ["lakes",!detailedGeography&&hydroContext],
-   ["lakes-regional",detailedGeography&&!veryDetailedHydro&&hydroContext],
+   ["lakes",!detailedGeography&&hydroContext&&(!isWorksheet||contourConfig.showLakes)],
+   ["lakes-regional",detailedGeography&&!veryDetailedHydro&&hydroContext&&(!isWorksheet||contourConfig.showLakes)],
    ["lakes-ultra",veryDetailedHydro],
    ["cities",landmarkCities&&!detailedGeography],
    ["cities-regional",landmarkCities&&detailedGeography&&!detailedCities],
    ["cities-local",detailedCities],
-   ["admin-regional",!historical&&(regionId!=="world"||citiesOn&&scale>=2.5)],
+   ["admin-regional",!historical&&(isWorksheet?contourConfig.showRegions||contourConfig.allowFill&&paintRegions:regionId!=="world"||citiesOn&&scale>=2.5)],
    ["regions",!detailedGeography&&reliefContext],
    ["regions-regional",detailedGeography&&reliefContext],
    ["elevation",!detailedGeography&&(mode==="physical"||mode==="relief")],
@@ -315,7 +320,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    setError(e instanceof Error?e.message:String(e));setLoading(false);
   });
   return()=>{active=false};
- },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,detailedCities,veryDetailedHydro,regionId,needsPoliticalGeometry,scale>=2.5,citiesOn,landmarkCities,hydroContext,reliefContext]);
+ },[mode,index,refresh,historical,snapshot.year,modernBorders,modernReference,detailedGeography,detailedCities,veryDetailedHydro,regionId,needsPoliticalGeometry,scale>=2.5,citiesOn,landmarkCities,hydroContext,reliefContext,contourConfig.showRivers,contourConfig.showLakes,contourConfig.showRegions,contourConfig.allowFill,paintRegions]);
  useEffect(()=>{
   let active=true;
   if(!modernBorders||scale<5||russianView){setDetail(null);setDetailWarning("");return}
@@ -357,10 +362,16 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const tileWidth=900/tileScale,tileHeight=450/tileScale;
  const tileX=Math.round((450-position.x/scale)/tileWidth);
  const tileY=Math.round((225-position.y/scale)/tileHeight);
- const viewport=useMemo<MapWindow|undefined>(()=>highDetail&&scale>=8?
+ const viewport=useMemo<MapWindow|undefined>(()=>highDetail&&scale>=3?
   {left:(tileX-3)*tileWidth,right:(tileX+3)*tileWidth,
    top:(tileY-3)*tileHeight,bottom:(tileY+3)*tileHeight}:undefined,
-  [highDetail,tileX,tileY,tileScale,scale>=8]);
+  [highDetail,tileX,tileY,tileScale,scale>=3]);
+ const gridViewport=useMemo<MapWindow>(()=>{
+  const worldW=900/scale,worldH=450/scale;
+  const cx=450-position.x/scale,cy=225-position.y/scale;
+  return {left:Math.max(0,cx-worldW/2),right:Math.min(900,cx+worldW/2),
+   top:Math.max(0,cy-worldH/2),bottom:Math.min(450,cy+worldH/2)};
+ },[scale,position.x,position.y]);
  const politicalColors=useMemo(()=>mode==="political"?colorPoliticalCountries(mapSourceFeatures):[],[mapSourceFeatures,mode]);
  const shapes=useMemo(()=>mapSourceFeatures.map((feature,i)=>({
   feature,path:mapFeaturePath(feature,precision,viewport),
@@ -858,7 +869,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const reset=()=>{commitCamera(atlasRegionCamera(selectedRegion));setSelected(null);setCoord(null)};
  const changeRegion=(id:string)=>{setRegionId(id);setFocusedUnit("");onChange?.({...d,regionId:id})};
  const paintProvince=(feature:GeoFeature)=>{
-  if(mode!=="contour"||contourAction!=="fill"||!paintRegions||dragged.current)return;
+  if(mode!=="contour"||!contourConfig.allowFill||contourAction!=="fill"||!paintRegions||dragged.current)return;
   const key="region:"+String(feature.properties?.adm1_code||feature.properties?.ADM1_CODE||feature.properties?.iso_3166_2||
    feature.properties?.name_ru||feature.properties?.name||geoFeatureName(feature));
   savePaint({...painted,[key]:paintColor});
@@ -870,6 +881,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  };
  const showCountry=(feature:GeoFeature)=>{
   if(mode==="contour"){
+   if(!contourConfig.allowFill)return;
    if(dragged.current||paintRegions||contourAction!=="fill")return;
    const key=String(feature.properties?.ADM0_A3||feature.properties?.ISO_A3||geoFeatureName(feature));
    savePaint({...painted,[key]:paintColor});
@@ -914,6 +926,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
   if(dragged.current)return;
   if(mode==="contour"){
+   if(contourAction==="label"&&!contourConfig.allowLabels||contourAction==="point"&&!contourConfig.allowPoints)return;
    if(!onChange||contourAction==="fill"||contourAction==="pen")return;
    if(contourAction==="erase")return;
    if(contourAction==="label"&&!contourText.trim())return;
@@ -958,7 +971,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство"));
   setSelectedMarker(null);
  };
- return <div className={"lektrus-atlas "+(historical?"lektrus-atlas-history ":"")+(editorMode?"lektrus-atlas--editor ":"")+(inspectorOpen?"":"lektrus-atlas--inspector-hidden")} aria-label={d.title}
+ return <div className={"lektrus-atlas "+(isWorksheet?"lektrus-atlas--worksheet ":"")+(historical?"lektrus-atlas-history ":"")+(editorMode?"lektrus-atlas--editor ":"")+(inspectorOpen?"":"lektrus-atlas--inspector-hidden")} aria-label={d.title}
   onPointerDown={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onPointerUp={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onClick={e=>{if(!objectMoveMode)e.stopPropagation()}}>
@@ -1007,8 +1020,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       lastPointer.current=anchor;
       zoomAt(cameraRef.current.scale*(e.deltaY<0?1.16:1/1.16),anchor);
      }}>
-     <g ref={cameraLayerRef} transform={cameraTransform({scale,position})}>
-      <LektrusMapBase land={baseLand} coastline={baseCoastline} theme={mode==="minerals"?"minerals":"default"}
+     <g ref={cameraLayerRef} className="lektrus-atlas-camera-layer" transform={cameraTransform({scale,position})}>
+      <LektrusMapBase land={baseLand} coastline={isWorksheet&&!contourConfig.showCoastline?null:baseCoastline} theme={mode==="minerals"?"minerals":"default"}
        scale={scale} viewport={viewport}
         terrain={<LektrusAtlasTerrain enabled={terrainEnabled||mineralTerrainEnabled} scale={scale} position={position}
          onStatus={setTerrainStatus}/>}/>
@@ -1219,7 +1232,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <title>{item.commodity.name}, источник USGS</title>
        </g>)}
       </g>}
-      {d.showGrid&&<LektrusAtlasGraticule scale={scale} viewport={viewport}/>}
+      {(isWorksheet?contourConfig.showGrid:d.showGrid)&&<LektrusAtlasGraticule scale={scale} viewport={gridViewport}/>}
       {mode==="contour"&&<g className="lektrus-atlas-contour-work">
        {contourStrokes.map(line=><path key={line.id} fill="none" stroke={line.color}
         strokeWidth={2/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents={contourAction==="erase"?"stroke":"none"}
@@ -1273,10 +1286,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(cameraRef.current.scale*1.5)}>+</button>
      <button type="button" onClick={reset} title="Вписать выбранный регион">⌖</button>
      <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(cameraRef.current.scale/1.5)}>−</button>
-     <button type="button" className={d.showGrid?"active":""}
+     <button type="button" className={(isWorksheet?contourConfig.showGrid:d.showGrid)?"active":""}
       title="Меридианы и параллели поверх карты" aria-label="Меридианы и параллели"
-      aria-pressed={d.showGrid}
-      onClick={()=>onChange?.({...d,showGrid:!d.showGrid})}>▦</button>
+      aria-pressed={isWorksheet?contourConfig.showGrid:d.showGrid}
+      onClick={()=>onChange?.(isWorksheet?{...d,contourAssignment:{...contourConfig,showGrid:!contourConfig.showGrid}}:
+       {...d,showGrid:!d.showGrid})}>▦</button>
      <label className="lektrus-atlas-zoom-slider">Масштаб
       <input type="range" min="0" max="14" step=".25"
        aria-label="Уровень детализации карты"
