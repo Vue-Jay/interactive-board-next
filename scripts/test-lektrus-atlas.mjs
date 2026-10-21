@@ -335,9 +335,20 @@ const testCities=[{id:0,point:[100,100],feature:kazan},{id:1,point:[102,101],fea
 assert.equal(places.chooseCityLabels(testCities,1,20).length,2,
  "city labels should avoid overlaps without inventing coordinates");
 assert.ok(places.limitCitySymbols(testCities,1,2).length<=2);
+const nearbyCities=[
+ {id:1,point:[200,200],feature:moscow},
+ {id:2,point:[204,203],feature:kazan},
+ {id:3,point:[310,200],feature:small}
+];
+const decluttered=places.limitCitySymbols(nearbyCities,1,10);
+assert.equal(decluttered.length,2,"Nearby city symbols must not overlap at overview scale");
+assert.deepEqual(decluttered.map(c=>c.id),[1,3],"Major cities take visual priority");
+assert.equal(places.limitCitySymbols(nearbyCities,8,10).length,3,
+ "Close cities return as students zoom in");
 
 assert.match(map,/Math\.log2\(scale\)/);
 assert.match(map,/lektrus-atlas-coordinate-toggle/);
+assert.match(map,/mode:normalizeAtlasMode\(d\.mode\),showCoordinates:enabled/,"legacy coordinate overlay can be disabled");
 assert.match(map,/infoTab==="sources"/);
 assert.match(map,/zoomAtlasCamera\(cameraRef\.current,next,point\)/);
 assert.match(map,/scale<1\.6\?75/,"world overview should not render hundreds of city markers");
