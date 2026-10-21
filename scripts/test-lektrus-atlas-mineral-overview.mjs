@@ -30,7 +30,7 @@ const mockFetch=async(url)=>{
  const [west,south,east,north]=rect;
  const x=(west+east)/2,y=(south+north)/2;
  return {ok:true,json:async()=>({features:[
-  {attributes:{gid:network.length,commod1:"Gold",dep_name:"Sample from USGS"},
+  {attributes:{gid:network.length,commodity:"Gold",dep_name:"Sample from USGS"},
    geometry:{x,y}}]})};
 };
 const external={};
