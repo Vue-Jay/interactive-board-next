@@ -11,7 +11,6 @@ import LektrusFurtherSchoolControls from "./LektrusFurtherSchoolControls";
 import LektrusApprovedSchoolControls from "./LektrusApprovedSchoolControls";
 import LektrusRussianSchoolControls from "./LektrusRussianSchoolControls";
 import LektrusLanguageSocialControls from "./LektrusLanguageSocialControls";
-import LektrusMapAtlasControls from "./LektrusMapAtlasControls";
 import LektrusBiologyExtensionControls from "./LektrusBiologyExtensionControls";
 import LektrusLogicCircuitControls from "./LektrusLogicCircuitControls";
 import LektrusProgrammingControls from "./LektrusProgrammingControls";
