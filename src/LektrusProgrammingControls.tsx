@@ -13,6 +13,8 @@ export default function LektrusProgrammingControls({diagram:d,onChange}:{
   if(!preset)return;
   onChange({...d,language:preset.language,code:preset.code,stdin:preset.stdin,tests:[]});
  };
+ const tests=d.tests??[];
+ const updateTest=(id:string,key:"name"|"stdin"|"expected",value:string)=>onChange({...d,tests:tests.map(t=>t.id===id?{...t,[key]:value}:t)});
  return <>
   <div className="lektrus-school-controls-heading">Редактор программы</div>
   <label className="lektrus-school-field">Язык программирования
