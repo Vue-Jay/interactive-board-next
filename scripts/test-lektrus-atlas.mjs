@@ -245,7 +245,7 @@ assert.ok(data.includes('"admin-world-lines":"ne_10m_admin_1_states_provinces_li
  "detailed regional atlas requires global 10m line coverage");
 assert.ok(map.includes('loadAtlasLayer(selectedLayer)'),"atlas must actually load the selected global administrative lines");
 assert.ok(map.includes('loadAtlasLayer("admin-world-overview")'),"detailed boundary source needs a 50m fallback");
-assert.match(map,/worldAdminLinePaths\\.map/);
+assert.ok(map.includes("worldAdminLinePaths.map"),"world admin-1 polylines are rendered");
 assert.match(map,/MAX_ATLAS_ZOOM=16384/);
 assert.match(map,/featureFocusBounds/);
 assert.ok(!map.includes("tinyPoints.map"),"tiny country pins must not be drawn");
