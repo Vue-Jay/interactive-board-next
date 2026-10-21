@@ -51,6 +51,7 @@ import "./lektrusInterfaceLayout.css";
 import "./lektrusReactionVisuals.css";
 import "./lektrusSchoolDiagrams.css";
 import "./lektrusAtlas.css";
+import "./lektrusAtlasEditor.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
