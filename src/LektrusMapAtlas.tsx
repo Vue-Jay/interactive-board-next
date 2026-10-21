@@ -401,8 +401,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(!loadRoads&&!loadWaterways){
    setInfrastructure(null);setInfrastructureError("");return()=>{active=false};
   }
-  const request=loadRoads?loadAtlasOSMCoverage(externalBounds,"roads"):
-   loadAtlasOSMCoverage(externalBounds,"waterways");
+  setInfrastructure(null);setInfrastructureError("");
+  const onPartial=(data:GeoCollection)=>{if(active)setInfrastructure(data)};
+  const request=loadRoads?loadAtlasOSMCoverage(externalBounds,"roads",onPartial):
+   loadAtlasOSMCoverage(externalBounds,"waterways",onPartial);
   request.then(v=>{if(active){setInfrastructure(v);setInfrastructureError("")}})
    .catch(()=>{if(active){setInfrastructure(null);
     setInfrastructureError("Основные дороги или водотоки OSM сейчас недоступны.")}});
@@ -1213,11 +1215,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     {citiesOn&&scale>=2.5&&<div className="lektrus-atlas-natural-legend">
      <strong>Обозначения населённых пунктов</strong>
      <small>Границы регионов мира: обзорные линии Natural Earth 1:50 млн и подробные 1:10 млн уже с увеличения ×3,5.
-      Включаются с увеличения ×2,5. Для городских и муниципальных границ используются подробные данные OpenStreetMap при более крупном масштабе.
+      Включаются с увеличения ×2,5. Для городских и муниципальных границ используются данные OpenStreetMap при более крупном масштабе. Дороги подгружаются участками, начиная со среднего увеличения.
       {worldAdminError?" "+worldAdminError:""}
       {cityBoundaryError?" "+cityBoundaryError:""}</small>
      <div><span className="lektrus-atlas-legend-swatch" style={{background:"#ead5b8",borderColor:"#937b61"}}/>Границы городов</div>
-     <small>{!roadsAvailable?"Приблизьте к городу, чтобы появились основные дороги.":
+     <small>{!roadsAvailable?"Приблизьте карту примерно до ×5 для основных дорог и до ×8 для подробных улиц.":
       infrastructureError||"Основные дороги: OpenStreetMap (локальные данные, не навигационная карта)."}</small>
      <a href="https://www.openstreetmap.org/copyright" target="_blank"
       rel="noopener noreferrer">© участники OpenStreetMap, лицензия ODbL ↗</a>
