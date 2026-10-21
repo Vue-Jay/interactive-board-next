@@ -35,6 +35,13 @@ const fetch=async(url)=>{
 const external=load("lektrusAtlasExternal.ts",{fetch,AbortController,setTimeout,clearTimeout,URLSearchParams});
 assert.equal(external.canLoadCityBoundaries(bounds),true);
 assert.equal(external.canLoadCityBoundaries({west:-180,east:180,south:-85,north:85}),false);
+const worldwideSample={west:-15,east:12,south:39,north:54};
+const tiles=external.atlasOSMCoverageTiles(worldwideSample,"city-boundaries");
+assert.ok(tiles.length>=2&&tiles.length<=12,"city boundaries should load in bounded viewport tiles");
+assert.ok(tiles.every(tile=>tile.east>tile.west&&tile.north>tile.south));
+assert.equal(external.atlasOSMCoverageTiles({west:-180,east:180,south:-85,north:85},"roads").length,0,
+ "do not query worldwide geometry in a single Overpass call");
+assert.ok(external.atlasOSMCoverageTiles({west:1,east:35,south:38,north:59},"roads").length>0);
 const collection=await external.loadCityBoundaries(bounds);
 assert.equal(collection.features.length,2);
 assert.equal(collection.features[0].properties.NAME_RU,"Тестовый город");
@@ -45,6 +52,8 @@ assert.equal((await external.loadCityBoundaries(bounds)).features.length,2,"view
 const map=fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8");
 assert.match(map,/politicalColors\[s\.i\]/);
 assert.match(map,/cityBoundaryPaths\.map/);
+assert.match(map,/loadAtlasOSMCoverage\(externalBounds,"roads"\)/);
+assert.match(map,/loadAtlasOSMCoverage\(externalBounds,"city-boundaries"\)/);
 assert.match(map,/cityBoundaryError/);
 assert.match(map,/LektrusMineralSymbol name=/);
 assert.match(map,/mineralMapSymbol\(item\.commodity\.name\)/);
