@@ -633,7 +633,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     aria-pressed={coordinatesEnabled}
     onClick={()=>{
      const enabled=!coordinatesEnabled;setCoordinatesEnabled(enabled);setCoord(null);
-     onChange?.({...d,showCoordinates:enabled});
+     onChange?.({...d,mode:normalizeAtlasMode(d.mode),showCoordinates:enabled});
     }}>⌖ Координаты</button>
    <button type="button" className="lektrus-atlas-inspector-toggle" aria-expanded={inspectorOpen}
     title={inspectorOpen?"Скрыть сведения и открыть карту во всю ширину":"Открыть сведения и поиск по карте"}
