@@ -12,8 +12,8 @@ const CODE_MATCHES:ReadonlyArray<[string,readonly string[]]>=[
  ["Вольфрамовые руды",["W"]],["Молибденовые руды",["MO"]],
  ["Оловянные руды",["SN"]],["Ртутные руды",["HG"]],
  ["Асбест",["ASB"]],["Графит",["GRF"]],
- ["Поваренная соль",["HAL"]],["Фосфориты",["P"]],
- ["Калийные соли",["K"]]
+ ["Алюминиевые руды",["AL1"]],["Слюда",["MIC","MIC1","MIC2","MIC3"]],
+ ["Поваренная соль",["HAL"]]
 ];
 const schoolInk="#202528";
 export function mrdsMineralCommodity(feature:GeoFeature):{name:string;color:string}|null{
