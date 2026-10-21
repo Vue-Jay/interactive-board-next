@@ -83,7 +83,7 @@ assert.equal(cityAreaExports.cityAreaId({WIKIDATAID:"invalid"}),null);
 
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/Фильтр полезных ископаемых/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/onDoubleClick/);
-assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/mapText\(7\.5\)/);
+assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/placedMapLabels/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/selected===f\.feature/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapAtlas.tsx",import.meta.url),"utf8"),/cityAreaLoading/);
 assert.match(fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8"),/user-select:none!important/);
@@ -159,7 +159,7 @@ assert.match(map,/Единая электронная картографичес
 assert.match(map,/НЕ подтверждена/);
 assert.match(map,/shownRiverNames/);
 assert.match(map,/shownLakeNames/);
-assert.match(map,/lake-label-/);
+assert.match(map,/"lake-"+f\.id/);
 assert.match(map,/Административные единицы региона/);
 assert.ok(map.includes("onChange?.({...d,mode:value})"));
 assert.match(map,/paintRegions/);
@@ -346,7 +346,7 @@ assert.deepEqual(decluttered.map(c=>c.id),[1,3],"Major cities take visual priori
 assert.equal(places.limitCitySymbols(nearbyCities,8,10).length,3,
  "Close cities return as students zoom in");
 
-assert.match(map,/Math\.log2\(scale\)/);
+assert.match(map,/Math\.log2\(Math\.max\(1,scale\)\)/);
 assert.match(map,/lektrus-atlas-coordinate-toggle/);
 assert.match(map,/mode:normalizeAtlasMode\(d\.mode\),showCoordinates:enabled/,"legacy coordinate overlay can be disabled");
 assert.match(map,/infoTab==="sources"/);
