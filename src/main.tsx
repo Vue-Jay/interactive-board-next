@@ -1,3 +1,4 @@
+import "./cryptoUuidCompatibility";
 import { Component, useState, type FormEvent, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { Capacitor } from "@capacitor/core";
