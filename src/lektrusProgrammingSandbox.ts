@@ -23,7 +23,7 @@ self.onmessage=async function(event){
   const input=typeof data.stdin==="string"?data.stdin:"";
   if(data.language==="python"){
    report("log","Загрузка Python (Pyodide). При первом запуске необходим интернет…");
-   importScripts("https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js");
+   const {loadPyodide}=await import("https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs");
    const py=await loadPyodide({
     indexURL:"https://cdn.jsdelivr.net/pyodide/v314.0.7/full/"
    });
@@ -96,7 +96,7 @@ export const PROGRAM_SANDBOX_HTML=`<!doctype html><html lang="ru"><head><meta ch
   try{
    const blob=new Blob([workerText],{type:"text/javascript"});
    const uri=URL.createObjectURL(blob);
-   worker=new Worker(uri);
+   worker=new Worker(uri,{type:"module"});
    URL.revokeObjectURL(uri);
    worker.onmessage=function(e){
     if(!e.data||activeId!==data.runId)return;
