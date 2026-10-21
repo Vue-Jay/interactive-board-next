@@ -3,9 +3,8 @@
  * remains available for local network pages. Generated IDs remain UUID v4.
  * Never treat this as a replacement for authentication secrets or HTTPS.
  */
-export function compatibleRandomUUID():string{
+function generateUUIDv4():string{
  const api=typeof globalThis.crypto!=="undefined"?globalThis.crypto:undefined;
- if(api&&typeof api.randomUUID==="function")return api.randomUUID();
  const bytes=new Uint8Array(16);
  if(api&&typeof api.getRandomValues==="function")api.getRandomValues(bytes);
  else for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256);
@@ -14,12 +13,16 @@ export function compatibleRandomUUID():string{
  const h=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
  return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20);
 }
+export function compatibleRandomUUID():string{
+ const api=typeof globalThis.crypto!=="undefined"?globalThis.crypto:undefined;
+ return api&&typeof api.randomUUID==="function"?api.randomUUID():generateUUIDv4();
+}
 export function installRandomUUIDCompatibility():void{
  const api=typeof globalThis.crypto!=="undefined"?globalThis.crypto:undefined;
  if(!api||typeof api.randomUUID==="function")return;
  try{
   Object.defineProperty(api,"randomUUID",{
-   configurable:true,writable:true,value:compatibleRandomUUID
+   configurable:true,writable:true,value:generateUUIDv4
   });
  }catch{
   // Browser engines with a non-extensible Crypto instance still use
