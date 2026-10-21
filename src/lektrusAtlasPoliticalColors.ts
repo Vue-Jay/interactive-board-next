@@ -7,7 +7,7 @@ export const politicalAtlasPalette=[
 ] as const;
 type Polygons=number[][][][];
 /** Map geometries can contain multipart polygons and shared administrative edges. */
-function polygonRings(f:GeoFeature):number[][][]{
+function polygonRings(f:GeoFeature):number[][][][]{
  const g=f.geometry;if(!g)return [];
  if(g.type==="Polygon")return [g.coordinates as number[][][]];
  if(g.type==="MultiPolygon")return (g.coordinates as Polygons);
