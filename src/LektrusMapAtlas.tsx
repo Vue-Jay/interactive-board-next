@@ -290,9 +290,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const shapeAnchors=useMemo(()=>shapes.map(s=>({...s,anchor:featureLabelAnchor(s.feature)}))
   .filter(s=>s.anchor),[shapes]);
  const labels=useMemo(()=>shapeAnchors
-  .filter(s=>s.anchor!.area*scale*scale>360)
+  .filter(s=>s.anchor!.area*scale*scale>190)
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
-  .slice(0,scale>=12?220:scale>=3?105:45),[shapeAnchors,scale]);
+  .slice(0,scale>=12?220:scale>=3?145:85),[shapeAnchors,scale]);
  const waterTolerance=atlasWaterGeometryTolerance(Math.pow(2,Math.floor(Math.log2(scale))),detailedGeography);
  const streams=useMemo(()=>rivers?.features.filter(hasAtlasName).map((f,i)=>({
   id:i,path:mapFeaturePath(f,waterTolerance,viewport),feature:f
@@ -409,7 +409,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    labels.forEach((f,i)=>add("country-"+f.i,"country",f.name,
     f.anchor!.x,f.anchor!.y,i/500,8.2));
    if(mode==="political"){
-    capitalLabels.forEach((f,i)=>add("capital-"+f.id,"capital",russianPlaceName(f.feature)??"",
+    // Read countries before capitals: first show the political geography itself.
+    if(scale>=2.6)capitalLabels.forEach((f,i)=>add("capital-"+f.id,"capital",russianPlaceName(f.feature)??"",
      f.point![0],f.point![1],1+i/500,7.4,"start",6,-5));
     if(scale>=4)provinceLabels.forEach((f,i)=>add("province-"+f.id,"province",geoFeatureName(f.feature),
      f.anchor!.x,f.anchor!.y,2+i/500,7.1));
@@ -434,7 +435,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     .slice(0,40).forEach((f,i)=>add("stream-"+f.id,"stream",geoFeatureName(f.feature),
      f.point![0],f.point![1],5+i/500,6.8));
   }
-  return layoutAtlasLabels(candidates,scale,scale>=16?210:scale>=3?110:60);
+  return layoutAtlasLabels(candidates,scale,scale>=16?225:scale>=3?155:90);
  },[d.showLabels,mode,historical,labels,capitalLabels,cityLabels,provinceLabels,
   shownMarineNames,shownLakeNames,shownRiverNames,shownNatureNames,shownPeaks,
   auxiliaryRiverLabels,scale,position.x,position.y]);
@@ -815,7 +816,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        </g>)}
       </g>}
       {mode==="political"&&<g className="lektrus-atlas-capitals">
-       {shownCapitals.filter(f=>scale>=3||capitalLabels.some(c=>c.feature===f.feature)).map(f=><g key={"capital-"+f.id}
+       {shownCapitals.filter(f=>scale>=2.6&&(scale>=4||capitalLabels.some(c=>c.feature===f.feature))).map(f=><g key={"capital-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={e=>{e.stopPropagation();selectFeature(f.feature,alternateCapital(f.feature)?"Дополнительная столица по данным источника":"Столица государства")}}
