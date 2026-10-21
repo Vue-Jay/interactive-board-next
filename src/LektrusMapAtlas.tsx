@@ -815,7 +815,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         </path>;
        })}
       </g>
-      {provincePaths.length>0&&(mode==="political"||mode==="contour"||mode==="coordinates")&&<g className="lektrus-atlas-admin1" stroke="#a0a7a5"
+      {provincePaths.length>0&&(mode==="contour"||mode==="coordinates"||citiesOn&&scale>=2.5)&&<g className="lektrus-atlas-admin1" stroke="#a0a7a5"
        strokeWidth=".48" vectorEffect="non-scaling-stroke"
        pointerEvents={mode==="contour"&&paintRegions||mode==="political"?"visiblePainted":"none"}>
        {provincePaths.map(f=>{
@@ -891,7 +891,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <title>{geoFeatureName(f.feature)}</title>
        </g>)}
       </g>}
-      {mode==="political"&&<g className="lektrus-atlas-capitals">
+      {citiesOn&&<g className="lektrus-atlas-capitals">
        {shownCapitals.filter(f=>scale>=2.6&&(scale>=4||capitalLabels.some(c=>c.feature===f.feature))).map(f=><g key={"capital-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" role="button" tabIndex={0}
@@ -910,6 +910,35 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
          strokeDasharray={line.feature.properties?.ATLAS_KIND==="road"?"2.5 1":undefined}/>)}
        </g>}
+      {mode==="minerals"&&!localMineralDetail&&<g className="lektrus-atlas-mineral-clusters">
+       {mineralGroups.filter(group=>group.point[0]>=visibleWorld.left&&group.point[0]<=visibleWorld.right&&
+        group.point[1]>=visibleWorld.top&&group.point[1]<=visibleWorld.bottom).map(group=>{
+        const symbol=mineralMapSymbol(group.dominant),radius=group.count>=20?13:group.count>=8?11:9;
+        const choose=()=>{
+         if(group.count===1){setSelectedMineral(group.representative.feature);setSelected(null)}
+         else {
+          const next=Math.max(3.5,Math.min(128,scale*3));
+          commitCamera({scale:next,position:normalizePosition({
+           x:-(group.point[0]-450)*next,y:-(group.point[1]-225)*next},next)});
+         }
+        };
+        return <g key={"mineral-group-"+group.id}
+         transform={`translate(${group.point[0]} ${group.point[1]}) scale(${1/scale})`}
+         className="lektrus-atlas-event lektrus-atlas-mineral-group"
+         role="button" tabIndex={0}
+         onClick={e=>{e.stopPropagation();choose()}}
+         onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();choose()}}}>
+         <circle r={radius+2} fill="#fff" fillOpacity=".94" stroke="#d9bf91" strokeWidth="1.4"/>
+         <circle r={radius} fill={symbol.fill} stroke="#fff" strokeWidth=".7"/>
+         <text x="0" y="3.3" textAnchor="middle" fontSize={group.count>=10?9:10}
+          fill="#fff" stroke="#193c3b" strokeWidth=".25" paintOrder="stroke" fontWeight="800">
+          {group.count>1?String(group.count):symbol.code}</text>
+         <title>{group.count>1?
+          group.count+" записей о месторождениях в обзорной выборке USGS. Нажмите для приближения.":
+          group.dominant+" (USGS)"}</title>
+        </g>;
+       })}
+      </g>}
       {mode==="minerals"&&<g className="lektrus-atlas-mineral-points">
        {visibleMinerals.map(item=><g key={"mineral-"+item.id}
         transform={`translate(${item.point[0]} ${item.point[1]}) scale(${1/scale})`}
@@ -1064,6 +1093,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>}
     {mode==="political"&&<div className="lektrus-atlas-natural-legend">
      <strong>Столицы государств</strong>
+     <label className="lektrus-atlas-compare"><input type="checkbox" checked={citiesOn}
+      onChange={e=>onChange?.({...d,mode:"political",showCities:e.target.checked})}/>
+      Города и административные границы</label>
      <div><span className="lektrus-atlas-legend-swatch lektrus-atlas-legend-capital"/>◆ Столица по данным Natural Earth</div>
      <small>Столиц в слое: {totalCapitals}. На карте они отмечены тёмными ромбами; это не маркеры маленьких государств.</small>
      <small>Столицы показаны по Natural Earth, кроме подтверждённых исправлений: Додома (Танзания) и Сьюдад-де-ла-Пас (Экваториальная Гвинея). Для остальных стран ещё требуется актуализация по официальным сведениям.</small>
@@ -1081,9 +1113,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        {mineralTypes.map(item=><option key={item.name}>{item.name}</option>)}
       </select>
      </label>
-     <small>{!mineralsAvailable?"Приблизьте территорию для загрузки месторождений.":
-      mineralLoading?"Загрузка данных USGS…":
-      mineralError||"Показано: "+visibleMinerals.length+" месторождений (не более 350 одновременно)."}</small>
+     <small>{!localMineralDetail?
+      worldMineralsLoading?"Загрузка мирового обзора месторождений USGS…":
+      worldMineralError||"Обзорная выборка: "+worldMineralPoints.length+
+       " записей, сгруппированных в "+mineralGroups.length+" обозначений. Числа внутри значков показывают записи выборки, а не все месторождения мира. Нажмите на скопление для приближения.":
+      mineralError||"Подробные месторождения в выбранной области: "+visibleMinerals.length+"."}</small>
      {mineralGuide(mineralFilter)&&<div className="lektrus-atlas-city-data">
       <strong>Справка: {mineralFilter}</strong>
       <p><b>Группа:</b> {mineralGuide(mineralFilter)!.className}</p>
@@ -1094,12 +1128,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <div className="lektrus-atlas-mineral-legend">{mineralTypes.map(item=><div key={item.name}>
       <LektrusMineralSymbol name={item.name} size={21}/>{item.name}</div>)}</div>
      <small>Историческая база USGS: покрытие за пределами США неполное.
-      Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются. Основа каталога USGS включает исторические сведения и не является актуальным кадастром на 2026 год.
+      Обзорные группы построены по выборке, а не по полному кадастру месторождений. Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются. Основа каталога USGS включает исторические сведения и не является актуальным кадастром на 2026 год.
       Показываются только месторождения с распознаваемым типом сырья.</small>
      <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
       target="_blank" rel="noopener noreferrer">Исходная база USGS и метаданные ↗</a>
     </div>}
-    {citiesOn&&<div className="lektrus-atlas-natural-legend">
+    {citiesOn&&scale>=2.5&&<div className="lektrus-atlas-natural-legend">
      <strong>Обозначения населённых пунктов</strong>
      <small>Тонкие линии показывают регионы из Natural Earth по всему миру.
       Границы городов подгружаются из OpenStreetMap при большом увеличении и могут отсутствовать там, где они не внесены в базу.
