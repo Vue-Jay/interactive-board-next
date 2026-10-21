@@ -1233,4 +1233,4 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   </div>}
  </div>;
 }
-export default function LektrusMapAtlas({diagram,onChange}:Props){return <AtlasMap diagram={diagram} onChange={onChange}/>};
+export default function LektrusMapAtlas({diagram,onChange,editorMode}:Props){return <AtlasMap diagram={diagram} onChange={onChange} editorMode={editorMode}/>};
