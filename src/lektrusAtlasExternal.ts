@@ -259,16 +259,16 @@ export function loadWorldMineralOverview():Promise<GeoCollection>{
  * Load deterministic geographic tiles as the user navigates. Sparse/absent OSM
  * coverage remains absent rather than manufacturing city polygons.
  */
-export type AtlasOSMCoverageKind="roads"|"city-boundaries";
+export type AtlasOSMCoverageKind="roads"|"city-boundaries"|"waterways";
 export function atlasOSMCoverageTiles(bounds:ExternalBounds,kind:AtlasOSMCoverageKind):ExternalBounds[]{
  if(!sane(bounds))return [];
  const width=bounds.east-bounds.west,height=bounds.north-bounds.south;
- if(kind==="roads"?(width>46||height>29):(width>27||height>17))return [];
+ if(kind!=="city-boundaries"?(width>46||height>29):(width>27||height>17))return [];
  // Smaller tiles at high zoom avoid querying entire regions when a teacher
  // needs only city blocks or the immediate road network.
- const stepLon=kind==="roads"?(width<=9?3:width<=22?5:10):
+ const stepLon=kind!=="city-boundaries"?(width<=9?3:width<=22?5:10):
   width<=7?1.5:width<=15?3:6;
- const stepLat=kind==="roads"?(height<=7?2:height<=15?4:7):
+ const stepLat=kind!=="city-boundaries"?(height<=7?2:height<=15?4:7):
   height<=5?1:height<=11?2.5:5;
  const cx=(bounds.west+bounds.east)/2,cy=(bounds.south+bounds.north)/2;
  const tiles:ExternalBounds[]=[];
@@ -286,7 +286,7 @@ export function atlasOSMCoverageTiles(bounds:ExternalBounds,kind:AtlasOSMCoverag
   const db=Math.hypot((b.west+b.east)/2-cx,(b.south+b.north)/2-cy);
   return da-db||a.west-b.west||a.south-b.south;
  });
- return tiles.slice(0,kind==="roads"?12:12);
+ return tiles.slice(0,kind==="city-boundaries"?10:12);
 }
 export function loadAtlasOSMCoverage(bounds:ExternalBounds,kind:AtlasOSMCoverageKind):Promise<GeoCollection>{
  const tiles=atlasOSMCoverageTiles(bounds,kind);
@@ -297,13 +297,13 @@ export function loadAtlasOSMCoverage(bounds:ExternalBounds,kind:AtlasOSMCoverage
   const loaded:GeoFeature[]=[],used=new Set<string>();
   let successful=0;
   for(let i=0;i<tiles.length;i+=3){
-   const batch=await Promise.allSettled(tiles.slice(i,i+3).map(tile=>kind==="roads"?
-    loadLocalInfrastructure(tile,"roads"):loadCityBoundaries(tile)));
+   const batch=await Promise.allSettled(tiles.slice(i,i+3).map(tile=>kind==="city-boundaries"?
+    loadCityBoundaries(tile):loadLocalInfrastructure(tile,kind)));
    for(const result of batch){
     if(result.status!=="fulfilled")continue;
     successful++;
     for(const feature of result.value.features){
-     if(loaded.length>=(kind==="roads"?2600:1800))break;
+     if(loaded.length>=(kind==="city-boundaries"?1800:kind==="waterways"?3000:2600))break;
      const props=feature.properties??{};
      const code=String(props.OSM_TYPE??"way")+":"+String(props.OSM_ID??"")+":"+
       String(props.OSM_ROLE??"")+":"+JSON.stringify(
@@ -313,7 +313,7 @@ export function loadAtlasOSMCoverage(bounds:ExternalBounds,kind:AtlasOSMCoverage
     }
    }
   }
-  if(!successful)throw Error("Не удалось получить границы и дороги OSM для этой территории");
+  if(!successful)throw Error("Не удалось получить дополнительные линии OSM для этой территории");
   return {type:"FeatureCollection",features:loaded};
  });
 }
