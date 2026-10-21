@@ -1384,16 +1384,24 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      {historical&&<p>Дата: {yearLabel(markerDetails.year)}</p>}
     </div>:
     selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
-     <strong>Месторождение: {(mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"Полезное ископаемое"}</strong>
+     <strong>Запись о минеральном сырье: {(mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"Полезное ископаемое"}</strong>
      <p>Источник: Геологическая служба США, {selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
       "архивный каталог минеральных ресурсов MRDS":"каталог крупных месторождений"}.</p>
+     {selectedMineral.properties?.ATLAS_DATASET==="MRDS"&&<>
+      {typeof selectedMineral.properties.site_name==="string"&&
+       <p><strong>Название в оригинальном каталоге:</strong> {selectedMineral.properties.site_name}</p>}
+      {selectedMineral.properties.dep_id&&
+       <p><strong>Номер записи MRDS:</strong> {String(selectedMineral.properties.dep_id)}</p>}
+      {selectedMineral.properties.dev_stat&&
+       <p><strong>Статус в архивной базе (не подтверждён на 2026 год):</strong> {String(selectedMineral.properties.dev_stat)}</p>}
+     </>}
      {mineralDepositFacts(selectedMineral).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
-     {mineralGuide(mineralCommodity(selectedMineral)?.name??"")&&
+     {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"")&&
       <div className="lektrus-atlas-city-data">
        <strong>Справка о минеральном сырье</strong>
-       <p>{mineralGuide(mineralCommodity(selectedMineral)!.name)!.className}</p>
-       <p><strong>Состав:</strong> {mineralGuide(mineralCommodity(selectedMineral)!.name)!.composition}</p>
-       <p><strong>Использование:</strong> {mineralGuide(mineralCommodity(selectedMineral)!.name)!.uses}</p>
+       <p>{mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.className}</p>
+       <p><strong>Состав:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.composition}</p>
+       <p><strong>Использование:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.uses}</p>
        <small>Генетический тип конкретного месторождения приводится отдельно, если он известен из USGS.</small>
       </div>}
      <p>Координаты: {(()=>{
@@ -1401,12 +1409,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       return Array.isArray(c)?Number(c[1]).toFixed(4)+"°, "+Number(c[0]).toFixed(4)+"°":"не приведены";
      })()}</p>
      <p>Идентификатор источника: {String(selectedMineral.properties?.OBJECTID??
-      selectedMineral.properties?.objectid??selectedMineral.properties?.gid??"не указан")}</p>
+      selectedMineral.properties?.objectid??selectedMineral.properties?.objectid_1??selectedMineral.properties?.gid??"не указан")}</p>
      <small>Название месторождения, разновидности минералов, геология, оценка запасов и статус добычи
       приводятся в исходной базе, если они опубликованы. Значения не вычисляются из точки карты.</small>
      {mineralDepositSource(selectedMineral)&&<a href={mineralDepositSource(selectedMineral)!}
       target="_blank" rel="noopener noreferrer">Исходная карточка месторождения USGS ↗</a>}
-     <a href="https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"
+     <a href={selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
+      "https://energy.usgs.gov/arcgis/rest/services/Hosted/Mineral_Resource_Data_System/FeatureServer/0":
+      "https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"}
       target="_blank" rel="noopener noreferrer">Открыть набор геологических данных USGS ↗</a>
     </div>:
     selected?<div className="lektrus-atlas-description">
