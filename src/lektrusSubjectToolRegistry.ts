@@ -26,6 +26,7 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"history-family-tree",label:"Генеалогическое дерево",description:"Поколения, два родителя и редактируемые родственные связи",group:"История и обществознание · родословные",subjects:["история","обществознание"]},
   {id:"ru-sentence-builder",label:"Конструктор предложений",description:"Сборка предложения из слов и проверка порядка",group:"Русский язык · синтаксис",subjects:["русский язык"]},
   {id:"language-sentence-builder",label:"Составление предложений",description:"Интерактивное упражнение на порядок слов",group:"Иностранный язык · грамматика",subjects:["иностранный язык"]},
+  {id:"literature-analysis",label:"Анализ произведения",description:"Тема, идея, композиция и сравнение персонажей в редактируемых схемах",group:"Литература · анализ текста",subjects:["литература"]},
   {id:"civics-structure",label:"Обществознание: учебные схемы",description:"Государство, общественные институты, социальные и экономические отношения",group:"Обществознание · схемы",subjects:["обществознание"]},
   {id:"language-flashcards",label:"Карточки слов",description:"Иностранные слова, перевод, транскрипция и переворот карточки",group:"Иностранные языки · лексика",subjects:["иностранный язык"]},
   {id:"ru-morphology",label:"Морфологический разбор",description:"Часть речи, постоянные и непостоянные признаки, скрываемые ответы",group:"Русский язык · морфология",subjects:["русский язык"]},
@@ -49,7 +50,7 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
      id==="bio-organ-systems"||
      id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||
      id==="ru-morphology"||id==="ru-phonetics"||id==="ru-orthography"||
-     id==="ru-sentence-builder"||id==="language-sentence-builder"||id==="civics-structure"){
+     id==="ru-sentence-builder"||id==="language-sentence-builder"||id==="civics-structure"||id==="literature-analysis"){
     const diagram=makeSchoolDiagram(id);
     return {id:createId(),kind:"graph",text:diagram.title,
       x:x-405,y:y-225,width:810,height:450,graphFigureId:id,
