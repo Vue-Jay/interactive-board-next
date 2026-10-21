@@ -564,7 +564,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const namedFeatures=mode==="cities"?cityPoints.filter(f=>russianPlaceName(f.feature)&&matchesCityCategory(f.feature,cityCategory)).map(f=>f.feature):
   mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature),...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
-  mode==="political"?[...mapSourceFeatures,...(administrative?.features.filter(hasAtlasName)??[]),...cityPoints.filter(p=>nationalCapital(p.feature)).map(p=>p.feature)]:
+  mode==="political"?[...mapSourceFeatures,...(administrative?.features.filter(hasAtlasName)??[]),...cityPoints.filter(p=>russianPlaceName(p.feature)&&matchesCityCategory(p.feature,cityCategory)).map(p=>p.feature)]:
   mapSourceFeatures;
  const directoryEntries=useMemo(()=>historical?mapSourceFeatures.map(feature=>({
   name:atlasDisplayName(feature,snapshot.year,!modernReference),feature}))
@@ -741,7 +741,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(!point)return;
   const target=bounds&&bounds.width+bounds.height>0?
    Math.min(720/Math.max(bounds.width,.005),340/Math.max(bounds.height,.005)):
-   mode==="cities"?48:4096;
+   selectedIsCity?48:4096;
   const s=clamp(Math.max(2,target),1,MAX_ATLAS_ZOOM);
   commitCamera({scale:s,position:normalizePosition({x:-(point[0]-450)*s,y:-(point[1]-225)*s},s)});setSelected(f);if(historical)setHistoryTab("article");setSelectedLayer(explicitLayer??(mode==="cities"?"Населённый пункт":
    mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство"));
@@ -1361,7 +1361,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      {mode==="physical"&&<p>Природные объекты, ледники, водная сеть и высотные отметки Natural Earth. Региональный масштаб использует подробнее проработанные реки, озёра и побережье. Для высотной подложки используется отдельная модель рельефа Mapzen (при включении и доступности).</p>}
      {mode==="hydrography"&&<p>Реки, озёра и морские акватории Natural Earth. При сильном приближении автоматически подключается детализация 1:10 млн; если источник недоступен, сохраняется слой 1:50 млн. Нажмите на объект или найдите его по названию.</p>}
      {mode==="relief"&&<p>При включённой гипсометрии цвета рассчитаны по высотам DEM; без неё заливка обозначает тип природной области. Подписи высот берутся из атрибутов Natural Earth.</p>}
-     {mode==="cities"&&<p>Города и другие населённые пункты из Natural Earth, включая не являющиеся административными центрами. Подробный слой подключается при приближении; численность населения дана по оценке источника и может устареть.</p>}
+     {citiesOn&&<p>На политической карте столицы появляются после стран, регионы и города постепенно показываются при приближении. Городские границы берутся из OSM там, где доступны геометрии.</p>}
      {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
     </div>}
     {historical&&historyTab==="changes"&&index>0&&<label className="lektrus-atlas-compare">
