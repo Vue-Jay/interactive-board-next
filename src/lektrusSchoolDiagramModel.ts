@@ -6,13 +6,15 @@ import {createRussianSchoolDiagram,isRussianToolId,validateRussianSchoolDiagram,
 import {createApprovedSchoolDiagram,isApprovedSchoolId,validateApprovedSchoolDiagram,type ApprovedSchoolDiagram,type ApprovedSchoolId} from "./lektrusApprovedSchoolModel";
 import {defaultFurtherDiagram,isFurtherId,validFurtherDiagram,type FurtherDiagram,type FurtherSchoolId} from "./lektrusFurtherSchoolModel";
 import {defaultNextSchoolDiagram,isNextSchoolId,validNextSchoolDiagram,type NextSchoolDiagram,type NextSchoolId} from "./lektrusNextSchoolModel";
-export type SchoolDiagramId="history-atlas"|"maps-atlas"|"contour-atlas"|"bio-cell"|"bio-food-chain"|"geo-climate"|"history-timeline"|NextSchoolId|FurtherSchoolId|ApprovedSchoolId|RussianToolId|LanguageSocialId;
+export type SchoolDiagramId="bio-genetics"|"info-logic"|"history-atlas"|"maps-atlas"|"contour-atlas"|"bio-cell"|"bio-food-chain"|"geo-climate"|"history-timeline"|NextSchoolId|FurtherSchoolId|ApprovedSchoolId|RussianToolId|LanguageSocialId;
 export type CellOrganelle="wall"|"membrane"|"cytoplasm"|"nucleus"|"vacuole"|"chloroplast"|"mitochondria";
 export type FoodRole="producer"|"consumer"|"decomposer";
 export type SchoolDiagram=
  |{kind:"cell";cell:"plant"|"animal";visible:CellOrganelle[];showLabels:boolean;title:string}
  |{kind:"food-chain";title:string;organisms:{id:string;name:string;role:FoodRole}[];showRoles:boolean}
  |{kind:"climate";title:string;months:{temperature:number;precipitation:number}[];showLegend:boolean}
+ |{kind:"genetics";title:string;parentA:string;parentB:string;showAnswers:boolean}
+ |{kind:"logic";title:string;operation:"and"|"or"|"xor"|"implication"|"equivalence";showAnswers:boolean}
  |{kind:"timeline";title:string;events:{id:string;year:number;label:string}[];showEra:boolean}
  |NextSchoolDiagram|FurtherDiagram|ApprovedSchoolDiagram|RussianSchoolDiagram|LanguageSocialDiagram|AtlasDocument;
 export const months=["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"] as const;
@@ -20,7 +22,7 @@ export const organelleTitles:Record<CellOrganelle,string>={
  wall:"Клеточная стенка",membrane:"Клеточная мембрана",cytoplasm:"Цитоплазма",
  nucleus:"Ядро",vacuole:"Вакуоль",chloroplast:"Хлоропласты",mitochondria:"Митохондрии"
 };
-export const ids:SchoolDiagramId[]=["history-atlas","maps-atlas","contour-atlas","bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile","ru-morphemes","history-family-tree","language-flashcards","ru-morphology","ru-phonetics","ru-orthography","ru-sentence-builder","language-sentence-builder","civics-structure","literature-analysis"];
+export const ids:SchoolDiagramId[]=["bio-genetics","info-logic","history-atlas","maps-atlas","contour-atlas","bio-cell","bio-food-chain","geo-climate","history-timeline","ru-syntax","info-flowchart","info-place-value","bio-organ-systems","geo-relief-profile","ru-morphemes","history-family-tree","language-flashcards","ru-morphology","ru-phonetics","ru-orthography","ru-sentence-builder","language-sentence-builder","civics-structure","literature-analysis"];
 export function isSchoolDiagramId(value:string|undefined):value is SchoolDiagramId{
  return ids.includes(value as SchoolDiagramId);
 }
@@ -34,6 +36,8 @@ export function makeSchoolDiagram(id:SchoolDiagramId):SchoolDiagram{
  if(isFurtherId(id))return defaultFurtherDiagram(id);
  if(isNextSchoolId(id))return defaultNextSchoolDiagram(id);
  switch(id){
+  case "bio-genetics":return {kind:"genetics",title:"Решётка Пеннета",parentA:"Aa",parentB:"Aa",showAnswers:false};
+  case "info-logic":return {kind:"logic",title:"Таблица истинности",operation:"and",showAnswers:false};
   case "bio-cell":return {kind:"cell",cell:"plant",showLabels:true,title:"Растительная клетка",
    visible:["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]};
   case "bio-food-chain":return {kind:"food-chain",title:"Цепь питания",showRoles:false,organisms:[
@@ -50,6 +54,8 @@ export function isSchoolDiagram(value:unknown):value is SchoolDiagram{
  const d=value as Record<string,unknown>;
  if(!label(d.title,120))return false;
  switch(d.kind){
+  case "genetics":return typeof d.showAnswers==="boolean"&&typeof d.parentA==="string"&&typeof d.parentB==="string"&&/^[A-Za-z]{2}$/.test(d.parentA)&&/^[A-Za-z]{2}$/.test(d.parentB)&&d.parentA.toLowerCase()===d.parentB.toLowerCase()&&d.parentA[0].toLowerCase()===d.parentA[1].toLowerCase()&&d.parentB[0].toLowerCase()===d.parentB[1].toLowerCase();
+  case "logic":return typeof d.showAnswers==="boolean"&&["and","or","xor","implication","equivalence"].includes(d.operation as string);
   case "cell":{
    if(d.cell!=="plant"&&d.cell!=="animal"||typeof d.showLabels!=="boolean"||
       !Array.isArray(d.visible)||d.visible.length>7)return false;
