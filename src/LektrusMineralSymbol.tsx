@@ -1,85 +1,84 @@
 import type {ReactNode} from "react";
 import {isSchoolAtlasMineral,type SchoolAtlasMineral} from "./lektrusSchoolAtlasMinerals";
-
-/** Traditional educational cartographic glyphs for the limited geography
- * school-atlas legend, not a geological dictionary of every commodity.
- * A missing symbol must not become a made-up generic square or letter badge.
+/** Conventional black-and-white pictograms from the user's Russian school atlas.
+ * The same glyph geometry is used for both actual map features and the legend.
  */
-type SchoolMineralGlyph="oil"|"gas"|"coal"|"brown-coal"|"iron"|"manganese"|
- "chromium"|"nickel"|"tungsten"|"molybdenum"|"bauxite"|"copper"|
- "polymetallic"|"tin"|"gold"|"diamonds"|"apatite"|"potash"|"salt";
-
-const schoolSigns:Record<SchoolAtlasMineral,SchoolMineralGlyph>={
+type MineralGlyph="coal"|"brown"|"shale"|"oil"|"gas"|"iron"|"manganese"|"chromium"|
+ "nickel"|"tungsten"|"molybdenum"|"aluminium"|"copper"|"polymetal"|"tin"|
+ "gold"|"mercury"|"asbestos"|"graphite"|"mica"|"apatite"|"phosphate"|
+ "potash"|"salt"|"glauber"|"diamonds";
+const signs:Record<SchoolAtlasMineral,MineralGlyph>={
+ "Каменный уголь":"coal","Бурый уголь":"brown","Горючие сланцы":"shale",
  "Нефть":"oil","Природный газ":"gas",
- "Каменный уголь":"coal","Бурый уголь":"brown-coal",
- "Железная руда":"iron","Марганец":"manganese",
- "Хромиты":"chromium","Никель":"nickel",
- "Вольфрам":"tungsten","Молибден":"molybdenum",
- "Бокситы и алюминий":"bauxite","Медь":"copper",
- "Полиметаллические руды":"polymetallic",
- "Олово":"tin","Золото":"gold","Алмазы":"diamonds",
- "Апатиты и фосфориты":"apatite","Калийные соли":"potash",
- "Каменная соль":"salt"
+ "Железные руды":"iron","Марганцевые руды":"manganese","Хромовые руды":"chromium",
+ "Никелевые руды":"nickel","Вольфрамовые руды":"tungsten",
+ "Молибденовые руды":"molybdenum","Алюминиевые руды":"aluminium",
+ "Медные руды":"copper","Полиметаллические руды":"polymetal",
+ "Оловянные руды":"tin","Золото":"gold","Ртутные руды":"mercury",
+ "Асбест":"asbestos","Графит":"graphite","Слюда":"mica","Апатиты":"apatite",
+ "Фосфориты":"phosphate","Калийные соли":"potash","Поваренная соль":"salt",
+ "Глауберова соль":"glauber","Алмазы":"diamonds"
 };
-const nonmetalNames=new Set<string>([
- "Алмазы","Апатиты и фосфориты","Калийные соли","Каменная соль"
-]);
-const fuelNames=new Set<string>([
- "Нефть","Природный газ","Каменный уголь","Бурый уголь"
-]);
 export const mineralMapSymbol=(name:string)=>{
  if(!isSchoolAtlasMineral(name))return null;
- return {glyph:schoolSigns[name],
-  group:fuelNames.has(name)?"Топливные":nonmetalNames.has(name)?"Нерудные":"Рудные",
-  fill:"#24313a",conventional:true};
+ return {glyph:signs[name],fill:"#202528",conventional:true};
 };
-/** The same vector pictograms serve the legend and actual USGS map points. */
+const ink="#15191c";
 export function MineralAtlasGlyph({name}:{name:string}):ReactNode{
- const symbol=mineralMapSymbol(name);
- if(!symbol)return null;
- const ink="#20292e";
- switch(symbol.glyph){
+ const shape=mineralMapSymbol(name)?.glyph;
+ switch(shape){
   case "coal":return <rect x="-9" y="-9" width="18" height="18" fill={ink}/>;
-  case "brown-coal":return <><rect x="-9" y="-9" width="18" height="18" fill="#fff"
-   stroke={ink} strokeWidth="1.6"/><path d="M-9 -1L-1 -9M-9 8L8 -9M0 9L9 0"
-   stroke={ink} strokeWidth="2.3"/></>;
-  case "oil":return <path d="M0 -9L8.5 9H-8.5Z" fill={ink}/>;
-  case "gas":return <path d="M0 -9L8.5 9H-8.5Z" fill="#fff" stroke={ink} strokeWidth="2.2"/>;
-  case "iron":return <path d="M0 -9L9.1 8H-9.1Z" fill={ink}/>;
-  case "copper":return <rect x="-9.5" y="-4.8" width="19" height="9.6" fill={ink}/>;
-  case "gold":return <><circle r="8.2" stroke={ink} strokeWidth="1.9" fill="#fff"/>
-   <path d="M0 -8.2A8.2 8.2 0 0 0 0 8.2Z" fill={ink}/></>;
-  case "bauxite":return <><rect x="-9" y="-9" width="18" height="18" fill={ink}/>
-   <circle r="5.4" fill="#fff"/></>;
-  case "nickel":return <><path d="M-9 -7H9L0 9Z" fill={ink}/>
-   <path d="M-6.8 -5.8H6.8L0 -.6Z" fill="#fff"/></>;
-  case "manganese":return <><rect x="-9" y="-9" width="18" height="18" fill={ink}/>
-   <path d="M-6 -9L0 -2.3L6 -9Z" fill="#fff"/></>;
+  case "brown":return <><rect x="-9" y="-9" width="18" height="18" fill="white" stroke={ink} strokeWidth="2"/>
+   <path d="M-9 -3L-3 -9M-9 5L5 -9M-5 9L9 -5M3 9L9 3"
+    stroke={ink} strokeWidth="2.9"/></>;
+  case "shale":return <path d="M-11 6L-5 -6H11L5 6Z" fill={ink}/>;
+  case "oil":return <path d="M-4 -10H4L9 10H-9Z" fill={ink}/>;
+  case "gas":return <path d="M-4 -10H4L9 10H-9Z" fill="#fff" stroke={ink} strokeWidth="2.4"/>;
+  case "iron":return <path d="M0 -10L10 9H-10Z" fill={ink}/>;
+  case "manganese":return <path d="M-10 -9L0 1 10 -9 10 9H-10Z" fill={ink}/>;
   case "chromium":return <><rect x="-9" y="-9" width="18" height="18" fill={ink}/>
-   <path d="M0 -4.1L-5.5 -9H5.5Z M0 4.1L-5.5 9H5.5Z" fill="#fff"/></>;
-  case "tungsten":return <rect x="-8.5" y="-8.5" width="17" height="17"
-   fill="#fff" stroke={ink} strokeWidth="2.6"/>;
-  case "molybdenum":return <><path d="M0 -10L10 0L0 10L-10 0Z" fill={ink}/>
-   <rect x="-4.2" y="-4.2" width="8.4" height="8.4" fill="#fff"/></>;
-  case "tin":return <rect x="-9" y="-5.5" width="18" height="11"
-   rx="4.5" fill="#fff" stroke={ink} strokeWidth="3"/>;
-  case "polymetallic":return <><circle r="8.5" fill="#fff" stroke={ink} strokeWidth="2.5"/>
-   <path d="M-5.8 -5.8L5.8 5.8M5.8 -5.8L-5.8 5.8" fill="none" stroke={ink} strokeWidth="2.5"/></>;
-  case "diamonds":return <path d="M0 -9.5L9.5 0L0 9.5L-9.5 0Z" fill={ink}/>;
-  case "apatite":return <><ellipse rx="9.5" ry="6.5" fill={ink}/>
-   <path d="M-8.5 0H8.5" stroke="#fff" strokeWidth="2.5"/></>;
-  case "potash":return <><rect x="-8.5" y="-8.5" width="17" height="17" fill="#fff"
-   stroke={ink} strokeWidth="2"/><path d="M-8.5 -8.5H8.5V-3H-3V8.5H-8.5Z" fill={ink}/></>;
-  case "salt":return <><path d="M-8 -5L-2 -9H8L2 -5ZM2 -5L8 -9V5L2 9Z" fill="#e8ecee"
-    stroke={ink} strokeWidth="1.3" strokeLinejoin="round"/>
-   <rect x="-8" y="-5" width="10" height="14" fill="#fff" stroke={ink}
-    strokeWidth="1.4"/></>;
+   <path d="M-8 -8L0 0 8 -8 0 -2Z M-8 8L0 0 8 8 0 2Z" fill="#fff"/></>;
+  case "nickel":return <><path d="M-10 -9H10L0 10Z" fill={ink}/>
+   <path d="M-6 -8H6L0 -2Z" fill="#fff"/></>;
+  case "tungsten":return <rect x="-9" y="-9" width="18" height="18"
+   fill="white" stroke={ink} strokeWidth="3"/>;
+  case "molybdenum":return <><path d="M0 -11L11 0 0 11 -11 0Z" fill={ink}/>
+   <rect x="-5" y="-5" width="10" height="10" fill="white"/></>;
+  case "aluminium":return <><rect x="-9" y="-9" width="18" height="18" fill={ink}/>
+   <circle r="6.2" fill="white"/></>;
+  case "copper":return <rect x="-11" y="-5.5" width="22" height="11" fill={ink}/>;
+  case "polymetal":return <><circle r="9.5" fill={ink}/><path d="M0 0L-6 -7A9.5 9.5 0 0 1 6 -7Z M0 0L8 5A9.5 9.5 0 0 1 -8 5Z"
+   fill="white"/><circle r="2.4" fill="white"/></>;
+  case "tin":return <rect x="-10" y="-5.8" width="20" height="11.6" rx="5.8"
+   fill="white" stroke={ink} strokeWidth="3.4"/>;
+  case "gold":return <><circle r="9" fill="white" stroke={ink} strokeWidth="1.9"/>
+   <path d="M0 -9A9 9 0 0 0 0 9Z" fill={ink}/></>;
+  case "mercury":return <circle r="9" fill="white" stroke={ink} strokeWidth="4"/>;
+  case "asbestos":return <path d="M0 -11V11M-11 0H11" stroke={ink} strokeWidth="3.8" strokeLinecap="round"/>;
+  case "graphite":return <path d="M-5 10V-5L0 -10 5 -5V10Z" fill={ink}/>;
+  case "mica":return <><rect x="-9" y="-9" width="18" height="18" fill="white" stroke={ink} strokeWidth="2"/>
+   <path d="M-9 -9L9 9" stroke={ink} strokeWidth="2.5"/>
+   <path d="M-9 -9H-1L9 1V9Z" fill={ink}/></>;
+  case "apatite":return <><circle r="9" fill={ink}/>
+   <rect x="-8" y="-2.4" width="16" height="4.8" fill="white"/></>;
+  case "phosphate":return <><circle r="9" fill={ink}/>
+   <rect x="-2.3" y="-8.5" width="4.6" height="17" fill="white"/></>;
+  case "potash":return <><path d="M-10 -5L-3 -10H9V5L2 10H-10Z" fill={ink}/>
+   <path d="M-8 -4H2V8H-8Z" fill="#fff"/></>;
+  case "salt":return <><path d="M-10 -5L-3 -10H9V5L2 10H-10Z" fill="#fff"
+   stroke={ink} strokeWidth="1.6" strokeLinejoin="round"/>
+   <path d="M-10 -5H2V10H-10ZM2 -5L9 -10M2 10L9 5" stroke={ink}
+    fill="none" strokeWidth="1.8"/></>;
+  case "glauber":return <path d="M-11 2H-4V-8H5V2H11V10H-11Z" fill={ink}/>;
+  case "diamonds":return <path d="M0 -11L2 -6 7 -9 6 -3 11 -1 6 2 9 7 3 6
+   0 11 -3 6 -9 7 -6 2 -11 -1 -6 -3 -7 -9 -2 -6Z" fill={ink}/>;
+  default:return null;
  }
 }
 export function LektrusMineralSymbol({name,size=22}:{name:string;size?:number}):ReactNode{
  if(!isSchoolAtlasMineral(name))return null;
  return <svg width={size} height={size} viewBox="-12 -12 24 24"
   role="img" aria-label={name} style={{flex:"none",overflow:"visible"}}>
-   <MineralAtlasGlyph name={name}/>
+  <MineralAtlasGlyph name={name}/>
  </svg>;
 }
