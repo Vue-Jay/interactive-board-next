@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
-import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
+import type {AtlasDocument,AtlasMode,ContourStroke} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
 import {clusterMineralMapPoints} from "./lektrusAtlasMineralClusters";
 import {loadMRDSRegionalDeposits,loadMRDSWorldOverview,mrdsMineralCommodity} from "./lektrusAtlasMRDS";
@@ -76,8 +76,26 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const mineralTerrainEnabled=mineralContext&&d.hypsometry!==false;
  const [paintColor,setPaintColor]=useState("#f3b778");
  const [paintRegions,setPaintRegions]=useState(false);
+ const [contourAction,setContourAction]=useState<"fill"|"label"|"point"|"pen"|"erase">("label");
+ const [contourText,setContourText]=useState("");
+ const [legendSymbol,setLegendSymbol]=useState("●");
+ const [legendMeaning,setLegendMeaning]=useState("");
+ const contourDrawing=useRef<Array<[number,number]>>([]);
+ const contourLivePath=useRef<SVGPathElement|null>(null);
+ const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[],contourLegend=d.contourLegend??[];
+ const [contourHistory,setContourHistory]=useState<Array<{marks:typeof contourMarks;strokes:typeof contourStrokes;
+  fills:Record<string,string>}>>([]);
+ const captureContour=()=>{
+  setContourHistory(h=>[...h.slice(-19),{marks:contourMarks,strokes:contourStrokes,fills:painted}]);
+ };
+ const contourUndo=()=>{
+  const last=contourHistory[contourHistory.length-1];if(!last)return;
+  onChange?.({...d,contourMarks:last.marks,contourStrokes:last.strokes,paintedCountries:last.fills});
+  setContourHistory(h=>h.slice(0,-1));
+ };
+
  const painted=d.paintedCountries??{};
- const savePaint=(next:Record<string,string>)=>onChange?.({...d,paintedCountries:next});
+ const savePaint=(next:Record<string,string>)=>{captureContour();onChange?.({...d,paintedCountries:next})};
  const isContourTool=d.title==="Контурная карта";
  const [index,setIndex]=useState(nearestSnapshotIndex(d.year));
  const [source,setSource]=useState<GeoCollection|null>(null);
@@ -761,6 +779,35 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const zoomAt=(next:number,point=lastPointer.current)=>{
   scheduleCamera(zoomAtlasCamera(cameraRef.current,next,point));
  };
+ const contourFreehand=mode==="contour"&&contourAction==="pen"&&!!onChange;
+ const contourPoint=(p:{x:number;y:number}):[number,number]=>[
+  Math.max(-180,Math.min(180,p.x/2.5-180)),Math.max(-90,Math.min(90,90-p.y/2.5))];
+ const beginContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  e.stopPropagation();e.currentTarget.setPointerCapture(e.pointerId);
+  contourDrawing.current=[contourPoint(worldPoint(localPoint(e)))];
+  if(contourLivePath.current)contourLivePath.current.setAttribute("stroke",paintColor);
+ };
+ const moveContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(!contourDrawing.current.length)return;
+  const point=contourPoint(worldPoint(localPoint(e)));
+  const pts=contourDrawing.current,last=pts[pts.length-1];
+  if(Math.hypot(last[0]-point[0],last[1]-point[1])<.02/cameraRef.current.scale)return;
+  if(pts.length<250)pts.push(point);
+  const path=pts.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
+   return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ");
+  contourLivePath.current?.setAttribute("d",path);
+ };
+ const endContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  const points=contourDrawing.current;contourDrawing.current=[];
+  contourLivePath.current?.setAttribute("d","");
+  if(points.length<2||contourStrokes.length>=140)return;
+  captureContour();
+  const next:ContourStroke={id:globalThis.crypto?.randomUUID?.()??String(Date.now())+Math.random(),
+   points,color:paintColor};
+  onChange?.({...d,contourStrokes:[...contourStrokes,next]});
+ };
  const onPointerDown=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
   const pt=localPoint(e);
@@ -811,7 +858,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const reset=()=>{commitCamera(atlasRegionCamera(selectedRegion));setSelected(null);setCoord(null)};
  const changeRegion=(id:string)=>{setRegionId(id);setFocusedUnit("");onChange?.({...d,regionId:id})};
  const paintProvince=(feature:GeoFeature)=>{
-  if(mode!=="contour"||!paintRegions||dragged.current)return;
+  if(mode!=="contour"||contourAction!=="fill"||!paintRegions||dragged.current)return;
   const key="region:"+String(feature.properties?.adm1_code||feature.properties?.ADM1_CODE||feature.properties?.iso_3166_2||
    feature.properties?.name_ru||feature.properties?.name||geoFeatureName(feature));
   savePaint({...painted,[key]:paintColor});
@@ -823,7 +870,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  };
  const showCountry=(feature:GeoFeature)=>{
   if(mode==="contour"){
-   if(dragged.current||paintRegions)return;
+   if(dragged.current||paintRegions||contourAction!=="fill")return;
    const key=String(feature.properties?.ADM0_A3||feature.properties?.ISO_A3||geoFeatureName(feature));
    savePaint({...painted,[key]:paintColor});
    return;
@@ -865,7 +912,23 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   onChange?.({...d,mode:value});
  };
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
-  if(dragged.current||(!coordinatesEnabled&&!terrainEnabled))return;
+  if(dragged.current)return;
+  if(mode==="contour"){
+   if(!onChange||contourAction==="fill"||contourAction==="pen")return;
+   if(contourAction==="erase")return;
+   if(contourAction==="label"&&!contourText.trim())return;
+   if(contourMarks.length>=150)return;
+   const p=worldPoint(localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
+   if(p.x<0||p.x>900||p.y<0||p.y>450)return;
+   captureContour();
+   onChange({...d,contourMarks:[...contourMarks,{
+    id:globalThis.crypto?.randomUUID?.()??String(Date.now())+Math.random(),
+    lon:p.x/2.5-180,lat:90-p.y/2.5,
+    text:contourText.trim().slice(0,80),color:paintColor,
+    kind:contourAction==="label"?"label":"point"
+   }]});return;
+  }
+  if(!coordinatesEnabled&&!terrainEnabled)return;
   const p=worldPoint(localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
   if(p.x>=0&&p.x<=900&&p.y>=0&&p.y<=450){
    const lon=Math.round((p.x/900*360-180)*10000)/10000;
@@ -933,8 +996,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     <svg viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
      onClick={objectMoveMode?undefined:pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
-     onPointerDown={objectMoveMode?undefined:onPointerDown} onPointerMove={objectMoveMode?undefined:onMove}
-     onPointerUp={objectMoveMode?undefined:onPointerEnd} onPointerCancel={objectMoveMode?undefined:onPointerEnd}
+     onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}
+     onPointerMove={objectMoveMode?undefined:contourFreehand?moveContourStroke:onMove}
+     onPointerUp={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}
+     onPointerCancel={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}
      onWheel={e=>{
       if(objectMoveMode)return;
       e.stopPropagation();e.preventDefault();
@@ -1154,7 +1219,32 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <title>{item.commodity.name}, источник USGS</title>
        </g>)}
       </g>}
-      {(d.showGrid||mode==="contour")&&<LektrusAtlasGraticule scale={scale} viewport={viewport}/>}
+      {d.showGrid&&<LektrusAtlasGraticule scale={scale} viewport={viewport}/>}
+      {mode==="contour"&&<g className="lektrus-atlas-contour-work">
+       {contourStrokes.map(line=><path key={line.id} fill="none" stroke={line.color}
+        strokeWidth={2/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents={contourAction==="erase"?"stroke":"none"}
+        onClick={e=>{if(contourAction!=="erase"||!onChange)return;e.stopPropagation();captureContour();
+         onChange({...d,contourStrokes:contourStrokes.filter(v=>v.id!==line.id)})}}
+        d={line.points.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
+         return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
+       {contourMarks.map(mark=>{const [x,y]=projectGeography(mark.lon,mark.lat);
+        return <g key={mark.id} transform={`translate(${x} ${y}) scale(${1/scale})`}
+         className="lektrus-atlas-contour-mark" role="button" tabIndex={0}
+         onClick={e=>{e.stopPropagation();if(contourAction==="erase"&&onChange){captureContour();
+          onChange({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}}
+         onDoubleClick={e=>{e.stopPropagation();captureContour();onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
+         onContextMenu={e=>{e.preventDefault();e.stopPropagation();captureContour();onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
+         onKeyDown={e=>{if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();captureContour();
+          onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}}>
+         {mark.kind==="point"&&<circle r="3.5" fill={mark.color} stroke="#fff" strokeWidth="1"/>}
+         {mark.text&&<text x={mark.kind==="point"?6:0} y={mark.kind==="point"?2:0}
+          textAnchor={mark.kind==="point"?"start":"middle"} fill={mark.color} fontSize="10"
+          stroke="#fff" strokeWidth="2.3" paintOrder="stroke" fontWeight="650">{mark.text}</text>}
+         <title>{mark.text||"Условный знак"} · ПКМ или двойное нажатие для удаления</title>
+        </g>})}
+       <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={2/scale}
+        strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
+      </g>}
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
        return <g key={marker.id} transform={`translate(${point[0]} ${point[1]}) scale(${1/scale})`}
@@ -1183,9 +1273,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(cameraRef.current.scale*1.5)}>+</button>
      <button type="button" onClick={reset} title="Вписать выбранный регион">⌖</button>
      <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(cameraRef.current.scale/1.5)}>−</button>
-     <button type="button" className={d.showGrid||mode==="contour"?"active":""}
+     <button type="button" className={d.showGrid?"active":""}
       title="Меридианы и параллели поверх карты" aria-label="Меридианы и параллели"
-      aria-pressed={d.showGrid||mode==="contour"}
+      aria-pressed={d.showGrid}
       onClick={()=>onChange?.({...d,showGrid:!d.showGrid})}>▦</button>
      <label className="lektrus-atlas-zoom-slider">Масштаб
       <input type="range" min="0" max="14" step=".25"
