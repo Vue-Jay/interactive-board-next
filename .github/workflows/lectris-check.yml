@@ -41,5 +41,7 @@ jobs:
         run: node scripts/test-lektrus-history-encyclopedia.mjs
       - name: Sentence builder and civics reference regression
         run: node scripts/test-lektrus-language-social.mjs
+      - name: DNA and taxonomy diagram regression
+        run: node scripts/test-lektrus-biology-extension.mjs
       - name: Real board interface studio regression
         run: node scripts/test-lektrus-real-interface-editor.mjs
