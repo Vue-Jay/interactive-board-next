@@ -11,7 +11,6 @@ import LektrusFurtherSchoolControls from "./LektrusFurtherSchoolControls";
 import LektrusApprovedSchoolControls from "./LektrusApprovedSchoolControls";
 import LektrusRussianSchoolControls from "./LektrusRussianSchoolControls";
 import LektrusLanguageSocialControls from "./LektrusLanguageSocialControls";
-import LektrusMapAtlasControls from "./LektrusMapAtlasControls";
 import LektrusBiologyExtensionControls from "./LektrusBiologyExtensionControls";
 import LektrusLogicCircuitControls from "./LektrusLogicCircuitControls";
 import LektrusProgrammingControls from "./LektrusProgrammingControls";
@@ -50,7 +49,6 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
   return makeSchoolDiagram(id);
  });
  const isAtlas=id==="maps-atlas"||id==="contour-atlas"||id==="history-atlas";
- const [atlasSettingsOpen,setAtlasSettingsOpen]=useState(false);
  const [error,setError]=useState("");
  const set=(data:SchoolDiagram)=>{setDraft(data);setError("")};
  const finish=()=>{
@@ -69,22 +67,17 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
   <input value={draft.title} maxLength={120} onChange={e=>set({...draft,title:max(e.target.value,120)})}
    placeholder="Введите название учебной схемы"/></label>;
  return createPortal(<div className="lektrus-school-backdrop" role="presentation" onPointerDown={e=>e.stopPropagation()}>
-  <section className={"lektrus-school-editor"+(isAtlas?" lektrus-school-editor--atlas"+(atlasSettingsOpen?" lektrus-school-editor--atlas-settings-open":""):"")} role="dialog" aria-modal="true" aria-label={"Редактор: "+titles[id]}>
+  <section className={"lektrus-school-editor"+(isAtlas?" lektrus-school-editor--atlas":"")} role="dialog" aria-modal="true" aria-label={"Редактор: "+titles[id]}>
    <header className="lektrus-school-header">
     <div className={isAtlas?"lektrus-atlas-editor-heading":undefined}>{isAtlas&&<div className="lektrus-atlas-editor-kicker">ИНТЕРАКТИВНЫЙ АТЛАС</div>}<h2>{titles[id]}</h2><span>{id==="history-atlas"?"История · 5–11 класс":id==="maps-atlas"?"География · 5–11 класс":(id==="bio-dna"||id==="bio-taxonomy")?"Биология · 6–11 класс":id==="bio-division"?"Биология · 9–11 класс":id==="info-encoding"?"Информатика · 7–11 класс":id==="bio-genetics"?"Биология · 9–11 класс":id==="info-logic"?"Информатика · 8–11 класс":id==="bio-cell"?"Биология · 5–6 класс":id==="bio-food-chain"?"Биология · 5–9 класс":id==="geo-climate"?"География · 6–8 класс":id==="history-timeline"?"История · 5–9 класс":id==="ru-syntax"?"Русский язык · 5–9 класс":id.startsWith("info-")?"Информатика · 5–9 класс":id==="bio-organ-systems"?"Биология · 8 класс":id==="ru-morphemes"?"Русский язык · 5–6 класс":id.startsWith("ru-")?"Русский язык · 5–9 класс":id==="history-family-tree"?"История и обществознание · 5–9 класс":id==="literature-analysis"?"Литература · 5–11 класс":id==="civics-structure"?"Обществознание · 6–11 класс":(id==="language-flashcards"||id==="language-sentence-builder")?"Иностранный язык · 2–11 класс":"География · 6–8 класс"}</span></div>
-    {isAtlas&&<button type="button" className="lektrus-atlas-settings-toggle"
-     onClick={()=>setAtlasSettingsOpen(open=>!open)} aria-expanded={atlasSettingsOpen}
-     aria-controls="lektrus-atlas-editor-settings">{atlasSettingsOpen?"✕ Закрыть настройки":"⚙ Настройки"}</button>}
     <button type="button" className="lektrus-school-close" onClick={close} aria-label={existing?"Сохранить и закрыть":"Отменить создание"}>×</button>
    </header>
    <div className="lektrus-school-body">
-    <div className="lektrus-school-controls" id={isAtlas?"lektrus-atlas-editor-settings":undefined}
-     aria-hidden={isAtlas&&!atlasSettingsOpen?true:undefined}>
+    {!isAtlas&&<div className="lektrus-school-controls">
      {title}
      {draft.kind==="programming"&&<LektrusProgrammingControls diagram={draft} onChange={set}/>}
      {draft.kind==="logic-circuit"&&<LektrusLogicCircuitControls diagram={draft} onChange={set}/>}
      {(draft.kind==="dna"||draft.kind==="taxonomy")&&<LektrusBiologyExtensionControls diagram={draft} onChange={set}/>}
-     {draft.kind==="atlas"&&<LektrusMapAtlasControls diagram={draft} onChange={set}/>}
      {(draft.kind==="syntax"||draft.kind==="flowchart"||draft.kind==="place-value")&&<LektrusNextSchoolControls diagram={draft} onChange={set}/>}
      {(draft.kind==="organs"||draft.kind==="relief")&&<LektrusFurtherSchoolControls diagram={draft} onChange={set}/>}
      {(draft.kind==="morphemes"||draft.kind==="family-tree"||draft.kind==="flashcards")&&<LektrusApprovedSchoolControls diagram={draft} onChange={set}/>}
@@ -175,7 +168,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
        onChange={e=>set({...draft,showEra:e.target.checked})}/> Подписи эры (до н. э. / г.)</label>
       <p className="lektrus-school-hint">События автоматически упорядочиваются по годам. Для дат до нашей эры вводите отрицательный год, например −500. Нулевого года нет. Длина интервалов на рисунке условна.</p>
      </>}
-    </div>
+    </div>}
     <div className="lektrus-school-preview-area">
      {!isAtlas&&<div className="lektrus-school-preview-heading"><strong>Предпросмотр</strong><span>Так объект будет выглядеть на доске</span></div>}
      <div className="lektrus-school-preview"><LektrusSchoolDiagramView diagram={draft} onChange={isAtlas?set:undefined} editorMode={isAtlas}/></div>

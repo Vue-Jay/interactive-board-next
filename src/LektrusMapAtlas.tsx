@@ -1,10 +1,10 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
-import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
+import type {AtlasDocument,AtlasMode,ContourStroke} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
 import {clusterMineralMapPoints} from "./lektrusAtlasMineralClusters";
 import {loadMRDSRegionalDeposits,loadMRDSWorldOverview,mrdsMineralCommodity} from "./lektrusAtlasMRDS";
 import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} from "./lektrusAtlasSchoolFacts";
-import LektrusMapBase from "./LektrusMapBase";
+import LektrusMapBase,{LektrusAtlasGraticule} from "./LektrusMapBase";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
 import {SCHOOL_ATLAS_GROUPS,SCHOOL_ATLAS_MINERALS,SCHOOL_ATLAS_FUEL_MINERALS} from "./lektrusSchoolAtlasMinerals";
@@ -62,22 +62,40 @@ export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean)
  return isRussianAtlasName(found)?found.trim():direct;
 }
 function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
- const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
+ const [inspectorOpen,setInspectorOpen]=useState(!editorMode||d.mode==="contour"||d.title==="Контурная карта");
  const [coordinatesEnabled,setCoordinatesEnabled]=useState(d.showCoordinates===true||d.mode==="coordinates");
  useEffect(()=>setCoordinatesEnabled(d.showCoordinates===true||d.mode==="coordinates"),[d.showCoordinates,d.mode]);
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":normalizeAtlasMode(d.mode));
  const citiesOn=mode==="political"&&d.showCities!==false;
  const mineralContext=mode==="minerals";
  const landmarkCities=citiesOn||mineralContext;
- const hydroContext=mode==="physical"||mode==="hydrography"||mineralContext;
+ const hydroContext=mode==="physical"||mode==="hydrography"||mineralContext||mode==="contour";
  const reliefContext=mode==="physical"||mode==="relief"||mineralContext;
  // This reuses the measured relief tiles, without turning every click on
  // the mineral map into an elevation/coordinate query.
  const mineralTerrainEnabled=mineralContext&&d.hypsometry!==false;
  const [paintColor,setPaintColor]=useState("#f3b778");
  const [paintRegions,setPaintRegions]=useState(false);
+ const [contourAction,setContourAction]=useState<"fill"|"label"|"point"|"pen"|"erase">("label");
+ const [contourText,setContourText]=useState("");
+ const [legendSymbol,setLegendSymbol]=useState("●");
+ const [legendMeaning,setLegendMeaning]=useState("");
+ const contourDrawing=useRef<Array<[number,number]>>([]);
+ const contourLivePath=useRef<SVGPathElement|null>(null);
+ const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[],contourLegend=d.contourLegend??[];
+ const [contourHistory,setContourHistory]=useState<Array<{marks:typeof contourMarks;strokes:typeof contourStrokes;
+  fills:Record<string,string>}>>([]);
+ const captureContour=()=>{
+  setContourHistory(h=>[...h.slice(-19),{marks:contourMarks,strokes:contourStrokes,fills:painted}]);
+ };
+ const contourUndo=()=>{
+  const last=contourHistory[contourHistory.length-1];if(!last)return;
+  onChange?.({...d,contourMarks:last.marks,contourStrokes:last.strokes,paintedCountries:last.fills});
+  setContourHistory(h=>h.slice(0,-1));
+ };
+
  const painted=d.paintedCountries??{};
- const savePaint=(next:Record<string,string>)=>onChange?.({...d,paintedCountries:next});
+ const savePaint=(next:Record<string,string>)=>{captureContour();onChange?.({...d,paintedCountries:next})};
  const isContourTool=d.title==="Контурная карта";
  const [index,setIndex]=useState(nearestSnapshotIndex(d.year));
  const [source,setSource]=useState<GeoCollection|null>(null);
@@ -154,22 +172,36 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [position,setPosition]=useState({x:0,y:0});
  const cameraRef=useRef({scale:1,position:{x:0,y:0}});
  const cameraFrame=useRef<number|null>(null);
+ const cameraLayerRef=useRef<SVGGElement|null>(null);
+ const cameraIdleRef=useRef<ReturnType<typeof setTimeout>|null>(null);
+ const cameraTransform=(cam:{scale:number;position:{x:number;y:number}})=>
+  `translate(${cam.position.x} ${cam.position.y}) translate(450 225) scale(${cam.scale}) translate(-450 -225)`;
+ const paintCamera=(cam:{scale:number;position:{x:number;y:number}})=>{
+  cameraLayerRef.current?.setAttribute("transform",cameraTransform(cam));
+ };
+
  const lastPointer=useRef({x:450,y:225});
  const commitCamera=(camera:{scale:number;position:{x:number;y:number}})=>{
   if(cameraFrame.current!==null){cancelAnimationFrame(cameraFrame.current);cameraFrame.current=null}
-  cameraRef.current=camera;setScale(camera.scale);setPosition(camera.position);
+  if(cameraIdleRef.current!==null){clearTimeout(cameraIdleRef.current);cameraIdleRef.current=null}
+  cameraRef.current=camera;paintCamera(camera);
+  setScale(camera.scale);setPosition(camera.position);
  };
- // Dragging and wheel events can fire far more often than the monitor refresh rate.
- // Render the newest camera at most once per animation frame.
+ // Crucial performance fix: live gesture moves ONE SVG transform, not thousands
+ // of React paths, labels and DEM tiles every animation frame. Recompute complex
+ // geometry only after the interaction becomes idle.
  const scheduleCamera=(camera:{scale:number;position:{x:number;y:number}})=>{
   cameraRef.current=camera;
-  if(cameraFrame.current!==null)return;
-  cameraFrame.current=requestAnimationFrame(()=>{
-   cameraFrame.current=null;
-   setScale(cameraRef.current.scale);setPosition(cameraRef.current.position);
+  if(cameraFrame.current===null)cameraFrame.current=requestAnimationFrame(()=>{
+   cameraFrame.current=null;paintCamera(cameraRef.current);
   });
+  if(cameraIdleRef.current!==null)clearTimeout(cameraIdleRef.current);
+  cameraIdleRef.current=setTimeout(()=>{
+   cameraIdleRef.current=null;commitCamera(cameraRef.current);
+  },145);
  };
- useEffect(()=>()=>{if(cameraFrame.current!==null)cancelAnimationFrame(cameraFrame.current)},[]);
+ useEffect(()=>()=>{if(cameraFrame.current!==null)cancelAnimationFrame(cameraFrame.current);
+  if(cameraIdleRef.current!==null)clearTimeout(cameraIdleRef.current)},[]);
  const distanceBar=atlasDistanceScale(scale,position.y);
  const pointer=useRef<{x:number;y:number;fromX:number;fromY:number;id:number}|null>(null);
  const points=useRef(new Map<number,{x:number;y:number}>());
@@ -741,10 +773,40 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    y:(e.clientY-rect.top-(rect.height-450*factor)/2)/factor};
  };
  const worldPoint=(p:{x:number;y:number})=>({
-  x:450+(p.x-450-position.x)/scale,y:225+(p.y-225-position.y)/scale
+  x:450+(p.x-450-cameraRef.current.position.x)/cameraRef.current.scale,
+  y:225+(p.y-225-cameraRef.current.position.y)/cameraRef.current.scale
  });
  const zoomAt=(next:number,point=lastPointer.current)=>{
   scheduleCamera(zoomAtlasCamera(cameraRef.current,next,point));
+ };
+ const contourFreehand=mode==="contour"&&contourAction==="pen"&&!!onChange;
+ const contourPoint=(p:{x:number;y:number}):[number,number]=>[
+  Math.max(-180,Math.min(180,p.x/2.5-180)),Math.max(-90,Math.min(90,90-p.y/2.5))];
+ const beginContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  e.stopPropagation();e.currentTarget.setPointerCapture(e.pointerId);
+  contourDrawing.current=[contourPoint(worldPoint(localPoint(e)))];
+  if(contourLivePath.current)contourLivePath.current.setAttribute("stroke",paintColor);
+ };
+ const moveContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(!contourDrawing.current.length)return;
+  const point=contourPoint(worldPoint(localPoint(e)));
+  const pts=contourDrawing.current,last=pts[pts.length-1];
+  if(Math.hypot(last[0]-point[0],last[1]-point[1])<.02/cameraRef.current.scale)return;
+  if(pts.length<250)pts.push(point);
+  const path=pts.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
+   return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ");
+  contourLivePath.current?.setAttribute("d",path);
+ };
+ const endContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  const points=contourDrawing.current;contourDrawing.current=[];
+  contourLivePath.current?.setAttribute("d","");
+  if(points.length<2||contourStrokes.length>=140)return;
+  captureContour();
+  const next:ContourStroke={id:globalThis.crypto?.randomUUID?.()??String(Date.now())+Math.random(),
+   points,color:paintColor};
+  onChange?.({...d,contourStrokes:[...contourStrokes,next]});
  };
  const onPointerDown=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
@@ -753,12 +815,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   points.current.set(e.pointerId,pt);
   if(points.current.size===1){
    dragged.current=false;
-   pointer.current={id:e.pointerId,x:pt.x,y:pt.y,fromX:position.x,fromY:position.y};
+   pointer.current={id:e.pointerId,x:pt.x,y:pt.y,
+    fromX:cameraRef.current.position.x,fromY:cameraRef.current.position.y};
   }else if(points.current.size===2){
    dragged.current=true;
    const [a,b]=[...points.current.values()];
-   pinch.current={distance:Math.hypot(a.x-b.x,a.y-b.y)||1,scale,
-    position,mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
+   pinch.current={distance:Math.hypot(a.x-b.x,a.y-b.y)||1,scale:cameraRef.current.scale,
+    position:cameraRef.current.position,mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}};
   }
   // Capture only after dragging. Immediate capture would steal click/tap
   // events from countries, rivers, cities and historical markers.
@@ -785,17 +848,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   scheduleCamera({scale:cameraRef.current.scale,position:normalizePosition({x:p.fromX+pt.x-p.x,y:p.fromY+pt.y-p.y},cameraRef.current.scale)});
  };
  const onPointerEnd=(e:ReactPointerEvent<SVGSVGElement>)=>{
-  if(cameraFrame.current!==null)commitCamera(cameraRef.current);
+  if(cameraFrame.current!==null||cameraIdleRef.current!==null)commitCamera(cameraRef.current);
   points.current.delete(e.pointerId);pinch.current=null;
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const next=[...points.current.entries()][0];
   pointer.current=next?{id:next[0],x:next[1].x,y:next[1].y,
-   fromX:position.x,fromY:position.y}:null;
+   fromX:cameraRef.current.position.x,fromY:cameraRef.current.position.y}:null;
  };
  const reset=()=>{commitCamera(atlasRegionCamera(selectedRegion));setSelected(null);setCoord(null)};
  const changeRegion=(id:string)=>{setRegionId(id);setFocusedUnit("");onChange?.({...d,regionId:id})};
  const paintProvince=(feature:GeoFeature)=>{
-  if(mode!=="contour"||!paintRegions||dragged.current)return;
+  if(mode!=="contour"||contourAction!=="fill"||!paintRegions||dragged.current)return;
   const key="region:"+String(feature.properties?.adm1_code||feature.properties?.ADM1_CODE||feature.properties?.iso_3166_2||
    feature.properties?.name_ru||feature.properties?.name||geoFeatureName(feature));
   savePaint({...painted,[key]:paintColor});
@@ -807,7 +870,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  };
  const showCountry=(feature:GeoFeature)=>{
   if(mode==="contour"){
-   if(dragged.current||paintRegions)return;
+   if(dragged.current||paintRegions||contourAction!=="fill")return;
    const key=String(feature.properties?.ADM0_A3||feature.properties?.ISO_A3||geoFeatureName(feature));
    savePaint({...painted,[key]:paintColor});
    return;
@@ -849,7 +912,23 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   onChange?.({...d,mode:value});
  };
  const pickCoordinates=(e:ReactMouseEvent<SVGSVGElement>)=>{
-  if(dragged.current||(!coordinatesEnabled&&!terrainEnabled))return;
+  if(dragged.current)return;
+  if(mode==="contour"){
+   if(!onChange||contourAction==="fill"||contourAction==="pen")return;
+   if(contourAction==="erase")return;
+   if(contourAction==="label"&&!contourText.trim())return;
+   if(contourMarks.length>=150)return;
+   const p=worldPoint(localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
+   if(p.x<0||p.x>900||p.y<0||p.y>450)return;
+   captureContour();
+   onChange({...d,contourMarks:[...contourMarks,{
+    id:globalThis.crypto?.randomUUID?.()??String(Date.now())+Math.random(),
+    lon:p.x/2.5-180,lat:90-p.y/2.5,
+    text:contourText.trim().slice(0,80),color:paintColor,
+    kind:contourAction==="label"?"label":"point"
+   }]});return;
+  }
+  if(!coordinatesEnabled&&!terrainEnabled)return;
   const p=worldPoint(localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
   if(p.x>=0&&p.x<=900&&p.y>=0&&p.y<=450){
    const lon=Math.round((p.x/900*360-180)*10000)/10000;
@@ -917,8 +996,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     <svg viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
      onClick={objectMoveMode?undefined:pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
-     onPointerDown={objectMoveMode?undefined:onPointerDown} onPointerMove={objectMoveMode?undefined:onMove}
-     onPointerUp={objectMoveMode?undefined:onPointerEnd} onPointerCancel={objectMoveMode?undefined:onPointerEnd}
+     onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}
+     onPointerMove={objectMoveMode?undefined:contourFreehand?moveContourStroke:onMove}
+     onPointerUp={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}
+     onPointerCancel={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}
      onWheel={e=>{
       if(objectMoveMode)return;
       e.stopPropagation();e.preventDefault();
@@ -926,20 +1007,20 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       lastPointer.current=anchor;
       zoomAt(cameraRef.current.scale*(e.deltaY<0?1.16:1/1.16),anchor);
      }}>
-     <g transform={`translate(${position.x} ${position.y}) translate(450 225) scale(${scale}) translate(-450 -225)`}>
+     <g ref={cameraLayerRef} transform={cameraTransform({scale,position})}>
       <LektrusMapBase land={baseLand} coastline={baseCoastline} theme={mode==="minerals"?"minerals":"default"}
-       grid={d.showGrid||coordinatesEnabled||mode==="minerals"} scale={scale} viewport={viewport}
+       scale={scale} viewport={viewport}
         terrain={<LektrusAtlasTerrain enabled={terrainEnabled||mineralTerrainEnabled} scale={scale} position={position}
          onStatus={setTerrainStatus}/>}/>
       <g strokeLinejoin="round">
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
-        const fill=mode==="contour"?(painted[String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name)]||"#fafcfb"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
+        const fill=mode==="contour"?(painted[String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name)]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
          mode==="political"?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
          fillOpacity={mineralTerrainEnabled?.56:1}
-         stroke={highlighted||s.name===selectedTitle?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#839fb2":"#819fb2"}
+         stroke={highlighted||s.name===selectedTitle?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
          strokeWidth={highlighted||s.name===selectedTitle?1.9:mode==="minerals"?.4:historical&&precise===1?.75:.65}
          vectorEffect="non-scaling-stroke"
          strokeDasharray={historical&&!modernReference&&precise===1?"2.2 1.7":undefined}
@@ -1006,11 +1087,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        strokeWidth="1.1" strokeDasharray="4 2" pointerEvents="none">
        {previous.features.filter(f=>!!atlasDisplayName(f,historicalSnapshots[Math.max(0,index-1)].year,true)).map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)} vectorEffect="non-scaling-stroke"/>)}
       </g>}
-      {hydroContext&&<g>
+      {hydroContext&&<g pointerEvents={mode==="contour"?"none":undefined}>
        {marineAreas.map(f=><path key={"marine-"+f.id} d={f.path} fill="transparent" stroke="none" vectorEffect="non-scaling-stroke"
         className="lektrus-atlas-water-feature" onClick={()=>selectFeature(f.feature,"Морская акватория")}>
         <title>{geoFeatureName(f.feature)}</title></path>)}
-       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill={mineralContext?"#c4e5ed":"#a7d5ed"} fillRule="evenodd" stroke="#7bb5d1"
+       {ponds.map(l=><path key={"lake-"+l.id} d={l.path} fill={mode==="contour"?"#f2faff":mineralContext?"#c4e5ed":"#a7d5ed"} fillRule="evenodd" stroke="#7bb5d1"
         strokeWidth={atlasLakeStroke()} strokeLinejoin="round" vectorEffect="non-scaling-stroke"
         onClick={()=>selectFeature(l.feature,"Озеро")} className="lektrus-atlas-water-feature lektrus-atlas-lake">
         <title>{geoFeatureName(l.feature)}</title></path>)}
@@ -1021,8 +1102,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <path d={l.path} fill="none" stroke="transparent" strokeWidth="8"
          vectorEffect="non-scaling-stroke" pointerEvents="stroke"
          strokeLinecap="round" strokeLinejoin="round"/>
-        <path d={l.path} fill="none" stroke={mineralContext?"#64a5be":"#4c9bc8"} opacity={mineralContext?.85:1}
-         strokeWidth={mineralContext?atlasRiverStroke(l.feature)*.85:atlasRiverStroke(l.feature,mode==="hydrography")}
+        <path d={l.path} fill="none" stroke={mode==="contour"?"#9bbdcd":mineralContext?"#64a5be":"#4c9bc8"} opacity={mode==="contour"?.72:mineralContext?.85:1}
+         strokeWidth={mode==="contour"?.4:mineralContext?atlasRiverStroke(l.feature)*.85:atlasRiverStroke(l.feature,mode==="hydrography")}
          strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
          className="lektrus-atlas-river-ink" pointerEvents="none"/>
         <title>{geoFeatureName(l.feature)}</title></g>)}
@@ -1138,6 +1219,32 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <title>{item.commodity.name}, источник USGS</title>
        </g>)}
       </g>}
+      {d.showGrid&&<LektrusAtlasGraticule scale={scale} viewport={viewport}/>}
+      {mode==="contour"&&<g className="lektrus-atlas-contour-work">
+       {contourStrokes.map(line=><path key={line.id} fill="none" stroke={line.color}
+        strokeWidth={2/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents={contourAction==="erase"?"stroke":"none"}
+        onClick={e=>{if(contourAction!=="erase"||!onChange)return;e.stopPropagation();captureContour();
+         onChange({...d,contourStrokes:contourStrokes.filter(v=>v.id!==line.id)})}}
+        d={line.points.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
+         return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
+       {contourMarks.map(mark=>{const [x,y]=projectGeography(mark.lon,mark.lat);
+        return <g key={mark.id} transform={`translate(${x} ${y}) scale(${1/scale})`}
+         className="lektrus-atlas-contour-mark" role="button" tabIndex={0}
+         onClick={e=>{e.stopPropagation();if(contourAction==="erase"&&onChange){captureContour();
+          onChange({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}}
+         onDoubleClick={e=>{e.stopPropagation();captureContour();onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
+         onContextMenu={e=>{e.preventDefault();e.stopPropagation();captureContour();onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
+         onKeyDown={e=>{if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();captureContour();
+          onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}}>
+         {mark.kind==="point"&&<circle r="3.5" fill={mark.color} stroke="#fff" strokeWidth="1"/>}
+         {mark.text&&<text x={mark.kind==="point"?6:0} y={mark.kind==="point"?2:0}
+          textAnchor={mark.kind==="point"?"start":"middle"} fill={mark.color} fontSize="10"
+          stroke="#fff" strokeWidth="2.3" paintOrder="stroke" fontWeight="650">{mark.text}</text>}
+         <title>{mark.text||"Условный знак"} · ПКМ или двойное нажатие для удаления</title>
+        </g>})}
+       <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={2/scale}
+        strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
+      </g>}
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
        return <g key={marker.id} transform={`translate(${point[0]} ${point[1]}) scale(${1/scale})`}
@@ -1166,6 +1273,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(cameraRef.current.scale*1.5)}>+</button>
      <button type="button" onClick={reset} title="Вписать выбранный регион">⌖</button>
      <button type="button" title="Уменьшить масштаб" onClick={()=>zoomAt(cameraRef.current.scale/1.5)}>−</button>
+     <button type="button" className={d.showGrid?"active":""}
+      title="Меридианы и параллели поверх карты" aria-label="Меридианы и параллели"
+      aria-pressed={d.showGrid}
+      onClick={()=>onChange?.({...d,showGrid:!d.showGrid})}>▦</button>
      <label className="lektrus-atlas-zoom-slider">Масштаб
       <input type="range" min="0" max="14" step=".25"
        aria-label="Уровень детализации карты"
@@ -1186,7 +1297,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        mode==="physical"?"Изучайте материки, океаны, горные системы, реки, озёра и высоты. Приближайте территорию, чтобы увидеть больше подписей и водных объектов.":
        
        mode==="minerals"?"Условные знаки показывают документированные месторождения. Крупные города, реки и приглушённый рельеф помогают определить положение объектов; подложка не обозначает запасы сырья.":
-       mode==="contour"?"Используйте контурную карту для заданий по расположению государств и объектов. Можно включать координаты и раскрашивать территории.":
+       mode==="contour"?"Наносите подписи, условные знаки, линии и тематическую заливку, работайте с легендой. Карту можно приближать и перемещать.":
        "Выберите период и территорию, чтобы изучить исторические изменения. Границы исторических эпох являются научными реконструкциями."}</p>
       {modernBorders&&mode==="political"&&<p className="lektrus-atlas-study-note">
        Государственные границы показаны по российскому варианту картографической базы Natural Earth RUS.
@@ -1213,6 +1324,33 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <small>{regionId==="russia"||regionId==="rf-far-east"?"Россия пересекает 180-й меридиан, части её территории представлены у обоих краёв мировой проекции.":
       "Регион изменяет область просмотра, но не подменяет географические границы."}</small>
     </div>
+    {(historical||d.markers.length>0)&&onChange&&<details className="lektrus-atlas-own-markers">
+     <summary>Мои метки и события ({d.markers.length})</summary>
+     <small>Метки с географическими координатами хранятся с доской. Их можно исправлять и удалять.</small>
+     {d.markers.map(mark=><div key={mark.id} className="lektrus-atlas-own-marker">
+      <label>Название <input maxLength={80} value={mark.title}
+       onChange={e=>onChange({...d,markers:d.markers.map(m=>m.id===mark.id?{...m,title:e.target.value}:m)})}/></label>
+      <div className="lektrus-atlas-marker-numbers">
+       {(["lat","lon","year"] as const).map(key=><label key={key}>
+        {key==="lat"?"Широта":key==="lon"?"Долгота":"Год"}
+        <input type="number" step={key==="year"?1:.01} value={mark[key]}
+         min={key==="lat"?-90:key==="lon"?-180:-123000}
+         max={key==="lat"?90:key==="lon"?180:2100}
+         onChange={e=>{const value=Number(e.target.value);if(!Number.isFinite(value))return;
+          const limit=key==="lat"?90:key==="lon"?180:2100;
+          const minimum=key==="lat"?-90:key==="lon"?-180:-123000;
+          onChange({...d,markers:d.markers.map(m=>m.id===mark.id?{...m,[key]:
+           Math.max(minimum,Math.min(limit,key==="year"?Math.round(value):value))}:m)})}}/>
+       </label>)}
+      </div>
+      <label>Пояснение <textarea rows={2} maxLength={300} value={mark.description}
+       onChange={e=>onChange({...d,markers:d.markers.map(m=>m.id===mark.id?{...m,description:e.target.value}:m)})}/></label>
+      <button type="button" onClick={()=>onChange({...d,markers:d.markers.filter(m=>m.id!==mark.id)})}>Удалить метку</button>
+     </div>)}
+     <button type="button" disabled={d.markers.length>=40}
+      onClick={()=>onChange({...d,markers:[...d.markers,{id:globalThis.crypto?.randomUUID?.()??String(Date.now()),
+       title:"Новая метка",lat:0,lon:0,year:snapshot.year,description:""}]})}>+ Добавить метку</button>
+    </details>}
     {terrainEnabled&&terrainPick&&<div className="lektrus-atlas-description">
      <strong>Высота выбранной точки</strong>
      <p>{Math.abs(terrainPick.lat).toFixed(4)}° {terrainPick.lat>=0?"с. ш.":"ю. ш."},
@@ -1355,17 +1493,70 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <small>В фильтре «Другие города и посёлки» отображаются не административные центры, а населённые пункты категории Populated place. Начиная с увеличения ×4 подключается база 1:10 млн.</small>
      <small>Размер символа зависит от оценочной численности населения. Русские названия берутся из атрибутов источника. Элементы без установленного русского названия не показываются.</small>
     </div>}
-    {mode==="contour"&&<div className="lektrus-atlas-paint-tools">
-     <strong>Контурная карта</strong>
-     {administrative&&<label className="lektrus-atlas-compare">
-      <input type="checkbox" checked={paintRegions} onChange={e=>setPaintRegions(e.target.checked)}/>
-      Закрашивать регионы вместо стран
+    {mode==="contour"&&<div className="lektrus-atlas-paint-tools lektrus-atlas-contour-panel">
+     <strong>Рабочая контурная карта</strong>
+     <small>Пустая карта для школьного задания. На ней нет готовых названий: наносите только то, что требуется в задании.</small>
+     <label>Название и задание
+      <textarea rows={2} maxLength={240} value={d.contourTask??""}
+       placeholder="Например: обозначьте крупные реки и горные системы Евразии"
+       onChange={e=>onChange?.({...d,contourTask:e.target.value})}/>
+     </label>
+     <label>Школьная тема
+      <select aria-label="Тема контурной карты" defaultValue=""
+       onChange={e=>{if(e.target.value)onChange?.({...d,contourTask:e.target.value})}}>
+       <option value="">Выберите шаблон задания</option>
+       <option value="5 класс: отметьте географические открытия и подпишите материки, океаны и маршруты экспедиций.">5 класс · Открытия и материки</option>
+       <option value="6 класс: подпишите океаны, крупные реки, озёра, горные системы и равнины по школьному атласу.">6 класс · Гидросфера и рельеф</option>
+       <option value="7 класс: отметьте крупнейшие природные объекты и государства изучаемого материка, оформите легенду.">7 класс · Материки и страны</option>
+       <option value="8 класс: отметьте на карте России крупные горные системы, равнины, речные бассейны и природные зоны.">8 класс · Природа России</option>
+       <option value="9 класс: обозначьте экономические районы России, крупные города и изучаемые месторождения условными знаками.">9 класс · Хозяйство России</option>
+      </select>
+     </label>
+     <div className="lektrus-contour-toolstrip" role="group" aria-label="Инструменты контурной карты">
+      {([["label","Подпись"],["point","Знак"],["pen","Карандаш"],["fill","Заливка"],["erase","Ластик"]] as const)
+       .map(([key,title])=><button key={key} type="button"
+        aria-pressed={contourAction===key} className={contourAction===key?"active":""}
+        onClick={()=>setContourAction(key)}>{title}</button>)}
+     </div>
+     {(contourAction==="label"||contourAction==="point")&&<label>Подпись объекта
+      <input maxLength={80} value={contourText} onChange={e=>setContourText(e.target.value)}
+       placeholder={contourAction==="label"?"Например: Волга":"Например: 1 или город"}/>
      </label>}
-     <label>Цвет маркера <input type="color" value={paintColor}
-      onChange={e=>setPaintColor(e.target.value)} aria-label="Цвет закраски"/></label>
-     <button type="button" onClick={()=>setPaintColor("#fafcfb")}>Ластик заливки</button>
-     <button type="button" onClick={()=>savePaint({})}>Очистить все заливки</button>
-     <small>Выберите цвет и нажимайте на страну или регион. Для работы с регионами сначала выберите территорию. Заливки сохраняются с доской.</small>
+     {contourAction==="fill"&&administrative&&<label className="lektrus-atlas-compare">
+      <input type="checkbox" checked={paintRegions} onChange={e=>setPaintRegions(e.target.checked)}/>
+      Раскрашивать административные регионы
+     </label>}
+     {contourAction==="fill"&&<small>Нажимайте на территорию для заливки. Цвет применяется только к выбранной стране или региону.</small>}
+     {contourAction==="pen"&&<small>Проведите линию по карте, чтобы начертить маршрут, обозначить течение или обвести объект.</small>}
+     {contourAction==="erase"&&<small>Нажмите на нарисованную линию или подпись, чтобы удалить её. Для заливки вернитесь в режим «Заливка».</small>}
+     <label className="lektrus-contour-palette">Цвет работы
+      <input type="color" aria-label="Цвет обозначений" value={paintColor}
+       onChange={e=>setPaintColor(e.target.value)}/>
+      <button type="button" onClick={()=>setPaintColor("#286baf")}>Синий</button>
+      <button type="button" onClick={()=>setPaintColor("#30343a")}>Чёрный</button>
+      <button type="button" onClick={()=>setPaintColor("#ba5b42")}>Красный</button>
+     </label>
+     <div className="lektrus-contour-edit-actions">
+      <button type="button" disabled={!contourHistory.length} onClick={contourUndo}>↶ Отменить</button>
+      <button type="button" onClick={()=>{captureContour();onChange?.({...d,contourMarks:[],contourStrokes:[],paintedCountries:{}})}}>Очистить работу</button>
+     </div>
+     <strong>Условные обозначения</strong>
+     <small>Мелкие объекты можно обозначать цифрами и расшифровывать в легенде.</small>
+     <div className="lektrus-contour-legend-add">
+      <input aria-label="Знак в легенде" maxLength={12} value={legendSymbol}
+       onChange={e=>setLegendSymbol(e.target.value)}/>
+      <input aria-label="Расшифровка знака" maxLength={90} value={legendMeaning}
+       placeholder="Например: месторождение нефти" onChange={e=>setLegendMeaning(e.target.value)}/>
+      <button type="button" disabled={!legendSymbol.trim()||!legendMeaning.trim()||contourLegend.length>=30}
+       onClick={()=>{onChange?.({...d,contourLegend:[...contourLegend,{id:globalThis.crypto?.randomUUID?.()??String(Date.now()),
+        symbol:legendSymbol.trim(),meaning:legendMeaning.trim()}]});setLegendMeaning("")}}>+</button>
+     </div>
+     {contourLegend.map(item=><div className="lektrus-contour-legend-row" key={item.id}>
+      <b>{item.symbol}</b><span>{item.meaning}</span>
+      <button type="button" aria-label={"Удалить из легенды "+item.meaning}
+       onClick={()=>onChange?.({...d,contourLegend:contourLegend.filter(v=>v.id!==item.id)})}>×</button>
+     </div>)}
+     <small>Подписи, линии, легенда и заливки сохраняются с объектом доски. Для удаления подписи можно также дважды нажать или использовать ПКМ.</small>
     </div>}
     {mode!=="contour"&&!historical&&<label>Поиск объектов
      <input value={search} onChange={e=>setSearch(e.target.value)}
@@ -1560,7 +1751,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      {mode==="hydrography"&&<p>Реки, озёра и морские акватории Natural Earth. При сильном приближении автоматически подключается детализация 1:10 млн; если источник недоступен, сохраняется слой 1:50 млн. Нажмите на объект или найдите его по названию.</p>}
      {mode==="relief"&&<p>При включённой гипсометрии цвета рассчитаны по высотам DEM; без неё заливка обозначает тип природной области. Подписи высот берутся из атрибутов Natural Earth.</p>}
      {citiesOn&&<p>На политической карте столицы появляются после стран, регионы и города постепенно показываются при приближении. Городские границы берутся из OSM там, где доступны геометрии.</p>}
-     {mode==="contour"&&<p>Названия скрыты: можно дать ученику задание подписать страны или выделить границы средствами доски.</p>}
+     {mode==="contour"&&<p>Школьная контурная карта: готовые названия скрыты. Подписывайте объекты, наносите условные знаки и маршруты, выполняйте цветовую заливку и оформляйте легенду непосредственно на карте.</p>}
     </div>}
     {historical&&historyTab==="changes"&&index>0&&<label className="lektrus-atlas-compare">
      <input type="checkbox" checked={compare} onChange={e=>setCompare(e.target.checked)}/>

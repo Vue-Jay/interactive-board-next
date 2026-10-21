@@ -11,9 +11,12 @@ export function normalizeAtlasDocument(document:AtlasDocument):AtlasDocument{
 }
 export const atlasModesFor=(subject:AtlasSubject)=>atlasModes.filter(m=>subject==="history"?m.id==="historical"||m.id==="events":m.id!=="historical"&&m.id!=="events");
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
+export type ContourMark={id:string;lat:number;lon:number;text:string;kind:"label"|"point";color:string};
+export type ContourStroke={id:string;points:Array<[number,number]>;color:string};
 export type AtlasDocument={
  kind:"atlas";title:string;mode:AtlasMode;scope?:AtlasSubject;year:number;showLabels:boolean;
  showGrid:boolean;showCoordinates?:boolean;showCities?:boolean;showEvents:boolean;markers:AtlasMarker[];borderView?:"source"|"russian";regionId?:string;hypsometry?:boolean;cityMinPopulation?:number;cityCategory?:"all"|"capitals"|"regional"|"ordinary";paintedCountries?:Record<string,string>;
+ contourMarks?:ContourMark[];contourStrokes?:ContourStroke[];contourTask?:string;contourLegend?:Array<{id:string;symbol:string;meaning:string}>;
 };
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
  {id:"political",title:"Политическая",hint:"Современные государства, названия и границы"},
@@ -195,6 +198,30 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
    (v.hypsometry!==undefined&&typeof v.hypsometry!=="boolean")||
    (v.cityMinPopulation!==undefined&&(typeof v.cityMinPopulation!=="number"||![0,50000,250000,1000000].includes(v.cityMinPopulation)))||
    (v.cityCategory!==undefined&&!["all","capitals","regional","ordinary"].includes(String(v.cityCategory))))return false;
+ if(v.contourTask!==undefined&&!isText(v.contourTask,240,true))return false;
+ if(v.contourMarks!==undefined){
+  if(!Array.isArray(v.contourMarks)||v.contourMarks.length>150)return false;
+  if(v.contourMarks.some((m:ContourMark)=>!m||!isText(m.id,64)||
+   !isText(m.text,80,true)||!["label","point"].includes(m.kind)||
+   !Number.isFinite(m.lat)||m.lat< -90||m.lat>90||
+   !Number.isFinite(m.lon)||m.lon< -180||m.lon>180||
+   typeof m.color!=="string"||!/^#[0-9a-fA-F]{6}$/.test(m.color)))return false;
+  if(new Set(v.contourMarks.map((m:ContourMark)=>m.id)).size!==v.contourMarks.length)return false;
+ }
+ if(v.contourStrokes!==undefined){
+  if(!Array.isArray(v.contourStrokes)||v.contourStrokes.length>140||
+   v.contourStrokes.some((line:ContourStroke)=>!line||!isText(line.id,64)||
+    typeof line.color!=="string"||!/^#[0-9a-fA-F]{6}$/.test(line.color)||
+    !Array.isArray(line.points)||line.points.length<2||line.points.length>250||
+    line.points.some(point=>!Array.isArray(point)||point.length!==2||
+     !Number.isFinite(point[0])||Math.abs(point[0])>180||
+     !Number.isFinite(point[1])||Math.abs(point[1])>90)))return false;
+ }
+ if(v.contourLegend!==undefined){
+  if(!Array.isArray(v.contourLegend)||v.contourLegend.length>30||
+   v.contourLegend.some((x:{id:string;symbol:string;meaning:string})=>!x||
+    !isText(x.id,64)||!isText(x.symbol,12)||!isText(x.meaning,90)))return false;
+ }
  if(v.paintedCountries!==undefined){
   if(!v.paintedCountries||typeof v.paintedCountries!=="object"||Array.isArray(v.paintedCountries))return false;
   const entries=Object.entries(v.paintedCountries as Record<string,unknown>);
