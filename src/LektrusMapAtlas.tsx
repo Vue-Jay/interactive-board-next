@@ -62,7 +62,7 @@ export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean)
  return isRussianAtlasName(found)?found.trim():direct;
 }
 function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
- const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
+ const [inspectorOpen,setInspectorOpen]=useState(!editorMode||d.mode==="contour"||d.title==="Контурная карта");
  const [coordinatesEnabled,setCoordinatesEnabled]=useState(d.showCoordinates===true||d.mode==="coordinates");
  useEffect(()=>setCoordinatesEnabled(d.showCoordinates===true||d.mode==="coordinates"),[d.showCoordinates,d.mode]);
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":normalizeAtlasMode(d.mode));
