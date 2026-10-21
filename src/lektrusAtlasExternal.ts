@@ -32,8 +32,7 @@ export function loadLocalInfrastructure(b:ExternalBounds,kind:"roads"|"waterways
  const box=[b.south,b.west,b.north,b.east].map(x=>Number(x.toFixed(5))).join(",");
  const overpass='[out:json][timeout:15];('+
   (kind==="roads"?'way["highway"~"^(motorway|trunk|primary)$"]('+box+');':
-   'way["waterway"~"^(river|stream|canal)$"]["name:ru"]('+box+');'+
-   'way["waterway"~"^(river|stream|canal)$"]["name"]('+box+');')+
+   'way["waterway"~"^(river|stream|canal)$"]('+box+');')+
   ');out geom;';
  // The Russian full-planet mirror is preferred; overloaded public servers
  // remain fallbacks. Never draw invented roads when all mirrors fail.
