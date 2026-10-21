@@ -114,4 +114,26 @@ assert.ok(stylesheet.includes('g[role="button"]:focus{outline:none}'));
 assert.ok(map.includes("lektrus-atlas-user-pin"));
 assert.ok(map.includes("loadMRDSWorldOverview("));
 
+// Mineral-resource maps now share factual geographical layers with the
+// physical/political atlas, without turning on unrelated roads or city outlines.
+assert.ok(map.includes('const landmarkCities=citiesOn||mineralContext'));
+assert.ok(map.includes('const hydroContext=mode==="physical"||mode==="hydrography"||mineralContext'));
+assert.ok(map.includes('const reliefContext=mode==="physical"||mode==="relief"||mineralContext'));
+assert.ok(map.includes('["rivers",!detailedGeography&&hydroContext]'));
+assert.ok(map.includes('["cities",landmarkCities&&!detailedGeography]'));
+assert.ok(map.includes('["regions",!detailedGeography&&reliefContext]'));
+assert.ok(map.includes('cityPopulation(f.feature)>=mineralCityFloor'));
+assert.ok(map.includes('russianPlaceName(f.feature)??""'));
+assert.ok(map.includes('shownRiverNames.slice(0,scale<2?20:scale<6?42:65)'));
+assert.ok(map.includes('className="lektrus-atlas-mineral-landmarks"'));
+assert.ok(map.includes('enabled={terrainEnabled||mineralTerrainEnabled}'));
+assert.ok(map.includes('fillOpacity={mineralTerrainEnabled?.56:1}'));
+assert.ok(map.includes('checked={d.hypsometry!==false}'));
+assert.ok(map.includes('mineralContext?atlasRiverStroke(l.feature)*.85'));
+assert.ok(map.indexOf('className="lektrus-atlas-mineral-points"')>
+ map.indexOf('className="lektrus-atlas-map-labels"'),
+ "Deposit symbols must remain above context labels");
+assert.ok(map.includes('const roadTiles=citiesOn?')&&map.includes('const cityTiles=citiesOn?'),
+ "Mineral orientation landmarks must not trigger expensive OSM road/city-boundary fetching");
+
 console.log("Atlas overview: six-world-zone USGS sampling, genuine mineral groups and city-political merger passed.");
