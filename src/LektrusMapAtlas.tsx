@@ -6,10 +6,11 @@ import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} f
 import LektrusMapBase from "./LektrusMapBase";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
+import {SCHOOL_ATLAS_GROUPS,SCHOOL_ATLAS_MINERALS,SCHOOL_ATLAS_FUEL_MINERALS} from "./lektrusSchoolAtlasMinerals";
 import {fetchCityArea,cityAreaId,type AtlasCityArea} from "./lektrusAtlasCityArea";
 import {mineralGuide} from "./lektrusAtlasMineralGuide";
-import {loadLocalInfrastructure,atlasOSMCoverageTiles,loadAtlasOSMCoverage,loadMineralDeposits,loadWorldMineralOverview,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
- canLoadLocalRoads,canLoadMinerals,externalBBoxKey,type ExternalBounds} from "./lektrusAtlasExternal";
+import {atlasOSMCoverageTiles,loadAtlasOSMCoverage,loadMineralDeposits,loadWorldMineralOverview,mineralCommodity,mineralTypes,mineralDepositFacts,mineralDepositSource,
+ canLoadMinerals,externalBBoxKey,type ExternalBounds} from "./lektrusAtlasExternal";
 import {russianPlaceName,nationalCapital,alternateCapital,cityPopulation,chooseCityLabels,limitCitySymbols,applyVerifiedCapitalUpdates2026,capitalsForCountry,matchesCityCategory,type CityCategory} from "./lektrusAtlasPlaces";
 import LektrusAtlasTerrain,{sampleTerrainElevation,type TerrainStatus} from "./LektrusAtlasTerrain";
 import {atlasRiverStroke,atlasLakeStroke,atlasGlacierStroke,atlasWaterGeometryTolerance,atlasRiverLabelRank} from "./lektrusAtlasHydro";
@@ -134,7 +135,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [regionId,setRegionId]=useState(d.regionId??"world");
  const selectedRegion=findAtlasRegion(regionId);
  const detailedGeography=scale>=3||regionId!=="world";
- const veryDetailedHydro=(mode==="physical"||mode==="hydrography")&&scale>=24;
+ const veryDetailedHydro=(mode==="physical"||mode==="hydrography")&&scale>=4;
  const detailedCities=citiesOn&&scale>=4;
  const [objectMoveMode,setObjectMoveMode]=useState(false);
  const [position,setPosition]=useState({x:0,y:0});
@@ -284,7 +285,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    setWorldAdminLines(null);setWorldAdminError("");return()=>{active=false};
   }
   setWorldAdminError("");
-  const selectedLayer=scale>=12?"admin-world-lines":"admin-world-overview";
+  const selectedLayer=scale>=3.5?"admin-world-lines":"admin-world-overview";
   loadAtlasLayer(selectedLayer).then(data=>{if(active){
    setWorldAdminLines(data);setWorldAdminError("");
   }}).catch(()=>{
@@ -298,7 +299,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     setWorldAdminError("Не удалось загрузить границы регионов Natural Earth.");}
   });
   return()=>{active=false};
- },[citiesOn,scale>=2.5,scale>=12,refresh]);
+ },[citiesOn,scale>=2.5,scale>=3.5,refresh]);
  const mapSource=historical||mode==="political"||mode==="contour"||mode==="minerals"?source:null;
  const highDetail=modernBorders&&(russianView||!!detail&&scale>=5);
  const precision=highDetail?(scale>=8?.00015:.08):modernBorders?.13:.10;
@@ -385,26 +386,28 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  };
  const externalKey=externalBBoxKey(externalBounds);
  const roadTiles=citiesOn?atlasOSMCoverageTiles(externalBounds,"roads"):[];
+ const waterwayTiles=mode==="physical"?atlasOSMCoverageTiles(externalBounds,"waterways"):[];
  const cityTiles=citiesOn?atlasOSMCoverageTiles(externalBounds,"city-boundaries"):[];
  const roadTileKey=roadTiles.map(externalBBoxKey).sort().join("|");
+ const waterwayTileKey=waterwayTiles.map(externalBBoxKey).sort().join("|");
  const cityTileKey=cityTiles.map(externalBBoxKey).sort().join("|");
  const roadsAvailable=roadTiles.length>0;
  const mineralsAvailable=canLoadMinerals(externalBounds);
  useEffect(()=>{
   let active=true;
   const loadRoads=citiesOn&&!!roadTileKey;
-  const loadWaterways=(mode==="hydrography"||mode==="physical")&&canLoadLocalRoads(externalBounds);
+  const loadWaterways=mode==="physical"&&!!waterwayTileKey;
   if(!loadRoads&&!loadWaterways){
    setInfrastructure(null);setInfrastructureError("");return()=>{active=false};
   }
   const request=loadRoads?loadAtlasOSMCoverage(externalBounds,"roads"):
-   loadLocalInfrastructure(externalBounds,"waterways");
+   loadAtlasOSMCoverage(externalBounds,"waterways");
   request.then(v=>{if(active){setInfrastructure(v);setInfrastructureError("")}})
    .catch(()=>{if(active){setInfrastructure(null);
     setInfrastructureError("Основные дороги или водотоки OSM сейчас недоступны.")}});
   return()=>{active=false};
  // eslint-disable-next-line react-hooks/exhaustive-deps
- },[mode,roadTileKey,externalKey,citiesOn]);
+ },[mode,roadTileKey,waterwayTileKey,citiesOn]);
  useEffect(()=>{
   let active=true;
   if(mode!=="minerals"||!mineralsAvailable){
@@ -423,7 +426,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  },[mode,externalKey,mineralsAvailable]);
  const auxiliaryDetailZoom=Math.pow(2,Math.floor(Math.log2(scale)));
  const auxiliaryLines=useMemo(()=>infrastructure?.features.flatMap((feature,id)=>{
-  const path=mapFeaturePath(feature,Math.max(.00008,.55/auxiliaryDetailZoom),viewport);
+  const path=mapFeaturePath(feature,Math.max(.00003,.22/auxiliaryDetailZoom),viewport);
   return path?[{id,path,feature}]:[];
  })??[],[infrastructure,auxiliaryDetailZoom,viewport]);
  const auxiliaryRiverLabels=useMemo(()=>infrastructure?.features
@@ -1172,7 +1175,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       <select aria-label="Фильтр полезных ископаемых" value={mineralFilter}
        onChange={e=>{setMineralFilter(e.target.value);setSelectedMineral(null)}}>
        <option>Все виды</option>
-       {mineralTypes.map(item=><option key={item.name}>{item.name}</option>)}
+       {SCHOOL_ATLAS_MINERALS.map(name=><option key={name}>{name}</option>)}
       </select>
      </label>
      <small>{!localMineralDetail?
@@ -1188,19 +1191,18 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       <p><b>Применение:</b> {mineralGuide(mineralFilter)!.uses}</p>
       <small>Общие школьные сведения о сырье, а не характеристика выбранного месторождения.</small>
      </div>}
-     <div className="lektrus-atlas-mineral-legend">{mineralTypes.map(item=><div key={item.name}>
-      <LektrusMineralSymbol name={item.name} size={21}/>{item.name}</div>)}</div>
-     <details className="lektrus-atlas-school-symbols">
-      <summary>Условные знаки горючих ископаемых</summary>
-      <div className="lektrus-atlas-mineral-legend">
-       {["Каменный уголь","Бурый уголь","Нефть","Природный газ"].map(name=>
-        <div key={name}><LektrusMineralSymbol name={name} size={21}/>{name}</div>)}
-      </div>
-      <small>Это примеры школьной легенды. Месторождения топлива не нанесены: подключённая база USGS не включает нефть, газ и уголь.</small>
-     </details>
+     <div className="lektrus-atlas-mineral-legend school-mineral-reference">
+      {SCHOOL_ATLAS_GROUPS.map(group=><div key={group.title} className="lektrus-mineral-reference-group">
+       <strong>{group.title}</strong>
+       {group.names.map(name=><div key={name} className="lektrus-mineral-reference-row">
+        <LektrusMineralSymbol name={name} size={22}/><span>{name}</span>
+       </div>)}
+      </div>)}
+     </div>
+     <small>Обозначения повторяют присланную школьную легенду. Месторождения горючих ископаемых отсутствуют в подключённой базе USGS и не создаются искусственно.</small>
      <a href="https://special-edu.kz/TEXTBOOKS/1RAZDEL/book/pdf/geog9Methods.pdf"
       target="_blank" rel="noopener noreferrer">Примеры условных знаков из школьного учебного материала ↗</a>
-     <small>В фильтре, на карте и в легенде оставлены только виды полезных ископаемых, изучаемые в школьной географии. Редкие специальные минералы исключены.
+     <small>Используются условные обозначения из присланной школьной легенды, сгруппированные по типу полезного ископаемого.
        Историческая база USGS: покрытие за пределами США неполное.
       Обзорные группы построены по выборке, а не по полному кадастру месторождений. Наличие точки не означает действующую добычу или подтверждённые запасы. Топливные ресурсы (нефть, газ, уголь) этим набором не покрываются. Основа каталога USGS включает исторические сведения и не является актуальным кадастром на 2026 год.
       Показываются только месторождения с распознаваемым типом сырья.</small>
@@ -1209,7 +1211,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>}
     {citiesOn&&scale>=2.5&&<div className="lektrus-atlas-natural-legend">
      <strong>Обозначения населённых пунктов</strong>
-     <small>Границы регионов мира: глобальные линии Natural Earth масштаба 1:10 млн.
+     <small>Границы регионов мира: обзорные линии Natural Earth 1:50 млн и подробные 1:10 млн уже с увеличения ×3,5.
       Включаются с увеличения ×2,5. Для городских и муниципальных границ используются подробные данные OpenStreetMap при более крупном масштабе.
       {worldAdminError?" "+worldAdminError:""}
       {cityBoundaryError?" "+cityBoundaryError:""}</small>
