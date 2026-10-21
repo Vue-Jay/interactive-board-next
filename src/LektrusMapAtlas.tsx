@@ -283,14 +283,22 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(!citiesOn||scale<2.5){
    setWorldAdminLines(null);setWorldAdminError("");return()=>{active=false};
   }
-  loadAtlasLayer("admin-world-lines").then(result=>{if(active){
-   setWorldAdminLines(result);setWorldAdminError("");
-  }}).catch(()=>{if(active){
-   setWorldAdminLines(null);
-   setWorldAdminError("Подробные границы регионов мира временно недоступны.");
-  }});
+  setWorldAdminError("");
+  const selectedLayer=scale>=12?"admin-world-lines":"admin-world-overview";
+  loadAtlasLayer(selectedLayer).then(data=>{if(active){
+   setWorldAdminLines(data);setWorldAdminError("");
+  }}).catch(()=>{
+   if(!active)return;
+   if(selectedLayer==="admin-world-lines"){
+    loadAtlasLayer("admin-world-overview").then(data=>{
+     if(active){setWorldAdminLines(data);setWorldAdminError("Использованы обзорные границы регионов 1:50 млн.");}
+    }).catch(()=>{if(active){setWorldAdminLines(null);
+     setWorldAdminError("Не удалось загрузить границы регионов Natural Earth.");}});
+   }else{setWorldAdminLines(null);
+    setWorldAdminError("Не удалось загрузить границы регионов Natural Earth.");}
+  });
   return()=>{active=false};
- },[citiesOn,scale>=2.5,refresh]);
+ },[citiesOn,scale>=2.5,scale>=12,refresh]);
  const mapSource=historical||mode==="political"||mode==="contour"||mode==="minerals"?source:null;
  const highDetail=modernBorders&&(russianView||!!detail&&scale>=5);
  const precision=highDetail?(scale>=8?.00015:.08):modernBorders?.13:.10;
