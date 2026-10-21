@@ -64,7 +64,7 @@ export default function LektrusLogicCircuitView({diagram:d}:{diagram:LogicCircui
      <text x="100" y="296" fontSize="22" textAnchor="end" fontWeight="700" fill="#315877">C = {signals.c}</text>
      <path d="M110 289H518V210H560" fill="none" stroke={wire(signals.c)} strokeWidth="5"/>
     </>}
-    <Gate gate={d.secondGate==="not"?"not":d.secondGate} x={560} y={129} unary={!useC}/>
+    <Gate gate={d.secondGate as LogicGate|"not"} x={560} y={129} unary={!useC}/>
     <text x="625" y="117" fontSize="15" textAnchor="middle" fill="#5e7891">Элемент 2</text>
    </>:null}
    <path d={"M"+outputX+" 176H800"} stroke={d.showResults?wire(result.output):"#8199b0"}
