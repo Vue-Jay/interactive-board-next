@@ -4,7 +4,7 @@ type Props={diagram:AtlasDocument;onChange:(diagram:AtlasDocument)=>void};
 const makeId=()=>crypto.randomUUID();
 export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
  const scope=d.scope??(d.mode==="historical"||d.mode==="events"?"history":"geography");
- const modes=atlasModesFor(scope);
+ const modes=atlasModesFor(scope).filter(mode=>scope==="history"||(d.title==="Контурная карта"?mode.id==="contour":mode.id!=="contour"));
  const historic=scope==="history";
  const index=nearestSnapshotIndex(d.year);
  const patch=(next:Partial<AtlasDocument>)=>onChange({...d,...next});
