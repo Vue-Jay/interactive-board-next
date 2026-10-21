@@ -278,3 +278,10 @@
 .lektrus-atlas-mineral-legend{display:grid;grid-template-columns:1fr 1fr;gap:3px 5px;font-size:10px}
 .lektrus-atlas-mineral-legend>div{display:flex;align-items:center;gap:5px}
 .lektrus-atlas-mineral-legend span{display:inline-block;width:9px;height:9px;border-radius:50%;border:1px solid #fff;flex-shrink:0}
+
+/* Deposit symbols are map pictograms with chemical labels, not uniform dots. */
+.lektrus-atlas-mineral-legend svg{display:block;flex:none;filter:drop-shadow(0 1px 1px #193a3a28)}
+.lektrus-atlas-mineral-points .lektrus-atlas-event{cursor:pointer}
+.lektrus-atlas-mineral-points .lektrus-atlas-event:hover{filter:drop-shadow(0 0 3px #ebad5b)}
+.lektrus-atlas-city-boundaries{stroke-linecap:round;stroke-linejoin:round}
+.lektrus-atlas-admin1{stroke-linecap:round}
