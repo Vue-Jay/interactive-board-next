@@ -1060,6 +1060,33 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
           strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>;
         })}
        </g>}
+      {citiesOn&&scale>=4.2&&<g className="lektrus-atlas-cities">
+       {shownCities.filter(f=>!nationalCapital(f.feature)&&(visibleMapLabels.has("city-"+f.id)||scale>=16&&cityLabels.some(c=>c.feature===f.feature))).map(f=><g key={"city-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
+        className="lektrus-atlas-event" role="button" tabIndex={0}
+        onClick={e=>{e.stopPropagation();selectFeature(f.feature,nationalCapital(f.feature)?"Столица":"Населённый пункт")}}
+        onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Населённый пункт")}}}>
+        {selected===f.feature&&<circle r="7.5" fill="#fff5d8" fillOpacity=".92"
+         stroke="#e77a24" strokeWidth="2.2" pointerEvents="none"/>}
+        {nationalCapital(f.feature)?
+         <path d="M0 -4.4L4.4 0L0 4.4L-4.4 0Z" fill="#263c55" stroke="#fff" strokeWidth="1"/>:
+         <circle r={Math.max(1.65,Math.min(3,1.6+Math.sqrt(cityPopulation(f.feature))/2400))}
+          fill={selected===f.feature?"#ed7e27":"#275a82"} stroke="#fff" strokeWidth={selected===f.feature?1.7:.85}/>}
+        <title>{russianPlaceName(f.feature)}{cityPopulation(f.feature)>0?
+         " · население (оценка): "+cityPopulation(f.feature).toLocaleString("ru-RU"):""}</title>
+       </g>)}
+      </g>}
+      {placedMapLabels.length>0&&<g className="lektrus-atlas-map-labels" pointerEvents="none">
+       {placedMapLabels.map(label=><text key={label.id}
+        textAnchor={label.align??"middle"}
+        x={label.x+(label.dx??0)/scale} y={label.y+(label.dy??0)/scale}
+        fontSize={label.fontSize/scale}
+        fill={label.kind==="river"||label.kind==="lake"||label.kind==="sea"||label.kind==="stream"?"#286c97":
+         label.kind==="nature"||label.kind==="peak"?"#6b4f39":"#284765"}
+        stroke="#fff" strokeWidth={1.5/scale} strokeLinejoin="round" paintOrder="stroke"
+        fontWeight={label.kind==="country"?"680":"630"}>{label.text}</text>)}
+      </g>}
+      {/* Draw deposit glyphs above geographic labels, never behind city names. */}
       {mode==="minerals"&&(!localMineralDetail||scale<12)&&<g className="lektrus-atlas-mineral-clusters">
        {mineralGroups.filter(group=>group.point[0]>=visibleWorld.left&&group.point[0]<=visibleWorld.right&&
         group.point[1]>=visibleWorld.top&&group.point[1]<=visibleWorld.bottom).map(group=>{
@@ -1099,32 +1126,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <g transform="scale(.78)"><MineralAtlasGlyph name={item.commodity.name}/></g>
         <title>{item.commodity.name}, источник USGS</title>
        </g>)}
-      </g>}
-      {citiesOn&&scale>=4.2&&<g className="lektrus-atlas-cities">
-       {shownCities.filter(f=>!nationalCapital(f.feature)&&(visibleMapLabels.has("city-"+f.id)||scale>=16&&cityLabels.some(c=>c.feature===f.feature))).map(f=><g key={"city-"+f.id}
-        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
-        className="lektrus-atlas-event" role="button" tabIndex={0}
-        onClick={e=>{e.stopPropagation();selectFeature(f.feature,nationalCapital(f.feature)?"Столица":"Населённый пункт")}}
-        onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Населённый пункт")}}}>
-        {selected===f.feature&&<circle r="7.5" fill="#fff5d8" fillOpacity=".92"
-         stroke="#e77a24" strokeWidth="2.2" pointerEvents="none"/>}
-        {nationalCapital(f.feature)?
-         <path d="M0 -4.4L4.4 0L0 4.4L-4.4 0Z" fill="#263c55" stroke="#fff" strokeWidth="1"/>:
-         <circle r={Math.max(1.65,Math.min(3,1.6+Math.sqrt(cityPopulation(f.feature))/2400))}
-          fill={selected===f.feature?"#ed7e27":"#275a82"} stroke="#fff" strokeWidth={selected===f.feature?1.7:.85}/>}
-        <title>{russianPlaceName(f.feature)}{cityPopulation(f.feature)>0?
-         " · население (оценка): "+cityPopulation(f.feature).toLocaleString("ru-RU"):""}</title>
-       </g>)}
-      </g>}
-      {placedMapLabels.length>0&&<g className="lektrus-atlas-map-labels" pointerEvents="none">
-       {placedMapLabels.map(label=><text key={label.id}
-        textAnchor={label.align??"middle"}
-        x={label.x+(label.dx??0)/scale} y={label.y+(label.dy??0)/scale}
-        fontSize={label.fontSize/scale}
-        fill={label.kind==="river"||label.kind==="lake"||label.kind==="sea"||label.kind==="stream"?"#286c97":
-         label.kind==="nature"||label.kind==="peak"?"#6b4f39":"#284765"}
-        stroke="#fff" strokeWidth={1.5/scale} strokeLinejoin="round" paintOrder="stroke"
-        fontWeight={label.kind==="country"?"680":"630"}>{label.text}</text>)}
       </g>}
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
