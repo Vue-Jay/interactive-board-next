@@ -58,7 +58,7 @@ export function loadLocalInfrastructure(b:ExternalBounds,kind:"roads"|"waterways
    const ruSource=String(tags["name:ru"]??"").trim();
    const alternate=String(tags.name??"").trim();
    const ru=/[А-ЯЁа-яё]/.test(ruSource)?ruSource:/[А-ЯЁа-яё]/.test(alternate)?alternate:"";
-   if(kind==="roads"&&!road||kind==="waterways"&&(road||!/[А-ЯЁа-яё]/.test(ru)))continue;
+   if(kind==="roads"&&!road||kind==="waterways"&&road)continue;
    const coords=item.geometry.filter((v:{lon:number;lat:number})=>Number.isFinite(v.lon)&&Number.isFinite(v.lat))
     .map((v:{lon:number;lat:number})=>[v.lon,v.lat]);
    if(coords.length<2)continue;
