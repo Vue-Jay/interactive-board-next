@@ -9,7 +9,7 @@ const sane=(b:ExternalBounds)=>Object.values(b).every(Number.isFinite)&&
  b.west>=-180&&b.east<=180&&b.south>=-85&&b.north<=85&&
  b.east>b.west&&b.north>b.south;
 export const canLoadLocalRoads=(b:ExternalBounds)=>
- sane(b)&&b.east-b.west<=8&&b.north-b.south<=5;
+ sane(b)&&b.east-b.west<=10.01&&b.north-b.south<=7.01;
 export const canLoadMinerals=(b:ExternalBounds)=>sane(b)&&
  b.east-b.west<=55&&b.north-b.south<=30;
 const safeFetch=async(url:string)=>{
@@ -23,7 +23,7 @@ const safeFetch=async(url:string)=>{
 const memo=(id:string,work:()=>Promise<GeoCollection>)=>{
  if(cache.has(id))return cache.get(id)!;
  const promise=work().catch(e=>{cache.delete(id);throw e});
- cache.set(id,promise);if(cache.size>7)cache.delete(cache.keys().next().value!);
+ cache.set(id,promise);if(cache.size>45)cache.delete(cache.keys().next().value!);
  return promise;
 };
 /** OSM Overpass geometry for a SMALL map viewport. This is not a full street map. */
@@ -31,7 +31,7 @@ export function loadLocalInfrastructure(b:ExternalBounds,kind:"roads"|"waterways
  if(!canLoadLocalRoads(b))return Promise.resolve({type:"FeatureCollection",features:[]});
  const box=[b.south,b.west,b.north,b.east].map(x=>Number(x.toFixed(5))).join(",");
  const overpass='[out:json][timeout:15];('+
-  (kind==="roads"?'way["highway"~"^(motorway|trunk|primary)$"]('+box+');':
+  (kind==="roads"?'way["highway"~"^(motorway|trunk|primary|secondary)$"]('+box+');':
    'way["waterway"~"^(river|stream|canal)$"]('+box+');')+
   ');out geom;';
  // The Russian full-planet mirror is preferred; overloaded public servers
@@ -150,13 +150,13 @@ export function mineralDepositSource(feature:GeoFeature):string|null{
  * current small viewport. Coverage depends on locally mapped OSM relations.
  * No guessed municipality outlines are ever drawn. */
 export const canLoadCityBoundaries=(b:ExternalBounds)=>
- sane(b)&&b.east-b.west<=3.5&&b.north-b.south<=3;
+ sane(b)&&b.east-b.west<=6.01&&b.north-b.south<=5.01;
 export function loadCityBoundaries(b:ExternalBounds):Promise<GeoCollection>{
  if(!canLoadCityBoundaries(b))return Promise.resolve({type:"FeatureCollection",features:[]});
  const bbox=[b.south,b.west,b.north,b.east].map(n=>n.toFixed(5)).join(",");
  const query='[out:json][timeout:18];('+
-  'relation["boundary"="administrative"]["admin_level"~"^(7|8|9)$"]('+bbox+');'+
-  'way["place"~"^(city|town)$"]('+bbox+');'+
+  'relation["boundary"="administrative"]["admin_level"~"^(6|7|8|9|10)$"]('+bbox+');'+
+  'way["boundary"="administrative"]["place"~"^(city|town)$"]('+bbox+');'+
   ');out geom;';
  const endpoints=["https://overpass-api.de/api/interpreter?data=",
   "https://overpass.kumi.systems/api/interpreter?data="];
@@ -241,5 +241,62 @@ export function loadWorldMineralOverview():Promise<GeoCollection>{
   }
   if(!successful)throw Error("Обзорные месторождения USGS недоступны");
   return {type:"FeatureCollection",features:combined};
+ });
+}
+
+/** OSM is global but live query services cannot return every world boundary at once.
+ * Load deterministic geographic tiles as the user navigates. Sparse/absent OSM
+ * coverage remains absent rather than manufacturing city polygons.
+ */
+export type AtlasOSMCoverageKind="roads"|"city-boundaries";
+export function atlasOSMCoverageTiles(bounds:ExternalBounds,kind:AtlasOSMCoverageKind):ExternalBounds[]{
+ if(!sane(bounds))return [];
+ const width=bounds.east-bounds.west,height=bounds.north-bounds.south;
+ if(kind==="roads"?(width>46||height>29):(width>27||height>17))return [];
+ const stepLon=kind==="roads"?10:6,stepLat=kind==="roads"?7:5;
+ const cx=(bounds.west+bounds.east)/2,cy=(bounds.south+bounds.north)/2;
+ const tiles:ExternalBounds[]=[];
+ const firstX=Math.floor(bounds.west/stepLon),lastX=Math.floor((bounds.east-1e-8)/stepLon);
+ const firstY=Math.floor(bounds.south/stepLat),lastY=Math.floor((bounds.north-1e-8)/stepLat);
+ for(let x=firstX;x<=lastX;x++)for(let y=firstY;y<=lastY;y++){
+  const west=Math.max(-180,x*stepLon),east=Math.min(180,(x+1)*stepLon);
+  const south=Math.max(-85,y*stepLat),north=Math.min(85,(y+1)*stepLat);
+  if(east>west&&north>south)tiles.push({west,east,south,north});
+ }
+ // At coarse scales prioritize a few tiles nearest the viewport centre,
+ // avoiding dozens of simultaneous heavy Overpass requests.
+ tiles.sort((a,b)=>{
+  const da=Math.hypot((a.west+a.east)/2-cx,(a.south+a.north)/2-cy);
+  const db=Math.hypot((b.west+b.east)/2-cx,(b.south+b.north)/2-cy);
+  return da-db||a.west-b.west||a.south-b.south;
+ });
+ return tiles.slice(0,kind==="roads"?12:12);
+}
+export function loadAtlasOSMCoverage(bounds:ExternalBounds,kind:AtlasOSMCoverageKind):Promise<GeoCollection>{
+ const tiles=atlasOSMCoverageTiles(bounds,kind);
+ if(!tiles.length)return Promise.resolve({type:"FeatureCollection",features:[]});
+ const cacheKey="coverage:"+kind+":"+tiles.map(externalBBoxKey).sort().join("|");
+ return memo(cacheKey,async()=>{
+  // Query groups of three concurrently to avoid overwhelming shared Overpass services.
+  const loaded:GeoFeature[]=[],used=new Set<string>();
+  let successful=0;
+  for(let i=0;i<tiles.length;i+=3){
+   const batch=await Promise.allSettled(tiles.slice(i,i+3).map(tile=>kind==="roads"?
+    loadLocalInfrastructure(tile,"roads"):loadCityBoundaries(tile)));
+   for(const result of batch){
+    if(result.status!=="fulfilled")continue;
+    successful++;
+    for(const feature of result.value.features){
+     const props=feature.properties??{};
+     const code=String(props.OSM_TYPE??"way")+":"+String(props.OSM_ID??"")+":"+
+      String(props.OSM_ROLE??"")+":"+JSON.stringify(
+       feature.geometry?.type==="LineString"?(feature.geometry.coordinates as number[][])[0]:null);
+     if(used.has(code))continue;
+     used.add(code);loaded.push(feature);
+    }
+   }
+  }
+  if(!successful)throw Error("Не удалось получить границы и дороги OSM для этой территории");
+  return {type:"FeatureCollection",features:loaded};
  });
 }
