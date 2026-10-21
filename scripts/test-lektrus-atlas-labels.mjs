@@ -25,6 +25,8 @@ assert.equal(schoolCountryName("Неизвестное историческое 
 assert.equal(schoolCountryName("Доминиканская Республика"),"Доминиканская Республика");
 assert.equal(schoolCountryName("Китай", "CN"),"Китай");
 assert.equal(schoolCountryName("Конго", "CD"),"ДР Конго");
+assert.equal(schoolCountryName("Республика Армения","AM"),"Армения");
+assert.equal(schoolCountryName("Королевство Испания","ES"),"Испания");
 const label=(id,text,x,y,priority=0)=>({id,kind:"country",text,x,y,priority,fontSize:12,align:"middle"});
 const pair=[
  label("china","Китай",200,200,0),
