@@ -1,5 +1,5 @@
 import type {AtlasDocument,AtlasMode} from "./lektrusAtlasModel";
-import {atlasModesFor,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
+import {atlasModesFor,normalizeAtlasMode,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 type Props={diagram:AtlasDocument;onChange:(diagram:AtlasDocument)=>void};
 const makeId=()=>crypto.randomUUID();
 export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
@@ -10,11 +10,11 @@ export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
  const patch=(next:Partial<AtlasDocument>)=>onChange({...d,...next});
  return <>
   <label className="lektrus-school-field">Тип карты
-   <select value={d.mode} onChange={e=>patch({scope,mode:e.target.value as AtlasMode})}>
+   <select value={normalizeAtlasMode(d.mode)} onChange={e=>patch({scope,mode:e.target.value as AtlasMode})}>
     {modes.map(m=><option key={m.id} value={m.id}>{m.title}</option>)}
    </select>
   </label>
-  <p className="lektrus-school-hint">{modes.find(m=>m.id===d.mode)?.hint}.
+  <p className="lektrus-school-hint">{modes.find(m=>m.id===normalizeAtlasMode(d.mode))?.hint}.
    Все виды этого предмета используют одну картографическую подложку. Исторические границы и события доступны только в разделе истории.</p>
   {historic&&<>
    <div className="lektrus-school-controls-heading">Временная шкала</div>
@@ -35,6 +35,9 @@ export default function LektrusMapAtlasControls({diagram:d,onChange}:Props){
    <p className="lektrus-school-hint">События добавляются преподавателем вручную в разделе маркеров ниже. Автоматических подборок событий нет.</p>
   </>}
   <p className="lektrus-school-hint">Во всех типах карт регион и увеличение выбираются непосредственно на карте. Выбранная территория сохраняется с доской. В современном политическом слое используется российский вариант Natural Earth RUS; исторические эпохи показываются по датированным реконструкциям.</p>
+  <div className="lektrus-school-controls-heading">Отображение карты</div>
+  <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showCoordinates??d.mode==="coordinates"}
+   onChange={e=>patch({showCoordinates:e.target.checked})}/> Координаты: сетка и определение широты и долготы по нажатию</label>
   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showGrid}
    onChange={e=>patch({showGrid:e.target.checked})}/> Меридианы и параллели</label>
   {d.mode!=="contour"&&<label className="lektrus-school-toggle"><input type="checkbox" checked={d.showLabels}
