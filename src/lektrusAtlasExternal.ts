@@ -263,7 +263,7 @@ export type AtlasOSMCoverageKind="roads"|"city-boundaries"|"waterways";
 export function atlasOSMCoverageTiles(bounds:ExternalBounds,kind:AtlasOSMCoverageKind):ExternalBounds[]{
  if(!sane(bounds))return [];
  const width=bounds.east-bounds.west,height=bounds.north-bounds.south;
- if(kind!=="city-boundaries"?(width>46||height>29):(width>27||height>17))return [];
+ if(kind!=="city-boundaries"?(width>78||height>48):(width>27||height>17))return [];
  // Smaller tiles at high zoom avoid querying entire regions when a teacher
  // needs only city blocks or the immediate road network.
  const stepLon=kind!=="city-boundaries"?(width<=9?3:width<=22?5:10):
@@ -288,7 +288,8 @@ export function atlasOSMCoverageTiles(bounds:ExternalBounds,kind:AtlasOSMCoverag
  });
  return tiles.slice(0,kind==="city-boundaries"?10:12);
 }
-export function loadAtlasOSMCoverage(bounds:ExternalBounds,kind:AtlasOSMCoverageKind):Promise<GeoCollection>{
+export function loadAtlasOSMCoverage(bounds:ExternalBounds,kind:AtlasOSMCoverageKind,
+  onPartial?:(data:GeoCollection)=>void):Promise<GeoCollection>{
  const tiles=atlasOSMCoverageTiles(bounds,kind);
  if(!tiles.length)return Promise.resolve({type:"FeatureCollection",features:[]});
  const cacheKey="coverage:"+kind+":"+tiles.map(externalBBoxKey).sort().join("|");
@@ -312,6 +313,9 @@ export function loadAtlasOSMCoverage(bounds:ExternalBounds,kind:AtlasOSMCoverage
      used.add(code);loaded.push(feature);
     }
    }
+   // Make the first completed tiles visible instead of waiting for every
+   // distant slow or overloaded Overpass server.
+   if(successful&&onPartial)onPartial({type:"FeatureCollection",features:[...loaded]});
   }
   if(!successful)throw Error("Не удалось получить дополнительные линии OSM для этой территории");
   return {type:"FeatureCollection",features:loaded};
