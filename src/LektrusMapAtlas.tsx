@@ -844,7 +844,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         pointerEvents="none" strokeLinejoin="round" opacity=".9">
         {cityBoundaryPaths.map(f=><path key={"city-outline-"+f.id} d={f.path}
          fill="none" vectorEffect="non-scaling-stroke"
-         strokeDasharray={f.feature.properties?.OSM_ROLE==="inner"?"3 3":undefined}/>)}
+         stroke={Number(f.feature.properties?.ADMIN_LEVEL)<=7?"#a5afa8":"#967858"}
+         strokeWidth={Number(f.feature.properties?.ADMIN_LEVEL)<=7?.7:1}
+         strokeDasharray={f.feature.properties?.OSM_ROLE==="inner"?"3 3":undefined}>
+         <title>{String(f.feature.properties?.NAME_RU||"Городская или муниципальная граница OSM")}</title>
+        </path>)}
        </g>}
       {(mode==="physical"||mode==="relief")&&<g>
        {landforms.map(f=>{const style=landformColors[landformClass(f.feature)];
@@ -915,11 +919,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       </g>}
       {(citiesOn||mode==="hydrography"||mode==="physical")&&
        <g className="lektrus-atlas-auxiliary-lines" pointerEvents="none">
-        {auxiliaryLines.map(line=><path key={"infra-"+line.id} d={line.path} fill="none"
-         stroke={line.feature.properties?.ATLAS_KIND==="road"?"#c6a995":"#61a9cc"}
-         strokeWidth={line.feature.properties?.ATLAS_KIND==="road"?.67:.48}
-         strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
-         strokeDasharray={line.feature.properties?.ATLAS_KIND==="road"?"2.5 1":undefined}/>)}
+        {auxiliaryLines.map(line=>{
+         const cls=String(line.feature.properties?.ATLAS_CLASS??"");
+         const road=line.feature.properties?.ATLAS_KIND==="road";
+         const color=road?(cls==="motorway"?"#c58b5c":
+          cls==="trunk"?"#d0a075":cls==="primary"?"#bfa388":"#b2a59a"):"#61a9cc";
+         const width=road?(cls==="motorway"?1.65:cls==="trunk"?1.3:
+          cls==="primary"?1.0:.65):.48;
+         return <path key={"infra-"+line.id} d={line.path} fill="none"
+          stroke={color} strokeWidth={width} opacity={road?.96:.88}
+          strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>;
+        })}
        </g>}
       {mode==="minerals"&&!localMineralDetail&&<g className="lektrus-atlas-mineral-clusters">
        {mineralGroups.filter(group=>group.point[0]>=visibleWorld.left&&group.point[0]<=visibleWorld.right&&
