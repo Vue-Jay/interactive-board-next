@@ -1288,6 +1288,51 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       <text x="766" y="438" fontSize="5.8" fill="#607f99">На широте центра · приближённо</text>
      </g>
     </svg>
+    {isWorksheet&&!editorMode&&<div className="lektrus-contour-workspace" role="toolbar"
+     aria-label="Инструменты контурной карты" onPointerDown={e=>e.stopPropagation()}
+     onClick={e=>e.stopPropagation()}>
+     <div className="lektrus-contour-workspace-head">
+      <strong>{d.title}</strong>
+      {d.contourTask&&<details><summary>Задание</summary><p>{d.contourTask}</p></details>}
+     </div>
+     <div className="lektrus-contour-workspace-tools">
+      {([["label","Подпись",contourConfig.allowLabels],["point","Знак",contourConfig.allowPoints],
+       ["pen","Карандаш",contourConfig.allowDrawing],["fill","Заливка",contourConfig.allowFill],
+       ["erase","Ластик",true]] as const).filter(([, ,allowed])=>allowed)
+       .map(([id,title])=><button type="button" key={id} title={title} aria-pressed={contourAction===id}
+        className={contourAction===id?"active":""} onClick={()=>setContourAction(id)}>{title}</button>)}
+      <button type="button" title="Отменить последнюю правку" disabled={!contourHistory.length}
+       onClick={contourUndo}>↶</button>
+     </div>
+     <div className="lektrus-contour-workspace-options">
+      {(contourAction==="label"||contourAction==="point")&&
+       <input aria-label="Текст подписи или знака" value={contourText} maxLength={80}
+        placeholder={contourAction==="label"?"Название объекта":"Знак или номер"}
+        onChange={e=>setContourText(e.target.value)}/>}
+      {contourAction==="fill"&&contourConfig.showRegions&&<label>
+       <input type="checkbox" checked={paintRegions} onChange={e=>setPaintRegions(e.target.checked)}/>
+       Регионы</label>}
+      {contourAction!=="erase"&&<input type="color" aria-label="Цвет" value={paintColor}
+       onChange={e=>setPaintColor(e.target.value)}/>}
+      <details><summary>Легенда</summary>
+       <div className="lektrus-contour-workspace-legend">
+        <input aria-label="Знак в легенде" value={legendSymbol} maxLength={12}
+         onChange={e=>setLegendSymbol(e.target.value)}/>
+        <input aria-label="Описание в легенде" value={legendMeaning} maxLength={90}
+         placeholder="Что означает знак" onChange={e=>setLegendMeaning(e.target.value)}/>
+        <button type="button" disabled={!legendSymbol.trim()||!legendMeaning.trim()||contourLegend.length>=30}
+         onClick={()=>{onChange?.({...d,contourLegend:[...contourLegend,{
+          id:globalThis.crypto?.randomUUID?.()??String(Date.now()),symbol:legendSymbol.trim(),meaning:legendMeaning.trim()
+         }]});setLegendMeaning("")}}>+</button>
+        {contourLegend.map(item=><div key={item.id} className="lektrus-contour-legend-row">
+         <b>{item.symbol}</b><span>{item.meaning}</span>
+         <button type="button" aria-label={"Удалить "+item.meaning}
+          onClick={()=>onChange?.({...d,contourLegend:contourLegend.filter(v=>v.id!==item.id)})}>×</button>
+        </div>)}
+       </div>
+      </details>
+     </div>
+    </div>}
     {!objectMoveMode&&<div className="lektrus-atlas-zoom" role="group" aria-label="Масштаб">
      <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(cameraRef.current.scale*1.5)}>+</button>
      <button type="button" onClick={reset} title="Вписать выбранный регион">⌖</button>
