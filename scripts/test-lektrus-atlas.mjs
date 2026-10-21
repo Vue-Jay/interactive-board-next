@@ -257,7 +257,14 @@ for(const name of ["countries-detail","cities","elevation","regions","glaciers",
  assert.ok(data.includes(name),"real map dataset "+name);
 for(const mode of ["hydrography","relief","cities","coordinates"])
  assert.equal(validAtlasDocument({...atlas,mode}),true);
-assert.match(map,/onPointerDown=\{objectMoveMode\?undefined:onPointerDown\}/);
+assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}'));
+assert.ok(map.includes('onPointerUp={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}'));
+assert.ok(map.includes('const cameraLayerRef=useRef<SVGGElement|null>(null)'));
+assert.ok(map.includes('cameraLayerRef.current?.setAttribute("transform"'));
+assert.ok(map.includes('cameraIdleRef.current=setTimeout('));
+assert.ok(map.includes('LektrusAtlasGraticule scale={scale} viewport={viewport}'));
+assert.ok(!map.includes('grid={d.showGrid||coordinatesEnabled'));
+assert.ok(map.includes('aria-label="Меридианы и параллели"'));
 assert.match(map,/featureSourceFacts/);
 assert.match(map,/setCompare/);
 assert.match(map,/pickCoordinates/);
@@ -558,5 +565,24 @@ const terrainPerf=fs.readFileSync(new URL("../src/LektrusAtlasTerrain.tsx",impor
 assert.ok(terrainPerf.includes('const palette=terrainPalette()'));
 assert.ok(terrainPerf.includes('Math.min(4,tiles.length)'),"Terrain decoding must be concurrency-limited");
 assert.ok(terrainPerf.includes('while(active&&next<tiles.length)'),"Discarded camera views must stop queueing new tile work");
+
+// Student work is local to the geographic map, source-based and persisted.
+const validWork={...atlas,mode:"contour",contourTask:"Обозначьте Волгу и Урал",
+ contourMarks:[{id:"mark-1",kind:"label",text:"Волга",lon:43,lat:56,color:"#286baf"}],
+ contourStrokes:[{id:"stroke-1",points:[[30,56],[33,58]],color:"#286baf"}],
+ contourLegend:[{id:"legend-1",symbol:"●",meaning:"Город"}]};
+assert.equal(validAtlasDocument(validWork),true);
+assert.equal(validAtlasDocument({...validWork,contourMarks:[{...validWork.contourMarks[0],lat:180}]}),false);
+assert.equal(validAtlasDocument({...validWork,contourStrokes:[{...validWork.contourStrokes[0],points:[[30,56],[360,60]]}]}),false);
+assert.equal(validAtlasDocument({...validWork,contourLegend:[{id:"x",symbol:"1",meaning:"".padEnd(100,"s")}]}),false);
+const atlasEditor=fs.readFileSync(new URL("../src/LektrusSchoolDiagramEditor.tsx",import.meta.url),"utf8");
+assert.ok(!atlasEditor.includes('lektrus-atlas-settings-toggle'));
+assert.ok(!atlasEditor.includes('atlasSettingsOpen'));
+assert.ok(map.includes('contourMarks:contourMarks.filter'));
+assert.ok(map.includes('setContourAction(key)'));
+assert.ok(map.includes('Контурная карта')||map.includes('контурной карты'));
+assert.ok(common.includes('export function LektrusAtlasGraticule'));
+assert.ok(common.indexOf('export function LektrusAtlasGraticule')<
+ common.indexOf('export default function LektrusMapBase'));
 
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
