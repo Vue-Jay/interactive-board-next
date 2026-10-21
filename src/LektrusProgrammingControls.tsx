@@ -49,9 +49,9 @@ export default function LektrusProgrammingControls({diagram:d,onChange}:{
   </label>
   <p className="lektrus-school-hint">
    Нажмите «Запустить» в предпросмотре, чтобы проверить программу. В JavaScript доступны
-   console.log(), print(), readLine(), input и prompt(). Для TypeScript выполняется
+   console.log(), print(), readLine(), input и prompt(). Для Python работают print(), input(), циклы и стандартные модули. Для TypeScript выполняется
    преобразование в JavaScript, затем запуск в изолированной среде.
-   Сетевые запросы отключены, время выполнения ограничено четырьмя секундами.
+   JavaScript выполняется без доступа к сети, Python загружает WebAssembly-интерпретатор через интернет. Ограничение времени: 4 секунды для JavaScript и до 30 секунд для Python с загрузкой.
    Код запускается только по нажатию, а результаты не сохраняются в доску.
   </p>
  </>;
