@@ -24,7 +24,8 @@ const mockFetch=async(url)=>{
  network.push(url);
  const params=new URL(url).searchParams;
  assert.equal(params.get("resultRecordCount"),"350");
- assert.equal(params.get("outFields").includes("commod1"),true);
+ assert.equal(params.get("outFields").includes("commodity"),true);
+ assert.equal(params.get("outFields").includes("commod1"),false);
  const rect=params.get("geometry").split(",").map(Number);
  const [west,south,east,north]=rect;
  const x=(west+east)/2,y=(south+north)/2;
