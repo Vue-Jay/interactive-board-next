@@ -287,7 +287,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   {left:(tileX-3)*tileWidth,right:(tileX+3)*tileWidth,
    top:(tileY-3)*tileHeight,bottom:(tileY+3)*tileHeight}:undefined,
   [highDetail,tileX,tileY,tileScale,scale>=8]);
- const politicalColors=useMemo(()=>colorPoliticalCountries(mapSourceFeatures),[mapSourceFeatures]);
+ const politicalColors=useMemo(()=>mode==="political"?colorPoliticalCountries(mapSourceFeatures):[],[mapSourceFeatures,mode]);
  const shapes=useMemo(()=>mapSourceFeatures.map((feature,i)=>({
   feature,path:mapFeaturePath(feature,precision,viewport),
   name:atlasDisplayName(feature,snapshot.year,historical&&!modernReference),i
