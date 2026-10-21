@@ -231,3 +231,24 @@
  .lektrus-atlas--editor .lektrus-atlas-header nav{order:3;flex:1 0 100%}
  .lektrus-atlas--editor .lektrus-atlas-info-tabs button{font-size:10px}
 }
+
+
+/* One school-reference panel: selected object first, atlas controls next,
+ * verifiable source details available without separate tabs. */
+.lektrus-atlas-sidebar{display:flex;flex-direction:column}
+.lektrus-atlas-info-heading{order:-3}
+.lektrus-atlas-info-object{order:-2}
+.lektrus-atlas-info-overview{order:-1}
+.lektrus-atlas-source-details{order:0;background:#fff;border:1px solid #d7e4f0;
+ border-radius:12px;min-width:0;padding:0;box-shadow:0 2px 7px #315a790b}
+.lektrus-atlas-source-details summary{padding:11px 12px;color:#315c84;
+ cursor:pointer;font-size:12px;font-weight:750}
+.lektrus-atlas-source-details[open] summary{border-bottom:1px solid #e2ebf4}
+.lektrus-atlas-source-details>.lektrus-atlas-info-content{padding:11px;gap:10px}
+.lektrus-atlas-reference-card{margin-top:10px;gap:7px}
+.lektrus-atlas-reference-card p{line-height:1.48}
+.lektrus-atlas-reference-card a{font-size:11px;color:#29679c}
+.lektrus-atlas-info-object>.lektrus-atlas-study-card:first-child{margin-top:0}
+.lektrus-atlas-info-object:not(:has(.lektrus-atlas-description, .lektrus-history-article)){
+ gap:8px
+}
