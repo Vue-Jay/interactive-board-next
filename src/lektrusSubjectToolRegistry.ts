@@ -15,6 +15,8 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"math-coordinate",label:"Координатная плоскость",description:"Функции, точки, числовая прямая и графики",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-fractions",label:"Дроби",description:"Круг и полоска с наглядными частями",group:"Математические инструменты",subjects:["математика"]},
   {id:"chem-periodic-table",label:"Периодическая система",description:"118 элементов, поиск, семейства и выделение элементов для урока",group:"Химия · элементы",subjects:["химия"]},
+  {id:"bio-genetics",label:"Генетические скрещивания",description:"Моногибридные скрещивания, решётка Пеннета и скрытие ответов",group:"Биология · генетика",subjects:["биология"]},
+  {id:"info-logic",label:"Логические операции",description:"Таблицы истинности пяти логических операций",group:"Информатика · логика",subjects:["информатика"]},
   {id:"bio-cell",label:"Строение клетки",description:"Растительная и животная клетки с подписями органоидов",group:"Биология · клетка",subjects:["биология"]},
   {id:"bio-food-chain",label:"Цепь питания",description:"Организмы и стрелки переноса вещества и энергии",group:"Биология · экосистемы",subjects:["биология"]},
   {id:"history-timeline",label:"Лента времени",description:"События и даты в хронологическом порядке",group:"История · хронология",subjects:["история"]},
@@ -45,7 +47,7 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
-  if(id==="maps-atlas"||id==="history-atlas"||id==="contour-atlas"||id==="bio-cell"||id==="bio-food-chain"||id==="history-timeline"||
+  if(id==="bio-genetics"||id==="info-logic"||id==="maps-atlas"||id==="history-atlas"||id==="contour-atlas"||id==="bio-cell"||id==="bio-food-chain"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||
      id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||
