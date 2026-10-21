@@ -283,7 +283,7 @@ assert.ok(map.includes('loadAtlasLayer("admin-world-overview")'),
  "a failed detailed boundary fetch must fall back to the global overview");
 const mineralGlyphSource=fs.readFileSync(new URL("../src/LektrusMineralSymbol.tsx",import.meta.url),"utf8");
 for(const schoolGlyph of ["coal","brown","shale","oil","gas","iron","manganese","copper","gold",
- "bauxite","nickel","chromium","tungsten","molybdenum","tin","polymetal",
+ "aluminium","nickel","chromium","tungsten","molybdenum","tin","polymetal",
  "mercury","asbestos","graphite","mica","apatite","phosphate","potash","salt","glauber","diamonds"]){
  assert.ok(mineralGlyphSource.includes('case "'+schoolGlyph+'":'),
   schoolGlyph+" should have an explicit pictogram matching the school atlas legend");
