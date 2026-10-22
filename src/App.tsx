@@ -6691,7 +6691,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setNotice("Электрическая схема добавлена на доску");
           }}/>}
         {schoolEditorItem&&<LektrusSchoolDiagramEditor key={schoolEditorItem.id}
-          item={schoolEditorItem} studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}
+          item={schoolEditorItem} userId={authUser.id} studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}
           existing={itemsRef.current.some(i=>i.id===schoolEditorItem.id)}
           onCancel={()=>setSchoolEditorItem(null)}
           onSave={next=>{
