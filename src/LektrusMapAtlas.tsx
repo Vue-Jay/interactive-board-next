@@ -1720,7 +1720,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
     selected?<div className="lektrus-atlas-description">
      {selectedCountrySymbol?<div className="lektrus-atlas-selected-symbol-title">
       <LektrusAtlasCountrySymbol symbol={selectedCountrySymbol}/>
-      <div><strong>{selectedTitle}</strong><small>{selectedLayer}</small></div>
+      <div><strong>{selectedTitle}</strong><small>{selectedLayer}</small>
+       {historical&&selectedCountrySymbol.kind==="symbol"&&<small>Условный знак, не исторический герб</small>}
+      </div>
      </div>:<><strong>{selectedTitle}</strong><small>{selectedLayer}</small></>}
      {selectedCountryCapitals.length>0&&<div className="lektrus-atlas-country-capitals">
       <strong>Столицы государства</strong>
@@ -1990,7 +1992,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
     </label>}
     {search.trim()&&!historical&&<div className="lektrus-atlas-search-results">
      {results.length?results.map((f,i)=><button key={i} type="button"
-      onClick={()=>focusFeature(f)}>{atlasDisplayName(f,snapshot.year,historical&&!modernReference)}</button>):
+      onClick={()=>focusFeature(f)}>
+       {mode==="political"&&(f.geometry?.type==="Polygon"||f.geometry?.type==="MultiPolygon")&&
+        <LektrusAtlasCountrySymbol compact symbol={atlasCountrySymbol(f,atlasDisplayName(f,snapshot.year,false),snapshot.year,false)}/>}
+       {atlasDisplayName(f,snapshot.year,historical&&!modernReference)}</button>):
       <small>Совпадений нет среди названий из картографической базы. Попробуйте уточнить запрос.</small>}
     </div>}
     {detailWarning&&<p className="lektrus-atlas-layer-warning" role="status">{detailWarning}</p>}
@@ -2033,7 +2038,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
       {indexProblem&&<small>Индекс временно недоступен: {indexProblem}</small>}
       {directoryFilter.trim().length>=2?<div className="lektrus-history-results">
        {globalMatches.length?globalMatches.map(item=><div key={item.raw} className="lektrus-history-result">
-        <strong>{item.name}</strong><small>{item.years.length} датированных карт</small>
+        <div className="lektrus-history-result-heading">
+         <LektrusAtlasCountrySymbol compact symbol={atlasCountrySymbol({type:"Feature",
+          properties:{NAME:item.raw},geometry:{type:"Polygon",coordinates:[]}},
+          item.name,item.years[item.years.length-1],true)}/>
+         <strong>{item.name}</strong>
+        </div><small>{item.years.length} датированных карт</small>
         <div className="lektrus-history-result-periods" aria-label={"Выбор периода: "+item.name}>
          {item.years.map(year=><button type="button" key={year}
           onClick={()=>{jumpToPeriod(year,item.raw);setHistoryTab("article");}}>{yearLabel(year)}</button>)}
@@ -2129,7 +2139,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
     selected?<div className="lektrus-atlas-description">
      {selectedCountrySymbol?<div className="lektrus-atlas-selected-symbol-title">
       <LektrusAtlasCountrySymbol symbol={selectedCountrySymbol}/>
-      <div><strong>{selectedTitle}</strong><small>{selectedLayer}</small></div>
+      <div><strong>{selectedTitle}</strong><small>{selectedLayer}</small>
+       {historical&&selectedCountrySymbol.kind==="symbol"&&<small>Условный знак, не исторический герб</small>}
+      </div>
      </div>:<><strong>{selectedTitle}</strong><small>{selectedLayer}</small></>}
      {selectedCountryCapitals.length>0&&<div className="lektrus-atlas-country-capitals">
       <strong>Столицы государства</strong>
