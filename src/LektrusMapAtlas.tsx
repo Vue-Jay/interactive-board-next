@@ -95,6 +95,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  // the mineral map into an elevation/coordinate query.
  const mineralTerrainEnabled=mineralContext&&d.hypsometry!==false;
  const [paintColor,setPaintColor]=useState("#000000");
+ const [toolThickness,setToolThickness]=useState(2);
  const [paintRegions,setPaintRegions]=useState(false);
  const [contourAction,setContourAction]=useState<"select"|"hand"|"fill"|"label"|"point"|"pen"|"erase">("select");
  const [lastLabelKind,setLastLabelKind]=useState<"label"|"point">("label");
@@ -886,7 +887,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const brushContour=(e:ReactPointerEvent<SVGSVGElement>)=>{
   const gesture=eraserGesture.current,point=annotationWorld(e);
   if(!gesture||gesture.pointerId!==e.pointerId||!point)return;
-  const hits=contourEraserHits(contourMarks,[],point,cameraRef.current.scale,14);
+  const hits=contourEraserHits(contourMarks,[],point,cameraRef.current.scale,Math.max(14,toolThickness*5));
   let changed=false;
   for(const id of hits.marks)if(!gesture.marks.has(id)){gesture.marks.add(id);changed=true}
   const last=gesture.path[gesture.path.length-1];
@@ -925,7 +926,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   eraserGesture.current=null;
   setPendingErasure({marks:[],fills:[]});
   contourEraserPreview.current?.setAttribute("d","");
-  const erasedStrokes=eraseContourInkAlongPath(contourStrokes,gesture.path,12/cameraRef.current.scale);
+  const erasedStrokes=eraseContourInkAlongPath(contourStrokes,gesture.path,(toolThickness*5+2)/cameraRef.current.scale);
   if(!gesture.marks.size&&erasedStrokes===contourStrokes&&!gesture.fills.size)return;
   captureContour();
   onChange?.({...d,contourMarks:contourMarks.filter(mark=>!gesture.marks.has(mark.id)),
@@ -1027,7 +1028,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    const part=points.slice(offset,offset+250);
    if(part.length>=2)segments.push({
     id:globalThis.crypto?.randomUUID?.()??String(Date.now())+Math.random(),
-    points:part,color:paintColor});
+    points:part,color:paintColor,width:toolThickness});
   }
   if(contourStrokes.length+segments.length>140)return;
   captureContour();
@@ -1496,7 +1497,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {(isWorksheet?contourConfig.showGrid:d.showGrid)&&<LektrusAtlasGraticule scale={scale} viewport={gridViewport}/>}
       {mode==="contour"&&<g className="lektrus-atlas-contour-work" pointerEvents={worksheetOnBoard?"none":undefined}>
        {contourStrokes.map(line=><path key={line.id} fill="none" stroke={line.color}
-        strokeWidth={2/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"
+        strokeWidth={(line.width??2)/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"
         d={line.points.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
        {contourMarks.map(stored=>{const mark=previewContourMark?.id===stored.id?previewContourMark:stored;
@@ -1543,7 +1544,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         </g>})}
        <path ref={contourEraserPreview} fill="none" stroke="#fffdfa" strokeOpacity=".93"
         strokeWidth={24/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
-       <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={2/scale}
+       <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={toolThickness/scale}
         strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
       </g>}
       {userMarkers.map(marker=>{
@@ -2165,6 +2166,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <ContourToolIcon name={id}/><span>{title}</span>
        </button>)}
       {contourAction!=="erase"&&<label className="lektrus-contour-dock-color" title="Цвет рисования"><input type="color" aria-label="Цвет" value={paintColor} onChange={e=>setPaintColor(e.target.value)}/><span>Цвет</span></label>}
+      <div className="lektrus-contour-dock-thickness" role="group" aria-label="Толщина карандаша и ластика"><span>Толщина</span><div>{([1,2,4,7] as const).map(size=><button key={size} type="button" title={"Толщина "+size} aria-label={"Толщина "+size} aria-pressed={toolThickness===size} className={toolThickness===size?"active":""} onClick={()=>setToolThickness(size)}><i style={{width:size+6,height:size+6}}/></button>)}</div></div>
       <button type="button" className="lektrus-contour-icon-button" title="Отменить последнее действие"
        aria-label="Отменить" disabled={!contourHistory.length}
        onClick={contourUndo}>
