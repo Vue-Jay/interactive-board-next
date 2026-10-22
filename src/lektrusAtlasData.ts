@@ -283,6 +283,12 @@ export function geoFeatureName(feature:GeoFeature):string{
  }
  return "";
 }
+/** Never discard a real historical territory because its label lacks a
+ * Russian translation. Source coverage and localization are separate concerns. */
+export function historicalMapFeatures(source:GeoCollection|null):GeoFeature[]{
+ return source?.features.filter(feature=>feature.geometry?.type==="Polygon"||
+  feature.geometry?.type==="MultiPolygon")??[];
+}
 export const hasAtlasName=(feature:GeoFeature)=>geoFeatureName(feature).length>0;
 export const borderPrecision=(f:GeoFeature):number=>{
  const number=Number(f.properties?.BORDERPRECISION);
