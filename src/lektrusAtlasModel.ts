@@ -19,7 +19,7 @@ export type ContourAssignment={
 };
 export const defaultContourAssignment:ContourAssignment={
  showBorders:true,showRegions:false,showCoastline:true,showRivers:true,showLakes:true,
- showGrid:true,allowLabels:true,allowPoints:true,allowDrawing:true,allowFill:true
+ showGrid:false,allowLabels:true,allowPoints:true,allowDrawing:true,allowFill:true
 };
 export type ContourMapCamera={regionId:string;scale:number;position:{x:number;y:number}};
 export type AtlasDocument={
