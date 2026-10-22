@@ -129,7 +129,7 @@ export default function LektrusColorPicker({
               onClick={()=>store(userId,removeSavedColor(custom,color))}>×</button>}
           </div>)}
         </div>
-        {paletteInside&&<label className="lektrus-color-popup-wheel">🎨 Палитра: выбрать свой цвет<input type="color" aria-label="Выбрать произвольный цвет" value={current} onChange={e=>onChange(e.target.value)}/></label>}
+        {paletteInside&&<label className="lektrus-color-popup-wheel"><span className="lektrus-color-popup-wheel-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 2a10 10 0 0 1 10 10c0 5-3.5 9-8 9-2 0-3-1.5-2-3.3.8-1.3-.1-2.7-1.5-2.7H8a6 6 0 0 1-6-6c0-4 4.5-7 10-7Z"/><circle cx="7.5" cy="9" r="1" fill="#ef4444" stroke="none"/><circle cx="11" cy="6" r="1" fill="#f59e0b" stroke="none"/><circle cx="16" cy="8" r="1" fill="#22c55e" stroke="none"/><circle cx="17.5" cy="12" r="1" fill="#3b82f6" stroke="none"/></svg></span><span className="lektrus-color-popup-wheel-text"><strong>Свой цвет</strong><small>Выбрать любой оттенок</small></span><span className="lektrus-color-popup-wheel-arrow" aria-hidden="true">›</span><input type="color" aria-label="Выбрать произвольный цвет" value={current} onChange={e=>onChange(e.target.value)}/></label>}
         <div className="lektrus-color-add-row">
           <button type="button" disabled={custom.includes(current)||custom.length>=MAX_SAVED_COLORS||DEFAULT_COLORS.some(value=>value===current)}
             onClick={()=>store(userId,addSavedColor(custom,current))}>☆ Сохранить текущий</button>
