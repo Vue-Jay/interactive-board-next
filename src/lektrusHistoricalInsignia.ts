@@ -20,6 +20,12 @@ const other=(id:string,from:number,to:number,file:string,title:string,kind:"bann
 /** State-specific emblems, with deliberately narrow year ranges. */
 export const historicalStateInsignia:readonly HistoricalInsignia[]=[
  other("rome",50,300,"Vexilloid of the Roman Empire.svg","Современная реконструкция римского военного вексиллума SPQR: не единый государственный флаг","banner",true),
+ other("austria-hungary",1869,1918,"Ensign of Austro-Hungarian civil fleet (1869-1918).svg","Торговый морской флаг Австро-Венгрии, а не единый флаг обоих государств монархии","banner",true),
+ other("british",1801,1997,"Flag of the United Kingdom.svg","Флаг Великобритании как государства-метрополии, не отдельный флаг всей колониальной империи","banner",false),
+ other("delhi-sultanate",1350,1400,"Delhi Sultanate Flag.svg","Знак правителя Дели с Каталанского атласа 1375 года; не доказан единый официальный флаг султаната","banner",true),
+ other("vijayanagara",1365,1400,"Flag of the King of Vijayanagara in the Catalan Atlas (1375).png","Изображение знамени правителя Виджаянагары с Каталанского атласа 1375 года","banner",true),
+ other("novgorod-republic",1400,1425,"Seal of the Novgorod Republic.gif","Историческая новгородская печать, не государственный флаг","emblem",true),
+ other("crimean-khanate",1441,1449,"State seal of the Crimean Khanate.jpg","Печать ханства с тамгой династии Гиреев, не государственный флаг","emblem",true),
  other("byzantium",975,1075,"Byzantine banner (cropped) based on a book illustration.png","Реконструкция военного знамени X–XI веков по исторической иллюстрации, не государственный флаг","banner",true),
  other("byzantium",1350,1453,"Byzantine Palaiologos Eagle.svg","Династический двуглавый орёл Палеологов по поздневизантийским изображениям","emblem",true),
  other("hre",1200,1350,"War flag of the Holy Roman Empire (1200-1350).svg","Военное знамя имперских сил (Рейхсштурмфане), не единый национальный флаг","banner",true),
