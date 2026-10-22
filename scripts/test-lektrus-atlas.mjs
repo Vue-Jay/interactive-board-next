@@ -646,7 +646,7 @@ assert.ok(map.includes('useState(isWorksheet&&!editorMode)'),
 assert.ok(map.includes('if(!objectMoveMode)e.stopPropagation()'),
  "Only intentional map-edit mode stops board pointer events");
 assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}'));
-assert.ok(map.includes('aria-label="Режим работы с контурной картой"'));
+assert.ok(map.includes('aria-label="Режим контурной карты"'));
 assert.ok(map.includes('onClick={()=>setObjectMoveMode(false)}'));
 assert.ok(map.includes('setObjectMoveMode(true)'));
 assert.ok(application.includes('data-object={item.id}'));
@@ -657,5 +657,33 @@ assert.ok(atlasDockCss.includes('.lektrus-atlas--worksheet .lektrus-contour-work
 assert.ok(atlasDockCss.includes('position:relative;left:auto;right:auto;top:auto;bottom:auto;'));
 assert.ok(atlasDockCss.includes('flex:1 1 0;min-height:0;min-width:0;'));
 assert.ok(atlasDockCss.includes('overflow-x:auto;'),"Narrow map objects must scroll their tools, not obscure the map");
+
+
+// The teacher's task must always be readable, not hidden in a disclosure.
+const worksheetHead=map.slice(map.indexOf('className="lektrus-contour-workspace-head"'),
+ map.indexOf('className="lektrus-contour-workspace-tools"'));
+assert.ok(worksheetHead.includes('className="lektrus-contour-task-label"'));
+assert.ok(worksheetHead.includes('{d.contourTask}'));
+assert.ok(!worksheetHead.includes('<details>'));
+assert.ok(worksheetHead.includes('className="lektrus-contour-workspace-mode"'),
+ "Object / map modes need a fixed, visible position outside the scrolling tool strip");
+assert.ok(worksheetHead.includes('↔ Объект'));
+assert.ok(worksheetHead.includes('✎ Работа с картой'));
+// Native board listeners fire earlier than React's nested bubble handler.
+// Both native wheel and capture-phase touch must exit for an editing atlas.
+assert.ok(application.includes('target.closest(".lektrus-atlas:not(.lektrus-atlas--board-selection)")'),
+ "Native board wheel handler must not zoom/pan when zooming the map");
+assert.ok(application.includes('e.preventDefault();\\n        return;'));
+const boardCapture=application.slice(application.indexOf('onPointerDownCapture={(e) => {'),
+ application.indexOf('onPointerMoveCapture={(e) => {'));
+assert.ok(boardCapture.includes('.lektrus-atlas:not(.lektrus-atlas--board-selection)'));
+assert.ok(boardCapture.indexOf('.lektrus-atlas:not(.lektrus-atlas--board-selection)')<
+ boardCapture.indexOf('touchStart(e)'),
+ "Atlas touch guard must run before the board records any touchpoints");
+assert.ok(map.includes('onPointerMove={e=>{if(!objectMoveMode)e.stopPropagation()}'));
+assert.ok(map.includes('onPointerCancel={e=>{if(!objectMoveMode)e.stopPropagation()}'));
+const bottomStyles=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
+assert.ok(bottomStyles.includes('.lektrus-atlas--worksheet .lektrus-contour-task-label{'));
+assert.ok(bottomStyles.includes('.lektrus-contour-workspace-head .lektrus-contour-workspace-mode'));
 
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
