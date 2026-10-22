@@ -4404,7 +4404,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const lectrisEditSelected = () => {
     const contourWorksheet=singleSelected?.graphFigureId==="contour-atlas";
-    if (!singleSelected || !canEdit || singleSelected.locked || (isStudent && structurallyLockedForStudent(singleSelected)&&!contourWorksheet)) return;
+    if (!singleSelected || !canEdit || (singleSelected.locked&&!contourWorksheet) || (isStudent && structurallyLockedForStudent(singleSelected)&&!contourWorksheet)) return;
     switch (singleSelected.kind) {
       case "text": case "sticky": case "frame": case "comment": startEdit(singleSelected); break;
       case "formula": openFormulaEditor(singleSelected); break;
@@ -4961,7 +4961,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const openGraphEditor = (item: Item) => {
-    if(item.kind!=="graph"||item.locked)return;
+    if(item.kind!=="graph"||(item.locked&&item.graphFigureId!=="contour-atlas"))return;
     if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}
     if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){setCircuitEditorItem(item);return;}
     if(item.scienceAtomModel||item.graphFigureId==="chem-atom"){setAtomEditorItem(item);return;}
@@ -7507,7 +7507,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   } else if (tool === "select" && !space && !item.locked && item.kind === "checklist") {
                     setSelected([item.id]);
                     openChecklistEditor(item);
-                  } else if ((tool === "select" || tool==="hand") && !space && !item.locked && item.kind==="graph" && item.graphFigureId==="contour-atlas") {
+                  } else if ((tool === "select" || tool==="hand") && !space && item.kind==="graph" && item.graphFigureId==="contour-atlas") {
                     setSelected([item.id]);setSchoolEditorItem(item);
 } else if (tool === "select" && !space && !item.locked && item.kind === "graph") { setSelected([item.id]); openGraphEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); setFractionEditorId(item.id);
