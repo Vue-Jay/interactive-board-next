@@ -673,7 +673,10 @@ assert.ok(worksheetHead.includes('✎ Работа с картой'));
 // Both native wheel and capture-phase touch must exit for an editing atlas.
 assert.ok(application.includes('target.closest(".lektrus-atlas:not(.lektrus-atlas--board-selection)")'),
  "Native board wheel handler must not zoom/pan when zooming the map");
-assert.ok(application.includes('e.preventDefault();\\n        return;'));
+const wheelGuard=application.slice(
+ application.indexOf('if(target.closest(".lektrus-atlas:not(.lektrus-atlas--board-selection)"))'),
+ application.indexOf('if (target.closest("textarea"))'));
+assert.ok(wheelGuard.includes('e.preventDefault();')&&wheelGuard.includes('return;'));
 const boardCapture=application.slice(application.indexOf('onPointerDownCapture={(e) => {'),
  application.indexOf('onPointerMoveCapture={(e) => {'));
 assert.ok(boardCapture.includes('.lektrus-atlas:not(.lektrus-atlas--board-selection)'));
@@ -688,7 +691,7 @@ assert.ok(bottomStyles.includes('.lektrus-contour-workspace-head .lektrus-contou
 
 assert.ok(map.includes('if(pinch.current){onMove(e);return}'),
  "Two-touch pencil interaction should navigate map instead of the whiteboard");
-assert.ok(map.includes('if(pinch.current){\\n    contourDrawing.current=[]'),
+assert.ok(map.includes('if(pinch.current){')&&map.includes('contourDrawing.current=[];'),
  "Second finger must cancel provisional pencil drawing");
 assert.ok(map.includes('onPointerCancel={objectMoveMode?undefined:contourFreehand?cancelContourStroke:onPointerEnd}'),
  "Cancelled touch must not save an unfinished stroke");
