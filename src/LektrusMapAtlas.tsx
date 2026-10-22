@@ -217,7 +217,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [mineralFilter,setMineralFilter]=useState("Все виды");
  const [selectedMineral,setSelectedMineral]=useState<GeoFeature|null>(null);
  const [search,setSearch]=useState("");
- const [focusedUnit,setFocusedUnit]=useState("");
  const [directoryFilter,setDirectoryFilter]=useState("");
  const [searchAcrossYears,setSearchAcrossYears]=useState(false);
  const [historyTab,setHistoryTab]=useState<"directory"|"article"|"changes">("directory");
@@ -752,19 +751,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   shownMarineNames,shownLakeNames,shownRiverNames,shownNatureNames,shownPeaks,
   auxiliaryRiverLabels,scale,position.x,position.y]);
  const visibleMapLabels=useMemo(()=>new Set(placedMapLabels.map(v=>v.id)),[placedMapLabels]);
- const subregions=useMemo(()=>{
-  if(!administrative||regionId==="world")return [];
-  const [west,south,east,north]=selectedRegion.bounds;
-  return administrative.features.flatMap((feature,i)=>{
-   const point=featureMapPoint(feature);if(!point)return [];
-   const lon=point[0]/2.5-180,lat=90-point[1]/2.5;
-   if(lon<west||lon>east||lat<south||lat>north)return [];
-   const name=geoFeatureName(feature);if(!name)return [];
-   const key=String(feature.properties?.adm1_code??feature.properties?.ADM1_CODE??
-    feature.properties?.iso_3166_2??feature.properties?.name??i);
-   return [{key,name,feature}];
-  }).sort((a,b)=>a.name.localeCompare(b.name,"ru")).slice(0,450);
- },[administrative,selectedRegion,regionId]);
  const changes=useMemo(()=>source&&previous?summariseNamedChanges(previous,source):null,[source,previous]);
  const userMarkers=d.markers.filter(marker=>!historical||
   Math.abs(marker.year-snapshot.year)<=Math.max(10,(historicalSnapshots[Math.min(index+1,historicalSnapshots.length-1)].year-
@@ -1093,7 +1079,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    fromX:cameraRef.current.position.x,fromY:cameraRef.current.position.y}:null;
  };
  const reset=()=>{commitCamera(atlasRegionCamera(selectedRegion));setSelected(null);setCoord(null)};
- const changeRegion=(id:string)=>{setRegionId(id);setFocusedUnit("");onChange?.({...d,regionId:id})};
+ const changeRegion=(id:string)=>{setRegionId(id);onChange?.({...d,regionId:id})};
  const paintProvince=(feature:GeoFeature)=>{
   if(mode!=="contour"||!contourConfig.allowFill||contourAction!=="fill"||!paintRegions||dragged.current)return;
   const key="region:"+String(feature.properties?.adm1_code||feature.properties?.ADM1_CODE||feature.properties?.iso_3166_2||
