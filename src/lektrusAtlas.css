@@ -621,3 +621,14 @@
 @media(max-width:600px){
  .lektrus-atlas--worksheet .lektrus-contour-selection-hint{font-size:10.5px}
 }
+
+/* On the board, the saved worksheet is ONE resizeable and moveable object.
+   Annotation hit areas must never steal selection from the board. */
+.lektrus-atlas--board-selection .lektrus-atlas-contour-work,
+.lektrus-atlas--board-selection .lektrus-atlas-contour-work *{
+ pointer-events:none!important;
+}
+.lektrus-atlas--board-selection .lektrus-atlas-svg,
+.lektrus-atlas--board-selection .lektrus-atlas-svg *{
+ cursor:move!important;
+}
