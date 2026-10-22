@@ -1124,23 +1124,24 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   selectFeature(feature,historical?"Историческая территория":"Государство");
  };
  const jumpToPeriod=(year:number,raw?:string)=>{
-  if(raw)pendingJump.current={year,raw};
   const next=nearestSnapshotIndex(year);
-  if(index===next&&raw){
+  const followRaw=raw??(historical&&!modernReference&&selectedRaw?selectedRaw:undefined);
+  pendingJump.current=followRaw?{year:historicalSnapshots[next].year,raw:followRaw}:null;
+  if(index===next&&followRaw){
    const feature=source?.features.find(f=>normalizeHistoricalName(String(f.properties?.NAME??""))===
-    normalizeHistoricalName(raw));
+    normalizeHistoricalName(followRaw));
    if(feature){pendingJump.current=null;focusFeature(feature)}
    return;
   }
   setIndex(next);if(onChange)onChange({...d,year:historicalSnapshots[next].year});
-  setSelected(null);setHistoryTab(raw?"article":"directory");
+  setSelected(null);setHistoryTab(followRaw?"article":"directory");
  };
  useEffect(()=>{
   const target=pendingJump.current;
   if(!target||!source||target.year!==snapshot.year||sourceYear!==snapshot.year)return;
   const match=source.features.find(f=>normalizeHistoricalName(String(f.properties?.NAME??""))===
    normalizeHistoricalName(target.raw));
-  if(!match)return;
+  if(!match){pendingJump.current=null;setHistoryTab("directory");return;}
   pendingJump.current=null;
   const point=featureMapPoint(match);
   if(point){const box=featureFocusBounds(match);
@@ -1366,7 +1367,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
        <title>Метка координат. Двойной щелчок или правая кнопка для удаления</title>
       </g>}
       {historical&&compare&&previous&&<g fill="none" stroke="#d64646"
-       strokeWidth="1.1" strokeDasharray="4 2" pointerEvents="none">
+       strokeWidth=".95" strokeDasharray="5 3" strokeOpacity=".85" pointerEvents="none">
        {previous.features.filter(f=>!!atlasDisplayName(f,historicalSnapshots[Math.max(0,index-1)].year,true)).map((f,i)=><path key={"prior-"+i} d={mapFeaturePath(f)} vectorEffect="non-scaling-stroke"/>)}
       </g>}
       {hydroContext&&<g pointerEvents={isWorksheet?"none":undefined}>
