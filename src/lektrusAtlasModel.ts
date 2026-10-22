@@ -21,10 +21,11 @@ export const defaultContourAssignment:ContourAssignment={
  showBorders:true,showRegions:false,showCoastline:true,showRivers:true,showLakes:true,
  showGrid:true,allowLabels:true,allowPoints:true,allowDrawing:true,allowFill:true
 };
+export type ContourMapCamera={regionId:string;scale:number;position:{x:number;y:number}};
 export type AtlasDocument={
  kind:"atlas";title:string;mode:AtlasMode;scope?:AtlasSubject;year:number;showLabels:boolean;
  showGrid:boolean;showCoordinates?:boolean;showCities?:boolean;showEvents:boolean;markers:AtlasMarker[];borderView?:"source"|"russian";regionId?:string;hypsometry?:boolean;cityMinPopulation?:number;cityCategory?:"all"|"capitals"|"regional"|"ordinary";paintedCountries?:Record<string,string>;
- contourMarks?:ContourMark[];contourStrokes?:ContourStroke[];contourTask?:string;contourAssignment?:ContourAssignment;contourLegend?:Array<{id:string;symbol:string;meaning:string}>;
+ contourMarks?:ContourMark[];contourStrokes?:ContourStroke[];contourTask?:string;contourAssignment?:ContourAssignment;contourCamera?:ContourMapCamera;contourLegend?:Array<{id:string;symbol:string;meaning:string}>;
 };
 export const atlasModes:ReadonlyArray<{id:AtlasMode;title:string;hint:string}>=[
  {id:"political",title:"Политическая",hint:"Современные государства, названия и границы"},
@@ -207,6 +208,14 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
    (v.cityMinPopulation!==undefined&&(typeof v.cityMinPopulation!=="number"||![0,50000,250000,1000000].includes(v.cityMinPopulation)))||
    (v.cityCategory!==undefined&&!["all","capitals","regional","ordinary"].includes(String(v.cityCategory))))return false;
  if(v.contourTask!==undefined&&!isText(v.contourTask,240,true))return false;
+ if(v.contourCamera!==undefined){
+  const camera=v.contourCamera as ContourMapCamera;
+  if(!camera||typeof camera!=="object"||!isText(camera.regionId,65)||
+   !/^[-a-z0-9]+$/.test(camera.regionId)||
+   !Number.isFinite(camera.scale)||camera.scale<1||camera.scale>16384||
+   !camera.position||!Number.isFinite(camera.position.x)||!Number.isFinite(camera.position.y)||
+   Math.abs(camera.position.x)>8000000||Math.abs(camera.position.y)>4000000)return false;
+ }
  if(v.contourAssignment!==undefined){
   if(!v.contourAssignment||typeof v.contourAssignment!=="object"||Array.isArray(v.contourAssignment))return false;
   const options=v.contourAssignment as Record<string,unknown>;
