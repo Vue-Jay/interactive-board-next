@@ -853,8 +853,9 @@ assert.ok(map.includes('contourEraserHits('));
 assert.ok(eraserCode.includes('brushContour(e)'));
 
 assert.ok(eraserCode.includes('onChange?.({...d,contourMarks:'));
-assert.ok(eraserCode.includes('eraseContourInkAlongPath(contourStrokes,gesture.path,12/cameraRef.current.scale)'));
-assert.ok(map.includes('contourEraserPreview.current?.setAttribute("d",gesture.path.map('));
+assert.ok(eraserCode.includes('eraseContourInkAlongPath(contourStrokes,gesture.path,(toolThickness*5+2)/cameraRef.current.scale)'));
+assert.ok(map.includes('setLiveErasedStrokes(eraseContourInkAlongPath(contourStrokes,gesture.path,'),
+ "Eraser must preview actual cut strokes during the gesture");
 assert.ok(!eraserCode.includes('scheduleCamera('),"Eraser must never pan or zoom");
 assert.ok(eraserCode.includes('gesture.fills.size'),"Eraser must remove territory colour");
 assert.ok(eraserCode.includes('paintedCountries:Object.fromEntries'));
