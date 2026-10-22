@@ -2062,41 +2062,38 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
        target="_blank" rel="noopener noreferrer">Правовой источник уточнения столицы ↗</a>}
       {typeof selected.properties?.LOCATION_SOURCE_URL==="string"&&<a href={selected.properties.LOCATION_SOURCE_URL}
        target="_blank" rel="noopener noreferrer">Географический источник координат ↗</a>}
-     {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
-      {selectedArticle&&<div className="lektrus-history-article">
-       <p className="lektrus-history-period">{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</p>
-       <p><strong>Столица и важные центры:</strong> {selectedArticle.capital}</p>
+     {historical&&<div className="lektrus-history-compact-facts">
+      <div className="lektrus-history-key-facts">
+       <span><strong>Период карты</strong>{yearLabel(snapshot.year)}</span>
+       {selectedArticle&&<span><strong>Время существования</strong>{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</span>}
+       {selectedArticle?.capital&&<span><strong>Столица и центры</strong>{selectedArticle.capital}</span>}
+       {!selectedArticle&&fallbackReference?.capital&&<span><strong>Центры</strong>{fallbackReference.capital}</span>}
+      </div>
+      {selectedArticle?<div className="lektrus-history-article">
        <p>{selectedArticle.summary}</p>
-       <p><strong>Важное изменение:</strong> {selectedArticle.turn}</p>
-       <a target="_blank" rel="noopener noreferrer" href={historyArticleUrl(selectedArticle)}>
-        Открыть обзорную статью на русском ↗</a>
-       <small>Учебная справка подготовлена отдельно от картографической базы; исторические границы и датировки необходимо сверять с дополнительными источниками.</small>
-      </div>}
-      {fallbackReference&&<div className="lektrus-history-article">
-       <p><strong>{fallbackReference.title}</strong></p>
-       {fallbackReference.capital&&<p><strong>Центры:</strong> {fallbackReference.capital}</p>}
-       {fallbackReference.formation&&<p><strong>Образование:</strong> {fallbackReference.formation}</p>}
+       <p><strong>Ключевое изменение:</strong> {selectedArticle.turn}</p>
+       <a href={historyArticleUrl(selectedArticle)} target="_blank" rel="noopener noreferrer">Подробнее об эпохе ↗</a>
+      </div>:fallbackReference?<div className="lektrus-history-article">
        <p>{fallbackReference.description}</p>
-       <p><strong>Изменения:</strong> {fallbackReference.change}</p>
-       <a href={fallbackReference.sourceUrl} target="_blank" rel="noopener noreferrer">Подробнее: {fallbackReference.sourceTitle} ↗</a>
-      </div>}
-      {!selectedArticle&&!fallbackReference&&!modernReference&&<p>Для этой территории ещё нет отдельной энциклопедической карточки. Ниже приведены только сведения исходного картографического набора.</p>}
-      {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
-      {!modernReference&&selectedYears.length>0&&<div className="lektrus-history-observed">
-       <strong>Название встречается на датированных картах</strong>
-       <div>{selectedYears.map(y=><button type="button" key={y}
-        className={snapshot.year===y?"selected":""} onClick={()=>jumpToPeriod(y,selectedRaw)}>{yearLabel(y)}</button>)}</div>
-       <small>Это только присутствие названия в наборе, не даты основания и распада.</small>
-      </div>}
-      <p><strong>Период карты:</strong> {yearLabel(snapshot.year)}. Это дата слоя, а не подтверждённые даты существования государства.</p>
-      {!selectedArticle&&!fallbackReference&&<p>Столица, правители и причины территориальных изменений не указаны, если их нет в подтверждённых данных.</p>}
-      <p>{modernReference?
-       "Современная геометрия из Natural Earth. Дата публикации набора не равна точной исторической обстановке 2026 года.":
-       "Территория представлена в историческом наборе для "+yearLabel(snapshot.year)+". Границы могут отражать реконструкцию."}</p>
-      <p>Историческая реконструкция принадлежит авторам снимка. Российская позиция применяется к современному политическому слою, но не подменяет исторические эпохи.</p>
-      {historicalSubject&&<p>Административная принадлежность в источнике: {historicalSubject}</p>}
-      {historicalPart&&historicalPart!==selectedTitle&&
-       <p>Регион/группа: {historicalPart}</p>}</>}
+       <p><strong>Ключевое изменение:</strong> {fallbackReference.change}</p>
+       <a href={fallbackReference.sourceUrl} target="_blank" rel="noopener noreferrer">Историческая справка ↗</a>
+      </div>:<p className="lektrus-history-missing-facts">Для этой территории пока нет отдельной проверенной исторической справки.</p>}
+      <details className="lektrus-history-more">
+       <summary>Источники и дополнительные сведения</summary>
+       <p><strong>Точность границ:</strong> {precisions[borderPrecision(selected)]}</p>
+       {fallbackReference?.formation&&<p><strong>Образование:</strong> {fallbackReference.formation}</p>}
+       {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+       {historicalSubject&&<p><strong>Принадлежность:</strong> {historicalSubject}</p>}
+       {historicalPart&&historicalPart!==selectedTitle&&<p><strong>Регион:</strong> {historicalPart}</p>}
+       {!modernReference&&selectedYears.length>0&&<div className="lektrus-history-observed">
+        <strong>Объект показан на картах</strong>
+        <div>{selectedYears.map(y=><button type="button" key={y} className={snapshot.year===y?"selected":""}
+         onClick={()=>jumpToPeriod(y,selectedRaw)}>{yearLabel(y)}</button>)}</div>
+        <small>Даты присутствия на картах не равны датам основания или распада.</small>
+       </div>}
+       <small>{modernReference?"Современный обзор по Natural Earth.":"Исторические границы являются реконструкцией и могут быть приблизительными."} Дата картографического слоя не устанавливает точные даты существования государства.</small>
+      </details>
+     </div>}
     </div>:
     historical?<div className="lektrus-atlas-description">
      <strong>Исторический справочник</strong>
