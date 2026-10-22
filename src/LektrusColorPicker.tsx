@@ -30,6 +30,7 @@ type Props = {
   label?: string;
   disabled?: boolean;
   compact?: boolean;
+  paletteInside?: boolean;
 };
 
 /** Two controls everywhere: current-color square opens saved swatches,
@@ -37,7 +38,7 @@ type Props = {
  * Swatch popup is portaled so editor scroll containers cannot clip it.
  */
 export default function LektrusColorPicker({
-  value, onChange, userId, label="Цвет", disabled=false, compact=false,
+  value, onChange, userId, label="Цвет", disabled=false, compact=false, paletteInside=false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 0, top: 0, above: false });
@@ -98,7 +99,7 @@ export default function LektrusColorPicker({
         aria-expanded={open} disabled={disabled} onClick={()=>setOpen(!open)}>
         <span aria-hidden="true"/>
       </button>
-      <label className={`lektrus-color-wheel ${disabled?"is-disabled":""}`}
+      {!paletteInside&&<label className={`lektrus-color-wheel ${disabled?"is-disabled":""}`}
         title="Смешанная палитра: выбрать любой цвет">
         <svg aria-hidden="true" viewBox="0 0 24 24" width="21" height="21">
           <path d="M12 2a10 10 0 0 1 10 10c0 5.4-4 9-8.4 9a2.5 2.5 0 0 1-2.1-4c.5-.8-.2-1.8-1.2-1.8H8.5A6.5 6.5 0 0 1 2 8.7C2 5 6.3 2 12 2Z" fill="#fff" stroke="#7485a2" strokeWidth="1.1"/>
@@ -110,7 +111,7 @@ export default function LektrusColorPicker({
         </svg>
         <input type="color" aria-label="Смешанная палитра: выбрать произвольный цвет"
           value={current} disabled={disabled} onChange={e=>onChange(e.target.value)}/>
-      </label>
+      </label>}
     </div>
     {open&&!disabled&&createPortal(
       <div ref={popup} role="dialog" aria-label="Избранные цвета" className="lektrus-colors-popup"
@@ -128,6 +129,7 @@ export default function LektrusColorPicker({
               onClick={()=>store(userId,removeSavedColor(custom,color))}>×</button>}
           </div>)}
         </div>
+        {paletteInside&&<label className="lektrus-color-popup-wheel">🎨 Палитра: выбрать свой цвет<input type="color" aria-label="Выбрать произвольный цвет" value={current} onChange={e=>onChange(e.target.value)}/></label>}
         <div className="lektrus-color-add-row">
           <button type="button" disabled={custom.includes(current)||custom.length>=MAX_SAVED_COLORS||DEFAULT_COLORS.some(value=>value===current)}
             onClick={()=>store(userId,addSavedColor(custom,current))}>☆ Сохранить текущий</button>
