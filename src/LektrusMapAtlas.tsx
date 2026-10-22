@@ -1362,13 +1362,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
          transform={`translate(${s.anchor!.x} ${s.anchor!.y}) scale(${1/scale})`}>
          <rect x="-14" y="-20" width="28" height="17" rx="4" fill="#ffffff" fillOpacity=".91"
           stroke="#b5c9da" strokeWidth=".9"/>
-         {symbol.kind==="flag"&&symbol.code?
+         <path d="M0 -18 8 -15v5c0 4-4 6-8 7-4-1-8-3-8-7v-5Z"
+          fill="#dce9f7" stroke="#527698" strokeWidth="1"/>
+         <text y="-8.5" textAnchor="middle" fontSize="6.6" fontWeight="800" fill="#30516e">
+          {symbol.monogram}</text>
+         {symbol.kind==="flag"&&symbol.code&&
           <image x="-11" y="-17" width="22" height="11"
-           preserveAspectRatio="xMidYMid meet" href={atlasCountryFlagUrl(symbol.code)}/>:
-          <><path d="M0 -18 8 -15v5c0 4-4 6-8 7-4-1-8-3-8-7v-5Z"
-           fill="#dce9f7" stroke="#527698" strokeWidth="1"/>
-          <text y="-8.5" textAnchor="middle" fontSize="6.6" fontWeight="800" fill="#30516e">
-           {symbol.monogram}</text></>}
+           preserveAspectRatio="xMidYMid meet" href={atlasCountryFlagUrl(symbol.code)}/>}
+
         </g>;
        })}
        </g>}
