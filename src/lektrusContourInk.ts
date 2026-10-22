@@ -12,7 +12,7 @@ function asInkItem(stroke:ContourStroke):Item{
  const xs=points.map(p=>p.x),ys=points.map(p=>p.y);
  const x=Math.min(...xs),y=Math.min(...ys);
  return {id:stroke.id,kind:"pen",x,y,width:Math.max(1,Math.max(...xs)-x),
-  height:Math.max(1,Math.max(...ys)-y),text:"",color:stroke.color,weight:2,
+  height:Math.max(1,Math.max(...ys)-y),text:"",color:stroke.color,weight:stroke.width??2,
   points:points.map(p=>({x:p.x-x,y:p.y-y}))};
 }
 function asContourStroke(item:Item):ContourStroke[]{
@@ -23,7 +23,7 @@ function asContourStroke(item:Item):ContourStroke[]{
  for(let offset=0;offset<points.length-1;offset+=249){
   const segment=points.slice(offset,offset+250);
   if(segment.length>=2)result.push({id:result.length?crypto.randomUUID():item.id,
-   color:item.color??"#000000",points:segment});
+   color:item.color??"#000000",width:item.weight??2,points:segment});
  }
  return result;
 }
