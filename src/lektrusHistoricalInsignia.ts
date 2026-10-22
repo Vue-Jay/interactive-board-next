@@ -25,6 +25,7 @@ const artifact=(id:string,from:number,to:number,file:string,title:string,reconst
 });
 /** State-specific emblems, with deliberately narrow year ranges. */
 export const historicalStateInsignia:readonly HistoricalInsignia[]=[
+ artifact("goryeo",918,1392,"Ceramic Seal, Goryeo Dynasty (17859666276).jpg","Керамическая печать эпохи Корё из собрания Национального музея Кореи; точная дата внутри периода неизвестна, это не государственный герб"),
  artifact("hittite-empire",-1230,-1210,"Impero ittita, bulla in terracotta, dagli scavi di bogazköy hattusa, XIII secolo ac. (museo di çorum) 04 con impronta del sigillo di Tudhaliya IV.jpg","Глиняная булла с оттиском царской печати Тудхалии IV из Хаттусы, XIII век до н. э."),
  artifact("mongols",1260,1294,"Mongol passport from period of Kublai Khan, Yuan dynasty; Karakorum Museum, Mongolia (1).jpg","Монгольская пайцза (дорожная грамота) эпохи Хубилая, музей Каракорума; не флаг империи"),
  artifact("yuan",1271,1294,"Mongol passport from period of Kublai Khan, Yuan dynasty; Karakorum Museum, Mongolia (1).jpg","Пайцза при Хубилае: знак административных полномочий в державе Юань, не знамя"),
