@@ -853,4 +853,14 @@ assert.ok(atlasCss.includes('.lektrus-atlas-territory-dropdown'));
 const editorCss=fs.readFileSync(new URL("../src/lektrusAtlasEditor.css",import.meta.url),"utf8");
 assert.ok(editorCss.includes('.lektrus-contour-create-preview-map'));
 
+const studentBoard=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+assert.ok(studentBoard.includes('(singleSelected.locked&&!contourWorksheet)'));
+assert.ok(studentBoard.includes('item.locked&&item.graphFigureId!=="contour-atlas"'));
+assert.ok(studentBoard.includes('studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}'));
+assert.ok(studentBoard.includes('contourMarks:next.schoolDiagram.contourMarks'));
+assert.ok(studentBoard.includes('contourStrokes:next.schoolDiagram.contourStrokes'));
+assert.ok(map.includes('aria-label="Инструменты контурной карты"'));
+assert.ok(map.includes('<ContourToolIcon name={id}/>'));
+assert.ok(map.includes('lektrus-atlas-territory-dropdown'));
+assert.ok(map.includes('lektrus-atlas-sidebar--selected-only'));
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
