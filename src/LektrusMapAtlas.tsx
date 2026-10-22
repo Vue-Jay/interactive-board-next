@@ -11,6 +11,7 @@ import LektrusMapBase,{LektrusAtlasGraticule} from "./LektrusMapBase";
 import LektrusColorPicker from "./LektrusColorPicker";
 import LektrusAtlasCountrySymbol from "./LektrusAtlasCountrySymbol";
 import {atlasCountrySymbol} from "./lektrusAtlasCountrySymbols";
+import {listHistoricalStateInsignia,historicalReferenceSymbolYear,historicalInsigniaSourceUrl} from "./lektrusHistoricalInsignia";
 import {INK_WIDTHS} from "./LectrisObjectEditor";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
@@ -2057,18 +2058,35 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
        {visibleHistoricalReferences.length?visibleHistoricalReferences.map(entry=><details key={entry.id} className="lektrus-history-reference-entry">
         <summary><LektrusAtlasCountrySymbol compact symbol={atlasCountrySymbol(
          {type:"Feature",properties:{NAME:entry.aliases[0]??entry.title},
-          geometry:{type:"Polygon",coordinates:[]}},entry.title,entry.to,true)}/>
+          geometry:{type:"Polygon",coordinates:[]}},entry.title,historicalReferenceSymbolYear(entry),true)}/>
          <strong>{entry.title}</strong><small>{yearLabel(entry.from)} – {yearLabel(entry.to)}</small></summary>
         {entry.capital&&<p><strong>Столица и центры:</strong> {entry.capital}</p>}
         <p>{entry.description}</p>
         <p><strong>Изменение:</strong> {entry.change}</p>
-        {(()=>{const symbol=atlasCountrySymbol({type:"Feature",properties:{NAME:entry.aliases[0]??entry.title},
-          geometry:{type:"Polygon",coordinates:[]}},entry.title,entry.to,true);
-         return symbol.sourceUrl?<p className="lektrus-history-symbol-source-note">
-          <strong>{symbol.label}</strong> · {symbol.period}.
-          {symbol.reconstruction&&" Изображение является реконструкцией."}
-          {" "}<a href={symbol.sourceUrl} target="_blank" rel="noopener noreferrer">Источник изображения ↗</a>
-         </p>:<small>Подтверждённого изображения исторического флага или герба для этой карточки нет.</small>;
+        {(()=>{const images=listHistoricalStateInsignia(entry.id).filter(image=>
+         image.from<=entry.to&&image.to>=entry.from);
+         if(!images.length)return <small>Изображение достоверного исторического символа пока не найдено. Показан условный знак.</small>;
+         return <div className="lektrus-history-symbol-gallery">
+          <strong>Исторические символы и источники ({images.length})</strong>
+          <div className="lektrus-history-symbol-gallery-items">
+           {images.map(image=>{
+            const year=Math.max(entry.from,Math.min(entry.to,image.to));
+            const badge=atlasCountrySymbol({type:"Feature",properties:{NAME:entry.aliases[0]??entry.title},
+             geometry:{type:"Polygon",coordinates:[]}},entry.title,year,true);
+            return <a className="lektrus-history-symbol-gallery-item" key={image.file+"|"+image.from}
+              href={historicalInsigniaSourceUrl(image.file)} target="_blank" rel="noopener noreferrer"
+              title={image.title}>
+              <LektrusAtlasCountrySymbol symbol={badge}/>
+              <span><b>{image.title}</b><small>{yearLabel(image.from)} – {yearLabel(image.to)}</small>
+               {image.reconstruction&&<small className="lektrus-history-symbol-gallery-warning">
+                {image.title.includes("не флаг")||image.title.includes("не государственный")?
+                 "Не государственный флаг; современное изображение":"Историческая реконструкция, не оригинал"}
+               </small>}</span>
+              <span aria-hidden="true">↗</span>
+             </a>;
+           })}
+          </div>
+         </div>;
         })()}
         <div className="lektrus-history-reference-actions">
          {indexedReferenceMaps.get(entry.id)&&<button type="button"
