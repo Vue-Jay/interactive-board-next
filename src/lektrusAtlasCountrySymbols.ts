@@ -4,8 +4,12 @@
  * Every other historical territory receives an explicitly NON-official,
  * deterministic monogram, never a fabricated historic flag or coat of arms. */
 import type {GeoFeature} from "./lektrusAtlasData";
-export type AtlasCountrySymbol={kind:"flag"|"symbol";code:string|null;monogram:string;
- label:string;note:string;key:string};
+import {findHistoricalReference} from "./lektrusHistoricalReferences";
+import {findHistoricalStateInsignia,findHistoricalCountryFlag,
+ historicalInsigniaUrl,historicalInsigniaSourceUrl} from "./lektrusHistoricalInsignia";
+export type AtlasCountrySymbol={kind:"flag"|"symbol"|"historic";code:string|null;monogram:string;
+ label:string;note:string;key:string;imageUrl?:string;sourceUrl?:string;
+ period?:string;reconstruction?:boolean};
 const englishNames=new Intl.DisplayNames(["en"],{type:"region"});
 const russianNames=new Intl.DisplayNames(["ru"],{type:"region"});
 const isoByName=(()=>{
@@ -96,6 +100,28 @@ export function atlasCountryFlagUrl(code:string):string{
 export function atlasCountrySymbol(feature:GeoFeature,title:string,year:number,historical:boolean):AtlasCountrySymbol{
  const raw=String(feature.properties?.NAME??feature.properties?.name??"").trim();
  const code=atlasCountryIso(feature);
+ if(historical){
+  // Bound to the *same* historical polity and year, not merely a shared modern ISO.
+  const record=findHistoricalReference(raw,year)??findHistoricalReference(title,year);
+  const emblem=record?findHistoricalStateInsignia(record.id,year):undefined;
+  const sourceMatchesNation=!!code&&!!validHistoricalNames[code]?.some(name=>
+   name.toLocaleLowerCase("en")===raw.toLocaleLowerCase("en"));
+  // A dated present-day country name can use the dated flag archive. Ancient
+  // states which merely inherit their territory's ISO never enter this branch.
+  const archive=emblem??(sourceMatchesNation&&code?findHistoricalCountryFlag(code,year):undefined);
+  if(archive){
+   const kind=archive.kind==="flag"?"Исторический флаг":
+    archive.kind==="emblem"?"Историческая эмблема":"Историческое знамя";
+   const period=archive.from+"–"+archive.to+" гг.";
+   const qualifier=archive.reconstruction?" Современная реконструкция, не подлинный сохранившийся предмет.":"";
+   return {kind:"historic",code:null,monogram:initials(title||raw),
+    label:kind,period,reconstruction:archive.reconstruction,
+    imageUrl:historicalInsigniaUrl(archive.file),
+    sourceUrl:historicalInsigniaSourceUrl(archive.file),
+    note:archive.title+". Период: "+period+"."+qualifier+" Источник: Wikimedia Commons.",
+    key:raw+"|"+year+"|"+archive.file};
+  }
+ }
  const dated=code&&datedFlagStart[code]!==undefined&&year>=datedFlagStart[code]&&
   validHistoricalNames[code]?.some(name=>name.toLocaleLowerCase("en")===raw.toLocaleLowerCase("en"));
  const flag=!!code&&(!historical||dated);
