@@ -706,7 +706,7 @@ assert.ok(map.includes('const wasPinching=e.pointerType==="touch"'),
 
 // Real, persisted annotations; eraser gestures must NOT use the map pan path.
 assert.ok(map.includes('const [paintColor,setPaintColor]=useState("#000000")'));
-assert.ok(map.includes('const contourEraser=mode==="contour"&&contourAction==="erase"'));
+assert.ok(map.includes('const contourEraser=worksheetEditor&&contourAction==="erase"'));
 assert.ok(map.includes('onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:onMove}'));
 const eraserCode=map.slice(map.indexOf('const beginContourErase='),map.indexOf('const startContourMarkDrag='));
 assert.ok(eraserCode.includes('setPointerCapture(e.pointerId)'));
