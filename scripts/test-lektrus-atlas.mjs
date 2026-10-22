@@ -281,7 +281,30 @@ assert.equal(symbols.atlasCountrySymbol(symbolCountry("Russia","RU"),"Росси
  "Do not show post-1993 Russian flag before adoption");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Russian Empire","RU"),"Российская империя",1914,true).imageUrl??"",
  /1896/,"Russia in 1914 should use the imperial-era flag, not a modern flag");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Roman Empire"),"Римская империя",100,true).kind,"symbol");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Roman Empire"),"Римская империя",100,true).kind,"historic");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Roman Empire"),"Римская империя",100,true).reconstruction,true);
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Roman Empire"),"Римская империя",450,true).kind,"symbol",
+ "Do not present a Roman military reconstruction as valid for every century");
+
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Byzantine Empire"),"Византийская империя",1400,true).imageUrl??"",
+ /Byzantine%20Palaiologos%20Eagle/,"A dated Palaiologos emblem is now available");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Byzantine Empire"),"Византия",650,true).kind,"symbol",
+ "Do not assign late Byzantine emblems to early Byzantium");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Jerusalem"),"Иерусалимское королевство",1200,true).imageUrl??"",
+ /Kingdom%20of%20Jerusalem/);
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Teutonic State"),"Тевтонский орден",1400,true).imageUrl??"",
+ /Teutonic%20Order/);
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Majapahit"),"Маджапахит",1400,true).imageUrl??"",
+ /Surya%20Majapahit/);
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Inca Empire"),"Империя инков",1500,true).reconstruction,
+ true,"Speculative Incan banner must be described as a reconstruction");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Hawaii"),"Гавайское королевство",1830,true).imageUrl??"",
+ /Hawaii%20%281816%29/);
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Crimean Khanate"),"Крымское ханство",1550,true).imageUrl??"",
+ /Giray%20tamga/);
+assert.equal(historicalSymbols.listHistoricalStateInsignia("byzantium").length,2);
+assert.equal(historicalSymbols.historicalReferenceSymbolYear({
+ id:"rome",from:-27,to:476}),300,"End-of-empire date must not hide an attested earlier symbol");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Ottoman Empire"),"Османская империя",1900,true).imageUrl??"",
  /Ottoman/,"Use the attested Ottoman flag only for the late period");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Ottoman Empire"),"Османская империя",1600,true).kind,"symbol",
@@ -307,7 +330,9 @@ assert.equal(symbols.atlasCountrySymbol(symbolCountry("Mughal Empire"),"Импе
 
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Venice"),"Венеция",1600,true).kind,"symbol",
  "Never infer the Venetian symbol from an unrelated unknown name");
-assert.ok(historicalSymbols.historicalStateInsignia.length>=30,"Curated historical emblems remain available");
+assert.ok(historicalSymbols.historicalStateInsignia.length>=55,"Reviewed historic insignia collection must remain complete");
+assert.ok(new Set(historicalSymbols.historicalStateInsignia.map(x=>x.id)).size>=40,
+ "Historical graphics must cover at least forty actual reference states");
 assert.ok(historicalSymbols.historicalDatedNationalFlags.length>=95,
  "Dated flags must cover more than one recent atlas period");
 for(const row of [...historicalSymbols.historicalStateInsignia,...historicalSymbols.historicalDatedNationalFlags]){
@@ -333,6 +358,12 @@ assert.ok(!map.includes("lektrus-atlas-map-country-symbols"),"Country insignia m
 assert.ok(!map.includes("showCountrySymbols"),"Remove the unused map symbol toggle");
 assert.ok(map.includes("lektrus-atlas-selected-symbol-title"),"Country cards must show flags and dated shields");
 assert.ok(map.includes("LektrusAtlasCountrySymbol"),"Country lists use the shared symbol component");
+assert.ok(map.includes("listHistoricalStateInsignia(entry.id)"),
+ "Historical library must expose every dated emblem instead of just the latest");
+assert.ok(map.includes("historicalReferenceSymbolYear(entry)"),
+ "Reference thumbnails must use an image's own period, not the polity's last year");
+assert.ok(!map.includes("lektrus-atlas-map-country-symbols"),
+ "Symbols must stay in reference information, never the map canvas");
 
 for(const [filename,source,kind] of [
  ["LektrusMapAtlas.tsx",map,ts.ScriptKind.TSX],
