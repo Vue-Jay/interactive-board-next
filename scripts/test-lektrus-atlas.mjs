@@ -710,6 +710,8 @@ assert.ok(map.includes('contourEraserHits('));
 assert.ok(eraserCode.includes('brushContour(e)'));
 
 assert.ok(eraserCode.includes('onChange?.({...d,contourMarks:'));
+assert.ok(eraserCode.includes('eraseContourInkAlongPath(contourStrokes,gesture.path,12/cameraRef.current.scale)'));
+assert.ok(map.includes('contourEraserPreview.current?.setAttribute("d",gesture.path.map('));
 assert.ok(!eraserCode.includes('scheduleCamera('),"Eraser must never pan or zoom");
 assert.ok(eraserCode.includes('gesture.fills.size'),"Eraser must remove territory colour");
 assert.ok(eraserCode.includes('paintedCountries:Object.fromEntries'));
@@ -752,11 +754,11 @@ const markDragLogic=map.slice(map.indexOf('const startContourMarkDrag='),
 assert.ok(markDragLogic.includes('setPreviewContourMark(moved);'));
 assert.ok(!markDragLogic.includes('markerGesture.current=null;setPreviewContourMark(null);'));
 assert.ok(map.includes('persisted.lon===previewContourMark.lon&&persisted.lat===previewContourMark.lat'));
-assert.ok(map.includes('const labelUiScale=Math.max(.7,Math.min(4.5,1/Math.max(.22,mapPixelRatio)))'));
-assert.ok(map.includes('new ResizeObserver(measure)'));
-assert.ok(map.includes('scale(${labelUiScale/scale})'),"Labels must retain readable on-screen size");
-assert.ok(map.includes('fontSize="16" stroke="#fff"'));
-assert.ok(map.includes('strokeWidth="3.8"'));
+assert.ok(map.includes('const labelUiScale=1;'));
+assert.ok(!map.includes('new ResizeObserver(measure)'),"User labels should follow the political atlas zoom, not board-object pixels");
+assert.ok(map.includes('scale(${labelUiScale/scale})'));
+assert.ok(map.includes('fontSize="7.4" stroke="#fff"'));
+assert.ok(map.includes('strokeWidth="1.5"'),"Use political atlas font halo");
 assert.ok(contourCss.includes('fill:transparent;fill-opacity:0;stroke:transparent'));
 assert.ok(contourCss.includes('height:56px;min-height:56px'),
  "Selected label actions must occupy a stable height so touch selection does not shift the map");
@@ -764,9 +766,36 @@ assert.ok(map.includes('className="lektrus-contour-delete-mark"'));
 assert.ok(map.includes('onClick={()=>deleteContourMark(selectedContourMark.id)}'));
 assert.ok(map.includes('Нажмите на подпись, чтобы переместить или удалить её'));
 assert.ok(contourCss.includes('min-height:44px'),"Mobile deletion must have a touch-sized button");
-const labelHitPoint={...pt(56,58),x:pt(56,58).x+55};
-assert.deepEqual(hitLib.contourEraserHits([movable],[],labelHitPoint,1,12).marks,[]);
-assert.deepEqual(hitLib.contourEraserHits([movable],[],labelHitPoint,1,12,2).marks,["city-label"],
- "Eraser must follow the enlarged mobile label's hit geometry");
+const labelHitPoint={...pt(56,58),x:pt(56,58).x+13};
+assert.deepEqual(hitLib.contourEraserHits([movable],[],labelHitPoint,1,2).marks,["city-label"]);
+assert.deepEqual(hitLib.contourEraserHits([movable],[],{...labelHitPoint,x:labelHitPoint.x+50},1,2).marks,[],
+ "Eraser must follow compact political map label hit geometry");
+
+// Editing markers are ordinary buttons, but resizing must never be treated
+// as a click on the control strip. This previously disabled *all* handles.
+assert.ok(application.includes('const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint]")'));
+assert.ok(application.includes('if(!transformHandle&&target.closest("button,input,select,textarea'));
+assert.ok(application.includes('gesture.current = {\n        pointer: e.pointerId,\n        mode: transformHandle === "rotate" ? "rotate" : "resize"'));
+const contourInkTs=fs.readFileSync(new URL("../src/lektrusContourInk.ts",import.meta.url),"utf8");
+const inkEraserTs=fs.readFileSync(new URL("../src/inkEraser.ts",import.meta.url),"utf8");
+const inkExports={};
+new Function("exports",ts.transpileModule(inkEraserTs,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText)(inkExports);
+const contourInkExports={};
+new Function("exports","require",ts.transpileModule(contourInkTs,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText)(contourInkExports,()=>inkExports);
+const testStroke={id:"line",color:"#000000",points:[[0,0],[10,0]]};
+const worldPoint=(lon,lat)=>({x:(lon+180)*2.5,y:(90-lat)*2.5});
+const split=contourInkExports.eraseContourInkAlongPath([testStroke],
+ [worldPoint(5,-1),worldPoint(5,1)],3);
+assert.ok(split.length>=2,"Partial eraser must retain segments on both sides");
+assert.ok(split.some(stroke=>stroke.points.some(p=>p[0]<3)));
+assert.ok(split.some(stroke=>stroke.points.some(p=>p[0]>7)));
+assert.equal(contourInkExports.eraseContourInkAlongPath([testStroke],[worldPoint(40,40)],3)[0],testStroke,
+ "Unbrushed strokes must retain their original data");
+assert.ok(map.includes('for(let offset=0;offset<points.length-1;offset+=249)'),
+ "Long pencil strokes must be persisted in bounded segments");
 
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
