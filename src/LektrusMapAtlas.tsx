@@ -2065,9 +2065,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         <p><strong>Изменение:</strong> {entry.change}</p>
         {(()=>{const images=listHistoricalStateInsignia(entry.id).filter(image=>
          image.from<=entry.to&&image.to>=entry.from);
-         if(!images.length)return <small>Изображение достоверного исторического символа пока не найдено. Показан условный знак.</small>;
+         if(!images.length)return <small>Проверенного изображения флага, печати или исторического памятника пока нет. Показан условный знак.</small>;
          return <div className="lektrus-history-symbol-gallery">
-          <strong>Исторические символы и источники ({images.length})</strong>
+          <strong>Флаги, знамёна и исторические свидетельства ({images.length})</strong>
           <div className="lektrus-history-symbol-gallery-items">
            {images.map(image=>{
             const year=Math.max(entry.from,Math.min(entry.to,image.to));
@@ -2077,7 +2077,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
               href={historicalInsigniaSourceUrl(image.file)} target="_blank" rel="noopener noreferrer"
               title={image.title}>
               <LektrusAtlasCountrySymbol symbol={badge}/>
-              <span><b>{image.title}</b><small>{yearLabel(image.from)} – {yearLabel(image.to)}</small>
+              <span><b>{image.title}</b>
+               <small>{image.kind==="artifact"?"Исторический памятник / источник":
+                image.kind==="emblem"?"Династическая эмблема":
+                image.kind==="banner"?"Знамя":"Флаг"} · {yearLabel(image.from)} – {yearLabel(image.to)}</small>
+               {image.kind==="artifact"&&<small>Не является государственным флагом или гербом</small>}
                {image.reconstruction&&<small className="lektrus-history-symbol-gallery-warning">
                 {image.title.includes("не флаг")||image.title.includes("не государственный")?
                  "Не государственный флаг; современное изображение":"Историческая реконструкция, не оригинал"}
