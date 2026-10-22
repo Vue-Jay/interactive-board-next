@@ -1452,7 +1452,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
       {/* Reference symbols follow the political map's zoom filtering and fixed screen size.
            They remain separate toggleable layers and never render names on worksheets. */}
       {isWorksheet&&(contourConfig.showCapitals||contourConfig.showMajorCities)&&<g className="lektrus-contour-reference-cities" pointerEvents="none">
-       {contourConfig.showCapitals&&contourCapitals.filter(f=>scale>=2.6).map(f=><g key={"ref-capital-"+f.id}
+       {contourConfig.showCapitals&&contourCapitals.filter(()=>scale>=2.6).map(f=><g key={"ref-capital-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}>
         <circle r="3.65" fill="#fff" stroke="#263c55" strokeWidth="1.5"/>
        </g>)}
@@ -1463,7 +1463,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
        </g>)}
       </g>}
       {citiesOn&&<g className="lektrus-atlas-capitals">
-       {contourCapitals.filter(f=>scale>=2.6).map(f=><g key={"capital-"+f.id}
+       {contourCapitals.filter(()=>scale>=2.6).map(f=><g key={"capital-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={e=>{e.stopPropagation();selectFeature(f.feature,alternateCapital(f.feature)?"Дополнительная столица по данным источника":"Столица государства")}}
