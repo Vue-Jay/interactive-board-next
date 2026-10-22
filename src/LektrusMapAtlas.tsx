@@ -90,7 +90,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const contourConfig={...defaultContourAssignment,...d.contourAssignment};
  const citiesOn=mode==="political"&&d.showCities!==false;
  const mineralContext=mode==="minerals";
- const landmarkCities=citiesOn||mineralContext;
+ const landmarkCities=citiesOn||mineralContext||isWorksheet&&(contourConfig.showCapitals||contourConfig.showMajorCities);
  const hydroContext=mode==="physical"||mode==="hydrography"||mineralContext||isWorksheet&&(contourConfig.showRivers||contourConfig.showLakes);
  const reliefContext=mode==="physical"||mode==="relief"||mineralContext;
  // This reuses the measured relief tiles, without turning every click on
@@ -1404,6 +1404,18 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         <circle r={selected===f.feature?4.4:2.5}
          fill={selected===f.feature?"#dc863b":"#355971"} stroke="#fff" strokeWidth="1.1"/>
         <title>{russianPlaceName(f.feature)} · ориентир, население по Natural Earth</title>
+       </g>)}
+      </g>}
+      {isWorksheet&&(contourConfig.showCapitals||contourConfig.showMajorCities)&&<g className="lektrus-contour-reference-cities" pointerEvents="none">
+       {contourConfig.showCapitals&&shownCapitals.filter(f=>!!f.point).map(f=><g key={"ref-capital-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}>
+        <path d="M0 -3.5L3.5 0L0 3.5L-3.5 0Z" fill="#243c58" stroke="#fff" strokeWidth="1.1"/>
+        <title>{russianPlaceName(f.feature)} · столица</title>
+       </g>)}
+       {contourConfig.showMajorCities&&limitCitySymbols(cityPoints.filter(f=>f.point&&visiblePoint(f.point)&&!nationalCapital(f.feature)&&cityPopulation(f.feature)>=500000),scale,scale<3?80:scale<12?180:420).map(f=><g key={"ref-city-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}>
+        <circle r="2.6" fill="#456b8c" stroke="#fff" strokeWidth=".9"/>
+        <title>{russianPlaceName(f.feature)} · крупный город</title>
        </g>)}
       </g>}
       {citiesOn&&<g className="lektrus-atlas-capitals">
