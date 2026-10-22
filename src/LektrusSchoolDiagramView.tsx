@@ -11,7 +11,7 @@ import LektrusMitosisView from "./LektrusMitosisView";
 import LektrusLogicCircuitView from "./LektrusLogicCircuitView";
 import LektrusProgrammingView from "./LektrusProgrammingView";
 
-type Props={diagram:SchoolDiagram;onChange?:(diagram:SchoolDiagram)=>void;editorMode?:boolean};
+type Props={diagram:SchoolDiagram;onChange?:(diagram:SchoolDiagram)=>void;editorMode?:boolean;userId?:string};
 const trim=(s:string,n=20)=>s.length>n?s.slice(0,n-1)+"…":s;
 const labelText=(s:string,max=19)=>{
  const words=s.split(/\s+/),lines:string[]=[];let line="";
@@ -183,6 +183,6 @@ export default function LektrusSchoolDiagramView({diagram,onChange,editorMode}:P
   case "morphemes":case "family-tree":case "flashcards":return <LektrusApprovedSchoolView diagram={diagram}/>;
   case "morphology":case "phonetics":case "orthography":return <LektrusRussianSchoolView diagram={diagram} onChange={onChange}/>;
   case "sentence-builder":case "state-structure":return <LektrusLanguageSocialView diagram={diagram}/>;
-  case "atlas":return <LektrusMapAtlas diagram={diagram} onChange={onChange} editorMode={editorMode}/>;
+  case "atlas":return <LektrusMapAtlas diagram={diagram} onChange={onChange} editorMode={editorMode} userId={userId}/>;
  }
 }
