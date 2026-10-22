@@ -8,6 +8,7 @@ import {clusterMineralMapPoints} from "./lektrusAtlasMineralClusters";
 import {loadMRDSRegionalDeposits,loadMRDSWorldOverview,mrdsMineralCommodity} from "./lektrusAtlasMRDS";
 import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} from "./lektrusAtlasSchoolFacts";
 import LektrusMapBase,{LektrusAtlasGraticule} from "./LektrusMapBase";
+import LektrusColorPicker from "./LektrusColorPicker";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
 import {SCHOOL_ATLAS_GROUPS,SCHOOL_ATLAS_MINERALS,SCHOOL_ATLAS_FUEL_MINERALS} from "./lektrusSchoolAtlasMinerals";
@@ -25,7 +26,7 @@ import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLa
 historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl,normalizeHistoricalName} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference} from "./lektrusHistoricalReferences";
-type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean};
+type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean;userId?:string};
 const MAX_ATLAS_ZOOM=16384;
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
 const palettes=["#c8dced","#e6c6a9","#c8e3cc","#e1d6ed","#ecd9a9","#a9d9dc","#e8c9d7","#d5dab4"];
@@ -77,7 +78,7 @@ function ContourToolIcon({name}:{name:ContourToolName}){
   {name==="label"&&<><path d="M3 5h12v12H3z"/><path d="m9 8-3 6M12 14 9 8M6.8 12h4.5M17 10l4 4-4 4"/></>}
  </svg>;
 }
-function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
+function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
  const [coordinatesEnabled,setCoordinatesEnabled]=useState(d.showCoordinates===true||d.mode==="coordinates");
  useEffect(()=>setCoordinatesEnabled(d.showCoordinates===true||d.mode==="coordinates"),[d.showCoordinates,d.mode]);
@@ -2165,7 +2166,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          pinch.current=null;dragged.current=false}}>
         <ContourToolIcon name={id}/><span>{title}</span>
        </button>)}
-      {contourAction!=="erase"&&<label className="lektrus-contour-dock-color" title="Цвет рисования"><input type="color" aria-label="Цвет" value={paintColor} onChange={e=>setPaintColor(e.target.value)}/><span>Цвет</span></label>}
+      {contourAction!=="erase"&&<div className="lektrus-contour-dock-color"><LektrusColorPicker compact userId={userId} label="Цвет" value={paintColor} onChange={setPaintColor}/></div>}
       <label className="lektrus-contour-dock-thickness"><span>Толщина</span><select aria-label="Толщина карандаша и ластика" value={toolThickness} onChange={e=>setToolThickness(Number(e.target.value))}>{[1,2,3,5,8].map(size=><option key={size} value={size}>{size}</option>)}</select></label>
       <button type="button" className="lektrus-contour-icon-button" title="Отменить последнее действие"
        aria-label="Отменить" disabled={!contourHistory.length}
@@ -2222,4 +2223,4 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   </div>}
  </div>;
 }
-export default function LektrusMapAtlas({diagram,onChange,editorMode}:Props){return <AtlasMap diagram={diagram} onChange={onChange} editorMode={editorMode}/>};
+export default function LektrusMapAtlas({diagram,onChange,editorMode,userId}:Props){return <AtlasMap diagram={diagram} onChange={onChange} editorMode={editorMode} userId={userId}/>};
