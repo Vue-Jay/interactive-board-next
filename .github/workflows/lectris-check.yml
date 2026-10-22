@@ -35,6 +35,8 @@ jobs:
         run: node scripts/test-lektrus-approved-school.mjs
       - name: Russian morphology phonetics and spelling regression
         run: node scripts/test-lektrus-russian-school.mjs
+      - name: Interactive geography matching and question cards regression
+        run: node scripts/test-lektrus-geography-training.mjs
       - name: Unified geography and historical atlas regression
         run: node scripts/test-lektrus-atlas.mjs
       - name: Russian-language historical encyclopedia and cross-era search regression
