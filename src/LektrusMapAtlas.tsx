@@ -689,7 +689,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const shownCapitals=cityPoints.filter(f=>visiblePoint(f.point)&&nationalCapital(f.feature));
  const totalCapitals=cityPoints.filter(f=>nationalCapital(f.feature)).length;
  const cityLabels=chooseCityLabels(shownCities,scale,scale>=20?145:scale>=7?75:scale>=3?40:15);
- const capitalLabels=scale>=12?shownCapitals:chooseCityLabels(shownCapitals,scale,scale>=8?90:scale>=3?40:18);
+ const capitalLabels=chooseCityLabels(shownCapitals,scale,scale>=12?160:scale>=5?95:scale>=2?55:30);
+ const contourCapitals=limitCitySymbols(shownCapitals,scale,scale<2?45:scale<4?95:scale<10?165:270);
+ const contourCities=limitCitySymbols(cityPoints.filter(f=>f.point&&visiblePoint(f.point)&&!nationalCapital(f.feature)&&cityPopulation(f.feature)>=500000),scale,scale<2?35:scale<4?75:scale<10?150:290);
+ const contourCapitalLabels=chooseCityLabels(contourCapitals,scale,scale<2?30:scale<5?65:140);
+ const contourCityLabels=chooseCityLabels(contourCities,scale,scale<2?20:scale<5?60:130);
+ const contourSymbolSize=Math.max(.55,Math.min(1.18,.62+Math.log2(Math.max(1,scale))*.105));
  const shownPeaks=peakPoints.filter(f=>visiblePoint(f.point));
  const shownRiverNames=riverNames.filter(f=>visiblePoint(f.point));
  const shownLakeNames=lakeNames.filter(f=>visiblePoint(f.point));
@@ -706,7 +711,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const placedMapLabels=useMemo(()=>{
   if(!d.showLabels||mode==="contour")return [] as AtlasLabelCandidate[];
   const candidates:AtlasLabelCandidate[]=[];
-  const font=(base:number)=>Math.min(13,base+Math.log2(Math.max(1,scale))*.68);
+  const font=(base:number)=>Math.min(18,base+Math.log2(Math.max(1,scale))*.88);
   const add=(id:string,kind:AtlasLabelKind,text:string,x:number,y:number,
    priority:number,base:number,align:"middle"|"start"="middle",dx=0,dy=0)=>{
    if(text)candidates.push({id,kind,text,x,y,priority,fontSize:font(base),align,dx,dy});
@@ -717,13 +722,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
    if(mode==="political"){
     // State capitals take precedence over all other atlas labels.
     if(scale>=2.6)capitalLabels.forEach((f,i)=>add("capital-"+f.id,"capital",russianPlaceName(f.feature)??"",
-     f.point![0],f.point![1],-10+i/10000,7.8,"start",7,-6));
+     f.point![0],f.point![1],-10+i/10000,11,"start",8,-7));
     if(scale>=4)provinceLabels.forEach((f,i)=>add("province-"+f.id,"province",geoFeatureName(f.feature),
      f.anchor!.x,f.anchor!.y,2+i/500,7.1));
    }
   }
   if(citiesOn&&scale>=4.2)cityLabels.filter(f=>!nationalCapital(f.feature)).forEach((f,i)=>add("city-"+f.id,"city",
-   russianPlaceName(f.feature)??"",f.point![0],f.point![1],i/500,7.6,"start",6,-5));
+   russianPlaceName(f.feature)??"",f.point![0],f.point![1],i/500,9.5,"start",7,-5));
   if(mineralContext){
    mineralCityLabels.forEach((f,i)=>add("mineral-city-"+f.id,"city",
     russianPlaceName(f.feature)??"",f.point![0],f.point![1],-.8+i/500,7.4,"start",6,-4));
@@ -1407,16 +1412,22 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
        </g>)}
       </g>}
       {isWorksheet&&(contourConfig.showCapitals||contourConfig.showMajorCities)&&<g className="lektrus-contour-reference-cities" pointerEvents="none">
-       {contourConfig.showCapitals&&shownCapitals.filter(f=>!!f.point).map(f=><g key={"ref-capital-"+f.id}
-        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}>
-        <path d="M0 -3.5L3.5 0L0 3.5L-3.5 0Z" fill="#243c58" stroke="#fff" strokeWidth="1.1"/>
-        <title>{russianPlaceName(f.feature)} · столица</title>
+       {contourConfig.showCapitals&&contourCapitals.map(f=><g key={"ref-capital-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${contourSymbolSize/scale})`}>
+        <circle r="3.6" fill="#fff" stroke="#243c58" strokeWidth="1.4"/>
        </g>)}
-       {contourConfig.showMajorCities&&limitCitySymbols(cityPoints.filter(f=>f.point&&visiblePoint(f.point)&&!nationalCapital(f.feature)&&cityPopulation(f.feature)>=500000),scale,scale<3?80:scale<12?180:420).map(f=><g key={"ref-city-"+f.id}
-        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}>
-        <circle r="2.6" fill="#456b8c" stroke="#fff" strokeWidth=".9"/>
-        <title>{russianPlaceName(f.feature)} · крупный город</title>
+       {contourConfig.showMajorCities&&contourCities.map(f=><g key={"ref-city-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${contourSymbolSize/scale})`}>
+        <circle r="2.5" fill="#456b8c" stroke="#fff" strokeWidth=".9"/>
        </g>)}
+       {contourConfig.showCapitals&&contourCapitalLabels.map(f=><text key={"ref-capital-label-"+f.id}
+        x={f.point![0]+8/scale} y={f.point![1]-6/scale} fontSize={Math.min(17,11+Math.log2(Math.max(1,scale))*.8)/scale}
+        fontWeight="730" fill="#243c58" stroke="#fff" strokeWidth={2/scale} strokeLinejoin="round" paintOrder="stroke">
+        {russianPlaceName(f.feature)}</text>)}
+       {contourConfig.showMajorCities&&contourCityLabels.map(f=><text key={"ref-city-label-"+f.id}
+        x={f.point![0]+7/scale} y={f.point![1]-5/scale} fontSize={Math.min(16,9.5+Math.log2(Math.max(1,scale))*.8)/scale}
+        fontWeight="650" fill="#365c7b" stroke="#fff" strokeWidth={1.8/scale} strokeLinejoin="round" paintOrder="stroke">
+        {russianPlaceName(f.feature)}</text>)}
       </g>}
       {citiesOn&&<g className="lektrus-atlas-capitals">
        {shownCapitals.filter(f=>scale>=2.6).map(f=><g key={"capital-"+f.id}
@@ -1424,8 +1435,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={e=>{e.stopPropagation();selectFeature(f.feature,alternateCapital(f.feature)?"Дополнительная столица по данным источника":"Столица государства")}}
         onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Столица государства")}}}>
-        <path d="M0 -3.4L3.4 0L0 3.4L-3.4 0Z"
-         fill="#263c55" stroke="#fff" strokeWidth="1.15"/>
+        <circle r="3.65" fill="#fff" stroke="#263c55" strokeWidth="1.5"/>
         <title>{russianPlaceName(f.feature)}: {alternateCapital(f.feature)?"дополнительная столица":"столица"}</title>
        </g>)}
       </g>}
@@ -1467,7 +1477,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         fill={label.kind==="river"||label.kind==="lake"||label.kind==="sea"||label.kind==="stream"?"#286c97":
          label.kind==="nature"||label.kind==="peak"?"#6b4f39":"#284765"}
         stroke="#fff" strokeWidth={1.5/scale} strokeLinejoin="round" paintOrder="stroke"
-        fontWeight={label.kind==="country"?"680":"630"}>{label.text}</text>)}
+        fontWeight={label.kind==="capital"?"750":label.kind==="country"?"680":"650"}>{label.text}</text>)}
       </g>}
       {/* Draw deposit glyphs above geographic labels, never behind city names. */}
       {mode==="minerals"&&(!localMineralDetail||scale<12)&&<g className="lektrus-atlas-mineral-clusters">
