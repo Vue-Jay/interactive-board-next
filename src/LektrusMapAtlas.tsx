@@ -25,8 +25,8 @@ import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots,nearestS
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
 historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
-import {findHistoricalArticle,historicalRussianName,historyArticleUrl,normalizeHistoricalName} from "./lektrusHistoryEncyclopedia";
-import {findHistoricalReference,historicalReferences} from "./lektrusHistoricalReferences";
+import {findHistoricalArticle,historicalRussianName,historyArticleUrl} from "./lektrusHistoryEncyclopedia";
+import {findHistoricalReference,historicalReferences,normalizeHistoricalReferenceName} from "./lektrusHistoricalReferences";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean;userId?:string};
 const MAX_ATLAS_ZOOM=16384;
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
@@ -823,7 +823,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   (russianPlaceName(selected)??""):
   (selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))):"";
  const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
-  normalizeHistoricalName(name)===normalizeHistoricalName(selectedRaw))).map(record=>record.year):[];
+  normalizeHistoricalReferenceName(name)===normalizeHistoricalReferenceName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
  const namedFeatures=mode==="physical"?[...landforms.map(f=>f.feature),...peakPoints.map(f=>f.feature),...natureNames.map(f=>f.feature),...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
   mode==="hydrography"?[...ponds.map(f=>f.feature),...(rivers?.features.filter(hasAtlasName)??[]),...marineNames.map(f=>f.feature)]:
@@ -850,14 +850,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const indexedReferenceMaps=useMemo(()=>{
   const byAlias=new Map<string,Array<{year:number;raw:string}>>();
   for(const record of historyIndex)for(const raw of record.countries){
-   const key=normalizeHistoricalName(raw);
+   const key=normalizeHistoricalReferenceName(raw);
    const matches=byAlias.get(key);
    if(matches)matches.push({year:record.year,raw});
    else byAlias.set(key,[{year:record.year,raw}]);
   }
   const links=new Map<string,{year:number;raw:string}>();
   for(const entry of historicalReferences){
-   const matches=entry.aliases.flatMap(alias=>byAlias.get(normalizeHistoricalName(alias))??[])
+   const matches=[entry.title,...entry.aliases].flatMap(alias=>byAlias.get(normalizeHistoricalReferenceName(alias))??[])
     .filter(hit=>hit.year>=entry.from&&hit.year<=entry.to)
     .sort((a,b)=>Math.abs(a.year-snapshot.year)-Math.abs(b.year-snapshot.year));
    if(matches.length)links.set(entry.id,matches[0]);
@@ -874,7 +874,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
     if(!isRussianAtlasName(title))continue;
     if(!title.toLocaleLowerCase("ru").includes(query)&&
      !raw.toLocaleLowerCase("en").includes(query))continue;
-    const key=normalizeHistoricalName(raw);
+    const key=normalizeHistoricalReferenceName(raw);
     const old=found.get(key);
     if(old){if(!old.years.includes(record.year))old.years.push(record.year);}
     else found.set(key,{name:title,raw,years:[record.year]});
@@ -1156,8 +1156,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   const followRaw=raw??(historical&&!modernReference&&selectedRaw?selectedRaw:undefined);
   pendingJump.current=followRaw?{year:historicalSnapshots[next].year,raw:followRaw}:null;
   if(index===next&&followRaw){
-   const feature=source?.features.find(f=>normalizeHistoricalName(String(f.properties?.NAME??""))===
-    normalizeHistoricalName(followRaw));
+   const feature=source?.features.find(f=>normalizeHistoricalReferenceName(String(f.properties?.NAME??""))===
+    normalizeHistoricalReferenceName(followRaw));
    if(feature){pendingJump.current=null;focusFeature(feature)}
    return;
   }
@@ -1167,8 +1167,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  useEffect(()=>{
   const target=pendingJump.current;
   if(!target||!source||target.year!==snapshot.year||sourceYear!==snapshot.year)return;
-  const match=source.features.find(f=>normalizeHistoricalName(String(f.properties?.NAME??""))===
-   normalizeHistoricalName(target.raw));
+  const match=source.features.find(f=>normalizeHistoricalReferenceName(String(f.properties?.NAME??""))===
+   normalizeHistoricalReferenceName(target.raw));
   if(!match){pendingJump.current=null;setHistoryTab("directory");return;}
   pendingJump.current=null;
   const point=featureMapPoint(match);
