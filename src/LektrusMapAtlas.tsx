@@ -963,8 +963,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(!contourDrawing.current.length)return;
   const point=contourPoint(worldPoint(localPoint(e)));
   const pts=contourDrawing.current,last=pts[pts.length-1];
-  if(Math.hypot(last[0]-point[0],last[1]-point[1])<.02/cameraRef.current.scale)return;
-  if(pts.length<250)pts.push(point);
+  if(Math.hypot(last[0]-point[0],last[1]-point[1])<.6/cameraRef.current.scale)return;
+  if(pts.length<2000)pts.push(point);
   const path=pts.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
    return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ");
   contourLivePath.current?.setAttribute("d",path);
@@ -976,10 +976,18 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   const points=contourDrawing.current;contourDrawing.current=[];
   contourLivePath.current?.setAttribute("d","");
   if(wasPinching||points.length<2||contourStrokes.length>=140)return;
+  // Match the board's pencil: a stroke can continue as long as the user
+  // draws. Split only at save time to respect the atlas' bounded format.
+  const segments:ContourStroke[]=[];
+  for(let offset=0;offset<points.length-1;offset+=249){
+   const part=points.slice(offset,offset+250);
+   if(part.length>=2)segments.push({
+    id:globalThis.crypto?.randomUUID?.()??String(Date.now())+Math.random(),
+    points:part,color:paintColor});
+  }
+  if(contourStrokes.length+segments.length>140)return;
   captureContour();
-  const next:ContourStroke={id:globalThis.crypto?.randomUUID?.()??String(Date.now())+Math.random(),
-   points,color:paintColor};
-  onChange?.({...d,contourStrokes:[...contourStrokes,next]});
+  onChange?.({...d,contourStrokes:[...contourStrokes,...segments]});
  };
  const cancelContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
   contourDrawing.current=[];
