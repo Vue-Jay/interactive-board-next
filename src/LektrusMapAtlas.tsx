@@ -1417,9 +1417,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
        {contourMarks.map(stored=>{const mark=previewContourMark?.id===stored.id?previewContourMark:stored;
         const [x,y]=projectGeography(mark.lon,mark.lat);
-        const width=Math.max(29,Math.min(80,mark.text.length)*6.3+16);
-        const left=mark.kind==="point"?7:-width/2,selected=selectedContourMarkId===mark.id;
-        return <g key={mark.id} transform={`translate(${x} ${y}) scale(${1/scale})`}
+        const labelUiScale=Math.max(.7,Math.min(4.5,1/Math.max(.22,mapPixelRatio)));
+        const width=Math.max(36,Math.min(80,mark.text.length)*9+20);
+        const left=mark.kind==="point"?11:-width/2,selected=selectedContourMarkId===mark.id;
+        return <g key={mark.id} transform={`translate(${x} ${y}) scale(${labelUiScale/scale})`}
          className={"lektrus-atlas-contour-mark lektrus-contour-label-object"+(selected?" selected":"")}
          role="button" tabIndex={0} aria-label={"Передвинуть обозначение: "+(mark.text||"Знак")}
          opacity={pendingErasure.marks.includes(mark.id)?.2:1}
@@ -1448,11 +1449,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
           }
          }}>
          <rect className="lektrus-contour-label-background"
-          x={left} y="-14" width={width} height="21" rx="5" strokeWidth="1"/>
-         {mark.kind==="point"&&<circle r="3.5" fill={mark.color} stroke="#fff" strokeWidth="1"/>}
-         {mark.text&&<text x={mark.kind==="point"?left+width/2:0} y="0"
-          textAnchor="middle" fill={mark.color} fontSize="10"
-          fontWeight="650">{mark.text}</text>}
+          x={left} y="-19" width={width} height="28" rx="5" strokeWidth="1"
+          aria-hidden="true"/>
+         {mark.kind==="point"&&<circle r="4.5" fill={mark.color} stroke="#fff" strokeWidth="1.8"/>}
+         {mark.text&&<text x={mark.kind==="point"?left+width/2:0} y="4"
+          textAnchor="middle" fill={mark.color} fontSize="16" stroke="#fff"
+          strokeWidth="3.8" strokeLinejoin="round" paintOrder="stroke"
+          fontWeight="750" letterSpacing=".12">{mark.text}</text>}
          <title>{mark.text||"Условный знак"} · Перетащите для перемещения, стрелки для точной настройки, Delete для удаления</title>
         </g>})}
        <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={2/scale}
@@ -1975,6 +1978,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        onClick={contourUndo}>↶</button>
 
      </div>
+     {!objectMoveMode&&selectedContourMark&&<div className="lektrus-contour-selected-mark"
+      role="group" aria-label="Действия с выбранной подписью">
+      <span title={selectedContourMark.text||"Знак"}>Выбрано: <strong>{selectedContourMark.text||"Условный знак"}</strong></span>
+      <button type="button" className="lektrus-contour-delete-mark"
+       aria-label={"Удалить объект "+(selectedContourMark.text||"Условный знак")}
+       onClick={()=>deleteContourMark(selectedContourMark.id)}>Удалить ×</button>
+     </div>}
      <div className="lektrus-contour-workspace-options">
       {(contourAction==="label"||contourAction==="point")&&
        <input aria-label="Текст подписи или знака" value={contourText} maxLength={80}
