@@ -877,3 +877,15 @@
 .lektrus-atlas-history .lektrus-history-result-heading{display:flex;align-items:center;gap:7px;min-width:0;grid-column:1/-1}
 .lektrus-atlas-history .lektrus-history-result-heading strong{grid-column:auto;flex:1}
 .lektrus-atlas-search-results button .lektrus-country-symbol{margin-right:7px;vertical-align:middle}
+
+/* Source-linked historical symbols live in the encyclopedia, never on the map. */
+.lektrus-atlas-history .lektrus-history-symbol-gallery{margin:12px 0 10px;border-top:1px solid #dce7f2;padding-top:9px}
+.lektrus-atlas-history .lektrus-history-symbol-gallery>strong{display:block;margin-bottom:7px;color:#365673;font-size:11px}
+.lektrus-atlas-history .lektrus-history-symbol-gallery-items{display:flex;flex-wrap:wrap;gap:7px;max-height:220px;overflow-y:auto;overscroll-behavior:contain}
+.lektrus-atlas-history .lektrus-history-symbol-gallery-item{display:flex;align-items:center;gap:8px;min-width:190px;max-width:100%;flex:1 1 220px;padding:7px;border:1px solid #dbe7f1;border-radius:9px;background:#fff;color:#355876;text-decoration:none}
+.lektrus-atlas-history .lektrus-history-symbol-gallery-item:hover{border-color:#8eb9df;background:#f4f9ff}
+.lektrus-atlas-history .lektrus-history-symbol-gallery-item>span:nth-child(2){min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+.lektrus-atlas-history .lektrus-history-symbol-gallery-item b{font-weight:700;line-height:1.25;font-size:11px}
+.lektrus-atlas-history .lektrus-history-symbol-gallery-item small{color:#7a8da0;font-size:10px;line-height:1.3}
+.lektrus-atlas-history .lektrus-history-symbol-gallery-item .lektrus-history-symbol-gallery-warning{color:#986024}
+.lektrus-atlas-history .lektrus-history-symbol-gallery-item .lektrus-country-symbol{width:49px;height:36px}
