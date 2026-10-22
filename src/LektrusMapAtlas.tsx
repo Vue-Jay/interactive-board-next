@@ -848,11 +848,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
      !raw.toLocaleLowerCase("en").includes(query))continue;
     const key=normalizeHistoricalName(raw);
     const old=found.get(key);
-    if(old)old.years.push(record.year);
+    if(old){if(!old.years.includes(record.year))old.years.push(record.year);}
     else found.set(key,{name:title,raw,years:[record.year]});
    }
   }
-  return [...found.values()].sort((a,b)=>a.name.localeCompare(b.name,"ru")).slice(0,30);
+  return [...found.values()].map(item=>({...item,years:item.years.sort((a,b)=>a-b)}))
+    .sort((a,b)=>a.name.localeCompare(b.name,"ru")).slice(0,60);
  },[directoryFilter,historyIndex]);
  const matchingFeatures=search.trim()?namedFeatures.filter(f=>{
   const title=atlasDisplayName(f,snapshot.year,historical&&!modernReference);
@@ -1967,9 +1968,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
       {indexProblem&&<small>Индекс временно недоступен: {indexProblem}</small>}
       {directoryFilter.trim().length>=2?<div className="lektrus-history-results">
        {globalMatches.length?globalMatches.map(item=><div key={item.raw} className="lektrus-history-result">
-        <strong>{item.name}</strong><small>{item.years.length} снимков</small>
-        <button type="button" onClick={()=>jumpToPeriod(item.years[item.years.length-1],item.raw)}>
-         Показать · {yearLabel(item.years[item.years.length-1])}</button>
+        <strong>{item.name}</strong><small>{item.years.length} датированных карт</small>
+        <div className="lektrus-history-result-periods" aria-label={"Выбор периода: "+item.name}>
+         {item.years.map(year=><button type="button" key={year}
+          onClick={()=>{jumpToPeriod(year,item.raw);setHistoryTab("article");}}>{yearLabel(year)}</button>)}
+        </div>
        </div>):<small>Совпадений нет. Попробуйте исходное написание названия.</small>}
       </div>:<small>Введите минимум две буквы для поиска по всем эпохам.</small>}
       <small>Периоды присутствия названия не устанавливают даты существования государства.</small>
@@ -2112,9 +2115,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
     {historical&&historyTab==="changes"&&changes&&<div className="lektrus-atlas-changes">
      <strong>Отличия от предыдущего снимка</strong>
      <small>{yearLabel(historicalSnapshots[index-1].year)} → {yearLabel(snapshot.year)}</small>
-     <p>Новые наименования в базе: {changes.appeared.length?changes.appeared.join(", "):"не обнаружены"}.</p>
-     <p>Отсутствуют в новом снимке: {changes.disappeared.length?changes.disappeared.join(", "):"не обнаружены"}.</p>
-     <small>Это сравнение названий объектов, не доказательство изменения каждой границы или причины события.</small>
+     <div className="lektrus-history-change-counts"><span>Появились в данных: <strong>{changes.appeared.length}</strong></span><span>Отсутствуют в новом слое: <strong>{changes.disappeared.length}</strong></span></div>
+     {changes.appeared.length>0&&<details><summary>Новые названия ({changes.appeared.length})</summary><p>{changes.appeared.join(", ")}</p></details>}
+     {changes.disappeared.length>0&&<details><summary>Исчезнувшие названия ({changes.disappeared.length})</summary><p>{changes.disappeared.join(", ")}</p></details>}
+     {!changes.appeared.length&&!changes.disappeared.length&&<p>Состав названий на соседних снимках совпадает.</p>}
+     <small>Сравниваются названия в источнике, а не точная геометрия границ или причины исторических событий.</small>
     </div>}
     {d.markers.length>0&&<div className="lektrus-atlas-user-markers">
      <strong>Маркеры преподавателя</strong>
