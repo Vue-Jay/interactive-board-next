@@ -126,6 +126,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const contourEraserPreview=useRef<SVGPathElement|null>(null);
  const eraserGesture=useRef<{pointerId:number;marks:Set<string>;fills:Set<string>;path:Array<{x:number;y:number}>}|null>(null);
  const [pendingErasure,setPendingErasure]=useState<{marks:string[];fills:string[]}>({marks:[],fills:[]});
+ const [liveErasedStrokes,setLiveErasedStrokes]=useState<ContourStroke[]|null>(null);
  const markerGesture=useRef<{pointerId:number;mark:ContourMark;start:{x:number;y:number};moved:boolean}|null>(null);
  const [previewContourMark,setPreviewContourMark]=useState<ContourMark|null>(null);
  const [selectedContourMarkId,setSelectedContourMarkId]=useState<string|null>(null);
@@ -895,10 +896,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   const last=gesture.path[gesture.path.length-1];
   if(!last||Math.hypot(point.x-last.x,point.y-last.y)>1.2/cameraRef.current.scale){
    if(gesture.path.length<700)gesture.path.push(point);
-   // Instant preview, like the board pen/eraser: update only the SVG path
-   // during a stroke and persist split fragments once on pointer-up.
-   contourEraserPreview.current?.setAttribute("d",gesture.path.map((p,i)=>
-    (i?"L":"M")+p.x.toFixed(3)+" "+p.y.toFixed(3)).join(" "));
+   // Recalculate cut segments during the gesture, not after pointer-up.
+   setLiveErasedStrokes(eraseContourInkAlongPath(contourStrokes,gesture.path,
+    (toolThickness*5+2)/cameraRef.current.scale));
   }
   // A filled polygon is also student work: erase its colour without panning.
   // elementFromPoint works after SVG pointer capture and supports swiping.
@@ -912,6 +912,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   if(e.pointerType==="mouse"&&e.button!==0)return;
   e.preventDefault();e.stopPropagation();
   if(eraserGesture.current)return;
+  setLiveErasedStrokes(null);
   eraserGesture.current={pointerId:e.pointerId,marks:new Set(),fills:new Set(),path:[]};
   e.currentTarget.setPointerCapture(e.pointerId);
   brushContour(e);
@@ -927,6 +928,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   eraserGesture.current=null;
   setPendingErasure({marks:[],fills:[]});
+  setLiveErasedStrokes(null);
   contourEraserPreview.current?.setAttribute("d","");
   const erasedStrokes=eraseContourInkAlongPath(contourStrokes,gesture.path,(toolThickness*5+2)/cameraRef.current.scale);
   if(!gesture.marks.size&&erasedStrokes===contourStrokes&&!gesture.fills.size)return;
@@ -939,7 +941,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   if(eraserGesture.current?.pointerId!==e.pointerId)return;
   e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
-  eraserGesture.current=null;contourEraserPreview.current?.setAttribute("d","");setPendingErasure({marks:[],fills:[]});
+  eraserGesture.current=null;contourEraserPreview.current?.setAttribute("d","");setPendingErasure({marks:[],fills:[]});setLiveErasedStrokes(null);
  };
  const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
   if(!worksheetEditor||contourAction!=="select"||!onChange||markerGesture.current)return;
@@ -1498,7 +1500,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
       </g>}
       {(isWorksheet?contourConfig.showGrid:d.showGrid)&&<LektrusAtlasGraticule scale={scale} viewport={gridViewport}/>}
       {mode==="contour"&&<g className="lektrus-atlas-contour-work" pointerEvents={worksheetOnBoard?"none":undefined}>
-       {contourStrokes.map(line=><path key={line.id} fill="none" stroke={line.color}
+       {(liveErasedStrokes??contourStrokes).map(line=><path key={line.id} fill="none" stroke={line.color}
         strokeWidth={(line.width??2)/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"
         d={line.points.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
@@ -1544,8 +1546,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
           fontWeight="630">{mark.text}</text>}
          <title>{mark.text||"Условный знак"} · Перетащите для перемещения, стрелки для точной настройки, Delete для удаления</title>
         </g>})}
-       <path ref={contourEraserPreview} fill="none" stroke="#fffdfa" strokeOpacity=".93"
-        strokeWidth={24/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
+
        <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={toolThickness/scale}
         strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
       </g>}
