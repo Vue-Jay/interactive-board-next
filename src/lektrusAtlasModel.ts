@@ -12,7 +12,7 @@ export function normalizeAtlasDocument(document:AtlasDocument):AtlasDocument{
 export const atlasModesFor=(subject:AtlasSubject)=>atlasModes.filter(m=>subject==="history"?m.id==="historical"||m.id==="events":m.id!=="historical"&&m.id!=="events");
 export type AtlasMarker={id:string;title:string;lat:number;lon:number;year:number;description:string};
 export type ContourMark={id:string;lat:number;lon:number;text:string;kind:"label"|"point";color:string};
-export type ContourStroke={id:string;points:Array<[number,number]>;color:string};
+export type ContourStroke={id:string;points:Array<[number,number]>;color:string;width?:number};
 export type ContourAssignment={
  showBorders:boolean;showRegions:boolean;showCoastline:boolean;showRivers:boolean;showLakes:boolean;
  showGrid:boolean;allowLabels:boolean;allowPoints:boolean;allowDrawing:boolean;allowFill:boolean;
@@ -235,6 +235,7 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
   if(!Array.isArray(v.contourStrokes)||v.contourStrokes.length>140||
    v.contourStrokes.some((line:ContourStroke)=>!line||!isText(line.id,64)||
     typeof line.color!=="string"||!/^#[0-9a-fA-F]{6}$/.test(line.color)||
+    (line.width!==undefined&&(!Number.isFinite(line.width)||line.width<1||line.width>8))||
     !Array.isArray(line.points)||line.points.length<2||line.points.length>250||
     line.points.some(point=>!Array.isArray(point)||point.length!==2||
      !Number.isFinite(point[0])||Math.abs(point[0])>180||
