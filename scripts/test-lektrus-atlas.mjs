@@ -710,6 +710,11 @@ assert.ok(eraserCode.includes('brushContour(e)'));
 
 assert.ok(eraserCode.includes('onChange?.({...d,contourMarks:'));
 assert.ok(!eraserCode.includes('scheduleCamera('),"Eraser must never pan or zoom");
+assert.ok(eraserCode.includes('gesture.fills.size'),"Eraser must remove territory colour");
+assert.ok(eraserCode.includes('paintedCountries:Object.fromEntries'));
+assert.ok(map.includes('data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}'));
+assert.ok(map.includes('data-contour-fill-key={isWorksheet&&painted[key]?key:undefined}'));
+
 assert.ok(map.includes('onPointerDown={e=>startContourMarkDrag(e,stored)}'));
 assert.ok(map.includes('onPointerMove={moveContourMarkDrag}'));
 assert.ok(map.includes('onPointerUp={e=>endContourMarkDrag(e)}'));
