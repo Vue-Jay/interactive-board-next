@@ -299,7 +299,7 @@ assert.match(symbols.atlasCountrySymbol(symbolCountry("Majapahit"),"Маджап
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Inca Empire"),"Империя инков",1500,true).reconstruction,
  true,"Speculative Incan banner must be described as a reconstruction");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Hawaii"),"Гавайское королевство",1830,true).imageUrl??"",
- /Hawaii%20%281816%29/);
+ /Hawaii%20\(1816\)/);
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Crimean Khanate"),"Крымское ханство",1550,true).imageUrl??"",
  /Giray%20tamga/);
 assert.equal(historicalSymbols.listHistoricalStateInsignia("byzantium").length,2);
