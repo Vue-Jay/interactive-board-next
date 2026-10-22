@@ -196,6 +196,19 @@ export function historicalInsigniaUrl(file:string,width=220):string{
 export function historicalInsigniaSourceUrl(file:string):string{
  return "https://commons.wikimedia.org/wiki/File:"+encodeURIComponent(file.replace(/ /g,"_"));
 }
+/** Enumerate every reviewed graphic for a given reference.
+ * A kingdom may have several different banners or dynastic symbols over time.
+ * Catalogue icons use an attested year, NOT the last year of the kingdom. */
+export function listHistoricalStateInsignia(id:string):HistoricalInsignia[]{
+ return historicalStateInsignia.filter(row=>row.id===id)
+  .sort((a,b)=>a.from-b.from||a.to-b.to);
+}
+export function historicalReferenceSymbolYear(entry:{id:string;from:number;to:number}):number{
+ const candidates=listHistoricalStateInsignia(entry.id)
+  .filter(row=>row.from<=entry.to&&row.to>=entry.from);
+ const latest=candidates[candidates.length-1];
+ return latest?Math.min(entry.to,latest.to):entry.to;
+}
 export function findHistoricalStateInsignia(id:string,year:number):HistoricalInsignia|undefined{
  return historicalStateInsignia.find(row=>row.id===id&&year>=row.from&&year<=row.to);
 }
