@@ -346,8 +346,8 @@
 .lektrus-school-editor--contour-task .lektrus-school-primary{
  min-width:170px!important;background:#2967ba;color:white;border-color:#2967ba;
 }
-.lektrus-contour-task-error{
- margin-right:auto!important;font-size:12px!important;font-weight:700;
+.lektrus-school-editor--contour-task .lektrus-contour-task-error{
+ display:block;margin-right:auto!important;font-size:12px!important;font-weight:700;
  color:#a83a3a!important;line-height:1.3;
 }
 @media(max-width:680px){
@@ -356,7 +356,7 @@
   width:100%;height:100dvh;max-height:100dvh;border:0;border-radius:0;
  }
  .lektrus-school-editor--contour-task>.lektrus-school-header{
-  padding:10px 15px;min-height:56px;
+  padding:max(10px,env(safe-area-inset-top)) 15px 10px;min-height:56px;
  }
  .lektrus-school-editor--contour-task .lektrus-school-header h2{font-size:18px}
  .lektrus-contour-task-scroll{padding:15px}
