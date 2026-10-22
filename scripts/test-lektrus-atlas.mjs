@@ -732,7 +732,7 @@ const contourFormBranch=atlasEditorNoSettings.slice(
  atlasEditorNoSettings.indexOf('if(isContour&&draft.kind==="atlas")return createPortal('),
  atlasEditorNoSettings.indexOf(' const title=<label className="lektrus-school-field">')
 );
-assert.ok(contourFormBranch.includes('<LektrusSchoolDiagramView diagram={draft} onChange={set} editorMode/>'));
+assert.ok(contourFormBranch.includes('<LektrusSchoolDiagramView diagram={draft} onChange={set} editorMode userId={userId}/>'));
 assert.ok(contourFormBranch.includes('aria-expanded={contourSettingsOpen}'));
 assert.ok(contourFormBranch.includes('⚙ Задание и подложка'));
 const contourStyles=fs.readFileSync(new URL("../src/lektrusAtlasEditor.css",import.meta.url),"utf8");
