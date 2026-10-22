@@ -26,7 +26,7 @@ import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLa
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
 historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl,normalizeHistoricalName} from "./lektrusHistoryEncyclopedia";
-import {findHistoricalReference} from "./lektrusHistoricalReferences";
+import {findHistoricalReference,historicalReferences} from "./lektrusHistoricalReferences";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean;userId?:string};
 const MAX_ATLAS_ZOOM=16384;
 const hash=(value:string)=>{let h=7;for(const ch of value)h=(h*31+ch.charCodeAt(0))|0;return Math.abs(h)};
@@ -836,6 +836,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   [historical,mapSourceFeatures,modernReference,snapshot.year]);
  const visibleDirectory=directoryEntries.filter(entry=>entry.name.toLocaleLowerCase("ru")
   .includes(directoryFilter.trim().toLocaleLowerCase("ru")));
+ const referenceQuery=directoryFilter.trim().toLocaleLowerCase("ru");
+ const visibleHistoricalReferences=historicalReferences.filter(entry=>!referenceQuery||
+  [entry.title,...entry.aliases].some(name=>name.toLocaleLowerCase("ru").includes(referenceQuery)))
+  .sort((a,b)=>a.title.localeCompare(b.title,"ru"));
  const globalMatches=useMemo(()=>{
   const query=directoryFilter.trim().toLocaleLowerCase("ru");
   if(query.length<2)return [];
@@ -1989,6 +1993,20 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
       <small>Найдено: {visibleDirectory.length} из {directoryEntries.length}.
        {visibleDirectory.length>120?" Показаны первые 120. Уточните поиск.":""}</small>
      </>}
+     <details className="lektrus-history-source-library">
+      <summary>Исторические справки <small>{visibleHistoricalReferences.length} из {historicalReferences.length}</small></summary>
+      <p className="lektrus-history-source-library-hint">Сведения о государствах разных эпох, в том числе без геометрии границ в текущем историческом слое.</p>
+      <div className="lektrus-history-source-library-list">
+       {visibleHistoricalReferences.length?visibleHistoricalReferences.map(entry=><details key={entry.id} className="lektrus-history-reference-entry">
+        <summary><strong>{entry.title}</strong><small>{yearLabel(entry.from)} – {yearLabel(entry.to)}</small></summary>
+        {entry.capital&&<p><strong>Столица и центры:</strong> {entry.capital}</p>}
+        <p>{entry.description}</p>
+        <p><strong>Изменение:</strong> {entry.change}</p>
+        <a href={entry.sourceUrl} target="_blank" rel="noopener noreferrer">{entry.sourceTitle} ↗</a>
+       </details>):<p>Совпадений в справочнике нет.</p>}
+      </div>
+      <small>Даты относятся к учебным справкам. Они не устанавливают точные границы для каждого года.</small>
+     </details>
     </div>}
     {historical&&historyTab!=="article"?null:markerDetails?<div className="lektrus-atlas-description">
      <strong>{markerDetails.title}</strong>
