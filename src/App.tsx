@@ -4403,7 +4403,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,...patch}:item));
   };
   const lectrisEditSelected = () => {
-    if (!singleSelected || !canEdit || singleSelected.locked || (isStudent && structurallyLockedForStudent(singleSelected))) return;
+    if (!singleSelected || !canEdit ||
+     (singleSelected.locked && !(isStudent&&singleSelected.graphFigureId==="contour-atlas")) ||
+     (isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")) return;
     switch (singleSelected.kind) {
       case "text": case "sticky": case "frame": case "comment": startEdit(singleSelected); break;
       case "formula": openFormulaEditor(singleSelected); break;
@@ -4960,7 +4962,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const openGraphEditor = (item: Item) => {
-    if(item.kind!=="graph"||item.locked)return;
+    if(item.kind!=="graph"||item.locked&&!(isStudent&&item.graphFigureId==="contour-atlas")||!canEdit)return;
     if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}
     if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){setCircuitEditorItem(item);return;}
     if(item.scienceAtomModel||item.graphFigureId==="chem-atom"){setAtomEditorItem(item);return;}
@@ -6690,7 +6692,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setNotice("Электрическая схема добавлена на доску");
           }}/>}
         {schoolEditorItem&&<LektrusSchoolDiagramEditor key={schoolEditorItem.id}
-          item={schoolEditorItem} existing={itemsRef.current.some(i=>i.id===schoolEditorItem.id)}
+          item={schoolEditorItem} studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}
+          existing={itemsRef.current.some(i=>i.id===schoolEditorItem.id)}
           onCancel={()=>setSchoolEditorItem(null)}
           onSave={next=>{
             commit(itemsRef.current.some(i=>i.id===next.id)?
@@ -7473,7 +7476,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                         : "#fff",
                 }}
                 onDoubleClick={() => {
-                  if (!canEdit || structurallyLockedForStudent(item)) return;
+                  if (!canEdit || structurallyLockedForStudent(item)&&item.graphFigureId!=="contour-atlas") return;
                   const remoteEditor = remoteEditorFor(item.id);
                   if (remoteEditor) {
                     setNotice(`${remoteEditor.name} уже редактирует этот объект`);
@@ -7496,7 +7499,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   } else if (tool === "select" && !space && !item.locked && item.kind === "checklist") {
                     setSelected([item.id]);
                     openChecklistEditor(item);
-                  } else if (tool === "select" && !space && !item.locked && item.kind === "graph") { setSelected([item.id]); openGraphEditor(item);
+                  } else if (tool === "select" && !space &&
+                   (!item.locked||isStudent&&item.graphFigureId==="contour-atlas")&&item.kind === "graph") {
+                    setSelected([item.id]); openGraphEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); setFractionEditorId(item.id);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "quiz") {
                     setSelected([item.id]);
