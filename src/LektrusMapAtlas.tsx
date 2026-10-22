@@ -808,6 +808,88 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const zoomAt=(next:number,point=lastPointer.current)=>{
   scheduleCamera(zoomAtlasCamera(cameraRef.current,next,point));
  };
+ // All annotation pointer positions use the SVG root, never the label's
+ // small bounding box. This keeps dragging correct at any atlas zoom and on
+ // mobile viewBox letterboxing.
+ const annotationWorld=(e:{clientX:number;clientY:number})=>{
+  const rect=mapSvgRef.current?.getBoundingClientRect();
+  if(!rect)return null;
+  const factor=Math.min(rect.width/900,rect.height/450)||1;
+  return worldPoint({x:(e.clientX-rect.left-(rect.width-900*factor)/2)/factor,
+   y:(e.clientY-rect.top-(rect.height-450*factor)/2)/factor});
+ };
+ const brushContour=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  const gesture=eraserGesture.current,point=annotationWorld(e);
+  if(!gesture||gesture.pointerId!==e.pointerId||!point)return;
+  const hits=contourEraserHits(contourMarks,contourStrokes,point,cameraRef.current.scale,14);
+  let changed=false;
+  for(const id of hits.marks)if(!gesture.marks.has(id)){gesture.marks.add(id);changed=true}
+  for(const id of hits.strokes)if(!gesture.strokes.has(id)){gesture.strokes.add(id);changed=true}
+  if(changed)setPendingErasure({marks:[...gesture.marks],strokes:[...gesture.strokes]});
+ };
+ const beginContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  e.preventDefault();e.stopPropagation();
+  if(eraserGesture.current)return;
+  eraserGesture.current={pointerId:e.pointerId,marks:new Set(),strokes:new Set()};
+  e.currentTarget.setPointerCapture(e.pointerId);
+  brushContour(e);
+ };
+ const moveContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  e.stopPropagation();brushContour(e);
+ };
+ const endContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  e.stopPropagation();
+  const gesture=eraserGesture.current;
+  if(!gesture||gesture.pointerId!==e.pointerId)return;
+  brushContour(e);
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  eraserGesture.current=null;
+  setPendingErasure({marks:[],strokes:[]});
+  if(!gesture.marks.size&&!gesture.strokes.size)return;
+  captureContour();
+  onChange?.({...d,contourMarks:contourMarks.filter(mark=>!gesture.marks.has(mark.id)),
+   contourStrokes:contourStrokes.filter(line=>!gesture.strokes.has(line.id))});
+ };
+ const cancelContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(eraserGesture.current?.pointerId!==e.pointerId)return;
+  e.stopPropagation();
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  eraserGesture.current=null;setPendingErasure({marks:[],strokes:[]});
+ };
+ const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
+  if(contourAction==="erase"||!onChange)return;
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  const start=annotationWorld(e);if(!start)return;
+  e.preventDefault();e.stopPropagation();
+  markerGesture.current={pointerId:e.pointerId,mark,start,moved:false};
+  setSelectedContourMarkId(mark.id);setPreviewContourMark(null);
+  e.currentTarget.setPointerCapture(e.pointerId);
+ };
+ const moveContourMarkDrag=(e:ReactPointerEvent<SVGGElement>)=>{
+  const gesture=markerGesture.current;
+  if(!gesture||gesture.pointerId!==e.pointerId)return;
+  e.preventDefault();e.stopPropagation();
+  const point=annotationWorld(e);if(!point)return;
+  if(!gesture.moved&&Math.hypot(point.x-gesture.start.x,point.y-gesture.start.y)<2/cameraRef.current.scale)return;
+  gesture.moved=true;
+  setPreviewContourMark(moveContourMark(gesture.mark,gesture.start,point));
+ };
+ const endContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,cancelled=false)=>{
+  const gesture=markerGesture.current;
+  if(!gesture||gesture.pointerId!==e.pointerId)return;
+  e.stopPropagation();
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  markerGesture.current=null;setPreviewContourMark(null);
+  if(cancelled||!gesture.moved)return;
+  const point=annotationWorld(e);
+  if(!point)return;
+  const moved=moveContourMark(gesture.mark,gesture.start,point);
+  if(moved.lon===gesture.mark.lon&&moved.lat===gesture.mark.lat)return;
+  captureContour();
+  onChange?.({...d,contourMarks:contourMarks.map(mark=>mark.id===gesture.mark.id?moved:mark)});
+ };
+ const contourEraser=mode==="contour"&&contourAction==="erase"&&!!onChange;
  const contourFreehand=mode==="contour"&&contourAction==="pen"&&contourConfig.allowDrawing&&!!onChange;
  const contourPoint=(p:{x:number;y:number}):[number,number]=>[
   Math.max(-180,Math.min(180,p.x/2.5-180)),Math.max(-90,Math.min(90,90-p.y/2.5))];
