@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode,ContourMark,ContourStroke} from "./lektrusAtlasModel";
 import {contourEraserHits,moveContourMark} from "./lektrusContourInteractions";
+import {eraseContourInkAlongPath} from "./lektrusContourInk";
 import {defaultContourAssignment} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
 import {clusterMineralMapPoints} from "./lektrusAtlasMineralClusters";
@@ -93,28 +94,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const contourDrawing=useRef<Array<[number,number]>>([]);
  const contourLivePath=useRef<SVGPathElement|null>(null);
  const mapSvgRef=useRef<SVGSVGElement|null>(null);
- const eraserGesture=useRef<{pointerId:number;marks:Set<string>;strokes:Set<string>;fills:Set<string>}|null>(null);
- const [pendingErasure,setPendingErasure]=useState<{marks:string[];strokes:string[];fills:string[]}>({marks:[],strokes:[],fills:[]});
+ const contourEraserPreview=useRef<SVGPathElement|null>(null);
+ const eraserGesture=useRef<{pointerId:number;marks:Set<string>;fills:Set<string>;path:Array<{x:number;y:number}>}|null>(null);
+ const [pendingErasure,setPendingErasure]=useState<{marks:string[];fills:string[]}>({marks:[],fills:[]});
  const markerGesture=useRef<{pointerId:number;mark:ContourMark;start:{x:number;y:number};moved:boolean}|null>(null);
  const [previewContourMark,setPreviewContourMark]=useState<ContourMark|null>(null);
  const [selectedContourMarkId,setSelectedContourMarkId]=useState<string|null>(null);
- const [mapPixelRatio,setMapPixelRatio]=useState(1);
- const labelUiScale=Math.max(.7,Math.min(4.5,1/Math.max(.22,mapPixelRatio)));
+ // Match the political atlas exactly: labels use map camera scale rather
+ // than board-object pixel ratio. No extra mobile text magnification.
+ const labelUiScale=1;
  const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[],contourLegend=d.contourLegend??[];
  const selectedContourMark=contourMarks.find(mark=>mark.id===selectedContourMarkId);
- // The map SVG can be resized as a board object. Keep user annotations at a
- // readable actual pixel size on a small phone and on a large desktop board.
- useEffect(()=>{
-  const svg=mapSvgRef.current;if(!svg)return;
-  const measure=()=>{
-   const rect=svg.getBoundingClientRect(),ratio=Math.min(rect.width/900,rect.height/450);
-   if(ratio>0)setMapPixelRatio(previous=>Math.abs(previous-ratio)>.025?ratio:previous);
-  };
-  measure();
-  if(typeof ResizeObserver==="undefined")return;
-  const observer=new ResizeObserver(measure);observer.observe(svg);
-  return()=>observer.disconnect();
- },[]);
  // Hold the last drag preview until the board acknowledges persisted
  // coordinates. Clearing it in pointer-up caused the old-position flash.
  useEffect(()=>{
@@ -852,23 +842,30 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const brushContour=(e:ReactPointerEvent<SVGSVGElement>)=>{
   const gesture=eraserGesture.current,point=annotationWorld(e);
   if(!gesture||gesture.pointerId!==e.pointerId||!point)return;
-  const hits=contourEraserHits(contourMarks,contourStrokes,point,cameraRef.current.scale,14,labelUiScale);
+  const hits=contourEraserHits(contourMarks,[],point,cameraRef.current.scale,14);
   let changed=false;
   for(const id of hits.marks)if(!gesture.marks.has(id)){gesture.marks.add(id);changed=true}
-  for(const id of hits.strokes)if(!gesture.strokes.has(id)){gesture.strokes.add(id);changed=true}
+  const last=gesture.path[gesture.path.length-1];
+  if(!last||Math.hypot(point.x-last.x,point.y-last.y)>1.2/cameraRef.current.scale){
+   if(gesture.path.length<700)gesture.path.push(point);
+   // Instant preview, like the board pen/eraser: update only the SVG path
+   // during a stroke and persist split fragments once on pointer-up.
+   contourEraserPreview.current?.setAttribute("d",gesture.path.map((p,i)=>
+    (i?"L":"M")+p.x.toFixed(3)+" "+p.y.toFixed(3)).join(" "));
+  }
   // A filled polygon is also student work: erase its colour without panning.
   // elementFromPoint works after SVG pointer capture and supports swiping.
   const polygon=(e.target as Element).closest<SVGElement>("[data-contour-fill-key]")??
    document.elementFromPoint(e.clientX,e.clientY)?.closest<SVGElement>("[data-contour-fill-key]");
   const key=polygon?.getAttribute("data-contour-fill-key");
   if(key&&painted[key]&&!gesture.fills.has(key)){gesture.fills.add(key);changed=true}
-  if(changed)setPendingErasure({marks:[...gesture.marks],strokes:[...gesture.strokes],fills:[...gesture.fills]});
+  if(changed)setPendingErasure({marks:[...gesture.marks],fills:[...gesture.fills]});
  };
  const beginContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
   e.preventDefault();e.stopPropagation();
   if(eraserGesture.current)return;
-  eraserGesture.current={pointerId:e.pointerId,marks:new Set(),strokes:new Set(),fills:new Set()};
+  eraserGesture.current={pointerId:e.pointerId,marks:new Set(),fills:new Set(),path:[]};
   e.currentTarget.setPointerCapture(e.pointerId);
   brushContour(e);
  };
@@ -882,18 +879,20 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   brushContour(e);
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   eraserGesture.current=null;
-  setPendingErasure({marks:[],strokes:[],fills:[]});
-  if(!gesture.marks.size&&!gesture.strokes.size&&!gesture.fills.size)return;
+  setPendingErasure({marks:[],fills:[]});
+  contourEraserPreview.current?.setAttribute("d","");
+  const erasedStrokes=eraseContourInkAlongPath(contourStrokes,gesture.path,12/cameraRef.current.scale);
+  if(!gesture.marks.size&&erasedStrokes===contourStrokes&&!gesture.fills.size)return;
   captureContour();
   onChange?.({...d,contourMarks:contourMarks.filter(mark=>!gesture.marks.has(mark.id)),
-   contourStrokes:contourStrokes.filter(line=>!gesture.strokes.has(line.id)),
+   contourStrokes:erasedStrokes,
    paintedCountries:Object.fromEntries(Object.entries(painted).filter(([key])=>!gesture.fills.has(key)))});
  };
  const cancelContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(eraserGesture.current?.pointerId!==e.pointerId)return;
   e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
-  eraserGesture.current=null;setPendingErasure({marks:[],strokes:[],fills:[]});
+  eraserGesture.current=null;contourEraserPreview.current?.setAttribute("d","");setPendingErasure({marks:[],fills:[]});
  };
  const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
   if(contourAction==="erase"||!onChange||markerGesture.current)return;
@@ -1413,7 +1412,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {mode==="contour"&&<g className="lektrus-atlas-contour-work">
        {contourStrokes.map(line=><path key={line.id} fill="none" stroke={line.color}
         strokeWidth={2/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"
-        opacity={pendingErasure.strokes.includes(line.id)?.17:1}
         d={line.points.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
        {contourMarks.map(stored=>{const mark=previewContourMark?.id===stored.id?previewContourMark:stored;
@@ -1458,6 +1456,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
           fontWeight="750" letterSpacing=".12">{mark.text}</text>}
          <title>{mark.text||"Условный знак"} · Перетащите для перемещения, стрелки для точной настройки, Delete для удаления</title>
         </g>})}
+       <path ref={contourEraserPreview} fill="none" stroke="#fffdfa" strokeOpacity=".93"
+        strokeWidth={24/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
        <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={2/scale}
         strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
       </g>}
