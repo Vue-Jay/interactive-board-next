@@ -39,8 +39,8 @@ const referenceSource=fs.readFileSync(new URL("../src/lektrusHistoricalReference
 const referenceCompiled=ts.transpileModule(referenceSource,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const referencesApi={};new Function("exports",referenceCompiled)(referencesApi);
-const {historicalReferences,findHistoricalReference}=referencesApi;
-assert.ok(historicalReferences.length>=65,"expanded source-backed history directory");
+const {historicalReferences,findHistoricalReference,normalizeHistoricalReferenceName}=referencesApi;
+assert.ok(historicalReferences.length>=72,"expanded source-backed history directory");
 const ids=new Set();
 for(const item of historicalReferences){
  assert.ok(!ids.has(item.id),"Duplicate history reference id: "+item.id);ids.add(item.id);
@@ -68,13 +68,27 @@ for(const [alias,year,title] of [
  ["Vijayanagara Empire",1500,"Виджаянагарская империя"],
  ["Kingdom of Benin",1600,"Королевство Бенин"],
  ["Republic of Venice",1500,"Венецианская республика"],
- ["Papal States",1200,"Папская область"]
+ ["Papal States",1200,"Папская область"],
+ ["Novgorod Republic",1350,"Новгородская республика"],
+ ["Pskov Republic",1400,"Псковская республика"],
+ ["Kazan Khanate",1500,"Казанское ханство"],
+ ["Astrakhan Khanate",1500,"Астраханское ханство"],
+ ["Crimean Khanate",1700,"Крымское ханство"],
+ ["Volga Bulgaria",1100,"Волжская Булгария"],
+ ["Empire of Trebizond",1300,"Трапезундская империя"]
 ]){
  assert.equal(findHistoricalReference(alias,year)?.title,title,"Source matching failed: "+alias);
 }
 assert.equal(findHistoricalReference("Yuan Dynasty",1550),undefined,"Do not match outside attested time window");
+assert.equal(findHistoricalReference("Novgorod Republic",1510),undefined,"Do not extend Novgorod independence beyond 1478");
+assert.equal(findHistoricalReference("Казанское ханство",1500)?.id,"kazan-khanate","Russian source title lookup");
+assert.equal(findHistoricalReference("Kazan-Khanate",1500)?.id,"kazan-khanate","Hyphenated atlas label lookup");
+assert.equal(findHistoricalReference("Novgorod—Republic",1350)?.id,"novgorod-republic","Unicode dash atlas lookup");
+assert.equal(normalizeHistoricalReferenceName("Kievan Rus’"),normalizeHistoricalReferenceName("Kievan Rus'"),"Historical apostrophe normalization");
 assert.ok(atlas.includes("lektrus-history-source-library"),"The sourced catalogue should remain available without a polygon");
 assert.ok(atlas.includes("visibleHistoricalReferences"),"Catalogue search must use Russian titles and aliases");
+assert.ok(atlas.includes("referenceOnlyCurrentPeriod"),"Historian can filter the reference library by dated period");
+assert.ok(atlas.includes("normalizeHistoricalReferenceName"),"Map and catalogue should share conservative name matching");
 assert.ok(atlas.includes("indexedReferenceMaps"),"References must use actual indexed historical shapes");
 assert.ok(atlas.includes("Показать на карте ·"),"Map action must be available only for dated matches");
 console.log("Historical atlas: 41 encyclopedia entries, "+historicalReferences.length+" sourced reference records, alias/date guards and cross-era UI checked.");
