@@ -292,17 +292,26 @@ assert.equal(symbols.atlasCountrySymbol(symbolCountry("Qing dynasty"),"Импе�
  "Do not assign a late Qing flag to 1700");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("German Democratic Republic"),"ГДР",1980,true).imageUrl??"",
  /German_Democratic_Republic/,"Historic GDR flag should be used for 1980");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1940,true).kind,"symbol",
- "1955 design must not be assigned to Soviet periods without dating evidence");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1940,true).imageUrl??"",
+ /1924/,"Use the documented early USSR flag for the 1940 period");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1980,true).imageUrl??"",
  /Soviet_Union/,"Flag of the USSR must be visible for 1980");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1965,true).imageUrl??"",
+ /dark_version/,"Use the dated 1955-1980 USSR flag");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Republic of Venice"),"Венеция",1600,true).imageUrl??"",
+ /Republic_of_Venice/,"Include reconstructed heraldic imagery only for the attested polity");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Safavid Empire"),"Держава Сефевидов",1600,true).imageUrl??"",
+ /Safavid_Flag/,"Safavid-era banner is documented");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Mughal Empire"),"Империя Великих Моголов",1700,true).reconstruction,
+ true,"Reconstructed Mughal banner must be described as a reconstruction");
+
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Venice"),"Венеция",1600,true).kind,"symbol",
  "Never infer the Venetian symbol from an unrelated unknown name");
-assert.ok(historicalSymbols.historicalStateInsignia.length>=19,"Curated historical emblems remain available");
-assert.ok(historicalSymbols.historicalDatedNationalFlags.length>=60,
+assert.ok(historicalSymbols.historicalStateInsignia.length>=30,"Curated historical emblems remain available");
+assert.ok(historicalSymbols.historicalDatedNationalFlags.length>=95,
  "Dated flags must cover more than one recent atlas period");
 for(const row of [...historicalSymbols.historicalStateInsignia,...historicalSymbols.historicalDatedNationalFlags]){
- assert.ok(row.from<=row.to&&row.file.endsWith(".svg")||row.file.endsWith(".png"),
+ assert.ok(row.from<=row.to&&(row.file.endsWith(".svg")||row.file.endsWith(".png")),
   "Historical source image requires a valid period and file: "+row.file);
  assert.ok(historicalSymbols.historicalInsigniaSourceUrl(row.file).startsWith("https://commons.wikimedia.org/wiki/File:"));
 }
