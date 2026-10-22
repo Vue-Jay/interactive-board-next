@@ -46,7 +46,7 @@ const referenceCompiled=ts.transpileModule(referenceSource,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const referencesApi={};new Function("exports",referenceCompiled)(referencesApi);
 const {historicalReferences,findHistoricalReference,normalizeHistoricalReferenceName}=referencesApi;
-assert.ok(historicalReferences.length>=102,"expanded source-backed history directory");
+assert.ok(historicalReferences.length>=121,"expanded source-backed history directory");
 const ids=new Set();
 for(const item of historicalReferences){
  assert.ok(!ids.has(item.id),"Duplicate history reference id: "+item.id);ids.add(item.id);
@@ -111,13 +111,31 @@ for(const [alias,year,title] of [
  ["Viceroyalty of New Spain",1600,"Вице-королевство Новая Испания"],
  ["Viceroyalty of New Granada",1750,"Вице-королевство Новая Гранада"],
  ["Viceroyalty of Rio de la Plata",1800,"Вице-королевство Рио-де-ла-Плата"],
- ["Kingdom of Jerusalem",1200,"Иерусалимское королевство"]
+ ["Kingdom of Jerusalem",1200,"Иерусалимское королевство"],
+ ["Hittite Empire",-1350,"Хеттское царство"],
+ ["Kingdom of Urartu",-760,"Урарту"],
+ ["Seleucid Empire",-200,"Держава Селевкидов"],
+ ["Ptolemaic Egypt",-150,"Царство Птолемеев"],
+ ["Parthian Empire",100,"Парфянское царство"],
+ ["Carolingian Empire",820,"Каролингская империя"],
+ ["Grand Duchy of Lithuania",1500,"Великое княжество Литовское"],
+ ["Kingdom of Italy",1900,"Итальянское королевство"],
+ ["German Democratic Republic",1980,"Германская Демократическая Республика"],
+ ["West Germany",1970,"Федеративная Республика Германия (1949–1990)"],
+ ["Khanate of Khiva",1800,"Хивинское ханство"],
+ ["Emirate of Bukhara",1900,"Бухарский эмират"],
+ ["Kokand Khanate",1850,"Кокандское ханство"],
+ ["Dzungar Khanate",1700,"Джунгарское ханство"],
+ ["Kingdom of Hawaii",1850,"Гавайское королевство"]
 ]){
  assert.equal(findHistoricalReference(alias,year)?.title,title,"Source matching failed: "+alias);
 }
 assert.equal(findHistoricalReference("Yuan Dynasty",1550),undefined,"Do not match outside attested time window");
 assert.equal(findHistoricalReference("Novgorod Republic",1510),undefined,"Do not extend Novgorod independence beyond 1478");
 assert.equal(findHistoricalReference("Northern Song",1150),undefined,"Northern Song ends in 1127");
+assert.equal(findHistoricalReference("Kingdom of Italy",2026),undefined,"Historical Italian monarchy must not extend into the republic");
+assert.equal(findHistoricalReference("German Democratic Republic",1994),undefined,"Do not show the GDR after reunification");
+assert.equal(findHistoricalReference("Parthian Empire",-300),undefined,"No Parthian empire before source period");
 assert.equal(findHistoricalReference("Liao dynasty",1200),undefined,"Liao ends in 1125");
 assert.equal(findHistoricalReference("Kingdom of Jerusalem",1400),undefined,"Crusader kingdom does not persist past 1291");
 assert.equal(findHistoricalReference("Inca Empire",1400),undefined,"Do not map Inca imperial borders before 1438");
