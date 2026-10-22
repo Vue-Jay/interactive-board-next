@@ -775,3 +775,8 @@
   max-height:calc(100dvh - 112px);
  }
 }
+
+/* The hand is for touch devices; desktop uses Select for navigation. */
+@media (hover:hover) and (pointer:fine){
+ .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-icon-button[data-contour-hand="true"]{display:none}
+}
