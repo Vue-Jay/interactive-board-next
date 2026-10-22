@@ -690,11 +690,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const totalCapitals=cityPoints.filter(f=>nationalCapital(f.feature)).length;
  const cityLabels=chooseCityLabels(shownCities,scale,scale>=20?145:scale>=7?75:scale>=3?40:15);
  const capitalLabels=chooseCityLabels(shownCapitals,scale,scale>=12?160:scale>=5?95:scale>=2?55:30);
- const contourCapitals=limitCitySymbols(shownCapitals,scale,scale<2?45:scale<4?95:scale<10?165:270);
- const contourCities=limitCitySymbols(cityPoints.filter(f=>f.point&&visiblePoint(f.point)&&!nationalCapital(f.feature)&&cityPopulation(f.feature)>=500000),scale,scale<2?35:scale<4?75:scale<10?150:290);
- const contourCapitalLabels=chooseCityLabels(contourCapitals,scale,scale<2?30:scale<5?65:140);
- const contourCityLabels=chooseCityLabels(contourCities,scale,scale<2?20:scale<5?60:130);
- const contourSymbolSize=Math.max(.55,Math.min(1.18,.62+Math.log2(Math.max(1,scale))*.105));
+ const contourCapitals=limitCitySymbols(shownCapitals,scale,scale<1.6?75:scale<3?130:scale<8?240:scale<24?440:720);
+ const contourCities=limitCitySymbols(eligibleCities.filter(f=>!nationalCapital(f.feature)&&cityPopulation(f.feature)>=500000),scale,scale<1.6?75:scale<3?130:scale<8?240:scale<24?440:720);
  const shownPeaks=peakPoints.filter(f=>visiblePoint(f.point));
  const shownRiverNames=riverNames.filter(f=>visiblePoint(f.point));
  const shownLakeNames=lakeNames.filter(f=>visiblePoint(f.point));
@@ -1411,23 +1408,18 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         <title>{russianPlaceName(f.feature)} · ориентир, население по Natural Earth</title>
        </g>)}
       </g>}
+      {/* Reference symbols follow the political map's zoom filtering and fixed screen size.
+           They remain separate toggleable layers and never render names on worksheets. */}
       {isWorksheet&&(contourConfig.showCapitals||contourConfig.showMajorCities)&&<g className="lektrus-contour-reference-cities" pointerEvents="none">
-       {contourConfig.showCapitals&&contourCapitals.map(f=><g key={"ref-capital-"+f.id}
-        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${contourSymbolSize/scale})`}>
-        <circle r="3.6" fill="#fff" stroke="#243c58" strokeWidth="1.4"/>
+       {contourConfig.showCapitals&&contourCapitals.filter(f=>scale>=2.6).map(f=><g key={"ref-capital-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}>
+        <circle r="3.65" fill="#fff" stroke="#263c55" strokeWidth="1.5"/>
        </g>)}
-       {contourConfig.showMajorCities&&contourCities.map(f=><g key={"ref-city-"+f.id}
-        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${contourSymbolSize/scale})`}>
-        <circle r="2.5" fill="#456b8c" stroke="#fff" strokeWidth=".9"/>
+       {contourConfig.showMajorCities&&scale>=4.2&&contourCities.map(f=><g key={"ref-city-"+f.id}
+        transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}>
+        <circle r={Math.max(1.65,Math.min(3,1.6+Math.sqrt(cityPopulation(f.feature))/2400))}
+         fill="#275a82" stroke="#fff" strokeWidth=".85"/>
        </g>)}
-       {contourConfig.showCapitals&&contourCapitalLabels.map(f=><text key={"ref-capital-label-"+f.id}
-        x={f.point![0]+8/scale} y={f.point![1]-6/scale} fontSize={Math.min(17,11+Math.log2(Math.max(1,scale))*.8)/scale}
-        fontWeight="730" fill="#243c58" stroke="#fff" strokeWidth={2/scale} strokeLinejoin="round" paintOrder="stroke">
-        {russianPlaceName(f.feature)}</text>)}
-       {contourConfig.showMajorCities&&contourCityLabels.map(f=><text key={"ref-city-label-"+f.id}
-        x={f.point![0]+7/scale} y={f.point![1]-5/scale} fontSize={Math.min(16,9.5+Math.log2(Math.max(1,scale))*.8)/scale}
-        fontWeight="650" fill="#365c7b" stroke="#fff" strokeWidth={1.8/scale} strokeLinejoin="round" paintOrder="stroke">
-        {russianPlaceName(f.feature)}</text>)}
       </g>}
       {citiesOn&&<g className="lektrus-atlas-capitals">
        {contourCapitals.filter(f=>scale>=2.6).map(f=><g key={"capital-"+f.id}
