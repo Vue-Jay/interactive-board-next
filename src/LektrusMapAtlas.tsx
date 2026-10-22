@@ -9,6 +9,7 @@ import {loadMRDSRegionalDeposits,loadMRDSWorldOverview,mrdsMineralCommodity} fro
 import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} from "./lektrusAtlasSchoolFacts";
 import LektrusMapBase,{LektrusAtlasGraticule} from "./LektrusMapBase";
 import LektrusColorPicker from "./LektrusColorPicker";
+import {INK_WIDTHS} from "./LectrisObjectEditor";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
 import {SCHOOL_ATLAS_GROUPS,SCHOOL_ATLAS_MINERALS,SCHOOL_ATLAS_FUEL_MINERALS} from "./lektrusSchoolAtlasMinerals";
@@ -96,7 +97,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  // the mineral map into an elevation/coordinate query.
  const mineralTerrainEnabled=mineralContext&&d.hypsometry!==false;
  const [paintColor,setPaintColor]=useState("#000000");
- const [toolThickness,setToolThickness]=useState(2);
+ const [toolThickness,setToolThickness]=useState<number>(3);
  const [paintRegions,setPaintRegions]=useState(false);
  const [contourAction,setContourAction]=useState<"select"|"hand"|"fill"|"label"|"point"|"pen"|"erase">("select");
  const [lastLabelKind,setLastLabelKind]=useState<"label"|"point">("label");
@@ -2166,8 +2167,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
          pinch.current=null;dragged.current=false}}>
         <ContourToolIcon name={id}/><span>{title}</span>
        </button>)}
-      {contourAction!=="erase"&&<div className="lektrus-contour-dock-color"><LektrusColorPicker compact userId={userId} label="Цвет" value={paintColor} onChange={setPaintColor}/></div>}
-      <label className="lektrus-contour-dock-thickness"><span>Толщина</span><select aria-label="Толщина карандаша и ластика" value={toolThickness} onChange={e=>setToolThickness(Number(e.target.value))}>{[1,2,3,5,8].map(size=><option key={size} value={size}>{size}</option>)}</select></label>
+      {contourAction!=="erase"&&<div className="lektrus-contour-dock-color"><LektrusColorPicker compact paletteInside userId={userId} label="Цвет" value={paintColor} onChange={setPaintColor}/></div>}
+      <div className="lektrus-contour-dock-thickness" role="group" aria-label="Толщина инструмента"><span>Толщина</span><div className="lektrus-contour-width-presets">{(contourAction==="erase"?INK_WIDTHS.eraser:INK_WIDTHS.pen).map((size,i)=><button key={size} type="button" aria-label={["Очень тонко","Тонко","Средняя толщина","Толсто","Очень толсто"][i]+": "+size+" пикселей"} aria-pressed={toolThickness===(contourAction==="erase"?INK_WIDTHS.eraser:INK_WIDTHS.pen)[i]} className={toolThickness===size?"active":""} title={size+" px"} onClick={()=>setToolThickness(size)}><span className="lektrus-contour-width-line" style={{height:Math.max(1,Math.min(13,size/3))+"px",background:contourAction==="erase"?"#64748b":paintColor}}/></button>)}</div></div>
       <button type="button" className="lektrus-contour-icon-button" title="Отменить последнее действие"
        aria-label="Отменить" disabled={!contourHistory.length}
        onClick={contourUndo}>
