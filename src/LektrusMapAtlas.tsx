@@ -1933,7 +1933,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        ["pen","Карандаш",contourConfig.allowDrawing],["fill","Заливка",contourConfig.allowFill],
        ["erase","Ластик",true]] as const).filter(([, ,allowed])=>allowed)
        .map(([id,title])=><button type="button" key={id} title={title} aria-pressed={contourAction===id}
-        className={contourAction===id?"active":""} onClick={()=>setContourAction(id)}>{title}</button>)}
+        className={contourAction===id&&!objectMoveMode?"active":""}
+        onClick={()=>{setContourAction(id);setObjectMoveMode(false);
+         points.current.clear();pointer.current=null;pinch.current=null;dragged.current=false}}>{title}</button>)}
       <button type="button" title="Отменить последнюю правку" disabled={!contourHistory.length}
        onClick={contourUndo}>↶</button>
 
