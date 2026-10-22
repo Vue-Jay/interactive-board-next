@@ -3363,7 +3363,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   useEffect(() => {
     const element = board.current!;
     const wheel = (e: WheelEvent) => {
-      if ((e.target as HTMLElement).closest("textarea")) return;
+      const target=e.target as HTMLElement;
+      // The board installs its own non-passive native wheel listener. React's
+      // map onWheel runs later in the event path, so stop board zoom/pan HERE
+      // before the map's local wheel handler sees the same event.
+      if(target.closest(".lektrus-atlas:not(.lektrus-atlas--board-selection)")){
+        e.preventDefault();
+        return;
+      }
+      if (target.closest("textarea")) return;
       e.preventDefault();
       if (gesture.current) return;
       const settings=controlSettingsRef.current;
@@ -7204,6 +7212,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             backgroundImage:backgroundAppearance.backgroundImage,
           } as CSSProperties}
           onPointerDownCapture={(e) => {
+            // Let a map in its own editing mode own its fingers, including
+            // two-finger zoom. This capture phase fires BEFORE the atlas'
+            // bubble handlers and otherwise starts a simultaneous board pinch.
+            if((e.target as HTMLElement).closest(
+              ".lektrus-atlas:not(.lektrus-atlas--board-selection)"))return;
             // Board overlays contain real controls. Do not hijack taps,
             // focus, or the first finger of a pinch over those controls.
             const touchControl=(e.target as HTMLElement).closest(
