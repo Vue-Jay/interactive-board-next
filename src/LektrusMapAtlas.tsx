@@ -99,6 +99,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [previewContourMark,setPreviewContourMark]=useState<ContourMark|null>(null);
  const [selectedContourMarkId,setSelectedContourMarkId]=useState<string|null>(null);
  const [mapPixelRatio,setMapPixelRatio]=useState(1);
+ const labelUiScale=Math.max(.7,Math.min(4.5,1/Math.max(.22,mapPixelRatio)));
  const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[],contourLegend=d.contourLegend??[];
  const selectedContourMark=contourMarks.find(mark=>mark.id===selectedContourMarkId);
  // The map SVG can be resized as a board object. Keep user annotations at a
@@ -851,7 +852,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const brushContour=(e:ReactPointerEvent<SVGSVGElement>)=>{
   const gesture=eraserGesture.current,point=annotationWorld(e);
   if(!gesture||gesture.pointerId!==e.pointerId||!point)return;
-  const hits=contourEraserHits(contourMarks,contourStrokes,point,cameraRef.current.scale,14);
+  const hits=contourEraserHits(contourMarks,contourStrokes,point,cameraRef.current.scale,14,labelUiScale);
   let changed=false;
   for(const id of hits.marks)if(!gesture.marks.has(id)){gesture.marks.add(id);changed=true}
   for(const id of hits.strokes)if(!gesture.strokes.has(id)){gesture.strokes.add(id);changed=true}
@@ -1417,7 +1418,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
        {contourMarks.map(stored=>{const mark=previewContourMark?.id===stored.id?previewContourMark:stored;
         const [x,y]=projectGeography(mark.lon,mark.lat);
-        const labelUiScale=Math.max(.7,Math.min(4.5,1/Math.max(.22,mapPixelRatio)));
         const width=Math.max(36,Math.min(80,mark.text.length)*9+20);
         const left=mark.kind==="point"?11:-width/2,selected=selectedContourMarkId===mark.id;
         return <g key={mark.id} transform={`translate(${x} ${y}) scale(${labelUiScale/scale})`}
@@ -1978,12 +1978,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        onClick={contourUndo}>↶</button>
 
      </div>
-     {!objectMoveMode&&selectedContourMark&&<div className="lektrus-contour-selected-mark"
+     {!objectMoveMode&&<div className="lektrus-contour-selected-mark"
       role="group" aria-label="Действия с выбранной подписью">
-      <span title={selectedContourMark.text||"Знак"}>Выбрано: <strong>{selectedContourMark.text||"Условный знак"}</strong></span>
-      <button type="button" className="lektrus-contour-delete-mark"
-       aria-label={"Удалить объект "+(selectedContourMark.text||"Условный знак")}
-       onClick={()=>deleteContourMark(selectedContourMark.id)}>Удалить ×</button>
+      {selectedContourMark?<>
+       <span title={selectedContourMark.text||"Знак"}>Выбрано: <strong>{selectedContourMark.text||"Условный знак"}</strong></span>
+       <button type="button" className="lektrus-contour-delete-mark"
+        aria-label={"Удалить объект "+(selectedContourMark.text||"Условный знак")}
+        onClick={()=>deleteContourMark(selectedContourMark.id)}>Удалить ×</button>
+      </>:<span className="lektrus-contour-selection-hint">Нажмите на подпись, чтобы переместить или удалить её</span>}
      </div>}
      <div className="lektrus-contour-workspace-options">
       {(contourAction==="label"||contourAction==="point")&&
