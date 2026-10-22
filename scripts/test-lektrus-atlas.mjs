@@ -280,8 +280,8 @@ assert.equal(symbols.atlasCountrySymbol(symbolCountry("Canada","CA"),"Канад
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Unknown Country"),"Неизвестная территория",2026,false).kind,"symbol");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Brazil","BR"),"Бразилия",2026,false).code,"BR");
 assert.ok(symbols.atlasCountryFlagUrl("GB").endsWith("/gb.png"));
-assert.ok(map.includes("lektrus-atlas-map-country-symbols"),"Map should display zoom-adaptive country symbols");
-assert.ok(map.includes("showCountrySymbols"),"Map symbol visibility must be optional");
+assert.ok(!map.includes("lektrus-atlas-map-country-symbols"),"Country insignia must not appear on the map canvas");
+assert.ok(!map.includes("showCountrySymbols"),"Remove the unused map symbol toggle");
 assert.ok(map.includes("lektrus-atlas-selected-symbol-title"),"Country cards must show flags and dated shields");
 assert.ok(map.includes("LektrusAtlasCountrySymbol"),"Country lists use the shared symbol component");
 
