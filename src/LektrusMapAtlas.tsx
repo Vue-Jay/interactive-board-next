@@ -715,7 +715,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   };
   if(mode==="political"||mode==="minerals"||historical){
    labels.forEach((f,i)=>add("country-"+f.i,"country",f.name,
-    f.anchor!.x,f.anchor!.y,(mineralContext?1.7:0)+i/500,8.2));
+    f.anchor!.x,f.anchor!.y,(historical?-1:mineralContext?1.7:0)+i/500,historical?9.3:8.2));
    if(mode==="political"){
     // State capitals take precedence over all other atlas labels.
     if(scale>=2.6)capitalLabels.forEach((f,i)=>add("capital-"+f.id,"capital",russianPlaceName(f.feature)??"",
@@ -1296,14 +1296,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
         const fillKey=String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name);
         const fill=mode==="contour"?(pendingErasure.fills.includes(fillKey)?"#fffdfa":painted[fillKey]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
-         mode==="political"?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name)%palettes.length];
+         mode==="political"?politicalColors[s.i]??"#ecd9bf":historical?(modernReference?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name)%palettes.length]):palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
          data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}
          fillOpacity={mineralTerrainEnabled?.56:1}
          stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.name===selectedTitle?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
-         strokeWidth={highlighted||s.name===selectedTitle?1.9:mode==="minerals"?.4:historical&&precise===1?.75:.65}
+         strokeWidth={highlighted||s.name===selectedTitle?1.9:mode==="minerals"?.4:historical?(precise===1?.8:.58):.65}
          vectorEffect="non-scaling-stroke"
-         strokeDasharray={historical&&!modernReference&&precise===1?"2.2 1.7":undefined}
+         strokeDasharray={historical&&!modernReference&&precise===1?"3 2":undefined}
          onClick={()=>showCountry(s.feature)} className="lektrus-atlas-country">
          <title>{mode==="contour"?"Граница государства":s.name}</title>
         </path>;
@@ -1944,8 +1944,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
      </div>}
     {historical&&<div className="lektrus-atlas-year-header">
      <strong>{yearLabel(snapshot.year)}{modernReference?" · современный обзор":""}</strong>
-     <small>{modernReference?"Современный обзор в российском профиле Natural Earth, не официальный снимок 2026 года":
-      "Датированный исторический снимок, не интерполяция"}</small>
+     <small>{modernReference?"Современные границы, не историческая реконструкция":"Историческая реконструкция выбранной эпохи"}</small>
     </div>}
     {historical&&<div className="lektrus-history-tabs" role="tablist" aria-label="Разделы исторического справочника">
      {([["directory","Территории"],["article","Справка"],["changes","Изменения"]] as const)
@@ -2096,9 +2095,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
      </div>}
     </div>:
     historical?<div className="lektrus-atlas-description">
-     <strong>Исторический справочник</strong>
-     <p>Выберите период, затем территорию на карте либо запись в алфавитном списке. Нажатие на название приближает карту к объекту.</p>
-     <p>Справочник показывает только территории из датированного набора. Неизвестные объекты не получают выдуманных названий и описаний.</p>
+     <strong>Выберите территорию</strong>
+     <p>Нажмите на историческое государство на карте, чтобы увидеть ключевые сведения. Другие эпохи доступны на временной шкале, а все территории в разделе «Территории».</p>
     </div>:
     <div className="lektrus-atlas-description"><strong>{mapModeTitle(mode)}</strong>
      <p>{atlasModes.find(m=>m.id===mode)?.hint}.</p>
