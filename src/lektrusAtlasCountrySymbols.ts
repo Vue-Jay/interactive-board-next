@@ -112,7 +112,9 @@ export function atlasCountrySymbol(feature:GeoFeature,title:string,year:number,h
   if(archive){
    const isIllustrative=archive.title.toLocaleLowerCase("ru").includes("гипотетичес")||
     archive.title.toLocaleLowerCase("ru").includes("фантазийн");
-   const kind=isIllustrative?"Предположительная иллюстрация":
+   const kind=archive.kind==="artifact"?
+    (archive.reconstruction?"Историческое изображение, современная реконструкция":"Подлинный исторический памятник"):
+    isIllustrative?"Предположительная иллюстрация":
     archive.kind==="flag"?"Исторический флаг":
     archive.kind==="emblem"?"Историческая эмблема":"Историческое знамя";
    const period=archive.from+"–"+archive.to+" гг.";
