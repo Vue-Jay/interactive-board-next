@@ -856,3 +856,7 @@
 .lektrus-atlas-history .lektrus-history-reference-actions button:hover{background:#d5eaff}
 .lektrus-atlas-history .lektrus-history-reference-actions a{margin:0}
 .lektrus-atlas-history .lektrus-history-reference-entry>small{display:block;margin:5px 0;color:#75889a;font-size:10px}
+
+/* History references: keep the optional era filter compact and accessible. */
+.lektrus-atlas-history .lektrus-history-source-period-filter{display:flex;align-items:center;gap:8px;padding:6px 8px;margin:8px 0;background:#edf5fd;border:1px solid #d6e7f5;border-radius:8px;color:#315e87;font-size:11px;font-weight:680;cursor:pointer}
+.lektrus-atlas-history .lektrus-history-source-period-filter input{margin:0;accent-color:#376fa3;flex:none}
