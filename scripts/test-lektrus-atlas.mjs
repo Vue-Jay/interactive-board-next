@@ -310,6 +310,8 @@ assert.equal(historicalSymbols.findHistoricalStateInsignia("benin",1550)?.kind,"
 assert.equal(historicalSymbols.findHistoricalStateInsignia("benin",1650),undefined,
  "A sixteenth-century British Museum object must not be dated to the seventeenth");
 assert.equal(historicalSymbols.findHistoricalStateInsignia("mongols",1280)?.kind,"artifact");
+assert.equal(historicalSymbols.findHistoricalStateInsignia("goryeo",1200)?.kind,"artifact");
+assert.equal(historicalSymbols.findHistoricalStateInsignia("ilkhanate",1320)?.kind,"artifact");
 assert.equal(historicalSymbols.findHistoricalStateInsignia("aztec",1500)?.reconstruction,true);
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Aksumite Empire"),"Аксумское царство",345,true).label,
  "Подлинный исторический памятник","Coins must never be labeled national flags");
@@ -345,8 +347,8 @@ assert.equal(symbols.atlasCountrySymbol(symbolCountry("Mughal Empire"),"Импе
 
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Venice"),"Венеция",1600,true).kind,"symbol",
  "Never infer the Venetian symbol from an unrelated unknown name");
-assert.ok(historicalSymbols.historicalStateInsignia.length>=90,"Reviewed historic graphics catalogue must include coins and museum objects");
-assert.ok(new Set(historicalSymbols.historicalStateInsignia.map(x=>x.id)).size>=80,
+assert.ok(historicalSymbols.historicalStateInsignia.length>=93,"Reviewed historic graphics catalogue must include coins and museum objects");
+assert.ok(new Set(historicalSymbols.historicalStateInsignia.map(x=>x.id)).size>=81,
  "Historical graphics must cover at least forty actual reference states");
 assert.ok(historicalSymbols.historicalDatedNationalFlags.length>=95,
  "Dated flags must cover more than one recent atlas period");
