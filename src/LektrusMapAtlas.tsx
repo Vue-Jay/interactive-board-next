@@ -1190,6 +1190,25 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      aria-pressed={mode===m.id} className={mode===m.id?"selected":""}
      onClick={()=>onMode(m.id)}>{m.title}</button>)}
    </nav>
+   <label className="lektrus-atlas-header-territory">
+    <span>Территория</span>
+    <select aria-label="Выбрать территорию карты" value={regionId}
+     onChange={e=>changeRegion(e.target.value)}>
+     {atlasRegionGroups.map(group=><optgroup key={group} label={group}>
+      {atlasRegions.filter(region=>region.group===group).map(region=>
+       <option key={region.id} value={region.id}>{region.title}</option>)}
+     </optgroup>)}
+    </select>
+   </label>
+   {subregions.length>0&&!historical&&<label className="lektrus-atlas-header-territory lektrus-atlas-header-subregion">
+    <span>Регион</span>
+    <select aria-label="Выбрать административную единицу" value={focusedUnit}
+     onChange={e=>{const chosen=subregions.find(f=>f.key===e.target.value);
+      setFocusedUnit(e.target.value);if(chosen)focusFeature(chosen.feature,"Административная единица")}}>
+     <option value="">Все регионы</option>
+     {subregions.map(f=><option key={f.key} value={f.key}>{f.name}</option>)}
+    </select>
+   </label>}
    <button type="button" className={"lektrus-atlas-coordinate-toggle"+(coordinatesEnabled?" active":"")}
     title="Определять широту и долготу на любой карте"
     aria-pressed={coordinatesEnabled}
@@ -1534,6 +1553,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      `${coord.lat.toFixed(2)}°, ${coord.lon.toFixed(2)}°`:objectMoveMode?"режим перемещения объекта":"обзорные геоданные"}</div>
    </div>
    {!isWorksheet&&<aside className="lektrus-atlas-sidebar">
+   {historical?<>
     <div className="lektrus-atlas-info-heading">
      <strong>Сведения об объектах</strong>
      <button type="button" aria-label="Скрыть панель сведений" onClick={()=>setInspectorOpen(false)}>×</button>
@@ -1978,6 +1998,34 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>
 
     </div></details>
+   </>:    <div className="lektrus-atlas-info-heading">
+     <strong>Сведения об объекте</strong>
+     <button type="button" aria-label="Скрыть сведения" onClick={()=>setInspectorOpen(false)}>×</button>
+    </div>
+    <div className="lektrus-atlas-info-content lektrus-atlas-info-object">
+     {markerDetails?<div className="lektrus-atlas-description">
+      <strong>{markerDetails.title}</strong>
+      {markerDetails.description&&<p>{markerDetails.description}</p>}
+      <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
+     </div>:selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
+      <strong>{(mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"Полезное ископаемое"}</strong>
+      {mineralDepositFacts(selectedMineral).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+     </div>:selected?<div className="lektrus-atlas-description">
+      <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
+      {selectedIsCity&&<div className="lektrus-atlas-city-data"><strong>Площадь города</strong>
+       <p>{cityArea?cityArea.km2.toLocaleString("ru-RU",{maximumFractionDigits:2})+" км²":
+        cityAreaLoading?"Получение данных…":cityAreaMessage}</p>
+      </div>}
+      {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+      {schoolReferenceLoading&&<small>Загрузка сведений…</small>}
+      {schoolReference?.description&&<p>{schoolReference.description}</p>}
+      {schoolReference?.facts.map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+      {schoolReference&&<a href={schoolReference.url} target="_blank" rel="noopener noreferrer">Источник сведений ↗</a>}
+     </div>:<div className="lektrus-atlas-description">
+      <p>Выберите объект на карте, чтобы увидеть сведения о нём.</p>
+     </div>}
+    </div>
+   }
    </aside>}
   </div>
     {worksheetEditor&&<div className="lektrus-contour-workspace" role="toolbar"
