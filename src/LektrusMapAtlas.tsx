@@ -1074,6 +1074,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     y:mid.y-225-(focus.y-225)*next},next)});
    return;
   }
+  // The hand is the only tool that pans the map with one finger. Other
+  // contour tools still permit a two-finger pinch in the block above.
+  if(worksheetEditor&&contourAction!=="hand")return;
   const p=pointer.current;if(!p||p.id!==e.pointerId)return;
   if(Math.hypot(pt.x-p.x,pt.y-p.y)>3)dragged.current=true;
   if(dragged.current&&!e.currentTarget.hasPointerCapture(e.pointerId)){
