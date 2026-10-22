@@ -1137,13 +1137,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <button type="button" onClick={()=>setRefresh(i=>i+1)}>Повторить загрузку</button>
      <small>Границы не заменяются вымышленными. Для доступа необходим интернет.</small>
     </div>}
-    <svg viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
+    <svg ref={mapSvgRef} viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
      onClick={objectMoveMode?undefined:pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
-     onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}
-     onPointerMove={objectMoveMode?undefined:contourFreehand?moveContourStroke:onMove}
-     onPointerUp={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}
-     onPointerCancel={objectMoveMode?undefined:contourFreehand?cancelContourStroke:onPointerEnd}
+     onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:onPointerDown}
+     onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:onMove}
+     onPointerUp={objectMoveMode?undefined:contourEraser?endContourErase:contourFreehand?endContourStroke:onPointerEnd}
+     onPointerCancel={objectMoveMode?undefined:contourEraser?cancelContourErase:contourFreehand?cancelContourStroke:onPointerEnd}
      onWheel={e=>{
       if(objectMoveMode)return;
       e.stopPropagation();e.preventDefault();
