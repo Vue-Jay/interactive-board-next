@@ -579,3 +579,7 @@
  .lektrus-contour-create-fields{border-bottom:0;border-right:1px solid #d8e6f2}
  .lektrus-contour-create-preview-pane{min-height:0}
 }
+
+/* Assignment settings are above the contour tool dock, including its popovers. */
+.lektrus-contour-editor-main>.lektrus-contour-editor-options{z-index:100}
+.lektrus-contour-editor-map{isolation:isolate}
