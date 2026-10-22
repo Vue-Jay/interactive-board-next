@@ -257,8 +257,8 @@ for(const name of ["countries-detail","cities","elevation","regions","glaciers",
  assert.ok(data.includes(name),"real map dataset "+name);
 for(const mode of ["hydrography","relief","cities","coordinates"])
  assert.equal(validAtlasDocument({...atlas,mode}),true);
-assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}'));
-assert.ok(map.includes('onPointerUp={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}'));
+assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:onPointerDown}'));
+assert.ok(map.includes('onPointerUp={objectMoveMode?undefined:contourEraser?endContourErase:contourFreehand?endContourStroke:onPointerEnd}'));
 assert.ok(map.includes('const cameraLayerRef=useRef<SVGGElement|null>(null)'));
 assert.ok(map.includes('cameraLayerRef.current?.setAttribute("transform"'));
 assert.ok(map.includes('cameraIdleRef.current=setTimeout('));
@@ -645,7 +645,7 @@ assert.ok(map.includes('useState(isWorksheet&&!editorMode)'),
  "Worksheets must start in board selection and resize mode");
 assert.ok(map.includes('if(!objectMoveMode)e.stopPropagation()'),
  "Only intentional map-edit mode stops board pointer events");
-assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}'));
+assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:onPointerDown}'));
 assert.ok(map.includes('aria-label="Режим контурной карты"'));
 assert.ok(map.includes('onClick={()=>setObjectMoveMode(false)}'));
 assert.ok(map.includes('setObjectMoveMode(true)'));
@@ -693,9 +693,46 @@ assert.ok(map.includes('if(pinch.current){onMove(e);return}'),
  "Two-touch pencil interaction should navigate map instead of the whiteboard");
 assert.ok(map.includes('if(pinch.current){')&&map.includes('contourDrawing.current=[];'),
  "Second finger must cancel provisional pencil drawing");
-assert.ok(map.includes('onPointerCancel={objectMoveMode?undefined:contourFreehand?cancelContourStroke:onPointerEnd}'),
+assert.ok(map.includes('onPointerCancel={objectMoveMode?undefined:contourEraser?cancelContourErase:contourFreehand?cancelContourStroke:onPointerEnd}'),
  "Cancelled touch must not save an unfinished stroke");
 assert.ok(map.includes('const wasPinching=e.pointerType==="touch"'),
  "Finishing a pinch must never persist a pencil stroke");
+
+
+// Real, persisted annotations; eraser gestures must NOT use the map pan path.
+assert.ok(map.includes('const [paintColor,setPaintColor]=useState("#000000")'));
+assert.ok(map.includes('const contourEraser=mode==="contour"&&contourAction==="erase"'));
+assert.ok(map.includes('onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:onMove}'));
+const eraserCode=map.slice(map.indexOf('const beginContourErase='),map.indexOf('const startContourMarkDrag='));
+assert.ok(eraserCode.includes('setPointerCapture(e.pointerId)'));
+assert.ok(eraserCode.includes('contourEraserHits('));
+assert.ok(eraserCode.includes('onChange?.({...d,contourMarks:'));
+assert.ok(!eraserCode.includes('scheduleCamera('),"Eraser must never pan or zoom");
+assert.ok(map.includes('onPointerDown={e=>startContourMarkDrag(e,stored)}'));
+assert.ok(map.includes('onPointerMove={moveContourMarkDrag}'));
+assert.ok(map.includes('onPointerUp={e=>endContourMarkDrag(e)}'));
+assert.ok(map.includes('moveContourMark(gesture.mark,gesture.start,point)'));
+assert.ok(map.includes('lektrus-contour-label-background'));
+const hitHelpers=fs.readFileSync(new URL("../src/lektrusContourInteractions.ts",import.meta.url),"utf8");
+const helperJs=ts.transpileModule(hitHelpers,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText;
+const hitLib={};
+new Function("exports",helperJs)(hitLib);
+const movable={id:"city-label",kind:"label",text:"Пермь",lat:58,lon:56,color:"#000000"};
+const line={id:"route-line",points:[[50,58],[60,58]],color:"#000000"};
+const pt=(lon,lat)=>({x:(lon+180)*2.5,y:(90-lat)*2.5});
+assert.deepEqual(hitLib.contourEraserHits([movable],[line],pt(56,58),1).marks,["city-label"]);
+assert.deepEqual(hitLib.contourEraserHits([movable],[line],pt(55,58),5).strokes,["route-line"]);
+assert.deepEqual(hitLib.contourEraserHits([movable],[line],pt(120,-30),5),
+ {marks:[],strokes:[]});
+const moved=hitLib.moveContourMark(movable,pt(56,58),pt(57,59));
+assert.equal(moved.lon,57);
+assert.equal(moved.lat,59);
+assert.equal(movable.lon,56,"Dragging must not mutate persisted data");
+assert.equal(hitLib.moveContourMark(movable,{x:0,y:0},{x:10000,y:10000}).lon,180);
+const contourCss=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
+assert.ok(contourCss.includes('.lektrus-atlas--erasing .lektrus-atlas-svg'));
+assert.ok(contourCss.includes('.lektrus-contour-label-object.selected'));
 
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
