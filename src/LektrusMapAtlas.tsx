@@ -1416,8 +1416,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
        {contourMarks.map(stored=>{const mark=previewContourMark?.id===stored.id?previewContourMark:stored;
         const [x,y]=projectGeography(mark.lon,mark.lat);
-        const width=Math.max(36,Math.min(80,mark.text.length)*9+20);
-        const left=mark.kind==="point"?11:-width/2,selected=selectedContourMarkId===mark.id;
+        const width=Math.max(16,Math.min(80,mark.text.length)*4.8+12);
+        const left=mark.kind==="point"?6:-width/2,selected=selectedContourMarkId===mark.id;
         return <g key={mark.id} transform={`translate(${x} ${y}) scale(${labelUiScale/scale})`}
          className={"lektrus-atlas-contour-mark lektrus-contour-label-object"+(selected?" selected":"")}
          role="button" tabIndex={0} aria-label={"Передвинуть обозначение: "+(mark.text||"Знак")}
@@ -1447,13 +1447,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
           }
          }}>
          <rect className="lektrus-contour-label-background"
-          x={left} y="-19" width={width} height="28" rx="5" strokeWidth="1"
+          x={left} y="-9" width={width} height="15" rx="3" strokeWidth=".8"
           aria-hidden="true"/>
-         {mark.kind==="point"&&<circle r="4.5" fill={mark.color} stroke="#fff" strokeWidth="1.8"/>}
-         {mark.text&&<text x={mark.kind==="point"?left+width/2:0} y="4"
-          textAnchor="middle" fill={mark.color} fontSize="16" stroke="#fff"
-          strokeWidth="3.8" strokeLinejoin="round" paintOrder="stroke"
-          fontWeight="750" letterSpacing=".12">{mark.text}</text>}
+         {mark.kind==="point"&&<circle r="2.6" fill={mark.color} stroke="#fff" strokeWidth="1"/>}
+         {mark.text&&<text x={mark.kind==="point"?left+width/2:0} y="0"
+          textAnchor="middle" fill={mark.color} fontSize="7.4" stroke="#fff"
+          strokeWidth="1.5" strokeLinejoin="round" paintOrder="stroke"
+          fontWeight="630">{mark.text}</text>}
          <title>{mark.text||"Условный знак"} · Перетащите для перемещения, стрелки для точной настройки, Delete для удаления</title>
         </g>})}
        <path ref={contourEraserPreview} fill="none" stroke="#fffdfa" strokeOpacity=".93"
