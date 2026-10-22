@@ -349,6 +349,14 @@ assert.equal(geoExports.historicalCountryName("India"),"Индия");
 assert.equal(geoExports.historicalCountryName("Japan"),"Япония");
 assert.equal(geoExports.historicalCountryName("United States of America"),"Соединённые Штаты Америки");
 assert.equal(geoExports.historicalCountryName("Czechoslovakia"),"Чехословакия");
+assert.equal(geoExports.historicalCountryName("Bosnia and Herzegovina"),"Босния и Герцеговина");
+assert.equal(geoExports.historicalCountryName("Byelarus"),"Беларусь");
+assert.equal(geoExports.historicalCountryName("Congo"),"Республика Конго");
+assert.equal(geoExports.historicalCountryName("Netherlands Antilles"),"Нидерландские Антильские острова");
+assert.equal(geoExports.historicalCountryName("Antigua and Barbuda"),"Антигуа и Барбуда");
+assert.equal(geoExports.historicalCountryName("Turkish Cypriot-administered area"),
+ "Территория под управлением турок-киприотов");
+assert.equal(geoExports.historicalCountryName("United States Virgin Islands"),"Американские Виргинские острова");
 assert.equal(geoExports.historicalCountryName("West Germany"),"Федеративная Республика Германия");
 assert.equal(geoExports.historicalCountryName("Nonexistent Historical Polity"),"",
  "Unknown source names must not receive invented translations");
