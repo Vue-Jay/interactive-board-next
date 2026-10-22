@@ -623,6 +623,10 @@ assert.ok(map.includes('lektrus-atlas--worksheet'));
 assert.ok(map.includes('worksheetEditor&&<div className="lektrus-contour-workspace"'));
 assert.ok(!map.includes('isWorksheet&&!editorMode&&<div className="lektrus-contour-workspace"'));
 assert.ok(map.includes('pointerEvents={worksheetOnBoard?"none":undefined}'));
+const worksheetCss=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
+assert.ok(worksheetCss.includes('.lektrus-atlas--board-selection .lektrus-atlas-contour-work *'));
+assert.ok(worksheetCss.includes('pointer-events:none!important;'));
+
 assert.ok(map.includes('!isWorksheet&&<aside className="lektrus-atlas-sidebar"'));
 assert.ok(map.includes('!isWorksheet&&<header className="lektrus-atlas-header"'));
 assert.ok(map.includes('contourConfig.showRivers')&&map.includes('contourConfig.showLakes'));
