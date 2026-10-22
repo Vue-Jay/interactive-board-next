@@ -787,3 +787,7 @@
 .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness button{display:grid;place-items:center;width:22px;height:25px;padding:0;border:1px solid transparent;border-radius:6px;background:white;cursor:pointer}
 .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness button.active{border-color:#79a6d7;background:#dcecff}
 .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness i{display:block;border-radius:50%;background:#345e82}
+
+/* Five thickness choices in one compact dropdown below color. */
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness{width:48px;box-sizing:border-box}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness select{display:block;width:100%;min-width:0;box-sizing:border-box;padding:5px 1px;border:1px solid #c2d4e7;border-radius:7px;background:#fff;color:#345e82;font-size:11px;cursor:pointer}
