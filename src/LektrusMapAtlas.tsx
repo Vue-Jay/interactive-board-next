@@ -64,6 +64,19 @@ export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean)
   findHistoricalReference(raw,year)?.title;
  return isRussianAtlasName(found)?found.trim():direct;
 }
+type ContourToolName="select"|"hand"|"pen"|"fill"|"erase"|"label";
+function ContourToolIcon({name}:{name:ContourToolName}){
+ return <svg className="lektrus-contour-tool-icon" width="23" height="23" viewBox="0 0 24 24"
+  fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"
+  strokeLinejoin="round" aria-hidden="true">
+  {name==="select"&&<><path d="m5 3 13 9-7 1-3 7z"/><path d="m11 13 4 7"/></>}
+  {name==="hand"&&<><path d="M8 13V6a1.5 1.5 0 0 1 3 0v5-7a1.5 1.5 0 0 1 3 0v7-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v6c0 4-3 6-7 6h-2c-2 0-3-1-4-3l-3-4a1.7 1.7 0 0 1 2.7-2z"/></>}
+  {name==="pen"&&<><path d="m4 20 5-1 11-11-4-4L5 15z"/><path d="m13 7 4 4"/></>}
+  {name==="fill"&&<><path d="M4 13 13 4l8 8-9 9z"/><path d="m9 8 6 6M20 17c-1 2-1 3-1 3a2 2 0 0 0 4 0c0-1-2-3-2-3"/></>}
+  {name==="erase"&&<><path d="m8 21-5-5a2 2 0 0 1 0-3L14 2a2 2 0 0 1 3 0l5 5a2 2 0 0 1 0 3L11 21z"/><path d="m6 10 8 8M8 21h14"/></>}
+  {name==="label"&&<><path d="M3 5h12v12H3z"/><path d="m9 8-3 6M12 14 9 8M6.8 12h4.5M17 10l4 4-4 4"/></>}
+ </svg>;
+}
 function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
  const [coordinatesEnabled,setCoordinatesEnabled]=useState(d.showCoordinates===true||d.mode==="coordinates");
@@ -83,12 +96,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const mineralTerrainEnabled=mineralContext&&d.hypsometry!==false;
  const [paintColor,setPaintColor]=useState("#000000");
  const [paintRegions,setPaintRegions]=useState(false);
- const [contourAction,setContourAction]=useState<"fill"|"label"|"point"|"pen"|"erase">("label");
+ const [contourAction,setContourAction]=useState<"select"|"hand"|"fill"|"label"|"point"|"pen"|"erase">("select");
+ const [lastLabelKind,setLastLabelKind]=useState<"label"|"point">("label");
+ const [territoryMenuOpen,setTerritoryMenuOpen]=useState(false);
  useEffect(()=>{
-  const allowed={label:contourConfig.allowLabels,point:contourConfig.allowPoints,
+  const allowed={select:true,hand:true,label:contourConfig.allowLabels,point:contourConfig.allowPoints,
    pen:contourConfig.allowDrawing,fill:contourConfig.allowFill,erase:true};
   if(!allowed[contourAction])setContourAction((["label","point","pen","fill","erase"] as const)
-   .find(id=>allowed[id])??"erase");
+   .find(id=>allowed[id])??"select");
  },[contourAction,contourConfig.allowLabels,contourConfig.allowPoints,contourConfig.allowDrawing,contourConfig.allowFill]);
  const [contourText,setContourText]=useState("");
  const [legendSymbol,setLegendSymbol]=useState("●");
@@ -915,7 +930,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   eraserGesture.current=null;contourEraserPreview.current?.setAttribute("d","");setPendingErasure({marks:[],fills:[]});
  };
  const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
-  if(!worksheetEditor||contourAction==="erase"||!onChange||markerGesture.current)return;
+  if(!worksheetEditor||contourAction!=="select"||!onChange||markerGesture.current)return;
   if(e.pointerType==="mouse"&&e.button!==0)return;
   const start=annotationWorld(e);if(!start)return;
   e.preventDefault();e.stopPropagation();
@@ -1210,8 +1225,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     <svg ref={mapSvgRef} viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
      onClick={objectMoveMode?undefined:pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
-     onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:onPointerDown}
-     onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:onMove}
+     onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:
+      worksheetEditor&&contourAction==="select"?undefined:onPointerDown}
+     onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:
+      worksheetEditor&&contourAction==="select"?undefined:onMove}
      onPointerUp={objectMoveMode?undefined:contourEraser?endContourErase:contourFreehand?endContourStroke:onPointerEnd}
      onPointerCancel={objectMoveMode?undefined:contourEraser?cancelContourErase:contourFreehand?cancelContourStroke:onPointerEnd}
      onWheel={e=>{
@@ -1986,15 +2003,29 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      </div>
      {d.contourTask&&<p className="lektrus-contour-task-label">{d.contourTask}</p>}
      <div className="lektrus-contour-workspace-tools">
-      {([["label","Подпись",contourConfig.allowLabels],["point","Знак",contourConfig.allowPoints],
-       ["pen","Карандаш",contourConfig.allowDrawing],["fill","Заливка",contourConfig.allowFill],
-       ["erase","Ластик",true]] as const).filter(([, ,allowed])=>allowed)
-       .map(([id,title])=><button type="button" key={id} title={title} aria-pressed={contourAction===id}
-        className={contourAction===id&&!objectMoveMode?"active":""}
-        onClick={()=>{setContourAction(id);setObjectMoveMode(false);
-         points.current.clear();pointer.current=null;pinch.current=null;dragged.current=false}}>{title}</button>)}
-      <button type="button" title="Отменить последнюю правку" disabled={!contourHistory.length}
-       onClick={contourUndo}>↶</button>
+      {([["select","Выбор",true],["hand","Рука",true],
+       ["pen","Карандаш",contourConfig.allowDrawing],
+       ["fill","Заливка",contourConfig.allowFill],
+       ["erase","Ластик",true],
+       ["label","Подпись / знак",contourConfig.allowLabels||contourConfig.allowPoints]] as const)
+       .filter(([, ,allowed])=>allowed).map(([id,title])=><button
+        type="button" key={id} title={title} aria-label={title}
+        aria-pressed={id==="label"?contourAction==="label"||contourAction==="point":contourAction===id}
+        className={"lektrus-contour-icon-button"+(
+         (id==="label"?contourAction==="label"||contourAction==="point":contourAction===id)?" active":"")}
+        onClick={()=>{setContourAction(id==="label"?
+          (lastLabelKind==="point"&&contourConfig.allowPoints?"point":contourConfig.allowLabels?"label":"point"):id);
+         setObjectMoveMode(false);points.current.clear();pointer.current=null;
+         pinch.current=null;dragged.current=false}}>
+        <ContourToolIcon name={id}/><span>{title}</span>
+       </button>)}
+      <button type="button" className="lektrus-contour-icon-button" title="Отменить последнее действие"
+       aria-label="Отменить" disabled={!contourHistory.length}
+       onClick={contourUndo}>
+       <svg className="lektrus-contour-tool-icon" width="23" height="23" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+        aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Отменить</span>
+      </button>
 
      </div>
      {!objectMoveMode&&<div className="lektrus-contour-selected-mark"
@@ -2007,10 +2038,18 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       </>:<span className="lektrus-contour-selection-hint">Нажмите на подпись, чтобы переместить или удалить её</span>}
      </div>}
      <div className="lektrus-contour-workspace-options">
-      {(contourAction==="label"||contourAction==="point")&&
+      {(contourAction==="label"||contourAction==="point")&&<>
+       <label className="lektrus-contour-label-type">Тип
+        <select aria-label="Тип обозначения" value={contourAction}
+         onChange={e=>{const kind=e.target.value as "label"|"point";
+          setLastLabelKind(kind);setContourAction(kind)}}>
+         {contourConfig.allowLabels&&<option value="label">Подпись</option>}
+         {contourConfig.allowPoints&&<option value="point">Знак</option>}
+        </select>
+       </label>
        <input aria-label="Текст подписи или знака" value={contourText} maxLength={80}
         placeholder={contourAction==="label"?"Название объекта":"Знак или номер"}
-        onChange={e=>setContourText(e.target.value)}/>}
+        onChange={e=>setContourText(e.target.value)}/></>}
       {contourAction==="fill"&&contourConfig.showRegions&&<label>
        <input type="checkbox" checked={paintRegions} onChange={e=>setPaintRegions(e.target.checked)}/>
        Регионы</label>}
