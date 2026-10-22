@@ -328,6 +328,31 @@ const named=(p,geometry={type:"Point",coordinates:[0,0]})=>
  ({type:"Feature",properties:p,geometry});
 assert.equal(geoExports.geoFeatureName(named({NAME_RU:"Озеро Байкал",NAME:"Baikal"})),"Озеро Байкал");
 assert.equal(geoExports.geoFeatureName(named({NAME:"Black Sea"})),"Чёрное море");
+
+// Regression: the dated 1994 layer must draw every source polygon, not just
+// countries present in the short Russian-language article catalogue.
+const historicalSample={type:"FeatureCollection",features:[
+ named({NAME:"France"},{type:"Polygon",coordinates:[]}),
+ named({NAME:"Japan"},{type:"MultiPolygon",coordinates:[]}),
+ named({NAME:"Untranslated but real polity"},{type:"Polygon",coordinates:[]}),
+ named({NAME:"Source point"},{type:"Point",coordinates:[0,0]})
+]};
+assert.equal(geoExports.historicalMapFeatures(historicalSample).length,3,
+ "Unnamed historical countries must not disappear from the rendered layer");
+assert.ok(map.includes("historicalMapFeatures(mapSource)"),
+ "Historical rendering must select all source polygons regardless of translation");
+assert.ok(map.includes("historical&&!modernReference||!!f.name"),
+ "Historical paths must not require Russian names");
+assert.equal(geoExports.historicalCountryName("France"),"Франция");
+assert.equal(geoExports.historicalCountryName("Germany"),"Германия");
+assert.equal(geoExports.historicalCountryName("India"),"Индия");
+assert.equal(geoExports.historicalCountryName("Japan"),"Япония");
+assert.equal(geoExports.historicalCountryName("United States of America"),"Соединённые Штаты Америки");
+assert.equal(geoExports.historicalCountryName("Czechoslovakia"),"Чехословакия");
+assert.equal(geoExports.historicalCountryName("West Germany"),"Федеративная Республика Германия");
+assert.equal(geoExports.historicalCountryName("Nonexistent Historical Polity"),"",
+ "Unknown source names must not receive invented translations");
+
 assert.equal(geoExports.geoFeatureName(named({name_ru:"река Кама",NAME:"Kama"})),"река Кама");
 assert.equal(geoExports.geoFeatureName(named({NAME:"Unknown"})),"");
 assert.equal(geoExports.geoFeatureName(named({NAME:"Unnamed"})),"");
