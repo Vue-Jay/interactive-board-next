@@ -36,6 +36,12 @@ const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url)
 assert.match(data,/aourednik\/historical-basemaps\/[0-9a-f]{40}\/index\.json/);
 assert.match(data,/available\.get\(item\.year\)!==item\.filename/);
 const referenceSource=fs.readFileSync(new URL("../src/lektrusHistoricalReferences.ts",import.meta.url),"utf8");
+const referenceSyntax=ts.createSourceFile("lektrusHistoricalReferences.ts",referenceSource,
+ ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+assert.equal(referenceSyntax.parseDiagnostics.length,0,
+ "Historical reference source must parse without errors: "+referenceSyntax.parseDiagnostics
+ .map(d=>ts.flattenDiagnosticMessageText(d.messageText," ")).join("; "));
+
 const referenceCompiled=ts.transpileModule(referenceSource,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const referencesApi={};new Function("exports",referenceCompiled)(referencesApi);
