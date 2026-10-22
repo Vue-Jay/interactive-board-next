@@ -268,6 +268,14 @@ assert.equal(symbols.atlasCountrySymbol(symbolCountry("Russia","RU"),"Росси
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Russian Empire","RU"),"Российская империя",1914,true).kind,"symbol",
  "Modern Russian flag is not an automatic imperial emblem");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Roman Empire"),"Римская империя",100,true).kind,"symbol");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("West Germany","DE"),"ФРГ",1994,true).kind,"symbol",
+ "Do not assign a modern flag to a defunct German state");
+assert.equal(symbols.atlasCountryIso({type:"Feature",properties:{ISO_A2:"RU",NAME:"Perm Krai",adm1_code:"RU-PER"},
+ geometry:{type:"Polygon",coordinates:[]}}),null,
+ "An administrative province is not a sovereign country flag");
+assert.equal(symbols.atlasCountryIso({type:"Feature",properties:{ISO_A2:"FR",NAME:"Paris"},
+ geometry:{type:"Point",coordinates:[0,0]}}),null,
+ "Place labels never inherit national flag badges");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Canada","CA"),"Канада",1994,true).code,"CA");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Unknown Country"),"Неизвестная территория",2026,false).kind,"symbol");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Brazil","BR"),"Бразилия",2026,false).code,"BR");
