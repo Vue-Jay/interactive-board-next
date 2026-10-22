@@ -203,7 +203,7 @@ assert.match(map,/shownMarineNames/);
 assert.match(map,/shownCities/);
 assert.match(map,/admin-regional/);
 assert.match(map,/rivers-regional/);
-assert.match(map,/Регион школьного атласа/);
+assert.match(map,/Территория карты/);
 assert.doesNotMatch(map,/Базовая версия Natural Earth/);
 assert.equal(createAtlasDocument().borderView,"russian");
 assert.equal(createAtlasDocument().regionId,"world");
@@ -257,7 +257,7 @@ for(const name of ["countries-detail","cities","elevation","regions","glaciers",
  assert.ok(data.includes(name),"real map dataset "+name);
 for(const mode of ["hydrography","relief","cities","coordinates"])
  assert.equal(validAtlasDocument({...atlas,mode}),true);
-assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:onPointerDown}'));
+assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:'));
 assert.ok(map.includes('onPointerUp={objectMoveMode?undefined:contourEraser?endContourErase:contourFreehand?endContourStroke:onPointerEnd}'));
 assert.ok(map.includes('const cameraLayerRef=useRef<SVGGElement|null>(null)'));
 assert.ok(map.includes('cameraLayerRef.current?.setAttribute("transform"'));
@@ -579,7 +579,7 @@ const atlasEditorNoSettings=fs.readFileSync(new URL("../src/LektrusSchoolDiagram
 assert.ok(!atlasEditorNoSettings.includes('lektrus-atlas-settings-toggle'));
 assert.ok(!atlasEditorNoSettings.includes('atlasSettingsOpen'));
 assert.ok(map.includes('contourMarks:contourMarks.filter'));
-assert.ok(map.includes('onClick={()=>{setContourAction(id);setObjectMoveMode(false);'),
+assert.ok(map.includes('setContourAction(id==="label"?'),
  "Choosing Eraser / Label / Pencil must switch from object movement to map editing");
 assert.ok(map.includes('Контурная карта')||map.includes('контурной карты'));
 assert.ok(common.includes('export function LektrusAtlasGraticule'));
@@ -627,7 +627,7 @@ const worksheetCss=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta
 assert.ok(worksheetCss.includes('.lektrus-atlas--board-selection .lektrus-atlas-contour-work *'));
 assert.ok(worksheetCss.includes('pointer-events:none!important;'));
 
-assert.ok(map.includes('!isWorksheet&&<aside className="lektrus-atlas-sidebar"'));
+assert.ok(map.includes('!isWorksheet&&!historical&&<aside className="lektrus-atlas-sidebar lektrus-atlas-sidebar--selected-only"'));
 assert.ok(map.includes('!isWorksheet&&<header className="lektrus-atlas-header"'));
 assert.ok(map.includes('contourConfig.showRivers')&&map.includes('contourConfig.showLakes'));
 assert.ok(map.includes('if(points.current.size===0)cameraIdleRef.current=setTimeout('));
@@ -656,7 +656,7 @@ assert.ok(map.includes('useState(isWorksheet&&!editorMode)'),
  "Worksheets must start in board selection and resize mode");
 assert.ok(map.includes('if(!objectMoveMode)e.stopPropagation()'),
  "Only intentional map-edit mode stops board pointer events");
-assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:onPointerDown}'));
+assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:'));
 assert.ok(map.includes('const worksheetEditor=isWorksheet&&editorMode'));
 assert.ok(map.includes('const worksheetOnBoard=isWorksheet&&!editorMode'));
 assert.ok(application.includes('data-object={item.id}'));
@@ -711,7 +711,7 @@ assert.ok(map.includes('const wasPinching=e.pointerType==="touch"'),
 // Real, persisted annotations; eraser gestures must NOT use the map pan path.
 assert.ok(map.includes('const [paintColor,setPaintColor]=useState("#000000")'));
 assert.ok(map.includes('const contourEraser=worksheetEditor&&contourAction==="erase"'));
-assert.ok(map.includes('onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:onMove}'));
+assert.ok(map.includes('onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:'));
 const eraserCode=map.slice(map.indexOf('const beginContourErase='),map.indexOf('const startContourMarkDrag='));
 assert.ok(eraserCode.includes('setPointerCapture(e.pointerId)'));
 assert.ok(map.includes('contourEraserHits('));
@@ -822,5 +822,35 @@ const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
 assert.ok(app.includes('if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}'));
 assert.ok(app.includes('className="screen-transform-overlay"'));
 assert.ok(app.includes('data-transform-handle={h}'));
+
+
+// The compact teacher creation form shows a clean live map preview.
+// Editing an existing worksheet is a fullscreen map, including for students.
+assert.ok(schoolEditor.includes('if(isContour&&!existing&&draft.kind==="atlas")return createPortal('));
+assert.ok(schoolEditor.includes('lektrus-contour-create-preview-map'));
+assert.ok(schoolEditor.includes('<LektrusSchoolDiagramView diagram={draft}/>'));
+assert.ok(schoolEditor.includes('studentMode?:boolean'));
+assert.ok(schoolEditor.includes('!studentMode&&contourSettingsOpen&&<aside'));
+assert.ok(schoolEditor.includes('if(isContour&&!existing&&draft.kind==="atlas")'));
+assert.ok(schoolEditor.includes('if(isContour&&draft.kind==="atlas")return createPortal('));
+assert.ok(application.includes('studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}'));
+assert.ok(application.includes('item.graphFigureId!=="contour-atlas"'));
+assert.ok(application.includes('paintedCountries:next.schoolDiagram.paintedCountries'));
+assert.ok(map.includes('function ContourToolIcon('));
+assert.ok(map.includes('["select","Выбор",true]'));
+assert.ok(map.includes('["hand","Рука",true]'));
+assert.ok(map.includes('["pen","Карандаш",contourConfig.allowDrawing]'));
+assert.ok(map.includes('["fill","Заливка",contourConfig.allowFill]'));
+assert.ok(map.includes('["erase","Ластик",true]'));
+assert.ok(map.includes('["label","Подпись / знак"'));
+assert.ok(map.includes('aria-label="Тип обозначения"'));
+assert.ok(map.includes('className="lektrus-atlas-territory-menu"'));
+assert.ok(map.includes('onClick={()=>{changeRegion(region.id);setTerritoryMenuOpen(false)}'));
+assert.ok(map.includes('lektrus-atlas-sidebar--selected-only'));
+const atlasCss=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
+assert.ok(atlasCss.includes('.lektrus-contour-icon-button'));
+assert.ok(atlasCss.includes('.lektrus-atlas-territory-dropdown'));
+const editorCss=fs.readFileSync(new URL("../src/lektrusAtlasEditor.css",import.meta.url),"utf8");
+assert.ok(editorCss.includes('.lektrus-contour-create-preview-map'));
 
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");

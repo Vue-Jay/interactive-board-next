@@ -15,7 +15,7 @@ import LektrusLanguageSocialControls from "./LektrusLanguageSocialControls";
 import LektrusBiologyExtensionControls from "./LektrusBiologyExtensionControls";
 import LektrusLogicCircuitControls from "./LektrusLogicCircuitControls";
 import LektrusProgrammingControls from "./LektrusProgrammingControls";
-type Props={item:Item;existing:boolean;onCancel:()=>void;onSave:(item:Item)=>void};
+type Props={item:Item;existing:boolean;studentMode?:boolean;onCancel:()=>void;onSave:(item:Item)=>void};
 const max=(s:string,n:number)=>s.slice(0,n);
 const roleNames:Record<FoodRole,string>={producer:"Продуцент",consumer:"Консумент",decomposer:"Редуцент"};
 const keys=(cell:"plant"|"animal"):CellOrganelle[]=>cell==="plant"?
@@ -40,7 +40,7 @@ const titles:Record<SchoolDiagramId,string>={
  "ru-sentence-builder":"Конструктор предложений","language-sentence-builder":"Составление предложений","civics-structure":"Государственное устройство и общество","literature-analysis":"Анализ произведения"
 };
 const newKey=()=>compatibleRandomUUID();
-export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSave}:Props){
+export default function LektrusSchoolDiagramEditor({item,existing,studentMode=false,onCancel,onSave}:Props){
  const id=isSchoolDiagramId(item.graphFigureId)?item.graphFigureId:"bio-cell";
  const [draft,setDraft]=useState<SchoolDiagram>(()=>{
   if(isSchoolDiagram(item.schoolDiagram)){
@@ -55,7 +55,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
  const [contourSettingsOpen,setContourSettingsOpen]=useState(false);
  const set=(data:SchoolDiagram)=>{setDraft(data);setError("")};
  const finish=()=>{
-  if(isContour&&draft.kind==="atlas"&&!draft.contourTask?.trim()){
+  if(isContour&&!studentMode&&draft.kind==="atlas"&&!draft.contourTask?.trim()){
    setError("Напишите задание для ученика.");return;
   }
   if(!isSchoolDiagram(draft)){setError("Проверьте данные: название, количество элементов и значения.");return}
@@ -69,6 +69,36 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
   window.addEventListener("keydown",onKey,true);
   return()=>window.removeEventListener("keydown",onKey,true);
  });
+ if(isContour&&!existing&&draft.kind==="atlas")return createPortal(
+  <div className="lektrus-school-backdrop lektrus-contour-task-backdrop" role="presentation"
+   onPointerDown={e=>e.stopPropagation()}>
+   <section className="lektrus-school-editor lektrus-school-editor--contour-task lektrus-contour-create-preview"
+    role="dialog" aria-modal="true" aria-labelledby="lektrus-contour-create-title">
+    <header className="lektrus-school-header">
+     <h2 id="lektrus-contour-create-title">Создать задание по контурной карте</h2>
+     <button type="button" className="lektrus-school-close" aria-label="Закрыть без сохранения"
+      onClick={onCancel}>×</button>
+    </header>
+    <div className="lektrus-contour-create-body">
+     <div className="lektrus-contour-create-fields">
+      <LektrusContourAssignmentSetup value={draft} onChange={set}/>
+     </div>
+     <div className="lektrus-contour-create-preview-pane">
+      <div className="lektrus-contour-create-preview-heading">
+       <strong>Предпросмотр карты</strong><small>Так карта будет выглядеть после добавления на доску</small>
+      </div>
+      <div className="lektrus-contour-create-preview-map">
+       <LektrusSchoolDiagramView diagram={draft}/>
+      </div>
+     </div>
+    </div>
+    <footer className="lektrus-school-footer">
+     {error&&<span className="lektrus-contour-task-error" role="alert">{error}</span>}
+     <button type="button" className="lektrus-school-secondary" onClick={onCancel}>Отмена</button>
+     <button type="button" className="lektrus-school-primary" onClick={finish}>Добавить на доску</button>
+    </footer>
+   </section>
+  </div>,document.body);
  if(isContour&&draft.kind==="atlas")return createPortal(
   <div className="lektrus-school-backdrop lektrus-contour-editor-backdrop" role="presentation"
    onPointerDown={e=>e.stopPropagation()}>
@@ -77,18 +107,18 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
     <header className="lektrus-contour-editor-header">
      <div className="lektrus-contour-editor-title">
       <span>КОНТУРНАЯ КАРТА</span>
-      <h2 id="lektrus-contour-editor-heading">{draft.title||"Новое задание"}</h2>
+      <h2 id="lektrus-contour-editor-heading">{studentMode?"Выполнение задания: "+(draft.title||"Контурная карта"):draft.title||"Контурная карта"}</h2>
      </div>
      <div className="lektrus-contour-editor-header-actions">
-      <button type="button" className={contourSettingsOpen?"active":""}
+      {!studentMode&&<button type="button" className={contourSettingsOpen?"active":""}
        aria-expanded={contourSettingsOpen} aria-controls="lektrus-contour-editor-options"
-       onClick={()=>setContourSettingsOpen(v=>!v)}>⚙ Задание и подложка</button>
+       onClick={()=>setContourSettingsOpen(v=>!v)}>⚙ Задание и подложка</button>}
       <button type="button" className="lektrus-contour-editor-close" aria-label="Закрыть без сохранения"
        title="Закрыть без сохранения" onClick={onCancel}>×</button>
      </div>
     </header>
     <div className="lektrus-contour-editor-main">
-     {contourSettingsOpen&&<aside className="lektrus-contour-editor-options"
+     {!studentMode&&contourSettingsOpen&&<aside className="lektrus-contour-editor-options"
       id="lektrus-contour-editor-options" aria-label="Настройки задания">
       <div className="lektrus-contour-editor-options-heading">
        <strong>Настройки задания</strong>

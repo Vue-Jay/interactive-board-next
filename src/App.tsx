@@ -4403,7 +4403,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     commit(itemsRef.current.map(item=>item.id===singleSelected.id?{...item,...patch}:item));
   };
   const lectrisEditSelected = () => {
-    if (!singleSelected || !canEdit || singleSelected.locked || (isStudent && structurallyLockedForStudent(singleSelected))) return;
+    const contourWorksheet=singleSelected?.graphFigureId==="contour-atlas";
+    if (!singleSelected || !canEdit || singleSelected.locked || (isStudent && structurallyLockedForStudent(singleSelected)&&!contourWorksheet)) return;
     switch (singleSelected.kind) {
       case "text": case "sticky": case "frame": case "comment": startEdit(singleSelected); break;
       case "formula": openFormulaEditor(singleSelected); break;
@@ -6356,7 +6357,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
           weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
-          canModify={canEdit && !selectionLocked && !(singleSelected && isStudent && structurallyLockedForStudent(singleSelected))}
+          canModify={canEdit && !selectionLocked && !(singleSelected && isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
           inspectorOpen={lectrisInspectorOpen} onInspectorOpen={()=>setLectrisInspectorOpen(v=>!v)}
           onDeselect={()=>{setSelected([]);setLectrisInspectorOpen(false)}}
           onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}
@@ -6366,7 +6367,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           onMarkerWeight={setMarkerWeight} onEraserSize={setEraserSize}/>}
         {lectrisInspectorOpen && singleSelected && !isInkItem(singleSelected) && !objectEditorOpen && !presentation &&
           <LectrisObjectInspector key={singleSelected.id} item={singleSelected} userId={authUser.id}
-            canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected))}
+            canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
             canToggleLock={canEdit && !(isStudent && structurallyLockedForStudent(singleSelected))}
             onClose={()=>setLectrisInspectorOpen(false)} onPatch={lectrisPatchSelected}
             onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}/>}
@@ -6690,12 +6691,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setNotice("Электрическая схема добавлена на доску");
           }}/>}
         {schoolEditorItem&&<LektrusSchoolDiagramEditor key={schoolEditorItem.id}
-          item={schoolEditorItem} existing={itemsRef.current.some(i=>i.id===schoolEditorItem.id)}
+          item={schoolEditorItem} studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}
+          existing={itemsRef.current.some(i=>i.id===schoolEditorItem.id)}
           onCancel={()=>setSchoolEditorItem(null)}
           onSave={next=>{
+            // Students may complete maps, but cannot change the teacher's
+            // assignment, territory, base layers or permitted instruments.
+            const saved=itemsRef.current.find(i=>i.id===next.id);
+            const studentContour=isStudent&&saved?.graphFigureId==="contour-atlas"&&
+              saved.schoolDiagram?.kind==="atlas"&&next.schoolDiagram?.kind==="atlas";
+            const updated=studentContour&&saved?.schoolDiagram?.kind==="atlas"&&next.schoolDiagram?.kind==="atlas"?
+              {...saved,schoolDiagram:{...saved.schoolDiagram,
+                contourMarks:next.schoolDiagram.contourMarks,contourStrokes:next.schoolDiagram.contourStrokes,
+                contourLegend:next.schoolDiagram.contourLegend,paintedCountries:next.schoolDiagram.paintedCountries}}:next;
             commit(itemsRef.current.some(i=>i.id===next.id)?
-              itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
-            setSchoolEditorItem(null);setNotice("Учебная схема сохранена");
+              itemsRef.current.map(i=>i.id===next.id?updated:i):[...itemsRef.current,next]);
+            setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
           }}/>}
         {scienceEditorItem&&<LektrusScienceEditor key={scienceEditorItem.id} item={scienceEditorItem}
           subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
@@ -7473,7 +7484,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                         : "#fff",
                 }}
                 onDoubleClick={() => {
-                  if (!canEdit || structurallyLockedForStudent(item)) return;
+                  if (!canEdit || (structurallyLockedForStudent(item)&&item.graphFigureId!=="contour-atlas")) return;
                   const remoteEditor = remoteEditorFor(item.id);
                   if (remoteEditor) {
                     setNotice(`${remoteEditor.name} уже редактирует этот объект`);
@@ -7496,7 +7507,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   } else if (tool === "select" && !space && !item.locked && item.kind === "checklist") {
                     setSelected([item.id]);
                     openChecklistEditor(item);
-                  } else if (tool === "select" && !space && !item.locked && item.kind === "graph") { setSelected([item.id]); openGraphEditor(item);
+                  } else if ((tool === "select" || tool==="hand") && !space && !item.locked && item.kind==="graph" && item.graphFigureId==="contour-atlas") {
+                    setSelected([item.id]);setSchoolEditorItem(item);
+} else if (tool === "select" && !space && !item.locked && item.kind === "graph") { setSelected([item.id]); openGraphEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); setFractionEditorId(item.id);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "quiz") {
                     setSelected([item.id]);

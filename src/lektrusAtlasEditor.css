@@ -524,3 +524,58 @@
  .lektrus-contour-editor-footer-actions button{min-height:36px}
  .lektrus-contour-editor-map .lektrus-contour-task-label{display:none}
 }
+
+/* Restored compact teacher assignment form, now with a live clean map preview. */
+.lektrus-school-editor--contour-task.lektrus-contour-create-preview{
+ width:min(1160px,calc(100vw - 32px));max-width:none;
+ height:min(780px,calc(100dvh - 30px));max-height:calc(100dvh - 14px);
+}
+.lektrus-contour-create-body{
+ flex:1;min-width:0;min-height:0;display:grid;
+ grid-template-columns:minmax(300px,43%) minmax(0,1fr);overflow:hidden;
+}
+.lektrus-contour-create-fields{
+ min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+ padding:19px 20px;background:#fafdff;
+ border-right:1px solid #d8e6f2;
+}
+.lektrus-contour-create-preview-pane{
+ display:flex;flex-direction:column;min-width:0;min-height:0;
+ padding:14px;background:#eef5fc;gap:11px;
+}
+.lektrus-contour-create-preview-heading{display:flex;flex-direction:column;gap:4px}
+.lektrus-contour-create-preview-heading strong{color:#284d72;font-size:13px}
+.lektrus-contour-create-preview-heading small{color:#6c86a0;font-size:11px}
+.lektrus-contour-create-preview-map{
+ flex:1;min-width:0;min-height:0;overflow:hidden;
+ background:#e3f0fa;border:1px solid #d3e2ef;border-radius:12px;
+}
+.lektrus-contour-create-preview-map .lektrus-atlas{
+ width:100%;height:100%;border:0;border-radius:0;
+}
+.lektrus-contour-create-preview-map .lektrus-atlas-svg{
+ width:100%;height:100%;max-height:none;
+}
+@media(max-width:700px){
+ .lektrus-school-editor--contour-task.lektrus-contour-create-preview{
+  width:100vw;height:100dvh;max-height:100dvh;border:0;border-radius:0;
+ }
+ .lektrus-contour-create-body{
+  display:flex;flex-direction:column;
+ }
+ .lektrus-contour-create-fields{
+  flex:1 1 52%;padding:12px 14px;border-right:0;
+  border-bottom:1px solid #d8e6f2;min-height:0;
+ }
+ .lektrus-contour-create-preview-pane{
+  flex:1 1 48%;padding:8px 12px;gap:6px;min-height:135px;
+ }
+ .lektrus-contour-create-preview-heading{gap:2px}
+ .lektrus-contour-create-preview-heading strong{font-size:11px}
+ .lektrus-contour-create-preview-heading small{font-size:10px}
+}
+@media(max-height:480px) and (orientation:landscape){
+ .lektrus-contour-create-body{display:grid;grid-template-columns:48% 52%}
+ .lektrus-contour-create-fields{border-bottom:0;border-right:1px solid #d8e6f2}
+ .lektrus-contour-create-preview-pane{min-height:0}
+}
