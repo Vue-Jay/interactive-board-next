@@ -158,6 +158,95 @@ const historicNames:Record<string,string>={
  "Caliphate":"Халифат","Golden Horde":"Золотая Орда",
  "Kievan Rus":"Древняя Русь","Muscovy":"Московское государство"
 };
+/** Translate only attested source names, without changing the historical
+ * boundaries or treating a modern country as an ancient polity.
+ * CLDR provides Russian equivalents for ISO 3166 country names, including
+ * small and island states often absent from hand-maintained dictionaries. */
+const englishCountryNames=new Intl.DisplayNames(["en"],{type:"region"});
+const historicalCountryNames=(()=>{
+ const names=new Map<string,string>();
+ for(let first=65;first<=90;first++)for(let second=65;second<=90;second++){
+  const iso=String.fromCharCode(first,second);
+  const en=englishCountryNames.of(iso),ru=russianCountryNames.of(iso);
+  if(en&&en!==iso&&ru&&ru!==iso&&/[А-ЯЁа-яё]/.test(ru)){
+   names.set(en.toLocaleLowerCase("en"),ru);
+  }
+ }
+ // Historical spellings and common English exonyms. These translate a name
+ // only when it is actually present in the dated source.
+ const aliases:Record<string,string>={
+  "United States of America":"Соединённые Штаты Америки",
+  "United States":"Соединённые Штаты Америки",
+  "Russian Federation":"Российская Федерация",
+  "Russia":"Россия",
+  "United Kingdom of Great Britain and Northern Ireland":"Великобритания",
+  "Great Britain":"Великобритания",
+  "The Netherlands":"Нидерланды",
+  "Czech Republic":"Чехия",
+  "Republic of Korea":"Республика Корея",
+  "South Korea":"Республика Корея",
+  "Democratic People's Republic of Korea":"Корейская Народно-Демократическая Республика",
+  "North Korea":"Корейская Народно-Демократическая Республика",
+  "People's Republic of China":"Китайская Народная Республика",
+  "Republic of China":"Китайская Республика",
+  "Taiwan":"Тайвань",
+  "Myanmar (Burma)":"Мьянма",
+  "Burma":"Бирма",
+  "Ivory Coast":"Кот-д'Ивуар",
+  "Cote d'Ivoire":"Кот-д'Ивуар",
+  "Democratic Republic of Congo":"Демократическая Республика Конго",
+  "Democratic Republic of the Congo":"Демократическая Республика Конго",
+  "Republic of Congo":"Республика Конго",
+  "Republic of the Congo":"Республика Конго",
+  "Cape Verde":"Кабо-Верде",
+  "East Timor":"Восточный Тимор",
+  "Swaziland":"Свазиленд",
+  "Macedonia":"Македония",
+  "North Macedonia":"Северная Македония",
+  "Turkey":"Турция",
+  "Syria":"Сирия",
+  "Iran":"Иран",
+  "Vietnam":"Вьетнам",
+  "Viet Nam":"Вьетнам",
+  "Laos":"Лаос",
+  "Moldova":"Молдавия",
+  "Kyrgyzstan":"Кыргызстан",
+  "Kyrgyz Republic":"Кыргызстан",
+  "Slovak Republic":"Словакия",
+  "Federal Republic of Germany":"Федеративная Республика Германия",
+  "West Germany":"Федеративная Республика Германия",
+  "East Germany":"Германская Демократическая Республика",
+  "German Democratic Republic":"Германская Демократическая Республика",
+  "Czechoslovakia":"Чехословакия",
+  "Czech and Slovak Federative Republic":"Чешская и Словацкая Федеративная Республика",
+  "Yugoslavia":"Югославия",
+  "Federal Republic of Yugoslavia":"Союзная Республика Югославия",
+  "Socialist Federal Republic of Yugoslavia":"Социалистическая Федеративная Республика Югославия",
+  "Serbia and Montenegro":"Сербия и Черногория",
+  "Zaire":"Заир",
+  "Upper Volta":"Верхняя Вольта",
+  "Rhodesia":"Родезия",
+  "South Vietnam":"Южный Вьетнам",
+  "North Vietnam":"Северный Вьетнам",
+  "Tanganyika":"Танганьика",
+  "French West Africa":"Французская Западная Африка",
+  "British India":"Британская Индия",
+  "Austro-Hungarian Empire":"Австро-Венгрия",
+  "Austria-Hungary":"Австро-Венгрия",
+  "Soviet Union":"СССР",
+  "Union of Soviet Socialist Republics":"СССР",
+  "USSR":"СССР"
+ };
+ for(const [name,translation] of Object.entries(aliases))names.set(name.toLocaleLowerCase("en"),translation);
+ return names;
+})();
+export function historicalCountryName(rawName:string):string{
+ const source=rawName.trim();
+ if(!source||source.length>110)return "";
+ if(/[А-ЯЁа-яё]/.test(source))return source;
+ return historicalCountryNames.get(source.toLocaleLowerCase("en"))??"";
+}
+
 /** Only real, meaningful Russian proper names may appear on the map.
  * Unnamed / placeholder entries must not acquire invented titles. */
 const atlasUnnamed=/^(?:unknown|unnamed|no[ -]?name|name[ -]?unknown|none|null|undefined|n.a|not applicable|unassigned|untitled|без названия|неизвестно|объект без названия|безымянн(?:ый|ая|ое)|[-?.\s]+)$/i;
