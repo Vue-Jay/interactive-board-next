@@ -128,7 +128,7 @@ for(const item of historicalReferences){
  for(const alias of [item.title,...item.aliases]){
   const key=referencesApi.normalizeHistoricalReferenceName(alias);
   const list=aliasCoverage.get(key)??[];
-  for(const other of list)assert.ok(item.from>other.to||item.to<other.from,
+  for(const other of list)if(other.id!==item.id)assert.ok(item.from>other.to||item.to<other.from,
    "Ambiguous simultaneous alias: "+alias+" between "+other.id+" and "+item.id);
   list.push(item);aliasCoverage.set(key,list);
  }
