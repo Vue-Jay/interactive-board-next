@@ -806,11 +806,29 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   Math.max(-180,Math.min(180,p.x/2.5-180)),Math.max(-90,Math.min(90,90-p.y/2.5))];
  const beginContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
-  e.stopPropagation();e.currentTarget.setPointerCapture(e.pointerId);
+  e.stopPropagation();
+  // Allow two-finger navigation even if the student left the pencil selected.
+  // The second touch cancels the provisional ink stroke and starts a map-only
+  // pinch, never a board pinch or an accidentally persisted drawing.
+  if(e.pointerType==="touch"){
+   onPointerDown(e);
+   if(pinch.current){
+    contourDrawing.current=[];
+    contourLivePath.current?.setAttribute("d","");
+    e.currentTarget.setPointerCapture(e.pointerId);
+    return;
+   }
+  }
+  e.currentTarget.setPointerCapture(e.pointerId);
   contourDrawing.current=[contourPoint(worldPoint(localPoint(e)))];
   if(contourLivePath.current)contourLivePath.current.setAttribute("stroke",paintColor);
  };
  const moveContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.pointerType==="touch"){
+   if(pinch.current){onMove(e);return}
+   // Keep the first touch current for a possible second-finger pinch.
+   if(points.current.has(e.pointerId))points.current.set(e.pointerId,localPoint(e));
+  }
   if(!contourDrawing.current.length)return;
   const point=contourPoint(worldPoint(localPoint(e)));
   const pts=contourDrawing.current,last=pts[pts.length-1];
@@ -821,14 +839,22 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   contourLivePath.current?.setAttribute("d",path);
  };
  const endContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
-  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  const wasPinching=e.pointerType==="touch"&&(!!pinch.current||contourDrawing.current.length===0);
+  if(e.pointerType==="touch")onPointerEnd(e);
+  else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const points=contourDrawing.current;contourDrawing.current=[];
   contourLivePath.current?.setAttribute("d","");
-  if(points.length<2||contourStrokes.length>=140)return;
+  if(wasPinching||points.length<2||contourStrokes.length>=140)return;
   captureContour();
   const next:ContourStroke={id:globalThis.crypto?.randomUUID?.()??String(Date.now())+Math.random(),
    points,color:paintColor};
   onChange?.({...d,contourStrokes:[...contourStrokes,next]});
+ };
+ const cancelContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  contourDrawing.current=[];
+  contourLivePath.current?.setAttribute("d","");
+  if(e.pointerType==="touch")onPointerEnd(e);
+  else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
  };
  const onPointerDown=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
@@ -987,7 +1013,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  };
  return <div className={"lektrus-atlas "+(isWorksheet?"lektrus-atlas--worksheet ":"")+(isWorksheet&&objectMoveMode?"lektrus-atlas--board-selection ":"")+(historical?"lektrus-atlas-history ":"")+(editorMode?"lektrus-atlas--editor ":"")+(inspectorOpen?"":"lektrus-atlas--inspector-hidden")} aria-label={d.title}
   onPointerDown={e=>{if(!objectMoveMode)e.stopPropagation()}}
+  onPointerMove={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onPointerUp={e=>{if(!objectMoveMode)e.stopPropagation()}}
+  onPointerCancel={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onClick={e=>{if(!objectMoveMode)e.stopPropagation()}}>
   {!isWorksheet&&<header className="lektrus-atlas-header">
    <strong title={d.title}>{d.title}</strong>
@@ -1026,7 +1054,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}
      onPointerMove={objectMoveMode?undefined:contourFreehand?moveContourStroke:onMove}
      onPointerUp={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}
-     onPointerCancel={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}
+     onPointerCancel={objectMoveMode?undefined:contourFreehand?cancelContourStroke:onPointerEnd}
      onWheel={e=>{
       if(objectMoveMode)return;
       e.stopPropagation();e.preventDefault();
@@ -1765,9 +1793,18 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      aria-label="Инструменты контурной карты" onPointerDown={e=>e.stopPropagation()}
      onClick={e=>e.stopPropagation()}>
      <div className="lektrus-contour-workspace-head">
-      <strong>{d.title}</strong>
-      {d.contourTask&&<details><summary>Задание</summary><p>{d.contourTask}</p></details>}
+      <strong title={d.title}>{d.title}</strong>
+      <div className="lektrus-contour-workspace-mode" role="group" aria-label="Режим контурной карты">
+       <button type="button" aria-pressed={objectMoveMode} className={objectMoveMode?"active":""}
+        title="Выделять, перемещать и изменять размер карты на доске"
+        onClick={()=>{setObjectMoveMode(true);points.current.clear();pointer.current=null;
+         pinch.current=null;dragged.current=false}}>↔ Объект</button>
+       <button type="button" aria-pressed={!objectMoveMode} className={!objectMoveMode?"active":""}
+        title="Работать внутри карты: подписи, заливка, рисование и масштаб карты"
+        onClick={()=>setObjectMoveMode(false)}>✎ Работа с картой</button>
+      </div>
      </div>
+     {d.contourTask&&<p className="lektrus-contour-task-label">{d.contourTask}</p>}
      <div className="lektrus-contour-workspace-tools">
       {([["label","Подпись",contourConfig.allowLabels],["point","Знак",contourConfig.allowPoints],
        ["pen","Карандаш",contourConfig.allowDrawing],["fill","Заливка",contourConfig.allowFill],
@@ -1776,15 +1813,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         className={contourAction===id?"active":""} onClick={()=>setContourAction(id)}>{title}</button>)}
       <button type="button" title="Отменить последнюю правку" disabled={!contourHistory.length}
        onClick={contourUndo}>↶</button>
-      <div className="lektrus-contour-workspace-mode" role="group" aria-label="Режим работы с контурной картой">
-       <button type="button" aria-pressed={objectMoveMode} className={objectMoveMode?"active":""}
-        title="Выделять, двигать и изменять размер карты стандартными средствами доски"
-        onClick={()=>{setObjectMoveMode(true);points.current.clear();pointer.current=null;
-         pinch.current=null;dragged.current=false}}>↔ Объект</button>
-       <button type="button" aria-pressed={!objectMoveMode} className={!objectMoveMode?"active":""}
-        title="Подписывать, раскрашивать и перемещать содержимое карты"
-        onClick={()=>setObjectMoveMode(false)}>✎ Карта</button>
-      </div>
+
      </div>
      <div className="lektrus-contour-workspace-options">
       {(contourAction==="label"||contourAction==="point")&&
