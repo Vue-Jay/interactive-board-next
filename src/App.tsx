@@ -6357,7 +6357,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
           weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
-          canModify={canEdit && !selectionLocked && !(singleSelected && isStudent && structurallyLockedForStudent(singleSelected))}
+          canModify={canEdit && !selectionLocked && !(singleSelected && isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
           inspectorOpen={lectrisInspectorOpen} onInspectorOpen={()=>setLectrisInspectorOpen(v=>!v)}
           onDeselect={()=>{setSelected([]);setLectrisInspectorOpen(false)}}
           onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}
@@ -6367,7 +6367,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           onMarkerWeight={setMarkerWeight} onEraserSize={setEraserSize}/>}
         {lectrisInspectorOpen && singleSelected && !isInkItem(singleSelected) && !objectEditorOpen && !presentation &&
           <LectrisObjectInspector key={singleSelected.id} item={singleSelected} userId={authUser.id}
-            canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected))}
+            canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
             canToggleLock={canEdit && !(isStudent && structurallyLockedForStudent(singleSelected))}
             onClose={()=>setLectrisInspectorOpen(false)} onPatch={lectrisPatchSelected}
             onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}/>}
