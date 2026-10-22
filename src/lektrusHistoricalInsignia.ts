@@ -12,14 +12,16 @@ const flag=(id:string,from:number,to:number,file:string,title="Историче�
  id,from,to,file,kind:"flag",title
 });
 const country=(code:string,from:number,to:number,file:string,title="Флаг соответствующего периода"):HistoricalInsignia=>({
- code,from,to,file,kind:"flag",title
+ code,from,to,file,kind:"flag",title,reconstruction:from<1600
 });
 const other=(id:string,from:number,to:number,file:string,title:string,kind:"banner"|"emblem"="banner",reconstruction=true):HistoricalInsignia=>({
  id,from,to,file,kind,title,reconstruction
 });
 /** State-specific emblems, with deliberately narrow year ranges. */
 export const historicalStateInsignia:readonly HistoricalInsignia[]=[
- flag("ussr",1955,1991,"Flag of the Soviet Union.svg","Государственный флаг СССР"),
+ flag("ussr",1924,1954,"Flag of the Soviet Union (1924).svg","Флаг СССР раннего периода"),
+ flag("ussr",1955,1979,"Flag of the Soviet Union (dark version).svg","Государственный флаг СССР 1955–1980 годов"),
+ flag("ussr",1980,1991,"Flag of the Soviet Union.svg","Государственный флаг СССР позднего периода"),
  flag("russian-empire",1858,1895,"Flag of Russia (1858–1896).svg","Государственные гербовые цвета Российской империи"),
  flag("russian-empire",1896,1917,"Flag of Russia (1896–1918).svg","Бело-сине-красный флаг Российской империи"),
  flag("ottoman",1844,1922,"Flag of the Ottoman Empire.svg","Флаг Османской империи"),
