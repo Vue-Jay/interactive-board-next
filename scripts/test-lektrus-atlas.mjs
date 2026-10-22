@@ -633,4 +633,29 @@ const modelOptions={...validWork,contourAssignment:{showBorders:false,showRivers
 assert.equal(validAtlasDocument(modelOptions),true);
 assert.equal(validAtlasDocument({...modelOptions,contourAssignment:{showRivers:"off"}}),false);
 
+// A contour worksheet has a docked tool strip below the map, never over it,
+// and defaults to the regular board interaction path so transform handles work.
+const contourToolbarStart=map.indexOf('isWorksheet&&!editorMode&&<div className="lektrus-contour-workspace"');
+const atlasSvgClose=map.indexOf('    </svg>');
+const mapBodyClose=map.lastIndexOf('   </aside>}');
+assert.ok(contourToolbarStart>mapBodyClose,
+ "Student toolbar must be a flex child BELOW the map body, not a map overlay");
+assert.ok(mapBodyClose>atlasSvgClose);
+assert.ok(map.includes('useState(isWorksheet&&!editorMode)'),
+ "Worksheets must start in board selection and resize mode");
+assert.ok(map.includes('if(!objectMoveMode)e.stopPropagation()'),
+ "Only intentional map-edit mode stops board pointer events");
+assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}'));
+assert.ok(map.includes('aria-label="Режим работы с контурной картой"'));
+assert.ok(map.includes('onClick={()=>setObjectMoveMode(false)}'));
+assert.ok(map.includes('setObjectMoveMode(true)'));
+assert.ok(application.includes('data-object={item.id}'));
+assert.ok(application.includes('data-transform-handle="rotate"'));
+assert.ok(application.includes('className={`screen-resize-handle screen-handle-${h}`}'));
+const atlasDockCss=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
+assert.ok(atlasDockCss.includes('.lektrus-atlas--worksheet .lektrus-contour-workspace{'));
+assert.ok(atlasDockCss.includes('position:relative;left:auto;right:auto;top:auto;bottom:auto;'));
+assert.ok(atlasDockCss.includes('flex:1 1 0;min-height:0;min-width:0;'));
+assert.ok(atlasDockCss.includes('overflow-x:auto;'),"Narrow map objects must scroll their tools, not obscure the map");
+
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
