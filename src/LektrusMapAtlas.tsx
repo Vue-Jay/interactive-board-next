@@ -228,6 +228,15 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(cameraIdleRef.current!==null){clearTimeout(cameraIdleRef.current);cameraIdleRef.current=null}
   cameraRef.current=camera;paintCamera(camera);
   setScale(camera.scale);setPosition(camera.position);
+  if(worksheetEditor&&onChange){
+   const previous=d.contourCamera;
+   if(!previous||previous.regionId!==regionId||
+     Math.abs(previous.scale-camera.scale)>1e-6||
+     Math.abs(previous.position.x-camera.position.x)>.01||
+     Math.abs(previous.position.y-camera.position.y)>.01){
+    onChange({...d,contourCamera:{regionId,scale:camera.scale,position:{...camera.position}}});
+   }
+  }
  };
  // Crucial performance fix: live gesture moves ONE SVG transform, not thousands
  // of React paths, labels and DEM tiles every animation frame. Recompute complex
@@ -258,8 +267,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  useEffect(()=>{setRegionId(d.regionId??"world")},[d.regionId]);
  useEffect(()=>{setMinCityPopulation(d.cityMinPopulation??0)},[d.cityMinPopulation]);
  useEffect(()=>{setCityCategory(d.cityCategory??"all")},[d.cityCategory]);
- useEffect(()=>{const camera=atlasRegionCamera(findAtlasRegion(regionId));commitCamera(camera);
-  setSelected(null);setCoord(null)},[regionId]);
+ useEffect(()=>{
+  const stored=d.contourCamera;
+  const camera=isWorksheet&&stored?.regionId===regionId?
+   {scale:stored.scale,position:stored.position}:
+   atlasRegionCamera(findAtlasRegion(regionId));
+  // The teacher's saved camera is replayed on the board. Only the editor may
+  // write view changes; re-opening never resets the student's work or zoom.
+  commitCamera(camera);
+  setSelected(null);setCoord(null);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[regionId]);
  const availableModes=isContourTool?atlasModesFor(scope).filter(m=>m.id==="contour"):
   atlasModesFor(scope).filter(m=>m.id!=="contour");
  const historical=scope==="history";
