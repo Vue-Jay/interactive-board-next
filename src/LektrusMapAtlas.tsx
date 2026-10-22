@@ -98,7 +98,37 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const markerGesture=useRef<{pointerId:number;mark:ContourMark;start:{x:number;y:number};moved:boolean}|null>(null);
  const [previewContourMark,setPreviewContourMark]=useState<ContourMark|null>(null);
  const [selectedContourMarkId,setSelectedContourMarkId]=useState<string|null>(null);
+ const [mapPixelRatio,setMapPixelRatio]=useState(1);
  const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[],contourLegend=d.contourLegend??[];
+ const selectedContourMark=contourMarks.find(mark=>mark.id===selectedContourMarkId);
+ // The map SVG can be resized as a board object. Keep user annotations at a
+ // readable actual pixel size on a small phone and on a large desktop board.
+ useEffect(()=>{
+  const svg=mapSvgRef.current;if(!svg)return;
+  const measure=()=>{
+   const rect=svg.getBoundingClientRect(),ratio=Math.min(rect.width/900,rect.height/450);
+   if(ratio>0)setMapPixelRatio(previous=>Math.abs(previous-ratio)>.025?ratio:previous);
+  };
+  measure();
+  if(typeof ResizeObserver==="undefined")return;
+  const observer=new ResizeObserver(measure);observer.observe(svg);
+  return()=>observer.disconnect();
+ },[]);
+ // Hold the last drag preview until the board acknowledges persisted
+ // coordinates. Clearing it in pointer-up caused the old-position flash.
+ useEffect(()=>{
+  if(!previewContourMark||markerGesture.current)return;
+  const persisted=contourMarks.find(mark=>mark.id===previewContourMark.id);
+  if(!persisted||persisted.lon===previewContourMark.lon&&persisted.lat===previewContourMark.lat){
+   setPreviewContourMark(null);
+  }
+ },[contourMarks,previewContourMark]);
+ const deleteContourMark=(id:string)=>{
+  if(!onChange)return;
+  captureContour();setSelectedContourMarkId(null);
+  setPreviewContourMark(null);
+  onChange({...d,contourMarks:contourMarks.filter(mark=>mark.id!==id)});
+ };
  const [contourHistory,setContourHistory]=useState<Array<{marks:typeof contourMarks;strokes:typeof contourStrokes;
   fills:Record<string,string>}>>([]);
  const captureContour=()=>{
@@ -865,7 +895,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   eraserGesture.current=null;setPendingErasure({marks:[],strokes:[],fills:[]});
  };
  const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
-  if(contourAction==="erase"||!onChange)return;
+  if(contourAction==="erase"||!onChange||markerGesture.current)return;
   if(e.pointerType==="mouse"&&e.button!==0)return;
   const start=annotationWorld(e);if(!start)return;
   e.preventDefault();e.stopPropagation();
@@ -887,12 +917,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(!gesture||gesture.pointerId!==e.pointerId)return;
   e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
-  markerGesture.current=null;setPreviewContourMark(null);
-  if(cancelled||!gesture.moved)return;
+  markerGesture.current=null;
+  if(cancelled||!gesture.moved){setPreviewContourMark(null);return;}
   const point=annotationWorld(e);
   if(!point)return;
   const moved=moveContourMark(gesture.mark,gesture.start,point);
-  if(moved.lon===gesture.mark.lon&&moved.lat===gesture.mark.lat)return;
+  if(moved.lon===gesture.mark.lon&&moved.lat===gesture.mark.lat){
+   setPreviewContourMark(null);return;
+  }
+  // Keep this position visible across the async parent/board state update.
+  // Avoid rendering a frame at the previously persisted coordinates.
+  setPreviewContourMark(moved);
   captureContour();
   onChange?.({...d,contourMarks:contourMarks.map(mark=>mark.id===gesture.mark.id?moved:mark)});
  };
