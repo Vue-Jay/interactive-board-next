@@ -98,7 +98,38 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const markerGesture=useRef<{pointerId:number;mark:ContourMark;start:{x:number;y:number};moved:boolean}|null>(null);
  const [previewContourMark,setPreviewContourMark]=useState<ContourMark|null>(null);
  const [selectedContourMarkId,setSelectedContourMarkId]=useState<string|null>(null);
+ const [mapPixelRatio,setMapPixelRatio]=useState(1);
+ const labelUiScale=Math.max(.7,Math.min(4.5,1/Math.max(.22,mapPixelRatio)));
  const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[],contourLegend=d.contourLegend??[];
+ const selectedContourMark=contourMarks.find(mark=>mark.id===selectedContourMarkId);
+ // The map SVG can be resized as a board object. Keep user annotations at a
+ // readable actual pixel size on a small phone and on a large desktop board.
+ useEffect(()=>{
+  const svg=mapSvgRef.current;if(!svg)return;
+  const measure=()=>{
+   const rect=svg.getBoundingClientRect(),ratio=Math.min(rect.width/900,rect.height/450);
+   if(ratio>0)setMapPixelRatio(previous=>Math.abs(previous-ratio)>.025?ratio:previous);
+  };
+  measure();
+  if(typeof ResizeObserver==="undefined")return;
+  const observer=new ResizeObserver(measure);observer.observe(svg);
+  return()=>observer.disconnect();
+ },[]);
+ // Hold the last drag preview until the board acknowledges persisted
+ // coordinates. Clearing it in pointer-up caused the old-position flash.
+ useEffect(()=>{
+  if(!previewContourMark||markerGesture.current)return;
+  const persisted=contourMarks.find(mark=>mark.id===previewContourMark.id);
+  if(!persisted||persisted.lon===previewContourMark.lon&&persisted.lat===previewContourMark.lat){
+   setPreviewContourMark(null);
+  }
+ },[contourMarks,previewContourMark]);
+ const deleteContourMark=(id:string)=>{
+  if(!onChange)return;
+  captureContour();setSelectedContourMarkId(null);
+  setPreviewContourMark(null);
+  onChange({...d,contourMarks:contourMarks.filter(mark=>mark.id!==id)});
+ };
  const [contourHistory,setContourHistory]=useState<Array<{marks:typeof contourMarks;strokes:typeof contourStrokes;
   fills:Record<string,string>}>>([]);
  const captureContour=()=>{
@@ -821,7 +852,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const brushContour=(e:ReactPointerEvent<SVGSVGElement>)=>{
   const gesture=eraserGesture.current,point=annotationWorld(e);
   if(!gesture||gesture.pointerId!==e.pointerId||!point)return;
-  const hits=contourEraserHits(contourMarks,contourStrokes,point,cameraRef.current.scale,14);
+  const hits=contourEraserHits(contourMarks,contourStrokes,point,cameraRef.current.scale,14,labelUiScale);
   let changed=false;
   for(const id of hits.marks)if(!gesture.marks.has(id)){gesture.marks.add(id);changed=true}
   for(const id of hits.strokes)if(!gesture.strokes.has(id)){gesture.strokes.add(id);changed=true}
@@ -865,7 +896,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   eraserGesture.current=null;setPendingErasure({marks:[],strokes:[],fills:[]});
  };
  const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
-  if(contourAction==="erase"||!onChange)return;
+  if(contourAction==="erase"||!onChange||markerGesture.current)return;
   if(e.pointerType==="mouse"&&e.button!==0)return;
   const start=annotationWorld(e);if(!start)return;
   e.preventDefault();e.stopPropagation();
@@ -887,12 +918,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(!gesture||gesture.pointerId!==e.pointerId)return;
   e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
-  markerGesture.current=null;setPreviewContourMark(null);
-  if(cancelled||!gesture.moved)return;
+  markerGesture.current=null;
+  if(cancelled||!gesture.moved){setPreviewContourMark(null);return;}
   const point=annotationWorld(e);
   if(!point)return;
   const moved=moveContourMark(gesture.mark,gesture.start,point);
-  if(moved.lon===gesture.mark.lon&&moved.lat===gesture.mark.lat)return;
+  if(moved.lon===gesture.mark.lon&&moved.lat===gesture.mark.lat){
+   setPreviewContourMark(null);return;
+  }
+  // Keep this position visible across the async parent/board state update.
+  // Avoid rendering a frame at the previously persisted coordinates.
+  setPreviewContourMark(moved);
   captureContour();
   onChange?.({...d,contourMarks:contourMarks.map(mark=>mark.id===gesture.mark.id?moved:mark)});
  };
@@ -1382,9 +1418,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
        {contourMarks.map(stored=>{const mark=previewContourMark?.id===stored.id?previewContourMark:stored;
         const [x,y]=projectGeography(mark.lon,mark.lat);
-        const width=Math.max(29,Math.min(80,mark.text.length)*6.3+16);
-        const left=mark.kind==="point"?7:-width/2,selected=selectedContourMarkId===mark.id;
-        return <g key={mark.id} transform={`translate(${x} ${y}) scale(${1/scale})`}
+        const width=Math.max(36,Math.min(80,mark.text.length)*9+20);
+        const left=mark.kind==="point"?11:-width/2,selected=selectedContourMarkId===mark.id;
+        return <g key={mark.id} transform={`translate(${x} ${y}) scale(${labelUiScale/scale})`}
          className={"lektrus-atlas-contour-mark lektrus-contour-label-object"+(selected?" selected":"")}
          role="button" tabIndex={0} aria-label={"Передвинуть обозначение: "+(mark.text||"Знак")}
          opacity={pendingErasure.marks.includes(mark.id)?.2:1}
@@ -1413,11 +1449,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
           }
          }}>
          <rect className="lektrus-contour-label-background"
-          x={left} y="-14" width={width} height="21" rx="5" strokeWidth="1"/>
-         {mark.kind==="point"&&<circle r="3.5" fill={mark.color} stroke="#fff" strokeWidth="1"/>}
-         {mark.text&&<text x={mark.kind==="point"?left+width/2:0} y="0"
-          textAnchor="middle" fill={mark.color} fontSize="10"
-          fontWeight="650">{mark.text}</text>}
+          x={left} y="-19" width={width} height="28" rx="5" strokeWidth="1"
+          aria-hidden="true"/>
+         {mark.kind==="point"&&<circle r="4.5" fill={mark.color} stroke="#fff" strokeWidth="1.8"/>}
+         {mark.text&&<text x={mark.kind==="point"?left+width/2:0} y="4"
+          textAnchor="middle" fill={mark.color} fontSize="16" stroke="#fff"
+          strokeWidth="3.8" strokeLinejoin="round" paintOrder="stroke"
+          fontWeight="750" letterSpacing=".12">{mark.text}</text>}
          <title>{mark.text||"Условный знак"} · Перетащите для перемещения, стрелки для точной настройки, Delete для удаления</title>
         </g>})}
        <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={2/scale}
@@ -1940,6 +1978,15 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        onClick={contourUndo}>↶</button>
 
      </div>
+     {!objectMoveMode&&<div className="lektrus-contour-selected-mark"
+      role="group" aria-label="Действия с выбранной подписью">
+      {selectedContourMark?<>
+       <span title={selectedContourMark.text||"Знак"}>Выбрано: <strong>{selectedContourMark.text||"Условный знак"}</strong></span>
+       <button type="button" className="lektrus-contour-delete-mark"
+        aria-label={"Удалить объект "+(selectedContourMark.text||"Условный знак")}
+        onClick={()=>deleteContourMark(selectedContourMark.id)}>Удалить ×</button>
+      </>:<span className="lektrus-contour-selection-hint">Нажмите на подпись, чтобы переместить или удалить её</span>}
+     </div>}
      <div className="lektrus-contour-workspace-options">
       {(contourAction==="label"||contourAction==="point")&&
        <input aria-label="Текст подписи или знака" value={contourText} maxLength={80}

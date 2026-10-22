@@ -743,4 +743,30 @@ const contourCss=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.u
 assert.ok(contourCss.includes('.lektrus-atlas--erasing .lektrus-atlas-svg'));
 assert.ok(contourCss.includes('.lektrus-contour-label-object.selected'));
 
+
+// A dragged annotation stays at its final preview coordinates while the board
+// persists the update. Reverting to its old saved position even for one frame
+// causes a visible snap/blink during mouse and touch drags.
+const markDragLogic=map.slice(map.indexOf('const startContourMarkDrag='),
+ map.indexOf('const contourEraser='));
+assert.ok(markDragLogic.includes('setPreviewContourMark(moved);'));
+assert.ok(!markDragLogic.includes('markerGesture.current=null;setPreviewContourMark(null);'));
+assert.ok(map.includes('persisted.lon===previewContourMark.lon&&persisted.lat===previewContourMark.lat'));
+assert.ok(map.includes('const labelUiScale=Math.max(.7,Math.min(4.5,1/Math.max(.22,mapPixelRatio)))'));
+assert.ok(map.includes('new ResizeObserver(measure)'));
+assert.ok(map.includes('scale(${labelUiScale/scale})'),"Labels must retain readable on-screen size");
+assert.ok(map.includes('fontSize="16" stroke="#fff"'));
+assert.ok(map.includes('strokeWidth="3.8"'));
+assert.ok(contourCss.includes('fill:transparent;fill-opacity:0;stroke:transparent'));
+assert.ok(contourCss.includes('height:56px;min-height:56px'),
+ "Selected label actions must occupy a stable height so touch selection does not shift the map");
+assert.ok(map.includes('className="lektrus-contour-delete-mark"'));
+assert.ok(map.includes('onClick={()=>deleteContourMark(selectedContourMark.id)}'));
+assert.ok(map.includes('Нажмите на подпись, чтобы переместить или удалить её'));
+assert.ok(contourCss.includes('min-height:44px'),"Mobile deletion must have a touch-sized button");
+const labelHitPoint={...pt(56,58),x:pt(56,58).x+55};
+assert.deepEqual(hitLib.contourEraserHits([movable],[],labelHitPoint,1,12).marks,[]);
+assert.deepEqual(hitLib.contourEraserHits([movable],[],labelHitPoint,1,12,2).marks,["city-label"],
+ "Eraser must follow the enlarged mobile label's hit geometry");
+
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
