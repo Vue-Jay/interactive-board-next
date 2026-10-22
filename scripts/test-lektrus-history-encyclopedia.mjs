@@ -35,4 +35,33 @@ for(const keyword of ["loadHistoricalIndex","Все эпохи","lektrus-history
 const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url),"utf8");
 assert.match(data,/aourednik\/historical-basemaps\/[0-9a-f]{40}\/index\.json/);
 assert.match(data,/available\.get\(item\.year\)!==item\.filename/);
-console.log("Historical reference encyclopedia: 41 dated Russian-language entries, alias guards, sources, and cross-era UI checked.");
+const referenceSource=fs.readFileSync(new URL("../src/lektrusHistoricalReferences.ts",import.meta.url),"utf8");
+const referenceCompiled=ts.transpileModule(referenceSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const referencesApi={};new Function("exports",referenceCompiled)(referencesApi);
+const {historicalReferences,findHistoricalReference}=referencesApi;
+assert.ok(historicalReferences.length>=47,"expanded source-backed history directory");
+const ids=new Set();
+for(const item of historicalReferences){
+ assert.ok(!ids.has(item.id),"Duplicate history reference id: "+item.id);ids.add(item.id);
+ assert.ok(item.title&&item.aliases.length>0&&item.from<=item.to,"Invalid history reference "+item.id);
+ assert.ok(item.description.length>=50&&item.change.length>=30,"Incomplete reference "+item.id);
+ assert.ok(item.sourceTitle&&item.sourceUrl.startsWith("https://"),"Missing source "+item.id);
+}
+for(const [alias,year,title] of [
+ ["Khmer Empire",1100,"Кхмерская империя"],
+ ["Ayutthaya Kingdom",1500,"Королевство Аюттхая"],
+ ["Timurid Empire",1400,"Держава Тимуридов"],
+ ["Yuan Dynasty",1300,"Империя Юань"],
+ ["Kingdom of Aksum",400,"Аксумское царство"],
+ ["Mamluk Sultanate",1400,"Мамлюкский султанат"],
+ ["Delhi Sultanate",1350,"Делийский султанат"],
+ ["Chimu Kingdom",1300,"Царство Чиму"],
+ ["Viceroyalty of Peru",1600,"Вице-королевство Перу"]
+]){
+ assert.equal(findHistoricalReference(alias,year)?.title,title,"Source matching failed: "+alias);
+}
+assert.equal(findHistoricalReference("Yuan Dynasty",1550),undefined,"Do not match outside attested time window");
+assert.ok(atlas.includes("lektrus-history-source-library"),"The sourced catalogue should remain available without a polygon");
+assert.ok(atlas.includes("visibleHistoricalReferences"),"Catalogue search must use Russian titles and aliases");
+console.log("Historical atlas: 41 encyclopedia entries, "+historicalReferences.length+" sourced reference records, alias/date guards and cross-era UI checked.");
