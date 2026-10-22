@@ -242,6 +242,16 @@ assert.match(map,/Гипсометрическая карта/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url),"utf8"),/\{terrain\}/);
 
 const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url),"utf8");
+for(const [filename,source,kind] of [
+ ["LektrusMapAtlas.tsx",map,ts.ScriptKind.TSX],
+ ["lektrusAtlasData.ts",data,ts.ScriptKind.TS]
+]){
+ const parsed=ts.createSourceFile(filename,source,ts.ScriptTarget.Latest,true,kind);
+ assert.equal(parsed.parseDiagnostics.length,0,
+  filename+" must parse without errors: "+parsed.parseDiagnostics.map(d=>
+   ts.flattenDiagnosticMessageText(d.messageText," ")).join("; "));
+}
+
 assert.match(data,/ne_50m_geography_marine_polys/);
 const reg=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
 assert.match(map,/loadHistoricalSnapshot/);
