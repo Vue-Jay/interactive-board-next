@@ -579,7 +579,8 @@ const atlasEditorNoSettings=fs.readFileSync(new URL("../src/LektrusSchoolDiagram
 assert.ok(!atlasEditorNoSettings.includes('lektrus-atlas-settings-toggle'));
 assert.ok(!atlasEditorNoSettings.includes('atlasSettingsOpen'));
 assert.ok(map.includes('contourMarks:contourMarks.filter'));
-assert.ok(map.includes('onClick={()=>setContourAction(id)}'));
+assert.ok(map.includes('onClick={()=>{setContourAction(id);setObjectMoveMode(false);'),
+ "Choosing Eraser / Label / Pencil must switch from object movement to map editing");
 assert.ok(map.includes('Контурная карта')||map.includes('контурной карты'));
 assert.ok(common.includes('export function LektrusAtlasGraticule'));
 assert.ok(common.indexOf('export function LektrusAtlasGraticule')<
