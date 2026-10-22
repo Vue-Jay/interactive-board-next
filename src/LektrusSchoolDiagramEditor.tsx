@@ -52,6 +52,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
  const isAtlas=id==="maps-atlas"||id==="contour-atlas"||id==="history-atlas";
  const isContour=id==="contour-atlas";
  const [error,setError]=useState("");
+ const [contourSettingsOpen,setContourSettingsOpen]=useState(false);
  const set=(data:SchoolDiagram)=>{setDraft(data);setError("")};
  const finish=()=>{
   if(isContour&&draft.kind==="atlas"&&!draft.contourTask?.trim()){
@@ -69,28 +70,47 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
   return()=>window.removeEventListener("keydown",onKey,true);
  });
  if(isContour&&draft.kind==="atlas")return createPortal(
-  <div className="lektrus-school-backdrop lektrus-contour-task-backdrop"
-   role="presentation" onPointerDown={e=>e.stopPropagation()}>
-   <section className="lektrus-school-editor lektrus-school-editor--contour-task"
-    role="dialog" aria-modal="true" aria-labelledby="lektrus-contour-task-heading">
-    <header className="lektrus-school-header">
-     <h2 id="lektrus-contour-task-heading">{existing?"Изменить задание":"Создать задание"}</h2>
-     <button type="button" className="lektrus-school-close" aria-label="Закрыть без сохранения"
-      onClick={onCancel}>×</button>
-    </header>
-    <form className="lektrus-contour-task-form" onSubmit={e=>{e.preventDefault();finish()}}>
-     <div className="lektrus-contour-task-scroll">
-      <LektrusContourAssignmentSetup value={draft} onChange={set}/>
+  <div className="lektrus-school-backdrop lektrus-contour-editor-backdrop" role="presentation"
+   onPointerDown={e=>e.stopPropagation()}>
+   <section className="lektrus-school-editor lektrus-contour-editor-fullscreen"
+    role="dialog" aria-modal="true" aria-labelledby="lektrus-contour-editor-heading">
+    <header className="lektrus-contour-editor-header">
+     <div className="lektrus-contour-editor-title">
+      <span>КОНТУРНАЯ КАРТА</span>
+      <h2 id="lektrus-contour-editor-heading">{draft.title||"Новое задание"}</h2>
      </div>
-     <footer className="lektrus-school-footer">
-      {error&&<span className="lektrus-contour-task-error" role="alert">{error}</span>}
-      <button type="button" className="lektrus-school-secondary"
-       onClick={onCancel}>Отмена</button>
-      <button type="submit" className="lektrus-school-primary">
-       {existing?"Сохранить":"Добавить на доску"}
+     <div className="lektrus-contour-editor-header-actions">
+      <button type="button" className={contourSettingsOpen?"active":""}
+       aria-expanded={contourSettingsOpen} aria-controls="lektrus-contour-editor-options"
+       onClick={()=>setContourSettingsOpen(v=>!v)}>⚙ Задание и подложка</button>
+      <button type="button" className="lektrus-contour-editor-close" aria-label="Закрыть без сохранения"
+       title="Закрыть без сохранения" onClick={onCancel}>×</button>
+     </div>
+    </header>
+    <div className="lektrus-contour-editor-main">
+     {contourSettingsOpen&&<aside className="lektrus-contour-editor-options"
+      id="lektrus-contour-editor-options" aria-label="Настройки задания">
+      <div className="lektrus-contour-editor-options-heading">
+       <strong>Настройки задания</strong>
+       <button type="button" aria-label="Закрыть настройки задания"
+        onClick={()=>setContourSettingsOpen(false)}>×</button>
+      </div>
+      <LektrusContourAssignmentSetup value={draft} onChange={set}/>
+     </aside>}
+     <div className="lektrus-contour-editor-map">
+      <LektrusSchoolDiagramView diagram={draft} onChange={set} editorMode/>
+     </div>
+    </div>
+    <footer className="lektrus-contour-editor-footer">
+     {error?<span className="lektrus-contour-task-error" role="alert">{error}</span>:
+      <span className="lektrus-contour-editor-hint">Редактируйте карту здесь. После сохранения на доске останется только карта, без инструментов.</span>}
+     <div className="lektrus-contour-editor-footer-actions">
+      <button type="button" className="lektrus-school-secondary" onClick={onCancel}>Отмена</button>
+      <button type="button" className="lektrus-school-primary" onClick={finish}>
+       {existing?"Сохранить изменения":"Сохранить на доску"}
       </button>
-     </footer>
-    </form>
+     </div>
+    </footer>
    </section>
   </div>,document.body);
  const title=<label className="lektrus-school-field">Название схемы
