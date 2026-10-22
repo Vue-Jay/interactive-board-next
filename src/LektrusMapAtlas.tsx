@@ -1979,7 +1979,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div>
 
     </div></details>
-   </>:    <div className="lektrus-atlas-info-heading">
+   </>:<>
+    <div className="lektrus-atlas-info-heading">
      <strong>Сведения об объекте</strong>
      <button type="button" aria-label="Скрыть сведения" onClick={()=>setInspectorOpen(false)}>×</button>
     </div>
@@ -2006,7 +2007,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       <p>Выберите объект на карте, чтобы увидеть сведения о нём.</p>
      </div>}
     </div>
-   }
+   </>}
    </aside>}
   </div>
     {worksheetEditor&&<div className="lektrus-contour-workspace" role="toolbar"
