@@ -5,7 +5,7 @@ export default function LektrusAtlasCountrySymbol({symbol,compact=false}:{
  symbol:AtlasCountrySymbol;compact?:boolean;
 }){
  const [failed,setFailed]=useState(false);
- useEffect(()=>setFailed(false),[symbol.code,symbol.key]);
+ useEffect(()=>setFailed(false),[symbol.code,symbol.key,symbol.imageUrl]);
  return <span className={"lektrus-country-symbol"+(compact?" lektrus-country-symbol--compact":"")}
   role="img" title={symbol.note} aria-label={symbol.label+": "+symbol.note}>
   <svg className="lektrus-country-symbol-shield" viewBox="0 0 40 32" aria-hidden="true">
@@ -15,8 +15,8 @@ export default function LektrusAtlasCountrySymbol({symbol,compact=false}:{
     fontFamily="system-ui, sans-serif" fontWeight="800" fill="#315375"
     textAnchor="middle">{symbol.monogram}</text>
   </svg>
-  {symbol.kind==="flag"&&symbol.code&&!failed&&<img
-   className="lektrus-country-symbol-flag" src={atlasCountryFlagUrl(symbol.code)}
+  {(symbol.imageUrl||symbol.kind==="flag"&&symbol.code)&&!failed&&<img
+   className="lektrus-country-symbol-flag" src={symbol.imageUrl??atlasCountryFlagUrl(symbol.code!)}
    alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer"
    onError={()=>setFailed(true)}/>}
  </span>;
