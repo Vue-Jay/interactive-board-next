@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
-import type {AtlasDocument,AtlasMode,ContourStroke} from "./lektrusAtlasModel";
+import type {AtlasDocument,AtlasMode,ContourMark,ContourStroke} from "./lektrusAtlasModel";
+import {contourEraserHits,moveContourMark} from "./lektrusContourInteractions";
 import {defaultContourAssignment} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
 import {clusterMineralMapPoints} from "./lektrusAtlasMineralClusters";
@@ -77,7 +78,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  // This reuses the measured relief tiles, without turning every click on
  // the mineral map into an elevation/coordinate query.
  const mineralTerrainEnabled=mineralContext&&d.hypsometry!==false;
- const [paintColor,setPaintColor]=useState("#f3b778");
+ const [paintColor,setPaintColor]=useState("#000000");
  const [paintRegions,setPaintRegions]=useState(false);
  const [contourAction,setContourAction]=useState<"fill"|"label"|"point"|"pen"|"erase">("label");
  useEffect(()=>{
@@ -91,6 +92,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [legendMeaning,setLegendMeaning]=useState("");
  const contourDrawing=useRef<Array<[number,number]>>([]);
  const contourLivePath=useRef<SVGPathElement|null>(null);
+ const mapSvgRef=useRef<SVGSVGElement|null>(null);
+ const eraserGesture=useRef<{pointerId:number;marks:Set<string>;strokes:Set<string>}|null>(null);
+ const [pendingErasure,setPendingErasure]=useState<{marks:string[];strokes:string[]}>({marks:[],strokes:[]});
+ const markerGesture=useRef<{pointerId:number;mark:ContourMark;start:{x:number;y:number};moved:boolean}|null>(null);
+ const [previewContourMark,setPreviewContourMark]=useState<ContourMark|null>(null);
+ const [selectedContourMarkId,setSelectedContourMarkId]=useState<string|null>(null);
  const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[],contourLegend=d.contourLegend??[];
  const [contourHistory,setContourHistory]=useState<Array<{marks:typeof contourMarks;strokes:typeof contourStrokes;
   fills:Record<string,string>}>>([]);
