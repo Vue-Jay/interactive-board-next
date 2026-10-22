@@ -117,8 +117,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    .find(id=>allowed[id])??"select");
  },[contourAction,contourConfig.allowLabels,contourConfig.allowPoints,contourConfig.allowDrawing,contourConfig.allowFill]);
  const [contourText,setContourText]=useState("");
- const [legendSymbol,setLegendSymbol]=useState("●");
- const [legendMeaning,setLegendMeaning]=useState("");
  const contourDrawing=useRef<Array<[number,number]>>([]);
  const contourLivePath=useRef<SVGPathElement|null>(null);
  const mapSvgRef=useRef<SVGSVGElement|null>(null);
@@ -131,7 +129,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  // Match the political atlas exactly: labels use map camera scale rather
  // than board-object pixel ratio. No extra mobile text magnification.
  const labelUiScale=1;
- const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[],contourLegend=d.contourLegend??[];
+ const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[];
  const selectedContourMark=contourMarks.find(mark=>mark.id===selectedContourMarkId);
  // Hold the last drag preview until the board acknowledges persisted
  // coordinates. Clearing it in pointer-up caused the old-position flash.
@@ -2195,23 +2193,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        Регионы</label>}
       {contourAction!=="erase"&&<input type="color" aria-label="Цвет" value={paintColor}
        onChange={e=>setPaintColor(e.target.value)}/>}
-      <details><summary>Легенда</summary>
-       <div className="lektrus-contour-workspace-legend">
-        <input aria-label="Знак в легенде" value={legendSymbol} maxLength={12}
-         onChange={e=>setLegendSymbol(e.target.value)}/>
-        <input aria-label="Описание в легенде" value={legendMeaning} maxLength={90}
-         placeholder="Что означает знак" onChange={e=>setLegendMeaning(e.target.value)}/>
-        <button type="button" disabled={!legendSymbol.trim()||!legendMeaning.trim()||contourLegend.length>=30}
-         onClick={()=>{onChange?.({...d,contourLegend:[...contourLegend,{
-          id:globalThis.crypto?.randomUUID?.()??String(Date.now()),symbol:legendSymbol.trim(),meaning:legendMeaning.trim()
-         }]});setLegendMeaning("")}}>+</button>
-        {contourLegend.map(item=><div key={item.id} className="lektrus-contour-legend-row">
-         <b>{item.symbol}</b><span>{item.meaning}</span>
-         <button type="button" aria-label={"Удалить "+item.meaning}
-          onClick={()=>onChange?.({...d,contourLegend:contourLegend.filter(v=>v.id!==item.id)})}>×</button>
-        </div>)}
-       </div>
-      </details>
      </div>
     </div>}
   {historical&&<div className="lektrus-atlas-timeline">
