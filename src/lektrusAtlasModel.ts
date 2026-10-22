@@ -15,11 +15,11 @@ export type ContourMark={id:string;lat:number;lon:number;text:string;kind:"label
 export type ContourStroke={id:string;points:Array<[number,number]>;color:string;width?:number};
 export type ContourAssignment={
  showBorders:boolean;showRegions:boolean;showCoastline:boolean;showRivers:boolean;showLakes:boolean;
- showGrid:boolean;allowLabels:boolean;allowPoints:boolean;allowDrawing:boolean;allowFill:boolean;
+ showGrid:boolean;showCapitals:boolean;showMajorCities:boolean;allowLabels:boolean;allowPoints:boolean;allowDrawing:boolean;allowFill:boolean;
 };
 export const defaultContourAssignment:ContourAssignment={
  showBorders:true,showRegions:false,showCoastline:true,showRivers:true,showLakes:true,
- showGrid:false,allowLabels:true,allowPoints:true,allowDrawing:true,allowFill:true
+ showGrid:false,showCapitals:false,showMajorCities:false,allowLabels:true,allowPoints:true,allowDrawing:true,allowFill:true
 };
 export type ContourMapCamera={regionId:string;scale:number;position:{x:number;y:number}};
 export type AtlasDocument={
