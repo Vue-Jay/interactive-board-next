@@ -839,7 +839,31 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const referenceQuery=directoryFilter.trim().toLocaleLowerCase("ru");
  const visibleHistoricalReferences=historicalReferences.filter(entry=>!referenceQuery||
   [entry.title,...entry.aliases].some(name=>name.toLocaleLowerCase("ru").includes(referenceQuery)))
-  .sort((a,b)=>a.title.localeCompare(b.title,"ru"));
+  .sort((a,b)=>{
+   // Keep the current epoch at the top without hiding research from other eras.
+   const presentA=Number(snapshot.year>=a.from&&snapshot.year<=a.to);
+   const presentB=Number(snapshot.year>=b.from&&snapshot.year<=b.to);
+   return presentB-presentA||a.title.localeCompare(b.title,"ru");
+  });
+ // Index only *existing* named shapes in pinned historical snapshots. A reference
+ // never creates geometry: the button is shown only if the source index has it.
+ const indexedReferenceMaps=useMemo(()=>{
+  const byAlias=new Map<string,Array<{year:number;raw:string}>>();
+  for(const record of historyIndex)for(const raw of record.countries){
+   const key=normalizeHistoricalName(raw);
+   const matches=byAlias.get(key);
+   if(matches)matches.push({year:record.year,raw});
+   else byAlias.set(key,[{year:record.year,raw}]);
+  }
+  const links=new Map<string,{year:number;raw:string}>();
+  for(const entry of historicalReferences){
+   const matches=entry.aliases.flatMap(alias=>byAlias.get(normalizeHistoricalName(alias))??[])
+    .filter(hit=>hit.year>=entry.from&&hit.year<=entry.to)
+    .sort((a,b)=>Math.abs(a.year-snapshot.year)-Math.abs(b.year-snapshot.year));
+   if(matches.length)links.set(entry.id,matches[0]);
+  }
+  return links;
+ },[historyIndex,snapshot.year]);
  const globalMatches=useMemo(()=>{
   const query=directoryFilter.trim().toLocaleLowerCase("ru");
   if(query.length<2)return [];
@@ -2002,7 +2026,15 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         {entry.capital&&<p><strong>Столица и центры:</strong> {entry.capital}</p>}
         <p>{entry.description}</p>
         <p><strong>Изменение:</strong> {entry.change}</p>
-        <a href={entry.sourceUrl} target="_blank" rel="noopener noreferrer">{entry.sourceTitle} ↗</a>
+        <div className="lektrus-history-reference-actions">
+         {indexedReferenceMaps.get(entry.id)&&<button type="button"
+          onClick={()=>{const link=indexedReferenceMaps.get(entry.id)!;jumpToPeriod(link.year,link.raw);setHistoryTab("article");}}
+          title="Открыть существующий датированный картографический слой">
+          Показать на карте · {yearLabel(indexedReferenceMaps.get(entry.id)!.year)}
+         </button>}
+         <a href={entry.sourceUrl} target="_blank" rel="noopener noreferrer">{entry.sourceTitle} ↗</a>
+        </div>
+        {!indexedReferenceMaps.get(entry.id)&&<small>Справка доступна; подтверждённый картографический объект в индексированных периодах не найден.</small>}
        </details>):<p>Совпадений в справочнике нет.</p>}
       </div>
       <small>Даты относятся к учебным справкам. Они не устанавливают точные границы для каждого года.</small>
