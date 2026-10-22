@@ -243,9 +243,13 @@ assert.match(fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url
 
 const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url),"utf8");
 
+const historicalInsigniaSource=fs.readFileSync(new URL("../src/lektrusHistoricalInsignia.ts",import.meta.url),"utf8");
+const historicalReferenceSource=fs.readFileSync(new URL("../src/lektrusHistoricalReferences.ts",import.meta.url),"utf8");
 const insigniaSource=fs.readFileSync(new URL("../src/lektrusAtlasCountrySymbols.ts",import.meta.url),"utf8");
 const insigniaUI=fs.readFileSync(new URL("../src/LektrusAtlasCountrySymbol.tsx",import.meta.url),"utf8");
 for(const [filename,source,kind] of [
+ ["lektrusHistoricalInsignia.ts",historicalInsigniaSource,ts.ScriptKind.TS],
+ ["lektrusHistoricalReferences.ts",historicalReferenceSource,ts.ScriptKind.TS],
  ["lektrusAtlasCountrySymbols.ts",insigniaSource,ts.ScriptKind.TS],
  ["LektrusAtlasCountrySymbol.tsx",insigniaUI,ts.ScriptKind.TSX]
 ]){
@@ -253,21 +257,56 @@ for(const [filename,source,kind] of [
  assert.equal(parse.parseDiagnostics.length,0,filename+" must parse: "+
   parse.parseDiagnostics.map(d=>ts.flattenDiagnosticMessageText(d.messageText," ")).join("; "));
 }
-const symbols={};
-new Function("exports",ts.transpileModule(insigniaSource,{compilerOptions:{
+const symbols={},historicalSymbols={},historicalReferences={};
+for(const [src,out] of [[historicalInsigniaSource,historicalSymbols],
+ [historicalReferenceSource,historicalReferences]]){
+ new Function("exports",ts.transpileModule(src,{compilerOptions:{
+  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+ }}).outputText)(out);
+}
+new Function("exports","require",ts.transpileModule(insigniaSource,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
-}}).outputText)(symbols);
+}}).outputText)(symbols,id=>{
+ if(id.includes("lektrusHistoricalInsignia"))return historicalSymbols;
+ if(id.includes("lektrusHistoricalReferences"))return historicalReferences;
+ throw Error("Unexpected atlas symbol import: "+id);
+});
 const symbolCountry=(name,code)=>({type:"Feature",properties:{NAME:name,...(code?{ISO_A2:code}:{})},
  geometry:{type:"Polygon",coordinates:[]}});
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Russia","RU"),2026+"",2026,false).code,"RU");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("United States of America","US"),"США",1994,true).kind,"flag");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("United States of America","US"),"США",1950,true).kind,"symbol",
- "Do not show the 1960 American flag in earlier snapshots");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("United States of America","US"),"США",1994,true).kind,"historic");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("United States of America","US"),"США",1950,true).imageUrl??"",
+ /1912-1959/,"Use the dated US flag rather than the 1960 design");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Russia","RU"),"Россия",1990,true).kind,"symbol",
  "Do not show post-1993 Russian flag before adoption");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Russian Empire","RU"),"Российская империя",1914,true).kind,"symbol",
- "Modern Russian flag is not an automatic imperial emblem");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Russian Empire","RU"),"Российская империя",1914,true).imageUrl??"",
+ /1896/,"Russia in 1914 should use the imperial-era flag, not a modern flag");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Roman Empire"),"Римская империя",100,true).kind,"symbol");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Ottoman Empire"),"Османская империя",1900,true).imageUrl??"",
+ /Ottoman/,"Use the attested Ottoman flag only for the late period");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Ottoman Empire"),"Османская империя",1600,true).kind,"symbol",
+ "Do not assign the 1844 Ottoman flag to the sixteenth century");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Qing dynasty"),"Империя Цин",1900,true).imageUrl??"",
+ /China/,"Late Qing dragon flag should appear in relevant year");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Qing dynasty"),"Империя Цин",1700,true).kind,"symbol",
+ "Do not assign a late Qing flag to 1700");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("German Democratic Republic"),"ГДР",1980,true).imageUrl??"",
+ /German_Democratic_Republic/,"Historic GDR flag should be used for 1980");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1940,true).kind,"symbol",
+ "1955 design must not be assigned to Soviet periods without dating evidence");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Soviet Union"),"СССР",1980,true).imageUrl??"",
+ /Soviet_Union/,"Flag of the USSR must be visible for 1980");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Venice"),"Венеция",1600,true).kind,"symbol",
+ "Never infer the Venetian symbol from an unrelated unknown name");
+assert.ok(historicalSymbols.historicalStateInsignia.length>=19,"Curated historical emblems remain available");
+assert.ok(historicalSymbols.historicalDatedNationalFlags.length>=60,
+ "Dated flags must cover more than one recent atlas period");
+for(const row of [...historicalSymbols.historicalStateInsignia,...historicalSymbols.historicalDatedNationalFlags]){
+ assert.ok(row.from<=row.to&&row.file.endsWith(".svg")||row.file.endsWith(".png"),
+  "Historical source image requires a valid period and file: "+row.file);
+ assert.ok(historicalSymbols.historicalInsigniaSourceUrl(row.file).startsWith("https://commons.wikimedia.org/wiki/File:"));
+}
+
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("West Germany","DE"),"ФРГ",1994,true).kind,"symbol",
  "Do not assign a modern flag to a defunct German state");
 assert.equal(symbols.atlasCountryIso({type:"Feature",properties:{ISO_A2:"RU",NAME:"Perm Krai",adm1_code:"RU-PER"},
@@ -276,7 +315,8 @@ assert.equal(symbols.atlasCountryIso({type:"Feature",properties:{ISO_A2:"RU",NAM
 assert.equal(symbols.atlasCountryIso({type:"Feature",properties:{ISO_A2:"FR",NAME:"Paris"},
  geometry:{type:"Point",coordinates:[0,0]}}),null,
  "Place labels never inherit national flag badges");
-assert.equal(symbols.atlasCountrySymbol(symbolCountry("Canada","CA"),"Канада",1994,true).code,"CA");
+assert.match(symbols.atlasCountrySymbol(symbolCountry("Canada","CA"),"Канада",1994,true).imageUrl??"",
+ /Canada/,"Use the dated Canadian design");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Unknown Country"),"Неизвестная территория",2026,false).kind,"symbol");
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Brazil","BR"),"Бразилия",2026,false).code,"BR");
 assert.ok(symbols.atlasCountryFlagUrl("GB").endsWith("/gb.png"));
