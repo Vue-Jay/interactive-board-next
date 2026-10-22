@@ -712,3 +712,66 @@
   font-size:9px;
  }
 }
+
+
+/* Full-screen contour editor: board-style vertical dock, no bottom tool strip. */
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-workspace{
+ position:absolute;left:max(10px,env(safe-area-inset-left));top:56px;bottom:auto;
+ z-index:30;width:60px;max-width:60px;min-width:60px;max-height:calc(100% - 68px);
+ padding:6px 5px;gap:5px;overflow:visible;
+ background:#fffef8f2;border:1px solid #c9d9e9;border-radius:13px;
+ box-shadow:0 5px 22px #1c42602b;
+}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-workspace-head,
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-task-label{display:none}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-workspace-tools{
+ display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;
+ gap:3px;overflow-x:hidden;overflow-y:auto;flex-wrap:nowrap;
+ max-height:calc(100dvh - 154px);min-height:0;padding:1px;scrollbar-width:thin;
+}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-icon-button{
+ width:48px;min-width:0;min-height:46px;padding:4px 2px;gap:2px;
+ border-radius:9px;font-size:9px;
+}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-icon-button span{
+ font-size:9px;line-height:1.1;white-space:normal;text-align:center;
+}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-color{
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:2px;flex:none;width:48px;padding:4px 2px;box-sizing:border-box;
+ color:#456481;font-size:9px;font-weight:700;cursor:pointer;
+ border-top:1px solid #dce6f0;
+}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-color input{
+ display:block;width:34px;height:32px;padding:2px;cursor:pointer;
+ border:1px solid #c2d4e7;border-radius:8px;background:#fff;
+}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-workspace-options{
+ position:absolute;top:0;left:calc(100% + 9px);width:max-content;max-width:min(250px,55vw);
+ min-height:0;display:flex;flex-direction:column;align-items:stretch;
+ gap:7px;padding:9px;border:1px solid #c9d9e9;border-radius:11px;
+ box-shadow:0 6px 20px #18395629;background:#fffffff5;
+}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-workspace-options:empty{display:none}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-workspace-options>input:not([type="color"]){
+ width:190px;min-width:0;max-width:100%;box-sizing:border-box;
+}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-selected-mark{
+ position:absolute;left:calc(100% + 9px);top:90px;width:220px;height:auto;
+ min-height:0;max-width:min(230px,55vw);padding:7px;
+ box-shadow:0 6px 20px #18395629;background:#eef6fd;
+}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-selected-mark:has(.lektrus-contour-selection-hint){display:none}
+@media(max-width:680px){
+ .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-workspace{
+  left:max(5px,env(safe-area-inset-left));top:50px;width:53px;min-width:53px;max-width:53px;
+  padding:5px 3px;max-height:calc(100% - 55px);
+ }
+ .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-icon-button{
+  width:45px;min-width:0;min-height:43px;padding:3px 1px;
+ }
+ .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-color{width:45px}
+ .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-workspace-tools{
+  max-height:calc(100dvh - 112px);
+ }
+}
