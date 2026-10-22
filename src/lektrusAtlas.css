@@ -780,3 +780,10 @@
 @media (hover:hover) and (pointer:fine){
  .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-icon-button[data-contour-hand="true"]{display:none}
 }
+
+/* Compact stroke thickness presets below the contour color picker. */
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness{display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 0 2px;border-top:1px solid #dce6f0;color:#456481;font-size:9px;font-weight:700}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness>div{display:grid;grid-template-columns:repeat(2,1fr);gap:3px;width:48px}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness button{display:grid;place-items:center;width:22px;height:25px;padding:0;border:1px solid transparent;border-radius:6px;background:white;cursor:pointer}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness button.active{border-color:#79a6d7;background:#dcecff}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness i{display:block;border-radius:50%;background:#345e82}
