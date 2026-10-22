@@ -6,7 +6,8 @@ type Props={value:AtlasDocument;onChange:(value:AtlasDocument)=>void};
 const baseLayers:ReadonlyArray<[keyof ContourAssignment,string]>=[
  ["showCoastline","Береговая линия"],["showBorders","Границы стран"],
  ["showRegions","Границы регионов"],["showRivers","Реки"],["showLakes","Озёра"],
- ["showGrid","Меридианы и параллели"]
+ ["showGrid","Меридианы и параллели"],
+ ["showCapitals","Столицы государств"],["showMajorCities","Крупные города"]
 ];
 const studentTools:ReadonlyArray<[keyof ContourAssignment,string]>=[
  ["allowLabels","Подписи"],["allowPoints","Условные знаки"],
