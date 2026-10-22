@@ -5,7 +5,7 @@
  * No modern country symbol is retroactively assigned to a medieval state. */
 export type HistoricalInsignia={
  id?:string;code?:string;from:number;to:number;file:string;
- kind:"flag"|"banner"|"emblem";title:string;reconstruction?:boolean;
+ kind:"flag"|"banner"|"emblem"|"artifact";title:string;reconstruction?:boolean;
 };
 export const historicalInsigniaSource="https://commons.wikimedia.org/wiki/Data:FlagsData.tab";
 const flag=(id:string,from:number,to:number,file:string,title="Исторический флаг"):HistoricalInsignia=>({
@@ -14,11 +14,37 @@ const flag=(id:string,from:number,to:number,file:string,title="Историче�
 const country=(code:string,from:number,to:number,file:string,title="Флаг соответствующего периода"):HistoricalInsignia=>({
  code,from,to,file,kind:"flag",title,reconstruction:from<1600
 });
-const other=(id:string,from:number,to:number,file:string,title:string,kind:"banner"|"emblem"="banner",reconstruction=true):HistoricalInsignia=>({
+const other=(id:string,from:number,to:number,file:string,title:string,kind:"banner"|"emblem"|"artifact"="banner",reconstruction=true):HistoricalInsignia=>({
  id,from,to,file,kind,title,reconstruction
+});
+/** An authentic object or historical manuscript is NOT a government flag.
+ * The image can serve as a documented visual reference without suggesting
+ * that a state possessed one national heraldic device. */
+const artifact=(id:string,from:number,to:number,file:string,title:string,reconstruction=false):HistoricalInsignia=>({
+ id,from,to,file,kind:"artifact",title,reconstruction
 });
 /** State-specific emblems, with deliberately narrow year ranges. */
 export const historicalStateInsignia:readonly HistoricalInsignia[]=[
+ artifact("maurya",-250,-230,"Lion capital of Ashoka, Sarnath.jpg","Львиная капитель колонны Ашоки в Сарнатхе, подлинная императорская скульптура III века до н. э.",false),
+ artifact("aksum",330,360,"Ezana.jpg","Монета царя Эзаны, IV век. Нумизматический памятник Аксума, не государственный флаг",false),
+ artifact("silla",450,550,"Royal Crown of Silla. National Museum of Korea.jpg","Подлинная золотая царская корона Силла V века, Национальный музей Кореи",false),
+ artifact("baekje",501,523,"Baekje Diadem King.jpg","Золотые царские украшения из гробницы правителя Мурёна, Пэкче, начало VI века",false),
+ artifact("goguryeo",400,600,"Gilt-Bronze Crown of Goguryeo 01.jpg","Позолоченная бронзовая корона Когурё, фотография музейного предмета, ориентировочно V–VI вв.",false),
+ artifact("chola",1012,1044,"Medieval Pandya royal insignia from a Chola coin.png","Монета Раджендры Чола I: тигр династии Чола, рыбы Пандьев и лук Чера; не государственный флаг",false),
+ artifact("aztec",1428,1521,"Tenochtitlan.png","Глиф Теночтитлана по кодексу Мендосы (составлен около 1541 года); современная прорисовка исторического знака",true),
+ artifact("mali-empire",1324,1337,"Mansa Musa.jpg","Манса Муса на Каталанском атласе 1375 года: позднее изображение правителя Мали, не государственный герб",true),
+ artifact("neo-babylonian",-604,-562,"Two panels of Babylon gate relief by Nebuchadnezzar II.jpg","Подлинные львиные рельефы ворот Вавилона эпохи Навуходоносора II, Метрополитен-музей",false),
+ artifact("gupta",330,375,"Gupta era gold Coin showing the Marriage of Chandragupta, National Museum, New Delhi.jpg","Золотая монета династии Гуптов с изображением царской четы (атрибуция выпуска обсуждается)",false),
+ artifact("lydia",-560,-547,"British Museum gold coin of Croesus.jpg","Золотая монета Креза с изображением льва и быка, Лидия VI века до н. э.",false),
+ artifact("urartu",-800,-600,"NewHaldi.jpg","Изображение божества с урартского щита из крепостей Анзаф, не официальный герб государства",true),
+ artifact("kushan",120,150,"Coin of Kanishka I.jpg","Подлинная монета Канишки I с надписью на греческом письме, II век",false),
+ artifact("parthians",-171,-132,"Mithradatesi.jpg","Монета Митридата I из династии Аршакидов, II век до н. э.",false),
+ artifact("fatimid",1036,1094,"Fatimid Dinar, al-Mustansir.jpg","Динар периода халифа аль-Мустансира (1036–1094), государственная чеканка Фатимидов",false),
+ artifact("samanids",892,907,"Coinage of Isma'il I ibn Ahmad (AH 279-295 AD 892-907) Usrushana mint. Dated AH 280 (AD 893-4).jpg","Дирхем Исмаила Самани, чеканка Уструшаны 893–894 годов",false),
+ artifact("umayyad",694,697,"First Umayyad gold dinar, Caliph Abd al-Malik, 695 CE.jpg","Ранняя золотая монета халифа Абд аль-Малика, около 695 года, Британский музей",false),
+ artifact("abbasid",783,783,"Abbasid Dinar - Al Mahdi - 167 AH (783 AD).jpg","Золотой динар халифа аль-Махди, чеканка 167 года хиджры (783 н. э.)",false),
+ artifact("northern-song",968,976,"128 S-451 Taizu, 960-976, 968-976, 25mm.jpg","Бронзовая монета императора Тай-цзу из Северной Сун, выпуск 968–976 годов",false),
+ artifact("benin",1500,1800,"Benin bronze plaque used for the decoration of the royal palace of the oba of Benin.jpg","Дворцовый бронзовый рельеф царства Бенин, традиция XV–XIX веков; датировка данного предмета не установлена",false),
  other("rome",50,300,"Vexilloid of the Roman Empire.svg","Современная реконструкция римского военного вексиллума SPQR: не единый государственный флаг","banner",true),
  other("austria-hungary",1869,1918,"Ensign of Austro-Hungarian civil fleet (1869-1918).svg","Торговый морской флаг Австро-Венгрии, а не единый флаг обоих государств монархии","banner",true),
  other("spain",1506,1785,"Flag of Cross of Burgundy.svg","Бургундский крест: военное знамя Испанской монархии и её владений, не единственный государственный флаг","banner",true),
