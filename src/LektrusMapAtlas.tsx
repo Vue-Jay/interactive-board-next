@@ -70,6 +70,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  useEffect(()=>setCoordinatesEnabled(d.showCoordinates===true||d.mode==="coordinates"),[d.showCoordinates,d.mode]);
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":normalizeAtlasMode(d.mode));
  const isWorksheet=mode==="contour";
+ const worksheetEditor=isWorksheet&&editorMode;
+ const worksheetOnBoard=isWorksheet&&!editorMode;
  const contourConfig={...defaultContourAssignment,...d.contourAssignment};
  const citiesOn=mode==="political"&&d.showCities!==false;
  const mineralContext=mode==="minerals";
@@ -226,6 +228,15 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(cameraIdleRef.current!==null){clearTimeout(cameraIdleRef.current);cameraIdleRef.current=null}
   cameraRef.current=camera;paintCamera(camera);
   setScale(camera.scale);setPosition(camera.position);
+  if(worksheetEditor&&onChange){
+   const previous=d.contourCamera;
+   if(!previous||previous.regionId!==regionId||
+     Math.abs(previous.scale-camera.scale)>1e-6||
+     Math.abs(previous.position.x-camera.position.x)>.01||
+     Math.abs(previous.position.y-camera.position.y)>.01){
+    onChange({...d,contourCamera:{regionId,scale:camera.scale,position:{...camera.position}}});
+   }
+  }
  };
  // Crucial performance fix: live gesture moves ONE SVG transform, not thousands
  // of React paths, labels and DEM tiles every animation frame. Recompute complex
@@ -256,8 +267,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  useEffect(()=>{setRegionId(d.regionId??"world")},[d.regionId]);
  useEffect(()=>{setMinCityPopulation(d.cityMinPopulation??0)},[d.cityMinPopulation]);
  useEffect(()=>{setCityCategory(d.cityCategory??"all")},[d.cityCategory]);
- useEffect(()=>{const camera=atlasRegionCamera(findAtlasRegion(regionId));commitCamera(camera);
-  setSelected(null);setCoord(null)},[regionId]);
+ useEffect(()=>{
+  const stored=d.contourCamera;
+  const camera=isWorksheet&&stored?.regionId===regionId?
+   {scale:stored.scale,position:stored.position}:
+   atlasRegionCamera(findAtlasRegion(regionId));
+  // The teacher's saved camera is replayed on the board. Only the editor may
+  // write view changes; re-opening never resets the student's work or zoom.
+  commitCamera(camera);
+  setSelected(null);setCoord(null);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[regionId]);
  const availableModes=isContourTool?atlasModesFor(scope).filter(m=>m.id==="contour"):
   atlasModesFor(scope).filter(m=>m.id!=="contour");
  const historical=scope==="history";
@@ -895,7 +915,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   eraserGesture.current=null;contourEraserPreview.current?.setAttribute("d","");setPendingErasure({marks:[],fills:[]});
  };
  const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
-  if(contourAction==="erase"||!onChange||markerGesture.current)return;
+  if(!worksheetEditor||contourAction==="erase"||!onChange||markerGesture.current)return;
   if(e.pointerType==="mouse"&&e.button!==0)return;
   const start=annotationWorld(e);if(!start)return;
   e.preventDefault();e.stopPropagation();
@@ -931,8 +951,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   captureContour();
   onChange?.({...d,contourMarks:contourMarks.map(mark=>mark.id===gesture.mark.id?moved:mark)});
  };
- const contourEraser=mode==="contour"&&contourAction==="erase"&&!!onChange;
- const contourFreehand=mode==="contour"&&contourAction==="pen"&&contourConfig.allowDrawing&&!!onChange;
+ const contourEraser=worksheetEditor&&contourAction==="erase"&&!!onChange;
+ const contourFreehand=worksheetEditor&&contourAction==="pen"&&contourConfig.allowDrawing&&!!onChange;
  const contourPoint=(p:{x:number;y:number}):[number,number]=>[
   Math.max(-180,Math.min(180,p.x/2.5-180)),Math.max(-90,Math.min(90,90-p.y/2.5))];
  const beginContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
@@ -1417,7 +1437,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        </g>)}
       </g>}
       {(isWorksheet?contourConfig.showGrid:d.showGrid)&&<LektrusAtlasGraticule scale={scale} viewport={gridViewport}/>}
-      {mode==="contour"&&<g className="lektrus-atlas-contour-work">
+      {mode==="contour"&&<g className="lektrus-atlas-contour-work" pointerEvents={worksheetOnBoard?"none":undefined}>
        {contourStrokes.map(line=><path key={line.id} fill="none" stroke={line.color}
         strokeWidth={2/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"
         d={line.points.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
@@ -1958,20 +1978,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     </div></details>
    </aside>}
   </div>
-    {isWorksheet&&!editorMode&&<div className="lektrus-contour-workspace" role="toolbar"
+    {worksheetEditor&&<div className="lektrus-contour-workspace" role="toolbar"
      aria-label="Инструменты контурной карты" onPointerDown={e=>e.stopPropagation()}
      onClick={e=>e.stopPropagation()}>
      <div className="lektrus-contour-workspace-head">
       <strong title={d.title}>{d.title}</strong>
-      <div className="lektrus-contour-workspace-mode" role="group" aria-label="Режим контурной карты">
-       <button type="button" aria-pressed={objectMoveMode} className={objectMoveMode?"active":""}
-        title="Выделять, перемещать и изменять размер карты на доске"
-        onClick={()=>{setObjectMoveMode(true);points.current.clear();pointer.current=null;
-         pinch.current=null;dragged.current=false}}>↔ Объект</button>
-       <button type="button" aria-pressed={!objectMoveMode} className={!objectMoveMode?"active":""}
-        title="Работать внутри карты: подписи, заливка, рисование и масштаб карты"
-        onClick={()=>setObjectMoveMode(false)}>✎ Работа с картой</button>
-      </div>
      </div>
      {d.contourTask&&<p className="lektrus-contour-task-label">{d.contourTask}</p>}
      <div className="lektrus-contour-workspace-tools">
