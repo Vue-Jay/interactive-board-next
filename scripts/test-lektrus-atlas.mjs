@@ -242,6 +242,41 @@ assert.match(map,/Гипсометрическая карта/);
 assert.match(fs.readFileSync(new URL("../src/LektrusMapBase.tsx",import.meta.url),"utf8"),/\{terrain\}/);
 
 const data=fs.readFileSync(new URL("../src/lektrusAtlasData.ts",import.meta.url),"utf8");
+
+const insigniaSource=fs.readFileSync(new URL("../src/lektrusAtlasCountrySymbols.ts",import.meta.url),"utf8");
+const insigniaUI=fs.readFileSync(new URL("../src/LektrusAtlasCountrySymbol.tsx",import.meta.url),"utf8");
+for(const [filename,source,kind] of [
+ ["lektrusAtlasCountrySymbols.ts",insigniaSource,ts.ScriptKind.TS],
+ ["LektrusAtlasCountrySymbol.tsx",insigniaUI,ts.ScriptKind.TSX]
+]){
+ const parse=ts.createSourceFile(filename,source,ts.ScriptTarget.Latest,true,kind);
+ assert.equal(parse.parseDiagnostics.length,0,filename+" must parse: "+
+  parse.parseDiagnostics.map(d=>ts.flattenDiagnosticMessageText(d.messageText," ")).join("; "));
+}
+const symbols={};
+new Function("exports",ts.transpileModule(insigniaSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText)(symbols);
+const symbolCountry=(name,code)=>({type:"Feature",properties:{NAME:name,...(code?{ISO_A2:code}:{})},
+ geometry:{type:"Polygon",coordinates:[]}});
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Russia","RU"),2026+"",2026,false).code,"RU");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("United States of America","US"),"США",1994,true).kind,"flag");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("United States of America","US"),"США",1950,true).kind,"symbol",
+ "Do not show the 1960 American flag in earlier snapshots");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Russia","RU"),"Россия",1990,true).kind,"symbol",
+ "Do not show post-1993 Russian flag before adoption");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Russian Empire","RU"),"Российская империя",1914,true).kind,"symbol",
+ "Modern Russian flag is not an automatic imperial emblem");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Roman Empire"),"Римская империя",100,true).kind,"symbol");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Canada","CA"),"Канада",1994,true).code,"CA");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Unknown Country"),"Неизвестная территория",2026,false).kind,"symbol");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Brazil","BR"),"Бразилия",2026,false).code,"BR");
+assert.ok(symbols.atlasCountryFlagUrl("GB").endsWith("/gb.png"));
+assert.ok(map.includes("lektrus-atlas-map-country-symbols"),"Map should display zoom-adaptive country symbols");
+assert.ok(map.includes("showCountrySymbols"),"Map symbol visibility must be optional");
+assert.ok(map.includes("lektrus-atlas-selected-symbol-title"),"Country cards must show flags and dated shields");
+assert.ok(map.includes("LektrusAtlasCountrySymbol"),"Country lists use the shared symbol component");
+
 for(const [filename,source,kind] of [
  ["LektrusMapAtlas.tsx",map,ts.ScriptKind.TSX],
  ["lektrusAtlasData.ts",data,ts.ScriptKind.TS]
