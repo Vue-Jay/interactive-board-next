@@ -1,4 +1,5 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
+import LektrusContourToolIcon from "./LektrusContourToolIcon";
 import type {AtlasDocument,AtlasMode,ContourMark,ContourStroke} from "./lektrusAtlasModel";
 import {contourEraserHits,moveContourMark} from "./lektrusContourInteractions";
 import {eraseContourInkAlongPath} from "./lektrusContourInk";
@@ -83,11 +84,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const mineralTerrainEnabled=mineralContext&&d.hypsometry!==false;
  const [paintColor,setPaintColor]=useState("#000000");
  const [paintRegions,setPaintRegions]=useState(false);
- const [contourAction,setContourAction]=useState<"fill"|"label"|"point"|"pen"|"erase">("label");
+ const [contourAction,setContourAction]=useState<"select"|"hand"|"fill"|"label"|"point"|"pen"|"erase">("select");
  useEffect(()=>{
-  const allowed={label:contourConfig.allowLabels,point:contourConfig.allowPoints,
+  const allowed={select:true,hand:true,label:contourConfig.allowLabels,point:contourConfig.allowPoints,
    pen:contourConfig.allowDrawing,fill:contourConfig.allowFill,erase:true};
-  if(!allowed[contourAction])setContourAction((["label","point","pen","fill","erase"] as const)
+  if(!allowed[contourAction])setContourAction((["select","label","point","pen","fill","erase"] as const)
    .find(id=>allowed[id])??"erase");
  },[contourAction,contourConfig.allowLabels,contourConfig.allowPoints,contourConfig.allowDrawing,contourConfig.allowFill]);
  const [contourText,setContourText]=useState("");
@@ -915,7 +916,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   eraserGesture.current=null;contourEraserPreview.current?.setAttribute("d","");setPendingErasure({marks:[],fills:[]});
  };
  const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
-  if(!worksheetEditor||contourAction==="erase"||!onChange||markerGesture.current)return;
+  if(!worksheetEditor||!["select","label","point"].includes(contourAction)||!onChange||markerGesture.current)return;
   if(e.pointerType==="mouse"&&e.button!==0)return;
   const start=annotationWorld(e);if(!start)return;
   e.preventDefault();e.stopPropagation();
@@ -1049,6 +1050,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    return;
   }
   const p=pointer.current;if(!p||p.id!==e.pointerId)return;
+  if(worksheetEditor&&contourAction==="select"&&points.current.size<2)return;
   if(Math.hypot(pt.x-p.x,pt.y-p.y)>3)dragged.current=true;
   if(dragged.current&&!e.currentTarget.hasPointerCapture(e.pointerId)){
    e.currentTarget.setPointerCapture(e.pointerId);
@@ -1126,7 +1128,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(dragged.current)return;
   if(mode==="contour"){
    if(contourAction==="label"&&!contourConfig.allowLabels||contourAction==="point"&&!contourConfig.allowPoints)return;
-   if(!onChange||contourAction==="fill"||contourAction==="pen")return;
+   if(!onChange||contourAction==="select"||contourAction==="hand"||contourAction==="fill"||contourAction==="pen")return;
    if(contourAction==="erase")return;
    if(contourAction==="label"&&!contourText.trim())return;
    if(contourMarks.length>=150)return;
@@ -1981,21 +1983,23 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     {worksheetEditor&&<div className="lektrus-contour-workspace" role="toolbar"
      aria-label="Инструменты контурной карты" onPointerDown={e=>e.stopPropagation()}
      onClick={e=>e.stopPropagation()}>
-     <div className="lektrus-contour-workspace-head">
-      <strong title={d.title}>{d.title}</strong>
-     </div>
+     <div className="lektrus-contour-workspace-head"><strong title={d.title}>{d.title}</strong></div>
      {d.contourTask&&<p className="lektrus-contour-task-label">{d.contourTask}</p>}
-     <div className="lektrus-contour-workspace-tools">
-      {([["label","Подпись",contourConfig.allowLabels],["point","Знак",contourConfig.allowPoints],
-       ["pen","Карандаш",contourConfig.allowDrawing],["fill","Заливка",contourConfig.allowFill],
-       ["erase","Ластик",true]] as const).filter(([, ,allowed])=>allowed)
-       .map(([id,title])=><button type="button" key={id} title={title} aria-pressed={contourAction===id}
-        className={contourAction===id&&!objectMoveMode?"active":""}
-        onClick={()=>{setContourAction(id);setObjectMoveMode(false);
-         points.current.clear();pointer.current=null;pinch.current=null;dragged.current=false}}>{title}</button>)}
-      <button type="button" title="Отменить последнюю правку" disabled={!contourHistory.length}
-       onClick={contourUndo}>↶</button>
-
+     <div className="lektrus-contour-workspace-tools" aria-label="Выберите инструмент">
+      {([["select","Выбор","select",true],["hand","Рука","hand",true],
+       ["pen","Карандаш","pen",contourConfig.allowDrawing],
+       ["fill","Заливка","fill",contourConfig.allowFill],
+       ["erase","Ластик","erase",true],
+       ["label","Подпись / знак","annotation",contourConfig.allowLabels||contourConfig.allowPoints]] as const)
+       .filter(([, , ,allowed])=>allowed)
+       .map(([id,title,icon])=><button type="button" key={id} title={title} aria-label={title}
+        aria-pressed={id==="label"?contourAction==="label"||contourAction==="point":contourAction===id}
+        className={"lektrus-contour-tool-button"+(id==="hand"?" lektrus-contour-touch-hand":"")+
+         ((id==="label"?contourAction==="label"||contourAction==="point":contourAction===id)?" active":"")}
+        onClick={()=>{setContourAction(id==="label"&&!contourConfig.allowLabels?"point":id);
+         points.current.clear();pointer.current=null;pinch.current=null;dragged.current=false}}>
+        <LektrusContourToolIcon name={icon}/><span>{title}</span>
+       </button>)}
      </div>
      {!objectMoveMode&&<div className="lektrus-contour-selected-mark"
       role="group" aria-label="Действия с выбранной подписью">
@@ -2007,32 +2011,21 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       </>:<span className="lektrus-contour-selection-hint">Нажмите на подпись, чтобы переместить или удалить её</span>}
      </div>}
      <div className="lektrus-contour-workspace-options">
-      {(contourAction==="label"||contourAction==="point")&&
+      {(contourAction==="label"||contourAction==="point")&&<>
+       {contourConfig.allowLabels&&contourConfig.allowPoints&&<select
+        aria-label="Тип обозначения" value={contourAction}
+        onChange={e=>setContourAction(e.target.value as "label"|"point")}>
+        <option value="label">Подпись</option><option value="point">Знак</option>
+       </select>}
        <input aria-label="Текст подписи или знака" value={contourText} maxLength={80}
         placeholder={contourAction==="label"?"Название объекта":"Знак или номер"}
-        onChange={e=>setContourText(e.target.value)}/>}
+        onChange={e=>setContourText(e.target.value)}/></>}
       {contourAction==="fill"&&contourConfig.showRegions&&<label>
        <input type="checkbox" checked={paintRegions} onChange={e=>setPaintRegions(e.target.checked)}/>
        Регионы</label>}
       {contourAction!=="erase"&&<input type="color" aria-label="Цвет" value={paintColor}
        onChange={e=>setPaintColor(e.target.value)}/>}
-      <details><summary>Легенда</summary>
-       <div className="lektrus-contour-workspace-legend">
-        <input aria-label="Знак в легенде" value={legendSymbol} maxLength={12}
-         onChange={e=>setLegendSymbol(e.target.value)}/>
-        <input aria-label="Описание в легенде" value={legendMeaning} maxLength={90}
-         placeholder="Что означает знак" onChange={e=>setLegendMeaning(e.target.value)}/>
-        <button type="button" disabled={!legendSymbol.trim()||!legendMeaning.trim()||contourLegend.length>=30}
-         onClick={()=>{onChange?.({...d,contourLegend:[...contourLegend,{
-          id:globalThis.crypto?.randomUUID?.()??String(Date.now()),symbol:legendSymbol.trim(),meaning:legendMeaning.trim()
-         }]});setLegendMeaning("")}}>+</button>
-        {contourLegend.map(item=><div key={item.id} className="lektrus-contour-legend-row">
-         <b>{item.symbol}</b><span>{item.meaning}</span>
-         <button type="button" aria-label={"Удалить "+item.meaning}
-          onClick={()=>onChange?.({...d,contourLegend:contourLegend.filter(v=>v.id!==item.id)})}>×</button>
-        </div>)}
-       </div>
-      </details>
+
      </div>
     </div>}
   {historical&&<div className="lektrus-atlas-timeline">
