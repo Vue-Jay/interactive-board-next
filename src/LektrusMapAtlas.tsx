@@ -2164,6 +2164,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
          pinch.current=null;dragged.current=false}}>
         <ContourToolIcon name={id}/><span>{title}</span>
        </button>)}
+      {contourAction!=="erase"&&<label className="lektrus-contour-dock-color" title="Цвет рисования"><input type="color" aria-label="Цвет" value={paintColor} onChange={e=>setPaintColor(e.target.value)}/><span>Цвет</span></label>}
       <button type="button" className="lektrus-contour-icon-button" title="Отменить последнее действие"
        aria-label="Отменить" disabled={!contourHistory.length}
        onClick={contourUndo}>
@@ -2198,8 +2199,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {contourAction==="fill"&&contourConfig.showRegions&&<label>
        <input type="checkbox" checked={paintRegions} onChange={e=>setPaintRegions(e.target.checked)}/>
        Регионы</label>}
-      {contourAction!=="erase"&&<input type="color" aria-label="Цвет" value={paintColor}
-       onChange={e=>setPaintColor(e.target.value)}/>}
+
      </div>
     </div>}
   {historical&&<div className="lektrus-atlas-timeline">
