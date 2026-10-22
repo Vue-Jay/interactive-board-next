@@ -637,7 +637,7 @@ assert.equal(validAtlasDocument({...modelOptions,contourAssignment:{showRivers:"
 // and defaults to the regular board interaction path so transform handles work.
 const contourToolbarStart=map.indexOf('isWorksheet&&!editorMode&&<div className="lektrus-contour-workspace"');
 const atlasSvgClose=map.indexOf('    </svg>');
-const mapBodyClose=map.indexOf('   </aside>}\\n  </div>');
+const mapBodyClose=map.lastIndexOf('   </aside>}');
 assert.ok(contourToolbarStart>mapBodyClose,
  "Student toolbar must be a flex child BELOW the map body, not a map overlay");
 assert.ok(mapBodyClose>atlasSvgClose);
