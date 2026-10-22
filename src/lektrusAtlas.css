@@ -538,3 +538,29 @@
   padding:5px 7px;font-size:11px;
  }
 }
+
+/* Editable school-map annotations: labels are draggable map objects, not bare
+   SVG text. Hit areas remain legible and touch-friendly at every map zoom. */
+.lektrus-atlas-contour-work .lektrus-contour-label-object{
+ cursor:grab;touch-action:none;outline:none;
+}
+.lektrus-atlas-contour-work .lektrus-contour-label-object:active{cursor:grabbing}
+.lektrus-atlas-contour-work .lektrus-contour-label-background{
+ fill:#fffefa;fill-opacity:.96;stroke:#b8c8d5;
+ paint-order:normal;
+}
+.lektrus-atlas-contour-work .lektrus-contour-label-object:hover .lektrus-contour-label-background,
+.lektrus-atlas-contour-work .lektrus-contour-label-object:focus-visible .lektrus-contour-label-background,
+.lektrus-atlas-contour-work .lektrus-contour-label-object.selected .lektrus-contour-label-background{
+ fill:#f5faff;stroke:#3682c1;stroke-width:1.6;
+}
+.lektrus-atlas-contour-work .lektrus-contour-label-object text{
+ pointer-events:none;user-select:none;
+}
+.lektrus-atlas--erasing .lektrus-atlas-svg,
+.lektrus-atlas--erasing .lektrus-atlas-svg *{
+ cursor:crosshair!important;
+}
+.lektrus-atlas--erasing .lektrus-contour-label-object{
+ touch-action:none;
+}
