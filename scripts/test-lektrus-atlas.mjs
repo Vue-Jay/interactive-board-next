@@ -627,7 +627,7 @@ const worksheetCss=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta
 assert.ok(worksheetCss.includes('.lektrus-atlas--board-selection .lektrus-atlas-contour-work *'));
 assert.ok(worksheetCss.includes('pointer-events:none!important;'));
 
-assert.ok(map.includes('!isWorksheet&&<aside className="lektrus-atlas-sidebar"'));
+assert.ok(map.includes('!isWorksheet&&!historical&&<aside className="lektrus-atlas-sidebar lektrus-atlas-sidebar--selected-only"'));
 assert.ok(map.includes('!isWorksheet&&<header className="lektrus-atlas-header"'));
 assert.ok(map.includes('contourConfig.showRivers')&&map.includes('contourConfig.showLakes'));
 assert.ok(map.includes('if(points.current.size===0)cameraIdleRef.current=setTimeout('));
