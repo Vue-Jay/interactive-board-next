@@ -9,6 +9,8 @@ import {loadMRDSRegionalDeposits,loadMRDSWorldOverview,mrdsMineralCommodity} fro
 import {atlasFactEntityId,fetchAtlasSchoolReference,type AtlasSchoolReference} from "./lektrusAtlasSchoolFacts";
 import LektrusMapBase,{LektrusAtlasGraticule} from "./LektrusMapBase";
 import LektrusColorPicker from "./LektrusColorPicker";
+import LektrusAtlasCountrySymbol from "./LektrusAtlasCountrySymbol";
+import {atlasCountrySymbol,atlasCountryFlagUrl} from "./lektrusAtlasCountrySymbols";
 import {INK_WIDTHS} from "./LectrisObjectEditor";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
@@ -81,6 +83,7 @@ function ContourToolIcon({name}:{name:ContourToolName}){
 }
 function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
+ const [showCountrySymbols,setShowCountrySymbols]=useState(true);
  const [coordinatesEnabled,setCoordinatesEnabled]=useState(d.showCoordinates===true||d.mode==="coordinates");
  useEffect(()=>setCoordinatesEnabled(d.showCoordinates===true||d.mode==="coordinates"),[d.showCoordinates,d.mode]);
  const [mode,setMode]=useState<AtlasMode>(d.title==="Контурная карта"?"contour":normalizeAtlasMode(d.mode));
@@ -827,6 +830,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   (russianPlaceName(selected)??""):
   ((selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))||
    (historical?"Историческая территория":""))):"";
+ const selectedCountrySymbol=selected&&!selectedIsCity&&(historical||mode==="political")&&
+  (selected.geometry?.type==="Polygon"||selected.geometry?.type==="MultiPolygon")?
+  atlasCountrySymbol(selected,selectedTitle,snapshot.year,historical&&!modernReference):null;
  const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
   normalizeHistoricalReferenceName(name)===normalizeHistoricalReferenceName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
@@ -1293,6 +1299,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
      const enabled=!coordinatesEnabled;setCoordinatesEnabled(enabled);setCoord(null);
      onChange?.({...d,mode:normalizeAtlasMode(d.mode),showCoordinates:enabled});
     }}>⌖ Координаты</button>
+   {(historical||mode==="political")&&<button type="button" className={"lektrus-atlas-symbols-toggle"+(showCountrySymbols?" active":"")}
+    aria-pressed={showCountrySymbols} title="Показать или скрыть флаги и условные знаки стран на карте"
+    onClick={()=>setShowCountrySymbols(value=>!value)}>⚑ Символы</button>}
    <button type="button" className="lektrus-atlas-inspector-toggle" aria-expanded={inspectorOpen}
     title={inspectorOpen?"Скрыть сведения и открыть карту во всю ширину":"Открыть сведения и поиск по карте"}
     onClick={()=>setInspectorOpen(open=>!open)}>{inspectorOpen?"Скрыть сведения":"☷ Сведения"}</button>
@@ -1345,6 +1354,24 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         </path>;
        })}
       </g>
+      {showCountrySymbols&&(historical||mode==="political")&&scale>=3&&
+       <g className="lektrus-atlas-map-country-symbols" pointerEvents="none">
+       {labels.slice(0,scale>=12?125:scale>=6?65:32).map(s=>{
+        const symbol=atlasCountrySymbol(s.feature,s.name,snapshot.year,historical&&!modernReference);
+        return <g key={"symbol-"+s.i}
+         transform={`translate(${s.anchor!.x} ${s.anchor!.y}) scale(${1/scale})`}>
+         <rect x="-14" y="-20" width="28" height="17" rx="4" fill="#ffffff" fillOpacity=".91"
+          stroke="#b5c9da" strokeWidth=".9"/>
+         {symbol.kind==="flag"&&symbol.code?
+          <image x="-11" y="-17" width="22" height="11"
+           preserveAspectRatio="xMidYMid meet" href={atlasCountryFlagUrl(symbol.code)}/>:
+          <><path d="M0 -18 8 -15v5c0 4-4 6-8 7-4-1-8-3-8-7v-5Z"
+           fill="#dce9f7" stroke="#527698" strokeWidth="1"/>
+          <text y="-8.5" textAnchor="middle" fontSize="6.6" fontWeight="800" fill="#30516e">
+           {symbol.monogram}</text></>}
+        </g>;
+       })}
+       </g>}
       {citiesOn&&scale>=2.5&&worldAdminLinePaths.length>0&&
        <g className="lektrus-atlas-global-admin1" fill="none" pointerEvents="none"
         stroke="#84999e" strokeWidth=".58" strokeLinecap="round" strokeLinejoin="round"
@@ -1691,7 +1718,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
       target="_blank" rel="noopener noreferrer">Открыть набор геологических данных USGS ↗</a>
     </div>:
     selected?<div className="lektrus-atlas-description">
-     <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
+     {selectedCountrySymbol?<div className="lektrus-atlas-selected-symbol-title">
+      <LektrusAtlasCountrySymbol symbol={selectedCountrySymbol}/>
+      <div><strong>{selectedTitle}</strong><small>{selectedLayer}</small></div>
+     </div>:<><strong>{selectedTitle}</strong><small>{selectedLayer}</small></>}
      {selectedCountryCapitals.length>0&&<div className="lektrus-atlas-country-capitals">
       <strong>Столицы государства</strong>
       {selectedCountryCapitals.map((capital,i)=>
@@ -2017,7 +2047,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         onClick={()=>focusFeature(entry.feature)} title={"Показать на карте: "+entry.name}
         style={{display:"block",width:"100%",textAlign:"left",padding:"6px 8px",
          background:selected===entry.feature?"#e2edff":"transparent",border:0,cursor:"pointer"}}>
-        {entry.name}
+        <LektrusAtlasCountrySymbol compact symbol={atlasCountrySymbol(entry.feature,entry.name,snapshot.year,!modernReference)}/>
+        <span>{entry.name}</span>
        </button>):<p>Нет названных территорий. Уточните запрос.</p>}
       </div>
       <small>Найдено: {visibleDirectory.length} из {directoryEntries.length}.
@@ -2032,7 +2063,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
       </label>}
       <div className="lektrus-history-source-library-list">
        {visibleHistoricalReferences.length?visibleHistoricalReferences.map(entry=><details key={entry.id} className="lektrus-history-reference-entry">
-        <summary><strong>{entry.title}</strong><small>{yearLabel(entry.from)} – {yearLabel(entry.to)}</small></summary>
+        <summary><LektrusAtlasCountrySymbol compact symbol={atlasCountrySymbol(
+         {type:"Feature",properties:{NAME:entry.aliases[0]??entry.title},
+          geometry:{type:"Polygon",coordinates:[]}},entry.title,entry.from,true)}/>
+         <strong>{entry.title}</strong><small>{yearLabel(entry.from)} – {yearLabel(entry.to)}</small></summary>
         {entry.capital&&<p><strong>Столица и центры:</strong> {entry.capital}</p>}
         <p>{entry.description}</p>
         <p><strong>Изменение:</strong> {entry.change}</p>
@@ -2093,7 +2127,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
       target="_blank" rel="noopener noreferrer">Открыть набор геологических данных USGS ↗</a>
     </div>:
     selected?<div className="lektrus-atlas-description">
-     <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
+     {selectedCountrySymbol?<div className="lektrus-atlas-selected-symbol-title">
+      <LektrusAtlasCountrySymbol symbol={selectedCountrySymbol}/>
+      <div><strong>{selectedTitle}</strong><small>{selectedLayer}</small></div>
+     </div>:<><strong>{selectedTitle}</strong><small>{selectedLayer}</small></>}
      {selectedCountryCapitals.length>0&&<div className="lektrus-atlas-country-capitals">
       <strong>Столицы государства</strong>
       {selectedCountryCapitals.map((capital,i)=>
