@@ -686,4 +686,13 @@ const bottomStyles=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta
 assert.ok(bottomStyles.includes('.lektrus-atlas--worksheet .lektrus-contour-task-label{'));
 assert.ok(bottomStyles.includes('.lektrus-contour-workspace-head .lektrus-contour-workspace-mode'));
 
+assert.ok(map.includes('if(pinch.current){onMove(e);return}'),
+ "Two-touch pencil interaction should navigate map instead of the whiteboard");
+assert.ok(map.includes('if(pinch.current){\\n    contourDrawing.current=[]'),
+ "Second finger must cancel provisional pencil drawing");
+assert.ok(map.includes('onPointerCancel={objectMoveMode?undefined:contourFreehand?cancelContourStroke:onPointerEnd}'),
+ "Cancelled touch must not save an unfinished stroke");
+assert.ok(map.includes('const wasPinching=e.pointerType==="touch"'),
+ "Finishing a pinch must never persist a pencil stroke");
+
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
