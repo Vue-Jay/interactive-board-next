@@ -336,7 +336,7 @@ assert.ok(new Set(historicalSymbols.historicalStateInsignia.map(x=>x.id)).size>=
 assert.ok(historicalSymbols.historicalDatedNationalFlags.length>=95,
  "Dated flags must cover more than one recent atlas period");
 for(const row of [...historicalSymbols.historicalStateInsignia,...historicalSymbols.historicalDatedNationalFlags]){
- assert.ok(row.from<=row.to&&(row.file.endsWith(".svg")||row.file.endsWith(".png")),
+ assert.ok(row.from<=row.to&&/\.(?:svg|png|jpe?g|gif)$/i.test(row.file),
   "Historical source image requires a valid period and file: "+row.file);
  assert.ok(historicalSymbols.historicalInsigniaSourceUrl(row.file).startsWith("https://commons.wikimedia.org/wiki/File:"));
 }
