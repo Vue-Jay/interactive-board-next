@@ -685,7 +685,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const shownCapitals=cityPoints.filter(f=>visiblePoint(f.point)&&nationalCapital(f.feature));
  const totalCapitals=cityPoints.filter(f=>nationalCapital(f.feature)).length;
  const cityLabels=chooseCityLabels(shownCities,scale,scale>=20?145:scale>=7?75:scale>=3?40:15);
- const capitalLabels=chooseCityLabels(shownCapitals,scale,scale>=8?90:scale>=3?40:18);
+ const capitalLabels=scale>=12?shownCapitals:chooseCityLabels(shownCapitals,scale,scale>=8?90:scale>=3?40:18);
  const shownPeaks=peakPoints.filter(f=>visiblePoint(f.point));
  const shownRiverNames=riverNames.filter(f=>visiblePoint(f.point));
  const shownLakeNames=lakeNames.filter(f=>visiblePoint(f.point));
@@ -711,9 +711,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    labels.forEach((f,i)=>add("country-"+f.i,"country",f.name,
     f.anchor!.x,f.anchor!.y,(mineralContext?1.7:0)+i/500,8.2));
    if(mode==="political"){
-    // Read countries before capitals: first show the political geography itself.
+    // State capitals take precedence over all other atlas labels.
     if(scale>=2.6)capitalLabels.forEach((f,i)=>add("capital-"+f.id,"capital",russianPlaceName(f.feature)??"",
-     f.point![0],f.point![1],1+i/500,7.4,"start",6,-5));
+     f.point![0],f.point![1],-10+i/10000,7.8,"start",7,-6));
     if(scale>=4)provinceLabels.forEach((f,i)=>add("province-"+f.id,"province",geoFeatureName(f.feature),
      f.anchor!.x,f.anchor!.y,2+i/500,7.1));
    }
@@ -1403,12 +1403,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        </g>)}
       </g>}
       {citiesOn&&<g className="lektrus-atlas-capitals">
-       {shownCapitals.filter(f=>scale>=2.6&&(visibleMapLabels.has("capital-"+f.id)||scale>=12&&capitalLabels.some(c=>c.feature===f.feature))).map(f=><g key={"capital-"+f.id}
+       {shownCapitals.filter(f=>scale>=2.6).map(f=><g key={"capital-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={e=>{e.stopPropagation();selectFeature(f.feature,alternateCapital(f.feature)?"Дополнительная столица по данным источника":"Столица государства")}}
         onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();selectFeature(f.feature,"Столица государства")}}}>
-        <path d="M0 -2.6L2.6 0L0 2.6L-2.6 0Z"
+        <path d="M0 -3.4L3.4 0L0 3.4L-3.4 0Z"
          fill="#263c55" stroke="#fff" strokeWidth="1.15"/>
         <title>{russianPlaceName(f.feature)}: {alternateCapital(f.feature)?"дополнительная столица":"столица"}</title>
        </g>)}
