@@ -7,6 +7,14 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  if(typeof d.title!=="string"||d.title.length>120)return false;
  const finiteIn=(x:unknown,lo:number,hi:number)=>typeof x==="number"&&Number.isFinite(x)&&x>=lo&&x<=hi;
  const field=(x:unknown,n:number)=>typeof x==="string"&&x.length<=n&&x.trim().length>0;
+ if(d.kind==="geo-training"){
+  return (d.exercise==="matching"||d.exercise==="cards")&&
+   (d.relation==="flag-country"||d.relation==="country-capital")&&
+   typeof d.reverse==="boolean"&&Array.isArray(d.countryCodes)&&
+   d.countryCodes.length>=2&&d.countryCodes.length<=12&&
+   d.countryCodes.every((code:unknown)=>typeof code==="string"&&/^[A-Z]{2}$/.test(code))&&
+   new Set(d.countryCodes).size===d.countryCodes.length;
+ }
  if(d.kind==="organs"){
   if(d.system!=="digestive"&&d.system!=="respiratory"||!Array.isArray(d.labels))return false;
   const allowed=d.system==="digestive"?
