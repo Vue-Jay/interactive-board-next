@@ -24,7 +24,7 @@ import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDi
 import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
-historicalFeatureFacts,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
+historicalFeatureFacts,historicalCountryName,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference,historicalReferences,normalizeHistoricalReferenceName} from "./lektrusHistoricalReferences";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean;userId?:string};
@@ -63,7 +63,7 @@ export function atlasDisplayName(feature:GeoFeature,year:number,history:boolean)
  }
  const raw=String(feature.properties?.NAME??feature.properties?.name??"").trim();
  const found=historicalRussianName(raw,year)??findHistoricalArticle(raw,year)?.name??
-  findHistoricalReference(raw,year)?.title;
+  findHistoricalReference(raw,year)?.title??historicalCountryName(raw);
  return isRussianAtlasName(found)?found.trim():direct;
 }
 type ContourToolName="select"|"hand"|"pen"|"fill"|"erase"|"label";
@@ -441,9 +441,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  // Simplify country paths to roughly a fraction of a display pixel. The old
  // fixed 0.00015 world-unit tolerance produced excessive SVG geometry at ×8.
  const precision=highDetail?(scale>=8?Math.max(.00015,.4/scale):.08):modernBorders?.13:.10;
- // Land and coastlines remain cartographic background; selectable territories need names.
+ // Historical geometry must never depend on the completeness of the Russian
+ // label dictionary. Every polygon in the dated source is drawn; only labels
+ // and directory entries require translated names.
  const mapSourceFeatures=useMemo(()=>mapSource?.features.filter(f=>
-  !!atlasDisplayName(f,snapshot.year,historical&&!modernReference))??[],
+  historical&&!modernReference?
+   (f.geometry?.type==="Polygon"||f.geometry?.type==="MultiPolygon"):
+   !!atlasDisplayName(f,snapshot.year,false))??[],
   [mapSource,snapshot.year,historical,modernReference]);
  // Quantized viewport tiles avoid rebuilding expensive high-resolution paths on every pointer move.
  const tileScale=Math.pow(2,Math.floor(Math.log2(scale)));
@@ -464,7 +468,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const shapes=useMemo(()=>mapSourceFeatures.map((feature,i)=>({
   feature,path:mapFeaturePath(feature,precision,viewport),
   name:atlasDisplayName(feature,snapshot.year,historical&&!modernReference),i
- })).filter(f=>f.path&&f.name),[mapSourceFeatures,precision,viewport,snapshot.year,historical,modernReference]);
+ })).filter(f=>f.path&&(historical&&!modernReference||!!f.name)),[mapSourceFeatures,precision,viewport,snapshot.year,historical,modernReference]);
  // Feature label anchors depend only on immutable source geometry.
  // Reuse them when a deep-zoom viewport pans to the next clipping tile.
  const countryAnchorCache=useMemo(()=>mapSourceFeatures.map(feature=>featureLabelAnchor(feature)),
@@ -472,7 +476,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const shapeAnchors=useMemo(()=>shapes.map(s=>({...s,anchor:countryAnchorCache[s.i]}))
   .filter(s=>s.anchor),[shapes,countryAnchorCache]);
  const labels=useMemo(()=>shapeAnchors
-  .filter(s=>s.anchor!.area*scale*scale>190)
+  .filter(s=>isRussianAtlasName(s.name)&&s.anchor!.area*scale*scale>190)
   .sort((a,b)=>b.anchor!.area-a.anchor!.area)
   .slice(0,scale>=12?220:scale>=3?145:85),[shapeAnchors,scale]);
  const waterTolerance=atlasWaterGeometryTolerance(Math.pow(2,Math.floor(Math.log2(scale))),detailedGeography);
@@ -822,7 +826,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const historicalPart=selected?russianSourceName(selected.properties?.PARTOF):"";
  const selectedTitle=selected?(selectedIsCity?
   (russianPlaceName(selected)??""):
-  (selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))):"";
+  ((selectedArticle?.name??fallbackReference?.title??atlasDisplayName(selected,snapshot.year,historical&&!modernReference))||
+   (historical?"Историческая территория":""))):"";
  const selectedYears=selectedRaw?historyIndex.filter(record=>record.countries.some(name=>
   normalizeHistoricalReferenceName(name)===normalizeHistoricalReferenceName(selectedRaw))).map(record=>record.year):[];
  const markerDetails=userMarkers.find(m=>m.id===selectedMarker)??null;
@@ -1328,16 +1333,16 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
         const fillKey=String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name);
         const fill=mode==="contour"?(pendingErasure.fills.includes(fillKey)?"#fffdfa":painted[fillKey]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
-         mode==="political"?politicalColors[s.i]??"#ecd9bf":historical?(modernReference?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name)%palettes.length]):palettes[hash(s.name)%palettes.length];
+         mode==="political"?politicalColors[s.i]??"#ecd9bf":historical?(modernReference?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name||String(s.feature.properties?.NAME??s.i))%palettes.length]):palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
          data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}
          fillOpacity={mineralTerrainEnabled?.56:1}
-         stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.name===selectedTitle?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
-         strokeWidth={highlighted||s.name===selectedTitle?1.9:mode==="minerals"?.4:historical?(precise===1?.8:.58):.65}
+         stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.feature===selected?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
+         strokeWidth={highlighted||s.feature===selected?1.9:mode==="minerals"?.4:historical?(precise===1?.8:.58):.65}
          vectorEffect="non-scaling-stroke"
          strokeDasharray={historical&&!modernReference&&precise===1?"3 2":undefined}
          onClick={()=>showCountry(s.feature)} className="lektrus-atlas-country">
-         <title>{mode==="contour"?"Граница государства":s.name}</title>
+         <title>{mode==="contour"?"Граница государства":s.name||"Историческая территория"}</title>
         </path>;
        })}
       </g>
