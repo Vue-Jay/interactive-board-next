@@ -826,3 +826,13 @@
 .lektrus-atlas-history .lektrus-history-more summary{cursor:pointer;color:#386c9b;font-weight:700;padding:5px 0}
 .lektrus-atlas-history .lektrus-history-more p{margin:7px 0}
 .lektrus-atlas-history .lektrus-history-missing-facts{color:#71859a;font-size:12px}
+
+/* Historical reference: selectable dated snapshots without overwhelming the sidebar. */
+.lektrus-atlas-history .lektrus-history-result-periods{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;max-height:105px;overflow:auto}
+.lektrus-atlas-history .lektrus-history-result-periods button{border:1px solid #c8dcf0;border-radius:7px;background:#f3f8fe;color:#315f87;padding:5px 8px;font-size:11px;cursor:pointer}
+.lektrus-atlas-history .lektrus-history-result-periods button:hover{background:#dcecff}
+.lektrus-atlas-history .lektrus-history-change-counts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:9px 0}
+.lektrus-atlas-history .lektrus-history-change-counts span{padding:9px;border:1px solid #dae6f1;background:#f6faff;border-radius:10px;font-size:11px;color:#546e85}
+.lektrus-atlas-history .lektrus-history-change-counts strong{display:block;font-size:18px;color:#254e73;margin-top:3px}
+.lektrus-atlas-history .lektrus-atlas-changes details{margin:6px 0;padding:6px 8px;border:1px solid #e0eaf2;border-radius:8px}
+.lektrus-atlas-history .lektrus-atlas-changes details summary{cursor:pointer;font-size:12px;font-weight:700;color:#365f84}
