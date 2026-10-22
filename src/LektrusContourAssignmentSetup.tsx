@@ -1,71 +1,68 @@
 import type {AtlasDocument,ContourAssignment} from "./lektrusAtlasModel";
 import {defaultContourAssignment} from "./lektrusAtlasModel";
 import {atlasRegionGroups,atlasRegions} from "./lektrusAtlasRegions";
+
 type Props={value:AtlasDocument;onChange:(value:AtlasDocument)=>void};
-const layers:ReadonlyArray<[keyof ContourAssignment,string,string]>=[
- ["showCoastline","Береговая линия","Материки, острова и побережье"],
- ["showBorders","Границы государств","Тонкие линии без названий"],
- ["showRegions","Границы регионов","Административные единицы из геоданных"],
- ["showRivers","Реки","Водотоки без названий"],
- ["showLakes","Озёра","Озёра и водохранилища"],
- ["showGrid","Меридианы и параллели","Градусная сетка поверх карты"]
+const baseLayers:ReadonlyArray<[keyof ContourAssignment,string]>=[
+ ["showCoastline","Береговая линия"],["showBorders","Границы стран"],
+ ["showRegions","Границы регионов"],["showRivers","Реки"],["showLakes","Озёра"],
+ ["showGrid","Меридианы и параллели"]
 ];
-const instruments:ReadonlyArray<[keyof ContourAssignment,string,string]>=[
- ["allowLabels","Подписи","Наносить названия"],
- ["allowPoints","Условные знаки","Точки и цифры"],
- ["allowDrawing","Карандаш","Маршруты, направления и линии"],
- ["allowFill","Закраска","Раскрашивать территории"]
+const studentTools:ReadonlyArray<[keyof ContourAssignment,string]>=[
+ ["allowLabels","Подписи"],["allowPoints","Условные знаки"],
+ ["allowDrawing","Карандаш"],["allowFill","Закраска"]
 ];
-const examples=[
- ["","Выберите учебную тему"],
- ["Подпишите материки и океаны.","5 класс · Материки и океаны"],
- ["Подпишите крупные реки, озёра, горные системы и равнины.","6 класс · Рельеф и гидросфера"],
- ["Нанесите государства и природные объекты изучаемого материка.","7 класс · Материки и страны"],
- ["Обозначьте крупные природные районы и речные бассейны России.","8 класс · Природа России"],
- ["Отметьте промышленные центры, экономические районы и месторождения России.","9 класс · Хозяйство России"]
-];
+
 export default function LektrusContourAssignmentSetup({value,onChange}:Props){
  const config={...defaultContourAssignment,...value.contourAssignment};
- const update=(key:keyof ContourAssignment,checked:boolean)=>onChange({...value,
-  contourAssignment:{...config,[key]:checked},showGrid:key==="showGrid"?checked:value.showGrid});
+ const update=(key:keyof ContourAssignment,checked:boolean)=>{
+  const next={...config,[key]:checked};
+  onChange({...value,contourAssignment:next,showGrid:next.showGrid});
+ };
+ const enabledLayers=baseLayers.filter(([key])=>config[key]).length;
+ const enabledTools=studentTools.filter(([key])=>config[key]).length;
  return <div className="lektrus-contour-assignment">
-  <header><strong>Создание задания</strong>
-   <p>Настройте подложку и разрешённые инструменты. Ученику откроется только контурная карта.</p></header>
-  <label className="lektrus-school-field">Название работы
-   <input maxLength={120} value={value.title}
-    onChange={e=>onChange({...value,title:e.target.value})}/>
-  </label>
-  <label className="lektrus-school-field">Задание ученику
-   <textarea rows={3} maxLength={240} value={value.contourTask??""}
-    onChange={e=>onChange({...value,contourTask:e.target.value})}
-    placeholder="Какие объекты нужно нанести?"/>
-  </label>
-  <label className="lektrus-school-field">Шаблон по программе
-   <select value="" aria-label="Шаблон учебного задания"
-    onChange={e=>{if(e.target.value)onChange({...value,contourTask:e.target.value})}}>
-    {examples.map(([v,name])=><option key={name} value={v}>{name}</option>)}
-   </select>
-  </label>
-  <label className="lektrus-school-field">Территория
-   <select value={value.regionId??"world"} onChange={e=>onChange({...value,regionId:e.target.value})}>
-    {atlasRegionGroups.map(group=><optgroup key={group} label={group}>
-     {atlasRegions.filter(r=>r.group===group).map(r=><option key={r.id} value={r.id}>{r.title}</option>)}
-    </optgroup>)}
-   </select>
-  </label>
-  <fieldset><legend>Подложка карты</legend>
-   {layers.map(([key,title,hint])=><label key={key} className="lektrus-contour-assignment-switch">
-    <input type="checkbox" checked={config[key]}
-     onChange={e=>update(key,e.target.checked)}/>
-    <span><b>{title}</b><small>{hint}</small></span>
-   </label>)}
-  </fieldset>
-  <fieldset><legend>Инструменты ученика</legend>
-   {instruments.map(([key,title,hint])=><label key={key} className="lektrus-contour-assignment-switch">
-    <input type="checkbox" checked={config[key]} onChange={e=>update(key,e.target.checked)}/>
-    <span><b>{title}</b><small>{hint}</small></span>
-   </label>)}
-  </fieldset>
-  <p className="lektrus-school-hint">Работа выполняется на пустой карте без готовых ответов. Подложка и инструменты сохраняются вместе с заданием.</p>
+  <div className="lektrus-contour-task-fields">
+   <label className="lektrus-school-field" htmlFor="lektrus-contour-title">Название
+    <input id="lektrus-contour-title" maxLength={120} value={value.title}
+     autoComplete="off" placeholder="Например, Реки России"
+     onChange={e=>onChange({...value,title:e.target.value})}/>
+   </label>
+   <label className="lektrus-school-field" htmlFor="lektrus-contour-task">Задание
+    <textarea id="lektrus-contour-task" rows={4} maxLength={240}
+     value={value.contourTask??""}
+     placeholder="Например: подпишите Волгу, Обь и Енисей и обозначьте их истоки."
+     onChange={e=>onChange({...value,contourTask:e.target.value})}/>
+   </label>
+   <label className="lektrus-school-field" htmlFor="lektrus-contour-region">Территория
+    <select id="lektrus-contour-region" value={value.regionId??"world"}
+     onChange={e=>onChange({...value,regionId:e.target.value})}>
+     {atlasRegionGroups.map(group=><optgroup key={group} label={group}>
+      {atlasRegions.filter(r=>r.group===group).map(region=>
+       <option key={region.id} value={region.id}>{region.title}</option>)}
+     </optgroup>)}
+    </select>
+   </label>
+  </div>
+  <div className="lektrus-contour-task-options">
+   <details className="lektrus-contour-task-section">
+    <summary><span>Подложка карты</span><small>{enabledLayers} из {baseLayers.length}</small></summary>
+    <div className="lektrus-contour-task-choice-grid">
+     {baseLayers.map(([key,title])=><label className="lektrus-contour-task-choice" key={key}>
+      <input type="checkbox" checked={config[key]} onChange={e=>update(key,e.target.checked)}/>
+      <span>{title}</span>
+     </label>)}
+    </div>
+   </details>
+   <details className="lektrus-contour-task-section">
+    <summary><span>Инструменты ученика</span><small>{enabledTools} из {studentTools.length}</small></summary>
+    <div className="lektrus-contour-task-choice-grid">
+     {studentTools.map(([key,title])=><label className="lektrus-contour-task-choice" key={key}>
+      <input type="checkbox" checked={config[key]} onChange={e=>update(key,e.target.checked)}/>
+      <span>{title}</span>
+     </label>)}
+    </div>
+   </details>
+  </div>
  </div>;
 }

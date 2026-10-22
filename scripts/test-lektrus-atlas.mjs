@@ -585,10 +585,33 @@ assert.ok(common.includes('export function LektrusAtlasGraticule'));
 assert.ok(common.indexOf('export function LektrusAtlasGraticule')<
  common.indexOf('export default function LektrusMapBase'));
 
+// A contour worksheet is created from a form, not a heavyweight interactive
+// map preview. This also guarantees reliable portrait mobile entry.
+assert.ok(atlasEditorNoSettings.includes('lektrus-school-editor--contour-task'));
+assert.ok(atlasEditorNoSettings.includes('lektrus-contour-task-form'));
+assert.ok(atlasEditorNoSettings.includes('!draft.contourTask?.trim()'));
+assert.ok(atlasEditorNoSettings.includes('onClick={onCancel}>Отмена'));
+assert.ok(atlasEditorNoSettings.includes('Добавить на доску'));
+const contourFormBranch=atlasEditorNoSettings.slice(
+ atlasEditorNoSettings.indexOf('if(isContour&&draft.kind==="atlas")return createPortal('),
+ atlasEditorNoSettings.indexOf(' const title=<label className="lektrus-school-field">')
+);
+assert.ok(!contourFormBranch.includes('<LektrusSchoolDiagramView'));
+const contourStyles=fs.readFileSync(new URL("../src/lektrusAtlasEditor.css",import.meta.url),"utf8");
+assert.ok(contourStyles.includes('.lektrus-contour-task-scroll'));
+assert.ok(contourStyles.includes('overflow-y:auto'));
+assert.ok(contourStyles.includes('@media(max-width:680px)'));
+assert.ok(contourStyles.includes('height:100dvh'));
+assert.ok(contourStyles.includes('env(safe-area-inset-bottom)'));
+
 const teacher=fs.readFileSync(new URL("../src/LektrusContourAssignmentSetup.tsx",import.meta.url),"utf8");
-assert.ok(teacher.includes("Создание задания"));
+assert.ok(teacher.includes('lektrus-contour-task-fields'));
+assert.ok(teacher.includes("Задание"));
 assert.ok(teacher.includes("Подложка карты"));
 assert.ok(teacher.includes("Инструменты ученика"));
+assert.ok(teacher.includes('<details className="lektrus-contour-task-section">'));
+assert.ok(!teacher.includes("Настройте подложку"));
+assert.ok(!teacher.includes("Шаблон по программе"));
 assert.ok(teacher.includes("atlasRegions.filter"));
 assert.ok(atlasEditorNoSettings.includes("LektrusContourAssignmentSetup value={draft}"));
 assert.ok(map.includes('lektrus-atlas--worksheet'));

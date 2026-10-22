@@ -253,33 +253,128 @@
  gap:8px
 }
 
-/* Teacher assignment builder; the preview remains a real interactive atlas. */
-.lektrus-school-editor--contour-setup .lektrus-school-body{display:grid;
- grid-template-columns:minmax(255px,320px) minmax(0,1fr);overflow:hidden}
-.lektrus-school-editor--contour-setup .lektrus-contour-config-sidebar{
- overflow:auto;min-height:0;padding:14px;background:#fbfdff;
- border-right:1px solid #d4e2ef;scrollbar-width:thin}
-.lektrus-contour-assignment{display:flex;flex-direction:column;gap:13px;color:#345a79}
-.lektrus-contour-assignment header strong{font-size:14px}
-.lektrus-contour-assignment header p{font-size:11px;line-height:1.5;color:#6b84a0;margin:5px 0 0}
-.lektrus-contour-assignment .lektrus-school-field{display:grid;gap:5px}
-.lektrus-contour-assignment .lektrus-school-field input,
-.lektrus-contour-assignment .lektrus-school-field textarea,
-.lektrus-contour-assignment .lektrus-school-field select{
- min-width:0;width:100%;padding:9px;background:white;border:1px solid #ccdae9;
- border-radius:8px;color:#2b4f71;font-size:12px}
-.lektrus-contour-assignment fieldset{border:1px solid #d9e6f1;border-radius:11px;
- padding:9px 10px;background:white;margin:0;min-width:0}
-.lektrus-contour-assignment legend{font-size:12px;font-weight:800;padding:0 4px}
-.lektrus-contour-assignment-switch{display:flex;align-items:center;gap:9px;
- padding:7px 0;border-bottom:1px solid #eef2f6;cursor:pointer}
-.lektrus-contour-assignment-switch:last-child{border:0}
-.lektrus-contour-assignment-switch input{flex:none;accent-color:#326db9;width:17px;height:17px}
-.lektrus-contour-assignment-switch span{display:flex;flex-direction:column;gap:2px}
-.lektrus-contour-assignment-switch b{font-size:11px}
-.lektrus-contour-assignment-switch small{font-size:10px;color:#6f879f;line-height:1.4}
-.lektrus-school-editor--contour-setup .lektrus-school-preview-area{width:100%}
-@media(max-width:800px){
- .lektrus-school-editor--contour-setup .lektrus-school-body{grid-template-columns:1fr;grid-template-rows:minmax(135px,34%) minmax(0,1fr)}
- .lektrus-school-editor--contour-setup .lektrus-contour-config-sidebar{padding:10px;border-right:0;border-bottom:1px solid #d4e2ef}
+
+/* Contour tasks have a single purpose: describe an assignment and add it.
+   Never mount the full atlas while configuring a task, especially on phones. */
+.lektrus-contour-task-backdrop{
+ padding:clamp(6px,2vw,20px);
+ background:rgba(17,34,53,.60);
+}
+.lektrus-school-editor--contour-task{
+ box-sizing:border-box;width:min(620px,100%);height:min(730px,calc(100dvh - 24px));
+ max-height:calc(100dvh - 12px);min-height:0;border-radius:18px;
+ background:#f8fafc;display:flex;flex-direction:column;overflow:hidden;
+}
+.lektrus-school-editor--contour-task>.lektrus-school-header{
+ flex:none;min-height:62px;padding:13px 20px;display:flex;align-items:center;
+ background:#fff;
+}
+.lektrus-school-editor--contour-task .lektrus-school-header h2{
+ margin:0;font-size:19px;line-height:1.25;color:#253f59;
+}
+.lektrus-school-editor--contour-task .lektrus-school-close{
+ height:42px;width:42px;min-width:42px;font-size:23px;
+}
+.lektrus-contour-task-form{
+ display:flex;flex:1;min-height:0;min-width:0;flex-direction:column;margin:0;
+}
+.lektrus-contour-task-scroll{
+ flex:1;min-height:0;min-width:0;overflow-y:auto;overscroll-behavior:contain;
+ scrollbar-width:thin;padding:20px;scroll-padding-bottom:24px;
+ -webkit-overflow-scrolling:touch;
+}
+.lektrus-contour-assignment{
+ display:flex;flex-direction:column;gap:19px;max-width:100%;min-width:0;
+ color:#34556f;
+}
+.lektrus-contour-task-fields{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:15px;
+}
+.lektrus-contour-assignment .lektrus-school-field{
+ display:flex;flex-direction:column;gap:7px;margin:0;
+ font-size:13px;font-weight:750;color:#34516e;
+}
+.lektrus-contour-assignment .lektrus-school-field :is(input,textarea,select){
+ display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;
+ border:1px solid #c9d7e5;border-radius:10px;background:#fff;color:#213e5b;
+ padding:11px 13px;font:inherit;font-size:15px;font-weight:450;min-height:46px;
+}
+.lektrus-contour-assignment .lektrus-school-field textarea{
+ min-height:110px;resize:vertical;line-height:1.45;
+}
+.lektrus-contour-assignment .lektrus-school-field :is(input,textarea,select):focus-visible{
+ outline:2px solid #4481c4;outline-offset:1px;
+}
+.lektrus-contour-task-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.lektrus-contour-task-section{
+ box-sizing:border-box;min-width:0;align-self:start;overflow:hidden;
+ border:1px solid #d2dfeb;border-radius:12px;background:#fff;
+}
+.lektrus-contour-task-section summary{
+ list-style:none;display:flex;align-items:center;justify-content:space-between;
+ min-height:50px;gap:7px;padding:12px;cursor:pointer;user-select:none;
+ color:#2d537a;font-size:13px;font-weight:750;
+}
+.lektrus-contour-task-section summary::-webkit-details-marker{display:none}
+.lektrus-contour-task-section summary:focus-visible{outline:2px solid #4481c4;outline-offset:-3px}
+.lektrus-contour-task-section summary small{font-size:11px;color:#738ba0;font-weight:650;white-space:nowrap}
+.lektrus-contour-task-section summary:before{content:"›";font-size:22px;line-height:12px;transform:rotate(0deg);
+ color:#5480a9;flex:none;transition:transform .15s ease}
+.lektrus-contour-task-section[open] summary:before{transform:rotate(90deg)}
+.lektrus-contour-task-choice-grid{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:2px;
+ border-top:1px solid #e0eaf3;padding:5px 9px 9px;
+}
+.lektrus-contour-task-choice{
+ display:flex;align-items:center;gap:10px;min-width:0;min-height:43px;
+ padding:7px 5px;cursor:pointer;font-size:12px;font-weight:600;color:#405f7b;
+ border-radius:7px;
+}
+.lektrus-contour-task-choice:hover{background:#f4f9fe}
+.lektrus-contour-task-choice input{
+ flex:none;width:19px;height:19px;accent-color:#2c6eaf;margin:0;
+}
+.lektrus-contour-task-choice span{line-height:1.35}
+.lektrus-school-editor--contour-task .lektrus-school-footer{
+ flex:none;display:flex;align-items:center;justify-content:flex-end;gap:10px;
+ padding:12px 20px;background:#fff;border-top:1px solid #d8e4ef;
+ box-sizing:border-box;
+}
+.lektrus-school-editor--contour-task .lektrus-school-footer button{
+ min-height:45px;min-width:110px;white-space:nowrap;font-size:13px;padding:10px 16px;
+}
+.lektrus-school-editor--contour-task .lektrus-school-primary{
+ min-width:170px!important;background:#2967ba;color:white;border-color:#2967ba;
+}
+.lektrus-school-editor--contour-task .lektrus-contour-task-error{
+ display:block;margin-right:auto!important;font-size:12px!important;font-weight:700;
+ color:#a83a3a!important;line-height:1.3;
+}
+@media(max-width:680px){
+ .lektrus-contour-task-backdrop{padding:0}
+ .lektrus-school-editor--contour-task{
+  width:100%;height:100dvh;max-height:100dvh;border:0;border-radius:0;
+ }
+ .lektrus-school-editor--contour-task>.lektrus-school-header{
+  padding:max(10px,env(safe-area-inset-top)) 15px 10px;min-height:56px;
+ }
+ .lektrus-school-editor--contour-task .lektrus-school-header h2{font-size:18px}
+ .lektrus-contour-task-scroll{padding:15px}
+ .lektrus-contour-task-options{grid-template-columns:minmax(0,1fr);gap:9px}
+ .lektrus-contour-task-section summary{min-height:48px}
+ .lektrus-school-editor--contour-task .lektrus-school-footer{
+  padding:10px max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+ }
+ .lektrus-school-editor--contour-task .lektrus-school-footer button{min-width:0;flex:1;font-size:13px}
+ .lektrus-school-editor--contour-task .lektrus-school-primary{flex:1.4;min-width:0!important}
+ .lektrus-school-editor--contour-task .lektrus-contour-task-error{flex:1 0 100%;margin:0}
+ .lektrus-school-editor--contour-task .lektrus-school-footer{flex-wrap:wrap}
+}
+@media(max-height:500px) and (orientation:landscape){
+ .lektrus-school-editor--contour-task>.lektrus-school-header{min-height:48px;padding:5px 15px}
+ .lektrus-contour-task-scroll{padding:10px 15px}
+ .lektrus-contour-task-fields{gap:10px}
+ .lektrus-contour-assignment .lektrus-school-field textarea{min-height:70px}
+ .lektrus-school-editor--contour-task .lektrus-school-footer{padding-top:6px;padding-bottom:6px}
+ .lektrus-school-editor--contour-task .lektrus-school-footer button{min-height:40px}
 }
