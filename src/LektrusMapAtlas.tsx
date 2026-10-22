@@ -92,8 +92,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    .find(id=>allowed[id])??"erase");
  },[contourAction,contourConfig.allowLabels,contourConfig.allowPoints,contourConfig.allowDrawing,contourConfig.allowFill]);
  const [contourText,setContourText]=useState("");
- const [legendSymbol,setLegendSymbol]=useState("●");
- const [legendMeaning,setLegendMeaning]=useState("");
  const contourDrawing=useRef<Array<[number,number]>>([]);
  const contourLivePath=useRef<SVGPathElement|null>(null);
  const mapSvgRef=useRef<SVGSVGElement|null>(null);
@@ -106,7 +104,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  // Match the political atlas exactly: labels use map camera scale rather
  // than board-object pixel ratio. No extra mobile text magnification.
  const labelUiScale=1;
- const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[],contourLegend=d.contourLegend??[];
+ const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[];
  const selectedContourMark=contourMarks.find(mark=>mark.id===selectedContourMarkId);
  // Hold the last drag preview until the board acknowledges persisted
  // coordinates. Clearing it in pointer-up caused the old-position flash.
@@ -2041,6 +2039,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       </>:<span className="lektrus-contour-selection-hint">Нажмите на подпись, чтобы переместить или удалить её</span>}
      </div>}
      <div className="lektrus-contour-workspace-options">
+      <button type="button" className="lektrus-contour-undo-action" title="Отменить последнюю правку"
+       aria-label="Отменить действие" disabled={!contourHistory.length} onClick={contourUndo}>↶</button>
       {(contourAction==="label"||contourAction==="point")&&<>
        {contourConfig.allowLabels&&contourConfig.allowPoints&&<select
         aria-label="Тип обозначения" value={contourAction}
