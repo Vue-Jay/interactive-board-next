@@ -1430,7 +1430,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         {russianPlaceName(f.feature)}</text>)}
       </g>}
       {citiesOn&&<g className="lektrus-atlas-capitals">
-       {shownCapitals.filter(f=>scale>=2.6).map(f=><g key={"capital-"+f.id}
+       {contourCapitals.filter(f=>scale>=2.6).map(f=><g key={"capital-"+f.id}
         transform={`translate(${f.point![0]} ${f.point![1]}) scale(${1/scale})`}
         className="lektrus-atlas-event" role="button" tabIndex={0}
         onClick={e=>{e.stopPropagation();selectFeature(f.feature,alternateCapital(f.feature)?"Дополнительная столица по данным источника":"Столица государства")}}
