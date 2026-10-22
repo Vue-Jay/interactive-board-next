@@ -1937,6 +1937,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     return()=>document.removeEventListener("pointerdown",finishCropFromOutside,true);
   },[imageCropEditorId]);
   const imageTapRef=useRef<{id:string;at:number;x:number;y:number}|null>(null);
+  const contourTapRef=useRef<{id:string;at:number;x:number;y:number}|null>(null);
   const [shapeType, setShapeType] = useState<ShapeType | null>(null);
   const [connectorStyle, setConnectorStyle] = useState<ConnectorStyle>("arrow");
   const [connectorWeight, setConnectorWeight] = useState(3);
@@ -7475,6 +7476,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                         ? "transparent"
                         : "#fff",
                 }}
+                onPointerDown={e=>{
+                  if(e.pointerType!=="touch"||item.graphFigureId!=="contour-atlas"||!canEdit||
+                     tool!=="select"||space)return;
+                  const now=performance.now(),previous=contourTapRef.current;
+                  contourTapRef.current={id:item.id,at:now,x:e.clientX,y:e.clientY};
+                  if(previous?.id===item.id&&now-previous.at<430&&
+                   Math.hypot(e.clientX-previous.x,e.clientY-previous.y)<26){
+                   e.preventDefault();e.stopPropagation();
+                   contourTapRef.current=null;setSchoolEditorItem(item);
+                  }
+                 }}
                 onDoubleClick={() => {
                   if (!canEdit || structurallyLockedForStudent(item)&&item.graphFigureId!=="contour-atlas") return;
                   const remoteEditor = remoteEditorFor(item.id);
