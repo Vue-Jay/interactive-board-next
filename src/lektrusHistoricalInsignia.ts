@@ -25,6 +25,14 @@ const artifact=(id:string,from:number,to:number,file:string,title:string,reconst
 });
 /** State-specific emblems, with deliberately narrow year ranges. */
 export const historicalStateInsignia:readonly HistoricalInsignia[]=[
+ artifact("hittite-empire",-1230,-1210,"Impero ittita, bulla in terracotta, dagli scavi di bogazköy hattusa, XIII secolo ac. (museo di çorum) 04 con impronta del sigillo di Tudhaliya IV.jpg","Глиняная булла с оттиском царской печати Тудхалии IV из Хаттусы, XIII век до н. э."),
+ artifact("mongols",1260,1294,"Mongol passport from period of Kublai Khan, Yuan dynasty; Karakorum Museum, Mongolia (1).jpg","Монгольская пайцза (дорожная грамота) эпохи Хубилая, музей Каракорума; не флаг империи"),
+ artifact("yuan",1271,1294,"Mongol passport from period of Kublai Khan, Yuan dynasty; Karakorum Museum, Mongolia (1).jpg","Пайцза при Хубилае: знак административных полномочий в державе Юань, не знамя"),
+ artifact("ilkhanate",1316,1335,"Silver-struck copper Ilkhanid paiza from the reign of Abu Saʿid Bahadur Khan, National Museum of Iran.jpg","Пайцза периода ильхана Абу Саида, хранится в Национальном музее Ирана"),
+ artifact("khwarazmians",1172,1200,"Gold coin of the Khwarazmshah Tekish.jpg","Золотая монета хорезмшаха Текеша (1172–1200), нумизматический источник"),
+ artifact("ayyubid",1182,1183,"Coinage of al-Nasir I Salah al-Din Yusuf (Saladin). AH 564-589 AD 1169-1193. Naṣībīn mint. Dated AH 578 (AD 1182-3).jpg","Монета Салах ад-Дина чеканки Насибина 1182–1183 годов; не официальный герб Айюбидов"),
+ artifact("songhai",1495,1495,"Askia.jpg","Гробница Аскии в Гао, сооружённая при правителе Мухаммаде Аскии около 1495 года; памятник государства Сонгай"),
+ artifact("great-seljuks",1093,1094,"Gold dinar of the Seljuk sultan Mahmud I, minted at Isfahan in 1093 or 1094.jpg","Золотой динар султана Махмуда I, чеканка Исфахана 1093–1094 годов"),
  artifact("maurya",-250,-230,"Lion capital of Ashoka, Sarnath.jpg","Львиная капитель колонны Ашоки в Сарнатхе, подлинная императорская скульптура III века до н. э.",false),
  artifact("aksum",330,360,"Ezana.jpg","Монета царя Эзаны, IV век. Нумизматический памятник Аксума, не государственный флаг",false),
  artifact("silla",450,550,"Royal Crown of Silla. National Museum of Korea.jpg","Подлинная золотая царская корона Силла V века, Национальный музей Кореи",false),
