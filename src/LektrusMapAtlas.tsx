@@ -99,6 +99,17 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [contourAction,setContourAction]=useState<"select"|"hand"|"fill"|"label"|"point"|"pen"|"erase">("select");
  const [lastLabelKind,setLastLabelKind]=useState<"label"|"point">("label");
  const [territoryMenuOpen,setTerritoryMenuOpen]=useState(false);
+ const territoryMenuRef=useRef<HTMLDivElement|null>(null);
+ useEffect(()=>{
+  if(!territoryMenuOpen)return;
+  const dismiss=(event:PointerEvent)=>{
+   if(!territoryMenuRef.current?.contains(event.target as Node))setTerritoryMenuOpen(false);
+  };
+  const escape=(event:KeyboardEvent)=>{if(event.key==="Escape")setTerritoryMenuOpen(false)};
+  document.addEventListener("pointerdown",dismiss);
+  document.addEventListener("keydown",escape);
+  return()=>{document.removeEventListener("pointerdown",dismiss);document.removeEventListener("keydown",escape)};
+ },[territoryMenuOpen]);
  useEffect(()=>{
   const allowed={select:true,hand:true,label:contourConfig.allowLabels,point:contourConfig.allowPoints,
    pen:contourConfig.allowDrawing,fill:contourConfig.allowFill,erase:true};
@@ -1203,6 +1214,28 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      aria-pressed={mode===m.id} className={mode===m.id?"selected":""}
      onClick={()=>onMode(m.id)}>{m.title}</button>)}
    </nav>
+   <div ref={territoryMenuRef} className="lektrus-atlas-territory-dropdown">
+    <button type="button" className="lektrus-atlas-territory-trigger"
+     title="Выбрать территорию карты" aria-expanded={territoryMenuOpen}
+     aria-haspopup="listbox" onClick={()=>setTerritoryMenuOpen(o=>!o)}>
+     <span className="lektrus-atlas-territory-trigger-icon">⌖</span>
+     <span className="lektrus-atlas-territory-trigger-name">
+      {atlasRegions.find(region=>region.id===regionId)?.title??"Весь мир"}
+     </span><span aria-hidden="true">⌄</span>
+    </button>
+    {territoryMenuOpen&&<div role="listbox" aria-label="Территория карты"
+     className="lektrus-atlas-territory-menu">
+     {atlasRegionGroups.map(group=><div key={group} className="lektrus-atlas-territory-group">
+      <strong>{group}</strong>
+      {atlasRegions.filter(region=>region.group===group).map(region=>
+       <button key={region.id} type="button" role="option"
+        aria-selected={region.id===regionId} className={region.id===regionId?"active":""}
+        onClick={()=>{changeRegion(region.id);setTerritoryMenuOpen(false)}}>
+        <span>{region.title}</span>{region.id===regionId&&<span aria-hidden="true">✓</span>}
+       </button>)}
+     </div>)}
+    </div>}
+   </div>
    <button type="button" className={"lektrus-atlas-coordinate-toggle"+(coordinatesEnabled?" active":"")}
     title="Определять широту и долготу на любой карте"
     aria-pressed={coordinatesEnabled}
@@ -1548,7 +1581,130 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
     <div className="lektrus-atlas-precision">Увеличение ×{scale.toFixed(scale>=10?0:1)} · {highDetail?"геоданные 1:10 млн":modernBorders?"обзорный слой":"историческая реконструкция"} · {coord?
      `${coord.lat.toFixed(2)}°, ${coord.lon.toFixed(2)}°`:objectMoveMode?"режим перемещения объекта":"обзорные геоданные"}</div>
    </div>
-   {!isWorksheet&&<aside className="lektrus-atlas-sidebar">
+   {!isWorksheet&&!historical&&<aside className="lektrus-atlas-sidebar lektrus-atlas-sidebar--selected-only">
+    <div className="lektrus-atlas-info-heading">
+     <strong>Сведения о выбранном объекте</strong>
+     <button type="button" aria-label="Скрыть сведения" onClick={()=>setInspectorOpen(false)}>×</button>
+    </div>
+    <div className="lektrus-atlas-info-content lektrus-atlas-info-object">
+     {markerDetails?<div className="lektrus-atlas-description">
+     <strong>{markerDetails.title}</strong>
+     <p>{markerDetails.description||"Маркер преподавателя"}</p>
+     <p>Координаты: {markerDetails.lat.toFixed(3)}°, {markerDetails.lon.toFixed(3)}°</p>
+     {historical&&<p>Дата: {yearLabel(markerDetails.year)}</p>}
+    </div>:
+    selectedMineral&&mode==="minerals"?<div className="lektrus-atlas-description">
+     <strong>Запись о минеральном сырье: {(mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"Полезное ископаемое"}</strong>
+     <p>Источник: Геологическая служба США, {selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
+      "архивный каталог минеральных ресурсов MRDS":"каталог крупных месторождений"}.</p>
+     {selectedMineral.properties?.ATLAS_DATASET==="MRDS"&&<>
+      {typeof selectedMineral.properties.site_name==="string"&&
+       <p><strong>Название в оригинальном каталоге:</strong> {selectedMineral.properties.site_name}</p>}
+      {selectedMineral.properties.dep_id&&
+       <p><strong>Номер записи MRDS:</strong> {String(selectedMineral.properties.dep_id)}</p>}
+      {selectedMineral.properties.dev_stat&&
+       <p><strong>Статус в архивной базе (не подтверждён на 2026 год):</strong> {String(selectedMineral.properties.dev_stat)}</p>}
+     </>}
+     {mineralDepositFacts(selectedMineral).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+     {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))?.name??"")&&
+      <div className="lektrus-atlas-city-data">
+       <strong>Справка о минеральном сырье</strong>
+       <p>{mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.className}</p>
+       <p><strong>Состав:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.composition}</p>
+       <p><strong>Использование:</strong> {mineralGuide((mineralCommodity(selectedMineral)??mrdsMineralCommodity(selectedMineral))!.name)!.uses}</p>
+       <small>Генетический тип конкретного месторождения приводится отдельно, если он известен из USGS.</small>
+      </div>}
+     <p>Координаты: {(()=>{
+      const c=selectedMineral.geometry?.coordinates;
+      return Array.isArray(c)?Number(c[1]).toFixed(4)+"°, "+Number(c[0]).toFixed(4)+"°":"не приведены";
+     })()}</p>
+     <p>Идентификатор источника: {String(selectedMineral.properties?.OBJECTID??
+      selectedMineral.properties?.objectid??selectedMineral.properties?.objectid_1??selectedMineral.properties?.gid??"не указан")}</p>
+     <small>Название месторождения, разновидности минералов, геология, оценка запасов и статус добычи
+      приводятся в исходной базе, если они опубликованы. Значения не вычисляются из точки карты.</small>
+     {mineralDepositSource(selectedMineral)&&<a href={mineralDepositSource(selectedMineral)!}
+      target="_blank" rel="noopener noreferrer">Исходная карточка месторождения USGS ↗</a>}
+     <a href={selectedMineral.properties?.ATLAS_DATASET==="MRDS"?
+      "https://energy.usgs.gov/arcgis/rest/services/Hosted/Mineral_Resource_Data_System/FeatureServer/0":
+      "https://energy.usgs.gov/arcgis/rest/services/Hosted/Major_mineral_deposits/FeatureServer/0"}
+      target="_blank" rel="noopener noreferrer">Открыть набор геологических данных USGS ↗</a>
+    </div>:
+    selected?<div className="lektrus-atlas-description">
+     <strong>{selectedTitle}</strong><small>{selectedLayer}</small>
+     {selectedCountryCapitals.length>0&&<div className="lektrus-atlas-country-capitals">
+      <strong>Столицы государства</strong>
+      {selectedCountryCapitals.map((capital,i)=>
+       <button key={i} type="button" onClick={()=>focusFeature(capital,"Столица государства")}>
+        ◆ {russianPlaceName(capital)}
+        <span>Показать на карте ↗</span>
+       </button>)}
+     </div>}
+     {selectedIsCity&&<div className="lektrus-atlas-city-data">
+      <strong>Площадь города</strong>
+      {cityArea?<p>{cityArea.km2.toLocaleString("ru-RU",{maximumFractionDigits:2})} км²
+       <small> Значение из Викиданных, может относиться к административной или городской территории.</small></p>:
+       <p>{cityAreaLoading?"Получение площади из источника…":cityAreaMessage}</p>}
+      {cityArea&&<a href={cityArea.url} target="_blank" rel="noopener noreferrer">Источник площади ↗</a>}
+     </div>}
+     {featureSourceFacts(selected).map(f=><p key={f.label}>{f.label}: {f.value}</p>)}
+     {!historical&&<div className="lektrus-atlas-study-card lektrus-atlas-reference-card">
+      <strong>Справка об объекте</strong>
+      {schoolReferenceLoading&&<small>Загрузка дополнительных сведений…</small>}
+      {schoolReference?.description&&<p>{schoolReference.description}</p>}
+      {schoolReference?.facts.map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+      {schoolReference&&<a href={schoolReference.url} target="_blank" rel="noopener noreferrer">Данные Wikidata, открытая база ↗</a>}
+      {schoolReferenceError&&<small>{schoolReferenceError}</small>}
+      {!schoolReferenceLoading&&!schoolReferenceError&&!schoolReference&&
+       <small>Для этого объекта дополнительные сведения в подключённом справочнике отсутствуют. Показаны атрибуты картографического источника.</small>}
+      <small>Значения из открытого справочника могут быть разного года и не всегда актуальны. Для учебного использования проверяйте дату и первоисточник.</small>
+     </div>}
+      {typeof selected.properties?.CAPITAL_CORRECTION_URL==="string"&&<a href={selected.properties.CAPITAL_CORRECTION_URL}
+       target="_blank" rel="noopener noreferrer">Правовой источник уточнения столицы ↗</a>}
+      {typeof selected.properties?.LOCATION_SOURCE_URL==="string"&&<a href={selected.properties.LOCATION_SOURCE_URL}
+       target="_blank" rel="noopener noreferrer">Географический источник координат ↗</a>}
+     {historical&&<><p>Точность: {precisions[borderPrecision(selected)]}.</p>
+      {selectedArticle&&<div className="lektrus-history-article">
+       <p className="lektrus-history-period">{yearLabel(selectedArticle.from)} – {yearLabel(selectedArticle.to)}</p>
+       <p><strong>Столица и важные центры:</strong> {selectedArticle.capital}</p>
+       <p>{selectedArticle.summary}</p>
+       <p><strong>Важное изменение:</strong> {selectedArticle.turn}</p>
+       <a target="_blank" rel="noopener noreferrer" href={historyArticleUrl(selectedArticle)}>
+        Открыть обзорную статью на русском ↗</a>
+       <small>Учебная справка подготовлена отдельно от картографической базы; исторические границы и датировки необходимо сверять с дополнительными источниками.</small>
+      </div>}
+      {fallbackReference&&<div className="lektrus-history-article">
+       <p><strong>{fallbackReference.title}</strong></p>
+       {fallbackReference.capital&&<p><strong>Центры:</strong> {fallbackReference.capital}</p>}
+       {fallbackReference.formation&&<p><strong>Образование:</strong> {fallbackReference.formation}</p>}
+       <p>{fallbackReference.description}</p>
+       <p><strong>Изменения:</strong> {fallbackReference.change}</p>
+       <a href={fallbackReference.sourceUrl} target="_blank" rel="noopener noreferrer">Подробнее: {fallbackReference.sourceTitle} ↗</a>
+      </div>}
+      {!selectedArticle&&!fallbackReference&&!modernReference&&<p>Для этой территории ещё нет отдельной энциклопедической карточки. Ниже приведены только сведения исходного картографического набора.</p>}
+      {historicalFeatureFacts(selected).map(f=><p key={f.label}><strong>{f.label}:</strong> {f.value}</p>)}
+      {!modernReference&&selectedYears.length>0&&<div className="lektrus-history-observed">
+       <strong>Название встречается на датированных картах</strong>
+       <div>{selectedYears.map(y=><button type="button" key={y}
+        className={snapshot.year===y?"selected":""} onClick={()=>jumpToPeriod(y,selectedRaw)}>{yearLabel(y)}</button>)}</div>
+       <small>Это только присутствие названия в наборе, не даты основания и распада.</small>
+      </div>}
+      <p><strong>Период карты:</strong> {yearLabel(snapshot.year)}. Это дата слоя, а не подтверждённые даты существования государства.</p>
+      {!selectedArticle&&!fallbackReference&&<p>Столица, правители и причины территориальных изменений не указаны, если их нет в подтверждённых данных.</p>}
+      <p>{modernReference?
+       "Современная геометрия из Natural Earth. Дата публикации набора не равна точной исторической обстановке 2026 года.":
+       "Территория представлена в историческом наборе для "+yearLabel(snapshot.year)+". Границы могут отражать реконструкцию."}</p>
+      <p>Историческая реконструкция принадлежит авторам снимка. Российская позиция применяется к современному политическому слою, но не подменяет исторические эпохи.</p>
+      {historicalSubject&&<p>Административная принадлежность в источнике: {historicalSubject}</p>}
+      {historicalPart&&historicalPart!==selectedTitle&&
+       <p>Регион/группа: {historicalPart}</p>}</>}
+    </div>:
+      <div className="lektrus-atlas-description">
+       <strong>Выберите объект на карте</strong>
+       <p>Нажмите на страну, город, реку, озеро или месторождение для просмотра сведений.</p>
+      </div>}
+    </div>
+   </aside>}
+   {!isWorksheet&&historical&&<aside className="lektrus-atlas-sidebar">
     <div className="lektrus-atlas-info-heading">
      <strong>Сведения об объектах</strong>
      <button type="button" aria-label="Скрыть панель сведений" onClick={()=>setInspectorOpen(false)}>×</button>
@@ -1566,25 +1722,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       </p>}
       <p className="lektrus-atlas-study-note">Перемещение: перетаскивание. Масштаб: колесо мыши или два пальца. Кнопка «Координаты» включает определение широты и долготы на любой карте.</p>
      </div>
-    <div className="lektrus-atlas-region-picker">
-     <strong>Территория карты</strong>
-     <select aria-label="Регион школьного атласа" value={regionId} onChange={e=>changeRegion(e.target.value)}>
-      {atlasRegionGroups.map(group=><optgroup label={group} key={group}>
-       {atlasRegions.filter(region=>region.group===group).map(region=><option key={region.id} value={region.id}>{region.title}</option>)}
-      </optgroup>)}
-     </select>
-     {subregions.length>0&&!historical&&<label className="lektrus-atlas-subregion">
-      Административные единицы региона
-      <select aria-label="Административная единица на карте" value={focusedUnit}
-       onChange={e=>{const match=subregions.find(f=>f.key===e.target.value);
-        setFocusedUnit(e.target.value);if(match)focusFeature(match.feature,"Административная единица")}}>
-       <option value="">Выберите для приближения</option>
-       {subregions.map(f=><option key={f.key} value={f.key}>{f.name}</option>)}
-      </select>
-     </label>}
-     <small>{regionId==="russia"||regionId==="rf-far-east"?"Россия пересекает 180-й меридиан, части её территории представлены у обоих краёв мировой проекции.":
-      "Регион изменяет область просмотра, но не подменяет географические границы."}</small>
-    </div>
     {(historical||d.markers.length>0)&&onChange&&<details className="lektrus-atlas-own-markers">
      <summary>Мои метки и события ({d.markers.length})</summary>
      <small>Метки с географическими координатами хранятся с доской. Их можно исправлять и удалять.</small>
