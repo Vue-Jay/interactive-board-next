@@ -815,3 +815,14 @@
 .lektrus-color-popup-wheel-text small{font-size:10px;color:#70859c}
 .lektrus-color-popup-wheel-arrow{font-size:24px;color:#7197bc}
 .lektrus-color-popup-wheel input[type=color]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+
+/* Historical atlas: concise political-map-style object facts. */
+.lektrus-atlas-history .lektrus-history-compact-facts{display:flex;flex-direction:column;gap:11px}
+.lektrus-atlas-history .lektrus-history-key-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:7px}
+.lektrus-atlas-history .lektrus-history-key-facts>span{display:flex;flex-direction:column;gap:4px;padding:10px;border:1px solid #d9e4ef;border-radius:11px;background:#f6faff;color:#254766;font-size:12px;line-height:1.4}
+.lektrus-atlas-history .lektrus-history-key-facts>span>strong{font-size:10px;color:#6b829a;font-weight:750}
+.lektrus-atlas-history .lektrus-history-compact-facts .lektrus-history-article{margin:0;padding:10px 12px;border:1px solid #e0e9f2;border-radius:11px;background:#fff}
+.lektrus-atlas-history .lektrus-history-more{border-top:1px solid #dce6f0;padding-top:9px;font-size:12px}
+.lektrus-atlas-history .lektrus-history-more summary{cursor:pointer;color:#386c9b;font-weight:700;padding:5px 0}
+.lektrus-atlas-history .lektrus-history-more p{margin:7px 0}
+.lektrus-atlas-history .lektrus-history-missing-facts{color:#71859a;font-size:12px}
