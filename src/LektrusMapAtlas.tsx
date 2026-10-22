@@ -1571,25 +1571,6 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       </p>}
       <p className="lektrus-atlas-study-note">Перемещение: перетаскивание. Масштаб: колесо мыши или два пальца. Кнопка «Координаты» включает определение широты и долготы на любой карте.</p>
      </div>
-    <div className="lektrus-atlas-region-picker">
-     <strong>Территория карты</strong>
-     <select aria-label="Регион школьного атласа" value={regionId} onChange={e=>changeRegion(e.target.value)}>
-      {atlasRegionGroups.map(group=><optgroup label={group} key={group}>
-       {atlasRegions.filter(region=>region.group===group).map(region=><option key={region.id} value={region.id}>{region.title}</option>)}
-      </optgroup>)}
-     </select>
-     {subregions.length>0&&!historical&&<label className="lektrus-atlas-subregion">
-      Административные единицы региона
-      <select aria-label="Административная единица на карте" value={focusedUnit}
-       onChange={e=>{const match=subregions.find(f=>f.key===e.target.value);
-        setFocusedUnit(e.target.value);if(match)focusFeature(match.feature,"Административная единица")}}>
-       <option value="">Выберите для приближения</option>
-       {subregions.map(f=><option key={f.key} value={f.key}>{f.name}</option>)}
-      </select>
-     </label>}
-     <small>{regionId==="russia"||regionId==="rf-far-east"?"Россия пересекает 180-й меридиан, части её территории представлены у обоих краёв мировой проекции.":
-      "Регион изменяет область просмотра, но не подменяет географические границы."}</small>
-    </div>
     {(historical||d.markers.length>0)&&onChange&&<details className="lektrus-atlas-own-markers">
      <summary>Мои метки и события ({d.markers.length})</summary>
      <small>Метки с географическими координатами хранятся с доской. Их можно исправлять и удалять.</small>
