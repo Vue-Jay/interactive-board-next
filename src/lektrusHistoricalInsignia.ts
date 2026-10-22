@@ -52,7 +52,7 @@ export const historicalStateInsignia:readonly HistoricalInsignia[]=[
  artifact("umayyad",694,697,"First Umayyad gold dinar, Caliph Abd al-Malik, 695 CE.jpg","Ранняя золотая монета халифа Абд аль-Малика, около 695 года, Британский музей",false),
  artifact("abbasid",783,783,"Abbasid Dinar - Al Mahdi - 167 AH (783 AD).jpg","Золотой динар халифа аль-Махди, чеканка 167 года хиджры (783 н. э.)",false),
  artifact("northern-song",968,976,"128 S-451 Taizu, 960-976, 968-976, 25mm.jpg","Бронзовая монета императора Тай-цзу из Северной Сун, выпуск 968–976 годов",false),
- artifact("benin",1500,1800,"Benin bronze plaque used for the decoration of the royal palace of the oba of Benin.jpg","Дворцовый бронзовый рельеф царства Бенин, традиция XV–XIX веков; датировка данного предмета не установлена",false),
+ artifact("benin",1500,1599,"British Museum Room 25 Cast brass plaque from Benin City 17022019 5047.jpg","Литая бронзовая дворцовая пластина царства Бенин, XVI век, собрание Британского музея; не герб государства",false),
  other("rome",50,300,"Vexilloid of the Roman Empire.svg","Современная реконструкция римского военного вексиллума SPQR: не единый государственный флаг","banner",true),
  other("austria-hungary",1869,1918,"Ensign of Austro-Hungarian civil fleet (1869-1918).svg","Торговый морской флаг Австро-Венгрии, а не единый флаг обоих государств монархии","banner",true),
  other("spain",1506,1785,"Flag of Cross of Burgundy.svg","Бургундский крест: военное знамя Испанской монархии и её владений, не единственный государственный флаг","banner",true),
