@@ -987,7 +987,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  };
  return <div className={"lektrus-atlas "+(isWorksheet?"lektrus-atlas--worksheet ":"")+(isWorksheet&&objectMoveMode?"lektrus-atlas--board-selection ":"")+(historical?"lektrus-atlas-history ":"")+(editorMode?"lektrus-atlas--editor ":"")+(inspectorOpen?"":"lektrus-atlas--inspector-hidden")} aria-label={d.title}
   onPointerDown={e=>{if(!objectMoveMode)e.stopPropagation()}}
+  onPointerMove={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onPointerUp={e=>{if(!objectMoveMode)e.stopPropagation()}}
+  onPointerCancel={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onClick={e=>{if(!objectMoveMode)e.stopPropagation()}}>
   {!isWorksheet&&<header className="lektrus-atlas-header">
    <strong title={d.title}>{d.title}</strong>
@@ -1765,9 +1767,18 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      aria-label="Инструменты контурной карты" onPointerDown={e=>e.stopPropagation()}
      onClick={e=>e.stopPropagation()}>
      <div className="lektrus-contour-workspace-head">
-      <strong>{d.title}</strong>
-      {d.contourTask&&<details><summary>Задание</summary><p>{d.contourTask}</p></details>}
+      <strong title={d.title}>{d.title}</strong>
+      <div className="lektrus-contour-workspace-mode" role="group" aria-label="Режим контурной карты">
+       <button type="button" aria-pressed={objectMoveMode} className={objectMoveMode?"active":""}
+        title="Выделять, перемещать и изменять размер карты на доске"
+        onClick={()=>{setObjectMoveMode(true);points.current.clear();pointer.current=null;
+         pinch.current=null;dragged.current=false}}>↔ Объект</button>
+       <button type="button" aria-pressed={!objectMoveMode} className={!objectMoveMode?"active":""}
+        title="Работать внутри карты: подписи, заливка, рисование и масштаб карты"
+        onClick={()=>setObjectMoveMode(false)}>✎ Работа с картой</button>
+      </div>
      </div>
+     {d.contourTask&&<p className="lektrus-contour-task-label">{d.contourTask}</p>}
      <div className="lektrus-contour-workspace-tools">
       {([["label","Подпись",contourConfig.allowLabels],["point","Знак",contourConfig.allowPoints],
        ["pen","Карандаш",contourConfig.allowDrawing],["fill","Заливка",contourConfig.allowFill],
@@ -1776,15 +1787,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         className={contourAction===id?"active":""} onClick={()=>setContourAction(id)}>{title}</button>)}
       <button type="button" title="Отменить последнюю правку" disabled={!contourHistory.length}
        onClick={contourUndo}>↶</button>
-      <div className="lektrus-contour-workspace-mode" role="group" aria-label="Режим работы с контурной картой">
-       <button type="button" aria-pressed={objectMoveMode} className={objectMoveMode?"active":""}
-        title="Выделять, двигать и изменять размер карты стандартными средствами доски"
-        onClick={()=>{setObjectMoveMode(true);points.current.clear();pointer.current=null;
-         pinch.current=null;dragged.current=false}}>↔ Объект</button>
-       <button type="button" aria-pressed={!objectMoveMode} className={!objectMoveMode?"active":""}
-        title="Подписывать, раскрашивать и перемещать содержимое карты"
-        onClick={()=>setObjectMoveMode(false)}>✎ Карта</button>
-      </div>
+
      </div>
      <div className="lektrus-contour-workspace-options">
       {(contourAction==="label"||contourAction==="point")&&
