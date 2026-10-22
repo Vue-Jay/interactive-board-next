@@ -791,3 +791,10 @@
 /* Five thickness choices in one compact dropdown below color. */
 .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness{width:48px;box-sizing:border-box}
 .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness select{display:block;width:100%;min-width:0;box-sizing:border-box;padding:5px 1px;border:1px solid #c2d4e7;border-radius:7px;background:#fff;color:#345e82;font-size:11px;cursor:pointer}
+
+/* Shared board palette inside the compact contour dock. */
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-color{display:block;width:48px;padding:4px 0;box-sizing:border-box}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-color .lektrus-color-picker{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-color .lektrus-color-controls{display:flex;align-items:center;justify-content:center;gap:3px}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-color .lektrus-color-caption{font-size:9px}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-color .lektrus-color-current,.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-color .lektrus-color-wheel{flex:none}
