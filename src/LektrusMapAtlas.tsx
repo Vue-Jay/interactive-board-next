@@ -1366,25 +1366,49 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {(isWorksheet?contourConfig.showGrid:d.showGrid)&&<LektrusAtlasGraticule scale={scale} viewport={gridViewport}/>}
       {mode==="contour"&&<g className="lektrus-atlas-contour-work">
        {contourStrokes.map(line=><path key={line.id} fill="none" stroke={line.color}
-        strokeWidth={2/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents={contourAction==="erase"?"stroke":"none"}
-        onClick={e=>{if(contourAction!=="erase"||!onChange)return;e.stopPropagation();captureContour();
-         onChange({...d,contourStrokes:contourStrokes.filter(v=>v.id!==line.id)})}}
+        strokeWidth={2/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"
+        opacity={pendingErasure.strokes.includes(line.id)?.17:1}
         d={line.points.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
-       {contourMarks.map(mark=>{const [x,y]=projectGeography(mark.lon,mark.lat);
+       {contourMarks.map(stored=>{const mark=previewContourMark?.id===stored.id?previewContourMark:stored;
+        const [x,y]=projectGeography(mark.lon,mark.lat);
+        const width=Math.max(29,Math.min(80,mark.text.length)*6.3+16);
+        const left=mark.kind==="point"?7:-width/2,selected=selectedContourMarkId===mark.id;
         return <g key={mark.id} transform={`translate(${x} ${y}) scale(${1/scale})`}
-         className="lektrus-atlas-contour-mark" role="button" tabIndex={0}
-         onClick={e=>{e.stopPropagation();if(contourAction==="erase"&&onChange){captureContour();
-          onChange({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}}
-         onDoubleClick={e=>{e.stopPropagation();captureContour();onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
-         onContextMenu={e=>{e.preventDefault();e.stopPropagation();captureContour();onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
-         onKeyDown={e=>{if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();captureContour();
-          onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}}>
+         className={"lektrus-atlas-contour-mark lektrus-contour-label-object"+(selected?" selected":"")}
+         role="button" tabIndex={0} aria-label={"Передвинуть обозначение: "+(mark.text||"Знак")}
+         opacity={pendingErasure.marks.includes(mark.id)?.2:1}
+         onPointerDown={e=>startContourMarkDrag(e,stored)}
+         onPointerMove={moveContourMarkDrag}
+         onPointerUp={e=>endContourMarkDrag(e)}
+         onPointerCancel={e=>endContourMarkDrag(e,true)}
+         onClick={e=>{e.stopPropagation();if(contourAction!=="erase")setSelectedContourMarkId(mark.id)}}
+         onDoubleClick={e=>{e.stopPropagation();if(contourAction==="erase")return;
+          captureContour();setSelectedContourMarkId(null);
+          onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
+         onContextMenu={e=>{e.preventDefault();e.stopPropagation();
+          captureContour();setSelectedContourMarkId(null);
+          onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
+         onKeyDown={e=>{
+          if(e.key==="Delete"||e.key==="Backspace"){
+           e.preventDefault();e.stopPropagation();captureContour();setSelectedContourMarkId(null);
+           onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)});
+          }else if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)&&onChange){
+           e.preventDefault();e.stopPropagation();
+           const step=(e.shiftKey?10:1)/Math.max(.1,cameraRef.current.scale);
+           const dx=e.key==="ArrowLeft"?-step:e.key==="ArrowRight"?step:0;
+           const dy=e.key==="ArrowUp"?-step:e.key==="ArrowDown"?step:0;
+           captureContour();onChange({...d,contourMarks:contourMarks.map(v=>v.id===mark.id?
+            moveContourMark(v,{x:0,y:0},{x:dx,y:dy}):v)});
+          }
+         }}>
+         <rect className="lektrus-contour-label-background"
+          x={left} y="-14" width={width} height="21" rx="5" strokeWidth="1"/>
          {mark.kind==="point"&&<circle r="3.5" fill={mark.color} stroke="#fff" strokeWidth="1"/>}
-         {mark.text&&<text x={mark.kind==="point"?6:0} y={mark.kind==="point"?2:0}
-          textAnchor={mark.kind==="point"?"start":"middle"} fill={mark.color} fontSize="10"
-          stroke="#fff" strokeWidth="2.3" paintOrder="stroke" fontWeight="650">{mark.text}</text>}
-         <title>{mark.text||"Условный знак"} · ПКМ или двойное нажатие для удаления</title>
+         {mark.text&&<text x={mark.kind==="point"?left+width/2:0} y="0"
+          textAnchor="middle" fill={mark.color} fontSize="10"
+          fontWeight="650">{mark.text}</text>}
+         <title>{mark.text||"Условный знак"} · Перетащите для перемещения, стрелки для точной настройки, Delete для удаления</title>
         </g>})}
        <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={2/scale}
         strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
