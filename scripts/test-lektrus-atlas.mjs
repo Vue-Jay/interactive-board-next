@@ -586,20 +586,24 @@ assert.ok(common.includes('export function LektrusAtlasGraticule'));
 assert.ok(common.indexOf('export function LektrusAtlasGraticule')<
  common.indexOf('export default function LektrusMapBase'));
 
-// A contour worksheet is created from a form, not a heavyweight interactive
-// map preview. This also guarantees reliable portrait mobile entry.
-assert.ok(atlasEditorNoSettings.includes('lektrus-school-editor--contour-task'));
-assert.ok(atlasEditorNoSettings.includes('lektrus-contour-task-form'));
+// Teacher and student create content in the same immersive atlas editor,
+ // while the board never shows any editing tools.
+assert.ok(atlasEditorNoSettings.includes('lektrus-contour-editor-fullscreen'));
+assert.ok(atlasEditorNoSettings.includes('lektrus-contour-editor-options'));
 assert.ok(atlasEditorNoSettings.includes('!draft.contourTask?.trim()'));
 assert.ok(atlasEditorNoSettings.includes('onClick={onCancel}>Отмена'));
-assert.ok(atlasEditorNoSettings.includes('Добавить на доску'));
+assert.ok(atlasEditorNoSettings.includes('Сохранить на доску'));
 const contourFormBranch=atlasEditorNoSettings.slice(
  atlasEditorNoSettings.indexOf('if(isContour&&draft.kind==="atlas")return createPortal('),
  atlasEditorNoSettings.indexOf(' const title=<label className="lektrus-school-field">')
 );
-assert.ok(!contourFormBranch.includes('<LektrusSchoolDiagramView'));
+assert.ok(contourFormBranch.includes('<LektrusSchoolDiagramView diagram={draft} onChange={set} editorMode/>'));
+assert.ok(contourFormBranch.includes('aria-expanded={contourSettingsOpen}'));
+assert.ok(contourFormBranch.includes('⚙ Задание и подложка'));
 const contourStyles=fs.readFileSync(new URL("../src/lektrusAtlasEditor.css",import.meta.url),"utf8");
-assert.ok(contourStyles.includes('.lektrus-contour-task-scroll'));
+assert.ok(contourStyles.includes('.lektrus-contour-editor-main'));
+assert.ok(contourStyles.includes('.lektrus-contour-editor-map'));
+assert.ok(contourStyles.includes('.lektrus-contour-editor-footer-actions'));
 assert.ok(contourStyles.includes('overflow-y:auto'));
 assert.ok(contourStyles.includes('@media(max-width:680px)'));
 assert.ok(contourStyles.includes('height:100dvh'));
@@ -616,7 +620,9 @@ assert.ok(!teacher.includes("Шаблон по программе"));
 assert.ok(teacher.includes("atlasRegions.filter"));
 assert.ok(atlasEditorNoSettings.includes("LektrusContourAssignmentSetup value={draft}"));
 assert.ok(map.includes('lektrus-atlas--worksheet'));
-assert.ok(map.includes('isWorksheet&&!editorMode&&<div className="lektrus-contour-workspace"'));
+assert.ok(map.includes('worksheetEditor&&<div className="lektrus-contour-workspace"'));
+assert.ok(!map.includes('isWorksheet&&!editorMode&&<div className="lektrus-contour-workspace"'));
+assert.ok(map.includes('pointerEvents={worksheetOnBoard?"none":undefined}'));
 assert.ok(map.includes('!isWorksheet&&<aside className="lektrus-atlas-sidebar"'));
 assert.ok(map.includes('!isWorksheet&&<header className="lektrus-atlas-header"'));
 assert.ok(map.includes('contourConfig.showRivers')&&map.includes('contourConfig.showLakes'));
@@ -636,20 +642,19 @@ assert.equal(validAtlasDocument({...modelOptions,contourAssignment:{showRivers:"
 
 // A contour worksheet has a docked tool strip below the map, never over it,
 // and defaults to the regular board interaction path so transform handles work.
-const contourToolbarStart=map.indexOf('isWorksheet&&!editorMode&&<div className="lektrus-contour-workspace"');
+const contourToolbarStart=map.indexOf('worksheetEditor&&<div className="lektrus-contour-workspace"');
 const atlasSvgClose=map.indexOf('    </svg>');
 const mapBodyClose=map.lastIndexOf('   </aside>}');
 assert.ok(contourToolbarStart>mapBodyClose,
- "Student toolbar must be a flex child BELOW the map body, not a map overlay");
+ "Editing toolbar must be below the map, outside the board version");
 assert.ok(mapBodyClose>atlasSvgClose);
 assert.ok(map.includes('useState(isWorksheet&&!editorMode)'),
  "Worksheets must start in board selection and resize mode");
 assert.ok(map.includes('if(!objectMoveMode)e.stopPropagation()'),
  "Only intentional map-edit mode stops board pointer events");
 assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:onPointerDown}'));
-assert.ok(map.includes('aria-label="Режим контурной карты"'));
-assert.ok(map.includes('onClick={()=>setObjectMoveMode(false)}'));
-assert.ok(map.includes('setObjectMoveMode(true)'));
+assert.ok(map.includes('const worksheetEditor=isWorksheet&&editorMode'));
+assert.ok(map.includes('const worksheetOnBoard=isWorksheet&&!editorMode'));
 assert.ok(application.includes('data-object={item.id}'));
 assert.ok(application.includes('data-transform-handle="rotate"'));
 assert.ok(application.includes('className={`screen-resize-handle screen-handle-${h}`}'));
@@ -666,10 +671,8 @@ const worksheetHead=map.slice(map.indexOf('className="lektrus-contour-workspace-
 assert.ok(worksheetHead.includes('className="lektrus-contour-task-label"'));
 assert.ok(worksheetHead.includes('{d.contourTask}'));
 assert.ok(!worksheetHead.includes('<details>'));
-assert.ok(worksheetHead.includes('className="lektrus-contour-workspace-mode"'),
- "Object / map modes need a fixed, visible position outside the scrolling tool strip");
-assert.ok(worksheetHead.includes('↔ Объект'));
-assert.ok(worksheetHead.includes('✎ Работа с картой'));
+assert.ok(!worksheetHead.includes('lektrus-contour-workspace-mode'),
+ "Map editor needs tools only; moving and resizing the board object belongs on the board");
 // Native board listeners fire earlier than React's nested bubble handler.
 // Both native wheel and capture-phase touch must exit for an editing atlas.
 assert.ok(application.includes('target.closest(".lektrus-atlas:not(.lektrus-atlas--board-selection)")'),
@@ -688,7 +691,8 @@ assert.ok(map.includes('onPointerMove={e=>{if(!objectMoveMode)e.stopPropagation(
 assert.ok(map.includes('onPointerCancel={e=>{if(!objectMoveMode)e.stopPropagation()}'));
 const bottomStyles=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
 assert.ok(bottomStyles.includes('.lektrus-atlas--worksheet .lektrus-contour-task-label{'));
-assert.ok(bottomStyles.includes('.lektrus-contour-workspace-head .lektrus-contour-workspace-mode'));
+assert.ok(contourStyles.includes('width:100vw;height:100dvh'));
+assert.ok(contourStyles.includes('safe-area-inset-bottom'));
 
 assert.ok(map.includes('if(pinch.current){onMove(e);return}'),
  "Two-touch pencil interaction should navigate map instead of the whiteboard");
@@ -797,5 +801,22 @@ assert.equal(contourInkExports.eraseContourInkAlongPath([testStroke],[worldPoint
  "Unbrushed strokes must retain their original data");
 assert.ok(map.includes('for(let offset=0;offset<points.length-1;offset+=249)'),
  "Long pencil strokes must be persisted in bounded segments");
+
+const savedCamera={regionId:"world",scale:2.5,position:{x:150,y:-50}};
+assert.equal(validAtlasDocument({...validWork,contourCamera:savedCamera}),true);
+assert.equal(validAtlasDocument({...validWork,contourCamera:{...savedCamera,scale:-1}}),false);
+assert.equal(validAtlasDocument({...validWork,contourCamera:{...savedCamera,position:{x:Infinity,y:0}}}),false);
+assert.ok(map.includes('const stored=d.contourCamera'));
+assert.ok(map.includes('stored?.regionId===regionId'));
+assert.ok(map.includes('onChange({...d,contourCamera:{regionId,scale:camera.scale,position:{...camera.position}}})'));
+assert.ok(map.includes('const worksheetEditor=isWorksheet&&editorMode'));
+assert.ok(map.includes('const worksheetOnBoard=isWorksheet&&!editorMode'));
+assert.ok(map.includes('const contourEraser=worksheetEditor&&contourAction==="erase"'));
+const schoolEditor=fs.readFileSync(new URL("../src/LektrusSchoolDiagramEditor.tsx",import.meta.url),"utf8");
+assert.ok(schoolEditor.includes('onSave({...item,schoolDiagram:structuredClone(draft),text:draft.title})'));
+const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+assert.ok(app.includes('if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}'));
+assert.ok(app.includes('className="screen-transform-overlay"'));
+assert.ok(app.includes('data-transform-handle={h}'));
 
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");
