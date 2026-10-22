@@ -93,8 +93,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const contourDrawing=useRef<Array<[number,number]>>([]);
  const contourLivePath=useRef<SVGPathElement|null>(null);
  const mapSvgRef=useRef<SVGSVGElement|null>(null);
- const eraserGesture=useRef<{pointerId:number;marks:Set<string>;strokes:Set<string>}|null>(null);
- const [pendingErasure,setPendingErasure]=useState<{marks:string[];strokes:string[]}>({marks:[],strokes:[]});
+ const eraserGesture=useRef<{pointerId:number;marks:Set<string>;strokes:Set<string>;fills:Set<string>}|null>(null);
+ const [pendingErasure,setPendingErasure]=useState<{marks:string[];strokes:string[];fills:string[]}>({marks:[],strokes:[],fills:[]});
  const markerGesture=useRef<{pointerId:number;mark:ContourMark;start:{x:number;y:number};moved:boolean}|null>(null);
  const [previewContourMark,setPreviewContourMark]=useState<ContourMark|null>(null);
  const [selectedContourMarkId,setSelectedContourMarkId]=useState<string|null>(null);
@@ -825,13 +825,19 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   let changed=false;
   for(const id of hits.marks)if(!gesture.marks.has(id)){gesture.marks.add(id);changed=true}
   for(const id of hits.strokes)if(!gesture.strokes.has(id)){gesture.strokes.add(id);changed=true}
-  if(changed)setPendingErasure({marks:[...gesture.marks],strokes:[...gesture.strokes]});
+  // A filled polygon is also student work: erase its colour without panning.
+  // elementFromPoint works after SVG pointer capture and supports swiping.
+  const polygon=(e.target as Element).closest<SVGElement>("[data-contour-fill-key]")??
+   document.elementFromPoint(e.clientX,e.clientY)?.closest<SVGElement>("[data-contour-fill-key]");
+  const key=polygon?.getAttribute("data-contour-fill-key");
+  if(key&&painted[key]&&!gesture.fills.has(key)){gesture.fills.add(key);changed=true}
+  if(changed)setPendingErasure({marks:[...gesture.marks],strokes:[...gesture.strokes],fills:[...gesture.fills]});
  };
  const beginContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
   e.preventDefault();e.stopPropagation();
   if(eraserGesture.current)return;
-  eraserGesture.current={pointerId:e.pointerId,marks:new Set(),strokes:new Set()};
+  eraserGesture.current={pointerId:e.pointerId,marks:new Set(),strokes:new Set(),fills:new Set()};
   e.currentTarget.setPointerCapture(e.pointerId);
   brushContour(e);
  };
@@ -845,17 +851,18 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   brushContour(e);
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   eraserGesture.current=null;
-  setPendingErasure({marks:[],strokes:[]});
-  if(!gesture.marks.size&&!gesture.strokes.size)return;
+  setPendingErasure({marks:[],strokes:[],fills:[]});
+  if(!gesture.marks.size&&!gesture.strokes.size&&!gesture.fills.size)return;
   captureContour();
   onChange?.({...d,contourMarks:contourMarks.filter(mark=>!gesture.marks.has(mark.id)),
-   contourStrokes:contourStrokes.filter(line=>!gesture.strokes.has(line.id))});
+   contourStrokes:contourStrokes.filter(line=>!gesture.strokes.has(line.id)),
+   paintedCountries:Object.fromEntries(Object.entries(painted).filter(([key])=>!gesture.fills.has(key)))});
  };
  const cancelContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(eraserGesture.current?.pointerId!==e.pointerId)return;
   e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
-  eraserGesture.current=null;setPendingErasure({marks:[],strokes:[]});
+  eraserGesture.current=null;setPendingErasure({marks:[],strokes:[],fills:[]});
  };
  const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
   if(contourAction==="erase"||!onChange)return;
@@ -1160,9 +1167,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
-        const fill=mode==="contour"?(painted[String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name)]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
+        const fillKey=String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name);
+        const fill=mode==="contour"?(pendingErasure.fills.includes(fillKey)?"#fffdfa":painted[fillKey]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
          mode==="political"?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
+         data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}
          fillOpacity={mineralTerrainEnabled?.56:1}
          stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.name===selectedTitle?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
          strokeWidth={highlighted||s.name===selectedTitle?1.9:mode==="minerals"?.4:historical&&precise===1?.75:.65}
@@ -1187,7 +1196,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         const key="region:"+String(f.feature.properties?.adm1_code||f.feature.properties?.ADM1_CODE||f.feature.properties?.iso_3166_2||
          f.feature.properties?.name_ru||f.feature.properties?.name||geoFeatureName(f.feature));
         return <path key={"province-"+f.id} d={f.path} vectorEffect="non-scaling-stroke"
-         fill={mode==="contour"&&paintRegions?(painted[key]??"#fafcfb"):mode==="political"?"transparent":"none"}
+         fill={mode==="contour"&&paintRegions?(pendingErasure.fills.includes(key)?"#fafcfb":painted[key]??"#fafcfb"):mode==="political"?"transparent":"none"}
+         data-contour-fill-key={isWorksheet&&painted[key]?key:undefined}
          onClick={e=>{e.stopPropagation();if(mode==="political")selectFeature(f.feature,"Административная единица");
           else paintProvince(f.feature)}}><title>{geoFeatureName(f.feature)}</title></path>;
        })}
