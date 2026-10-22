@@ -2166,7 +2166,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         <ContourToolIcon name={id}/><span>{title}</span>
        </button>)}
       {contourAction!=="erase"&&<label className="lektrus-contour-dock-color" title="Цвет рисования"><input type="color" aria-label="Цвет" value={paintColor} onChange={e=>setPaintColor(e.target.value)}/><span>Цвет</span></label>}
-      <div className="lektrus-contour-dock-thickness" role="group" aria-label="Толщина карандаша и ластика"><span>Толщина</span><div>{([1,2,4,7] as const).map(size=><button key={size} type="button" title={"Толщина "+size} aria-label={"Толщина "+size} aria-pressed={toolThickness===size} className={toolThickness===size?"active":""} onClick={()=>setToolThickness(size)}><i style={{width:size+6,height:size+6}}/></button>)}</div></div>
+      <label className="lektrus-contour-dock-thickness"><span>Толщина</span><select aria-label="Толщина карандаша и ластика" value={toolThickness} onChange={e=>setToolThickness(Number(e.target.value))}>{[1,2,3,5,8].map(size=><option key={size} value={size}>{size}</option>)}</select></label>
       <button type="button" className="lektrus-contour-icon-button" title="Отменить последнее действие"
        aria-label="Отменить" disabled={!contourHistory.length}
        onClick={contourUndo}>
