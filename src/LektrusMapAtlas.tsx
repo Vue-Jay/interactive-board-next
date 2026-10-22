@@ -224,6 +224,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const [focusedUnit,setFocusedUnit]=useState("");
  const [directoryFilter,setDirectoryFilter]=useState("");
  const [searchAcrossYears,setSearchAcrossYears]=useState(false);
+ const [referenceOnlyCurrentPeriod,setReferenceOnlyCurrentPeriod]=useState(false);
  const [historyTab,setHistoryTab]=useState<"directory"|"article"|"changes">("directory");
  const [historyIndex,setHistoryIndex]=useState<HistoricalIndexRecord[]>([]);
  const [sourceYear,setSourceYear]=useState<number|null>(null);
@@ -837,8 +838,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  const visibleDirectory=directoryEntries.filter(entry=>entry.name.toLocaleLowerCase("ru")
   .includes(directoryFilter.trim().toLocaleLowerCase("ru")));
  const referenceQuery=directoryFilter.trim().toLocaleLowerCase("ru");
- const visibleHistoricalReferences=historicalReferences.filter(entry=>!referenceQuery||
-  [entry.title,...entry.aliases].some(name=>name.toLocaleLowerCase("ru").includes(referenceQuery)))
+ const visibleHistoricalReferences=historicalReferences.filter(entry=>(!referenceOnlyCurrentPeriod||modernReference||
+   snapshot.year>=entry.from&&snapshot.year<=entry.to)&&(!referenceQuery||
+   [entry.title,...entry.aliases].some(name=>name.toLocaleLowerCase("ru").includes(referenceQuery))))
   .sort((a,b)=>{
    // Keep the current epoch at the top without hiding research from other eras.
    const presentA=Number(snapshot.year>=a.from&&snapshot.year<=a.to);
@@ -2020,6 +2022,10 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
      <details className="lektrus-history-source-library">
       <summary>Исторические справки <small>{visibleHistoricalReferences.length} из {historicalReferences.length}</small></summary>
       <p className="lektrus-history-source-library-hint">Сведения о государствах разных эпох, в том числе без геометрии границ в текущем историческом слое.</p>
+      {!modernReference&&<label className="lektrus-history-source-period-filter">
+       <input type="checkbox" checked={referenceOnlyCurrentPeriod} onChange={e=>setReferenceOnlyCurrentPeriod(e.target.checked)}/>
+       Только этот период ({yearLabel(snapshot.year)})
+      </label>}
       <div className="lektrus-history-source-library-list">
        {visibleHistoricalReferences.length?visibleHistoricalReferences.map(entry=><details key={entry.id} className="lektrus-history-reference-entry">
         <summary><strong>{entry.title}</strong><small>{yearLabel(entry.from)} – {yearLabel(entry.to)}</small></summary>
