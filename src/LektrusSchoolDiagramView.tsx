@@ -165,7 +165,7 @@ function TimelineGraphic({diagram:d}:{diagram:Extract<SchoolDiagram,{kind:"timel
   <text x="450" y="463" textAnchor="middle" fontSize="13" fill="#8193a4">События расположены по порядку. Промежутки между датами не в масштабе.</text>
  </svg>;
 }
-export default function LektrusSchoolDiagramView({diagram,onChange,editorMode}:Props){
+export default function LektrusSchoolDiagramView({diagram,onChange,editorMode,userId}:Props){
  switch(diagram.kind){
   case "programming":return <LektrusProgrammingView diagram={diagram}/>;
   case "logic-circuit":return <LektrusLogicCircuitView diagram={diagram}/>;
