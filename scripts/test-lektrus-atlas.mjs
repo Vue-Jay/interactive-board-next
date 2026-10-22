@@ -303,6 +303,21 @@ assert.match(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Hawaii"),"Га
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Crimean Khanate"),"Крымское ханство",1550,true).imageUrl??"",
  /Giray%20tamga/);
 assert.equal(historicalSymbols.listHistoricalStateInsignia("byzantium").length,2);
+
+assert.equal(historicalSymbols.findHistoricalStateInsignia("maurya",-245)?.kind,"artifact");
+assert.equal(historicalSymbols.findHistoricalStateInsignia("hittite-empire",-1220)?.kind,"artifact");
+assert.equal(historicalSymbols.findHistoricalStateInsignia("benin",1550)?.kind,"artifact");
+assert.equal(historicalSymbols.findHistoricalStateInsignia("benin",1650),undefined,
+ "A sixteenth-century British Museum object must not be dated to the seventeenth");
+assert.equal(historicalSymbols.findHistoricalStateInsignia("mongols",1280)?.kind,"artifact");
+assert.equal(historicalSymbols.findHistoricalStateInsignia("aztec",1500)?.reconstruction,true);
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Aksumite Empire"),"Аксумское царство",345,true).label,
+ "Подлинный исторический памятник","Coins must never be labeled national flags");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Baekje"),"Пэкче",510,true).kind,"historic");
+assert.equal(symbols.atlasCountrySymbol(symbolCountry("Aksumite Empire"),"Аксумское царство",800,true).kind,"symbol",
+ "Do not extend surviving evidence to periods after a state's existence");
+assert.ok(map.includes('image.kind==="artifact"'),"Artifact galleries must distinguish coins from heraldic flags");
+
 assert.equal(historicalSymbols.historicalReferenceSymbolYear({
  id:"rome",from:-27,to:476}),300,"End-of-empire date must not hide an attested earlier symbol");
 assert.match(symbols.atlasCountrySymbol(symbolCountry("Ottoman Empire"),"Османская империя",1900,true).imageUrl??"",
@@ -330,8 +345,8 @@ assert.equal(symbols.atlasCountrySymbol(symbolCountry("Mughal Empire"),"Импе
 
 assert.equal(symbols.atlasCountrySymbol(symbolCountry("Kingdom of Venice"),"Венеция",1600,true).kind,"symbol",
  "Never infer the Venetian symbol from an unrelated unknown name");
-assert.ok(historicalSymbols.historicalStateInsignia.length>=55,"Reviewed historic insignia collection must remain complete");
-assert.ok(new Set(historicalSymbols.historicalStateInsignia.map(x=>x.id)).size>=40,
+assert.ok(historicalSymbols.historicalStateInsignia.length>=90,"Reviewed historic graphics catalogue must include coins and museum objects");
+assert.ok(new Set(historicalSymbols.historicalStateInsignia.map(x=>x.id)).size>=80,
  "Historical graphics must cover at least forty actual reference states");
 assert.ok(historicalSymbols.historicalDatedNationalFlags.length>=95,
  "Dated flags must cover more than one recent atlas period");
