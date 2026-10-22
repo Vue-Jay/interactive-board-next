@@ -836,3 +836,16 @@
 .lektrus-atlas-history .lektrus-history-change-counts strong{display:block;font-size:18px;color:#254e73;margin-top:3px}
 .lektrus-atlas-history .lektrus-atlas-changes details{margin:6px 0;padding:6px 8px;border:1px solid #e0eaf2;border-radius:8px}
 .lektrus-atlas-history .lektrus-atlas-changes details summary{cursor:pointer;font-size:12px;font-weight:700;color:#365f84}
+
+/* History reference library remains compact until the teacher opens it. */
+.lektrus-atlas-history .lektrus-history-source-library{margin:12px 0 3px;padding:8px 10px;border:1px solid #dbe7f2;border-radius:11px;background:#f7fbff}
+.lektrus-atlas-history .lektrus-history-source-library>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;font-size:12px;font-weight:750;color:#2f5b84;list-style:revert}
+.lektrus-atlas-history .lektrus-history-source-library>summary small{font-weight:600;font-size:10px;color:#69809a}
+.lektrus-atlas-history .lektrus-history-source-library-hint{font-size:11px;color:#617991;line-height:1.5}
+.lektrus-atlas-history .lektrus-history-source-library-list{max-height:315px;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:5px;padding-right:3px}
+.lektrus-atlas-history .lektrus-history-reference-entry{background:#fff;border:1px solid #e2ebf4;border-radius:8px;padding:6px 9px;font-size:11px;line-height:1.5}
+.lektrus-atlas-history .lektrus-history-reference-entry>summary{cursor:pointer;display:flex;justify-content:space-between;gap:7px;align-items:center;list-style:revert}
+.lektrus-atlas-history .lektrus-history-reference-entry>summary strong{font-weight:720;color:#304c68}
+.lektrus-atlas-history .lektrus-history-reference-entry>summary small{flex:none;font-size:10px;color:#8192a3}
+.lektrus-atlas-history .lektrus-history-reference-entry p{margin:7px 0;color:#415d75}
+.lektrus-atlas-history .lektrus-history-reference-entry a{display:inline-block;margin:4px 0 6px;color:#2467a7}
