@@ -79,10 +79,13 @@ export const historicalReferences:HistoricalReference[]=[
 {"id":"volga-bulgaria","title":"Волжская Булгария","aliases":["Volga Bulgaria","Volga Bulgar","Volga Bulgars","Kingdom of Volga Bulgaria","Bulgar State"],"from":900,"to":1236,"capital":"Болгар, Сувар, Биляр в разные периоды","description":"Государство Среднего Поволжья и Прикамья, сложившееся в X веке. Было важным центром торговли на Волге, ремёсел и распространения ислама; состав населения и политические центры менялись.","change":"Во время монгольских завоеваний в 1236 году государственная самостоятельность Волжской Булгарии была утрачена.","sourceTitle":"Большая российская энциклопедия: Булгария Волжско-Камская","sourceUrl":"https://old.bigenc.ru/domestic_history/text/1887934"},
 {"id":"trebizond","title":"Трапезундская империя","aliases":["Empire of Trebizond","Trebizond Empire","Trapezuntine Empire","Trebizond"],"from":1204,"to":1461,"capital":"Трапезунд (ныне Трабзон)","description":"Государство на юго-восточном побережье Чёрного моря, созданное представителями династии Великих Комнинов после кризиса Византийской империи в 1204 году.","change":"В 1461 году Трапезунд был взят войсками османского султана Мехмеда II, и империя прекратила существование.","sourceTitle":"Большая российская энциклопедия: Исторические государства","sourceUrl":"https://bigenc.ru/t/historical_states"}
 ];
-const normalize=(s:string)=>s.toLocaleLowerCase("ru-RU").replace(/[’']/g,"").replace(/[–—-]/g," ").replace(/\s+/g," ").trim();
+/** Normalize typography, not historical identities: never use approximate fuzzy matching. */
+export const normalizeHistoricalReferenceName=(s:string)=>s.normalize("NFKC").toLocaleLowerCase("ru-RU")
+ .replace(/[’‘ʼ'`´]/g,"").replace(/[‐‑‒–—−_-]/g," ")
+ .replace(/[.,;:!?()[\]{}]/g," ").replace(/\s+/g," ").trim();
 export function findHistoricalReference(name:string,year:number):HistoricalReference|undefined{
- const key=normalize(name);
+ const key=normalizeHistoricalReferenceName(name);
  if(!key||year===2026)return undefined;
  return historicalReferences.find(r=>year>=r.from&&year<=r.to&&
-  r.aliases.some(alias=>normalize(alias)===key));
+  [r.title,...r.aliases].some(alias=>normalizeHistoricalReferenceName(alias)===key));
 }
