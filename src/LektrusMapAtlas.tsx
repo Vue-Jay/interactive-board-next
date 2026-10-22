@@ -1100,7 +1100,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство"));
   setSelectedMarker(null);
  };
- return <div className={"lektrus-atlas "+(isWorksheet?"lektrus-atlas--worksheet ":"")+(isWorksheet&&objectMoveMode?"lektrus-atlas--board-selection ":"")+(historical?"lektrus-atlas-history ":"")+(editorMode?"lektrus-atlas--editor ":"")+(inspectorOpen?"":"lektrus-atlas--inspector-hidden")} aria-label={d.title}
+ return <div className={"lektrus-atlas "+(isWorksheet?"lektrus-atlas--worksheet ":"")+(isWorksheet&&objectMoveMode?"lektrus-atlas--board-selection ":"")+(isWorksheet&&!objectMoveMode&&contourAction==="erase"?"lektrus-atlas--erasing ":"")+(historical?"lektrus-atlas-history ":"")+(editorMode?"lektrus-atlas--editor ":"")+(inspectorOpen?"":"lektrus-atlas--inspector-hidden")} aria-label={d.title}
   onPointerDown={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onPointerMove={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onPointerUp={e=>{if(!objectMoveMode)e.stopPropagation()}}
