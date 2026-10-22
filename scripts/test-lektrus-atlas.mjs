@@ -203,7 +203,7 @@ assert.match(map,/shownMarineNames/);
 assert.match(map,/shownCities/);
 assert.match(map,/admin-regional/);
 assert.match(map,/rivers-regional/);
-assert.match(map,/Регион школьного атласа/);
+assert.match(map,/Территория карты/);
 assert.doesNotMatch(map,/Базовая версия Natural Earth/);
 assert.equal(createAtlasDocument().borderView,"russian");
 assert.equal(createAtlasDocument().regionId,"world");
