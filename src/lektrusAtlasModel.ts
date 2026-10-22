@@ -235,7 +235,7 @@ export function validAtlasDocument(value:unknown):value is AtlasDocument{
   if(!Array.isArray(v.contourStrokes)||v.contourStrokes.length>140||
    v.contourStrokes.some((line:ContourStroke)=>!line||!isText(line.id,64)||
     typeof line.color!=="string"||!/^#[0-9a-fA-F]{6}$/.test(line.color)||
-    (line.width!==undefined&&(!Number.isFinite(line.width)||line.width<1||line.width>8))||
+    (line.width!==undefined&&(!Number.isFinite(line.width)||line.width<1||line.width>14))||
     !Array.isArray(line.points)||line.points.length<2||line.points.length>250||
     line.points.some(point=>!Array.isArray(point)||point.length!==2||
      !Number.isFinite(point[0])||Math.abs(point[0])>180||
