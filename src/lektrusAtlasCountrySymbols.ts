@@ -110,7 +110,10 @@ export function atlasCountrySymbol(feature:GeoFeature,title:string,year:number,h
   // states which merely inherit their territory's ISO never enter this branch.
   const archive=emblem??(sourceMatchesNation&&code?findHistoricalCountryFlag(code,year):undefined);
   if(archive){
-   const kind=archive.kind==="flag"?"Исторический флаг":
+   const isIllustrative=archive.title.toLocaleLowerCase("ru").includes("гипотетичес")||
+    archive.title.toLocaleLowerCase("ru").includes("фантазийн");
+   const kind=isIllustrative?"Предположительная иллюстрация":
+    archive.kind==="flag"?"Исторический флаг":
     archive.kind==="emblem"?"Историческая эмблема":"Историческое знамя";
    const period=archive.from+"–"+archive.to+" гг.";
    const qualifier=archive.reconstruction?" Современная реконструкция, не подлинный сохранившийся предмет.":"";
