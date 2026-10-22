@@ -3,7 +3,7 @@ import type {GeoTrainingDiagram,GeoRelation,GeoRegion} from "./lektrusGeographyT
 import {geoCountries,geoRegions,geoRelationNames,getGeoCountry,sampleGeoCountries} from "./lektrusGeographyTrainingModel";
 
 type Props={diagram:GeoTrainingDiagram;onChange:(diagram:GeoTrainingDiagram)=>void};
-const counts=[4,6,8,10,12] as const;
+const counts=[2,3,4,5,6,7,8,9,10,11,12] as const;
 export default function LektrusGeographyTrainingControls({diagram:d,onChange}:Props){
  const [region,setRegion]=useState<GeoRegion|"Все">("Все");
  const [query,setQuery]=useState("");
