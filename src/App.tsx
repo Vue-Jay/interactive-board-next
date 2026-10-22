@@ -7338,7 +7338,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if(Date.now()<suppressTouchClickUntil.current){e.preventDefault();e.stopPropagation();}
           }}
           onPointerDown={(e) => {
-            if((e.target as HTMLElement).closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
+            const target=e.target as HTMLElement;
+            // Resize/rotate/connector handles are real buttons. These are
+            // board gestures, not interface controls, and must reach down().
+            const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint]");
+            if(!transformHandle&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
             if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
           onPointerMove={(e) => { if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;} if(eraserSession.current)return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; const localPoint = local(e.clientX, e.clientY); const worldPoint = world(localPoint); if(!adminHidden) cursorChannel.current?.sendCursor(worldPoint.x, worldPoint.y); if (presentation) { if (presentationLaser) setPresentationLaserPos(localPoint); if (presentationSpotlight) setPresentationSpotlightPos(localPoint); } move(e); }}
           onContextMenu={(e) => {

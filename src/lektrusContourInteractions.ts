@@ -13,11 +13,11 @@ export function contourEraserHits(marks:ContourMark[],strokes:ContourStroke[],
  const factor=Math.max(.1,scale),radius=radiusPx/factor;
  const hitMarks=marks.filter(mark=>{
   const anchor=screenPoint(mark.lon,mark.lat),dx=point.x-anchor.x,dy=point.y-anchor.y;
-  const width=Math.max(36,Math.min(80,mark.text.length)*9+20)*labelUiScale/factor;
-  const pointOffset=mark.kind==="point"?11*labelUiScale/factor:0;
+  const width=Math.max(16,Math.min(80,mark.text.length)*4.8+12)*labelUiScale/factor;
+  const pointOffset=mark.kind==="point"?6*labelUiScale/factor:0;
   return dx>=pointOffset-(mark.kind==="point"?0:width/2)-radius
    &&dx<=pointOffset+(mark.kind==="point"?width:width/2)+radius
-   &&dy>=-19*labelUiScale/factor-radius&&dy<=9*labelUiScale/factor+radius;
+   &&dy>=-9*labelUiScale/factor-radius&&dy<=6*labelUiScale/factor+radius;
  }).map(mark=>mark.id);
  const hitStrokes=strokes.filter(line=>{
   for(let i=1;i<line.points.length;i++){
