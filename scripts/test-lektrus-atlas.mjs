@@ -579,8 +579,8 @@ const atlasEditorNoSettings=fs.readFileSync(new URL("../src/LektrusSchoolDiagram
 assert.ok(!atlasEditorNoSettings.includes('lektrus-atlas-settings-toggle'));
 assert.ok(!atlasEditorNoSettings.includes('atlasSettingsOpen'));
 assert.ok(map.includes('contourMarks:contourMarks.filter'));
-assert.ok(map.includes('onClick={()=>{setContourAction(id);setObjectMoveMode(false);'),
- "Choosing Eraser / Label / Pencil must switch from object movement to map editing");
+assert.ok(map.includes('setContourAction(id==="label"&&!contourConfig.allowLabels?"point":id)'),
+ "Toolbar should select its board-style icon tool");
 assert.ok(map.includes('Контурная карта')||map.includes('контурной карты'));
 assert.ok(common.includes('export function LektrusAtlasGraticule'));
 assert.ok(common.indexOf('export function LektrusAtlasGraticule')<
@@ -592,11 +592,15 @@ assert.ok(atlasEditorNoSettings.includes('lektrus-contour-editor-fullscreen'));
 assert.ok(atlasEditorNoSettings.includes('lektrus-contour-editor-options'));
 assert.ok(atlasEditorNoSettings.includes('!draft.contourTask?.trim()'));
 assert.ok(atlasEditorNoSettings.includes('onClick={onCancel}>Отмена'));
-assert.ok(atlasEditorNoSettings.includes('Сохранить на доску'));
+assert.ok(atlasEditorNoSettings.includes('Сохранить изменения'));
+assert.ok(atlasEditorNoSettings.includes('Создать контурное задание'));
+assert.ok(atlasEditorNoSettings.includes('Предпросмотр подложки'));
+assert.ok(atlasEditorNoSettings.includes('Лектрус')===false);
 const contourFormBranch=atlasEditorNoSettings.slice(
- atlasEditorNoSettings.indexOf('if(isContour&&draft.kind==="atlas")return createPortal('),
+ atlasEditorNoSettings.indexOf('if(isContour&&!existing&&draft.kind==="atlas")return createPortal('),
  atlasEditorNoSettings.indexOf(' const title=<label className="lektrus-school-field">')
 );
+assert.ok(contourFormBranch.includes('<LektrusSchoolDiagramView diagram={draft}/>'));
 assert.ok(contourFormBranch.includes('<LektrusSchoolDiagramView diagram={draft} onChange={set} editorMode/>'));
 assert.ok(contourFormBranch.includes('aria-expanded={contourSettingsOpen}'));
 assert.ok(contourFormBranch.includes('⚙ Задание и подложка'));
@@ -822,5 +826,44 @@ const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
 assert.ok(app.includes('if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}'));
 assert.ok(app.includes('className="screen-transform-overlay"'));
 assert.ok(app.includes('data-transform-handle={h}'));
+
+
+// A compact worksheet creator with passive preview coexists with the separate
+// full editor, which offers the six icon tools and no extra legend tool.
+const contourEditor=fs.readFileSync(new URL("../src/LektrusSchoolDiagramEditor.tsx",import.meta.url),"utf8");
+assert.ok(contourEditor.includes('if(isContour&&!existing&&draft.kind==="atlas")'));
+assert.ok(contourEditor.includes('studentMode=false'));
+assert.ok(contourEditor.includes('!studentMode&&contourSettingsOpen'));
+assert.ok(contourEditor.includes('contourMarks:draft.contourMarks?.filter('));
+assert.ok(contourEditor.includes('contourStrokes:allowed.allowDrawing?draft.contourStrokes:original.contourStrokes'));
+assert.ok(contourEditor.includes('paintedCountries:allowed.allowFill?draft.paintedCountries:original.paintedCountries'));
+const contourIcons=fs.readFileSync(new URL("../src/LektrusContourToolIcon.tsx",import.meta.url),"utf8");
+assert.ok(contourIcons.includes('select:"'));
+assert.ok(contourIcons.includes('hand:"'));
+assert.ok(contourIcons.includes('pen:"'));
+assert.ok(contourIcons.includes('fill:"'));
+assert.ok(contourIcons.includes('erase:"'));
+assert.ok(contourIcons.includes('annotation:"'));
+assert.ok(map.includes('<LektrusContourToolIcon name={icon}/>'));
+assert.ok(map.includes('["label","Подпись / знак","annotation"'));
+assert.ok(map.includes('["select","Выбор","select",true]'));
+assert.ok(map.includes('["hand","Рука","hand",true]'));
+assert.ok(!map.includes('Легенда</summary>'));
+assert.ok(map.includes('contourAction==="select"&&points.current.size<2'));
+assert.ok(map.includes('className="lektrus-atlas-header-territory"'));
+assert.ok(map.includes('aria-label="Выбрать территорию карты"'));
+assert.ok(map.includes('aria-label="Выбрать административную единицу"'));
+assert.ok(map.includes('{historical?<>'),"Only historical atlas retains its reference directory");
+assert.ok(map.includes('Выберите объект на карте, чтобы увидеть сведения о нём.'));
+assert.ok(!map.includes('lektrus-atlas-region-picker">'),"Territory should not appear in the details sidebar");
+const studentBoard=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+assert.ok(studentBoard.includes('studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}'));
+assert.ok(studentBoard.includes('contourTapRef.current=null;setSchoolEditorItem(item)'));
+assert.ok(studentBoard.includes('structurallyLockedForStudent(item)&&item.graphFigureId!=="contour-atlas"'));
+assert.ok(contourStyles.includes('.lektrus-contour-create-preview-map'));
+assert.ok(contourStyles.includes('aspect-ratio:2/1'));
+assert.ok(worksheetCss.includes('.lektrus-contour-tool-button.active'));
+assert.ok(worksheetCss.includes('@media(pointer:coarse)'));
+assert.ok(worksheetCss.includes('.lektrus-atlas-header-territory select'));
 
 console.log("Lektrus atlas: consolidated map modes, universal coordinates, stable zoom, legacy map migration, and geodata tests passed.");

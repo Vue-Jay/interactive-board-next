@@ -524,3 +524,30 @@
  .lektrus-contour-editor-footer-actions button{min-height:36px}
  .lektrus-contour-editor-map .lektrus-contour-task-label{display:none}
 }
+
+/* Creating a worksheet is again a compact form, with a real but passive
+   preview of the map layers chosen by the teacher. */
+.lektrus-school-editor--contour-task{height:min(850px,calc(100dvh - 16px))}
+.lektrus-contour-create-preview{
+ display:flex;flex-direction:column;gap:10px;margin-top:6px;
+ padding:12px;border:1px solid #cbddec;border-radius:12px;
+ background:#fff;min-width:0;
+}
+.lektrus-contour-create-preview>strong{
+ color:#345c82;font-size:12px;font-weight:800;
+}
+.lektrus-contour-create-preview-map{
+ width:100%;min-width:0;aspect-ratio:2/1;min-height:150px;
+ overflow:hidden;border:1px solid #bed5e9;border-radius:10px;
+ background:#dfedf9;pointer-events:none;
+}
+.lektrus-contour-create-preview-map>.lektrus-atlas{
+ width:100%;height:100%;border:0;border-radius:0;
+}
+.lektrus-contour-create-preview-map .lektrus-atlas-zoom,
+.lektrus-contour-create-preview-map .lektrus-atlas-precision{display:none!important}
+@media(max-width:680px){
+ .lektrus-school-editor--contour-task{height:100dvh}
+ .lektrus-contour-create-preview{padding:8px;gap:6px}
+ .lektrus-contour-create-preview-map{min-height:115px}
+}
