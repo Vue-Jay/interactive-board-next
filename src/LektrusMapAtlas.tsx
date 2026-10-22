@@ -24,7 +24,7 @@ import {atlasRegions,atlasRegionGroups,findAtlasRegion,atlasRegionCamera,atlasDi
 import {atlasModes,atlasModesFor,normalizeAtlasMode,historicalSnapshots,nearestSnapshotIndex,yearLabel} from "./lektrusAtlasModel";
 import {borderPrecision,geoFeatureName,hasAtlasName,isRussianAtlasName,featureLabelAnchor,loadAtlasLayer,loadHistoricalSnapshot,mapFeaturePath,
  modernDataProvider,historicDataProvider,projectGeography,featureMapPoint,featureSourceFacts,summariseNamedChanges,
-historicalFeatureFacts,historicalCountryName,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
+historicalFeatureFacts,historicalCountryName,historicalMapFeatures,loadHistoricalIndex,featureFocusBounds,featureLineMidpoint,type MapWindow,type HistoricalIndexRecord,type GeoCollection,type GeoFeature} from "./lektrusAtlasData";
 import {findHistoricalArticle,historicalRussianName,historyArticleUrl} from "./lektrusHistoryEncyclopedia";
 import {findHistoricalReference,historicalReferences,normalizeHistoricalReferenceName} from "./lektrusHistoricalReferences";
 type Props={diagram:AtlasDocument;onChange?:(next:AtlasDocument)=>void;editorMode?:boolean;userId?:string};
@@ -444,10 +444,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  // Historical geometry must never depend on the completeness of the Russian
  // label dictionary. Every polygon in the dated source is drawn; only labels
  // and directory entries require translated names.
- const mapSourceFeatures=useMemo(()=>mapSource?.features.filter(f=>
-  historical&&!modernReference?
-   (f.geometry?.type==="Polygon"||f.geometry?.type==="MultiPolygon"):
-   !!atlasDisplayName(f,snapshot.year,false))??[],
+ const mapSourceFeatures=useMemo(()=>historical&&!modernReference?
+  historicalMapFeatures(mapSource):
+  mapSource?.features.filter(f=>!!atlasDisplayName(f,snapshot.year,false))??[],
   [mapSource,snapshot.year,historical,modernReference]);
  // Quantized viewport tiles avoid rebuilding expensive high-resolution paths on every pointer move.
  const tileScale=Math.pow(2,Math.floor(Math.log2(scale)));
