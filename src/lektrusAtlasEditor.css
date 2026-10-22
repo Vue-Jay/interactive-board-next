@@ -378,3 +378,149 @@
  .lektrus-school-editor--contour-task .lektrus-school-footer{padding-top:6px;padding-bottom:6px}
  .lektrus-school-editor--contour-task .lektrus-school-footer button{min-height:40px}
 }
+
+/* Contour worksheet is edited in a dedicated full-screen map workspace.
+   The board version reuses the exact same map data, but never the editor UI. */
+.lektrus-contour-editor-backdrop{
+ padding:0!important;inset:0!important;
+ background:rgba(12,30,52,.78);backdrop-filter:blur(5px);
+}
+.lektrus-contour-editor-fullscreen{
+ box-sizing:border-box;display:flex;flex-direction:column;
+ position:relative;width:100vw;height:100dvh;max-height:100dvh;
+ max-width:none;min-height:0;min-width:0;margin:0;
+ padding:0;border:0;border-radius:0;background:#e8f1f8;overflow:hidden;
+}
+.lektrus-contour-editor-header{
+ flex:0 0 auto;min-height:64px;box-sizing:border-box;
+ display:flex;align-items:center;justify-content:space-between;gap:12px;
+ padding:10px max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));
+ background:#fff;border-bottom:1px solid #d5e4f1;
+}
+.lektrus-contour-editor-title{min-width:0;flex:1}
+.lektrus-contour-editor-title span{
+ display:block;font-size:10px;color:#6f8caa;letter-spacing:1.2px;font-weight:800
+}
+.lektrus-contour-editor-title h2{
+ font-size:clamp(15px,1.6vw,21px);margin:4px 0 0;font-weight:800;
+ color:#294d72;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.lektrus-contour-editor-header-actions{display:flex;gap:8px;align-items:center;flex:none}
+.lektrus-contour-editor-header-actions button{
+ border:1px solid #ccdaeb;background:#f7faff;color:#345d83;
+ border-radius:9px;min-height:40px;padding:8px 13px;cursor:pointer;font-size:12px;font-weight:750
+}
+.lektrus-contour-editor-header-actions button.active{background:#e2efff;border-color:#79a7d7}
+.lektrus-contour-editor-header-actions .lektrus-contour-editor-close{
+ width:40px;padding:0;font-size:23px;line-height:1;background:#fff
+}
+.lektrus-contour-editor-main{
+ position:relative;display:flex;flex:1;min-height:0;min-width:0;overflow:hidden
+}
+.lektrus-contour-editor-map{
+ flex:1;min-width:0;min-height:0;position:relative;overflow:hidden;
+ background:#dfeafa;
+}
+.lektrus-contour-editor-map>.lektrus-atlas{
+ width:100%;height:100%;border:0;border-radius:0;min-height:0;
+}
+.lektrus-contour-editor-map .lektrus-atlas-svg{
+ width:100%;height:100%;max-height:none;min-height:0;
+}
+.lektrus-contour-editor-map .lektrus-atlas--worksheet .lektrus-atlas-body{
+ flex:1 1 0;min-height:0
+}
+.lektrus-contour-editor-options{
+ box-sizing:border-box;position:absolute;left:0;top:0;bottom:0;z-index:25;
+ width:min(365px,calc(100% - 38px));min-width:0;
+ background:#fafdff;border-right:1px solid #d3e2f2;
+ box-shadow:12px 0 28px #1c3f6b38;padding:13px 16px 20px;
+ overflow-y:auto;overscroll-behavior:contain;
+}
+.lektrus-contour-editor-options-heading{
+ position:sticky;z-index:3;top:-13px;display:flex;
+ align-items:center;justify-content:space-between;gap:10px;
+ background:#fafdff;padding:6px 0 11px;margin-bottom:11px;
+ border-bottom:1px solid #d9e7f4;color:#345879;
+}
+.lektrus-contour-editor-options-heading strong{font-size:14px}
+.lektrus-contour-editor-options-heading button{
+ width:32px;height:32px;flex:none;background:#fff;
+ border:1px solid #d2dfec;border-radius:8px;font-size:20px;color:#477194;
+}
+.lektrus-contour-editor-options .lektrus-contour-assignment{
+ display:flex;flex-direction:column;gap:14px;
+}
+.lektrus-contour-editor-options .lektrus-school-field{
+ display:flex;flex-direction:column;gap:6px;color:#355d81;
+ font-size:12px;font-weight:750;
+}
+.lektrus-contour-editor-options .lektrus-school-field :is(input,textarea,select){
+ display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;
+ padding:10px 12px;font-size:13px;color:#24496e;
+ background:white;border:1px solid #cadbec;border-radius:9px;
+}
+.lektrus-contour-editor-options .lektrus-school-field textarea{
+ resize:vertical;min-height:90px;line-height:1.45;
+}
+.lektrus-contour-editor-options .lektrus-contour-task-options{
+ display:flex;flex-direction:column;gap:9px;
+}
+.lektrus-contour-editor-options .lektrus-contour-task-section{
+ min-width:0;border:1px solid #d0e2f1;border-radius:10px;
+ background:#fff;overflow:hidden;
+}
+.lektrus-contour-editor-options .lektrus-contour-task-section summary{
+ display:flex;align-items:center;gap:6px;justify-content:space-between;
+ min-height:47px;padding:10px;color:#386388;cursor:pointer;font-weight:750;font-size:12px;
+}
+.lektrus-contour-editor-options .lektrus-contour-task-choice-grid{
+ display:grid;grid-template-columns:1fr;gap:4px;padding:7px 10px;
+}
+.lektrus-contour-editor-options .lektrus-contour-task-choice{
+ display:flex;align-items:center;gap:9px;min-height:39px;font-size:12px;
+}
+.lektrus-contour-editor-options .lektrus-contour-task-choice input{
+ width:18px;height:18px;accent-color:#3978b3;
+}
+.lektrus-contour-editor-footer{
+ flex:0 0 auto;min-height:62px;padding:10px max(16px,env(safe-area-inset-right))
+ max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+ box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;
+ gap:12px;background:#fff;border-top:1px solid #d6e5f1;
+}
+.lektrus-contour-editor-hint{
+ font-size:11px;line-height:1.4;color:#6283a2;min-width:0;
+}
+.lektrus-contour-editor-footer-actions{flex:none;display:flex;align-items:center;gap:9px}
+.lektrus-contour-editor-footer-actions button{
+ border-radius:9px;min-height:43px;padding:9px 16px;white-space:nowrap;
+ font-size:12px;font-weight:750;
+}
+.lektrus-contour-editor-footer-actions .lektrus-school-primary{
+ border-color:#326bb6;background:#326bb6;color:#fff;
+}
+@media(max-width:680px){
+ .lektrus-contour-editor-header{
+  padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right))
+   8px max(10px,env(safe-area-inset-left));gap:6px;min-height:55px;
+ }
+ .lektrus-contour-editor-title span{font-size:9px}
+ .lektrus-contour-editor-title h2{font-size:15px}
+ .lektrus-contour-editor-header-actions{gap:5px}
+ .lektrus-contour-editor-header-actions button{font-size:11px;min-height:38px;padding:7px}
+ .lektrus-contour-editor-options{width:min(355px,calc(100% - 24px));padding:11px}
+ .lektrus-contour-editor-footer{min-height:58px;padding:7px max(9px,env(safe-area-inset-right))
+  max(8px,env(safe-area-inset-bottom)) max(9px,env(safe-area-inset-left))}
+ .lektrus-contour-editor-hint{display:none}
+ .lektrus-contour-editor-footer-actions{width:100%;gap:7px}
+ .lektrus-contour-editor-footer-actions button{flex:1;min-width:0;padding:8px 10px;font-size:12px}
+ .lektrus-contour-editor-footer-actions .lektrus-school-primary{flex:1.4}
+ .lektrus-contour-editor-map .lektrus-contour-workspace{padding:5px 7px}
+}
+@media(max-height:490px) and (orientation:landscape){
+ .lektrus-contour-editor-header{min-height:43px;padding-top:4px;padding-bottom:4px}
+ .lektrus-contour-editor-footer{min-height:45px;padding-top:3px;padding-bottom:3px}
+ .lektrus-contour-editor-footer-actions button{min-height:36px}
+ .lektrus-contour-editor-map .lektrus-contour-task-label{display:none}
+}
