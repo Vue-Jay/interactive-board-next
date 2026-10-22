@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
-import type {AtlasDocument,AtlasMode,ContourStroke} from "./lektrusAtlasModel";
+import type {AtlasDocument,AtlasMode,ContourMark,ContourStroke} from "./lektrusAtlasModel";
+import {contourEraserHits,moveContourMark} from "./lektrusContourInteractions";
 import {defaultContourAssignment} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
 import {clusterMineralMapPoints} from "./lektrusAtlasMineralClusters";
@@ -77,7 +78,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  // This reuses the measured relief tiles, without turning every click on
  // the mineral map into an elevation/coordinate query.
  const mineralTerrainEnabled=mineralContext&&d.hypsometry!==false;
- const [paintColor,setPaintColor]=useState("#f3b778");
+ const [paintColor,setPaintColor]=useState("#000000");
  const [paintRegions,setPaintRegions]=useState(false);
  const [contourAction,setContourAction]=useState<"fill"|"label"|"point"|"pen"|"erase">("label");
  useEffect(()=>{
@@ -91,6 +92,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const [legendMeaning,setLegendMeaning]=useState("");
  const contourDrawing=useRef<Array<[number,number]>>([]);
  const contourLivePath=useRef<SVGPathElement|null>(null);
+ const mapSvgRef=useRef<SVGSVGElement|null>(null);
+ const eraserGesture=useRef<{pointerId:number;marks:Set<string>;strokes:Set<string>;fills:Set<string>}|null>(null);
+ const [pendingErasure,setPendingErasure]=useState<{marks:string[];strokes:string[];fills:string[]}>({marks:[],strokes:[],fills:[]});
+ const markerGesture=useRef<{pointerId:number;mark:ContourMark;start:{x:number;y:number};moved:boolean}|null>(null);
+ const [previewContourMark,setPreviewContourMark]=useState<ContourMark|null>(null);
+ const [selectedContourMarkId,setSelectedContourMarkId]=useState<string|null>(null);
  const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[],contourLegend=d.contourLegend??[];
  const [contourHistory,setContourHistory]=useState<Array<{marks:typeof contourMarks;strokes:typeof contourStrokes;
   fills:Record<string,string>}>>([]);
@@ -801,6 +808,95 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
  const zoomAt=(next:number,point=lastPointer.current)=>{
   scheduleCamera(zoomAtlasCamera(cameraRef.current,next,point));
  };
+ // All annotation pointer positions use the SVG root, never the label's
+ // small bounding box. This keeps dragging correct at any atlas zoom and on
+ // mobile viewBox letterboxing.
+ const annotationWorld=(e:{clientX:number;clientY:number})=>{
+  const rect=mapSvgRef.current?.getBoundingClientRect();
+  if(!rect)return null;
+  const factor=Math.min(rect.width/900,rect.height/450)||1;
+  return worldPoint({x:(e.clientX-rect.left-(rect.width-900*factor)/2)/factor,
+   y:(e.clientY-rect.top-(rect.height-450*factor)/2)/factor});
+ };
+ const brushContour=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  const gesture=eraserGesture.current,point=annotationWorld(e);
+  if(!gesture||gesture.pointerId!==e.pointerId||!point)return;
+  const hits=contourEraserHits(contourMarks,contourStrokes,point,cameraRef.current.scale,14);
+  let changed=false;
+  for(const id of hits.marks)if(!gesture.marks.has(id)){gesture.marks.add(id);changed=true}
+  for(const id of hits.strokes)if(!gesture.strokes.has(id)){gesture.strokes.add(id);changed=true}
+  // A filled polygon is also student work: erase its colour without panning.
+  // elementFromPoint works after SVG pointer capture and supports swiping.
+  const polygon=(e.target as Element).closest<SVGElement>("[data-contour-fill-key]")??
+   document.elementFromPoint(e.clientX,e.clientY)?.closest<SVGElement>("[data-contour-fill-key]");
+  const key=polygon?.getAttribute("data-contour-fill-key");
+  if(key&&painted[key]&&!gesture.fills.has(key)){gesture.fills.add(key);changed=true}
+  if(changed)setPendingErasure({marks:[...gesture.marks],strokes:[...gesture.strokes],fills:[...gesture.fills]});
+ };
+ const beginContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  e.preventDefault();e.stopPropagation();
+  if(eraserGesture.current)return;
+  eraserGesture.current={pointerId:e.pointerId,marks:new Set(),strokes:new Set(),fills:new Set()};
+  e.currentTarget.setPointerCapture(e.pointerId);
+  brushContour(e);
+ };
+ const moveContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  e.stopPropagation();brushContour(e);
+ };
+ const endContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  e.stopPropagation();
+  const gesture=eraserGesture.current;
+  if(!gesture||gesture.pointerId!==e.pointerId)return;
+  brushContour(e);
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  eraserGesture.current=null;
+  setPendingErasure({marks:[],strokes:[],fills:[]});
+  if(!gesture.marks.size&&!gesture.strokes.size&&!gesture.fills.size)return;
+  captureContour();
+  onChange?.({...d,contourMarks:contourMarks.filter(mark=>!gesture.marks.has(mark.id)),
+   contourStrokes:contourStrokes.filter(line=>!gesture.strokes.has(line.id)),
+   paintedCountries:Object.fromEntries(Object.entries(painted).filter(([key])=>!gesture.fills.has(key)))});
+ };
+ const cancelContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(eraserGesture.current?.pointerId!==e.pointerId)return;
+  e.stopPropagation();
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  eraserGesture.current=null;setPendingErasure({marks:[],strokes:[],fills:[]});
+ };
+ const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
+  if(contourAction==="erase"||!onChange)return;
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  const start=annotationWorld(e);if(!start)return;
+  e.preventDefault();e.stopPropagation();
+  markerGesture.current={pointerId:e.pointerId,mark,start,moved:false};
+  setSelectedContourMarkId(mark.id);setPreviewContourMark(null);
+  e.currentTarget.setPointerCapture(e.pointerId);
+ };
+ const moveContourMarkDrag=(e:ReactPointerEvent<SVGGElement>)=>{
+  const gesture=markerGesture.current;
+  if(!gesture||gesture.pointerId!==e.pointerId)return;
+  e.preventDefault();e.stopPropagation();
+  const point=annotationWorld(e);if(!point)return;
+  if(!gesture.moved&&Math.hypot(point.x-gesture.start.x,point.y-gesture.start.y)<2/cameraRef.current.scale)return;
+  gesture.moved=true;
+  setPreviewContourMark(moveContourMark(gesture.mark,gesture.start,point));
+ };
+ const endContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,cancelled=false)=>{
+  const gesture=markerGesture.current;
+  if(!gesture||gesture.pointerId!==e.pointerId)return;
+  e.stopPropagation();
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  markerGesture.current=null;setPreviewContourMark(null);
+  if(cancelled||!gesture.moved)return;
+  const point=annotationWorld(e);
+  if(!point)return;
+  const moved=moveContourMark(gesture.mark,gesture.start,point);
+  if(moved.lon===gesture.mark.lon&&moved.lat===gesture.mark.lat)return;
+  captureContour();
+  onChange?.({...d,contourMarks:contourMarks.map(mark=>mark.id===gesture.mark.id?moved:mark)});
+ };
+ const contourEraser=mode==="contour"&&contourAction==="erase"&&!!onChange;
  const contourFreehand=mode==="contour"&&contourAction==="pen"&&contourConfig.allowDrawing&&!!onChange;
  const contourPoint=(p:{x:number;y:number}):[number,number]=>[
   Math.max(-180,Math.min(180,p.x/2.5-180)),Math.max(-90,Math.min(90,90-p.y/2.5))];
@@ -1011,7 +1107,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
    mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство"));
   setSelectedMarker(null);
  };
- return <div className={"lektrus-atlas "+(isWorksheet?"lektrus-atlas--worksheet ":"")+(isWorksheet&&objectMoveMode?"lektrus-atlas--board-selection ":"")+(historical?"lektrus-atlas-history ":"")+(editorMode?"lektrus-atlas--editor ":"")+(inspectorOpen?"":"lektrus-atlas--inspector-hidden")} aria-label={d.title}
+ return <div className={"lektrus-atlas "+(isWorksheet?"lektrus-atlas--worksheet ":"")+(isWorksheet&&objectMoveMode?"lektrus-atlas--board-selection ":"")+(isWorksheet&&!objectMoveMode&&contourAction==="erase"?"lektrus-atlas--erasing ":"")+(historical?"lektrus-atlas-history ":"")+(editorMode?"lektrus-atlas--editor ":"")+(inspectorOpen?"":"lektrus-atlas--inspector-hidden")} aria-label={d.title}
   onPointerDown={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onPointerMove={e=>{if(!objectMoveMode)e.stopPropagation()}}
   onPointerUp={e=>{if(!objectMoveMode)e.stopPropagation()}}
@@ -1048,13 +1144,13 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      <button type="button" onClick={()=>setRefresh(i=>i+1)}>Повторить загрузку</button>
      <small>Границы не заменяются вымышленными. Для доступа необходим интернет.</small>
     </div>}
-    <svg viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
+    <svg ref={mapSvgRef} viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
      onClick={objectMoveMode?undefined:pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
-     onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}
-     onPointerMove={objectMoveMode?undefined:contourFreehand?moveContourStroke:onMove}
-     onPointerUp={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}
-     onPointerCancel={objectMoveMode?undefined:contourFreehand?cancelContourStroke:onPointerEnd}
+     onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:onPointerDown}
+     onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:onMove}
+     onPointerUp={objectMoveMode?undefined:contourEraser?endContourErase:contourFreehand?endContourStroke:onPointerEnd}
+     onPointerCancel={objectMoveMode?undefined:contourEraser?cancelContourErase:contourFreehand?cancelContourStroke:onPointerEnd}
      onWheel={e=>{
       if(objectMoveMode)return;
       e.stopPropagation();e.preventDefault();
@@ -1071,9 +1167,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        {shapes.map(s=>{
         const precise=historical?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
-        const fill=mode==="contour"?(painted[String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name)]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
+        const fillKey=String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name);
+        const fill=mode==="contour"?(pendingErasure.fills.includes(fillKey)?"#fffdfa":painted[fillKey]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
          mode==="political"?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
+         data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}
          fillOpacity={mineralTerrainEnabled?.56:1}
          stroke={isWorksheet&&!contourConfig.showBorders?"none":highlighted||s.name===selectedTitle?"#df793e":mode==="minerals"?"#a4aea2":mode==="contour"?"#8c9eaa":"#819fb2"}
          strokeWidth={highlighted||s.name===selectedTitle?1.9:mode==="minerals"?.4:historical&&precise===1?.75:.65}
@@ -1098,7 +1196,8 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
         const key="region:"+String(f.feature.properties?.adm1_code||f.feature.properties?.ADM1_CODE||f.feature.properties?.iso_3166_2||
          f.feature.properties?.name_ru||f.feature.properties?.name||geoFeatureName(f.feature));
         return <path key={"province-"+f.id} d={f.path} vectorEffect="non-scaling-stroke"
-         fill={mode==="contour"&&paintRegions?(painted[key]??"#fafcfb"):mode==="political"?"transparent":"none"}
+         fill={mode==="contour"&&paintRegions?(pendingErasure.fills.includes(key)?"#fafcfb":painted[key]??"#fafcfb"):mode==="political"?"transparent":"none"}
+         data-contour-fill-key={isWorksheet&&painted[key]?key:undefined}
          onClick={e=>{e.stopPropagation();if(mode==="political")selectFeature(f.feature,"Административная единица");
           else paintProvince(f.feature)}}><title>{geoFeatureName(f.feature)}</title></path>;
        })}
@@ -1277,25 +1376,49 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
       {(isWorksheet?contourConfig.showGrid:d.showGrid)&&<LektrusAtlasGraticule scale={scale} viewport={gridViewport}/>}
       {mode==="contour"&&<g className="lektrus-atlas-contour-work">
        {contourStrokes.map(line=><path key={line.id} fill="none" stroke={line.color}
-        strokeWidth={2/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents={contourAction==="erase"?"stroke":"none"}
-        onClick={e=>{if(contourAction!=="erase"||!onChange)return;e.stopPropagation();captureContour();
-         onChange({...d,contourStrokes:contourStrokes.filter(v=>v.id!==line.id)})}}
+        strokeWidth={2/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"
+        opacity={pendingErasure.strokes.includes(line.id)?.17:1}
         d={line.points.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
-       {contourMarks.map(mark=>{const [x,y]=projectGeography(mark.lon,mark.lat);
+       {contourMarks.map(stored=>{const mark=previewContourMark?.id===stored.id?previewContourMark:stored;
+        const [x,y]=projectGeography(mark.lon,mark.lat);
+        const width=Math.max(29,Math.min(80,mark.text.length)*6.3+16);
+        const left=mark.kind==="point"?7:-width/2,selected=selectedContourMarkId===mark.id;
         return <g key={mark.id} transform={`translate(${x} ${y}) scale(${1/scale})`}
-         className="lektrus-atlas-contour-mark" role="button" tabIndex={0}
-         onClick={e=>{e.stopPropagation();if(contourAction==="erase"&&onChange){captureContour();
-          onChange({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}}
-         onDoubleClick={e=>{e.stopPropagation();captureContour();onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
-         onContextMenu={e=>{e.preventDefault();e.stopPropagation();captureContour();onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
-         onKeyDown={e=>{if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();captureContour();
-          onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}}>
+         className={"lektrus-atlas-contour-mark lektrus-contour-label-object"+(selected?" selected":"")}
+         role="button" tabIndex={0} aria-label={"Передвинуть обозначение: "+(mark.text||"Знак")}
+         opacity={pendingErasure.marks.includes(mark.id)?.2:1}
+         onPointerDown={e=>startContourMarkDrag(e,stored)}
+         onPointerMove={moveContourMarkDrag}
+         onPointerUp={e=>endContourMarkDrag(e)}
+         onPointerCancel={e=>endContourMarkDrag(e,true)}
+         onClick={e=>{e.stopPropagation();if(contourAction!=="erase")setSelectedContourMarkId(mark.id)}}
+         onDoubleClick={e=>{e.stopPropagation();if(contourAction==="erase")return;
+          captureContour();setSelectedContourMarkId(null);
+          onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
+         onContextMenu={e=>{e.preventDefault();e.stopPropagation();
+          captureContour();setSelectedContourMarkId(null);
+          onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)})}}
+         onKeyDown={e=>{
+          if(e.key==="Delete"||e.key==="Backspace"){
+           e.preventDefault();e.stopPropagation();captureContour();setSelectedContourMarkId(null);
+           onChange?.({...d,contourMarks:contourMarks.filter(v=>v.id!==mark.id)});
+          }else if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)&&onChange){
+           e.preventDefault();e.stopPropagation();
+           const step=(e.shiftKey?10:1)/Math.max(.1,cameraRef.current.scale);
+           const dx=e.key==="ArrowLeft"?-step:e.key==="ArrowRight"?step:0;
+           const dy=e.key==="ArrowUp"?-step:e.key==="ArrowDown"?step:0;
+           captureContour();onChange({...d,contourMarks:contourMarks.map(v=>v.id===mark.id?
+            moveContourMark(v,{x:0,y:0},{x:dx,y:dy}):v)});
+          }
+         }}>
+         <rect className="lektrus-contour-label-background"
+          x={left} y="-14" width={width} height="21" rx="5" strokeWidth="1"/>
          {mark.kind==="point"&&<circle r="3.5" fill={mark.color} stroke="#fff" strokeWidth="1"/>}
-         {mark.text&&<text x={mark.kind==="point"?6:0} y={mark.kind==="point"?2:0}
-          textAnchor={mark.kind==="point"?"start":"middle"} fill={mark.color} fontSize="10"
-          stroke="#fff" strokeWidth="2.3" paintOrder="stroke" fontWeight="650">{mark.text}</text>}
-         <title>{mark.text||"Условный знак"} · ПКМ или двойное нажатие для удаления</title>
+         {mark.text&&<text x={mark.kind==="point"?left+width/2:0} y="0"
+          textAnchor="middle" fill={mark.color} fontSize="10"
+          fontWeight="650">{mark.text}</text>}
+         <title>{mark.text||"Условный знак"} · Перетащите для перемещения, стрелки для точной настройки, Delete для удаления</title>
         </g>})}
        <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={2/scale}
         strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
@@ -1810,7 +1933,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        ["pen","Карандаш",contourConfig.allowDrawing],["fill","Заливка",contourConfig.allowFill],
        ["erase","Ластик",true]] as const).filter(([, ,allowed])=>allowed)
        .map(([id,title])=><button type="button" key={id} title={title} aria-pressed={contourAction===id}
-        className={contourAction===id?"active":""} onClick={()=>setContourAction(id)}>{title}</button>)}
+        className={contourAction===id&&!objectMoveMode?"active":""}
+        onClick={()=>{setContourAction(id);setObjectMoveMode(false);
+         points.current.clear();pointer.current=null;pinch.current=null;dragged.current=false}}>{title}</button>)}
       <button type="button" title="Отменить последнюю правку" disabled={!contourHistory.length}
        onClick={contourUndo}>↶</button>
 
