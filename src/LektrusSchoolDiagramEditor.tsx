@@ -54,10 +54,13 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
  const [error,setError]=useState("");
  const set=(data:SchoolDiagram)=>{setDraft(data);setError("")};
  const finish=()=>{
+  if(isContour&&draft.kind==="atlas"&&!draft.contourTask?.trim()){
+   setError("Напишите задание для ученика.");return;
+  }
   if(!isSchoolDiagram(draft)){setError("Проверьте данные: название, количество элементов и значения.");return}
   onSave({...item,schoolDiagram:structuredClone(draft),text:draft.title});
  };
- const close=()=>{if(existing)finish();else onCancel()};
+ const close=()=>{if(isContour){onCancel();return}if(existing)finish();else onCancel()};
  useEffect(()=>{
   const onKey=(e:KeyboardEvent)=>{
    if(e.key==="Escape"){e.preventDefault();e.stopImmediatePropagation();close()}
@@ -65,6 +68,31 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
   window.addEventListener("keydown",onKey,true);
   return()=>window.removeEventListener("keydown",onKey,true);
  });
+ if(isContour&&draft.kind==="atlas")return createPortal(
+  <div className="lektrus-school-backdrop lektrus-contour-task-backdrop"
+   role="presentation" onPointerDown={e=>e.stopPropagation()}>
+   <section className="lektrus-school-editor lektrus-school-editor--contour-task"
+    role="dialog" aria-modal="true" aria-labelledby="lektrus-contour-task-heading">
+    <header className="lektrus-school-header">
+     <h2 id="lektrus-contour-task-heading">{existing?"Изменить задание":"Создать задание"}</h2>
+     <button type="button" className="lektrus-school-close" aria-label="Закрыть без сохранения"
+      onClick={onCancel}>×</button>
+    </header>
+    <form className="lektrus-contour-task-form" onSubmit={e=>{e.preventDefault();finish()}}>
+     <div className="lektrus-contour-task-scroll">
+      <LektrusContourAssignmentSetup value={draft} onChange={set}/>
+     </div>
+     <footer className="lektrus-school-footer">
+      {error&&<span className="lektrus-contour-task-error" role="alert">{error}</span>}
+      <button type="button" className="lektrus-school-secondary"
+       onClick={onCancel}>Отмена</button>
+      <button type="submit" className="lektrus-school-primary">
+       {existing?"Сохранить":"Добавить на доску"}
+      </button>
+     </footer>
+    </form>
+   </section>
+  </div>,document.body);
  const title=<label className="lektrus-school-field">Название схемы
   <input value={draft.title} maxLength={120} onChange={e=>set({...draft,title:max(e.target.value,120)})}
    placeholder="Введите название учебной схемы"/></label>;
@@ -75,9 +103,6 @@ export default function LektrusSchoolDiagramEditor({item,existing,onCancel,onSav
     <button type="button" className="lektrus-school-close" onClick={close} aria-label={existing?"Сохранить и закрыть":"Отменить создание"}>×</button>
    </header>
    <div className="lektrus-school-body">
-    {isContour&&draft.kind==="atlas"&&<aside className="lektrus-contour-config-sidebar">
-     <LektrusContourAssignmentSetup value={draft} onChange={set}/>
-    </aside>}
     {!isAtlas&&<div className="lektrus-school-controls">
      {title}
      {draft.kind==="programming"&&<LektrusProgrammingControls diagram={draft} onChange={set}/>}
