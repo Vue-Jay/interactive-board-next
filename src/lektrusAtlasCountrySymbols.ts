@@ -42,6 +42,9 @@ const isCountryPolygon=(feature:GeoFeature)=>feature.geometry?.type==="Polygon"|
 export function atlasCountryIso(feature:GeoFeature):string|null{
  if(!isCountryPolygon(feature))return null;
  const props=feature.properties??{};
+ // A province may carry its parent country ISO code: never give it a country flag.
+ if(props.adm1_code!==undefined||props.ADM1_CODE!==undefined||
+  props.iso_3166_2!==undefined)return null;
  for(const key of ["ISO_A2","ISO_A2_EH","WB_A2","iso_a2","iso_3166_1_alpha_2"]){
   const iso=allowedCode(props[key]);
   if(iso&&russianNames.of(iso)!==iso)return iso;
@@ -69,7 +72,7 @@ const validHistoricalNames:Readonly<Record<string,string[]>>={
  GB:["United Kingdom","Great Britain","United Kingdom of Great Britain and Northern Ireland"],
  RU:["Russian Federation","Russia"],
  FR:["France","French Republic"],
- DE:["Germany","Federal Republic of Germany","West Germany"],
+ DE:["Germany","Federal Republic of Germany"],
  IT:["Italy","Italian Republic"],
  CA:["Canada"],JP:["Japan"],CN:["China","People's Republic of China"],
  IN:["India","Republic of India"],
