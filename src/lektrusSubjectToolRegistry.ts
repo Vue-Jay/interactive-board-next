@@ -42,6 +42,8 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"ru-orthography",label:"Орфографический тренажёр",description:"Орфограммы с пропусками и проверкой ответов на доске",group:"Русский язык · орфография",subjects:["русский язык"]},
   {id:"maps-atlas",label:"Географические карты",description:"Единая подложка: страны, контурная, физическая карта, рельеф, воды и города",group:"География · карты",subjects:["география"]},
   {id:"contour-atlas",label:"Контурная карта",description:"Отдельная контурная карта с раскрашиванием стран, маркером и очисткой",group:"География · карты",subjects:["география"]},
+  {id:"geo-matching",label:"Сопоставление",description:"Флаги, страны и столицы: соединение пар, проверка и смена направления",group:"География · задания",subjects:["география"]},
+  {id:"geo-question-cards",label:"Карточки вопросов",description:"Карточки с флагами, странами и столицами: переворот и самопроверка",group:"География · задания",subjects:["география"]},
   {id:"history-atlas",label:"Исторические карты",description:"Единая подложка: границы эпох, исторические события и ползунок времени",group:"История · карты",subjects:["история"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
@@ -53,7 +55,7 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
-  if(id==="info-programming"||id==="info-circuit"||id==="bio-dna"||id==="bio-taxonomy"||id==="bio-division"||id==="info-encoding"||id==="bio-genetics"||id==="info-logic"||id==="maps-atlas"||id==="history-atlas"||id==="contour-atlas"||id==="bio-cell"||id==="bio-food-chain"||id==="history-timeline"||
+  if(id==="info-programming"||id==="info-circuit"||id==="bio-dna"||id==="bio-taxonomy"||id==="bio-division"||id==="info-encoding"||id==="bio-genetics"||id==="info-logic"||id==="maps-atlas"||id==="history-atlas"||id==="contour-atlas"||id==="geo-matching"||id==="geo-question-cards"||id==="bio-cell"||id==="bio-food-chain"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||
      id==="ru-morphemes"||id==="history-family-tree"||id==="language-flashcards"||
