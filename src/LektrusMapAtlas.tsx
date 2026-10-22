@@ -806,11 +806,29 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   Math.max(-180,Math.min(180,p.x/2.5-180)),Math.max(-90,Math.min(90,90-p.y/2.5))];
  const beginContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
-  e.stopPropagation();e.currentTarget.setPointerCapture(e.pointerId);
+  e.stopPropagation();
+  // Allow two-finger navigation even if the student left the pencil selected.
+  // The second touch cancels the provisional ink stroke and starts a map-only
+  // pinch, never a board pinch or an accidentally persisted drawing.
+  if(e.pointerType==="touch"){
+   onPointerDown(e);
+   if(pinch.current){
+    contourDrawing.current=[];
+    contourLivePath.current?.setAttribute("d","");
+    e.currentTarget.setPointerCapture(e.pointerId);
+    return;
+   }
+  }
+  e.currentTarget.setPointerCapture(e.pointerId);
   contourDrawing.current=[contourPoint(worldPoint(localPoint(e)))];
   if(contourLivePath.current)contourLivePath.current.setAttribute("stroke",paintColor);
  };
  const moveContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.pointerType==="touch"){
+   if(pinch.current){onMove(e);return}
+   // Keep the first touch current for a possible second-finger pinch.
+   if(points.current.has(e.pointerId))points.current.set(e.pointerId,localPoint(e));
+  }
   if(!contourDrawing.current.length)return;
   const point=contourPoint(worldPoint(localPoint(e)));
   const pts=contourDrawing.current,last=pts[pts.length-1];
@@ -821,14 +839,22 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   contourLivePath.current?.setAttribute("d",path);
  };
  const endContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
-  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  const wasPinching=e.pointerType==="touch"&&(!!pinch.current||contourDrawing.current.length===0);
+  if(e.pointerType==="touch")onPointerEnd(e);
+  else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const points=contourDrawing.current;contourDrawing.current=[];
   contourLivePath.current?.setAttribute("d","");
-  if(points.length<2||contourStrokes.length>=140)return;
+  if(wasPinching||points.length<2||contourStrokes.length>=140)return;
   captureContour();
   const next:ContourStroke={id:globalThis.crypto?.randomUUID?.()??String(Date.now())+Math.random(),
    points,color:paintColor};
   onChange?.({...d,contourStrokes:[...contourStrokes,next]});
+ };
+ const cancelContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  contourDrawing.current=[];
+  contourLivePath.current?.setAttribute("d","");
+  if(e.pointerType==="touch")onPointerEnd(e);
+  else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
  };
  const onPointerDown=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
@@ -1028,7 +1054,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
      onPointerDown={objectMoveMode?undefined:contourFreehand?beginContourStroke:onPointerDown}
      onPointerMove={objectMoveMode?undefined:contourFreehand?moveContourStroke:onMove}
      onPointerUp={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}
-     onPointerCancel={objectMoveMode?undefined:contourFreehand?endContourStroke:onPointerEnd}
+     onPointerCancel={objectMoveMode?undefined:contourFreehand?cancelContourStroke:onPointerEnd}
      onWheel={e=>{
       if(objectMoveMode)return;
       e.stopPropagation();e.preventDefault();
