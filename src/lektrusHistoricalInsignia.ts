@@ -21,6 +21,11 @@ const other=(id:string,from:number,to:number,file:string,title:string,kind:"bann
 export const historicalStateInsignia:readonly HistoricalInsignia[]=[
  other("rome",50,300,"Vexilloid of the Roman Empire.svg","Современная реконструкция римского военного вексиллума SPQR: не единый государственный флаг","banner",true),
  other("austria-hungary",1869,1918,"Ensign of Austro-Hungarian civil fleet (1869-1918).svg","Торговый морской флаг Австро-Венгрии, а не единый флаг обоих государств монархии","banner",true),
+ other("spain",1506,1785,"Flag of Cross of Burgundy.svg","Бургундский крест: военное знамя Испанской монархии и её владений, не единственный государственный флаг","banner",true),
+ other("new-spain",1535,1785,"Flag of Cross of Burgundy.svg","Бургундский крест войск Испанской монархии в Новой Испании, не отдельный флаг вице-королевства","banner",true),
+ other("peru-viceroyalty",1542,1785,"Flag of Cross of Burgundy.svg","Испанское военное знамя, использовавшееся и в вице-королевстве Перу, не собственный флаг Перу","banner",true),
+ other("new-granada",1717,1785,"Flag of Cross of Burgundy.svg","Флаг испанских военных сил в американских владениях, не официальный отдельный флаг Новой Гранады","banner",true),
+ other("rio-plata",1776,1785,"Flag of Cross of Burgundy.svg","Бургундский крест Испанской монархии, не самостоятельная государственная символика Рио-де-ла-Плата","banner",true),
  other("british",1801,1997,"Flag of the United Kingdom.svg","Флаг Великобритании как государства-метрополии, не отдельный флаг всей колониальной империи","banner",false),
  other("delhi-sultanate",1350,1400,"Delhi Sultanate Flag.svg","Знак правителя Дели с Каталанского атласа 1375 года; не доказан единый официальный флаг султаната","banner",true),
  other("vijayanagara",1365,1400,"Flag of the King of Vijayanagara in the Catalan Atlas (1375).png","Изображение знамени правителя Виджаянагары с Каталанского атласа 1375 года","banner",true),
