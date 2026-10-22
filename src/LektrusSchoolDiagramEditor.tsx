@@ -15,7 +15,7 @@ import LektrusLanguageSocialControls from "./LektrusLanguageSocialControls";
 import LektrusBiologyExtensionControls from "./LektrusBiologyExtensionControls";
 import LektrusLogicCircuitControls from "./LektrusLogicCircuitControls";
 import LektrusProgrammingControls from "./LektrusProgrammingControls";
-type Props={item:Item;existing:boolean;studentMode?:boolean;onCancel:()=>void;onSave:(item:Item)=>void};
+type Props={item:Item;existing:boolean;studentMode?:boolean;userId?:string;onCancel:()=>void;onSave:(item:Item)=>void};
 const max=(s:string,n:number)=>s.slice(0,n);
 const roleNames:Record<FoodRole,string>={producer:"Продуцент",consumer:"Консумент",decomposer:"Редуцент"};
 const keys=(cell:"plant"|"animal"):CellOrganelle[]=>cell==="plant"?
@@ -40,7 +40,7 @@ const titles:Record<SchoolDiagramId,string>={
  "ru-sentence-builder":"Конструктор предложений","language-sentence-builder":"Составление предложений","civics-structure":"Государственное устройство и общество","literature-analysis":"Анализ произведения"
 };
 const newKey=()=>compatibleRandomUUID();
-export default function LektrusSchoolDiagramEditor({item,existing,studentMode=false,onCancel,onSave}:Props){
+export default function LektrusSchoolDiagramEditor({item,existing,studentMode=false,userId="",onCancel,onSave}:Props){
  const id=isSchoolDiagramId(item.graphFigureId)?item.graphFigureId:"bio-cell";
  const [draft,setDraft]=useState<SchoolDiagram>(()=>{
   if(isSchoolDiagram(item.schoolDiagram)){
@@ -128,7 +128,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
       <LektrusContourAssignmentSetup value={draft} onChange={set}/>
      </aside>}
      <div className="lektrus-contour-editor-map">
-      <LektrusSchoolDiagramView diagram={draft} onChange={set} editorMode/>
+      <LektrusSchoolDiagramView diagram={draft} onChange={set} editorMode userId={userId}/>
      </div>
     </div>
     <footer className="lektrus-contour-editor-footer">
@@ -251,7 +251,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
     </div>}
     <div className="lektrus-school-preview-area">
      {!isAtlas&&<div className="lektrus-school-preview-heading"><strong>Предпросмотр</strong><span>Так объект будет выглядеть на доске</span></div>}
-     <div className="lektrus-school-preview"><LektrusSchoolDiagramView diagram={draft} onChange={isAtlas?set:undefined} editorMode={isAtlas}/></div>
+     <div className="lektrus-school-preview"><LektrusSchoolDiagramView diagram={draft} onChange={isAtlas?set:undefined} editorMode={isAtlas} userId={userId}/></div>
     </div>
    </div>
    <footer className="lektrus-school-footer">
