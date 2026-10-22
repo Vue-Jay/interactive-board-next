@@ -13,10 +13,6 @@ export default function LektrusGeographyTrainingControls({diagram:d,onChange}:Pr
   (region==="Все"||c.region===region)&&
   (!query.trim()||c.name.toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru"))||
    c.capital.toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru"))));
- const replace=(i:number,code:string)=>{
-  if(used.has(code))return;
-  onChange({...d,countryCodes:d.countryCodes.map((v,j)=>j===i?code:v)});
- };
  const reorder=(i:number,j:number)=>{
   const next=[...d.countryCodes];[next[i],next[j]]=[next[j],next[i]];
   onChange({...d,countryCodes:next});
