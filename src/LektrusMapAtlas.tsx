@@ -1153,8 +1153,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
   if(dragged.current)return;
   if(mode==="contour"){
    if(contourAction==="label"&&!contourConfig.allowLabels||contourAction==="point"&&!contourConfig.allowPoints)return;
-   if(!onChange||contourAction==="fill"||contourAction==="pen")return;
-   if(contourAction==="erase")return;
+   if(!onChange||(contourAction!=="label"&&contourAction!=="point"))return;
    if(contourAction==="label"&&!contourText.trim())return;
    if(contourMarks.length>=150)return;
    const p=worldPoint(localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>));
@@ -2155,6 +2154,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false}:Props){
        ["label","Подпись / знак",contourConfig.allowLabels||contourConfig.allowPoints]] as const)
        .filter(([, ,allowed])=>allowed).map(([id,title])=><button
         type="button" key={id} title={title} aria-label={title}
+        data-contour-hand={id==="hand"?"true":undefined}
         aria-pressed={id==="label"?contourAction==="label"||contourAction==="point":contourAction===id}
         className={"lektrus-contour-icon-button"+(
          (id==="label"?contourAction==="label"||contourAction==="point":contourAction===id)?" active":"")}
