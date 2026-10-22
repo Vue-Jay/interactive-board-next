@@ -705,7 +705,9 @@ assert.ok(map.includes('const contourEraser=mode==="contour"&&contourAction==="e
 assert.ok(map.includes('onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:onMove}'));
 const eraserCode=map.slice(map.indexOf('const beginContourErase='),map.indexOf('const startContourMarkDrag='));
 assert.ok(eraserCode.includes('setPointerCapture(e.pointerId)'));
-assert.ok(eraserCode.includes('contourEraserHits('));
+assert.ok(map.includes('contourEraserHits('));
+assert.ok(eraserCode.includes('brushContour(e)'));
+
 assert.ok(eraserCode.includes('onChange?.({...d,contourMarks:'));
 assert.ok(!eraserCode.includes('scheduleCamera('),"Eraser must never pan or zoom");
 assert.ok(map.includes('onPointerDown={e=>startContourMarkDrag(e,stored)}'));
