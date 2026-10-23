@@ -145,5 +145,9 @@ function Flashcards({diagram:d}:{diagram:GeoTrainingDiagram}){
  </div>;
 }
 export default function LektrusGeographyTrainingView({diagram}:{diagram:GeoTrainingDiagram}){
+ if(diagram.countryCodes.length<2)return <div className="lektrus-geo-game lektrus-geo-empty-preview" role="status">
+  <strong>{diagram.title}</strong>
+  <p>Задание пока пустое. Выберите страны вручную или сгенерируйте набор в редакторе.</p>
+ </div>;
  return diagram.exercise==="matching"?<Matching diagram={diagram}/>:<Flashcards diagram={diagram}/>;
 }
