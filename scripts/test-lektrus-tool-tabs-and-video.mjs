@@ -41,6 +41,8 @@ assert.ok(app.includes('title={id==="linkmedia"?"Видео прикрепляе
 assert.ok(app.includes('lektrus-video-hover-hint'));
 assert.ok(toolCss.includes('.lektrus-video-hover-hint'));
 assert.ok(toolCss.includes('button:is(:hover,:focus-visible) .lektrus-video-hover-hint'));
+assert.ok(toolCss.includes('.lektrus-tool-overflow-popover .lektrus-tool-overflow-grid .lektrus-video-hover-hint'),
+ "Tool menu is a document.body portal, so tooltip selectors must not depend on .workspace ancestry");
 assert.ok(toolCss.includes('.lektrus-tool-grid-subhead'));
 
 const mobileGroups=app.match(/const mobileToolGroups:[\s\S]*?= \[([\s\S]*?)\];/);
