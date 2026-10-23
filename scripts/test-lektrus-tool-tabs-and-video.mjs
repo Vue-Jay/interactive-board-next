@@ -13,25 +13,30 @@ const section=app.match(/const desktopToolSections=([^;]+);/);
 assert.ok(section,"Desktop tool sections must exist");
 const groups=[...section[1].matchAll(/\{id:"([^"]+)",label:"([^"]+)",icon:"([^"]+)" as IconName,ids:\[([^\]]+)\] as Tool\[\]\}/g)]
  .map(([,id,label,icon,ids])=>({id,label,icon,ids:[...ids.matchAll(/"([^"]+)"/g)].map(m=>m[1])}));
-assert.deepEqual(groups.map(g=>g.id),["create","assignments","media"],
- "Tool sections are text/figures/tables, assignments and media, without a separate arrow tab");
-assert.equal(groups[0].label,"Текст и графика");
-assert.equal(groups[1].label,"Задания");
-for(const tool of ["text","sticky","shape","table","connector","frame"])
- assert.ok(groups[0].ids.includes(tool),tool+" must be in the text/figures/tables tab");
+assert.deepEqual(groups.map(g=>g.id),["create","shapes","data","assignments","media"],
+ "Tools split into Text, Shapes, Tables & Charts, Assignments and Media");
+assert.equal(groups[0].label,"Текст");
+assert.equal(groups[1].label,"Фигуры");
+assert.equal(groups[2].label,"Таблицы и диаграммы");
+assert.equal(groups[3].label,"Задания");
+assert.deepEqual(groups[0].ids,["text","sticky","frame"]);
+assert.deepEqual(groups[1].ids,["shape","connector"]);
+assert.deepEqual(groups[2].ids,["table","graph"]);
 for(const tool of ["checklist","quiz","flashcard","cover"])
- assert.ok(groups[1].ids.includes(tool),tool+" must be in the assignments tab");
-assert.deepEqual(groups[2].ids,["media","linkmedia"]);
+ assert.ok(groups[3].ids.includes(tool),tool+" must be in the assignments tab");
+assert.deepEqual(groups[4].ids,["media","linkmedia"]);
 assert.equal(new Set(groups.flatMap(g=>g.ids)).size,groups.flatMap(g=>g.ids).length,
  "No tool can occur in multiple categories");
-assert.ok(app.includes('<LektrusElementsCatalogue {...elementCatalogueProps}/>'),
- "The combined tab uses a classified elements catalogue");
+assert.ok(app.includes('<LektrusElementsCatalogue {...elementCatalogueProps} mode={group.id==="create"?"text":group.id==="shapes"?"shapes":"data"}/>'),
+ "Desktop tool panels must use separate modes");
 const elements=read("src/LektrusElementsCatalogue.tsx");
 assert.ok(elements.includes('(["line","arrow","double"] as const)'),
  "The catalog supports all three line and arrow variants");
 assert.ok(elements.includes('onConnector(type)'),"Connector style remains selectable");
 
-assert.match(app,/case "section-create": return [^\n]*M3 8h13/);
+assert.match(app,/case "section-create": return [^\n]*M5 7h22/);
+assert.match(app,/case "section-shapes": return [^\n]*rect x="4\.5"/);
+assert.match(app,/case "section-data": return [^\n]*rect x="3\.5"/);
 assert.match(app,/case "section-assignments": return [^\n]*rect x="4" y="3"/);
 assert.match(app,/case "linkmedia": return [^\n]*rect x="2\.5" y="5"/);
 assert.doesNotMatch(app,/case "linkmedia": return [^\n]*M20\.5 5 17 8\.5/,
@@ -50,7 +55,9 @@ assert.ok(read("src/lektrusElementsCatalogue.css").includes(".lektrus-elements-h
 const mobileGroups=app.match(/const mobileToolGroups:[\s\S]*?= \[([\s\S]*?)\];/);
 assert.ok(mobileGroups);
 for(const [label,names] of [
- ["Текст и графика",["text","shape","table","connector"]],
+ ["Текст",["text","sticky","frame"]],
+ ["Фигуры",["shape","connector"]],
+ ["Таблицы и диаграммы",["table","graph"]],
  ["Задания",["checklist","quiz","flashcard","cover"]],
  ["Фото, PDF и видео",["media","linkmedia"]]
 ]){
