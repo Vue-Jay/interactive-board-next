@@ -49,13 +49,14 @@ function ShapeGlyph({name,solid}:{name:string;solid:boolean}){
  const n=name==="pentagon"?5:6,r=12;const pts=Array.from({length:n},(_,i)=>[16+r*Math.cos(i*Math.PI*2/n-Math.PI/2),16+r*Math.sin(i*Math.PI*2/n-Math.PI/2)]);return <svg viewBox="0 0 32 32"><polygon points={pts.map(p=>p.join(",")).join(" ")}/></svg>;
 }
 
-export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart,onSymbol,renderIcon}:{
- onTool:(id:"text"|"sticky"|"table"|"frame"|"connector")=>void;
+export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart,onSymbol,onConnector,renderIcon}:{
+ onTool:(id:"text"|"sticky"|"table"|"frame")=>void;
  onShape:(id:ShapeType)=>void;
  onSolid:(id:SolidFigureId)=>void;
  onChart:()=>void;
  onSymbol:(symbol:string)=>void;
- renderIcon:(id:"text"|"sticky"|"table"|"frame"|"connector")=>ReactNode;
+ onConnector:(style:"line"|"arrow"|"double")=>void;
+ renderIcon:(id:"text"|"sticky"|"table"|"frame")=>ReactNode;
 }){
  const [dimension,setDimension]=useState<"2D"|"3D">("2D");
  const [symbolsOpen,setSymbolsOpen]=useState(false);
@@ -90,7 +91,7 @@ export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart
    </section>
    <section className="lektrus-elements-section">
      <h3>Линии и соединения</h3>
-     <div className="lektrus-elements-arrow-row">{(["line","arrow","double"] as const).map(type=><button type="button" key={type} className={connector===type?"active":""} onClick={()=>{setConnector(type);onTool("connector")}}><span>{type==="line"?"━":type==="arrow"?"⟶":"⟷"}</span><small>{type==="line"?"Линия":type==="arrow"?"Стрелка":"Двусторонняя"}</small></button>)}</div>
+     <div className="lektrus-elements-arrow-row">{(["line","arrow","double"] as const).map(type=><button type="button" key={type} className={connector===type?"active":""} onClick={()=>{setConnector(type);onConnector(type)}}><span>{type==="line"?"━":type==="arrow"?"⟶":"⟷"}</span><small>{type==="line"?"Линия":type==="arrow"?"Стрелка":"Двусторонняя"}</small></button>)}</div>
    </section>
  </div>;
 }
