@@ -9,7 +9,7 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  const field=(x:unknown,n:number)=>typeof x==="string"&&x.length<=n&&x.trim().length>0;
  if(d.kind==="geo-training"){
   return (d.exercise==="matching"||d.exercise==="cards")&&
-   (d.relation==="flag-country"||d.relation==="country-capital")&&
+   (d.relation==="flag-country"||d.relation==="country-capital"||d.relation==="outline-country")&&
    typeof d.reverse==="boolean"&&Array.isArray(d.countryCodes)&&
    d.countryCodes.length>=2&&d.countryCodes.length<=12&&
    d.countryCodes.every((code:unknown)=>typeof code==="string"&&/^[A-Z]{2}$/.test(code))&&
