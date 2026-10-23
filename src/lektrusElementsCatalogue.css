@@ -40,3 +40,46 @@
 .lektrus-elements-arrow-row button span{font-size:20px}.lektrus-elements-arrow-row button small{font-size:9.5px}
 .lektrus-elements-catalogue button:focus-visible{outline:2px solid var(--lt-primary,#4776d9);outline-offset:2px}
 @media(max-width:700px){.lektrus-elements-catalogue{padding:2px}.lektrus-elements-shape-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.lektrus-elements-symbol-grid{grid-template-columns:repeat(7,minmax(0,1fr))}}
+
+/* The mobile tool sheet has legacy 54px tile rules. The full elements
+   catalogue must be a flowing, scrollable editor rather than one tile. */
+@media(max-width:1100px),(pointer:coarse){
+ body .workspace section.mobile-tools-sheet .mobile-tools-group>div.lektrus-mobile-elements-catalogue{
+  display:block!important;height:auto!important;min-height:0!important;
+  grid-template-columns:none!important;grid-auto-rows:auto!important;
+  width:100%!important;overflow:visible!important;
+  padding:4px 0 12px!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-group .lektrus-elements-catalogue button{
+  height:auto!important;min-height:0!important;
+  width:auto!important;max-width:100%!important;
+  border-radius:9px!important;
+  white-space:normal!important;
+  line-height:1.2!important;
+  opacity:1!important;visibility:visible!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-group .lektrus-elements-quick button{
+  display:flex!important;min-height:62px!important;padding:7px 5px!important;
+  flex-direction:column!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-group .lektrus-elements-shape-grid button{
+  display:flex!important;min-height:68px!important;padding:6px 3px!important;
+  flex-direction:column!important;gap:4px!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-group .lektrus-elements-symbol-grid button{
+  display:grid!important;place-items:center!important;
+  height:34px!important;min-height:34px!important;padding:0!important;
+  font-size:17px!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-group .lektrus-elements-arrow-row button{
+  display:flex!important;min-height:58px!important;padding:7px 3px!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-group .lektrus-elements-chart-button{
+  display:flex!important;flex-direction:row!important;
+  min-height:52px!important;width:100%!important;padding:10px!important;
+ }
+ body .workspace section.mobile-tools-sheet .mobile-tools-group .lektrus-elements-switch button,
+ body .workspace section.mobile-tools-sheet .mobile-tools-group .lektrus-elements-symbol-tabs button{
+  display:inline-flex!important;flex-direction:row!important;padding:6px 10px!important;
+ }
+}
