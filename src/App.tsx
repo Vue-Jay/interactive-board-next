@@ -7184,7 +7184,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             <label>Наконечник <select aria-label="Форма наконечника" value={arrowHeadStyle} onChange={e=>setArrowHeadStyle(e.target.value as ArrowHeadStyle)}><option value="triangle">Треугольник</option><option value="open">Открытый</option><option value="stealth">Заострённый</option><option value="diamond">Ромб</option><option value="oval">Овал</option></select></label><label>Размер наконечника <input aria-label="Размер наконечника" type="range" min={4} max={24} value={arrowHeadSize} onChange={e=>setArrowHeadSize(Number(e.target.value))}/><span>{arrowHeadSize}px</span></label><span className="connector-hint">Тяните мышью · Shift — угол 45°</span>
           </div>
         )}
-        {tool === "shape" && (
+        {tool === "shape" && shapeType===null && (
           <div className="lektrus-figures-floating" role="group" aria-label="Фигуры 2D и 3D"
             onPointerDown={e=>e.stopPropagation()}>
             <LektrusElementsCatalogue {...elementCatalogueProps} figuresOnly/>
