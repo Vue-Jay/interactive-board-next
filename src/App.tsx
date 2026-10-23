@@ -168,7 +168,7 @@ type IconName =
   | "align-left" | "align-center-x" | "align-right" | "align-top" | "align-center-y" | "align-bottom"
   | "distribute-x" | "distribute-y" | "open" | "download" | "eye" | "eye-off"
   | "frame-contents" | "fit" | "grid" | "dots" | "plain" | "line" | "arrow-one" | "arrow-double" | "elbow" | "link" | "unlink" | "label" | "zoom-in" | "zoom-out" | "snap" | "chevron-left" | "chevron-right"
-  | "section-arrows" | "section-create" | "section-assignments" | "section-media"
+  | "section-arrows" | "section-create" | "section-shapes" | "section-data" | "section-assignments" | "section-media"
   | "templates" | "comments" | "check" | "plus" | "minus" | "presentation-order"
   | "checklist" | "quiz" | "cover" | "flip" | "robot" | "fullscreen" | "timer" | "laser" | "spotlight" | "slides" | "play" | "pause" | "reset" | "keyboard" | "settings" | "add-person";
 
@@ -183,7 +183,9 @@ const iconBody = (name: IconName) => {
     case "marker": return <><path d="m4.5 15.6 9.9-10a1.9 1.9 0 0 1 2.7 0l2 2a1.9 1.9 0 0 1 0 2.7l-9.8 9.8H4.5v-4.5Z"/><path d="m13.1 7 4.6 4.5M6.2 16.6l2.2 2.2"/><path d="M3 21h11" strokeWidth="2.6"/></>;
     case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
     case "section-arrows": return <><path d="M4 24C9 24 8 15 14 15S20 22 27 7"/><path d="m20.5 9 7-3-1 7"/><circle cx="4" cy="24" r="2.3" fill="var(--lt-raised,#fff)"/><circle cx="14" cy="15" r="2.3" fill="var(--lt-raised,#fff)"/></>;
-    case "section-create": return <><path d="M3 8h13M9.5 8v18" strokeWidth="2.8"/><path d="M20 26V16M25 26V11M30 26V6" strokeWidth="3" strokeLinecap="round"/></>;
+    case "section-create": return <><path d="M5 7h22M16 7v19" strokeWidth="3" strokeLinecap="round"/></>;
+    case "section-shapes": return <><rect x="4.5" y="6" width="13" height="13" rx="2.2"/><path d="m22 9 8 16H14Z" strokeLinejoin="round"/></>;
+    case "section-data": return <><rect x="3.5" y="6" width="13.5" height="19" rx="2.2"/><path d="M3.5 12.5H17M10.25 6v19M21 25V17M26 25V11M31 25V7" strokeWidth="2.5" strokeLinecap="round"/></>;
     case "section-assignments": return <><rect x="4" y="3" width="24" height="27" rx="4"/><path d="M11 3.5V2.2h10v1.3M15 10h9M15 18h9M15 26h5"/><path d="m8 9 1.8 1.8L13 7.5m-5 9.5 1.8 1.8 3.2-3.3"/><rect x="7.7" y="23" width="5" height="5" rx="1" strokeWidth="1.8"/></>;
     case "section-media": return <><rect x="2.5" y="3.5" width="18" height="19" rx="2"/><circle cx="8" cy="9.5" r="2"/><path d="m4.5 19 5.5-6 4.2 4.4 3.6-3.4"/><rect x="17.8" y="16" width="11.5" height="11.5" rx="2" fill="var(--lt-raised,#fff)"/><path d="m22 19 4.2 2.8-4.2 2.7Z"/></>;
     case "connector": return <><path d="M3.5 12h17"/><path d="M14.5 5.5 21 12l-6.5 6.5"/></>;
@@ -415,7 +417,9 @@ type LectrisSavedLayout={id:string;name:string;mode:"standard"|"lesson"|"focus";
 const mobileToolGroups: { label:string; tools:Tool[] }[] = [
   { label:"Навигация", tools:["select","lasso"] },
   { label:"Рисование", tools:["pen","marker","eraser"] },
-  { label:"Текст и графика", tools:["text","sticky","shape","table","connector","frame","comment"] },
+  { label:"Текст", tools:["text","sticky","frame"] },
+  { label:"Фигуры", tools:["shape","connector"] },
+  { label:"Таблицы и диаграммы", tools:["table","graph"] },
   { label:"Задания", tools:["checklist","quiz","flashcard","cover"] },
   { label:"Фото, PDF и видео", tools:["media","linkmedia"] },
 ];
@@ -2251,7 +2255,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
   const [desktopToolSection,setDesktopToolSection]=useState("create");
-  const desktopToolSections=[{id:"create",label:"Текст и графика",icon:"section-create" as IconName,ids:["text","sticky","shape","table","connector","frame"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
+  const desktopToolSections=[{id:"create",label:"Текст",icon:"section-create" as IconName,ids:["text","sticky","frame"] as Tool[]},{id:"shapes",label:"Фигуры",icon:"section-shapes" as IconName,ids:["shape","connector"] as Tool[]},{id:"data",label:"Таблицы и диаграммы",icon:"section-data" as IconName,ids:["table","graph"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
   useEffect(()=>{const mq=window.matchMedia?.("(pointer: coarse)");if(!mq)return;const sync=()=>setIsCoarsePointer(mq.matches);sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync)},[]);
@@ -5311,6 +5315,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if(!canEdit||!toolAllowedForRole("connector")){setNotice("Недостаточно прав для добавления линии");return}
       finishEdit();setConnectorStyle(style);setTool("connector");closeElementsMenu();
     },
+    canUseTool:(id:"text"|"sticky"|"table"|"frame"|"shape"|"connector"|"graph")=>toolAllowedForRole(id),
     renderIcon:(id:"text"|"sticky"|"table"|"frame")=><Icon name={id} size={20}/>
   };
 
@@ -7204,7 +7209,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
           <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiOpen(true);setBoardAiPreview([])}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
-            {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span>{group.label==="Текст и графика"?<div className="lektrus-mobile-elements-catalogue"><LektrusElementsCatalogue {...elementCatalogueProps}/></div>:<div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div>}</div>)}
+            {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(id=>id!=="formula"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span>{["Текст","Фигуры","Таблицы и диаграммы"].includes(group.label)?<div className="lektrus-mobile-elements-catalogue"><LektrusElementsCatalogue {...elementCatalogueProps} mode={group.label==="Текст"?"text":group.label==="Фигуры"?"shapes":"data"}/></div>:<div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div>}</div>)}
           </div>
         </section>}
         <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
@@ -7241,7 +7246,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <div className="lektrus-tool-overflow-content">
             {desktopToolSections.filter(g=>g.id===desktopToolSection).map(group=><div className={`lektrus-tool-overflow-group lektrus-tool-overflow-group--${group.id}`} key={group.id}>
               <div className="lektrus-tool-overflow-group-title">{group.label}</div>
-              {group.id==="create"?<LektrusElementsCatalogue {...elementCatalogueProps}/>:(
+              {["create","shapes","data"].includes(group.id)?<LektrusElementsCatalogue {...elementCatalogueProps} mode={group.id==="create"?"text":group.id==="shapes"?"shapes":"data"}/>:(
                 <div className="lektrus-tool-overflow-grid">
                   {group.ids.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id)).map(id=>{
                     const t=tools.find(x=>x.id===id)!;
