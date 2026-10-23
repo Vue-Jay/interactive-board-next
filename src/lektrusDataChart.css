@@ -1,0 +1,29 @@
+.lektrus-data-chart{height:100%;width:100%;display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:0;padding:12px;background:linear-gradient(145deg,#fff,#f7faff);border-radius:inherit;color:#233953;overflow:hidden}
+.lektrus-data-chart-title{flex:0 0 auto;font-size:clamp(13px,2.6cqw,19px);font-weight:780;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lektrus-data-chart-svg{flex:1;min-height:0;display:block;width:100%;pointer-events:none}
+.lektrus-data-chart-empty{display:grid;place-items:center;flex:1;color:#8796ae;font-size:13px;text-align:center;padding:15px}
+.lektrus-data-chart-overlay{position:fixed;inset:0;z-index:2600;display:grid;place-items:center;padding:14px;background:#0e213b99;backdrop-filter:blur(4px)}
+.lektrus-data-chart-dialog{display:flex;flex-direction:column;max-height:min(88dvh,780px);width:min(96vw,900px);min-height:0;overflow:hidden;border:1px solid #d6e3f5;border-radius:18px;background:#fff;color:#233955;box-shadow:0 20px 65px #132e5060;font-family:inherit}
+.lektrus-data-chart-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:linear-gradient(115deg,#f4f8ff,#fff);border-bottom:1px solid #e1e9f4}
+.lektrus-data-chart-head>div{display:grid;gap:4px}.lektrus-data-chart-head strong{font-size:18px}.lektrus-data-chart-head small{font-size:12px;color:#647b9b}
+.lektrus-data-chart-head>button{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#eef3fb;color:#4b668c;font-size:24px;cursor:pointer}
+.lektrus-data-chart-editor-body{display:grid;grid-template-columns:minmax(290px,1.05fr) minmax(260px,.95fr);gap:0;min-height:0;overflow:auto}
+.lektrus-data-chart-settings{padding:17px;display:flex;flex-direction:column;gap:12px;min-width:0;overflow:auto;border-right:1px solid #e5edf8}
+.lektrus-data-chart-settings label{display:grid;gap:5px;font-size:12px;font-weight:750}
+.lektrus-data-chart-settings input{min-width:0;width:100%;height:36px;border:1px solid #d3e0f0;background:#f9fbff;color:#243a59;padding:7px 9px;border-radius:8px;font:inherit}
+.lektrus-data-chart-types{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.lektrus-data-chart-types button{padding:9px 6px;border:1px solid #d5e2f1;border-radius:9px;background:#f4f8ff;color:#506987;font-weight:720;cursor:pointer}
+.lektrus-data-chart-types button.active{background:#dfeaff;border-color:#6796e8;color:#285bb6}
+.lektrus-data-chart-subtitle{font-size:12px}.lektrus-data-chart-rows{display:grid;gap:6px}
+.lektrus-data-chart-row{display:grid;grid-template-columns:10px minmax(0,1fr) 94px 28px;align-items:center;gap:7px}
+.lektrus-data-chart-row .lektrus-data-chart-swatch{height:12px;width:10px;border-radius:3px}
+.lektrus-data-chart-row>button{height:29px;border-radius:7px;background:#f5f7fb;color:#7187a4;font-size:19px;cursor:pointer}
+.lektrus-data-chart-add{padding:9px;background:#eef4ff;color:#3568b5;border-radius:9px;font-weight:700;cursor:pointer}
+.lektrus-data-chart-add:disabled,.lektrus-data-chart-row button:disabled{opacity:.4;cursor:default}
+.lektrus-data-chart-error{margin:0;color:#ba3445;font-size:12px;font-weight:650}
+.lektrus-data-chart-preview{display:flex;flex-direction:column;gap:9px;min-width:0;padding:17px}
+.lektrus-data-chart-preview>span{font-size:12px;font-weight:800;color:#657b96}.lektrus-data-chart-preview>.lektrus-data-chart{height:min(340px,45dvh);flex:none;box-shadow:0 2px 12px #264d8c16;border:1px solid #e0e8f4}
+.lektrus-data-chart-dialog footer{display:flex;justify-content:flex-end;gap:9px;padding:12px 18px;border-top:1px solid #e5edf8;background:#fbfcff}
+.lektrus-data-chart-dialog footer button{padding:11px 16px;border-radius:10px;font-weight:750;cursor:pointer}.lektrus-data-chart-dialog footer .secondary{background:#eff3fa;color:#546985}
+.lektrus-data-chart-dialog footer .primary{background:#4774d7;color:white}
+@media(max-width:700px){.lektrus-data-chart-overlay{padding:6px}.lektrus-data-chart-dialog{max-height:93dvh;width:100%}.lektrus-data-chart-editor-body{grid-template-columns:1fr}.lektrus-data-chart-settings{border-right:0}.lektrus-data-chart-preview{padding-top:0}.lektrus-data-chart-preview>.lektrus-data-chart{height:180px}.lektrus-data-chart-head{padding:12px 14px}}
