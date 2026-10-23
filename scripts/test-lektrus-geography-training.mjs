@@ -67,6 +67,8 @@ for(const id of ["geo-matching","geo-question-cards"]){
 }
 assert.ok(editor.includes("LektrusGeographyTrainingControls"));
 assert.ok(editor.includes('draft.countryCodes.length<2'),"cannot save empty geography exercises");
+assert.ok(editor.includes('isContour||draft.kind==="geo-training"'),"closing geography editor discards unsaved changes");
+assert.ok(editor.includes('draft.kind==="geo-training"?"Закрыть без сохранения"'),"close label agrees with cancel behavior");
 assert.ok(view.includes("LektrusGeographyTrainingView"));
 assert.ok(board.includes('if(d.kind==="geo-training")'),"save/load validator");
 assert.ok(board.includes('d.relation==="outline-country"'),"outline mode survives persistence");
