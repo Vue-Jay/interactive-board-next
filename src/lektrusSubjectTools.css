@@ -199,3 +199,39 @@ body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button:focus-visib
 @media(prefers-reduced-motion:reduce){
  body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon{transition:none}
 }
+
+/* Search stays in the same compact subject catalogue and works in both themes. */
+.lektrus-subject-tools-panel .lektrus-subject-tool-search{
+ display:grid;gap:6px;margin:-2px 0 14px;
+}
+.lektrus-subject-tools-panel .lektrus-subject-tool-search>label{
+ font-size:11px;font-weight:750;color:var(--lt-muted,#677d9b);
+}
+.lektrus-subject-tools-panel .lektrus-subject-tool-search>div{
+ display:flex;align-items:center;gap:4px;
+ border:1px solid var(--lt-line,#d4e0ef);border-radius:10px;
+ background:var(--lt-subtle,#f6f9ff);padding-right:6px;
+}
+.lektrus-subject-tools-panel .lektrus-subject-tool-search input{
+ box-sizing:border-box;flex:1;min-width:0;width:100%;height:36px;
+ border:none!important;outline:none!important;box-shadow:none!important;
+ padding:7px 10px;background:transparent;color:var(--lt-text,#213957);
+ font:inherit;font-size:12px;
+}
+.lektrus-subject-tools-panel .lektrus-subject-tool-search>div:focus-within{
+ outline:2px solid var(--lt-primary,#416dce);outline-offset:2px;
+}
+.lektrus-subject-tools-panel .lektrus-subject-tool-search>div>button{
+ flex:none;width:26px;height:26px;display:grid;place-items:center;
+ border:0;border-radius:7px;background:var(--lt-raised,#fff);
+ color:var(--lt-secondary,#60738d);font-size:19px;cursor:pointer;
+}
+.lektrus-subject-tools-panel .lektrus-subject-tool-search>small{
+ font-size:10px;color:var(--lt-muted,#75859d);
+}
+.lektrus-subject-tools-panel .lektrus-subject-tools-clear{
+ margin-top:12px;min-height:32px;padding:7px 10px;
+ border-radius:9px;border:1px solid var(--lt-line,#dae3f2);
+ background:var(--lt-raised,#fff);
+ color:var(--lt-primary,#3d64c7);font-size:11px;font-weight:750;cursor:pointer;
+}
