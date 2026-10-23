@@ -63,7 +63,7 @@
  justify-content:center;gap:5px;padding:5px 9px;
  border:1px solid #adc5eb;border-radius:11px;
  background:linear-gradient(150deg,#fff,#e8f1ff);
- color:#3461b4;font:700 11px/1.1 inherit;
+ color:#3461b4;font-size:11px;font-weight:750;line-height:1.1;font-family:inherit;
  box-shadow:0 3px 12px #284f8338;
  pointer-events:auto;touch-action:none;cursor:grab;white-space:nowrap;
  user-select:none;-webkit-user-select:none;
@@ -109,7 +109,7 @@
 }
 .workspace .lektrus-study-creation-hint{
  margin:0;padding:9px 14px;background:#edf5ff;
- color:#4a6e9a;font:650 12px/1.4 inherit;
+ color:#4a6e9a;font-size:12px;font-weight:650;line-height:1.4;font-family:inherit;
  border-bottom:1px solid #dae7f6;
 }
 /* Fine-pointer tools: icon plus placement marker. Tool cursors are never
