@@ -37,6 +37,8 @@ jobs:
         run: node scripts/test-lektrus-russian-school.mjs
       - name: Interactive geography matching and question cards regression
         run: node scripts/test-lektrus-geography-training.mjs
+      - name: Universal board object interactions and assignment creation
+        run: node scripts/test-lektrus-object-transform-and-task-create.mjs
       - name: Unified geography and historical atlas regression
         run: node scripts/test-lektrus-atlas.mjs
       - name: Russian-language historical encyclopedia and cross-era search regression
