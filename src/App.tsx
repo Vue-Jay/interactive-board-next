@@ -7265,8 +7265,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // Let a map in its own editing mode own its fingers, including
             // two-finger zoom. This capture phase fires BEFORE the atlas'
             // bubble handlers and otherwise starts a simultaneous board pinch.
-            if((e.target as HTMLElement).closest(
-              ".lektrus-atlas:not(.lektrus-atlas--board-selection)"))return;
             // Select at capture time because school widgets, PDF previews and
             // task controls can consume their own pointerdown events.
             // Preserve the atlas' dedicated edit mode and native form controls.
@@ -7282,6 +7280,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 }
               }
             }
+            if((e.target as HTMLElement).closest(
+              ".lektrus-atlas:not(.lektrus-atlas--board-selection)"))return;
             // Board overlays contain real controls. Do not hijack taps,
             // focus, or the first finger of a pinch over those controls.
             const touchControl=(e.target as HTMLElement).closest(
