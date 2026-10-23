@@ -3,7 +3,7 @@ import type {ShapeType} from "./boardModel";
 import type {SolidFigureId} from "./lektrusSolid3d";
 import "./lektrusElementsCatalogue.css";
 
-const twoD=[
+const twoD:ReadonlyArray<{name:string;items:ReadonlyArray<readonly [ShapeType,string]>}>=[
  {name:"Основные",items:[
  ["rectangle","Прямоугольник"],["square","Квадрат"],["circle","Круг"],
  ["ellipse","Овал"],["rounded","Скруглённая"],["triangle","Треугольник"],
@@ -13,8 +13,8 @@ const twoD=[
  ["diamond","Ромб"],["parallelogram","Параллелограмм"],["trapezoid","Трапеция"],
  ["pentagon","Пятиугольник"],["hexagon","Шестиугольник"],["star","Звезда"]
  ]}
-] as const satisfies ReadonlyArray<{name:string;items:readonly (readonly [ShapeType,string])[]}>;
-const threeD=[
+];
+const threeD:ReadonlyArray<{name:string;items:ReadonlyArray<readonly [SolidFigureId,string]>}>=[
  {name:"Призмы и пирамиды",items:[
  ["cube","Куб"],["rectangular-prism","Параллелепипед"],["prism","Призма"],
  ["pyramid","Пирамида"],["triangular-pyramid","Треугольная пирамида"]
@@ -22,7 +22,7 @@ const threeD=[
  {name:"Тела вращения",items:[
  ["sphere","Сфера"],["cylinder","Цилиндр"],["cone","Конус"]
  ]}
-] as const satisfies ReadonlyArray<{name:string;items:readonly (readonly [SolidFigureId,string])[]}>;
+];
 const symbolGroups=[
  {title:"Математика",glyphs:["±","×","÷","≈","≠","≤","≥","∞","√","∑","∫","∂","π","Δ","∈","∉","∩","∪","⊂","∠","°","‰","∝","∅"]},
  {title:"Стрелки и связи",glyphs:["→","←","↔","↑","↓","⇒","⇔","↗","↘","⇑","⇓","↦","↩","⇢","⟶","↪"]},
