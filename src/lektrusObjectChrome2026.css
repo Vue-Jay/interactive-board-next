@@ -100,6 +100,13 @@
 @media (prefers-reduced-motion:reduce){
  .workspace .board .screen-resize-handle::after{transition:none}
 }
+/* Native PDF/video iframes own an isolated document and cannot bubble clicks.
+   Their first click selects the board object; once selected, the embedded
+   viewer is interactive again and the common move grip does the dragging. */
+.workspace .board.board-tool-select .board-object:is(.object-pdf,.object-linkmedia):not(.selected) iframe,
+.workspace .board.board-tool-hand .board-object:is(.object-pdf,.object-linkmedia):not(.selected) iframe{
+ pointer-events:none!important;
+}
 /* Fine-pointer tools: icon plus placement marker. Tool cursors are never
    applied to ink, panning, resize handles or form fields. */
 @media(pointer:fine){
