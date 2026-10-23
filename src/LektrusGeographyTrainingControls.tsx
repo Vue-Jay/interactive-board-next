@@ -30,7 +30,7 @@ export default function LektrusGeographyTrainingControls({diagram:d,onChange}:Pr
   </label>
   <p className="lektrus-school-hint">{d.exercise==="matching"?
    "На доске ученик нажимает подходящие элементы в двух колонках. Верные пары отмечаются, ошибки учитываются.":"На доске ученик сначала видит вопрос, затем переворачивает карточку и проверяет себя."}
-   {" "}Направление можно менять в любом типе задания.</p>
+   {" "}Направление можно менять в любом типе задания. Контуры строятся по геоданным основного атласа, без подписей и подсказок.</p>
   <div className="lektrus-school-controls-heading">Подбор стран</div>
   <label className="lektrus-school-field">Часть света
    <select value={region} onChange={e=>{setRegion(e.target.value as GeoRegion|"Все");setNewCountry("");setQuery("")}}>
