@@ -66,7 +66,9 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
   if(!isSchoolDiagram(draft)){setError("Проверьте данные: название, количество элементов и значения.");return}
   onSave({...item,schoolDiagram:structuredClone(draft),text:draft.title});
  };
- const close=()=>{if(isContour){onCancel();return}if(existing)finish();else onCancel()};
+ // Geography exercises are only committed with the explicit Save button.
+ // Closing the editor must not persist a partially generated question set.
+ const close=()=>{if(isContour||draft.kind==="geo-training"){onCancel();return}if(existing)finish();else onCancel()};
  useEffect(()=>{
   const onKey=(e:KeyboardEvent)=>{
    if(e.key==="Escape"){e.preventDefault();e.stopImmediatePropagation();close()}
@@ -155,7 +157,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
   <section className={"lektrus-school-editor"+(isAtlas?" lektrus-school-editor--atlas":"")+(isContour?" lektrus-school-editor--contour-setup":"")} role="dialog" aria-modal="true" aria-label={"Редактор: "+titles[id]}>
    <header className="lektrus-school-header">
     <div className={isAtlas?"lektrus-atlas-editor-heading":undefined}>{isAtlas&&<div className="lektrus-atlas-editor-kicker">ИНТЕРАКТИВНЫЙ АТЛАС</div>}<h2>{titles[id]}</h2><span>{id==="history-atlas"?"История · 5–11 класс":id==="maps-atlas"?"География · 5–11 класс":id==="geo-matching"||id==="geo-question-cards"?"География · 5–11 класс":(id==="bio-dna"||id==="bio-taxonomy")?"Биология · 6–11 класс":id==="bio-division"?"Биология · 9–11 класс":id==="info-encoding"?"Информатика · 7–11 класс":id==="bio-genetics"?"Биология · 9–11 класс":id==="info-logic"?"Информатика · 8–11 класс":id==="bio-cell"?"Биология · 5–6 класс":id==="bio-food-chain"?"Биология · 5–9 класс":id==="geo-climate"?"География · 6–8 класс":id==="history-timeline"?"История · 5–9 класс":id==="ru-syntax"?"Русский язык · 5–9 класс":id.startsWith("info-")?"Информатика · 5–9 класс":id==="bio-organ-systems"?"Биология · 8 класс":id==="ru-morphemes"?"Русский язык · 5–6 класс":id.startsWith("ru-")?"Русский язык · 5–9 класс":id==="history-family-tree"?"История и обществознание · 5–9 класс":id==="literature-analysis"?"Литература · 5–11 класс":id==="civics-structure"?"Обществознание · 6–11 класс":(id==="language-flashcards"||id==="language-sentence-builder")?"Иностранный язык · 2–11 класс":"География · 6–8 класс"}</span></div>
-    <button type="button" className="lektrus-school-close" onClick={close} aria-label={existing?"Сохранить и закрыть":"Отменить создание"}>×</button>
+    <button type="button" className="lektrus-school-close" onClick={close} aria-label={draft.kind==="geo-training"?"Закрыть без сохранения":existing?"Сохранить и закрыть":"Отменить создание"}>×</button>
    </header>
    <div className="lektrus-school-body">
     {!isAtlas&&<div className="lektrus-school-controls">
@@ -262,7 +264,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
    </div>
    <footer className="lektrus-school-footer">
     <span>{error||(isContour?"Задание, территория, содержание подложки и инструменты ученика сохранятся при добавлении карты.":isAtlas?"Перемещайте карту и изменяйте масштаб. Вид сохранится после добавления.":"Изменения видны в предпросмотре. На доску объект попадает после сохранения.")}</span>
-    <button type="button" className="lektrus-school-secondary" onClick={close}>{existing?"Закрыть":"Отмена"}</button>
+    <button type="button" className="lektrus-school-secondary" onClick={close}>{draft.kind==="geo-training"?"Отмена":existing?"Закрыть":"Отмена"}</button>
     <button type="button" className="lektrus-school-primary" onClick={finish}>{existing?"Сохранить изменения":"Вывести на доску"}</button>
    </footer>
   </section>
