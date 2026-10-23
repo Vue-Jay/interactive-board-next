@@ -36,7 +36,8 @@ assert.doesNotMatch(app,/case "linkmedia": return [^\n]*M20\.5 5 17 8\.5/,
  "Video button must no longer depict a link");
 assert.ok(app.includes('label: "Видео · L / Д"'));
 assert.ok(app.includes('linkmedia:"Видео"'));
-assert.ok(app.includes('title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label}'));
+assert.ok(app.includes('title={id==="linkmedia"?undefined:t.label}'),"custom tooltip must not double with native title");
+assert.ok(app.includes('title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label}'),"mobile tool receives a native link hint");
 assert.ok(app.includes('lektrus-video-hover-hint'));
 assert.ok(toolCss.includes('.lektrus-video-hover-hint'));
 assert.ok(toolCss.includes('button:is(:hover,:focus-visible) .lektrus-video-hover-hint'));
