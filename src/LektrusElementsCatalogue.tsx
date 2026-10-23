@@ -49,19 +49,30 @@ function ShapeGlyph({name,solid}:{name:string;solid:boolean}){
  const n=name==="pentagon"?5:6,r=12;const pts=Array.from({length:n},(_,i)=>[16+r*Math.cos(i*Math.PI*2/n-Math.PI/2),16+r*Math.sin(i*Math.PI*2/n-Math.PI/2)]);return <svg viewBox="0 0 32 32"><polygon points={pts.map(p=>p.join(",")).join(" ")}/></svg>;
 }
 
-export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart,onSymbol,onConnector,renderIcon}:{
+export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart,onSymbol,onConnector,renderIcon,figuresOnly=false}:{
  onTool:(id:"text"|"sticky"|"table"|"frame")=>void;
  onShape:(id:ShapeType)=>void;
  onSolid:(id:SolidFigureId)=>void;
  onChart:()=>void;
  onSymbol:(symbol:string)=>void;
  onConnector:(style:"line"|"arrow"|"double")=>void;
+ figuresOnly?:boolean;
  renderIcon:(id:"text"|"sticky"|"table"|"frame")=>ReactNode;
 }){
  const [dimension,setDimension]=useState<"2D"|"3D">("2D");
  const [symbolsOpen,setSymbolsOpen]=useState(false);
  const [symbolGroup,setSymbolGroup]=useState(0);
  const [connector,setConnector]=useState<"line"|"arrow"|"double">("arrow");
+ const figureSection=(
+<section className="lektrus-elements-section">
+     <div className="lektrus-elements-heading"><h3>Фигуры</h3><div className="lektrus-elements-switch" role="group" aria-label="Плоские и объёмные фигуры">{(["2D","3D"] as const).map(id=><button type="button" key={id} aria-pressed={dimension===id} className={dimension===id?"active":""} onClick={()=>setDimension(id)}>{id}</button>)}</div></div>
+     {(dimension==="2D"?twoD:threeD).map(group=><div key={group.name} className="lektrus-elements-shape-group">
+       <h4>{group.name}</h4>
+       <div className="lektrus-elements-shape-grid">{dimension==="2D"?twoD.find(g=>g.name===group.name)?.items.map(([id,label])=><button type="button" key={id} title={label} onClick={()=>onShape(id)}><ShapeGlyph name={id} solid={false}/><span>{label}</span></button>):threeD.find(g=>g.name===group.name)?.items.map(([id,label])=><button type="button" key={id} title={label} onClick={()=>onSolid(id)}><ShapeGlyph name={id} solid/><span>{label}</span></button>)}</div>
+     </div>)}
+   </section>
+ );
+ if(figuresOnly)return <div className="lektrus-elements-catalogue lektrus-elements-figures-only">{figureSection}</div>;
  return <div className="lektrus-elements-catalogue">
    <div className="lektrus-elements-hint">Текст, рисунки, объёмные модели, диаграммы и другие элементы доски</div>
    <section className="lektrus-elements-section">
@@ -75,13 +86,7 @@ export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart
        <div className="lektrus-elements-symbol-grid">{symbolGroups[symbolGroup].glyphs.map((value,i)=><button type="button" key={value+i} title={`Добавить символ ${value}`} onClick={()=>onSymbol(value)}>{value}</button>)}</div>
      </div>}
    </section>
-   <section className="lektrus-elements-section">
-     <div className="lektrus-elements-heading"><h3>Фигуры</h3><div className="lektrus-elements-switch" role="group" aria-label="Плоские и объёмные фигуры">{(["2D","3D"] as const).map(id=><button type="button" key={id} aria-pressed={dimension===id} className={dimension===id?"active":""} onClick={()=>setDimension(id)}>{id}</button>)}</div></div>
-     {(dimension==="2D"?twoD:threeD).map(group=><div key={group.name} className="lektrus-elements-shape-group">
-       <h4>{group.name}</h4>
-       <div className="lektrus-elements-shape-grid">{dimension==="2D"?twoD.find(g=>g.name===group.name)?.items.map(([id,label])=><button type="button" key={id} title={label} onClick={()=>onShape(id)}><ShapeGlyph name={id} solid={false}/><span>{label}</span></button>):threeD.find(g=>g.name===group.name)?.items.map(([id,label])=><button type="button" key={id} title={label} onClick={()=>onSolid(id)}><ShapeGlyph name={id} solid/><span>{label}</span></button>)}</div>
-     </div>)}
-   </section>
+   {figureSection}
    <section className="lektrus-elements-section">
      <h3>Диаграммы</h3>
      <button className="lektrus-elements-chart-button" type="button" onClick={onChart}>
