@@ -4,9 +4,11 @@
 export type GeoRegion="Европа"|"Азия"|"Африка"|"Америка"|"Океания";
 export type GeoExercise="matching"|"cards";
 export type GeoRelation="flag-country"|"country-capital"|"outline-country";
+export type GeoDifficulty="easy"|"medium"|"hard";
+export type GeoSelectionDifficulty=GeoDifficulty|"custom";
 export type GeoTrainingDiagram={kind:"geo-training";title:string;exercise:GeoExercise;
- relation:GeoRelation;reverse:boolean;countryCodes:string[]};
-export type GeoCountry={code:string;name:string;capital:string;region:GeoRegion;note?:string};
+ relation:GeoRelation;reverse:boolean;countryCodes:string[];difficulty?:GeoSelectionDifficulty};
+export type GeoCountry={code:string;name:string;capital:string;region:GeoRegion;note?:string;difficulty:GeoDifficulty};
 const countryNames=new Intl.DisplayNames(["ru"],{type:"region"});
 const overrides:Record<string,string>={
  US:"США",GB:"Великобритания",KR:"Республика Корея",KP:"КНДР",
@@ -224,10 +226,34 @@ TV|Фунафути
 VU|Порт-Вила`
 };
 export const geoRegions:GeoRegion[]=["Европа","Азия","Африка","Америка","Океания"];
+/** Teaching tiers describe country familiarity, not territorial size or national importance.
+ * All catalogue countries belong to one tier. Smaller regional pools are filled
+ * from neighbouring tiers instead of silently returning too few questions. */
+export const geoDifficultyNames:Record<GeoDifficulty,string>={
+ easy:"Лёгкий",medium:"Средний",hard:"Сложный"
+};
+export const geoDifficultyHints:Record<GeoDifficulty,string>={
+ easy:"Широко известные государства, знакомые по школьной программе.",
+ medium:"Менее известные страны и столицы разных регионов.",
+ hard:"Малые, островные и редко встречающиеся государства."
+};
+const easyCountries=new Set(`RU GB FR DE IT ES PT NL BE CH AT SE NO FI DK PL CZ GR UA BY IE IS
+ CN IN JP KR KP KZ MN ID TH VN PH SA AE IR IQ PK AF SG MY NP UZ TR
+ EG ZA NG KE MA DZ ET TZ SD LY TN GH UG
+ US CA MX BR AR CL CO PE CU VE BO EC PA
+ AU NZ FJ PG`.trim().split(/\s+/));
+const mediumCountries=new Set(`LT LV EE SK SI HR RS RO BG HU ME BA AL CY LU MT MD MK
+ AM AZ GE BH BD BT KH JO KW KG LA LB MM OM QA LK SY TJ TM YE
+ AO BJ BW CM CD CG CI DJ ER GA GM GN LR MG ML MZ NA NE RW SN SO ZM ZW
+ CR DO GT HT HN JM NI PY UY SV TT BS GY
+ WS SB VU TO KI`.trim().split(/\s+/));
+export function geoCountryDifficulty(code:string):GeoDifficulty{
+ return easyCountries.has(code)?"easy":mediumCountries.has(code)?"medium":"hard";
+}
 export const geoCountries:readonly GeoCountry[]=geoRegions.flatMap(region=>
  raw[region].trim().split("\n").map(line=>{
   const [code,capital]=line.split("|");
-  return {code,name:overrides[code]??countryNames.of(code)??code,capital,region,note:notes[code]};
+  return {code,name:overrides[code]??countryNames.of(code)??code,capital,region,note:notes[code],difficulty:geoCountryDifficulty(code)};
  })).sort((a,b)=>a.name.localeCompare(b.name,"ru"));
 const countryByIso=new Map(geoCountries.map(country=>[country.code,country]));
 export const getGeoCountry=(code:string)=>countryByIso.get(code);
@@ -240,15 +266,33 @@ export function geoPair(country:GeoCountry,relation:GeoRelation):{left:string;ri
  relation==="outline-country"?{left:"outline",right:country.name}:
  {left:country.name,right:country.capital};
 }
-export function sampleGeoCountries(region:GeoRegion|"Все",size:number):string[]{
- const pool=geoCountries.filter(row=>region==="Все"||row.region===region).map(row=>row.code);
- // Fisher-Yates: new random sample, without repeats.
- for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
- return pool.slice(0,Math.max(2,Math.min(12,size)));
+/** Generate only on demand. Prefer the selected tier and progressively relax
+ * to adjacent tiers if the chosen region has fewer countries than requested. */
+export function sampleGeoCountries(region:GeoRegion|"Все",size:number,
+ difficulty:GeoDifficulty="medium"):string[]{
+ const available=geoCountries.filter(row=>region==="Все"||row.region===region);
+ const priorities:Record<GeoDifficulty,GeoDifficulty[]>={
+  easy:["easy","medium","hard"],
+  medium:["medium","easy","hard"],
+  hard:["hard","medium","easy"]
+ };
+ const shuffled=(source:string[]):string[]=>{
+  const result=[...source];
+  for(let i=result.length-1;i>0;i--){
+   const j=Math.floor(Math.random()*(i+1));
+   [result[i],result[j]]=[result[j],result[i]];
+  }
+  return result;
+ };
+ const count=Math.max(2,Math.min(12,Math.floor(size)));
+ const selected=priorities[difficulty].flatMap(level=>
+  shuffled(available.filter(row=>row.difficulty===level).map(row=>row.code)));
+ return selected.slice(0,count);
 }
 export function makeGeoTraining(exercise:GeoExercise):GeoTrainingDiagram{
- return {kind:"geo-training",title:exercise==="matching"?"Сопоставление: страны мира":"Карточки: страны мира",
-  exercise,relation:"flag-country",reverse:false,countryCodes:["RU","CN","IN","US","FR","JP"]};
+ // No predetermined examples. Teachers explicitly generate or select each task.
+ return {kind:"geo-training",title:exercise==="matching"?"Сопоставление":"Карточки вопросов",
+  exercise,relation:"flag-country",reverse:false,countryCodes:[]};
 }
 export function validGeoTraining(value:unknown):value is GeoTrainingDiagram{
  if(!value||typeof value!=="object")return false;
@@ -256,6 +300,8 @@ export function validGeoTraining(value:unknown):value is GeoTrainingDiagram{
  return d.kind==="geo-training"&&typeof d.title==="string"&&d.title.length<=120&&
   (d.exercise==="matching"||d.exercise==="cards")&&
   (d.relation==="flag-country"||d.relation==="country-capital"||d.relation==="outline-country")&&
+  (d.difficulty===undefined||d.difficulty==="custom"||d.difficulty==="easy"||
+   d.difficulty==="medium"||d.difficulty==="hard")&&
   typeof d.reverse==="boolean"&&Array.isArray(d.countryCodes)&&
   d.countryCodes.length>=2&&d.countryCodes.length<=12&&
   d.countryCodes.every(code=>typeof code==="string"&&countryByIso.has(code))&&
