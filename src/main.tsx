@@ -50,6 +50,7 @@ import "./lektrusSubjectPolish2026.css";
 import "./lektrusInterfaceLayout.css";
 import "./lektrusReactionVisuals.css";
 import "./lektrusSchoolDiagrams.css";
+import "./lektrusObjectChrome2026.css";
 import "./lektrusAtlas.css";
 import "./lektrusAtlasEditor.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
