@@ -68,6 +68,10 @@
  pointer-events:auto;touch-action:none;cursor:grab;white-space:nowrap;
  user-select:none;-webkit-user-select:none;
 }
+.workspace .board .lektrus-selection-move-grip{
+ width:33px;min-width:33px;padding:5px;
+}
+.workspace .board .lektrus-selection-move-grip span{display:none}
 .workspace .board .lektrus-selection-move-grip:hover,
 .workspace .board .lektrus-selection-move-grip:focus-visible{
  background:#dae8ff;border-color:#6b96e7;
