@@ -6908,7 +6908,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {checklistEditorId && checklistDraft && (
           <div className="checklist-editor-backdrop" onPointerDown={() => { cancelStudyEditor("checklist"); }}>
             <div className="checklist-editor-modal" role="dialog" aria-modal="false" aria-label="Редактор чек-листа" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelStudyEditor("checklist"); } if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveChecklistEditor(); } }}>
-              <div className="checklist-editor-header"><div className="checklist-editor-header-main"><strong>Чек-лист / задание</strong><span>{checklistDraft.done.filter(Boolean).length} из {checklistDraft.items.length} выполнено</span></div><button onClick={() => { cancelStudyEditor("checklist"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button></div>
+              <div className="checklist-editor-header"><div className="checklist-editor-header-main"><strong>{pendingStudyItem?.id===checklistEditorId?"Создание чек-листа":"Чек-лист / задание"}</strong><span>{checklistDraft.done.filter(Boolean).length} из {checklistDraft.items.length} выполнено</span></div><button onClick={() => { cancelStudyEditor("checklist"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button></div>
+              {pendingStudyItem?.id===checklistEditorId&&<p className="lektrus-study-creation-hint">
+                Объект появится на доске только после сохранения. Отмена не создаёт задание.
+              </p>}
               <div className="checklist-editor-settings">
                 <label className="checklist-title-input"><span>Название</span><input value={checklistDraft.title} maxLength={200} onChange={(e) => setChecklistDraft({ ...checklistDraft, title: e.target.value })}/></label>
                 <div className="checklist-editor-style-row">
@@ -6936,7 +6939,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelStudyEditor("flashcard"); }
               if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveFlashcardEditor(); }
             }}>
-              <div className="flashcard-editor-header"><div><strong>Карточка вопрос–ответ</strong><span>Лицевая и обратная стороны одной учебной карточки</span></div><button onClick={() => { cancelStudyEditor("flashcard"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button></div>
+              <div className="flashcard-editor-header"><div><strong>{pendingStudyItem?.id===flashcardEditorId?"Создание карточки":"Карточка вопрос–ответ"}</strong><span>Лицевая и обратная стороны одной учебной карточки</span></div><button onClick={() => { cancelStudyEditor("flashcard"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button></div>
+              {pendingStudyItem?.id===flashcardEditorId&&<p className="lektrus-study-creation-hint">
+                Объект появится на доске только после сохранения. Отмена не создаёт задание.
+              </p>}
               <div className="flashcard-editor-body">
                 <section className="flashcard-editor-compose">
                   <label><span>Вопрос / лицевая сторона</span><textarea value={flashcardDraft.front} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, front: e.target.value })} placeholder="Что нужно вспомнить?"/></label>
@@ -6965,9 +6971,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveQuizEditor(); }
             }}>
               <div className="quiz-editor-header">
-                <div><strong>Вопрос / мини-тест</strong><span>Выберите правильный вариант и при необходимости добавьте пояснение</span></div>
+                <div><strong>{pendingStudyItem?.id===quizEditorId?"Создание теста":"Вопрос / мини-тест"}</strong><span>Выберите правильный вариант и при необходимости добавьте пояснение</span></div>
                 <button onClick={() => { cancelStudyEditor("quiz"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button>
               </div>
+              {pendingStudyItem?.id===quizEditorId&&<p className="lektrus-study-creation-hint">
+                Объект появится на доске только после сохранения. Отмена не создаёт задание.
+              </p>}
               <div className="quiz-editor-body">
                 <section className="quiz-editor-compose">
                   <label className="quiz-question-editor"><span>Вопрос</span><textarea value={quizDraft.question} maxLength={2000} onChange={(e) => setQuizDraft({ ...quizDraft, question: e.target.value })} placeholder="Введите вопрос…"/></label>
