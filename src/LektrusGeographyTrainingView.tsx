@@ -1,5 +1,6 @@
 import {useEffect,useState} from "react";
 import {atlasCountryFlagUrl} from "./lektrusAtlasCountrySymbols";
+import LektrusGeoCountryOutline from "./LektrusGeoCountryOutline";
 import type {GeoCountry,GeoTrainingDiagram} from "./lektrusGeographyTrainingModel";
 import {getGeoCountry,geoPair,geoRelationNames} from "./lektrusGeographyTrainingModel";
 import "./lektrusGeographyTraining.css";
@@ -14,7 +15,9 @@ function Flag({code}:{code:string}){
  </span>;
 }
 function asToken(country:GeoCountry,token:string){
- return token==="flag"?<Flag code={country.code}/>:<span className="lektrus-geo-answer-text">{token}</span>;
+ return token==="flag"?<Flag code={country.code}/>:token==="outline"?
+  <LektrusGeoCountryOutline code={country.code}/>:
+  <span className="lektrus-geo-answer-text">{token}</span>;
 }
 function shuffled<T,>(array:readonly T[]):T[]{
  const items=[...array];
@@ -23,8 +26,8 @@ function shuffled<T,>(array:readonly T[]):T[]{
  return items;
 }
 function sideLabels(d:GeoTrainingDiagram):[string,string]{
- const first=d.relation==="flag-country"?"Флаг":"Страна";
- const second=d.relation==="flag-country"?"Страна":"Столица";
+ const first=d.relation==="flag-country"?"Флаг":d.relation==="outline-country"?"Контур":"Страна";
+ const second=d.relation==="country-capital"?"Столица":"Страна";
  return d.reverse?[second,first]:[first,second];
 }
 function token(country:GeoCountry,d:GeoTrainingDiagram,side:"left"|"right"){
