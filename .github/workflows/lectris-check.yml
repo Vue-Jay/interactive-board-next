@@ -43,6 +43,8 @@ jobs:
         run: node scripts/test-lektrus-tool-tabs-and-video.mjs
       - name: Text and Graphics objects, diagrams and 3D solids
         run: node scripts/test-lektrus-elements-catalogue.mjs
+      - name: Dedicated icon coverage for every subject tool
+        run: node scripts/test-lektrus-subject-tool-icons.mjs
       - name: Unified geography and historical atlas regression
         run: node scripts/test-lektrus-atlas.mjs
       - name: Russian-language historical encyclopedia and cross-era search regression
