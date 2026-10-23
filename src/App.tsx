@@ -183,11 +183,11 @@ const iconBody = (name: IconName) => {
     case "marker": return <><path d="m4.5 15.6 9.9-10a1.9 1.9 0 0 1 2.7 0l2 2a1.9 1.9 0 0 1 0 2.7l-9.8 9.8H4.5v-4.5Z"/><path d="m13.1 7 4.6 4.5M6.2 16.6l2.2 2.2"/><path d="M3 21h11" strokeWidth="2.6"/></>;
     case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
     case "section-arrows": return <><path d="M4 24C9 24 8 15 14 15S20 22 27 7"/><path d="m20.5 9 7-3-1 7"/><circle cx="4" cy="24" r="2.3" fill="var(--lt-raised,#fff)"/><circle cx="14" cy="15" r="2.3" fill="var(--lt-raised,#fff)"/></>;
-    case "section-create": return <><path d="M5 7h22M16 7v19" strokeWidth="3" strokeLinecap="round"/></>;
-    case "section-shapes": return <><rect x="4.5" y="6" width="13" height="13" rx="2.2"/><path d="m22 9 8 16H14Z" strokeLinejoin="round"/></>;
-    case "section-data": return <><rect x="3.5" y="6" width="13.5" height="19" rx="2.2"/><path d="M3.5 12.5H17M10.25 6v19M21 25V17M26 25V11M31 25V7" strokeWidth="2.5" strokeLinecap="round"/></>;
-    case "section-assignments": return <><rect x="4" y="3" width="24" height="27" rx="4"/><path d="M11 3.5V2.2h10v1.3M15 10h9M15 18h9M15 26h5"/><path d="m8 9 1.8 1.8L13 7.5m-5 9.5 1.8 1.8 3.2-3.3"/><rect x="7.7" y="23" width="5" height="5" rx="1" strokeWidth="1.8"/></>;
-    case "section-media": return <><rect x="2.5" y="3.5" width="18" height="19" rx="2"/><circle cx="8" cy="9.5" r="2"/><path d="m4.5 19 5.5-6 4.2 4.4 3.6-3.4"/><rect x="17.8" y="16" width="11.5" height="11.5" rx="2" fill="var(--lt-raised,#fff)"/><path d="m22 19 4.2 2.8-4.2 2.7Z"/></>;
+    case "section-create": return <><path d="M3.5 19 8.5 5l5 14M5.8 13.5h5.4"/><path d="M16 8h5M16 13h5M16 18h4"/></>;
+    case "section-shapes": return <><rect x="3.5" y="3.5" width="11" height="11" rx="2.2"/><circle cx="16.5" cy="16.5" r="5"/></>;
+    case "section-data": return <><rect x="2.5" y="4.5" width="11" height="15" rx="2"/><path d="M2.5 10h11M8 4.5v15"/><path d="M16.5 19.5v-6M20.5 19.5V8" strokeWidth="2.2"/></>;
+    case "section-assignments": return <><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m7 10 2 2 3-3M14 10h3M7 16h3M13 16h4"/></>;
+    case "section-media": return <><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="9" r="1.5"/><path d="m5 17 5-5 3.5 3.5 2.6-2.6L19 16"/></>;
     case "connector": return <><path d="M3.5 12h17"/><path d="M14.5 5.5 21 12l-6.5 6.5"/></>;
     case "frame": return <><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2"/><rect x="8" y="8" width="8" height="8" rx="1.2"/><path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/></>;
     case "comment": return <><path d="M5 4.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-14a2 2 0 0 1 1-2Z"/><path d="M8 9h9M8 13h6"/></>;
@@ -275,8 +275,12 @@ const iconBody = (name: IconName) => {
 };
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
+  // A consistent 24px optical grid for all five main tool categories.
+  // The legacy section-arrows glyph retains its 32px viewBox.
+  const compactCategory = name === "section-create" || name === "section-shapes" ||
+    name === "section-data" || name === "section-assignments" || name === "section-media";
   return (
-    <svg className="ui-icon" width={size} height={size} viewBox={name.startsWith("section-")?"0 0 32 32":"0 0 24 24"} fill="none" stroke="currentColor" strokeWidth={name.startsWith("section-")?2.4:1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className="ui-icon" width={size} height={size} viewBox={name==="section-arrows"?"0 0 32 32":"0 0 24 24"} fill="none" stroke="currentColor" strokeWidth={compactCategory?1.9:name==="section-arrows"?2.4:1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {iconBody(name)}
     </svg>
   );
