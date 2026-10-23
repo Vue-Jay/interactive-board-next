@@ -739,20 +739,19 @@ body .workspace .lektrus-tool-overflow-group--media .lektrus-tool-overflow-grid>
  position:relative;
 }
 body .workspace .lektrus-tool-overflow-grid .lektrus-video-hover-hint{
- position:absolute;z-index:10;
- bottom:calc(100% + 7px);left:50%;
- width:max-content;max-width:min(234px,calc(100vw - 34px));
- transform:translate(-50%,3px);
- padding:7px 10px;border-radius:9px;
- background:#253e68;color:#fff;
- box-shadow:0 8px 24px #102c5640;
- font-family:inherit;font-size:11px;font-weight:650;line-height:1.35;
+ position:absolute;inset:4px;z-index:10;
+ display:grid;place-items:center;
+ padding:6px 7px;border-radius:8px;
+ background:linear-gradient(145deg,#2f5caa,#203b74);
+ color:#fff;
+ box-shadow:0 4px 12px #102c562b;
+ font-family:inherit;font-size:10px;font-weight:700;line-height:1.35;
  text-align:center;white-space:normal;
  opacity:0;visibility:hidden;pointer-events:none;
- transition:opacity .13s ease,transform .13s ease,visibility .13s ease;
+ transition:opacity .13s ease,visibility .13s ease;
 }
 body .workspace .lektrus-tool-overflow-grid>button:is(:hover,:focus-visible) .lektrus-video-hover-hint{
- opacity:1;visibility:visible;transform:translate(-50%,0);
+ opacity:1;visibility:visible;
 }
 body .workspace .lektrus-tool-overflow-grid .lektrus-tool-grid-subhead{
  grid-column:1/-1;
