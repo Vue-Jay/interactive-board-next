@@ -2228,6 +2228,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     quizEditorId ||
     flashcardEditorId ||
     graphEditorId ||
+    chartEditorItem ||
     formulaEditorId ||
     frameNotesEditorId
   );
@@ -5261,6 +5262,56 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       setFlashcardEditorId(item.id);
       setFlashcardDraft({front:"",back:"",fontSize:18,color:"#5355c9"});
     }
+  };
+
+  // One catalogue for desktop and mobile; all entries create the same
+  // portable board objects as their original tools.
+  const elementsCenter=():Point=>{
+    const rect=board.current?.getBoundingClientRect();
+    return {x:((rect?.width??900)/2-view.x)/view.zoom,y:((rect?.height??650)/2-view.y)/view.zoom};
+  };
+  const closeElementsMenu=()=>{setDesktopToolsExpanded(false);setMobileToolsOpen(false)};
+  const createDataChart=()=>{
+    if(!canEdit||!toolAllowedForRole("graph")){setNotice("Недостаточно прав для создания диаграммы");return}
+    const p=elementsCenter();
+    setChartEditorItem({id:createId(),kind:"graph",graphFigureId:"lektrus-chart",
+      text:"",x:p.x-240,y:p.y-170,width:480,height:340,
+      chartStyle:"bar",chartEntries:[],color:"#4774d7"});
+    setSelected([]);setTool("select");closeElementsMenu();
+  };
+  const createSolidElement=(id:import("./lektrusSolid3d").SolidFigureId)=>{
+    if(!canEdit||!toolAllowedForRole("graph")){setNotice("Недостаточно прав для создания 3D-фигуры");return}
+    const p=elementsCenter(),item=makeMathPresetItem(id,p.x,p.y,createId());
+    setPendingMathItem(item);setSelected([]);setTool("select");closeElementsMenu();
+    openGraphEditor(item);
+  };
+  const insertSpecialSymbol=(glyph:string)=>{
+    if(!canEdit||!toolAllowedForRole("text")){setNotice("Недостаточно прав для добавления символа");return}
+    const p=elementsCenter();
+    const item:Item={id:createId(),kind:"text",x:p.x-65,y:p.y-38,
+      width:130,height:76,text:glyph,color:"#253a64",fontSize:44,
+      textAlign:"center",fontWeight:"normal",fontStyle:"normal",
+      textDecoration:"none",textList:"none",lineHeight:1.25};
+    commit([...itemsRef.current,item]);setSelected([item.id]);setTool("select");
+    closeElementsMenu();
+  };
+  const elementCatalogueProps={
+    onTool:(id:"text"|"sticky"|"table"|"frame")=>{
+      if(!canEdit||!toolAllowedForRole(id)){setNotice("Недостаточно прав для добавления объекта");return}
+      finishEdit();setTool(id);closeElementsMenu();
+    },
+    onShape:(id:ShapeType)=>{
+      if(!canEdit||!toolAllowedForRole("shape")){setNotice("Недостаточно прав для добавления фигуры");return}
+      finishEdit();setShapeType(id);setTool("shape");closeElementsMenu();
+    },
+    onSolid:createSolidElement,
+    onChart:createDataChart,
+    onSymbol:insertSpecialSymbol,
+    onConnector:(style:ConnectorStyle)=>{
+      if(!canEdit||!toolAllowedForRole("connector")){setNotice("Недостаточно прав для добавления линии");return}
+      finishEdit();setConnectorStyle(style);setTool("connector");closeElementsMenu();
+    },
+    renderIcon:(id:"text"|"sticky"|"table"|"frame")=><Icon name={id} size={20}/>
   };
 
   const flipFlashcard = (item: Item) => {
