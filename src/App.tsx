@@ -6892,9 +6892,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>,document.body
         )}
         {checklistEditorId && checklistDraft && (
-          <div className="checklist-editor-backdrop" onPointerDown={() => { saveChecklistEditor(); }}>
-            <div className="checklist-editor-modal" role="dialog" aria-modal="false" aria-label="Редактор чек-листа" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); saveChecklistEditor(); } if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveChecklistEditor(); } }}>
-              <div className="checklist-editor-header"><div className="checklist-editor-header-main"><strong>Чек-лист / задание</strong><span>{checklistDraft.done.filter(Boolean).length} из {checklistDraft.items.length} выполнено</span></div><button onClick={() => { saveChecklistEditor(); }} aria-label="Закрыть"><Icon name="close" size={17}/></button></div>
+          <div className="checklist-editor-backdrop" onPointerDown={() => { cancelStudyEditor("checklist"); }}>
+            <div className="checklist-editor-modal" role="dialog" aria-modal="false" aria-label="Редактор чек-листа" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelStudyEditor("checklist"); } if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveChecklistEditor(); } }}>
+              <div className="checklist-editor-header"><div className="checklist-editor-header-main"><strong>Чек-лист / задание</strong><span>{checklistDraft.done.filter(Boolean).length} из {checklistDraft.items.length} выполнено</span></div><button onClick={() => { cancelStudyEditor("checklist"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button></div>
               <div className="checklist-editor-settings">
                 <label className="checklist-title-input"><span>Название</span><input value={checklistDraft.title} maxLength={200} onChange={(e) => setChecklistDraft({ ...checklistDraft, title: e.target.value })}/></label>
                 <div className="checklist-editor-style-row">
@@ -6912,17 +6912,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 ))}
                 <button className="checklist-add-row" disabled={checklistDraft.items.length >= 40} onClick={addChecklistRow}><Icon name="plus" size={15}/> Добавить пункт</button>
               </div>
-              <div className="checklist-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div className="checklist-editor-bulk"><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => false) } : current)}>Сбросить отметки</button><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => true) } : current)}>Отметить всё</button><button className="secondary" onClick={() => { saveChecklistEditor(); }}>Отмена</button><button className="primary" onClick={saveChecklistEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
+              <div className="checklist-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div className="checklist-editor-bulk"><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => false) } : current)}>Сбросить отметки</button><button className="secondary" onClick={() => setChecklistDraft((current) => current ? { ...current, done: current.done.map(() => true) } : current)}>Отметить всё</button><button className="secondary" onClick={() => { cancelStudyEditor("checklist"); }}>Отмена</button><button className="primary" onClick={saveChecklistEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
             </div>
           </div>
         )}
         {flashcardEditorId && flashcardDraft && (
-          <div className="flashcard-editor-backdrop" onPointerDown={() => { saveFlashcardEditor(); }}>
+          <div className="flashcard-editor-backdrop" onPointerDown={() => { cancelStudyEditor("flashcard"); }}>
             <div className="flashcard-editor-modal" role="dialog" aria-modal="false" aria-label="Редактор карточки вопрос–ответ" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => {
-              if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); saveFlashcardEditor(); }
+              if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelStudyEditor("flashcard"); }
               if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveFlashcardEditor(); }
             }}>
-              <div className="flashcard-editor-header"><div><strong>Карточка вопрос–ответ</strong><span>Лицевая и обратная стороны одной учебной карточки</span></div><button onClick={() => { saveFlashcardEditor(); }} aria-label="Закрыть"><Icon name="close" size={17}/></button></div>
+              <div className="flashcard-editor-header"><div><strong>Карточка вопрос–ответ</strong><span>Лицевая и обратная стороны одной учебной карточки</span></div><button onClick={() => { cancelStudyEditor("flashcard"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button></div>
               <div className="flashcard-editor-body">
                 <section className="flashcard-editor-compose">
                   <label><span>Вопрос / лицевая сторона</span><textarea value={flashcardDraft.front} maxLength={5000} onChange={(e) => setFlashcardDraft({ ...flashcardDraft, front: e.target.value })} placeholder="Что нужно вспомнить?"/></label>
@@ -6940,19 +6940,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   </div>
                 </aside>
               </div>
-              <div className="flashcard-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div><button className="secondary" onClick={() => { saveFlashcardEditor(); }}>Отмена</button><button className="primary" onClick={saveFlashcardEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
+              <div className="flashcard-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div><button className="secondary" onClick={() => { cancelStudyEditor("flashcard"); }}>Отмена</button><button className="primary" onClick={saveFlashcardEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
             </div>
           </div>
         )}
         {quizEditorId && quizDraft && (
-          <div className="quiz-editor-backdrop" onPointerDown={() => { saveQuizEditor(); }}>
+          <div className="quiz-editor-backdrop" onPointerDown={() => { cancelStudyEditor("quiz"); }}>
             <div className="quiz-editor-modal" role="dialog" aria-modal="false" aria-label="Редактор мини-теста" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => {
-              if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); saveQuizEditor(); }
+              if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelStudyEditor("quiz"); }
               if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveQuizEditor(); }
             }}>
               <div className="quiz-editor-header">
                 <div><strong>Вопрос / мини-тест</strong><span>Выберите правильный вариант и при необходимости добавьте пояснение</span></div>
-                <button onClick={() => { saveQuizEditor(); }} aria-label="Закрыть"><Icon name="close" size={17}/></button>
+                <button onClick={() => { cancelStudyEditor("quiz"); }} aria-label="Закрыть без сохранения"><Icon name="close" size={17}/></button>
               </div>
               <div className="quiz-editor-body">
                 <section className="quiz-editor-compose">
@@ -6988,7 +6988,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   </div>
                 </aside>
               </div>
-              <div className="quiz-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div><button className="secondary" onClick={() => { saveQuizEditor(); }}>Отмена</button><button className="primary" onClick={saveQuizEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
+              <div className="quiz-editor-footer"><span>Ctrl+Enter — сохранить · Esc — закрыть</span><div><button className="secondary" onClick={() => { cancelStudyEditor("quiz"); }}>Отмена</button><button className="primary" onClick={saveQuizEditor}><Icon name="check" size={15}/> Сохранить</button></div></div>
             </div>
           </div>
         )}
