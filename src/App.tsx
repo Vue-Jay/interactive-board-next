@@ -21,6 +21,8 @@ const INTERFACE_STUDIO_BOARD_ID="00000000-0000-4000-8000-00000000a11a";
 import {LEKTRUS_SCHOOL_SUBJECTS,normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import {queueLectrisBoardOrganization} from "./lectrisOrganizationStore";
 import LektrusToolOverflow from "./LektrusToolOverflow";
+import LektrusElementsCatalogue from "./LektrusElementsCatalogue";
+import {LektrusDataChartView,LektrusDataChartEditor} from "./LektrusDataChart";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
@@ -181,7 +183,7 @@ const iconBody = (name: IconName) => {
     case "marker": return <><path d="m4.5 15.6 9.9-10a1.9 1.9 0 0 1 2.7 0l2 2a1.9 1.9 0 0 1 0 2.7l-9.8 9.8H4.5v-4.5Z"/><path d="m13.1 7 4.6 4.5M6.2 16.6l2.2 2.2"/><path d="M3 21h11" strokeWidth="2.6"/></>;
     case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
     case "section-arrows": return <><path d="M4 24C9 24 8 15 14 15S20 22 27 7"/><path d="m20.5 9 7-3-1 7"/><circle cx="4" cy="24" r="2.3" fill="var(--lt-raised,#fff)"/><circle cx="14" cy="15" r="2.3" fill="var(--lt-raised,#fff)"/></>;
-    case "section-create": return <><path d="M3 5h12M9 5v13M6 18h6" strokeWidth="2.5"/><path d="m20 5 8 13H15z" strokeWidth="2.2"/><rect x="3.5" y="21" width="12" height="8" rx="1.2"/><path d="M3.5 25h12M9.5 21v8"/><path d="M18 25h11m-4-4 4 4-4 4" strokeWidth="2.2"/></>;
+    case "section-create": return <><path d="M3 8h13M9.5 8v18" strokeWidth="2.8"/><path d="M20 26V16M25 26V11M30 26V6" strokeWidth="3" strokeLinecap="round"/></>;
     case "section-assignments": return <><rect x="4" y="3" width="24" height="27" rx="4"/><path d="M11 3.5V2.2h10v1.3M15 10h9M15 18h9M15 26h5"/><path d="m8 9 1.8 1.8L13 7.5m-5 9.5 1.8 1.8 3.2-3.3"/><rect x="7.7" y="23" width="5" height="5" rx="1" strokeWidth="1.8"/></>;
     case "section-media": return <><rect x="2.5" y="3.5" width="18" height="19" rx="2"/><circle cx="8" cy="9.5" r="2"/><path d="m4.5 19 5.5-6 4.2 4.4 3.6-3.4"/><rect x="17.8" y="16" width="11.5" height="11.5" rx="2" fill="var(--lt-raised,#fff)"/><path d="m22 19 4.2 2.8-4.2 2.7Z"/></>;
     case "connector": return <><path d="M3.5 12h17"/><path d="M14.5 5.5 21 12l-6.5 6.5"/></>;
@@ -413,7 +415,7 @@ type LectrisSavedLayout={id:string;name:string;mode:"standard"|"lesson"|"focus";
 const mobileToolGroups: { label:string; tools:Tool[] }[] = [
   { label:"Навигация", tools:["select","lasso"] },
   { label:"Рисование", tools:["pen","marker","eraser"] },
-  { label:"Текст, фигуры и таблицы", tools:["text","sticky","shape","table","connector","frame","comment"] },
+  { label:"Текст и графика", tools:["text","sticky","shape","table","connector","frame","comment"] },
   { label:"Задания", tools:["checklist","quiz","flashcard","cover"] },
   { label:"Фото, PDF и видео", tools:["media","linkmedia"] },
 ];
@@ -1144,6 +1146,7 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
     graphGivenSides: Array.isArray(item.graphGivenSides) ? item.graphGivenSides : [],
     graphGivenAngles: Array.isArray(item.graphGivenAngles) ? item.graphGivenAngles : []
   };
+  if(item.graphFigureId==="lektrus-chart")return <LektrusDataChartView item={item}/>;
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
     return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
@@ -1967,6 +1970,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [atomEditorItem,setAtomEditorItem]=useState<Item|null>(null);
   const [fractionEditorId, setFractionEditorId] = useState<string | null>(null);
   const [pendingMathItem,setPendingMathItem] = useState<Item|null>(null);
+  const [chartEditorItem,setChartEditorItem] = useState<Item|null>(null);
   const [graphDraft, setGraphDraft] = useState<GraphDraft|null>(null);
   const [formulaEditorId, setFormulaEditorId] = useState<string | null>(null);
   const [formulaDraft, setFormulaDraft] = useState<{ text: string; fontSize: number; color: string } | null>(null);
@@ -2056,7 +2060,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [preview, setPreview] = useState<Item | null>(null);
   const [tool, setTool] = useState<Tool>("select");
   // Opening the shape palette does not arm a previously chosen figure.
-  useEffect(() => { if (tool === "shape") setShapeType(null); }, [tool]);
+  useEffect(() => { if (tool !== "shape") setShapeType(null); }, [tool]);
   const inkCursorElement=useRef<HTMLDivElement|null>(null);
   const moveInkCursor=(clientX:number,clientY:number,pointerType:string)=>{
     const indicator=inkCursorElement.current,rect=board.current?.getBoundingClientRect();
@@ -2246,7 +2250,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
   const [desktopToolSection,setDesktopToolSection]=useState("create");
-  const desktopToolSections=[{id:"create",label:"Текст, фигуры и таблицы",icon:"section-create" as IconName,ids:["text","sticky","shape","table","connector","frame"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
+  const desktopToolSections=[{id:"create",label:"Текст и графика",icon:"section-create" as IconName,ids:["text","sticky","shape","table","connector","frame"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
   useEffect(()=>{const mq=window.matchMedia?.("(pointer: coarse)");if(!mq)return;const sync=()=>setIsCoarsePointer(mq.matches);sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync)},[]);
@@ -4946,6 +4950,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   const openGraphEditor = (item: Item) => {
     if(item.kind!=="graph"||(item.locked&&item.graphFigureId!=="contour-atlas"))return;
+    if(item.graphFigureId==="lektrus-chart"){setChartEditorItem(item);return;}
     if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}
     if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){setCircuitEditorItem(item);return;}
     if(item.scienceAtomModel||item.graphFigureId==="chem-atom"){setAtomEditorItem(item);return;}
