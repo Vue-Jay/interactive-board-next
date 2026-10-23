@@ -10,6 +10,8 @@ function validSchoolTeachingDiagram(value:unknown):boolean{
  if(d.kind==="geo-training"){
   return (d.exercise==="matching"||d.exercise==="cards")&&
    (d.relation==="flag-country"||d.relation==="country-capital"||d.relation==="outline-country")&&
+   (d.difficulty===undefined||d.difficulty==="custom"||d.difficulty==="easy"||
+    d.difficulty==="medium"||d.difficulty==="hard")&&
    typeof d.reverse==="boolean"&&Array.isArray(d.countryCodes)&&
    d.countryCodes.length>=2&&d.countryCodes.length<=12&&
    d.countryCodes.every((code:unknown)=>typeof code==="string"&&/^[A-Z]{2}$/.test(code))&&
