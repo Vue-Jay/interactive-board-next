@@ -3560,6 +3560,20 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         return;
       }
     }
+    // Moving the common selection grip works even for embedded maps,
+    // formulas, media frames and other widgets that consume pointer events.
+    const groupGrip=target.closest<HTMLElement>("[data-group-selection-drag]");
+    if((tool==="select"||tool==="hand")&&groupGrip&&canEdit&&selected.length>1){
+      const movable=itemsRef.current.filter(item=>selected.includes(item.id)&&
+        !item.locked&&!structurallyLockedForStudent(item)).map(item=>item.id);
+      if(movable.length){
+        e.preventDefault();e.stopPropagation();
+        gesture.current={pointer:e.pointerId,mode:"drag",start,view,
+          before:itemsRef.current,ids:movable,path:[p],additive:false,dragging:true};
+        board.current?.setPointerCapture(e.pointerId);
+      }
+      return;
+    }
     const groupHandleEl = target.closest<HTMLElement>("[data-group-transform-handle]");
     const groupHandle = groupHandleEl?.dataset.groupTransformHandle;
     if ((tool === "select" || tool === "hand") && groupHandle && selected.length > 1 && !itemsRef.current.some((i) => selected.includes(i.id) && i.locked)) {
@@ -7364,11 +7378,25 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if((e.target as HTMLElement).closest("button,input,select,textarea,[role='button'],[role='slider'],[data-board-interactive]"))return;
             if(Date.now()<suppressTouchClickUntil.current){e.preventDefault();e.stopPropagation();}
           }}
+          onPointerDownCapture={(e)=>{
+            // Embedded editors may stop propagation inside their widgets.
+            // Capture first so *every* board object can still be selected.
+            if((tool!=="select"&&tool!=="hand")||space||e.button!==0||
+              presentation||gesture.current||objectEditorOpen)return;
+            const target=e.target as HTMLElement;
+            if(target.closest("[data-transform-handle],[data-group-transform-handle],[data-group-selection-drag],[data-connector-endpoint]"))return;
+            const id=target.closest<HTMLElement>("[data-object]")?.dataset.object;
+            if(!id||selected.includes(id))return;
+            const hit=itemsRef.current.find(item=>item.id===id&&!item.hidden);
+            if(!hit)return;
+            const family=familyIdsFor(hit);
+            setSelected(e.shiftKey?[...new Set([...selected,...family])]:family);
+          }}
           onPointerDown={(e) => {
             const target=e.target as HTMLElement;
             // Resize/rotate/connector handles are real buttons. These are
             // board gestures, not interface controls, and must reach down().
-            const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint]");
+            const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]");
             if(!transformHandle&&target.closest("button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"))return;
             if(tool==="eraser")return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; if (presentation) { const point = local(e.clientX, e.clientY); if (presentationLaser) setPresentationLaserPos(point); if (presentationSpotlight) setPresentationSpotlightPos(point); return; } down(e); }}
           onPointerMove={(e) => { if(tool==="eraser"){if(!eraserSession.current){const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y);}return;} if(eraserSession.current)return; if(pinchState.current||consumedTouchIds.current.has(e.pointerId))return; const localPoint = local(e.clientX, e.clientY); const worldPoint = world(localPoint); if(!adminHidden) cursorChannel.current?.sendCursor(worldPoint.x, worldPoint.y); if (presentation) { if (presentationLaser) setPresentationLaserPos(localPoint); if (presentationSpotlight) setPresentationSpotlightPos(localPoint); } move(e); }}
@@ -7706,6 +7734,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               }}
             >
               <div className="screen-selection-frame" />
+              <button type="button" className="lektrus-selection-move-grip" data-object={singleSelected.id}
+                data-board-selection-grip="true" aria-label="Переместить выделенный объект"
+                title="Перетащите, чтобы переместить объект">
+                <Icon name="hand" size={13} />
+                <span>Переместить</span>
+              </button>
               <div className="screen-rotate-connector" />
               <button
                 className="screen-rotate-handle"
@@ -7739,6 +7773,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               }}
             >
               <div className="screen-selection-frame" />
+              <button type="button" className="lektrus-selection-move-grip" data-group-selection-drag="true"
+                aria-label="Переместить выделенную группу"
+                title="Перетащите, чтобы переместить всю группу">
+                <Icon name="hand" size={13} />
+                <span>Группа</span>
+              </button>
               <div className="screen-rotate-connector" />
               <button
                 className="screen-rotate-handle"
