@@ -49,6 +49,18 @@ assert.ok(app.includes('icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>')
 assert.ok(!app.includes('entry.id==="math-coordinate"||entry.id==="physics-graphs"'),
  "Generic graph/shape/text icon switching must be removed");
 assert.ok(panel.includes('className="lektrus-subject-tools-icon"'));
+assert.ok(panel.includes('const shownTools=searchTerm?tools.filter('),
+ "Subject tools must be searchable by name, purpose, and group");
+assert.ok(panel.includes('tools.length>4&&<div className="lektrus-subject-tool-search"'),
+ "Do not display a full search bar for short subject catalogues");
+assert.ok(panel.includes('shownTools.filter(t=>(t.group||"Инструменты")===group)'),
+ "Search must filter rendered instrument cards");
+assert.ok(panel.includes('setSearch("");onSubjectChange(e.target.value)'),
+ "Switching school subjects must clear an old query");
+assert.ok(panel.includes('Ничего не найдено'),
+ "Empty search results must be clear to the user");
+assert.ok(styles.includes('.lektrus-subject-tools-panel .lektrus-subject-tool-search>div:focus-within'),
+ "Search input must have a visible keyboard focus indicator");
 assert.ok(styles.includes('body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon>svg'),
  "Portal-mounted panels must receive consistent icon sizing");
 assert.ok(styles.includes("prefers-reduced-motion:reduce"));
