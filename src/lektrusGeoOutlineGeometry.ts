@@ -40,7 +40,8 @@ export function buildCountryOutline(features:readonly GeoFeature[]):GeoOutline|n
  }
  if(longitudes.length<3)return null;
  const origin=outlineLongitudeOrigin(longitudes);
- const north=Math.max(...latitudes),south=Math.min(...latitudes);
+ let north=-Infinity,south=Infinity;
+ for(const lat of latitudes){if(lat>north)north=lat;if(lat<south)south=lat}
  // Correct the exaggerated longitude scale of a cylindrical atlas at high latitudes.
  const latMid=Math.max(-80,Math.min(80,(north+south)/2));
  const latitudeCorrection=Math.max(.16,Math.cos(latMid*Math.PI/180));
@@ -60,7 +61,6 @@ export function buildCountryOutline(features:readonly GeoFeature[]):GeoOutline|n
  // Keep the island outlines and interior holes. Pixel-level simplification
  // makes even 1:10m borders responsive in a classroom with many cards.
  for(const polygon of polys){
-  let firstRing=true;
   for(const ring of polygon){
    const valid=ring.filter(p=>Array.isArray(p)&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
    if(valid.length<3)continue;
@@ -73,15 +73,15 @@ export function buildCountryOutline(features:readonly GeoFeature[]):GeoOutline|n
    if(kept.length<3)continue;
    // Extremely small polygons cannot create readable silhouettes at this scale.
    // Do not make up proxy shapes for them.
-   const xs=kept.map(p=>p[0]),ys=kept.map(p=>p[1]);
-   const boundsArea=(Math.max(...xs)-Math.min(...xs))*(Math.max(...ys)-Math.min(...ys));
+   let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+   for(const [x,y] of kept){minX=Math.min(minX,x);maxX=Math.max(maxX,x);
+    minY=Math.min(minY,y);maxY=Math.max(maxY,y)}
+   const boundsArea=(maxX-minX)*(maxY-minY);
    if(boundsArea<.16)continue;
    const format=(v:number)=>v.toFixed(2);
    const path="M"+kept.map(p=>format(p[0])+" "+format(p[1])).join("L")+"Z";
    paths.push(path);
-   firstRing=false;
   }
-  void firstRing;
  }
  if(!paths.length)return null;
  return {path:paths.join(" "),viewBox:`0 0 ${WIDTH} ${HEIGHT}`};
