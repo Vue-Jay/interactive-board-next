@@ -3,7 +3,7 @@
  * Multiple-capital states list the school-appropriate primary capital with a note. */
 export type GeoRegion="Европа"|"Азия"|"Африка"|"Америка"|"Океания";
 export type GeoExercise="matching"|"cards";
-export type GeoRelation="flag-country"|"country-capital";
+export type GeoRelation="flag-country"|"country-capital"|"outline-country";
 export type GeoTrainingDiagram={kind:"geo-training";title:string;exercise:GeoExercise;
  relation:GeoRelation;reverse:boolean;countryCodes:string[]};
 export type GeoCountry={code:string;name:string;capital:string;region:GeoRegion;note?:string};
@@ -232,10 +232,12 @@ export const geoCountries:readonly GeoCountry[]=geoRegions.flatMap(region=>
 const countryByIso=new Map(geoCountries.map(country=>[country.code,country]));
 export const getGeoCountry=(code:string)=>countryByIso.get(code);
 export const geoRelationNames:Record<GeoRelation,string>={
- "flag-country":"Флаг и страна","country-capital":"Страна и столица"
+ "flag-country":"Флаг и страна","country-capital":"Страна и столица",
+ "outline-country":"Контур страны и название"
 };
 export function geoPair(country:GeoCountry,relation:GeoRelation):{left:string;right:string}{
  return relation==="flag-country"?{left:"flag",right:country.name}:
+ relation==="outline-country"?{left:"outline",right:country.name}:
  {left:country.name,right:country.capital};
 }
 export function sampleGeoCountries(region:GeoRegion|"Все",size:number):string[]{
@@ -253,7 +255,7 @@ export function validGeoTraining(value:unknown):value is GeoTrainingDiagram{
  const d=value as Record<string,unknown>;
  return d.kind==="geo-training"&&typeof d.title==="string"&&d.title.length<=120&&
   (d.exercise==="matching"||d.exercise==="cards")&&
-  (d.relation==="flag-country"||d.relation==="country-capital")&&
+  (d.relation==="flag-country"||d.relation==="country-capital"||d.relation==="outline-country")&&
   typeof d.reverse==="boolean"&&Array.isArray(d.countryCodes)&&
   d.countryCodes.length>=2&&d.countryCodes.length<=12&&
   d.countryCodes.every(code=>typeof code==="string"&&countryByIso.has(code))&&
