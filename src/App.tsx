@@ -7258,6 +7258,21 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // bubble handlers and otherwise starts a simultaneous board pinch.
             if((e.target as HTMLElement).closest(
               ".lektrus-atlas:not(.lektrus-atlas--board-selection)"))return;
+            // Select at capture time because school widgets, PDF previews and
+            // task controls can consume their own pointerdown events.
+            // Preserve the atlas' dedicated edit mode and native form controls.
+            if((tool==="select"||tool==="hand"&&e.pointerType!=="touch")&&
+              !space&&e.button===0&&!presentation&&!gesture.current&&!objectEditorOpen){
+              const target=e.target as HTMLElement;
+              if(!target.closest("[data-transform-handle],[data-group-transform-handle],[data-group-selection-drag],[data-board-selection-grip],[data-connector-endpoint]")){
+                const id=target.closest<HTMLElement>("[data-object]")?.dataset.object;
+                const hit=id?itemsRef.current.find(item=>item.id===id&&!item.hidden):null;
+                if(hit&&!selected.includes(hit.id)){
+                  const family=familyIdsFor(hit);
+                  setSelected(e.shiftKey?[...new Set([...selected,...family])]:family);
+                }
+              }
+            }
             // Board overlays contain real controls. Do not hijack taps,
             // focus, or the first finger of a pinch over those controls.
             const touchControl=(e.target as HTMLElement).closest(
@@ -7377,20 +7392,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // but actual toolbar and embedded button taps must still work.
             if((e.target as HTMLElement).closest("button,input,select,textarea,[role='button'],[role='slider'],[data-board-interactive]"))return;
             if(Date.now()<suppressTouchClickUntil.current){e.preventDefault();e.stopPropagation();}
-          }}
-          onPointerDownCapture={(e)=>{
-            // Embedded editors may stop propagation inside their widgets.
-            // Capture first so *every* board object can still be selected.
-            if((tool!=="select"&&tool!=="hand")||space||e.button!==0||
-              presentation||gesture.current||objectEditorOpen)return;
-            const target=e.target as HTMLElement;
-            if(target.closest("[data-transform-handle],[data-group-transform-handle],[data-group-selection-drag],[data-connector-endpoint]"))return;
-            const id=target.closest<HTMLElement>("[data-object]")?.dataset.object;
-            if(!id||selected.includes(id))return;
-            const hit=itemsRef.current.find(item=>item.id===id&&!item.hidden);
-            if(!hit)return;
-            const family=familyIdsFor(hit);
-            setSelected(e.shiftKey?[...new Set([...selected,...family])]:family);
           }}
           onPointerDown={(e) => {
             const target=e.target as HTMLElement;
