@@ -1,0 +1,175 @@
+/* Unified Lektrus selection chrome. Applies to every ordinary board object:
+   text, figures, tables, PDFs, graphics, science/atlas and task widgets. */
+.workspace .board .screen-transform-overlay{z-index:180;pointer-events:none}
+.workspace .board .screen-selection-frame{
+ border:1.5px solid #3d72dc;border-radius:7px;
+ box-shadow:0 0 0 1px #ffffffd9,0 0 0 4px #5085ef19,0 0 20px #2b58be15;
+ background:linear-gradient(145deg,#6197f109,#6197f100);
+ pointer-events:none;
+}
+.workspace .board .screen-transform-group .screen-selection-frame{
+ border:1.5px dashed #516ed5;border-radius:8px;
+ background:#668bd911;box-shadow:0 0 0 2px #ffffffbc;
+}
+.workspace .board .screen-transform-locked .screen-selection-frame{
+ border-color:#8f9ba9;border-style:dashed;background:#8b9bad12;
+}
+.workspace .board .screen-resize-handle{
+ width:23px;height:23px;display:grid;place-items:center;
+ padding:0;border:0;border-radius:99px;background:transparent;
+ z-index:8;pointer-events:auto;touch-action:none;outline-offset:2px;
+}
+.workspace .board .screen-resize-handle::after{
+ content:"";display:block;position:absolute;
+ left:50%;top:50%;width:12px;height:12px;
+ transform:translate(-50%,-50%);
+ box-sizing:border-box;border:2px solid #3769c6;border-radius:5px;
+ background:linear-gradient(140deg,#fff,#eaf1ff);
+ box-shadow:0 1px 6px #23457945,0 0 0 2px #ffffffec;
+ transition:background .12s,box-shadow .12s,scale .12s;
+}
+.workspace .board .screen-resize-handle:hover::after,
+.workspace .board .screen-resize-handle:focus-visible::after{
+ width:15px;height:15px;background:#e0ecff;
+ border-color:#2053bf;
+ box-shadow:0 0 0 5px #5989e72b,0 2px 8px #294f7b3f;
+}
+.workspace .board .screen-handle-nw{left:-11px;top:-11px;cursor:nwse-resize}
+.workspace .board .screen-handle-ne{right:-11px;top:-11px;cursor:nesw-resize}
+.workspace .board .screen-handle-sw{left:-11px;bottom:-11px;cursor:nesw-resize}
+.workspace .board .screen-handle-se{right:-11px;bottom:-11px;cursor:nwse-resize}
+.workspace .board .screen-handle-n{left:50%;top:-11px;cursor:ns-resize}
+.workspace .board .screen-handle-s{left:50%;bottom:-11px;cursor:ns-resize}
+.workspace .board .screen-handle-e{right:-11px;top:50%;cursor:ew-resize}
+.workspace .board .screen-handle-w{left:-11px;top:50%;cursor:ew-resize}
+.workspace .board .screen-rotate-connector{
+ top:-39px;height:39px;left:50%;width:2px;
+ background:linear-gradient(#99b6f6,#4d7cdb);
+}
+.workspace .board .screen-rotate-handle{
+ top:-57px;width:33px;height:33px;border-radius:12px;
+ border:1.5px solid #91b0ed;background:linear-gradient(155deg,#fff,#e5efff);
+ color:#315cb5;box-shadow:0 3px 13px #214b8840,0 0 0 2px #ffffffd9;
+ cursor:grab;z-index:9;
+}
+.workspace .board .screen-rotate-handle:hover{
+ color:#194bb4;background:#dce9ff;
+ box-shadow:0 0 0 4px #5089e52d,0 4px 14px #214b8830;
+}
+.workspace .board .screen-rotate-handle:active{cursor:grabbing}
+.workspace .board .lektrus-selection-move-grip{
+ position:absolute;top:-40px;left:0;z-index:10;
+ height:30px;min-width:33px;display:inline-flex;align-items:center;
+ justify-content:center;gap:5px;padding:5px 9px;
+ border:1px solid #adc5eb;border-radius:11px;
+ background:linear-gradient(150deg,#fff,#e8f1ff);
+ color:#3461b4;font:700 11px/1.1 inherit;
+ box-shadow:0 3px 12px #284f8338;
+ pointer-events:auto;touch-action:none;cursor:grab;white-space:nowrap;
+ user-select:none;-webkit-user-select:none;
+}
+.workspace .board .lektrus-selection-move-grip:hover,
+.workspace .board .lektrus-selection-move-grip:focus-visible{
+ background:#dae8ff;border-color:#6b96e7;
+ outline:2px solid #598de43c;outline-offset:2px;
+}
+.workspace .board .lektrus-selection-move-grip:active{cursor:grabbing}
+.workspace .board .screen-transform-group .lektrus-selection-move-grip{color:#6b53b3}
+.workspace .board .connector-endpoint-handle{
+ border:2px solid #316bc9;background:#f5faff;
+ box-shadow:0 0 0 3px #ffffffeb,0 2px 8px #224a7b33;
+}
+.workspace .board .board-object:focus-visible{
+ outline:2px solid #417ae1;outline-offset:3px;
+}
+@media (pointer:coarse){
+ .workspace .board .screen-resize-handle{width:32px;height:32px}
+ .workspace .board .screen-resize-handle::after{width:16px;height:16px;border-radius:6px}
+ .workspace .board .screen-handle-nw{left:-16px;top:-16px}
+ .workspace .board .screen-handle-ne{right:-16px;top:-16px}
+ .workspace .board .screen-handle-sw{left:-16px;bottom:-16px}
+ .workspace .board .screen-handle-se{right:-16px;bottom:-16px}
+ .workspace .board .screen-handle-n{top:-16px}
+ .workspace .board .screen-handle-s{bottom:-16px}
+ .workspace .board .screen-handle-e{right:-16px}
+ .workspace .board .screen-handle-w{left:-16px}
+ .workspace .board .lektrus-selection-move-grip{
+  height:38px;min-width:38px;top:-45px;padding:7px 11px;
+ }
+}
+@media (prefers-reduced-motion:reduce){
+ .workspace .board .screen-resize-handle::after{transition:none}
+}
+/* Fine-pointer tools: icon plus placement marker. Tool cursors are never
+   applied to ink, panning, resize handles or form fields. */
+@media(pointer:fine){
+.workspace .board.board-tool-sticky:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-sticky:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-sticky:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-sticky:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%207h10v11l-4%204H9z%22%2F%3E%3Cpath%20d%3D%22M15%2022v-4h4%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-text:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-text:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-text:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-text:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%209h11M14.5%209v12M11%2021h7%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-shape:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-shape:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-shape:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-shape:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M10%2020%2015%208l6%2012z%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-connector:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-connector:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-connector:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-connector:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m8%2020%2013-11m-5%200h5v5%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-frame:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-frame:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-frame:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-frame:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%2012V8h5m6%204V8h-5M9%2018v4h5m6-4v4h-5%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-comment:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-comment:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-comment:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-comment:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%208h12v10h-7l-4%204v-4H9z%22%2F%3E%3Cpath%20d%3D%22M12%2012h6m-6%203h4%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-table:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-table:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-table:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-table:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%229%22%20y%3D%228%22%20width%3D%2212%22%20height%3D%2214%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M9%2013h12m-8-5v14m4-9v9%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-formula:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-formula:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-formula:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-formula:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M21%208H11l5%207-5%207h10%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-graph:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-graph:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-graph:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-graph:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%208v14h13M11%2018l4-4%203%202%204-6%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-checklist:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-checklist:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-checklist:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-checklist:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%229%22%20y%3D%227%22%20width%3D%2212%22%20height%3D%2215%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22m11%2012%202%202%203-3m1%202h2m-8%205%202%202%203-3m1%202h2%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-quiz:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-quiz:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-quiz:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-quiz:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%229%22%20y%3D%227%22%20width%3D%2212%22%20height%3D%2215%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M13%2012a3%203%200%200%201%206%200c0%202-3%202-3%204m0%203v.5%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-flashcard:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-flashcard:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-flashcard:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-flashcard:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%2210%22%20y%3D%2210%22%20width%3D%2212%22%20height%3D%2212%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M9%2018H7V7h12v2M13%2014h6m-3-3v6%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-cover:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-cover:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-cover:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-cover:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%2011h12v10H9zM10%208h10m-8%206%202%202%203-3%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-media:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-media:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-media:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-media:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%229%22%20y%3D%228%22%20width%3D%2212%22%20height%3D%2214%22%20rx%3D%222%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2212%22%20r%3D%221%22%2F%3E%3Cpath%20d%3D%22m10%2020%204-5%203%203%202-2%202%203%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+.workspace .board.board-tool-linkmedia:not(.board-right-hand):not(.board-panning):not(.board-hand-active),
+.workspace .board.board-tool-linkmedia:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world,
+.workspace .board.board-tool-linkmedia:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object,
+.workspace .board.board-tool-linkmedia:not(.board-right-hand):not(.board-panning):not(.board-hand-active) .world .board-object *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20width%3D%2232%22%20height%3D%2232%22%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%23fff%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M5%202v7M2%205h7%22%20stroke%3D%22%232563c4%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%2F%3E%3Crect%20x%3D%226.5%22%20y%3D%225.5%22%20width%3D%2219%22%20height%3D%2221%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%2382aaf1%22%20stroke-width%3D%221.5%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23305ab2%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2013h-2a4%204%200%200%200%200%208h4a4%204%200%200%200%204-4m-3-5h3a4%204%200%200%200%200-8h-4a4%204%200%200%200-4%204m-1%208%2012-9%22%2F%3E%3C%2Fg%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%2225%22%20r%3D%225.3%22%20fill%3D%22%23336bd5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M25%2022.5v5M22.5%2025h5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.25%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 5 5,crosshair!important}
+}
+/* Draw tools keep their existing high-fidelity ink indicator. */
+.workspace .board.board-tool-select .world .board-object:not(.locked):hover{cursor:grab}
+.workspace .board.board-tool-select .world .board-object:not(.locked):active{cursor:grabbing}
+/* Never mask precise resize and rotation cursors. */
+.workspace .board .screen-resize-handle{cursor:inherit}
+.workspace .board .screen-handle-nw,.workspace .board .screen-handle-se{cursor:nwse-resize}
+.workspace .board .screen-handle-ne,.workspace .board .screen-handle-sw{cursor:nesw-resize}
+.workspace .board .screen-handle-n,.workspace .board .screen-handle-s{cursor:ns-resize}
+.workspace .board .screen-handle-e,.workspace .board .screen-handle-w{cursor:ew-resize}
