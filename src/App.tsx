@@ -287,12 +287,6 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   );
 }
 
-function ShapeIcon({ type }: { type: ShapeType }) {
-  const d:Partial<Record<ShapeType,string>>={triangle:"M14 2 25 20H3Z",rightTriangle:"M4 2v18h21Z",diamond:"M14 2 25 11 14 20 3 11Z",parallelogram:"M8 3h17l-5 16H3Z",trapezoid:"M8 3h12l5 16H3Z",pentagon:"M14 2 25 9l-4 11H7L3 9Z",hexagon:"M8 3h12l6 8-6 8H8l-6-8Z"};
-  if(type==="ellipse"||type==="circle")return <svg viewBox="0 0 28 22"><ellipse cx="14" cy="11" rx={type==="circle"?8:10} ry={type==="circle"?8:7}/></svg>;
-  if(type==="rectangle"||type==="square"||type==="rounded")return <svg viewBox="0 0 28 22"><rect x={type==="square"?6:4} y="4" width={type==="square"?16:20} height="14" rx={type==="rounded"?4:0}/></svg>;
-  return <svg viewBox="0 0 28 22"><path d={d[type]??"M4 4h20v14H4Z"}/></svg>;
-}
 function loadInitial(storageKey: string) {
   const empty: DocumentData = {
     version: 1,
