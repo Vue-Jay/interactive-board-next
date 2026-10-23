@@ -68,6 +68,23 @@ for(const id of ["geo-matching","geo-question-cards"]){
 assert.ok(editor.includes("LektrusGeographyTrainingControls"));
 assert.ok(editor.includes('draft.countryCodes.length<2'),"cannot save empty geography exercises");
 assert.ok(editor.includes('isContour||draft.kind==="geo-training"'),"closing geography editor discards unsaved changes");
+assert.ok(editor.includes('lektrus-school-editor--geo-training'),
+ "geography practice gets an isolated, wider editor layout");
+assert.ok(editor.includes("Компактный предпросмотр задания"),
+ "matching and question cards share an explicitly compact preview");
+const geoCss=read("lektrusGeographyTraining.css");
+assert.ok(geoCss.includes(".lektrus-school-editor--geo-training .lektrus-school-body"),
+ "editor column ratio changes only for geography exercises");
+assert.match(geoCss,/grid-template-columns:minmax\(0,1\.95fr\) minmax\(280px,\.86fr\)/,
+ "settings column must be much wider than preview");
+assert.ok(geoCss.includes("height:min(440px,60dvh)"),"preview has bounded height");
+assert.ok(geoCss.includes("lektrus-geo-generator-fields")&&
+ geoCss.includes("lektrus-geo-manual-grid")&&
+ geoCss.includes("lektrus-geo-selected-heading"),
+ "compact generator, country list and manual entry sections are styled");
+assert.ok(geoCss.includes("@container geoControls")&&
+ geoCss.includes("(orientation:portrait)"),
+ "exercise authoring remains responsive on narrow screens");
 assert.ok(editor.includes('draft.kind==="geo-training"?"Закрыть без сохранения"'),"close label agrees with cancel behavior");
 assert.ok(view.includes("LektrusGeographyTrainingView"));
 assert.ok(board.includes('if(d.kind==="geo-training")'),"save/load validator");
