@@ -49,7 +49,7 @@ function ShapeGlyph({name,solid}:{name:string;solid:boolean}){
  const n=name==="pentagon"?5:6,r=12;const pts=Array.from({length:n},(_,i)=>[16+r*Math.cos(i*Math.PI*2/n-Math.PI/2),16+r*Math.sin(i*Math.PI*2/n-Math.PI/2)]);return <svg viewBox="0 0 32 32"><polygon points={pts.map(p=>p.join(",")).join(" ")}/></svg>;
 }
 
-export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart,onSymbol,onConnector,renderIcon,figuresOnly=false}:{
+export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart,onSymbol,onConnector,renderIcon,mode="text",figuresOnly=false,canUseTool=()=>true}:{
  onTool:(id:"text"|"sticky"|"table"|"frame")=>void;
  onShape:(id:ShapeType)=>void;
  onSolid:(id:SolidFigureId)=>void;
@@ -57,6 +57,8 @@ export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart
  onSymbol:(symbol:string)=>void;
  onConnector:(style:"line"|"arrow"|"double")=>void;
  figuresOnly?:boolean;
+ mode?:"text"|"shapes"|"data";
+ canUseTool?:(id:"text"|"sticky"|"table"|"frame"|"shape"|"connector"|"graph")=>boolean;
  renderIcon:(id:"text"|"sticky"|"table"|"frame")=>ReactNode;
 }){
  const [dimension,setDimension]=useState<"2D"|"3D">("2D");
@@ -64,21 +66,27 @@ export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart
  const [symbolGroup,setSymbolGroup]=useState(0);
  const [connector,setConnector]=useState<"line"|"arrow"|"double">("arrow");
  const figureSection=(
-<section className="lektrus-elements-section">
+<section className="lektrus-elements-section lektrus-elements-shapes-section">
      <div className="lektrus-elements-heading"><h3>Фигуры</h3><div className="lektrus-elements-switch" role="group" aria-label="Плоские и объёмные фигуры">{(["2D","3D"] as const).map(id=><button type="button" key={id} aria-pressed={dimension===id} className={dimension===id?"active":""} onClick={()=>setDimension(id)}>{id}</button>)}</div></div>
-     {(dimension==="2D"?twoD:threeD).map(group=><div key={group.name} className="lektrus-elements-shape-group">
-       <h4>{group.name}</h4>
-       <div className="lektrus-elements-shape-grid">{dimension==="2D"?twoD.find(g=>g.name===group.name)?.items.map(([id,label])=><button type="button" key={id} title={label} onClick={()=>onShape(id)}><ShapeGlyph name={id} solid={false}/><span>{label}</span></button>):threeD.find(g=>g.name===group.name)?.items.map(([id,label])=><button type="button" key={id} title={label} onClick={()=>onSolid(id)}><ShapeGlyph name={id} solid/><span>{label}</span></button>)}</div>
-     </div>)}
+     <div className="lektrus-elements-shape-grid">{dimension==="2D" ? twoD.flatMap(group=>group.items).map(([id,label])=><button type="button" key={id} title={label} onClick={()=>onShape(id)}><ShapeGlyph name={id} solid={false}/><span>{label}</span></button>) : threeD.flatMap(group=>group.items).map(([id,label])=><button type="button" key={id} title={label} onClick={()=>onSolid(id)}><ShapeGlyph name={id} solid/><span>{label}</span></button>)}</div>
    </section>
  );
- if(figuresOnly)return <div className="lektrus-elements-catalogue lektrus-elements-figures-only">{figureSection}</div>;
- return <div className="lektrus-elements-catalogue">
-   <div className="lektrus-elements-hint">Текст, рисунки, объёмные модели, диаграммы и другие элементы доски</div>
+ if(figuresOnly||mode==="shapes")return <div className="lektrus-elements-catalogue lektrus-elements-figures-only">{canUseTool("shape")&&figureSection}{canUseTool("connector")&&<section className="lektrus-elements-section"><h3>Линии и стрелки</h3><div className="lektrus-elements-arrow-row">{(["line","arrow","double"] as const).map(type=><button type="button" key={type} className={connector===type?"active":""} onClick={()=>{setConnector(type);onConnector(type)}}><span>{type==="line"?"━":type==="arrow"?"⟶":"⟷"}</span><small>{type==="line"?"Линия":type==="arrow"?"Стрелка":"Двусторонняя"}</small></button>)}</div></section>}</div>;
+ if(mode==="data")return <div className="lektrus-elements-catalogue lektrus-elements-data">
+   <div className="lektrus-elements-hint">Таблицы и диаграммы с редактируемыми данными</div>
+   <section className="lektrus-elements-section">
+     <div className="lektrus-elements-data-actions">
+       {canUseTool("table")&&<button type="button" className="lektrus-elements-data-action" onClick={()=>onTool("table")}><span className="lektrus-elements-data-icon"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="26" height="24" rx="3"/><path d="M3 12h26M3 20h26M12 4v24M21 4v24"/></svg></span><strong>Таблица</strong><small>Ячейки, строки, столбцы</small></button>}
+       {canUseTool("graph")&&<button type="button" className="lektrus-elements-data-action" onClick={onChart}><span className="lektrus-elements-data-icon"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 28h26M6 24V15h5v9M14 24V9h5v15M22 24V4h5v20"/></svg></span><strong>Диаграмма</strong><small>Столбцы, линии, круговая</small></button>}
+     </div>
+   </section>
+ </div>;
+ return <div className="lektrus-elements-catalogue lektrus-elements-text">
+   <div className="lektrus-elements-hint">Текстовые элементы и специальные символы</div>
    <section className="lektrus-elements-section">
      <h3>Текст и оформление</h3>
      <div className="lektrus-elements-quick">
-       {(["text","sticky","table","frame"] as const).map(id=><button type="button" key={id} onClick={()=>onTool(id)}><span className="lektrus-elements-quick-icon">{renderIcon(id)}</span><span>{{text:"Текст",sticky:"Стикер",table:"Таблица",frame:"Фрейм"}[id]}</span></button>)}
+       {(["text","sticky","frame"] as const).filter(id=>canUseTool(id)).map(id=><button type="button" key={id} onClick={()=>onTool(id)}><span className="lektrus-elements-quick-icon">{renderIcon(id)}</span><span>{{text:"Текст",sticky:"Стикер",frame:"Фрейм"}[id]}</span></button>)}
        <button type="button" className={symbolsOpen?"active":""} onClick={()=>setSymbolsOpen(x=>!x)} aria-expanded={symbolsOpen}><span className="lektrus-elements-quick-icon">Ω</span><span>Спецсимволы</span></button>
      </div>
      {symbolsOpen&&<div className="lektrus-elements-symbols">
@@ -86,17 +94,6 @@ export default function LektrusElementsCatalogue({onTool,onShape,onSolid,onChart
        <div className="lektrus-elements-symbol-grid">{symbolGroups[symbolGroup].glyphs.map((value,i)=><button type="button" key={value+i} title={`Добавить символ ${value}`} onClick={()=>onSymbol(value)}>{value}</button>)}</div>
      </div>}
    </section>
-   {figureSection}
-   <section className="lektrus-elements-section">
-     <h3>Диаграммы</h3>
-     <button className="lektrus-elements-chart-button" type="button" onClick={onChart}>
-       <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 27V17h5v10M14 27V10h5v17M23 27V5h5v22" fill="#7697e2" stroke="#416aba" strokeWidth="1.7"/></svg>
-       <span><strong>Создать диаграмму</strong><small>Столбчатая, линейная или круговая</small></span>
-     </button>
-   </section>
-   <section className="lektrus-elements-section">
-     <h3>Линии и соединения</h3>
-     <div className="lektrus-elements-arrow-row">{(["line","arrow","double"] as const).map(type=><button type="button" key={type} className={connector===type?"active":""} onClick={()=>{setConnector(type);onConnector(type)}}><span>{type==="line"?"━":type==="arrow"?"⟶":"⟷"}</span><small>{type==="line"?"Линия":type==="arrow"?"Стрелка":"Двусторонняя"}</small></button>)}</div>
-   </section>
+
  </div>;
 }
