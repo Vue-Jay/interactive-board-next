@@ -1,11 +1,16 @@
 import {useState} from "react";
-import type {GeoTrainingDiagram,GeoRelation,GeoRegion} from "./lektrusGeographyTrainingModel";
-import {geoCountries,geoRegions,geoRelationNames,getGeoCountry,sampleGeoCountries} from "./lektrusGeographyTrainingModel";
+import type {GeoTrainingDiagram,GeoRelation,GeoRegion,GeoDifficulty} from "./lektrusGeographyTrainingModel";
+import {geoCountries,geoRegions,geoRelationNames,geoDifficultyNames,geoDifficultyHints,
+ getGeoCountry,sampleGeoCountries} from "./lektrusGeographyTrainingModel";
 
 type Props={diagram:GeoTrainingDiagram;onChange:(diagram:GeoTrainingDiagram)=>void};
 const counts=[2,3,4,5,6,7,8,9,10,11,12] as const;
+const difficultyLevels:GeoDifficulty[]=["easy","medium","hard"];
 export default function LektrusGeographyTrainingControls({diagram:d,onChange}:Props){
  const [region,setRegion]=useState<GeoRegion|"Все">("Все");
+ const [difficulty,setDifficulty]=useState<GeoDifficulty>(
+  d.difficulty&&d.difficulty!=="custom"?d.difficulty:"medium");
+ const [count,setCount]=useState(d.countryCodes.length>=2?d.countryCodes.length:6);
  const [query,setQuery]=useState("");
  const [newCountry,setNewCountry]=useState("");
  const used=new Set(d.countryCodes);
@@ -13,10 +18,13 @@ export default function LektrusGeographyTrainingControls({diagram:d,onChange}:Pr
   (region==="Все"||c.region===region)&&
   (!query.trim()||c.name.toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru"))||
    c.capital.toLocaleLowerCase("ru").includes(query.trim().toLocaleLowerCase("ru"))));
+ const manual=(countryCodes:string[])=>onChange({...d,countryCodes,difficulty:"custom"});
  const reorder=(i:number,j:number)=>{
   const next=[...d.countryCodes];[next[i],next[j]]=[next[j],next[i]];
-  onChange({...d,countryCodes:next});
+  manual(next);
  };
+ const generate=()=>onChange({...d,
+  countryCodes:sampleGeoCountries(region,count,difficulty),difficulty});
  return <>
   <div className="lektrus-school-controls-heading">Тип задания</div>
   <label className="lektrus-school-field">Что сопоставляем
@@ -29,28 +37,40 @@ export default function LektrusGeographyTrainingControls({diagram:d,onChange}:Pr
    Поменять местами вопрос и ответ
   </label>
   <p className="lektrus-school-hint">{d.exercise==="matching"?
-   "На доске ученик нажимает подходящие элементы в двух колонках. Верные пары отмечаются, ошибки учитываются.":"На доске ученик сначала видит вопрос, затем переворачивает карточку и проверяет себя."}
-   {" "}Направление можно менять в любом типе задания. Контуры строятся по геоданным основного атласа, без подписей и подсказок.</p>
-  <div className="lektrus-school-controls-heading">Подбор стран</div>
+   "На доске ученик выбирает связанные элементы в двух колонках. Верные пары отмечаются, ошибки учитываются.":
+   "На доске ученик переворачивает карточку и самостоятельно проверяет ответ."}
+   {" "}Направление можно менять в обоих инструментах. Контуры строятся по данным нашего атласа.</p>
+  <div className="lektrus-school-controls-heading">Генерация задания</div>
+  <p className="lektrus-school-hint">Готовых наборов нет. Выберите параметры и сгенерируйте задание или добавьте страны вручную.</p>
   <label className="lektrus-school-field">Часть света
    <select value={region} onChange={e=>{setRegion(e.target.value as GeoRegion|"Все");setNewCountry("");setQuery("")}}>
     <option value="Все">Весь мир</option>
     {geoRegions.map(name=><option value={name} key={name}>{name}</option>)}
    </select>
   </label>
+  <label className="lektrus-school-field">Уровень сложности
+   <select value={difficulty} onChange={e=>setDifficulty(e.target.value as GeoDifficulty)}>
+    {difficultyLevels.map(level=><option value={level} key={level}>{geoDifficultyNames[level]}</option>)}
+   </select>
+  </label>
+  <p className="lektrus-school-hint">{geoDifficultyHints[difficulty]} Если в выбранной части света подходящих стран меньше заданного числа, набор дополняется странами ближайшего уровня.</p>
   <div className="lektrus-geo-setting-actions">
-   <button type="button" className="lektrus-school-add" onClick={()=>
-    onChange({...d,countryCodes:sampleGeoCountries(region,d.countryCodes.length)})}>
-    ↻ Случайные страны
-   </button>
-   <label>Количество
-    <select value={d.countryCodes.length} onChange={e=>
-     onChange({...d,countryCodes:sampleGeoCountries(region,Number(e.target.value))})}>
+   <label>Количество заданий
+    <select value={count} onChange={e=>setCount(Number(e.target.value))}>
      {counts.map(n=><option key={n} value={n}>{n}</option>)}
     </select>
    </label>
+   <button type="button" className="lektrus-school-add" onClick={generate}>
+    ↻ Сгенерировать задание
+   </button>
   </div>
-  <p className="lektrus-school-hint">В справочнике {geoCountries.length} государств; для задания выбирайте от 2 до 12 разных стран. Случайная подборка изменяет текущий набор только по нажатию.</p>
+  <div className="lektrus-school-controls-heading">Выбранные страны ({d.countryCodes.length})</div>
+  {d.countryCodes.length===0?
+   <p className="lektrus-school-hint lektrus-geo-empty">
+    Пока ничего не выбрано. Задайте сложность и нажмите «Сгенерировать задание» либо добавьте страны по одной.
+   </p>:
+   <p className="lektrus-school-hint">Набор: {d.difficulty&&d.difficulty!=="custom"?geoDifficultyNames[d.difficulty]:"ручной выбор"}.
+    Изменение настроек генерации не заменяет текущие страны до нажатия кнопки.</p>}
   <div className="lektrus-geo-chosen" aria-label="Выбранные страны">
    {d.countryCodes.map((code,i)=>{
     const country=getGeoCountry(code);
@@ -63,11 +83,13 @@ export default function LektrusGeographyTrainingControls({diagram:d,onChange}:Pr
      <button type="button" aria-label={"Ниже: "+country.name} title="Ниже"
       disabled={i===d.countryCodes.length-1} onClick={()=>reorder(i,i+1)}>↓</button>
      <button type="button" aria-label={"Убрать: "+country.name} title="Убрать страну"
-      disabled={d.countryCodes.length<=2}
-      onClick={()=>onChange({...d,countryCodes:d.countryCodes.filter(x=>x!==code)})}>×</button>
+      onClick={()=>manual(d.countryCodes.filter(x=>x!==code))}>×</button>
     </div>
    })}
   </div>
+  {d.countryCodes.length>0&&<button type="button" className="lektrus-geo-clear"
+   onClick={()=>manual([])}>Очистить выбранные страны</button>}
+  <div className="lektrus-school-controls-heading">Ручной выбор</div>
   <label className="lektrus-school-field">Поиск страны или столицы
    <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Например, Казахстан или Астана"/>
   </label>
@@ -80,14 +102,15 @@ export default function LektrusGeographyTrainingControls({diagram:d,onChange}:Pr
    <button type="button" disabled={d.countryCodes.length>=12||available.length===0}
     onClick={()=>{
      const code=available.some(c=>c.code===newCountry)?newCountry:available[0]?.code;
-     if(code&&!used.has(code))onChange({...d,countryCodes:[...d.countryCodes,code]});
+     if(code&&!used.has(code))manual([...d.countryCodes,code]);
     }}>+ Добавить</button>
   </div>
+  <p className="lektrus-school-hint">В справочнике {geoCountries.length} государств. Для сохранения требуется от 2 до 12 разных стран.</p>
   {d.countryCodes.some(code=>!!getGeoCountry(code)?.note)&&
    <details className="lektrus-geo-facts-note"><summary>Уточнения о столицах</summary>
     {d.countryCodes.map(code=>{const c=getGeoCountry(code);return c?.note?
      <p key={code}><strong>{c.name}:</strong> {c.note}</p>:null})}
    </details>}
-  <p className="lektrus-school-hint">Флаги используются современные. Если нужно составить задания по историческим государствам, лучше выбирать историческую карту: государственные символы и столицы менялись.</p>
+  <p className="lektrus-school-hint">Флаги и очертания государств относятся к современной карте. Для прошлых эпох используйте исторический атлас.</p>
  </>;
 }
