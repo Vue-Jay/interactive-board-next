@@ -6804,6 +6804,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setScienceEditorItem(null);
           }}
           onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Предметная схема сохранена");}}/>}
+        {chartEditorItem&&createPortal(<LektrusDataChartEditor key={chartEditorItem.id}
+          item={chartEditorItem} onClose={()=>setChartEditorItem(null)}
+          onSave={next=>{
+            commit(itemsRef.current.some(x=>x.id===next.id)
+              ?itemsRef.current.map(x=>x.id===next.id?next:x)
+              :[...itemsRef.current,next]);
+            setSelected([next.id]);setChartEditorItem(null);setTool("select");
+            setNotice("Диаграмма сохранена");
+          }}/>,document.body)}
         {graphEditorId && graphDraft && createPortal(
           <LektrusGraphEditor
             draft={graphDraft} userId={authUser.id} mode={graphDraft.purpose==="geometry"?"geometry":"coordinates"}
@@ -7201,7 +7210,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {mobileToolsOpen&&<section className="mobile-tools-sheet" aria-label="Все инструменты">
           <div className="mobile-tools-sheet-head"><strong>Инструменты</strong><div className="mobile-tools-sheet-head-actions"><button type="button" title="Настроить основные инструменты" aria-label="Настроить основные инструменты" onClick={()=>{setMobileToolsOpen(false);setLectrisCustomizeOpen(true)}}><Icon name="settings" size={18}/></button>{!isStudent&&<button type="button" onClick={()=>{setMobileToolsOpen(false);setBoardAiOpen(true);setBoardAiPreview([])}} aria-label="AI-помощник" title="AI-помощник"><Icon name="robot" size={18}/></button>}<button type="button" className="mobile-command-search" onClick={()=>{setMobileToolsOpen(false);setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}} aria-label="Найти инструмент" title="Найти инструмент"><Icon name="search" size={18}/></button><button type="button" onClick={()=>setMobileToolsOpen(false)} aria-label="Закрыть">×</button></div></div>
           <div className="mobile-tools-groups">
-            {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span><div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div></div>)}
+            {mobileToolGroups.map(group=>({...group,tools:group.tools.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))})).filter(group=>group.tools.length>0).map(group=><div className="mobile-tools-group" key={group.label}><span>{group.label}</span>{group.label==="Текст и графика"?<div className="lektrus-mobile-elements-catalogue"><LektrusElementsCatalogue {...elementCatalogueProps}/></div>:<div>{group.tools.map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" className={tool===id?"active":""} title={id==="linkmedia"?"Видео прикрепляется по ссылке":t.label} aria-label={id==="linkmedia"?"Видео":t.label} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={19}/><small>{toolShortLabel[id]}</small></button>})}</div>}</div>)}
           </div>
         </section>}
         <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
@@ -7238,11 +7247,21 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <div className="lektrus-tool-overflow-content">
             {desktopToolSections.filter(g=>g.id===desktopToolSection).map(group=><div className={`lektrus-tool-overflow-group lektrus-tool-overflow-group--${group.id}`} key={group.id}>
               <div className="lektrus-tool-overflow-group-title">{group.label}</div>
-              <div className="lektrus-tool-overflow-grid">
-                {group.ids.filter(id=>id!=="formula"&&id!=="graph"&&id!=="connector"&&toolAllowedForRole(id)).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" title={id==="linkmedia"?undefined:t.label} aria-label={id==="linkmedia"?"Видео":t.label} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);setDesktopToolsExpanded(false)}}><span className="lektrus-tool-overflow-icon"><Icon name={t.icon} size={20}/></span><span>{toolShortLabel[id]}</span>{id==="linkmedia"&&<span className="lektrus-video-hover-hint" role="tooltip">Видео прикрепляется по ссылке</span>}</button>})}
-                {group.id==="create"&&toolAllowedForRole("connector")&&<div className="lektrus-tool-grid-subhead">Линии и стрелки</div>}
-                {group.id==="create"&&toolAllowedForRole("connector")&&(["line","arrow","double"] as ConnectorStyle[]).map((type)=><button key={type} type="button" title={type==="line"?"Линия без наконечника":type==="arrow"?"Стрелка с одним наконечником":"Двусторонняя стрелка"} className={tool==="connector"&&connectorStyle===type?"active":""} onClick={()=>{finishEdit();setTool("connector");setConnectorStyle(type);setDesktopToolsExpanded(false)}}><span className="lektrus-tool-overflow-icon"><Icon name={type==="line"?"line":type==="arrow"?"arrow-one":"arrow-double"} size={20}/></span><span>{type==="line"?"Линия":type==="arrow"?"Стрелка":"Двусторонняя"}</span></button>)}
-              </div>
+              {group.id==="create"?<LektrusElementsCatalogue {...elementCatalogueProps}/>:(
+                <div className="lektrus-tool-overflow-grid">
+                  {group.ids.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id)).map(id=>{
+                    const t=tools.find(x=>x.id===id)!;
+                    return <button key={id} type="button" title={id==="linkmedia"?undefined:t.label}
+                      aria-label={id==="linkmedia"?"Видео":t.label}
+                      className={tool===id?"active":""}
+                      onClick={()=>{finishEdit();setTool(id);setDesktopToolsExpanded(false)}}>
+                      <span className="lektrus-tool-overflow-icon"><Icon name={t.icon} size={20}/></span>
+                      <span>{toolShortLabel[id]}</span>
+                      {id==="linkmedia"&&<span className="lektrus-video-hover-hint" role="tooltip">Видео прикрепляется по ссылке</span>}
+                    </button>;
+                  })}
+                </div>
+              )}
             </div>)}
           </div>
         </LektrusToolOverflow>}
