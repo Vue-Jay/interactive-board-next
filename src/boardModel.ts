@@ -354,6 +354,8 @@ export type Item = {
   // Subject objects keep their teaching purpose, title and visible axes.
   graphPurpose?: "function" | "coordinates" | "geometry" | "unit-circle" | "number-line";
   graphFigureId?: string;
+  chartStyle?: "bar" | "line" | "pie";
+  chartEntries?: {label:string;value:number}[];
   scienceCircuit?: import("./lektrusCircuitModel").CircuitDocument;
   scienceAtomModel?: import("./lektrusAtomModel").AtomModel;
   sciencePeriodicHighlights?: number[];
@@ -456,7 +458,7 @@ const binding = (v: unknown): v is ConnectorBinding => !!v && typeof v === "obje
  * or reopening a board. Previously these fields were silently dropped and all
  * subject diagrams rendered as a generic coordinate plane. */
 const persistedGraphKeys = [
-  "graphPurpose","graphFigureId","scienceCircuit","scienceAtomModel",
+  "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceAtomModel",
   "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
   "scienceExperimentStage","scienceOrganicAnnotations","scienceReactionConditions",
   "scienceReagents","scienceEnvironment","schoolDiagram",
@@ -539,6 +541,11 @@ export function parseDocument(raw: string): DocumentData {
       if (!Number.isInteger(i.fractionDenominator) || i.fractionDenominator! < 1 || !Number.isInteger(i.fractionNumerator) || i.fractionNumerator! < 0 || i.fractionNumerator! > i.fractionDenominator!) throw new Error("Повреждена дробь");
     }
     if (i.kind === "graph") {
+      if(i.graphFigureId==="lektrus-chart"&&(
+        !["bar","line","pie"].includes(i.chartStyle)||
+        !Array.isArray(i.chartEntries)||i.chartEntries.length<1||i.chartEntries.length>12||
+        i.chartEntries.some((entry:{label?:unknown;value?:unknown})=>!entry||typeof entry.label!=="string"||entry.label.length>80||typeof entry.value!=="number"||!Number.isFinite(entry.value)||entry.value<0||entry.value>1e9)
+      ))throw new Error("Некорректные данные диаграммы");
       if(i.graphFigureId!=null&&(typeof i.graphFigureId!=="string"||i.graphFigureId.length>64))throw new Error("Некорректный тип геометрической фигуры");
       for(const list of [i.graphPoints,i.graphSegments,i.graphCircles,i.graphPolygons,i.graphAngles,i.graphMidpoints]){
         if(!Array.isArray(list))continue;
