@@ -735,10 +735,10 @@ body .workspace .lektrus-board-subject-picker select{min-width:0;max-width:135px
 @media(max-width:700px){body .workspace .lektrus-board-subject-picker{max-width:118px}body .workspace .lektrus-board-subject-picker>span{display:none}body .workspace .lektrus-board-subject-picker select{max-width:115px;font-size:11px}}
 
 /* Compact media icon and discreet link explanation, visible only on hover/focus. */
-body .workspace .lektrus-tool-overflow-group--media .lektrus-tool-overflow-grid>button{
+.lektrus-tool-overflow-popover .lektrus-tool-overflow-group--media .lektrus-tool-overflow-grid>button{
  position:relative;
 }
-body .workspace .lektrus-tool-overflow-grid .lektrus-video-hover-hint{
+.lektrus-tool-overflow-popover .lektrus-tool-overflow-grid .lektrus-video-hover-hint{
  position:absolute;inset:4px;z-index:10;
  display:grid;place-items:center;
  padding:6px 7px;border-radius:8px;
@@ -750,10 +750,10 @@ body .workspace .lektrus-tool-overflow-grid .lektrus-video-hover-hint{
  opacity:0;visibility:hidden;pointer-events:none;
  transition:opacity .13s ease,visibility .13s ease;
 }
-body .workspace .lektrus-tool-overflow-grid>button:is(:hover,:focus-visible) .lektrus-video-hover-hint{
+.lektrus-tool-overflow-popover .lektrus-tool-overflow-grid>button:is(:hover,:focus-visible) .lektrus-video-hover-hint{
  opacity:1;visibility:visible;
 }
-body .workspace .lektrus-tool-overflow-grid .lektrus-tool-grid-subhead{
+.lektrus-tool-overflow-popover .lektrus-tool-overflow-grid .lektrus-tool-grid-subhead{
  grid-column:1/-1;
  color:var(--lt-muted,#70839d);
  font-size:10px;font-weight:800;letter-spacing:.035em;
@@ -762,5 +762,5 @@ body .workspace .lektrus-tool-overflow-grid .lektrus-tool-grid-subhead{
  border-top:1px solid var(--lt-line,#e0e7f1);
 }
 @media(prefers-reduced-motion:reduce){
- body .workspace .lektrus-tool-overflow-grid .lektrus-video-hover-hint{transition:none}
+ .lektrus-tool-overflow-popover .lektrus-tool-overflow-grid .lektrus-video-hover-hint{transition:none}
 }
