@@ -15,7 +15,7 @@ const groups=[...section[1].matchAll(/\{id:"([^"]+)",label:"([^"]+)",icon:"([^"]
  .map(([,id,label,icon,ids])=>({id,label,icon,ids:[...ids.matchAll(/"([^"]+)"/g)].map(m=>m[1])}));
 assert.deepEqual(groups.map(g=>g.id),["create","assignments","media"],
  "Tool sections are text/figures/tables, assignments and media, without a separate arrow tab");
-assert.equal(groups[0].label,"Текст, фигуры и таблицы");
+assert.equal(groups[0].label,"Текст и графика");
 assert.equal(groups[1].label,"Задания");
 for(const tool of ["text","sticky","shape","table","connector","frame"])
  assert.ok(groups[0].ids.includes(tool),tool+" must be in the text/figures/tables tab");
@@ -24,12 +24,14 @@ for(const tool of ["checklist","quiz","flashcard","cover"])
 assert.deepEqual(groups[2].ids,["media","linkmedia"]);
 assert.equal(new Set(groups.flatMap(g=>g.ids)).size,groups.flatMap(g=>g.ids).length,
  "No tool can occur in multiple categories");
-assert.ok(app.includes('group.id==="create"&&toolAllowedForRole("connector")'),
- "Connector variants remain available with role checks in the combined tab");
-assert.ok(app.includes('(["line","arrow","double"] as ConnectorStyle[])'),
- "All three line and arrow variants remain usable");
+assert.ok(app.includes('<LektrusElementsCatalogue {...elementCatalogueProps}/>'),
+ "The combined tab uses a classified elements catalogue");
+const elements=read("src/LektrusElementsCatalogue.tsx");
+assert.ok(elements.includes('(["line","arrow","double"] as const)'),
+ "The catalog supports all three line and arrow variants");
+assert.ok(elements.includes('onConnector(type)'),"Connector style remains selectable");
 
-assert.match(app,/case "section-create": return [^\n]*M3 5h12/);
+assert.match(app,/case "section-create": return [^\n]*M3 8h13/);
 assert.match(app,/case "section-assignments": return [^\n]*rect x="4" y="3"/);
 assert.match(app,/case "linkmedia": return [^\n]*rect x="2\.5" y="5"/);
 assert.doesNotMatch(app,/case "linkmedia": return [^\n]*M20\.5 5 17 8\.5/,
@@ -43,12 +45,12 @@ assert.ok(toolCss.includes('.lektrus-video-hover-hint'));
 assert.ok(toolCss.includes('button:is(:hover,:focus-visible) .lektrus-video-hover-hint'));
 assert.ok(toolCss.includes('.lektrus-tool-overflow-popover .lektrus-tool-overflow-grid .lektrus-video-hover-hint'),
  "Tool menu is a document.body portal, so tooltip selectors must not depend on .workspace ancestry");
-assert.ok(toolCss.includes('.lektrus-tool-grid-subhead'));
+assert.ok(read("src/lektrusElementsCatalogue.css").includes(".lektrus-elements-heading"));
 
 const mobileGroups=app.match(/const mobileToolGroups:[\s\S]*?= \[([\s\S]*?)\];/);
 assert.ok(mobileGroups);
 for(const [label,names] of [
- ["Текст, фигуры и таблицы",["text","shape","table","connector"]],
+ ["Текст и графика",["text","shape","table","connector"]],
  ["Задания",["checklist","quiz","flashcard","cover"]],
  ["Фото, PDF и видео",["media","linkmedia"]]
 ]){
