@@ -30,8 +30,8 @@ for(const exercise of ["matching","cards"]){
  assert.equal(validGeoTraining({...d,countryCodes:["RU","FR"],difficulty:"easy"}),true);
  assert.equal(validGeoTraining({...d,countryCodes:["RU","FR"],difficulty:"custom"}),true);
  assert.equal(validGeoTraining({...d,countryCodes:["RU","FR"],difficulty:"unknown"}),false);
- assert.equal(validGeoTraining({...d,relation:"country-capital",reverse:true}),true);
- assert.equal(validGeoTraining({...d,relation:"outline-country",reverse:true}),true);
+ assert.equal(validGeoTraining({...d,countryCodes:["RU","FR"],relation:"country-capital",reverse:true}),true);
+ assert.equal(validGeoTraining({...d,countryCodes:["RU","FR"],relation:"outline-country",reverse:true}),true);
  assert.equal(validGeoTraining({...d,countryCodes:["RU","RU"]}),false);
  assert.equal(validGeoTraining({...d,countryCodes:["XX","US"]}),false);
  assert.equal(validGeoTraining({...d,countryCodes:["RU"]}),false);
