@@ -107,6 +107,11 @@
 .workspace .board.board-tool-hand .board-object:is(.object-pdf,.object-linkmedia):not(.selected) iframe{
  pointer-events:none!important;
 }
+.workspace .lektrus-study-creation-hint{
+ margin:0;padding:9px 14px;background:#edf5ff;
+ color:#4a6e9a;font:650 12px/1.4 inherit;
+ border-bottom:1px solid #dae7f6;
+}
 /* Fine-pointer tools: icon plus placement marker. Tool cursors are never
    applied to ink, panning, resize handles or form fields. */
 @media(pointer:fine){
