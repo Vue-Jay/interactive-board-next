@@ -1950,6 +1950,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [tableEditorId, setTableEditorId] = useState<string | null>(null);
   const [tableDraft, setTableDraft] = useState<{ rows: number; cols: number; cells: string[]; header: boolean; fontSize: number; align: "left" | "center" | "right"; stripe: boolean; compact: boolean } | null>(null);
+  const [pendingStudyItem, setPendingStudyItem] = useState<Item | null>(null);
   const [checklistEditorId, setChecklistEditorId] = useState<string | null>(null);
   const [checklistDraft, setChecklistDraft] = useState<{ title: string; items: string[]; done: boolean[]; fontSize: number; color: string } | null>(null);
   const [quizEditorId, setQuizEditorId] = useState<string | null>(null);
@@ -3791,39 +3792,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       setTool("select");
       window.setTimeout(() => openFormulaEditor(item), 0);
       return;
-    } else if (tool === "checklist") {
+    } else if (tool === "checklist" || tool === "quiz" || tool === "flashcard") {
       e.preventDefault();
-      const item: Item = { id: createId(), kind: "checklist", x: p.x - 170, y: p.y - 130, width: 340, height: 260, text: "Задание", checklistItems: ["Первый пункт", "Второй пункт", "Третий пункт"], checklistDone: [false, false, false], fontSize: 15, color: "#5355c9" };
-      commit([...itemsRef.current, item]);
-      setSelected([item.id]);
-      setTool("select");
-      window.setTimeout(() => openChecklistEditor(item), 0);
-      return;
-    } else if (tool === "quiz") {
-      e.preventDefault();
-      const item: Item = {
-        id: createId(), kind: "quiz",
-        x: p.x - 190, y: p.y - 155, width: 380, height: 310,
-        text: "Какой ответ правильный?",
-        quizOptions: ["Вариант A", "Вариант B", "Вариант C", "Вариант D"],
-        quizCorrect: 0, quizRevealed: false, fontSize: 15, color: "#5355c9",
-      };
-      commit([...itemsRef.current, item]);
-      setSelected([item.id]);
-      setTool("select");
-      window.setTimeout(() => openQuizEditor(item), 0);
-      return;
-    } else if (tool === "flashcard") {
-      e.preventDefault();
-      const item: Item = {
-        id: createId(), kind: "flashcard",
-        x: p.x - 180, y: p.y - 125, width: 360, height: 250,
-        text: "Вопрос", flashcardBack: "Ответ", flashcardFlipped: false, fontSize: 18, color: "#5355c9",
-      };
-      commit([...itemsRef.current, item]);
-      setSelected([item.id]);
-      setTool("select");
-      window.setTimeout(() => openFlashcardEditor(item), 0);
+      beginStudyCreation(tool,p);
       return;
     } else if (tool === "cover") {
       e.preventDefault();
@@ -5137,7 +5108,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (!checklistEditorId || !checklistDraft) { setChecklistEditorId(null); setChecklistDraft(null); return; }
     const cleanItems = checklistDraft.items.slice(0, 40).map((value) => value.slice(0, 2000));
     const cleanDone = cleanItems.map((_, index) => checklistDraft.done[index] === true);
-    commit(itemsRef.current.map((item) => item.id === checklistEditorId ? {
+    if(pendingStudyItem?.id===checklistEditorId && (!checklistDraft.title.trim()||!cleanItems.some(x=>x.trim()))){
+      setNotice("Введите название и хотя бы один пункт чек-листа");return;
+    }
+    const original=pendingStudyItem?.id===checklistEditorId?pendingStudyItem:null;
+    const source=original?[...itemsRef.current,original]:itemsRef.current;
+    commit(source.map((item) => item.id === checklistEditorId ? {
       ...item,
       text: checklistDraft.title.slice(0, 200),
       checklistItems: cleanItems.length ? cleanItems : ["Новый пункт"],
@@ -5145,6 +5121,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       fontSize: Math.max(10, Math.min(32, Math.round(checklistDraft.fontSize))),
       color: checklistDraft.color,
     } : item));
+    if(original){setSelected([original.id]);setPendingStudyItem(null)}
     setChecklistEditorId(null);
     setChecklistDraft(null);
     setNotice("Чек-лист сохранён");
@@ -5176,7 +5153,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (!quizEditorId || !quizDraft) { setQuizEditorId(null); setQuizDraft(null); return; }
     const options = quizDraft.options.slice(0, 8).map((value) => value.slice(0, 2000));
     const correct = Math.max(0, Math.min(options.length - 1, Math.round(quizDraft.correct)));
-    commit(itemsRef.current.map((item) => item.id === quizEditorId ? {
+    if(pendingStudyItem?.id===quizEditorId && (!quizDraft.question.trim()||options.length<2||options.some(x=>!x.trim()))){
+      setNotice("Напишите вопрос и минимум два непустых варианта ответа");return;
+    }
+    const original=pendingStudyItem?.id===quizEditorId?pendingStudyItem:null;
+    const source=original?[...itemsRef.current,original]:itemsRef.current;
+    commit(source.map((item) => item.id === quizEditorId ? {
       ...item,
       text: quizDraft.question.slice(0, 2000),
       quizOptions: options.length >= 2 ? options : [...options, "Вариант 2"].slice(0, 2),
@@ -5187,6 +5169,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       quizRevealed: false,
       quizSelected: undefined,
     } : item));
+    if(original){setSelected([original.id]);setPendingStudyItem(null)}
     setQuizEditorId(null);
     setQuizDraft(null);
     setNotice("Мини-тест сохранён");
@@ -5222,11 +5205,44 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   const saveFlashcardEditor = () => {
     if (!flashcardEditorId || !flashcardDraft) { setFlashcardEditorId(null); setFlashcardDraft(null); return; }
-    commit(itemsRef.current.map((item) => item.id === flashcardEditorId ? {
+    if(pendingStudyItem?.id===flashcardEditorId && (!flashcardDraft.front.trim()||!flashcardDraft.back.trim())){
+      setNotice("Заполните вопрос и ответ на карточке");return;
+    }
+    const original=pendingStudyItem?.id===flashcardEditorId?pendingStudyItem:null;
+    const source=original?[...itemsRef.current,original]:itemsRef.current;
+    commit(source.map((item) => item.id === flashcardEditorId ? {
       ...item, text: flashcardDraft.front.slice(0, 5000), flashcardBack: flashcardDraft.back.slice(0, 5000),
       fontSize: Math.max(10, Math.min(48, Math.round(flashcardDraft.fontSize))), color: flashcardDraft.color, flashcardFlipped: false,
     } : item));
+    if(original){setSelected([original.id]);setPendingStudyItem(null)}
     setFlashcardEditorId(null); setFlashcardDraft(null); setNotice("Карточка сохранена");
+  };
+
+  // An educational task is a draft until Save, not a half-built board object.
+  const cancelStudyEditor=(kind:"checklist"|"quiz"|"flashcard")=>{
+    if(kind==="checklist"){setChecklistEditorId(null);setChecklistDraft(null)}
+    if(kind==="quiz"){setQuizEditorId(null);setQuizDraft(null)}
+    if(kind==="flashcard"){setFlashcardEditorId(null);setFlashcardDraft(null)}
+    setPendingStudyItem(null);
+  };
+  const beginStudyCreation=(kind:"checklist"|"quiz"|"flashcard",point:Point)=>{
+    const size=kind==="quiz"?{width:380,height:310}:
+      kind==="flashcard"?{width:360,height:250}:{width:340,height:260};
+    const item:Item={
+      id:createId(),kind,x:point.x-size.width/2,y:point.y-size.height/2,
+      ...size,text:"",fontSize:kind==="flashcard"?18:15,color:"#5355c9"
+    };
+    setPendingStudyItem(item);setSelected([]);setTool("select");
+    if(kind==="checklist"){
+      setChecklistEditorId(item.id);
+      setChecklistDraft({title:"",items:[""],done:[false],fontSize:15,color:"#5355c9"});
+    }else if(kind==="quiz"){
+      setQuizEditorId(item.id);
+      setQuizDraft({question:"",options:["",""],correct:0,explanation:"",fontSize:15,color:"#5355c9"});
+    }else{
+      setFlashcardEditorId(item.id);
+      setFlashcardDraft({front:"",back:"",fontSize:18,color:"#5355c9"});
+    }
   };
 
   const flipFlashcard = (item: Item) => {
