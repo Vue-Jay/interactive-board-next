@@ -34,10 +34,11 @@ assert.ok(elements.includes('(["line","arrow","double"] as const)'),
  "The catalog supports all three line and arrow variants");
 assert.ok(elements.includes('onConnector(type)'),"Connector style remains selectable");
 
-assert.match(app,/case "section-create": return [^\n]*M5 7h22/);
-assert.match(app,/case "section-shapes": return [^\n]*rect x="4\.5"/);
-assert.match(app,/case "section-data": return [^\n]*rect x="3\.5"/);
-assert.match(app,/case "section-assignments": return [^\n]*rect x="4" y="3"/);
+assert.match(app,/case "section-create": return [^\n]*M3\.5 19 8\.5 5/);
+assert.match(app,/case "section-shapes": return [^\n]*rect x="3\.5"/);
+assert.match(app,/case "section-data": return [^\n]*rect x="2\.5"/);
+assert.match(app,/case "section-assignments": return [^\n]*rect x="3\.5" y="3\.5"/);
+assert.match(app,/case "section-media": return [^\n]*rect x="3" y="4"/);
 assert.match(app,/case "linkmedia": return [^\n]*rect x="2\.5" y="5"/);
 assert.doesNotMatch(app,/case "linkmedia": return [^\n]*M20\.5 5 17 8\.5/,
  "Video button must no longer depict a link");
