@@ -25,6 +25,9 @@ for(const solid of ["cube","rectangular-prism","prism","pyramid","triangular-pyr
  assert.ok(cat.includes('"'+solid+'"'),"Missing 3D object "+solid);
 }
 assert.ok(cat.includes('onShape(id)'));
+assert.ok(cat.includes("if(figuresOnly)return"),"2D/3D picker must be reusable in the standard Shapes tool");
+assert.ok(app.includes('className="lektrus-figures-floating"')&&app.includes("<LektrusElementsCatalogue {...elementCatalogueProps} figuresOnly/>"),"Shape tool must expose 2D and 3D");
+assert.ok(css.includes("lektrus-figures-floating"),"Floating figure palette must be responsive");
 assert.ok(cat.includes('onSolid(id)'));
 assert.ok(cat.includes('onSymbol(value)'));
 assert.ok(cat.includes('onChart'));
