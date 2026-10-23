@@ -15,6 +15,9 @@ type Props={
 export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubject,subjects,tools,onSubjectChange,onChoose,onClose}:Props){
   const panelRef=useRef<HTMLElement>(null);
   const [position,setPosition]=useState<CSSProperties>({left:70,top:86});
+  const [search,setSearch]=useState("");
+  const searchTerm=search.trim().toLocaleLowerCase("ru-RU");
+  const shownTools=searchTerm?tools.filter(t=>[t.label,t.description??"",t.group??""].some(part=>part.toLocaleLowerCase("ru-RU").includes(searchTerm))):tools;
   useLayoutEffect(()=>{
     if(!anchor)return;
     let frame=0;
@@ -74,20 +77,21 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
       <div className="lektrus-subject-tools-body">
         <label className="lektrus-subject-tools-category">
           <span>Предмет доски</span>
-          <select aria-label="Предмет доски для набора инструментов" value={subject} disabled={!canChangeSubject} onChange={e=>onSubjectChange(e.target.value)}>
+          <select aria-label="Предмет доски для набора инструментов" value={subject} disabled={!canChangeSubject} onChange={e=>{setSearch("");onSubjectChange(e.target.value)}}>
             <option value="">Выберите предмет</option>
             {subjects.filter(Boolean).map(name=><option key={name} value={name}>{name}</option>)}
             {subject&&!subjects.includes(subject)&&<option value={subject}>{subject}</option>}
           </select>
           {!canChangeSubject&&<small>Предмет закреплён создателем доски</small>}
         </label>
-        {tools.length>0?
+        {tools.length>4&&<div className="lektrus-subject-tool-search"><label htmlFor="lektrus-subject-tool-search-input">Найти инструмент</label><div><input id="lektrus-subject-tool-search-input" type="search" autoComplete="off" spellCheck={false} placeholder="Название или назначение…" value={search} onChange={e=>setSearch(e.target.value)}/>{search&&<button type="button" aria-label="Очистить поиск" title="Очистить поиск" onClick={()=>setSearch("")}>×</button>}</div><small>{shownTools.length} из {tools.length} инструментов</small></div>}
+        {shownTools.length>0?
           <div className="lektrus-subject-tools-groups" role="group" aria-label={subject+" инструменты"}>
-            {Array.from(new Set(tools.map(t=>t.group||"Инструменты"))).map(group=>
+            {Array.from(new Set(shownTools.map(t=>t.group||"Инструменты"))).map(group=>
               <section className="lektrus-subject-tools-group" key={group}>
                 <h3>{group}</h3>
                 <div className="lektrus-subject-tools-list">
-                  {tools.filter(t=>(t.group||"Инструменты")===group).map(t=>
+                  {shownTools.filter(t=>(t.group||"Инструменты")===group).map(t=>
                     <button type="button" key={t.id} onClick={()=>onChoose(t.id)}>
                       <span className="lektrus-subject-tools-icon">{t.icon}</span>
                       <span className="lektrus-subject-tools-name">{t.label}</span>
@@ -97,8 +101,9 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
               </section>)}
           </div>:
           <div className="lektrus-subject-tools-empty">
-            <strong>Выберите учебный предмет</strong>
-            <p>Набор инструментов появится здесь. Универсальные инструменты остаются в основной панели.</p>
+            <strong>{searchTerm?"Ничего не найдено":"Выберите учебный предмет"}</strong>
+            <p>{searchTerm?"Попробуйте другое название или очистите поиск.":"Набор инструментов появится здесь. Универсальные инструменты остаются в основной панели."}</p>
+            {searchTerm&&<button className="lektrus-subject-tools-clear" type="button" onClick={()=>setSearch("")}>Показать все инструменты</button>}
           </div>}
       </div>
     </section>,document.body
