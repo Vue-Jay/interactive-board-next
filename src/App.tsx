@@ -7180,19 +7180,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
         )}
         {tool === "shape" && (
-          <div className="shape-palette" role="group" aria-label="Выбрать фигуру" onPointerDown={e=>e.stopPropagation()}>
-            {([
-              ["rectangle","Прямоугольник"], ["square","Квадрат"], ["circle","Круг"], ["ellipse","Овал"],
-              ["triangle","Треугольник"], ["rightTriangle","Прямоугольный треугольник"], ["diamond","Ромб"], ["parallelogram","Параллелограмм"],
-              ["trapezoid","Трапеция"], ["pentagon","Пятиугольник"], ["hexagon","Шестиугольник"],
-            ] as [ShapeType,string][]).map(([id,label]) => (
-              <button type="button" key={id} title={label} aria-pressed={shapeType===id} className={shapeType === id ? "active" : ""} onClick={(e) => { e.stopPropagation(); setShapeType(id); }}>
-                <span className="shape-palette-icon"><ShapeIcon type={id} /></span>
-                <span className={id === "rightTriangle" ? "shape-label-two-line" : undefined}>{id === "rightTriangle" ? <>Прямоугольный<br/>треугольник</> : label}</span>
-              </button>
-            ))}
+          <div className="lektrus-figures-floating" role="group" aria-label="Фигуры 2D и 3D"
+            onPointerDown={e=>e.stopPropagation()}>
+            <LektrusElementsCatalogue {...elementCatalogueProps} figuresOnly/>
+            <p className="lektrus-figures-footnote">Выберите 2D-фигуру и нажмите на доску. Объёмные фигуры открываются в редакторе.</p>
           </div>
         )}
+
 <nav className="mobile-board-tools" aria-label="Основные инструменты">
           <div className="mobile-tool-cluster mobile-tool-cluster-navigation" aria-label="Навигация">
             {lectrisTouchDockTools.slice(0,1).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
