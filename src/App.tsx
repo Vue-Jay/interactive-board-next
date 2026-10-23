@@ -166,7 +166,7 @@ type IconName =
   | "align-left" | "align-center-x" | "align-right" | "align-top" | "align-center-y" | "align-bottom"
   | "distribute-x" | "distribute-y" | "open" | "download" | "eye" | "eye-off"
   | "frame-contents" | "fit" | "grid" | "dots" | "plain" | "line" | "arrow-one" | "arrow-double" | "elbow" | "link" | "unlink" | "label" | "zoom-in" | "zoom-out" | "snap" | "chevron-left" | "chevron-right"
-  | "section-arrows" | "section-create" | "section-studies" | "section-media"
+  | "section-arrows" | "section-create" | "section-assignments" | "section-media"
   | "templates" | "comments" | "check" | "plus" | "minus" | "presentation-order"
   | "checklist" | "quiz" | "cover" | "flip" | "robot" | "fullscreen" | "timer" | "laser" | "spotlight" | "slides" | "play" | "pause" | "reset" | "keyboard" | "settings" | "add-person";
 
@@ -181,8 +181,8 @@ const iconBody = (name: IconName) => {
     case "marker": return <><path d="m4.5 15.6 9.9-10a1.9 1.9 0 0 1 2.7 0l2 2a1.9 1.9 0 0 1 0 2.7l-9.8 9.8H4.5v-4.5Z"/><path d="m13.1 7 4.6 4.5M6.2 16.6l2.2 2.2"/><path d="M3 21h11" strokeWidth="2.6"/></>;
     case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
     case "section-arrows": return <><path d="M4 24C9 24 8 15 14 15S20 22 27 7"/><path d="m20.5 9 7-3-1 7"/><circle cx="4" cy="24" r="2.3" fill="var(--lt-raised,#fff)"/><circle cx="14" cy="15" r="2.3" fill="var(--lt-raised,#fff)"/></>;
-    case "section-create": return <><path d="M1.7 6.7H18.9M10.3 6.7V25.7" strokeWidth="2.9"/><path d="M26.3 6.3 21.1 15.2h10.4Z" strokeWidth="2"/><circle cx="21.6" cy="22.1" r="3" strokeWidth="2"/><rect x="28.3" y="18.9" width="6.3" height="6.3" rx=".3" strokeWidth="2"/></>;
-    case "section-studies": return <><rect x="2.5" y="3.5" width="16.5" height="23" rx="2"/><path d="M2.5 10.5h16.5M2.5 18.5h16.5M10.75 3.5v23"/><rect x="17" y="15" width="13" height="13" rx="2" fill="var(--lt-raised,#fff)"/><path d="m19.7 21.3 2.5 2.5 5-5.6" strokeWidth="2.6"/></>;
+    case "section-create": return <><path d="M3 5h12M9 5v13M6 18h6" strokeWidth="2.5"/><path d="m20 5 8 13H15z" strokeWidth="2.2"/><rect x="3.5" y="21" width="12" height="8" rx="1.2"/><path d="M3.5 25h12M9.5 21v8"/><path d="M18 25h11m-4-4 4 4-4 4" strokeWidth="2.2"/></>;
+    case "section-assignments": return <><rect x="4" y="3" width="24" height="27" rx="4"/><path d="M11 3.5V2.2h10v1.3M15 10h9M15 18h9M15 26h5"/><path d="m8 9 1.8 1.8L13 7.5m-5 9.5 1.8 1.8 3.2-3.3"/><rect x="7.7" y="23" width="5" height="5" rx="1" strokeWidth="1.8"/></>;
     case "section-media": return <><rect x="2.5" y="3.5" width="18" height="19" rx="2"/><circle cx="8" cy="9.5" r="2"/><path d="m4.5 19 5.5-6 4.2 4.4 3.6-3.4"/><rect x="17.8" y="16" width="11.5" height="11.5" rx="2" fill="var(--lt-raised,#fff)"/><path d="m22 19 4.2 2.8-4.2 2.7Z"/></>;
     case "connector": return <><path d="M3.5 12h17"/><path d="M14.5 5.5 21 12l-6.5 6.5"/></>;
     case "frame": return <><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2"/><rect x="8" y="8" width="8" height="8" rx="1.2"/><path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/></>;
@@ -200,7 +200,7 @@ const iconBody = (name: IconName) => {
     case "sticky": return <><path d="M5 4h14v11.4L14.4 20H5V4Z"/><path d="M14.4 20v-4.6H19M8 9h8M8 12h5"/></>;
     case "shape": return <><rect x="3.5" y="4.5" width="8" height="8" rx="1.4"/><circle cx="17.5" cy="8.5" r="3.5"/><path d="m9 20 4.2-6.6L17.5 20H9Z"/></>;
     case "media": return <><rect x="3" y="4.5" width="18" height="15" rx="2"/><circle cx="8" cy="9" r="1.7"/><path d="m4.5 17 5-5 3.5 3 3-2.5 3.6 4.5"/></>;
-    case "linkmedia": return <><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="m9.5 8.5 5.5 3.5-5.5 3.5v-7Z"/><path d="m17 5 3.5 3.5M20.5 5 17 8.5" opacity=".65"/></>;
+    case "linkmedia": return <><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="m21.5 9 2-1.5v9L21.5 15" strokeWidth="1.7"/><path d="m9.8 8.8 5.4 3.2-5.4 3.2z" fill="currentColor" stroke="none"/></>;
     case "search": return <><circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 4 4"/></>;
     case "present": return <><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M12 16v4M8.5 20h7"/><path d="m10 9 5 2.5-5 2.5V9Z"/></>;
     case "layers": return <><path d="m12 4 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4M4 16l8 4 8-4"/></>;
@@ -272,7 +272,7 @@ const iconBody = (name: IconName) => {
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   return (
-    <svg className="ui-icon" width={size} height={size} viewBox={name==="section-create"?"0 0 36 32":name.startsWith("section-")?"0 0 32 32":"0 0 24 24"} fill="none" stroke="currentColor" strokeWidth={name.startsWith("section-")?2.4:1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className="ui-icon" width={size} height={size} viewBox={name.startsWith("section-")?"0 0 32 32":"0 0 24 24"} fill="none" stroke="currentColor" strokeWidth={name.startsWith("section-")?2.4:1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {iconBody(name)}
     </svg>
   );
@@ -400,23 +400,22 @@ const tools: { id: Tool; icon: IconName; label: string; dividerAfter?: boolean }
   { id: "flashcard", icon: "flashcard", label: "Карточка вопрос–ответ · J / О" },
   { id: "cover", icon: "cover", label: "Шторка / открыть ответ · U / Г", dividerAfter: true },
   { id: "media", icon: "media", label: "Фото / PDF · I / Ш" },
-  { id: "linkmedia", icon: "linkmedia", label: "Видео / аудио по ссылке · L / Д" },
+  { id: "linkmedia", icon: "linkmedia", label: "Видео · L / Д" },
 ];
 const toolShortLabel: Record<Tool, string> = {
   select:"Выбрать",hand:"Двигать",lasso:"Петля",pen:"Карандаш",marker:"Маркер",eraser:"Ластик",
   connector:"Стрелка",frame:"Фрейм",comment:"Комментарий",text:"Текст",sticky:"Стикер",shape:"Фигуры",
   table:"Таблица",formula:"Формула",graph:"График",checklist:"Чек-лист",quiz:"Тест",flashcard:"Карточка",
-  cover:"Шторка",media:"Фото / PDF",linkmedia:"Видео / аудио",
+  cover:"Шторка",media:"Фото / PDF",linkmedia:"Видео",
 };
 const primaryDesktopTools = new Set<Tool>(["select","lasso","pen","marker","eraser","connector","text","sticky","shape","media"]);
 type LectrisSavedLayout={id:string;name:string;mode:"standard"|"lesson"|"focus";pinned:Tool[];panels?:LectrisPanelLayout};
 const mobileToolGroups: { label:string; tools:Tool[] }[] = [
   { label:"Навигация", tools:["select","lasso"] },
   { label:"Рисование", tools:["pen","marker","eraser"] },
-  { label:"Создание", tools:["sticky","text","shape","connector"] },
-  { label:"Материалы", tools:["media","linkmedia","frame"] },
-  { label:"Задания", tools:["checklist","quiz","flashcard"] },
-  { label:"Интерактив", tools:["table","cover","comment"] },
+  { label:"Текст, фигуры и таблицы", tools:["text","sticky","shape","table","connector","frame","comment"] },
+  { label:"Задания", tools:["checklist","quiz","flashcard","cover"] },
+  { label:"Фото, PDF и видео", tools:["media","linkmedia"] },
 ];
 const mobileDockTools: Tool[] = ["select","lasso","pen","eraser","sticky","text","shape"];
 const STUDENT_BLOCKED_CREATE_TOOLS = new Set<Tool>(["frame","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"]);
@@ -2247,7 +2246,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // "Ещё" is a transient floating menu, not a persistent expansion of the rail.
   const [desktopToolsExpanded,setDesktopToolsExpanded]=useState(false);
   const [desktopToolSection,setDesktopToolSection]=useState("create");
-  const desktopToolSections=[{id:"arrows",label:"Линии и стрелки",icon:"section-arrows" as IconName,ids:["connector"] as Tool[]},{id:"create",label:"Текст и фигуры",icon:"section-create" as IconName,ids:["text","sticky","shape","frame"] as Tool[]},{id:"studies",label:"Таблицы и задания",icon:"section-studies" as IconName,ids:["table","checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
+  const desktopToolSections=[{id:"create",label:"Текст, фигуры и таблицы",icon:"section-create" as IconName,ids:["text","sticky","shape","table","connector","frame"] as Tool[]},{id:"assignments",label:"Задания",icon:"section-assignments" as IconName,ids:["checklist","quiz","flashcard","cover"] as Tool[]},{id:"media",label:"Фото, PDF и видео",icon:"section-media" as IconName,ids:["media","linkmedia"] as Tool[]}];
   const adaptiveToolbarRef=useAdaptiveBoardToolbar(desktopToolsExpanded,desktopToolSection);
   const [isCoarsePointer,setIsCoarsePointer]=useState(()=>window.matchMedia?.("(pointer: coarse)").matches===true);
   useEffect(()=>{const mq=window.matchMedia?.("(pointer: coarse)");if(!mq)return;const sync=()=>setIsCoarsePointer(mq.matches);sync();mq.addEventListener?.("change",sync);return()=>mq.removeEventListener?.("change",sync)},[]);
