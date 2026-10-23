@@ -14,8 +14,10 @@ const cat=read("src/LektrusElementsCatalogue.tsx");
 const chart=read("src/LektrusDataChart.tsx");
 const model=read("src/boardModel.ts");
 const css=read("src/lektrusElementsCatalogue.css");
-assert.ok(app.includes('label:"Текст и графика"'));
-assert.ok(app.includes('case "section-create": return <><path d="M3 8h13'));
+assert.ok(app.includes('label:"Текст"'));
+assert.ok(app.includes('label:"Фигуры"'));
+assert.ok(app.includes('label:"Таблицы и диаграммы"'));
+assert.ok(app.includes('case "section-create": return <><path d="M5 7h22'));
 assert.ok(app.includes('renderIcon:(id:"text"|"sticky"|"table"|"frame")'));
 assert.ok(app.includes('label:"Задания"'),"Tasks remain a separate category");
 for(const name of ["twoD","threeD","symbolGroups"]){
@@ -25,9 +27,11 @@ for(const solid of ["cube","rectangular-prism","prism","pyramid","triangular-pyr
  assert.ok(cat.includes('"'+solid+'"'),"Missing 3D object "+solid);
 }
 assert.ok(cat.includes('onShape(id)'));
-assert.ok(cat.includes("if(figuresOnly)return"),"2D/3D picker must be reusable in the standard Shapes tool");
+assert.ok(cat.includes('if(figuresOnly||mode==="shapes")return'),"2D/3D picker must be reusable in the standalone Shapes tab and tool");
+assert.ok(cat.includes('if(mode==="data")return'),"Tables and diagrams must share a dedicated compact tab");
 assert.ok(app.includes('className="lektrus-figures-floating"')&&app.includes("<LektrusElementsCatalogue {...elementCatalogueProps} figuresOnly/>"),"Shape tool must expose 2D and 3D");
 assert.ok(css.includes("lektrus-figures-floating"),"Floating figure palette must be responsive");
+assert.ok(css.includes("repeat(5,minmax(0,1fr))"),"The figure picker should be compact");
 assert.ok(cat.includes('onSolid(id)'));
 assert.ok(cat.includes('onSymbol(value)'));
 assert.ok(cat.includes('onChart'));
@@ -51,6 +55,8 @@ assert.ok(model.includes('"graphPurpose","graphFigureId","chartStyle","chartEntr
 assert.ok(model.includes('i.graphFigureId==="lektrus-chart"&&('),
  "Invalid persisted diagram data must be rejected");
 assert.ok(css.includes('lektrus-mobile-elements-catalogue'));
+assert.ok(app.includes('mode={group.label==="Текст"?"text":group.label==="Фигуры"?"shapes":"data"}'),"Mobile category mapping must match desktop");
+assert.ok(app.includes('{tool === "shape" && shapeType===null && ('),"The quick picker must close after choosing a figure");
 assert.ok(css.includes('grid-template-columns:repeat(4,minmax(0,1fr))'));
 const src=read("src/lektrusDataChart.css");
 assert.ok(src.includes('@media(max-width:700px)'));
