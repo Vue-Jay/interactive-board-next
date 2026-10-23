@@ -57,6 +57,9 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
  const [contourSettingsOpen,setContourSettingsOpen]=useState(false);
  const set=(data:SchoolDiagram)=>{setDraft(data);setError("")};
  const finish=()=>{
+  if(draft.kind==="geo-training"&&draft.countryCodes.length<2){
+   setError("Выберите не менее двух стран вручную или сгенерируйте задание.");return;
+  }
   if(isContour&&!studentMode&&draft.kind==="atlas"&&!draft.contourTask?.trim()){
    setError("Напишите задание для ученика.");return;
   }
