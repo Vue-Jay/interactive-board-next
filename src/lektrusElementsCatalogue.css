@@ -83,3 +83,34 @@
   display:inline-flex!important;flex-direction:row!important;padding:6px 10px!important;
  }
 }
+
+/* Dedicated Shapes tool reuses the same selector as Text and Graphics.
+   It is a compact floating palette, not the legacy 11-column ribbon. */
+body .workspace .lektrus-figures-floating{
+ position:absolute;z-index:190;top:12px;left:76px;
+ width:min(345px,calc(100% - 92px));
+ max-height:min(72dvh,490px);
+ overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+ padding:13px;border-radius:16px;
+ background:var(--lt-raised,#fff);color:var(--lt-text,#233b5e);
+ border:1px solid var(--lt-line,#d7e3f4);
+ box-shadow:var(--lt-pop-shadow,0 16px 40px #1e3e6d3d);
+ scrollbar-width:thin;
+}
+body .workspace .lektrus-figures-floating .lektrus-elements-catalogue{
+ gap:7px;
+}
+body .workspace .lektrus-figures-floating .lektrus-elements-section{
+ padding:0;border:0;
+}
+body .workspace .lektrus-figures-footnote{
+ margin:9px 2px 0;font-size:10px;line-height:1.45;
+ color:var(--lt-muted,#7c8da6);
+}
+@media (max-width:700px){
+ body .workspace .lektrus-figures-floating{
+  left:max(6px,env(safe-area-inset-left,0px));
+  top:60px;width:min(342px,calc(100% - 16px));
+  max-height:calc(100dvh - 130px);
+ }
+}
