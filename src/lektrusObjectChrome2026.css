@@ -104,7 +104,7 @@
    Their first click selects the board object; once selected, the embedded
    viewer is interactive again and the common move grip does the dragging. */
 .workspace .board.board-tool-select .board-object:is(.object-pdf,.object-linkmedia):not(.selected) iframe,
-.workspace .board.board-tool-hand .board-object:is(.object-pdf,.object-linkmedia):not(.selected) iframe{
+.workspace .board.board-tool-hand .board-object:is(.object-pdf,.object-linkmedia) iframe{
  pointer-events:none!important;
 }
 .workspace .lektrus-study-creation-hint{
