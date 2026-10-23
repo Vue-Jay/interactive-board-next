@@ -1723,7 +1723,7 @@ const itemLabel = (item: Item) => {
   if (item.kind === "table") return `Таблица ${item.tableRows ?? 3}×${item.tableCols ?? 3}`;
   if (item.kind === "formula") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Формула";
   if (item.kind === "fraction") return item.text.trim().slice(0,44) || "Дробная модель";
-  if (item.kind === "graph") return item.text.trim().slice(0,44) || (item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрическое построение":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции");
+  if (item.kind === "graph") return item.text.trim().slice(0,44) || (item.graphFigureId==="lektrus-chart"?"Диаграмма":item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрическое построение":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции");
   if (item.kind === "checklist") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Чек-лист";
   if (item.kind === "quiz") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Вопрос";
   if (item.kind === "flashcard") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Карточка";
@@ -1739,7 +1739,7 @@ const itemKindLabel = (item: Item) => {
   if (item.kind === "table") return "Таблица";
   if (item.kind === "formula") return "Формула";
   if (item.kind === "fraction") return "Дробная модель";
-  if (item.kind === "graph") return item.graphPurpose==="number-line"?"Числовая прямая":item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрия":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции";
+  if (item.kind === "graph") return item.graphFigureId==="lektrus-chart"?"Диаграмма":item.graphPurpose==="number-line"?"Числовая прямая":item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрия":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции";
   if (item.kind === "checklist") return "Чек-лист / задание";
   if (item.kind === "quiz") return "Вопрос / мини-тест";
   if (item.kind === "flashcard") return item.flashcardFlipped ? "Карточка · ответ" : "Карточка · вопрос";
