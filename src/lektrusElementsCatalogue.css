@@ -1,0 +1,42 @@
+.lektrus-elements-catalogue{display:grid;gap:13px;font-family:inherit;min-width:0}
+.lektrus-elements-hint{font-size:11px;line-height:1.45;color:var(--lt-muted,#71829c);padding:2px 3px}
+.lektrus-elements-section{display:grid;gap:8px}
+.lektrus-elements-section+.lektrus-elements-section{padding-top:12px;border-top:1px solid var(--lt-line,#e0e8f4)}
+.lektrus-elements-section h3{font-size:12px;font-weight:820;color:var(--lt-text,#263c58);margin:0 2px}
+.lektrus-elements-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.lektrus-elements-section h4{font-size:10px;font-weight:760;color:var(--lt-muted,#74869e);margin:0 2px 6px}
+.lektrus-elements-quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.lektrus-elements-quick button,.lektrus-elements-shape-grid button,.lektrus-elements-arrow-row button{
+ min-width:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;
+ border:1px solid var(--lt-line,#dce6f2);border-radius:10px;background:var(--lt-surface,#f7faff);
+ color:var(--lt-secondary,#4a6381);padding:8px 4px;font:inherit;font-weight:650;font-size:10px;line-height:1.15;
+ cursor:pointer;transition:background .14s,border-color .14s;
+}
+.lektrus-elements-quick button:hover,.lektrus-elements-shape-grid button:hover,.lektrus-elements-arrow-row button:hover{background:var(--lt-hover,#eaf2ff);border-color:var(--lt-primary,#4776d9)}
+.lektrus-elements-quick button.active,.lektrus-elements-switch button.active,.lektrus-elements-arrow-row button.active{background:var(--lt-selected,#e1ebff);color:var(--lt-selected-ink,#2f5ec0);border-color:var(--lt-primary,#4776d9)}
+.lektrus-elements-quick-icon{height:25px;display:grid;place-items:center;font-size:21px;font-weight:700}
+.lektrus-elements-quick-icon svg{width:22px;height:22px}
+.lektrus-elements-switch{display:flex;gap:3px;padding:3px;background:var(--lt-subtle,#eff3fb);border-radius:9px}
+.lektrus-elements-switch button{background:transparent;color:var(--lt-secondary,#59708c);padding:5px 11px;font-size:11px;font-weight:800;border-radius:7px;cursor:pointer}
+.lektrus-elements-shape-group{min-width:0}
+.lektrus-elements-shape-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.lektrus-elements-shape-grid button{min-height:65px;padding:6px 2px;overflow-wrap:anywhere;font-size:9.5px}
+.lektrus-elements-shape-grid svg{display:block;width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.lektrus-elements-shape-grid span{max-width:100%;overflow-wrap:anywhere;line-height:1.15}
+.lektrus-elements-symbols{border-radius:10px;border:1px solid var(--lt-line,#dce6f2);padding:8px;display:grid;gap:9px;background:var(--lt-raised,#fff)}
+.lektrus-elements-symbol-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.lektrus-elements-symbol-tabs button{padding:6px 8px;border-radius:8px;font-size:10px;font-weight:700;background:var(--lt-subtle,#f3f5fc);color:var(--lt-secondary,#5a6e89);cursor:pointer}
+.lektrus-elements-symbol-tabs button.active{background:var(--lt-primary,#416bd3);color:#fff}
+.lektrus-elements-symbol-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px}
+.lektrus-elements-symbol-grid button{min-width:0;height:32px;border-radius:7px;border:1px solid var(--lt-line,#e0e7f2);background:var(--lt-surface,#f8faff);color:var(--lt-text,#243e60);font-size:17px;cursor:pointer}
+.lektrus-elements-symbol-grid button:hover{background:var(--lt-hover,#e7efff)}
+.lektrus-elements-chart-button{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--lt-surface,#f5f8ff);border:1px solid var(--lt-line,#dbe4f1);color:var(--lt-text,#2c456b);border-radius:11px;text-align:left;cursor:pointer}
+.lektrus-elements-chart-button:hover{background:var(--lt-hover,#e5efff);border-color:var(--lt-primary,#557bd6)}
+.lektrus-elements-chart-button svg{width:32px;height:32px;flex:none}
+.lektrus-elements-chart-button span{display:grid;gap:3px}
+.lektrus-elements-chart-button strong{font-size:11px}.lektrus-elements-chart-button small{font-size:10px;color:var(--lt-muted,#71829e)}
+.lektrus-elements-arrow-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.lektrus-elements-arrow-row button{min-height:60px}
+.lektrus-elements-arrow-row button span{font-size:20px}.lektrus-elements-arrow-row button small{font-size:9.5px}
+.lektrus-elements-catalogue button:focus-visible{outline:2px solid var(--lt-primary,#4776d9);outline-offset:2px}
+@media(max-width:700px){.lektrus-elements-catalogue{padding:2px}.lektrus-elements-shape-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.lektrus-elements-symbol-grid{grid-template-columns:repeat(7,minmax(0,1fr))}}
