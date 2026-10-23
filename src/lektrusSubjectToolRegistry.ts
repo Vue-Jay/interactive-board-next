@@ -42,8 +42,8 @@ export const subjectToolRegistry:SubjectToolDefinition[]=[
   {id:"ru-orthography",label:"Орфографический тренажёр",description:"Орфограммы с пропусками и проверкой ответов на доске",group:"Русский язык · орфография",subjects:["русский язык"]},
   {id:"maps-atlas",label:"Географические карты",description:"Единая подложка: страны, контурная, физическая карта, рельеф, воды и города",group:"География · карты",subjects:["география"]},
   {id:"contour-atlas",label:"Контурная карта",description:"Отдельная контурная карта с раскрашиванием стран, маркером и очисткой",group:"География · карты",subjects:["география"]},
-  {id:"geo-matching",label:"Сопоставление",description:"Флаги, страны и столицы: соединение пар, проверка и смена направления",group:"География · задания",subjects:["география"]},
-  {id:"geo-question-cards",label:"Карточки вопросов",description:"Карточки с флагами, странами и столицами: переворот и самопроверка",group:"География · задания",subjects:["география"]},
+  {id:"geo-matching",label:"Сопоставление",description:"Флаги, контуры, страны и столицы: подбор пар и смена направления",group:"География · задания",subjects:["география"]},
+  {id:"geo-question-cards",label:"Карточки вопросов",description:"Флаги, контуры стран и столицы: переворот карточек и самопроверка",group:"География · задания",subjects:["география"]},
   {id:"history-atlas",label:"Исторические карты",description:"Единая подложка: границы эпох, исторические события и ползунок времени",group:"История · карты",subjects:["история"]},
   ...scienceToolGroups.map(group=>({id:group.id,label:group.label,description:group.description,
     group:group.group,subjects:[group.subject==="physics"?"физика":"химия"]}))
