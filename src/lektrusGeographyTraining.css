@@ -81,6 +81,15 @@
 .lektrus-geo-outline-status{font-size:11px;line-height:1.3;color:#6885a2;font-weight:500;text-align:center}
 .lektrus-geo-flashcard-content .lektrus-geo-outline-svg{height:clamp(108px,25vh,220px);width:min(100%,300px);max-width:300px}
 .lektrus-geo-match-item .lektrus-geo-outline-svg{height:64px}
+.lektrus-geo-empty{padding:10px 12px;border:1px dashed #c8d7e7;border-radius:10px;
+ background:#f8fbff;color:#647f98}
+.lektrus-geo-empty-preview{align-items:center;justify-content:center;text-align:center;gap:10px}
+.lektrus-geo-empty-preview strong{font-size:clamp(18px,2vw,24px)}
+.lektrus-geo-empty-preview p{max-width:390px;line-height:1.5;color:#708aa3}
+.lektrus-geo-clear{align-self:start;padding:7px 10px;border-radius:8px;
+ border:1px solid #d5e2ed;background:#fff;color:#6e8298;cursor:pointer;
+ font:inherit;font-size:12px}
+.lektrus-geo-clear:hover{border-color:#a7c2db;color:#365e85}
 @media(max-width:600px){
  .lektrus-geo-game{padding:9px;gap:7px}
  .lektrus-geo-match-grid{gap:7px}
