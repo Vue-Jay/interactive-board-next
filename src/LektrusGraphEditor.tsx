@@ -173,6 +173,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const [geometryError,setGeometryError]=useState("");
   const [linkKind,setLinkKind]=useState<ExistingPointTool>("segment");
   const [linkPoints,setLinkPoints]=useState<number[]>([]);
+  const [createdLinkPoints,setCreatedLinkPoints]=useState<number[]>([]);
   const [precisionValue,setPrecisionValue]=useState("5");
   const [regularSides,setRegularSides]=useState<3|4|5|6|8>(6);
   const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">(()=>["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"].includes(draft.figureId)?"Объёмные фигуры":"Геометрия");
@@ -229,7 +230,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const finishLink=(selected:readonly number[],source:GraphDraft=draft)=>{
     const result=linkExistingPoints(source,linkKind,selected);
     if(result.error){setGeometryError(result.error);return;}
-    setGeometryError("");setLinkPoints([]);onChange(result.draft);
+    setGeometryError("");setLinkPoints([]);setCreatedLinkPoints([]);onChange(result.draft);
   };
   const pickLinkPoint=(index:number,source:GraphDraft=draft)=>{
     if(index<0||index>=source.points.length)return;
@@ -249,12 +250,31 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     else{setLinkPoints(next);setGeometryError("");}
   };
   const connectionActive=tab==="connect"&&mode==="geometry"&&!isSolid&&draft.figureId!=="ray";
+  const undoLinkPoint=()=>{
+    const index=linkPoints[linkPoints.length-1];
+    if(index===undefined)return;
+    if(createdLinkPoints.includes(index)&&index===draft.points.length-1){
+      onChange(removeGraphPoint(draft,index));
+      setCreatedLinkPoints(createdLinkPoints.filter(i=>i!==index));
+    }
+    setLinkPoints(linkPoints.slice(0,-1));setGeometryError("");
+  };
+  const resetLinkSelection=()=>{
+    let model=draft;
+    for(const index of [...createdLinkPoints].sort((a,b)=>b-a)){
+      if(index===model.points.length-1&&linkPoints.includes(index))
+        model=removeGraphPoint(model,index);
+    }
+    if(model!==draft)onChange(model);
+    setCreatedLinkPoints([]);setLinkPoints([]);setGeometryError("");
+  };
   const createAndSelectPoint=(x:number,y:number)=>{
     if(draft.points.length>=40){setGeometryError("На одном чертеже допускается не более 40 точек.");return}
     const next:GraphDraft={...draft,points:[...draft.points,{
       x,y,label:nextGeometryPointLabel(draft.points)
     }]};
     onChange(next);
+    setCreatedLinkPoints(previous=>[...previous,next.points.length-1]);
     pickLinkPoint(next.points.length-1,next);
   };
   const previewWithLink=connectionActive&&isValidElement(preview)?
@@ -821,12 +841,12 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           </div>}
           {tab==="connect"&&mode==="geometry"&&!isSolid&&<div className="lektrus-graph-section lektrus-point-link-builder">
             <div className="lektrus-link-topbar">
-              <button type="button" className="lektrus-link-back" onClick={()=>{setTab("points");setLinkPoints([]);setGeometryError("");}}>← К точкам</button>
+              <button type="button" className="lektrus-link-back" onClick={()=>{resetLinkSelection();setTab("points");}}>← К точкам</button>
               <strong>Соединить точки</strong>
             </div>
             <label className="lektrus-link-kind-picker"><span>Построить</span>
               <select aria-label="Выберите построение" value={linkKind} onChange={e=>{
-                setLinkKind(e.target.value as ExistingPointTool);setLinkPoints([]);setGeometryError("");
+                resetLinkSelection();setLinkKind(e.target.value as ExistingPointTool);
               }}>{existingPointTools.map(tool=><option value={tool.id} key={tool.id}>{tool.label}</option>)}</select>
             </label>
             <small>Коснитесь готовой точки или свободного места на рисунке, чтобы создать новую вершину и сразу включить её в построение.</small>
@@ -904,8 +924,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               </div>)}
             </details>}
             <div className="lektrus-link-actions">
-              <button type="button" disabled={!linkPoints.length} onClick={()=>{setLinkPoints(v=>v.slice(0,-1));setGeometryError("");}}>↶ Назад</button>
-              <button type="button" disabled={!linkPoints.length} onClick={()=>{setLinkPoints([]);setGeometryError("");}}>Очистить выбор</button>
+              <button type="button" disabled={!linkPoints.length} onClick={undoLinkPoint}>↶ Назад</button>
+              <button type="button" disabled={!linkPoints.length} onClick={resetLinkSelection}>Очистить выбор</button>
               {linkKind==="polygon"&&<button type="button" className="lektrus-link-finish"
                 disabled={linkPoints.length<3} onClick={()=>finishLink(linkPoints)}>Замкнуть фигуру</button>}
             </div>
