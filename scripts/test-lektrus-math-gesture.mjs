@@ -18,10 +18,15 @@ const names=load(transpile("src/lektrusGeometryPointNames.ts"));
 const math=load(transpile("src/LektrusGraphEditor.tsx"),{
  "./lektrusGeometryPointNames":names
 });
-const {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse}=names;
+const {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse,repairGeometryPointLabels}=names;
 const {appendFreeSketchPoint,closeFreeSketch,freeSketchClosingIndex,removeGraphPoint,closeFreeSketchBoard,removeGraphBoardPoint}=math;
 
 assert.equal(nextGeometryPointLabel([]),"A");
+const legacy=repairGeometryPointLabels([{label:"A"},{label:"C"},{label:"C"},{label:"C"},{label:"D"}]);
+assert.deepEqual(legacy.map(p=>p.label),["A","C","B","E","D"],
+ "fix preexisting duplicate labels without changing valid first instances");
+assert.equal(new Set(legacy.map(p=>p.label)).size,legacy.length);
+
 assert.equal(nextGeometryPointLabel([{label:"A"},{label:"C"},{label:"c"}]),"B");
 assert.equal(nextGeometryPointLabel(Array.from({length:26},(_,i)=>({label:String.fromCharCode(65+i)}))),"AA");
 assert.equal(availableGeometryLabel([{label:"A"},{label:"B"}],"A"),"C");
@@ -93,4 +98,5 @@ assert.match(editor,/lektrus-free-build-status/);
 assert.match(css,/\.lektrus-free-close-target/);
 assert.match(css,/@media\(pointer:coarse\)/);
 assert.match(main,/import "\.\/lektrusMathTouchPolish\.css"/);
+assert.match(app,/repairGeometryPointLabels\(Array\.isArray\(item\.graphPoints\)/);
 console.log("Geometry touch and names: free contours, tap closure, deletion, second polygon, unique letters and mobile controls verified.");
