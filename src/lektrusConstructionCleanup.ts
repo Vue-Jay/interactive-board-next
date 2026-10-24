@@ -1,7 +1,7 @@
 import type {GraphDraft} from "./LektrusGraphEditor";
 
 export type ConstructionKind="circle"|"polygon"|"segment"|"angle"|"midpoint";
-type Geometry=Pick<GraphDraft,"points"|"segments"|"circles"|"polygons"|"angles"|"midpoints">;
+type Geometry=Pick<GraphDraft,"points"|"segments"|"circles"|"polygons"|"angles"|"midpoints">&Partial<Pick<GraphDraft,"constraints">>;
 
 /** Removing a shape also removes points used exclusively by it.
  * A point shared with another shape, its midpoint or another relation survives.
@@ -61,7 +61,8 @@ export function removeConstruction<T extends Geometry>(geometry:T,kind:Construct
     return result;
   };
   const before=refs(geometry),after=refs({...geometry,segments,circles,polygons,angles,midpoints});
-  const removedPoints=new Set([...before].filter(i=>!after.has(i)&&!keepExistingPoints));
+  const protectedByConstraints=new Set((geometry.constraints??[]).flatMap(c=>[c.a,c.b]));
+  const removedPoints=new Set([...before].filter(i=>!after.has(i)&&!protectedByConstraints.has(i)&&!keepExistingPoints));
   const remap=new Map<number,number>();
   const points=geometry.points.filter((_,i)=>{
     if(removedPoints.has(i))return false;
@@ -69,6 +70,8 @@ export function removeConstruction<T extends Geometry>(geometry:T,kind:Construct
   });
   const indexOf=(i:number)=>remap.get(i)??i;
   return {...geometry,points,
+    ...(geometry.constraints?{constraints:geometry.constraints.filter(c=>remap.has(c.a)&&remap.has(c.b))
+      .map(c=>({...c,a:indexOf(c.a),b:indexOf(c.b)}))}:{}),
     segments:segments.map(v=>({...v,a:indexOf(v.a),b:indexOf(v.b)})),
     circles:circles.map(v=>({...v,center:indexOf(v.center),edge:indexOf(v.edge)})),
     angles:angles.map(v=>({...v,a:indexOf(v.a),vertex:indexOf(v.vertex),b:indexOf(v.b)})),
@@ -92,6 +95,7 @@ export function removeSchoolConstructionGroup<T extends Geometry>(geometry:T,sch
   for(const polygon of polygons)for(const index of polygon.points)referenced.add(index);
   for(const angle of angles){referenced.add(angle.a);referenced.add(angle.vertex);referenced.add(angle.b)}
   for(const midpoint of midpoints){referenced.add(midpoint.a);referenced.add(midpoint.b)}
+  for(const constraint of geometry.constraints??[]){referenced.add(constraint.a);referenced.add(constraint.b)}
   const remap=new Map<number,number>();
   const points=geometry.points.flatMap((point,index)=>{
     if(point.schoolGroupId===schoolGroupId&&!referenced.has(index))return [];
@@ -101,6 +105,8 @@ export function removeSchoolConstructionGroup<T extends Geometry>(geometry:T,sch
   });
   const shift=(index:number)=>remap.get(index)??index;
   return {...geometry,points,
+    ...(geometry.constraints?{constraints:geometry.constraints.filter(c=>remap.has(c.a)&&remap.has(c.b))
+      .map(c=>({...c,a:shift(c.a),b:shift(c.b)}))}:{}),
     segments:segments.map(s=>({...s,a:shift(s.a),b:shift(s.b)})),
     circles:circles.map(c=>({...c,center:shift(c.center),edge:shift(c.edge)})),
     polygons:polygons.map(p=>({...p,points:p.points.map(shift)})),
