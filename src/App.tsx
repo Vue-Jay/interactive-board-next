@@ -1169,6 +1169,7 @@ function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint
   const freeContacts=useRef(new Set<number>());
   const freePointGesture=useRef<{cancel:()=>void}|null>(null);
   const selectionTap=useRef<{id:number;x:number;y:number;index:number|null;cancelled:boolean}|null>(null);
+  const editBlankTap=useRef<{id:number;x:number;y:number;cancelled:boolean}|null>(null);
   const selectionContacts=useRef(new Set<number>());
   const orbitX=liveSpin?.[0]??item.graphRotationX??25;
   const orbitY=liveSpin?.[1]??item.graphRotationY??-35;
@@ -1338,14 +1339,37 @@ function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint
           event.stopPropagation();
           return;
         }
+        if(onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free"&&event.button===0&&event.isPrimary){
+          const box=event.currentTarget.getBoundingClientRect(),factor=Math.min(box.width/W,box.height/H)||1;
+          const left=box.left+(box.width-W*factor)/2,top=box.top+(box.height-H*factor)/2;
+          const px=(event.clientX-left)/factor,py=(event.clientY-top)/factor;
+          const nearest=gp.some(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&
+            Math.hypot((sx(p.x)-px)*factor,(sy(p.y)-py)*factor)<=(event.pointerType==="touch"?28:18));
+          if(!nearest){
+            if(event.pointerType!=="mouse")freeContacts.current.add(event.pointerId);
+            editBlankTap.current={id:event.pointerId,x:event.clientX,y:event.clientY,cancelled:false};
+            try{event.currentTarget.setPointerCapture(event.pointerId)}catch{/* no SVG capture on older browsers */}
+            event.preventDefault();event.stopPropagation();return;
+          }
+        }
         if(!(item.graphFigureId==="free"&&onAddPoint||onPointMoveEnd)||event.pointerType==="mouse")return;
         freeContacts.current.add(event.pointerId);
         if(freeContacts.current.size>1){
+          if(editBlankTap.current)editBlankTap.current.cancelled=true;
           if(freeTap.current)freeTap.current.cancelled=true;
           freePointGesture.current?.cancel();
         }
       }}
       onPointerUpCapture={event=>{
+        if(editBlankTap.current?.id===event.pointerId){
+          const tap=editBlankTap.current;editBlankTap.current=null;
+          if(!tap.cancelled&&freeContacts.current.size<=1&&onAddPoint&&
+            Math.hypot(event.clientX-tap.x,event.clientY-tap.y)<=(event.pointerType==="touch"?15:9)){
+            event.preventDefault();event.stopPropagation();
+            const q=coord(event.clientX,event.clientY,event.currentTarget);
+            onAddPoint(q.x,q.y);
+          }
+        }
         if(onPickPoint&&selectionTap.current?.id===event.pointerId){
           const tap=selectionTap.current;selectionTap.current=null;
           const stayed=Math.hypot(event.clientX-tap.x,event.clientY-tap.y)<=(event.pointerType==="touch"?16:9);
@@ -1363,6 +1387,7 @@ function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint
           freeContacts.current.delete(event.pointerId);
       }}
       onPointerCancelCapture={event=>{
+        if(editBlankTap.current?.id===event.pointerId)editBlankTap.current=null;
         if(selectionTap.current?.id===event.pointerId)selectionTap.current=null;
         selectionContacts.current.delete(event.pointerId);
         if((onPickPoint||item.graphFigureId==="free"&&onAddPoint||onPointMoveEnd)&&event.pointerType!=="mouse"){
@@ -1371,8 +1396,8 @@ function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint
           freePointGesture.current?.cancel();
         }
       }}
-      onDoubleClick={e=>{if(onOpenEditor&&!onAddPoint){e.preventDefault();e.stopPropagation();onOpenEditor();return;}if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
-      {onPickPoint&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
+      onDoubleClick={e=>{if(onOpenEditor&&!onAddPoint){e.preventDefault();e.stopPropagation();onOpenEditor();return;}if(onPointMoveEnd&&onAddPoint){e.stopPropagation();return;}if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
+      {(onPickPoint||onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free")&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
         {gridX.map(x=><line key={`x${x}`} className={Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
