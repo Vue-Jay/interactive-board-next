@@ -48,7 +48,7 @@ import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
 import LektrusGraphEditor, {appendFreeSketchPoint,appendFreeSketchBoard,closeFreeSketch,closeFreeSketchBoard,freeSketchClosingIndex,removeGraphPoint,removeGraphBoardPoint,type GraphDraft} from "./LektrusGraphEditor";
 import {nextGeometryPointLabel,repairGeometryPointLabels} from "./lektrusGeometryPointNames";
 import {geometryAngle,geometryDistance,geometryPolygonMetrics,formatGeometryMetric} from "./lektrusGeometryPrecision";
-import {magneticGeometrySnap,moveGeometryVertex,removeVertexConstraints} from "./lektrusGeometryConstraints";
+import {magneticGeometrySnap,moveGeometryVertex} from "./lektrusGeometryConstraints";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {formatPiRadians,makeMathPresetItem} from "./lektrusMathPresets";
