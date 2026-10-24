@@ -64,7 +64,8 @@ export function removeGraphPoint(draft:GraphDraft,index:number):GraphDraft {
 /** Simple geometry: a line is drawn between every two consecutive user points.
  * Closing a shape replaces its linear outline with a true polygon.
  */
-export function appendFreeSketchPoint(draft:GraphDraft,x:number,y:number):GraphDraft {
+type FreeSketchSource=Pick<GraphDraft,"figureId"|"points"|"segments"|"polygons"|"circles">;
+export function appendFreeSketchPoint<T extends FreeSketchSource>(draft:T,x:number,y:number):T {
   if(draft.figureId!=="free"||draft.points.length>=40||!Number.isFinite(x)||!Number.isFinite(y))return draft;
   const n=draft.points.length;
   const lastClosed=draft.polygons.some(poly=>poly.points.includes(n-1))||
@@ -74,6 +75,17 @@ export function appendFreeSketchPoint(draft:GraphDraft,x:number,y:number):GraphD
   const segments=n>0&&!lastClosed&&draft.segments.length<60?
     [...draft.segments,{a:n-1,b:n,kind:"segment" as const,label:"",measure:false}]:draft.segments;
   return {...draft,points:[...draft.points,{x,y,label}],segments};
+}
+/** The board and the modal use precisely the same point/segment rules.
+ * This also guards against re-linking old circles or completed constructions. */
+export function appendFreeSketchBoard(item:Item,x:number,y:number):Item {
+  const model={
+    figureId:item.graphFigureId??"",
+    points:item.graphPoints??[],segments:item.graphSegments??[],
+    polygons:item.graphPolygons??[],circles:item.graphCircles??[]
+  };
+  const next=appendFreeSketchPoint(model,x,y);
+  return next===model?item:{...item,graphPoints:next.points,graphSegments:next.segments};
 }
 /** First vertex of the currently unfinished path, or null if it cannot close.
  * The first point may be AFTER a previously completed polygon. */
