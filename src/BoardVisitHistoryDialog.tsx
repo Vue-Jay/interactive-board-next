@@ -31,16 +31,28 @@ export default function BoardVisitHistoryDialog({boardTitle,visits,loading,error
  const closeRef=useRef(onClose);
  closeRef.current=onClose;
  const titleRef=useRef<HTMLHeadingElement>(null);
+ const dialogRef=useRef<HTMLElement>(null);
 
  useEffect(()=>{
   const oldOverflow=document.body.style.overflow;
   document.body.style.overflow="hidden";
   titleRef.current?.focus({preventScroll:true});
   const dismiss=(event:KeyboardEvent)=>{
-   if(event.key!=="Escape")return;
-   event.preventDefault();
-   event.stopPropagation();
-   closeRef.current();
+   if(event.key==="Escape"){
+    event.preventDefault();
+    event.stopPropagation();
+    closeRef.current();
+    return;
+   }
+   if(event.key!=="Tab")return;
+   const controls=dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled)');
+   if(!controls?.length){event.preventDefault();titleRef.current?.focus();return}
+   const first=controls[0],last=controls[controls.length-1],active=document.activeElement;
+   if(event.shiftKey&&(active===first||active===titleRef.current)){
+    event.preventDefault();last.focus();
+   }else if(!event.shiftKey&&active===last){
+    event.preventDefault();first.focus();
+   }
   };
   window.addEventListener("keydown",dismiss,true);
   return()=>{
@@ -66,7 +78,7 @@ export default function BoardVisitHistoryDialog({boardTitle,visits,loading,error
     event.stopPropagation();
     if(event.target===event.currentTarget)onClose();
    }} onClick={event=>event.stopPropagation()}>
-   <section className="bv-dialog" role="dialog" aria-modal="true" aria-labelledby="bv-dialog-title" onPointerDown={event=>event.stopPropagation()}>
+   <section ref={dialogRef} className="bv-dialog" role="dialog" aria-modal="true" aria-labelledby="bv-dialog-title" onPointerDown={event=>event.stopPropagation()}>
     <header className="bv-header">
      <div className="bv-heading">
       <div className="bv-eyebrow"><span className="bv-eyebrow-dot"/> LEKTRUS · ПОСЕЩАЕМОСТЬ</div>
