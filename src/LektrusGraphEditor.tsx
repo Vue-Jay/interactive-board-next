@@ -225,17 +225,17 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     if(result.error){setGeometryError(result.error);return}
     setGeometryError("");onChange(result.draft);
   };
-  const finishLink=(selected:readonly number[])=>{
-    const result=linkExistingPoints(draft,linkKind,selected);
+  const finishLink=(selected:readonly number[],source:GraphDraft=draft)=>{
+    const result=linkExistingPoints(source,linkKind,selected);
     if(result.error){setGeometryError(result.error);return;}
     setGeometryError("");setLinkPoints([]);onChange(result.draft);
   };
-  const pickLinkPoint=(index:number)=>{
-    if(index<0||index>=draft.points.length)return;
+  const pickLinkPoint=(index:number,source:GraphDraft=draft)=>{
+    if(index<0||index>=source.points.length)return;
     if(linkPoints.includes(index)){
       if(linkKind==="measure"){setLinkPoints(linkPoints.filter(i=>i!==index));setGeometryError("");return;}
       if(linkKind==="polygon"&&linkPoints[0]===index&&linkPoints.length>=3)
-        finishLink(linkPoints);
+        finishLink(linkPoints,source);
       else setGeometryError("Эта вершина уже выбрана. Для отмены используйте кнопку «Назад».");
       return;
     }
@@ -244,17 +244,25 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       if(next.length>20){setGeometryError("Допустимо не более 20 вершин.");return;}
       setLinkPoints(next);setGeometryError("");return;
     }
-    if(next.length>=(linkKind==="angle"?3:2))finishLink(next);
+    if(next.length>=(linkKind==="angle"?3:2))finishLink(next,source);
     else{setLinkPoints(next);setGeometryError("");}
   };
   const connectionActive=tab==="connect"&&mode==="geometry"&&!isSolid&&draft.figureId!=="ray";
+  const createAndSelectPoint=(x:number,y:number)=>{
+    if(draft.points.length>=40){setGeometryError("На одном чертеже допускается не более 40 точек.");return}
+    const next:GraphDraft={...draft,points:[...draft.points,{
+      x,y,label:nextGeometryPointLabel(draft.points)
+    }]};
+    onChange(next);
+    pickLinkPoint(next.points.length-1,next);
+  };
   const previewWithLink=connectionActive&&isValidElement(preview)?
     cloneElement(preview as ReactElement<{
-      onPickPoint?: (index:number)=>void; pickedPoints?:readonly number[];
+      onPickPoint?: (index:number)=>void;onCreateAndPickPoint?: (x:number,y:number)=>void; pickedPoints?:readonly number[];
       onAddPoint?: (x:number,y:number)=>void;onPointMove?: (i:number,x:number,y:number)=>void;
       onRemovePoint?: (i:number)=>void;onCloseFreePolygon?:()=>void;
     }>,{
-      onPickPoint:pickLinkPoint,pickedPoints:linkPoints,onAddPoint:undefined,
+      onPickPoint:pickLinkPoint,onCreateAndPickPoint:createAndSelectPoint,pickedPoints:linkPoints,onAddPoint:undefined,
       onPointMove:undefined,onRemovePoint:undefined,onCloseFreePolygon:undefined
     }):preview;
   const loadPreset=(id:MathPresetId)=>{
@@ -815,7 +823,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 setLinkKind(e.target.value as ExistingPointTool);setLinkPoints([]);setGeometryError("");
               }}>{existingPointTools.map(tool=><option value={tool.id} key={tool.id}>{tool.label}</option>)}</select>
             </label>
-            <small>Коснитесь нужных вершин на чертеже или выберите их буквы ниже.</small>
+            <small>Коснитесь готовой точки или свободного места на рисунке, чтобы создать новую вершину и сразу включить её в построение.</small>
             <div className="lektrus-link-instructions" role="status">
               {linkKind==="polygon"?"Последовательно укажите вершины многоугольника. Завершите нажатием на первую вершину или кнопкой ниже.":
                linkKind==="angle"?"Выберите точку первой стороны, затем вершину угла, затем точку второй стороны.":
