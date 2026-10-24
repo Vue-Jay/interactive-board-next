@@ -556,28 +556,28 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     setFigureCategory(category);setTab("presets");setSettingsOpen(true);setGeometryError("");
   };
   const sectionTabs=<nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
-        <button type="button" className={tab==="presets"?"active":""} onClick={()=>{setTab("presets");setSettingsOpen(true)}}>{mode==="geometry"?"Каталог":"Построение"}</button>
+        <button type="button" className={tab==="presets"?"active":""} onClick={()=>{setTab("presets");setSettingsOpen(true)}}>{mode==="geometry"?"Фигуры":"Построение"}</button>
         {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>{setTab("givens");setSettingsOpen(true)}}>Размеры</button>}
-        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>Построения <span>{extraElementCount+schoolGroups.length}</span></button>}
+        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>Элементы <span>{extraElementCount+schoolGroups.length}</span></button>}
         {!isSolid&&<button type="button" className={tab==="points"||tab==="connect"?"active":""} onClick={()=>{setTab("points");setSettingsOpen(true)}}>Точки <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
       </nav>;
   return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""} ${mode==="geometry"?"lektrus-geometry-workspace":""} ${!settingsOpen?"is-settings-hidden":""}`} onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
       <header className="graph-editor-header lektrus-graph-head">
-        <div><strong>{mode==="geometry"?"Редактор фигур":"Координатная плоскость"}</strong><span>{mode==="geometry"?"2D и 3D · изменения появятся на доске после сохранения":"Графики, координаты и тригонометрия"}</span></div>
+        <div><strong>{mode==="geometry"?"Построение фигур":"Координатная плоскость"}</strong><span>{mode==="geometry"?"Создание и редактирование чертежа":"Графики, координаты и тригонометрия"}</span></div>
         {mode==="geometry"&&<div className="lektrus-geometry-header-catalog" role="group" aria-label="Библиотека фигур">
           <button type="button" className={settingsOpen&&tab==="presets"&&figureCategory==="Геометрия"?"active":""}
             aria-pressed={settingsOpen&&tab==="presets"&&figureCategory==="Геометрия"}
-            onClick={()=>showFigureCatalog("Геометрия")}><LektrusGeometryToolIcon name="2d" size={18}/> <span>Фигуры 2D</span></button>
+            onClick={()=>showFigureCatalog("Геометрия")}><LektrusGeometryToolIcon name="2d" size={18}/> <span>2D</span></button>
           <button type="button" className={settingsOpen&&tab==="presets"&&figureCategory==="Объёмные фигуры"?"active":""}
             aria-pressed={settingsOpen&&tab==="presets"&&figureCategory==="Объёмные фигуры"}
-            onClick={()=>showFigureCatalog("Объёмные фигуры")}><LektrusGeometryToolIcon name="3d" size={18}/> <span>Фигуры 3D</span></button>
+            onClick={()=>showFigureCatalog("Объёмные фигуры")}><LektrusGeometryToolIcon name="3d" size={18}/> <span>3D</span></button>
         </div>}
         {mode==="geometry"&&<button type="button" className="lektrus-geometry-properties-toggle"
           aria-label={settingsOpen?"Скрыть настройки":"Показать настройки"}
           aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(open=>!open)}>
-          {settingsOpen?"Скрыть":"Параметры"}
+          <LektrusGeometryToolIcon name="elements" size={17}/><span>Параметры</span>
         </button>}
         <button type="button" className={mode==="geometry"?"lektrus-geometry-modal-close":undefined}
           aria-label="Закрыть редактор без сохранения" title="Закрыть без сохранения" onClick={onClose}>
@@ -587,16 +587,6 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       {mode!=="geometry"&&sectionTabs}
       <div className="graph-editor-body lektrus-graph-content">
         {mode==="geometry"&&<nav className="lektrus-geometry-tool-rail" aria-label="Инструменты геометрического построения">
-          <div className="lektrus-geometry-rail-library">
-            <button type="button" className={tab==="presets"&&figureCategory==="Геометрия"&&settingsOpen?"active":""}
-              aria-label="Открыть плоские фигуры" onClick={()=>showFigureCatalog("Геометрия")}>
-              <LektrusGeometryToolIcon name="2d"/><span>2D</span>
-            </button>
-            <button type="button" className={tab==="presets"&&figureCategory==="Объёмные фигуры"&&settingsOpen?"active":""}
-              aria-label="Открыть объёмные фигуры" onClick={()=>showFigureCatalog("Объёмные фигуры")}>
-              <LektrusGeometryToolIcon name="3d"/><span>3D</span>
-            </button>
-          </div>
           {!isSolid?drawingTools.map(tool=><button key={tool.id} type="button"
             className={canvasTool===tool.id?"active":""} title={tool.hint}
             aria-pressed={canvasTool===tool.id} onClick={()=>setDrawingTool(tool.id)}>
@@ -619,13 +609,13 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         <div className="graph-editor-form lektrus-graph-settings">
           {mode==="geometry"&&sectionTabs}
           {tab==="presets"&&<div className="lektrus-graph-section lektrus-math-presets">
-            <strong>{mode==="geometry"?(figureCategory==="Геометрия"?"Плоские фигуры · 2D":"Объёмные фигуры · 3D"):"Выберите построение"}</strong>
+            <strong>{mode==="geometry"?(figureCategory==="Геометрия"?"Плоские фигуры":"Объёмные фигуры"):"Выберите построение"}</strong>
             {mode==="geometry"&&figureCategory==="Геометрия"&&<button type="button" className="lektrus-start-free-drawing"
               onClick={()=>{loadPreset("free");setCanvasTool("polygon");setLinkKind("polygon");setLinkPoints([]);setTab("connect");}}>
-              <strong>+ Свой чертёж</strong>
-              <small>Создайте произвольную фигуру по вершинам</small>
+              <strong>Свой чертёж</strong>
+              <small>Начать с пустого поля</small>
             </button>}
-            <small>{mode==="geometry"?"Нажмите на фигуру для создания. Затем редактируйте её на большом чертеже.":"Выберите готовую фигуру или начните свой чертёж."}</small>
+            {mode!=="geometry"&&<small>Выберите готовую фигуру или начните свой чертёж.</small>}
             {figureSections.map(section=>
               <div className="lektrus-math-preset-group" key={section.name}>
                 <h4>{section.name}</h4>
@@ -1078,7 +1068,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 onChange={e=>patch({magneticSnap:e.target.checked})}/> Магнитное выравнивание</label>
             </div>}
             {draft.figureId==="free"&&<div className="lektrus-school-point-builder">
-              <strong>Простое построение по точкам</strong>
+              <strong>Свободное построение</strong>
               <small>Коснитесь рисунка для добавления точек, первую вершину нажмите для замыкания. «Новая линия» начинает отдельный контур без соединения с предыдущим.</small>
               <div className="lektrus-free-build-status" role="status">
                 <span className={closeFreeSketch(draft)!==draft?"is-ready":""}>{closeFreeSketch(draft)!==draft?"● Можно замкнуть":draft.points.length>0&&draft.points.length===(draft.freePathStart??0)?"● Новая линия готова":"● Ставьте точки по порядку"}</span>
@@ -1366,7 +1356,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           </div>}
         </div>
         <aside className="graph-editor-preview lektrus-graph-preview">
-          <div className="lektrus-graph-preview-title"><strong>{mode==="geometry"?"Чертёж":"Предпросмотр"}</strong><span>{mode==="geometry"?canvasHelp:"Изменения видны сразу"}</span>
+          <div className="lektrus-graph-preview-title"><strong>{mode==="geometry"?(isSolid?"Объёмная фигура":`Инструмент: ${drawingTools.find(tool=>tool.id===canvasTool)?.name||"Выбор"}`):"Предпросмотр"}</strong><span>{mode==="geometry"?canvasHelp:"Изменения видны сразу"}</span>
             <button type="button" className="lektrus-preview-expand" aria-pressed={previewExpanded} onClick={()=>setPreviewExpanded(value=>!value)}>
               {previewExpanded?"К настройкам":"Развернуть"}
             </button>
