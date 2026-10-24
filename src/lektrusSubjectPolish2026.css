@@ -607,17 +607,16 @@
 }
 .workspace .lektrus-ink-five-widths .lektrus-ink-width-button{
  display:grid!important;place-items:center;flex:0 0 auto;
- min-height:39px!important;width:43px!important;padding:6px!important;
+ min-height:54px!important;width:48px!important;padding:3px!important;
  border:1px solid transparent;border-radius:8px;background:transparent;
  touch-action:manipulation;
 }
 .workspace .lektrus-ink-five-widths .lektrus-ink-width-button[aria-pressed=true]{
  background:#e3efff;border:1px solid #8db7f0;
 }
-.workspace .lektrus-ink-width-line{
- display:block;width:29px;max-height:13px;min-height:1px;
- border-radius:20px;pointer-events:none;
-}
+.workspace .lektrus-ink-five-widths .lektrus-ink-swatch{width:100%}
+.workspace .lektrus-ink-five-widths .lektrus-ink-swatch-field{height:25px;min-height:25px}
+.workspace .lektrus-ink-five-widths .lektrus-ink-swatch-value{font-size:9px;color:#456080}
 @media (pointer:coarse), (max-width:850px){
  .workspace .lectris-quick-properties.is-ink-properties{
   left:50%!important;right:auto!important;
@@ -630,9 +629,9 @@
  .workspace .lectris-quick-properties.is-ink-properties .lectris-quick-details{gap:6px}
  .workspace .lektrus-ink-five-widths{gap:1px;padding:2px}
  .workspace .lektrus-ink-five-widths .lektrus-ink-width-button{
-  width:38px!important;min-height:36px!important;padding:5px!important;
+  width:45px!important;min-height:50px!important;padding:2px!important;
  }
- .workspace .lektrus-ink-width-line{width:23px}
+ .workspace .lektrus-ink-swatch-stroke{max-width:23px}
 }
 @media (max-width:700px) and (orientation:portrait){
  .workspace .lectris-quick-properties.is-ink-properties{
