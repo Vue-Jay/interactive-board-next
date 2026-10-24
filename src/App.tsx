@@ -4775,7 +4775,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           else { roundedRect(item.x + 2, item.y + 2, item.width - 4, item.height - 4, item.shapeType === "rounded" ? 14 : 2); ctx.stroke(); }
         } else if (item.kind === "image") {
           const img = await loadImage(item);
-          if (img) { ctx.save(); roundedRect(item.x, item.y, item.width, item.height, 8); ctx.clip(); ctx.drawImage(img, item.x, item.y, item.width, item.height); ctx.restore(); }
+          if (img) {
+            ctx.save();
+            roundedRect(item.x, item.y, item.width, item.height, 8);ctx.clip();
+            if(item.imageCrop){
+              const crop=item.imageCrop;
+              ctx.drawImage(img,
+                crop.x*img.naturalWidth,crop.y*img.naturalHeight,
+                crop.width*img.naturalWidth,crop.height*img.naturalHeight,
+                item.x,item.y,item.width,item.height);
+            }else ctx.drawImage(img,item.x,item.y,item.width,item.height);
+            ctx.restore();
+          }
           else { ctx.fillStyle = "#eef0f4"; roundedRect(item.x, item.y, item.width, item.height, 8); ctx.fill(); }
         } else if (item.kind === "pdf") {
           ctx.fillStyle = "#fff"; ctx.strokeStyle = "#d8dce5"; ctx.lineWidth = 1.5; roundedRect(item.x, item.y, item.width, item.height, 8); ctx.fill(); ctx.stroke();
