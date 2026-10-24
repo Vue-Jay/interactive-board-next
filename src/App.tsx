@@ -1143,11 +1143,12 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
   onPickPoint?: (index:number)=>void;
+  onCreateAndPickPoint?: (x:number,y:number)=>void;
   pickedPoints?: readonly number[];
   onCloseFreePolygon?: ()=>void;
   onRemovePoint?: (index:number)=>void;
@@ -1164,6 +1165,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
   const freeTap=useRef<{id:number;x:number;y:number;cancelled:boolean}|null>(null);
   const freeContacts=useRef(new Set<number>());
   const freePointGesture=useRef<{cancel:()=>void}|null>(null);
+  const selectionTap=useRef<{id:number;x:number;y:number;index:number|null;cancelled:boolean}|null>(null);
   const orbitX=liveSpin?.[0]??item.graphRotationX??25;
   const orbitY=liveSpin?.[1]??item.graphRotationY??-35;
   const solid=isSolidFigure(item.graphFigureId);
@@ -1300,7 +1302,27 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
       })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onPointerDownCapture={event=>{
-        if(!(onPickPoint||item.graphFigureId==="free"&&onAddPoint)||event.pointerType==="mouse")return;
+        if(onPickPoint){
+          const target=event.target as SVGElement;
+          if(target.closest?.(".lektrus-diagram-grid-toggle"))return;
+          if(event.button!==0)return;
+          const box=event.currentTarget.getBoundingClientRect();
+          const factor=Math.min(box.width/W,box.height/H)||1;
+          const left=box.left+(box.width-W*factor)/2,top=box.top+(box.height-H*factor)/2;
+          const px=(event.clientX-left)/factor,py=(event.clientY-top)/factor;
+          const radius=(event.pointerType==="touch"?28:18)/factor;
+          let nearest:number|null=null,best=radius*radius;
+          gp.forEach((p,index)=>{
+            if(rayFigure&&index!==0||!Number.isFinite(p.x)||!Number.isFinite(p.y))return;
+            const d=(sx(p.x)-px)**2+(sy(p.y)-py)**2;
+            if(d<best){best=d;nearest=index;}
+          });
+          selectionTap.current={id:event.pointerId,x:event.clientX,y:event.clientY,index:nearest,cancelled:false};
+          try{event.currentTarget.setPointerCapture(event.pointerId)}catch{/* browser may not support SVG capture */}
+          event.stopPropagation();
+          return;
+        }
+        if(!(item.graphFigureId==="free"&&onAddPoint)||event.pointerType==="mouse")return;
         freeContacts.current.add(event.pointerId);
         if(freeContacts.current.size>1){
           if(freeTap.current)freeTap.current.cancelled=true;
@@ -1308,10 +1330,23 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
         }
       }}
       onPointerUpCapture={event=>{
+        if(onPickPoint&&selectionTap.current?.id===event.pointerId){
+          const tap=selectionTap.current;selectionTap.current=null;
+          const stayed=Math.hypot(event.clientX-tap.x,event.clientY-tap.y)<=(event.pointerType==="touch"?16:9);
+          if(stayed&&!tap.cancelled&&freeContacts.current.size<=1){
+            event.preventDefault();event.stopPropagation();
+            if(tap.index!==null)onPickPoint(tap.index);
+            else if(onCreateAndPickPoint){
+              const q=coord(event.clientX,event.clientY,event.currentTarget);
+              onCreateAndPickPoint(q.x,q.y);
+            }
+          }
+        }
         if((onPickPoint||item.graphFigureId==="free"&&onAddPoint)&&event.pointerType!=="mouse")
           freeContacts.current.delete(event.pointerId);
       }}
       onPointerCancelCapture={event=>{
+        if(selectionTap.current?.id===event.pointerId)selectionTap.current=null;
         if((onPickPoint||item.graphFigureId==="free"&&onAddPoint)&&event.pointerType!=="mouse"){
           freeContacts.current.delete(event.pointerId);
           if(freeTap.current?.id===event.pointerId)freeTap.current=null;
