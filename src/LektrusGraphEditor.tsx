@@ -868,7 +868,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 </button>
               </label>
               {linkPoints.length===2&&<details className="lektrus-constraint-options">
-                <summary>Сохранять размер при перетаскивании</summary>
+                <summary>Закрепить расположение</summary>
                 <small>Первая точка опорная, вторая зависимая. Можно закрепить горизонталь, вертикаль или расстояние. Любую связь можно снять.</small>
                 <div className="lektrus-precision-actions">
                   <button type="button" onClick={()=>lockConstraint("horizontal")}>Закрепить горизонталь</button>
