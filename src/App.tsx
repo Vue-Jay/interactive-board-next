@@ -7413,8 +7413,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const target=e.target as HTMLElement;
             // A new pointer releases a stranded drag/capture. Only an actual
             // second finger in a live board gesture may keep the old pointer.
-            if(gesture.current && gesture.current.pointer!==e.pointerId &&
-              (e.pointerType!=="touch" || e.isPrimary || touchPoints.current.size===0)){
+            if(gesture.current && (gesture.current.pointer===e.pointerId ||
+              e.pointerType!=="touch" || e.isPrimary || touchPoints.current.size===0)){
               end(true);
               if(eraserSession.current){eraserSession.current=null;stopEraserPreview();}
               touchPoints.current.clear();
