@@ -3376,7 +3376,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       // The board installs its own non-passive native wheel listener. React's
       // map onWheel runs later in the event path, so stop board zoom/pan HERE
       // before the map's local wheel handler sees the same event.
-      if(target.closest(".lektrus-atlas:not(.lektrus-atlas--board-selection)")){
+      if(target.closest(".lektrus-atlas-map-box") && !target.closest(".lektrus-atlas--board-selection")){
         e.preventDefault();
         return;
       }
@@ -7410,6 +7410,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             backgroundImage:backgroundAppearance.backgroundImage,
           } as CSSProperties}
           onPointerDownCapture={(e) => {
+            const target=e.target as HTMLElement;
+            // A new pointer releases a stranded drag/capture. Only an actual
+            // second finger in a live board gesture may keep the old pointer.
+            if(gesture.current && gesture.current.pointer!==e.pointerId &&
+              (e.pointerType!=="touch" || e.isPrimary || touchPoints.current.size===0)){
+              end(true);
+              if(eraserSession.current){eraserSession.current=null;stopEraserPreview();}
+              touchPoints.current.clear();
+              consumedTouchIds.current.clear();
+              pinchState.current=null;
+              pinchSelectionSnapshot.current=null;
+              setPanning(false);
+            }
             // Let a map in its own editing mode own its fingers, including
             // two-finger zoom. This capture phase fires BEFORE the atlas'
             // bubble handlers and otherwise starts a simultaneous board pinch.
@@ -7417,19 +7430,51 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // task controls can consume their own pointerdown events.
             // Preserve the atlas' dedicated edit mode and native form controls.
             if((tool==="select"||tool==="hand"&&e.pointerType!=="touch")&&
-              !space&&e.button===0&&!presentation&&!gesture.current&&!objectEditorOpen){
-              const target=e.target as HTMLElement;
+              !space&&e.button===0&&!presentation&&!objectEditorOpen){
               if(!target.closest("[data-transform-handle],[data-group-transform-handle],[data-group-selection-drag],[data-board-selection-grip],[data-connector-endpoint]")){
                 const id=target.closest<HTMLElement>("[data-object]")?.dataset.object;
                 const hit=id?itemsRef.current.find(item=>item.id===id&&!item.hidden):null;
                 if(hit&&!selected.includes(hit.id)){
                   const family=familyIdsFor(hit);
                   setSelected(e.shiftKey?[...new Set([...selected,...family])]:family);
+                }else if(!hit&&!e.shiftKey){
+                  // An empty press deselects immediately, even if a nested
+                  // widget would consume the bubble-phase pointer event.
+                  setSelected([]);
                 }
               }
             }
-            if((e.target as HTMLElement).closest(
-              ".lektrus-atlas:not(.lektrus-atlas--board-selection)"))return;
+            const atlas=target.closest(".lektrus-atlas:not(.lektrus-atlas--board-selection)");
+            const mapSurface=target.closest(".lektrus-atlas-map-box");
+            if(atlas&&mapSurface){
+              // An existing board pinch keeps both fingers even when the
+              // second one happens to land on the embedded map.
+              if(e.pointerType==="touch"&&touchPoints.current.size){
+                touchStart(e);
+                e.preventDefault();e.stopPropagation();
+              }
+              return;
+            }
+            const atlasControl=target.closest(
+              "button,input,select,textarea,a,[role='button'],[role='slider'],[contenteditable='true']");
+            // Empty atlas header/inspector space belongs to board navigation,
+            // not dragging or pinching the atlas object itself.
+            if(atlas&&!atlasControl&&!presentation&&!space&&
+              (tool==="select"||tool==="hand")&&e.button===0){
+              if(e.pointerType==="touch"){
+                touchStart(e);
+                if(pinchState.current){e.preventDefault();e.stopPropagation();return;}
+              }
+              e.preventDefault();e.stopPropagation();
+              if(gesture.current)end(true);
+              const start=local(e.clientX,e.clientY);
+              gesture.current={pointer:e.pointerId,mode:"pan",start,view,
+                before:itemsRef.current,ids:[],path:[world(start)],additive:false};
+              setPanning(true);
+              board.current?.setPointerCapture(e.pointerId);
+              return;
+            }
+            if(atlas&&atlasControl)return;
             // Board overlays contain real controls. Do not hijack taps,
             // focus, or the first finger of a pinch over those controls.
             const touchControl=(e.target as HTMLElement).closest(
