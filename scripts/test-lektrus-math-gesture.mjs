@@ -18,6 +18,9 @@ const names=load(transpile("src/lektrusGeometryPointNames.ts"));
 const math=load(transpile("src/LektrusGraphEditor.tsx"),{
  "./lektrusGeometryPointNames":names
 });
+const linking=load(transpile("src/lektrusGeometryExistingPoints.ts"),{
+ "./lektrusGeometryPointNames":names
+});
 const {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse,repairGeometryPointLabels}=names;
 const {appendFreeSketchPoint,appendFreeSketchBoard,closeFreeSketch,freeSketchClosingIndex,removeGraphPoint,closeFreeSketchBoard,removeGraphBoardPoint}=math;
 
@@ -106,6 +109,41 @@ assert.equal(independent.graphSegments.length,0,
  "new sketch must not extend another construction's protected point");
 assert.deepEqual(independent.graphPoints.map(p=>p.label),["A","B"]);
 
+const {linkExistingPoints}=linking;
+const geometry={
+ points:[{x:0,y:0,label:"A"},{x:4,y:0,label:"B"},{x:4,y:3,label:"C"},{x:0,y:3,label:"D"}],
+ segments:[],polygons:[],angles:[],circles:[],midpoints:[]
+};
+const straight=linkExistingPoints(geometry,"segment",[0,1]);
+assert.equal(straight.draft.points,geometry.points,"reuse shared vertices by reference");
+assert.deepEqual(straight.draft.segments.map(s=>[s.a,s.b,s.kind]),[[0,1,"segment"]]);
+assert.equal(linkExistingPoints(straight.draft,"segment",[1,0]).draft,straight.draft,
+ "duplicate reversed segment must not mutate the draft");
+assert.equal(linkExistingPoints(straight.draft,"ray",[1,0]).draft.segments.length,2,
+ "a directed ray may reuse an existing segment in reverse");
+const rectangle=linkExistingPoints(geometry,"polygon",[0,1,2,3]);
+assert.deepEqual(rectangle.draft.polygons[0].points,[0,1,2,3]);
+assert.equal(rectangle.draft.points.length,4,"polygon reuses existing points");
+assert.equal(linkExistingPoints(rectangle.draft,"polygon",[2,1,0,3]).draft,rectangle.draft,
+ "rotated or reversed duplicate polygon rejected");
+assert.equal(linkExistingPoints(geometry,"polygon",[0,2,1,3]).draft,geometry,
+ "self-intersecting polygon cannot corrupt the diagram");
+assert.equal(linkExistingPoints(geometry,"polygon",[0,1,1]).draft,geometry,
+ "repeated vertices are not accepted");
+assert.equal(linkExistingPoints(geometry,"polygon",[0,1,10]).draft,geometry,
+ "out-of-range indices are rejected");
+const circle=linkExistingPoints(geometry,"circle",[0,1]);
+assert.equal(circle.draft.circles[0].center,0);
+assert.equal(circle.draft.circles[0].edge,1);
+assert.equal(circle.draft.points.length,4);
+const angle=linkExistingPoints(geometry,"angle",[0,1,2]);
+assert.deepEqual(angle.draft.angles.map(a=>[a.a,a.vertex,a.b]),[[0,1,2]],
+ "the second selected point must be the angle vertex");
+const midpoint=linkExistingPoints(geometry,"midpoint",[0,2]);
+assert.deepEqual(midpoint.draft.midpoints.map(m=>[m.a,m.b,m.label]),[[0,2,"M"]]);
+assert.equal(linkExistingPoints(midpoint.draft,"midpoint",[2,0]).draft,midpoint.draft);
+assert.equal(linkExistingPoints(geometry,"segment",[0,0]).draft,geometry,
+ "zero-length construction does not change the drawing");
 const app=read("src/App.tsx"),editor=read("src/LektrusGraphEditor.tsx");
 const css=read("src/lektrusMathTouchPolish.css"),main=read("src/main.tsx");
 assert.match(app,/onCloseFreePolygon=\{\(\)=>setGraphDraft\(/,"preview closes polygon at first point");
@@ -131,5 +169,13 @@ assert.match(app,/freePointGesture/,
  "second finger cancels an existing point gesture");
 assert.match(app,/appendFreeSketchBoard\(candidate,x,y\)/,
  "saved board uses the same geometry path builder");
+assert.match(editor,/linkExistingPoints\(draft,linkKind,selected\)/,
+ "editor invokes pure existing-vertex geometry builder");
+assert.match(editor,/onPickPoint:pickLinkPoint,pickedPoints:linkPoints/,
+ "preview forwards touch vertex selection and highlights picks");
+assert.match(app,/onPickPoint\?\.\(i\)/,
+ "touching a vertex in linking mode uses references instead of adding points");
+assert.match(css,/lektrus-link-vertex-list/,
+ "the same vertex selection is possible through accessible large buttons");
 
 console.log("Geometry touch and names: free contours, tap closure, deletion, second polygon, unique letters and mobile controls verified.");
