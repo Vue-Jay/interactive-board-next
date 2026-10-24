@@ -1340,6 +1340,7 @@ function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint
           return;
         }
         if(onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free"&&event.button===0&&event.isPrimary){
+          if((event.target as SVGElement).closest?.(".lektrus-diagram-grid-toggle"))return;
           const box=event.currentTarget.getBoundingClientRect(),factor=Math.min(box.width/W,box.height/H)||1;
           const left=box.left+(box.width-W*factor)/2,top=box.top+(box.height-H*factor)/2;
           const px=(event.clientX-left)/factor,py=(event.clientY-top)/factor;
