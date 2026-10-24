@@ -8210,26 +8210,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     }));
                     setSelected([item.id]);
                   } : undefined} onRemovePoint={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/> }
-                {item.kind==="graph"&&canEdit&&!item.locked&&!structurallyLockedForStudent(item)&&
-                  !isSchoolDiagramId(item.graphFigureId)&&
-                  !item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&
-                  item.graphFigureId!=="lektrus-chart"&&
-                  <div className="lektrus-graph-board-actions" data-board-interactive="true"
-                    onPointerDown={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()}>
-                    <button type="button" title="Открыть настройки построения" aria-label="Настройки построения"
-                      onClick={e=>{e.preventDefault();e.stopPropagation();setTool("select");openGraphEditor(item)}}>
-                      <Icon name="settings" size={15}/><span>Настроить</span>
-                    </button>
-                    {(item.graphPurpose==="geometry"||item.graphFigureId==="free"||!!item.graphPolygons?.length)&&
-                      !isSolidFigure(item.graphFigureId)&&
-                      <button type="button" className={graphPointEditId===item.id?"is-active":""}
-                        aria-pressed={graphPointEditId===item.id}
-                        aria-label={graphPointEditId===item.id?"Закончить редактирование вершин":"Редактировать точки построения"}
-                        title={graphPointEditId===item.id?"Вернуться к перемещению фигуры":"Перемещать и добавлять точки"}
-                        onClick={e=>{e.preventDefault();e.stopPropagation();setTool("select");setSelected([item.id]);setGraphPointEditId(v=>v===item.id?null:item.id)}}>
-                        <Icon name="select" size={15}/><span>{graphPointEditId===item.id?"Готово":"Точки"}</span>
-                      </button>}
-                  </div>}
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
@@ -8489,7 +8469,27 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <span className="cover-selection-controls"><button type="button" className={singleSelected.coverOpen ? "active" : ""} onClick={() => toggleCover(singleSelected)} title="Прозрачность шторки"><Icon name={singleSelected.coverOpen ? "eye-off" : "eye"} size={15}/><span>{singleSelected.coverOpen ? "Закрыть" : "Прозрачная"}</span></button><input type="range" min="0" max="100" value={Math.round((singleSelected.coverOpen?0:(singleSelected.coverOpacity??1))*100)} onChange={e=>{const opacity=Number(e.target.value)/100;commit(itemsRef.current.map(i=>i.id===singleSelected.id?{...i,coverOpen:opacity===0,coverOpacity:opacity}:i))}} aria-label="Непрозрачность шторки"/></span>
               )}
               {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>setFractionEditorId(singleSelected.id)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
-              {singleSelected?.kind === "graph" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>openGraphEditor(singleSelected)} title="Настроить учебный объект"><Icon name="graph" size={15}/><span>Настроить</span></button></span>)}
+              {singleSelected?.kind==="graph"&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&(
+                <span className="graph-selection-controls">
+                  <button type="button" data-board-interactive="true"
+                    aria-label="Настроить учебный объект"
+                    onPointerDown={e=>e.stopPropagation()}
+                    onClick={e=>{e.preventDefault();e.stopPropagation();setGraphPointEditId(null);openGraphEditor(singleSelected)}}
+                    title="Открыть настройки учебного объекта">
+                    <Icon name="settings" size={15}/><span>Настроить</span>
+                  </button>
+                  {(singleSelected.graphPurpose==="geometry"||singleSelected.graphFigureId==="free"||!!singleSelected.graphPolygons?.length)&&
+                    !isSolidFigure(singleSelected.graphFigureId)&&
+                    <button type="button" data-board-interactive="true"
+                      className={graphPointEditId===singleSelected.id?"active":""}
+                      aria-pressed={graphPointEditId===singleSelected.id}
+                      aria-label={graphPointEditId===singleSelected.id?"Закончить редактирование точек":"Редактировать точки"}
+                      title={graphPointEditId===singleSelected.id?"Завершить работу с точками":"Редактировать вершины на доске"}
+                      onPointerDown={e=>e.stopPropagation()}
+                      onClick={e=>{e.preventDefault();e.stopPropagation();setTool("select");setGraphPointEditId(current=>current===singleSelected.id?null:singleSelected.id)}}>
+                      <Icon name="select" size={15}/><span>{graphPointEditId===singleSelected.id?"Готово":"Точки"}</span>
+                    </button>}
+                </span>)}
               {singleSelected?.kind === "formula" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
                 <span className="formula-selection-controls">
                   <button type="button" className="formula-edit-action" onClick={() => openFormulaEditor(singleSelected)} title="Редактировать формулу"><Icon name="formula" size={15}/><span>{singleSelected.fontSize ?? 28}px</span></button>
