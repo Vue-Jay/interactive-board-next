@@ -8,7 +8,7 @@ type Result<T>={draft:T;error?:string};
 const finite=(n:number)=>Number.isFinite(n);
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const round=(n:number)=>Number(n.toFixed(6));
-const validPair=(c:GeometryConstraint,n:number)=>Number.isInteger(c.a)&&Number.isInteger(c.b)&&
+const validPair=(c:GeometryConstraint,n:number)=>!!c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)&&
  c.a>=0&&c.b>=0&&c.a<n&&c.b<n&&c.a!==c.b&&
  (c.kind==="horizontal"||c.kind==="vertical"||c.kind==="distance")&&
  (c.kind!=="distance"||typeof c.value==="number"&&finite(c.value)&&c.value>0&&c.value<=1000);
@@ -110,7 +110,7 @@ export function forgetGeometryConstraint<T extends Model>(draft:T,index:number):
  return {...draft,constraints:draft.constraints!.filter((_,i)=>i!==index)} as T;
 }
 export function removeVertexConstraints(constraints:readonly GeometryConstraint[]|undefined,index:number):GeometryConstraint[]{
- return (constraints??[]).filter(c=>c.a!==index&&c.b!==index)
+ return (constraints??[]).filter(c=>c&&validPair(c,1_000_000)&&c.a!==index&&c.b!==index)
   .map(c=>({...c,a:c.a>index?c.a-1:c.a,b:c.b>index?c.b-1:c.b}));
 }
 /** Magnetic *axis* guides only. Deliberately avoid snapping both coordinates
