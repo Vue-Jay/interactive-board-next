@@ -1,0 +1,26 @@
+name: Verify Lektrus
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-geometry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Typecheck and build
+        run: npm run build
+      - name: Check geometry names, closure and touch gestures
+        run: npm run test:math-gesture
+      - name: Check school geometry constructions
+        run: node scripts/test-school-geometry.mjs
