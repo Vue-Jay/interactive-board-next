@@ -43,7 +43,7 @@ const modeChoices:readonly {id:BoardGeometryMode;label:string;icon:GeometryToolI
  {id:"angle",label:"Угол",icon:"angle"},
  {id:"circle",label:"Окружность",icon:"circle"},
  {id:"midpoint",label:"Середина",icon:"midpoint"},
- {id:"measure",label:"Размер",icon:"measure"}
+ {id:"measure",label:"Измерить",icon:"measure"}
 ];
 type Props={
  item:Item;mode:BoardGeometryMode;selected:readonly number[];error:string;
