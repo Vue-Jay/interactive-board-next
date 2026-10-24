@@ -65,3 +65,73 @@
   .lektrus-board-geometry-actions button{min-height:48px;font-size:10px}
   .lektrus-board-geometry-panel button{touch-action:manipulation}
 }
+
+/* Shared SVG geometry controls: predictable size on all fonts and devices. */
+.lektrus-board-geometry-panel{
+ width:min(304px,calc(100% - 22px));
+ max-height:min(520px,calc(100% - 130px));
+}
+.lektrus-board-geometry-head{
+ padding:7px 10px;gap:5px;min-height:39px;
+}
+.lektrus-board-geometry-head>div{
+ align-items:center;gap:7px;flex-wrap:nowrap;min-width:0;
+}
+.lektrus-board-geometry-head strong{white-space:nowrap;font-size:12px}
+.lektrus-board-geometry-head small{
+ min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:10px;
+}
+.lektrus-board-geometry-tabs{padding:5px 7px 0;gap:2px}
+.lektrus-board-geometry-tabs button{
+ min-width:0;min-height:30px;
+ padding:5px 1px;overflow:hidden;text-overflow:ellipsis;
+ font-size:10px;
+}
+.lektrus-board-geometry-actions{
+ grid-template-columns:repeat(5,minmax(0,1fr));
+ padding:6px 7px 3px;gap:4px;
+}
+.lektrus-board-geometry-actions button{
+ min-width:0;min-height:49px;gap:3px;padding:5px 1px;
+ line-height:1.15;border-radius:8px;
+}
+.lektrus-board-geometry-actions .lektrus-geometry-vector-icon{
+ width:21px;height:21px;flex:0 0 21px;display:block;
+}
+.lektrus-board-geometry-tool-label{
+ display:block;max-width:100%;min-width:0;overflow:hidden;
+ text-overflow:ellipsis;white-space:nowrap;
+ font-size:9px;letter-spacing:-.1px;
+}
+.lektrus-board-geometry-actions button.active .lektrus-geometry-vector-icon{color:inherit}
+.lektrus-board-geometry-hint{
+ margin:4px 9px;font-size:10px;line-height:1.3;
+}
+.lektrus-board-geometry-switches{
+ gap:4px 8px;padding:6px 0;margin:5px 8px 4px;
+}
+.lektrus-board-geometry-value{padding:5px 9px}
+.lektrus-board-geometry-buttons{padding:4px 8px;gap:4px}
+.lektrus-board-geometry-entry button{white-space:nowrap}
+.lektrus-board-geometry-point{grid-template-columns:minmax(38px,48px) minmax(0,1fr) minmax(0,1fr) 26px}
+.lektrus-board-geometry-panel .lektrus-board-geometry-selection{padding:5px 8px}
+.graph-selection-controls button{
+ display:inline-flex;align-items:center;justify-content:center;
+ max-width:100%;gap:4px;white-space:nowrap;
+}
+.graph-selection-controls button span{
+ display:inline-block;white-space:nowrap;
+}
+@media(max-width:680px),(pointer:coarse){
+ .lektrus-board-geometry-panel{
+  right:6px;top:53px;width:min(284px,calc(100% - 12px));
+  max-height:calc(100% - 110px);
+ }
+ .lektrus-board-geometry-actions button{min-height:45px}
+ .lektrus-board-geometry-actions .lektrus-geometry-vector-icon{width:20px;height:20px;flex-basis:20px}
+ .lektrus-board-geometry-tool-label{font-size:8.5px}
+}
+@media(max-height:440px) and (orientation:landscape){
+ .lektrus-board-geometry-panel{top:43px;max-height:calc(100% - 62px)}
+ .lektrus-board-geometry-actions button{min-height:42px}
+}
