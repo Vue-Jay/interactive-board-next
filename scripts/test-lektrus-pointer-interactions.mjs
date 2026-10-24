@@ -47,7 +47,7 @@ assert.ok(read("src/main.tsx").includes('import "./lektrusBoardInteraction.css";
 assert.ok(app.includes('saveRemoteBoardDocument'),"core persistence is unchanged");
 // Mobile gesture contract: interactive controls must never be treated as a
 // drawing pointer or first pinch contact.
-assert.match(app,/if\(touchControl\)return;/,"Mobile interactive controls bypass board pointer capture");
+assert.match(app,/if\(touchControl\s*&&\s*!boardHandle\)return;/,"Mobile interactive controls bypass board pointer capture, except explicit transform handles");
 assert.match(app,/touchPoints\.current\.size===2/,"Two touches start a pinch");
 assert.match(app,/setSelected\(pinchSelectionSnapshot\.current\?\?\[\]\)/,
  "Pinch must not modify the user's selection");
