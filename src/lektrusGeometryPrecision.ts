@@ -14,15 +14,32 @@ export function geometryAngle(a:GeometryPoint,vertex:GeometryPoint,b:GeometryPoi
  if(la<EPS||lb<EPS)return null;
  return Math.atan2(Math.abs(ax*by-ay*bx),ax*bx+ay*by)*180/Math.PI;
 }
+const orientedArea=(a:GeometryPoint,b:GeometryPoint,c:GeometryPoint)=>
+ (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+const onSegment=(a:GeometryPoint,b:GeometryPoint,c:GeometryPoint)=>
+ Math.abs(orientedArea(a,b,c))<EPS&&
+ c.x>=Math.min(a.x,b.x)-EPS&&c.x<=Math.max(a.x,b.x)+EPS&&
+ c.y>=Math.min(a.y,b.y)-EPS&&c.y<=Math.max(a.y,b.y)+EPS;
+const crosses=(a:GeometryPoint,b:GeometryPoint,c:GeometryPoint,d:GeometryPoint)=>{
+ const ac=orientedArea(a,b,c),ad=orientedArea(a,b,d),
+       ca=orientedArea(c,d,a),cb=orientedArea(c,d,b);
+ return (ac>0)!==(ad>0)&&(ca>0)!==(cb>0)||
+  onSegment(a,b,c)||onSegment(a,b,d)||onSegment(c,d,a)||onSegment(c,d,b);
+};
 export function geometryPolygonMetrics(points:readonly GeometryPoint[]):{perimeter:number;area:number}|null{
  if(points.length<3||points.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))return null;
+ if(points.some((p,i)=>geometryDistance(p,points[(i+1)%points.length])<EPS))return null;
+ for(let i=0;i<points.length;i++)for(let j=i+1;j<points.length;j++){
+  if(j===i+1||i===0&&j===points.length-1)continue;
+  if(crosses(points[i],points[(i+1)%points.length],points[j],points[(j+1)%points.length]))return null;
+ }
  let signed=0,perimeter=0;
  for(let i=0;i<points.length;i++){
   const a=points[i],b=points[(i+1)%points.length];
   signed+=a.x*b.y-a.y*b.x;
   perimeter+=geometryDistance(a,b);
  }
- return {perimeter,area:Math.abs(signed)/2};
+ return Math.abs(signed)<EPS?null:{perimeter,area:Math.abs(signed)/2};
 }
 export const formatGeometryMetric=(value:number)=>
  Number.isFinite(value)?Number(value.toFixed(2)).toLocaleString("ru-RU",{maximumFractionDigits:2}):"—";
