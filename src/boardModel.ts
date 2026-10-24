@@ -405,6 +405,8 @@ export type Item = {
   graphGivenAngles?: string[];
   graphTriangleInputMode?: "SSS"|"SAS"|"ASA";
   graphMidpoints?: { a:number; b:number; label:string; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphConstraints?: import("./lektrusGeometryConstraints").GeometryConstraint[];
+  graphMagneticSnap?: boolean;
   graphSnap?: boolean;
   graphAxisLabels?: boolean;
   graphGridStep?: number;
