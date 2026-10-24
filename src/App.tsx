@@ -8036,7 +8036,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                       if(candidate.id!==item.id)return candidate;
                       const points=candidate.graphPoints??[],n=points.length;
                       const next={x,y:candidate.graphPurpose==="number-line"?0:y,
-                        label:candidate.graphFigureId==="free"?nextGeometryPointLabel(points):"",color:"#111111"};
+                        label:candidate.graphPurpose==="geometry"&&!candidate.graphFigureId?.startsWith("physics-")?nextGeometryPointLabel(points):"",color:"#111111"};
                       if(candidate.graphFigureId!=="free")return {...candidate,graphPoints:[...points,next]};
                       const previouslyClosed=(candidate.graphPolygons??[]).some(poly=>poly.points.includes(n-1));
                       const nextSegments=n>0&&!previouslyClosed&&(candidate.graphSegments?.length??0)<60?
