@@ -1367,7 +1367,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             <span className="lektrus-geometry-selection-summary" role="status">
               {isSolid?`Объёмная фигура: ${draft.title}`:
                connectionActive?`${existingPointTools.find(entry=>entry.id===linkKind)?.label||"Построение"}: ${linkPoints.map(i=>draft.points[i]?.label||String(i+1)).join(" → ")||"выберите точку"}`:
-               draft.figureId==="free"&&canvasTool==="point"?`Точек: ${draft.points.length} · фигур: ${draft.polygons.length}`:
+               draft.figureId==="free"&&canvasTool==="point"?`Точек: ${draft.points.length} · элементов: ${extraElementCount+schoolGroups.length}`:
                canvasTool==="point"?"Коснитесь поля для добавления точки":
                `Редактирование: ${draft.title||"чертёж"}`}
             </span>
