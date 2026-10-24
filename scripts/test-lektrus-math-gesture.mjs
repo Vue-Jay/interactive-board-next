@@ -309,6 +309,13 @@ assert.match(app,/graphConstraints:d\.constraints/,
  "persistent links survive save");
 assert.match(app,/graphMagneticSnap:d\.magneticSnap/,
  "snap preference survives save");
+const boardModel=read("src/boardModel.ts");
+assert.match(boardModel,/"graphConstraints","graphMagneticSnap"/,
+ "new geometry settings are included in board import/export allowlist");
+assert.match(math.removeGraphBoardPoint.toString(),/graphConstraints/,
+ "deleting a vertex in a saved board removes dangling constraints");
+const fourTabs=(editor.match(/tab==="presets"\?"active"|tab==="givens"\?"active"|tab==="geometry"\?"active"|tab==="points"\|\|tab==="connect"\?"active"/g)||[]);
+assert.equal(fourTabs.length,4,"only four top-level editor tabs");
 assert.match(editor,/linkExistingPoints\(draft,linkKind,selected\)/,
  "editor invokes pure existing-vertex geometry builder");
 assert.match(editor,/onPickPoint:pickLinkPoint,pickedPoints:linkPoints/,
