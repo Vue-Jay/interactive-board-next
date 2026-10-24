@@ -481,7 +481,7 @@ const persistedGraphKeys = [
   "graphGrid","graphPoints","graphShowLabels","graphSegments","graphAngles",
   "graphCircles","graphPolygons","graphTriangleLines","graphTriangleVertex",
   "graphShowArea","graphGivenSides","graphGivenAngles","graphTriangleInputMode",
-  "graphMidpoints","graphSnap","graphAxisLabels","graphGridStep",
+  "graphMidpoints","graphSnap","graphConstraints","graphMagneticSnap","graphAxisLabels","graphGridStep",
   "graphShowCurve","graphProjections"
 ] as const satisfies readonly (keyof Item)[];
 function persistedGraphData(item:Item):Partial<Item>{
