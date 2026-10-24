@@ -96,7 +96,7 @@ export function appendFreeSketchBoard(item:Item,x:number,y:number):Item {
 }
 /** First vertex of the currently unfinished path, or null if it cannot close.
  * The first point may be AFTER a previously completed polygon. */
-export function freeSketchClosingIndex(draft:Pick<GraphDraft,"figureId"|"points"|"segments"|"polygons"|"circles">):number|null {
+export function freeSketchClosingIndex(draft:FreeSketchSource):number|null {
   if(draft.figureId!=="free"||draft.polygons.length>=20)return null;
   const n=draft.points.length;
   const protectedPoint=(index:number)=>!!draft.points[index]?.schoolGroupId||
@@ -111,7 +111,7 @@ export function freeSketchClosingIndex(draft:Pick<GraphDraft,"figureId"|"points"
   }
   return n-first>=3?first:null;
 }
-const closeFreeSketchParts=(draft:Pick<GraphDraft,"figureId"|"points"|"segments"|"polygons"|"circles">)=>{
+const closeFreeSketchParts=(draft:FreeSketchSource)=>{
   const first=freeSketchClosingIndex(draft);
   if(first===null)return null;
   const n=draft.points.length;
