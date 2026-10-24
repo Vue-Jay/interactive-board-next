@@ -359,6 +359,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     setCanvasTool(tool);setGeometryError("");
     if(tool!=="select"&&tool!=="point"){setLinkKind(tool);setTab("connect")}
     else setTab("points");
+    if(typeof window!=="undefined"&&window.innerWidth<=900)setSettingsOpen(false);
   };
   const drawingTools=[
     {id:"select",name:"Выбор",symbol:"↖",hint:"Перемещать вершины"},
@@ -1359,6 +1360,27 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             </button>
           </div>
           <div className={connectionActive?"lektrus-graph-canvas is-linking":"lektrus-graph-canvas"}>{previewWithLink}</div>
+          {mode==="geometry"&&<div className="lektrus-geometry-canvas-actions" role="group" aria-label="Действия с текущим построением">
+            <span className="lektrus-geometry-selection-summary" role="status">
+              {isSolid?`Объёмная фигура: ${draft.title}`:
+               connectionActive?`${existingPointTools.find(entry=>entry.id===linkKind)?.label||"Построение"}: ${linkPoints.map(i=>draft.points[i]?.label||String(i+1)).join(" → ")||"выберите точку"}`:
+               draft.figureId==="free"&&canvasTool==="point"?`Точек: ${draft.points.length} · фигур: ${draft.polygons.length}`:
+               canvasTool==="point"?"Коснитесь поля для добавления точки":
+               `Редактирование: ${draft.title||"чертёж"}`}
+            </span>
+            {connectionActive&&<>
+              <button type="button" disabled={!linkPoints.length} onClick={undoLinkPoint} aria-label="Отменить выбор последней точки">↶</button>
+              <button type="button" disabled={!linkPoints.length} onClick={resetLinkSelection}>Сброс</button>
+              {linkKind==="polygon"&&<button type="button" className="primary" disabled={linkPoints.length<3} onClick={()=>finishLink(linkPoints)}>Замкнуть</button>}
+              {linkKind==="measure"&&<button type="button" onClick={()=>{setTab("connect");setSettingsOpen(true)}}>Размеры</button>}
+            </>}
+            {!connectionActive&&canvasTool==="point"&&draft.figureId==="free"&&<>
+              <button type="button" disabled={!canUndoFreePoint} onClick={()=>onChange(removeGraphPoint(draft,openPathLast))}>↶</button>
+              <button type="button" disabled={draft.points.length===(draft.freePathStart??0)} onClick={()=>patch({freePathStart:draft.points.length})}>Новая линия</button>
+              <button type="button" className="primary" disabled={closeFreeSketch(draft)===draft} onClick={()=>onChange(closeFreeSketch(draft))}>Замкнуть</button>
+            </>}
+            {isSolid&&<button type="button" onClick={()=>{setTab("givens");setSettingsOpen(true)}}>Параметры</button>}
+          </div>}
           <div className="lektrus-graph-preview-hint">{mode==="geometry"?canvasHelp:connectionActive?"Нажимайте на существующие вершины. Выбранные точки подсвечиваются; линии создаются без новых вершин.":isSolid?"Поворачивайте фигуру, перетаскивая оси X, Y, Z в правом верхнем углу. Двойное нажатие на оси возвращает стандартный вид.":draft.figureId==="ray"?"Изменяйте направление луча, захватив его линию. На рисунке остаётся одна начальная точка.":draft.figureId==="free"?"Одно касание ставит точку. Коснитесь первой вершины для замыкания, а для перемещения удерживайте и перетаскивайте её.":"Перетаскивайте точки мышью или пальцем. Двойное нажатие добавляет или удаляет точку."}</div>
         </aside>
       </div>
