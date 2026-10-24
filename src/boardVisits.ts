@@ -25,7 +25,8 @@ export function trackBoardVisit(boardId:string):()=>void{
  const timer=setInterval(()=>{if(active&&document.visibilityState==="visible")void pulse("ping")},30000);
  document.addEventListener("visibilitychange",visibility);
  window.addEventListener("pagehide",leave);
+ window.addEventListener("pageshow",enter);
  window.addEventListener("online",online);
  enter();
- return()=>{closed=true;clearInterval(timer);document.removeEventListener("visibilitychange",visibility);window.removeEventListener("pagehide",leave);window.removeEventListener("online",online);leave()};
+ return()=>{closed=true;clearInterval(timer);document.removeEventListener("visibilitychange",visibility);window.removeEventListener("pagehide",leave);window.removeEventListener("pageshow",enter);window.removeEventListener("online",online);leave()};
 }
