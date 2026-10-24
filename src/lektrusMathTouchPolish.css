@@ -82,3 +82,63 @@
  }
  .lektrus-graph-dialog .lektrus-graph-point-row>button{width:33px}
 }
+
+
+/* Existing-vertex geometry: clear selection and finger-sized controls. */
+.lektrus-point-link-builder{display:flex;flex-direction:column;gap:12px}
+.lektrus-link-tool-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lektrus-link-tool-grid button,.lektrus-link-actions button{
+ min-height:44px;padding:8px 9px;border-radius:10px;border:1px solid #cad8ea;
+ background:#f7faff;color:#284361;font-size:12px;font-weight:700;cursor:pointer;
+}
+.lektrus-link-tool-grid button.is-active{
+ border-color:#3a70c0;background:#e9f1ff;color:#174e9d;
+ box-shadow:inset 0 0 0 1px #3a70c0;
+}
+.lektrus-link-instructions{line-height:1.5;color:#4e627f;font-size:12px}
+.lektrus-link-selected{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
+.lektrus-link-selected span{color:#2c60a2;font-weight:650;overflow-wrap:anywhere}
+.lektrus-link-vertex-list{
+ display:grid;grid-template-columns:repeat(auto-fill,minmax(77px,1fr));gap:8px;
+ max-height:225px;overflow-y:auto;padding:5px;overscroll-behavior:contain;
+}
+.lektrus-link-vertex-list button{
+ min-height:56px;display:flex;flex-direction:column;justify-content:center;align-items:center;
+ gap:2px;border:1px solid #ccdaeb;background:#fff;color:#243751;border-radius:11px;
+ cursor:pointer;touch-action:manipulation;white-space:nowrap;
+}
+.lektrus-link-vertex-list button strong{font-size:16px}
+.lektrus-link-vertex-list button small{font-size:10px;color:#6e7e96}
+.lektrus-link-vertex-list button.is-selected{
+ border-color:#2865b1;background:#e8f2ff;outline:2px solid #a4c8f5;
+}
+.lektrus-link-actions{display:flex;flex-wrap:wrap;gap:7px}
+.lektrus-link-actions button{flex:1 1 100px}
+.lektrus-link-actions button:disabled,.lektrus-link-tool-grid button:disabled{
+ opacity:.45;cursor:not-allowed
+}
+.lektrus-link-actions .lektrus-link-finish:not(:disabled){
+ border-color:#326bbe;background:#326bbe;color:#fff;
+}
+.lektrus-graph-canvas.is-linking .graph-point.lektrus-link-pickable,
+.lektrus-graph-canvas.is-linking .graph-point.lektrus-link-pickable .graph-point-hit{
+ cursor:pointer;touch-action:none;
+}
+.graph-view .lektrus-link-picked-ring{
+ fill:#3678d51a;stroke:#3272ca;stroke-width:3;
+ vector-effect:non-scaling-stroke;pointer-events:none;
+}
+.graph-view .lektrus-link-pending-path{
+ fill:none;stroke:#3272ca;stroke-width:2.6;stroke-dasharray:6 5;
+ stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;
+ pointer-events:none;
+}
+@media(pointer:coarse){
+ .lektrus-link-tool-grid button,.lektrus-link-actions button{min-height:48px}
+ .lektrus-link-vertex-list button{min-height:58px}
+}
+@media(max-width:600px){
+ .lektrus-link-tool-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .lektrus-link-vertex-list{grid-template-columns:repeat(3,minmax(0,1fr));max-height:192px}
+ .lektrus-point-link-builder{gap:9px}
+}
