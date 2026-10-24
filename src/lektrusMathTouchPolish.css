@@ -255,3 +255,22 @@
  .lektrus-link-kind-picker select{max-width:none;width:100%}
  .lektrus-point-quick-actions{justify-content:space-between}
 }
+
+
+/* Shape fills and labels are visual, not invisible click blockers.
+ * Pointer interactions are centralized on the SVG for point construction. */
+.graph-view.graph-purpose-geometry .graph-polygon,
+.graph-view.graph-purpose-geometry .graph-circle,
+.graph-view.graph-purpose-geometry .graph-segment,
+.graph-view.graph-purpose-geometry .graph-axes,
+.graph-view.graph-purpose-geometry .graph-angle,
+.graph-view.graph-purpose-geometry .graph-midpoint,
+.graph-view.graph-purpose-geometry .graph-figure-label,
+.graph-view.graph-purpose-geometry .graph-dimension-labels,
+.graph-view.graph-purpose-geometry .graph-given-label{
+ pointer-events:none;
+}
+.lektrus-graph-canvas.is-linking .graph-view svg{cursor:crosshair}
+.lektrus-graph-canvas.is-linking .graph-point circle.graph-point-hit{
+ cursor:pointer;
+}
