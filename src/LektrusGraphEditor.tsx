@@ -1,5 +1,6 @@
 import {cloneElement,isValidElement,useEffect,useState,type ReactElement,type ReactNode} from "react";
 import "./lektrusGeometryWorkspace.css";
+import LektrusGeometryToolIcon from "./LektrusGeometryToolIcon";
 import type {Item} from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
 import {removeConstruction,removeSchoolConstructionGroup,type ConstructionKind} from "./lektrusConstructionCleanup";
@@ -354,7 +355,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     }):preview;
   const setDrawingTool=(tool:"select"|"point"|ExistingPointTool)=>{
     if(tool==="point"&&draft.figureId==="ray"){setGeometryError("Для добавления отдельных точек выберите плоский чертёж.");return}
-    if(isSolid){setGeometryError("Объёмную фигуру можно поворачивать и настраивать в разделе «Фигура».");return}
+    if(isSolid){setGeometryError("Настройки объёмной фигуры доступны в разделе «Размеры».");return}
     if(tool!==canvasTool){resetLinkSelection();}
     setCanvasTool(tool);setGeometryError("");
     if(tool!=="select"&&tool!=="point"){setLinkKind(tool);setTab("connect")}
@@ -362,16 +363,16 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     if(typeof window!=="undefined"&&window.innerWidth<=900)setSettingsOpen(false);
   };
   const drawingTools=[
-    {id:"select",name:"Выбор",symbol:"↖",hint:"Перемещать вершины"},
-    {id:"point",name:"Точка",symbol:"•",hint:"Поставить новую точку"},
-    {id:"segment",name:"Отрезок",symbol:"╱",hint:"Две вершины"},
-    {id:"line",name:"Прямая",symbol:"⟷",hint:"Через две точки"},
-    {id:"ray",name:"Луч",symbol:"↗",hint:"Начало и направление"},
-    {id:"polygon",name:"Фигура",symbol:"⬡",hint:"Три или больше точек"},
-    {id:"angle",name:"Угол",symbol:"∠",hint:"Три точки, вершина вторая"},
-    {id:"circle",name:"Окружн.",symbol:"◯",hint:"Центр и радиус"},
-    {id:"midpoint",name:"Середина",symbol:"⊙",hint:"Две точки"},
-    {id:"measure",name:"Размер",symbol:"⌁",hint:"Измерения и связи"}
+    {id:"select",name:"Выбор",hint:"Перемещать вершины"},
+    {id:"point",name:"Точка",hint:"Поставить новую точку"},
+    {id:"segment",name:"Отрезок",hint:"Две вершины"},
+    {id:"line",name:"Прямая",hint:"Через две точки"},
+    {id:"ray",name:"Луч",hint:"Начало и направление"},
+    {id:"polygon",name:"Контур",hint:"Три или больше точек"},
+    {id:"angle",name:"Угол",hint:"Три точки, вершина вторая"},
+    {id:"circle",name:"Окружн.",hint:"Центр и радиус"},
+    {id:"midpoint",name:"Середина",hint:"Две точки"},
+    {id:"measure",name:"Размер",hint:"Измерения и связи"}
   ] as const;
   const canvasHelp=isSolid?"Для вращения перетаскивайте оси X, Y, Z в углу чертежа. Изменение размеров доступно в настройках.":canvasTool==="select"?"Перетащите вершину для изменения фигуры.":
     canvasTool==="point"?"Коснитесь чертежа, чтобы поставить точку.":"Выбирайте вершины на поле. На пустом месте новая точка создаётся автоматически.";
@@ -568,15 +569,15 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         {mode==="geometry"&&<div className="lektrus-geometry-header-catalog" role="group" aria-label="Библиотека фигур">
           <button type="button" className={settingsOpen&&tab==="presets"&&figureCategory==="Геометрия"?"active":""}
             aria-pressed={settingsOpen&&tab==="presets"&&figureCategory==="Геометрия"}
-            onClick={()=>showFigureCatalog("Геометрия")}>▱ <span>Фигуры 2D</span></button>
+            onClick={()=>showFigureCatalog("Геометрия")}><LektrusGeometryToolIcon name="2d" size={18}/> <span>Фигуры 2D</span></button>
           <button type="button" className={settingsOpen&&tab==="presets"&&figureCategory==="Объёмные фигуры"?"active":""}
             aria-pressed={settingsOpen&&tab==="presets"&&figureCategory==="Объёмные фигуры"}
-            onClick={()=>showFigureCatalog("Объёмные фигуры")}>⬡ <span>Фигуры 3D</span></button>
+            onClick={()=>showFigureCatalog("Объёмные фигуры")}><LektrusGeometryToolIcon name="3d" size={18}/> <span>Фигуры 3D</span></button>
         </div>}
         {mode==="geometry"&&<button type="button" className="lektrus-geometry-properties-toggle"
           aria-label={settingsOpen?"Скрыть настройки":"Показать настройки"}
           aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(open=>!open)}>
-          {settingsOpen?"Скрыть настройки":"Настройки"}
+          {settingsOpen?"Скрыть":"Параметры"}
         </button>}
         <button type="button" aria-label="Закрыть редактор без сохранения" onClick={onClose}>×</button>
       </header>
@@ -586,28 +587,28 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           <div className="lektrus-geometry-rail-library">
             <button type="button" className={tab==="presets"&&figureCategory==="Геометрия"&&settingsOpen?"active":""}
               aria-label="Открыть плоские фигуры" onClick={()=>showFigureCatalog("Геометрия")}>
-              <span className="lektrus-geometry-tool-symbol" aria-hidden="true">▱</span><span>2D</span>
+              <LektrusGeometryToolIcon name="2d"/><span>2D</span>
             </button>
             <button type="button" className={tab==="presets"&&figureCategory==="Объёмные фигуры"&&settingsOpen?"active":""}
               aria-label="Открыть объёмные фигуры" onClick={()=>showFigureCatalog("Объёмные фигуры")}>
-              <span className="lektrus-geometry-tool-symbol" aria-hidden="true">⬡</span><span>3D</span>
+              <LektrusGeometryToolIcon name="3d"/><span>3D</span>
             </button>
           </div>
           {!isSolid?drawingTools.map(tool=><button key={tool.id} type="button"
             className={canvasTool===tool.id?"active":""} title={tool.hint}
             aria-pressed={canvasTool===tool.id} onClick={()=>setDrawingTool(tool.id)}>
-            <span className="lektrus-geometry-tool-symbol" aria-hidden="true">{tool.symbol}</span>
+            <LektrusGeometryToolIcon name={tool.id}/>
             <span>{tool.name}</span>
           </button>):<>
             <button type="button" aria-label="Открыть размеры объёмной фигуры"
               className={tab==="givens"&&settingsOpen?"active":""}
               onClick={()=>{setTab("givens");setSettingsOpen(true)}}>
-              <span className="lektrus-geometry-tool-symbol" aria-hidden="true">⌗</span><span>Размеры</span>
+              <LektrusGeometryToolIcon name="dimensions"/><span>Размеры</span>
             </button>
             <button type="button" aria-label="Показать дополнительные построения объёмной фигуры"
               className={tab==="geometry"&&settingsOpen?"active":""}
               onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>
-              <span className="lektrus-geometry-tool-symbol" aria-hidden="true">⊕</span><span>Элементы</span>
+              <LektrusGeometryToolIcon name="elements"/><span>Элементы</span>
             </button>
             <div className="lektrus-geometry-tool-solid-note">Для вращения используйте оси на чертеже</div>
           </>}
@@ -618,8 +619,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             <strong>{mode==="geometry"?(figureCategory==="Геометрия"?"Плоские фигуры · 2D":"Объёмные фигуры · 3D"):"Выберите построение"}</strong>
             {mode==="geometry"&&figureCategory==="Геометрия"&&<button type="button" className="lektrus-start-free-drawing"
               onClick={()=>{loadPreset("free");setCanvasTool("polygon");setLinkKind("polygon");setLinkPoints([]);setTab("connect");}}>
-              <strong>+ Построить по точкам</strong>
-              <small>Коснитесь трёх или более мест на рисунке и замкните контур</small>
+              <strong>+ Свой чертёж</strong>
+              <small>Создайте произвольную фигуру по вершинам</small>
             </button>}
             <small>{mode==="geometry"?"Нажмите на фигуру для создания. Затем редактируйте её на большом чертеже.":"Выберите готовую фигуру или начните свой чертёж."}</small>
             {figureSections.map(section=>
