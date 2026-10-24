@@ -370,9 +370,9 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     {id:"ray",name:"Луч",hint:"Начало и направление"},
     {id:"polygon",name:"Контур",hint:"Три или больше точек"},
     {id:"angle",name:"Угол",hint:"Три точки, вершина вторая"},
-    {id:"circle",name:"Окружн.",hint:"Центр и радиус"},
+    {id:"circle",name:"Окружность",hint:"Центр и радиус"},
     {id:"midpoint",name:"Середина",hint:"Две точки"},
-    {id:"measure",name:"Размер",hint:"Измерения и связи"}
+    {id:"measure",name:"Измерить",hint:"Измерения и связи"}
   ] as const;
   const canvasHelp=isSolid?"Для вращения перетаскивайте оси X, Y, Z в углу чертежа. Изменение размеров доступно в настройках.":canvasTool==="select"?"Перетащите вершину для изменения фигуры.":
     canvasTool==="point"?"Коснитесь чертежа, чтобы поставить точку.":"Выбирайте вершины на поле. На пустом месте новая точка создаётся автоматически.";
@@ -565,7 +565,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
       <header className="graph-editor-header lektrus-graph-head">
-        <div><strong>{mode==="geometry"?"Построение фигур":"Координатная плоскость"}</strong><span>{mode==="geometry"?"Рабочая область · изменения появятся на доске после сохранения":"Графики, координаты и тригонометрия"}</span></div>
+        <div><strong>{mode==="geometry"?"Редактор фигур":"Координатная плоскость"}</strong><span>{mode==="geometry"?"2D и 3D · изменения появятся на доске после сохранения":"Графики, координаты и тригонометрия"}</span></div>
         {mode==="geometry"&&<div className="lektrus-geometry-header-catalog" role="group" aria-label="Библиотека фигур">
           <button type="button" className={settingsOpen&&tab==="presets"&&figureCategory==="Геометрия"?"active":""}
             aria-pressed={settingsOpen&&tab==="presets"&&figureCategory==="Геометрия"}
@@ -579,7 +579,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(open=>!open)}>
           {settingsOpen?"Скрыть":"Параметры"}
         </button>}
-        <button type="button" aria-label="Закрыть редактор без сохранения" onClick={onClose}>×</button>
+        <button type="button" className={mode==="geometry"?"lektrus-geometry-modal-close":undefined}
+          aria-label="Закрыть редактор без сохранения" title="Закрыть без сохранения" onClick={onClose}>
+          {mode==="geometry"?<LektrusGeometryToolIcon name="close" size={20}/>: "×"}
+        </button>
       </header>
       {mode!=="geometry"&&sectionTabs}
       <div className="graph-editor-body lektrus-graph-content">
@@ -1378,13 +1381,14 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                `Редактирование: ${draft.title||"чертёж"}`}
             </span>
             {connectionActive&&<>
-              <button type="button" disabled={!linkPoints.length} onClick={undoLinkPoint} aria-label="Отменить выбор последней точки">↶</button>
+              <button type="button" disabled={!linkPoints.length} onClick={undoLinkPoint} aria-label="Отменить выбор последней точки" title="Назад"><LektrusGeometryToolIcon name="undo" size={17}/></button>
               <button type="button" disabled={!linkPoints.length} onClick={resetLinkSelection}>Сброс</button>
               {linkKind==="polygon"&&<button type="button" className="primary" disabled={linkPoints.length<3} onClick={()=>finishLink(linkPoints)}>Замкнуть</button>}
               {linkKind==="measure"&&<button type="button" onClick={()=>{setTab("connect");setSettingsOpen(true)}}>Размеры</button>}
             </>}
             {!connectionActive&&canvasTool==="point"&&draft.figureId==="free"&&<>
-              <button type="button" disabled={!canUndoFreePoint} onClick={()=>onChange(removeGraphPoint(draft,openPathLast))}>↶</button>
+              <button type="button" disabled={!canUndoFreePoint} onClick={()=>onChange(removeGraphPoint(draft,openPathLast))}
+                aria-label="Удалить последнюю точку" title="Удалить последнюю точку"><LektrusGeometryToolIcon name="undo" size={17}/></button>
               <button type="button" disabled={draft.points.length===(draft.freePathStart??0)} onClick={()=>patch({freePathStart:draft.points.length})}>Новая линия</button>
               <button type="button" className="primary" disabled={closeFreeSketch(draft)===draft} onClick={()=>onChange(closeFreeSketch(draft))}>Замкнуть</button>
             </>}
