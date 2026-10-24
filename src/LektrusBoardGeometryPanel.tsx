@@ -83,15 +83,15 @@ export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMo
    aria-label="Построение фигур на доске" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
    <div className="lektrus-board-geometry-head">
-    <div className="lektrus-board-geometry-identity"><strong>Черчение</strong><small>{points.length} т. · {total} эл.</small></div>
+    <div className="lektrus-board-geometry-identity"><strong>Построение</strong><small>{points.length} т. · {total} эл.</small></div>
     <div className="lektrus-board-geometry-head-actions">
       <button type="button" className="lektrus-board-geometry-editor-link"
         title="Открыть полный редактор фигур"
         aria-label="Открыть полный редактор фигур" onClick={onOpenEditor}>
-        <LektrusGeometryToolIcon name="editor" size={16}/><span>Редактор</span>
+        <LektrusGeometryToolIcon name="editor" size={16}/><span>В редактор</span>
       </button>
       <button type="button" className="lektrus-board-geometry-collapse"
-        aria-label={collapsed?"Развернуть инструменты черчения":"Свернуть инструменты черчения"}
+        aria-label={collapsed?"Развернуть инструменты построения":"Свернуть инструменты построения"}
         title={collapsed?"Развернуть":"Свернуть"} onClick={()=>setCollapsed(v=>!v)}>
         <LektrusGeometryToolIcon name={collapsed?"expand":"collapse"} size={17}/>
       </button>
@@ -99,25 +99,28 @@ export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMo
    </div>
    {!collapsed&&<>
     <nav className="lektrus-board-geometry-tabs" aria-label="Разделы построения">
-     {([["draw","Инструменты"],["exact","Размеры"],["school","Школьные"],["objects","Объекты"]] as const).map(([id,label])=>
+     {([["draw","Рисовать"],["exact","Размеры"],["school","Школьные"],["objects","Объекты"]] as const).map(([id,label])=>
       <button type="button" key={id} className={tab===id?"active":""} onClick={()=>setTab(id)}>{label}</button>)}
     </nav>
     {tab==="draw"&&<>
       <div className="lektrus-board-geometry-actions">
        {modeChoices.map(choice=>button(choice.id,choice.label,choice.icon))}
       </div>
-      <p className="lektrus-board-geometry-hint">{instruction}</p>
+      {mode!=="move"&&<p className="lektrus-board-geometry-hint">{instruction}</p>}
       {mode==="polygon"&&<p className="lektrus-board-geometry-hint">Замкните нажатием на первую вершину либо кнопкой ниже.</p>}
       {mode==="point"&&item.graphFigureId==="free"&&<div className="lektrus-board-geometry-buttons">
         <button type="button" onClick={onClosePolygon}>Замкнуть контур</button>
         <button type="button" onClick={onNewLine}>Новая линия</button>
       </div>}
-      <div className="lektrus-board-geometry-switches">
-       <label><input type="checkbox" checked={item.graphGrid!==false} onChange={()=>onToggle("graphGrid")}/> Сетка</label>
-       <label><input type="checkbox" checked={item.graphSnap!==false} onChange={()=>onToggle("graphSnap")}/> Шаг</label>
-       <label><input type="checkbox" checked={item.graphMagneticSnap!==false} onChange={()=>onToggle("graphMagneticSnap")}/> Магнит</label>
-       <label><input type="checkbox" checked={item.graphShowLabels!==false} onChange={()=>onToggle("graphShowLabels")}/> Буквы</label>
-      </div>
+      <details className="lektrus-board-geometry-details lektrus-board-geometry-display">
+       <summary>Отображение</summary>
+       <div className="lektrus-board-geometry-switches">
+        <label><input type="checkbox" checked={item.graphGrid!==false} onChange={()=>onToggle("graphGrid")}/> Сетка</label>
+        <label><input type="checkbox" checked={item.graphSnap!==false} onChange={()=>onToggle("graphSnap")}/> Привязка</label>
+        <label><input type="checkbox" checked={item.graphMagneticSnap!==false} onChange={()=>onToggle("graphMagneticSnap")}/> Магнит</label>
+        <label><input type="checkbox" checked={item.graphShowLabels!==false} onChange={()=>onToggle("graphShowLabels")}/> Буквы</label>
+       </div>
+      </details>
     </>}
     {tab==="exact"&&<>
       <div className="lektrus-board-geometry-buttons"><button type="button" className={mode==="measure"?"active":""} onClick={()=>onMode("measure")}>Выбрать вершины</button>
