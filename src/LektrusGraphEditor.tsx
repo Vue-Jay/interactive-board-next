@@ -1,4 +1,4 @@
-import {useEffect, useState, type ReactNode} from "react";
+import {cloneElement,isValidElement,useEffect,useState,type ReactElement,type ReactNode} from "react";
 import type {Item} from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
 import {removeConstruction,removeSchoolConstructionGroup,type ConstructionKind} from "./lektrusConstructionCleanup";
@@ -6,6 +6,7 @@ import {isStructuralSolidSegment} from "./lektrusSolid3d";
 import {buildSchoolConstruction,type SchoolConstruction} from "./lektrusSchoolConstructions";
 import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "./lektrusMathPresets";
 import {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse} from "./lektrusGeometryPointNames";
+import {existingPointTools,linkExistingPoints,type ExistingPointTool} from "./lektrusGeometryExistingPoints";
 
 /** Presentation-only: leave the parsed equation untouched for graph calculations. */
 const displayGraphFormula=(expression:string)=>"y = "+expression
@@ -161,9 +162,11 @@ const formulas:Record<GraphDraft["type"],string>={
 };
 
 export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,onSave,onCancel,onClose}:Props) {
-  const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry">(()=>mode==="geometry"&&draft.figureId==="free"?"points":"presets");
+  const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry"|"connect">(()=>mode==="geometry"&&draft.figureId==="free"?"points":"presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   const [geometryError,setGeometryError]=useState("");
+  const [linkKind,setLinkKind]=useState<ExistingPointTool>("segment");
+  const [linkPoints,setLinkPoints]=useState<number[]>([]);
   const [regularSides,setRegularSides]=useState<3|4|5|6|8>(6);
   const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">(()=>["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"].includes(draft.figureId)?"Объёмные фигуры":"Геометрия");
   const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"]);
@@ -203,9 +206,40 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   };
   const deleteConstruction=(kind:ConstructionKind,index:number)=>onChange(removeConstruction(draft,kind,index));
   const deleteSchoolGroup=(groupId:string)=>onChange(removeSchoolConstructionGroup(draft,groupId));
+  const finishLink=(selected:readonly number[])=>{
+    const result=linkExistingPoints(draft,linkKind,selected);
+    if(result.error){setGeometryError(result.error);return;}
+    setGeometryError("");setLinkPoints([]);onChange(result.draft);
+  };
+  const pickLinkPoint=(index:number)=>{
+    if(index<0||index>=draft.points.length)return;
+    if(linkPoints.includes(index)){
+      if(linkKind==="polygon"&&linkPoints[0]===index&&linkPoints.length>=3)
+        finishLink(linkPoints);
+      else setGeometryError("Эта вершина уже выбрана. Для отмены используйте кнопку «Назад».");
+      return;
+    }
+    const next=[...linkPoints,index];
+    if(linkKind==="polygon"){
+      if(next.length>20){setGeometryError("Допустимо не более 20 вершин.");return;}
+      setLinkPoints(next);setGeometryError("");return;
+    }
+    if(next.length>=(linkKind==="angle"?3:2))finishLink(next);
+    else{setLinkPoints(next);setGeometryError("");}
+  };
+  const connectionActive=tab==="connect"&&mode==="geometry"&&!isSolid&&draft.figureId!=="ray";
+  const previewWithLink=connectionActive&&isValidElement(preview)?
+    cloneElement(preview as ReactElement<{
+      onPickPoint?: (index:number)=>void; pickedPoints?:readonly number[];
+      onAddPoint?: (x:number,y:number)=>void;onPointMove?: (i:number,x:number,y:number)=>void;
+      onRemovePoint?: (i:number)=>void;onCloseFreePolygon?:()=>void;
+    }>,{
+      onPickPoint:pickLinkPoint,pickedPoints:linkPoints,onAddPoint:undefined,
+      onPointMove:undefined,onRemovePoint:undefined,onCloseFreePolygon:undefined
+    }):preview;
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
-    setGeometryError("");
+    setGeometryError("");setLinkPoints([]);
     if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");if(id==="free")setTab("points");else if(tab==="givens"&&id!=="triangle")setTab("presets")}
     patch({
       figureId:id,rotationX:sample.graphRotationX??25,rotationY:sample.graphRotationY??-35,parallelMarks:[],title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
@@ -385,6 +419,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>Размеры</button>}
         {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Элементы <span>{extraElementCount+schoolGroups.length}</span></button>}
         {!isSolid&&<button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
+        {mode==="geometry"&&!isSolid&&draft.figureId!=="ray"&&<button type="button" className={tab==="connect"?"active":""} onClick={()=>{setTab("connect");setLinkPoints([]);setGeometryError("");}}>Соединить</button>}
       </nav>
       <div className="graph-editor-body lektrus-graph-content">
         <div className="graph-editor-form lektrus-graph-settings">
@@ -746,6 +781,47 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
 
             </>:!roundSolid&&<div className="lektrus-graph-empty">{isSolid?"Габариты проекции настраиваются перемещением вершин в предпросмотре или на вкладке «Точки».":"Построение по заданным сторонам и углам доступно для треугольника. Выберите его во вкладке «Фигура»."}</div>}
           </div>}
+          {tab==="connect"&&mode==="geometry"&&!isSolid&&<div className="lektrus-graph-section lektrus-point-link-builder">
+            <strong>Построение из готовых точек</strong>
+            <small>Выберите элемент, затем касайтесь вершин прямо на рисунке или нажимайте их буквы ниже. Новые точки не создаются.</small>
+            <div className="lektrus-link-tool-grid" role="group" aria-label="Тип построения">
+              {existingPointTools.map(tool=><button type="button" key={tool.id}
+                className={linkKind===tool.id?"is-active":""} aria-pressed={linkKind===tool.id}
+                onClick={()=>{setLinkKind(tool.id);setLinkPoints([]);setGeometryError("");}}>
+                {tool.label}
+              </button>)}
+            </div>
+            <div className="lektrus-link-instructions" role="status">
+              {linkKind==="polygon"?"Последовательно укажите вершины многоугольника. Завершите нажатием на первую вершину или кнопкой ниже.":
+               linkKind==="angle"?"Выберите точку первой стороны, затем вершину угла, затем точку второй стороны.":
+               linkKind==="circle"?"Выберите центр окружности, затем точку на окружности.":
+               linkKind==="ray"?"Сначала начало луча, затем точку, задающую направление.":
+               linkKind==="midpoint"?"Выберите две вершины: между ними появится обозначенная середина.":
+               "Выберите две точки. Они останутся на своих местах."}
+            </div>
+            <div className="lektrus-link-selected" aria-live="polite">
+              <strong>Выбрано: {linkPoints.length}</strong>
+              <span>{linkPoints.map(i=>draft.points[i]?.label||`Точка ${i+1}`).join(" → ")||"Нажмите первую вершину"}</span>
+            </div>
+            <div className="lektrus-link-vertex-list" role="group" aria-label="Выбор существующих точек">
+              {draft.points.map((point,index)=><button type="button" key={index}
+                className={linkPoints.includes(index)?"is-selected":""}
+                aria-pressed={linkPoints.includes(index)}
+                aria-label={`Выбрать точку ${point.label||index+1}`}
+                onClick={()=>pickLinkPoint(index)}>
+                <strong>{point.label||`№${index+1}`}</strong>
+                <small>{Number(point.x.toFixed(2))}; {Number(point.y.toFixed(2))}</small>
+              </button>)}
+            </div>
+            {draft.points.length<2&&<small>Пока недостаточно точек. Добавьте их во вкладке «Точки».</small>}
+            <div className="lektrus-link-actions">
+              <button type="button" disabled={!linkPoints.length} onClick={()=>{setLinkPoints(v=>v.slice(0,-1));setGeometryError("");}}>↶ Назад</button>
+              <button type="button" disabled={!linkPoints.length} onClick={()=>{setLinkPoints([]);setGeometryError("");}}>Очистить выбор</button>
+              {linkKind==="polygon"&&<button type="button" className="lektrus-link-finish"
+                disabled={linkPoints.length<3} onClick={()=>finishLink(linkPoints)}>Замкнуть фигуру</button>}
+            </div>
+            {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
+          </div>}
           {tab==="points"&&<div className="lektrus-graph-section">
             {draft.figureId==="free"&&<div className="lektrus-school-point-builder">
               <strong>Простое построение по точкам</strong>
@@ -1025,8 +1101,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               {previewExpanded?"К настройкам":"Развернуть"}
             </button>
           </div>
-          <div className="lektrus-graph-canvas">{preview}</div>
-          <div className="lektrus-graph-preview-hint">{isSolid?"Поворачивайте фигуру, перетаскивая оси X, Y, Z в правом верхнем углу. Двойное нажатие на оси возвращает стандартный вид.":draft.figureId==="ray"?"Изменяйте направление луча, захватив его линию. На рисунке остаётся одна начальная точка.":draft.figureId==="free"?"Одно касание ставит точку. Коснитесь первой вершины для замыкания, а для перемещения удерживайте и перетаскивайте её.":"Перетаскивайте точки мышью или пальцем. Двойное нажатие добавляет или удаляет точку."}</div>
+          <div className={connectionActive?"lektrus-graph-canvas is-linking":"lektrus-graph-canvas"}>{previewWithLink}</div>
+          <div className="lektrus-graph-preview-hint">{connectionActive?"Нажимайте на существующие вершины. Выбранные точки подсвечиваются; линии создаются без новых вершин.":isSolid?"Поворачивайте фигуру, перетаскивая оси X, Y, Z в правом верхнем углу. Двойное нажатие на оси возвращает стандартный вид.":draft.figureId==="ray"?"Изменяйте направление луча, захватив его линию. На рисунке остаётся одна начальная точка.":draft.figureId==="free"?"Одно касание ставит точку. Коснитесь первой вершины для замыкания, а для перемещения удерживайте и перетаскивайте её.":"Перетаскивайте точки мышью или пальцем. Двойное нажатие добавляет или удаляет точку."}</div>
         </aside>
       </div>
       <footer className="graph-editor-footer lektrus-graph-footer"><span>Изменения сохраняются на доске после подтверждения</span>
