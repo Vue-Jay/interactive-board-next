@@ -1380,8 +1380,19 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           const stayed=Math.hypot(event.clientX-tap.x,event.clientY-tap.y)<=(event.pointerType==="touch"?16:9);
           if(stayed&&!tap.cancelled&&selectionContacts.current.size<=1){
             event.preventDefault();event.stopPropagation();
-            if(tap.index!==null)onPickPoint(tap.index);
-            else if(onCreateAndPickPoint){
+            if(tap.index!==null){
+              const previous=pointDoubleTap.current,now=Date.now();
+              if(event.pointerType==="touch"&&onRemovePoint&&purpose==="geometry"&&
+                  previous?.index===tap.index&&now-previous.at<420&&
+                  Math.hypot(previous.x-event.clientX,previous.y-event.clientY)<26){
+                pointDoubleTap.current=null;
+                ignoreNativeDoubleClickUntil.current=now+650;
+                onRemovePoint(tap.index);
+              }else{
+                pointDoubleTap.current=event.pointerType==="touch"?{index:tap.index,at:now,x:event.clientX,y:event.clientY}:null;
+                onPickPoint(tap.index);
+              }
+            }else if(onCreateAndPickPoint){
               const q=coord(event.clientX,event.clientY,event.currentTarget);
               onCreateAndPickPoint(q.x,q.y);
             }
@@ -2235,6 +2246,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [graphPointEditId,setGraphPointEditId]=useState<string|null>(null);
   const [boardGeometryMode,setBoardGeometryMode]=useState<{id:string;mode:BoardGeometryMode;selected:number[]}|null>(null);
   const [boardGeometryError,setBoardGeometryError]=useState("");
+  const geometryCanvasTouch=useRef<{pointer:number;id:string;x:number;y:number}|null>(null);
+  const lastGeometryCanvasTap=useRef<{id:string;x:number;y:number;time:number}|null>(null);
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
   const [schoolEditorItem,setSchoolEditorItem]=useState<Item|null>(null);
   const [circuitEditorItem,setCircuitEditorItem]=useState<Item|null>(null);
@@ -7826,6 +7839,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           } as CSSProperties}
           onPointerDownCapture={(e) => {
             const target=e.target as HTMLElement;
+            // A vertex belongs to its own deletion gesture; an empty portion
+            // of a figure can instead open the full editor with two taps.
+            if(e.pointerType==="touch"){
+              geometryCanvasTouch.current=null;
+              if(!e.isPrimary)lastGeometryCanvasTap.current=null;
+              if(e.isPrimary&&tool==="select"&&!space&&!presentation&&!objectEditorOpen&&canEdit&&
+                !target.closest(".graph-point, .graph-axis-control, button, [data-board-interactive]")&&
+                target.closest(".graph-view")&&!pinchState.current){
+                const objectId=target.closest<HTMLElement>("[data-object]")?.dataset.object;
+                const candidate=objectId?itemsRef.current.find(it=>it.id===objectId):null;
+                if(candidate?.kind==="graph"&&candidate.graphPurpose==="geometry"&&!candidate.locked&&
+                    !(structurallyLockedForStudent(candidate))&&activeBoardGeometryMode(candidate)==="move"){
+                  geometryCanvasTouch.current={pointer:e.pointerId,id:candidate.id,x:e.clientX,y:e.clientY};
+                }
+              }
+            }
             // A new pointer releases a stranded drag/capture. Only an actual
             // second finger in a live board gesture may keep the old pointer.
             if(gesture.current && (gesture.current.pointer===e.pointerId ||
@@ -7992,6 +8021,27 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setLiveEraserCursor(screen.x,screen.y);
           }}
           onPointerUpCapture={(e) => {
+            const canvasTap=geometryCanvasTouch.current;
+            if(canvasTap?.pointer===e.pointerId){
+              geometryCanvasTouch.current=null;
+              if(e.pointerType==="touch"&&!pinchState.current&&touchPoints.current.size<=1&&
+                  Math.hypot(e.clientX-canvasTap.x,e.clientY-canvasTap.y)<15){
+                const previous=lastGeometryCanvasTap.current,now=Date.now();
+                lastGeometryCanvasTap.current={id:canvasTap.id,x:e.clientX,y:e.clientY,time:now};
+                if(previous?.id===canvasTap.id&&now-previous.time<420&&
+                  Math.hypot(previous.x-e.clientX,previous.y-e.clientY)<27){
+                  lastGeometryCanvasTap.current=null;
+                  const target=itemsRef.current.find(it=>it.id===canvasTap.id);
+                  if(target?.kind==="graph"&&target.graphPurpose==="geometry"&&!target.locked&&canEdit){
+                    if(gesture.current?.pointer===e.pointerId){move(e);end();}
+                    touchEnd(e);
+                    e.preventDefault();e.stopPropagation();
+                    setSelected([target.id]);openGraphEditor(target);
+                    return;
+                  }
+                }
+              }else lastGeometryCanvasTap.current=null;
+            }
             // Always retire the touch in capture phase. Some embedded objects
             // stop propagation, so relying on the board's bubble pointerup
             // leaves phantom fingers and makes every later touch a false pinch.
@@ -8226,7 +8276,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     setSelected([item.id]);setSchoolEditorItem(item);
 } else if (tool === "select" && !space && !item.locked && item.kind === "graph") {
                     setSelected([item.id]);
-                    if(item.graphPurpose==="geometry")openGraphEditor(item);
+                    if(item.graphPurpose==="geometry"&&activeBoardGeometryMode(item)==="move")openGraphEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); setFractionEditorId(item.id);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "quiz") {
                     setSelected([item.id]);
