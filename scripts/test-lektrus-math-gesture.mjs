@@ -382,4 +382,16 @@ assert.match(app,/if\(tool==="eraser"&&!\(/,
  "eraser click capture respects interactive diagram buttons");
 assert.match(css,/\.lektrus-graph-board-actions>button/,
  "floating settings and point toggle have visible touch targets");
+assert.match(app,/const editBlankTap=useRef/,
+ "board has its own cancellable background point-tap gesture");
+assert.match(app,/if\(onPointMoveEnd&&onAddPoint&&item\.graphFigureId!=="free"/,
+ "one-tap vertex creation is enabled only in explicit edit mode");
+assert.match(app,/if\(editBlankTap\.current\?\.id===event\.pointerId\)/,
+ "point is added only on release of its original finger");
+assert.match(app,/if\(editBlankTap\.current\)editBlankTap\.current\.cancelled=true/,
+ "pinch cancels provisional vertex placement");
+assert.match(app,/if\(onPointMoveEnd&&onAddPoint\)\{e\.stopPropagation\(\);return;\}/,
+ "a double tap cannot add an extra duplicate vertex");
+assert.match(css,/\.board-object\.object-graph \.lektrus-connect-drawing-surface/,
+ "the board has a dedicated touch-safe blank drawing surface");
 console.log("Geometry construction regression checks: point placement, contour closing, nearest vertex, edit gestures and cancellation.");
