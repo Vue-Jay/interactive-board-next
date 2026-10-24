@@ -1143,9 +1143,10 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
+  onPointMoveEnd?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
   onPickPoint?: (index:number)=>void;
   onCreateAndPickPoint?: (x:number,y:number)=>void;
@@ -1162,6 +1163,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
   const [liveRay,setLiveRay]=useState<{x:number;y:number}|null>(null);
+  const [liveVertex,setLiveVertex]=useState<{index:number;x:number;y:number}|null>(null);
   const freeTap=useRef<{id:number;x:number;y:number;cancelled:boolean}|null>(null);
   const freeContacts=useRef(new Set<number>());
   const freePointGesture=useRef<{cancel:()=>void}|null>(null);
@@ -1186,6 +1188,13 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
     graphGivenSides: Array.isArray(item.graphGivenSides) ? item.graphGivenSides : [],
     graphGivenAngles: Array.isArray(item.graphGivenAngles) ? item.graphGivenAngles : []
   };
+  if(liveVertex&&onPointMoveEnd){
+    const moved=moveGeometryVertex({
+      points:item.graphPoints??[],constraints:item.graphConstraints??[],
+      xMin:item.graphXMin,xMax:item.graphXMax,yMin:item.graphYMin,yMax:item.graphYMax
+    },liveVertex.index,liveVertex.x,liveVertex.y);
+    item={...item,graphPoints:moved.points};
+  }
   if(item.graphFigureId==="lektrus-chart")return <LektrusDataChartView item={item}/>;
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
     return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange}/></div>;
@@ -1684,7 +1693,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
           points={pickedPoints.map(i=>gp[i]).filter(Boolean).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
       {(solid?[]:gp).map((p,i)=>{if(rayFigure&&i!==0)return null;const pointColor=p.color??"#111111";
         const selectable=!!onPickPoint;
-        const movable=!!onPointMove&&!selectable&&(purpose!=="unit-circle"||i>=5);
+        const movable=!!(onPointMove||onPointMoveEnd)&&!selectable&&(purpose!=="unit-circle"||i>=5);
         const closesHere=closingVertex===i&&!!onCloseFreePolygon&&!selectable;
         const picked=pickedPoints?.includes(i)??false;
         return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""} ${selectable?"lektrus-link-pickable":""} ${picked?"lektrus-link-picked":""}`} key={i}
@@ -1697,13 +1706,17 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
           if(!svg)return;
           const startX=e.clientX,startY=e.clientY,id=e.pointerId;
           let didMove=false,cancelled=false;
+          let lastPosition:{x:number;y:number}|null=null;
           const gesture={cancel:()=>{cancelled=true}};
           if(item.graphFigureId==="free"||selectable)freePointGesture.current=gesture;
           const move=(ev:PointerEvent)=>{
             if(ev.pointerId!==id||cancelled)return;
             if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>(ev.pointerType==="touch"?14:7))didMove=true;
             if(!didMove||!movable)return;
-            const q=coord(ev.clientX,ev.clientY,svg,i);onPointMove?.(i,q.x,q.y);
+            const q=coord(ev.clientX,ev.clientY,svg,i);
+            lastPosition=q;
+            if(onPointMoveEnd)setLiveVertex({index:i,x:q.x,y:q.y});
+            else onPointMove?.(i,q.x,q.y);
           };
           const cleanup=()=>{
             window.removeEventListener("pointermove",move);
@@ -1715,6 +1728,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
           const up=(ev:PointerEvent)=>{
             if(ev.pointerId!==id)return;
             cleanup();
+            if(onPointMoveEnd){setLiveVertex(null);if(!cancelled&&didMove&&lastPosition)onPointMoveEnd(i,lastPosition.x,lastPosition.y);}
             if(!cancelled&&!didMove&&selectable){
               ev.preventDefault();ev.stopPropagation();
               onPickPoint?.(i);
@@ -1723,7 +1737,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
               onCloseFreePolygon?.();
             }
           };
-          const cancel=(ev:PointerEvent)=>{if(ev.pointerId===id)cleanup()};
+          const cancel=(ev:PointerEvent)=>{if(ev.pointerId===id){cleanup();if(onPointMoveEnd)setLiveVertex(null)}};
           window.addEventListener("pointermove",move);
           window.addEventListener("pointerup",up);
           window.addEventListener("pointercancel",cancel);
