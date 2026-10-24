@@ -137,6 +137,11 @@ assert.equal(geometryDistance(right.draft.points[1],right.draft.points[2]),3,
  "changing an angle preserves its other ray length");
 assert.equal(adjustGeometryPoints(geometry,[0,1],"distance",-4).draft,geometry);
 assert.equal(adjustGeometryPoints(geometry,[0,1],"distance",1e5).draft,geometry);
+assert.equal(adjustGeometryPoints(geometry,[0,1],"distance",NaN).draft,geometry);
+assert.equal(adjustGeometryPoints(geometry,[0,1,2],"angle",181).draft,geometry);
+const bounded={...geometry,xMin:-5,xMax:5,yMin:-5,yMax:5};
+assert.equal(adjustGeometryPoints(bounded,[0,1],"distance",10).draft,bounded,
+ "precision cannot silently move a vertex outside the diagram");
 assert.equal(adjustGeometryPoints(geometry,[0,1],"angle",90).draft,geometry,
  "angle requires three selected points");
 const straight=linkExistingPoints(geometry,"segment",[0,1]);
@@ -222,6 +227,20 @@ assert.match(editor,/linkKind==="measure"/,
  "measurement mode keeps the selection rather than adding a construction");
 assert.match(editor,/lektrus-precision-target/,
  "mobile editor exposes an exact measurement field");
+assert.match(editor,/polygon\.showMetrics===true/,
+ "polygon has an optional computed area and perimeter overlay");
+assert.match(editor,/segment\.measure===true/,
+ "segment length readout is user-switchable");
+assert.match(editor,/angle\.autoMeasure===true/,
+ "angle readout is user-switchable");
+assert.match(app,/geometryPolygonMetrics\(pts\)/,
+ "saved board and preview compute polygon area from actual positions");
+assert.match(app,/formatGeometryMetric\(geometryDistance\(a,b\)\)/,
+ "segment length labels follow changing endpoints");
+assert.match(app,/formatGeometryMetric\(geometryAngle\(a,v,b\)\?\?NaN\)/,
+ "angle labels follow actual geometry rather than stale values");
+assert.match(css,/lektrus-live-geometry-metrics/,
+ "computed measurement labels are styled for white backgrounds");
 assert.match(editor,/linkExistingPoints\(draft,linkKind,selected\)/,
  "editor invokes pure existing-vertex geometry builder");
 assert.match(editor,/onPickPoint:pickLinkPoint,pickedPoints:linkPoints/,
