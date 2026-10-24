@@ -354,4 +354,32 @@ assert.match(editor,/const resetLinkSelection=\(\)=>/,
  "cancel clears unfinished vertices, not just their selection");
 assert.match(css,/lektrus-connect-drawing-surface/,
  "geometry tap surface is accessible on touch devices");
+const parsedApp=ts.createSourceFile("src/App.tsx",app,ts.ScriptTarget.ES2022,true,ts.ScriptKind.TSX);
+const parsedEditor=ts.createSourceFile("src/LektrusGraphEditor.tsx",editor,ts.ScriptTarget.ES2022,true,ts.ScriptKind.TSX);
+assert.equal(parsedApp.parseDiagnostics.length,0,
+ "board JSX with nested graph action buttons must parse successfully");
+assert.equal(parsedEditor.parseDiagnostics.length,0,
+ "geometry editor JSX must parse successfully");
+assert.match(app,/onDoubleClick=\{e=>\{if\(onOpenEditor&&!onAddPoint\)/,
+ "double-tapping saved drawing opens editor instead of swallowing the event or adding a point");
+assert.match(app,/onOpenEditor=\{tool==="select"&&!space/,
+ "the edit gesture is available only in selection mode");
+assert.match(app,/className="lektrus-graph-board-actions"/,
+ "every eligible saved diagram includes a directly accessible settings toolbar");
+assert.match(app,/aria-label="Настройки построения"/,
+ "the settings button remains accessible to touch and screen-reader users");
+assert.match(app,/setGraphPointEditId\(v=>v===item\.id\?null:item\.id\)/,
+ "vertex editing is an explicitly toggled state");
+assert.match(app,/onAddPoint=\{graphPointEditId===item\.id/,
+ "a normal graph drag no longer adds accidental vertices");
+assert.match(app,/onCloseFreePolygon=\{graphPointEditId===item\.id/,
+ "a normal graph drag no longer closes a free polygon accidentally");
+assert.match(app,/onPointMoveEnd=\{graphPointEditId===item\.id/,
+ "normal graph movement is separated from vertex manipulation");
+assert.match(app,/if\(touchControl && !boardHandle\)return/,
+ "board capture never treats the settings toolbar as an ink or eraser gesture");
+assert.match(app,/if\(tool==="eraser"&&!,/,
+ "eraser click capture respects interactive diagram buttons");
+assert.match(css,/\.lektrus-graph-board-actions>button/,
+ "floating settings and point toggle have visible touch targets");
 console.log("Geometry construction regression checks: point placement, contour closing, nearest vertex, edit gestures and cancellation.");
