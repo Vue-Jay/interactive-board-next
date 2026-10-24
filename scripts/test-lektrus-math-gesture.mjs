@@ -118,6 +118,10 @@ assert.equal(geometryAngle({x:0,y:1},{x:0,y:0},{x:1,y:0}),90);
 assert.equal(geometryAngle({x:-1,y:0},{x:0,y:0},{x:1,y:0}),180);
 assert.equal(geometryAngle({x:0,y:0},{x:0,y:0},{x:1,y:0}),null);
 assert.deepEqual(geometryPolygonMetrics([{x:0,y:0},{x:4,y:0},{x:4,y:3},{x:0,y:3}]),{perimeter:14,area:12});
+assert.equal(geometryPolygonMetrics([{x:0,y:0},{x:4,y:4},{x:0,y:4},{x:4,y:0}]),null,
+ "bow-tie polygon must not display a misleading area");
+assert.equal(geometryPolygonMetrics([{x:0,y:0},{x:1,y:1},{x:2,y:2}]),null,
+ "collinear triple has no valid interior area");
 assert.equal(formatGeometryMetric(4.49999999),"4,5");
 const geometry={
  points:[{x:0,y:0,label:"A"},{x:4,y:0,label:"B"},{x:4,y:3,label:"C"},{x:0,y:3,label:"D"}],
