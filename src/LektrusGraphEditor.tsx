@@ -172,9 +172,9 @@ const formulas:Record<GraphDraft["type"],string>={
 };
 
 export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,onSave,onCancel,onClose}:Props) {
-  const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry"|"connect">(()=>mode==="geometry"&&draft.figureId==="free"?"points":"presets");
+  const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry"|"connect">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
-  const [settingsOpen,setSettingsOpen]=useState(()=>mode!=="geometry"||typeof window==="undefined"||window.innerWidth>=900);
+  const [settingsOpen,setSettingsOpen]=useState(true);
   // Left-rail tools control the drawing itself. The sidebar only configures them.
   const [canvasTool,setCanvasTool]=useState<"select"|"point"|ExistingPointTool>(()=>mode==="geometry"&&draft.figureId==="free"?"point":"select");
   const [geometryError,setGeometryError]=useState("");
@@ -336,7 +336,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
     setGeometryError("");setLinkPoints([]);setCanvasTool(id==="free"?"point":"select");
-    if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");if(id==="free")setTab("points");else if(tab==="givens"&&id!=="triangle")setTab("presets")}
+    if(mode==="geometry"){setFigureCategory(solidPresetIds.has(id)?"Объёмные фигуры":"Геометрия");setTab(id==="free"?"points":"presets");if(typeof window!=="undefined"&&window.innerWidth<=900)setSettingsOpen(false)}
     patch({
       figureId:id,rotationX:sample.graphRotationX??25,rotationY:sample.graphRotationY??-35,parallelMarks:[],title:sample.text,purpose:sample.graphPurpose??"coordinates",axisMode:sample.graphAxisMode??"both",
       type:sample.graphType??"quadratic",expression:sample.graphExpression??"",
@@ -508,11 +508,29 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       {name:"Многогранники",ids:["cube","rectangular-prism","prism","pyramid","triangular-pyramid"]},
       {name:"Тела вращения",ids:["cylinder","cone","sphere"]}
     ].map(section=>({name:section.name,presets:mathPresets.filter(p=>section.ids.includes(p.id))}));
+  const showFigureCatalog=(category:"Геометрия"|"Объёмные фигуры")=>{
+    resetLinkSelection();
+    setFigureCategory(category);setTab("presets");setSettingsOpen(true);setGeometryError("");
+  };
+  const sectionTabs=<nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
+        <button type="button" className={tab==="presets"?"active":""} onClick={()=>{setTab("presets");setSettingsOpen(true)}}>{mode==="geometry"?"Каталог":"Построение"}</button>
+        {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>{setTab("givens");setSettingsOpen(true)}}>Размеры</button>}
+        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>Построения <span>{extraElementCount+schoolGroups.length}</span></button>}
+        {!isSolid&&<button type="button" className={tab==="points"||tab==="connect"?"active":""} onClick={()=>{setTab("points");setSettingsOpen(true)}}>Точки <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
+      </nav>;
   return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""} ${mode==="geometry"?"lektrus-geometry-workspace":""} ${!settingsOpen?"is-settings-hidden":""}`} onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
       <header className="graph-editor-header lektrus-graph-head">
         <div><strong>{mode==="geometry"?"Построение фигур":"Координатная плоскость"}</strong><span>{mode==="geometry"?"Рабочая область · изменения появятся на доске после сохранения":"Графики, координаты и тригонометрия"}</span></div>
+        {mode==="geometry"&&<div className="lektrus-geometry-header-catalog" role="group" aria-label="Библиотека фигур">
+          <button type="button" className={settingsOpen&&tab==="presets"&&figureCategory==="Геометрия"?"active":""}
+            aria-pressed={settingsOpen&&tab==="presets"&&figureCategory==="Геометрия"}
+            onClick={()=>showFigureCatalog("Геометрия")}>▱ <span>Фигуры 2D</span></button>
+          <button type="button" className={settingsOpen&&tab==="presets"&&figureCategory==="Объёмные фигуры"?"active":""}
+            aria-pressed={settingsOpen&&tab==="presets"&&figureCategory==="Объёмные фигуры"}
+            onClick={()=>showFigureCatalog("Объёмные фигуры")}>⬡ <span>Фигуры 3D</span></button>
+        </div>}
         {mode==="geometry"&&<button type="button" className="lektrus-geometry-properties-toggle"
           aria-label={settingsOpen?"Скрыть настройки":"Показать настройки"}
           aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(open=>!open)}>
@@ -520,40 +538,46 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         </button>}
         <button type="button" aria-label="Закрыть редактор без сохранения" onClick={onClose}>×</button>
       </header>
-      <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
-        <button type="button" className={tab==="presets"?"active":""} onClick={()=>{setTab("presets");setSettingsOpen(true)}}>{mode==="geometry"?"Фигура":"Построение"}</button>
-        {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>{setTab("givens");setSettingsOpen(true)}}>Размеры</button>}
-        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>Элементы <span>{extraElementCount+schoolGroups.length}</span></button>}
-        {!isSolid&&<button type="button" className={tab==="points"||tab==="connect"?"active":""} onClick={()=>{setTab("points");setSettingsOpen(true)}}>Точки и связи <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
-      </nav>
+      {mode!=="geometry"&&sectionTabs}
       <div className="graph-editor-body lektrus-graph-content">
         {mode==="geometry"&&<nav className="lektrus-geometry-tool-rail" aria-label="Инструменты геометрического построения">
+          <div className="lektrus-geometry-rail-library">
+            <button type="button" className={tab==="presets"&&figureCategory==="Геометрия"&&settingsOpen?"active":""}
+              aria-label="Открыть плоские фигуры" onClick={()=>showFigureCatalog("Геометрия")}>
+              <span className="lektrus-geometry-tool-symbol" aria-hidden="true">▱</span><span>2D</span>
+            </button>
+            <button type="button" className={tab==="presets"&&figureCategory==="Объёмные фигуры"&&settingsOpen?"active":""}
+              aria-label="Открыть объёмные фигуры" onClick={()=>showFigureCatalog("Объёмные фигуры")}>
+              <span className="lektrus-geometry-tool-symbol" aria-hidden="true">⬡</span><span>3D</span>
+            </button>
+          </div>
           {!isSolid?drawingTools.map(tool=><button key={tool.id} type="button"
             className={canvasTool===tool.id?"active":""} title={tool.hint}
             aria-pressed={canvasTool===tool.id} onClick={()=>setDrawingTool(tool.id)}>
             <span className="lektrus-geometry-tool-symbol" aria-hidden="true">{tool.symbol}</span>
             <span>{tool.name}</span>
-          </button>):<div className="lektrus-geometry-tool-solid-note">3D</div>}
+          </button>):<div className="lektrus-geometry-tool-solid-note">Вращайте фигуру на чертеже</div>}
         </nav>}
         <div className="graph-editor-form lektrus-graph-settings">
+          {mode==="geometry"&&sectionTabs}
           {tab==="presets"&&<div className="lektrus-graph-section lektrus-math-presets">
-            <strong>{mode==="geometry"?"Выберите фигуру":"Выберите построение"}</strong>
+            <strong>{mode==="geometry"?(figureCategory==="Геометрия"?"Плоские фигуры · 2D":"Объёмные фигуры · 3D"):"Выберите построение"}</strong>
             {mode==="geometry"&&<button type="button" className="lektrus-start-free-drawing"
               onClick={()=>{loadPreset("free");setCanvasTool("polygon");setLinkKind("polygon");setLinkPoints([]);setTab("connect");}}>
               <strong>+ Построить по точкам</strong>
               <small>Коснитесь трёх или более мест на рисунке и замкните контур</small>
             </button>}
-            <small>Выберите готовую фигуру или начните свой чертёж. Точки и размеры можно изменить позже.</small>
+            <small>{mode==="geometry"?"Нажмите на фигуру для создания. Затем редактируйте её на большом чертеже.":"Выберите готовую фигуру или начните свой чертёж."}</small>
             {mode==="geometry"&&<div className="lektrus-math-figure-categories" role="group" aria-label="Тип фигур">
-              <button type="button" className={figureCategory==="Геометрия"?"active":""} aria-pressed={figureCategory==="Геометрия"} onClick={()=>setFigureCategory("Геометрия")}>Плоские фигуры</button>
-              <button type="button" className={figureCategory==="Объёмные фигуры"?"active":""} aria-pressed={figureCategory==="Объёмные фигуры"} onClick={()=>setFigureCategory("Объёмные фигуры")}>Объёмные фигуры</button>
+              <button type="button" className={figureCategory==="Геометрия"?"active":""} aria-pressed={figureCategory==="Геометрия"} onClick={()=>setFigureCategory("Геометрия")}>2D</button>
+              <button type="button" className={figureCategory==="Объёмные фигуры"?"active":""} aria-pressed={figureCategory==="Объёмные фигуры"} onClick={()=>setFigureCategory("Объёмные фигуры")}>3D</button>
             </div>}
             {figureSections.map(section=>
               <div className="lektrus-math-preset-group" key={section.name}>
                 <h4>{section.name}</h4>
                 <div className="lektrus-math-preset-grid">{section.presets.map(p=>
                   <button type="button" key={p.id} className={draft.figureId===p.id||!draft.figureId&&draft.title===p.title?"active":""}
-                    onClick={()=>loadPreset(p.id)}><strong>{p.title}</strong><small>{p.subtitle}</small></button>
+                    onClick={()=>loadPreset(p.id)}><LektrusGeometryPresetGlyph id={p.id}/><strong>{p.title}</strong><small>{p.subtitle}</small></button>
                 )}</div>
               </div>)}
 
