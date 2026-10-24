@@ -1770,10 +1770,10 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
                 ev.preventDefault();ev.stopPropagation();onRemovePoint(i);return;
               }
             }
-            if(!cancelled&&!didMove&&selectable){
-              ev.preventDefault();ev.stopPropagation();
-              onPickPoint?.(i);
-            }else if(!cancelled&&!didMove&&closesHere){
+            // SVG capture owns vertex selection for both mouse and touch.
+            // Calling onPickPoint here as well selected the same point twice,
+            // breaking segments, polygons and circles on the board.
+            if(!cancelled&&!didMove&&closesHere&&!selectable){
               ev.preventDefault();ev.stopPropagation();
               onCloseFreePolygon?.();
             }
@@ -4167,7 +4167,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     } else if (tool === "graph") {
       e.preventDefault();
       const item=makeMathPresetItem("blank",p.x,p.y,createId());
-      commit([...itemsRef.current,{...item,graphPurpose:"geometry",graphFigureId:"free",graphPoints:[],graphPolygons:[],graphSegments:[],graphCircles:[],graphAngles:[],graphMidpoints:[],graphFreePathStart:0,graphConnectPoints:false}]);
+      commit([...itemsRef.current,{...item,text:"Геометрическое построение",graphPurpose:"geometry",graphFigureId:"free",graphPoints:[],graphPolygons:[],graphSegments:[],graphCircles:[],graphAngles:[],graphMidpoints:[],graphFreePathStart:0,graphConnectPoints:false}]);
       setBoardGeometryMode({id:item.id,mode:"point",selected:[]});
       setBoardGeometryError("");setSelected([item.id]);setTool("select");
       return;
