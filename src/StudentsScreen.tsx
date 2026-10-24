@@ -79,7 +79,7 @@ export default function StudentsScreen({user,onBack,onOpenBoard}:Props){
       <label className="student-field"><span>Заметки преподавателя</span><textarea value={note} onChange={e=>setNote(e.target.value)} rows={5} placeholder="Что важно помнить к следующему занятию…"/></label>
       <div className="student-card-actions"><button className="students-primary" onClick={()=>void persistCard()}>Сохранить карточку</button><button className="boards-secondary" onClick={openProgress}>Прогресс</button><button className="boards-secondary" onClick={openAssignments}>Задания</button><button className="boards-secondary" onClick={openSchedule}>Расписание</button></div>
       <div className="student-section-head"><h3>Посещения досок</h3><span>{studentVisits.length} сеансов</span></div>
-     <div className="visit-history-overview student-visit-summary">
+     <div className="student-visit-summary">
        <div><small>Посещений</small><strong>{studentVisits.length}</strong></div>
        <div><small>Время на досках</small><strong>{formatVisitDuration(studentVisits.reduce((n,v)=>n+v.duration_seconds,0))}</strong></div>
        <div><small>Последний вход</small><strong>{studentVisits.length?fmtDateTime(studentVisits[0].started_at):"—"}</strong></div>
