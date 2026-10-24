@@ -8,6 +8,7 @@ import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "
 import {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse} from "./lektrusGeometryPointNames";
 import {existingPointTools,linkExistingPoints,type ExistingPointTool} from "./lektrusGeometryExistingPoints";
 import {adjustGeometryPoints,geometryDistance,geometryAngle,geometryPolygonMetrics,formatGeometryMetric,type PrecisionMode} from "./lektrusGeometryPrecision";
+import {lockGeometryConstraint,forgetGeometryConstraint,moveGeometryVertex,removeVertexConstraints} from "./lektrusGeometryConstraints";
 
 /** Presentation-only: leave the parsed equation untouched for graph calculations. */
 const displayGraphFormula=(expression:string)=>"y = "+expression
@@ -30,6 +31,7 @@ export type GraphDraft = {
   a: number; b: number; c: number;
   xMin: number; xMax: number; yMin: number; yMax: number;
   grid: boolean; points: NonNullable<Item["graphPoints"]>;
+  constraints:NonNullable<Item["graphConstraints"]>;magneticSnap:boolean;
   showLabels: boolean; snap: boolean; axisLabels: boolean;
   gridStep: number; showCurve: boolean; projections: boolean;
   segments: NonNullable<Item["graphSegments"]>;
@@ -55,6 +57,7 @@ export function removeGraphPoint(draft:GraphDraft,index:number):GraphDraft {
   return {
     ...draft,
     points:draft.points.filter((_,i)=>i!==index),
+    constraints:removeVertexConstraints(draft.constraints,index),
     segments:nextSegments,
     circles:draft.circles.filter(c=>c.center!==index&&c.edge!==index).map(c=>({...c,center:shift(c.center),edge:shift(c.edge)})),
     angles:draft.angles.filter(a=>a.a!==index&&a.vertex!==index&&a.b!==index).map(a=>({...a,a:shift(a.a),vertex:shift(a.vertex),b:shift(a.b)})),
@@ -211,6 +214,14 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const adjustGeometry=(kind:PrecisionMode,value?:number)=>{
     const result=adjustGeometryPoints(draft,linkPoints,kind,value);
     if(result.error){setGeometryError(result.error);return;}
+    const changed=result.draft.points.findIndex((p,i)=>p.x!==draft.points[i]?.x||p.y!==draft.points[i]?.y);
+    const moved=changed>=0?moveGeometryVertex(draft,changed,result.draft.points[changed].x,result.draft.points[changed].y):draft;
+    setGeometryError("");onChange(moved);
+  };
+  const lockConstraint=(kind:"horizontal"|"vertical"|"distance")=>{
+    const value=kind==="distance"?Number(precisionValue.replace(",",".")):undefined;
+    const result=lockGeometryConstraint(draft,linkPoints,kind,value);
+    if(result.error){setGeometryError(result.error);return}
     setGeometryError("");onChange(result.draft);
   };
   const finishLink=(selected:readonly number[])=>{
@@ -255,7 +266,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       connectPoints:sample.graphConnectPoints===true,grid:sample.graphGrid!==false,
       gridStep:sample.graphGridStep??1,xMin:sample.graphXMin??-10,xMax:sample.graphXMax??10,
       yMin:sample.graphYMin??-6,yMax:sample.graphYMax??6,
-      points:(sample.graphPoints??[]).map(p=>({...p})),
+      points:(sample.graphPoints??[]).map(p=>({...p})),constraints:[],magneticSnap:true,
       segments:(sample.graphSegments??[]).map(v=>({...v})),
       angles:(sample.graphAngles??[]).map(v=>({...v})),
       circles:(sample.graphCircles??[]).map(v=>({...v})),
@@ -280,8 +291,13 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     if(draft.points.length>5)patch({points:draft.points.map((p,i)=>i===5?{...p,x,y,label:formatPiRadians(theta)}:p)});
     else loadPreset("unit-circle");
   };
-  const editPoint=(i:number,change:Partial<GraphDraft["points"][number]>)=>
-    patch({points:draft.points.map((p,j)=>j===i?{...p,...change}:p)});
+  const editPoint=(i:number,change:Partial<GraphDraft["points"][number]>)=>{
+    const previous=draft.points[i];if(!previous)return;
+    const moved=change.x!==undefined||change.y!==undefined?
+      moveGeometryVertex(draft,i,change.x??previous.x,change.y??previous.y):draft;
+    onChange({...moved,points:moved.points.map((p,j)=>j===i?{...p,...change,
+      x:p.x,y:p.y}:p)});
+  };
   const addPoint=()=>{
     if(draft.points.length>=40||draft.purpose==="unit-circle")return;
     if(draft.figureId==="free"){
