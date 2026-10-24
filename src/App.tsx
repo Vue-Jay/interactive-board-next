@@ -8671,7 +8671,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>setFractionEditorId(singleSelected.id)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
               {singleSelected?.kind==="graph"&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&(
                 <span className="graph-selection-controls">
-                  <button type="button" data-board-interactive="true"
+                  {(singleSelected.graphPurpose!=="geometry"||boardGeometryMode?.id!==singleSelected.id)&&<button type="button" data-board-interactive="true"
                     className={singleSelected.graphPurpose==="geometry"?"lektrus-graph-open-editor":"lektrus-graph-edit-secondary"}
                     aria-label={singleSelected.graphPurpose==="geometry"?"Открыть полный редактор фигур":"Настроить учебный объект"}
                     onPointerDown={e=>e.stopPropagation()}
@@ -8679,7 +8679,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     title={singleSelected.graphPurpose==="geometry"?"Открыть большой редактор фигур":"Открыть настройки учебного объекта"}>
                     {singleSelected.graphPurpose==="geometry"?<LektrusGeometryToolIcon name="editor" size={17}/>:<Icon name="settings" size={15}/>}
                     <span>{singleSelected.graphPurpose==="geometry"?"Открыть редактор":"Настроить"}</span>
-                  </button>
+                  </button}
                   {singleSelected.graphPurpose==="geometry"&&!isSolidFigure(singleSelected.graphFigureId)&&!isSchoolDiagramId(singleSelected.graphFigureId)&&
                     <button type="button" data-board-interactive="true"
                       className="lektrus-graph-inline-draw"
