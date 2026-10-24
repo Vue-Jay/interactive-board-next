@@ -4166,10 +4166,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       return;
     } else if (tool === "graph") {
       e.preventDefault();
-      const item=makeMathPresetItem("blank",p.x,p.y,createId());
-      commit([...itemsRef.current,{...item,text:"Геометрическое построение",graphPurpose:"geometry",graphFigureId:"free",graphPoints:[],graphPolygons:[],graphSegments:[],graphCircles:[],graphAngles:[],graphMidpoints:[],graphFreePathStart:0,graphConnectPoints:false}]);
-      setBoardGeometryMode({id:item.id,mode:"point",selected:[]});
-      setBoardGeometryError("");setSelected([item.id]);setTool("select");
+      // Creation is staged just like contour-map editing: only Save inserts
+      // the finished drawing onto the shared board.
+      const item=makeMathPresetItem("free",p.x,p.y,createId());
+      setPendingMathItem(item);
+      setSelected([]);setTool("select");
+      openGraphEditor(item);
       return;
     } else if (tool === "formula") {
       e.preventDefault();
@@ -5333,7 +5335,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const openGraphEditor = (item: Item) => {
-    setGraphPointEditId(null);
+    setGraphPointEditId(null);setBoardGeometryMode(null);setBoardGeometryError("");
     if(item.kind!=="graph"||(item.locked&&item.graphFigureId!=="contour-atlas"))return;
     if(item.graphFigureId==="lektrus-chart"){setChartEditorItem(item);return;}
     if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}
@@ -8521,6 +8523,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>
           )}
           {singleSelected?.kind==="graph"&&singleSelected.graphPurpose==="geometry"&&
+            boardGeometryMode?.id===singleSelected.id&&
             canEdit&&!singleSelected.locked&&!selectionLocked&&tool==="select"&&!graphEditorId&&
             !isSolidFigure(singleSelected.graphFigureId)&&!isSchoolDiagramId(singleSelected.graphFigureId)&&
             !singleSelected.graphFigureId?.startsWith("physics-")&&!singleSelected.graphFigureId?.startsWith("chem-")&&
@@ -8620,13 +8623,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     onPointerDown={e=>e.stopPropagation()}
                     onClick={e=>{e.preventDefault();e.stopPropagation();setGraphPointEditId(null);openGraphEditor(singleSelected)}}
                     title="Открыть настройки учебного объекта">
-                    <Icon name="settings" size={15}/><span>Настроить</span>
+                    <Icon name="settings" size={15}/><span>{singleSelected.graphPurpose==="geometry"?"Построение":"Настроить"}</span>
                   </button>
                   {singleSelected.graphPurpose==="geometry"&&!isSolidFigure(singleSelected.graphFigureId)&&!isSchoolDiagramId(singleSelected.graphFigureId)&&
                     <button type="button" data-board-interactive="true" title="Инструменты построения доступны справа на доске"
                       onPointerDown={e=>e.stopPropagation()}
-                      onClick={e=>{e.preventDefault();e.stopPropagation();changeBoardGeometryMode(singleSelected,"move")}}>
-                      <Icon name="select" size={15}/><span>На доске</span>
+                      onClick={e=>{e.preventDefault();e.stopPropagation();if(boardGeometryMode?.id===singleSelected.id){setBoardGeometryMode(null);setBoardGeometryError("")}else changeBoardGeometryMode(singleSelected,"move")}}>
+                      <Icon name="select" size={15}/><span>{boardGeometryMode?.id===singleSelected.id?"Свернуть":"Быстро"}</span>
                     </button>}
                 </span>)}
               {singleSelected?.kind === "formula" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
