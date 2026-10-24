@@ -5,6 +5,7 @@ import {removeConstruction,removeSchoolConstructionGroup,type ConstructionKind} 
 import {isStructuralSolidSegment} from "./lektrusSolid3d";
 import {buildSchoolConstruction,type SchoolConstruction} from "./lektrusSchoolConstructions";
 import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "./lektrusMathPresets";
+import {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse} from "./lektrusGeometryPointNames";
 
 /** Presentation-only: leave the parsed equation untouched for graph calculations. */
 const displayGraphFormula=(expression:string)=>"y = "+expression
@@ -62,7 +63,7 @@ export function appendFreeSketchPoint(draft:GraphDraft,x:number,y:number):GraphD
   const lastClosed=draft.polygons.some(poly=>poly.points.includes(n-1))||
     !!draft.points[n-1]?.schoolGroupId||
     draft.circles.some(circle=>circle.center===n-1||circle.edge===n-1);
-  const label=String.fromCharCode(65+(n%26));
+  const label=nextGeometryPointLabel(draft.points);
   const segments=n>0&&!lastClosed&&draft.segments.length<60?
     [...draft.segments,{a:n-1,b:n,kind:"segment" as const,label:"",measure:false}]:draft.segments;
   return {...draft,points:[...draft.points,{x,y,label}],segments};
@@ -198,24 +199,31 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       onChange(appendFreeSketchPoint(draft,-4+(i%5)*2,-2+Math.floor(i%8/5)*3));
       return;
     }
-    const label=draft.purpose==="geometry"?String.fromCharCode(65+(draft.points.length%26)):"";
+    const label=draft.purpose==="geometry"?nextGeometryPointLabel(draft.points):"";
     patch({points:[...draft.points,{x:0,y:0,label}]});
   };
   const addConstruction=(kind:"circle"|"polygon"|"segment"|"angle")=>{
     const index=draft.points.length;
     if(index>34)return;
-    const points=kind==="circle"?[{x:0,y:0,label:"O"},{x:3,y:0,label:"R"}]:
+    const originals=kind==="circle"?[{x:0,y:0,label:"O"},{x:3,y:0,label:"R"}]:
       kind==="polygon"?[{x:-3,y:-2,label:"A"},{x:3,y:-2,label:"B"},{x:0,y:3,label:"C"}]:
       kind==="angle"?[{x:3,y:0,label:"A"},{x:0,y:0,label:"O"},{x:2,y:3,label:"B"}]:
       [{x:-3,y:0,label:"A"},{x:3,y:0,label:"B"}];
+    const reserved=[...draft.points];
+    const points=originals.map(point=>{
+      const label=availableGeometryLabel(reserved,point.label);
+      const next={...point,label};
+      reserved.push(next);
+      return next;
+    });
     patch({
       purpose:"geometry",title:draft.purpose==="geometry"?draft.title:"Геометрическое построение",showCurve:false,
       points:[...draft.points,...points],
       circles:kind==="circle"?[...draft.circles,{center:index,edge:index+1,label:"",measure:true}]:draft.circles,
-      polygons:kind==="polygon"?[...draft.polygons,{points:[index,index+1,index+2],label:"ABC",measure:true}]:draft.polygons,
+      polygons:kind==="polygon"?[...draft.polygons,{points:[index,index+1,index+2],label:points.map(p=>p.label).join(""),measure:true}]:draft.polygons,
       segments:kind==="segment"?[...draft.segments,{a:index,b:index+1,kind:"segment",label:"",measure:true}]:
         kind==="angle"?[...draft.segments,{a:index+1,b:index,kind:"ray",label:"",measure:false},{a:index+1,b:index+2,kind:"ray",label:"",measure:false}]:draft.segments,
-      angles:kind==="angle"?[...draft.angles,{a:index,vertex:index+1,b:index+2,label:"∠AOB"}]:draft.angles
+      angles:kind==="angle"?[...draft.angles,{a:index,vertex:index+1,b:index+2,label:"∠"+points.map(p=>p.label).join("")}]:draft.angles
     });
   };
   const addSchoolElement=(kind:"diagonal"|"midpoint"|"midline"|"perpendicular-bisector"|"incircle"|"circumcircle"|"radius"|"diameter"|"chord"|"tangent"|"secant"|"axis")=>{
@@ -225,7 +233,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     const midpoints=draft.midpoints.map(v=>({...v}));
     const push=(x:number,y:number,label="")=>{
       if(points.length>=40)return -1;
-      points.push({x,y,label});return points.length-1;
+      points.push({x,y,label:label?availableGeometryLabel(points,label):""});return points.length-1;
     };
     const line=(a:number,b:number,lineKind:"segment"|"line"="segment")=>{
       if(a>=0&&b>=0&&a!==b&&segments.length<60)segments.push({a,b,kind:lineKind,label:"",measure:false});
@@ -693,11 +701,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           {tab==="points"&&<div className="lektrus-graph-section">
             {draft.figureId==="free"&&<div className="lektrus-school-point-builder">
               <strong>Простое построение по точкам</strong>
-              <small>Дважды нажмите на чертёж, чтобы поставить точку. Следующая точка автоматически соединится с предыдущей. Перетаскивайте точки для изменения фигуры.</small>
+              <small>Коснитесь свободного места, чтобы поставить вершину. Следующая соединяется с предыдущей. Для замыкания коснитесь первой точки или нажмите кнопку. Точки можно перетаскивать.</small>
               <div className="lektrus-graph-construct-actions">
                 <button type="button" onClick={addPoint} disabled={draft.points.length>=40}>+ Поставить точку</button>
                 <button type="button" disabled={closeFreeSketch(draft)===draft}
-                  onClick={()=>onChange(closeFreeSketch(draft))}>Замкнуть фигуру</button>
+                  onClick={()=>onChange(closeFreeSketch(draft))}>Замкнуть с первой точкой</button>
               </div>
             </div>}
             <div className="lektrus-graph-section-head"><strong>Точки чертежа</strong>{draft.figureId!=="free"&&<button type="button" disabled={draft.figureId==="ray"||isSolid||draft.purpose==="unit-circle"||draft.points.length>=40} onClick={addPoint}>+ Точка</button>}</div>
@@ -710,7 +718,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <input aria-label={"Подпись точки "+(i+1)} maxLength={24}
                 value={draft.purpose==="unit-circle"&&i>0?(i===5?formatPiRadians(Math.atan2(p.y,p.x)):p.label):draft.purpose==="number-line"?"":p.label}
                 placeholder={draft.purpose==="geometry"?"A, B, C…":"Без подписи"} disabled={draft.purpose==="unit-circle"||draft.purpose==="number-line"}
-                onChange={e=>editPoint(i,{label:e.target.value})}/>
+                onChange={e=>editPoint(i,{label:e.target.value})}
+                 onBlur={e=>{if(draft.purpose==="geometry"&&isGeometryLabelInUse(draft.points,e.target.value,i)){
+                   editPoint(i,{label:nextGeometryPointLabel(draft.points)});
+                   setGeometryError("Подписи точек должны быть уникальными. Повторяющееся имя заменено свободной буквой.");
+                 }}}/>
               <input aria-label={"X точки "+(i+1)} disabled={draft.purpose==="unit-circle"} type="number" step=".25" value={p.x} onChange={e=>editPoint(i,{x:finiteNumber(e.target.value,p.x)})}/>
               <input aria-label={"Y точки "+(i+1)} title={draft.purpose==="number-line"?"На числовой прямой все точки имеют Y = 0":undefined} disabled={draft.purpose==="number-line"||draft.purpose==="unit-circle"} type="number" step=".25" value={draft.purpose==="number-line"?0:p.y} onChange={e=>editPoint(i,{y:finiteNumber(e.target.value,p.y)})}/>
               <LektrusColorPicker userId={userId} label="" compact value={p.color??"#111111"} onChange={color=>editPoint(i,{color})}/>
