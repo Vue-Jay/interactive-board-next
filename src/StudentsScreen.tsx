@@ -9,6 +9,7 @@ import {
 import { listStudentMaterials,unlinkMaterial,type MaterialLink } from "./materialLinksStore";
 import { downloadMaterial,type Material } from "./materialsStore";
 import { listAssignments,type Assignment } from "./assignmentsStore";
+import {listStudentVisits,formatVisitDuration,type BoardVisit} from "./boardVisits";
 import { listScheduledLessons,type ScheduledLesson } from "./scheduleStore";
 
 type Props={user:AuthUser;onBack:()=>void;onOpenBoard:(board:BoardSummary)=>void};
@@ -24,6 +25,8 @@ export default function StudentsScreen({user,onBack,onOpenBoard}:Props){
  useEffect(()=>{try{const id=sessionStorage.getItem("lektrus.students.open");if(id){sessionStorage.removeItem("lektrus.students.open");setSelected(id)}}catch{}},[]);
  const [note,setNote]=useState(""),[tags,setTags]=useState(""),[notice,setNotice]=useState("");
  const [linkedMaterials,setLinkedMaterials]=useState<MaterialLink[]>([]);
+ const [studentVisits,setStudentVisits]=useState<BoardVisit[]>([]);
+ const [visitsLoading,setVisitsLoading]=useState(false);
  const [sessionOpen,setSessionOpen]=useState(false),[sessionId,setSessionId]=useState<string|null>(null);
  const [sessionDate,setSessionDate]=useState(today()),[sessionBoard,setSessionBoard]=useState("");
  const [sessionDuration,setSessionDuration]=useState("60"),[sessionTopic,setSessionTopic]=useState("");
@@ -36,6 +39,7 @@ export default function StudentsScreen({user,onBack,onOpenBoard}:Props){
  useEffect(()=>{void load()},[user.id]);
  const visible=useMemo(()=>{const q=query.trim().toLowerCase();return students.filter(s=>!q||s.name.toLowerCase().includes(q)||s.email.toLowerCase().includes(q)||s.tags.some(t=>t.toLowerCase().includes(q)))},[students,query]);
  const student=students.find(s=>s.userId===selected)||null;
+ useEffect(()=>{if(!selected){setStudentVisits([]);return}let alive=true;setVisitsLoading(true);void listStudentVisits(selected).then(rows=>{if(alive)setStudentVisits(rows)}).catch(()=>{if(alive)setStudentVisits([])}).finally(()=>{if(alive)setVisitsLoading(false)});return()=>{alive=false}},[selected]);
  useEffect(()=>{setNote(student?.note||"");setTags(student?.tags.join(", ")||"");if(student)void listStudentMaterials(student.userId).then(setLinkedMaterials).catch(()=>setLinkedMaterials([]));else setLinkedMaterials([])},[selected,student?.note]);
 
  const persistCard=async()=>{if(!student)return;const parsed=tags.split(",").map(x=>x.trim()).filter(Boolean).slice(0,12);try{await saveStudentProfile(student.userId,note,parsed);setStudents(cur=>cur.map(s=>s.userId===student.userId?{...s,note,tags:parsed}:s));setNotice("Карточка ученика сохранена")}catch{setNotice("Не удалось сохранить карточку на сервере")}};
@@ -74,7 +78,14 @@ export default function StudentsScreen({user,onBack,onOpenBoard}:Props){
       <label className="student-field"><span>Теги</span><input value={tags} onChange={e=>setTags(e.target.value)} placeholder="математика, 9 класс, ЕГЭ"/></label>
       <label className="student-field"><span>Заметки преподавателя</span><textarea value={note} onChange={e=>setNote(e.target.value)} rows={5} placeholder="Что важно помнить к следующему занятию…"/></label>
       <div className="student-card-actions"><button className="students-primary" onClick={()=>void persistCard()}>Сохранить карточку</button><button className="boards-secondary" onClick={openProgress}>Прогресс</button><button className="boards-secondary" onClick={openAssignments}>Задания</button><button className="boards-secondary" onClick={openSchedule}>Расписание</button></div>
-      <div className="student-section-head"><h3>История занятий</h3><button onClick={openNewSession}>+ Добавить занятие</button></div>
+      <div className="student-section-head"><h3>Посещения досок</h3><span>{studentVisits.length} сеансов</span></div>
+     <div className="visit-history-overview student-visit-summary">
+       <div><small>Посещений</small><strong>{studentVisits.length}</strong></div>
+       <div><small>Время на досках</small><strong>{formatVisitDuration(studentVisits.reduce((n,v)=>n+v.duration_seconds,0))}</strong></div>
+       <div><small>Последний вход</small><strong>{studentVisits.length?fmtDateTime(studentVisits[0].started_at):"—"}</strong></div>
+     </div>
+     <div className="student-visits">{visitsLoading?<div className="student-history-empty">Загружаем посещения…</div>:studentVisits.length===0?<div className="student-history-empty">Посещений пока нет.</div>:studentVisits.slice(0,15).map(v=><article key={v.visit_id} className="student-visit-row"><span className="student-visit-dot"/><div><b>{v.board_title}</b><small>{fmtDateTime(v.started_at)} · {v.active?"Сейчас на доске":v.left_at?"Выход "+new Intl.DateTimeFormat("ru-RU",{hour:"2-digit",minute:"2-digit"}).format(new Date(v.left_at)):"Завершено"}</small></div><strong>{formatVisitDuration(v.duration_seconds)}</strong></article>)}</div>
+     <div className="student-section-head"><h3>История занятий</h3><button onClick={openNewSession}>+ Добавить занятие</button></div>
       <div className="student-history">{student.sessions.length===0?<div className="student-history-empty">Пока нет записей о занятиях.</div>:student.sessions.map(s=><article key={s.id} className="student-session"><div><b>{s.topic||"Занятие без темы"}</b><span>{fmt(s.date)} · {s.durationMinutes} мин · {s.boardTitle}</span>{s.result&&<p><strong>Итог:</strong> {s.result}</p>}{s.homework&&<p><strong>Домашнее:</strong> {s.homework}</p>}</div><div><button onClick={()=>editSession(s)}>Изменить</button><button className="danger" onClick={async()=>{if(confirm("Удалить запись занятия?")){try{await deleteStudentSession(s.id);setStudents(cur=>cur.map(x=>x.userId===student.userId?{...x,sessions:x.sessions.filter(v=>v.id!==s.id)}:x))}catch{setNotice("Не удалось удалить занятие на сервере")}}}}>Удалить</button></div></article>)}</div>
       <div className="student-materials"><div className="student-section-head"><h3>Материалы ученика</h3><span>{linkedMaterials.length}</span></div>{linkedMaterials.length===0?<div className="student-history-empty">Материалы пока не назначены.</div>:linkedMaterials.map(m=><article key={m.id}><div><b>{m.materialTitle}</b><span>{m.assignmentId?"К заданию":"Личный материал"}</span></div><div><button onClick={()=>void downloadMaterial({id:m.materialId,ownerId:user.id,folder:"",title:m.materialTitle,fileName:m.fileName,mime:m.mime,size:0,storagePath:m.storagePath,createdAt:m.createdAt,favorite:false,useCount:0,lastUsedAt:null} as Material).catch(e=>setNotice(e.message))}>Скачать</button><button className="danger" onClick={async()=>{await unlinkMaterial(m.id);setLinkedMaterials(x=>x.filter(v=>v.id!==m.id))}}>Убрать</button></div></article>)}</div>
       <div className="student-boards"><h3>Доски ученика</h3>{studentBoards.map(b=><button key={b.id} onClick={()=>onOpenBoard(b)}><span><b>{b.title}</b><small>Изменено {fmt(b.updatedAt)}</small></span><strong>Открыть →</strong></button>)}</div>
