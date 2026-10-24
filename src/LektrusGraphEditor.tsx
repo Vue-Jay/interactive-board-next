@@ -754,12 +754,13 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               "Контрольные точки единичной окружности фиксированы. Угол можно задать во вкладке «Построить» или переместить радиус.":
               draft.figureId==="free"?"Здесь можно менять названия вершин и точные координаты. Для обычного построения достаточно нажимать на рисунок.":"Точки можно перемещать прямо на рисунке. На мобильном для точного положения используйте поля X и Y."}</small>
             {draft.figureId==="ray"&&<small>У луча только одна начальная точка. Чтобы повернуть луч, захватите линию на чертеже и перетащите в нужном направлении.</small>}
+            {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
             {draft.points.length===0&&<p className="lektrus-graph-empty">Пока нет точек. Добавьте первую.</p>}
             {draft.points.map((p,i)=>draft.figureId==="ray"&&i===1?null:<div className="lektrus-graph-point-row" key={i}>
               <input aria-label={"Подпись точки "+(i+1)} maxLength={24}
                 value={draft.purpose==="unit-circle"&&i>0?(i===5?formatPiRadians(Math.atan2(p.y,p.x)):p.label):draft.purpose==="number-line"?"":p.label}
                 placeholder={draft.purpose==="geometry"?"A, B, C…":"Без подписи"} disabled={draft.purpose==="unit-circle"||draft.purpose==="number-line"}
-                onChange={e=>editPoint(i,{label:e.target.value})}
+                onChange={e=>{setGeometryError("");editPoint(i,{label:e.target.value})}}
                  onBlur={e=>{if(draft.purpose==="geometry"&&isGeometryLabelInUse(draft.points,e.target.value,i)){
                    editPoint(i,{label:nextGeometryPointLabel(draft.points)});
                    setGeometryError("Подписи точек должны быть уникальными. Повторяющееся имя заменено свободной буквой.");
