@@ -32,7 +32,7 @@ export function availableGeometryLabel(points:readonly NamedVertex[],requested:s
  return nextGeometryPointLabel(points);
 }
 export function isGeometryLabelInUse(points:readonly NamedVertex[],name:string,ignoreIndex=-1):boolean{
- const normalized=name.trim().toLocaleUpperCase("ru");
+ const normalized=labelKey(name);
  return !!normalized&&points.some((point,index)=>index!==ignoreIndex&&labelKey(point.label??"")===normalized);
 }
 
