@@ -34,14 +34,14 @@ const schoolActions:readonly {id:SchoolConstruction;label:string}[]=[
   {id:"circumscribed-polygon",label:"Описанный многоугольник"}
 ];
 const modeChoices:readonly {id:BoardGeometryMode;label:string;icon:GeometryToolIconName}[]=[
- {id:"move",label:"Двигать",icon:"move"},
+ {id:"move",label:"Выбор",icon:"move"},
  {id:"point",label:"Точка",icon:"point"},
  {id:"segment",label:"Отрезок",icon:"segment"},
  {id:"line",label:"Прямая",icon:"line"},
  {id:"ray",label:"Луч",icon:"ray"},
  {id:"polygon",label:"Контур",icon:"polygon"},
  {id:"angle",label:"Угол",icon:"angle"},
- {id:"circle",label:"Окружн.",icon:"circle"},
+ {id:"circle",label:"Окружность",icon:"circle"},
  {id:"midpoint",label:"Середина",icon:"midpoint"},
  {id:"measure",label:"Размер",icon:"measure"}
 ];
@@ -55,8 +55,9 @@ type Props={
  onPointEdit:(index:number,change:{x?:number;y?:number;label?:string})=>void;
  onRemovePoint:(index:number)=>void;onNewLine:()=>void;onClosePolygon:()=>void;
  onToggle:(field:"graphGrid"|"graphSnap"|"graphMagneticSnap"|"graphShowLabels")=>void;
+ onOpenEditor:()=>void;
 };
-export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMode,onPickBack,onClear,onFinish,onAdjust,onConstraint,onRelease,onSchool,onRemove,onRemoveSchool,onPointEdit,onRemovePoint,onNewLine,onClosePolygon,onToggle}:Props){
+export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMode,onPickBack,onClear,onFinish,onAdjust,onConstraint,onRelease,onSchool,onRemove,onRemoveSchool,onPointEdit,onRemovePoint,onNewLine,onClosePolygon,onToggle,onOpenEditor}:Props){
  const [tab,setTab]=useState<PanelTab>("draw");
  const [collapsed,setCollapsed]=useState(false);
  const [value,setValue]=useState("");
@@ -82,13 +83,23 @@ export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMo
    aria-label="Построение фигур на доске" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
    <div className="lektrus-board-geometry-head">
-    <div><strong>По точкам</strong><small>{points.length} т. · {total} эл.</small></div>
-    <button type="button" aria-label={collapsed?"Развернуть инструменты построения":"Свернуть инструменты построения"}
-       title={collapsed?"Развернуть":"Свернуть"} onClick={()=>setCollapsed(v=>!v)}>{collapsed?"▣":"−"}</button>
+    <div className="lektrus-board-geometry-identity"><strong>Черчение</strong><small>{points.length} т. · {total} эл.</small></div>
+    <div className="lektrus-board-geometry-head-actions">
+      <button type="button" className="lektrus-board-geometry-editor-link"
+        title="Открыть полный редактор фигур"
+        aria-label="Открыть полный редактор фигур" onClick={onOpenEditor}>
+        <LektrusGeometryToolIcon name="editor" size={16}/><span>Редактор</span>
+      </button>
+      <button type="button" className="lektrus-board-geometry-collapse"
+        aria-label={collapsed?"Развернуть инструменты черчения":"Свернуть инструменты черчения"}
+        title={collapsed?"Развернуть":"Свернуть"} onClick={()=>setCollapsed(v=>!v)}>
+        <LektrusGeometryToolIcon name={collapsed?"expand":"collapse"} size={17}/>
+      </button>
+    </div>
    </div>
    {!collapsed&&<>
     <nav className="lektrus-board-geometry-tabs" aria-label="Разделы построения">
-     {([["draw","Черчение"],["exact","Размеры"],["school","Школьные"],["objects","Объекты"]] as const).map(([id,label])=>
+     {([["draw","Инструменты"],["exact","Размеры"],["school","Школьные"],["objects","Объекты"]] as const).map(([id,label])=>
       <button type="button" key={id} className={tab===id?"active":""} onClick={()=>setTab(id)}>{label}</button>)}
     </nav>
     {tab==="draw"&&<>
