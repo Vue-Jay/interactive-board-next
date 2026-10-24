@@ -61,6 +61,12 @@ export function remoteUpdateDecision(currentVersion: number | null, nextVersion:
   return hasLocalChanges ? "conflict" : "apply";
 }
 
+// The viewport is personal to each participant. Comparing it as shared
+// board content creates false edit conflicts every time users pan differently.
+export function sharedBoardFingerprint(document: DocumentData): string {
+  return documentFingerprint({...document,view:{x:0,y:0,zoom:1}});
+}
+
 export function isOwnRemoteRevision(row: RemoteBoardDocument, userId: string,
   attempt: { version: number; fingerprint: string } | null): boolean {
   return !!attempt && row.updated_by === userId && row.version === attempt.version &&
