@@ -1868,6 +1868,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [remoteInk, setRemoteInk] = useState<Record<string, LiveInkMessage>>({});
+  const remoteInkExpiryTimers = useRef(new Map<string,ReturnType<typeof setTimeout>>());
   const [inkDiagnostics, setInkDiagnostics] = useState("подключается");
   const [developerSettingsOpen, setDeveloperSettingsOpen] = useState(false);
   const [controlSettingsOpen,setControlSettingsOpen]=useState(false);
@@ -2192,17 +2193,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastViewSerialized = useRef<string | null>(null);
   const [items, setItems] = useState<Item[]>(() => expandDocumentInk(initial.data));
-  useEffect(() => {
-    // Remove an overlay only after its permanent item has appeared, avoiding flicker.
-    const persistedIds = new Set(items.map(item => item.id));
-    setRemoteInk(current => {
-      const stale = Object.keys(current).filter(id => persistedIds.has(id));
-      if (!stale.length) return current;
-      const next = {...current};
-      for (const id of stale) delete next[id];
-      return next;
-    });
-  }, [items]);
+  // Keep live ink available as a fallback after its first server rendering.
+  // A later competing document revision may temporarily lack that stroke:
+  // immediately deleting the broadcast overlay made it visibly disappear.
+  // The renderer hides duplicate previews whenever the permanent ink exists.
+  // Per-stroke expiry below bounds memory without assuming a server-save time.
 
   const itemsRef = useRef(items);
   const eraserSession = useRef<{pointer:number;last:Point;zoom:number;path:Point[]}|null>(null);
@@ -2901,6 +2896,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       });
     }
     stopEraserPreview();
+    if (!remoteSaveInFlight.current && deferredRemote.current) {
+      const delayed = deferredRemote.current;
+      deferredRemote.current = null;
+      window.setTimeout(() => receiveRemote.current(delayed), 0);
+    }
   };
   const currentDocument = (): DocumentData => packDocumentInk({
     version: 1,
@@ -3550,6 +3550,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setGuides({});
     if (board.current?.hasPointerCapture(g.pointer))
       board.current.releasePointerCapture(g.pointer);
+    if (!cancel && g.mode === "draw" && g.ink) {
+      // Do not wait for the standard 220ms debounce to persist a completed line.
+      // The realtime preview must quickly hand off to a durable board object.
+      window.setTimeout(flushSave, 0);
+    }
+    // A collaborator's document is never applied in the middle of this stroke.
+    // Resume any postponed reconciliation once the local gesture is committed.
+    if (!remoteSaveInFlight.current && deferredRemote.current) {
+      const delayed = deferredRemote.current;
+      deferredRemote.current = null;
+      window.setTimeout(() => receiveRemote.current(delayed), 0);
+    }
   };
   // Switching tools invalidates every in-flight gesture and capture.
   // Never leave an object drag or pinch attached to the next tool.
@@ -5972,7 +5984,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   receiveRemote.current = row => {
     if (!boardMounted.current || row.board_id !== boardSummary.id) return;
-    const busy = !!(gesture.current || editing || tableEditorId || checklistEditorId || quizEditorId || flashcardEditorId || formulaEditorId || frameNotesEditorId);
+    // Applying a competing snapshot during an active pen/eraser gesture calls
+    // end(true), rolling that stroke back before it is ever saved.
+    if (gesture.current || eraserSession.current) {
+      if (!deferredRemote.current || row.version > deferredRemote.current.version)
+        deferredRemote.current = row;
+      return;
+    }
+    const busy = !!(editing || tableEditorId || checklistEditorId || quizEditorId || flashcardEditorId || formulaEditorId || frameNotesEditorId);
     const dirty = canEdit && (busy || documentFingerprint(currentDocument()) !== acknowledgedDocument.current);
     const decision = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, dirty || !!pendingRemote.current);
     if (decision === "ignore") return;
@@ -6050,10 +6069,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         // Each stroke must retain its own preview until the persisted document contains it.
         // Keying by clientId replaced the previous completed stroke as soon as a new one began.
         setRemoteInk(current => ({...current,[ink.id]:ink}));
-        if (ink.finished) window.setTimeout(() => setRemoteInk(current => {
-          if (!current[ink.id]?.finished) return current;
-          const next = {...current}; delete next[ink.id]; return next;
-        }), 15000);
+        const previous=remoteInkExpiryTimers.current.get(ink.id);
+        if(previous)clearTimeout(previous);
+        // Network delivery and document persistence are independent channels.
+        // Keep the hidden fallback long enough to survive server retries or
+        // version conflicts. Unlike the old 15s cutoff, no gap in normal saves.
+        const timer=window.setTimeout(()=>{
+          remoteInkExpiryTimers.current.delete(ink.id);
+          setRemoteInk(current=>{
+            if(!current[ink.id])return current;
+            const next={...current};delete next[ink.id];return next;
+          });
+        },120000);
+        remoteInkExpiryTimers.current.set(ink.id,timer);
       },
       setInkDiagnostics,
       true, // Drawings remain collaborative even when the admin hides their presence.
@@ -6066,6 +6094,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       remoteCursorFrame.current = null;
       pendingRemoteCursors.current = {};
       setRemoteCursors({});
+      for(const timer of remoteInkExpiryTimers.current.values())clearTimeout(timer);
+      remoteInkExpiryTimers.current.clear();
       setRemoteInk({});
     };
   }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name]);
