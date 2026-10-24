@@ -7419,7 +7419,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             // second finger in a live board gesture may keep the old pointer.
             if(gesture.current && (gesture.current.pointer===e.pointerId ||
               e.pointerType!=="touch" || e.isPrimary || touchPoints.current.size===0)){
-              end(true);
+              // Complete the previous move at its last valid position instead
+              // of silently snapping the object or viewport backwards.
+              end();
               if(eraserSession.current){eraserSession.current=null;stopEraserPreview();}
               touchPoints.current.clear();
               consumedTouchIds.current.clear();
