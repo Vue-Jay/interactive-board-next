@@ -115,6 +115,33 @@ assert.equal(freeSketchClosingIndex(free),3,"click new polygon's first vertex ra
 const closedTwo=closeFreeSketch(free);
 assert.deepEqual(closedTwo.polygons.map(p=>p.points),[[0,1,2],[3,4,5]]);
 assert.equal(closeFreeSketch(closedTwo),closedTwo,"do not create duplicates when already closed");
+let separate=draft();
+for(const [x,y] of [[0,0],[2,0],[3,1]])separate=appendFreeSketchPoint(separate,x,y);
+const split={...separate,freePathStart:separate.points.length};
+const independentFirst=appendFreeSketchPoint(split,6,2);
+assert.deepEqual(independentFirst.segments.map(s=>[s.a,s.b]),[[0,1],[1,2]],
+ "starting a new line must never join it to the previous figure");
+const independentSecond=appendFreeSketchPoint(independentFirst,7,3);
+assert.deepEqual(independentSecond.segments.map(s=>[s.a,s.b]),[[0,1],[1,2],[3,4]]);
+assert.equal(freeSketchClosingIndex(independentSecond),null,
+ "only new contour vertices count toward closing");
+const independentThird=appendFreeSketchPoint(independentSecond,6,4);
+assert.equal(freeSketchClosingIndex(independentThird),3);
+const separatedClosed=closeFreeSketch(independentThird);
+assert.deepEqual(separatedClosed.polygons[0].points,[3,4,5],
+ "closing the new contour never merges an older polyline");
+assert.deepEqual(separatedClosed.segments.map(s=>[s.a,s.b]),[[0,1],[1,2]],
+ "separate open lines remain untouched after polygon closure");
+const splitBoard={
+ kind:"graph",graphFigureId:"free",graphPoints:separate.points,graphSegments:separate.segments,
+ graphPolygons:[],graphCircles:[],graphFreePathStart:separate.points.length
+};
+const boardFirst=appendFreeSketchBoard(splitBoard,8,1);
+assert.equal(boardFirst.graphSegments.length,2,
+ "new independent line on saved board must not join older points");
+assert.equal(removeGraphBoardPoint(boardFirst,0).graphFreePathStart,2,
+ "deleting an earlier vertex shifts the saved free-path start");
+
 let edited=draft();
 for(const [x,y] of [[0,0],[4,0],[4,4],[0,4]])edited=appendFreeSketchPoint(edited,x,y);
 const removedMiddle=removeGraphPoint(edited,1);
@@ -360,16 +387,18 @@ assert.equal(parsedApp.parseDiagnostics.length,0,
  "board JSX with nested graph action buttons must parse successfully");
 assert.equal(parsedEditor.parseDiagnostics.length,0,
  "geometry editor JSX must parse successfully");
-assert.match(app,/onDoubleClick=\{e=>\{if\(onOpenEditor&&!onAddPoint\)/,
- "double-tapping saved drawing opens editor instead of swallowing the event or adding a point");
-assert.match(app,/onOpenEditor=\{tool==="select"&&!space/,
- "the edit gesture is available only in selection mode");
-assert.match(app,/className="lektrus-graph-board-actions"/,
- "every eligible saved diagram includes a directly accessible settings toolbar");
-assert.match(app,/aria-label="Настройки построения"/,
- "the settings button remains accessible to touch and screen-reader users");
-assert.match(app,/setGraphPointEditId\(v=>v===item\.id\?null:item\.id\)/,
- "vertex editing is an explicitly toggled state");
+assert.match(app,/onDoubleClick=\{e=>\{if\(purpose==="geometry"\)/,
+ "double-clicking the graph surface cannot open settings or add stray geometry");
+assert.doesNotMatch(app,/onOpenEditor=\{/,
+ "settings no longer open through a double-click prop");
+assert.match(app,/\.selection-toolbar-screen,button,input,select,textarea/,
+ "board selection capture leaves toolbar clicks intact");
+assert.doesNotMatch(app,/className="lektrus-graph-board-actions"/,
+ "redundant on-canvas settings toolbar was removed");
+assert.match(app,/aria-label="Настроить учебный объект"/,
+ "the bottom selection toolbar provides a clear accessible settings action");
+assert.match(app,/setGraphPointEditId\(current=>current===singleSelected\.id\?null:singleSelected\.id\)/,
+ "the bottom toolbar toggles explicit point editing");
 assert.match(app,/onAddPoint=\{graphPointEditId===item\.id/,
  "a normal graph drag no longer adds accidental vertices");
 assert.match(app,/onCloseFreePolygon=\{graphPointEditId===item\.id/,
@@ -380,8 +409,8 @@ assert.match(app,/if\(touchControl && !boardHandle\)return/,
  "board capture never treats the settings toolbar as an ink or eraser gesture");
 assert.match(app,/if\(tool==="eraser"&&!\(/,
  "eraser click capture respects interactive diagram buttons");
-assert.match(css,/\.lektrus-graph-board-actions>button/,
- "floating settings and point toggle have visible touch targets");
+assert.match(app,/className="graph-selection-controls"/,
+ "settings and point mode are together in a single toolbar");
 assert.match(app,/const editBlankTap=useRef/,
  "board has its own cancellable background point-tap gesture");
 assert.match(app,/if\(onPointMoveEnd&&onAddPoint&&item\.graphFigureId!=="free"/,
@@ -390,8 +419,26 @@ assert.match(app,/if\(editBlankTap\.current\?\.id===event\.pointerId\)/,
  "point is added only on release of its original finger");
 assert.match(app,/if\(editBlankTap\.current\)editBlankTap\.current\.cancelled=true/,
  "pinch cancels provisional vertex placement");
-assert.match(app,/if\(onPointMoveEnd&&onAddPoint\)\{e\.stopPropagation\(\);return;\}/,
- "a double tap cannot add an extra duplicate vertex");
+assert.match(app,/onDoubleClick=\{onRemovePoint&&purpose==="geometry"/,
+ "double-click on a vertex removes it only in point editing mode");
 assert.match(css,/\.board-object\.object-graph \.lektrus-connect-drawing-surface/,
  "the board has a dedicated touch-safe blank drawing surface");
+assert.match(app,/ignoreNativeDoubleClickUntil/,
+ "mobile double-tap cannot delete two vertices accidentally");
+assert.match(app,/boardGestureHandle=target\.closest/,
+ "board handles control clicks before any selection mutation");
+assert.match(app,/window\.addEventListener\("pointerup",up,true\)/,
+ "vertex release is captured even when the board consumes bubble events");
+assert.match(app,/window\.addEventListener\("pointerdown",secondaryPointer,true\)/,
+ "a second finger cancels ongoing vertex drag");
+assert.match(app,/graphFreePathStart:d\.freePathStart/,
+ "independent line boundary is saved with the graph");
+assert.match(app,/graphFreePathStart:item\.graphFreePathStart\?\?0/,
+ "saved independent paths are restored when editor opens");
+assert.match(app,/graphFreePathStart:entry\.graphPoints\?\.length\?\?0/,
+ "new line action starts after existing points");
+assert.match(editor,/Новая линия/,
+ "the same new line action is available in editor");
+assert.match(boardModel,/"graphFreePathStart"/,
+ "free path start is included in board import and export allowlist");
 console.log("Geometry construction regression checks: point placement, contour closing, nearest vertex, edit gestures and cancellation.");
