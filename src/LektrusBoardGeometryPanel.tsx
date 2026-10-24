@@ -1,6 +1,6 @@
 import {useEffect,useState} from "react";
 import type {Item} from "./boardModel";
-import {existingPointTools,type ExistingPointTool} from "./lektrusGeometryExistingPoints";
+import type {ExistingPointTool} from "./lektrusGeometryExistingPoints";
 import {geometryAngle,geometryDistance,geometryPolygonMetrics,formatGeometryMetric,type PrecisionMode} from "./lektrusGeometryPrecision";
 import type {SchoolConstruction} from "./lektrusSchoolConstructions";
 import type {ConstructionKind} from "./lektrusConstructionCleanup";
