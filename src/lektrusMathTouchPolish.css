@@ -142,3 +142,16 @@
  .lektrus-link-vertex-list{grid-template-columns:repeat(3,minmax(0,1fr));max-height:192px}
  .lektrus-point-link-builder{gap:9px}
 }
+
+
+/* The fifth geometry tab stays reachable on narrow phones. */
+.lektrus-graph-dialog .lektrus-graph-tabs{
+ display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;
+ -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+}
+.lektrus-graph-dialog .lektrus-graph-tabs>button{
+ flex:0 0 auto;min-height:40px;white-space:nowrap;
+}
+@media(pointer:coarse){
+ .lektrus-graph-dialog .lektrus-graph-tabs>button{min-height:44px}
+}
