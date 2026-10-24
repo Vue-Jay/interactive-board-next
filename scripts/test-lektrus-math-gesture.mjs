@@ -328,14 +328,20 @@ assert.match(editor,/lockGeometryConstraint\(draft,linkPoints,kind,value\)/,
  "persistent links use validated directed dependency model");
 assert.match(editor,/Точки <span>/,
  "points are accessible through the compact inspector tab");
-assert.match(editor,/Фигуры 2D/,
- "the 2D catalog is always accessible in the header");
-assert.match(editor,/Фигуры 3D/,
- "the 3D catalog is always accessible in the header");
+assert.match(editor,/<span>2D<\/span>/,
+ "the 2D catalog is always accessible in the compact header");
+assert.match(editor,/<span>3D<\/span>/,
+ "the 3D catalog is always accessible in the compact header");
 assert.match(editor,/LektrusGeometryPresetGlyph id=\{p.id\}/,
  "each figure preset has a recognisable preview drawing");
 assert.match(editor,/showFigureCatalog\("Объёмные фигуры"\)/,
  "3D library navigation opens the catalog directly");
+assert.doesNotMatch(editor,/lektrus-geometry-rail-library/,
+ "2D/3D switch is not duplicated in the tool rail");
+assert.match(boardPanel,/lektrus-board-geometry-display/,
+ "secondary display settings stay collapsed by default");
+assert.match(app,/boardGeometryMode\?\.id!==singleSelected\.id\)\&\&<button/,
+ "selection toolbar hides duplicate editor button when the construction panel is open");
 assert.doesNotMatch(editor,/className=\{tab==="connect"\?"active"/,
  "connecting points is part of the existing points section, not a fifth tab");
 assert.match(editor,/className="lektrus-link-kind-picker"/,
@@ -370,14 +376,14 @@ assert.match(app,/onRemovePoint\(tap\.index\)/,
 assert.match(css,/lektrus-link-vertex-list/,
  "the same vertex selection is possible through accessible large buttons");
 
-assert.match(editor,/Редактор фигур/,
+assert.match(editor,/Построение фигур/,
  "full screen figure editor uses a consistent title");
 assert.match(app,/lektrus-graph-open-editor/,
  "selected figure exposes an obvious primary editor action");
 assert.match(app,/lektrus-graph-inline-draw/,
  "in-board drawing is a secondary mode");
-assert.match(app,/"Закрыть":"Черчение"/,
- "on-board drawing no longer uses the misleading points-only label");
+assert.match(app,/<span>Построение<\/span>/,
+ "on-board mode no longer uses the misleading points-only label");
 assert.match(editor,/LektrusGeometryToolIcon name="close"/,
  "workspace has a consistent vector close icon");
 assert.match(editor,/lektrus-start-free-drawing/,
@@ -465,8 +471,8 @@ assert.match(editor,/Новая линия/,
 assert.match(boardModel,/"graphFreePathStart"/,
  "free path start is included in board import and export allowlist");
 const boardPanel=read("src/LektrusBoardGeometryPanel.tsx");
-assert.match(boardPanel,/Черчение/,
- "board drawing panel and selection toolbar share their title");
+assert.match(boardPanel,/<strong>Построение<\/strong>/,
+ "board construction panel and selection toolbar share their title");
 assert.match(boardPanel,/onOpenEditor/,
  "board drawing panel can launch the full editor without hiding and reselecting");
 const boardActions=read("src/lektrusBoardGeometry.ts");
@@ -489,8 +495,8 @@ assert.match(editor,/lektrus-geometry-tool-rail/,
  "geometry tools are always accessible to the left of the canvas");
 assert.match(editor,/canvasTool==="point"/,
  "single touch point creation is distinct from vertex movement");
-assert.match(geometryWorkspaceCss,/grid-template-columns:72px minmax\(0,1fr\) minmax\(280px,315px\)/,
- "the work area gets the large central canvas, not a small preview");
+assert.match(geometryWorkspaceCss,/grid-template-columns:58px minmax\(0,1fr\) minmax\(290px,312px\)/,
+ "one compact rail and inspector leave the large central canvas accessible");
 assert.match(app,/setPendingMathItem\(item\);\s*setSelected\(\[\]\);setTool\("select"\);\s*openGraphEditor\(item\)/,
  "new geometry remains pending until the large editor is saved");
 assert.match(app,/boardGeometryMode\?\.id===singleSelected\.id&&/,
