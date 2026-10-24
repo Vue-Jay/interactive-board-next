@@ -183,7 +183,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"]);
   const isSolid=solidPresetIds.has(draft.figureId as MathPresetId);
   const openPathLast=draft.figureId==="free"?draft.points.length-1:-1;
-  const canUndoFreePoint=openPathLast>=0&&!draft.polygons.some(p=>p.points.includes(openPathLast))&&
+  const canUndoFreePoint=openPathLast>=Math.max(0,draft.freePathStart??0)&&!draft.polygons.some(p=>p.points.includes(openPathLast))&&
     !draft.circles.some(c=>c.center===openPathLast||c.edge===openPathLast)&&
     !draft.points[openPathLast]?.schoolGroupId;
   const roundSolid=draft.figureId==="cone"||draft.figureId==="cylinder";
@@ -944,9 +944,9 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             </div>}
             {draft.figureId==="free"&&<div className="lektrus-school-point-builder">
               <strong>Простое построение по точкам</strong>
-              <small>Коснитесь свободного места, чтобы поставить вершину. Следующая соединяется с предыдущей. Для замыкания коснитесь первой точки или нажмите кнопку. Точки можно перетаскивать.</small>
+              <small>Коснитесь рисунка для добавления точек, первую вершину нажмите для замыкания. «Новая линия» начинает отдельный контур без соединения с предыдущим.</small>
               <div className="lektrus-free-build-status" role="status">
-                <span className={closeFreeSketch(draft)!==draft?"is-ready":""}>{closeFreeSketch(draft)!==draft?"● Можно замкнуть":"● Ставьте точки по порядку"}</span>
+                <span className={closeFreeSketch(draft)!==draft?"is-ready":""}>{closeFreeSketch(draft)!==draft?"● Можно замкнуть":draft.points.length>0&&draft.points.length===(draft.freePathStart??0)?"● Новая линия готова":"● Ставьте точки по порядку"}</span>
                 <span>{draft.points.length} точек · {draft.polygons.length} фигур</span>
               </div>
               {freeSketchClosingIndex(draft)!==null&&closeFreeSketch(draft)===draft&&
