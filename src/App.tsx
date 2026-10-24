@@ -1143,8 +1143,9 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
+function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
   item: Item;
+  onOpenEditor?: ()=>void;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
@@ -1370,7 +1371,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           freePointGesture.current?.cancel();
         }
       }}
-      onDoubleClick={e=>{if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
+      onDoubleClick={e=>{if(onOpenEditor){e.preventDefault();e.stopPropagation();onOpenEditor();return;}if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
       {onPickPoint&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
@@ -2185,6 +2186,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [studyTab, setStudyTab] = useState<"quiz"|"flashcards">("quiz");
   const [studyCardIndex, setStudyCardIndex] = useState(0);
   const [graphEditorId, setGraphEditorId] = useState<string | null>(null);
+  const [graphPointEditId,setGraphPointEditId]=useState<string|null>(null);
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
   const [schoolEditorItem,setSchoolEditorItem]=useState<Item|null>(null);
   const [circuitEditorItem,setCircuitEditorItem]=useState<Item|null>(null);
@@ -5280,6 +5282,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const openGraphEditor = (item: Item) => {
+    setGraphPointEditId(null);
     if(item.kind!=="graph"||(item.locked&&item.graphFigureId!=="contour-atlas"))return;
     if(item.graphFigureId==="lektrus-chart"){setChartEditorItem(item);return;}
     if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}
@@ -8128,7 +8131,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item}
-                  onPointMoveEnd={!item.locked&&canEdit&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)?(index,x,y)=>{
+                  onOpenEditor={canEdit&&!item.locked&&!structurallyLockedForStudent(item)?()=>openGraphEditor(item):undefined}
+                  onPointMoveEnd={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)?(index,x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
                       const moved=moveGeometryVertex({
@@ -8163,7 +8167,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?closeFreeSketchBoard(candidate):candidate));
                     setSelected([item.id]);
                   }:undefined}
-                  onAddPoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
+                  onAddPoint={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
                       const points=candidate.graphPoints??[];
@@ -8174,7 +8178,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                       return {...candidate,graphPoints:[...points,next]};
                     }));
                     setSelected([item.id]);
-                  } : undefined} onRemovePoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/>}
+                  } : undefined} onRemovePoint={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/> }
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
