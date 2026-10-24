@@ -72,7 +72,7 @@ export function linkExistingPoints<T extends Geometry>(
     }
     if(draft.polygons.some(poly=>sameCycle(poly.points,chosen)))
       return error("Такой многоугольник уже существует.");
-    return {draft:{...draft,polygons:[...draft.polygons,{points:[...chosen],label:"",measure:false}]}};
+    return {draft:{...draft,polygons:[...draft.polygons,{points:[...chosen],label:"",measure:false,keepPointsOnDelete:true}]}};
   }
   const [a,b]=chosen;
   if(kind==="segment"||kind==="line"||kind==="ray"){
@@ -80,20 +80,20 @@ export function linkExistingPoints<T extends Geometry>(
     if(draft.segments.some(seg=>seg.kind===kind&&
       (kind==="ray"?seg.a===a&&seg.b===b:samePair(seg.a,seg.b,a,b))))
       return error("Такая линия уже есть на чертеже.");
-    return {draft:{...draft,segments:[...draft.segments,{a,b,kind,label:"",measure:false}]}};
+    return {draft:{...draft,segments:[...draft.segments,{a,b,kind,label:"",measure:false,keepPointsOnDelete:true}]}};
   }
   if(kind==="circle"){
     if(draft.circles.length>=30)return error("На чертеже достигнут предел 30 окружностей.");
     if(draft.circles.some(circle=>circle.center===a&&circle.edge===b))
       return error("Такая окружность уже существует.");
-    return {draft:{...draft,circles:[...draft.circles,{center:a,edge:b,label:"",measure:false}]}};
+    return {draft:{...draft,circles:[...draft.circles,{center:a,edge:b,label:"",measure:false,keepPointsOnDelete:true}]}};
   }
   if(kind==="midpoint"){
     if(draft.midpoints.length>=40)return error("На чертеже достигнут предел 40 середин.");
     if(draft.midpoints.some(mid=>samePair(mid.a,mid.b,a,b)))
       return error("Середина этого отрезка уже отмечена.");
     const label=availableGeometryLabel([...draft.points,...draft.midpoints],"M");
-    return {draft:{...draft,midpoints:[...draft.midpoints,{a,b,label}]}};
+    return {draft:{...draft,midpoints:[...draft.midpoints,{a,b,label,keepPointsOnDelete:true}]}};
   }
   if(draft.angles.length>=40)return error("На чертеже достигнут предел 40 углов.");
   const [first,vertex,last]=chosen;
@@ -106,5 +106,5 @@ export function linkExistingPoints<T extends Geometry>(
     return error("Лучам с одинаковым направлением соответствует нулевой угол.");
   if(draft.angles.some(angle=>angle.vertex===vertex&&samePair(angle.a,angle.b,first,last)))
     return error("Этот угол уже построен.");
-  return {draft:{...draft,angles:[...draft.angles,{a:first,vertex,b:last,label:""}]}};
+  return {draft:{...draft,angles:[...draft.angles,{a:first,vertex,b:last,label:"",keepPointsOnDelete:true}]}};
 }
