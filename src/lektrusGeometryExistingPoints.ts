@@ -97,8 +97,13 @@ export function linkExistingPoints<T extends Geometry>(
   }
   if(draft.angles.length>=40)return error("На чертеже достигнут предел 40 углов.");
   const [first,vertex,last]=chosen;
-  if(Math.abs(cross(p[1],p[0],p[2]))<1e-6)
-    return error("Для угла выберите две стороны, не лежащие на одной прямой.");
+  const left={x:p[0].x-p[1].x,y:p[0].y-p[1].y};
+  const right={x:p[2].x-p[1].x,y:p[2].y-p[1].y};
+  // A straight 180° angle is valid school geometry; only coincident rays
+  // that create a zero angle should be rejected.
+  if(Math.abs(cross(p[1],p[0],p[2]))<1e-6&&
+    left.x*right.x+left.y*right.y>0)
+    return error("Лучам с одинаковым направлением соответствует нулевой угол.");
   if(draft.angles.some(angle=>angle.vertex===vertex&&samePair(angle.a,angle.b,first,last)))
     return error("Этот угол уже построен.");
   return {draft:{...draft,angles:[...draft.angles,{a:first,vertex,b:last,label:""}]}};
