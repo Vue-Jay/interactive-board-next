@@ -23,7 +23,13 @@ export default function AuthScreen({ onAuthenticated }: Props) {
   useEffect(()=>{
     const outsidePress=(event:PointerEvent)=>{
       const target=event.target;
-      if(!(target instanceof Element) || !target.closest(".auth-form input"))
+      const active=document.activeElement;
+      // A tap on ANOTHER field is intentional too. Don't immediately restore
+      // the previous one when WebKit reports relatedTarget=null during focus.
+      if(!(target instanceof Element) ||
+         (active instanceof HTMLInputElement && active.closest(".auth-form") &&
+           active!==target) ||
+         !target.closest(".auth-form input"))
         fieldFocus.current.outsidePressAt=Date.now();
     };
     document.addEventListener("pointerdown",outsidePress,true);
@@ -66,6 +72,8 @@ export default function AuthScreen({ onAuthenticated }: Props) {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
+    // An intentional form submission may blur the keyboard; don't reopen it.
+    fieldFocus.current.outsidePressAt=Date.now();
     setBusy(true);setError("");
     try {
       const user = mode === "register" ? await registerUser({ name, email, password }) : await loginUser({ email, password });
