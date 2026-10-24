@@ -10,6 +10,9 @@ type Geometry=Pick<GraphDraft,"points"|"segments"|"circles"|"polygons"|"angles"|
 export function removeConstruction<T extends Geometry>(geometry:T,kind:ConstructionKind,index:number):T {
   const current=geometry[kind==="circle"?"circles":kind==="polygon"?"polygons":kind==="segment"?"segments":kind==="angle"?"angles":"midpoints"];
   if(!Number.isInteger(index)||index<0||index>=current.length)return geometry;
+  // Reused-point objects own no vertices or pre-existing supporting lines:
+  // deleting one must remove only that object, never the original drawing.
+  const keepExistingPoints=!!current[index].keepPointsOnDelete;
   let segments=geometry.segments.filter((_,i)=>kind!=="segment"||i!==index);
   let circles=geometry.circles.filter((_,i)=>kind!=="circle"||i!==index);
   let polygons=geometry.polygons.filter((_,i)=>kind!=="polygon"||i!==index);
@@ -18,7 +21,7 @@ export function removeConstruction<T extends Geometry>(geometry:T,kind:Construct
 
   // An independently created angle has two supporting rays. Only remove them
   // when there is no other angle that still needs the same rays.
-  if(kind==="angle"){
+  if(kind==="angle"&&!keepExistingPoints){
     const removed=geometry.angles[index];
     const pairs=[[removed.vertex,removed.a],[removed.vertex,removed.b]];
     const shared=(a:number,b:number)=>angles.some(v=>
@@ -31,7 +34,7 @@ export function removeConstruction<T extends Geometry>(geometry:T,kind:Construct
   // A shape's schoolbook angle mark, edge or radius is part of that shape.
   // Drop these dependent relations before computing which vertices are orphaned.
   // A point that belongs to a different primary polygon or circle is protected.
-  if(kind==="polygon"||kind==="circle"||kind==="segment"){
+  if(!keepExistingPoints&&(kind==="polygon"||kind==="circle"||kind==="segment")){
     const source=kind==="polygon"?geometry.polygons[index].points:
       kind==="circle"?[geometry.circles[index].center,geometry.circles[index].edge]:
       [geometry.segments[index].a,geometry.segments[index].b];
@@ -58,7 +61,7 @@ export function removeConstruction<T extends Geometry>(geometry:T,kind:Construct
     return result;
   };
   const before=refs(geometry),after=refs({...geometry,segments,circles,polygons,angles,midpoints});
-  const removedPoints=new Set([...before].filter(i=>!after.has(i)));
+  const removedPoints=new Set([...before].filter(i=>!after.has(i)&&!keepExistingPoints));
   const remap=new Map<number,number>();
   const points=geometry.points.filter((_,i)=>{
     if(removedPoints.has(i))return false;
