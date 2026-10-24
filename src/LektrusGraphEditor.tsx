@@ -631,7 +631,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 <h4>{section.name}</h4>
                 <div className="lektrus-math-preset-grid">{section.presets.map(p=>
                   <button type="button" key={p.id} className={draft.figureId===p.id||!draft.figureId&&draft.title===p.title?"active":""}
-                    onClick={()=>loadPreset(p.id)}><LektrusGeometryPresetGlyph id={p.id}/><strong>{p.title}</strong><small>{p.subtitle}</small></button>
+                    onClick={()=>loadPreset(p.id)}>{mode==="geometry"&&<LektrusGeometryPresetGlyph id={p.id}/>}<strong>{p.title}</strong><small>{p.subtitle}</small></button>
                 )}</div>
               </div>)}
 
