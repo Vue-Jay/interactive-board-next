@@ -1,4 +1,5 @@
 import {useEffect,useState} from "react";
+import LektrusGeometryToolIcon,{type GeometryToolIconName} from "./LektrusGeometryToolIcon";
 import type {Item} from "./boardModel";
 import type {ExistingPointTool} from "./lektrusGeometryExistingPoints";
 import {geometryAngle,geometryDistance,geometryPolygonMetrics,formatGeometryMetric,type PrecisionMode} from "./lektrusGeometryPrecision";
@@ -32,17 +33,17 @@ const schoolActions:readonly {id:SchoolConstruction;label:string}[]=[
   {id:"inscribed-polygon",label:"Вписанный многоугольник"},
   {id:"circumscribed-polygon",label:"Описанный многоугольник"}
 ];
-const modeChoices:readonly {id:BoardGeometryMode;label:string;symbol:string}[]=[
- {id:"move",label:"Двигать",symbol:"↖"},
- {id:"point",label:"Точка",symbol:"•"},
- {id:"segment",label:"Отрезок",symbol:"╱"},
- {id:"line",label:"Прямая",symbol:"⟷"},
- {id:"ray",label:"Луч",symbol:"↗"},
- {id:"polygon",label:"Фигура",symbol:"⬡"},
- {id:"angle",label:"Угол",symbol:"∠"},
- {id:"circle",label:"Окружность",symbol:"◯"},
- {id:"midpoint",label:"Середина",symbol:"⊙"},
- {id:"measure",label:"Измерить",symbol:"⌁"}
+const modeChoices:readonly {id:BoardGeometryMode;label:string;icon:GeometryToolIconName}[]=[
+ {id:"move",label:"Двигать",icon:"move"},
+ {id:"point",label:"Точка",icon:"point"},
+ {id:"segment",label:"Отрезок",icon:"segment"},
+ {id:"line",label:"Прямая",icon:"line"},
+ {id:"ray",label:"Луч",icon:"ray"},
+ {id:"polygon",label:"Контур",icon:"polygon"},
+ {id:"angle",label:"Угол",icon:"angle"},
+ {id:"circle",label:"Окружн.",icon:"circle"},
+ {id:"midpoint",label:"Середина",icon:"midpoint"},
+ {id:"measure",label:"Размер",icon:"measure"}
 ];
 type Props={
  item:Item;mode:BoardGeometryMode;selected:readonly number[];error:string;
@@ -71,9 +72,9 @@ export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMo
  const instruction=mode==="move"?"Перетаскивайте точки на рисунке. Двойное нажатие удаляет точку.":
   mode==="point"?"Коснитесь свободного места, чтобы добавить точку.":"Нажимайте готовые точки или свободное место: новая точка добавится автоматически.";
  const pickNames=selected.map(i=>points[i]?.label||`№${i+1}`).join(" → ");
- const button=(id:BoardGeometryMode,label:string,symbol:string)=><button type="button" key={id}
+ const button=(id:BoardGeometryMode,label:string,icon:GeometryToolIconName)=><button type="button" key={id}
    className={mode===id?"active":""} aria-pressed={mode===id} aria-label={label}
-   title={label} onClick={()=>onMode(id)}><span aria-hidden="true">{symbol}</span>{label}</button>;
+   title={label} onClick={()=>onMode(id)}><LektrusGeometryToolIcon name={icon} size={21}/><span className="lektrus-board-geometry-tool-label">{label}</span></button>;
  const removeRows=(kind:ConstructionKind,list:readonly unknown[],title:string)=>
   list.map((_,i)=><div key={kind+i} className="lektrus-board-geometry-entry"><span>{title} {i+1}</span><button type="button" title={`Удалить ${title.toLowerCase()}`} onClick={()=>onRemove(kind,i)}>Удалить</button></div>);
  const apply=()=>{const n=Number(value.replace(",","."));onAdjust(selected.length===3?"angle":"distance",n)};
@@ -81,18 +82,18 @@ export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMo
    aria-label="Построение фигур на доске" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
    <div className="lektrus-board-geometry-head">
-    <div><strong>Построение</strong><small>{points.length} точек · {total} элементов</small></div>
+    <div><strong>По точкам</strong><small>{points.length} т. · {total} эл.</small></div>
     <button type="button" aria-label={collapsed?"Развернуть инструменты построения":"Свернуть инструменты построения"}
        title={collapsed?"Развернуть":"Свернуть"} onClick={()=>setCollapsed(v=>!v)}>{collapsed?"▣":"−"}</button>
    </div>
    {!collapsed&&<>
     <nav className="lektrus-board-geometry-tabs" aria-label="Разделы построения">
-     {([["draw","Чертить"],["exact","Точно"],["school","Готовое"],["objects","Объекты"]] as const).map(([id,label])=>
+     {([["draw","Черчение"],["exact","Размеры"],["school","Школьные"],["objects","Объекты"]] as const).map(([id,label])=>
       <button type="button" key={id} className={tab===id?"active":""} onClick={()=>setTab(id)}>{label}</button>)}
     </nav>
     {tab==="draw"&&<>
       <div className="lektrus-board-geometry-actions">
-       {modeChoices.map(choice=>button(choice.id,choice.label,choice.symbol))}
+       {modeChoices.map(choice=>button(choice.id,choice.label,choice.icon))}
       </div>
       <p className="lektrus-board-geometry-hint">{instruction}</p>
       {mode==="polygon"&&<p className="lektrus-board-geometry-hint">Замкните нажатием на первую вершину либо кнопкой ниже.</p>}
