@@ -145,6 +145,7 @@ export function removeGraphBoardPoint(item:Item,index:number):Item {
   return {
     ...item,
     graphPoints:(item.graphPoints??[]).filter((_,i)=>i!==index),
+    graphConstraints:removeVertexConstraints(item.graphConstraints,index),
     graphSegments:nextSegments,
     graphCircles:(item.graphCircles??[]).filter(v=>v.center!==index&&v.edge!==index).map(v=>({...v,center:shift(v.center),edge:shift(v.edge)})),
     graphAngles:(item.graphAngles??[]).filter(v=>v.a!==index&&v.vertex!==index&&v.b!==index).map(v=>({...v,a:shift(v.a),vertex:shift(v.vertex),b:shift(v.b)})),
