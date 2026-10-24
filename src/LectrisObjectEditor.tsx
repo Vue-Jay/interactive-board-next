@@ -18,7 +18,7 @@ export function InkWidthSample({tool,size,color}:{tool:InkTool;size:number;color
      <span className="lektrus-ink-swatch-stroke" style={{
        height:Math.max(1,size*scale)+"px",
        background:tool==="eraser"?"#64748b":color,
-       opacity:tool==="marker"?.6:1
+       opacity:tool==="marker"?.32:1
      }}/>
    </span>
    <span className="lektrus-ink-swatch-value">{String(size).replace(".",",")} px</span>
