@@ -458,7 +458,12 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         <div className="graph-editor-form lektrus-graph-settings">
           {tab==="presets"&&<div className="lektrus-graph-section lektrus-math-presets">
             <strong>{mode==="geometry"?"Выберите фигуру":"Выберите построение"}</strong>
-            <small>Шаблон можно изменить до сохранения. У объёмных фигур показана редактируемая проекция, вершины и рёбра можно перемещать вручную. Готовых вычислений нет.</small>
+            {mode==="geometry"&&<button type="button" className="lektrus-start-free-drawing"
+              onClick={()=>{loadPreset("free");setLinkKind("polygon");setLinkPoints([]);setTab("connect");}}>
+              <strong>+ Построить по точкам</strong>
+              <small>Коснитесь трёх или более мест на рисунке и замкните контур</small>
+            </button>}
+            <small>Выберите готовую фигуру или начните свой чертёж. Точки и размеры можно изменить позже.</small>
             {mode==="geometry"&&<div className="lektrus-math-figure-categories" role="group" aria-label="Тип фигур">
               <button type="button" className={figureCategory==="Геометрия"?"active":""} aria-pressed={figureCategory==="Геометрия"} onClick={()=>setFigureCategory("Геометрия")}>Плоские фигуры</button>
               <button type="button" className={figureCategory==="Объёмные фигуры"?"active":""} aria-pressed={figureCategory==="Объёмные фигуры"} onClick={()=>setFigureCategory("Объёмные фигуры")}>Объёмные фигуры</button>
