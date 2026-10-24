@@ -7516,6 +7516,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               const consumed=touchEnd(e);
               if(consumed){e.preventDefault();e.stopPropagation();return;}
             }
+            // Complete touch drags here, before an embedded object can swallow
+            // the bubble-phase pointerup and leave a captured transform alive.
+            if(e.pointerType==="touch"&&gesture.current?.pointer===e.pointerId){
+              move(e);end();
+              return;
+            }
             const right=rightPress.current;
             if(right?.pointer===e.pointerId){
               e.preventDefault();e.stopPropagation();
@@ -7542,6 +7548,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if(e.pointerType==="touch"){
               const consumed=touchEnd(e);
               if(consumed){e.preventDefault();e.stopPropagation();return;}
+              if(gesture.current?.pointer===e.pointerId){end(true);return;}
             }
             if(rightPress.current?.pointer===e.pointerId){
               rightPress.current=null;
