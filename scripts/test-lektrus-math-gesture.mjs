@@ -353,8 +353,8 @@ assert.match(editor,/linkExistingPoints\(source,linkKind,selected\)/,
  "editor invokes pure existing-vertex geometry builder");
 assert.match(editor,/onPickPoint:pickLinkPoint,onCreateAndPickPoint:createAndSelectPoint,pickedPoints:linkPoints/,
  "preview forwards touch vertex selection and highlights picks");
-assert.match(app,/onPickPoint\?\.\(i\)/,
- "touching a vertex in linking mode uses references instead of adding points");
+assert.match(app,/if\(tap\.index!==null\)onPickPoint\(tap\.index\)/,
+ "one SVG capture selects each existing vertex exactly once");
 assert.match(css,/lektrus-link-vertex-list/,
  "the same vertex selection is possible through accessible large buttons");
 
