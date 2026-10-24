@@ -1663,7 +1663,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
         }:undefined}>
         {closesHere&&<circle className="lektrus-free-close-ring" cx={sx(p.x)} cy={sy(p.y)} r="14" pointerEvents="none"/>}
         {picked&&<circle className="lektrus-link-picked-ring" cx={sx(p.x)} cy={sy(p.y)} r="16" pointerEvents="none"/>}
-        {(movable||closesHere||selectable)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r={item.graphFigureId==="free"?(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?42:24):20}/>}
+        {(movable||closesHere||selectable)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r={selectable?(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?34:24):item.graphFigureId==="free"?(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?42:24):20}/>}
         {closesHere&&<title>Коснитесь, чтобы замкнуть фигуру. Перетащите, чтобы переместить точку.</title>}
         {selectable&&<title>Выбрать точку {p.label||i+1} для построения</title>}
         {!((item.graphFigureId??"").startsWith("physics-")&&
