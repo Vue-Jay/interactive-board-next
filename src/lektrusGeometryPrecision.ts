@@ -47,21 +47,21 @@ export function adjustGeometryPoints<T extends HasPoints>(
  if(mode==="horizontal"){y=a.y;}
  else if(mode==="vertical"){x=a.x;}
  else if(mode==="distance"){
-  if(!Number.isFinite(target)||target!>1000||target!<=0)return fail("Укажите положительную длину не более 1000.");
+  if(typeof target!=="number"||!Number.isFinite(target)||target>1000||target<=0)return fail("Укажите положительную длину не более 1000.");
   const current=geometryDistance(a,b);
   if(current<EPS)return fail("Совпадающие вершины не задают направление. Сначала разведите точки.");
-  const factor=target!/current;
+  const factor=target/current;
   x=a.x+(b.x-a.x)*factor;
   y=a.y+(b.y-a.y)*factor;
  }else{
-  if(!Number.isFinite(target)||target!<=0||target!>180)
+  if(typeof target!=="number"||!Number.isFinite(target)||target<=0||target>180)
    return fail("Укажите угол от 0 до 180°.");
   const current=geometryAngle(a,b,c);
   if(current===null)return fail("Совпадающие вершины не задают угол.");
   const ray={x:a.x-b.x,y:a.y-b.y};
   const length=geometryDistance(b,c),rayLength=Math.hypot(ray.x,ray.y);
   const cross=ray.x*(c.y-b.y)-ray.y*(c.x-b.x);
-  const signedAngle=(cross<0?-1:1)*target!*Math.PI/180;
+  const signedAngle=(cross<0?-1:1)*target*Math.PI/180;
   const co=Math.cos(signedAngle),si=Math.sin(signedAngle);
   x=b.x+length/rayLength*(ray.x*co-ray.y*si);
   y=b.y+length/rayLength*(ray.x*si+ray.y*co);
