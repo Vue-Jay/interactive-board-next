@@ -1096,7 +1096,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                     value={polygon.label} onChange={e=>patch({polygons:draft.polygons.map((p,j)=>j===i?{...p,label:e.target.value}:p)})}/>
                   <button type="button" className="lektrus-school-element-delete" aria-label={"Удалить фигуру "+label} onClick={()=>deleteConstruction("polygon",i)}>Удалить</button>
                 </div>
-                <small>Длины сторон и углы можно указать во вкладке «Размеры».</small>
+                <label className="lektrus-auto-metric-option"><input type="checkbox" checked={polygon.showMetrics===true}
+                  onChange={e=>patch({polygons:draft.polygons.map((v,j)=>j===i?{...v,showMetrics:e.target.checked}:v)})}/>
+                  Показывать вычисленные площадь и периметр
+                </label>
               </div>;
             })}
             {draft.segments.map((segment,i)=>{
@@ -1110,6 +1113,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                     maxLength={32} value={segment.label} onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,label:e.target.value}:v)})}/>
                   <button type="button" className="lektrus-school-element-delete" aria-label={"Удалить линию "+label} onClick={()=>deleteConstruction("segment",i)}>Удалить</button>
                 </div>
+                {segment.kind==="segment"&&<label className="lektrus-auto-metric-option">
+                  <input type="checkbox" checked={segment.measure===true}
+                    onChange={e=>patch({segments:draft.segments.map((v,j)=>j===i?{...v,measure:e.target.checked}:v)})}/>
+                  Показывать вычисленную длину (ед.)
+                </label>}
               </div>;
             })}
             {draft.midpoints.map((midpoint,i)=>midpoint.schoolGroupId?null:<div className="lektrus-graph-construction lektrus-school-element" key={"midpoint"+i}>
@@ -1133,6 +1141,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                   <span aria-hidden="true">°</span>
                   <button type="button" className="lektrus-school-element-delete" aria-label={"Удалить угол "+name} onClick={()=>deleteConstruction("angle",i)}>Удалить</button>
                 </div>
+                <label className="lektrus-auto-metric-option"><input type="checkbox" checked={angle.autoMeasure===true}
+                  onChange={e=>patch({angles:draft.angles.map((v,j)=>j===i?{...v,autoMeasure:e.target.checked}:v)})}/>
+                  Показывать вычисленный угол (°)
+                </label>
               </div>;
             })}
           </div>}
