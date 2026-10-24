@@ -376,7 +376,7 @@ assert.match(app,/lektrus-graph-open-editor/,
  "selected figure exposes an obvious primary editor action");
 assert.match(app,/lektrus-graph-inline-draw/,
  "in-board drawing is a secondary mode");
-assert.match(app,/>Черчение<\/span>/,
+assert.match(app,/"Закрыть":"Черчение"/,
  "on-board drawing no longer uses the misleading points-only label");
 assert.match(editor,/LektrusGeometryToolIcon name="close"/,
  "workspace has a consistent vector close icon");
