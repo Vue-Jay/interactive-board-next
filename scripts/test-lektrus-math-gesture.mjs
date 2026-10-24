@@ -300,7 +300,7 @@ assert.match(editor,/lockGeometryConstraint\(draft,linkPoints,kind,value\)/,
  "persistent links use validated directed dependency model");
 assert.match(editor,/Точки и связи/,
  "only four editor tabs remain visible");
-assert.doesNotMatch(editor,/tab==="connect"\?"active"/,
+assert.doesNotMatch(editor,/className=\{tab==="connect"\?"active"/,
  "connecting points is part of the existing points section, not a fifth tab");
 assert.match(editor,/className="lektrus-link-kind-picker"/,
  "a compact selector replaces eight competing buttons");
@@ -321,9 +321,9 @@ assert.match(math.removeGraphBoardPoint.toString(),/graphConstraints/,
  "deleting a vertex in a saved board removes dangling constraints");
 const fourTabs=(editor.match(/tab==="presets"\?"active"|tab==="givens"\?"active"|tab==="geometry"\?"active"|tab==="points"\|\|tab==="connect"\?"active"/g)||[]);
 assert.equal(fourTabs.length,4,"only four top-level editor tabs");
-assert.match(editor,/linkExistingPoints\(draft,linkKind,selected\)/,
+assert.match(editor,/linkExistingPoints\(source,linkKind,selected\)/,
  "editor invokes pure existing-vertex geometry builder");
-assert.match(editor,/onPickPoint:pickLinkPoint,pickedPoints:linkPoints/,
+assert.match(editor,/onPickPoint:pickLinkPoint,onCreateAndPickPoint:createAndSelectPoint,pickedPoints:linkPoints/,
  "preview forwards touch vertex selection and highlights picks");
 assert.match(app,/onPickPoint\?\.\(i\)/,
  "touching a vertex in linking mode uses references instead of adding points");
