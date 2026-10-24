@@ -3417,6 +3417,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(touchPoints.current.size===0)pinchSelectionSnapshot.current=[...selected];
     touchPoints.current.set(e.pointerId,local(e.clientX,e.clientY));
     if(touchPoints.current.size===2){
+      // Mark BOTH fingers consumed before releasing the old pointer capture.
+      // lostpointercapture must not unregister a finger that is still down.
+      for(const id of touchPoints.current.keys())consumedTouchIds.current.add(id);
       // Two fingers always navigate. Discard an unfinished eraser preview
       // before zooming; otherwise its pointer capture outlives the gesture.
       if(eraserSession.current){
@@ -3451,7 +3454,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     scheduleViewerPan({zoom,x:center.x-anchoredX*zoom,y:center.y-anchoredY*zoom});
     return true;
   };
-  const touchEnd=(e:PE<HTMLElement>)=>{
+  const touchEnd=(e:{pointerType:string;pointerId:number})=>{
     if(e.pointerType!=="touch")return false;
     const consumed=consumedTouchIds.current.delete(e.pointerId);
     touchPoints.current.delete(e.pointerId);
@@ -3561,6 +3564,37 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setGuides({});
     if(tool!=="select")setSelected([]);
   },[tool]);
+  // Some embedded widgets consume pointerup, and a captured element can be
+  // removed mid-drag. A window-level fallback retires orphaned pointers.
+  useEffect(()=>{
+    const release=(event:PointerEvent)=>{
+      if(touchPoints.current.has(event.pointerId)||consumedTouchIds.current.has(event.pointerId))touchEnd(event);
+      if(eraserSession.current?.pointer===event.pointerId){
+        eraserSession.current=null;stopEraserPreview();
+      }
+      if(gesture.current?.pointer===event.pointerId)end(true);
+    };
+    const blur=()=>{
+      end(true);
+      eraserSession.current=null;
+      stopEraserPreview();
+      touchPoints.current.clear();
+      consumedTouchIds.current.clear();
+      pinchState.current=null;
+      pinchSelectionSnapshot.current=null;
+      rightPress.current=null;
+      setRightPointerActive(false);
+      setPanning(false);
+    };
+    window.addEventListener("pointerup",release);
+    window.addEventListener("pointercancel",release);
+    window.addEventListener("blur",blur);
+    return()=>{
+      window.removeEventListener("pointerup",release);
+      window.removeEventListener("pointercancel",release);
+      window.removeEventListener("blur",blur);
+    };
+  },[tool,boardSummary.id]);
   const openBoardContextMenu = (clientX:number,clientY:number,domId?:string) => {
     finishEdit();
     const screen=local(clientX,clientY);
@@ -7585,7 +7619,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if(eraserSession.current?.pointer===e.pointerId){
               eraserSession.current=null;stopEraserPreview();
             }else if(gesture.current?.pointer===e.pointerId)end(true);
-            if(e.pointerType==="touch")touchEnd(e);
+            if(e.pointerType==="touch"&&!consumedTouchIds.current.has(e.pointerId)&&!pinchState.current)touchEnd(e);
           }}
         >
           {isAppAdmin && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
