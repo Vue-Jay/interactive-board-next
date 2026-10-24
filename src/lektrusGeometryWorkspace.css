@@ -5,7 +5,7 @@
  padding:0!important;overflow:hidden!important;
  background:rgba(12,24,43,.60)!important;backdrop-filter:blur(4px);
 }
-.lektrus-geometry-workspace .lektrus-graph-dialog{
+.lektrus-geometry-workspace.lektrus-graph-overlay .lektrus-graph-dialog{
  box-sizing:border-box;position:relative!important;flex:0 1 auto;
  display:flex!important;flex-direction:column!important;
  width:calc(100vw - 20px)!important;max-width:1920px!important;
@@ -291,7 +291,7 @@
  background:#2768bd;color:#fff;
 }
 @media(max-width:900px){
- .lektrus-geometry-workspace .lektrus-graph-dialog{
+ .lektrus-geometry-workspace.lektrus-graph-overlay .lektrus-graph-dialog{
   width:calc(100vw - 6px)!important;max-width:calc(100vw - 6px)!important;
   height:calc(100dvh - 6px)!important;max-height:calc(100dvh - 6px)!important;
   border-radius:9px!important;
