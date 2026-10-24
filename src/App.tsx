@@ -7917,10 +7917,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const graphObject=target.closest<HTMLElement>("[data-object]");
             if(tool==="select"&&graphObject&&target.closest(".graph-view")&&
               (graphObject.dataset.object===graphPointEditId||
-                (selectedIds.has(graphObject.dataset.object??"")&&
-                  itemsRef.current.some(obj=>obj.id===graphObject.dataset.object&&obj.graphPurpose==="geometry"&&
-                    !obj.locked&&!isSolidFigure(obj.graphFigureId)&&!isSchoolDiagramId(obj.graphFigureId)&&
-                    !obj.graphFigureId?.startsWith("physics-")&&!obj.graphFigureId?.startsWith("chem-"))))){
+               boardGeometryMode?.id===graphObject.dataset.object)){
               return;
             }
             // The phone/tablet hand always pans with ONE finger, including
@@ -8277,7 +8274,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item}
-                  onPointMoveEnd={selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)&&activeBoardGeometryMode(item)==="move"?(index,x,y)=>{
+                  onPointMoveEnd={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)&&activeBoardGeometryMode(item)==="move"?(index,x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
                       const moved=moveGeometryVertex({
@@ -8305,7 +8302,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onRotate={!item.locked&&canEdit&&(isSolidFigure(item.graphFigureId))?(rotationX,rotationY)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphRotationX:rotationX,graphRotationY:rotationY}:candidate));
                   }:undefined}
-                  onRayChange={selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId==="ray"&&activeBoardGeometryMode(item)==="move"?(x,y)=>{
+                  onRayChange={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId==="ray"&&activeBoardGeometryMode(item)==="move"?(x,y)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:(candidate.graphPoints??[]).map((p,i)=>i===1?{...p,x,y}:p)}:candidate));
                   }:undefined}
                   onCloseFreePolygon={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId==="free"?()=>{
@@ -8327,7 +8324,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onPickPoint={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&activeBoardGeometryMode(item)!=="move"?(index)=>selectBoardGeometryPoint(item,index):undefined}
                   onCreateAndPickPoint={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&activeBoardGeometryMode(item)!=="move"?(x,y)=>tapBoardGeometryBlank(item,x,y):undefined}
                   pickedPoints={boardGeometryMode?.id===item.id?boardGeometryMode.selected:[]}
-                  onRemovePoint={selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&activeBoardGeometryMode(item)==="move"&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId)?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);setBoardGeometryError("");} : undefined}/> }
+                  onRemovePoint={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&activeBoardGeometryMode(item)==="move"&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId)?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);setBoardGeometryError("");} : undefined}/> }
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
