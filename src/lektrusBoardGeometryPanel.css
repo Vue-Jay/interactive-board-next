@@ -135,3 +135,140 @@
  .lektrus-board-geometry-panel{top:43px;max-height:calc(100% - 62px)}
  .lektrus-board-geometry-actions button{min-height:42px}
 }
+
+/* Geometry quick workspace: clear hierarchy, no clipped button names. */
+.lektrus-board-geometry-panel{
+ width:min(292px,calc(100% - 18px));
+ max-height:min(510px,calc(100% - 112px));
+ border-radius:13px;
+ box-shadow:0 10px 30px rgba(24,43,82,.17);
+}
+.lektrus-board-geometry-panel.is-collapsed{
+ width:252px;max-width:calc(100% - 18px);max-height:46px;
+ overflow:hidden;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-head{
+ display:flex;align-items:center;justify-content:space-between;
+ min-height:44px;padding:5px 7px 5px 11px;gap:5px;
+ position:sticky;top:0;z-index:3;background:var(--ui-surface,#fff);
+ border-bottom:1px solid var(--ui-line,#e5eaf2);
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-head .lektrus-board-geometry-identity{
+ display:flex;flex:1 1 auto;align-items:center;min-width:0;gap:5px;
+ overflow:hidden;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-identity strong{
+ white-space:nowrap;flex:0 0 auto;font-size:12px;font-weight:800;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-identity small{
+ min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ font-size:9px;font-variant-numeric:tabular-nums;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-head .lektrus-board-geometry-head-actions{
+ flex:0 0 auto;display:flex;align-items:center;gap:4px;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-head-actions button{
+ display:inline-flex;align-items:center;justify-content:center;
+ flex:0 0 auto;border-radius:8px;cursor:pointer;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-head-actions .lektrus-board-geometry-editor-link{
+ display:flex;gap:5px;min-width:0;min-height:31px;width:auto;height:auto;
+ padding:5px 8px;color:#fff;background:#2868ba;border:1px solid #2868ba;
+ font-size:10px;font-weight:780;line-height:1.1;white-space:nowrap;
+ box-shadow:0 2px 8px #235eaf29;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-editor-link:hover{
+ background:#19569f;border-color:#19569f;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-editor-link .lektrus-geometry-vector-icon{
+ display:block;flex:0 0 16px;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-head-actions .lektrus-board-geometry-collapse{
+ width:31px;height:31px;min-width:31px;min-height:31px;padding:5px;
+ color:var(--ui-muted,#5c6c82);background:var(--ui-subtle,#f2f5fa);
+ border:1px solid var(--ui-line,#dce6f1);
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-tabs{
+ grid-template-columns:1.2fr .85fr .9fr .8fr;gap:3px;padding:6px 7px 0;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-tabs button{
+ min-height:31px;padding:5px 2px;line-height:1.2;
+ font-size:9.5px;letter-spacing:-.12px;white-space:nowrap;
+ overflow:visible;text-overflow:clip;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-actions{
+ grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;
+ padding:6px 7px 4px;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-actions button{
+ min-height:51px;padding:5px 2px;gap:3px;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-actions button .lektrus-geometry-vector-icon{
+ width:21px;height:21px;flex:0 0 21px;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-actions .lektrus-board-geometry-tool-label{
+ display:block;max-width:100%;min-width:0;
+ padding:0 1px;font-family:inherit;font-size:9px;line-height:1.15;
+ white-space:normal;overflow-wrap:anywhere;text-align:center;
+ overflow:visible;text-overflow:clip;letter-spacing:-.18px;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-hint{
+ padding:0;margin:4px 9px 3px;font-size:10px;line-height:1.32;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-switches{
+ margin:5px 8px;padding:6px 0 4px;gap:4px 9px;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-value{
+ min-width:0;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-value select{
+ width:100%;max-width:100%;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-selection{
+ min-width:0;
+}
+.lektrus-board-geometry-panel .lektrus-board-geometry-selection>span{
+ min-width:0;overflow:hidden;text-overflow:ellipsis;
+}
+.lektrus-board-geometry-panel .lektrus-geometry-vector-icon{
+ display:block;vertical-align:middle;
+}
+.lektrus-graph-selection-toolbar .graph-selection-controls>button.lektrus-graph-open-editor{
+ background:linear-gradient(120deg,#265db3,#377ad0)!important;
+ border:1px solid #316dbc!important;color:#fff!important;
+ min-height:33px;border-radius:9px;gap:6px;
+ padding:5px 11px;
+ box-shadow:0 2px 8px #20569d27;
+ font-weight:800;transition:background .14s ease,box-shadow .14s ease;
+}
+.lektrus-graph-selection-toolbar .graph-selection-controls>button.lektrus-graph-open-editor:hover{
+ background:linear-gradient(120deg,#174c9a,#2d68b8)!important;
+ box-shadow:0 3px 12px #20569d37;
+}
+.lektrus-graph-selection-toolbar .graph-selection-controls>button.lektrus-graph-inline-draw{
+ border:1px solid #d1dff1;color:#315d94;background:#f0f5fd;
+ border-radius:9px;min-height:33px;padding:5px 9px;
+}
+.lektrus-graph-selection-toolbar .graph-selection-controls>button.lektrus-graph-inline-draw[aria-pressed=true]{
+ border-color:#89b3eb;color:#1f57a0;background:#e0eeff;
+}
+.lektrus-graph-selection-toolbar .graph-selection-controls button .lektrus-geometry-vector-icon{
+ display:block;flex:0 0 17px;width:17px;height:17px;color:inherit;
+}
+.lektrus-graph-selection-toolbar .graph-selection-controls button>span{
+ white-space:nowrap;line-height:1.15;
+}
+@media(max-width:680px),(pointer:coarse){
+ .lektrus-board-geometry-panel{right:6px;top:53px;width:min(292px,calc(100% - 12px))}
+ .lektrus-board-geometry-panel .lektrus-board-geometry-actions button{min-height:46px}
+ .lektrus-board-geometry-panel .lektrus-board-geometry-actions .lektrus-board-geometry-tool-label{font-size:8.8px}
+ .lektrus-board-geometry-panel .lektrus-board-geometry-editor-link{min-height:34px}
+ .lektrus-graph-selection-toolbar .graph-selection-controls>button.lektrus-graph-open-editor,
+ .lektrus-graph-selection-toolbar .graph-selection-controls>button.lektrus-graph-inline-draw{
+  min-height:40px;padding:7px 10px;
+ }
+}
+@media(max-width:345px){
+ .lektrus-board-geometry-panel .lektrus-board-geometry-identity small{display:none}
+ .lektrus-board-geometry-panel .lektrus-board-geometry-tabs button{font-size:9px}
+}
