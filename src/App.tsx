@@ -8679,7 +8679,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     title={singleSelected.graphPurpose==="geometry"?"Открыть большой редактор фигур":"Открыть настройки учебного объекта"}>
                     {singleSelected.graphPurpose==="geometry"?<LektrusGeometryToolIcon name="editor" size={17}/>:<Icon name="settings" size={15}/>}
                     <span>{singleSelected.graphPurpose==="geometry"?"Открыть редактор":"Настроить"}</span>
-                  </button}
+                  </button>}
                   {singleSelected.graphPurpose==="geometry"&&!isSolidFigure(singleSelected.graphFigureId)&&!isSchoolDiagramId(singleSelected.graphFigureId)&&
                     <button type="button" data-board-interactive="true"
                       className="lektrus-graph-inline-draw"
