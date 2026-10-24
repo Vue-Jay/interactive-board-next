@@ -21,7 +21,7 @@ export default function LektrusGeometryToolIcon({name,size=23}:{name:GeometryToo
   collapse:<><path d="M6 12h12"/></>,
   expand:<><path d="M6 12h12M12 6v12"/></>,
   close:<><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></>,
-  undo:<><path d="M9 8 4 12l5 4"/><path d="M4 12h9a6 6 0 0 1 0 12" transform="translate(0 -4)"/></>
+  undo:<><path d="M9 6 4 11l5 5M4 11h10a5 5 0 0 1 0 10"/></>
  };
  return <svg viewBox="0 0 24 24" width={size} height={size} className="lektrus-geometry-vector-icon"
    fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"
