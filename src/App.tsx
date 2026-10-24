@@ -8179,6 +8179,26 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     }));
                     setSelected([item.id]);
                   } : undefined} onRemovePoint={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/> }
+                {item.kind==="graph"&&canEdit&&!item.locked&&!structurallyLockedForStudent(item)&&
+                  !isSchoolDiagramId(item.graphFigureId)&&
+                  !item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&
+                  item.graphFigureId!=="lektrus-chart"&&
+                  <div className="lektrus-graph-board-actions" data-board-interactive="true"
+                    onPointerDown={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()}>
+                    <button type="button" title="Открыть настройки построения" aria-label="Настройки построения"
+                      onClick={e=>{e.preventDefault();e.stopPropagation();setTool("select");openGraphEditor(item)}}>
+                      <Icon name="settings" size={15}/><span>Настроить</span>
+                    </button>
+                    {(item.graphPurpose==="geometry"||item.graphFigureId==="free"||!!item.graphPolygons?.length)&&
+                      !isSolidFigure(item.graphFigureId)&&
+                      <button type="button" className={graphPointEditId===item.id?"is-active":""}
+                        aria-pressed={graphPointEditId===item.id}
+                        aria-label={graphPointEditId===item.id?"Закончить редактирование вершин":"Редактировать точки построения"}
+                        title={graphPointEditId===item.id?"Вернуться к перемещению фигуры":"Перемещать и добавлять точки"}
+                        onClick={e=>{e.preventDefault();e.stopPropagation();setTool("select");setSelected([item.id]);setGraphPointEditId(v=>v===item.id?null:item.id)}}>
+                        <Icon name="move" size={15}/><span>{graphPointEditId===item.id?"Готово":"Точки"}</span>
+                      </button>}
+                  </div>}
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
