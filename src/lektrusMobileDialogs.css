@@ -191,45 +191,10 @@
 /* Attendance: quiet typography, concise session rows and mobile-friendly scrolling. */
 .presence-visit-link{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 12px!important;margin:4px 0 7px;background:#edf4ff!important;color:#2459a4!important;border:1px solid #d8e7fc!important;border-radius:10px;font-size:12px;font-weight:750;cursor:pointer}
 .presence-visit-link span{font-size:15px;opacity:.75}
-.visit-history-backdrop{z-index:2400!important;padding:16px!important;display:flex;align-items:center;justify-content:center}
-.visit-history-modal{box-sizing:border-box;width:min(660px,100%);max-width:100%;max-height:min(87dvh,760px);display:flex;flex-direction:column;overflow:hidden;padding:0!important;background:#fff;border:1px solid #e0e9f6;border-radius:21px;box-shadow:0 25px 85px #1f3d6529}
-.visit-history-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:24px 24px 15px}
-.visit-history-header small{font-size:10px;letter-spacing:.12em;font-weight:800;color:#6284b4}
-.visit-history-header h2{margin:6px 0;font-size:23px;line-height:1.15;letter-spacing:-.035em;color:#1c3558}
-.visit-history-header p{margin:0;color:#8190a3;font-size:12px}
-.visit-history-header button{width:34px;height:34px;flex:none;border:1px solid #e4eaf3;border-radius:9px;background:#f8fafd;color:#4f6888;font-size:22px;cursor:pointer}
-.visit-history-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:0 24px 16px}
-.visit-history-overview>div{display:grid;gap:4px;padding:13px 14px;background:#f4f7fd;border-radius:12px;min-width:0}
-.visit-history-overview small{font-size:10px;color:#788da8}
-.visit-history-overview strong{font-size:21px;letter-spacing:-.04em;color:#244e8a}
-.visit-history-actions{padding:11px 24px;border-top:1px solid #edf1f7;border-bottom:1px solid #edf1f7;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#75869e}
-.visit-history-actions button{padding:7px 11px;background:#eef4ff;border-radius:9px;color:#3266b0;font-weight:700;cursor:pointer}
-.visit-history-list{padding:4px 24px 24px;overflow-y:auto;min-height:0;overscroll-behavior:contain}
-.visit-history-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #edf0f5}
-.visit-history-avatar{width:37px;height:37px;flex:none;display:grid;place-items:center;background:#e5edff;color:#3b63aa;font-size:14px;font-weight:800;border-radius:12px}
-.visit-history-info{display:grid;gap:3px;min-width:0;flex:1}
-.visit-history-info strong{font-size:13px;color:#243a5c;overflow-wrap:anywhere}
-.visit-history-info span{font-size:11px;color:#70839c}
-.visit-history-info small{font-size:10px;color:#9ba6b6}
-.visit-history-duration{display:grid;justify-items:end;gap:4px;flex:none}
-.visit-history-duration b{font-size:14px;color:#2f5b9d;font-variant-numeric:tabular-nums}
-.visit-history-duration span{font-size:10px;color:#909fb1}
-.visit-history-duration .visit-history-live{color:#278c64}
-.visit-history-empty,.visit-history-error{padding:25px 12px;text-align:center;color:#8090a5;font-size:12px}
-.visit-history-error{color:#a74a56}
-@media(max-width:600px){
- .visit-history-backdrop{padding:8px!important}
- .visit-history-modal{max-height:calc(100dvh - 18px);border-radius:15px}
- .visit-history-header{padding:17px 15px 12px}
- .visit-history-overview{gap:6px;padding:0 15px 13px}
- .visit-history-overview>div{padding:10px 8px}
- .visit-history-overview strong{font-size:17px}
- .visit-history-actions{padding:9px 15px}
- .visit-history-list{padding:0 15px 16px}
- .visit-history-row{gap:8px}
-}
-
-.student-visit-summary{padding:3px 0 12px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.student-visit-summary{display:grid;gap:8px;padding:3px 0 12px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.student-visit-summary>div{display:grid;gap:4px;min-width:0;background:#f4f7fd;border-radius:11px}
+.student-visit-summary small{font-size:10px;color:#788da8}
+.student-visit-summary strong{font-size:16px;letter-spacing:-.035em;color:#244e8a;line-height:1.2}
 .student-visit-summary>div{padding:11px}
 .student-visit-summary strong{font-size:16px;overflow-wrap:anywhere}
 .student-visits{display:grid;gap:7px;margin-bottom:20px}
