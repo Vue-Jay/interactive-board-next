@@ -368,8 +368,8 @@ assert.match(app,/let nearest:number\|null=null,best=radius\*radius/,
  "nearest real vertex wins when large mobile touch areas overlap");
 assert.match(app,/selectionContacts\.current\.size>1/,
  "two-finger navigation cancels point selection");
-assert.match(app,/onPointMoveEnd=\{selectedIds\.has\(item\.id\)/,
- "selected geometry permits direct vertex dragging on the board");
+assert.match(app,/onPointMoveEnd=\{boardGeometryMode\?\.id===item\.id&&selectedIds\.has\(item\.id\)/,
+ "vertex dragging is opt-in so ordinary object dragging remains available");
 assert.match(app,/if\(onPointMoveEnd\)setLiveVertex/,
  "local drag preview does not write remote history at every pointer step");
 assert.match(app,/onPointMoveEnd\(i,lastPosition\.x,lastPosition\.y\)/,
@@ -456,4 +456,17 @@ assert.match(boardPanel,/schoolActions\.map\(/,
  "school constructions are accessible directly on the board");
 assert.match(boardActions,/removeBoardGeometryElement/,
  "construction element removal is available on the board");
-console.log("Geometry construction regression checks: point placement, contour closing, nearest vertex, edit gestures and cancellation.");
+const geometryWorkspaceCss=read("src/lektrusGeometryWorkspace.css");
+assert.match(editor,/lektrus-geometry-workspace/,
+ "geometry uses an independently styled fullscreen studio");
+assert.match(editor,/lektrus-geometry-tool-rail/,
+ "geometry tools are always accessible to the left of the canvas");
+assert.match(editor,/canvasTool==="point"/,
+ "single touch point creation is distinct from vertex movement");
+assert.match(geometryWorkspaceCss,/grid-template-columns:72px minmax\(0,1fr\) minmax\(280px,315px\)/,
+ "the work area gets the large central canvas, not a small preview");
+assert.match(app,/setPendingMathItem\(item\);\s*setSelected\(\[\]\);setTool\("select"\);\s*openGraphEditor\(item\)/,
+ "new geometry remains pending until the large editor is saved");
+assert.match(app,/boardGeometryMode\?\.id===singleSelected\.id&&/,
+ "quick geometry panel does not appear when merely selecting a drawing");
+console.log("Geometry construction regression checks: fullscreen workspace, creation, edit gestures and cancellation.");
