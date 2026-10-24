@@ -1,4 +1,5 @@
 import type {GraphDraft} from "./LektrusGraphEditor";
+import {availableGeometryLabel} from "./lektrusGeometryPointNames";
 
 /** Geometrically valid school constructions. These work on the existing editable
  * points, lines, circles and polygons, so all results survive board persistence.
@@ -98,7 +99,7 @@ export function buildSchoolConstruction(original:GraphDraft,request:SchoolBuildR
   };
   const point=(x:number,y:number,label="")=>{
     const i=points.length;
-    points.push({x,y,label});return i;
+    points.push({x,y,label:label?availableGeometryLabel(points,label):""});return i;
   };
   const segment=(a:number,b:number,kind:"segment"|"line"|"ray"="segment")=>{
     segments.push({a,b,kind,label:"",measure:false});
