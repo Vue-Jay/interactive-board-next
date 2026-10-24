@@ -7908,7 +7908,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             stopEraserPreview();
           }}
           onClickCapture={(e)=>{
-            if(tool==="eraser"){e.preventDefault();e.stopPropagation();return;}
+            if(tool==="eraser"&&!(e.target as HTMLElement).closest("button,input,select,textarea,[data-board-interactive]")){
+              e.preventDefault();e.stopPropagation();return;
+            }
             // A synthetic click following pinch should not open an object editor,
             // but actual toolbar and embedded button taps must still work.
             if((e.target as HTMLElement).closest("button,input,select,textarea,[role='button'],[role='slider'],[data-board-interactive]"))return;
