@@ -12,7 +12,7 @@ function load(file, globals = {}) {
   }).outputText, { exports, ...globals });
   return exports;
 }
-const { documentFingerprint, isOwnRemoteRevision, remoteUpdateDecision } = load('boardSync');
+const { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } = load('boardSync');
 const document = { version: 1, title: 'Board', view: { x: 0, y: 0, zoom: 1 }, items: [] };
 
 test('own echo before RPC acknowledgement waits; afterwards it cannot reapply', () => {
@@ -27,6 +27,17 @@ test('unsaved edits and active drafts conflict; a clean viewer applies changes',
   assert.equal(remoteUpdateDecision(4, 5, false, false), 'apply');
   // Another tab/device using the same account is still an external change.
   assert.equal(remoteUpdateDecision(5, 6, false, false), 'apply');
+});
+
+test('changing local pan or zoom is not a collaborative document edit', () => {
+  const original={...document,items:[{id:'one',kind:'pen',points:[{x:1,y:1}]}]};
+  const anotherView={...original,view:{x:400,y:-200,zoom:3}};
+  assert.notEqual(documentFingerprint(original),documentFingerprint(anotherView));
+  assert.equal(sharedBoardFingerprint(original),sharedBoardFingerprint(anotherView));
+  assert.notEqual(sharedBoardFingerprint(original),
+    sharedBoardFingerprint({...anotherView,items:[...anotherView.items,{id:'two',kind:'pen'}]}));
+  assert.equal(remoteUpdateDecision(2,3,false,
+    sharedBoardFingerprint(original)!==sharedBoardFingerprint(anotherView)),'apply');
 });
 
 test('lost HTTP acknowledgement identifies own save without ignoring another device', () => {
