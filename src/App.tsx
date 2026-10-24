@@ -1544,7 +1544,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
           const rayControl=rayFigure&&seg.kind==="ray"&&i===0;
           const dimension=purpose==="geometry"&&seg.kind==="segment"&&seg.measure?
             formatGeometryMetric(geometryDistance(a,b))+" ед.":"";
-          const segmentText=seg.label||dimension;
+          const segmentText=dimension||seg.label;
           return <g key={`segment-${i}`}>
             {Array.from({length:seg.bondOrder??1},(_,bondIndex)=>{
               const ax=sx(start.x),ay=sy(start.y),bx=sx(end.x),by=sy(end.y);
