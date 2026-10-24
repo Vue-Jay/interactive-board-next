@@ -414,7 +414,7 @@ const toolShortLabel: Record<Tool, string> = {
 const primaryDesktopTools = new Set<Tool>(["select","lasso","pen","marker","eraser","connector","text","sticky","shape","media"]);
 type LectrisSavedLayout={id:string;name:string;mode:"standard"|"lesson"|"focus";pinned:Tool[];panels?:LectrisPanelLayout};
 const mobileToolGroups: { label:string; tools:Tool[] }[] = [
-  { label:"Навигация", tools:["select","lasso"] },
+  { label:"Навигация", tools:["select","hand","lasso"] },
   { label:"Рисование", tools:["pen","marker","eraser"] },
   { label:"Текст", tools:["text","sticky","frame"] },
   { label:"Фигуры", tools:["shape","connector"] },
@@ -2286,6 +2286,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [online,setOnline]=useState(()=>navigator.onLine);
   const [updateReady,setUpdateReady]=useState<ServiceWorkerRegistration|null>(null);
   const gesture = useRef<Gesture | null>(null);
+  const previousInteractionTool=useRef(tool);
   useEffect(()=>{const ready=(e:Event)=>{e.preventDefault();setInstallPrompt(e)};const installed=()=>{setInstallPrompt(null);setIsStandalone(true)};window.addEventListener("beforeinstallprompt",ready);window.addEventListener("appinstalled",installed);return()=>{window.removeEventListener("beforeinstallprompt",ready);window.removeEventListener("appinstalled",installed)}},[]);
   useEffect(()=>{const sync=()=>setOnline(navigator.onLine);const update=((e:Event)=>setUpdateReady((e as CustomEvent<{registration:ServiceWorkerRegistration}>).detail.registration)) as EventListener;window.addEventListener("online",sync);window.addEventListener("offline",sync);window.addEventListener("or-sw-update",update);return()=>{window.removeEventListener("online",sync);window.removeEventListener("offline",sync);window.removeEventListener("or-sw-update",update)}},[]);
   const applyUpdate=()=>{if(!updateReady?.waiting)return;window.dispatchEvent(new Event("lektrus:apply-update"));updateReady.waiting.postMessage({type:"SKIP_WAITING"})};
@@ -3402,11 +3403,28 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const touchStart=(e:PE<HTMLElement>)=>{
     if(e.pointerType!=="touch")return;
     if(touchPoints.current.has(e.pointerId))return;
+    // Android sometimes removes a captured object before pointerup reaches it.
+    // A new PRIMARY touch cannot belong to the abandoned multi-touch session.
+    if(e.isPrimary && touchPoints.current.size){
+      touchPoints.current.clear();
+      consumedTouchIds.current.clear();
+      pinchState.current=null;
+      pinchSelectionSnapshot.current=null;
+      if(eraserSession.current){eraserSession.current=null;stopEraserPreview();}
+      if(gesture.current)end(true);
+      setPanning(false);
+    }
     if(touchPoints.current.size===0)pinchSelectionSnapshot.current=[...selected];
     touchPoints.current.set(e.pointerId,local(e.clientX,e.clientY));
     if(touchPoints.current.size===2){
-      // Cancel any single-finger object edit before beginning a navigation gesture.
-      end(true);
+      // Two fingers always navigate. Discard an unfinished eraser preview
+      // before zooming; otherwise its pointer capture outlives the gesture.
+      if(eraserSession.current){
+        eraserSession.current=null;
+        stopEraserPreview();
+      }
+      // A pan keeps its current viewport; an object transform is cancelled.
+      end(gesture.current?.mode!=="pan");
       // The first touch may have selected an object before the second arrived.
       // Restore the selection that existed before the gesture began.
       setSelected(pinchSelectionSnapshot.current??[]);
@@ -3414,7 +3432,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       for(const id of touchPoints.current.keys())consumedTouchIds.current.add(id);
       const pts=[...touchPoints.current.values()];
       const center={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-      pinchState.current={distance:Math.max(1,Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y)),center,view:{...view}};
+      pinchState.current={distance:Math.max(1,Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y)),center,view:{...viewRef.current}};
       setPanning(true);
     }
   };
@@ -3523,6 +3541,26 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (board.current?.hasPointerCapture(g.pointer))
       board.current.releasePointerCapture(g.pointer);
   };
+  // Switching tools invalidates every in-flight gesture and capture.
+  // Never leave an object drag or pinch attached to the next tool.
+  useEffect(()=>{
+    if(previousInteractionTool.current===tool)return;
+    previousInteractionTool.current=tool;
+    end(true);
+    eraserSession.current=null;
+    stopEraserPreview();
+    touchPoints.current.clear();
+    consumedTouchIds.current.clear();
+    pinchState.current=null;
+    pinchSelectionSnapshot.current=null;
+    suppressTouchClickUntil.current=Date.now()+250;
+    rightPress.current=null;
+    setRightPointerActive(false);
+    setPanning(false);
+    setMarqueeRect(null);
+    setGuides({});
+    if(tool!=="select")setSelected([]);
+  },[tool]);
   const openBoardContextMenu = (clientX:number,clientY:number,domId?:string) => {
     finishEdit();
     const screen=local(clientX,clientY);
@@ -7194,7 +7232,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 <nav className="mobile-board-tools" aria-label="Основные инструменты">
           <div className="mobile-tool-cluster mobile-tool-cluster-navigation" aria-label="Навигация">
             {lectrisTouchDockTools.slice(0,1).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
-            <button type="button" className={tool==="hand"?"active":""} aria-label="Рука — перемещать доску одним пальцем" title="Рука" aria-pressed={tool==="hand"} onClick={()=>{finishEdit();setTool("hand");setMobileToolsOpen(false);setSelected([])}}><Icon name="hand" size={20}/></button>
+            <button type="button" data-lektrus-hand-tool="true" className={tool==="hand"?"active":""} aria-label="Рука — перемещать доску одним пальцем" title="Рука" aria-pressed={tool==="hand"} onClick={()=>{finishEdit();setTool("hand");setMobileToolsOpen(false);setSelected([])}}><Icon name="hand" size={20}/></button>
             {lectrisTouchDockTools.slice(1,2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <button key={id} type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
@@ -7213,7 +7251,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         </section>}
         <aside ref={adaptiveToolbarRef} className={`toolbar compact-toolbar ${desktopToolsExpanded?"expanded":""}`} aria-label="Инструменты">
           <div className="toolbar-pinned" aria-label="Основные инструменты">
-            {(["select","lasso","pen","marker","eraser"] as Tool[]).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} aria-label={t.label} title={toolShortLabel[id]} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setDesktopToolsExpanded(false)}}><Icon name={t.icon} size={19}/><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
+            {(["select","lasso",...(isCoarsePointer?["hand"]:[]),"pen","marker","eraser"] as Tool[]).map(id=>{const t=tools.find(x=>x.id===id)!;return <button key={id} aria-label={t.label} title={toolShortLabel[id]} className={`tool-button ${tool===id?"active":""}`} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setDesktopToolsExpanded(false)}}><Icon name={t.icon} size={19}/><span className="tool-tooltip">{toolShortLabel[id]}</span></button>})}
           </div>
           <span className="toolbar-section-line" aria-hidden="true"/>
           <div className="lektrus-desktop-sections" aria-label="Разделы инструментов">
@@ -7360,7 +7398,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const touchControl=(e.target as HTMLElement).closest(
               "button,input,select,textarea,[role='button'],[role='slider'],[contenteditable='true'],[data-board-interactive]"
             );
-            if(touchControl)return;
+            const boardHandle=(e.target as HTMLElement).closest(
+              "[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]"
+            );
+            if(touchControl && !boardHandle && tool!=="eraser")return;
             if(e.pointerType==="touch"){touchStart(e);if(pinchState.current){e.preventDefault();e.stopPropagation();return;}}
             // The phone/tablet hand always pans with ONE finger, including
             // over selected objects. Desktop still uses RMB/space to pan.
@@ -7400,9 +7441,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               return;
             }
             if(tool!=="eraser"||presentation||e.button!==0)return;
-            if(!canEdit){setNotice("У вас доступ только для просмотра");return;}
             e.preventDefault();e.stopPropagation();
-            if(gesture.current)end();
+            if(!canEdit){setNotice("У вас доступ только для просмотра");return;}
+            // Only ONE pointer owns an eraser stroke. A second finger starts
+            // pinch navigation instead of replacing the first brush session.
+            if(eraserSession.current||pinchState.current||touchPoints.current.size>1||
+               consumedTouchIds.current.has(e.pointerId))return;
+            if(gesture.current)end(true);
             const screen=local(e.clientX,e.clientY);
             const p=world(screen);
             eraserSession.current={pointer:e.pointerId,last:p,zoom:view.zoom,path:[p]};
@@ -7430,8 +7475,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setLiveEraserCursor(screen.x,screen.y);
           }}
           onPointerUpCapture={(e) => {
-            if(e.pointerType==="touch" && (pinchState.current || consumedTouchIds.current.has(e.pointerId))){
-              e.preventDefault();e.stopPropagation();touchEnd(e);return;
+            // Always retire the touch in capture phase. Some embedded objects
+            // stop propagation, so relying on the board's bubble pointerup
+            // leaves phantom fingers and makes every later touch a false pinch.
+            if(e.pointerType==="touch"){
+              const consumed=touchEnd(e);
+              if(consumed){e.preventDefault();e.stopPropagation();return;}
             }
             const right=rightPress.current;
             if(right?.pointer===e.pointerId){
@@ -7456,8 +7505,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             if(board.current?.hasPointerCapture(e.pointerId))board.current.releasePointerCapture(e.pointerId);
           }}
           onPointerCancelCapture={(e) => {
-            if(e.pointerType==="touch" && (pinchState.current || consumedTouchIds.current.has(e.pointerId))){
-              e.preventDefault();e.stopPropagation();touchEnd(e);return;
+            if(e.pointerType==="touch"){
+              const consumed=touchEnd(e);
+              if(consumed){e.preventDefault();e.stopPropagation();return;}
             }
             if(rightPress.current?.pointer===e.pointerId){
               rightPress.current=null;
@@ -7467,9 +7517,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             }
             if(eraserSession.current?.pointer!==e.pointerId)return;
             e.preventDefault();e.stopPropagation();
-            finishEraser(null);
+            // Pointer cancellation (e.g. a second finger) is not an erase.
+            eraserSession.current=null;
+            stopEraserPreview();
           }}
           onClickCapture={(e)=>{
+            if(tool==="eraser"){e.preventDefault();e.stopPropagation();return;}
             // A synthetic click following pinch should not open an object editor,
             // but actual toolbar and embedded button taps must still work.
             if((e.target as HTMLElement).closest("button,input,select,textarea,[role='button'],[role='slider'],[data-board-interactive]"))return;
@@ -7519,14 +7572,21 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           onPointerEnter={(e) => { if(tool==="pen"||tool==="marker")moveInkCursor(e.clientX,e.clientY,e.pointerType); if (tool === "eraser") { const p=local(e.clientX,e.clientY);setLiveEraserCursor(p.x,p.y); } }}
           onPointerLeave={() => { if(inkCursorElement.current)inkCursorElement.current.style.visibility="hidden"; if(!eraserSession.current && eraserCursorElement.current)eraserCursorElement.current.style.visibility="hidden"; }}
           onPointerUp={(e) => {
-            if(touchEnd(e))return;
+            if(e.pointerType==="touch"&&touchEnd(e))return;
             if (e.pointerId === gesture.current?.pointer) {
               move(e);
               end();
             }
           }}
-          onPointerCancel={(e) => { if(touchEnd(e))return; if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} end(true); }}
-          onLostPointerCapture={() => { if(eraserSession.current)finishEraser(null);else end(true); }}
+          onPointerCancel={(e) => { if(e.pointerType==="touch"&&touchEnd(e))return; if(rightPress.current?.pointer===e.pointerId){rightPress.current=null;setRightPointerActive(false)} if(gesture.current?.pointer===e.pointerId)end(true); }}
+          onLostPointerCapture={(e) => {
+            // Releasing a previous object's capture must not cancel a NEW
+            // gesture. Only the owner of the lost capture can be cleared.
+            if(eraserSession.current?.pointer===e.pointerId){
+              eraserSession.current=null;stopEraserPreview();
+            }else if(gesture.current?.pointer===e.pointerId)end(true);
+            if(e.pointerType==="touch")touchEnd(e);
+          }}
         >
           {isAppAdmin && (showInkDiagnostics || showBoardDiagnostics || showPerformanceDiagnostics) && <div style={{position:"absolute",right:12,top:12,zIndex:2400,background:"rgba(20,23,33,.85)",color:"#fff",padding:"7px 10px",borderRadius:8,fontSize:11,pointerEvents:"none",maxWidth:"min(90vw,480px)"}}>
             {showInkDiagnostics && <div>Штрихи: {inkDiagnostics}</div>}
