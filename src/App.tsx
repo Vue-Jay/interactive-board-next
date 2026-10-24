@@ -51,7 +51,7 @@ import {useAdaptiveBoardToolbar} from "./useAdaptiveBoardToolbar";
 import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
 import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
-import { LectrisQuickProperties, LectrisObjectInspector, INK_WIDTHS } from "./LectrisObjectEditor";
+import { LectrisQuickProperties, LectrisObjectInspector, InkWidthSample, INK_WIDTHS } from "./LectrisObjectEditor";
 import LektrusColorPicker from "./LektrusColorPicker";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
 import LectrisPanelSettings from "./LectrisPanelSettings";
@@ -7311,8 +7311,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 return <button key={size} type="button" aria-pressed={nearest===index}
                   aria-label={["Очень тонкий","Тонкий","Средний","Толстый","Очень толстый"][index]+" штрих, "+size+" пикселей"}
                   onClick={()=>tool==="eraser"?setEraserSize(size):tool==="marker"?setMarkerWeight(size):setWeight(size)}>
-                  <span className="lektrus-direct-ink-sample" style={{height:Math.max(1,Math.min(13,size/3)),
-                    background:tool==="eraser"?"#64748b":tool==="marker"?markerColor:penColor}}/>
+                  <InkWidthSample tool={tool} size={size}
+                    color={tool==="marker"?markerColor:penColor}/>
                 </button>;
               })}
             </div>
