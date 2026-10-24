@@ -3,12 +3,26 @@ import {readFileSync} from "node:fs";
 import ts from "typescript";
 
 const read=(file)=>readFileSync(new URL("../"+file,import.meta.url),"utf8");
+// Resolve local TS imports explicitly: data: module URLs cannot resolve ./ paths.
+const tsCache=new Map();
 async function loadTs(file){
+  if(tsCache.has(file))return tsCache.get(file);
   const javascript=ts.transpileModule(read(file),{
-    compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}
+    compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
   }).outputText;
-  return import("data:text/javascript;base64,"+Buffer.from(javascript).toString("base64"));
+  const exports={};
+  const dirname=file.slice(0,file.lastIndexOf("/")+1);
+  const require=(specifier)=>{
+    const local=dirname+specifier.replace(/^\.\//,"");
+    if(!specifier.startsWith("./"))throw Error("Unexpected module "+specifier);
+    if(tsCache.has(local+".ts"))return tsCache.get(local+".ts");
+    throw Error("Load dependency first: "+local);
+  };
+  new Function("exports","require",javascript)(exports,require);
+  tsCache.set(file,exports);
+  return exports;
 }
+await loadTs("src/lektrusGeometryPointNames.ts");
 
 const {mathPresets,makeMathPresetItem}=await loadTs("src/lektrusMathPresets.ts");
 const {isSolidFigure,solidWorldPoints,projectSolid}=await loadTs("src/lektrusSolid3d.ts");
