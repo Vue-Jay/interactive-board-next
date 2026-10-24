@@ -1401,7 +1401,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           freePointGesture.current?.cancel();
         }
       }}
-      onDoubleClick={e=>{if(purpose==="geometry"){e.preventDefault();e.stopPropagation();return;}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
+      onDoubleClick={e=>{if(purpose==="geometry"){if((e.target as Element).closest(".graph-point")){e.preventDefault();e.stopPropagation()}return;}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
       {(onPickPoint||onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free")&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
@@ -1729,7 +1729,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         const picked=pickedPoints?.includes(i)??false;
         return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""} ${selectable?"lektrus-link-pickable":""} ${picked?"lektrus-link-picked":""}`} key={i}
         onDoubleClick={onRemovePoint&&purpose==="geometry"?(e)=>{e.preventDefault();e.stopPropagation();if(Date.now()>ignoreNativeDoubleClickUntil.current)onRemovePoint(i);ignoreNativeDoubleClickUntil.current=0}:undefined}
-        onPointerDown={movable||closesHere||selectable?(e)=>{
+        onPointerDown={movable||closesHere||selectable||!!onRemovePoint?(e)=>{
           if(e.button!==0||!e.isPrimary||
             (item.graphFigureId==="free"||selectable||onPointMoveEnd)&&freeContacts.current.size>1)return;
           e.preventDefault();e.stopPropagation();
@@ -1791,7 +1791,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         }:undefined}>
         {closesHere&&<circle className="lektrus-free-close-ring" cx={sx(p.x)} cy={sy(p.y)} r="14" pointerEvents="none"/>}
         {picked&&<circle className="lektrus-link-picked-ring" cx={sx(p.x)} cy={sy(p.y)} r="16" pointerEvents="none"/>}
-        {(movable||closesHere||selectable)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r={selectable?(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?27:17):item.graphFigureId==="free"?(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?26:16):(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?23:14)}/>}
+        {(movable||closesHere||selectable||onRemovePoint)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r={selectable?(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?27:17):item.graphFigureId==="free"?(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?26:16):(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?23:14)}/>}
         {closesHere&&<title>Коснитесь, чтобы замкнуть фигуру. Перетащите, чтобы переместить точку.</title>}
         {selectable&&<title>Выбрать точку {p.label||i+1} для построения</title>}
         {!((item.graphFigureId??"").startsWith("physics-")&&
@@ -8196,7 +8196,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                         ? "transparent"
                         : "#fff",
                 }}
-                onDoubleClick={() => {
+                onDoubleClick={(event) => {
+                  if(item.kind==="graph"&&item.graphPurpose==="geometry"&&
+                     (event.target as Element).closest?.(".graph-point"))return;
                   if (!canEdit || (structurallyLockedForStudent(item)&&item.graphFigureId!=="contour-atlas")) return;
                   const remoteEditor = remoteEditorFor(item.id);
                   if (remoteEditor) {
@@ -8222,7 +8224,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     openChecklistEditor(item);
                   } else if ((tool === "select" || tool==="hand") && !space && item.kind==="graph" && item.graphFigureId==="contour-atlas") {
                     setSelected([item.id]);setSchoolEditorItem(item);
-} else if (tool === "select" && !space && !item.locked && item.kind === "graph") { setSelected([item.id]);
+} else if (tool === "select" && !space && !item.locked && item.kind === "graph") {
+                    setSelected([item.id]);
+                    if(item.graphPurpose==="geometry")openGraphEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); setFractionEditorId(item.id);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "quiz") {
                     setSelected([item.id]);
@@ -8324,7 +8328,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onPickPoint={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&activeBoardGeometryMode(item)!=="move"?(index)=>selectBoardGeometryPoint(item,index):undefined}
                   onCreateAndPickPoint={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&activeBoardGeometryMode(item)!=="move"?(x,y)=>tapBoardGeometryBlank(item,x,y):undefined}
                   pickedPoints={boardGeometryMode?.id===item.id?boardGeometryMode.selected:[]}
-                  onRemovePoint={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&activeBoardGeometryMode(item)==="move"&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId)?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);setBoardGeometryError("");} : undefined}/> }
+                  onRemovePoint={selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);setBoardGeometryError("");} : undefined}/> }
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
@@ -8623,10 +8627,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     <Icon name="settings" size={15}/><span>{singleSelected.graphPurpose==="geometry"?"Построение":"Настроить"}</span>
                   </button>
                   {singleSelected.graphPurpose==="geometry"&&!isSolidFigure(singleSelected.graphFigureId)&&!isSchoolDiagramId(singleSelected.graphFigureId)&&
-                    <button type="button" data-board-interactive="true" title="Инструменты построения доступны справа на доске"
+                    <button type="button" data-board-interactive="true" title="Построение по точкам прямо на доске"
                       onPointerDown={e=>e.stopPropagation()}
                       onClick={e=>{e.preventDefault();e.stopPropagation();if(boardGeometryMode?.id===singleSelected.id){setBoardGeometryMode(null);setBoardGeometryError("")}else changeBoardGeometryMode(singleSelected,"move")}}>
-                      <Icon name="select" size={15}/><span>{boardGeometryMode?.id===singleSelected.id?"Свернуть":"Быстро"}</span>
+                      <Icon name="select" size={15}/><span>{boardGeometryMode?.id===singleSelected.id?"Скрыть":"По точкам"}</span>
                     </button>}
                 </span>)}
               {singleSelected?.kind === "formula" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
