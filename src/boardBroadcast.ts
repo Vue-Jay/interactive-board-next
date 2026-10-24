@@ -69,15 +69,35 @@ export function connectBoardCursorChannel(
   const report = (status: string) => onDiagnostics?.(`${status} · вызов ${attemptedInkCount} · блок ${blockedInkCount} · отправлено ${sentInkCount} · сервер ${acknowledged} · эхо ${echoInkCount} · получено ${receivedInkCount}`);
   const minInterval = 45;
   let lastInkSent = 0;
-  let pendingInk: Omit<LiveInkMessage, "userId" | "clientId"> | null = null;
+  type OutgoingInk = Omit<LiveInkMessage, "userId" | "clientId">;
+  // A single throttled slot can overwrite the FINAL packet for stroke A
+  // when stroke B starts immediately afterwards. Keep completed strokes
+  // separately so short handwritten letters never disappear on peers.
+  const completedInk = new Map<string, OutgoingInk>();
+  let pendingInk: OutgoingInk | null = null;
   let inkTimer: ReturnType<typeof setTimeout> | undefined;
   const sendInkNow = () => {
     clearTimeout(inkTimer); inkTimer = undefined;
-    if (!ready || !pendingInk || !publishInkSelf) return;
-    const ink = pendingInk; pendingInk = null;
-    const ref = String(++sequence);
-    if (rawSend("broadcast", {type:"broadcast",event:"live_ink",payload:{...ink,userId:me.userId,clientId}}, topic, ref)) { lastInkSent = Date.now(); sentInkCount++; pendingAcks.add(ref); if(sentInkCount===1 || sentInkCount%25===0) report("подключено"); }
-    else pendingInk = ink;
+    if (!ready || !publishInkSelf) return;
+    const sendPacket = (ink: OutgoingInk) => {
+      const ref = String(++sequence);
+      if (!rawSend("broadcast", {type:"broadcast",event:"live_ink",payload:{...ink,userId:me.userId,clientId}}, topic, ref)) return false;
+      lastInkSent = Date.now();
+      sentInkCount++;
+      pendingAcks.add(ref);
+      if(sentInkCount===1 || sentInkCount%25===0) report("подключено");
+      return true;
+    };
+    // Flush every completed stroke even when a reconnect or several very
+    // quick pen gestures coalesced all their intermediate preview messages.
+    for (const [id, ink] of completedInk) {
+      if (!sendPacket(ink)) return;
+      completedInk.delete(id);
+    }
+    if (pendingInk) {
+      const ink = pendingInk;
+      if (sendPacket(ink)) pendingInk = null;
+    }
   };
 
   const active = () => !stopped && socket?.readyState === WebSocket.OPEN;
@@ -405,8 +425,17 @@ export function connectBoardCursorChannel(
     if (stopped || !publishInkSelf) { blockedInkCount++; report(stopped ? "канал закрыт" : "отправка запрещена"); return; }
     if (!ready) { blockedInkCount++; report("ожидание подписки"); }
     if (attemptedInkCount === 1 || attemptedInkCount % 25 === 0) report(ready ? "подключено" : "ожидание подписки");
-    pendingInk = {...ink,points:ink.points.slice(-500)};
-    if (ink.finished || Date.now()-lastInkSent >= 45) sendInkNow();
+    const packet={...ink,points:ink.points.slice(-500)};
+    if (ink.finished) {
+      completedInk.set(ink.id, packet);
+      if (pendingInk?.id===ink.id) pendingInk=null;
+      sendInkNow();
+      return;
+    }
+    // Never let an older in-progress packet supersede an already queued final.
+    if (completedInk.has(ink.id)) return;
+    pendingInk=packet;
+    if (Date.now()-lastInkSent >= 45) sendInkNow();
     else if (!inkTimer) inkTimer = setTimeout(sendInkNow,45-(Date.now()-lastInkSent));
   };
 
