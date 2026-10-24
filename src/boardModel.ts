@@ -407,6 +407,7 @@ export type Item = {
   graphMidpoints?: { a:number; b:number; label:string; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphConstraints?: import("./lektrusGeometryConstraints").GeometryConstraint[];
   graphMagneticSnap?: boolean;
+  graphFreePathStart?:number;
   graphSnap?: boolean;
   graphAxisLabels?: boolean;
   graphGridStep?: number;
@@ -481,7 +482,7 @@ const persistedGraphKeys = [
   "graphGrid","graphPoints","graphShowLabels","graphSegments","graphAngles",
   "graphCircles","graphPolygons","graphTriangleLines","graphTriangleVertex",
   "graphShowArea","graphGivenSides","graphGivenAngles","graphTriangleInputMode",
-  "graphMidpoints","graphSnap","graphConstraints","graphMagneticSnap","graphAxisLabels","graphGridStep",
+  "graphMidpoints","graphSnap","graphConstraints","graphMagneticSnap","graphFreePathStart","graphAxisLabels","graphGridStep",
   "graphShowCurve","graphProjections"
 ] as const satisfies readonly (keyof Item)[];
 function persistedGraphData(item:Item):Partial<Item>{
