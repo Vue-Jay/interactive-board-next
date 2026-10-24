@@ -1166,6 +1166,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
   const freeContacts=useRef(new Set<number>());
   const freePointGesture=useRef<{cancel:()=>void}|null>(null);
   const selectionTap=useRef<{id:number;x:number;y:number;index:number|null;cancelled:boolean}|null>(null);
+  const selectionContacts=useRef(new Set<number>());
   const orbitX=liveSpin?.[0]??item.graphRotationX??25;
   const orbitY=liveSpin?.[1]??item.graphRotationY??-35;
   const solid=isSolidFigure(item.graphFigureId);
@@ -1303,6 +1304,11 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onPointerDownCapture={event=>{
         if(onPickPoint){
+          selectionContacts.current.add(event.pointerId);
+          if(selectionContacts.current.size>1){
+            if(selectionTap.current)selectionTap.current.cancelled=true;
+            event.stopPropagation();return;
+          }
           const target=event.target as SVGElement;
           if(target.closest?.(".lektrus-diagram-grid-toggle"))return;
           if(event.button!==0)return;
@@ -1333,7 +1339,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
         if(onPickPoint&&selectionTap.current?.id===event.pointerId){
           const tap=selectionTap.current;selectionTap.current=null;
           const stayed=Math.hypot(event.clientX-tap.x,event.clientY-tap.y)<=(event.pointerType==="touch"?16:9);
-          if(stayed&&!tap.cancelled&&freeContacts.current.size<=1){
+          if(stayed&&!tap.cancelled&&selectionContacts.current.size<=1){
             event.preventDefault();event.stopPropagation();
             if(tap.index!==null)onPickPoint(tap.index);
             else if(onCreateAndPickPoint){
@@ -1342,11 +1348,13 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
             }
           }
         }
+        selectionContacts.current.delete(event.pointerId);
         if((onPickPoint||item.graphFigureId==="free"&&onAddPoint)&&event.pointerType!=="mouse")
           freeContacts.current.delete(event.pointerId);
       }}
       onPointerCancelCapture={event=>{
         if(selectionTap.current?.id===event.pointerId)selectionTap.current=null;
+        selectionContacts.current.delete(event.pointerId);
         if((onPickPoint||item.graphFigureId==="free"&&onAddPoint)&&event.pointerType!=="mouse"){
           freeContacts.current.delete(event.pointerId);
           if(freeTap.current?.id===event.pointerId)freeTap.current=null;
