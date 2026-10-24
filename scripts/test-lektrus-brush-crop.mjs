@@ -48,7 +48,12 @@ for(const invalid of [
 const app=fs.readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
 assert.ok(app.includes("placeImageCrop(current,crop)"));
 assert.ok(app.includes('className="inline-image-crop" style={originalBounds}'));
-assert.ok(app.includes("imageCrop:crop")===false||app.includes("placeImageCrop(current,crop)"));
+assert.ok(app.includes("placeImageCrop(current,crop)"));
+assert.ok(app.includes("crop.x*img.naturalWidth"),
+ "PNG export must honor the persisted crop without losing source pixels");
+const preview=fs.readFileSync(new URL("../src/boardPreview.ts",import.meta.url),"utf8");
+assert.ok(preview.includes("c.x*bitmap.width")&&preview.includes("c.width*bitmap.width"),
+ "Gallery thumbnails must also show the selected crop");
 assert.ok(!app.includes("await putAsset(assetId,blob,boardSummary.id)"),
  "Applying an image crop must never upload a destructive clipped image");
 assert.ok(app.includes("previous.item.imageCrop?.width === next.item.imageCrop?.width"),
