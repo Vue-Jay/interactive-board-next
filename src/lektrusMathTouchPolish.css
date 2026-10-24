@@ -290,3 +290,14 @@
 .lektrus-graph-canvas.is-linking .graph-point{
  cursor:crosshair!important;
 }
+
+
+/* Obvious first step instead of hunting for a hidden free-construction preset. */
+.lektrus-graph-dialog .lektrus-start-free-drawing{
+ width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:5px;
+ min-height:61px;padding:12px 14px;border:1px solid #b4cfef;border-radius:12px;
+ background:#eaf3ff;color:#205ba2;text-align:left;cursor:pointer;
+}
+.lektrus-start-free-drawing strong{font-size:14px}
+.lektrus-start-free-drawing small{font-size:11px;line-height:1.4;color:#5478a5}
+.lektrus-graph-dialog .lektrus-start-free-drawing:hover{background:#e2efff;border-color:#74a6e7}
