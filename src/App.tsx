@@ -8678,17 +8678,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     onClick={e=>{e.preventDefault();e.stopPropagation();setGraphPointEditId(null);openGraphEditor(singleSelected)}}
                     title={singleSelected.graphPurpose==="geometry"?"Открыть большой редактор фигур":"Открыть настройки учебного объекта"}>
                     {singleSelected.graphPurpose==="geometry"?<LektrusGeometryToolIcon name="editor" size={17}/>:<Icon name="settings" size={15}/>}
-                    <span>{singleSelected.graphPurpose==="geometry"?"Редактор":"Настроить"}</span>
+                    <span>{singleSelected.graphPurpose==="geometry"?"Открыть редактор":"Настроить"}</span>
                   </button>
                   {singleSelected.graphPurpose==="geometry"&&!isSolidFigure(singleSelected.graphFigureId)&&!isSchoolDiagramId(singleSelected.graphFigureId)&&
                     <button type="button" data-board-interactive="true"
                       className="lektrus-graph-inline-draw"
-                      title={boardGeometryMode?.id===singleSelected.id?"Закрыть инструменты черчения":"Черчение прямо на доске"}
-                      aria-label={boardGeometryMode?.id===singleSelected.id?"Закрыть инструменты черчения":"Включить черчение на доске"}
+                      title={boardGeometryMode?.id===singleSelected.id?"Завершить построение на доске":"Построить прямо на доске"}
+                      aria-label={boardGeometryMode?.id===singleSelected.id?"Выключить построение на доске":"Включить построение на доске"}
                       aria-pressed={boardGeometryMode?.id===singleSelected.id}
                       onPointerDown={e=>e.stopPropagation()}
                       onClick={e=>{e.preventDefault();e.stopPropagation();if(boardGeometryMode?.id===singleSelected.id){setBoardGeometryMode(null);setBoardGeometryError("")}else changeBoardGeometryMode(singleSelected,"move")}}>
-                      <LektrusGeometryToolIcon name="point" size={17}/><span>{boardGeometryMode?.id===singleSelected.id?"Закрыть":"Черчение"}</span>
+                      <LektrusGeometryToolIcon name="polygon" size={17}/><span>Построение</span>
                     </button>}
                 </span>)}
               {singleSelected?.kind === "formula" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
