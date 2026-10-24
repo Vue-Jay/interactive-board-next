@@ -29,4 +29,26 @@ assert.match(styles,/\.lektrus-collection-gallery\.is-list/);
 assert.match(styles,/@media\(max-width:700px\)/);
 assert.match(read("src/lectrisV3.css"),/\.lectris-hub-hero-compact/,"compact home must remain");
 assert.match(app,/saveRemoteBoardDocument/,"board save must remain present");
+// A mobile soft keyboard must not move/remount or blur login inputs when the
+// user clears their email/password or touches a field for the first time.
+const mobileAuth=read("src/lektrusMobileDialogs.css");
+assert.match(mobileAuth,/\.auth-shell\s*\{\s*display:flex;/,
+  "On mobile the auth form must be top-anchored, not centered in a resizing 100dvh grid");
+assert.match(mobileAuth,/min-height:100svh/,
+  "Authentication screen must not rely on the keyboard-driven dynamic viewport height");
+assert.match(mobileAuth,/\.auth-field input\s*\{\s*font-size:16px;/,
+  "16px inputs prevent mobile Safari from zooming on initial keyboard focus");
+assert.match(auth,/onFocus=\{fieldFocused\} onBlur=\{fieldBlurred\}/);
+assert.match(auth,/onChange=\{e=>fieldEdited\(e\.target\.value,setEmail\)\}/);
+assert.match(auth,/onChange=\{e=>fieldEdited\(e\.target\.value,setPassword\)\}/);
+assert.match(auth,/if\(event\.relatedTarget\)return;/,
+  "Moving intentionally between fields must never steal back focus");
+assert.match(auth,/active!==target/,
+  "Touching a different login field is not accidental blur");
+assert.match(auth,/document\.activeElement!==document\.body/,
+  "Only restore focus when another control has not taken it");
+assert.match(auth,/input\.focus\(\{preventScroll:true\}\)/);
+assert.ok(!auth.includes('key={email}')&&!auth.includes('key={password}'),
+  "Field DOM nodes must stay mounted when their values are cleared");
+
 console.log("Lektrus UI: correct visible brand, searchable categories, gallery modes and responsive styles.");
