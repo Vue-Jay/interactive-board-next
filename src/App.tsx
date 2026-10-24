@@ -833,13 +833,19 @@ const Media = memo(function Media({ item, boardId }: { item: Item; boardId: stri
     };
   }, [nearViewport, item.assetId, boardId]);
 
+  const crop=item.kind==="image"?item.imageCrop:undefined;
+  const imageStyle:CSSProperties|undefined=crop?{
+    position:"absolute",objectFit:"fill",
+    width:`${100/crop.width}%`,height:`${100/crop.height}%`,
+    left:`${-100*crop.x/crop.width}%`,top:`${-100*crop.y/crop.height}%`
+  }:undefined;
   return <div ref={hostRef} className="media-host">
     {!nearViewport
       ? <div className="media-missing">Вложение</div>
       : !src
         ? <div className="media-missing">Загрузка…</div>
         : item.kind === "image"
-          ? <img className="media-image" src={src} alt={item.name??"Изображение"} loading="lazy" decoding="async"/>
+          ? <img className="media-image" style={imageStyle} src={src} alt={item.name??"Изображение"} loading="lazy" decoding="async"/>
           : <iframe
               key={`${item.assetId}-${item.pdfPage ?? 1}`}
               className="media-pdf"
@@ -853,79 +859,95 @@ const Media = memo(function Media({ item, boardId }: { item: Item; boardId: stri
   previous.item.assetId === next.item.assetId &&
   previous.item.kind === next.item.kind &&
   previous.item.name === next.item.name &&
+  previous.item.imageCrop?.x === next.item.imageCrop?.x &&
+  previous.item.imageCrop?.y === next.item.imageCrop?.y &&
+  previous.item.imageCrop?.width === next.item.imageCrop?.width &&
+  previous.item.imageCrop?.height === next.item.imageCrop?.height &&
   previous.item.pdfPage === next.item.pdfPage
 );
 type CropRect = { x: number; y: number; width: number; height: number };
 type CropHandle = "move" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
-function InlineImageCrop({ item, boardId, onApply, registerApply }: { item: Item; boardId: string; onApply: (blob: Blob, crop: CropRect, width: number, height: number) => Promise<void> | void; registerApply: (apply: (() => Promise<void>) | null) => void }) {
-  const [src, setSrc] = useState("");
-  const [natural, setNatural] = useState({ width: 1, height: 1 });
-  const [crop, setCrop] = useState<CropRect>({ x: 0, y: 0, width: 1, height: 1 });
-  const imageRef = useRef<HTMLImageElement>(null);
-  const dragRef = useRef<{ mode: CropHandle; startX: number; startY: number; crop: CropRect; box: DOMRect } | null>(null);
-  useEffect(() => {
-    let url = "", alive = true;
-    if (!item.assetId) return;
-    void getAsset(item.assetId, boardId).then((blob) => {
-      if (!blob || !alive) return;
-      url = URL.createObjectURL(blob);
+function InlineImageCrop({ item, boardId, onApply, registerApply }: {
+  item: Item; boardId: string;
+  onApply: (crop: CropRect) => Promise<void> | void;
+  registerApply: (apply: (() => Promise<void>) | null) => void;
+}) {
+  // This editor always works in ORIGINAL image coordinates, even after multiple
+  // crops. The hidden pixels remain inside the original asset, not deleted.
+  const original=item.imageCrop??{x:0,y:0,width:1,height:1};
+  const [src,setSrc]=useState("");
+  const [crop,setCrop]=useState<CropRect>(()=>({...original}));
+  const dragRef=useRef<{mode:CropHandle;startX:number;startY:number;crop:CropRect;box:DOMRect}|null>(null);
+  useEffect(()=>{
+    let url="",alive=true;
+    if(!item.assetId)return;
+    void getAsset(item.assetId,boardId).then(blob=>{
+      if(!blob||!alive)return;
+      url=URL.createObjectURL(blob);
       setSrc(url);
-    });
-    return () => { alive = false; if (url) URL.revokeObjectURL(url); };
-  }, [item.assetId, boardId]);
-  const begin = (mode: CropHandle) => (event: React.PointerEvent<HTMLElement>) => {
-    const box = event.currentTarget.closest<HTMLElement>(".inline-image-crop")?.getBoundingClientRect();
-    if (!box) return;
-    event.preventDefault(); event.stopPropagation();
+    }).catch(()=>{});
+    return ()=>{alive=false;if(url)URL.revokeObjectURL(url)};
+  },[item.assetId,boardId]);
+  const begin=(mode:CropHandle)=>(event:React.PointerEvent<HTMLElement>)=>{
+    const box=event.currentTarget.closest<HTMLElement>(".inline-image-crop")?.getBoundingClientRect();
+    if(!box)return;
+    event.preventDefault();event.stopPropagation();
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    dragRef.current = { mode, startX: event.clientX, startY: event.clientY, crop: { ...crop }, box };
+    dragRef.current={mode,startX:event.clientX,startY:event.clientY,crop:{...crop},box};
   };
-  const moveCrop = (event: React.PointerEvent<HTMLElement>) => {
-    const drag = dragRef.current; if (!drag) return;
-    event.preventDefault(); event.stopPropagation();
-    const dx = (event.clientX - drag.startX) / Math.max(1, drag.box.width);
-    const dy = (event.clientY - drag.startY) / Math.max(1, drag.box.height);
-    const min = Math.min(.16, Math.max(.035, 28 / Math.max(80, Math.min(drag.box.width, drag.box.height))));
-    let { x, y, width, height } = drag.crop;
-    if (drag.mode === "move") {
-      x = Math.max(0, Math.min(1 - width, x + dx));
-      y = Math.max(0, Math.min(1 - height, y + dy));
-    } else {
-      let left = x, top = y, right = x + width, bottom = y + height;
-      if (drag.mode.includes("w")) left = Math.max(0, Math.min(right - min, left + dx));
-      if (drag.mode.includes("e")) right = Math.min(1, Math.max(left + min, right + dx));
-      if (drag.mode.includes("n")) top = Math.max(0, Math.min(bottom - min, top + dy));
-      if (drag.mode.includes("s")) bottom = Math.min(1, Math.max(top + min, bottom + dy));
-      x = left; y = top; width = right - left; height = bottom - top;
+  const moveCrop=(event:React.PointerEvent<HTMLElement>)=>{
+    const drag=dragRef.current;if(!drag)return;
+    event.preventDefault();event.stopPropagation();
+    const dx=(event.clientX-drag.startX)/Math.max(1,drag.box.width);
+    const dy=(event.clientY-drag.startY)/Math.max(1,drag.box.height);
+    const min=Math.min(.16,Math.max(.035,28/Math.max(80,Math.min(drag.box.width,drag.box.height))));
+    let {x,y,width,height}=drag.crop;
+    if(drag.mode==="move"){
+      x=Math.max(0,Math.min(1-width,x+dx));
+      y=Math.max(0,Math.min(1-height,y+dy));
+    }else{
+      let left=x,top=y,right=x+width,bottom=y+height;
+      if(drag.mode.includes("w"))left=Math.max(0,Math.min(right-min,left+dx));
+      if(drag.mode.includes("e"))right=Math.min(1,Math.max(left+min,right+dx));
+      if(drag.mode.includes("n"))top=Math.max(0,Math.min(bottom-min,top+dy));
+      if(drag.mode.includes("s"))bottom=Math.min(1,Math.max(top+min,bottom+dy));
+      x=left;y=top;width=right-left;height=bottom-top;
     }
-    setCrop({ x, y, width, height });
+    setCrop({x,y,width,height});
   };
-  const finish = (event: React.PointerEvent<HTMLElement>) => { event.stopPropagation(); dragRef.current = null; };
-  const apply = async () => {
-    const image = imageRef.current;
-    if (!image || !src) return;
-    const sx = Math.max(0, Math.min(natural.width - 1, Math.round(crop.x * natural.width)));
-    const sy = Math.max(0, Math.min(natural.height - 1, Math.round(crop.y * natural.height)));
-    const sw = Math.max(1, Math.min(natural.width - sx, Math.round(crop.width * natural.width)));
-    const sh = Math.max(1, Math.min(natural.height - sy, Math.round(crop.height * natural.height)));
-    const canvas = document.createElement("canvas"); canvas.width = sw; canvas.height = sh;
-    const ctx = canvas.getContext("2d"); if (!ctx) return;
-    ctx.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
-    const type = item.mime === "image/jpeg" ? "image/jpeg" : "image/png";
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, .95));
-    if (blob) await onApply(blob, crop, sw, sh);
+  const finish=(event:React.PointerEvent<HTMLElement>)=>{
+    event.stopPropagation();dragRef.current=null;
   };
-  useEffect(() => { registerApply(apply); return () => registerApply(null); }, [crop, src, natural.width, natural.height, item.assetId]);
-  const shadeTop = { left: 0, top: 0, width: "100%", height: `${crop.y * 100}%` };
-  const shadeBottom = { left: 0, top: `${(crop.y + crop.height) * 100}%`, width: "100%", bottom: 0 };
-  const shadeLeft = { left: 0, top: `${crop.y * 100}%`, width: `${crop.x * 100}%`, height: `${crop.height * 100}%` };
-  const shadeRight = { left: `${(crop.x + crop.width) * 100}%`, top: `${crop.y * 100}%`, right: 0, height: `${crop.height * 100}%` };
-  return <div className="inline-image-crop" onPointerDown={(e)=>{e.preventDefault();e.stopPropagation()}} onPointerMove={moveCrop} onPointerUp={finish} onPointerCancel={finish}>
-    {src && <img ref={imageRef} className="inline-image-crop-source" src={src} alt="" draggable={false} onLoad={(e)=>setNatural({width:e.currentTarget.naturalWidth||1,height:e.currentTarget.naturalHeight||1})}/>} 
-    <div className="inline-crop-shade" style={shadeTop}/><div className="inline-crop-shade" style={shadeBottom}/><div className="inline-crop-shade" style={shadeLeft}/><div className="inline-crop-shade" style={shadeRight}/>
-    <div className="inline-crop-frame" style={{left:`${crop.x*100}%`,top:`${crop.y*100}%`,width:`${crop.width*100}%`,height:`${crop.height*100}%`}} onPointerDown={begin("move")}>
-      {(["nw","n","ne","e","se","s","sw","w"] as const).map((handle)=><button key={handle} type="button" className={`inline-crop-handle ${handle}`} aria-label="Изменить область обрезки" onPointerDown={begin(handle)}/>)}
+  const apply=async()=>{if(src)await onApply(crop)};
+  useEffect(()=>{registerApply(apply);return()=>registerApply(null)},[crop,src,item.assetId]);
+  const shadeTop={left:0,top:0,width:"100%",height:`${crop.y*100}%`};
+  const shadeBottom={left:0,top:`${(crop.y+crop.height)*100}%`,width:"100%",bottom:0};
+  const shadeLeft={left:0,top:`${crop.y*100}%`,width:`${crop.x*100}%`,height:`${crop.height*100}%`};
+  const shadeRight={left:`${(crop.x+crop.width)*100}%`,top:`${crop.y*100}%`,right:0,height:`${crop.height*100}%`};
+  // Restoring the full image bounds allows moving ANY edge back out again.
+  // Percentages position the original under the CURRENT cropped board object.
+  const originalBounds:CSSProperties={
+    left:`${-100*original.x/original.width}%`,
+    top:`${-100*original.y/original.height}%`,
+    width:`${100/original.width}%`,
+    height:`${100/original.height}%`
+  };
+  return <div className="inline-image-crop" style={originalBounds}
+    onPointerDown={e=>{e.preventDefault();e.stopPropagation()}}
+    onPointerMove={moveCrop} onPointerUp={finish} onPointerCancel={finish}>
+    {src?<img className="inline-image-crop-preview" src={src} alt="" draggable={false}/>:<div className="inline-image-crop-loading">Загрузка оригинала…</div>}
+    <div className="inline-crop-shade" style={shadeTop}/>
+    <div className="inline-crop-shade" style={shadeBottom}/>
+    <div className="inline-crop-shade" style={shadeLeft}/>
+    <div className="inline-crop-shade" style={shadeRight}/>
+    <div className="inline-crop-frame" style={{
+      left:`${crop.x*100}%`,top:`${crop.y*100}%`,
+      width:`${crop.width*100}%`,height:`${crop.height*100}%`
+    }} onPointerDown={begin("move")}>
+      {(["nw","n","ne","e","se","s","sw","w"] as const).map(handle=>
+        <button key={handle} type="button" className={`inline-crop-handle ${handle}`}
+          aria-label="Изменить область обрезки" onPointerDown={begin(handle)}/>)}
     </div>
   </div>;
 }
@@ -7798,7 +7820,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               <div
                 data-object={item.id}
                 key={item.id}
-                className={`board-object object-${item.kind} ${selectedIds.has(item.id) ? "selected" : ""} ${item.locked ? "locked" : ""}`}
+                className={`board-object object-${item.kind} ${selectedIds.has(item.id) ? "selected" : ""} ${item.locked ? "locked" : ""} ${item.kind==="image"&&imageCropEditorId===item.id?"image-crop-editing":""}`}
                 style={{
                   left: item.x,
                   top: item.y,
@@ -7866,7 +7888,33 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "shape" && <Shape type={item.shapeType} color={item.color}/>}
                 {item.kind === "connector" && <Connector item={item}/>}
                 {(item.kind === "image" || item.kind === "pdf") && <Media item={item} boardId={boardSummary.id}/>}
-                {item.kind === "image" && imageCropEditorId === item.id && <InlineImageCrop item={item} boardId={boardSummary.id} registerApply={(apply)=>{imageCropApplyRef.current=apply}} onApply={async(blob,crop)=>{const current=itemsRef.current.find(candidate=>candidate.id===item.id&&candidate.kind==="image");if(!current)return;const assetId=createId();await putAsset(assetId,blob,boardSummary.id);const nextWidth=Math.max(24,current.width*crop.width),nextHeight=Math.max(24,current.height*crop.height);const angle=(current.rotation??0)*Math.PI/180;const localDx=(crop.x+crop.width/2-.5)*current.width,localDy=(crop.y+crop.height/2-.5)*current.height;const rotatedDx=localDx*Math.cos(angle)-localDy*Math.sin(angle),rotatedDy=localDx*Math.sin(angle)+localDy*Math.cos(angle);const oldCenterX=current.x+current.width/2,oldCenterY=current.y+current.height/2;const nextX=oldCenterX+rotatedDx-nextWidth/2,nextY=oldCenterY+rotatedDy-nextHeight/2;commit(itemsRef.current.map(candidate=>candidate.id===current.id?{...candidate,assetId,mime:blob.type||"image/png",x:nextX,y:nextY,width:nextWidth,height:nextHeight}:candidate));setImageCropEditorId(null);setSelected([current.id]);setNotice("Изображение обрезано")}}/>}
+                {item.kind === "image" && imageCropEditorId === item.id && <InlineImageCrop
+                  item={item} boardId={boardSummary.id}
+                  registerApply={apply=>{imageCropApplyRef.current=apply}}
+                  onApply={async crop=>{
+                    const current=itemsRef.current.find(candidate=>candidate.id===item.id&&candidate.kind==="image");
+                    if(!current)return;
+                    const previous=current.imageCrop??{x:0,y:0,width:1,height:1};
+                    const same=([ "x","y","width","height"] as const).every(k=>Math.abs(previous[k]-crop[k])<.00001);
+                    if(!same){
+                      const nextWidth=Math.max(24,current.width*crop.width/previous.width);
+                      const nextHeight=Math.max(24,current.height*crop.height/previous.height);
+                      const localDx=(crop.x+crop.width/2-previous.x-previous.width/2)*current.width/previous.width;
+                      const localDy=(crop.y+crop.height/2-previous.y-previous.height/2)*current.height/previous.height;
+                      const angle=(current.rotation??0)*Math.PI/180;
+                      const rotatedDx=localDx*Math.cos(angle)-localDy*Math.sin(angle);
+                      const rotatedDy=localDx*Math.sin(angle)+localDy*Math.cos(angle);
+                      const nextX=current.x+current.width/2+rotatedDx-nextWidth/2;
+                      const nextY=current.y+current.height/2+rotatedDy-nextHeight/2;
+                      // No new asset is written. The original survives every
+                      // crop, even across board reloads and on collaborators.
+                      commit(itemsRef.current.map(candidate=>candidate.id===current.id?
+                        {...candidate,imageCrop:crop,x:nextX,y:nextY,width:nextWidth,height:nextHeight}:candidate));
+                    }
+                    setImageCropEditorId(null);
+                    setSelected([current.id]);
+                    setNotice("Обрезка изменена · оригинал сохранён");
+                  }}/>} 
                 {item.kind === "linkmedia" && <LinkMediaPlayer item={item}/>}
                 {item.kind === "frame" && editing !== item.id && <div className="frame-title">{item.text || "Без названия"}</div>}
                 {item.kind === "comment" && editing !== item.id && <CommentCard item={item} />}
