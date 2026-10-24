@@ -44,6 +44,7 @@ import {defaultAtomModel} from "./lektrusAtomModel";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
 import LektrusGraphEditor, {appendFreeSketchPoint,appendFreeSketchBoard,closeFreeSketch,closeFreeSketchBoard,freeSketchClosingIndex,removeGraphPoint,removeGraphBoardPoint,type GraphDraft} from "./LektrusGraphEditor";
 import {nextGeometryPointLabel,repairGeometryPointLabels} from "./lektrusGeometryPointNames";
+import {geometryAngle,geometryDistance,geometryPolygonMetrics,formatGeometryMetric} from "./lektrusGeometryPrecision";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {formatPiRadians,makeMathPresetItem} from "./lektrusMathPresets";
@@ -1483,8 +1484,21 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
             <text x={sx(top.x)+12} y={sy((bottom.y+top.y)/2)} className="graph-given-label" style={{paintOrder:"stroke",stroke:"#fff",strokeWidth:4}}>h = {item.graphGivenSides[4]}</text>
           </g>;
         })()}
-        {Array.from(item.graphPolygons??[],(poly,i)=>{const pts=poly.points.map(point).filter((p):p is NonNullable<typeof p>=>!!p);if(pts.length<3)return null;const center={x:pts.reduce((v,p)=>v+p.x,0)/pts.length,y:pts.reduce((v,p)=>v+p.y,0)/pts.length};return <g key={`polygon-${i}`}><polygon points={pts.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")} className="graph-polygon"/>{poly.label&&<text className="graph-figure-label" x={sx(center.x)} y={sy(center.y)} textAnchor="middle">{poly.label}</text>}</g>})}
-        {(item.graphCircles??[]).map((circle,i)=>{const center=point(circle.center),edge=point(circle.edge);if(!center||!edge)return null;const radius=distance(center,edge);const given=(circle.label.match(/^r\s*=\s*(.+)$/i)?.[1]??(["circle","sphere"].includes(item.graphFigureId??"")?(item.graphGivenSides??[])[i]:undefined))?.trim();const isSphere=item.graphFigureId==="sphere";return <g key={`circle-${i}`}><circle className="graph-circle" cx={sx(center.x)} cy={sy(center.y)} r={radius*scale}/>{isSphere&&(["equator","meridian"] as const).map(ring=>{
+        {Array.from(item.graphPolygons??[],(poly,i)=>{
+          const pts=poly.points.map(point).filter((p):p is NonNullable<typeof p>=>!!p);
+          if(pts.length<3)return null;
+          const center={x:pts.reduce((v,p)=>v+p.x,0)/pts.length,y:pts.reduce((v,p)=>v+p.y,0)/pts.length};
+          const metrics=purpose==="geometry"&&poly.showMetrics?geometryPolygonMetrics(pts):null;
+          return <g key={`polygon-${i}`}>
+            <polygon points={pts.map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")} className="graph-polygon"/>
+            {poly.label&&<text className="graph-figure-label" x={sx(center.x)} y={sy(center.y)-(metrics?22:0)} textAnchor="middle">{poly.label}</text>}
+            {metrics&&<g className="lektrus-live-geometry-metrics" pointerEvents="none">
+              <text x={sx(center.x)} y={sy(center.y)} textAnchor="middle">S = {formatGeometryMetric(metrics.area)} ед.²</text>
+              <text x={sx(center.x)} y={sy(center.y)+17} textAnchor="middle">P = {formatGeometryMetric(metrics.perimeter)} ед.</text>
+            </g>}
+          </g>;
+        })}
+        {(item.graphCircles??[]).map((circle,i)=>{const center=point(circle.center),edge=point(circle.edge);if(!center||!edge)return null;const radius=distance(center,edge);const given=(circle.label.match(/^r\s*=\s*(.+)$/i)?.[1]??(["circle","sphere"].includes(item.graphFigureId??"")?(item.graphGivenSides??[])[i]:undefined))?.trim();const displayedRadius=purpose==="geometry"&&circle.measure?formatGeometryMetric(radius)+" ед.":given;const isSphere=item.graphFigureId==="sphere";return <g key={`circle-${i}`}><circle className="graph-circle" cx={sx(center.x)} cy={sy(center.y)} r={radius*scale}/>{isSphere&&(["equator","meridian"] as const).map(ring=>{
               const points=Array.from({length:65},(_,j)=>{
                 const t=2*Math.PI*j/64;
                 const x=ring==="equator"?radius*Math.cos(t):radius*Math.cos(t);
@@ -1494,7 +1508,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
                 return `${sx(center.x+projected.x)},${sy(center.y+projected.y)}`;
               });
               return <polyline key={ring} points={points.join(" ")} fill="none" stroke="#537cc5" strokeDasharray={ring==="equator"?"6 4":"3 5"} strokeWidth="1.4" pointerEvents="none"/>;
-            })}{given&&purpose==="geometry"&&<g className="graph-radius-dimension"><line x1={sx(center.x)} y1={sy(center.y)} x2={sx(edge.x)} y2={sy(edge.y)} stroke="#57677b" strokeWidth="1.3"/><text x={sx((center.x+edge.x)/2)} y={sy((center.y+edge.y)/2)-12} textAnchor="middle" style={{paintOrder:"stroke",stroke:"#fff",strokeWidth:4,fontWeight:650,fill:"#1c293a"}}>{`r = ${given}`}</text></g>}{circle.label&&!/^r\s*=/.test(circle.label)&&<text className="graph-figure-label" x={sx(center.x)+radius*scale+8} y={sy(center.y)-8}>{circle.label}</text>}</g>})}
+            })}{displayedRadius&&purpose==="geometry"&&<g className="graph-radius-dimension"><line x1={sx(center.x)} y1={sy(center.y)} x2={sx(edge.x)} y2={sy(edge.y)} stroke="#57677b" strokeWidth="1.3"/><text x={sx((center.x+edge.x)/2)} y={sy((center.y+edge.y)/2)-12} textAnchor="middle" style={{paintOrder:"stroke",stroke:"#fff",strokeWidth:4,fontWeight:650,fill:"#1c293a"}}>{`r = ${displayedRadius}`}</text></g>}{circle.label&&!/^r\s*=/.test(circle.label)&&<text className="graph-figure-label" x={sx(center.x)+radius*scale+8} y={sy(center.y)-8}>{circle.label}</text>}</g>})}
         {solid&&<g className="lektrus-solid-auxiliary" pointerEvents="none">
           {(item.graphSegments??[]).slice((()=>{
             const id=item.graphFigureId;
@@ -1528,6 +1542,9 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
             end={x:a.x+vx*t,y:a.y+vy*t};
           }
           const rayControl=rayFigure&&seg.kind==="ray"&&i===0;
+          const dimension=purpose==="geometry"&&seg.kind==="segment"&&seg.measure?
+            formatGeometryMetric(geometryDistance(a,b))+" ед.":"";
+          const segmentText=seg.label||dimension;
           return <g key={`segment-${i}`}>
             {Array.from({length:seg.bondOrder??1},(_,bondIndex)=>{
               const ax=sx(start.x),ay=sy(start.y),bx=sx(end.x),by=sy(end.y);
@@ -1545,9 +1562,9 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
             {rayControl&&onRayChange&&<line x1={sx(start.x)} y1={sy(start.y)} x2={sx(end.x)} y2={sy(end.y)}
               stroke="transparent" strokeWidth="24" style={{cursor:"grab",touchAction:"none"}} onPointerDown={beginRayDrag}
               aria-label="Перетащите луч, чтобы изменить направление"/>}
-            {seg.label&&<text className="graph-figure-label"
+            {segmentText&&<text className="graph-figure-label"
               x={scienceCaptionLayout?.lines[i]?.x??(sx((a.x+b.x)/2+(seg.labelDx??0))+(seg.labelDx==null?6:0))}
-              y={scienceCaptionLayout?.lines[i]?.y??(sy((a.y+b.y)/2+(seg.labelDy??0))-(seg.labelDy==null?7:0))}>{seg.label}</text>}
+              y={scienceCaptionLayout?.lines[i]?.y??(sy((a.y+b.y)/2+(seg.labelDy??0))-(seg.labelDy==null?7:0))}>{segmentText}</text>}
           </g>;
         })}
         {item.graphFigureId==="parallel"&&item.graphParallelMarks?.[0]&&gp.length>=6&&(()=>{
@@ -1600,7 +1617,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
             })}
           </g>;
         })()}
-        {(item.graphAngles??[]).map((angle,i)=>{const a=point(angle.a),v=point(angle.vertex),b=point(angle.b);if(!a||!v||!b)return null;const start=Math.atan2(sy(a.y)-sy(v.y),sx(a.x)-sx(v.x)),end=Math.atan2(sy(b.y)-sy(v.y),sx(b.x)-sx(v.x));let diff=end-start;if(purpose==="unit-circle"){while(diff>0)diff-=2*Math.PI;while(diff<=-2*Math.PI)diff+=2*Math.PI;}else{while(diff>Math.PI)diff-=2*Math.PI;while(diff< -Math.PI)diff+=2*Math.PI;}const radius=26;const p1={x:sx(v.x)+radius*Math.cos(start),y:sy(v.y)+radius*Math.sin(start)},p2={x:sx(v.x)+radius*Math.cos(start+diff),y:sy(v.y)+radius*Math.sin(start+diff)};const isRight=purpose!=="unit-circle"&&Math.abs(Math.abs(diff)-Math.PI/2)<.015;const corner={x:p1.x+radius*Math.cos(start+diff),y:p1.y+radius*Math.sin(start+diff)};const arcPath=isRight?`M ${p1.x} ${p1.y} L ${corner.x} ${corner.y} L ${p2.x} ${p2.y}`:`M ${p1.x} ${p1.y} A ${radius} ${radius} 0 ${Math.abs(diff)>Math.PI?1:0} ${diff>0?1:0} ${p2.x} ${p2.y}`;return <g key={`angle-${i}`}><path className="graph-angle" d={arcPath}/>{<text className="graph-figure-label" x={sx(v.x)+(radius+13)*Math.cos(start+diff/2)} y={sy(v.y)+(radius+13)*Math.sin(start+diff/2)}>{purpose==="unit-circle"?formatPiRadians(Math.abs(diff)):angle.label ? (/°$/.test(angle.label)?angle.label:/^\d+(?:[.,]\d+)?$/.test(angle.label)?angle.label+"°":angle.label) : ""}</text>}</g>})}
+        {(item.graphAngles??[]).map((angle,i)=>{const a=point(angle.a),v=point(angle.vertex),b=point(angle.b);if(!a||!v||!b)return null;const start=Math.atan2(sy(a.y)-sy(v.y),sx(a.x)-sx(v.x)),end=Math.atan2(sy(b.y)-sy(v.y),sx(b.x)-sx(v.x));let diff=end-start;if(purpose==="unit-circle"){while(diff>0)diff-=2*Math.PI;while(diff<=-2*Math.PI)diff+=2*Math.PI;}else{while(diff>Math.PI)diff-=2*Math.PI;while(diff< -Math.PI)diff+=2*Math.PI;}const radius=26;const p1={x:sx(v.x)+radius*Math.cos(start),y:sy(v.y)+radius*Math.sin(start)},p2={x:sx(v.x)+radius*Math.cos(start+diff),y:sy(v.y)+radius*Math.sin(start+diff)};const isRight=purpose!=="unit-circle"&&Math.abs(Math.abs(diff)-Math.PI/2)<.015;const corner={x:p1.x+radius*Math.cos(start+diff),y:p1.y+radius*Math.sin(start+diff)};const arcPath=isRight?`M ${p1.x} ${p1.y} L ${corner.x} ${corner.y} L ${p2.x} ${p2.y}`:`M ${p1.x} ${p1.y} A ${radius} ${radius} 0 ${Math.abs(diff)>Math.PI?1:0} ${diff>0?1:0} ${p2.x} ${p2.y}`;return <g key={`angle-${i}`}><path className="graph-angle" d={arcPath}/>{<text className="graph-figure-label" x={sx(v.x)+(radius+13)*Math.cos(start+diff/2)} y={sy(v.y)+(radius+13)*Math.sin(start+diff/2)}>{purpose==="unit-circle"?formatPiRadians(Math.abs(diff)):angle.autoMeasure?formatGeometryMetric(geometryAngle(a,v,b)??NaN)+"°":angle.label ? (/°$/.test(angle.label)?angle.label:/^\d+(?:[.,]\d+)?$/.test(angle.label)?angle.label+"°":angle.label) : ""}</text>}</g>})}
         {purpose==="geometry"&&["cylinder","cone"].includes(item.graphFigureId??"")&&(()=>{
           const radius=(item.graphGivenSides??[])[0]?.trim(),height=(item.graphGivenSides??[])[1]?.trim();
           const base=point(0),side=point(8),top=point(item.graphFigureId==="cylinder"?17:17);
