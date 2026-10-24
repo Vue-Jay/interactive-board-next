@@ -219,13 +219,13 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     if(result.error){setGeometryError(result.error);return;}
     const changed=result.draft.points.findIndex((p,i)=>p.x!==draft.points[i]?.x||p.y!==draft.points[i]?.y);
     const moved=changed>=0?moveGeometryVertex(draft,changed,result.draft.points[changed].x,result.draft.points[changed].y):draft;
-    setGeometryError("");onChange(moved);
+    setGeometryError("");setCreatedLinkPoints([]);onChange(moved);
   };
   const lockConstraint=(kind:"horizontal"|"vertical"|"distance")=>{
     const value=kind==="distance"?Number(precisionValue.replace(",",".")):undefined;
     const result=lockGeometryConstraint(draft,linkPoints,kind,value);
     if(result.error){setGeometryError(result.error);return}
-    setGeometryError("");onChange(result.draft);
+    setGeometryError("");setCreatedLinkPoints([]);onChange(result.draft);
   };
   const finishLink=(selected:readonly number[],source:GraphDraft=draft)=>{
     const result=linkExistingPoints(source,linkKind,selected);
