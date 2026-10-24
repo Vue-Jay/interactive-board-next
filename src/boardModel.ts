@@ -303,6 +303,16 @@ export function normalizeBoardBackground(value:unknown):BoardBackground{
 }
 
 export type Point = { x: number; y: number };
+/** Non-destructive crop, normalized against the ORIGINAL stored image. */
+export type ImageCropRect = { x: number; y: number; width: number; height: number };
+export function validImageCrop(value: unknown): value is ImageCropRect {
+  if (!value || typeof value !== "object") return false;
+  const crop=value as Partial<ImageCropRect>;
+  return [crop.x,crop.y,crop.width,crop.height].every(
+    n=>typeof n==="number"&&Number.isFinite(n)) &&
+    crop.x!>=0&&crop.y!>=0&&crop.width!>0&&crop.height!>0&&
+    crop.x!+crop.width!<=1.000001&&crop.y!+crop.height!<=1.000001;
+}
 export type View = Point & { zoom: number };
 export type ShapeType = "rectangle" | "square" | "rounded" | "ellipse" | "circle" | "diamond" | "triangle" | "rightTriangle" | "parallelogram" | "trapezoid" | "pentagon" | "hexagon" | "star" | "arrow";
 export type ConnectorStyle = "line" | "arrow" | "double";
@@ -329,6 +339,7 @@ export type Item = {
   lineHeight?: number;
   shapeType?: ShapeType;
   assetId?: string;
+  imageCrop?: ImageCropRect;
   name?: string;
   mime?: string;
   pdfPage?: number;
@@ -511,6 +522,8 @@ export function parseDocument(raw: string): DocumentData {
     if (i.kind === "shape" && i.shapeType != null && !shapes.includes(i.shapeType)) throw new Error("Неизвестная фигура");
     if (i.kind === "image" || i.kind === "pdf") {
       if (typeof i.assetId !== "string" || typeof i.name !== "string" || typeof i.mime !== "string") throw new Error("Повреждён медиаобъект");
+      if (i.kind === "image" && i.imageCrop != null && !validImageCrop(i.imageCrop))
+        throw new Error("Повреждены границы обрезки изображения");
       if (i.kind === "pdf" && i.pdfPage != null && (!finite(i.pdfPage) || i.pdfPage < 1 || i.pdfPage > 10000)) throw new Error("Повреждён номер страницы PDF");
     }
     if (i.kind === "pen" || i.kind === "marker") {
@@ -690,7 +703,11 @@ export function parseDocument(raw: string): DocumentData {
       } : {}),
       ...(i.kind === "pen" || i.kind === "marker" ? { color: i.color, weight: i.weight, points: i.points!.map(p => ({ x: p.x, y: p.y })) } : {}),
       ...(i.kind === "shape" ? { shapeType: i.shapeType ?? "rounded", ...(color(i.color) ? { color: i.color } : {}) } : {}),
-      ...(i.kind === "image" || i.kind === "pdf" ? { assetId: i.assetId, name: i.name, mime: i.mime, ...(i.kind === "pdf" && finite(i.pdfPage) ? { pdfPage: Math.max(1, Math.round(i.pdfPage)) } : {}) } : {}),
+      ...(i.kind === "image" || i.kind === "pdf" ? {
+          assetId: i.assetId, name: i.name, mime: i.mime,
+          ...(i.kind === "image" && validImageCrop(i.imageCrop) ? { imageCrop: { ...i.imageCrop } } : {}),
+          ...(i.kind === "pdf" && finite(i.pdfPage) ? { pdfPage: Math.max(1, Math.round(i.pdfPage)) } : {})
+        } : {}),
       ...(i.kind === "connector" ? {
         connectorStart: { ...i.connectorStart! },
         connectorEnd: { ...i.connectorEnd! },
