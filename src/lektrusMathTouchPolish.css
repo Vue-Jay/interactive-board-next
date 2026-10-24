@@ -1,0 +1,84 @@
+/* Lektrus school geometry: touch-first controls and clearly closable contours. */
+.lektrus-free-close-target{cursor:pointer!important}
+.graph-view .lektrus-free-close-ring{
+ fill:rgba(53,115,213,.14)!important;
+ stroke:#3674d5!important;
+ stroke-width:2.7!important;
+ stroke-dasharray:4 3;
+ vector-effect:non-scaling-stroke;
+ pointer-events:none;
+}
+.lektrus-graph-canvas .lektrus-free-drawing-surface{
+ touch-action:none;
+ cursor:crosshair;
+}
+.lektrus-free-build-status{
+ display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+ font-size:11px;font-weight:680;color:#61748c;
+}
+.lektrus-free-build-status>span:first-child{
+ border:1px solid #dee8f7;border-radius:999px;background:#f1f5fc;padding:6px 9px;
+}
+.lektrus-free-build-status>span:first-child.is-ready{
+ color:#186f4d;background:#e8f8ef;border-color:#b7e9cb;
+}
+.lektrus-graph-dialog .lektrus-graph-construct-actions{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;
+}
+.lektrus-graph-dialog .lektrus-graph-construct-actions button{
+ min-height:43px;white-space:normal;overflow-wrap:anywhere;
+ padding:8px 10px;font-size:12px;line-height:1.25;
+}
+.lektrus-graph-dialog .lektrus-graph-construct-actions button.lektrus-free-close-action:not(:disabled){
+ background:#3569bd;color:#fff;border-color:#3569bd;box-shadow:0 3px 9px #3159b027;
+}
+.lektrus-graph-dialog .lektrus-graph-construct-actions button.lektrus-free-close-action:not(:disabled):hover{
+ background:#2959a7;color:#fff;
+}
+.lektrus-graph-dialog .lektrus-graph-point-row{
+ min-height:44px;
+}
+.lektrus-graph-dialog .lektrus-graph-point-row input:not([type=color]){
+ min-width:0;
+}
+.lektrus-graph-dialog .lektrus-graph-point-row>button{
+ min-height:39px;min-width:31px;
+}
+@media(pointer:coarse){
+ .lektrus-graph-dialog .lektrus-graph-construct-actions button,
+ .lektrus-graph-dialog .lektrus-graph-section-head button,
+ .lektrus-graph-dialog .lektrus-school-element-delete,
+ .lektrus-graph-dialog .lektrus-graph-point-row>button{
+  min-height:44px;touch-action:manipulation;
+ }
+ .lektrus-graph-dialog .lektrus-graph-point-row input:not([type=color]),
+ .lektrus-graph-dialog .lektrus-graph-field input:not([type=color]),
+ .lektrus-graph-dialog .lektrus-graph-field select{
+  font-size:16px!important;min-height:43px;
+ }
+ .lektrus-graph-dialog .lektrus-graph-settings{overscroll-behavior-y:contain}
+}
+@media(max-width:600px){
+ .lektrus-graph-dialog .lektrus-graph-construct-actions{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ .lektrus-graph-dialog .lektrus-graph-construct-actions .lektrus-free-close-action{
+  grid-column:1/-1;
+ }
+ .lektrus-graph-dialog .lektrus-graph-point-row{
+  grid-template-columns:minmax(55px,1fr) minmax(54px,.8fr) minmax(54px,.8fr) 32px 36px!important;
+  gap:5px;
+ }
+ .lektrus-graph-dialog .lektrus-graph-point-row>button{width:36px}
+ .lektrus-graph-dialog .lektrus-graph-point-row input:not([type=color]){
+  font-size:16px!important;padding:7px 3px!important;
+ }
+ .lektrus-free-build-status{font-size:10px}
+}
+@media(max-width:360px){
+ .lektrus-graph-dialog .lektrus-graph-point-row{
+  grid-template-columns:minmax(46px,1fr) minmax(47px,.75fr) minmax(47px,.75fr) 30px 33px!important;
+  gap:3px;
+ }
+ .lektrus-graph-dialog .lektrus-graph-point-row>button{width:33px}
+}
