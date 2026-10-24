@@ -4683,6 +4683,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   const itemById = useMemo(() => new Map(items.map((item) => [item.id, item] as const)), [items]);
   const selectedIds = useMemo(() => new Set(selected), [selected]);
+  useEffect(()=>{
+    if(graphPointEditId&&(!selectedIds.has(graphPointEditId)||tool!=="select"||!!graphEditorId))setGraphPointEditId(null);
+  },[graphPointEditId,selectedIds,tool,graphEditorId]);
   const selectedItems = useMemo(() => selected.map((id) => itemById.get(id)).filter((item): item is Item => Boolean(item)), [selected, itemById]);
   const singleSelected = selectedItems.length === 1 ? selectedItems[0] : null;
   const selectionBounds = useMemo(() => boundsOf(selectedItems), [selectedItems]);
