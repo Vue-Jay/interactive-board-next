@@ -31,6 +31,8 @@ assert.ok(touchStart.indexOf('consumedTouchIds.current.add(id)')<
 assert.match(touchStart,/eraserSession\.current=null;\s*stopEraserPreview\(\)/,
  "Pinch must cancel the uncommitted eraser session");
 assert.match(touchStart,/pinchState\.current=\{distance:/);
+assert.ok(touchStart.includes("const pinchBaseView=viewerPendingPan.current??viewRef.current;"),
+ "Pinch zoom must start from the live panned position, not stale React state");
 assert.match(touchEnd,/touchPoints\.current\.delete\(e\.pointerId\)/);
 assert.ok(up.includes('const consumed=touchEnd(e)'),
  "Capture-phase release must retire a touch even when embedded widgets swallow pointerup");
