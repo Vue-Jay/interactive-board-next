@@ -43,10 +43,17 @@ export type GraphDraft = {
 
 export function removeGraphPoint(draft:GraphDraft,index:number):GraphDraft {
   const shift=(v:number)=>v>index?v-1:v;
+  const bridge=draft.figureId==="free"&&index>0&&index<draft.points.length-1&&
+    draft.segments.some(seg=>seg.kind==="segment"&&seg.a===index-1&&seg.b===index)&&
+    draft.segments.some(seg=>seg.kind==="segment"&&seg.a===index&&seg.b===index+1);
+  const nextSegments=draft.segments.filter(seg=>seg.a!==index&&seg.b!==index)
+    .map(seg=>({...seg,a:shift(seg.a),b:shift(seg.b)}));
+  if(bridge&&!nextSegments.some(seg=>seg.a===index-1&&seg.b===index)&&nextSegments.length<60)
+    nextSegments.push({a:index-1,b:index,kind:"segment",label:"",measure:false});
   return {
     ...draft,
     points:draft.points.filter((_,i)=>i!==index),
-    segments:draft.segments.filter(s=>s.a!==index&&s.b!==index).map(s=>({...s,a:shift(s.a),b:shift(s.b)})),
+    segments:nextSegments,
     circles:draft.circles.filter(c=>c.center!==index&&c.edge!==index).map(c=>({...c,center:shift(c.center),edge:shift(c.edge)})),
     angles:draft.angles.filter(a=>a.a!==index&&a.vertex!==index&&a.b!==index).map(a=>({...a,a:shift(a.a),vertex:shift(a.vertex),b:shift(a.b)})),
     midpoints:draft.midpoints.filter(m=>m.a!==index&&m.b!==index).map(m=>({...m,a:shift(m.a),b:shift(m.b)})),
@@ -68,8 +75,10 @@ export function appendFreeSketchPoint(draft:GraphDraft,x:number,y:number):GraphD
     [...draft.segments,{a:n-1,b:n,kind:"segment" as const,label:"",measure:false}]:draft.segments;
   return {...draft,points:[...draft.points,{x,y,label}],segments};
 }
-export function closeFreeSketch(draft:GraphDraft):GraphDraft {
-  if(draft.figureId!=="free"||draft.polygons.length>=20)return draft;
+/** First vertex of the currently unfinished path, or null if it cannot close.
+ * The first point may be AFTER a previously completed polygon. */
+export function freeSketchClosingIndex(draft:Pick<GraphDraft,"figureId"|"points"|"segments"|"polygons"|"circles">):number|null {
+  if(draft.figureId!=="free"||draft.polygons.length>=20)return null;
   const n=draft.points.length;
   const protectedPoint=(index:number)=>!!draft.points[index]?.schoolGroupId||
     draft.polygons.some(poly=>poly.points.includes(index))||
@@ -81,22 +90,45 @@ export function closeFreeSketch(draft:GraphDraft):GraphDraft {
     if(index<n-1&&!draft.segments.some(seg=>seg.kind==="segment"&&seg.a===index&&seg.b===index+1))break;
     first=index;
   }
-  const count=n-first;
-  if(count<3)return draft;
-  const polygonPoints=Array.from({length:count},(_,i)=>first+i);
+  return n-first>=3?first:null;
+}
+const closeFreeSketchParts=(draft:Pick<GraphDraft,"figureId"|"points"|"segments"|"polygons"|"circles">)=>{
+  const first=freeSketchClosingIndex(draft);
+  if(first===null)return null;
+  const n=draft.points.length;
+  const polygonPoints=Array.from({length:n-first},(_,i)=>first+i);
   const sections=draft.segments.filter(seg=>!(seg.a>=first&&seg.b>=first&&
     Math.abs(seg.a-seg.b)===1&&seg.kind==="segment"));
-  return {...draft,segments:sections,
-    polygons:[...draft.polygons,{points:polygonPoints,label:"",measure:false}]};
+  return {segments:sections,polygons:[...draft.polygons,{points:polygonPoints,label:"",measure:false}]};
+};
+export function closeFreeSketch(draft:GraphDraft):GraphDraft {
+  const result=closeFreeSketchParts(draft);
+  return result?{...draft,...result}:draft;
+}
+export function closeFreeSketchBoard(item:Item):Item {
+  const result=closeFreeSketchParts({
+    figureId:item.graphFigureId??"",points:item.graphPoints??[],
+    segments:item.graphSegments??[],polygons:item.graphPolygons??[],
+    circles:item.graphCircles??[]
+  });
+  return result?{...item,graphSegments:result.segments,graphPolygons:result.polygons}:item;
 }
 
 // Keep point-index references consistent when a point is removed directly on the board.
 export function removeGraphBoardPoint(item:Item,index:number):Item {
   const shift=(v:number)=>v>index?v-1:v;
+  const existing=item.graphSegments??[];
+  const bridge=item.graphFigureId==="free"&&index>0&&index<(item.graphPoints??[]).length-1&&
+    existing.some(seg=>seg.kind==="segment"&&seg.a===index-1&&seg.b===index)&&
+    existing.some(seg=>seg.kind==="segment"&&seg.a===index&&seg.b===index+1);
+  const nextSegments=existing.filter(seg=>seg.a!==index&&seg.b!==index)
+    .map(seg=>({...seg,a:shift(seg.a),b:shift(seg.b)}));
+  if(bridge&&!nextSegments.some(seg=>seg.a===index-1&&seg.b===index)&&nextSegments.length<60)
+    nextSegments.push({a:index-1,b:index,kind:"segment",label:"",measure:false});
   return {
     ...item,
     graphPoints:(item.graphPoints??[]).filter((_,i)=>i!==index),
-    graphSegments:(item.graphSegments??[]).filter(v=>v.a!==index&&v.b!==index).map(v=>({...v,a:shift(v.a),b:shift(v.b)})),
+    graphSegments:nextSegments,
     graphCircles:(item.graphCircles??[]).filter(v=>v.center!==index&&v.edge!==index).map(v=>({...v,center:shift(v.center),edge:shift(v.edge)})),
     graphAngles:(item.graphAngles??[]).filter(v=>v.a!==index&&v.vertex!==index&&v.b!==index).map(v=>({...v,a:shift(v.a),vertex:shift(v.vertex),b:shift(v.b)})),
     graphMidpoints:(item.graphMidpoints??[]).filter(v=>v.a!==index&&v.b!==index).map(v=>({...v,a:shift(v.a),b:shift(v.b)})),
