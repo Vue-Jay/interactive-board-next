@@ -64,7 +64,7 @@ assert.deepEqual(removeVertexConstraints(chained.draft.constraints,1),[],
  "deleting the shared vertex drops both adjacent constraints");
 assert.deepEqual(magneticGeometrySnap(forest().points,-1,4.08,2.6,.1),
  {x:4,y:2.6,axis:"x"},"magnet aligns one coordinate without merging vertices");
-assert.deepEqual(magneticGeometrySnap(forest().points,1,4.08,3.04,.1),
+assert.deepEqual(magneticGeometrySnap([{x:4,y:3}],0,4.08,3.04,.1),
  {x:4.08,y:3.04,axis:null},"magnet never aligns with itself");
 const boundedForest={...forest(),xMax:4};
 assert.ok(lockGeometryConstraint(boundedForest,[0,1],"distance",9).error,
