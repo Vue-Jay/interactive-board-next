@@ -3459,7 +3459,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const touchEnd=(e:{pointerType:string;pointerId:number})=>{
     if(e.pointerType!=="touch")return false;
+    // A map/widget owns its own fingers. Do not let their pointerup reset
+    // an unrelated board pinch, pan or object gesture.
+    const tracked=touchPoints.current.has(e.pointerId);
     const consumed=consumedTouchIds.current.delete(e.pointerId);
+    if(!tracked&&!consumed)return false;
     touchPoints.current.delete(e.pointerId);
     if(touchPoints.current.size<2){
       pinchState.current=null;
