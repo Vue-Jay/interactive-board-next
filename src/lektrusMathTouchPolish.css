@@ -213,3 +213,45 @@
  .lektrus-graph-dialog .lektrus-auto-metric-option{min-height:44px}
  .lektrus-graph-dialog .lektrus-auto-metric-option input{width:21px;height:21px}
 }
+
+
+/* One concise flow: Points > Connect. Advanced constraints stay collapsed. */
+.lektrus-point-quick-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 0 11px}
+.lektrus-point-quick-actions>button{
+ border:1px solid #b9d1f0;background:#eaf3ff;border-radius:10px;
+ padding:10px 13px;min-height:42px;color:#205b9e;font-weight:700;cursor:pointer
+}
+.lektrus-point-quick-actions>label{display:flex;align-items:center;gap:7px;font-size:12px;color:#546b85}
+.lektrus-point-quick-actions input{width:18px;height:18px;accent-color:#3775c6}
+.lektrus-link-topbar{display:flex;align-items:center;gap:11px}
+.lektrus-link-topbar strong{font-size:15px}
+.lektrus-link-back{
+ background:transparent;border:0;color:#2e6cb9;cursor:pointer;
+ padding:8px 5px;min-height:40px;font-size:13px;font-weight:700
+}
+.lektrus-link-kind-picker{display:flex;align-items:center;gap:12px;font-size:12px;color:#546b85;font-weight:700}
+.lektrus-link-kind-picker select{
+ flex:1;max-width:290px;min-width:0;min-height:44px;border:1px solid #bdcde3;
+ border-radius:10px;background:#fff;padding:8px;font-size:14px;color:#263f61
+}
+.lektrus-constraint-options,.lektrus-constraint-list{
+ border:1px solid #d7e3f1;border-radius:11px;padding:9px 11px;background:#fff
+}
+.lektrus-constraint-options summary,.lektrus-constraint-list summary{
+ cursor:pointer;font-size:12px;font-weight:750;color:#2f5f9b;min-height:28px
+}
+.lektrus-constraint-options>small{display:block;margin:8px 0;color:#627b95;line-height:1.5}
+.lektrus-constraint-options .lektrus-precision-actions{margin-top:9px}
+.lektrus-constraint-item{display:flex;align-items:center;gap:7px;justify-content:space-between;
+ padding:7px 0;font-size:12px;color:#475d74;border-top:1px solid #e7eef6}
+.lektrus-constraint-item:first-of-type{margin-top:8px}
+.lektrus-constraint-item button{min-height:34px;padding:6px 9px;border-radius:8px;
+ border:1px solid #ccdaed;color:#32629c;background:#fff;font-size:12px;cursor:pointer}
+@media(pointer:coarse){
+ .lektrus-point-quick-actions>button,.lektrus-link-back,.lektrus-constraint-item button{min-height:44px}
+}
+@media(max-width:600px){
+ .lektrus-link-kind-picker{align-items:stretch;flex-direction:column;gap:6px}
+ .lektrus-link-kind-picker select{max-width:none;width:100%}
+ .lektrus-point-quick-actions{justify-content:space-between}
+}
