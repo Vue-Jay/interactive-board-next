@@ -21,7 +21,7 @@ assert.ok(app.includes('case "section-create": return <><path d="M3.5 19 8.5 5')
 assert.ok(app.includes('renderIcon:(id:"text"|"sticky"|"table"|"frame")'));
 assert.ok(app.includes('label:"Задания"'),"Tasks remain a separate category");
 for(const name of ["twoD","threeD","symbolGroups"]){
- assert.ok(cat.includes("const "+name+"="),"Missing "+name+" catalogue");
+ assert.match(cat,new RegExp("const "+name+"(?::[^=\\n]+)?\\s*="),"Missing "+name+" catalogue");
 }
 for(const solid of ["cube","rectangular-prism","prism","pyramid","triangular-pyramid","sphere","cylinder","cone"]){
  assert.ok(cat.includes('"'+solid+'"'),"Missing 3D object "+solid);
