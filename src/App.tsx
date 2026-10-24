@@ -89,7 +89,7 @@ import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor, 
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState } from "./boardWorkSync";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
-import { documentFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
+import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import {
   parseDocument,
   packDocumentInk,
@@ -2313,6 +2313,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     initialRemoteVersion == null || (()=>{
       try{return localStorage.getItem(storageKey+".pending-sync")==="1"}catch{return false}
     })()?null:documentFingerprint(initial.data));
+  const acknowledgedSharedContent = useRef<string | null>(
+    acknowledgedDocument.current===null?null:sharedBoardFingerprint(initial.data));
   const deferredRemote = useRef<RemoteBoardDocument | null>(null);
   const pendingRemote = useRef<RemoteBoardDocument | null>(null);
   const lastAttempt = useRef<{ version: number; fingerprint: string } | null>(null);
@@ -2430,7 +2432,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const pushRemoteSnapshot = useCallback(async (data: DocumentData, knownFingerprint?: string) => {
     if (layoutEditing || !isRemoteBackendEnabled() || !canEdit || !boardMounted.current || pendingRemote.current) return;
     const fingerprint = knownFingerprint ?? documentFingerprint(data);
-    if (fingerprint === acknowledgedDocument.current) return;
+    if (fingerprint === acknowledgedDocument.current ||
+        sharedBoardFingerprint(data)===acknowledgedSharedContent.current) return;
     if (remoteSaveInFlight.current) {
       queuedRemoteSnapshot.current = data;
       return;
@@ -2465,6 +2468,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       }
       remoteVersion.current = result.version;
       acknowledgedDocument.current = fingerprint;
+      acknowledgedSharedContent.current = sharedBoardFingerprint(data);
       // A newer local edit may already be queued. Never clear its pending flag
       // merely because the previous remote revision finished.
       if(snapshot.current&&documentFingerprint(snapshot.current)===fingerprint){
@@ -2537,7 +2541,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if (!boardMounted.current) return;
       const fingerprint = documentFingerprint(data);
       if (isRemoteBackendEnabled() && pendingRemote.current) return;
-      if(isRemoteBackendEnabled() && fingerprint === acknowledgedDocument.current){
+      if(isRemoteBackendEnabled() && (
+        fingerprint === acknowledgedDocument.current ||
+        sharedBoardFingerprint(data)===acknowledgedSharedContent.current
+      )){
         try{localStorage.removeItem(storageKey+".pending-sync")}catch{}
         setSaveStatus("Сохранено на сервере");
         return;
@@ -5959,10 +5966,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // data, but not drawing gestures.
     const localDoc=currentDocument();
     const onlyBackgroundChanged=
-      documentFingerprint({...localDoc,background:data.background})===documentFingerprint(data) &&
+      sharedBoardFingerprint({...localDoc,background:data.background})===sharedBoardFingerprint(data) &&
       JSON.stringify(localDoc.background)!==JSON.stringify(data.background);
     remoteVersion.current = row.version;
     acknowledgedDocument.current = documentFingerprint(data);
+    acknowledgedSharedContent.current = sharedBoardFingerprint(data);
     pendingRemote.current = null;
     queuedRemoteSnapshot.current = null;
     remoteSaveFailures.current = 0;
@@ -5992,7 +6000,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       return;
     }
     const busy = !!(editing || tableEditorId || checklistEditorId || quizEditorId || flashcardEditorId || formulaEditorId || frameNotesEditorId);
-    const dirty = canEdit && (busy || documentFingerprint(currentDocument()) !== acknowledgedDocument.current);
+    const dirty = canEdit && (busy ||
+      sharedBoardFingerprint(currentDocument()) !== acknowledgedSharedContent.current);
     const decision = remoteUpdateDecision(remoteVersion.current, row.version, remoteSaveInFlight.current, dirty || !!pendingRemote.current);
     if (decision === "ignore") return;
     if (decision === "defer") {
@@ -6004,6 +6013,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if (isOwnRemoteRevision(row, authUser.id, lastAttempt.current)) {
         remoteVersion.current = row.version;
         acknowledgedDocument.current = lastAttempt.current!.fingerprint;
+        acknowledgedSharedContent.current = sharedBoardFingerprint(data);
         return;
       }
       if (decision === "conflict") {
@@ -6026,6 +6036,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
         remoteVersion.current = row.version;
         acknowledgedDocument.current = documentFingerprint(remote);
+        acknowledgedSharedContent.current = sharedBoardFingerprint(remote);
         pendingRemote.current = null;
         setRemoteConflict(null);
         setConflictLocalBackup(null);
