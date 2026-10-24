@@ -1159,6 +1159,7 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
   const [liveRay,setLiveRay]=useState<{x:number;y:number}|null>(null);
   const freeTap=useRef<{id:number;x:number;y:number;cancelled:boolean}|null>(null);
   const freeContacts=useRef(new Set<number>());
+  const freePointGesture=useRef<{cancel:()=>void}|null>(null);
   const orbitX=liveSpin?.[0]??item.graphRotationX??25;
   const orbitY=liveSpin?.[1]??item.graphRotationY??-35;
   const solid=isSolidFigure(item.graphFigureId);
@@ -1289,6 +1290,25 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
         return analysis.valid?<small className="lektrus-organic-formula">{analysis.formula}</small>:null;
       })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
+      onPointerDownCapture={event=>{
+        if(item.graphFigureId!=="free"||!onAddPoint||event.pointerType==="mouse")return;
+        freeContacts.current.add(event.pointerId);
+        if(freeContacts.current.size>1){
+          if(freeTap.current)freeTap.current.cancelled=true;
+          freePointGesture.current?.cancel();
+        }
+      }}
+      onPointerUpCapture={event=>{
+        if(item.graphFigureId==="free"&&event.pointerType!=="mouse")
+          freeContacts.current.delete(event.pointerId);
+      }}
+      onPointerCancelCapture={event=>{
+        if(item.graphFigureId==="free"&&event.pointerType!=="mouse"){
+          freeContacts.current.delete(event.pointerId);
+          if(freeTap.current?.id===event.pointerId)freeTap.current=null;
+          freePointGesture.current?.cancel();
+        }
+      }}
       onDoubleClick={e=>{if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
@@ -1305,7 +1325,7 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
               if(freeTap.current)freeTap.current.cancelled=true;
               return;
             }
-            freeContacts.current.add(event.pointerId);
+            if(event.pointerType==="mouse")freeContacts.current.add(event.pointerId);
             if(freeContacts.current.size>1&&freeTap.current)freeTap.current.cancelled=true;
             if(event.button!==0||freeContacts.current.size>1)return;
             event.preventDefault();event.stopPropagation();
@@ -1595,14 +1615,17 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
         return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""}`} key={i}
         onDoubleClick={onRemovePoint&&item.graphFigureId!=="free"&&(purpose!=="unit-circle"||i>5)?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint?.(i)}:undefined}
         onPointerDown={movable||closesHere?(e)=>{
-          if(e.button!==0||!e.isPrimary)return;
+          if(e.button!==0||!e.isPrimary||
+            item.graphFigureId==="free"&&freeContacts.current.size>1)return;
           e.preventDefault();e.stopPropagation();
           const svg=e.currentTarget.ownerSVGElement;
           if(!svg)return;
           const startX=e.clientX,startY=e.clientY,id=e.pointerId;
-          let didMove=false;
+          let didMove=false,cancelled=false;
+          const gesture={cancel:()=>{cancelled=true}};
+          if(item.graphFigureId==="free")freePointGesture.current=gesture;
           const move=(ev:PointerEvent)=>{
-            if(ev.pointerId!==id)return;
+            if(ev.pointerId!==id||cancelled)return;
             if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>7)didMove=true;
             if(!didMove||!movable)return;
             const q=coord(ev.clientX,ev.clientY,svg);onPointMove?.(i,q.x,q.y);
@@ -1611,11 +1634,13 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
             window.removeEventListener("pointermove",move);
             window.removeEventListener("pointerup",up);
             window.removeEventListener("pointercancel",cancel);
+            if(freePointGesture.current===gesture)freePointGesture.current=null;
+            freeContacts.current.delete(id);
           };
           const up=(ev:PointerEvent)=>{
             if(ev.pointerId!==id)return;
             cleanup();
-            if(!didMove&&closesHere){
+            if(!cancelled&&!didMove&&closesHere){
               ev.preventDefault();ev.stopPropagation();
               onCloseFreePolygon?.();
             }
