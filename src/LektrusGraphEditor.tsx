@@ -555,7 +555,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     resetLinkSelection();
     setFigureCategory(category);setTab("presets");setSettingsOpen(true);setGeometryError("");
   };
-  const sectionTabs=<nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
+  const sectionTabs=<nav className={`lektrus-graph-tabs ${mode==="geometry"&&isSolid?"is-solid-tabs":""}`} aria-label="Разделы редактора">
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>{setTab("presets");setSettingsOpen(true)}}>{mode==="geometry"?"Фигуры":"Построение"}</button>
         {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>{setTab("givens");setSettingsOpen(true)}}>Размеры</button>}
         {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>Элементы</button>}
