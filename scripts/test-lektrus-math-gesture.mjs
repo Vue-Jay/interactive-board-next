@@ -326,7 +326,7 @@ assert.match(css,/lektrus-live-geometry-metrics/,
  "computed measurement labels are styled for white backgrounds");
 assert.match(editor,/lockGeometryConstraint\(draft,linkPoints,kind,value\)/,
  "persistent links use validated directed dependency model");
-assert.match(editor,/Точки <span>/,
+assert.match(editor,/>Точки<\/button>/,
  "points are accessible through the compact inspector tab");
 assert.match(editor,/<span>2D<\/span>/,
  "the 2D catalog is always accessible in the compact header");
@@ -338,8 +338,6 @@ assert.match(editor,/showFigureCatalog\("Объёмные фигуры"\)/,
  "3D library navigation opens the catalog directly");
 assert.doesNotMatch(editor,/lektrus-geometry-rail-library/,
  "2D/3D switch is not duplicated in the tool rail");
-assert.match(boardPanel,/lektrus-board-geometry-display/,
- "secondary display settings stay collapsed by default");
 assert.match(app,/boardGeometryMode\?\.id!==singleSelected\.id\)\&\&<button/,
  "selection toolbar hides duplicate editor button when the construction panel is open");
 assert.doesNotMatch(editor,/className=\{tab==="connect"\?"active"/,
@@ -475,6 +473,8 @@ assert.match(boardPanel,/<strong>Построение<\/strong>/,
  "board construction panel and selection toolbar share their title");
 assert.match(boardPanel,/onOpenEditor/,
  "board drawing panel can launch the full editor without hiding and reselecting");
+assert.match(boardPanel,/lektrus-board-geometry-display/,
+ "secondary display settings stay collapsed by default");
 const boardActions=read("src/lektrusBoardGeometry.ts");
 assert.match(app,/onPickPoint=\{item\.graphPurpose==="geometry"/,
  "clicking an existing point enters the active board construction");
