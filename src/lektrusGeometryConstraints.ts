@@ -62,9 +62,11 @@ export function lockGeometryConstraint<T extends Model>(
   y=parent.y+(previous.y-parent.y)*target!/length;
  }
  const prepared={...draft,constraints:[...existing,link]} as T;
+ if(!limits(prepared,{x,y}))return fail("Новая связь выводит точку за границы рисунка.");
  const updated=moveGeometryVertex(prepared,b,x,y);
- return updated===prepared&&!limits(prepared,{x,y})?fail("Новая связь выводит точку за границы рисунка."):
-  {draft:updated};
+ if(updated===prepared&&(Math.abs(previous.x-x)>1e-6||Math.abs(previous.y-y)>1e-6))
+  return fail("Эта связь конфликтует с положением других точек. Измените размер или снимите старую связь.");
+ return {draft:updated};
 }
 /** Moving a parent moves dependent vertices, not vice versa. Editing a
  * dependent vertex projects it onto its active link. */
@@ -117,12 +119,13 @@ export function magneticGeometrySnap(points:readonly Pt[],index:number,x:number,
  threshold:number):{x:number;y:number;axis:"x"|"y"|null}{
  if(!finite(x)||!finite(y)||!finite(threshold)||threshold<=0)return {x,y,axis:null};
  let xx:{v:number;d:number}|null=null,yy:{v:number;d:number}|null=null;
- points.forEach((p,i)=>{
-  if(i===index||!finite(p.x)||!finite(p.y))return;
+ for(let i=0;i<points.length;i++){
+  const p=points[i];
+  if(i===index||!finite(p.x)||!finite(p.y))continue;
   const dx=Math.abs(p.x-x),dy=Math.abs(p.y-y);
   if(dx<=threshold&&(!xx||dx<xx.d))xx={v:p.x,d:dx};
   if(dy<=threshold&&(!yy||dy<yy.d))yy={v:p.y,d:dy};
- });
+ }
  // A single axis gives a helpful visual guide without collapsing vertices.
  if(xx&&(!yy||xx.d<=yy.d))return {x:xx.v,y,axis:"x"};
  if(yy)return {x,y:yy.v,axis:"y"};
