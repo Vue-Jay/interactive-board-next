@@ -8439,7 +8439,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           )}
           {selectionScreenBounds && selectedItems.length > 0 && !objectEditorOpen && (
             <div
-              className="selection-toolbar-screen"
+              className={`selection-toolbar-screen ${singleSelected?.kind==="graph"?"lektrus-graph-selection-toolbar":""}`}
               style={{
                 left: selectionToolbarLeft,
                 top: selectionToolbarTop,
@@ -8526,8 +8526,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                       <Icon name="select" size={15}/><span>{graphPointEditId===singleSelected.id?"Готово":"Точки"}</span>
                     </button>}
                   {graphPointEditId===singleSelected.id&&singleSelected.graphFigureId==="free"&&
+                    !!singleSelected.graphPoints?.length&&singleSelected.graphFreePathStart!==(singleSelected.graphPoints?.length??0)&&
                     <button type="button" data-board-interactive="true"
-                      disabled={!(singleSelected.graphPoints?.length)||singleSelected.graphFreePathStart===(singleSelected.graphPoints?.length??0)}
                       title="Продолжить чертёж новой независимой линией"
                       aria-label="Начать отдельную линию"
                       onPointerDown={e=>e.stopPropagation()}
