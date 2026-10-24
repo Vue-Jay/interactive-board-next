@@ -299,7 +299,7 @@ assert.doesNotMatch(editor,/tab==="connect"\?"active"/,
  "connecting points is part of the existing points section, not a fifth tab");
 assert.match(editor,/className="lektrus-link-kind-picker"/,
  "a compact selector replaces eight competing buttons");
-assert.match(editor,/Сохранять размер при перетаскивании/,
+assert.match(editor,/Закрепить расположение/,
  "advanced constraints appear only in an optional disclosure");
 assert.match(app,/magneticGeometrySnap\(item\.graphPoints/,
  "geometry drag snaps gently to neighboring coordinate axes");
