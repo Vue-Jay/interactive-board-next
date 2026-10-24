@@ -1337,7 +1337,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           event.stopPropagation();
           return;
         }
-        if(!(item.graphFigureId==="free"&&onAddPoint)||event.pointerType==="mouse")return;
+        if(!(item.graphFigureId==="free"&&onAddPoint||onPointMoveEnd)||event.pointerType==="mouse")return;
         freeContacts.current.add(event.pointerId);
         if(freeContacts.current.size>1){
           if(freeTap.current)freeTap.current.cancelled=true;
@@ -1358,13 +1358,13 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           }
         }
         selectionContacts.current.delete(event.pointerId);
-        if((onPickPoint||item.graphFigureId==="free"&&onAddPoint)&&event.pointerType!=="mouse")
+        if((onPickPoint||item.graphFigureId==="free"&&onAddPoint||onPointMoveEnd)&&event.pointerType!=="mouse")
           freeContacts.current.delete(event.pointerId);
       }}
       onPointerCancelCapture={event=>{
         if(selectionTap.current?.id===event.pointerId)selectionTap.current=null;
         selectionContacts.current.delete(event.pointerId);
-        if((onPickPoint||item.graphFigureId==="free"&&onAddPoint)&&event.pointerType!=="mouse"){
+        if((onPickPoint||item.graphFigureId==="free"&&onAddPoint||onPointMoveEnd)&&event.pointerType!=="mouse"){
           freeContacts.current.delete(event.pointerId);
           if(freeTap.current?.id===event.pointerId)freeTap.current=null;
           freePointGesture.current?.cancel();
@@ -1700,7 +1700,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         onDoubleClick={onRemovePoint&&item.graphFigureId!=="free"&&(purpose!=="unit-circle"||i>5)?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint?.(i)}:undefined}
         onPointerDown={movable||closesHere||selectable?(e)=>{
           if(e.button!==0||!e.isPrimary||
-            (item.graphFigureId==="free"||selectable)&&freeContacts.current.size>1)return;
+            (item.graphFigureId==="free"||selectable||onPointMoveEnd)&&freeContacts.current.size>1)return;
           e.preventDefault();e.stopPropagation();
           const svg=e.currentTarget.ownerSVGElement;
           if(!svg)return;
@@ -1708,7 +1708,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           let didMove=false,cancelled=false;
           let lastPosition:{x:number;y:number}|null=null;
           const gesture={cancel:()=>{cancelled=true}};
-          if(item.graphFigureId==="free"||selectable)freePointGesture.current=gesture;
+          if(item.graphFigureId==="free"||selectable||onPointMoveEnd)freePointGesture.current=gesture;
           const move=(ev:PointerEvent)=>{
             if(ev.pointerId!==id||cancelled)return;
             if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>(ev.pointerType==="touch"?14:7))didMove=true;
