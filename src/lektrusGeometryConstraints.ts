@@ -103,11 +103,11 @@ export function moveGeometryVertex<T extends Model>(draft:T,index:number,x:numbe
  if(points.some((p,i)=>!limits(draft,p)&&
    (i===index||seen.has(i))))return draft;
  if(points.every((p,i)=>p.x===draft.points[i].x&&p.y===draft.points[i].y))return draft;
- return {...draft,points};
+ return {...draft,points} as T;
 }
 export function forgetGeometryConstraint<T extends Model>(draft:T,index:number):T{
  if(!Number.isInteger(index)||index<0||index>=(draft.constraints??[]).length)return draft;
- return {...draft,constraints:draft.constraints!.filter((_,i)=>i!==index)};
+ return {...draft,constraints:draft.constraints!.filter((_,i)=>i!==index)} as T;
 }
 export function removeVertexConstraints(constraints:readonly GeometryConstraint[]|undefined,index:number):GeometryConstraint[]{
  return (constraints??[]).filter(c=>c.a!==index&&c.b!==index)
