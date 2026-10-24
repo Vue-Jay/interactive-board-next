@@ -8522,6 +8522,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                       onClick={e=>{e.preventDefault();e.stopPropagation();setTool("select");setGraphPointEditId(current=>current===singleSelected.id?null:singleSelected.id)}}>
                       <Icon name="select" size={15}/><span>{graphPointEditId===singleSelected.id?"Готово":"Точки"}</span>
                     </button>}
+                  {graphPointEditId===singleSelected.id&&singleSelected.graphFigureId==="free"&&
+                    <button type="button" data-board-interactive="true"
+                      disabled={!(singleSelected.graphPoints?.length)||singleSelected.graphFreePathStart===(singleSelected.graphPoints?.length??0)}
+                      title="Продолжить чертёж новой независимой линией"
+                      aria-label="Начать отдельную линию"
+                      onPointerDown={e=>e.stopPropagation()}
+                      onClick={e=>{
+                        e.preventDefault();e.stopPropagation();
+                        commit(itemsRef.current.map(entry=>entry.id===singleSelected.id?
+                          {...entry,graphFreePathStart:entry.graphPoints?.length??0}:entry));
+                      }}>
+                      <Icon name="plus" size={15}/><span>Новая линия</span>
+                    </button>}
                 </span>)}
               {singleSelected?.kind === "formula" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
                 <span className="formula-selection-controls">
