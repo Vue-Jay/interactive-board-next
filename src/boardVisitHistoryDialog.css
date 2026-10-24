@@ -106,4 +106,19 @@
  .bv-results-heading{padding:7px 13px}
  .bv-footer{padding:8px 13px}
 }
+@media(max-height:500px){
+ .bv-overlay{padding:6px}
+ .bv-dialog{max-height:calc(100dvh - 12px);border-radius:12px}
+ .bv-header{padding:9px 16px}
+ .bv-heading h2{font-size:18px;margin:5px 0 2px}
+ .bv-heading p{display:none}
+ .bv-stats{padding:7px 16px;gap:6px}
+ .bv-stat{padding:7px 10px}
+ .bv-stat strong{font-size:17px}
+ .bv-stat small{display:none}
+ .bv-toolbar{padding:0 16px 7px}
+ .bv-results-heading{padding:7px 16px}
+ .bv-list{min-height:0;padding:0 16px}
+ .bv-footer{padding:7px 16px}
+}
 @media(prefers-reduced-motion:reduce){.bv-loading{animation:none}}
