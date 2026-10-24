@@ -303,37 +303,6 @@
 .lektrus-graph-dialog .lektrus-start-free-drawing:hover{background:#e2efff;border-color:#74a6e7}
 
 
-/* Saved geometry has its own obvious edit entry, independent of double-tap.
- * Normal mode moves the object; point mode moves individual vertices. */
-.board-object.object-graph .lektrus-graph-board-actions{
- position:absolute;top:7px;right:7px;z-index:12;display:flex;gap:5px;
- align-items:center;justify-content:flex-end;max-width:calc(100% - 14px);
- pointer-events:auto;user-select:none;touch-action:manipulation;
-}
-.board-object.object-graph .lektrus-graph-board-actions>button{
- display:inline-flex;align-items:center;justify-content:center;gap:5px;
- min-height:35px;padding:6px 9px;border:1px solid #c4d5eb;border-radius:9px;
- background:rgba(255,255,255,.97);color:#2e557f;font-size:11px;font-weight:700;
- box-shadow:0 2px 7px rgba(20,40,74,.13);cursor:pointer;white-space:nowrap;
- touch-action:manipulation;
-}
-.board-object.object-graph .lektrus-graph-board-actions>button:hover{
- background:#e8f2ff;border-color:#86b4ed;
-}
-.board-object.object-graph .lektrus-graph-board-actions>button.is-active{
- background:#306bc0;color:#fff;border-color:#306bc0;
-}
-@media(pointer:coarse){
- .board-object.object-graph .lektrus-graph-board-actions>button{
-  min-height:43px;min-width:43px;padding:8px;
- }
-}
-@media(max-width:540px){
- .board-object.object-graph .lektrus-graph-board-actions{gap:4px;top:4px;right:4px}
- .board-object.object-graph .lektrus-graph-board-actions>button{font-size:10px;padding:6px}
-}
-
-
 /* In explicit vertex mode the whole blank SVG is a precise single-tap target. */
 .board-object.object-graph .lektrus-connect-drawing-surface{
  pointer-events:all;touch-action:none;cursor:crosshair;
