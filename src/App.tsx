@@ -1371,7 +1371,7 @@ function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint
           freePointGesture.current?.cancel();
         }
       }}
-      onDoubleClick={e=>{if(onOpenEditor){e.preventDefault();e.stopPropagation();onOpenEditor();return;}if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
+      onDoubleClick={e=>{if(onOpenEditor&&!onAddPoint){e.preventDefault();e.stopPropagation();onOpenEditor();return;}if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
       {onPickPoint&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
@@ -8160,10 +8160,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onRotate={!item.locked&&canEdit&&(isSolidFigure(item.graphFigureId))?(rotationX,rotationY)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphRotationX:rotationX,graphRotationY:rotationY}:candidate));
                   }:undefined}
-                  onRayChange={!item.locked&&canEdit&&item.graphFigureId==="ray"?(x,y)=>{
+                  onRayChange={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId==="ray"?(x,y)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:(candidate.graphPoints??[]).map((p,i)=>i===1?{...p,x,y}:p)}:candidate));
                   }:undefined}
-                  onCloseFreePolygon={!item.locked&&canEdit&&item.graphFigureId==="free"?()=>{
+                  onCloseFreePolygon={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId==="free"?()=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?closeFreeSketchBoard(candidate):candidate));
                     setSelected([item.id]);
                   }:undefined}
