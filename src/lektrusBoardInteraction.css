@@ -70,3 +70,22 @@
   pointer-events:none!important;
   -webkit-user-drag:none!important;
 }
+
+
+/* The eraser is a stroke-only tool. Never let a text object, atlas, PDF,
+   selected handle, or embedded control hijack its single-finger stroke. */
+.workspace .board.board-tool-eraser [data-object],
+.workspace .board.board-tool-eraser [data-object] *,
+.workspace .board.board-tool-eraser [data-transform-handle],
+.workspace .board.board-tool-eraser [data-group-transform-handle],
+.workspace .board.board-tool-eraser [data-connector-endpoint],
+.workspace .board.board-tool-eraser [data-group-selection-drag],
+.workspace .board.board-tool-eraser .screen-transform-overlay,
+.workspace .board.board-tool-eraser .screen-transform-overlay * {
+  pointer-events:none!important;
+}
+.workspace .board.board-tool-eraser{
+  touch-action:none!important;
+  -webkit-user-select:none!important;
+  user-select:none!important;
+}
