@@ -287,7 +287,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         if(ids.length<4){setGeometryError("Диагональ можно построить у фигуры с четырьмя и более вершинами.");return}
         line(ids[0],ids[2]);
       }
-      if(kind==="midpoint"&&midpoints.length<40)midpoints.push({a:ids[0],b:ids[1],label:"M"});
+      if(kind==="midpoint"&&midpoints.length<40)midpoints.push({a:ids[0],b:ids[1],label:availableGeometryLabel([...points,...midpoints],"M")});
       if(kind==="midline"){
         const m=midpoint(a,b),n=midpoint(a,c);
         line(push(m.x,m.y,"M"),push(n.x,n.y,"N"));
@@ -296,7 +296,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         const m=midpoint(a,b),dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
         const p=push(m.x-dy/len*3,m.y+dx/len*3,""),q=push(m.x+dy/len*3,m.y-dx/len*3,"");
         line(p,q,"line");
-        if(midpoints.length<40)midpoints.push({a:ids[0],b:ids[1],label:"M"});
+        if(midpoints.length<40)midpoints.push({a:ids[0],b:ids[1],label:availableGeometryLabel([...points,...midpoints],"M")});
       }
       if((kind==="incircle"||kind==="circumcircle")&&ids.length===3){
         let cx=0,cy=0,radius=0;
@@ -821,7 +821,9 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                     if(len<.001)return;
                     const top={x:(c.x+d.x)/2,y:(c.y+d.y)/2},t=((top.x-a.x)*vx+(top.y-a.y)*vy)/len;
                     const foot={x:a.x+vx*t,y:a.y+vy*t},n=draft.points.length;
-                    patch({points:[...draft.points,{...top,label:"H₁"},{...foot,label:"H"}],
+                    const first={...top,label:availableGeometryLabel(draft.points,"H₁")};
+                    const second={...foot,label:availableGeometryLabel([...draft.points,first],"H")};
+                    patch({points:[...draft.points,first,second],
                       segments:[...draft.segments,{a:n,b:n+1,kind:"segment",label:"h",measure:false}],
                       angles:[...draft.angles,{a:0,vertex:n+1,b:n,label:"90°"}]});
                   }}>+ Перпендикуляр между прямыми</button>
@@ -838,7 +840,9 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                     const length=Math.hypot(dx,dy);if(length<.001){dx=-u.y/su;dy=u.x/su}
                     else {dx/=length;dy/=length}
                     const n=draft.points.length;
-                    patch({points:[...draft.points,{...center,label:"O"},{x:center.x+dx*3,y:center.y+dy*3,label:"K"}],
+                    const first={...center,label:availableGeometryLabel(draft.points,"O")};
+                    const second={x:center.x+dx*3,y:center.y+dy*3,label:availableGeometryLabel([...draft.points,first],"K")};
+                    patch({points:[...draft.points,first,second],
                       segments:[...draft.segments,{a:n,b:n+1,kind:"ray",label:"",measure:false}]});
                     setGeometryError("");
                   }}>+ Биссектриса угла при секущей</button>
