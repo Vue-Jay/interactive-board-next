@@ -11,13 +11,12 @@ export function formatVisitDuration(seconds:number){
  * Closing the tab uses keepalive, while missed heartbeats automatically expire. */
 export function trackBoardVisit(boardId:string):()=>void{
  if(!isRemoteBackendEnabled())return()=>{};
- let id=crypto.randomUUID(),closed=false,active=false,writing=false;
+ let id=crypto.randomUUID(),closed=false,active=false;
+ let chain=Promise.resolve();
  const pulse=async(action:"ping"|"leave")=>{
-  if(writing||closed&&action==="ping")return;
-  writing=true;
-  try{await rpc<void>("record_board_visit",{p_board_id:boardId,p_session_id:id,p_action:action})}
-  catch(error){if(action==="ping")console.warn("Не удалось отметить посещение доски",error)}
-  finally{writing=false}
+  const session=id;
+  chain=chain.then(()=>rpc<void>("record_board_visit",{p_board_id:boardId,p_session_id:session,p_action:action})).catch(error=>{if(action==="ping")console.warn("Не удалось отметить посещение доски",error)});
+  await chain;
  };
  const enter=()=>{if(closed||document.visibilityState==="hidden"||active)return;active=true;id=crypto.randomUUID();void pulse("ping")};
  const leave=()=>{if(!active)return;active=false;void pulse("leave")};
