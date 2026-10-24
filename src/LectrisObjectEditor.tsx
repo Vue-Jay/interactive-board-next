@@ -2,12 +2,28 @@ import { useEffect, useState } from "react";
 import type { Item } from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
 
-/** Five fixed widths for every inking tool, from hairline to broad stroke. */
-export const INK_WIDTHS = {
-  pen:[0.5,1.5,3,7,14],
-  marker:[1,4,10,22,44],
-  eraser:[4,10,22,44,86]
+/** Five genuinely distinct BOARD-pixel widths. */
+export const INK_WIDTHS={
+ pen:[1,3,6,12,22],
+ marker:[2,7,14,28,48],
+ eraser:[6,16,32,55,90]
 } as const;
+export type InkTool="pen"|"marker"|"eraser";
+/** Scale wider tools uniformly so the whole five-sample set fits, and always
+ * show the REAL board-pixel width below each proportionate preview. */
+export function InkWidthSample({tool,size,color}:{tool:InkTool;size:number;color:string}){
+ const scale=Math.min(1,22/INK_WIDTHS[tool][4]);
+ return <span className="lektrus-ink-swatch">
+   <span className="lektrus-ink-swatch-field">
+     <span className="lektrus-ink-swatch-stroke" style={{
+       height:Math.max(1,size*scale)+"px",
+       background:tool==="eraser"?"#64748b":color,
+       opacity:tool==="marker"?.6:1
+     }}/>
+   </span>
+   <span className="lektrus-ink-swatch-value">{String(size).replace(".",",")} px</span>
+ </span>;
+}
 const inkWidthIndex=(tool:"pen"|"marker"|"eraser",width:number)=>{
  const values=INK_WIDTHS[tool];
  return values.reduce((best,v,i)=>Math.abs(v-width)<Math.abs(values[best]-width)?i:best,0);
@@ -91,9 +107,7 @@ export function LectrisQuickProperties(props: QuickProps) {
             className="lektrus-ink-width-button" aria-pressed={inkWidthIndex(inkTool,currentWidth)===i}
             aria-label={["Очень тонко","Тонко","Средняя толщина","Толсто","Очень толсто"][i]+": "+size+" пикселей"}
             title={size+" px"} onClick={()=>updateWidth(size)}>
-            <span className="lektrus-ink-width-line"
-              style={{height:Math.max(1,Math.min(13,size/3))+"px",
-                background:erasing?"#64748b":color}}/>
+            <InkWidthSample tool={inkTool} size={size} color={color}/>
           </button>)}
         </div>
       </>}
