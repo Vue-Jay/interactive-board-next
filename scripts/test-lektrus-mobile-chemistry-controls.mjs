@@ -24,9 +24,9 @@ assert.match(app,/lektrus-ink-settings-direct/,"show direct brush controls");
 assert.match(app,/INK_WIDTHS\.eraser/);
 assert.match(app,/INK_WIDTHS\.marker/);
 assert.match(app,/INK_WIDTHS\.pen/);
-assert.match(quick,/pen:\[0\.5,1\.5,3,7,14\]/);
-assert.match(quick,/marker:\[1,4,10,22,44\]/);
-assert.match(quick,/eraser:\[4,10,22,44,86\]/);
+assert.match(quick,/pen:\[1,3,6,12,22\]/);
+assert.match(quick,/marker:\[2,7,14,28,48\]/);
+assert.match(quick,/eraser:\[6,16,32,55,90\]/);
 assert.match(responsive,/\.lectris-quick-properties\.is-ink-properties\{display:none!important\}/,
  "mobile should not have a duplicate collapsed brush toolbar");
 assert.match(organic,/onPointerCancel=\{e=>/, "cancelled touch must not insert a bond");
