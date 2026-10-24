@@ -442,8 +442,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>{mode==="geometry"?"Фигура":"Построение"}</button>
         {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>Размеры</button>}
         {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Элементы <span>{extraElementCount+schoolGroups.length}</span></button>}
-        {!isSolid&&<button type="button" className={tab==="points"?"active":""} onClick={()=>setTab("points")}>Точки <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
-        {mode==="geometry"&&!isSolid&&draft.figureId!=="ray"&&<button type="button" className={tab==="connect"?"active":""} onClick={()=>{setTab("connect");setLinkPoints([]);setGeometryError("");}}>Соединить</button>}
+        {!isSolid&&<button type="button" className={tab==="points"||tab==="connect"?"active":""} onClick={()=>setTab("points")}>Точки и связи <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
       </nav>
       <div className="graph-editor-body lektrus-graph-content">
         <div className="graph-editor-form lektrus-graph-settings">
@@ -806,15 +805,16 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             </>:!roundSolid&&<div className="lektrus-graph-empty">{isSolid?"Габариты проекции настраиваются перемещением вершин в предпросмотре или на вкладке «Точки».":"Построение по заданным сторонам и углам доступно для треугольника. Выберите его во вкладке «Фигура»."}</div>}
           </div>}
           {tab==="connect"&&mode==="geometry"&&!isSolid&&<div className="lektrus-graph-section lektrus-point-link-builder">
-            <strong>Построение из готовых точек</strong>
-            <small>Выберите элемент, затем касайтесь вершин прямо на рисунке или нажимайте их буквы ниже. Новые точки не создаются.</small>
-            <div className="lektrus-link-tool-grid" role="group" aria-label="Тип построения">
-              {existingPointTools.map(tool=><button type="button" key={tool.id}
-                className={linkKind===tool.id?"is-active":""} aria-pressed={linkKind===tool.id}
-                onClick={()=>{setLinkKind(tool.id);setLinkPoints([]);setGeometryError("");}}>
-                {tool.label}
-              </button>)}
+            <div className="lektrus-link-topbar">
+              <button type="button" className="lektrus-link-back" onClick={()=>{setTab("points");setLinkPoints([]);setGeometryError("");}}>← К точкам</button>
+              <strong>Соединить точки</strong>
             </div>
+            <label className="lektrus-link-kind-picker"><span>Построить</span>
+              <select aria-label="Выберите построение" value={linkKind} onChange={e=>{
+                setLinkKind(e.target.value as ExistingPointTool);setLinkPoints([]);setGeometryError("");
+              }}>{existingPointTools.map(tool=><option value={tool.id} key={tool.id}>{tool.label}</option>)}</select>
+            </label>
+            <small>Коснитесь нужных вершин на чертеже или выберите их буквы ниже.</small>
             <div className="lektrus-link-instructions" role="status">
               {linkKind==="polygon"?"Последовательно укажите вершины многоугольника. Завершите нажатием на первую вершину или кнопкой ниже.":
                linkKind==="angle"?"Выберите точку первой стороны, затем вершину угла, затем точку второй стороны.":
@@ -866,12 +866,28 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                   Применить
                 </button>
               </label>
+              {linkPoints.length===2&&<details className="lektrus-constraint-options">
+                <summary>Сохранять размер при перетаскивании</summary>
+                <small>Первая точка опорная, вторая зависимая. Можно закрепить горизонталь, вертикаль или расстояние. Любую связь можно снять.</small>
+                <div className="lektrus-precision-actions">
+                  <button type="button" onClick={()=>lockConstraint("horizontal")}>Закрепить горизонталь</button>
+                  <button type="button" onClick={()=>lockConstraint("vertical")}>Закрепить вертикаль</button>
+                  <button type="button" onClick={()=>lockConstraint("distance")}>Закрепить длину</button>
+                </div>
+              </details>}
               {linkPoints.length===3&&<div className="lektrus-precision-actions">
                 <button type="button" onClick={()=>adjustGeometry("angle",90)}>Прямой угол 90°</button>
                 <button type="button" onClick={()=>adjustGeometry("angle",60)}>Угол 60°</button>
               </div>}
             </div>}
             {draft.points.length<2&&<small>Пока недостаточно точек. Добавьте их во вкладке «Точки».</small>}
+            {draft.constraints.length>0&&<details className="lektrus-constraint-list">
+              <summary>Закреплённые связи ({draft.constraints.length})</summary>
+              {draft.constraints.map((constraint,i)=><div className="lektrus-constraint-item" key={i}>
+                <span>{draft.points[constraint.a]?.label||"№"+(constraint.a+1)} → {draft.points[constraint.b]?.label||"№"+(constraint.b+1)} · {constraint.kind==="horizontal"?"горизонтально":constraint.kind==="vertical"?"вертикально":"длина "+formatGeometryMetric(constraint.value??0)}</span>
+                <button type="button" aria-label={"Снять связь "+(i+1)} onClick={()=>onChange(forgetGeometryConstraint(draft,i))}>Снять</button>
+              </div>)}
+            </details>}
             <div className="lektrus-link-actions">
               <button type="button" disabled={!linkPoints.length} onClick={()=>{setLinkPoints(v=>v.slice(0,-1));setGeometryError("");}}>↶ Назад</button>
               <button type="button" disabled={!linkPoints.length} onClick={()=>{setLinkPoints([]);setGeometryError("");}}>Очистить выбор</button>
@@ -881,6 +897,13 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             {geometryError&&<small role="alert" className="lektrus-geometry-error">{geometryError}</small>}
           </div>}
           {tab==="points"&&<div className="lektrus-graph-section">
+            {mode==="geometry"&&!isSolid&&draft.figureId!=="ray"&&<div className="lektrus-point-quick-actions">
+              <button type="button" onClick={()=>{setTab("connect");setLinkPoints([]);setGeometryError("");}}>
+                Соединить или измерить точки →
+              </button>
+              <label><input type="checkbox" checked={draft.magneticSnap}
+                onChange={e=>patch({magneticSnap:e.target.checked})}/> Магнитное выравнивание</label>
+            </div>}
             {draft.figureId==="free"&&<div className="lektrus-school-point-builder">
               <strong>Простое построение по точкам</strong>
               <small>Коснитесь свободного места, чтобы поставить вершину. Следующая соединяется с предыдущей. Для замыкания коснитесь первой точки или нажмите кнопку. Точки можно перетаскивать.</small>
