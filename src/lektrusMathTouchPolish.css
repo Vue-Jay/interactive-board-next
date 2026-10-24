@@ -274,3 +274,19 @@
 .lektrus-graph-canvas.is-linking .graph-point circle.graph-point-hit{
  cursor:pointer;
 }
+
+
+/* A painted transparent SVG surface is essential for tapping empty canvas areas.
+ * All geometry labels must yield pointer events to the construction canvas. */
+.lektrus-graph-canvas .lektrus-connect-drawing-surface{
+ pointer-events:all;touch-action:none;cursor:crosshair;
+}
+.lektrus-graph-canvas.is-linking .graph-label{
+ pointer-events:none;
+}
+.lektrus-graph-canvas.is-linking .graph-point-hit{
+ pointer-events:none!important;
+}
+.lektrus-graph-canvas.is-linking .graph-point{
+ cursor:crosshair!important;
+}
