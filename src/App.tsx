@@ -6016,6 +6016,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         acknowledgedSharedContent.current = sharedBoardFingerprint(data);
         return;
       }
+      // A different viewport is not new shared board content. Accept the
+      // version without resetting selected objects, active tool or ink layers.
+      if (decision === "apply" &&
+          sharedBoardFingerprint(data) === acknowledgedSharedContent.current) {
+        remoteVersion.current = row.version;
+        acknowledgedDocument.current = documentFingerprint(data);
+        return;
+      }
       if (decision === "conflict") {
         // Collaborative boards should converge automatically instead of asking the user
         // to choose between "my" and "server" versions.
