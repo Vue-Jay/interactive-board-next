@@ -195,3 +195,21 @@
  .lektrus-precision-target{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
  .lektrus-precision-target span{grid-column:1/-1}
 }
+
+
+/* Automatic dimensions remain readable against a white or gridded canvas. */
+.graph-view .lektrus-live-geometry-metrics text{
+ font-size:13px;font-weight:700;fill:#274c79;stroke:#fff;stroke-width:4px;
+ stroke-linejoin:round;paint-order:stroke;pointer-events:none;user-select:none;
+}
+.lektrus-graph-dialog .lektrus-auto-metric-option{
+ display:flex;align-items:center;gap:9px;padding:8px 5px;
+ color:#425976;font-weight:600;font-size:12px;cursor:pointer;
+}
+.lektrus-graph-dialog .lektrus-auto-metric-option input{
+ width:18px;height:18px;flex:none;accent-color:#326fbc;
+}
+@media(pointer:coarse){
+ .lektrus-graph-dialog .lektrus-auto-metric-option{min-height:44px}
+ .lektrus-graph-dialog .lektrus-auto-metric-option input{width:21px;height:21px}
+}
