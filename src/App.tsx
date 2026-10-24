@@ -1334,7 +1334,7 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
           }}
           onPointerMove={event=>{
             if(event.pointerId===freeTap.current?.id&&
-              Math.hypot(event.clientX-freeTap.current.x,event.clientY-freeTap.current.y)>9)
+              Math.hypot(event.clientX-freeTap.current.x,event.clientY-freeTap.current.y)>(event.pointerType==="touch"?14:9))
               freeTap.current.cancelled=true;
           }}
           onPointerUp={event=>{
@@ -1626,7 +1626,7 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
           if(item.graphFigureId==="free")freePointGesture.current=gesture;
           const move=(ev:PointerEvent)=>{
             if(ev.pointerId!==id||cancelled)return;
-            if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>7)didMove=true;
+            if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>(ev.pointerType==="touch"?14:7))didMove=true;
             if(!didMove||!movable)return;
             const q=coord(ev.clientX,ev.clientY,svg);onPointMove?.(i,q.x,q.y);
           };
