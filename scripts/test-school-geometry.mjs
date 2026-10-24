@@ -269,7 +269,7 @@ assert.match(app,/onGridChange=\{!item.locked&&canEdit/,"board grid toggle is co
 assert.match(app,/className="lektrus-diagram-grid-toggle"/,"the grid toggle appears on the diagram");
 assert.match(app,/className="lektrus-free-drawing-surface"/,"point placement uses the background directly");
 assert.match(app,/candidate.graphFigureId==="free"/,"board updates segment chain in free point mode");
-assert.match(app,/previouslyClosed/,"the next free point starts a new contour after closing");
+assert.match(app,/appendFreeSketchBoard\(candidate,x,y\)/,"board and editor share the same new-contour rules after closing");
 assert.match(editor,/schoolGroups\.map\(group=>/,"each grouped school construction has its own delete control");
 assert.match(editor,/deleteSchoolGroup\(group.id\)/,"group deletion is wired to the actual removal helper");
 const styles=read("src/App.css");
