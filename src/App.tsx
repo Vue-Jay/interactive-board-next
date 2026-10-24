@@ -1310,7 +1310,7 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
             if(event.button!==0||freeContacts.current.size>1)return;
             event.preventDefault();event.stopPropagation();
             freeTap.current={id:event.pointerId,x:event.clientX,y:event.clientY,cancelled:false};
-            event.currentTarget.setPointerCapture(event.pointerId);
+            try{event.currentTarget.setPointerCapture(event.pointerId)}catch{/* older WebViews may not support SVG pointer capture */}
           }}
           onPointerMove={event=>{
             if(event.pointerId===freeTap.current?.id&&
@@ -1626,7 +1626,7 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
           window.addEventListener("pointercancel",cancel);
         }:undefined}>
         {closesHere&&<circle className="lektrus-free-close-ring" cx={sx(p.x)} cy={sy(p.y)} r="14" pointerEvents="none"/>}
-        {(movable||closesHere)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r={item.graphFigureId==="free"?28:20}/>}
+        {(movable||closesHere)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r={item.graphFigureId==="free"?(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?42:24):20}/>}
         {closesHere&&<title>Коснитесь, чтобы замкнуть фигуру. Перетащите, чтобы переместить точку.</title>}
         {!((item.graphFigureId??"").startsWith("physics-")&&
           (item.graphSegments??[]).some(s=>s.scienceArrow&&s.b===i))&&
