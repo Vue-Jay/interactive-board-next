@@ -7,6 +7,7 @@ import {buildSchoolConstruction,type SchoolConstruction} from "./lektrusSchoolCo
 import {mathPresets,makeMathPresetItem,formatPiRadians,type MathPresetId} from "./lektrusMathPresets";
 import {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse} from "./lektrusGeometryPointNames";
 import {existingPointTools,linkExistingPoints,type ExistingPointTool} from "./lektrusGeometryExistingPoints";
+import {adjustGeometryPoints,geometryDistance,geometryAngle,geometryPolygonMetrics,formatGeometryMetric,type PrecisionMode} from "./lektrusGeometryPrecision";
 
 /** Presentation-only: leave the parsed equation untouched for graph calculations. */
 const displayGraphFormula=(expression:string)=>"y = "+expression
@@ -167,6 +168,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const [geometryError,setGeometryError]=useState("");
   const [linkKind,setLinkKind]=useState<ExistingPointTool>("segment");
   const [linkPoints,setLinkPoints]=useState<number[]>([]);
+  const [precisionValue,setPrecisionValue]=useState("5");
   const [regularSides,setRegularSides]=useState<3|4|5|6|8>(6);
   const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">(()=>["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"].includes(draft.figureId)?"Объёмные фигуры":"Геометрия");
   const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"]);
@@ -206,6 +208,11 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   };
   const deleteConstruction=(kind:ConstructionKind,index:number)=>onChange(removeConstruction(draft,kind,index));
   const deleteSchoolGroup=(groupId:string)=>onChange(removeSchoolConstructionGroup(draft,groupId));
+  const adjustGeometry=(kind:PrecisionMode,value?:number)=>{
+    const result=adjustGeometryPoints(draft,linkPoints,kind,value);
+    if(result.error){setGeometryError(result.error);return;}
+    setGeometryError("");onChange(result.draft);
+  };
   const finishLink=(selected:readonly number[])=>{
     const result=linkExistingPoints(draft,linkKind,selected);
     if(result.error){setGeometryError(result.error);return;}
@@ -214,13 +221,14 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const pickLinkPoint=(index:number)=>{
     if(index<0||index>=draft.points.length)return;
     if(linkPoints.includes(index)){
+      if(linkKind==="measure"){setLinkPoints(linkPoints.filter(i=>i!==index));setGeometryError("");return;}
       if(linkKind==="polygon"&&linkPoints[0]===index&&linkPoints.length>=3)
         finishLink(linkPoints);
       else setGeometryError("Эта вершина уже выбрана. Для отмены используйте кнопку «Назад».");
       return;
     }
     const next=[...linkPoints,index];
-    if(linkKind==="polygon"){
+    if(linkKind==="polygon"||linkKind==="measure"){
       if(next.length>20){setGeometryError("Допустимо не более 20 вершин.");return;}
       setLinkPoints(next);setGeometryError("");return;
     }
@@ -794,6 +802,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             <div className="lektrus-link-instructions" role="status">
               {linkKind==="polygon"?"Последовательно укажите вершины многоугольника. Завершите нажатием на первую вершину или кнопкой ниже.":
                linkKind==="angle"?"Выберите точку первой стороны, затем вершину угла, затем точку второй стороны.":
+               linkKind==="measure"?"Выберите две точки для длины, три для угла (вершина вторая), три или более для периметра и площади. Выравнивание меняет только выбранную вершину.":
                linkKind==="circle"?"Выберите центр окружности, затем точку на окружности.":
                linkKind==="ray"?"Сначала начало луча, затем точку, задающую направление.":
                linkKind==="midpoint"?"Выберите две вершины: между ними появится обозначенная середина.":
@@ -813,6 +822,39 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 <small>{Number(point.x.toFixed(2))}; {Number(point.y.toFixed(2))}</small>
               </button>)}
             </div>
+            {linkKind==="measure"&&linkPoints.length>=2&&<div className="lektrus-precision-panel">
+              <strong>Точные измерения</strong>
+              <small>Значения рассчитываются по координатам в условных единицах и изменяются при перемещении точек.</small>
+              <div className="lektrus-precision-values">
+                <span>Расстояние: <b>{formatGeometryMetric(geometryDistance(draft.points[linkPoints[0]],draft.points[linkPoints[1]]))} ед.</b></span>
+                <span>ΔX: <b>{formatGeometryMetric(draft.points[linkPoints[1]].x-draft.points[linkPoints[0]].x)}</b></span>
+                <span>ΔY: <b>{formatGeometryMetric(draft.points[linkPoints[1]].y-draft.points[linkPoints[0]].y)}</b></span>
+                {linkPoints.length>=3&&<span>Угол при второй точке: <b>{formatGeometryMetric(geometryAngle(draft.points[linkPoints[0]],draft.points[linkPoints[1]],draft.points[linkPoints[2]])??NaN)}°</b></span>}
+                {linkPoints.length>=3&&(()=>{
+                  const result=geometryPolygonMetrics(linkPoints.map(i=>draft.points[i]));
+                  return result?<><span>Периметр выбранного контура: <b>{formatGeometryMetric(result.perimeter)} ед.</b></span>
+                    <span>Площадь: <b>{formatGeometryMetric(result.area)} ед.²</b></span></>:null;
+                })()}
+              </div>
+              <strong>Точное построение</strong>
+              <small>Разовое выравнивание: первая точка остаётся неподвижной, вторая перемещается. Для угла перемещается третья точка. Построения, использующие эти вершины, перестраиваются вместе с ними.</small>
+              <div className="lektrus-precision-actions">
+                <button type="button" disabled={linkPoints.length!==2} onClick={()=>adjustGeometry("horizontal")}>Горизонтально</button>
+                <button type="button" disabled={linkPoints.length!==2} onClick={()=>adjustGeometry("vertical")}>Вертикально</button>
+              </div>
+              <label className="lektrus-precision-target"><span>{linkPoints.length===3?"Точный угол, °":"Точная длина, ед."}</span>
+                <input type="text" inputMode="decimal" aria-label="Целевое значение размера" value={precisionValue}
+                  onChange={e=>setPrecisionValue(e.target.value.slice(0,24))} placeholder={linkPoints.length===3?"90":"5"}/>
+                <button type="button" disabled={linkPoints.length!==2&&linkPoints.length!==3}
+                  onClick={()=>adjustGeometry(linkPoints.length===3?"angle":"distance",Number(precisionValue.replace(",",".")))}>
+                  Применить
+                </button>
+              </label>
+              {linkPoints.length===3&&<div className="lektrus-precision-actions">
+                <button type="button" onClick={()=>adjustGeometry("angle",90)}>Прямой угол 90°</button>
+                <button type="button" onClick={()=>adjustGeometry("angle",60)}>Угол 60°</button>
+              </div>}
+            </div>}
             {draft.points.length<2&&<small>Пока недостаточно точек. Добавьте их во вкладке «Точки».</small>}
             <div className="lektrus-link-actions">
               <button type="button" disabled={!linkPoints.length} onClick={()=>{setLinkPoints(v=>v.slice(0,-1));setGeometryError("");}}>↶ Назад</button>
