@@ -16,14 +16,15 @@ function load(moduleCode,dependencies={}){
 }
 const names=load(transpile("src/lektrusGeometryPointNames.ts"));
 const constraints=load(transpile("src/lektrusGeometryConstraints.ts"));
+const precise=load(transpile("src/lektrusGeometryPrecision.ts"));
 const math=load(transpile("src/LektrusGraphEditor.tsx"),{
  "./lektrusGeometryPointNames":names,
- "./lektrusGeometryConstraints":constraints
+ "./lektrusGeometryConstraints":constraints,
+ "./lektrusGeometryPrecision":precise
 });
 const linking=load(transpile("src/lektrusGeometryExistingPoints.ts"),{
  "./lektrusGeometryPointNames":names
 });
-const precise=load(transpile("src/lektrusGeometryPrecision.ts"));
 const {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse,repairGeometryPointLabels}=names;
 const {lockGeometryConstraint,moveGeometryVertex,forgetGeometryConstraint,removeVertexConstraints,magneticGeometrySnap}=constraints;
 const forest=()=>({
@@ -126,6 +127,10 @@ const addedAfterDelete=appendFreeSketchPoint(removedMiddle,-1,3);
 assert.deepEqual(addedAfterDelete.points.map(p=>p.label),["A","C","D","B"],
  "new vertices get a unique letter even when earlier indices have changed");
 assert.equal(new Set(addedAfterDelete.points.map(p=>p.label)).size,4);
+let bowTie=draft();
+for(const [x,y] of [[0,0],[4,4],[0,4],[4,0]])bowTie=appendFreeSketchPoint(bowTie,x,y);
+assert.equal(closeFreeSketch(bowTie),bowTie,
+ "self-crossing free outline must not be saved as a polygon");
 const boardItem={
  kind:"graph",graphFigureId:"free",graphPoints:edited.points,graphSegments:edited.segments,
  graphPolygons:[],graphCircles:[],graphAngles:[],graphMidpoints:[]
