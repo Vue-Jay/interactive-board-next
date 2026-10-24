@@ -12,7 +12,7 @@ import LektrusColorPicker from "./LektrusColorPicker";
 import LektrusAtlasCountrySymbol from "./LektrusAtlasCountrySymbol";
 import {atlasCountrySymbol} from "./lektrusAtlasCountrySymbols";
 import {listHistoricalStateInsignia,historicalReferenceSymbolYear,historicalInsigniaSourceUrl} from "./lektrusHistoricalInsignia";
-import {INK_WIDTHS} from "./LectrisObjectEditor";
+import {INK_WIDTHS,InkWidthSample} from "./LectrisObjectEditor";
 import {colorPoliticalCountries} from "./lektrusAtlasPoliticalColors";
 import {LektrusMineralSymbol,MineralAtlasGlyph} from "./LektrusMineralSymbol";
 import {SCHOOL_ATLAS_GROUPS,SCHOOL_ATLAS_MINERALS,SCHOOL_ATLAS_FUEL_MINERALS} from "./lektrusSchoolAtlasMinerals";
@@ -2325,7 +2325,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
         <ContourToolIcon name={id}/><span>{title}</span>
        </button>)}
       {contourAction!=="erase"&&<div className="lektrus-contour-dock-color"><LektrusColorPicker compact paletteInside userId={userId} label="Цвет" value={paintColor} onChange={setPaintColor}/></div>}
-      <div className="lektrus-contour-dock-thickness" role="group" aria-label="Толщина инструмента"><span>Толщина</span><div className="lektrus-contour-width-presets">{(contourAction==="erase"?INK_WIDTHS.eraser:INK_WIDTHS.pen).map((size,i)=><button key={size} type="button" aria-label={["Очень тонко","Тонко","Средняя толщина","Толсто","Очень толсто"][i]+": "+size+" пикселей"} aria-pressed={toolThickness===(contourAction==="erase"?INK_WIDTHS.eraser:INK_WIDTHS.pen)[i]} className={toolThickness===size?"active":""} title={size+" px"} onClick={()=>setToolThickness(size)}><span className="lektrus-contour-width-line" style={{height:Math.max(1,Math.min(13,size/3))+"px",background:contourAction==="erase"?"#64748b":paintColor}}/></button>)}</div></div>
+      <div className="lektrus-contour-dock-thickness" role="group" aria-label="Толщина инструмента"><span>Толщина</span><div className="lektrus-contour-width-presets">{(contourAction==="erase"?INK_WIDTHS.eraser:INK_WIDTHS.pen).map((size,i)=><button key={size} type="button" aria-label={["Очень тонко","Тонко","Средняя толщина","Толсто","Очень толсто"][i]+": "+size+" пикселей"} aria-pressed={toolThickness===(contourAction==="erase"?INK_WIDTHS.eraser:INK_WIDTHS.pen)[i]} className={toolThickness===size?"active":""} title={size+" px"} onClick={()=>setToolThickness(size)}><InkWidthSample tool={contourAction==="erase"?"eraser":"pen"} size={size} color={paintColor}/></button>)}</div></div>
       <button type="button" className="lektrus-contour-icon-button" title="Отменить последнее действие"
        aria-label="Отменить" disabled={!contourHistory.length}
        onClick={contourUndo}>
