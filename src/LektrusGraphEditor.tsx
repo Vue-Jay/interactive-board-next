@@ -558,8 +558,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const sectionTabs=<nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
         <button type="button" className={tab==="presets"?"active":""} onClick={()=>{setTab("presets");setSettingsOpen(true)}}>{mode==="geometry"?"Фигуры":"Построение"}</button>
         {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>{setTab("givens");setSettingsOpen(true)}}>Размеры</button>}
-        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>Элементы <span>{extraElementCount+schoolGroups.length}</span></button>}
-        {!isSolid&&<button type="button" className={tab==="points"||tab==="connect"?"active":""} onClick={()=>{setTab("points");setSettingsOpen(true)}}>Точки <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
+        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>Элементы</button>}
+        {!isSolid&&<button type="button" className={tab==="points"||tab==="connect"?"active":""} onClick={()=>{setTab("points");setSettingsOpen(true)}}>Точки</button>}
       </nav>;
   return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""} ${mode==="geometry"?"lektrus-geometry-workspace":""} ${!settingsOpen?"is-settings-hidden":""}`} onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
@@ -575,7 +575,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             onClick={()=>showFigureCatalog("Объёмные фигуры")}><LektrusGeometryToolIcon name="3d" size={18}/> <span>3D</span></button>
         </div>}
         {mode==="geometry"&&<button type="button" className="lektrus-geometry-properties-toggle"
-          aria-label={settingsOpen?"Скрыть настройки":"Показать настройки"}
+          aria-label={settingsOpen?"Скрыть панель параметров":"Показать панель параметров"}
           aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(open=>!open)}>
           <LektrusGeometryToolIcon name="elements" size={17}/><span>Параметры</span>
         </button>}
@@ -588,7 +588,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       <div className="graph-editor-body lektrus-graph-content">
         {mode==="geometry"&&<nav className="lektrus-geometry-tool-rail" aria-label="Инструменты геометрического построения">
           {!isSolid?drawingTools.map(tool=><button key={tool.id} type="button"
-            className={canvasTool===tool.id?"active":""} title={tool.hint}
+            className={canvasTool===tool.id?"active":""} title={`${tool.name}: ${tool.hint}`}
+            aria-label={`${tool.name}: ${tool.hint}`}
             aria-pressed={canvasTool===tool.id} onClick={()=>setDrawingTool(tool.id)}>
             <LektrusGeometryToolIcon name={tool.id}/>
             <span>{tool.name}</span>
@@ -621,7 +622,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 <h4>{section.name}</h4>
                 <div className="lektrus-math-preset-grid">{section.presets.map(p=>
                   <button type="button" key={p.id} className={draft.figureId===p.id||!draft.figureId&&draft.title===p.title?"active":""}
-                    onClick={()=>loadPreset(p.id)}>{mode==="geometry"&&<LektrusGeometryPresetGlyph id={p.id}/>}<strong>{p.title}</strong><small>{p.subtitle}</small></button>
+                    title={p.subtitle} onClick={()=>loadPreset(p.id)}>{mode==="geometry"&&<LektrusGeometryPresetGlyph id={p.id}/>}<strong>{p.title}</strong><small>{p.subtitle}</small></button>
                 )}</div>
               </div>)}
 
