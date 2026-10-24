@@ -252,7 +252,7 @@ assert.equal(linkExistingPoints(straightAngle,"angle",[0,1,0]).draft,straightAng
 const app=read("src/App.tsx"),editor=read("src/LektrusGraphEditor.tsx");
 const css=read("src/lektrusMathTouchPolish.css"),main=read("src/main.tsx");
 assert.match(app,/onCloseFreePolygon=\{\(\)=>setGraphDraft\(/,"preview closes polygon at first point");
-assert.match(app,/onCloseFreePolygon=\{!item\.locked&&canEdit/,"saved board can close free geometry");
+assert.match(app,/onCloseFreePolygon=\{graphPointEditId===item\.id&&selectedIds\.has\(item\.id\)/,"saved board can close free geometry");
 assert.match(app,/Math\.hypot\(ev\.clientX-startX,ev\.clientY-startY\)>\(ev\.pointerType==="touch"\?14:7\)/,
  "tap does not instantly drag the vertex");
 assert.match(app,/freeContacts\.current\.size>1/,
@@ -340,7 +340,7 @@ assert.match(app,/let nearest:number\|null=null,best=radius\*radius/,
  "nearest real vertex wins when large mobile touch areas overlap");
 assert.match(app,/selectionContacts\.current\.size>1/,
  "two-finger navigation cancels point selection");
-assert.match(app,/onPointMoveEnd=\{!item.locked&&canEdit/,
+assert.match(app,/onPointMoveEnd=\{graphPointEditId===item\.id&&selectedIds\.has\(item\.id\)/,
  "saved board permits local point dragging under edit permissions");
 assert.match(app,/if\(onPointMoveEnd\)setLiveVertex/,
  "local drag preview does not write remote history at every pointer step");
