@@ -15,14 +15,60 @@ function load(moduleCode,dependencies={}){
  return exports;
 }
 const names=load(transpile("src/lektrusGeometryPointNames.ts"));
+const constraints=load(transpile("src/lektrusGeometryConstraints.ts"));
 const math=load(transpile("src/LektrusGraphEditor.tsx"),{
- "./lektrusGeometryPointNames":names
+ "./lektrusGeometryPointNames":names,
+ "./lektrusGeometryConstraints":constraints
 });
 const linking=load(transpile("src/lektrusGeometryExistingPoints.ts"),{
  "./lektrusGeometryPointNames":names
 });
 const precise=load(transpile("src/lektrusGeometryPrecision.ts"));
 const {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse,repairGeometryPointLabels}=names;
+const {lockGeometryConstraint,moveGeometryVertex,forgetGeometryConstraint,removeVertexConstraints,magneticGeometrySnap}=constraints;
+const forest=()=>({
+ points:[{x:0,y:0,label:"A"},{x:4,y:3,label:"B"},{x:4,y:5,label:"C"}],
+ constraints:[],xMin:-10,xMax:10,yMin:-10,yMax:10
+});
+const h=lockGeometryConstraint(forest(),[0,1],"horizontal");
+assert.equal(h.error,undefined);
+assert.equal(h.draft.points[1].y,0);
+assert.equal(h.draft.constraints.length,1);
+const movedAnchor=moveGeometryVertex(h.draft,0,1,2);
+assert.equal(movedAnchor.points[1].y,2,"dependent vertex follows a moving parent");
+const draggedChild=moveGeometryVertex(movedAnchor,1,7,9);
+assert.equal(draggedChild.points[1].y,2,"direct child drag stays horizontal");
+const v=lockGeometryConstraint(forest(),[0,1],"vertical");
+assert.equal(v.draft.points[1].x,0);
+assert.equal(moveGeometryVertex(v.draft,1,9,6).points[1].x,0);
+const lengthLock=lockGeometryConstraint(forest(),[0,1],"distance",5);
+assert.equal(lengthLock.error,undefined);
+const shiftedLength=moveGeometryVertex(lengthLock.draft,0,1,2);
+assert.ok(Math.abs(Math.hypot(
+ shiftedLength.points[1].x-shiftedLength.points[0].x,
+ shiftedLength.points[1].y-shiftedLength.points[0].y)-5)<1e-5);
+const circleDrag=moveGeometryVertex(shiftedLength,1,5,10);
+assert.ok(Math.abs(Math.hypot(
+ circleDrag.points[1].x-circleDrag.points[0].x,
+ circleDrag.points[1].y-circleDrag.points[0].y)-5)<1e-5);
+const chained=lockGeometryConstraint(h.draft,[1,2],"vertical");
+assert.equal(chained.error,undefined);
+assert.equal(moveGeometryVertex(chained.draft,1,2,0).points[2].x,2,
+ "constraints follow descendants transitively");
+assert.ok(lockGeometryConstraint(chained.draft,[2,0],"horizontal").error,
+ "circular vertex dependencies are rejected");
+assert.ok(lockGeometryConstraint(chained.draft,[0,2],"distance",4).error,
+ "a child accepts at most one controlling parent");
+assert.equal(forgetGeometryConstraint(chained.draft,0).constraints.length,1);
+assert.deepEqual(removeVertexConstraints(chained.draft.constraints,1),[],
+ "deleting the shared vertex drops both adjacent constraints");
+assert.deepEqual(magneticGeometrySnap(forest().points,-1,4.08,2.6,.1),
+ {x:4,y:2.6,axis:"x"},"magnet aligns one coordinate without merging vertices");
+assert.deepEqual(magneticGeometrySnap(forest().points,1,4.08,3.04,.1),
+ {x:4.08,y:3.04,axis:null},"magnet never aligns with itself");
+const boundedForest={...forest(),xMax:4};
+assert.ok(lockGeometryConstraint(boundedForest,[0,1],"distance",9).error,
+ "invalid persistent links cannot move a vertex out of view");
 const {appendFreeSketchPoint,appendFreeSketchBoard,closeFreeSketch,freeSketchClosingIndex,removeGraphPoint,closeFreeSketchBoard,removeGraphBoardPoint}=math;
 
 assert.equal(nextGeometryPointLabel([]),"A");
@@ -245,6 +291,24 @@ assert.match(app,/formatGeometryMetric\(geometryAngle\(a,v,b\)\?\?NaN\)/,
  "angle labels follow actual geometry rather than stale values");
 assert.match(css,/lektrus-live-geometry-metrics/,
  "computed measurement labels are styled for white backgrounds");
+assert.match(editor,/lockGeometryConstraint\(draft,linkPoints,kind,value\)/,
+ "persistent links use validated directed dependency model");
+assert.match(editor,/Точки и связи/,
+ "only four editor tabs remain visible");
+assert.doesNotMatch(editor,/tab==="connect"\?"active"/,
+ "connecting points is part of the existing points section, not a fifth tab");
+assert.match(editor,/className="lektrus-link-kind-picker"/,
+ "a compact selector replaces eight competing buttons");
+assert.match(editor,/Сохранять размер при перетаскивании/,
+ "advanced constraints appear only in an optional disclosure");
+assert.match(app,/magneticGeometrySnap\(item\.graphPoints/,
+ "geometry drag snaps gently to neighboring coordinate axes");
+assert.match(app,/moveGeometryVertex\(current,i,xx,yy\)/,
+ "drags preserve live vertex dependencies");
+assert.match(app,/graphConstraints:d\.constraints/,
+ "persistent links survive save");
+assert.match(app,/graphMagneticSnap:d\.magneticSnap/,
+ "snap preference survives save");
 assert.match(editor,/linkExistingPoints\(draft,linkKind,selected\)/,
  "editor invokes pure existing-vertex geometry builder");
 assert.match(editor,/onPickPoint:pickLinkPoint,pickedPoints:linkPoints/,
