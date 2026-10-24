@@ -31,6 +31,7 @@ export type GraphDraft = {
   a: number; b: number; c: number;
   xMin: number; xMax: number; yMin: number; yMax: number;
   grid: boolean; points: NonNullable<Item["graphPoints"]>;
+  freePathStart?:number;
   constraints:NonNullable<Item["graphConstraints"]>;magneticSnap:boolean;
   showLabels: boolean; snap: boolean; axisLabels: boolean;
   gridStep: number; showCurve: boolean; projections: boolean;
@@ -57,6 +58,7 @@ export function removeGraphPoint(draft:GraphDraft,index:number):GraphDraft {
   return {
     ...draft,
     points:draft.points.filter((_,i)=>i!==index),
+    freePathStart:Math.max(0,(draft.freePathStart??0)-(index<(draft.freePathStart??0)?1:0)),
     constraints:removeVertexConstraints(draft.constraints,index),
     segments:nextSegments,
     circles:draft.circles.filter(c=>c.center!==index&&c.edge!==index).map(c=>({...c,center:shift(c.center),edge:shift(c.edge)})),
@@ -69,7 +71,7 @@ export function removeGraphPoint(draft:GraphDraft,index:number):GraphDraft {
 /** Simple geometry: a line is drawn between every two consecutive user points.
  * Closing a shape replaces its linear outline with a true polygon.
  */
-type FreeSketchSource=Pick<GraphDraft,"figureId"|"points"|"segments"|"polygons"|"circles">;
+type FreeSketchSource=Pick<GraphDraft,"figureId"|"points"|"segments"|"polygons"|"circles"> & Pick<GraphDraft,"freePathStart">;
 export function appendFreeSketchPoint<T extends FreeSketchSource>(draft:T,x:number,y:number):T {
   if(draft.figureId!=="free"||draft.points.length>=40||!Number.isFinite(x)||!Number.isFinite(y))return draft;
   const n=draft.points.length;
@@ -77,7 +79,7 @@ export function appendFreeSketchPoint<T extends FreeSketchSource>(draft:T,x:numb
     !!draft.points[n-1]?.schoolGroupId||
     draft.circles.some(circle=>circle.center===n-1||circle.edge===n-1);
   const label=nextGeometryPointLabel(draft.points);
-  const segments=n>0&&!lastClosed&&draft.segments.length<60?
+  const segments=n>Math.min(n,Math.max(0,draft.freePathStart??0))&&!lastClosed&&draft.segments.length<60?
     [...draft.segments,{a:n-1,b:n,kind:"segment" as const,label:"",measure:false}]:draft.segments;
   return {...draft,points:[...draft.points,{x,y,label}],segments};
 }
@@ -87,7 +89,7 @@ export function appendFreeSketchBoard(item:Item,x:number,y:number):Item {
   const model={
     figureId:item.graphFigureId??"",
     points:item.graphPoints??[],segments:item.graphSegments??[],
-    polygons:item.graphPolygons??[],circles:item.graphCircles??[]
+    polygons:item.graphPolygons??[],circles:item.graphCircles??[],freePathStart:item.graphFreePathStart
   };
   const next=appendFreeSketchPoint(model,x,y);
   return next===model?item:{...item,graphPoints:next.points,graphSegments:next.segments};
@@ -101,7 +103,7 @@ export function freeSketchClosingIndex(draft:Pick<GraphDraft,"figureId"|"points"
     draft.polygons.some(poly=>poly.points.includes(index))||
     draft.circles.some(circle=>circle.center===index||circle.edge===index);
   let first=n;
-  while(first>0){
+  while(first>Math.min(n,Math.max(0,draft.freePathStart??0))){
     const index=first-1;
     if(protectedPoint(index))break;
     if(index<n-1&&!draft.segments.some(seg=>seg.kind==="segment"&&seg.a===index&&seg.b===index+1))break;
@@ -117,7 +119,7 @@ const closeFreeSketchParts=(draft:Pick<GraphDraft,"figureId"|"points"|"segments"
   if(!geometryPolygonMetrics(polygonPoints.map(i=>draft.points[i])))return null;
   const sections=draft.segments.filter(seg=>!(seg.a>=first&&seg.b>=first&&
     Math.abs(seg.a-seg.b)===1&&seg.kind==="segment"));
-  return {segments:sections,polygons:[...draft.polygons,{points:polygonPoints,label:"",measure:false}]};
+  return {segments:sections,polygons:[...draft.polygons,{points:polygonPoints,label:"",measure:false}],freePathStart:n};
 };
 export function closeFreeSketch(draft:GraphDraft):GraphDraft {
   const result=closeFreeSketchParts(draft);
@@ -127,9 +129,9 @@ export function closeFreeSketchBoard(item:Item):Item {
   const result=closeFreeSketchParts({
     figureId:item.graphFigureId??"",points:item.graphPoints??[],
     segments:item.graphSegments??[],polygons:item.graphPolygons??[],
-    circles:item.graphCircles??[]
+    circles:item.graphCircles??[],freePathStart:item.graphFreePathStart
   });
-  return result?{...item,graphSegments:result.segments,graphPolygons:result.polygons}:item;
+  return result?{...item,graphSegments:result.segments,graphPolygons:result.polygons,graphFreePathStart:result.freePathStart}:item;
 }
 
 // Keep point-index references consistent when a point is removed directly on the board.
@@ -146,6 +148,7 @@ export function removeGraphBoardPoint(item:Item,index:number):Item {
   return {
     ...item,
     graphPoints:(item.graphPoints??[]).filter((_,i)=>i!==index),
+    graphFreePathStart:Math.max(0,(item.graphFreePathStart??0)-(index<(item.graphFreePathStart??0)?1:0)),
     graphConstraints:removeVertexConstraints(item.graphConstraints,index),
     graphSegments:nextSegments,
     graphCircles:(item.graphCircles??[]).filter(v=>v.center!==index&&v.edge!==index).map(v=>({...v,center:shift(v.center),edge:shift(v.edge)})),
@@ -296,7 +299,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
       connectPoints:sample.graphConnectPoints===true,grid:sample.graphGrid!==false,
       gridStep:sample.graphGridStep??1,xMin:sample.graphXMin??-10,xMax:sample.graphXMax??10,
       yMin:sample.graphYMin??-6,yMax:sample.graphYMax??6,
-      points:(sample.graphPoints??[]).map(p=>({...p})),constraints:[],magneticSnap:true,
+      points:(sample.graphPoints??[]).map(p=>({...p})),constraints:[],magneticSnap:true,freePathStart:0,
       segments:(sample.graphSegments??[]).map(v=>({...v})),
       angles:(sample.graphAngles??[]).map(v=>({...v})),
       circles:(sample.graphCircles??[]).map(v=>({...v})),
@@ -953,6 +956,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 <button type="button" disabled={!canUndoFreePoint} onClick={()=>onChange(removeGraphPoint(draft,openPathLast))} title="Убрать последнюю неподтверждённую вершину">↶ Отменить точку</button>
                 <button type="button" className="lektrus-free-close-action" disabled={closeFreeSketch(draft)===draft}
                   onClick={()=>onChange(closeFreeSketch(draft))}>Замкнуть с первой точкой</button>
+                <button type="button" disabled={draft.points.length<1||draft.points.length<=(draft.freePathStart??0)}
+                  onClick={()=>patch({freePathStart:draft.points.length})} title="Следующая точка начнёт отдельную линию без соединения с предыдущей">Новая линия</button>
               </div>
             </div>}
             <div className="lektrus-graph-section-head"><strong>Точки чертежа</strong>{draft.figureId!=="free"&&<button type="button" disabled={draft.figureId==="ray"||isSolid||draft.purpose==="unit-circle"||draft.points.length>=40} onClick={addPoint}>+ Точка</button>}</div>
