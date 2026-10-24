@@ -11,6 +11,47 @@ import {existingPointTools,linkExistingPoints,type ExistingPointTool} from "./le
 import {adjustGeometryPoints,geometryDistance,geometryAngle,geometryPolygonMetrics,formatGeometryMetric,type PrecisionMode} from "./lektrusGeometryPrecision";
 import {lockGeometryConstraint,forgetGeometryConstraint,moveGeometryVertex,removeVertexConstraints} from "./lektrusGeometryConstraints";
 
+/** Small vector thumbnails make the school shape library usable at a glance. */
+function LektrusGeometryPresetGlyph({id}:{id:MathPresetId}){
+
+
+
+  const points:Record<string,string>={
+    triangle:"20,52 79,52 50,11","triangle-right":"19,52 78,52 19,12",
+    "triangle-isosceles":"19,52 81,52 50,10","triangle-equilateral":"19,54 81,54 50,11",
+    quadrilateral:"22,17 77,16 82,52 19,54",square:"28,10 71,10 71,55 28,55",
+    rectangle:"17,16 83,16 83,49 17,49",
+    parallelogram:"31,14 83,14 69,52 17,52",
+    rhombus:"50,8 82,33 50,59 18,33",
+    kite:"50,8 73,37 50,58 27,37",
+    trapezoid:"36,15 65,15 81,52 17,52",
+    "trapezoid-isosceles":"35,15 65,15 82,52 18,52",
+    "trapezoid-right":"23,15 68,15 83,52 23,52"
+  };
+  const regular:Record<string,number>={pentagon:5,hexagon:6,octagon:8};
+  const n=regular[id];
+  const poly=n?Array.from({length:n},(_,i)=>{const t=Math.PI*2*i/n-Math.PI/2;return `${(50+30*Math.cos(t)).toFixed(1)},${(33+26*Math.sin(t)).toFixed(1)}`}).join(" "):points[id];
+  const cube=<><polygon points="21,21 56,21 56,53 21,53"/><polygon points="41,10 78,10 78,42 56,53 56,21"/><path d="M21 21 41 10M21 53 41 42 78 42M41 10V42"/></>;
+  return <svg className="lektrus-geometry-preset-glyph" viewBox="0 0 100 66"
+    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {poly&&<polygon points={poly}/>}
+    {id==="circle"&&<><circle cx="50" cy="33" r="25"/><circle cx="50" cy="33" r="2.5" fill="currentColor"/></>}
+    {id==="angle"&&<><path d="M16 53H79M16 53 66 13"/><path d="M38 53 A22 22 0 0 0 32 35" strokeDasharray="3 3"/></>}
+    {id==="segment"&&<><path d="M17 50 81 15"/><circle cx="17" cy="50" r="3" fill="currentColor"/><circle cx="81" cy="15" r="3" fill="currentColor"/></>}
+    {id==="ray"&&<><path d="M17 52 78 14M65 14H78V27"/><circle cx="17" cy="52" r="3" fill="currentColor"/></>}
+    {id==="line"&&<><path d="M12 52 86 11M12 52 21 51M12 52 16 43M86 11 77 12M86 11 82 20"/></>}
+    {id==="parallel"&&<><path d="M16 27H85M16 47H85M77 22 85 27 77 32M77 42 85 47 77 52"/></>}
+    {id==="perpendicular"&&<><path d="M16 42H84M50 9V58M50 33H59V42"/></>}
+    {(id==="cube"||id==="rectangular-prism")&&cube}
+    {id==="prism"&&<><polygon points="20,44 54,44 35,20"/><polygon points="45,54 83,54 64,30"/><path d="M20 44 45 54M54 44 83 54M35 20 64 30" strokeDasharray="5 4"/></>}
+    {id==="pyramid"&&<><polygon points="15,46 60,58 86,43 43,32"/><path d="M53 5 15 46M53 5 60 58M53 5 86 43M53 5 43 32" strokeDasharray="5 2"/></>}
+    {id==="triangular-pyramid"&&<><polygon points="16,50 83,50 51,30"/><path d="M51 6 16 50M51 6 83 50M51 6 51 30" strokeDasharray="5 2"/></>}
+    {id==="cylinder"&&<><ellipse cx="50" cy="17" rx="27" ry="10"/><path d="M23 17V49M77 17V49M23 49A27 10 0 0 0 77 49"/><path d="M23 49A27 10 0 0 1 77 49" strokeDasharray="4 3"/></>}
+    {id==="cone"&&<><path d="M50 4 21 51M50 4 79 51"/><path d="M21 51A29 10 0 0 0 79 51"/><path d="M21 51A29 10 0 0 1 79 51" strokeDasharray="4 3"/></>}
+    {id==="sphere"&&<><circle cx="50" cy="33" r="28"/><ellipse cx="50" cy="33" rx="28" ry="10" strokeDasharray="4 3"/><ellipse cx="50" cy="33" rx="10" ry="28" strokeDasharray="4 3"/></>}
+  </svg>;
+}
+
 /** Presentation-only: leave the parsed equation untouched for graph calculations. */
 const displayGraphFormula=(expression:string)=>"y = "+expression
   .replace(/\s*\*\s*/g," · ")
