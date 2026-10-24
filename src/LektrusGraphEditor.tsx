@@ -598,13 +598,25 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             aria-pressed={canvasTool===tool.id} onClick={()=>setDrawingTool(tool.id)}>
             <span className="lektrus-geometry-tool-symbol" aria-hidden="true">{tool.symbol}</span>
             <span>{tool.name}</span>
-          </button>):<div className="lektrus-geometry-tool-solid-note">Вращайте фигуру на чертеже</div>}
+          </button>):<>
+            <button type="button" aria-label="Открыть размеры объёмной фигуры"
+              className={tab==="givens"&&settingsOpen?"active":""}
+              onClick={()=>{setTab("givens");setSettingsOpen(true)}}>
+              <span className="lektrus-geometry-tool-symbol" aria-hidden="true">⌗</span><span>Размеры</span>
+            </button>
+            <button type="button" aria-label="Показать дополнительные построения объёмной фигуры"
+              className={tab==="geometry"&&settingsOpen?"active":""}
+              onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>
+              <span className="lektrus-geometry-tool-symbol" aria-hidden="true">⊕</span><span>Элементы</span>
+            </button>
+            <div className="lektrus-geometry-tool-solid-note">Для вращения используйте оси на чертеже</div>
+          </>}
         </nav>}
         <div className="graph-editor-form lektrus-graph-settings">
           {mode==="geometry"&&sectionTabs}
           {tab==="presets"&&<div className="lektrus-graph-section lektrus-math-presets">
             <strong>{mode==="geometry"?(figureCategory==="Геометрия"?"Плоские фигуры · 2D":"Объёмные фигуры · 3D"):"Выберите построение"}</strong>
-            {mode==="geometry"&&<button type="button" className="lektrus-start-free-drawing"
+            {mode==="geometry"&&figureCategory==="Геометрия"&&<button type="button" className="lektrus-start-free-drawing"
               onClick={()=>{loadPreset("free");setCanvasTool("polygon");setLinkKind("polygon");setLinkPoints([]);setTab("connect");}}>
               <strong>+ Построить по точкам</strong>
               <small>Коснитесь трёх или более мест на рисунке и замкните контур</small>
