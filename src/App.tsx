@@ -7818,6 +7818,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             );
             if(touchControl && !boardHandle)return;
             if(e.pointerType==="touch"){touchStart(e);if(pinchState.current){e.preventDefault();e.stopPropagation();return;}}
+            // When editing vertices, GraphView owns this gesture. The board may
+            // still recognize a two-finger pinch, but must not start a competing
+            // object drag or capture the first finger.
+            const graphObject=target.closest<HTMLElement>("[data-object]");
+            if(graphPointEditId&&tool==="select"&&graphObject?.dataset.object===graphPointEditId&&
+              target.closest(".graph-view")){
+              return;
+            }
             // The phone/tablet hand always pans with ONE finger, including
             // over selected objects. Desktop still uses RMB/space to pan.
             if (e.pointerType==="touch" && tool==="hand" && !pinchState.current) {
