@@ -361,11 +361,25 @@ assert.match(editor,/linkExistingPoints\(source,linkKind,selected\)/,
  "editor invokes pure existing-vertex geometry builder");
 assert.match(editor,/onPickPoint:pickLinkPoint,onCreateAndPickPoint:createAndSelectPoint,pickedPoints:linkPoints/,
  "preview forwards touch vertex selection and highlights picks");
-assert.match(app,/if\(tap\.index!==null\)onPickPoint\(tap\.index\)/,
- "one SVG capture selects each existing vertex exactly once");
+assert.match(app,/if\(tap\.index!==null\)\{/,
+ "one SVG capture processes each selected vertex once");
+assert.match(app,/onPickPoint\(tap\.index\)/,
+ "single tap forwards the selected point");
+assert.match(app,/onRemovePoint\(tap\.index\)/,
+ "touch double tap removes the point without reopening the editor");
 assert.match(css,/lektrus-link-vertex-list/,
  "the same vertex selection is possible through accessible large buttons");
 
+assert.match(editor,/Редактор фигур/,
+ "full screen figure editor uses a consistent title");
+assert.match(app,/lektrus-graph-open-editor/,
+ "selected figure exposes an obvious primary editor action");
+assert.match(app,/lektrus-graph-inline-draw/,
+ "in-board drawing is a secondary mode");
+assert.match(app,/>Черчение<\/span>/,
+ "on-board drawing no longer uses the misleading points-only label");
+assert.match(editor,/LektrusGeometryToolIcon name="close"/,
+ "workspace has a consistent vector close icon");
 assert.match(editor,/lektrus-start-free-drawing/,
  "an obvious build-by-points entry exists on the first geometry screen");
 assert.match(editor,/onCreateAndPickPoint:createAndSelectPoint/,
@@ -451,6 +465,10 @@ assert.match(editor,/Новая линия/,
 assert.match(boardModel,/"graphFreePathStart"/,
  "free path start is included in board import and export allowlist");
 const boardPanel=read("src/LektrusBoardGeometryPanel.tsx");
+assert.match(boardPanel,/Черчение/,
+ "board drawing panel and selection toolbar share their title");
+assert.match(boardPanel,/onOpenEditor/,
+ "board drawing panel can launch the full editor without hiding and reselecting");
 const boardActions=read("src/lektrusBoardGeometry.ts");
 assert.match(app,/onPickPoint=\{item\.graphPurpose==="geometry"/,
  "clicking an existing point enters the active board construction");
