@@ -86,6 +86,7 @@ import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
+import {trackBoardVisit,listBoardVisits,formatVisitDuration,type BoardVisit} from "./boardVisits";
 import { connectBoardCursorChannel, type BoardCursorChannel, type RemoteCursor, type LiveInkMessage } from "./boardBroadcast";
 import { connectBoardViewControl, type BoardViewControlChannel } from "./boardViewSync";
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState } from "./boardWorkSync";
@@ -1888,6 +1889,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [discussionParticipants,setDiscussionParticipants]=useState<BoardCommentParticipant[]>([]);
   const [discussionFocusId,setDiscussionFocusId]=useState<string|null>(()=>new URLSearchParams(window.location.search).get("discussion"));
   const [presenceUsers, setPresenceUsers] = useState<BoardPresenceUser[]>([]);
+  const [visitHistoryOpen,setVisitHistoryOpen]=useState(false);
+  const [visitRows,setVisitRows]=useState<BoardVisit[]>([]);
+  const [visitLoading,setVisitLoading]=useState(false);
+  const [visitError,setVisitError]=useState("");
+  const loadVisitHistory=async()=>{setVisitLoading(true);setVisitError("");try{setVisitRows(await listBoardVisits(boardSummary.id))}catch(error){setVisitError(error instanceof Error?error.message:"Не удалось получить посещения")}finally{setVisitLoading(false)}};
   const visiblePresenceUsers = useMemo(() => adminHidden ? presenceUsers.filter((user) => user.userId !== authUser.id) : presenceUsers, [presenceUsers, adminHidden, authUser.id]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [remoteInk, setRemoteInk] = useState<Record<string, LiveInkMessage>>({});
@@ -6095,6 +6101,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   useEffect(() => layoutEditing?()=>{}:subscribeBoardDocument(boardSummary.id, row => receiveRemote.current(row), setRealtimeStatus), [boardSummary.id,layoutEditing]);
 
+  useEffect(() => layoutEditing||!isRemoteBackendEnabled()?()=>{}:trackBoardVisit(boardSummary.id),[boardSummary.id,layoutEditing]);
+
   useEffect(() => layoutEditing?()=>{}:subscribeBoardPresence(
     boardSummary.id,
     { userId: authUser.id, name: authUser.name, role: boardSummary.role },
@@ -6429,6 +6437,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   Собрать всех
                 </button>}
               </div>
+              {boardSummary.role==="owner"&&<button type="button" className="presence-visit-link" onClick={()=>{setVisitHistoryOpen(true);void loadVisitHistory()}}>История посещений <span>↗</span></button>}
               {visiblePresenceUsers.length ? visiblePresenceUsers.map((user) => <div className="presence-person" key={user.userId}>
                 <span className="presence-avatar" aria-hidden="true">{user.name.trim().charAt(0).toUpperCase() || "U"}</span>
                 <span className="presence-person-copy">
@@ -6458,6 +6467,33 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               </div>}
             </div>
           </details>}
+          {visitHistoryOpen&&<div className="access-backdrop visit-history-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setVisitHistoryOpen(false)}}>
+            <section className="access-modal visit-history-modal" role="dialog" aria-modal="true" aria-label="История посещений доски">
+              <header className="visit-history-header">
+                <div><small>LEKTRUS · ПОСЕЩАЕМОСТЬ</small><h2>История посещений</h2><p>{boardSummary.title} · время присутствия на доске</p></div>
+                <button type="button" onClick={()=>setVisitHistoryOpen(false)} aria-label="Закрыть">×</button>
+              </header>
+              <div className="visit-history-overview">
+                <div><small>Посещений</small><strong>{visitRows.length}</strong></div>
+                <div><small>Участников</small><strong>{new Set(visitRows.map(r=>r.user_id)).size}</strong></div>
+                <div><small>Общее время</small><strong>{formatVisitDuration(visitRows.reduce((n,r)=>n+r.duration_seconds,0))}</strong></div>
+              </div>
+              <div className="visit-history-actions"><span>Последние посещения · до 150 записей</span><button type="button" disabled={visitLoading} onClick={()=>void loadVisitHistory()}>↻ Обновить</button></div>
+              {visitError&&<p className="visit-history-error">{visitError}</p>}
+              <div className="visit-history-list">
+                {visitLoading&&<p className="visit-history-empty">Загружаем посещения…</p>}
+                {!visitLoading&&!visitError&&visitRows.length===0&&<p className="visit-history-empty">Записей пока нет. Они появятся после входа участников на доску.</p>}
+                {!visitLoading&&visitRows.map(row=><article className="visit-history-row" key={row.visit_id}>
+                  <div className="visit-history-avatar">{row.user_name.charAt(0).toUpperCase()||"У"}</div>
+                  <div className="visit-history-info"><strong>{row.user_name}</strong>
+                    <span>{new Intl.DateTimeFormat("ru-RU",{day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(row.started_at))}</span>
+                    <small>{row.active?"Сейчас на доске":row.left_at?"Вышел "+new Intl.DateTimeFormat("ru-RU",{hour:"2-digit",minute:"2-digit"}).format(new Date(row.left_at)):"Сеанс завершён"}</small>
+                  </div>
+                  <div className="visit-history-duration"><b>{formatVisitDuration(row.duration_seconds)}</b><span className={row.active?"visit-history-live":""}>{row.active?"● В сети":"Завершён"}</span></div>
+                </article>)}
+              </div>
+            </section>
+          </div>}
           {remoteEditingCount > 0 && <span className="collab-editing-status" title="Сейчас другие участники редактируют объекты">
             ✎ {remoteEditingCount}
           </span>}
