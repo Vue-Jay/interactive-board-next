@@ -21,6 +21,7 @@ const math=load(transpile("src/LektrusGraphEditor.tsx"),{
 const linking=load(transpile("src/lektrusGeometryExistingPoints.ts"),{
  "./lektrusGeometryPointNames":names
 });
+const precise=load(transpile("src/lektrusGeometryPrecision.ts"));
 const {nextGeometryPointLabel,availableGeometryLabel,isGeometryLabelInUse,repairGeometryPointLabels}=names;
 const {appendFreeSketchPoint,appendFreeSketchBoard,closeFreeSketch,freeSketchClosingIndex,removeGraphPoint,closeFreeSketchBoard,removeGraphBoardPoint}=math;
 
@@ -111,10 +112,33 @@ assert.deepEqual(independent.graphPoints.map(p=>p.label),["A","B"]);
 
 const {linkExistingPoints}=linking;
 const {removeConstruction}=load(transpile("src/lektrusConstructionCleanup.ts"));
+const {geometryDistance,geometryAngle,geometryPolygonMetrics,adjustGeometryPoints,formatGeometryMetric}=precise;
+assert.equal(geometryDistance({x:0,y:0},{x:3,y:4}),5);
+assert.equal(geometryAngle({x:0,y:1},{x:0,y:0},{x:1,y:0}),90);
+assert.equal(geometryAngle({x:-1,y:0},{x:0,y:0},{x:1,y:0}),180);
+assert.equal(geometryAngle({x:0,y:0},{x:0,y:0},{x:1,y:0}),null);
+assert.deepEqual(geometryPolygonMetrics([{x:0,y:0},{x:4,y:0},{x:4,y:3},{x:0,y:3}]),{perimeter:14,area:12});
+assert.equal(formatGeometryMetric(4.49999999),"4,5");
 const geometry={
  points:[{x:0,y:0,label:"A"},{x:4,y:0,label:"B"},{x:4,y:3,label:"C"},{x:0,y:3,label:"D"}],
  segments:[],polygons:[],angles:[],circles:[],midpoints:[]
 };
+const horizontal=adjustGeometryPoints(geometry,[0,2],"horizontal");
+assert.equal(horizontal.draft.points[2].y,0);
+assert.deepEqual(horizontal.draft.points[0],geometry.points[0],"fixed reference point does not move");
+assert.deepEqual(geometry.points[2],{x:4,y:3,label:"C"},"precision never mutates its source");
+const vertical=adjustGeometryPoints(geometry,[0,2],"vertical");
+assert.equal(vertical.draft.points[2].x,0);
+const lengthAdjusted=adjustGeometryPoints(geometry,[0,2],"distance",5);
+assert.equal(geometryDistance(lengthAdjusted.draft.points[0],lengthAdjusted.draft.points[2]),5);
+const right=adjustGeometryPoints(geometry,[0,1,2],"angle",90);
+assert.equal(Math.round(geometryAngle(right.draft.points[0],right.draft.points[1],right.draft.points[2])),90);
+assert.equal(geometryDistance(right.draft.points[1],right.draft.points[2]),3,
+ "changing an angle preserves its other ray length");
+assert.equal(adjustGeometryPoints(geometry,[0,1],"distance",-4).draft,geometry);
+assert.equal(adjustGeometryPoints(geometry,[0,1],"distance",1e5).draft,geometry);
+assert.equal(adjustGeometryPoints(geometry,[0,1],"angle",90).draft,geometry,
+ "angle requires three selected points");
 const straight=linkExistingPoints(geometry,"segment",[0,1]);
 assert.equal(straight.draft.points,geometry.points,"reuse shared vertices by reference");
 assert.deepEqual(straight.draft.segments.map(s=>[s.a,s.b,s.kind]),[[0,1,"segment"]]);
@@ -190,6 +214,14 @@ assert.match(app,/freePointGesture/,
  "second finger cancels an existing point gesture");
 assert.match(app,/appendFreeSketchBoard\(candidate,x,y\)/,
  "saved board uses the same geometry path builder");
+assert.match(editor,/adjustGeometryPoints\(draft,linkPoints,kind,value\)/,
+ "geometry editor delegates exact alignments to the validated model");
+assert.match(editor,/geometryPolygonMetrics\(linkPoints\.map/,
+ "measurements update from referenced vertex positions");
+assert.match(editor,/linkKind==="measure"/,
+ "measurement mode keeps the selection rather than adding a construction");
+assert.match(editor,/lektrus-precision-target/,
+ "mobile editor exposes an exact measurement field");
 assert.match(editor,/linkExistingPoints\(draft,linkKind,selected\)/,
  "editor invokes pure existing-vertex geometry builder");
 assert.match(editor,/onPickPoint:pickLinkPoint,pickedPoints:linkPoints/,
