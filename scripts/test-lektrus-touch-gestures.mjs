@@ -47,8 +47,8 @@ assert.ok(eraser.includes('item.kind!=="pen"&&item.kind!=="marker"'),
  "Brush must only erase ink strokes and marker strokes");
 assert.ok(interaction.includes('.board.board-tool-eraser [data-object] *'));
 assert.ok(interaction.includes('pointer-events:none!important'));
-assert.ok(app.includes('if(tool==="eraser"){e.preventDefault();e.stopPropagation();return;}'),
- "Eraser must not activate object click handlers");
+assert.match(app,/if\(tool==="eraser"&&\!\(e\.target as HTMLElement\)\.closest\("button,input,select,textarea,\[data-board-interactive\]"\)\)/,
+ "Eraser must suppress object clicks while allowing embedded toolbar controls");
 assert.ok(lost.includes('eraserSession.current?.pointer===e.pointerId'));
 assert.ok(lost.includes('gesture.current?.pointer===e.pointerId'));
 assert.ok(!lost.includes('else end(true)'),
