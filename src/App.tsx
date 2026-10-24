@@ -2677,11 +2677,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const latest=currentDocument();
       snapshot.current=latest;
       flushSave();
-      const expected=documentFingerprint(latest);
-      if(canEdit&&isRemoteBackendEnabled()&&expected!==acknowledgedDocument.current){
+      const expected=sharedBoardFingerprint(latest);
+      if(canEdit&&isRemoteBackendEnabled()&&expected!==acknowledgedSharedContent.current){
         const until=Date.now()+8000;
         while(boardMounted.current&&Date.now()<until&&
-              acknowledgedDocument.current!==expected){
+              acknowledgedSharedContent.current!==expected){
           const running=remoteSavePromise.current;
           if(running){
             await Promise.race([
@@ -2692,7 +2692,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             await new Promise<void>(resolve=>window.setTimeout(resolve,140));
           }
         }
-        if(acknowledgedDocument.current!==expected){
+        if(acknowledgedSharedContent.current!==expected){
           const reason=saveFailure.current;
           const detail=reason
             ? "Последняя ошибка ("+reason.step+"): "+reason.message
