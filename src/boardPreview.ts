@@ -198,7 +198,12 @@ export async function renderBoardPreview(data:DocumentData,boardId:string):Promi
         bitmap=await createImageBitmap(blob,{resizeWidth:Math.min(480,Math.max(2,Math.round(item.width*scale)))});
         ctx.save();ctx.translate(item.x,item.y);
         if(item.rotation){ctx.translate(item.width/2,item.height/2);ctx.rotate(item.rotation*Math.PI/180);ctx.translate(-item.width/2,-item.height/2)}
-        ctx.drawImage(bitmap,0,0,item.width,item.height);ctx.restore();
+        if(item.imageCrop){
+          const c=item.imageCrop;
+          ctx.drawImage(bitmap,c.x*bitmap.width,c.y*bitmap.height,
+            c.width*bitmap.width,c.height*bitmap.height,0,0,item.width,item.height);
+        }else ctx.drawImage(bitmap,0,0,item.width,item.height);
+        ctx.restore();
       }
     }catch{/* Asset isn't cached or is offline. */}
     finally{bitmap?.close()}
