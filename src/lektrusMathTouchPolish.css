@@ -307,3 +307,28 @@
 .board-object.object-graph .lektrus-connect-drawing-surface{
  pointer-events:all;touch-action:none;cursor:crosshair;
 }
+
+
+/* One compact action strip for school figures. On narrow screens the full set
+ * remains reachable by horizontal scrolling instead of clipping buttons. */
+.selection-toolbar-screen.lektrus-graph-selection-toolbar{
+ max-width:min(760px,calc(100vw - 28px));
+ overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
+ -webkit-overflow-scrolling:touch;scrollbar-width:thin;
+}
+.lektrus-graph-selection-toolbar .graph-selection-controls{
+ display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
+}
+.lektrus-graph-selection-toolbar .graph-selection-controls>button{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ min-height:31px;padding:4px 9px;border-radius:7px;white-space:nowrap;
+ font-size:11px;font-weight:700;touch-action:manipulation;
+}
+.lektrus-graph-selection-toolbar .graph-selection-controls>button.active{
+ background:#e7f0ff;color:#235b9e;
+}
+@media(pointer:coarse){
+ .lektrus-graph-selection-toolbar .graph-selection-controls>button{
+  min-height:42px;min-width:42px;padding:8px;
+ }
+}
