@@ -368,8 +368,8 @@ assert.match(app,/let nearest:number\|null=null,best=radius\*radius/,
  "nearest real vertex wins when large mobile touch areas overlap");
 assert.match(app,/selectionContacts\.current\.size>1/,
  "two-finger navigation cancels point selection");
-assert.match(app,/onPointMoveEnd=\{graphPointEditId===item\.id&&selectedIds\.has\(item\.id\)/,
- "saved board permits local point dragging under edit permissions");
+assert.match(app,/onPointMoveEnd=\{selectedIds\.has\(item\.id\)/,
+ "selected geometry permits direct vertex dragging on the board");
 assert.match(app,/if\(onPointMoveEnd\)setLiveVertex/,
  "local drag preview does not write remote history at every pointer step");
 assert.match(app,/onPointMoveEnd\(i,lastPosition\.x,lastPosition\.y\)/,
@@ -398,14 +398,14 @@ assert.doesNotMatch(app,/className="lektrus-graph-board-actions"/,
  "redundant on-canvas settings toolbar was removed");
 assert.match(app,/aria-label="Настроить учебный объект"/,
  "the bottom selection toolbar provides a clear accessible settings action");
-assert.match(app,/setGraphPointEditId\(current=>current===singleSelected\.id\?null:singleSelected\.id\)/,
- "the bottom toolbar toggles explicit point editing");
+assert.match(app,/changeBoardGeometryMode\(singleSelected,"move"\)/,
+ "the selection toolbar opens on-board construction mode");
 assert.match(app,/onAddPoint=\{graphPointEditId===item\.id/,
  "a normal graph drag no longer adds accidental vertices");
 assert.match(app,/onCloseFreePolygon=\{graphPointEditId===item\.id/,
  "a normal graph drag no longer closes a free polygon accidentally");
-assert.match(app,/onPointMoveEnd=\{graphPointEditId===item\.id/,
- "normal graph movement is separated from vertex manipulation");
+assert.match(app,/activeBoardGeometryMode\(item\)==="move"/,
+ "vertex manipulation is separated from geometry construction modes");
 assert.match(app,/if\(touchControl && !boardHandle\)return/,
  "board capture never treats the settings toolbar as an ink or eraser gesture");
 assert.match(app,/if\(tool==="eraser"&&!\(/,
@@ -436,10 +436,24 @@ assert.match(app,/graphFreePathStart:d\.freePathStart/,
  "independent line boundary is saved with the graph");
 assert.match(app,/freePathStart:item\.graphFreePathStart\?\?0/,
  "saved independent paths are restored when editor opens");
-assert.match(app,/graphFreePathStart:entry\.graphPoints\?\.length\?\?0/,
+assert.match(app,/graphFreePathStart:item\.graphPoints\?\.length\?\?0/,
  "new line action starts after existing points");
 assert.match(editor,/Новая линия/,
  "the same new line action is available in editor");
 assert.match(boardModel,/"graphFreePathStart"/,
  "free path start is included in board import and export allowlist");
+const boardPanel=read("src/LektrusBoardGeometryPanel.tsx");
+const boardActions=read("src/lektrusBoardGeometry.ts");
+assert.match(app,/onPickPoint=\{item\.graphPurpose==="geometry"/,
+ "clicking an existing point enters the active board construction");
+assert.match(app,/onCreateAndPickPoint=\{item\.graphPurpose==="geometry"/,
+ "tapping empty graph space creates and selects a vertex");
+assert.match(app,/linkBoardGeometry\(original,mode,next\)/,
+ "two or three taps complete line, circle and angle on the saved object");
+assert.match(boardPanel,/onConstraint\("distance",length\?\?undefined\)/,
+ "precise constraints are accessible without opening a dialog");
+assert.match(boardPanel,/schoolActions\.map\(/,
+ "school constructions are accessible directly on the board");
+assert.match(boardActions,/removeBoardGeometryElement/,
+ "construction element removal is available on the board");
 console.log("Geometry construction regression checks: point placement, contour closing, nearest vertex, edit gestures and cancellation.");
