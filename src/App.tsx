@@ -45,6 +45,7 @@ import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
 import LektrusGraphEditor, {appendFreeSketchPoint,appendFreeSketchBoard,closeFreeSketch,closeFreeSketchBoard,freeSketchClosingIndex,removeGraphPoint,removeGraphBoardPoint,type GraphDraft} from "./LektrusGraphEditor";
 import {nextGeometryPointLabel,repairGeometryPointLabels} from "./lektrusGeometryPointNames";
 import {geometryAngle,geometryDistance,geometryPolygonMetrics,formatGeometryMetric} from "./lektrusGeometryPrecision";
+import {magneticGeometrySnap,moveGeometryVertex,removeVertexConstraints} from "./lektrusGeometryConstraints";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {formatPiRadians,makeMathPresetItem} from "./lektrusMathPresets";
@@ -1216,12 +1217,17 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
   const curve = purpose === "function" && item.graphShowCurve !== false && expression ? Array.from({length:401},(_,i)=>{const x=xMin+(xMax-xMin)*i/400,y=evaluateGraphExpression(expression,x);return {x:sx(x),y:sy(y),ok:Number.isFinite(y)&&y>=yMin-(yMax-yMin)*2&&y<=yMax+(yMax-yMin)*2};}) : [];
   let curvePath="",drawing=false;
   for(const p of curve){if(!p.ok){drawing=false;continue}curvePath+=`${drawing?"L":"M"}${p.x.toFixed(1)} ${p.y.toFixed(1)} `;drawing=true}
-  const coord = (clientX:number,clientY:number,svg:SVGSVGElement) => {
+  const coord = (clientX:number,clientY:number,svg:SVGSVGElement,pointIndex=-1) => {
     const r=svg.getBoundingClientRect(),factor=Math.min(r.width/W,r.height/H)||1;
     const left=r.left+(r.width-W*factor)/2,top=r.top+(r.height-H*factor)/2;
     let x=ux((clientX-left)/factor),y=uy((clientY-top)/factor);
     if(item.graphSnap!==false&&purpose!=="unit-circle"){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
+    if(purpose==="geometry"&&item.graphMagneticSnap!==false&&pointIndex>=0){
+      const aligned=magneticGeometrySnap(item.graphPoints??[],pointIndex,x,y,12/scale);
+      x=aligned.x;y=aligned.y;
+    }
     return {x:Number(x.toFixed(4)),y:Number(y.toFixed(4))};
+
   };
   const beginOrbit=(e:PE<SVGGElement>)=>{
     if(!onRotate)return;
@@ -1653,7 +1659,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, o
             if(ev.pointerId!==id||cancelled)return;
             if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>(ev.pointerType==="touch"?14:7))didMove=true;
             if(!didMove||!movable)return;
-            const q=coord(ev.clientX,ev.clientY,svg);onPointMove?.(i,q.x,q.y);
+            const q=coord(ev.clientX,ev.clientY,svg,i);onPointMove?.(i,q.x,q.y);
           };
           const cleanup=()=>{
             window.removeEventListener("pointermove",move);
@@ -5223,10 +5229,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(item.scienceAtomModel||item.graphFigureId==="chem-atom"){setAtomEditorItem(item);return;}
     if(item.graphFigureId==="chem-periodic"){setPeriodicEditorItem(item);return;}
     if(item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")){setScienceEditorItem(item);return;} if(itemsRef.current.some(existing=>existing.id===item.id))setSelected([item.id]); setGraphEditorId(item.id);
-    setGraphDraft({figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
+    setGraphDraft({constraints:[...(item.graphConstraints??[])],magneticSnap:item.graphMagneticSnap!==false,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
   };
   const closeGraphEditor=()=>{setGraphEditorId(null);setGraphDraft(null);setPendingMathItem(null)};
-  const saveGraphEditor=()=>{if(!graphEditorId||!graphDraft){closeGraphEditor();return} const d={...graphDraft,xMin:Math.min(graphDraft.xMin,graphDraft.xMax-1),xMax:Math.max(graphDraft.xMax,graphDraft.xMin+1),yMin:Math.min(graphDraft.yMin,graphDraft.yMax-1),yMax:Math.max(graphDraft.yMax,graphDraft.yMin+1)}; commit((pendingMathItem?.kind==="graph"&&pendingMathItem.id===graphEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map(item=>item.id===graphEditorId?{...item,text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode}:item)); closeGraphEditor(); setNotice("График сохранён")};
+  const saveGraphEditor=()=>{if(!graphEditorId||!graphDraft){closeGraphEditor();return} const d={...graphDraft,xMin:Math.min(graphDraft.xMin,graphDraft.xMax-1),xMax:Math.max(graphDraft.xMax,graphDraft.xMin+1),yMin:Math.min(graphDraft.yMin,graphDraft.yMax-1),yMax:Math.max(graphDraft.yMax,graphDraft.yMin+1)}; commit((pendingMathItem?.kind==="graph"&&pendingMathItem.id===graphEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map(item=>item.id===graphEditorId?{...item,text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphConstraints:d.constraints,graphMagneticSnap:d.magneticSnap,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode}:item)); closeGraphEditor(); setNotice("График сохранён")};
 
   const openFormulaEditor = (item: Item) => {
     if (!canEdit || structurallyLockedForStudent(item)) return;
@@ -7125,7 +7131,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               graphShowCurve:graphDraft.showCurve,graphConnectPoints:graphDraft.connectPoints,
               graphXMin:graphDraft.xMin,graphXMax:graphDraft.xMax,
               graphYMin:graphDraft.yMin,graphYMax:graphDraft.yMax,
-              graphGrid:graphDraft.grid,graphPoints:graphDraft.points,
+              graphGrid:graphDraft.grid,graphPoints:graphDraft.points,graphConstraints:graphDraft.constraints,graphMagneticSnap:graphDraft.magneticSnap,
               graphShowLabels:graphDraft.showLabels,graphSnap:graphDraft.snap,
               graphAxisLabels:graphDraft.axisLabels,graphGridStep:graphDraft.gridStep,
               graphProjections:graphDraft.projections,graphSegments:graphDraft.segments,
@@ -7140,7 +7146,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               if(!current||current.purpose==="unit-circle"&&i<5)return current;
               const trig=current.purpose==="unit-circle"&&i===5;
               const angle=Math.atan2(y,x),xx=trig?Number(Math.cos(angle).toFixed(6)):x,yy=trig?Number(Math.sin(angle).toFixed(6)):current.purpose==="number-line"?0:y;
-              return {...current,points:current.points.map((p,j)=>j===i?{...p,x:xx,y:yy,label:trig?formatPiRadians(angle):p.label}:p)};
+              const updated=current.purpose==="geometry"?
+                moveGeometryVertex(current,i,xx,yy):{...current,points:current.points.map((p,j)=>j===i?{...p,x:xx,y:yy,label:trig?formatPiRadians(angle):p.label}:p)};
+              return updated;
             })}
             onAddPoint={(x,y)=>setGraphDraft(current=>{
               if(!current||current.purpose==="unit-circle"||current.figureId==="ray"||isSolidFigure(current.figureId)||current.points.length>=40)return current;
