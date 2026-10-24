@@ -8201,7 +8201,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                         aria-label={graphPointEditId===item.id?"Закончить редактирование вершин":"Редактировать точки построения"}
                         title={graphPointEditId===item.id?"Вернуться к перемещению фигуры":"Перемещать и добавлять точки"}
                         onClick={e=>{e.preventDefault();e.stopPropagation();setTool("select");setSelected([item.id]);setGraphPointEditId(v=>v===item.id?null:item.id)}}>
-                        <Icon name="move" size={15}/><span>{graphPointEditId===item.id?"Готово":"Точки"}</span>
+                        <Icon name="select" size={15}/><span>{graphPointEditId===item.id?"Готово":"Точки"}</span>
                       </button>}
                   </div>}
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
