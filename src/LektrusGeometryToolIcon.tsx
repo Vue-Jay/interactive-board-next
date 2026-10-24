@@ -1,5 +1,5 @@
 import type {ReactNode} from "react";
-export type GeometryToolIconName="move"|"select"|"point"|"segment"|"line"|"ray"|"polygon"|"angle"|"circle"|"midpoint"|"measure"|"2d"|"3d"|"dimensions"|"elements"|"editor"|"collapse"|"expand";
+export type GeometryToolIconName="move"|"select"|"point"|"segment"|"line"|"ray"|"polygon"|"angle"|"circle"|"midpoint"|"measure"|"2d"|"3d"|"dimensions"|"elements"|"editor"|"collapse"|"expand"|"close"|"undo";
 export default function LektrusGeometryToolIcon({name,size=23}:{name:GeometryToolIconName;size?:number}){
  const nodes:Record<GeometryToolIconName,ReactNode>={
   move:<><path d="M4 3.5 19 12l-7.1 1.1L9 20.5Z"/></>,
@@ -19,7 +19,9 @@ export default function LektrusGeometryToolIcon({name,size=23}:{name:GeometryToo
   elements:<><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="6.8" strokeDasharray="3 2"/></>,
   editor:<><rect x="3.5" y="3.5" width="16" height="16" rx="3.2"/><path d="M7 14.5 15.2 6.3a1.75 1.75 0 0 1 2.5 2.5L9.5 17l-3.5 1Z"/><path d="m13.8 7.7 2.5 2.5"/></>,
   collapse:<><path d="M6 12h12"/></>,
-  expand:<><path d="M6 12h12M12 6v12"/></>
+  expand:<><path d="M6 12h12M12 6v12"/></>,
+  close:<><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></>,
+  undo:<><path d="M9 8 4 12l5 4"/><path d="M4 12h9a6 6 0 0 1 0 12" transform="translate(0 -4)"/></>
  };
  return <svg viewBox="0 0 24 24" width={size} height={size} className="lektrus-geometry-vector-icon"
    fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"
