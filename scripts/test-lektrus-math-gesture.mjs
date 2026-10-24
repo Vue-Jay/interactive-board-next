@@ -378,7 +378,7 @@ assert.match(app,/onPointMoveEnd=\{graphPointEditId===item\.id/,
  "normal graph movement is separated from vertex manipulation");
 assert.match(app,/if\(touchControl && !boardHandle\)return/,
  "board capture never treats the settings toolbar as an ink or eraser gesture");
-assert.match(app,/if\(tool==="eraser"&&!,/,
+assert.match(app,/if\(tool==="eraser"&&!\(/,
  "eraser click capture respects interactive diagram buttons");
 assert.match(css,/\.lektrus-graph-board-actions>button/,
  "floating settings and point toggle have visible touch targets");
