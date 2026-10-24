@@ -114,6 +114,7 @@ const closeFreeSketchParts=(draft:Pick<GraphDraft,"figureId"|"points"|"segments"
   if(first===null)return null;
   const n=draft.points.length;
   const polygonPoints=Array.from({length:n-first},(_,i)=>first+i);
+  if(!geometryPolygonMetrics(polygonPoints.map(i=>draft.points[i])))return null;
   const sections=draft.segments.filter(seg=>!(seg.a>=first&&seg.b>=first&&
     Math.abs(seg.a-seg.b)===1&&seg.kind==="segment"));
   return {segments:sections,polygons:[...draft.polygons,{points:polygonPoints,label:"",measure:false}]};
@@ -920,6 +921,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 <span className={closeFreeSketch(draft)!==draft?"is-ready":""}>{closeFreeSketch(draft)!==draft?"● Можно замкнуть":"● Ставьте точки по порядку"}</span>
                 <span>{draft.points.length} точек · {draft.polygons.length} фигур</span>
               </div>
+              {freeSketchClosingIndex(draft)!==null&&closeFreeSketch(draft)===draft&&
+                <small role="alert" className="lektrus-geometry-error">Контур пересекает сам себя или имеет нулевую площадь. Исправьте положение вершин.</small>}
               <div className="lektrus-graph-construct-actions">
                 <button type="button" onClick={addPoint} disabled={draft.points.length>=40}>+ Точка</button>
                 <button type="button" disabled={!canUndoFreePoint} onClick={()=>onChange(removeGraphPoint(draft,openPathLast))} title="Убрать последнюю неподтверждённую вершину">↶ Отменить точку</button>
