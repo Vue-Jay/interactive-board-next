@@ -332,3 +332,9 @@
  .board-object.object-graph .lektrus-graph-board-actions{gap:4px;top:4px;right:4px}
  .board-object.object-graph .lektrus-graph-board-actions>button{font-size:10px;padding:6px}
 }
+
+
+/* In explicit vertex mode the whole blank SVG is a precise single-tap target. */
+.board-object.object-graph .lektrus-connect-drawing-surface{
+ pointer-events:all;touch-action:none;cursor:crosshair;
+}
