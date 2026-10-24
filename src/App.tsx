@@ -1141,10 +1141,12 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onAddPoint, onPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
+  onPickPoint?: (index:number)=>void;
+  pickedPoints?: readonly number[];
   onCloseFreePolygon?: ()=>void;
   onRemovePoint?: (index:number)=>void;
   onRotate?: (rotationX:number,rotationY:number)=>void;
@@ -1291,7 +1293,7 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
       })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onPointerDownCapture={event=>{
-        if(item.graphFigureId!=="free"||!onAddPoint||event.pointerType==="mouse")return;
+        if(!(onPickPoint||item.graphFigureId==="free"&&onAddPoint)||event.pointerType==="mouse")return;
         freeContacts.current.add(event.pointerId);
         if(freeContacts.current.size>1){
           if(freeTap.current)freeTap.current.cancelled=true;
@@ -1299,11 +1301,11 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
         }
       }}
       onPointerUpCapture={event=>{
-        if(item.graphFigureId==="free"&&event.pointerType!=="mouse")
+        if((onPickPoint||item.graphFigureId==="free"&&onAddPoint)&&event.pointerType!=="mouse")
           freeContacts.current.delete(event.pointerId);
       }}
       onPointerCancelCapture={event=>{
-        if(item.graphFigureId==="free"&&event.pointerType!=="mouse"){
+        if((onPickPoint||item.graphFigureId==="free"&&onAddPoint)&&event.pointerType!=="mouse"){
           freeContacts.current.delete(event.pointerId);
           if(freeTap.current?.id===event.pointerId)freeTap.current=null;
           freePointGesture.current?.cancel();
@@ -1610,20 +1612,26 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
         {(item.graphMidpoints??[]).map((m,i)=>{const a=point(m.a),b=point(m.b);if(!a||!b)return null;const x=(a.x+b.x)/2,y=(a.y+b.y)/2;return <g key={`mid-${i}`}><circle className="graph-midpoint" cx={sx(x)} cy={sy(y)} r="4"/>{m.label&&<text className="graph-figure-label" x={sx(x)+8} y={sy(y)-7}>{m.label}</text>}</g>})}
       </g>
       {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={(purpose==="number-line"?gp.slice(0,2):gp).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
-      {(solid?[]:gp).map((p,i)=>{if(rayFigure&&i!==0)return null;const pointColor=p.color??"#111111";const movable=!!onPointMove&&(purpose!=="unit-circle"||i>=5);
-        const closesHere=closingVertex===i&&!!onCloseFreePolygon;
-        return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""}`} key={i}
+      {pickedPoints&&pickedPoints.length>1&&
+        <polyline className="lektrus-link-pending-path" pointerEvents="none"
+          points={pickedPoints.map(i=>gp[i]).filter(Boolean).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
+      {(solid?[]:gp).map((p,i)=>{if(rayFigure&&i!==0)return null;const pointColor=p.color??"#111111";
+        const selectable=!!onPickPoint;
+        const movable=!!onPointMove&&!selectable&&(purpose!=="unit-circle"||i>=5);
+        const closesHere=closingVertex===i&&!!onCloseFreePolygon&&!selectable;
+        const picked=pickedPoints?.includes(i)??false;
+        return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""} ${selectable?"lektrus-link-pickable":""} ${picked?"lektrus-link-picked":""}`} key={i}
         onDoubleClick={onRemovePoint&&item.graphFigureId!=="free"&&(purpose!=="unit-circle"||i>5)?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint?.(i)}:undefined}
-        onPointerDown={movable||closesHere?(e)=>{
+        onPointerDown={movable||closesHere||selectable?(e)=>{
           if(e.button!==0||!e.isPrimary||
-            item.graphFigureId==="free"&&freeContacts.current.size>1)return;
+            (item.graphFigureId==="free"||selectable)&&freeContacts.current.size>1)return;
           e.preventDefault();e.stopPropagation();
           const svg=e.currentTarget.ownerSVGElement;
           if(!svg)return;
           const startX=e.clientX,startY=e.clientY,id=e.pointerId;
           let didMove=false,cancelled=false;
           const gesture={cancel:()=>{cancelled=true}};
-          if(item.graphFigureId==="free")freePointGesture.current=gesture;
+          if(item.graphFigureId==="free"||selectable)freePointGesture.current=gesture;
           const move=(ev:PointerEvent)=>{
             if(ev.pointerId!==id||cancelled)return;
             if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>(ev.pointerType==="touch"?14:7))didMove=true;
@@ -1640,7 +1648,10 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
           const up=(ev:PointerEvent)=>{
             if(ev.pointerId!==id)return;
             cleanup();
-            if(!cancelled&&!didMove&&closesHere){
+            if(!cancelled&&!didMove&&selectable){
+              ev.preventDefault();ev.stopPropagation();
+              onPickPoint?.(i);
+            }else if(!cancelled&&!didMove&&closesHere){
               ev.preventDefault();ev.stopPropagation();
               onCloseFreePolygon?.();
             }
@@ -1651,8 +1662,10 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
           window.addEventListener("pointercancel",cancel);
         }:undefined}>
         {closesHere&&<circle className="lektrus-free-close-ring" cx={sx(p.x)} cy={sy(p.y)} r="14" pointerEvents="none"/>}
-        {(movable||closesHere)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r={item.graphFigureId==="free"?(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?42:24):20}/>}
+        {picked&&<circle className="lektrus-link-picked-ring" cx={sx(p.x)} cy={sy(p.y)} r="16" pointerEvents="none"/>}
+        {(movable||closesHere||selectable)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r={item.graphFigureId==="free"?(typeof window!=="undefined"&&window.matchMedia("(pointer:coarse)").matches?42:24):20}/>}
         {closesHere&&<title>Коснитесь, чтобы замкнуть фигуру. Перетащите, чтобы переместить точку.</title>}
+        {selectable&&<title>Выбрать точку {p.label||i+1} для построения</title>}
         {!((item.graphFigureId??"").startsWith("physics-")&&
           (item.graphSegments??[]).some(s=>s.scienceArrow&&s.b===i))&&
           <circle cx={sx(p.x)} cy={sy(p.y)}
