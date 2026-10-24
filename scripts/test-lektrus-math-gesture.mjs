@@ -330,4 +330,28 @@ assert.match(app,/onPickPoint\?\.\(i\)/,
 assert.match(css,/lektrus-link-vertex-list/,
  "the same vertex selection is possible through accessible large buttons");
 
-console.log("Geometry touch and names: free contours, tap closure, deletion, second polygon, unique letters and mobile controls verified.");
+assert.match(editor,/lektrus-start-free-drawing/,
+ "an obvious build-by-points entry exists on the first geometry screen");
+assert.match(editor,/onCreateAndPickPoint:createAndSelectPoint/,
+ "new vertices are created and selected by a single touch without tab switching");
+assert.match(app,/lektrus-connect-drawing-surface/,
+ "an actual SVG hit area must receive taps on blank construction canvas");
+assert.match(app,/let nearest:number\|null=null,best=radius\*radius/,
+ "nearest real vertex wins when large mobile touch areas overlap");
+assert.match(app,/selectionContacts\.current\.size>1/,
+ "two-finger navigation cancels point selection");
+assert.match(app,/onPointMoveEnd=\{!item.locked&&canEdit/,
+ "saved board permits local point dragging under edit permissions");
+assert.match(app,/if\(onPointMoveEnd\)setLiveVertex/,
+ "local drag preview does not write remote history at every pointer step");
+assert.match(app,/onPointMoveEnd\(i,lastPosition\.x,lastPosition\.y\)/,
+ "vertex position commits once on pointer release");
+assert.match(app,/onClose=\{closeGraphEditor\}/,
+ "closing or cancelling editor does not persist unfinished construction");
+assert.match(editor,/const undoLinkPoint=\(\)=>/,
+ "undo handles vertices created during unfinished constructions");
+assert.match(editor,/const resetLinkSelection=\(\)=>/,
+ "cancel clears unfinished vertices, not just their selection");
+assert.match(css,/lektrus-connect-drawing-surface/,
+ "geometry tap surface is accessible on touch devices");
+console.log("Geometry construction regression checks: point placement, contour closing, nearest vertex, edit gestures and cancellation.");
