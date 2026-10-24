@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
 import { isRemoteBackendEnabled } from "./backend";
 import { forgetRememberedAccount, getRememberedAccount, loginUser, loginGuest, registerUser, resumeRememberedAccount, type AuthUser } from "./authStore";
 
@@ -16,6 +16,39 @@ export default function AuthScreen({ onAuthenticated }: Props) {
   const [guestName, setGuestName] = useState("");
   const [remembered,setRemembered]=useState(()=>getRememberedAccount());
   const joining = hasJoinLink();
+  // Android WebView and iOS Safari sometimes blur a field while their virtual
+  // keyboard changes the visual viewport. Never treat deleting the last
+  // character as a request to dismiss the keyboard.
+  const fieldFocus = useRef({focusedAt:0,editedAt:0,outsidePressAt:0});
+  useEffect(()=>{
+    const outsidePress=(event:PointerEvent)=>{
+      const target=event.target;
+      if(!(target instanceof Element) || !target.closest(".auth-form input"))
+        fieldFocus.current.outsidePressAt=Date.now();
+    };
+    document.addEventListener("pointerdown",outsidePress,true);
+    return ()=>document.removeEventListener("pointerdown",outsidePress,true);
+  },[]);
+  const fieldEdited=(value:string,update:(next:string)=>void)=>{
+    fieldFocus.current.editedAt=Date.now();
+    update(value);
+  };
+  const fieldFocused=()=>{fieldFocus.current.focusedAt=Date.now()};
+  const fieldBlurred=(event:FocusEvent<HTMLInputElement>)=>{
+    if(!window.matchMedia("(max-width:700px), (pointer:coarse)").matches)return;
+    // Explicit taps elsewhere, tab navigation and system back after a normal
+    // editing session should work. Rescue only a near-immediate stray blur.
+    if(event.relatedTarget)return;
+    const now=Date.now(),focus=fieldFocus.current;
+    if(now-focus.outsidePressAt<400 ||
+       (now-focus.focusedAt>700 && now-focus.editedAt>230))return;
+    const input=event.currentTarget;
+    window.requestAnimationFrame(()=>{
+      if(!input.isConnected || document.activeElement!==document.body ||
+         Date.now()-fieldFocus.current.outsidePressAt<400)return;
+      input.focus({preventScroll:true});
+    });
+  };
 
   const quickLogin=async()=>{
     if(busy||!remembered)return;
@@ -50,12 +83,12 @@ export default function AuthScreen({ onAuthenticated }: Props) {
     <div className="auth-tabs" role="tablist" aria-label="Вход или регистрация"><button type="button" className={mode==="login"?"active":""} onClick={()=>changeMode("login")}>Вход</button><button type="button" className={mode==="register"?"active":""} onClick={()=>changeMode("register")}>Регистрация</button></div>
     <form className="auth-form" onSubmit={submit}>
       <div><h1 id="auth-title">{mode==="register"?"Создать аккаунт":"С возвращением"}</h1><p>{joining?"После входа откроется доска, которой с вами поделились.":mode==="register"?"Создайте аккаунт и начните работать с собственными досками.":"Войдите, чтобы продолжить занятие или открыть свои доски."}</p></div>
-      {mode==="register"&&<label className="auth-field"><span>Имя</span><input value={name} onChange={e=>setName(e.target.value)} autoComplete="name" placeholder="Введите ваше имя" maxLength={80} /></label>}
-      <label className="auth-field"><span>Email</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="name@example.com" maxLength={180} /></label>
-      <label className="auth-field"><span>Пароль</span><input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode==="register"?"new-password":"current-password"} placeholder={mode==="register"?"Минимум 6 символов":"Ваш пароль"} maxLength={200}/></label>
+      {mode==="register"&&<label className="auth-field"><span>Имя</span><input value={name} onChange={e=>fieldEdited(e.target.value,setName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="name" autoCapitalize="words" placeholder="Введите ваше имя" maxLength={80} /></label>}
+      <label className="auth-field"><span>Email</span><input type="email" value={email} onChange={e=>fieldEdited(e.target.value,setEmail)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="name@example.com" maxLength={180} /></label>
+      <label className="auth-field"><span>Пароль</span><input type="password" value={password} onChange={e=>fieldEdited(e.target.value,setPassword)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete={mode==="register"?"new-password":"current-password"} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={mode==="register"?"Минимум 6 символов":"Ваш пароль"} maxLength={200}/></label>
       {error&&<div className="auth-error" role="alert">{error}</div>}
       <button className="auth-submit" type="submit" disabled={busy}>{busy?"Подождите…":mode==="register"?"Зарегистрироваться":"Войти"}</button>
-      {joining&&<><div className="auth-or"><span>или</span></div><label className="auth-field"><span>Ваше имя на доске</span><input value={guestName} onChange={e=>setGuestName(e.target.value)} placeholder="Например, Анна" maxLength={60}/></label><button className="auth-guest" type="button" disabled={busy||guestName.trim().length<2} onClick={async()=>{if(busy)return;setBusy(true);setError("");try{onAuthenticated(await loginGuest(guestName))}catch(value){setError(value instanceof Error?value.message:"Не удалось войти как гость")}finally{setBusy(false)}}}>Продолжить как гость</button><p className="auth-guest-note">Аккаунт создавать не нужно. Это имя увидят участники доски.</p></>}
+      {joining&&<><div className="auth-or"><span>или</span></div><label className="auth-field"><span>Ваше имя на доске</span><input value={guestName} onChange={e=>fieldEdited(e.target.value,setGuestName)} onFocus={fieldFocused} onBlur={fieldBlurred} autoComplete="nickname" placeholder="Например, Анна" maxLength={60}/></label><button className="auth-guest" type="button" disabled={busy||guestName.trim().length<2} onClick={async()=>{if(busy)return;setBusy(true);setError("");try{onAuthenticated(await loginGuest(guestName))}catch(value){setError(value instanceof Error?value.message:"Не удалось войти как гость")}finally{setBusy(false)}}}>Продолжить как гость</button><p className="auth-guest-note">Аккаунт создавать не нужно. Это имя увидят участники доски.</p></>}
     </form>
     <div className="auth-role-note">Одна доска, много возможностей. Учитесь, объясняйте и работайте вместе.</div>
   </section></main>;
