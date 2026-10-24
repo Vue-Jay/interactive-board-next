@@ -1625,7 +1625,9 @@ function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemove
           window.addEventListener("pointerup",up);
           window.addEventListener("pointercancel",cancel);
         }:undefined}>
-        {(movable||closesHere)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r="20"/>}
+        {closesHere&&<circle className="lektrus-free-close-ring" cx={sx(p.x)} cy={sy(p.y)} r="14" pointerEvents="none"/>}
+        {(movable||closesHere)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r={item.graphFigureId==="free"?28:20}/>}
+        {closesHere&&<title>Коснитесь, чтобы замкнуть фигуру. Перетащите, чтобы переместить точку.</title>}
         {!((item.graphFigureId??"").startsWith("physics-")&&
           (item.graphSegments??[]).some(s=>s.scienceArrow&&s.b===i))&&
           <circle cx={sx(p.x)} cy={sy(p.y)}
