@@ -1,7 +1,7 @@
 import type {Item} from "./boardModel";
 import {availableGeometryLabel} from "./lektrusGeometryPointNames";
 
-export type ExistingPointTool="segment"|"line"|"ray"|"polygon"|"angle"|"circle"|"midpoint";
+export type ExistingPointTool="segment"|"line"|"ray"|"polygon"|"angle"|"circle"|"midpoint"|"measure";
 
 type Geometry={
   points:NonNullable<Item["graphPoints"]>;
@@ -19,7 +19,8 @@ export const existingPointTools:readonly {id:ExistingPointTool;label:string;need
   {id:"polygon",label:"Многоугольник",needed:3},
   {id:"angle",label:"Угол",needed:3},
   {id:"circle",label:"Окружность",needed:2},
-  {id:"midpoint",label:"Середина",needed:2}
+  {id:"midpoint",label:"Середина",needed:2},
+  {id:"measure",label:"Измерить / выровнять",needed:2}
 ];
 const samePair=(a:number,b:number,c:number,d:number)=>a===c&&b===d||a===d&&b===c;
 const cross=(a:{x:number;y:number},b:{x:number;y:number},c:{x:number;y:number})=>
@@ -49,6 +50,7 @@ export function linkExistingPoints<T extends Geometry>(
   draft:T,kind:ExistingPointTool,chosen:readonly number[]
 ):ExistingPointResult<T>{
   const error=(reason:string):ExistingPointResult<T>=>({draft,error:reason});
+  if(kind==="measure")return error("Для измерения выберите точки и используйте панель точных построений.");
   const count=kind==="polygon"?3:kind==="angle"?3:2;
   if(chosen.length<count||(kind!=="polygon"&&chosen.length!==count))
     return error("Выберите "+(kind==="polygon"?"не менее трёх":"нужное количество")+" точек.");
