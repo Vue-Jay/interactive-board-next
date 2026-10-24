@@ -373,7 +373,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     {id:"midpoint",name:"Середина",symbol:"⊙",hint:"Две точки"},
     {id:"measure",name:"Размер",symbol:"⌁",hint:"Измерения и связи"}
   ] as const;
-  const canvasHelp=canvasTool==="select"?"Перетащите вершину для изменения фигуры.":
+  const canvasHelp=isSolid?"Для вращения перетаскивайте оси X, Y, Z в углу чертежа. Изменение размеров доступно в настройках.":canvasTool==="select"?"Перетащите вершину для изменения фигуры.":
     canvasTool==="point"?"Коснитесь чертежа, чтобы поставить точку.":"Выбирайте вершины на поле. На пустом месте новая точка создаётся автоматически.";
   const loadPreset=(id:MathPresetId)=>{
     const sample=makeMathPresetItem(id,0,0,"editor");
