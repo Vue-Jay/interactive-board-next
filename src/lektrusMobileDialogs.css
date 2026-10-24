@@ -228,3 +228,14 @@
  .visit-history-list{padding:0 15px 16px}
  .visit-history-row{gap:8px}
 }
+
+.student-visit-summary{padding:3px 0 12px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.student-visit-summary>div{padding:11px}
+.student-visit-summary strong{font-size:16px;overflow-wrap:anywhere}
+.student-visits{display:grid;gap:7px;margin-bottom:20px}
+.student-visit-row{display:flex;align-items:center;gap:10px;padding:12px;background:#f8faff;border:1px solid #e6eef8;border-radius:11px}
+.student-visit-dot{width:8px;height:8px;flex:none;border-radius:50%;background:#6487ca;box-shadow:0 0 0 4px #e5edff}
+.student-visit-row>div{display:grid;gap:4px;flex:1;min-width:0}
+.student-visit-row b{font-size:12px;color:#28416b}
+.student-visit-row small{font-size:10px;color:#8392a8}
+.student-visit-row>strong{flex:none;font-size:12px;color:#2c60a1;white-space:nowrap}
