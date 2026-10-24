@@ -974,7 +974,7 @@ assert.deepEqual(hitLib.contourEraserHits([movable],[],{...labelHitPoint,x:label
 
 // Editing markers are ordinary buttons, but resizing must never be treated
 // as a click on the control strip. This previously disabled *all* handles.
-assert.ok(application.includes('const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint]")'));
+assert.ok(application.includes('const transformHandle=target.closest("[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]")'));
 assert.ok(application.includes('if(!transformHandle&&target.closest("button,input,select,textarea'));
 assert.ok(application.includes('gesture.current = {\n        pointer: e.pointerId,\n        mode: transformHandle === "rotate" ? "rotate" : "resize"'));
 const contourInkTs=fs.readFileSync(new URL("../src/lektrusContourInk.ts",import.meta.url),"utf8");
