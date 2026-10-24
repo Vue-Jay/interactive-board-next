@@ -123,4 +123,55 @@ const hole=buildCountryOutline([polygon([
  [[1,1],[1,2],[2,2],[2,1],[1,1]]
 ])]);
 assert.ok(hole&&hole.path.split("M").length>=3,"lakes and holes remain in the silhouette");
+
+// Overseas territories must not shrink a familiar mainland into a tiny dot.
+// The main French landmass and nearby Corsica must stay, while French Guiana
+// and remote ocean colonies may be hidden on a small matching-card outline.
+const {selectReadableCountryPolygons}=geometryExports;
+const rectangle=(west,south,east,north)=>[[
+ [west,south],[east,south],[east,north],[west,north],[west,south]
+]];
+const franceMain=rectangle(-5,42,8,51);
+const corsica=rectangle(8.6,41,9.6,43);
+const frenchGuiana=rectangle(-54,3,-51,6);
+const frenchCaribbean=rectangle(-63,16,-62,17);
+const mainlandOnly=selectReadableCountryPolygons([franceMain,corsica,frenchGuiana,frenchCaribbean]);
+assert.equal(mainlandOnly.length,2,"France should keep the mainland and Corsica, not distant overseas regions");
+assert.ok(mainlandOnly.includes(franceMain)&&mainlandOnly.includes(corsica));
+const readableFrance=buildCountryOutline([{
+ type:"Feature",properties:{ISO_A2:"FR"},geometry:{type:"MultiPolygon",
+  coordinates:[franceMain,corsica,frenchGuiana,frenchCaribbean]}
+}]);
+assert.ok(readableFrance&&readableFrance.path.split("M").length===3,
+ "French geography cards must use a large readable mainland with nearby Corsica");
+const nearbyIslands=selectReadableCountryPolygons([
+ rectangle(0,0,12,10),rectangle(13,1,15,3)
+]);
+assert.equal(nearbyIslands.length,2,"nearby islands must not disappear");
+const archipelago=selectReadableCountryPolygons([
+ rectangle(101,-2,105,2),rectangle(122,-2,127,2),
+ rectangle(135,-7,140,-3),rectangle(153,0,157,3)
+]);
+assert.equal(archipelago.length,4,
+ "widely spaced genuine archipelagos like Indonesia must never be cropped to one island");
+const tinyArchipelago=selectReadableCountryPolygons([
+ rectangle(0,0,.2,.2),rectangle(1.1,.4,1.3,.6),rectangle(1.8,.4,2,.6)
+]);
+assert.equal(tinyArchipelago.length,3,
+ "small island states must remain identifiable by all their islands");
+const withHole=[franceMain[0],[[0,45],[1,45],[1,46],[0,46],[0,45]]];
+const croppedWithHole=buildCountryOutline([{
+ type:"Feature",properties:{ISO_A2:"FR"},geometry:{type:"MultiPolygon",
+ coordinates:[withHole,corsica,frenchGuiana]}
+}]);
+assert.ok(croppedWithHole&&croppedWithHole.path.split("M").length===4,
+ "interior rings/holes of the mainland must survive when overseas parts are dropped");
+const datelineIslands=buildCountryOutline([{
+ type:"Feature",properties:{},geometry:{type:"MultiPolygon",coordinates:[
+ rectangle(178,-17,179.6,-15),rectangle(-179.4,-17,-178.2,-15)
+ ]}
+}]);
+assert.ok(datelineIslands&&datelineIslands.path.split("M").length===3,
+ "paired islands across the dateline remain visible together");
+
 console.log("Geography practice: country catalogue, flags, capitals, real atlas silhouettes, dateline handling and both exercise modes verified.");
