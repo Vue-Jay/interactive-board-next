@@ -82,9 +82,15 @@ export function selectReadableCountryPolygons(polygons:readonly Polygon[]):Polyg
  if(mainland.length<3)return [...polygons];
  const origin=outlineLongitudeOrigin(mainland.map(p=>p[0]));
  const rawLongitude=(lon:number)=>(mod360(lon)-origin+360)%360;
- const rawXs=mainland.map(p=>rawLongitude(p[0]));
- const anchor=(Math.min(...rawXs)+Math.max(...rawXs))/2;
- const latMin=Math.min(...mainland.map(p=>p[1])),latMax=Math.max(...mainland.map(p=>p[1]));
+ // Large 1:10m outlines can contain tens of thousands of vertices.
+ // Accumulate bounds without spreading a giant array into Math.min/Math.max.
+ let left=Infinity,right=-Infinity,latMin=Infinity,latMax=-Infinity;
+ for(const point of mainland){
+  const lon=rawLongitude(point[0]);
+  left=Math.min(left,lon);right=Math.max(right,lon);
+  latMin=Math.min(latMin,point[1]);latMax=Math.max(latMax,point[1]);
+ }
+ const anchor=(left+right)/2;
  const correction=Math.max(.16,Math.cos((latMin+latMax)*Math.PI/360));
  const projectedLongitude=(lon:number)=>{
   let x=rawLongitude(lon);
