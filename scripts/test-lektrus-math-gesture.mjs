@@ -107,7 +107,8 @@ assert.equal(closed.polygons.length,1);
 assert.deepEqual(closed.polygons[0].points,[0,1,2]);
 assert.equal(closed.segments.length,0,"polygon replaces temporary edges");
 assert.equal(freeSketchClosingIndex(closed),null);
-for(const [x,y] of [[7,1],[9,1],[8,3]])free=appendFreeSketchPoint(free===closed?closed:free,x,y);
+free=closed;
+for(const [x,y] of [[7,1],[9,1],[8,3]])free=appendFreeSketchPoint(free,x,y);
 assert.deepEqual(free.points.map(p=>p.label),["A","B","C","D","E","F"]);
 assert.deepEqual(free.segments.map(s=>[s.a,s.b]),[[3,4],[4,5]],
  "new figure must not connect to previous polygon");
