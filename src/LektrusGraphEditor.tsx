@@ -156,6 +156,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">(()=>["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"].includes(draft.figureId)?"Объёмные фигуры":"Геометрия");
   const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"]);
   const isSolid=solidPresetIds.has(draft.figureId as MathPresetId);
+  const openPathLast=draft.figureId==="free"?draft.points.length-1:-1;
+  const canUndoFreePoint=openPathLast>=0&&!draft.polygons.some(p=>p.points.includes(openPathLast))&&
+    !draft.circles.some(c=>c.center===openPathLast||c.edge===openPathLast)&&
+    !draft.points[openPathLast]?.schoolGroupId;
   const roundSolid=draft.figureId==="cone"||draft.figureId==="cylinder";
   const equalSideFigure=["square","rhombus","pentagon","hexagon","octagon"].includes(draft.figureId);
   const rectangleFigure=["square","rectangle"].includes(draft.figureId);
@@ -734,9 +738,14 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             {draft.figureId==="free"&&<div className="lektrus-school-point-builder">
               <strong>Простое построение по точкам</strong>
               <small>Коснитесь свободного места, чтобы поставить вершину. Следующая соединяется с предыдущей. Для замыкания коснитесь первой точки или нажмите кнопку. Точки можно перетаскивать.</small>
+              <div className="lektrus-free-build-status" role="status">
+                <span className={closeFreeSketch(draft)!==draft?"is-ready":""}>{closeFreeSketch(draft)!==draft?"● Можно замкнуть":"● Ставьте точки по порядку"}</span>
+                <span>{draft.points.length} точек · {draft.polygons.length} фигур</span>
+              </div>
               <div className="lektrus-graph-construct-actions">
-                <button type="button" onClick={addPoint} disabled={draft.points.length>=40}>+ Поставить точку</button>
-                <button type="button" disabled={closeFreeSketch(draft)===draft}
+                <button type="button" onClick={addPoint} disabled={draft.points.length>=40}>+ Точка</button>
+                <button type="button" disabled={!canUndoFreePoint} onClick={()=>onChange(removeGraphPoint(draft,openPathLast))} title="Убрать последнюю неподтверждённую вершину">↶ Отменить точку</button>
+                <button type="button" className="lektrus-free-close-action" disabled={closeFreeSketch(draft)===draft}
                   onClick={()=>onChange(closeFreeSketch(draft))}>Замкнуть с первой точкой</button>
               </div>
             </div>}
@@ -755,8 +764,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                    editPoint(i,{label:nextGeometryPointLabel(draft.points)});
                    setGeometryError("Подписи точек должны быть уникальными. Повторяющееся имя заменено свободной буквой.");
                  }}}/>
-              <input aria-label={"X точки "+(i+1)} disabled={draft.purpose==="unit-circle"} type="number" step=".25" value={p.x} onChange={e=>editPoint(i,{x:finiteNumber(e.target.value,p.x)})}/>
-              <input aria-label={"Y точки "+(i+1)} title={draft.purpose==="number-line"?"На числовой прямой все точки имеют Y = 0":undefined} disabled={draft.purpose==="number-line"||draft.purpose==="unit-circle"} type="number" step=".25" value={draft.purpose==="number-line"?0:p.y} onChange={e=>editPoint(i,{y:finiteNumber(e.target.value,p.y)})}/>
+              <input aria-label={"X точки "+(i+1)} disabled={draft.purpose==="unit-circle"} type="number" inputMode="decimal" step=".25" value={p.x} onChange={e=>editPoint(i,{x:finiteNumber(e.target.value,p.x)})}/>
+              <input aria-label={"Y точки "+(i+1)} title={draft.purpose==="number-line"?"На числовой прямой все точки имеют Y = 0":undefined} disabled={draft.purpose==="number-line"||draft.purpose==="unit-circle"} type="number" inputMode="decimal" step=".25" value={draft.purpose==="number-line"?0:p.y} onChange={e=>editPoint(i,{y:finiteNumber(e.target.value,p.y)})}/>
               <LektrusColorPicker userId={userId} label="" compact value={p.color??"#111111"} onChange={color=>editPoint(i,{color})}/>
               <button type="button" disabled={draft.figureId==="ray"||isSolid||draft.purpose==="unit-circle"} aria-label={"Удалить точку "+(i+1)} title="Удалить точку и связанные с ней построения" onClick={()=>onChange(removeGraphPoint(draft,i))}>×</button>
             </div>)}
@@ -1000,7 +1009,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
             </button>
           </div>
           <div className="lektrus-graph-canvas">{preview}</div>
-          <div className="lektrus-graph-preview-hint">{isSolid?"Поворачивайте фигуру, перетаскивая оси X, Y, Z в правом верхнем углу. Двойное нажатие на оси возвращает стандартный вид.":draft.figureId==="ray"?"Изменяйте направление луча, захватив его линию. На рисунке остаётся одна начальная точка.":"Перетаскивайте точки мышью или пальцем. Двойное нажатие добавляет или удаляет точку."}</div>
+          <div className="lektrus-graph-preview-hint">{isSolid?"Поворачивайте фигуру, перетаскивая оси X, Y, Z в правом верхнем углу. Двойное нажатие на оси возвращает стандартный вид.":draft.figureId==="ray"?"Изменяйте направление луча, захватив его линию. На рисунке остаётся одна начальная точка.":draft.figureId==="free"?"Одно касание ставит точку. Коснитесь первой вершины для замыкания, а для перемещения удерживайте и перетаскивайте её.":"Перетаскивайте точки мышью или пальцем. Двойное нажатие добавляет или удаляет точку."}</div>
         </aside>
       </div>
       <footer className="graph-editor-footer lektrus-graph-footer"><span>Изменения сохраняются на доске после подтверждения</span>
