@@ -8513,6 +8513,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   </button>
                   {(singleSelected.graphPurpose==="geometry"||singleSelected.graphFigureId==="free"||!!singleSelected.graphPolygons?.length)&&
                     !isSolidFigure(singleSelected.graphFigureId)&&
+                    !isSchoolDiagramId(singleSelected.graphFigureId)&&
+                    !singleSelected.graphFigureId?.startsWith("physics-")&&
+                    !singleSelected.graphFigureId?.startsWith("chem-")&&
                     <button type="button" data-board-interactive="true"
                       className={graphPointEditId===singleSelected.id?"active":""}
                       aria-pressed={graphPointEditId===singleSelected.id}
