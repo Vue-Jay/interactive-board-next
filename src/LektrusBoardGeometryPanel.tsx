@@ -159,7 +159,7 @@ export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMo
         <input aria-label={`Название точки ${i+1}`} defaultValue={p.label} key={i+":"+p.label} onBlur={e=>{if(e.target.value!==p.label)onPointEdit(i,{label:e.target.value})}}/>
         <input aria-label={`X точки ${p.label}`} type="number" step=".25" defaultValue={p.x} key={i+":x:"+p.x} onBlur={e=>{if(e.target.value!==String(p.x))onPointEdit(i,{x:Number(e.target.value)})}}/>
         <input aria-label={`Y точки ${p.label}`} type="number" step=".25" defaultValue={p.y} key={i+":y:"+p.y} onBlur={e=>{if(e.target.value!==String(p.y))onPointEdit(i,{y:Number(e.target.value)})}}/>
-        <button type="button" title={`Удалить точку ${p.label}`} onClick={()=>onRemovePoint(i)}>×</button>
+        <button type="button" title={`Удалить точку ${p.label}`} aria-label={`Удалить точку ${p.label||i+1}`} onClick={()=>onRemovePoint(i)}><LektrusGeometryToolIcon name="trash" size={15}/></button>
        </div>)}</div>
       </details>
       <details className="lektrus-board-geometry-details"><summary>Элементы ({total})</summary>
@@ -173,8 +173,8 @@ export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMo
     </>}
     {!!selected.length&&<div className="lektrus-board-geometry-selection" role="status">
       <span>{pickNames}</span><div>
-       <button type="button" onClick={onPickBack} title="Отменить последнюю точку">↶</button>
-       <button type="button" onClick={onClear} title="Очистить выбор">×</button>
+       <button type="button" onClick={onPickBack} aria-label="Убрать последнюю выбранную точку" title="Назад"><LektrusGeometryToolIcon name="undo" size={17}/></button>
+       <button type="button" onClick={onClear} aria-label="Сбросить выбранные точки" title="Сбросить"><LektrusGeometryToolIcon name="close" size={17}/></button>
        {mode==="polygon"&&<button type="button" disabled={selected.length<3} onClick={onFinish}>Замкнуть</button>}
       </div>
     </div>}
