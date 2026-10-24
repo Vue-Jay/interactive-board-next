@@ -52,6 +52,7 @@ import ViewerInkLayer from "./ViewerInkLayer";
 import BoardsScreen from "./BoardsScreen";
 import LectrisWorkspaceShell from "./LectrisWorkspaceShell";
 import { LectrisQuickProperties, LectrisObjectInspector, InkWidthSample, INK_WIDTHS } from "./LectrisObjectEditor";
+import {placeImageCrop} from "./imageCropGeometry";
 import LektrusColorPicker from "./LektrusColorPicker";
 import LectrisToolbarSettings from "./LectrisToolbarSettings";
 import LectrisPanelSettings from "./LectrisPanelSettings";
@@ -7897,19 +7898,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     const previous=current.imageCrop??{x:0,y:0,width:1,height:1};
                     const same=([ "x","y","width","height"] as const).every(k=>Math.abs(previous[k]-crop[k])<.00001);
                     if(!same){
-                      const nextWidth=Math.max(24,current.width*crop.width/previous.width);
-                      const nextHeight=Math.max(24,current.height*crop.height/previous.height);
-                      const localDx=(crop.x+crop.width/2-previous.x-previous.width/2)*current.width/previous.width;
-                      const localDy=(crop.y+crop.height/2-previous.y-previous.height/2)*current.height/previous.height;
-                      const angle=(current.rotation??0)*Math.PI/180;
-                      const rotatedDx=localDx*Math.cos(angle)-localDy*Math.sin(angle);
-                      const rotatedDy=localDx*Math.sin(angle)+localDy*Math.cos(angle);
-                      const nextX=current.x+current.width/2+rotatedDx-nextWidth/2;
-                      const nextY=current.y+current.height/2+rotatedDy-nextHeight/2;
-                      // No new asset is written. The original survives every
-                      // crop, even across board reloads and on collaborators.
+                      const framed=placeImageCrop(current,crop);
+                      // Non-destructive: assetId stays unchanged and the crop
+                      // remains editable after reopening the same board.
                       commit(itemsRef.current.map(candidate=>candidate.id===current.id?
-                        {...candidate,imageCrop:crop,x:nextX,y:nextY,width:nextWidth,height:nextHeight}:candidate));
+                        {...candidate,...framed}:candidate));
                     }
                     setImageCropEditorId(null);
                     setSelected([current.id]);
