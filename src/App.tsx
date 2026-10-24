@@ -42,7 +42,8 @@ import LektrusAtomEditor from "./LektrusAtomEditor";
 import LektrusAtomView from "./LektrusAtomView";
 import {defaultAtomModel} from "./lektrusAtomModel";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
-import LektrusGraphEditor, {appendFreeSketchPoint,removeGraphPoint, removeGraphBoardPoint, type GraphDraft} from "./LektrusGraphEditor";
+import LektrusGraphEditor, {appendFreeSketchPoint,closeFreeSketch,closeFreeSketchBoard,freeSketchClosingIndex,removeGraphPoint,removeGraphBoardPoint,type GraphDraft} from "./LektrusGraphEditor";
+import {nextGeometryPointLabel} from "./lektrusGeometryPointNames";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
 import {formatPiRadians,makeMathPresetItem} from "./lektrusMathPresets";
@@ -1140,10 +1141,11 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onAddPoint, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
+  onCloseFreePolygon?: ()=>void;
   onRemovePoint?: (index:number)=>void;
   onRotate?: (rotationX:number,rotationY:number)=>void;
   onRayChange?: (x:number,y:number)=>void;
@@ -1155,6 +1157,8 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
   const [liveRay,setLiveRay]=useState<{x:number;y:number}|null>(null);
+  const freeTap=useRef<{id:number;x:number;y:number;cancelled:boolean}|null>(null);
+  const freeContacts=useRef(new Set<number>());
   const orbitX=liveSpin?.[0]??item.graphRotationX??25;
   const orbitY=liveSpin?.[1]??item.graphRotationY??-35;
   const solid=isSolidFigure(item.graphFigureId);
@@ -1196,6 +1200,11 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
   const gridX = values(xMin,xMax), gridY = values(yMin,yMax);
   const gp = (solid?projectSolid(item,orbitX,orbitY):(item.graphPoints??[])).map((p,i)=>purpose==="number-line"?{...p,y:0}:rayFigure&&i===1&&liveRay?{...p,...liveRay}:p);
   const intervalEnds=purpose==="number-line"&&gp.length>=2?[gp[0],gp[1]].sort((p,q)=>p.x-q.x):null;
+  const closingVertex=item.graphFigureId==="free"&&onCloseFreePolygon?
+    freeSketchClosingIndex({
+      figureId:"free",points:item.graphPoints??[],segments:item.graphSegments??[],
+      polygons:item.graphPolygons??[],circles:item.graphCircles??[]
+    }):null;
   const axes = item.graphAxisMode ?? "both";
   const hasX = axes === "both" || axes === "x", hasY = axes === "both" || axes === "y";
   const point = (index:number) => gp[index];
@@ -1290,15 +1299,40 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
       </g>}
       {item.graphFigureId==="free"&&onAddPoint&&
         <rect className="lektrus-free-drawing-surface" x="0" y="0" width={W} height={H}
-          fill="transparent" style={{cursor:"crosshair",touchAction:"manipulation"}}
-          onClick={event=>{
-            if(event.detail>1)return;
-            event.stopPropagation();
-            const svg=event.currentTarget.ownerSVGElement;
-            if(!svg)return;
-            const p=coord(event.clientX,event.clientY,svg);
-            onAddPoint(p.x,p.y);
-          }}/>
+          fill="transparent" style={{cursor:"crosshair",touchAction:"none"}}
+          onPointerDown={event=>{
+            if(!event.isPrimary&&event.pointerType!=="mouse"){
+              if(freeTap.current)freeTap.current.cancelled=true;
+              return;
+            }
+            freeContacts.current.add(event.pointerId);
+            if(freeContacts.current.size>1&&freeTap.current)freeTap.current.cancelled=true;
+            if(event.button!==0||freeContacts.current.size>1)return;
+            event.preventDefault();event.stopPropagation();
+            freeTap.current={id:event.pointerId,x:event.clientX,y:event.clientY,cancelled:false};
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={event=>{
+            if(event.pointerId===freeTap.current?.id&&
+              Math.hypot(event.clientX-freeTap.current.x,event.clientY-freeTap.current.y)>9)
+              freeTap.current.cancelled=true;
+          }}
+          onPointerUp={event=>{
+            freeContacts.current.delete(event.pointerId);
+            const tap=freeTap.current;
+            if(!tap||tap.id!==event.pointerId)return;
+            freeTap.current=null;
+            if(!tap.cancelled&&freeContacts.current.size===0&&onAddPoint){
+              event.preventDefault();event.stopPropagation();
+              const svg=event.currentTarget.ownerSVGElement;
+              if(svg){const p=coord(event.clientX,event.clientY,svg);onAddPoint(p.x,p.y)}
+            }
+          }}
+          onPointerCancel={event=>{
+            freeContacts.current.delete(event.pointerId);
+            if(freeTap.current?.id===event.pointerId)freeTap.current=null;
+          }}
+          onClick={event=>{event.preventDefault();event.stopPropagation()}}/>
       }
       <g className="graph-axes">
         {hasY&&xMin<=0&&xMax>=0&&<line x1={sx(0)} x2={sx(0)} y1={H} y2="5" markerEnd={`url(#graph-arrow-${item.id})`}/>}
@@ -1556,10 +1590,42 @@ function GraphView({ item, onPointMove, onAddPoint, onRemovePoint, onRotate, onR
         {(item.graphMidpoints??[]).map((m,i)=>{const a=point(m.a),b=point(m.b);if(!a||!b)return null;const x=(a.x+b.x)/2,y=(a.y+b.y)/2;return <g key={`mid-${i}`}><circle className="graph-midpoint" cx={sx(x)} cy={sy(y)} r="4"/>{m.label&&<text className="graph-figure-label" x={sx(x)+8} y={sy(y)-7}>{m.label}</text>}</g>})}
       </g>
       {item.graphConnectPoints===true&&gp.length>1&&<polyline className="graph-point-line" points={(purpose==="number-line"?gp.slice(0,2):gp).map(p=>`${sx(p.x)},${sy(p.y)}`).join(" ")}/>}
-      {(solid?[]:gp).map((p,i)=>{if(rayFigure&&i!==0)return null;const pointColor=p.color??"#111111";const movable=!!onPointMove&&(purpose!=="unit-circle"||i>=5);return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""}`} key={i}
-        onDoubleClick={onRemovePoint&&(purpose!=="unit-circle"||i>5)?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint?.(i)}:undefined}
-        onPointerDown={movable?(e)=>{e.preventDefault();e.stopPropagation();const svg=e.currentTarget.ownerSVGElement;if(!svg)return;const move=(ev:PointerEvent)=>{const q=coord(ev.clientX,ev.clientY,svg);onPointMove?.(i,q.x,q.y)};const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);window.removeEventListener("pointercancel",up)};window.addEventListener("pointermove",move);window.addEventListener("pointerup",up);window.addEventListener("pointercancel",up)}:undefined}>
-        {movable&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r="20"/>}
+      {(solid?[]:gp).map((p,i)=>{if(rayFigure&&i!==0)return null;const pointColor=p.color??"#111111";const movable=!!onPointMove&&(purpose!=="unit-circle"||i>=5);
+        const closesHere=closingVertex===i&&!!onCloseFreePolygon;
+        return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""}`} key={i}
+        onDoubleClick={onRemovePoint&&item.graphFigureId!=="free"&&(purpose!=="unit-circle"||i>5)?(e)=>{e.preventDefault();e.stopPropagation();onRemovePoint?.(i)}:undefined}
+        onPointerDown={movable||closesHere?(e)=>{
+          if(e.button!==0||!e.isPrimary)return;
+          e.preventDefault();e.stopPropagation();
+          const svg=e.currentTarget.ownerSVGElement;
+          if(!svg)return;
+          const startX=e.clientX,startY=e.clientY,id=e.pointerId;
+          let didMove=false;
+          const move=(ev:PointerEvent)=>{
+            if(ev.pointerId!==id)return;
+            if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>7)didMove=true;
+            if(!didMove||!movable)return;
+            const q=coord(ev.clientX,ev.clientY,svg);onPointMove?.(i,q.x,q.y);
+          };
+          const cleanup=()=>{
+            window.removeEventListener("pointermove",move);
+            window.removeEventListener("pointerup",up);
+            window.removeEventListener("pointercancel",cancel);
+          };
+          const up=(ev:PointerEvent)=>{
+            if(ev.pointerId!==id)return;
+            cleanup();
+            if(!didMove&&closesHere){
+              ev.preventDefault();ev.stopPropagation();
+              onCloseFreePolygon?.();
+            }
+          };
+          const cancel=(ev:PointerEvent)=>{if(ev.pointerId===id)cleanup()};
+          window.addEventListener("pointermove",move);
+          window.addEventListener("pointerup",up);
+          window.addEventListener("pointercancel",cancel);
+        }:undefined}>
+        {(movable||closesHere)&&<circle className="graph-point-hit" cx={sx(p.x)} cy={sy(p.y)} r="20"/>}
         {!((item.graphFigureId??"").startsWith("physics-")&&
           (item.graphSegments??[]).some(s=>s.scienceArrow&&s.b===i))&&
           <circle cx={sx(p.x)} cy={sy(p.y)}
@@ -7022,8 +7088,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             onAddPoint={(x,y)=>setGraphDraft(current=>{
               if(!current||current.purpose==="unit-circle"||current.figureId==="ray"||isSolidFigure(current.figureId)||current.points.length>=40)return current;
               if(current.figureId==="free")return appendFreeSketchPoint(current,x,y);
-              return {...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:current.purpose==="geometry"?String.fromCharCode(65+(current.points.length%26)):""}]};
+              return {...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:current.purpose==="geometry"?nextGeometryPointLabel(current.points):""}]};
             })}
+            onCloseFreePolygon={()=>setGraphDraft(current=>current?closeFreeSketch(current):current)}
             onRemovePoint={i=>setGraphDraft(current=>current&&current.figureId!=="ray"&&!isSolidFigure(current.figureId)&&!(current.purpose==="unit-circle"&&i<=5)?removeGraphPoint(current,i):current)}
             />}
           />,document.body)}
@@ -7957,13 +8024,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onRayChange={!item.locked&&canEdit&&item.graphFigureId==="ray"?(x,y)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:(candidate.graphPoints??[]).map((p,i)=>i===1?{...p,x,y}:p)}:candidate));
                   }:undefined}
+                  onCloseFreePolygon={!item.locked&&canEdit&&item.graphFigureId==="free"?()=>{
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?closeFreeSketchBoard(candidate):candidate));
+                    setSelected([item.id]);
+                  }:undefined}
                   onAddPoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
                     if((item.graphPoints?.length??0)>=40)return;
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
                       const points=candidate.graphPoints??[],n=points.length;
                       const next={x,y:candidate.graphPurpose==="number-line"?0:y,
-                        label:candidate.graphFigureId==="free"?String.fromCharCode(65+n%26):"",color:"#111111"};
+                        label:candidate.graphFigureId==="free"?nextGeometryPointLabel(points):"",color:"#111111"};
                       if(candidate.graphFigureId!=="free")return {...candidate,graphPoints:[...points,next]};
                       const previouslyClosed=(candidate.graphPolygons??[]).some(poly=>poly.points.includes(n-1));
                       const nextSegments=n>0&&!previouslyClosed&&(candidate.graphSegments?.length??0)<60?
