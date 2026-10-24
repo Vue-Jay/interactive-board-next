@@ -51,7 +51,7 @@ assert.match(app,/if\(touchControl\s*&&\s*!boardHandle\)return;/,"Mobile interac
 assert.match(app,/touchPoints\.current\.size===2/,"Two touches start a pinch");
 assert.match(app,/setSelected\(pinchSelectionSnapshot\.current\?\?\[\]\)/,
  "Pinch must not modify the user's selection");
-assert.match(app,/if\(touchEnd\(e\)\)return;/,"Touch cleanup happens on pointer release");
+assert.match(app,/if\(e\.pointerType==="touch"&&[^\n]*touchEnd\(e\)/,"Touch cleanup happens on pointer release without consuming multitouch");
 assert.match(app,/aria-label="Рука — перемещать доску одним пальцем"/);
 const widths=read("src/LectrisObjectEditor.tsx");
 const mobile=read("src/lektrusSubjectPolish2026.css");
