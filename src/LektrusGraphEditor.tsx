@@ -317,7 +317,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     if(tool!==canvasTool){resetLinkSelection();}
     setCanvasTool(tool);setGeometryError("");
     if(tool!=="select"&&tool!=="point"){setLinkKind(tool);setTab("connect")}
-    else if(tool==="point")setTab("points");
+    else setTab("points");
   };
   const drawingTools=[
     {id:"select",name:"Выбор",symbol:"↖",hint:"Перемещать вершины"},
