@@ -993,7 +993,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
           </div>}
           {tab==="points"&&<div className="lektrus-graph-section">
             {mode==="geometry"&&!isSolid&&draft.figureId!=="ray"&&<div className="lektrus-point-quick-actions">
-              <button type="button" onClick={()=>{setTab("connect");setLinkPoints([]);setGeometryError("");}}>
+              <button type="button" onClick={()=>{setTab("connect");setCanvasTool(linkKind);setLinkPoints([]);setGeometryError("");}}>
                 Соединить или измерить точки →
               </button>
               <label><input type="checkbox" checked={draft.magneticSnap}
