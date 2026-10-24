@@ -8,7 +8,7 @@ const syntax=ts.createSourceFile("App.tsx",app,ts.ScriptTarget.Latest,true,ts.Sc
 assert.equal(syntax.parseDiagnostics.length,0,
  "App board JSX/TypeScript must remain parsable after selection and creation changes");
 const captureCount=app.match(/onPointerDownCapture=/g)?.length??0;
-assert.equal(captureCount,1,"only one board capture handler must exist");
+assert.equal(captureCount,2,"one board capture and one isolated graph vertex capture must exist");
 assert.match(app,/Select at capture time because school widgets/);
 assert.match(app,/setSelected\(e.shiftKey\?\[\.\.\.new Set\(\[\.\.\.selected,\.\.\.family\]\)\]:family\)/);
 assert.match(app,/data-group-selection-drag="true"/);
