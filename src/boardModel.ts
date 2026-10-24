@@ -307,11 +307,10 @@ export type Point = { x: number; y: number };
 export type ImageCropRect = { x: number; y: number; width: number; height: number };
 export function validImageCrop(value: unknown): value is ImageCropRect {
   if (!value || typeof value !== "object") return false;
-  const crop=value as Partial<ImageCropRect>;
-  return [crop.x,crop.y,crop.width,crop.height].every(
-    n=>typeof n==="number"&&Number.isFinite(n)) &&
-    crop.x!>=0&&crop.y!>=0&&crop.width!>0&&crop.height!>0&&
-    crop.x!+crop.width!<=1.000001&&crop.y!+crop.height!<=1.000001;
+  const {x,y,width,height}=value as ImageCropRect;
+  return [x,y,width,height].every(n=>typeof n==="number"&&Number.isFinite(n)) &&
+    x>=0&&y>=0&&width>0&&height>0&&
+    x+width<=1.000001&&y+height<=1.000001;
 }
 export type View = Point & { zoom: number };
 export type ShapeType = "rectangle" | "square" | "rounded" | "ellipse" | "circle" | "diamond" | "triangle" | "rightTriangle" | "parallelogram" | "trapezoid" | "pentagon" | "hexagon" | "star" | "arrow";
