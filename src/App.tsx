@@ -3417,6 +3417,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(touchPoints.current.size===0)pinchSelectionSnapshot.current=[...selected];
     touchPoints.current.set(e.pointerId,local(e.clientX,e.clientY));
     if(touchPoints.current.size===2){
+      // Use the latest scheduled view so adding a second finger during a pan
+      // does not jump back to the previous React paint.
+      const pinchBaseView=viewerPendingPan.current??viewRef.current;
       // Mark BOTH fingers consumed before releasing the old pointer capture.
       // lostpointercapture must not unregister a finger that is still down.
       for(const id of touchPoints.current.keys())consumedTouchIds.current.add(id);
@@ -3435,7 +3438,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       for(const id of touchPoints.current.keys())consumedTouchIds.current.add(id);
       const pts=[...touchPoints.current.values()];
       const center={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-      pinchState.current={distance:Math.max(1,Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y)),center,view:{...viewRef.current}};
+      pinchState.current={distance:Math.max(1,Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y)),center,view:{...pinchBaseView}};
       setPanning(true);
     }
   };
