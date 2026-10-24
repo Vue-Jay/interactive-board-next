@@ -604,7 +604,6 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>
               <LektrusGeometryToolIcon name="elements"/><span>Элементы</span>
             </button>
-            <div className="lektrus-geometry-tool-solid-note">Для вращения используйте оси на чертеже</div>
           </>}
         </nav>}
         <div className="graph-editor-form lektrus-graph-settings">
