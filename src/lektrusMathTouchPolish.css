@@ -155,3 +155,43 @@
 @media(pointer:coarse){
  .lektrus-graph-dialog .lektrus-graph-tabs>button{min-height:44px}
 }
+
+
+/* Live school-geometry measurements and safe one-time alignments. */
+.lektrus-point-link-builder .lektrus-precision-panel{
+ display:flex;flex-direction:column;gap:10px;padding:13px;
+ border:1px solid #cfdef1;border-radius:13px;background:#f8fbff;
+}
+.lektrus-precision-panel>strong{color:#25476e;font-size:13px}
+.lektrus-precision-panel>small{color:#637990;line-height:1.55}
+.lektrus-precision-values{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;
+}
+.lektrus-precision-values span{
+ padding:8px;border-radius:9px;border:1px solid #dce7f5;background:white;
+ font-size:12px;line-height:1.5;
+}
+.lektrus-precision-values b{white-space:nowrap;color:#245ba5}
+.lektrus-precision-actions{display:flex;gap:7px;flex-wrap:wrap}
+.lektrus-precision-actions button,
+.lektrus-precision-target button{
+ flex:1 1 100px;min-height:44px;border:1px solid #aabedc;
+ border-radius:9px;background:#fff;color:#275285;
+ font-size:12px;font-weight:700;padding:8px;cursor:pointer;
+}
+.lektrus-precision-actions button:disabled,
+.lektrus-precision-target button:disabled{opacity:.45;cursor:not-allowed}
+.lektrus-precision-target{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(70px,100px) minmax(88px,auto);
+ align-items:center;gap:7px;font-size:12px;
+}
+.lektrus-precision-target input{
+ width:100%;min-width:0;min-height:44px;border:1px solid #aec5e4;border-radius:9px;
+ padding:8px;font-size:16px;
+}
+.lektrus-precision-target button{background:#356ab8;color:#fff;border-color:#356ab8}
+@media(max-width:600px){
+ .lektrus-precision-values{grid-template-columns:minmax(0,1fr)}
+ .lektrus-precision-target{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ .lektrus-precision-target span{grid-column:1/-1}
+}
