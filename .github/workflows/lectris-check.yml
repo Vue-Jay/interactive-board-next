@@ -39,6 +39,8 @@ jobs:
         run: node scripts/test-lektrus-geography-training.mjs
       - name: Universal board object interactions and assignment creation
         run: node scripts/test-lektrus-object-transform-and-task-create.mjs
+      - name: Touch gestures, eraser behavior, and tablet hand regression
+        run: node scripts/test-lektrus-touch-gestures.mjs
       - name: Tool categories and video attachment icon
         run: node scripts/test-lektrus-tool-tabs-and-video.mjs
       - name: Text and Graphics objects, diagrams and 3D solids
