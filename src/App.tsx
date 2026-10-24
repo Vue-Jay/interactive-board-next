@@ -7763,6 +7763,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               pinchSelectionSnapshot.current=null;
               setPanning(false);
             }
+            // Selection toolbar and embedded controls are UI, not the canvas.
+            // Previously pressing "Настроить" deselected the object in capture
+            // phase, unmounting the button before its click could fire.
+            const boardGestureHandle=target.closest(
+              "[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]"
+            );
+            if(!boardGestureHandle&&target.closest(
+              ".selection-toolbar-screen,button,input,select,textarea,[role='button'],[role='slider'],[data-board-interactive]"
+            ))return;
             // Let a map in its own editing mode own its fingers, including
             // two-finger zoom. This capture phase fires BEFORE the atlas'
             // bubble handlers and otherwise starts a simultaneous board pinch.
