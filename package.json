@@ -16,7 +16,8 @@
     "native:android": "npm run build && npx cap sync android && npx cap open android",
     "native:ios": "npm run build && npx cap sync ios && npx cap open ios",
     "native:check": "node scripts/test-native-mobile.mjs",
-    "test:realtime": "node --test tests/realtime.test.mjs tests/live-ink.test.mjs"
+    "test:realtime": "node --test tests/realtime.test.mjs tests/live-ink.test.mjs",
+    "test:brush-crop": "node scripts/test-lektrus-brush-crop.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
