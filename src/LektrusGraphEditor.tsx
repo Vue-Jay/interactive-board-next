@@ -174,7 +174,7 @@ const formulas:Record<GraphDraft["type"],string>={
 export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,onSave,onCancel,onClose}:Props) {
   const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry"|"connect">(()=>mode==="geometry"&&draft.figureId==="free"?"points":"presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
-  const [settingsOpen,setSettingsOpen]=useState(true);
+  const [settingsOpen,setSettingsOpen]=useState(()=>mode!=="geometry"||typeof window==="undefined"||window.innerWidth>=900);
   // Left-rail tools control the drawing itself. The sidebar only configures them.
   const [canvasTool,setCanvasTool]=useState<"select"|"point"|ExistingPointTool>(()=>mode==="geometry"&&draft.figureId==="free"?"point":"select");
   const [geometryError,setGeometryError]=useState("");
