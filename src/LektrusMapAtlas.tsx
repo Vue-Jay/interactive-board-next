@@ -1092,6 +1092,12 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  };
  const onPointerDown=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
+  // A lost pointerup must never leave phantom fingers on the atlas.
+  if((e.pointerType==="touch"&&e.isPrimary&&points.current.size)||
+     points.current.has(e.pointerId)){
+   points.current.clear();pointer.current=null;pinch.current=null;dragged.current=false;
+   e.currentTarget.classList.remove("is-atlas-panning");
+  }
   const pt=localPoint(e);
   lastPointer.current=pt;
   points.current.set(e.pointerId,pt);
@@ -1333,6 +1339,9 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
       worksheetEditor&&contourAction==="select"?undefined:onMove}
      onPointerUp={objectMoveMode?undefined:contourEraser?endContourErase:contourFreehand?endContourStroke:onPointerEnd}
      onPointerCancel={objectMoveMode?undefined:contourEraser?cancelContourErase:contourFreehand?cancelContourStroke:onPointerEnd}
+     onLostPointerCapture={e=>{
+      if(points.current.has(e.pointerId))onPointerEnd(e);
+     }}
      >
      <g ref={cameraLayerRef} className="lektrus-atlas-camera-layer" transform={cameraTransform({scale,position})}>
       <LektrusMapBase land={baseLand} coastline={isWorksheet&&!contourConfig.showCoastline?null:baseCoastline} theme={mode==="minerals"?"minerals":"default"}
