@@ -395,9 +395,9 @@ export type Item = {
   graphPoints?: { x:number; y:number; label:string; color?: string; labelDx?:number;labelDy?:number; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphShowLabels?: boolean;
   graphSegments?: { a:number; b:number; kind:"segment"|"line"|"ray"; label:string; measure:boolean; bondOrder?:1|2|3; scienceArrow?:boolean; color?:string; scienceCircuitSymbol?:import("./ScienceCircuitGlyph").CircuitSymbol; labelDx?:number; labelDy?:number; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
-  graphAngles?: { a:number; vertex:number; b:number; label:string; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphAngles?: { a:number; vertex:number; b:number; label:string; autoMeasure?:boolean; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphCircles?: { center:number; edge:number; label:string; measure:boolean; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
-  graphPolygons?: { points:number[]; label:string; measure:boolean; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphPolygons?: { points:number[]; label:string; measure:boolean; showMetrics?:boolean; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
   graphTriangleLines?: ("median"|"altitude"|"bisector")[];
   graphTriangleVertex?: 0|1|2;
   graphShowArea?: boolean;
