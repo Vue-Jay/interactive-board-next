@@ -110,7 +110,7 @@ const app=read("src/App.tsx"),editor=read("src/LektrusGraphEditor.tsx");
 const css=read("src/lektrusMathTouchPolish.css"),main=read("src/main.tsx");
 assert.match(app,/onCloseFreePolygon=\{\(\)=>setGraphDraft\(/,"preview closes polygon at first point");
 assert.match(app,/onCloseFreePolygon=\{!item\.locked&&canEdit/,"saved board can close free geometry");
-assert.match(app,/Math\.hypot\(ev\.clientX-startX,ev\.clientY-startY\)>7/,
+assert.match(app,/Math\.hypot\(ev\.clientX-startX,ev\.clientY-startY\)>\(ev\.pointerType==="touch"\?14:7\)/,
  "tap does not instantly drag the vertex");
 assert.match(app,/freeContacts\.current\.size>1/,
  "touch-down involving multiple fingers cannot create a random point");
@@ -123,6 +123,8 @@ assert.match(css,/\.lektrus-free-close-target/);
 assert.match(css,/@media\(pointer:coarse\)/);
 assert.match(main,/import "\.\/lektrusMathTouchPolish\.css"/);
 assert.match(app,/repairGeometryPointLabels\(Array\.isArray\(item\.graphPoints\)/);
+assert.match(app,/event\.pointerType==="touch"\?14:9/,
+ "touch placement tolerates the small motion caused by a finger tap");
 assert.match(app,/onPointerDownCapture=/,
  "SVG must track all fingers even when touching existing vertices");
 assert.match(app,/freePointGesture/,
