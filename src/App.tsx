@@ -8128,6 +8128,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item}
+                  onPointMoveEnd={!item.locked&&canEdit&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)?(index,x,y)=>{
+                    commit(itemsRef.current.map(candidate=>{
+                      if(candidate.id!==item.id)return candidate;
+                      const moved=moveGeometryVertex({
+                        points:candidate.graphPoints??[],constraints:candidate.graphConstraints??[],
+                        xMin:candidate.graphXMin,xMax:candidate.graphXMax,
+                        yMin:candidate.graphYMin,yMax:candidate.graphYMax
+                      },index,x,y);
+                      return moved.points===candidate.graphPoints?candidate:{...candidate,graphPoints:moved.points};
+                    }));
+                    setSelected([item.id]);
+                  }:undefined}
                   onSchoolDiagramChange={canEdit&&!item.locked&&isSchoolDiagramId(item.graphFigureId)?(diagram)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,schoolDiagram:diagram}:candidate));
                   }:undefined}
