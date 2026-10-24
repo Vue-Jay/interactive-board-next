@@ -343,3 +343,121 @@
  .lektrus-geometry-workspace .lektrus-geometry-canvas-actions button{min-height:28px}
  .lektrus-geometry-workspace .lektrus-geometry-rail-library button{min-height:39px}
 }
+
+/* Compact icon + typography pass. Keep labels legible in narrow tool rails. */
+.lektrus-geometry-workspace .lektrus-geometry-vector-icon{
+ width:22px;height:22px;flex:0 0 22px;overflow:visible;
+ display:block;stroke:currentColor;
+}
+.lektrus-geometry-workspace .lektrus-geometry-header-catalog .lektrus-geometry-vector-icon{
+ width:18px;height:18px;flex-basis:18px;
+}
+.lektrus-geometry-workspace .lektrus-geometry-tool-rail{
+ gap:2px;padding:5px 5px;
+}
+.lektrus-geometry-workspace .lektrus-geometry-tool-rail button{
+ min-width:0;min-height:45px;gap:2px;padding:5px 2px;
+ border-radius:8px;line-height:1.1;
+}
+.lektrus-geometry-workspace .lektrus-geometry-tool-rail button>span:last-child{
+ display:block;max-width:100%;min-width:0;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ font-size:9px;letter-spacing:-.15px;
+}
+.lektrus-geometry-workspace .lektrus-geometry-tool-solid-note{
+ padding:7px 3px;font-size:9px;line-height:1.4;overflow-wrap:anywhere;
+}
+.lektrus-geometry-workspace .lektrus-graph-settings>.lektrus-graph-tabs{
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;
+ padding:7px 9px!important;
+}
+.lektrus-geometry-workspace .lektrus-graph-settings>.lektrus-graph-tabs button{
+ min-height:32px!important;max-width:100%;
+ font-size:10px!important;padding:5px 4px!important;
+ white-space:normal;overflow-wrap:anywhere;
+}
+.lektrus-geometry-workspace .lektrus-graph-dialog .lektrus-graph-section{
+ min-width:0;padding:8px!important;gap:7px!important;
+}
+.lektrus-geometry-workspace .lektrus-graph-dialog .lektrus-math-presets{
+ padding:7px 3px!important;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid{
+ gap:5px!important;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid button{
+ min-height:99px!important;padding:5px 3px!important;gap:2px;
+}
+.lektrus-geometry-workspace .lektrus-geometry-preset-glyph{
+ width:80px;height:43px;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid button strong{
+ font-size:10px;line-height:1.22;max-width:100%;overflow-wrap:anywhere;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid button small{
+ font-size:9px;max-width:100%;overflow-wrap:anywhere;
+}
+.lektrus-geometry-workspace .lektrus-start-free-drawing{
+ min-width:0;max-width:100%;white-space:normal;
+}
+.lektrus-geometry-workspace .lektrus-geometry-header-catalog button{
+ font-variant-numeric:tabular-nums;padding:5px 9px;min-height:32px;
+}
+.lektrus-geometry-workspace .lektrus-graph-head>div{
+ flex:1 1 0%;overflow:hidden;
+}
+.lektrus-geometry-workspace .lektrus-graph-head strong{
+ display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
+.lektrus-geometry-workspace .lektrus-graph-preview-title strong,
+.lektrus-geometry-workspace .lektrus-geometry-selection-summary{
+ min-width:0;overflow:hidden;text-overflow:ellipsis;
+}
+.lektrus-geometry-workspace .lektrus-graph-footer{
+ gap:7px;
+}
+.lektrus-geometry-workspace .lektrus-graph-footer>span{
+ min-width:0;white-space:normal;font-size:10px;line-height:1.25;
+}
+.lektrus-geometry-workspace .lektrus-graph-footer>div{
+ display:flex;flex:0 0 auto;gap:5px;
+}
+.lektrus-geometry-workspace .lektrus-graph-footer button{
+ min-height:34px;padding:7px 11px;white-space:nowrap;
+}
+@media(min-width:901px){
+ .lektrus-geometry-workspace .lektrus-geometry-rail-library{
+  display:none;
+ }
+}
+@media(max-width:900px){
+ .lektrus-geometry-workspace .lektrus-geometry-header-catalog{display:none}
+ .lektrus-geometry-workspace .lektrus-geometry-rail-library{display:flex}
+ .lektrus-geometry-workspace .lektrus-graph-dialog .lektrus-graph-head{
+  gap:6px;padding:5px 8px!important;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-tool-rail button{
+  min-height:40px;gap:1px;padding:4px 1px;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-tool-rail button>span:last-child{
+  font-size:8.5px;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-vector-icon{
+  width:20px;height:20px;flex-basis:20px;
+ }
+ .lektrus-geometry-workspace .lektrus-graph-footer>span{
+  display:none;
+ }
+}
+@media(max-height:520px) and (orientation:landscape){
+ .lektrus-geometry-workspace .lektrus-geometry-tool-rail button>span:last-child{
+  display:none;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-tool-rail button{
+  min-height:34px!important;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-tool-rail .lektrus-geometry-vector-icon{
+  width:20px;height:20px;flex-basis:20px;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-tool-solid-note{display:none}
+}
