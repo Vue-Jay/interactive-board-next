@@ -1747,9 +1747,10 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
             else onPointMove?.(i,q.x,q.y);
           };
           const cleanup=()=>{
-            window.removeEventListener("pointermove",move);
-            window.removeEventListener("pointerup",up);
-            window.removeEventListener("pointercancel",cancel);
+            window.removeEventListener("pointermove",move,true);
+            window.removeEventListener("pointerup",up,true);
+            window.removeEventListener("pointercancel",cancel,true);
+            window.removeEventListener("pointerdown",secondaryPointer,true);
             if(freePointGesture.current===gesture)freePointGesture.current=null;
             freeContacts.current.delete(id);
           };
@@ -1775,9 +1776,15 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
             }
           };
           const cancel=(ev:PointerEvent)=>{if(ev.pointerId===id){cleanup();if(onPointMoveEnd)setLiveVertex(null)}};
-          window.addEventListener("pointermove",move);
-          window.addEventListener("pointerup",up);
-          window.addEventListener("pointercancel",cancel);
+          const secondaryPointer=(ev:PointerEvent)=>{
+            if(ev.pointerId!==id&&ev.pointerType==="touch"){cancelled=true;setLiveVertex(null);}
+          };
+          // Capture-phase window listeners run before board pinch handlers.
+          // They cannot become stranded if the canvas consumes bubble events.
+          window.addEventListener("pointermove",move,true);
+          window.addEventListener("pointerup",up,true);
+          window.addEventListener("pointercancel",cancel,true);
+          window.addEventListener("pointerdown",secondaryPointer,true);
         }:undefined}>
         {closesHere&&<circle className="lektrus-free-close-ring" cx={sx(p.x)} cy={sy(p.y)} r="14" pointerEvents="none"/>}
         {picked&&<circle className="lektrus-link-picked-ring" cx={sx(p.x)} cy={sy(p.y)} r="16" pointerEvents="none"/>}
