@@ -53,6 +53,7 @@ import "./lektrusSchoolDiagrams.css";
 import "./lektrusObjectChrome2026.css";
 import "./lektrusAtlas.css";
 import "./lektrusAtlasEditor.css";
+import "./lektrusMathTouchPolish.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
