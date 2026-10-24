@@ -110,6 +110,7 @@ assert.equal(independent.graphSegments.length,0,
 assert.deepEqual(independent.graphPoints.map(p=>p.label),["A","B"]);
 
 const {linkExistingPoints}=linking;
+const {removeConstruction}=load(transpile("src/lektrusConstructionCleanup.ts"));
 const geometry={
  points:[{x:0,y:0,label:"A"},{x:4,y:0,label:"B"},{x:4,y:3,label:"C"},{x:0,y:3,label:"D"}],
  segments:[],polygons:[],angles:[],circles:[],midpoints:[]
@@ -144,6 +145,26 @@ assert.deepEqual(midpoint.draft.midpoints.map(m=>[m.a,m.b,m.label]),[[0,2,"M"]])
 assert.equal(linkExistingPoints(midpoint.draft,"midpoint",[2,0]).draft,midpoint.draft);
 assert.equal(linkExistingPoints(geometry,"segment",[0,0]).draft,geometry,
  "zero-length construction does not change the drawing");
+const linkWithExistingLine=linkExistingPoints(straight.draft,"polygon",[0,1,2,3]);
+const afterLinkDelete=removeConstruction(linkWithExistingLine.draft,"polygon",0);
+assert.equal(afterLinkDelete.polygons.length,0);
+assert.equal(afterLinkDelete.points.length,4,
+ "removing a reused-vertex polygon preserves all original points");
+assert.deepEqual(afterLinkDelete.segments,straight.draft.segments,
+ "removing a reused-vertex polygon preserves earlier supporting segments");
+assert.equal(removeConstruction(straight.draft,"segment",0).points.length,4,
+ "removing a linked segment preserves free-standing original points");
+assert.equal(removeConstruction(circle.draft,"circle",0).points.length,4,
+ "removing a linked circle preserves its original center and radius point");
+assert.equal(removeConstruction(angle.draft,"angle",0).points.length,4,
+ "removing a linked angle preserves its original vertices");
+const straightAngle={
+ ...geometry,points:[{x:-1,y:0,label:"A"},{x:0,y:0,label:"B"},{x:1,y:0,label:"C"}]
+};
+assert.equal(linkExistingPoints(straightAngle,"angle",[0,1,2]).draft.angles.length,1,
+ "a straight 180 degree angle is valid");
+assert.equal(linkExistingPoints(straightAngle,"angle",[0,1,0]).draft,straightAngle,
+ "the same point cannot be chosen twice");
 const app=read("src/App.tsx"),editor=read("src/LektrusGraphEditor.tsx");
 const css=read("src/lektrusMathTouchPolish.css"),main=read("src/main.tsx");
 assert.match(app,/onCloseFreePolygon=\{\(\)=>setGraphDraft\(/,"preview closes polygon at first point");
