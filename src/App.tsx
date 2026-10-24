@@ -7780,7 +7780,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const boardHandle=(e.target as HTMLElement).closest(
               "[data-transform-handle],[data-group-transform-handle],[data-connector-endpoint],[data-group-selection-drag],[data-board-selection-grip]"
             );
-            if(touchControl && !boardHandle && tool!=="eraser")return;
+            if(touchControl && !boardHandle)return;
             if(e.pointerType==="touch"){touchStart(e);if(pinchState.current){e.preventDefault();e.stopPropagation();return;}}
             // The phone/tablet hand always pans with ONE finger, including
             // over selected objects. Desktop still uses RMB/space to pan.
