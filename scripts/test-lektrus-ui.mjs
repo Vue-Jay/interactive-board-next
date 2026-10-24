@@ -51,4 +51,22 @@ assert.match(auth,/input\.focus\(\{preventScroll:true\}\)/);
 assert.ok(!auth.includes('key={email}')&&!auth.includes('key={password}'),
   "Field DOM nodes must stay mounted when their values are cleared");
 
+// Attendance dialog must be mounted OUTSIDE the board header. The original
+// in-topbar modal rendered as a thin, clipped strip in browser and tablet UIs.
+const visitsDialog=read("src/BoardVisitHistoryDialog.tsx");
+const visitsStyle=read("src/boardVisitHistoryDialog.css");
+assert.match(visitsDialog,/return createPortal\(/);
+assert.match(visitsDialog,/document\.body/);
+assert.match(visitsDialog,/role="dialog" aria-modal="true"/);
+assert.match(visitsDialog,/onPointerDown=\{event=>\{/);
+assert.match(visitsDialog,/className="bv-overlay"/);
+assert.match(visitsDialog,/setPeriod\("today"\)/);
+assert.match(visitsDialog,/Найти ученика/);
+assert.match(visitsStyle,/\.bv-overlay\{position:fixed!important;inset:0!important;/);
+assert.match(visitsStyle,/z-index:2147483000!important/);
+assert.match(visitsStyle,/@media\(max-width:640px\)/);
+assert.match(app,/<BoardVisitHistoryDialog boardTitle=/);
+assert.match(app,/visitPresenceMenuRef\.current\?\.removeAttribute\("open"\)/);
+assert.doesNotMatch(app,/className="access-backdrop visit-history-backdrop"/);
+
 console.log("Lektrus UI: correct visible brand, searchable categories, gallery modes and responsive styles.");
