@@ -7181,7 +7181,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {graphEditorId && graphDraft && createPortal(
           <LektrusGraphEditor
             draft={graphDraft} userId={authUser.id} mode={graphDraft.purpose==="geometry"?"geometry":"coordinates"}
-            onChange={setGraphDraft} onCancel={closeGraphEditor} onSave={saveGraphEditor} onClose={pendingMathItem?.id===graphEditorId?closeGraphEditor:saveGraphEditor}
+            onChange={setGraphDraft} onCancel={closeGraphEditor} onSave={saveGraphEditor} onClose={closeGraphEditor}
             preview={<GraphView item={{
               id:"preview",kind:"graph",x:0,y:0,width:600,height:360,text:graphDraft.title,
               graphPurpose:graphDraft.purpose,graphAxisMode:graphDraft.axisMode,graphFigureId:graphDraft.figureId,graphRotationX:graphDraft.rotationX,graphRotationY:graphDraft.rotationY,graphParallelMarks:graphDraft.parallelMarks,graphIntervalStartClosed:graphDraft.intervalStartClosed,graphIntervalEndClosed:graphDraft.intervalEndClosed,
