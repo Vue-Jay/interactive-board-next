@@ -908,8 +908,11 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
  };
  // SVG's own viewport is letterboxed on many mobile screens; browser pixels
  // are never used directly as coordinates in the 900x450 world.
- const localPoint=(e:ReactPointerEvent<SVGSVGElement>)=>{
-  const rect=e.currentTarget.getBoundingClientRect(),factor=Math.min(rect.width/900,rect.height/450)||1;
+ const localPoint=(e:{clientX:number;clientY:number})=>{
+  // The SVG viewport is shared by touch and wheel events from map overlays.
+  const rect=mapSvgRef.current?.getBoundingClientRect();
+  if(!rect)return lastPointer.current;
+  const factor=Math.min(rect.width/900,rect.height/450)||1;
   return {x:(e.clientX-rect.left-(rect.width-900*factor)/2)/factor,
    y:(e.clientY-rect.top-(rect.height-450*factor)/2)/factor};
  };
@@ -1245,12 +1248,15 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
    mode==="relief"?"Форма рельефа":mode==="hydrography"?"Водный объект":"Государство"));
   setSelectedMarker(null);
  };
+ const mapConsumesPointer=(target:EventTarget)=>
+  !objectMoveMode&&!!(target as Element).closest?.(
+   ".lektrus-atlas-map-box,button,input,select,textarea,a,[role='button'],[role='slider'],[contenteditable='true']");
  return <div className={"lektrus-atlas "+(isWorksheet?"lektrus-atlas--worksheet ":"")+(isWorksheet&&objectMoveMode?"lektrus-atlas--board-selection ":"")+(isWorksheet&&!objectMoveMode&&contourAction==="erase"?"lektrus-atlas--erasing ":"")+(historical?"lektrus-atlas-history ":"")+(editorMode?"lektrus-atlas--editor ":"")+(inspectorOpen?"":"lektrus-atlas--inspector-hidden")} aria-label={d.title}
-  onPointerDown={e=>{if(!objectMoveMode)e.stopPropagation()}}
-  onPointerMove={e=>{if(!objectMoveMode)e.stopPropagation()}}
-  onPointerUp={e=>{if(!objectMoveMode)e.stopPropagation()}}
-  onPointerCancel={e=>{if(!objectMoveMode)e.stopPropagation()}}
-  onClick={e=>{if(!objectMoveMode)e.stopPropagation()}}>
+  onPointerDown={e=>{if(mapConsumesPointer(e.target))e.stopPropagation()}}
+  onPointerMove={e=>{if(mapConsumesPointer(e.target))e.stopPropagation()}}
+  onPointerUp={e=>{if(mapConsumesPointer(e.target))e.stopPropagation()}}
+  onPointerCancel={e=>{if(mapConsumesPointer(e.target))e.stopPropagation()}}
+  onClick={e=>{if(mapConsumesPointer(e.target))e.stopPropagation()}}>
   {!isWorksheet&&<header className="lektrus-atlas-header">
    <strong title={d.title}>{d.title}</strong>
    <button type="button" aria-pressed={objectMoveMode}
@@ -1304,7 +1310,14 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
     onClick={()=>setInspectorOpen(open=>!open)}>{inspectorOpen?"Скрыть сведения":"☷ Сведения"}</button>
   </header>}
   <div className="lektrus-atlas-body">
-   <div className="lektrus-atlas-map-box">
+   <div className="lektrus-atlas-map-box"
+    onWheel={e=>{
+     if(objectMoveMode)return;
+     e.stopPropagation();e.preventDefault();
+     const anchor=localPoint(e);
+     lastPointer.current=anchor;
+     zoomAt(cameraRef.current.scale*(e.deltaY<0?1.16:1/1.16),anchor);
+    }}>
     {(loading||baseLoading)&&<div className="lektrus-atlas-overlay" role="status">Загружается общая подложка и слои карты…</div>}
     {!loading&&!baseLoading&&(error||baseError)&&<div className="lektrus-atlas-overlay lektrus-atlas-failure" role="alert">
      <strong>Карта недоступна</strong><span>{error||baseError}</span>
@@ -1320,13 +1333,7 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
       worksheetEditor&&contourAction==="select"?undefined:onMove}
      onPointerUp={objectMoveMode?undefined:contourEraser?endContourErase:contourFreehand?endContourStroke:onPointerEnd}
      onPointerCancel={objectMoveMode?undefined:contourEraser?cancelContourErase:contourFreehand?cancelContourStroke:onPointerEnd}
-     onWheel={e=>{
-      if(objectMoveMode)return;
-      e.stopPropagation();e.preventDefault();
-      const anchor=localPoint(e as unknown as ReactPointerEvent<SVGSVGElement>);
-      lastPointer.current=anchor;
-      zoomAt(cameraRef.current.scale*(e.deltaY<0?1.16:1/1.16),anchor);
-     }}>
+     >
      <g ref={cameraLayerRef} className="lektrus-atlas-camera-layer" transform={cameraTransform({scale,position})}>
       <LektrusMapBase land={baseLand} coastline={isWorksheet&&!contourConfig.showCoastline?null:baseCoastline} theme={mode==="minerals"?"minerals":"default"}
        scale={scale} viewport={viewport}
