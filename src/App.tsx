@@ -42,7 +42,7 @@ import LektrusAtomEditor from "./LektrusAtomEditor";
 import LektrusAtomView from "./LektrusAtomView";
 import {defaultAtomModel} from "./lektrusAtomModel";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
-import LektrusGraphEditor, {appendFreeSketchPoint,closeFreeSketch,closeFreeSketchBoard,freeSketchClosingIndex,removeGraphPoint,removeGraphBoardPoint,type GraphDraft} from "./LektrusGraphEditor";
+import LektrusGraphEditor, {appendFreeSketchPoint,appendFreeSketchBoard,closeFreeSketch,closeFreeSketchBoard,freeSketchClosingIndex,removeGraphPoint,removeGraphBoardPoint,type GraphDraft} from "./LektrusGraphEditor";
 import {nextGeometryPointLabel,repairGeometryPointLabels} from "./lektrusGeometryPointNames";
 import LektrusFractionEditor, {LektrusFractionView} from "./LektrusFraction";
 import {subjectToolsFor,makeSubjectToolItem,type SubjectToolId} from "./lektrusSubjectToolRegistry";
@@ -8031,18 +8031,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     setSelected([item.id]);
                   }:undefined}
                   onAddPoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
-                    if((item.graphPoints?.length??0)>=40)return;
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
-                      const points=candidate.graphPoints??[],n=points.length;
+                      const points=candidate.graphPoints??[];
+                      if(points.length>=40)return candidate;
+                      if(candidate.graphFigureId==="free")return appendFreeSketchBoard(candidate,x,y);
                       const next={x,y:candidate.graphPurpose==="number-line"?0:y,
                         label:candidate.graphPurpose==="geometry"&&!candidate.graphFigureId?.startsWith("physics-")?nextGeometryPointLabel(points):"",color:"#111111"};
-                      if(candidate.graphFigureId!=="free")return {...candidate,graphPoints:[...points,next]};
-                      const previouslyClosed=(candidate.graphPolygons??[]).some(poly=>poly.points.includes(n-1));
-                      const nextSegments=n>0&&!previouslyClosed&&(candidate.graphSegments?.length??0)<60?
-                        [...(candidate.graphSegments??[]),{a:n-1,b:n,kind:"segment" as const,label:"",measure:false}]:
-                        candidate.graphSegments??[];
-                      return {...candidate,graphPoints:[...points,next],graphSegments:nextSegments};
+                      return {...candidate,graphPoints:[...points,next]};
                     }));
                     setSelected([item.id]);
                   } : undefined} onRemovePoint={!item.locked && canEdit && item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);} : undefined}/>}
