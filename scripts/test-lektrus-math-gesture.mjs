@@ -326,8 +326,16 @@ assert.match(css,/lektrus-live-geometry-metrics/,
  "computed measurement labels are styled for white backgrounds");
 assert.match(editor,/lockGeometryConstraint\(draft,linkPoints,kind,value\)/,
  "persistent links use validated directed dependency model");
-assert.match(editor,/Точки и связи/,
- "only four editor tabs remain visible");
+assert.match(editor,/Точки <span>/,
+ "points are accessible through the compact inspector tab");
+assert.match(editor,/Фигуры 2D/,
+ "the 2D catalog is always accessible in the header");
+assert.match(editor,/Фигуры 3D/,
+ "the 3D catalog is always accessible in the header");
+assert.match(editor,/LektrusGeometryPresetGlyph id=\{p.id\}/,
+ "each figure preset has a recognisable preview drawing");
+assert.match(editor,/showFigureCatalog\("Объёмные фигуры"\)/,
+ "3D library navigation opens the catalog directly");
 assert.doesNotMatch(editor,/className=\{tab==="connect"\?"active"/,
  "connecting points is part of the existing points section, not a fifth tab");
 assert.match(editor,/className="lektrus-link-kind-picker"/,
