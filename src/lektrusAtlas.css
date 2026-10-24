@@ -802,9 +802,12 @@
 .lektrus-color-popup-wheel{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 4px;font-size:12px;color:#365976;cursor:pointer}
 .lektrus-color-popup-wheel input{width:40px;height:32px;cursor:pointer}
 .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness .lektrus-contour-width-presets{display:flex;flex-direction:column;align-items:center;gap:2px;width:48px}
-.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness .lektrus-contour-width-presets button{width:44px;height:21px;display:flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:5px;background:#fff;cursor:pointer}
+.lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness .lektrus-contour-width-presets button{width:44px;height:45px;min-height:45px;padding:2px;display:flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:5px;background:#fff;cursor:pointer}
 .lektrus-atlas--worksheet.lektrus-atlas--editor .lektrus-contour-dock-thickness .lektrus-contour-width-presets button.active{background:#dcecff;border-color:#79a6d7}
-.lektrus-contour-width-line{display:block;width:26px;border-radius:4px}
+.lektrus-contour-dock-thickness .lektrus-ink-swatch{gap:1px}
+.lektrus-contour-dock-thickness .lektrus-ink-swatch-field{height:22px;min-height:22px}
+.lektrus-contour-dock-thickness .lektrus-ink-swatch-stroke{width:26px}
+.lektrus-contour-dock-thickness .lektrus-ink-swatch-value{font-size:8px;line-height:10px}
 
 .lektrus-color-popup-wheel{position:relative;display:flex;align-items:center;gap:10px;padding:10px 12px;margin:9px 0 5px;border:1px solid #cadbee;border-radius:12px;background:linear-gradient(130deg,#f0f7ff,#faf7ff);color:#315b82;cursor:pointer;transition:background .15s,border-color .15s}
 .lektrus-color-popup-wheel:hover{border-color:#83afe0;background:#e8f2ff}
