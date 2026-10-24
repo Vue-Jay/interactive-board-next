@@ -433,7 +433,7 @@ assert.match(app,/window\.addEventListener\("pointerdown",secondaryPointer,true\
  "a second finger cancels ongoing vertex drag");
 assert.match(app,/graphFreePathStart:d\.freePathStart/,
  "independent line boundary is saved with the graph");
-assert.match(app,/graphFreePathStart:item\.graphFreePathStart\?\?0/,
+assert.match(app,/freePathStart:item\.graphFreePathStart\?\?0/,
  "saved independent paths are restored when editor opens");
 assert.match(app,/graphFreePathStart:entry\.graphPoints\?\.length\?\?0/,
  "new line action starts after existing points");
