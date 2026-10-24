@@ -837,7 +837,7 @@ assert.ok(contourToolbarStart>mapBodyClose,
 assert.ok(mapBodyClose>atlasSvgClose);
 assert.ok(map.includes('useState(isWorksheet&&!editorMode)'),
  "Worksheets must start in board selection and resize mode");
-assert.ok(map.includes('if(!objectMoveMode)e.stopPropagation()'),
+assert.ok(map.includes('const mapConsumesPointer=')&&map.includes('if(mapConsumesPointer(e.target))e.stopPropagation()'),
  "Only intentional map-edit mode stops board pointer events");
 assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:'));
 assert.ok(map.includes('const worksheetEditor=isWorksheet&&editorMode'));
@@ -862,10 +862,10 @@ assert.ok(!worksheetHead.includes('lektrus-contour-workspace-mode'),
  "Map editor needs tools only; moving and resizing the board object belongs on the board");
 // Native board listeners fire earlier than React's nested bubble handler.
 // Both native wheel and capture-phase touch must exit for an editing atlas.
-assert.ok(application.includes('target.closest(".lektrus-atlas:not(.lektrus-atlas--board-selection)")'),
+assert.ok(application.includes('target.closest(".lektrus-atlas-map-box")'),
  "Native board wheel handler must not zoom/pan when zooming the map");
 const wheelGuard=application.slice(
- application.indexOf('if(target.closest(".lektrus-atlas:not(.lektrus-atlas--board-selection)"))'),
+ application.indexOf('if(target.closest(".lektrus-atlas-map-box")'),
  application.indexOf('if (target.closest("textarea"))'));
 assert.ok(wheelGuard.includes('e.preventDefault();')&&wheelGuard.includes('return;'));
 const boardCapture=application.slice(application.indexOf('onPointerDownCapture={(e) => {'),
@@ -874,8 +874,17 @@ assert.ok(boardCapture.includes('.lektrus-atlas:not(.lektrus-atlas--board-select
 assert.ok(boardCapture.indexOf('.lektrus-atlas:not(.lektrus-atlas--board-selection)')<
  boardCapture.indexOf('touchStart(e)'),
  "Atlas touch guard must run before the board records any touchpoints");
-assert.ok(map.includes('onPointerMove={e=>{if(!objectMoveMode)e.stopPropagation()}'));
-assert.ok(map.includes('onPointerCancel={e=>{if(!objectMoveMode)e.stopPropagation()}'));
+assert.ok(map.includes('onPointerMove={e=>{if(mapConsumesPointer(e.target))e.stopPropagation()}'));
+assert.ok(map.includes('onPointerCancel={e=>{if(mapConsumesPointer(e.target))e.stopPropagation()}'));
+assert.ok(map.includes('onWheel={e=>{')&&map.includes('<div className="lektrus-atlas-map-box"'),
+ "The atlas viewport, rather than the entire object, handles wheel zoom");
+assert.ok(boardCapture.includes('if(atlas&&!atlasControl&&!presentation&&!space&&'),
+ "Board pan must work on unoccupied atlas header and sidebar");
+assert.ok(boardCapture.includes('gesture.current={pointer:e.pointerId,mode:"pan"'));
+assert.ok(boardCapture.includes('const mapSurface=target.closest(".lektrus-atlas-map-box")'));
+assert.ok(boardCapture.includes('setSelected([])'),"An empty press releases object selection");
+assert.ok(boardCapture.includes('gesture.current.pointer===e.pointerId'),
+ "Pointer IDs reused after lost release must retire stale captures");
 const bottomStyles=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
 assert.ok(bottomStyles.includes('.lektrus-atlas--worksheet .lektrus-contour-task-label{'));
 assert.ok(contourStyles.includes('width:100vw;height:100dvh'));
