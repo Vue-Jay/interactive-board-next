@@ -1143,9 +1143,8 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
   item: Item;
-  onOpenEditor?: ()=>void;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
   onAddPoint?: (x:number,y:number)=>void;
@@ -1172,7 +1171,7 @@ function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint
   const editBlankTap=useRef<{id:number;x:number;y:number;cancelled:boolean}|null>(null);
   const selectionContacts=useRef(new Set<number>());
   const pointDoubleTap=useRef<{index:number;at:number;x:number;y:number}|null>(null);
-  const ignoredTouchDoubleClick=useRef(false);
+  const ignoreNativeDoubleClickUntil=useRef(0);
   const orbitX=liveSpin?.[0]??item.graphRotationX??25;
   const orbitY=liveSpin?.[1]??item.graphRotationY??-35;
   const solid=isSolidFigure(item.graphFigureId);
@@ -1726,7 +1725,7 @@ function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint
         const closesHere=closingVertex===i&&!!onCloseFreePolygon&&!selectable;
         const picked=pickedPoints?.includes(i)??false;
         return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""} ${selectable?"lektrus-link-pickable":""} ${picked?"lektrus-link-picked":""}`} key={i}
-        onDoubleClick={onRemovePoint&&purpose==="geometry"?(e)=>{e.preventDefault();e.stopPropagation();if(!ignoredTouchDoubleClick.current)onRemovePoint(i);ignoredTouchDoubleClick.current=false}:undefined}
+        onDoubleClick={onRemovePoint&&purpose==="geometry"?(e)=>{e.preventDefault();e.stopPropagation();if(Date.now()>ignoreNativeDoubleClickUntil.current)onRemovePoint(i);ignoreNativeDoubleClickUntil.current=0}:undefined}
         onPointerDown={movable||closesHere||selectable?(e)=>{
           if(e.button!==0||!e.isPrimary||
             (item.graphFigureId==="free"||selectable||onPointMoveEnd)&&freeContacts.current.size>1)return;
@@ -1763,7 +1762,7 @@ function GraphView({ item, onOpenEditor, onPointMove, onPointMoveEnd, onAddPoint
               pointDoubleTap.current={index:i,at:now,x:ev.clientX,y:ev.clientY};
               if(previous?.index===i&&now-previous.at<420&&Math.hypot(previous.x-ev.clientX,previous.y-ev.clientY)<26){
                 pointDoubleTap.current=null;
-                ignoredTouchDoubleClick.current=true;
+                ignoreNativeDoubleClickUntil.current=Date.now()+650;
                 ev.preventDefault();ev.stopPropagation();onRemovePoint(i);return;
               }
             }
@@ -8173,7 +8172,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item}
-                  onOpenEditor={tool==="select"&&!space&&canEdit&&!item.locked&&!structurallyLockedForStudent(item)?()=>openGraphEditor(item):undefined}
                   onPointMoveEnd={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)?(index,x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
