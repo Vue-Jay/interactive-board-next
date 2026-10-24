@@ -622,10 +622,6 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               <small>Коснитесь трёх или более мест на рисунке и замкните контур</small>
             </button>}
             <small>{mode==="geometry"?"Нажмите на фигуру для создания. Затем редактируйте её на большом чертеже.":"Выберите готовую фигуру или начните свой чертёж."}</small>
-            {mode==="geometry"&&<div className="lektrus-math-figure-categories" role="group" aria-label="Тип фигур">
-              <button type="button" className={figureCategory==="Геометрия"?"active":""} aria-pressed={figureCategory==="Геометрия"} onClick={()=>setFigureCategory("Геометрия")}>2D</button>
-              <button type="button" className={figureCategory==="Объёмные фигуры"?"active":""} aria-pressed={figureCategory==="Объёмные фигуры"} onClick={()=>setFigureCategory("Объёмные фигуры")}>3D</button>
-            </div>}
             {figureSections.map(section=>
               <div className="lektrus-math-preset-group" key={section.name}>
                 <h4>{section.name}</h4>
