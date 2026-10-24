@@ -1362,6 +1362,7 @@ function GraphView({ item, onPointMove, onAddPoint, onPickPoint, onCreateAndPick
         }
       }}
       onDoubleClick={e=>{if(item.graphFigureId==="free"){e.stopPropagation();return}if(onAddPoint&&purpose!=="unit-circle"){e.stopPropagation();const p=coord(e.clientX,e.clientY,e.currentTarget);onAddPoint(p.x,p.y)}}}>
+      {onPickPoint&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
         {gridX.map(x=><line key={`x${x}`} className={Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
