@@ -172,3 +172,174 @@
  .lektrus-geometry-workspace .lektrus-graph-preview-title{min-height:19px}
  .lektrus-geometry-workspace .lektrus-graph-dialog .lektrus-graph-head{min-height:43px!important}
 }
+
+/* Geometry studio v2: fixed discoverability of flat/solid figures. */
+.lektrus-geometry-workspace .lektrus-geometry-header-catalog{
+ display:flex;flex:0 0 auto;align-items:center;gap:5px;
+ padding:3px;border:1px solid #e0e9f5;border-radius:12px;background:#f3f7fd;
+}
+.lektrus-geometry-workspace .lektrus-geometry-header-catalog button{
+ display:flex;align-items:center;gap:7px;justify-content:center;
+ border:1px solid transparent;border-radius:9px;padding:8px 12px;
+ min-height:35px;color:#527092;background:transparent;white-space:nowrap;
+ font-size:12px;font-weight:750;cursor:pointer;touch-action:manipulation;
+}
+.lektrus-geometry-workspace .lektrus-geometry-header-catalog button.active{
+ border-color:#aac7ec;color:#2057a1;background:#fff;
+ box-shadow:0 2px 6px #34649b16;
+}
+.lektrus-geometry-workspace .lektrus-geometry-header-catalog button:hover:not(.active){
+ background:#e7effa;
+}
+.lektrus-geometry-workspace .lektrus-geometry-rail-library{
+ flex:0 0 auto;display:flex;flex-direction:column;
+ gap:4px;padding-bottom:10px;margin-bottom:5px;border-bottom:1px solid #dbe6f3;
+}
+.lektrus-geometry-workspace .lektrus-geometry-rail-library button{
+ min-height:52px;font-size:11px;font-weight:850;
+}
+.lektrus-geometry-workspace .lektrus-geometry-rail-library button .lektrus-geometry-tool-symbol{
+ font-size:23px;
+}
+.lektrus-geometry-workspace .lektrus-graph-dialog .lektrus-graph-settings{
+ padding:0 12px 12px!important;gap:10px!important;
+}
+.lektrus-geometry-workspace .lektrus-graph-settings>.lektrus-graph-tabs{
+ position:sticky;top:0;z-index:4;
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:5px;align-items:center;flex:0 0 auto;
+ min-height:0!important;
+ margin:0 -12px 2px;padding:10px 12px!important;
+ background:#fff;border-bottom:1px solid #e2eaf5;
+ overflow:visible;
+}
+.lektrus-geometry-workspace .lektrus-graph-settings>.lektrus-graph-tabs button{
+ display:flex;align-items:center;justify-content:center;min-width:0;
+ min-height:37px!important;padding:7px 5px!important;
+ border:1px solid transparent;border-radius:9px;
+ background:#f3f6fa;color:#60728b;
+ font-weight:750;white-space:nowrap;line-height:1.2;
+}
+.lektrus-geometry-workspace .lektrus-graph-settings>.lektrus-graph-tabs button.active{
+ border-color:#a5c6ef;background:#e5f0ff;color:#275ba5;
+}
+.lektrus-geometry-workspace .lektrus-graph-settings>.lektrus-graph-tabs button span{
+ font-size:9px;background:#fff;border:1px solid #e0eafa;
+}
+.lektrus-geometry-workspace .lektrus-math-figure-categories{
+ position:relative;display:grid;grid-template-columns:1fr 1fr;gap:4px;
+ padding:4px;border-radius:10px;background:#eaf1fa;
+}
+.lektrus-geometry-workspace .lektrus-math-figure-categories button{
+ min-height:36px;border-radius:8px;font-size:12px;font-weight:780;
+}
+.lektrus-geometry-workspace .lektrus-math-figure-categories button.active{
+ color:#215bb1;background:#fff;box-shadow:0 1px 7px #17447720;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid{
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid button{
+ position:relative;display:flex;flex-direction:column;align-items:center;
+ justify-content:flex-start;gap:3px;min-height:120px;
+ border-radius:12px;padding:9px 5px 8px;
+ color:#3e6b9b;text-align:center;background:#fff;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid button:hover{
+ background:#f2f7ff;box-shadow:0 3px 12px #2456970d;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid button.active{
+ background:#eaf2ff;border-color:#5e8bd3;box-shadow:inset 0 0 0 1px #6d9adc;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid button strong{
+ font-size:11px;line-height:1.22;color:#2e4a71;overflow-wrap:anywhere;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid button small{
+ max-width:100%;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+ overflow:hidden;font-size:9px;line-height:1.3;word-break:normal;
+}
+.lektrus-geometry-workspace .lektrus-geometry-preset-glyph{
+ display:block;flex:0 0 auto;width:95px;max-width:100%;height:51px;
+ color:#5780b5;stroke-width:2.8;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-grid button.active .lektrus-geometry-preset-glyph{
+ color:#2761b5;
+}
+.lektrus-geometry-workspace .lektrus-math-preset-group h4{
+ color:#445d7d;font-size:11px;padding:0 2px;
+}
+.lektrus-geometry-workspace .lektrus-math-presets{gap:11px!important}
+.lektrus-geometry-workspace .lektrus-graph-preview{
+ position:relative;
+}
+.lektrus-geometry-workspace .lektrus-geometry-canvas-actions{
+ display:flex;align-items:center;flex-wrap:wrap;gap:6px;
+ padding:7px 8px;border:1px solid #d5e1f0;border-radius:11px;
+ background:#fff;box-shadow:0 2px 8px #2449780e;
+}
+.lektrus-geometry-workspace .lektrus-geometry-canvas-actions .lektrus-geometry-selection-summary{
+ display:flex;align-items:center;min-width:0;flex:1;gap:5px;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ color:#4c6382;font-size:11px;font-weight:700;
+}
+.lektrus-geometry-workspace .lektrus-geometry-canvas-actions button{
+ min-height:32px;padding:6px 10px;border-radius:8px;
+ border:1px solid #d7e3f2;background:#f4f8ff;color:#2a5e9f;
+ font-size:11px;font-weight:760;cursor:pointer;touch-action:manipulation;
+}
+.lektrus-geometry-workspace .lektrus-geometry-canvas-actions button.primary{
+ background:#2865ba;border-color:#2865ba;color:#fff;
+}
+.lektrus-geometry-workspace .lektrus-geometry-canvas-actions button:disabled{
+ cursor:not-allowed;opacity:.45;
+}
+.lektrus-geometry-workspace .lektrus-geometry-canvas-actions button:hover:not(:disabled){
+ filter:brightness(.96);
+}
+@media(max-width:900px){
+ .lektrus-geometry-workspace .lektrus-geometry-header-catalog button{
+  min-height:39px;padding:5px 9px;font-size:11px;
+ }
+ .lektrus-geometry-workspace .lektrus-graph-dialog .lektrus-graph-settings{
+  padding:0 9px 9px!important;
+ }
+ .lektrus-geometry-workspace .lektrus-graph-settings>.lektrus-graph-tabs{
+  margin:0 -9px 1px;padding:8px 9px!important;
+ }
+ .lektrus-geometry-workspace .lektrus-math-preset-grid button{
+  min-height:105px;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-rail-library{
+  padding-bottom:5px;margin-bottom:4px;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-rail-library button{
+  min-height:46px;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-canvas-actions{
+  padding:4px 6px;gap:3px;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-canvas-actions button{
+  min-height:36px;padding:6px 8px;
+ }
+}
+@media(max-width:570px){
+ .lektrus-geometry-workspace .lektrus-graph-head strong{font-size:14px}
+ .lektrus-geometry-workspace .lektrus-geometry-header-catalog{gap:2px;padding:2px}
+ .lektrus-geometry-workspace .lektrus-geometry-header-catalog button{
+  padding:5px 7px;font-size:11px;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-header-catalog button span{display:none}
+ .lektrus-geometry-workspace .lektrus-geometry-properties-toggle{
+  padding:0 8px;font-size:11px;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-canvas-actions .lektrus-geometry-selection-summary{
+  font-size:10px;
+ }
+}
+@media(max-height:520px) and (orientation:landscape){
+ .lektrus-geometry-workspace .lektrus-geometry-canvas-actions{
+  min-height:0;padding:2px 5px;border-radius:7px;
+ }
+ .lektrus-geometry-workspace .lektrus-geometry-canvas-actions button{min-height:28px}
+ .lektrus-geometry-workspace .lektrus-geometry-rail-library button{min-height:39px}
+}
