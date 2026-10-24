@@ -412,14 +412,14 @@ assert.equal(parsedEditor.parseDiagnostics.length,0,
  "geometry editor JSX must parse successfully");
 assert.match(app,/onDoubleClick=\{e=>\{if\(purpose==="geometry"\)/,
  "double-clicking the graph surface cannot open settings or add stray geometry");
-assert.doesNotMatch(app,/onOpenEditor=\{/,
- "settings no longer open through a double-click prop");
+assert.match(app,/onOpenEditor=\{\(\)=>openGraphEditor\(singleSelected\)\}/,
+ "full editor opens only from the explicit panel button");
 assert.match(app,/\.selection-toolbar-screen,button,input,select,textarea/,
  "board selection capture leaves toolbar clicks intact");
 assert.doesNotMatch(app,/className="lektrus-graph-board-actions"/,
  "redundant on-canvas settings toolbar was removed");
-assert.match(app,/aria-label="Настроить учебный объект"/,
- "the bottom selection toolbar provides a clear accessible settings action");
+assert.match(app,/aria-label=\{singleSelected\.graphPurpose==="geometry"\?"Открыть полный редактор фигур"/,
+ "the bottom toolbar explicitly labels its editor action");
 assert.match(app,/changeBoardGeometryMode\(singleSelected,"move"\)/,
  "the selection toolbar opens on-board construction mode");
 assert.match(app,/onAddPoint=\{graphPointEditId===item\.id/,
