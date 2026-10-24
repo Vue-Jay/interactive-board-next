@@ -521,10 +521,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         <button type="button" aria-label="Закрыть редактор без сохранения" onClick={onClose}>×</button>
       </header>
       <nav className="lektrus-graph-tabs" aria-label="Разделы редактора">
-        <button type="button" className={tab==="presets"?"active":""} onClick={()=>setTab("presets")}>{mode==="geometry"?"Фигура":"Построение"}</button>
-        {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>setTab("givens")}>Размеры</button>}
-        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>setTab("geometry")}>Элементы <span>{extraElementCount+schoolGroups.length}</span></button>}
-        {!isSolid&&<button type="button" className={tab==="points"||tab==="connect"?"active":""} onClick={()=>setTab("points")}>Точки и связи <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
+        <button type="button" className={tab==="presets"?"active":""} onClick={()=>{setTab("presets");setSettingsOpen(true)}}>{mode==="geometry"?"Фигура":"Построение"}</button>
+        {mode==="geometry"&&<button type="button" className={tab==="givens"?"active":""} onClick={()=>{setTab("givens");setSettingsOpen(true)}}>Размеры</button>}
+        {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>Элементы <span>{extraElementCount+schoolGroups.length}</span></button>}
+        {!isSolid&&<button type="button" className={tab==="points"||tab==="connect"?"active":""} onClick={()=>{setTab("points");setSettingsOpen(true)}}>Точки и связи <span>{draft.figureId==="ray"?1:draft.points.length}</span></button>}
       </nav>
       <div className="graph-editor-body lektrus-graph-content">
         {mode==="geometry"&&<nav className="lektrus-geometry-tool-rail" aria-label="Инструменты геометрического построения">
