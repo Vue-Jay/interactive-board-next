@@ -537,6 +537,12 @@ assert.match(editor,/lektrus-geometry-zoom-controls/,
  "zoom controls remain accessible beside the full drawing");
 assert.match(editor,/onWheel=\{event=>/,
  "the editor supports scrolling to change its coordinate viewport");
+assert.match(editor,/onPointerMoveCapture=\{event=>\{/,
+ "the editor listens for touch pinch gestures to change its coordinate scale");
+assert.match(editor,/pinchPointers\.current\.size===2/,
+ "a single finger cannot change zoom or interfere with point placement");
+assert.match(editor,/const source=historyRef\.current\.current/,
+ "consecutive zoom steps use the latest viewport rather than a stale render");
 assert.match(editor,/const fitViewport=\(\)=>/,
  "the full diagram can be fitted to all current coordinates");
 assert.match(editor,/lektrus-geometry-viewport-settings/,
