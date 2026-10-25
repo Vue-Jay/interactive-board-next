@@ -3,17 +3,18 @@ import type {Item} from "./boardModel";
 import LektrusMechanicsView,{mechanicsSvgPoint} from "./LektrusMechanicsView";
 import LektrusOpticsView,{opticsSvgPoint} from "./LektrusOpticsView";
 import LektrusCircuitView,{circuitSvgCoords} from "./LektrusCircuitView";
+import LektrusPhysicsCanvasEditorAction from "./LektrusPhysicsCanvasEditorAction";
 import {movePhysicalPart,physicalPartPivot,type PhysicalTarget} from "./lektrusPhysicalBoardMove";
 
 type Point={x:number;y:number};
-type Props={item:Item;editable:boolean;
+type Props={item:Item;editable:boolean;onOpenEditor?:()=>void;
   onMoveEnd?:(target:PhysicalTarget,position:Point)=>void;
   onMovePreview?:(target:PhysicalTarget,position:Point)=>void};
 type Gesture={id:number;target:PhysicalTarget;from:Point;origin:Point;last:Point;lastPublish:number};
 const isTarget=(v:PhysicalTarget|null):v is PhysicalTarget=>v!==null;
 /** The same school-object SVG is used in the fullscreen editor and on the
  * board. Existing diagrams stay viewable, even without editing permissions. */
-export default function LektrusPhysicalBoardView({item,editable,onMoveEnd,onMovePreview}:Props){
+export default function LektrusPhysicalBoardView({item,editable,onOpenEditor,onMoveEnd,onMovePreview}:Props){
   const [selection,setSelection]=useState<PhysicalTarget|null>(null);
   const [preview,setPreview]=useState<Item|null>(null);
   const drag=useRef<Gesture|null>(null);
@@ -83,6 +84,7 @@ export default function LektrusPhysicalBoardView({item,editable,onMoveEnd,onMove
         ?{kind:currentSelection.kind,id:currentSelection.id}:null}
       onComponentDown={editable?(event,part)=>begin(event,{kind:"component",id:part.id}):undefined}
       onJunctionDown={editable?(event,part)=>begin(event,{kind:"junction",id:part.id}):undefined}/>}
+    {onOpenEditor&&<LektrusPhysicsCanvasEditorAction onOpenEditor={onOpenEditor}/>}
     {editable&&<div className="lektrus-physical-inline-note" aria-hidden="true">Перемещайте детали</div>}
   </div>;
 }
