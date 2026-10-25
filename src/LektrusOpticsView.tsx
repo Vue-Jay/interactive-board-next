@@ -115,9 +115,12 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
   </g>
   {cursor&&interactive&&tool!=="select"&&<g transform={`translate(${cursor.x} ${cursor.y})`}
     className="lektrus-editor-cursor" pointerEvents="none">
-    <circle r="10" fill="#fff" fillOpacity=".9" stroke="#3375cb" strokeWidth="2"/>
-    <circle r="2.6" fill="#3375cb"/>
-    <circle r="16" fill="none" stroke="#9abce9" strokeWidth="1.2" strokeDasharray="5 6"/>
+    <circle r="13" fill="#fff" fillOpacity=".97" stroke="#2676be" strokeWidth="2.5"/>
+    <circle r="3" fill="#2676be"/>
+    <g transform={cursor.x>770?"translate(-162 -34)":"translate(19 -34)"}>
+      <rect x="0" y="0" width="146" height="27" rx="9" fill="#ffffff" stroke="#bad5ed" strokeWidth="1.4"/>
+      <text x="9" y="18" fontSize="12" fontWeight="750" fill="#225c9b">{({source:"Источник света",mirror:"Зеркало","converging-lens":"Собирающая линза","diverging-lens":"Рассеивающая линза",interface:"Граница сред",screen:"Экран",prism:"Призма"} as Record<string,string>)[tool]??"Добавить"}</text>
+    </g>
   </g>}
  </svg>;
 }
