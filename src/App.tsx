@@ -31,6 +31,7 @@ import {LektrusDataChartView,LektrusDataChartEditor} from "./LektrusDataChart";
 import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusSubjectToolIcon from "./LektrusSubjectToolIcons";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
+import {fitGeoMatchingItem} from "./lektrusGeoMatchingLayout";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
@@ -1113,7 +1114,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
@@ -1130,6 +1131,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
   onSchoolDiagramChange?: (diagram:import("./lektrusSchoolDiagramModel").SchoolDiagram)=>void;
+  onMatchingSize?: (width:number,height:number)=>void;
   onOpenEditor?: ()=>void;
   onToggleConstruction?: ()=>void;
   constructionActive?: boolean;
@@ -1174,7 +1176,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   }
   if(item.graphFigureId==="lektrus-chart")return <LektrusDataChartView item={item}/>;
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
-    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange}/></div>;
+    return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} onMatchingSize={onMatchingSize}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
   if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
     <LektrusChemistryIllustration item={item}/>
@@ -7537,8 +7539,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               {...saved,schoolDiagram:{...saved.schoolDiagram,
                 contourMarks:next.schoolDiagram.contourMarks,contourStrokes:next.schoolDiagram.contourStrokes,
                 contourLegend:next.schoolDiagram.contourLegend,paintedCountries:next.schoolDiagram.paintedCountries}}:next;
+            const fitted=fitGeoMatchingItem(updated);
             commit(itemsRef.current.some(i=>i.id===next.id)?
-              itemsRef.current.map(i=>i.id===next.id?updated:i):[...itemsRef.current,next]);
+              itemsRef.current.map(i=>i.id===next.id?fitted:i):[...itemsRef.current,fitted]);
             setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
           }}/>}
         {scienceEditorItem&&<LektrusScienceEditor key={scienceEditorItem.id} item={scienceEditorItem}
@@ -8581,6 +8584,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item}
+                  onMatchingSize={!isStudent&&canEdit&&!item.locked&&!presentation&&
+                   item.graphFigureId==="geo-matching"?(width,height)=>{
+                    const current=itemsRef.current.find(entry=>entry.id===item.id);
+                    if(!current||current.graphFigureId!=="geo-matching"||
+                       current.schoolDiagram?.kind!=="geo-training"||current.schoolDiagram.exercise!=="matching")return;
+                    const w=Math.round(width),h=Math.round(height);
+                    if(!Number.isFinite(w)||!Number.isFinite(h)||w<300||w>1200||h<200||h>2200||
+                       current.width===w&&current.height===h)return;
+                    commit(itemsRef.current.map(entry=>entry.id===item.id?{...entry,width:w,height:h}:entry));
+                   }:undefined}
                   onOpenEditor={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation
                     ?()=>{setGraphPointEditId(null);openGraphEditor(item)}:undefined}
                   constructionActive={boardGeometryMode?.id===item.id}
