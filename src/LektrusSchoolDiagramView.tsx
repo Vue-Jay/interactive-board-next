@@ -12,7 +12,8 @@ import LektrusLogicCircuitView from "./LektrusLogicCircuitView";
 import LektrusProgrammingView from "./LektrusProgrammingView";
 import LektrusGeographyTrainingView from "./LektrusGeographyTrainingView";
 
-type Props={diagram:SchoolDiagram;onChange?:(diagram:SchoolDiagram)=>void;editorMode?:boolean;userId?:string};
+type Props={diagram:SchoolDiagram;onChange?:(diagram:SchoolDiagram)=>void;editorMode?:boolean;userId?:string;
+ onMatchingSize?:(width:number,height:number)=>void};
 const trim=(s:string,n=20)=>s.length>n?s.slice(0,n-1)+"…":s;
 const labelText=(s:string,max=19)=>{
  const words=s.split(/\s+/),lines:string[]=[];let line="";
@@ -166,7 +167,7 @@ function TimelineGraphic({diagram:d}:{diagram:Extract<SchoolDiagram,{kind:"timel
   <text x="450" y="463" textAnchor="middle" fontSize="13" fill="#8193a4">События расположены по порядку. Промежутки между датами не в масштабе.</text>
  </svg>;
 }
-export default function LektrusSchoolDiagramView({diagram,onChange,editorMode,userId}:Props){
+export default function LektrusSchoolDiagramView({diagram,onChange,editorMode,userId,onMatchingSize}:Props){
  switch(diagram.kind){
   case "programming":return <LektrusProgrammingView diagram={diagram}/>;
   case "logic-circuit":return <LektrusLogicCircuitView diagram={diagram}/>;
@@ -182,7 +183,7 @@ export default function LektrusSchoolDiagramView({diagram,onChange,editorMode,us
   case "syntax":case "flowchart":case "place-value":return <LektrusNextSchoolView diagram={diagram} onChange={onChange}/>;
   case "organs":case "relief":return <LektrusFurtherSchoolView diagram={diagram}/>;
   case "morphemes":case "family-tree":case "flashcards":return <LektrusApprovedSchoolView diagram={diagram}/>;
-  case "geo-training":return <LektrusGeographyTrainingView diagram={diagram}/>;
+  case "geo-training":return <LektrusGeographyTrainingView diagram={diagram} onMatchingSize={onMatchingSize}/>;
   case "morphology":case "phonetics":case "orthography":return <LektrusRussianSchoolView diagram={diagram} onChange={onChange}/>;
   case "sentence-builder":case "state-structure":return <LektrusLanguageSocialView diagram={diagram}/>;
   case "atlas":return <LektrusMapAtlas diagram={diagram} onChange={onChange} editorMode={editorMode} userId={userId}/>;
