@@ -13,7 +13,7 @@ import {
   type CircuitAnchor,type CircuitComponent,type CircuitDocument,type CircuitJunction
 } from "./lektrusCircuitModel";
 
-type Props={item:Item;onSave:(value:Item)=>void;onCancel:()=>void;onClose?:(value:Item)=>void;onLiveChange?:(before:CircuitDocument,next:CircuitDocument)=>void};
+type Props={item:Item;onSave:(value:Item)=>void;onCancel:()=>void;onClose?:(value:Item)=>void;onLiveChange?:(before:CircuitDocument,next:CircuitDocument)=>void;shared?:boolean};
 type History={past:CircuitDocument[];present:CircuitDocument;future:CircuitDocument[]};
 const templates=[
   {id:"physics-circuit-series",label:"Последовательная цепь"},
@@ -51,7 +51,7 @@ function addCircuitNode(doc:CircuitDocument,x:number,y:number):[CircuitDocument,
   };
   return [{...doc,junctions:[...doc.junctions,node]},node];
 }
-export default function LektrusCircuitEditor({item,onSave,onCancel,onClose,onLiveChange}:Props){
+export default function LektrusCircuitEditor({item,onSave,onCancel,onClose,onLiveChange,shared=false}:Props){
   const [history,setHistory]=useState<History>(()=>({
     past:[],present:circuitFromLegacyItem(item),future:[]
   }));
@@ -598,8 +598,8 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose,onLiv
         </div>}
         <footer className="lektrus-circuit-footer">
           <span role="status">{notice||"Редактирование на компьютере · без автоматического решения задач"}</span>
-          <button type="button" className="secondary" onClick={onCancel}>Отмена</button>
-          <button type="button" className="primary" onClick={()=>onSave(normalized())}>Сохранить на доску</button>
+          <button type="button" className="secondary" onClick={shared?close:onCancel}>{shared?"Закрыть":"Отмена"}</button>
+          <button type="button" className="primary" onClick={()=>onSave(normalized())}>{shared?"Готово":"Сохранить на доску"}</button>
         </footer>
       </section>
     </div>,document.body
