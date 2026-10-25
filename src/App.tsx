@@ -5429,7 +5429,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const livePhysicalEditorUpdate=(itemId:string,field:"scienceMechanics"|"scienceOptics"|"scienceCircuit",
     before:unknown,next:unknown)=>{
     const latest=itemsRef.current.find(candidate=>candidate.id===itemId);
-    if(!latest||latest.locked||!canEdit)return;
+    if(!latest||latest.locked||!canEdit||structurallyLockedForStudent(latest))return;
     const merged=mergeEditedValue(before,next,latest[field]??before);
     const valid=field==="scienceMechanics"?mechanicsValid(merged):
       field==="scienceOptics"?validOptics(merged):circuitIsDocument(merged);
@@ -7547,6 +7547,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setNotice("Периодическая таблица добавлена на доску");
           }}/>}
         {circuitEditorItem&&<LektrusCircuitEditor key={circuitEditorItem.id}
+          shared={items.some(x=>x.id===circuitEditorItem.id)}
           item={remoteLiveItems[circuitEditorItem.id]??items.find(x=>x.id===circuitEditorItem.id)??circuitEditorItem}
           onLiveChange={(before,next)=>livePhysicalEditorUpdate(circuitEditorItem.id,"scienceCircuit",before,next)}
           onCancel={()=>setCircuitEditorItem(null)}
@@ -7592,13 +7593,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
           }}/>}
         {scienceEditorItem&&<>{scienceEditorItem.scienceMechanics?
-          <LektrusMechanicsEditor key={scienceEditorItem.id} item={remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem}
+          <LektrusMechanicsEditor key={scienceEditorItem.id} shared={items.some(x=>x.id===scienceEditorItem.id)} item={remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem}
             onLiveChange={(before,next)=>livePhysicalEditorUpdate(scienceEditorItem.id,"scienceMechanics",before,next)}
             onCancel={()=>setScienceEditorItem(null)}
             onClose={next=>{finalizePhysicalEditor(next,false);setScienceEditorItem(null)}}
             onSave={next=>{finalizePhysicalEditor(next,true);setScienceEditorItem(null);setNotice("Механика синхронизирована")}}/>:
         (scienceEditorItem.scienceOptics||["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(scienceEditorItem.graphFigureId??""))?
-          <LektrusOpticsEditor key={scienceEditorItem.id} item={remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem}
+          <LektrusOpticsEditor key={scienceEditorItem.id} shared={items.some(x=>x.id===scienceEditorItem.id)} item={remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem}
             onLiveChange={(before,next)=>livePhysicalEditorUpdate(scienceEditorItem.id,"scienceOptics",before,next)}
             onCancel={()=>setScienceEditorItem(null)}
             onClose={next=>{finalizePhysicalEditor(next,false);setScienceEditorItem(null)}}
