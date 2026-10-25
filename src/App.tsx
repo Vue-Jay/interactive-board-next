@@ -4844,6 +4844,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       default: setLectrisInspectorOpen(true); break;
     }
   };
+  // A single settings entry point for every selected board object. Subject tools
+  // open their own editors; simple objects use the shared properties inspector.
+  const lectrisConfigureSelected = () => {
+    if (!singleSelected || isInkItem(singleSelected)) return;
+    const contourWorksheet = singleSelected.graphFigureId === "contour-atlas";
+    if (!canEdit || (singleSelected.locked && !contourWorksheet) ||
+      (isStudent && structurallyLockedForStudent(singleSelected) && !contourWorksheet)) {
+      setLectrisInspectorOpen(true);
+      return;
+    }
+    lectrisEditSelected();
+  };
   const selectionToolbarPointerDown=(event:React.PointerEvent<HTMLDivElement>)=>{
     event.stopPropagation();
   };
@@ -7178,7 +7190,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           canModify={canEdit && !selectionLocked && !(singleSelected && isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
           inspectorOpen={lectrisInspectorOpen} onInspectorOpen={()=>setLectrisInspectorOpen(v=>!v)}
           onDeselect={()=>{setSelected([]);setLectrisInspectorOpen(false)}}
-          onEdit={lectrisEditSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}
+          onEdit={lectrisConfigureSelected} onDuplicate={duplicateSelected} onDelete={deleteSelected}
           onPatch={lectrisPatchSelected}
           onColor={tool === "marker" ? setMarkerColor : tool === "pen" ? setPenColor : setColor}
           onWeight={setWeight}
@@ -8900,18 +8912,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   : `${selectedItems.length} объектов`}
               </span>
 
-              {singleSelected&&!isInkItem(singleSelected)&&
+              {singleSelected&&!isInkItem(singleSelected)&&<>
+                <button type="button" className="selection-configure-action" data-board-interactive="true"
+                  title="Настроить выбранный объект" aria-label="Настроить выбранный объект"
+                  onClick={lectrisConfigureSelected}>
+                  <Icon name="settings" size={15}/><span>Настроить</span>
+                </button>
                 <button type="button" className="icon-action" data-board-interactive="true"
-                  title="Настройки и свойства объекта" aria-label="Настройки и свойства объекта"
-                  aria-pressed={lectrisInspectorOpen}
+                  title="Свойства: размер, расположение и оформление"
+                  aria-label="Свойства объекта" aria-pressed={lectrisInspectorOpen}
                   onClick={()=>setLectrisInspectorOpen(value=>!value)}>
                   <Icon name="settings" size={16}/>
-                </button>}
-              {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
-                (["text","sticky","frame","comment","formula","graph","fraction","table","checklist","quiz","flashcard","linkmedia","image"].includes(singleSelected.kind))&&
-                <button type="button" className="selection-edit-action" data-board-interactive="true"
-                  title="Редактировать содержимое" aria-label="Редактировать содержимое"
-                  onClick={lectrisEditSelected}><Icon name="rename" size={15}/><span>Редактировать</span></button>}
+                </button>
+              </>}}
               {singleSelected?.kind === "linkmedia" && !selectionLocked && (<span className="linkmedia-selection-controls"><button type="button" onClick={()=>openLinkMediaEditor(singleSelected)} title="Изменить ссылку"><Icon name="rename" size={15}/><span>Ссылка</span></button><a href={singleSelected.mediaUrl} target="_blank" rel="noreferrer" onPointerDown={e=>e.stopPropagation()} title="Открыть источник"><Icon name="open" size={15}/></a></span>)}
               {singleSelected?.kind === "frame" && !selectionLocked && (
                 <button type="button" className="frame-name-action" onClick={renameSelectedFrame} title="Переименовать фрейм · Enter / F2">
@@ -8961,16 +8974,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <span className="cover-selection-controls"><button type="button" className={singleSelected.coverOpen ? "active" : ""} onClick={() => toggleCover(singleSelected)} title="Прозрачность шторки"><Icon name={singleSelected.coverOpen ? "eye-off" : "eye"} size={15}/><span>{singleSelected.coverOpen ? "Закрыть" : "Прозрачная"}</span></button><input type="range" min="0" max="100" value={Math.round((singleSelected.coverOpen?0:(singleSelected.coverOpacity??1))*100)} onChange={e=>{const opacity=Number(e.target.value)/100;commit(itemsRef.current.map(i=>i.id===singleSelected.id?{...i,coverOpen:opacity===0,coverOpacity:opacity}:i))}} aria-label="Непрозрачность шторки"/></span>
               )}
               {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>setFractionEditorId(singleSelected.id)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
-              {singleSelected?.kind==="graph"&&singleSelected.graphPurpose!=="geometry"&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&(
-                <span className="graph-selection-controls">
-                  <button type="button" data-board-interactive="true"
-                    className="lektrus-graph-edit-secondary" aria-label="Настроить учебный объект"
-                    onPointerDown={e=>e.stopPropagation()}
-                    onClick={e=>{e.preventDefault();e.stopPropagation();setGraphPointEditId(null);openGraphEditor(singleSelected)}}
-                    title="Открыть настройки учебного объекта">
-                    <Icon name="settings" size={15}/><span>Настроить</span>
-                  </button>
-                </span>)}
+
               {singleSelected?.kind === "formula" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
                 <span className="formula-selection-controls">
                   <button type="button" className="formula-edit-action" onClick={() => openFormulaEditor(singleSelected)} title="Редактировать формулу"><Icon name="formula" size={15}/><span>{singleSelected.fontSize ?? 28}px</span></button>
@@ -9041,14 +9045,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               <details className="selection-more">
                 <summary title="Ещё действия" aria-label="Ещё действия"><Icon name="more" size={17} /></summary>
                 <div className="selection-more-menu">
-                  {singleSelected&&!isInkItem(singleSelected)&&
-                    <button type="button" onClick={()=>setLectrisInspectorOpen(true)}>
-                      <Icon name="settings" size={16}/><span>Настройки и свойства</span>
-                    </button>}
-                  {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
-                    <button type="button" onClick={lectrisEditSelected}>
-                      <Icon name="rename" size={16}/><span>Редактировать</span>
-                    </button>}
+                  {singleSelected&&!isInkItem(singleSelected)&&<>
+                    <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");lectrisConfigureSelected()}}>
+                      <Icon name="settings" size={16}/><span>Настроить</span>
+                    </button>
+                    <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");setLectrisInspectorOpen(true)}}>
+                      <Icon name="settings" size={16}/><span>Свойства</span>
+                    </button>
+                  </>}
                   <button type="button" onClick={copySelected}><Icon name="copy" size={16} /><span>Копировать</span><kbd>Ctrl+C</kbd></button>
                   {selectedItems.length === 1 && singleSelected?.kind !== "comment" && <button type="button" onClick={addCommentToSelection}><Icon name="comment" size={16}/><span>Добавить комментарий</span></button>}
                   <button type="button" onClick={() => void exportItemsToPng("selection")}><Icon name="download" size={16} /><span>Скачать выделение PNG</span><kbd>Ctrl+Shift+E</kbd></button>
@@ -9145,6 +9149,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             >
               {selectedItems.length ? (
                 <>
+                  {singleSelected&&!isInkItem(singleSelected)&&<>
+                    <button onClick={()=>{lectrisConfigureSelected();setContextMenu(null)}}>Настроить</button>
+                    <button onClick={()=>{setLectrisInspectorOpen(true);setContextMenu(null)}}>Свойства</button>
+                  </>}
                   <button onClick={() => { duplicateSelected(); setContextMenu(null); }}>Дублировать <span>Ctrl+D</span></button>
                   <button onClick={() => { copySelected(); setContextMenu(null); }}>Копировать <span>Ctrl+C</span></button>
                   {singleSelected?.kind !== "comment" && <button onClick={() => { addCommentToSelection(); setContextMenu(null); }}>Добавить комментарий</button>}
