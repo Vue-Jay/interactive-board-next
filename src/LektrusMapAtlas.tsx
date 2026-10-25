@@ -1,6 +1,6 @@
 import {useEffect,useId,useLayoutEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode,ContourMark,ContourStroke} from "./lektrusAtlasModel";
-import {contourEraserHits,moveContourMark} from "./lektrusContourInteractions";
+import {moveContourMark} from "./lektrusContourInteractions";
 import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import {eraseContourInkAlongPath} from "./lektrusContourInk";
 import {defaultContourAssignment} from "./lektrusAtlasModel";
@@ -144,7 +144,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const contourEraserPreview=useRef<SVGPathElement|null>(null);
  const contourInkMaskId="lektrus-contour-ink-"+useId().replace(/:/g,"");
  
- const eraserGesture=useRef<{pointerId:number;marks:Set<string>;fills:Set<string>;path:Array<{x:number;y:number}>;radius:number}|null>(null);
+ const eraserGesture=useRef<{pointerId:number;path:Array<{x:number;y:number}>;radius:number}|null>(null);
  const [liveErasedStrokes,setLiveErasedStrokes]=useState<ContourStroke[]|null>(null);
  const [pendingInk,setPendingInk]=useState<ContourStroke[]|null>(null);
  const eraserPersisting=useRef(false);
@@ -1035,7 +1035,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   }
   if(eraserGesture.current)return;
   clearErasePreview();
-  eraserGesture.current={pointerId:e.pointerId,marks:new Set(),fills:new Set(),path:[],
+  eraserGesture.current={pointerId:e.pointerId,path:[],
    radius:contourEraserRadius()};
   try{e.currentTarget.setPointerCapture(e.pointerId)}catch{/* older mobile WebViews */}
   brushContour(e);
@@ -1457,7 +1457,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         const precise=historical?borderPrecision(s.feature):3;
         const highlighted=!!search&&s.name.toLocaleLowerCase("ru-RU").includes(search.toLocaleLowerCase("ru-RU"));
         const fillKey=String(s.feature.properties?.ADM0_A3||s.feature.properties?.ISO_A3||s.name);
-        const fill=mode==="contour"?(pendingErasure.fills.includes(fillKey)?"#fffdfa":painted[fillKey]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
+        const fill=mode==="contour"?(painted[fillKey]||"#fffdfa"):mode==="physical"||mode==="relief"?"#d2e5c8":mode==="hydrography"?"#e6eee2":mode==="minerals"?"#f4ecd6":
          mode==="political"?politicalColors[s.i]??"#ecd9bf":historical?(modernReference?politicalColors[s.i]??"#ecd9bf":palettes[hash(s.name||String(s.feature.properties?.NAME??s.i))%palettes.length]):palettes[hash(s.name)%palettes.length];
         return <path key={s.i} d={s.path} fillRule="evenodd" fill={fill}
          data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}
@@ -1485,7 +1485,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         const key="region:"+String(f.feature.properties?.adm1_code||f.feature.properties?.ADM1_CODE||f.feature.properties?.iso_3166_2||
          f.feature.properties?.name_ru||f.feature.properties?.name||geoFeatureName(f.feature));
         return <path key={"province-"+f.id} d={f.path} vectorEffect="non-scaling-stroke"
-         fill={mode==="contour"&&paintRegions?(pendingErasure.fills.includes(key)?"#fafcfb":painted[key]??"#fafcfb"):mode==="political"?"transparent":"none"}
+         fill={mode==="contour"&&paintRegions?(painted[key]??"#fafcfb"):mode==="political"?"transparent":"none"}
          data-contour-fill-key={isWorksheet&&painted[key]?key:undefined}
          onClick={e=>{e.stopPropagation();if(mode==="political")selectFeature(f.feature,"Административная единица");
           else paintProvince(f.feature)}}><title>{geoFeatureName(f.feature)}</title></path>;
@@ -1689,7 +1689,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
         return <g key={mark.id} transform={`translate(${x} ${y}) scale(${labelUiScale/scale})`}
          className={"lektrus-atlas-contour-mark lektrus-contour-label-object"+(selected?" selected":"")}
          role="button" tabIndex={0} aria-label={"Передвинуть обозначение: "+(mark.text||"Знак")}
-         opacity={pendingErasure.marks.includes(mark.id)?.2:1}
+         opacity={1}
          onPointerDown={e=>startContourMarkDrag(e,stored)}
          onPointerMove={moveContourMarkDrag}
          onPointerUp={e=>endContourMarkDrag(e)}
