@@ -93,7 +93,7 @@ import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from 
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
-import {boardRoleCapabilities,BOARD_ROLE_PREVIEW_LABELS,type BoardRolePreview} from "./lektrusBoardRolePreview";
+import {boardRoleCapabilities,restrictStudentDiagramChange,BOARD_ROLE_PREVIEW_LABELS,type BoardRolePreview} from "./lektrusBoardRolePreview";
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
 import {trackBoardVisit,listBoardVisits,type BoardVisit} from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
@@ -2161,9 +2161,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const {showInkDiagnostics,showBoardDiagnostics,showPerformanceDiagnostics} = developerPrefs;
   const changeRolePreview=(next:BoardRolePreview)=>{
     if(!isAppAdmin)return;
+    end(true);setEditing(null);
     setRolePreview(next);
     // Do not carry a privileged active tool/editor into a restricted preview.
-    setSelected([]);setTool("select");setSpace(false);
+    setSelected([]);setTool("select");setSpace(false);setSharing(false);
+    setBoardAiOpen(false);setImageCropEditorId(null);
     setGraphEditorId(null);setGraphDraft(null);setSchoolEditorItem(null);
     setBoardGeometryMode(null);setPendingMathItem(null);
     setSubjectToolsOpen(false);
@@ -8548,7 +8550,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     setSelected([item.id]);
                   }:undefined}
                   onSchoolDiagramChange={canEdit&&!item.locked&&isSchoolDiagramId(item.graphFigureId)?(diagram)=>{
-                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,schoolDiagram:diagram}:candidate));
+                    const before=itemsRef.current.find(candidate=>candidate.id===item.id);
+                    if(!before)return;
+                    const allowed=isStudent?restrictStudentDiagramChange(before.schoolDiagram,diagram):diagram;
+                    if(!allowed)return;
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?
+                      {...candidate,schoolDiagram:allowed}:candidate));
                   }:undefined}
                   suspendPeriodicWindows={periodicEditorItem?.id===item.id}
                   onPeriodicLayoutChange={canEdit&&!item.locked&&item.graphFigureId==="chem-periodic"?(nextLayout)=>{
