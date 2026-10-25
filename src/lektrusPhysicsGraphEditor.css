@@ -109,3 +109,10 @@
 }
 .lektrus-motion-svg.mode-point{cursor:none}
 .lektrus-motion-svg.mode-point .lektrus-motion-point-hit{cursor:grab}
+
+/* Physics graph tools use the same icon-and-label rhythm as the other editors. */
+.lektrus-motion-editor .lektrus-motion-tools button{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;
+}
+.lektrus-motion-editor .lektrus-motion-tools button svg{width:19px;height:19px;flex:none;stroke:currentColor}
+@media(pointer:coarse){.lektrus-motion-editor .lektrus-motion-tools button{min-height:44px}}
