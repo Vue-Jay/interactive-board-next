@@ -59,6 +59,35 @@ for(const level of ["easy","medium","hard"]){
  assert.ok(all.every(code=>getGeoCountry(code).difficulty===level),
   "whole-world exercises must honour their chosen difficulty");
 }
+const layout={};
+new Function("exports","require",ts.transpileModule(read("lektrusGeoMatchingLayout.ts"),{
+ compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}
+}).outputText)(layout,()=>mod);
+const sample2={...makeGeoTraining("matching"),countryCodes:["RU","FR"],relation:"flag-country"};
+const sample12={...makeGeoTraining("matching"),countryCodes:geoCountries.slice(0,12).map(c=>c.code),relation:"outline-country"};
+assert.ok(layout.geoMatchingEstimatedHeight(sample12)>layout.geoMatchingEstimatedHeight(sample2),
+ "More matching rows must produce a taller board item");
+const capitalExercise={...sample2,relation:"country-capital",countryCodes:["LK","AD","RU"]};
+assert.ok(layout.geoMatchingPreferredWidth(capitalExercise)>=layout.geoMatchingPreferredWidth(sample2),
+ "Long capitals must increase column space where necessary");
+const base={id:"match",kind:"graph",graphFigureId:"geo-matching",schoolDiagram:sample12,
+ x:110,y:90,width:810,height:450,text:sample12.title};
+const fitted=layout.fitGeoMatchingItem(base);
+assert.ok(fitted.height>base.height,"Many pairs must not be clipped by the old 450px board box");
+assert.equal(fitted.width,layout.geoMatchingPreferredWidth(sample12));
+assert.deepEqual([fitted.x+fitted.width/2,fitted.y+fitted.height/2],
+ [base.x+base.width/2,base.y+base.height/2],"Fit preserves position of exercise centre");
+assert.equal(layout.fitGeoMatchingItem({...base,graphFigureId:"geo-question-cards"}).width,810,
+ "Automatic resizing must not change other school exercises");
+assert.equal(layout.fitGeoMatchingItem(fitted),fitted,"Stable content does not resize repeatedly");
+const trainingView=read("LektrusGeographyTrainingView.tsx"),app=read("App.tsx");
+assert.ok(trainingView.includes("new ResizeObserver(report)")&&
+ trainingView.includes("Math.ceil(element.offsetHeight)"),
+ "Actual matching content height is measured and observed for changes");
+assert.ok(trainingView.includes("lektrus-geo-game--auto-matching"));
+assert.ok(app.includes("fitGeoMatchingItem(updated)")&&app.includes("onMatchingSize="),
+ "Saved exercises and previously placed board objects must both auto-fit");
+
 const registry=read("lektrusSubjectToolRegistry.ts"),editor=read("LektrusSchoolDiagramEditor.tsx"),
  view=read("LektrusSchoolDiagramView.tsx"),board=read("boardModel.ts");
 for(const id of ["geo-matching","geo-question-cards"]){
