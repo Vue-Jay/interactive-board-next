@@ -7342,9 +7342,26 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setNotice("Электрическая схема добавлена на доску");
           }}/>}
         {schoolEditorItem&&<LektrusSchoolDiagramEditor key={schoolEditorItem.id}
-          item={schoolEditorItem} userId={authUser.id} studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}
+          item={items.find(item=>item.id===schoolEditorItem.id)??schoolEditorItem}
+          userId={authUser.id} studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}
           existing={itemsRef.current.some(i=>i.id===schoolEditorItem.id)}
           onCancel={()=>setSchoolEditorItem(null)}
+          onLiveChange={(before,next)=>{
+            const latest=itemsRef.current.find(item=>item.id===schoolEditorItem.id);
+            if(!latest||latest.graphFigureId!=="contour-atlas"||
+              latest.schoolDiagram?.kind!=="atlas"||next.kind!=="atlas"||before.kind!=="atlas")return;
+            // Students can edit only their answers; never overwrite the
+            // teacher's assignment, territory, or permitted map layers.
+            const allowed=isStudent?new Set([
+              "contourMarks","contourStrokes","contourLegend","paintedCountries","contourCamera"
+            ]):null;
+            const submitted=allowed?{...before,...Object.fromEntries(
+              [...allowed].map(key=>[key,next[key as keyof typeof next]])
+            )}:next;
+            const merged=mergeEditedValue(before,submitted,latest.schoolDiagram);
+            const updated={...latest,schoolDiagram:merged,text:merged.title};
+            commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
+          }}
           onSave={next=>{
             // Students may complete maps, but cannot change the teacher's
             // assignment, territory, base layers or permitted instruments.
