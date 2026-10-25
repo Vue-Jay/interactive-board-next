@@ -902,7 +902,7 @@ assert.ok(map.includes('const wasPinching=e.pointerType==="touch"'),
  "Finishing a pinch must never persist a pencil stroke");
 assert.ok(map.includes('contourLivePath.current.setAttribute("d",'),
  "The pencil must show an ink dot immediately on first contact");
-assert.ok(map.includes('contourDrawing.current.push([last[0]>179.997?'),
+assert.ok(map.includes('contourDrawing.current.push([last[0],last[1]])'),
  "A pencil tap without pointer movement must be saved as a round dot");
 assert.ok(map.includes('const end=contourPoint(worldPoint(localPoint(e)))'),
  "The last pointer-up coordinate must be retained in the finished line");
