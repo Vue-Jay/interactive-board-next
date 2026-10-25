@@ -1,4 +1,5 @@
-import {useEffect,useState} from "react";
+import {useEffect,useLayoutEffect,useRef,useState} from "react";
+import {geoMatchingPreferredWidth} from "./lektrusGeoMatchingLayout";
 import {atlasCountryFlagUrl} from "./lektrusAtlasCountrySymbols";
 import LektrusGeoCountryOutline from "./LektrusGeoCountryOutline";
 import type {GeoCountry,GeoTrainingDiagram} from "./lektrusGeographyTrainingModel";
@@ -38,7 +39,25 @@ function token(country:GeoCountry,d:GeoTrainingDiagram,side:"left"|"right"){
 }
 const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
 
-function Matching({diagram:d}:{diagram:GeoTrainingDiagram}){
+function Matching({diagram:d,onMatchingSize}:{diagram:GeoTrainingDiagram;
+ onMatchingSize?:(width:number,height:number)=>void}){
+ const gameRef=useRef<HTMLDivElement|null>(null);
+ const preferredWidth=geoMatchingPreferredWidth(d);
+ const sizeCallback=useRef(onMatchingSize);
+ useLayoutEffect(()=>{sizeCallback.current=onMatchingSize});
+ useLayoutEffect(()=>{
+  if(!onMatchingSize||!gameRef.current)return;
+  const element=gameRef.current;
+  const report=()=>{
+   if(!element.isConnected)return;
+   const height=Math.min(2100,Math.max(220,Math.ceil(element.offsetHeight)));
+   sizeCallback.current?.(preferredWidth,height);
+  };
+  report();
+  const observer=typeof ResizeObserver==="undefined"?null:new ResizeObserver(report);
+  observer?.observe(element);
+  return()=>observer?.disconnect();
+ },[preferredWidth,!!onMatchingSize]);
  const [rightOrder,setRightOrder]=useState(()=>shuffled(d.countryCodes));
  const [selected,setSelected]=useState<{side:"left"|"right";code:string}|null>(null);
  const [matched,setMatched]=useState<string[]>([]);
@@ -75,7 +94,8 @@ function Matching({diagram:d}:{diagram:GeoTrainingDiagram}){
    {solved&&<span className="lektrus-geo-complete-mark" aria-label="Верно">✓</span>}
   </button>;
  };
- return <div className="lektrus-geo-game" onPointerDown={stop} onPointerUp={stop}
+ return <div ref={gameRef} className={"lektrus-geo-game"+(onMatchingSize?" lektrus-geo-game--auto-matching":"")}
+  style={onMatchingSize?{width:preferredWidth}:undefined} onPointerDown={stop} onPointerUp={stop}
   onClick={stop} onDoubleClick={stop}>
   <header className="lektrus-geo-game-header">
    <div><strong>{d.title}</strong><small>{geoRelationNames[d.relation]} · {d.reverse?"Обратный порядок":"Обычный порядок"}</small></div>
@@ -144,10 +164,11 @@ function Flashcards({diagram:d}:{diagram:GeoTrainingDiagram}){
   <p className="lektrus-geo-message" role="status">Ответы скрыты до переворота. Оценка «Знаю» сохраняется только на время этого прохождения.</p>
  </div>;
 }
-export default function LektrusGeographyTrainingView({diagram}:{diagram:GeoTrainingDiagram}){
+export default function LektrusGeographyTrainingView({diagram,onMatchingSize}:{diagram:GeoTrainingDiagram;
+ onMatchingSize?:(width:number,height:number)=>void}){
  if(diagram.countryCodes.length<2)return <div className="lektrus-geo-game lektrus-geo-empty-preview" role="status">
   <strong>{diagram.title}</strong>
   <p>Задание пока пустое. Выберите страны вручную или сгенерируйте набор в редакторе.</p>
  </div>;
- return diagram.exercise==="matching"?<Matching diagram={diagram}/>:<Flashcards diagram={diagram}/>;
+ return diagram.exercise==="matching"?<Matching diagram={diagram} onMatchingSize={onMatchingSize}/>:<Flashcards diagram={diagram}/>;
 }
