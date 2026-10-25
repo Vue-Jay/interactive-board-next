@@ -55,9 +55,8 @@ type Props={
  onPointEdit:(index:number,change:{x?:number;y?:number;label?:string})=>void;
  onRemovePoint:(index:number)=>void;onNewLine:()=>void;onClosePolygon:()=>void;
  onToggle:(field:"graphGrid"|"graphSnap"|"graphMagneticSnap"|"graphShowLabels")=>void;
- onOpenEditor:()=>void;
 };
-export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMode,onPickBack,onClear,onFinish,onAdjust,onConstraint,onRelease,onSchool,onRemove,onRemoveSchool,onPointEdit,onRemovePoint,onNewLine,onClosePolygon,onToggle,onOpenEditor}:Props){
+export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMode,onPickBack,onClear,onFinish,onAdjust,onConstraint,onRelease,onSchool,onRemove,onRemoveSchool,onPointEdit,onRemovePoint,onNewLine,onClosePolygon,onToggle}:Props){
  const [tab,setTab]=useState<PanelTab>("draw");
  const [collapsed,setCollapsed]=useState(false);
  const [value,setValue]=useState("");
@@ -85,11 +84,6 @@ export default function LektrusBoardGeometryPanel({item,mode,selected,error,onMo
    <div className="lektrus-board-geometry-head">
     <div className="lektrus-board-geometry-identity"><strong>Построение</strong><small>{points.length} т. · {total} эл.</small></div>
     <div className="lektrus-board-geometry-head-actions">
-      <button type="button" className="lektrus-board-geometry-editor-link"
-        title="Открыть полный редактор фигур"
-        aria-label="Открыть полный редактор фигур" onClick={onOpenEditor}>
-        <LektrusGeometryToolIcon name="editor" size={16}/><span>В редактор</span>
-      </button>
       <button type="button" className="lektrus-board-geometry-collapse"
         aria-label={collapsed?"Развернуть инструменты построения":"Свернуть инструменты построения"}
         title={collapsed?"Развернуть":"Свернуть"} onClick={()=>setCollapsed(v=>!v)}>
