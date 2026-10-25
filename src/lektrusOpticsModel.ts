@@ -3,7 +3,8 @@ export type OpticalKind="source"|"mirror"|"converging-lens"|"diverging-lens"|"in
 export type OpticalElement={id:string;kind:OpticalKind;x:number;y:number;label:string;
   focalLength:number;length:number;n1:number;n2:number};
 export type OpticalRay={id:string;sourceId:string;angle:number;color:string};
-export type OpticsDocument={version:1;elements:OpticalElement[];rays:OpticalRay[];grid:boolean;labels:boolean;normals:boolean};
+export type LegacyOpticsStroke={id:string;x1:number;y1:number;x2:number;y2:number;label:string;arrow:boolean};
+export type OpticsDocument={version:1;elements:OpticalElement[];rays:OpticalRay[];grid:boolean;labels:boolean;normals:boolean;legacy?:LegacyOpticsStroke[]};
 export type OpticalPoint={x:number;y:number};
 export type OpticalPath={id:string;color:string;points:OpticalPoint[];kind:"normal"|"reflected"|"refracted"|"lens"|"straight";note:string};
 export const OPTICS_WIDTH=960,OPTICS_HEIGHT=560;
@@ -20,6 +21,11 @@ export function validOptics(d:unknown):d is OpticsDocument{
   if(v.version!==1||!Array.isArray(v.elements)||!Array.isArray(v.rays)||
     v.elements.length>80||v.rays.length>160||
     typeof v.grid!=="boolean"||typeof v.labels!=="boolean"||typeof v.normals!=="boolean")return false;
+  if(v.legacy!=null&&(!Array.isArray(v.legacy)||v.legacy.length>200||
+    v.legacy.some(segment=>!segment||typeof segment.id!=="string"||
+      typeof segment.label!=="string"||segment.label.length>75||
+      typeof segment.arrow!=="boolean"||
+      ![segment.x1,segment.y1,segment.x2,segment.y2].every(Number.isFinite))))return false;
   const ids=new Set<string>();
   const known=new Set<OpticalKind>(["source","mirror","converging-lens","diverging-lens","interface","screen","prism"]);
   for(const e of v.elements){
