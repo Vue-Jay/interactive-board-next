@@ -6,7 +6,7 @@ export type OpticalRay={id:string;sourceId:string;angle:number;color:string};
 export type LegacyOpticsStroke={id:string;x1:number;y1:number;x2:number;y2:number;label:string;arrow:boolean};
 export type OpticsDocument={version:1;elements:OpticalElement[];rays:OpticalRay[];grid:boolean;labels:boolean;normals:boolean;legacy?:LegacyOpticsStroke[]};
 export type OpticalPoint={x:number;y:number};
-export type OpticalInteraction={point:OpticalPoint;kind:"lens"|"mirror"|"refraction"|"tir"|"screen";text:string};
+export type OpticalInteraction={point:OpticalPoint;kind:"lens"|"mirror"|"refraction"|"tir"|"screen";text:string;normal?:{x:number;y:number}};
 export type OpticalPath={id:string;color:string;points:OpticalPoint[];kind:"normal"|"reflected"|"refracted"|"lens"|"prism"|"straight";note:string;events?:OpticalInteraction[]};
 export const OPTICS_WIDTH=960,OPTICS_HEIGHT=560;
 export const opticsId=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-5);
@@ -105,6 +105,10 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
   const points:OpticalPoint[]=[{x:source.x,y:source.y}];
   const events:OpticalInteraction[]=[];
   const degrees=(radians:number)=>Math.round(radians*180/Math.PI);
+  const surfaceNormal=(a:OpticalPoint,b:OpticalPoint):Vector=>{
+    const dx=b.x-a.x,dy=b.y-a.y,size=Math.hypot(dx,dy)||1;
+    return {x:-dy/size,y:dx/size};
+  };
   const incidence=(d:Vector,a:OpticalPoint,b:OpticalPoint)=>{
     const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
     const perpendicular=Math.abs((d.x*(-dy)+d.y*dx)/len);
@@ -159,7 +163,7 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
     }
     if(e.kind==="mirror"){
       const angle=degrees(Math.atan2(Math.abs(direction.y),Math.abs(direction.x)));
-      events.push({point:p,kind:"mirror",text:"Зеркало: отражение, угол "+angle+"°"});
+      events.push({point:p,kind:"mirror",text:"Зеркало: отражение, угол "+angle+"°",normal:{x:1,y:0}});
       direction=unit({x:-direction.x,y:direction.y});
       kind="reflected";note="Отражение от зеркала, далее учитываются следующие поверхности";
     }else if(e.kind==="interface"){
@@ -167,11 +171,11 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
       const from=direction.x>0?e.n1:e.n2,to=direction.x>0?e.n2:e.n1;
       const sine=direction.y*from/to;
       if(Math.abs(sine)>1){
-        events.push({point:p,kind:"tir",text:"Граница сред: полное внутреннее отражение"});
+        events.push({point:p,kind:"tir",text:"Граница сред: полное внутреннее отражение",normal:{x:1,y:0}});
         direction=unit({x:-direction.x,y:direction.y});
         kind="reflected";note="Полное внутреннее отражение на границе сред";
       }else{
-        events.push({point:p,kind:"refraction",text:"Граница сред: "+from+" → "+to});
+        events.push({point:p,kind:"refraction",text:"Граница сред: "+from+" → "+to,normal:{x:1,y:0}});
         direction=unit({x:Math.sign(direction.x)*Math.sqrt(Math.max(0,1-sine*sine)),y:sine});
         kind="refracted";note="Преломление на границе сред; луч продолжает путь";
       }
@@ -193,7 +197,8 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
       if(outgoing){
         events.push({point:p,kind:"refraction",
           text:(wasInside?"Выход из призмы":"Вход в призму")+
-            ": "+incidence(direction,hit.facet[0],hit.facet[1])+"°"});
+            ": "+incidence(direction,hit.facet[0],hit.facet[1])+"°",
+          normal:surfaceNormal(hit.facet[0],hit.facet[1])});
         direction=unit(outgoing);
         medium=wasInside?null:e.id;
         kind="prism";
@@ -204,7 +209,8 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
         // Total internal reflection is another interaction, not the end
         // of the path. The next search sees the following triangular face.
         events.push({point:p,kind:"tir",text:"ПВО в призме: "+
-          incidence(direction,hit.facet[0],hit.facet[1])+"°"});
+          incidence(direction,hit.facet[0],hit.facet[1])+"°",
+          normal:surfaceNormal(hit.facet[0],hit.facet[1])});
         direction=reflected(direction,hit.facet[0],hit.facet[1]);
         kind="reflected";
         note="Полное внутреннее отражение в призме; поиск следующей грани";
