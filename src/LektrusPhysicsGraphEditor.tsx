@@ -47,6 +47,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
   const [settingsOpen,setSettingsOpen]=useState(()=>typeof window==="undefined"||!window.matchMedia("(max-width:760px)").matches);
   const [notice,setNotice]=useState("");
   const [measurementOpen,setMeasurementOpen]=useState(false);
+  const [aim,setAim]=useState<Point|null>(null);
   const [preview,setPreview]=useState<{index:number;point:Point}|null>(null);
   const drag=useRef<{id:number;index:number;start:Point;last:Point}|null>(null);
   const data=useMemo(()=>draft.points.map((point,i)=>preview?.index===i?preview.point:point),[draft.points,preview]);
@@ -220,7 +221,12 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
           <div className="lektrus-motion-sheet">
             <svg viewBox="0 0 980 590" preserveAspectRatio="xMidYMid meet" className={"lektrus-motion-svg mode-"+tool} role="img"
               aria-label={`Интерактивный график ${axis.variable} от времени`}
-              onPointerMove={move} onPointerUp={finish} onPointerCancel={finish}
+              onPointerMove={event=>{
+                move(event);
+                if(event.pointerType!=="touch"&&tool==="point")setAim(fromScreen(event,event.currentTarget));
+              }}
+              onPointerLeave={()=>setAim(null)}
+              onPointerUp={finish} onPointerCancel={finish}
               onClick={event=>{if(tool!=="point"||event.target!==event.currentTarget)return;addPoint(fromScreen(event,event.currentTarget))}}>
               <rect width="980" height="590" fill="#fff" onClick={event=>{
                 if(tool==="point"){event.stopPropagation();addPoint(fromScreen(event,event.currentTarget.ownerSVGElement!))}
@@ -242,6 +248,12 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
                 <text x={PLOT.left} y={PLOT.top-19} className="axis-title">${axis.variable}, ${axis.unit}</text>
               </g>
               {draft.connect&&ordered.length>1&&<polyline points={polyline} className="lektrus-motion-line" pointerEvents="none"/>}
+              {aim&&tool==="point"&&<g transform={`translate(${sx(aim.x)} ${sy(aim.y)})`}
+                pointerEvents="none" className="lektrus-editor-cursor">
+                <circle r="10" fill="#fff" fillOpacity=".9" stroke="#3266c9" strokeWidth="2"/>
+                <circle r="2.5" fill="#3266c9"/>
+                <circle r="16" fill="none" stroke="#9ebfe8" strokeDasharray="5 6" strokeWidth="1.3"/>
+              </g>}
               {data.map((point,i)=><g key={i}>
                 {selected===i&&<circle cx={sx(point.x)} cy={sy(point.y)} r="14" fill="#dce9ff" pointerEvents="none"/>}
                 <circle cx={sx(point.x)} cy={sy(point.y)} r={selected===i?6.2:5} fill={selected===i?"#194ba6":"#3878d5"}
