@@ -68,8 +68,12 @@ for(const field of ['item.kind==="shape"','item.kind==="connector"','item.kind==
 const names=file("src/boardObjectNames.ts");
 assert.ok(editor.includes('boardObjectTypeName(item)'),
  "Object inspector must use the true subject tool name rather than storage kind graph");
-for(const required of ['"geo-matching"','"geo-question-cards"','"lektrus-chart"','"chem-periodic"'])
- assert.ok(names.includes(required), "Missing specialized type mapping: "+required);
+const subjectRegistry=file("src/lektrusSubjectToolRegistry.ts");
+for(const id of ['"geo-matching"','"geo-question-cards"'])
+ assert.ok(subjectRegistry.includes('id:'+id) && names.includes("subjectToolRegistry"),
+  "Missing subject type mapping: "+id);
+for(const id of ['"lektrus-chart"','"chem-periodic"'])
+ assert.ok(names.includes(id), "Missing specialized type mapping: "+id);
 assert.ok(app.includes('if (item.kind === "graph") return boardObjectTypeName(item)'),
  "Object type in layers must agree with the inspector");
 
