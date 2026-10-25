@@ -77,7 +77,7 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
            onPlace(point.x,point.y);
          }
        }:undefined}
-       onClick={onSelect?e=>{e.stopPropagation();onSelect({kind:"element",id:part.id})}:undefined}>
+       onClick={onSelect&&tool==="select"?e=>{e.stopPropagation();onSelect({kind:"element",id:part.id})}:undefined}>
        {picked&&<rect x={part.x-23} y={part.y-Math.min(length/2,110)-15} width="46" height={Math.min(length,220)+30} rx="8"
          fill="#cce0ff" fillOpacity=".35" stroke="#6e9bdf" strokeDasharray="5 5" strokeWidth="1" pointerEvents="none"/>}
        {part.kind==="source"&&<g>
