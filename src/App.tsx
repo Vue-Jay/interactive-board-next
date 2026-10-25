@@ -1810,7 +1810,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
            y={scienceCaptionLayout?.points[i]?.y??(sy(p.y+(item.graphPoints?.[i]?.labelDy??0))-9)}
            style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
       </g>})}
-      {purpose==="geometry"&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(465 11)" data-board-interactive="true">
+      {purpose==="geometry"&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(517 11)" data-board-interactive="true">
         <g role="button" tabIndex={0} className="lektrus-grid-control"
           aria-label={item.graphGrid===false?"Показать сетку":"Скрыть сетку"}
           aria-pressed={item.graphGrid!==false}
