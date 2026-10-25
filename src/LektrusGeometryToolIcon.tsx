@@ -18,7 +18,7 @@ export default function LektrusGeometryToolIcon({name,size=23}:{name:GeometryToo
   dimensions:<><path d="M3 8h18M3 16h18M6 5v6m12-6v6M6 13v6m12-6v6"/></>,
   elements:<><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="6.8" strokeDasharray="3 2"/></>,
   editor:<><rect x="3.5" y="3.5" width="16" height="16" rx="3.2"/><path d="M7 14.5 15.2 6.3a1.75 1.75 0 0 1 2.5 2.5L9.5 17l-3.5 1Z"/><path d="m13.8 7.7 2.5 2.5"/></>,
-  construction:<><path d="M4.5 19.2 11.8 4.4l8 14.8H4.5Z"/><path d="M7.7 18.9a6.2 6.2 0 0 1 5.2-5.3" strokeDasharray="2 2" opacity=".7"/><circle cx="11.8" cy="4.4" r="2.1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="19.2" r="2.1" fill="currentColor" stroke="none"/><circle cx="19.8" cy="19.2" r="2.1" fill="currentColor" stroke="none"/></>,
+  construction:<><path d="M4.5 18.8 8 6.4 18 8.2" strokeWidth="1.85"/><path d="m18 8.2 2.2 10.6H4.5" strokeDasharray="3 2" opacity=".8"/><circle cx="4.5" cy="18.8" r="2.1" fill="currentColor" stroke="none"/><circle cx="8" cy="6.4" r="2.1" fill="currentColor" stroke="none"/><circle cx="18" cy="8.2" r="2.1" fill="currentColor" stroke="none"/><circle cx="20.2" cy="18.8" r="2" fill="none" strokeWidth="1.5"/></>,
   collapse:<><path d="M6 12h12"/></>,
   expand:<><path d="M6 12h12M12 6v12"/></>,
   close:<><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></>,
