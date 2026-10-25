@@ -8911,7 +8911,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 (["text","sticky","frame","comment","formula","graph","fraction","table","checklist","quiz","flashcard","linkmedia","image"].includes(singleSelected.kind))&&
                 <button type="button" className="selection-edit-action" data-board-interactive="true"
                   title="Редактировать содержимое" aria-label="Редактировать содержимое"
-                  onClick={lectrisEditSelected}><Icon name="edit" size={15}/><span>Редактировать</span></button>}
+                  onClick={lectrisEditSelected}><Icon name="rename" size={15}/><span>Редактировать</span></button>}
               {singleSelected?.kind === "linkmedia" && !selectionLocked && (<span className="linkmedia-selection-controls"><button type="button" onClick={()=>openLinkMediaEditor(singleSelected)} title="Изменить ссылку"><Icon name="rename" size={15}/><span>Ссылка</span></button><a href={singleSelected.mediaUrl} target="_blank" rel="noreferrer" onPointerDown={e=>e.stopPropagation()} title="Открыть источник"><Icon name="open" size={15}/></a></span>)}
               {singleSelected?.kind === "frame" && !selectionLocked && (
                 <button type="button" className="frame-name-action" onClick={renameSelectedFrame} title="Переименовать фрейм · Enter / F2">
@@ -9047,7 +9047,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     </button>}
                   {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
                     <button type="button" onClick={lectrisEditSelected}>
-                      <Icon name="edit" size={16}/><span>Редактировать</span>
+                      <Icon name="rename" size={16}/><span>Редактировать</span>
                     </button>}
                   <button type="button" onClick={copySelected}><Icon name="copy" size={16} /><span>Копировать</span><kbd>Ctrl+C</kbd></button>
                   {selectedItems.length === 1 && singleSelected?.kind !== "comment" && <button type="button" onClick={addCommentToSelection}><Icon name="comment" size={16}/><span>Добавить комментарий</span></button>}
