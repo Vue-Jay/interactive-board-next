@@ -84,6 +84,9 @@ export function LectrisQuickProperties(props: QuickProps) {
     <span className="lectris-quick-title">
       {selectionCount>0&&!drawing&&!erasing ? item?itemNames[item.kind]:"Выбрано: "+selectionCount : erasing?"Ластик":tool==="marker"?"Маркер":"Карандаш"}
     </span>
+    {item&&!drawing&&!erasing&&<button type="button" className="lectris-quick-configure"
+      title="Настроить выбранный объект" aria-label="Настроить выбранный объект"
+      onClick={props.onEdit}>Настроить</button>}
     {!(drawing||erasing)&&<button className="lectris-quick-expand" type="button" aria-expanded={expanded}
       onClick={()=>setExpanded(v=>!v)}>{expanded?"Свернуть ▲":"Настройки ▼"}</button>}
     <div className="lectris-quick-details">
@@ -93,7 +96,6 @@ export function LectrisQuickProperties(props: QuickProps) {
             value={item.color||"#365fd0"} onChange={value=>props.onPatch({color:value})}/>}
         {item&&<span className="lectris-quick-metric">{Math.round(item.width)} × {Math.round(item.height)}</span>}
         {item&&item.kind!=="pen"&&item.kind!=="marker"&&<button type="button" onClick={props.onInspectorOpen} aria-pressed={props.inspectorOpen}>Свойства</button>}
-        {item&&canModify&&advancedKinds.has(item.kind)&&<button type="button" onClick={props.onEdit}>Редактировать</button>}
         {canModify&&<button type="button" onClick={props.onDuplicate}>Копия</button>}
         {canModify&&<button type="button" className="lectris-danger" onClick={props.onDelete}>Удалить</button>}
         <button type="button" onClick={props.onDeselect} aria-label="Снять выделение">×</button>
