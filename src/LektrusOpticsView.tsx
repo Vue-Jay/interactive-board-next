@@ -35,6 +35,15 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
     onPlace(p.x,p.y);
   }}/>
   {doc.grid&&<rect width="960" height="560" fill={"url(#optics-dot-"+id+")"} pointerEvents="none"/>}
+  {!!doc.legacy?.length&&<g pointerEvents="none" className="lektrus-optics-legacy">
+    {doc.legacy.map(stroke=><g key={stroke.id}>
+      <path d={`M${stroke.x1} ${stroke.y1}L${stroke.x2} ${stroke.y2}`}
+        fill="none" stroke="#8397ae" strokeWidth="2" strokeLinecap="round"
+        strokeDasharray={stroke.label==="Нормаль"?"6 5":undefined}/>
+      {stroke.label&&doc.labels&&<text x={(stroke.x1+stroke.x2)/2+6}
+        y={(stroke.y1+stroke.y2)/2-10} fontSize="12" fill="#637b98">{stroke.label}</text>}
+    </g>)}
+  </g>}
   <g pointerEvents="none" className="lektrus-optics-paths">
    {paths.map(path=><g key={path.id}>
      <polyline points={path.points.map(p=>p.x+","+p.y).join(" ")}
