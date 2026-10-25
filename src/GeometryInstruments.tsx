@@ -1,4 +1,5 @@
-import {useRef,useState,type RefObject,type PointerEvent} from "react";
+import {useId,useRef,useState,type RefObject,type PointerEvent} from "react";
+import "./lektrusMeasurementInstruments.css";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 
@@ -20,11 +21,74 @@ const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 const angleTo=(x:number,y:number,point:Point)=>Math.atan2(y-point.y,x-point.x)*180/Math.PI;
 
 function InstrumentGraphic({type}:{type:InstrumentType}){
- return <>
-      {type==="ruler"&&<svg width="410" height="88" viewBox="0 0 410 88" aria-label="Линейка с делениями"><rect x="3" y="3" width="404" height="82" rx="5" fill="#fce8a5" fillOpacity=".85" stroke="#805e25"/>{Array.from({length:41},(_,i)=><g key={i}><line x1={5+i*10} y1="45" x2={5+i*10} y2={i%10===0?13:i%5===0?23:34} stroke="#624c30" strokeWidth="1"/>{i%10===0&&<text x={5+i*10} y="62" textAnchor="middle" fontSize="12" fill="#543f26">{i/10}</text>}</g>)}</svg>}
-      {type==="triangle"&&<svg width="340" height="260" viewBox="0 0 340 260" aria-label="Прямоугольный угольник"><path d="M8 8 L8 250 L330 250 Z" fill="#afe5ee" fillOpacity=".7" stroke="#367b88" strokeWidth="2"/><path d="M55 127 L55 215 L171 215 Z" fill="white" fillOpacity=".8" stroke="#367b88"/>{Array.from({length:17},(_,i)=><line key={i} x1={10+i*20} y1="249" x2={10+i*20} y2={i%5===0?229:238} stroke="#367b88"/>)}</svg>}
-      {type==="protractor"&&<svg width="360" height="205" viewBox="0 0 360 205" aria-label="Транспортир с делениями от 0 до 180 градусов"><path d="M10 190 A170 170 0 0 1 350 190 Z" fill="#b8e6f6" fillOpacity=".72" stroke="#277293" strokeWidth="2"/><path d="M65 190 A115 115 0 0 1 295 190" fill="none" stroke="#277293"/>{Array.from({length:37},(_,i)=>{const a=Math.PI-i*Math.PI/36;const x=180+170*Math.cos(a),y=190-170*Math.sin(a);const xx=180+(i%2===0?151:160)*Math.cos(a),yy=190-(i%2===0?151:160)*Math.sin(a);return <g key={i}><line x1={x} y1={y} x2={xx} y2={yy} stroke="#277293"/>{i%6===0&&<text x={180+132*Math.cos(a)} y={190-132*Math.sin(a)} textAnchor="middle" fontSize="11" fill="#16445f">{i*5}°</text>}</g>})}<circle cx="180" cy="190" r="4" fill="#277293"/></svg>}
- </>;
+ // Keep the graduations in SVG: rotation and zoom must not move the ticks
+ // independently of the shared instrument object.
+ const gradient="lektrus-measure-"+useId().replace(/:/g,"");
+ if(type==="ruler")return <svg width="410" height="88" viewBox="0 0 410 88" role="img" aria-label="Прозрачная линейка, 20 сантиметров">
+  <defs><linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
+   <stop offset="0" stopColor="#f9fdff" stopOpacity=".94"/>
+   <stop offset=".56" stopColor="#dceefa" stopOpacity=".88"/>
+   <stop offset="1" stopColor="#c4def2" stopOpacity=".9"/>
+  </linearGradient></defs>
+  <rect x="2" y="2" width="406" height="84" rx="11" fill={"url(#"+gradient+")"} stroke="#7398ba" strokeWidth="1.5"/>
+  <rect x="6" y="6" width="398" height="76" rx="8" fill="#fff" fillOpacity=".18" stroke="#fff" strokeOpacity=".75"/>
+  <path d="M12 10H398" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity=".82"/>
+  <path d="M13 33H395" stroke="#668dac" strokeWidth=".8" opacity=".5"/>
+  {Array.from({length:101},(_,i)=>{
+   const x=13+i*3.82,major=i%5===0,half=i%5!==0&&i%5===2;
+   return <g key={i}>
+    <line x1={x} x2={x} y1={major?12:half?20:24} y2="33"
+      stroke="#254967" strokeWidth={major?1.4:half?1:.75} strokeOpacity={major?1:.73}/>
+    {major&&<text x={x} y="49" textAnchor="middle" fontSize="9.5" fontWeight="600" fill="#294a67">{i/5}</text>}
+   </g>;
+  })}
+  <path d="M13 59H395" stroke="#8bb1ce" strokeOpacity=".55"/>
+  <text x="16" y="73" fontFamily="inherit" fontSize="9" fontWeight="700" letterSpacing="1.6" fill="#6083a1">LEKTRUS</text>
+  <text x="394" y="73" fontFamily="inherit" fontSize="10" textAnchor="end" fill="#527995">см</text>
+ </svg>;
+ if(type==="triangle")return <svg width="340" height="260" viewBox="0 0 340 260" role="img" aria-label="Прозрачный угольник с угловой разметкой">
+  <defs><linearGradient id={gradient} x1="0" y1="0" x2=".8" y2="1">
+   <stop offset="0" stopColor="#f4fcff" stopOpacity=".87"/>
+   <stop offset="1" stopColor="#b8ddf3" stopOpacity=".83"/>
+  </linearGradient></defs>
+  <path d="M12 10V248H330L12 10Z M66 132V208H167L66 132Z" fill={"url(#"+gradient+")"} fillRule="evenodd"/>
+  <path d="M12 10V248H330L12 10Z" fill="none" stroke="#5f93ba" strokeWidth="2" strokeLinejoin="round"/>
+  <path d="M66 132V208H167L66 132Z" fill="none" stroke="#6799bb" strokeWidth="1.5" strokeLinejoin="round"/>
+  <path d="M20 30V236H305" fill="none" stroke="#fff" strokeWidth="2" strokeOpacity=".8" strokeLinecap="round"/>
+  {Array.from({length:17},(_,i)=>{
+   const x=25+i*18,major=i%4===0;
+   return <g key={i}>
+    <line x1={x} y1={major?220:230} x2={x} y2="241" stroke="#335f7b" strokeWidth={major?1.6:1} strokeOpacity=".86"/>
+    {major&&<text x={x} y="216" fontSize="10" fontWeight="650" textAnchor="middle" fill="#355e7c">{i/4}</text>}
+   </g>;
+  })}
+  <path d="M27 207V222H42" fill="none" stroke="#416e8c" strokeWidth="1.5"/>
+  <path d="M45 20A24 24 0 0 1 24 43" fill="none" stroke="#719fbe" strokeWidth="1.5"/>
+  <text x="100" y="234" fontSize="8.5" letterSpacing="1" fontWeight="750" fill="#597b96">LEKTRUS</text>
+ </svg>;
+ return <svg width="360" height="205" viewBox="0 0 360 205" role="img" aria-label="Прозрачный транспортир, от 0 до 180 градусов">
+  <defs><linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
+   <stop offset="0" stopColor="#f7fcff" stopOpacity=".9"/>
+   <stop offset="1" stopColor="#c0e2f6" stopOpacity=".85"/>
+  </linearGradient></defs>
+  <path d="M6 191A174 174 0 0 1 354 191Z M77 191A103 103 0 0 1 283 191Z" fill={"url(#"+gradient+")"} fillRule="evenodd"/>
+  <path d="M6 191A174 174 0 0 1 354 191Z" fill="none" stroke="#6295ba" strokeWidth="2"/>
+  <path d="M77 191A103 103 0 0 1 283 191" fill="none" stroke="#6e9fbe" strokeWidth="1.5"/>
+  <path d="M14 191H346" stroke="#456e8b" strokeWidth="1.1"/>
+  {Array.from({length:37},(_,i)=>{
+   const a=Math.PI-i*Math.PI/36,major=i%6===0,mid=i%2===0;
+   const outer=170,inner=major?142:mid?150:157;
+   return <g key={i}>
+    <line x1={180+outer*Math.cos(a)} y1={191-outer*Math.sin(a)}
+      x2={180+inner*Math.cos(a)} y2={191-inner*Math.sin(a)}
+      stroke="#315978" strokeWidth={major?1.65:1} strokeOpacity={major?1:.75}/>
+    {major&&<text x={180+124*Math.cos(a)} y={194-124*Math.sin(a)}
+      fontSize="10" fontWeight="650" textAnchor="middle" fill="#2d5878">{180-i*5}°</text>}
+   </g>;
+  })}
+  <path d="M180 179v24M168 191h24" stroke="#477898" strokeWidth=".9"/>
+  <circle cx="180" cy="191" r="4.1" fill="#f4fcff" stroke="#416d8c" strokeWidth="1.5"/>
+ </svg>;
 }
 
 function SharedInstrument({item,view,boardRef,editable,onUpdate,onRemove}:{
