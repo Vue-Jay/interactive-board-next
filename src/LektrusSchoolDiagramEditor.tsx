@@ -16,7 +16,9 @@ import LektrusBiologyExtensionControls from "./LektrusBiologyExtensionControls";
 import LektrusLogicCircuitControls from "./LektrusLogicCircuitControls";
 import LektrusProgrammingControls from "./LektrusProgrammingControls";
 import LektrusGeographyTrainingControls from "./LektrusGeographyTrainingControls";
-type Props={item:Item;existing:boolean;studentMode?:boolean;userId?:string;onCancel:()=>void;onSave:(item:Item)=>void};
+type Props={item:Item;existing:boolean;studentMode?:boolean;userId?:string;
+ onCancel:()=>void;onSave:(item:Item)=>void;
+ onLiveChange?:(before:SchoolDiagram,next:SchoolDiagram)=>void;};
 const max=(s:string,n:number)=>s.slice(0,n);
 const roleNames:Record<FoodRole,string>={producer:"Продуцент",consumer:"Консумент",decomposer:"Редуцент"};
 const keys=(cell:"plant"|"animal"):CellOrganelle[]=>cell==="plant"?
@@ -42,9 +44,9 @@ const titles:Record<SchoolDiagramId,string>={
  "ru-sentence-builder":"Конструктор предложений","language-sentence-builder":"Составление предложений","civics-structure":"Государственное устройство и общество","literature-analysis":"Анализ произведения"
 };
 const newKey=()=>compatibleRandomUUID();
-export default function LektrusSchoolDiagramEditor({item,existing,studentMode=false,userId="",onCancel,onSave}:Props){
+export default function LektrusSchoolDiagramEditor({item,existing,studentMode=false,userId="",onCancel,onSave,onLiveChange}:Props){
  const id=isSchoolDiagramId(item.graphFigureId)?item.graphFigureId:"bio-cell";
- const [draft,setDraft]=useState<SchoolDiagram>(()=>{
+ const [localDraft,setDraft]=useState<SchoolDiagram>(()=>{
   if(isSchoolDiagram(item.schoolDiagram)){
    const saved=structuredClone(item.schoolDiagram);
    return saved.kind==="atlas"?normalizeAtlasDocument(saved):saved;
@@ -53,10 +55,17 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
  });
  const isAtlas=id==="maps-atlas"||id==="contour-atlas"||id==="history-atlas";
  const isContour=id==="contour-atlas";
+ // Existing contour maps use the live board object as their source of truth.
+ // Every editor sees updates received from other participants without reopening.
+ const live=existing&&isContour&&isSchoolDiagram(item.schoolDiagram)?item.schoolDiagram:null;
+ const draft:SchoolDiagram=live?(live.kind==="atlas"?normalizeAtlasDocument(live):live):localDraft;
  const isGeoTraining=id==="geo-matching"||id==="geo-question-cards";
  const [error,setError]=useState("");
  const [contourSettingsOpen,setContourSettingsOpen]=useState(false);
- const set=(data:SchoolDiagram)=>{setDraft(data);setError("")};
+ const set=(data:SchoolDiagram)=>{
+  setDraft(data);setError("");
+  if(existing&&isContour&&onLiveChange)onLiveChange(draft,data);
+ };
  const finish=()=>{
   if(draft.kind==="geo-training"&&draft.countryCodes.length<2){
    setError("Выберите не менее двух стран вручную или сгенерируйте задание.");return;
@@ -65,6 +74,7 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
    setError("Напишите задание для ученика.");return;
   }
   if(!isSchoolDiagram(draft)){setError("Проверьте данные: название, количество элементов и значения.");return}
+  if(existing&&isContour&&onLiveChange){onCancel();return;}
   onSave({...item,schoolDiagram:structuredClone(draft),text:draft.title});
  };
  // Geography exercises are only committed with the explicit Save button.
@@ -121,8 +131,9 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
       {!studentMode&&<button type="button" className={contourSettingsOpen?"active":""}
        aria-expanded={contourSettingsOpen} aria-controls="lektrus-contour-editor-options"
        onClick={()=>setContourSettingsOpen(v=>!v)}>⚙ Задание и подложка</button>}
-      <button type="button" className="lektrus-contour-editor-close" aria-label="Закрыть без сохранения"
-       title="Закрыть без сохранения" onClick={onCancel}>×</button>
+      <button type="button" className="lektrus-contour-editor-close"
+       aria-label={existing?"Закрыть общий редактор":"Закрыть без сохранения"}
+       title={existing?"Изменения уже видны всем":"Закрыть без сохранения"} onClick={onCancel}>×</button>
      </div>
     </header>
     <div className="lektrus-contour-editor-main">
@@ -141,11 +152,13 @@ export default function LektrusSchoolDiagramEditor({item,existing,studentMode=fa
     </div>
     <footer className="lektrus-contour-editor-footer">
      {error?<span className="lektrus-contour-task-error" role="alert">{error}</span>:
-      <span className="lektrus-contour-editor-hint">Редактируйте карту здесь. После сохранения на доске останется только карта, без инструментов.</span>}
+      <span className="lektrus-contour-editor-hint">
+       {existing?"Совместное редактирование · изменения отображаются на доске у всех участников.":"Редактируйте карту здесь. После сохранения на доске останется только карта, без инструментов."}
+      </span>}
      <div className="lektrus-contour-editor-footer-actions">
-      <button type="button" className="lektrus-school-secondary" onClick={onCancel}>Отмена</button>
+      {!existing&&<button type="button" className="lektrus-school-secondary" onClick={onCancel}>Отмена</button>}
       <button type="button" className="lektrus-school-primary" onClick={finish}>
-       {existing?"Сохранить изменения":"Сохранить на доску"}
+       {existing?"Готово":"Сохранить на доску"}
       </button>
      </div>
     </footer>
