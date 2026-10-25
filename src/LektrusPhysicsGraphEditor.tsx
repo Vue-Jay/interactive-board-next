@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {scienceToolGroupForId} from "./lektrusScienceCatalog";
-import {makeSciencePresetItem,type SciencePresetId} from "./lektrusSciencePresets";
+import type {SciencePresetId} from "./lektrusSciencePresets";
 
 type Props={item:Item;onSave:(next:Item)=>void;onCancel:()=>void;onClose?:(next:Item)=>void};
 type Point={x:number;y:number;label:string;color?:string};
@@ -46,7 +46,6 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
   const [selected,setSelected]=useState<number|null>(null);
   const [settingsOpen,setSettingsOpen]=useState(()=>typeof window==="undefined"||!window.matchMedia("(max-width:760px)").matches);
   const [notice,setNotice]=useState("");
-  const [pendingPreset,setPendingPreset]=useState<SciencePresetId|null>(null);
   const [preview,setPreview]=useState<{index:number;point:Point}|null>(null);
   const drag=useRef<{id:number;index:number;start:Point;last:Point}|null>(null);
   const data=useMemo(()=>draft.points.map((point,i)=>preview?.index===i?preview.point:point),[draft.points,preview]);
@@ -88,11 +87,10 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
     commit({...draft,points:draft.points.filter((_,i)=>i!==selected)});
     setSelected(null);
   };
-  const applyPreset=(id:SciencePresetId)=>{
-    const sample=makeSciencePresetItem(id,item.x+item.width/2,item.y+item.height/2,()=>item.id);
-    const next=initial(sample);
-    commit(next);setSelected(null);setPreview(null);setTool("select");
-    setPendingPreset(null);setNotice("Выбран новый график движения");
+  // Changing the measured quantity never overwrites work with a sample curve.
+  const setGraphKind=(id:SciencePresetId)=>{
+    patch({figureId:id});
+    setSelected(null);setNotice("Вид графика изменён. Построенные точки сохранены.");
   };
   const close=()=>onClose?onClose(makeItem(item,draft)):onCancel();
   const startDrag=(event:ReactPointerEvent<SVGCircleElement>,i:number)=>{
@@ -123,7 +121,6 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
       if(event.target instanceof HTMLElement&&event.target.closest("input,textarea,select,[contenteditable]"))return;
       if(event.key==="Escape"){
         event.stopPropagation();
-        if(pendingPreset){setPendingPreset(null);return}
         if(tool!=="select"){setTool("select");return}
         close();return;
       }
@@ -153,7 +150,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
       <div className="lektrus-motion-layout">
         <aside className="lektrus-motion-settings" aria-label="Параметры физического графика">
           <label>Вид зависимости
-            <select value={draft.figureId} onChange={e=>setPendingPreset(e.target.value as SciencePresetId)}>
+            <select value={draft.figureId} onChange={e=>setGraphKind(e.target.value as SciencePresetId)}>
               {choices.map(choice=><option key={choice.id} value={choice.id}>{choice.label}</option>)}
             </select>
           </label>
@@ -187,7 +184,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
             </div>)}
           </div>
           <button type="button" className="lektrus-motion-add-row" onClick={()=>addPoint()}>+ Добавить точку</button>
-          <p>Шаблоны задают форму зависимости. Численные значения вводятся вручную, готовые решения задач не вычисляются.</p>
+          <p>Начните с пустой координатной плоскости. Поставьте точки на листе или введите значения в таблицу.</p>
         </aside>
         <main className="lektrus-motion-stage">
           <div className="lektrus-motion-toolbar">
@@ -239,13 +236,6 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
           </div>
         </main>
       </div>
-      {pendingPreset&&<div className="lektrus-motion-confirm-backdrop">
-        <section className="lektrus-motion-confirm" role="alertdialog" aria-modal="true">
-          <strong>Заменить текущий график?</strong>
-          <p>Изменятся точки, масштаб и название. Предыдущее построение можно вернуть кнопкой отмены.</p>
-          <div><button type="button" onClick={()=>setPendingPreset(null)}>Отмена</button><button type="button" className="primary" onClick={()=>applyPreset(pendingPreset)}>Заменить</button></div>
-        </section>
-      </div>}
       <footer className="lektrus-motion-footer">
         <span>Отдельный инструмент физических графиков · без сил и схемных обозначений</span>
         <button type="button" onClick={onCancel}>Отмена</button>
