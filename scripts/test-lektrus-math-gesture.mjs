@@ -414,8 +414,18 @@ assert.match(app,/onPointMoveEnd\(i,lastPosition\.x,lastPosition\.y\)/,
  "vertex position commits once on pointer release");
 assert.match(app,/onClose=\{closeGraphEditor\}/,
  "closing or cancelling editor does not persist unfinished construction");
-assert.match(editor,/const undoLinkPoint=\(\)=>/,
- "undo handles vertices created during unfinished constructions");
+assert.match(editor,/const undoDraft=\(\)=>/,
+ "undo restores the entire graph draft, independent of the selected construction");
+assert.match(editor,/const redoDraft=\(\)=>/,
+ "redo restores global geometry revisions");
+assert.match(editor,/history\.past\.push\(previous\)/,
+ "changes in any geometry tab are saved in a shared undo history");
+assert.match(editor,/onPointMove:\(i:number,x:number,y:number\)=>/,
+ "vertex gestures on the preview are routed through shared undo history");
+assert.match(editor,/onAddPoint:draft\.figureId==="free"\?\(x:number,y:number\)=>onChange\(appendFreeSketchPoint\(draft,x,y\)\)/,
+ "free drawing edits are also undoable");
+assert.doesNotMatch(editor,/const undoLinkPoint=\(\)=>/,
+ "history is no longer limited to a single point selection");
 assert.match(editor,/const resetLinkSelection=\(\)=>/,
  "cancel clears unfinished vertices, not just their selection");
 assert.match(css,/lektrus-connect-drawing-surface/,
@@ -521,6 +531,18 @@ assert.match(editor,/canvasTool==="point"/,
  "single touch point creation is distinct from vertex movement");
 assert.match(geometryWorkspaceCss,/grid-template-columns:58px minmax\(0,1fr\) minmax\(290px,312px\)/,
  "one compact rail and inspector leave the large central canvas accessible");
+assert.match(geometryWorkspaceCss,/grid-template-columns:repeat\(2,max-content\)!important/,
+ "2D and 3D header buttons are forced into the same row even in mobile layouts");
+assert.match(editor,/lektrus-geometry-zoom-controls/,
+ "zoom controls remain accessible beside the full drawing");
+assert.match(editor,/onWheel=\{event=>/,
+ "the editor supports scrolling to change its coordinate viewport");
+assert.match(editor,/const fitViewport=\(\)=>/,
+ "the full diagram can be fitted to all current coordinates");
+assert.match(editor,/lektrus-geometry-viewport-settings/,
+ "manual axis limits and extended coordinate presets are available");
+assert.match(editor,/onClick=\{undoDraft\}/,
+ "the same global undo command is shared by the editor action buttons");
 assert.match(app,/setPendingMathItem\(item\);\s*setSelected\(\[\]\);setTool\("select"\);\s*openGraphEditor\(item\)/,
  "new geometry remains pending until the large editor is saved");
 assert.match(app,/boardGeometryMode\?\.id===singleSelected\.id&&/,
