@@ -89,20 +89,22 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
      originX:e.x,originY:e.y,x:e.x,y:e.y};
    event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
  };
- const move=(event:ReactPointerEvent<SVGSVGElement>)=>{
+ const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
    const current=drag.current;if(!current||current.pointerId!==event.pointerId)return;
    event.preventDefault();
-   const origin=opticsSvgPoint(current.startX,current.startY,event.currentTarget);
-   const next=opticsSvgPoint(event.clientX,event.clientY,event.currentTarget);
+   const svg=event.currentTarget.querySelector("svg");if(!svg)return;
+   const origin=opticsSvgPoint(current.startX,current.startY,svg);
+   const next=opticsSvgPoint(event.clientX,event.clientY,svg);
    current.x=clamp(Math.round(current.originX+next.x-origin.x),30,930);
    current.y=clamp(Math.round(current.originY+next.y-origin.y),30,530);
    const nextDoc={...doc,elements:doc.elements.map(e=>e.id===current.id?{...e,x:current.x,y:current.y}:e)};
    preview.current=nextDoc;setDisplay(nextDoc);
  };
- const up=(event:ReactPointerEvent<SVGSVGElement>)=>{
+ const up=(event:ReactPointerEvent<HTMLDivElement>)=>{
    const current=drag.current;if(!current||current.pointerId!==event.pointerId)return;
    drag.current=null;setDisplay(null);preview.current=null;
-   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
+   const svg=event.currentTarget.querySelector("svg");
+   if(svg?.hasPointerCapture(event.pointerId))svg.releasePointerCapture(event.pointerId);
    if(current.x!==current.originX||current.y!==current.originY)
      commit({...doc,elements:doc.elements.map(e=>e.id===current.id?{...e,x:current.x,y:current.y}:e)});
  };
