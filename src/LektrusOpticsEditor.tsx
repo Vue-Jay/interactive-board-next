@@ -169,6 +169,11 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
       <button type="button" className="lektrus-optics-quick-ray" disabled={!source}
         title={source?"Добавить луч от источника света":"Сначала добавьте источник света"}
         onClick={newRay}>+ Луч</button>
+      {!!doc.rays.length&&<button type="button" className="lektrus-optics-trace-action"
+        title="Показать все преломления и отражения выбранного луча"
+        onClick={()=>{setSelected({kind:"ray",id:chosenRay?.id??doc.rays[doc.rays.length-1].id});setInspector(true)}}>
+        Ход луча
+      </button>}
       {selected&&<button type="button" className={inspector?"active":""} onClick={()=>setInspector(v=>!v)}>Параметры</button>}
      </div>
      <div className="lektrus-optics-stage" onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={()=>setCursor(null)}>
