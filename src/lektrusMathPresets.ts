@@ -14,7 +14,7 @@ export type MathPreset = {
   id:MathPresetId; title:string; subtitle:string; group:"Функции"|"Числа и координаты"|"Геометрия"|"Тригонометрия"|"Объёмные фигуры";
 };
 export const mathPresets:MathPreset[]=[
-  {id:"free",title:"По точкам",subtitle:"Расположите точки, соедините отрезками и замкните фигуру",group:"Геометрия"},
+  {id:"free",title:"Свободный чертёж",subtitle:"Создавайте фигуры из точек и отрезков",group:"Геометрия"},
   {id:"blank",title:"Чистая плоскость",subtitle:"Оси, сетка и свободные точки",group:"Числа и координаты"},
   {id:"number-line",title:"Числовая прямая",subtitle:"Числа и границы промежутка",group:"Числа и координаты"},
   {id:"linear",title:"Линейная функция",subtitle:"y = 2x + 1",group:"Функции"},
