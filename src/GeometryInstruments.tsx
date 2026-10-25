@@ -54,12 +54,12 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
   <path d="M12 10V248H330L12 10Z M66 132V208H167L66 132Z" fill={"url(#"+gradient+")"} fillRule="evenodd"/>
   <path d="M12 10V248H330L12 10Z" fill="none" stroke="#5f93ba" strokeWidth="2" strokeLinejoin="round"/>
   <path d="M66 132V208H167L66 132Z" fill="none" stroke="#6799bb" strokeWidth="1.5" strokeLinejoin="round"/>
-  <path d="M20 30V236H305" fill="none" stroke="#fff" strokeWidth="2" strokeOpacity=".8" strokeLinecap="round"/>
+  <path d="M20 30V242" fill="none" stroke="#fff" strokeWidth="2" strokeOpacity=".8" strokeLinecap="round"/>
   {Array.from({length:17},(_,i)=>{
-   const x=42+i*16,major=i%4===0;
+   const x=55+i*12.5,major=i%4===0;
    return <g key={i}>
-    <line x1={x} y1={major?230:235} x2={x} y2="242" stroke="#335f7b" strokeWidth={major?1.6:1} strokeOpacity=".86"/>
-    {major&&<text x={x} y="222" fontSize="9.5" fontWeight="650" textAnchor="middle" fill="#355e7c">{i/4}</text>}
+    <line x1={x} y1={major?231:236} x2={x} y2="242" stroke="#335f7b" strokeWidth={major?1.6:1} strokeOpacity=".86"/>
+    {major&&<text x={x} y="224" fontSize="9.5" fontWeight="650" textAnchor="middle" fill="#355e7c">{i/4}</text>}
    </g>;
   })}
   <path d="M24 210V226H40" fill="none" stroke="#416e8c" strokeWidth="1.5"/>
