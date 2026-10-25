@@ -8640,6 +8640,35 @@ option{background:#fff;color:#343741}
 .lektrus-developer-role-setting small{
  color:#526783;font-size:12px;line-height:1.45;
 }
+.lektrus-developer-role-options{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;
+ border:1px solid #d5e1f2;background:#edf3fc;padding:4px;border-radius:11px;
+}
+.lektrus-developer-role-options button{
+ min-width:0;min-height:42px;border:1px solid transparent;border-radius:8px;
+ font:inherit;font-size:12px;font-weight:740;cursor:pointer;
+ color:#3c5474;background:transparent;transition:background-color .14s,border-color .14s;
+}
+.lektrus-developer-role-options button:hover{background:#e1ebf9}
+.lektrus-developer-role-options button.active{
+ border-color:#9cbbed;background:#fff;color:#2057a1;
+ box-shadow:0 1px 5px #244c8d1c;
+}
+.lektrus-developer-role-options button:focus-visible,
+.lektrus-developer-role-real button:focus-visible{outline:2px solid #377cd2;outline-offset:2px}
+.lektrus-developer-role-real{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:8px;flex-wrap:wrap;color:#39577f;font-size:12px;
+}
+.lektrus-developer-role-real button{
+ border:1px solid #bbcee7;border-radius:8px;background:#fff;
+ min-height:34px;padding:5px 10px;color:#23518e;font-weight:740;cursor:pointer;
+}
+.lektrus-developer-role-real button:disabled{opacity:.48;cursor:default}
+@media(max-width:390px){
+ .lektrus-developer-role-options button{font-size:11px;padding:4px 2px}
+}
+
 .lektrus-developer-role-banner{
  position:fixed;left:50%;top:calc(58px + env(safe-area-inset-top,0px));
  transform:translateX(-50%);z-index:220;max-width:calc(100vw - 20px);
