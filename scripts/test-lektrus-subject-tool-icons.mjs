@@ -87,4 +87,28 @@ for(const token of ["--lektrus-tool-ink:#3b424b","--lektrus-tool-tile:#f5f6f8",
 }
 assert.ok(entry.includes('import "./lektrusBoardToolIcons.css";'),"Load icon styles after existing themes");
 
+
+// Original illustration samples approved in the subject-tool visual review must
+// be displayed as image atlas artwork, not reduced to stand-in line glyphs.
+const start=icons.indexOf("const illustrationIds:SubjectToolId[]=[");
+const end=icons.indexOf("const illustrationIndexes=",start);
+assert.ok(start>=0&&end>start,"All subject illustration IDs must be registered");
+const illustrationIds=[...icons.slice(start,end).matchAll(/"([a-z0-9-]+)"/g)].map(m=>m[1]);
+assert.equal(illustrationIds.length,expected.length,"Provide exactly one approved illustration per tool");
+assert.equal(new Set(illustrationIds).size,expected.length,"Artwork may not duplicate subject IDs");
+for(const id of expected)assert.ok(illustrationIds.includes(id),"Missing subject image: "+id);
+assert.ok(icons.includes('const illustrationIndex=illustrationIndexes.get(id)'),
+ "Show artwork from the actual selected image atlas rather than simple paths");
+assert.ok(icons.includes("<image href={illustrationHref}"),
+ "Render an image from the atlas inside the square SVG viewport");
+assert.ok(icons.includes('style={{overflow:"hidden"}}'),
+ "Keep neighboring illustrations clipped outside their tile");
+const artwork=readFileSync(new URL("../public/lektrus-subject-illustrations.png",import.meta.url));
+assert.deepEqual([...artwork.subarray(0,8)],[137,80,78,71,13,10,26,10],
+ "Subject artwork atlas must be a genuine PNG");
+assert.equal(artwork.readUInt32BE(16),280,"Seven 40px atlas columns");
+assert.equal(artwork.readUInt32BE(20),280,"Seven 40px atlas rows");
+assert.ok(inkStyles.includes("width:34px!important")&&inkStyles.includes("overflow:hidden!important"),
+ "Square subject image tiles must be readable without bleeding into neighbors");
+
 console.log("Unique subject tool pictograms:",expected.length,"registered icons +",iconIds.length-expected.length,"additional icons, all connected and responsive: OK");
