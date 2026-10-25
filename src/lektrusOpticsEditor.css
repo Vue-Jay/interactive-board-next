@@ -164,3 +164,35 @@
  }
  .lektrus-optics-editor .lektrus-optics-inspector{top:5px;right:5px;bottom:5px;width:min(256px,calc(100vw - 48px))}
 }
+
+/* Clear single-line equipment palette. An icon and a full readable name
+   must always fit the same row, including long lens names. */
+.lektrus-optics-editor .lektrus-optics-tools{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:5px;
+}
+.lektrus-optics-editor .lektrus-optics-tools button,
+.lektrus-optics-editor .lektrus-optics-tools button:first-child{
+  grid-column:auto;display:flex;align-items:center;justify-content:flex-start;
+  box-sizing:border-box;width:100%;min-width:0;min-height:41px;
+  gap:10px;padding:7px 11px;text-align:left;
+  font-size:11.5px;font-weight:750;line-height:1.15;
+  white-space:nowrap;overflow:hidden;text-wrap:nowrap;
+}
+.lektrus-optics-editor .lektrus-optics-tools button svg{
+  width:20px;height:20px;min-width:20px;flex:0 0 20px;
+  stroke-width:1.8;
+}
+.lektrus-optics-editor .lektrus-optics-tools button span{
+  display:block;min-width:0;flex:1 1 auto;
+  white-space:nowrap;overflow:visible;text-wrap:nowrap;
+  line-height:1.2;font-size:inherit;
+}
+.lektrus-optics-editor .lektrus-optics-tools button.active{
+  box-shadow:inset 3px 0 0 #396dd0;
+  background:#e5efff;border-color:#aac8f1;color:#2355aa;
+}
+@media(max-width:760px){
+  .lektrus-optics-editor .lektrus-optics-tools button{
+    min-height:43px;font-size:12px;
+  }
+}
