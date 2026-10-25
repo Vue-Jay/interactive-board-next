@@ -275,7 +275,9 @@ assert.equal(removeSchoolConstructionGroup(schoolCircle,circleId).circles.length
 const freePreset=makeMathPresetItem("free",0,0,"free");
 assert.equal(freePreset.graphPurpose,"geometry");
 assert.equal(freePreset.graphPoints.length,0);
-assert.equal(freePreset.graphGrid,false,"clean white background is the initial state");
+assert.equal(freePreset.graphGrid,true,"construction grid is visible by default");
+assert.equal(freePreset.graphSnap,false,"grid snapping is optional and initially off");
+assert.match(app,/onSnapChange=\{enabled=>changeLiveGraphDraft/,"preview snap toggle is connected");
 assert.match(editor,/export function appendFreeSketchPoint/,"free sketch algorithm is exported");
 assert.match(editor,/closeFreeSketch\(draft\)/,"point contour can be closed");
 assert.match(app,/onGridChange=\{enabled=>changeLiveGraphDraft/,"preview grid toggle is connected");
