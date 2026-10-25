@@ -427,7 +427,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
       onPickPoint:pickLinkPoint,onCreateAndPickPoint:createAndSelectPoint,pickedPoints:linkPoints,
       onAddPoint:undefined,onPointMove:undefined,onRemovePoint:undefined,onCloseFreePolygon:undefined
     }:canvasTool==="point"?{
-      onPointMove:undefined,onPointMoveEnd:undefined,
+      onPointMoveEnd:undefined,
       onPickPoint:draft.figureId==="free"?undefined:()=>{},
       onCreateAndPickPoint:draft.figureId==="free"?undefined:(x:number,y:number)=>{
         if(draft.points.length>=40){setGeometryError("На чертеже может быть не более 40 точек.");return}
