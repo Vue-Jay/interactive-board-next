@@ -93,6 +93,7 @@ import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from 
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
+import {boardRoleCapabilities,BOARD_ROLE_PREVIEW_LABELS,type BoardRolePreview} from "./lektrusBoardRolePreview";
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
 import {trackBoardVisit,listBoardVisits,type BoardVisit} from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
@@ -2056,10 +2057,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   initialRemoteVersion?: number | null;
 }) {
   const layoutEditing=new URLSearchParams(window.location.search).get("layout-editor")==="1";
-  const canEdit = boardSummary.role !== "viewer" || (isAppAdmin && adminMaintenance);
-  const isStudent = accountRole === "student" && !adminMaintenance;
+  const [rolePreview,setRolePreview]=useState<BoardRolePreview>("actual");
+  const roleCapabilities=boardRoleCapabilities({
+    preview:rolePreview,boardRole:boardSummary.role,accountRole,
+    isAppAdmin,adminMaintenance
+  });
+  const {canEdit,isStudent,isGuestPreview,canManageBoard,canCreateAssignments}=roleCapabilities;
   const adminHidden = isAppAdmin && adminInvisible;
-  const toolAllowedForRole = (id:Tool) => !isStudent || !STUDENT_BLOCKED_CREATE_TOOLS.has(id);
+  const toolAllowedForRole = (id:Tool) => canEdit&&(!isStudent || !STUDENT_BLOCKED_CREATE_TOOLS.has(id));
   const structurallyLockedForStudent = (item:Item|undefined|null) => !!item && isStudent && STUDENT_PROTECTED_KINDS.has(item.kind);
   const studentSelectionHasProtected = () => isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)));
   const rejectStudentStructuralEdit = () => {
@@ -2288,7 +2293,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [backgroundIsShared,setBackgroundIsShared]=useState(initial.data.backgroundShared!==false);
   const visibleBoardBackground=backgroundIsShared?boardBackground:(personalBackground??boardBackground);
   const backgroundAppearance=useMemo(()=>boardBackgroundAppearance(visibleBoardBackground),[visibleBoardBackground]);
-  const canChangeBoardBackground=backgroundIsShared?(canEdit&&boardSummary.role==="owner"):true;
+  const canChangeBoardBackground=backgroundIsShared?canManageBoard:true;
   const updateBoardBackground=(patch:Partial<BoardBackground>)=>{
     if(!canChangeBoardBackground)return;
     if(backgroundIsShared)setBoardBackground(current=>normalizeBoardBackground({...current,...patch}));
