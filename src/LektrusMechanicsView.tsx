@@ -72,8 +72,12 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
   })}
   {cursor&&editable&&tool!=="select"&&<g transform={`translate(${cursor.x} ${cursor.y})`}
     className="lektrus-editor-cursor" pointerEvents="none">
-    <circle r="10" fill="#fff" fillOpacity=".86" stroke="#316aca" strokeWidth="2"/>
-    <circle r="2.6" fill="#316aca"/><circle r="15.5" fill="none" stroke="#98b9e9" strokeWidth="1.2" strokeDasharray="5 6"/>
+    <circle r="13" fill="#ffffff" fillOpacity=".97" stroke="#2862c8" strokeWidth="2.4"/>
+    <circle r="3" fill="#2862c8"/>
+    <g transform={cursor.x>780?"translate(-148 -34)":"translate(19 -34)"}>
+      <rect x="0" y="0" width="132" height="27" rx="9" fill="#ffffff" stroke="#bad0ee" strokeWidth="1.4"/>
+      <text x="9" y="18" fontSize="12" fontWeight="750" fill="#2557a5">{({block:"Брусок",circle:"Шар",floor:"Плоскость",incline:"Наклонная плоскость",pivot:"Опора",force:"Сила"} as Record<string,string>)[tool]??"Добавить"}</text>
+    </g>
   </g>}
  </svg>;
 }
