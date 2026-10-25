@@ -780,3 +780,26 @@ body .workspace .lektrus-board-subject-picker select{min-width:0;max-width:135px
   margin:0 auto!important;
  }
 }
+
+/* The object actions menu must escape the scrollable selection strip.
+   z-index alone cannot escape overflow-x:auto, which also clips vertically. */
+.workspace .selection-toolbar-screen:has(.selection-more[open]){
+ overflow:visible!important;
+ z-index:2500!important;
+}
+.workspace .selection-toolbar-screen .selection-more[open]{
+ position:relative;
+ z-index:2501!important;
+}
+.workspace .selection-toolbar-screen .selection-more[open]>.selection-more-menu{
+ z-index:2502!important;
+ pointer-events:auto!important;
+ width:246px;
+ max-width:min(246px,calc(100vw - 24px));
+ max-height:min(430px,calc(100dvh - 115px));
+ overscroll-behavior:contain;
+}
+.workspace .selection-toolbar-screen[data-more-direction="down"] .selection-more-menu{
+ top:calc(100% + 8px);
+ bottom:auto;
+}
