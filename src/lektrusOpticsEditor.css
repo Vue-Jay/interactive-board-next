@@ -1,0 +1,83 @@
+.lektrus-optics-backdrop{position:fixed;inset:0;z-index:100065;background:#eaf1fb;font-family:Inter,system-ui,sans-serif;color:#233c5c}
+.lektrus-optics-editor{width:100vw;height:100dvh;display:flex;flex-direction:column;overflow:hidden;--opt:#3268c6}
+.lektrus-optics-editor button,.lektrus-optics-editor input{font:inherit}
+.lektrus-optics-editor button{touch-action:manipulation;cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+.lektrus-optics-editor button:disabled{opacity:.4;cursor:default}
+.lektrus-optics-editor :is(button,input):focus-visible{outline:2px solid #4f86da;outline-offset:2px}
+.lektrus-optics-header{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:59px;box-sizing:border-box;padding:8px 17px;background:#fff;border-bottom:1px solid #dce7f5}
+.lektrus-optics-heading{display:flex;align-items:center;gap:10px}
+.lektrus-optics-logo{flex:0 0 39px;width:39px;height:39px;display:grid;place-items:center;background:#e4efff;border:1px solid #cfdef4;color:#3472c6;border-radius:11px}
+.lektrus-optics-heading strong{display:block;font-size:18px;letter-spacing:-.02em}
+.lektrus-optics-heading small{display:block;font-size:10px;font-weight:820;letter-spacing:.09em;color:#6e93c3}
+.lektrus-optics-header-actions{display:flex;align-items:center;gap:5px}
+.lektrus-optics-editor button{border:1px solid #d5e3f4;background:#f4f8fe;color:#385b8a;border-radius:9px;padding:7px 10px;font-size:11px;font-weight:740}
+.lektrus-optics-editor button:hover:not(:disabled){background:#e5efff;border-color:#a5c2ed}
+.lektrus-optics-header-actions button{min-height:35px;min-width:35px}
+.lektrus-optics-header-actions button:first-child,.lektrus-optics-header-actions button:nth-child(2),.lektrus-optics-header-actions button:last-child{font-size:20px;line-height:1;padding:5px}
+.lektrus-optics-editor button[aria-pressed=true],.lektrus-optics-editor button.active{background:#e1edff;border-color:#a5c3f2;color:#245bad}
+.lektrus-optics-layout{flex:1 1 0;display:grid;grid-template-columns:206px minmax(0,1fr);gap:8px;padding:8px;min-height:0}
+.lektrus-optics-editor.catalog-hidden .lektrus-optics-layout{grid-template-columns:minmax(0,1fr)}
+.lektrus-optics-editor.show-properties .lektrus-optics-layout{grid-template-columns:206px minmax(0,1fr) 233px}
+.lektrus-optics-editor.catalog-hidden.show-properties .lektrus-optics-layout{grid-template-columns:minmax(0,1fr) 233px}
+.lektrus-optics-editor.catalog-hidden .lektrus-optics-catalog{display:none}
+.lektrus-optics-catalog,.lektrus-optics-inspector,.lektrus-optics-work{min-height:0;min-width:0;border:1px solid #dce5f2;border-radius:12px;background:#fff}
+.lektrus-optics-catalog,.lektrus-optics-inspector{display:flex;flex-direction:column;gap:12px;padding:11px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.lektrus-optics-editor label{display:grid;gap:5px;font-size:11px;font-weight:760;color:#526b8c}
+.lektrus-optics-editor label input:not([type=checkbox]){box-sizing:border-box;min-width:0;width:100%;min-height:35px;padding:7px 9px;border:1px solid #d4e1f2;border-radius:8px;background:#f8fbff;color:#29476e;font-size:11px}
+.lektrus-optics-editor input[type=range]{min-height:24px;accent-color:#3666bf;padding:0}
+.lektrus-optics-editor input[type=checkbox]{accent-color:#386ccb}
+.lektrus-optics-editor input[type=color]{width:100%;height:35px;min-height:35px;cursor:pointer}
+.lektrus-optics-catalog>strong{font-size:12px;padding-top:8px;border-top:1px solid #e7edf6}
+.lektrus-optics-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.lektrus-optics-tools button{min-width:0;min-height:43px;text-wrap:balance;line-height:1.35;padding:7px 5px;font-size:10px}
+.lektrus-optics-tools button:first-child{grid-column:span 2;min-height:35px}
+.lektrus-optics-catalog-options{display:grid;gap:10px;border-top:1px solid #e8eef7;padding-top:10px}
+.lektrus-optics-catalog-options label{display:flex;align-items:center;gap:7px;font-size:10px}
+.lektrus-optics-catalog p,.lektrus-optics-inspector p{font-size:10px;line-height:1.5;color:#7e94ae}
+.lektrus-optics-work{display:flex;flex-direction:column;padding:9px;gap:7px;overflow:hidden}
+.lektrus-optics-work-top{display:flex;align-items:center;gap:12px;min-height:33px}
+.lektrus-optics-work-top b{font-size:13px}
+.lektrus-optics-work-top span{font-size:10px;color:#8ca0b8;flex:1}
+.lektrus-optics-work-top button{min-height:32px}
+.lektrus-optics-stage{flex:1 1 0;min-height:0;border:1px solid #d9e7f7;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.lektrus-optics-svg{display:block;width:100%;height:100%;min-width:0;min-height:0;touch-action:none}
+.lektrus-optics-svg.optics-mode-select .lektrus-optics-hit{cursor:grab}
+.lektrus-optics-svg.optics-mode-select .lektrus-optics-hit:active{cursor:grabbing}
+.lektrus-optics-svg:not(.optics-mode-select) rect:first-of-type{cursor:crosshair}
+.lektrus-optics-caption{font-family:Inter,system-ui,sans-serif;font-weight:680;paint-order:stroke;stroke:#fff;stroke-width:2px}
+.lektrus-optics-note{min-height:18px;font-size:10px;color:#768dac;line-height:1.4}
+.graph-view.lektrus-optics-board-view{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:0!important;overflow:hidden;background:#fff}
+.lektrus-optics-board-view .lektrus-optics-svg{width:100%;height:100%}
+.lektrus-optics-panel-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e6edf5;padding-bottom:9px}
+.lektrus-optics-panel-head strong{font-size:12px}
+.lektrus-optics-panel-head button{min-width:29px;min-height:29px;font-size:17px;padding:0}
+.lektrus-optics-inspector>strong{font-size:13px;color:#305b99}
+.lektrus-optics-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lektrus-optics-two label{min-width:0}
+.lektrus-optics-inspector label small{font-size:10px;color:#8a9bb0}
+.lektrus-optics-section{font-size:11px;font-weight:800;border-top:1px solid #e7edf6;padding-top:9px}
+.lektrus-optics-editor button.lektrus-optics-primary{background:#365fc9;border-color:#365fc9;color:white;font-weight:790}
+.lektrus-optics-editor button.lektrus-optics-primary:hover{background:#2854b7;border-color:#2854b7}
+.lektrus-optics-ray-row{display:flex;gap:5px}
+.lektrus-optics-ray-row button:first-child{flex:1;text-align:left}
+.lektrus-optics-ray-row button:last-child{color:#ab5360;background:#fff1f3}
+.lektrus-optics-ray-editor{display:grid;gap:10px;padding-top:9px;border-top:1px solid #e8edf4}
+.lektrus-optics-ray-editor strong{font-size:12px}
+.lektrus-optics-editor button.lektrus-optics-danger{margin-top:auto;min-height:35px;background:#fff2f3;border-color:#f2d7db;color:#b14b5d}
+.lektrus-optics-footer{display:flex;align-items:center;gap:7px;padding:8px 14px;min-height:52px;box-sizing:border-box;background:#fff;border-top:1px solid #dce5f3}
+.lektrus-optics-footer span{flex:1;font-size:10px;color:#7d8ea7}
+.lektrus-optics-footer button{min-height:36px;padding:8px 15px}
+@media(max-width:1020px){.lektrus-optics-editor.show-properties .lektrus-optics-layout{grid-template-columns:180px minmax(0,1fr) 200px}
+.lektrus-optics-editor.catalog-hidden.show-properties .lektrus-optics-layout{grid-template-columns:minmax(0,1fr) 200px}
+.lektrus-optics-tools{grid-template-columns:1fr}
+.lektrus-optics-tools button:first-child{grid-column:auto}}
+@media(max-width:760px){.lektrus-optics-layout,.lektrus-optics-editor.show-properties .lektrus-optics-layout,.lektrus-optics-editor.catalog-hidden.show-properties .lektrus-optics-layout{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);position:relative;padding:5px}
+.lektrus-optics-catalog,.lektrus-optics-inspector{position:absolute;z-index:6;top:5px;bottom:5px;max-height:none;width:min(235px,calc(100vw - 55px));box-sizing:border-box;box-shadow:0 12px 30px #20345433}
+.lektrus-optics-catalog{left:5px}.lektrus-optics-inspector{right:5px}
+.lektrus-optics-work{height:100%;padding:6px}
+.lektrus-optics-header{min-height:49px;padding:6px 9px}
+.lektrus-optics-heading strong{font-size:14px}.lektrus-optics-heading small{font-size:9px}.lektrus-optics-logo{display:none}
+.lektrus-optics-header-actions button{min-height:31px;min-width:30px;padding:4px 7px}
+.lektrus-optics-footer span{display:none}
+.lektrus-optics-footer button{flex:1}
+}
