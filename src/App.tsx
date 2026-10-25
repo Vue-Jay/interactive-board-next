@@ -15,6 +15,7 @@ import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./r
 import "./App.css";
 import AuthScreen from "./AuthScreen";
 import GeometryInstruments, {type InstrumentType} from "./GeometryInstruments";
+import {resizedRect,preserveRotatedAnchor} from "./lektrusRotateResize";
 import LektrusBoardGeometryPanel, {type BoardGeometryMode} from "./LektrusBoardGeometryPanel";
 import LektrusGeometryToolIcon from "./LektrusGeometryToolIcon";
 import {addBoardGeometryPoint,linkBoardGeometry,adjustBoardGeometry,constrainBoardGeometry,releaseBoardGeometryConstraint,schoolBoardGeometry,removeBoardGeometryElement,removeBoardGeometrySchoolGroup,editBoardGeometryPoint,type BoardGeometryResult} from "./lektrusBoardGeometry";
@@ -582,41 +583,6 @@ const blobToDataUrl = (blob: Blob): Promise<string> =>
     reader.onerror = () => reject(reader.error ?? new Error("Не удалось прочитать вложение"));
     reader.readAsDataURL(blob);
   });
-
-const resizedRect = (
-  base: Bounds,
-  handle: string,
-  dx: number,
-  dy: number,
-  minW: number,
-  minH: number,
-  keepRatio: boolean,
-): Bounds => {
-  let x = base.x;
-  let y = base.y;
-  let width = base.width;
-  let height = base.height;
-  if (handle.includes("e")) width = Math.max(minW, base.width + dx);
-  if (handle.includes("s")) height = Math.max(minH, base.height + dy);
-  if (handle.includes("w")) {
-    width = Math.max(minW, base.width - dx);
-    x = base.x + base.width - width;
-  }
-  if (handle.includes("n")) {
-    height = Math.max(minH, base.height - dy);
-    y = base.y + base.height - height;
-  }
-  if (keepRatio && handle.length === 2) {
-    const ratio = base.width / Math.max(1, base.height);
-    if (Math.abs(width - base.width) >= Math.abs(height - base.height) * ratio)
-      height = Math.max(minH, width / ratio);
-    else
-      width = Math.max(minW, height * ratio);
-    if (handle.includes("w")) x = base.x + base.width - width;
-    if (handle.includes("n")) y = base.y + base.height - height;
-  }
-  return { x, y, width, height };
-};
 
 const fitItemToRect = (base: Item, rect: Bounds): Item => {
   const sx = rect.width / Math.max(1, base.width);
@@ -4468,7 +4434,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const radians=-(base.rotation??0)*Math.PI/180;
         const localWx=wx*Math.cos(radians)-wy*Math.sin(radians);
         const localWy=wx*Math.sin(radians)+wy*Math.cos(radians);
-        const rect = resizedRect(base, g.handle, localWx, localWy, minW, minH, e.shiftKey);
+        const localRect = resizedRect(base, g.handle, localWx, localWy, minW, minH, e.shiftKey);
+        const rect = preserveRotatedAnchor(base,localRect,base.rotation??0);
         display(g.before.map((item) => item.id === base.id ? fitItemToRect(base, rect) : item));
       }
     } else if (g.mode === "rotate") {
