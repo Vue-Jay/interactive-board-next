@@ -7471,6 +7471,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {graphEditorId && graphDraft && createPortal(
           <LektrusGraphEditor
             draft={graphDraft} userId={authUser.id} mode={graphDraft.purpose==="geometry"?"geometry":"coordinates"}
+            collaborative={items.some(item=>item.id===graphEditorId)}
             onChange={changeLiveGraphDraft} onCancel={closeGraphEditor} onSave={saveGraphEditor} onClose={closeGraphEditor}
             preview={<GraphView item={{
               id:"preview",kind:"graph",x:0,y:0,width:600,height:360,text:graphDraft.title,
