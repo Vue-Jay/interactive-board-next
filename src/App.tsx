@@ -6827,6 +6827,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               </select>
               <small>Меняет только интерфейс этой открытой доски. Реальные права аккаунта, гостевой вход, роли Supabase и доступ к сохранению не изменяются.</small>
               <small>Гость здесь проверяется в режиме просмотра. Если настоящая роль слабее выбранной, её ограничения сохраняются.</small>
+              <div className="lektrus-developer-role-permissions">
+                <strong>Действующие разрешения</strong>
+                <span>Редактирование доски: {canEdit?"разрешено":"только просмотр"}</span>
+                <span>Создание и изменение заданий: {canCreateAssignments?"разрешено":"запрещено"}</span>
+                <span>Выполнение контурной карты: {roleCapabilities.canAnswerContour?"разрешено":"только просмотр"}</span>
+                <span>Управление предметом и участниками: {canManageBoard?"владелец":"недоступно"}</span>
+              </div>
             </div>
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showInkDiagnostics} onChange={e=>changeDeveloperPref("showInkDiagnostics",e.target.checked)}/> Показывать отправку и получение штрихов</label>
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showBoardDiagnostics} onChange={e=>changeDeveloperPref("showBoardDiagnostics",e.target.checked)}/> Показывать состояние доски и синхронизации</label>
