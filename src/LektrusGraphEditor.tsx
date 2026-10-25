@@ -420,7 +420,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
       onPointMoveEnd?: (i:number,x:number,y:number)=>void;
       onRemovePoint?: (i:number)=>void;onCloseFreePolygon?:()=>void;
       onRotate?: (x:number,y:number)=>void;onRayChange?: (x:number,y:number)=>void;
-      onGridChange?: (enabled:boolean)=>void;
+      onGridChange?: (enabled:boolean)=>void;onSnapChange?: (enabled:boolean)=>void;
     }>,isSolid?{
       onRotate:(x:number,y:number)=>onChange({...draft,rotationX:x,rotationY:y})
     }:connectionActive?{
@@ -450,7 +450,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
       onRayChange:(x:number,y:number)=>draft.points[1]&&onChange({
         ...draft,points:draft.points.map((point,i)=>i===1?{...point,x,y}:point)
       }),
-      onGridChange:(enabled:boolean)=>patch({grid:enabled})
+      onGridChange:(enabled:boolean)=>patch({grid:enabled}),
+      onSnapChange:(enabled:boolean)=>patch({snap:enabled})
     }):preview;
   const setDrawingTool=(tool:"select"|"point"|ExistingPointTool)=>{
     if(tool==="point"&&draft.figureId==="ray"){setGeometryError("Для добавления отдельных точек выберите плоский чертёж.");return}
@@ -496,7 +497,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
       intervalStartClosed:sample.graphIntervalStartClosed!==false,
       intervalEndClosed:sample.graphIntervalEndClosed!==false,
       showCurve:sample.graphShowCurve===true,projections:sample.graphProjections===true,
-      snap:sample.graphSnap!==false,axisLabels:sample.graphAxisLabels!==false,showLabels:sample.graphShowLabels!==false
+      snap:sample.graphSnap===true,axisLabels:sample.graphAxisLabels!==false,showLabels:sample.graphShowLabels!==false
     });
   };
   const activeAngle=()=>{
