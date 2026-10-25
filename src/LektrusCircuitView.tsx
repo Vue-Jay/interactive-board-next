@@ -90,7 +90,7 @@ export default function LektrusCircuitView({
       {doc.components.map((component:CircuitComponent)=>{
         const selected=selection?.kind==="component"&&selection.id===component.id;
         const a=circuitTerminal(component,"a"),b=circuitTerminal(component,"b");
-        return <g key={component.id} className={"lektrus-circuit-part"+(selected?" selected":"")}
+        return <g key={component.id} className={"lektrus-circuit-part"+(selected?" selected":"")} data-board-interactive={onComponentDown?"true":undefined}
           onPointerDown={onComponentDown?e=>{stop(e);onComponentDown(e,component)}:undefined}
           onClick={onSelection?e=>{stop(e);if(mode!=="wire")onSelection({kind:"component",id:component.id})}:undefined}>
           {selected&&<rect x={component.x-43} y={component.y-44} width="86" height="89" rx="10"
@@ -123,7 +123,7 @@ export default function LektrusCircuitView({
     <g className="lektrus-circuit-junctions">
       {doc.junctions.map((junction:CircuitJunction)=>{
         const selected=selection?.kind==="junction"&&selection.id===junction.id;
-        return <g key={junction.id}>
+        return <g key={junction.id} data-board-interactive={onJunctionDown?"true":undefined}>
           {selected&&<circle cx={junction.x} cy={junction.y} r="11"
             fill="#dbe8ff" pointerEvents="none"/>}
           <circle cx={junction.x} cy={junction.y} r={activeWire||selected?4.5:3.3}
