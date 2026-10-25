@@ -144,6 +144,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const contourInkCanvasRef=useRef<HTMLCanvasElement|null>(null);
  const contourInkLayerRef=useRef<SVGGElement|null>(null);
  const contourCanvasMode=useRef<"pen"|"erase"|null>(null);
+ const contourCanvasBounds=useRef<{left:number;top:number;width:number;height:number;factor:number}|null>(null);
  const contourLastScreen=useRef<{x:number;y:number}|null>(null);
  const contourEraserPreview=useRef<SVGPathElement|null>(null);
  const contourInkMaskId="lektrus-contour-ink-"+useId().replace(/:/g,"");
@@ -980,9 +981,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  // are never used directly as coordinates in the 900x450 world.
  const localPoint=(e:{clientX:number;clientY:number})=>{
   // The SVG viewport is shared by touch and wheel events from map overlays.
-  const rect=mapSvgRef.current?.getBoundingClientRect();
+  const rect=contourCanvasBounds.current??mapSvgRef.current?.getBoundingClientRect();
   if(!rect)return lastPointer.current;
-  const factor=Math.min(rect.width/900,rect.height/450)||1;
+  const factor=contourCanvasBounds.current?.factor??Math.min(rect.width/900,rect.height/450)||1;
   return {x:(e.clientX-rect.left-(rect.width-900*factor)/2)/factor,
    y:(e.clientY-rect.top-(rect.height-450*factor)/2)/factor};
  };
@@ -997,14 +998,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  // small bounding box. This keeps dragging correct at any atlas zoom and on
  // mobile viewBox letterboxing.
  const annotationWorld=(e:{clientX:number;clientY:number})=>{
-  const rect=mapSvgRef.current?.getBoundingClientRect();
-  if(!rect)return null;
-  const factor=Math.min(rect.width/900,rect.height/450)||1;
-  return worldPoint({x:(e.clientX-rect.left-(rect.width-900*factor)/2)/factor,
-   y:(e.clientY-rect.top-(rect.height-450*factor)/2)/factor});
+  return mapSvgRef.current?worldPoint(localPoint(e)):null;
  };
  // Match the main board's CSS-pixel widths regardless of atlas zoom and viewport size.
  const contourPixelScale=()=>{
+  const cached=contourCanvasBounds.current;
+  if(cached)return cached.factor;
   const rect=mapSvgRef.current?.getBoundingClientRect();
   return rect?Math.min(rect.width/900,rect.height/450)||1:1;
  };
@@ -1013,7 +1012,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  // Dedicated instantaneous ink preview. A pointer sample paints one small
  // canvas segment instead of rebuilding an SVG path or invalidating the atlas.
  const mapScreenPoint=(e:{clientX:number;clientY:number})=>{
-  const rect=mapSvgRef.current?.getBoundingClientRect();
+  const rect=contourCanvasBounds.current??mapSvgRef.current?.getBoundingClientRect();
   return rect?{x:e.clientX-rect.left,y:e.clientY-rect.top}:null;
  };
  const stopContourCanvas=()=>{
@@ -1024,6 +1023,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   }
   if(contourInkLayerRef.current)contourInkLayerRef.current.style.visibility="";
   contourCanvasMode.current=null;
+  contourCanvasBounds.current=null;
   contourLastScreen.current=null;
  };
  const startContourCanvas=(mode:"pen"|"erase")=>{
@@ -1031,6 +1031,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   if(!canvas||!svg)return false;
   const rect=svg.getBoundingClientRect(),container=canvas.parentElement?.getBoundingClientRect();
   if(!rect.width||!rect.height||!container)return false;
+  contourCanvasBounds.current={left:rect.left,top:rect.top,width:rect.width,height:rect.height,
+   factor:Math.min(rect.width/900,rect.height/450)||1};
   const pixelRatio=Math.min(2,window.devicePixelRatio||1);
   canvas.width=Math.round(rect.width*pixelRatio);
   canvas.height=Math.round(rect.height*pixelRatio);
@@ -1096,7 +1098,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   const gesture=eraserGesture.current,point=annotationWorld(e);
   if(!gesture||gesture.pointerId!==e.pointerId||!point||pinch.current)return;
   const last=gesture.path[gesture.path.length-1];
-  if(last&&Math.hypot(point.x-last.x,point.y-last.y)<.3/(contourPixelScale()*cameraRef.current.scale))return;
+  if(last&&Math.hypot(point.x-last.x,point.y-last.y)<2.5/(contourPixelScale()*cameraRef.current.scale))return;
   if(gesture.path.length>=2000)return;
   gesture.path.push(point);
   if(contourCanvasMode.current==="erase"){
