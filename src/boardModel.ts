@@ -525,6 +525,7 @@ export function parseDocument(raw: string): DocumentData {
     ids.add(i.id);
     if (i.kind === "shape" && i.shapeType != null && !shapes.includes(i.shapeType)) throw new Error("Неизвестная фигура");
     if (i.kind === "instrument" && (
+      typeof i.instrumentType !== "string" ||
       !["ruler","triangle","protractor"].includes(i.instrumentType) ||
       !finite(i.instrumentScale) || i.instrumentScale < .1 || i.instrumentScale > 5 ||
       (i.rotation != null && (!finite(i.rotation) || Math.abs(i.rotation)>36000))
