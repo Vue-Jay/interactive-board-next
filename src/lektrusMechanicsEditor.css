@@ -112,3 +112,27 @@
 .lektrus-mechanics-inspector,.lektrus-mechanics-palette{overflow-x:hidden}
 .lektrus-mechanics-inspector>label,.lektrus-mechanics-palette>label{font-size:12px}
 .lektrus-mechanics-hint{font-size:11px;line-height:1.45}
+
+
+/* Opening contextual editing must not move the object away from the pointer. */
+.lektrus-mechanics-editor .lektrus-mechanics-layout{position:relative}
+.lektrus-mechanics-editor.inspector-open .lektrus-mechanics-layout{
+ grid-template-columns:210px minmax(0,1fr);
+}
+.lektrus-mechanics-editor.palette-closed.inspector-open .lektrus-mechanics-layout{
+ grid-template-columns:minmax(0,1fr);
+}
+.lektrus-mechanics-editor .lektrus-mechanics-inspector{
+ position:absolute;top:8px;right:8px;bottom:8px;z-index:8;
+ box-sizing:border-box;width:min(260px,calc(100vw - 20px));
+ height:auto;min-height:0;box-shadow:0 12px 32px #18385c26;
+}
+@media(max-width:760px){
+ .lektrus-mechanics-editor.inspector-open .lektrus-mechanics-layout,
+ .lektrus-mechanics-editor.palette-closed.inspector-open .lektrus-mechanics-layout{
+    grid-template-columns:minmax(0,1fr);
+ }
+ .lektrus-mechanics-editor .lektrus-mechanics-inspector{
+    top:5px;right:5px;bottom:5px;width:min(260px,calc(100vw - 48px));
+ }
+}
