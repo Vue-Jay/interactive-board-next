@@ -7171,7 +7171,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
          </section></div>}
         {lectrisPanelSettingsOpen&&<LectrisPanelSettings value={lectrisPanelLayout} onChange={setLectrisPanelLayout} onClose={()=>setLectrisPanelSettingsOpen(false)}/>}
 
-        {!objectEditorOpen && !presentation && <LectrisQuickProperties userId={authUser.id}
+        {!objectEditorOpen && !presentation && selectedItems.length===0 && <LectrisQuickProperties userId={authUser.id}
           item={singleSelected} selectionCount={selectedItems.length} tool={tool}
           color={tool === "marker" ? markerColor : tool === "pen" ? penColor : color}
           weight={weight} markerWeight={markerWeight} eraserSize={eraserSize}
@@ -8908,7 +8908,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   <Icon name="settings" size={16}/>
                 </button>}
               {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
-                (["text","sticky","frame","comment","formula","graph","fraction","table","checklist","quiz","flashcard","linkmedia","image"].includes(singleSelected.kind))&&
+                (["text","sticky","frame","comment","formula","fraction","table","checklist","quiz","flashcard","linkmedia","image"].includes(singleSelected.kind))&&
                 <button type="button" className="selection-edit-action" data-board-interactive="true"
                   title="Редактировать содержимое" aria-label="Редактировать содержимое"
                   onClick={lectrisEditSelected}><Icon name="rename" size={15}/><span>Редактировать</span></button>}
