@@ -8588,8 +8588,30 @@ option{background:#fff;color:#343741}
 .lektrus-school-point-builder>small{font-size:11px;line-height:1.5;color:#61738e}
 .lektrus-school-point-builder>.lektrus-graph-construct-actions{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
 .lektrus-school-point-builder button{min-width:0;white-space:normal}
-.graph-view .lektrus-diagram-grid-toggle:focus-visible rect{stroke:#3365c6;stroke-width:3px}
-.graph-view .lektrus-diagram-grid-toggle:hover rect{fill:#edf4ff}
+/* Compact in-canvas geometry switches: interactive pointer over drawing crosshair. */
+.graph-view .lektrus-diagram-grid-toggle,
+.graph-view .lektrus-diagram-grid-toggle .lektrus-grid-control,
+.graph-view .lektrus-diagram-grid-toggle .lektrus-grid-control *{
+ cursor:pointer!important;
+}
+.graph-view .lektrus-diagram-grid-toggle .lektrus-grid-control{
+ color:#466993;
+ outline:none;
+}
+.graph-view .lektrus-diagram-grid-toggle .lektrus-grid-control>rect{
+ fill:#fff;stroke:#c9d6e8;stroke-width:1.1;
+ transition:fill .15s ease,stroke .15s ease;
+}
+.graph-view .lektrus-diagram-grid-toggle .lektrus-grid-control>rect.is-on{
+ fill:#e9f1ff;stroke:#96b9ea;
+}
+.graph-view .lektrus-diagram-grid-toggle .lektrus-grid-control:is(:hover,:focus-visible)>rect{
+ fill:#dceaff;stroke:#4f83cd;stroke-width:1.5;
+}
+.graph-view .lektrus-diagram-grid-toggle .lektrus-grid-control:focus-visible>rect{
+ stroke-width:2;
+}
+
 @media(max-width:430px){.lektrus-school-point-builder>.lektrus-graph-construct-actions{grid-template-columns:1fr}.lektrus-school-construction-row{padding:6px}}
 
 /* School notebook grid: legible small cells with clearer five-cell guides. */
