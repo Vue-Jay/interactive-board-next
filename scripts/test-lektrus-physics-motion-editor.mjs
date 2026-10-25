@@ -25,7 +25,8 @@ assert.doesNotMatch(editor,/lektrus-physics-quick-actions|scienceCircuitSymbol|�
   "Motion graphs must not include mechanics and circuit editing controls");
 for(const text of ["Вид зависимости","Сетка","Привязка 0,5","Соединять точки","Подписи точек","Время до, с","Добавить точку"])
   assert.ok(editor.includes(text),text+" must be graph-specific");
-assert.match(editor,/onPointerMove=\{move\} onPointerUp=\{finish\}/);
+assert.match(editor,/onPointerMove=\{event=>\{/);
+assert.match(editor,/onPointerUp=\{finish\} onPointerCancel=\{finish\}/);
 assert.match(editor,/onSave\(makeItem\(item,draft\)\)/);
 assert.match(css,/grid-template-columns:265px minmax\(0,1fr\)/);
 assert.match(circuit,/LektrusCircuitUiIcon kind="select"/);
