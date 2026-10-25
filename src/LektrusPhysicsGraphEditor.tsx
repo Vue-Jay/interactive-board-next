@@ -56,6 +56,11 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
   const choices=scienceToolGroupForId("physics-motion")?.templates??[];
   const sx=(x:number)=>PLOT.left+x/draft.xMax*PLOT.width;
   const sy=(y:number)=>PLOT.top+(draft.yMax-y)/(draft.yMax-draft.yMin)*PLOT.height;
+  const inPlot=(event:{clientX:number;clientY:number},svg:SVGSVGElement)=>{
+    const {x,y}=svgClientPoint(svg,event.clientX,event.clientY);
+    return x>=PLOT.left&&x<=PLOT.left+PLOT.width&&
+      y>=PLOT.top&&y<=PLOT.top+PLOT.height;
+  };
   const fromScreen=(event:{clientX:number;clientY:number},svg:SVGSVGElement):Point=>{
     const {x,y}=svgClientPoint(svg,event.clientX,event.clientY);
     const rawX=clamp((x-PLOT.left)/PLOT.width*draft.xMax,0,draft.xMax);
@@ -221,13 +226,13 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
               aria-label={`Интерактивный график ${axis.variable} от времени`}
               onPointerMove={event=>{
                 move(event);
-                if(event.pointerType!=="touch"&&tool==="point")setAim(fromScreen(event,event.currentTarget));
+                if(event.pointerType!=="touch"&&tool==="point")setAim(inPlot(event,event.currentTarget)?fromScreen(event,event.currentTarget):null);
               }}
               onPointerLeave={()=>setAim(null)}
               onPointerUp={finish} onPointerCancel={finish}
-              onClick={event=>{if(tool!=="point"||event.target!==event.currentTarget)return;addPoint(fromScreen(event,event.currentTarget))}}>
+              onClick={event=>{if(tool!=="point"||event.target!==event.currentTarget||!inPlot(event,event.currentTarget))return;addPoint(fromScreen(event,event.currentTarget))}}>
               <rect width="980" height="590" fill="#fff" onClick={event=>{
-                if(tool==="point"){event.stopPropagation();addPoint(fromScreen(event,event.currentTarget.ownerSVGElement!))}
+                if(tool==="point"){event.stopPropagation();const svg=event.currentTarget.ownerSVGElement!;if(inPlot(event,svg))addPoint(fromScreen(event,svg))}
                 else if(tool==="select")setSelected(null);
               }}/>
               <g className="lektrus-motion-grid" pointerEvents="none">
