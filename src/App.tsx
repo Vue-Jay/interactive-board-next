@@ -40,6 +40,7 @@ import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import LektrusOpticsEditor from "./LektrusOpticsEditor";
 import LektrusMechanicsEditor from "./LektrusMechanicsEditor";
 import LektrusPhysicalBoardView from "./LektrusPhysicalBoardView";
+import LektrusPhysicsCanvasEditorAction from "./LektrusPhysicsCanvasEditorAction";
 import {movePhysicalPart,type PhysicalTarget} from "./lektrusPhysicalBoardMove";
 import {mechanicsValid} from "./lektrusMechanicsModel";
 import {validOptics} from "./lektrusOpticsModel";
@@ -1187,7 +1188,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   }
   if(item.scienceMechanics||item.scienceOptics||item.scienceCircuit)
     return <LektrusPhysicalBoardView item={item} editable={!!onPhysicalPartMove}
-      onMoveEnd={onPhysicalPartMove} onMovePreview={onPhysicalPartPreview}/>;
+      onOpenEditor={onOpenEditor} onMoveEnd={onPhysicalPartMove} onMovePreview={onPhysicalPartPreview}/>;
   if(item.graphFigureId==="lektrus-chart")return <LektrusDataChartView item={item}/>;
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
     return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} onMatchingSize={onMatchingSize}/></div>;
@@ -1289,6 +1290,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){
     return <div className="graph-view lektrus-circuit-board-view">
       <LektrusCircuitView doc={circuitFromLegacyItem(item)}/>
+      {onOpenEditor&&<LektrusPhysicsCanvasEditorAction onOpenEditor={onOpenEditor}/>}
     </div>;
   }
   if(item.graphFigureId==="chem-periodic")return <div className="graph-view lektrus-periodic-board-view">
@@ -1298,6 +1300,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const scienceCaptionLayout=item.graphFigureId?.startsWith("physics-")?
     layoutScienceLabels(item.graphPoints??[],item.graphSegments??[],p=>({x:sx(p.x),y:sy(p.y)}),W,H):null;
   return <div className={`graph-view graph-purpose-${purpose} ${item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")?"science-graph":""} ${onPointMove?"graph-interactive":""}`}>
+    {purpose!=="geometry"&&item.graphFigureId?.startsWith("physics-")&&onOpenEditor&&
+      <LektrusPhysicsCanvasEditorAction onOpenEditor={onOpenEditor}/>}
     {purpose==="geometry" ? (onOpenEditor&&
       <div className="lektrus-graph-canvas-actions" data-board-interactive="true">
         <button type="button" className="lektrus-graph-canvas-editor" data-board-interactive="true"
@@ -1320,12 +1324,12 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           <LektrusGeometryToolIcon name="construction" size={21}/>
         </button>}
       </div>) :
-      <div className="graph-label"><strong>{title}</strong>
+      (onOpenEditor&&item.graphFigureId?.startsWith("physics-")?null:<div className="graph-label"><strong>{title}</strong>
         {item.graphFigureId?.startsWith("chem-organic-")&&(()=>{
           const analysis=analyzeOrganicStructure(item);
           return analysis.valid?<small className="lektrus-organic-formula">{analysis.formula}</small>:null;
         })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}
-      </div>}
+      </div>)}
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onPointerDownCapture={event=>{
         if((event.target as Element).closest?.(".lektrus-diagram-grid-toggle"))return;
@@ -8697,6 +8701,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     commit(itemsRef.current.map(entry=>entry.id===item.id?{...entry,width:w,height:h}:entry));
                    }:undefined}
                   onOpenEditor={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation
+                    ?()=>{setGraphPointEditId(null);openGraphEditor(item)}:
+                    (item.graphFigureId?.startsWith("physics-")||!!item.scienceMechanics||!!item.scienceOptics||!!item.scienceCircuit)&&
+                    selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!space&&!presentation
                     ?()=>{setGraphPointEditId(null);openGraphEditor(item)}:undefined}
                   constructionActive={boardGeometryMode?.id===item.id}
                   onToggleConstruction={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")
