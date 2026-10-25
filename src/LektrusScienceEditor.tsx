@@ -81,6 +81,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const atom=draft.graphFigureId==="chem-atom";
   const circuit=group?.id==="physics-circuits";
   const optics=group?.id==="physics-optics";
+  const mechanics=isPhysics&&group?.id==="physics-mechanics";
   // Graphs use positive time/quantity axes; construction sketches use the centered sheet.
   const xMin=motion?0:-7,xMax=motion?12:7;
   const yMin=motion?0:-5,yMax=motion?10:5;
@@ -120,6 +121,33 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     if(!points.length)return;
     setDraft(previous=>deletePoint(previous,selected));
     setSelected(Math.max(0,selected-1));setFirst(0);setSecond(1);setActiveLink(null);
+  };
+  // Mechanics starts blank and offers explicit actions instead of presets.
+  const addMechanicsBody=()=>{
+    const x=clamp(points.length?1.5:0,-3.5,3.5),y=0;
+    const corners=[{x:x-1,y:y-1,label:""},{x:x+1,y:y-1,label:""},
+      {x:x+1,y:y+1,label:""},{x:x-1,y:y+1,label:""}];
+    const index=points.length;
+    setDraft(old=>({...old,graphPoints:[...(old.graphPoints??[]),...corners,{x,y,label:"O"}],
+      graphPolygons:[...(old.graphPolygons??[]),{points:[index,index+1,index+2,index+3],label:"",measure:false}]}));
+    setSelected(index+4);setFirst(index+4);setSecond(index+4);
+  };
+  const addMechanicsSupport=()=>{
+    const index=points.length;
+    setDraft(old=>({...old,graphPoints:[...(old.graphPoints??[]),
+      {x:-4,y:-2,label:""},{x:4,y:-2,label:""}],
+      graphSegments:[...(old.graphSegments??[]),{a:index,b:index+1,kind:"segment",label:"Опора",measure:false}]}));
+  };
+  const addMechanicsForce=(label:string,dx:number,dy:number)=>{
+    const originIndex=selected>=0&&points[selected]?selected:points.findIndex(p=>p.label==="O");
+    const anchor=originIndex>=0?points[originIndex]:{x:0,y:0,label:"O"};
+    const a=originIndex>=0?originIndex:points.length;
+    const b=originIndex>=0?points.length:points.length+1;
+    setDraft(old=>({...old,
+      graphPoints:[...(old.graphPoints??[]),...(originIndex>=0?[]:[anchor]),
+        {x:clamp(anchor.x+dx,-7,7),y:clamp(anchor.y+dy,-5,5),label}],
+      graphSegments:[...(old.graphSegments??[]),{a,b,kind:"segment",label:"",measure:false,scienceArrow:true,color:"#2967d2"}]}));
+    setSelected(b);setFirst(a);setSecond(b);
   };
   const addLink=(forceArrow?:boolean)=>{
     if(first===second||!points[first]||!points[second]||segments.length>=64)return;
@@ -232,7 +260,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
       <div className="lektrus-science-content">
         <aside className="lektrus-science-settings">
           <div className="lektrus-science-subhead"><strong>Построение</strong><span>01</span></div>
-          {group&&<label>Вариант внутри инструмента
+          {!isPhysics&&group&&<label>Вариант внутри инструмента
             <select className="lektrus-science-template" value={currentVariant}
               onChange={e=>selectVariant(e.target.value as SciencePresetId)}>
               {group.templates.map(t=><option value={t.id} key={t.id}>{t.label}</option>)}
@@ -373,12 +401,14 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
         <div className="lektrus-science-preview">
           <div className="lektrus-science-preview-head">
             <strong>Чертёж</strong>
-            {isPhysics&&!atom&&<div className="lektrus-physics-quick-actions" role="group" aria-label="Быстрые действия для физической схемы" title="Выберите две точки, затем добавьте силу или линию">
-              <button type="button" disabled={points.length>=40} onClick={()=>addPoint()}>+ Точка</button>
-              <button type="button" disabled={!canLink||first===second||segments.length>=64}
-                onClick={()=>addLink(true)}>+ Сила</button>
-              <button type="button" disabled={!canLink||first===second||segments.length>=64}
-                onClick={()=>addLink(false)}>+ Линия</button>
+            {mechanics&&<div className="lektrus-physics-quick-actions" role="group" aria-label="Инструменты механики">
+              <button type="button" onClick={addMechanicsBody}>+ Тело</button>
+              <button type="button" onClick={addMechanicsSupport}>+ Опора</button>
+              <button type="button" onClick={()=>addPoint()}>+ Точка</button>
+              <button type="button" onClick={()=>addMechanicsForce("F",2.5,0)}>+ F</button>
+              <button type="button" onClick={()=>addMechanicsForce("mg",0,-2.5)}>+ mg</button>
+              <button type="button" onClick={()=>addMechanicsForce("N",0,2.5)}>+ N</button>
+              <button type="button" disabled={!canLink||first===second} onClick={()=>addLink(false)}>+ Линия</button>
             </div>}
             <span>Перемещайте точки · двойное нажатие добавляет</span>
           </div>
