@@ -1,0 +1,70 @@
+.lektrus-mechanics-backdrop{position:fixed;inset:0;z-index:100066;background:#eaf1fa;font-family:Inter,system-ui,sans-serif;color:#243f62}
+.lektrus-mechanics-editor{width:100vw;height:100dvh;display:flex;flex-direction:column;min-height:0;background:#f5f8fd}
+.lektrus-mechanics-editor :is(button,input,select){font:inherit}
+.lektrus-mechanics-editor button{cursor:pointer;color:#355c94;font-weight:740;border:1px solid #d6e3f3;border-radius:9px;background:#f3f7ff;padding:7px 10px;font-size:11px;touch-action:manipulation;transition:background .13s,border-color .13s}
+.lektrus-mechanics-editor button:hover:not(:disabled){background:#e6f0ff;border-color:#a8c5f1}
+.lektrus-mechanics-editor button:disabled{opacity:.42;cursor:default}
+.lektrus-mechanics-editor :is(button,input,select):focus-visible{outline:2px solid #4c80da;outline-offset:2px}
+.lektrus-mechanics-editor button.active,.lektrus-mechanics-editor button[aria-pressed=true]{background:#dfecff;border-color:#8eafe7;color:#2757af;box-shadow:inset 0 0 0 1px #d3e4ff}
+.lektrus-mechanics-header{display:flex;justify-content:space-between;align-items:center;gap:9px;min-height:56px;padding:7px 17px;box-sizing:border-box;background:#fff;border-bottom:1px solid #dce7f4}
+.lektrus-mechanics-heading{display:flex;align-items:center;gap:10px}
+.mechanics-logo{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:#e5efff;color:#3266bf;font-size:24px;font-weight:800;font-style:italic}
+.lektrus-mechanics-heading small{display:block;color:#6991c3;font-size:10px;letter-spacing:.08em;font-weight:780}
+.lektrus-mechanics-heading strong{font-size:17px}
+.lektrus-mechanics-header-actions{display:flex;gap:5px;align-items:center}
+.lektrus-mechanics-header-actions button{min-height:35px;min-width:35px}
+.lektrus-mechanics-header-actions button:first-child,.lektrus-mechanics-header-actions button:nth-child(2),.lektrus-mechanics-header-actions button:last-child{font-size:19px;line-height:1}
+.lektrus-mechanics-layout{flex:1 1 0;display:grid;grid-template-columns:210px minmax(0,1fr);gap:8px;padding:8px;min-height:0}
+.lektrus-mechanics-editor.palette-closed .lektrus-mechanics-layout{grid-template-columns:minmax(0,1fr)}
+.lektrus-mechanics-editor.palette-closed .lektrus-mechanics-palette{display:none}
+.lektrus-mechanics-editor.inspector-open .lektrus-mechanics-layout{grid-template-columns:210px minmax(0,1fr) 250px}
+.lektrus-mechanics-editor.palette-closed.inspector-open .lektrus-mechanics-layout{grid-template-columns:minmax(0,1fr) 250px}
+.lektrus-mechanics-palette,.lektrus-mechanics-work,.lektrus-mechanics-inspector{background:#fff;border:1px solid #dce6f4;border-radius:12px;min-width:0;min-height:0}
+.lektrus-mechanics-palette,.lektrus-mechanics-inspector{display:flex;flex-direction:column;gap:11px;padding:12px;overflow:auto;overscroll-behavior:contain}
+.lektrus-mechanics-palette>strong{font-size:12px;border-top:1px solid #e7eef7;padding-top:10px}
+.lektrus-mechanics-editor label{display:grid;gap:5px;color:#4e688e;font-size:11px;font-weight:740}
+.lektrus-mechanics-editor :is(input:not([type=checkbox]),select){min-width:0;width:100%;box-sizing:border-box;min-height:35px;border-radius:8px;border:1px solid #d7e4f2;background:#fbfcff;color:#2e4d75;padding:6px 8px;font-size:12px}
+.lektrus-mechanics-editor input[type=range]{padding:0;min-height:20px;accent-color:#376bc4}
+.lektrus-mechanics-editor input[type=checkbox]{accent-color:#326bcb}
+.lektrus-mechanics-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.lektrus-mechanics-tools button{min-width:0;min-height:44px;line-height:1.25;white-space:normal;text-wrap:balance}
+.lektrus-mechanics-tools button:first-child{grid-column:span 2;min-height:35px}
+.lektrus-mechanics-check{display:flex!important;align-items:center;gap:7px}
+.lektrus-mechanics-palette p,.lektrus-mechanics-inspector p{color:#758ba8;font-size:10px;line-height:1.5}
+.lektrus-mechanics-work{display:flex;flex-direction:column;gap:8px;padding:9px;overflow:hidden}
+.lektrus-mechanics-work-head{display:flex;align-items:center;min-height:32px;gap:12px}
+.lektrus-mechanics-work-head strong{font-size:13px}
+.lektrus-mechanics-work-head span{font-size:10px;color:#8299b5;flex:1}
+.lektrus-mechanics-work-head button{min-height:32px}
+.lektrus-mechanics-stage{flex:1 1 0;min-height:0;border:1px solid #dbe8f6;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.lektrus-mechanics-svg{width:100%;height:100%;display:block;touch-action:none}
+.lektrus-mechanics-svg.mode-select .mechanics-hit{cursor:grab}
+.lektrus-mechanics-svg.mode-select .mechanics-hit:active{cursor:grabbing}
+.lektrus-mechanics-svg:not(.mode-select){cursor:none}
+.lektrus-editor-cursor{filter:drop-shadow(0 1px 3px #365b9660)}
+.lektrus-mechanics-hint{font-size:10px;color:#758eab;min-height:17px}
+.lektrus-mechanics-inspector-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #e7eef7}
+.lektrus-mechanics-inspector-head strong{font-size:12px}
+.lektrus-mechanics-inspector-head button{width:28px;height:28px;min-height:28px;padding:0;font-size:17px}
+.lektrus-mechanics-inspector h3{font-size:14px;color:#3464a5;margin:0}
+.lektrus-mechanics-field-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.lektrus-mechanics-inspector small{font-size:10px;color:#7f99b8}
+.lektrus-mechanics-inspector button.lektrus-mechanics-danger{margin-top:auto;background:#fff1f4;color:#ab5262;border-color:#f0d2d8;min-height:36px}
+.lektrus-mechanics-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 15px;min-height:52px;box-sizing:border-box;border-top:1px solid #dbe6f4;background:#fff}
+.lektrus-mechanics-footer span{flex:1;font-size:10px;color:#869ab3}
+.lektrus-mechanics-footer button{min-height:36px;padding:8px 16px}
+.lektrus-mechanics-footer button.primary{background:#3766c9;color:#fff;border-color:#3766c9}
+.lektrus-mechanics-footer button.primary:hover{background:#2854b5;color:#fff}
+.graph-view.lektrus-mechanics-board-view{display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#fff;overflow:hidden}
+.lektrus-mechanics-board-view .lektrus-mechanics-svg{width:100%;height:100%}
+@media(max-width:1050px){.lektrus-mechanics-editor.inspector-open .lektrus-mechanics-layout{grid-template-columns:165px minmax(0,1fr) 205px}.lektrus-mechanics-editor.palette-closed.inspector-open .lektrus-mechanics-layout{grid-template-columns:minmax(0,1fr) 205px}}
+@media(max-width:760px){.lektrus-mechanics-layout,.lektrus-mechanics-editor.inspector-open .lektrus-mechanics-layout,.lektrus-mechanics-editor.palette-closed.inspector-open .lektrus-mechanics-layout{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);position:relative;padding:5px}
+.lektrus-mechanics-palette,.lektrus-mechanics-inspector{position:absolute;top:5px;bottom:5px;z-index:7;width:min(245px,calc(100vw - 55px));box-sizing:border-box;box-shadow:0 14px 35px #1e365734}
+.lektrus-mechanics-palette{left:5px}.lektrus-mechanics-inspector{right:5px}
+.lektrus-mechanics-work{height:100%;padding:6px}
+.lektrus-mechanics-header{min-height:48px;padding:5px 9px}
+.mechanics-logo{display:none}.lektrus-mechanics-heading strong{font-size:14px}
+.lektrus-mechanics-heading small{font-size:9px}
+.lektrus-mechanics-header-actions button{min-width:30px;min-height:31px;padding:5px}
+.lektrus-mechanics-footer span{display:none}
+.lektrus-mechanics-footer button{flex:1}}
