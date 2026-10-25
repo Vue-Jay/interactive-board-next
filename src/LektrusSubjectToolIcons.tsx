@@ -8,7 +8,7 @@ import type {SubjectToolId} from "./lektrusSubjectToolRegistry";
  */
 const icons:Partial<Record<SubjectToolId,ReactNode>>={
  "math-formula":<><path d="M4 4h7l-4 8 4 8H4"/><path d="M13 9h8m-4-4v8M14 19h7"/></>,
- "math-geometry":<><path d="m3 20 9-16 9 16H3Z"/><path d="M8 20v-5h5M12 4v4"/></>,
+ "math-geometry":<><circle cx="12" cy="4.5" r="2.1"/><path d="m10.6 6.4-5.7 13.2m8.5-13.2 5.7 13.2M7.9 12.7h8.2"/><path d="M3.5 20.3h4.4m8.2 0h4.4" strokeWidth="2.1"/><path d="M13.8 15.3a6 6 0 0 1 4 4.1" strokeDasharray="2 2" opacity=".7"/></>,
  "math-coordinate":<><path d="M4 3v17h17"/><path d="M6 17c3-1 3-9 7-9s4 7 8 2"/><circle cx="13" cy="8" r="1.2" fill="currentColor"/></>,
  "math-fractions":<><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/><path d="M12 12 5.6 18.4" strokeDasharray="2 2"/></>,
  "chem-periodic-table":<><rect x="3" y="3.5" width="7" height="8" rx="1"/><rect x="12" y="3.5" width="9" height="8" rx="1"/><path d="M5 8h3M15 8h3"/><rect x="3" y="13.5" width="7" height="7" rx="1"/><rect x="12" y="13.5" width="9" height="7" rx="1"/></>,
