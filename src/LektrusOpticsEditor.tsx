@@ -124,7 +124,6 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
    };
    window.addEventListener("keydown",handle,true);return()=>window.removeEventListener("keydown",handle,true);
  });
- const inspectRay=chosenRay??(rays.length?rays[rays.length-1]:undefined);
  return createPortal(<div className="lektrus-optics-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget)close()}}>
   <section className={"lektrus-optics-editor"+(drawer?"":" catalog-hidden")+(inspector&&selected?" show-properties":"")} role="dialog" aria-modal="true" aria-label="Редактор оптики" onPointerDown={e=>e.stopPropagation()}>
    <header className="lektrus-optics-header">
