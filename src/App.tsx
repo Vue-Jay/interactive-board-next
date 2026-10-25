@@ -2159,6 +2159,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   controlSettingsRef.current=controlSettings;
   const [developerPrefs, setDeveloperPrefs] = useState(readDeveloperPreferences);
   const {showInkDiagnostics,showBoardDiagnostics,showPerformanceDiagnostics} = developerPrefs;
+  const changeRolePreview=(next:BoardRolePreview)=>{
+    if(!isAppAdmin)return;
+    setRolePreview(next);
+    // Do not carry a privileged active tool/editor into a restricted preview.
+    setSelected([]);setTool("select");setSpace(false);
+    setGraphEditorId(null);setGraphDraft(null);setSchoolEditorItem(null);
+    setBoardGeometryMode(null);setPendingMathItem(null);
+    setSubjectToolsOpen(false);
+    setNotice(next==="actual"?"Настоящая роль восстановлена":
+      "Проверка роли: "+BOARD_ROLE_PREVIEW_LABELS[next]);
+  };
   const changeDeveloperPref=(key:keyof typeof developerPrefs,value:boolean)=>{
     const next={...developerPrefs,[key]:value};
     setDeveloperPrefs(next);
@@ -2300,7 +2311,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     else setPersonalBackground(current=>normalizeBoardBackground({...(current??boardBackground),...patch}));
   };
   const changeBackgroundSharing=(shared:boolean)=>{
-    if(boardSummary.role!=="owner")return;
+    if(!canManageBoard)return;
     setBackgroundIsShared(shared);
     if(!shared && !personalBackground)setPersonalBackground(normalizeBoardBackground(boardBackground));
   };
@@ -2362,7 +2373,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const lectrisDefaultPinned=useMemo<Tool[]>(()=>(
     (window.matchMedia?.("(pointer:coarse)").matches?mobileDockTools:tools.filter(t=>primaryDesktopTools.has(t.id)).map(t=>t.id))
       .filter(id=>id!=="select"&&id!=="hand"&&id!=="lasso"&&toolAllowedForRole(id))
-  ),[isStudent]);
+  ),[isStudent,canEdit]);
   const [lectrisPinned,setLectrisPinned]=useState<Tool[]>(()=>{
     const defaults=(window.matchMedia?.("(pointer:coarse)").matches?mobileDockTools:tools.filter(t=>primaryDesktopTools.has(t.id)).map(t=>t.id))
       .filter(id=>id!=="select"&&id!=="hand"&&id!=="lasso"&&toolAllowedForRole(id));
@@ -2374,7 +2385,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   });
   const [lectrisCustomizeOpen,setLectrisCustomizeOpen]=useState(false);
   useEffect(()=>{try{localStorage.setItem(lectrisToolbarKey,JSON.stringify(lectrisPinned))}catch{}},[lectrisToolbarKey,lectrisPinned]);
-  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))],[lectrisPinned,isStudent]);
+  const lectrisTouchDockTools=useMemo<Tool[]>(()=>["select","lasso",...lectrisPinned.filter(id=>id!=="formula"&&id!=="graph"&&toolAllowedForRole(id))],[lectrisPinned,isStudent,canEdit]);
   const [lectrisLayout,setLectrisLayout]=useState<"standard"|"lesson"|"focus">(()=>{
     try{const value=localStorage.getItem(lectrisLayoutKey);return value==="lesson"||value==="focus"?value:"standard"}catch{return"standard"}
   });
@@ -2422,7 +2433,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   });
   const subjectCategories=["",...LEKTRUS_SCHOOL_SUBJECTS];
   const changeBoardSubject=(subject:string)=>{
-    if(boardSummary.role!=="owner"||boardSummary.ownerId!==authUser.id)return;
+    if(!canManageBoard||boardSummary.ownerId!==authUser.id)return;
     const next={...lectrisBoardOrganization,subject:normalizeLektrusSubject(subject)};
     setLectrisBoardOrganization(next);
     queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
@@ -6780,6 +6791,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   return (
     <div className={`app ${presentation ? "presentation-mode" : ""} ${!canEdit ? "viewer-mode" : ""} ${publicPresentation ? "public-presentation-mode" : ""}`}>
+      {isAppAdmin&&rolePreview!=="actual"&&
+        <div className="lektrus-developer-role-banner" role="status">
+          <span>Тест роли: <strong>{BOARD_ROLE_PREVIEW_LABELS[rolePreview]}</strong></span>
+          <button type="button" onClick={()=>changeRolePreview("actual")}
+            aria-label="Вернуть настоящую роль">Вернуть роль</button>
+        </div>}
       {linkMediaOpen&&<div className="access-backdrop link-media-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setLinkMediaOpen(false)}}><section className="access-modal link-media-dialog"><div className="access-head"><div><h2>{linkMediaEditId?"Изменить мультимедиа":"Мультимедиа по ссылке"}</h2><p>Файл не загружается в Lektrus и не занимает Storage.</p></div><button onClick={()=>setLinkMediaOpen(false)}>×</button></div><label className="link-media-field"><span>Ссылка</span><input value={linkMediaUrl} onChange={e=>setLinkMediaUrl(e.target.value)} placeholder="YouTube, Vimeo, MP3, MP4 или другая http/https ссылка"/></label><label className="link-media-field"><span>Название</span><input value={linkMediaTitle} onChange={e=>setLinkMediaTitle(e.target.value)} placeholder="Необязательно"/></label><div className="link-media-support"><strong>Внутренний плеер</strong><span>YouTube и Vimeo открываются внутри доски. Прямые ссылки на MP3/MP4/WebM и другие поддерживаемые браузером файлы используют встроенный HTML5-плеер. Для остальных ссылок показывается безопасная карточка перехода.</span></div><div className="access-actions"><button onClick={()=>setLinkMediaOpen(false)}>Отмена</button><button className="boards-create" onClick={saveLinkMedia}>{linkMediaEditId?"Сохранить":"Добавить на доску"}</button></div></section></div>}
 
       {sharing && <ShareDialog board={boardSummary} user={authUser} onClose={() => setSharing(false)}/>}
@@ -6787,6 +6804,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         <section className="access-modal" style={{width:"min(480px,calc(100vw - 24px))",maxHeight:"85vh",overflowY:"auto"}}>
           <div className="access-head"><div><h2>Настройки разработчика</h2><p>Диагностика только для администратора этой доски</p></div><button type="button" aria-label="Закрыть" onClick={()=>setDeveloperSettingsOpen(false)}>×</button></div>
           <div style={{display:"grid",gap:14,padding:"16px 0"}}>
+            <div className="lektrus-developer-role-setting">
+              <label htmlFor="lektrus-developer-role-preview"><strong>Проверка роли на доске</strong></label>
+              <select id="lektrus-developer-role-preview" value={rolePreview}
+                onChange={event=>changeRolePreview(event.target.value as BoardRolePreview)}
+                aria-label="Роль для проверки интерфейса">
+                {(Object.entries(BOARD_ROLE_PREVIEW_LABELS) as [BoardRolePreview,string][]).map(([key,label])=>
+                  <option key={key} value={key}>{label}</option>)}
+              </select>
+              <small>Меняет только интерфейс этой открытой доски. Реальные права аккаунта, гостевой вход, роли Supabase и доступ к сохранению не изменяются.</small>
+              <small>Гость здесь проверяется в режиме просмотра. Если настоящая роль слабее выбранной, её ограничения сохраняются.</small>
+            </div>
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showInkDiagnostics} onChange={e=>changeDeveloperPref("showInkDiagnostics",e.target.checked)}/> Показывать отправку и получение штрихов</label>
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showBoardDiagnostics} onChange={e=>changeDeveloperPref("showBoardDiagnostics",e.target.checked)}/> Показывать состояние доски и синхронизации</label>
             <label style={{display:"flex",alignItems:"center",gap:10}}><input type="checkbox" checked={showPerformanceDiagnostics} onChange={e=>changeDeveloperPref("showPerformanceDiagnostics",e.target.checked)}/> Показывать статистику объектов и масштаб</label>
@@ -6851,7 +6879,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             readOnly={!canEdit}
           />
           {authUser.isGuest&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
-          <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={boardSummary.role!=="owner"||boardSummary.ownerId!==authUser.id} onChange={changeBoardSubject}/>
+          <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={!canManageBoard||boardSummary.ownerId!==authUser.id} onChange={changeBoardSubject}/>
         </div>
         <div className="topbar-right"><details className="lectris-layout-picker">
             <summary title="Настройки и раскладка доски" aria-label="Настройки и раскладка доски"><Icon name="settings" size={17}/></summary>
@@ -6891,7 +6919,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             <div className="presence-popover">
               <div className="presence-popover-head">
                 <strong>Сейчас на доске</strong>
-                {boardSummary.role === "owner" && visiblePresenceUsers.some((user) => user.userId !== authUser.id) && <button
+                {canManageBoard && visiblePresenceUsers.some((user) => user.userId !== authUser.id) && <button
                   type="button"
                   className="presence-gather-button"
                   title="Переместить всех остальных участников к вашей текущей области доски"
@@ -6912,14 +6940,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   Собрать всех
                 </button>}
               </div>
-              {boardSummary.role==="owner"&&<button type="button" className="presence-visit-link" onClick={()=>{visitPresenceMenuRef.current?.removeAttribute("open");setVisitHistoryOpen(true);void loadVisitHistory()}}>История посещений <span>↗</span></button>}
+              {canManageBoard&&<button type="button" className="presence-visit-link" onClick={()=>{visitPresenceMenuRef.current?.removeAttribute("open");setVisitHistoryOpen(true);void loadVisitHistory()}}>История посещений <span>↗</span></button>}
               {visiblePresenceUsers.length ? visiblePresenceUsers.map((user) => <div className="presence-person" key={user.userId}>
                 <span className="presence-avatar" aria-hidden="true">{user.name.trim().charAt(0).toUpperCase() || "U"}</span>
                 <span className="presence-person-copy">
                   <b>{user.name}{user.userId === authUser.id ? " · Вы" : ""}</b>
                   <small>{BOARD_ROLE_LABELS[user.role]}{remoteWork[user.userId]?.editingId ? " · редактирует объект" : remoteWork[user.userId]?.selectedIds.length ? ` · выбрано: ${remoteWork[user.userId].selectedIds.length}` : ""}</small>
                 </span>
-                {boardSummary.role === "owner" && user.userId !== authUser.id && <button
+                {canManageBoard && user.userId !== authUser.id && <button
                   type="button"
                   className="presence-focus-button"
                   title={`Переместить экран пользователя ${user.name} к вашей текущей области доски`}
@@ -6946,7 +6974,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           {remoteEditingCount > 0 && <span className="collab-editing-status" title="Сейчас другие участники редактируют объекты">
             ✎ {remoteEditingCount}
           </span>}
-          {boardSummary.role === "owner" && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
+          {canManageBoard && <button className="lesson-button board-invite-button compact-top-action" aria-label="Добавить участника" title="Добавить участника" onClick={() => setSharing(true)}><svg className="top-action-svg add-person-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 18c.5-3.2 2.5-5 5.5-5s5 1.8 5.5 5"/><path d="M18 7v6M15 10h6"/></svg></button>}
           {isRemoteBackendEnabled() && <button type="button" className={`lesson-button board-chat-button ${chatOpen ? "active" : ""}`} onClick={()=>void openDiscussions()} title="Чат этой доски" aria-label={`Чат этой доски${chatUnread?` · новых сообщений ${chatUnread}`:""}`}><Icon name="comments" size={16}/><span>Чат</span>{chatUnread>0&&<b className="top-badge">{chatUnread>99?"99+":chatUnread}</b>}</button>}
           <details className="topbar-more-menu">
             <summary className="top-button topbar-more-trigger" title="Дополнительные действия" aria-label="Дополнительные действия"><Icon name="more" /></summary>
@@ -7939,7 +7967,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>)}
           </div>
         </LektrusToolOverflow>}
-        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={boardSummary.role==="owner"&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
+        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canManageBoard&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
             if(!canEdit||!toolAllowedForRole(id==="math-formula"?"formula":"graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
@@ -9148,7 +9176,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           role="group" aria-label="Настройки фона доски" onPointerDown={e=>e.stopPropagation()}>
           <div className="lektrus-background-head"><strong>Фон доски</strong>
             <button type="button" aria-label="Закрыть настройки фона" onClick={()=>setBackgroundMenuOpen(false)}><Icon name="close" size={16}/></button></div>
-          {boardSummary.role==="owner"&&<label className="lektrus-background-sharing">
+          {canManageBoard&&<label className="lektrus-background-sharing">
             <span><strong>Сделать общим</strong><small>{backgroundIsShared?"Виден всем участникам":"Только для вас"}</small></span>
             <input type="checkbox" role="switch" aria-label="Сделать фон общим для всех" checked={backgroundIsShared} onChange={e=>changeBackgroundSharing(e.target.checked)}/>
           </label>}
