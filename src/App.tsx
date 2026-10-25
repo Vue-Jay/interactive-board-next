@@ -7382,7 +7382,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {graphEditorId && graphDraft && createPortal(
           <LektrusGraphEditor
             draft={graphDraft} userId={authUser.id} mode={graphDraft.purpose==="geometry"?"geometry":"coordinates"}
-            onChange={setGraphDraft} onCancel={closeGraphEditor} onSave={saveGraphEditor} onClose={closeGraphEditor}
+            onChange={changeLiveGraphDraft} onCancel={closeGraphEditor} onSave={saveGraphEditor} onClose={closeGraphEditor}
             preview={<GraphView item={{
               id:"preview",kind:"graph",x:0,y:0,width:600,height:360,text:graphDraft.title,
               graphPurpose:graphDraft.purpose,graphAxisMode:graphDraft.axisMode,graphFigureId:graphDraft.figureId,graphRotationX:graphDraft.rotationX,graphRotationY:graphDraft.rotationY,graphParallelMarks:graphDraft.parallelMarks,graphIntervalStartClosed:graphDraft.intervalStartClosed,graphIntervalEndClosed:graphDraft.intervalEndClosed,
@@ -7397,11 +7397,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               graphAngles:graphDraft.angles,graphCircles:graphDraft.circles,
               graphPolygons:graphDraft.polygons,graphMidpoints:graphDraft.midpoints,graphTriangleLines:graphDraft.triangleLines,graphTriangleVertex:graphDraft.triangleVertex,graphShowArea:false,graphGivenSides:graphDraft.givenSides,graphGivenAngles:graphDraft.givenAngles,graphTriangleInputMode:graphDraft.triangleInputMode
             }}
-            onGridChange={enabled=>setGraphDraft(current=>current?{...current,grid:enabled}:current)}
-            onRotate={(rotationX,rotationY)=>setGraphDraft(current=>current?{...current,rotationX,rotationY}:current)}
-            onRayChange={(x,y)=>setGraphDraft(current=>current&&current.figureId==="ray"&&current.points[1]?
+            onGridChange={enabled=>changeLiveGraphDraft(current=>current?{...current,grid:enabled}:current)}
+            onRotate={(rotationX,rotationY)=>changeLiveGraphDraft(current=>current?{...current,rotationX,rotationY}:current)}
+            onRayChange={(x,y)=>changeLiveGraphDraft(current=>current&&current.figureId==="ray"&&current.points[1]?
               {...current,points:current.points.map((point,i)=>i===1?{...point,x,y}:point)}:current)}
-            onPointMove={(i,x,y)=>setGraphDraft(current=>{
+            onPointMove={(i,x,y)=>changeLiveGraphDraft(current=>{
               if(!current||current.purpose==="unit-circle"&&i<5)return current;
               const trig=current.purpose==="unit-circle"&&i===5;
               const angle=Math.atan2(y,x),xx=trig?Number(Math.cos(angle).toFixed(6)):x,yy=trig?Number(Math.sin(angle).toFixed(6)):current.purpose==="number-line"?0:y;
@@ -7409,13 +7409,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 moveGeometryVertex(current,i,xx,yy):{...current,points:current.points.map((p,j)=>j===i?{...p,x:xx,y:yy,label:trig?formatPiRadians(angle):p.label}:p)};
               return updated;
             })}
-            onAddPoint={(x,y)=>setGraphDraft(current=>{
+            onAddPoint={(x,y)=>changeLiveGraphDraft(current=>{
               if(!current||current.purpose==="unit-circle"||current.figureId==="ray"||isSolidFigure(current.figureId)||current.points.length>=40)return current;
               if(current.figureId==="free")return appendFreeSketchPoint(current,x,y);
               return {...current,points:[...current.points,{x,y:current.purpose==="number-line"?0:y,label:current.purpose==="geometry"?nextGeometryPointLabel(current.points):""}]};
             })}
-            onCloseFreePolygon={()=>setGraphDraft(current=>current?closeFreeSketch(current):current)}
-            onRemovePoint={i=>setGraphDraft(current=>current&&current.figureId!=="ray"&&!isSolidFigure(current.figureId)&&!(current.purpose==="unit-circle"&&i<=5)?removeGraphPoint(current,i):current)}
+            onCloseFreePolygon={()=>changeLiveGraphDraft(current=>current?closeFreeSketch(current):current)}
+            onRemovePoint={i=>changeLiveGraphDraft(current=>current&&current.figureId!=="ray"&&!isSolidFigure(current.figureId)&&!(current.purpose==="unit-circle"&&i<=5)?removeGraphPoint(current,i):current)}
             />}
           />,document.body)}
         {formulaEditorId && formulaDraft && createPortal(
