@@ -1,3 +1,4 @@
+import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import {useEffect,useMemo,useRef,useState,type WheelEvent as ReactWheelEvent,type DragEvent,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
@@ -12,7 +13,7 @@ import {
   type CircuitAnchor,type CircuitComponent,type CircuitDocument,type CircuitJunction
 } from "./lektrusCircuitModel";
 
-type Props={item:Item;onSave:(value:Item)=>void;onCancel:()=>void;onClose?:(value:Item)=>void};
+type Props={item:Item;onSave:(value:Item)=>void;onCancel:()=>void;onClose?:(value:Item)=>void;onLiveChange?:(before:CircuitDocument,next:CircuitDocument)=>void};
 type History={past:CircuitDocument[];present:CircuitDocument;future:CircuitDocument[]};
 const templates=[
   {id:"physics-circuit-series",label:"Последовательная цепь"},
@@ -50,7 +51,7 @@ function addCircuitNode(doc:CircuitDocument,x:number,y:number):[CircuitDocument,
   };
   return [{...doc,junctions:[...doc.junctions,node]},node];
 }
-export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Props){
+export default function LektrusCircuitEditor({item,onSave,onCancel,onClose,onLiveChange}:Props){
   const [history,setHistory]=useState<History>(()=>({
     past:[],present:circuitFromLegacyItem(item),future:[]
   }));
@@ -83,6 +84,28 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
   useEffect(()=>setInspectorOpen(Boolean(selection)),[selection?.kind,selection?.id]);
   const [confirmAction,setConfirmAction]=useState<{kind:"template";id:TemplateId}|{kind:"clear"}|null>(null);
   const doc=history.present;
+  // The shared object is updated incrementally, while incoming peer edits
+  // are rebased by stable component IDs instead of overwriting this draft.
+  const livePrevious=useRef<CircuitDocument>(history.present);
+  const remotePrevious=useRef(item.scienceCircuit);
+  useEffect(()=>{
+    if(doc===livePrevious.current)return;
+    const before=livePrevious.current;
+    livePrevious.current=doc;
+    onLiveChange?.(before,doc);
+  },[doc,onLiveChange]);
+  useEffect(()=>{
+    const remote=item.scienceCircuit;
+    if(!remote||remote===remotePrevious.current)return;
+    const base=remotePrevious.current;
+    remotePrevious.current=remote;
+    setHistory(h=>{
+      const merged=mergeEditedValue(base??h.present,h.present,remote);
+      livePrevious.current=merged;
+      return {...h,present:merged};
+    });
+  },[item.scienceCircuit]);
+
   const currentComponent=selection?.kind==="component"?
     doc.components.find(x=>x.id===selection.id):undefined;
   const currentJunction=selection?.kind==="junction"?
