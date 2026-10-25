@@ -6817,15 +6817,24 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <div className="access-head"><div><h2>Настройки разработчика</h2><p>Диагностика только для администратора этой доски</p></div><button type="button" aria-label="Закрыть" onClick={()=>setDeveloperSettingsOpen(false)}>×</button></div>
           <div style={{display:"grid",gap:14,padding:"16px 0"}}>
             <div className="lektrus-developer-role-setting">
-              <label htmlFor="lektrus-developer-role-preview"><strong>Проверка роли на доске</strong></label>
-              <select id="lektrus-developer-role-preview" value={rolePreview}
-                onChange={event=>changeRolePreview(event.target.value as BoardRolePreview)}
-                aria-label="Роль для проверки интерфейса">
-                {(Object.entries(BOARD_ROLE_PREVIEW_LABELS) as [BoardRolePreview,string][]).map(([key,label])=>
-                  <option key={key} value={key}>{label}</option>)}
-              </select>
-              <small>Меняет только интерфейс этой открытой доски. Реальные права аккаунта, гостевой вход, роли Supabase и доступ к сохранению не изменяются.</small>
-              <small>Гость здесь проверяется в режиме просмотра. Если настоящая роль слабее выбранной, её ограничения сохраняются.</small>
+              <strong>Проверка роли на доске</strong>
+              <div id="lektrus-developer-role-preview" className="lektrus-developer-role-options"
+                role="group" aria-label="Тестовая роль пользователя">
+                {(["teacher","student","guest"] as const).map(role=>
+                  <button key={role} type="button"
+                    className={rolePreview===role?"active":""}
+                    aria-pressed={rolePreview===role}
+                    onClick={()=>changeRolePreview(role)}>
+                    {BOARD_ROLE_PREVIEW_LABELS[role]}
+                  </button>)}
+              </div>
+              <div className="lektrus-developer-role-real">
+                <span>Активно: <strong>{BOARD_ROLE_PREVIEW_LABELS[rolePreview]}</strong></span>
+                <button type="button" disabled={rolePreview==="actual"}
+                  onClick={()=>changeRolePreview("actual")}>Вернуть настоящую роль</button>
+              </div>
+              <small>Режим имитирует права и инструменты выбранной роли только на этой доске. Гость и ученик имеют одинаковые функции доски при одинаковом доступе.</small>
+              <small>Настоящие права аккаунта, членство в доске и ограничения Supabase не меняются. Если реальный доступ только на просмотр, тестовые роли не дадут право записи.</small>
               <div className="lektrus-developer-role-permissions">
                 <strong>Действующие разрешения</strong>
                 <span>Редактирование доски: {canEdit?"разрешено":"только просмотр"}</span>
