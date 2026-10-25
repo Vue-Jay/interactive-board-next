@@ -2163,12 +2163,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const changeRolePreview=(next:BoardRolePreview)=>{
     if(!isAppAdmin)return;
     end(true);setEditing(null);
+    flushSave();
     setRolePreview(next);
     // Do not carry a privileged active tool/editor into a restricted preview.
     setSelected([]);setTool("select");setSpace(false);setSharing(false);
     setBoardAiOpen(false);setImageCropEditorId(null);
     setGraphEditorId(null);setGraphDraft(null);setSchoolEditorItem(null);
     setBoardGeometryMode(null);setPendingMathItem(null);
+    setChecklistEditorId(null);setQuizEditorId(null);setFlashcardEditorId(null);
+    setTableEditorId(null);setFormulaEditorId(null);setFractionEditorId(null);
+    setScienceEditorItem(null);setCircuitEditorItem(null);setAtomEditorItem(null);
+    setPeriodicEditorItem(null);setChartEditorItem(null);setLinkMediaOpen(false);
     setSubjectToolsOpen(false);
     setNotice(next==="actual"?"Настоящая роль восстановлена":
       "Проверка роли: "+BOARD_ROLE_PREVIEW_LABELS[next]);
@@ -5635,6 +5640,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const copyTableTsv = async () => { if(!tableDraft)return; const value=Array.from({length:tableDraft.rows},(_,r)=>Array.from({length:tableDraft.cols},(_,c)=>tableDraft.cells[r*tableDraft.cols+c]??"").map(v=>v.replace(/\t/g," ").replace(/\r?\n/g," ")).join("\t")).join("\n"); try{await navigator.clipboard.writeText(value);setNotice("Таблица скопирована как TSV")}catch{setNotice("Не удалось скопировать таблицу")} };
   const pasteTableTsv = async () => { if(!tableDraft)return; try{const raw=await navigator.clipboard.readText(),lines=raw.replace(/\r/g,"").split("\n").filter((line,i,a)=>line.length>0||i<a.length-1),matrix=lines.map(line=>line.split("\t"));if(!matrix.length||!matrix.some(row=>row.some(cell=>cell.trim()))){setNotice("В буфере нет табличных данных");return}const rows=Math.min(20,matrix.length),cols=Math.min(12,Math.max(1,...matrix.map(row=>row.length))),cells=Array.from({length:rows*cols},(_,i)=>(matrix[Math.floor(i/cols)]?.[i%cols]??"").slice(0,2000));setTableDraft({...tableDraft,rows,cols,cells});setNotice(`Вставлена таблица ${rows}×${cols}`)}catch{setNotice("Браузер не дал прочитать буфер обмена")} };
   const saveTableEditor = () => {
+    if(!canCreateAssignments){setNotice("Изменять учебную таблицу может преподаватель");return;}
     if (!tableEditorId || !tableDraft) { setTableEditorId(null); setTableDraft(null); return; }
     commit(itemsRef.current.map((item) => item.id === tableEditorId ? {
       ...item,
@@ -5663,6 +5669,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const saveChecklistEditor = () => {
+    if(!canCreateAssignments){setNotice("Изменять структуру задания может преподаватель");return;}
     if (!checklistEditorId || !checklistDraft) { setChecklistEditorId(null); setChecklistDraft(null); return; }
     const cleanItems = checklistDraft.items.slice(0, 40).map((value) => value.slice(0, 2000));
     const cleanDone = cleanItems.map((_, index) => checklistDraft.done[index] === true);
@@ -5708,6 +5715,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const saveQuizEditor = () => {
+    if(!canCreateAssignments){setNotice("Изменять структуру задания может преподаватель");return;}
     if (!quizEditorId || !quizDraft) { setQuizEditorId(null); setQuizDraft(null); return; }
     const options = quizDraft.options.slice(0, 8).map((value) => value.slice(0, 2000));
     const correct = Math.max(0, Math.min(options.length - 1, Math.round(quizDraft.correct)));
@@ -5762,6 +5770,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
 
   const saveFlashcardEditor = () => {
+    if(!canCreateAssignments){setNotice("Изменять структуру задания может преподаватель");return;}
     if (!flashcardEditorId || !flashcardDraft) { setFlashcardEditorId(null); setFlashcardDraft(null); return; }
     if(pendingStudyItem?.id===flashcardEditorId && (!flashcardDraft.front.trim()||!flashcardDraft.back.trim())){
       setNotice("Заполните вопрос и ответ на карточке");return;
@@ -5784,6 +5793,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setPendingStudyItem(null);
   };
   const beginStudyCreation=(kind:"checklist"|"quiz"|"flashcard",point:Point)=>{
+    if(!canCreateAssignments){setNotice("Создание заданий доступно преподавателю");return;}
     const size=kind==="quiz"?{width:380,height:310}:
       kind==="flashcard"?{width:360,height:250}:{width:340,height:260};
     const item:Item={
