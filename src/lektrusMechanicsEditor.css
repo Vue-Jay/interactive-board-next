@@ -98,3 +98,17 @@
 .lektrus-mechanics-editor .lektrus-mechanics-svg.mode-select .mechanics-hit{cursor:grab}
 .lektrus-mechanics-editor .lektrus-mechanics-svg.mode-select .mechanics-hit:active{cursor:grabbing}
 .lektrus-mechanics-editor .lektrus-editor-cursor{filter:drop-shadow(0 2px 3px #315e984d)}
+
+
+/* Pointer and objects are mapped against the same visibly bounded SVG sheet. */
+.lektrus-mechanics-stage{container-type:size;background:#edf3fa;border-color:#cbdbef}
+@supports (width:100cqw){
+ .lektrus-mechanics-stage>.lektrus-mechanics-svg{
+   width:min(100cqw,171.42857cqh);height:min(100cqh,58.33333cqw);
+   flex:none;box-sizing:border-box;border:1px solid #c6daf2;
+   border-radius:9px;box-shadow:0 4px 15px #204e8720;background:#fff;
+ }
+}
+.lektrus-mechanics-inspector,.lektrus-mechanics-palette{overflow-x:hidden}
+.lektrus-mechanics-inspector>label,.lektrus-mechanics-palette>label{font-size:12px}
+.lektrus-mechanics-hint{font-size:11px;line-height:1.45}
