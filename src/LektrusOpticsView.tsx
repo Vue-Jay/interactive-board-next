@@ -53,6 +53,9 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
        strokeWidth="2" opacity=".95"/>)}
      {selection?.kind==="ray"&&selection.id===path.id&&path.events?.map((event,index)=><g
        key={"event-"+index} transform={`translate(${event.point.x} ${event.point.y})`}>
+       {doc.normals&&event.normal&&<path
+         d={`M${-event.normal.x*32} ${-event.normal.y*32} L${event.normal.x*32} ${event.normal.y*32}`}
+         stroke="#729fc8" strokeWidth="1.5" strokeDasharray="4 4" opacity=".85"/>}
        <circle r="10.5" fill="#fff" stroke={event.kind==="tir"?"#e59a34":"#3e79bf"} strokeWidth="1.8"/>
        <text x="0" y="3.7" textAnchor="middle" fontSize="10.5" fontWeight="750"
           fill="#285995">{index+1}</text>
