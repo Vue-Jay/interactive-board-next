@@ -35,7 +35,7 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
    onPlace(p.x,p.y);
   }}/>
   {doc.grid&&<rect width="960" height="560" fill={"url(#mechanics-dot-"+id+")"} pointerEvents="none"/>}
-  {doc.supports.map(s=><g key={s.id} className={"lektrus-mechanics-part"+(selected("support",s.id)?" selected":"")}
+  {doc.supports.map(s=><g key={s.id} className={"lektrus-mechanics-part"+(selected("support",s.id)?" selected":"")} data-board-interactive={onPartDown?"true":undefined}
    onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"support",id:s.id}):undefined}
 >
    <g transform={`translate(${s.x} ${s.y}) rotate(${-s.angle})`}>
@@ -47,7 +47,7 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
    {doc.labels&&s.label&&<text x={s.x} y={s.y+37} fill="#567493" fontSize="14" textAnchor="middle">{s.label}</text>}
    {editable&&<rect className="mechanics-hit" x={s.x-s.width/2-12} y={s.y-28} width={s.width+24} height="55" fill="transparent" pointerEvents="all"/>}
   </g>)}
-  {doc.bodies.map(b=><g key={b.id} className={"lektrus-mechanics-part"+(selected("body",b.id)?" selected":"")}
+  {doc.bodies.map(b=><g key={b.id} className={"lektrus-mechanics-part"+(selected("body",b.id)?" selected":"")} data-board-interactive={onPartDown?"true":undefined}
    onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"body",id:b.id}):undefined}
 >
    {selected("body",b.id)&&<rect x={b.x-b.width/2-7} y={b.y-b.height/2-7} width={b.width+14} height={b.height+14} rx="13"
@@ -64,7 +64,7 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
   {doc.forces.map(f=>{
     const a=mechanicsForceOrigin(f,doc),b=mechanicsForceTip(f,doc),picked=selected("force",f.id);
     const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
-    return <g key={f.id} className={"lektrus-mechanics-force"+(picked?" selected":"")}
+    return <g key={f.id} className={"lektrus-mechanics-force"+(picked?" selected":"")} data-board-interactive={onPartDown?"true":undefined}
       onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"force",id:f.id}):undefined}
 >
       {picked&&<line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#a8c9ff" strokeWidth="12" opacity=".7" pointerEvents="none"/>}
