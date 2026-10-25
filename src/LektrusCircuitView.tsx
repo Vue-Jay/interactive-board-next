@@ -5,7 +5,7 @@ import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
 
 export type CircuitSelection=
   |{kind:"component";id:string}|{kind:"wire";id:string}|{kind:"junction";id:string}|null;
-export type CircuitTool="select"|"wire"|"junction"|"place";
+export type CircuitTool="select"|"hand"|"wire"|"junction"|"place";
 type Point={x:number;y:number};
 type Props={
   doc:CircuitDocument;
@@ -22,18 +22,28 @@ type Props={
   onSvgUp?:(e:ReactPointerEvent<SVGSVGElement>)=>void;
   onSvgLeave?:()=>void;
   onDrop?:(e:React.DragEvent<SVGSVGElement>)=>void;
+  view?:{x:number;y:number;zoom:number};
+  onWheel?:(e:React.WheelEvent<SVGSVGElement>)=>void;
+  onBackgroundDown?:(e:ReactPointerEvent<SVGSVGElement>)=>void;
 };
 export function circuitSvgCoords(clientX:number,clientY:number,svg:SVGSVGElement):Point{
   const rect=svg.getBoundingClientRect();
-  const scale=Math.min(rect.width/900,rect.height/580)||1;
-  const padX=(rect.width-900*scale)/2,padY=(rect.height-580*scale)/2;
-  return {x:Math.max(0,Math.min(900,(clientX-rect.left-padX)/scale)),
-    y:Math.max(0,Math.min(580,(clientY-rect.top-padY)/scale))};
+  const vb=svg.viewBox.baseVal;
+  const x=vb.width>0?vb.x:0,y=vb.height>0?vb.y:0;
+  const width=vb.width>0?vb.width:900,height=vb.height>0?vb.height:580;
+  // The SVG uses xMidYMid meet. Include letterboxing at any viewport ratio
+  // so a cursor, touch point, or dropped component lands exactly where intended.
+  const scale=Math.min(rect.width/width,rect.height/height)||1;
+  const padX=(rect.width-width*scale)/2,padY=(rect.height-height*scale)/2;
+  return {
+    x:Math.max(0,Math.min(900,x+(clientX-rect.left-padX)/scale)),
+    y:Math.max(0,Math.min(580,y+(clientY-rect.top-padY)/scale))
+  };
 }
 export default function LektrusCircuitView({
   doc,mode="select",selection=null,pending=null,cursor=null,onBlank,
   onAnchor,onComponentDown,onJunctionDown,onSelection,onSvgMove,onSvgUp,
-  onSvgLeave,onDrop
+  onSvgLeave,onDrop,view,onWheel,onBackgroundDown
 }:Props){
   const gridId="circuit-grid-"+useId().replaceAll(":","");
   const activeWire=mode==="wire";
@@ -42,10 +52,14 @@ export default function LektrusCircuitView({
     (()=>{const j=doc.junctions.find(j=>j.id===anchor.junctionId);return j?{x:j.x,y:j.y}:null})();
   const waiting=pending?resolve(pending):null;
   const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
-  return <svg className={"lektrus-circuit-svg mode-"+mode} viewBox="0 0 900 580"
+  const zoom=view?.zoom??1;
+  const visibleWidth=900/zoom,visibleHeight=580/zoom;
+  return <svg className={"lektrus-circuit-svg mode-"+mode}
+    viewBox={`${view?.x??0} ${view?.y??0} ${visibleWidth} ${visibleHeight}`}
     preserveAspectRatio="xMidYMid meet" role="img"
     aria-label="Редактируемая электрическая схема"
     onPointerMove={onSvgMove} onPointerUp={onSvgUp}
+    onWheel={onWheel} onPointerDown={onBackgroundDown}
     onPointerCancel={onSvgUp} onPointerLeave={onSvgLeave}
     onDragOver={onDrop?e=>{e.preventDefault();e.dataTransfer.dropEffect="copy"}:undefined}
     onDrop={onDrop}>
