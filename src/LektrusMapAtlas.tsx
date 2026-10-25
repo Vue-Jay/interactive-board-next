@@ -1167,7 +1167,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
    if(Math.hypot(last[0]-end[0],last[1]-end[1])>.000001&&contourDrawing.current.length<2000)
     contourDrawing.current.push(end);
    if(contourDrawing.current.length===1)
-    contourDrawing.current.push([last[0]>179.997?last[0]-.002:last[0]+.002,last[1]]);
+    contourDrawing.current.push([last[0],last[1]]);
   }
   if(e.pointerType==="touch")onPointerEnd(e);
   else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
