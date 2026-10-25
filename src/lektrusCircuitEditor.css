@@ -432,3 +432,35 @@
   background:#e5efff;border-color:#abc5ed;color:#2558b0;
 }
 .lektrus-circuit-properties-toggle:disabled{opacity:.45;cursor:default}
+
+/* Adding/selecting a component must not shrink the electrical canvas:
+   prevent a visible jump away from the precise drop position. */
+.lektrus-circuit-editor .lektrus-circuit-editor-main{position:relative}
+.lektrus-circuit-editor.inspector-expanded .lektrus-circuit-editor-main{
+ grid-template-columns:206px minmax(0,1fr);
+}
+.lektrus-circuit-editor.palette-collapsed.inspector-expanded .lektrus-circuit-editor-main{
+ grid-template-columns:minmax(0,1fr);
+}
+.lektrus-circuit-editor .lektrus-circuit-inspector{
+ position:absolute;top:8px;right:8px;bottom:8px;z-index:7;
+ box-sizing:border-box;width:min(246px,calc(100vw - 20px));
+ min-height:0;max-height:none;box-shadow:0 12px 30px #193c6730;
+}
+@media(max-width:1050px){
+ .lektrus-circuit-editor.inspector-expanded .lektrus-circuit-editor-main{
+  grid-template-columns:170px minmax(0,1fr);
+ }
+ .lektrus-circuit-editor.palette-collapsed.inspector-expanded .lektrus-circuit-editor-main{
+  grid-template-columns:minmax(0,1fr);
+ }
+}
+@media(max-width:800px){
+ .lektrus-circuit-editor.inspector-expanded .lektrus-circuit-editor-main,
+ .lektrus-circuit-editor.palette-collapsed.inspector-expanded .lektrus-circuit-editor-main{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .lektrus-circuit-editor .lektrus-circuit-inspector{
+  top:6px;right:6px;bottom:6px;width:min(238px,calc(100vw - 62px));
+ }
+}
