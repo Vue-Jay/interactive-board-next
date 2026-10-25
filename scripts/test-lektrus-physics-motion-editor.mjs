@@ -39,4 +39,22 @@ for(const label of ["circuit-categories button","circuit-parts>button","circuit-
   assert.ok(buttons.includes(label),label+" needs consistent styling");
 assert.match(entry,/import "\.\/lektrusPhysicsGraphEditor.css"/);
 assert.match(entry,/import "\.\/lektrusCircuitButtons2026.css"/);
+// Physics editors share crisp vector glyphs and custom hot-spotted pointers.
+const mechanicsIcon=read("src/LektrusMechanicsToolIcon.tsx");
+const opticsIcon=read("src/LektrusOpticsToolIcon.tsx");
+const pointerGlyph=read("src/LektrusPhysicsPointerGlyph.tsx");
+const pointerCss=read("src/lektrusPhysicsPointers.css");
+assert.ok(mechanicsIcon.includes('<LektrusPhysicsPointerGlyph kind="select"'));
+assert.ok(opticsIcon.includes('<LektrusPhysicsPointerGlyph kind="select"'));
+assert.ok(icon.includes('<LektrusPhysicsPointerGlyph kind={kind}'));
+assert.ok(editor.includes('<LektrusPhysicsPointerGlyph kind="select"'));
+assert.ok(pointerGlyph.includes('kind==="select"')&&pointerGlyph.includes('kind==="hand"'));
+for(const name of ["--lektrus-select-pointer","--lektrus-open-hand-pointer","--lektrus-closed-hand-pointer"])
+ assert.ok(pointerCss.includes(name),"Branded cursor missing: "+name);
+for(const cls of ["lektrus-mechanics-svg.mode-select","lektrus-optics-svg.optics-mode-select",
+ "lektrus-circuit-svg.mode-select","lektrus-circuit-svg.mode-hand",
+ "lektrus-motion-svg.mode-select","board.board-hand-active"])
+ assert.ok(pointerCss.includes(cls),"Physics cursor surface missing: "+cls);
+assert.ok(entry.includes('import "./lektrusPhysicsPointers.css";'),"Cursor CSS must be loaded");
+
 console.log("Physics graphs: dedicated motion editor, no mixed forces, valid graph data and unified circuit controls.");
