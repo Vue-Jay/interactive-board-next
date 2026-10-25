@@ -348,6 +348,14 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
         event.preventDefault();event.stopPropagation();if(event.shiftKey)redo();else undo();
       }else if(modifier&&event.key.toLowerCase()==="y"){
         event.preventDefault();event.stopPropagation();redo();
+      }else if(!modifier&&["v","h","w","n"].includes(event.key.toLowerCase())){
+        event.preventDefault();event.stopPropagation();
+        const shortcut=event.key.toLowerCase();
+        changeTool(shortcut==="h"?"hand":shortcut==="w"?"wire":shortcut==="n"?"junction":"select");
+      }else if(!modifier&&["=","+","-","0"].includes(event.key)){
+        event.preventDefault();event.stopPropagation();
+        if(event.key==="0")resetView();
+        else zoomTo(view.zoom*(event.key==="-"?.8:1.25));
       }else if(event.key==="Delete"||event.key==="Backspace"){
         event.preventDefault();deleteSelected();
       }else if(event.key==="Escape"){
@@ -420,13 +428,13 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
             <div className="lektrus-circuit-toolbar">
               <div className="lektrus-circuit-toolgroup">
                 <button type="button" className={tool==="select"?"active":""}
-                  onClick={()=>changeTool("select")} title="Выделение и перемещение">↖ <span>Выбор</span></button>
+                  onClick={()=>changeTool("select")} title="Выделение и перемещение · V">↖ <span>Выбор</span></button>
                 <button type="button" className={tool==="hand"?"active":""}
-                  onClick={()=>changeTool("hand")} title="Переместить лист">✋ <span>Рука</span></button>
+                  onClick={()=>changeTool("hand")} title="Переместить лист · H">✋ <span>Рука</span></button>
                 <button type="button" className={tool==="wire"?"active":""}
-                  onClick={()=>changeTool("wire")} title="Соединить контакты и узлы">⌁ <span>Провод</span></button>
+                  onClick={()=>changeTool("wire")} title="Соединить контакты и узлы · W">⌁ <span>Провод</span></button>
                 <button type="button" className={tool==="junction"?"active":""}
-                  onClick={()=>changeTool("junction")} title="Поставить узел соединения">● <span>Узел</span></button>
+                  onClick={()=>changeTool("junction")} title="Поставить узел соединения · N">● <span>Узел</span></button>
               </div>
               <button type="button" className="lektrus-circuit-properties-toggle"
                 disabled={!selection} aria-pressed={inspectorOpen}
