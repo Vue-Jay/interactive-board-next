@@ -56,6 +56,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
  const [display,setDisplay]=useState<OpticsDocument|null>(null);
  const part=selected?.kind==="element"?doc.elements.find(e=>e.id===selected.id):undefined;
  const chosenRay=selected?.kind==="ray"?doc.rays.find(r=>r.id===selected.id):undefined;
+ const pathForSelected=chosenRay?traceOptics(doc).find(path=>path.id===chosenRay.id):undefined;
  const source=part?.kind==="source"?part:doc.elements.find(e=>e.kind==="source");
  const rays=source?doc.rays.filter(r=>r.sourceId===source.id):[];
  const commit=(next:OpticsDocument)=>{
@@ -213,7 +214,14 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
        <strong>Луч</strong>
        <label>Угол к оси, °<input type="range" min={-85} max={85} value={chosenRay.angle} onChange={e=>commit({...doc,rays:doc.rays.map(r=>r.id===chosenRay.id?{...r,angle:Number(e.target.value)}:r)})}/><small>{chosenRay.angle}°</small></label>
        <label>Цвет луча<input type="color" value={chosenRay.color} onChange={e=>commit({...doc,rays:doc.rays.map(r=>r.id===chosenRay.id?{...r,color:e.target.value}:r)})}/></label>
-       <p>{traceOptics(doc).find(ray=>ray.id===chosenRay.id)?.note}</p>
+       <div className="lektrus-optics-ray-steps">
+         <strong>Ход луча</strong>
+         {pathForSelected?.events?.length?pathForSelected.events.map((event,i)=>
+           <div key={i} className="lektrus-optics-ray-step">
+             <span>{i+1}</span><text>{event.text}</text>
+           </div>):<p>Луч движется по прямой, пока не встретит элемент.</p>}
+         <small>{pathForSelected?.note}</small>
+       </div>
      </div>}
      <button type="button" className="lektrus-optics-danger" onClick={deleteSelected}>Удалить выбранное</button>
      </aside>}
