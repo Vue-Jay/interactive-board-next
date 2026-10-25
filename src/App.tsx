@@ -1147,7 +1147,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onOpenEditor, suspendPeriodicWindows }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
@@ -1163,6 +1163,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
   onSchoolDiagramChange?: (diagram:import("./lektrusSchoolDiagramModel").SchoolDiagram)=>void;
+  onOpenEditor?: ()=>void;
   suspendPeriodicWindows?: boolean;
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
@@ -1312,11 +1313,21 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const scienceCaptionLayout=item.graphFigureId?.startsWith("physics-")?
     layoutScienceLabels(item.graphPoints??[],item.graphSegments??[],p=>({x:sx(p.x),y:sy(p.y)}),W,H):null;
   return <div className={`graph-view graph-purpose-${purpose} ${item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")?"science-graph":""} ${onPointMove?"graph-interactive":""}`}>
-    <div className="graph-label"><strong>{title}</strong>
-      {item.graphFigureId?.startsWith("chem-organic-")&&(()=>{
-        const analysis=analyzeOrganicStructure(item);
-        return analysis.valid?<small className="lektrus-organic-formula">{analysis.formula}</small>:null;
-      })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}</div>
+    {purpose==="geometry" ? (onOpenEditor&&
+      <button type="button" className="lektrus-graph-canvas-editor" data-board-interactive="true"
+        title="Открыть редактор построения" aria-label="Открыть редактор построения"
+        onPointerDown={event=>event.stopPropagation()}
+        onPointerUp={event=>event.stopPropagation()}
+        onClick={event=>{event.preventDefault();event.stopPropagation();onOpenEditor()}}
+        onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}>
+        <LektrusGeometryToolIcon name="editor" size={17}/><span>Редактор</span>
+      </button>) :
+      <div className="graph-label"><strong>{title}</strong>
+        {item.graphFigureId?.startsWith("chem-organic-")&&(()=>{
+          const analysis=analyzeOrganicStructure(item);
+          return analysis.valid?<small className="lektrus-organic-formula">{analysis.formula}</small>:null;
+        })()}{purpose==="number-line"&&intervalEnds&&<small>Промежуток: {item.graphIntervalStartClosed===false?"(":"["}{intervalEnds[0].x}; {intervalEnds[1].x}{item.graphIntervalEndClosed===false?")":"]"}</small>}{purpose==="function"&&expression&&<small className="graph-equation">{prettyGraphEquation(expression)}</small>}
+      </div>}
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onPointerDownCapture={event=>{
         if(onPickPoint){
@@ -8329,6 +8340,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item}
+                  onOpenEditor={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation
+                    ?()=>{setGraphPointEditId(null);openGraphEditor(item)}:undefined}
                   onPointMoveEnd={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)&&activeBoardGeometryMode(item)==="move"?(index,x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
@@ -8671,7 +8684,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>setFractionEditorId(singleSelected.id)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
               {singleSelected?.kind==="graph"&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&(
                 <span className="graph-selection-controls">
-                  {(singleSelected.graphPurpose!=="geometry"||boardGeometryMode?.id!==singleSelected.id)&&<button type="button" data-board-interactive="true"
+                  {singleSelected.graphPurpose!=="geometry"&&<button type="button" data-board-interactive="true"
                     className={singleSelected.graphPurpose==="geometry"?"lektrus-graph-open-editor":"lektrus-graph-edit-secondary"}
                     aria-label={singleSelected.graphPurpose==="geometry"?"Открыть полный редактор фигур":"Настроить учебный объект"}
                     onPointerDown={e=>e.stopPropagation()}
