@@ -93,7 +93,7 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
   };
   const advance=(p:OpticalPoint,v:Vector,amount:number):OpticalPoint=>
     ({x:p.x+v.x*amount,y:p.y+v.y*amount});
-  const addPoint=(p:OpticalPoint)=>{if(!points.some(q=>Math.abs(q.x-p.x)<.0001&&Math.abs(q.y-p.y)<.0001))points.push(p)};
+  const addPoint=(p:OpticalPoint)=>{const last=points.at(-1);if(!last||Math.hypot(last.x-p.x,last.y-p.y)>.0001)points.push(p)};
   for(let pass=0;pass<18;pass++){
     type Hit={e:OpticalElement;point:OpticalPoint;t:number;facet?:[OpticalPoint,OpticalPoint]};
     const candidates:Hit[]=[];
