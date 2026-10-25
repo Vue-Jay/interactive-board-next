@@ -1749,7 +1749,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         const movable=!!(onPointMove||onPointMoveEnd)&&!selectable&&(purpose!=="unit-circle"||i>=5);
         const closesHere=closingVertex===i&&!!onCloseFreePolygon&&!selectable;
         const picked=pickedPoints?.includes(i)??false;
-        return <g className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""} ${selectable?"lektrus-link-pickable":""} ${picked?"lektrus-link-picked":""}`} key={i}
+        return <g data-board-interactive={movable&&item.graphFigureId?.startsWith("physics-")?"true":undefined} className={`graph-point ${movable?"draggable":""} ${onRemovePoint?"removable":""} ${closesHere?"lektrus-free-close-target":""} ${selectable?"lektrus-link-pickable":""} ${picked?"lektrus-link-picked":""}`} key={i}
         onDoubleClick={onRemovePoint&&purpose==="geometry"?(e)=>{e.preventDefault();e.stopPropagation();if(Date.now()>ignoreNativeDoubleClickUntil.current)onRemovePoint(i);ignoreNativeDoubleClickUntil.current=0}:undefined}
         onPointerDown={movable||closesHere||selectable||!!onRemovePoint?(e)=>{
           if(e.button!==0||!e.isPrimary||
@@ -8694,7 +8694,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                       return moved.points===candidate.graphPoints?candidate:{...candidate,graphPoints:moved.points};
                     }));
                     setSelected([item.id]);
-                  }:undefined}
+                  }:selectedIds.has(item.id)&&tool==="select"&&!presentation&&
+                    !item.locked&&canEdit&&!structurallyLockedForStudent(item)&&
+                    ["physics-motion","physics-speed","physics-accelerated-speed",
+                     "physics-acceleration","physics-braking","physics-rest"].includes(item.graphFigureId??"")
+                    ?(index,x,y)=>{
+                      const latest=itemsRef.current.find(candidate=>candidate.id===item.id);
+                      if(!latest||!latest.graphPoints?.[index])return;
+                      const changed={...latest,graphPoints:latest.graphPoints.map((p,i)=>
+                        i===index?{...p,x,y}:p)};
+                      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+                      commit(itemsRef.current.map(candidate=>candidate.id===latest.id?changed:candidate));
+                      workChannel.current?.publishEdit(latest.id,editorDiff(latest,changed));
+                    }:undefined}
                   onSchoolDiagramChange={canEdit&&!item.locked&&isSchoolDiagramId(item.graphFigureId)?(diagram)=>{
                     const before=itemsRef.current.find(candidate=>candidate.id===item.id);
                     if(!before)return;
