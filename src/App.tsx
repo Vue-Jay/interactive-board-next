@@ -5426,6 +5426,20 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {...candidate,text:next.text}:candidate));
     }
   };
+  const isMotionGraph=(id:string|undefined)=>[
+    "physics-motion","physics-speed","physics-accelerated-speed",
+    "physics-acceleration","physics-braking","physics-rest"
+  ].includes(id??"");
+  const liveMotionGraphUpdate=(itemId:string,before:Item,next:Item)=>{
+    const latest=itemsRef.current.find(item=>item.id===itemId);
+    if(!latest||!isMotionGraph(latest.graphFigureId)||latest.locked||
+      !canEdit||structurallyLockedForStudent(latest))return;
+    const updated=mergeEditedValue(before,next,latest);
+    if(JSON.stringify(updated)===JSON.stringify(latest))return;
+    if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+    commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
+    workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
+  };
   const livePhysicalEditorUpdate=(itemId:string,field:"scienceMechanics"|"scienceOptics"|"scienceCircuit",
     before:unknown,next:unknown)=>{
     const latest=itemsRef.current.find(candidate=>candidate.id===itemId);
@@ -6737,7 +6751,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const stored=itemsRef.current.find(item=>item.id===mutation.itemId);
         if(!stored||stored.kind!=="graph"||
           !(stored.graphPurpose==="geometry"||stored.graphFigureId==="contour-atlas"||
-            stored.scienceMechanics||stored.scienceOptics||stored.scienceCircuit))return;
+            isMotionGraph(stored.graphFigureId)||stored.scienceMechanics||stored.scienceOptics||stored.scienceCircuit))return;
         if(!mutation.ops.length||JSON.stringify(mutation.ops).length>120000)return;
         const allowed=stored.graphFigureId==="contour-atlas"?
           (path:string|number)=>path==="schoolDiagram"||path==="text":
@@ -6763,7 +6777,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             (preview.scienceMechanics&&!mechanicsValid(preview.scienceMechanics))||
             (preview.scienceOptics&&!validOptics(preview.scienceOptics))||
             (preview.scienceCircuit&&!circuitIsDocument(preview.scienceCircuit))||
-            (preview.graphPoints?.length??0)>40||
+            (preview.graphPoints?.length??0)>(isMotionGraph(preview.graphFigureId)?80:40)||
             (preview.graphSegments?.length??0)>60||
             (preview.graphPolygons?.length??0)>30||
             preview.graphPoints?.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))return current;
@@ -7605,10 +7619,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             onClose={next=>{finalizePhysicalEditor(next,false);setScienceEditorItem(null)}}
             onSave={next=>{finalizePhysicalEditor(next,true);setScienceEditorItem(null);setNotice("Оптика синхронизирована")}}/>:
           ["physics-motion","physics-speed","physics-accelerated-speed","physics-acceleration","physics-braking","physics-rest"].includes(scienceEditorItem.graphFigureId??"")?
-          <LektrusPhysicsGraphEditor key={scienceEditorItem.id} item={scienceEditorItem}
+          <LektrusPhysicsGraphEditor key={scienceEditorItem.id}
+            shared={items.some(x=>x.id===scienceEditorItem.id)}
+            item={remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem}
+            onLiveChange={(before,next)=>liveMotionGraphUpdate(scienceEditorItem.id,before,next)}
             onCancel={()=>setScienceEditorItem(null)}
-            onClose={next=>{if(itemsRef.current.some(i=>i.id===next.id))commit(itemsRef.current.map(i=>i.id===next.id?next:i));setScienceEditorItem(null)}}
-            onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Физический график сохранён")}}/>:
+            onClose={next=>{finalizePhysicalEditor(next,false);setScienceEditorItem(null)}}
+            onSave={next=>{finalizePhysicalEditor(next,true);setScienceEditorItem(null);setNotice("Физический график синхронизирован")}}/>:
           <LektrusScienceEditor key={scienceEditorItem.id} item={scienceEditorItem}
           subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
           onCancel={()=>setScienceEditorItem(null)}
@@ -8572,7 +8589,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   if (!canEdit || (structurallyLockedForStudent(item)&&item.graphFigureId!=="contour-atlas")) return;
                   const remoteEditor = remoteEditorFor(item.id);
                   if (remoteEditor&&!((item.kind==="graph"&&item.graphPurpose==="geometry")||
-            item.graphFigureId==="contour-atlas")) {
+            item.graphFigureId==="contour-atlas"||isMotionGraph(item.graphFigureId))) {
                     setNotice(`${remoteEditor.name} уже редактирует этот объект`);
                     return;
                   }
