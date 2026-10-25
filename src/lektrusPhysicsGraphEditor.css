@@ -109,3 +109,6 @@
 }
 .lektrus-motion-svg.mode-point{cursor:none}
 .lektrus-motion-svg.mode-point .lektrus-motion-point-hit{cursor:grab}
+
+/* Finer unlabeled subdivisions, with slightly stronger integer tick lines. */
+.lektrus-motion-grid line.major{stroke:#c9d7ec;stroke-width:1.25}
