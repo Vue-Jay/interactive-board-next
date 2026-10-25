@@ -101,6 +101,7 @@ import { connectBoardViewControl, type BoardViewControlChannel } from "./boardVi
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState } from "./boardWorkSync";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
+import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import {
   parseDocument,
   packDocumentInk,
@@ -5341,6 +5342,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     window.setTimeout(() => startEdit(frame), 0);
   };
 
+  const graphDraftFromItem=(item:Item):GraphDraft=>({constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
+  const graphItemFromDraft=(item:Item,d:GraphDraft):Item=>({...item,text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphConstraints:d.constraints,graphMagneticSnap:d.magneticSnap,graphFreePathStart:d.freePathStart??0,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode});
+  const liveGraphDraftRef=useRef<GraphDraft|null>(null);
+  const graphLiveBaseRef=useRef<Item|null>(null);
   const openGraphEditor = (item: Item) => {
     setGraphPointEditId(null);setBoardGeometryMode(null);setBoardGeometryError("");
     if(item.kind!=="graph"||(item.locked&&item.graphFigureId!=="contour-atlas"))return;
@@ -5349,11 +5354,54 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){setCircuitEditorItem(item);return;}
     if(item.scienceAtomModel||item.graphFigureId==="chem-atom"){setAtomEditorItem(item);return;}
     if(item.graphFigureId==="chem-periodic"){setPeriodicEditorItem(item);return;}
-    if(item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")){setScienceEditorItem(item);return;} if(itemsRef.current.some(existing=>existing.id===item.id))setSelected([item.id]); setGraphEditorId(item.id);
-    setGraphDraft({constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
+    if(item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")){setScienceEditorItem(item);return;}
+    if(itemsRef.current.some(existing=>existing.id===item.id))setSelected([item.id]);
+    const next=graphDraftFromItem(item);
+    liveGraphDraftRef.current=next;
+    graphLiveBaseRef.current=item;
+    setGraphEditorId(item.id);setGraphDraft(next);
   };
-  const closeGraphEditor=()=>{setGraphEditorId(null);setGraphDraft(null);setPendingMathItem(null)};
-  const saveGraphEditor=()=>{if(!graphEditorId||!graphDraft){closeGraphEditor();return} const d={...graphDraft,xMin:Math.min(graphDraft.xMin,graphDraft.xMax-1),xMax:Math.max(graphDraft.xMax,graphDraft.xMin+1),yMin:Math.min(graphDraft.yMin,graphDraft.yMax-1),yMax:Math.max(graphDraft.yMax,graphDraft.yMin+1)}; commit((pendingMathItem?.kind==="graph"&&pendingMathItem.id===graphEditorId?[...itemsRef.current,pendingMathItem]:itemsRef.current).map(item=>item.id===graphEditorId?{...item,text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphConstraints:d.constraints,graphMagneticSnap:d.magneticSnap,graphFreePathStart:d.freePathStart??0,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode}:item)); closeGraphEditor(); setNotice(d.purpose==="geometry"?"Построение сохранено":"График сохранён")};
+  const closeGraphEditor=()=>{
+    setGraphEditorId(null);setGraphDraft(null);setPendingMathItem(null);
+    liveGraphDraftRef.current=null;graphLiveBaseRef.current=null;
+  };
+  const changeLiveGraphDraft=(update:GraphDraft|null|((current:GraphDraft|null)=>GraphDraft|null))=>{
+    const before=liveGraphDraftRef.current;
+    if(!before)return;
+    const proposed=typeof update==="function"?update(before):update;
+    if(!proposed||JSON.stringify(before)===JSON.stringify(proposed))return;
+    const exists=!!graphEditorId&&itemsRef.current.some(item=>item.id===graphEditorId);
+    const latest=exists?itemsRef.current.find(item=>item.id===graphEditorId):null;
+    const merged=latest?mergeEditedValue(before,proposed,graphDraftFromItem(latest)):proposed;
+    liveGraphDraftRef.current=merged;setGraphDraft(merged);
+    if(latest){
+      if(!graphLiveBaseRef.current)graphLiveBaseRef.current=latest;
+      const changedItem=graphItemFromDraft(latest,merged);
+      commit(itemsRef.current.map(item=>item.id===latest.id?changedItem:item));
+    }
+  };
+  const saveGraphEditor=()=>{
+    if(!graphEditorId||!liveGraphDraftRef.current){closeGraphEditor();return;}
+    const d=liveGraphDraftRef.current;
+    if(!itemsRef.current.some(item=>item.id===graphEditorId)){
+      const pending=pendingMathItem?.kind==="graph"&&pendingMathItem.id===graphEditorId?pendingMathItem:null;
+      if(pending)commit([...itemsRef.current,graphItemFromDraft(pending,d)]);
+    }
+    closeGraphEditor();
+    setNotice(d.purpose==="geometry"?"Построение синхронизировано":"График сохранён");
+  };
+  // Refresh an editor after another participant updates its object. Local edits
+  // already use the latest item synchronously and never overwrite the whole
+  // previous draft when an unrelated point changes.
+  useEffect(()=>{
+    if(!graphEditorId)return;
+    const current=items.find(item=>item.id===graphEditorId);
+    if(!current)return;
+    const updated=graphDraftFromItem(current);
+    if(JSON.stringify(updated)!==JSON.stringify(liveGraphDraftRef.current)){
+      liveGraphDraftRef.current=updated;setGraphDraft(updated);
+    }
+  },[items,graphEditorId]);
 
   // On-board school construction. Changing tools never creates a separate editor:
   // the actual board object is updated through the same undo/realtime commit.
