@@ -8,6 +8,10 @@ function validOpticsPayload(data:unknown):boolean{
    doc.elements.length>80||doc.rays.length>160||typeof doc.grid!=="boolean"||
    typeof doc.labels!=="boolean"||typeof doc.normals!=="boolean")return false;
  const kinds=["source","mirror","converging-lens","diverging-lens","interface","screen","prism"];
+ if(doc.legacy!=null&&(!Array.isArray(doc.legacy)||doc.legacy.length>200||
+   doc.legacy.some((seg:Record<string,unknown>)=>!seg||typeof seg.id!=="string"||
+     typeof seg.label!=="string"||seg.label.length>75||typeof seg.arrow!=="boolean"||
+     !["x1","y1","x2","y2"].every(k=>typeof seg[k]==="number"&&Number.isFinite(seg[k])))))return false;
  const ids=new Set<string>();
  for(const e of doc.elements){
    if(!e||typeof e!=="object")return false;
