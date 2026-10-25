@@ -91,4 +91,22 @@ assert.ok(touchPolish.includes('selection-toolbar-screen > .selection-edit-actio
  touchPolish.includes('min-width:max-content!important'),
  "Action labels must never be squeezed into an icon-only width");
 
+// Physics diagrams get the same on-board editor affordance as school geometry.
+const physicsAction=file("src/LektrusPhysicsCanvasEditorAction.tsx");
+const physicsBoard=file("src/LektrusPhysicalBoardView.tsx");
+const physicsCanvasCss=file("src/lektrusBoardGeometryPanel.css");
+assert.ok(physicsAction.includes('className="lektrus-graph-canvas-editor"'),"Physics editor button must match math styling");
+assert.ok(physicsAction.includes('onPointerDown={event=>event.stopPropagation()}'),"Physics editor action must not start a board drag");
+assert.ok(physicsAction.includes("onOpenEditor()"),"Physics editor action must invoke the real editor");
+assert.ok(physicsBoard.includes("<LektrusPhysicsCanvasEditorAction onOpenEditor={onOpenEditor}/>"),
+ "Mechanics, optics and circuit diagrams must expose their editor on the board");
+assert.ok(app.includes("onOpenEditor={onOpenEditor} onMoveEnd={onPhysicalPartMove}"),
+ "Board must pass the editor action to interactive physical diagrams");
+assert.ok(app.includes('item.graphFigureId?.startsWith("physics-")&&onOpenEditor&&'),
+ "Legacy physics graphs must offer their editor on the canvas");
+assert.ok(app.includes('(item.graphFigureId?.startsWith("physics-")||!!item.scienceMechanics||!!item.scienceOptics||!!item.scienceCircuit)'),
+ "Selection actions must support all physics editor formats");
+assert.ok(physicsCanvasCss.includes(".graph-view:is(.lektrus-physical-board-inline,.science-graph,.lektrus-circuit-board-view)"),
+ "Physics editor button must be positioned above the diagram");
+
 console.log("Lektrus editor UX: palette, five immediate ink widths, keyboard and inspector contracts OK");
