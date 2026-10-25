@@ -66,6 +66,9 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
   const [inspectorOpen,setInspectorOpen]=useState(false);
   const [view,setView]=useState({x:0,y:0,zoom:1});
   const panRef=useRef<{id:number;clientX:number;clientY:number;x:number;y:number;scale:number}|null>(null);
+  const touches=useRef(new Map<number,{x:number;y:number}>());
+  const pinchRef=useRef<{distance:number;zoom:number;world:{x:number;y:number}}|null>(null);
+  const ignoreTapUntil=useRef(0);
   const zoomTo=(factor:number,anchor={x:450,y:290})=>{
     setView(v=>{
       const zoom=Math.max(1,Math.min(4,Math.round(factor*100)/100));
@@ -151,6 +154,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
     setNotice(elementLabel(type)+" добавлен. Контакты показаны по сторонам.");
   };
   const clickAnchor=(anchor:CircuitAnchor)=>{
+    if(tool==="hand"||Date.now()<ignoreTapUntil.current)return;
     if(tool!=="wire"){
       if(anchor.kind==="terminal")setSelection({kind:"component",id:anchor.componentId});
       else setSelection({kind:"junction",id:anchor.junctionId});
@@ -162,7 +166,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
     commit(result);setPending(null);setNotice(result===doc?"Такое соединение уже существует.":"Провод добавлен.");
   };
   const blank=(point:{x:number;y:number})=>{
-    if(tool==="hand")return;
+    if(Date.now()<ignoreTapUntil.current||tool==="hand")return;
     if(tool==="select"){setSelection(null);return}
     if(tool==="place"){dropSymbol(placing,point);return}
     if(doc.junctions.length>=240){setNotice("Достигнут предел 240 узлов.");return}
@@ -200,6 +204,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
     setSelection(null);setNotice("Щёлкните на чертеже, чтобы разместить "+elementLabel(type).toLowerCase()+".");
   };
   const downComponent=(event:ReactPointerEvent<SVGGElement>,component:CircuitComponent)=>{
+    if(pinchRef.current)return;
     if(tool==="wire"){setSelection({kind:"component",id:component.id});return}
     if(tool!=="select")return;
     event.preventDefault();
@@ -211,7 +216,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
     event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
   };
   const downJunction=(event:ReactPointerEvent<SVGCircleElement>,node:CircuitJunction)=>{
-    if(tool!=="select")return;
+    if(pinchRef.current||tool!=="select")return;
     event.preventDefault();
     setSelection({kind:"junction",id:node.id});
     const point=circuitSvgCoords(event.clientX,event.clientY,event.currentTarget.ownerSVGElement!);
@@ -221,6 +226,19 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
     event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
   };
   const svgDown=(event:ReactPointerEvent<SVGSVGElement>)=>{
+    if(event.pointerType==="touch"){
+      touches.current.set(event.pointerId,{x:event.clientX,y:event.clientY});
+      if(touches.current.size>=2){
+        const [a,b]=[...touches.current.values()];
+        const distance=Math.hypot(a.x-b.x,a.y-b.y);
+        const world=circuitSvgCoords((a.x+b.x)/2,(a.y+b.y)/2,event.currentTarget);
+        pinchRef.current={distance:Math.max(distance,1),zoom:view.zoom,world};
+        panRef.current=null;ignoreTapUntil.current=Date.now()+450;
+        setDragging(null);setPending(null);
+        event.currentTarget.setPointerCapture(event.pointerId);
+        event.preventDefault();return;
+      }
+    }
     if(tool!=="hand")return;
     event.preventDefault();event.stopPropagation();
     const rect=event.currentTarget.getBoundingClientRect();
@@ -234,6 +252,21 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
     zoomTo(view.zoom*(event.deltaY>0?.88:1.14),point);
   };
   const svgMove=(event:ReactPointerEvent<SVGSVGElement>)=>{
+    if(event.pointerType==="touch"&&touches.current.has(event.pointerId))
+      touches.current.set(event.pointerId,{x:event.clientX,y:event.clientY});
+    if(pinchRef.current&&touches.current.size>=2){
+      const [a,b]=[...touches.current.values()],pinch=pinchRef.current;
+      const distance=Math.hypot(a.x-b.x,a.y-b.y),zoom=Math.max(1,Math.min(4,pinch.zoom*distance/pinch.distance));
+      const rect=event.currentTarget.getBoundingClientRect();
+      const width=900/zoom,height=580/zoom;
+      const scale=Math.min(rect.width/width,rect.height/height)||1;
+      const padX=(rect.width-width*scale)/2,padY=(rect.height-height*scale)/2;
+      const x=(a.x+b.x)/2-rect.left-padX,y=(a.y+b.y)/2-rect.top-padY;
+      setView({zoom,
+        x:clampCircuit(pinch.world.x-x/scale,0,900-width),
+        y:clampCircuit(pinch.world.y-y/scale,0,580-height)});
+      event.preventDefault();return;
+    }
     if(panRef.current?.id===event.pointerId){
       event.preventDefault();
       const pan=panRef.current,width=900/view.zoom,height=580/view.zoom;
@@ -252,6 +285,16 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
     }
   };
   const svgUp=(event:ReactPointerEvent<SVGSVGElement>)=>{
+    const wasPinching=Boolean(pinchRef.current);
+    if(event.pointerType==="touch")touches.current.delete(event.pointerId);
+    if(wasPinching){
+      if(touches.current.size<2)pinchRef.current=null;
+      ignoreTapUntil.current=Date.now()+450;
+      setDragging(null);
+      if(event.currentTarget.hasPointerCapture(event.pointerId))
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      return;
+    }
     if(panRef.current?.id===event.pointerId){
       panRef.current=null;
       if(event.currentTarget.hasPointerCapture(event.pointerId))
