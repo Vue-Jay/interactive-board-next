@@ -39,4 +39,45 @@ for(const label of ["circuit-categories button","circuit-parts>button","circuit-
   assert.ok(buttons.includes(label),label+" needs consistent styling");
 assert.match(entry,/import "\.\/lektrusPhysicsGraphEditor.css"/);
 assert.match(entry,/import "\.\/lektrusCircuitButtons2026.css"/);
+// Board toolbar icons, not the tools inside fullscreen physics editors.
+const subjectIcons=read("src/LektrusSubjectToolIcons.tsx");
+for(const id of ["physics-mechanics","physics-optics","physics-graphs","physics-circuits"]){
+ const line=subjectIcons.split("\n").find(s=>s.includes(' "'+id+'":'));
+ assert.ok(line&&line.includes("currentColor"),"Board physics icon must match Lektrus's monochrome vector language: "+id);
+}
+const mechanicsGlyph=read("src/LektrusMechanicsToolIcon.tsx");
+const opticsGlyph=read("src/LektrusOpticsToolIcon.tsx");
+assert.ok(mechanicsGlyph.includes('const blue="#4779b9"'),"Preserve original mechanics editor icons");
+assert.ok(opticsGlyph.includes('const opticalStroke="#3d77b7"'),"Preserve original optics editor icons");
+assert.ok(icon.includes("const path:Record<Kind,string>"),"Preserve original circuit editor icons");
+assert.ok(editor.includes('>Выбор</button>')&&editor.includes('>+ Точка</button>'),
+ "Fullscreen motion editor button layout must be restored");
+
+const compactCursors=read("src/lektrusPhysicsPointers.css");
+assert.ok(compactCursors.includes('width%3D%2220%22')&&
+ !compactCursors.includes('width%3D%2232%22'),
+ "The pointer images must use 20px size rather than oversized 32px");
+const axisTs=read("src/lektrusPhysicsGraphTicks.ts");
+const axisJs=ts.transpileModule(axisTs,{compilerOptions:{
+ module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText;
+const {motionAxisTicks,isPhysicsMotionGraph}=await import("data:text/javascript;base64,"+Buffer.from(axisJs).toString("base64"));
+assert.equal(isPhysicsMotionGraph("physics-motion"),true);
+assert.equal(isPhysicsMotionGraph("physics-optics"),false);
+for(const [min,max,labels] of [[0,12,8],[-4,5,5],[0,9,7],[0,0.8,7],
+ [1.25,14.75,8],[-16,180,7],[0,900,7]]){
+ const axisTicks=motionAxisTicks(min,max,labels);
+ assert.ok(axisTicks.labels.every(Number.isInteger),"Axis labels must be integers: "+min+".."+max);
+ assert.ok(axisTicks.grid.length>=axisTicks.labels.length,
+  "Grid cannot omit labelled positions: "+min+".."+max);
+ assert.ok(axisTicks.labels.every(x=>axisTicks.grid.includes(x)),
+  "Every label should sit on a visible grid line: "+min+".."+max);
+}
+const defaultTicks=motionAxisTicks(0,12,8);
+assert.deepEqual(defaultTicks.labels,[0,2,4,6,8,10,12]);
+assert.ok(defaultTicks.grid.includes(1)&&!defaultTicks.labels.includes(1),
+ "Unlabelled intermediate subdivision should remain visible");
+assert.ok(editor.includes('xTicks.labels.map')&&editor.includes('yTicks.labels.map'));
+assert.ok(app.includes('motionXTicks?.labels??gridX')&&app.includes('motionYTicks?.labels??gridY'),
+ "The board preview must use the same integer tick layout as the full editor");
+
 console.log("Physics graphs: dedicated motion editor, no mixed forces, valid graph data and unified circuit controls.");
