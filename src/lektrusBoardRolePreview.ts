@@ -58,6 +58,8 @@ export const STUDENT_PROTECTED_OBJECT_KINDS=Object.freeze([
 export function canUseBoardCreationTool(
  toolId:string,capabilities:BoardRoleCapabilities
 ):boolean{
+ // Navigation never edits document state and remains available to viewers.
+ if(toolId==="select"||toolId==="hand"||toolId==="lasso")return true;
  return capabilities.canEdit&&(!capabilities.isStudent||
    !(STUDENT_BLOCKED_CREATE_TOOLS as readonly string[]).includes(toolId));
 }
