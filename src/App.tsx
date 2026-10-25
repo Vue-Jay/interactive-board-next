@@ -36,6 +36,7 @@ import {boardObjectTypeName} from "./boardObjectNames";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
+import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration,{isChemicalIllustration} from "./LektrusChemistryIllustration";
 import {analyzeOrganicStructure} from "./lektrusOrganicFormula";
@@ -7548,7 +7549,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               itemsRef.current.map(i=>i.id===next.id?fitted:i):[...itemsRef.current,fitted]);
             setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
           }}/>}
-        {scienceEditorItem&&<LektrusScienceEditor key={scienceEditorItem.id} item={scienceEditorItem}
+        {scienceEditorItem&&<>{["physics-motion","physics-speed","physics-accelerated-speed","physics-acceleration","physics-braking","physics-rest"].includes(scienceEditorItem.graphFigureId??"")?
+          <LektrusPhysicsGraphEditor key={scienceEditorItem.id} item={scienceEditorItem}
+            onCancel={()=>setScienceEditorItem(null)}
+            onClose={next=>{if(itemsRef.current.some(i=>i.id===next.id))commit(itemsRef.current.map(i=>i.id===next.id?next:i));setScienceEditorItem(null)}}
+            onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Физический график сохранён")}}/>:
+          <LektrusScienceEditor key={scienceEditorItem.id} item={scienceEditorItem}
           subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
           onCancel={()=>setScienceEditorItem(null)}
           onClose={next=>{
@@ -7558,7 +7564,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             }
             setScienceEditorItem(null);
           }}
-          onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Предметная схема сохранена");}}/>}
+          onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Предметная схема сохранена");}}/>}</>}
         {chartEditorItem&&createPortal(<LektrusDataChartEditor key={chartEditorItem.id}
           item={chartEditorItem} onClose={()=>setChartEditorItem(null)}
           onSave={next=>{
