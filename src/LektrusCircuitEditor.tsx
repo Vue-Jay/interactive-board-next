@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState,type DragEvent,type PointerEvent as ReactPointerEvent} from "react";
+import {useEffect,useMemo,useRef,useState,type WheelEvent as ReactWheelEvent,type DragEvent,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {circuitSymbols,type CircuitCategory,type CircuitSymbol} from "./ScienceCircuitGlyph";
@@ -62,6 +62,21 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
   const [cursor,setCursor]=useState<{x:number;y:number}|null>(null);
   const [dragging,setDragging]=useState<Dragging|null>(null);
   const [notice,setNotice]=useState("");
+  const [paletteOpen,setPaletteOpen]=useState(true);
+  const [inspectorOpen,setInspectorOpen]=useState(false);
+  const [view,setView]=useState({x:0,y:0,zoom:1});
+  const panRef=useRef<{id:number;clientX:number;clientY:number;x:number;y:number;scale:number}|null>(null);
+  const zoomTo=(factor:number,anchor={x:450,y:290})=>{
+    setView(v=>{
+      const zoom=Math.max(1,Math.min(4,Math.round(factor*100)/100));
+      const width=900/zoom,height=580/zoom,ratio=v.zoom/zoom;
+      return {zoom,
+        x:clampCircuit(anchor.x-(anchor.x-v.x)*ratio,0,900-width),
+        y:clampCircuit(anchor.y-(anchor.y-v.y)*ratio,0,580-height)};
+    });
+  };
+  const resetView=()=>setView({x:0,y:0,zoom:1});
+  useEffect(()=>setInspectorOpen(Boolean(selection)),[selection?.kind,selection?.id]);
   const [confirmAction,setConfirmAction]=useState<{kind:"template";id:TemplateId}|{kind:"clear"}|null>(null);
   const doc=history.present;
   const currentComponent=selection?.kind==="component"?
@@ -106,7 +121,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
   });
   const close=()=>onClose?onClose(normalized()):onCancel();
   const changeTool=(next:CircuitTool)=>{
-    setTool(next);setPending(null);setDragging(null);setNotice("");
+    setTool(next);setPending(null);setDragging(null);panRef.current=null;setNotice("");
   };
   const applyTemplate=(id:TemplateId)=>{
     commit(circuitTemplate(id));
@@ -147,6 +162,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
     commit(result);setPending(null);setNotice(result===doc?"Такое соединение уже существует.":"Провод добавлен.");
   };
   const blank=(point:{x:number;y:number})=>{
+    if(tool==="hand")return;
     if(tool==="select"){setSelection(null);return}
     if(tool==="place"){dropSymbol(placing,point);return}
     if(doc.junctions.length>=240){setNotice("Достигнут предел 240 узлов.");return}
@@ -204,7 +220,27 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
       previewX:node.x,previewY:node.y});
     event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
   };
+  const svgDown=(event:ReactPointerEvent<SVGSVGElement>)=>{
+    if(tool!=="hand")return;
+    event.preventDefault();event.stopPropagation();
+    const rect=event.currentTarget.getBoundingClientRect();
+    const scale=Math.min(rect.width/(900/view.zoom),rect.height/(580/view.zoom))||1;
+    panRef.current={id:event.pointerId,clientX:event.clientX,clientY:event.clientY,x:view.x,y:view.y,scale};
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const svgWheel=(event:ReactWheelEvent<SVGSVGElement>)=>{
+    event.preventDefault();event.stopPropagation();
+    const point=circuitSvgCoords(event.clientX,event.clientY,event.currentTarget);
+    zoomTo(view.zoom*(event.deltaY>0?.88:1.14),point);
+  };
   const svgMove=(event:ReactPointerEvent<SVGSVGElement>)=>{
+    if(panRef.current?.id===event.pointerId){
+      event.preventDefault();
+      const pan=panRef.current,width=900/view.zoom,height=580/view.zoom;
+      setView(v=>({...v,x:clampCircuit(pan.x-(event.clientX-pan.clientX)/pan.scale,0,900-width),
+        y:clampCircuit(pan.y-(event.clientY-pan.clientY)/pan.scale,0,580-height)}));
+      return;
+    }
     const position=circuitSvgCoords(event.clientX,event.clientY,event.currentTarget);
     if(tool==="wire")setCursor(position);
     if(dragging&&dragging.pointerId===event.pointerId){
@@ -216,6 +252,12 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
     }
   };
   const svgUp=(event:ReactPointerEvent<SVGSVGElement>)=>{
+    if(panRef.current?.id===event.pointerId){
+      panRef.current=null;
+      if(event.currentTarget.hasPointerCapture(event.pointerId))
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      return;
+    }
     if(dragging&&dragging.pointerId===event.pointerId){
       const moved=Math.hypot(dragging.previewX-dragging.sourceX,dragging.previewY-dragging.sourceY)>0.5;
       if(moved){
@@ -246,7 +288,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
   };
   const toggleSetting=(name:"showGrid"|"snap")=>update(d=>({...d,[name]:!d[name]}));
   const groupTypes=visibleParts;
-  const modeInstruction=tool==="place"?"Щёлкните на листе, чтобы поставить элемент. Можно перетащить его из палитры.":
+  const modeInstruction=tool==="hand"?"Перетаскивайте лист. Колёсико или кнопки масштаба изменяют увеличение.":tool==="place"?"Щёлкните на листе, чтобы поставить элемент. Можно перетащить его из палитры.":
     tool==="wire"?"Щёлкните контакт → второй контакт. Щелчок по пустому месту создаст узел.":
     tool==="junction"?"Щёлкните, чтобы поставить узел соединения проводов.":
     "Выберите элемент или провод. Перетаскивание элемента сохраняет его соединения.";
@@ -275,7 +317,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
   });
   return createPortal(
     <div className="lektrus-circuit-backdrop" onPointerDown={e=>{if(e.currentTarget===e.target)close()}}>
-      <section className="lektrus-circuit-editor" role="dialog" aria-modal="true" aria-label="Конструктор электрических цепей"
+      <section className={"lektrus-circuit-editor"+(paletteOpen?"":" palette-collapsed")+(inspectorOpen?" inspector-expanded":"")} role="dialog" aria-modal="true" aria-label="Конструктор электрических цепей"
         onPointerDown={e=>e.stopPropagation()}>
         <header className="lektrus-circuit-header">
           <div className="lektrus-circuit-mark">⌁</div>
@@ -286,12 +328,16 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
               aria-label="Отменить" disabled={!history.past.length} onClick={undo}>↶</button>
             <button type="button" className="lektrus-circuit-icon-button" title="Повторить (Ctrl+Y)"
               aria-label="Повторить" disabled={!history.future.length} onClick={redo}>↷</button>
+            <button type="button" className="lektrus-circuit-compact-button" aria-pressed={paletteOpen}
+              onClick={()=>setPaletteOpen(v=>!v)} title="Показать или скрыть каталог">Элементы</button>
             <button type="button" className="lektrus-circuit-close" aria-label="Закрыть редактор" onClick={close}>×</button>
           </div>
         </header>
         <div className="lektrus-circuit-editor-main">
-          <aside className="lektrus-circuit-palette">
-            <div className="lektrus-circuit-palette-section">
+          <aside className="lektrus-circuit-palette" aria-label="Каталог элементов цепи">
+            <details className="lektrus-circuit-palette-section">
+              <summary>Название и примеры</summary>
+              <div className="lektrus-circuit-palette-config">
               <label>Название чертежа
                 <input maxLength={100} value={title} onChange={e=>setTitle(e.target.value)}/>
               </label>
@@ -304,8 +350,9 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
                   {templates.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
                 </select>
               </label>
-              <p>Примеры внутри одного инструмента. Можно полностью переделать схему.</p>
-            </div>
+              <p>Загрузка примера заменит текущую схему после подтверждения.</p>
+              </div>
+            </details>
             <div className="lektrus-circuit-palette-heading"><strong>Условные обозначения</strong><span>{circuitSymbols.length-1}</span></div>
             <div className="lektrus-circuit-categories">
               {palettes.map(([key,name])=><button type="button" key={key}
@@ -331,10 +378,20 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
               <div className="lektrus-circuit-toolgroup">
                 <button type="button" className={tool==="select"?"active":""}
                   onClick={()=>changeTool("select")} title="Выделение и перемещение">↖ <span>Выбор</span></button>
+                <button type="button" className={tool==="hand"?"active":""}
+                  onClick={()=>changeTool("hand")} title="Переместить лист">✋ <span>Рука</span></button>
                 <button type="button" className={tool==="wire"?"active":""}
                   onClick={()=>changeTool("wire")} title="Соединить контакты и узлы">⌁ <span>Провод</span></button>
                 <button type="button" className={tool==="junction"?"active":""}
                   onClick={()=>changeTool("junction")} title="Поставить узел соединения">● <span>Узел</span></button>
+              </div>
+              <div className="lektrus-circuit-zoom" role="group" aria-label="Масштаб схемы">
+                <button type="button" aria-label="Уменьшить масштаб" disabled={view.zoom<=1}
+                  onClick={()=>zoomTo(view.zoom/1.25)}>−</button>
+                <button type="button" className="lektrus-circuit-zoom-value"
+                  onClick={resetView} title="Показать весь лист">{Math.round(view.zoom*100)}%</button>
+                <button type="button" aria-label="Увеличить масштаб" disabled={view.zoom>=4}
+                  onClick={()=>zoomTo(view.zoom*1.25)}>+</button>
               </div>
               <div className="lektrus-circuit-toggle">
                 <label><input type="checkbox" checked={doc.showGrid} onChange={()=>toggleSetting("showGrid")}/> Сетка</label>
@@ -345,6 +402,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
               <LektrusCircuitView doc={displayDoc} mode={tool} selection={selection}
                 pending={pending} cursor={cursor} onBlank={blank} onAnchor={clickAnchor}
                 onSelection={setSelection} onComponentDown={downComponent} onJunctionDown={downJunction}
+                view={view} onWheel={svgWheel} onBackgroundDown={svgDown}
                 onSvgMove={svgMove} onSvgUp={svgUp} onSvgLeave={()=>setCursor(null)} onDrop={drop}/>
             </div>
             <div className="lektrus-circuit-stage-bottom">
@@ -352,7 +410,9 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
               <span>{doc.components.length} элементов · {doc.wires.length} проводов · {doc.junctions.length} узлов</span>
             </div>
           </div>
-          <aside className="lektrus-circuit-inspector">
+          <aside className="lektrus-circuit-inspector" aria-label="Настройки выбранного элемента">
+            <button type="button" className="lektrus-circuit-inspector-close"
+              aria-label="Скрыть настройки элемента" onClick={()=>setInspectorOpen(false)}>×</button>
             <div className="lektrus-circuit-inspector-header"><strong>Свойства</strong><span>{selection?"Выбрано":"Выберите объект"}</span></div>
             {currentComponent&&<>
               <div className="lektrus-circuit-inspector-preview">
