@@ -83,6 +83,20 @@ function ContourToolIcon({name}:{name:ContourToolName}){
   {name==="label"&&<><path d="M3 5h12v12H3z"/><path d="m9 8-3 6M12 14 9 8M6.8 12h4.5M17 10l4 4-4 4"/></>}
  </svg>;
 }
+/** Screen-space brush indicator matches the actual pen and eraser thickness.
+ * SVG data cursors avoid a separately moving DOM overlay and never interfere
+ * with two-finger map gestures or shared contour drawings. */
+export function contourBrushCursor(tool:"pen"|"erase",width:number,color:string):string{
+ const diameter=Math.max(3,Math.min(90,tool==="erase"?width*5+2:width));
+ const canvas=Math.max(24,Math.ceil(diameter+10));
+ const center=Math.floor(canvas/2),radius=diameter/2;
+ const ink=tool==="erase"?"#c94b60":/^#[0-9a-fA-F]{6}$/.test(color)?color:"#263c58";
+ const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+canvas+'" height="'+canvas+'" viewBox="0 0 '+canvas+' '+canvas+'">'+
+ '<circle cx="'+center+'" cy="'+center+'" r="'+radius+'" fill="'+(tool==="erase"?"#e36b7c":"#ffffff")+'" fill-opacity=".16" stroke="#fff" stroke-width="3"/>'+
+ '<circle cx="'+center+'" cy="'+center+'" r="'+radius+'" fill="none" stroke="'+ink+'" stroke-width="1.5"/>'+
+ '<circle cx="'+center+'" cy="'+center+'" r="1.4" fill="'+ink+'"/></svg>';
+ return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") '+center+' '+center+', crosshair';
+}
 function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Props){
  const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
  const [coordinatesEnabled,setCoordinatesEnabled]=useState(d.showCoordinates===true||d.mode==="coordinates");
@@ -1358,6 +1372,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <small>Границы не заменяются вымышленными. Для доступа необходим интернет.</small>
     </div>}
     <svg ref={mapSvgRef} viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
+     style={worksheetEditor&&(contourAction==="pen"||contourAction==="erase")&&!objectMoveMode?{
+      cursor:contourBrushCursor(contourAction,toolThickness,paintColor)
+     }:undefined}
      onClick={objectMoveMode?undefined:pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
      onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:
