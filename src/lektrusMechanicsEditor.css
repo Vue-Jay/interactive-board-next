@@ -68,3 +68,12 @@
 .lektrus-mechanics-header-actions button{min-width:30px;min-height:31px;padding:5px}
 .lektrus-mechanics-footer span{display:none}
 .lektrus-mechanics-footer button{flex:1}}
+
+
+/* Consistent compact icon buttons and a readable placement pointer. */
+.lektrus-mechanics-tools button{display:flex;align-items:center;justify-content:flex-start;gap:9px;padding:8px 10px;text-align:left;min-height:42px}
+.lektrus-mechanics-tools button svg{width:19px;height:19px;flex:none;stroke-width:1.9}
+.lektrus-mechanics-tools button span{flex:1;line-height:1.25}
+.lektrus-mechanics-tools button:first-child{justify-content:center}
+.lektrus-mechanics-editor .lektrus-mechanics-tools button.active{background:#e4efff;border-color:#8dadde;color:#2658b0}
+.lektrus-mechanics-svg .mechanics-hit:focus-visible{outline:none}
