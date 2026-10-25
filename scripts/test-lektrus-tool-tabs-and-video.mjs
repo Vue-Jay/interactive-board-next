@@ -35,7 +35,8 @@ assert.ok(elements.includes('(["line","arrow","double"] as const)'),
 assert.ok(elements.includes('onConnector(type)'),"Connector style remains selectable");
 
 assert.match(app,/case "section-create": return [^\n]*M3\.5 19 8\.5 5/);
-assert.match(app,/case "section-shapes": return [^\n]*rect x="3\.5"/);
+assert.match(app,/case "section-shapes": return [^\n]*<rect [^\n]*<circle [^\n]*<path/,
+ "figures category icon depicts three distinct geometric shapes");
 assert.match(app,/case "section-data": return [^\n]*rect x="2\.5"/);
 assert.match(app,/case "section-assignments": return [^\n]*rect x="3\.5" y="3\.5"/);
 assert.match(app,/case "section-media": return [^\n]*rect x="3" y="4"/);
