@@ -1312,6 +1312,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
       </div>}
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" aria-label={title}
       onPointerDownCapture={event=>{
+        if((event.target as Element).closest?.(".lektrus-diagram-grid-toggle"))return;
         if(onPickPoint){
           selectionContacts.current.add(event.pointerId);
           if(selectionContacts.current.size>1){
@@ -1809,28 +1810,34 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
            y={scienceCaptionLayout?.points[i]?.y??(sy(p.y+(item.graphPoints?.[i]?.labelDy??0))-9)}
            style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
       </g>})}
-      {purpose==="geometry"&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(433 13)">
-        <g role="button" tabIndex={0} aria-label={item.graphGrid===false?"Включить сетку":"Выключить сетку"}
-          aria-pressed={item.graphGrid!==false} style={{cursor:"pointer"}}
+      {purpose==="geometry"&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(465 11)" data-board-interactive="true">
+        <g role="button" tabIndex={0} className="lektrus-grid-control"
+          aria-label={item.graphGrid===false?"Показать сетку":"Скрыть сетку"}
+          aria-pressed={item.graphGrid!==false}
           onPointerDown={event=>event.stopPropagation()}
-          onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}
+          onPointerUp={event=>event.stopPropagation()}
           onClick={event=>{event.preventDefault();event.stopPropagation();onGridChange(item.graphGrid===false)}}
           onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onGridChange(item.graphGrid===false)}}>
-          <rect width="70" height="25" rx="7" fill={item.graphGrid!==false?"#e9f1ff":"#fff"} stroke={item.graphGrid!==false?"#9bbcf0":"#c9d6e6"}/>
-          <g stroke="#456c9e" strokeWidth=".9" fill="none"><rect x="7" y="7" width="12" height="12" rx="1.2"/><path d="M13 7v12M7 13h12"/></g>
-          <text x="26" y="16.5" fontSize="10" fontWeight="650" fill="#35577f">Сетка</text>
+          <title>{item.graphGrid===false?"Показать сетку":"Скрыть сетку"}</title>
+          <rect width="30" height="25" rx="7" className={item.graphGrid!==false?"is-on":""}/>
+          <g stroke="currentColor" strokeWidth="1.25" fill="none" pointerEvents="none">
+            <rect x="8" y="6" width="14" height="13" rx="1"/>
+            <path d="M15 6v13M8 12.5h14"/>
+          </g>
         </g>
-        {onSnapChange&&<g transform="translate(75 0)" role="button" tabIndex={0}
-          aria-label={item.graphSnap===true?"Выключить привязку к сетке":"Включить привязку к сетке"}
-          aria-pressed={item.graphSnap===true} style={{cursor:"pointer"}}
+        {onSnapChange&&<g transform="translate(35 0)" role="button" tabIndex={0}
+          className="lektrus-grid-control" aria-label={item.graphSnap===true?"Отключить привязку к сетке":"Включить привязку к сетке"}
+          aria-pressed={item.graphSnap===true}
           onPointerDown={event=>event.stopPropagation()}
-          onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}
+          onPointerUp={event=>event.stopPropagation()}
           onClick={event=>{event.preventDefault();event.stopPropagation();onSnapChange(item.graphSnap!==true)}}
           onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onSnapChange(item.graphSnap!==true)}}>
-          <rect width="68" height="25" rx="7" fill={item.graphSnap===true?"#e9f1ff":"#fff"} stroke={item.graphSnap===true?"#9bbcf0":"#c9d6e6"}/>
-          <path d="M9 7v12M4 12h12" fill="none" stroke="#456c9e" strokeWidth="1.2"/>
-          <circle cx="9" cy="12" r="2.5" fill={item.graphSnap===true?"#2c68c0":"#fff"} stroke="#456c9e"/>
-          <text x="22" y="16.5" fontSize="10" fontWeight="650" fill="#35577f">Привязка</text>
+          <title>{item.graphSnap===true?"Отключить привязку к сетке":"Включить привязку к сетке"}</title>
+          <rect width="30" height="25" rx="7" className={item.graphSnap===true?"is-on":""}/>
+          <g stroke="currentColor" strokeWidth="1.3" fill="none" pointerEvents="none">
+            <path d="M15 4v17M6.5 12.5h17"/>
+            <circle cx="15" cy="12.5" r="3" fill="var(--lt-raised,#fff)"/>
+          </g>
         </g>}
       </g>}
       {solid&&<g className="lektrus-orbit-control" role="button" tabIndex={onRotate?0:-1}
