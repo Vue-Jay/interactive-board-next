@@ -6,7 +6,8 @@ export type OpticalRay={id:string;sourceId:string;angle:number;color:string};
 export type LegacyOpticsStroke={id:string;x1:number;y1:number;x2:number;y2:number;label:string;arrow:boolean};
 export type OpticsDocument={version:1;elements:OpticalElement[];rays:OpticalRay[];grid:boolean;labels:boolean;normals:boolean;legacy?:LegacyOpticsStroke[]};
 export type OpticalPoint={x:number;y:number};
-export type OpticalPath={id:string;color:string;points:OpticalPoint[];kind:"normal"|"reflected"|"refracted"|"lens"|"prism"|"straight";note:string};
+export type OpticalInteraction={point:OpticalPoint;kind:"lens"|"mirror"|"refraction"|"tir"|"screen";text:string};
+export type OpticalPath={id:string;color:string;points:OpticalPoint[];kind:"normal"|"reflected"|"refracted"|"lens"|"prism"|"straight";note:string;events?:OpticalInteraction[]};
 export const OPTICS_WIDTH=960,OPTICS_HEIGHT=560;
 export const opticsId=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-5);
 const bounded=(v:number,low:number,high:number)=>Math.max(low,Math.min(high,v));
@@ -102,6 +103,13 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
     return values.every(v=>v>=-0.0001)||values.every(v=>v<=0.0001);
   };
   const points:OpticalPoint[]=[{x:source.x,y:source.y}];
+  const events:OpticalInteraction[]=[];
+  const degrees=(radians:number)=>Math.round(radians*180/Math.PI);
+  const incidence=(d:Vector,a:OpticalPoint,b:OpticalPoint)=>{
+    const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+    const perpendicular=Math.abs((d.x*(-dy)+d.y*dx)/len);
+    return degrees(Math.acos(bounded(perpendicular,0,1)));
+  };
   const append=(p:OpticalPoint)=>{
     const last=points[points.length-1];
     if(!last||Math.hypot(last.x-p.x,last.y-p.y)>0.0001)points.push(p);
@@ -146,9 +154,12 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
     append(hit.point);
     const {e}=hit,p=hit.point;
     if(e.kind==="screen"){
+      events.push({point:p,kind:"screen",text:"Экран: луч остановлен"});
       kind="straight";note="Луч достиг экрана";finished=true;break;
     }
     if(e.kind==="mirror"){
+      const angle=degrees(Math.atan2(Math.abs(direction.y),Math.abs(direction.x)));
+      events.push({point:p,kind:"mirror",text:"Зеркало: отражение, угол "+angle+"°"});
       direction=unit({x:-direction.x,y:direction.y});
       kind="reflected";note="Отражение от зеркала, далее учитываются следующие поверхности";
     }else if(e.kind==="interface"){
@@ -156,9 +167,11 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
       const from=direction.x>0?e.n1:e.n2,to=direction.x>0?e.n2:e.n1;
       const sine=direction.y*from/to;
       if(Math.abs(sine)>1){
+        events.push({point:p,kind:"tir",text:"Граница сред: полное внутреннее отражение"});
         direction=unit({x:-direction.x,y:direction.y});
         kind="reflected";note="Полное внутреннее отражение на границе сред";
       }else{
+        events.push({point:p,kind:"refraction",text:"Граница сред: "+from+" → "+to});
         direction=unit({x:Math.sign(direction.x)*Math.sqrt(Math.max(0,1-sine*sine)),y:sine});
         kind="refracted";note="Преломление на границе сред; луч продолжает путь";
       }
@@ -171,12 +184,16 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
       const incomingSlope=direction.y/direction.x;
       const outgoingSlope=bounded(incomingSlope-sign*(p.y-e.y)/f,-8,8);
       direction=unit({x:sign,y:sign*outgoingSlope});
+      events.push({point:p,kind:"lens",text:(e.kind==="diverging-lens"?"Рассеивающая":"Собирающая")+" линза"});
       kind="lens";note="Преломление в тонкой линзе в прямом и обратном направлениях";
     }else if(e.kind==="prism"&&hit.facet){
       const wasInside=medium===e.id;
       const from=wasInside?e.n2:e.n1,to=wasInside?e.n1:e.n2;
       const outgoing=refract(direction,hit.facet[0],hit.facet[1],from,to);
       if(outgoing){
+        events.push({point:p,kind:"refraction",
+          text:(wasInside?"Выход из призмы":"Вход в призму")+
+            ": "+incidence(direction,hit.facet[0],hit.facet[1])+"°"});
         direction=unit(outgoing);
         medium=wasInside?null:e.id;
         kind="prism";
@@ -186,6 +203,8 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
       }else{
         // Total internal reflection is another interaction, not the end
         // of the path. The next search sees the following triangular face.
+        events.push({point:p,kind:"tir",text:"ПВО в призме: "+
+          incidence(direction,hit.facet[0],hit.facet[1])+"°"});
         direction=reflected(direction,hit.facet[0],hit.facet[1]);
         kind="reflected";
         note="Полное внутреннее отражение в призме; поиск следующей грани";
@@ -200,7 +219,7 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
     // They should not freeze a lesson or pretend light disappeared.
     note="Достигнут предел 96 взаимодействий; проверьте замкнутую систему зеркал и призм";
   }
-  return {id:ray.id,color:ray.color,points,kind,note};
+  return {id:ray.id,color:ray.color,points,kind,note,events};
 }
 export function traceOptics(doc:OpticsDocument):OpticalPath[]{
   return doc.rays.flatMap(r=>{const path=traceOpticalRay(doc,r);return path?[path]:[]});
