@@ -144,6 +144,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
       sum+(pt.y+ordered[i].y)/2*(pt.x-ordered[i].x),0);
     return {dt,change:last.y-first.y,slope:dt>0?(last.y-first.y)/dt:0,area};
   },[data]);
+  const slopeUnit=axis.variable==="s"?"м/с":axis.variable==="v"?"м/с²":"м/с³";
   const integralLabel=axis.variable==="v"?"Перемещение Δx, м":
     axis.variable==="a"?"Изменение скорости Δv, м/с":"Площадь под s(t)";
 
@@ -212,7 +213,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
             {measurement?<>
               <span>Δt: <b>{format(measurement.dt)} с</b></span>
               <span>Δ${axis.variable}: <b>{format(measurement.change)} ${axis.unit}</b></span>
-              <span>Δ${axis.variable}/Δt: <b>{format(measurement.slope)} ${axis.unit}/с</b></span>
+              <span>Δ${axis.variable}/Δt: <b>{format(measurement.slope)} {slopeUnit}</b></span>
               {axis.variable!=="s"&&<span>${integralLabel}: <b>{format(measurement.area)}</b></span>}
             </>:<span>Для измерений необходимо не менее двух точек.</span>}
           </div>}
