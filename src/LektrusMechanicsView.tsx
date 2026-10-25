@@ -37,7 +37,7 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
   {doc.grid&&<rect width="960" height="560" fill={"url(#mechanics-dot-"+id+")"} pointerEvents="none"/>}
   {doc.supports.map(s=><g key={s.id} className={"lektrus-mechanics-part"+(selected("support",s.id)?" selected":"")}
    onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"support",id:s.id}):undefined}
-   onClick={onSelect&&tool==="select"?e=>{e.stopPropagation();onSelect({type:"support",id:s.id})}:undefined}>
+>
    <g transform={`translate(${s.x} ${s.y}) rotate(${-s.angle})`}>
     {s.kind==="pivot"?<g><path d="M0 -20L-24 20H24Z" stroke="#657a95" fill="#e9f0f9" strokeWidth="2"/><path d="M-31 23h62" stroke="#72849e" strokeWidth="3"/></g>:<g>
      <path d={`M${-s.width/2} 0h${s.width}`} stroke={selected("support",s.id)?"#245dc1":"#627e9f"} strokeWidth="5" strokeLinecap="round"/>
