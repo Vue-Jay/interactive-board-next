@@ -256,7 +256,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
                   <rect width="141" height="28" rx="9" fill="#fff" stroke="#c1d4f1" strokeWidth="1.4"/>
                   <text x="9" y="19" fill="#2b5698" fontWeight="750" fontSize="12">{format(aim.x)} с · {format(aim.y)} {axis.unit}</text>
                 </g>
-              </g>
+              </g>}
               {data.map((point,i)=><g key={i}>
                 {selected===i&&<circle cx={sx(point.x)} cy={sy(point.y)} r="14" fill="#dce9ff" pointerEvents="none"/>}
                 <circle cx={sx(point.x)} cy={sy(point.y)} r={selected===i?6.2:5} fill={selected===i?"#194ba6":"#3878d5"}
