@@ -81,3 +81,16 @@
 .lektrus-optics-footer span{display:none}
 .lektrus-optics-footer button{flex:1}
 }
+
+
+/* The optical tools are actual instruments, not generic unstyled commands. */
+.lektrus-optics-tools button{display:flex;align-items:center;justify-content:flex-start;gap:8px;min-height:44px;padding:8px 9px;text-align:left}
+.lektrus-optics-tools button svg{width:18px;height:18px;stroke-width:1.8;flex:none}
+.lektrus-optics-tools button span{line-height:1.25;flex:1}
+.lektrus-optics-tools button:first-child{justify-content:center}
+.lektrus-optics-editor .lektrus-optics-quick-ray{flex:0 0 auto;min-height:32px;min-width:64px;background:#e5efff;border-color:#a6c1ed;color:#2658af}
+.lektrus-optics-editor .lektrus-optics-quick-ray:hover:not(:disabled){background:#d7e8ff}
+.lektrus-optics-svg:not(.optics-mode-select){cursor:none}
+.lektrus-optics-ray-hits{cursor:pointer}
+.lektrus-optics-ray-hits polyline:hover{stroke:#2d65bd;stroke-opacity:.12}
+.lektrus-editor-cursor{filter:drop-shadow(0 1px 3px #345a9360)}
