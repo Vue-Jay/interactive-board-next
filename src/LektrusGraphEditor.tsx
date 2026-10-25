@@ -422,10 +422,12 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
       onRotate?: (x:number,y:number)=>void;onRayChange?: (x:number,y:number)=>void;
       onGridChange?: (enabled:boolean)=>void;onSnapChange?: (enabled:boolean)=>void;
     }>,isSolid?{
-      onRotate:(x:number,y:number)=>onChange({...draft,rotationX:x,rotationY:y})
+      onRotate:(x:number,y:number)=>onChange({...draft,rotationX:x,rotationY:y}),
+      onGridChange:(enabled:boolean)=>patch({grid:enabled}),onSnapChange:(enabled:boolean)=>patch({snap:enabled})
     }:connectionActive?{
       onPickPoint:pickLinkPoint,onCreateAndPickPoint:createAndSelectPoint,pickedPoints:linkPoints,
-      onAddPoint:undefined,onPointMove:undefined,onRemovePoint:undefined,onCloseFreePolygon:undefined
+      onAddPoint:undefined,onPointMove:undefined,onRemovePoint:undefined,onCloseFreePolygon:undefined,
+      onGridChange:(enabled:boolean)=>patch({grid:enabled}),onSnapChange:(enabled:boolean)=>patch({snap:enabled})
     }:canvasTool==="point"?{
       onPointMoveEnd:undefined,
       onPickPoint:draft.figureId==="free"?undefined:()=>{},
@@ -436,7 +438,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
       },
       onAddPoint:draft.figureId==="free"?(x:number,y:number)=>onChange(appendFreeSketchPoint(draft,x,y)):undefined,
       onPointMove:undefined,onRemovePoint:undefined,
-      onCloseFreePolygon:draft.figureId==="free"?()=>onChange(closeFreeSketch(draft)):undefined
+      onCloseFreePolygon:draft.figureId==="free"?()=>onChange(closeFreeSketch(draft)):undefined,
+      onGridChange:(enabled:boolean)=>patch({grid:enabled}),onSnapChange:(enabled:boolean)=>patch({snap:enabled})
     }:{
       onPickPoint:undefined,onCreateAndPickPoint:undefined,pickedPoints:[],
       onAddPoint:undefined,onCloseFreePolygon:undefined,
