@@ -58,3 +58,80 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
  }
  return edit;
 }
+
+/** Small independent mutations for the editor realtime channel.
+ * Other users do not need to download an entire world atlas on each stroke.
+ */
+export type LiveEditorOp={path:(string|number)[];kind:"set"|"remove"|"append"|"upsert-id"|"remove-id";value?:unknown;id?:string};
+const MAX_DEPTH=18;
+export function editorDiff(before:unknown,after:unknown):LiveEditorOp[]{
+ const changes:LiveEditorOp[]=[];
+ const walk=(a:unknown,b:unknown,path:(string|number)[],depth:number)=>{
+  if(same(a,b)||depth>MAX_DEPTH)return;
+  if(Array.isArray(a)&&Array.isArray(b)){
+   const key=String(path[path.length-1]??"");
+   if(isIdCollection(a,key)&&isIdCollection(b,key)){
+    const previous=new Map(a.map(v=>[(v as {id:string}).id,v]));
+    const following=new Map(b.map(v=>[(v as {id:string}).id,v]));
+    for(const [id,value] of following)
+     if(!same(value,previous.get(id)))
+      changes.push({path,kind:"upsert-id",id,value});
+    for(const [id] of previous)if(!following.has(id))
+      changes.push({path,kind:"remove-id",id});
+    return;
+   }
+   if(b.length>=a.length){
+    for(let i=0;i<a.length;i++)walk(a[i],b[i],[...path,i],depth+1);
+    if(b.length>a.length)changes.push({path,kind:"append",value:b.slice(a.length)});
+    return;
+   }
+  }
+  if(record(a)&&record(b)){
+   for(const field of new Set([...Object.keys(a),...Object.keys(b)])){
+    if(!(field in b))changes.push({path:[...path,field],kind:"remove"});
+    else walk(a[field],b[field],[...path,field],depth+1);
+   }
+   return;
+  }
+  changes.push({path,kind:"set",value:b});
+ };
+ walk(before,after,[],0);
+ return changes.slice(0,300);
+}
+export function applyEditorOps<T>(input:T,ops:readonly LiveEditorOp[]):T{
+ let result:unknown=input;
+ const replaceAt=(value:unknown,path:readonly (string|number)[],action:LiveEditorOp,depth=0):unknown=>{
+  if(depth<path.length){
+   const field=path[depth];
+   const output:Array<unknown>|Record<string,unknown>=Array.isArray(value)?
+     value.slice():record(value)?{...value}:typeof field==="number"?[]:{};
+   (output as unknown as Record<string|number,unknown>)[field]=replaceAt(
+     (output as unknown as Record<string|number,unknown>)[field],path,action,depth+1);
+   return output;
+  }
+  switch(action.kind){
+   case "set":return action.value;
+   case "remove":return undefined;
+   case "append":{
+     if(!Array.isArray(value)||!Array.isArray(action.value))return value;
+     return [...value,...action.value];
+   }
+   case "upsert-id":{
+     if(!Array.isArray(value)||!action.id||!record(action.value))return value;
+     const index=value.findIndex(v=>record(v)&&v.id===action.id);
+     if(index<0)return [...value,action.value];
+     return value.map((v,i)=>i===index?mergeEditedValue(v,action.value,action.value):v);
+   }
+   case "remove-id":{
+     if(!Array.isArray(value))return value;
+     return value.filter(v=>!record(v)||v.id!==action.id);
+   }
+  }
+ };
+ for(const op of ops){
+  if(op.path.length>MAX_DEPTH||op.path.some(p=>typeof p==="string"&&
+   (p==="__proto__"||p==="constructor"||p==="prototype")))continue;
+  result=replaceAt(result,op.path,op);
+ }
+ return result as T;
+}
