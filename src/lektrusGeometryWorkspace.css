@@ -38,7 +38,10 @@
  font-size:10px;line-height:1.3;color:#7b8ba0;
 }
 .lektrus-geometry-workspace .lektrus-geometry-header-catalog{
- flex:0 0 auto;display:flex;align-items:center;gap:3px;
+ flex:0 0 auto;display:grid!important;grid-template-columns:repeat(2,max-content)!important;
+ grid-auto-flow:column!important;align-items:center;justify-content:center;gap:3px;
+ flex-direction:row!important;flex-wrap:nowrap!important;white-space:nowrap;
+ width:max-content!important;min-width:max-content!important;
  padding:3px;border:1px solid #e2e8f2;border-radius:10px;
  background:#f3f6fb;
 }
@@ -185,6 +188,50 @@
 }
 .lektrus-geometry-workspace .lektrus-geometry-canvas-actions .lektrus-geometry-vector-icon{
  width:16px;height:16px;flex:0 0 16px;display:block;
+}
+.lektrus-geometry-workspace .lektrus-geometry-zoom-controls{
+ flex:0 0 auto;display:inline-flex;align-items:center;gap:3px;
+ padding-left:5px;margin-left:2px;border-left:1px solid #e0e8f4;
+}
+.lektrus-geometry-workspace .lektrus-geometry-zoom-controls>button{
+ min-width:28px;padding:4px 6px;font-size:12px;font-weight:800;
+}
+.lektrus-geometry-workspace .lektrus-geometry-zoom-controls>span{
+ min-width:42px;text-align:center;white-space:nowrap;
+ font-size:10px;color:#4f6787;font-weight:750;font-variant-numeric:tabular-nums;
+}
+.lektrus-geometry-workspace .lektrus-geometry-history-button>span{
+ font-size:10px;white-space:nowrap;color:inherit;font-weight:750;
+}
+.lektrus-geometry-workspace .lektrus-geometry-viewport-settings{
+ margin:7px 0;padding:8px;border:1px solid #dce6f3;
+ border-radius:9px;background:#f7faff;
+}
+.lektrus-geometry-workspace .lektrus-geometry-viewport-settings summary{
+ cursor:pointer;font-size:11px;font-weight:800;color:#315c94;
+}
+.lektrus-geometry-workspace .lektrus-geometry-viewport-settings>small{
+ display:block;margin:7px 0;color:#637995;font-size:10px;line-height:1.4;
+}
+.lektrus-geometry-workspace .lektrus-geometry-range-presets{
+ display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;
+}
+.lektrus-geometry-workspace .lektrus-geometry-range-presets button{
+ flex:1 0 auto;min-height:30px;padding:4px 7px;
+ border:1px solid #c7d8ef;border-radius:7px;background:#fff;
+ color:#2d629d;font-size:10px;font-weight:720;cursor:pointer;
+}
+.lektrus-geometry-workspace .lektrus-geometry-range-inputs{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+}
+.lektrus-geometry-workspace .lektrus-geometry-range-inputs label{
+ display:flex;flex-direction:column;gap:3px;min-width:0;
+ font-size:10px;font-weight:730;color:#536b87;
+}
+.lektrus-geometry-workspace .lektrus-geometry-range-inputs input{
+ box-sizing:border-box;min-width:0;width:100%;height:32px;
+ border:1px solid #cbd9eb;border-radius:7px;background:#fff;
+ color:#243d5b;padding:5px 7px;font:inherit;font-size:12px;
 }
 .lektrus-geometry-workspace .lektrus-graph-dialog .lektrus-graph-settings{
  grid-column:3!important;grid-row:1!important;order:0!important;
@@ -359,10 +406,13 @@
  .lektrus-geometry-workspace .lektrus-geometry-canvas-actions button{
   min-height:31px;padding:5px 7px;
  }
+ .lektrus-geometry-workspace .lektrus-geometry-history-button>span{display:none}
+ .lektrus-geometry-workspace .lektrus-geometry-zoom-controls{gap:2px;padding-left:3px}
+ .lektrus-geometry-workspace .lektrus-geometry-zoom-controls>span{min-width:36px;font-size:9px}
 }
 @media(max-width:570px){
  .lektrus-geometry-workspace .lektrus-graph-head strong{font-size:12px}
- .lektrus-geometry-workspace .lektrus-geometry-header-catalog{gap:2px;padding:2px}
+ .lektrus-geometry-workspace .lektrus-geometry-header-catalog{gap:2px;padding:2px;grid-template-columns:repeat(2,max-content)!important}
  .lektrus-geometry-workspace .lektrus-graph-head .lektrus-geometry-header-catalog button{
   min-width:43px;gap:3px;padding:5px;font-size:10px;
  }
