@@ -94,4 +94,27 @@ assert.match(geometry,/renderOverlays&&instruments.filter\(i=>!i.hidden\).map/,
  "one shared overlay is drawn for each ruler, set square, or protractor");
 assert.match(geometry,/onRemove\(item.id\)/,
  "each measuring tool has its own removal action");
-console.log("Shared rulers and fixed-anchor diagonal object resizing: checks passed.");
+// Visual regressions: the same shared tool model uses readable, translucent
+// centimeter/degree marks and does not replace the original collaboration logic.
+const instrumentStyles=read("src/lektrusMeasurementInstruments.css");
+const catalogIcons=read("src/LektrusSubjectToolIcons.tsx");
+const constructionIcons=read("src/LektrusGeometryToolIcon.tsx");
+transpile("src/LektrusSubjectToolIcons.tsx");
+transpile("src/LektrusGeometryToolIcon.tsx");
+assert.match(geometry,/useId\(\)/,"every measuring SVG has a unique gradient ID");
+assert.match(geometry,/length:101/,"the ruler includes intermediate graduations");
+assert.match(geometry,/i\/5/,"the ruler displays centimeter labels");
+assert.match(geometry,/length:37/,"protractor degree ticks are preserved");
+assert.match(geometry,/fillRule="evenodd"/,"set square and protractor have see-through openings");
+assert.match(geometry,/lektrusMeasurementInstruments\.css/,"measuring styles are imported");
+assert.match(instrumentStyles,/geometry-instrument-centered.*geometry-instrument-body/,
+ "instrument visual polish is scoped to shared measuring tools");
+assert.match(catalogIcons,/"math-geometry":<><circle cx="12"/,
+ "figure catalogue uses a legible drafting-compass icon");
+assert.match(constructionIcons,/construction:<><path d="M4\.5 18\.8/,
+ "in-graphic construction button has its own connected-points icon");
+assert.match(app,/case "section-shapes": return/,
+ "figures tool group retains its dedicated icon");
+assert.match(app,/case "section-data": return/,
+ "tables and charts retain their own recognizable icon");
+console.log("Shared rulers, graduated visual tools and toolbar icons: checks passed.");
