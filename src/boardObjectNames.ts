@@ -68,7 +68,6 @@ export function boardObjectTypeName(item: Item): string {
     case "coordinates": return "Координатная плоскость";
     case "number-line": return "Числовая прямая";
     case "unit-circle": return "Единичная окружность";
-    case "polar": return "Полярная система координат";
     default: return "График функции";
   }
 }
