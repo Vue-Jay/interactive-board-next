@@ -314,3 +314,41 @@
   flex-basis:44px;width:44px;height:44px;
  }
 }
+
+/* Physical board diagrams reuse the mathematical editor button's size and
+   placement. Keep it above draggable SVG elements on tablets and desktops. */
+.graph-view:is(.lektrus-physical-board-inline,.science-graph,.lektrus-circuit-board-view) .lektrus-graph-canvas-actions{
+ position:absolute;top:9px;left:10px;z-index:8;
+ max-width:calc(100% - 20px);display:flex;align-items:center;
+ box-sizing:border-box;pointer-events:auto!important;
+ user-select:none;-webkit-user-select:none;
+}
+.graph-view:is(.lektrus-physical-board-inline,.science-graph,.lektrus-circuit-board-view) .lektrus-graph-canvas-editor{
+ position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-height:38px;max-width:100%;padding:8px 12px;
+ border:1px solid #2f6ec1;border-radius:10px;background:#296bbc;color:#fff;
+ box-shadow:0 3px 12px rgba(35,92,166,.18);
+ font:760 12px/1.15 inherit;white-space:nowrap;cursor:pointer;
+ pointer-events:auto!important;touch-action:manipulation;
+ -webkit-tap-highlight-color:transparent;
+}
+.graph-view:is(.lektrus-physical-board-inline,.science-graph,.lektrus-circuit-board-view) .lektrus-graph-canvas-editor:hover{
+ background:#1e58a4;border-color:#1e58a4;
+}
+.graph-view:is(.lektrus-physical-board-inline,.science-graph,.lektrus-circuit-board-view) .lektrus-graph-canvas-editor:focus-visible{
+ outline:2px solid #528be2;outline-offset:2px;
+}
+.graph-view:is(.lektrus-physical-board-inline,.science-graph,.lektrus-circuit-board-view) .lektrus-graph-canvas-editor>span{
+ min-width:0;overflow:hidden;text-overflow:ellipsis;color:inherit;
+}
+.graph-view:is(.lektrus-physical-board-inline,.science-graph,.lektrus-circuit-board-view) .lektrus-graph-canvas-editor .lektrus-geometry-vector-icon{
+ width:19px;height:19px;flex:none;stroke:currentColor;
+}
+@media(pointer:coarse){
+ .graph-view:is(.lektrus-physical-board-inline,.science-graph,.lektrus-circuit-board-view) .lektrus-graph-canvas-actions{
+  top:8px;left:8px;
+ }
+ .graph-view:is(.lektrus-physical-board-inline,.science-graph,.lektrus-circuit-board-view) .lektrus-graph-canvas-editor{
+  min-height:44px;
+ }
+}
