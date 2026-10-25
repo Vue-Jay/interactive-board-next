@@ -1,4 +1,4 @@
-import {cloneElement,isValidElement,useEffect,useState,type ReactElement,type ReactNode} from "react";
+import {cloneElement,isValidElement,useEffect,useRef,useState,type ReactElement,type ReactNode} from "react";
 import "./lektrusGeometryWorkspace.css";
 import LektrusGeometryToolIcon from "./LektrusGeometryToolIcon";
 import type {Item} from "./boardModel";
@@ -213,7 +213,52 @@ const formulas:Record<GraphDraft["type"],string>={
   linear:"2*x + 1",quadratic:"x^2 - 4*x + 3",sin:"sin(x)",cos:"cos(x)"
 };
 
-export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,onSave,onCancel,onClose}:Props) {
+export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:emitChange,onSave,onCancel,onClose}:Props) {
+  // Keep a single history for the WHOLE drawing, not just the points selected by
+  // one construction tool. Preserve snapshots across tabs, presets and viewport edits.
+  const historyRef=useRef<{past:GraphDraft[];future:GraphDraft[];current:GraphDraft;
+    lastKind:"zoom"|"drag"|null;lastAt:number}>({
+      past:[],future:[],current:draft,lastKind:null,lastAt:0
+    });
+  const [,refreshHistory]=useState(0);
+  if(historyRef.current.current!==draft)historyRef.current.current=draft;
+  const onChange=(next:GraphDraft)=>{
+    const history=historyRef.current,previous=history.current;
+    if(previous===next)return;
+    const sameStructure=previous.figureId===next.figureId&&previous.points.length===next.points.length&&
+      previous.segments===next.segments&&previous.polygons===next.polygons&&
+      previous.circles===next.circles&&previous.angles===next.angles&&
+      previous.midpoints===next.midpoints&&previous.constraints===next.constraints;
+    const zoomChanged=previous.xMin!==next.xMin||previous.xMax!==next.xMax||
+      previous.yMin!==next.yMin||previous.yMax!==next.yMax;
+    const kind: "zoom"|"drag"|null=sameStructure&&zoomChanged&&previous.points===next.points?"zoom":
+      sameStructure&&!zoomChanged&&previous.points!==next.points?"drag":null;
+    const now=Date.now();
+    if(!kind||kind!==history.lastKind||now-history.lastAt>350||!history.past.length){
+      history.past.push(previous);
+      if(history.past.length>120)history.past.shift();
+    }
+    history.future=[];history.current=next;history.lastKind=kind;history.lastAt=now;
+    emitChange(next);refreshHistory(n=>n+1);
+  };
+  const undoDraft=()=>{
+    const history=historyRef.current;
+    if(!history.past.length)return;
+    const previous=history.past.pop()!;
+    history.future.push(history.current);
+    history.current=previous;history.lastKind=null;
+    setLinkPoints([]);setCreatedLinkPoints([]);setGeometryError("");
+    emitChange(previous);refreshHistory(n=>n+1);
+  };
+  const redoDraft=()=>{
+    const history=historyRef.current;
+    if(!history.future.length)return;
+    const next=history.future.pop()!;
+    history.past.push(history.current);
+    history.current=next;history.lastKind=null;
+    setLinkPoints([]);setCreatedLinkPoints([]);setGeometryError("");
+    emitChange(next);refreshHistory(n=>n+1);
+  };
   const [tab,setTab]=useState<"presets"|"givens"|"points"|"geometry"|"connect">("presets");
   const [previewExpanded,setPreviewExpanded]=useState(false);
   const [settingsOpen,setSettingsOpen]=useState(()=>mode!=="geometry"||typeof window==="undefined"||window.innerWidth>900);
@@ -250,12 +295,48 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
   useEffect(()=>{
     const key=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();event.stopPropagation();onClose()}
+      if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="z"){
+        event.preventDefault();event.stopPropagation();
+        if(event.shiftKey)redoDraft();else undoDraft();
+      }else if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="y"){
+        event.preventDefault();event.stopPropagation();redoDraft();
+      }
       if((event.ctrlKey||event.metaKey)&&event.key==="Enter"){event.preventDefault();event.stopPropagation();onSave()}
     };
     document.addEventListener("keydown",key,true);
     return ()=>document.removeEventListener("keydown",key,true);
-  },[onClose,onSave]);
+  },[onClose,onSave,undoDraft,redoDraft]);
   const patch=(next:Partial<GraphDraft>)=>onChange({...draft,...next});
+  // The axes are the viewport. Zoom changes their range, never vertex values.
+  const validViewport=Number.isFinite(draft.xMin)&&Number.isFinite(draft.xMax)&&
+    Number.isFinite(draft.yMin)&&Number.isFinite(draft.yMax)&&
+    draft.xMax>draft.xMin&&draft.yMax>draft.yMin;
+  const zoomViewport=(factor:number)=>{
+    if(!validViewport||!Number.isFinite(factor)||factor<=0)return;
+    const spanX=draft.xMax-draft.xMin,spanY=draft.yMax-draft.yMin;
+    const nextX=Math.max(.4,Math.min(1e6,spanX*factor));
+    const nextY=Math.max(.24,Math.min(6e5,spanY*factor));
+    if(Math.abs(nextX-spanX)<1e-9&&Math.abs(nextY-spanY)<1e-9)return;
+    const cx=(draft.xMin+draft.xMax)/2,cy=(draft.yMin+draft.yMax)/2;
+    patch({xMin:cx-nextX/2,xMax:cx+nextX/2,yMin:cy-nextY/2,yMax:cy+nextY/2});
+  };
+  const fitViewport=()=>{
+    const points=draft.points.filter(point=>Number.isFinite(point.x)&&Number.isFinite(point.y));
+    if(!points.length){patch({xMin:-10,xMax:10,yMin:-6,yMax:6});return;}
+    const xs=points.map(p=>p.x),ys=points.map(p=>p.y);
+    const cx=(Math.min(...xs)+Math.max(...xs))/2,cy=(Math.min(...ys)+Math.max(...ys))/2;
+    const span=Math.max(10,(Math.max(...xs)-Math.min(...xs))*1.4,
+      (Math.max(...ys)-Math.min(...ys))*1.4*5/3);
+    patch({xMin:cx-span/2,xMax:cx+span/2,yMin:cy-span*.3,yMax:cy+span*.3});
+  };
+  const setAxisBoundary=(key:"xMin"|"xMax"|"yMin"|"yMax",value:number)=>{
+    if(!Number.isFinite(value)||Math.abs(value)>1e6)return;
+    // Keep the visible interval valid on every keystroke.
+    const counterpart=key==="xMin"?draft.xMax:key==="xMax"?draft.xMin:key==="yMin"?draft.yMax:draft.yMin;
+    if((key==="xMin"||key==="yMin")&&value>=counterpart)return;
+    if((key==="xMax"||key==="yMax")&&value<=counterpart)return;
+    patch({[key]:value});
+  };
   const createSchool=(kind:SchoolConstruction,sides?:3|4|5|6|8)=>{
     const result=buildSchoolConstruction(draft,{kind,sides});
     if(result.error){setGeometryError(result.error);return}
@@ -327,12 +408,18 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
     setCreatedLinkPoints(previous=>[...previous,next.points.length-1]);
     pickLinkPoint(next.points.length-1,next);
   };
-  const previewWithLink=mode==="geometry"&&!isSolid&&isValidElement(preview)?
+  // Wrap preview edits as well: point drags, freehand vertex placement,
+  // deleting vertices and 3D rotations must participate in the same undo history.
+  const previewWithLink=mode==="geometry"&&isValidElement(preview)?
     cloneElement(preview as ReactElement<{
       onPickPoint?: (index:number)=>void;onCreateAndPickPoint?: (x:number,y:number)=>void; pickedPoints?:readonly number[];
       onAddPoint?: (x:number,y:number)=>void;onPointMove?: (i:number,x:number,y:number)=>void;
       onRemovePoint?: (i:number)=>void;onCloseFreePolygon?:()=>void;
-    }>,connectionActive?{
+      onRotate?: (x:number,y:number)=>void;onRayChange?: (x:number,y:number)=>void;
+      onGridChange?: (enabled:boolean)=>void;
+    }>,isSolid?{
+      onRotate:(x:number,y:number)=>onChange({...draft,rotationX:x,rotationY:y})
+    }:connectionActive?{
       onPickPoint:pickLinkPoint,onCreateAndPickPoint:createAndSelectPoint,pickedPoints:linkPoints,
       onAddPoint:undefined,onPointMove:undefined,onRemovePoint:undefined,onCloseFreePolygon:undefined
     }:canvasTool==="point"?{
@@ -342,16 +429,21 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
         onChange({...draft,points:[...draft.points,{x,y,label:nextGeometryPointLabel(draft.points)}]});
         setGeometryError("");
       },
-      onAddPoint:draft.figureId==="free"?(preview as ReactElement<{
-        onAddPoint?:(x:number,y:number)=>void
-      }>).props.onAddPoint:undefined,
+      onAddPoint:draft.figureId==="free"?(x:number,y:number)=>onChange(appendFreeSketchPoint(draft,x,y)):undefined,
       onPointMove:undefined,onRemovePoint:undefined,
-      onCloseFreePolygon:draft.figureId==="free"?(preview as ReactElement<{
-        onCloseFreePolygon?:()=>void
-      }>).props.onCloseFreePolygon:undefined
+      onCloseFreePolygon:draft.figureId==="free"?()=>onChange(closeFreeSketch(draft)):undefined
     }:{
       onPickPoint:undefined,onCreateAndPickPoint:undefined,pickedPoints:[],
-      onAddPoint:undefined,onCloseFreePolygon:undefined
+      onAddPoint:undefined,onCloseFreePolygon:undefined,
+      onPointMove:(i:number,x:number,y:number)=>{
+        if(!draft.points[i])return;
+        onChange(moveGeometryVertex(draft,i,x,y));
+      },
+      onRemovePoint:(i:number)=>onChange(removeGraphPoint(draft,i)),
+      onRayChange:(x:number,y:number)=>draft.points[1]&&onChange({
+        ...draft,points:draft.points.map((point,i)=>i===1?{...point,x,y}:point)
+      }),
+      onGridChange:(enabled:boolean)=>patch({grid:enabled})
     }):preview;
   const setDrawingTool=(tool:"select"|"point"|ExistingPointTool)=>{
     if(tool==="point"&&draft.figureId==="ray"){setGeometryError("Для добавления отдельных точек выберите плоский чертёж.");return}
@@ -1052,7 +1144,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               </div>)}
             </details>}
             <div className="lektrus-link-actions">
-              <button type="button" disabled={!linkPoints.length} onClick={undoLinkPoint}>↶ Назад</button>
+              <button type="button" disabled={!historyRef.current.past.length} onClick={undoDraft}>↶ Назад</button>
               <button type="button" disabled={!linkPoints.length} onClick={resetLinkSelection}>Очистить выбор</button>
               {linkKind==="polygon"&&<button type="button" className="lektrus-link-finish"
                 disabled={linkPoints.length<3} onClick={()=>finishLink(linkPoints)}>Замкнуть фигуру</button>}
@@ -1078,13 +1170,31 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                 <small role="alert" className="lektrus-geometry-error">Контур пересекает сам себя или имеет нулевую площадь. Исправьте положение вершин.</small>}
               <div className="lektrus-graph-construct-actions">
                 <button type="button" onClick={addPoint} disabled={draft.points.length>=40}>+ Точка</button>
-                <button type="button" disabled={!canUndoFreePoint} onClick={()=>onChange(removeGraphPoint(draft,openPathLast))} title="Убрать последнюю неподтверждённую вершину">↶ Отменить точку</button>
+                <button type="button" disabled={!historyRef.current.past.length} onClick={undoDraft} title="Отменить последнее изменение всего чертежа">↶ Назад</button>
                 <button type="button" className="lektrus-free-close-action" disabled={closeFreeSketch(draft)===draft}
                   onClick={()=>onChange(closeFreeSketch(draft))}>Замкнуть с первой точкой</button>
                 <button type="button" disabled={draft.points.length<1||draft.points.length<=(draft.freePathStart??0)}
                   onClick={()=>patch({freePathStart:draft.points.length})} title="Следующая точка начнёт отдельную линию без соединения с предыдущей">Новая линия</button>
               </div>
             </div>}
+            {mode==="geometry"&&!isSolid&&<details className="lektrus-geometry-viewport-settings">
+              <summary>Масштаб и диапазон координат</summary>
+              <small>Расширяйте область для больших чертежей. Координаты существующих точек не изменяются.</small>
+              <div className="lektrus-geometry-range-presets">
+                {[10,20,50,100].map(half=><button key={half} type="button" onClick={()=>{
+                  const cx=(draft.xMin+draft.xMax)/2,cy=(draft.yMin+draft.yMax)/2;
+                  patch({xMin:cx-half,xMax:cx+half,yMin:cy-half*.6,yMax:cy+half*.6});
+                }}>±{half}</button>)}
+                <button type="button" onClick={fitViewport}>Вписать все точки</button>
+              </div>
+              <div className="lektrus-geometry-range-inputs">
+                {([["X от","xMin"],["X до","xMax"],["Y от","yMin"],["Y до","yMax"]] as const).map(([label,key])=>
+                  <label key={key}>{label}
+                    <input type="number" step="any" value={draft[key]}
+                      onChange={event=>setAxisBoundary(key,Number(event.target.value))}/>
+                  </label>)}
+              </div>
+            </details>}
             <div className="lektrus-graph-section-head"><strong>Точки чертежа</strong>{draft.figureId!=="free"&&<button type="button" disabled={draft.figureId==="ray"||isSolid||draft.purpose==="unit-circle"||draft.points.length>=40} onClick={addPoint}>+ Точка</button>}</div>
             <small>{draft.purpose==="unit-circle"?
               "Контрольные точки единичной окружности фиксированы. Угол можно задать во вкладке «Построить» или переместить радиус.":
@@ -1361,7 +1471,12 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
               {previewExpanded?"К настройкам":"Развернуть"}
             </button>
           </div>
-          <div className={connectionActive?"lektrus-graph-canvas is-linking":"lektrus-graph-canvas"}>{previewWithLink}</div>
+          <div className={connectionActive?"lektrus-graph-canvas is-linking":"lektrus-graph-canvas"}
+            onWheel={event=>{
+              if(mode!=="geometry"||isSolid)return;
+              event.preventDefault();event.stopPropagation();
+              zoomViewport(event.deltaY>0?1.16:1/1.16);
+            }}>{previewWithLink}</div>
           {mode==="geometry"&&<div className="lektrus-geometry-canvas-actions" role="group" aria-label="Действия с текущим построением">
             <span className="lektrus-geometry-selection-summary" role="status">
               {isSolid?`Объёмная фигура: ${draft.title}`:
@@ -1370,15 +1485,28 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange,o
                canvasTool==="point"?"Коснитесь поля для добавления точки":
                `Редактирование: ${draft.title||"чертёж"}`}
             </span>
+            <button type="button" className="lektrus-geometry-history-button"
+              disabled={!historyRef.current.past.length} onClick={undoDraft}
+              aria-label="Назад: отменить последнее изменение чертежа" title="Назад · Ctrl+Z">
+              <LektrusGeometryToolIcon name="undo" size={17}/><span>Назад</span>
+            </button>
+            <button type="button" className="lektrus-geometry-history-button"
+              disabled={!historyRef.current.future.length} onClick={redoDraft}
+              aria-label="Вперёд: вернуть изменение чертежа" title="Вперёд · Ctrl+Y">
+              <LektrusGeometryToolIcon name="redo" size={17}/><span>Вперёд</span>
+            </button>
+            {!isSolid&&<div className="lektrus-geometry-zoom-controls" role="group" aria-label="Масштаб чертежа">
+              <button type="button" onClick={()=>zoomViewport(1.25)} disabled={!validViewport} title="Отдалить чертёж" aria-label="Уменьшить масштаб">−</button>
+              <span title="Видимый диапазон координат">±{formatGeometryMetric((draft.xMax-draft.xMin)/2)}</span>
+              <button type="button" onClick={()=>zoomViewport(.8)} disabled={!validViewport} title="Приблизить чертёж" aria-label="Увеличить масштаб">+</button>
+              <button type="button" onClick={fitViewport} title="Показать все точки на чертеже">Вписать</button>
+            </div>}
             {connectionActive&&<>
-              <button type="button" disabled={!linkPoints.length} onClick={undoLinkPoint} aria-label="Отменить выбор последней точки" title="Назад"><LektrusGeometryToolIcon name="undo" size={17}/></button>
               <button type="button" disabled={!linkPoints.length} onClick={resetLinkSelection}>Сброс</button>
               {linkKind==="polygon"&&<button type="button" className="primary" disabled={linkPoints.length<3} onClick={()=>finishLink(linkPoints)}>Замкнуть</button>}
               {linkKind==="measure"&&<button type="button" onClick={()=>{setTab("connect");setSettingsOpen(true)}}>Размеры</button>}
             </>}
             {!connectionActive&&canvasTool==="point"&&draft.figureId==="free"&&<>
-              <button type="button" disabled={!canUndoFreePoint} onClick={()=>onChange(removeGraphPoint(draft,openPathLast))}
-                aria-label="Удалить последнюю точку" title="Удалить последнюю точку"><LektrusGeometryToolIcon name="undo" size={17}/></button>
               <button type="button" disabled={draft.points.length===(draft.freePathStart??0)} onClick={()=>patch({freePathStart:draft.points.length})}>Новая линия</button>
               <button type="button" className="primary" disabled={closeFreeSketch(draft)===draft} onClick={()=>onChange(closeFreeSketch(draft))}>Замкнуть</button>
             </>}
