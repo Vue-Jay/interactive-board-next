@@ -56,6 +56,7 @@ import "./lektrusAtlasEditor.css";
 import "./lektrusMathTouchPolish.css";
 import "./lektrusPhysicsGraphEditor.css";
 import "./lektrusCircuitButtons2026.css";
+import "./lektrusOpticsEditor.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
