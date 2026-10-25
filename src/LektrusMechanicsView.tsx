@@ -13,6 +13,16 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
  const id=useId().replaceAll(":","");
  const editable=Boolean(onPlace||onSelect||onPartDown);
  const selected=(type:string,objectId:string)=>selection?.type===type&&selection.id===objectId;
+ const partPointerDown=(e:ReactPointerEvent<SVGGElement>,target:NonNullable<MechanicsSelection>)=>{
+   e.stopPropagation();
+   if(tool==="select"||(tool==="force"&&target.type==="body"))onPartDown?.(e,target);
+   else if(onPlace){
+     e.preventDefault();
+     const svg=e.currentTarget.ownerSVGElement!;
+     const point=mechanicsSvgPoint(e.clientX,e.clientY,svg);
+     onPlace(point.x,point.y);
+   }
+ };
  return <svg className={"lektrus-mechanics-svg mode-"+tool} viewBox="0 0 960 560"
    preserveAspectRatio="xMidYMid meet" role="img" aria-label="Редактируемая физическая схема"
    style={{touchAction:editable?"none":undefined}}>
@@ -26,7 +36,7 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
   }}/>
   {doc.grid&&<rect width="960" height="560" fill={"url(#mechanics-dot-"+id+")"} pointerEvents="none"/>}
   {doc.supports.map(s=><g key={s.id} className={"lektrus-mechanics-part"+(selected("support",s.id)?" selected":"")}
-   onPointerDown={onPartDown?e=>{e.stopPropagation();onPartDown(e,{type:"support",id:s.id})}:undefined}
+   onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"support",id:s.id}):undefined}
    onClick={onSelect?e=>{e.stopPropagation();onSelect({type:"support",id:s.id})}:undefined}>
    <g transform={`translate(${s.x} ${s.y}) rotate(${-s.angle})`}>
     {s.kind==="pivot"?<g><path d="M0 -20L-24 20H24Z" stroke="#657a95" fill="#e9f0f9" strokeWidth="2"/><path d="M-31 23h62" stroke="#72849e" strokeWidth="3"/></g>:<g>
@@ -38,7 +48,7 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
    {editable&&<rect className="mechanics-hit" x={s.x-s.width/2-12} y={s.y-28} width={s.width+24} height="55" fill="transparent" pointerEvents="all"/>}
   </g>)}
   {doc.bodies.map(b=><g key={b.id} className={"lektrus-mechanics-part"+(selected("body",b.id)?" selected":"")}
-   onPointerDown={onPartDown?e=>{e.stopPropagation();onPartDown(e,{type:"body",id:b.id})}:undefined}
+   onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"body",id:b.id}):undefined}
    onClick={onSelect&&tool==="select"?e=>{e.stopPropagation();onSelect({type:"body",id:b.id})}:undefined}>
    {selected("body",b.id)&&<rect x={b.x-b.width/2-7} y={b.y-b.height/2-7} width={b.width+14} height={b.height+14} rx="13"
     fill="#dbe9ff" fillOpacity=".42" stroke="#5690e0" strokeDasharray="6 5" pointerEvents="none"/>}
@@ -55,7 +65,7 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
     const a=mechanicsForceOrigin(f,doc),b=mechanicsForceTip(f,doc),picked=selected("force",f.id);
     const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
     return <g key={f.id} className={"lektrus-mechanics-force"+(picked?" selected":"")}
-      onPointerDown={onPartDown?e=>{e.stopPropagation();onPartDown(e,{type:"force",id:f.id})}:undefined}
+      onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"force",id:f.id}):undefined}
       onClick={onSelect?e=>{e.stopPropagation();onSelect({type:"force",id:f.id})}:undefined}>
       {picked&&<line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#a8c9ff" strokeWidth="12" opacity=".7" pointerEvents="none"/>}
       <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#296bd5" strokeWidth="3.5" strokeLinecap="round"
