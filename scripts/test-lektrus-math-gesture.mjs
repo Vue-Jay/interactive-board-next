@@ -288,7 +288,7 @@ assert.match(app,/freeContacts\.current\.size>1/,
 assert.match(app,/onPointerCancel=\{event=>\{/,"cancelled touch never creates a point");
 assert.doesNotMatch(app,/candidate\.graphFigureId==="free"\?String\.fromCharCode/,
  "saved board names must never depend on point index");
-assert.match(editor,/↶ Отменить точку/);
+assert.match(editor,/↶ Назад/,"undo button reverts the last complete construction action");
 assert.match(editor,/lektrus-free-build-status/);
 assert.match(css,/\.lektrus-free-close-target/);
 assert.match(css,/@media\(pointer:coarse\)/);
