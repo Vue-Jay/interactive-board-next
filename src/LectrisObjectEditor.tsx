@@ -245,6 +245,11 @@ export function LectrisObjectInspector({item,canModify,userId,canToggleLock,onCl
           onChange={e=>setTextDraft(e.target.value)} aria-label="Содержимое выбранного объекта"/>
         <button type="button" className="lectris-inspector-primary" disabled={!canModify||textDraft===item.text} onClick={saveText}>Сохранить текст</button>
       </section>}
+      {(item.kind==="pen"||item.kind==="marker")&&<section className="lectris-inspector-section">
+        <h3>Линия</h3>
+        <NumberField label="Толщина, px" value={item.weight??3} minimum={1} maximum={90}
+          disabled={!canModify} onCommit={weight=>onPatch({weight})}/>
+      </section>}
       {colorKinds.has(item.kind) && <section className="lectris-inspector-section">
         <h3>Оформление</h3>
         <LektrusColorPicker userId={userId} label="Цвет объекта" value={currentColor}
