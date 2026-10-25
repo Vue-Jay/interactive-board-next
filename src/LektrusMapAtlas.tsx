@@ -1059,7 +1059,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   brushContour(e);
   eraserGesture.current=null;
   const source=[...(liveErasedStrokes??contourStrokes),...(pendingInk??[])];
-  const erased=eraseContourInkAlongPath(source,gesture.path,gesture.radius);
+  const erased=eraseContourInkAlongPath(source,gesture.path,gesture.radius,
+   contourPixelScale()*cameraRef.current.scale);
   if(erased===source){clearErasePreview();return}
   erasedSourceIds.current=new Set(source.map(line=>line.id).filter(id=>!erased.some(line=>line.id===id)));
   eraserPersisting.current=true;
