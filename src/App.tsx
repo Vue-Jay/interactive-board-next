@@ -198,8 +198,8 @@ const iconBody = (name: IconName) => {
     case "eraser": return <><path d="m4.7 12 7.1-7.1a2 2 0 0 1 2.8 0l4.5 4.5a2 2 0 0 1 0 2.8L12.3 19H8l-3.3-3.3a2.6 2.6 0 0 1 0-3.7Z"/><path d="m9.2 8.3 6.2 6.2M12.3 19H21"/></>;
     case "section-arrows": return <><path d="M4 24C9 24 8 15 14 15S20 22 27 7"/><path d="m20.5 9 7-3-1 7"/><circle cx="4" cy="24" r="2.3" fill="var(--lt-raised,#fff)"/><circle cx="14" cy="15" r="2.3" fill="var(--lt-raised,#fff)"/></>;
     case "section-create": return <><path d="M3.5 19 8.5 5l5 14M5.8 13.5h5.4"/><path d="M16 8h5M16 13h5M16 18h4"/></>;
-    case "section-shapes": return <><rect x="3.5" y="3.5" width="11" height="11" rx="2.2"/><circle cx="16.5" cy="16.5" r="5"/></>;
-    case "section-data": return <><rect x="2.5" y="4.5" width="11" height="15" rx="2"/><path d="M2.5 10h11M8 4.5v15"/><path d="M16.5 19.5v-6M20.5 19.5V8" strokeWidth="2.2"/></>;
+    case "section-shapes": return <><rect x="3" y="3.5" width="9.5" height="9.5" rx="1.8"/><circle cx="17.6" cy="8" r="3.5"/><path d="m9.3 20.5 5.4-8 5.3 8H9.3Z"/></>;
+    case "section-data": return <><rect x="2.5" y="4.5" width="11" height="15" rx="2"/><path d="M2.5 10h11M2.5 14.5h11M8 10v9.5"/><path d="M16 19.5v-3.5m3 3.5v-7m3 7v-11" strokeWidth="2.3"/><path d="M15 20h8" strokeWidth="1.3"/></>;
     case "section-assignments": return <><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m7 10 2 2 3-3M14 10h3M7 16h3M13 16h4"/></>;
     case "section-media": return <><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="9" r="1.5"/><path d="m5 17 5-5 3.5 3.5 2.6-2.6L19 16"/></>;
     case "connector": return <><path d="M3.5 12h17"/><path d="M14.5 5.5 21 12l-6.5 6.5"/></>;
