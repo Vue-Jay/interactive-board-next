@@ -915,6 +915,21 @@ assert.ok(map.includes('onPointerMove={objectMoveMode?undefined:contourEraser?mo
 const eraserCode=map.slice(map.indexOf('const beginContourErase='),map.indexOf('const startContourMarkDrag='));
 assert.ok(eraserCode.includes('setPointerCapture(e.pointerId)'));
 assert.ok(eraserCode.includes('brushContour(e)'));
+const penMove=map.slice(map.indexOf('const moveContourStroke='),map.indexOf('const endContourStroke='));
+assert.ok(map.includes('className="lektrus-contour-ink-preview"'),
+ "Contour editor must render a separate, non-interactive canvas ink preview");
+assert.ok(map.includes('startContourCanvas("erase")')&&map.includes('startContourCanvas("pen")'),
+ "Both pencil and eraser must use the fast preview surface");
+assert.ok(map.includes('ctx.globalCompositeOperation=mode==="erase"?"destination-out":"source-over"'),
+ "Eraser must cut the cached ink image without re-rendering the map");
+assert.ok(penMove.includes('if(contourCanvasMode.current==="pen")')&&penMove.includes('paintContourPixel(e,"pen")'),
+ "Pencil must update the new local segment rather than repeatedly reconstruct all points");
+assert.ok(map.includes('const rect=contourCanvasBounds.current??mapSvgRef.current?.getBoundingClientRect()'),
+ "Ink gesture coordinates must reuse cached bounds instead of forcing layout every event");
+assert.ok(map.includes('setPendingInk(segments)')&&map.includes('if(pendingInk&&contourCanvasMode.current==="pen"'),
+ "Canvas stays visible until optimistic pencil ink appears in SVG");
+assert.ok(map.includes('if(liveErasedStrokes&&contourCanvasMode.current==="erase"'),
+ "Canvas erasure stays visible until the persisted stroke preview is ready");
 assert.ok(eraserCode.includes('eraseContourInkAlongPath(source,gesture.path,gesture.radius,'),
  "Eraser must cut drawn ink once, when the gesture finishes");
 assert.ok(eraserCode.includes('contourPixelScale()*cameraRef.current.scale'),
