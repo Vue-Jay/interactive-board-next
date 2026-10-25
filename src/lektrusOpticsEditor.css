@@ -218,3 +218,16 @@
 .lektrus-optics-editor .lektrus-optics-tools button:hover:not(:disabled){
   border-color:#a9c7ec;
 }
+
+.lektrus-optics-ray-steps{
+  display:grid;gap:7px;padding:10px;
+  border:1px solid #d9e6f5;border-radius:11px;background:#f7faff;
+}
+.lektrus-optics-ray-steps>strong{font-size:12px;color:#2a527e}
+.lektrus-optics-ray-step{display:grid;grid-template-columns:22px minmax(0,1fr);align-items:start;gap:7px}
+.lektrus-optics-ray-step>span{
+  width:21px;height:21px;display:grid;place-items:center;border-radius:50%;
+  background:#e3efff;color:#2a60ad;font-weight:800;font-size:10px;
+}
+.lektrus-optics-ray-step p{margin:1px 0 0;font-size:11px;line-height:1.35;color:#415e86}
+.lektrus-optics-ray-steps small{display:block;line-height:1.4;color:#7890ad;font-size:10px}
