@@ -25,6 +25,25 @@ const nearSource={...src,x:465};
 const refracting={...blank,elements:[nearSource,boundary],rays:[{...ray,angle:20}]};
 const refracted=optics.traceOpticalRay(refracting,refracting.rays[0]);
 assert.equal(refracted.kind,"refracted");
+// A light ray must not stop after its first optical component.
+const firstLens={...optics.makeOpticalElement("converging-lens",300,280),id:"first-lens"};
+const secondLens={...optics.makeOpticalElement("diverging-lens",600,280),id:"second-lens"};
+const multiLens={...blank,elements:[src,firstLens,secondLens],rays:[ray]};
+const multiLensTrace=optics.traceOpticalRay(multiLens,ray);
+assert.ok(multiLensTrace.points.length>=4,"ray must continue through both lenses and to the edge");
+assert.ok(multiLensTrace.points.some(p=>Math.abs(p.x-300)<1),"ray must hit first lens");
+assert.ok(multiLensTrace.points.some(p=>Math.abs(p.x-600)<1),"ray must hit second lens");
+assert.ok(multiLensTrace.points.at(-1).x>900,"ray must emerge beyond second lens");
+const mirrorAfterLens={...blank,elements:[src,firstLens,mirror],rays:[ray]};
+const bounced=optics.traceOpticalRay(mirrorAfterLens,ray);
+assert.ok(bounced.points.some(p=>Math.abs(p.x-300)<1)&&bounced.points.some(p=>Math.abs(p.x-500)<1),
+ "mirror interaction must still work after a lens");
+assert.ok(bounced.points.length>=5,"reflected ray must travel back through the lens");
+const reverseScreen={...optics.makeOpticalElement("screen",70,280),id:"rear-screen"};
+const captured={...blank,elements:[src,firstLens,mirror,reverseScreen],rays:[ray]};
+const capturedTrace=optics.traceOpticalRay(captured,ray);
+assert.ok(capturedTrace.points.length>=5);
+assert.ok(capturedTrace.note.includes("экран"),"reflected ray should stop at screen after several elements");
 const initial=Math.abs((refracted.points[1].y-refracted.points[0].y)/(refracted.points[1].x-refracted.points[0].x));
 const transmitted=Math.abs((refracted.points[2].y-refracted.points[1].y)/(refracted.points[2].x-refracted.points[1].x));
 assert.ok(transmitted<initial,"refraction into denser medium bends toward normal");
