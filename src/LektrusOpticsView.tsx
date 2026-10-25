@@ -51,6 +51,13 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
      {path.points.slice(1,-1).map((p,index)=><circle key={"hit-"+index}
        cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke={path.color}
        strokeWidth="2" opacity=".95"/>)}
+     {selection?.kind==="ray"&&selection.id===path.id&&path.events?.map((event,index)=><g
+       key={"event-"+index} transform={`translate(${event.point.x} ${event.point.y})`}>
+       <circle r="10.5" fill="#fff" stroke={event.kind==="tir"?"#e59a34":"#3e79bf"} strokeWidth="1.8"/>
+       <text x="0" y="3.7" textAnchor="middle" fontSize="10.5" fontWeight="750"
+          fill="#285995">{index+1}</text>
+       <title>{event.text}</title>
+     </g>)}
      {path.points.slice(0,-1).map((p,i)=>{
        const next=path.points[i+1],mx=(p.x+next.x)/2,my=(p.y+next.y)/2;
        const angle=Math.atan2(next.y-p.y,next.x-p.x)*180/Math.PI;
