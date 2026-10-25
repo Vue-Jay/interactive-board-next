@@ -255,36 +255,62 @@
  }
 }
 
-/* One click on the drawing itself opens the editor, replacing the legacy
-   "По точкам" caption. No extra action in the bottom selection toolbar. */
-.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor{
+/* Direct, touch-safe actions in the drawing: a full editor and an icon-only
+   on-board construction toggle. Both appear only on a selected editable graph. */
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-actions{
  position:absolute;left:10px;top:9px;z-index:6;
- display:inline-flex;align-items:center;justify-content:center;gap:7px;
- box-sizing:border-box;min-width:116px;min-height:38px;max-width:calc(100% - 20px);
- padding:8px 12px;border:1px solid #2f6ec1;border-radius:10px;
- background:#296bbc;color:#fff;
+ display:flex;align-items:center;gap:6px;box-sizing:border-box;
+ max-width:calc(100% - 20px);pointer-events:auto!important;
+ user-select:none;-webkit-user-select:none;
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-actions>button{
+ position:relative;display:inline-flex;align-items:center;justify-content:center;
+ box-sizing:border-box;min-height:38px;border-radius:10px;
  font-family:inherit;font-size:12px;font-weight:760;line-height:1.15;
- white-space:nowrap;box-shadow:0 3px 12px rgba(35,92,166,.18);
- cursor:pointer;pointer-events:auto!important;touch-action:manipulation;
- user-select:none;-webkit-tap-highlight-color:transparent;
+ white-space:nowrap;cursor:pointer;pointer-events:auto!important;
+ touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+ transition:background-color .14s,border-color .14s,box-shadow .14s;
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor{
+ flex:0 1 auto;min-width:0;padding:8px 12px;gap:7px;
+ border:1px solid #2f6ec1;background:#296bbc;color:#fff;
+ box-shadow:0 3px 12px rgba(35,92,166,.18);
 }
 .graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor:hover{
  background:#1e58a4;border-color:#1e58a4;
 }
-.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor:active{
- transform:translateY(1px);
-}
-.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor:focus-visible{
- outline:2px solid #528be2;outline-offset:2px;
-}
-.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor .lektrus-geometry-vector-icon{
- width:17px;height:17px;flex:0 0 17px;display:block;stroke:currentColor;
-}
 .graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor>span{
+ min-width:0;overflow:hidden;text-overflow:ellipsis;
  color:inherit;font-size:12px;line-height:1.2;
 }
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-construction{
+ flex:0 0 40px;width:40px;height:38px;padding:6px;
+ border:1px solid #b8cfe9;background:#f2f7ff;color:#285a9b;
+ box-shadow:0 3px 12px rgba(35,92,166,.12);
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-construction:hover{
+ background:#e4efff;border-color:#7da7db;
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-construction[aria-pressed="true"]{
+ background:#245fab;border-color:#245fab;color:white;
+ box-shadow:0 0 0 2px rgba(83,143,216,.22),0 3px 12px rgba(35,92,166,.21);
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-actions>button:active{
+ transform:translateY(1px);
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-actions>button:focus-visible{
+ outline:2px solid #528be2;outline-offset:2px;
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-actions .lektrus-geometry-vector-icon{
+ width:19px;height:19px;flex:0 0 19px;display:block;stroke:currentColor;
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-construction .lektrus-geometry-vector-icon{
+ width:23px;height:23px;flex:0 0 23px;
+}
 @media(pointer:coarse){
- .graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor{
-  min-height:42px;padding:9px 12px;
+ .graph-view.graph-purpose-geometry .lektrus-graph-canvas-actions{gap:7px;left:8px;top:8px}
+ .graph-view.graph-purpose-geometry .lektrus-graph-canvas-actions>button{min-height:44px}
+ .graph-view.graph-purpose-geometry .lektrus-graph-canvas-construction{
+  flex-basis:44px;width:44px;height:44px;
  }
 }
