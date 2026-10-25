@@ -1,8 +1,8 @@
 /** Consistent Lektrus pointer symbols for the physics workspaces.
  * Line art inherits the same active and hover colour as other school tools. */
 export type PhysicsPointerKind="select"|"hand";
-export default function LektrusPhysicsPointerGlyph({kind,size=24}:{kind:PhysicsPointerKind;size?:number}){
- return <svg viewBox="0 0 24 24" width={size} height={size} fill="none"
+export default function LektrusPhysicsPointerGlyph({kind,size=24,className}:{kind:PhysicsPointerKind;size?:number;className?:string}){
+ return <svg className={className} viewBox="0 0 24 24" width={size} height={size} fill="none"
    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
    aria-hidden="true" focusable="false">
   {kind==="select"?<>
