@@ -841,7 +841,7 @@ assert.ok(map.includes('useState(isWorksheet&&!editorMode)'),
  "Worksheets must start in board selection and resize mode");
 assert.ok(map.includes('const mapConsumesPointer=')&&map.includes('if(mapConsumesPointer(e.target))e.stopPropagation()'),
  "Only intentional map-edit mode stops board pointer events");
-assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:'));
+assert.ok(map.includes('onPointerDownCapture={contourEraser?beginContourErase:contourFreehand?beginContourStroke:undefined}'));
 assert.ok(map.includes('const worksheetEditor=isWorksheet&&editorMode'));
 assert.ok(map.includes('const worksheetOnBoard=isWorksheet&&!editorMode'));
 assert.ok(application.includes('data-object={item.id}'));
