@@ -8684,13 +8684,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               {singleSelected?.kind==="graph"&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&(
                 <span className="graph-selection-controls">
                   {singleSelected.graphPurpose!=="geometry"&&<button type="button" data-board-interactive="true"
-                    className={singleSelected.graphPurpose==="geometry"?"lektrus-graph-open-editor":"lektrus-graph-edit-secondary"}
-                    aria-label={singleSelected.graphPurpose==="geometry"?"Открыть полный редактор фигур":"Настроить учебный объект"}
+                    className="lektrus-graph-edit-secondary" aria-label="Настроить учебный объект"
                     onPointerDown={e=>e.stopPropagation()}
                     onClick={e=>{e.preventDefault();e.stopPropagation();setGraphPointEditId(null);openGraphEditor(singleSelected)}}
-                    title={singleSelected.graphPurpose==="geometry"?"Открыть большой редактор фигур":"Открыть настройки учебного объекта"}>
-                    {singleSelected.graphPurpose==="geometry"?<LektrusGeometryToolIcon name="editor" size={17}/>:<Icon name="settings" size={15}/>}
-                    <span>{singleSelected.graphPurpose==="geometry"?"Открыть редактор":"Настроить"}</span>
+                    title="Открыть настройки учебного объекта">
+                    <Icon name="settings" size={15}/><span>Настроить</span>
                   </button>}
                   {singleSelected.graphPurpose==="geometry"&&!isSolidFigure(singleSelected.graphFigureId)&&!isSchoolDiagramId(singleSelected.graphFigureId)&&
                     <button type="button" data-board-interactive="true"
