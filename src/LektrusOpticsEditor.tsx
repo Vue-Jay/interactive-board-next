@@ -2,6 +2,7 @@ import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from "
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import LektrusOpticsView,{opticsSvgPoint,type OpticsSelection,type OpticsTool} from "./LektrusOpticsView";
+import LektrusSubjectToolIcon from "./LektrusSubjectToolIcons";
 import LektrusPhysicsToolIcon from "./LektrusPhysicsToolIcon";
 import {emptyOptics,makeOpticalElement,opticsId,validOptics,traceOptics,type OpticalElement,type OpticalKind,type OpticsDocument} from "./lektrusOpticsModel";
 type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void};
@@ -135,7 +136,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
  return createPortal(<div className="lektrus-optics-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget)close()}}>
   <section className={"lektrus-optics-editor"+(drawer?"":" catalog-hidden")+(inspector&&selected?" show-properties":"")} role="dialog" aria-modal="true" aria-label="Редактор оптики" onPointerDown={e=>e.stopPropagation()}>
    <header className="lektrus-optics-header">
-    <div className="lektrus-optics-heading"><span className="lektrus-optics-logo" aria-hidden="true"><svg viewBox="0 0 32 32" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 3v26M4 11h8m-4-4 4 4-4 4M20 11h8m-4-4-4 4 4 4"/><path d="M14 6c-9 6-9 14 0 20M18 6c9 6 9 14 0 20"/></svg></span>
+    <div className="lektrus-optics-heading"><span className="lektrus-optics-logo" aria-hidden="true"><LektrusSubjectToolIcon id="physics-optics" size={30}/></span>
      <div><small>ФИЗИКА · СВЕТ</small><strong>Оптическая лаборатория</strong></div>
     </div>
     <div className="lektrus-optics-header-actions">
@@ -217,7 +218,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
      <button type="button" className="lektrus-optics-danger" onClick={deleteSelected}>Удалить выбранное</button>
      </aside>}
    </div>
-   <footer className="lektrus-optics-footer"><span>Луч проходит через первую встреченную поверхность. Линзы: тонколинзовое приближение. Призма: преломление на гранях.</span>
+   <footer className="lektrus-optics-footer"><span>Лучи проходят через последовательные линзы и зеркала. Используются учебные приближения тонких линз и преломления.</span>
     <button type="button" onClick={onCancel}>Отмена</button><button type="button" className="lektrus-optics-primary" onClick={()=>onSave(saveValue())}>Сохранить на доску</button>
    </footer>
   </section>
