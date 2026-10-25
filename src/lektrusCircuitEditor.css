@@ -421,3 +421,14 @@
   .lektrus-circuit-footer span{display:none}
   .lektrus-circuit-footer button{flex:1 1 auto;min-width:0}
 }
+
+.lektrus-circuit-properties-toggle{
+  flex:0 0 auto;min-height:32px;padding:5px 10px;
+  border:1px solid #d5e2f3;border-radius:8px;
+  background:#f4f8ff;color:#486793;
+  font-size:11px;font-weight:750;cursor:pointer;
+}
+.lektrus-circuit-properties-toggle[aria-pressed=true]{
+  background:#e5efff;border-color:#abc5ed;color:#2558b0;
+}
+.lektrus-circuit-properties-toggle:disabled{opacity:.45;cursor:default}
