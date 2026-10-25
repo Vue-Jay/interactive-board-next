@@ -1,6 +1,7 @@
 import {useId,type PointerEvent as ReactPointerEvent} from "react";
 import type {OpticsDocument,OpticalElement} from "./lektrusOpticsModel";
 import {OPTICS_WIDTH,OPTICS_HEIGHT,traceOptics} from "./lektrusOpticsModel";
+import {svgClientPoint,clampCanvasPoint} from "./lektrusSvgPointer";
 export type OpticsSelection={kind:"element"|"ray";id:string}|null;
 export type OpticsTool="select"|"source"|"mirror"|"converging-lens"|"diverging-lens"|"interface"|"screen"|"prism";
 type Props={doc:OpticsDocument;selection?:OpticsSelection;tool?:OpticsTool;
@@ -11,11 +12,7 @@ type Props={doc:OpticsDocument;selection?:OpticsSelection;tool?:OpticsTool;
   cursor?:{x:number;y:number}|null;
 };
 export function opticsSvgPoint(clientX:number,clientY:number,svg:SVGSVGElement){
- const rect=svg.getBoundingClientRect();
- const scale=Math.min(rect.width/OPTICS_WIDTH,rect.height/OPTICS_HEIGHT)||1;
- const ox=(rect.width-OPTICS_WIDTH*scale)/2,oy=(rect.height-OPTICS_HEIGHT*scale)/2;
- return {x:Math.max(0,Math.min(OPTICS_WIDTH,(clientX-rect.left-ox)/scale)),
-   y:Math.max(0,Math.min(OPTICS_HEIGHT,(clientY-rect.top-oy)/scale))};
+  return clampCanvasPoint(svgClientPoint(svg,clientX,clientY),OPTICS_WIDTH,OPTICS_HEIGHT);
 }
 const captions:Record<OpticalElement["kind"],string>={
  source:"Источник","mirror":"Зеркало","converging-lens":"Собирающая линза",
