@@ -203,6 +203,7 @@ export function removeGraphBoardPoint(item:Item,index:number):Item {
 
 type Props = {
   draft:GraphDraft; userId:string; preview:ReactNode; mode:"coordinates"|"geometry";
+  collaborative?:boolean;
   onChange:(value:GraphDraft)=>void;
   onSave:()=>void; onCancel:()=>void; onClose:()=>void;
 };
@@ -213,7 +214,7 @@ const formulas:Record<GraphDraft["type"],string>={
   linear:"2*x + 1",quadratic:"x^2 - 4*x + 3",sin:"sin(x)",cos:"cos(x)"
 };
 
-export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:emitChange,onSave,onCancel,onClose}:Props) {
+export default function LektrusGraphEditor({draft,userId,preview,mode,collaborative=false,onChange:emitChange,onSave,onCancel,onClose}:Props) {
   // Record exactly one history step per completed user action.
   // Continuous wheel/pinch gestures and one tap that both creates and links
   // a point are explicit groups. Unrelated edits are NEVER time-merged.
@@ -1562,8 +1563,12 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
           <div className="lektrus-graph-preview-hint">{mode==="geometry"?canvasHelp:connectionActive?"Нажимайте на существующие вершины. Выбранные точки подсвечиваются; линии создаются без новых вершин.":isSolid?"Поворачивайте фигуру, перетаскивая оси X, Y, Z в правом верхнем углу. Двойное нажатие на оси возвращает стандартный вид.":draft.figureId==="ray"?"Изменяйте направление луча, захватив его линию. На рисунке остаётся одна начальная точка.":draft.figureId==="free"?"Одно касание ставит точку. Коснитесь первой вершины для замыкания, а для перемещения удерживайте и перетаскивайте её.":"Перетаскивайте точки мышью или пальцем. Двойное нажатие добавляет или удаляет точку."}</div>
         </aside>
       </div>
-      <footer className="graph-editor-footer lektrus-graph-footer"><span>Изменения сохраняются на доске после подтверждения</span>
-        <div><button type="button" className="secondary" onClick={onCancel}>Отмена</button><button type="button" className="primary" onClick={onSave}>Сохранить</button></div>
+      <footer className="graph-editor-footer lektrus-graph-footer">
+        <span>{collaborative?"Общий редактор · изменения сразу видны на доске всем участникам":"Изменения сохраняются после подтверждения"}</span>
+        <div>
+          {!collaborative&&<button type="button" className="secondary" onClick={onCancel}>Отмена</button>}
+          <button type="button" className="primary" onClick={onSave}>{collaborative?"Готово":"Сохранить"}</button>
+        </div>
       </footer>
     </section>
   </div>;
