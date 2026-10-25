@@ -420,8 +420,18 @@ assert.match(editor,/const redoDraft=\(\)=>/,
  "redo restores global geometry revisions");
 assert.match(editor,/history\.past\.push\(previous\)/,
  "changes in any geometry tab are saved in a shared undo history");
-assert.match(editor,/onPointMove:\(i:number,x:number,y:number\)=>/,
- "vertex gestures on the preview are routed through shared undo history");
+assert.match(editor,/onPointMoveEnd:\(i:number,x:number,y:number\)=>/,
+ "one completed vertex drag is stored as one undo step");
+assert.match(editor,/onPointMove:undefined,onPointMoveEnd:/,
+ "dragging does not create one history item per pointer movement");
+assert.match(editor,/const sameGesture=!!group&&history\.lastGroup===group/,
+ "only explicitly grouped gestures may share an undo step");
+assert.doesNotMatch(editor,/const kind: "zoom"\|"drag"\|null=/,
+ "independent point moves are never coalesced merely because they happened close together");
+assert.match(editor,/singleAction\(\(\)=>\{/,
+ "creating and linking a vertex in one tap is one undo step");
+assert.match(editor,/history\.future\.push\(history\.current\)/,
+ "undo pushes exactly one current snapshot into redo");
 assert.match(editor,/onAddPoint:draft\.figureId==="free"\?\(x:number,y:number\)=>onChange\(appendFreeSketchPoint\(draft,x,y\)\)/,
  "free drawing edits are also undoable");
 assert.doesNotMatch(editor,/const undoLinkPoint=\(\)=>/,
