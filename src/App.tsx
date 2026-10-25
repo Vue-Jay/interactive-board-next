@@ -40,6 +40,11 @@ import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import LektrusOpticsEditor from "./LektrusOpticsEditor";
 import LektrusMechanicsEditor from "./LektrusMechanicsEditor";
 import LektrusMechanicsView from "./LektrusMechanicsView";
+import LektrusPhysicalBoardView from "./LektrusPhysicalBoardView";
+import {movePhysicalPart,type PhysicalTarget} from "./lektrusPhysicalBoardMove";
+import {mechanicsValid} from "./lektrusMechanicsModel";
+import {validOptics} from "./lektrusOpticsModel";
+import {circuitIsDocument} from "./lektrusCircuitModel";
 import LektrusOpticsView from "./LektrusOpticsView";
 import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration,{isChemicalIllustration} from "./LektrusChemistryIllustration";
@@ -1120,7 +1125,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
@@ -1142,6 +1147,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onToggleConstruction?: ()=>void;
   constructionActive?: boolean;
   suspendPeriodicWindows?: boolean;
+  onPhysicalPartMove?: (target:PhysicalTarget,position:{x:number;y:number})=>void;
+  onPhysicalPartPreview?: (target:PhysicalTarget,position:{x:number;y:number})=>void;
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
   const [liveRay,setLiveRay]=useState<{x:number;y:number}|null>(null);
@@ -1180,12 +1187,9 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
     },liveVertex.index,liveVertex.x,liveVertex.y);
     item={...item,graphPoints:moved.points};
   }
-  if(item.scienceMechanics)return <div className="graph-view lektrus-mechanics-board-view">
-    <LektrusMechanicsView doc={item.scienceMechanics}/>
-  </div>;
-  if(item.scienceOptics)return <div className="graph-view lektrus-optics-board-view">
-    <LektrusOpticsView doc={item.scienceOptics}/>
-  </div>;
+  if(item.scienceMechanics||item.scienceOptics||item.scienceCircuit)return
+    <LektrusPhysicalBoardView item={item} editable={!!onPhysicalPartMove}
+      onMoveEnd={onPhysicalPartMove} onMovePreview={onPhysicalPartPreview}/>;
   if(item.graphFigureId==="lektrus-chart")return <LektrusDataChartView item={item}/>;
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
     return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} onMatchingSize={onMatchingSize}/></div>;
@@ -8619,6 +8623,26 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind === "graph" && <GraphView item={item}
+                  onPhysicalPartMove={!presentation&&!item.locked&&!space&&!selectionLocked&&
+                   canEdit&&!structurallyLockedForStudent(item)&&tool==="select"&&
+                   !!(item.scienceMechanics||item.scienceOptics||item.scienceCircuit)
+                   ?(target,position)=>{
+                     const latest=itemsRef.current.find(candidate=>candidate.id===item.id);
+                     if(!latest||latest.locked)return;
+                     const changed=movePhysicalPart(latest,target,position.x,position.y);
+                     if(changed===latest)return;
+                     if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+                     commit(itemsRef.current.map(candidate=>candidate.id===latest.id?changed:candidate));
+                     workChannel.current?.publishEdit(latest.id,editorDiff(latest,changed));
+                   }:undefined}
+                  onPhysicalPartPreview={!presentation&&!item.locked&&!space&&canEdit&&
+                    !structurallyLockedForStudent(item)&&tool==="select"
+                    ?(target,position)=>{
+                      const latest=itemsRef.current.find(candidate=>candidate.id===item.id);
+                      if(!latest||latest.locked)return;
+                      const preview=movePhysicalPart(latest,target,position.x,position.y);
+                      if(preview!==latest)workChannel.current?.publishEdit(latest.id,editorDiff(latest,preview));
+                    }:undefined}
                   onMatchingSize={!isStudent&&canEdit&&!item.locked&&!presentation&&
                    item.graphFigureId==="geo-matching"?(width,height)=>{
                     const current=itemsRef.current.find(entry=>entry.id===item.id);
