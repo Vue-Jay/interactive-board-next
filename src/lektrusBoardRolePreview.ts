@@ -27,7 +27,7 @@ export function boardRoleCapabilities(input:{
  const realCanEdit=boardRole!=="viewer"||(isAppAdmin&&adminMaintenance);
  const effectiveRole:"teacher"|"student"=safePreview==="teacher"?"teacher":
    safePreview==="student"||safePreview==="guest"?"student":
-   (isGuest||accountRole==="student")&&!adminMaintenance?"student":"teacher";
+   (isGuest||(accountRole==="student"&&!adminMaintenance))?"student":"teacher";
  const isStudent=effectiveRole==="student";
  const isGuestPreview=safePreview==="guest";
  const canEdit=realCanEdit;
