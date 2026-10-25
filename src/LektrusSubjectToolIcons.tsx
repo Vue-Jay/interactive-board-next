@@ -17,7 +17,7 @@ const icons:Partial<Record<SubjectToolId,ReactNode>>={
  "chem-formulas":<><path d="M3 7h5m-5 9h5m3-5h10m-4-4 4 4-4 4"/><path d="M11 5h4m-2-2v4"/></>,
  "chem-experiments":<><path d="M9 3h6m-5 0v7l-6 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-6-9V3"/><path d="M7 17c3-2 7 2 10 0"/><circle cx="12" cy="18.7" r=".9" fill="currentColor"/></>,
  "physics-mechanics":<><rect x="9" y="10" width="7" height="7" rx="1"/><path d="M3 17h18M12.5 10V3m-3 3.5 3-3.5 3 3.5M16 13.5h5m-2.5-2.5 2.5 2.5-2.5 2.5"/></>,
- "physics-optics":<><path d="M12 2.8c-3 3-3 15.4 0 18.4M12 2.8c3 3 3 15.4 0 18.4" strokeWidth="2"/><path d="M2 8.5h7.5M14.5 8.5H22M2 15.5h7.5M14.5 15.5H22" strokeWidth="2"/><path d="m5.5 6 4 2.5-4 2.5m12-5 4 2.5-4 2.5m-12 1 4 2.5-4 2.5m12-5 4 2.5-4 2.5" strokeWidth="1.4"/><path d="M1 12h22" strokeDasharray="2 2" opacity=".35"/></>,
+ "physics-optics":<><path d="M14 3 7.5 21h14Z" strokeWidth="1.9" strokeLinejoin="round"/><path d="M1.5 12H11" strokeWidth="2.1"/><path d="m8.6 9.8 2.5 2.2-2.5 2.2" strokeWidth="1.5"/><path d="M16.5 12 22.5 6.5M16.5 12l6.5 0M16.5 12l6 5.5" strokeWidth="1.65"/><circle cx="2" cy="12" r=".9" fill="currentColor" stroke="none"/></>,
  "physics-graphs":<><path d="M4 3v17h17"/><path d="m6 17 4-7 4 4 6-9"/><circle cx="10" cy="10" r="1.2"/><circle cx="14" cy="14" r="1.2"/></>,
  "physics-circuits":<><path d="M3 10v-5h18v14H3v-5M6 8v4M9 6v8"/><circle cx="16" cy="12" r="3"/><path d="m14 10 4 4m0-4-4 4"/></>,
  "bio-dna":<><path d="M5 2c0 9 14 11 14 20M19 2C19 11 5 13 5 22"/><path d="M7 5h10M7 10h10M7 15h10M7 20h10"/></>,
