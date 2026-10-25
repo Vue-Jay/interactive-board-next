@@ -338,8 +338,8 @@ assert.match(editor,/showFigureCatalog\("Объёмные фигуры"\)/,
  "3D library navigation opens the catalog directly");
 assert.doesNotMatch(editor,/lektrus-geometry-rail-library/,
  "2D/3D switch is not duplicated in the tool rail");
-assert.match(app,/boardGeometryMode\?\.id!==singleSelected\.id\)\&\&<button/,
- "selection toolbar hides duplicate editor button when the construction panel is open");
+assert.match(app,/singleSelected\.graphPurpose!=="geometry"&&<button/,
+ "the bottom selection toolbar only opens the editor for non-geometry graphs");
 assert.doesNotMatch(editor,/className=\{tab==="connect"\?"active"/,
  "connecting points is part of the existing points section, not a fifth tab");
 assert.match(editor,/className="lektrus-link-kind-picker"/,
@@ -376,8 +376,16 @@ assert.match(css,/lektrus-link-vertex-list/,
 
 assert.match(editor,/Построение фигур/,
  "full screen figure editor uses a consistent title");
-assert.match(app,/lektrus-graph-open-editor/,
- "selected figure exposes an obvious primary editor action");
+assert.match(app,/className="lektrus-graph-canvas-editor"/,
+ "selected geometry opens its editor inside the graphic at the former title position");
+const boardGeometryCss=read("src/lektrusBoardGeometryPanel.css");
+assert.match(boardGeometryCss,/\.graph-view\.graph-purpose-geometry \.lektrus-graph-canvas-editor/,
+ "the editor button is styled in the top-left corner of the graph");
+assert.match(boardGeometryCss,/position:absolute;left:10px;top:9px/,
+ "the editor button occupies the old top-left title position");
+assert.match(app,/onPointerDown=\{event=>event\.stopPropagation\(\)\}/,
+ "the new overlay does not begin an accidental board drag");
+
 assert.match(app,/lektrus-graph-inline-draw/,
  "in-board drawing is a secondary mode");
 assert.match(app,/<span>Построение<\/span>/,
@@ -416,14 +424,18 @@ assert.equal(parsedEditor.parseDiagnostics.length,0,
  "geometry editor JSX must parse successfully");
 assert.match(app,/onDoubleClick=\{e=>\{if\(purpose==="geometry"\)/,
  "double-clicking the graph surface cannot open settings or add stray geometry");
-assert.match(app,/onOpenEditor=\{\(\)=>openGraphEditor\(singleSelected\)\}/,
- "full editor opens only from the explicit panel button");
+assert.match(app,/onOpenEditor=\{item\.graphPurpose==="geometry"&&selectedIds\.has\(item\.id\)/,
+ "the canvas editor button exists only for a selected editable geometry item");
+assert.match(app,/onClick=\{event=>\{event\.preventDefault\(\);event\.stopPropagation\(\);onOpenEditor\(\)\}\}/,
+ "the in-graphic editor button opens in one click without selecting or dragging the board");
+assert.match(app,/purpose==="geometry" \? \(onOpenEditor&&/,
+ "the old geometry caption is fully replaced by the canvas editor action");
 assert.match(app,/\.selection-toolbar-screen,button,input,select,textarea/,
  "board selection capture leaves toolbar clicks intact");
 assert.doesNotMatch(app,/className="lektrus-graph-board-actions"/,
  "redundant on-canvas settings toolbar was removed");
-assert.match(app,/aria-label=\{singleSelected\.graphPurpose==="geometry"\?"Открыть полный редактор фигур"/,
- "the bottom toolbar explicitly labels its editor action");
+assert.match(app,/aria-label="Открыть редактор построения"/,
+ "the in-graphic editor button has an accessible name");
 assert.match(app,/changeBoardGeometryMode\(singleSelected,"move"\)/,
  "the selection toolbar opens on-board construction mode");
 assert.match(app,/onAddPoint=\{graphPointEditId===item\.id/,
@@ -471,8 +483,8 @@ assert.match(boardModel,/"graphFreePathStart"/,
 const boardPanel=read("src/LektrusBoardGeometryPanel.tsx");
 assert.match(boardPanel,/<strong>Построение<\/strong>/,
  "board construction panel and selection toolbar share their title");
-assert.match(boardPanel,/onOpenEditor/,
- "board drawing panel can launch the full editor without hiding and reselecting");
+assert.doesNotMatch(boardPanel,/onOpenEditor/,
+ "the compact construction panel has no duplicate editor button");
 assert.match(boardPanel,/lektrus-board-geometry-display/,
  "secondary display settings stay collapsed by default");
 const boardActions=read("src/lektrusBoardGeometry.ts");
