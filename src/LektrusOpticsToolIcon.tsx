@@ -1,7 +1,8 @@
+import type {ReactNode} from "react";
 /** One coherent set of optical-school symbols, distinct from mechanics tools. */
 export type OpticsIconKind="select"|"source"|"mirror"|"converging-lens"|"diverging-lens"|"interface"|"screen"|"prism";
 export default function LektrusOpticsToolIcon({type}:{type:OpticsIconKind}){
- const icons:Record<OpticsIconKind,React.ReactNode>={
+ const icons:Record<OpticsIconKind,ReactNode>={
   select:<path d="M4 2.5 19 12l-7.2 1.1L9 21l-5-18.5Z" strokeLinejoin="round"/>,
   source:<>
     <circle cx="12" cy="12" r="4.1" fill="currentColor" fillOpacity=".13"/>
