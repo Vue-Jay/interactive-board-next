@@ -5413,6 +5413,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     window.setTimeout(() => startEdit(frame), 0);
   };
 
+  const finalizePhysicalEditor=(next:Item,create:boolean)=>{
+    const latest=itemsRef.current.find(candidate=>candidate.id===next.id);
+    if(!latest){
+      if(create)commit([...itemsRef.current,next]);
+      return;
+    }
+    // Component changes have already been merged live. Never write the
+    // editor's potentially older full document over another user's edits.
+    if(latest.text!==next.text){
+      commit(itemsRef.current.map(candidate=>candidate.id===latest.id?
+        {...candidate,text:next.text}:candidate));
+    }
+  };
   const livePhysicalEditorUpdate=(itemId:string,field:"scienceMechanics"|"scienceOptics"|"scienceCircuit",
     before:unknown,next:unknown)=>{
     const latest=itemsRef.current.find(candidate=>candidate.id===itemId);
@@ -7537,19 +7550,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           item={remoteLiveItems[circuitEditorItem.id]??items.find(x=>x.id===circuitEditorItem.id)??circuitEditorItem}
           onLiveChange={(before,next)=>livePhysicalEditorUpdate(circuitEditorItem.id,"scienceCircuit",before,next)}
           onCancel={()=>setCircuitEditorItem(null)}
-          onClose={next=>{
-            if(itemsRef.current.some(i=>i.id===next.id)){
-              commit(itemsRef.current.map(i=>i.id===next.id?next:i));
-              setNotice("Электрическая схема сохранена");
-            }
-            setCircuitEditorItem(null);
-          }}
-          onSave={next=>{
-            commit(itemsRef.current.some(i=>i.id===next.id)?
-              itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
-            setCircuitEditorItem(null);
-            setNotice("Электрическая схема добавлена на доску");
-          }}/>}
+          onClose={next=>{finalizePhysicalEditor(next,false);setCircuitEditorItem(null);}}
+          onSave={next=>{finalizePhysicalEditor(next,true);setCircuitEditorItem(null);
+            setNotice("Электрическая схема синхронизирована")}}/>}
         {schoolEditorItem&&<LektrusSchoolDiagramEditor key={schoolEditorItem.id}
           item={remoteLiveItems[schoolEditorItem.id]??items.find(item=>item.id===schoolEditorItem.id)??schoolEditorItem}
           userId={authUser.id} studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}
@@ -7592,14 +7595,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <LektrusMechanicsEditor key={scienceEditorItem.id} item={remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem}
             onLiveChange={(before,next)=>livePhysicalEditorUpdate(scienceEditorItem.id,"scienceMechanics",before,next)}
             onCancel={()=>setScienceEditorItem(null)}
-            onClose={next=>{if(itemsRef.current.some(i=>i.id===next.id))commit(itemsRef.current.map(i=>i.id===next.id?next:i));setScienceEditorItem(null)}}
-            onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Схема механики сохранена")}}/>:
+            onClose={next=>{finalizePhysicalEditor(next,false);setScienceEditorItem(null)}}
+            onSave={next=>{finalizePhysicalEditor(next,true);setScienceEditorItem(null);setNotice("Механика синхронизирована")}}/>:
         (scienceEditorItem.scienceOptics||["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(scienceEditorItem.graphFigureId??""))?
           <LektrusOpticsEditor key={scienceEditorItem.id} item={remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem}
             onLiveChange={(before,next)=>livePhysicalEditorUpdate(scienceEditorItem.id,"scienceOptics",before,next)}
             onCancel={()=>setScienceEditorItem(null)}
-            onClose={next=>{if(itemsRef.current.some(i=>i.id===next.id))commit(itemsRef.current.map(i=>i.id===next.id?next:i));setScienceEditorItem(null)}}
-            onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Оптическая схема сохранена")}}/>:
+            onClose={next=>{finalizePhysicalEditor(next,false);setScienceEditorItem(null)}}
+            onSave={next=>{finalizePhysicalEditor(next,true);setScienceEditorItem(null);setNotice("Оптика синхронизирована")}}/>:
           ["physics-motion","physics-speed","physics-accelerated-speed","physics-acceleration","physics-braking","physics-rest"].includes(scienceEditorItem.graphFigureId??"")?
           <LektrusPhysicsGraphEditor key={scienceEditorItem.id} item={scienceEditorItem}
             onCancel={()=>setScienceEditorItem(null)}
