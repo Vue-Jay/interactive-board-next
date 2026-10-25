@@ -20,6 +20,21 @@ const merged=mergeEditedValue(graph,teacher,student);
 assert.equal(merged.graphPoints[0].x,9,"one editor's point A move retained");
 assert.equal(merged.graphPoints[1].y,8,"other editor's point B move retained");
 
+// If two users add a vertex at the same time, rebase any new
+// segment/polygon references to the vertex's final merged index.
+const original={...graph,graphPoints:[...graph.graphPoints],graphSegments:[]};
+const localAdd={...original,
+ graphPoints:[...original.graphPoints,{x:5,y:6,label:"C"}],
+ graphSegments:[{a:0,b:2,kind:"segment",label:"AC"}]};
+const remoteAdd={...original,
+ graphPoints:[...original.graphPoints,{x:7,y:8,label:"C"}],
+ graphSegments:[{a:1,b:2,kind:"segment",label:"BC"}]};
+const combined=mergeEditedValue(original,localAdd,remoteAdd);
+assert.equal(combined.graphPoints.length,4,"both appended vertices survive");
+assert.equal(new Set(combined.graphPoints.map(p=>p.label)).size,4,"vertex names stay unique");
+assert.deepEqual(combined.graphSegments.map(s=>[s.a,s.b]),[[1,2],[0,3]],
+ "new vertex references are rebased instead of attaching to the wrong point");
+
 const atlas={schoolDiagram:{kind:"atlas",contourMarks:[{id:"one",lon:1,lat:2,label:"Старая"}],
  contourStrokes:[],paintedCountries:{"RU":"#eeeeee"},contourTask:"Задание"}};
 const first={schoolDiagram:{...atlas.schoolDiagram,
