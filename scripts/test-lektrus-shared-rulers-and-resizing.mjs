@@ -109,8 +109,8 @@ assert.match(geometry,/fillRule="evenodd"/,"set square and protractor have see-t
 assert.match(geometry,/lektrusMeasurementInstruments\.css/,"measuring styles are imported");
 assert.match(instrumentStyles,/geometry-instrument-centered.*geometry-instrument-body/,
  "instrument visual polish is scoped to shared measuring tools");
-assert.match(catalogIcons,/"math-geometry":<><circle cx="12"/,
- "figure catalogue uses a legible drafting-compass icon");
+assert.match(catalogIcons,/"math-geometry":<><path d="M4 19\\.5 11 4\\.5l9 15H4Z"/,
+ "figure catalogue uses the new connected-vertices construction icon");
 assert.match(constructionIcons,/construction:<><path d="M4\.5 18\.8/,
  "in-graphic construction button has its own connected-points icon");
 assert.match(app,/case "section-shapes": return/,
