@@ -250,10 +250,13 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
               {draft.connect&&ordered.length>1&&<polyline points={polyline} className="lektrus-motion-line" pointerEvents="none"/>}
               {aim&&tool==="point"&&<g transform={`translate(${sx(aim.x)} ${sy(aim.y)})`}
                 pointerEvents="none" className="lektrus-editor-cursor">
-                <circle r="10" fill="#fff" fillOpacity=".9" stroke="#3266c9" strokeWidth="2"/>
-                <circle r="2.5" fill="#3266c9"/>
-                <circle r="16" fill="none" stroke="#9ebfe8" strokeDasharray="5 6" strokeWidth="1.3"/>
-              </g>}
+                <circle r="13" fill="#fff" fillOpacity=".97" stroke="#2862ca" strokeWidth="2.5"/>
+                <circle r="3" fill="#2862ca"/>
+                <g transform={sx(aim.x)>730?"translate(-154 -36)":"translate(19 -36)"}>
+                  <rect width="141" height="28" rx="9" fill="#fff" stroke="#c1d4f1" strokeWidth="1.4"/>
+                  <text x="9" y="19" fill="#2b5698" fontWeight="750" fontSize="12">{format(aim.x)} с · {format(aim.y)} {axis.unit}</text>
+                </g>
+              </g>
               {data.map((point,i)=><g key={i}>
                 {selected===i&&<circle cx={sx(point.x)} cy={sy(point.y)} r="14" fill="#dce9ff" pointerEvents="none"/>}
                 <circle cx={sx(point.x)} cy={sy(point.y)} r={selected===i?6.2:5} fill={selected===i?"#194ba6":"#3878d5"}
