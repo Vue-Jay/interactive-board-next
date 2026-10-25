@@ -278,7 +278,7 @@ assert.equal(freePreset.graphPoints.length,0);
 assert.equal(freePreset.graphGrid,false,"clean white background is the initial state");
 assert.match(editor,/export function appendFreeSketchPoint/,"free sketch algorithm is exported");
 assert.match(editor,/closeFreeSketch\(draft\)/,"point contour can be closed");
-assert.match(app,/onGridChange=\{enabled=>setGraphDraft/,"preview grid toggle is connected");
+assert.match(app,/onGridChange=\{enabled=>changeLiveGraphDraft/,"preview grid toggle is connected");
 assert.match(app,/onGridChange=\{!item.locked&&canEdit/,"board grid toggle is connected");
 assert.match(app,/className="lektrus-diagram-grid-toggle"/,"the grid toggle appears on the diagram");
 assert.match(app,/className="lektrus-free-drawing-surface"/,"point placement uses the background directly");
