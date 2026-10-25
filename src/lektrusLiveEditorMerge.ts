@@ -47,11 +47,56 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
  if(Array.isArray(base)&&Array.isArray(edit)&&Array.isArray(latest))
   return mergeArray(base,edit,latest,key) as T;
  if(record(base)&&record(edit)&&record(latest)){
+  let effectiveEdit=edit;
+  // Concurrent point additions need index rebasing. Point-indexed graph
+  // elements refer to vertices by integer, so simply concatenating the
+  // vertex arrays would attach a newly drawn line to somebody else's point.
+  const pointKey="graphPoints" in base?"graphPoints":
+    "figureId" in base&&"points" in base?"points":null;
+  if(pointKey){
+   const old=base[pointKey],changed=edit[pointKey],remote=latest[pointKey];
+   if(Array.isArray(old)&&Array.isArray(changed)&&Array.isArray(remote)&&
+     changed.length>old.length&&remote.length>old.length){
+    const offset=remote.length-old.length;
+    const remoteNames=new Set(remote.filter(record).map(p=>String(p.label??"")));
+    const nameFor=(index:number)=>{
+     let n=index,label="";
+     do{label=String.fromCharCode(65+n%26)+label;n=Math.floor(n/26)-1;}while(n>=0);
+     return label;
+    };
+    const appended=changed.slice(old.length).map(point=>{
+      if(!record(point)||typeof point.label!=="string"||!remoteNames.has(point.label))return point;
+      let i=0,label=nameFor(i);
+      while(remoteNames.has(label)&&i<1000)label=nameFor(++i);
+      remoteNames.add(label);
+      return {...point,label};
+    });
+    const shifted:Record<string,unknown>={...edit,[pointKey]:[...changed.slice(0,old.length),...appended]};
+    const shift=(index:unknown)=>typeof index==="number"&&index>=old.length?index+offset:index;
+    const fields=pointKey==="graphPoints"?
+      ["graphSegments","graphAngles","graphCircles","graphPolygons","graphMidpoints","graphConstraints"]:
+      ["segments","angles","circles","polygons","midpoints","constraints"];
+    for(const field of fields){
+     const previous=base[field],following=edit[field];
+     if(!Array.isArray(previous)||!Array.isArray(following))continue;
+     shifted[field]=following.map((entry,i)=>{
+      if(i<previous.length&&same(entry,previous[i])||!record(entry))return entry;
+      const transformed:{[key:string]:unknown}={...entry};
+      for(const key of ["a","b","center","edge","vertex"])
+       if(key in transformed)transformed[key]=shift(transformed[key]);
+      if(Array.isArray(transformed.points))
+       transformed.points=transformed.points.map(shift);
+      return transformed;
+     });
+    }
+    effectiveEdit=shifted;
+   }
+  }
   const result:{[k:string]:unknown}={...latest};
-  for(const field of new Set([...Object.keys(base),...Object.keys(edit)])){
-   if(!same(base[field],edit[field])){
-    if(!(field in edit))delete result[field];
-    else result[field]=mergeEditedValue(base[field],edit[field],latest[field],field);
+  for(const field of new Set([...Object.keys(base),...Object.keys(effectiveEdit)])){
+   if(!same(base[field],effectiveEdit[field])){
+    if(!(field in effectiveEdit))delete result[field];
+    else result[field]=mergeEditedValue(base[field],effectiveEdit[field],latest[field],field);
    }
   }
   return result as T;
