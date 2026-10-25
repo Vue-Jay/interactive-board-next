@@ -53,6 +53,28 @@ const icons:Partial<Record<SubjectToolId,ReactNode>>={
  "civics-structure":<><path d="M12 3l9 5H3Z" fill="currentColor" fillOpacity=".12"/><path d="M5 10v8m5-8v8m4-8v8m5-8v8M3 19h18M2 21h20"/><path d="M12 11.5v5" strokeWidth="1.3"/></>,
 };
 
+/** Illustrated artwork atlas. Ordering is identical to the 7-column PNG grid.
+ * Unlike the simplified path glyphs, these silhouettes are lifted from the
+ * actual image option sheets reviewed for the subject-tool catalogue.
+ * Original SVG glyphs stay below as a resilient offline fallback.
+ */
+const illustrationIds:SubjectToolId[]=[
+ "math-formula","math-geometry","math-coordinate","math-fractions",
+ "physics-mechanics","physics-optics","physics-graphs","physics-circuits",
+ "chem-periodic-table","chem-molecules","chem-organic","chem-formulas","chem-experiments",
+ "bio-dna","bio-taxonomy","bio-division","bio-genetics","bio-cell","bio-food-chain",
+ "bio-organ-systems","info-encoding","info-programming","info-circuit","info-logic",
+ "info-flowchart","info-place-value","maps-atlas","contour-atlas","geo-matching",
+ "geo-question-cards","history-atlas","history-timeline","history-family-tree",
+ "ru-syntax","ru-morphemes","ru-morphology","ru-phonetics","ru-orthography",
+ "ru-sentence-builder","language-sentence-builder","language-flashcards",
+ "literature-analysis","civics-structure"
+];
+const illustrationIndexes=new Map<string,number>(illustrationIds.map((id,i)=>[id,i]));
+const illustrationHref=`${import.meta.env.BASE_URL}lektrus-subject-illustrations.png`;
+const illustratedTileSize=40;
+const illustratedAtlasSize=illustratedTileSize*7;
+
 export const subjectToolIconIds=Object.keys(icons);
 
 export function hasDedicatedSubjectToolIcon(id:string):boolean{
@@ -60,6 +82,19 @@ export function hasDedicatedSubjectToolIcon(id:string):boolean{
 }
 
 export default function LektrusSubjectToolIcon({id,size=23,className}:{id:string;size?:number;className?:string}){
+ const illustrationIndex=illustrationIndexes.get(id);
+ if(illustrationIndex!==undefined){
+  // A self-clipping SVG viewport keeps every original square illustration
+  // centred in its tile without showing neighbouring atlas entries.
+  const col=illustrationIndex%7,row=Math.floor(illustrationIndex/7);
+  return <svg className={className} width={size} height={size}
+   viewBox={`0 0 ${illustratedTileSize} ${illustratedTileSize}`}
+   style={{overflow:"hidden"}} aria-hidden="true" data-lektrus-subject-illustration={id}>
+   <image href={illustrationHref} width={illustratedAtlasSize} height={illustratedAtlasSize}
+    x={-col*illustratedTileSize} y={-row*illustratedTileSize}
+    preserveAspectRatio="xMinYMin meet" pointerEvents="none"/>
+  </svg>;
+ }
  const glyph=icons[id as SubjectToolId];
  if(!glyph){
   // A distinct, consistent fallback for newly registered tools. The regression
