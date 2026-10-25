@@ -1,13 +1,16 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {build} from "esbuild";
+import ts from "typescript";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
-async function load(path){
- const compiled=await build({entryPoints:[path],bundle:true,platform:"node",format:"esm",write:false,
-   target:"es2022",logLevel:"silent"});
- return import("data:text/javascript;base64,"+Buffer.from(compiled.outputFiles[0].text).toString("base64"));
+async function load(...paths){
+ const combined=paths.map(path=>read(path).replace(/^import(?: type)?[^\n]*$/gm,"")).join("\n");
+ const js=ts.transpileModule(combined,{compilerOptions:{
+   target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022
+ }}).outputText;
+ return import("data:text/javascript;base64,"+Buffer.from(js).toString("base64"));
 }
-const {movePhysicalPart,physicalPartPivot}=await load("src/lektrusPhysicalBoardMove.ts");
+const {movePhysicalPart,physicalPartPivot}=await load(
+ "src/lektrusMechanicsModel.ts","src/lektrusCircuitModel.ts","src/lektrusPhysicalBoardMove.ts");
 const {mergeEditedValue,editorDiff,applyEditorOps}=await load("src/lektrusLiveEditorMerge.ts");
 const body={id:"body-a",kind:"block",x:200,y:240,width:90,height:60,mass:2,label:"m"};
 const bodyB={...body,id:"body-b",x:450};
