@@ -93,7 +93,7 @@ import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from 
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
-import {boardRoleCapabilities,restrictStudentDiagramChange,BOARD_ROLE_PREVIEW_LABELS,type BoardRolePreview} from "./lektrusBoardRolePreview";
+import {boardRoleCapabilities,canUseBoardCreationTool,isStudentProtectedBoardObject,restrictStudentDiagramChange,BOARD_ROLE_PREVIEW_LABELS,type BoardRolePreview} from "./lektrusBoardRolePreview";
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
 import {trackBoardVisit,listBoardVisits,type BoardVisit} from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
@@ -436,8 +436,6 @@ const mobileToolGroups: { label:string; tools:Tool[] }[] = [
   { label:"Фото, PDF и видео", tools:["media","linkmedia"] },
 ];
 const mobileDockTools: Tool[] = ["select","lasso","pen","eraser","sticky","text","shape"];
-const STUDENT_BLOCKED_CREATE_TOOLS = new Set<Tool>(["frame","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"]);
-const STUDENT_PROTECTED_KINDS = new Set<Item["kind"]>(["frame","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"]);
 
 
 const keyTools: Record<string, Tool> = {
@@ -2061,12 +2059,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   useEffect(()=>setRolePreview("actual"),[boardSummary.id]);
   const roleCapabilities=boardRoleCapabilities({
     preview:rolePreview,boardRole:boardSummary.role,accountRole,
-    isAppAdmin,adminMaintenance
+    isAppAdmin,adminMaintenance,isGuest:authUser.isGuest===true
   });
   const {canEdit,isStudent,canManageBoard,canCreateAssignments}=roleCapabilities;
   const adminHidden = isAppAdmin && adminInvisible;
-  const toolAllowedForRole = (id:Tool) => canEdit&&(!isStudent || !STUDENT_BLOCKED_CREATE_TOOLS.has(id));
-  const structurallyLockedForStudent = (item:Item|undefined|null) => !!item && isStudent && STUDENT_PROTECTED_KINDS.has(item.kind);
+  const toolAllowedForRole = (id:Tool) => canUseBoardCreationTool(id,roleCapabilities);
+  const structurallyLockedForStudent = (item:Item|undefined|null) =>
+    !!item&&isStudentProtectedBoardObject(item.kind,roleCapabilities);
   const studentSelectionHasProtected = () => isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)));
   const rejectStudentStructuralEdit = () => {
     if(!studentSelectionHasProtected()) return false;
