@@ -279,7 +279,7 @@ assert.equal(linkExistingPoints(straightAngle,"angle",[0,1,0]).draft,straightAng
  "the same point cannot be chosen twice");
 const app=read("src/App.tsx"),editor=read("src/LektrusGraphEditor.tsx");
 const css=read("src/lektrusMathTouchPolish.css"),main=read("src/main.tsx");
-assert.match(app,/onCloseFreePolygon=\{\(\)=>setGraphDraft\(/,"preview closes polygon at first point");
+assert.match(app,/onCloseFreePolygon=\{\(\)=>changeLiveGraphDraft\(/,"preview closes polygon at first point");
 assert.match(app,/onCloseFreePolygon=\{graphPointEditId===item\.id&&selectedIds\.has\(item\.id\)/,"saved board can close free geometry");
 assert.match(app,/Math\.hypot\(ev\.clientX-startX,ev\.clientY-startY\)>\(ev\.pointerType==="touch"\?14:7\)/,
  "tap does not instantly drag the vertex");
