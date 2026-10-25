@@ -557,10 +557,8 @@
 .lektrus-atlas-contour-work .lektrus-contour-label-object text{
  pointer-events:none;user-select:none;
 }
-.lektrus-atlas--erasing .lektrus-atlas-svg,
-.lektrus-atlas--erasing .lektrus-atlas-svg *{
- cursor:crosshair!important;
-}
+/* The active brush cursor is supplied by the atlas SVG itself.
+   Do not force a crosshair over its correctly sized pen/eraser indicator. */
 .lektrus-atlas--erasing .lektrus-contour-label-object{
  touch-action:none;
 }
