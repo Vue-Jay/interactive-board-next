@@ -407,7 +407,9 @@ for(const name of ["countries-detail","cities","elevation","regions","glaciers",
  assert.ok(data.includes(name),"real map dataset "+name);
 for(const mode of ["hydrography","relief","cities","coordinates"])
  assert.equal(validAtlasDocument({...atlas,mode}),true);
-assert.ok(map.includes('onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:'));
+assert.ok(map.includes('onPointerDownCapture={contourEraser?beginContourErase:contourFreehand?beginContourStroke:undefined}'));
+assert.ok(map.includes('onClickCapture={contourEraser||contourFreehand?e=>'));
+assert.ok(map.includes('vectorEffect="non-scaling-stroke" strokeLinecap="round"'),"Pen ink is kept in device-independent screen pixels");
 assert.ok(map.includes('onPointerUp={objectMoveMode?undefined:contourEraser?endContourErase:contourFreehand?endContourStroke:onPointerEnd}'));
 assert.ok(map.includes('const cameraLayerRef=useRef<SVGGElement|null>(null)'));
 assert.ok(map.includes('cameraLayerRef.current?.setAttribute("transform"'));
@@ -906,16 +908,24 @@ assert.ok(map.includes('const contourEraser=worksheetEditor&&contourAction==="er
 assert.ok(map.includes('onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:'));
 const eraserCode=map.slice(map.indexOf('const beginContourErase='),map.indexOf('const startContourMarkDrag='));
 assert.ok(eraserCode.includes('setPointerCapture(e.pointerId)'));
-assert.ok(map.includes('contourEraserHits('));
 assert.ok(eraserCode.includes('brushContour(e)'));
-
-assert.ok(eraserCode.includes('onChange?.({...d,contourMarks:'));
-assert.ok(eraserCode.includes('eraseContourInkAlongPath(contourStrokes,gesture.path,(toolThickness*5+2)/cameraRef.current.scale)'));
-assert.ok(map.includes('setLiveErasedStrokes(eraseContourInkAlongPath(contourStrokes,gesture.path,'),
- "Eraser must preview actual cut strokes during the gesture");
-assert.ok(!eraserCode.includes('scheduleCamera('),"Eraser must never pan or zoom");
-assert.ok(eraserCode.includes('gesture.fills.size'),"Eraser must remove territory colour");
-assert.ok(eraserCode.includes('paintedCountries:Object.fromEntries'));
+assert.ok(eraserCode.includes('eraseContourInkAlongPath(source,gesture.path,gesture.radius,'),
+ "Eraser must cut drawn ink once, when the gesture finishes");
+assert.ok(eraserCode.includes('contourPixelScale()*cameraRef.current.scale'),
+ "Eraser stroke width must match the selected screen-pixel size at every zoom");
+assert.ok(map.includes('mask={`url(#${contourInkMaskId})`}'),
+ "Stroke-only live mask must avoid rerendering the full atlas for every eraser move");
+assert.ok(map.includes('preview.setAttribute("d",'),
+ "Eraser preview is updated directly via SVG, not React on every frame");
+assert.ok(!map.includes('setLiveErasedStrokes(eraseContourInkAlongPath('),
+ "Never recalculate complete stroke fragments for every pointer sample");
+assert.ok(eraserCode.includes('setLiveErasedStrokes(erased)'),
+ "Keep local optimistic ink visible until the realtime save is acknowledged");
+assert.ok(!eraserCode.includes('contourMarks:')&&!eraserCode.includes('paintedCountries:'),
+ "Eraser must not delete map marks or territory fills");
+assert.ok(!eraserCode.includes('scheduleCamera('),"Eraser must not start ordinary map panning");
+assert.ok(map.includes('if(pinch.current){clearErasePreview();onMove(e);return}'),
+ "Two fingers must navigate map without erasing ink");
 assert.ok(map.includes('data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}'));
 assert.ok(map.includes('data-contour-fill-key={isWorksheet&&painted[key]?key:undefined}'));
 
@@ -996,6 +1006,15 @@ assert.ok(split.some(stroke=>stroke.points.some(p=>p[0]<3)));
 assert.ok(split.some(stroke=>stroke.points.some(p=>p[0]>7)));
 assert.equal(contourInkExports.eraseContourInkAlongPath([testStroke],[worldPoint(40,40)],3)[0],testStroke,
  "Unbrushed strokes must retain their original data");
+const screenSizedStroke={...testStroke,width:8};
+const zoomAdjusted=contourInkExports.eraseContourInkAlongPath(
+ [screenSizedStroke],[worldPoint(5,0)],.75,4);
+assert.ok(zoomAdjusted.length>=2,"Eraser at atlas zoom cuts a local portion, not the whole line");
+assert.ok(zoomAdjusted.every(line=>Math.abs(line.width-8)<.0001),
+ "Clipped lines must preserve their original screen-pixel width");
+assert.equal(contourInkExports.eraseContourInkAlongPath(
+ [screenSizedStroke],[worldPoint(5,7)],.75,4)[0],screenSizedStroke,
+ "A screen-sized eraser never erases remote ink due to a coordinate-scale mismatch");
 assert.ok(map.includes('for(let offset=0;offset<points.length-1;offset+=249)'),
  "Long pencil strokes must be persisted in bounded segments");
 
