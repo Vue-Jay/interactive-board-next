@@ -6889,14 +6889,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             aria-label="Название доски"
             className="board-title"
             value={title}
-            onChange={(e) => { if (canEdit) setTitle(e.target.value); }}
+            onChange={(e) => { if (canCreateAssignments) setTitle(e.target.value); }}
             onKeyDown={(e) => e.stopPropagation()}
             onFocus={() => {
               setSpace(false);
               end(true);
             }}
             maxLength={300}
-            readOnly={!canEdit}
+            readOnly={!canCreateAssignments}
           />
           {authUser.isGuest&&<span className="guest-session-badge" title="Временная гостевая сессия">Гость · {authUser.name}</span>}
           <LektrusSubjectPicker value={lectrisBoardOrganization.subject} options={subjectCategories.filter(Boolean)} disabled={!canManageBoard||boardSummary.ownerId!==authUser.id} onChange={changeBoardSubject}/>
