@@ -4,7 +4,6 @@
  * Point-indexed geometry is merged conservatively: independent point moves are
  * combined, but structural deletions replace the affected collection.
  */
-type Json=unknown;
 const same=(a:unknown,b:unknown)=>a===b||JSON.stringify(a)===JSON.stringify(b);
 const record=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v);
 const isIdCollection=(values:unknown[],key:string)=>(
@@ -47,7 +46,7 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
  if(Array.isArray(base)&&Array.isArray(edit)&&Array.isArray(latest))
   return mergeArray(base,edit,latest,key) as T;
  if(record(base)&&record(edit)&&record(latest)){
-  let effectiveEdit=edit;
+  let effectiveEdit:Record<string,unknown>=edit;
   // Concurrent point additions need index rebasing. Point-indexed graph
   // elements refer to vertices by integer, so simply concatenating the
   // vertex arrays would attach a newly drawn line to somebody else's point.
