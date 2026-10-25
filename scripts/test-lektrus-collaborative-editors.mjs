@@ -55,6 +55,14 @@ const preview=applyEditorOps(second,diff);
 assert.deepEqual(preview.schoolDiagram.contourMarks.map(m=>m.id),["one","three","two"]);
 assert.equal(preview.schoolDiagram.paintedCountries.KZ,"#cccccc");
 
+// Undoing a local stroke must preserve a later remote marker.
+const actionBefore={marks:[{id:"old",lon:1,lat:2}],strokes:[],fills:{}};
+const actionAfter={marks:[...actionBefore.marks,{id:"mine",lon:3,lat:4}],strokes:[],fills:{}};
+const withPeer={marks:[...actionAfter.marks,{id:"peer",lon:5,lat:6}],strokes:[],fills:{}};
+const undone=mergeEditedValue(actionAfter,actionBefore,withPeer);
+assert.deepEqual(undone.marks.map(mark=>mark.id),["old","peer"],
+ "undo reverts only the user's action, leaving remote work intact");
+
 const editMarker={schoolDiagram:{...atlas.schoolDiagram,
  contourMarks:[{...atlas.schoolDiagram.contourMarks[0],lon:20}]}};
 const otherMarker={schoolDiagram:{...atlas.schoolDiagram,
@@ -69,6 +77,9 @@ assert.equal(patchedMark.schoolDiagram.contourMarks[0].label,"Новое");
 const app=read("src/App.tsx");
 const school=read("src/LektrusSchoolDiagramEditor.tsx");
 const ws=read("src/boardWorkSync.ts");
+const atlasMap=read("src/LektrusMapAtlas.tsx");
+assert.match(atlasMap,/mergeEditedValue\(after,last.before,currentContour\(\)\)/,
+ "contour undo rebases its inverse on the latest shared markings");
 for(const [path,body] of [["src/App.tsx",app],["src/LektrusSchoolDiagramEditor.tsx",school],["src/boardWorkSync.ts",ws]]){
  const parsed=ts.createSourceFile(path,body,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(parsed.parseDiagnostics.length,0,path+" parses as TSX");
