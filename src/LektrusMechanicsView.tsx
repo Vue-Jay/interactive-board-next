@@ -66,7 +66,7 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
     const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
     return <g key={f.id} className={"lektrus-mechanics-force"+(picked?" selected":"")}
       onPointerDown={onPartDown||onPlace?e=>partPointerDown(e,{type:"force",id:f.id}):undefined}
-      onClick={onSelect?e=>{e.stopPropagation();onSelect({type:"force",id:f.id})}:undefined}>
+      onClick={onSelect&&tool==="select"?e=>{e.stopPropagation();onSelect({type:"force",id:f.id})}:undefined}>
       {picked&&<line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#a8c9ff" strokeWidth="12" opacity=".7" pointerEvents="none"/>}
       <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#296bd5" strokeWidth="3.5" strokeLinecap="round"
         markerEnd={"url(#mechanics-arrow-"+id+")"} pointerEvents="none"/>
