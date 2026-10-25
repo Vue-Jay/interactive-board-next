@@ -60,6 +60,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const [activeLink,setActiveLink]=useState<number|null>(null);
   const [elementQuery,setElementQuery]=useState("");
   const [placingElement,setPlacingElement]=useState<string|null>(null);
+  const [settingsOpen,setSettingsOpen]=useState(true);
   const [elementNotice,setElementNotice]=useState("");
   const drag=useRef<{pointerId:number;index:number;kind:"point"|"point-label"|"segment-label"}|null>(null);
   const isPhysics=subject==="physics";
@@ -120,10 +121,10 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     setDraft(previous=>deletePoint(previous,selected));
     setSelected(Math.max(0,selected-1));setFirst(0);setSecond(1);setActiveLink(null);
   };
-  const addLink=()=>{
+  const addLink=(forceArrow?:boolean)=>{
     if(first===second||!points[first]||!points[second]||segments.length>=64)return;
     const link:Link={a:first,b:second,kind:"segment",label:"",measure:false,
-      ...(circuit?{scienceCircuitSymbol:component}:isPhysics?{scienceArrow:arrow,color:arrow?"#2563eb":"#475569"}:{bondOrder:order})};
+      ...(circuit?{scienceCircuitSymbol:component}:isPhysics?{scienceArrow:forceArrow??arrow,color:(forceArrow??arrow)?"#2563eb":"#475569"}:{bondOrder:order})};
     setDraft(old=>{
       const all=old.graphSegments??[];
       const existing=all.findIndex(s=>(s.a===first&&s.b===second)||(s.a===second&&s.b===first));
@@ -195,7 +196,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     onSave={()=>onSave(draft)} onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
   return createPortal(<div className={"lektrus-science-backdrop "+(isPhysics?"physics":"chemistry")}
      onPointerDown={e=>{if(e.currentTarget===e.target)(onClose??onCancel)(draft)}}>
-    <section className="lektrus-science-editor" role="dialog" aria-modal="true"
+    <section className={"lektrus-science-editor"+(isPhysics?" physics-workspace"+(settingsOpen?"":" settings-collapsed"):"")} role="dialog" aria-modal="true"
       aria-label={isPhysics?"Редактор физики":"Редактор химии"}
       onPointerDown={e=>e.stopPropagation()}>
       <header className="lektrus-science-header">
@@ -215,6 +216,10 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
         </div>
         <div><small>{isPhysics?"ФИЗИКА · КОНСТРУКТОР":"ХИМИЯ · КОНСТРУКТОР"}</small>
           <h2>{group?.label??(isPhysics?"Физическая схема":"Химическая структура")}</h2></div>
+        {isPhysics&&<button type="button" className="lektrus-science-toggle-settings"
+          aria-pressed={settingsOpen} onClick={()=>setSettingsOpen(v=>!v)}>
+          {settingsOpen?"Скрыть параметры":"Параметры"}
+        </button>}
         <button type="button" className="lektrus-science-close"
           title="Закрыть редактор" aria-label="Закрыть редактор"
           onClick={()=>(onClose??onCancel)(draft)}>×</button>
@@ -325,7 +330,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                   <option value={1}>Одинарная</option><option value={2}>Двойная</option>
                   <option value={3}>Тройная</option>
                 </select></label>}
-            <button type="button" onClick={addLink} disabled={!canLink||first===second||segments.length>=64}
+            <button type="button" onClick={()=>addLink()} disabled={!canLink||first===second||segments.length>=64}
               className="lektrus-science-add-link">+ {isPhysics?(arrow?"Добавить силу":"Добавить линию"):"Добавить связь"}</button>
           </div>
           {segments.length>0&&<div className="lektrus-science-links">
@@ -361,7 +366,17 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
           {!(formula||experiment||organic)&&<button className="lektrus-science-clear" type="button" onClick={clear}>Очистить построение</button>}
         </aside>
         <div className="lektrus-science-preview">
-          <div className="lektrus-science-preview-head"><strong>Чертёж</strong><span>Перетаскивайте точки · двойной щелчок добавляет</span></div>
+          <div className="lektrus-science-preview-head">
+            <strong>Чертёж</strong>
+            {isPhysics&&!atom&&<div className="lektrus-physics-quick-actions" role="group" aria-label="Быстрые действия для физической схемы">
+              <button type="button" disabled={points.length>=40} onClick={()=>addPoint()}>+ Точка</button>
+              <button type="button" disabled={!canLink||first===second||segments.length>=64}
+                onClick={()=>addLink(true)}>+ Сила</button>
+              <button type="button" disabled={!canLink||first===second||segments.length>=64}
+                onClick={()=>addLink(false)}>+ Линия</button>
+            </div>}
+            <span>Перемещайте точки · двойное нажатие добавляет</span>
+          </div>
           {organic?<LektrusOrganicCanvas item={draft} onChange={setDraft}/>:
           formula||experiment?<LektrusChemistryIllustration item={draft}
              onStageChange={experiment?(stage)=>setDraft(old=>({...old,scienceExperimentStage:stage})):undefined}/>:
