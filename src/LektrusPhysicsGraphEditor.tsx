@@ -152,7 +152,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
     <section className={"lektrus-motion-editor"+(settingsOpen?"":" is-compact")} role="dialog" aria-modal="true" aria-label="Редактор физических графиков"
       onPointerDown={event=>event.stopPropagation()}>
       <header className="lektrus-motion-header">
-        <div className="lektrus-motion-brand"><span aria-hidden="true">ƒ</span><div><small>ФИЗИКА · ГРАФИКИ ДВИЖЕНИЯ</small><strong>График ${axis.variable}(t)</strong></div></div>
+        <div className="lektrus-motion-brand"><span aria-hidden="true">ƒ</span><div><small>ФИЗИКА · ГРАФИКИ ДВИЖЕНИЯ</small><strong>График {axis.variable}(t)</strong></div></div>
         <div className="lektrus-motion-actions">
           <button type="button" disabled={!history.past.length} onClick={undo} title="Отменить · Ctrl+Z" aria-label="Отменить">↶</button>
           <button type="button" disabled={!history.future.length} onClick={redo} title="Повторить · Ctrl+Y" aria-label="Повторить">↷</button>
@@ -172,9 +172,9 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
           <div className="lektrus-motion-fields">
             <label>Время до, с<input type="number" min={1} max={10000} step="1" value={draft.xMax}
               onChange={e=>{const n=Number(e.target.value);if(Number.isFinite(n)&&n>=1)patch({xMax:clamp(n,1,10000)})}}/></label>
-            <label>${axis.variable} от, ${axis.unit}<input type="number" step=".5" value={draft.yMin}
+            <label>{axis.variable} от, {axis.unit}<input type="number" step=".5" value={draft.yMin}
               onChange={e=>{const n=Number(e.target.value);if(Number.isFinite(n)&&n<draft.yMax)patch({yMin:n})}}/></label>
-            <label>${axis.variable} до, ${axis.unit}<input type="number" step=".5" value={draft.yMax}
+            <label>{axis.variable} до, {axis.unit}<input type="number" step=".5" value={draft.yMax}
               onChange={e=>{const n=Number(e.target.value);if(Number.isFinite(n)&&n>draft.yMin)patch({yMax:n})}}/></label>
           </div>
           <div className="lektrus-motion-toggles">
@@ -185,7 +185,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
           </div>
           <div className="lektrus-motion-section-title">Точки <span>{draft.points.length}</span></div>
           <div className="lektrus-motion-point-table">
-            <div className="lektrus-motion-table-head"><span>№</span><span>t, с</span><span>${axis.variable}, ${axis.unit}</span><span/></div>
+            <div className="lektrus-motion-table-head"><span>№</span><span>t, с</span><span>{axis.variable}, {axis.unit}</span><span/></div>
             {draft.points.map((point,i)=><div className={"lektrus-motion-point-row"+(selected===i?" selected":"")} key={i}>
               <button type="button" className="lektrus-motion-point-select" onClick={()=>setSelected(i)} aria-label={`Выбрать точку ${i+1}`}>{i+1}</button>
               <input aria-label={`Время точки ${i+1}`} type="number" step=".5" min={0} max={draft.xMax} value={point.x}
@@ -207,14 +207,14 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
             </div>
             <button type="button" className="lektrus-motion-measure-toggle" aria-pressed={measurementOpen}
               onClick={()=>setMeasurementOpen(v=>!v)}>Измерения</button>
-            <div className="lektrus-motion-toolbar-status"><b>{axis.title}</b><span>t, с · ${axis.variable}, ${axis.unit}</span></div>
+            <div className="lektrus-motion-toolbar-status"><b>{axis.title}</b><span>t, с · {axis.variable}, {axis.unit}</span></div>
           </div>
           {measurementOpen&&<div className="lektrus-motion-measurements" role="status">
             {measurement?<>
               <span>Δt: <b>{format(measurement.dt)} с</b></span>
-              <span>Δ${axis.variable}: <b>{format(measurement.change)} ${axis.unit}</b></span>
-              <span>Δ${axis.variable}/Δt: <b>{format(measurement.slope)} {slopeUnit}</b></span>
-              {axis.variable!=="s"&&<span>${integralLabel}: <b>{format(measurement.area)}</b></span>}
+              <span>Δ{axis.variable}: <b>{format(measurement.change)} ${axis.unit}</b></span>
+              <span>Δ{axis.variable}/Δt: <b>{format(measurement.slope)} {slopeUnit}</b></span>
+              {axis.variable!=="s"&&<span>{integralLabel}: <b>{format(measurement.area)}</b></span>}
             </>:<span>Для измерений необходимо не менее двух точек.</span>}
           </div>}
           <div className="lektrus-motion-sheet">
