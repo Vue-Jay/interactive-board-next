@@ -8626,3 +8626,33 @@ option{background:#fff;color:#343741}
   line-height:24px!important;font-size:13px!important;font-weight:700;
   box-sizing:border-box!important;vertical-align:middle;
 }
+
+/* Developer-only, session-local role verification without changing membership. */
+.lektrus-developer-role-setting{
+ display:grid;gap:8px;padding:12px;border:1px solid #cfdced;
+ border-radius:12px;background:#f6f9ff;color:#263e5f;
+}
+.lektrus-developer-role-setting select{
+ display:block;box-sizing:border-box;width:100%;min-height:40px;
+ border-radius:9px;border:1px solid #adbfdb;background:#fff;
+ color:#263e5f;padding:8px 10px;font:inherit;font-size:14px;
+}
+.lektrus-developer-role-setting small{
+ color:#526783;font-size:12px;line-height:1.45;
+}
+.lektrus-developer-role-banner{
+ position:fixed;left:50%;top:calc(58px + env(safe-area-inset-top,0px));
+ transform:translateX(-50%);z-index:220;max-width:calc(100vw - 20px);
+ display:flex;gap:12px;align-items:center;justify-content:space-between;
+ padding:7px 10px;border:1px solid #abc4e9;border-radius:11px;
+ background:#f4f8ff;color:#213f69;font-size:12px;
+ box-shadow:0 3px 14px #152d5130;pointer-events:auto;
+}
+.lektrus-developer-role-banner span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lektrus-developer-role-banner button{
+ border:1px solid #b2c5e4;border-radius:8px;background:#fff;
+ color:#235590;padding:6px 9px;cursor:pointer;white-space:nowrap;font-weight:750;
+}
+@media(max-width:600px){
+ .lektrus-developer-role-banner{top:calc(47px + env(safe-area-inset-top,0px));font-size:11px}
+}
