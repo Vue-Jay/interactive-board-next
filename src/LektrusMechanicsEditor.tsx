@@ -78,6 +78,19 @@ export default function LektrusMechanicsEditor({item,onSave,onCancel,onClose}:Pr
    if(!selectedForce)return;
    commit({...doc,forces:doc.forces.map(f=>f.id===selectedForce.id?{...f,...patch}:f)});
  };
+ const addBodyForce=(label:string,magnitude:number,angle:number)=>{
+   if(!selectedBody||doc.forces.length>=180)return;
+   const id=mechanicsId();
+   const f:MechanicsForce={id,bodyId:selectedBody.id,x:0,y:0,angle,length:115,
+     magnitude,label,showValue:true};
+   commit({...doc,forces:[...doc.forces,f]});
+   setSelected({type:"force",id});setInspector(true);
+ };
+ const bodyForces=selectedBody?doc.forces.filter(force=>force.bodyId===selectedBody.id):[];
+ const resultX=bodyForces.reduce((sum,force)=>sum+force.magnitude*Math.cos(force.angle*Math.PI/180),0);
+ const resultY=bodyForces.reduce((sum,force)=>sum+force.magnitude*Math.sin(force.angle*Math.PI/180),0);
+ const resultMagnitude=Math.hypot(resultX,resultY);
+ const fixed=(n:number)=>Number(n.toFixed(2)).toLocaleString("ru-RU");
  const remove=()=>{
    if(!selected)return;
    commit({...doc,
@@ -198,6 +211,26 @@ export default function LektrusMechanicsEditor({item,onSave,onCancel,onClose}:Pr
          </div>
          <label>Масса, кг<input type="number" step=".1" min="0" max="10000000" value={selectedBody.mass} onChange={e=>changeBody({mass:num(e.target.value,1,0,1e7)})}/></label>
          <p>Силы, прикреплённые к телу, перемещаются вместе с ним.</p>
+         <div className="lektrus-mechanics-inspector-section"><strong>Силы этого тела</strong>
+           <div className="lektrus-mechanics-force-presets" role="group" aria-label="Добавить силу к выбранному телу">
+             <button type="button" onClick={()=>addBodyForce("F",10,0)}>+ F</button>
+             <button type="button" onClick={()=>addBodyForce("mg",selectedBody.mass*9.81,-90)}
+               title="Сила тяжести вблизи поверхности Земли: mg, g ≈ 9,81 м/с²">+ mg</button>
+             <button type="button" onClick={()=>addBodyForce("N",10,90)}>+ N</button>
+           </div>
+           {bodyForces.map(force=><button type="button" className="lektrus-mechanics-force-list-item"
+             key={force.id} onClick={()=>setSelected({type:"force",id:force.id})}>
+             <span>{force.label||"F"}</span><b>{fixed(force.magnitude)} Н</b>
+           </button>)}
+           {!bodyForces.length&&<small>У этого тела пока нет приложенных сил.</small>}
+         </div>
+         {!!bodyForces.length&&<div className="lektrus-mechanics-resultant">
+           <strong>Равнодействующая ΣF</strong>
+           <span>ΣFₓ: <b>{fixed(resultX)} Н</b></span>
+           <span>ΣFᵧ: <b>{fixed(resultY)} Н</b></span>
+           <span>Модуль: <b>{fixed(resultMagnitude)} Н</b></span>
+           <small>По введённым значениям сил, без автоматического учёта реакций и трения.</small>
+         </div>}
        </>}
        {selectedSupport&&<>
          <h3>{tools.find(t=>t.id===selectedSupport.kind)?.name}</h3>
