@@ -90,3 +90,11 @@
 .lektrus-mechanics-resultant>strong{font-size:12px;color:#2a548b;margin-bottom:3px}
 .lektrus-mechanics-resultant>span{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#516e96}
 .lektrus-mechanics-resultant b{font-variant-numeric:tabular-nums;color:#2359a6}
+
+/* Hide the old system crosshair only while placing an object; the precision
+   ring and contextual name stay visible inside the SVG. */
+.lektrus-mechanics-editor .lektrus-mechanics-svg:not(.mode-select){cursor:none}
+.lektrus-mechanics-editor .lektrus-mechanics-svg:not(.mode-select) .mechanics-hit{cursor:none}
+.lektrus-mechanics-editor .lektrus-mechanics-svg.mode-select .mechanics-hit{cursor:grab}
+.lektrus-mechanics-editor .lektrus-mechanics-svg.mode-select .mechanics-hit:active{cursor:grabbing}
+.lektrus-mechanics-editor .lektrus-editor-cursor{filter:drop-shadow(0 2px 3px #315e984d)}
