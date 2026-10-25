@@ -1041,7 +1041,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   canvas.style.width=rect.width+"px";
   canvas.style.height=rect.height+"px";
   const ctx=canvas.getContext("2d",{alpha:true});
-  if(!ctx)return false;
+  if(!ctx){contourCanvasBounds.current=null;return false;}
   ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
   ctx.clearRect(0,0,rect.width,rect.height);
   ctx.lineCap="round";ctx.lineJoin="round";
@@ -1231,7 +1231,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   startContourCanvas("pen");
   contourDrawing.current=[contourPoint(worldPoint(localPoint(e)))];
   paintContourPixel(e,"pen");
-  if(contourLivePath.current){
+  if(contourCanvasMode.current!=="pen"&&contourLivePath.current){
    const [x,y]=projectGeography(...contourDrawing.current[0]);
    contourLivePath.current.setAttribute("stroke",paintColor);
    // A single board tap is visible immediately, even before pointer movement.
@@ -1248,7 +1248,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   const point=contourPoint(worldPoint(localPoint(e)));
   const pts=contourDrawing.current,last=pts[pts.length-1];
   if(Math.hypot(last[0]-point[0],last[1]-point[1])<.6/cameraRef.current.scale)return;
-  if(pts.length<2000)pts.push(point);
+  if(pts.length<5000)pts.push(point);
   if(contourCanvasMode.current==="pen"){
    paintContourPixel(e,"pen");
    return;
@@ -1263,7 +1263,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
    // Save the final pointer location and retain single-tap dots like the board.
    const end=contourPoint(worldPoint(localPoint(e)));
    const last=contourDrawing.current[contourDrawing.current.length-1];
-   if(Math.hypot(last[0]-end[0],last[1]-end[1])>.000001&&contourDrawing.current.length<2000)
+   if(Math.hypot(last[0]-end[0],last[1]-end[1])>.000001&&contourDrawing.current.length<5000)
     contourDrawing.current.push(end);
    if(contourDrawing.current.length===1)
     contourDrawing.current.push([last[0],last[1]]);
@@ -1281,7 +1281,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
     id:globalThis.crypto?.randomUUID?.()??String(Date.now())+Math.random(),
     points:part,color:paintColor,width:toolThickness});
   }
-  if(contourStrokes.length+segments.length>140)return;
+  if(contourStrokes.length+segments.length>140){stopContourCanvas();return;}
   setPendingInk(segments);
   contourLivePath.current?.setAttribute("d","");
   captureContour();
