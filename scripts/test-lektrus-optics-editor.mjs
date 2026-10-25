@@ -81,7 +81,7 @@ const neutralPrism={...prism,n1:1,n2:1};
 const farMirror={...mirror,x:810,id:"far-mirror"};
 const returnScene={...blank,elements:[src,neutralPrism,farMirror],rays:[ray]};
 const returned=optics.traceOpticalRay(returnScene,ray);
-assert.ok(returned.events?.filter(e=>e.text.includes("призмы")).length>=4,
+assert.ok(returned.events?.filter(e=>e.text.includes("призм")).length>=4,
  "Mirror return must enter and exit the prism in both directions");
 assert.equal(returned.events?.filter(e=>e.kind==="mirror").length,1,
  "The reflected return path must show the mirror interaction");
