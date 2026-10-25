@@ -320,7 +320,7 @@ export type ConnectorRouting = "straight" | "elbow";
 export type ConnectorBinding = { itemId: string; nx: number; ny: number };
 export type Item = {
   id: string;
-  kind: "sticky" | "text" | "shape" | "pen" | "marker" | "image" | "pdf" | "frame" | "connector" | "comment" | "table" | "formula" | "graph" | "fraction" | "checklist" | "quiz" | "flashcard" | "cover" | "linkmedia";
+  kind: "sticky" | "text" | "shape" | "pen" | "marker" | "image" | "pdf" | "frame" | "connector" | "comment" | "table" | "formula" | "graph" | "fraction" | "checklist" | "quiz" | "flashcard" | "cover" | "linkmedia" | "instrument";
   x: number;
   y: number;
   width: number;
@@ -337,6 +337,8 @@ export type Item = {
   textList?: "none" | "bullet" | "number";
   lineHeight?: number;
   shapeType?: ShapeType;
+  instrumentType?: "ruler" | "triangle" | "protractor";
+  instrumentScale?: number;
   assetId?: string;
   imageCrop?: ImageCropRect;
   name?: string;
@@ -513,7 +515,7 @@ export function parseDocument(raw: string): DocumentData {
     }
     d.items = expandDocumentInk(d as DocumentData);
   }
-  const allowedKinds = ["sticky","text","shape","pen","marker","image","pdf","frame","connector","comment","table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia"];
+  const allowedKinds = ["sticky","text","shape","pen","marker","image","pdf","frame","connector","comment","table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia","instrument"];
   if (!d || d.version !== 1 || typeof d.title !== "string" || d.title.length > 10000 || !point(d.view) || !finite(d.view.zoom) || d.view.zoom < .1 || d.view.zoom > 8 || !Array.isArray(d.items) || d.items.length > 10000) throw new Error("Неверный формат доски");
   if(d.subject!=null&&(typeof d.subject!=="string"||d.subject.length>80))throw new Error("Некорректный предмет доски");
   const ids = new Set<string>();
@@ -522,6 +524,11 @@ export function parseDocument(raw: string): DocumentData {
     if (!point(i) || typeof i.id !== "string" || ids.has(i.id) || !allowedKinds.includes(i.kind) || !finite(i.width) || i.width <= 0 || !finite(i.height) || i.height <= 0 || typeof i.text !== "string") throw new Error("Повреждён объект доски");
     ids.add(i.id);
     if (i.kind === "shape" && i.shapeType != null && !shapes.includes(i.shapeType)) throw new Error("Неизвестная фигура");
+    if (i.kind === "instrument" && (
+      !["ruler","triangle","protractor"].includes(i.instrumentType) ||
+      !finite(i.instrumentScale) || i.instrumentScale < .1 || i.instrumentScale > 5 ||
+      (i.rotation != null && (!finite(i.rotation) || Math.abs(i.rotation)>36000))
+    )) throw new Error("Повреждён измерительный инструмент");
     if (i.kind === "image" || i.kind === "pdf") {
       if (typeof i.assetId !== "string" || typeof i.name !== "string" || typeof i.mime !== "string") throw new Error("Повреждён медиаобъект");
       if (i.kind === "image" && i.imageCrop != null && !validImageCrop(i.imageCrop))
@@ -705,6 +712,10 @@ export function parseDocument(raw: string): DocumentData {
       } : {}),
       ...(i.kind === "pen" || i.kind === "marker" ? { color: i.color, weight: i.weight, points: i.points!.map(p => ({ x: p.x, y: p.y })) } : {}),
       ...(i.kind === "shape" ? { shapeType: i.shapeType ?? "rounded", ...(color(i.color) ? { color: i.color } : {}) } : {}),
+      ...(i.kind === "instrument" ? {
+        instrumentType:i.instrumentType,
+        instrumentScale:i.instrumentScale,
+      } : {}),
       ...(i.kind === "image" || i.kind === "pdf" ? {
           assetId: i.assetId, name: i.name, mime: i.mime,
           ...(i.kind === "image" && validImageCrop(i.imageCrop) ? { imageCrop: { ...i.imageCrop } } : {}),
