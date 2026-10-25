@@ -1,0 +1,116 @@
+/* Shared classroom measuring tools. Keep the graduation SVG crisp on every board. */
+.geometry-instrument.geometry-instrument-centered .geometry-instrument-body{
+ border-radius:12px;
+ filter:drop-shadow(0 8px 12px rgba(24,53,85,.17)) drop-shadow(0 1px 2px rgba(33,70,106,.13));
+ transition:filter .16s ease;
+ -webkit-user-select:none;user-select:none;
+}
+.geometry-instrument.geometry-instrument-centered .geometry-instrument-body>svg{
+ display:block;overflow:visible;pointer-events:none;
+ -webkit-user-select:none;user-select:none;
+}
+.geometry-instrument.geometry-instrument-centered .geometry-instrument-body:active{
+ filter:drop-shadow(0 10px 15px rgba(24,53,85,.24));
+}
+.geometry-instrument.geometry-instrument-centered .geometry-instrument-actions{
+ gap:4px;
+ padding:5px 6px;
+ background:var(--lt-raised,#fff);
+ color:var(--lt-text,#253e5b);
+ border:1px solid var(--lt-line,#d2deed);
+ border-radius:13px;
+ box-shadow:0 10px 32px rgba(18,38,68,.15),0 2px 7px rgba(18,38,68,.06);
+ font-family:inherit;
+}
+.geometry-instrument.geometry-instrument-centered .geometry-instrument-actions>span:first-child{
+ padding:0 8px 0 6px;
+ font-size:12px;font-weight:750;
+ color:var(--lt-text,#26415e);
+}
+.geometry-instrument.geometry-instrument-centered .geometry-angle-readout{
+ min-width:40px;padding:5px 7px;
+ border-radius:7px;
+ background:var(--lt-subtle,#edf4fc);
+ color:var(--lt-secondary,#43647f);
+ font-size:11px;font-weight:700;
+ font-variant-numeric:tabular-nums;
+}
+.geometry-instrument.geometry-instrument-centered .geometry-instrument-actions button{
+ display:grid;place-items:center;
+ flex:0 0 auto;min-width:32px;height:33px;
+ padding:0 7px;
+ border:1px solid transparent;
+ border-radius:8px;
+ background:transparent;
+ color:var(--lt-secondary,#375879);
+ font-family:inherit;font-size:16px;font-weight:650;
+ line-height:1;cursor:pointer;
+ transition:background-color .15s ease,border-color .15s ease,color .15s ease;
+}
+.geometry-instrument.geometry-instrument-centered .geometry-instrument-actions button:hover{
+ background:var(--lt-hover,#eaf2fc);
+ border-color:var(--lt-line,#d2deed);
+ color:var(--lt-primary,#2864b0);
+}
+.geometry-instrument.geometry-instrument-centered .geometry-instrument-actions button:focus-visible,
+.geometry-picker.geometry-picker-portal button:focus-visible{
+ outline:2px solid var(--lt-primary,#356ac0);outline-offset:2px;
+}
+.geometry-instrument.geometry-instrument-centered .geometry-instrument-actions .geometry-rotation-handle{
+ background:var(--lt-selected,#e9f2ff)!important;
+ color:var(--lt-primary,#235da3)!important;
+ font-size:21px!important;
+ border-color:var(--lt-line,#d2deed);
+}
+.geometry-instrument.geometry-instrument-centered .geometry-instrument-actions button:last-child:hover{
+ color:#bc4355;background:#fff0f3;border-color:#f4c4cc;
+}
+.geometry-instrument.geometry-instrument-centered .geometry-pivot{
+ width:7px;height:7px;border:1.3px solid #4e83ad;background:rgba(255,255,255,.75);
+ box-shadow:0 0 0 2px rgba(255,255,255,.35);
+}
+.geometry-picker.geometry-picker-portal{
+ gap:5px;
+ padding:7px;
+ background:var(--lt-raised,#fff);
+ border:1px solid var(--lt-line,#d5dfeb);
+ border-radius:13px;
+ box-shadow:0 12px 30px rgba(19,43,74,.17);
+}
+.geometry-picker.geometry-picker-portal button{
+ width:39px;height:39px;min-width:39px;
+ padding:7px;
+ border:1px solid transparent;
+ background:var(--lt-subtle,#f2f7fd);
+ color:var(--lt-secondary,#355e80);
+ border-radius:9px;
+ box-shadow:none;
+ transition:background-color .15s ease,border-color .15s ease;
+}
+.geometry-picker.geometry-picker-portal button:hover{
+ background:var(--lt-selected,#e7f0ff);
+ border-color:var(--lt-line-strong,#adc6e5);
+ color:var(--lt-primary,#2864b0);
+}
+.geometry-picker.geometry-picker-portal button svg{
+ width:24px;height:24px;stroke-width:1.8;
+}
+@media (pointer:coarse){
+ .geometry-instrument.geometry-instrument-centered .geometry-instrument-actions{
+  gap:2px;padding:5px;
+ }
+ .geometry-instrument.geometry-instrument-centered .geometry-instrument-actions>span:first-child{
+  padding:0 4px;
+ }
+ .geometry-instrument.geometry-instrument-centered .geometry-instrument-actions button{
+  min-width:38px;height:38px;
+ }
+ .geometry-picker.geometry-picker-portal button{
+  width:44px;height:44px;min-width:44px;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .geometry-instrument.geometry-instrument-centered .geometry-instrument-body,
+ .geometry-instrument.geometry-instrument-centered .geometry-instrument-actions button,
+ .geometry-picker.geometry-picker-portal button{transition:none}
+}
