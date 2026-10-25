@@ -291,3 +291,31 @@
   height:min(46dvh,250px);
  }
 }
+
+/* On the board, matching has intrinsic height. Neither the old 450px object
+   size nor an expanding flex grid should introduce clipping or empty space. */
+.lektrus-school-on-board .lektrus-geo-game--auto-matching{
+ box-sizing:border-box;
+ height:max-content;
+ min-height:0;
+ max-height:none;
+ overflow:visible;
+ flex:none;
+ padding:13px;
+ gap:9px;
+}
+.lektrus-school-on-board .lektrus-geo-game--auto-matching .lektrus-geo-match-grid{
+ flex:none;
+ align-items:start;
+}
+.lektrus-school-on-board .lektrus-geo-game--auto-matching .lektrus-geo-match-grid section{
+ min-width:0;
+}
+.lektrus-school-on-board .lektrus-geo-game--auto-matching .lektrus-geo-match-item{
+ height:auto;
+ white-space:normal;
+ overflow-wrap:anywhere;
+}
+.lektrus-school-on-board .lektrus-geo-game--auto-matching .lektrus-geo-game-header{
+ flex:none;
+}
