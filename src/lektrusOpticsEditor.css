@@ -130,3 +130,7 @@
   .lektrus-optics-editor.catalog-hidden.show-properties .lektrus-optics-layout{grid-template-columns:minmax(0,1fr)}
   .lektrus-optics-catalog,.lektrus-optics-inspector{width:min(265px,calc(100vw - 48px))}
 }
+
+
+.lektrus-optics-editor .lektrus-optics-catalog .lektrus-optics-tools button{white-space:normal}
+.lektrus-optics-editor .lektrus-optics-inspector{min-width:0}
