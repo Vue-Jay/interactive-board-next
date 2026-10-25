@@ -58,6 +58,7 @@ import "./lektrusPhysicsGraphEditor.css";
 import "./lektrusCircuitButtons2026.css";
 import "./lektrusOpticsEditor.css";
 import "./lektrusMechanicsEditor.css";
+import "./lektrusPhysicsPointers.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
