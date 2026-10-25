@@ -273,10 +273,6 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
   const [figureCategory,setFigureCategory]=useState<"Геометрия"|"Объёмные фигуры">(()=>["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"].includes(draft.figureId)?"Объёмные фигуры":"Геометрия");
   const solidPresetIds=new Set<MathPresetId>(["cube","prism","pyramid","rectangular-prism","triangular-pyramid","sphere","cylinder","cone"]);
   const isSolid=solidPresetIds.has(draft.figureId as MathPresetId);
-  const openPathLast=draft.figureId==="free"?draft.points.length-1:-1;
-  const canUndoFreePoint=openPathLast>=Math.max(0,draft.freePathStart??0)&&!draft.polygons.some(p=>p.points.includes(openPathLast))&&
-    !draft.circles.some(c=>c.center===openPathLast||c.edge===openPathLast)&&
-    !draft.points[openPathLast]?.schoolGroupId;
   const roundSolid=draft.figureId==="cone"||draft.figureId==="cylinder";
   const equalSideFigure=["square","rhombus","pentagon","hexagon","octagon"].includes(draft.figureId);
   const rectangleFigure=["square","rectangle"].includes(draft.figureId);
@@ -381,15 +377,6 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
   };
   const connectionActive=mode==="geometry"&&!isSolid&&draft.figureId!=="ray"&&
     canvasTool!=="select"&&canvasTool!=="point";
-  const undoLinkPoint=()=>{
-    const index=linkPoints[linkPoints.length-1];
-    if(index===undefined)return;
-    if(createdLinkPoints.includes(index)&&index===draft.points.length-1){
-      onChange(removeGraphPoint(draft,index));
-      setCreatedLinkPoints(createdLinkPoints.filter(i=>i!==index));
-    }
-    setLinkPoints(linkPoints.slice(0,-1));setGeometryError("");
-  };
   const resetLinkSelection=()=>{
     let model=draft;
     for(const index of [...createdLinkPoints].sort((a,b)=>b-a)){
@@ -1190,8 +1177,14 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
               <div className="lektrus-geometry-range-inputs">
                 {([["X от","xMin"],["X до","xMax"],["Y от","yMin"],["Y до","yMax"]] as const).map(([label,key])=>
                   <label key={key}>{label}
-                    <input type="number" step="any" value={draft[key]}
-                      onChange={event=>setAxisBoundary(key,Number(event.target.value))}/>
+                    <input type="number" step="any" key={key+":"+draft[key]} defaultValue={draft[key]}
+                      onBlur={event=>{
+                        const value=Number(event.target.value);
+                        if(event.target.value.trim()!==""&&Number.isFinite(value)){
+                          setAxisBoundary(key,value);
+                        }else event.target.value=String(draft[key]);
+                      }}
+                      onKeyDown={event=>{if(event.key==="Enter")event.currentTarget.blur()}}/>
                   </label>)}
               </div>
             </details>}
@@ -1497,7 +1490,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
             </button>
             {!isSolid&&<div className="lektrus-geometry-zoom-controls" role="group" aria-label="Масштаб чертежа">
               <button type="button" onClick={()=>zoomViewport(1.25)} disabled={!validViewport} title="Отдалить чертёж" aria-label="Уменьшить масштаб">−</button>
-              <span title="Видимый диапазон координат">±{formatGeometryMetric((draft.xMax-draft.xMin)/2)}</span>
+              <span title="Ширина видимой области X">X: {formatGeometryMetric(draft.xMax-draft.xMin)}</span>
               <button type="button" onClick={()=>zoomViewport(.8)} disabled={!validViewport} title="Приблизить чертёж" aria-label="Увеличить масштаб">+</button>
               <button type="button" onClick={fitViewport} title="Показать все точки на чертеже">Вписать</button>
             </div>}
