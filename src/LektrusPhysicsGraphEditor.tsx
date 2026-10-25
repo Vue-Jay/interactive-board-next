@@ -36,7 +36,7 @@ function makeItem(item:Item,d:Draft):Item{
     graphShowCurve:false,graphExpression:"",graphGrid:d.grid,graphSnap:d.snap,
     graphConnectPoints:d.connect,graphShowLabels:d.showLabels,graphAxisLabels:true,
     graphXMin:0,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,
-    graphPoints:d.points.map(point=>({...point})),graphSegments:[],graphPolygons:[],
+    graphPoints:[...d.points].sort((a,b)=>a.x-b.x).map(point=>({...point})),graphSegments:[],graphPolygons:[],
     graphCircles:[],graphAngles:[],graphMidpoints:[]};
 }
 export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}:Props){
