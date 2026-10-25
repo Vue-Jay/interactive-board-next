@@ -213,7 +213,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
           {measurementOpen&&<div className="lektrus-motion-measurements" role="status">
             {measurement?<>
               <span>Δt: <b>{format(measurement.dt)} с</b></span>
-              <span>Δ{axis.variable}: <b>{format(measurement.change)} ${axis.unit}</b></span>
+              <span>Δ{axis.variable}: <b>{format(measurement.change)} {axis.unit}</b></span>
               <span>Δ{axis.variable}/Δt: <b>{format(measurement.slope)} {slopeUnit}</b></span>
               {axis.variable!=="s"&&<span>{integralLabel}: <b>{format(measurement.area)}</b></span>}
             </>:<span>Для измерений необходимо не менее двух точек.</span>}
@@ -245,7 +245,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
                   <text x={PLOT.left-12} y={PLOT.top+PLOT.height*(6-i)/6+4} textAnchor="end">{format(draft.yMin+(draft.yMax-draft.yMin)*i/6)}</text>
                 </g>)}
                 <text x={PLOT.left+PLOT.width+20} y={PLOT.top+PLOT.height+5} className="axis-title">t, с</text>
-                <text x={PLOT.left} y={PLOT.top-19} className="axis-title">${axis.variable}, ${axis.unit}</text>
+                <text x={PLOT.left} y={PLOT.top-19} className="axis-title">{axis.variable}, {axis.unit}</text>
               </g>
               {draft.connect&&ordered.length>1&&<polyline points={polyline} className="lektrus-motion-line" pointerEvents="none"/>}
               {aim&&tool==="point"&&<g transform={`translate(${sx(aim.x)} ${sy(aim.y)})`}
