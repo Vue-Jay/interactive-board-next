@@ -38,6 +38,8 @@ import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import LektrusOpticsEditor from "./LektrusOpticsEditor";
+import LektrusMechanicsEditor from "./LektrusMechanicsEditor";
+import LektrusMechanicsView from "./LektrusMechanicsView";
 import LektrusOpticsView from "./LektrusOpticsView";
 import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration,{isChemicalIllustration} from "./LektrusChemistryIllustration";
@@ -1178,6 +1180,9 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
     },liveVertex.index,liveVertex.x,liveVertex.y);
     item={...item,graphPoints:moved.points};
   }
+  if(item.scienceMechanics)return <div className="graph-view lektrus-mechanics-board-view">
+    <LektrusMechanicsView doc={item.scienceMechanics}/>
+  </div>;
   if(item.scienceOptics)return <div className="graph-view lektrus-optics-board-view">
     <LektrusOpticsView doc={item.scienceOptics}/>
   </div>;
@@ -5416,6 +5421,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(item.graphFigureId==="lektrus-chart"){setChartEditorItem(item);return;}
     if(isSchoolDiagramId(item.graphFigureId)){setSchoolEditorItem(item);return;}
     if(item.scienceCircuit||item.graphFigureId?.startsWith("physics-circuit-")){setCircuitEditorItem(item);return;}
+    if(item.scienceMechanics){setScienceEditorItem(item);return;}
     if(item.scienceOptics||["physics-optics","physics-refraction","physics-lens","physics-diverging-lens",
        "physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")){
       setScienceEditorItem(item);return;
@@ -7558,7 +7564,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               itemsRef.current.map(i=>i.id===next.id?fitted:i):[...itemsRef.current,fitted]);
             setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
           }}/>}
-        {scienceEditorItem&&<>{(scienceEditorItem.scienceOptics||["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(scienceEditorItem.graphFigureId??""))?
+        {scienceEditorItem&&<>{scienceEditorItem.scienceMechanics?
+          <LektrusMechanicsEditor key={scienceEditorItem.id} item={scienceEditorItem}
+            onCancel={()=>setScienceEditorItem(null)}
+            onClose={next=>{if(itemsRef.current.some(i=>i.id===next.id))commit(itemsRef.current.map(i=>i.id===next.id?next:i));setScienceEditorItem(null)}}
+            onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Схема механики сохранена")}}/>:
+        (scienceEditorItem.scienceOptics||["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(scienceEditorItem.graphFigureId??""))?
           <LektrusOpticsEditor key={scienceEditorItem.id} item={scienceEditorItem}
             onCancel={()=>setScienceEditorItem(null)}
             onClose={next=>{if(itemsRef.current.some(i=>i.id===next.id))commit(itemsRef.current.map(i=>i.id===next.id?next:i));setScienceEditorItem(null)}}
