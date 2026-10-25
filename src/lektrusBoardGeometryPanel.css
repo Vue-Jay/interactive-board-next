@@ -254,3 +254,37 @@
   min-height:44px;
  }
 }
+
+/* One click on the drawing itself opens the editor, replacing the legacy
+   "По точкам" caption. No extra action in the bottom selection toolbar. */
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor{
+ position:absolute;left:10px;top:9px;z-index:6;
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ box-sizing:border-box;min-width:116px;min-height:38px;max-width:calc(100% - 20px);
+ padding:8px 12px;border:1px solid #2f6ec1;border-radius:10px;
+ background:#296bbc;color:#fff;font:750 12px/1.15 inherit;
+ font-family:inherit;font-size:12px;font-weight:760;line-height:1.15;
+ white-space:nowrap;box-shadow:0 3px 12px rgba(35,92,166,.18);
+ cursor:pointer;pointer-events:auto!important;touch-action:manipulation;
+ user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor:hover{
+ background:#1e58a4;border-color:#1e58a4;
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor:active{
+ transform:translateY(1px);
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor:focus-visible{
+ outline:2px solid #528be2;outline-offset:2px;
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor .lektrus-geometry-vector-icon{
+ width:17px;height:17px;flex:0 0 17px;display:block;stroke:currentColor;
+}
+.graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor>span{
+ color:inherit;font-size:12px;line-height:1.2;
+}
+@media(pointer:coarse){
+ .graph-view.graph-purpose-geometry .lektrus-graph-canvas-editor{
+  min-height:42px;padding:9px 12px;
+ }
+}
