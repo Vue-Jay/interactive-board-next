@@ -2,6 +2,7 @@ import {useId,type PointerEvent as ReactPointerEvent} from "react";
 import type {CircuitAnchor,CircuitComponent,CircuitDocument,CircuitJunction,CircuitWire} from "./lektrusCircuitModel";
 import {circuitPolyline,circuitPolylineString,circuitTerminal} from "./lektrusCircuitModel";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
+import {svgClientPoint,clampCanvasPoint} from "./lektrusSvgPointer";
 
 export type CircuitSelection=
   |{kind:"component";id:string}|{kind:"wire";id:string}|{kind:"junction";id:string}|null;
@@ -27,18 +28,7 @@ type Props={
   onBackgroundDown?:(e:ReactPointerEvent<SVGSVGElement>)=>void;
 };
 export function circuitSvgCoords(clientX:number,clientY:number,svg:SVGSVGElement):Point{
-  const rect=svg.getBoundingClientRect();
-  const vb=svg.viewBox.baseVal;
-  const x=vb.width>0?vb.x:0,y=vb.height>0?vb.y:0;
-  const width=vb.width>0?vb.width:900,height=vb.height>0?vb.height:580;
-  // The SVG uses xMidYMid meet. Include letterboxing at any viewport ratio
-  // so a cursor, touch point, or dropped component lands exactly where intended.
-  const scale=Math.min(rect.width/width,rect.height/height)||1;
-  const padX=(rect.width-width*scale)/2,padY=(rect.height-height*scale)/2;
-  return {
-    x:Math.max(0,Math.min(900,x+(clientX-rect.left-padX)/scale)),
-    y:Math.max(0,Math.min(580,y+(clientY-rect.top-padY)/scale))
-  };
+  return clampCanvasPoint(svgClientPoint(svg,clientX,clientY),900,580);
 }
 export default function LektrusCircuitView({
   doc,mode="select",selection=null,pending=null,cursor=null,onBlank,
