@@ -287,3 +287,137 @@
   .lektrus-circuit-palette,.lektrus-circuit-inspector{flex:0 0 auto;max-height:300px}
   .lektrus-circuit-work{flex:0 0 auto;height:380px}
 }
+
+/* 2026 Circuit workspace: full-size drawing sheet, compact contextual controls.
+   The saved 900x580 circuit model is unchanged. */
+.lektrus-circuit-backdrop{padding:0!important;backdrop-filter:none!important}
+.lektrus-circuit-editor{
+  width:100vw!important;max-width:none!important;
+  height:100dvh!important;max-height:none!important;
+  border:0!important;border-radius:0!important;
+}
+.lektrus-circuit-header{min-height:54px;padding:7px 16px;gap:10px}
+.lektrus-circuit-mark{height:35px;flex-basis:35px;font-size:22px}
+.lektrus-circuit-title h2{font-size:16px;margin-top:1px}
+.lektrus-circuit-header-actions button{min-width:34px;min-height:34px;flex-basis:34px}
+.lektrus-circuit-header-actions .lektrus-circuit-compact-button{
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 auto;width:auto;min-width:86px;padding:5px 10px;
+  font-size:11px;font-weight:770;border-radius:9px;
+}
+.lektrus-circuit-compact-button[aria-pressed=true]{
+  background:#e2edff;color:#2356b2;border-color:#a9c5f3;
+}
+.lektrus-circuit-editor-main{
+  position:relative;grid-template-columns:206px minmax(0,1fr);
+  gap:8px;padding:8px;overflow:hidden;
+}
+.lektrus-circuit-editor.inspector-expanded .lektrus-circuit-editor-main{
+  grid-template-columns:206px minmax(0,1fr) minmax(222px,246px);
+}
+.lektrus-circuit-editor.palette-collapsed .lektrus-circuit-editor-main{
+  grid-template-columns:minmax(0,1fr);
+}
+.lektrus-circuit-editor.palette-collapsed.inspector-expanded .lektrus-circuit-editor-main{
+  grid-template-columns:minmax(0,1fr) minmax(222px,246px);
+}
+.lektrus-circuit-editor.palette-collapsed .lektrus-circuit-palette,
+.lektrus-circuit-editor:not(.inspector-expanded) .lektrus-circuit-inspector{
+  display:none;
+}
+.lektrus-circuit-palette{gap:9px;padding:8px}
+.lektrus-circuit-palette-section{
+  border:1px solid #e0e9f5;border-radius:9px;padding:0;
+  background:#f8faff;display:block;
+}
+.lektrus-circuit-palette-section summary{
+  list-style:none;cursor:pointer;padding:9px 10px;
+  color:#4c6485;font-size:11px;font-weight:760;
+}
+.lektrus-circuit-palette-section summary::after{
+  content:"⌄";float:right;font-size:14px;color:#7188a8;
+}
+.lektrus-circuit-palette-section[open] summary::after{content:"⌃"}
+.lektrus-circuit-palette-section summary::-webkit-details-marker{display:none}
+.lektrus-circuit-palette-config{display:grid;gap:9px;padding:0 9px 10px}
+.lektrus-circuit-palette-heading{padding:2px 3px}
+.lektrus-circuit-categories{gap:4px}
+.lektrus-circuit-categories button{min-height:28px;padding:5px 6px;font-size:10px;flex:1 1 auto}
+.lektrus-circuit-parts{gap:5px}
+.lektrus-circuit-parts>button{min-height:72px;padding:4px;gap:3px;border-radius:9px}
+.lektrus-circuit-parts svg{height:32px;max-width:90px}
+.lektrus-circuit-parts>button span{font-size:10px;line-height:1.22}
+.lektrus-circuit-palette-note{margin-top:0;padding:7px;line-height:1.35}
+.lektrus-circuit-work{padding:7px;gap:7px}
+.lektrus-circuit-toolbar{display:flex;flex-wrap:wrap;gap:6px;min-height:35px}
+.lektrus-circuit-toolgroup{flex:1 1 auto}
+.lektrus-circuit-toolgroup button{min-height:34px;padding:6px 10px}
+.lektrus-circuit-zoom{display:flex;align-items:center;gap:3px}
+.lektrus-circuit-zoom button{
+  min-width:31px;height:32px;padding:0 6px;cursor:pointer;
+  border:1px solid #d9e5f3;border-radius:8px;background:#f7faff;
+  color:#345889;font-weight:790;font-size:17px;
+}
+.lektrus-circuit-zoom button:disabled{opacity:.35;cursor:default}
+.lektrus-circuit-zoom .lektrus-circuit-zoom-value{
+  min-width:49px;font-size:11px;font-variant-numeric:tabular-nums;
+}
+.lektrus-circuit-canvas-container{background:#fff;border-color:#cdddf2}
+.lektrus-circuit-svg.mode-hand{cursor:grab}
+.lektrus-circuit-svg.mode-hand:active{cursor:grabbing}
+.lektrus-circuit-inspector{padding:10px;gap:8px;position:relative}
+.lektrus-circuit-inspector-close{
+  position:absolute;top:7px;right:7px;min-width:25px;min-height:25px;
+  border:0;border-radius:7px;background:#edf3fb;color:#587392;
+  cursor:pointer;font-size:18px;
+}
+.lektrus-circuit-inspector-header{padding-right:30px}
+.lektrus-circuit-footer{min-height:48px;padding:6px 12px}
+.lektrus-circuit-footer button{min-height:34px}
+@media(max-width:1050px){
+  .lektrus-circuit-editor-main{grid-template-columns:170px minmax(0,1fr)}
+  .lektrus-circuit-editor.inspector-expanded .lektrus-circuit-editor-main{
+    grid-template-columns:170px minmax(0,1fr) 200px;
+  }
+  .lektrus-circuit-editor.palette-collapsed.inspector-expanded .lektrus-circuit-editor-main{
+    grid-template-columns:minmax(0,1fr) 200px;
+  }
+  .lektrus-circuit-palette,.lektrus-circuit-inspector{padding:7px}
+  .lektrus-circuit-categories button{font-size:9px}
+}
+@media(max-width:800px){
+  .lektrus-circuit-editor-main,
+  .lektrus-circuit-editor.inspector-expanded .lektrus-circuit-editor-main,
+  .lektrus-circuit-editor.palette-collapsed.inspector-expanded .lektrus-circuit-editor-main{
+    grid-template-columns:minmax(0,1fr);
+    display:grid;grid-template-rows:minmax(0,1fr);padding:5px;
+  }
+  .lektrus-circuit-palette,.lektrus-circuit-inspector{
+    position:absolute;top:6px;bottom:6px;z-index:7;
+    width:min(238px,calc(100vw - 62px));max-height:none!important;
+    box-shadow:0 12px 32px #142b4740;
+  }
+  .lektrus-circuit-palette{left:6px}
+  .lektrus-circuit-inspector{right:6px}
+  .lektrus-circuit-work{min-height:0;flex:none;height:auto}
+  .lektrus-circuit-toolbar{justify-content:space-between}
+  .lektrus-circuit-toolgroup button{padding:5px 7px}
+  .lektrus-circuit-toggle{gap:7px}
+  .lektrus-circuit-stage-bottom span:first-child{flex-basis:160px}
+}
+@media(max-width:590px){
+  .lektrus-circuit-header{min-height:47px;padding:5px 7px}
+  .lektrus-circuit-mark{display:none}
+  .lektrus-circuit-title h2{font-size:13px}
+  .lektrus-circuit-title small{font-size:9px}
+  .lektrus-circuit-header-actions{gap:3px}
+  .lektrus-circuit-header-actions button{min-width:29px;min-height:30px;flex-basis:29px}
+  .lektrus-circuit-header-actions .lektrus-circuit-compact-button{min-width:71px;font-size:10px;padding:4px}
+  .lektrus-circuit-work{height:auto;min-height:0;flex:1 1 auto}
+  .lektrus-circuit-toolgroup button{min-height:32px;padding:4px 6px}
+  .lektrus-circuit-toolgroup button span{font-size:10px}
+  .lektrus-circuit-zoom button{height:29px}
+  .lektrus-circuit-footer{gap:6px;min-height:45px}
+  .lektrus-circuit-footer span{display:none}
+  .lektrus-circuit-footer button{flex:1 1 auto;min-width:0}
+}
