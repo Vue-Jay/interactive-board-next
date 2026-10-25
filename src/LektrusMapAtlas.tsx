@@ -87,7 +87,7 @@ function ContourToolIcon({name}:{name:ContourToolName}){
  * SVG data cursors avoid a separately moving DOM overlay and never interfere
  * with two-finger map gestures or shared contour drawings. */
 export function contourBrushCursor(tool:"pen"|"erase",width:number,color:string):string{
- const diameter=Math.max(3,Math.min(90,tool==="erase"?width*5+2:width));
+ const diameter=Math.max(3,Math.min(90,tool==="erase"?width:width));
  const canvas=Math.max(24,Math.ceil(diameter+10));
  const center=Math.floor(canvas/2),radius=diameter/2;
  const ink=tool==="erase"?"#c94b60":/^#[0-9a-fA-F]{6}$/.test(color)?color:"#263c58";
@@ -142,10 +142,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const contourLivePath=useRef<SVGPathElement|null>(null);
  const mapSvgRef=useRef<SVGSVGElement|null>(null);
  const contourEraserPreview=useRef<SVGPathElement|null>(null);
- const eraserCursorRef=useRef<SVGCircleElement|null>(null);
+ 
  const eraserGesture=useRef<{pointerId:number;marks:Set<string>;fills:Set<string>;path:Array<{x:number;y:number}>}|null>(null);
  const [pendingErasure,setPendingErasure]=useState<{marks:string[];fills:string[]}>({marks:[],fills:[]});
  const [liveErasedStrokes,setLiveErasedStrokes]=useState<ContourStroke[]|null>(null);
+ const [pendingInk,setPendingInk]=useState<ContourStroke[]|null>(null);
+ const eraserPersisting=useRef(false);
  const markerGesture=useRef<{pointerId:number;mark:ContourMark;start:{x:number;y:number};moved:boolean}|null>(null);
  const [previewContourMark,setPreviewContourMark]=useState<ContourMark|null>(null);
  const [selectedContourMarkId,setSelectedContourMarkId]=useState<string|null>(null);
@@ -154,6 +156,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const labelUiScale=1;
  const contourMarks=d.contourMarks??[],contourStrokes=d.contourStrokes??[];
  const selectedContourMark=contourMarks.find(mark=>mark.id===selectedContourMarkId);
+ useEffect(()=>{
+  if(eraserPersisting.current){eraserPersisting.current=false;setLiveErasedStrokes(null)}
+ },[d.contourStrokes]);
+ useEffect(()=>{
+  if(pendingInk&&pendingInk.every(line=>contourStrokes.some(saved=>saved.id===line.id)))setPendingInk(null);
+ },[contourStrokes,pendingInk]);
  // Hold the last drag preview until the board acknowledges persisted
  // coordinates. Clearing it in pointer-up caused the old-position flash.
  useEffect(()=>{
@@ -1002,18 +1010,6 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   brushContour(e);
  };
  const moveContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
-  const cursor=eraserCursorRef.current;
-  if(cursor){
-   if(e.pointerType==="mouse"||e.pointerType==="pen"){
-    const pos=localPoint(e);
-    const rect=e.currentTarget.getBoundingClientRect();
-    const pixelsPerUnit=Math.min(rect.width/900,rect.height/450)||1;
-    cursor.setAttribute("cx",String(pos.x));
-    cursor.setAttribute("cy",String(pos.y));
-    cursor.setAttribute("r",String((toolThickness*5+2)/2/pixelsPerUnit));
-    cursor.style.display="block";
-   }else cursor.style.display="none";
-  }
   e.stopPropagation();
   if(e.pointerType==="touch"){
    if(pinch.current){onMove(e);return}
@@ -1033,8 +1029,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   eraserGesture.current=null;
   const erasedStrokes=eraseContourInkAlongPath(contourStrokes,gesture.path,
    (toolThickness*5+2)/cameraRef.current.scale);
-  setLiveErasedStrokes(null);
-  if(erasedStrokes===contourStrokes)return;
+  if(erasedStrokes===contourStrokes){setLiveErasedStrokes(null);return}
+  setLiveErasedStrokes(erasedStrokes);
+  eraserPersisting.current=true;
   captureContour();
   // Like the board eraser, remove only pencil ink, never labels, markers or country fills.
   onChange?.({...d,contourStrokes:erasedStrokes});
@@ -1128,7 +1125,6 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   if(e.pointerType==="touch")onPointerEnd(e);
   else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const points=contourDrawing.current;contourDrawing.current=[];
-  contourLivePath.current?.setAttribute("d","");
   if(wasPinching||points.length<2||contourStrokes.length>=140)return;
   // Match the board's pencil: a stroke can continue as long as the user
   // draws. Split only at save time to respect the atlas' bounded format.
@@ -1140,6 +1136,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
     points:part,color:paintColor,width:toolThickness});
   }
   if(contourStrokes.length+segments.length>140)return;
+  setPendingInk(segments);
+  contourLivePath.current?.setAttribute("d","");
   captureContour();
   onChange?.({...d,contourStrokes:[...contourStrokes,...segments]});
  };
@@ -1391,9 +1389,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
     </div>}
     <svg ref={mapSvgRef} viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
      data-contour-brush={worksheetEditor&&!objectMoveMode&&(contourAction==="pen"||contourAction==="erase")?contourAction:undefined}
-     onPointerLeave={()=>{if(eraserCursorRef.current)eraserCursorRef.current.style.display="none"}}
+
      style={worksheetEditor&&(contourAction==="pen"||contourAction==="erase")&&!objectMoveMode?{
-      cursor:contourAction==="erase"?"none":contourBrushCursor(contourAction,toolThickness,paintColor)
+      cursor:contourBrushCursor(contourAction,toolThickness,paintColor)
      }:undefined}
      onClick={objectMoveMode?undefined:pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
@@ -1637,7 +1635,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       </g>}
       {(isWorksheet?contourConfig.showGrid:d.showGrid)&&<LektrusAtlasGraticule scale={scale} viewport={gridViewport}/>}
       {mode==="contour"&&<g className="lektrus-atlas-contour-work" pointerEvents={worksheetOnBoard?"none":undefined}>
-       {(liveErasedStrokes??contourStrokes).map(line=><path key={line.id} fill="none" stroke={line.color}
+       {([... (liveErasedStrokes??contourStrokes),...(pendingInk??[]).filter(line=>!(liveErasedStrokes??contourStrokes).some(saved=>saved.id===line.id))]).map(line=><path key={line.id} fill="none" stroke={line.color}
         strokeWidth={(line.width??2)/scale} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"
         d={line.points.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
@@ -1687,9 +1685,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={toolThickness/scale}
         strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
       </g>}
-      {contourEraser&&<circle ref={eraserCursorRef} cx="-100" cy="-100" r="0" fill="#e36b7c" fillOpacity=".12"
-        stroke="#cc4763" strokeWidth="1.5" strokeDasharray="4 2" vectorEffect="non-scaling-stroke"
-        pointerEvents="none" style={{display:"none"}} aria-hidden="true"/>}
+
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
        return <g key={marker.id} transform={`translate(${point[0]} ${point[1]}) scale(${1/scale})`}
