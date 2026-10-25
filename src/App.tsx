@@ -14,7 +14,7 @@ import { createPortal, flushSync } from "react-dom";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import "./App.css";
 import AuthScreen from "./AuthScreen";
-import GeometryInstruments from "./GeometryInstruments";
+import GeometryInstruments, {type InstrumentType} from "./GeometryInstruments";
 import LektrusBoardGeometryPanel, {type BoardGeometryMode} from "./LektrusBoardGeometryPanel";
 import LektrusGeometryToolIcon from "./LektrusGeometryToolIcon";
 import {addBoardGeometryPoint,linkBoardGeometry,adjustBoardGeometry,constrainBoardGeometry,releaseBoardGeometryConstraint,schoolBoardGeometry,removeBoardGeometryElement,removeBoardGeometrySchoolGroup,editBoardGeometryPoint,type BoardGeometryResult} from "./lektrusBoardGeometry";
@@ -6106,7 +6106,27 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setNotice("Связь отвязана от объектов");
   };
 
-  const visibleItems = useMemo(() => items.filter((item) => !item.hidden), [items]);
+  // Measuring instruments are shared board objects, but rendered in a single
+  // screen-space portal so their handles remain readable at any board zoom.
+  const sharedInstruments = useMemo(() => items.filter(item => item.kind === "instrument"), [items]);
+  const addSharedInstrument=(type:InstrumentType,point:Point,scale:number)=>{
+    const dimensions:Record<InstrumentType,[number,number]>={
+      ruler:[410,88],triangle:[340,260],protractor:[360,205]
+    };
+    const [width,height]=dimensions[type];
+    const instrument:Item={
+      id:createId(),kind:"instrument",x:point.x,y:point.y,width,height,
+      text:"",instrumentType:type,instrumentScale:scale,rotation:0
+    };
+    commit([...itemsRef.current,instrument]);
+  };
+  const updateSharedInstrument=(id:string,patch:Partial<Item>)=>{
+    commit(itemsRef.current.map(item=>item.id===id&&item.kind==="instrument"?{...item,...patch}:item));
+  };
+  const removeSharedInstrument=(id:string)=>{
+    commit(itemsRef.current.filter(item=>item.id!==id));
+  };
+  const visibleItems = useMemo(() => items.filter((item) => !item.hidden && item.kind !== "instrument"), [items]);
   const visibleObjects = visibleItems;
   const objectCount = items.length;
   const drawingCount = useMemo(() => items.filter(isInkItem).length, [items]);
@@ -7729,7 +7749,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
           <div className="mobile-tool-cluster mobile-tool-cluster-create" aria-label="Создание">
-            {lectrisTouchDockTools.slice(2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board} />}</div>})}
+            {lectrisTouchDockTools.slice(2).map((id)=>{const t=tools.find(x=>x.id===id)!;return <div key={id} className="mobile-tool-with-geometry"><button type="button" aria-label={t.label} title={toolShortLabel[id]} className={tool===id?"active":""} onClick={()=>{finishEdit();if(id==="eraser")setSpace(false);setTool(id);setMobileToolsOpen(false)}}><Icon name={t.icon} size={20}/></button>{id==="eraser"&&<GeometryInstruments mobile view={view} boardRef={board}
+              instruments={sharedInstruments} onAdd={addSharedInstrument}
+              onUpdate={updateSharedInstrument} onRemove={removeSharedInstrument}
+              editable={canEdit} renderOverlays={false} />}</div>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
           <button type="button" className={`lektrus-mobile-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" aria-expanded={subjectToolsOpen} onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg></button>
@@ -7752,7 +7775,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <button type="button" className={`tool-button lektrus-desktop-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-expanded={subjectToolsOpen} aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg><span className="tool-tooltip">Предметные инструменты</span></button>
           {toolAllowedForRole("comment")&&<button type="button" className={`tool-button lektrus-direct-comment ${tool==="comment"?"active":""}`} title="Комментарий" aria-label="Комментарий" onClick={()=>{finishEdit();setTool("comment");setDesktopToolsExpanded(false)}}><Icon name="comment" size={20}/><span className="tool-tooltip">Комментарий</span></button>}
           <div className="lektrus-toolbar-measure" aria-label="Измерительные инструменты">
-            <GeometryInstruments view={view} boardRef={board}/>
+            <GeometryInstruments view={view} boardRef={board}
+              instruments={sharedInstruments} onAdd={addSharedInstrument}
+              onUpdate={updateSharedInstrument} onRemove={removeSharedInstrument}
+              editable={canEdit} renderOverlays />
           </div>
           <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Закрыть меню инструментов":"Открыть все инструменты"} title={desktopToolsExpanded?"Закрыть меню инструментов":"Ещё инструменты"} aria-controls="lektrus-tool-overflow" aria-haspopup="dialog" onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
