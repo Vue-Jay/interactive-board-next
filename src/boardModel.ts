@@ -1,5 +1,38 @@
 /** Self-contained persisted circuit validation.
  * Keep this module import-free for whiteboard persistence and ink tests. */
+/** Validate the independent optics payload without coupling board storage to UI. */
+function validOpticsPayload(data:unknown):boolean{
+ if(!data||typeof data!=="object")return false;
+ const doc=data as Record<string,unknown>;
+ if(doc.version!==1||!Array.isArray(doc.elements)||!Array.isArray(doc.rays)||
+   doc.elements.length>80||doc.rays.length>160||typeof doc.grid!=="boolean"||
+   typeof doc.labels!=="boolean"||typeof doc.normals!=="boolean")return false;
+ const kinds=["source","mirror","converging-lens","diverging-lens","interface","screen","prism"];
+ const ids=new Set<string>();
+ for(const e of doc.elements){
+   if(!e||typeof e!=="object")return false;
+   const x=e as Record<string,unknown>;
+   if(typeof x.id!=="string"||!x.id||ids.has(x.id)||!kinds.includes(x.kind as string)||
+      typeof x.label!=="string"||x.label.length>75||
+      !["x","y","length","focalLength","n1","n2"].every(k=>typeof x[k]==="number"&&Number.isFinite(x[k]))||
+      (x.x as number)<0||(x.x as number)>960||(x.y as number)<0||(x.y as number)>560||
+      (x.length as number)<30||(x.length as number)>530||
+      (x.focalLength as number)<20||(x.focalLength as number)>500||
+      (x.n1 as number)<1||(x.n1 as number)>3||(x.n2 as number)<1||(x.n2 as number)>3)return false;
+   ids.add(x.id);
+ }
+ const rays=new Set<string>();
+ for(const raw of doc.rays){
+   if(!raw||typeof raw!=="object")return false;
+   const ray=raw as Record<string,unknown>;
+   if(typeof ray.id!=="string"||rays.has(ray.id)||typeof ray.sourceId!=="string"||
+      !doc.elements.some((e:Record<string,unknown>)=>e.id===ray.sourceId&&e.kind==="source")||
+      typeof ray.angle!=="number"||!Number.isFinite(ray.angle)||(ray.angle as number)<-85||(ray.angle as number)>85||
+      typeof ray.color!=="string"||!/^#[0-9a-fA-F]{6}$/.test(ray.color))return false;
+   rays.add(ray.id);
+ }
+ return true;
+}
 /** Import-free validation prevents corrupt school objects from breaking board loads. */
 function validSchoolTeachingDiagram(value:unknown):boolean{
  if(!value||typeof value!=="object")return false;
@@ -369,6 +402,7 @@ export type Item = {
   chartStyle?: "bar" | "line" | "pie";
   chartEntries?: {label:string;value:number}[];
   scienceCircuit?: import("./lektrusCircuitModel").CircuitDocument;
+  scienceOptics?: import("./lektrusOpticsModel").OpticsDocument;
   scienceAtomModel?: import("./lektrusAtomModel").AtomModel;
   sciencePeriodicHighlights?: number[];
   sciencePeriodicShowNames?: boolean;
@@ -473,7 +507,7 @@ const binding = (v: unknown): v is ConnectorBinding => !!v && typeof v === "obje
  * or reopening a board. Previously these fields were silently dropped and all
  * subject diagrams rendered as a generic coordinate plane. */
 const persistedGraphKeys = [
-  "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceAtomModel",
+  "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceOptics","scienceAtomModel",
   "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
   "scienceExperimentStage","scienceOrganicAnnotations","scienceReactionConditions",
   "scienceReagents","scienceEnvironment","schoolDiagram",
@@ -585,6 +619,7 @@ export function parseDocument(raw: string): DocumentData {
       if(i.schoolDiagram!=null&&!validSchoolTeachingDiagram(i.schoolDiagram))
         throw new Error("Повреждена предметная учебная схема");
       if(i.scienceCircuit!=null&&!circuitIsDocument(i.scienceCircuit))throw new Error("Повреждена схема электрической цепи");
+      if(i.scienceOptics!=null&&!validOpticsPayload(i.scienceOptics))throw new Error("Повреждена оптическая схема");
       if(i.scienceAtomModel!=null){
         const model=i.scienceAtomModel;
         if(!model||!Number.isInteger(model.atomicNumber)||model.atomicNumber<1||model.atomicNumber>118||
