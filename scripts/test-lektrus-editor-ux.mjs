@@ -49,9 +49,12 @@ assert.ok(toolCss.includes('.selection-toolbar-screen:has(.selection-more[open])
 assert.ok(toolCss.includes('z-index:2500!important'),"Menu must layer above all board objects");
 assert.ok(app.includes('data-more-direction={selectionToolbarTop<440?"down":"up"}'),
  "Menu should open into visible board space");
-assert.ok(app.includes('aria-label="Настройки и свойства объекта"')&&
- app.includes('setLectrisInspectorOpen(value=>!value)'),
- "Every selected object should have a direct properties action");
+assert.ok(!app.includes('aria-label="Настройки и свойства объекта"'),
+ "The redundant little settings gear must not appear beside Configure");
+assert.ok(app.includes('className="lektrus-graph-edit-secondary" aria-label="Настроить учебный объект"'),
+ "The original Configure button must remain");
+assert.ok(app.includes('onClick={()=>setLectrisInspectorOpen(true)}'),
+ "Additional properties must remain reachable in the More menu");
 assert.ok(app.includes('onClick={lectrisEditSelected}'),"Object toolbar should expose its editor");
 assert.ok(app.includes('case "image": setImageCropEditorId(singleSelected.id)'),
  "Image editing must open the cropping editor");
@@ -61,6 +64,14 @@ assert.ok(!editor.includes('if(item?.kind==="graph"&&item.graphFigureId==="chem-
  "Periodic table must not lose quick properties");
 for(const field of ['item.kind==="shape"','item.kind==="connector"','item.kind==="cover"','item.kind==="pdf"'])
  assert.ok(editor.includes(field),"Missing editable inspector fields for "+field);
+
+const names=file("src/boardObjectNames.ts");
+assert.ok(editor.includes('boardObjectTypeName(item)'),
+ "Object inspector must use the true subject tool name rather than storage kind graph");
+for(const required of ['"geo-matching"','"geo-question-cards"','"lektrus-chart"','"chem-periodic"'])
+ assert.ok(names.includes(required), "Missing specialized type mapping: "+required);
+assert.ok(app.includes('if (item.kind === "graph") return boardObjectTypeName(item)'),
+ "Object type in layers must agree with the inspector");
 
 // Selection must have exactly one context bar. The fixed quick bar is only for ink tools
 // when nothing is selected, never another overlapping object action bar.
