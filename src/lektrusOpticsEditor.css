@@ -196,3 +196,25 @@
     min-height:43px;font-size:12px;
   }
 }
+
+/* Equipment thumbnails: real on-board object shapes, not miniature abstract
+   directional arrows. Give symbols their own quiet canvas for legibility. */
+.lektrus-optics-editor .lektrus-optics-tools button,
+.lektrus-optics-editor .lektrus-optics-tools button:first-child{
+  min-height:50px;gap:12px;padding:7px 11px;
+  border-radius:11px;font-size:12px;font-weight:740;
+}
+.lektrus-optics-editor .lektrus-optics-tools .lektrus-optics-tool-picture{
+  display:block;flex:0 0 36px;width:36px;height:36px;min-width:36px;
+  box-sizing:border-box;padding:4px;border:1px solid #d6e5f5;
+  border-radius:9px;background:#fff;
+}
+.lektrus-optics-editor .lektrus-optics-tools button.active .lektrus-optics-tool-picture{
+  background:#f1f7ff;border-color:#a5c5ed;
+}
+.lektrus-optics-editor .lektrus-optics-tools button span{
+  text-align:left;white-space:nowrap;letter-spacing:-.012em;
+}
+.lektrus-optics-editor .lektrus-optics-tools button:hover:not(:disabled){
+  border-color:#a9c7ec;
+}
