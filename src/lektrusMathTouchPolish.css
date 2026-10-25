@@ -332,3 +332,41 @@
   min-height:42px;min-width:42px;padding:8px;
  }
 }
+
+/* The selection actions are the only toolbar for a selected object.
+ * Never give a text action an icon-only width: that made Edit overlap Configure. */
+.workspace .selection-toolbar-screen > .selection-edit-action {
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:auto!important;
+  min-width:max-content!important;
+  height:31px;
+  padding:5px 10px!important;
+  white-space:nowrap;
+  flex:0 0 auto;
+}
+.workspace .selection-toolbar-screen > .selection-edit-action > span {
+  display:inline!important;
+  width:auto!important;
+  white-space:nowrap;
+}
+.workspace .selection-toolbar-screen .graph-selection-controls > .lektrus-graph-edit-secondary {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:auto!important;
+  min-width:max-content!important;
+  padding-inline:10px;
+  white-space:nowrap;
+  flex:0 0 auto;
+}
+@media(pointer:coarse){
+  .workspace .selection-toolbar-screen > .selection-edit-action,
+  .workspace .selection-toolbar-screen .graph-selection-controls > .lektrus-graph-edit-secondary {
+    min-height:40px;
+    padding-inline:10px!important;
+  }
+}
