@@ -1,4 +1,4 @@
-import {useId,type PointerEvent as ReactPointerEvent} from "react";
+import {useId,useMemo,type PointerEvent as ReactPointerEvent} from "react";
 import type {OpticsDocument,OpticalElement} from "./lektrusOpticsModel";
 import {OPTICS_WIDTH,OPTICS_HEIGHT,traceOptics} from "./lektrusOpticsModel";
 import {svgClientPoint,clampCanvasPoint} from "./lektrusSvgPointer";
@@ -20,7 +20,7 @@ const captions:Record<OpticalElement["kind"],string>={
 export default function LektrusOpticsView({doc,selection=null,tool="select",onPlace,onElementDown,onSelect,onRaySelect,cursor=null}:Props){
  const id=useId().replaceAll(":","");
  const interactive=Boolean(onPlace||onSelect||onElementDown);
- const paths=traceOptics(doc);
+ const paths=useMemo(()=>traceOptics(doc),[doc]);
  return <svg className={"lektrus-optics-svg optics-mode-"+tool} viewBox="0 0 960 560"
     preserveAspectRatio="xMidYMid meet" role="img" aria-label="Оптическая схема" style={{touchAction:interactive?"none":undefined}}>
   <defs>
