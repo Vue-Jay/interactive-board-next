@@ -1113,7 +1113,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
@@ -1126,6 +1126,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onRotate?: (rotationX:number,rotationY:number)=>void;
   onRayChange?: (x:number,y:number)=>void;
   onGridChange?: (enabled:boolean)=>void;
+  onSnapChange?: (enabled:boolean)=>void;
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
   onSchoolDiagramChange?: (diagram:import("./lektrusSchoolDiagramModel").SchoolDiagram)=>void;
@@ -1209,7 +1210,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
     const r=svg.getBoundingClientRect(),factor=Math.min(r.width/W,r.height/H)||1;
     const left=r.left+(r.width-W*factor)/2,top=r.top+(r.height-H*factor)/2;
     let x=ux((clientX-left)/factor),y=uy((clientY-top)/factor);
-    if(item.graphSnap!==false&&purpose!=="unit-circle"){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
+    if((purpose==="geometry"?item.graphSnap===true:item.graphSnap!==false)&&purpose!=="unit-circle"){x=Math.round(x/step)*step;y=Math.round(y/step)*step}
     if(purpose==="geometry"&&item.graphMagneticSnap!==false&&pointIndex>=0){
       const aligned=magneticGeometrySnap(item.graphPoints??[],pointIndex,x,y,12/scale);
       x=aligned.x;y=aligned.y;
@@ -1808,25 +1809,29 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
            y={scienceCaptionLayout?.points[i]?.y??(sy(p.y+(item.graphPoints?.[i]?.labelDy??0))-9)}
            style={{fill:pointColor}}>{purpose==="number-line"?p.x:purpose==="unit-circle"&&i>0?formatPiRadians(Math.atan2(p.y,p.x)):p.label}</text>}
       </g>})}
-      {purpose==="geometry"&&onGridChange&&<g role="button" tabIndex={0}
-        aria-label={item.graphGrid===false?"Включить фон в клетку":"Сделать фон белым"}
-        aria-pressed={item.graphGrid!==false}
-        className="lektrus-diagram-grid-toggle" style={{cursor:"pointer"}}
-        onPointerDown={event=>event.stopPropagation()}
-        onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}
-        onClick={event=>{event.preventDefault();event.stopPropagation();onGridChange(item.graphGrid===false)}}
-        onKeyDown={event=>{
-          if(event.key!=="Enter"&&event.key!==" ")return;
-          event.preventDefault();event.stopPropagation();onGridChange(item.graphGrid===false);
-        }}>
-        <rect x="474" y="319" width="116" height="32" rx="9" fill="#fff" stroke="#c4d1e7" strokeWidth="1.5"/>
-        <g stroke="#59749c" fill="none" strokeWidth="1">
-          <rect x="484" y="327" width="16" height="16" rx="1"/>
-          <path d="M489 327v16M495 327v16M484 332h16M484 338h16"/>
+      {purpose==="geometry"&&onGridChange&&<g className="lektrus-diagram-grid-toggle" transform="translate(433 13)">
+        <g role="button" tabIndex={0} aria-label={item.graphGrid===false?"Включить сетку":"Выключить сетку"}
+          aria-pressed={item.graphGrid!==false} style={{cursor:"pointer"}}
+          onPointerDown={event=>event.stopPropagation()}
+          onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}
+          onClick={event=>{event.preventDefault();event.stopPropagation();onGridChange(item.graphGrid===false)}}
+          onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onGridChange(item.graphGrid===false)}}>
+          <rect width="70" height="25" rx="7" fill={item.graphGrid!==false?"#e9f1ff":"#fff"} stroke={item.graphGrid!==false?"#9bbcf0":"#c9d6e6"}/>
+          <g stroke="#456c9e" strokeWidth=".9" fill="none"><rect x="7" y="7" width="12" height="12" rx="1.2"/><path d="M13 7v12M7 13h12"/></g>
+          <text x="26" y="16.5" fontSize="10" fontWeight="650" fill="#35577f">Сетка</text>
         </g>
-        <text x="506" y="340" fontSize="12" fontWeight="700" fill="#30486d">
-          {item.graphGrid===false?"В клетку":"Белый фон"}
-        </text>
+        {onSnapChange&&<g transform="translate(75 0)" role="button" tabIndex={0}
+          aria-label={item.graphSnap===true?"Выключить привязку к сетке":"Включить привязку к сетке"}
+          aria-pressed={item.graphSnap===true} style={{cursor:"pointer"}}
+          onPointerDown={event=>event.stopPropagation()}
+          onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}
+          onClick={event=>{event.preventDefault();event.stopPropagation();onSnapChange(item.graphSnap!==true)}}
+          onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onSnapChange(item.graphSnap!==true)}}>
+          <rect width="68" height="25" rx="7" fill={item.graphSnap===true?"#e9f1ff":"#fff"} stroke={item.graphSnap===true?"#9bbcf0":"#c9d6e6"}/>
+          <path d="M9 7v12M4 12h12" fill="none" stroke="#456c9e" strokeWidth="1.2"/>
+          <circle cx="9" cy="12" r="2.5" fill={item.graphSnap===true?"#2c68c0":"#fff"} stroke="#456c9e"/>
+          <text x="22" y="16.5" fontSize="10" fontWeight="650" fill="#35577f">Привязка</text>
+        </g>}
       </g>}
       {solid&&<g className="lektrus-orbit-control" role="button" tabIndex={onRotate?0:-1}
         aria-label="Повернуть объёмную фигуру: перетащите манипулятор в углу"
@@ -5382,7 +5387,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     window.setTimeout(() => startEdit(frame), 0);
   };
 
-  const graphDraftFromItem=(item:Item):GraphDraft=>({constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
+  const graphDraftFromItem=(item:Item):GraphDraft=>({constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphPurpose==="geometry"?item.graphSnap===true:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
   const graphItemFromDraft=(item:Item,d:GraphDraft):Item=>({...item,text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphConstraints:d.constraints,graphMagneticSnap:d.magneticSnap,graphFreePathStart:d.freePathStart??0,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode});
   const liveGraphDraftRef=useRef<GraphDraft|null>(null);
   const graphLiveBaseRef=useRef<Item|null>(null);
@@ -7569,6 +7574,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               graphPolygons:graphDraft.polygons,graphMidpoints:graphDraft.midpoints,graphTriangleLines:graphDraft.triangleLines,graphTriangleVertex:graphDraft.triangleVertex,graphShowArea:false,graphGivenSides:graphDraft.givenSides,graphGivenAngles:graphDraft.givenAngles,graphTriangleInputMode:graphDraft.triangleInputMode
             }}
             onGridChange={enabled=>changeLiveGraphDraft(current=>current?{...current,grid:enabled}:current)}
+            onSnapChange={enabled=>changeLiveGraphDraft(current=>current?{...current,snap:enabled}:current)}
             onRotate={(rotationX,rotationY)=>changeLiveGraphDraft(current=>current?{...current,rotationX,rotationY}:current)}
             onRayChange={(x,y)=>changeLiveGraphDraft(current=>current&&current.figureId==="ray"&&current.points[1]?
               {...current,points:current.points.map((point,i)=>i===1?{...point,x,y}:point)}:current)}
@@ -8602,6 +8608,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   }:undefined}
                   onGridChange={!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(enabled)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphGrid:enabled}:candidate));
+                  }:undefined}
+                  onSnapChange={!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(enabled)=>{
+                    commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphSnap:enabled}:candidate));
                   }:undefined}
                   onRotate={!item.locked&&canEdit&&(isSolidFigure(item.graphFigureId))?(rotationX,rotationY)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphRotationX:rotationX,graphRotationY:rotationY}:candidate));
