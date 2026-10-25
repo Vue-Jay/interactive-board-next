@@ -1,55 +1,56 @@
-import LektrusPhysicsPointerGlyph from "./LektrusPhysicsPointerGlyph";
-
-/** Diagram-faithful optics symbols drawn with the same stroke as Lektrus tools.
- * Shapes are recognizable at 24px; no tiny labels or decorative clutter. */
+/** Optical instrument miniatures match the shapes used on the drawing,
+ * rather than abstract arrows with unclear meaning at 18px. */
 export type OpticsIconKind="select"|"source"|"mirror"|"converging-lens"|"diverging-lens"|"interface"|"screen"|"prism";
 export default function LektrusOpticsToolIcon({type}:{type:OpticsIconKind}){
- if(type==="select")return <LektrusPhysicsPointerGlyph kind="select" size={32} className="lektrus-optics-tool-picture"/>;
+ const opticalStroke="#3d77b7";
+ const glass="#d6efff";
  return <svg className={"lektrus-optics-tool-picture symbol-"+type}
-   viewBox="0 0 32 32" width="32" height="32" fill="none"
-   stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-   aria-hidden="true" focusable="false">
+   viewBox="0 0 48 48" width="32" height="32" fill="none"
+   strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  {type==="select"&&<>
+    <path d="M13 7 37 24l-11.5 2.3-4.5 13L13 7Z"
+      fill="#d9e8ff" stroke="#2c63bc" strokeWidth="2.7"/>
+    <path d="m26 26 7.5 11" stroke="#2c63bc" strokeWidth="2.8"/>
+  </>}
   {type==="source"&&<>
-   <circle cx="13" cy="16" r="6.5" fill="currentColor" fillOpacity=".08"/>
-   <circle cx="13" cy="16" r="2.2" fill="currentColor" stroke="none"/>
-   <path d="M13 3v4m0 18v4M1 16h4m16 0h7M4.5 7.5l3 3m11 11 3 3m0-17-3 3M7.5 21.5l-3 3"/>
-   <path d="m24 13 4 3-4 3" strokeWidth="1.6"/>
+    <circle cx="24" cy="24" r="9" fill="#fff2cc" stroke="#e4a13f" strokeWidth="2.6"/>
+    <circle cx="24" cy="24" r="3.6" fill="#e4a13f"/>
+    {Array.from({length:8},(_,i)=><path key={i} d="M24 7V12"
+      transform={`rotate(${45*i} 24 24)`} stroke="#e3a13f" strokeWidth="2.4"/>)}
   </>}
   {type==="mirror"&&<>
-   <path d="M18 5v22" strokeWidth="3"/>
-   <path d="m21 6 5 5m-5 1 5 5m-5 1 5 5m-5 1 3 3" opacity=".55"/>
-   <path d="M4 24 16 12 5 5" strokeWidth="1.9"/>
-   <path d="m7 12-2-7 7 1M9 19l-5 5 7-.8" opacity=".75"/>
+    <path d="M20 6v36" stroke="#366994" strokeWidth="4.1"/>
+    {Array.from({length:6},(_,i)=><path key={i}
+      d={`M24 ${6+i*6}l7 5`} stroke="#9eb2c8" strokeWidth="2"/>)}
+    <path d="m9 21 9-7M18 14l-2 6m2-6-6-1" stroke="#e4a13f" strokeWidth="2"/>
   </>}
   {type==="converging-lens"&&<>
-   <path d="M16 3C8 11 8 21 16 29c8-8 8-18 0-26Z" fill="currentColor" fillOpacity=".10" strokeWidth="2"/>
-   <path d="M2 12h8l6 4 6-4h8" opacity=".85"/>
-   <path d="M2 20h8l6-4 6 4h8" opacity=".85"/>
-   <path d="m26 9 4 3-4 3m-4 2 4 3-4 3" strokeWidth="1.4"/>
+    <path d="M24 5C12 14 12 34 24 43 36 34 36 14 24 5Z"
+      fill={glass} stroke={opticalStroke} strokeWidth="2.6"/>
+    <path d="M5 19h10m18 10h10" stroke="#d9a04e" strokeWidth="2.1"/>
+    <path d="m11 16 4 3-4 3m27 4-5 3 5 3" stroke="#d9a04e" strokeWidth="1.9"/>
   </>}
   {type==="diverging-lens"&&<>
-   <path d="M11 3c6 8 6 18 0 26h10c-6-8-6-18 0-26Z" fill="currentColor" fillOpacity=".10" strokeWidth="2"/>
-   <path d="M2 12h9l5-3 7-5h7M2 20h9l5 3 7 5h7" opacity=".83"/>
-   <path d="m25 1 5 3-4 3m-1 18 5 3-4 3" strokeWidth="1.4"/>
+    <path d="M14 5C23 15 23 33 14 43H34C25 33 25 15 34 5Z"
+      fill={glass} stroke={opticalStroke} strokeWidth="2.6"/>
+    <path d="M5 19h10m18 10h10" stroke="#d9a04e" strokeWidth="2.1"/>
+    <path d="m11 16 4 3-4 3m27 4-5 3 5 3" stroke="#d9a04e" strokeWidth="1.9"/>
   </>}
   {type==="interface"&&<>
-   <path d="M16 3v26" strokeWidth="2.6"/>
-   <path d="M17 3h12v26H17Z" fill="currentColor" fillOpacity=".07" stroke="none"/>
-   <path d="M4 5 16 16l12 6" strokeWidth="2.1"/>
-   <path d="m8 11-4-6 7 1m11 11 6 5-7 1" strokeWidth="1.6"/>
-   <path d="M6 16h20" strokeDasharray="2 3" opacity=".45"/>
+    <rect x="24" y="5" width="17" height="38" rx="2" fill="#e4f3fc"/>
+    <path d="M24 5v38" stroke={opticalStroke} strokeWidth="2.8"/>
+    <path d="M7 10 24 24 40 31" stroke="#e4a13f" strokeWidth="2.5"/>
+    <path d="m14 12 4 0-.6 4m18 11 4.6 4-6 1" stroke="#e4a13f" strokeWidth="1.8"/>
   </>}
   {type==="screen"&&<>
-   <rect x="19" y="4" width="7" height="24" rx="1.4" fill="currentColor" fillOpacity=".10"/>
-   <path d="M3 16h16" strokeWidth="2.2"/>
-   <path d="m14 12 5 4-5 4" strokeWidth="1.6"/>
-   <path d="M26 7h3m-3 5h3m-3 5h3m-3 5h3" opacity=".5"/>
+    <rect x="24" y="6" width="12" height="36" rx="2" fill="#d6e2ee" stroke="#60819d" strokeWidth="2.6"/>
+    <path d="M6 24h18" stroke="#e4a13f" strokeWidth="2.5"/>
+    <path d="m18 20 6 4-6 4" stroke="#e4a13f" strokeWidth="2"/>
   </>}
   {type==="prism"&&<>
-   <path d="M16 4 3 27h26L16 4Z" fill="currentColor" fillOpacity=".10" strokeWidth="2"/>
-   <path d="M1 18h8l8 5 13-8" strokeWidth="1.9"/>
-   <path d="m26 13 4 2-3 4" strokeWidth="1.5"/>
-   <path d="M13 23h9" strokeDasharray="2 3" opacity=".5"/>
+    <path d="M24 6 6 41h36L24 6Z" fill="#c9e9fc" stroke={opticalStroke} strokeWidth="2.6"/>
+    <path d="M3 27h12m-4-3 4 3-4 3" stroke="#e4a13f" strokeWidth="2.1"/>
+    <path d="m17 27 11 5 16-8m-16 8 15 4" stroke="#e4a13f" strokeWidth="2"/>
   </>}
  </svg>;
 }
