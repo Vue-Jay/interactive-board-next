@@ -67,7 +67,16 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
      const length=part.length,top=part.y-length/2,bottom=part.y+length/2;
      const label=part.label.trim()||captions[part.kind];
      return <g key={part.id} className={"lektrus-optics-part"+(picked?" selected":"")}
-       onPointerDown={onElementDown?e=>{e.stopPropagation();onElementDown(e,part)}:undefined}
+       onPointerDown={onElementDown||onPlace?e=>{
+         e.stopPropagation();
+         if(tool==="select")onElementDown?.(e,part);
+         else if(onPlace){
+           e.preventDefault();
+           const svg=e.currentTarget.ownerSVGElement!;
+           const point=opticsSvgPoint(e.clientX,e.clientY,svg);
+           onPlace(point.x,point.y);
+         }
+       }:undefined}
        onClick={onSelect?e=>{e.stopPropagation();onSelect({kind:"element",id:part.id})}:undefined}>
        {picked&&<rect x={part.x-23} y={part.y-Math.min(length/2,110)-15} width="46" height={Math.min(length,220)+30} rx="8"
          fill="#cce0ff" fillOpacity=".35" stroke="#6e9bdf" strokeDasharray="5 5" strokeWidth="1" pointerEvents="none"/>}
