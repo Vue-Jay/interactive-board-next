@@ -62,7 +62,7 @@ export function mergeEditedValue<T>(base:T,edit:T,latest:T,key=""):T{
 /** Small independent mutations for the editor realtime channel.
  * Other users do not need to download an entire world atlas on each stroke.
  */
-export type LiveEditorOp={path:(string|number)[];kind:"set"|"remove"|"append"|"upsert-id"|"remove-id";value?:unknown;id?:string};
+export type LiveEditorOp={path:(string|number)[];kind:"set"|"remove"|"append"|"upsert-id"|"remove-id";value?:unknown;id?:string;before?:unknown};
 const MAX_DEPTH=18;
 export function editorDiff(before:unknown,after:unknown):LiveEditorOp[]{
  const changes:LiveEditorOp[]=[];
@@ -75,7 +75,7 @@ export function editorDiff(before:unknown,after:unknown):LiveEditorOp[]{
     const following=new Map(b.map(v=>[(v as {id:string}).id,v]));
     for(const [id,value] of following)
      if(!same(value,previous.get(id)))
-      changes.push({path,kind:"upsert-id",id,value});
+      changes.push({path,kind:"upsert-id",id,value,before:previous.get(id)});
     for(const [id] of previous)if(!following.has(id))
       changes.push({path,kind:"remove-id",id});
     return;
@@ -120,7 +120,7 @@ export function applyEditorOps<T>(input:T,ops:readonly LiveEditorOp[]):T{
      if(!Array.isArray(value)||!action.id||!record(action.value))return value;
      const index=value.findIndex(v=>record(v)&&v.id===action.id);
      if(index<0)return [...value,action.value];
-     return value.map((v,i)=>i===index?mergeEditedValue(v,action.value,action.value):v);
+     return value.map((v,i)=>i===index&&action.before!==undefined?mergeEditedValue(action.before,action.value,v):i===index?action.value:v);
    }
    case "remove-id":{
      if(!Array.isArray(value))return value;
