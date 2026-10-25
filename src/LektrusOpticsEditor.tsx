@@ -20,17 +20,22 @@ function fromLegacy(item:Item):OpticsDocument{
  if(item.scienceOptics&&validOptics(item.scienceOptics))return item.scienceOptics;
  const d=emptyOptics();
  if(!(item.graphPoints?.length||item.graphSegments?.length))return d;
- // Existing documents remain editable: legacy segments become editable light rays.
- // Keep segment geometry without silently inventing lens/surface types.
+ // Keep legacy physics diagrams visible during conversion. Original segments
+ // are preserved as a reference layer instead of replaced by guessed rays.
  const points=item.graphPoints??[];
- for(const [index,seg] of (item.graphSegments??[]).entries()){
-   const a=points[seg.a],b=points[seg.b];if(!a||!b)continue;
-   const x=clamp(480+a.x*28,30,930),y=clamp(280-a.y*28,30,530);
-   const source=makeOpticalElement("source",x,y);source.label="Луч "+(index+1);
-   d.elements.push(source);
-   const angle=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
-   d.rays.push({id:opticsId(),sourceId:source.id,angle:clamp(angle,-85,85),color:"#eda342"});
+ const legacy=(item.graphSegments??[]).flatMap((segment,index)=>{
+   const a=points[segment.a],b=points[segment.b];if(!a||!b)return [];
+   return [{id:"legacy-"+index,x1:480+a.x*55,y1:280-a.y*48,
+     x2:480+b.x*55,y2:280-b.y*48,label:segment.label??"",arrow:segment.scienceArrow===true}];
+ });
+ for(const [index,poly]of(item.graphPolygons??[]).entries()){
+   for(let side=0;side<poly.points.length;side++){
+     const a=points[poly.points[side]],b=points[poly.points[(side+1)%poly.points.length]];
+     if(a&&b)legacy.push({id:"legacy-poly-"+index+"-"+side,x1:480+a.x*55,y1:280-a.y*48,
+       x2:480+b.x*55,y2:280-b.y*48,label:"",arrow:false});
+   }
  }
+ d.legacy=legacy.slice(0,200);
  return d;
 }
 export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props){
@@ -151,6 +156,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
        <label><input type="checkbox" checked={doc.normals} onChange={e=>patch({normals:e.target.checked})}/> Главная ось и нормали</label>
      </div>
      <p>Начните с пустого листа. Добавьте источник света, затем оптический элемент и лучи. Изменения сразу видны на схеме.</p>
+     {!!doc.legacy?.length&&<button type="button" onClick={()=>patch({legacy:[]})}>Убрать старое построение</button>}
     </aside>
     <div className="lektrus-optics-work">
      <div className="lektrus-optics-work-top">
