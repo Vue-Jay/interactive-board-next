@@ -176,6 +176,11 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
 
   const scienceLayout=isPhysics?layoutScienceLabels(points,segments,canvasPoint,520,370):null;
   const pointName=(index:number)=>points[index]?.label?.trim()||"Точка "+(index+1);
+  // When placing a force, the two most recently picked points become its ends.
+  const pickPoint=(index:number)=>{
+    setSelected(index);
+    if(isPhysics&&index!==second){setFirst(second);setSecond(index)}
+  };
   const canLink=points.length>=2;
   const drawingHelp=organic?"Стройте углеродные цепи, кольца и группы. Неявные атомы H рассчитываются для нейтральных C, N и O." :
     formula?"Введите формулу или уравнение. Нижние индексы отображаются автоматически, коэффициенты остаются обычными." :
@@ -278,7 +283,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
           <p className="lektrus-science-description">{drawingHelp}</p>
           <div className="lektrus-science-points">
             {points.map((point,i)=><button type="button" key={i}
-              className={selected===i?"active":""} onClick={()=>setSelected(i)}>
+              className={selected===i?"active":""} onClick={()=>pickPoint(i)}>
               <span>{point.label||"Точка "+(i+1)}</span><em>{i+1}</em>
             </button>)}
             {!points.length&&<span className="lektrus-science-empty">Добавьте первую точку</span>}
@@ -368,7 +373,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
         <div className="lektrus-science-preview">
           <div className="lektrus-science-preview-head">
             <strong>Чертёж</strong>
-            {isPhysics&&!atom&&<div className="lektrus-physics-quick-actions" role="group" aria-label="Быстрые действия для физической схемы">
+            {isPhysics&&!atom&&<div className="lektrus-physics-quick-actions" role="group" aria-label="Быстрые действия для физической схемы" title="Выберите две точки, затем добавьте силу или линию">
               <button type="button" disabled={points.length>=40} onClick={()=>addPoint()}>+ Точка</button>
               <button type="button" disabled={!canLink||first===second||segments.length>=64}
                 onClick={()=>addLink(true)}>+ Сила</button>
@@ -491,12 +496,12 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
                 <circle cx={p.x} cy={p.y} r="13.5" fill="transparent"
                   className="lektrus-science-point-hit" onPointerDown={event=>{
                     event.preventDefault();event.stopPropagation();
-                    setSelected(i);
+                    pickPoint(i);
                     drag.current={pointerId:event.pointerId,index:i,kind:"point"};
                     event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
                   }}/>
                 {point.label&&<g className="lektrus-science-label-handle" onPointerDown={event=>{
-                  event.preventDefault();event.stopPropagation();setSelected(i);
+                  event.preventDefault();event.stopPropagation();pickPoint(i);
                   drag.current={pointerId:event.pointerId,index:i,kind:"point-label"};
                   event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
                 }}>
