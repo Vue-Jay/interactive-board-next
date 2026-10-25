@@ -41,4 +41,25 @@ assert.ok(colorCss.includes('z-index:2147482000'));
 assert.ok(css.includes('.lektrus-inspector-position-content'));
 assert.ok(css.includes('max-height:calc(100dvh - 112px)'),"Short touch landscape must scroll safely");
 assert.ok(workflow.includes("test-lektrus-editor-ux.mjs"));
+
+// Selection action popovers must escape toolbar overflow and float above objects.
+const toolCss=file("src/lektrusToolLayout.css");
+assert.ok(toolCss.includes('.selection-toolbar-screen:has(.selection-more[open])')&&
+ toolCss.includes('overflow:visible!important'),"Expanded more menu must not be clipped");
+assert.ok(toolCss.includes('z-index:2500!important'),"Menu must layer above all board objects");
+assert.ok(app.includes('data-more-direction={selectionToolbarTop<440?"down":"up"}'),
+ "Menu should open into visible board space");
+assert.ok(app.includes('aria-label="Настройки и свойства объекта"')&&
+ app.includes('setLectrisInspectorOpen(value=>!value)'),
+ "Every selected object should have a direct properties action");
+assert.ok(app.includes('onClick={lectrisEditSelected}'),"Object toolbar should expose its editor");
+assert.ok(app.includes('case "image": setImageCropEditorId(singleSelected.id)'),
+ "Image editing must open the cropping editor");
+assert.ok(editor.includes('"fraction","table"')&&editor.includes('"linkmedia","image"'),
+ "Quick actions must cover fraction and image content editors");
+assert.ok(!editor.includes('if(item?.kind==="graph"&&item.graphFigureId==="chem-periodic"'),
+ "Periodic table must not lose quick properties");
+for(const field of ['item.kind==="shape"','item.kind==="connector"','item.kind==="cover"','item.kind==="pdf"'])
+ assert.ok(editor.includes(field),"Missing editable inspector fields for "+field);
+
 console.log("Lektrus editor UX: palette, five immediate ink widths, keyboard and inspector contracts OK");
