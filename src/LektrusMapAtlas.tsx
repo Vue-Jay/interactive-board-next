@@ -141,6 +141,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const contourDrawing=useRef<Array<[number,number]>>([]);
  const contourLivePath=useRef<SVGPathElement|null>(null);
  const mapSvgRef=useRef<SVGSVGElement|null>(null);
+ const contourInkCanvasRef=useRef<HTMLCanvasElement|null>(null);
+ const contourInkLayerRef=useRef<SVGGElement|null>(null);
+ const contourCanvasMode=useRef<"pen"|"erase"|null>(null);
+ const contourLastScreen=useRef<{x:number;y:number}|null>(null);
  const contourEraserPreview=useRef<SVGPathElement|null>(null);
  const contourInkMaskId="lektrus-contour-ink-"+useId().replace(/:/g,"");
  
@@ -1006,6 +1010,88 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  };
  const contourEraserRadius=()=>toolThickness/2/(contourPixelScale()*cameraRef.current.scale);
  const clearErasePreview=()=>contourEraserPreview.current?.setAttribute("d","");
+ // Dedicated instantaneous ink preview. A pointer sample paints one small
+ // canvas segment instead of rebuilding an SVG path or invalidating the atlas.
+ const mapScreenPoint=(e:{clientX:number;clientY:number})=>{
+  const rect=mapSvgRef.current?.getBoundingClientRect();
+  return rect?{x:e.clientX-rect.left,y:e.clientY-rect.top}:null;
+ };
+ const stopContourCanvas=()=>{
+  const canvas=contourInkCanvasRef.current;
+  if(canvas){
+   canvas.getContext("2d")?.clearRect(0,0,canvas.width,canvas.height);
+   canvas.style.display="none";
+  }
+  if(contourInkLayerRef.current)contourInkLayerRef.current.style.visibility="";
+  contourCanvasMode.current=null;
+  contourLastScreen.current=null;
+ };
+ const startContourCanvas=(mode:"pen"|"erase")=>{
+  const canvas=contourInkCanvasRef.current,svg=mapSvgRef.current;
+  if(!canvas||!svg)return false;
+  const rect=svg.getBoundingClientRect(),container=canvas.parentElement?.getBoundingClientRect();
+  if(!rect.width||!rect.height||!container)return false;
+  const pixelRatio=Math.min(2,window.devicePixelRatio||1);
+  canvas.width=Math.round(rect.width*pixelRatio);
+  canvas.height=Math.round(rect.height*pixelRatio);
+  canvas.style.left=(rect.left-container.left)+"px";
+  canvas.style.top=(rect.top-container.top)+"px";
+  canvas.style.width=rect.width+"px";
+  canvas.style.height=rect.height+"px";
+  const ctx=canvas.getContext("2d",{alpha:true});
+  if(!ctx)return false;
+  ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
+  ctx.clearRect(0,0,rect.width,rect.height);
+  ctx.lineCap="round";ctx.lineJoin="round";
+  if(mode==="erase"){
+   const factor=Math.min(rect.width/900,rect.height/450)||1;
+   const left=(rect.width-900*factor)/2,top=(rect.height-450*factor)/2;
+   const cam=cameraRef.current;
+   const source=[...(liveErasedStrokes??contourStrokes),
+    ...(pendingInk??[]).filter(stroke=>!(liveErasedStrokes??contourStrokes).some(line=>line.id===stroke.id))];
+   for(const line of source){
+    if(!line.points.length)continue;
+    ctx.beginPath();ctx.strokeStyle=line.color;
+    ctx.lineWidth=line.width??2;
+    line.points.forEach(([lon,lat],i)=>{
+     const x=(lon+180)*2.5,y=(90-lat)*2.5;
+     const px=left+factor*(450+(x-450)*cam.scale+cam.position.x);
+     const py=top+factor*(225+(y-225)*cam.scale+cam.position.y);
+     if(i)ctx.lineTo(px,py);else ctx.moveTo(px,py);
+    });
+    ctx.stroke();
+   }
+   if(contourInkLayerRef.current)contourInkLayerRef.current.style.visibility="hidden";
+  }
+  contourCanvasMode.current=mode;
+  contourLastScreen.current=null;
+  canvas.style.display="block";
+  return true;
+ };
+ const paintContourPixel=(e:{clientX:number;clientY:number},mode:"pen"|"erase")=>{
+  if(contourCanvasMode.current!==mode)return;
+  const screen=mapScreenPoint(e),ctx=contourInkCanvasRef.current?.getContext("2d");
+  if(!screen||!ctx)return;
+  const last=contourLastScreen.current;
+  ctx.globalCompositeOperation=mode==="erase"?"destination-out":"source-over";
+  ctx.lineWidth=toolThickness;
+  if(mode==="pen")ctx.strokeStyle=paintColor;
+  else ctx.strokeStyle="#000";
+  ctx.beginPath();
+  if(last){ctx.moveTo(last.x,last.y);ctx.lineTo(screen.x,screen.y);ctx.stroke()}
+  else{ctx.arc(screen.x,screen.y,toolThickness/2,0,Math.PI*2);ctx.fillStyle=mode==="pen"?paintColor:"#000";ctx.fill()}
+  contourLastScreen.current=screen;
+  ctx.globalCompositeOperation="source-over";
+ };
+ // Clear Canvas only AFTER React has put the optimistic stroke into SVG.
+ useLayoutEffect(()=>{
+  if(pendingInk&&contourCanvasMode.current==="pen"&&!contourDrawing.current.length)
+   stopContourCanvas();
+ },[pendingInk]);
+ useLayoutEffect(()=>{
+  if(liveErasedStrokes&&contourCanvasMode.current==="erase"&&!eraserGesture.current)
+   stopContourCanvas();
+ },[liveErasedStrokes]);
  const brushContour=(e:ReactPointerEvent<SVGSVGElement>)=>{
   const gesture=eraserGesture.current,point=annotationWorld(e);
   if(!gesture||gesture.pointerId!==e.pointerId||!point||pinch.current)return;
@@ -1013,6 +1099,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   if(last&&Math.hypot(point.x-last.x,point.y-last.y)<.3/(contourPixelScale()*cameraRef.current.scale))return;
   if(gesture.path.length>=2000)return;
   gesture.path.push(point);
+  if(contourCanvasMode.current==="erase"){
+   paintContourPixel(e,"erase");
+   return;
+  }
   // SVG mask removes ink visually at pointer speed, not by running React
   // reconciliation and splitting every saved stroke on every move.
   const preview=contourEraserPreview.current;
@@ -1029,12 +1119,13 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
    onPointerDown(e);
    if(pinch.current){
     eraserGesture.current=null;
-    clearErasePreview();
+    clearErasePreview();stopContourCanvas();
     return;
    }
   }
   if(eraserGesture.current)return;
   clearErasePreview();
+  startContourCanvas("erase");
   eraserGesture.current={pointerId:e.pointerId,path:[],
    radius:contourEraserRadius()};
   try{e.currentTarget.setPointerCapture(e.pointerId)}catch{/* older mobile WebViews */}
@@ -1043,7 +1134,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const moveContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
   e.preventDefault();e.stopPropagation();
   if(e.pointerType==="touch"){
-   if(pinch.current){clearErasePreview();onMove(e);return}
+   if(pinch.current){clearErasePreview();stopContourCanvas();onMove(e);return}
    if(points.current.has(e.pointerId))points.current.set(e.pointerId,localPoint(e));
   }
   brushContour(e);
@@ -1055,13 +1146,13 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   if(e.pointerType==="touch")onPointerEnd(e);
   else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   if(!gesture||gesture.pointerId!==e.pointerId)return;
-  if(wasPinching){eraserGesture.current=null;clearErasePreview();return}
+  if(wasPinching){eraserGesture.current=null;clearErasePreview();stopContourCanvas();return}
   brushContour(e);
   eraserGesture.current=null;
   const source=[...(liveErasedStrokes??contourStrokes),...(pendingInk??[])];
   const erased=eraseContourInkAlongPath(source,gesture.path,gesture.radius,
    contourPixelScale()*cameraRef.current.scale);
-  if(erased===source){clearErasePreview();return}
+  if(erased===source){clearErasePreview();stopContourCanvas();return}
   erasedSourceIds.current=new Set(source.map(line=>line.id).filter(id=>!erased.some(line=>line.id===id)));
   eraserPersisting.current=true;
   setLiveErasedStrokes(erased);
@@ -1076,7 +1167,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   e.preventDefault();e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   eraserGesture.current=null;
-  clearErasePreview();
+  clearErasePreview();stopContourCanvas();
  };
  const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
   if(!worksheetEditor||contourAction!=="select"||!onChange||markerGesture.current)return;
@@ -1129,13 +1220,15 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
    onPointerDown(e);
    if(pinch.current){
     contourDrawing.current=[];
-    contourLivePath.current?.setAttribute("d","");
+    contourLivePath.current?.setAttribute("d","");stopContourCanvas();
     e.currentTarget.setPointerCapture(e.pointerId);
     return;
    }
   }
   e.currentTarget.setPointerCapture(e.pointerId);
+  startContourCanvas("pen");
   contourDrawing.current=[contourPoint(worldPoint(localPoint(e)))];
+  paintContourPixel(e,"pen");
   if(contourLivePath.current){
    const [x,y]=projectGeography(...contourDrawing.current[0]);
    contourLivePath.current.setAttribute("stroke",paintColor);
@@ -1154,6 +1247,10 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   const pts=contourDrawing.current,last=pts[pts.length-1];
   if(Math.hypot(last[0]-point[0],last[1]-point[1])<.6/cameraRef.current.scale)return;
   if(pts.length<2000)pts.push(point);
+  if(contourCanvasMode.current==="pen"){
+   paintContourPixel(e,"pen");
+   return;
+  }
   const path=pts.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
    return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ");
   contourLivePath.current?.setAttribute("d",path);
@@ -1172,7 +1269,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   if(e.pointerType==="touch")onPointerEnd(e);
   else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const points=contourDrawing.current;contourDrawing.current=[];
-  if(wasPinching||points.length<2||contourStrokes.length>=140)return;
+  if(wasPinching||points.length<2||contourStrokes.length>=140){stopContourCanvas();return;}
   // Match the board's pencil: a stroke can continue as long as the user
   // draws. Split only at save time to respect the atlas' bounded format.
   const segments:ContourStroke[]=[];
@@ -1190,7 +1287,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  };
  const cancelContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
   contourDrawing.current=[];
-  contourLivePath.current?.setAttribute("d","");
+  contourLivePath.current?.setAttribute("d","");stopContourCanvas();
   if(e.pointerType==="touch")onPointerEnd(e);
   else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
  };
@@ -1690,9 +1787,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       </g>}
       {(isWorksheet?contourConfig.showGrid:d.showGrid)&&<LektrusAtlasGraticule scale={scale} viewport={gridViewport}/>}
       {mode==="contour"&&<g className="lektrus-atlas-contour-work" pointerEvents={worksheetOnBoard?"none":undefined}>
-       <g mask={`url(#${contourInkMaskId})`} pointerEvents="none">
+       <g ref={contourInkLayerRef} mask={`url(#${contourInkMaskId})`} pointerEvents="none">
        {([... (liveErasedStrokes??contourStrokes),...(pendingInk??[]).filter(line=>!(liveErasedStrokes??contourStrokes).some(saved=>saved.id===line.id))]).map(line=><path key={line.id} fill="none" stroke={line.color}
-        strokeWidth={line.width??2} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"
+        strokeWidth={(line.width??2)/contourPixelScale()} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"
         d={line.points.map((p,i)=>{const [x,y]=projectGeography(p[0],p[1]);
          return (i?"L":"M")+x.toFixed(3)+" "+y.toFixed(3)}).join(" ")}/>)}
        </g>
@@ -1739,7 +1836,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
          <title>{mark.text||"Условный знак"} · Перетащите для перемещения, стрелки для точной настройки, Delete для удаления</title>
         </g>})}
 
-       <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={toolThickness} vectorEffect="non-scaling-stroke"
+       <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={toolThickness/contourPixelScale()} vectorEffect="non-scaling-stroke"
         strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
       </g>}
 
@@ -1767,6 +1864,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
       <text x="766" y="438" fontSize="5.8" fill="#607f99">На широте центра · приближённо</text>
      </g>
     </svg>
+    {worksheetEditor&&<canvas ref={contourInkCanvasRef} className="lektrus-contour-ink-preview" aria-hidden="true"/>}
     {!objectMoveMode&&<div className="lektrus-atlas-zoom" role="group" aria-label="Масштаб">
      <button type="button" title="Увеличить масштаб" onClick={()=>zoomAt(cameraRef.current.scale*1.5)}>+</button>
      <button type="button" onClick={reset} title="Вписать выбранный регион">⌖</button>
