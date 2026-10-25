@@ -3,6 +3,7 @@ import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {circuitSymbols,type CircuitCategory,type CircuitSymbol} from "./ScienceCircuitGlyph";
 import ScienceCircuitGlyph from "./ScienceCircuitGlyph";
+import LektrusCircuitUiIcon from "./LektrusCircuitUiIcon";
 import LektrusCircuitView,{circuitSvgCoords,type CircuitSelection,type CircuitTool} from "./LektrusCircuitView";
 import {
   circuitTemplate,circuitFromLegacyItem,circuitId,createCircuitDocument,
@@ -376,12 +377,12 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
             <h2>Конструктор электрических цепей</h2></div>
           <div className="lektrus-circuit-header-actions">
             <button type="button" className="lektrus-circuit-icon-button" title="Отменить (Ctrl+Z)"
-              aria-label="Отменить" disabled={!history.past.length} onClick={undo}>↶</button>
+              aria-label="Отменить" disabled={!history.past.length} onClick={undo}><LektrusCircuitUiIcon kind="undo"/></button>
             <button type="button" className="lektrus-circuit-icon-button" title="Повторить (Ctrl+Y)"
-              aria-label="Повторить" disabled={!history.future.length} onClick={redo}>↷</button>
+              aria-label="Повторить" disabled={!history.future.length} onClick={redo}><LektrusCircuitUiIcon kind="redo"/></button>
             <button type="button" className="lektrus-circuit-compact-button" aria-pressed={paletteOpen}
-              onClick={()=>setPaletteOpen(v=>!v)} title="Показать или скрыть каталог">Элементы</button>
-            <button type="button" className="lektrus-circuit-close" aria-label="Закрыть редактор" onClick={close}>×</button>
+              onClick={()=>setPaletteOpen(v=>!v)} title="Показать или скрыть каталог"><LektrusCircuitUiIcon kind="catalog"/> Элементы</button>
+            <button type="button" className="lektrus-circuit-close" aria-label="Закрыть редактор" onClick={close}><LektrusCircuitUiIcon kind="close"/></button>
           </div>
         </header>
         <div className="lektrus-circuit-editor-main">
@@ -428,13 +429,13 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
             <div className="lektrus-circuit-toolbar">
               <div className="lektrus-circuit-toolgroup">
                 <button type="button" className={tool==="select"?"active":""}
-                  onClick={()=>changeTool("select")} title="Выделение и перемещение · V">↖ <span>Выбор</span></button>
+                  onClick={()=>changeTool("select")} title="Выделение и перемещение · V"><LektrusCircuitUiIcon kind="select"/><span>Выбор</span></button>
                 <button type="button" className={tool==="hand"?"active":""}
-                  onClick={()=>changeTool("hand")} title="Переместить лист · H">✋ <span>Рука</span></button>
+                  onClick={()=>changeTool("hand")} title="Переместить лист · H"><LektrusCircuitUiIcon kind="hand"/><span>Рука</span></button>
                 <button type="button" className={tool==="wire"?"active":""}
-                  onClick={()=>changeTool("wire")} title="Соединить контакты и узлы · W">⌁ <span>Провод</span></button>
+                  onClick={()=>changeTool("wire")} title="Соединить контакты и узлы · W"><LektrusCircuitUiIcon kind="wire"/><span>Провод</span></button>
                 <button type="button" className={tool==="junction"?"active":""}
-                  onClick={()=>changeTool("junction")} title="Поставить узел соединения · N">● <span>Узел</span></button>
+                  onClick={()=>changeTool("junction")} title="Поставить узел соединения · N"><LektrusCircuitUiIcon kind="junction"/><span>Узел</span></button>
               </div>
               <button type="button" className="lektrus-circuit-properties-toggle"
                 disabled={!selection} aria-pressed={inspectorOpen}
@@ -467,7 +468,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
           </div>
           <aside className="lektrus-circuit-inspector" aria-label="Настройки выбранного элемента">
             <button type="button" className="lektrus-circuit-inspector-close"
-              aria-label="Скрыть настройки элемента" onClick={()=>setInspectorOpen(false)}>×</button>
+              aria-label="Скрыть настройки элемента" onClick={()=>setInspectorOpen(false)}><LektrusCircuitUiIcon kind="close"/></button>
             <div className="lektrus-circuit-inspector-header"><strong>Свойства</strong><span>{selection?"Выбрано":"Выберите объект"}</span></div>
             {currentComponent&&<>
               <div className="lektrus-circuit-inspector-preview">
