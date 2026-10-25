@@ -134,3 +134,33 @@
 
 .lektrus-optics-editor .lektrus-optics-catalog .lektrus-optics-tools button{white-space:normal}
 .lektrus-optics-editor .lektrus-optics-inspector{min-width:0}
+
+
+/* Contextual properties must NEVER resize the drawing after a pointer tap. */
+.lektrus-optics-editor .lektrus-optics-layout{position:relative}
+.lektrus-optics-editor.show-properties .lektrus-optics-layout{
+  grid-template-columns:238px minmax(0,1fr);
+}
+.lektrus-optics-editor.catalog-hidden.show-properties .lektrus-optics-layout{
+  grid-template-columns:minmax(0,1fr);
+}
+.lektrus-optics-editor .lektrus-optics-inspector{
+  position:absolute;top:8px;right:8px;bottom:8px;z-index:8;
+  box-sizing:border-box;width:min(254px,calc(100vw - 20px));
+  height:auto;min-height:0;box-shadow:0 12px 32px #16345427;
+}
+@media(max-width:1020px){
+  .lektrus-optics-editor.show-properties .lektrus-optics-layout{
+    grid-template-columns:198px minmax(0,1fr);
+  }
+  .lektrus-optics-editor.catalog-hidden.show-properties .lektrus-optics-layout{
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+@media(max-width:760px){
+ .lektrus-optics-editor.show-properties .lektrus-optics-layout,
+ .lektrus-optics-editor.catalog-hidden.show-properties .lektrus-optics-layout{
+   grid-template-columns:minmax(0,1fr);
+ }
+ .lektrus-optics-editor .lektrus-optics-inspector{top:5px;right:5px;bottom:5px;width:min(256px,calc(100vw - 48px))}
+}
