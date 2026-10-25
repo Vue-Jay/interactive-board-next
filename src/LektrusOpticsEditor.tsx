@@ -2,6 +2,7 @@ import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from "
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import LektrusOpticsView,{opticsSvgPoint,type OpticsSelection,type OpticsTool} from "./LektrusOpticsView";
+import LektrusPhysicsToolIcon from "./LektrusPhysicsToolIcon";
 import {emptyOptics,makeOpticalElement,opticsId,validOptics,traceOptics,type OpticalElement,type OpticalKind,type OpticsDocument} from "./lektrusOpticsModel";
 type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void};
 type History={past:OpticsDocument[];present:OpticsDocument;future:OpticsDocument[]};
@@ -150,7 +151,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
      <strong>Построения</strong>
      <div className="lektrus-optics-tools">
       {tools.map(t=><button key={t.id} type="button" title={t.hint} className={tool===t.id?"active":""}
-       onClick={()=>{setTool(t.id);setNotice(t.id==="select"?"Выберите или переместите элемент.":"Коснитесь листа, чтобы поставить: "+t.name.toLowerCase())}}>{t.name}</button>)}
+       onClick={()=>{setTool(t.id);setNotice(t.id==="select"?"Выберите или переместите элемент.":"Коснитесь листа, чтобы поставить: "+t.name.toLowerCase())}}><LektrusPhysicsToolIcon type={t.id}/><span>{t.name}</span></button>)}
      </div>
      <div className="lektrus-optics-catalog-options">
        <label><input type="checkbox" checked={doc.grid} onChange={e=>patch({grid:e.target.checked})}/> Точки сетки</label>
