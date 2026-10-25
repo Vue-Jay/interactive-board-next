@@ -2058,6 +2058,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 }) {
   const layoutEditing=new URLSearchParams(window.location.search).get("layout-editor")==="1";
   const [rolePreview,setRolePreview]=useState<BoardRolePreview>("actual");
+  useEffect(()=>setRolePreview("actual"),[boardSummary.id]);
   const roleCapabilities=boardRoleCapabilities({
     preview:rolePreview,boardRole:boardSummary.role,accountRole,
     isAppAdmin,adminMaintenance
@@ -6742,7 +6743,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const remoteSelectorsFor = (itemId: string) => remoteWorkIndex.selectors.get(itemId) ?? [];
   const remoteEditingCount = remoteWorkIndex.editingCount;
   useEffect(() => {
-    if (adminHidden || boardSummary.role !== "owner") return;
+    if (adminHidden || !canManageBoard) return;
     if (teacherViewBroadcastTimer.current) clearTimeout(teacherViewBroadcastTimer.current);
 
     teacherViewBroadcastTimer.current = setTimeout(() => {
@@ -6760,7 +6761,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         teacherViewBroadcastTimer.current = null;
       }
     };
-  }, [adminHidden, boardSummary.role, view.x, view.y, view.zoom]);
+  }, [adminHidden, canManageBoard, view.x, view.y, view.zoom]);
 
   useEffect(() => {
     const online = new Set(presenceUsers.map((user) => user.userId));
