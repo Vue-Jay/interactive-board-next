@@ -96,7 +96,8 @@ assert.match(circuitStyles,/inspector-expanded/,"Selection settings must be cont
 assert.match(editor,/onClick=\{\(\)=>changeTool\("hand"\)\}/,"Hand tool must be usable");
 assert.match(editor,/pinchRef\.current/,"Touch pinch must control the editor");
 assert.match(view,/onPointerDownCapture=\{onBackgroundDown\}/,"Capture pinch before dragging components");
-assert.match(view,/vb\.width>0\?vb\.width:900/,"Touch placement must account for zoomed SVG");
+assert.match(view,/svgClientPoint\(svg,clientX,clientY\)/,
+  "Touch placement must use the real screen-to-SVG transform");
 assert.match(physicsStyles,/physics-workspace/,"Physics editor must have a separate large workspace");
 assert.match(physicsStyles,/settings-collapsed/,"Physics settings must collapse");
 assert.match(physicsEditor,/lektrus-physics-quick-actions/,"Forces and geometry need on-canvas quick actions");
