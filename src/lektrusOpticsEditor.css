@@ -231,3 +231,12 @@
 }
 .lektrus-optics-ray-step p{margin:1px 0 0;font-size:11px;line-height:1.35;color:#415e86}
 .lektrus-optics-ray-steps small{display:block;line-height:1.4;color:#7890ad;font-size:10px}
+
+.lektrus-optics-editor .lektrus-optics-trace-action{
+  flex:0 0 auto;min-height:32px;padding:7px 11px;
+  border:1px solid #cadcf3;background:#f4f8ff;
+  color:#2a5d9c;border-radius:9px;font-weight:760;font-size:11px;
+}
+.lektrus-optics-editor .lektrus-optics-trace-action:hover{
+  background:#e3efff;border-color:#a6c5ed;
+}
