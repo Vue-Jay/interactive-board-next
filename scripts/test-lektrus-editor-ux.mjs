@@ -49,10 +49,20 @@ assert.ok(toolCss.includes('.selection-toolbar-screen:has(.selection-more[open])
 assert.ok(toolCss.includes('z-index:2500!important'),"Menu must layer above all board objects");
 assert.ok(app.includes('data-more-direction={selectionToolbarTop<440?"down":"up"}'),
  "Menu should open into visible board space");
-assert.ok(app.includes('aria-label="Настройки и свойства объекта"')&&
+assert.ok(app.includes('aria-label="Свойства объекта"')&&
  app.includes('setLectrisInspectorOpen(value=>!value)'),
  "Every selected object should have a direct properties action");
-assert.ok(app.includes('onClick={lectrisEditSelected}'),"Object toolbar should expose its editor");
+assert.ok(app.includes('onClick={lectrisConfigureSelected}')&&
+ app.includes('const lectrisConfigureSelected = () => {'),
+ "Every selected object should have a consistent Configure action");
+assert.ok(editor.includes('className="lectris-quick-configure"')&&
+ editor.includes('onClick={props.onEdit}>Настроить'),
+ "Configure must remain visible in the compact touch quick bar");
+assert.ok(app.includes('onEdit={lectrisEditSelected}'),
+ "Object inspector must still be able to open content editors");
+assert.ok(app.includes('isSchoolDiagramId(item.graphFigureId)')&&
+ app.includes('setSchoolEditorItem(item)'),
+ "School diagrams, including geography matching, must use their dedicated settings editor");
 assert.ok(app.includes('case "image": setImageCropEditorId(singleSelected.id)'),
  "Image editing must open the cropping editor");
 assert.ok(editor.includes('"fraction","table"')&&editor.includes('"linkmedia","image"'),
