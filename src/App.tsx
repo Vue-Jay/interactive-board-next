@@ -4847,7 +4847,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // A single settings entry point for every selected board object. Subject tools
   // open their own editors; simple objects use the shared properties inspector.
   const lectrisConfigureSelected = () => {
-    if (!singleSelected || isInkItem(singleSelected)) return;
+    if (!singleSelected) return;
     const contourWorksheet = singleSelected.graphFigureId === "contour-atlas";
     if (!canEdit || (singleSelected.locked && !contourWorksheet) ||
       (isStudent && structurallyLockedForStudent(singleSelected) && !contourWorksheet)) {
@@ -7195,7 +7195,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           onColor={tool === "marker" ? setMarkerColor : tool === "pen" ? setPenColor : setColor}
           onWeight={setWeight}
           onMarkerWeight={setMarkerWeight} onEraserSize={setEraserSize}/>}
-        {lectrisInspectorOpen && singleSelected && !isInkItem(singleSelected) && !objectEditorOpen && !presentation &&
+        {lectrisInspectorOpen && singleSelected && !objectEditorOpen && !presentation &&
           <LectrisObjectInspector key={singleSelected.id} item={singleSelected} userId={authUser.id}
             canModify={canEdit && !singleSelected.locked && !(isStudent && structurallyLockedForStudent(singleSelected) && singleSelected.graphFigureId!=="contour-atlas")}
             canToggleLock={canEdit && !(isStudent && structurallyLockedForStudent(singleSelected))}
@@ -8912,7 +8912,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   : `${selectedItems.length} объектов`}
               </span>
 
-              {singleSelected&&!isInkItem(singleSelected)&&<>
+              {singleSelected&&<>
                 <button type="button" className="selection-configure-action" data-board-interactive="true"
                   title="Настроить выбранный объект" aria-label="Настроить выбранный объект"
                   onClick={lectrisConfigureSelected}>
@@ -9045,7 +9045,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               <details className="selection-more">
                 <summary title="Ещё действия" aria-label="Ещё действия"><Icon name="more" size={17} /></summary>
                 <div className="selection-more-menu">
-                  {singleSelected&&!isInkItem(singleSelected)&&<>
+                  {singleSelected&&<>
                     <button type="button" onClick={e=>{e.currentTarget.closest("details")?.removeAttribute("open");lectrisConfigureSelected()}}>
                       <Icon name="settings" size={16}/><span>Настроить</span>
                     </button>
@@ -9149,7 +9149,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             >
               {selectedItems.length ? (
                 <>
-                  {singleSelected&&!isInkItem(singleSelected)&&<>
+                  {singleSelected&&<>
                     <button onClick={()=>{lectrisConfigureSelected();setContextMenu(null)}}>Настроить</button>
                     <button onClick={()=>{setLectrisInspectorOpen(true);setContextMenu(null)}}>Свойства</button>
                   </>}
