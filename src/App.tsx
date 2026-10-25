@@ -4840,6 +4840,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       case "quiz": openQuizEditor(singleSelected); break;
       case "flashcard": openFlashcardEditor(singleSelected); break;
       case "linkmedia": openLinkMediaEditor(singleSelected); break;
+      case "image": setImageCropEditorId(singleSelected.id); break;
+      default: setLectrisInspectorOpen(true); break;
     }
   };
   const selectionToolbarPointerDown=(event:React.PointerEvent<HTMLDivElement>)=>{
@@ -8884,6 +8886,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           {selectionScreenBounds && selectedItems.length > 0 && !objectEditorOpen && (
             <div
               className={`selection-toolbar-screen ${singleSelected?.kind==="graph"?"lektrus-graph-selection-toolbar":""}`}
+              data-more-direction={selectionToolbarTop<440?"down":"up"}
               style={{
                 left: selectionToolbarLeft,
                 top: selectionToolbarTop,
@@ -8897,6 +8900,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   : `${selectedItems.length} объектов`}
               </span>
 
+              {singleSelected&&!isInkItem(singleSelected)&&
+                <button type="button" className="icon-action" data-board-interactive="true"
+                  title="Настройки и свойства объекта" aria-label="Настройки и свойства объекта"
+                  aria-pressed={lectrisInspectorOpen}
+                  onClick={()=>setLectrisInspectorOpen(value=>!value)}>
+                  <Icon name="settings" size={16}/>
+                </button>}
+              {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
+                (["text","sticky","frame","comment","formula","graph","fraction","table","checklist","quiz","flashcard","linkmedia","image"].includes(singleSelected.kind))&&
+                <button type="button" className="selection-edit-action" data-board-interactive="true"
+                  title="Редактировать содержимое" aria-label="Редактировать содержимое"
+                  onClick={lectrisEditSelected}><Icon name="edit" size={15}/><span>Редактировать</span></button>}
               {singleSelected?.kind === "linkmedia" && !selectionLocked && (<span className="linkmedia-selection-controls"><button type="button" onClick={()=>openLinkMediaEditor(singleSelected)} title="Изменить ссылку"><Icon name="rename" size={15}/><span>Ссылка</span></button><a href={singleSelected.mediaUrl} target="_blank" rel="noreferrer" onPointerDown={e=>e.stopPropagation()} title="Открыть источник"><Icon name="open" size={15}/></a></span>)}
               {singleSelected?.kind === "frame" && !selectionLocked && (
                 <button type="button" className="frame-name-action" onClick={renameSelectedFrame} title="Переименовать фрейм · Enter / F2">
@@ -9026,6 +9041,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               <details className="selection-more">
                 <summary title="Ещё действия" aria-label="Ещё действия"><Icon name="more" size={17} /></summary>
                 <div className="selection-more-menu">
+                  {singleSelected&&!isInkItem(singleSelected)&&
+                    <button type="button" onClick={()=>setLectrisInspectorOpen(true)}>
+                      <Icon name="settings" size={16}/><span>Настройки и свойства</span>
+                    </button>}
+                  {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
+                    <button type="button" onClick={lectrisEditSelected}>
+                      <Icon name="edit" size={16}/><span>Редактировать</span>
+                    </button>}
                   <button type="button" onClick={copySelected}><Icon name="copy" size={16} /><span>Копировать</span><kbd>Ctrl+C</kbd></button>
                   {selectedItems.length === 1 && singleSelected?.kind !== "comment" && <button type="button" onClick={addCommentToSelection}><Icon name="comment" size={16}/><span>Добавить комментарий</span></button>}
                   <button type="button" onClick={() => void exportItemsToPng("selection")}><Icon name="download" size={16} /><span>Скачать выделение PNG</span><kbd>Ctrl+Shift+E</kbd></button>
