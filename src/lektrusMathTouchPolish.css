@@ -332,3 +332,38 @@
   min-height:42px;min-width:42px;padding:8px;
  }
 }
+
+/* One visible, reliably clickable Configure action for every selected object.
+   Keep it at the start of the floating strip and outside mobile quick-panel overflow. */
+.workspace .selection-toolbar-screen > button.selection-configure-action {
+ display:inline-flex!important;align-items:center;justify-content:center;gap:6px;
+ width:auto!important;min-width:100px!important;min-height:31px!important;
+ padding:5px 11px!important;flex:0 0 auto;
+ background:#365fd0!important;color:#fff!important;
+ border:1px solid #365fd0!important;border-radius:9px!important;
+ font-size:12px;font-weight:750;line-height:1.1;
+ white-space:nowrap;touch-action:manipulation;
+}
+.workspace .selection-toolbar-screen > button.selection-configure-action:hover {
+ background:#284eae!important;border-color:#284eae!important;color:#fff!important;
+}
+.workspace .lectris-quick-properties > button.lectris-quick-configure {
+ display:inline-flex!important;align-items:center;justify-content:center;
+ min-width:98px;flex:0 0 auto;background:#365fd0!important;
+ border-color:#365fd0!important;color:#fff!important;font-weight:800;
+}
+.workspace .lectris-quick-properties > button.lectris-quick-configure:hover {
+ background:#284eae!important;border-color:#284eae!important;color:#fff!important;
+}
+.workspace :is(.selection-toolbar-screen > button.selection-configure-action,
+ .lectris-quick-properties > button.lectris-quick-configure):focus-visible {
+ outline:3px solid #8eb1ff;outline-offset:2px;
+}
+@media(pointer:coarse){
+ .workspace .selection-toolbar-screen > button.selection-configure-action {
+  min-height:39px!important;min-width:100px!important;
+ }
+ .workspace .lectris-quick-properties > button.lectris-quick-configure {
+  min-height:34px!important;min-width:90px;padding:6px 9px!important;
+ }
+}
