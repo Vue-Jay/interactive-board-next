@@ -428,6 +428,10 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
                 <button type="button" className={tool==="junction"?"active":""}
                   onClick={()=>changeTool("junction")} title="Поставить узел соединения">● <span>Узел</span></button>
               </div>
+              <button type="button" className="lektrus-circuit-properties-toggle"
+                disabled={!selection} aria-pressed={inspectorOpen}
+                title="Показать или скрыть свойства выбранного элемента"
+                onClick={()=>setInspectorOpen(value=>!value)}>Параметры</button>
               <div className="lektrus-circuit-zoom" role="group" aria-label="Масштаб схемы">
                 <button type="button" aria-label="Уменьшить масштаб" disabled={view.zoom<=1}
                   onClick={()=>zoomTo(view.zoom/1.25)}>−</button>
