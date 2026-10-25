@@ -7,6 +7,8 @@ type Props={doc:OpticsDocument;selection?:OpticsSelection;tool?:OpticsTool;
   onPlace?:(x:number,y:number)=>void;
   onElementDown?:(e:ReactPointerEvent<SVGGElement>,part:OpticalElement)=>void;
   onSelect?:(selected:OpticsSelection)=>void;
+  onRaySelect?:(rayId:string)=>void;
+  cursor?:{x:number;y:number}|null;
 };
 export function opticsSvgPoint(clientX:number,clientY:number,svg:SVGSVGElement){
  const rect=svg.getBoundingClientRect();
@@ -18,7 +20,7 @@ export function opticsSvgPoint(clientX:number,clientY:number,svg:SVGSVGElement){
 const captions:Record<OpticalElement["kind"],string>={
  source:"Источник","mirror":"Зеркало","converging-lens":"Собирающая линза",
  "diverging-lens":"Рассеивающая линза",interface:"Граница сред",screen:"Экран",prism:"Призма"};
-export default function LektrusOpticsView({doc,selection=null,tool="select",onPlace,onElementDown,onSelect}:Props){
+export default function LektrusOpticsView({doc,selection=null,tool="select",onPlace,onElementDown,onSelect,onRaySelect,cursor=null}:Props){
  const id=useId().replaceAll(":","");
  const interactive=Boolean(onPlace||onSelect||onElementDown);
  const paths=traceOptics(doc);
@@ -57,6 +59,11 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
      })}
    </g>)}
   </g>
+  {onRaySelect&&tool==="select"&&<g className="lektrus-optics-ray-hits">
+    {paths.map(path=><polyline key={path.id} points={path.points.map(p=>p.x+","+p.y).join(" ")}
+      fill="none" stroke="transparent" strokeWidth="19" pointerEvents="stroke"
+      onPointerDown={e=>{e.stopPropagation();onRaySelect(path.id)}}/>)}
+  </g>}
   <g className="lektrus-optics-elements">
    {doc.elements.map(part=>{
      const picked=selection?.kind==="element"&&selection.id===part.id;
@@ -106,5 +113,11 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
      </g>;
    })}
   </g>
+  {cursor&&interactive&&tool!=="select"&&<g transform={`translate(${cursor.x} ${cursor.y})`}
+    className="lektrus-editor-cursor" pointerEvents="none">
+    <circle r="10" fill="#fff" fillOpacity=".9" stroke="#3375cb" strokeWidth="2"/>
+    <circle r="2.6" fill="#3375cb"/>
+    <circle r="16" fill="none" stroke="#9abce9" strokeWidth="1.2" strokeDasharray="5 6"/>
+  </g>}
  </svg>;
 }
