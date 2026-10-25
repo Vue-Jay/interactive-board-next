@@ -338,10 +338,8 @@ assert.match(editor,/showFigureCatalog\("Объёмные фигуры"\)/,
  "3D library navigation opens the catalog directly");
 assert.doesNotMatch(editor,/lektrus-geometry-rail-library/,
  "2D/3D switch is not duplicated in the tool rail");
-assert.match(app,/className="selection-configure-action"/,
- "the selection toolbar exposes Configure for every object, including geometry graphs");
-assert.match(app,/onClick=\{lectrisConfigureSelected\}/,
- "Configure routes geometry graphs to their appropriate editor or inspector");
+assert.match(app,/singleSelected\.graphPurpose!=="geometry"&&canEdit/,
+ "the bottom selection toolbar only opens the editor for non-geometry graphs");
 assert.doesNotMatch(editor,/className=\{tab==="connect"\?"active"/,
  "connecting points is part of the existing points section, not a fifth tab");
 assert.match(editor,/className="lektrus-link-kind-picker"/,
