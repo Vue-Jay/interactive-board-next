@@ -983,7 +983,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   // The SVG viewport is shared by touch and wheel events from map overlays.
   const rect=contourCanvasBounds.current??mapSvgRef.current?.getBoundingClientRect();
   if(!rect)return lastPointer.current;
-  const factor=contourCanvasBounds.current?.factor??Math.min(rect.width/900,rect.height/450)||1;
+  const factor=contourCanvasBounds.current?.factor??(Math.min(rect.width/900,rect.height/450)||1);
   return {x:(e.clientX-rect.left-(rect.width-900*factor)/2)/factor,
    y:(e.clientY-rect.top-(rect.height-450*factor)/2)/factor};
  };
