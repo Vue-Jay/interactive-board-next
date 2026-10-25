@@ -75,130 +75,130 @@ const refract=(d:Vector,a:OpticalPoint,b:OpticalPoint,from:number,to:number):Vec
     y:eta*d.y+(eta*ci-Math.sqrt(k))*ny};
 };
 
-/** Iterate through all encountered optical surfaces.
- * Finite interaction and travel bounds prevent cyclic reflections from locking
- * the board. Optics are educational approximations, not spectral ray tracing. */
+/** Educational geometric ray tracing. Every encountered surface is handled
+ * in travel order, including subsequent prism faces after total internal
+ * reflection and optical elements encountered after leaving the prism.
+ * Refraction uses Snell's law and lenses use the thin-lens approximation. */
 export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|null{
   const source=doc.elements.find(e=>e.id===ray.sourceId&&e.kind==="source");
   if(!source)return null;
   const theta=limitAngle(ray.angle)*Math.PI/180;
-  let direction:Vector={x:Math.cos(theta),y:-Math.sin(theta)};
-  let position:OpticalPoint={x:source.x,y:source.y};
-  const points:OpticalPoint[]=[position];
-  let previousId="";
-  let note="Прямолинейный ход луча";
-  let kind:OpticalPath["kind"]="straight";
+  type Hit={e:OpticalElement;t:number;point:OpticalPoint;facet?:[OpticalPoint,OpticalPoint]};
   const unit=(v:Vector):Vector=>{
-    const len=Math.hypot(v.x,v.y)||1;return {x:v.x/len,y:v.y/len};
+    const size=Math.hypot(v.x,v.y)||1;
+    return {x:v.x/size,y:v.y/size};
   };
-  const advance=(p:OpticalPoint,v:Vector,amount:number):OpticalPoint=>
-    ({x:p.x+v.x*amount,y:p.y+v.y*amount});
-  const addPoint=(p:OpticalPoint)=>{const last=points.at(-1);if(!last||Math.hypot(last.x-p.x,last.y-p.y)>.0001)points.push(p)};
-  for(let pass=0;pass<18;pass++){
-    type Hit={e:OpticalElement;point:OpticalPoint;t:number;facet?:[OpticalPoint,OpticalPoint]};
-    const candidates:Hit[]=[];
+  const reflected=(v:Vector,a:OpticalPoint,b:OpticalPoint):Vector=>{
+    const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+    const nx=-dy/len,ny=dx/len,dot=v.x*nx+v.y*ny;
+    return unit({x:v.x-2*dot*nx,y:v.y-2*dot*ny});
+  };
+  const cross=(a:OpticalPoint,b:OpticalPoint,c:OpticalPoint)=>
+    (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+  const insideTriangle=(p:OpticalPoint,e:OpticalElement)=>{
+    const face=prismFaces(e);
+    const corners=[face[0][0],face[0][1],face[1][1]];
+    const values=corners.map((a,i)=>cross(a,corners[(i+1)%3],p));
+    return values.every(v=>v>=-0.0001)||values.every(v=>v<=0.0001);
+  };
+  const points:OpticalPoint[]=[{x:source.x,y:source.y}];
+  const append=(p:OpticalPoint)=>{
+    const last=points[points.length-1];
+    if(!last||Math.hypot(last.x-p.x,last.y-p.y)>0.0001)points.push(p);
+  };
+  let direction:Vector={x:Math.cos(theta),y:-Math.sin(theta)};
+  let position:OpticalPoint=points[0];
+  // A light source may be placed in a prism. It then starts in that medium.
+  let medium=doc.elements.find(e=>e.kind==="prism"&&insideTriangle(position,e))?.id??null;
+  let kind:OpticalPath["kind"]="straight";
+  let note="Прямолинейное распространение света";
+  let finished=false;
+  // A finite cap protects the UI from mirror traps. It does not terminate
+  // the ray at the first total internal reflection.
+  for(let step=0;step<96;step++){
+    const boundary=endpoint(position,direction.x,direction.y);
+    const remaining=Math.hypot(boundary.x-position.x,boundary.y-position.y);
+    if(remaining<0.0001){finished=true;break}
+    const hits:Hit[]=[];
     for(const e of doc.elements){
       if(e.id===source.id||e.kind==="source")continue;
+      // While inside the glass only the current prism faces are active.
+      // Once it exits the full optical scene is traced again.
+      if(medium&&e.id!==medium)continue;
       if(e.kind==="prism"){
         for(const facet of prismFaces(e)){
-          const hit=raySegmentHit(position,direction,...facet);
-          if(hit&&hit.t>.08&&!(previousId===e.id&&hit.t<1))
-            candidates.push({e,...hit,facet});
+          const h=raySegmentHit(position,direction,facet[0],facet[1]);
+          if(h&&h.t<remaining-0.0001)hits.push({e,...h,facet});
         }
-        continue;
+      }else if(!medium&&Math.abs(direction.x)>0.000001){
+        const t=(e.x-position.x)/direction.x;
+        const y=position.y+direction.y*t;
+        if(t>0.005&&t<remaining-0.0001&&Math.abs(y-e.y)<=e.length/2)
+          hits.push({e,t,point:{x:e.x,y}});
       }
-      if(Math.abs(direction.x)<1e-7)continue;
-      const t=(e.x-position.x)/direction.x;
-      if(t<=.08||previousId===e.id&&t<1)continue;
-      const y=position.y+direction.y*t;
-      if(Math.abs(y-e.y)<=e.length/2) candidates.push({e,t,point:{x:e.x,y}});
     }
-    const hit=candidates.sort((a,b)=>a.t-b.t)[0];
+    hits.sort((a,b)=>a.t-b.t);
+    const hit=hits[0];
     if(!hit){
-      addPoint(endpoint(position,direction.x,direction.y));
-      break;
+      append(boundary);
+      finished=true;break;
     }
-    const {e,point:p}=hit;
-    addPoint(p);
-    previousId=e.id;
+    append(hit.point);
+    const {e}=hit,p=hit.point;
     if(e.kind==="screen"){
-      kind="straight";note="Луч поглощён экраном";break;
+      kind="straight";note="Луч достиг экрана";finished=true;break;
     }
     if(e.kind==="mirror"){
-      direction={x:-direction.x,y:direction.y};
-      position=advance(p,direction,.2);
-      kind="reflected";note="Последовательное отражение от зеркальных поверхностей";
-      continue;
-    }
-    if(e.kind==="interface"){
-      const entering=direction.x>0;
-      const ratio=(entering?e.n1:e.n2)/(entering?e.n2:e.n1);
-      const sine=direction.y*ratio;
+      direction=unit({x:-direction.x,y:direction.y});
+      kind="reflected";note="Отражение от зеркала, далее учитываются следующие поверхности";
+    }else if(e.kind==="interface"){
+      // A planar interface has its left medium n1 and right medium n2.
+      const from=direction.x>0?e.n1:e.n2,to=direction.x>0?e.n2:e.n1;
+      const sine=direction.y*from/to;
       if(Math.abs(sine)>1){
-        direction={x:-direction.x,y:direction.y};
+        direction=unit({x:-direction.x,y:direction.y});
         kind="reflected";note="Полное внутреннее отражение на границе сред";
       }else{
         direction=unit({x:Math.sign(direction.x)*Math.sqrt(Math.max(0,1-sine*sine)),y:sine});
-        kind="refracted";note="Преломление по закону Снеллиуса на последовательных границах";
+        kind="refracted";note="Преломление на границе сред; луч продолжает путь";
       }
-      position=advance(p,direction,.2);
-      continue;
-    }
-    if(e.kind==="converging-lens"||e.kind==="diverging-lens"){
-      const focal=e.focalLength*(e.kind==="diverging-lens"?-1:1);
-      const slope=direction.y/Math.max(.00001,Math.abs(direction.x));
-      const newSlope=bounded(slope-(p.y-e.y)/focal,-8,8);
+    }else if(e.kind==="converging-lens"||e.kind==="diverging-lens"){
+      const f=e.focalLength*(e.kind==="diverging-lens"?-1:1);
       const sign=Math.sign(direction.x)||1;
-      direction=unit({x:sign,y:newSlope});
-      position=advance(p,direction,.2);
-      kind="lens";note="Последовательное прохождение через тонкие линзы (параксиальная модель)";
-      continue;
+      const slope=direction.y/Math.max(0.00001,Math.abs(direction.x));
+      const after=bounded(slope-(p.y-e.y)/f,-8,8);
+      direction=unit({x:sign,y:after});
+      kind="lens";note="Последовательное прохождение через тонкие линзы";
+    }else if(e.kind==="prism"&&hit.facet){
+      const wasInside=medium===e.id;
+      const from=wasInside?e.n2:e.n1,to=wasInside?e.n1:e.n2;
+      const outgoing=refract(direction,hit.facet[0],hit.facet[1],from,to);
+      if(outgoing){
+        direction=unit(outgoing);
+        medium=wasInside?null:e.id;
+        kind="prism";
+        note=wasInside
+          ?"Луч вышел из призмы и продолжает движение к следующим объектам"
+          :"Луч преломился и проходит внутри призмы";
+      }else{
+        // Total internal reflection is another interaction, not the end
+        // of the path. The next search sees the following triangular face.
+        direction=reflected(direction,hit.facet[0],hit.facet[1]);
+        kind="reflected";
+        note="Полное внутреннее отражение в призме; поиск следующей грани";
+      }
     }
-    if(e.kind==="prism"&&hit.facet){
-      const inside=refract(direction,hit.facet[0],hit.facet[1],e.n1,e.n2);
-      if(!inside){
-        const edge=hit.facet,dx=edge[1].x-edge[0].x,dy=edge[1].y-edge[0].y;
-        const len=Math.hypot(dx,dy)||1;
-        let nx=-dy/len,ny=dx/len;
-        if(direction.x*nx+direction.y*ny>0){nx=-nx;ny=-ny}
-        const dot=direction.x*nx+direction.y*ny;
-        direction=unit({x:direction.x-2*dot*nx,y:direction.y-2*dot*ny});
-        position=advance(p,direction,.2);
-        kind="reflected";note="Полное отражение от грани призмы";continue;
-      }
-      const entry=advance(p,inside,.08);
-      const exits=prismFaces(e).flatMap(facet=>{
-        const result=raySegmentHit(entry,inside,...facet);
-        return result&&result.t>.15?[{...result,facet}]:[];
-      }).sort((a,b)=>a.t-b.t);
-      if(!exits.length){
-        direction=inside;position=entry;kind="prism";note="Преломление на входе в призму";
-        continue;
-      }
-      const exit=exits[0];
-      addPoint(exit.point);
-      const outward=refract(inside,exit.facet[0],exit.facet[1],e.n2,e.n1);
-      if(!outward){
-        // At present the simple teaching model stops at internal reflection;
-        // following every bounce inside a polygon is a separate advanced mode.
-        kind="prism";note="Внутреннее отражение в призме";break;
-      }
-      direction=unit(outward);
-      position=advance(exit.point,direction,.2);
-      kind="prism";note="Преломление в призме и дальнейшее прохождение через элементы";
-      continue;
-    }
+    // Nudge in the outgoing direction, never add this epsilon to the drawn
+    // polyline. This avoids repeatedly hitting the same face at zero t.
+    position={x:p.x+direction.x*0.03,y:p.y+direction.y*0.03};
   }
-  if(points.length===1)addPoint(endpoint(position,direction.x,direction.y));
-  if(points.length>1&&points.length<20){
-    const last=points[points.length-1];
-    if(last.x>0&&last.x<OPTICS_WIDTH&&last.y>0&&last.y<OPTICS_HEIGHT&&
-      !doc.elements.some(e=>e.kind==="screen"&&Math.abs(e.x-last.x)<1&&Math.abs(e.y-last.y)<e.length/2) &&
-      !note.includes("Внутреннее отражение в призме")){
-      // Looped rays can reach the cap. Do not silently leave a floating endpoint.
-      if(points.length>=18)addPoint(endpoint(position,direction.x,direction.y));
-    }
+  if(!finished){
+    // Pathological closed mirror/prism loops are explicitly bounded.
+    // They should not freeze a lesson or pretend light disappeared.
+    note="Достигнут предел 96 взаимодействий; проверьте замкнутую систему зеркал и призм";
   }
   return {id:ray.id,color:ray.color,points,kind,note};
 }
-export function traceOptics(doc:OpticsDocument):OpticalPath[]{return doc.rays.flatMap(r=>{const p=traceOpticalRay(doc,r);return p?[p]:[]})}
+export function traceOptics(doc:OpticsDocument):OpticalPath[]{
+  return doc.rays.flatMap(r=>{const path=traceOpticalRay(doc,r);return path?[path]:[]});
+}
