@@ -62,7 +62,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose}:Prop
   const [cursor,setCursor]=useState<{x:number;y:number}|null>(null);
   const [dragging,setDragging]=useState<Dragging|null>(null);
   const [notice,setNotice]=useState("");
-  const [paletteOpen,setPaletteOpen]=useState(true);
+  const [paletteOpen,setPaletteOpen]=useState(()=>typeof window==="undefined"||!window.matchMedia("(max-width: 800px)").matches);
   const [inspectorOpen,setInspectorOpen]=useState(false);
   const [view,setView]=useState({x:0,y:0,zoom:1});
   const panRef=useRef<{id:number;clientX:number;clientY:number;x:number;y:number;scale:number}|null>(null);
