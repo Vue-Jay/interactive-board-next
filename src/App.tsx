@@ -8924,7 +8924,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onClick={()=>setLectrisInspectorOpen(value=>!value)}>
                   <Icon name="settings" size={16}/>
                 </button>
-              </>}}
+              </>}
               {singleSelected?.kind === "linkmedia" && !selectionLocked && (<span className="linkmedia-selection-controls"><button type="button" onClick={()=>openLinkMediaEditor(singleSelected)} title="Изменить ссылку"><Icon name="rename" size={15}/><span>Ссылка</span></button><a href={singleSelected.mediaUrl} target="_blank" rel="noreferrer" onPointerDown={e=>e.stopPropagation()} title="Открыть источник"><Icon name="open" size={15}/></a></span>)}
               {singleSelected?.kind === "frame" && !selectionLocked && (
                 <button type="button" className="frame-name-action" onClick={renameSelectedFrame} title="Переименовать фрейм · Enter / F2">
