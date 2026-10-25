@@ -61,6 +61,16 @@ assert.match(code,/editable=\{!!onPhysicalPartMove\}/,"Physics objects must rend
 assert.match(code,/workChannel\.current\?\.publishEdit\(latest\.id,editorDiff\(latest,changed\)\)/);
 assert.ok(code.includes("scienceOptics")&&code.includes("scienceCircuit")&&code.includes("scienceMechanics"));
 assert.ok(code.includes("onLiveChange={(before,next)=>livePhysicalEditorUpdate"),"Fullscreen editors must publish their edits");
+assert.ok(code.includes("onLiveChange={(before,next)=>liveMotionGraphUpdate"),"Motion graphs must publish independent edits");
+assert.ok(code.includes("isMotionGraph(stored.graphFigureId)"),"Peers must accept safe live motion graph data");
+for(const source of ["src/LektrusMechanicsEditor.tsx","src/LektrusOpticsEditor.tsx",
+ "src/LektrusCircuitEditor.tsx","src/LektrusPhysicsGraphEditor.tsx"]){
+ const text=read(source);
+ assert.match(text,/onLiveChange\?\./,"Existing editors must stream current document mutations");
+ assert.match(text,/mergeEditedValue\(/,"Existing editors must rebase remote changes");
+ assert.ok(text.includes('shared?"Готово":"Сохранить на доску"'),
+   "Existing edited objects must not present a misleading discard button");
+}
 assert.ok(read("src/LektrusMechanicsEditor.tsx").includes("LektrusMechanicsToolIcon"),"Styled mechanics palette");
 assert.ok(read("src/LektrusMechanicsView.tsx").includes("data-board-interactive"));
 assert.ok(read("src/LektrusOpticsView.tsx").includes("data-board-interactive"));
