@@ -1,5 +1,10 @@
 import { getRealtimeSocketUrl, getRemoteSession, isRemoteBackendEnabled } from "./backend";
 import type { BoardRole } from "./authStore";
+import type {LiveEditorOp} from "./lektrusLiveEditorMerge";
+export type BoardEditorMutation={
+ id:string;itemId:string;userId:string;clientId:string;
+ sentAt:number;ops:LiveEditorOp[];
+};
 
 export type RemoteWorkState = {
   userId: string;
@@ -12,6 +17,7 @@ export type RemoteWorkState = {
 
 export type BoardWorkChannel = {
   publish: (selectedIds: string[], editingId: string | null) => void;
+  publishEdit: (itemId:string,ops:LiveEditorOp[])=>void;
   close: () => void;
 };
 
@@ -21,9 +27,10 @@ export function connectBoardWorkChannel(
   onState: (state: RemoteWorkState) => void,
   onLeave: (userId: string) => void,
   publishSelf = true,
+  onEdit?: (mutation:BoardEditorMutation)=>void,
 ): BoardWorkChannel {
   if (!isRemoteBackendEnabled()) {
-    return { publish: () => {}, close: () => {} };
+    return { publish: () => {}, publishEdit:()=>{}, close: () => {} };
   }
 
   let stopped = false;
@@ -40,6 +47,9 @@ export function connectBoardWorkChannel(
   let latest: { selectedIds: string[]; editingId: string | null } = { selectedIds: [], editingId: null };
   let lastFingerprint = "";
   let publishTimer: ReturnType<typeof setTimeout> | undefined;
+  const clientId=Math.random().toString(36).slice(2)+Date.now().toString(36);
+  let editSequence=0;
+  const seenEdits=new Set<string>();
 
   const topic = `realtime:board-work:${boardId}`;
 
@@ -173,7 +183,23 @@ export function connectBoardWorkChannel(
             sendState();
             return;
           }
-          if (message.event !== "broadcast" || message.payload?.event !== "work_state") return;
+          if (message.event !== "broadcast") return;
+          if (message.payload?.event === "editor_mutation"){
+            const raw=message.payload?.payload as Partial<BoardEditorMutation>|undefined;
+            if(!raw||!raw.clientId||raw.clientId===clientId||!raw.itemId||!raw.id||
+              !Array.isArray(raw.ops)||raw.ops.length>300||
+              raw.ops.some(op=>!Array.isArray(op.path)||op.path.length>18))return;
+            if(seenEdits.has(raw.id))return;
+            seenEdits.add(raw.id);
+            if(seenEdits.size>3000)seenEdits.clear();
+            onEdit?.({
+              id:raw.id,itemId:raw.itemId,userId:raw.userId??"",
+              clientId:raw.clientId,sentAt:Number(raw.sentAt)||Date.now(),
+              ops:raw.ops
+            });
+            return;
+          }
+          if (message.payload?.event !== "work_state") return;
 
           const payload = message.payload?.payload ?? {};
           const userId = String(payload.userId || "").trim();
@@ -206,6 +232,20 @@ export function connectBoardWorkChannel(
     publishTimer = setTimeout(sendState, 80);
   };
 
+  const publishEdit=(itemId:string,ops:LiveEditorOp[])=>{
+    if(stopped||!publishSelf||!ready||!socket||socket.readyState!==WebSocket.OPEN||
+      !itemId||!ops.length||ops.length>300)return;
+    const mutation:BoardEditorMutation={
+      id:clientId+":"+(++editSequence),itemId,userId:me.userId,clientId,
+      sentAt:Date.now(),ops
+    };
+    const payload=JSON.stringify({
+      topic,event:"broadcast",payload:{type:"broadcast",event:"editor_mutation",payload:mutation},
+      ref:String(++sequence),join_ref:null
+    });
+    if(payload.length>120000)return;
+    socket.send(payload);
+  };
   const networkChanged = () => reconnect();
   window.addEventListener("online", networkChanged);
   window.addEventListener("offline", networkChanged);
@@ -213,6 +253,7 @@ export function connectBoardWorkChannel(
 
   return {
     publish,
+    publishEdit,
     close: () => {
       stopped = true;
       generation++;
