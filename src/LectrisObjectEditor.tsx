@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Item } from "./boardModel";
+import type { Item,ShapeType,ConnectorStyle,ArrowHeadStyle } from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
 
 /** Five genuinely distinct BOARD-pixel widths. */
@@ -183,6 +183,59 @@ export function LectrisObjectInspector({item,canModify,userId,canToggleLock,onCl
         </div>
         </div>}
       </section>
+      {item.kind==="shape"&&<section className="lectris-inspector-section">
+        <h3>Вид фигуры</h3>
+        <label className="lectris-inspector-field"><span>Форма</span>
+          <select value={item.shapeType??"rectangle"} disabled={!canModify}
+            onChange={e=>onPatch({shapeType:e.target.value as ShapeType})}>
+            {([
+              ["rectangle","Прямоугольник"],["square","Квадрат"],["rounded","Со скруглением"],
+              ["ellipse","Эллипс"],["circle","Круг"],["diamond","Ромб"],
+              ["triangle","Треугольник"],["rightTriangle","Прямоугольный треугольник"],
+              ["parallelogram","Параллелограмм"],["trapezoid","Трапеция"],
+              ["pentagon","Пятиугольник"],["hexagon","Шестиугольник"],
+              ["star","Звезда"],["arrow","Стрелка"]
+            ] as const).map(([value,label])=><option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+      </section>}
+      {item.kind==="connector"&&<section className="lectris-inspector-section">
+        <h3>Настройки линии</h3>
+        <label className="lectris-inspector-field"><span>Тип соединения</span>
+          <select value={item.connectorStyle??"arrow"} disabled={!canModify}
+            onChange={e=>onPatch({connectorStyle:e.target.value as ConnectorStyle})}>
+            <option value="line">Линия</option><option value="arrow">Стрелка</option>
+            <option value="double">Двусторонняя стрелка</option>
+          </select>
+        </label>
+        <label className="lectris-inspector-field"><span>Наконечник</span>
+          <select value={item.arrowHeadStyle??"triangle"} disabled={!canModify}
+            onChange={e=>onPatch({arrowHeadStyle:e.target.value as ArrowHeadStyle})}>
+            <option value="triangle">Треугольник</option><option value="open">Открытый</option>
+            <option value="stealth">Заострённый</option><option value="diamond">Ромб</option>
+            <option value="oval">Овальный</option>
+          </select>
+        </label>
+        <NumberField label="Толщина линии" value={item.weight??3} minimum={1} maximum={32}
+          disabled={!canModify} onCommit={weight=>onPatch({weight})}/>
+        <NumberField label="Размер наконечника" value={item.arrowHeadSize??8} minimum={4} maximum={24}
+          disabled={!canModify} onCommit={arrowHeadSize=>onPatch({arrowHeadSize})}/>
+      </section>}
+      {item.kind==="cover"&&<section className="lectris-inspector-section">
+        <h3>Параметры шторки</h3>
+        <label className="lectris-inspector-field"><span>Непрозрачность: {Math.round((item.coverOpacity??1)*100)}%</span>
+          <input type="range" min={0} max={100} value={Math.round((item.coverOpacity??1)*100)}
+            disabled={!canModify} onChange={e=>onPatch({coverOpacity:Number(e.target.value)/100})}/>
+        </label>
+        <button type="button" disabled={!canModify} onClick={()=>onPatch({coverOpen:!item.coverOpen})}>
+          {item.coverOpen?"Закрыть шторку":"Сделать прозрачной"}
+        </button>
+      </section>}
+      {item.kind==="pdf"&&<section className="lectris-inspector-section">
+        <h3>Документ PDF</h3>
+        <NumberField label="Страница" value={item.pdfPage??1} minimum={1} maximum={10000}
+          disabled={!canModify} onCommit={pdfPage=>onPatch({pdfPage:Math.round(pdfPage)})}/>
+      </section>}
       {textEditable && <section className="lectris-inspector-section">
         <h3>{item.kind==="frame"?"Название фрейма":"Содержимое"}</h3>
         <textarea className="lectris-inspector-text" rows={item.kind==="frame"?2:6}
