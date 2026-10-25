@@ -62,4 +62,18 @@ assert.ok(!editor.includes('if(item?.kind==="graph"&&item.graphFigureId==="chem-
 for(const field of ['item.kind==="shape"','item.kind==="connector"','item.kind==="cover"','item.kind==="pdf"'])
  assert.ok(editor.includes(field),"Missing editable inspector fields for "+field);
 
+// Selection must have exactly one context bar. The fixed quick bar is only for ink tools
+// when nothing is selected, never another overlapping object action bar.
+assert.ok(app.includes('selectedItems.length===0 && <LectrisQuickProperties'),
+ "Selected objects must not mount a second fixed toolbar over their actions");
+const graphEdit=app.match(/\(\["text","sticky","frame","comment","formula"[^\n]+\.includes\(singleSelected\.kind\)\)\&\&/);
+assert.ok(graphEdit && !graphEdit[0].includes('"graph"'),
+ "Graphs must have the original Configure action without duplicate Edit");
+assert.ok(app.includes('className="lektrus-graph-edit-secondary" aria-label="Настроить учебный объект"'),
+ "The original Configure button must remain intact");
+const touchPolish=file("src/lektrusMathTouchPolish.css");
+assert.ok(touchPolish.includes('selection-toolbar-screen > .selection-edit-action') &&
+ touchPolish.includes('min-width:max-content!important'),
+ "Action labels must never be squeezed into an icon-only width");
+
 console.log("Lektrus editor UX: palette, five immediate ink widths, keyboard and inspector contracts OK");
