@@ -48,6 +48,9 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
      <polyline points={path.points.map(p=>p.x+","+p.y).join(" ")}
        stroke={path.color} strokeWidth="2.5" fill="none" strokeLinejoin="round"
        strokeLinecap="round" opacity=".92"/>
+     {path.points.slice(1,-1).map((p,index)=><circle key={"hit-"+index}
+       cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke={path.color}
+       strokeWidth="2" opacity=".95"/>)}
      {path.points.slice(0,-1).map((p,i)=>{
        const next=path.points[i+1],mx=(p.x+next.x)/2,my=(p.y+next.y)/2;
        const angle=Math.atan2(next.y-p.y,next.x-p.x)*180/Math.PI;
