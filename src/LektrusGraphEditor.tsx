@@ -221,6 +221,8 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
       past:[],future:[],current:draft,lastKind:null,lastAt:0
     });
   const [,refreshHistory]=useState(0);
+  const pinchPointers=useRef(new Map<number,{x:number;y:number}>());
+  const pinchDistance=useRef<number|null>(null);
   if(historyRef.current.current!==draft)historyRef.current.current=draft;
   const onChange=(next:GraphDraft)=>{
     const history=historyRef.current,previous=history.current;
@@ -308,13 +310,17 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
     Number.isFinite(draft.yMin)&&Number.isFinite(draft.yMax)&&
     draft.xMax>draft.xMin&&draft.yMax>draft.yMin;
   const zoomViewport=(factor:number)=>{
-    if(!validViewport||!Number.isFinite(factor)||factor<=0)return;
-    const spanX=draft.xMax-draft.xMin,spanY=draft.yMax-draft.yMin;
+    const source=historyRef.current.current;
+    if(!Number.isFinite(source.xMin)||!Number.isFinite(source.xMax)||
+       !Number.isFinite(source.yMin)||!Number.isFinite(source.yMax)||
+       source.xMin>=source.xMax||source.yMin>=source.yMax||
+       !Number.isFinite(factor)||factor<=0)return;
+    const spanX=source.xMax-source.xMin,spanY=source.yMax-source.yMin;
     const nextX=Math.max(.4,Math.min(1e6,spanX*factor));
     const nextY=Math.max(.24,Math.min(6e5,spanY*factor));
     if(Math.abs(nextX-spanX)<1e-9&&Math.abs(nextY-spanY)<1e-9)return;
-    const cx=(draft.xMin+draft.xMax)/2,cy=(draft.yMin+draft.yMax)/2;
-    patch({xMin:cx-nextX/2,xMax:cx+nextX/2,yMin:cy-nextY/2,yMax:cy+nextY/2});
+    const cx=(source.xMin+source.xMax)/2,cy=(source.yMin+source.yMax)/2;
+    onChange({...source,xMin:cx-nextX/2,xMax:cx+nextX/2,yMin:cy-nextY/2,yMax:cy+nextY/2});
   };
   const fitViewport=()=>{
     const points=draft.points.filter(point=>Number.isFinite(point.x)&&Number.isFinite(point.y));
@@ -1469,6 +1475,36 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
               if(mode!=="geometry"||isSolid)return;
               event.preventDefault();event.stopPropagation();
               zoomViewport(event.deltaY>0?1.16:1/1.16);
+            }}
+            onPointerDownCapture={event=>{
+              if(mode!=="geometry"||isSolid||event.pointerType!=="touch")return;
+              pinchPointers.current.set(event.pointerId,{x:event.clientX,y:event.clientY});
+              if(pinchPointers.current.size===2){
+                const [a,b]=[...pinchPointers.current.values()];
+                pinchDistance.current=Math.hypot(a.x-b.x,a.y-b.y);
+              }
+            }}
+            onPointerMoveCapture={event=>{
+              if(mode!=="geometry"||isSolid||!pinchPointers.current.has(event.pointerId))return;
+              pinchPointers.current.set(event.pointerId,{x:event.clientX,y:event.clientY});
+              if(pinchPointers.current.size!==2)return;
+              const [a,b]=[...pinchPointers.current.values()];
+              const distance=Math.hypot(a.x-b.x,a.y-b.y);
+              const previous=pinchDistance.current;
+              if(!previous||distance<12)return;
+              event.preventDefault();event.stopPropagation();
+              if(distance/previous>1.045||distance/previous<.955){
+                zoomViewport(Math.max(.7,Math.min(1.4,previous/distance)));
+                pinchDistance.current=distance;
+              }
+            }}
+            onPointerUpCapture={event=>{
+              pinchPointers.current.delete(event.pointerId);
+              if(pinchPointers.current.size<2)pinchDistance.current=null;
+            }}
+            onPointerCancelCapture={event=>{
+              pinchPointers.current.delete(event.pointerId);
+              if(pinchPointers.current.size<2)pinchDistance.current=null;
             }}>{previewWithLink}</div>
           {mode==="geometry"&&<div className="lektrus-geometry-canvas-actions" role="group" aria-label="Действия с текущим построением">
             <span className="lektrus-geometry-selection-summary" role="status">
