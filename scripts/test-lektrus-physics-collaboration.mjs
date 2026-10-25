@@ -54,7 +54,7 @@ assert.equal(movedCircuit.scienceCircuit.wires[0].from.componentId,"r","Wires pr
 const code=read("src/App.tsx"),board=read("src/LektrusPhysicalBoardView.tsx");
 assert.ok(code.includes("onPhysicalPartMove={!presentation&&!item.locked"),"Board edit requires writable state");
 assert.ok(code.includes("!structurallyLockedForStudent(item)"),"Student permissions are enforced");
-assert.match(board,/editable=\{!!onPhysicalPartMove\}/,"Physics objects must render read-only for viewers");
+assert.match(code,/editable=\{!!onPhysicalPartMove\}/,"Physics objects must render read-only for viewers");
 assert.match(code,/workChannel\.current\?\.publishEdit\(latest\.id,editorDiff\(latest,changed\)\)/);
 assert.ok(code.includes("scienceOptics")&&code.includes("scienceCircuit")&&code.includes("scienceMechanics"));
 assert.ok(code.includes("onLiveChange={(before,next)=>livePhysicalEditorUpdate"),"Fullscreen editors must publish their edits");
