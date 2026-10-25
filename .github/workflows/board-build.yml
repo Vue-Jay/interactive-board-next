@@ -29,6 +29,7 @@ jobs:
       - run: node scripts/test-lektrus-reaction-library.mjs
       - run: node scripts/test-lektrus-physics-templates.mjs
       - run: node scripts/test-lektrus-optics-editor.mjs
+      - run: node scripts/test-lektrus-physical-pointer-map.mjs
       - run: node scripts/test-lektrus-subject-persistence.mjs
       - run: node scripts/test-lektrus-circuit-editor.mjs
       - run: node scripts/test-lektrus-physics-motion-editor.mjs
