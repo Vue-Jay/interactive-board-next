@@ -40,7 +40,7 @@ export default function LektrusMechanicsView({doc,selection=null,tool="select",o
   </g>)}
   {doc.bodies.map(b=><g key={b.id} className={"lektrus-mechanics-part"+(selected("body",b.id)?" selected":"")}
    onPointerDown={onPartDown?e=>{e.stopPropagation();onPartDown(e,{type:"body",id:b.id})}:undefined}
-   onClick={onSelect?e=>{e.stopPropagation();onSelect({type:"body",id:b.id})}:undefined}>
+   onClick={onSelect&&tool==="select"?e=>{e.stopPropagation();onSelect({type:"body",id:b.id})}:undefined}>
    {selected("body",b.id)&&<rect x={b.x-b.width/2-7} y={b.y-b.height/2-7} width={b.width+14} height={b.height+14} rx="13"
     fill="#dbe9ff" fillOpacity=".42" stroke="#5690e0" strokeDasharray="6 5" pointerEvents="none"/>}
    {b.kind==="block"?<rect x={b.x-b.width/2} y={b.y-b.height/2} width={b.width} height={b.height} rx="8"
