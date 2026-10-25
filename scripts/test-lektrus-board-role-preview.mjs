@@ -3,52 +3,116 @@ import {readFileSync} from "node:fs";
 import ts from "typescript";
 
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
-const roleSource=read("src/lektrusBoardRolePreview.ts");
-const compiled=ts.transpileModule(roleSource,{compilerOptions:{
-  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
-}}).outputText;
+const source=read("src/lektrusBoardRolePreview.ts");
+const compiled=ts.transpileModule(source,{
+ compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}
+}).outputText;
 const api={};
 new Function("exports","require",compiled)(api,()=>({}));
-const {boardRoleCapabilities,restrictStudentDiagramChange}=api;
+const {
+ boardRoleCapabilities,restrictStudentDiagramChange,canUseBoardCreationTool,
+ isStudentProtectedBoardObject,STUDENT_BLOCKED_CREATE_TOOLS,
+ STUDENT_PROTECTED_OBJECT_KINDS
+}=api;
 
-for(const boardRole of ["owner","editor","viewer"]){
- for(const accountRole of ["teacher","student"]){
-  for(const preview of ["actual","teacher","student","guest"]){
-   const input={preview,boardRole,accountRole,isAppAdmin:true,adminMaintenance:false};
-   const caps=boardRoleCapabilities(input);
-   assert.equal(caps.canEdit,boardRole!=="viewer"&&preview!=="guest",
-    JSON.stringify(input)+" never elevates viewer or guest");
-   assert.equal(caps.isStudent,accountRole==="student"||preview==="student",
-    JSON.stringify(input)+" preserves student restrictions");
-   assert.equal(caps.canCreateAssignments,caps.canEdit&&!caps.isStudent,
-    JSON.stringify(input)+" teacher-only creation");
-   assert.equal(caps.canManageBoard,boardRole==="owner"&&!caps.isStudent&&caps.canEdit,
-    JSON.stringify(input)+" owner-only administration");
+const boardRoles=["owner","editor","viewer"];
+const accountRoles=["teacher","student"];
+const previews=["actual","teacher","student","guest"];
+const creations=["select","hand","lasso","pen","marker","eraser","text","sticky","shape",
+ "connector","comment","image","pdf","frame","table","formula","graph","checklist",
+ "quiz","flashcard","cover","linkmedia"];
+const protectedKinds=["frame","table","formula","graph","checklist","quiz",
+ "flashcard","cover","linkmedia"];
+let cases=0;
+for(const boardRole of boardRoles){
+ for(const accountRole of accountRoles){
+  for(const guest of [false,true]){
+   for(const adminMaintenance of [false,true]){
+    for(const preview of previews){
+     const input={preview,boardRole,accountRole,isGuest:guest,
+       isAppAdmin:true,adminMaintenance};
+     const caps=boardRoleCapabilities(input);
+     const expectedCanEdit=boardRole!=="viewer"||adminMaintenance;
+     const student=preview==="student"||preview==="guest"||
+       preview==="actual"&&(guest||accountRole==="student"&&!adminMaintenance);
+     assert.equal(caps.canEdit,expectedCanEdit,JSON.stringify(input)+" board membership stays authoritative");
+     assert.equal(caps.isStudent,student,JSON.stringify(input)+" effective role");
+     assert.equal(caps.effectiveRole,student?"student":"teacher");
+     assert.equal(caps.canAnswerContour,expectedCanEdit);
+     assert.equal(caps.canAddStudentMedia,expectedCanEdit&&student);
+     assert.equal(caps.canCreateAssignments,expectedCanEdit&&!student);
+     assert.equal(caps.canUseStudentTools,expectedCanEdit&&student);
+     assert.equal(caps.canUseTeacherTools,expectedCanEdit&&!student);
+     assert.equal(caps.canManageBoard,expectedCanEdit&&!student&&boardRole==="owner"&&!guest);
+     for(const tool of creations){
+      const denied=STUDENT_BLOCKED_CREATE_TOOLS.includes(tool);
+      assert.equal(canUseBoardCreationTool(tool,caps),
+        expectedCanEdit&&!(student&&denied),JSON.stringify(input)+" "+tool);
+     }
+     for(const kind of [...creations,"fraction","instrument"]){
+      assert.equal(isStudentProtectedBoardObject(kind,caps),
+        student&&protectedKinds.includes(kind),JSON.stringify(input)+" "+kind);
+     }
+     cases++;
+    }
+   }
   }
  }
 }
-for(const boardRole of ["owner","editor","viewer"]){
- const normal=boardRoleCapabilities({
-  preview:"actual",boardRole,accountRole:"student",
-  isAppAdmin:false,adminMaintenance:false
- });
- const attempted=boardRoleCapabilities({
-  preview:"teacher",boardRole,accountRole:"student",
-  isAppAdmin:false,adminMaintenance:false
- });
- assert.deepEqual(attempted,normal,"non-admin cannot simulate elevated role");
+assert.deepEqual(STUDENT_BLOCKED_CREATE_TOOLS,STUDENT_PROTECTED_OBJECT_KINDS,
+ "teacher-only creation and protected structure use one matrix");
+
+// A simulated guest must have exactly the same functionality as a student.
+for(const boardRole of boardRoles)for(const accountRole of accountRoles){
+ const common={boardRole,accountRole,isAppAdmin:true,adminMaintenance:false,isGuest:false};
+ const student=boardRoleCapabilities({...common,preview:"student"});
+ const guest=boardRoleCapabilities({...common,preview:"guest"});
+ const {isGuestPreview:_g,...guestRights}=guest;
+ const {isGuestPreview:_s,...studentRights}=student;
+ assert.deepEqual(guestRights,studentRights,
+  "guest and student have identical board permissions at "+boardRole);
+ for(const tool of creations){
+  assert.equal(canUseBoardCreationTool(tool,guest),canUseBoardCreationTool(tool,student));
+ }
+ for(const kind of protectedKinds){
+  assert.equal(isStudentProtectedBoardObject(kind,guest),isStudentProtectedBoardObject(kind,student));
+ }
+ const realGuest=boardRoleCapabilities({...common,preview:"actual",accountRole:"teacher",isGuest:true});
+ const realStudent=boardRoleCapabilities({...common,preview:"actual",accountRole:"student",isGuest:false});
+ const {isGuestPreview:__g,...actualGuestRights}=realGuest;
+ const {isGuestPreview:__s,...actualStudentRights}=realStudent;
+ assert.deepEqual(actualGuestRights,actualStudentRights,
+  "anonymous account and registered student receive the same rights on "+boardRole);
+}
+// Developer tools may not grant extra permissions to ordinary board members.
+for(const boardRole of boardRoles)for(const accountRole of accountRoles)
+ for(const preview of previews)for(const isGuest of [false,true]){
+  const common={boardRole,accountRole,isAppAdmin:false,adminMaintenance:false,isGuest};
+  assert.deepEqual(boardRoleCapabilities({...common,preview}),
+    boardRoleCapabilities({...common,preview:"actual"}),
+    "non-admin cannot spoof a role");
+ }
+// A normal viewer may never write, even when developer UI selects teacher.
+for(const preview of previews){
+ const caps=boardRoleCapabilities({
+  preview,boardRole:"viewer",accountRole:"teacher",
+  isAppAdmin:true,adminMaintenance:false});
+ assert.equal(caps.canEdit,false);
+ assert.equal(caps.canManageBoard,false);
+ for(const tool of creations)assert.equal(canUseBoardCreationTool(tool,caps),false);
 }
 const maintenance=boardRoleCapabilities({
  preview:"actual",boardRole:"viewer",accountRole:"student",
  isAppAdmin:true,adminMaintenance:true
 });
-assert.equal(maintenance.canEdit,true,"existing authorized admin maintenance remains supported");
-assert.equal(maintenance.canManageBoard,false,"maintenance does not forge board ownership");
-const maintenanceGuest=boardRoleCapabilities({
- preview:"guest",boardRole:"viewer",accountRole:"student",
- isAppAdmin:true,adminMaintenance:true
+assert.equal(maintenance.canEdit,true,"authorized admin maintenance stays functional");
+assert.equal(maintenance.canManageBoard,false,"maintenance cannot fake owner");
+const noGuestPromotion=boardRoleCapabilities({
+ preview:"actual",boardRole:"viewer",accountRole:"teacher",isGuest:true,
+ isAppAdmin:false,adminMaintenance:false
 });
-assert.equal(maintenanceGuest.canEdit,false,"guest preview restricts even the admin");
+assert.equal(noGuestPromotion.isStudent,true,"real guest is always a student");
+assert.equal(noGuestPromotion.canEdit,false,"viewer remains read-only");
 
 const contour={kind:"atlas",title:"Контурная карта",regionId:"world",
  contourTask:"Задание преподавателя",
@@ -66,39 +130,46 @@ assert.deepEqual(guarded.contourMarks,changed.contourMarks);
 assert.deepEqual(guarded.paintedCountries,changed.paintedCountries);
 assert.equal(restrictStudentDiagramChange({...contour,title:"Географические карты"},changed),null);
 assert.equal(restrictStudentDiagramChange({kind:"flowchart"},{kind:"flowchart"}),null);
-assert.deepEqual(restrictStudentDiagramChange({kind:"syntax",words:[]},{kind:"syntax",words:[{id:"1"}]}),
- {kind:"syntax",words:[{id:"1"}]});
+assert.deepEqual(restrictStudentDiagramChange({kind:"syntax",words:[]},
+ {kind:"syntax",words:[{id:"1"}]}),{kind:"syntax",words:[{id:"1"}]});
 
 const app=read("src/App.tsx"),css=read("src/App.css"),model=read("src/boardStore.ts");
-for(const [path,code] of [["src/App.tsx",app],["src/lektrusBoardRolePreview.ts",roleSource]]){
- const source=ts.createSourceFile(path,code,ts.ScriptTarget.Latest,true,
+for(const [path,code] of [["src/App.tsx",app],["src/lektrusBoardRolePreview.ts",source]]){
+ const parsed=ts.createSourceFile(path,code,ts.ScriptTarget.Latest,true,
   path.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
- assert.equal(source.parseDiagnostics.length,0,path+" should parse");
+ assert.equal(parsed.parseDiagnostics.length,0,path+" syntax parses");
 }
-assert.match(app,/isAppAdmin && developerSettingsOpen/,"developer dialog restricted to admin");
-assert.match(app,/id="lektrus-developer-role-preview"/,"role selector exists");
-assert.match(app,/changeRolePreview\("actual"\)/,"reset to real role always accessible");
+assert.match(app,/isAppAdmin && developerSettingsOpen/,"developer dialog is admin-only");
+assert.match(app,/id="lektrus-developer-role-preview"/,"developer role buttons are on the board");
+assert.match(app,/(["teacher","student","guest"] as const).map/,"quick switching among three roles");
+assert.match(app,/aria-pressed={rolePreview===role}/,"active role is accessible");
+assert.match(app,/changeRolePreview("actual")/,"real-role reset is accessible");
 assert.match(app,/const \[rolePreview,setRolePreview\]=useState<BoardRolePreview>\("actual"\)/,
- "role test starts with real permissions and does not survive remount");
+ "role preview is not persisted");
 assert.doesNotMatch(read("src/developerPreferences.ts"),/rolePreview/,
- "test role is not persisted across sessions");
-assert.match(app,/const \{canEdit,isStudent,canManageBoard,canCreateAssignments\}=roleCapabilities/,
- "centralized policy feeds board interactions");
-assert.match(app,/if \(!canEdit\) \{ setNotice\("У вас доступ только для просмотра"\); return; \}/,
- "every board model commit is guarded");
-assert.match(app,/onSchoolDiagramChange=\{canEdit/,"on-board teaching edits remain permission checked");
+ "simulation never enters persisted developer preferences");
+assert.match(app,/isGuest:authUser\.isGuest===true/,"real guest identity maps to student");
+assert.match(app,/canUseBoardCreationTool\(id,roleCapabilities\)/,"single creation policy");
+assert.match(app,/isStudentProtectedBoardObject\(item.kind,roleCapabilities\)/,
+ "single protected-object policy");
+assert.match(app,/onSchoolDiagramChange=\{canEdit/,"on-board teaching answers gated");
 assert.match(app,/restrictStudentDiagramChange\(before.schoolDiagram,diagram\)/,
- "student editor permissions also checked for on-board teaching objects");
+ "students cannot rewrite a teacher's assignment");
 assert.match(app,/if\(!canManageBoard\|\|boardSummary.ownerId!==authUser.id\)return;/,
- "subject switching requires real ownership");
-assert.match(app,/\{canManageBoard && <button className="lesson-button board-invite-button/,
- "sharing management hidden in student/guest simulation");
+ "only actual board owner can change the subject");
 assert.match(app,/if\(!canCreateAssignments\)\{setNotice\("Создавать задания может только преподаватель/,
- "AI creation denied for student/guest");
-assert.match(app,/const toolAllowedForRole = \(id:Tool\) => canEdit&&/,
- "read-only users cannot activate creating tools");
+ "students cannot generate assignments");
+assert.match(app,/if \(!canEdit\) \{ setNotice\("У вас доступ только для просмотра"\); return; \}/,
+ "write guard remains at board commit");
 assert.match(app,/end\(true\);setEditing\(null\);/,
- "active pointer gestures cancelled on role switch");
-assert.match(css,/\.lektrus-developer-role-banner/,"persistent visual indication of simulation");
-assert.match(model,/role:BoardRole/,"membership role is still separate from test role");
-console.log("Lektrus role matrix: 24 previews + nonadmin/admin + student assignments + UI guards passed.");
+ "switch cancels active interactions");
+assert.match(app,/onRemovePoint=\{selectedIds\.has\(item.id\).*?!structurallyLockedForStudent\(item\)/,
+ "students cannot remove vertices from teacher's geometry");
+assert.match(app,/onGridChange=\{!item.locked&&canEdit&&!structurallyLockedForStudent\(item\)/,
+ "students cannot edit protected graph structure");
+assert.match(app,/notes: isStudent \? `student-media-request:/,
+ "guest and student image/PDF uploads both use the teacher approval path");
+assert.match(css,/\.lektrus-developer-role-options/,"responsive role buttons styled");
+assert.match(css,/\.lektrus-developer-role-banner/,"active simulation visibly indicated");
+assert.match(model,/role:BoardRole/,"real board membership is separate");
+console.log(`Lektrus: ${cases} role scenarios, tool/object matrix, real guests and permissions checks passed.`);
