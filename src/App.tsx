@@ -6649,6 +6649,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         setRemoteLiveItems(current=>{
           const base=current[mutation.itemId]??stored;
           const preview=applyEditorOps(base,mutation.ops);
+          // Treat realtime as an untrusted visual hint, never as an
+          // authoritative edit. Reject malformed objects before rendering.
+          if(preview.kind!=="graph"||preview.id!==stored.id||
+             preview.graphFigureId!==stored.graphFigureId)return current;
+          if(preview.graphFigureId==="contour-atlas"){
+            if(!isSchoolDiagram(preview.schoolDiagram))return current;
+          }else if((preview.graphPoints?.length??0)>40||
+                   (preview.graphSegments?.length??0)>60||
+                   (preview.graphPolygons?.length??0)>30||
+                   preview.graphPoints?.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))return current;
           return {...current,[mutation.itemId]:preview};
         });
         const oldTimer=remoteLiveCleanup.current.get(mutation.itemId);
