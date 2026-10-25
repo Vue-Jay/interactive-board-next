@@ -8563,7 +8563,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   constructionActive={boardGeometryMode?.id===item.id}
                   onToggleConstruction={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")
                     ?()=>{if(boardGeometryMode?.id===item.id){setBoardGeometryMode(null);setBoardGeometryError("")}else changeBoardGeometryMode(item,"move")}:undefined}
-                  onPointMoveEnd={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)&&activeBoardGeometryMode(item)==="move"?(index,x,y)=>{
+                  onPointMoveEnd={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)&&activeBoardGeometryMode(item)==="move"?(index,x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
                       const moved=moveGeometryVertex({
@@ -8590,20 +8590,20 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onPeriodicChange={canEdit&&!item.locked&&item.graphFigureId==="chem-periodic"?(marked)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,sciencePeriodicHighlights:marked}:candidate));
                   }:undefined}
-                  onGridChange={!item.locked&&canEdit?(enabled)=>{
+                  onGridChange={!item.locked&&canEdit&&!structurallyLockedForStudent(item)?(enabled)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphGrid:enabled}:candidate));
                   }:undefined}
                   onRotate={!item.locked&&canEdit&&(isSolidFigure(item.graphFigureId))?(rotationX,rotationY)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphRotationX:rotationX,graphRotationY:rotationY}:candidate));
                   }:undefined}
-                  onRayChange={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId==="ray"&&activeBoardGeometryMode(item)==="move"?(x,y)=>{
+                  onRayChange={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphFigureId==="ray"&&activeBoardGeometryMode(item)==="move"?(x,y)=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?{...candidate,graphPoints:(candidate.graphPoints??[]).map((p,i)=>i===1?{...p,x,y}:p)}:candidate));
                   }:undefined}
-                  onCloseFreePolygon={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId==="free"?()=>{
+                  onCloseFreePolygon={graphPointEditId===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphFigureId==="free"?()=>{
                     commit(itemsRef.current.map(candidate=>candidate.id===item.id?closeFreeSketchBoard(candidate):candidate));
                     setSelected([item.id]);
                   }:undefined}
-                  onAddPoint={graphPointEditId===item.id&&item.graphPurpose!=="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
+                  onAddPoint={graphPointEditId===item.id&&item.graphPurpose!=="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId) ? (x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
                       const points=candidate.graphPoints??[];
@@ -8618,7 +8618,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onPickPoint={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&activeBoardGeometryMode(item)!=="move"?(index)=>selectBoardGeometryPoint(item,index):undefined}
                   onCreateAndPickPoint={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&activeBoardGeometryMode(item)!=="move"?(x,y)=>tapBoardGeometryBlank(item,x,y):undefined}
                   pickedPoints={boardGeometryMode?.id===item.id?boardGeometryMode.selected:[]}
-                  onRemovePoint={selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);setBoardGeometryError("");} : undefined}/> }
+                  onRemovePoint={selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&!structurallyLockedForStudent(item)&&item.graphPurpose==="geometry"&&item.graphFigureId!=="ray"&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")?(index)=>{commit(itemsRef.current.map(candidate=>candidate.id===item.id?removeGraphBoardPoint(candidate,index):candidate));setSelected([item.id]);setBoardGeometryError("");} : undefined}/> }
                 {item.kind === "checklist" && <ChecklistView item={item} onToggle={!presentation && !item.locked ? (indexValue) => {
                   const entries = item.checklistItems?.length ? item.checklistItems : ["Новый пункт"];
                   const nextDone = entries.map((_, index) => index === indexValue ? !(item.checklistDone?.[index] === true) : item.checklistDone?.[index] === true);
