@@ -46,6 +46,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
   const [selected,setSelected]=useState<number|null>(null);
   const [settingsOpen,setSettingsOpen]=useState(()=>typeof window==="undefined"||!window.matchMedia("(max-width:760px)").matches);
   const [notice,setNotice]=useState("");
+  const [measurementOpen,setMeasurementOpen]=useState(false);
   const [preview,setPreview]=useState<{index:number;point:Point}|null>(null);
   const drag=useRef<{id:number;index:number;start:Point;last:Point}|null>(null);
   const data=useMemo(()=>draft.points.map((point,i)=>preview?.index===i?preview.point:point),[draft.points,preview]);
@@ -135,6 +136,17 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
   const ordered=[...data].sort((a,b)=>a.x-b.x);
   const polyline=ordered.map(point=>`${sx(point.x)},${sy(point.y)}`).join(" ");
   const ticks=Array.from({length:7},(_,i)=>i);
+  const measurement=useMemo(()=>{
+    const ordered=[...data].sort((a,b)=>a.x-b.x);
+    if(ordered.length<2)return null;
+    const first=ordered[0],last=ordered[ordered.length-1],dt=last.x-first.x;
+    const area=ordered.slice(1).reduce((sum,pt,i)=>
+      sum+(pt.y+ordered[i].y)/2*(pt.x-ordered[i].x),0);
+    return {dt,change:last.y-first.y,slope:dt>0?(last.y-first.y)/dt:0,area};
+  },[data]);
+  const integralLabel=axis.variable==="v"?"Перемещение Δx, м":
+    axis.variable==="a"?"Изменение скорости Δv, м/с":"Площадь под s(t)";
+
   return createPortal(<div className="lektrus-motion-backdrop" onPointerDown={event=>{if(event.currentTarget===event.target)close()}}>
     <section className={"lektrus-motion-editor"+(settingsOpen?"":" is-compact")} role="dialog" aria-modal="true" aria-label="Редактор физических графиков"
       onPointerDown={event=>event.stopPropagation()}>
@@ -192,8 +204,18 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
               <button type="button" className={tool==="select"?"active":""} onClick={()=>setTool("select")}>Выбор</button>
               <button type="button" className={tool==="point"?"active":""} onClick={()=>setTool("point")}>+ Точка</button>
             </div>
+            <button type="button" className="lektrus-motion-measure-toggle" aria-pressed={measurementOpen}
+              onClick={()=>setMeasurementOpen(v=>!v)}>Измерения</button>
             <div className="lektrus-motion-toolbar-status"><b>{axis.title}</b><span>t, с · ${axis.variable}, ${axis.unit}</span></div>
           </div>
+          {measurementOpen&&<div className="lektrus-motion-measurements" role="status">
+            {measurement?<>
+              <span>Δt: <b>{format(measurement.dt)} с</b></span>
+              <span>Δ${axis.variable}: <b>{format(measurement.change)} ${axis.unit}</b></span>
+              <span>Δ${axis.variable}/Δt: <b>{format(measurement.slope)} ${axis.unit}/с</b></span>
+              {axis.variable!=="s"&&<span>${integralLabel}: <b>{format(measurement.area)}</b></span>}
+            </>:<span>Для измерений необходимо не менее двух точек.</span>}
+          </div>}
           <div className="lektrus-motion-sheet">
             <svg viewBox="0 0 980 590" preserveAspectRatio="xMidYMid meet" className={"lektrus-motion-svg mode-"+tool} role="img"
               aria-label={`Интерактивный график ${axis.variable} от времени`}
