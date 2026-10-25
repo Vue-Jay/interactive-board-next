@@ -46,8 +46,10 @@ for(const boardRole of boardRoles){
      assert.equal(caps.canManageBoard,expectedCanEdit&&!student&&boardRole==="owner"&&!guest);
      for(const tool of creations){
       const denied=STUDENT_BLOCKED_CREATE_TOOLS.includes(tool);
+      const navigation=["select","hand","lasso"].includes(tool);
       assert.equal(canUseBoardCreationTool(tool,caps),
-        expectedCanEdit&&!(student&&denied),JSON.stringify(input)+" "+tool);
+        navigation||expectedCanEdit&&(!student||!denied),
+        JSON.stringify(input)+" "+tool);
      }
      for(const kind of [...creations,"fraction","instrument"]){
       assert.equal(isStudentProtectedBoardObject(kind,caps),
@@ -99,7 +101,9 @@ for(const preview of previews){
   isAppAdmin:true,adminMaintenance:false});
  assert.equal(caps.canEdit,false);
  assert.equal(caps.canManageBoard,false);
- for(const tool of creations)assert.equal(canUseBoardCreationTool(tool,caps),false);
+ for(const tool of creations)assert.equal(canUseBoardCreationTool(tool,caps),
+  ["select","hand","lasso"].includes(tool),
+  "viewers can navigate but cannot create "+tool);
 }
 const maintenance=boardRoleCapabilities({
  preview:"actual",boardRole:"viewer",accountRole:"student",
