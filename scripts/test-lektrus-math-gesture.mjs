@@ -386,10 +386,14 @@ assert.match(boardGeometryCss,/position:absolute;left:10px;top:9px/,
 assert.match(app,/onPointerDown=\{event=>event\.stopPropagation\(\)\}/,
  "the new overlay does not begin an accidental board drag");
 
-assert.match(app,/lektrus-graph-inline-draw/,
- "in-board drawing is a secondary mode");
-assert.match(app,/<span>Построение<\/span>/,
- "on-board mode no longer uses the misleading points-only label");
+assert.match(app,/className="lektrus-graph-canvas-construction"/,
+ "the icon-only construction control lives beside the in-canvas editor");
+assert.match(app,/name="construction" size=\{21\}/,
+ "on-board construction has its own geometry icon");
+assert.doesNotMatch(app,/className="lektrus-graph-inline-draw"/,
+ "on-board geometry is no longer in the bottom selection toolbar");
+assert.doesNotMatch(app,/<span>Построение<\/span>/,
+ "the construction control is icon-only, with its accessible label in aria-label");
 assert.match(editor,/LektrusGeometryToolIcon name="close"/,
  "workspace has a consistent vector close icon");
 assert.match(editor,/lektrus-start-free-drawing/,
@@ -436,8 +440,16 @@ assert.doesNotMatch(app,/className="lektrus-graph-board-actions"/,
  "redundant on-canvas settings toolbar was removed");
 assert.match(app,/aria-label="Открыть редактор построения"/,
  "the in-graphic editor button has an accessible name");
-assert.match(app,/changeBoardGeometryMode\(singleSelected,"move"\)/,
- "the selection toolbar opens on-board construction mode");
+assert.match(app,/onToggleConstruction=\{item\.graphPurpose==="geometry"&&selectedIds\.has\(item\.id\)/,
+ "only selected editable planar geometry shows the construction icon");
+assert.match(app,/changeBoardGeometryMode\(item,"move"\)/,
+ "the on-canvas icon toggles the full on-board construction panel");
+assert.match(app,/constructionActive=\{boardGeometryMode\?\.id===item\.id\}/,
+ "the canvas icon reflects whether construction mode is active");
+assert.match(app,/aria-pressed=\{constructionActive\}/,
+ "the on-canvas construction toggle exposes active state to assistive technologies");
+assert.match(boardGeometryCss,/\.lektrus-graph-canvas-construction\[aria-pressed="true"\]/,
+ "active on-graph construction button is visibly distinguished");
 assert.match(app,/onAddPoint=\{graphPointEditId===item\.id/,
  "a normal graph drag no longer adds accidental vertices");
 assert.match(app,/onCloseFreePolygon=\{graphPointEditId===item\.id/,
