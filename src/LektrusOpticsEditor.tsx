@@ -218,7 +218,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
          <strong>Ход луча</strong>
          {pathForSelected?.events?.length?pathForSelected.events.map((event,i)=>
            <div key={i} className="lektrus-optics-ray-step">
-             <span>{i+1}</span><text>{event.text}</text>
+             <span>{i+1}</span><p>{event.text}</p>
            </div>):<p>Луч движется по прямой, пока не встретит элемент.</p>}
          <small>{pathForSelected?.note}</small>
        </div>
