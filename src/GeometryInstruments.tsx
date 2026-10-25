@@ -82,7 +82,7 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
     <line x1={180+outer*Math.cos(a)} y1={191-outer*Math.sin(a)}
       x2={180+inner*Math.cos(a)} y2={191-inner*Math.sin(a)}
       stroke="#315978" strokeWidth={major?1.65:1} strokeOpacity={major?1:.75}/>
-    {major&&<text x={180+(i===0||i===36?133:128)*Math.cos(a)} y={i===0||i===36?177:194-128*Math.sin(a)}
+    {major&&<text x={180+(i===0||i===36?133:128)*Math.cos(a)} y={i===0||i===36?186:194-128*Math.sin(a)}
       fontSize="9.5" fontWeight="650" textAnchor="middle" fill="#2d5878">{180-i*5}°</text>}
    </g>;
   })}
