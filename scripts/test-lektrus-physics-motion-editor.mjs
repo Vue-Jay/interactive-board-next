@@ -43,7 +43,8 @@ assert.match(entry,/import "\.\/lektrusCircuitButtons2026.css"/);
 const subjectIcons=read("src/LektrusSubjectToolIcons.tsx");
 for(const id of ["physics-mechanics","physics-optics","physics-graphs","physics-circuits"]){
  const line=subjectIcons.split("\n").find(s=>s.includes(' "'+id+'":'));
- assert.ok(line&&line.includes("currentColor"),"Board physics icon must match Lektrus's monochrome vector language: "+id);
+ assert.ok(line&&/<path|<rect|<circle/.test(line)&&!/stroke="#[0-9a-f]{3,8}"/i.test(line),
+  "Board physics icon must inherit monochrome SVG color: "+id);
 }
 const mechanicsGlyph=read("src/LektrusMechanicsToolIcon.tsx");
 const opticsGlyph=read("src/LektrusOpticsToolIcon.tsx");
