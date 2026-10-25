@@ -1,0 +1,62 @@
+/* Consistent design system for ALL electrical editor controls */
+.lektrus-circuit-editor{--cbtn:#f4f8ff;--cborder:#d7e3f3;--cink:#345177;--chover:#eaf2ff;--cactive:#e3eeff;--cprimary:#365fc9;font-size:12px}
+.lektrus-circuit-editor :is(button,summary){-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.lektrus-circuit-editor button{box-sizing:border-box;font-family:inherit;line-height:1.2;transition:background .14s,border-color .14s,color .14s,box-shadow .14s}
+.lektrus-circuit-editor button:disabled{opacity:.42;cursor:default;box-shadow:none!important}
+.lektrus-circuit-editor :is(button,summary):focus-visible{outline:2px solid #5284e2;outline-offset:2px}
+.lektrus-circuit-editor :is(.lektrus-circuit-header-actions button,.lektrus-circuit-toolgroup button,.lektrus-circuit-zoom button,.lektrus-circuit-properties-toggle,.lektrus-circuit-rotate button,.lektrus-circuit-categories button,.lektrus-circuit-inspector-actions button,.lektrus-circuit-inspector-delete,.lektrus-circuit-inspector-footer button,.lektrus-circuit-footer button,.lektrus-circuit-confirm-actions button,.lektrus-circuit-inspector-close){
+ border:1px solid var(--cborder);border-radius:9px;background:var(--cbtn);color:var(--cink);font-weight:730
+}
+.lektrus-circuit-editor button:hover:not(:disabled){background:var(--chover);border-color:#aac5ef;color:#2453ac}
+.lektrus-circuit-editor :is(.lektrus-circuit-toolgroup button.active,.lektrus-circuit-categories button.active,.lektrus-circuit-rotate button.active,.lektrus-circuit-parts>button.active,.lektrus-circuit-compact-button[aria-pressed=true],.lektrus-circuit-properties-toggle[aria-pressed=true]){
+ background:var(--cactive);border-color:#93b4ec;color:#2455b1;box-shadow:inset 0 0 0 1px #d7e6ff
+}
+.lektrus-circuit-editor :is(.lektrus-circuit-footer button.primary,.lektrus-circuit-confirm-actions button.primary){
+ background:var(--cprimary);color:#fff;border-color:var(--cprimary);box-shadow:0 2px 6px #214caa25
+}
+.lektrus-circuit-editor :is(.lektrus-circuit-footer button.primary,.lektrus-circuit-confirm-actions button.primary):hover:not(:disabled){
+ background:#2854b5;color:#fff;border-color:#2854b5
+}
+.lektrus-circuit-editor :is(.lektrus-circuit-inspector-delete,.lektrus-circuit-inspector-actions .danger,.lektrus-circuit-confirm-actions .danger){
+ background:#fff2f4;border-color:#f0d5da;color:#b04758
+}
+.lektrus-circuit-editor :is(.lektrus-circuit-inspector-delete,.lektrus-circuit-inspector-actions .danger,.lektrus-circuit-confirm-actions .danger):hover:not(:disabled){
+ background:#ffe2e6;border-color:#e5aebb;color:#963549
+}
+.lektrus-circuit-header-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.lektrus-circuit-header-actions button:not(.lektrus-circuit-compact-button){
+ min-width:35px;width:35px;min-height:35px;height:35px;padding:0;font-size:18px
+}
+.lektrus-circuit-header-actions .lektrus-circuit-compact-button{flex:0 0 auto;width:auto;min-height:35px;padding:7px 11px;font-size:11px}
+.lektrus-circuit-header-actions .lektrus-circuit-close:hover:not(:disabled),
+.lektrus-circuit-inspector-close:hover:not(:disabled){background:#fff0f1;border-color:#f0c5cd;color:#ae4555}
+.lektrus-circuit-toolgroup{gap:5px}
+.lektrus-circuit-toolgroup button{min-height:35px;padding:7px 10px;gap:7px;font-size:12px;white-space:nowrap}
+.lektrus-circuit-toolgroup button span{font-size:11px;font-weight:730}
+.lektrus-circuit-toolgroup button svg,.lektrus-circuit-header-actions button svg{width:17px;height:17px;flex:0 0 auto}
+.lektrus-circuit-zoom button{height:35px;width:34px;min-width:34px;font-size:16px}
+.lektrus-circuit-zoom .lektrus-circuit-zoom-value{width:auto;min-width:55px;font-size:11px}
+.lektrus-circuit-properties-toggle{min-height:35px;padding:7px 11px;white-space:nowrap}
+.lektrus-circuit-categories{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.lektrus-circuit-categories button{min-height:33px;padding:6px 5px;font-size:10px;line-height:1.3;text-wrap:balance}
+.lektrus-circuit-categories button:last-child:nth-child(odd){grid-column:span 2}
+.lektrus-circuit-parts>button{border:1px solid #dbe4f2;border-radius:10px;min-height:74px;cursor:pointer;box-shadow:0 1px 3px #23416b0b;background:#fff}
+.lektrus-circuit-parts>button:hover:not(:disabled){border-color:#a1bcea;background:#f0f5ff;box-shadow:0 2px 9px #26539a14}
+.lektrus-circuit-palette-section summary{display:flex;align-items:center;justify-content:space-between;min-height:35px;border-radius:8px}
+.lektrus-circuit-palette-section summary:hover{background:#eaf2ff;color:#2b59a7}
+.lektrus-circuit-editor :is(input:not([type=checkbox]),select){border:1px solid #d2e0f1;border-radius:9px;background:#f9fbff;min-height:35px;font-size:11px;color:#294366}
+.lektrus-circuit-editor :is(input:not([type=checkbox]),select):focus{outline:2px solid #b9d0fa;border-color:#6d98e0;outline-offset:0}
+.lektrus-circuit-editor input[type=checkbox]{width:15px;height:15px;accent-color:var(--cprimary);cursor:pointer}
+.lektrus-circuit-editor .lektrus-circuit-toggle label{font-size:11px;font-weight:720;color:#496389;cursor:pointer}
+.lektrus-circuit-rotate button{min-height:34px}
+.lektrus-circuit-inspector-actions button,.lektrus-circuit-inspector-delete,.lektrus-circuit-inspector-footer button{min-height:35px;padding:7px}
+.lektrus-circuit-inspector-close{display:grid;place-items:center;min-height:28px;height:28px;min-width:28px;width:28px}
+.lektrus-circuit-footer button{min-height:37px;padding:8px 15px;font-size:11px}
+.lektrus-circuit-confirm-actions button{min-height:36px;padding:8px 14px;font-size:11px}
+@media(max-width:590px){
+ .lektrus-circuit-header-actions button:not(.lektrus-circuit-compact-button){min-width:31px;width:31px;min-height:31px;height:31px}
+ .lektrus-circuit-toolgroup button{gap:4px;padding:6px}
+ .lektrus-circuit-zoom button{min-width:31px;width:31px;height:32px}
+ .lektrus-circuit-zoom .lektrus-circuit-zoom-value{min-width:48px}
+ .lektrus-circuit-properties-toggle{min-height:32px;padding:6px 8px}
+}
