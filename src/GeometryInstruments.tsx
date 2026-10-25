@@ -56,13 +56,13 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
   <path d="M66 132V208H167L66 132Z" fill="none" stroke="#6799bb" strokeWidth="1.5" strokeLinejoin="round"/>
   <path d="M20 30V236H305" fill="none" stroke="#fff" strokeWidth="2" strokeOpacity=".8" strokeLinecap="round"/>
   {Array.from({length:17},(_,i)=>{
-   const x=25+i*18,major=i%4===0;
+   const x=42+i*16,major=i%4===0;
    return <g key={i}>
-    <line x1={x} y1={major?220:230} x2={x} y2="241" stroke="#335f7b" strokeWidth={major?1.6:1} strokeOpacity=".86"/>
-    {major&&<text x={x} y="216" fontSize="10" fontWeight="650" textAnchor="middle" fill="#355e7c">{i/4}</text>}
+    <line x1={x} y1={major?230:235} x2={x} y2="242" stroke="#335f7b" strokeWidth={major?1.6:1} strokeOpacity=".86"/>
+    {major&&<text x={x} y="222" fontSize="9.5" fontWeight="650" textAnchor="middle" fill="#355e7c">{i/4}</text>}
    </g>;
   })}
-  <path d="M27 207V222H42" fill="none" stroke="#416e8c" strokeWidth="1.5"/>
+  <path d="M24 210V226H40" fill="none" stroke="#416e8c" strokeWidth="1.5"/>
   <path d="M45 20A24 24 0 0 1 24 43" fill="none" stroke="#719fbe" strokeWidth="1.5"/>
   <text x="36" y="123" transform="rotate(-90 36 123)" textAnchor="middle" fontSize="8.5" letterSpacing="1" fontWeight="750" fill="#597b96">LEKTRUS</text>
  </svg>;
@@ -70,7 +70,7 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
   <defs><linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
    <stop offset="0" stopColor="#f7fcff" stopOpacity=".9"/>
    <stop offset="1" stopColor="#c0e2f6" stopOpacity=".85"/>
-  </linearGradient><path id={`${gradient}-brand-arc`} d="M120 93 A120 120 0 0 1 240 93"/></defs>
+  </linearGradient><path id={`${gradient}-brand-arc`} d="M140 93 A106 106 0 0 1 220 93"/></defs>
   <path d="M6 191A174 174 0 0 1 354 191Z M77 191A103 103 0 0 1 283 191Z" fill={"url(#"+gradient+")"} fillRule="evenodd"/>
   <path d="M6 191A174 174 0 0 1 354 191Z" fill="none" stroke="#6295ba" strokeWidth="2"/>
   <path d="M77 191A103 103 0 0 1 283 191" fill="none" stroke="#6e9fbe" strokeWidth="1.5"/>
@@ -82,8 +82,8 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
     <line x1={180+outer*Math.cos(a)} y1={191-outer*Math.sin(a)}
       x2={180+inner*Math.cos(a)} y2={191-inner*Math.sin(a)}
       stroke="#315978" strokeWidth={major?1.65:1} strokeOpacity={major?1:.75}/>
-    {major&&<text x={180+124*Math.cos(a)} y={194-124*Math.sin(a)}
-      fontSize="10" fontWeight="650" textAnchor="middle" fill="#2d5878">{180-i*5}°</text>}
+    {major&&<text x={180+134*Math.cos(a)} y={major&&(i===0||i===36)?181:194-134*Math.sin(a)}
+      fontSize="9.5" fontWeight="650" textAnchor="middle" fill="#2d5878">{180-i*5}°</text>}
    </g>;
   })}
   <text fontFamily="inherit" fontSize="9" fontWeight="750" letterSpacing="1.35" fill="#597b96" textAnchor="middle" pointerEvents="none"><textPath href={`#${gradient}-brand-arc`} startOffset="50%">LEKTRUS</textPath></text>
