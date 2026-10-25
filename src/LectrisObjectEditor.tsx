@@ -33,7 +33,7 @@ const itemNames: Record<Item["kind"], string> = {
   sticky:"Стикер", image:"Изображение", pdf:"PDF", frame:"Фрейм",
   connector:"Линия", comment:"Комментарий", table:"Таблица",
   formula:"Формула", graph:"График", fraction:"Дробь", checklist:"Чек-лист",
-  quiz:"Тест", flashcard:"Карточка", cover:"Шторка", linkmedia:"Медиа",
+  quiz:"Тест", flashcard:"Карточка", cover:"Шторка", linkmedia:"Медиа", instrument:"Измерительный инструмент",
 };
 const colorKinds = new Set<Item["kind"]>(["pen","marker","shape","text","sticky","connector","comment","formula","graph","checklist","quiz","flashcard","frame"]);
 const advancedKinds = new Set<Item["kind"]>(["text","sticky","frame","comment","graph","formula","table","checklist","quiz","flashcard","linkmedia"]);
