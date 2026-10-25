@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent,type MouseEvent as ReactMouseEvent} from "react";
 import type {AtlasDocument,AtlasMode,ContourMark,ContourStroke} from "./lektrusAtlasModel";
 import {contourEraserHits,moveContourMark} from "./lektrusContourInteractions";
+import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import {eraseContourInkAlongPath} from "./lektrusContourInk";
 import {defaultContourAssignment} from "./lektrusAtlasModel";
 import {schoolCountryName,layoutAtlasLabels,type AtlasLabelCandidate,type AtlasLabelKind} from "./lektrusAtlasLabels";
@@ -82,7 +83,7 @@ function ContourToolIcon({name}:{name:ContourToolName}){
   {name==="label"&&<><path d="M3 5h12v12H3z"/><path d="m9 8-3 6M12 14 9 8M6.8 12h4.5M17 10l4 4-4 4"/></>}
  </svg>;
 }
-function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
+function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Props){
  const [inspectorOpen,setInspectorOpen]=useState(!editorMode);
  const [coordinatesEnabled,setCoordinatesEnabled]=useState(d.showCoordinates===true||d.mode==="coordinates");
  useEffect(()=>setCoordinatesEnabled(d.showCoordinates===true||d.mode==="coordinates"),[d.showCoordinates,d.mode]);
@@ -153,18 +154,44 @@ function AtlasMap({diagram:d,onChange,editorMode=false,userId=""}:Props){
   setPreviewContourMark(null);
   onChange({...d,contourMarks:contourMarks.filter(mark=>mark.id!==id)});
  };
- const [contourHistory,setContourHistory]=useState<Array<{marks:typeof contourMarks;strokes:typeof contourStrokes;
-  fills:Record<string,string>}>>([]);
- const captureContour=()=>{
-  setContourHistory(h=>[...h.slice(-19),{marks:contourMarks,strokes:contourStrokes,fills:painted}]);
+ type ContourUndoState={
+  marks:typeof contourMarks;strokes:typeof contourStrokes;fills:Record<string,string>
  };
- const contourUndo=()=>{
-  const last=contourHistory[contourHistory.length-1];if(!last)return;
-  onChange?.({...d,contourMarks:last.marks,contourStrokes:last.strokes,paintedCountries:last.fills});
-  setContourHistory(h=>h.slice(0,-1));
- };
-
+ type ContourUndoEntry={before:ContourUndoState;after?:ContourUndoState};
+ const [contourHistory,setContourHistory]=useState<ContourUndoEntry[]>([]);
+ const pendingContourCapture=useRef<ContourUndoEntry|null>(null);
  const painted=d.paintedCountries??{};
+ const currentContour=():ContourUndoState=>({
+  marks:contourMarks,strokes:contourStrokes,fills:painted
+ });
+ const captureContour=()=>{
+  const entry:ContourUndoEntry={before:currentContour()};
+  pendingContourCapture.current=entry;
+  setContourHistory(history=>[...history.slice(-19),entry]);
+ };
+ const onChange=emitChange?(next:AtlasDocument)=>{
+  const captured=pendingContourCapture.current;
+  if(captured){
+   pendingContourCapture.current=null;
+   const updated:ContourUndoEntry={...captured,after:{
+    marks:next.contourMarks??[],strokes:next.contourStrokes??[],
+    fills:next.paintedCountries??{}
+   }};
+   setContourHistory(history=>history.map(entry=>entry===captured?updated:entry));
+  }
+  emitChange(next);
+ }:undefined;
+ const contourUndo=()=>{
+  const last=contourHistory[contourHistory.length-1];
+  if(!last||!onChange)return;
+  // Reverse only this user's last action, not a later line/label/fill
+  // added by another collaborator while the editor stayed open.
+  const after=last.after??last.before;
+  const restored=mergeEditedValue(after,last.before,currentContour());
+  onChange({...d,contourMarks:restored.marks,
+   contourStrokes:restored.strokes,paintedCountries:restored.fills});
+  setContourHistory(history=>history.slice(0,-1));
+ };
  const savePaint=(next:Record<string,string>)=>{captureContour();onChange?.({...d,paintedCountries:next})};
  const isContourTool=d.title==="Контурная карта";
  const [index,setIndex]=useState(nearestSnapshotIndex(d.year));
