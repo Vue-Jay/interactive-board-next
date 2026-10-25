@@ -142,6 +142,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  const contourLivePath=useRef<SVGPathElement|null>(null);
  const mapSvgRef=useRef<SVGSVGElement|null>(null);
  const contourEraserPreview=useRef<SVGPathElement|null>(null);
+ const eraserCursorRef=useRef<SVGCircleElement|null>(null);
  const eraserGesture=useRef<{pointerId:number;marks:Set<string>;fills:Set<string>;path:Array<{x:number;y:number}>}|null>(null);
  const [pendingErasure,setPendingErasure]=useState<{marks:string[];fills:string[]}>({marks:[],fills:[]});
  const [liveErasedStrokes,setLiveErasedStrokes]=useState<ContourStroke[]|null>(null);
@@ -1005,6 +1006,18 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   brushContour(e);
  };
  const moveContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  const cursor=eraserCursorRef.current;
+  if(cursor){
+   if(e.pointerType==="mouse"||e.pointerType==="pen"){
+    const pos=localPoint(e);
+    const rect=e.currentTarget.getBoundingClientRect();
+    const pixelsPerUnit=Math.min(rect.width/900,rect.height/450)||1;
+    cursor.setAttribute("cx",String(pos.x));
+    cursor.setAttribute("cy",String(pos.y));
+    cursor.setAttribute("r",String((toolThickness*5+2)/2/pixelsPerUnit));
+    cursor.style.display="block";
+   }else cursor.style.display="none";
+  }
   e.stopPropagation();brushContour(e);
  };
  const endContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
@@ -1373,8 +1386,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
     </div>}
     <svg ref={mapSvgRef} viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
      data-contour-brush={worksheetEditor&&!objectMoveMode&&(contourAction==="pen"||contourAction==="erase")?contourAction:undefined}
+     onPointerLeave={()=>{if(eraserCursorRef.current)eraserCursorRef.current.style.display="none"}}
      style={worksheetEditor&&(contourAction==="pen"||contourAction==="erase")&&!objectMoveMode?{
-      cursor:contourBrushCursor(contourAction,toolThickness,paintColor)
+      cursor:contourAction==="erase"?"none":contourBrushCursor(contourAction,toolThickness,paintColor)
      }:undefined}
      onClick={objectMoveMode?undefined:pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
@@ -1667,6 +1681,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
        <path ref={contourLivePath} fill="none" stroke={paintColor} strokeWidth={toolThickness/scale}
         strokeLinecap="round" strokeLinejoin="round" pointerEvents="none"/>
       </g>}
+      {contourEraser&&<circle ref={eraserCursorRef} cx="-100" cy="-100" r="0" fill="#e36b7c" fillOpacity=".12"
+        stroke="#cc4763" strokeWidth="1.5" strokeDasharray="4 2" vectorEffect="non-scaling-stroke"
+        pointerEvents="none" style={{display:"none"}} aria-hidden="true"/>}
       {userMarkers.map(marker=>{
        const point=projectGeography(marker.lon,marker.lat);
        return <g key={marker.id} transform={`translate(${point[0]} ${point[1]}) scale(${1/scale})`}
