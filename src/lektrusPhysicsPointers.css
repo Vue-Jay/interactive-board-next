@@ -1,0 +1,56 @@
+/* Lektrus pointer set: crisp blue contour, white halo and precise hot-spots.
+   Use on editing surfaces, not controls. Touch gestures remain unchanged. */
+:root{
+ --lektrus-select-pointer:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20d%3D%22M4%202.5%204.5%2027l6.3-6.6%204.2%208%204.7-2.5-4.3-7.8%209.4-1.3Z%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%224%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%202.5%204.5%2027l6.3-6.6%204.2%208%204.7-2.5-4.3-7.8%209.4-1.3Z%22%20fill%3D%22%23dceaff%22%20stroke%3D%22%23204d9f%22%20stroke-width%3D%222.2%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M20%205l3-3m-1%208%205%201M15%202l-.3%204%22%20fill%3D%22none%22%20stroke%3D%22%232b70cd%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E") 4 3,default;
+ --lektrus-open-hand-pointer:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20d%3D%22M8.5%2014V8a2%202%200%200%201%204%200v5-8a2%202%200%200%201%204%200v8-6a2%202%200%200%201%204%200v7-3a2%202%200%200%201%204%200v7c0%206-4.2%209.6-10%209.6h-1c-3%200-5.4-1.5-7.1-4.4L3%2019.2c-1.5-2.4%201.8-4.9%203.8-2.8l1.7%202%22%20fill%3D%22none%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M8.5%2014V8a2%202%200%200%201%204%200v5-8a2%202%200%200%201%204%200v8-6a2%202%200%200%201%204%200v7-3a2%202%200%200%201%204%200v7c0%206-4.2%209.6-10%209.6h-1c-3%200-5.4-1.5-7.1-4.4L3%2019.2c-1.5-2.4%201.8-4.9%203.8-2.8l1.7%202%22%20fill%3D%22%23e7f0ff%22%20stroke%3D%22%23204d9f%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E") 15 17,grab;
+ --lektrus-closed-hand-pointer:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20d%3D%22M6%2011.5a2%202%200%200%201%203.8-.9V8a2%202%200%200%201%204%200v1.4a2%202%200%200%201%204%200v.6a2%202%200%200%201%204%200v1.8a2%202%200%200%201%204%20.4v6.5c0%205.7-4.1%209.4-10%209.4h-1.5c-3.8%200-6.7-2.7-8.2-6L4.3%2016a2.1%202.1%200%200%201%203.8-1.9l1.5%202.8%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M6%2011.5a2%202%200%200%201%203.8-.9V8a2%202%200%200%201%204%200v1.4a2%202%200%200%201%204%200v.6a2%202%200%200%201%204%200v1.8a2%202%200%200%201%204%20.4v6.5c0%205.7-4.1%209.4-10%209.4h-1.5c-3.8%200-6.7-2.7-8.2-6L4.3%2016a2.1%202.1%200%200%201%203.8-1.9l1.5%202.8%22%20fill%3D%22%23d1e4ff%22%20stroke%3D%22%23204d9f%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E") 15 17,grabbing;
+}
+/* Select means "inspect or place selection", including the empty page. */
+.lektrus-mechanics-editor .lektrus-mechanics-svg.mode-select,
+.lektrus-optics-editor .lektrus-optics-svg.optics-mode-select,
+.lektrus-circuit-editor .lektrus-circuit-svg.mode-select,
+.lektrus-motion-editor .lektrus-motion-svg.mode-select{
+ cursor:var(--lektrus-select-pointer)!important;
+}
+/* SVG hit areas must not revert to the browser default. */
+.lektrus-mechanics-editor .lektrus-mechanics-svg.mode-select > rect,
+.lektrus-optics-editor .lektrus-optics-svg.optics-mode-select > rect,
+.lektrus-circuit-editor .lektrus-circuit-svg.mode-select .lektrus-circuit-hitarea,
+.lektrus-motion-editor .lektrus-motion-svg.mode-select > rect{
+ cursor:var(--lektrus-select-pointer)!important;
+}
+/* Movable objects and points use the actual open/closed hand pointer. */
+.lektrus-mechanics-editor .lektrus-mechanics-svg.mode-select .mechanics-hit,
+.lektrus-optics-editor .lektrus-optics-svg.optics-mode-select .lektrus-optics-hit,
+.lektrus-circuit-editor .lektrus-circuit-svg.mode-select .lektrus-circuit-component-body,
+.lektrus-circuit-editor .lektrus-circuit-svg.mode-select .lektrus-circuit-part,
+.lektrus-motion-editor .lektrus-motion-svg.mode-select .lektrus-motion-point-hit{
+ cursor:var(--lektrus-open-hand-pointer)!important;
+}
+.lektrus-mechanics-editor .lektrus-mechanics-svg.mode-select .mechanics-hit:active,
+.lektrus-optics-editor .lektrus-optics-svg.optics-mode-select .lektrus-optics-hit:active,
+.lektrus-circuit-editor .lektrus-circuit-svg.mode-select .lektrus-circuit-component-body:active,
+.lektrus-circuit-editor .lektrus-circuit-svg.mode-select .lektrus-circuit-part:active,
+.lektrus-motion-editor .lektrus-motion-svg.mode-select .lektrus-motion-point-hit:active{
+ cursor:var(--lektrus-closed-hand-pointer)!important;
+}
+/* Hand mode pans a circuit, including when started over an element. */
+.lektrus-circuit-editor .lektrus-circuit-svg.mode-hand,
+.lektrus-circuit-editor .lektrus-circuit-svg.mode-hand :is(rect,path,g,ellipse,circle,line){
+ cursor:var(--lektrus-open-hand-pointer)!important;
+}
+.lektrus-circuit-editor .lektrus-circuit-svg.mode-hand:active,
+.lektrus-circuit-editor .lektrus-circuit-svg.mode-hand:active :is(rect,path,g,ellipse,circle,line){
+ cursor:var(--lektrus-closed-hand-pointer)!important;
+}
+/* The main board shares the same branded pointer language. */
+.workspace .board.board-tool-select:not(.board-hand-active):not(.board-panning):not(.board-right-hand){
+ cursor:var(--lektrus-select-pointer);
+}
+.workspace .board.board-hand-active:not(.board-right-hand):not(.board-panning){
+ cursor:var(--lektrus-open-hand-pointer);
+}
+.workspace .board.board-panning,.workspace .board.board-panning *,
+.workspace .board.board-right-hand,.workspace .board.board-right-hand *{
+ cursor:var(--lektrus-closed-hand-pointer)!important;
+}
