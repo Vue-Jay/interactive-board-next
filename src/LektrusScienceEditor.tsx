@@ -60,7 +60,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const [activeLink,setActiveLink]=useState<number|null>(null);
   const [elementQuery,setElementQuery]=useState("");
   const [placingElement,setPlacingElement]=useState<string|null>(null);
-  const [settingsOpen,setSettingsOpen]=useState(true);
+  const [settingsOpen,setSettingsOpen]=useState(()=>typeof window==="undefined"||!window.matchMedia("(max-width: 760px)").matches);
   const [elementNotice,setElementNotice]=useState("");
   const drag=useRef<{pointerId:number;index:number;kind:"point"|"point-label"|"segment-label"}|null>(null);
   const isPhysics=subject==="physics";
