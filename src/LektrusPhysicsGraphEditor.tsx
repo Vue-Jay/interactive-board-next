@@ -1,6 +1,8 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import {svgClientPoint} from "./lektrusSvgPointer";
+import LektrusPhysicsPointerGlyph from "./LektrusPhysicsPointerGlyph";
+import LektrusGeometryToolIcon from "./LektrusGeometryToolIcon";
 import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import type {Item} from "./boardModel";
 import {scienceToolGroupForId} from "./lektrusScienceCatalog";
@@ -226,8 +228,12 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
         <main className="lektrus-motion-stage">
           <div className="lektrus-motion-toolbar">
             <div className="lektrus-motion-tools" role="group" aria-label="Режим работы с графиком">
-              <button type="button" className={tool==="select"?"active":""} onClick={()=>setTool("select")}>Выбор</button>
-              <button type="button" className={tool==="point"?"active":""} onClick={()=>setTool("point")}>+ Точка</button>
+              <button type="button" className={tool==="select"?"active":""} onClick={()=>setTool("select")}>
+                <LektrusPhysicsPointerGlyph kind="select" size={19}/><span>Выбор</span>
+              </button>
+              <button type="button" className={tool==="point"?"active":""} onClick={()=>setTool("point")}>
+                <LektrusGeometryToolIcon name="point" size={19}/><span>Точка</span>
+              </button>
             </div>
             <button type="button" className="lektrus-motion-measure-toggle" aria-pressed={measurementOpen}
               onClick={()=>setMeasurementOpen(v=>!v)}>Измерения</button>
