@@ -171,6 +171,18 @@ assert.match(app,/onRemovePoint=\{selectedIds\.has\(item.id\).*?!structurallyLoc
  "students cannot remove vertices from teacher's geometry");
 assert.match(app,/onGridChange=\{!item.locked&&canEdit&&!structurallyLockedForStudent\(item\)/,
  "students cannot edit protected graph structure");
+assert.match(app,/if\(tool!=="select"&&tool!=="hand"&&tool!=="lasso"&&!toolAllowedForRole\(tool\)\)/,
+ "role switch invalidates disallowed drawing tools at pointer event boundary");
+assert.match(app,/connector && canEdit && !connector.locked && !structurallyLockedForStudent\(connector\)/,
+ "viewer cannot drag connector endpoints, and students cannot change teacher-protected connections");
+assert.match(app,/transformHandle && hit && canEdit && !hit.locked/,
+ "viewer cannot resize objects even while holding a stale transform handle");
+assert.match(app,/const movableIds = canEdit\?/,
+ "viewer cannot move board objects using the hand tool");
+assert.match(app,/if \(!canEdit \|\| structurallyLockedForStudent\(hit\)\) return;/,
+ "viewer selection never starts an object drag");
+assert.match(app,/&& !space && canEdit && !hit.locked/,
+ "viewer cannot open crop editor on a touch double tap");
 assert.match(app,/notes: isStudent \? `student-media-request:/,
  "guest and student image/PDF uploads both use the teacher approval path");
 assert.match(css,/\.lektrus-developer-role-options/,"responsive role buttons styled");
