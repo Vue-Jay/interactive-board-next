@@ -4,7 +4,6 @@ import {makeSchoolDiagram,type SchoolDiagramId} from "./lektrusSchoolDiagramMode
 import {makeMathPresetItem} from "./lektrusMathPresets";
 import {makeSciencePresetItem} from "./lektrusSciencePresets";
 import {emptyMechanics} from "./lektrusMechanicsModel";
-import {emptyMechanics} from "./lektrusMechanicsModel";
 import {scienceDefaultPreset,scienceToolGroups,type ScienceToolId} from "./lektrusScienceCatalog";
 
 export type SubjectToolId="math-coordinate"|"math-fractions"|"math-formula"|"math-geometry"|"chem-periodic-table"|ScienceToolId|SchoolDiagramId;
@@ -75,7 +74,7 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
     // Subject tools open on a clean sheet; stored objects created earlier retain their content.
     if(id==="physics-mechanics")return {...item,text:"Механика",graphFigureId:"physics-forces",scienceMechanics:emptyMechanics(),
       graphPoints:[],graphSegments:[],graphPolygons:[],graphCircles:[],graphAngles:[],graphMidpoints:[],
-      graphGrid:false,scienceMechanics:emptyMechanics()};
+      graphGrid:false};
     if(id==="physics-optics")return {...item,text:"Оптика",graphFigureId:"physics-optics",
       graphPoints:[],graphSegments:[],graphPolygons:[],graphCircles:[],graphAngles:[],graphMidpoints:[],graphGrid:false};
     if(id==="physics-graphs")return {...item,text:"График движения",
