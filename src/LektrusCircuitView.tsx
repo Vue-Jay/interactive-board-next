@@ -59,7 +59,7 @@ export default function LektrusCircuitView({
     preserveAspectRatio="xMidYMid meet" role="img"
     aria-label="Редактируемая электрическая схема"
     onPointerMove={onSvgMove} onPointerUp={onSvgUp}
-    onWheel={onWheel} onPointerDown={onBackgroundDown}
+    onWheel={onWheel} onPointerDownCapture={onBackgroundDown}
     onPointerCancel={onSvgUp} onPointerLeave={onSvgLeave}
     onDragOver={onDrop?e=>{e.preventDefault();e.dataTransfer.dropEffect="copy"}:undefined}
     onDrop={onDrop}>
