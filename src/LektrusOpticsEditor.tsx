@@ -1,3 +1,4 @@
+import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
@@ -5,7 +6,7 @@ import LektrusOpticsView,{opticsSvgPoint,type OpticsSelection,type OpticsTool} f
 import LektrusSubjectToolIcon from "./LektrusSubjectToolIcons";
 import LektrusOpticsToolIcon from "./LektrusOpticsToolIcon";
 import {emptyOptics,makeOpticalElement,opticsId,validOptics,traceOptics,type OpticalElement,type OpticalKind,type OpticsDocument} from "./lektrusOpticsModel";
-type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void};
+type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void;onLiveChange?:(before:OpticsDocument,next:OpticsDocument)=>void};
 type History={past:OpticsDocument[];present:OpticsDocument;future:OpticsDocument[]};
 const tools:{id:OpticsTool;name:string;hint:string}[]=[
  {id:"select",name:"Выбор",hint:"Перемещайте и настраивайте оптические объекты"},
@@ -40,9 +41,31 @@ function fromLegacy(item:Item):OpticsDocument{
  d.legacy=legacy.slice(0,200);
  return d;
 }
-export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props){
+export default function LektrusOpticsEditor({item,onSave,onCancel,onClose,onLiveChange}:Props){
  const [history,setHistory]=useState<History>(()=>({past:[],present:fromLegacy(item),future:[]}));
  const doc=history.present;
+  // The shared object is updated incrementally, while incoming peer edits
+  // are rebased by stable component IDs instead of overwriting this draft.
+  const livePrevious=useRef<OpticsDocument>(history.present);
+  const remotePrevious=useRef(item.scienceOptics);
+  useEffect(()=>{
+    if(doc===livePrevious.current)return;
+    const before=livePrevious.current;
+    livePrevious.current=doc;
+    onLiveChange?.(before,doc);
+  },[doc,onLiveChange]);
+  useEffect(()=>{
+    const remote=item.scienceOptics;
+    if(!remote||remote===remotePrevious.current)return;
+    const base=remotePrevious.current;
+    remotePrevious.current=remote;
+    setHistory(h=>{
+      const merged=mergeEditedValue(base??h.present,h.present,remote);
+      livePrevious.current=merged;
+      return {...h,present:merged};
+    });
+  },[item.scienceOptics]);
+
  const [name,setName]=useState(item.text?.trim()||"Оптика");
  const [tool,setTool]=useState<OpticsTool>("select");
  const [selected,setSelected]=useState<OpticsSelection>(null);
