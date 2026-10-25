@@ -113,7 +113,7 @@ const editor=read("src/LektrusOpticsEditor.tsx"),view=read("src/LektrusOpticsVie
 assert.match(editor,/lektrus-optics-ray-steps/,"Optics editor must explain the actual ray path");
 assert.match(view,/path\.events\?\.map/,"Selected path should display numbered interactions");
 assert.match(app,/scienceOptics\|\|\["physics-optics"/,"optics opens dedicated editor");
-assert.match(app,/<LektrusOpticsView doc=\{item.scienceOptics\}/,"optics renders on board");
+assert.match(app,/<LektrusPhysicalBoardView item=\{item\}/,"optics renders inside the editable collaborative physics board view");
 assert.match(editor,/role="dialog" aria-modal="true" aria-label="Редактор оптики"/);
 assert.match(editor,/onSave\(saveValue\(\)\)/,"optics saves persisted schema");
 assert.match(view,/traceOptics\(doc\)/);
