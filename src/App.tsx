@@ -5413,6 +5413,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     window.setTimeout(() => startEdit(frame), 0);
   };
 
+  const livePhysicalEditorUpdate=(itemId:string,field:"scienceMechanics"|"scienceOptics"|"scienceCircuit",
+    before:unknown,next:unknown)=>{
+    const latest=itemsRef.current.find(candidate=>candidate.id===itemId);
+    if(!latest||latest.locked||!canEdit)return;
+    const merged=mergeEditedValue(before,next,latest[field]??before);
+    const valid=field==="scienceMechanics"?mechanicsValid(merged):
+      field==="scienceOptics"?validOptics(merged):circuitIsDocument(merged);
+    if(!valid||JSON.stringify(merged)===JSON.stringify(latest[field]))return;
+    const updated={...latest,[field]:merged};
+    if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+    commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
+    workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
+  };
   const graphDraftFromItem=(item:Item):GraphDraft=>({constraints:Array.isArray(item.graphConstraints)?item.graphConstraints.filter(c=>c&&typeof c==="object"&&Number.isInteger(c.a)&&Number.isInteger(c.b)):[],magneticSnap:item.graphMagneticSnap!==false,freePathStart:item.graphFreePathStart??0,figureId:item.graphFigureId??"",rotationX:item.graphRotationX??25,rotationY:item.graphRotationY??-35,parallelMarks:[...(item.graphParallelMarks??[])],title:item.text??"",intervalStartClosed:item.graphIntervalStartClosed!==false,intervalEndClosed:item.graphIntervalEndClosed!==false,purpose:item.graphPurpose??((item.graphCircles?.length??0)>0?"unit-circle":(item.graphPolygons?.length??0)>0?"geometry":item.graphExpression?"function":"coordinates"),axisMode:item.graphAxisMode??"both",type:item.graphType??"quadratic",expression:item.graphExpression??"",connectPoints:item.graphConnectPoints!==false,a:item.graphA??1,b:item.graphB??0,c:item.graphC??0,xMin:item.graphXMin??-10,xMax:item.graphXMax??10,yMin:item.graphYMin??-10,yMax:item.graphYMax??10,grid:item.graphGrid!==false,points:(item.graphPurpose==="geometry"||item.graphFigureId==="free"?repairGeometryPointLabels(Array.isArray(item.graphPoints)?item.graphPoints:[]):(Array.isArray(item.graphPoints)?item.graphPoints:[])).map(p=>({...p})),showLabels:item.graphShowLabels!==false,snap:item.graphPurpose==="geometry"?item.graphSnap===true:item.graphSnap!==false,axisLabels:item.graphAxisLabels!==false,gridStep:item.graphGridStep??1,showCurve:item.graphShowCurve!==false,projections:item.graphProjections===true,segments:(Array.isArray(item.graphSegments)?item.graphSegments:[]).map(s=>({...s})),angles:(Array.isArray(item.graphAngles)?item.graphAngles:[]).map(g=>({...g})),circles:(Array.isArray(item.graphCircles)?item.graphCircles:[]).map(g=>({...g})),polygons:(Array.isArray(item.graphPolygons)?item.graphPolygons:[]).map(g=>({...g,points:Array.isArray(g.points)?[...g.points]:[]})),midpoints:(Array.isArray(item.graphMidpoints)?item.graphMidpoints:[]).map(g=>({...g})),triangleLines:[...(Array.isArray(item.graphTriangleLines)?item.graphTriangleLines:[])],triangleVertex:item.graphTriangleVertex??0,showArea:false,givenSides:[...(Array.isArray(item.graphGivenSides)?item.graphGivenSides:[])],givenAngles:[...(Array.isArray(item.graphGivenAngles)?item.graphGivenAngles:[])],triangleInputMode:item.graphTriangleInputMode??"SSS"});
   const graphItemFromDraft=(item:Item,d:GraphDraft):Item=>({...item,text:d.title.slice(0,100),graphFigureId:d.figureId,graphRotationX:d.rotationX,graphRotationY:d.rotationY,graphParallelMarks:d.parallelMarks,graphIntervalStartClosed:d.intervalStartClosed,graphIntervalEndClosed:d.intervalEndClosed,graphPurpose:d.purpose,graphAxisMode:d.axisMode,graphType:d.type,graphExpression:d.purpose==="function"?d.expression:"",graphConnectPoints:d.connectPoints,graphA:d.a,graphB:d.b,graphC:d.c,graphXMin:d.xMin,graphXMax:d.xMax,graphYMin:d.yMin,graphYMax:d.yMax,graphGrid:d.grid,graphPoints:d.points,graphShowLabels:d.showLabels,graphSnap:d.snap,graphConstraints:d.constraints,graphMagneticSnap:d.magneticSnap,graphFreePathStart:d.freePathStart??0,graphAxisLabels:d.axisLabels,graphGridStep:d.gridStep,graphShowCurve:d.purpose==="function"&&d.showCurve,graphProjections:d.projections,graphSegments:d.segments,graphAngles:d.angles,graphCircles:d.circles,graphPolygons:d.polygons,graphMidpoints:d.midpoints,graphTriangleLines:d.triangleLines,graphTriangleVertex:d.triangleVertex,graphShowArea:false,graphGivenSides:d.givenSides,graphGivenAngles:d.givenAngles,graphTriangleInputMode:d.triangleInputMode});
   const liveGraphDraftRef=useRef<GraphDraft|null>(null);
@@ -7521,7 +7534,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setNotice("Периодическая таблица добавлена на доску");
           }}/>}
         {circuitEditorItem&&<LektrusCircuitEditor key={circuitEditorItem.id}
-          item={circuitEditorItem}
+          item={remoteLiveItems[circuitEditorItem.id]??items.find(x=>x.id===circuitEditorItem.id)??circuitEditorItem}
+          onLiveChange={(before,next)=>livePhysicalEditorUpdate(circuitEditorItem.id,"scienceCircuit",before,next)}
           onCancel={()=>setCircuitEditorItem(null)}
           onClose={next=>{
             if(itemsRef.current.some(i=>i.id===next.id)){
@@ -7575,12 +7589,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
           }}/>}
         {scienceEditorItem&&<>{scienceEditorItem.scienceMechanics?
-          <LektrusMechanicsEditor key={scienceEditorItem.id} item={scienceEditorItem}
+          <LektrusMechanicsEditor key={scienceEditorItem.id} item={remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem}
+            onLiveChange={(before,next)=>livePhysicalEditorUpdate(scienceEditorItem.id,"scienceMechanics",before,next)}
             onCancel={()=>setScienceEditorItem(null)}
             onClose={next=>{if(itemsRef.current.some(i=>i.id===next.id))commit(itemsRef.current.map(i=>i.id===next.id?next:i));setScienceEditorItem(null)}}
             onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Схема механики сохранена")}}/>:
         (scienceEditorItem.scienceOptics||["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(scienceEditorItem.graphFigureId??""))?
-          <LektrusOpticsEditor key={scienceEditorItem.id} item={scienceEditorItem}
+          <LektrusOpticsEditor key={scienceEditorItem.id} item={remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem}
+            onLiveChange={(before,next)=>livePhysicalEditorUpdate(scienceEditorItem.id,"scienceOptics",before,next)}
             onCancel={()=>setScienceEditorItem(null)}
             onClose={next=>{if(itemsRef.current.some(i=>i.id===next.id))commit(itemsRef.current.map(i=>i.id===next.id?next:i));setScienceEditorItem(null)}}
             onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Оптическая схема сохранена")}}/>:
