@@ -39,13 +39,11 @@ import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import LektrusOpticsEditor from "./LektrusOpticsEditor";
 import LektrusMechanicsEditor from "./LektrusMechanicsEditor";
-import LektrusMechanicsView from "./LektrusMechanicsView";
 import LektrusPhysicalBoardView from "./LektrusPhysicalBoardView";
 import {movePhysicalPart,type PhysicalTarget} from "./lektrusPhysicalBoardMove";
 import {mechanicsValid} from "./lektrusMechanicsModel";
 import {validOptics} from "./lektrusOpticsModel";
 import {circuitIsDocument} from "./lektrusCircuitModel";
-import LektrusOpticsView from "./LektrusOpticsView";
 import LektrusOrganicView from "./LektrusOrganicView";
 import LektrusChemistryIllustration,{isChemicalIllustration} from "./LektrusChemistryIllustration";
 import {analyzeOrganicStructure} from "./lektrusOrganicFormula";
@@ -1187,8 +1185,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
     },liveVertex.index,liveVertex.x,liveVertex.y);
     item={...item,graphPoints:moved.points};
   }
-  if(item.scienceMechanics||item.scienceOptics||item.scienceCircuit)return
-    <LektrusPhysicalBoardView item={item} editable={!!onPhysicalPartMove}
+  if(item.scienceMechanics||item.scienceOptics||item.scienceCircuit)
+    return <LektrusPhysicalBoardView item={item} editable={!!onPhysicalPartMove}
       onMoveEnd={onPhysicalPartMove} onMovePreview={onPhysicalPartPreview}/>;
   if(item.graphFigureId==="lektrus-chart")return <LektrusDataChartView item={item}/>;
   if(isSchoolDiagramId(item.graphFigureId)&&isSchoolDiagram(item.schoolDiagram))
