@@ -8656,3 +8656,9 @@ option{background:#fff;color:#343741}
 @media(max-width:600px){
  .lektrus-developer-role-banner{top:calc(47px + env(safe-area-inset-top,0px));font-size:11px}
 }
+
+.lektrus-developer-role-permissions{
+ display:grid;gap:5px;padding:9px 10px;border:1px solid #dce7f6;
+ border-radius:9px;background:#fff;color:#36516e;font-size:12px;
+}
+.lektrus-developer-role-permissions strong{color:#233e5d;font-size:12px}
