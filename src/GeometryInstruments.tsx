@@ -70,19 +70,19 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
   <defs><linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
    <stop offset="0" stopColor="#f7fcff" stopOpacity=".9"/>
    <stop offset="1" stopColor="#c0e2f6" stopOpacity=".85"/>
-  </linearGradient><path id={`${gradient}-brand-arc`} d="M140 93 A106 106 0 0 1 220 93"/></defs>
+  </linearGradient><path id={`${gradient}-brand-arc`} d="M141 83 A117 117 0 0 1 219 83"/></defs>
   <path d="M6 191A174 174 0 0 1 354 191Z M77 191A103 103 0 0 1 283 191Z" fill={"url(#"+gradient+")"} fillRule="evenodd"/>
   <path d="M6 191A174 174 0 0 1 354 191Z" fill="none" stroke="#6295ba" strokeWidth="2"/>
   <path d="M77 191A103 103 0 0 1 283 191" fill="none" stroke="#6e9fbe" strokeWidth="1.5"/>
   <path d="M14 191H346" stroke="#456e8b" strokeWidth="1.1"/>
   {Array.from({length:37},(_,i)=>{
    const a=Math.PI-i*Math.PI/36,major=i%6===0,mid=i%2===0;
-   const outer=170,inner=major?142:mid?150:157;
+   const outer=170,inner=major?143:mid?152:159;
    return <g key={i}>
     <line x1={180+outer*Math.cos(a)} y1={191-outer*Math.sin(a)}
       x2={180+inner*Math.cos(a)} y2={191-inner*Math.sin(a)}
       stroke="#315978" strokeWidth={major?1.65:1} strokeOpacity={major?1:.75}/>
-    {major&&<text x={180+134*Math.cos(a)} y={major&&(i===0||i===36)?181:194-134*Math.sin(a)}
+    {major&&<text x={180+(i===0||i===36?133:128)*Math.cos(a)} y={i===0||i===36?177:194-128*Math.sin(a)}
       fontSize="9.5" fontWeight="650" textAnchor="middle" fill="#2d5878">{180-i*5}°</text>}
    </g>;
   })}
