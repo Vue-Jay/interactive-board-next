@@ -95,3 +95,17 @@
 }
 .lektrus-motion-measurements b{color:#28589f;font-variant-numeric:tabular-nums}
 @media(max-width:760px){.lektrus-motion-measurements{gap:5px 12px;padding:6px 8px;font-size:10px}}
+
+
+/* Graph work area: match pointer mapping to a visibly bounded page. */
+.lektrus-motion-sheet{container-type:size;background:#edf3fa;border-color:#cbdbef}
+@supports (width:100cqw){
+ .lektrus-motion-sheet>.lektrus-motion-svg{
+   width:min(100cqw,166.1017cqh);height:min(100cqh,60.20408cqw);
+   flex:none;box-sizing:border-box;border-radius:9px;
+   border:1px solid #c9daf2;background:#fff;
+   box-shadow:0 4px 15px #204e8720;
+ }
+}
+.lektrus-motion-svg.mode-point{cursor:none}
+.lektrus-motion-svg.mode-point .lektrus-motion-point-hit{cursor:grab}
