@@ -6,7 +6,7 @@ import LektrusMechanicsView,{mechanicsSvgPoint} from "./LektrusMechanicsView";
 import LektrusMechanicsToolIcon from "./LektrusMechanicsToolIcon";
 import {emptyMechanics,mechClamp,mechanicsId,mechanicsForceOrigin,mechanicsValid,
  type MechanicsDocument,type MechanicsSelection,type MechanicsTool,type MechanicsBody,type MechanicsSupport,type MechanicsForce} from "./lektrusMechanicsModel";
-type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void;onLiveChange?:(before:MechanicsDocument,next:MechanicsDocument)=>void};
+type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void;onLiveChange?:(before:MechanicsDocument,next:MechanicsDocument)=>void;shared?:boolean};
 type History={past:MechanicsDocument[];present:MechanicsDocument;future:MechanicsDocument[]};
 const tools:{id:MechanicsTool;name:string;hint:string}[]=[
  {id:"select",name:"Выбор",hint:"Выберите и перемещайте детали"},
@@ -20,7 +20,7 @@ const tools:{id:MechanicsTool;name:string;hint:string}[]=[
 const num=(v:string,fallback:number,low:number,high:number)=>{
  const n=Number(v);return Number.isFinite(n)?mechClamp(n,low,high):fallback;
 };
-export default function LektrusMechanicsEditor({item,onSave,onCancel,onClose,onLiveChange}:Props){
+export default function LektrusMechanicsEditor({item,onSave,onCancel,onClose,onLiveChange,shared=false}:Props){
  const [history,setHistory]=useState<History>(()=>({past:[],present:item.scienceMechanics&&mechanicsValid(item.scienceMechanics)?item.scienceMechanics:emptyMechanics(),future:[]}));
  const doc=history.present;
   // The shared object is updated incrementally, while incoming peer edits
@@ -303,8 +303,8 @@ export default function LektrusMechanicsEditor({item,onSave,onCancel,onClose,onL
      </aside>}
    </div>
    <footer className="lektrus-mechanics-footer"><span>Редактируемые тела, опоры и силы · новые схемы создаются с чистого листа</span>
-    <button type="button" onClick={onCancel}>Отмена</button>
-    <button type="button" className="primary" onClick={()=>onSave(saveItem())}>Сохранить на доску</button>
+    <button type="button" onClick={shared?close:onCancel}>{shared?"Закрыть":"Отмена"}</button>
+    <button type="button" className="primary" onClick={()=>onSave(saveItem())}>{shared?"Готово":"Сохранить на доску"}</button>
    </footer>
   </section>
  </div>,document.body);
