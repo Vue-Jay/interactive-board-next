@@ -586,7 +586,6 @@
 
 /* Painting should use the brush-size cursor across map features, not their
    generic pointer cursors. Selection and hand modes remain unchanged. */
-.lektrus-atlas-svg[data-contour-brush] *,
-.lektrus-atlas-svg[data-contour-brush]{
+.lektrus-atlas-svg[data-contour-brush] *{
  cursor:inherit!important;
 }
