@@ -6,6 +6,7 @@
  --lektrus-tool-ink-hover:#242b33;
  --lektrus-tool-tile:#f5f6f8;
  --lektrus-tool-edge:#e3e6eb;
+ --lektrus-tool-surface:var(--lektrus-tool-tile);
 }
 :root[data-theme="dark"]{
  --lektrus-tool-ink:#d6dde7;
@@ -39,8 +40,8 @@ body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon{
  color:var(--lektrus-tool-ink)!important;
 }
 body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon>svg{
- display:block!important;width:22px!important;height:22px!important;
- max-width:22px!important;max-height:22px!important;
+ display:block!important;width:24px!important;height:24px!important;
+ max-width:24px!important;max-height:24px!important;
  stroke:currentColor!important;stroke-width:1.9!important;
  stroke-linecap:round!important;stroke-linejoin:round!important;
  overflow:visible;
@@ -56,7 +57,7 @@ body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button:focus-visib
   flex-basis:38px!important;width:38px!important;height:38px!important;
  }
  body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon>svg{
-  width:22px!important;height:22px!important;
+  width:24px!important;height:24px!important;
  }
 }
 /* Figure, diagram, general text and measuring-tool icons stay on the same
