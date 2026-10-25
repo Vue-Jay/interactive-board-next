@@ -890,3 +890,12 @@
 .lektrus-atlas-history .lektrus-history-symbol-gallery-item small{color:#7a8da0;font-size:10px;line-height:1.3}
 .lektrus-atlas-history .lektrus-history-symbol-gallery-item .lektrus-history-symbol-gallery-warning{color:#986024}
 .lektrus-atlas-history .lektrus-history-symbol-gallery-item .lektrus-country-symbol{width:49px;height:36px}
+
+/* Instantaneous brush layer, aligned to the atlas SVG's letterboxed viewport.
+   It never intercepts pointer events or blocks zoom and tool controls. */
+.lektrus-atlas-map-box .lektrus-contour-ink-preview{
+ position:absolute;z-index:4;left:0;top:0;display:none;
+ pointer-events:none!important;touch-action:none;
+ max-width:none;max-height:none;user-select:none;
+ contain:layout style paint;
+}
