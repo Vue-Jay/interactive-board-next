@@ -94,3 +94,39 @@
 .lektrus-optics-ray-hits{cursor:pointer}
 .lektrus-optics-ray-hits polyline:hover{stroke:#2d65bd;stroke-opacity:.12}
 .lektrus-editor-cursor{filter:drop-shadow(0 1px 3px #345a9360)}
+
+/* The drawing has a real, visible page boundary. No invisible letterbox is
+   presented as an editable canvas on wide monitors. */
+.lektrus-optics-editor .lektrus-optics-layout{grid-template-columns:238px minmax(0,1fr)}
+.lektrus-optics-editor.show-properties .lektrus-optics-layout{grid-template-columns:238px minmax(0,1fr) 254px}
+.lektrus-optics-editor.catalog-hidden.show-properties .lektrus-optics-layout{grid-template-columns:minmax(0,1fr) 254px}
+.lektrus-optics-catalog,.lektrus-optics-inspector{overflow-x:hidden;overflow-wrap:anywhere;gap:12px}
+.lektrus-optics-tools button{font-size:11px;line-height:1.35;min-height:46px;gap:8px}
+.lektrus-optics-tools button span{min-width:0}
+.lektrus-optics-editor label,.lektrus-optics-catalog>strong,.lektrus-optics-section{font-size:12px}
+.lektrus-optics-catalog p,.lektrus-optics-inspector p{font-size:11px;line-height:1.55}
+.lektrus-optics-note{font-size:11px;line-height:1.5}
+.lektrus-optics-stage{container-type:size;background:#edf3fa;border-color:#cbdcf2}
+@supports (width:100cqw){
+  .lektrus-optics-stage>.lektrus-optics-svg{
+    width:min(100cqw,171.42857cqh);
+    height:min(100cqh,58.33333cqw);
+    flex:none;
+    box-sizing:border-box;
+    border:1px solid #c7dbf3;
+    border-radius:9px;
+    box-shadow:0 4px 15px #204e8720;
+    background:#fff;
+  }
+}
+.lektrus-optics-editor .lektrus-optics-stage .lektrus-optics-svg:not(.optics-mode-select) rect:first-of-type{cursor:none}
+@media(max-width:1020px){
+  .lektrus-optics-editor.show-properties .lektrus-optics-layout{grid-template-columns:198px minmax(0,1fr) 212px}
+  .lektrus-optics-editor.catalog-hidden.show-properties .lektrus-optics-layout{grid-template-columns:minmax(0,1fr) 212px}
+}
+@media(max-width:760px){
+  .lektrus-optics-editor .lektrus-optics-layout,
+  .lektrus-optics-editor.show-properties .lektrus-optics-layout,
+  .lektrus-optics-editor.catalog-hidden.show-properties .lektrus-optics-layout{grid-template-columns:minmax(0,1fr)}
+  .lektrus-optics-catalog,.lektrus-optics-inspector{width:min(265px,calc(100vw - 48px))}
+}
