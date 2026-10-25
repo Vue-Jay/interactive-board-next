@@ -101,7 +101,7 @@ import { connectBoardViewControl, type BoardViewControlChannel } from "./boardVi
 import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState } from "./boardWorkSync";
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
-import {mergeEditedValue} from "./lektrusLiveEditorMerge";
+import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMerge";
 import {
   parseDocument,
   packDocumentInk,
@@ -2468,6 +2468,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const viewSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastViewSerialized = useRef<string | null>(null);
   const [items, setItems] = useState<Item[]>(() => expandDocumentInk(initial.data));
+  // Realtime broadcasts are untrusted display-only previews until the sender
+  // persists the change through the board's RLS-protected server RPC.
+  const [remoteLiveItems,setRemoteLiveItems]=useState<Record<string,Item>>({});
+  const remoteLiveBases=useRef(new Map<string,string>());
+  const pendingEditorBases=useRef(new Map<string,Item>());
+  const remoteLiveCleanup=useRef(new Map<string,ReturnType<typeof setTimeout>>());
   // Keep live ink available as a fallback after its first server rendering.
   // A later competing document revision may temporarily lack that stroke:
   // immediately deleting the broadcast overlay made it visibly disappear.
@@ -5377,7 +5383,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(latest){
       if(!graphLiveBaseRef.current)graphLiveBaseRef.current=latest;
       const changedItem=graphItemFromDraft(latest,merged);
+      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
       commit(itemsRef.current.map(item=>item.id===latest.id?changedItem:item));
+      workChannel.current?.publishEdit(latest.id,editorDiff(latest,changedItem));
     }
   };
   const saveGraphEditor=()=>{
@@ -5395,13 +5403,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   // previous draft when an unrelated point changes.
   useEffect(()=>{
     if(!graphEditorId)return;
-    const current=items.find(item=>item.id===graphEditorId);
+    const current=remoteLiveItems[graphEditorId]??items.find(item=>item.id===graphEditorId);
     if(!current)return;
     const updated=graphDraftFromItem(current);
     if(JSON.stringify(updated)!==JSON.stringify(liveGraphDraftRef.current)){
       liveGraphDraftRef.current=updated;setGraphDraft(updated);
     }
-  },[items,graphEditorId]);
+  },[items,remoteLiveItems,graphEditorId]);
 
   // On-board school construction. Changing tools never creates a separate editor:
   // the actual board object is updated through the same undo/realtime commit.
@@ -6606,8 +6614,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
 
   useEffect(() => {
-    if(!adminHidden) workChannel.current?.publish(selected, editing);
-  }, [selected, editing, adminHidden]);
+    if(!adminHidden) workChannel.current?.publish(selected,
+      editing??graphEditorId??(schoolEditorItem?.graphFigureId==="contour-atlas"?schoolEditorItem.id:null));
+  }, [selected, editing,graphEditorId,schoolEditorItem, adminHidden]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -7342,7 +7351,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setNotice("Электрическая схема добавлена на доску");
           }}/>}
         {schoolEditorItem&&<LektrusSchoolDiagramEditor key={schoolEditorItem.id}
-          item={items.find(item=>item.id===schoolEditorItem.id)??schoolEditorItem}
+          item={remoteLiveItems[schoolEditorItem.id]??items.find(item=>item.id===schoolEditorItem.id)??schoolEditorItem}
           userId={authUser.id} studentMode={isStudent&&schoolEditorItem.graphFigureId==="contour-atlas"}
           existing={itemsRef.current.some(i=>i.id===schoolEditorItem.id)}
           onCancel={()=>setSchoolEditorItem(null)}
@@ -7360,7 +7369,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             )}:next;
             const merged=mergeEditedValue(before,submitted,latest.schoolDiagram);
             const updated={...latest,schoolDiagram:merged,text:merged.title};
+            if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
             commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
+            workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
           }}
           onSave={next=>{
             // Students may complete maps, but cannot change the teacher's
@@ -8336,7 +8347,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                      (event.target as Element).closest?.(".graph-point"))return;
                   if (!canEdit || (structurallyLockedForStudent(item)&&item.graphFigureId!=="contour-atlas")) return;
                   const remoteEditor = remoteEditorFor(item.id);
-                  if (remoteEditor) {
+                  if (remoteEditor&&!((item.kind==="graph"&&item.graphPurpose==="geometry")||
+            item.graphFigureId==="contour-atlas")) {
                     setNotice(`${remoteEditor.name} уже редактирует этот объект`);
                     return;
                   }
