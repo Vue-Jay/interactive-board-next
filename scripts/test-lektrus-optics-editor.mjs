@@ -68,10 +68,23 @@ assert.ok([0,960].some(x=>Math.abs(tirEnd.x-x)<0.01)||
 
 // Exactly aligned prism, mirror and prism again: the return ray must hit
 // both prism faces on the way back, instead of stopping inside the glass.
+// In a glass prism the selected ray must expose the exact interaction
+// sequence, rather than an inexplicable zigzag with no labels.
+const narratedPrism=optics.traceOpticalRay({...blank,elements:[src,glassPrism],rays:[ray]},ray);
+assert.ok(narratedPrism.events?.length>=2,"Glass prism should report both surface interactions");
+assert.ok(narratedPrism.events[0].text.includes("Вход в призму"),"Identify entry point");
+assert.ok(narratedPrism.events.some(e=>e.text.includes("Выход из призмы")),
+ "The ray must eventually emerge from a standard triangular glass prism");
+assert.ok(narratedPrism.events.every(e=>Number.isFinite(e.point.x)&&Number.isFinite(e.point.y)),
+ "Physical interaction markers require finite coordinates");
 const neutralPrism={...prism,n1:1,n2:1};
 const farMirror={...mirror,x:810,id:"far-mirror"};
 const returnScene={...blank,elements:[src,neutralPrism,farMirror],rays:[ray]};
 const returned=optics.traceOpticalRay(returnScene,ray);
+assert.ok(returned.events?.filter(e=>e.text.includes("призмы")).length>=4,
+ "Mirror return must enter and exit the prism in both directions");
+assert.equal(returned.events?.filter(e=>e.kind==="mirror").length,1,
+ "The reflected return path must show the mirror interaction");
 assert.ok(returned.points.length>=7,"Light must traverse prism, reflect and traverse it again");
 assert.ok(returned.points.at(-1).x<1,"Return ray must continue past the prism to the left edge");
 assert.ok(returned.points.filter(p=>Math.abs(p.x-500)<75).length>=4,
@@ -97,6 +110,8 @@ for(const id of ["physics-mechanics","physics-optics","physics-graphs","physics-
  assert.ok(factory.includes('id==="'+id+'"'),"blank-start factory for "+id);
 const app=read("src/App.tsx"),icon=read("src/LektrusSubjectToolIcons.tsx");
 const editor=read("src/LektrusOpticsEditor.tsx"),view=read("src/LektrusOpticsView.tsx");
+assert.match(editor,/lektrus-optics-ray-steps/,"Optics editor must explain the actual ray path");
+assert.match(view,/path\.events\?\.map/,"Selected path should display numbered interactions");
 assert.match(app,/scienceOptics\|\|\["physics-optics"/,"optics opens dedicated editor");
 assert.match(app,/<LektrusOpticsView doc=\{item.scienceOptics\}/,"optics renders on board");
 assert.match(editor,/role="dialog" aria-modal="true" aria-label="Редактор оптики"/);
