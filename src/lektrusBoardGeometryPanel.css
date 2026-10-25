@@ -328,7 +328,7 @@
  min-height:38px;max-width:100%;padding:8px 12px;
  border:1px solid #2f6ec1;border-radius:10px;background:#296bbc;color:#fff;
  box-shadow:0 3px 12px rgba(35,92,166,.18);
- font:760 12px/1.15 inherit;white-space:nowrap;cursor:pointer;
+ font-family:inherit;font-size:12px;font-weight:760;line-height:1.15;white-space:nowrap;cursor:pointer;
  pointer-events:auto!important;touch-action:manipulation;
  -webkit-tap-highlight-color:transparent;
 }
