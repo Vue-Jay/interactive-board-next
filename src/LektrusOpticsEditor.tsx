@@ -48,6 +48,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
  const [inspector,setInspector]=useState(true);
  const [rayAngle,setRayAngle]=useState(0);
  const [notice,setNotice]=useState("");
+ const [cursor,setCursor]=useState<{x:number;y:number}|null>(null);
  const drag=useRef<{pointerId:number;id:string;startX:number;startY:number;originX:number;originY:number;x:number;y:number}|null>(null);
  const preview=useRef<OpticsDocument|null>(null);
  const [display,setDisplay]=useState<OpticsDocument|null>(null);
@@ -95,9 +96,10 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
    event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
  };
  const move=(event:ReactPointerEvent<HTMLDivElement>)=>{
+   const svg=event.currentTarget.querySelector("svg");if(!svg)return;
+   if(event.pointerType!=="touch"&&tool!=="select")setCursor(opticsSvgPoint(event.clientX,event.clientY,svg));
    const current=drag.current;if(!current||current.pointerId!==event.pointerId)return;
    event.preventDefault();
-   const svg=event.currentTarget.querySelector("svg");if(!svg)return;
    const origin=opticsSvgPoint(current.startX,current.startY,svg);
    const next=opticsSvgPoint(event.clientX,event.clientY,svg);
    current.x=clamp(Math.round(current.originX+next.x-origin.x),30,930);
@@ -161,13 +163,20 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
     <div className="lektrus-optics-work">
      <div className="lektrus-optics-work-top">
       <b>Схема лучей</b><span>{doc.elements.length} элементов · {doc.rays.length} лучей</span>
+      <button type="button" className="lektrus-optics-quick-ray" disabled={!source}
+        title={source?"Добавить луч от источника света":"Сначала добавьте источник света"}
+        onClick={newRay}>+ Луч</button>
       {selected&&<button type="button" className={inspector?"active":""} onClick={()=>setInspector(v=>!v)}>Параметры</button>}
      </div>
-     <div className="lektrus-optics-stage" onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
-       <LektrusOpticsView doc={display??doc} selection={selected} tool={tool}
-         onPlace={place} onSelect={setSelected} onElementDown={down}/>
+     <div className="lektrus-optics-stage" onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={()=>setCursor(null)}>
+       <LektrusOpticsView doc={display??doc} selection={selected} tool={tool} cursor={cursor}
+         onPlace={place} onSelect={setSelected} onElementDown={down}
+         onRaySelect={id=>{setSelected({kind:"ray",id});setInspector(true)}}/>
      </div>
-     <div className="lektrus-optics-note" role="status">{notice||"Выберите элемент слева, затем коснитесь чертежа. Лучи добавляются для выбранного источника."}</div>
+     <div className="lektrus-optics-note" role="status">{notice||(
+       !doc.elements.length?"1. Выберите «Источник» и поставьте его на лист. 2. Добавьте линзу или зеркало. 3. Нажмите «+ Луч».":
+       !source?"Добавьте источник света для построения лучей. Объекты можно перемещать прямо на листе.":
+       !doc.rays.length?"Нажмите «+ Луч» над чертежом. Направление можно изменить, выделив луч.":"Выделите луч на чертеже, чтобы изменить его угол и цвет в правой панели.")}</div>
     </div>
     {inspector&&selected&&<aside className="lektrus-optics-inspector" aria-label="Параметры оптического элемента">
      <div className="lektrus-optics-panel-head"><strong>Параметры</strong><button type="button" onClick={()=>setInspector(false)} aria-label="Скрыть параметры">×</button></div>
