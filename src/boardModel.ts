@@ -1,5 +1,39 @@
 /** Self-contained persisted circuit validation.
  * Keep this module import-free for whiteboard persistence and ink tests. */
+/** Validate persisted mechanics without importing any rendering modules. */
+function validMechanicsPayload(input:unknown):boolean{
+ if(!input||typeof input!=="object")return false;
+ const d=input as Record<string,unknown>;
+ if(d.version!==1||!Array.isArray(d.bodies)||!Array.isArray(d.supports)||!Array.isArray(d.forces)||
+   d.bodies.length>60||d.supports.length>60||d.forces.length>180||
+   typeof d.grid!=="boolean"||typeof d.labels!=="boolean")return false;
+ const ids=new Set<string>(),bodyIds=new Set<string>();
+ const coords=(v:Record<string,unknown>)=>typeof v.id==="string"&&!!v.id&&v.id.length<=64&&!ids.has(v.id)&&
+  typeof v.label==="string"&&v.label.length<=75&&
+  typeof v.x==="number"&&Number.isFinite(v.x)&&v.x>=0&&v.x<=960&&
+  typeof v.y==="number"&&Number.isFinite(v.y)&&v.y>=0&&v.y<=560;
+ for(const raw of d.bodies){if(!raw||typeof raw!=="object")return false;const b=raw as Record<string,unknown>;
+  if(!coords(b)||!["block","circle"].includes(b.kind as string)||
+    !["width","height","mass"].every(k=>typeof b[k]==="number"&&Number.isFinite(b[k]))||
+    (b.width as number)<20||(b.width as number)>420||
+    (b.height as number)<20||(b.height as number)>420||
+    (b.mass as number)<0||(b.mass as number)>1e7)return false;
+  ids.add(b.id as string);bodyIds.add(b.id as string);}
+ for(const raw of d.supports){if(!raw||typeof raw!=="object")return false;const v=raw as Record<string,unknown>;
+  if(!coords(v)||!["floor","incline","pivot"].includes(v.kind as string)||
+   typeof v.width!=="number"||!Number.isFinite(v.width)||(v.width as number)<30||(v.width as number)>500||
+   typeof v.angle!=="number"||!Number.isFinite(v.angle)||(v.angle as number)<-75||(v.angle as number)>75)return false;
+  ids.add(v.id as string);}
+ for(const raw of d.forces){if(!raw||typeof raw!=="object")return false;const f=raw as Record<string,unknown>;
+  if(!coords(f)||!["angle","length","magnitude"].every(k=>typeof f[k]==="number"&&Number.isFinite(f[k]))||
+    (f.angle as number)<-360||(f.angle as number)>360||
+    (f.length as number)<15||(f.length as number)>400||
+    (f.magnitude as number)<0||(f.magnitude as number)>1e9||
+    typeof f.showValue!=="boolean"||
+    (f.bodyId!==null&&(typeof f.bodyId!=="string"||!bodyIds.has(f.bodyId))))return false;
+  ids.add(f.id as string);}
+ return true;
+}
 /** Validate the independent optics payload without coupling board storage to UI. */
 function validOpticsPayload(data:unknown):boolean{
  if(!data||typeof data!=="object")return false;
@@ -407,6 +441,7 @@ export type Item = {
   chartEntries?: {label:string;value:number}[];
   scienceCircuit?: import("./lektrusCircuitModel").CircuitDocument;
   scienceOptics?: import("./lektrusOpticsModel").OpticsDocument;
+  scienceMechanics?: import("./lektrusMechanicsModel").MechanicsDocument;
   scienceAtomModel?: import("./lektrusAtomModel").AtomModel;
   sciencePeriodicHighlights?: number[];
   sciencePeriodicShowNames?: boolean;
@@ -511,7 +546,7 @@ const binding = (v: unknown): v is ConnectorBinding => !!v && typeof v === "obje
  * or reopening a board. Previously these fields were silently dropped and all
  * subject diagrams rendered as a generic coordinate plane. */
 const persistedGraphKeys = [
-  "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceOptics","scienceAtomModel",
+  "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceOptics","scienceMechanics","scienceAtomModel",
   "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
   "scienceExperimentStage","scienceOrganicAnnotations","scienceReactionConditions",
   "scienceReagents","scienceEnvironment","schoolDiagram",
@@ -624,6 +659,7 @@ export function parseDocument(raw: string): DocumentData {
         throw new Error("Повреждена предметная учебная схема");
       if(i.scienceCircuit!=null&&!circuitIsDocument(i.scienceCircuit))throw new Error("Повреждена схема электрической цепи");
       if(i.scienceOptics!=null&&!validOpticsPayload(i.scienceOptics))throw new Error("Повреждена оптическая схема");
+      if(i.scienceMechanics!=null&&!validMechanicsPayload(i.scienceMechanics))throw new Error("Повреждена схема механики");
       if(i.scienceAtomModel!=null){
         const model=i.scienceAtomModel;
         if(!model||!Number.isInteger(model.atomicNumber)||model.atomicNumber<1||model.atomicNumber>118||
