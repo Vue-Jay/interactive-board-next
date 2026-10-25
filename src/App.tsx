@@ -6712,12 +6712,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       (mutation)=>{
         const stored=itemsRef.current.find(item=>item.id===mutation.itemId);
         if(!stored||stored.kind!=="graph"||
-          !(stored.graphPurpose==="geometry"||stored.graphFigureId==="contour-atlas"))return;
+          !(stored.graphPurpose==="geometry"||stored.graphFigureId==="contour-atlas"||
+            stored.scienceMechanics||stored.scienceOptics||stored.scienceCircuit))return;
         if(!mutation.ops.length||JSON.stringify(mutation.ops).length>120000)return;
         const allowed=stored.graphFigureId==="contour-atlas"?
           (path:string|number)=>path==="schoolDiagram"||path==="text":
           (path:string|number)=>typeof path==="string"&&
-            (path.startsWith("graph")||path==="text");
+            (path.startsWith("graph")||path==="text"||
+              path==="scienceMechanics"&&!!stored.scienceMechanics||
+              path==="scienceOptics"&&!!stored.scienceOptics||
+              path==="scienceCircuit"&&!!stored.scienceCircuit);
         if(mutation.ops.some(op=>!op.path.length||!allowed(op.path[0])||
           !["set","remove","append","upsert-id","remove-id"].includes(op.kind)))return;
         if(!remoteLiveBases.current.has(mutation.itemId))
@@ -6731,10 +6735,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
              preview.graphFigureId!==stored.graphFigureId)return current;
           if(preview.graphFigureId==="contour-atlas"){
             if(!isSchoolDiagram(preview.schoolDiagram))return current;
-          }else if((preview.graphPoints?.length??0)>40||
-                   (preview.graphSegments?.length??0)>60||
-                   (preview.graphPolygons?.length??0)>30||
-                   preview.graphPoints?.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))return current;
+          }else if(
+            (preview.scienceMechanics&&!mechanicsValid(preview.scienceMechanics))||
+            (preview.scienceOptics&&!validOptics(preview.scienceOptics))||
+            (preview.scienceCircuit&&!circuitIsDocument(preview.scienceCircuit))||
+            (preview.graphPoints?.length??0)>40||
+            (preview.graphSegments?.length??0)>60||
+            (preview.graphPolygons?.length??0)>30||
+            preview.graphPoints?.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)))return current;
           return {...current,[mutation.itemId]:preview};
         });
         const oldTimer=remoteLiveCleanup.current.get(mutation.itemId);
