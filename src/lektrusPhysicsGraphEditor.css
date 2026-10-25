@@ -1,0 +1,82 @@
+.lektrus-motion-backdrop{position:fixed;inset:0;z-index:100065;padding:0;background:#eaf0f9;font-family:Inter,system-ui,sans-serif;color:#253e61}
+.lektrus-motion-editor{display:flex;flex-direction:column;width:100vw;height:100dvh;min-height:0;overflow:hidden;background:#f5f8fd}
+.lektrus-motion-editor button,.lektrus-motion-editor input,.lektrus-motion-editor select{font:inherit}
+.lektrus-motion-editor button{cursor:pointer;transition:background .12s,border-color .12s;color:#35547d}
+.lektrus-motion-editor button:disabled{cursor:default;opacity:.42}
+.lektrus-motion-editor button:focus-visible,.lektrus-motion-editor :is(input,select):focus-visible{outline:2px solid #4d79d2;outline-offset:2px}
+.lektrus-motion-header{flex:0 0 57px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:7px 17px;background:#fff;border-bottom:1px solid #dce6f3}
+.lektrus-motion-brand{display:flex;align-items:center;gap:11px;min-width:0}
+.lektrus-motion-brand>span{width:37px;height:37px;display:grid;place-items:center;border-radius:10px;background:#e4eeff;color:#3868c7;font-weight:820;font-size:23px}
+.lektrus-motion-brand small{display:block;font-size:10px;letter-spacing:.075em;color:#6d89b7;font-weight:790}
+.lektrus-motion-brand strong{display:block;font-size:17px;margin-top:3px}
+.lektrus-motion-actions{display:flex;align-items:center;gap:5px}
+.lektrus-motion-actions button{min-width:35px;min-height:35px;padding:5px 9px;border-radius:9px;border:1px solid #d7e3f2;background:#f3f7fd;font-size:12px;font-weight:750}
+.lektrus-motion-actions button:hover:not(:disabled){background:#e6efff;border-color:#afc9f3}
+.lektrus-motion-actions .lektrus-motion-close{font-size:20px;width:35px;padding:0}
+.lektrus-motion-layout{flex:1 1 0;display:grid;grid-template-columns:265px minmax(0,1fr);gap:8px;padding:8px;min-height:0}
+.lektrus-motion-editor.is-compact .lektrus-motion-layout{grid-template-columns:minmax(0,1fr)}
+.lektrus-motion-editor.is-compact .lektrus-motion-settings{display:none}
+.lektrus-motion-settings,.lektrus-motion-stage{min-width:0;min-height:0;border:1px solid #dce5f2;background:#fff;border-radius:12px}
+.lektrus-motion-settings{display:flex;flex-direction:column;gap:12px;padding:12px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.lektrus-motion-settings label{display:grid;gap:5px;font-size:11px;font-weight:730;color:#4d6585}
+.lektrus-motion-settings :is(input:not([type=checkbox]),select){width:100%;min-width:0;box-sizing:border-box;min-height:35px;padding:6px 8px;border:1px solid #d6e3f1;border-radius:8px;background:#fbfcff;color:#304767;font-size:12px}
+.lektrus-motion-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.lektrus-motion-fields label:first-child{grid-column:span 2}
+.lektrus-motion-section-title{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e6edf6;padding-top:10px;font-weight:800;font-size:12px;color:#324d72}
+.lektrus-motion-section-title span{color:#5079b8}
+.lektrus-motion-toggles{display:grid;grid-template-columns:1fr 1fr;gap:9px 7px}
+.lektrus-motion-toggles label{display:flex;align-items:center;font-size:10px;line-height:1.3;gap:6px;min-width:0}
+.lektrus-motion-toggles input{accent-color:#365fc9;margin:0}
+.lektrus-motion-point-table{max-height:320px;overflow:auto;scrollbar-width:thin}
+.lektrus-motion-table-head,.lektrus-motion-point-row{display:grid;grid-template-columns:31px minmax(0,1fr) minmax(0,1fr) 25px;align-items:center;gap:4px}
+.lektrus-motion-table-head{font-size:9px;font-weight:800;color:#7088a9;padding:0 2px 6px}
+.lektrus-motion-point-row{padding:3px 0;border-bottom:1px solid #edf2f9}
+.lektrus-motion-point-row.selected{background:#eff5ff}
+.lektrus-motion-point-row input{min-height:28px!important;height:28px!important;padding:3px 5px!important;font-size:11px!important}
+.lektrus-motion-point-row button{border:1px solid #dfe8f3;border-radius:7px;background:#f3f7fe;min-height:27px;font-size:11px;font-weight:740}
+.lektrus-motion-point-row button:hover{background:#e2edff}
+.lektrus-motion-point-row .lektrus-motion-delete-point{background:#fff2f3;color:#ac5664;border-color:#f4dbe0;font-size:17px}
+.lektrus-motion-add-row{flex:0 0 auto;min-height:34px;border-radius:8px;background:#edf4ff;border:1px solid #c9dcfa;font-weight:740;font-size:11px}
+.lektrus-motion-add-row:hover{background:#e2eeff}
+.lektrus-motion-settings p{font-size:10px;line-height:1.5;color:#8595ac;margin:0}
+.lektrus-motion-stage{display:flex;flex-direction:column;overflow:hidden;padding:10px;gap:8px}
+.lektrus-motion-toolbar{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.lektrus-motion-tools{display:flex;gap:5px}
+.lektrus-motion-tools button{min-height:33px;padding:6px 12px;border-radius:8px;border:1px solid #d5e2f2;background:#f4f7fc;font-weight:720;font-size:11px}
+.lektrus-motion-tools button.active{background:#e5eeff;border-color:#9fbaeb;color:#2758b4}
+.lektrus-motion-tools button:hover:not(.active){background:#eaf2ff}
+.lektrus-motion-toolbar-status{display:flex;gap:9px;align-items:center;font-size:11px;color:#758baa}
+.lektrus-motion-toolbar-status b{color:#3c5d8b}
+.lektrus-motion-sheet{flex:1 1 auto;min-height:0;min-width:0;background:#fff;border:1px solid #e1e8f4;border-radius:10px;display:grid;place-items:center;overflow:hidden}
+.lektrus-motion-svg{width:100%;height:100%;min-height:0;max-height:100%;touch-action:none}
+.lektrus-motion-svg.mode-point{cursor:crosshair}
+.lektrus-motion-point-hit{cursor:grab}
+.lektrus-motion-point-hit:active{cursor:grabbing}
+.lektrus-motion-grid line{stroke:#e9eff8;stroke-width:1.1}
+.lektrus-motion-axis path{stroke:#526d94;stroke-width:2.1;fill:none}
+.lektrus-motion-axis text{font-size:12px;fill:#7085a1}
+.lektrus-motion-axis .axis-title{font-size:14px;font-weight:800;fill:#344f76}
+.lektrus-motion-line{fill:none;stroke:#3973cb;stroke-width:3.6;stroke-linejoin:round;stroke-linecap:round}
+.lektrus-motion-hint{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;color:#8190a8;font-size:10px}
+.lektrus-motion-footer{display:flex;align-items:center;gap:8px;justify-content:flex-end;flex:0 0 auto;min-height:49px;padding:7px 15px;background:#fff;border-top:1px solid #dce5f3}
+.lektrus-motion-footer span{flex:1 1 auto;font-size:10px;color:#899ab0}
+.lektrus-motion-footer button{min-height:35px;padding:7px 16px;border-radius:9px;border:1px solid #d2dff0;background:#f5f8fe;font-size:11px;font-weight:760}
+.lektrus-motion-footer .primary,.lektrus-motion-confirm .primary{background:#365fc9;color:#fff;border-color:#365fc9}
+.lektrus-motion-confirm-backdrop{position:absolute;inset:0;z-index:9;display:grid;place-items:center;background:#192f4e88;padding:12px}
+.lektrus-motion-confirm{max-width:370px;padding:23px;background:#fff;border-radius:14px;box-shadow:0 20px 50px #14223f30}
+.lektrus-motion-confirm strong{font-size:16px}.lektrus-motion-confirm p{font-size:12px;line-height:1.5;color:#5d718e}
+.lektrus-motion-confirm>div{display:flex;justify-content:flex-end;gap:8px}
+.lektrus-motion-confirm button{padding:8px 14px;border:1px solid #cbdbee;border-radius:8px;background:#f3f7fd;font-size:11px}
+@media(max-width:760px){.lektrus-motion-layout{display:grid;grid-template-columns:minmax(0,1fr)!important;position:relative;padding:4px}
+.lektrus-motion-settings{position:absolute;z-index:5;left:4px;top:4px;bottom:4px;width:min(270px,calc(100vw - 45px));box-sizing:border-box;box-shadow:0 12px 36px #20385d40}
+.lektrus-motion-stage{height:100%;padding:6px}
+.lektrus-motion-header{padding:6px 9px;gap:5px}
+.lektrus-motion-brand>span{display:none}
+.lektrus-motion-brand strong{font-size:14px}
+.lektrus-motion-brand small{font-size:9px}
+.lektrus-motion-actions button{min-height:32px;min-width:31px;padding:3px 6px}
+.lektrus-motion-toolbar-status{display:none}
+.lektrus-motion-footer span{display:none}
+.lektrus-motion-footer button{flex:1 1 auto}
+.lektrus-motion-tools button{padding:5px 8px}
+}
