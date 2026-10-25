@@ -2754,6 +2754,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       // merely because the previous remote revision finished.
       if(snapshot.current&&documentFingerprint(snapshot.current)===fingerprint){
         try{localStorage.removeItem(storageKey+".pending-sync")}catch{}
+        pendingEditorBases.current.clear();
       }
       remoteSaveFailures.current = 0;
       saveFailure.current = null;
@@ -6473,12 +6474,20 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         const localItems = expandDocumentInk(local);
         const remoteIds = new Set(remoteItems.map(item => item.id));
         const localOnly = localItems.filter(item => !remoteIds.has(item.id));
+        const localById=new Map(localItems.map(item=>[item.id,item]));
+        const mergedItems=remoteItems.map(item=>{
+          const original=pendingEditorBases.current.get(item.id);
+          const changed=localById.get(item.id);
+          return original&&changed?mergeEditedValue(original,changed,item):item;
+        });
         const merged: DocumentData = packDocumentInk({
           ...remote,
           view: local.view,
-          items: [...remoteItems, ...localOnly],
+          items: [...mergedItems, ...localOnly],
           ink: undefined,
         });
+        for(const item of remoteItems)
+          if(pendingEditorBases.current.has(item.id))pendingEditorBases.current.set(item.id,item);
 
         remoteVersion.current = row.version;
         acknowledgedDocument.current = documentFingerprint(remote);
@@ -6591,6 +6600,26 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     followTeacherRef.current = followTeacher;
   }, [followTeacher]);
 
+  // Retire previews once an authenticated document revision arrives.
+  useEffect(()=>{
+    const stale:string[]=[];
+    for(const [id,baseline] of remoteLiveBases.current){
+      const stored=items.find(item=>item.id===id);
+      if(!stored||JSON.stringify(stored)!==baseline)stale.push(id);
+    }
+    if(!stale.length)return;
+    for(const id of stale){
+      remoteLiveBases.current.delete(id);
+      const timer=remoteLiveCleanup.current.get(id);
+      if(timer)clearTimeout(timer);
+      remoteLiveCleanup.current.delete(id);
+    }
+    setRemoteLiveItems(current=>{
+      const updated={...current};
+      for(const id of stale)delete updated[id];
+      return updated;
+    });
+  },[items]);
   useEffect(() => {
     if(layoutEditing)return;
     const channel = connectBoardWorkChannel(
@@ -6604,11 +6633,43 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         return next;
       }),
       !adminHidden,
+      (mutation)=>{
+        const stored=itemsRef.current.find(item=>item.id===mutation.itemId);
+        if(!stored||stored.kind!=="graph"||
+          !(stored.graphPurpose==="geometry"||stored.graphFigureId==="contour-atlas"))return;
+        if(!mutation.ops.length||JSON.stringify(mutation.ops).length>120000)return;
+        const allowed=stored.graphFigureId==="contour-atlas"?
+          (path:string|number)=>path==="schoolDiagram"||path==="text":
+          (path:string|number)=>typeof path==="string"&&
+            (path.startsWith("graph")||path==="text");
+        if(mutation.ops.some(op=>!op.path.length||!allowed(op.path[0])||
+          !["set","remove","append","upsert-id","remove-id"].includes(op.kind)))return;
+        if(!remoteLiveBases.current.has(mutation.itemId))
+          remoteLiveBases.current.set(mutation.itemId,JSON.stringify(stored));
+        setRemoteLiveItems(current=>{
+          const base=current[mutation.itemId]??stored;
+          const preview=applyEditorOps(base,mutation.ops);
+          return {...current,[mutation.itemId]:preview};
+        });
+        const oldTimer=remoteLiveCleanup.current.get(mutation.itemId);
+        if(oldTimer)clearTimeout(oldTimer);
+        remoteLiveCleanup.current.set(mutation.itemId,setTimeout(()=>{
+          remoteLiveBases.current.delete(mutation.itemId);
+          remoteLiveCleanup.current.delete(mutation.itemId);
+          setRemoteLiveItems(current=>{
+            if(!current[mutation.itemId])return current;
+            const next={...current};delete next[mutation.itemId];return next;
+          });
+        },15000));
+      },
     );
     workChannel.current = channel;
     return () => {
       workChannel.current = null;
       channel.close();
+      for(const timer of remoteLiveCleanup.current.values())clearTimeout(timer);
+      remoteLiveCleanup.current.clear();remoteLiveBases.current.clear();
+      setRemoteLiveItems({});
       setRemoteWork({});
     };
   }, [boardSummary.id, boardSummary.role, authUser.id, authUser.name, adminHidden]);
@@ -8321,7 +8382,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <ViewerInkLayer key={entry.key} strokes={entry.strokes} bounds={entry.bounds}
                   view={view} viewport={boardViewportSize} />
               );
-              const item = entry.item;
+              const item = remoteLiveItems[entry.item.id]??entry.item;
               return (
               <div
                 data-object={item.id}
