@@ -1,4 +1,4 @@
-import {useId,useRef,useState,type RefObject,type PointerEvent} from "react";
+import {useEffect,useId,useRef,useState,type RefObject,type PointerEvent} from "react";
 import "./lektrusMeasurementInstruments.css";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
@@ -64,7 +64,7 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
   })}
   <path d="M27 207V222H42" fill="none" stroke="#416e8c" strokeWidth="1.5"/>
   <path d="M45 20A24 24 0 0 1 24 43" fill="none" stroke="#719fbe" strokeWidth="1.5"/>
-  <text x="100" y="234" fontSize="8.5" letterSpacing="1" fontWeight="750" fill="#597b96">LEKTRUS</text>
+  <text x="36" y="123" transform="rotate(-90 36 123)" textAnchor="middle" fontSize="8.5" letterSpacing="1" fontWeight="750" fill="#597b96">LEKTRUS</text>
  </svg>;
  return <svg width="360" height="205" viewBox="0 0 360 205" role="img" aria-label="Прозрачный транспортир, от 0 до 180 градусов">
   <defs><linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
@@ -91,8 +91,8 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
  </svg>;
 }
 
-function SharedInstrument({item,view,boardRef,editable,onUpdate,onRemove}:{
- item:Item;view:View;boardRef:RefObject<HTMLElement|null>;editable:boolean;
+function SharedInstrument({item,view,boardRef,editable,selected,onUpdate,onRemove}:{
+ item:Item;view:View;boardRef:RefObject<HTMLElement|null>;editable:boolean;selected:boolean;
  onUpdate:(id:string,patch:Partial<Item>)=>void;
  onRemove:(id:string)=>void;
 }){
@@ -153,7 +153,7 @@ function SharedInstrument({item,view,boardRef,editable,onUpdate,onRemove}:{
   <div className="geometry-instrument geometry-instrument-centered"
     data-shared-instrument={item.id}
     style={{left:screenPosition.x,top:screenPosition.y}}>
-    {editable&&<div className="geometry-instrument-actions" style={{top:toolbarOffset}}
+    {editable&&selected&&<div className="geometry-instrument-actions" style={{top:toolbarOffset}}
       onPointerDown={event=>event.stopPropagation()}>
       <span>{labels[type]}</span>
       <span className="geometry-angle-readout" title="Угол поворота">
@@ -181,7 +181,7 @@ function SharedInstrument({item,view,boardRef,editable,onUpdate,onRemove}:{
       onPointerMove={moving} onPointerUp={finish} onPointerCancel={finish}>
       <InstrumentGraphic type={type}/>
     </div>
-    <span className="geometry-pivot" aria-hidden="true"/>
+
   </div>,document.body);
 }
 
@@ -197,6 +197,23 @@ export default function GeometryInstruments({
  editable?:boolean;renderOverlays?:boolean;
 }){
  const [open,setOpen]=useState(false);
+ const [selectedInstrumentId,setSelectedInstrumentId]=useState<string|null>(null);
+ useEffect(()=>{
+  if(!renderOverlays)return;
+  const selectFromPointer=(event:globalThis.PointerEvent)=>{
+   const target=event.target;
+   if(!(target instanceof Element))return;
+   const instrument=target.closest<HTMLElement>("[data-shared-instrument]");
+   setSelectedInstrumentId(instrument?.dataset.sharedInstrument??null);
+  };
+  // Capture catches clicks outside even when the canvas stops bubbling.
+  document.addEventListener("pointerdown",selectFromPointer,true);
+  return()=>document.removeEventListener("pointerdown",selectFromPointer,true);
+ },[renderOverlays]);
+ useEffect(()=>{
+  if(selectedInstrumentId&&!instruments.some(item=>item.id===selectedInstrumentId&&!item.hidden))
+   setSelectedInstrumentId(null);
+ },[instruments,selectedInstrumentId]);
  const [menuPosition,setMenuPosition]=useState({left:72,top:120});
  const toggleMenu=(button:HTMLButtonElement)=>{
   if(!editable)return;
@@ -248,6 +265,7 @@ export default function GeometryInstruments({
   </div>
   {renderOverlays&&instruments.filter(i=>!i.hidden).map(item=>
     <SharedInstrument key={item.id} item={item} view={view} boardRef={boardRef}
-      editable={editable&&!item.locked} onUpdate={onUpdate} onRemove={onRemove}/>)}
+      editable={editable&&!item.locked} selected={selectedInstrumentId===item.id}
+      onUpdate={onUpdate} onRemove={onRemove}/>)}
  </>;
 }
