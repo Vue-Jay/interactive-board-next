@@ -1,8 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import {svgClientPoint} from "./lektrusSvgPointer";
-import LektrusPhysicsPointerGlyph from "./LektrusPhysicsPointerGlyph";
-import LektrusGeometryToolIcon from "./LektrusGeometryToolIcon";
+import {motionAxisTicks} from "./lektrusPhysicsGraphTicks";
 import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import type {Item} from "./boardModel";
 import {scienceToolGroupForId} from "./lektrusScienceCatalog";
@@ -161,7 +160,9 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
   });
   const ordered=[...data].sort((a,b)=>a.x-b.x);
   const polyline=ordered.map(point=>`${sx(point.x)},${sy(point.y)}`).join(" ");
-  const ticks=Array.from({length:7},(_,i)=>i);
+  const xTicks=motionAxisTicks(0,draft.xMax,8);
+  const yTicks=motionAxisTicks(draft.yMin,draft.yMax,6);
+  const majorX=new Set(xTicks.labels),majorY=new Set(yTicks.labels);
   const measurement=useMemo(()=>{
     const ordered=[...data].sort((a,b)=>a.x-b.x);
     if(ordered.length<2)return null;
@@ -228,12 +229,8 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
         <main className="lektrus-motion-stage">
           <div className="lektrus-motion-toolbar">
             <div className="lektrus-motion-tools" role="group" aria-label="Режим работы с графиком">
-              <button type="button" className={tool==="select"?"active":""} onClick={()=>setTool("select")}>
-                <LektrusPhysicsPointerGlyph kind="select" size={19}/><span>Выбор</span>
-              </button>
-              <button type="button" className={tool==="point"?"active":""} onClick={()=>setTool("point")}>
-                <LektrusGeometryToolIcon name="point" size={19}/><span>Точка</span>
-              </button>
+              <button type="button" className={tool==="select"?"active":""} onClick={()=>setTool("select")}>Выбор</button>
+              <button type="button" className={tool==="point"?"active":""} onClick={()=>setTool("point")}>+ Точка</button>
             </div>
             <button type="button" className="lektrus-motion-measure-toggle" aria-pressed={measurementOpen}
               onClick={()=>setMeasurementOpen(v=>!v)}>Измерения</button>
@@ -262,17 +259,19 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
                 else if(tool==="select")setSelected(null);
               }}/>
               <g className="lektrus-motion-grid" pointerEvents="none">
-                {draft.grid&&ticks.map(i=><g key={i}>
-                  <line x1={PLOT.left+PLOT.width*i/6} y1={PLOT.top} x2={PLOT.left+PLOT.width*i/6} y2={PLOT.top+PLOT.height}/>
-                  <line x1={PLOT.left} y1={PLOT.top+PLOT.height*i/6} x2={PLOT.left+PLOT.width} y2={PLOT.top+PLOT.height*i/6}/>
-                </g>)}
+                {draft.grid&&<>
+                  {xTicks.grid.map(x=><line key={`gx-${x}`} className={majorX.has(x)?"major":undefined}
+                    x1={sx(x)} x2={sx(x)} y1={PLOT.top} y2={PLOT.top+PLOT.height}/>)}
+                  {yTicks.grid.map(y=><line key={`gy-${y}`} className={majorY.has(y)?"major":undefined}
+                    x1={PLOT.left} x2={PLOT.left+PLOT.width} y1={sy(y)} y2={sy(y)}/>)}
+                </>}
               </g>
               <g className="lektrus-motion-axis" pointerEvents="none">
                 <path d={`M${PLOT.left} ${PLOT.top-6}V${PLOT.top+PLOT.height}H${PLOT.left+PLOT.width+10}`}/>
-                {ticks.map(i=><g key={i}>
-                  <text x={PLOT.left+PLOT.width*i/6} y={PLOT.top+PLOT.height+27} textAnchor="middle">{format(draft.xMax*i/6)}</text>
-                  <text x={PLOT.left-12} y={PLOT.top+PLOT.height*(6-i)/6+4} textAnchor="end">{format(draft.yMin+(draft.yMax-draft.yMin)*i/6)}</text>
-                </g>)}
+                {xTicks.labels.map(x=><text key={`lx-${x}`} x={sx(x)}
+                  y={PLOT.top+PLOT.height+27} textAnchor="middle">{x}</text>)}
+                {yTicks.labels.map(y=><text key={`ly-${y}`} x={PLOT.left-12}
+                  y={sy(y)+4} textAnchor="end">{y}</text>)}
                 <text x={PLOT.left+PLOT.width+20} y={PLOT.top+PLOT.height+5} className="axis-title">t, с</text>
                 <text x={PLOT.left} y={PLOT.top-19} className="axis-title">{axis.variable}, {axis.unit}</text>
               </g>
