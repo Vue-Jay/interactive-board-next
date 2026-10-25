@@ -63,7 +63,7 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
     graphExpression:"",graphShowCurve:false,
     graphConnectPoints:false,graphA:1,graphB:0,graphC:0,
     graphXMin:-10,graphXMax:10,graphYMin:-6,graphYMax:6,
-    graphGrid:true,graphGridStep:1,graphSnap:true,graphAxisLabels:true,
+    graphGrid:true,graphGridStep:1,graphSnap:false,graphAxisLabels:true,
     graphShowLabels:true,graphPoints:[],graphProjections:false,
     graphSegments:[],graphCircles:[],graphAngles:[],
     graphPolygons:[],graphMidpoints:[],
@@ -90,7 +90,7 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
   }):schoolPolygons[id];
   if(vertices){
     const names="ABCDEFGHIJKLMNOPQRST";
-    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,
       graphPoints:vertices.map(([px,py],i)=>({x:px,y:py,label:names[i]})),
       graphPolygons:[{points:vertices.map((_,i)=>i),label:"",measure:true}],
       graphAngles:["triangle-right","square","rectangle","trapezoid-right"].includes(id)?[{a:vertices.length===3?2:vertices.length-1,vertex:0,b:1,label:""}]:[]};
@@ -100,7 +100,7 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
       id==="perpendicular"?[[-4,0],[4,0],[0,-3],[0,3]]:
       [[-4,-1],[4,1]];
     const segs=id==="parallel"||id==="perpendicular"?[[0,1],[2,3]]:[[0,1]];
-    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,
       graphPoints:pts.map(([px,py],i)=>({x:px,y:py,label:["A","B","C","D"][i]})),
       graphSnap:id==="ray"?false:graph.graphSnap,
       graphSegments:segs.map(([a,b])=>({a,b,kind:id==="ray"?"ray" as const:id==="segment"?"segment" as const:"line" as const,label:"",measure:false})),
@@ -108,12 +108,12 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
   }
   if(id==="triangular-pyramid"){
     const pts=[[-4,-2],[4,-2],[0,1],[0,4]];
-    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,
       graphPoints:pts.map(([px,py],i)=>({x:px,y:py,label:["A","B","C","S"][i]})),
       graphSegments:[[0,1],[1,2],[2,0],[0,3],[1,3],[2,3]].map(([a,b])=>({a,b,kind:"segment" as const,label:"",measure:false}))};
   }
   if(id==="sphere"){
-    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,
       graphPoints:[{x:0,y:0,label:"O"},{x:3.5,y:0,label:"R"}],
       graphCircles:[{center:0,edge:1,label:"",measure:false}],
       graphShowLabels:true};
@@ -121,7 +121,7 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
   if(id==="rectangular-prism"){
     const p=[[-4,-3],[2,-3],[4,-1],[-2,-1],[-4,2],[2,2],[4,4],[-2,4]];
     const edges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
-    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,
       graphPoints:p.map(([px,py],i)=>({x:px,y:py,label:["A","B","C","D","A₁","B₁","C₁","D₁"][i]})),
       graphSegments:edges.map(([a,b])=>({a,b,kind:"segment" as const,label:"",measure:false}))};
   }
@@ -143,12 +143,12 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
     const edges=id==="cube"?cubeEdges:id==="prism"?prismEdges:id==="pyramid"?pyramidEdges:
       id==="cylinder"?[...Array.from({length:16},(_,i)=>[i,i+1]),...Array.from({length:16},(_,i)=>[17+i,17+i+1]),[0,17],[8,25]]:
       [...Array.from({length:16},(_,i)=>[i,i+1]),[0,17],[8,17]];
-    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+    return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,
       graphShowLabels:id!=="cylinder"&&id!=="cone",graphSnap:false,
       graphPoints:points,graphSegments:edges.map(([a,b])=>segment(a,b)),
       graphXMin:-7,graphXMax:7,graphYMin:-5,graphYMax:6};
   }
-  if(id==="free")return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,graphSnap:false,graphShowLabels:true};
+  if(id==="free")return {...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,graphSnap:false,graphShowLabels:true};
   if(id==="blank")return {...graph,text:"Координатная плоскость"};
   if(id==="linear")return {...graph,graphPurpose:"function",graphType:"linear",graphExpression:"2*x + 1",graphShowCurve:true};
   if(id==="quadratic")return {...graph,graphPurpose:"function",graphType:"quadratic",graphExpression:"x^2 - 4*x + 3",graphShowCurve:true};
@@ -160,23 +160,23 @@ export function makeMathPresetItem(id:MathPresetId,x:number,y:number,objectId:st
     graphConnectPoints:true,graphPoints:[{x:-2,y:0,label:""},{x:3,y:0,label:""}]
   };
   if(id==="triangle")return {
-    ...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+    ...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,
     graphPoints:[{x:-4,y:-3,label:"A"},{x:4,y:-3,label:"B"},{x:0,y:3,label:"C"}],
     graphPolygons:[{points:[0,1,2],label:"ABC",measure:true}]
   };
   if(id==="quadrilateral")return {
-    ...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+    ...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,
     graphPoints:[{x:-4,y:-3,label:"A"},{x:4,y:-3,label:"B"},{x:3,y:3,label:"C"},{x:-3,y:3,label:"D"}],
     graphPolygons:[{points:[0,1,2,3],label:"ABCD",measure:true}]
   };
   if(id==="angle")return {
-    ...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+    ...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,
     graphPoints:[{x:4,y:0,label:"A"},{x:0,y:0,label:"O"},{x:3,y:4,label:"B"}],
     graphSegments:[{a:1,b:0,kind:"ray",label:"",measure:false},{a:1,b:2,kind:"ray",label:"",measure:false}],
     graphAngles:[{a:0,vertex:1,b:2,label:"∠AOB"}]
   };
   if(id==="circle")return {
-    ...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,
+    ...graph,graphPurpose:"geometry",graphAxisMode:"none",graphGrid:true,
     graphPoints:[{x:0,y:0,label:"O"},{x:3,y:0,label:"R"}],
     graphCircles:[{center:0,edge:1,label:"",measure:true}]
   };
