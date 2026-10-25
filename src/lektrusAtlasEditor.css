@@ -583,3 +583,10 @@
 /* Assignment settings are above the contour tool dock, including its popovers. */
 .lektrus-contour-editor-main>.lektrus-contour-editor-options{z-index:100}
 .lektrus-contour-editor-map{isolation:isolate}
+
+/* Painting should use the brush-size cursor across map features, not their
+   generic pointer cursors. Selection and hand modes remain unchanged. */
+.lektrus-atlas-svg[data-contour-brush] *,
+.lektrus-atlas-svg[data-contour-brush]{
+ cursor:inherit!important;
+}
