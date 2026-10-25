@@ -84,4 +84,20 @@ for(const id of ["voltmeter","ammeter","resistor","variable-resistor","photoresi
   "lamp","switch","push-button","battery","cell","diode","led",
   "capacitor","capacitor-polarized","galvanometer","motor","fuse","inductor","ground"])
   assert.ok(glyph.includes('id:"'+id+'"'),id+" must be available in the school palette");
+// The schematic stays in its stable saved coordinate system while the editor
+// provides large-screen navigation, compact settings, and touch gestures.
+const circuitStyles=read("src/lektrusCircuitEditor.css");
+const physicsStyles=read("src/lektrusScienceEditor.css");
+const physicsEditor=read("src/LektrusScienceEditor.tsx");
+assert.match(circuitStyles,/width:100vw!important/,"Circuit editor should fill the viewport");
+assert.match(circuitStyles,/height:100dvh!important/,"Circuit editor should fill viewport height");
+assert.match(circuitStyles,/palette-collapsed/,"Circuit component catalog must collapse");
+assert.match(circuitStyles,/inspector-expanded/,"Selection settings must be contextual");
+assert.match(editor,/onClick=\{\(\)=>changeTool\("hand"\)\}/,"Hand tool must be usable");
+assert.match(editor,/pinchRef\.current/,"Touch pinch must control the editor");
+assert.match(view,/onPointerDownCapture=\{onBackgroundDown\}/,"Capture pinch before dragging components");
+assert.match(view,/vb\.width>0\?vb\.width:900/,"Touch placement must account for zoomed SVG");
+assert.match(physicsStyles,/physics-workspace/,"Physics editor must have a separate large workspace");
+assert.match(physicsStyles,/settings-collapsed/,"Physics settings must collapse");
+assert.match(physicsEditor,/lektrus-physics-quick-actions/,"Forces and geometry need on-canvas quick actions");
 console.log("Electrical circuits: validated templates, electrical topology, wiring, deletion, 22-part palette and editor integration.");
