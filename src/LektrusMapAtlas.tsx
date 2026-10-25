@@ -1372,6 +1372,7 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      <small>Границы не заменяются вымышленными. Для доступа необходим интернет.</small>
     </div>}
     <svg ref={mapSvgRef} viewBox="0 0 900 450" className="lektrus-atlas-svg" role="img"
+     data-contour-brush={worksheetEditor&&!objectMoveMode&&(contourAction==="pen"||contourAction==="erase")?contourAction:undefined}
      style={worksheetEditor&&(contourAction==="pen"||contourAction==="erase")&&!objectMoveMode?{
       cursor:contourBrushCursor(contourAction,toolThickness,paintColor)
      }:undefined}
