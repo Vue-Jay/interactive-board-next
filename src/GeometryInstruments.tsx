@@ -74,7 +74,6 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
   <path d="M6 191A174 174 0 0 1 354 191Z M77 191A103 103 0 0 1 283 191Z" fill={"url(#"+gradient+")"} fillRule="evenodd"/>
   <path d="M6 191A174 174 0 0 1 354 191Z" fill="none" stroke="#6295ba" strokeWidth="2"/>
   <path d="M77 191A103 103 0 0 1 283 191" fill="none" stroke="#6e9fbe" strokeWidth="1.5"/>
-  <path d="M14 191H346" stroke="#456e8b" strokeWidth="1.1"/>
   {Array.from({length:37},(_,i)=>{
    const a=Math.PI-i*Math.PI/36,major=i%6===0,mid=i%2===0;
    const outer=170,inner=major?143:mid?152:159;
@@ -110,6 +109,7 @@ function SharedInstrument({item,view,boardRef,editable,selected,onUpdate,onRemov
   x:(rect?.left??0)+view.x+point.x*zoom,
   y:(rect?.top??0)+view.y+point.y*zoom,
  };
+ const boardPosition={x:view.x+point.x*zoom,y:view.y+point.y*zoom};
  const rad=rotation*Math.PI/180;
  const rotatedHalfHeight=(Math.abs(Math.sin(rad))*width+Math.abs(Math.cos(rad))*height)*visualScale/2;
  const toolbarOffset=-rotatedHalfHeight-57;
@@ -150,10 +150,11 @@ function SharedInstrument({item,view,boardRef,editable,selected,onUpdate,onRemov
  const updateScale=(delta:number)=>editable&&onUpdate(item.id,{
   instrumentScale:clamp(+((item.instrumentScale??1)+delta).toFixed(2),.25,3)
  });
+ if(!boardRef.current)return null;
  return createPortal(
   <div className="geometry-instrument geometry-instrument-centered"
     data-shared-instrument={item.id}
-    style={{left:screenPosition.x,top:screenPosition.y}}>
+    style={{left:boardPosition.x,top:boardPosition.y}}>
     {editable&&selected&&<div className="geometry-instrument-actions" style={{top:toolbarOffset}}
       onPointerDown={event=>event.stopPropagation()}>
       <span>{labels[type]}</span>
@@ -183,7 +184,7 @@ function SharedInstrument({item,view,boardRef,editable,selected,onUpdate,onRemov
       <InstrumentGraphic type={type}/>
     </div>
 
-  </div>,document.body);
+  </div>,boardRef.current);
 }
 
 export default function GeometryInstruments({
