@@ -945,7 +945,7 @@ assert.ok(eraserCode.includes('setLiveErasedStrokes(erased)'),
 assert.ok(!eraserCode.includes('contourMarks:')&&!eraserCode.includes('paintedCountries:'),
  "Eraser must not delete map marks or territory fills");
 assert.ok(!eraserCode.includes('scheduleCamera('),"Eraser must not start ordinary map panning");
-assert.ok(map.includes('if(pinch.current){clearErasePreview();onMove(e);return}'),
+assert.ok(map.includes('if(pinch.current){clearErasePreview();stopContourCanvas();onMove(e);return}'),
  "Two fingers must navigate map without erasing ink");
 assert.ok(map.includes('data-contour-fill-key={isWorksheet&&painted[fillKey]?fillKey:undefined}'));
 assert.ok(map.includes('data-contour-fill-key={isWorksheet&&painted[key]?key:undefined}'));
