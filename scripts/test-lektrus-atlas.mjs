@@ -953,7 +953,10 @@ assert.equal(moved.lat,59);
 assert.equal(movable.lon,56,"Dragging must not mutate persisted data");
 assert.equal(hitLib.moveContourMark(movable,{x:0,y:0},{x:10000,y:10000}).lon,180);
 const contourCss=fs.readFileSync(new URL("../src/lektrusAtlas.css",import.meta.url),"utf8");
-assert.ok(contourCss.includes('.lektrus-atlas--erasing .lektrus-atlas-svg'));
+assert.ok(!contourCss.includes('cursor:crosshair!important;'),
+ "The selected eraser size must not be overridden with a generic crosshair");
+assert.ok(map.includes('cursor:contourBrushCursor(contourAction,toolThickness,paintColor)'),
+ "Ink tools use a real-size cursor like the main board");
 assert.ok(contourCss.includes('.lektrus-contour-label-object.selected'));
 
 
