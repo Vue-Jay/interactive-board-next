@@ -79,7 +79,7 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
      const picked=selection?.kind==="element"&&selection.id===part.id;
      const length=part.length,top=part.y-length/2,bottom=part.y+length/2;
      const label=part.label.trim()||captions[part.kind];
-     return <g key={part.id} className={"lektrus-optics-part"+(picked?" selected":"")}
+     return <g key={part.id} className={"lektrus-optics-part"+(picked?" selected":"")} data-board-interactive={onElementDown?"true":undefined}
        onPointerDown={onElementDown||onPlace?e=>{
          e.stopPropagation();
          if(tool==="select")onElementDown?.(e,part);
