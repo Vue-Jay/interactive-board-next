@@ -1,0 +1,83 @@
+/* Lektrus board tool icons: one neutral graphite language across the dock,
+   school subject catalogue, shapes, data and measuring tools.
+   Accent colours remain for selection/focus feedback, not idle pictograms. */
+:root{
+ --lektrus-tool-ink:#3b424b;
+ --lektrus-tool-ink-hover:#242b33;
+ --lektrus-tool-tile:#f5f6f8;
+ --lektrus-tool-edge:#e3e6eb;
+}
+:root[data-theme="dark"]{
+ --lektrus-tool-ink:#d6dde7;
+ --lektrus-tool-ink-hover:#f2f5f9;
+ --lektrus-tool-tile:#283442;
+ --lektrus-tool-edge:#455368;
+}
+/* Universal drawing tools, desktop categories and the navigation dock. */
+body .workspace .toolbar.compact-toolbar .tool-button:not(.active):not([aria-expanded="true"]) .ui-icon,
+body .workspace .toolbar.compact-toolbar .tool-button:not(.active):not([aria-expanded="true"]) .lektrus-section-icon svg,
+body .workspace .toolbar.compact-toolbar .lektrus-desktop-subject-trigger:not(.active):not([aria-expanded="true"]) svg,
+body .workspace .toolbar.compact-toolbar .geometry-trigger:not(.active) svg,
+body .workspace .mobile-board-tools button:not(.active) .ui-icon,
+body .workspace .mobile-board-tools button:not(.active).lektrus-mobile-subject-trigger svg,
+body .workspace .mobile-tools-sheet button:not(.active) .ui-icon{
+ color:var(--lektrus-tool-ink)!important;
+ stroke:currentColor;
+}
+body .workspace .toolbar.compact-toolbar .tool-button:not(.active):hover .ui-icon,
+body .workspace .toolbar.compact-toolbar .tool-button:not(.active):hover .lektrus-section-icon svg,
+body .workspace .mobile-board-tools button:not(.active):hover .ui-icon{
+ color:var(--lektrus-tool-ink-hover)!important;
+}
+/* Every subject, not just physics, receives the identical monochrome tile. */
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon{
+ display:grid!important;place-items:center!important;
+ flex:0 0 38px!important;width:38px!important;height:38px!important;
+ border-radius:10px!important;
+ background:var(--lektrus-tool-tile)!important;
+ border:1px solid var(--lektrus-tool-edge)!important;
+ color:var(--lektrus-tool-ink)!important;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon>svg{
+ display:block!important;width:22px!important;height:22px!important;
+ max-width:22px!important;max-height:22px!important;
+ stroke:currentColor!important;stroke-width:1.9!important;
+ stroke-linecap:round!important;stroke-linejoin:round!important;
+ overflow:visible;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button:hover .lektrus-subject-tools-icon,
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button:focus-visible .lektrus-subject-tools-icon{
+ color:var(--lektrus-tool-ink-hover)!important;
+ background:var(--lektrus-tool-tile)!important;
+ border-color:var(--lektrus-tool-edge)!important;
+}
+@media(max-width:700px){
+ body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon{
+  flex-basis:38px!important;width:38px!important;height:38px!important;
+ }
+ body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon>svg{
+  width:22px!important;height:22px!important;
+ }
+}
+/* Figure, diagram, general text and measuring-tool icons stay on the same
+   restrained stroke scale. Only their active button background is accented. */
+body .workspace .lektrus-elements-catalogue .lektrus-elements-shape-grid button:not(.active) svg,
+body .workspace .lektrus-elements-catalogue .lektrus-elements-quick button:not(.active) svg,
+body .workspace .lektrus-elements-catalogue .lektrus-elements-data-icon,
+body .workspace .lektrus-elements-catalogue .lektrus-elements-arrow-row button:not(.active) svg,
+body .workspace .geometry-tools .geometry-trigger:not(.active) svg,
+body .geometry-picker.geometry-picker-portal button svg{
+ color:var(--lektrus-tool-ink)!important;
+ stroke:currentColor!important;
+}
+body .workspace .lektrus-elements-catalogue .lektrus-elements-shape-grid button svg,
+body .workspace .lektrus-elements-catalogue .lektrus-elements-quick button svg,
+body .geometry-picker.geometry-picker-portal button svg{
+ stroke-width:1.9;stroke-linejoin:round;stroke-linecap:round;
+}
+body .workspace .lektrus-elements-catalogue .lektrus-elements-data-icon{
+ width:32px;height:32px;
+}
+body .workspace .lektrus-elements-catalogue .lektrus-elements-data-icon svg{
+ width:25px;height:25px;
+}
