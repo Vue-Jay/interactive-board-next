@@ -189,3 +189,76 @@
 .lektrus-science-preview .lektrus-science-link-label{
   pointer-events:none;
 }
+
+/* Physics: a real full-window drawing workspace, not a settings dialog with a preview. */
+.lektrus-science-backdrop.physics{padding:0!important;backdrop-filter:none!important}
+.lektrus-science-editor.physics-workspace{
+  width:100vw!important;max-width:none!important;min-width:0;
+  height:100dvh!important;max-height:none!important;
+  border:0!important;border-radius:0!important;
+}
+.physics-workspace .lektrus-science-header{
+  min-height:54px;padding:7px 15px;gap:10px;
+}
+.physics-workspace .lektrus-science-symbol{flex-basis:36px;height:36px;border-radius:10px}
+.physics-workspace .lektrus-science-header h2{font-size:17px;margin-top:2px}
+.physics-workspace .lektrus-science-toggle-settings{
+  flex:0 0 auto;min-height:34px;min-width:106px;
+  padding:5px 12px;border:1px solid #ccd9ed;border-radius:9px;
+  color:#385c96;background:#f1f6ff;font-size:11px;font-weight:750;cursor:pointer;
+}
+.physics-workspace .lektrus-science-toggle-settings[aria-pressed=true]{
+  color:#2457b5;background:#e4eeff;border-color:#acc8f3;
+}
+.physics-workspace .lektrus-science-content{
+  flex:1 1 0;min-height:0;min-width:0;
+  grid-template-columns:minmax(235px,275px) minmax(0,1fr);
+  gap:8px;padding:8px;overflow:hidden;
+}
+.physics-workspace.settings-collapsed .lektrus-science-content{
+  grid-template-columns:minmax(0,1fr);
+}
+.physics-workspace.settings-collapsed .lektrus-science-settings{display:none}
+.physics-workspace .lektrus-science-settings{
+  padding:12px;gap:9px;overflow-y:auto;
+}
+.physics-workspace .lektrus-science-preview{
+  padding:9px;gap:8px;min-height:0;
+  overflow:hidden;align-self:stretch;
+}
+.physics-workspace .lektrus-science-preview-head{
+  flex:0 0 auto;gap:8px;flex-wrap:wrap;min-height:34px;
+}
+.physics-workspace .lektrus-science-preview-head>span{font-size:10px}
+.physics-workspace .lektrus-science-preview svg{
+  display:block;flex:1 1 0;
+  width:100%;max-width:100%;min-height:0;max-height:none;
+  height:100%;aspect-ratio:auto;
+  object-fit:contain;
+}
+.physics-workspace .lektrus-science-hint{
+  flex:0 0 auto;line-height:1.4;
+}
+.lektrus-physics-quick-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.lektrus-physics-quick-actions button{
+  min-height:31px;padding:5px 10px;border:1px solid #d3e1f4;border-radius:8px;
+  background:#eff5ff;color:#355e9c;font-size:11px;font-weight:730;cursor:pointer;
+}
+.lektrus-physics-quick-actions button:hover:not(:disabled){background:#dfeaff}
+.lektrus-physics-quick-actions button:disabled{opacity:.45;cursor:default}
+.physics-workspace footer{flex:0 0 auto;min-height:46px;padding:6px 13px}
+@media(max-width:760px){
+  .physics-workspace .lektrus-science-header{min-height:48px;padding:6px 9px}
+  .physics-workspace .lektrus-science-symbol{display:none}
+  .physics-workspace .lektrus-science-header h2{font-size:14px}
+  .physics-workspace .lektrus-science-content{display:flex;flex-direction:column;position:relative;overflow:hidden}
+  .physics-workspace .lektrus-science-settings{
+    position:absolute;left:7px;top:7px;bottom:7px;z-index:8;
+    width:min(275px,calc(100vw - 58px));height:auto;max-height:none;
+    background:#fff;box-shadow:0 12px 32px #142b4740;
+  }
+  .physics-workspace .lektrus-science-preview{flex:1 1 auto;min-height:0;overflow:hidden}
+  .physics-workspace .lektrus-science-preview svg{min-height:0;flex:1 1 0}
+  .physics-workspace .lektrus-science-preview-head>span{display:none}
+  .physics-workspace .lektrus-science-toggle-settings{min-height:30px;min-width:86px;padding:4px 8px;font-size:10px}
+}
