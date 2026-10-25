@@ -36,7 +36,7 @@ const itemNames: Record<Item["kind"], string> = {
   quiz:"Тест", flashcard:"Карточка", cover:"Шторка", linkmedia:"Медиа", instrument:"Измерительный инструмент",
 };
 const colorKinds = new Set<Item["kind"]>(["pen","marker","shape","text","sticky","connector","comment","formula","graph","checklist","quiz","flashcard","frame"]);
-const advancedKinds = new Set<Item["kind"]>(["text","sticky","frame","comment","graph","formula","table","checklist","quiz","flashcard","linkmedia"]);
+const advancedKinds = new Set<Item["kind"]>(["text","sticky","frame","comment","graph","formula","fraction","table","checklist","quiz","flashcard","linkmedia","image"]);
 
 
 type QuickProps = {
@@ -68,7 +68,6 @@ export function LectrisQuickProperties(props: QuickProps) {
   useEffect(()=>setExpanded(false),[tool,item?.id]);
   const drawing=tool==="pen"||tool==="marker";
   const erasing=tool==="eraser";
-  if(item?.kind==="graph"&&item.graphFigureId==="chem-periodic"&&!drawing&&!erasing)return null;
   if(!selectionCount&&!drawing&&!erasing)return null;
   const inkTool=erasing?"eraser":tool==="marker"?"marker":"pen";
   const inkSizes=INK_WIDTHS[inkTool];
