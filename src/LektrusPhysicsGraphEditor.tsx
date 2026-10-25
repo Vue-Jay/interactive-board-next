@@ -8,7 +8,7 @@ type Props={item:Item;onSave:(next:Item)=>void;onCancel:()=>void;onClose?:(next:
 type Point={x:number;y:number;label:string;color?:string};
 type Draft={figureId:string;title:string;points:Point[];xMax:number;yMin:number;yMax:number;grid:boolean;snap:boolean;connect:boolean;showLabels:boolean};
 type History={past:Draft[];present:Draft;future:Draft[]};
-type Tool="select"|"point"|"hand";
+type Tool="select"|"point";
 const presetIds=new Set<string>(["physics-motion","physics-speed","physics-accelerated-speed","physics-acceleration","physics-braking","physics-rest"]);
 const defaultTitle="График движения";
 const initial=(item:Item):Draft=>({
@@ -49,7 +49,6 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
   const [pendingPreset,setPendingPreset]=useState<SciencePresetId|null>(null);
   const [preview,setPreview]=useState<{index:number;point:Point}|null>(null);
   const drag=useRef<{id:number;index:number;start:Point;last:Point}|null>(null);
-  const stage=useRef<SVGSVGElement|null>(null);
   const data=useMemo(()=>draft.points.map((point,i)=>preview?.index===i?preview.point:point),[draft.points,preview]);
   const axis=axes(draft.figureId);
   const choices=scienceToolGroupForId("physics-motion")?.templates??[];
@@ -97,7 +96,6 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
   };
   const close=()=>onClose?onClose(makeItem(item,draft)):onCancel();
   const startDrag=(event:ReactPointerEvent<SVGCircleElement>,i:number)=>{
-    if(tool==="hand")return;
     event.preventDefault();event.stopPropagation();
     setSelected(i);
     const start=data[i];
@@ -196,12 +194,11 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
             <div className="lektrus-motion-tools" role="group" aria-label="Режим работы с графиком">
               <button type="button" className={tool==="select"?"active":""} onClick={()=>setTool("select")}>Выбор</button>
               <button type="button" className={tool==="point"?"active":""} onClick={()=>setTool("point")}>+ Точка</button>
-              <button type="button" className={tool==="hand"?"active":""} onClick={()=>setTool("hand")}>Просмотр</button>
             </div>
             <div className="lektrus-motion-toolbar-status"><b>{axis.title}</b><span>t, с · ${axis.variable}, ${axis.unit}</span></div>
           </div>
           <div className="lektrus-motion-sheet">
-            <svg ref={stage} viewBox="0 0 980 590" preserveAspectRatio="xMidYMid meet" className={"lektrus-motion-svg mode-"+tool} role="img"
+            <svg viewBox="0 0 980 590" preserveAspectRatio="xMidYMid meet" className={"lektrus-motion-svg mode-"+tool} role="img"
               aria-label={`Интерактивный график ${axis.variable} от времени`}
               onPointerMove={move} onPointerUp={finish} onPointerCancel={finish}
               onClick={event=>{if(tool!=="point"||event.target!==event.currentTarget)return;addPoint(fromScreen(event,event.currentTarget))}}>
