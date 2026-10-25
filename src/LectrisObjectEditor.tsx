@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Item,ShapeType,ConnectorStyle,ArrowHeadStyle } from "./boardModel";
 import LektrusColorPicker from "./LektrusColorPicker";
+import {boardObjectTypeName} from "./boardObjectNames";
 
 /** Five genuinely distinct BOARD-pixel widths. */
 export const INK_WIDTHS={
@@ -27,13 +28,6 @@ export function InkWidthSample({tool,size,color}:{tool:InkTool;size:number;color
 const inkWidthIndex=(tool:"pen"|"marker"|"eraser",width:number)=>{
  const values=INK_WIDTHS[tool];
  return values.reduce((best,v,i)=>Math.abs(v-width)<Math.abs(values[best]-width)?i:best,0);
-};
-const itemNames: Record<Item["kind"], string> = {
-  pen:"Карандаш", marker:"Маркер", shape:"Фигура", text:"Текст",
-  sticky:"Стикер", image:"Изображение", pdf:"PDF", frame:"Фрейм",
-  connector:"Линия", comment:"Комментарий", table:"Таблица",
-  formula:"Формула", graph:"График", fraction:"Дробь", checklist:"Чек-лист",
-  quiz:"Тест", flashcard:"Карточка", cover:"Шторка", linkmedia:"Медиа", instrument:"Измерительный инструмент",
 };
 const colorKinds = new Set<Item["kind"]>(["pen","marker","shape","text","sticky","connector","comment","formula","graph","checklist","quiz","flashcard","frame"]);
 const advancedKinds = new Set<Item["kind"]>(["text","sticky","frame","comment","graph","formula","fraction","table","checklist","quiz","flashcard","linkmedia","image"]);
@@ -82,7 +76,7 @@ export function LectrisQuickProperties(props: QuickProps) {
     onPointerDown={e=>e.stopPropagation()} onPointerMove={e=>e.stopPropagation()}
     onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
     <span className="lectris-quick-title">
-      {selectionCount>0&&!drawing&&!erasing ? item?itemNames[item.kind]:"Выбрано: "+selectionCount : erasing?"Ластик":tool==="marker"?"Маркер":"Карандаш"}
+      {selectionCount>0&&!drawing&&!erasing ? item?boardObjectTypeName(item):"Выбрано: "+selectionCount : erasing?"Ластик":tool==="marker"?"Маркер":"Карандаш"}
     </span>
     {!(drawing||erasing)&&<button className="lectris-quick-expand" type="button" aria-expanded={expanded}
       onClick={()=>setExpanded(v=>!v)}>{expanded?"Свернуть ▲":"Настройки ▼"}</button>}
@@ -158,7 +152,7 @@ export function LectrisObjectInspector({item,canModify,userId,canToggleLock,onCl
     onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
     onKeyDown={e=>{if(e.key==="Escape"&&!advancedOpen){e.stopPropagation();onClose()}}}>
     <header className="lectris-inspector-head">
-      <div><small>СВОЙСТВА ОБЪЕКТА</small><strong>{itemNames[item.kind]}</strong>
+      <div><small>СВОЙСТВА ОБЪЕКТА</small><strong>{boardObjectTypeName(item)}</strong>
         <span className="lectris-inspector-state">{item.locked?"Объект заблокирован":canModify?"Можно редактировать":"Только просмотр"} · {Math.round(item.width)} × {Math.round(item.height)}</span></div>
       <button type="button" onClick={onClose} aria-label="Закрыть свойства">×</button>
     </header>
@@ -262,7 +256,7 @@ export function LectrisObjectInspector({item,canModify,userId,canToggleLock,onCl
     {advancedOpen&&<div className="lectris-advanced-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget)setAdvancedOpen(false)}}>
       <section role="dialog" aria-modal="true" aria-label="Дополнительные параметры объекта" className="lectris-advanced-modal"
         onKeyDown={e=>{if(e.key==="Escape"){e.stopPropagation();setAdvancedOpen(false)}}}>
-        <header><div><small>LEKTRUS · ДОПОЛНИТЕЛЬНО</small><strong>{itemNames[item.kind]}</strong></div>
+        <header><div><small>LEKTRUS · ДОПОЛНИТЕЛЬНО</small><strong>{boardObjectTypeName(item)}</strong></div>
           <button type="button" onClick={()=>setAdvancedOpen(false)} aria-label="Закрыть дополнительные настройки">×</button></header>
         <div className="lectris-advanced-body">
           <p>Дополнительные операции с выбранным объектом.</p>
