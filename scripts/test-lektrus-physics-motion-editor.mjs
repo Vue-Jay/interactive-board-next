@@ -48,7 +48,7 @@ assert.ok(mechanicsIcon.includes('<LektrusPhysicsPointerGlyph kind="select"'));
 assert.ok(opticsIcon.includes('<LektrusPhysicsPointerGlyph kind="select"'));
 assert.ok(icon.includes('<LektrusPhysicsPointerGlyph kind={kind}'));
 assert.ok(editor.includes('<LektrusPhysicsPointerGlyph kind="select"'));
-assert.ok(pointerGlyph.includes('kind==="select"')&&pointerGlyph.includes('kind==="hand"'));
+assert.ok(pointerGlyph.includes('kind==="select"')&&pointerGlyph.includes('PhysicsPointerKind="select"|"hand"'));
 for(const name of ["--lektrus-select-pointer","--lektrus-open-hand-pointer","--lektrus-closed-hand-pointer"])
  assert.ok(pointerCss.includes(name),"Branded cursor missing: "+name);
 for(const cls of ["lektrus-mechanics-svg.mode-select","lektrus-optics-svg.optics-mode-select",
