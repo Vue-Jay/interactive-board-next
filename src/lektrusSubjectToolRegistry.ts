@@ -68,7 +68,19 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
       graphPoints:[],graphSegments:[],schoolDiagram:diagram};
   }
   const sciencePreset=scienceDefaultPreset(id);
-  if(sciencePreset)return makeSciencePresetItem(sciencePreset,x,y,createId);
+  if(sciencePreset){
+    const item=makeSciencePresetItem(id==="physics-circuits"?"physics-circuit-free":sciencePreset,x,y,createId);
+    // Subject tools open on a clean sheet; stored objects created earlier retain their content.
+    if(id==="physics-mechanics")return {...item,text:"Механика",graphFigureId:"physics-forces",
+      graphPoints:[],graphSegments:[],graphPolygons:[],graphCircles:[],graphAngles:[],graphMidpoints:[],graphGrid:false};
+    if(id==="physics-optics")return {...item,text:"Оптика",graphFigureId:"physics-optics",
+      graphPoints:[],graphSegments:[],graphPolygons:[],graphCircles:[],graphAngles:[],graphMidpoints:[],graphGrid:false};
+    if(id==="physics-graphs")return {...item,text:"График движения",
+      graphPoints:[],graphSegments:[],graphPolygons:[],graphCircles:[],graphAngles:[],graphMidpoints:[],
+      graphGrid:true,graphConnectPoints:true};
+    if(id==="physics-circuits")return {...item,text:"Электрическая цепь",graphPoints:[],graphSegments:[]};
+    return item;
+  }
   if(id==="chem-periodic-table"){
     const base=makeMathPresetItem("blank",x,y,createId());
     return {...base,text:"Периодическая система химических элементов",
