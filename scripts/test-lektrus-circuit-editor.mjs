@@ -100,4 +100,7 @@ assert.match(view,/vb\.width>0\?vb\.width:900/,"Touch placement must account for
 assert.match(physicsStyles,/physics-workspace/,"Physics editor must have a separate large workspace");
 assert.match(physicsStyles,/settings-collapsed/,"Physics settings must collapse");
 assert.match(physicsEditor,/lektrus-physics-quick-actions/,"Forces and geometry need on-canvas quick actions");
+assert.match(physicsEditor,/const pickPoint=\(index:number\)=>/,"Clicking physical points should select vector endpoints");
+assert.match(physicsEditor,/addLink\(true\)/,"Add force must create a directed vector");
+assert.match(physicsEditor,/addLink\(false\)/,"Add line must create an unarrowed construction");
 console.log("Electrical circuits: validated templates, electrical topology, wiring, deletion, 22-part palette and editor integration.");
