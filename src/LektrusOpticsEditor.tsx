@@ -183,7 +183,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
         <small>{part.length} ед.</small></label>}
       {(part.kind==="converging-lens"||part.kind==="diverging-lens")&&<label>Фокусное расстояние, ед.
        <input type="number" min={20} max={500} value={part.focalLength} onChange={e=>updateElement({focalLength:clamp(Number(e.target.value)||20,20,500)})}/></label>}
-      {part.kind==="interface"&&<div className="lektrus-optics-two">
+      {(part.kind==="interface"||part.kind==="prism")&&<div className="lektrus-optics-two">
        <label>n₁<input type="number" min={1} max={3} step=".01" value={part.n1} onChange={e=>updateElement({n1:clamp(Number(e.target.value)||1,1,3)})}/></label>
        <label>n₂<input type="number" min={1} max={3} step=".01" value={part.n2} onChange={e=>updateElement({n2:clamp(Number(e.target.value)||1,1,3)})}/></label>
       </div>}
@@ -207,7 +207,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose}:Props
      <button type="button" className="lektrus-optics-danger" onClick={deleteSelected}>Удалить выбранное</button>
      </aside>}
    </div>
-   <footer className="lektrus-optics-footer"><span>Построение лучей: первое пересечение; линзы в параксиальном приближении. Призма показана схематично.</span>
+   <footer className="lektrus-optics-footer"><span>Луч проходит через первую встреченную поверхность. Линзы: тонколинзовое приближение. Призма: преломление на гранях.</span>
     <button type="button" onClick={onCancel}>Отмена</button><button type="button" className="lektrus-optics-primary" onClick={()=>onSave(saveValue())}>Сохранить на доску</button>
    </footer>
   </section>
