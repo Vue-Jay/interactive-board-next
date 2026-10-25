@@ -37,6 +37,7 @@ import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
+import {isPhysicsMotionGraph,motionAxisTicks} from "./lektrusPhysicsGraphTicks";
 import LektrusOpticsEditor from "./LektrusOpticsEditor";
 import LektrusMechanicsEditor from "./LektrusMechanicsEditor";
 import LektrusPhysicalBoardView from "./LektrusPhysicalBoardView";
@@ -1208,7 +1209,12 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   const ux = (p:number) => cx+(p-W/2)/scale, uy = (p:number) => cy-(p-H/2)/scale;
   const step = Math.max(.1,item.graphGridStep ?? 1);
   const values = (a:number,b:number) => { const spacing=step*Math.max(1,Math.ceil((b-a)/(step*90))); const first=Math.ceil(a/spacing)*spacing,count=Math.min(101,Math.max(0,Math.floor((b-first)/spacing)+1));return Array.from({length:count},(_,i)=>Number((first+i*spacing).toFixed(6))); };
-  const gridX = values(xMin,xMax), gridY = values(yMin,yMax);
+  const motionAxes=isPhysicsMotionGraph(item.graphFigureId);
+  const motionXTicks=motionAxes?motionAxisTicks(xMin,xMax,7):null;
+  const motionYTicks=motionAxes?motionAxisTicks(yMin,yMax,5):null;
+  const gridX = motionXTicks?.grid??values(xMin,xMax), gridY = motionYTicks?.grid??values(yMin,yMax);
+  const majorMotionX=new Set(motionXTicks?.labels??[]);
+  const majorMotionY=new Set(motionYTicks?.labels??[]);
   const gp = (solid?projectSolid(item,orbitX,orbitY):(item.graphPoints??[])).map((p,i)=>purpose==="number-line"?{...p,y:0}:rayFigure&&i===1&&liveRay?{...p,...liveRay}:p);
   const intervalEnds=purpose==="number-line"&&gp.length>=2?[gp[0],gp[1]].sort((p,q)=>p.x-q.x):null;
   const closingVertex=item.graphFigureId==="free"&&onCloseFreePolygon?
@@ -1431,9 +1437,9 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
       {(onPickPoint||onPointMoveEnd&&onAddPoint&&item.graphFigureId!=="free")&&<rect className="lektrus-connect-drawing-surface" x="0" y="0" width={W} height={H} fill="transparent" pointerEvents="all"/>}
       <defs><marker id={`graph-arrow-${item.id}`} markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke={item.graphFigureId?.startsWith("physics-")&&!["physics-optics","physics-refraction","physics-lens","physics-diverging-lens","physics-plane-mirror","physics-total-reflection","physics-prism"].includes(item.graphFigureId??"")?"#2563eb":"#667085"} strokeWidth="1.3"/></marker></defs>
       {item.graphGrid!==false&&<g className="graph-grid" pointerEvents="none">
-        {gridX.map(x=><line key={`x${x}`} className={Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
+        {gridX.map(x=><line key={`x${x}`} className={motionAxes?(majorMotionX.has(x)?"graph-grid-major":undefined):Math.abs(x/(step*5)-Math.round(x/(step*5)))<1e-6?"graph-grid-major":undefined}
           x1={sx(x)} x2={sx(x)} y1="0" y2={H}/>)}
-        {gridY.map(y=><line key={`y${y}`} className={Math.abs(y/(step*5)-Math.round(y/(step*5)))<1e-6?"graph-grid-major":undefined}
+        {gridY.map(y=><line key={`y${y}`} className={motionAxes?(majorMotionY.has(y)?"graph-grid-major":undefined):Math.abs(y/(step*5)-Math.round(y/(step*5)))<1e-6?"graph-grid-major":undefined}
           x1="0" x2={W} y1={sy(y)} y2={sy(y)}/>)}
       </g>}
       {item.graphFigureId==="free"&&onAddPoint&&
@@ -1478,8 +1484,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
         {hasX&&yMin<=0&&yMax>=0&&<line x1="0" x2={W-5} y1={sy(0)} y2={sy(0)} markerEnd={`url(#graph-arrow-${item.id})`}/>}
       </g>
       {item.graphAxisLabels!==false&&<g className="graph-axis-labels">
-        {hasX&&gridX.filter(x=>x!==0).map(x=><text key={`xl${x}`} x={sx(x)+3} y={Math.min(H-4,Math.max(13,sy(0)+14))}>{x}</text>)}
-        {hasY&&gridY.filter(y=>y!==0).map(y=><text key={`yl${y}`} x={Math.min(W-25,Math.max(3,sx(0)+6))} y={sy(y)-4}>{y}</text>)}
+        {hasX&&(motionXTicks?.labels??gridX).filter(x=>x!==0).map(x=><text key={`xl${x}`} x={sx(x)+3} y={Math.min(H-4,Math.max(13,sy(0)+14))}>{x}</text>)}
+        {hasY&&(motionYTicks?.labels??gridY).filter(y=>y!==0).map(y=><text key={`yl${y}`} x={Math.min(W-25,Math.max(3,sx(0)+6))} y={sy(y)-4}>{y}</text>)}
         {hasX&&<text x={W-17} y={Math.max(14,Math.min(H-8,sy(0)-9))}>x</text>}
         {hasY&&<text x={Math.max(5,Math.min(W-18,sx(0)+9))} y="13">y</text>}
       </g>}
