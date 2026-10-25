@@ -80,3 +80,17 @@
 .lektrus-motion-footer button{flex:1 1 auto}
 .lektrus-motion-tools button{padding:5px 8px}
 }
+.lektrus-motion-editor .lektrus-motion-measure-toggle{
+  min-height:33px;padding:6px 11px;border-radius:8px;
+  border:1px solid #d4e2f3;background:#f4f8ff;color:#385e95;font-size:11px;font-weight:760;
+}
+.lektrus-motion-editor .lektrus-motion-measure-toggle[aria-pressed=true]{
+  background:#e2edff;border-color:#abc6ee;color:#275aaa;
+}
+.lektrus-motion-measurements{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px 15px;
+  padding:9px 11px;background:#edf5ff;border:1px solid #d2e3fa;border-radius:9px;
+  color:#526e94;font-size:11px;
+}
+.lektrus-motion-measurements b{color:#28589f;font-variant-numeric:tabular-nums}
+@media(max-width:760px){.lektrus-motion-measurements{gap:5px 12px;padding:6px 8px;font-size:10px}}
