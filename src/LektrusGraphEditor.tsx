@@ -214,33 +214,37 @@ const formulas:Record<GraphDraft["type"],string>={
 };
 
 export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:emitChange,onSave,onCancel,onClose}:Props) {
-  // Keep a single history for the WHOLE drawing, not just the points selected by
-  // one construction tool. Preserve snapshots across tabs, presets and viewport edits.
-  const historyRef=useRef<{past:GraphDraft[];future:GraphDraft[];current:GraphDraft;
-    lastKind:"zoom"|"drag"|null;lastAt:number}>({
-      past:[],future:[],current:draft,lastKind:null,lastAt:0
-    });
+  // Record exactly one history step per completed user action.
+  // Continuous wheel/pinch gestures and one tap that both creates and links
+  // a point are explicit groups. Unrelated edits are NEVER time-merged.
+  const historyRef=useRef<{
+    past:GraphDraft[];future:GraphDraft[];current:GraphDraft;
+    lastGroup:string|null;lastWheelAt:number
+  }>({past:[],future:[],current:draft,lastGroup:null,lastWheelAt:0});
   const [,refreshHistory]=useState(0);
+  const groupRef=useRef<string|null>(null);
+  const actionSequence=useRef(0);
   const pinchPointers=useRef(new Map<number,{x:number;y:number}>());
   const pinchDistance=useRef<number|null>(null);
+  const pinchGroup=useRef<string|null>(null);
+  const singleAction=(action:()=>void)=>{
+    const outer=groupRef.current;
+    groupRef.current="action-"+(++actionSequence.current);
+    try{action()}finally{groupRef.current=outer;}
+  };
   if(historyRef.current.current!==draft)historyRef.current.current=draft;
   const onChange=(next:GraphDraft)=>{
     const history=historyRef.current,previous=history.current;
     if(previous===next)return;
-    const sameStructure=previous.figureId===next.figureId&&previous.points.length===next.points.length&&
-      previous.segments===next.segments&&previous.polygons===next.polygons&&
-      previous.circles===next.circles&&previous.angles===next.angles&&
-      previous.midpoints===next.midpoints&&previous.constraints===next.constraints;
-    const zoomChanged=previous.xMin!==next.xMin||previous.xMax!==next.xMax||
-      previous.yMin!==next.yMin||previous.yMax!==next.yMax;
-    const kind: "zoom"|"drag"|null=sameStructure&&zoomChanged&&previous.points===next.points?"zoom":
-      sameStructure&&!zoomChanged&&previous.points!==next.points?"drag":null;
-    const now=Date.now();
-    if(!kind||kind!==history.lastKind||now-history.lastAt>350||!history.past.length){
+    const now=Date.now(),group=groupRef.current;
+    const sameGesture=!!group&&history.lastGroup===group&&history.past.length>0&&
+      (group!=="wheel"||now-history.lastWheelAt<240);
+    if(!sameGesture){
       history.past.push(previous);
-      if(history.past.length>120)history.past.shift();
+      if(history.past.length>160)history.past.shift();
     }
-    history.future=[];history.current=next;history.lastKind=kind;history.lastAt=now;
+    history.future=[];history.current=next;history.lastGroup=group;
+    history.lastWheelAt=group==="wheel"?now:0;
     emitChange(next);refreshHistory(n=>n+1);
   };
   const undoDraft=()=>{
@@ -248,7 +252,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
     if(!history.past.length)return;
     const previous=history.past.pop()!;
     history.future.push(history.current);
-    history.current=previous;history.lastKind=null;
+    history.current=previous;history.lastGroup=null;history.lastWheelAt=0;
     setLinkPoints([]);setCreatedLinkPoints([]);setGeometryError("");
     emitChange(previous);refreshHistory(n=>n+1);
   };
@@ -257,7 +261,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
     if(!history.future.length)return;
     const next=history.future.pop()!;
     history.past.push(history.current);
-    history.current=next;history.lastKind=null;
+    history.current=next;history.lastGroup=null;history.lastWheelAt=0;
     setLinkPoints([]);setCreatedLinkPoints([]);setGeometryError("");
     emitChange(next);refreshHistory(n=>n+1);
   };
@@ -309,7 +313,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
   const validViewport=Number.isFinite(draft.xMin)&&Number.isFinite(draft.xMax)&&
     Number.isFinite(draft.yMin)&&Number.isFinite(draft.yMax)&&
     draft.xMax>draft.xMin&&draft.yMax>draft.yMin;
-  const zoomViewport=(factor:number)=>{
+  const zoomViewport=(factor:number,gesture:"wheel"|"pinch"|null=null)=>{
     const source=historyRef.current.current;
     if(!Number.isFinite(source.xMin)||!Number.isFinite(source.xMax)||
        !Number.isFinite(source.yMin)||!Number.isFinite(source.yMax)||
@@ -320,7 +324,10 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
     const nextY=Math.max(.24,Math.min(6e5,spanY*factor));
     if(Math.abs(nextX-spanX)<1e-9&&Math.abs(nextY-spanY)<1e-9)return;
     const cx=(source.xMin+source.xMax)/2,cy=(source.yMin+source.yMax)/2;
-    onChange({...source,xMin:cx-nextX/2,xMax:cx+nextX/2,yMin:cy-nextY/2,yMax:cy+nextY/2});
+    const outer=groupRef.current;
+    groupRef.current=gesture==="pinch"?pinchGroup.current:gesture==="wheel"?"wheel":null;
+    try{onChange({...source,xMin:cx-nextX/2,xMax:cx+nextX/2,yMin:cy-nextY/2,yMax:cy+nextY/2})}
+    finally{groupRef.current=outer;}
   };
   const fitViewport=()=>{
     const points=draft.points.filter(point=>Number.isFinite(point.x)&&Number.isFinite(point.y));
@@ -394,12 +401,14 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
   };
   const createAndSelectPoint=(x:number,y:number)=>{
     if(draft.points.length>=40){setGeometryError("На одном чертеже допускается не более 40 точек.");return}
-    const next:GraphDraft={...draft,points:[...draft.points,{
-      x,y,label:nextGeometryPointLabel(draft.points)
-    }]};
-    onChange(next);
-    setCreatedLinkPoints(previous=>[...previous,next.points.length-1]);
-    pickLinkPoint(next.points.length-1,next);
+    singleAction(()=>{
+      const next:GraphDraft={...draft,points:[...draft.points,{
+        x,y,label:nextGeometryPointLabel(draft.points)
+      }]};
+      onChange(next);
+      setCreatedLinkPoints(previous=>[...previous,next.points.length-1]);
+      pickLinkPoint(next.points.length-1,next);
+    });
   };
   // Wrap preview edits as well: point drags, freehand vertex placement,
   // deleting vertices and 3D rotations must participate in the same undo history.
@@ -407,6 +416,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
     cloneElement(preview as ReactElement<{
       onPickPoint?: (index:number)=>void;onCreateAndPickPoint?: (x:number,y:number)=>void; pickedPoints?:readonly number[];
       onAddPoint?: (x:number,y:number)=>void;onPointMove?: (i:number,x:number,y:number)=>void;
+      onPointMoveEnd?: (i:number,x:number,y:number)=>void;
       onRemovePoint?: (i:number)=>void;onCloseFreePolygon?:()=>void;
       onRotate?: (x:number,y:number)=>void;onRayChange?: (x:number,y:number)=>void;
       onGridChange?: (enabled:boolean)=>void;
@@ -416,6 +426,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
       onPickPoint:pickLinkPoint,onCreateAndPickPoint:createAndSelectPoint,pickedPoints:linkPoints,
       onAddPoint:undefined,onPointMove:undefined,onRemovePoint:undefined,onCloseFreePolygon:undefined
     }:canvasTool==="point"?{
+      onPointMove:undefined,onPointMoveEnd:undefined,
       onPickPoint:draft.figureId==="free"?undefined:()=>{},
       onCreateAndPickPoint:draft.figureId==="free"?undefined:(x:number,y:number)=>{
         if(draft.points.length>=40){setGeometryError("На чертеже может быть не более 40 точек.");return}
@@ -428,7 +439,9 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
     }:{
       onPickPoint:undefined,onCreateAndPickPoint:undefined,pickedPoints:[],
       onAddPoint:undefined,onCloseFreePolygon:undefined,
-      onPointMove:(i:number,x:number,y:number)=>{
+      // The dragged vertex is previewed locally; only pointer release is
+      // committed to history, so one entire drag needs one undo.
+      onPointMove:undefined,onPointMoveEnd:(i:number,x:number,y:number)=>{
         if(!draft.points[i])return;
         onChange(moveGeometryVertex(draft,i,x,y));
       },
@@ -1474,7 +1487,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
             onWheel={event=>{
               if(mode!=="geometry"||isSolid)return;
               event.preventDefault();event.stopPropagation();
-              zoomViewport(event.deltaY>0?1.16:1/1.16);
+              zoomViewport(event.deltaY>0?1.16:1/1.16,"wheel");
             }}
             onPointerDownCapture={event=>{
               if(mode!=="geometry"||isSolid||event.pointerType!=="touch")return;
@@ -1482,6 +1495,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
               if(pinchPointers.current.size===2){
                 const [a,b]=[...pinchPointers.current.values()];
                 pinchDistance.current=Math.hypot(a.x-b.x,a.y-b.y);
+                pinchGroup.current="pinch-"+(++actionSequence.current);
               }
             }}
             onPointerMoveCapture={event=>{
@@ -1494,17 +1508,21 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,onChange:e
               if(!previous||distance<12)return;
               event.preventDefault();event.stopPropagation();
               if(distance/previous>1.045||distance/previous<.955){
-                zoomViewport(Math.max(.7,Math.min(1.4,previous/distance)));
+                zoomViewport(Math.max(.7,Math.min(1.4,previous/distance)),"pinch");
                 pinchDistance.current=distance;
               }
             }}
             onPointerUpCapture={event=>{
               pinchPointers.current.delete(event.pointerId);
-              if(pinchPointers.current.size<2)pinchDistance.current=null;
+              if(pinchPointers.current.size<2){
+                pinchDistance.current=null;pinchGroup.current=null;
+              }
             }}
             onPointerCancelCapture={event=>{
               pinchPointers.current.delete(event.pointerId);
-              if(pinchPointers.current.size<2)pinchDistance.current=null;
+              if(pinchPointers.current.size<2){
+                pinchDistance.current=null;pinchGroup.current=null;
+              }
             }}>{previewWithLink}</div>
           {mode==="geometry"&&<div className="lektrus-geometry-canvas-actions" role="group" aria-label="Действия с текущим построением">
             <span className="lektrus-geometry-selection-summary" role="status">
