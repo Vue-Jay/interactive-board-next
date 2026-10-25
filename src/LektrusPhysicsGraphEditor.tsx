@@ -1,11 +1,12 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import {svgClientPoint} from "./lektrusSvgPointer";
+import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import type {Item} from "./boardModel";
 import {scienceToolGroupForId} from "./lektrusScienceCatalog";
 import type {SciencePresetId} from "./lektrusSciencePresets";
 
-type Props={item:Item;onSave:(next:Item)=>void;onCancel:()=>void;onClose?:(next:Item)=>void};
+type Props={item:Item;onSave:(next:Item)=>void;onCancel:()=>void;onClose?:(next:Item)=>void;onLiveChange?:(before:Item,next:Item)=>void;shared?:boolean};
 type Point={x:number;y:number;label:string;color?:string};
 type Draft={figureId:string;title:string;points:Point[];xMax:number;yMin:number;yMax:number;grid:boolean;snap:boolean;connect:boolean;showLabels:boolean};
 type History={past:Draft[];present:Draft;future:Draft[]};
@@ -40,9 +41,28 @@ function makeItem(item:Item,d:Draft):Item{
     graphPoints:[...d.points].sort((a,b)=>a.x-b.x).map(point=>({...point})),graphSegments:[],graphPolygons:[],
     graphCircles:[],graphAngles:[],graphMidpoints:[]};
 }
-export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}:Props){
+export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,onLiveChange,shared=false}:Props){
   const [history,setHistory]=useState<History>(()=>({past:[],present:initial(item),future:[]}));
   const draft=history.present;
+  const lastLive=useRef<Draft>(history.present);
+  const lastRemote=useRef(item);
+  useEffect(()=>{
+    if(draft===lastLive.current)return;
+    const before=lastLive.current;
+    lastLive.current=draft;
+    onLiveChange?.(makeItem(item,before),makeItem(item,draft));
+  },[draft,onLiveChange,item]);
+  useEffect(()=>{
+    const previous=initial(lastRemote.current),incoming=initial(item);
+    lastRemote.current=item;
+    if(JSON.stringify(previous)===JSON.stringify(incoming))return;
+    setHistory(h=>{
+      const merged=mergeEditedValue(previous,h.present,incoming);
+      if(JSON.stringify(merged)===JSON.stringify(h.present))return h;
+      lastLive.current=merged;
+      return {...h,present:merged};
+    });
+  },[item]);
   const [tool,setTool]=useState<Tool>("select");
   const [selected,setSelected]=useState<number|null>(null);
   const [settingsOpen,setSettingsOpen]=useState(()=>typeof window==="undefined"||!window.matchMedia("(max-width:760px)").matches);
@@ -279,8 +299,8 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
       </div>
       <footer className="lektrus-motion-footer">
         <span>Отдельный инструмент физических графиков · без сил и схемных обозначений</span>
-        <button type="button" onClick={onCancel}>Отмена</button>
-        <button type="button" className="primary" onClick={()=>onSave(makeItem(item,draft))}>Сохранить на доску</button>
+        <button type="button" onClick={shared?close:onCancel}>{shared?"Закрыть":"Отмена"}</button>
+        <button type="button" className="primary" onClick={()=>onSave(makeItem(item,draft))}>{shared?"Готово":"Сохранить на доску"}</button>
       </footer>
     </section>
   </div>,document.body);
