@@ -1028,9 +1028,9 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   if(e.pointerType==="touch")onPointerEnd(e);
   else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   if(!gesture||gesture.pointerId!==e.pointerId)return;
-  eraserGesture.current=null;
-  if(wasPinching){setLiveErasedStrokes(null);return}
+  if(wasPinching){eraserGesture.current=null;setLiveErasedStrokes(null);return}
   brushContour(e);
+  eraserGesture.current=null;
   const erasedStrokes=eraseContourInkAlongPath(contourStrokes,gesture.path,
    (toolThickness*5+2)/cameraRef.current.scale);
   setLiveErasedStrokes(null);
