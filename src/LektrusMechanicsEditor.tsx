@@ -2,7 +2,7 @@ import {useEffect,useRef,useState,type PointerEvent as PE} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import LektrusMechanicsView,{mechanicsSvgPoint} from "./LektrusMechanicsView";
-import LektrusPhysicsToolIcon from "./LektrusPhysicsToolIcon";
+import LektrusMechanicsToolIcon from "./LektrusMechanicsToolIcon";
 import {emptyMechanics,mechClamp,mechanicsId,mechanicsForceOrigin,mechanicsValid,
  type MechanicsDocument,type MechanicsSelection,type MechanicsTool,type MechanicsBody,type MechanicsSupport,type MechanicsForce} from "./lektrusMechanicsModel";
 type Props={item:Item;onSave:(item:Item)=>void;onCancel:()=>void;onClose?:(item:Item)=>void};
@@ -12,7 +12,7 @@ const tools:{id:MechanicsTool;name:string;hint:string}[]=[
  {id:"block",name:"Брусок",hint:"Тело прямоугольной формы"},
  {id:"circle",name:"Шар",hint:"Круглое тело"},
  {id:"floor",name:"Плоскость",hint:"Горизонтальная опора"},
- {id:"incline",name:"Наклон",hint:"Наклонная плоскость"},
+ {id:"incline",name:"Наклонная плоскость",hint:"Наклонная опорная поверхность"},
  {id:"pivot",name:"Опора",hint:"Точечная опора"},
  {id:"force",name:"Сила",hint:"Вектор силы: выбирайте тело или точку"}
 ];
@@ -182,7 +182,7 @@ export default function LektrusMechanicsEditor({item,onSave,onCancel,onClose}:Pr
        <div className="lektrus-mechanics-tools">
          {tools.map(t=><button type="button" title={t.hint} key={t.id}
            className={tool===t.id?"active":""} onClick={()=>{setTool(t.id);setNotice(t.id==="select"?"Выберите объект для редактирования.":"Нажмите на листе, чтобы добавить: "+t.name.toLowerCase())}}>
-           <LektrusPhysicsToolIcon type={t.id}/><span>{t.name}</span></button>)}
+           <LektrusMechanicsToolIcon type={t.id}/><span>{t.name}</span></button>)}
        </div>
        <strong>Отображение</strong>
        <label className="lektrus-mechanics-check"><input type="checkbox" checked={doc.grid} onChange={e=>commit({...doc,grid:e.target.checked})}/> Точки сетки</label>
