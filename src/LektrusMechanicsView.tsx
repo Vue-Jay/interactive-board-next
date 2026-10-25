@@ -1,9 +1,8 @@
 import {useId,type PointerEvent as ReactPointerEvent} from "react";
 import {MECH_WIDTH,MECH_HEIGHT,mechanicsForceOrigin,mechanicsForceTip,type MechanicsDocument,type MechanicsSelection,type MechanicsTool} from "./lektrusMechanicsModel";
+import {svgClientPoint,clampCanvasPoint} from "./lektrusSvgPointer";
 export const mechanicsSvgPoint=(x:number,y:number,svg:SVGSVGElement)=>{
- const r=svg.getBoundingClientRect(),scale=Math.min(r.width/MECH_WIDTH,r.height/MECH_HEIGHT)||1;
- const ox=(r.width-MECH_WIDTH*scale)/2,oy=(r.height-MECH_HEIGHT*scale)/2;
- return {x:Math.max(0,Math.min(MECH_WIDTH,(x-r.left-ox)/scale)),y:Math.max(0,Math.min(MECH_HEIGHT,(y-r.top-oy)/scale))};
+  return clampCanvasPoint(svgClientPoint(svg,x,y),MECH_WIDTH,MECH_HEIGHT);
 };
 type Props={doc:MechanicsDocument;selection?:MechanicsSelection;tool?:MechanicsTool;
  onPlace?:(x:number,y:number,bodyId?:string)=>void;
