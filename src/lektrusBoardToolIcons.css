@@ -47,8 +47,9 @@ body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon>svg{
  stroke-linecap:round!important;stroke-linejoin:round!important;
  overflow:hidden!important;
 }
-:root[data-theme="dark"] body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon image,
-body[data-theme="dark"]>.lektrus-subject-tools-panel .lektrus-subject-tools-icon image{
+/* The same image atlas also appears in compact toolbars and preview dialogs. */
+:root[data-theme="dark"] svg[data-lektrus-subject-illustration] image,
+body[data-theme="dark"] svg[data-lektrus-subject-illustration] image{
  filter:brightness(0) invert(1);
 }
 body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button:hover .lektrus-subject-tools-icon,
