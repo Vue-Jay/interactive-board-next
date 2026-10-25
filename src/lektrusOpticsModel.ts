@@ -75,62 +75,130 @@ const refract=(d:Vector,a:OpticalPoint,b:OpticalPoint,from:number,to:number):Vec
     y:eta*d.y+(eta*ci-Math.sqrt(k))*ny};
 };
 
-/** First contact ray sketch using thin-lens/paraxial and planar Snell models.
- * It is a learning construction, not a full optical ray-tracing solver. */
+/** Iterate through all encountered optical surfaces.
+ * Finite interaction and travel bounds prevent cyclic reflections from locking
+ * the board. Optics are educational approximations, not spectral ray tracing. */
 export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|null{
   const source=doc.elements.find(e=>e.id===ray.sourceId&&e.kind==="source");
   if(!source)return null;
-  const angle=limitAngle(ray.angle)*Math.PI/180;
-  const dir={x:Math.cos(angle),y:-Math.sin(angle)};
-  const candidates=doc.elements.filter(e=>e.id!==source.id&&e.kind!=="source")
-    .map(e=>{
+  const theta=limitAngle(ray.angle)*Math.PI/180;
+  let direction:Vector={x:Math.cos(theta),y:-Math.sin(theta)};
+  let position:OpticalPoint={x:source.x,y:source.y};
+  const points:OpticalPoint[]=[position];
+  let previousId="";
+  let note="Прямолинейный ход луча";
+  let kind:OpticalPath["kind"]="straight";
+  const unit=(v:Vector):Vector=>{
+    const len=Math.hypot(v.x,v.y)||1;return {x:v.x/len,y:v.y/len};
+  };
+  const advance=(p:OpticalPoint,v:Vector,amount:number):OpticalPoint=>
+    ({x:p.x+v.x*amount,y:p.y+v.y*amount});
+  const addPoint=(p:OpticalPoint)=>{if(!points.some(q=>Math.abs(q.x-p.x)<.0001&&Math.abs(q.y-p.y)<.0001))points.push(p)};
+  for(let pass=0;pass<18;pass++){
+    type Hit={e:OpticalElement;point:OpticalPoint;t:number;facet?:[OpticalPoint,OpticalPoint]};
+    const candidates:Hit[]=[];
+    for(const e of doc.elements){
+      if(e.id===source.id||e.kind==="source")continue;
       if(e.kind==="prism"){
-        const faceHits=prismFaces(e).flatMap(facet=>{
-          const h=raySegmentHit(source,dir,...facet);
-          return h?[{e,t:h.t,intersection:h.point,facet}]:[];
-        }).sort((a,b)=>a.t-b.t);
-        return faceHits[0]??null;
+        for(const facet of prismFaces(e)){
+          const hit=raySegmentHit(position,direction,...facet);
+          if(hit&&hit.t>.08&&!(previousId===e.id&&hit.t<1))
+            candidates.push({e,...hit,facet});
+        }
+        continue;
       }
-      if(Math.abs(dir.x)<.00001)return null;
-      const t=(e.x-source.x)/dir.x;
-      const intersection={x:e.x,y:source.y+dir.y*t};
-      return t>0&&Math.abs(intersection.y-e.y)<=e.length/2?{e,t,intersection}:null;
-    }).filter(Boolean) as {e:OpticalElement;t:number;intersection:OpticalPoint;facet?:[OpticalPoint,OpticalPoint]}[];
-  candidates.sort((a,b)=>a.t-b.t);
-  if(!candidates.length)return {id:ray.id,color:ray.color,points:[source,endpoint(source,dir.x,dir.y)],kind:"straight",note:"Прямолинейный ход луча"};
-  const hit=candidates[0],e=hit.e,p=hit.intersection;
-  if(e.kind==="prism"&&hit.facet){
-    const inside=refract(dir,hit.facet[0],hit.facet[1],e.n1,e.n2);
-    if(!inside)return {id:ray.id,color:ray.color,points:[source,p,endpoint(p,-dir.x,-dir.y)],
-      kind:"reflected",note:"Полное отражение на первой грани"};
-    const exits=prismFaces(e).flatMap(facet=>{
-      const result=raySegmentHit({x:p.x+inside.x*.02,y:p.y+inside.y*.02},inside,...facet);
-      return result?[{...result,facet}]:[];
-    }).filter(h=>h.t>1).sort((a,b)=>a.t-b.t);
-    if(!exits.length)return {id:ray.id,color:ray.color,points:[source,p,endpoint(p,inside.x,inside.y)],
-      kind:"prism",note:"Преломление на входе в призму"};
-    const exit=exits[0];
-    const out=refract(inside,exit.facet[0],exit.facet[1],e.n2,e.n1);
-    if(!out)return {id:ray.id,color:ray.color,points:[source,p,exit.point],
-      kind:"prism",note:"Полное внутреннее отражение на выходной грани"};
-    return {id:ray.id,color:ray.color,
-      points:[source,p,exit.point,endpoint(exit.point,out.x,out.y)],
-      kind:"prism",note:"Преломление на двух гранях призмы по закону Снеллиуса"};
+      if(Math.abs(direction.x)<1e-7)continue;
+      const t=(e.x-position.x)/direction.x;
+      if(t<=.08||previousId===e.id&&t<1)continue;
+      const y=position.y+direction.y*t;
+      if(Math.abs(y-e.y)<=e.length/2) candidates.push({e,t,point:{x:e.x,y}});
+    }
+    const hit=candidates.sort((a,b)=>a.t-b.t)[0];
+    if(!hit){
+      addPoint(endpoint(position,direction.x,direction.y));
+      break;
+    }
+    const {e,point:p}=hit;
+    addPoint(p);
+    previousId=e.id;
+    if(e.kind==="screen"){
+      kind="straight";note="Луч поглощён экраном";break;
+    }
+    if(e.kind==="mirror"){
+      direction={x:-direction.x,y:direction.y};
+      position=advance(p,direction,.2);
+      kind="reflected";note="Последовательное отражение от зеркальных поверхностей";
+      continue;
+    }
+    if(e.kind==="interface"){
+      const entering=direction.x>0;
+      const ratio=(entering?e.n1:e.n2)/(entering?e.n2:e.n1);
+      const sine=direction.y*ratio;
+      if(Math.abs(sine)>1){
+        direction={x:-direction.x,y:direction.y};
+        kind="reflected";note="Полное внутреннее отражение на границе сред";
+      }else{
+        direction=unit({x:Math.sign(direction.x)*Math.sqrt(Math.max(0,1-sine*sine)),y:sine});
+        kind="refracted";note="Преломление по закону Снеллиуса на последовательных границах";
+      }
+      position=advance(p,direction,.2);
+      continue;
+    }
+    if(e.kind==="converging-lens"||e.kind==="diverging-lens"){
+      const focal=e.focalLength*(e.kind==="diverging-lens"?-1:1);
+      const slope=direction.y/Math.max(.00001,Math.abs(direction.x));
+      const newSlope=bounded(slope-(p.y-e.y)/focal,-8,8);
+      const sign=Math.sign(direction.x)||1;
+      direction=unit({x:sign,y:newSlope});
+      position=advance(p,direction,.2);
+      kind="lens";note="Последовательное прохождение через тонкие линзы (параксиальная модель)";
+      continue;
+    }
+    if(e.kind==="prism"&&hit.facet){
+      const inside=refract(direction,hit.facet[0],hit.facet[1],e.n1,e.n2);
+      if(!inside){
+        const edge=hit.facet,dx=edge[1].x-edge[0].x,dy=edge[1].y-edge[0].y;
+        const len=Math.hypot(dx,dy)||1;
+        let nx=-dy/len,ny=dx/len;
+        if(direction.x*nx+direction.y*ny>0){nx=-nx;ny=-ny}
+        const dot=direction.x*nx+direction.y*ny;
+        direction=unit({x:direction.x-2*dot*nx,y:direction.y-2*dot*ny});
+        position=advance(p,direction,.2);
+        kind="reflected";note="Полное отражение от грани призмы";continue;
+      }
+      const entry=advance(p,inside,.08);
+      const exits=prismFaces(e).flatMap(facet=>{
+        const result=raySegmentHit(entry,inside,...facet);
+        return result&&result.t>.15?[{...result,facet}]:[];
+      }).sort((a,b)=>a.t-b.t);
+      if(!exits.length){
+        direction=inside;position=entry;kind="prism";note="Преломление на входе в призму";
+        continue;
+      }
+      const exit=exits[0];
+      addPoint(exit.point);
+      const outward=refract(inside,exit.facet[0],exit.facet[1],e.n2,e.n1);
+      if(!outward){
+        // At present the simple teaching model stops at internal reflection;
+        // following every bounce inside a polygon is a separate advanced mode.
+        kind="prism";note="Внутреннее отражение в призме";break;
+      }
+      direction=unit(outward);
+      position=advance(exit.point,direction,.2);
+      kind="prism";note="Преломление в призме и дальнейшее прохождение через элементы";
+      continue;
+    }
   }
-  if(e.kind==="screen")return {id:ray.id,color:ray.color,points:[source,p],kind:"straight",note:"Луч падает на экран"};
-  if(e.kind==="mirror")return {id:ray.id,color:ray.color,points:[source,p,endpoint(p,-dir.x,dir.y)],kind:"reflected",note:"Угол отражения равен углу падения"};
-  if(e.kind==="interface"){
-    const ratio=e.n1/e.n2*Math.sin(angle);
-    if(Math.abs(ratio)>1)return {id:ray.id,color:ray.color,points:[source,p,endpoint(p,-dir.x,dir.y)],kind:"reflected",note:"Полное внутреннее отражение"};
-    const next=Math.asin(ratio);
-    return {id:ray.id,color:ray.color,points:[source,p,endpoint(p,Math.sign(dir.x)*Math.cos(next),-Math.sin(next))],kind:"refracted",note:"Закон Снеллиуса: n₁ sin α = n₂ sin β"};
+  if(points.length===1)addPoint(endpoint(position,direction.x,direction.y));
+  if(points.length>1&&points.length<20){
+    const last=points[points.length-1];
+    if(last.x>0&&last.x<OPTICS_WIDTH&&last.y>0&&last.y<OPTICS_HEIGHT&&
+      !doc.elements.some(e=>e.kind==="screen"&&Math.abs(e.x-last.x)<1&&Math.abs(e.y-last.y)<e.length/2) &&
+      !note.includes("Внутреннее отражение в призме")){
+      // Looped rays can reach the cap. Do not silently leave a floating endpoint.
+      if(points.length>=18)addPoint(endpoint(position,direction.x,direction.y));
+    }
   }
-  const focal=e.focalLength*(e.kind==="diverging-lens"?-1:1);
-  // Paraxial ray through a thin lens: outgoing slope changes by -height/f.
-  const incomingSlope=dir.y/dir.x;
-  const outgoingSlope=bounded(incomingSlope-(p.y-e.y)/focal,-8,8);
-  const dx=Math.sign(dir.x)/Math.sqrt(1+outgoingSlope*outgoingSlope);
-  const dy=outgoingSlope*dx;
-  return {id:ray.id,color:ray.color,points:[source,p,endpoint(p,dx,dy)],kind:"lens",note:"Тонкая линза, параксиальное приближение"};
+  return {id:ray.id,color:ray.color,points,kind,note};
 }
 export function traceOptics(doc:OpticsDocument):OpticalPath[]{return doc.rays.flatMap(r=>{const p=traceOpticalRay(doc,r);return p?[p]:[]})}
