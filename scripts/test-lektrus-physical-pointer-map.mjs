@@ -38,6 +38,6 @@ const svgMech=read("src/lektrusMechanicsEditor.css");
 assert.ok(svgOpts.includes("container-type:size")&&svgMech.includes("container-type:size"),
  "The visible drawing page must match the actual SVG hit area");
 const glyph=read("src/LektrusSubjectToolIcons.tsx");
-assert.ok(glyph.includes('"physics-optics":<><path d="M14 3 7.5 21h14Z"'),
- "Use the new prism-with-rays icon, not the rejected lens");
+assert.ok(glyph.includes('"physics-optics":<><path d="M11 3c-2.8 4.6-2.8 13.4 0 18'),
+ "Subject optics icon must use the user-approved converging lens and rays");
 console.log("Physical editors: real SVG coordinate mapping, visible sheet, accurate cursor, and new optics icon OK");
