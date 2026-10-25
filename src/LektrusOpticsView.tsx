@@ -82,7 +82,7 @@ export default function LektrusOpticsView({doc,selection=null,tool="select",onPl
          </g>}
        </g>}
        {part.kind==="interface"&&<g>
-         <rect x={part.x} y={top} width="min(100,960)" height={length} fill="#d1eeff" fillOpacity=".32"/>
+         <rect x={part.x} y={top} width={Math.max(0,960-part.x)} height={length} fill="#d1eeff" fillOpacity=".32"/>
          <path d={`M${part.x} ${top}V${bottom}`} stroke="#5e96c9" strokeWidth="2.5"/>
          {doc.normals&&<path d={`M${part.x-58} ${part.y}h116`} stroke="#87a9ca" strokeDasharray="5 4"/>}
        </g>}
