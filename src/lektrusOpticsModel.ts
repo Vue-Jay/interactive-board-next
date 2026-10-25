@@ -164,11 +164,14 @@ export function traceOpticalRay(doc:OpticsDocument,ray:OpticalRay):OpticalPath|n
       }
     }else if(e.kind==="converging-lens"||e.kind==="diverging-lens"){
       const f=e.focalLength*(e.kind==="diverging-lens"?-1:1);
+      // A thin lens bends a ray in either travel direction. Using |dx|
+      // here previously broke optical reversibility: a ray reflected back
+      // through a lens could turn the wrong way or cross at a false angle.
       const sign=Math.sign(direction.x)||1;
-      const slope=direction.y/Math.max(0.00001,Math.abs(direction.x));
-      const after=bounded(slope-(p.y-e.y)/f,-8,8);
-      direction=unit({x:sign,y:after});
-      kind="lens";note="Последовательное прохождение через тонкие линзы";
+      const incomingSlope=direction.y/direction.x;
+      const outgoingSlope=bounded(incomingSlope-sign*(p.y-e.y)/f,-8,8);
+      direction=unit({x:sign,y:sign*outgoingSlope});
+      kind="lens";note="Преломление в тонкой линзе в прямом и обратном направлениях";
     }else if(e.kind==="prism"&&hit.facet){
       const wasInside=medium===e.id;
       const from=wasInside?e.n2:e.n1,to=wasInside?e.n1:e.n2;
