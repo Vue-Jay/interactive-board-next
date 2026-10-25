@@ -3944,6 +3944,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (gesture.current || eraserSession.current || (e.target as HTMLElement).closest("textarea"))
       return;
     if (e.button !== 0 && e.button !== 1) return;
+    // Guard the actual canvas event too: a previously selected or shortcut
+    // tool must never outlive a switch to a restricted testing role.
+    if(tool!=="select"&&tool!=="hand"&&tool!=="lasso"&&!toolAllowedForRole(tool)){
+      setTool("select");
+      setNotice(canEdit?"Этот инструмент доступен преподавателю":"Эта доска открыта только для просмотра");
+      return;
+    }
     // A click outside an unselected shape palette only dismisses the tool.
     if (tool === "shape" && shapeType === null) {
       e.preventDefault();
@@ -3959,7 +3966,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const connectorEndpoint = connectorEndpointEl?.dataset.connectorEndpoint;
     if ((tool === "select" || tool === "hand") && connectorEndpoint && selected.length === 1) {
       const connector = itemsRef.current.find((item) => item.id === selected[0] && item.kind === "connector");
-      if (connector && !connector.locked) {
+      if (connector && canEdit && !connector.locked && !structurallyLockedForStudent(connector)) {
         e.preventDefault();
         e.stopPropagation();
         gesture.current = {
@@ -4051,7 +4058,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         return;
       }
     }
-    if (e.pointerType === "touch" && hit?.kind === "image" && (tool === "select" || tool === "hand") && !space && !hit.locked) {
+    if (e.pointerType === "touch" && hit?.kind === "image" && (tool === "select" || tool === "hand") && !space && canEdit && !hit.locked) {
       const now = performance.now();
       const previousTap = imageTapRef.current;
       const isDoubleTap = !!previousTap && previousTap.id === hit.id && now - previousTap.at <= 420 && Math.hypot(e.clientX - previousTap.x, e.clientY - previousTap.y) <= 28;
@@ -4067,7 +4074,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     const handleEl = target.closest<HTMLElement>("[data-transform-handle]");
     const transformHandle = handleEl?.dataset.transformHandle;
-    if ((tool === "select" || tool === "hand") && transformHandle && hit && !hit.locked && !structurallyLockedForStudent(hit) && selected.length === 1 && selected[0] === hit.id) {
+    if ((tool === "select" || tool === "hand") && transformHandle && hit && canEdit && !hit.locked && !structurallyLockedForStudent(hit) && selected.length === 1 && selected[0] === hit.id) {
       e.preventDefault();
       e.stopPropagation();
       gesture.current = {
@@ -4102,10 +4109,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (tool === "hand" && !space && e.button === 0) {
       const family = hit ? familyIdsFor(hit) : [];
       const hitIsSelected = !!hit && family.every((member) => selected.includes(member));
-      const movableIds = (hitIsSelected ? selected : family).filter((member) => {
+      const movableIds = canEdit?(hitIsSelected ? selected : family).filter((member) => {
         const candidate=itemsRef.current.find((item) => item.id === member);
         return !!candidate && !candidate.locked && !structurallyLockedForStudent(candidate);
-      });
+      }):[];
       if (e.pointerType === "touch" && hit && !hitIsSelected) setSelected(family);
 
       /* Touch needs capture immediately. Waiting for the movement threshold on
@@ -4262,7 +4269,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         ids = family.every((member) => selected.includes(member)) ? selected : family;
       }
       setSelected(ids);
-      if (structurallyLockedForStudent(hit)) return;
+      if (!canEdit || structurallyLockedForStudent(hit)) return;
       if (!ids.includes(id) || ids.some((member) => itemsRef.current.find((item) => item.id === member)?.locked)) return;
     } else if(tool==="select" && !space && e.button===0){
       // Dragging from empty canvas selects all objects intersecting a rectangle.
@@ -4683,7 +4690,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         if(gesture.current || eraserSession.current || e.repeat)return;
         e.preventDefault();
         const shortcutTool=keyTools[e.code];
-        if(!toolAllowedForRole(shortcutTool)){setNotice("Этот инструмент доступен преподавателю");return}
+        if(!toolAllowedForRole(shortcutTool)){
+          setNotice(canEdit?"Этот инструмент доступен преподавателю":"Эта доска открыта только для просмотра");
+          return;
+        }
         setTool(shortcutTool);
       }
     };
