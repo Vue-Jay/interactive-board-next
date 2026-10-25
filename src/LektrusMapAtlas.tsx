@@ -977,32 +977,28 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  };
  const brushContour=(e:ReactPointerEvent<SVGSVGElement>)=>{
   const gesture=eraserGesture.current,point=annotationWorld(e);
-  if(!gesture||gesture.pointerId!==e.pointerId||!point)return;
-  const hits=contourEraserHits(contourMarks,[],point,cameraRef.current.scale,Math.max(14,toolThickness*5));
-  let changed=false;
-  for(const id of hits.marks)if(!gesture.marks.has(id)){gesture.marks.add(id);changed=true}
+  if(!gesture||gesture.pointerId!==e.pointerId||!point||pinch.current)return;
   const last=gesture.path[gesture.path.length-1];
-  if(!last||Math.hypot(point.x-last.x,point.y-last.y)>1.2/cameraRef.current.scale){
-   if(gesture.path.length<700)gesture.path.push(point);
-   // Recalculate cut segments during the gesture, not after pointer-up.
+  if(!last||Math.hypot(point.x-last.x,point.y-last.y)>.6/cameraRef.current.scale){
+   if(gesture.path.length<2000)gesture.path.push(point);
    setLiveErasedStrokes(eraseContourInkAlongPath(contourStrokes,gesture.path,
     (toolThickness*5+2)/cameraRef.current.scale));
   }
-  // A filled polygon is also student work: erase its colour without panning.
-  // elementFromPoint works after SVG pointer capture and supports swiping.
-  const polygon=(e.target as Element).closest<SVGElement>("[data-contour-fill-key]")??
-   document.elementFromPoint(e.clientX,e.clientY)?.closest<SVGElement>("[data-contour-fill-key]");
-  const key=polygon?.getAttribute("data-contour-fill-key");
-  if(key&&painted[key]&&!gesture.fills.has(key)){gesture.fills.add(key);changed=true}
-  if(changed)setPendingErasure({marks:[...gesture.marks],fills:[...gesture.fills]});
  };
  const beginContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="mouse"&&e.button!==0)return;
   e.preventDefault();e.stopPropagation();
+  if(e.pointerType==="touch"){
+   onPointerDown(e);
+   if(pinch.current){
+    eraserGesture.current=null;
+    setLiveErasedStrokes(null);
+    return;
+   }
+  }
   if(eraserGesture.current)return;
-  setLiveErasedStrokes(null);
   eraserGesture.current={pointerId:e.pointerId,marks:new Set(),fills:new Set(),path:[]};
-  e.currentTarget.setPointerCapture(e.pointerId);
+  try{e.currentTarget.setPointerCapture(e.pointerId)}catch{/* Safari/WebView */}
   brushContour(e);
  };
  const moveContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
@@ -1018,30 +1014,39 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
     cursor.style.display="block";
    }else cursor.style.display="none";
   }
-  e.stopPropagation();brushContour(e);
+  e.stopPropagation();
+  if(e.pointerType==="touch"){
+   if(pinch.current){onMove(e);return}
+   if(points.current.has(e.pointerId))points.current.set(e.pointerId,localPoint(e));
+  }
+  brushContour(e);
  };
  const endContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
   e.stopPropagation();
   const gesture=eraserGesture.current;
+  const wasPinching=e.pointerType==="touch"&&!!pinch.current;
+  if(e.pointerType==="touch")onPointerEnd(e);
+  else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   if(!gesture||gesture.pointerId!==e.pointerId)return;
-  brushContour(e);
-  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   eraserGesture.current=null;
-  setPendingErasure({marks:[],fills:[]});
+  if(wasPinching){setLiveErasedStrokes(null);return}
+  brushContour(e);
+  const erasedStrokes=eraseContourInkAlongPath(contourStrokes,gesture.path,
+   (toolThickness*5+2)/cameraRef.current.scale);
   setLiveErasedStrokes(null);
-  contourEraserPreview.current?.setAttribute("d","");
-  const erasedStrokes=eraseContourInkAlongPath(contourStrokes,gesture.path,(toolThickness*5+2)/cameraRef.current.scale);
-  if(!gesture.marks.size&&erasedStrokes===contourStrokes&&!gesture.fills.size)return;
+  if(erasedStrokes===contourStrokes)return;
   captureContour();
-  onChange?.({...d,contourMarks:contourMarks.filter(mark=>!gesture.marks.has(mark.id)),
-   contourStrokes:erasedStrokes,
-   paintedCountries:Object.fromEntries(Object.entries(painted).filter(([key])=>!gesture.fills.has(key)))});
+  // Like the board eraser, remove only pencil ink, never labels, markers or country fills.
+  onChange?.({...d,contourStrokes:erasedStrokes});
  };
  const cancelContourErase=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.pointerType==="touch")onPointerEnd(e);
   if(eraserGesture.current?.pointerId!==e.pointerId)return;
   e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
-  eraserGesture.current=null;contourEraserPreview.current?.setAttribute("d","");setPendingErasure({marks:[],fills:[]});setLiveErasedStrokes(null);
+  eraserGesture.current=null;
+  contourEraserPreview.current?.setAttribute("d","");
+  setLiveErasedStrokes(null);
  };
  const startContourMarkDrag=(e:ReactPointerEvent<SVGGElement>,mark:ContourMark)=>{
   if(!worksheetEditor||contourAction!=="select"||!onChange||markerGesture.current)return;
@@ -1392,7 +1397,8 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
      }:undefined}
      onClick={objectMoveMode?undefined:pickCoordinates}
      aria-label={historical?"Историческая карта мира: "+yearLabel(snapshot.year):"Карта мира: "+mapModeTitle(mode)}
-     onPointerDown={objectMoveMode?undefined:contourEraser?beginContourErase:contourFreehand?beginContourStroke:
+     onPointerDownCapture={contourEraser?beginContourErase:undefined}
+     onPointerDown={objectMoveMode?undefined:contourEraser?undefined:contourFreehand?beginContourStroke:
       worksheetEditor&&contourAction==="select"?undefined:onPointerDown}
      onPointerMove={objectMoveMode?undefined:contourEraser?moveContourErase:contourFreehand?moveContourStroke:
       worksheetEditor&&contourAction==="select"?undefined:onMove}
