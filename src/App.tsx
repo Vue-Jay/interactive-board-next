@@ -2062,7 +2062,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     preview:rolePreview,boardRole:boardSummary.role,accountRole,
     isAppAdmin,adminMaintenance
   });
-  const {canEdit,isStudent,isGuestPreview,canManageBoard,canCreateAssignments}=roleCapabilities;
+  const {canEdit,isStudent,canManageBoard,canCreateAssignments}=roleCapabilities;
   const adminHidden = isAppAdmin && adminInvisible;
   const toolAllowedForRole = (id:Tool) => canEdit&&(!isStudent || !STUDENT_BLOCKED_CREATE_TOOLS.has(id));
   const structurallyLockedForStudent = (item:Item|undefined|null) => !!item && isStudent && STUDENT_PROTECTED_KINDS.has(item.kind);
@@ -3385,13 +3385,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     y: (p.y - view.y) / view.zoom,
   });
   const generateBoardAi=()=>{
-    if(isStudent){setNotice("Создавать задания может только преподаватель");return}
+    if(!canCreateAssignments){setNotice("Создавать задания может только преподаватель с правом редактирования");return}
     const result=generateMathAi(boardAiMode,boardAiLevel,boardAiCount,boardAiTopic,boardAiWithAnswers);
     setBoardAiDetected(result.detected);
     setBoardAiPreview(boardAiWithAnswers?result.items.map((x,i)=>`${x}  •  Ответ: ${result.answers[i]}`):result.items);
   };
   const insertBoardAi=()=>{
-    if(isStudent){setNotice("Создавать задания может только преподаватель");return}
+    if(!canCreateAssignments){setNotice("Создавать задания может только преподаватель с правом редактирования");return}
     if(!canEdit||!boardAiPreview.length)return;
     const rect=board.current?.getBoundingClientRect();if(!rect)return;
     const center=world({x:rect.width/2,y:rect.height/2});
@@ -3408,7 +3408,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   const aiTransferHandledRef = useRef<string|null>(null);
   useEffect(()=>{
-    if(!canEdit)return;
+    if(!canCreateAssignments)return;
     const transfer=peekAiBoardTransfer();
     if(!transfer||aiTransferHandledRef.current===transfer.queuedAt)return;
     const rect=board.current?.getBoundingClientRect();
@@ -3459,7 +3459,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     setTool("select");
     clearAiBoardTransfer();
     setNotice(created.length===1?"AI-материал добавлен на доску":`AI-материалы добавлены на доску · ${created.length}`);
-  },[boardSummary.id,canEdit]);
+  },[boardSummary.id,canCreateAssignments]);
 
   const zoom = (factor: number, anchor?: Point) => {
     if (gesture.current) return;
@@ -7931,7 +7931,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <button type="button" className="toolbar-more" aria-label={desktopToolsExpanded?"Закрыть меню инструментов":"Открыть все инструменты"} title={desktopToolsExpanded?"Закрыть меню инструментов":"Ещё инструменты"} aria-controls="lektrus-tool-overflow" aria-haspopup="dialog" onClick={()=>setDesktopToolsExpanded(v=>!v)} aria-expanded={desktopToolsExpanded}>
             <Icon name={desktopToolsExpanded?"chevron-left":"plus"} size={16}/><span className="tool-tooltip">{desktopToolsExpanded?"Свернуть":"Ещё инструменты"}</span>
           </button>
-          {!isStudent&&<button type="button" className="toolbar-ai-button" title="AI-помощник" aria-label="AI-помощник" onClick={()=>{finishEdit();setBoardAiOpen(true);setBoardAiPreview([])}}>
+          {canCreateAssignments&&<button type="button" className="toolbar-ai-button" title="AI-помощник" aria-label="AI-помощник" onClick={()=>{finishEdit();setBoardAiOpen(true);setBoardAiPreview([])}}>
             <Icon name="robot" size={18}/><span className="tool-tooltip">AI-помощник</span>
           </button>}
           <button type="button" className="toolbar-command-search" title="Найти инструмент · Ctrl+K" aria-label="Найти инструмент" onClick={()=>{setCommandPaletteQuery("");setCommandPaletteIndex(0);setCommandPaletteOpen(true)}}>
@@ -8012,7 +8012,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <div><Icon name="media" size={17}/><span><b>На согласовании</b><small>{pendingAttachmentRequests.length===1?pendingAttachmentRequests[0].name:`Вложений: ${pendingAttachmentRequests.length}`}</small></span></div>
           <button onClick={()=>{for(const request of pendingAttachmentRequests)sendAttachmentRequest(request);setNotice("Запрос повторно отправлен преподавателю")}}>Отправить снова</button>
         </aside>}
-        {boardAiOpen&&!isStudent&&<div className="board-ai-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setBoardAiOpen(false)}}>
+        {boardAiOpen&&canCreateAssignments&&<div className="board-ai-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)setBoardAiOpen(false)}}>
           <section className="board-ai-panel" role="dialog" aria-modal="true" aria-label="AI-помощник">
             <header><div className="board-ai-title"><Icon name="robot" size={22}/><div><strong>AI-помощник</strong><span>Создать материал прямо на доске</span></div></div><button onClick={()=>setBoardAiOpen(false)} aria-label="Закрыть">×</button></header>
             <div className="board-ai-types">
