@@ -63,7 +63,7 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
    </g>;
   })}
   <path d="M24 210V226H40" fill="none" stroke="#416e8c" strokeWidth="1.5"/>
-  <path d="M45 20A24 24 0 0 1 24 43" fill="none" stroke="#719fbe" strokeWidth="1.5"/>
+  <path d="M12 38 A28 28 0 0 0 34.4 26.8" fill="none" stroke="#719fbe" strokeWidth="1.5"/>
   <text x="36" y="123" transform="rotate(-90 36 123)" textAnchor="middle" fontSize="8.5" letterSpacing="1" fontWeight="750" fill="#597b96">LEKTRUS</text>
  </svg>;
  return <svg width="360" height="205" viewBox="0 0 360 205" role="img" aria-label="Прозрачный транспортир, от 0 до 180 градусов">
