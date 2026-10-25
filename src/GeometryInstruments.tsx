@@ -70,7 +70,7 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
   <defs><linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
    <stop offset="0" stopColor="#f7fcff" stopOpacity=".9"/>
    <stop offset="1" stopColor="#c0e2f6" stopOpacity=".85"/>
-  </linearGradient></defs>
+  </linearGradient><path id={`${gradient}-brand-arc`} d="M142 86 A111 111 0 0 1 218 86"/></defs>
   <path d="M6 191A174 174 0 0 1 354 191Z M77 191A103 103 0 0 1 283 191Z" fill={"url(#"+gradient+")"} fillRule="evenodd"/>
   <path d="M6 191A174 174 0 0 1 354 191Z" fill="none" stroke="#6295ba" strokeWidth="2"/>
   <path d="M77 191A103 103 0 0 1 283 191" fill="none" stroke="#6e9fbe" strokeWidth="1.5"/>
@@ -86,6 +86,7 @@ function InstrumentGraphic({type}:{type:InstrumentType}){
       fontSize="10" fontWeight="650" textAnchor="middle" fill="#2d5878">{180-i*5}°</text>}
    </g>;
   })}
+  <text fontFamily="inherit" fontSize="8.5" fontWeight="750" letterSpacing="1" fill="#597b96" textAnchor="middle" pointerEvents="none"><textPath href={`#${gradient}-brand-arc`} startOffset="50%">LEKTRUS</textPath></text>
   <path d="M180 179v24M168 191h24" stroke="#477898" strokeWidth=".9"/>
   <circle cx="180" cy="191" r="4.1" fill="#f4fcff" stroke="#416d8c" strokeWidth="1.5"/>
  </svg>;
