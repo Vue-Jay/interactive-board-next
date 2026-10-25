@@ -64,4 +64,27 @@ assert.ok(styles.includes('.lektrus-subject-tools-panel .lektrus-subject-tool-se
 assert.ok(styles.includes('body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon>svg'),
  "Portal-mounted panels must receive consistent icon sizing");
 assert.ok(styles.includes("prefers-reduced-motion:reduce"));
+// The visual language is shared with the ordinary pencil/select/eraser icons.
+const inkStyles=read("src/lektrusBoardToolIcons.css");
+const entry=read("src/main.tsx");
+const appIconBody=app.slice(app.indexOf("const iconBody ="),app.indexOf("function Icon("));
+const appSvg=app.slice(app.indexOf("function Icon("),app.indexOf("function loadInitial("));
+assert.ok(appSvg.includes('strokeWidth={compactCategory?1.9:name==="section-arrows"?2.4:1.9}'),
+ "The regular board toolbar must retain its 1.9px stroke system");
+for(const name of ["select","hand","pen","marker","eraser","shape","table","graph"]){
+ assert.ok(appIconBody.includes('case "'+name+'"'),"Regular board tool icon missing: "+name);
+}
+assert.ok(icons.includes('strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"'),
+ "Subject glyphs must use the same 1.9px round-line geometry as the board");
+assert.equal(iconIds.length,new Set(iconIds).size,"Icon names must stay unique");
+assert.ok(iconIds.length>=43,"Icon inventory must cover every school subject");
+assert.ok(!/stroke="#[0-9a-f]{3,8}"/i.test(icons),"All subject glyphs must inherit monochrome ink");
+for(const token of ["--lektrus-tool-ink:#3b424b","--lektrus-tool-tile:#f5f6f8",
+ ":root[data-theme=\"dark\"]",".lektrus-subject-tools-icon>svg",
+ ".lektrus-elements-catalogue .lektrus-elements-shape-grid",
+ ".toolbar.compact-toolbar .tool-button", ".mobile-board-tools button"]){
+ assert.ok(inkStyles.includes(token),"Board-wide icon style missing: "+token);
+}
+assert.ok(entry.includes('import "./lektrusBoardToolIcons.css";'),"Load icon styles after existing themes");
+
 console.log("Unique subject tool pictograms:",expected.length,"registered icons +",iconIds.length-expected.length,"additional icons, all connected and responsive: OK");
