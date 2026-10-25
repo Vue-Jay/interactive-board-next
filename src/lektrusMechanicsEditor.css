@@ -77,3 +77,16 @@
 .lektrus-mechanics-tools button:first-child{justify-content:center}
 .lektrus-mechanics-editor .lektrus-mechanics-tools button.active{background:#e4efff;border-color:#8dadde;color:#2658b0}
 .lektrus-mechanics-svg .mechanics-hit:focus-visible{outline:none}
+
+/* Resultant and force actions live with the selected body, not in a generic point list. */
+.lektrus-mechanics-inspector-section{display:flex;flex-direction:column;gap:7px;border-top:1px solid #e5edf7;padding-top:11px}
+.lektrus-mechanics-inspector-section>strong{font-size:12px;color:#345780}
+.lektrus-mechanics-inspector-section>small,.lektrus-mechanics-resultant small{font-size:10px;color:#8296ad;line-height:1.45}
+.lektrus-mechanics-force-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.lektrus-mechanics-force-presets button{min-height:34px;background:#ebf3ff;border-color:#bed2f0;color:#2c5ba3}
+.lektrus-mechanics-force-list-item{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px;text-align:left}
+.lektrus-mechanics-force-list-item b{font-size:11px;font-variant-numeric:tabular-nums;color:#275fb4}
+.lektrus-mechanics-resultant{display:grid;gap:5px;padding:10px;border:1px solid #cddff5;background:#f2f7ff;border-radius:10px}
+.lektrus-mechanics-resultant>strong{font-size:12px;color:#2a548b;margin-bottom:3px}
+.lektrus-mechanics-resultant>span{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#516e96}
+.lektrus-mechanics-resultant b{font-variant-numeric:tabular-nums;color:#2359a6}
