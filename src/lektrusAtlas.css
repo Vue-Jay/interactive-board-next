@@ -899,3 +899,7 @@
  max-width:none;max-height:none;user-select:none;
  contain:layout style paint;
 }
+
+/* Map chrome stays visually above the transient ink preview. */
+.lektrus-atlas-map-box .lektrus-atlas-zoom{z-index:8}
+.lektrus-atlas-map-box .lektrus-atlas-overlay{z-index:9}
