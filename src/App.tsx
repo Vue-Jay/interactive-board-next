@@ -1147,7 +1147,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onOpenEditor, suspendPeriodicWindows }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
@@ -1164,6 +1164,8 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
   onSchoolDiagramChange?: (diagram:import("./lektrusSchoolDiagramModel").SchoolDiagram)=>void;
   onOpenEditor?: ()=>void;
+  onToggleConstruction?: ()=>void;
+  constructionActive?: boolean;
   suspendPeriodicWindows?: boolean;
 }) {
   const [liveSpin,setLiveSpin]=useState<[number,number]|null>(null);
@@ -1314,14 +1316,27 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
     layoutScienceLabels(item.graphPoints??[],item.graphSegments??[],p=>({x:sx(p.x),y:sy(p.y)}),W,H):null;
   return <div className={`graph-view graph-purpose-${purpose} ${item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")?"science-graph":""} ${onPointMove?"graph-interactive":""}`}>
     {purpose==="geometry" ? (onOpenEditor&&
-      <button type="button" className="lektrus-graph-canvas-editor" data-board-interactive="true"
-        title="Открыть редактор построения" aria-label="Открыть редактор построения"
-        onPointerDown={event=>event.stopPropagation()}
-        onPointerUp={event=>event.stopPropagation()}
-        onClick={event=>{event.preventDefault();event.stopPropagation();onOpenEditor()}}
-        onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}>
-        <LektrusGeometryToolIcon name="editor" size={17}/><span>Редактор</span>
-      </button>) :
+      <div className="lektrus-graph-canvas-actions" data-board-interactive="true">
+        <button type="button" className="lektrus-graph-canvas-editor" data-board-interactive="true"
+          title="Открыть редактор построения" aria-label="Открыть редактор построения"
+          onPointerDown={event=>event.stopPropagation()}
+          onPointerUp={event=>event.stopPropagation()}
+          onClick={event=>{event.preventDefault();event.stopPropagation();onOpenEditor()}}
+          onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}>
+          <LektrusGeometryToolIcon name="editor" size={17}/><span>Редактор</span>
+        </button>
+        {onToggleConstruction&&<button type="button"
+          className="lektrus-graph-canvas-construction" data-board-interactive="true"
+          title={constructionActive?"Закрыть инструменты построения":"Построение на чертеже"}
+          aria-label={constructionActive?"Закрыть инструменты построения":"Открыть инструменты построения на чертеже"}
+          aria-pressed={constructionActive}
+          onPointerDown={event=>event.stopPropagation()}
+          onPointerUp={event=>event.stopPropagation()}
+          onClick={event=>{event.preventDefault();event.stopPropagation();onToggleConstruction()}}
+          onDoubleClick={event=>{event.preventDefault();event.stopPropagation()}}>
+          <LektrusGeometryToolIcon name="construction" size={21}/>
+        </button>}
+      </div>) :
       <div className="graph-label"><strong>{title}</strong>
         {item.graphFigureId?.startsWith("chem-organic-")&&(()=>{
           const analysis=analyzeOrganicStructure(item);
@@ -8342,6 +8357,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "graph" && <GraphView item={item}
                   onOpenEditor={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation
                     ?()=>{setGraphPointEditId(null);openGraphEditor(item)}:undefined}
+                  constructionActive={boardGeometryMode?.id===item.id}
+                  onToggleConstruction={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")
+                    ?()=>{if(boardGeometryMode?.id===item.id){setBoardGeometryMode(null);setBoardGeometryError("")}else changeBoardGeometryMode(item,"move")}:undefined}
                   onPointMoveEnd={boardGeometryMode?.id===item.id&&selectedIds.has(item.id)&&tool==="select"&&!item.locked&&canEdit&&item.graphPurpose==="geometry"&&!isSolidFigure(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")&&!isSchoolDiagramId(item.graphFigureId)&&activeBoardGeometryMode(item)==="move"?(index,x,y)=>{
                     commit(itemsRef.current.map(candidate=>{
                       if(candidate.id!==item.id)return candidate;
@@ -8681,25 +8699,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <span className="cover-selection-controls"><button type="button" className={singleSelected.coverOpen ? "active" : ""} onClick={() => toggleCover(singleSelected)} title="Прозрачность шторки"><Icon name={singleSelected.coverOpen ? "eye-off" : "eye"} size={15}/><span>{singleSelected.coverOpen ? "Закрыть" : "Прозрачная"}</span></button><input type="range" min="0" max="100" value={Math.round((singleSelected.coverOpen?0:(singleSelected.coverOpacity??1))*100)} onChange={e=>{const opacity=Number(e.target.value)/100;commit(itemsRef.current.map(i=>i.id===singleSelected.id?{...i,coverOpen:opacity===0,coverOpacity:opacity}:i))}} aria-label="Непрозрачность шторки"/></span>
               )}
               {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>setFractionEditorId(singleSelected.id)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
-              {singleSelected?.kind==="graph"&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&(
+              {singleSelected?.kind==="graph"&&singleSelected.graphPurpose!=="geometry"&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&(
                 <span className="graph-selection-controls">
-                  {singleSelected.graphPurpose!=="geometry"&&<button type="button" data-board-interactive="true"
+                  <button type="button" data-board-interactive="true"
                     className="lektrus-graph-edit-secondary" aria-label="Настроить учебный объект"
                     onPointerDown={e=>e.stopPropagation()}
                     onClick={e=>{e.preventDefault();e.stopPropagation();setGraphPointEditId(null);openGraphEditor(singleSelected)}}
                     title="Открыть настройки учебного объекта">
                     <Icon name="settings" size={15}/><span>Настроить</span>
-                  </button>}
-                  {singleSelected.graphPurpose==="geometry"&&!isSolidFigure(singleSelected.graphFigureId)&&!isSchoolDiagramId(singleSelected.graphFigureId)&&
-                    <button type="button" data-board-interactive="true"
-                      className="lektrus-graph-inline-draw"
-                      title={boardGeometryMode?.id===singleSelected.id?"Завершить построение на доске":"Построить прямо на доске"}
-                      aria-label={boardGeometryMode?.id===singleSelected.id?"Выключить построение на доске":"Включить построение на доске"}
-                      aria-pressed={boardGeometryMode?.id===singleSelected.id}
-                      onPointerDown={e=>e.stopPropagation()}
-                      onClick={e=>{e.preventDefault();e.stopPropagation();if(boardGeometryMode?.id===singleSelected.id){setBoardGeometryMode(null);setBoardGeometryError("")}else changeBoardGeometryMode(singleSelected,"move")}}>
-                      <LektrusGeometryToolIcon name="polygon" size={17}/><span>Построение</span>
-                    </button>}
+                  </button>
                 </span>)}
               {singleSelected?.kind === "formula" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (
                 <span className="formula-selection-controls">
