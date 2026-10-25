@@ -1,3 +1,8 @@
+/* Keep measuring overlays clipped to the board and below its interface chrome. */
+.board .geometry-instrument.geometry-instrument-centered{
+ position:absolute!important;
+ z-index:8!important;
+}
 /* Shared classroom measuring tools. Keep the graduation SVG crisp on every board. */
 .geometry-instrument.geometry-instrument-centered .geometry-instrument-body{
  border-radius:12px;
