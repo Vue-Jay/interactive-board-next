@@ -32,6 +32,7 @@ import LektrusSubjectToolsPanel from "./LektrusSubjectToolsPanel";
 import LektrusSubjectToolIcon from "./LektrusSubjectToolIcons";
 import LektrusSchoolDiagramView from "./LektrusSchoolDiagramView";
 import {fitGeoMatchingItem} from "./lektrusGeoMatchingLayout";
+import {boardObjectTypeName} from "./boardObjectNames";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
@@ -2003,7 +2004,7 @@ const itemLabel = (item: Item) => {
   if (item.kind === "table") return `Таблица ${item.tableRows ?? 3}×${item.tableCols ?? 3}`;
   if (item.kind === "formula") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Формула";
   if (item.kind === "fraction") return item.text.trim().slice(0,44) || "Дробная модель";
-  if (item.kind === "graph") return item.text.trim().slice(0,44) || (item.graphFigureId==="lektrus-chart"?"Диаграмма":item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрическое построение":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции");
+  if (item.kind === "graph") return item.text.trim().slice(0,44) || boardObjectTypeName(item);
   if (item.kind === "checklist") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Чек-лист";
   if (item.kind === "quiz") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Вопрос";
   if (item.kind === "flashcard") return item.text.trim().replace(/\s+/g, " ").slice(0, 44) || "Карточка";
@@ -2019,7 +2020,7 @@ const itemKindLabel = (item: Item) => {
   if (item.kind === "table") return "Таблица";
   if (item.kind === "formula") return "Формула";
   if (item.kind === "fraction") return "Дробная модель";
-  if (item.kind === "graph") return item.graphFigureId==="lektrus-chart"?"Диаграмма":item.graphPurpose==="number-line"?"Числовая прямая":item.graphPurpose==="unit-circle"?"Окружность":item.graphPurpose==="geometry"?"Геометрия":item.graphPurpose==="coordinates"?"Координатная плоскость":"График функции";
+  if (item.kind === "graph") return boardObjectTypeName(item);
   if (item.kind === "checklist") return "Чек-лист / задание";
   if (item.kind === "quiz") return "Вопрос / мини-тест";
   if (item.kind === "flashcard") return item.flashcardFlipped ? "Карточка · ответ" : "Карточка · вопрос";
@@ -4829,6 +4830,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   };
   const lectrisEditSelected = () => {
     const contourWorksheet=singleSelected?.graphFigureId==="contour-atlas";
+    setLectrisInspectorOpen(false);
     if (!singleSelected || !canEdit || (singleSelected.locked&&!contourWorksheet) || (isStudent && structurallyLockedForStudent(singleSelected)&&!contourWorksheet)) return;
     switch (singleSelected.kind) {
       case "text": case "sticky": case "frame": case "comment": startEdit(singleSelected); break;
@@ -8900,13 +8902,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   : `${selectedItems.length} объектов`}
               </span>
 
-              {singleSelected&&!isInkItem(singleSelected)&&
-                <button type="button" className="icon-action" data-board-interactive="true"
-                  title="Настройки и свойства объекта" aria-label="Настройки и свойства объекта"
-                  aria-pressed={lectrisInspectorOpen}
-                  onClick={()=>setLectrisInspectorOpen(value=>!value)}>
-                  <Icon name="settings" size={16}/>
-                </button>}
               {singleSelected&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&
                 (["text","sticky","frame","comment","formula","fraction","table","checklist","quiz","flashcard","linkmedia","image"].includes(singleSelected.kind))&&
                 <button type="button" className="selection-edit-action" data-board-interactive="true"
