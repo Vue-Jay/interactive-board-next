@@ -8597,7 +8597,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               selected={boardGeometryMode?.id===singleSelected.id?boardGeometryMode.selected:[]}
               error={boardGeometryMode?.id===singleSelected.id?boardGeometryError:""}
               onMode={mode=>changeBoardGeometryMode(singleSelected,mode)}
-              onOpenEditor={()=>openGraphEditor(singleSelected)}
               onPickBack={()=>setBoardGeometryMode(state=>state?.id===singleSelected.id?{...state,selected:state.selected.slice(0,-1)}:state)}
               onClear={()=>{setBoardGeometryMode(state=>state?.id===singleSelected.id?{...state,selected:[]}:state);setBoardGeometryError("")}}
               onFinish={()=>{
