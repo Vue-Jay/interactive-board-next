@@ -1136,7 +1136,12 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
   }
   e.currentTarget.setPointerCapture(e.pointerId);
   contourDrawing.current=[contourPoint(worldPoint(localPoint(e)))];
-  if(contourLivePath.current)contourLivePath.current.setAttribute("stroke",paintColor);
+  if(contourLivePath.current){
+   const [x,y]=projectGeography(...contourDrawing.current[0]);
+   contourLivePath.current.setAttribute("stroke",paintColor);
+   // A single board tap is visible immediately, even before pointer movement.
+   contourLivePath.current.setAttribute("d",`M${x.toFixed(3)} ${y.toFixed(3)} l0.005 0`);
+  }
  };
  const moveContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="touch"){
@@ -1155,6 +1160,15 @@ function AtlasMap({diagram:d,onChange:emitChange,editorMode=false,userId=""}:Pro
  };
  const endContourStroke=(e:ReactPointerEvent<SVGSVGElement>)=>{
   const wasPinching=e.pointerType==="touch"&&(!!pinch.current||contourDrawing.current.length===0);
+  if(!wasPinching&&contourDrawing.current.length){
+   // Save the final pointer location and retain single-tap dots like the board.
+   const end=contourPoint(worldPoint(localPoint(e)));
+   const last=contourDrawing.current[contourDrawing.current.length-1];
+   if(Math.hypot(last[0]-end[0],last[1]-end[1])>.000001&&contourDrawing.current.length<2000)
+    contourDrawing.current.push(end);
+   if(contourDrawing.current.length===1)
+    contourDrawing.current.push([last[0]>179.997?last[0]-.002:last[0]+.002,last[1]]);
+  }
   if(e.pointerType==="touch")onPointerEnd(e);
   else if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const points=contourDrawing.current;contourDrawing.current=[];
