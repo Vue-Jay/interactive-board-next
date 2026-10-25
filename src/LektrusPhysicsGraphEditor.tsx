@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
+import {svgClientPoint} from "./lektrusSvgPointer";
 import type {Item} from "./boardModel";
 import {scienceToolGroupForId} from "./lektrusScienceCatalog";
 import type {SciencePresetId} from "./lektrusSciencePresets";
@@ -56,10 +57,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose}
   const sx=(x:number)=>PLOT.left+x/draft.xMax*PLOT.width;
   const sy=(y:number)=>PLOT.top+(draft.yMax-y)/(draft.yMax-draft.yMin)*PLOT.height;
   const fromScreen=(event:{clientX:number;clientY:number},svg:SVGSVGElement):Point=>{
-    const rect=svg.getBoundingClientRect();
-    const scale=Math.min(rect.width/980,rect.height/590)||1;
-    const px=(rect.width-980*scale)/2,py=(rect.height-590*scale)/2;
-    const x=(event.clientX-rect.left-px)/scale,y=(event.clientY-rect.top-py)/scale;
+    const {x,y}=svgClientPoint(svg,event.clientX,event.clientY);
     const rawX=clamp((x-PLOT.left)/PLOT.width*draft.xMax,0,draft.xMax);
     const rawY=clamp(draft.yMax-(y-PLOT.top)/PLOT.height*(draft.yMax-draft.yMin),draft.yMin,draft.yMax);
     const snap=(value:number)=>draft.snap?Math.round(value*2)/2:+value.toFixed(2);
