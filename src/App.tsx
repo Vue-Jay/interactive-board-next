@@ -5443,7 +5443,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      const latest=itemsRef.current.find(candidate=>candidate.id===next.id);
      if(!latest||latest.locked||!canEdit||structurallyLockedForStudent(latest))return;
      const fields=(item:Item)=>({graphPoints:item.graphPoints??[],graphSegments:item.graphSegments??[],
-       scienceOrganicAnnotations:item.scienceOrganicAnnotations??[],text:item.text});
+       scienceOrganicAnnotations:item.scienceOrganicAnnotations??[],
+       scienceOrganicShowSystematic:item.scienceOrganicShowSystematic===true,
+       scienceOrganicShowTrivial:item.scienceOrganicShowTrivial===true,text:item.text});
      const merged=mergeEditedValue(fields(before),fields(next),fields(latest));
      const updated={...latest,...merged};
      if(JSON.stringify(updated)===JSON.stringify(latest))return;
@@ -7639,6 +7641,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             onClose={next=>{finalizePhysicalEditor(next,false);setScienceEditorItem(null)}}
             onSave={next=>{finalizePhysicalEditor(next,true);setScienceEditorItem(null);setNotice("Физический график синхронизирован")}}/>:
           <LektrusScienceEditor key={scienceEditorItem.id}
+          canTeach={roleCapabilities.canUseTeacherTools}
           item={scienceEditorItem.graphFigureId?.startsWith("chem-organic-")?
             (remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem):
             scienceEditorItem}
