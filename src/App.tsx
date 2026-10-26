@@ -7666,7 +7666,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setNotice("Предметная схема сохранена");
             }
             setScienceEditorItem(null);
-          }}/></>}
+          }}/>}</>}
         {chartEditorItem&&createPortal(<LektrusDataChartEditor key={chartEditorItem.id}
           item={chartEditorItem} onClose={()=>setChartEditorItem(null)}
           onSave={next=>{
