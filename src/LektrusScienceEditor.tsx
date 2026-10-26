@@ -22,6 +22,7 @@ type Props={
   onClose?:(item:Item)=>void;
   onOrganicLiveChange?:(before:Item,next:Item)=>void;
   shared?:boolean;
+  canTeach?:boolean;
 };
 type Link=NonNullable<Item["graphSegments"]>[number];
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
@@ -52,7 +53,7 @@ const deletePoint=(item:Item,index:number):Item=>{
   };
 };
 
-export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose,onOrganicLiveChange,shared=false}:Props){
+export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose,onOrganicLiveChange,shared=false,canTeach=false}:Props){
   const [draft,setDraft]=useState<Item>(()=>copyItem(item));
   const [selected,setSelected]=useState(-1);
   const [first,setFirst]=useState(0);
@@ -244,7 +245,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     :optics?"Перемещайте источники, лучи и оптические элементы."
     :"Расположите тело, подпишите силы и задайте направления векторов.";
 
-  if(organic)return <LektrusOrganicEditorPanel item={draft} onChange={setDraft}
+  if(organic)return <LektrusOrganicEditorPanel item={draft} onChange={setDraft} canTeach={canTeach}
     onSave={()=>onSave(draft)} onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
   if(experiment&&draft.graphFigureId==="chem-experiment-free")return <LektrusReactionLab
    item={draft} onChange={setDraft} onSave={()=>onSave(draft)}
