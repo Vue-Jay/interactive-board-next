@@ -1,13 +1,18 @@
 import type {Item} from "./boardModel";
 import {analyzeOrganicStructure,organicAtomColor,organicAtomCaption} from "./lektrusOrganicFormula";
+import {nameOrganicStructure} from "./lektrusOrganicNomenclature";
 const W=560,H=390,U=32;
 export default function LektrusOrganicView({item}:{item:Item}){
  const points=item.graphPoints??[],links=item.graphSegments??[];
  const formula=analyzeOrganicStructure(item);
+ const naming=item.scienceOrganicShowSystematic||item.scienceOrganicShowTrivial?nameOrganicStructure(item):null;
  const xy=(p:{x:number;y:number})=>({x:W/2+p.x*U,y:H/2-p.y*U});
  return <div className="lektrus-organic-board-view">
   <div className="lektrus-organic-board-caption"><strong>{item.text}</strong>
-   {formula.valid&&<span>{formula.formula.replace(/[0-9]/g,d=>"₀₁₂₃₄₅₆₇₈₉"[Number(d)])}</span>}</div>
+   {formula.valid&&<span>{formula.formula.replace(/[0-9]/g,d=>"₀₁₂₃₄₅₆₇₈₉"[Number(d)])}</span>}
+   {item.scienceOrganicShowSystematic&&naming?.systematic&&<small className="lektrus-organic-systematic-name">Систематическое: {naming.systematic}</small>}
+   {item.scienceOrganicShowTrivial&&naming?.trivial&&<small className="lektrus-organic-trivial-name">Тривиальное: {naming.trivial}</small>}
+  </div>
   <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={"Структурная формула "+item.text}>
    <rect width={W} height={H} fill="#fff"/>
    {links.map((edge,i)=>{
