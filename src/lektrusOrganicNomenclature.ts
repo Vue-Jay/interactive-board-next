@@ -309,7 +309,7 @@ function calculated(g:Graph):OrganicNameResult{
     const nums=locants.sort((a,b)=>a-b).join(",");
     return nums+"-"+(multipliers[locants.length]??"")+" "+name;
    }).map(s=>s.replace(" ","")).join("-");
-  const prefix=named?named+"-":"";
+  const prefix=named;
   const unsats=multiple.filter(m=>m.order===2),ynes=multiple.filter(m=>m.order===3);
   if(unsats.length&&ynes.length){valid=false;}
   if(unsats.length>2||ynes.length>2)valid=false;
