@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
 const src=readFileSync(new URL("../src/lektrusOrganicCycle.ts",import.meta.url),"utf8");
-const js=ts.transpileModule(src,{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText.replace(/\bexport\s+/g,"");
+const js=ts.transpileModule(src.replace(/\bexport\s+/g,""),{compilerOptions:{module:ts.ModuleKind.None,target:ts.ScriptTarget.ES2022}}).outputText;
 const regularize=new Function(js+";return regularizeOrganicCycle;")();
 for(const n of [3,4,5,6,7,8,10,12]){
  const points=Array.from({length:n},(_,i)=>({x:i*2.15,y:i%2===0?0:.6,label:"C"}));
