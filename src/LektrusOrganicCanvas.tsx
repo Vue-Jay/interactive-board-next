@@ -22,7 +22,7 @@ const possible=(pts:Point[],edges:Bond[],a:number,b:number,order:1|2|3):boolean=
 const snapAngle=(p:{x:number;y:number},origin:{x:number;y:number})=>{
  const angle=Math.atan2(p.y-origin.y,p.x-origin.x);
  const target=Math.round(angle/(Math.PI/6))*Math.PI/6;
- return {x:clamp(origin.x+2.15*Math.cos(target),-8.2,8.2),y:clamp(origin.y+2.15*Math.sin(target),-5.2,5.2)};
+ return {x:origin.x+2.15*Math.cos(target),y:origin.y+2.15*Math.sin(target)};
 };
 function OrganicToolGlyph({tool}:{tool:Tool}){
  const art:Partial<Record<Tool,string>>={
@@ -49,6 +49,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  const touches=useRef(new Map<number,{x:number;y:number}>());
  const pan=useRef<{id:number;startX:number;startY:number;x:number;y:number;zoom:number}|null>(null);
  const pinch=useRef<{distance:number;midX:number;midY:number;x:number;y:number;zoom:number}|null>(null);
+ const pendingBlankTouch=useRef<{id:number;x:number;y:number}|null>(null);
  const [selected,setSelected]=useState<number|null>(null);
  const [carbonLabels,setCarbonLabels]=useState(false);
  const [handwriting,setHandwriting]=useState(false);
@@ -119,6 +120,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
        const [a,b]=[...touches.current.values()];
        pinch.current={distance:Math.max(1,Math.hypot(b.x-a.x,b.y-a.y)),
          midX:(a.x+b.x)/2,midY:(a.y+b.y)/2,...camera};
+       pendingBlankTouch.current=null;
        pan.current=null;pointer.current=null;setDraftEnd(null);setHoverPoint(null);
      }
    }
@@ -234,7 +236,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
    if(ring){addRing(tool==="ring5"?5:6,pos,null,tool==="benzene");return;}
    const symbol=(["C","N","O","H","S","F","Cl","Br"] as Tool[]).includes(tool)?tool:"C";
    if(tool==="single"||tool==="double"||tool==="triple"||tool==="chain"){
-    const end={x:clamp(pos.x+2.15,-8.2,8.2),y:pos.y};
+    const end={x:pos.x+2.15,y:pos.y};
     mutate([{...pos,label:"C",color:organicAtomColor("C")},{...end,label:"C",color:organicAtomColor("C")}],
      [bond(0,1,selectedBond)]);setSelected(1);
    }else{mutate([{...pos,label:symbol,color:organicAtomColor(symbol)}],[]);setSelected(0);}
@@ -261,6 +263,9 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  const onMove=(e:ReactPointerEvent<SVGSVGElement>)=>{
   if(e.pointerType==="touch"&&touches.current.has(e.pointerId))
     touches.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pendingBlankTouch.current?.id===e.pointerId&&
+    Math.hypot(e.clientX-pendingBlankTouch.current.x,e.clientY-pendingBlankTouch.current.y)>9)
+    pendingBlankTouch.current=null;
   if(pinch.current&&touches.current.size===2){
     const [a,b]=[...touches.current.values()],p=pinch.current;
     const rect=e.currentTarget.getBoundingClientRect();
@@ -287,7 +292,11 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   }else if(ptr.from!==null&&(tool==="single"||tool==="double"||tool==="triple"||tool==="chain"))setDraftEnd(pos);
  };
  const onEnd=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  const pending=pendingBlankTouch.current;
+  if(pending?.id===e.pointerId)pendingBlankTouch.current=null;
   endGesture(e);
+  if(pending?.id===e.pointerId&&Math.hypot(e.clientX-pending.x,e.clientY-pending.y)<9
+    &&tool!=="hand"&&!pinch.current)handleBlank(e);
   const ptr=pointer.current;if(!ptr||ptr.id!==e.pointerId)return;
   pointer.current=null;setDraftEnd(null);
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
@@ -423,6 +432,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
     onPointerDown={e=>{if(e.button===0&&e.target===e.currentTarget){e.preventDefault();handleBlank(e)}}}
     onPointerMove={onMove} onPointerLeave={()=>setHoverPoint(null)} onPointerUp={onEnd} onPointerCancel={e=>{
       endGesture(e);
+      if(pendingBlankTouch.current?.id===e.pointerId)pendingBlankTouch.current=null;
       if(pointer.current?.id===e.pointerId)pointer.current=null;
       setDraftEnd(null);
       if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
@@ -435,7 +445,12 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
     <rect x={-4000} y={-4000} width={8000} height={8000} fill="url(#lektrus-organic-grid)"
      onPointerDown={e=>{
       if(e.button!==0||pinch.current)return;
-      e.preventDefault();e.stopPropagation();handleBlank(e);}}/>
+      e.preventDefault();e.stopPropagation();
+      if(e.pointerType==="touch"){
+       pendingBlankTouch.current={id:e.pointerId,x:e.clientX,y:e.clientY};
+       return;
+      }
+      handleBlank(e);}}/>
     {segments.map((edge,index)=>{
      const a=points[edge.a],b=points[edge.b];if(!a||!b)return null;
      const p=toSvg(a),q=toSvg(b),length=Math.hypot(q.y-p.y,q.x-p.x)||1;

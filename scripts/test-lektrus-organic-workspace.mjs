@@ -36,6 +36,10 @@ for(const feature of ["const beginGesture=","const endGesture=","const setZoom="
 assert.ok(canvas.includes('className="lektrus-organic-tools-grid"'),"Use a compact tool rail instead of a wrapping strip");
 assert.ok(canvas.includes('className="lektrus-organic-stage-actions"'),"Expose undo, redo, zoom and fit");
 assert.ok(canvas.includes('tool==="hand"'),"Allow panning with the hand tool");
+assert.ok(canvas.includes("pendingBlankTouch.current")&&canvas.includes('e.pointerType==="touch"'),
+ "Two-finger zoom must not leave an accidental atom at the first touch");
+assert.ok(!canvas.includes("clamp(origin.x+2.15")&&!canvas.includes("clamp(pos.x+2.15"),
+ "Organic structures must not be cut off by the old fixed canvas boundaries");
 assert.ok(editor.includes('className="lektrus-organic-panel"'),"Use a dedicated full workspace modal");
 assert.ok(editor.includes('Сохранить на доску'),"The editor saves into the existing board");
 assert.ok(css.includes('height:calc(100dvh - 12px)')&&css.includes('grid-template-columns:226px minmax(0,1fr)'),
