@@ -83,6 +83,9 @@ const manual:RecordName[]=[
  ["CCC(=O)OCC","этилпропаноат","этилпропионат"],
  ["C(=O)N","метанамид","формамид"],
  ["CC(=O)N","этанамид","ацетамид"],
+ ["CC(=O)Cl","этаноилхлорид","ацетилхлорид"],
+ ["CCC(=O)Cl","пропаноилхлорид","пропионилхлорид"],
+ ["CC(=O)Br","этаноилбромид","ацетилбромид"],
  ["NC(=O)N","карбамид","мочевина"],
  ["C=CC(=O)N","проп-2-енамид","акриламид"],
  ["CC#N","этаннитрил","ацетонитрил"],
@@ -194,6 +197,10 @@ function calculated(g:Graph):OrganicNameResult{
   const amino=near.filter(n=>g.atoms[n.index]==="N"&&n.order===1);
   const cyano=near.find(n=>g.atoms[n.index]==="N"&&n.order===3);
   if(ox){
+   // R-C(=O)-X and R-C(=O)-S are acid derivatives, never aldehydes.
+   // Those without an exact reference match must remain unnamed.
+   if(near.some(n=>n.order===1&&(!!prefixes[g.atoms[n.index]]||g.atoms[n.index]==="S")))
+    return unsupported("Производное карбоновой кислоты требует отдельного правила");
    const acid=singleO.find(n=>neighbors(g,n.index).length===1);
    const ester=singleO.find(n=>neighbors(g,n.index).length===2);
    const amide=amino.find(n=>neighbors(g,n.index).length===1);
@@ -368,9 +375,16 @@ export function nameOrganicStructure(item:Pick<Item,"graphPoints"|"graphSegments
  if(hydrogens.some(n=>n<0))return unsupported("Превышена допустимая валентность");
  if(atoms.some((s,i)=>s==="H"&&neighbors(g,i).length!==1))
   return unsupported("Атом водорода должен иметь одну связь");
+ // Hydrogen coordinates are not part of molecular identity: a structure with
+ // explicitly drawn H atoms must match the same reference as implicit H.
+ const heavyIndices=atoms.map((a,i)=>a==="H"?-1:i).filter(i=>i>=0);
+ const indices=new Map(heavyIndices.map((original,i)=>[original,i]));
+ const heavy:Graph={atoms:heavyIndices.map(i=>atoms[i]),links:links
+  .filter(e=>indices.has(e.a)&&indices.has(e.b))
+  .map(e=>({...e,a:indices.get(e.a)!,b:indices.get(e.b)!}))};
  for(const entry of references){
-  if(sameStructure(g,entry.graph))return {systematic:entry.systematic,trivial:entry.trivial??null,
+  if(sameStructure(heavy,entry.graph))return {systematic:entry.systematic,trivial:entry.trivial??null,
    status:"reference",reason:"Структура совпала с проверенным справочным соединением"};
  }
- return calculated(g);
+ return calculated(heavy);
 }
