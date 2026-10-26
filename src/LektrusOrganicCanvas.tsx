@@ -2,10 +2,11 @@ import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from "
 import type {Item} from "./boardModel";
 import {analyzeOrganicStructure,organicAtomColor,organicAtomCaption} from "./lektrusOrganicFormula";
 import LektrusOrganicHandwriting from "./LektrusOrganicHandwriting";
+import {regularizeOrganicCycle} from "./lektrusOrganicCycle";
 
 type Point=NonNullable<Item["graphPoints"]>[number];
 type Bond=NonNullable<Item["graphSegments"]>[number];
-type Tool="select"|"hand"|"single"|"double"|"triple"|"C"|"N"|"O"|"H"|"S"|"F"|"Cl"|"Br"|"erase"|"ring5"|"ring6"|"benzene"|"chain"|"OH"|"NH2"|"COOH";
+type Tool="select"|"hand"|"close"|"single"|"double"|"triple"|"C"|"N"|"O"|"H"|"S"|"F"|"Cl"|"Br"|"erase"|"ring5"|"ring6"|"benzene"|"chain"|"OH"|"NH2"|"COOH";
 type Props={item:Item;onChange:(updater:(item:Item)=>Item)=>void};
 const W=560,H=390,UNIT=32;
 const toSvg=(p:{x:number;y:number})=>({x:W/2+p.x*UNIT,y:H/2-p.y*UNIT});
@@ -30,6 +31,7 @@ function OrganicToolGlyph({tool}:{tool:Tool}){
   hand:"M8 11V6a1.5 1.5 0 0 1 3 0v4-0V4a1.5 1.5 0 0 1 3 0v6-0V5a1.5 1.5 0 0 1 3 0v7l1-2a1.5 1.5 0 0 1 3 1l-2 7-3 3H9l-5-7a1.5 1.5 0 0 1 2.5-1.5L8 14Z",
   erase:"M4 13 13 4l7 7-9 9H7Z M11 20h10",
   chain:"M3 18 8 8 14 16 21 6",
+  close:"M12 3a9 9 0 1 1-8.3 12.5 M3 4v6h6",
   single:"M3 12h18",
   double:"M3 9h18M3 15h18",
   triple:"M3 7h18M3 12h18M3 17h18",
@@ -51,6 +53,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  const pinch=useRef<{distance:number;midX:number;midY:number;x:number;y:number;zoom:number}|null>(null);
  const pendingBlankTouch=useRef<{id:number;x:number;y:number}|null>(null);
  const [selected,setSelected]=useState<number|null>(null);
+ const [closingStart,setClosingStart]=useState<number|null>(null);
  const [carbonLabels,setCarbonLabels]=useState(false);
  const [handwriting,setHandwriting]=useState(false);
  const [draftEnd,setDraftEnd]=useState<{x:number;y:number}|null>(null);
@@ -158,7 +161,10 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   const existingIndex=segments.findIndex(b=>b.a===from&&b.b===to||b.b===from&&b.a===to);
   const nextBonds=existingIndex>=0?segments.map((b,i)=>i===existingIndex?{...b,bondOrder:selectedBond}:b):[...segments,bond(from,to,selectedBond)];
   if(!possible(nextPts,nextBonds,from,to,selectedBond)){setStatus("Слишком много связей для выбранного атома");return;}
-  mutate(nextPts,nextBonds);setSelected(to);
+  const closing=matched!==null&&existingIndex<0;
+  const ring=closing?regularizeOrganicCycle(nextPts,segments,from,to):null;
+  mutate(ring??nextPts,nextBonds);setSelected(to);
+  if(closing)setStatus(ring?"Цепь замкнута: кольцо выровнено.":"Атомы соединены. Разветвлённая структура сохранена без перестройки.");
  };
  const extend=(index:number,target?:{x:number;y:number},existing:number|null=null)=>{
   const base=points[index];if(!base||points.length>=80)return;
@@ -227,7 +233,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   if(e.button!==0)return;
   const pos=svgPoint(e);
   if(tool==="select"){setSelected(null);return;}
-  if(tool==="hand")return;
+  if(tool==="hand"||tool==="close")return;
   if(tool==="erase")return;
   const ring=tool==="ring5"||tool==="ring6"||tool==="benzene";
   const functional=tool==="OH"||tool==="NH2"||tool==="COOH";
@@ -307,6 +313,14 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
     a:l.a>index?l.a-1:l.a,b:l.b>index?l.b-1:l.b}));
    mutate(points.filter((_,i)=>i!==index),kept);setSelected(null);return;
   }
+  if(tool==="close"){
+   const endIndex=points.findIndex((v,i)=>i!==index&&Math.hypot(v.x-p.x,v.y-p.y)<.6);
+   if(closingStart===null&&endIndex<0){setClosingStart(index);setSelected(index);setStatus("Теперь выберите второй атом, чтобы замкнуть цепь.");return;}
+   const from=closingStart??index,to=endIndex??index;
+   if(from===to){setStatus("Выберите другой атом цепи.");return;}
+   setClosingStart(null);
+   addConnection(from,points[to],to);return;
+  }
   if(tool==="OH"||tool==="NH2"||tool==="COOH"){
    attachFunctionalGroup(index,tool);return;
   }
@@ -361,7 +375,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  },[selected,points,segments,tool]);
  const labels:{value:Tool;name:string}[]=[
   {value:"select",name:"Выбор"},{value:"hand",name:"Рука"},{value:"single",name:"—"},{value:"double",name:"="},
-  {value:"triple",name:"≡"},{value:"C",name:"C"},{value:"N",name:"N"},
+  {value:"triple",name:"≡"},{value:"close",name:"Замкнуть"},{value:"C",name:"C"},{value:"N",name:"N"},
   {value:"O",name:"O"},{value:"H",name:"H"},{value:"S",name:"S"},
   {value:"F",name:"F"},{value:"Cl",name:"Cl"},{value:"Br",name:"Br"},
   {value:"ring5",name:"Цикл C₅"},{value:"ring6",name:"Цикл C₆"},
@@ -371,7 +385,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  ];
  const toolGroups:{title:string;tools:Tool[]}[]=[
   {title:"Управление",tools:["select","hand","erase"]},
-  {title:"Связи",tools:["single","double","triple","chain"]},
+  {title:"Связи",tools:["single","double","triple","chain","close"]},
   {title:"Атомы",tools:["C","N","O","H","S","F","Cl","Br"]},
   {title:"Циклы",tools:["ring5","ring6","benzene"]},
   {title:"Группы",tools:["OH","NH2","COOH"]}
@@ -385,7 +399,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
      {group.tools.map(id=>{
       const o=labels.find(entry=>entry.value===id)!;
       return <button type="button" key={id} title={o.name} aria-label={o.name}
-       aria-pressed={tool===id} onClick={()=>{setTool(id);setStatus("");setHandwriting(false)}}>
+       aria-pressed={tool===id} onClick={()=>{setTool(id);setClosingStart(null);setStatus("");setHandwriting(false)}}>
        <OrganicToolGlyph tool={id}/><small>{o.name}</small>
       </button>;
      })}
