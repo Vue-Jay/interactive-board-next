@@ -2484,17 +2484,6 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
   };
   const mathematicalSubjectTools=useMemo(()=>subjectToolsFor(lectrisBoardOrganization.subject),[lectrisBoardOrganization.subject]);
-  const lectrisSubjectTools=useMemo<Tool[]>(()=>{
-    const v=lectrisBoardOrganization.subject.toLocaleLowerCase("ru");
-    if(!v)return [];
-    if(/матем|алгеб|геом|информ/.test(v))return ["shape","table"];
-    if(/хими/.test(v))return ["formula","table","text","shape"];
-    if(/физик/.test(v))return ["graph","formula","connector","shape"];
-    if(/биол|географ/.test(v))return ["media","shape","text","table"];
-    if(/русск|англ|язык|литерат|истор/.test(v))return ["text","sticky","comment","table"];
-    return ["text","shape","table"];
-  },[lectrisBoardOrganization.subject]);
-
   const [view, setView] = useState<View>(() => {
     try {
       const raw = localStorage.getItem(viewStorageKey);
@@ -8113,7 +8102,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             </div>)}
           </div>
         </LektrusToolOverflow>}
-        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canManageBoard&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.length?mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>})):lectrisSubjectTools.filter(toolAllowedForRole).map(id=>{const t=tools.find(x=>x.id===id)!;return {id,label:toolShortLabel[id],icon:<Icon name={t.icon} size={21}/>}})} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
+        {subjectToolsOpen&&<LektrusSubjectToolsPanel anchor={subjectToolsAnchor} subject={lectrisBoardOrganization.subject} canChangeSubject={canManageBoard&&boardSummary.ownerId===authUser.id} subjects={subjectCategories.filter(Boolean)} tools={mathematicalSubjectTools.filter(entry=>canEdit&&toolAllowedForRole(entry.id==="math-formula"?"formula":"graph")).map(entry=>({id:entry.id,label:entry.label,description:entry.description,group:entry.group,icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>}))} onClose={()=>setSubjectToolsOpen(false)} onSubjectChange={subject=>{if(canEdit)changeBoardSubject(subject)}} onChoose={id=>{
           finishEdit();
           if(mathematicalSubjectTools.some(entry=>entry.id===id)){
             if(!canEdit||!toolAllowedForRole(id==="math-formula"?"formula":"graph")){setNotice("Недостаточно прав для создания предметного инструмента");return}
@@ -8137,7 +8126,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               setPendingMathItem(item);
               window.setTimeout(()=>item.kind==="fraction"?setFractionEditorId(item.id):item.kind==="formula"?openFormulaEditor(item):openGraphEditor(item),0);
             }
-          }else{setTool(id as Tool);setSubjectToolsOpen(false)}
+          }else{
+            // Subject tools are never a shortcut to unrelated universal tools.
+            setNotice("Инструмент не относится к выбранному предмету");
+            setSubjectToolsOpen(false);
+          }
         }}/>}
         {lectrisCustomizeOpen&&<LectrisToolbarSettings
           tools={tools.filter(t=>t.id!=="hand"&&t.id!=="select"&&t.id!=="lasso"&&t.id!=="graph"&&t.id!=="formula").map(t=>({id:t.id,label:toolShortLabel[t.id],available:toolAllowedForRole(t.id)}))}

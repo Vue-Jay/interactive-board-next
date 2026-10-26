@@ -19,6 +19,7 @@ assert.equal(width,672);
 assert.equal(height,672);
 let prev=Buffer.alloc(stride),at=0;
 const bboxes=Array.from({length:43},()=>({left:96,right:-1,top:96,bottom:-1,pixels:0}));
+const foodPyramidRightEdge=new Set();
 for(let y=0;y<height;y++){
  const filter=inflated[at++],cur=Buffer.alloc(stride);
  for(let i=0;i<stride;i++){
@@ -39,6 +40,9 @@ for(let y=0;y<height;y++){
   assert.ok(index<43,"Unexpected artwork outside the 43 registered subject tiles");
   const b=bboxes[index],lx=x%96,ly=y%96;
   b.left=Math.min(b.left,lx);b.right=Math.max(b.right,lx);
+  // The approved food-chain icon is a three-tier pyramid. Both sides must reach the base.
+  if(index===18&&ly>=60&&ly<=79&&cur[x*4+3]>110&&
+     Math.abs(lx-(48+(ly-12)*0.53))<2.5)foodPyramidRightEdge.add(ly);
   b.top=Math.min(b.top,ly);b.bottom=Math.max(b.bottom,ly);b.pixels++;
  }
  prev=cur;
@@ -51,5 +55,9 @@ for(const [index,b] of bboxes.entries()){
 for(const [id,lo,hi] of [[4,72,95],[16,0,12],[16,84,95],[21,84,95]]){
  const b=bboxes[id];
  assert.ok(b.top>hi||b.bottom<lo,"Source stray dots remain in subject artwork "+id);
+}
+for(let y=60;y<=79;y++){
+ assert.ok(foodPyramidRightEdge.has(y),
+  "Food-chain pyramid right border is cropped at row "+y);
 }
 console.log("Subject illustration layout: 43 tiles centered and safely inset, no stray edge dots: OK");
