@@ -44,6 +44,8 @@ shouldName("CC(=O)C","пропан-2-он","ацетон");
 shouldName("C=O","метаналь","формальдегид");
 shouldName("CC(=O)OCC","этилэтаноат","этилацетат");
 shouldName("CC(=O)N","этанамид","ацетамид");
+shouldName("CC(=O)Cl","этаноилхлорид","ацетилхлорид");
+shouldName("CC(=O)Br","этаноилбромид","ацетилбромид");
 shouldName("OCC(O)CO","пропан-1,2,3-триол","глицерин");
 shouldName("C1=CC=CC=C1","бензол");
 shouldName("CC1=CC=CC=C1","метилбензол","толуол");
@@ -61,6 +63,12 @@ const reordered={
    a:permutation.indexOf(e.a),b:permutation.indexOf(e.b)})).reverse()
 };
 assert.equal(nameOrganicStructure(reordered).trivial,"этилацетат");
+const explicitHydrogen=item("CCO");
+const hydrogenIndex=explicitHydrogen.graphPoints.length;
+explicitHydrogen.graphPoints.push({x:2,y:1,label:"H"});
+explicitHydrogen.graphSegments.push({a:2,b:hydrogenIndex,bondOrder:1});
+assert.equal(nameOrganicStructure(explicitHydrogen).trivial,"этиловый спирт",
+ "Explicitly drawn OH hydrogen must not break nomenclature");
 // Never confuse isomers just because the molecular formula is the same.
 assert.notEqual(nameOrganicStructure(item("CCCO")).systematic,
  nameOrganicStructure(item("CC(O)C")).systematic);
@@ -71,5 +79,9 @@ disjoint.graphPoints.push({x:9,y:0,label:"C"});
 assert.equal(nameOrganicStructure(disjoint).status,"unsupported");
 assert.equal(nameOrganicStructure(item("C(Cl)(Cl)(Cl)(Cl)Cl")).status,"unsupported");
 assert.equal(nameOrganicStructure(item("CCOCCC")).status,"unsupported");
+assert.equal(nameOrganicStructure(item("CC(=O)S")).status,"unsupported",
+ "Thioacid must not be reported as an aldehyde");
+assert.equal(nameOrganicStructure(item("CC(=O)F")).status,"unsupported",
+ "Unsupported acyl halide must not be reported as an aldehyde");
 console.log("Organic names: "+ORGANIC_REFERENCE_COUNT+
  " reference structures, priority, Russian terminology, isomers, unsupported cases: OK");
