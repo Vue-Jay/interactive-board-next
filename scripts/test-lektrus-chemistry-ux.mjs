@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./test-lektrus-organic-workspace.mjs";
 import fs from "node:fs";
 import ts from "typescript";
 const text=path=>fs.readFileSync(new URL("../"+path,import.meta.url),"utf8");

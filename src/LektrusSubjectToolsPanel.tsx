@@ -19,7 +19,7 @@ const subjectToolSections:Record<string,{title:string;ids:string[]}[]>={
     {title:"Построения",ids:["math-geometry","math-coordinate"]}],
   "физика":[{title:"Механика и движение",ids:["physics-mechanics","physics-graphs"]},
     {title:"Свет и электричество",ids:["physics-optics","physics-circuits"]}],
-  "химия":[{title:"Вещества и строение",ids:["chem-periodic-table","chem-molecules","chem-organic"]},
+  "химия":[{title:"Вещества и органика",ids:["chem-periodic-table","chem-organic"]},
     {title:"Реакции и опыты",ids:["chem-formulas","chem-experiments"]}],
   "биология":[{title:"Клетка и генетика",ids:["bio-cell","bio-division","bio-dna","bio-genetics"]},
     {title:"Организмы и экология",ids:["bio-taxonomy","bio-food-chain"]},

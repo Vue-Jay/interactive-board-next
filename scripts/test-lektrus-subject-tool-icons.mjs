@@ -33,7 +33,7 @@ const iconDefs=[...icons.matchAll(/^\s+"([a-z0-9-]+)":<>([^\n]+)<\/>[,]?$/gm)]
  .map(([,id,body])=>({id,body}));
 const iconIds=iconDefs.map(x=>x.id);
 assert.equal(ids.length,35,"Registry scanner must cover explicit classroom tools");
-assert.equal(scienceIds.length,8,"Registry scanner must cover physics and chemistry");
+assert.equal(scienceIds.length,7,"Registry scanner must cover four physics and three chemistry editors");
 assert.equal(new Set(iconIds).size,iconIds.length,"Each icon ID is declared once");
 for(const id of expected){
  assert.ok(iconIds.includes(id),"Missing dedicated subject icon: "+id);
@@ -41,7 +41,8 @@ for(const id of expected){
  assert.ok(icon?.body && /<path\b|<rect\b|<circle\b|<ellipse\b/.test(icon.body),
   "Missing vector artwork for "+id);
 }
-assert.ok(expected.length>=43,"Cover the full subject-tool catalogue");
+assert.equal(expected.length,42,"Redundant molecules tool must be absent from the active catalogue");
+assert.ok(!expected.includes("chem-molecules"),"Molecules and bonds must not be selectable");
 assert.ok(iconIds.includes("geo-climate"),"Prepare the available geographic climate module icon");
 assert.ok(new Set(iconDefs.filter(x=>expected.includes(x.id)).map(x=>x.body)).size===expected.length,
  "No two registered classroom tools should share exactly the same pictogram");
@@ -98,8 +99,8 @@ const start=icons.indexOf("const illustrationIds:SubjectToolId[]=[");
 const end=icons.indexOf("const illustrationIndexes=",start);
 assert.ok(start>=0&&end>start,"All subject illustration IDs must be registered");
 const illustrationIds=[...icons.slice(start,end).matchAll(/"([a-z0-9-]+)"/g)].map(m=>m[1]);
-assert.equal(illustrationIds.length,expected.length,"Provide exactly one approved illustration per tool");
-assert.equal(new Set(illustrationIds).size,expected.length,"Artwork may not duplicate subject IDs");
+assert.equal(illustrationIds.length,43,"Keep one legacy molecules illustration for existing boards");
+assert.equal(new Set(illustrationIds).size,43,"Artwork may not duplicate subject IDs");
 for(const id of expected)assert.ok(illustrationIds.includes(id),"Missing subject image: "+id);
 assert.ok(icons.includes('const illustrationIndex=illustrationIndexes.get(id)'),
  "Show artwork from the actual selected image atlas rather than simple paths");

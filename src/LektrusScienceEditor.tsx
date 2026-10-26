@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState,type PointerEvent} from "react";
+import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {scienceToolGroupForId} from "./lektrusScienceCatalog";
@@ -19,6 +20,8 @@ type Props={
   onSave:(item:Item)=>void;
   onCancel:()=>void;
   onClose?:(item:Item)=>void;
+  onOrganicLiveChange?:(before:Item,next:Item)=>void;
+  shared?:boolean;
 };
 type Link=NonNullable<Item["graphSegments"]>[number];
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
@@ -49,7 +52,7 @@ const deletePoint=(item:Item,index:number):Item=>{
   };
 };
 
-export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose}:Props){
+export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose,onOrganicLiveChange,shared=false}:Props){
   const [draft,setDraft]=useState<Item>(()=>copyItem(item));
   const [selected,setSelected]=useState(-1);
   const [first,setFirst]=useState(0);
@@ -77,6 +80,27 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const experiment=group?.id==="chem-experiments";
   const molecule=group?.id==="chem-molecules"||organic;
   const organicFormula=organic?analyzeOrganicStructure(draft):null;
+  // Keep already placed structures interactive for every participant. Only
+  // changes to existing objects are broadcast by App; new objects wait for Save.
+  const organicLocalPrevious=useRef<Item>(draft);
+  const organicRemotePrevious=useRef<Item>(item);
+  useEffect(()=>{
+    if(!organic||!shared||item===organicRemotePrevious.current)return;
+    const previousRemote=organicRemotePrevious.current;
+    organicRemotePrevious.current=item;
+    setDraft(current=>{
+      const merged=mergeEditedValue(previousRemote,current,item);
+      organicLocalPrevious.current=merged; // incoming peer update is not a local stroke
+      return merged;
+    });
+  },[organic,shared,item]);
+  useEffect(()=>{
+    if(!organic||draft===organicLocalPrevious.current)return;
+    const before=organicLocalPrevious.current;
+    organicLocalPrevious.current=draft;
+    onOrganicLiveChange?.(before,draft);
+  },[organic,draft,onOrganicLiveChange]);
+
   const motion=group?.id==="physics-graphs";
   const atom=draft.graphFigureId==="chem-atom";
   const circuit=group?.id==="physics-circuits";

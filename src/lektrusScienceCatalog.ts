@@ -47,15 +47,6 @@ export const scienceToolGroups:ScienceToolGroup[]=[
      {id:"physics-circuit-meters",label:"Измерительные приборы",hint:"Амперметр и вольтметр в схеме"},
      {id:"physics-circuit-free",label:"Создать с нуля",hint:"Начните с чистого листа и добавьте компоненты"}
    ]},
-  {id:"chem-molecules",subject:"chem",label:"Молекулы и связи",
-   description:"Структурные схемы, атомы и связи: готовые молекулы внутри редактора",
-   group:"Химия · молекулы",templates:[
-     {id:"chem-water",label:"Вода · H₂O",hint:"Две связи O—H"},
-     {id:"chem-carbon-dioxide",label:"Углекислый газ · CO₂",hint:"Двойные связи C=O"},
-     {id:"chem-methane",label:"Метан · CH₄",hint:"Четыре связи C—H"},
-     {id:"chem-ammonia",label:"Аммиак · NH₃",hint:"Три связи N—H"},
-     {id:"chem-oxygen",label:"Кислород · O₂",hint:"Двойная связь O=O"}
-   ]},
   {id:"chem-organic",subject:"chem",label:"Органический редактор",
    description:"Рисуйте углеродный скелет с атомами, связями, циклами и функциональными группами",
    group:"Химия · органика",templates:[
@@ -73,9 +64,24 @@ export const scienceToolGroups:ScienceToolGroup[]=[
    ]}
 ];
 
+// Existing molecular diagrams must continue opening on older boards, but the
+// redundant "Молекулы и связи" entry is no longer offered as a subject tool.
+const legacyMolecules:ScienceToolGroup={id:"chem-molecules",subject:"chem",label:"Молекулы и связи",
+   description:"Структурные схемы, атомы и связи: готовые молекулы внутри редактора",
+   group:"Химия · молекулы",templates:[
+     {id:"chem-water",label:"Вода · H₂O",hint:"Две связи O—H"},
+     {id:"chem-carbon-dioxide",label:"Углекислый газ · CO₂",hint:"Двойные связи C=O"},
+     {id:"chem-methane",label:"Метан · CH₄",hint:"Четыре связи C—H"},
+     {id:"chem-ammonia",label:"Аммиак · NH₃",hint:"Три связи N—H"},
+     {id:"chem-oxygen",label:"Кислород · O₂",hint:"Двойная связь O=O"}
+   ]};
+
 export function scienceToolGroupForId(id:string):ScienceToolGroup|undefined{
-  return scienceToolGroups.find(group=>group.id===id||group.templates.some(t=>t.id===id));
+  return scienceToolGroups.find(group=>group.id===id||group.templates.some(t=>t.id===id))||
+    (legacyMolecules.templates.some(template=>template.id===id)?legacyMolecules:undefined);
 }
 export function scienceDefaultPreset(id:string):SciencePresetId|undefined{
+  // Legacy molecules are readable, but cannot create new objects.
+  if(id==="chem-molecules")return undefined;
   return scienceToolGroupForId(id)?.templates[0]?.id;
 }

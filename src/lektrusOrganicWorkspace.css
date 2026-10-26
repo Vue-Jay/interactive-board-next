@@ -1,0 +1,206 @@
+/* The organic workspace follows Lektrus's atlas and geometry editor layout:
+   full viewport, persistent tool rail, fitted canvas, compact monochrome controls. */
+.lektrus-organic-overlay{
+ position:fixed!important;inset:0!important;z-index:2147482500!important;
+ display:grid!important;place-items:stretch!important;padding:6px!important;
+ background:rgba(15,24,35,.68)!important;backdrop-filter:blur(5px);
+}
+.lektrus-organic-panel{
+ --organic-ink:#303e50;--organic-muted:#657489;--organic-line:#dce3eb;
+ --organic-soft:#f3f6f9;--organic-dark:#314258;
+ width:100%!important;height:calc(100dvh - 12px)!important;max-height:none!important;
+ min-height:0!important;max-width:none!important;
+ display:flex!important;flex-direction:column!important;gap:0!important;
+ border:1px solid var(--organic-line)!important;border-radius:16px!important;
+ padding:0!important;box-shadow:0 22px 75px #09142668!important;
+ background:#fff!important;color:var(--organic-ink)!important;
+}
+.lektrus-organic-panel>header{
+ flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:11px 18px!important;
+ background:#fff;border-bottom:1px solid var(--organic-line)!important;
+}
+.lektrus-organic-panel-heading{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lektrus-organic-panel-heading strong{font-size:17px!important;color:var(--organic-ink)}
+.lektrus-organic-panel-heading small{font-size:11px!important;color:var(--organic-muted)}
+.lektrus-organic-panel>header>button{
+ flex:0 0 36px!important;width:36px!important;height:36px!important;
+ margin-left:auto;display:grid;place-items:center;border:1px solid var(--organic-line)!important;
+ border-radius:10px!important;background:var(--organic-soft)!important;
+ color:var(--organic-ink)!important;cursor:pointer;font-size:23px!important;
+}
+.lektrus-organic-panel>header>button:hover{background:#e6ebf0!important}
+.lektrus-organic-panel .lektrus-organic-name{
+ flex:0 0 auto;display:flex;align-items:center;gap:10px;
+ padding:8px 18px!important;margin:0!important;background:#fbfcfe;
+ border-bottom:1px solid var(--organic-line)!important;
+ color:var(--organic-muted);font-weight:650;
+}
+.lektrus-organic-name span{flex:0 0 auto}
+.lektrus-organic-panel .lektrus-organic-name input{
+ width:min(550px,100%);flex:1 1 220px;min-height:34px;max-width:700px;
+ padding:7px 10px!important;background:#fff;border:1px solid var(--organic-line)!important;
+ border-radius:9px!important;color:var(--organic-ink);font:inherit;font-size:13px!important;
+}
+.lektrus-organic-panel>main{
+ flex:1 1 0!important;min-height:0!important;display:flex!important;overflow:hidden!important;
+ background:var(--organic-soft);
+}
+.lektrus-organic-panel .lektrus-organic-editor{
+ flex:1 1 0;min-width:0;min-height:0;width:100%;height:100%;
+ display:grid!important;grid-template-columns:226px minmax(0,1fr);
+ gap:0!important;background:var(--organic-soft);overflow:hidden;
+}
+.lektrus-organic-panel .lektrus-organic-editor-toolbar{
+ display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;
+ align-items:stretch!important;align-content:initial!important;
+ gap:10px!important;min-width:0!important;min-height:0!important;
+ max-height:none!important;height:100%!important;overflow-x:hidden!important;
+ overflow-y:auto!important;overscroll-behavior:contain!important;
+ border:0!important;border-right:1px solid var(--organic-line)!important;
+ border-radius:0!important;background:#fff!important;padding:13px!important;
+ scrollbar-width:thin;
+}
+.lektrus-organic-tools-heading{display:flex;flex-direction:column;gap:2px}
+.lektrus-organic-tools-heading strong{font-size:12px;color:var(--organic-ink);font-weight:800}
+.lektrus-organic-tools-heading small{font-size:10px;color:var(--organic-muted)}
+.lektrus-organic-tools-group{display:grid;gap:6px}
+.lektrus-organic-tools-group h3{
+ font-size:10px;line-height:1.4;letter-spacing:.02em;
+ color:var(--organic-muted);font-weight:800;margin:0;padding:0 2px;
+}
+.lektrus-organic-tools-grid{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;
+}
+.lektrus-organic-tools-grid button{
+ display:flex;flex-direction:column;justify-content:center;align-items:center;
+ gap:2px;min-width:0;min-height:55px;border:1px solid var(--organic-line);
+ border-radius:10px;background:#fff;color:var(--organic-ink);
+ padding:4px 2px;cursor:pointer;touch-action:manipulation;
+}
+.lektrus-organic-tools-grid button>span{
+ display:grid;place-items:center;font:750 19px/1 system-ui,sans-serif;
+ color:var(--organic-ink);height:25px;white-space:nowrap;
+}
+.lektrus-organic-tools-grid button>small{
+ max-width:100%;overflow:hidden;text-overflow:ellipsis;
+ font-size:9px;line-height:1.1;font-weight:700;color:var(--organic-muted);
+ white-space:nowrap;
+}
+.lektrus-organic-tools-grid button:hover{background:var(--organic-soft);border-color:#a8b8c9}
+.lektrus-organic-tools-grid button[aria-pressed="true"]{
+ background:#e6ecf3;color:#182c43;border-color:#758da8;
+ box-shadow:inset 0 0 0 1px #9eafc2;
+}
+.lektrus-organic-stage{
+ min-width:0;min-height:0;height:100%;display:flex;flex-direction:column;gap:0;
+}
+.lektrus-organic-stage-top{
+ flex:0 0 auto;display:flex;gap:10px;align-items:center;justify-content:space-between;
+ padding:9px 12px;border-bottom:1px solid var(--organic-line);background:#fff;
+}
+.lektrus-organic-stage-title{display:flex;flex-direction:column;gap:1px;min-width:0}
+.lektrus-organic-stage-title strong{font-size:12px;color:var(--organic-ink)}
+.lektrus-organic-stage-title span{font-size:10px;color:var(--organic-muted)}
+.lektrus-organic-stage-actions{display:flex;align-items:center;gap:5px}
+.lektrus-organic-stage-actions button,.lektrus-organic-options>button{
+ display:grid;place-items:center;min-height:32px;padding:5px 10px;cursor:pointer;
+ border:1px solid var(--organic-line);border-radius:8px;background:var(--organic-soft);
+ color:var(--organic-ink);font:750 14px/1 system-ui,sans-serif;
+}
+.lektrus-organic-stage-actions button{min-width:34px}
+.lektrus-organic-stage-actions button:disabled{opacity:.35;cursor:default}
+.lektrus-organic-stage-actions button:hover:not(:disabled),
+.lektrus-organic-options>button:hover{background:#e5ebf2}
+.lektrus-organic-stage-actions button.fit{font-size:11px}
+.lektrus-organic-stage-actions output{
+ font-size:11px;font-variant-numeric:tabular-nums;font-weight:750;
+ text-align:center;min-width:41px;color:var(--organic-ink);
+}
+.lektrus-organic-stage-divider{width:1px;height:24px;background:var(--organic-line);margin:0 3px}
+.lektrus-organic-options{
+ flex:0 0 auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+ background:#fbfcfd;padding:6px 12px;border-bottom:1px solid var(--organic-line);
+}
+.lektrus-organic-options label{font-size:11px;font-weight:700;color:var(--organic-ink);
+ display:flex;gap:5px;align-items:center;white-space:nowrap}
+.lektrus-organic-options label input{accent-color:#53677d}
+.lektrus-organic-options>button{font-size:10px;min-height:29px;padding:5px 9px}
+.lektrus-organic-tip{margin-left:auto;color:var(--organic-muted);font-size:10px}
+.lektrus-organic-panel .lektrus-organic-canvas-scroll{
+ position:relative;flex:1 1 0!important;min-height:0!important;width:100%;
+ display:flex!important;align-items:stretch!important;justify-content:stretch!important;
+ margin:0!important;padding:0!important;border:0!important;border-radius:0!important;
+ overflow:hidden!important;background:#fff!important;
+}
+.lektrus-organic-canvas-scroll>svg{
+ display:block!important;flex:1 1 0;width:100%!important;height:100%!important;
+ max-width:none!important;max-height:none!important;min-height:0!important;
+ touch-action:none!important;user-select:none!important;
+}
+.lektrus-organic-panel .lektrus-organic-footer{
+ flex:0 0 auto;display:flex;flex-direction:row;align-items:center;
+ flex-wrap:wrap;gap:10px;padding:7px 12px!important;
+ border:0!important;border-top:1px solid var(--organic-line)!important;
+ border-radius:0!important;background:#fff!important;color:var(--organic-ink)!important;
+}
+.lektrus-organic-panel .lektrus-organic-footer strong{font-size:12px}
+.lektrus-organic-panel .lektrus-organic-footer small{font-size:10px}
+.lektrus-organic-panel .lektrus-organic-status{color:#a04943}
+.lektrus-organic-panel>footer{
+ flex:0 0 auto;display:flex!important;align-items:center;gap:7px;
+ min-height:58px;padding:10px 18px!important;
+ background:#fff;border-top:1px solid var(--organic-line)!important;
+}
+.lektrus-organic-panel-result{display:flex;flex-direction:column;gap:2px;margin-right:auto}
+.lektrus-organic-panel-result>span{font-size:10px;color:var(--organic-muted)}
+.lektrus-organic-panel-result>strong{font-size:13px;color:var(--organic-ink)}
+.lektrus-organic-panel>footer>button{
+ min-height:36px!important;padding:8px 13px!important;background:#fff!important;
+ border:1px solid var(--organic-line)!important;color:var(--organic-ink)!important;
+ border-radius:9px!important;font:750 12px/1 system-ui,sans-serif;
+}
+.lektrus-organic-panel>footer>button.primary{
+ color:#fff!important;background:var(--organic-dark)!important;
+ border-color:var(--organic-dark)!important;
+}
+.lektrus-organic-panel button:focus-visible{
+ outline:2px solid #6e879f!important;outline-offset:2px!important;
+}
+@media(max-width:840px),(max-height:510px){
+ .lektrus-organic-overlay{padding:0!important}
+ .lektrus-organic-panel{height:100dvh!important;border-radius:0!important}
+ .lektrus-organic-panel>header{padding:6px 10px!important}
+ .lektrus-organic-panel .lektrus-organic-name{padding:5px 10px!important}
+ .lektrus-organic-panel .lektrus-organic-editor{
+  grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto minmax(0,1fr);
+ }
+ .lektrus-organic-panel .lektrus-organic-editor-toolbar{
+  height:auto!important;max-height:132px!important;
+  display:flex!important;flex-direction:row!important;align-items:stretch!important;
+  gap:8px!important;padding:6px!important;
+  border-right:0!important;border-bottom:1px solid var(--organic-line)!important;
+  overflow-x:auto!important;overflow-y:hidden!important;
+  overscroll-behavior-x:contain!important;scrollbar-width:thin;
+ }
+ .lektrus-organic-tools-heading{display:none}
+ .lektrus-organic-tools-group{flex:0 0 auto;min-width:0}
+ .lektrus-organic-tools-grid{display:flex;gap:4px}
+ .lektrus-organic-tools-grid button{width:49px;min-height:55px;flex:0 0 49px}
+ .lektrus-organic-stage-top{padding:5px 8px}
+ .lektrus-organic-stage-title span{display:none}
+ .lektrus-organic-options{gap:6px;padding:4px 8px}
+ .lektrus-organic-tip{display:none}
+ .lektrus-organic-panel .lektrus-organic-footer{padding:5px 8px!important}
+ .lektrus-organic-panel .lektrus-organic-footer>small{display:none}
+ .lektrus-organic-panel>footer{padding:5px 9px!important;min-height:45px}
+}
+@media(max-width:540px){
+ .lektrus-organic-stage-actions{gap:2px}
+ .lektrus-organic-stage-actions button{min-width:29px;min-height:30px;padding:4px 6px}
+ .lektrus-organic-stage-actions button.fit{font-size:10px}
+ .lektrus-organic-panel .lektrus-organic-footer>div{gap:5px}
+ .lektrus-organic-panel-heading small{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-organic-panel button{transition:none!important}
+}

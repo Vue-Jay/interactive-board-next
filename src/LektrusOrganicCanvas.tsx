@@ -5,7 +5,7 @@ import LektrusOrganicHandwriting from "./LektrusOrganicHandwriting";
 
 type Point=NonNullable<Item["graphPoints"]>[number];
 type Bond=NonNullable<Item["graphSegments"]>[number];
-type Tool="select"|"single"|"double"|"triple"|"C"|"N"|"O"|"H"|"S"|"F"|"Cl"|"Br"|"erase"|"ring5"|"ring6"|"benzene"|"chain"|"OH"|"NH2"|"COOH";
+type Tool="select"|"hand"|"single"|"double"|"triple"|"C"|"N"|"O"|"H"|"S"|"F"|"Cl"|"Br"|"erase"|"ring5"|"ring6"|"benzene"|"chain"|"OH"|"NH2"|"COOH";
 type Props={item:Item;onChange:(updater:(item:Item)=>Item)=>void};
 const W=560,H=390,UNIT=32;
 const toSvg=(p:{x:number;y:number})=>({x:W/2+p.x*UNIT,y:H/2-p.y*UNIT});
@@ -24,8 +24,31 @@ const snapAngle=(p:{x:number;y:number},origin:{x:number;y:number})=>{
  const target=Math.round(angle/(Math.PI/6))*Math.PI/6;
  return {x:clamp(origin.x+2.15*Math.cos(target),-8.2,8.2),y:clamp(origin.y+2.15*Math.sin(target),-5.2,5.2)};
 };
+function OrganicToolGlyph({tool}:{tool:Tool}){
+ const art:Partial<Record<Tool,string>>={
+  select:"M5 3l14 9-8 1-2 8Z",
+  hand:"M8 11V6a1.5 1.5 0 0 1 3 0v4-0V4a1.5 1.5 0 0 1 3 0v6-0V5a1.5 1.5 0 0 1 3 0v7l1-2a1.5 1.5 0 0 1 3 1l-2 7-3 3H9l-5-7a1.5 1.5 0 0 1 2.5-1.5L8 14Z",
+  erase:"M4 13 13 4l7 7-9 9H7Z M11 20h10",
+  chain:"M3 18 8 8 14 16 21 6",
+  single:"M3 12h18",
+  double:"M3 9h18M3 15h18",
+  triple:"M3 7h18M3 12h18M3 17h18",
+  ring5:"M12 2 22 10l-4 12H6L2 10Z",
+  ring6:"M7 3h10l5 9-5 9H7l-5-9Z",
+  benzene:"M7 3h10l5 9-5 9H7l-5-9Z M8 6h8 M19 11l-4 7 M9 18l-4-7"
+ };
+ const d=art[tool];
+ if(!d)return <span aria-hidden="true">{tool}</span>;
+ return <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24"
+    fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
+}
+
 export default function LektrusOrganicCanvas({item,onChange}:Props){
  const [tool,setTool]=useState<Tool>("single");
+ const [camera,setCamera]=useState({x:0,y:0,zoom:1});
+ const touches=useRef(new Map<number,{x:number;y:number}>());
+ const pan=useRef<{id:number;startX:number;startY:number;x:number;y:number;zoom:number}|null>(null);
+ const pinch=useRef<{distance:number;midX:number;midY:number;x:number;y:number;zoom:number}|null>(null);
  const [selected,setSelected]=useState<number|null>(null);
  const [carbonLabels,setCarbonLabels]=useState(false);
  const [handwriting,setHandwriting]=useState(false);
@@ -33,10 +56,18 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  const [hoverPoint,setHoverPoint]=useState<{x:number;y:number}|null>(null);
  const [status,setStatus]=useState("");
  const undoStack=useRef<{points:Point[];segments:Bond[];notes:NonNullable<Item["scienceOrganicAnnotations"]>}[]>([]);
- const remember=()=>{undoStack.current.push({points:structuredClone(points),segments:structuredClone(segments),notes:structuredClone(item.scienceOrganicAnnotations??[])});
+ const redoStack=useRef<typeof undoStack.current>([]);
+ const snapshot=()=>({points:structuredClone(points),segments:structuredClone(segments),notes:structuredClone(item.scienceOrganicAnnotations??[])});
+ const remember=()=>{undoStack.current.push(snapshot());redoStack.current=[];
     if(undoStack.current.length>35)undoStack.current.shift();};
  const undo=()=>{const previous=undoStack.current.pop();if(previous){
+    redoStack.current.push(snapshot());
     onChange(old=>({...old,graphPoints:previous.points,graphSegments:previous.segments,scienceOrganicAnnotations:previous.notes}));
+    setSelected(null);setStatus("");
+ }};
+ const redo=()=>{const next=redoStack.current.pop();if(next){
+    undoStack.current.push(snapshot());
+    onChange(old=>({...old,graphPoints:next.points,graphSegments:next.segments,scienceOrganicAnnotations:next.notes}));
     setSelected(null);setStatus("");
  }};
 
@@ -46,9 +77,62 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
  const info=analyzeOrganicStructure(item);
  const selectedBond=(tool==="single"||tool==="double"||tool==="triple")?({single:1,double:2,triple:3} as const)[tool]:1;
  const svgPoint=(e:ReactPointerEvent<SVGElement>)=>{
-  const r=svg.current?.getBoundingClientRect()??e.currentTarget.getBoundingClientRect();
-  return toGraph({x:(e.clientX-r.left)*W/Math.max(1,r.width),y:(e.clientY-r.top)*H/Math.max(1,r.height)});
+  const root=svg.current,ctm=root?.getScreenCTM();
+  if(root&&ctm){
+   const p=root.createSVGPoint();p.x=e.clientX;p.y=e.clientY;
+   return toGraph(p.matrixTransform(ctm.inverse()));
+  }
+  return {x:0,y:0};
  };
+ const viewport=()=>({x:camera.x+(W-W/camera.zoom)/2,y:camera.y+(H-H/camera.zoom)/2,
+   width:W/camera.zoom,height:H/camera.zoom});
+ const setZoom=(next:number,fx=.5,fy=.5)=>setCamera(old=>{
+   const zoom=clamp(next,.45,4),beforeW=W/old.zoom,afterW=W/zoom;
+   const beforeH=H/old.zoom,afterH=H/zoom;
+   return {zoom,x:old.x+(fx-.5)*(beforeW-afterW),y:old.y+(fy-.5)*(beforeH-afterH)};
+ });
+ const fit=()=>{
+   if(!points.length){setCamera({x:0,y:0,zoom:1});return;}
+   const px=points.map(toSvg),margin=110;
+   const minX=Math.min(...px.map(v=>v.x)),maxX=Math.max(...px.map(v=>v.x));
+   const minY=Math.min(...px.map(v=>v.y)),maxY=Math.max(...px.map(v=>v.y));
+   const zoom=clamp(Math.min(W/(maxX-minX+margin),H/(maxY-minY+margin)),.45,2.8);
+   setCamera({x:(minX+maxX-W)/2,y:(minY+maxY-H)/2,zoom});
+ };
+ useEffect(()=>{
+   const root=svg.current;if(!root)return;
+   const wheel=(e:WheelEvent)=>{
+    if(!root.contains(e.target as Node))return;
+    e.preventDefault();e.stopPropagation();
+    const rect=root.getBoundingClientRect();
+    const fx=clamp((e.clientX-rect.left)/Math.max(1,rect.width),0,1);
+    const fy=clamp((e.clientY-rect.top)/Math.max(1,rect.height),0,1);
+    setZoom(camera.zoom*Math.exp(-e.deltaY*.0014),fx,fy);
+   };
+   root.addEventListener("wheel",wheel,{passive:false});
+   return()=>root.removeEventListener("wheel",wheel);
+ },[camera.zoom]);
+ const beginGesture=(e:ReactPointerEvent<SVGSVGElement>)=>{
+   if(e.pointerType==="touch"){
+     touches.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
+     if(touches.current.size===2){
+       const [a,b]=[...touches.current.values()];
+       pinch.current={distance:Math.max(1,Math.hypot(b.x-a.x,b.y-a.y)),
+         midX:(a.x+b.x)/2,midY:(a.y+b.y)/2,...camera};
+       pan.current=null;pointer.current=null;setDraftEnd(null);setHoverPoint(null);
+     }
+   }
+   if(tool==="hand"&&e.button===0&&touches.current.size<2){
+     pan.current={id:e.pointerId,startX:e.clientX,startY:e.clientY,...camera};
+     e.currentTarget.setPointerCapture(e.pointerId);
+   }
+ };
+ const endGesture=(e:ReactPointerEvent<SVGSVGElement>)=>{
+   touches.current.delete(e.pointerId);
+   if(touches.current.size<2)pinch.current=null;
+   if(pan.current?.id===e.pointerId)pan.current=null;
+ };
+
  const mutate=(nextPoints:Point[],nextSegments:Bond[])=>{remember();onChange(old=>({...old,graphPoints:nextPoints,graphSegments:nextSegments}));};
  // Add to the nearest atom with available valence; never start a second molecule.
  const nearestAttachment=(pos:{x:number;y:number},required=1)=>{
@@ -141,6 +225,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   if(e.button!==0)return;
   const pos=svgPoint(e);
   if(tool==="select"){setSelected(null);return;}
+  if(tool==="hand")return;
   if(tool==="erase")return;
   const ring=tool==="ring5"||tool==="ring6"||tool==="benzene";
   const functional=tool==="OH"||tool==="NH2"||tool==="COOH";
@@ -165,16 +250,32 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   setStatus("");
  };
  const handleAtom=(e:ReactPointerEvent<SVGGElement>,index:number)=>{
-  if(e.button!==0)return;
+  if(e.button!==0||tool==="hand"||touches.current.size>=2)return;
   e.stopPropagation();e.preventDefault();
-  const p=toGraph({x:(e.clientX-(svg.current?.getBoundingClientRect().left??0))*W/Math.max(1,svg.current?.getBoundingClientRect().width??W),
-   y:(e.clientY-(svg.current?.getBoundingClientRect().top??0))*H/Math.max(1,svg.current?.getBoundingClientRect().height??H)});
+  const p=svgPoint(e);
   const el=e.currentTarget.ownerSVGElement;if(!el)return;
   pointer.current={id:e.pointerId,start:p,from:index,moving:false};
   if(tool==="select")remember();
   el.setPointerCapture(e.pointerId);setSelected(index);
  };
  const onMove=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  if(e.pointerType==="touch"&&touches.current.has(e.pointerId))
+    touches.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch.current&&touches.current.size===2){
+    const [a,b]=[...touches.current.values()],p=pinch.current;
+    const rect=e.currentTarget.getBoundingClientRect();
+    const zoom=clamp(p.zoom*Math.hypot(b.x-a.x,b.y-a.y)/p.distance,.45,4);
+    const midX=(a.x+b.x)/2,midY=(a.y+b.y)/2;
+    setCamera({zoom,x:p.x-(midX-p.midX)*W/Math.max(1,rect.width)/zoom,
+      y:p.y-(midY-p.midY)*H/Math.max(1,rect.height)/zoom});
+    return;
+  }
+  if(pan.current?.id===e.pointerId){
+    const rect=e.currentTarget.getBoundingClientRect(),p=pan.current;
+    setCamera(old=>({...old,x:p.x-(e.clientX-p.startX)*W/Math.max(1,rect.width)/p.zoom,
+      y:p.y-(e.clientY-p.startY)*H/Math.max(1,rect.height)/p.zoom}));
+    return;
+  }
   const pos=svgPoint(e);
   if(!pointer.current){setHoverPoint(pos);return;}
   const ptr=pointer.current;if(ptr.id!==e.pointerId)return;
@@ -186,6 +287,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   }else if(ptr.from!==null&&(tool==="single"||tool==="double"||tool==="triple"||tool==="chain"))setDraftEnd(pos);
  };
  const onEnd=(e:ReactPointerEvent<SVGSVGElement>)=>{
+  endGesture(e);
   const ptr=pointer.current;if(!ptr||ptr.id!==e.pointerId)return;
   pointer.current=null;setDraftEnd(null);
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
@@ -200,7 +302,10 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
    attachFunctionalGroup(index,tool);return;
   }
   if((["C","N","O","H","S","F","Cl","Br"] as Tool[]).includes(tool)){
-   mutate(points.map((v,i)=>i===index?{...v,label:tool,color:organicAtomColor(tool)}:v),segments);return;
+   const used=segments.reduce((sum,edge)=>sum+(edge.a===index||edge.b===index?(edge.bondOrder??1):0),0);
+   if(used>(positions[tool]??0)){setStatus("Замена атома нарушает валентность");return;}
+   mutate(points.map((v,i)=>i===index?{...v,label:tool,color:organicAtomColor(tool)}:v),segments);
+   return;
   }
   if(tool==="ring5"||tool==="ring6"||tool==="benzene"){addRing(tool==="ring5"?5:6,undefined,index,tool==="benzene");return;}
   if(tool==="single"||tool==="double"||tool==="triple"||tool==="chain"){
@@ -215,8 +320,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   const link=segments[index];
   if(tool==="erase"){mutate(points,segments.filter((_,i)=>i!==index));return;}
   if(tool!=="single"&&tool!=="double"&&tool!=="triple"&&tool!=="chain")return;
-  const next=(link.bondOrder??1)%3+1 as 1|2|3;
-  const order=next;
+  const order=({single:1,double:2,triple:3} as const)[tool as "single"|"double"|"triple"]??1;
   if(possible(points,segments,link.a,link.b,order))
    mutate(points,segments.map((b,i)=>i===index?{...b,bondOrder:order}:b));
  };
@@ -228,7 +332,10 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
       "c":"C","n":"N","o":"O","h":"H","s":"S","f":"F","b":"Br","l":"Cl",
       "t":"ring6","g":"benzene","e":"erase"};
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){
-      e.preventDefault();undo();return;
+      e.preventDefault();if(e.shiftKey)redo();else undo();return;
+    }
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){
+      e.preventDefault();redo();return;
     }
     if(e.ctrlKey||e.metaKey||e.altKey)return;
     const next=shortcut[e.key.toLowerCase()];
@@ -244,7 +351,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   return()=>window.removeEventListener("keydown",key);
  },[selected,points,segments,tool]);
  const labels:{value:Tool;name:string}[]=[
-  {value:"select",name:"Выбор"},{value:"single",name:"—"},{value:"double",name:"="},
+  {value:"select",name:"Выбор"},{value:"hand",name:"Рука"},{value:"single",name:"—"},{value:"double",name:"="},
   {value:"triple",name:"≡"},{value:"C",name:"C"},{value:"N",name:"N"},
   {value:"O",name:"O"},{value:"H",name:"H"},{value:"S",name:"S"},
   {value:"F",name:"F"},{value:"Cl",name:"Cl"},{value:"Br",name:"Br"},
@@ -253,35 +360,82 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
   {value:"OH",name:"–OH"},{value:"NH2",name:"–NH₂"},{value:"COOH",name:"–COOH"},
   {value:"erase",name:"Удалить"}
  ];
+ const toolGroups:{title:string;tools:Tool[]}[]=[
+  {title:"Управление",tools:["select","hand","erase"]},
+  {title:"Связи",tools:["single","double","triple","chain"]},
+  {title:"Атомы",tools:["C","N","O","H","S","F","Cl","Br"]},
+  {title:"Циклы",tools:["ring5","ring6","benzene"]},
+  {title:"Группы",tools:["OH","NH2","COOH"]}
+ ];
  return <div className="lektrus-organic-editor">
-  <div className="lektrus-organic-editor-toolbar" role="toolbar" aria-label="Органический конструктор">
-   {labels.map(o=><button type="button" key={o.value} aria-pressed={tool===o.value}
-    onClick={()=>setTool(o.value)}>{o.name}</button>)}
-   <button type="button" onClick={undo} disabled={!undoStack.current.length}
-      aria-label="Отменить построение" title="Отменить предыдущее изменение">↶ Отменить</button>
-   <button type="button" aria-pressed={handwriting} onClick={()=>setHandwriting(v=>!v)}>✍ Рисовать и распознать</button>
-   <label><input type="checkbox" checked={carbonLabels} onChange={e=>setCarbonLabels(e.target.checked)}/> Показывать C</label>
-  </div>
+  <aside className="lektrus-organic-editor-toolbar" aria-label="Панель построения органических формул">
+   <div className="lektrus-organic-tools-heading"><strong>Инструменты</strong><small>Выберите действие</small></div>
+   {toolGroups.map(group=><section className="lektrus-organic-tools-group" key={group.title}>
+    <h3>{group.title}</h3>
+    <div className="lektrus-organic-tools-grid" role="toolbar" aria-label={group.title}>
+     {group.tools.map(id=>{
+      const o=labels.find(entry=>entry.value===id)!;
+      return <button type="button" key={id} title={o.name} aria-label={o.name}
+       aria-pressed={tool===id} onClick={()=>{setTool(id);setStatus("");setHandwriting(false)}}>
+       <OrganicToolGlyph tool={id}/><small>{o.name}</small>
+      </button>;
+     })}
+    </div>
+   </section>)}
+  </aside>
+  <section className="lektrus-organic-stage">
+   <div className="lektrus-organic-stage-top">
+    <div className="lektrus-organic-stage-title">
+     <strong>Рабочее поле</strong><span>{points.length} атомов · {segments.length} связей</span>
+    </div>
+    <div className="lektrus-organic-stage-actions" aria-label="Управление холстом">
+     <button type="button" title="Отменить (Ctrl+Z)" aria-label="Отменить" onClick={undo}
+      disabled={!undoStack.current.length}>↶</button>
+     <button type="button" title="Повторить (Ctrl+Y)" aria-label="Повторить" onClick={redo}
+      disabled={!redoStack.current.length}>↷</button>
+     <span className="lektrus-organic-stage-divider" aria-hidden="true"/>
+     <button type="button" aria-label="Уменьшить масштаб" onClick={()=>setZoom(camera.zoom/1.25)}>−</button>
+     <output aria-label="Масштаб">{Math.round(camera.zoom*100)}%</output>
+     <button type="button" aria-label="Увеличить масштаб" onClick={()=>setZoom(camera.zoom*1.25)}>+</button>
+     <button type="button" className="fit" onClick={fit} title="Показать всю структуру">Вместить</button>
+    </div>
+   </div>
+   <div className="lektrus-organic-options">
+    <label><input type="checkbox" checked={carbonLabels} onChange={e=>setCarbonLabels(e.target.checked)}/> Показывать атомы C</label>
+    <button type="button" aria-pressed={handwriting} onClick={()=>setHandwriting(v=>!v)}>
+      {handwriting?"Закрыть распознавание":"Рисование и распознавание"}
+    </button>
+    <span className="lektrus-organic-tip">Точка или связь: нажать · перетащить: построить · два пальца: масштаб</span>
+   </div>
   <div className="lektrus-organic-canvas-scroll">
    {handwriting&&<LektrusOrganicHandwriting item={item} onChange={update=>{remember();onChange(update)}} onExit={()=>setHandwriting(false)}/>}
-   <svg ref={svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Конструктор органических молекул"
+   <svg ref={svg} viewBox={`${viewport().x} ${viewport().y} ${viewport().width} ${viewport().height}`}
+    preserveAspectRatio="xMidYMid meet" role="img" aria-label="Рабочая область органического редактора"
     onContextMenu={e=>{e.preventDefault();e.stopPropagation();setTool("select");setDraftEnd(null);setHoverPoint(null)}}
     onPointerDownCapture={e=>{
-     if(e.button!==2)return;
-     e.preventDefault();e.stopPropagation();
-     pointer.current=null;setDraftEnd(null);setHoverPoint(null);
-     setTool("select");setStatus("Вставка отменена. Режим выбора.");
+     if(e.button===2){
+      e.preventDefault();e.stopPropagation();pointer.current=null;
+      setDraftEnd(null);setHoverPoint(null);setTool("select");
+      setStatus("Построение отменено. Выбор активен.");return;
+     }
+     beginGesture(e);
     }}
     onPointerDown={e=>{if(e.button===0&&e.target===e.currentTarget){e.preventDefault();handleBlank(e)}}}
     onPointerMove={onMove} onPointerLeave={()=>setHoverPoint(null)} onPointerUp={onEnd} onPointerCancel={e=>{
+      endGesture(e);
       if(pointer.current?.id===e.pointerId)pointer.current=null;
       setDraftEnd(null);
       if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
     }}
-    style={{touchAction:"none"}}>
-    <rect width={W} height={H} fill="#fff" onPointerDown={e=>{
-     if(e.button!==0)return;
-     e.preventDefault();e.stopPropagation();handleBlank(e);}}/>
+    style={{touchAction:"none",cursor:tool==="hand"?"grab":tool==="select"?"default":"crosshair"}}>
+    <defs><pattern id="lektrus-organic-grid" width={UNIT} height={UNIT} patternUnits="userSpaceOnUse">
+      <path d={`M ${UNIT} 0 H 0 V ${UNIT}`} fill="none" stroke="#e6ebf1" strokeWidth="0.8"/>
+    </pattern></defs>
+    <rect x={-4000} y={-4000} width={8000} height={8000} fill="#fff" pointerEvents="none"/>
+    <rect x={-4000} y={-4000} width={8000} height={8000} fill="url(#lektrus-organic-grid)"
+     onPointerDown={e=>{
+      if(e.button!==0||pinch.current)return;
+      e.preventDefault();e.stopPropagation();handleBlank(e);}}/>
     {segments.map((edge,index)=>{
      const a=points[edge.a],b=points[edge.b];if(!a||!b)return null;
      const p=toSvg(a),q=toSvg(b),length=Math.hypot(q.y-p.y,q.x-p.x)||1;
@@ -296,7 +450,7 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
        onPointerDown={e=>clickBond(e,index)} style={{cursor:"pointer"}}/>
      </g>;
     })}
-    {hoverPoint!==null&&points.length>0&&tool!=="select"&&tool!=="erase"&&(()=>{
+    {hoverPoint!==null&&points.length>0&&tool!=="select"&&tool!=="hand"&&tool!=="erase"&&(()=>{
      const required=(tool==="ring5"||tool==="ring6"||tool==="benzene")?2:tool==="double"?2:tool==="triple"?3:1;
      const fromIndex=nearestAttachment(hoverPoint,required);
      if(fromIndex<0)return null;
@@ -339,7 +493,8 @@ export default function LektrusOrganicCanvas({item,onChange}:Props){
    {status&&<span role="status" className="lektrus-organic-status">{status}</span>}
    <div><strong>Формула: {info.valid?info.formula:"Проверьте валентности"}</strong>
     <small>{info.note}</small></div>
-   <small>Новый атом или группа присоединяются к ближайшему свободному атому. Пунктир показывает место соединения до вставки. Для продолжения цепи касайтесь атомов.</small>
+   <small>Связи и группы присоединяются к свободным атомам. Выберите «Руку» для перемещения холста.</small>
   </div>
+  </section>
  </div>;
 }

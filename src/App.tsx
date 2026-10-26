@@ -5439,7 +5439,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     commit(itemsRef.current.map(item=>item.id===latest.id?updated:item));
     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
   };
-  const livePhysicalEditorUpdate=(itemId:string,field:"scienceMechanics"|"scienceOptics"|"scienceCircuit",
+  const liveOrganicEditorUpdate=(before:Item,next:Item)=>{
+     const latest=itemsRef.current.find(candidate=>candidate.id===next.id);
+     if(!latest||latest.locked||!canEdit||structurallyLockedForStudent(latest))return;
+     const fields=(item:Item)=>({graphPoints:item.graphPoints??[],graphSegments:item.graphSegments??[],
+       scienceOrganicAnnotations:item.scienceOrganicAnnotations??[],text:item.text});
+     const merged=mergeEditedValue(fields(before),fields(next),fields(latest));
+     const updated={...latest,...merged};
+     if(JSON.stringify(updated)===JSON.stringify(latest))return;
+     if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+     commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry));
+     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
+   };
+   const livePhysicalEditorUpdate=(itemId:string,field:"scienceMechanics"|"scienceOptics"|"scienceCircuit",
     before:unknown,next:unknown)=>{
     const latest=itemsRef.current.find(candidate=>candidate.id===itemId);
     if(!latest||latest.locked||!canEdit||structurallyLockedForStudent(latest))return;
@@ -7626,17 +7638,35 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             onCancel={()=>setScienceEditorItem(null)}
             onClose={next=>{finalizePhysicalEditor(next,false);setScienceEditorItem(null)}}
             onSave={next=>{finalizePhysicalEditor(next,true);setScienceEditorItem(null);setNotice("Физический график синхронизирован")}}/>:
-          <LektrusScienceEditor key={scienceEditorItem.id} item={scienceEditorItem}
+          <LektrusScienceEditor key={scienceEditorItem.id}
+          item={scienceEditorItem.graphFigureId?.startsWith("chem-organic-")?
+            (remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem):
+            scienceEditorItem}
+          shared={items.some(x=>x.id===scienceEditorItem.id)}
+          onOrganicLiveChange={(before,next)=>liveOrganicEditorUpdate(before,next)}
           subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
           onCancel={()=>setScienceEditorItem(null)}
           onClose={next=>{
             if(itemsRef.current.some(i=>i.id===next.id)){
-              commit(itemsRef.current.map(i=>i.id===next.id?next:i));
-              setNotice("Изменения схемы сохранены");
+              if(next.graphFigureId?.startsWith("chem-organic-"))
+                finalizePhysicalEditor(next,false);
+              else{
+                commit(itemsRef.current.map(i=>i.id===next.id?next:i));
+                setNotice("Изменения схемы сохранены");
+              }
             }
             setScienceEditorItem(null);
           }}
-          onSave={next=>{commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);setScienceEditorItem(null);setNotice("Предметная схема сохранена");}}/>}</>}
+          onSave={next=>{
+            if(next.graphFigureId?.startsWith("chem-organic-")){
+              finalizePhysicalEditor(next,true);
+              setNotice("Органическая структура синхронизирована");
+            }else{
+              commit(itemsRef.current.some(i=>i.id===next.id)?itemsRef.current.map(i=>i.id===next.id?next:i):[...itemsRef.current,next]);
+              setNotice("Предметная схема сохранена");
+            }
+            setScienceEditorItem(null);
+          }}/></>}
         {chartEditorItem&&createPortal(<LektrusDataChartEditor key={chartEditorItem.id}
           item={chartEditorItem} onClose={()=>setChartEditorItem(null)}
           onSave={next=>{
