@@ -106,8 +106,9 @@ assert.ok(icons.includes('style={{overflow:"hidden"}}'),
 const artwork=readFileSync(new URL("../public/lektrus-subject-illustrations.png",import.meta.url));
 assert.deepEqual([...artwork.subarray(0,8)],[137,80,78,71,13,10,26,10],
  "Subject artwork atlas must be a genuine PNG");
-assert.equal(artwork.readUInt32BE(16),280,"Seven 40px atlas columns");
-assert.equal(artwork.readUInt32BE(20),280,"Seven 40px atlas rows");
+assert.equal(artwork.readUInt32BE(16),672,"Seven 96px atlas columns");
+assert.equal(artwork.readUInt32BE(20),672,"Seven 96px atlas rows");
+assert.ok(artwork.byteLength>30000,"The subject artwork atlas must retain detailed selected illustrations");
 assert.ok(inkStyles.includes("width:34px!important")&&inkStyles.includes("overflow:hidden!important"),
  "Square subject image tiles must be readable without bleeding into neighbors");
 

@@ -72,7 +72,8 @@ const illustrationIds:SubjectToolId[]=[
 ];
 const illustrationIndexes=new Map<string,number>(illustrationIds.map((id,i)=>[id,i]));
 const illustrationHref=`${import.meta.env.BASE_URL}lektrus-subject-illustrations.png`;
-const illustratedTileSize=40;
+// Approved square illustrations, upsampled for crisp desktop/mobile previews.
+const illustratedTileSize=96;
 const illustratedAtlasSize=illustratedTileSize*7;
 
 export const subjectToolIconIds=Object.keys(icons);
