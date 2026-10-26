@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
+import "./test-lektrus-illustration-layout.mjs";
 
 const read=file=>readFileSync(new URL("../"+file,import.meta.url),"utf8");
 const app=read("src/App.tsx");
