@@ -45,6 +45,7 @@ assert.equal(validateApprovedSchoolDiagram({...cards,cards:[
 const registry=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
 for(const id of ["ru-morphemes","history-family-tree","language-flashcards"])
  assert.ok(registry.includes('id:"'+id+'"'),id+" available in subject menu");
-assert.match(registry,/subjects:\["история","обществознание"\]/);
+assert.match(registry,/id:"history-family-tree"[^\n]*subjects:\["история"\]/,
+ "Genealogy belongs to history, not social studies");
 assert.match(registry,/subjects:\["иностранный язык"\]/);
 console.log("Approved school tools: morpheme order and zero endings, family acyclicity and foreign vocabulary answer hiding verified.");
