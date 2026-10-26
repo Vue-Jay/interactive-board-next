@@ -246,13 +246,13 @@ function calculated(g:Graph):OrganicNameResult{
  const ends=carbon.filter(i=>carbonds.filter(e=>e.a===i||e.b===i).length<=1);
  const mainAtom=primary[0]?.at;
  const paths:number[][]=[];
- function route(from:number,at:number,seen:Set<number>,path:number[]){
+ function route(at:number,seen:Set<number>,path:number[]){
   if(path.length>20)return;
   const next=carbonds.flatMap(e=>e.a===at&&!seen.has(e.b)?[e.b]:e.b===at&&!seen.has(e.a)?[e.a]:[]);
   if(!next.length){if((mainAtom===undefined||path.includes(mainAtom))&&path.length)paths.push(path);return;}
-  next.forEach(i=>route(from,i,new Set([...seen,i]),[...path,i]));
+  next.forEach(i=>route(i,new Set([...seen,i]),[...path,i]));
  }
- ends.forEach(i=>route(i,i,new Set([i]),[i]));
+ ends.forEach(i=>route(i,new Set([i]),[i]));
  if(!paths.length)return unsupported("Не найдена подходящая главная цепь");
  type Option={path:number[];score:number[];prefix:string;core:string};
  const options:Option[]=[];
