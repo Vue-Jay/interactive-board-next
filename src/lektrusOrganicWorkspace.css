@@ -41,6 +41,24 @@
  padding:7px 10px!important;background:#fff;border:1px solid var(--organic-line)!important;
  border-radius:9px!important;color:var(--organic-ink);font:inherit;font-size:13px!important;
 }
+.lektrus-organic-nomenclature{
+ flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+ padding:7px 18px;background:#f8fafc;border-bottom:1px solid var(--organic-line);
+}
+.lektrus-organic-nomenclature-head{display:flex;flex-direction:column;min-width:150px}
+.lektrus-organic-nomenclature-head strong{font-size:12px;color:var(--organic-ink)}
+.lektrus-organic-nomenclature-head small{font-size:10px;color:var(--organic-muted)}
+.lektrus-organic-nomenclature-values{display:flex;gap:14px;flex:1 1 290px;flex-wrap:wrap}
+.lektrus-organic-nomenclature-values>div{display:flex;flex-direction:column;gap:2px;min-width:110px;flex:1 1 160px}
+.lektrus-organic-nomenclature-values span{font-size:10px;color:var(--organic-muted)}
+.lektrus-organic-nomenclature-values strong{font-size:12px;color:var(--organic-ink);overflow-wrap:anywhere}
+.lektrus-organic-nomenclature-controls{display:flex;flex-wrap:wrap;gap:5px 13px}
+.lektrus-organic-nomenclature-controls label{display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;font-weight:650}
+.lektrus-organic-nomenclature-controls input{accent-color:#435d7b}
+.lektrus-organic-nomenclature-controls input:disabled{opacity:.45;cursor:not-allowed}
+.lektrus-organic-nomenclature-warning{flex-basis:100%;font-size:10px;color:#96552e}
+.lektrus-organic-board-caption{display:flex;flex-direction:column;align-items:flex-start;gap:2px;max-width:100%;overflow-wrap:anywhere}
+.lektrus-organic-board-caption small{font-size:11px;line-height:1.4;color:#344d67}
 .lektrus-organic-panel>main{
  flex:1 1 0!important;min-height:0!important;display:flex!important;overflow:hidden!important;
  background:var(--organic-soft);
@@ -171,6 +189,10 @@
  .lektrus-organic-panel{height:100dvh!important;border-radius:0!important}
  .lektrus-organic-panel>header{padding:6px 10px!important}
  .lektrus-organic-panel .lektrus-organic-name{padding:5px 10px!important}
+ .lektrus-organic-nomenclature{padding:5px 10px;gap:5px}
+ .lektrus-organic-nomenclature-values{gap:6px}
+ .lektrus-organic-nomenclature-values>div{min-width:90px}
+ .lektrus-organic-nomenclature-controls{gap:5px 8px}
  .lektrus-organic-panel .lektrus-organic-editor{
   grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto minmax(0,1fr);
  }
