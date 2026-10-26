@@ -448,6 +448,8 @@ export type Item = {
   sciencePeriodicLayout?: "school" | "long";
   scienceExperimentStage?: 0 | 1;
   scienceOrganicAnnotations?: {x:number;y:number;text:string}[];
+  scienceOrganicShowSystematic?: boolean;
+  scienceOrganicShowTrivial?: boolean;
   scienceReactionConditions?: string;
   scienceReagents?: string[];
   scienceEnvironment?: "aqueous" | "dry" | "heated" | "ignited";
@@ -548,7 +550,7 @@ const binding = (v: unknown): v is ConnectorBinding => !!v && typeof v === "obje
 const persistedGraphKeys = [
   "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceOptics","scienceMechanics","scienceAtomModel",
   "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
-  "scienceExperimentStage","scienceOrganicAnnotations","scienceReactionConditions",
+  "scienceExperimentStage","scienceOrganicAnnotations","scienceOrganicShowSystematic","scienceOrganicShowTrivial","scienceReactionConditions",
   "scienceReagents","scienceEnvironment","schoolDiagram",
   "graphRotationX","graphRotationY","graphParallelMarks",
   "graphAxisMode","graphIntervalStartClosed","graphIntervalEndClosed",
