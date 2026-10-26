@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
-import {build} from "esbuild";
-
-const bundle=await build({
- entryPoints:["src/lektrusOrganicNomenclature.ts"],bundle:true,platform:"node",
- format:"esm",write:false,logLevel:"silent"
-});
+import {readFileSync} from "node:fs";
+import ts from "typescript";
+const compile=(path)=>ts.transpileModule(readFileSync(path,"utf8"),{
+ compilerOptions:{target:ts.ScriptTarget.ES2023,module:ts.ModuleKind.ESNext}
+}).outputText;
+const toUrl=(source)=>"data:text/javascript;base64,"+Buffer.from(source).toString("base64");
+const formulaUrl=toUrl(compile("src/lektrusOrganicFormula.ts"));
+const moduleText=compile("src/lektrusOrganicNomenclature.ts")
+ .replace("./lektrusOrganicFormula",formulaUrl);
 const {nameOrganicStructure,parseOrganicReference,ORGANIC_REFERENCE_COUNT}=
- await import("data:text/javascript;base64,"+Buffer.from(bundle.outputFiles[0].text).toString("base64"));
+ await import(toUrl(moduleText));
 assert.ok(ORGANIC_REFERENCE_COUNT>=75,"Substantial curated structure reference is required");
 
 const item=(smiles)=>{
