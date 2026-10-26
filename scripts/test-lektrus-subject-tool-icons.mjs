@@ -26,7 +26,7 @@ const registryBlock=registry.slice(registry.indexOf("export const subjectToolReg
  registry.indexOf("export function subjectToolsFor"));
 const ids=[...registryBlock.matchAll(/\{id:"([^"]+)"/g)].map(m=>m[1]);
 const scienceBlock=science.slice(science.indexOf("export const scienceToolGroups"),
- science.indexOf("export function scienceToolGroupForId"));
+ science.indexOf("const legacyMolecules"));
 const scienceIds=[...scienceBlock.matchAll(/\{id:"([^"]+)",subject:/g)].map(m=>m[1]);
 const expected=[...new Set([...ids,...scienceIds])];
 const iconDefs=[...icons.matchAll(/^\s+"([a-z0-9-]+)":<>([^\n]+)<\/>[,]?$/gm)]
