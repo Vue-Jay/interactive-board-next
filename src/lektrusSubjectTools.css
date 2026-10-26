@@ -200,38 +200,61 @@ body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button:focus-visib
  body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon{transition:none}
 }
 
-/* Search stays in the same compact subject catalogue and works in both themes. */
-.lektrus-subject-tools-panel .lektrus-subject-tool-search{
- display:grid;gap:6px;margin:-2px 0 14px;
+/* Compact subject catalogue: semantic sections and two-column tool rows. */
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-head{
+  align-items:center;padding:12px 14px 10px!important;
 }
-.lektrus-subject-tools-panel .lektrus-subject-tool-search>label{
- font-size:11px;font-weight:750;color:var(--lt-muted,#677d9b);
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-body{
+  padding:10px 12px 13px!important;
 }
-.lektrus-subject-tools-panel .lektrus-subject-tool-search>div{
- display:flex;align-items:center;gap:4px;
- border:1px solid var(--lt-line,#d4e0ef);border-radius:10px;
- background:var(--lt-subtle,#f6f9ff);padding-right:6px;
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-category{
+  gap:5px;margin-bottom:10px!important;
 }
-.lektrus-subject-tools-panel .lektrus-subject-tool-search input{
- box-sizing:border-box;flex:1;min-width:0;width:100%;height:36px;
- border:none!important;outline:none!important;box-shadow:none!important;
- padding:7px 10px;background:transparent;color:var(--lt-text,#213957);
- font:inherit;font-size:12px;
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-category select{
+  min-height:35px;padding:6px 10px;
 }
-.lektrus-subject-tools-panel .lektrus-subject-tool-search>div:focus-within{
- outline:2px solid var(--lt-primary,#416dce);outline-offset:2px;
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-groups{
+  display:grid;gap:10px;
 }
-.lektrus-subject-tools-panel .lektrus-subject-tool-search>div>button{
- flex:none;width:26px;height:26px;display:grid;place-items:center;
- border:0;border-radius:7px;background:var(--lt-raised,#fff);
- color:var(--lt-secondary,#60738d);font-size:19px;cursor:pointer;
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-group{
+  display:grid;gap:5px;min-width:0;
 }
-.lektrus-subject-tools-panel .lektrus-subject-tool-search>small{
- font-size:10px;color:var(--lt-muted,#75859d);
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-group>h3{
+  margin:0;padding:0 1px;
+  color:var(--lt-muted,#667a91);font-size:10px;font-weight:750;
+  letter-spacing:.025em;line-height:1.4;text-transform:none;
 }
-.lektrus-subject-tools-panel .lektrus-subject-tools-clear{
- margin-top:12px;min-height:32px;padding:7px 10px;
- border-radius:9px;border:1px solid var(--lt-line,#dae3f2);
- background:var(--lt-raised,#fff);
- color:var(--lt-primary,#3d64c7);font-size:11px;font-weight:750;cursor:pointer;
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-list{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button{
+  display:flex!important;flex-direction:row!important;
+  align-items:center!important;justify-content:flex-start!important;
+  min-width:0!important;min-height:63px!important;
+  gap:7px!important;padding:7px 8px!important;
+  text-align:left!important;overflow-wrap:normal!important;
+  border-radius:10px!important;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-name{
+  flex:1 1 0;min-width:0;max-width:100%;
+  font-size:11px!important;line-height:1.3!important;
+  font-weight:700!important;hyphens:auto;word-break:normal;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button .lektrus-subject-tools-icon{
+  flex:0 0 40px!important;width:40px!important;height:40px!important;
+  border-radius:10px!important;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button .lektrus-subject-tools-icon>svg{
+  width:31px!important;height:31px!important;
+}
+@media(max-width:380px){
+  body>.lektrus-subject-tools-panel .lektrus-subject-tools-list{
+    grid-template-columns:minmax(0,1fr);
+  }
+  body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button{
+    min-height:52px!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button{transition:none!important}
 }

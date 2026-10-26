@@ -3,6 +3,7 @@ import {readFileSync} from "node:fs";
 import ts from "typescript";
 import "./test-lektrus-illustration-layout.mjs";
 import "./test-lektrus-subject-routing.mjs";
+import "./test-lektrus-subject-catalogue-ui.mjs";
 
 const read=file=>readFileSync(new URL("../"+file,import.meta.url),"utf8");
 const app=read("src/App.tsx");
@@ -51,18 +52,19 @@ assert.ok(app.includes('icon:<LektrusSubjectToolIcon id={entry.id} size={24}/>')
 assert.ok(!app.includes('entry.id==="math-coordinate"||entry.id==="physics-graphs"'),
  "Generic graph/shape/text icon switching must be removed");
 assert.ok(panel.includes('className="lektrus-subject-tools-icon"'));
-assert.ok(panel.includes('const shownTools=searchTerm?tools.filter('),
- "Subject tools must be searchable by name, purpose, and group");
-assert.ok(panel.includes('tools.length>4&&<div className="lektrus-subject-tool-search"'),
- "Do not display a full search bar for short subject catalogues");
-assert.ok(panel.includes('shownTools.filter(t=>(t.group||"Инструменты")===group)'),
- "Search must filter rendered instrument cards");
-assert.ok(panel.includes('setSearch("");onSubjectChange(e.target.value)'),
- "Switching school subjects must clear an old query");
-assert.ok(panel.includes('Ничего не найдено'),
- "Empty search results must be clear to the user");
-assert.ok(styles.includes('.lektrus-subject-tools-panel .lektrus-subject-tool-search>div:focus-within'),
- "Search input must have a visible keyboard focus indicator");
+assert.ok(panel.includes("const subjectToolSections:Record<string,"),
+ "Use a curated semantic layout for every classroom subject");
+for(const name of ["Разбор","Практика","Карты и хронология","Информация","Программирование и алгоритмы","Логика"]){
+ assert.ok(panel.includes(name),"Missing compact subject section: "+name);
+}
+assert.ok(panel.includes('section.items.map(t=>'),"Render tightly grouped subject tool cards");
+assert.ok(panel.includes('title={t.description??t.label}'),"Preserve tool details in hover tooltips");
+assert.ok(!panel.includes("lektrus-subject-tool-search")&&!panel.includes("searchTerm"),
+ "Remove the inconsistent embedded search from all subject menus");
+assert.ok(!styles.includes(".lektrus-subject-tool-search"),
+ "Remove dead subject-search CSS");
+assert.ok(styles.includes("grid-template-columns:repeat(2,minmax(0,1fr))"),
+ "Use a compact two-column subject catalogue");
 assert.ok(styles.includes('body>.lektrus-subject-tools-panel .lektrus-subject-tools-icon>svg'),
  "Portal-mounted panels must receive consistent icon sizing");
 assert.ok(styles.includes("prefers-reduced-motion:reduce"));

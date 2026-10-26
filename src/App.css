@@ -8713,3 +8713,22 @@ option{background:#fff;color:#343741}
  border-radius:9px;background:#fff;color:#36516e;font-size:12px;
 }
 .lektrus-developer-role-permissions strong{color:#233e5d;font-size:12px}
+
+/* An explicit close action for the command search on desktop and touch screens. */
+.command-palette-search .command-palette-close{
+  flex:0 0 34px;display:grid;place-items:center;width:34px;height:34px;
+  margin-left:2px;padding:0;cursor:pointer;border:1px solid var(--lt-line,#dfe1e8);
+  border-radius:9px;background:var(--lt-subtle,#f3f4f7);color:var(--lt-secondary,#556373);
+  font:inherit;line-height:1;
+}
+.command-palette-search .command-palette-close:hover{
+  color:var(--lt-text,#243247);background:var(--lt-hover,#e6ebf3);
+}
+.command-palette-search .command-palette-close:focus-visible{
+  outline:2px solid var(--lt-primary,#4568b3);outline-offset:2px;
+}
+@media(max-width:700px){
+  .command-palette-search{gap:7px}
+  .command-palette-search .command-palette-close{flex-basis:36px;width:36px;height:36px}
+  .command-palette-search>kbd{display:none}
+}

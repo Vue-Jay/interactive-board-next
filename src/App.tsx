@@ -7322,7 +7322,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           ];
           const q = commandPaletteQuery.trim().toLocaleLowerCase("ru");
           const filtered = commands.filter(([label,hint,,toolId]) => (!toolId || toolAllowedForRole(toolId)) && (!q || `${label} ${hint}`.toLocaleLowerCase("ru").includes(q)));
-          const execute = (run: () => void) => { setCommandPaletteOpen(false); setCommandPaletteQuery(""); setCommandPaletteIndex(0); run(); };
+          const closeCommandPalette = () => { setCommandPaletteOpen(false); setCommandPaletteQuery(""); setCommandPaletteIndex(0); };
+          const execute = (run: () => void) => { closeCommandPalette(); run(); };
           return <div className="command-palette-backdrop" onPointerDown={(e) => { if (e.target === e.currentTarget) { setCommandPaletteOpen(false); setCommandPaletteQuery(""); setCommandPaletteIndex(0); } }}>
             <section className="command-palette" role="dialog" aria-modal="true" aria-label="Быстрые команды">
               <div className="command-palette-search"><Icon name="search" size={18}/><input value={commandPaletteQuery} onChange={(e) => { setCommandPaletteQuery(e.target.value); setCommandPaletteIndex(0); }} placeholder="Найти инструмент или действие…" onKeyDown={(e) => {
@@ -7330,7 +7331,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 if (e.key === "ArrowDown" && filtered.length) { e.preventDefault(); setCommandPaletteIndex((value) => (value + 1) % filtered.length); return; }
                 if (e.key === "ArrowUp" && filtered.length) { e.preventDefault(); setCommandPaletteIndex((value) => (value - 1 + filtered.length) % filtered.length); return; }
                 if (e.key === "Enter" && filtered[commandPaletteIndex]) { e.preventDefault(); execute(filtered[commandPaletteIndex][2]); }
-              }}/><kbd>Esc</kbd></div>
+              }}/><kbd>Esc</kbd><button type="button" className="command-palette-close" title="Закрыть поиск" aria-label="Закрыть поиск инструментов" onClick={closeCommandPalette}><Icon name="close" size={18}/></button></div>
               <div className="command-palette-list">{filtered.length ? filtered.map(([label,hint,run],index) => <button key={`${label}:${hint}`} className={index === commandPaletteIndex ? "suggested" : ""} onMouseEnter={() => setCommandPaletteIndex(index)} onClick={() => execute(run)}><span><strong>{label}</strong><small>{hint}</small></span>{index === commandPaletteIndex && <kbd>Enter</kbd>}</button>) : <div className="command-palette-empty">Ничего не найдено</div>}</div>
               <div className="command-palette-footer"><span className="command-palette-desktop-hint">Ctrl K</span><span>Начните вводить название инструмента · коснитесь результата для выбора</span></div>
             </section>
