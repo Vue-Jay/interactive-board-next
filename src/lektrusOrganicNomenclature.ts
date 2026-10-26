@@ -92,9 +92,9 @@ const manual:RecordName[]=[
  ["CNC","диметиламин"],
  ["NCCN","этан-1,2-диамин","этилендиамин"],
  ["CCl","хлорметан","хлористый метил"],
- ["CCl(Cl)","дихлорметан","метиленхлорид"],
- ["CCl(Cl)Cl","трихлорметан","хлороформ"],
- ["CCl(Cl)(Cl)Cl","тетрахлорметан","четырёххлористый углерод"],
+ ["C(Cl)Cl","дихлорметан","метиленхлорид"],
+ ["C(Cl)(Cl)Cl","трихлорметан","хлороформ"],
+ ["C(Cl)(Cl)(Cl)Cl","тетрахлорметан","четырёххлористый углерод"],
  ["CBr","бромметан","бромистый метил"],
  ["CI","иодметан","йодистый метил"],
  ["C=C","этен","этилен"],
@@ -242,7 +242,6 @@ function calculated(g:Graph):OrganicNameResult{
      v.kind==="nitrile"&&v!==primary[0]||v.kind==="aldehyde"&&v!==primary[0]))
   return unsupported("Сочетание функциональных групп требует специального правила");
  const carbonds=g.links.filter(e=>g.atoms[e.a]==="C"&&g.atoms[e.b]==="C");
- const tree=new Set(carbon);
  if(carbonds.length!==carbon.length-1)return unsupported("Кольца и несколько углеродных фрагментов именуются по справочнику");
  const ends=carbon.filter(i=>carbonds.filter(e=>e.a===i||e.b===i).length<=1);
  const mainAtom=primary[0]?.at;
