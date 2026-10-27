@@ -142,6 +142,20 @@ for(const acid of acids)
   register("Нейтрализация "+acid.name,"Нейтрализация",equation,condition,
    "Полная нейтрализация с указанной стехиометрией; при недостатке основания возможны кислые соли.");
  }
+// Acid salts are legitimate alternative products at different stoichiometries.
+// Keep these as separate references instead of marking partial neutralisation wrong.
+for(const [alkali,symbol] of [[c.Na,"Na"],[c.K,"K"]] as const){
+ const hydroxide=makeSalt(alkali,a.hydroxide).formula;
+ register("Кислая соль серной кислоты","Кислые соли",
+  "H2SO4 + "+hydroxide+" → "+symbol+"HSO4 + H2O",
+  "недостаток щёлочи","Частичная нейтрализация серной кислоты (кислая соль).");
+ register("Дигидрофосфат "+alkali.name,"Кислые соли",
+  "H3PO4 + "+hydroxide+" → "+symbol+"H2PO4 + H2O",
+  "недостаток щёлочи","Первая ступень нейтрализации H₃PO₄.");
+ register("Гидрофосфат "+alkali.name,"Кислые соли",
+  "H3PO4 + 2"+hydroxide+" → "+symbol+"2HPO4 + 2H2O",
+  "частичная нейтрализация","Вторая ступень нейтрализации H₃PO₄.");
+}
 // Acid / carbonate or bicarbonate: CO2 + H2O always included.
 // Omit ambiguous phosphate acid cases and sulphate surface-passivation cases.
 for(const acid of acids.filter(v=>v.protons<=2)){
