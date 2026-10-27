@@ -1,0 +1,194 @@
+/* Compact, responsive Lektrus chemistry equation workspace.
+   Loaded after the shared chemistry stylesheet to scope every override. */
+.lektrus-chem-equation-v2{padding:clamp(4px,1.2vw,16px)!important}
+.lektrus-chem-equation-v2 .lektrus-chem-equation-editor{
+ --eq-ink:#2d4057;--eq-muted:#708095;--eq-line:#dce3eb;--eq-soft:#f5f8fb;
+ width:min(1140px,100%)!important;max-width:1140px!important;
+ height:min(800px,calc(100dvh - 16px))!important;max-height:calc(100dvh - 8px)!important;
+ gap:0!important;padding:0!important;border-radius:16px!important;
+ background:#fff!important;border:1px solid var(--eq-line)!important;
+ box-shadow:0 28px 85px #0e1c316b!important;
+ color:var(--eq-ink)!important;overflow:hidden!important;
+}
+.lektrus-chem-equation-v2 .lektrus-chem-equation-header{
+ flex:0 0 auto;display:flex;gap:12px;align-items:center;
+ padding:12px 18px!important;background:white;border-bottom:1px solid var(--eq-line)!important;
+}
+.lektrus-chem-equation-heading{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lektrus-chem-equation-heading strong{font:800 17px/1.2 system-ui,sans-serif!important}
+.lektrus-chem-equation-heading small{font:500 11px/1.35 system-ui,sans-serif;color:var(--eq-muted)}
+.lektrus-chem-equation-v2 .lektrus-chem-equation-header>button{margin-left:auto;flex:0 0 36px}
+.lektrus-chem-equation-v2 button{touch-action:manipulation;transition:background-color .12s,border-color .12s}
+.lektrus-chem-equation-v2 button:focus-visible,
+.lektrus-chem-equation-v2 input:focus-visible,.lektrus-chem-equation-v2 textarea:focus-visible{
+ outline:2px solid #7098c8!important;outline-offset:1px;
+}
+.lektrus-chem-equation-v2 button:disabled{opacity:.38!important;cursor:not-allowed!important}
+.lektrus-chem-equation-mode{display:flex;align-items:center;gap:6px;padding:7px 16px;
+ background:#fff;border-bottom:1px solid var(--eq-line)}
+.lektrus-chem-equation-mode>button{border:1px solid transparent;border-radius:9px;
+ background:transparent;font:750 12px system-ui,sans-serif;color:var(--eq-muted);
+ padding:8px 15px;cursor:pointer}
+.lektrus-chem-equation-mode>button[aria-selected="true"]{
+ border-color:#bacadc;background:#e9eff6;color:var(--eq-ink)}
+.lektrus-chem-equation-mode>span{margin-left:auto;font-size:10px;color:var(--eq-muted)}
+.lektrus-chem-equation-content{flex:1 1 0;min-height:0;overflow:auto;
+ display:flex;flex-direction:column;gap:11px;padding:14px 18px 16px;
+ overscroll-behavior:contain;background:#f8fafc;scrollbar-width:thin}
+.lektrus-chem-builder{display:flex;flex-direction:column;gap:11px}
+.lektrus-chem-equation-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.lektrus-chem-side{min-width:0;border:1px solid var(--eq-line);border-radius:12px;
+ background:#fff;display:flex;flex-direction:column;gap:8px;padding:10px}
+.lektrus-chem-side-heading{display:flex;align-items:center;gap:7px}
+.lektrus-chem-side-heading strong{font-size:12px;font-weight:800}
+.lektrus-chem-side-heading>span:last-child{font-size:10px;margin-left:auto;color:var(--eq-muted)}
+.lektrus-chem-side-number{width:23px;height:23px;display:grid;place-items:center;
+ border-radius:7px;background:#e9eff6;color:#415e7d;font-size:11px;font-weight:800}
+.lektrus-chem-species-list{display:flex;flex-direction:column;gap:7px}
+.lektrus-chem-species-card{display:flex;align-items:end;gap:6px;border:1px solid #e6ebf2;
+ border-radius:10px;padding:7px;background:#fafcff;min-width:0}
+.lektrus-chem-species-card:focus-within{border-color:#a2bad5;background:#fff}
+.lektrus-chem-coeff-field,.lektrus-chem-formula-field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lektrus-chem-coeff-field{flex:0 0 60px}
+.lektrus-chem-formula-field{flex:1 1 0}
+.lektrus-chem-coeff-field>span,.lektrus-chem-formula-field>span{
+ font-size:9px;color:var(--eq-muted);font-weight:750}
+.lektrus-chem-equation-v2 .lektrus-chem-species-card input{
+ min-height:36px;font-size:15px;font-weight:650;width:100%;min-width:0;
+ border:1px solid #d7e1ec;border-radius:8px;background:white;color:var(--eq-ink);
+ padding:6px 8px;line-height:1.3;outline:none}
+.lektrus-chem-equation-v2 .lektrus-chem-species-card input:focus{border-color:#7194bb}
+.lektrus-chem-equation-v2 .lektrus-chem-coeff-field input{
+ font-size:13px;text-align:center;font-variant-numeric:tabular-nums;
+ appearance:textfield;-moz-appearance:textfield}
+.lektrus-chem-coeff-field input::-webkit-inner-spin-button,
+.lektrus-chem-coeff-field input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.lektrus-chem-equation-v2 input::placeholder{color:#a0afc0;font-weight:500}
+.lektrus-chem-species-actions{display:flex;align-self:end;align-items:center;gap:2px}
+.lektrus-chem-species-actions button{height:35px;min-width:27px;
+ border:1px solid transparent;border-radius:7px;cursor:pointer;
+ background:transparent;color:#5e7691;font-size:14px;font-weight:740}
+.lektrus-chem-species-actions button:hover:not(:disabled){background:#eaf0f7;border-color:#d5e1ee}
+.lektrus-chem-species-actions button:first-child{font-size:10px;letter-spacing:-.5px}
+.lektrus-chem-species-actions button:last-child{color:#a15858}
+.lektrus-chem-add-species{border:1px dashed #b4c6d9;background:#f7faff;color:#385875;
+ font:750 11px system-ui,sans-serif;min-height:33px;border-radius:8px;cursor:pointer}
+.lektrus-chem-add-species:hover:not(:disabled){background:#e9eff6}
+.lektrus-chem-equation-conditions{display:flex;align-items:end;gap:13px;flex-wrap:wrap;
+ padding:10px 12px;border:1px solid var(--eq-line);border-radius:12px;background:#fff}
+.lektrus-chem-equation-arrows{display:flex;flex-direction:column;gap:5px}
+.lektrus-chem-equation-arrows strong,.lektrus-chem-equation-condition-field span,
+.lektrus-chem-source label>strong{font-size:11px;font-weight:800;color:var(--eq-ink)}
+.lektrus-chem-equation-arrows>div{display:flex;gap:4px}
+.lektrus-chem-equation-arrows button{min-width:47px;height:35px;cursor:pointer;
+ border:1px solid #dbe4ee;border-radius:8px;background:#fff;
+ color:#4b6888;font-size:23px;line-height:1}
+.lektrus-chem-equation-arrows button[aria-pressed="true"]{
+ border-color:#95aecb;background:#e9f0f8;color:#243f5c}
+.lektrus-chem-equation-condition-field{display:flex;flex-direction:column;gap:5px;
+ min-width:160px;flex:1 1 240px}
+.lektrus-chem-equation-v2 .lektrus-chem-equation-condition-field input,
+.lektrus-chem-equation-v2 .lektrus-chem-source-condition input{
+ box-sizing:border-box;min-height:35px;border:1px solid #d8e3ee;
+ border-radius:8px;padding:6px 10px;font-size:12px;background:#fff;color:var(--eq-ink)}
+.lektrus-chem-conditions-quick{display:flex;flex:0 1 280px;gap:4px;flex-wrap:wrap}
+.lektrus-chem-conditions-quick button{min-height:30px;padding:4px 8px;border:1px solid var(--eq-line);
+ border-radius:8px;background:var(--eq-soft);font-size:11px;color:#4f6780;cursor:pointer}
+.lektrus-chem-source{display:flex;flex-direction:column;gap:12px}
+.lektrus-chem-source label{display:flex;flex-direction:column;gap:6px}
+.lektrus-chem-source label>span{font-size:11px;color:var(--eq-muted)}
+.lektrus-chem-equation-v2 .lektrus-chem-source textarea{
+ box-sizing:border-box;min-height:108px;border:1px solid #d1dfed;border-radius:11px;
+ padding:12px;font:15px/1.65 ui-monospace,monospace;color:var(--eq-ink);
+ background:#fff;resize:vertical;width:100%}
+.lektrus-chem-source-condition{max-width:580px}
+.lektrus-chem-convert-hint{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--eq-muted)}
+.lektrus-chem-convert-hint button{background:white;border:1px solid var(--eq-line);border-radius:8px;
+ padding:8px 10px;cursor:pointer;color:var(--eq-ink);font-weight:650}
+.lektrus-chem-palettes{background:#fff;border:1px solid var(--eq-line);border-radius:11px;padding:8px 10px}
+.lektrus-chem-palette-toggle{width:100%;display:flex;justify-content:space-between;
+ background:transparent;border:0;font:800 11px system-ui,sans-serif;
+ color:var(--eq-ink);cursor:pointer;padding:3px 1px}
+.lektrus-chem-palettes-rows{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.lektrus-chem-palettes-row{display:flex;align-items:center;gap:9px}
+.lektrus-chem-palettes-row>span{flex:0 0 105px;font-size:10px;color:var(--eq-muted);font-weight:650}
+.lektrus-chem-palettes-row>div{display:flex;gap:4px;flex-wrap:wrap}
+.lektrus-chem-palettes-row button{min-width:35px;height:32px;padding:4px 8px;
+ border:1px solid #dce5ee;border-radius:8px;background:#f9fbfd;cursor:pointer;
+ font:750 14px system-ui,sans-serif;color:#435f7c}
+.lektrus-chem-palettes-row button:hover{background:#e9eff6}
+.lektrus-chem-equation-v2 .lektrus-chem-equation-preview{
+ flex:0 0 auto;min-height:90px;margin:0!important;padding:13px 12px!important;
+ border:1px solid var(--eq-line);background:#fff;border-radius:12px;overflow-x:auto}
+.lektrus-chem-preview-heading{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.lektrus-chem-preview-heading strong{font-size:11px;font-weight:800;color:var(--eq-ink)}
+.lektrus-chem-preview-heading span{font-size:10px;color:var(--eq-muted)}
+.lektrus-chem-equation-v2 .lektrus-reaction-equation-text{color:#253e5b;justify-content:center;
+ font-size:clamp(17px,2vw,27px);padding:7px 0;line-height:1.5;gap:9px}
+.lektrus-reaction-side,.lektrus-reaction-term,.lektrus-reaction-species{display:inline-flex;align-items:baseline;gap:.18em}
+.lektrus-reaction-side{flex-wrap:wrap;justify-content:center;gap:.35em}
+.lektrus-reaction-term{white-space:nowrap}
+.lektrus-reaction-species{white-space:nowrap}
+.lektrus-reaction-coefficient{margin-right:.01em}
+.lektrus-reaction-indicator{font-size:.82em}
+.lektrus-reaction-plus{margin-right:.14em;color:#6b8199}
+.lektrus-reaction-placeholder{font:600 13px system-ui,sans-serif;color:#8898a9}
+.lektrus-chem-balance{display:flex;gap:14px;align-items:center;justify-content:space-between;
+ padding:10px 12px;border:1px solid #dce4ec;border-radius:11px;background:#fff}
+.lektrus-chem-balance-description{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lektrus-chem-balance-description strong{font-size:11px;color:var(--eq-ink)}
+.lektrus-chem-balance-description span{font-size:11px;color:var(--eq-muted);line-height:1.4}
+.lektrus-chem-balance.balanced .lektrus-chem-balance-description strong{color:#3c745d}
+.lektrus-chem-balance.invalid .lektrus-chem-balance-description strong{color:#a45e48}
+.lektrus-chem-balance-buttons{display:flex;gap:6px;flex-wrap:wrap}
+.lektrus-chem-balance-buttons button{min-height:32px;padding:6px 10px;
+ font-size:11px;border:1px solid #cad9e7;border-radius:8px;background:white;
+ color:#3c5874;font-weight:750;white-space:nowrap;cursor:pointer}
+.lektrus-chem-balance-buttons button.primary{background:#304b68;color:#fff;border-color:#304b68}
+.lektrus-chem-equation-notice{margin:0;padding:5px 3px;font-size:11px;color:#406a8e}
+.lektrus-chem-equation-v2 .lektrus-chem-equation-editor>footer{
+ flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:11px 16px!important;
+ background:#fff;border-top:1px solid var(--eq-line)}
+.lektrus-chem-shortcut{margin-right:auto;font-size:10px;color:var(--eq-muted)}
+.lektrus-chem-equation-v2 footer button{
+ min-height:37px;border:1px solid #d2dfeb;border-radius:9px;padding:8px 14px;
+ background:white;color:var(--eq-ink);font:750 12px system-ui,sans-serif;cursor:pointer}
+.lektrus-chem-equation-v2 footer button.primary{border-color:#2f4965;background:#2f4965;color:white}
+@media(max-width:880px){
+ .lektrus-chem-equation-v2 .lektrus-chem-equation-editor{height:calc(100dvh - 10px)!important}
+ .lektrus-chem-equation-content{padding:9px;gap:9px}
+ .lektrus-chem-equation-columns{gap:7px}
+ .lektrus-chem-side{padding:7px}
+ .lektrus-chem-species-card{padding:5px;gap:4px;flex-wrap:wrap}
+ .lektrus-chem-species-actions{margin-left:auto}
+ .lektrus-chem-equation-mode>span{display:none}
+ .lektrus-chem-shortcut{display:none}
+}
+@media(max-width:610px){
+ .lektrus-chem-equation-v2{padding:0!important}
+ .lektrus-chem-equation-v2 .lektrus-chem-equation-editor{
+  height:100dvh!important;max-height:100dvh!important;border-radius:0!important}
+ .lektrus-chem-equation-v2 .lektrus-chem-equation-header{padding:7px 10px!important}
+ .lektrus-chem-equation-heading strong{font-size:14px!important}
+ .lektrus-chem-equation-heading small{display:none}
+ .lektrus-chem-equation-mode{padding:5px 8px}
+ .lektrus-chem-equation-mode>button{padding:7px 11px}
+ .lektrus-chem-equation-columns{grid-template-columns:minmax(0,1fr)}
+ .lektrus-chem-side-heading>span:last-child{display:block}
+ .lektrus-chem-equation-conditions{padding:9px}
+ .lektrus-chem-palettes-row>span{flex-basis:65px}
+ .lektrus-chem-balance{flex-direction:column;align-items:stretch;gap:8px}
+ .lektrus-chem-equation-v2 .lektrus-chem-equation-editor>footer{padding:6px 8px!important}
+ .lektrus-chem-equation-v2 footer button{padding:7px 11px;font-size:11px}
+}
+@media(max-height:510px) and (orientation:landscape){
+ .lektrus-chem-equation-v2{padding:0!important}
+ .lektrus-chem-equation-v2 .lektrus-chem-equation-editor{
+  width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}
+ .lektrus-chem-equation-v2 .lektrus-chem-equation-header{padding:5px 10px!important}
+ .lektrus-chem-equation-heading small{display:none}
+ .lektrus-chem-equation-mode{padding:3px 8px}
+ .lektrus-chem-equation-content{padding:7px 9px}
+ .lektrus-chem-equation-v2 .lektrus-chem-equation-editor>footer{padding:5px 9px!important}
+}
+@media(prefers-reduced-motion:reduce){.lektrus-chem-equation-v2 button{transition:none}}
