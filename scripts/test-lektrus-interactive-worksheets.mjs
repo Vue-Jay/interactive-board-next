@@ -19,9 +19,9 @@ assert.equal(interactiveSubjects("physics"),false);
 const defaults=[
  ["mathematics","task",null],["mathematics","equation",null],["mathematics","geometry",null],
  ["mathematics","word-problem",null],["mathematics","function",null],
- ["mathematics","choice","choice"],["mathematics","cloze","fill"],
+ ["mathematics","interactive","choice"],["mathematics","choice","choice"],["mathematics","cloze","fill"],
  ["mathematics","matching","match"],["mathematics","sequence","order"],
- ["russian","task",null],["russian","orthography","fill"],["russian","punctuation","fill"],
+ ["russian","task",null],["russian","interactive","choice"],["russian","orthography","fill"],["russian","punctuation","fill"],
  ["russian","morphemes",null],["russian","morphology",null],["russian","syntax",null],
  ["russian","text",null],["russian","cloze","fill"],["russian","matching","match"],
  ["russian","sequence","order"],["russian","choice","choice"],
@@ -69,9 +69,17 @@ assert.match(board,/onActivityAnswer\(entry.id,response\)/);
 assert.match(app,/patchSubjectBoardEntry\(item.id,entryId,\{activityResponse:response\}\)/);
 assert.ok(schema.includes("SubjectTaskActivityResponse"),"Student answers are persisted");
 assert.ok(schema.includes("Повреждено интерактивное задание"),"Student answers are validated");
-assert.ok(registry.includes('type("cloze","Пропуски в выражении"'));
-assert.ok(registry.includes('type("matching","Сопоставление"'));
-assert.ok(registry.includes('type("sequence","Порядок действий"'));
+assert.ok(registry.includes('type("interactive","Интерактивный тренажёр"'));
+assert.ok(board.includes('interactiveModesForSubject(tone)'),"Activity modes belong inside one builder");
+assert.ok(board.includes('onClick={()=>{patch({activity:freshActivity(activityMode)'),
+ "Switching mode replaces the exercise in the same task");
+const modes=new Function(code+"\nreturn {interactiveModesForSubject,isIntegratedInteractiveTask,activityMatchesTask};")();
+assert.deepEqual(modes.interactiveModesForSubject("russian"),["choice","match","order"]);
+assert.deepEqual(modes.interactiveModesForSubject("mathematics"),["choice","fill","match","order"]);
+assert.equal(modes.activityMatchesTask("mathematics","interactive",{mode:"order"}),true);
+assert.equal(modes.activityMatchesTask("russian","interactive",{mode:"fill"}),false);
+assert.equal(modes.activityMatchesTask("languages","translation",{mode:"choice"}),false);
+assert.equal(modes.activityMatchesTask("russian","orthography",{mode:"match"}),false);
 for(const label of ["Текст с пропусками","Варианты ответа","Пары для сопоставления","Последовательность"]){
  assert.ok(src.includes(label),label);
 }
