@@ -35,6 +35,7 @@ jobs:
       - run: node scripts/test-lektrus-subject-boards.mjs
       - run: node scripts/test-lektrus-interactive-worksheets.mjs
       - run: node scripts/test-lektrus-subject-isolation.mjs
+      - run: node scripts/test-lektrus-subject-task-audit.mjs
       - run: node scripts/test-lektrus-worksheet-growth.mjs
       - run: node scripts/test-lektrus-equation-review.mjs
       - run: node scripts/test-lektrus-organic-nomenclature.mjs
