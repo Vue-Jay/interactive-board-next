@@ -1,8 +1,8 @@
 /** Reviewed classroom examples and conservative step-by-step diagnostics.
  * Never infer arbitrary products from stoichiometry. Unknown chemistry is UNKNOWN.
  */
-import {identifyReaction,reviewedReactionCases,type ReactionCase,type ReactionEnvironment} from "./lektrusReactionDatabase";
-import {countFormulaAtoms,inspectEquationBalance,normalizeFormulaInput,parseEquationDraft,type EquationDraft,type EquationSpecies} from "./lektrusChemicalEquationModel";
+import {identifyReaction,type ReactionEnvironment} from "./lektrusReactionDatabase";
+import {inspectEquationBalance,normalizeFormulaInput,parseEquationDraft,type EquationDraft,type EquationSpecies} from "./lektrusChemicalEquationModel";
 export type EquationDomain="inorganic"|"organic";
 export type EquationStep={expression:string;conditions:string};
 export type ReviewIssue={severity:"error"|"warning"|"info";kind:"missing"|"extra"|"coefficient"|"indicator"|"formula"|"condition"|"chain"|"unknown";side?:"left"|"right";index?:number;formula?:string;message:string};
@@ -34,7 +34,6 @@ const standaloneReferences:Reference[]=[
 ];
 const normalize=(s:string)=>normalizeFormulaInput(s).replace(/\s+/g,"");
 const list=(values:EquationSpecies[])=>values.filter(s=>s.formula.trim()).map(s=>normalize(s.formula));
-const equalSet=(a:string[],b:string[])=>a.length===b.length&&a.every(v=>a.filter(x=>x===v).length===b.filter(x=>x===v).length);
 const normalizedReactants=(expression:string)=>{const draft=parseEquationDraft(expression);return draft?list(draft.left):[]};
 const signature=(values:string[])=>values.slice().sort().join("|");
 function referenceFor(draft:EquationDraft,domain:EquationDomain,conditions:string):Reference|undefined{
@@ -56,12 +55,6 @@ function referenceFor(draft:EquationDraft,domain:EquationDomain,conditions:strin
  if(caseData.status==="reaction"&&caseData.caseData)return official(caseData.caseData.equation,caseData.caseData.description,"",environment);
  // Missing required heat/light etc. may explain why a reference was not matched.
  return undefined;
-}
-function atomSignature(values:EquationSpecies[]){
- const result=new Map<string,bigint>();
- for(const s of values){const atoms=countFormulaAtoms(s.formula);if(!atoms)return null;
-  for(const [e,n] of atoms)result.set(e,(result.get(e)??0n)+n*BigInt(s.coefficient));}
- return result;
 }
 export function reviewEquationStep(step:EquationStep,domain:EquationDomain):ReviewedEquation{
  const draft=parseEquationDraft(step.expression),issues:ReviewIssue[]=[];
