@@ -262,7 +262,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
       </div>
       <LektrusChemicalEquationTypeset expression={raw} conditions={item.scienceReactionConditions}/>
      </section>
-     {draft&&raw.trim()&&<div className={"lektrus-chem-balance "+(balance?.status??"")} role="status">
+     {complete&&<div className={"lektrus-chem-balance "+(balance?.status??"")} role="status">
       <div className="lektrus-chem-balance-description">
        <strong>{balance?.status==="balanced"?"Число атомов совпадает":
         balance?.status==="unbalanced"?"Коэффициенты не уравнены":
@@ -274,9 +274,9 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
         Расставить коэффициенты</button>}
      </div>}
      {notice&&<p className="lektrus-chem-equation-notice" role="status">{notice}</p>}
-     <p className="lektrus-chem-equation-footnote">
+     {complete&&<p className="lektrus-chem-equation-footnote">
       Проверка относится к числу атомов, а не к возможности протекания реакции.
-     </p>
+     </p>}
     </div>
     <footer>
      <span className="lektrus-chem-shortcut">Ctrl+Enter: сохранить</span>
