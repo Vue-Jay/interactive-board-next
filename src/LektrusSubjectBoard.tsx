@@ -118,7 +118,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
         <div className="lektrus-subject-board-solution-area">
           <LektrusSubjectBoardInlineSolution tone={tone} value={entry.workedSolution}
            onChange={onWorkedSolutionChange?solution=>onWorkedSolutionChange(entry.id,solution):undefined}/>
-        </div>:isSchoolSolutionSubject(tone)?<div className="lektrus-subject-board-solution-area">
+        </div>:isSchoolSolutionSubject(tone)&&!activityMatchesTask(tone,entry.format,entry.activity)?<div className="lektrus-subject-board-solution-area">
         <LektrusSubjectBoardSolutionView tone={tone} value={entry.workedSolution} legacyAnswer={entry.answer}/>
         {onEditSolution&&<button type="button" className="lektrus-subject-board-add-solution"
          data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
