@@ -143,8 +143,8 @@ for(const metal of [c.Ca,c.Ba,c.Sr,c.Mg,c.Zn,c.Cu])
  for(const partner of [c.Na,c.K]){
   const eq=exchange(metal,metalSalt,partner,a.phosphate);
   const value=mark(eq,"AY");
-  if(value)register("Осаждение фосфата "+metal.name,"Осадки",value,"",
-   "Школьная схема осаждения фосфата, реальный состав осадка зависит от pH.");
+  if(value)register("Осаждение фосфата "+metal.name,"Осадки",value,"щелочная среда",
+   "Школьная схема осаждения фосфата: преобладание PO₄³⁻ зависит от pH, и в кислой среде возможны гидрофосфаты.");
  }
 register("Известковая вода при избытке углекислого газа","Избыток реагента",
  "Ca(OH)2 + 2CO2 → Ca(HCO3)2","избыток CO₂",
@@ -164,8 +164,10 @@ for(const acid of acids)
   const total=lcm(base.charge,acid.protons);
   const nAcid=total/acid.protons,nBase=total/base.charge;
   const condition=acid.protons===3?"избыток щёлочи":"";
+  const precipitate=(acid.anion===a.phosphate&&[c.Ca,c.Ba,c.Mg].includes(base))||
+    (acid.anion===a.sulfate&&base===c.Ba);
   const equation=show(nAcid,acid.formula)+" + "+show(nBase,makeSalt(base,a.hydroxide).formula)+
-   " → "+salt.formula+" + "+show(total,"H2O");
+   " → "+salt.formula+(precipitate?"↓":"")+" + "+show(total,"H2O");
   register("Нейтрализация "+acid.name,"Нейтрализация",equation,condition,
    "Полная нейтрализация с указанной стехиометрией; при недостатке основания возможны кислые соли.");
  }
