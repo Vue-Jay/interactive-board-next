@@ -1,10 +1,10 @@
 import {Fragment,useRef,useState,type ReactNode} from "react";
-import {reviewEquationChain,applyKnownProductMarks,balancedStep,type EquationDomain,type EquationStep} from "./lektrusEquationReview";
+import {reviewEquationChain,applyKnownProductMarks,balancedStep,type ReviewIssue,type EquationDomain,type EquationStep} from "./lektrusEquationReview";
 import {selectRandomEquationExample,type ReviewedExample} from "./lektrusEquationExamplePool";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {
- parseEquationDraft,type EquationArrow,type EquationSpecies
+ parseEquationDraft,splitEquationSide,type EquationArrow,type EquationSpecies
 } from "./lektrusChemicalEquationModel";
 import {
  readReactionText,writeReactionText,REACTION_CONDITION_GROUPS,REACTION_CONDITION_LIMIT,
@@ -54,6 +54,33 @@ function ReactionSide({species}:{species:EquationSpecies[]}){
    </span>
   </span>)}
  </span>;
+}
+/** Textarea keeps normal keyboard, cursor, IME and selection.
+ * A scroll-synced read-only text mirror underlines exact formula spans.
+ * The matching messages are INSIDE the bordered input, not below the equation.
+ */
+function highlightedSpecies(text:string,issues:ReviewIssue[]):ReactNode[]{
+ const result:ReactNode[]=[];
+ if(!text)return result;
+ const segments=issues.filter(issue=>issue.index!==undefined&&!!issue.formula&&
+  ["substance","extra","indicator","coefficient"].includes(issue.kind));
+ if(!segments.length)return [text];
+ let cursor=0;let position=0;
+ const tokens=splitEquationSide(text);
+ tokens.forEach((part,index)=>{
+  if(!part.trim())return;
+  const start=text.indexOf(part.trim(),position);
+  if(start<0)return;
+  const end=start+part.trim().length;
+  if(start>cursor)result.push(text.slice(cursor,start));
+  const found=segments.filter(issue=>issue.index===index);
+  const severity=found.some(v=>v.severity==="error")?"error":found.some(v=>v.severity==="warning")?"warning":"info";
+  result.push(found.length?<mark key={start} className={"lektrus-chem-token-issue is-"+severity}
+   title={found.map(v=>v.message).join(" · ")}>{text.slice(start,end)}</mark>:text.slice(start,end));
+  cursor=end;position=end;
+ });
+ if(cursor<text.length)result.push(text.slice(cursor));
+ return result.length?result:[text];
 }
 /** The exact same typesetter is used by the board and by the editor preview. */
 export function LektrusChemicalEquationTypeset({expression,conditions}:{expression:string;conditions?:string}){
@@ -218,21 +245,34 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
       {(["left","right"] as Side[]).map(side=><Fragment key={side}><label className={"lektrus-chem-equation-side "+(issuesFor(side).some(v=>v.severity==="error")?"has-error":"")} key={side}>
        <span className="lektrus-chem-equation-side-head"><strong>{side==="left"?"Реагенты":"Продукты"}</strong>
         <small>{side==="left"?"До реакции":"После реакции"}</small></span>
-       <textarea ref={el=>{inputs.current[side]=el;}} rows={3} maxLength={500} spellCheck={false}
-        aria-label={side==="left"?"Реагенты":"Продукты"} autoComplete="off"
-        value={side==="left"?parts.reactants:parts.products}
-        placeholder={side==="left"?exampleParts.reactants:exampleParts.products}
-        onFocus={()=>{focused.current=side;}} onChange={e=>changeSide(side,e.target.value)}
-        onKeyDown={e=>{
-         if(side==="left"&&e.key==="="&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!e.nativeEvent.isComposing){
-          e.preventDefault();focused.current="right";
-          inputs.current.right?.focus();inputs.current.right?.setSelectionRange(
-           inputs.current.right.value.length,inputs.current.right.value.length);
-         }
-        }}/>
-       {reviewed&&issuesFor(side).filter(v=>v.severity==="error").slice(0,3).map((v,i)=><small key={i} className="lektrus-chem-inline-error">
-        {v.formula?("⚠ "+v.formula+": "):"⚠ "}{v.message}
-       </small>)}
+       <div className={"lektrus-chem-input-shell "+(reviewed&&issuesFor(side).some(v=>v.index!==undefined&&["substance","extra","indicator","coefficient"].includes(v.kind))?"is-annotated":"")}>
+        {reviewed&&<div className="lektrus-chem-input-mirror" aria-hidden="true">
+         {highlightedSpecies(side==="left"?parts.reactants:parts.products,issuesFor(side))}
+        </div>}
+        <textarea ref={el=>{inputs.current[side]=el;}} rows={3} maxLength={500} spellCheck={false}
+         aria-label={side==="left"?"Реагенты":"Продукты"} autoComplete="off"
+         aria-invalid={reviewed&&issuesFor(side).some(v=>v.severity==="error")}
+         value={side==="left"?parts.reactants:parts.products}
+         placeholder={side==="left"?exampleParts.reactants:exampleParts.products}
+         onScroll={e=>{
+          const mirror=e.currentTarget.previousElementSibling;
+          if(mirror instanceof HTMLDivElement)mirror.scrollTop=e.currentTarget.scrollTop;
+         }}
+         onFocus={()=>{focused.current=side;}} onChange={e=>changeSide(side,e.target.value)}
+         onKeyDown={e=>{
+          if(side==="left"&&e.key==="="&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!e.nativeEvent.isComposing){
+           e.preventDefault();focused.current="right";
+           inputs.current.right?.focus();inputs.current.right?.setSelectionRange(
+            inputs.current.right.value.length,inputs.current.right.value.length);
+          }
+         }}/>
+        {reviewed&&issuesFor(side).length>0&&<div className="lektrus-chem-field-feedback" role="status">
+         {issuesFor(side).filter(v=>v.severity!=="info").slice(0,4).map((issue,i)=>
+          <span key={i} className={"is-"+issue.severity} title={issue.message}>
+           {issue.formula&&<b>{issue.formula}: </b>}{issue.message}
+          </span>)}
+        </div>}
+       </div>
       </label>
        {side==="left"&&<div className="lektrus-chem-arrow-chooser">
         <span>Стрелка</span><div role="group" aria-label="Знак реакции">
