@@ -35,8 +35,12 @@ const iconIds=iconDefs.map(x=>x.id);
 assert.equal(ids.length,35,"Registry scanner must cover explicit classroom tools");
 assert.ok(registryBlock.includes('id:"chem-assignments"'),
  "Chemical task authoring must be registered separately from the legacy subject icon atlas");
-assert.ok(registryBlock.includes('id:("subject-board-"+tone) as SubjectToolId'),
- "Each subject needs its own shared worksheet");
+assert.ok(!registryBlock.includes('label:palette.label+" · учебная доска"'),
+ "Subject worksheets must not appear as eleven separate subject tools");
+assert.ok(registry.includes('id.startsWith("subject-board-")'),
+ "Existing worksheets must stay available through the shared item factory");
+assert.ok(app.includes('aria-label="Предметная доска"'),
+ "The universal worksheet must be accessible from the main toolbar");
 assert.ok(icons.includes('if(id.startsWith("subject-board-")||id==="chem-assignments")'),
  "New worksheet and task tools must render dedicated vector symbols");
 assert.equal(scienceIds.length,7,"Registry scanner must cover four physics and three chemistry editors");
