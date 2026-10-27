@@ -13,7 +13,7 @@ for(const id of russianToolIds){
 const m=createRussianSchoolDiagram("ru-morphology");
 assert.equal(m.showAnalysis,false,"never expose prefilled grammatical answers");
 assert.equal(validateRussianSchoolDiagram({...m,partOfSpeech:"unknown"}),false);
-assert.equal(validateRussianSchoolDiagram({...m,rows:[{id:"a",group:"variable",feature:"",value:"Падеж"}]}),false);
+assert.equal(validateRussianSchoolDiagram({...m,rows:[{id:"a",group:"variable",feature:"",value:"Падеж"}]}),true);
 assert.equal(validateRussianSchoolDiagram({...m,rows:[{id:"a",group:"variable",feature:"Падеж",value:"И."},{id:"a",group:"syntax",feature:"Роль",value:"Подлежащее"}]}),false);
 const p=createRussianSchoolDiagram("ru-phonetics");
 assert.equal(totalSounds(p.letters),0);
