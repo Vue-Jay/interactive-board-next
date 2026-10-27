@@ -47,7 +47,7 @@ assert.ok(editor.includes("Разместить доску"),"Docking control mu
 assert.ok(styles.includes("pointer-events:none!important"),"Editor backdrop cannot intercept board pointer gestures");
 assert.ok(styles.includes("pointer-events:auto!important"),"Editor inputs stay fully interactive");
 assert.ok(styles.includes('data-subject-tone="chemistry"'),"Chemistry board has no white frame");
-assert.ok(styles.includes('background-color:#d9eee5'),"Chemistry board uses a colored paper surface");
+assert.ok(styles.includes('background-color:#d9eee5'),"Chemistry board uses near-white paper");
 assert.ok(styles.includes("width:min(1260px,calc(100vw - 300px))"),"Expanded desktop editor fits more controls");
 for(const [name,source] of [["App.tsx",app],["Editor.tsx",editor],["Science.tsx",science],
  ["Illustration.tsx",illustration]]){
@@ -82,4 +82,4 @@ assert.ok(!editor.includes("↻ Другой"),"No visible example switcher");
 assert.ok(styles.includes(".lektrus-chemical-board-paper"));
 assert.ok(styles.includes(".lektrus-chemical-board-placeholder"));
 assert.ok(main.includes('import "./lektrusChemicalBoardSurface.css";'));
-console.log("Chemical board: drag and 8-handle resize during edit, eleven subject accents, no white frame, full editor, exact preview and cancel cleanup: OK");
+console.log("Chemical board: near-white paper, edit/resize, eleven subject accents and legacy equation lifecycle: OK");
