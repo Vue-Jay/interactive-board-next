@@ -37,6 +37,7 @@ import {boardObjectTypeName} from "./boardObjectNames";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
+import {subjectToneForItem} from "./lektrusSubjectAccent";
 import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import {isPhysicsMotionGraph,motionAxisTicks} from "./lektrusPhysicsGraphTicks";
 import LektrusOpticsEditor from "./LektrusOpticsEditor";
@@ -8200,6 +8201,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               if(item.graphFigureId?.startsWith("chem-formula-")){
                 provisionalChemistryBoards.current.add(item.id);
                 commit([...itemsRef.current,item]);
+                setSelected([item.id]);
               }
               setScienceEditorItem(item);
             }else{
@@ -8651,6 +8653,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 data-object={item.id}
                 key={item.id}
                 className={`board-object object-${item.kind} ${selectedIds.has(item.id) ? "selected" : ""} ${item.locked ? "locked" : ""} ${item.kind==="image"&&imageCropEditorId===item.id?"image-crop-editing":""}`}
+                data-subject-tone={subjectToneForItem(item)}
                 style={{
                   left: item.x,
                   top: item.y,
@@ -8669,6 +8672,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 onDoubleClick={(event) => {
                   if(item.kind==="graph"&&item.graphPurpose==="geometry"&&
                      (event.target as Element).closest?.(".graph-point"))return;
+                  if(scienceEditorItem?.id===item.id&&item.graphFigureId?.startsWith("chem-formula-"))return;
                   if (!canEdit || (structurallyLockedForStudent(item)&&item.graphFigureId!=="contour-atlas")) return;
                   const remoteEditor = remoteEditorFor(item.id);
                   if (remoteEditor&&!((item.kind==="graph"&&item.graphPurpose==="geometry")||
