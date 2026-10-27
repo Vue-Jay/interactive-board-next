@@ -6,15 +6,17 @@ export function readReactionText(expression:string):ReactionTextParts{
  const found=arrowPattern.exec(expression);
  if(!found)return {reactants:expression,products:"",arrow:"→",standalone:true};
  return {
-  reactants:expression.slice(0,found.index).trim(),
-  products:expression.slice(found.index+found[0].length).trim(),
+  // Keep text and caret stable while typing, including spaces around "+".
+  // Only strip the single spacer inserted by writeReactionText near the arrow.
+  reactants:expression.slice(0,found.index).replace(/ $/,""),
+  products:expression.slice(found.index+found[0].length).replace(/^ /,""),
   arrow:found[0]==="⇌"||found[0]==="⇄"||found[0]==="↔"?"⇌":found[0]==="="? "=":"→",
   standalone:false
  };
 }
 export function writeReactionText(parts:ReactionTextParts,keepStandalone=false):string{
  if(keepStandalone&&!parts.products.trim())return parts.reactants;
- return parts.reactants.trim()+" "+parts.arrow+" "+parts.products.trim();
+ return parts.reactants+" "+parts.arrow+" "+parts.products;
 }
 
 export type ConditionGroup={id:string;title:string;tokens:readonly string[]};
