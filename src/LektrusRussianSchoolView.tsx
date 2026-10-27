@@ -15,7 +15,7 @@ function MorphologyGraphic({d}:{d:Extract<RussianSchoolDiagram,{kind:"morphology
    {d.sentence.length>72?d.sentence.slice(0,71)+"…":d.sentence}
   </text>}
   {sections.map((section,i)=>{
-   const y=185+i*91,rows=d.rows.filter(row=>row.group===section);
+   const y=185+i*91,rows=d.rows.filter(row=>row.group===section&&row.feature.trim()&&row.value.trim());
    return <g key={section}>
     <rect x="60" y={y} width="780" height="80" rx="11" fill={i%2===0?"#f2f7fe":"#f8fbff"} stroke="#dce7f3"/>
     <text x="80" y={y+22} fill="#416b99" fontSize="16" fontWeight="750">{traitGroupNames[section]}</text>
