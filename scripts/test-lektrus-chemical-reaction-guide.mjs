@@ -15,7 +15,14 @@ const load=(path,bindings={})=>{
 };
 const model=load("src/lektrusChemicalEquationModel.ts");
 const db=load("src/lektrusReactionDatabase.ts");
-const guide=load("src/lektrusChemicalReactionGuide.ts",{...model,...db});
+const guide=load("src/lektrusChemicalReactionGuide.ts",{
+ countFormulaAtoms:model.countFormulaAtoms,
+ normalizeFormulaInput:model.normalizeFormulaInput,
+ parseEquationDraft:model.parseEquationDraft,
+ identifyReaction:db.identifyReaction,
+ reviewedReactionCases:db.reviewedReactionCases,
+ substances:db.substances
+});
 const example=guide.reactionExamples[0];
 assert.ok(guide.reactionExamples.length>=6,"Classroom examples ready");
 assert.ok(db.reviewedReactionCases.length>=60,"Use substantial existing validated reaction set");
