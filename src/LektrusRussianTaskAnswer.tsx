@@ -37,7 +37,12 @@ export default function LektrusRussianTaskAnswer({entry,work,onChange}:Props){
   }));
   const toggle=(n:number)=>{
    const next=splits.includes(n)?splits.filter(c=>c!==n):[...splits,n].sort((a,b)=>a-b);
-   update({cuts:next,morphemeRoles:Array.from({length:next.length+1},()=>"unset")});
+   const endpoints=[0,...next,letters.length];
+   const preserved=endpoints.slice(0,-1).map((a,i)=>{
+    const exact=sections.find(part=>part.offset===a&&part.text.length===endpoints[i+1]-a);
+    return exact?.role??"unset";
+   });
+   update({cuts:next,morphemeRoles:preserved});
   };
   if(!validWord)return <div className="lektrus-rus-answer-help">
    {word?"Для разбора по составу укажите одно слово без пробелов (до 64 букв).":"Преподаватель ещё не указал слово для разбора."}
@@ -57,7 +62,8 @@ export default function LektrusRussianTaskAnswer({entry,work,onChange}:Props){
       <span className="lektrus-rus-morpheme-graphic">{text}</span>
       <select aria-label={"Часть слова "+(i+1)} value={role} disabled={!editable}
        onChange={e=>{const next=sections.map(section=>section.role);
-        next[i]=e.target.value as MorphemeRole|"unset";update({morphemeRoles:next})}}>
+        next[i]=e.target.value as MorphemeRole|"unset";
+        update({morphemeRoles:next,zeroEnding:next.includes("ending")?false:state?.zeroEnding??false})}}>
        <option value="unset">Выберите часть слова</option>
        {morphemeRoles.map(([id,label])=><option key={id} value={id}>{label}</option>)}
       </select>
@@ -65,7 +71,8 @@ export default function LektrusRussianTaskAnswer({entry,work,onChange}:Props){
    </div>
    <label className="lektrus-rus-zero-ending">
     <input type="checkbox" checked={state?.zeroEnding??false} disabled={!editable}
-     onChange={e=>update({zeroEnding:e.target.checked})}/> Нулевое окончание (∅)
+     onChange={e=>update({zeroEnding:e.target.checked,
+       morphemeRoles:e.target.checked?sections.map(part=>part.role==="ending"?"unset":part.role):sections.map(part=>part.role)})}/> Нулевое окончание (∅)
    </label>
   </div>;
  }
