@@ -5,7 +5,7 @@ import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
 import {taskTemplateFor,subjectTaskTemplates,freshTaskDetails,subjectBoardHasWork,isSchoolSolutionSubject} from "./lektrusSubjectTaskTemplates";
 import {LektrusSubjectBoardSolutionView,hasWorkedSolution} from "./LektrusSubjectBoardSolution";
-import {interactiveSubjects,preferredActivityMode,freshActivity,LektrusSubjectActivityBuilder,LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
+import {interactiveSubjects,preferredActivityMode,activityMatchesTask,freshActivity,LektrusSubjectActivityBuilder,LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
 
 export const subjectBoardId=(tone:SubjectTone)=>"subject-board-"+tone;
 export const isSubjectBoard=(item:Item)=>item.kind==="graph"&&!!item.graphFigureId?.startsWith("subject-board-");
@@ -13,11 +13,20 @@ export const boardTone=(item:Item):SubjectTone=>{
  const tone=item.graphFigureId?.replace(/^subject-board-/,"") as SubjectTone;
  return tone in subjectAccentPalette?tone:"mathematics";
 };
+/** Existing untagged entries remain readable only when their format belongs to this subject.
+ * Tagged entries are strictly bound to the subject where they were created. */
+export const entryBelongsToSubject=(tone:SubjectTone,entry:SubjectBoardEntry):boolean=>{
+ if(entry.subject)return entry.subject===tone;
+ if(entry.kind==="equation")return tone==="chemistry";
+ return !entry.format||subjectTaskTemplates[tone].some(template=>template.id===entry.format);
+};
 export const subjectBoardLocked=(item:Item)=>item.subjectBoardEntries?.some(subjectBoardHasWork)===true;
 export const newSubjectBoardEntry=(id:string,kind:"equation"|"task",tone:SubjectTone="chemistry"):SubjectBoardEntry=>{
+ if(kind==="equation"&&tone!=="chemistry")throw new Error("Редактор химических уравнений доступен только на химической доске");
  const format=kind==="equation"?"equation":subjectTaskTemplates[tone][0].id;
- return {id,kind,title:"",prompt:"",format,
-  activity:kind==="task"&&interactiveSubjects(tone)?freshActivity(preferredActivityMode(tone,format)):undefined,
+ const mode=kind==="task"?preferredActivityMode(tone,format):null;
+ return {id,kind,subject:tone,title:"",prompt:"",format,
+  activity:mode?freshActivity(mode):undefined,
   details:kind==="task"?freshTaskDetails(tone,format):undefined,
   steps:kind==="equation"?[{expression:"",conditions:""}]:undefined,
   answer:"",solution:"",revealed:false};
@@ -35,7 +44,9 @@ type BoardProps={
 };
 export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution,onActivityAnswer}:BoardProps){
  const tone=boardTone(item),palette=subjectAccentPalette[tone];
- const entries=item.subjectBoardEntries??[];
+ const allEntries=item.subjectBoardEntries??[];
+ const entries=allEntries.filter(entry=>entryBelongsToSubject(tone,entry));
+ const incompatibleCount=allEntries.length-entries.length;
  const sheetRef=useRef<HTMLDivElement>(null);
  const countRef=useRef(entries.length);
  useEffect(()=>{
@@ -57,7 +68,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
      <button type="button" data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
        onClick={e=>{e.stopPropagation();onAction("task")}}>Создать задание</button>
     </nav>}
-    <small>{subjectBoardLocked(item)?"Закреплена":entries.length?entries.length+" заданий":"Чистый лист"}</small>
+    <small>{incompatibleCount?"Есть задания другого предмета":subjectBoardLocked(item)?"Закреплена":entries.length?entries.length+" заданий":"Чистый лист"}</small>
    </header>
    <div className="lektrus-subject-board-sheet" ref={sheetRef}>
     {entries.length===0&&<div className="lektrus-subject-board-empty">
@@ -99,8 +110,8 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
            <p>{value}</p>
          </div>)}
       </div>}
-      {entry.kind==="task"&&entry.activity&&
-       <LektrusSubjectActivityRunner activity={entry.activity} response={entry.activityResponse}
+      {entry.kind==="task"&&activityMatchesTask(tone,entry.format,entry.activity)&&
+       <LektrusSubjectActivityRunner activity={entry.activity!} response={entry.activityResponse}
         onChange={onActivityAnswer?(response)=>onActivityAnswer(entry.id,response):undefined}/>}
       {isSchoolSolutionSubject(tone)?<div className="lektrus-subject-board-solution-area">
         <LektrusSubjectBoardSolutionView tone={tone} value={entry.workedSolution} legacyAnswer={entry.answer}/>
@@ -110,7 +121,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
          {hasWorkedSolution(entry.workedSolution)||entry.answer.trim()?"Изменить решение":"+ Добавить решение"}</button>}
         {!onEditSolution&&!hasWorkedSolution(entry.workedSolution)&&!entry.answer.trim()&&
          <span className="lektrus-subject-board-solution-hint">Решение пока не добавлено</span>}
-      </div>:entry.activity?null:<div className="lektrus-subject-board-answer">
+      </div>:activityMatchesTask(tone,entry.format,entry.activity)?null:<div className="lektrus-subject-board-answer">
        <label htmlFor={"board-answer-"+entry.id}>{definition.answerLabel??"Ответ ученика"}</label>
        {onAnswerChange?<textarea id={"board-answer-"+entry.id} rows={2} value={entry.answer} maxLength={2000}
         placeholder="Введите свой ответ" data-board-interactive="true"
@@ -143,10 +154,13 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
  const current=taskTemplateFor(tone,entry.format);
  const [previewResponse,setPreviewResponse]=useState<SubjectTaskActivityResponse>({});
  const interactive=interactiveSubjects(tone);
- const activeActivity=interactive?(entry.activity??freshActivity(preferredActivityMode(tone,current.id))):undefined;
+ const mode=preferredActivityMode(tone,current.id);
+ const activeActivity=mode?(activityMatchesTask(tone,current.id,entry.activity)?entry.activity!:freshActivity(mode)):undefined;
  const patch=(fields:Partial<SubjectBoardEntry>)=>onChange({...entry,...fields});
  const chooseType=(format:string)=>{
-   patch({format,activity:interactive?freshActivity(preferredActivityMode(tone,format)):entry.activity,
+   if(!subjectTaskTemplates[tone].some(template=>template.id===format))return;
+   const nextMode=preferredActivityMode(tone,format);
+   patch({format,subject:tone,activity:nextMode?freshActivity(nextMode):undefined,
     activityResponse:undefined,details:{...freshTaskDetails(tone,format),...entry.details}});
    setPreviewResponse({});
  };
