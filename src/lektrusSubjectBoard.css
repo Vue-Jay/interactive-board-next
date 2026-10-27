@@ -215,7 +215,6 @@
  resize:vertical;min-height:37px;max-height:220px}
 .lektrus-school-solution-editor-body textarea:focus,.lektrus-school-solution-editor-body input:focus{outline:2px solid var(--subject-board-accent);outline-offset:1px}
 .lektrus-school-solution-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.lektrus-school-solution-si{grid-column:1/-1}
 .lektrus-school-solution-work-editor textarea{min-height:130px}
 .lektrus-school-solution-editor-foot{border-top:1px solid #e5ecec}
 .lektrus-school-solution-editor-foot span{font-size:10px;color:#79909a}
@@ -417,8 +416,6 @@
 .lektrus-school-notebook textarea:focus-visible{
  outline:0;background:color-mix(in srgb,var(--subject-board-soft) 24%,transparent);
  box-shadow:0 1px 0 color-mix(in srgb,var(--subject-board-accent) 46%,transparent)}
-.lektrus-school-notebook-si{display:flex;flex-direction:column;gap:5px;
- margin-top:10px;padding-top:10px;border-top:1px dashed #ccd7da}
 .lektrus-school-notebook .lektrus-school-written-text{min-height:42px}
 @media(max-width:600px){
  .lektrus-subject-board-content{padding:12px 14px 16px;gap:11px}
@@ -427,4 +424,19 @@
  .lektrus-school-notebook-working,.lektrus-school-notebook-result{padding-left:10px}
  .lektrus-school-notebook-part strong{font-size:14px}
  .lektrus-school-notebook textarea{font-size:16px}
+}
+
+/* An intentional secondary choice: the subject type stays visible above,
+   while modes within one interactive exercise read as a distinct inner step. */
+.lektrus-subject-task-body .lektrus-activity-modes{
+ background:color-mix(in srgb,var(--subject-board-soft) 24%,white);
+ border:1px solid color-mix(in srgb,var(--subject-board-accent) 19%,#e3e9ed);
+ border-radius:11px;padding:13px 15px;gap:8px;
+}
+.lektrus-activity-modes .lektrus-subject-task-types{gap:7px}
+.lektrus-activity-modes .lektrus-subject-task-types button{
+ padding:9px 13px;min-height:37px;background:#ffffffeb;border-radius:9px;
+}
+.lektrus-activity-modes .lektrus-subject-task-types button.selected{
+ background:var(--subject-board-soft);box-shadow:inset 0 0 0 1px var(--subject-board-accent);
 }
