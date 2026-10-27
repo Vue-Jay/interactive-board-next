@@ -2304,6 +2304,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const geometryCanvasTouch=useRef<{pointer:number;id:string;x:number;y:number}|null>(null);
   const lastGeometryCanvasTap=useRef<{id:string;x:number;y:number;time:number}|null>(null);
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
+  const provisionalChemistryBoards=useRef(new Set<string>());
   const [schoolEditorItem,setSchoolEditorItem]=useState<Item|null>(null);
   const [circuitEditorItem,setCircuitEditorItem]=useState<Item|null>(null);
   const [periodicEditorItem,setPeriodicEditorItem]=useState<Item|null>(null);
@@ -5453,6 +5454,45 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry));
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
    };
+   const liveChemicalEquationUpdate=(before:Item,next:Item)=>{
+     const latest=itemsRef.current.find(candidate=>candidate.id===next.id);
+     if(!latest||!latest.graphFigureId?.startsWith("chem-formula-")||
+        latest.locked||!canEdit||structurallyLockedForStudent(latest))return;
+     const fields=(value:Item)=>({
+       graphExpression:value.graphExpression??"",
+       scienceReactionConditions:value.scienceReactionConditions??"",
+       scienceReactionDomain:value.scienceReactionDomain??"inorganic",
+       scienceReactionSteps:value.scienceReactionSteps??[]
+     });
+     const merged=mergeEditedValue(fields(before),fields(next),fields(latest));
+     const updated={...latest,...merged};
+     if(JSON.stringify(fields(updated))===JSON.stringify(fields(latest)))return;
+     if(!pendingEditorBases.current.has(latest.id))
+       pendingEditorBases.current.set(latest.id,latest);
+     commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry));
+     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
+   };
+   const closeChemicalEquationEditor=(save:boolean)=>{
+     const editing=scienceEditorItem;
+     if(!editing)return;
+     if(provisionalChemistryBoards.current.has(editing.id)){
+       provisionalChemistryBoards.current.delete(editing.id);
+       const latest=itemsRef.current.find(entry=>entry.id===editing.id);
+       const hasContent=!!latest&&(
+        !!latest.graphExpression?.trim()||
+        !!latest.scienceReactionConditions?.trim()||
+        !!latest.scienceReactionSteps?.some(step=>step.expression.trim()||step.conditions.trim())
+       );
+       if(!save&&!hasContent&&latest){
+         commit(itemsRef.current.filter(entry=>entry.id!==editing.id));
+         setSelected([]);setNotice("Пустая химическая доска удалена");
+       }else if(latest){
+         setSelected([latest.id]);
+         if(save)setNotice("Химическая доска сохранена");
+       }
+     }else if(save)setSelected([editing.id]);
+     setScienceEditorItem(null);
+   };
    const livePhysicalEditorUpdate=(itemId:string,field:"scienceMechanics"|"scienceOptics"|"scienceCircuit",
     before:unknown,next:unknown)=>{
     const latest=itemsRef.current.find(candidate=>candidate.id===itemId);
@@ -7642,14 +7682,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             onSave={next=>{finalizePhysicalEditor(next,true);setScienceEditorItem(null);setNotice("Физический график синхронизирован")}}/>:
           <LektrusScienceEditor key={scienceEditorItem.id}
           canTeach={roleCapabilities.canUseTeacherTools}
-          item={scienceEditorItem.graphFigureId?.startsWith("chem-organic-")?
+          item={scienceEditorItem.graphFigureId?.startsWith("chem-organic-")||
+            scienceEditorItem.graphFigureId?.startsWith("chem-formula-")?
             (remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem):
             scienceEditorItem}
           shared={items.some(x=>x.id===scienceEditorItem.id)}
           onOrganicLiveChange={(before,next)=>liveOrganicEditorUpdate(before,next)}
+          onFormulaLiveChange={(before,next)=>liveChemicalEquationUpdate(before,next)}
           subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
-          onCancel={()=>setScienceEditorItem(null)}
+          onCancel={()=>scienceEditorItem.graphFigureId?.startsWith("chem-formula-")?
+            closeChemicalEquationEditor(false):setScienceEditorItem(null)}
           onClose={next=>{
+            if(next.graphFigureId?.startsWith("chem-formula-")){closeChemicalEquationEditor(false);return;}
             if(itemsRef.current.some(i=>i.id===next.id)){
               if(next.graphFigureId?.startsWith("chem-organic-"))
                 finalizePhysicalEditor(next,false);
@@ -7661,6 +7705,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setScienceEditorItem(null);
           }}
           onSave={next=>{
+            if(next.graphFigureId?.startsWith("chem-formula-")){closeChemicalEquationEditor(true);return;}
             if(next.graphFigureId?.startsWith("chem-organic-")){
               finalizePhysicalEditor(next,true);
               setNotice("Органическая структура синхронизирована");
@@ -8155,6 +8200,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             }else if(isSchoolDiagramId(id)){
               setSchoolEditorItem(item);
             }else if(id.startsWith("physics-")||id.startsWith("chem-")){
+              if(item.graphFigureId?.startsWith("chem-formula-")){
+                provisionalChemistryBoards.current.add(item.id);
+                commit([...itemsRef.current,item]);
+              }
               setScienceEditorItem(item);
             }else{
               setPendingMathItem(item);
