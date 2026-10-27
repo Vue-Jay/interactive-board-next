@@ -389,6 +389,17 @@ export type ConnectorStyle = "line" | "arrow" | "double";
 export type ArrowHeadStyle = "triangle" | "open" | "stealth" | "diamond" | "oval";
 export type ConnectorRouting = "straight" | "elbow";
 export type ConnectorBinding = { itemId: string; nx: number; ny: number };
+export type SubjectBoardEntry={
+  id:string;
+  kind:"equation"|"task";
+  title:string;
+  prompt:string;
+  format?:"equation"|"chain"|"problem"|"exercise";
+  steps?:{expression:string;conditions:string}[];
+  answer:string;
+  solution:string;
+  revealed:boolean;
+};
 export type Item = {
   id: string;
   kind: "sticky" | "text" | "shape" | "pen" | "marker" | "image" | "pdf" | "frame" | "connector" | "comment" | "table" | "formula" | "graph" | "fraction" | "checklist" | "quiz" | "flashcard" | "cover" | "linkmedia" | "instrument";
@@ -453,6 +464,7 @@ export type Item = {
   scienceReactionConditions?: string;
   scienceReactionDomain?: "inorganic" | "organic";
   scienceReactionSteps?: {expression:string;conditions:string}[];
+  subjectBoardEntries?: SubjectBoardEntry[];
   scienceReagents?: string[];
   scienceEnvironment?: "aqueous" | "dry" | "heated" | "ignited";
   schoolDiagram?: import("./lektrusSchoolDiagramModel").SchoolDiagram;
@@ -552,7 +564,7 @@ const binding = (v: unknown): v is ConnectorBinding => !!v && typeof v === "obje
 const persistedGraphKeys = [
   "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceOptics","scienceMechanics","scienceAtomModel",
   "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
-  "scienceExperimentStage","scienceOrganicAnnotations","scienceOrganicShowSystematic","scienceOrganicShowTrivial","scienceReactionConditions","scienceReactionDomain","scienceReactionSteps",
+  "scienceExperimentStage","scienceOrganicAnnotations","scienceOrganicShowSystematic","scienceOrganicShowTrivial","scienceReactionConditions","scienceReactionDomain","scienceReactionSteps","subjectBoardEntries",
   "scienceReagents","scienceEnvironment","schoolDiagram",
   "graphRotationX","graphRotationY","graphParallelMarks",
   "graphAxisMode","graphIntervalStartClosed","graphIntervalEndClosed",
@@ -702,6 +714,15 @@ export function parseDocument(raw: string): DocumentData {
       if(i.scienceReactionSteps!=null&&(!Array.isArray(i.scienceReactionSteps)||i.scienceReactionSteps.length<1||i.scienceReactionSteps.length>8||
         !i.scienceReactionSteps.every((step: {expression:string;conditions:string})=>!!step&&typeof step.expression==="string"&&step.expression.length<=500&&typeof step.conditions==="string"&&step.conditions.length<=180)))
         throw new Error("Повреждены этапы химической цепочки");
+      if(i.subjectBoardEntries!=null&&(!Array.isArray(i.subjectBoardEntries)||i.subjectBoardEntries.length>48||
+        !i.subjectBoardEntries.every((entry:SubjectBoardEntry)=>!!entry&&typeof entry.id==="string"&&entry.id.length<=100&&
+          (entry.kind==="equation"||entry.kind==="task")&&typeof entry.title==="string"&&entry.title.length<=120&&
+          typeof entry.prompt==="string"&&entry.prompt.length<=2500&&typeof entry.answer==="string"&&entry.answer.length<=2000&&
+          typeof entry.solution==="string"&&entry.solution.length<=2000&&typeof entry.revealed==="boolean"&&
+          (!entry.steps||(Array.isArray(entry.steps)&&entry.steps.length<=8&&
+            entry.steps.every(step=>typeof step.expression==="string"&&step.expression.length<=500&&
+              typeof step.conditions==="string"&&step.conditions.length<=180))))))
+        throw new Error("Повреждены записи предметной доски");
       if (i.graphConnectPoints != null && typeof i.graphConnectPoints !== "boolean") throw new Error("Повреждено соединение точек");
       for (const value of [i.graphA,i.graphB,i.graphC,i.graphXMin,i.graphXMax,i.graphYMin,i.graphYMax]) if (value != null && !finite(value)) throw new Error("Повреждены параметры графика");
       if (i.graphGrid != null && typeof i.graphGrid !== "boolean") throw new Error("Повреждена сетка графика");
