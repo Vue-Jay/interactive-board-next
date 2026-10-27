@@ -700,7 +700,7 @@ export function parseDocument(raw: string): DocumentData {
       if (i.graphExpression != null && (typeof i.graphExpression !== "string" || i.graphExpression.length > 500)) throw new Error("Повреждена функция графика");
       if(i.scienceReactionDomain!=null&&!["inorganic","organic"].includes(i.scienceReactionDomain))throw new Error("Повреждён раздел химических реакций");
       if(i.scienceReactionSteps!=null&&(!Array.isArray(i.scienceReactionSteps)||i.scienceReactionSteps.length<1||i.scienceReactionSteps.length>8||
-        !i.scienceReactionSteps.every(step=>!!step&&typeof step.expression==="string"&&step.expression.length<=500&&typeof step.conditions==="string"&&step.conditions.length<=180)))
+        !i.scienceReactionSteps.every((step: {expression:string;conditions:string})=>!!step&&typeof step.expression==="string"&&step.expression.length<=500&&typeof step.conditions==="string"&&step.conditions.length<=180)))
         throw new Error("Повреждены этапы химической цепочки");
       if (i.graphConnectPoints != null && typeof i.graphConnectPoints !== "boolean") throw new Error("Повреждено соединение точек");
       for (const value of [i.graphA,i.graphB,i.graphC,i.graphXMin,i.graphXMax,i.graphYMin,i.graphYMax]) if (value != null && !finite(value)) throw new Error("Повреждены параметры графика");
