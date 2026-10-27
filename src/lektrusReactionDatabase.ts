@@ -183,6 +183,27 @@ none("Cu+HCl","aqueous","Медь не вытесняет водород из р
 none("Ag+HCl","aqueous","Серебро не вытесняет водород из разбавленной соляной кислоты.");
 none("KCl+NaOH","aqueous","В водном растворе не образуются осадок, газ или слабый электролит.");
 
+/* Explicit negative controls for simple soluble salts and displacement pairs.
+ * These apply to ordinary dilute AQUEOUS mixtures, not concentrated reagents,
+ * electrolysis, melt chemistry or oxidation by air.
+ */
+const furtherNoReactionPairs=[
+ ["NaCl","NaNO3"],["NaCl","K2SO4"],["NaCl","Na2SO4"],
+ ["KCl","NaNO3"],["KCl","KNO3"],["KCl","Na2SO4"],
+ ["KBr","NaNO3"],["KI","NaNO3"],["KBr","KNO3"],
+ ["Na2SO4","KNO3"],["Na2SO4","NaNO3"],["K2SO4","KNO3"],
+ ["CuSO4","NaCl"],["CuSO4","KNO3"],["ZnSO4","KCl"],
+ ["ZnSO4","NaNO3"],["MgSO4","KNO3"],["CaCl2","NaNO3"],
+ ["BaCl2","NaNO3"],["FeCl3","NaNO3"],["ZnCl2","KNO3"],
+ ["MgCl2","KNO3"],["NaCl","NaOH"],["KCl","KOH"],
+ ["Cu","ZnSO4"],["Cu","FeSO4"],["Ag","CuSO4"],
+ ["Fe","ZnSO4"],["Zn","MgSO4"],["Fe","MgSO4"]
+] as const;
+for(const [first,second] of furtherNoReactionPairs)
+ none(first+"+"+second,"aqueous",
+  "При обычном смешении разбавленных водных растворов нет движущей силы превращения либо металл не вытесняет более активный металл.");
+
+
 /* Additional explicit classroom cases. Each equation is checked for element balance
  * by scripts/test-lektrus-reaction-library.mjs. Never turn this table into
  * a rule claiming to predict arbitrary mixtures or concentration effects. */
