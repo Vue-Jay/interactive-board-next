@@ -39,6 +39,7 @@ import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,subjectBoardLocked,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
+import {LektrusSubjectBoardSolutionEditor} from "./LektrusSubjectBoardSolution";
 import {subjectToneForItem,subjectToneForSubject,subjectAccentPalette} from "./lektrusSubjectAccent";
 import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import {isPhysicsMotionGraph,motionAxisTicks} from "./lektrusPhysicsGraphTicks";
@@ -2313,6 +2314,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
   const provisionalChemistryBoards=useRef(new Set<string>());
   const [subjectBoardEditor,setSubjectBoardEditor]=useState<{boardId:string;entryId:string;mode:"equation"|"task"}|null>(null);
+  const [subjectBoardSolution,setSubjectBoardSolution]=useState<{boardId:string;entryId:string}|null>(null);
   const [schoolEditorItem,setSchoolEditorItem]=useState<Item|null>(null);
   const [circuitEditorItem,setCircuitEditorItem]=useState<Item|null>(null);
   const [periodicEditorItem,setPeriodicEditorItem]=useState<Item|null>(null);
@@ -5515,6 +5517,25 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      commit(itemsRef.current.map(value=>value.id===latest.id?next:value));
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
    };
+   const moveSubjectBoardEntry=(boardId:string,entryId:string,direction:-1|1)=>{
+     const latest=itemsRef.current.find(value=>value.id===boardId);
+     if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit||!roleCapabilities.canUseTeacherTools)return;
+     const entries=latest.subjectBoardEntries??[];
+     const from=entries.findIndex(value=>value.id===entryId),to=from+direction;
+     if(from<0||to<0||to>=entries.length)return;
+     const ordered=[...entries];
+     [ordered[from],ordered[to]]=[ordered[to],ordered[from]];
+     const next={...latest,subjectBoardEntries:ordered};
+     if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+     commit(itemsRef.current.map(value=>value.id===boardId?next:value));
+     workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
+   };
+   const openSubjectBoardSolution=(boardId:string,entryId:string)=>{
+     const latest=itemsRef.current.find(value=>value.id===boardId);
+     if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit)return;
+     if(!latest.subjectBoardEntries?.some(entry=>entry.id===entryId))return;
+     setSubjectBoardSolution({boardId,entryId});
+   };
    const closeSubjectBoardEntry=()=>{
      if(!subjectBoardEditor)return;
      const state=subjectBoardEditor;
@@ -7760,6 +7781,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               itemsRef.current.map(i=>i.id===next.id?fitted:i):[...itemsRef.current,fitted]);
             setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
           }}/>}
+        {subjectBoardSolution&&(()=>{
+          const source=remoteLiveItems[subjectBoardSolution.boardId]??items.find(value=>value.id===subjectBoardSolution.boardId);
+          const entry=source?.subjectBoardEntries?.find(value=>value.id===subjectBoardSolution.entryId);
+          if(!source||!entry)return null;
+          return <LektrusSubjectBoardSolutionEditor key={entry.id} tone={boardTone(source)} value={entry.workedSolution}
+            onChange={value=>patchSubjectBoardEntry(source.id,entry.id,{workedSolution:value})}
+            onClose={()=>setSubjectBoardSolution(null)}/>;
+        })()}
         {subjectBoardEditor&&(()=>{
           const boardItem=remoteLiveItems[subjectBoardEditor.boardId]??
             items.find(value=>value.id===subjectBoardEditor.boardId);
@@ -8907,7 +8936,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     (entryId,answer)=>patchSubjectBoardEntry(item.id,entryId,{answer}):undefined}
                   onReveal={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
                     entryId=>{const entry=item.subjectBoardEntries?.find(value=>value.id===entryId);
-                      if(entry)patchSubjectBoardEntry(item.id,entryId,{revealed:!entry.revealed},true);}:undefined}/>}
+                      if(entry)patchSubjectBoardEntry(item.id,entryId,{revealed:!entry.revealed},true);}:undefined}
+                  onMove={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
+                    (entryId,direction)=>moveSubjectBoardEntry(item.id,entryId,direction):undefined}
+                  onEditSolution={canEdit&&!item.locked&&!presentation?
+                    entryId=>openSubjectBoardSolution(item.id,entryId):undefined}/>}
                 {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item}
                   onPhysicalPartMove={!presentation&&!item.locked&&!space&&!selectionLocked&&
                    canEdit&&!structurallyLockedForStudent(item)&&tool==="select"&&
