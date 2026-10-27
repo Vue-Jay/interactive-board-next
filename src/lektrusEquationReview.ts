@@ -53,12 +53,13 @@ function referenceFor(draft:EquationDraft,domain:EquationDomain,conditions:strin
  const withProducts=candidates.filter(ex=>signature(productsFrom(ex.equation))===outputs);
  const withContext=candidates.filter(ex=>hasRequiredConditions(ex.conditions,conditions));
  const relevant=withContext.length?withContext:candidates;
- const withSameProducts=relevant.filter(ex=>withProducts.includes(ex));
- // Different records can describe the SAME products, often with slightly
- // different prose. Treat them as one outcome. Only defer when distinct outcomes
- // remain possible and the conditions do not select one reliably.
+ // A known product pathway should still be recognised when required conditions
+ // were OMITTED or contradictory. The condition checker will then warn rather
+ // than falsely calling a chemically possible product extra.
+ const productMatch=withProducts.find(ex=>hasRequiredConditions(ex.conditions,conditions))??withProducts[0];
+ // Repeated source entries with the same products are not different outcomes.
  const uniqueProducts=new Set(relevant.map(ex=>signature(productsFrom(ex.equation))));
- const chosen=withSameProducts[0]??(uniqueProducts.size===1?relevant[0]:undefined);
+ const chosen=productMatch??(uniqueProducts.size===1?relevant[0]:undefined);
  if(!chosen)return undefined;
  return {expression:chosen.equation,conditions:chosen.conditions,note:chosen.note,
   environment:chosen.environment,limitedToMolecularFormula:chosen.limitedToMolecularFormula};
