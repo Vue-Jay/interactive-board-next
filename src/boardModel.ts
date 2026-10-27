@@ -415,6 +415,8 @@ export type SubjectTaskActivityResponse={
 export type SubjectBoardEntry={
   id:string;
   kind:"equation"|"task";
+  /** Owning subject; absent only in exercises saved before subject tagging. */
+  subject?:"chemistry"|"physics"|"mathematics"|"geography"|"history"|"biology"|"russian"|"literature"|"social"|"languages"|"informatics";
   title:string;
   prompt:string;
   format?:string;
@@ -744,7 +746,11 @@ export function parseDocument(raw: string): DocumentData {
         throw new Error("Повреждены этапы химической цепочки");
       if(i.subjectBoardEntries!=null&&(!Array.isArray(i.subjectBoardEntries)||i.subjectBoardEntries.length>48||
         !i.subjectBoardEntries.every((entry:SubjectBoardEntry)=>!!entry&&typeof entry.id==="string"&&entry.id.length<=100&&
-          (entry.kind==="equation"||entry.kind==="task")&&typeof entry.title==="string"&&entry.title.length<=120&&
+          (entry.kind==="equation"||entry.kind==="task")&&
+           (entry.subject==null||["chemistry","physics","mathematics","geography","history","biology","russian","literature","social","languages","informatics"].includes(entry.subject))&&
+           (!i.graphFigureId?.startsWith("subject-board-")||entry.subject==null||entry.subject===i.graphFigureId.slice("subject-board-".length))&&
+           (entry.kind!=="equation"||entry.subject==null||entry.subject==="chemistry")&&
+           typeof entry.title==="string"&&entry.title.length<=120&&
           typeof entry.prompt==="string"&&entry.prompt.length<=2500&&typeof entry.answer==="string"&&entry.answer.length<=2000&&
           typeof entry.solution==="string"&&entry.solution.length<=2000&&typeof entry.revealed==="boolean"&&
           (entry.format==null||(typeof entry.format==="string"&&entry.format.length<=50))&&
