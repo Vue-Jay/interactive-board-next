@@ -197,7 +197,7 @@
 /* Lean chemical equation editor: no catalogue, only the equation itself. */
 .lektrus-chem-equation-compact .lektrus-chem-equation-editor{
  width:min(900px,100%)!important;max-width:900px!important;
- height:auto!important;max-height:min(94dvh,710px)!important;
+ height:min(640px,calc(100dvh - 18px))!important;max-height:min(94dvh,710px)!important;
  min-height:0!important;padding:0!important;gap:0!important;
  --eq-ink:#304256;--eq-muted:#748498;--eq-line:#dee5ec;
  background:#fff!important;box-shadow:0 25px 70px #13283e4d!important;
