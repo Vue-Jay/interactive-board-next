@@ -24,7 +24,7 @@ for(const [file,source] of [
 }
 const registryBlock=registry.slice(registry.indexOf("export const subjectToolRegistry"),
  registry.indexOf("export function subjectToolsFor"));
-const ids=[...registryBlock.matchAll(/\{id:"([^"]+)"/g)].map(m=>m[1]);
+const ids=[...registryBlock.matchAll(/\{id:"([^"]+)"/g)].map(m=>m[1]).filter(id=>id!=="chem-assignments");
 const scienceBlock=science.slice(science.indexOf("export const scienceToolGroups"),
  science.indexOf("const legacyMolecules"));
 const scienceIds=[...scienceBlock.matchAll(/\{id:"([^"]+)",subject:/g)].map(m=>m[1]);
@@ -33,6 +33,12 @@ const iconDefs=[...icons.matchAll(/^\s+"([a-z0-9-]+)":<>([^\n]+)<\/>[,]?$/gm)]
  .map(([,id,body])=>({id,body}));
 const iconIds=iconDefs.map(x=>x.id);
 assert.equal(ids.length,35,"Registry scanner must cover explicit classroom tools");
+assert.ok(registryBlock.includes('id:"chem-assignments"'),
+ "Chemical task authoring must be registered separately from the legacy subject icon atlas");
+assert.ok(registryBlock.includes('id:("subject-board-"+tone) as SubjectToolId'),
+ "Each subject needs its own shared worksheet");
+assert.ok(icons.includes('if(id.startsWith("subject-board-")||id==="chem-assignments")'),
+ "New worksheet and task tools must render dedicated vector symbols");
 assert.equal(scienceIds.length,7,"Registry scanner must cover four physics and three chemistry editors");
 assert.equal(new Set(iconIds).size,iconIds.length,"Each icon ID is declared once");
 for(const id of expected){
