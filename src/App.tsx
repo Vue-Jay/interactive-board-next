@@ -5518,7 +5518,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      if(changes.format&&changes.format!==current.format&&current.kind==="task"&&
        !subjectTaskTypeAllowed(tone,changes.format))return;
      if(changes.format&&changes.format!==current.format&&!roleCapabilities.canUseTeacherTools)return;
-     if(!roleCapabilities.canUseTeacherTools&&Object.keys(changes).some(key=>!["answer","workedSolution","activityResponse"].includes(key)))return;
+     if(!roleCapabilities.canUseTeacherTools&&Object.keys(changes).some(key=>!["answer","workedSolution","activityResponse","russianWork"].includes(key)))return;
      const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?{
        ...entry,...changes,subject:boardTone(latest)}:entry)};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
@@ -8987,7 +8987,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onWorkedSolutionChange={canEdit&&!item.locked&&!presentation?
                     (entryId,solution)=>patchSubjectBoardEntry(item.id,entryId,{workedSolution:solution}):undefined}
                   onActivityAnswer={canEdit&&!item.locked&&!presentation?
-                    (entryId,response)=>patchSubjectBoardEntry(item.id,entryId,{activityResponse:response}):undefined}/>}
+                    (entryId,response)=>patchSubjectBoardEntry(item.id,entryId,{activityResponse:response}):undefined}
+                  onRussianWorkChange={canEdit&&!item.locked&&!presentation?
+                    (entryId,work)=>patchSubjectBoardEntry(item.id,entryId,{russianWork:work}):undefined}/>}
                 {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item}
                   onPhysicalPartMove={!presentation&&!item.locked&&!space&&!selectionLocked&&
                    canEdit&&!structurallyLockedForStudent(item)&&tool==="select"&&
