@@ -34,7 +34,7 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
      placeholder="Значение" onChange={e=>setRow(row.id,{value:e.target.value})}/>
    </div>)}
    <button type="button" className="lektrus-school-add" disabled={d.rows.length>=18}
-    onClick={()=>onChange({...d,rows:[...d.rows,{id:makeId(),group:"variable",feature:"Новый признак",value:"Значение"}]})}>
+    onClick={()=>onChange({...d,rows:[...d.rows,{id:makeId(),group:"variable",feature:"",value:""}]})}>
     + Добавить признак ({d.rows.length}/18)</button>
    <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showAnalysis}
     onChange={e=>onChange({...d,showAnalysis:e.target.checked})}/> Показывать готовый разбор на доске</label>
@@ -65,7 +65,7 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
        letters:d.letters.map(l=>l.id===entry.id?{...l,letter:e.target.value}:l)})}/></label>
     <label>Звуки (через пробел)
      <input value={entry.sounds.join(" ")} aria-label={"Звуки буквы "+(i+1)}
-      placeholder="Напр. й’ о" onChange={e=>{
+      placeholder="Запишите звуки буквы через пробел" onChange={e=>{
        const sounds=e.target.value.trim().split(/\s+/u).filter(Boolean).slice(0,2).map(v=>v.slice(0,12));
        update(entry.id,{sounds});
       }}/></label>
@@ -75,7 +75,7 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
        stressed:l.id===entry.id?e.target.checked:false}))})}/> Ударение
     </label>
     <label className="lektrus-russian-characteristic">Характеристика
-     <input value={entry.characteristic} maxLength={100} placeholder="гласный, ударный / согласный…"
+     <input value={entry.characteristic} maxLength={100} placeholder="Укажите признаки звука"
       aria-label={"Характеристика звуков буквы "+(i+1)}
       onChange={e=>update(entry.id,{characteristic:e.target.value})}/></label>
    </div>)}
