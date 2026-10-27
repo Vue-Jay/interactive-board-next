@@ -336,3 +336,33 @@
 .lektrus-activity-result.some-errors{background:#fff4e6;color:#965921}
 @media(max-width:900px){.lektrus-activity-author-workspace{grid-template-columns:1fr}.lektrus-activity-preview-section{width:100%}}
 @media(max-width:600px){.lektrus-activity-choice-options{grid-template-columns:1fr}.lektrus-activity-fill-grid{grid-template-columns:1fr}.lektrus-activity-builder{padding:11px}.lektrus-activity-match-columns{gap:6px}.lektrus-activity-match-columns button{padding:7px 5px}.lektrus-activity-gap-content input{max-width:55%}}
+
+
+/* School exercise notebook shown immediately with a numeric or word problem. */
+.lektrus-school-solution-inline{width:100%;margin:1px 0 4px;padding:13px 15px;
+ background:linear-gradient(180deg,#fffefa,#fff);border:1px solid
+ color-mix(in srgb,var(--subject-board-accent) 27%,#e1e6e6);
+ box-shadow:0 2px 8px #1e33400a}
+.lektrus-school-solution-inline .lektrus-school-solution-heading{display:flex;gap:9px;align-items:center}
+.lektrus-school-solution-inline .lektrus-school-solution-heading small{font-size:10px;letter-spacing:0;
+ font-weight:600;text-transform:none;color:#7a8a91}
+.lektrus-school-solution-inline .lektrus-school-solution-data{grid-template-columns:repeat(2,minmax(0,1fr))}
+.lektrus-school-solution-inline-field{display:flex;flex-direction:column;gap:5px;min-width:0;font:600 11px/1.35 system-ui,sans-serif;
+ color:var(--subject-board-accent)}
+.lektrus-school-solution-inline-field>b{font-weight:800;color:var(--subject-board-accent)}
+.lektrus-school-solution-inline-field textarea,.lektrus-school-solution-inline-field input{width:100%;box-sizing:border-box;
+ min-height:42px;padding:7px 9px;border:1px solid #e0e8eb;border-radius:7px;background:#fff;
+ resize:vertical;color:#293b44;font:500 12px/1.55 "Cambria Math",Cambria,system-ui,sans-serif;box-shadow:none}
+.lektrus-school-solution-inline-field textarea:focus-visible,.lektrus-school-solution-inline-field input:focus-visible{
+ outline:2px solid var(--subject-board-accent);outline-offset:1px;border-color:var(--subject-board-accent)}
+.lektrus-school-solution-inline-field textarea::placeholder,.lektrus-school-solution-inline-field input::placeholder{
+ font:500 10px/1.5 system-ui,sans-serif;color:#8d9ba2}
+.lektrus-school-solution-inline-field p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:500 12px/1.5 system-ui,sans-serif;color:#3b5360}
+.lektrus-school-solution-inline .lektrus-school-solution-work-editor{margin-top:0;border-bottom:1px dashed #e5eaec;padding:2px 0 10px}
+.lektrus-school-solution-inline .lektrus-school-solution-work-editor textarea{min-height:85px}
+.lektrus-school-solution-inline .lektrus-school-solution-inline-answer{flex-direction:row;align-items:center;gap:10px}
+.lektrus-school-solution-inline .lektrus-school-solution-inline-answer input{flex:1 1 auto;min-width:0;min-height:36px}
+@media(max-width:580px){
+ .lektrus-school-solution-inline{padding:10px}
+ .lektrus-school-solution-inline .lektrus-school-solution-data{grid-template-columns:1fr}
+}
