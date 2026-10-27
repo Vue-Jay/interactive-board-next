@@ -127,7 +127,10 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
         <div className="lektrus-subject-board-solution-area">
           <LektrusSubjectBoardInlineSolution tone={tone} value={entry.workedSolution}
            onChange={onWorkedSolutionChange?solution=>onWorkedSolutionChange(entry.id,solution):undefined}/>
-        </div>:isSchoolSolutionSubject(tone)&&!activityMatchesTask(tone,entry.format,entry.activity)?<div className="lektrus-subject-board-solution-area">
+        </div>:isSchoolSolutionSubject(tone)&&!activityMatchesTask(tone,entry.format,entry.activity)&&
+        !(tone==="physics"&&entry.format==="lab")&&
+        !(tone==="chemistry"&&["experiment","chain"].includes(entry.format??""))&&
+        !(tone==="chemistry"&&entry.kind==="equation")?<div className="lektrus-subject-board-solution-area">
         <LektrusSubjectBoardSolutionView tone={tone} value={entry.workedSolution} legacyAnswer={entry.answer}/>
         {onEditSolution&&<button type="button" className="lektrus-subject-board-add-solution"
          data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
@@ -136,7 +139,10 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
         {!onEditSolution&&!hasWorkedSolution(entry.workedSolution)&&!entry.answer.trim()&&
          <span className="lektrus-subject-board-solution-hint">Решение пока не добавлено</span>}
       </div>:activityMatchesTask(tone,entry.format,entry.activity)?null:<div className="lektrus-subject-board-answer">
-       <label htmlFor={"board-answer-"+entry.id}>{definition.answerLabel??"Ответ ученика"}</label>
+       <label htmlFor={"board-answer-"+entry.id}>{tone==="physics"&&entry.format==="lab"?"Результаты измерений и вывод":
+          tone==="chemistry"&&entry.format==="experiment"?"Наблюдения и вывод":
+          tone==="chemistry"&&(entry.format==="chain"||entry.kind==="equation")?"Уравнения и пояснения":
+          definition.answerLabel??"Ответ ученика"}</label>
        {onAnswerChange?<textarea id={"board-answer-"+entry.id} rows={2} value={entry.answer} maxLength={2000}
         placeholder="Введите свой ответ" data-board-interactive="true"
         onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()}
