@@ -4,7 +4,8 @@ import ts from "typescript";
 const read=path=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const sources=["src/App.tsx","src/LektrusSubjectBoard.tsx","src/boardModel.ts",
  "src/lektrusSubjectToolRegistry.ts","src/lektrusSubjectAccent.ts",
- "src/lektrusSubjectTaskTemplates.ts","src/LektrusSubjectToolsPanel.tsx"];
+ "src/lektrusSubjectTaskTemplates.ts","src/LektrusSubjectToolsPanel.tsx",
+ "src/LektrusSubjectBoardSolution.tsx","src/LektrusChemicalEquationEditor.tsx"];
 for(const path of sources){
  const source=ts.createSourceFile(path,read(path),ts.ScriptTarget.Latest,true,
   path.endsWith(".tsx")?ts.ScriptKind.TSX:ts.ScriptKind.TS);
@@ -41,9 +42,28 @@ for(const subject of subjects){
  assert.ok(colors.includes(subject+":{accent:"),subject+" has subject palette");
 }
 for(const label of ["Цепочка превращений","Расстановка коэффициентов","Геометрическая задача",
- "Оптика","Орфография","Работа с картой","Хронология","Программирование"]){
+ "Расчётная задача","Лабораторная работа","Орфографическое задание","Синтаксический разбор",
+ "Перевод","Грамматика","Порядок слов"]){
  assert.ok(templates.includes(label),"Task type not found: "+label);
 }
+assert.match(templates,/physics:\[\s*task,\s*type\("calculation".*?\)/s,
+ "Physics starts with an assignment and includes a calculation");
+for(const subject of ["biology","geography","history","literature","social","informatics"]){
+ assert.ok(templates.includes(subject+":[task]"),subject+" must show only the assignment type");
+}
+for(const example of ["Например:","Fe + HCl","Aa × Aa","Present Perfect","2x²","I ___"]){
+ assert.ok(!templates.includes(example),"Field descriptions must not suggest an answer: "+example);
+}
+assert.ok(board.includes('options.length>1'),"One-type subjects hide type selection");
+assert.ok(board.includes('onMove(entry.id,-1)')&&board.includes('onMove(entry.id,1)'),
+ "Each task can be moved to a different position");
+assert.ok(board.includes("onEditSolution(entry.id)"),"School-style worked solutions open from worksheets");
+assert.ok(app.includes("moveSubjectBoardEntry"),"Reordering is persisted");
+const solution=read("src/LektrusSubjectBoardSolution.tsx");
+for(const label of ["Дано","Найти","СИ","Решение","Ответ"]){
+ assert.ok(solution.includes(label),"Structured school solution missing "+label);
+}
+assert.ok(model.includes("workedSolution?:SubjectBoardWorkedSolution"),"Persist written solution");
 assert.ok(board.includes('onAction("equation")')&&board.includes('onAction("task")'),
  "Chemistry worksheet retains equation and task tools");
 assert.match(board,/freshTaskDetails\(tone,template.id\)/);
