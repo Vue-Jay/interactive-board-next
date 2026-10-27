@@ -8942,7 +8942,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onMove={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
                     (entryId,direction)=>moveSubjectBoardEntry(item.id,entryId,direction):undefined}
                   onEditSolution={canEdit&&!item.locked&&!presentation?
-                    entryId=>openSubjectBoardSolution(item.id,entryId):undefined}/>}
+                    entryId=>openSubjectBoardSolution(item.id,entryId):undefined}
+                  onActivityAnswer={canEdit&&!item.locked&&!presentation?
+                    (entryId,response)=>patchSubjectBoardEntry(item.id,entryId,{activityResponse:response}):undefined}/>}
                 {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item}
                   onPhysicalPartMove={!presentation&&!item.locked&&!space&&!selectionLocked&&
                    canEdit&&!structurallyLockedForStudent(item)&&tool==="select"&&
