@@ -347,3 +347,15 @@
   max-height:84px;
  }
 }
+
+
+/* Conditions are also checked at their own input, never only in the report. */
+.lektrus-chem-reaction-workspace .lektrus-chem-condition-input.has-warning input{
+ border-color:#cda354;background:#fffcf5;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-condition-feedback{
+ display:block;margin:4px 0 0;padding:6px 8px;
+ border:1px solid #f0d8a6;border-radius:7px;
+ background:#fff8e8;color:#855f23;
+ font:600 10px/1.4 system-ui,sans-serif;
+}
