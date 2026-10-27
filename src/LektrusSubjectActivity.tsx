@@ -3,6 +3,11 @@ import type {SubjectTaskActivity,SubjectTaskActivityResponse} from "./boardModel
 import type {SubjectTone} from "./lektrusSubjectAccent";
 
 export const interactiveSubjects=(tone:SubjectTone)=>tone==="mathematics"||tone==="russian"||tone==="languages";
+/** One exercise studio instead of four nearly identical task types. */
+export const interactiveModesForSubject=(tone:SubjectTone):readonly SubjectTaskActivity["mode"][]=>
+ tone==="russian"?["choice","match","order"]:["choice","fill","match","order"];
+export const isIntegratedInteractiveTask=(tone:SubjectTone,format:string|undefined)=>
+ (tone==="russian"||tone==="mathematics")&&format==="interactive";
 /**
  * Each subject chooses its own interaction, not a global guess based on labels.
  * null means a written task with a normal answer/solution, not an empty quiz.
@@ -10,12 +15,14 @@ export const interactiveSubjects=(tone:SubjectTone)=>tone==="mathematics"||tone=
 export function preferredActivityMode(tone:SubjectTone,format:string):SubjectTaskActivity["mode"]|null{
  switch(tone){
   case "mathematics":
+   if(format==="interactive")return "choice";
    if(format==="choice")return "choice";
    if(format==="cloze")return "fill";
    if(format==="matching")return "match";
    if(format==="sequence")return "order";
    return null; // Equations, geometry, functions and word problems need worked solutions
   case "russian":
+   if(format==="interactive")return "choice";
    if(format==="orthography"||format==="punctuation"||format==="cloze")return "fill";
    if(format==="matching")return "match";
    if(format==="sequence")return "order";
@@ -31,7 +38,9 @@ export function preferredActivityMode(tone:SubjectTone,format:string):SubjectTas
  }
 }
 export const activityMatchesTask=(tone:SubjectTone,format:string|undefined,activity?:SubjectTaskActivity):boolean=>
- !!activity&&preferredActivityMode(tone,format??"task")===activity.mode;
+ !!activity&&(isIntegratedInteractiveTask(tone,format)?
+ interactiveModesForSubject(tone).includes(activity.mode):
+ preferredActivityMode(tone,format??"task")===activity.mode);
 export function freshActivity(mode:SubjectTaskActivity["mode"]):SubjectTaskActivity{
  if(mode==="choice")return {mode,options:["","",""],correctIndex:0};
  if(mode==="fill")return {mode,blanks:[{before:"",answer:""}],tail:""};
