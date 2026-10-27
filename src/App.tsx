@@ -10,6 +10,7 @@ import {
   type PointerEvent as PE,
   type CSSProperties,
 } from "react";
+import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import { createPortal, flushSync } from "react-dom";
 import { normalizeSelectionRect, itemsInsideRect, type SelectionRect } from "./rectSelection";
 import "./App.css";
@@ -5478,11 +5479,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      if(provisionalChemistryBoards.current.has(editing.id)){
        provisionalChemistryBoards.current.delete(editing.id);
        const latest=itemsRef.current.find(entry=>entry.id===editing.id);
-       const hasContent=!!latest&&(
-        !!latest.graphExpression?.trim()||
-        !!latest.scienceReactionConditions?.trim()||
-        !!latest.scienceReactionSteps?.some(step=>step.expression.trim()||step.conditions.trim())
-       );
+       const hasContent=!!latest&&chemistryBoardHasContent(latest);
        if(!save&&!hasContent&&latest){
          commit(itemsRef.current.filter(entry=>entry.id!==editing.id));
          setSelected([]);setNotice("Пустая химическая доска удалена");
