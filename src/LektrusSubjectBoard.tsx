@@ -1,10 +1,11 @@
 import {createPortal} from "react-dom";
-import {useEffect,useRef,type CSSProperties} from "react";
-import type {Item,SubjectBoardEntry} from "./boardModel";
+import {useEffect,useRef,useState,type CSSProperties} from "react";
+import type {Item,SubjectBoardEntry,SubjectTaskActivityResponse} from "./boardModel";
 import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
 import {taskTemplateFor,subjectTaskTemplates,freshTaskDetails,subjectBoardHasWork,isSchoolSolutionSubject} from "./lektrusSubjectTaskTemplates";
 import {LektrusSubjectBoardSolutionView,hasWorkedSolution} from "./LektrusSubjectBoardSolution";
+import {interactiveSubjects,preferredActivityMode,freshActivity,LektrusSubjectActivityBuilder,LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
 
 export const subjectBoardId=(tone:SubjectTone)=>"subject-board-"+tone;
 export const isSubjectBoard=(item:Item)=>item.kind==="graph"&&!!item.graphFigureId?.startsWith("subject-board-");
@@ -16,6 +17,7 @@ export const subjectBoardLocked=(item:Item)=>item.subjectBoardEntries?.some(subj
 export const newSubjectBoardEntry=(id:string,kind:"equation"|"task",tone:SubjectTone="chemistry"):SubjectBoardEntry=>{
  const format=kind==="equation"?"equation":subjectTaskTemplates[tone][0].id;
  return {id,kind,title:"",prompt:"",format,
+  activity:kind==="task"&&interactiveSubjects(tone)?freshActivity(preferredActivityMode(tone,format)):undefined,
   details:kind==="task"?freshTaskDetails(tone,format):undefined,
   steps:kind==="equation"?[{expression:"",conditions:""}]:undefined,
   answer:"",solution:"",revealed:false};
@@ -29,8 +31,9 @@ type BoardProps={
  onReveal?:(entryId:string)=>void;
  onMove?:(entryId:string,direction:-1|1)=>void;
  onEditSolution?:(entryId:string)=>void;
+ onActivityAnswer?:(entryId:string,response:SubjectTaskActivityResponse)=>void;
 };
-export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution}:BoardProps){
+export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution,onActivityAnswer}:BoardProps){
  const tone=boardTone(item),palette=subjectAccentPalette[tone];
  const entries=item.subjectBoardEntries??[];
  const sheetRef=useRef<HTMLDivElement>(null);
@@ -96,6 +99,9 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
            <p>{value}</p>
          </div>)}
       </div>}
+      {entry.kind==="task"&&entry.activity&&
+       <LektrusSubjectActivityRunner activity={entry.activity} response={entry.activityResponse}
+        onChange={onActivityAnswer?(response)=>onActivityAnswer(entry.id,response):undefined}/>}
       {isSchoolSolutionSubject(tone)?<div className="lektrus-subject-board-solution-area">
         <LektrusSubjectBoardSolutionView tone={tone} value={entry.workedSolution} legacyAnswer={entry.answer}/>
         {onEditSolution&&<button type="button" className="lektrus-subject-board-add-solution"
@@ -104,7 +110,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
          {hasWorkedSolution(entry.workedSolution)||entry.answer.trim()?"Изменить решение":"+ Добавить решение"}</button>}
         {!onEditSolution&&!hasWorkedSolution(entry.workedSolution)&&!entry.answer.trim()&&
          <span className="lektrus-subject-board-solution-hint">Решение пока не добавлено</span>}
-      </div>:<div className="lektrus-subject-board-answer">
+      </div>:entry.activity?null:<div className="lektrus-subject-board-answer">
        <label htmlFor={"board-answer-"+entry.id}>{definition.answerLabel??"Ответ ученика"}</label>
        {onAnswerChange?<textarea id={"board-answer-"+entry.id} rows={2} value={entry.answer} maxLength={2000}
         placeholder="Введите свой ответ" data-board-interactive="true"
@@ -135,7 +141,15 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
  const palette=subjectAccentPalette[tone];
  const options=subjectTaskTemplates[tone];
  const current=taskTemplateFor(tone,entry.format);
+ const [previewResponse,setPreviewResponse]=useState<SubjectTaskActivityResponse>({});
+ const interactive=interactiveSubjects(tone);
+ const activeActivity=interactive?(entry.activity??freshActivity(preferredActivityMode(tone,current.id))):undefined;
  const patch=(fields:Partial<SubjectBoardEntry>)=>onChange({...entry,...fields});
+ const chooseType=(format:string)=>{
+   patch({format,activity:interactive?freshActivity(preferredActivityMode(tone,format)):entry.activity,
+    activityResponse:undefined,details:{...freshTaskDetails(tone,format),...entry.details}});
+   setPreviewResponse({});
+ };
  const style={"--subject-board-accent":palette.accent,"--subject-board-soft":palette.soft} as CSSProperties;
  return createPortal(<div className="lektrus-subject-task-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)onClose();}}>
   <section className="lektrus-subject-task-editor" style={style} role="dialog" aria-modal="true" aria-label="Создание задания"
@@ -148,7 +162,7 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
       <div className="lektrus-subject-task-types" role="group" aria-label="Тип задания">
        {options.map(template=><button type="button" key={template.id}
         className={current.id===template.id?"selected":""} aria-pressed={current.id===template.id}
-        onClick={()=>patch({format:template.id,details:{...freshTaskDetails(tone,template.id),...entry.details}})}>
+        onClick={()=>chooseType(template.id)}>
         {template.title}</button>)}
       </div>
       <small>{current.instruction}</small>
@@ -159,7 +173,28 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
     <label className="lektrus-subject-task-prompt">{current.promptLabel}
      <textarea rows={3} maxLength={2500} value={entry.prompt}
       placeholder={current.promptPlaceholder} onChange={e=>patch({prompt:e.target.value})}/></label>
-    {current.fields.length>0&&<div className="lektrus-subject-task-fields">
+    {interactive&&activeActivity&&<div className="lektrus-activity-author-workspace">
+      <LektrusSubjectActivityBuilder tone={tone} format={current.id} activity={activeActivity}
+       onChange={activity=>{patch({activity,activityResponse:undefined});setPreviewResponse({});}}/>
+      <section className="lektrus-activity-preview-section" aria-label="Предпросмотр задания">
+       <div className="lektrus-activity-preview-heading">
+        <strong>Как это увидит ученик</strong><span>Проверьте задание в действии</span>
+       </div>
+       <LektrusSubjectActivityRunner key={current.id+activeActivity.mode}
+        activity={activeActivity} response={previewResponse} onChange={setPreviewResponse} compact/>
+      </section>
+     </div>}
+    {current.fields.length>0&&(interactive?
+     <details className="lektrus-activity-context-details">
+       <summary>Дополнительные данные и условия <span>необязательно</span></summary>
+       <div className="lektrus-subject-task-fields">
+        {current.fields.map(field=><label key={field.id}>{field.label}
+         {field.multiline?<textarea rows={2} maxLength={1800} value={entry.details?.[field.id]??""}
+          placeholder={field.placeholder} onChange={e=>patch({details:{...entry.details,[field.id]:e.target.value}})}/>:
+          <input maxLength={1800} value={entry.details?.[field.id]??""} placeholder={field.placeholder}
+           onChange={e=>patch({details:{...entry.details,[field.id]:e.target.value}})}/>}</label>)}
+       </div>
+      </details>:<div className="lektrus-subject-task-fields">)}
      {current.fields.map(field=><label key={field.id}>{field.label}
       {field.multiline?<textarea rows={2} maxLength={1800}
        value={entry.details?.[field.id]??""} placeholder={field.placeholder}
@@ -167,7 +202,7 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
        <input maxLength={1800} value={entry.details?.[field.id]??""} placeholder={field.placeholder}
        onChange={e=>patch({details:{...entry.details,[field.id]:e.target.value}})}/>}
       </label>)}
-    </div>}
+    </div>)}
     {Object.entries(entry.details??{}).some(([key,value])=>value.trim()&&!current.fields.some(field=>field.id===key))&&
      <details className="lektrus-subject-task-legacy">
       <summary>Дополнительные сведения прежнего задания</summary>
