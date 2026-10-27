@@ -31,7 +31,7 @@ const anions=new Map<string,number>([
  ["CH3COO",1],["SO4",2],["SO3",2],["CO3",2],["HPO4",2],["S",2],["O",2],
  ["CrO4",2],["C2O4",2],["PO4",3]
 ]);
-const polyatomic=new Set([...anions.keys()].filter(s=>s.length>2));
+const polyatomic=new Set([...anions.keys()].filter(s=>s.length>2||s==="OH"));
 const specialValence=new Set(["Fe3O4","Pb3O4","Cu2O2","Na2O2","K2O2","BaO2","MgO2","CaO2","Li2O2"]);
 function normalizeFormula(text:string):string{
  return normalizeFormulaInput(text).replace(/\s+/g,"");
