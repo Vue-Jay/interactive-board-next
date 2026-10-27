@@ -42,7 +42,7 @@ for(const subject of subjects){
  assert.ok(colors.includes(subject+":{accent:"),subject+" has subject palette");
 }
 for(const label of ["Цепочка превращений","Геометрическая задача",
- "Текстовая задача","Расчётная задача","Лабораторная работа","Орфография","Разбор предложения",
+ "Текстовая задача","Расчётная задача","Лабораторная работа","Орфография","Синтаксический разбор",
  "Перевод","Грамматическое преобразование","Порядок слов"]){
  assert.ok(templates.includes(label),"Task type not found: "+label);
 }
