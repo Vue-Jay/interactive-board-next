@@ -178,11 +178,13 @@ for(const acid of acids.filter(v=>v.protons<=2)){
 for(const metal of [c.Mg,c.Zn,c.FeII,c.Al]){
  for(const acid of acids.filter(v=>["HCl","HBr","H2SO4"].includes(v.formula))){
   const salt=makeSalt(metal,acid.anion);
-  const total=lcm(metal.charge,acid.protons);
+  let total=lcm(metal.charge,acid.protons);
+  if(total%2!==0)total*=2; // Al requires two atoms per three H2 molecules
   const nMetal=total/metal.charge,nAcid=total/acid.protons;
-  if(total%2!==0)continue; // all chosen metal charges are 2 or 3; Al requires two formula units
+  const nSalt=nMetal/salt.cations;
+  if(!Number.isInteger(nSalt))continue;
   const value=show(nMetal,metal.formula)+" + "+show(nAcid,acid.formula)+" → "+
-   salt.formula+" + "+show(total/2,"H2")+"↑";
+   show(nSalt,salt.formula)+" + "+show(total/2,"H2")+"↑";
   register("Металл и разбавленная кислота","Замещение",value,"разб.",
    "Активный металл с неокисляющей кислотой; водород выделяется. Не применять к концентрированной H₂SO₄.");
  }
