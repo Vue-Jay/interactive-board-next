@@ -10,7 +10,7 @@ const compile=(path)=>ts.transpileModule(read(path),{compilerOptions:{
 const modelCode=compile("src/lektrusChemicalEquationModel.ts");
 const model=new Function(modelCode+"\nreturn {countFormulaAtoms,inspectEquationBalance,normalizeFormulaInput,parseEquationDraft};")();
 const dbCode=compile("src/lektrusReactionDatabase.ts");
-const db=new Function(dbCode+"\nreturn {identifyReaction,reviewedReactionCases};")();
+const db=new Function(dbCode+"\nreturn {identifyReaction,reviewedReactionCases,substances};")();
 const expandedCode=compile("src/lektrusEquationExtendedCases.ts");
 const expanded=new Function(expandedCode+"\nreturn {expandedEquationCases,expandedEquationCount};")();
 const additionalCode=compile("src/lektrusEquationAdditionalCases.ts");
@@ -35,16 +35,55 @@ for(const ex of pool.equationExamplePool){
 }
 const first=pool.selectRandomEquationExample("organic",undefined,()=>0);
 assert.notEqual(pool.selectRandomEquationExample("organic",first.id,()=>0).id,first.id);
+const formulaCode=compile("src/lektrusChemicalFormulaValidation.ts");
+const {inspectChemicalSpecies,findKnownFormula}=new Function(
+ "countFormulaAtoms","normalizeFormulaInput","parseEquationDraft","equationExamplePool","substances",
+ formulaCode+"\nreturn {inspectChemicalSpecies,findKnownFormula};")(
+ model.countFormulaAtoms,model.normalizeFormulaInput,model.parseEquationDraft,
+ pool.equationExamplePool,db.substances);
 const reviewCode=compile("src/lektrusEquationReview.ts");
 const review=new Function(...["identifyReaction","reviewedReactionCases","countFormulaAtoms","inspectEquationBalance",
- "normalizeFormulaInput","parseEquationDraft","equationExamplePool"],reviewCode+
+ "normalizeFormulaInput","parseEquationDraft","equationExamplePool","inspectChemicalSpecies"],reviewCode+
  "\nreturn {classroomEquationExamples,reviewEquationStep,reviewEquationChain,applyKnownProductMarks,balancedStep};")(
  db.identifyReaction,db.reviewedReactionCases,model.countFormulaAtoms,model.inspectEquationBalance,
- model.normalizeFormulaInput,model.parseEquationDraft,pool.equationExamplePool
+ model.normalizeFormulaInput,model.parseEquationDraft,pool.equationExamplePool,inspectChemicalSpecies
 );
+const formulaIssues=(formula,domain="inorganic")=>inspectChemicalSpecies([
+ {formula,coefficient:1,indicator:""}
+],domain);
+assert.ok(findKnownFormula("H2O"),"Common valid substance recognised");
+assert.ok(findKnownFormula("Ca(OH)2"),"Polyatomic hydroxide correctly recognised");
+assert.ok(formulaIssues("NaCl").length===0,"Sodium chloride valid");
+assert.ok(!formulaIssues("H2O2").some(v=>v.severity==="error"),"Peroxide is valid");
+assert.ok(!formulaIssues("Fe3O4").some(v=>v.severity==="error"),"Mixed-valence magnetite valid");
+assert.ok(!formulaIssues("C6H6","organic").some(v=>v.severity==="error"),"Benzene valid");
+assert.ok(!formulaIssues("C2H4Br2","organic").some(v=>v.severity==="error"),"Organic halides valid");
+assert.ok(formulaIssues("NaCl2").some(v=>v.severity==="error"&&v.suggestion==="NaCl"),"Sodium chloride valence");
+assert.ok(formulaIssues("MgCl").some(v=>v.severity==="error"&&v.suggestion==="MgCl2"),"Magnesium chloride valence");
+assert.ok(formulaIssues("Ca(OH)").some(v=>v.severity==="error"&&v.suggestion==="Ca(OH)2"),"Hydroxide valence");
+assert.ok(formulaIssues("NaCI").some(v=>v.severity==="error"&&v.suggestion==="NaCl"),"Capital I typo");
+assert.ok(formulaIssues("H20").some(v=>v.severity==="error"&&v.suggestion==="H2O"),"Digit zero typo");
+assert.ok(formulaIssues("H2(Q)").some(v=>v.severity==="error"),"Unknown element");
+assert.ok(formulaIssues("Fe(OH2").some(v=>v.severity==="error"),"Missing parenthesis");
+assert.ok(!formulaIssues("Na⁺").some(v=>v.severity==="error"),"Charged species are not automatically rejected");
+assert.ok(!formulaIssues("CH2=CH2","organic").some(v=>v.severity==="error"),"Condensed double bond supported as unknown");
+assert.ok(!formulaIssues("C11H24","organic").some(v=>v.severity==="error"),"Unlisted organic compound not falsely rejected");
+assert.equal(inspectChemicalSpecies([
+ {formula:"H2O",coefficient:1,indicator:""},
+ {formula:"H2O",coefficient:1,indicator:""}],"inorganic").some(v=>v.index===1&&v.severity==="warning"),true,
+ "Duplicate species highlighted separately");
 const step=(expression,conditions="")=>({expression,conditions});
 const inspect=(expression,domain="inorganic",conditions="")=>review.reviewEquationStep(step(expression,conditions),domain);
 assert.equal(inspect("AgNO3 + NaCl → AgCl↓ + NaNO3").status,"correct");
+assert.equal(inspect("AgNO3 + NaCl2 → AgCl↓ + NaNO3").status,"incorrect",
+ "Formula valence errors are reported even when reference matching fails");
+assert.ok(inspect("AgNO3 + NaCl2 → AgCl↓ + NaNO3").issues.some(v=>
+ v.kind==="substance"&&v.side==="left"&&v.index===1&&v.severity==="error"),
+ "Localise incorrect reactant exactly inside the reagent field");
+assert.ok(inspect("AgNO3 + NaCl → AgCl↓ + NaN03").issues.some(v=>
+ v.kind==="substance"&&v.side==="right"&&v.index===1&&v.severity==="error"),
+ "Localise a typo in a product formula");
+
 assert.equal(inspect("AgNO3 + NaCl → ").issues.filter(i=>i.kind==="missing").length,2,
  "Known but unfinished equations report which products are missing");
 assert.equal(inspect("AgNO3 + NaCl → KCl + NaNO3").status,"incorrect");
