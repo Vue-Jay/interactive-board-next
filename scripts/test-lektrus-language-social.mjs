@@ -52,8 +52,10 @@ assert.equal(validateLanguageSocialDiagram({...civics,nodes:civics.nodes.map(n=>
 assert.equal(validateLanguageSocialDiagram({...civics,edges:[
  {id:"e1",from:"leg",to:"missing",kind:"part"}]}),false);
 const registry=fs.readFileSync(new URL("../src/lektrusSubjectToolRegistry.ts",import.meta.url),"utf8");
-for(const id of ["ru-sentence-builder","language-sentence-builder","civics-structure","literature-analysis"])
+for(const id of ["language-sentence-builder","civics-structure","literature-analysis"])
  assert.match(registry,new RegExp('id:"'+id+'"'),"active classroom tool appears in the subject menu");
+assert.ok(!registry.includes('{id:"ru-sentence-builder",label:'),"Retired Russian sentence builder is not offered as a duplicate tool");
+assert.equal(validateLanguageSocialDiagram(newLanguageSocialDiagram("ru-sentence-builder")),true,"Previously saved Russian sentence diagrams stay readable");
 assert.equal(validateLanguageSocialDiagram(newLanguageSocialDiagram("literature-analysis")),true);
 assert.equal(validateLanguageSocialDiagram(newLanguageSocialDiagram("language-sentence-builder")),true);
 const view=fs.readFileSync(new URL("../src/LektrusLanguageSocialView.tsx",import.meta.url),"utf8");
