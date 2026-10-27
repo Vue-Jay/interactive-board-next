@@ -48,6 +48,13 @@ assert.equal(inspect("NaCl + KNO3 → KCl + NaNO3").status,"incorrect",
  "A balanced equation is not enough to establish a reaction");
 assert.equal(inspect("Na2CO3 + 2HCl → 2NaCl + CO2↑ + H2O").status,"correct");
 assert.equal(inspect("H2CO3 → H2O + CO2↑").status,"correct");
+assert.equal(inspect("H3PO4 + NaOH → NaH2PO4 + H2O","inorganic","недостаток щёлочи").status,"correct");
+assert.equal(inspect("H3PO4 + 2NaOH → Na2HPO4 + 2H2O","inorganic","частичная нейтрализация").status,"correct");
+assert.equal(inspect("H3PO4 + 3NaOH → Na3PO4 + 3H2O","inorganic","избыток щёлочи").status,"correct");
+assert.equal(inspect("H3PO4 + NaOH → NaH2PO4 + H2O","inorganic","").status,"partial",
+ "A real partial-neutralisation product is not an extra species when conditions are missing");
+assert.ok(inspect("H3PO4 + NaOH → NaH2PO4 + H2O","inorganic","").issues.some(i=>i.kind==="condition"));
+assert.equal(inspect("H2SO4 + NaOH → NaHSO4 + H2O","inorganic","недостаток щёлочи").status,"correct");
 assert.equal(inspect("Na2CO3 + 2HCl → 2NaCl + H2CO3").status,"correct",
  "Unstable carbonic acid can be represented as an intermediate chain step");
 assert.equal(inspect("H2CO3 → H2O + CO2").issues.some(i=>i.kind==="indicator"),true);
