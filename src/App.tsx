@@ -9284,7 +9284,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   <Icon name="formula" size={15}/><span>Редактор уравнений</span></button>}
                  <button type="button" data-board-interactive="true"
                   onPointerDown={e=>e.stopPropagation()} onClick={()=>openSubjectBoardEntry(singleSelected,"task")}>
-                  <Icon name="edit" size={15}/><span>Создать задание</span></button>
+                  <Icon name="section-assignments" size={15}/><span>Создать задание</span></button>
                 </span>)}
               {singleSelected?.kind==="graph"&&!isSubjectBoard(singleSelected)&&(singleSelected.graphPurpose!=="geometry"||isSchoolDiagramId(singleSelected.graphFigureId)||!!singleSelected.graphFigureId?.startsWith("physics-")||!!singleSelected.graphFigureId?.startsWith("chem-")||singleSelected.graphFigureId==="lektrus-chart")&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&(
                 <span className="graph-selection-controls">
