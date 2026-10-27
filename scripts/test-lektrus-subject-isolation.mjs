@@ -100,7 +100,9 @@ assert.ok(inline.includes("LektrusSubjectBoardInlineSolution"));
 for(const section of ["Дано","Найти","Решение","Ответ"]){
  assert.ok(inline.includes(section),"Missing school solution section: "+section);
 }
-assert.ok(inline.includes('onChange={event=>patch("answer",event.target.value)}'));
+assert.ok(inline.includes('onChange={onChange?text=>patch("answer",text):undefined}'));
+assert.ok(inline.includes('onChange={onChange?text=>patch("given",text):undefined}'));
+assert.ok(inline.includes('onChange={onChange?text=>patch("work",text):undefined}'));
 assert.ok(component.includes("needsAutomaticWorkedSolution(tone,entry.format)"));
 assert.ok(component.includes("onWorkedSolutionChange(entry.id,solution)"));
 assert.ok(app.includes("patchSubjectBoardEntry(item.id,entryId,{workedSolution:solution})"));
