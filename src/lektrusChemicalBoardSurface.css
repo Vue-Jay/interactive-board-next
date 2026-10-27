@@ -245,3 +245,24 @@
  width:100vw!important;max-width:100vw!important;max-height:100dvh!important;height:100dvh!important;
  }
 }
+
+
+/* A real full-size editor: do not let flex shrink it to header and footer. */
+.lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-equation-editor{
+ height:calc(100dvh - 44px)!important;min-height:min(650px,calc(100dvh - 44px))!important;
+ max-height:calc(100dvh - 44px)!important;
+ display:flex!important;flex-direction:column!important;overflow:hidden!important;
+}
+.lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-equation-content{
+ flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain;
+}
+.lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-equation-header,
+.lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-domain-tabs,
+.lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-equation-editor>footer{
+ flex:0 0 auto!important;
+}
+@media(max-width:590px){
+ .lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-equation-editor{
+ height:100dvh!important;min-height:100dvh!important;max-height:100dvh!important;
+ }
+}
