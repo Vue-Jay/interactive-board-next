@@ -395,6 +395,7 @@ export type SubjectBoardEntry={
   title:string;
   prompt:string;
   format?:"equation"|"chain"|"problem"|"exercise";
+  domain?:"inorganic"|"organic";
   steps?:{expression:string;conditions:string}[];
   answer:string;
   solution:string;
