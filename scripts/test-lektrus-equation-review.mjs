@@ -17,7 +17,8 @@ const poolCode=compile("src/lektrusEquationExamplePool.ts");
 const pool=new Function("reviewedReactionCases","parseEquationDraft","expandedEquationCases",poolCode+
  "\nreturn {equationExamplePool,equationExamplesByDomain,selectRandomEquationExample};")(
  db.reviewedReactionCases,model.parseEquationDraft,expanded.expandedEquationCases);
-assert.ok(expanded.expandedEquationCount>=300,"At least 300 new bounded school chemistry cases");
+assert.ok(expanded.expandedEquationCount>=350,"At least 350 new bounded school chemistry cases");
+assert.ok(pool.equationExamplePool.length>=500,"Five hundred audited reaction references");
 assert.ok(pool.equationExamplesByDomain("inorganic").length>=280);
 assert.ok(pool.equationExamplesByDomain("organic").length>=100);
 assert.ok(pool.equationExamplesByDomain("inorganic").length>=20,"At least twenty rotating inorganic examples");
@@ -55,6 +56,12 @@ assert.equal(inspect("H3PO4 + NaOH → NaH2PO4 + H2O","inorganic","").status,"pa
  "A real partial-neutralisation product is not an extra species when conditions are missing");
 assert.ok(inspect("H3PO4 + NaOH → NaH2PO4 + H2O","inorganic","").issues.some(i=>i.kind==="condition"));
 assert.equal(inspect("H2SO4 + NaOH → NaHSO4 + H2O","inorganic","недостаток щёлочи").status,"correct");
+assert.equal(inspect("ZnSO4 + 2NaOH → Zn(OH)2↓ + Na2SO4").status,"correct");
+assert.equal(inspect("ZnSO4 + 4NaOH → Na2[Zn(OH)4] + Na2SO4","inorganic","избыток щёлочи").status,"correct");
+assert.equal(inspect("ZnSO4 + 4NaOH → Na2[Zn(OH)4] + Na2SO4","inorganic","").status,"partial");
+assert.equal(inspect("AlCl3 + 4NaOH → Na[Al(OH)4] + 3NaCl","inorganic","избыток щёлочи").status,"correct");
+assert.equal(inspect("Ca(OH)2 + 2CO2 → Ca(HCO3)2","inorganic","избыток CO₂").status,"correct");
+
 assert.equal(inspect("Na2CO3 + 2HCl → 2NaCl + H2CO3").status,"correct",
  "Unstable carbonic acid can be represented as an intermediate chain step");
 assert.equal(inspect("H2CO3 → H2O + CO2").issues.some(i=>i.kind==="indicator"),true);
