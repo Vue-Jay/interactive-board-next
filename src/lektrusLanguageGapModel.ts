@@ -30,7 +30,9 @@ export function parseLanguageGapText(source:string):GapDraft{
 }
 export function languageGapText(activity?:SubjectTaskActivity):string{
  if(activity?.mode!=="fill")return "";
- return (activity.blanks??[]).map(part=>part.before+"["+part.answer+"]").join("")+(activity.tail??"");
+ const blanks=activity.blanks??[];
+ if(!blanks.some(part=>part.before||part.answer)&&!activity.tail)return "";
+ return blanks.map(part=>part.before+"["+part.answer+"]").join("")+(activity.tail??"");
 }
 export const isLanguageGapExercise=(subject:string,format:string|undefined):boolean=>
  (subject==="russian"&&(format==="orthography"||format==="punctuation"))||
