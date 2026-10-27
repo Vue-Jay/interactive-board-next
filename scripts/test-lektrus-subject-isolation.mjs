@@ -116,7 +116,7 @@ assert.ok(inline.includes('onChange={onChange?text=>patch("work",text):undefined
 assert.ok(component.includes("needsAutomaticWorkedSolution(tone,entry.format)"));
 assert.ok(component.includes("onWorkedSolutionChange(entry.id,solution)"));
 assert.ok(app.includes("patchSubjectBoardEntry(item.id,entryId,{workedSolution:solution})"));
-assert.ok(app.includes('Object.keys(changes).some(key=>!["answer","workedSolution","activityResponse"].includes(key))'),
+assert.ok(app.includes('Object.keys(changes).some(key=>!["answer","workedSolution","activityResponse","russianWork"].includes(key))'),
  "Students may submit answers, not alter teacher task content");
 const model=read("src/boardModel.ts");
 assert.match(model,/entry.subject===i.graphFigureId.slice\("subject-board-"\.length\)/);
