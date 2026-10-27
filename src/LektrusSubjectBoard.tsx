@@ -7,6 +7,7 @@ import {taskTemplateFor,subjectTaskTemplates,subjectTaskTypeKnown,freshTaskDetai
 import {LektrusSubjectBoardSolutionView,LektrusSubjectBoardInlineSolution,emptyWorkedSolution,hasWorkedSolution} from "./LektrusSubjectBoardSolution";
 import {interactiveSubjects,preferredActivityMode,activityMatchesTask,isIntegratedInteractiveTask,interactiveModesForSubject,freshActivity,LektrusSubjectActivityBuilder,LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
 import {nextSubjectBoardHeight} from "./lektrusSubjectBoardSizing";
+import {LektrusLanguageTaskStudio} from "./LektrusLanguageTaskStudio";
 
 export const subjectBoardId=(tone:SubjectTone)=>"subject-board-"+tone;
 export const isSubjectBoard=(item:Item)=>item.kind==="graph"&&!!item.graphFigureId?.startsWith("subject-board-");
@@ -142,7 +143,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
          <div className="lektrus-subject-board-field" key={field.id}>
           <span>{field.label}</span><p>{entry.details?.[field.id]}</p>
          </div>)}
-        {Object.entries(entry.details??{}).filter(([key,value])=>value.trim()&&!definition.fields.some(field=>field.id===key)&&
+        {Object.entries(entry.details??{}).filter(([key,value])=>key!=="markup"&&value.trim()&&!definition.fields.some(field=>field.id===key)&&
           !(needsAutomaticWorkedSolution(tone,entry.format)&&(key==="given"||key==="find")))
          .map(([key,value])=><div className="lektrus-subject-board-field" key={key}>
            <span>{key==="given"?"Дано":key==="find"?"Найти":key==="material"?"Материал":"Дополнительные данные"}</span>
@@ -248,6 +249,9 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
     <label className="lektrus-subject-task-title">Название <small>Необязательно</small>
      <input value={entry.title} maxLength={120} placeholder="Краткое название задания"
       onChange={e=>patch({title:e.target.value})}/></label>
+    {(tone==="russian"||tone==="languages")?
+      <LektrusLanguageTaskStudio tone={tone} entry={entry} template={current} onChange={onChange}/>:
+      <>{/* Other subjects retain their specialised school task editors. */}
     <label className="lektrus-subject-task-prompt">{current.promptLabel}
      <textarea rows={3} maxLength={2500} value={entry.prompt}
       placeholder={current.promptPlaceholder} onChange={e=>patch({prompt:e.target.value})}/></label>
@@ -291,10 +295,11 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
        onChange={e=>patch({details:{...entry.details,[field.id]:e.target.value}})}/>}
       </label>)}
     </div>)}
-    {Object.entries(entry.details??{}).some(([key,value])=>value.trim()&&!current.fields.some(field=>field.id===key))&&
+      </>}
+    {Object.entries(entry.details??{}).some(([key,value])=>key!=="markup"&&value.trim()&&!current.fields.some(field=>field.id===key))&&
      <details className="lektrus-subject-task-legacy">
       <summary>Дополнительные сведения прежнего задания</summary>
-      {Object.entries(entry.details??{}).filter(([key,value])=>value.trim()&&!current.fields.some(field=>field.id===key))
+      {Object.entries(entry.details??{}).filter(([key,value])=>key!=="markup"&&value.trim()&&!current.fields.some(field=>field.id===key))
        .map(([key,value])=><label key={key}>Сохранённое поле
          <textarea rows={2} maxLength={1800} value={value}
           onChange={e=>patch({details:{...entry.details,[key]:e.target.value}})}/>
