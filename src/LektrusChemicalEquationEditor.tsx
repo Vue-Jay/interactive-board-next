@@ -3,11 +3,11 @@ import {classroomEquationExamples,reviewEquationChain,applyKnownProductMarks,bal
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {
- inspectEquationBalance,parseEquationDraft,writeEquationDraft,type EquationArrow,type EquationSpecies
+ parseEquationDraft,type EquationArrow,type EquationSpecies
 } from "./lektrusChemicalEquationModel";
 import {
  readReactionText,writeReactionText,REACTION_CONDITION_GROUPS,REACTION_CONDITION_LIMIT,
- parseConditionTokens,toggleReactionCondition,type ReactionTextParts
+ parseConditionTokens,toggleReactionCondition
 } from "./lektrusChemicalEquationControls";
 
 type Props={item:Item;onChange:(item:Item)=>void;onSave:()=>void;onCancel:()=>void};
@@ -18,18 +18,6 @@ const arrows:{value:EquationArrow;label:string;title:string}[]=[
  {value:"→",label:"→",title:"Необратимая реакция"},
  {value:"⇌",label:"⇌",title:"Обратимая реакция"},
  {value:"=",label:"=",title:"Уравнение со знаком равенства"}
-];
-const symbols=[
- {value:" + ",label:"+",title:"Добавить следующее вещество"},
- {value:"(",label:"(",title:"Открывающая скобка"},
- {value:")",label:")",title:"Закрывающая скобка"},
- {value:"₂",label:"₂",title:"Индекс 2"},
- {value:"₃",label:"₃",title:"Индекс 3"},
- {value:"·",label:"·",title:"Точка гидратации"},
- {value:"↑",label:"↑",title:"Выделение газа"},
- {value:"↓",label:"↓",title:"Выпадение осадка"},
- {value:"⁺",label:"⁺",title:"Положительный заряд"},
- {value:"⁻",label:"⁻",title:"Отрицательный заряд"}
 ];
 
 function FormulaPart({value}:{value:string}){
@@ -94,7 +82,6 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  const current=steps[activeIndex];
  const parts=readReactionText(current.expression);
  const draft=parseEquationDraft(current.expression);
- const balance=draft?inspectEquationBalance(draft):null;
  const products=draft?.right.filter(s=>s.formula.trim()).map(s=>s.formula.trim())??[];
  const currentReview=reviewed?reviewEquationChain(steps,domain)[activeIndex]:null;
  const allReviews=reviewed?reviewEquationChain(steps,domain):[];
@@ -203,7 +190,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
     <div className="lektrus-chem-equation-content">
      <div className="lektrus-chem-reaction-topline">
       <div className="lektrus-chem-chain-steps" role="group" aria-label="Этапы цепочки">
-       {steps.map((s,i)=><button type="button" key={i} aria-pressed={activeIndex===i}
+       {steps.map((_,i)=><button type="button" key={i} aria-pressed={activeIndex===i}
         className={reviewed?("is-"+(allReviews[i]?.status??"unknown")):""}
         title={"Перейти к этапу "+(i+1)} onClick={()=>{setStepIndex(i);setNotice("");}}>
         {i+1}{steps.length>1?" этап":""}
