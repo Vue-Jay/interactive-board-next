@@ -38,8 +38,8 @@ import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
-import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
-import {subjectToneForItem} from "./lektrusSubjectAccent";
+import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,subjectBoardLocked,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
+import {subjectToneForItem,subjectToneForSubject,subjectAccentPalette} from "./lektrusSubjectAccent";
 import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import {isPhysicsMotionGraph,motionAxisTicks} from "./lektrusPhysicsGraphTicks";
 import LektrusOpticsEditor from "./LektrusOpticsEditor";
@@ -2491,6 +2491,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const next={...lectrisBoardOrganization,subject:normalizeLektrusSubject(subject)};
     setLectrisBoardOrganization(next);
     queueLectrisBoardOrganization(authUser.id,boardSummary.id,next);
+    // An untouched worksheet follows the classroom subject. The first written
+    // exercise locks its subject and preserves the design and its editor types.
+    const tone=subjectToneForSubject(next.subject);
+    if(tone){
+      const current=itemsRef.current;
+      const updated=current.map(item=>isSubjectBoard(item)&&!subjectBoardLocked(item)&&boardTone(item)!==tone?
+        {...item,graphFigureId:"subject-board-"+tone,text:subjectAccentPalette[tone].label+" · учебная доска"}:item);
+      if(updated.some((item,index)=>item!==current[index]))commit(updated);
+    }
   };
   const mathematicalSubjectTools=useMemo(()=>subjectToolsFor(lectrisBoardOrganization.subject),[lectrisBoardOrganization.subject]);
   const [view, setView] = useState<View>(() => {
@@ -5522,7 +5531,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
        setSelected([current.id]);setSubjectBoardEditor({boardId:current.id,entryId,mode});return;
      }
      if((current.subjectBoardEntries?.length??0)>=48){setNotice("На доске может быть до 48 заданий");return;}
-     const entry=newSubjectBoardEntry(createId(),mode);
+     const entry=newSubjectBoardEntry(createId(),mode,boardTone(current));
      const next={...current,subjectBoardEntries:[...(current.subjectBoardEntries??[]),entry]};
      const already=itemsRef.current.some(value=>value.id===current.id);
      if(already&&!pendingEditorBases.current.has(current.id))pendingEditorBases.current.set(current.id,current);
@@ -6041,6 +6050,25 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       textDecoration:"none",textList:"none",lineHeight:1.25};
     commit([...itemsRef.current,item]);setSelected([item.id]);setTool("select");
     closeElementsMenu();
+  };
+  const createUniversalSubjectBoard=()=>{
+    if(!canEdit||!toolAllowedForRole("graph")){
+      setNotice("Недостаточно прав для создания учебной доски");return;
+    }
+    const tone=subjectToneForSubject(lectrisBoardOrganization.subject);
+    if(!tone){
+      setNotice("Сначала выберите предмет доски в предметных инструментах");
+      setDesktopToolsExpanded(false);setMobileToolsOpen(false);
+      return;
+    }
+    finishEdit();
+    const rect=board.current?.getBoundingClientRect();
+    const x=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
+    const y=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
+    const item=makeSubjectToolItem(("subject-board-"+tone) as SubjectToolId,x,y,createId);
+    commit([...itemsRef.current,item]);setSelected([item.id]);setTool("select");
+    setDesktopToolsExpanded(false);setMobileToolsOpen(false);setSubjectToolsOpen(false);
+    setNotice(subjectAccentPalette[tone].label+": доска добавлена");
   };
   const elementCatalogueProps={
     onTool:(id:"text"|"sticky"|"table"|"frame")=>{
@@ -7747,7 +7775,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 steps:next.scienceReactionSteps??[],domain:next.scienceReactionDomain??"inorganic"
               },true)} onSave={closeSubjectBoardEntry} onCancel={closeSubjectBoardEntry}/>;
           }
-          return <LektrusSubjectBoardTaskEditor key={entry.id} subject={boardItem.text} entry={entry}
+          return <LektrusSubjectBoardTaskEditor key={entry.id} tone={boardTone(boardItem)} entry={entry}
             onChange={next=>patchSubjectBoardEntry(boardItem.id,entry.id,next,true)}
             onDelete={()=>{removeSubjectBoardEntry(boardItem.id,entry.id);setSubjectBoardEditor(null)}}
             onClose={closeSubjectBoardEntry}/>;
@@ -8209,6 +8237,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               editable={canEdit} renderOverlays={false} />}</div>})}
           </div>
           <span className="mobile-tool-separator" aria-hidden="true"/>
+          {canEdit&&toolAllowedForRole("graph")&&<button type="button" className="lektrus-mobile-subject-board"
+            title="Предметная доска" aria-label="Предметная доска" onClick={createUniversalSubjectBoard}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+             <rect x="3" y="3.5" width="18" height="17" rx="2"/><path d="M7 8h10M7 12h10M7 16h5M16.5 15v5m-2.5-2.5h5"/>
+            </svg></button>}
           <button type="button" className={`lektrus-mobile-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" aria-expanded={subjectToolsOpen} onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg></button>
           <button type="button" className={`mobile-tools-more ${mobileToolsOpen?"active":""}`} aria-label="Все инструменты" title="Все инструменты" aria-expanded={mobileToolsOpen} onClick={()=>setMobileToolsOpen(v=>!v)}><Icon name={mobileToolsOpen?"chevron-left":"plus"} size={20}/></button>
         </nav>
@@ -8226,6 +8259,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <div className="lektrus-desktop-sections" aria-label="Разделы инструментов">
             {desktopToolSections.filter(g=>g.ids.some(toolAllowedForRole)).map(group=><button key={group.id} type="button" className={`tool-button ${desktopToolsExpanded&&desktopToolSection===group.id?"active":""}`} aria-label={group.label} title={group.label} aria-expanded={desktopToolsExpanded&&desktopToolSection===group.id} onClick={()=>{if(desktopToolSection===group.id)setDesktopToolsExpanded(v=>!v);else{setDesktopToolSection(group.id);setDesktopToolsExpanded(true)}}}><span className="lektrus-section-icon" aria-hidden="true"><Icon name={group.icon} size={22}/></span><span className="tool-tooltip">{group.label}</span></button>)}
           </div>
+          {canEdit&&toolAllowedForRole("graph")&&<button type="button" className="tool-button lektrus-direct-subject-board"
+             title="Предметная доска" aria-label="Предметная доска" onClick={createUniversalSubjectBoard}>
+             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3.5" width="18" height="17" rx="2"/><path d="M7 8h10M7 12h10M7 16h5M16.5 15v5m-2.5-2.5h5"/>
+             </svg><span className="tool-tooltip">Предметная доска</span>
+          </button>}
           <button type="button" className={`tool-button lektrus-desktop-subject-trigger ${subjectToolsOpen?"active":""}`} aria-label="Предметные инструменты" title="Предметные инструменты" aria-expanded={subjectToolsOpen} aria-haspopup="dialog" aria-controls="lektrus-subject-tools-panel" onClick={e=>toggleSubjectTools(e.currentTarget)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5c3.4-.9 6.4-.6 9 1.4 2.6-2 5.6-2.3 9-1.4v13c-3.4-.9-6.4-.6-9 1.4-2.6-2-5.6-2.3-9-1.4z"/><path d="M12 7v13M6 10h3M15 10h3M6 13h2M15 13h2"/></svg><span className="tool-tooltip">Предметные инструменты</span></button>
           {toolAllowedForRole("comment")&&<button type="button" className={`tool-button lektrus-direct-comment ${tool==="comment"?"active":""}`} title="Комментарий" aria-label="Комментарий" onClick={()=>{finishEdit();setTool("comment");setDesktopToolsExpanded(false)}}><Icon name="comment" size={20}/><span className="tool-tooltip">Комментарий</span></button>}
           <div className="lektrus-toolbar-measure" aria-label="Измерительные инструменты">
@@ -8292,10 +8331,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSelected([]);
             setTool("select");
             setSubjectToolsOpen(false);
-            if(id.startsWith("subject-board-")){
-              commit([...itemsRef.current,item]);setSelected([item.id]);
-              setNotice("Учебная доска добавлена");
-            }else if(id==="chem-atoms"){setAtomEditorItem(item);
+            if(id==="chem-atoms"){setAtomEditorItem(item);
             }else if(id==="physics-circuits"){
               setCircuitEditorItem(item);
             }else if(id==="chem-periodic-table"){
