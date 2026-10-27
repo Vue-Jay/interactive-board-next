@@ -737,7 +737,7 @@ export function parseDocument(raw: string): DocumentData {
             entry.steps.every(step=>typeof step.expression==="string"&&step.expression.length<=500&&
               typeof step.conditions==="string"&&step.conditions.length<=180))))))
         throw new Error("Повреждены записи предметной доски");
-      if(i.subjectBoardEntries?.some(entry=>entry.workedSolution!=null&&
+      if(i.subjectBoardEntries?.some((entry:SubjectBoardEntry)=>entry.workedSolution!=null&&
          (typeof entry.workedSolution!=="object"||!["given","find","si","work","answer"].every(key=>{
            const value=entry.workedSolution?.[key as keyof SubjectBoardWorkedSolution];
            return typeof value==="string"&&value.length<=(key==="work"?5000:2000);
