@@ -53,7 +53,17 @@ assert.deepEqual(templates.subjectTaskTemplates.physics.map(x=>x.id),["task","ca
 assert.deepEqual(templates.subjectTaskTemplates.chemistry.map(x=>x.id),
  ["task","chain","calculation","experiment"]);
 assert.deepEqual(templates.subjectTaskTemplates.mathematics.map(x=>x.id),
- ["task","word-problem","equation","geometry","choice","cloze","matching","sequence"]);
+ ["task","word-problem","equation","geometry","interactive"]);
+assert.deepEqual(templates.subjectTaskTemplates.russian.map(x=>x.id),
+ ["task","orthography","punctuation","morphemes","morphology","syntax","text","interactive"]);
+for(const tone of ["mathematics","russian"]){
+ for(const oldId of ["choice","matching","sequence"]){
+  assert.equal(templates.subjectTaskTypeKnown(tone,oldId),true,
+   "Previously saved exercises remain readable");
+  assert.equal(templates.subjectTaskTemplates[tone].some(x=>x.id===oldId),false,
+   "Redundant standalone activities no longer appear");
+ }
+}
 assert.deepEqual(templates.subjectTaskTemplates.languages.map(x=>x.id),
  ["task","translation","gaps","vocabulary","word-order","grammar","reading","choice"]);
 assert.ok(!templates.subjectTaskTemplates.russian.some(x=>x.id==="cloze"),
@@ -70,8 +80,8 @@ assert.equal(templates.subjectTaskTypeKnown("mathematics","function"),true,"Keep
 assert.equal(templates.subjectTaskTypeKnown("chemistry","balance"),true,"Keep old chemical tasks readable");
 for(const [tone,format,expected] of [
  ["mathematics","equation",null],["mathematics","word-problem",null],
- ["mathematics","geometry",null],["mathematics","matching","match"],
- ["russian","morphology",null],["russian","syntax",null],["russian","morphemes",null],
+ ["mathematics","geometry",null],["mathematics","interactive","choice"],["mathematics","matching","match"],
+ ["russian","morphology",null],["russian","syntax",null],["russian","morphemes",null],["russian","interactive","choice"],
  ["russian","orthography","fill"],["russian","punctuation","fill"],
  ["languages","translation",null],["languages","reading",null],["languages","grammar",null],
  ["languages","vocabulary","match"],["languages","word-order","order"]
