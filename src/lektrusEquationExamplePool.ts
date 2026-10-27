@@ -1,4 +1,4 @@
-/** Teacher-reviewed school examples for unobtrusive placeholders and reference-only checks.
+/** Condition-annotated school references for unobtrusive placeholders and conservative checks.
  * They are neither assigned to a board object nor claimed as an exhaustive chemistry engine.
  * Inorganic cases reuse the condition-specific curated reaction collection.
  */
@@ -11,7 +11,12 @@ export type ReviewedExample={
  id:string;title:string;equation:string;conditions:string;family:EquationFamily;
  category:string;environment?:ReactionEnvironment;note:string;limitedToMolecularFormula?:boolean;
 };
-const inorganic:ReviewedExample[]=reviewedReactionCases.filter(v=>v.status==="reaction").map((v,i)=>({
+const organicLegacyMolecules=new Set(["CH4","C2H6","C2H4","C2H2","C2H5OH","CH3COOH","CH3OH"]);
+const inorganic:ReviewedExample[]=reviewedReactionCases.filter(v=>
+ v.status==="reaction"&&
+ !v.reactants.some(formula=>organicLegacyMolecules.has(formula))&&
+ !/идеализирован|упрощённый состав/i.test(v.description)
+).map((v,i)=>({
  id:"i-"+i,title:v.description.split(/[.;]/)[0].slice(0,62),equation:v.equation,
  conditions:v.environment==="ignited"?"поджиг":v.environment==="heated"?"t°":"",
  family:"inorganic" as const,
