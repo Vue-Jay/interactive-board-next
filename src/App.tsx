@@ -7786,6 +7786,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           const entry=source?.subjectBoardEntries?.find(value=>value.id===subjectBoardSolution.entryId);
           if(!source||!entry)return null;
           return <LektrusSubjectBoardSolutionEditor key={entry.id} tone={boardTone(source)} value={entry.workedSolution}
+            initialGiven={entry.details?.given??entry.details?.expression??entry.details?.reaction??""}
+            initialFind={entry.details?.find??""}
             onChange={value=>patchSubjectBoardEntry(source.id,entry.id,{workedSolution:value})}
             onClose={()=>setSubjectBoardSolution(null)}/>;
         })()}
