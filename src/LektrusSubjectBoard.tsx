@@ -6,6 +6,7 @@ import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
 import {taskTemplateFor,subjectTaskTemplates,subjectTaskTypeKnown,freshTaskDetails,subjectBoardHasWork,isSchoolSolutionSubject,needsAutomaticWorkedSolution} from "./lektrusSubjectTaskTemplates";
 import {LektrusSubjectBoardSolutionView,LektrusSubjectBoardInlineSolution,emptyWorkedSolution,hasWorkedSolution} from "./LektrusSubjectBoardSolution";
 import {interactiveSubjects,preferredActivityMode,activityMatchesTask,freshActivity,LektrusSubjectActivityBuilder,LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
+import {nextSubjectBoardHeight} from "./lektrusSubjectBoardSizing";
 
 export const subjectBoardId=(tone:SubjectTone)=>"subject-board-"+tone;
 export const isSubjectBoard=(item:Item)=>item.kind==="graph"&&!!item.graphFigureId?.startsWith("subject-board-");
@@ -73,8 +74,8 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
      const used=content.scrollHeight+(headerRef.current?.offsetHeight??44)+
        (footerRef.current?.offsetHeight??24);
      const current=heightRef.current;
-     if(current-used>=120||lastRequestedRef.current>current)return;
-     const next=Math.ceil(Math.max(current+160,used+200)/40)*40;
+     const next=nextSubjectBoardHeight(current,used);
+     if(next==null||lastRequestedRef.current>current)return;
      lastRequestedRef.current=next;
      heightCallbackRef.current(next);
    };
