@@ -25,9 +25,7 @@ export const subjectTaskTemplates:Record<SubjectTone,readonly SubjectTaskTemplat
   ]),
   type("geometry","Геометрическая задача","Укажите фигуру и то, что требуется найти или доказать",[
    field("figure","Чертёж и обозначения","Обозначения фигуры и известные геометрические условия",true)
-  ]),
-  type("interactive","Интерактивный тренажёр",
-   "Выберите способ: варианты ответа, пропуски, соответствия или порядок действий")
+  ])
  ],
  physics:[
   task,
@@ -99,6 +97,7 @@ export const subjectTaskTemplates:Record<SubjectTone,readonly SubjectTaskTemplat
 /** Previously saved types remain readable and editable, but aren't offered for new tasks. */
 const retiredTaskTemplates:Partial<Record<SubjectTone,readonly SubjectTaskTemplate[]>>={
  mathematics:[
+  type("interactive","Интерактивный тренажёр","Сохранённое интерактивное упражнение"),
   type("choice","Выбор ответа","Сохранённый математический тест"),
   type("cloze","Пропуски в выражении","Сохранённое математическое упражнение"),
   type("matching","Сопоставление","Сохранённое математическое сопоставление"),
