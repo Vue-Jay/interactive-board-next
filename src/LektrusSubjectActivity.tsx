@@ -3,15 +3,35 @@ import type {SubjectTaskActivity,SubjectTaskActivityResponse} from "./boardModel
 import type {SubjectTone} from "./lektrusSubjectAccent";
 
 export const interactiveSubjects=(tone:SubjectTone)=>tone==="mathematics"||tone==="russian"||tone==="languages";
-export function preferredActivityMode(tone:SubjectTone,format:string):SubjectTaskActivity["mode"]{
- if(format==="matching"||format==="vocabulary"||format==="morphemes"||format==="syntax")return "match";
- if(format==="sequence"||format==="word-order")return "order";
- if(format==="choice"||format==="morphology"||format==="reading"||format==="text")return "choice";
- if(format==="task")return "choice";
- if(tone==="mathematics"&&format==="geometry")return "choice";
- if(tone==="languages"&&format==="grammar")return "choice";
- return "fill";
+/**
+ * Each subject chooses its own interaction, not a global guess based on labels.
+ * null means a written task with a normal answer/solution, not an empty quiz.
+ */
+export function preferredActivityMode(tone:SubjectTone,format:string):SubjectTaskActivity["mode"]|null{
+ switch(tone){
+  case "mathematics":
+   if(format==="choice")return "choice";
+   if(format==="cloze")return "fill";
+   if(format==="matching")return "match";
+   if(format==="sequence")return "order";
+   return null; // Equations, geometry, functions and word problems need worked solutions
+  case "russian":
+   if(format==="orthography"||format==="punctuation"||format==="cloze")return "fill";
+   if(format==="matching")return "match";
+   if(format==="sequence")return "order";
+   if(format==="choice")return "choice";
+   return null; // Morphemic, morphological and syntactic analyses are written work
+  case "languages":
+   if(format==="gaps"||format==="cloze")return "fill";
+   if(format==="vocabulary"||format==="matching")return "match";
+   if(format==="word-order"||format==="sequence")return "order";
+   if(format==="choice")return "choice";
+   return null; // Translation, reading and transformations need an open answer
+  default:return null;
+ }
 }
+export const activityMatchesTask=(tone:SubjectTone,format:string|undefined,activity?:SubjectTaskActivity):boolean=>
+ !!activity&&preferredActivityMode(tone,format??"task")===activity.mode;
 export function freshActivity(mode:SubjectTaskActivity["mode"]):SubjectTaskActivity{
  if(mode==="choice")return {mode,options:["","",""],correctIndex:0};
  if(mode==="fill")return {mode,blanks:[{before:"",answer:""}],tail:""};
