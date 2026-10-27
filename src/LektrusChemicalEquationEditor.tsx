@@ -267,7 +267,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
           }
          }}/>
         {reviewed&&issuesFor(side).length>0&&<div className="lektrus-chem-field-feedback" role="status">
-         {issuesFor(side).filter(v=>v.severity!=="info").slice(0,4).map((issue,i)=>
+         {issuesFor(side).slice(0,4).map((issue,i)=>
           <span key={i} className={"is-"+issue.severity} title={issue.message}>
            {issue.formula&&<b>{issue.formula}: </b>}{issue.message}
           </span>)}
@@ -319,9 +319,11 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
        <div><strong>Условия над стрелкой</strong><small>Для этапа {activeIndex+1}</small></div>
        {!!current.conditions.trim()&&<button type="button" className="lektrus-chem-clear-conditions" onClick={()=>changeConditions("")}>Очистить</button>}
       </div>
-      <label className="lektrus-chem-condition-input"><span className="sr-only">Условия реакции</span>
+      <label className={"lektrus-chem-condition-input "+(reviewed&&currentReview?.issues.some(v=>v.kind==="condition")?"has-warning":"")}><span className="sr-only">Условия реакции</span>
        <input type="text" aria-label="Условия реакции над стрелкой" value={current.conditions} maxLength={REACTION_CONDITION_LIMIT}
         placeholder={backgroundExample.conditions||"Выберите условие или напишите своё"} onChange={e=>changeConditions(e.target.value)}/>
+       {reviewed&&currentReview?.issues.filter(v=>v.kind==="condition").map((issue,i)=>
+        <small key={i} className="lektrus-chem-condition-feedback">{issue.message}</small>)}
       </label>
       <div className="lektrus-chem-condition-categories">
        {REACTION_CONDITION_GROUPS.map(group=><div className="lektrus-chem-condition-group" key={group.id}>
