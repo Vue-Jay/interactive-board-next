@@ -113,6 +113,30 @@ for(const metal of [c.Cu,c.FeII,c.FeIII,c.Zn,c.Al,c.Mg])
      "Малорастворимый гидроксид, продукты для обычных школьных условий.");
   }
  }
+// Amphoteric precipitates can dissolve in EXCESS alkali. These are alternative
+// products for the same starting reagents, never selected by default.
+for(const metal of [c.Zn,c.Al])
+ for(const anion of [a.chloride,a.nitrate,a.sulfate])
+ for(const alkali of [c.Na,c.K]){
+  const metalSalt=makeSalt(metal,anion);
+  const spectator=makeSalt(alkali,anion);
+  const formula=alkali.formula+(metal.charge===2?"2":"")+"["+metal.formula+"(OH)4]";
+  const spectatorCount=metalSalt.anions/spectator.anions;
+  if(!Number.isInteger(spectatorCount))continue;
+  const equation=metalSalt.formula+" + "+show(4*metalSalt.cations,makeSalt(alkali,a.hydroxide).formula)+
+   " → "+show(metalSalt.cations,formula)+" + "+show(spectatorCount,spectator.formula);
+  register("Амфотерный гидроксокомплекс "+metal.name,"Амфотерность",equation,
+   "избыток щёлочи","Растворимый комплекс при избытке сильной щёлочи; при малом количестве выпадает осадок.");
+ }
+for(const metal of [c.Zn,c.Al])
+ for(const alkali of [c.Na,c.K]){
+  const metalOH=makeSalt(metal,a.hydroxide).formula;
+  const hydroxo=alkali.formula+(metal.charge===2?"2":"")+"["+metal.formula+"(OH)4]";
+  const hydroxideCount=4-metal.charge;
+  register("Растворение амфотерного осадка","Амфотерность",
+   metalOH+" + "+show(hydroxideCount,makeSalt(alkali,a.hydroxide).formula)+" → "+hydroxo,
+   "избыток щёлочи","Амфотерный гидроксид растворяется в избытке сильной щёлочи.");
+ }
 // Phosphates: insoluble alkaline-earth and divalent transition-metal salts.
 for(const metal of [c.Ca,c.Ba,c.Sr,c.Mg,c.Zn,c.Cu])
  for(const metalSalt of [a.chloride,a.nitrate])
