@@ -36,6 +36,13 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal}:
    <header className="lektrus-subject-board-header">
     <span className="lektrus-subject-board-emblem" aria-hidden="true">▤</span>
     <strong>{palette.label} <span>· учебная доска</span></strong>
+    {onAction&&<nav className="lektrus-subject-board-tools" aria-label="Инструменты предметной доски">
+     {chemistry&&<button type="button" data-board-interactive="true"
+       onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onAction("equation")}}>
+       Уравнения</button>}
+     <button type="button" data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
+       onClick={e=>{e.stopPropagation();onAction("task")}}>Создать задание</button>
+    </nav>}
     <small>{entries.length?entries.length+" заданий":"Чистый лист"}</small>
    </header>
    <div className="lektrus-subject-board-sheet">
