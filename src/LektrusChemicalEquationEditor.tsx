@@ -1,7 +1,6 @@
 import {Fragment,useRef,useState,type ReactNode} from "react";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import {reviewEquationChain,applyKnownProductMarks,balancedStep,type ReviewIssue,type EquationDomain,type EquationStep} from "./lektrusEquationReview";
-import {selectRandomEquationExample,type ReviewedExample} from "./lektrusEquationExamplePool";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {
@@ -14,14 +13,6 @@ import {
 
 type Props={item:Item;onChange:(item:Item)=>void;onSave:()=>void;onCancel:()=>void};
 type Side="left"|"right";
-// Randomised independently on each editor opening, excluding the last displayed
-// example even when the user reopens the same object.
-const lastExampleId:Partial<Record<EquationDomain,string>>={};
-function newBackgroundExample(domain:EquationDomain):ReviewedExample{
- const next=selectRandomEquationExample(domain,lastExampleId[domain]);
- lastExampleId[domain]=next.id;
- return next;
-}
 const subscripts="₀₁₂₃₄₅₆₇₈₉";
 const indexed=/([A-Z][a-z]?|[)\]])([0-9]+)/g;
 const arrows:{value:EquationArrow;label:string;title:string}[]=[
@@ -140,13 +131,9 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  const [stepIndex,setStepIndex]=useState(0);
  const [domain,setDomain]=useState<EquationDomain>(item.scienceReactionDomain??"inorganic");
  const [reviewed,setReviewed]=useState(false);
- const [boardLayout,setBoardLayout]=useState(false);
  const [openGroup,setOpenGroup]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
  const [nextSubstance,setNextSubstance]=useState("");
- const [backgrounds,setBackgrounds]=useState<Record<EquationDomain,ReviewedExample>>(()=>({
-  inorganic:newBackgroundExample("inorganic"),organic:newBackgroundExample("organic")
- }));
  const focused=useRef<Side>("left");
  const inputs=useRef<{left:HTMLTextAreaElement|null;right:HTMLTextAreaElement|null}>({left:null,right:null});
  const activeIndex=Math.min(stepIndex,steps.length-1);
@@ -157,8 +144,6 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  const currentReview=reviewed?reviewEquationChain(steps,domain)[activeIndex]:null;
  const allReviews=reviewed?reviewEquationChain(steps,domain):[];
  const selectedConditions=parseConditionTokens(current.conditions);
- const backgroundExample=backgrounds[domain];
- const exampleParts=readReactionText(backgroundExample.equation);
  const complete=(step:EquationStep)=>{const p=readReactionText(step.expression);
   return !!p.reactants.trim()&&!!p.products.trim()&&!p.standalone;};
  const canSave=steps.every(st=>st.expression.length<=500&&
@@ -209,7 +194,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
   setDomain(next);setReviewed(false);
   onChange({...item,scienceReactionDomain:next,scienceReactionSteps:steps,
    graphExpression:steps[0].expression,scienceReactionConditions:steps[0].conditions});
-  setBackgrounds(current=>({...current,[next]:newBackgroundExample(next)}));setNotice("");
+  setNotice("");
  };
  const appendStep=()=>{
   if(steps.length>=8)return;
@@ -237,7 +222,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  };
  const issuesFor=(side:Side)=>currentReview?.issues.filter(v=>v.side===side||!v.side&&v.kind==="formula")??[];
  const save=()=>{if(canSave)onSave();};
- return createPortal(<div className={"lektrus-chem-equation-overlay lektrus-chem-equation-v2 lektrus-chem-equation-compact lektrus-chem-one-screen lektrus-chem-reaction-workspace lektrus-chem-nonblocking"+(boardLayout?" is-board-layout":"")}>
+ return createPortal(<div className="lektrus-chem-equation-overlay lektrus-chem-equation-v2 lektrus-chem-equation-compact lektrus-chem-one-screen lektrus-chem-reaction-workspace lektrus-chem-nonblocking">
    <section className="lektrus-chem-equation-editor" role="dialog" aria-modal="false" aria-label="Редактор уравнений и цепочек"
     onPointerDown={e=>e.stopPropagation()} onKeyDown={e=>{
      if(e.key==="Escape"){e.stopPropagation();onCancel();}
@@ -247,13 +232,9 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
      <div className="lektrus-chem-equation-heading"><strong>Химические уравнения</strong>
       <small>Уравнения, распад продуктов и цепочки превращений</small></div>
      <div className="lektrus-chem-equation-window-actions">
-      <button type="button" className="lektrus-chem-board-layout-toggle"
-       aria-pressed={boardLayout} title={boardLayout?"Расширить редактор":"Освободить место для перемещения и размера химической доски"}
-       onClick={()=>setBoardLayout(v=>!v)}>{boardLayout?"Развернуть редактор":"Разместить доску"}</button>
       <button type="button" aria-label="Закрыть" title="Закрыть" onClick={onCancel}>×</button>
      </div>
     </header>
-    {boardLayout&&<p className="lektrus-chem-board-hint">Перетаскивайте химическую доску слева. Для изменения размера потяните за угловые маркеры выделенного объекта.</p>}
     <nav className="lektrus-chem-domain-tabs" aria-label="Раздел химии">
      <button type="button" aria-pressed={domain==="inorganic"} onClick={()=>switchDomain("inorganic")}>Неорганика</button>
      <button type="button" aria-pressed={domain==="organic"} onClick={()=>switchDomain("organic")}>Органика</button>
@@ -270,9 +251,6 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
        {steps.length<8&&<button type="button" className="lektrus-chem-chain-add" onClick={appendStep}
         title="Новый этап с продуктом текущего уравнения">+ Этап</button>}
       </div>
-      <span className="lektrus-chem-background-caption" title={backgroundExample.title}>
-       Фоновый пример · {backgroundExample.category}
-      </span>
      </div>
      <div className="lektrus-chem-equation-columns">
       {(["left","right"] as Side[]).map(side=><Fragment key={side}><label className={"lektrus-chem-equation-side "+(issuesFor(side).some(v=>v.severity==="error")?"has-error":"")} key={side}>
@@ -286,7 +264,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
          aria-label={side==="left"?"Реагенты":"Продукты"} autoComplete="off"
          aria-invalid={reviewed&&issuesFor(side).some(v=>v.severity==="error")}
          value={side==="left"?parts.reactants:parts.products}
-         placeholder={side==="left"?exampleParts.reactants:exampleParts.products}
+         placeholder={side==="left"?"Укажите исходные вещества":"Укажите продукты реакции"}
          onScroll={e=>{
           const mirror=e.currentTarget.previousElementSibling;
           if(mirror instanceof HTMLDivElement)mirror.scrollTop=e.currentTarget.scrollTop;
@@ -341,11 +319,6 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
        {products.map((formula,i)=><option key={i} value={formula}>{formula}</option>)}
       </select>
       <button type="button" onClick={appendStep}>Следующее превращение</button>
-      {products.includes("H2CO3")&&<button type="button" className="lektrus-chem-carbonic-step"
-       onClick={()=>{
-        setSteps([...steps,{expression:"H2CO3 → H2O + CO2↑",conditions:""}],steps.length);
-        setNextSubstance("");
-       }}>Распад H₂CO₃</button>}
      </div>}
      <section className="lektrus-chem-condition-panel" aria-label="Условия реакции над стрелкой">
       <div className="lektrus-chem-condition-heading">
@@ -354,7 +327,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
       </div>
       <label className={"lektrus-chem-condition-input "+(reviewed&&currentReview?.issues.some(v=>v.kind==="condition")?"has-warning":"")}><span className="sr-only">Условия реакции</span>
        <input type="text" aria-label="Условия реакции над стрелкой" value={current.conditions} maxLength={REACTION_CONDITION_LIMIT}
-        placeholder={backgroundExample.conditions||"Выберите условие или напишите своё"} onChange={e=>changeConditions(e.target.value)}/>
+        placeholder="Укажите температуру, среду или катализатор при необходимости" onChange={e=>changeConditions(e.target.value)}/>
        {reviewed&&currentReview?.issues.filter(v=>v.kind==="condition").map((issue,i)=>
         <small key={i} className="lektrus-chem-condition-feedback">{issue.message}</small>)}
       </label>
