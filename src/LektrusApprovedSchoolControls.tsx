@@ -29,13 +29,13 @@ export default function LektrusApprovedSchoolControls({diagram:d,onChange}:Props
      </select>
     </div>
     <div className="lektrus-school-row-actions">
-     <button type="button" title="Раньше" disabled={i===0} onClick={()=>{
+     <button type="button" title="Раньше" disabled={i===0||d.segments[i-1].role!==segment.role} onClick={()=>{
       const segments=[...d.segments];[segments[i-1],segments[i]]=[segments[i],segments[i-1]];
       onChange({...d,segments})}}>↑</button>
-     <button type="button" title="Позже" disabled={i===d.segments.length-1} onClick={()=>{
+     <button type="button" title="Позже" disabled={i===d.segments.length-1||d.segments[i+1].role!==segment.role} onClick={()=>{
       const segments=[...d.segments];[segments[i+1],segments[i]]=[segments[i],segments[i+1]];
       onChange({...d,segments})}}>↓</button>
-     <button type="button" title="Удалить" disabled={d.segments.length<=1}
+     <button type="button" title="Удалить" disabled={d.segments.length<=1||(segment.role==="root"&&d.segments.filter(m=>m.role==="root").length<=1)}
       onClick={()=>onChange({...d,segments:d.segments.filter(m=>m.id!==segment.id)})}>×</button>
     </div>
    </div>)}
