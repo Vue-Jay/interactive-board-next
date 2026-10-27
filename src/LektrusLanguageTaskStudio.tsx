@@ -1,11 +1,12 @@
 import {useRef,useState,type CSSProperties} from "react";
-import type {SubjectBoardEntry,SubjectTaskActivity,SubjectTaskActivityResponse} from "./boardModel";
+import type {SubjectBoardEntry,SubjectTaskActivity,SubjectTaskActivityResponse,RussianTaskWork} from "./boardModel";
 import type {SubjectTaskTemplate} from "./lektrusSubjectTaskTemplates";
 import {subjectAccentPalette} from "./lektrusSubjectAccent";
 import {activityMatchesTask,freshActivity,interactiveModesForSubject,
  isIntegratedInteractiveTask,preferredActivityMode,LektrusSubjectActivityBuilder,
  LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
 import {isLanguageGapExercise,languageGapText,parseLanguageGapText} from "./lektrusLanguageGapModel";
+import LektrusRussianTaskAnswer from "./LektrusRussianTaskAnswer";
 
 type Props={
  tone:"russian"|"languages";
@@ -20,9 +21,9 @@ const introduction:Record<string,{title:string;hint:string}>={
  "russian:task":{title:"Свободное задание",hint:"Запишите вопрос или инструкцию. Ученик ответит на доске."},
  "russian:orthography":{title:"Орфографический текст",hint:"Выделите буквы или части слов, которые ученик должен восстановить."},
  "russian:punctuation":{title:"Пунктуационное упражнение",hint:"Выделите знаки препинания, которые ученик должен расставить."},
- "russian:morphemes":{title:"Разбор слова по составу",hint:"Укажите слова для морфемного разбора. Ученик запишет приставку, корень, суффикс и окончание."},
+ "russian:morphemes":{title:"Разбор слова по составу",hint:"Укажите слово. Ученик сам разделит его на морфемы и назначит обозначения."},
  "russian:morphology":{title:"Морфологический разбор",hint:"Запишите слово в предложении, которое нужно разобрать по частям речи и признакам."},
- "russian:syntax":{title:"Разбор предложения",hint:"Введите предложение для определения основы, членов предложения и составления схемы."},
+ "russian:syntax":{title:"Разбор предложения",hint:"Введите предложение. Ученик выберет тип линии и отметит члены предложения на словах."},
  "russian:text":{title:"Работа с текстом",hint:"Разместите текст и вопросы к нему. Ученик ответит самостоятельно."},
  "russian:interactive":{title:"Интерактивная практика",hint:"Выберите способ выполнения и создайте упражнение с проверкой ответа."},
  "languages:task":{title:"Свободное задание",hint:"Запишите инструкцию. Ученик напишет ответ."},
@@ -36,9 +37,10 @@ const introduction:Record<string,{title:string;hint:string}>={
 };
 /** The same stored field can have different school meaning in different workflows. */
 const subjectFieldInfo:Record<string,{label:string;hint:string;rows?:number}>={
- "russian:morphemes:material":{label:"Слова для разбора",hint:"Введите слова, каждое можно написать с новой строки",rows:4},
- "russian:morphology:material":{label:"Предложение и слово",hint:"Укажите предложение и слово для морфологического разбора",rows:4},
- "russian:syntax:material":{label:"Предложение для разбора",hint:"Введите предложение для определения грамматической основы и схемы",rows:4},
+ "russian:morphemes:material":{label:"Слово для разбора",hint:"Одно слово, без пробелов"},
+ "russian:morphology:material":{label:"Предложение",hint:"Введите предложение с разбираемым словом",rows:4},
+ "russian:morphology:target":{label:"Разбираемое слово",hint:"Введите одно слово из этого предложения"},
+ "russian:syntax:material":{label:"Предложение для разбора",hint:"Введите предложение для подчёркивания членов",rows:4},
  "russian:text:material":{label:"Исходный текст",hint:"Введите текст для чтения и анализа",rows:6},
  "russian:text:questions":{label:"Вопросы и задания",hint:"Укажите вопросы к тексту и требуемые действия",rows:4},
  "languages:translation:material":{label:"Исходный текст",hint:"Введите текст, который нужно перевести",rows:6},
@@ -56,6 +58,7 @@ const fieldInfo:Record<string,{label:string;hint:string;rows?:number}>={
 };
 export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
  const [previewAnswer,setPreviewAnswer]=useState<SubjectTaskActivityResponse>({});
+ const [previewRussian,setPreviewRussian]=useState<RussianTaskWork>({});
  const [selectionHint,setSelectionHint]=useState("");
  const selectedRef=useRef<HTMLTextAreaElement>(null);
  const note=introduction[tone+":"+template.id]??{title:template.title,hint:template.instruction};
@@ -163,7 +166,9 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
       <div key={field.id} className="lektrus-language-preview-material">
        <small>{subjectFieldInfo[tone+":"+template.id+":"+field.id]?.label??field.label}</small><p>{entry.details?.[field.id]}</p>
       </div>:null))}
-     {activity?<LektrusSubjectActivityRunner activity={activity} response={previewAnswer}
+     {tone==="russian"&&["morphemes","morphology","syntax","text"].includes(template.id)?
+       <LektrusRussianTaskAnswer entry={entry} work={previewRussian} onChange={setPreviewRussian}/>:
+      activity?<LektrusSubjectActivityRunner activity={activity} response={previewAnswer}
        onChange={setPreviewAnswer} compact/>:
       <div className="lektrus-language-preview-answer">
        {isGap?"Добавьте хотя бы один пропуск, чтобы увидеть упражнение":"Место для письменного ответа ученика"}
