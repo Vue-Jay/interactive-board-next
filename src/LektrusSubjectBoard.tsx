@@ -105,11 +105,20 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
          <div className="lektrus-subject-board-field" key={field.id}>
           <span>{field.label}</span><p>{entry.details?.[field.id]}</p>
          </div>)}
-        {Object.entries(entry.details??{}).filter(([key,value])=>value.trim()&&!definition.fields.some(field=>field.id===key))
+        {Object.entries(entry.details??{}).filter(([key,value])=>value.trim()&&!definition.fields.some(field=>field.id===key)&&
+          !(needsAutomaticWorkedSolution(tone,entry.format)&&(key==="given"||key==="find")))
          .map(([key,value])=><div className="lektrus-subject-board-field" key={key}>
            <span>{key==="given"?"Дано":key==="find"?"Найти":key==="material"?"Материал":"Дополнительные данные"}</span>
            <p>{value}</p>
          </div>)}
+        {needsAutomaticWorkedSolution(tone,entry.format)&&
+         (entry.details?.given?.trim()||entry.details?.find?.trim())&&
+         <details className="lektrus-school-solution-old-hints" data-board-interactive="true"
+          onPointerDown={event=>event.stopPropagation()}>
+          <summary>Сведения из старого условия</summary>
+          {entry.details.given?.trim()&&<p>{entry.details.given}</p>}
+          {entry.details.find?.trim()&&<p>{entry.details.find}</p>}
+         </details>}
       </div>}
       {entry.kind==="task"&&activityMatchesTask(tone,entry.format,entry.activity)&&
        <LektrusSubjectActivityRunner activity={entry.activity!} response={entry.activityResponse}
