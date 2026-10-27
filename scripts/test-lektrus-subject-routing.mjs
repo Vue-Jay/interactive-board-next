@@ -11,9 +11,9 @@ const registryEnd=registry.indexOf("export function subjectToolsFor",registrySta
 const entries=registry.slice(registryStart,registryEnd);
 const rx=/\{id:"([a-z0-9-]+)",label:"[^"]+",description:"[^"]+",group:"[^"]+",subjects:\[([^\]]*)\]\}/g;
 const definitions=[...entries.matchAll(rx)].map(([,id,raw])=>({id,subjects:[...raw.matchAll(/"([^"]+)"/g)].map(m=>m[1])}));
-assert.equal(definitions.length,35,"Check every explicitly registered school tool");
+assert.equal(definitions.length,34,"Check all visible school tools; obsolete Russian sentence builder is hidden");
 const humanities={
- "русский язык":["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics","ru-orthography","ru-sentence-builder"],
+ "русский язык":["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics" ,"ru-orthography"],
  "история":["history-timeline","history-family-tree","history-atlas"],
  "обществознание":["civics-structure"],
  "литература":["literature-analysis"],
