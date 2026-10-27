@@ -9,7 +9,7 @@ export const splitRussianSentence=(source:string):string[]=>
 export const separateRussianQuestions=(source:string)=>
  source.split(/\r?\n/).map(v=>v.trim()).filter(Boolean).slice(0,15);
 export const russianWorkSource=(entry:SubjectBoardEntry):string=>
- entry.details?.material?.trim()??"";
+ (entry.format==="text"?entry.details?.questions:entry.details?.material)?.trim()??"";
 
 const grammaticalRoles=Object.entries(grammarRoles) as [WordRole,string][];
 const morphemeRoles=Object.entries(morphemeNames) as [MorphemeRole,string][];
