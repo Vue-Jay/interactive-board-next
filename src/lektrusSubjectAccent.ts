@@ -18,6 +18,11 @@ export const subjectAccentPalette:Record<SubjectTone,{accent:string;soft:string;
  languages:{accent:"#775cb4",soft:"#f0eafb",label:"Иностранный язык"},
  informatics:{accent:"#496b9b",soft:"#e9eff9",label:"Информатика"}
 };
+export function subjectToneForSubject(subject:string):SubjectTone|undefined{
+ const name=subject.trim().toLocaleLowerCase("ru-RU");
+ return (Object.keys(subjectAccentPalette) as SubjectTone[])
+  .find(tone=>subjectAccentPalette[tone].label.toLocaleLowerCase("ru-RU")===name);
+}
 export function subjectToneForItem(item:Item):SubjectTone|undefined{
  if(item.kind!=="graph")return undefined;
  const id=item.graphFigureId??"";
