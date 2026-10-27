@@ -8,7 +8,7 @@ function stripped(path){
  }}).outputText.replace(/^import[^;]*;\s*$/gm,"").replace(/^export /gm,"");
 }
 const templates=new Function(stripped("src/lektrusSubjectTaskTemplates.ts")+
- "\nreturn {subjectTaskTemplates,subjectBoardHasWork,freshTaskDetails};")();
+ "\nreturn {subjectTaskTemplates,subjectBoardHasWork,freshTaskDetails,needsAutomaticWorkedSolution,subjectTaskTypeKnown};")();
 const interactions=new Function(stripped("src/LektrusSubjectActivity.tsx")+
  "\nreturn {preferredActivityMode,freshActivity};")();
 const toneCode=read("src/lektrusSubjectAccent.ts");
@@ -50,6 +50,24 @@ for(const tone of ["biology","geography","history","literature","social","inform
  assert.deepEqual(templates.subjectTaskTemplates[tone].map(x=>x.id),["task"]);
 }
 assert.deepEqual(templates.subjectTaskTemplates.physics.map(x=>x.id),["task","calculation","lab"]);
+assert.deepEqual(templates.subjectTaskTemplates.chemistry.map(x=>x.id),
+ ["task","chain","calculation","experiment"]);
+assert.deepEqual(templates.subjectTaskTemplates.mathematics.map(x=>x.id),
+ ["task","word-problem","equation","geometry","choice","cloze","matching","sequence"]);
+assert.deepEqual(templates.subjectTaskTemplates.languages.map(x=>x.id),
+ ["task","translation","gaps","vocabulary","word-order","grammar","reading","choice"]);
+assert.ok(!templates.subjectTaskTemplates.russian.some(x=>x.id==="cloze"),
+ "Russian orthography already has a specialised gaps constructor");
+assert.ok(!templates.subjectTaskTemplates.chemistry.some(x=>x.id==="balance"||x.id==="equation"),
+ "Chemical equations and coefficients already have a dedicated equation editor");
+for(const [tone,type] of [["mathematics","word-problem"],["physics","calculation"],["chemistry","calculation"]]){
+ assert.equal(templates.needsAutomaticWorkedSolution(tone,type),true);
+ assert.equal(templates.subjectTaskTemplates[tone].find(t=>t.id===type).fields.length,0,
+  "Only pupils should extract given/find information");
+}
+assert.equal(templates.needsAutomaticWorkedSolution("mathematics","choice"),false);
+assert.equal(templates.subjectTaskTypeKnown("mathematics","function"),true,"Keep old homework readable");
+assert.equal(templates.subjectTaskTypeKnown("chemistry","balance"),true,"Keep old chemical tasks readable");
 for(const [tone,format,expected] of [
  ["mathematics","equation",null],["mathematics","word-problem",null],
  ["mathematics","geometry",null],["mathematics","matching","match"],
@@ -77,6 +95,17 @@ assert.match(app,/entryBelongsToSubject\(boardTone\(latest\),current\)/);
 assert.match(app,/subjectBoardEntries:\(item.subjectBoardEntries\?\?\[\]\)\.filter\(subjectBoardEntryFilled\)/);
 assert.match(component,/allEntries\.filter\(entry=>entryBelongsToSubject\(tone,entry\)\)/);
 assert.match(component,/activityMatchesTask\(tone,entry.format,entry.activity\)/);
+const inline=read("src/LektrusSubjectBoardSolution.tsx");
+assert.ok(inline.includes("LektrusSubjectBoardInlineSolution"));
+for(const section of ["Краткая запись","Найти","Решение","Ответ"]){
+ assert.ok(inline.includes(section),"Missing school solution section: "+section);
+}
+assert.ok(inline.includes('onChange={event=>patch("answer",event.target.value)}'));
+assert.ok(component.includes("needsAutomaticWorkedSolution(tone,entry.format)"));
+assert.ok(component.includes("onWorkedSolutionChange(entry.id,solution)"));
+assert.ok(app.includes("patchSubjectBoardEntry(item.id,entryId,{workedSolution:solution})"));
+assert.ok(app.includes('Object.keys(changes).some(key=>!["answer","workedSolution","activityResponse"].includes(key))'),
+ "Students may submit answers, not alter teacher task content");
 const model=read("src/boardModel.ts");
 assert.match(model,/entry.subject===i.graphFigureId.slice\("subject-board-"\.length\)/);
 console.log("Subject ownership: eleven subject partitions, native formats, legacy protection and invalid cross-subject edits OK");
