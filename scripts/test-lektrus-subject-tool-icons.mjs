@@ -32,7 +32,7 @@ const expected=[...new Set([...ids,...scienceIds])];
 const iconDefs=[...icons.matchAll(/^\s+"([a-z0-9-]+)":<>([^\n]+)<\/>[,]?$/gm)]
  .map(([,id,body])=>({id,body}));
 const iconIds=iconDefs.map(x=>x.id);
-assert.equal(ids.length,35,"Registry scanner must cover explicit classroom tools");
+assert.equal(ids.length,34,"Registry scanner covers active classroom tools, excluding retired sentence builder");
 assert.ok(registryBlock.includes('id:"chem-assignments"'),
  "Chemical task authoring must be registered separately from the legacy subject icon atlas");
 assert.ok(!registryBlock.includes('label:palette.label+" · учебная доска"'),
@@ -51,7 +51,7 @@ for(const id of expected){
  assert.ok(icon?.body && /<path\b|<rect\b|<circle\b|<ellipse\b/.test(icon.body),
   "Missing vector artwork for "+id);
 }
-assert.equal(expected.length,42,"Redundant molecules tool must be absent from the active catalogue");
+assert.equal(expected.length,41,"Retired sentence builder and redundant molecules tool stay outside the active catalogue");
 assert.ok(!expected.includes("chem-molecules"),"Molecules and bonds must not be selectable");
 assert.ok(iconIds.includes("geo-climate"),"Prepare the available geographic climate module icon");
 assert.ok(new Set(iconDefs.filter(x=>expected.includes(x.id)).map(x=>x.body)).size===expected.length,
