@@ -32,7 +32,7 @@ const science=read("src/LektrusScienceEditor.tsx");
 const styles=read("src/lektrusChemicalBoardSurface.css");
 const main=read("src/main.tsx");
 const tonesCode=read("src/lektrusSubjectAccent.ts");
-const subjectColors=["chemistry","physics","mathematics","geography","history","biology","russian","languages","informatics"];
+const subjectColors=["chemistry","physics","mathematics","geography","history","biology","russian","literature","social","languages","informatics"];
 for(const subject of subjectColors){
  assert.ok(tonesCode.includes(subject+':{accent:'),"Missing subject palette: "+subject);
  assert.ok(styles.includes('data-subject-tone="'+subject+'"'),"Missing style for "+subject);
@@ -82,4 +82,4 @@ assert.ok(!editor.includes("↻ Другой"),"No visible example switcher");
 assert.ok(styles.includes(".lektrus-chemical-board-paper"));
 assert.ok(styles.includes(".lektrus-chemical-board-placeholder"));
 assert.ok(main.includes('import "./lektrusChemicalBoardSurface.css";'));
-console.log("Chemical board: drag and 8-handle resize during edit, nine subject accents, no white frame, full editor, exact preview and cancel cleanup: OK");
+console.log("Chemical board: drag and 8-handle resize during edit, eleven subject accents, no white frame, full editor, exact preview and cancel cleanup: OK");
