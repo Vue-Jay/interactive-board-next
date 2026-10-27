@@ -100,7 +100,7 @@ assert.equal(board.subjectBoardLocked({subjectBoardEntries:[filled]}),true,
 const app=read("src/App.tsx"),component=read("src/LektrusSubjectBoard.tsx");
 assert.match(app,/if\(mode==="equation"&&tone!=="chemistry"\)/);
 assert.match(app,/changes\.subject!==tone/);
-assert.match(app,/!subjectTaskTemplates\[tone\]\.some\(type=>type.id===changes.format\)/);
+assert.match(app,/!subjectTaskTypeAllowed\(tone,changes.format\)/);
 assert.match(app,/entryBelongsToSubject\(boardTone\(latest\),current\)/);
 assert.match(app,/subjectBoardEntries:\(item.subjectBoardEntries\?\?\[\]\)\.filter\(subjectBoardEntryFilled\)/);
 assert.match(component,/allEntries\.filter\(entry=>entryBelongsToSubject\(tone,entry\)\)/);
