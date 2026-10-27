@@ -508,3 +508,80 @@
  .lektrus-language-author{padding:12px}
  .lektrus-language-preview-content{padding:12px}
 }
+
+
+/* The same school marking vocabulary is used by the existing Russian tools
+   and by responses written directly on the worksheet. */
+.lektrus-rus-task-work{display:grid;gap:13px;min-width:0;padding:14px 15px;
+ border:1px solid color-mix(in srgb,var(--subject-board-accent) 25%,#e5ecee);
+ border-radius:10px;background:#ffffffea;color:#344b55;font:500 12px/1.5 system-ui,sans-serif}
+.lektrus-rus-work-top{display:grid;gap:4px}
+.lektrus-rus-work-top strong{color:var(--subject-board-accent);font-size:13px}
+.lektrus-rus-work-top small,.lektrus-rus-legend{font-size:10px;line-height:1.55;color:#81929b}
+.lektrus-rus-answer-help{padding:10px;border:1px dashed #dce7e9;border-radius:8px;
+ font:500 11px/1.5 system-ui,sans-serif;color:#7a8e99}
+.lektrus-rus-word-divider{display:flex;align-items:center;flex-wrap:wrap;min-height:54px;gap:0;
+ border:1px solid #e2eaed;border-radius:9px;background:#fbfdfd;padding:5px 11px}
+.lektrus-rus-letter{display:inline-flex;align-items:center;gap:0;font:650 24px/1.5 Georgia,serif;color:#35515e}
+.lektrus-rus-letter button{border:0;padding:0;margin:0;width:14px;height:37px;
+ background:transparent;color:#d1dce1;cursor:pointer;font:500 27px/1 system-ui,sans-serif}
+.lektrus-rus-letter button.is-cut{color:var(--subject-board-accent);font-weight:800}
+.lektrus-rus-letter button:hover:not(:disabled){color:var(--subject-board-accent)}
+.lektrus-rus-morpheme-sections{display:flex;flex-wrap:wrap;gap:8px;align-items:start}
+.lektrus-rus-morpheme-section{flex:0 1 auto;min-width:86px;display:grid;justify-items:center;gap:12px;
+ padding:14px 10px 9px;border:1px solid #e2eaed;background:#fff;border-radius:8px}
+.lektrus-rus-morpheme-graphic{position:relative;min-height:32px;font:700 22px/1.4 Georgia,serif;color:#304e5c;white-space:pre}
+.lektrus-rus-morpheme-section select{width:100%;max-width:168px;min-height:29px;background:#fcfdfd;
+ border:1px solid #d9e3e6;border-radius:6px;padding:5px 6px;font:600 10px system-ui,sans-serif;color:#435a66}
+.lektrus-rus-mark-root .lektrus-rus-morpheme-graphic:before{content:"";position:absolute;bottom:100%;
+ left:0;right:0;height:13px;border:2px solid var(--subject-board-accent);border-bottom:0;border-radius:60% 60% 0 0}
+.lektrus-rus-mark-prefix .lektrus-rus-morpheme-graphic:before{content:"";position:absolute;bottom:100%;
+ left:0;right:0;height:10px;border-top:2px solid var(--subject-board-accent);border-left:2px solid var(--subject-board-accent)}
+.lektrus-rus-mark-suffix .lektrus-rus-morpheme-graphic:before{content:"";position:absolute;bottom:100%;height:12px;
+ left:0;right:0;border-left:2px solid var(--subject-board-accent);border-top:2px solid var(--subject-board-accent);
+ transform:skewY(-22deg)}
+.lektrus-rus-mark-ending .lektrus-rus-morpheme-graphic{outline:2px solid var(--subject-board-accent);outline-offset:2px}
+.lektrus-rus-mark-postfix .lektrus-rus-morpheme-graphic{border-bottom:2px solid var(--subject-board-accent)}
+.lektrus-rus-zero-ending{display:flex;align-items:center;gap:7px;font:600 11px system-ui,sans-serif;color:#596f79}
+.lektrus-rus-zero-ending input{accent-color:var(--subject-board-accent)}
+.lektrus-rus-roles{display:flex;gap:6px;flex-wrap:wrap}
+.lektrus-rus-roles button{display:grid;gap:5px;justify-items:center;border:1px solid #dae5e9;border-radius:8px;
+ min-width:80px;padding:7px 9px;background:#fff;color:#576f7b;cursor:pointer}
+.lektrus-rus-roles button.selected{border-color:var(--subject-board-accent);
+ background:var(--subject-board-soft);color:var(--subject-board-accent)}
+.lektrus-rus-roles button small{font-size:10px;font-weight:600}
+.lektrus-rus-grammar-mark{display:inline-block;font:750 12px/1.5 Georgia,serif;padding:0 5px 3px}
+.lektrus-rus-sentence-tokens{display:flex;align-items:end;flex-wrap:wrap;gap:4px 6px;border-radius:9px;
+ padding:14px;background:#fbfdff;border:1px solid #e5eaee}
+.lektrus-rus-token{position:relative;border:0;background:transparent;padding:4px 2px 8px;
+ color:#314d59;font:700 19px/1.4 Georgia,serif;cursor:pointer}
+.lektrus-rus-token:disabled{cursor:default}
+.lektrus-rus-punctuation{font:700 19px/1.4 Georgia,serif;padding-bottom:7px}
+.lektrus-rus-token.mark-subject,.lektrus-rus-grammar-mark.mark-subject{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
+.lektrus-rus-token.mark-predicate,.lektrus-rus-grammar-mark.mark-predicate{
+ text-decoration-line:underline;text-decoration-style:double;text-decoration-thickness:2px;text-underline-offset:6px}
+.lektrus-rus-token.mark-attribute,.lektrus-rus-grammar-mark.mark-attribute{
+ text-decoration-line:underline;text-decoration-style:wavy;text-decoration-thickness:1.5px;text-underline-offset:7px}
+.lektrus-rus-token.mark-object,.lektrus-rus-grammar-mark.mark-object{
+ text-decoration-line:underline;text-decoration-style:dashed;text-decoration-thickness:1.5px;text-underline-offset:6px}
+.lektrus-rus-token.mark-adverbial,.lektrus-rus-grammar-mark.mark-adverbial{
+ text-decoration-line:underline;text-decoration-style:dotted;text-decoration-thickness:2px;text-underline-offset:6px}
+.lektrus-rus-analysis-target{margin:0;padding:9px 11px;background:var(--subject-board-soft);
+ border-radius:7px;font:600 12px/1.4 system-ui,sans-serif;color:var(--subject-board-accent)}
+.lektrus-rus-analysis-fields{display:grid;gap:10px}
+.lektrus-rus-work-field,.lektrus-rus-reading-question{display:grid;gap:6px;min-width:0;
+ font:700 12px/1.4 system-ui,sans-serif;color:var(--subject-board-accent)}
+.lektrus-rus-work-field textarea,.lektrus-rus-reading-question textarea,
+.lektrus-rus-work-field select{box-sizing:border-box;width:100%;min-width:0;border:1px solid #dce5e9;border-radius:7px;
+ padding:9px 10px;color:#38505b;background:#fff;font:500 12px/1.5 system-ui,sans-serif;resize:vertical}
+.lektrus-rus-work-field p,.lektrus-rus-reading-question p{white-space:pre-wrap;overflow-wrap:anywhere;
+ margin:0;font:500 12px/1.5 system-ui,sans-serif;color:#536e79}
+.lektrus-rus-reading-question{padding:10px 11px;border:1px solid #e5edef;border-radius:8px;background:#fff}
+.lektrus-rus-reading-question strong{color:#354f5b}
+@media(max-width:560px){
+ .lektrus-rus-task-work{padding:10px}
+ .lektrus-rus-roles button{min-width:63px;padding:7px 5px}
+ .lektrus-rus-roles button small{font-size:9px}
+ .lektrus-rus-token{font-size:17px}
+ .lektrus-rus-letter{font-size:21px}
+}
