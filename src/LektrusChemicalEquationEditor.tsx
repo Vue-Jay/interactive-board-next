@@ -234,7 +234,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
       <div>{[
        {value:"↑",label:"↑ газ",title:"Выделение газа"},
        {value:"↓",label:"↓ осадок",title:"Выпадение осадка"},
-       {value:"⇌",label:"⇌",title:"Обратимая реакция"},
+       {value:"e⁻",label:"e⁻",title:"Электрон"},
        {value:"₂",label:"₂",title:"Индекс 2"},
        {value:"₃",label:"₃",title:"Индекс 3"},
        {value:"₄",label:"₄",title:"Индекс 4"},
@@ -251,7 +251,11 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
        {products.map((formula,i)=><option key={i} value={formula}>{formula}</option>)}
       </select>
       <button type="button" onClick={appendStep}>Следующее превращение</button>
-      {products.includes("H2CO3")&&<small>H₂CO₃ можно разложить на H₂O и CO₂↑ следующим этапом.</small>}
+      {products.includes("H2CO3")&&<button type="button" className="lektrus-chem-carbonic-step"
+       onClick={()=>{
+        setSteps([...steps,{expression:"H2CO3 → H2O + CO2↑",conditions:""}],steps.length);
+        setNextSubstance("");
+       }}>Распад H₂CO₃</button>}
      </div>}
      <section className="lektrus-chem-condition-panel" aria-label="Условия реакции над стрелкой">
       <div className="lektrus-chem-condition-heading">
