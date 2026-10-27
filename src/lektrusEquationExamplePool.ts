@@ -4,6 +4,7 @@
  */
 import {reviewedReactionCases,type ReactionEnvironment} from "./lektrusReactionDatabase";
 import {expandedEquationCases} from "./lektrusEquationExtendedCases";
+import {additionalEquationCases} from "./lektrusEquationAdditionalCases";
 import {parseEquationDraft} from "./lektrusChemicalEquationModel";
 export type EquationFamily="inorganic"|"organic";
 export type ReviewedExample={
@@ -60,10 +61,16 @@ const inorganicExtras:ReviewedExample[]=[
   family:"inorganic",category:"Обмен",note:"Учебная промежуточная запись, далее нужен этап разложения"}
 ];
 // Combine separately reviewed examples with bounded reaction-family expansions.
-export const equationExamplePool:readonly ReviewedExample[]=[...inorganic,...inorganicExtras,...organic,...expandedEquationCases];
+export const equationExamplePool:readonly ReviewedExample[]=[
+ ...inorganic,...inorganicExtras,...organic,...expandedEquationCases,...additionalEquationCases
+];
+// Background hints favour approachable classroom examples. The full database is
+// available to the teacher's on-demand checker without turning hints into a catalogue.
+const placeholderExamples:readonly ReviewedExample[]=[...inorganic,...inorganicExtras,...organic];
+
 export const equationExamplesByDomain=(domain:EquationFamily):ReviewedExample[]=>equationExamplePool.filter(v=>v.family===domain);
 export function selectRandomEquationExample(domain:EquationFamily,excludedId?:string,random=Math.random):ReviewedExample{
- const candidates=equationExamplesByDomain(domain);
+ const candidates=placeholderExamples.filter(v=>v.family===domain);
  const choice=excludedId&&candidates.length>1?candidates.filter(v=>v.id!==excludedId):candidates;
  return choice[Math.min(choice.length-1,Math.floor(Math.max(0,Math.min(0.999999,random()))*choice.length))];
 }
