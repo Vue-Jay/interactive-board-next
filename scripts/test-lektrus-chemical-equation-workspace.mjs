@@ -5,8 +5,8 @@ import ts from "typescript";
 const read=(path)=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 const modelSource=read("src/lektrusChemicalEquationModel.ts");
 const js=ts.transpileModule(modelSource,{compilerOptions:{
- target:ts.ScriptTarget.ES2023,module:ts.ModuleKind.None
-}}).outputText.replace(/\bexport\s+(?=(?:const|function)\b)/g,"");
+ target:ts.ScriptTarget.ES2023,module:ts.ModuleKind.ESNext
+}}).outputText.replace(/^export /gm,"");
 const {parseEquationDraft,writeEquationDraft,splitEquationSide,readSpecies,countFormulaAtoms,
  inspectEquationBalance}=new Function(js+"\nreturn {parseEquationDraft,writeEquationDraft,splitEquationSide,readSpecies,countFormulaAtoms,inspectEquationBalance};")();
 
