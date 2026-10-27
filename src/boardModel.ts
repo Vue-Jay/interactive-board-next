@@ -417,7 +417,7 @@ export type SubjectTaskActivityResponse={
 export type RussianTaskWork={
  source?:string;
  cuts?:number[];
- morphemeRoles?:("prefix"|"root"|"suffix"|"ending"|"postfix")[];
+ morphemeRoles?:("unset"|"prefix"|"root"|"suffix"|"ending"|"postfix")[];
  zeroEnding?:boolean;
  syntaxRoles?:("subject"|"predicate"|"attribute"|"object"|"adverbial"|"none")[];
  partOfSpeech?:string;
@@ -806,7 +806,7 @@ export function parseDocument(raw: string): DocumentData {
           !w.cuts.every((n:number)=>Number.isInteger(n)&&n>0&&n<65)||
           new Set(w.cuts).size!==w.cuts.length))return true;
         if(w.morphemeRoles!=null&&(!Array.isArray(w.morphemeRoles)||w.morphemeRoles.length>48||
-          !w.morphemeRoles.every((v:string)=>["prefix","root","suffix","ending","postfix"].includes(v))))return true;
+          !w.morphemeRoles.every((v:string)=>["unset","prefix","root","suffix","ending","postfix"].includes(v))))return true;
         if(w.syntaxRoles!=null&&(!Array.isArray(w.syntaxRoles)||w.syntaxRoles.length>100||
           !w.syntaxRoles.every((v:string)=>["subject","predicate","attribute","object","adverbial","none"].includes(v))))return true;
         if(w.textAnswers!=null&&(!Array.isArray(w.textAnswers)||w.textAnswers.length>15||
