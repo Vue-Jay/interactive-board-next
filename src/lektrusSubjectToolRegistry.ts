@@ -1,4 +1,5 @@
 import type {Item} from "./boardModel";
+import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
 import {normalizeLektrusSubject} from "./lektrusSchoolSubjects";
 import {makeSchoolDiagram,type SchoolDiagramId} from "./lektrusSchoolDiagramModel";
 import {makeMathPresetItem} from "./lektrusMathPresets";
@@ -6,11 +7,18 @@ import {makeSciencePresetItem} from "./lektrusSciencePresets";
 import {emptyMechanics} from "./lektrusMechanicsModel";
 import {scienceDefaultPreset,scienceToolGroups,type ScienceToolId} from "./lektrusScienceCatalog";
 
-export type SubjectToolId="math-coordinate"|"math-fractions"|"math-formula"|"math-geometry"|"chem-periodic-table"|ScienceToolId|SchoolDiagramId;
+export type SubjectToolId=`subject-board-${SubjectTone}`|"chem-assignments"|"math-coordinate"|"math-fractions"|"math-formula"|"math-geometry"|"chem-periodic-table"|ScienceToolId|SchoolDiagramId;
 export type SubjectToolDefinition={id:SubjectToolId;label:string;description:string;subjects:string[];group:string};
 
 /** A tool is a distinct editing workflow; its examples are selected INSIDE the editor. */
 export const subjectToolRegistry:SubjectToolDefinition[]=[
+  ...Object.entries(subjectAccentPalette).map(([tone,palette])=>({
+   id:("subject-board-"+tone) as SubjectToolId,label:palette.label+" · учебная доска",
+   description:"Единый лист для заданий и решений нескольких предметных инструментов",
+   group:"Учебная доска",subjects:[palette.label.toLocaleLowerCase("ru-RU")]
+  })),
+  {id:"chem-assignments",label:"Создание заданий",description:"Уравнения, цепочки превращений, вопросы и решения на химической доске",
+   group:"Химия · учебная доска",subjects:["химия"]},
   {id:"math-formula",label:"Математическая формула",description:"Степени, корни и математические символы",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-geometry",label:"Построение фигур",description:"Плоские и объёмные фигуры, стороны и углы",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-coordinate",label:"Координатная плоскость",description:"Функции, точки, числовая прямая и графики",group:"Математические инструменты",subjects:["математика"]},
@@ -56,6 +64,13 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
+  if(id.startsWith("subject-board-")){
+   const tone=id.slice("subject-board-".length) as SubjectTone;
+   return {id:createId(),kind:"graph",text:subjectAccentPalette[tone].label+" · учебная доска",
+    x:x-410,y:y-235,width:820,height:470,graphFigureId:id,
+    graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,graphSnap:false,
+    graphPoints:[],graphSegments:[],subjectBoardEntries:[]};
+  }
   if(id==="info-programming"||id==="info-circuit"||id==="bio-dna"||id==="bio-taxonomy"||id==="bio-division"||id==="info-encoding"||id==="bio-genetics"||id==="info-logic"||id==="maps-atlas"||id==="history-atlas"||id==="contour-atlas"||id==="geo-matching"||id==="geo-question-cards"||id==="bio-cell"||id==="bio-food-chain"||id==="history-timeline"||
      id==="ru-syntax"||id==="info-flowchart"||id==="info-place-value"||
      id==="bio-organ-systems"||
