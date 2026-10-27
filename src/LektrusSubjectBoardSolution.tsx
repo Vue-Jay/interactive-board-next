@@ -1,5 +1,5 @@
 import {createPortal} from "react-dom";
-import type {CSSProperties} from "react";
+import {useLayoutEffect,useRef,type CSSProperties} from "react";
 import type {SubjectBoardWorkedSolution} from "./boardModel";
 import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
 
@@ -24,8 +24,26 @@ export function LektrusSubjectBoardSolutionView({tone,value,legacyAnswer}:Props)
   {!!value?.answer&&<div className="lektrus-school-solution-final"><b>Ответ:</b> {value.answer}</div>}
  </section>;
 }
-/** An automatically visible, directly editable school notebook answer.
- * Teacher sets the problem; learners independently extract known and unknown values. */
+/** Controlled growing handwriting-style line editor, measured at intrinsic height. */
+function SchoolWritingArea({value,onChange,placeholder,label,limit=2000,rows=2}:{
+ value:string;onChange?:(next:string)=>void;placeholder:string;label:string;limit?:number;rows?:number;
+}){
+ const ref=useRef<HTMLTextAreaElement>(null);
+ useLayoutEffect(()=>{
+   const el=ref.current;
+   if(!el)return;
+   el.style.height="auto";
+   el.style.height=Math.max(el.scrollHeight,rows*24)+"px";
+ },[value,rows]);
+ return onChange?<textarea ref={ref} rows={rows} aria-label={label} maxLength={limit}
+   value={value} placeholder={placeholder} data-board-interactive="true"
+   onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
+   onDoubleClick={e=>e.stopPropagation()} onChange={e=>onChange(e.target.value)}/>:
+   <p className="lektrus-school-written-text">{value||" "}</p>;
+}
+
+/** School layout: Дано | Решение, then Найти | Ответ, following the notebook sketch.
+ * The subject's question belongs to the teacher; all four fields belong to pupils. */
 export function LektrusSubjectBoardInlineSolution({tone,value,onChange}:{
  tone:SubjectTone;
  value?:SubjectBoardWorkedSolution;
@@ -33,47 +51,39 @@ export function LektrusSubjectBoardInlineSolution({tone,value,onChange}:{
 }){
  const current=value??emptyWorkedSolution();
  const patch=(field:keyof SubjectBoardWorkedSolution,next:string)=>{
-  if(!onChange)return;
-  onChange({...current,[field]:next});
+  if(onChange)onChange({...current,[field]:next});
  };
- const datumLabel=tone==="mathematics"?"Краткая запись":"Дано";
- const fields=[
-  {id:"given" as const,label:datumLabel,hint:"Запишите известные величины и данные условия"},
-  {id:"find" as const,label:"Найти",hint:"Запишите, что нужно определить"},
-  ...(tone==="physics"?[{id:"si" as const,label:"СИ",hint:"Переведите величины в единицы СИ"}]:[])
- ];
- return <section className="lektrus-school-solution lektrus-school-solution-inline" aria-label="Решение задачи по школьному образцу">
-  <div className="lektrus-school-solution-heading">Решение задачи <small>Заполняет ученик</small></div>
-  <div className="lektrus-school-solution-data">
-   {fields.map(field=><label className="lektrus-school-solution-inline-field" key={field.id}>
-    <b>{field.label}</b>
-    {onChange?<textarea rows={2} maxLength={2000} value={current[field.id]} placeholder={field.hint}
-      aria-label={field.label} data-board-interactive="true"
-      onPointerDown={event=>event.stopPropagation()}
-      onClick={event=>event.stopPropagation()}
-      onChange={event=>patch(field.id,event.target.value)}/>:
-      <p>{current[field.id]||"________________"}</p>}
-   </label>)}
-  </div>
-  <label className="lektrus-school-solution-inline-field lektrus-school-solution-work-editor">
-   <b>Решение</b>
-   {onChange?<textarea rows={4} maxLength={5000} value={current.work}
-    placeholder="Последовательно запишите действия, формулы и вычисления"
-    aria-label="Решение" data-board-interactive="true"
-    onPointerDown={event=>event.stopPropagation()}
-    onClick={event=>event.stopPropagation()}
-    onChange={event=>patch("work",event.target.value)}/>:
-    <p className="lektrus-school-solution-work">{current.work||"Место для хода решения"}</p>}
-  </label>
-  <label className="lektrus-school-solution-inline-field lektrus-school-solution-inline-answer">
-   <b>Ответ:</b>
-   {onChange?<input value={current.answer} maxLength={2000} aria-label="Ответ"
-    placeholder="Итоговый ответ с единицами измерения" data-board-interactive="true"
-    onPointerDown={event=>event.stopPropagation()}
-    onClick={event=>event.stopPropagation()}
-    onChange={event=>patch("answer",event.target.value)}/>:
-    <p>{current.answer||"________________"}</p>}
-  </label>
+ return <section className="lektrus-school-notebook" aria-label="Школьное оформление решения задачи">
+   <div className="lektrus-school-notebook-left">
+     <label className="lektrus-school-notebook-part lektrus-school-notebook-given">
+       <strong>Дано:</strong>
+       <SchoolWritingArea label="Дано" value={current.given} rows={4}
+        placeholder="Выпишите известные данные" onChange={onChange?text=>patch("given",text):undefined}/>
+     </label>
+     <label className="lektrus-school-notebook-part lektrus-school-notebook-find">
+       <strong>Найти:</strong>
+       <SchoolWritingArea label="Найти" value={current.find}
+        placeholder="Укажите искомое" onChange={onChange?text=>patch("find",text):undefined}/>
+       {tone==="physics"&&<div className="lektrus-school-notebook-si">
+        <strong>СИ:</strong>
+        <SchoolWritingArea label="СИ" value={current.si}
+         placeholder="Переведите единицы в СИ" onChange={onChange?text=>patch("si",text):undefined}/>
+       </div>}
+     </label>
+   </div>
+   <div className="lektrus-school-notebook-right">
+     <label className="lektrus-school-notebook-part lektrus-school-notebook-working">
+       <strong>Решение:</strong>
+       <SchoolWritingArea label="Решение" value={current.work} rows={6} limit={5000}
+        placeholder="Запишите действия, формулы и вычисления"
+        onChange={onChange?text=>patch("work",text):undefined}/>
+     </label>
+     <label className="lektrus-school-notebook-part lektrus-school-notebook-result">
+       <strong>Ответ:</strong>
+       <SchoolWritingArea label="Ответ" value={current.answer}
+        placeholder="Запишите ответ" onChange={onChange?text=>patch("answer",text):undefined}/>
+     </label>
+   </div>
  </section>;
 }
 type EditorProps={
