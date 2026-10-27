@@ -69,8 +69,8 @@ for(const text of ["lektrus-chem-equation-side","lektrus-chem-equation-symbols",
 assert.ok(!ui.includes('role="tablist"'),"Single-screen editor must have no mode tabs");
 assert.ok(!ui.includes("lektrus-chem-source"),"No second input mode");
 assert.match(ui,/<textarea[^>]+/,"Dedicated equation input fields");
-assert.match(ui,/\?"Реагенты"/);
-assert.match(ui,/\?"Продукты"/);
+assert.ok(ui.includes('"Реагенты"'));
+assert.ok(ui.includes('"Продукты"'));
 assert.ok(!ui.includes("LektrusChemistryGuidedBuilder"),"Do not show catalog or guided reaction builder");
 assert.ok(!ui.includes("getReactionGuidance"),"Do not couple freeform editor to reaction database");
 assert.ok(!main.includes("lektrusChemistryGuidedBuilder.css"),"Remove obsolete reference UI styles");
