@@ -121,6 +121,8 @@
 .workspace .board .board-object[data-subject-tone="geography"]{--lektrus-subject:#288998;--lektrus-subject-soft:#e4f4f5}
 .workspace .board .board-object[data-subject-tone="history"]{--lektrus-subject:#a16f38;--lektrus-subject-soft:#f9f0df}
 .workspace .board .board-object[data-subject-tone="russian"]{--lektrus-subject:#a34d6c;--lektrus-subject-soft:#f9e9ef}
+.workspace .board .board-object[data-subject-tone="literature"]{--lektrus-subject:#aa6177;--lektrus-subject-soft:#faebef}
+.workspace .board .board-object[data-subject-tone="social"]{--lektrus-subject:#83714f;--lektrus-subject-soft:#f5f0e2}
 .workspace .board .board-object[data-subject-tone="languages"]{--lektrus-subject:#775cb4;--lektrus-subject-soft:#f0eafb}
 .workspace .board .board-object[data-subject-tone="informatics"]{--lektrus-subject:#496b9b;--lektrus-subject-soft:#e9eff9}
 .workspace .board .board-object.object-graph[data-subject-tone]:not([data-subject-tone="chemistry"]){
