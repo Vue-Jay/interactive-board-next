@@ -61,7 +61,7 @@ const main=read("src/main.tsx");
 const science=read("src/LektrusScienceEditor.tsx");
 const syntax=ts.createSourceFile("editor.tsx",ui,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(syntax.parseDiagnostics.length,0,"No TSX syntax regressions");
-for(const text of ["lektrus-chem-species-card","lektrus-chem-add-species","autoBalance",
+for(const text of ["lektrus-chem-species-card","lektrus-chem-add-species","applyBalance",
  "lektrus-chem-equation-condition-field","lektrus-chem-equation-preview","lektrus-chem-palettes",
  'role="tablist"',"onKeyDown","onCancel","⇌"])
  assert.ok(ui.includes(text),"Editor feature missing: "+text);
