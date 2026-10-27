@@ -19,7 +19,7 @@ export const hasWorkedSolution=(value?:SubjectBoardWorkedSolution)=>Boolean(valu
  (givenWithLegacyUnits(value).trim()||value.find.trim()||value.work.trim()||value.answer.trim()));
 
 type Props={tone:SubjectTone;value:SubjectBoardWorkedSolution|undefined;legacyAnswer?:string};
-export function LektrusSubjectBoardSolutionView({tone,value,legacyAnswer}:Props){
+export function LektrusSubjectBoardSolutionView({value,legacyAnswer}:Props){
  const hasContent=hasWorkedSolution(value)||Boolean(legacyAnswer?.trim());
  if(!hasContent)return null;
  return <section className="lektrus-school-solution" aria-label="Оформленное решение задачи">
@@ -52,7 +52,7 @@ function SchoolWritingArea({value,onChange,placeholder,label,limit=2000,rows=2}:
 
 /** School layout: Дано | Решение, then Найти | Ответ, following the notebook sketch.
  * The subject's question belongs to the teacher; all four fields belong to pupils. */
-export function LektrusSubjectBoardInlineSolution({tone,value,onChange}:{
+export function LektrusSubjectBoardInlineSolution({value,onChange}:{
  tone:SubjectTone;
  value?:SubjectBoardWorkedSolution;
  onChange?:(value:SubjectBoardWorkedSolution)=>void;
