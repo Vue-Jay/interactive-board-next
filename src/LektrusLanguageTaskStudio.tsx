@@ -147,11 +147,16 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
        {field.multiline||content?.rows?<textarea rows={content?.rows??4} maxLength={1800}
         value={entry.details?.[field.id]??""} placeholder={content?.hint??field.placeholder}
         onChange={e=>changeMaterial(field.id,e.target.value)}/>:
-        <input maxLength={1800} value={entry.details?.[field.id]??""}
+        <input maxLength={tone==="russian"&&template.id==="morphemes"&&field.id==="material"?64:1800} value={entry.details?.[field.id]??""}
          placeholder={content?.hint??field.placeholder}
          onChange={e=>changeMaterial(field.id,e.target.value)}/>}
       </label>;
      })}
+     {tone==="russian"&&template.id==="morphemes"&&/\\s/.test(entry.details?.material?.trim()??"")&&
+      <p className="lektrus-language-studio-warning">Для разбора по составу укажите одно слово без пробелов.</p>}
+     {tone==="russian"&&template.id==="text"&&
+      (entry.details?.questions?.split(/\\r?\\n/).filter(line=>line.trim()).length??0)>15&&
+      <p className="lektrus-language-studio-warning">В одном задании можно задать не больше 15 вопросов.</p>}
     </div>}
    </div>
    <aside className="lektrus-language-preview" aria-label="Предпросмотр задания для ученика">
