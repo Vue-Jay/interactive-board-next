@@ -3,7 +3,8 @@ import type {CSSProperties} from "react";
 import type {Item,SubjectBoardEntry} from "./boardModel";
 import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
-import {taskTemplateFor,subjectTaskTemplates,freshTaskDetails,subjectBoardHasWork} from "./lektrusSubjectTaskTemplates";
+import {taskTemplateFor,subjectTaskTemplates,freshTaskDetails,subjectBoardHasWork,isSchoolSolutionSubject} from "./lektrusSubjectTaskTemplates";
+import {LektrusSubjectBoardSolutionView,hasWorkedSolution} from "./LektrusSubjectBoardSolution";
 
 export const subjectBoardId=(tone:SubjectTone)=>"subject-board-"+tone;
 export const isSubjectBoard=(item:Item)=>item.kind==="graph"&&!!item.graphFigureId?.startsWith("subject-board-");
@@ -26,8 +27,10 @@ type BoardProps={
  onAction?:(mode:"equation"|"task",entryId?:string)=>void;
  onAnswerChange?:(entryId:string,answer:string)=>void;
  onReveal?:(entryId:string)=>void;
+ onMove?:(entryId:string,direction:-1|1)=>void;
+ onEditSolution?:(entryId:string)=>void;
 };
-export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal}:BoardProps){
+export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution}:BoardProps){
  const tone=boardTone(item),palette=subjectAccentPalette[tone];
  const entries=item.subjectBoardEntries??[];
  const chemistry=tone==="chemistry";
@@ -58,6 +61,12 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal}:
       <div className="lektrus-subject-board-entry-head">
        <span className="lektrus-subject-board-index">{String(index+1).padStart(2,"0")}</span>
        <strong>{entry.title.trim()||(entry.kind==="equation"?"Уравнения и превращения":definition.title)}</strong>
+       {onMove&&entries.length>1&&<span className="lektrus-subject-board-reorder" role="group" aria-label="Порядок заданий">
+        <button type="button" disabled={index===0} aria-label="Поднять задание выше" title="Переместить вверх" data-board-interactive="true"
+         onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onMove(entry.id,-1);}}>↑</button>
+        <button type="button" disabled={index===entries.length-1} aria-label="Опустить задание ниже" title="Переместить вниз" data-board-interactive="true"
+         onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onMove(entry.id,1);}}>↓</button>
+       </span>}
        {onAction&&<button type="button" data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
         onClick={e=>{e.stopPropagation();onAction(entry.kind,entry.id);}} title="Изменить задание">Изменить</button>}
       </div>
@@ -75,14 +84,22 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal}:
           <span>{field.label}</span><p>{entry.details?.[field.id]}</p>
          </div>)}
       </div>}
-      <div className="lektrus-subject-board-answer">
-       <label htmlFor={"board-answer-"+entry.id}>{entry.kind==="task"?(definition.answerLabel??"Решение"):"Уравняйте / решите"}</label>
+      {isSchoolSolutionSubject(tone)?<div className="lektrus-subject-board-solution-area">
+        <LektrusSubjectBoardSolutionView tone={tone} value={entry.workedSolution} legacyAnswer={entry.answer}/>
+        {onEditSolution&&<button type="button" className="lektrus-subject-board-add-solution"
+         data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
+         onClick={e=>{e.stopPropagation();onEditSolution(entry.id)}}>
+         {hasWorkedSolution(entry.workedSolution)||entry.answer.trim()?"Изменить решение":"+ Добавить решение"}</button>}
+        {!onEditSolution&&!hasWorkedSolution(entry.workedSolution)&&!entry.answer.trim()&&
+         <span className="lektrus-subject-board-solution-hint">Решение пока не добавлено</span>}
+      </div>:<div className="lektrus-subject-board-answer">
+       <label htmlFor={"board-answer-"+entry.id}>{definition.answerLabel??"Ответ ученика"}</label>
        {onAnswerChange?<textarea id={"board-answer-"+entry.id} rows={2} value={entry.answer} maxLength={2000}
-        placeholder="Запишите решение или ответ…" data-board-interactive="true"
+        placeholder="Введите свой ответ" data-board-interactive="true"
         onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()}
         onChange={e=>onAnswerChange(entry.id,e.target.value)}/>:
-        <div className="lektrus-subject-board-answer-text">{entry.answer||"Место для решения"}</div>}
-      </div>
+        <div className="lektrus-subject-board-answer-text">{entry.answer||"Место для ответа"}</div>}
+      </div>}
       {entry.solution.trim()&&<>
        {entry.revealed?<div className="lektrus-subject-board-solution"><b>Образец ответа</b><span>{entry.solution}</span></div>:
         <div className="lektrus-subject-board-solution-hidden">Ответ преподавателя скрыт</div>}
@@ -114,34 +131,33 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
    <header><div><strong>Создание задания</strong><small>{palette.label} · {current.title}</small></div>
     <button type="button" aria-label="Закрыть" onClick={onClose}>×</button></header>
    <div className="lektrus-subject-task-body">
-    <div className="lektrus-subject-task-type">
-     <strong>Вид задания</strong>
-     <div className="lektrus-subject-task-types" role="group" aria-label="Тип задания">
-      {options.map(template=><button type="button" key={template.id}
-       className={current.id===template.id?"selected":""} aria-pressed={current.id===template.id}
-       onClick={()=>patch({format:template.id,details:freshTaskDetails(tone,template.id)})}>
-       {template.title}</button>)}
-     </div>
-     <small>{current.instruction}</small>
-    </div>
-    <label>Название<input value={entry.title} maxLength={120} placeholder={current.title}
-       onChange={e=>patch({title:e.target.value})}/></label>
-    <label>{current.promptLabel}<textarea rows={3} maxLength={2500} value={entry.prompt}
-       placeholder={current.promptPlaceholder}
-       onChange={e=>patch({prompt:e.target.value})}/></label>
-    <div className="lektrus-subject-task-fields">
+    {options.length>1&&<label className="lektrus-subject-task-kind">Тип задания
+     <select value={options.some(opt=>opt.id===entry.format)?entry.format:"task"}
+      onChange={e=>patch({format:e.target.value,details:{...freshTaskDetails(tone,e.target.value),...entry.details}})}>
+      {options.map(template=><option value={template.id} key={template.id}>{template.title}</option>)}
+     </select></label>}
+    <label className="lektrus-subject-task-title">Название <small>Необязательно</small>
+     <input value={entry.title} maxLength={120} placeholder="Краткое название задания"
+      onChange={e=>patch({title:e.target.value})}/></label>
+    <label className="lektrus-subject-task-prompt">{current.promptLabel}
+     <textarea rows={3} maxLength={2500} value={entry.prompt}
+      placeholder={current.promptPlaceholder} onChange={e=>patch({prompt:e.target.value})}/></label>
+    {current.fields.length>0&&<div className="lektrus-subject-task-fields">
      {current.fields.map(field=><label key={field.id}>{field.label}
-      {field.multiline?<textarea rows={3} maxLength={1800}
+      {field.multiline?<textarea rows={2} maxLength={1800}
        value={entry.details?.[field.id]??""} placeholder={field.placeholder}
        onChange={e=>patch({details:{...entry.details,[field.id]:e.target.value}})}/>:
        <input maxLength={1800} value={entry.details?.[field.id]??""} placeholder={field.placeholder}
        onChange={e=>patch({details:{...entry.details,[field.id]:e.target.value}})}/>}
       </label>)}
-    </div>
-    <label>Образец ответа преподавателя<textarea rows={3} maxLength={2000} value={entry.solution}
-       placeholder="Необязательно. Скрыт от учеников до показа."
-       onChange={e=>patch({solution:e.target.value})}/></label>
-    <p>Задание появится на общей доске. Ученик сможет решать его прямо на ней.</p>
+    </div>}
+    <details className="lektrus-subject-task-teacher-answer">
+      <summary>Ответ для проверки <span>необязательно, скрыт от учеников</span></summary>
+      <label>Правильный ответ / образец
+       <textarea rows={2} maxLength={2000} value={entry.solution}
+        placeholder="Введите правильный ответ или краткие критерии проверки"
+        onChange={e=>patch({solution:e.target.value})}/></label>
+    </details>
    </div>
    <footer><button type="button" className="is-danger" onClick={onDelete}>Удалить задание</button>
     <button type="button" className="is-primary" onClick={onClose}>Готово</button></footer>
