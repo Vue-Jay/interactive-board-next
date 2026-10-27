@@ -315,3 +315,11 @@
  .lektrus-sentence-actions button{min-width:74px;padding:6px}
  .lektrus-sentence-tip{padding:4px}
 }
+
+
+/* Standalone morpheme editor uses explicit school roles, not fictional prefilled text. */
+.lektrus-morpheme-add-roles{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:12px 0}
+.lektrus-morpheme-add-roles .lektrus-school-add{
+ flex:0 1 auto;min-height:33px;padding:7px 10px;font:650 11px/1.3 system-ui,sans-serif;
+ white-space:nowrap;border-radius:8px}
+.lektrus-morpheme-add-roles .lektrus-school-add:disabled{opacity:.42;cursor:default}
