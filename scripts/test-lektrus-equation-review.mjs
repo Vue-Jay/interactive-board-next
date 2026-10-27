@@ -98,6 +98,20 @@ assert.equal(inspect("C2H4 + H2 → C2H6","organic","Ni, t°").status,"correct")
 assert.equal(inspect("C2H5OH → C2H4 + H2O","organic","H₂SO₄ (конц.), 170 °C").status,"correct");
 assert.ok(inspect("C2H5OH → C2H4 + H2O","organic").issues.some(i=>i.kind==="condition"));
 assert.equal(inspect("CH4 + Cl2 → CH3Cl + HCl","organic","hν").status,"correct");
+assert.equal(inspect("C6H6 + HNO3 → C6H5NO2 + H2O","organic","H₂SO₄ (конц.)").status,"partial",
+ "Structural orientation must not be certified from the molecular formula");
+assert.ok(inspect("C6H6 + HNO3 → C6H5NO2 + H2O","organic","").issues.some(i=>i.kind==="condition"),
+ "Nitration requires catalyst/acid conditions");
+assert.ok(inspect("CH3Cl + NaOH → CH3OH + NaCl","organic","").issues.some(i=>i.kind==="condition"),
+ "Haloalkane nucleophilic substitution has a required aqueous condition");
+assert.equal(inspect("CH3Cl + NaOH → CH3OH + NaCl","organic","водн. щёлочь, t°").status,"correct");
+assert.equal(inspect("C2H5Br + KOH → C2H4 + KBr + H2O","organic","спирт. щёлочь, t°").status,"correct");
+assert.equal(inspect("C2H5Br + KOH → C2H5OH + KBr","organic","водн. щёлочь, t°").status,"correct");
+assert.equal(inspect("C2H5Br + KOH → C2H4 + KBr + H2O","organic","").status,"partial",
+ "Elimination requires the alcoholic reaction conditions");
+assert.equal(inspect("CH3COOCH3 + NaOH → CH3COONa + CH3OH","organic","водн. NaOH, t°").status,"correct");
+assert.equal(inspect("Na2SO3 + 2HCl → 2NaCl + SO2↑ + H2O","inorganic","водн. р-р").status,"correct");
+assert.equal(inspect("Fe + CuSO4 → FeSO4 + Cu","inorganic","").status,"correct");
 assert.notEqual(inspect("C4H8 + H2 → C4H10","organic","Ni, t°").status,"correct",
  "Molecular formula cannot certify an organic structural isomer");
 assert.equal(inspect("C4H8 + H2 → C4H10","organic","Ni, t°").status,"partial");
