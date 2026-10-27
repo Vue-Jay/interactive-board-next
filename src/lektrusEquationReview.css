@@ -279,3 +279,71 @@
   height:100dvh!important;max-height:100dvh!important;
  }
 }
+
+
+/* In-field equation diagnostics: the real textarea owns IME, caret, selection,
+   and scrolling; a read-only aligned mirror draws the exact marked formulas. */
+.lektrus-chem-reaction-workspace .lektrus-chem-input-shell{
+ position:relative;display:flex;flex-direction:column;gap:0;min-width:0;
+ border-radius:8px;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-input-shell>textarea{
+ position:relative;z-index:2;flex-shrink:0;margin:0;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-input-shell.is-annotated>textarea{
+ color:transparent!important;caret-color:#234d71!important;
+ background:transparent!important;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-input-shell.is-annotated>textarea::selection{
+ color:#183a57;background:rgba(133,175,218,.42);
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-input-mirror{
+ position:absolute;inset:0 0 auto 0;box-sizing:border-box;
+ padding:7px 9px;border:1px solid transparent;
+ height:74px;overflow:hidden;overflow-wrap:anywhere;
+ white-space:pre-wrap;tab-size:8;
+ font:600 16px/1.4 Cambria,"Times New Roman",serif;
+ color:#274862;background:#fff;pointer-events:none;z-index:1;
+ border-radius:8px;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-token-issue{
+ background:rgba(225,82,62,.13);color:#a52e25;
+ border-radius:2px;text-decoration:underline wavy #d85849 1.25px;
+ text-underline-offset:3px;font:inherit;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-token-issue.is-warning{
+ color:#845827;background:rgba(225,155,46,.14);
+ text-decoration-color:#bc862c;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-token-issue.is-info{
+ color:#3b6793;background:rgba(90,150,212,.14);
+ text-decoration-color:#6292bf;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-field-feedback{
+ display:flex;flex-direction:column;gap:3px;
+ padding:6px 8px;border:1px solid #dce5ed;border-top:0;
+ border-radius:0 0 8px 8px;background:#fdfefe;z-index:2;
+ max-height:108px;overflow-y:auto;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-field-feedback>span{
+ display:block;padding:4px 6px;border-radius:5px;
+ color:#49647e;background:#f1f5fa;
+ font:600 10px/1.4 system-ui,sans-serif;overflow-wrap:anywhere;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-field-feedback>span.is-error{
+ color:#9f392e;background:#fff0ee;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-field-feedback>span.is-warning{
+ color:#83622f;background:#fff6e6;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-side.has-error .lektrus-chem-input-shell>textarea{
+ border-color:#d28078!important;
+}
+@media(max-width:540px){
+ .lektrus-chem-reaction-workspace .lektrus-chem-input-mirror{
+  height:65px;font-size:16px;line-height:1.4;
+ }
+ .lektrus-chem-reaction-workspace .lektrus-chem-field-feedback{
+  max-height:84px;
+ }
+}
