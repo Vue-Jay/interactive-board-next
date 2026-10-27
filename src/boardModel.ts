@@ -451,6 +451,8 @@ export type Item = {
   scienceOrganicShowSystematic?: boolean;
   scienceOrganicShowTrivial?: boolean;
   scienceReactionConditions?: string;
+  scienceReactionDomain?: "inorganic" | "organic";
+  scienceReactionSteps?: {expression:string;conditions:string}[];
   scienceReagents?: string[];
   scienceEnvironment?: "aqueous" | "dry" | "heated" | "ignited";
   schoolDiagram?: import("./lektrusSchoolDiagramModel").SchoolDiagram;
@@ -550,7 +552,7 @@ const binding = (v: unknown): v is ConnectorBinding => !!v && typeof v === "obje
 const persistedGraphKeys = [
   "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceOptics","scienceMechanics","scienceAtomModel",
   "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
-  "scienceExperimentStage","scienceOrganicAnnotations","scienceOrganicShowSystematic","scienceOrganicShowTrivial","scienceReactionConditions",
+  "scienceExperimentStage","scienceOrganicAnnotations","scienceOrganicShowSystematic","scienceOrganicShowTrivial","scienceReactionConditions","scienceReactionDomain","scienceReactionSteps",
   "scienceReagents","scienceEnvironment","schoolDiagram",
   "graphRotationX","graphRotationY","graphParallelMarks",
   "graphAxisMode","graphIntervalStartClosed","graphIntervalEndClosed",
@@ -696,6 +698,10 @@ export function parseDocument(raw: string): DocumentData {
       if (i.graphAxisMode != null && !["both","x","y","none"].includes(i.graphAxisMode)) throw new Error("Повреждён режим осей");
       if (i.graphType != null && !["linear","quadratic","sin","cos"].includes(i.graphType)) throw new Error("Повреждён тип графика");
       if (i.graphExpression != null && (typeof i.graphExpression !== "string" || i.graphExpression.length > 500)) throw new Error("Повреждена функция графика");
+      if(i.scienceReactionDomain!=null&&!["inorganic","organic"].includes(i.scienceReactionDomain))throw new Error("Повреждён раздел химических реакций");
+      if(i.scienceReactionSteps!=null&&(!Array.isArray(i.scienceReactionSteps)||i.scienceReactionSteps.length<1||i.scienceReactionSteps.length>8||
+        !i.scienceReactionSteps.every(step=>!!step&&typeof step.expression==="string"&&step.expression.length<=500&&typeof step.conditions==="string"&&step.conditions.length<=180)))
+        throw new Error("Повреждены этапы химической цепочки");
       if (i.graphConnectPoints != null && typeof i.graphConnectPoints !== "boolean") throw new Error("Повреждено соединение точек");
       for (const value of [i.graphA,i.graphB,i.graphC,i.graphXMin,i.graphXMax,i.graphYMin,i.graphYMax]) if (value != null && !finite(value)) throw new Error("Повреждены параметры графика");
       if (i.graphGrid != null && typeof i.graphGrid !== "boolean") throw new Error("Повреждена сетка графика");
