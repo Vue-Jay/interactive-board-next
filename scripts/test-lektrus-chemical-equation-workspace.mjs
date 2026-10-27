@@ -66,6 +66,13 @@ for(const text of ["lektrus-chem-species-card","lektrus-chem-add-species","autoB
  'role="tablist"',"onKeyDown","onCancel","⇌"])
  assert.ok(ui.includes(text),"Editor feature missing: "+text);
 assert.match(styles,/@media\(max-width:610px\)/,"Phone layout");
+assert.ok(ui.includes("lektrus-chem-equation-compact"),"Use uncluttered equation workspace");
+assert.ok(ui.includes("lektrus-chem-arrow-chooser"),"Place arrow between equation sides");
+assert.ok(ui.includes("lektrus-chem-state"),"Gas and precipitate selector remains available");
+assert.ok(ui.includes("setSymbolsOpen(false)"),"Symbols start collapsed");
+assert.ok(!ui.includes("LektrusChemistryGuidedBuilder"),"Do not show catalog or guided reaction builder");
+assert.ok(!ui.includes("getReactionGuidance"),"Do not couple freeform editor to reaction database");
+assert.ok(!main.includes("lektrusChemistryGuidedBuilder.css"),"Remove obsolete reference UI styles");
 assert.match(styles, /max-height:100dvh/,"Responsive full viewport");
 assert.ok(main.includes('import "./lektrusChemicalEquationWorkspace.css";'),"Load new equation styles");
 assert.ok(science.includes('if(formula)return <LektrusChemicalEquationEditor'),
