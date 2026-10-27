@@ -194,7 +194,7 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
           <input maxLength={1800} value={entry.details?.[field.id]??""} placeholder={field.placeholder}
            onChange={e=>patch({details:{...entry.details,[field.id]:e.target.value}})}/>}</label>)}
        </div>
-      </details>:<div className="lektrus-subject-task-fields">)}
+      </details>:<div className="lektrus-subject-task-fields">
      {current.fields.map(field=><label key={field.id}>{field.label}
       {field.multiline?<textarea rows={2} maxLength={1800}
        value={entry.details?.[field.id]??""} placeholder={field.placeholder}
