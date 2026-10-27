@@ -35,6 +35,9 @@ assert.equal(parse(" ").arrow,"→");
 assert.equal(parse("H2 +  → ").left.length,2,"Editing must preserve blank added card");
 assert.equal(parse("H2 + O2 ⇌ H2O").arrow,"⇌");
 assert.equal(parse("H2 + O2 = H2O").arrow,"=");
+assert.equal(parse("CH2=CH2 + Br2 → CH2BrCH2Br").left[0].formula,"CH2=CH2",
+ "Organic double bond must not be parsed as the reaction arrow");
+assert.equal(parse("CH2=CH2"),null,"Standalone alkene structure is not an equation");
 assert.deepEqual([...countFormulaAtoms("Ca(OH)2")], [["Ca",1n],["O",2n],["H",2n]]);
 assert.deepEqual([...countFormulaAtoms("CuSO4·5H2O")], [["Cu",1n],["S",1n],["O",9n],["H",10n]]);
 assert.deepEqual([...countFormulaAtoms("Al2(SO4)3")],[["Al",2n],["S",3n],["O",12n]]);
@@ -98,6 +101,8 @@ assert.deepEqual(readReactionText("H2O"),{reactants:"H2O",products:"",arrow:"→
 assert.equal(writeReactionText(readReactionText("H2O"),true),"H2O","Legacy individual formula preserved");
 assert.equal(readReactionText("N2 + 3H2 ⇌ 2NH3").arrow,"⇌");
 assert.equal(readReactionText("H2 + O2 = H2O").arrow,"=");
+assert.equal(readReactionText("CH2=CH2").standalone,true);
+assert.equal(readReactionText("CH2=CH2 + Br2 → CH2BrCH2Br").reactants,"CH2=CH2 + Br2");
 assert.equal(writeReactionText(readReactionText("H2 + O2 -> H2O")),"H2 + O2 → H2O");
 const trailing=readReactionText(writeReactionText({reactants:"H2 + ",products:"  H2O",arrow:"→",standalone:false}));
 assert.equal(trailing.reactants,"H2 + ","Do not eat spaces near cursor in reactant field");
