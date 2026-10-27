@@ -74,8 +74,13 @@ function OrthographyBoard({d}:{d:Extract<RussianSchoolDiagram,{kind:"orthography
  const [index,setIndex]=useState(0);
  const [picked,setPicked]=useState<number|null>(null);
  const [checked,setChecked]=useState(false);
- useEffect(()=>{setIndex(0);setPicked(null);setChecked(false)},[d.questions]);
+ // Preserve the active question when classmates or the teacher update a different
+ // question. Reset only if this particular question or its answers changed.
+ const questionIds=d.questions.map(q=>q.id).join("|");
+ useEffect(()=>setIndex(current=>Math.min(current,Math.max(0,d.questions.length-1))),[questionIds,d.questions.length]);
  const question=d.questions[Math.min(index,d.questions.length-1)];
+ const signature=question?[question.id,question.prompt,...question.options,question.correct].join("\u0000"):"";
+ useEffect(()=>{setPicked(null);setChecked(false)},[signature]);
  const ok=checked&&question!==undefined&&picked===question.correct;
  const next=(i:number)=>{setIndex(i);setPicked(null);setChecked(false)};
  const stop=(e:SyntheticEvent)=>e.stopPropagation();
