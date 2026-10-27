@@ -31,6 +31,26 @@ const list=(values:EquationSpecies[])=>values.filter(s=>s.formula.trim()).map(s=
 const signature=(values:string[])=>values.slice().sort().join("|");
 const reactantsFrom=(expression:string)=>{const draft=parseEquationDraft(expression);return draft?list(draft.left):[]};
 const productsFrom=(expression:string)=>{const draft=parseEquationDraft(expression);return draft?list(draft.right):[]};
+// Build the exact-match reference index only once; a teacher may check 8 chain
+// stages against hundreds of reviewed records without repeatedly parsing all.
+const referenceIndex=new Map<string,typeof equationExamplePool[number][]>();
+for(const example of equationExamplePool){
+ const formulas=reactantsFrom(example.equation);
+ if(!formulas.length)continue;
+ const key=example.family+"|"+signature(formulas);
+ const items=referenceIndex.get(key)??[];
+ items.push(example);referenceIndex.set(key,items);
+}
+const candidatesFor=(draft:EquationDraft,domain:EquationDomain)=>
+ referenceIndex.get(domain+"|"+signature(list(draft.left)))??[];
+const consensusIndicator=(draft:EquationDraft,domain:EquationDomain,formula:string):EquationSpecies["indicator"]|null=>{
+ const outputs=signature(list(draft.right));
+ const matching=candidatesFor(draft,domain).filter(ex=>
+  signature(productsFrom(ex.equation))===outputs);
+ const marks=new Set(matching.map(ex=>parseEquationDraft(ex.equation)?.right.find(
+  s=>normalize(s.formula)===normalize(formula))?.indicator??""));
+ return marks.size===1?[...marks][0] as EquationSpecies["indicator"]:null;
+};
 const environmentFrom=(conditions:string):ReactionEnvironment=>
  /поджиг|горен|плам|воспламен/i.test(conditions)?"ignited":
  /t°|Δ|нагрев|[0-9]+\s*°C/i.test(conditions)?"heated":
@@ -44,10 +64,8 @@ const hasRequiredConditions=(required:string,given:string):boolean=>{
   req==="поджиг"&&(/плам|горен|поджиг|воспламен/i.test(actual)));
 };
 function referenceFor(draft:EquationDraft,domain:EquationDomain,conditions:string):Reference|undefined{
- const reactants=signature(list(draft.left));
- if(!reactants)return undefined;
- const candidates=equationExamplePool.filter(ex=>ex.family===domain&&
-  signature(reactantsFrom(ex.equation))===reactants);
+ if(!list(draft.left).length)return undefined;
+ const candidates=candidatesFor(draft,domain);
  if(!candidates.length)return undefined;
  const outputs=signature(list(draft.right));
  const withProducts=candidates.filter(ex=>signature(productsFrom(ex.equation))===outputs);
@@ -107,10 +125,10 @@ export function reviewEquationStep(step:EquationStep,domain:EquationDomain):Revi
   }
   if(!issues.some(i=>i.kind==="extra"||i.kind==="missing")){
    for(let i=0;i<draft.right.length;i++){
-    const current=draft.right[i],expectedEntry=expected.right.find(s=>normalize(s.formula)===normalize(current.formula));
-    if(expectedEntry&&expectedEntry.indicator!==current.indicator){
+    const current=draft.right[i],agreed=consensusIndicator(draft,domain,current.formula);
+    if(agreed!==null&&agreed!==current.indicator){
      issues.push({kind:"indicator",severity:"warning",side:"right",index:i,formula:current.formula,
-      message:expectedEntry.indicator?("Для "+current.formula+" нужен знак "+expectedEntry.indicator+"."):
+      message:agreed?("Для "+current.formula+" нужен знак "+agreed+"."):
        ("У "+current.formula+" здесь не нужен знак "+current.indicator+".")});
     }
    }
@@ -157,8 +175,8 @@ export function applyKnownProductMarks(step:EquationStep,domain:EquationDomain="
  if(!actual||!expected)return null;
  if(signature(list(actual.right))!==signature(list(expected.right)))return null;
  const next={...actual,right:actual.right.map(s=>{
-  const ref=expected.right.find(v=>normalize(v.formula)===normalize(s.formula));
-  return {...s,indicator:ref?.indicator??s.indicator};
+  const agreed=consensusIndicator(actual,domain,s.formula);
+  return {...s,indicator:agreed??s.indicator};
  })};
  const side=(values:EquationSpecies[])=>values.map(s=> (s.coefficient===1?"":s.coefficient)+s.formula+s.indicator).join(" + ");
  return {...step,expression:side(next.left)+" "+next.arrow+" "+side(next.right)};
