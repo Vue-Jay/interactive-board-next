@@ -51,7 +51,8 @@ assert.match(studio,/LektrusSubjectActivityRunner/);
 assert.match(board,/tone==="russian"\|\|tone==="languages"/);
 assert.match(board,/LektrusLanguageTaskStudio/);
 assert.match(board,/key!=="markup"/);
-assert.ok(!registry.match(/mathematics:\[\s*task,[\s\S]*?type\("interactive"/)?.[0],
+const mathOptions=registry.split(" mathematics:[")[1].split(" physics:[")[0];
+assert.ok(!mathOptions.includes('type("interactive"'),
  "New math tasks must not expose interactive training");
 assert.ok(registry.includes('type("interactive","Интерактивный тренажёр","Сохранённое интерактивное упражнение")'),
  "Do not delete legacy mathematical exercises");
