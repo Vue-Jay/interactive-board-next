@@ -140,6 +140,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  const [stepIndex,setStepIndex]=useState(0);
  const [domain,setDomain]=useState<EquationDomain>(item.scienceReactionDomain??"inorganic");
  const [reviewed,setReviewed]=useState(false);
+ const [boardLayout,setBoardLayout]=useState(false);
  const [openGroup,setOpenGroup]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
  const [nextSubstance,setNextSubstance]=useState("");
@@ -236,9 +237,8 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  };
  const issuesFor=(side:Side)=>currentReview?.issues.filter(v=>v.side===side||!v.side&&v.kind==="formula")??[];
  const save=()=>{if(canSave)onSave();};
- return createPortal(<div className="lektrus-chem-equation-overlay lektrus-chem-equation-v2 lektrus-chem-equation-compact lektrus-chem-one-screen lektrus-chem-reaction-workspace"
-    onPointerDown={e=>{if(e.target===e.currentTarget)onCancel();}}>
-   <section className="lektrus-chem-equation-editor" role="dialog" aria-modal="true" aria-label="Редактор уравнений и цепочек"
+ return createPortal(<div className={"lektrus-chem-equation-overlay lektrus-chem-equation-v2 lektrus-chem-equation-compact lektrus-chem-one-screen lektrus-chem-reaction-workspace lektrus-chem-nonblocking"+(boardLayout?" is-board-layout":"")}>
+   <section className="lektrus-chem-equation-editor" role="dialog" aria-modal="false" aria-label="Редактор уравнений и цепочек"
     onPointerDown={e=>e.stopPropagation()} onKeyDown={e=>{
      if(e.key==="Escape"){e.stopPropagation();onCancel();}
      if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();save();}
@@ -246,8 +246,14 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
     <header className="lektrus-chem-equation-header">
      <div className="lektrus-chem-equation-heading"><strong>Химические уравнения</strong>
       <small>Уравнения, распад продуктов и цепочки превращений</small></div>
-     <button type="button" aria-label="Закрыть" title="Закрыть" onClick={onCancel}>×</button>
+     <div className="lektrus-chem-equation-window-actions">
+      <button type="button" className="lektrus-chem-board-layout-toggle"
+       aria-pressed={boardLayout} title={boardLayout?"Расширить редактор":"Освободить место для перемещения и размера химической доски"}
+       onClick={()=>setBoardLayout(v=>!v)}>{boardLayout?"Развернуть редактор":"Разместить доску"}</button>
+      <button type="button" aria-label="Закрыть" title="Закрыть" onClick={onCancel}>×</button>
+     </div>
     </header>
+    {boardLayout&&<p className="lektrus-chem-board-hint">Перетаскивайте химическую доску слева. Для изменения размера потяните за угловые маркеры выделенного объекта.</p>}
     <nav className="lektrus-chem-domain-tabs" aria-label="Раздел химии">
      <button type="button" aria-pressed={domain==="inorganic"} onClick={()=>switchDomain("inorganic")}>Неорганика</button>
      <button type="button" aria-pressed={domain==="organic"} onClick={()=>switchDomain("organic")}>Органика</button>
