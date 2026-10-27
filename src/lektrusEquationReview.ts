@@ -5,7 +5,7 @@ import {identifyReaction,type ReactionEnvironment} from "./lektrusReactionDataba
 import {inspectEquationBalance,normalizeFormulaInput,parseEquationDraft,type EquationDraft,type EquationSpecies} from "./lektrusChemicalEquationModel";
 export type EquationDomain="inorganic"|"organic";
 export type EquationStep={expression:string;conditions:string};
-export type ReviewIssue={severity:"error"|"warning"|"info";kind:"missing"|"extra"|"coefficient"|"indicator"|"formula"|"condition"|"chain"|"unknown";side?:"left"|"right";index?:number;formula?:string;message:string};
+export type ReviewIssue={severity:"error"|"warning"|"info";kind:"missing"|"extra"|"coefficient"|"indicator"|"formula"|"condition"|"chain"|"reaction"|"unknown";side?:"left"|"right";index?:number;formula?:string;message:string};
 export type ReviewedEquation={status:"correct"|"incorrect"|"partial"|"unknown";issues:ReviewIssue[];reference?:string;referenceConditions?:string;canFillProducts:boolean;canMarkProducts:boolean;canBalance:boolean;description:string};
 export type ReactionExample={id:string;title:string;expression:string;conditions:string;domain:EquationDomain};
 const example=(id:string,title:string,expression:string,conditions="",domain:EquationDomain="inorganic"):ReactionExample=>({id,title,expression,conditions,domain});
@@ -68,6 +68,15 @@ export function reviewEquationStep(step:EquationStep,domain:EquationDomain):Revi
  if(balance.status==="unbalanced")issues.push({kind:"coefficient",severity:"error",message:"Неправильные коэффициенты: число атомов не сохраняется. Требуются "+balance.coefficients?.join(", ")+". "});
  if(balance.status==="unsupported")issues.push({kind:"unknown",severity:"warning",message:"Автоматическая проверка атомного баланса для этой записи недоступна."});
  const reference=referenceFor(draft,domain,step.conditions);
+ // A reviewed "no reaction" must never be represented as a legitimate equation.
+ if(!reference&&domain==="inorganic"){
+  const environment:ReactionEnvironment=/поджиг|горен|плам/i.test(step.conditions)?"ignited":
+   /t°|Δ|нагрев|[0-9]+\s*°C/i.test(step.conditions)?"heated":"aqueous";
+  const negative=identifyReaction(left,environment);
+  if(negative.status==="none")
+   issues.push({kind:"reaction",severity:"error",side:"left",
+    message:"Для этих реагентов в указанных условиях реакция не наблюдается: "+negative.caseData?.description});
+ }
  if(reference){
   const expected=parseEquationDraft(reference.expression)!;
   const products=list(expected.right);
@@ -106,6 +115,13 @@ export function reviewEquationStep(step:EquationStep,domain:EquationDomain):Revi
 export function reviewEquationChain(steps:EquationStep[],domain:EquationDomain){
  return steps.map((step,index)=>{
   const reviewed=reviewEquationStep(step,domain);
+  const currentDraft=parseEquationDraft(step.expression);
+  if(currentDraft&&list(currentDraft.right).includes("H2CO3")&&
+    (index===steps.length-1||!parseEquationDraft(steps[index+1].expression)?.left.some(s=>normalize(s.formula)==="H2CO3"))){
+   reviewed.issues.push({kind:"chain",severity:"warning",
+    message:"H₂CO₃ является неустойчивым промежуточным продуктом. Покажите следующий этап распада на H₂O и CO₂↑."});
+   if(reviewed.status==="correct")reviewed.status="partial";
+  }
   if(index===0)return reviewed;
   const before=parseEquationDraft(steps[index-1].expression),current=parseEquationDraft(step.expression);
   if(before&&current&&list(before.right).length&&list(current.left).length){
