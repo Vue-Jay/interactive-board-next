@@ -250,7 +250,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   if(experiment&&draft.graphFigureId==="chem-experiment-free")return <LektrusReactionLab
    item={draft} onChange={setDraft} onSave={()=>onSave(draft)}
    onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
-  if(formula)return <LektrusChemicalEquationEditor item={draft} onChange={setDraft}
+  if(formula)return <LektrusChemicalEquationEditor canTeach={canTeach===true} item={draft} onChange={setDraft}
     onSave={()=>onSave(draft)} onCancel={onCancel}/>;
   return createPortal(<div className={"lektrus-science-backdrop "+(isPhysics?"physics":"chemistry")}
      onPointerDown={e=>{if(e.currentTarget===e.target)(onClose??onCancel)(draft)}}>
