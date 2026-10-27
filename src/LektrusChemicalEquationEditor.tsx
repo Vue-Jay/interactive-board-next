@@ -1,6 +1,9 @@
 import {useRef,useState,type ReactNode} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
+import LektrusChemistryGuidedBuilder from "./LektrusChemistryGuidedBuilder";
+import {getReactionGuidance,sourceReactionDraft} from "./lektrusChemicalReactionGuide";
+import type {ReactionCase,ReactionEnvironment} from "./lektrusReactionDatabase";
 import {
  blankSpecies,inspectEquationBalance,parseEquationDraft,
  readSpecies,writeEquationDraft,type EquationArrow,type EquationDraft,
@@ -81,9 +84,11 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  const raw=item.graphExpression??"";
  const draft=parseEquationDraft(raw);
  const results=draft?inspectEquationBalance(draft):null;
+ const guidance=draft?getReactionGuidance(draft,item.scienceEnvironment??"aqueous"):null;
  const saveReady=raw.trim().length>0&&raw.length<=500&&(
   mode==="source"||!!draft&&
-    [...draft.left,...draft.right].every(s=>s.formula.trim().length>0));
+    [...draft.left,...draft.right].every(s=>s.formula.trim().length>0)&&
+    guidance?.status!=="none"&&guidance?.products!=="different");
  const updateSource=(value:string)=>{if(value.length<=500){onChange({...item,graphExpression:value});setNotice("");}};
  const changeDraft=(next:EquationDraft)=>{
   const value=writeEquationDraft(next);
@@ -144,6 +149,13 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
    next[side].forEach(s=>{s.coefficient=results.coefficients![i++];});
   changeDraft(next);setNotice("Коэффициенты рассчитаны. Формулы веществ не изменены.");
  };
+ const selectKnownReaction=(reaction:ReactionCase,environment:ReactionEnvironment)=>{
+  const checked=sourceReactionDraft(reaction);
+  if(!checked){setNotice("Не удалось прочитать справочное уравнение");return;}
+  onChange({...item,graphExpression:writeEquationDraft(checked),scienceEnvironment:environment,
+   scienceReactionConditions:environment==="heated"?"t°":environment==="ignited"?"поджиг":""});
+  setNotice("Добавлена проверенная реакция с готовыми продуктами и коэффициентами.");
+ };
  const resetBalance=()=>{
   const next=cloneDraft();
   for(const side of ["left","right"] as const)next[side].forEach(s=>s.coefficient=1);
@@ -174,6 +186,8 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
    </div>
    <div className="lektrus-chem-equation-content">
     {mode==="builder"&&draft?<div className="lektrus-chem-builder">
+     <LektrusChemistryGuidedBuilder item={item} draft={draft}
+      onChange={onChange} onDraft={changeDraft} onSelectScenario={selectKnownReaction}/>
      <div className="lektrus-chem-equation-columns">
       {(["left","right"] as Side[]).map((side,sideIndex)=><section className="lektrus-chem-side" key={side}>
        <div className="lektrus-chem-side-heading">
@@ -289,6 +303,8 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
      </div>}
     </div>}
     {notice&&<p className="lektrus-chem-equation-notice" role="status">{notice}</p>}
+    {mode==="builder"&&guidance?.status==="none"&&<p className="lektrus-chem-equation-notice" role="status">Для подтверждённого случая без реакции нельзя автоматически создавать продукты. Выберите другие вещества или условия.</p>}
+    {mode==="builder"&&guidance?.products==="different"&&<p className="lektrus-chem-equation-notice" role="status">Состав продуктов отличается от справочного. Исправьте продукты или перейдите к текстовому режиму для самостоятельной записи.</p>}
    </div>
    <footer><span className="lektrus-chem-shortcut">Enter: новое вещество · Ctrl+Enter: сохранить</span>
     <button type="button" onClick={onCancel}>Отмена</button>
