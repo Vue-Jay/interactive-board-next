@@ -35,6 +35,7 @@ export const subjectBoardEntryFilled=subjectBoardHasWork;
 
 type BoardProps={
  item:Item;
+ onRequestHeight?:(height:number)=>void;
  onAction?:(mode:"equation"|"task",entryId?:string)=>void;
  onAnswerChange?:(entryId:string,answer:string)=>void;
  onReveal?:(entryId:string)=>void;
@@ -43,13 +44,47 @@ type BoardProps={
  onWorkedSolutionChange?:(entryId:string,solution:import("./boardModel").SubjectBoardWorkedSolution)=>void;
  onActivityAnswer?:(entryId:string,response:SubjectTaskActivityResponse)=>void;
 };
-export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution,onWorkedSolutionChange,onActivityAnswer}:BoardProps){
+export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution,onWorkedSolutionChange,onActivityAnswer,onRequestHeight}:BoardProps){
  const tone=boardTone(item),palette=subjectAccentPalette[tone];
  const allEntries=item.subjectBoardEntries??[];
  const entries=allEntries.filter(entry=>entryBelongsToSubject(tone,entry));
  const incompatibleCount=allEntries.length-entries.length;
  const sheetRef=useRef<HTMLDivElement>(null);
+ const contentRef=useRef<HTMLDivElement>(null);
+ const headerRef=useRef<HTMLElement>(null);
+ const footerRef=useRef<HTMLElement>(null);
+ const heightCallbackRef=useRef(onRequestHeight);
+ const heightRef=useRef(item.height);
+ const lastRequestedRef=useRef(0);
+ heightCallbackRef.current=onRequestHeight;
+ if(item.height<heightRef.current&&item.height!==lastRequestedRef.current){
+   // Manual resizing is allowed, but content must still fit comfortably.
+   lastRequestedRef.current=0;
+ }
+ heightRef.current=item.height;
  const countRef=useRef(entries.length);
+ useEffect(()=>{
+   const content=contentRef.current;
+   if(!content)return;
+   const measure=()=>{
+     if(!heightCallbackRef.current)return;
+     // Measure the intrinsic content, never the height of the scroll viewport.
+     // Observing the latter would create an endless resize feedback loop.
+     const used=content.scrollHeight+(headerRef.current?.offsetHeight??44)+
+       (footerRef.current?.offsetHeight??24);
+     const current=heightRef.current;
+     if(current-used>=120||lastRequestedRef.current>current)return;
+     const next=Math.ceil(Math.max(current+160,used+200)/40)*40;
+     lastRequestedRef.current=next;
+     heightCallbackRef.current(next);
+   };
+   const resizeObserver=typeof ResizeObserver!=="undefined"?new ResizeObserver(measure):null;
+   resizeObserver?.observe(content);
+   if(headerRef.current)resizeObserver?.observe(headerRef.current);
+   if(footerRef.current)resizeObserver?.observe(footerRef.current);
+   measure();
+   return ()=>resizeObserver?.disconnect();
+ },[]);
  useEffect(()=>{
    const previous=countRef.current;
    countRef.current=entries.length;
@@ -59,7 +94,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
  const style={"--subject-board-accent":palette.accent,"--subject-board-soft":palette.soft} as CSSProperties;
  return <div className="graph-view lektrus-subject-board-shell" data-worksheet-subject={tone}>
   <article className="lektrus-subject-board" style={style} aria-label={palette.label+" · учебная доска"}>
-   <header className="lektrus-subject-board-header">
+   <header className="lektrus-subject-board-header" ref={headerRef}>
     <span className="lektrus-subject-board-emblem" aria-hidden="true">▤</span>
     <strong>{palette.label} <span>· учебная доска</span></strong>
     {onAction&&<nav className="lektrus-subject-board-tools" aria-label="Инструменты предметной доски">
@@ -72,6 +107,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
     <small>{incompatibleCount?"Есть задания другого предмета":subjectBoardLocked(item)?"Закреплена":entries.length?entries.length+" заданий":"Чистый лист"}</small>
    </header>
    <div className="lektrus-subject-board-sheet" ref={sheetRef}>
+    <div className="lektrus-subject-board-content" ref={contentRef}>
     {entries.length===0&&<div className="lektrus-subject-board-empty">
       <strong>Задания и решения</strong>
       <span>{chemistry?"Уравнения, цепочки и химические задачи":"Выберите вид задания и заполните поля"}</span>
@@ -157,8 +193,9 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
         {entry.revealed?"Скрыть образец":"Показать образец"}</button>}
       </>}
     </section>})}
+    </div>
    </div>
-   <footer className="lektrus-subject-board-footer"><span>LEKTRUS · {palette.label.toLocaleUpperCase("ru-RU")}</span>
+   <footer className="lektrus-subject-board-footer" ref={footerRef}><span>LEKTRUS · {palette.label.toLocaleUpperCase("ru-RU")}</span>
     <span>ЗАДАНИЯ / РЕШЕНИЯ</span></footer>
   </article>
  </div>;
