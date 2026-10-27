@@ -16,10 +16,10 @@ const palette={};
 for(const tone of ["chemistry","physics","mathematics","geography","history","biology",
  "russian","literature","social","languages","informatics"])palette[tone]={label:tone};
 const board=new Function("subjectTaskTemplates","subjectBoardHasWork","freshTaskDetails",
- "preferredActivityMode","freshActivity","subjectAccentPalette",stripped("src/LektrusSubjectBoard.tsx")+
+ "preferredActivityMode","freshActivity","subjectAccentPalette","subjectTaskTypeKnown",stripped("src/LektrusSubjectBoard.tsx")+
  "\nreturn {newSubjectBoardEntry,entryBelongsToSubject,boardTone,subjectBoardLocked};")(
  templates.subjectTaskTemplates,templates.subjectBoardHasWork,templates.freshTaskDetails,
- interactions.preferredActivityMode,interactions.freshActivity,palette);
+ interactions.preferredActivityMode,interactions.freshActivity,palette,templates.subjectTaskTypeKnown);
 const tones=Object.keys(palette);
 for(const tone of tones){
  const formats=templates.subjectTaskTemplates[tone].map(x=>x.id);
