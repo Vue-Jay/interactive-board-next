@@ -24,6 +24,58 @@ export function LektrusSubjectBoardSolutionView({tone,value,legacyAnswer}:Props)
   {!!value?.answer&&<div className="lektrus-school-solution-final"><b>Ответ:</b> {value.answer}</div>}
  </section>;
 }
+/** An automatically visible, directly editable school notebook answer.
+ * Teacher sets the problem; learners independently extract known and unknown values. */
+export function LektrusSubjectBoardInlineSolution({tone,value,onChange}:{
+ tone:SubjectTone;
+ value?:SubjectBoardWorkedSolution;
+ onChange?:(value:SubjectBoardWorkedSolution)=>void;
+}){
+ const current=value??emptyWorkedSolution();
+ const patch=(field:keyof SubjectBoardWorkedSolution,next:string)=>{
+  if(!onChange)return;
+  onChange({...current,[field]:next});
+ };
+ const datumLabel=tone==="mathematics"?"Краткая запись":"Дано";
+ const fields=[
+  {id:"given" as const,label:datumLabel,hint:"Запишите известные величины и данные условия"},
+  {id:"find" as const,label:"Найти",hint:"Запишите, что нужно определить"},
+  ...(tone==="physics"?[{id:"si" as const,label:"СИ",hint:"Переведите величины в единицы СИ"}]:[])
+ ];
+ return <section className="lektrus-school-solution lektrus-school-solution-inline" aria-label="Решение задачи по школьному образцу">
+  <div className="lektrus-school-solution-heading">Решение задачи <small>Заполняет ученик</small></div>
+  <div className="lektrus-school-solution-data">
+   {fields.map(field=><label className="lektrus-school-solution-inline-field" key={field.id}>
+    <b>{field.label}</b>
+    {onChange?<textarea rows={2} maxLength={2000} value={current[field.id]} placeholder={field.hint}
+      aria-label={field.label} data-board-interactive="true"
+      onPointerDown={event=>event.stopPropagation()}
+      onClick={event=>event.stopPropagation()}
+      onChange={event=>patch(field.id,event.target.value)}/>:
+      <p>{current[field.id]||"________________"}</p>}
+   </label>)}
+  </div>
+  <label className="lektrus-school-solution-inline-field lektrus-school-solution-work-editor">
+   <b>Решение</b>
+   {onChange?<textarea rows={4} maxLength={5000} value={current.work}
+    placeholder="Последовательно запишите действия, формулы и вычисления"
+    aria-label="Решение" data-board-interactive="true"
+    onPointerDown={event=>event.stopPropagation()}
+    onClick={event=>event.stopPropagation()}
+    onChange={event=>patch("work",event.target.value)}/>:
+    <p className="lektrus-school-solution-work">{current.work||"Место для хода решения"}</p>}
+  </label>
+  <label className="lektrus-school-solution-inline-field lektrus-school-solution-inline-answer">
+   <b>Ответ:</b>
+   {onChange?<input value={current.answer} maxLength={2000} aria-label="Ответ"
+    placeholder="Итоговый ответ с единицами измерения" data-board-interactive="true"
+    onPointerDown={event=>event.stopPropagation()}
+    onClick={event=>event.stopPropagation()}
+    onChange={event=>patch("answer",event.target.value)}/>:
+    <p>{current.answer||"________________"}</p>}
+  </label>
+ </section>;
+}
 type EditorProps={
  tone:SubjectTone;
  value:SubjectBoardWorkedSolution|undefined;
