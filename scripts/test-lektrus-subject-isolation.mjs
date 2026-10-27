@@ -55,7 +55,7 @@ assert.deepEqual(templates.subjectTaskTemplates.chemistry.map(x=>x.id),
 assert.deepEqual(templates.subjectTaskTemplates.mathematics.map(x=>x.id),
  ["task","word-problem","equation","geometry"]);
 assert.deepEqual(templates.subjectTaskTemplates.russian.map(x=>x.id),
- ["task","orthography","punctuation","morphemes","morphology","syntax","text","interactive"]);
+ ["task","orthography","punctuation","morphemes","morphology","syntax","text"]);
 for(const tone of ["mathematics","russian"]){
  for(const oldId of ["choice","matching","sequence"]){
   assert.equal(templates.subjectTaskTypeKnown(tone,oldId),true,
