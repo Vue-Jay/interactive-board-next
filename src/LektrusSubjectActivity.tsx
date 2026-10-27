@@ -1,4 +1,4 @@
-import {useState,type CSSProperties} from "react";
+import {useState,type SyntheticEvent} from "react";
 import type {SubjectTaskActivity,SubjectTaskActivityResponse} from "./boardModel";
 import type {SubjectTone} from "./lektrusSubjectAccent";
 
@@ -41,10 +41,10 @@ export function activityScore(activity:SubjectTaskActivity,response:SubjectTaskA
 }
 /** Deterministic visual shuffle. The saved answers always refer to original indices. */
 export function mixedIndices(length:number):number[]{
- return Array.from({length},(_,i)=>(length-i-2+length)%length);
+ return Array.from({length},(_,i)=>(length-i-1+length)%length);
 }
 type EditorProps={tone:SubjectTone;format:string;activity:SubjectTaskActivity;onChange:(value:SubjectTaskActivity)=>void};
-export function LektrusSubjectActivityBuilder({tone,format,activity,onChange}:EditorProps){
+export function LektrusSubjectActivityBuilder({activity,onChange}:EditorProps){
  const patch=(v:Partial<SubjectTaskActivity>)=>onChange({...activity,...v});
  const title=activity.mode==="choice"?"Варианты ответа":
   activity.mode==="fill"?"Текст с пропусками":activity.mode==="match"?"Пары для сопоставления":"Последовательность";
@@ -139,7 +139,7 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
   if(!onChange||!complete)return;
   onChange({...data,checked:true});
  };
- const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
+ const stop=(e:SyntheticEvent)=>e.stopPropagation();
  return <div className={"lektrus-activity-runner"+(compact?" compact":"")}
   data-board-interactive="true" onPointerDown={stop} onClick={stop}
   aria-label="Интерактивное упражнение">
