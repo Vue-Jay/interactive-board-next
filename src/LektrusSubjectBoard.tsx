@@ -1,5 +1,5 @@
 import {createPortal} from "react-dom";
-import type {CSSProperties} from "react";
+import {useEffect,useRef,type CSSProperties} from "react";
 import type {Item,SubjectBoardEntry} from "./boardModel";
 import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
@@ -33,6 +33,13 @@ type BoardProps={
 export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution}:BoardProps){
  const tone=boardTone(item),palette=subjectAccentPalette[tone];
  const entries=item.subjectBoardEntries??[];
+ const sheetRef=useRef<HTMLDivElement>(null);
+ const countRef=useRef(entries.length);
+ useEffect(()=>{
+   const previous=countRef.current;
+   countRef.current=entries.length;
+   if(entries.length>previous)sheetRef.current?.scrollTo({top:sheetRef.current.scrollHeight,behavior:"smooth"});
+ },[entries.length]);
  const chemistry=tone==="chemistry";
  const style={"--subject-board-accent":palette.accent,"--subject-board-soft":palette.soft} as CSSProperties;
  return <div className="graph-view lektrus-subject-board-shell" data-worksheet-subject={tone}>
@@ -49,7 +56,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
     </nav>}
     <small>{subjectBoardLocked(item)?"Закреплена":entries.length?entries.length+" заданий":"Чистый лист"}</small>
    </header>
-   <div className="lektrus-subject-board-sheet">
+   <div className="lektrus-subject-board-sheet" ref={sheetRef}>
     {entries.length===0&&<div className="lektrus-subject-board-empty">
       <strong>Задания и решения</strong>
       <span>{chemistry?"Уравнения, цепочки и химические задачи":"Выберите вид задания и заполните поля"}</span>
@@ -82,6 +89,11 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
         {definition.fields.filter(field=>entry.details?.[field.id]?.trim()).map(field=>
          <div className="lektrus-subject-board-field" key={field.id}>
           <span>{field.label}</span><p>{entry.details?.[field.id]}</p>
+         </div>)}
+        {Object.entries(entry.details??{}).filter(([key,value])=>value.trim()&&!definition.fields.some(field=>field.id===key))
+         .map(([key,value])=><div className="lektrus-subject-board-field" key={key}>
+           <span>{key==="given"?"Дано":key==="find"?"Найти":key==="material"?"Материал":"Дополнительные данные"}</span>
+           <p>{value}</p>
          </div>)}
       </div>}
       {isSchoolSolutionSubject(tone)?<div className="lektrus-subject-board-solution-area">
@@ -151,6 +163,15 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
        onChange={e=>patch({details:{...entry.details,[field.id]:e.target.value}})}/>}
       </label>)}
     </div>}
+    {Object.entries(entry.details??{}).some(([key,value])=>value.trim()&&!current.fields.some(field=>field.id===key))&&
+     <details className="lektrus-subject-task-legacy">
+      <summary>Дополнительные сведения прежнего задания</summary>
+      {Object.entries(entry.details??{}).filter(([key,value])=>value.trim()&&!current.fields.some(field=>field.id===key))
+       .map(([key,value])=><label key={key}>Сохранённое поле
+         <textarea rows={2} maxLength={1800} value={value}
+          onChange={e=>patch({details:{...entry.details,[key]:e.target.value}})}/>
+       </label>)}
+     </details>}
     <details className="lektrus-subject-task-teacher-answer">
       <summary>Ответ для проверки <span>необязательно, скрыт от учеников</span></summary>
       <label>Правильный ответ / образец
