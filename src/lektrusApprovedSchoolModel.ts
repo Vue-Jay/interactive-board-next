@@ -39,7 +39,7 @@ export function validateApprovedSchoolDiagram(v:unknown):v is ApprovedSchoolDiag
    typeof d.zeroEnding!=="boolean"||!Array.isArray(d.segments)||
    d.segments.length>10)return false;
   const entries=d.segments as Morpheme[];
-  if(entries.some(m=>!m||!okString(m.id,64)||!okString(m.text,24)||
+  if(entries.some(m=>!m||!okString(m.id,64)||!okString(m.text,24,true)||
    !Object.prototype.hasOwnProperty.call(morphemeNames,m.role))||
    new Set(entries.map(m=>m.id)).size!==entries.length)return false;
   const roots=entries.filter(m=>m.role==="root");
