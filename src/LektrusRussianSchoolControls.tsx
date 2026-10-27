@@ -99,7 +99,7 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
      onClick={()=>onChange({...d,questions:d.questions.filter(x=>x.id!==q.id)})}>×</button>
    </div>
    <label>Текст с одним пропуском □
-    <input value={q.prompt} maxLength={180} placeholder="Например: тр□ва"
+    <input value={q.prompt} maxLength={180} placeholder="Текст с одним пропуском □"
      onChange={e=>edit(q.id,{prompt:e.target.value})}/>
    </label>
    {q.prompt.split("□").length!==2&&<small className="lektrus-russian-validation">Используйте ровно один символ □.</small>}
@@ -123,7 +123,7 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
   </div>)}
   <button type="button" className="lektrus-school-add" disabled={d.questions.length>=20}
    onClick={()=>onChange({...d,questions:[...d.questions,{id:makeId(),
-    prompt:"Сл□во",options:["о","а"],correct:0,explanation:""}]})}>
+    prompt:"□",options:["",""],correct:0,explanation:""}]})}>
    + Добавить задание ({d.questions.length}/20)</button>
   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showExplanation}
    onChange={e=>onChange({...d,showExplanation:e.target.checked})}/> Показывать объяснение после правильного ответа</label>
