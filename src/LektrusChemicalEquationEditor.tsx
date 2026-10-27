@@ -101,6 +101,37 @@ export function LektrusChemicalEquationTypeset({expression,conditions}:{expressi
  </div>;
 }
 
+/** One renderer for the persistent board object AND the editor's live preview.
+ * No second copy of the chemical equation is ever created.
+ */
+export function LektrusChemicalEquationBoardView({item}:{item:Item}){
+ const steps=item.scienceReactionSteps?.length?item.scienceReactionSteps:
+  [{expression:item.graphExpression??"",conditions:item.scienceReactionConditions??""}];
+ const filled=steps.some(step=>step.expression.trim().length>0);
+ return <div className={"lektrus-chemical-board"+(filled?"":" is-empty")}
+  aria-label="Химическая доска">
+  <div className="lektrus-chemical-board-header">
+   <span className="lektrus-chemical-board-mark" aria-hidden="true">∴</span>
+   <strong>ХИМИЧЕСКАЯ ДОСКА</strong>
+   <span className="lektrus-chemical-board-domain">
+    {item.scienceReactionDomain==="organic"?"Органика":"Неорганика"}
+   </span>
+  </div>
+  <div className="lektrus-chemical-board-paper">
+   {filled?steps.map((step,index)=><div className="lektrus-chemical-board-step" key={index}>
+    {steps.length>1&&<span className="lektrus-chemical-board-number">{index+1}.</span>}
+    <LektrusChemicalEquationTypeset expression={step.expression} conditions={step.conditions}/>
+   </div>):<div className="lektrus-chemical-board-placeholder">
+    <span className="lektrus-chemical-board-orbit" aria-hidden="true">◌</span>
+    Начните вводить уравнение в редакторе
+   </div>}
+  </div>
+  <div className="lektrus-chemical-board-footer" aria-hidden="true">
+   <span>LEKTRUS · ХИМИЯ</span><span>{steps.length>1?steps.length+" этапов":"УРАВНЕНИЕ РЕАКЦИИ"}</span>
+  </div>
+ </div>;
+}
+
 export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCancel,canTeach=false}:Props&{canTeach?:boolean}){
  const initialSteps:EquationStep[]=item.scienceReactionSteps?.length?item.scienceReactionSteps:
   [{expression:item.graphExpression??"",conditions:item.scienceReactionConditions??""}];
@@ -178,9 +209,6 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
    graphExpression:steps[0].expression,scienceReactionConditions:steps[0].conditions});
   setBackgrounds(current=>({...current,[next]:newBackgroundExample(next)}));setNotice("");
  };
- const refreshBackground=()=>{
-  setBackgrounds(current=>({...current,[domain]:newBackgroundExample(domain)}));
- };
  const appendStep=()=>{
   if(steps.length>=8)return;
   const selected=nextSubstance&&products.includes(nextSubstance)?nextSubstance:(products[0]??"");
@@ -235,11 +263,9 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
        {steps.length<8&&<button type="button" className="lektrus-chem-chain-add" onClick={appendStep}
         title="Новый этап с продуктом текущего уравнения">+ Этап</button>}
       </div>
-      <div className="lektrus-chem-templates lektrus-chem-background-example" aria-label="Фоновый пример химического уравнения">
-       <span title={backgroundExample.title}>Пример: {backgroundExample.category}</span>
-       <button type="button" title="Показать другой фоновый пример, не изменяя уравнение"
-        onClick={refreshBackground}>↻ Другой</button>
-      </div>
+      <span className="lektrus-chem-background-caption" title={backgroundExample.title}>
+       Фоновый пример · {backgroundExample.category}
+      </span>
      </div>
      <div className="lektrus-chem-equation-columns">
       {(["left","right"] as Side[]).map(side=><Fragment key={side}><label className={"lektrus-chem-equation-side "+(issuesFor(side).some(v=>v.severity==="error")?"has-error":"")} key={side}>
@@ -341,10 +367,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
      <section className="lektrus-chem-equation-preview" aria-label="Предпросмотр на доске">
       <div className="lektrus-chem-preview-heading"><strong>{steps.length>1?"Цепочка превращений":"Предпросмотр"}</strong>
        <span>Итоговое отображение на доске</span></div>
-      {steps.map((s,i)=><div className={"lektrus-chem-stage-preview "+(i===activeIndex?"is-active":"")} key={i}>
-       {steps.length>1&&<span className="lektrus-chem-stage-number">{i+1}</span>}
-       <LektrusChemicalEquationTypeset expression={s.expression} conditions={s.conditions}/>
-      </div>)}
+      <LektrusChemicalEquationBoardView item={item}/>
      </section>
      {steps.length>1&&<div className="lektrus-chem-step-controls">
       <span>Этап {activeIndex+1} из {steps.length}</span>
