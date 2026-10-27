@@ -21,6 +21,7 @@ jobs:
       - run: npm run test:eraser
       - run: node scripts/test-ink-hit.mjs
       - run: node scripts/test-ink-layer.mjs
+      - run: node scripts/test-lektrus-board-three-way-merge.mjs
       - run: node scripts/test-ink-preferences.mjs
       - run: node scripts/test-preview-autosave.mjs
       - run: node scripts/test-board-history.mjs
