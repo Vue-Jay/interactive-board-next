@@ -1,4 +1,4 @@
-import {useRef,useState,type ReactNode} from "react";
+import {Fragment,useRef,useState,type ReactNode} from "react";
 import {classroomEquationExamples,reviewEquationChain,applyKnownProductMarks,balancedStep,type EquationDomain,type EquationStep} from "./lektrusEquationReview";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
@@ -221,7 +221,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
       </div>
      </div>
      <div className="lektrus-chem-equation-columns">
-      {(["left","right"] as Side[]).map(side=><label className={"lektrus-chem-equation-side "+(issuesFor(side).some(v=>v.severity==="error")?"has-error":"")} key={side}>
+      {(["left","right"] as Side[]).map(side=><Fragment key={side}><label className={"lektrus-chem-equation-side "+(issuesFor(side).some(v=>v.severity==="error")?"has-error":"")} key={side}>
        <span className="lektrus-chem-equation-side-head"><strong>{side==="left"?"Реагенты":"Продукты"}</strong>
         <small>{side==="left"?"До реакции":"После реакции"}</small></span>
        <textarea ref={el=>{inputs.current[side]=el;}} rows={3} maxLength={500} spellCheck={false}
@@ -229,6 +229,9 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
         value={side==="left"?parts.reactants:parts.products}
         placeholder={side==="left"?(domain==="organic"?"C2H4 + H2":"AgNO3 + NaCl"):(domain==="organic"?"C2H6":"AgCl↓ + NaNO3")}
         onFocus={()=>{focused.current=side;}} onChange={e=>changeSide(side,e.target.value)}/>
+       {reviewed&&issuesFor(side).filter(v=>v.severity==="error").slice(0,3).map((v,i)=><small key={i} className="lektrus-chem-inline-error">
+        {v.formula?("⚠ "+v.formula+": "):"⚠ "}{v.message}
+       </small>)}
        {side==="left"&&<div className="lektrus-chem-arrow-chooser">
         <span>Стрелка</span><div role="group" aria-label="Знак реакции">
          {arrows.map(a=><button type="button" key={a.value} title={a.title}
@@ -236,10 +239,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
           onClick={()=>changeArrow(a.value)}>{a.label}</button>)}
         </div>
        </div>}
-       {reviewed&&issuesFor(side).filter(v=>v.severity==="error").slice(0,3).map((v,i)=><small key={i} className="lektrus-chem-inline-error">
-        {v.formula?("⚠ "+v.formula+": "):"⚠ "}{v.message}
-       </small>)}
-      </label>)}
+       </Fragment>)}
      </div>
      <div className="lektrus-chem-equation-symbols" role="group" aria-label="Химические обозначения">
       <span>Вставить знак</span>
