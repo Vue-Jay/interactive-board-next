@@ -107,9 +107,14 @@ export function inspectChemicalSpecies(species:EquationSpecies[],domain:"inorgan
   }
   if(domain==="inorganic"){
    const valence=checkFixedValence(formula);
-   if(valence)add(valence.isError?"error":"warning",
-    "Не совпадают заряды ионов в типичной соли. Возможно, "+valence.suggestion+".",valence.suggestion);
+   if(valence){
+    add(valence.isError?"error":"warning",
+     "Не совпадают заряды ионов в типичной соли. Возможно, "+valence.suggestion+".",valence.suggestion);
+    continue;
+   }
   }
+  if(!familiar.has(formula))
+   add("info","Синтаксис формулы допустим, но такое вещество отсутствует в справочной базе. Нужна дополнительная проверка.");
  }
  return result;
 }
