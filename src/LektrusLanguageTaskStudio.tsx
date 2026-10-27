@@ -34,6 +34,20 @@ const introduction:Record<string,{title:string;hint:string}>={
  "languages:reading":{title:"Чтение с вопросами",hint:"Поместите текст и вопросы. Ученик читает и записывает ответы."},
  "languages:choice":{title:"Вопрос с вариантами",hint:"Создайте вопрос и варианты, обозначив правильный ответ."}
 };
+/** The same stored field can have different school meaning in different workflows. */
+const subjectFieldInfo:Record<string,{label:string;hint:string;rows?:number}>={
+ "russian:morphemes:material":{label:"Слова для разбора",hint:"Введите слова, каждое можно написать с новой строки",rows:4},
+ "russian:morphology:material":{label:"Предложение и слово",hint:"Укажите предложение и слово для морфологического разбора",rows:4},
+ "russian:syntax:material":{label:"Предложение для разбора",hint:"Введите предложение для определения грамматической основы и схемы",rows:4},
+ "russian:text:material":{label:"Исходный текст",hint:"Введите текст для чтения и анализа",rows:6},
+ "russian:text:questions":{label:"Вопросы и задания",hint:"Укажите вопросы к тексту и требуемые действия",rows:4},
+ "languages:translation:material":{label:"Исходный текст",hint:"Введите текст, который нужно перевести",rows:6},
+ "languages:translation:direction":{label:"Перевести на язык",hint:"Укажите язык, на который нужно перевести"},
+ "languages:grammar:material":{label:"Предложения для преобразования",hint:"Введите предложения, которые нужно изменить",rows:5},
+ "languages:grammar:instruction":{label:"Грамматическое действие",hint:"Укажите требуемое время, форму или правило",rows:3},
+ "languages:reading:material":{label:"Текст для чтения",hint:"Введите текст, который ученик будет читать",rows:7},
+ "languages:reading:questions":{label:"Вопросы к тексту",hint:"Введите вопросы к прочитанному",rows:5}
+};
 const fieldInfo:Record<string,{label:string;hint:string;rows?:number}>={
  material:{label:"Учебный материал",hint:"Введите текст, слова или предложения для работы",rows:5},
  direction:{label:"Язык перевода",hint:"Укажите, на какой язык нужно перевести"},
@@ -124,7 +138,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
      onChange={next=>{patch({activity:next,activityResponse:undefined});setPreviewAnswer({});}}/>}
     {template.fields.length>0&&<div className="lektrus-language-studio-fields">
      {template.fields.map(field=>{
-      const content=fieldInfo[field.id];
+      const content=subjectFieldInfo[tone+":"+template.id+":"+field.id]??fieldInfo[field.id];
       return <label className="lektrus-language-field" key={field.id}>
        {content?.label??field.label}
        {field.multiline||content?.rows?<textarea rows={content?.rows??4} maxLength={1800}
@@ -147,7 +161,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
      {entry.prompt.trim()&&<p className="lektrus-language-preview-instruction">{entry.prompt}</p>}
      {template.fields.map(field=>(entry.details?.[field.id]?.trim()?
       <div key={field.id} className="lektrus-language-preview-material">
-       <small>{field.label}</small><p>{entry.details?.[field.id]}</p>
+       <small>{subjectFieldInfo[tone+":"+template.id+":"+field.id]?.label??field.label}</small><p>{entry.details?.[field.id]}</p>
       </div>:null))}
      {activity?<LektrusSubjectActivityRunner activity={activity} response={previewAnswer}
        onChange={setPreviewAnswer} compact/>:
