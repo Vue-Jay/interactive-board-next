@@ -11,9 +11,15 @@ const modelCode=compile("src/lektrusChemicalEquationModel.ts");
 const model=new Function(modelCode+"\nreturn {countFormulaAtoms,inspectEquationBalance,normalizeFormulaInput,parseEquationDraft};")();
 const dbCode=compile("src/lektrusReactionDatabase.ts");
 const db=new Function(dbCode+"\nreturn {identifyReaction,reviewedReactionCases};")();
+const expandedCode=compile("src/lektrusEquationExtendedCases.ts");
+const expanded=new Function(expandedCode+"\nreturn {expandedEquationCases,expandedEquationCount};")();
 const poolCode=compile("src/lektrusEquationExamplePool.ts");
-const pool=new Function("reviewedReactionCases","parseEquationDraft",poolCode+
- "\nreturn {equationExamplePool,equationExamplesByDomain,selectRandomEquationExample};")(db.reviewedReactionCases,model.parseEquationDraft);
+const pool=new Function("reviewedReactionCases","parseEquationDraft","expandedEquationCases",poolCode+
+ "\nreturn {equationExamplePool,equationExamplesByDomain,selectRandomEquationExample};")(
+ db.reviewedReactionCases,model.parseEquationDraft,expanded.expandedEquationCases);
+assert.ok(expanded.expandedEquationCount>=300,"At least 300 new bounded school chemistry cases");
+assert.ok(pool.equationExamplesByDomain("inorganic").length>=280);
+assert.ok(pool.equationExamplesByDomain("organic").length>=100);
 assert.ok(pool.equationExamplesByDomain("inorganic").length>=20,"At least twenty rotating inorganic examples");
 assert.ok(pool.equationExamplesByDomain("organic").length>=20,"At least twenty rotating organic examples");
 assert.ok(pool.equationExamplesByDomain("inorganic").length>=80,"Review 80+ curated inorganic reactions");
@@ -113,4 +119,4 @@ assert.ok(presets.includes('"chem-formula-free":{title:"Химическое у�
  "A new equation starts empty, showing only a background reference");
 const styles=read("src/lektrusEquationReview.css");
 assert.match(styles,/@media\(max-width:540px\)/);
-console.log("Chemistry pathways: 20+ backgrounds per domain, validated examples, decomposition, organic chemistry, chain continuity and teacher review: OK");
+console.log(`Chemistry pathways: ${pool.equationExamplePool.length} validated reaction references (${expanded.expandedEquationCount} new), organic chains, conditions and teacher review: OK`);
