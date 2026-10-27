@@ -3,10 +3,11 @@
  */
 import {identifyReaction,type ReactionEnvironment} from "./lektrusReactionDatabase";
 import {equationExamplePool} from "./lektrusEquationExamplePool";
+import {inspectChemicalSpecies} from "./lektrusChemicalFormulaValidation";
 import {inspectEquationBalance,normalizeFormulaInput,parseEquationDraft,type EquationDraft,type EquationSpecies} from "./lektrusChemicalEquationModel";
 export type EquationDomain="inorganic"|"organic";
 export type EquationStep={expression:string;conditions:string};
-export type ReviewIssue={severity:"error"|"warning"|"info";kind:"missing"|"extra"|"coefficient"|"indicator"|"formula"|"condition"|"chain"|"reaction"|"unknown";side?:"left"|"right";index?:number;formula?:string;message:string};
+export type ReviewIssue={severity:"error"|"warning"|"info";kind:"missing"|"extra"|"coefficient"|"indicator"|"formula"|"condition"|"chain"|"reaction"|"substance"|"unknown";side?:"left"|"right";index?:number;formula?:string;message:string};
 export type ReviewedEquation={status:"correct"|"incorrect"|"partial"|"unknown";issues:ReviewIssue[];reference?:string;referenceConditions?:string;canFillProducts:boolean;canMarkProducts:boolean;canBalance:boolean;description:string};
 export type ReactionExample={id:string;title:string;expression:string;conditions:string;domain:EquationDomain};
 const example=(id:string,title:string,expression:string,conditions="",domain:EquationDomain="inorganic"):ReactionExample=>({id,title,expression,conditions,domain});
@@ -87,14 +88,22 @@ export function reviewEquationStep(step:EquationStep,domain:EquationDomain):Revi
  if(!draft)return {status:"unknown",issues:[{kind:"formula",severity:"warning",message:"Введите знак реакции и обе части уравнения."}],
   canFillProducts:false,canMarkProducts:false,canBalance:false,description:"Недостаточно данных"};
  const left=list(draft.left),right=list(draft.right);
+ for(const side of ["left","right"] as const){
+  const species=draft[side];
+  for(const finding of inspectChemicalSpecies(species,domain)){
+   issues.push({kind:"substance",side,index:finding.index,
+    formula:finding.formula,severity:finding.severity,message:finding.message});
+  }
+ }
  if(!left.length||!right.length){
   const known=left.length?referenceFor(draft,domain,step.conditions):undefined;
   const expected=known?parseEquationDraft(known.expression):null;
-  return {status:"partial",issues:expected&&!right.length?
+  const missing=expected&&!right.length?
    expected.right.filter(v=>v.formula.trim()).map(s=>({kind:"missing" as const,severity:"warning" as const,
     side:"right" as const,formula:s.formula,message:"Не хватает продукта "+s.formula+"."})):
-   [{kind:"formula",severity:"warning",message:"Заполните реагенты и продукты."}],
-   reference:known?.expression,referenceConditions:known?.conditions,
+   [{kind:"formula" as const,severity:"warning" as const,message:"Заполните реагенты и продукты."}];
+  return {status:issues.some(v=>v.severity==="error")?"incorrect":"partial",
+   issues:[...issues,...missing],reference:known?.expression,referenceConditions:known?.conditions,
    canFillProducts:!!known,canMarkProducts:false,canBalance:false,
    description:known?.note??"Уравнение не закончено"};
  }
