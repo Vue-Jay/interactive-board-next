@@ -109,7 +109,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
      <div className="lektrus-language-gap-heading">
       <strong>Текст упражнения</strong><small>Выделяйте нужные фрагменты и превращайте их в пропуски</small>
      </div>
-     <textarea className="lektrus-language-gap-source" ref={selectedRef} rows={7} maxLength={2500}
+     <textarea className="lektrus-language-gap-source" ref={selectedRef} rows={7} maxLength={1800}
       aria-label="Текст упражнения для создания пропусков" value={markup}
       placeholder="Введите текст, затем выделите нужные буквы, знаки или слова"
       onChange={e=>changeMarkup(e.target.value)}/>
