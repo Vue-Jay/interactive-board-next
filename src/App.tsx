@@ -38,7 +38,7 @@ import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
-import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,subjectBoardLocked,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
+import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,subjectBoardLocked,entryBelongsToSubject,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
 import {LektrusSubjectBoardSolutionEditor} from "./LektrusSubjectBoardSolution";
 import {subjectToneForItem,subjectToneForSubject,subjectAccentPalette} from "./lektrusSubjectAccent";
 import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
@@ -2499,8 +2499,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(tone){
       const current=itemsRef.current;
       const updated=current.map(item=>isSubjectBoard(item)&&!subjectBoardLocked(item)&&boardTone(item)!==tone?
-        {...item,graphFigureId:"subject-board-"+tone,text:subjectAccentPalette[tone].label+" · учебная доска"}:item);
-      if(updated.some((item,index)=>item!==current[index]))commit(updated);
+        {...item,graphFigureId:"subject-board-"+tone,text:subjectAccentPalette[tone].label+" · учебная доска",
+          // Discard only empty, unsaved drafts from the former subject.
+          subjectBoardEntries:(item.subjectBoardEntries??[]).filter(subjectBoardEntryFilled)}:item);
+      if(updated.some((item,index)=>item!==current[index])){
+        setSubjectBoardEditor(null);
+        setSubjectBoardSolution(null);
+        commit(updated);
+      }
     }
   };
   const mathematicalSubjectTools=useMemo(()=>subjectToolsFor(lectrisBoardOrganization.subject),[lectrisBoardOrganization.subject]);
@@ -5503,15 +5509,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      const latest=itemsRef.current.find(value=>value.id===boardId);
      if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit||(teacherOnly&&!roleCapabilities.canUseTeacherTools))return;
      const entries=latest.subjectBoardEntries??[];
-     if(!entries.some(entry=>entry.id===entryId))return;
-     const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?{...entry,...changes}:entry)};
+     const current=entries.find(entry=>entry.id===entryId);
+     if(!current||!entryBelongsToSubject(boardTone(latest),current))return;
+     if(changes.subject&&changes.subject!==boardTone(latest))return;
+     if(changes.format&&changes.format!==current.format&&!roleCapabilities.canUseTeacherTools)return;
+     if(!roleCapabilities.canUseTeacherTools&&Object.keys(changes).some(key=>!["answer","workedSolution","activityResponse"].includes(key)))return;
+     const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?{
+       ...entry,...changes,subject:boardTone(latest)}:entry)};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
      commit(itemsRef.current.map(value=>value.id===latest.id?next:value));
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
    };
    const removeSubjectBoardEntry=(boardId:string,entryId:string)=>{
      const latest=itemsRef.current.find(value=>value.id===boardId);
-     if(!latest||latest.locked||!canEdit||!roleCapabilities.canUseTeacherTools)return;
+     if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit||!roleCapabilities.canUseTeacherTools)return;
+     const owned=latest.subjectBoardEntries?.find(entry=>entry.id===entryId);
+     if(!owned||!entryBelongsToSubject(boardTone(latest),owned))return;
      const next={...latest,subjectBoardEntries:(latest.subjectBoardEntries??[]).filter(entry=>entry.id!==entryId)};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
      commit(itemsRef.current.map(value=>value.id===latest.id?next:value));
@@ -5522,6 +5535,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit||!roleCapabilities.canUseTeacherTools)return;
      const entries=latest.subjectBoardEntries??[];
      const from=entries.findIndex(value=>value.id===entryId),to=from+direction;
+     if(!entries.every(entry=>entryBelongsToSubject(boardTone(latest),entry)))return;
      if(from<0||to<0||to>=entries.length)return;
      const ordered=[...entries];
      [ordered[from],ordered[to]]=[ordered[to],ordered[from]];
@@ -5533,7 +5547,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
    const openSubjectBoardSolution=(boardId:string,entryId:string)=>{
      const latest=itemsRef.current.find(value=>value.id===boardId);
      if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit)return;
-     if(!latest.subjectBoardEntries?.some(entry=>entry.id===entryId))return;
+     if(!latest.subjectBoardEntries?.some(entry=>entry.id===entryId&&entryBelongsToSubject(boardTone(latest),entry)))return;
      setSubjectBoardSolution({boardId,entryId});
    };
    const closeSubjectBoardEntry=()=>{
@@ -5548,7 +5562,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      if(!canEdit||!roleCapabilities.canUseTeacherTools)return;
      const current=itemsRef.current.find(value=>value.id===boardItem.id)??boardItem;
      if(!isSubjectBoard(current)||current.locked)return;
-     if(entryId&&current.subjectBoardEntries?.some(entry=>entry.id===entryId)){
+     const tone=boardTone(current);
+     if(mode==="equation"&&tone!=="chemistry"){
+       setNotice("Химические уравнения доступны только на химической доске");return;
+     }
+     if(entryId){
+       const existing=current.subjectBoardEntries?.find(entry=>entry.id===entryId);
+       if(!existing||!entryBelongsToSubject(tone,existing)||existing.kind!==mode){
+         setNotice("Это задание не принадлежит предмету данной доски");return;
+       }
        setSelected([current.id]);setSubjectBoardEditor({boardId:current.id,entryId,mode});return;
      }
      if((current.subjectBoardEntries?.length??0)>=48){setNotice("На доске может быть до 48 заданий");return;}
@@ -7784,7 +7806,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {subjectBoardSolution&&(()=>{
           const source=remoteLiveItems[subjectBoardSolution.boardId]??items.find(value=>value.id===subjectBoardSolution.boardId);
           const entry=source?.subjectBoardEntries?.find(value=>value.id===subjectBoardSolution.entryId);
-          if(!source||!entry)return null;
+          if(!source||!entry||!entryBelongsToSubject(boardTone(source),entry))return null;
           return <LektrusSubjectBoardSolutionEditor key={entry.id} tone={boardTone(source)} value={entry.workedSolution}
             initialGiven={entry.details?.given??entry.details?.expression??entry.details?.reaction??""}
             initialFind={entry.details?.find??""}
@@ -7795,7 +7817,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           const boardItem=remoteLiveItems[subjectBoardEditor.boardId]??
             items.find(value=>value.id===subjectBoardEditor.boardId);
           const entry=boardItem?.subjectBoardEntries?.find(value=>value.id===subjectBoardEditor.entryId);
-          if(!boardItem||!entry)return null;
+          if(!boardItem||!entry||!entryBelongsToSubject(boardTone(boardItem),entry)||
+            entry.kind!==subjectBoardEditor.mode||
+            (subjectBoardEditor.mode==="equation"&&boardTone(boardItem)!=="chemistry"))return null;
           if(subjectBoardEditor.mode==="equation"){
             const steps=entry.steps?.length?entry.steps:[{expression:"",conditions:""}];
             return <LektrusChemicalEquationEditor key={entry.id} canTeach={roleCapabilities.canUseTeacherTools}
