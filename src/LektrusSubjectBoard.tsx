@@ -1,4 +1,5 @@
 import {createPortal} from "react-dom";
+import type {CSSProperties} from "react";
 import type {Item,SubjectBoardEntry} from "./boardModel";
 import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
@@ -30,7 +31,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal}:
  const entries=item.subjectBoardEntries??[];
  const chemistry=tone==="chemistry";
  return <div className="graph-view lektrus-subject-board-shell">
-  <article className="lektrus-subject-board" style={{"--subject-board-accent":palette.accent,"--subject-board-soft":palette.soft} as React.CSSProperties}
+  <article className="lektrus-subject-board" style={{"--subject-board-accent":palette.accent,"--subject-board-soft":palette.soft} as CSSProperties}
    aria-label={palette.label+" · учебная доска"}>
    <header className="lektrus-subject-board-header">
     <span className="lektrus-subject-board-emblem" aria-hidden="true">▤</span>
