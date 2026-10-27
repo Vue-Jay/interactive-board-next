@@ -117,6 +117,7 @@ import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState } 
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMerge";
+import {mergeBoardDocumentEdits} from "./lektrusBoardThreeWayMerge";
 import {
   parseDocument,
   packDocumentInk,
@@ -2649,6 +2650,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     })()?null:documentFingerprint(initial.data));
   const acknowledgedSharedContent = useRef<string | null>(
     acknowledgedDocument.current===null?null:sharedBoardFingerprint(initial.data));
+  // Base for ALL unacknowledged local edits, including ink and ordinary
+  // object transforms. Editor-specific bases alone cannot preserve them.
+  const acknowledgedBoardData=useRef<DocumentData|null>(
+    acknowledgedDocument.current===null?null:initial.data);
   const deferredRemote = useRef<RemoteBoardDocument | null>(null);
   const pendingRemote = useRef<RemoteBoardDocument | null>(null);
   const lastAttempt = useRef<{ version: number; fingerprint: string } | null>(null);
@@ -2803,6 +2808,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       remoteVersion.current = result.version;
       acknowledgedDocument.current = fingerprint;
       acknowledgedSharedContent.current = sharedBoardFingerprint(data);
+      acknowledgedBoardData.current = data;
       // A newer local edit may already be queued. Never clear its pending flag
       // merely because the previous remote revision finished.
       if(snapshot.current&&documentFingerprint(snapshot.current)===fingerprint){
@@ -2844,7 +2850,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       if (boardMounted.current && deferred) receiveRemote.current(deferred);
       const queued = queuedRemoteSnapshot.current;
       queuedRemoteSnapshot.current = null;
-      if (queued) void pushRemoteSnapshot(queued);
+      // A competing server revision must be rebased BEFORE starting another
+      // save. Sending a previously queued, unrebased document overwrites ink.
+      if (queued && !deferred)
+        void pushRemoteSnapshot(snapshot.current??queued);
     }
   }, [boardSummary.id, canEdit, layoutEditing]);
 
@@ -2926,8 +2935,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       backgroundShared:backgroundIsShared,
       subject:lectrisBoardOrganization.subject,
       items: editing
-        ? items.map((i) => (i.id === editing ? { ...i, text: draft } : i))
-        : items,
+        ? itemsRef.current.map((i) => (i.id === editing ? { ...i, text: draftRef.current } : i))
+        : itemsRef.current,
     });
     snapshot.current = data;
     if (!canEdit) return;
@@ -6575,6 +6584,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     remoteVersion.current = row.version;
     acknowledgedDocument.current = documentFingerprint(data);
     acknowledgedSharedContent.current = sharedBoardFingerprint(data);
+    acknowledgedBoardData.current = data;
     pendingRemote.current = null;
     queuedRemoteSnapshot.current = null;
     remoteSaveFailures.current = 0;
@@ -6590,7 +6600,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     setTableEditorId(null); setChecklistEditorId(null); setQuizEditorId(null);
     setFlashcardEditorId(null); setFormulaEditorId(null); setFrameNotesEditorId(null);
-    applyDocument(data, true);
+    // Receive server changes without closing an editor, dropping the selected
+    // object or cancelling the current tool/undo history.
+    const incomingItems=expandDocumentInk(data);
+    display(incomingItems);
+    history.current=[incomingItems];
+    index.current=0;
+    snapshot.current=data;
+    setTitle(data.title);
+    setBoardBackground(normalizeBoardBackground(data.background));
+    setBackgroundIsShared(data.backgroundShared!==false);
+    setLectrisBoardOrganization(current=>({...current,
+      subject:typeof data.subject==="string"?normalizeLektrusSubject(data.subject):""}));
+    setSelected(current=>current.filter(id=>incomingItems.some(item=>item.id===id)));
     try { localStorage.setItem(storageKey, JSON.stringify(data)); } catch { /* still usable in memory */ }
     setSaveStatus("Получена серверная версия");
   };
@@ -6618,6 +6640,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         remoteVersion.current = row.version;
         acknowledgedDocument.current = lastAttempt.current!.fingerprint;
         acknowledgedSharedContent.current = sharedBoardFingerprint(data);
+        acknowledgedBoardData.current = data;
         return;
       }
       // A different viewport is not new shared board content. Accept the
@@ -6633,39 +6656,37 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         // to choose between "my" and "server" versions.
         const local = parseDocument(JSON.stringify(currentDocument()));
         const remote = data;
-        // Merge both normal objects and drawing strokes by stable ids.
-        // Drawings remain in the separate ink collection after packing.
-        const remoteItems = expandDocumentInk(remote);
-        const localItems = expandDocumentInk(local);
-        const remoteIds = new Set(remoteItems.map(item => item.id));
-        const localOnly = localItems.filter(item => !remoteIds.has(item.id));
-        const localById=new Map(localItems.map(item=>[item.id,item]));
-        const mergedItems=remoteItems.map(item=>{
-          const original=pendingEditorBases.current.get(item.id);
-          const changed=localById.get(item.id);
-          return original&&changed?mergeEditedValue(original,changed,item):item;
-        });
-        const merged: DocumentData = packDocumentInk({
-          ...remote,
-          view: local.view,
-          items: [...mergedItems, ...localOnly],
-          ink: undefined,
-        });
-        for(const item of remoteItems)
+        // Rebase every unsaved local change on the last ACKNOWLEDGED version,
+        // not just the special editors. This preserves fresh ink, eraser
+        // deletions and moves while accepting independent remote changes.
+        const merged=mergeBoardDocumentEdits(acknowledgedBoardData.current,local,remote);
+        const mergedItems=expandDocumentInk(merged);
+        for(const item of expandDocumentInk(remote))
           if(pendingEditorBases.current.has(item.id))pendingEditorBases.current.set(item.id,item);
 
         remoteVersion.current = row.version;
         acknowledgedDocument.current = documentFingerprint(remote);
         acknowledgedSharedContent.current = sharedBoardFingerprint(remote);
+        acknowledgedBoardData.current = remote;
         pendingRemote.current = null;
         setRemoteConflict(null);
         setConflictLocalBackup(null);
         try { localStorage.removeItem(storageKey + ".conflict-backup"); } catch {}
-        applyDocument(merged, true);
-        snapshot.current = merged;
-        queuedRemoteSnapshot.current = merged;
+        // Do not call applyDocument(): it resets pointer state, selection,
+        // editor windows and the undo stack on EVERY server version.
+        display(mergedItems);
+        history.current=[mergedItems];
+        index.current=0;
+        snapshot.current=merged;
+        setTitle(merged.title);
+        setBoardBackground(normalizeBoardBackground(merged.background));
+        setBackgroundIsShared(merged.backgroundShared!==false);
+        setLectrisBoardOrganization(current=>({...current,
+          subject:typeof merged.subject==="string"?normalizeLektrusSubject(merged.subject):""}));
+        queuedRemoteSnapshot.current=null;
         setSaveStatus("Синхронизировано");
-        window.setTimeout(() => void pushRemoteSnapshot(merged), 0);
+        // The newest merged document is the ONLY valid save candidate.
+        window.setTimeout(()=>{if(boardMounted.current)void pushRemoteSnapshot(snapshot.current??merged)},0);
         return;
       }
       applyServerDocument(row);
