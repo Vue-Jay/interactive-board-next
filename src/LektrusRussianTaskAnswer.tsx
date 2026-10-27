@@ -14,8 +14,6 @@ export const russianWorkSource=(entry:SubjectBoardEntry):string=>
 const grammaticalRoles=Object.entries(grammarRoles) as [WordRole,string][];
 const morphemeRoles=Object.entries(morphemeNames) as [MorphemeRole,string][];
 const sentencePunctuation=/^[^\p{L}\p{N}]+$/u;
-const roles:Record<WordRole,string>={subject:"Одна линия",predicate:"Две линии",
- attribute:"Волнистая",object:"Пунктир",adverbial:"Штрихпунктир",none:"Без подчёркивания"};
 const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
 
 type Props={entry:SubjectBoardEntry;work?:RussianTaskWork;onChange?:(next:RussianTaskWork)=>void};
