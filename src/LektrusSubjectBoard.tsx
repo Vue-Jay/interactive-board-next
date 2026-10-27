@@ -3,8 +3,8 @@ import {useEffect,useRef,useState,type CSSProperties} from "react";
 import type {Item,SubjectBoardEntry,SubjectTaskActivityResponse} from "./boardModel";
 import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
-import {taskTemplateFor,subjectTaskTemplates,freshTaskDetails,subjectBoardHasWork,isSchoolSolutionSubject} from "./lektrusSubjectTaskTemplates";
-import {LektrusSubjectBoardSolutionView,hasWorkedSolution} from "./LektrusSubjectBoardSolution";
+import {taskTemplateFor,subjectTaskTemplates,subjectTaskTypeKnown,freshTaskDetails,subjectBoardHasWork,isSchoolSolutionSubject,needsAutomaticWorkedSolution} from "./lektrusSubjectTaskTemplates";
+import {LektrusSubjectBoardSolutionView,LektrusSubjectBoardInlineSolution,emptyWorkedSolution,hasWorkedSolution} from "./LektrusSubjectBoardSolution";
 import {interactiveSubjects,preferredActivityMode,activityMatchesTask,freshActivity,LektrusSubjectActivityBuilder,LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
 
 export const subjectBoardId=(tone:SubjectTone)=>"subject-board-"+tone;
@@ -18,7 +18,7 @@ export const boardTone=(item:Item):SubjectTone=>{
 export const entryBelongsToSubject=(tone:SubjectTone,entry:SubjectBoardEntry):boolean=>{
  if(entry.subject&&entry.subject!==tone)return false;
  if(entry.kind==="equation")return tone==="chemistry";
- return !entry.format||subjectTaskTemplates[tone].some(template=>template.id===entry.format);
+ return subjectTaskTypeKnown(tone,entry.format);
 };
 export const subjectBoardLocked=(item:Item)=>item.subjectBoardEntries?.some(subjectBoardHasWork)===true;
 export const newSubjectBoardEntry=(id:string,kind:"equation"|"task",tone:SubjectTone="chemistry"):SubjectBoardEntry=>{
@@ -40,9 +40,10 @@ type BoardProps={
  onReveal?:(entryId:string)=>void;
  onMove?:(entryId:string,direction:-1|1)=>void;
  onEditSolution?:(entryId:string)=>void;
+ onWorkedSolutionChange?:(entryId:string,solution:import("./boardModel").SubjectBoardWorkedSolution)=>void;
  onActivityAnswer?:(entryId:string,response:SubjectTaskActivityResponse)=>void;
 };
-export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution,onActivityAnswer}:BoardProps){
+export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution,onWorkedSolutionChange,onActivityAnswer}:BoardProps){
  const tone=boardTone(item),palette=subjectAccentPalette[tone];
  const allEntries=item.subjectBoardEntries??[];
  const entries=allEntries.filter(entry=>entryBelongsToSubject(tone,entry));
@@ -113,7 +114,11 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
       {entry.kind==="task"&&activityMatchesTask(tone,entry.format,entry.activity)&&
        <LektrusSubjectActivityRunner activity={entry.activity!} response={entry.activityResponse}
         onChange={onActivityAnswer?(response)=>onActivityAnswer(entry.id,response):undefined}/>}
-      {isSchoolSolutionSubject(tone)?<div className="lektrus-subject-board-solution-area">
+      {needsAutomaticWorkedSolution(tone,entry.format)&&entry.kind==="task"?
+        <div className="lektrus-subject-board-solution-area">
+          <LektrusSubjectBoardInlineSolution tone={tone} value={entry.workedSolution}
+           onChange={onWorkedSolutionChange?solution=>onWorkedSolutionChange(entry.id,solution):undefined}/>
+        </div>:isSchoolSolutionSubject(tone)?<div className="lektrus-subject-board-solution-area">
         <LektrusSubjectBoardSolutionView tone={tone} value={entry.workedSolution} legacyAnswer={entry.answer}/>
         {onEditSolution&&<button type="button" className="lektrus-subject-board-add-solution"
          data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
@@ -161,7 +166,9 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
    if(!subjectTaskTemplates[tone].some(template=>template.id===format))return;
    const nextMode=preferredActivityMode(tone,format);
    patch({format,subject:tone,activity:nextMode?freshActivity(nextMode):undefined,
-    activityResponse:undefined,details:{...freshTaskDetails(tone,format),...entry.details}});
+    activityResponse:undefined,details:freshTaskDetails(tone,format),
+    workedSolution:needsAutomaticWorkedSolution(tone,format)?
+     (entry.workedSolution??emptyWorkedSolution()):entry.workedSolution});
    setPreviewResponse({});
  };
  const style={"--subject-board-accent":palette.accent,"--subject-board-soft":palette.soft} as CSSProperties;
@@ -198,7 +205,7 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
         activity={activeActivity} response={previewResponse} onChange={setPreviewResponse} compact/>
       </section>
      </div>}
-    {current.fields.length>0&&(interactive?
+    {current.fields.length>0&&(activeActivity?
      <details className="lektrus-activity-context-details">
        <summary>Дополнительные данные и условия <span>необязательно</span></summary>
        <div className="lektrus-subject-task-fields">
