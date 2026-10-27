@@ -15,16 +15,25 @@ assert.equal(interactiveSubjects("mathematics"),true);
 assert.equal(interactiveSubjects("russian"),true);
 assert.equal(interactiveSubjects("languages"),true);
 assert.equal(interactiveSubjects("physics"),false);
+// Specialised interactions are only enabled when they make sense for the subject.
 const defaults=[
- ["mathematics","equation","fill"],["mathematics","matching","match"],["mathematics","sequence","order"],
- ["russian","orthography","fill"],["russian","morphemes","match"],["russian","syntax","match"],
- ["russian","morphology","choice"],["russian","sequence","order"],
- ["languages","translation","fill"],["languages","gaps","fill"],["languages","vocabulary","match"],
- ["languages","grammar","choice"],["languages","word-order","order"],["languages","reading","choice"]
+ ["mathematics","task",null],["mathematics","equation",null],["mathematics","geometry",null],
+ ["mathematics","word-problem",null],["mathematics","function",null],
+ ["mathematics","choice","choice"],["mathematics","cloze","fill"],
+ ["mathematics","matching","match"],["mathematics","sequence","order"],
+ ["russian","task",null],["russian","orthography","fill"],["russian","punctuation","fill"],
+ ["russian","morphemes",null],["russian","morphology",null],["russian","syntax",null],
+ ["russian","text",null],["russian","cloze","fill"],["russian","matching","match"],
+ ["russian","sequence","order"],["russian","choice","choice"],
+ ["languages","task",null],["languages","translation",null],["languages","reading",null],
+ ["languages","grammar",null],["languages","gaps","fill"],["languages","vocabulary","match"],
+ ["languages","word-order","order"],["languages","matching","match"],
+ ["languages","choice","choice"],["languages","cloze","fill"],
+ ["physics","calculation",null],["chemistry","experiment",null]
 ];
 for(const [subject,format,mode] of defaults){
  assert.equal(preferredActivityMode(subject,format),mode,subject+" / "+format);
- assert.equal(freshActivity(mode).mode,mode);
+ if(mode)assert.equal(freshActivity(mode).mode,mode);
 }
 const emptyModes=["choice","fill","match","order"];
 for(const mode of emptyModes)assert.equal(activityComplete(freshActivity(mode)),false,
