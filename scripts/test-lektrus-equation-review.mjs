@@ -197,16 +197,16 @@ assert.ok(code.includes("lektrus-chem-token-issue"),"Incorrect substance is high
 assert.ok(code.includes("lektrus-chem-field-feedback"),"Feedback messages are in the input box");
 assert.ok(code.includes("lektrus-chem-condition-feedback"),"Condition warnings are placed at their field");
 assert.ok(code.includes("onScroll={e=>"),"Text highlights follow textarea scrolling");
-assert.ok(code.includes("newBackgroundExample"),"Opening the editor rotates background examples");
+assert.ok(!code.includes("newBackgroundExample"),"Exercise authoring must not fill input hints with reaction examples");
 assert.ok(code.includes('e.key==="="'),"Equal key shortcut targets the product side");
 assert.ok(code.includes("inputs.current.right?.focus()"),"Equal key moves focus instead of inserting text");
-assert.ok(code.includes("exampleParts.reactants")&&code.includes("exampleParts.products"),
- "Hints appear as input placeholders rather than inserted reactants");
+assert.ok(code.includes("Укажите исходные вещества")&&code.includes("Укажите продукты реакции"),
+ "Input hints describe fields without giving example reactions");
 assert.ok(!code.includes("insertExample"),"Example must never overwrite actual equation");
 const AST=ts.createSourceFile("Editor.tsx",code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(AST.parseDiagnostics.length,0,"Editor TSX parses");
-for(const feature of ["selectRandomEquationExample","Неорганика","Органика","+ Этап",
- "Распад H₂CO₃","Расставить коэффициенты","Газы и осадки","Проверить",
+for(const feature of ["Неорганика","Органика","+ Этап",
+ "Расставить коэффициенты","Газы и осадки","Проверить",
  "reviewEquationChain","canTeach","scienceReactionSteps"])assert.ok(code.includes(feature),feature);
 assert.match(code,/canTeach&&<section/,"Only teachers get reference checking UI");
 const board=read("src/boardModel.ts");
@@ -221,7 +221,7 @@ const science=read("src/LektrusScienceEditor.tsx");
 assert.ok(science.includes("canTeach={canTeach===true}"));
 const presets=read("src/lektrusSciencePresets.ts");
 assert.ok(presets.includes('"chem-formula-free":{title:"Химическое уравнение",expression:""}'),
- "A new equation starts empty, showing only a background reference");
+ "A new chemical equation must start empty");
 const styles=read("src/lektrusEquationReview.css");
 assert.match(styles,/@media\(max-width:540px\)/);
 console.log(`Chemistry pathways: ${pool.equationExamplePool.length} atom-balanced references (${expanded.expandedEquationCount} expanded, ${additional.additionalEquationCount} additional), organic chains, conditions and teacher review: OK`);
