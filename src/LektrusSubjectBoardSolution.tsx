@@ -27,12 +27,14 @@ export function LektrusSubjectBoardSolutionView({tone,value,legacyAnswer}:Props)
 type EditorProps={
  tone:SubjectTone;
  value:SubjectBoardWorkedSolution|undefined;
+ initialGiven?:string;
+ initialFind?:string;
  onChange:(value:SubjectBoardWorkedSolution)=>void;
  onClose:()=>void;
 };
-export function LektrusSubjectBoardSolutionEditor({tone,value,onChange,onClose}:EditorProps){
+export function LektrusSubjectBoardSolutionEditor({tone,value,initialGiven="",initialFind="",onChange,onClose}:EditorProps){
  const palette=subjectAccentPalette[tone];
- const current=value??emptyWorkedSolution();
+ const current=value??{...emptyWorkedSolution(),given:initialGiven,find:initialFind};
  const patch=(key:keyof SubjectBoardWorkedSolution,value:string)=>onChange({...current,[key]:value});
  const style={"--subject-board-accent":palette.accent,"--subject-board-soft":palette.soft} as CSSProperties;
  return createPortal(<div className="lektrus-subject-task-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)onClose();}}>
