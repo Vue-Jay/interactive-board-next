@@ -4,14 +4,14 @@
  box-sizing:border-box;position:relative;isolation:isolate;
  width:100%;height:100%;min-height:145px;
  display:flex;flex-direction:column;overflow:hidden;
- border:1px solid #bfd3d6;border-radius:12px;
- color:var(--chemical-ink);background:#f8fbf8;
+ border:1px solid #a9cfc3;border-radius:12px;
+ color:var(--chemical-ink);background:#d9eee5;
  box-shadow:0 7px 22px rgba(26,57,67,.08),0 1px 3px rgba(25,65,68,.08);
 }
 .lektrus-chemical-board-header {
  position:relative;z-index:1;display:flex;align-items:center;gap:9px;
  flex:0 0 auto;min-height:37px;padding:7px 13px;
- color:#f4faf7;background:linear-gradient(110deg,#285865,#326b70 65%,#377f78);
+ color:#f4faf7;background:linear-gradient(110deg,#174d4f,#1d6861 65%,#23806a);
  border-bottom:1px solid rgba(8,52,59,.25);
  font:700 10px/1.2 system-ui,sans-serif;letter-spacing:.11em;
 }
@@ -31,7 +31,7 @@
  position:relative;flex:1 1 auto;min-width:0;min-height:0;
  display:flex;flex-direction:column;justify-content:center;
  gap:7px;overflow:auto;padding:16px 22px 18px;
- background-color:#fafcf9;
+ background-color:#d9eee5;
  background-image:linear-gradient(to right,rgba(48,114,113,.055) 1px,transparent 1px),
                   linear-gradient(to bottom,rgba(48,114,113,.055) 1px,transparent 1px);
  background-size:23px 23px;background-position:0 4px;
@@ -77,9 +77,9 @@
 .lektrus-chemical-board-footer{
  display:flex;align-items:center;justify-content:space-between;gap:12px;
  min-height:24px;padding:5px 13px;
- border-top:1px solid #deeae6;background:rgba(235,245,240,.75);
+ border-top:1px solid #c6dfd4;background:#c4e5d7;
  font:650 8px/1.1 system-ui,sans-serif;letter-spacing:.15em;
- color:#688883;
+ color:#326c66;
 }
 .lektrus-chem-reaction-workspace .lektrus-chem-background-caption{
  display:flex;align-items:center;margin-left:auto;
@@ -109,4 +109,112 @@
  .lektrus-chemical-board .lektrus-reaction-equation-text{font-size:17px}
  .lektrus-chemical-board-domain{font-size:9px;padding:4px 5px}
  .lektrus-chem-reaction-workspace .lektrus-chem-background-caption{max-width:140px}
+}
+
+
+/* Subject identity: all subject objects have a distinct, restrained border
+   accent, without recolouring mathematical diagrams or geographic maps. */
+.workspace .board .board-object[data-subject-tone="mathematics"]{--lektrus-subject:#605bb6;--lektrus-subject-soft:#efedfb}
+.workspace .board .board-object[data-subject-tone="physics"]{--lektrus-subject:#386fae;--lektrus-subject-soft:#e8f1fc}
+.workspace .board .board-object[data-subject-tone="chemistry"]{--lektrus-subject:#1e766a;--lektrus-subject-soft:#e0f2e8}
+.workspace .board .board-object[data-subject-tone="biology"]{--lektrus-subject:#52823e;--lektrus-subject-soft:#eef5e5}
+.workspace .board .board-object[data-subject-tone="geography"]{--lektrus-subject:#288998;--lektrus-subject-soft:#e4f4f5}
+.workspace .board .board-object[data-subject-tone="history"]{--lektrus-subject:#a16f38;--lektrus-subject-soft:#f9f0df}
+.workspace .board .board-object[data-subject-tone="russian"]{--lektrus-subject:#a34d6c;--lektrus-subject-soft:#f9e9ef}
+.workspace .board .board-object[data-subject-tone="languages"]{--lektrus-subject:#775cb4;--lektrus-subject-soft:#f0eafb}
+.workspace .board .board-object[data-subject-tone="informatics"]{--lektrus-subject:#496b9b;--lektrus-subject-soft:#e9eff9}
+.workspace .board .board-object.object-graph[data-subject-tone]:not([data-subject-tone="chemistry"]){
+ border-color:color-mix(in srgb,var(--lektrus-subject) 30%,#e4e8ee);
+}
+.workspace .board .board-object.object-graph[data-subject-tone]:not([data-subject-tone="chemistry"])::before{
+ content:"";position:absolute;inset:0 0 auto;z-index:2;height:3px;
+ pointer-events:none;border-radius:10px 10px 0 0;
+ background:var(--lektrus-subject);
+ opacity:.72;
+}
+/* Nothing white or inset around the chemical surface: the coloured board
+   itself is the object, including during a live resize. */
+.workspace .board .board-object.object-graph[data-subject-tone="chemistry"]{
+ padding:0!important;border:0!important;background:transparent!important;
+ box-shadow:none!important;border-radius:12px!important;
+}
+.workspace .board .board-object.object-graph[data-subject-tone="chemistry"].selected{
+ outline-color:#208677!important;outline-offset:3px;
+}
+.workspace .board .graph-view.lektrus-chemical-illustration{
+ width:100%;height:100%;padding:0!important;margin:0!important;
+ background:transparent!important;box-shadow:none!important;border:0!important;
+ border-radius:12px!important;overflow:hidden;
+}
+.workspace .board .lektrus-chemical-board{
+ border-radius:12px;box-shadow:0 3px 12px rgba(14,73,66,.15);
+}
+/* The canvas remains interactive under the editor. Only the floating panel
+   receives pointer events. Clicking outside does NOT close the editor. */
+.lektrus-chem-reaction-workspace.lektrus-chem-nonblocking{
+ pointer-events:none!important;background:transparent!important;
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+ display:flex!important;align-items:center!important;justify-content:flex-end!important;
+ padding:10px 14px!important;isolation:isolate;
+}
+.lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-equation-editor{
+ pointer-events:auto!important;
+ width:min(1260px,calc(100vw - 300px))!important;
+ max-width:1260px!important;
+ height:min(960px,calc(100dvh - 20px))!important;
+ max-height:calc(100dvh - 20px)!important;
+ box-shadow:0 20px 68px rgba(18,52,57,.2)!important;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-window-actions{
+ margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-board-layout-toggle{
+ border:1px solid #c2d5d5;border-radius:8px;padding:7px 11px;min-height:30px;
+ background:#e5f3ed;color:#23635c;font:700 11px/1.25 system-ui,sans-serif;
+ cursor:pointer;white-space:nowrap;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-board-layout-toggle[aria-pressed="true"]{
+ background:#24766a;color:#fff;border-color:#24766a;
+}
+.lektrus-chem-reaction-workspace.lektrus-chem-nonblocking.is-board-layout .lektrus-chem-equation-editor{
+ width:min(480px,42vw)!important;max-width:480px!important;
+ height:calc(100dvh - 20px)!important;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-board-hint{
+ flex:0 0 auto;margin:0;padding:7px 14px;
+ background:#e6f5ed;border-bottom:1px solid #c9e4da;color:#2a7267;
+ font:600 11px/1.4 system-ui,sans-serif;
+}
+.lektrus-chem-reaction-workspace.is-board-layout .lektrus-chem-equation-columns{
+ display:flex!important;flex-direction:column!important;gap:7px!important;
+}
+.lektrus-chem-reaction-workspace.is-board-layout .lektrus-chem-equation-side textarea{
+ height:65px!important;min-height:56px!important;
+}
+.lektrus-chem-reaction-workspace.is-board-layout .lektrus-chem-equation-header small{
+ display:none!important;
+}
+.lektrus-chem-reaction-workspace.is-board-layout .lektrus-chem-domain-tabs span{
+ display:none;
+}
+@media(max-width:990px){
+ .lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-equation-editor{
+  width:calc(100vw - 20px)!important;max-width:calc(100vw - 20px)!important;
+ }
+ .lektrus-chem-reaction-workspace.lektrus-chem-nonblocking.is-board-layout .lektrus-chem-equation-editor{
+  width:min(430px,52vw)!important;max-width:52vw!important;
+ }
+}
+@media(max-width:590px){
+ .lektrus-chem-reaction-workspace.lektrus-chem-nonblocking{padding:0!important;align-items:stretch!important;}
+ .lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-equation-editor{
+  width:100vw!important;max-width:100vw!important;height:100dvh!important;
+  max-height:100dvh!important;border-radius:0!important;
+ }
+ .lektrus-chem-reaction-workspace.lektrus-chem-nonblocking.is-board-layout .lektrus-chem-equation-editor{
+  width:min(320px,78vw)!important;max-width:78vw!important;
+ }
+ .lektrus-chem-reaction-workspace .lektrus-chem-equation-window-actions{gap:4px}
+ .lektrus-chem-reaction-workspace .lektrus-chem-board-layout-toggle{padding:6px 8px;font-size:10px}
+ .lektrus-chem-reaction-workspace .lektrus-chem-board-hint{font-size:10px;padding:5px 8px}
 }
