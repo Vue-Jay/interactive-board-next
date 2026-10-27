@@ -61,22 +61,58 @@ const main=read("src/main.tsx");
 const science=read("src/LektrusScienceEditor.tsx");
 const syntax=ts.createSourceFile("editor.tsx",ui,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(syntax.parseDiagnostics.length,0,"No TSX syntax regressions");
-for(const text of ["lektrus-chem-species-card","lektrus-chem-add-species","applyBalance",
- "lektrus-chem-equation-condition-field","lektrus-chem-equation-preview","lektrus-chem-palettes",
- 'role="tablist"',"onKeyDown","onCancel","⇌"])
+for(const text of ["lektrus-chem-equation-side","lektrus-chem-equation-symbols",
+ "lektrus-chem-condition-panel","lektrus-chem-condition-categories",
+ "lektrus-chem-condition-options","lektrus-chem-equation-preview",
+ "applyBalance","onKeyDown","onCancel","⇌"])
  assert.ok(ui.includes(text),"Editor feature missing: "+text);
-assert.match(styles,/@media\(max-width:610px\)/,"Phone layout");
-assert.ok(ui.includes("lektrus-chem-equation-compact"),"Use uncluttered equation workspace");
-assert.ok(ui.includes("lektrus-chem-arrow-chooser"),"Place arrow between equation sides");
-assert.ok(ui.includes("lektrus-chem-state"),"Gas and precipitate selector remains available");
-assert.match(ui,/\[symbolsOpen,setSymbolsOpen\]=useState\(false\)/,"Symbols start collapsed");
+assert.ok(!ui.includes('role="tablist"'),"Single-screen editor must have no mode tabs");
+assert.ok(!ui.includes("lektrus-chem-source"),"No second input mode");
+assert.match(ui,/<textarea[^>]+/,"Dedicated equation input fields");
+assert.match(ui,/aria-label="Реагенты"/);
+assert.match(ui,/aria-label="Продукты"/);
 assert.ok(!ui.includes("LektrusChemistryGuidedBuilder"),"Do not show catalog or guided reaction builder");
 assert.ok(!ui.includes("getReactionGuidance"),"Do not couple freeform editor to reaction database");
 assert.ok(!main.includes("lektrusChemistryGuidedBuilder.css"),"Remove obsolete reference UI styles");
 assert.match(styles, /max-height:100dvh/,"Responsive full viewport");
+
+const controlsSource=read("src/lektrusChemicalEquationControls.ts");
+const controlsCode=ts.transpileModule(controlsSource,{compilerOptions:{
+ target:ts.ScriptTarget.ES2023,module:ts.ModuleKind.ESNext
+}}).outputText.replace(/^export /gm,"");
+const {readReactionText,writeReactionText,REACTION_CONDITION_GROUPS,REACTION_CONDITION_LIMIT,
+ parseConditionTokens,toggleReactionCondition}=new Function(controlsCode+
+ "\nreturn {readReactionText,writeReactionText,REACTION_CONDITION_GROUPS,REACTION_CONDITION_LIMIT,parseConditionTokens,toggleReactionCondition};")();
+assert.equal(REACTION_CONDITION_GROUPS.length,6,"Conditions have six compact categories");
+assert.ok(REACTION_CONDITION_GROUPS.flatMap(g=>g.tokens).length>=50,
+ "Large grouped set of common reaction conditions without a reference directory");
+assert.ok(REACTION_CONDITION_GROUPS.some(g=>g.tokens.includes("hν")));
+assert.ok(REACTION_CONDITION_GROUPS.some(g=>g.tokens.includes("Pt")));
+assert.ok(REACTION_CONDITION_GROUPS.some(g=>g.tokens.includes("вакуум")));
+assert.ok(REACTION_CONDITION_GROUPS.some(g=>g.tokens.includes("этанол")));
+assert.ok(REACTION_CONDITION_GROUPS.some(g=>g.tokens.includes("t°")));
+const simple=readReactionText("2H2 + O2 → 2H2O");
+assert.deepEqual(simple,{reactants:"2H2 + O2",products:"2H2O",arrow:"→",standalone:false});
+assert.equal(writeReactionText(simple),"2H2 + O2 → 2H2O");
+assert.deepEqual(readReactionText("H2O"),{reactants:"H2O",products:"",arrow:"→",standalone:true});
+assert.equal(writeReactionText(readReactionText("H2O"),true),"H2O","Legacy individual formula preserved");
+assert.equal(readReactionText("N2 + 3H2 ⇌ 2NH3").arrow,"⇌");
+assert.equal(readReactionText("H2 + O2 = H2O").arrow,"=");
+assert.equal(writeReactionText(readReactionText("H2 + O2 -> H2O")),"H2 + O2 → H2O");
+const trailing=readReactionText(writeReactionText({reactants:"H2 + ",products:"  H2O",arrow:"→",standalone:false}));
+assert.equal(trailing.reactants,"H2 + ","Do not eat spaces near cursor in reactant field");
+assert.equal(trailing.products,"  H2O","Do not eat spaces near cursor in product field");
+assert.deepEqual(parseConditionTokens(" t°,  Pt, hν "),["t°","Pt","hν"]);
+assert.equal(toggleReactionCondition("t°","Pt"),"t°, Pt");
+assert.equal(toggleReactionCondition("t°, Pt","Pt"),"t°","Clicking selected condition removes it");
+assert.equal(toggleReactionCondition("Pt","Pt"),"");
+assert.equal(toggleReactionCondition("","Pt"),"Pt");
+assert.equal(toggleReactionCondition("x".repeat(REACTION_CONDITION_LIMIT),"Pt"),"x".repeat(REACTION_CONDITION_LIMIT));
+assert.match(styles, /\.lektrus-chem-one-screen \.lektrus-chem-equation-columns/);
+assert.match(styles, /@media\(max-width:540px\)/,"Narrow phone stacks reagents and products");
 assert.ok(main.includes('import "./lektrusChemicalEquationWorkspace.css";'),"Load new equation styles");
 assert.ok(science.includes('if(formula)return <LektrusChemicalEquationEditor'),
  "Use this editor in chemistry");
 assert.ok(science.includes('onSave={()=>onSave(draft)} onCancel={onCancel}'),
  "Cancel must not silently commit changes");
-console.log("Chemistry equations: balanced chemistry, ions safety, indicators, legacy formulas, mobile UI and cancel: OK");
+console.log("Chemistry equations: single screen, grouped conditions, input preservation, balancing, mobile UI and legacy formulas: OK");
