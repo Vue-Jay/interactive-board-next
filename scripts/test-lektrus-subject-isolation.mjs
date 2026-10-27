@@ -97,7 +97,7 @@ assert.match(component,/allEntries\.filter\(entry=>entryBelongsToSubject\(tone,e
 assert.match(component,/activityMatchesTask\(tone,entry.format,entry.activity\)/);
 const inline=read("src/LektrusSubjectBoardSolution.tsx");
 assert.ok(inline.includes("LektrusSubjectBoardInlineSolution"));
-for(const section of ["Краткая запись","Найти","Решение","Ответ"]){
+for(const section of ["Дано","Найти","Решение","Ответ"]){
  assert.ok(inline.includes(section),"Missing school solution section: "+section);
 }
 assert.ok(inline.includes('onChange={event=>patch("answer",event.target.value)}'));
