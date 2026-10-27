@@ -146,6 +146,9 @@ for(const metal of [c.Ca,c.Ba,c.Sr,c.Mg,c.Zn,c.Cu])
   if(value)register("Осаждение фосфата "+metal.name,"Осадки",value,"",
    "Школьная схема осаждения фосфата, реальный состав осадка зависит от pH.");
  }
+register("Известковая вода при избытке углекислого газа","Избыток реагента",
+ "Ca(OH)2 + 2CO2 → Ca(HCO3)2","избыток CO₂",
+ "При избытке CO₂ первоначальный осадок карбоната кальция переходит в растворимый гидрокарбонат.");
 // Conventional complete neutralisation; phosphoric acid requires complete consumption and excess base.
 const acids=[
  {formula:"HCl",anion:a.chloride,protons:1,name:"соляной кислотой"},
