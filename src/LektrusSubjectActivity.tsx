@@ -47,7 +47,13 @@ export function freshActivity(mode:SubjectTaskActivity["mode"]):SubjectTaskActiv
  if(mode==="match")return {mode,pairs:[{left:"",right:""},{left:"",right:""},{left:"",right:""}]};
  return {mode,tokens:["","",""]};
 }
-const words=(value:string)=>value.trim().replace(/\s+/g," ").replace(/[.,!?;:]+$/g,"").toLocaleLowerCase("ru-RU");
+const words=(value:string)=>{
+ const normalized=value.trim().replace(/\s+/g," ").toLocaleLowerCase("ru-RU");
+ // A missing comma or full stop IS the answer in punctuation exercises.
+ // Strip trailing sentence punctuation only when checking a word or number.
+ return /[\p{L}\p{N}]/u.test(normalized)?
+  normalized.replace(/[.,!?;:]+$/g,""):normalized;
+};
 export function activityComplete(a:SubjectTaskActivity|undefined):boolean{
  if(!a)return false;
  if(a.mode==="choice")return (a.options?.filter(x=>x.trim()).length??0)>=2&&
