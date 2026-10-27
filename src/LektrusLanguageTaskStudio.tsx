@@ -1,7 +1,7 @@
 import {useRef,useState,type CSSProperties} from "react";
 import type {SubjectBoardEntry,SubjectTaskActivity,SubjectTaskActivityResponse} from "./boardModel";
 import type {SubjectTaskTemplate} from "./lektrusSubjectTaskTemplates";
-import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
+import {subjectAccentPalette} from "./lektrusSubjectAccent";
 import {activityMatchesTask,freshActivity,interactiveModesForSubject,
  isIntegratedInteractiveTask,preferredActivityMode,LektrusSubjectActivityBuilder,
  LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
