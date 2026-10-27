@@ -261,3 +261,78 @@
  .lektrus-subject-task-fields{grid-template-columns:1fr;padding:13px}
  .lektrus-subject-task-types button{min-height:36px;padding:8px 10px}
 }
+
+
+/* Interactive assignment studio. All interaction colours follow the subject. */
+.lektrus-activity-author-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.88fr);gap:16px;align-items:start}
+.lektrus-activity-builder,.lektrus-activity-preview-section{min-width:0;border:1px solid color-mix(in srgb,var(--subject-board-accent) 18%,#e8edf0);border-radius:13px;overflow:hidden;background:#fff}
+.lektrus-activity-builder{padding:15px;display:grid;gap:13px}
+.lektrus-activity-builder-heading{display:flex;align-items:flex-start;gap:11px}
+.lektrus-activity-builder-heading>div{display:grid;gap:5px;min-width:0}
+.lektrus-activity-builder-heading strong{font:800 14px/1.3 system-ui,sans-serif;color:#304b58}
+.lektrus-activity-builder-heading small{font:500 11px/1.5 system-ui,sans-serif;color:#788d96}
+.lektrus-activity-builder-symbol{flex:0 0 34px;width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:var(--subject-board-soft);color:var(--subject-board-accent);font:800 22px/1 system-ui,sans-serif}
+.lektrus-activity-choice-editor,.lektrus-activity-pairs-editor,.lektrus-activity-order-editor,.lektrus-activity-fill-editor{display:grid;gap:9px;min-width:0}
+.lektrus-activity-choice-row,.lektrus-activity-pair-row,.lektrus-activity-order-row{display:flex;gap:7px;align-items:center;min-width:0}
+.lektrus-activity-choice-row input,.lektrus-activity-pair-row input,.lektrus-activity-order-row input{min-width:0;flex:1 1 auto}
+.lektrus-activity-choice-row>button:first-child{flex:0 0 29px;height:31px;display:grid;place-items:center;border:1px solid #cfdbe0;border-radius:8px;background:#f7f9fb;color:#79909a;cursor:pointer}
+.lektrus-activity-choice-row>button:first-child.correct{background:var(--subject-board-soft);color:var(--subject-board-accent);border-color:var(--subject-board-accent)}
+.lektrus-activity-choice-row>button.remove,.lektrus-activity-pair-row>button.remove,.lektrus-activity-order-row>button.remove{flex:0 0 25px;width:25px;height:28px;padding:0;border:0;background:transparent;color:#8d9ca8;font-size:21px;cursor:pointer}
+.lektrus-activity-add{justify-self:start;border:1px dashed color-mix(in srgb,var(--subject-board-accent) 45%,#dce5e6);border-radius:9px;background:color-mix(in srgb,var(--subject-board-soft) 37%,white);color:var(--subject-board-accent);padding:9px 13px;font:750 11px system-ui,sans-serif;cursor:pointer}
+.lektrus-activity-add:hover{border-style:solid}
+.lektrus-activity-index{flex:0 0 23px;display:grid;place-items:center;color:var(--subject-board-accent);font-weight:800}
+.lektrus-activity-pair-row>span:not(.lektrus-activity-index){font-size:18px;color:var(--subject-board-accent)}
+.lektrus-activity-fill-row{display:grid;gap:8px;border:1px solid #e8edf1;border-radius:10px;padding:10px;background:#fbfcff}
+.lektrus-activity-fill-row-head{display:flex;align-items:center;justify-content:space-between;font:750 11px system-ui,sans-serif;color:var(--subject-board-accent)}
+.lektrus-activity-fill-row-head button{border:0;background:none;color:#a15b5b;font-size:11px;cursor:pointer}
+.lektrus-activity-fill-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:9px;min-width:0}
+.lektrus-activity-fill-grid label,.lektrus-activity-fill-ending{min-width:0}
+.lektrus-activity-fill-grid textarea{min-height:65px!important}
+.lektrus-activity-preview-section{background:color-mix(in srgb,var(--subject-board-soft) 16%,white)}
+.lektrus-activity-preview-heading{padding:13px 14px;border-bottom:1px solid color-mix(in srgb,var(--subject-board-accent) 17%,#e7ecf0);display:grid;gap:4px}
+.lektrus-activity-preview-heading strong{font:800 13px/1.3 system-ui,sans-serif;color:var(--subject-board-accent)}
+.lektrus-activity-preview-heading span{font:500 11px system-ui,sans-serif;color:#728992}
+.lektrus-activity-context-details,.lektrus-subject-task-legacy{border:1px solid #e4ecf0;border-radius:10px;background:#fff;padding:11px 14px}
+.lektrus-activity-context-details>summary,.lektrus-subject-task-legacy>summary{font:750 12px system-ui,sans-serif;color:#4a6571;cursor:pointer}
+.lektrus-activity-context-details>summary span{font:500 10px system-ui,sans-serif;color:#889aa2}
+.lektrus-activity-context-details .lektrus-subject-task-fields{margin-top:12px}
+.lektrus-activity-runner{display:grid;gap:11px;padding:14px;background:color-mix(in srgb,var(--subject-board-soft) 8%,white);min-width:0}
+.lektrus-subject-board-entry .lektrus-activity-runner{background:#ffffffdc;border:1px solid color-mix(in srgb,var(--subject-board-accent) 16%,#e1eceb);border-radius:10px;margin:12px 0 2px}
+.lektrus-activity-runner.compact{padding:12px}
+.lektrus-activity-unfinished{border:1px dashed #d2dfe3;padding:10px;border-radius:8px;color:#84969e;font:550 11px/1.5 system-ui,sans-serif}
+.lektrus-activity-choice-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.lektrus-activity-choice-options>button{display:flex;align-items:center;gap:9px;text-align:left;min-height:43px;padding:8px 10px;min-width:0;border:1px solid #dce6e9;border-radius:9px;background:#fff;color:#385362;font:650 12px/1.4 system-ui,sans-serif;cursor:pointer;overflow-wrap:anywhere}
+.lektrus-activity-choice-options>button>span,.lektrus-activity-match-columns button>span{flex:0 0 23px;width:23px;height:23px;display:grid;place-items:center;border-radius:7px;background:#eef3f5;color:#59727c;font-size:10px;font-weight:800}
+.lektrus-activity-choice-options>button>b{font-weight:600;min-width:0}
+.lektrus-activity-choice-options>button.chosen,.lektrus-activity-match-columns button.active{border-color:var(--subject-board-accent);background:color-mix(in srgb,var(--subject-board-soft) 45%,white);color:var(--subject-board-accent);box-shadow:0 0 0 1px var(--subject-board-accent) inset}
+.lektrus-activity-choice-options>button.right{border-color:#4eaa80;background:#e9f7ee}
+.lektrus-activity-choice-options>button.wrong{border-color:#d58c83;background:#fff0ec}
+.lektrus-activity-choice-options>button:disabled{cursor:default}
+.lektrus-activity-gap-content{line-height:2.6;white-space:pre-wrap;overflow-wrap:anywhere;color:#314b56;font:600 15px/2.7 "Cambria Math",Cambria,system-ui,sans-serif}
+.lektrus-activity-gap-part{display:inline}
+.lektrus-activity-gap-content input{vertical-align:baseline;width:clamp(90px,21vw,150px);max-width:40%;height:34px;padding:4px 8px;border:0;border-bottom:2px solid var(--subject-board-accent);border-radius:4px 4px 0 0;background:#f7fbff;color:#263e50;font:650 13px system-ui,sans-serif;text-align:center}
+.lektrus-activity-gap-content input:focus{outline:2px solid var(--subject-board-accent);outline-offset:1px}
+.lektrus-activity-match-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lektrus-activity-match-columns>div{display:grid;align-content:start;gap:7px;min-width:0}
+.lektrus-activity-match-columns small,.lektrus-activity-selected-sequence small{color:var(--subject-board-accent);font:750 10px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em}
+.lektrus-activity-match-columns button{display:flex;align-items:center;gap:6px;padding:8px;border:1px solid #dfe8ea;border-radius:8px;background:#fff;text-align:left;font:600 11px/1.45 system-ui,sans-serif;color:#385461;min-width:0;overflow-wrap:anywhere;cursor:pointer}
+.lektrus-activity-match-columns button.paired{border-color:color-mix(in srgb,var(--subject-board-accent) 33%,#e3e9ea);background:color-mix(in srgb,var(--subject-board-soft) 25%,white)}
+.lektrus-activity-links{display:flex;flex-wrap:wrap;gap:5px;margin:0}
+.lektrus-activity-links>span{padding:4px 7px;border-radius:6px;background:var(--subject-board-soft);color:var(--subject-board-accent);font:700 10px system-ui,sans-serif}
+.lektrus-activity-selected-sequence{display:grid;gap:8px;padding:10px;border:1px dashed color-mix(in srgb,var(--subject-board-accent) 40%,#dde8e9);border-radius:9px;min-height:62px}
+.lektrus-activity-selected-sequence>div{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lektrus-activity-selected-sequence>div>span{font:500 11px system-ui,sans-serif;color:#81939a}
+.lektrus-activity-selected-sequence button{padding:7px;border:1px solid var(--subject-board-accent);border-radius:7px;background:var(--subject-board-soft);color:var(--subject-board-accent);font:700 11px system-ui,sans-serif;cursor:pointer}
+.lektrus-activity-selected-sequence button>span{color:#81939a}
+.lektrus-activity-tokens{display:flex;gap:7px;flex-wrap:wrap}
+.lektrus-activity-tokens button{border:1px solid #d4e1e6;border-radius:8px;background:#fff;padding:9px 12px;color:#345363;cursor:pointer;font:650 12px system-ui,sans-serif}
+.lektrus-activity-tokens button:disabled{opacity:.28;cursor:default}
+.lektrus-activity-runner-footer{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #edf1f1;padding-top:9px}
+.lektrus-activity-runner-footer button{border-radius:8px;min-height:32px;padding:7px 12px;font:750 11px system-ui,sans-serif;cursor:pointer}
+.lektrus-activity-runner-footer .lektrus-activity-reset{border:1px solid #e2e9ec;background:white;color:#70838f}
+.lektrus-activity-runner-footer .lektrus-activity-check{background:var(--subject-board-accent);color:white;border:1px solid var(--subject-board-accent)}
+.lektrus-activity-result{margin:0!important;padding:10px 12px;border-radius:8px;font:700 11px/1.5 system-ui,sans-serif}
+.lektrus-activity-result.all-correct{background:#e8f7ef;color:#24704a}
+.lektrus-activity-result.some-errors{background:#fff4e6;color:#965921}
+@media(max-width:900px){.lektrus-activity-author-workspace{grid-template-columns:1fr}.lektrus-activity-preview-section{width:100%}}
+@media(max-width:600px){.lektrus-activity-choice-options{grid-template-columns:1fr}.lektrus-activity-fill-grid{grid-template-columns:1fr}.lektrus-activity-builder{padding:11px}.lektrus-activity-match-columns{gap:6px}.lektrus-activity-match-columns button{padding:7px 5px}.lektrus-activity-gap-content input{max-width:55%}}
