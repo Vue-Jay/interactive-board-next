@@ -21,6 +21,7 @@ type Props={
   onCancel:()=>void;
   onClose?:(item:Item)=>void;
   onOrganicLiveChange?:(before:Item,next:Item)=>void;
+  onFormulaLiveChange?:(before:Item,next:Item)=>void;
   shared?:boolean;
   canTeach?:boolean;
 };
@@ -53,7 +54,7 @@ const deletePoint=(item:Item,index:number):Item=>{
   };
 };
 
-export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose,onOrganicLiveChange,shared=false,canTeach=false}:Props){
+export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose,onOrganicLiveChange,onFormulaLiveChange,shared=false,canTeach=false}:Props){
   const [draft,setDraft]=useState<Item>(()=>copyItem(item));
   const [selected,setSelected]=useState(-1);
   const [first,setFirst]=useState(0);
@@ -85,6 +86,13 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   // changes to existing objects are broadcast by App; new objects wait for Save.
   const organicLocalPrevious=useRef<Item>(draft);
   const organicRemotePrevious=useRef<Item>(item);
+  const formulaRemotePrevious=useRef<Item>(item);
+  useEffect(()=>{
+    if(!formula||!shared||item===formulaRemotePrevious.current)return;
+    const previousRemote=formulaRemotePrevious.current;
+    formulaRemotePrevious.current=item;
+    setDraft(current=>mergeEditedValue(previousRemote,current,item));
+  },[formula,shared,item]);
   useEffect(()=>{
     if(!organic||!shared||item===organicRemotePrevious.current)return;
     const previousRemote=organicRemotePrevious.current;
@@ -250,7 +258,8 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   if(experiment&&draft.graphFigureId==="chem-experiment-free")return <LektrusReactionLab
    item={draft} onChange={setDraft} onSave={()=>onSave(draft)}
    onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
-  if(formula)return <LektrusChemicalEquationEditor canTeach={canTeach===true} item={draft} onChange={setDraft}
+  if(formula)return <LektrusChemicalEquationEditor canTeach={canTeach===true} item={draft}
+    onChange={next=>{setDraft(next);onFormulaLiveChange?.(draft,next)}}
     onSave={()=>onSave(draft)} onCancel={onCancel}/>;
   return createPortal(<div className={"lektrus-science-backdrop "+(isPhysics?"physics":"chemistry")}
      onPointerDown={e=>{if(e.currentTarget===e.target)(onClose??onCancel)(draft)}}>
