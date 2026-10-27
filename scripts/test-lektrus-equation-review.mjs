@@ -21,7 +21,7 @@ const pool=new Function("reviewedReactionCases","parseEquationDraft","expandedEq
  "\nreturn {equationExamplePool,equationExamplesByDomain,selectRandomEquationExample};")(
  db.reviewedReactionCases,model.parseEquationDraft,expanded.expandedEquationCases,additional.additionalEquationCases);
 assert.ok(expanded.expandedEquationCount>=350,"At least 350 new bounded school chemistry cases");
-assert.ok(pool.equationExamplePool.length>=700,"Seven hundred audited reaction references");
+assert.ok(pool.equationExamplePool.length>=800,"Eight hundred audited reaction references");
 assert.ok(pool.equationExamplesByDomain("inorganic").length>=280);
 assert.ok(pool.equationExamplesByDomain("organic").length>=100);
 assert.ok(pool.equationExamplesByDomain("inorganic").length>=20,"At least twenty rotating inorganic examples");
@@ -74,6 +74,12 @@ assert.ok(wrong.issues.some(i=>i.kind==="missing"&&i.formula==="NaNO3"));
 assert.ok(wrong.issues.some(i=>i.kind==="extra"&&i.formula==="KNO3"&&i.index===1));
 assert.ok(wrong.issues.some(i=>i.kind==="formula"));
 assert.equal(inspect("AgNO3 + NaCl → AgCl + NaNO3").issues.some(i=>i.kind==="indicator"),true);
+assert.equal(inspect("Fe + CuSO4 → FeSO4 + Cu").issues.some(i=>i.kind==="indicator"),false,
+ "Deposited metal symbol ↓ is optional when reviewed references legitimately disagree");
+assert.equal(inspect("Fe + CuSO4 → FeSO4 + Cu").status,"correct");
+assert.equal(review.applyKnownProductMarks(step("Fe + CuSO4 → FeSO4 + Cu"))?.expression,
+ "Fe + CuSO4 → FeSO4 + Cu",
+ "Auto-marking should preserve optional deposition notation");
 assert.ok(inspect("AgNO3 + NaCl → AgCl↓ + NaNO3").canMarkProducts);
 assert.equal(inspect("AgNO3 + NaCl → AgCl↓ + NaNO3").canBalance,false);
 assert.equal(inspect("AgNO3 + NaCl → AgCl↓ + KNO3").status,"incorrect");
