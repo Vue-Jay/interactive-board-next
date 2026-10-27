@@ -53,7 +53,7 @@ export const STUDENT_BLOCKED_CREATE_TOOLS=Object.freeze([
  "frame","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"
 ] as const);
 export const STUDENT_PROTECTED_OBJECT_KINDS=Object.freeze([
- "frame","table","formula","graph","checklist","quiz","flashcard","cover","linkmedia"
+ "frame","checklist","quiz","flashcard","cover","linkmedia"
 ] as const);
 export function canUseBoardCreationTool(
  toolId:string,capabilities:BoardRoleCapabilities
@@ -62,6 +62,13 @@ export function canUseBoardCreationTool(
  if(toolId==="select"||toolId==="hand"||toolId==="lasso")return true;
  return capabilities.canEdit&&(!capabilities.isStudent||
    !(STUDENT_BLOCKED_CREATE_TOOLS as readonly string[]).includes(toolId));
+}
+/** Object placement is not assignment authoring. Editable students and
+ * guests can drag/resize all unlocked lesson objects, including teacher-built
+ * questions, while creation and answer-key edits remain restricted. */
+export function canTransformStudentBoardObject(kind:string,capabilities:BoardRoleCapabilities):boolean{
+ void kind;
+ return capabilities.canEdit;
 }
 export function isStudentProtectedBoardObject(
  kind:string,capabilities:BoardRoleCapabilities
