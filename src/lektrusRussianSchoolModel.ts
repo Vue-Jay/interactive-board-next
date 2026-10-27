@@ -51,7 +51,7 @@ export function validateRussianSchoolDiagram(value:unknown):value is RussianScho
   const rows=v.rows as MorphologyRow[];
   return unique(rows)&&rows.every(r=>r&&id(r.id)&&
    Object.prototype.hasOwnProperty.call(traitGroupNames,r.group)&&
-   text(r.feature,52)&&text(r.value,90));
+   text(r.feature,52,true)&&text(r.value,90,true));
  }
  if(v.kind==="phonetics"){
   if(!text(v.word,36,true)||typeof v.showSounds!=="boolean"||
