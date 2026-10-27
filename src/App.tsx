@@ -5523,6 +5523,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      commit(itemsRef.current.map(value=>value.id===latest.id?next:value));
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
    };
+   const growSubjectBoard=(boardId:string,neededHeight:number)=>{
+     const latest=itemsRef.current.find(value=>value.id===boardId);
+     if(!canEdit||!latest||!isSubjectBoard(latest)||latest.locked||!Number.isFinite(neededHeight))return;
+     const newHeight=Math.min(24000,Math.ceil(neededHeight/40)*40);
+     if(newHeight<=latest.height)return;
+     const updated={...latest,height:newHeight};
+     if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+     commit(itemsRef.current.map(value=>value.id===latest.id?updated:value));
+     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
+   };
    const removeSubjectBoardEntry=(boardId:string,entryId:string)=>{
      const latest=itemsRef.current.find(value=>value.id===boardId);
      if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit||!roleCapabilities.canUseTeacherTools)return;
@@ -8959,6 +8969,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
                 {item.kind==="graph"&&isSubjectBoard(item)&&<LektrusSubjectBoardView item={item}
+                  onRequestHeight={canEdit&&!item.locked?
+                    height=>growSubjectBoard(item.id,height):undefined}
                   onAction={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
                     (mode,entryId)=>openSubjectBoardEntry(item,mode,entryId):undefined}
                   onAnswerChange={canEdit&&!item.locked&&!presentation?
