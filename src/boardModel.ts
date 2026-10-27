@@ -412,6 +412,20 @@ export type SubjectTaskActivityResponse={
  ordered?:number[];
  checked?:boolean;
 };
+/** Editable student work for Russian-language exercises. Reuses the same
+ * school role classifications as the standalone Russian tools. */
+export type RussianTaskWork={
+ source?:string;
+ cuts?:number[];
+ morphemeRoles?:("prefix"|"root"|"suffix"|"ending"|"postfix")[];
+ zeroEnding?:boolean;
+ syntaxRoles?:("subject"|"predicate"|"attribute"|"object"|"adverbial"|"none")[];
+ partOfSpeech?:string;
+ permanent?:string;
+ variable?:string;
+ syntax?:string;
+ textAnswers?:string[];
+};
 export type SubjectBoardEntry={
   id:string;
   kind:"equation"|"task";
@@ -424,6 +438,7 @@ export type SubjectBoardEntry={
   workedSolution?:SubjectBoardWorkedSolution;
   activity?:SubjectTaskActivity;
   activityResponse?:SubjectTaskActivityResponse;
+  russianWork?:RussianTaskWork;
   domain?:"inorganic"|"organic";
   steps?:{expression:string;conditions:string}[];
   answer:string;
@@ -778,6 +793,26 @@ export function parseDocument(raw: string): DocumentData {
          (r.ordered!=null&&(!Array.isArray(r.ordered)||r.ordered.length>12||!r.ordered.every(x=>Number.isInteger(x)&&x>=0&&x<=12)))))return true;
         return false;
       }))throw new Error("Повреждено интерактивное задание");
+      if(i.subjectBoardEntries?.some((entry:SubjectBoardEntry)=>{
+        const w=entry.russianWork;
+        if(w==null)return false;
+        if(entry.subject!==undefined&&entry.subject!=="russian")return true;
+        if(typeof w!=="object"||Array.isArray(w))return true;
+        const str=(v:unknown,max:number)=>v==null||(typeof v==="string"&&v.length<=max);
+        if(!str(w.source,1800)||!str(w.partOfSpeech,30)||!str(w.permanent,1500)||
+           !str(w.variable,1500)||!str(w.syntax,1000))return true;
+        if(w.zeroEnding!=null&&typeof w.zeroEnding!=="boolean")return true;
+        if(w.cuts!=null&&(!Array.isArray(w.cuts)||w.cuts.length>45||
+          !w.cuts.every((n:number)=>Number.isInteger(n)&&n>0&&n<65)||
+          new Set(w.cuts).size!==w.cuts.length))return true;
+        if(w.morphemeRoles!=null&&(!Array.isArray(w.morphemeRoles)||w.morphemeRoles.length>48||
+          !w.morphemeRoles.every((v:string)=>["prefix","root","suffix","ending","postfix"].includes(v))))return true;
+        if(w.syntaxRoles!=null&&(!Array.isArray(w.syntaxRoles)||w.syntaxRoles.length>100||
+          !w.syntaxRoles.every((v:string)=>["subject","predicate","attribute","object","adverbial","none"].includes(v))))return true;
+        if(w.textAnswers!=null&&(!Array.isArray(w.textAnswers)||w.textAnswers.length>15||
+          !w.textAnswers.every((v:string)=>typeof v==="string"&&v.length<=1500)))return true;
+        return false;
+      }))throw new Error("Повреждён разбор по русскому языку");
       if(i.subjectBoardEntries?.some((entry:SubjectBoardEntry)=>entry.workedSolution!=null&&
          (typeof entry.workedSolution!=="object"||!["given","find","si","work","answer"].every(key=>{
            const value=entry.workedSolution?.[key as keyof SubjectBoardWorkedSolution];
