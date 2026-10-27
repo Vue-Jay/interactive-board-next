@@ -107,7 +107,7 @@ import { boardStorageKey, getBoardForUser, touchBoard, type BoardSummary } from 
 import { getRemoteBoardDocument, isRemoteBackendEnabled, saveRemoteBoardDocument, adminSaveRemoteBoardDocument, type RemoteBoardDocument } from "./backend";
 import { subscribeBoardDocument, type RealtimeStatus } from "./boardRealtime";
 import {readDeveloperPreferences,writeDeveloperPreferences} from "./developerPreferences";
-import {boardRoleCapabilities,canUseBoardCreationTool,isStudentProtectedBoardObject,restrictStudentDiagramChange,BOARD_ROLE_PREVIEW_LABELS,type BoardRolePreview} from "./lektrusBoardRolePreview";
+import {boardRoleCapabilities,canUseBoardCreationTool,isStudentProtectedBoardObject,canTransformStudentBoardObject,restrictStudentDiagramChange,BOARD_ROLE_PREVIEW_LABELS,type BoardRolePreview} from "./lektrusBoardRolePreview";
 import { subscribeBoardPresence, type BoardPresenceUser } from "./boardPresence";
 import {trackBoardVisit,listBoardVisits,type BoardVisit} from "./boardVisits";
 import BoardVisitHistoryDialog from "./BoardVisitHistoryDialog";
@@ -2107,6 +2107,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const toolAllowedForRole = (id:Tool) => canUseBoardCreationTool(id,roleCapabilities);
   const structurallyLockedForStudent = (item:Item|undefined|null) =>
     !!item&&isStudentProtectedBoardObject(item.kind,roleCapabilities);
+  const canTransformBoardObject=(item:Item|null|undefined)=>
+    !!item&&!item.locked&&canTransformStudentBoardObject(item.kind,roleCapabilities);
   const studentSelectionHasProtected = () => isStudent && selected.some(id=>structurallyLockedForStudent(itemsRef.current.find(item=>item.id===id)));
   const rejectStudentStructuralEdit = () => {
     if(!studentSelectionHasProtected()) return false;
@@ -4005,7 +4007,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const connectorEndpoint = connectorEndpointEl?.dataset.connectorEndpoint;
     if ((tool === "select" || tool === "hand") && connectorEndpoint && selected.length === 1) {
       const connector = itemsRef.current.find((item) => item.id === selected[0] && item.kind === "connector");
-      if (connector && canEdit && !connector.locked && !structurallyLockedForStudent(connector)) {
+      if (connector && canEdit && !connector.locked && canTransformBoardObject(connector)) {
         e.preventDefault();
         e.stopPropagation();
         gesture.current = {
@@ -4021,7 +4023,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     const groupGrip=target.closest<HTMLElement>("[data-group-selection-drag]");
     if((tool==="select"||tool==="hand")&&groupGrip&&canEdit&&selected.length>1){
       const movable=itemsRef.current.filter(item=>selected.includes(item.id)&&
-        !item.locked&&!structurallyLockedForStudent(item)).map(item=>item.id);
+        !item.locked&&canTransformBoardObject(item)).map(item=>item.id);
       if(movable.length){
         e.preventDefault();e.stopPropagation();
         gesture.current={pointer:e.pointerId,mode:"drag",start,view,
@@ -4071,12 +4073,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // nested fraction glyphs must not defer to browser text-selection gestures.
     if (hit?.kind === "formula" && (e.pointerType === "touch" || e.pointerType === "pen") &&
         (tool === "select" || tool === "hand") && !space && canEdit &&
-        !hit.locked && !structurallyLockedForStudent(hit) &&
+        !hit.locked && canTransformBoardObject(hit) &&
         !target.closest("[data-transform-handle]")) {
       const family = familyIdsFor(hit);
       const movableIds = family.filter((member) => {
         const candidate = itemsRef.current.find((item) => item.id === member);
-        return !!candidate && !candidate.locked && !structurallyLockedForStudent(candidate);
+        return !!candidate && !candidate.locked && canTransformBoardObject(candidate);
       });
       if (movableIds.length) {
         e.preventDefault();
@@ -4113,7 +4115,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     const handleEl = target.closest<HTMLElement>("[data-transform-handle]");
     const transformHandle = handleEl?.dataset.transformHandle;
-    if ((tool === "select" || tool === "hand") && transformHandle && hit && canEdit && !hit.locked && !structurallyLockedForStudent(hit) && selected.length === 1 && selected[0] === hit.id) {
+    if ((tool === "select" || tool === "hand") && transformHandle && hit && canEdit && !hit.locked && canTransformBoardObject(hit) && selected.length === 1 && selected[0] === hit.id) {
       e.preventDefault();
       e.stopPropagation();
       gesture.current = {
@@ -4150,7 +4152,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       const hitIsSelected = !!hit && family.every((member) => selected.includes(member));
       const movableIds = canEdit?(hitIsSelected ? selected : family).filter((member) => {
         const candidate=itemsRef.current.find((item) => item.id === member);
-        return !!candidate && !candidate.locked && !structurallyLockedForStudent(candidate);
+        return !!candidate && !candidate.locked && canTransformBoardObject(candidate);
       }):[];
       if (e.pointerType === "touch" && hit && !hitIsSelected) setSelected(family);
 
@@ -4308,7 +4310,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         ids = family.every((member) => selected.includes(member)) ? selected : family;
       }
       setSelected(ids);
-      if (!canEdit || structurallyLockedForStudent(hit)) return;
+      if (!canTransformBoardObject(hit)) return;
       if (!ids.includes(id) || ids.some((member) => itemsRef.current.find((item) => item.id === member)?.locked)) return;
     } else if(tool==="select" && !space && e.button===0){
       // Dragging from empty canvas selects all objects intersecting a rectangle.
@@ -8668,7 +8670,12 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <ViewerInkLayer key={entry.key} strokes={entry.strokes} bounds={entry.bounds}
                   view={view} viewport={boardViewportSize} />
               );
-              const item = remoteLiveItems[entry.item.id]??entry.item;
+              // Collaborative editor previews may contain OLD geometry. Never let a
+              // delayed preview put a dragged/resized object back on screen.
+              const live=remoteLiveItems[entry.item.id];
+              const item=live?{...live,x:entry.item.x,y:entry.item.y,
+                width:entry.item.width,height:entry.item.height,
+                rotation:entry.item.rotation}:entry.item;
               return (
               <div
                 data-object={item.id}
@@ -8722,7 +8729,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     setSelected([item.id]);setSchoolEditorItem(item);
 } else if (tool === "select" && !space && !item.locked && item.kind === "graph") {
                     setSelected([item.id]);
-                    if(item.graphPurpose==="geometry"&&activeBoardGeometryMode(item)==="move")openGraphEditor(item);
+                    // Existing subject editors belong to collaborative pupils too.
+                    // Do not require an undocumented geometry-only double-click.
+                    openGraphEditor(item);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "fraction") { setSelected([item.id]); setFractionEditorId(item.id);
                   } else if (tool === "select" && !space && !item.locked && item.kind === "quiz") {
                     setSelected([item.id]);
