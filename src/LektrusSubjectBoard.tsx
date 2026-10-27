@@ -141,7 +141,10 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
          </div>)}
       </div>}
       {entry.kind==="task"&&<div className="lektrus-subject-board-fields">
-        {definition.fields.filter(field=>entry.details?.[field.id]?.trim()).map(field=>
+        {definition.fields.filter(field=>entry.details?.[field.id]?.trim()&&
+         !(tone==="russian"&&
+          (["morphemes","syntax"].includes(entry.format??"")&&field.id==="material"||
+           entry.format==="morphology"&&field.id==="target"))).map(field=>
          <div className="lektrus-subject-board-field" key={field.id}>
           <span>{field.label}</span><p>{entry.details?.[field.id]}</p>
          </div>)}
