@@ -203,7 +203,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
              title="Обозначение выделения газа или осадка"
              aria-label={"Признак продукта "+(index+1)}
              onChange={e=>patch(side,index,{indicator:e.target.value as EquationSpecies["indicator"]})}>
-             <option value="">—</option><option value="↑">↑ газ</option><option value="↓">↓ осадок</option>
+             <option value="">—</option><option value="↑">↑</option><option value="↓">↓</option>
             </select>}
            <button type="button" className="lektrus-chem-remove-species"
             aria-label={"Убрать "+(side==="left"?"реагент ":"продукт ")+(index+1)}
