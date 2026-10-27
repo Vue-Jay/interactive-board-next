@@ -4,7 +4,7 @@
  */
 import {identifyReaction,reviewedReactionCases,substances,
  type ReactionCase,type ReactionEnvironment,type Substance} from "./lektrusReactionDatabase";
-import {normalizeFormulaInput,parseEquationDraft,
+import {countFormulaAtoms,normalizeFormulaInput,parseEquationDraft,
  type EquationDraft,type EquationSpecies} from "./lektrusChemicalEquationModel";
 
 export const reactionEnvironments:{id:ReactionEnvironment;label:string;help:string}[]=[
@@ -87,11 +87,10 @@ export function sourceReactionDraft(reaction:ReactionCase):EquationDraft|null{
  return parseEquationDraft(reaction.equation);
 }
 export function isBuilderCompatible(draft:EquationDraft):boolean{
- // Charged species require net-charge balancing which the current algorithm
- // intentionally does not claim to handle.
+ // Charged species require charge-balanced equations, not the neutral atom
+ // conservation solver. Unrecognized ions stay in the source editor.
  return [...draft.left,...draft.right].every(s=>!s.formula.trim()||
-  /^[A-Z][A-Za-z0-9()[\]·.₀-₉]*[↑↓]?$/.test(s.formula.trim())||
-  /^[([][A-Za-z0-9()[\]·.₀-₉]+$/.test(s.formula.trim()));
+  countFormulaAtoms(s.formula)!==null);
 }
 type Ion={id:string;name:string;charge:number};
 export const cations:Ion[]=[
