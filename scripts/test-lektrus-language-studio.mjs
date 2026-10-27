@@ -38,6 +38,8 @@ for(const input of ["[","]","а[]б","а[б[в]","abc", "[x]".repeat(9)]){
 }
 assert.equal(parseLanguageGapText("").issue,null);
 assert.equal(parseLanguageGapText("").activity,undefined);
+assert.equal(languageGapText({mode:"fill",blanks:[{before:"",answer:""}],tail:""}),"",
+ "A new exercise must not open with a fabricated bracket placeholder");
 const studio=read("src/LektrusLanguageTaskStudio.tsx");
 const board=read("src/LektrusSubjectBoard.tsx");
 const registry=read("src/lektrusSubjectTaskTemplates.ts");
