@@ -116,8 +116,8 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
          <details className="lektrus-school-solution-old-hints" data-board-interactive="true"
           onPointerDown={event=>event.stopPropagation()}>
           <summary>Сведения из старого условия</summary>
-          {entry.details.given?.trim()&&<p>{entry.details.given}</p>}
-          {entry.details.find?.trim()&&<p>{entry.details.find}</p>}
+          {entry.details?.given?.trim()&&<p>{entry.details?.given}</p>}
+          {entry.details?.find?.trim()&&<p>{entry.details?.find}</p>}
          </details>}
       </div>}
       {entry.kind==="task"&&activityMatchesTask(tone,entry.format,entry.activity)&&
