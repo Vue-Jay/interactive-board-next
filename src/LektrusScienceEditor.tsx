@@ -115,10 +115,10 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
 
 
   useEffect(()=>{
-    const escape=(event:KeyboardEvent)=>{if(event.key==="Escape"&&event.target instanceof HTMLElement&&!event.target.closest("input,select")){event.stopPropagation();(onClose??onCancel)(draft)}};
+    const escape=(event:KeyboardEvent)=>{if(formula)return; if(event.key==="Escape"&&event.target instanceof HTMLElement&&!event.target.closest("input,select")){event.stopPropagation();(onClose??onCancel)(draft)}};
     window.addEventListener("keydown",escape,true);
     return()=>window.removeEventListener("keydown",escape,true);
-  },[draft,onClose,onCancel]);
+  },[draft,onClose,onCancel,formula]);
 
   const patchPoint=(index:number,update:Partial<NonNullable<Item["graphPoints"]>[number]>)=>
     setDraft(old=>({...old,graphPoints:(old.graphPoints??[]).map((p,i)=>i===index?{...p,...update}:p)}));
@@ -251,7 +251,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
    item={draft} onChange={setDraft} onSave={()=>onSave(draft)}
    onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
   if(formula)return <LektrusChemicalEquationEditor item={draft} onChange={setDraft}
-    onSave={()=>onSave(draft)} onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
+    onSave={()=>onSave(draft)} onCancel={onCancel}/>;
   return createPortal(<div className={"lektrus-science-backdrop "+(isPhysics?"physics":"chemistry")}
      onPointerDown={e=>{if(e.currentTarget===e.target)(onClose??onCancel)(draft)}}>
     <section className={"lektrus-science-editor"+(isPhysics?" physics-workspace"+(settingsOpen?"":" settings-collapsed"):"")} role="dialog" aria-modal="true"
