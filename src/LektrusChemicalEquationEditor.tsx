@@ -1,4 +1,5 @@
 import {Fragment,useRef,useState,type ReactNode} from "react";
+import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import {reviewEquationChain,applyKnownProductMarks,balancedStep,type ReviewIssue,type EquationDomain,type EquationStep} from "./lektrusEquationReview";
 import {selectRandomEquationExample,type ReviewedExample} from "./lektrusEquationExamplePool";
 import {createPortal} from "react-dom";
@@ -107,7 +108,7 @@ export function LektrusChemicalEquationTypeset({expression,conditions}:{expressi
 export function LektrusChemicalEquationBoardView({item}:{item:Item}){
  const steps=item.scienceReactionSteps?.length?item.scienceReactionSteps:
   [{expression:item.graphExpression??"",conditions:item.scienceReactionConditions??""}];
- const filled=steps.some(step=>step.expression.trim().length>0);
+ const filled=chemistryBoardHasContent(item);
  return <div className={"lektrus-chemical-board"+(filled?"":" is-empty")}
   aria-label="Химическая доска">
   <div className="lektrus-chemical-board-header">
