@@ -4,10 +4,10 @@
 }
 .lektrus-subject-board-shell{width:100%;height:100%;min-height:0;padding:0!important;margin:0!important;overflow:hidden;background:transparent!important}
 .lektrus-subject-board{box-sizing:border-box;width:100%;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;
- color:#293f49;background:#fcfefa;border:1px solid color-mix(in srgb,var(--subject-board-accent) 27%,#e2ebec);
+ color:#293f49;background:color-mix(in srgb,var(--subject-board-soft) 12%,white);border:1px solid color-mix(in srgb,var(--subject-board-accent) 37%,#e2ebec);
  border-radius:12px;box-shadow:0 7px 23px #1a36400d}
 .lektrus-subject-board-header{display:flex;flex:0 0 auto;align-items:center;gap:10px;min-height:44px;padding:9px 16px;
- border-bottom:1px solid color-mix(in srgb,var(--subject-board-accent) 20%,#edf1f3);background:color-mix(in srgb,var(--subject-board-soft) 30%,white)}
+ border-bottom:1px solid color-mix(in srgb,var(--subject-board-accent) 25%,#edf1f3);background:color-mix(in srgb,var(--subject-board-soft) 60%,white)}
 .lektrus-subject-board-header strong{font:750 13px/1.2 system-ui,sans-serif;color:var(--subject-board-accent)}
 .lektrus-subject-board-header strong span{font-weight:550}
 .lektrus-subject-board-header small{margin-left:auto;font:600 10px system-ui,sans-serif;color:#7e9198}
@@ -15,18 +15,18 @@
  color:var(--subject-board-accent);background:color-mix(in srgb,var(--subject-board-soft) 50%,white);font-size:19px}
 .lektrus-subject-board-sheet{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;
  display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:15px;
- padding:20px 24px;background-color:#fcfefd;
- background-image:linear-gradient(#5d8e9010 1px,transparent 1px),linear-gradient(90deg,#5d8e9010 1px,transparent 1px);
+ padding:20px 24px;background-color:color-mix(in srgb,var(--subject-board-soft) 13%,white);
+ background-image:linear-gradient(color-mix(in srgb,var(--subject-board-accent) 10%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--subject-board-accent) 10%,transparent) 1px,transparent 1px);
  background-size:27px 27px}
 .lektrus-subject-board-empty{display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:15px 0;color:#7c9298;
  font:500 12px/1.4 system-ui,sans-serif}
 .lektrus-subject-board-empty strong{color:#46646c;font-size:14px}
-.lektrus-subject-board-entry{flex:0 0 auto;min-width:0;padding:0 0 16px;border-bottom:1px solid #dce8e8;overflow-wrap:anywhere}
+.lektrus-subject-board-entry{flex:0 0 auto;min-width:0;padding:0 0 16px;border-bottom:1px solid color-mix(in srgb,var(--subject-board-accent) 18%,#ebeeed);overflow-wrap:anywhere}
 .lektrus-subject-board-entry-head{display:flex;align-items:center;gap:9px;margin-bottom:9px;min-width:0}
 .lektrus-subject-board-entry-head strong{font:750 14px/1.3 system-ui,sans-serif;color:#314750}
 .lektrus-subject-board-index{font:700 10px system-ui,sans-serif;color:var(--subject-board-accent)}
 .lektrus-subject-board-entry-head button{margin-left:auto;border:1px solid #dde7e9;border-radius:6px;padding:4px 7px;
- background:#fff;color:#476976;font:650 10px system-ui,sans-serif;cursor:pointer}
+ background:#fff;color:var(--subject-board-accent);font:650 10px system-ui,sans-serif;cursor:pointer}
 .lektrus-subject-board-prompt{margin:0 0 13px!important;color:#324e59;font:550 15px/1.5 system-ui,sans-serif;white-space:pre-wrap}
 .lektrus-subject-board-equations{display:grid;justify-items:start;gap:5px}
 .lektrus-subject-board-formula{display:flex;align-items:baseline;justify-content:flex-start;gap:9px;min-width:0}
@@ -37,23 +37,23 @@
 .lektrus-subject-board-answer{display:grid;justify-items:stretch;gap:5px;max-width:100%;margin-top:12px}
 .lektrus-subject-board-answer label{color:var(--subject-board-accent);font:700 10px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.08em}
 .lektrus-subject-board-answer textarea,.lektrus-subject-board-answer-text{width:100%;box-sizing:border-box;min-height:44px;
- resize:vertical;padding:8px 10px;border:1px solid #dbe7e5;border-radius:8px;background:#ffffffd9;color:#294753;
+ resize:vertical;padding:8px 10px;border:1px solid color-mix(in srgb,var(--subject-board-accent) 24%,#e5ebea);border-radius:8px;background:#ffffffde;color:#294753;
  font:550 13px/1.5 system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
 .lektrus-subject-board-answer-text{color:#8a9c9c}
 .lektrus-subject-board-solution{margin-top:10px;display:grid;gap:4px;padding:10px 12px;
- border-left:3px solid var(--subject-board-accent);background:#f1f8f6;font:550 12px/1.45 system-ui,sans-serif;white-space:pre-wrap}
+ border-left:3px solid var(--subject-board-accent);background:color-mix(in srgb,var(--subject-board-soft) 54%,white);font:550 12px/1.45 system-ui,sans-serif;white-space:pre-wrap}
 .lektrus-subject-board-solution-hidden{margin-top:9px;color:#95a3a6;font:500 11px system-ui,sans-serif}
 .lektrus-subject-board-reveal{border:0;background:none;color:var(--subject-board-accent);cursor:pointer;font:650 11px system-ui,sans-serif;padding:6px 0}
 .lektrus-subject-board-exercise-type{margin:7px 0;color:var(--subject-board-accent);font:650 10px system-ui,sans-serif}
 .lektrus-subject-board-footer{display:flex;justify-content:space-between;flex:0 0 auto;gap:10px;padding:7px 16px;
- background:color-mix(in srgb,var(--subject-board-soft) 28%,white);border-top:1px solid #e1ebeb;
+ background:color-mix(in srgb,var(--subject-board-soft) 47%,white);border-top:1px solid color-mix(in srgb,var(--subject-board-accent) 17%,#e1ebeb);
  color:#6f868b;font:700 9px/1.1 system-ui,sans-serif;letter-spacing:.12em}
 .lektrus-subject-task-overlay{position:fixed;inset:0;z-index:350000;display:grid;place-items:center;padding:12px;background:#1629335e}
 .lektrus-subject-task-editor{box-sizing:border-box;display:flex;flex-direction:column;width:min(630px,100%);max-height:min(95dvh,800px);
- overflow:hidden;border:1px solid #d4e3e2;border-radius:17px;background:#fbfefd;color:#263f48;box-shadow:0 22px 65px #142c3845;
+ overflow:hidden;border:1px solid color-mix(in srgb,var(--subject-board-accent) 23%,#e7ecec);border-radius:17px;background:color-mix(in srgb,var(--subject-board-soft) 10%,white);color:#263f48;box-shadow:0 22px 65px #142c3845;
  font:500 13px system-ui,sans-serif}
 .lektrus-subject-task-editor header,.lektrus-subject-task-editor footer{display:flex;align-items:center;gap:12px;justify-content:space-between;
- padding:15px 20px;border-bottom:1px solid #e3eaea;background:#f7fbfa}
+ padding:15px 20px;border-bottom:1px solid color-mix(in srgb,var(--subject-board-accent) 19%,#e3eaea);background:color-mix(in srgb,var(--subject-board-soft) 54%,white)}
 .lektrus-subject-task-editor header>div{display:flex;flex-direction:column;gap:4px}
 .lektrus-subject-task-editor header strong{font-size:17px}
 .lektrus-subject-task-editor header small{font-size:11px;color:#738990}
@@ -67,8 +67,8 @@
 .lektrus-subject-task-body p{margin:0;font-size:11px;line-height:1.5;color:#6f8388}
 .lektrus-subject-task-editor footer{border:0;border-top:1px solid #e3eaea}
 .lektrus-subject-task-editor footer button{cursor:pointer;border:1px solid #dae5e4;border-radius:9px;padding:10px 16px;
- background:#fff;color:#355660;font-weight:700}
-.lektrus-subject-task-editor footer .is-primary{color:#fff;background:#32756d;border-color:#32756d}
+ background:#fff;color:var(--subject-board-accent);font-weight:700}
+.lektrus-subject-task-editor footer .is-primary{color:#fff;background:var(--subject-board-accent);border-color:var(--subject-board-accent)}
 .lektrus-subject-task-editor footer .is-danger{color:#a44449}
 @media(max-width:600px){.lektrus-subject-board-sheet{padding:12px 14px;gap:11px}
  .lektrus-subject-board-header{padding:7px 10px;gap:6px}
@@ -94,3 +94,39 @@
 @media(max-width:520px){.lektrus-subject-board-tools{gap:3px}
  .lektrus-subject-board-tools button{font-size:9px;padding:4px 6px}
  .lektrus-subject-board-header small{display:none}}
+
+/* The same subject palette drives every part of the paper and its editor.
+   The old generic graph top stripe is not part of the worksheet design. */
+.workspace .board .board-object.object-graph[data-subject-tone]:has(.lektrus-subject-board-shell)::before{
+ content:none!important;display:none!important;
+}
+.workspace .board .board-object.object-graph[data-subject-tone]:has(.lektrus-subject-board-shell).selected{
+ outline-color:var(--lektrus-subject)!important;
+}
+.lektrus-subject-board-empty-note{font-weight:650;color:var(--subject-board-accent)}
+.lektrus-subject-board-fields{display:grid;gap:8px;margin:10px 0}
+.lektrus-subject-board-field{display:grid;grid-template-columns:minmax(85px,24%) minmax(0,1fr);
+ align-items:start;gap:12px;font:500 12px/1.5 system-ui,sans-serif}
+.lektrus-subject-board-field>span{font-size:10px;font-weight:750;color:var(--subject-board-accent)}
+.lektrus-subject-board-field p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#334b55}
+.lektrus-subject-task-type{display:grid;gap:9px}
+.lektrus-subject-task-type>strong{font-size:12px;color:var(--subject-board-accent)}
+.lektrus-subject-task-type>small{font-size:11px;line-height:1.45;color:#687d83}
+.lektrus-subject-task-types{display:flex;flex-wrap:wrap;gap:7px}
+.lektrus-subject-task-types button{border:1px solid color-mix(in srgb,var(--subject-board-accent) 30%,#e3e8e6);
+ background:#fff;color:#35525b;border-radius:9px;min-height:34px;padding:7px 10px;cursor:pointer;
+ font:650 11px/1.25 system-ui,sans-serif}
+.lektrus-subject-task-types button.selected{background:var(--subject-board-soft);
+ color:var(--subject-board-accent);border-color:var(--subject-board-accent);
+ box-shadow:inset 0 0 0 1px var(--subject-board-accent)}
+.lektrus-subject-task-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;
+ border:1px solid color-mix(in srgb,var(--subject-board-accent) 15%,#dce7e6);
+ border-radius:11px;padding:14px;background:color-mix(in srgb,var(--subject-board-soft) 24%,white)}
+.lektrus-subject-task-fields label:has(textarea){grid-column:1/-1}
+.lektrus-subject-task-editor input:focus-visible,.lektrus-subject-task-editor textarea:focus-visible{
+ outline:2px solid var(--subject-board-accent);outline-offset:1px}
+.lektrus-mobile-subject-board{display:grid;place-items:center}
+.lektrus-mobile-subject-board svg,.lektrus-direct-subject-board svg{width:21px;height:21px;flex:0 0 21px}
+@media(max-width:540px){.lektrus-subject-board-field{grid-template-columns:1fr;gap:3px}
+.lektrus-subject-task-fields{grid-template-columns:1fr;padding:10px}
+.lektrus-subject-task-types button{font-size:10px}}
