@@ -8970,6 +8970,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     (entryId,direction)=>moveSubjectBoardEntry(item.id,entryId,direction):undefined}
                   onEditSolution={canEdit&&!item.locked&&!presentation?
                     entryId=>openSubjectBoardSolution(item.id,entryId):undefined}
+                  onWorkedSolutionChange={canEdit&&!item.locked&&!presentation?
+                    (entryId,solution)=>patchSubjectBoardEntry(item.id,entryId,{workedSolution:solution}):undefined}
                   onActivityAnswer={canEdit&&!item.locked&&!presentation?
                     (entryId,response)=>patchSubjectBoardEntry(item.id,entryId,{activityResponse:response}):undefined}/>}
                 {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item}
