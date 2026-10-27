@@ -1,4 +1,7 @@
 name: Board build and eraser regression
+concurrency:
+  group: board-regression-${{ github.ref }}
+  cancel-in-progress: true
 on:
   push:
     branches: [main]
