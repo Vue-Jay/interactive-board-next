@@ -3,6 +3,7 @@
  * Inorganic cases reuse the condition-specific curated reaction collection.
  */
 import {reviewedReactionCases,type ReactionEnvironment} from "./lektrusReactionDatabase";
+import {expandedEquationCases} from "./lektrusEquationExtendedCases";
 import {parseEquationDraft} from "./lektrusChemicalEquationModel";
 export type EquationFamily="inorganic"|"organic";
 export type ReviewedExample={
@@ -58,7 +59,8 @@ const inorganicExtras:ReviewedExample[]=[
  {id:"i-carbonate-intermediate",title:"Образование H₂CO₃ (промежуточная стадия)",equation:"Na2CO3 + 2HCl → 2NaCl + H2CO3",conditions:"",
   family:"inorganic",category:"Обмен",note:"Учебная промежуточная запись, далее нужен этап разложения"}
 ];
-export const equationExamplePool:readonly ReviewedExample[]=[...inorganic,...inorganicExtras,...organic];
+// Combine separately reviewed examples with bounded reaction-family expansions.
+export const equationExamplePool:readonly ReviewedExample[]=[...inorganic,...inorganicExtras,...organic,...expandedEquationCases];
 export const equationExamplesByDomain=(domain:EquationFamily):ReviewedExample[]=>equationExamplePool.filter(v=>v.family===domain);
 export function selectRandomEquationExample(domain:EquationFamily,excludedId?:string,random=Math.random):ReviewedExample{
  const candidates=equationExamplesByDomain(domain);
