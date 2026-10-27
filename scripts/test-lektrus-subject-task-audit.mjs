@@ -13,7 +13,7 @@ const interaction=new Function(stripped("src/LektrusSubjectActivity.tsx")+
 const solution=new Function(stripped("src/LektrusSubjectBoardSolution.tsx")+
  "\nreturn {givenWithLegacyUnits,withoutSeparateUnits,hasWorkedSolution};")();
 const expected={
- mathematics:["task","word-problem","equation","geometry","interactive"],
+ mathematics:["task","word-problem","equation","geometry"],
  physics:["task","calculation","lab"],
  chemistry:["task","chain","calculation","experiment"],
  russian:["task","orthography","punctuation","morphemes","morphology","syntax","text","interactive"],
@@ -49,7 +49,7 @@ for(const [tone,format,mode] of [
 ])assert.equal(interaction.preferredActivityMode(tone,format),mode,
  "Use only meaningful interaction for "+tone+"/"+format);
 for(const [tone,oldFormats] of [
- ["mathematics",["choice","cloze","matching","sequence","expression","function"]],
+ ["mathematics",["interactive","choice","cloze","matching","sequence","expression","function"]],
  ["russian",["choice","matching","sequence","cloze"]],
  ["chemistry",["equation","balance"]],
  ["languages",["matching","sequence","cloze"]]
