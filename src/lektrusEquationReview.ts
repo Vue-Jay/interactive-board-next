@@ -109,7 +109,21 @@ export function reviewEquationStep(step:EquationStep,domain:EquationDomain):Revi
  }
  const balance=inspectEquationBalance(draft);
  if(balance.status==="invalid")issues.push({kind:"formula",severity:"error",message:"Элементы слева и справа не совпадают. Проверьте состав веществ."});
- if(balance.status==="unbalanced")issues.push({kind:"coefficient",severity:"error",message:"Неправильные коэффициенты: число атомов не сохраняется. Требуются "+balance.coefficients?.join(", ")+". "});
+ if(balance.status==="unbalanced"){
+  issues.push({kind:"coefficient",severity:"error",
+   message:"Неправильные коэффициенты: число атомов не сохраняется. Требуются "+balance.coefficients?.join(", ")+". "});
+  if(balance.coefficients){
+   let p=0;
+   for(const side of ["left","right"] as const){
+    draft[side].forEach((species,index)=>{
+     const correct=balance.coefficients![p++];
+     if(species.coefficient!==correct)
+      issues.push({kind:"coefficient",severity:"error",side,index,formula:species.formula,
+       message:"Коэффициент перед "+species.formula+": нужен "+correct+", сейчас "+species.coefficient+"."});
+    });
+   }
+  }
+ }
  if(balance.status==="unsupported")issues.push({kind:"unknown",severity:"warning",message:"Автоматическая проверка атомного баланса для этой записи недоступна."});
  const reference=referenceFor(draft,domain,step.conditions);
  // A reviewed "no reaction" must never be represented as a legitimate equation.
