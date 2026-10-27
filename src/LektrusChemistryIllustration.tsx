@@ -1,6 +1,6 @@
 import {useEffect,useState} from "react";
 import type {Item} from "./boardModel";
-import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
+import {LektrusChemicalEquationBoardView} from "./LektrusChemicalEquationEditor";
 import {LektrusReactionScene} from "./LektrusReactionLab";
 
 export const isChemicalIllustration=(item:Item)=>/^(chem-formula-|chem-experiment-)/.test(item.graphFigureId??"");
@@ -59,16 +59,7 @@ export default function LektrusChemistryIllustration({item,onStageChange}:{
  const stage=onStageChange?(item.scienceExperimentStage??0):localStage;
  const setStage=(next:0|1)=>onStageChange?onStageChange(next):setLocalStage(next);
  if(item.graphFigureId==="chem-experiment-free")return <LektrusReactionScene item={item} stage={stage} onStageChange={onStageChange??setLocalStage}/>;
- const equationSteps=item.scienceReactionSteps;
- if(!experiment)return <div className="lektrus-chem-formula-sheet">
-  <strong>{item.text}</strong>
-  {equationSteps&&equationSteps.length>1?<div className="lektrus-equation-board-steps">
-   {equationSteps.map((step,index)=><div className="lektrus-equation-board-step" key={index}>
-    <small>{index+1}.</small><LektrusChemicalEquationTypeset expression={step.expression} conditions={step.conditions}/>
-   </div>)}
-  </div>:<LektrusChemicalEquationTypeset expression={item.graphExpression??""} conditions={item.scienceReactionSteps?.[0]?.conditions??item.scienceReactionConditions}/>}
-
- </div>;
+ if(!experiment)return <LektrusChemicalEquationBoardView item={item}/>;
  const before=stage===0;
  const salt=item.graphFigureId==="chem-experiment-salt";
  const indicator=item.graphFigureId==="chem-experiment-litmus";
