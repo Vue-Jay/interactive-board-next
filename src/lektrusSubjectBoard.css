@@ -366,3 +366,9 @@
  .lektrus-school-solution-inline{padding:10px}
  .lektrus-school-solution-inline .lektrus-school-solution-data{grid-template-columns:1fr}
 }
+
+
+.lektrus-school-solution-old-hints{border:1px dashed color-mix(in srgb,var(--subject-board-accent) 25%,#d8e3e6);
+ border-radius:8px;padding:7px 10px;font:500 11px/1.4 system-ui,sans-serif;color:#617b83}
+.lektrus-school-solution-old-hints summary{cursor:pointer;color:var(--subject-board-accent);font-weight:650}
+.lektrus-school-solution-old-hints p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
