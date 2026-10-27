@@ -8,7 +8,7 @@ import {parseEquationDraft} from "./lektrusChemicalEquationModel";
 export type EquationFamily="inorganic"|"organic";
 export type ReviewedExample={
  id:string;title:string;equation:string;conditions:string;family:EquationFamily;
- category:string;environment?:ReactionEnvironment;note:string;
+ category:string;environment?:ReactionEnvironment;note:string;limitedToMolecularFormula?:boolean;
 };
 const inorganic:ReviewedExample[]=reviewedReactionCases.filter(v=>v.status==="reaction").map((v,i)=>({
  id:"i-"+i,title:v.description.split(/[.;]/)[0].slice(0,62),equation:v.equation,
