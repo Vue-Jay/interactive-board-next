@@ -5,7 +5,7 @@ import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
 import {taskTemplateFor,subjectTaskTemplates,subjectTaskTypeKnown,freshTaskDetails,subjectBoardHasWork,isSchoolSolutionSubject,needsAutomaticWorkedSolution} from "./lektrusSubjectTaskTemplates";
 import {LektrusSubjectBoardSolutionView,LektrusSubjectBoardInlineSolution,emptyWorkedSolution,hasWorkedSolution} from "./LektrusSubjectBoardSolution";
-import {interactiveSubjects,preferredActivityMode,activityMatchesTask,freshActivity,LektrusSubjectActivityBuilder,LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
+import {interactiveSubjects,preferredActivityMode,activityMatchesTask,isIntegratedInteractiveTask,interactiveModesForSubject,freshActivity,LektrusSubjectActivityBuilder,LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
 import {nextSubjectBoardHeight} from "./lektrusSubjectBoardSizing";
 
 export const subjectBoardId=(tone:SubjectTone)=>"subject-board-"+tone;
@@ -214,6 +214,8 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
  const interactive=interactiveSubjects(tone);
  const mode=preferredActivityMode(tone,current.id);
  const activeActivity=mode?(activityMatchesTask(tone,current.id,entry.activity)?entry.activity!:freshActivity(mode)):undefined;
+ const integrated=isIntegratedInteractiveTask(tone,current.id);
+ const activityModeLabels={choice:"Выбор ответа",fill:"Пропуски",match:"Соответствия",order:"Последовательность"} as const;
  const patch=(fields:Partial<SubjectBoardEntry>)=>onChange({...entry,...fields});
  const chooseType=(format:string)=>{
    if(!subjectTaskTemplates[tone].some(template=>template.id===format))return;
@@ -240,6 +242,8 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
         {template.title}</button>)}
       </div>
       <small>{current.instruction}</small>
+      {!options.some(option=>option.id===current.id)&&
+       <small>Это сохранённый тип прежней версии. Его содержимое останется доступным.</small>}
      </div>}
     <label className="lektrus-subject-task-title">Название <small>Необязательно</small>
      <input value={entry.title} maxLength={120} placeholder="Краткое название задания"
@@ -247,6 +251,16 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
     <label className="lektrus-subject-task-prompt">{current.promptLabel}
      <textarea rows={3} maxLength={2500} value={entry.prompt}
       placeholder={current.promptPlaceholder} onChange={e=>patch({prompt:e.target.value})}/></label>
+    {integrated&&activeActivity&&<div className="lektrus-subject-task-type lektrus-activity-modes">
+       <strong>Как ученик будет выполнять задание</strong>
+       <div className="lektrus-subject-task-types" role="group" aria-label="Способ выполнения">
+        {interactiveModesForSubject(tone).map(activityMode=><button type="button" key={activityMode}
+         className={activeActivity.mode===activityMode?"selected":""}
+         aria-pressed={activeActivity.mode===activityMode}
+         onClick={()=>{patch({activity:freshActivity(activityMode),activityResponse:undefined});setPreviewResponse({});}}>
+         {activityModeLabels[activityMode]}</button>)}
+       </div>
+     </div>}
     {interactive&&activeActivity&&<div className="lektrus-activity-author-workspace">
       <LektrusSubjectActivityBuilder tone={tone} format={current.id} activity={activeActivity}
        onChange={activity=>{patch({activity,activityResponse:undefined});setPreviewResponse({});}}/>
