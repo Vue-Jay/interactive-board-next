@@ -82,8 +82,15 @@ function OrthographyBoard({d}:{d:Extract<RussianSchoolDiagram,{kind:"orthography
  const signature=question?[question.id,question.prompt,...question.options,question.correct].join("\u0000"):"";
  useEffect(()=>{setPicked(null);setChecked(false)},[signature]);
  const ok=checked&&question!==undefined&&picked===question.correct;
+ const ready=!!question&&question.prompt!=="□"&&
+  question.options.length>=2&&question.options.every(option=>option.trim().length>0);
  const next=(i:number)=>{setIndex(i);setPicked(null);setChecked(false)};
  const stop=(e:SyntheticEvent)=>e.stopPropagation();
+ if(!ready)return <div className="lektrus-orthography-board" role="status"
+  onPointerDown={stop} onPointerUp={stop} onClick={stop}>
+  <strong className="lektrus-orthography-title">{d.title}</strong>
+  <p>Задание пока не заполнено. Преподавателю нужно указать слово и все варианты.</p>
+ </div>;
  if(!question)return <div className="lektrus-orthography-board" role="status"
   onPointerDown={stop} onPointerUp={stop} onClick={stop}>
   <strong className="lektrus-orthography-title">{d.title}</strong>
