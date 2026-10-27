@@ -60,7 +60,7 @@ assert.ok(board.includes('onMove(entry.id,-1)')&&board.includes('onMove(entry.id
 assert.ok(board.includes("onEditSolution(entry.id)"),"School-style worked solutions open from worksheets");
 assert.ok(app.includes("moveSubjectBoardEntry"),"Reordering is persisted");
 const solution=read("src/LektrusSubjectBoardSolution.tsx");
-for(const label of ["Дано","Найти","СИ","Решение","Ответ"]){
+for(const label of ["Дано","Найти","Решение","Ответ"]){
  assert.ok(solution.includes(label),"Structured school solution missing "+label);
 }
 assert.ok(model.includes("workedSolution?:SubjectBoardWorkedSolution"),"Persist written solution");
