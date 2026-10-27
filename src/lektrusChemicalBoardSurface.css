@@ -220,3 +220,28 @@
  .lektrus-chem-reaction-workspace .lektrus-chem-board-layout-toggle{padding:6px 8px;font-size:10px}
  .lektrus-chem-reaction-workspace .lektrus-chem-board-hint{font-size:10px;padding:5px 8px}
 }
+
+
+/* Equations belong to the centre of the workspace, not to a right-side drawer.
+   Keep the surrounding drawing canvas accessible while the modal is open. */
+.lektrus-chem-reaction-workspace.lektrus-chem-nonblocking{
+ justify-content:center!important;align-items:center!important;padding:12px!important;
+}
+.lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-equation-editor{
+ width:min(1040px,calc(100vw - 28px))!important;max-width:1040px!important;
+ height:auto!important;min-height:0!important;max-height:calc(100dvh - 24px)!important;
+ margin:0 auto!important;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-reaction-topline{justify-content:flex-start}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-preview .lektrus-chemical-board{
+ height:clamp(110px,18vh,180px);min-height:110px;max-height:180px;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-preview{
+ min-height:120px!important;
+}
+@media(max-width:590px){
+ .lektrus-chem-reaction-workspace.lektrus-chem-nonblocking{padding:0!important;align-items:stretch!important}
+ .lektrus-chem-reaction-workspace.lektrus-chem-nonblocking .lektrus-chem-equation-editor{
+ width:100vw!important;max-width:100vw!important;max-height:100dvh!important;height:100dvh!important;
+ }
+}
