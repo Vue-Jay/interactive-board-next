@@ -1,5 +1,6 @@
 import {Fragment,useRef,useState,type ReactNode} from "react";
-import {classroomEquationExamples,reviewEquationChain,applyKnownProductMarks,balancedStep,type EquationDomain,type EquationStep} from "./lektrusEquationReview";
+import {reviewEquationChain,applyKnownProductMarks,balancedStep,type EquationDomain,type EquationStep} from "./lektrusEquationReview";
+import {selectRandomEquationExample,type ReviewedExample} from "./lektrusEquationExamplePool";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {
@@ -12,6 +13,14 @@ import {
 
 type Props={item:Item;onChange:(item:Item)=>void;onSave:()=>void;onCancel:()=>void};
 type Side="left"|"right";
+// Randomised independently on each editor opening, excluding the last displayed
+// example even when the user reopens the same object.
+const lastExampleId:Partial<Record<EquationDomain,string>>={};
+function newBackgroundExample(domain:EquationDomain):ReviewedExample{
+ const next=selectRandomEquationExample(domain,lastExampleId[domain]);
+ lastExampleId[domain]=next.id;
+ return next;
+}
 const subscripts="₀₁₂₃₄₅₆₇₈₉";
 const indexed=/([A-Z][a-z]?|[)\]])([0-9]+)/g;
 const arrows:{value:EquationArrow;label:string;title:string}[]=[
@@ -72,10 +81,12 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  const [stepIndex,setStepIndex]=useState(0);
  const [domain,setDomain]=useState<EquationDomain>(item.scienceReactionDomain??"inorganic");
  const [reviewed,setReviewed]=useState(false);
- const [openGroup,setOpenGroup]=useState<string|null>("heat");
+ const [openGroup,setOpenGroup]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
  const [nextSubstance,setNextSubstance]=useState("");
- const [templateId,setTemplateId]=useState("silver-chloride");
+ const [backgrounds,setBackgrounds]=useState<Record<EquationDomain,ReviewedExample>>(()=>({
+  inorganic:newBackgroundExample("inorganic"),organic:newBackgroundExample("organic")
+ }));
  const focused=useRef<Side>("left");
  const inputs=useRef<{left:HTMLTextAreaElement|null;right:HTMLTextAreaElement|null}>({left:null,right:null});
  const activeIndex=Math.min(stepIndex,steps.length-1);
@@ -86,7 +97,8 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  const currentReview=reviewed?reviewEquationChain(steps,domain)[activeIndex]:null;
  const allReviews=reviewed?reviewEquationChain(steps,domain):[];
  const selectedConditions=parseConditionTokens(current.conditions);
- const availableExamples=classroomEquationExamples.filter(e=>e.domain===domain);
+ const backgroundExample=backgrounds[domain];
+ const exampleParts=readReactionText(backgroundExample.equation);
  const complete=(step:EquationStep)=>{const p=readReactionText(step.expression);
   return !!p.reactants.trim()&&!!p.products.trim()&&!p.standalone;};
  const canSave=steps.every(st=>st.expression.length<=500&&
@@ -137,12 +149,10 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
   setDomain(next);setReviewed(false);
   onChange({...item,scienceReactionDomain:next,scienceReactionSteps:steps,
    graphExpression:steps[0].expression,scienceReactionConditions:steps[0].conditions});
-  setTemplateId(next==="organic"?"alkene":"silver-chloride");setNotice("");
+  setBackgrounds(current=>({...current,[next]:newBackgroundExample(next)}));setNotice("");
  };
- const insertExample=()=>{
-  const sample=availableExamples.find(e=>e.id===templateId)??availableExamples[0];
-  if(!sample)return;
-  updateStep({expression:sample.expression,conditions:sample.conditions});
+ const refreshBackground=()=>{
+  setBackgrounds(current=>({...current,[domain]:newBackgroundExample(domain)}));
  };
  const appendStep=()=>{
   if(steps.length>=8)return;
@@ -198,13 +208,10 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
        {steps.length<8&&<button type="button" className="lektrus-chem-chain-add" onClick={appendStep}
         title="Новый этап с продуктом текущего уравнения">+ Этап</button>}
       </div>
-      <div className="lektrus-chem-templates">
-       <label htmlFor="lektrus-chem-template">Шаблон</label>
-       <select id="lektrus-chem-template" value={availableExamples.some(e=>e.id===templateId)?templateId:availableExamples[0]?.id}
-        onChange={e=>setTemplateId(e.target.value)} aria-label="Проверенный пример уравнения">
-        {availableExamples.map(e=><option key={e.id} value={e.id}>{e.title}</option>)}
-       </select>
-       <button type="button" onClick={insertExample}>Вставить</button>
+      <div className="lektrus-chem-templates lektrus-chem-background-example" aria-label="Фоновый пример химического уравнения">
+       <span title={backgroundExample.title}>Пример: {backgroundExample.category}</span>
+       <button type="button" title="Показать другой фоновый пример, не изменяя уравнение"
+        onClick={refreshBackground}>↻ Другой</button>
       </div>
      </div>
      <div className="lektrus-chem-equation-columns">
@@ -214,8 +221,15 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
        <textarea ref={el=>{inputs.current[side]=el;}} rows={3} maxLength={500} spellCheck={false}
         aria-label={side==="left"?"Реагенты":"Продукты"} autoComplete="off"
         value={side==="left"?parts.reactants:parts.products}
-        placeholder={side==="left"?(domain==="organic"?"C2H4 + H2":"AgNO3 + NaCl"):(domain==="organic"?"C2H6":"AgCl↓ + NaNO3")}
-        onFocus={()=>{focused.current=side;}} onChange={e=>changeSide(side,e.target.value)}/>
+        placeholder={side==="left"?exampleParts.reactants:exampleParts.products}
+        onFocus={()=>{focused.current=side;}} onChange={e=>changeSide(side,e.target.value)}
+        onKeyDown={e=>{
+         if(side==="left"&&e.key==="="&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!e.isComposing){
+          e.preventDefault();focused.current="right";
+          inputs.current.right?.focus();inputs.current.right?.setSelectionRange(
+           inputs.current.right.value.length,inputs.current.right.value.length);
+         }
+        }}/>
        {reviewed&&issuesFor(side).filter(v=>v.severity==="error").slice(0,3).map((v,i)=><small key={i} className="lektrus-chem-inline-error">
         {v.formula?("⚠ "+v.formula+": "):"⚠ "}{v.message}
        </small>)}
@@ -242,7 +256,10 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
        {value:"⁻",label:"⁻",title:"Отрицательный заряд"},
        {value:"·",label:"·",title:"Точка гидратации"}
       ].map(symbol=><button type="button" key={symbol.title} title={symbol.title} aria-label={symbol.title}
-       onMouseDown={e=>e.preventDefault()} onClick={()=>insert(symbol.value)}>{symbol.label}</button>)}</div>
+       onMouseDown={e=>e.preventDefault()} onClick={()=>insert(symbol.value)}>{symbol.label}</button>)}
+       {domain==="organic"&&<button type="button" title="Вставить знак двойной связи в органическую формулу"
+        onMouseDown={e=>e.preventDefault()} onClick={()=>insert("=")}>C=C</button>}
+      </div>
      </div>
      {steps.length<8&&products.length>0&&<div className="lektrus-chem-decomposition">
       <span>Продолжить цепочку из продукта:</span>
@@ -264,7 +281,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
       </div>
       <label className="lektrus-chem-condition-input"><span className="sr-only">Условия реакции</span>
        <input type="text" aria-label="Условия реакции над стрелкой" value={current.conditions} maxLength={REACTION_CONDITION_LIMIT}
-        placeholder="Выберите условие или напишите своё" onChange={e=>changeConditions(e.target.value)}/>
+        placeholder={backgroundExample.conditions||"Выберите условие или напишите своё"} onChange={e=>changeConditions(e.target.value)}/>
       </label>
       <div className="lektrus-chem-condition-categories">
        {REACTION_CONDITION_GROUPS.map(group=><div className="lektrus-chem-condition-group" key={group.id}>
