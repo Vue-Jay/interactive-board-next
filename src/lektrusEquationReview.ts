@@ -2,6 +2,7 @@
  * Never infer arbitrary products from stoichiometry. Unknown chemistry is UNKNOWN.
  */
 import {identifyReaction,type ReactionEnvironment} from "./lektrusReactionDatabase";
+import {equationExamplePool} from "./lektrusEquationExamplePool";
 import {inspectEquationBalance,normalizeFormulaInput,parseEquationDraft,type EquationDraft,type EquationSpecies} from "./lektrusChemicalEquationModel";
 export type EquationDomain="inorganic"|"organic";
 export type EquationStep={expression:string;conditions:string};
@@ -24,37 +25,40 @@ export const classroomEquationExamples:ReactionExample[]=[
  example("chlorination","Хлорирование метана","CH4 + Cl2 → CH3Cl + HCl","hν","organic"),
  example("ethanol-combustion","Горение этанола","C2H5OH + 3O2 → 2CO2 + 3H2O","поджиг","organic")
 ];
-type Reference={expression:string;conditions?:string;note:string;environment?:ReactionEnvironment};
-const official=(equation:string,note:string,conditions="",environment?:ReactionEnvironment):Reference=>({expression:equation,conditions,note,environment});
-const standaloneReferences:Reference[]=[
- official("H2CO3 → H2O + CO2↑","Нестойкая угольная кислота распадается с выделением CO₂ при его удалении из раствора."),
- official("Na2CO3 + 2HCl → 2NaCl + H2CO3","Промежуточная школьная запись. H₂CO₃ неустойчива и далее распадается; добавьте следующий этап."),
- official("NaHCO3 + HCl → NaCl + H2CO3","Промежуточная школьная запись. H₂CO₃ переходит в H₂O и CO₂; добавьте следующий этап."),
- ...classroomEquationExamples.filter(e=>e.domain==="organic").map(e=>official(e.expression,"Проверенный школьный пример при указанных условиях.",e.conditions))
-];
+type Reference={expression:string;conditions:string;note:string;environment?:ReactionEnvironment};
 const normalize=(s:string)=>normalizeFormulaInput(s).replace(/\s+/g,"");
 const list=(values:EquationSpecies[])=>values.filter(s=>s.formula.trim()).map(s=>normalize(s.formula));
-const normalizedReactants=(expression:string)=>{const draft=parseEquationDraft(expression);return draft?list(draft.left):[]};
 const signature=(values:string[])=>values.slice().sort().join("|");
+const reactantsFrom=(expression:string)=>{const draft=parseEquationDraft(expression);return draft?list(draft.left):[]};
+const productsFrom=(expression:string)=>{const draft=parseEquationDraft(expression);return draft?list(draft.right):[]};
+const environmentFrom=(conditions:string):ReactionEnvironment=>
+ /поджиг|горен|плам|воспламен/i.test(conditions)?"ignited":
+ /t°|Δ|нагрев|[0-9]+\s*°C/i.test(conditions)?"heated":
+ /без\s*раствора|сух/i.test(conditions)?"dry":"aqueous";
+const strip=(value:string)=>normalize(value).toLowerCase().replace(/₂/g,"2").replace(/₃/g,"3").replace(/\s/g,"");
+const hasRequiredConditions=(required:string,given:string):boolean=>{
+ if(!required)return true;
+ const actual=strip(given);
+ return required.split(",").map(s=>strip(s)).filter(Boolean).every(req=>
+  actual.includes(req)||req==="t°"&&(/°c|нагрев|delta|Δ/i.test(actual))||
+  req==="поджиг"&&(/плам|горен|поджиг|воспламен/i.test(actual)));
+};
 function referenceFor(draft:EquationDraft,domain:EquationDomain,conditions:string):Reference|undefined{
- const target=signature(list(draft.left));
- if(!target)return;
- if(domain==="organic"){
-  const refs=standaloneReferences.filter(r=>classroomEquationExamples.some(e=>e.domain==="organic"&&e.expression===r.expression));
-  return refs.find(r=>signature(normalizedReactants(r.expression))===target);
- }
- const special=standaloneReferences.filter(r=>!classroomEquationExamples.some(e=>e.domain==="organic"&&e.expression===r.expression));
- const intermediate=(draft.right.some(s=>normalize(s.formula)==="H2CO3"));
- const matches=special.filter(r=>signature(normalizedReactants(r.expression))===target);
- const exact=matches.find(r=>parseEquationDraft(r.expression)?.right.some(s=>normalize(s.formula)==="H2CO3")===intermediate);
- if(exact)return exact;
- // Only use the existing reviewed database. Its records are condition-specific.
- const environment:ReactionEnvironment=/поджиг|горен|плам|воспламен/i.test(conditions)?"ignited":
-   /t°|Δ|нагрев|[0-9]+\s*°C/i.test(conditions)?"heated":"aqueous";
- const caseData=identifyReaction(list(draft.left),environment);
- if(caseData.status==="reaction"&&caseData.caseData)return official(caseData.caseData.equation,caseData.caseData.description,"",environment);
- // Missing required heat/light etc. may explain why a reference was not matched.
- return undefined;
+ const reactants=signature(list(draft.left));
+ if(!reactants)return undefined;
+ const candidates=equationExamplePool.filter(ex=>ex.family===domain&&
+  signature(reactantsFrom(ex.equation))===reactants);
+ if(!candidates.length)return undefined;
+ const outputs=signature(list(draft.right));
+ const withProducts=candidates.filter(ex=>signature(productsFrom(ex.equation))===outputs);
+ const withContext=candidates.filter(ex=>hasRequiredConditions(ex.conditions,conditions));
+ const relevant=withContext.length?withContext:candidates;
+ const withSameProducts=relevant.filter(ex=>withProducts.includes(ex));
+ // Do not assume one pathway when more than one different product set
+ // is chemically supported for the given reactants and uncertain conditions.
+ const chosen=withSameProducts[0]??(relevant.length===1?relevant[0]:undefined);
+ if(!chosen)return undefined;
+ return {expression:chosen.equation,conditions:chosen.conditions,note:chosen.note,environment:chosen.environment};
 }
 export function reviewEquationStep(step:EquationStep,domain:EquationDomain):ReviewedEquation{
  const draft=parseEquationDraft(step.expression),issues:ReviewIssue[]=[];
@@ -70,8 +74,7 @@ export function reviewEquationStep(step:EquationStep,domain:EquationDomain):Revi
  const reference=referenceFor(draft,domain,step.conditions);
  // A reviewed "no reaction" must never be represented as a legitimate equation.
  if(!reference&&domain==="inorganic"){
-  const environment:ReactionEnvironment=/поджиг|горен|плам/i.test(step.conditions)?"ignited":
-   /t°|Δ|нагрев|[0-9]+\s*°C/i.test(step.conditions)?"heated":"aqueous";
+  const environment=environmentFrom(step.conditions);
   const negative=identifyReaction(left,environment);
   if(negative.status==="none")
    issues.push({kind:"reaction",severity:"error",side:"left",
@@ -99,8 +102,7 @@ export function reviewEquationStep(step:EquationStep,domain:EquationDomain):Revi
     }
    }
   }
-  if(reference.conditions&&!(reference.conditions.toLowerCase().split(/[, ]+/).filter(Boolean)
-    .some(t=>step.conditions.toLowerCase().includes(t)))){
+  if(reference.conditions&&!hasRequiredConditions(reference.conditions,step.conditions)){
    issues.push({severity:"warning",kind:"condition",message:"Проверьте необходимые условия: "+reference.conditions+"."});
   }
  }
