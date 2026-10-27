@@ -3,7 +3,7 @@ import type {Item} from "./boardModel";
 import type {EquationDraft,EquationSpecies} from "./lektrusChemicalEquationModel";
 import {
  anions,cations,composeReviewedIonicCompound,getReactionGuidance,isBuilderCompatible,
- lookupSubstance,reactionEnvironments,reactionExamples,searchSchoolSubstances,
+ reactionEnvironments,reactionExamples,searchSchoolSubstances,
  sourceReactionDraft,substanceCategories,suggestedPartners
 } from "./lektrusChemicalReactionGuide";
 import type {ReactionCase,ReactionEnvironment} from "./lektrusReactionDatabase";
