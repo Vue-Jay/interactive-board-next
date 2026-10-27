@@ -2,13 +2,12 @@ import {useRef,useState,type ReactNode} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {
- blankSpecies,countFormulaAtoms,inspectEquationBalance,parseEquationDraft,
+ blankSpecies,inspectEquationBalance,parseEquationDraft,
  readSpecies,writeEquationDraft,type EquationArrow,type EquationDraft,
  type EquationSpecies
 } from "./lektrusChemicalEquationModel";
 
 const subscriptAfter=/([A-Z][a-z]?|[)\]])([0-9]+)/g;
-const supDigits="⁰¹²³⁴⁵⁶⁷⁸⁹";
 function FormulaPart({value}:{value:string}){
  const chunks:ReactNode[]=[];
  const normalized=value.replace(/[₀-₉]/g,v=>String("₀₁₂₃₄₅₆₇₈₉".indexOf(v)));
@@ -22,7 +21,6 @@ function FormulaPart({value}:{value:string}){
  if(last<normalized.length)chunks.push(normalized.slice(last));
  return <span>{chunks}</span>;
 }
-const toSup=(s:string)=>s.replace(/\d/g,n=>supDigits[Number(n)]);
 function RenderSpecies({species}:{species:EquationSpecies}){
  // Formula labels and stoichiometric coefficients are separate, so 2H2O
  // cannot accidentally become an index in the typesetter.
