@@ -8,7 +8,8 @@ export type EquationDraft={left:EquationSpecies[];right:EquationSpecies[];arrow:
 export type BalanceResult={status:"empty"|"incomplete"|"invalid"|"unsupported"|"balanced"|"unbalanced";
  message:string;coefficients?:number[]};
 export const blankSpecies=():EquationSpecies=>({formula:"",coefficient:1,indicator:""});
-const arrows=/(⇌|⇄|↔|→|⟶|⟹|->|=)/;
+// A bare = in organic condensed structures (CH2=CH2) is a bond, not a reaction arrow.
+const arrows=/(⇌|⇄|↔|→|⟶|⟹|->)|(?<=\s)=(?=\s)/;
 const unicodeSub="₀₁₂₃₄₅₆₇₈₉";
 const elements=new Set(("H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr "+
 "Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu "+
