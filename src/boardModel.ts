@@ -396,6 +396,22 @@ export type SubjectBoardWorkedSolution={
  work:string;
  answer:string;
 };
+export type SubjectTaskActivity={
+ mode:"choice"|"fill"|"match"|"order";
+ options?:string[];
+ correctIndex?:number;
+ blanks?:{before:string;answer:string}[];
+ tail?:string;
+ pairs?:{left:string;right:string}[];
+ tokens?:string[];
+};
+export type SubjectTaskActivityResponse={
+ selected?:number;
+ values?:string[];
+ matched?:number[];
+ ordered?:number[];
+ checked?:boolean;
+};
 export type SubjectBoardEntry={
   id:string;
   kind:"equation"|"task";
@@ -404,6 +420,8 @@ export type SubjectBoardEntry={
   format?:string;
   details?:Record<string,string>;
   workedSolution?:SubjectBoardWorkedSolution;
+  activity?:SubjectTaskActivity;
+  activityResponse?:SubjectTaskActivityResponse;
   domain?:"inorganic"|"organic";
   steps?:{expression:string;conditions:string}[];
   answer:string;
@@ -737,6 +755,23 @@ export function parseDocument(raw: string): DocumentData {
             entry.steps.every(step=>typeof step.expression==="string"&&step.expression.length<=500&&
               typeof step.conditions==="string"&&step.conditions.length<=180))))))
         throw new Error("Повреждены записи предметной доски");
+      if(i.subjectBoardEntries?.some((entry:SubjectBoardEntry)=>{
+        const a=entry.activity,r=entry.activityResponse;
+        if(a!=null&&(!a||typeof a!=="object"||!["choice","fill","match","order"].includes(a.mode)||
+         (a.options!=null&&(!Array.isArray(a.options)||a.options.length>8||!a.options.every(t=>typeof t==="string"&&t.length<=240)))||
+         (a.correctIndex!=null&&(!Number.isInteger(a.correctIndex)||a.correctIndex<0||a.correctIndex>7))||
+         (a.blanks!=null&&(!Array.isArray(a.blanks)||a.blanks.length>8||!a.blanks.every(x=>!!x&&typeof x.before==="string"&&x.before.length<=1200&&typeof x.answer==="string"&&x.answer.length<=240)))||
+         (a.tail!=null&&(typeof a.tail!=="string"||a.tail.length>1200))||
+         (a.pairs!=null&&(!Array.isArray(a.pairs)||a.pairs.length>8||!a.pairs.every(x=>!!x&&typeof x.left==="string"&&x.left.length<=240&&typeof x.right==="string"&&x.right.length<=240)))||
+         (a.tokens!=null&&(!Array.isArray(a.tokens)||a.tokens.length>12||!a.tokens.every(x=>typeof x==="string"&&x.length<=240)))))return true;
+        if(r!=null&&(!r||typeof r!=="object"||
+         (r.checked!=null&&typeof r.checked!=="boolean")||
+         (r.selected!=null&&(!Number.isInteger(r.selected)||r.selected<0||r.selected>8))||
+         (r.values!=null&&(!Array.isArray(r.values)||r.values.length>8||!r.values.every(x=>typeof x==="string"&&x.length<=240)))||
+         (r.matched!=null&&(!Array.isArray(r.matched)||r.matched.length>8||!r.matched.every(x=>Number.isInteger(x)&&x>=-1&&x<=8)))||
+         (r.ordered!=null&&(!Array.isArray(r.ordered)||r.ordered.length>12||!r.ordered.every(x=>Number.isInteger(x)&&x>=0&&x<=12)))))return true;
+        return false;
+      }))throw new Error("Повреждено интерактивное задание");
       if(i.subjectBoardEntries?.some((entry:SubjectBoardEntry)=>entry.workedSolution!=null&&
          (typeof entry.workedSolution!=="object"||!["given","find","si","work","answer"].every(key=>{
            const value=entry.workedSolution?.[key as keyof SubjectBoardWorkedSolution];
