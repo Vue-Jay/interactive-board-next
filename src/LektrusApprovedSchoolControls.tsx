@@ -1,19 +1,30 @@
 import type {ApprovedSchoolDiagram,MorphemeRole} from "./lektrusApprovedSchoolModel";
 import {morphemeNames} from "./lektrusApprovedSchoolModel";
+const sortMorphemeRoles=(segments:Extract<ApprovedSchoolDiagram,{kind:"morphemes"}>["segments"])=>
+ [...segments].sort((a,b)=>["prefix","root","suffix","ending","postfix"].indexOf(a.role)-
+  ["prefix","root","suffix","ending","postfix"].indexOf(b.role));
 type Props={diagram:ApprovedSchoolDiagram;onChange:(diagram:ApprovedSchoolDiagram)=>void};
 const createId=()=>crypto.randomUUID();
 export default function LektrusApprovedSchoolControls({diagram:d,onChange}:Props){
  if(d.kind==="morphemes"){
   return <>
    <div className="lektrus-school-controls-heading">Части слова слева направо</div>
-   <p className="lektrus-school-hint">Каждую морфему задаёт преподаватель. Разбор не выполняется автоматически. Пример: под + снеж + ник, нулевое окончание.</p>
+   <p className="lektrus-school-hint">Введите части слова по порядку. Значки появятся на схеме автоматически; приложение не угадывает морфемы за преподавателя.</p>
    {d.segments.map((segment,i)=><div className="lektrus-school-edit-row" key={segment.id}>
     <span className="lektrus-school-number">{i+1}</span>
     <div className="lektrus-school-edit-content">
      <input value={segment.text} maxLength={24} aria-label={"Морфема "+(i+1)}
       onChange={e=>onChange({...d,segments:d.segments.map(m=>m.id===segment.id?{...m,text:e.target.value}:m)})}/>
      <select aria-label={"Тип морфемы "+(i+1)} value={segment.role}
-      onChange={e=>onChange({...d,segments:d.segments.map(m=>m.id===segment.id?{...m,role:e.target.value as MorphemeRole}:m)})}>
+      onChange={e=>{
+       const role=e.target.value as MorphemeRole;
+       if(role==="root"&&d.segments.filter(m=>m.role==="root"&&m.id!==segment.id).length>=2)return;
+       if(role==="ending"&&d.segments.some(m=>m.role==="ending"&&m.id!==segment.id))return;
+       if(role==="postfix"&&d.segments.some(m=>m.role==="postfix"&&m.id!==segment.id))return;
+       if(segment.role==="root"&&role!=="root"&&d.segments.filter(m=>m.role==="root").length<=1)return;
+       onChange({...d,zeroEnding:role==="ending"?false:d.zeroEnding,
+         segments:sortMorphemeRoles(d.segments.map(m=>m.id===segment.id?{...m,role}:m))});
+      }}>
       {Object.entries(morphemeNames).map(([id,title])=><option key={id} value={id}>{title}</option>)}
      </select>
     </div>
@@ -28,18 +39,27 @@ export default function LektrusApprovedSchoolControls({diagram:d,onChange}:Props
       onClick={()=>onChange({...d,segments:d.segments.filter(m=>m.id!==segment.id)})}>×</button>
     </div>
    </div>)}
-   <button type="button" className="lektrus-school-add" disabled={d.segments.length>=10}
-    onClick={()=>onChange({...d,segments:[...d.segments,{id:createId(),text:"часть",role:"suffix"}]})}>
-    + Добавить морфему ({d.segments.length}/10)</button>
+   <div className="lektrus-morpheme-add-roles" role="group" aria-label="Добавить часть слова">
+    {(["prefix","root","suffix","ending","postfix"] as MorphemeRole[]).map(role=>
+     <button type="button" key={role} className="lektrus-school-add"
+      disabled={d.segments.length>=10||
+       (d.segments.length===0&&role!=="root")||
+       (role==="root"&&d.segments.filter(m=>m.role==="root").length>=2)||
+       (role==="ending"&&d.segments.some(m=>m.role==="ending"))||
+       (role==="postfix"&&d.segments.some(m=>m.role==="postfix"))}
+      onClick={()=>onChange({...d,zeroEnding:role==="ending"?false:d.zeroEnding,
+       segments:sortMorphemeRoles([...d.segments,{id:createId(),text:"",role}])})}>
+      + {morphemeNames[role]}</button>)}
+   </div>
    <label className="lektrus-school-toggle"><input type="checkbox" checked={d.zeroEnding}
-    onChange={e=>onChange({...d,zeroEnding:e.target.checked,
-     segments:e.target.checked?d.segments.filter(m=>m.role!=="ending"):d.segments})}/>
+    disabled={d.segments.some(m=>m.role==="ending")}
+    onChange={e=>onChange({...d,zeroEnding:e.target.checked})}/>
     Нулевое окончание (∅)</label>
    <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showMarks}
     onChange={e=>onChange({...d,showMarks:e.target.checked})}/> Обозначения морфем</label>
    <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showBase}
     onChange={e=>onChange({...d,showBase:e.target.checked})}/> Показывать основу слова</label>
-   <p className="lektrus-school-hint">Для упражнения можно скрыть обозначения. При ненулевом окончании добавьте отдельную морфему «Окончание». Допускается один или два корня. При сохранении проверяется последовательность частей слова.</p>
+   <p className="lektrus-school-hint">Для демонстрации можно скрыть обозначения. При добавлении окончания нулевое окончание отключается автоматически. Пустые части предназначены для редактирования, а не для готового ответа.</p>
   </>;
  }
  if(d.kind==="family-tree"){
