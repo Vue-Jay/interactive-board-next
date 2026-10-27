@@ -1,20 +1,35 @@
-import {Fragment,useRef,useState,type ReactNode} from "react";
+import {useRef,useState,type ReactNode} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {
- blankSpecies,inspectEquationBalance,parseEquationDraft,readSpecies,writeEquationDraft,
- type EquationArrow,type EquationDraft,type EquationSpecies
+ inspectEquationBalance,parseEquationDraft,writeEquationDraft,type EquationArrow,type EquationSpecies
 } from "./lektrusChemicalEquationModel";
+import {
+ readReactionText,writeReactionText,REACTION_CONDITION_GROUPS,REACTION_CONDITION_LIMIT,
+ parseConditionTokens,toggleReactionCondition,type ReactionTextParts
+} from "./lektrusChemicalEquationControls";
 
 type Props={item:Item;onChange:(item:Item)=>void;onSave:()=>void;onCancel:()=>void};
 type Side="left"|"right";
 const subscripts="₀₁₂₃₄₅₆₇₈₉";
 const indexed=/([A-Z][a-z]?|[)\]])([0-9]+)/g;
-const arrows:{value:EquationArrow;label:string}[]=[
- {value:"→",label:"→"},{value:"⇌",label:"⇌"},{value:"=",label:"="}
+const arrows:{value:EquationArrow;label:string;title:string}[]=[
+ {value:"→",label:"→",title:"Необратимая реакция"},
+ {value:"⇌",label:"⇌",title:"Обратимая реакция"},
+ {value:"=",label:"=",title:"Уравнение со знаком равенства"}
 ];
-const symbols=["₂","₃","₄","₅","(",")","[","]","·","⁺","⁻"];
-const quickConditions=["t°","hν","кат."];
+const symbols=[
+ {value:" + ",label:"+",title:"Добавить следующее вещество"},
+ {value:"(",label:"(",title:"Открывающая скобка"},
+ {value:")",label:")",title:"Закрывающая скобка"},
+ {value:"₂",label:"₂",title:"Индекс 2"},
+ {value:"₃",label:"₃",title:"Индекс 3"},
+ {value:"·",label:"·",title:"Точка гидратации"},
+ {value:"↑",label:"↑",title:"Выделение газа"},
+ {value:"↓",label:"↓",title:"Выпадение осадка"},
+ {value:"⁺",label:"⁺",title:"Положительный заряд"},
+ {value:"⁻",label:"⁻",title:"Отрицательный заряд"}
+];
 
 function FormulaPart({value}:{value:string}){
  const normalized=value.replace(/[₀-₉]/g,s=>String(subscripts.indexOf(s)));
@@ -42,7 +57,7 @@ function ReactionSide({species}:{species:EquationSpecies[]}){
   </span>)}
  </span>;
 }
-/** One shared rendering for the editor preview and existing objects on the board. */
+/** The exact same typesetter is used by the board and by the editor preview. */
 export function LektrusChemicalEquationTypeset({expression,conditions}:{expression:string;conditions?:string}){
  const draft=parseEquationDraft(expression);
  if(!draft)return <div className="lektrus-reaction-equation-text">
@@ -62,91 +77,68 @@ export function LektrusChemicalEquationTypeset({expression,conditions}:{expressi
 }
 
 export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCancel}:Props){
- const first=useRef(item.graphExpression??"");
- const [mode,setMode]=useState<"builder"|"source">(()=>
-  parseEquationDraft(first.current)?"builder":"source");
- const [symbolsOpen,setSymbolsOpen]=useState(false);
+ const legacyFormula=useRef(!!item.graphExpression?.trim()&&readReactionText(item.graphExpression).standalone);
+ const [openGroup,setOpenGroup]=useState<string|null>("heat");
  const [notice,setNotice]=useState("");
- const focused=useRef<{side:Side;index:number}|null>(null);
- const inputs=useRef(new Map<string,HTMLInputElement>());
- const rawArea=useRef<HTMLTextAreaElement>(null);
+ const focused=useRef<Side>("left");
+ const inputs=useRef<{left:HTMLTextAreaElement|null;right:HTMLTextAreaElement|null}>({left:null,right:null});
  const raw=item.graphExpression??"";
+ const parts=readReactionText(raw);
  const draft=parseEquationDraft(raw);
  const balance=draft?inspectEquationBalance(draft):null;
- const complete=!!draft&&draft.left.length>0&&draft.right.length>0&&
-  [...draft.left,...draft.right].every(s=>s.formula.trim().length>0);
- const canSave=raw.trim().length>0&&raw.length<=500&&(mode==="source"||complete);
-
- const updateSource=(value:string)=>{
-  if(value.length>500){setNotice("Максимум 500 символов");return;}
+ const complete=!!parts.reactants.trim()&&!!parts.products.trim()&&!parts.standalone;
+ const canSave=raw.trim().length>0&&raw.length<=500&&
+  (complete||(legacyFormula.current&&parts.standalone&&!!parts.reactants.trim()));
+ const selectedConditions=parseConditionTokens(item.scienceReactionConditions??"");
+ const updateEquation=(next:ReactionTextParts)=>{
+  const value=writeReactionText(next,legacyFormula.current&&next.standalone);
+  if(value.length>500){setNotice("Максимальная длина уравнения: 500 символов");return;}
   onChange({...item,graphExpression:value});setNotice("");
  };
- const updateDraft=(next:EquationDraft)=>{
-  const value=writeEquationDraft(next);
-  updateSource(value);
+ const changeSide=(side:Side,value:string)=>{
+  updateEquation({...parts,[side==="left"?"reactants":"products"]:value,
+   standalone:legacyFormula.current&&side==="left"&&!parts.products.trim()});
  };
- const copyDraft=():EquationDraft=>({
-  left:(draft?.left??[blankSpecies()]).map(s=>({...s})),
-  right:(draft?.right??[blankSpecies()]).map(s=>({...s})),
-  arrow:draft?.arrow??"→"
- });
- const patch=(side:Side,index:number,updates:Partial<EquationSpecies>)=>{
-  const next=copyDraft();
-  if(!next[side][index])return;
-  next[side][index]={...next[side][index],...updates};
-  updateDraft(next);
- };
- const addSpecies=(side:Side)=>{
-  const next=copyDraft();if(next[side].length>=10)return;
-  next[side].push(blankSpecies());
-  updateDraft(next);
-  const index=next[side].length-1;
-  requestAnimationFrame(()=>inputs.current.get(side+index)?.focus());
- };
- const deleteSpecies=(side:Side,index:number)=>{
-  const next=copyDraft();
-  if(next[side].length===1)next[side][0]=blankSpecies();
-  else next[side].splice(index,1);
-  focused.current=null;updateDraft(next);
- };
- const insertSymbol=(symbol:string)=>{
-  const insertion=mode==="source"?symbol:
-   symbol.replace(/[₀-₉]/g,v=>String(subscripts.indexOf(v)));
-  if(mode==="source"){
-   const el=rawArea.current,start=el?.selectionStart??raw.length,end=el?.selectionEnd??start;
-   updateSource(raw.slice(0,start)+insertion+raw.slice(end));
-   requestAnimationFrame(()=>{el?.focus();el?.setSelectionRange(start+insertion.length,start+insertion.length);});
-   return;
-  }
-  const target=focused.current??{side:"left" as const,index:0};
-  const next=copyDraft();const row=next[target.side][target.index];
-  if(!row)return;
-  const el=inputs.current.get(target.side+target.index);
-  const start=el?.selectionStart??row.formula.length,end=el?.selectionEnd??start;
-  row.formula=row.formula.slice(0,start)+insertion+row.formula.slice(end);
-  updateDraft(next);
-  requestAnimationFrame(()=>{el?.focus();el?.setSelectionRange(start+insertion.length,start+insertion.length);});
+ const changeArrow=(arrow:EquationArrow)=>updateEquation({...parts,arrow,standalone:false});
+ const insert=(value:string)=>{
+  const side=focused.current,input=inputs.current[side];
+  const before=side==="left"?parts.reactants:parts.products;
+  const start=input?.selectionStart??before.length,end=input?.selectionEnd??start;
+  const next=before.slice(0,start)+value+before.slice(end);
+  changeSide(side,next);
+  requestAnimationFrame(()=>{
+   const el=inputs.current[side];el?.focus();
+   el?.setSelectionRange(start+value.length,start+value.length);
+  });
  };
  const applyBalance=()=>{
   if(!draft||balance?.status!=="unbalanced"||!balance.coefficients)return;
-  const next=copyDraft();let i=0;
+  const updated={...draft,left:draft.left.map(s=>({...s})),right:draft.right.map(s=>({...s}))};
+  let i=0;
   for(const side of ["left","right"] as const)
-   next[side].forEach(row=>{row.coefficient=balance.coefficients![i++];});
-  updateDraft(next);setNotice("Коэффициенты расставлены по числу атомов.");
+   updated[side].forEach(s=>{s.coefficient=balance.coefficients![i++];});
+  const expression=writeEquationDraft(updated);
+  if(expression.length>500)return;
+  onChange({...item,graphExpression:expression});
+  setNotice("Коэффициенты расставлены. Формулы веществ не изменены.");
  };
- const makeReaction=()=>{
-  updateDraft({left:[readSpecies(raw)],right:[blankSpecies()],arrow:"→"});
-  setMode("builder");
+ const changeConditions=(value:string)=>{
+  if(value.length>REACTION_CONDITION_LIMIT){setNotice("Слишком длинная запись условий");return;}
+  onChange({...item,scienceReactionConditions:value});setNotice("");
  };
- const appendCondition=(condition:string)=>{
-  const before=(item.scienceReactionConditions??"").trim();
-  const next=before?before+", "+condition:condition;
-  if(next.length<=90)onChange({...item,scienceReactionConditions:next});
+ const toggleCondition=(value:string)=>{
+  const before=item.scienceReactionConditions??"";
+  const after=toggleReactionCondition(before,value);
+  if(after===before&&!selectedConditions.includes(value)){
+   setNotice("Слишком много условий. Удалите ненужные или сократите запись.");
+   return;
+  }
+  changeConditions(after);
  };
  const submit=()=>{if(canSave)onSave();};
  return createPortal(
-  <div className="lektrus-chem-equation-overlay lektrus-chem-equation-v2 lektrus-chem-equation-compact"
-   onPointerDown={e=>{if(e.target===e.currentTarget)onCancel()}}>
+  <div className="lektrus-chem-equation-overlay lektrus-chem-equation-v2 lektrus-chem-equation-compact lektrus-chem-one-screen"
+   onPointerDown={e=>{if(e.target===e.currentTarget)onCancel();}}>
    <section className="lektrus-chem-equation-editor" role="dialog" aria-modal="true"
     aria-label="Редактор химических уравнений"
     onPointerDown={e=>e.stopPropagation()}
@@ -155,128 +147,92 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
      if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();submit();}
     }}>
     <header className="lektrus-chem-equation-header">
-     <div className="lektrus-chem-equation-heading"><strong>Химическое уравнение</strong>
-      <small>Введите вещества, оформите реакцию и проверьте коэффициенты</small></div>
-     <button type="button" aria-label="Закрыть" title="Закрыть" onClick={onCancel}>×</button>
+     <div className="lektrus-chem-equation-heading">
+      <strong>Химическое уравнение</strong>
+      <small>Реагенты, продукты и условия в одном окне</small>
+     </div>
+     <button type="button" title="Закрыть" aria-label="Закрыть" onClick={onCancel}>×</button>
     </header>
-    <div className="lektrus-chem-equation-mode" role="tablist" aria-label="Способ редактирования">
-     <button type="button" role="tab" aria-selected={mode==="builder"} disabled={!draft}
-      onClick={()=>setMode("builder")}>По веществам</button>
-     <button type="button" role="tab" aria-selected={mode==="source"}
-      onClick={()=>setMode("source")}>Одной строкой</button>
-    </div>
     <div className="lektrus-chem-equation-content">
-     {mode==="builder"&&draft?
-      <div className="lektrus-chem-builder">
-       <div className="lektrus-chem-equation-columns">
-        {(["left","right"] as Side[]).map(side=><Fragment key={side}><section className="lektrus-chem-side">
-         <div className="lektrus-chem-side-heading">
-          <strong>{side==="left"?"Реагенты":"Продукты"}</strong>
-          <small>{side==="left"?"До реакции":"После реакции"}</small>
-         </div>
-         <div className="lektrus-chem-species-list">
-          {draft[side].map((s,index)=><div className="lektrus-chem-species-card" key={side+index}>
-           <label className="lektrus-chem-coeff-field">
-            <span className="sr-only">Коэффициент</span>
-            <input type="number" inputMode="numeric" min={1} max={999} step={1}
-             title="Коэффициент (1 не пишется)"
-             aria-label={"Коэффициент "+(side==="left"?"реагента ":"продукта ")+(index+1)}
-             value={s.coefficient===1?"":s.coefficient} placeholder="1"
-             onChange={e=>patch(side,index,{coefficient:Math.min(999,Math.max(1,Math.floor(Number(e.target.value)||1)))})}/>
-           </label>
-           <label className="lektrus-chem-formula-field">
-            <span className="sr-only">Формула вещества</span>
-            <input type="text" autoComplete="off" spellCheck={false} maxLength={120}
-             aria-label={"Формула "+(side==="left"?"реагента ":"продукта ")+(index+1)}
-             placeholder={side==="left"?"Например, H2SO4":"Например, H2O"} value={s.formula}
-             ref={el=>{if(el)inputs.current.set(side+index,el);else inputs.current.delete(side+index);}}
-             onFocus={()=>{focused.current={side,index};}}
-             onChange={e=>patch(side,index,{formula:e.target.value})}
-             onKeyDown={e=>{
-              if(e.key==="Enter"&&!e.ctrlKey&&!e.metaKey){e.preventDefault();addSpecies(side);}
-              if(e.key==="Backspace"&&!s.formula&&draft[side].length>1){
-               e.preventDefault();deleteSpecies(side,index);
-              }
-             }}/>
-           </label>
-           {side==="right"&&<select className="lektrus-chem-state" value={s.indicator}
-             title="Обозначение выделения газа или осадка"
-             aria-label={"Признак продукта "+(index+1)}
-             onChange={e=>patch(side,index,{indicator:e.target.value as EquationSpecies["indicator"]})}>
-             <option value="">—</option><option value="↑">↑</option><option value="↓">↓</option>
-            </select>}
-           <button type="button" className="lektrus-chem-remove-species"
-            aria-label={"Убрать "+(side==="left"?"реагент ":"продукт ")+(index+1)}
-            title="Убрать вещество" onClick={()=>deleteSpecies(side,index)}>×</button>
-          </div>)}
-         </div>
-         <button type="button" className="lektrus-chem-add-species"
-          onClick={()=>addSpecies(side)} disabled={draft[side].length>=10}>+ Вещество</button>
-        </section>
-        {side==="left"&&<div className="lektrus-chem-arrow-chooser">
-         <span>Знак реакции</span>
-         <div role="group" aria-label="Знак реакции">{arrows.map(a=><button type="button" key={a.value}
-          title={"Использовать "+a.label} aria-pressed={draft.arrow===a.value}
-          onClick={()=>updateDraft({...copyDraft(),arrow:a.value})}>{a.label}</button>)}</div>
-        </div>}
-        </Fragment>)}
-       </div>
-      </div>:
-      <div className="lektrus-chem-source">
-       <label><strong>Запись уравнения</strong><span>Для ионных уравнений и нестандартных обозначений</span>
-        <textarea ref={rawArea} rows={4} spellCheck={false} maxLength={500} value={raw}
-         placeholder="Na2CO3 + 2HCl → 2NaCl + CO2↑ + H2O"
-         onChange={e=>updateSource(e.target.value)}/>
-       </label>
-       {!draft&&raw.trim()&&!/(→|⇌|⇄|↔|⟶|⟹|=|->)/.test(raw)&&
-        <button type="button" className="lektrus-chem-make-reaction"
-         onClick={makeReaction}>Превратить формулу в уравнение</button>}
-      </div>}
-     <div className="lektrus-chem-equation-conditions">
-      <label className="lektrus-chem-equation-condition-field">
-       <span>Условия над стрелкой</span>
-       <input type="text" maxLength={90} value={item.scienceReactionConditions??""}
-        placeholder="Необязательно" onChange={e=>onChange({...item,scienceReactionConditions:e.target.value})}/>
+     <div className="lektrus-chem-equation-columns">
+      <label className="lektrus-chem-equation-side">
+       <span className="lektrus-chem-equation-side-head"><strong>Реагенты</strong><small>Исходные вещества</small></span>
+       <textarea ref={el=>{inputs.current.left=el;}} rows={3}
+        aria-label="Реагенты" spellCheck={false} autoComplete="off" maxLength={500}
+        value={parts.reactants} placeholder="H2 + O2"
+        onFocus={()=>{focused.current="left";}}
+        onChange={e=>changeSide("left",e.target.value)}/>
       </label>
-      <div className="lektrus-chem-conditions-quick" aria-label="Частые условия реакции">
-       {quickConditions.map(cond=><button key={cond} type="button"
-        title={"Добавить "+cond} onClick={()=>appendCondition(cond)}>{cond}</button>)}
+      <div className="lektrus-chem-arrow-chooser">
+       <span>Стрелка</span>
+       <div role="group" aria-label="Знак химической реакции">
+        {arrows.map(a=><button type="button" key={a.value} title={a.title}
+         aria-pressed={!parts.standalone&&parts.arrow===a.value}
+         onClick={()=>changeArrow(a.value)}>{a.label}</button>)}
+       </div>
       </div>
+      <label className="lektrus-chem-equation-side">
+       <span className="lektrus-chem-equation-side-head"><strong>Продукты</strong><small>Результат реакции</small></span>
+       <textarea ref={el=>{inputs.current.right=el;}} rows={3}
+        aria-label="Продукты" spellCheck={false} autoComplete="off" maxLength={500}
+        value={parts.products} placeholder="2H2O, CO2↑"
+        onFocus={()=>{focused.current="right";}}
+        onChange={e=>changeSide("right",e.target.value)}/>
+      </label>
      </div>
-     <div className="lektrus-chem-palettes">
-      <button type="button" className="lektrus-chem-palette-toggle" aria-expanded={symbolsOpen}
-       onClick={()=>setSymbolsOpen(v=>!v)}>
-       Специальные символы <span>{symbolsOpen?"−":"+"}</span>
-      </button>
-      {symbolsOpen&&<div className="lektrus-chem-palettes-rows">
-       <div className="lektrus-chem-palettes-row"><div role="group" aria-label="Вставка символов">
-        {symbols.map(symbol=><button type="button" key={symbol}
-         onMouseDown={e=>e.preventDefault()} title={"Вставить "+symbol}
-         onClick={()=>insertSymbol(symbol)}>{symbol}</button>)}
-       </div></div>
-      </div>}
+     <div className="lektrus-chem-equation-symbols" role="group" aria-label="Кнопки ввода химических символов">
+      <span>Вставить</span>
+      <div>{symbols.map(symbol=><button type="button" key={symbol.title}
+       title={symbol.title} aria-label={symbol.title}
+       onMouseDown={e=>e.preventDefault()} onClick={()=>insert(symbol.value)}>{symbol.label}</button>)}</div>
      </div>
-     <section className="lektrus-chem-equation-preview" aria-label="Предпросмотр записи">
+     <section className="lektrus-chem-condition-panel" aria-label="Условия реакции над стрелкой">
+      <div className="lektrus-chem-condition-heading">
+       <div><strong>Условия реакции</strong><small>Будут показаны над стрелкой</small></div>
+       {!!item.scienceReactionConditions?.trim()&&<button type="button"
+        className="lektrus-chem-clear-conditions" onClick={()=>changeConditions("")}>Очистить</button>}
+      </div>
+      <label className="lektrus-chem-condition-input">
+       <span className="sr-only">Условия реакции, отображаемые над стрелкой</span>
+       <input type="text" aria-label="Условия реакции над стрелкой"
+        value={item.scienceReactionConditions??""} maxLength={REACTION_CONDITION_LIMIT}
+        placeholder="Выберите ниже или впишите свои условия"
+        onChange={e=>changeConditions(e.target.value)}/>
+      </label>
+      <div className="lektrus-chem-condition-categories">
+       {REACTION_CONDITION_GROUPS.map(group=><div className="lektrus-chem-condition-group" key={group.id}>
+        <button type="button" className="lektrus-chem-condition-group-title"
+         aria-expanded={openGroup===group.id}
+         onClick={()=>setOpenGroup(v=>v===group.id?null:group.id)}>
+         {group.title}<span aria-hidden="true">{openGroup===group.id?"−":"+"}</span>
+        </button>
+        {openGroup===group.id&&<div className="lektrus-chem-condition-options" role="group"
+         aria-label={"Условия: "+group.title}>
+         {group.tokens.map(token=><button type="button" key={token}
+          aria-pressed={selectedConditions.includes(token)} title={"Условие: "+token}
+          onClick={()=>toggleCondition(token)}>{token}</button>)}
+        </div>}
+       </div>)}
+      </div>
+     </section>
+     <section className="lektrus-chem-equation-preview" aria-label="Предпросмотр записи на доске">
       <div className="lektrus-chem-preview-heading">
-       <strong>Предпросмотр</strong><span>Так уравнение появится на доске</span>
+       <strong>Предпросмотр</strong><span>Так уравнение будет выглядеть на доске</span>
       </div>
       <LektrusChemicalEquationTypeset expression={raw} conditions={item.scienceReactionConditions}/>
      </section>
      {complete&&<div className={"lektrus-chem-balance "+(balance?.status??"")} role="status">
       <div className="lektrus-chem-balance-description">
-       <strong>{balance?.status==="balanced"?"Число атомов совпадает":
-        balance?.status==="unbalanced"?"Коэффициенты не уравнены":
-        balance?.status==="invalid"?"Проверьте состав веществ":"Проверка коэффициентов"}</strong>
-       <span>{balance?.message}.</span>
+       <strong>{balance?.status==="balanced"?"Атомы уравнены":
+        balance?.status==="unbalanced"?"Проверьте коэффициенты":
+        balance?.status==="invalid"?"Разный состав элементов":"Проверка коэффициентов"}</strong>
+       <span>{balance?.message}</span>
       </div>
-      {mode==="builder"&&balance?.status==="unbalanced"&&balance.coefficients&&
-       <button type="button" className="lektrus-chem-apply-balance" onClick={applyBalance}>
-        Расставить коэффициенты</button>}
+      {balance?.status==="unbalanced"&&balance.coefficients&&
+       <button type="button" className="lektrus-chem-apply-balance"
+        onClick={applyBalance}>Расставить коэффициенты</button>}
      </div>}
      {notice&&<p className="lektrus-chem-equation-notice" role="status">{notice}</p>}
-     {complete&&<p className="lektrus-chem-equation-footnote">
-      Проверка относится к числу атомов, а не к возможности протекания реакции.
-     </p>}
     </div>
     <footer>
      <span className="lektrus-chem-shortcut">Ctrl+Enter: сохранить</span>
