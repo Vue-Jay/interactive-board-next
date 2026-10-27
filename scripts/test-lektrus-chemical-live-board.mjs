@@ -42,13 +42,14 @@ assert.ok(app.includes("setSelected([item.id]);"),"Newly created board can show 
 assert.ok(app.includes('if(scienceEditorItem?.id===item.id&&item.graphFigureId?.startsWith("chem-formula-"))return;'),
  "Double click on live board does not reopen or reset the active editor");
 assert.ok(editor.includes('aria-modal="false"'),"Board and editor can be interacted with at the same time");
-assert.ok(editor.includes("setBoardLayout(v=>!v)"),"User can dock editor to drag and resize board");
-assert.ok(editor.includes("Разместить доску"),"Docking control must be discoverable");
+assert.ok(!editor.includes("setBoardLayout(v=>!v)"),"Editor no longer docks on the right");
+assert.ok(!editor.includes("Разместить доску"),"Remove layout toggle from chemical equation authoring");
+assert.ok(styles.includes("justify-content:center!important"),"Equation editor sits centrally");
 assert.ok(styles.includes("pointer-events:none!important"),"Editor backdrop cannot intercept board pointer gestures");
 assert.ok(styles.includes("pointer-events:auto!important"),"Editor inputs stay fully interactive");
 assert.ok(styles.includes('data-subject-tone="chemistry"'),"Chemistry board has no white frame");
 assert.ok(styles.includes('background-color:#fcfefd'),"Chemistry board uses near-white paper");
-assert.ok(styles.includes("width:min(1260px,calc(100vw - 300px))"),"Expanded desktop editor fits more controls");
+assert.ok(styles.includes("width:min(1040px,calc(100vw - 28px))"),"Centred editor adapts to desktop widths");
 for(const [name,source] of [["App.tsx",app],["Editor.tsx",editor],["Science.tsx",science],
  ["Illustration.tsx",illustration]]){
  const ast=ts.createSourceFile(name,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
@@ -77,7 +78,7 @@ assert.ok(illustration.includes("<LektrusChemicalEquationBoardView item={item}/>
 assert.ok(editor.includes("<LektrusChemicalEquationBoardView item={item}/>"),
  "Editor preview uses identical canvas view");
 assert.ok(editor.includes('aria-label="Химическая доска"'));
-assert.ok(!editor.includes("refreshBackground"),"No template switching handler");
+assert.ok(!editor.includes("refreshBackground")&&!editor.includes("backgroundExample"),"No sample reactions shown as input hints");
 assert.ok(!editor.includes("↻ Другой"),"No visible example switcher");
 assert.ok(styles.includes(".lektrus-chemical-board-paper"));
 assert.ok(styles.includes(".lektrus-chemical-board-placeholder"));
