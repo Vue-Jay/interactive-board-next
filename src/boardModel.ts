@@ -722,7 +722,7 @@ export function parseDocument(raw: string): DocumentData {
           typeof entry.solution==="string"&&entry.solution.length<=2000&&typeof entry.revealed==="boolean"&&
           (!entry.steps||(Array.isArray(entry.steps)&&entry.steps.length<=8&&
             entry.steps.every(step=>typeof step.expression==="string"&&step.expression.length<=500&&
-              typeof step.conditions==="string"&&step.conditions.length<=180))))))
+              typeof step.conditions==="string"&&step.conditions.length<=180)))))))
         throw new Error("Повреждены записи предметной доски");
       if (i.graphConnectPoints != null && typeof i.graphConnectPoints !== "boolean") throw new Error("Повреждено соединение точек");
       for (const value of [i.graphA,i.graphB,i.graphC,i.graphXMin,i.graphXMax,i.graphYMin,i.graphYMax]) if (value != null && !finite(value)) throw new Error("Повреждены параметры графика");
