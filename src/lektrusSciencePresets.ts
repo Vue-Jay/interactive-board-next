@@ -55,7 +55,7 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
     "chem-formula-water":{title:"Молекулярная формула · вода",expression:"H2O"},
     "chem-formula-combustion":{title:"Горение метана",expression:"CH4 + 2O2 → CO2 + 2H2O"},
     "chem-formula-neutralization":{title:"Нейтрализация",expression:"HCl + NaOH → NaCl + H2O"},
-    "chem-formula-free":{title:"Химическое уравнение",expression:""}
+    "chem-formula-free":{title:"Химическое уравнение · пример",expression:"AgNO3 + NaCl → AgCl↓ + NaNO3"}
   };
   if(formulaPresets[id]){
     const entry=formulaPresets[id]!;
