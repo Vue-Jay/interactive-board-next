@@ -16,6 +16,8 @@ const pool=new Function("reviewedReactionCases","parseEquationDraft",poolCode+
  "\nreturn {equationExamplePool,equationExamplesByDomain,selectRandomEquationExample};")(db.reviewedReactionCases,model.parseEquationDraft);
 assert.ok(pool.equationExamplesByDomain("inorganic").length>=20,"At least twenty rotating inorganic examples");
 assert.ok(pool.equationExamplesByDomain("organic").length>=20,"At least twenty rotating organic examples");
+assert.ok(pool.equationExamplesByDomain("inorganic").length>=80,"Review 80+ curated inorganic reactions");
+assert.ok(pool.equationExamplesByDomain("organic").length>=30,"Rotate thirty verified organic examples");
 for(const ex of pool.equationExamplePool){
  const draft=model.parseEquationDraft(ex.equation);
  assert.ok(draft,"Reference should parse: "+ex.id);
@@ -33,6 +35,11 @@ const review=new Function(...["identifyReaction","reviewedReactionCases","countF
 const step=(expression,conditions="")=>({expression,conditions});
 const inspect=(expression,domain="inorganic",conditions="")=>review.reviewEquationStep(step(expression,conditions),domain);
 assert.equal(inspect("AgNO3 + NaCl → AgCl↓ + NaNO3").status,"correct");
+assert.equal(inspect("AgNO3 + NaCl → ").issues.filter(i=>i.kind==="missing").length,2,
+ "Known but unfinished equations report which products are missing");
+assert.equal(inspect("AgNO3 + NaCl → KCl + NaNO3").status,"incorrect");
+assert.equal(inspect("NaCl + KNO3 → KCl + NaNO3").status,"incorrect",
+ "A balanced equation is not enough to establish a reaction");
 assert.equal(inspect("Na2CO3 + 2HCl → 2NaCl + CO2↑ + H2O").status,"correct");
 assert.equal(inspect("H2CO3 → H2O + CO2↑").status,"correct");
 assert.equal(inspect("Na2CO3 + 2HCl → 2NaCl + H2CO3").status,"correct",
@@ -82,6 +89,12 @@ const brokenChain=review.reviewEquationChain([
 ],"organic");
 assert.ok(brokenChain[1].issues.some(i=>i.kind==="chain"));
 const code=read("src/LektrusChemicalEquationEditor.tsx");
+assert.ok(code.includes("newBackgroundExample"),"Opening the editor rotates background examples");
+assert.ok(code.includes('e.key==="="'),"Equal key shortcut targets the product side");
+assert.ok(code.includes("inputs.current.right?.focus()"),"Equal key moves focus instead of inserting text");
+assert.ok(code.includes("exampleParts.reactants")&&code.includes("exampleParts.products"),
+ "Hints appear as input placeholders rather than inserted reactants");
+assert.ok(!code.includes("insertExample"),"Example must never overwrite actual equation");
 const AST=ts.createSourceFile("Editor.tsx",code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(AST.parseDiagnostics.length,0,"Editor TSX parses");
 for(const feature of ["selectRandomEquationExample","Неорганика","Органика","+ Этап",
