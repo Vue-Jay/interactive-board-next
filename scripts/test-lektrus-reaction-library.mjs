@@ -30,6 +30,13 @@ assert.equal(identifyReaction(["NaCl","AgNO3"],"aqueous").status,"reaction");
 assert.equal(identifyReaction(["AgNO3","NaCl"],"aqueous").status,"reaction");
 assert.equal(identifyReaction(["NaCl","KNO3"],"aqueous").status,"none");
 assert.equal(identifyReaction(["NaCl","KNO3"],"dry").status,"unknown");
+assert.equal(identifyReaction(["Na2CO3","KBr"],"aqueous").status,"none",
+ "Two soluble sodium/potassium salts have no net ionic change in dilute water");
+assert.equal(identifyReaction(["Na2CO3","KBr"],"heated").status,"unknown",
+ "Negative reaction assertions must never extrapolate to other environments");
+assert.equal(identifyReaction(["Cu","ZnSO4"],"aqueous").status,"none",
+ "Copper cannot displace zinc from a dilute aqueous salt");
+assert.equal(identifyReaction(["Zn","CuSO4"],"aqueous").status,"reaction");
 assert.equal(identifyReaction(["Mg","O2"],"ignited").status,"reaction");
 assert.equal(identifyReaction(["Mg","O2"],"aqueous").status,"unknown");
 assert.equal(identifyReaction(["NaCl","KNO3","HCl"],"aqueous").status,"unknown");
