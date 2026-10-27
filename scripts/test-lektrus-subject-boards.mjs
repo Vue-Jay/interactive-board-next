@@ -66,7 +66,7 @@ for(const label of ["Дано","Найти","СИ","Решение","Ответ"
 assert.ok(model.includes("workedSolution?:SubjectBoardWorkedSolution"),"Persist written solution");
 assert.ok(board.includes('onAction("equation")')&&board.includes('onAction("task")'),
  "Chemistry worksheet retains equation and task tools");
-assert.match(board,/freshTaskDetails\(tone,template.id\)/);
+assert.match(board,/freshTaskDetails\(tone,e.target.value\)/);
 assert.match(board,/entry\.details\?\.\[field\.id\]/);
 assert.match(board,/onAnswerChange\(entry\.id,e\.target\.value\)/);
 assert.match(board,/entry\.revealed\?/);
