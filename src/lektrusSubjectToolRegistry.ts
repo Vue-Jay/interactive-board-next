@@ -12,11 +12,6 @@ export type SubjectToolDefinition={id:SubjectToolId;label:string;description:str
 
 /** A tool is a distinct editing workflow; its examples are selected INSIDE the editor. */
 export const subjectToolRegistry:SubjectToolDefinition[]=[
-  ...Object.entries(subjectAccentPalette).map(([tone,palette])=>({
-   id:("subject-board-"+tone) as SubjectToolId,label:palette.label+" · учебная доска",
-   description:"Единый лист для заданий и решений нескольких предметных инструментов",
-   group:"Учебная доска",subjects:[palette.label.toLocaleLowerCase("ru-RU")]
-  })),
   {id:"chem-assignments",label:"Создание заданий",description:"Уравнения, цепочки превращений, вопросы и решения на химической доске",
    group:"Химия · учебная доска",subjects:["химия"]},
   {id:"math-formula",label:"Математическая формула",description:"Степени, корни и математические символы",group:"Математические инструменты",subjects:["математика"]},
