@@ -34,6 +34,7 @@ jobs:
       - run: node scripts/test-lektrus-chemical-live-board.mjs
       - run: node scripts/test-lektrus-subject-boards.mjs
       - run: node scripts/test-lektrus-interactive-worksheets.mjs
+      - run: node scripts/test-lektrus-subject-isolation.mjs
       - run: node scripts/test-lektrus-equation-review.mjs
       - run: node scripts/test-lektrus-organic-nomenclature.mjs
       - run: node scripts/test-lektrus-reaction-library.mjs
