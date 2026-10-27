@@ -18,7 +18,7 @@ for(const [subject,ids] of Object.entries({
  "география":["maps-atlas","contour-atlas","geo-matching","geo-question-cards"],
  "история":["history-atlas","history-timeline","history-family-tree"],
  "информатика":["info-encoding","info-place-value","info-programming","info-flowchart","info-circuit","info-logic"],
- "русский язык":["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics","ru-orthography","ru-sentence-builder"],
+ "русский язык":["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics","ru-orthography"],
  "иностранный язык":["language-sentence-builder","language-flashcards"],
  "литература":["literature-analysis"],
  "обществознание":["civics-structure"]
