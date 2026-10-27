@@ -565,7 +565,14 @@
 .lektrus-rus-token.mark-object,.lektrus-rus-grammar-mark.mark-object{
  text-decoration-line:underline;text-decoration-style:dashed;text-decoration-thickness:1.5px;text-underline-offset:6px}
 .lektrus-rus-token.mark-adverbial,.lektrus-rus-grammar-mark.mark-adverbial{
- text-decoration-line:underline;text-decoration-style:dotted;text-decoration-thickness:2px;text-underline-offset:6px}
+ text-decoration:none;
+ background-image:repeating-linear-gradient(90deg,
+  var(--subject-board-accent) 0px,var(--subject-board-accent) 10px,
+  transparent 10px,transparent 14px,
+  var(--subject-board-accent) 14px,var(--subject-board-accent) 16px,
+  transparent 16px,transparent 21px);
+ background-size:100% 2px;background-position:center bottom;background-repeat:no-repeat
+}
 .lektrus-rus-analysis-target{margin:0;padding:9px 11px;background:var(--subject-board-soft);
  border-radius:7px;font:600 12px/1.4 system-ui,sans-serif;color:var(--subject-board-accent)}
 .lektrus-rus-analysis-fields{display:grid;gap:10px}
