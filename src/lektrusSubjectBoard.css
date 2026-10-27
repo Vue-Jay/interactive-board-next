@@ -84,3 +84,13 @@
 .workspace .selection-toolbar-screen .graph-selection-controls{display:inline-flex;align-items:center;flex-wrap:nowrap!important}
 .workspace .selection-toolbar-screen.lektrus-graph-selection-toolbar{overflow-x:auto;overflow-y:hidden}
 .workspace .selection-toolbar-screen:has(.lektrus-connector-quick){overflow:visible!important}
+
+.lektrus-subject-board-tools{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-left:auto;min-width:0}
+.lektrus-subject-board-tools button{flex:0 0 auto;border:1px solid color-mix(in srgb,var(--subject-board-accent) 25%,#dae5e6);
+ border-radius:7px;padding:5px 8px;min-height:28px;background:#fff;color:var(--subject-board-accent);
+ font:700 10px/1.2 system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+.lektrus-subject-board-tools button:hover{background:var(--subject-board-soft)}
+.lektrus-subject-board-tools+small{margin-left:0}
+@media(max-width:520px){.lektrus-subject-board-tools{gap:3px}
+ .lektrus-subject-board-tools button{font-size:9px;padding:4px 6px}
+ .lektrus-subject-board-header small{display:none}}
