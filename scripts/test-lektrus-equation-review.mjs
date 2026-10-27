@@ -80,7 +80,7 @@ const board=read("src/boardModel.ts");
 assert.ok(board.includes("scienceReactionSteps?:"));
 assert.ok(board.includes('"scienceReactionDomain","scienceReactionSteps"'));
 const illustration=read("src/LektrusChemistryIllustration.tsx");
-assert.ok(illustration.includes("scienceReactionSteps?.length>1"));
+assert.ok(illustration.includes("equationSteps&&equationSteps.length>1"));
 const science=read("src/LektrusScienceEditor.tsx");
 assert.ok(science.includes("canTeach={canTeach===true}"));
 const presets=read("src/lektrusSciencePresets.ts");
