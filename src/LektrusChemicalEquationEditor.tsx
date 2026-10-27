@@ -232,6 +232,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
        {reviewed&&issuesFor(side).filter(v=>v.severity==="error").slice(0,3).map((v,i)=><small key={i} className="lektrus-chem-inline-error">
         {v.formula?("⚠ "+v.formula+": "):"⚠ "}{v.message}
        </small>)}
+      </label>
        {side==="left"&&<div className="lektrus-chem-arrow-chooser">
         <span>Стрелка</span><div role="group" aria-label="Знак реакции">
          {arrows.map(a=><button type="button" key={a.value} title={a.title}
