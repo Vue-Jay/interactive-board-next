@@ -61,6 +61,7 @@ import "./lektrusMechanicsEditor.css";
 import "./lektrusPhysicsPointers.css";
 import "./lektrusBoardToolIcons.css";
 import "./lektrusOrganicWorkspace.css";
+import "./lektrusChemicalEquationWorkspace.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
