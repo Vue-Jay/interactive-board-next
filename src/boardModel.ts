@@ -394,7 +394,8 @@ export type SubjectBoardEntry={
   kind:"equation"|"task";
   title:string;
   prompt:string;
-  format?:"equation"|"chain"|"problem"|"exercise";
+  format?:string;
+  details?:Record<string,string>;
   domain?:"inorganic"|"organic";
   steps?:{expression:string;conditions:string}[];
   answer:string;
@@ -720,6 +721,10 @@ export function parseDocument(raw: string): DocumentData {
           (entry.kind==="equation"||entry.kind==="task")&&typeof entry.title==="string"&&entry.title.length<=120&&
           typeof entry.prompt==="string"&&entry.prompt.length<=2500&&typeof entry.answer==="string"&&entry.answer.length<=2000&&
           typeof entry.solution==="string"&&entry.solution.length<=2000&&typeof entry.revealed==="boolean"&&
+          (entry.format==null||(typeof entry.format==="string"&&entry.format.length<=50))&&
+          (entry.details==null||(typeof entry.details==="object"&&!Array.isArray(entry.details)&&
+             Object.entries(entry.details).length<=20&&Object.entries(entry.details).every(([key,value])=>
+               key.length<=50&&typeof value==="string"&&value.length<=1800)))&&
           (!entry.steps||(Array.isArray(entry.steps)&&entry.steps.length<=8&&
             entry.steps.every(step=>typeof step.expression==="string"&&step.expression.length<=500&&
               typeof step.conditions==="string"&&step.conditions.length<=180))))))
