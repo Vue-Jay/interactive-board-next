@@ -143,11 +143,16 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
    <header><div><strong>Создание задания</strong><small>{palette.label} · {current.title}</small></div>
     <button type="button" aria-label="Закрыть" onClick={onClose}>×</button></header>
    <div className="lektrus-subject-task-body">
-    {options.length>1&&<label className="lektrus-subject-task-kind">Тип задания
-     <select value={options.some(opt=>opt.id===entry.format)?entry.format:"task"}
-      onChange={e=>patch({format:e.target.value,details:{...freshTaskDetails(tone,e.target.value),...entry.details}})}>
-      {options.map(template=><option value={template.id} key={template.id}>{template.title}</option>)}
-     </select></label>}
+    {options.length>1&&<div className="lektrus-subject-task-type">
+      <strong>Вид задания</strong>
+      <div className="lektrus-subject-task-types" role="group" aria-label="Тип задания">
+       {options.map(template=><button type="button" key={template.id}
+        className={current.id===template.id?"selected":""} aria-pressed={current.id===template.id}
+        onClick={()=>patch({format:template.id,details:{...freshTaskDetails(tone,template.id),...entry.details}})}>
+        {template.title}</button>)}
+      </div>
+      <small>{current.instruction}</small>
+     </div>}
     <label className="lektrus-subject-task-title">Название <small>Необязательно</small>
      <input value={entry.title} maxLength={120} placeholder="Краткое название задания"
       onChange={e=>patch({title:e.target.value})}/></label>
