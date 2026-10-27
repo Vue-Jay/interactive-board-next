@@ -75,7 +75,8 @@ export function validateRussianSchoolDiagram(value:unknown):value is RussianScho
   return unique(questions)&&questions.every(q=>q&&id(q.id)&&text(q.prompt,180)&&
    q.prompt.split("□").length===2&&Array.isArray(q.options)&&
    q.options.length>=2&&q.options.length<=4&&
-   q.options.every(s=>text(s,24))&&new Set(q.options.map(s=>s.trim())).size===q.options.length&&
+   q.options.every(s=>text(s,24,true))&&
+   new Set(q.options.filter(s=>s.trim()).map(s=>s.trim())).size===q.options.filter(s=>s.trim()).length&&
    Number.isInteger(q.correct)&&q.correct>=0&&q.correct<q.options.length&&
    text(q.explanation,250,true));
  }
