@@ -204,6 +204,19 @@ for(const [first,second] of furtherNoReactionPairs)
  none(first+"+"+second,"aqueous",
   "При обычном смешении разбавленных водных растворов нет движущей силы превращения либо металл не вытесняет более активный металл.");
 
+// Conservatively extend the negative controls to simple alkali-metal salts:
+// chlorides, bromides, iodides, nitrates, sulfates and carbonates stay soluble.
+// No NH4⁺ species: carbonate/ammonium mixtures may evolve NH3.
+const solubleSpectators=["NaCl","KCl","NaNO3","KNO3","Na2SO4","K2SO4","KBr","KI","Na2CO3","K2CO3"];
+for(let i=0;i<solubleSpectators.length;i++){
+ for(let j=i+1;j<solubleSpectators.length;j++){
+  const ids=[solubleSpectators[i],solubleSpectators[j]].sort().join("|");
+  if(cases.some(row=>row.environment==="aqueous"&&row.reactants.slice().sort().join("|")===ids))continue;
+  none(solubleSpectators[i]+"+"+solubleSpectators[j],"aqueous",
+   "В разбавленном водном растворе этих солей отсутствует образование малорастворимого соединения, газа или слабого электролита; нет суммарного ионного превращения.");
+ }
+}
+
 
 /* Additional explicit classroom cases. Each equation is checked for element balance
  * by scripts/test-lektrus-reaction-library.mjs. Never turn this table into
