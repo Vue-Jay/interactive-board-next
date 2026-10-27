@@ -40,6 +40,7 @@ import LektrusScienceEditor from "./LektrusScienceEditor";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,subjectBoardLocked,entryBelongsToSubject,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
 import {LektrusSubjectBoardSolutionEditor} from "./LektrusSubjectBoardSolution";
+import {subjectTaskTemplates} from "./lektrusSubjectTaskTemplates";
 import {subjectToneForItem,subjectToneForSubject,subjectAccentPalette} from "./lektrusSubjectAccent";
 import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import {isPhysicsMotionGraph,motionAxisTicks} from "./lektrusPhysicsGraphTicks";
@@ -5511,7 +5512,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      const entries=latest.subjectBoardEntries??[];
      const current=entries.find(entry=>entry.id===entryId);
      if(!current||!entryBelongsToSubject(boardTone(latest),current))return;
-     if(changes.subject&&changes.subject!==boardTone(latest))return;
+     const tone=boardTone(latest);
+     if(changes.subject&&changes.subject!==tone)return;
+     if(changes.format&&current.kind==="task"&&!subjectTaskTemplates[tone].some(type=>type.id===changes.format))return;
      if(changes.format&&changes.format!==current.format&&!roleCapabilities.canUseTeacherTools)return;
      if(!roleCapabilities.canUseTeacherTools&&Object.keys(changes).some(key=>!["answer","workedSolution","activityResponse"].includes(key)))return;
      const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?{
