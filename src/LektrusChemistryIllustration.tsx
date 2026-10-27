@@ -59,10 +59,11 @@ export default function LektrusChemistryIllustration({item,onStageChange}:{
  const stage=onStageChange?(item.scienceExperimentStage??0):localStage;
  const setStage=(next:0|1)=>onStageChange?onStageChange(next):setLocalStage(next);
  if(item.graphFigureId==="chem-experiment-free")return <LektrusReactionScene item={item} stage={stage} onStageChange={onStageChange??setLocalStage}/>;
+ const equationSteps=item.scienceReactionSteps;
  if(!experiment)return <div className="lektrus-chem-formula-sheet">
   <strong>{item.text}</strong>
-  {item.scienceReactionSteps?.length>1?<div className="lektrus-equation-board-steps">
-   {item.scienceReactionSteps.map((step,index)=><div className="lektrus-equation-board-step" key={index}>
+  {equationSteps&&equationSteps.length>1?<div className="lektrus-equation-board-steps">
+   {equationSteps.map((step,index)=><div className="lektrus-equation-board-step" key={index}>
     <small>{index+1}.</small><LektrusChemicalEquationTypeset expression={step.expression} conditions={step.conditions}/>
    </div>)}
   </div>:<LektrusChemicalEquationTypeset expression={item.graphExpression??""} conditions={item.scienceReactionSteps?.[0]?.conditions??item.scienceReactionConditions}/>}
