@@ -23,11 +23,11 @@ export function writeReactionText(parts:ReactionTextParts,keepStandalone=false):
 export type ConditionGroup={id:string;title:string;tokens:readonly string[]};
 export const REACTION_CONDITION_GROUPS:readonly ConditionGroup[]=[
  {id:"heat",title:"Температура",tokens:[
-  "t°","Δ","нагревание","охлаждение","−20 °C","0 °C","25 °C","80 °C","100 °C","200 °C","450 °C"]},
+  "t°","Δ","нагревание","охлаждение","−20 °C","0 °C","25 °C","80 °C","100 °C","170 °C","200 °C","450 °C"]},
  {id:"energy",title:"Свет и энергия",tokens:[
-  "hν","свет","УФ","ИК","электролиз","эл. ток","эл. разряд","микроволны","ультразвук"]},
+  "hν","свет","УФ","ИК","поджиг","электролиз","эл. ток","эл. разряд","микроволны","ультразвук"]},
  {id:"catalysts",title:"Катализаторы",tokens:[
-  "кат.","Pt","Pd","Ni","Fe","Cu","MnO₂","V₂O₅","Al₂O₃","Cr₂O₃","H₂SO₄ (конц.)","H₃PO₄","фермент"]},
+  "кат.","Pt","Pd","Ni","кат. Линдлара","Fe","Cu","MnO₂","V₂O₅","Al₂O₃","Cr₂O₃","H₂SO₄ (конц.)","H₃PO₄","фермент"]},
  {id:"medium",title:"Среда и растворители",tokens:[
   "H₂O","водн. р-р","этанол","спирт","эфир","ацетон","бензол","толуол",
   "THF","DMSO","кислая среда","щелочная среда","нейтральная среда"]},
