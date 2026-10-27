@@ -27,7 +27,8 @@ export function splitEquationSide(text:string):string[]{
    const next=text.slice(i+1).trimStart();
    const previous=current.trimEnd();
    // A plus sign inside an ion (Na+ + Cl−) is not a separator.
-   const isSeparator=next.length>0&&/^(?:[0-9]{0,3}[A-Z([{]|[A-Z])/.test(next) &&
+   const isSeparator=next.length===0?/\s$/.test(current):
+    /^(?:[0-9]{0,3}[A-Z([{])/.test(next) &&
     !(/[+⁺]\s*$/.test(previous)&&next.startsWith("+"));
    if(isSeparator){parts.push(current.trim());current="";continue;}
   }
