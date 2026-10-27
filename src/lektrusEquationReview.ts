@@ -25,7 +25,7 @@ export const classroomEquationExamples:ReactionExample[]=[
  example("chlorination","Хлорирование метана","CH4 + Cl2 → CH3Cl + HCl","hν","organic"),
  example("ethanol-combustion","Горение этанола","C2H5OH + 3O2 → 2CO2 + 3H2O","поджиг","organic")
 ];
-type Reference={expression:string;conditions:string;note:string;environment?:ReactionEnvironment};
+type Reference={expression:string;conditions:string;note:string;environment?:ReactionEnvironment;limitedToMolecularFormula?:boolean};
 const normalize=(s:string)=>normalizeFormulaInput(s).replace(/\s+/g,"");
 const list=(values:EquationSpecies[])=>values.filter(s=>s.formula.trim()).map(s=>normalize(s.formula));
 const signature=(values:string[])=>values.slice().sort().join("|");
@@ -54,11 +54,14 @@ function referenceFor(draft:EquationDraft,domain:EquationDomain,conditions:strin
  const withContext=candidates.filter(ex=>hasRequiredConditions(ex.conditions,conditions));
  const relevant=withContext.length?withContext:candidates;
  const withSameProducts=relevant.filter(ex=>withProducts.includes(ex));
- // Do not assume one pathway when more than one different product set
- // is chemically supported for the given reactants and uncertain conditions.
- const chosen=withSameProducts[0]??(relevant.length===1?relevant[0]:undefined);
+ // Different records can describe the SAME products, often with slightly
+ // different prose. Treat them as one outcome. Only defer when distinct outcomes
+ // remain possible and the conditions do not select one reliably.
+ const uniqueProducts=new Set(relevant.map(ex=>signature(productsFrom(ex.equation))));
+ const chosen=withSameProducts[0]??(uniqueProducts.size===1?relevant[0]:undefined);
  if(!chosen)return undefined;
- return {expression:chosen.equation,conditions:chosen.conditions,note:chosen.note,environment:chosen.environment};
+ return {expression:chosen.equation,conditions:chosen.conditions,note:chosen.note,
+  environment:chosen.environment,limitedToMolecularFormula:chosen.limitedToMolecularFormula};
 }
 export function reviewEquationStep(step:EquationStep,domain:EquationDomain):ReviewedEquation{
  const draft=parseEquationDraft(step.expression),issues:ReviewIssue[]=[];
@@ -110,6 +113,10 @@ export function reviewEquationStep(step:EquationStep,domain:EquationDomain):Revi
        ("У "+current.formula+" здесь не нужен знак "+current.indicator+".")});
     }
    }
+  }
+  if(reference.limitedToMolecularFormula){
+   issues.push({severity:"warning",kind:"unknown",
+    message:"Проверен молекулярный состав. Без структурной формулы нельзя подтвердить изомер, положение связей и направление органической реакции."});
   }
   if(reference.conditions&&!hasRequiredConditions(reference.conditions,step.conditions)){
    issues.push({severity:"warning",kind:"condition",message:"Проверьте необходимые условия: "+reference.conditions+"."});
