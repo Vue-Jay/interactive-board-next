@@ -16,7 +16,7 @@ export const boardTone=(item:Item):SubjectTone=>{
 /** Existing untagged entries remain readable only when their format belongs to this subject.
  * Tagged entries are strictly bound to the subject where they were created. */
 export const entryBelongsToSubject=(tone:SubjectTone,entry:SubjectBoardEntry):boolean=>{
- if(entry.subject)return entry.subject===tone;
+ if(entry.subject&&entry.subject!==tone)return false;
  if(entry.kind==="equation")return tone==="chemistry";
  return !entry.format||subjectTaskTemplates[tone].some(template=>template.id===entry.format);
 };
