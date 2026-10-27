@@ -224,7 +224,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
         placeholder={side==="left"?exampleParts.reactants:exampleParts.products}
         onFocus={()=>{focused.current=side;}} onChange={e=>changeSide(side,e.target.value)}
         onKeyDown={e=>{
-         if(side==="left"&&e.key==="="&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!e.isComposing){
+         if(side==="left"&&e.key==="="&&!e.ctrlKey&&!e.altKey&&!e.metaKey&&!e.nativeEvent.isComposing){
           e.preventDefault();focused.current="right";
           inputs.current.right?.focus();inputs.current.right?.setSelectionRange(
            inputs.current.right.value.length,inputs.current.right.value.length);
