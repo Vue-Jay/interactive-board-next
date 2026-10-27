@@ -62,11 +62,22 @@ assert.equal(inspect("AgNO3 + NaCl → AgCl↓ + NaNO3").canBalance,false);
 assert.equal(inspect("AgNO3 + NaCl → AgCl↓ + KNO3").status,"incorrect");
 assert.equal(inspect("Cu + HCl → CuCl2 + H2").status,"incorrect",
  "A verified no-reaction case must flag invented products");
+assert.equal(inspect("Cu + ZnSO4 → CuSO4 + Zn").status,"incorrect",
+ "Less active copper must not displace zinc in water");
+assert.equal(inspect("KCl + NaNO3 → KNO3 + NaCl").status,"incorrect",
+ "Soluble-salt exchange without a driving force is not a reaction");
+assert.equal(inspect("Fe + ZnSO4 → FeSO4 + Zn").status,"incorrect",
+ "Iron does not displace more active zinc");
+assert.equal(inspect("Zn + MgSO4 → ZnSO4 + Mg").status,"incorrect",
+ "Zinc does not displace more active magnesium");
 assert.equal(inspect("CH4 + 2O2 → CO2 + 2H2O","organic","поджиг").status,"correct");
 assert.equal(inspect("C2H4 + H2 → C2H6","organic","Ni, t°").status,"correct");
 assert.equal(inspect("C2H5OH → C2H4 + H2O","organic","H₂SO₄ (конц.), 170 °C").status,"correct");
 assert.ok(inspect("C2H5OH → C2H4 + H2O","organic").issues.some(i=>i.kind==="condition"));
 assert.equal(inspect("CH4 + Cl2 → CH3Cl + HCl","organic","hν").status,"correct");
+assert.notEqual(inspect("C4H8 + H2 → C4H10","organic","Ni, t°").status,"correct",
+ "Molecular formula cannot certify an organic structural isomer");
+assert.equal(inspect("C4H8 + H2 → C4H10","organic","Ni, t°").status,"partial");
 for(const ex of review.classroomEquationExamples){
  const draft=model.parseEquationDraft(ex.expression);
  assert.ok(draft,"Example must parse: "+ex.id);
