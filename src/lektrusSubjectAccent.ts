@@ -21,6 +21,7 @@ export const subjectAccentPalette:Record<SubjectTone,{accent:string;soft:string;
 export function subjectToneForItem(item:Item):SubjectTone|undefined{
  if(item.kind!=="graph")return undefined;
  const id=item.graphFigureId??"";
+ if(id.startsWith("subject-board-"))return id.slice("subject-board-".length) as SubjectTone;
  if(id.startsWith("chem-"))return "chemistry";
  if(id.startsWith("physics-")||item.scienceMechanics||item.scienceOptics||item.scienceCircuit)return "physics";
  if(id.startsWith("history-"))return "history";
