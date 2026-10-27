@@ -1,4 +1,4 @@
-import {useRef,useState,type ReactNode} from "react";
+import {Fragment,useRef,useState,type ReactNode} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {
@@ -169,7 +169,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
      {mode==="builder"&&draft?
       <div className="lektrus-chem-builder">
        <div className="lektrus-chem-equation-columns">
-        {(["left","right"] as Side[]).map(side=><section className="lektrus-chem-side" key={side}>
+        {(["left","right"] as Side[]).map(side=><Fragment key={side}><section className="lektrus-chem-side">
          <div className="lektrus-chem-side-heading">
           <strong>{side==="left"?"Реагенты":"Продукты"}</strong>
           <small>{side==="left"?"До реакции":"После реакции"}</small>
@@ -212,13 +212,14 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
          </div>
          <button type="button" className="lektrus-chem-add-species"
           onClick={()=>addSpecies(side)} disabled={draft[side].length>=10}>+ Вещество</button>
-        </section>)}
-       </div>
-       <div className="lektrus-chem-arrow-chooser">
-        <span>Знак реакции</span>
-        <div role="group" aria-label="Знак реакции">{arrows.map(a=><button type="button" key={a.value}
-         title={"Использовать "+a.label} aria-pressed={draft.arrow===a.value}
-         onClick={()=>updateDraft({...copyDraft(),arrow:a.value})}>{a.label}</button>)}</div>
+        </section>
+        {side==="left"&&<div className="lektrus-chem-arrow-chooser">
+         <span>Знак реакции</span>
+         <div role="group" aria-label="Знак реакции">{arrows.map(a=><button type="button" key={a.value}
+          title={"Использовать "+a.label} aria-pressed={draft.arrow===a.value}
+          onClick={()=>updateDraft({...copyDraft(),arrow:a.value})}>{a.label}</button>)}</div>
+        </div>}
+        </Fragment>)}
        </div>
       </div>:
       <div className="lektrus-chem-source">
