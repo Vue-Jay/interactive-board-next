@@ -59,7 +59,11 @@ export const subjectTaskTemplates:Record<SubjectTone,readonly SubjectTaskTemplat
    field("function","Функция","Запишите функцию"),
    field("conditions","Область и условия","Укажите интервалы или дополнительные условия"),
    field("find","Исследовать / построить","Укажите требуемые свойства или построение")
-  ])
+  ]),
+  type("choice","Математический тест","Вопрос с вариантами ответа и проверкой правильного"),
+  type("cloze","Заполни пропуски","Формула или математическое выражение с неизвестными частями"),
+  type("matching","Найди пары","Сопоставить равные выражения, формулы или фигуры"),
+  type("sequence","Собери решение","Расположить шаги решения в правильном порядке")
  ],
  physics:[
   task,
@@ -99,7 +103,11 @@ export const subjectTaskTemplates:Record<SubjectTone,readonly SubjectTaskTemplat
   type("text","Работа с текстом","Анализ содержания, стиля, типа речи или изложение",[
    field("material","Исходный текст","Введите текст для работы",true),
    field("questions","Вопросы / задания","Перечислите действия, которые нужно выполнить с текстом",true)
-  ])
+  ]),
+  type("cloze","Вставь пропущенное","Конструктор предложений с буквами, словами или знаками препинания"),
+  type("matching","Соотнеси пары","Сопоставление слов, частей речи или признаков"),
+  type("sequence","Собери предложение","Восстановить правильный порядок слов или этапов разбора"),
+  type("choice","Выбери ответ","Интерактивный вопрос с вариантами ответа")
  ],
  languages:[
   task,
@@ -126,7 +134,11 @@ export const subjectTaskTemplates:Record<SubjectTone,readonly SubjectTaskTemplat
   type("reading","Чтение и понимание","Прочитать текст и ответить на вопросы",[
    field("material","Текст для чтения","Введите учебный текст",true),
    field("questions","Вопросы по тексту","Запишите вопросы, на которые нужно ответить",true)
-  ])
+  ]),
+  type("matching","Соедини пары","Сопоставление слов, переводов или грамматических форм"),
+  type("choice","Выбери ответ","Проверка грамматики или лексики с вариантами ответа"),
+  type("sequence","Собери фразу","Составить предложение из перемешанных слов"),
+  type("cloze","Заполни пропуски","Конструктор текстов с пропущенными словами или формами")
  ],
  biology:[task],
  geography:[task],
@@ -149,6 +161,13 @@ export function subjectBoardHasWork(entry:SubjectBoardEntry):boolean{
  const worked=entry.workedSolution;
  return Boolean(entry.title.trim()||entry.prompt.trim()||entry.solution.trim()||entry.answer.trim()||
  Object.values(entry.details??{}).some(value=>value.trim())||
+ (entry.activity&&(
+  entry.activity.options?.some(value=>value.trim())||
+  entry.activity.blanks?.some(value=>value.before.trim()||value.answer.trim())||
+  entry.activity.tail?.trim()||
+  entry.activity.pairs?.some(value=>value.left.trim()||value.right.trim())||
+  entry.activity.tokens?.some(value=>value.trim())
+ ))||
  (worked&&Object.values(worked).some(value=>value.trim()))||
  entry.steps?.some(step=>step.expression.replace(/[→⇌=\s]/g,"").trim()||step.conditions.trim()));
 }
