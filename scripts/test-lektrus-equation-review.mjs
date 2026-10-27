@@ -35,8 +35,8 @@ assert.equal(inspect("AgNO3 + NaCl → AgCl + NaNO3").issues.some(i=>i.kind==="i
 assert.ok(inspect("AgNO3 + NaCl → AgCl↓ + NaNO3").canMarkProducts);
 assert.equal(inspect("AgNO3 + NaCl → AgCl↓ + NaNO3").canBalance,false);
 assert.equal(inspect("AgNO3 + NaCl → AgCl↓ + KNO3").status,"incorrect");
-assert.equal(inspect("Cu + HCl → CuCl2 + H2").status,"unknown",
- "Do not invent reference for a reaction that is not verified");
+assert.equal(inspect("Cu + HCl → CuCl2 + H2").status,"incorrect",
+ "A verified no-reaction case must flag invented products");
 assert.equal(inspect("CH4 + 2O2 → CO2 + 2H2O","organic","поджиг").status,"correct");
 assert.equal(inspect("C2H4 + H2 → C2H6","organic","Ni, t°").status,"correct");
 assert.equal(inspect("C2H5OH → C2H4 + H2O","organic","H₂SO₄ (конц.), 170 °C").status,"correct");
@@ -61,6 +61,9 @@ const chain=review.reviewEquationChain([
 ],"inorganic");
 assert.equal(chain.length,2);
 assert.equal(chain[0].status,"correct");assert.equal(chain[1].status,"correct");
+const unfinished=review.reviewEquationChain([step("Na2CO3 + 2HCl → 2NaCl + H2CO3")],"inorganic");
+assert.equal(unfinished[0].status,"partial");
+assert.ok(unfinished[0].issues.some(i=>i.kind==="chain"),"Unstable H2CO3 needs a decomposition stage");
 const brokenChain=review.reviewEquationChain([
  step("H2CO3 → H2O + CO2↑"),
  step("C2H4 + H2 → C2H6","Ni")
