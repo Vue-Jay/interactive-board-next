@@ -173,13 +173,6 @@ for(const metal of metals){
    const productMetalSalt=salt(metal.saltC,counter);
    const reagentMetalSalt=salt(target,counter);
    const toFree=displaced;
-   const metalCount=reagentMetalSalt.nc;
-   const resultingMetalCount=productMetalSalt.nc;
-   const count=lcm(metalCount,resultingMetalCount);
-   const mFree=count/resultingMetalCount*productMetalSalt.nc;
-   const mReleased=count/metalCount*reagentMetalSalt.nc;
-   const mSalt=count/metalCount;
-   const pSalt=mFree/productMetalSalt.nc;
    // Find stoichiometry using the preserved counterion and free-metal atoms.
    for(let p=1;p<=6;p++){
     const q=p*reagentMetalSalt.na/productMetalSalt.na;
