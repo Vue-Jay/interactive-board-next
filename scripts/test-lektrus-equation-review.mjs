@@ -11,12 +11,24 @@ const modelCode=compile("src/lektrusChemicalEquationModel.ts");
 const model=new Function(modelCode+"\nreturn {countFormulaAtoms,inspectEquationBalance,normalizeFormulaInput,parseEquationDraft};")();
 const dbCode=compile("src/lektrusReactionDatabase.ts");
 const db=new Function(dbCode+"\nreturn {identifyReaction,reviewedReactionCases};")();
+const poolCode=compile("src/lektrusEquationExamplePool.ts");
+const pool=new Function("reviewedReactionCases","parseEquationDraft",poolCode+
+ "\nreturn {equationExamplePool,equationExamplesByDomain,selectRandomEquationExample};")(db.reviewedReactionCases,model.parseEquationDraft);
+assert.ok(pool.equationExamplesByDomain("inorganic").length>=20,"At least twenty rotating inorganic examples");
+assert.ok(pool.equationExamplesByDomain("organic").length>=20,"At least twenty rotating organic examples");
+for(const ex of pool.equationExamplePool){
+ const draft=model.parseEquationDraft(ex.equation);
+ assert.ok(draft,"Reference should parse: "+ex.id);
+ assert.equal(model.inspectEquationBalance(draft).status,"balanced","Reference should be atom balanced: "+ex.id);
+}
+const first=pool.selectRandomEquationExample("organic",undefined,()=>0);
+assert.notEqual(pool.selectRandomEquationExample("organic",first.id,()=>0).id,first.id);
 const reviewCode=compile("src/lektrusEquationReview.ts");
 const review=new Function(...["identifyReaction","reviewedReactionCases","countFormulaAtoms","inspectEquationBalance",
- "normalizeFormulaInput","parseEquationDraft"],reviewCode+
+ "normalizeFormulaInput","parseEquationDraft","equationExamplePool"],reviewCode+
  "\nreturn {classroomEquationExamples,reviewEquationStep,reviewEquationChain,applyKnownProductMarks,balancedStep};")(
  db.identifyReaction,db.reviewedReactionCases,model.countFormulaAtoms,model.inspectEquationBalance,
- model.normalizeFormulaInput,model.parseEquationDraft
+ model.normalizeFormulaInput,model.parseEquationDraft,pool.equationExamplePool
 );
 const step=(expression,conditions="")=>({expression,conditions});
 const inspect=(expression,domain="inorganic",conditions="")=>review.reviewEquationStep(step(expression,conditions),domain);
@@ -72,7 +84,7 @@ assert.ok(brokenChain[1].issues.some(i=>i.kind==="chain"));
 const code=read("src/LektrusChemicalEquationEditor.tsx");
 const AST=ts.createSourceFile("Editor.tsx",code,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 assert.equal(AST.parseDiagnostics.length,0,"Editor TSX parses");
-for(const feature of ["classroomEquationExamples","Неорганика","Органика","+ Этап",
+for(const feature of ["selectRandomEquationExample","Неорганика","Органика","+ Этап",
  "Распад H₂CO₃","Расставить коэффициенты","Газы и осадки","Проверить",
  "reviewEquationChain","canTeach","scienceReactionSteps"])assert.ok(code.includes(feature),feature);
 assert.match(code,/canTeach&&<section/,"Only teachers get reference checking UI");
@@ -84,8 +96,8 @@ assert.ok(illustration.includes("equationSteps&&equationSteps.length>1"));
 const science=read("src/LektrusScienceEditor.tsx");
 assert.ok(science.includes("canTeach={canTeach===true}"));
 const presets=read("src/lektrusSciencePresets.ts");
-assert.ok(presets.includes("AgNO3 + NaCl → AgCl↓ + NaNO3"),
- "Default template is real, balanced precipitation");
+assert.ok(presets.includes('"chem-formula-free":{title:"Химическое уравнение",expression:""}'),
+ "A new equation starts empty, showing only a background reference");
 const styles=read("src/lektrusEquationReview.css");
 assert.match(styles,/@media\(max-width:540px\)/);
-console.log("Chemistry pathways: 13 reviewed templates, intermediate decomposition, organic tab, validation, chain continuity and teacher actions: OK");
+console.log("Chemistry pathways: 20+ backgrounds per domain, validated examples, decomposition, organic chemistry, chain continuity and teacher review: OK");
