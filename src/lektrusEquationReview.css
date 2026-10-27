@@ -202,3 +202,80 @@
  .lektrus-chem-reaction-workspace .lektrus-chem-equation-editor{height:100dvh!important}
  .lektrus-chem-reaction-workspace .lektrus-chem-equation-side textarea{min-height:68px}
 }
+
+
+/* Compact editing: one screen with examples only as faint text in empty inputs. */
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-editor{
+ width:min(940px,100%)!important;max-width:940px!important;
+ height:min(650px,calc(100dvh - 16px))!important;max-height:calc(100dvh - 8px)!important;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-content{
+ padding:9px 12px!important;gap:7px!important;overflow-y:auto;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-header{padding:8px 12px!important}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-heading strong{font-size:14px!important}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-heading small{font-size:10px}
+.lektrus-chem-reaction-workspace .lektrus-chem-domain-tabs{padding:4px 12px}
+.lektrus-chem-reaction-workspace .lektrus-chem-domain-tabs button{padding:5px 11px;min-height:29px;font-size:11px}
+.lektrus-chem-reaction-workspace .lektrus-chem-chain-steps button{padding:5px 9px;min-height:30px}
+.lektrus-chem-reaction-workspace .lektrus-chem-templates{gap:6px}
+.lektrus-chem-reaction-workspace .lektrus-chem-background-example>span{
+ color:#8c9dad;font-size:10px;max-width:150px;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-background-example button{
+ background:transparent;color:#607d99;border:1px solid #d7e2ed;padding:5px 9px;min-height:30px;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-side{gap:5px;padding:8px}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-side textarea{
+ min-height:65px;height:74px;max-height:115px;padding:7px 9px;
+ font-size:16px;line-height:1.4;resize:vertical;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-side textarea::placeholder{
+ color:#aebbc9!important;font-weight:450;opacity:.8;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-arrow-chooser{gap:4px}
+.lektrus-chem-reaction-workspace .lektrus-chem-arrow-chooser>span{font-size:9px}
+.lektrus-chem-reaction-workspace .lektrus-chem-arrow-chooser button{
+ height:28px!important;min-height:28px!important;width:41px!important;font-size:18px!important;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-symbols{padding:5px 8px;gap:7px}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-symbols button{
+ min-height:29px;height:29px;padding:4px 8px;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-decomposition{padding:5px 8px}
+.lektrus-chem-reaction-workspace .lektrus-chem-condition-panel{gap:6px;padding:8px}
+.lektrus-chem-reaction-workspace .lektrus-chem-condition-heading strong{font-size:11px}
+.lektrus-chem-reaction-workspace .lektrus-chem-condition-input input{height:32px;min-height:32px}
+.lektrus-chem-reaction-workspace .lektrus-chem-condition-group-title{min-height:29px;padding:5px 7px}
+.lektrus-chem-reaction-workspace .lektrus-chem-condition-categories{gap:5px}
+.lektrus-chem-reaction-workspace .lektrus-chem-condition-options{max-height:100px;overflow-y:auto}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-preview{
+ min-height:59px!important;padding:7px 9px!important;
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-preview-heading{gap:5px}
+.lektrus-chem-reaction-workspace .lektrus-chem-preview-heading strong{font-size:10px}
+.lektrus-chem-reaction-workspace .lektrus-chem-preview-heading span{font-size:9px}
+.lektrus-chem-reaction-workspace .lektrus-chem-stage-preview{padding:2px 5px}
+.lektrus-chem-reaction-workspace .lektrus-chem-stage-preview .lektrus-reaction-equation-text{
+ padding:5px 0;font-size:clamp(16px,1.8vw,22px);
+}
+.lektrus-chem-reaction-workspace .lektrus-chem-teacher-tools{gap:6px;padding:8px}
+.lektrus-chem-reaction-workspace .lektrus-chem-teacher-header strong{font-size:11px}
+.lektrus-chem-reaction-workspace .lektrus-chem-teacher-header small{font-size:9px}
+.lektrus-chem-reaction-workspace .lektrus-chem-teacher-actions button{min-height:29px}
+.lektrus-chem-reaction-workspace .lektrus-chem-equation-editor>footer{padding:7px 11px!important}
+@media(max-width:540px){
+ .lektrus-chem-reaction-workspace .lektrus-chem-equation-editor{
+  height:100dvh!important;max-height:100dvh!important;border-radius:0!important;
+ }
+ .lektrus-chem-reaction-workspace .lektrus-chem-equation-content{padding:7px!important}
+ .lektrus-chem-reaction-workspace .lektrus-chem-equation-side textarea{min-height:59px;height:65px}
+ .lektrus-chem-reaction-workspace .lektrus-chem-domain-tabs{padding:3px 8px}
+ .lektrus-chem-reaction-workspace .lektrus-chem-background-example>span{max-width:110px}
+}
+@media(max-height:530px) and (orientation:landscape){
+ .lektrus-chem-reaction-workspace .lektrus-chem-equation-editor{
+  height:100dvh!important;max-height:100dvh!important;
+ }
+}
