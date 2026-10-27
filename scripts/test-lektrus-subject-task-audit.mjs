@@ -16,7 +16,7 @@ const expected={
  mathematics:["task","word-problem","equation","geometry"],
  physics:["task","calculation","lab"],
  chemistry:["task","chain","calculation","experiment"],
- russian:["task","orthography","punctuation","morphemes","morphology","syntax","text","interactive"],
+ russian:["task","orthography","punctuation","morphemes","morphology","syntax","text"],
  languages:["task","translation","gaps","vocabulary","word-order","grammar","reading","choice"],
  biology:["task"],geography:["task"],history:["task"],literature:["task"],
  social:["task"],informatics:["task"]
@@ -50,7 +50,7 @@ for(const [tone,format,mode] of [
  "Use only meaningful interaction for "+tone+"/"+format);
 for(const [tone,oldFormats] of [
  ["mathematics",["interactive","choice","cloze","matching","sequence","expression","function"]],
- ["russian",["choice","matching","sequence","cloze"]],
+ ["russian",["interactive","choice","matching","sequence","cloze"]],
  ["chemistry",["equation","balance"]],
  ["languages",["matching","sequence","cloze"]]
 ]){
