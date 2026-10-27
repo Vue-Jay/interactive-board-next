@@ -41,9 +41,9 @@ for(const subject of subjects){
  assert.ok(templates.includes(subject+":[")||templates.includes(subject+": ["),subject+" needs task templates");
  assert.ok(colors.includes(subject+":{accent:"),subject+" has subject palette");
 }
-for(const label of ["Цепочка превращений","Расстановка коэффициентов","Геометрическая задача",
- "Расчётная задача","Лабораторная работа","Орфографическое задание","Синтаксический разбор",
- "Перевод","Грамматика","Порядок слов"]){
+for(const label of ["Цепочка превращений","Геометрическая задача",
+ "Текстовая задача","Расчётная задача","Лабораторная работа","Орфография","Разбор предложения",
+ "Перевод","Грамматическое преобразование","Порядок слов"]){
  assert.ok(templates.includes(label),"Task type not found: "+label);
 }
 assert.match(templates,/physics:\[\s*task,\s*type\("calculation".*?\)/s,
@@ -64,6 +64,16 @@ for(const label of ["Дано","Найти","СИ","Решение","Ответ"
  assert.ok(solution.includes(label),"Structured school solution missing "+label);
 }
 assert.ok(model.includes("workedSolution?:SubjectBoardWorkedSolution"),"Persist written solution");
+assert.match(templates,/needsAutomaticWorkedSolution/);
+assert.match(board,/LektrusSubjectBoardInlineSolution/);
+assert.match(board,/onWorkedSolutionChange\?solution=>onWorkedSolutionChange\(entry.id,solution\)/);
+assert.match(app,/onWorkedSolutionChange=\{canEdit&&!item.locked&&!presentation\?/);
+assert.match(templates,/textProblem=type\("word-problem","Текстовая задача"/);
+assert.match(templates,/Преподаватель вводит только условие/);
+assert.ok(!templates.includes('type("word-problem","Текстовая задача","Задача по условию'),
+ "Teachers should not fill pupils' given/find fields");
+assert.match(templates,/subjectTaskTypeKnown/);
+
 assert.ok(board.includes('onAction("equation")')&&board.includes('onAction("task")'),
  "Chemistry worksheet retains equation and task tools");
 assert.match(board,/freshTaskDetails\(tone,format\)/);
