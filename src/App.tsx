@@ -37,6 +37,8 @@ import {boardObjectTypeName} from "./boardObjectNames";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
+import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
+import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
 import {subjectToneForItem} from "./lektrusSubjectAccent";
 import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import {isPhysicsMotionGraph,motionAxisTicks} from "./lektrusPhysicsGraphTicks";
@@ -2310,6 +2312,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const lastGeometryCanvasTap=useRef<{id:string;x:number;y:number;time:number}|null>(null);
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
   const provisionalChemistryBoards=useRef(new Set<string>());
+  const [subjectBoardEditor,setSubjectBoardEditor]=useState<{boardId:string;entryId:string;mode:"equation"|"task"}|null>(null);
   const [schoolEditorItem,setSchoolEditorItem]=useState<Item|null>(null);
   const [circuitEditorItem,setCircuitEditorItem]=useState<Item|null>(null);
   const [periodicEditorItem,setPeriodicEditorItem]=useState<Item|null>(null);
@@ -5485,6 +5488,49 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry));
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
    };
+   const patchSubjectBoardEntry=(boardId:string,entryId:string,changes:Partial<import("./boardModel").SubjectBoardEntry>,teacherOnly=false)=>{
+     const latest=itemsRef.current.find(value=>value.id===boardId);
+     if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit||(teacherOnly&&!roleCapabilities.canUseTeacherTools))return;
+     const entries=latest.subjectBoardEntries??[];
+     if(!entries.some(entry=>entry.id===entryId))return;
+     const next={...latest,subjectBoardEntries:entries.map(entry=>entry.id===entryId?{...entry,...changes}:entry)};
+     if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+     commit(itemsRef.current.map(value=>value.id===latest.id?next:value));
+     workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
+   };
+   const removeSubjectBoardEntry=(boardId:string,entryId:string)=>{
+     const latest=itemsRef.current.find(value=>value.id===boardId);
+     if(!latest||latest.locked||!canEdit||!roleCapabilities.canUseTeacherTools)return;
+     const next={...latest,subjectBoardEntries:(latest.subjectBoardEntries??[]).filter(entry=>entry.id!==entryId)};
+     if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+     commit(itemsRef.current.map(value=>value.id===latest.id?next:value));
+     workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
+   };
+   const closeSubjectBoardEntry=()=>{
+     if(!subjectBoardEditor)return;
+     const state=subjectBoardEditor;
+     const current=itemsRef.current.find(value=>value.id===state.boardId);
+     const entry=current?.subjectBoardEntries?.find(value=>value.id===state.entryId);
+     if(entry&&!subjectBoardEntryFilled(entry))removeSubjectBoardEntry(state.boardId,state.entryId);
+     setSubjectBoardEditor(null);
+   };
+   const openSubjectBoardEntry=(boardItem:Item,mode:"equation"|"task",entryId?:string)=>{
+     if(!canEdit||!roleCapabilities.canUseTeacherTools)return;
+     const current=itemsRef.current.find(value=>value.id===boardItem.id)??boardItem;
+     if(!isSubjectBoard(current)||current.locked)return;
+     if(entryId&&current.subjectBoardEntries?.some(entry=>entry.id===entryId)){
+       setSelected([current.id]);setSubjectBoardEditor({boardId:current.id,entryId,mode});return;
+     }
+     if((current.subjectBoardEntries?.length??0)>=48){setNotice("На доске может быть до 48 заданий");return;}
+     const entry=newSubjectBoardEntry(createId(),mode);
+     const next={...current,subjectBoardEntries:[...(current.subjectBoardEntries??[]),entry]};
+     const already=itemsRef.current.some(value=>value.id===current.id);
+     if(already&&!pendingEditorBases.current.has(current.id))pendingEditorBases.current.set(current.id,current);
+     commit(already?itemsRef.current.map(value=>value.id===current.id?next:value):[...itemsRef.current,next]);
+     if(already)workChannel.current?.publishEdit(current.id,editorDiff(current,next));
+     setSelected([current.id]);setTool("select");
+     setSubjectBoardEditor({boardId:current.id,entryId:entry.id,mode});
+   };
    const closeChemicalEquationEditor=(save:boolean)=>{
      const editing=scienceEditorItem;
      if(!editing)return;
@@ -5520,6 +5566,11 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const liveGraphDraftRef=useRef<GraphDraft|null>(null);
   const graphLiveBaseRef=useRef<Item|null>(null);
   const openGraphEditor = (item: Item) => {
+    if(isSubjectBoard(item)){
+      setSelected([item.id]);
+      if(roleCapabilities.canUseTeacherTools)openSubjectBoardEntry(item,boardTone(item)==="chemistry"?"equation":"task");
+      return;
+    }
     setGraphPointEditId(null);setBoardGeometryMode(null);setBoardGeometryError("");
     if(item.kind!=="graph"||(item.locked&&item.graphFigureId!=="contour-atlas"))return;
     if(item.graphFigureId==="lektrus-chart"){setChartEditorItem(item);return;}
@@ -7681,6 +7732,26 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               itemsRef.current.map(i=>i.id===next.id?fitted:i):[...itemsRef.current,fitted]);
             setSchoolEditorItem(null);setNotice(studentContour?"Контурная карта сохранена":"Учебная схема сохранена");
           }}/>}
+        {subjectBoardEditor&&(()=>{
+          const boardItem=remoteLiveItems[subjectBoardEditor.boardId]??
+            items.find(value=>value.id===subjectBoardEditor.boardId);
+          const entry=boardItem?.subjectBoardEntries?.find(value=>value.id===subjectBoardEditor.entryId);
+          if(!boardItem||!entry)return null;
+          if(subjectBoardEditor.mode==="equation"){
+            const steps=entry.steps?.length?entry.steps:[{expression:"",conditions:""}];
+            return <LektrusChemicalEquationEditor key={entry.id} canTeach={roleCapabilities.canUseTeacherTools}
+              item={{...boardItem,graphFigureId:"chem-formula-free",graphExpression:steps[0].expression,
+                scienceReactionConditions:steps[0].conditions,scienceReactionSteps:steps,
+                scienceReactionDomain:entry.domain??"inorganic"}}
+              onChange={next=>patchSubjectBoardEntry(boardItem.id,entry.id,{
+                steps:next.scienceReactionSteps??[],domain:next.scienceReactionDomain??"inorganic"
+              },true)} onSave={closeSubjectBoardEntry} onCancel={closeSubjectBoardEntry}/>;
+          }
+          return <LektrusSubjectBoardTaskEditor key={entry.id} subject={boardItem.text} entry={entry}
+            onChange={next=>patchSubjectBoardEntry(boardItem.id,entry.id,next,true)}
+            onDelete={()=>{removeSubjectBoardEntry(boardItem.id,entry.id);setSubjectBoardEditor(null)}}
+            onClose={closeSubjectBoardEntry}/>;
+        })()}
         {scienceEditorItem&&<>{scienceEditorItem.scienceMechanics?
           <LektrusMechanicsEditor key={scienceEditorItem.id} shared={items.some(x=>x.id===scienceEditorItem.id)} item={remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem}
             onLiveChange={(before,next)=>livePhysicalEditorUpdate(scienceEditorItem.id,"scienceMechanics",before,next)}
@@ -8209,11 +8280,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const rect=board.current?.getBoundingClientRect();
             const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
             const centerY=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
+            if(id==="chem-formulas"||id==="chem-assignments"){
+              const boards=itemsRef.current.filter(value=>value.graphFigureId==="subject-board-chemistry");
+              const target=boards.find(value=>selected.includes(value.id))??boards.at(-1)??
+                makeSubjectToolItem("subject-board-chemistry",centerX,centerY,createId);
+              setSubjectToolsOpen(false);
+              openSubjectBoardEntry(target,id==="chem-formulas"?"equation":"task");
+              return;
+            }
             const item=makeSubjectToolItem(id as SubjectToolId,centerX,centerY,createId);
             setSelected([]);
             setTool("select");
             setSubjectToolsOpen(false);
-            if(id==="chem-atoms"){setAtomEditorItem(item);
+            if(id.startsWith("subject-board-")){
+              commit([...itemsRef.current,item]);setSelected([item.id]);
+              setNotice("Учебная доска добавлена");
+            }else if(id==="chem-atoms"){setAtomEditorItem(item);
             }else if(id==="physics-circuits"){
               setCircuitEditorItem(item);
             }else if(id==="chem-periodic-table"){
@@ -8782,7 +8864,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 {item.kind === "table" && <TableView item={item} />}
                 {item.kind === "formula" && <FormulaView text={item.text} fontSize={item.fontSize ?? 28} color={item.color ?? "#20242c"} />}
                 {item.kind === "fraction" && <LektrusFractionView item={item} />}
-                {item.kind === "graph" && <GraphView item={item}
+                {item.kind==="graph"&&isSubjectBoard(item)&&<LektrusSubjectBoardView item={item}
+                  onAction={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
+                    (mode,entryId)=>openSubjectBoardEntry(item,mode,entryId):undefined}
+                  onAnswerChange={canEdit&&!item.locked&&!presentation?
+                    (entryId,answer)=>patchSubjectBoardEntry(item.id,entryId,{answer}):undefined}
+                  onReveal={canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation?
+                    entryId=>{const entry=item.subjectBoardEntries?.find(value=>value.id===entryId);
+                      if(entry)patchSubjectBoardEntry(item.id,entryId,{revealed:!entry.revealed},true);}:undefined}/>}
+                {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item}
                   onPhysicalPartMove={!presentation&&!item.locked&&!space&&!selectionLocked&&
                    canEdit&&!structurallyLockedForStudent(item)&&tool==="select"&&
                    !!(item.scienceMechanics||item.scienceOptics||item.scienceCircuit)
@@ -9186,7 +9276,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                 <span className="cover-selection-controls"><button type="button" className={singleSelected.coverOpen ? "active" : ""} onClick={() => toggleCover(singleSelected)} title="Прозрачность шторки"><Icon name={singleSelected.coverOpen ? "eye-off" : "eye"} size={15}/><span>{singleSelected.coverOpen ? "Закрыть" : "Прозрачная"}</span></button><input type="range" min="0" max="100" value={Math.round((singleSelected.coverOpen?0:(singleSelected.coverOpacity??1))*100)} onChange={e=>{const opacity=Number(e.target.value)/100;commit(itemsRef.current.map(i=>i.id===singleSelected.id?{...i,coverOpen:opacity===0,coverOpacity:opacity}:i))}} aria-label="Непрозрачность шторки"/></span>
               )}
               {singleSelected?.kind === "fraction" && !selectionLocked && !structurallyLockedForStudent(singleSelected) && (<span className="graph-selection-controls"><button type="button" onClick={()=>setFractionEditorId(singleSelected.id)} title="Редактировать дробь"><Icon name="shape" size={15}/><span>Дробь</span></button></span>)}
-              {singleSelected?.kind==="graph"&&(singleSelected.graphPurpose!=="geometry"||isSchoolDiagramId(singleSelected.graphFigureId)||!!singleSelected.graphFigureId?.startsWith("physics-")||!!singleSelected.graphFigureId?.startsWith("chem-")||singleSelected.graphFigureId==="lektrus-chart")&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&(
+              {singleSelected?.kind==="graph"&&isSubjectBoard(singleSelected)&&
+                canEdit&&roleCapabilities.canUseTeacherTools&&!selectionLocked&&!singleSelected.locked&&(
+                <span className="graph-selection-controls lektrus-subject-board-controls">
+                 {boardTone(singleSelected)==="chemistry"&&<button type="button" data-board-interactive="true"
+                  onPointerDown={e=>e.stopPropagation()} onClick={()=>openSubjectBoardEntry(singleSelected,"equation")}>
+                  <Icon name="formula" size={15}/><span>Редактор уравнений</span></button>}
+                 <button type="button" data-board-interactive="true"
+                  onPointerDown={e=>e.stopPropagation()} onClick={()=>openSubjectBoardEntry(singleSelected,"task")}>
+                  <Icon name="edit" size={15}/><span>Создать задание</span></button>
+                </span>)}
+              {singleSelected?.kind==="graph"&&!isSubjectBoard(singleSelected)&&(singleSelected.graphPurpose!=="geometry"||isSchoolDiagramId(singleSelected.graphFigureId)||!!singleSelected.graphFigureId?.startsWith("physics-")||!!singleSelected.graphFigureId?.startsWith("chem-")||singleSelected.graphFigureId==="lektrus-chart")&&canEdit&&!selectionLocked&&!structurallyLockedForStudent(singleSelected)&&(
                 <span className="graph-selection-controls">
                   <button type="button" data-board-interactive="true"
                     className="lektrus-graph-edit-secondary" aria-label="Настроить учебный объект"
