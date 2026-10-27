@@ -8,8 +8,12 @@ export const splitRussianSentence=(source:string):string[]=>
  source.match(/[\p{L}\p{M}]+(?:[-’][\p{L}\p{M}]+)*|\d+|[^\s]/gu)?.slice(0,100)??[];
 export const separateRussianQuestions=(source:string)=>
  source.split(/\r?\n/).map(v=>v.trim()).filter(Boolean).slice(0,15);
-export const russianWorkSource=(entry:SubjectBoardEntry):string=>
- (entry.format==="text"?entry.details?.questions:entry.details?.material)?.trim()??"";
+export const russianWorkSource=(entry:SubjectBoardEntry):string=>{
+ const detail=entry.details??{};
+ if(entry.format==="text")return detail.questions?.trim()??"";
+ if(entry.format==="morphology")return [detail.target?.trim(),detail.material?.trim()].filter(Boolean).join(" · ").slice(0,1800);
+ return detail.material?.trim()??"";
+};
 
 const grammaticalRoles=Object.entries(grammarRoles) as [WordRole,string][];
 const morphemeRoles=Object.entries(morphemeNames) as [MorphemeRole,string][];
