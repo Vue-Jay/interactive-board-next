@@ -41,7 +41,8 @@ const pool:ReviewedExample[]=[];
 let count=0;
 const register=(name:string,category:string,expression:string,conditions="",note="",environment:"aqueous"|"heated"|"ignited"|"dry"="aqueous",family:"inorganic"|"organic"="inorganic")=>{
  pool.push({id:"expanded-"+(++count),title:name,category,equation:expression,conditions,
-  family,note:note||name,environment});
+  family,note:note||name,environment,
+  limitedToMolecularFormula:family==="organic"&&/молекулярн|изомер|строени|структур|положение|расположение|общая формула/i.test(note)});
 };
 /** Exchange reaction: AX + BY -> AY + BX, coefficients conserved by ionic stoichiometry. */
 function exchange(A:Ion,X:Ion,B:Ion,Y:Ion){
