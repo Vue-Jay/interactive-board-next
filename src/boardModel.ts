@@ -389,6 +389,13 @@ export type ConnectorStyle = "line" | "arrow" | "double";
 export type ArrowHeadStyle = "triangle" | "open" | "stealth" | "diamond" | "oval";
 export type ConnectorRouting = "straight" | "elbow";
 export type ConnectorBinding = { itemId: string; nx: number; ny: number };
+export type SubjectBoardWorkedSolution={
+ given:string;
+ find:string;
+ si:string;
+ work:string;
+ answer:string;
+};
 export type SubjectBoardEntry={
   id:string;
   kind:"equation"|"task";
@@ -396,6 +403,7 @@ export type SubjectBoardEntry={
   prompt:string;
   format?:string;
   details?:Record<string,string>;
+  workedSolution?:SubjectBoardWorkedSolution;
   domain?:"inorganic"|"organic";
   steps?:{expression:string;conditions:string}[];
   answer:string;
@@ -729,6 +737,12 @@ export function parseDocument(raw: string): DocumentData {
             entry.steps.every(step=>typeof step.expression==="string"&&step.expression.length<=500&&
               typeof step.conditions==="string"&&step.conditions.length<=180))))))
         throw new Error("Повреждены записи предметной доски");
+      if(i.subjectBoardEntries?.some(entry=>entry.workedSolution!=null&&
+         (typeof entry.workedSolution!=="object"||!["given","find","si","work","answer"].every(key=>{
+           const value=entry.workedSolution?.[key as keyof SubjectBoardWorkedSolution];
+           return typeof value==="string"&&value.length<=(key==="work"?5000:2000);
+         }))))throw new Error("Повреждено школьное решение задачи");
+
       if (i.graphConnectPoints != null && typeof i.graphConnectPoints !== "boolean") throw new Error("Повреждено соединение точек");
       for (const value of [i.graphA,i.graphB,i.graphC,i.graphXMin,i.graphXMax,i.graphYMin,i.graphYMax]) if (value != null && !finite(value)) throw new Error("Повреждены параметры графика");
       if (i.graphGrid != null && typeof i.graphGrid !== "boolean") throw new Error("Повреждена сетка графика");
