@@ -69,7 +69,6 @@ const mark=(eq:ReturnType<typeof exchange>,precipitate:"AY"|"BX")=>{
 };
 // Insoluble silver and lead halides, paired ONLY with water-soluble starting salts.
 for(const metal of [c.Ag,c.Pb]){
- const metalNitrate=makeSalt(metal,a.nitrate).formula;
  for(const [ion,label,partners] of [
   [a.chloride,"хлорида",[c.Na,c.K,c.NH4,c.Ca,c.Ba,c.Mg,c.Zn]],
   [a.bromide,"бромида",[c.Na,c.K,c.NH4,c.Ca,c.Mg]],
