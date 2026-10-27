@@ -372,3 +372,59 @@
  border-radius:8px;padding:7px 10px;font:500 11px/1.4 system-ui,sans-serif;color:#617b83}
 .lektrus-school-solution-old-hints summary{cursor:pointer;color:var(--subject-board-accent);font-weight:650}
 .lektrus-school-solution-old-hints p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+
+
+/* The scrollable viewport is independent from the intrinsic sheet content.
+   Its measured inner height drives auto-growth without a feedback loop. */
+.lektrus-subject-board .lektrus-subject-board-sheet{
+ display:block;min-height:0;overflow:auto;padding:0!important;scrollbar-gutter:stable;
+}
+.lektrus-subject-board-content{
+ box-sizing:border-box;width:100%;display:flex;flex-direction:column;align-items:stretch;
+ gap:15px;padding:20px 24px 22px;min-height:max-content;
+}
+.lektrus-school-notebook{
+ display:grid;grid-template-columns:minmax(0,43%) minmax(0,57%);align-items:stretch;
+ width:100%;min-width:0;box-sizing:border-box;margin-top:6px;
+ background:transparent;color:#36505a;
+ font:500 15px/1.55 "Cambria Math",Cambria,"Times New Roman",serif;
+}
+.lektrus-school-notebook-left,.lektrus-school-notebook-right{
+ display:flex;flex-direction:column;min-width:0;box-sizing:border-box;
+}
+.lektrus-school-notebook-left{border-right:1.5px solid color-mix(in srgb,var(--subject-board-accent) 67%,#8d99a1)}
+.lektrus-school-notebook-part{display:flex;flex-direction:column;align-items:stretch;
+ min-width:0;box-sizing:border-box;padding:9px 13px 11px 5px;gap:5px;
+ font:inherit;color:inherit;cursor:text}
+.lektrus-school-notebook-part strong{
+ font:700 16px/1.35 "Cambria Math",Cambria,Georgia,serif;
+ color:color-mix(in srgb,var(--subject-board-accent) 65%,#2b424f)}
+.lektrus-school-notebook-given{flex:1 0 auto;min-height:175px;
+ border-bottom:1.5px solid color-mix(in srgb,var(--subject-board-accent) 62%,#9aa5a9)}
+.lektrus-school-notebook-find{flex:0 0 auto;min-height:110px;padding-top:13px}
+.lektrus-school-notebook-working{flex:1 0 auto;min-height:230px;
+ padding-left:18px;padding-right:4px;}
+.lektrus-school-notebook-result{flex:0 0 auto;min-height:88px;
+ padding-top:12px;padding-left:18px;padding-right:4px}
+.lektrus-school-notebook textarea,.lektrus-school-written-text{
+ display:block;box-sizing:border-box;width:100%;min-width:0;min-height:45px;
+ padding:1px 2px;margin:0;border:0;border-radius:2px;
+ background:transparent;color:#354951;resize:none;overflow:hidden;
+ outline:none;white-space:pre-wrap;overflow-wrap:anywhere;
+ font:500 16px/1.5 "Cambria Math",Cambria,Georgia,serif}
+.lektrus-school-notebook textarea::placeholder{
+ color:#9dabb2;font:500 12px/1.5 system-ui,sans-serif}
+.lektrus-school-notebook textarea:focus-visible{
+ outline:0;background:color-mix(in srgb,var(--subject-board-soft) 24%,transparent);
+ box-shadow:0 1px 0 color-mix(in srgb,var(--subject-board-accent) 46%,transparent)}
+.lektrus-school-notebook-si{display:flex;flex-direction:column;gap:5px;
+ margin-top:10px;padding-top:10px;border-top:1px dashed #ccd7da}
+.lektrus-school-notebook .lektrus-school-written-text{min-height:42px}
+@media(max-width:600px){
+ .lektrus-subject-board-content{padding:12px 14px 16px;gap:11px}
+ .lektrus-school-notebook{grid-template-columns:minmax(0,43%) minmax(0,57%)}
+ .lektrus-school-notebook-part{padding:7px 7px 9px 2px}
+ .lektrus-school-notebook-working,.lektrus-school-notebook-result{padding-left:10px}
+ .lektrus-school-notebook-part strong{font-size:14px}
+ .lektrus-school-notebook textarea{font-size:16px}
+}
