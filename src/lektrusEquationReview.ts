@@ -134,7 +134,7 @@ export function reviewEquationChain(steps:EquationStep[],domain:EquationDomain){
   return reviewed;
  });
 }
-export function applyKnownProductMarks(step:EquationStep,domain:EquationDomain):EquationStep|null{
+export function applyKnownProductMarks(step:EquationStep,domain:EquationDomain="inorganic"):EquationStep|null{
  const review=reviewEquationStep(step,domain);if(!review.reference)return null;
  const actual=parseEquationDraft(step.expression),expected=parseEquationDraft(review.reference);
  if(!actual||!expected)return null;
