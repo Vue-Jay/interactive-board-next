@@ -54,7 +54,7 @@ assert.equal(combination("Na",1,"Cl").substance?.formula,"NaCl");
 assert.equal(combination("Ca",2,"OH").substance?.formula,"Ca(OH)2");
 assert.equal(combination("Fe",3,"SO4").substance?.formula,"Fe2(SO4)3");
 assert.equal(combination("NH4",1,"SO4").substance?.formula,"(NH4)2SO4");
-assert.equal(combination("Al",3,"PO4").substance?.formula, "AlPO4" in db.substances? "AlPO4":undefined);
+assert.equal(combination("Al",3,"PO4").substance,null,"No invented AlPO4 catalogue entry");
 const notKnown=combination("Ag",1,"PO4");
 assert.equal(notKnown.substance,null);
 assert.ok(notKnown.error?.includes("не подтверждён"),"Do not invent unverified stable salts");
