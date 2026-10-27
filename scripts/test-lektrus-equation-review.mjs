@@ -64,6 +64,10 @@ assert.ok(formulaIssues("Ca(OH)").some(v=>v.severity==="error"&&v.suggestion==="
 assert.ok(formulaIssues("NaCI").some(v=>v.severity==="error"&&v.suggestion==="NaCl"),"Capital I typo");
 assert.ok(formulaIssues("H20").some(v=>v.severity==="error"&&v.suggestion==="H2O"),"Digit zero typo");
 assert.ok(formulaIssues("H2(Q)").some(v=>v.severity==="error"),"Unknown element");
+assert.ok(formulaIssues("H2O3").some(v=>v.severity==="info"),
+ "Unrecognised but syntactically valid formula is not assumed impossible");
+assert.ok(!formulaIssues("H2O3").some(v=>v.severity==="error"),
+ "Never reject unknown molecular substances merely because absent from references");
 assert.ok(formulaIssues("Fe(OH2").some(v=>v.severity==="error"),"Missing parenthesis");
 assert.ok(!formulaIssues("Na⁺").some(v=>v.severity==="error"),"Charged species are not automatically rejected");
 assert.ok(!formulaIssues("CH2=CH2","organic").some(v=>v.severity==="error"),"Condensed double bond supported as unknown");
@@ -80,6 +84,12 @@ assert.equal(inspect("AgNO3 + NaCl2 → AgCl↓ + NaNO3").status,"incorrect",
 assert.ok(inspect("AgNO3 + NaCl2 → AgCl↓ + NaNO3").issues.some(v=>
  v.kind==="substance"&&v.side==="left"&&v.index===1&&v.severity==="error"),
  "Localise incorrect reactant exactly inside the reagent field");
+assert.ok(inspect("CH4 + O2 → CO2 + H2O","organic","поджиг").issues.some(v=>
+ v.kind==="coefficient"&&v.side==="left"&&v.index===1&&v.severity==="error"),
+ "Wrong oxygen coefficient is highlighted directly on the offending reagent");
+assert.ok(inspect("CH4 + O2 → CO2 + H2O","organic","поджиг").issues.some(v=>
+ v.kind==="coefficient"&&v.side==="right"&&v.index===1&&v.severity==="error"),
+ "Wrong water coefficient is highlighted directly on the offending product");
 assert.ok(inspect("AgNO3 + NaCl → AgCl↓ + NaN03").issues.some(v=>
  v.kind==="substance"&&v.side==="right"&&v.index===1&&v.severity==="error"),
  "Localise a typo in a product formula");
@@ -182,6 +192,11 @@ const brokenChain=review.reviewEquationChain([
 ],"organic");
 assert.ok(brokenChain[1].issues.some(i=>i.kind==="chain"));
 const code=read("src/LektrusChemicalEquationEditor.tsx");
+assert.ok(code.includes("lektrus-chem-input-mirror"),"Formula underlines are inside each editable field");
+assert.ok(code.includes("lektrus-chem-token-issue"),"Incorrect substance is highlighted in place");
+assert.ok(code.includes("lektrus-chem-field-feedback"),"Feedback messages are in the input box");
+assert.ok(code.includes("lektrus-chem-condition-feedback"),"Condition warnings are placed at their field");
+assert.ok(code.includes("onScroll={e=>"),"Text highlights follow textarea scrolling");
 assert.ok(code.includes("newBackgroundExample"),"Opening the editor rotates background examples");
 assert.ok(code.includes('e.key==="="'),"Equal key shortcut targets the product side");
 assert.ok(code.includes("inputs.current.right?.focus()"),"Equal key moves focus instead of inserting text");
