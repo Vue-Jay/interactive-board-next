@@ -65,8 +65,17 @@ export function reviewEquationStep(step:EquationStep,domain:EquationDomain):Revi
  if(!draft)return {status:"unknown",issues:[{kind:"formula",severity:"warning",message:"Введите знак реакции и обе части уравнения."}],
   canFillProducts:false,canMarkProducts:false,canBalance:false,description:"Недостаточно данных"};
  const left=list(draft.left),right=list(draft.right);
- if(!left.length||!right.length)return {status:"partial",issues:[{kind:"formula",severity:"warning",message:"Заполните реагенты и продукты."}],
-  canFillProducts:false,canMarkProducts:false,canBalance:false,description:"Уравнение не закончено"};
+ if(!left.length||!right.length){
+  const known=left.length?referenceFor(draft,domain,step.conditions):undefined;
+  const expected=known?parseEquationDraft(known.expression):null;
+  return {status:"partial",issues:expected&&!right.length?
+   expected.right.filter(v=>v.formula.trim()).map(s=>({kind:"missing" as const,severity:"warning" as const,
+    side:"right" as const,formula:s.formula,message:"Не хватает продукта "+s.formula+"."})):
+   [{kind:"formula",severity:"warning",message:"Заполните реагенты и продукты."}],
+   reference:known?.expression,referenceConditions:known?.conditions,
+   canFillProducts:!!known,canMarkProducts:false,canBalance:false,
+   description:known?.note??"Уравнение не закончено"};
+ }
  const balance=inspectEquationBalance(draft);
  if(balance.status==="invalid")issues.push({kind:"formula",severity:"error",message:"Элементы слева и справа не совпадают. Проверьте состав веществ."});
  if(balance.status==="unbalanced")issues.push({kind:"coefficient",severity:"error",message:"Неправильные коэффициенты: число атомов не сохраняется. Требуются "+balance.coefficients?.join(", ")+". "});
