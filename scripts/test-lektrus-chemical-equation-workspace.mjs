@@ -64,7 +64,7 @@ assert.equal(syntax.parseDiagnostics.length,0,"No TSX syntax regressions");
 for(const text of ["lektrus-chem-equation-side","lektrus-chem-equation-symbols",
  "lektrus-chem-condition-panel","lektrus-chem-condition-categories",
  "lektrus-chem-condition-options","lektrus-chem-equation-preview",
- "applyBalance","onKeyDown","onCancel","⇌"])
+ "balancedStep","onKeyDown","onCancel","⇌"])
  assert.ok(ui.includes(text),"Editor feature missing: "+text);
 assert.ok(!ui.includes('role="tablist"'),"Single-screen editor must have no mode tabs");
 assert.ok(!ui.includes("lektrus-chem-source"),"No second input mode");
