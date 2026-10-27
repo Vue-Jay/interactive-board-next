@@ -69,9 +69,9 @@ assert.match(board,/onActivityAnswer\(entry.id,response\)/);
 assert.match(app,/patchSubjectBoardEntry\(item.id,entryId,\{activityResponse:response\}\)/);
 assert.ok(schema.includes("SubjectTaskActivityResponse"),"Student answers are persisted");
 assert.ok(schema.includes("Повреждено интерактивное задание"),"Student answers are validated");
-assert.ok(registry.includes('type("cloze","Заполни пропуски"'));
-assert.ok(registry.includes('type("matching","Найди пары"'));
-assert.ok(registry.includes('type("sequence","Собери решение"'));
+assert.ok(registry.includes('type("cloze","Пропуски в выражении"'));
+assert.ok(registry.includes('type("matching","Сопоставление"'));
+assert.ok(registry.includes('type("sequence","Порядок действий"'));
 for(const label of ["Текст с пропусками","Варианты ответа","Пары для сопоставления","Последовательность"]){
  assert.ok(src.includes(label),label);
 }
