@@ -13,40 +13,30 @@ type Props={
   onClose:()=>void;
 };
 
-/** Curated subject-specific sections. Shared worksheets appear first in each subject. */
+/** Subject editors only. The universal worksheet lives in the main board toolbar. */
 const subjectToolSections:Record<string,{title:string;ids:string[]}[]>={
-  "математика":[{title:"Учебная доска",ids:["subject-board-mathematics"]},
-    {title:"Формулы и вычисления",ids:["math-formula","math-fractions"]},
+  "математика":[{title:"Формулы и вычисления",ids:["math-formula","math-fractions"]},
     {title:"Построения",ids:["math-geometry","math-coordinate"]}],
-  "физика":[{title:"Учебная доска",ids:["subject-board-physics"]},
-    {title:"Механика и движение",ids:["physics-mechanics","physics-graphs"]},
+  "физика":[{title:"Механика и движение",ids:["physics-mechanics","physics-graphs"]},
     {title:"Свет и электричество",ids:["physics-optics","physics-circuits"]}],
-  "химия":[{title:"Учебная доска и задания",ids:["subject-board-chemistry","chem-formulas","chem-assignments"]},
+  "химия":[{title:"Уравнения и задания",ids:["chem-formulas","chem-assignments"]},
     {title:"Вещества и органика",ids:["chem-periodic-table","chem-organic"]},
     {title:"Реакции и опыты",ids:["chem-experiments"]}],
-  "биология":[{title:"Учебная доска",ids:["subject-board-biology"]},
-    {title:"Клетка и генетика",ids:["bio-cell","bio-division","bio-dna","bio-genetics"]},
+  "биология":[{title:"Клетка и генетика",ids:["bio-cell","bio-division","bio-dna","bio-genetics"]},
     {title:"Организмы и экология",ids:["bio-taxonomy","bio-food-chain"]},
     {title:"Человек",ids:["bio-organ-systems"]}],
-  "география":[{title:"Учебная доска",ids:["subject-board-geography"]},
-    {title:"Карты",ids:["maps-atlas","contour-atlas"]},
+  "география":[{title:"Карты",ids:["maps-atlas","contour-atlas"]},
     {title:"Учебные задания",ids:["geo-matching","geo-question-cards"]}],
-  "история":[{title:"Учебная доска",ids:["subject-board-history"]},
-    {title:"Карты и хронология",ids:["history-atlas","history-timeline"]},
+  "история":[{title:"Карты и хронология",ids:["history-atlas","history-timeline"]},
     {title:"Родословные",ids:["history-family-tree"]}],
-  "информатика":[{title:"Учебная доска",ids:["subject-board-informatics"]},
-    {title:"Информация",ids:["info-encoding","info-place-value"]},
+  "информатика":[{title:"Информация",ids:["info-encoding","info-place-value"]},
     {title:"Программирование и алгоритмы",ids:["info-programming","info-flowchart"]},
     {title:"Логика",ids:["info-circuit","info-logic"]}],
-  "русский язык":[{title:"Учебная доска",ids:["subject-board-russian"]},
-    {title:"Разбор",ids:["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics"]},
+  "русский язык":[{title:"Разбор",ids:["ru-syntax","ru-morphemes","ru-morphology","ru-phonetics"]},
     {title:"Практика",ids:["ru-orthography","ru-sentence-builder"]}],
-  "иностранный язык":[{title:"Учебная доска",ids:["subject-board-languages"]},
-    {title:"Грамматика и лексика",ids:["language-sentence-builder","language-flashcards"]}],
-  "литература":[{title:"Учебная доска",ids:["subject-board-literature"]},
-    {title:"Анализ",ids:["literature-analysis"]}],
-  "обществознание":[{title:"Учебная доска",ids:["subject-board-social"]},
-    {title:"Учебные схемы",ids:["civics-structure"]}]
+  "иностранный язык":[{title:"Грамматика и лексика",ids:["language-sentence-builder","language-flashcards"]}],
+  "литература":[{title:"Анализ",ids:["literature-analysis"]}],
+  "обществознание":[{title:"Учебные схемы",ids:["civics-structure"]}]
 };
 
 function sectionsForSubject(subject:string,tools:SubjectToolOption[]){
