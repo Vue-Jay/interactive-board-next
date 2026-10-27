@@ -69,7 +69,7 @@ assert.match(styles,/@media\(max-width:610px\)/,"Phone layout");
 assert.ok(ui.includes("lektrus-chem-equation-compact"),"Use uncluttered equation workspace");
 assert.ok(ui.includes("lektrus-chem-arrow-chooser"),"Place arrow between equation sides");
 assert.ok(ui.includes("lektrus-chem-state"),"Gas and precipitate selector remains available");
-assert.ok(ui.includes("setSymbolsOpen(false)"),"Symbols start collapsed");
+assert.match(ui,/\[symbolsOpen,setSymbolsOpen\]=useState\(false\)/,"Symbols start collapsed");
 assert.ok(!ui.includes("LektrusChemistryGuidedBuilder"),"Do not show catalog or guided reaction builder");
 assert.ok(!ui.includes("getReactionGuidance"),"Do not couple freeform editor to reaction database");
 assert.ok(!main.includes("lektrusChemistryGuidedBuilder.css"),"Remove obsolete reference UI styles");
