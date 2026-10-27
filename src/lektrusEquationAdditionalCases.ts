@@ -243,5 +243,114 @@ for(const [equation,title,conditions] of [
  ["CH3COOH + Na2CO3 → CH3COONa + NaHCO3","Первая стадия взаимодействия кислоты и карбоната","недостаток кислоты"]
 ] as const)add("organic","Органические превращения",title,equation,conditions,
  "Школьная схема по указанным условиям; молекулярная формула не определяет изомер.",true);
+// Further gas-evolution reactions: sulfites and sulfides, with acidic medium.
+// Toxic H₂S and SO₂ are reference symbols only, not experiment instructions.
+for(const metal of ["Na","K"] as const){
+ for(const [acid,saltSuffix,coefficient] of [
+  ["HCl","Cl",2],["HBr","Br",2],["H2SO4","2SO4",1]
+ ] as const){
+  const sulfite=metal+"2SO3";
+  const saltProduct=saltSuffix==="2SO4"?metal+"2SO4":metal+saltSuffix;
+  const saltCoef=saltSuffix==="2SO4"?1:2;
+  add("inorganic","Выделение газа","Сульфит и кислота",
+   sulfite+" + "+term(coefficient,acid)+" → "+term(saltCoef,saltProduct)+" + SO2↑ + H2O",
+   "водн. р-р",
+   "SO₂ выделяется при подкислении растворимого сульфита; токсичный газ.");
+ }
+ for(const [acid,anion,count] of [
+  ["HCl","Cl",2],["HBr","Br",2],["H2SO4","2SO4",1]
+ ] as const){
+  const base=metal+"2S";
+  const saltProduct=anion==="2SO4"?metal+"2SO4":metal+anion;
+  add("inorganic","Выделение газа","Сульфид щелочного металла и кислота",
+   base+" + "+term(count,acid)+" → "+term(count===1?1:2,saltProduct)+" + H2S↑",
+   "разб. кислота",
+   "Выделяется сероводород; токсичный газ, только теоретическая схема.");
+ }
+}
+for(const metal of ["Fe","Zn"] as const)
+ for(const acid of ["HCl","HBr"] as const){
+  const salt=metal+(acid==="HCl"?"Cl2":"Br2");
+  add("inorganic","Выделение газа","Сульфид металла с кислотой",
+   metal+"S + 2"+acid+" → "+salt+" + H2S↑","разб. кислота",
+   "Теоретическая кислотная обработка сульфида; выделяемый H₂S токсичен.");
+ }
+// Ammonium salts plus alkali under warming.
+const ammoniumSalts=[
+ ["NH4Cl","Cl",1],["NH4Br","Br",1],["NH4NO3","NO3",1],
+ ["NH4I","I",1],["(NH4)2SO4","SO4",2]
+] as const;
+for(const [saltFormula,anion,n] of ammoniumSalts){
+ for(const alkali of ["Na","K"] as const){
+  const saltProduct=anion==="SO4"?alkali+"2SO4":alkali+anion;
+  add("inorganic","Выделение газа","Аммонийная соль со щёлочью",
+   saltFormula+" + "+term(n,alkali+"OH")+" → "+
+   saltProduct+" + "+term(n,"NH3")+"↑ + "+term(n,"H2O"),
+   "t°","Уравнение выделения аммиака из иона аммония в щелочной среде.");
+ }
+}
+// Halogenoalkane substitution and ethanol-elimination: conditions select pathway.
+for(const [halide,halogen,alcohol,alkene,alkenePossible] of [
+ ["CH3Cl","Cl","CH3OH","",false],
+ ["CH3Br","Br","CH3OH","",false],
+ ["C2H5Cl","Cl","C2H5OH","C2H4",true],
+ ["C2H5Br","Br","C2H5OH","C2H4",true],
+ ["CH3CH2CH2Br","Br","CH3CH2CH2OH","C3H6",true],
+ ["CH3CH2CH2Cl","Cl","CH3CH2CH2OH","C3H6",true]
+] as const){
+ for(const alkali of ["Na","K"] as const){
+  add("organic","Замещение","Гидролиз галогеналкана",
+   halide+" + "+alkali+"OH → "+alcohol+" + "+alkali+halogen,
+   "водн. щёлочь, t°","Нуклеофильное замещение в водной щёлочи; учитывается строение субстрата.");
+  if(alkenePossible)
+   add("organic","Отщепление","Дегидрогалогенирование",
+    halide+" + "+alkali+"OH → "+alkene+" + "+alkali+halogen+" + H2O",
+    "спирт. щёлочь, t°",
+    "Элиминирование в спиртовой щёлочи; для более длинных цепей проверка молекулярная, изомерные алкены возможны.",
+    alkene==="C3H6");
+ }
+}
+// Aldehydes oxidised into acids; secondary alcohols into ketones.
+for(const [aldehyde,acid,title] of [
+ ["HCHO","HCOOH","метаналь"],["CH3CHO","CH3COOH","этаналь"],
+ ["CH3CH2CHO","CH3CH2COOH","пропаналь"],
+ ["CH3CH2CH2CHO","CH3CH2CH2COOH","бутаналь"]
+] as const){
+ add("organic","Окисление","Окисление "+title+" кислородом",
+  "2"+aldehyde+" + O2 → 2"+acid,"кат., t°",
+  "Окисление альдегида до соответствующей карбоновой кислоты.");
+ add("organic","Окисление","Реакция "+title+" с Cu(OH)₂",
+  aldehyde+" + 2Cu(OH)2 → "+acid+" + Cu2O↓ + 2H2O",
+  "t°","Школьная схема окисления альдегида с образованием красного Cu₂O.");
+}
+for(const [alcohol,ketone,title] of [
+ ["CH3CHOHCH3","CH3COCH3","пропан-2-ол"],
+ ["CH3CHOHCH2CH3","CH3COCH2CH3","бутан-2-ол"]
+] as const){
+ add("organic","Окисление","Окисление вторичного спирта "+title,
+  alcohol+" + CuO → "+ketone+" + Cu + H2O",
+  "t°","Окисление вторичного спирта до кетона.");
+ add("organic","Восстановление","Гидрирование кетона",
+  ketone+" + H2 → "+alcohol,"Ni, t°",
+  "Восстановление кетона до вторичного спирта.");
+}
+// Aromatic substitutions and individual formula-specific transformations.
+for(const [eq,title,condition,note] of [
+ ["C6H6 + HNO3 → C6H5NO2 + H2O","Нитрование бензола","H₂SO₄ (конц.)","Реакция электрофильного замещения; необходима нитрующая смесь."],
+ ["C6H6 + Br2 → C6H5Br + HBr","Бромирование бензола","FeBr₃","Каталитическое замещение в ароматическом кольце."],
+ ["C6H6 + Cl2 → C6H5Cl + HCl","Хлорирование бензола","FeCl₃","Каталитическое замещение, не радикальное фото-присоединение."],
+ ["C6H6 + 3H2 → C6H12","Гидрирование бензола","Ni, t°, p↑","Гидрирование ароматического кольца до циклогексана."],
+ ["3C2H2 → C6H6","Тримеризация ацетилена","кат., t°","Циклотримеризация при специальных условиях."],
+ ["C6H5CH3 + HNO3 → C6H4(NO2)CH3 + H2O","Нитрование толуола","H₂SO₄ (конц.)","Молекулярная формула не различает орто- и пара-изомеры."]
+] as const)add("organic","Ароматические превращения",title,eq,condition,note,true);
+// Decarboxylation of named sodium carboxylates by soda lime.
+for(const [salt,alkane,label] of [
+ ["CH3COONa","CH4","ацетата натрия"],
+ ["CH3CH2COONa","C2H6","пропионата натрия"],
+ ["CH3CH2CH2COONa","C3H8","бутирата натрия"]
+] as const)add("organic","Декарбоксилирование","Декарбоксилирование "+label,
+ salt+" + NaOH → "+alkane+" + Na2CO3",
+ "CaO, t°","Суммарная школьная схема декарбоксилирования соли карбоновой кислоты.");
+
 export const additionalEquationCases:readonly ReviewedExample[]=pool;
 export const additionalEquationCount=pool.length;
