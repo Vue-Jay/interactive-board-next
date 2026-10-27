@@ -1,6 +1,6 @@
 import {createPortal} from "react-dom";
 import {useEffect,useRef,useState,type CSSProperties} from "react";
-import type {Item,SubjectBoardEntry,SubjectTaskActivityResponse} from "./boardModel";
+import type {Item,SubjectBoardEntry,SubjectTaskActivityResponse,RussianTaskWork} from "./boardModel";
 import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 import {subjectAccentPalette,type SubjectTone} from "./lektrusSubjectAccent";
 import {taskTemplateFor,subjectTaskTemplates,subjectTaskTypeKnown,freshTaskDetails,subjectBoardHasWork,isSchoolSolutionSubject,needsAutomaticWorkedSolution} from "./lektrusSubjectTaskTemplates";
@@ -8,6 +8,7 @@ import {LektrusSubjectBoardSolutionView,LektrusSubjectBoardInlineSolution,emptyW
 import {interactiveSubjects,preferredActivityMode,activityMatchesTask,isIntegratedInteractiveTask,interactiveModesForSubject,freshActivity,LektrusSubjectActivityBuilder,LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
 import {nextSubjectBoardHeight} from "./lektrusSubjectBoardSizing";
 import {LektrusLanguageTaskStudio} from "./LektrusLanguageTaskStudio";
+import LektrusRussianTaskAnswer from "./LektrusRussianTaskAnswer";
 
 export const subjectBoardId=(tone:SubjectTone)=>"subject-board-"+tone;
 export const isSubjectBoard=(item:Item)=>item.kind==="graph"&&!!item.graphFigureId?.startsWith("subject-board-");
@@ -45,8 +46,9 @@ type BoardProps={
  onEditSolution?:(entryId:string)=>void;
  onWorkedSolutionChange?:(entryId:string,solution:import("./boardModel").SubjectBoardWorkedSolution)=>void;
  onActivityAnswer?:(entryId:string,response:SubjectTaskActivityResponse)=>void;
+ onRussianWorkChange?:(entryId:string,work:RussianTaskWork)=>void;
 };
-export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution,onWorkedSolutionChange,onActivityAnswer,onRequestHeight}:BoardProps){
+export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,onMove,onEditSolution,onWorkedSolutionChange,onActivityAnswer,onRussianWorkChange,onRequestHeight}:BoardProps){
  const tone=boardTone(item),palette=subjectAccentPalette[tone];
  const allEntries=item.subjectBoardEntries??[];
  const entries=allEntries.filter(entry=>entryBelongsToSubject(tone,entry));
@@ -161,6 +163,11 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
       {entry.kind==="task"&&activityMatchesTask(tone,entry.format,entry.activity)&&
        <LektrusSubjectActivityRunner activity={entry.activity!} response={entry.activityResponse}
         onChange={onActivityAnswer?(response)=>onActivityAnswer(entry.id,response):undefined}/>}
+      {tone==="russian"&&["morphemes","syntax","morphology","text"].includes(entry.format??"")&&
+       <LektrusRussianTaskAnswer entry={entry} work={entry.russianWork}
+        onChange={onRussianWorkChange?work=>onRussianWorkChange(entry.id,work):undefined}/>}
+      {tone==="russian"&&["orthography","punctuation"].includes(entry.format??"")&&!entry.activity&&
+       <div className="lektrus-rus-answer-help">Добавьте пропуски в редакторе задания.</div>}
       {needsAutomaticWorkedSolution(tone,entry.format)&&entry.kind==="task"?
         <div className="lektrus-subject-board-solution-area">
           <LektrusSubjectBoardInlineSolution tone={tone} value={entry.workedSolution}
@@ -176,7 +183,9 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
          {hasWorkedSolution(entry.workedSolution)||entry.answer.trim()?"Изменить решение":"+ Добавить решение"}</button>}
         {!onEditSolution&&!hasWorkedSolution(entry.workedSolution)&&!entry.answer.trim()&&
          <span className="lektrus-subject-board-solution-hint">Решение пока не добавлено</span>}
-      </div>:activityMatchesTask(tone,entry.format,entry.activity)?null:<div className="lektrus-subject-board-answer">
+      </div>:(activityMatchesTask(tone,entry.format,entry.activity)||
+       tone==="russian"&&["morphemes","syntax","morphology","text","orthography","punctuation"].includes(entry.format??""))?null:
+       <div className="lektrus-subject-board-answer">
        <label htmlFor={"board-answer-"+entry.id}>{tone==="physics"&&entry.format==="lab"?"Результаты измерений и вывод":
           tone==="chemistry"&&entry.format==="experiment"?"Наблюдения и вывод":
           tone==="chemistry"&&(entry.format==="chain"||entry.kind==="equation")?"Уравнения и пояснения":
