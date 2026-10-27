@@ -5,7 +5,7 @@ const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const file="src/LektrusRussianTaskAnswer.tsx";
 const js=ts.transpileModule(read(file),{fileName:file,compilerOptions:{
  target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.React
-}}).outputText.replace(/^import[^;]*;\s*$/gm,"").replace(/^export /gm,"");
+}}).outputText.replace(/^import[^;]*;\s*$/gm,"").replace(/^export default /gm,"").replace(/^export /gm,"");
 const api=new Function("grammarRoles","morphemeNames","posNames",js+
  "\nreturn {splitRussianSentence,separateRussianQuestions,russianWorkSource};")(
  {subject:"Подлежащее",predicate:"Сказуемое",attribute:"Определение",
