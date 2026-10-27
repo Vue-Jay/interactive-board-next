@@ -1,7 +1,8 @@
 /** Editor-only notation helpers, not a reaction prediction database. */
 export type ReactionArrow="→"|"⇌"|"=";
 export type ReactionTextParts={reactants:string;products:string;arrow:ReactionArrow;standalone:boolean};
-const arrowPattern=/(⇌|⇄|↔|→|⟶|⟹|->|=)/;
+// Prefer arrows and require spaces around equality so CH2=CH2 stays a molecule.
+const arrowPattern=/(⇌|⇄|↔|→|⟶|⟹|->)|(?<=\s)=(?=\s)/;
 export function readReactionText(expression:string):ReactionTextParts{
  const found=arrowPattern.exec(expression);
  if(!found)return {reactants:expression,products:"",arrow:"→",standalone:true};
@@ -10,7 +11,7 @@ export function readReactionText(expression:string):ReactionTextParts{
   // Only strip the single spacer inserted by writeReactionText near the arrow.
   reactants:expression.slice(0,found.index).replace(/ $/,""),
   products:expression.slice(found.index+found[0].length).replace(/^ /,""),
-  arrow:found[0]==="⇌"||found[0]==="⇄"||found[0]==="↔"?"⇌":found[0]==="="? "=":"→",
+  arrow:found[0]==="⇌"||found[0]==="⇄"||found[0]==="↔"?"⇌":found[0].includes("=")? "=":"→",
   standalone:false
  };
 }
