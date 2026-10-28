@@ -106,7 +106,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
   }
   if((gapState?.count??0)>=8){setSelectionHint("В одном упражнении не больше восьми пропусков");return;}
   const selection=markup.slice(begin,end);
-  if(orthography&&!/[\\p{L}]/u.test(selection)){setSelectionHint("Для орфографии выделите букву или часть слова");return;}
+  if(orthography&&!/[\p{L}]/u.test(selection)){setSelectionHint("Для орфографии выделите букву или часть слова");return;}
   if(punctuation&&!/^[,.;:!?—–«»()"'-]+$/.test(selection.trim())){
    setSelectionHint("Выделите только знак препинания. Для нового знака воспользуйтесь палитрой ниже.");return;
   }
@@ -199,7 +199,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
       <strong>Выберите слово для разбора</strong>
       <small>Нажмите на слово из предложения или введите своё ниже</small>
       <div role="group" aria-label="Слова предложения">
-       {(entry.details?.material??"").match(/[\\p{L}]+(?:[-’][\\p{L}]+)*/gu)?.slice(0,60).map((word,i)=>
+       {(entry.details?.material??"").match(/[\p{L}]+(?:[-’][\p{L}]+)*/gu)?.slice(0,60).map((word,i)=>
         <button type="button" key={i} className={word.toLocaleLowerCase("ru-RU")===(entry.details?.target??"").toLocaleLowerCase("ru-RU")?"selected":""}
          onClick={()=>changeMaterial("target",word)}>{word}</button>)}
       </div>
