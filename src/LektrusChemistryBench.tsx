@@ -385,8 +385,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         onClick={()=>{setChosen(v.id);setUnit(reagentAppearance(v.id).phase==="solid"?"g":"ml");setAmount(reagentAppearance(v.id).phase==="solid"?"1":"10")}}>
         <i style={{background:reagentAppearance(v.id).color}}/>
         <strong>{v.formula}</strong><span>{v.name}</span>
-       </button>)}
-       ):experimentCases.map((row,i)=><button type="button" key={i}
+       </button>):experimentCases.map((row,i)=><button type="button" key={i}
          className="lektrus-lab-example-choice" onClick={()=>prepareExample(row)}
          title="Разместить исходные вещества отдельно">
          <strong>{row.reactants.join(" + ")}</strong>
