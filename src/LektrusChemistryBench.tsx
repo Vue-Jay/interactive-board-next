@@ -45,6 +45,7 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true}:{vessel:La
  const active=Boolean(visualCase);
  const color=indicator?.color??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3");
  const observation=visualCase?.observation??"none";
+ const singlePhase=vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const geo=shape[vessel.kind];
  const labels=vessel.reagents.map(r=>substances.find(s=>s.id===r)?.formula??r);
  return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
@@ -56,10 +57,20 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true}:{vessel:La
    <ellipse cx="50" cy="126" rx="34" ry="4" fill="#254f49" opacity=".12"/>
    <path d={geo.inside} fill={"url(#"+id+"glass)"} stroke="none"/>
    <g clipPath={"url(#"+id+"clip)"}>
-    {labels.length>0&&<path d={geo.liquid} fill={color} opacity={reagent?.phase==="solid"&&!active?.4:.78} className="lektrus-lab-fluid"/>}
-    {labels.length>0&&reagent?.phase==="solid"&&!active&&Array.from({length:15},(_,i)=><circle
-      key={"grain"+i} cx={31+(i*17)%38} cy={100+(i*13)%13} r={1.3+i%3*.65}
-      fill={color} stroke="#526962" strokeOpacity=".24"/>)}
+    {labels.length>0&&singlePhase!=="solid"&&singlePhase!=="metal"&&singlePhase!=="gas"&&
+     <path d={geo.liquid} fill={color} opacity=".76" className="lektrus-lab-fluid"/>}
+    {labels.length>0&&(singlePhase==="solid"||singlePhase==="metal")&&<>
+     <path d="M17 107Q29 99 47 103Q69 98 82 107L79 119H21Z" fill={color} opacity=".88"/>
+     {Array.from({length:22},(_,i)=><circle key={"grain"+i}
+      cx={27+(i*17)%46} cy={102+(i*13)%13} r={1.2+i%3*.7}
+      fill={color} stroke="#526962" strokeOpacity=".28"/>)}
+    </>}
+    {labels.length>0&&singlePhase==="gas"&&<>
+     <path d={geo.inside} fill={color} opacity=".17"/>
+     {Array.from({length:9},(_,i)=><circle key={"gascloud"+i}
+      cx={34+(i*13)%33} cy={32+(i*21)%61} r={3+i%3}
+      fill={color} opacity=".42"/>)}
+    </>}
     {active&&observation==="precipitate"&&<>
      <rect className="lektrus-lab-sediment" x="16" y="106" width="70" height="18"
       fill={appearance.solidColor||"#d6dee1"} opacity=".94"/>
