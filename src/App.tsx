@@ -1,3 +1,4 @@
+import LektrusChemistryCollectionAction from "./LektrusChemistryCollectionAction";
 import {
   lazy,
   memo,
@@ -5591,6 +5592,40 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      if(isEmpty)removeSubjectBoardEntry(state.boardId,state.entryId);
      setSubjectBoardEditor(null);
    };
+   /** Move one standalone chemistry object into a teacher-chosen worksheet.
+    * Preserve student work and equation conditions; never create duplicates. */
+   const collectChemistryObject=(sourceId:string,destinationId:string)=>{
+     if(!canEdit||!roleCapabilities.canUseTeacherTools)return;
+     const source=itemsRef.current.find(item=>item.id===sourceId);
+     if(!source||source.locked)return;
+     const standaloneTask=source.graphFigureId==="subject-board-chemistry"&&source.subjectBoardStandalone===true;
+     const standaloneReaction=source.graphFigureId?.startsWith("chem-formula-")===true;
+     if(!standaloneTask&&!standaloneReaction)return;
+     const entries=standaloneTask?
+       (source.subjectBoardEntries??[]).filter(entry=>entryBelongsToSubject("chemistry",entry)):
+       (()=>{const eq=newSubjectBoardEntry(createId(),"equation","chemistry");
+         return [{...eq,domain:source.scienceReactionDomain??"inorganic",
+          steps:source.scienceReactionSteps?.length?source.scienceReactionSteps:
+           [{expression:source.graphExpression??"",conditions:source.scienceReactionConditions??""}]}]})();
+     if(!entries.length||standaloneReaction&&!chemistryBoardHasContent(source)){
+       setNotice("Сначала заполните химический материал");return;
+     }
+     const existing=destinationId!=="__new__"?
+       itemsRef.current.find(item=>item.id===destinationId):undefined;
+     if(destinationId!=="__new__"&&(!existing||existing.graphFigureId!=="subject-board-chemistry"||
+       existing.subjectBoardStandalone||existing.locked)){setNotice("Химическая доска недоступна");return;}
+     const target=existing??makeSubjectToolItem("subject-board-chemistry",
+       source.x+source.width/2+140,source.y+source.height/2,createId);
+     if((target.subjectBoardEntries?.length??0)+entries.length>48){
+       setNotice("На химической доске может быть не более 48 заданий");return;
+     }
+     const updated={...target,subjectBoardEntries:[...(target.subjectBoardEntries??[]),...entries]};
+     if(existing&&!pendingEditorBases.current.has(existing.id))pendingEditorBases.current.set(existing.id,existing);
+     commit([...itemsRef.current.filter(item=>item.id!==sourceId&&item.id!==target.id),updated]);
+     if(existing)workChannel.current?.publishEdit(existing.id,editorDiff(existing,updated));
+     setSelected([updated.id]);setTool("select");
+     setNotice("Материал перенесён на химическую доску");
+   };
    const openSubjectBoardEntry=(boardItem:Item,mode:"equation"|"task",entryId?:string)=>{
      if(!canEdit||!roleCapabilities.canUseTeacherTools)return;
      const current=itemsRef.current.find(value=>value.id===boardItem.id)??boardItem;
@@ -9020,6 +9055,16 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     (entryId,response)=>patchSubjectBoardEntry(item.id,entryId,{activityResponse:response}):undefined}
                   onRussianWorkChange={canEdit&&!item.locked&&!presentation?
                     (entryId,work)=>patchSubjectBoardEntry(item.id,entryId,{russianWork:work}):undefined}/>}
+                {item.kind==="graph"&&
+                 (item.subjectBoardStandalone===true&&item.graphFigureId==="subject-board-chemistry"||
+                  item.graphFigureId?.startsWith("chem-formula-"))&&
+                 canEdit&&roleCapabilities.canUseTeacherTools&&!item.locked&&!presentation&&
+                 <LektrusChemistryCollectionAction
+                  destinations={items.filter(value=>value.graphFigureId==="subject-board-chemistry"&&
+                   !value.subjectBoardStandalone&&!value.locked&&value.id!==item.id)
+                   .map((value,index)=>({id:value.id,title:
+                     (value.text||"Химическая доска")+" · "+(index+1)}))}
+                  onCollect={destinationId=>collectChemistryObject(item.id,destinationId)}/>}
                 {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item}
                   onPhysicalPartMove={!presentation&&!item.locked&&!space&&!selectionLocked&&
                    canEdit&&!structurallyLockedForStudent(item)&&tool==="select"&&
