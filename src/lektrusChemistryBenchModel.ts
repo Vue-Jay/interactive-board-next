@@ -1,11 +1,47 @@
 import type {Item} from "./boardModel";
-import {identifyReaction,type ReactionEnvironment,type ReactionStatus} from "./lektrusReactionDatabase";
+import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus} from "./lektrusReactionDatabase";
 
 export type LabGlassware="beaker"|"tube"|"flask";
+export type LabIndicator="litmus"|"phenolphthalein"|"methyl-orange"|"universal";
+export const labIndicators:{id:LabIndicator;name:string;note:string}[]=[
+ {id:"litmus",name:"Лакмус",note:"Красный в кислой среде, синий в щелочной"},
+ {id:"phenolphthalein",name:"Фенолфталеин",note:"Малиновый в щелочной среде"},
+ {id:"methyl-orange",name:"Метилоранж",note:"Красный в кислой среде, жёлтый в щелочной"},
+ {id:"universal",name:"Универсальный",note:"Условная цветовая шкала кислотности"}
+];
+export type LabIndicatorResult={medium:"acid"|"base"|"neutral"|"unknown";
+ label:string;color?:string;note:string};
+const indicatorPalette:Record<LabIndicator,Record<"acid"|"base"|"neutral",string>>={
+ litmus:{acid:"#d85761",base:"#426cce",neutral:"#8978b5"},
+ phenolphthalein:{acid:"#c8e3eb",base:"#d83a96",neutral:"#c8e3eb"},
+ "methyl-orange":{acid:"#db4444",base:"#efc94b",neutral:"#eda24f"},
+ universal:{acid:"#e55b45",base:"#5673cc",neutral:"#72ad5c"}
+};
+/** Qualitative indicator reading only where medium is unambiguous.
+ * Never invent pH for neutralisation, salts or multi-stage mixtures. */
+export function labIndicatorResult(vessel:LabVessel):LabIndicatorResult|null{
+ if(!vessel.indicator)return null;
+ const reagents=vessel.reagents;
+ let medium:LabIndicatorResult["medium"]="unknown";
+ if(reagents.length&&vessel.environment==="aqueous"&&!vessel.uncertain&&
+    !(vessel.observed&&identifyReaction(reagents,vessel.environment).status==="reaction")){
+  if(reagents.length===1&&reagents[0]==="H2O")medium="neutral";
+  else if(reagents.every(id=>substances.find(s=>s.id===id)?.kind==="кислота"))medium="acid";
+  else if(reagents.every(id=>["NaOH","KOH","Ca(OH)2","Ba(OH)2","NH4OH"].includes(id)))medium="base";
+ }
+ const descriptions={acid:"Кислая среда",base:"Щелочная среда",
+  neutral:"Нейтральная среда",unknown:"Окраска не определена"};
+ const color=medium==="unknown"?undefined:indicatorPalette[vessel.indicator][medium];
+ return{medium,label:descriptions[medium],color,
+  note:medium==="unknown"?
+   "Без известных pH и концентраций нельзя надёжно определить цвет индикатора.":
+   "Качественная оценка среды, без вычисления pH и концентраций."};
+}
+
 export type LabVessel={
  id:string;kind:LabGlassware;x:number;y:number;
  reagents:string[];environment:ReactionEnvironment;
- observed:boolean;uncertain?:boolean;
+ observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
 };
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number};
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=6;
@@ -36,8 +72,10 @@ export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:
 const bump=(bench:LabBench,vessels:LabVessel[],selectedId=bench.selectedId):LabBench=>({
  ...bench,vessels,selectedId,event:bench.event+1
 });
-const revise=(bench:LabBench,id:string,update:(v:LabVessel)=>LabVessel):LabBench=>
- bump(bench,bench.vessels.map(v=>v.id===id?update(v):v),id);
+const revise=(bench:LabBench,id:string,update:(v:LabVessel)=>LabVessel):LabBench=>{
+ const vessels=bench.vessels.map(v=>v.id===id?update(v):v);
+ return vessels.every((v,i)=>v===bench.vessels[i])?bench:bump(bench,vessels,id);
+};
 export function addLabVessel(bench:LabBench,kind:LabGlassware):LabBench{
  if(bench.vessels.length>=MAX_BENCH_VESSELS)return bench;
  let n=1;while(bench.vessels.some(v=>v.id==="v"+n))n++;
@@ -59,7 +97,11 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
  return bump(bench,vessels,bench.selectedId===id?vessels[0].id:bench.selectedId);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- return revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false}));
+ return revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined}));
+}
+export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|undefined):LabBench{
+ if(!bench.vessels.some(v=>v.id===id&&v.reagents.length))return bench;
+ return revise(bench,id,v=>v.indicator===indicator?v:{...v,indicator});
 }
 export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionEnvironment):LabBench{
  return revise(bench,id,v=>({...v,environment,
@@ -93,9 +135,10 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
   labObservation(target).status==="reaction"||
   source.environment!==target.environment&&source.environment!=="aqueous");
  const vessels=bench.vessels.map(v=>{
-  if(v.id===sourceId)return {...v,reagents:[],observed:false,uncertain:false};
+  if(v.id===sourceId)return {...v,reagents:[],observed:false,uncertain:false,indicator:undefined};
   if(v.id===targetId)return {...v,reagents,observed:reagents.length>1,
-   uncertain};
+   indicator:v.indicator??source.indicator,
+   uncertain:uncertain||Boolean(v.indicator&&source.indicator&&v.indicator!==source.indicator)};
   return v;
  });
  return bump(bench,vessels,targetId);
