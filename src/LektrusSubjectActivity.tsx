@@ -131,7 +131,7 @@ export function LektrusSubjectActivityBuilder({activity,onChange}:EditorProps){
      "Вставьте пары построчно: слово — перевод. Можно использовать знак = или табуляцию.":
      "Вставьте предложение. Оно разделится на отдельные слова, сохранив исходный порядок."}</small></div>
     <textarea rows={activity.mode==="match"?4:2} maxLength={1800} value={quickSource}
-     placeholder={activity.mode==="match"?"house — дом\\nwindow — окно":"She is reading a book."}
+     placeholder={activity.mode==="match"?"house — дом\nwindow — окно":"She is reading a book."}
      onChange={e=>{setQuickSource(e.target.value);setQuickHint("");}}/>
     <button type="button" onClick={()=>{
      if(activity.mode==="match"){
