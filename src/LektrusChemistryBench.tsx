@@ -1,8 +1,8 @@
 import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import type {LabBench,LabVessel,LabGlassware,LabDose} from "./lektrusChemistryBenchModel";
-import {addLabVessel,emptyLabVessel,labBenchSettings,labGlassware,labIndicators,labObservation,
+import {addLabVessel,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
  labIndicatorResult,positionLabVessel,removeLabVessel,selectedLabVessel,setLabBenchSettings,
- setLabIndicator} from "./lektrusChemistryBenchModel";
+ } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,substances} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 
