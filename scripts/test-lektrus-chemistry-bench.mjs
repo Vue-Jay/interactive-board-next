@@ -132,6 +132,10 @@ devices=lab.putLabReagent(devices,"v1","CaCO3");
 devices=lab.useLabDevice(devices,"hotplate","v1");
 assert.equal(lab.labObservation(devices.vessels[0]).caseData.observation,"gas",
  "Hotplate applies validated heated conditions to the chosen vessel");
+devices=lab.useLabDevice(devices,"tripod","v1");
+assert.deepEqual(devices.instrumentTarget,{kind:"tripod",vesselId:"v1"});
+devices=lab.useLabDevice(devices,"thermometer","v1");
+assert.deepEqual(devices.instrumentTarget,{kind:"thermometer",vesselId:"v1"});
 devices=lab.useLabDevice(devices,"stirrer","v1");
 assert.equal(devices.stirringVesselId,"v1","Mixer starts on the selected vessel");
 devices=lab.useLabDevice(devices,"stirrer","v1");
