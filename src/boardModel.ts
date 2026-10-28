@@ -400,7 +400,7 @@ export type SubjectTaskActivity={
  mode:"choice"|"fill"|"match"|"order";
  options?:string[];
  correctIndex?:number;
- blanks?:{before:string;answer:string;choices?:[string,string]}[];
+ blanks?:{before:string;answer:string;choices?:[string,string];rule?:string}[];
  tail?:string;
  pairs?:{left:string;right:string}[];
  tokens?:string[];
@@ -411,6 +411,7 @@ export type SubjectTaskActivityResponse={
  matched?:number[];
  ordered?:number[];
  checked?:boolean;
+ explanations?:string[];
 };
 /** Editable student work for Russian-language exercises. Reuses the same
  * school role classifications as the standalone Russian tools. */
@@ -784,12 +785,15 @@ export function parseDocument(raw: string): DocumentData {
          (a.correctIndex!=null&&(!Number.isInteger(a.correctIndex)||a.correctIndex<0||a.correctIndex>7))||
          (a.blanks!=null&&(!Array.isArray(a.blanks)||a.blanks.length>8||!a.blanks.every(x=>!!x&&typeof x.before==="string"&&x.before.length<=1200&&typeof x.answer==="string"&&x.answer.length<=240&&
           (x.choices==null||(Array.isArray(x.choices)&&x.choices.length===2&&x.choices[0]===x.answer&&
-           x.choices.every((v:unknown)=>typeof v==="string"&&v.length<=24))))))||
+           x.choices.every((v:unknown)=>typeof v==="string"&&v.length<=24)))&&
+          (x.rule==null||(typeof x.rule==="string"&&x.rule.length<=160)))))||
          (a.tail!=null&&(typeof a.tail!=="string"||a.tail.length>1200))||
          (a.pairs!=null&&(!Array.isArray(a.pairs)||a.pairs.length>8||!a.pairs.every(x=>!!x&&typeof x.left==="string"&&x.left.length<=240&&typeof x.right==="string"&&x.right.length<=240)))||
          (a.tokens!=null&&(!Array.isArray(a.tokens)||a.tokens.length>12||!a.tokens.every(x=>typeof x==="string"&&x.length<=240)))))return true;
         if(r!=null&&(!r||typeof r!=="object"||
          (r.checked!=null&&typeof r.checked!=="boolean")||
+         (r.explanations!=null&&(!Array.isArray(r.explanations)||r.explanations.length>8||
+          !r.explanations.every(x=>typeof x==="string"&&x.length<=500)))||
          (r.selected!=null&&(!Number.isInteger(r.selected)||r.selected<0||r.selected>8))||
          (r.values!=null&&(!Array.isArray(r.values)||r.values.length>8||!r.values.every(x=>typeof x==="string"&&x.length<=240)))||
          (r.matched!=null&&(!Array.isArray(r.matched)||r.matched.length>8||!r.matched.every(x=>Number.isInteger(x)&&x>=-1&&x<=8)))||
