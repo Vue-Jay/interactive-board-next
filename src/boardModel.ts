@@ -784,7 +784,7 @@ export function parseDocument(raw: string): DocumentData {
          (a.correctIndex!=null&&(!Number.isInteger(a.correctIndex)||a.correctIndex<0||a.correctIndex>7))||
          (a.blanks!=null&&(!Array.isArray(a.blanks)||a.blanks.length>8||!a.blanks.every(x=>!!x&&typeof x.before==="string"&&x.before.length<=1200&&typeof x.answer==="string"&&x.answer.length<=240&&
           (x.choices==null||(Array.isArray(x.choices)&&x.choices.length===2&&x.choices[0]===x.answer&&
-           x.choices.every((v:unknown)=>typeof v==="string"&&v.length<=24)))))||
+           x.choices.every((v:unknown)=>typeof v==="string"&&v.length<=24))))))||
          (a.tail!=null&&(typeof a.tail!=="string"||a.tail.length>1200))||
          (a.pairs!=null&&(!Array.isArray(a.pairs)||a.pairs.length>8||!a.pairs.every(x=>!!x&&typeof x.left==="string"&&x.left.length<=240&&typeof x.right==="string"&&x.right.length<=240)))||
          (a.tokens!=null&&(!Array.isArray(a.tokens)||a.tokens.length>12||!a.tokens.every(x=>typeof x==="string"&&x.length<=240)))))return true;
