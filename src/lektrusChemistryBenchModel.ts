@@ -49,7 +49,7 @@ export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:numbe
  const id="device-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9);
  const placed:LabPlacedDevice={id,kind,
   x:clampDevice(point?.x??(22+(occupied%5)*13),9,79),
-  y:clampDevice(point?.y??(72+Math.floor(occupied/5)*8),58,84),
+  y:clampDevice(point?.y??(62+Math.floor(occupied/5)*22),58,84),
   powered:false,heatLevel:2,temperatureC:22};
  return {...bench,placedDevices:[...existing,placed],
   devices:[...new Set([...(bench.devices??[]),kind])],event:bench.event+1};
