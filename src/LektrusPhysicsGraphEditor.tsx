@@ -1,3 +1,4 @@
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {useEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
 import {svgClientPoint} from "./lektrusSvgPointer";
@@ -175,7 +176,7 @@ export default function LektrusPhysicsGraphEditor({item,onSave,onCancel,onClose,
   const integralLabel=axis.variable==="v"?"Перемещение Δx, м":
     axis.variable==="a"?"Изменение скорости Δv, м/с":"Площадь под s(t)";
 
-  return createPortal(<div className="lektrus-motion-backdrop" onPointerDown={event=>{if(event.currentTarget===event.target)close()}}>
+  return createPortal(<div className="lektrus-motion-backdrop" style={subjectEditorStyle("physics")} onPointerDown={event=>{if(event.currentTarget===event.target)close()}}>
     <section className={"lektrus-motion-editor"+(settingsOpen?"":" is-compact")} role="dialog" aria-modal="true" aria-label="Редактор физических графиков"
       onPointerDown={event=>event.stopPropagation()}>
       <header className="lektrus-motion-header">
