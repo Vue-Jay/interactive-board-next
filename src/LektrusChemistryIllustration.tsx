@@ -53,7 +53,7 @@ const experiments:Record<string,Experiment>={
   initial:"Прозрачный раствор",final:"Осадок CaCO₃",note:"Образование карбоната кальция показано условно, не в масштабе.",
   colorBefore:"#d8eefa",colorAfter:"#c9d0d6"}
 };
-export default function LektrusChemistryIllustration({item,onStageChange,onBenchChange,onOpenEditor}:{
+export default function LektrusChemistryIllustration({item,onStageChange,onBenchChange}:{
  item:Item;onStageChange?:(stage:0|1)=>void;
  onBenchChange?:(bench:LabBench)=>void;onOpenEditor?:()=>void
 }){
