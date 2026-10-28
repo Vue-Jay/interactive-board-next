@@ -74,11 +74,21 @@ export function activityScore(activity:SubjectTaskActivity,response:SubjectTaskA
   return {correct:pairs.filter((_,i)=>response.matched?.[i]===i).length,total:pairs.length};
  }
  const tokens=activity.tokens??[];
- return {correct:tokens.filter((_,i)=>response.ordered?.[i]===i).length,total:tokens.length};
+ return {correct:tokens.filter((value,i)=>tokens[response.ordered?.[i]??-1]===value).length,total:tokens.length};
 }
-/** Deterministic visual shuffle. The saved answers always refer to original indices. */
-export function mixedIndices(length:number):number[]{
- return Array.from({length},(_,i)=>(length-i-1+length)%length);
+/** A stable exercise-specific shuffle. It avoids random shifts on re-render and
+ * never exposes the source sequence in its original order. */
+export function mixedIndices(length:number,seed=""):number[]{
+ const positions=Array.from({length},(_,i)=>i);
+ let state=2166136261;
+ for(const ch of seed){state=Math.imul(state^ch.charCodeAt(0),16777619)>>>0;}
+ for(let i=positions.length-1;i>0;i--){
+  state=(Math.imul(state,1664525)+1013904223)>>>0;
+  const j=state%(i+1);
+  [positions[i],positions[j]]=[positions[j],positions[i]];
+ }
+ if(length>1&&positions.every((position,i)=>position===i))positions.reverse();
+ return positions;
 }
 type EditorProps={tone:SubjectTone;format:string;activity:SubjectTaskActivity;onChange:(value:SubjectTaskActivity)=>void};
 export function LektrusSubjectActivityBuilder({activity,onChange}:EditorProps){
@@ -191,7 +201,8 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
  const patch=(values:Partial<SubjectTaskActivityResponse>)=>onChange?.({...data,...values,checked:false});
  const complete=activityComplete(activity);
  const result=data.checked&&complete?activityScore(activity,data):null;
- const order=activity.mode==="match"?mixedIndices(activity.pairs?.length??0):[];
+ const order=activity.mode==="match"?mixedIndices(activity.pairs?.length??0,
+  (activity.pairs??[]).map(pair=>pair.left+"|"+pair.right).join(";")):[];
  const tokens=activity.tokens??[];
  const selections=data.ordered??[];
  const choose=(index:number)=>{
@@ -294,7 +305,7 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
     {!selections.length&&<span>Нажимайте на элементы в нужном порядке</span>}</div>
    </div>
    <div className="lektrus-activity-tokens" role="group" aria-label="Элементы для упорядочивания">
-    {mixedIndices(tokens.length).map(i=><button key={i} disabled={!onChange||selections.includes(i)}
+    {mixedIndices(tokens.length,tokens.join("|")).map(i=><button key={i} disabled={!onChange||selections.includes(i)}
      type="button" onClick={()=>choose(i)}>{tokens[i]||"Элемент"}</button>)}
    </div>
   </>}
