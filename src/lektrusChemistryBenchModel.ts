@@ -64,8 +64,8 @@ export function emptyLabVessel(bench:LabBench,id:string):LabBench{
 export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionEnvironment):LabBench{
  return revise(bench,id,v=>({...v,environment,
   // Keep previous products opaque when reaction conditions change.
-  uncertain:v.uncertain||v.observed&&v.reagents.length>1,
-  observed:v.observed||v.reagents.length>1}));
+  uncertain:v.uncertain||labObservation(v).status==="reaction",
+  observed:v.reagents.length>1||identifyReaction(v.reagents,environment).status==="reaction"}));
 }
 export function putLabReagent(bench:LabBench,id:string,reagent:string):LabBench{
  if(!bench.vessels.some(v=>v.id===id))return bench;
@@ -73,11 +73,14 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string):LabBench{
   if(v.reagents.includes(reagent)||v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
   const reagents=[...v.reagents,reagent];
   return {...v,reagents,observed:reagents.length>1,
-   uncertain:v.uncertain||v.observed&&v.reagents.length>1};
+   uncertain:v.uncertain||labObservation(v).status==="reaction"};
  });
 }
 /** Full transfer. Never assume that a second step using already reacted
  * mixtures can be predicted from their original reagent identifiers. */
+export function activateLabVessel(bench:LabBench,id:string):LabBench{
+ return revise(bench,id,v=>({...v,observed:true}));
+}
 export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):LabBench{
  if(sourceId===targetId)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
@@ -86,8 +89,8 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  const reagents=[...new Set([...target.reagents,...source.reagents])];
  if(reagents.length>MAX_VESSEL_REAGENTS)return bench;
  const uncertain=Boolean(source.uncertain||target.uncertain||
-  source.observed&&source.reagents.length>1||
-  target.observed&&target.reagents.length>1||
+  labObservation(source).status==="reaction"||
+  labObservation(target).status==="reaction"||
   source.environment!==target.environment&&source.environment!=="aqueous");
  const vessels=bench.vessels.map(v=>{
   if(v.id===sourceId)return {...v,reagents:[],observed:false,uncertain:false};
