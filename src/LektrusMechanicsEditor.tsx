@@ -1,3 +1,4 @@
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import {useEffect,useRef,useState,type PointerEvent as PE} from "react";
 import {createPortal} from "react-dom";
@@ -186,7 +187,7 @@ export default function LektrusMechanicsEditor({item,onSave,onCancel,onClose,onL
    };
    window.addEventListener("keydown",listener,true);return()=>window.removeEventListener("keydown",listener,true);
  });
- return createPortal(<div className="lektrus-mechanics-backdrop">
+ return createPortal(<div className="lektrus-mechanics-backdrop" style={subjectEditorStyle("physics")}>
   <section className={"lektrus-mechanics-editor"+(palette?"":" palette-closed")+(selected&&inspector?" inspector-open":"")}
     role="dialog" aria-modal="true" aria-label="Конструктор механики">
    <header className="lektrus-mechanics-header">
