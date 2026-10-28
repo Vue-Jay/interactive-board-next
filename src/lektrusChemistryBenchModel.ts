@@ -1,7 +1,26 @@
 import type {Item} from "./boardModel";
 import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus} from "./lektrusReactionDatabase";
 
-export type LabGlassware="beaker"|"tube"|"flask";
+export type LabGlassware="beaker"|"tube"|"flask"|"cylinder"|"dish";
+export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
+ {id:"beaker",name:"Стакан",description:"Смешивание растворов"},
+ {id:"tube",name:"Пробирка",description:"Небольшие пробы"},
+ {id:"flask",name:"Колба",description:"Работа с жидкостями"},
+ {id:"cylinder",name:"Мерный цилиндр",description:"Отмеривание жидкости"},
+ {id:"dish",name:"Чашка",description:"Открытый сосуд"}
+];
+export type LabDose={value:number;unit:"ml"|"g"};
+export type LabBenchSettings={
+ showEquationBoard:boolean;showVesselLabels:boolean;animateEffects:boolean;
+};
+export const defaultLabBenchSettings=():LabBenchSettings=>({
+ showEquationBoard:false,showVesselLabels:true,animateEffects:true
+});
+export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
+ ...defaultLabBenchSettings(),...bench.settings
+});
+export const formatLabDose=(dose:LabDose)=>`${dose.value.toLocaleString("ru-RU")} ${dose.unit==="ml"?"мл":"г"}`;
+
 export type LabIndicator="litmus"|"phenolphthalein"|"methyl-orange"|"universal";
 export const labIndicators:{id:LabIndicator;name:string;note:string}[]=[
  {id:"litmus",name:"Лакмус",note:"Красный в кислой среде, синий в щелочной"},
@@ -42,13 +61,20 @@ export type LabVessel={
  id:string;kind:LabGlassware;x:number;y:number;
  reagents:string[];environment:ReactionEnvironment;
  observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
+ doses?:Record<string,LabDose>;
 };
-export type LabBench={vessels:LabVessel[];selectedId:string;event:number};
+export type LabBench={vessels:LabVessel[];selectedId:string;event:number;
+ settings?:LabBenchSettings};
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=6;
-const clamp=(v:number)=>Math.round(Math.min(92,Math.max(8,v))*10)/10;
+const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
+export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>):LabBench{
+ const next={...labBenchSettings(bench),...settings};
+ return JSON.stringify(next)===JSON.stringify(labBenchSettings(bench))?bench:
+  {...bench,settings:next,event:bench.event+1};
+}
 export const defaultLabBench=():LabBench=>({
  vessels:[{id:"v1",kind:"beaker",x:48,y:57,reagents:[],environment:"aqueous",observed:false}],
- selectedId:"v1",event:0
+ selectedId:"v1",event:0,settings:defaultLabBenchSettings()
 });
 export function readLabBench(item:Item):LabBench{
  if(item.scienceLabBench)return item.scienceLabBench;
@@ -76,12 +102,12 @@ const revise=(bench:LabBench,id:string,update:(v:LabVessel)=>LabVessel):LabBench
  const vessels=bench.vessels.map(v=>v.id===id?update(v):v);
  return vessels.every((v,i)=>v===bench.vessels[i])?bench:bump(bench,vessels,id);
 };
-export function addLabVessel(bench:LabBench,kind:LabGlassware):LabBench{
+export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:number;y:number}):LabBench{
  if(bench.vessels.length>=MAX_BENCH_VESSELS)return bench;
  let n=1;while(bench.vessels.some(v=>v.id==="v"+n))n++;
- const position=bench.vessels.length;
- const next:LabVessel={id:"v"+n,kind,x:23+(position%3)*25,
-  y:position<3?49:76,reagents:[],environment:"aqueous",observed:false};
+ const index=bench.vessels.length;
+ const next:LabVessel={id:"v"+n,kind,x:clamp(position?.x??(36+(index%3)*15)),
+  y:clamp(position?.y??(index<3?59:76)),reagents:[],environment:"aqueous",observed:false};
  return bump(bench,[...bench.vessels,next],next.id);
 }
 export function positionLabVessel(bench:LabBench,id:string,x:number,y:number):LabBench{
@@ -89,15 +115,17 @@ export function positionLabVessel(bench:LabBench,id:string,x:number,y:number):La
  return revise(bench,id,v=>({...v,x:clamp(x),y:clamp(y)}));
 }
 export function selectLabVessel(bench:LabBench,id:string):LabBench{
- return bench.vessels.some(v=>v.id===id)?{...bench,selectedId:id}:bench;
+ return bench.selectedId===id?bench:bench.vessels.some(v=>v.id===id)?
+  {...bench,selectedId:id}:bench;
 }
 export function removeLabVessel(bench:LabBench,id:string):LabBench{
- if(bench.vessels.length<=1)return bench;
+ const target=bench.vessels.find(v=>v.id===id);
+ if(!target||target.reagents.length>0)return bench; // Only clean glassware returns to storage.
  const vessels=bench.vessels.filter(v=>v.id!==id);
- return bump(bench,vessels,bench.selectedId===id?vessels[0].id:bench.selectedId);
+ return bump(bench,vessels,bench.selectedId===id?(vessels[0]?.id??""):bench.selectedId);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- return revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined}));
+ return revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined}));
 }
 export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|undefined):LabBench{
  if(!bench.vessels.some(v=>v.id===id&&v.reagents.length))return bench;
@@ -109,12 +137,24 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
   uncertain:v.uncertain||labObservation(v).status==="reaction",
   observed:v.reagents.length>1||identifyReaction(v.reagents,environment).status==="reaction"}));
 }
-export function putLabReagent(bench:LabBench,id:string,reagent:string):LabBench{
+export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabDose):LabBench{
  if(!bench.vessels.some(v=>v.id===id))return bench;
  return revise(bench,id,v=>{
-  if(v.reagents.includes(reagent)||v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
-  const reagents=[...v.reagents,reagent];
-  return {...v,reagents,observed:reagents.length>1,
+  const validDose=dose&&Number.isFinite(dose.value)&&dose.value>0&&
+   dose.value<=10000&&(dose.unit==="ml"||dose.unit==="g")?dose:undefined;
+  if(dose&&!validDose)return v;
+  const present=v.reagents.includes(reagent);
+  if(!present&&v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
+  const previous=v.doses?.[reagent];
+  if(present&&!validDose)return v;
+  if(previous&&validDose&&previous.unit!==validDose.unit)return v;
+  const combined=validDose?{value:Math.round(((previous?.value??0)+validDose.value)*100)/100,
+   unit:validDose.unit}:undefined;
+  if(combined&&combined.value>10000)return v;
+  const reagents=present?v.reagents:[...v.reagents,reagent];
+  return {...v,reagents,
+   doses:combined?{...v.doses,[reagent]:combined}:v.doses,
+   observed:reagents.length>1,
    uncertain:v.uncertain||labObservation(v).status==="reaction"};
  });
 }
@@ -134,11 +174,24 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
   labObservation(source).status==="reaction"||
   labObservation(target).status==="reaction"||
   source.environment!==target.environment&&source.environment!=="aqueous");
+ const incompatible=Object.entries(source.doses??{}).some(([id,dose])=>{
+  const previous=target.doses?.[id];
+  return previous&&(previous.unit!==dose.unit||previous.value+dose.value>10000);
+ });
+ if(incompatible)return bench;
  const vessels=bench.vessels.map(v=>{
-  if(v.id===sourceId)return {...v,reagents:[],observed:false,uncertain:false,indicator:undefined};
-  if(v.id===targetId)return {...v,reagents,observed:reagents.length>1,
-   indicator:v.indicator??source.indicator,
-   uncertain:uncertain||Boolean(v.indicator&&source.indicator&&v.indicator!==source.indicator)};
+  if(v.id===sourceId)return {...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined};
+  if(v.id===targetId){
+   const doses={...v.doses};
+   for(const [id,dose] of Object.entries(source.doses??{})){
+    const old=doses[id];
+    if(old&&old.unit!==dose.unit)return v; // Unsupported units are not silently converted.
+    doses[id]={value:Math.round(((old?.value??0)+dose.value)*100)/100,unit:dose.unit};
+   }
+   return {...v,reagents,observed:reagents.length>1,doses,
+    indicator:v.indicator??source.indicator,
+    uncertain:uncertain||Boolean(v.indicator&&source.indicator&&v.indicator!==source.indicator)};
+  }
   return v;
  });
  return bump(bench,vessels,targetId);
@@ -174,8 +227,12 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
   vessels.push(merged);
  }
  const limited=vessels.slice(0,MAX_BENCH_VESSELS);
- if(!limited.length)return defaultLabBench();
  const selectedId=limited.some(v=>v.id===mine.selectedId)?mine.selectedId:
-  limited.some(v=>v.id===remote.selectedId)?remote.selectedId:limited[0].id;
- return {vessels:limited,selectedId,event:Math.max(remote.event,mine.event)+1};
+  limited.some(v=>v.id===remote.selectedId)?remote.selectedId:(limited[0]?.id??"");
+ const originalSettings=labBenchSettings(previous),mineSettings=labBenchSettings(mine);
+ const settings={...labBenchSettings(remote)};
+ for(const key of Object.keys(mineSettings) as (keyof LabBenchSettings)[]){
+  if(mineSettings[key]!==originalSettings[key])settings[key]=mineSettings[key];
+ }
+ return {vessels:limited,selectedId,settings,event:Math.max(remote.event,mine.event)+1};
 }
