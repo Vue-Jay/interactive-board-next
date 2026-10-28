@@ -1,9 +1,9 @@
 import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import type {LabBench,LabVessel,LabGlassware,LabDose} from "./lektrusChemistryBenchModel";
 import {addLabVessel,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,positionLabVessel,removeLabVessel,selectedLabVessel,setLabBenchSettings,
+ labIndicatorResult,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
  } from "./lektrusChemistryBenchModel";
-import {reactionAppearance,substances} from "./lektrusReactionDatabase";
+import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
@@ -117,6 +117,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"settings"|null>(null);
  const [query,setQuery]=useState("");
  const [category,setCategory]=useState("Все");
+ const [cabinetTab,setCabinetTab]=useState<"substances"|"experiments">("substances");
+ const [effectFilter,setEffectFilter]=useState<"all"|Observation>("all");
  const [chosen,setChosen]=useState<string|null>(null);
  const [amount,setAmount]=useState("10");
  const [unit,setUnit]=useState<"ml"|"g">("ml");
@@ -129,6 +131,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   (v.formula+" "+v.name).toLocaleLowerCase("ru-RU").includes(query.trim().toLocaleLowerCase("ru-RU")));
  const reagent=chosen?substances.find(s=>s.id===chosen):null;
  const classes=["Все",...new Set(substances.map(s=>s.kind))];
+ const experimentCases=reviewedReactionCases.filter(v=>v.status==="reaction"&&
+  v.reactants.length<=2&&(effectFilter==="all"||v.observation===effectFilter)&&
+  (v.equation+" "+v.description+" "+v.reactants.join(" ")).toLocaleLowerCase("ru-RU")
+   .includes(query.trim().toLocaleLowerCase("ru-RU"))).slice(0,80);
  const rxn=selected?labObservation(selected):null;
  const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
@@ -231,9 +237,22 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const value=Number(amount.replace(",","."));
   if(!Number.isFinite(value)||value<=0||value>10000){setNotice("Укажите количество больше нуля и не более 10000");return}
   const dose:LabDose={value:Math.round(value*100)/100,unit};
-  onDropReagent?.(selected.id,chosen,dose);
+  const updated=putLabReagent(bench,selected.id,chosen,dose);
+  if(updated===bench){setNotice("Реагент уже добавлен или посуда заполнена");return}
+  onChange?.(updated);
   setNotice(chosen+" · "+dose.value+" "+(unit==="ml"?"мл":"г")+" добавлено в "+names[selected.kind]);
   setCabinet(null);setChosen(null);
+ };
+ const prepareExample=(row:(typeof reviewedReactionCases)[number])=>{
+  const vessels=row.reactants.map((reagent,i)=>({
+   id:"v"+(i+1),kind:(i===0?"beaker":"tube") as LabGlassware,
+   x:i===0?40:60,y:67,reagents:[reagent],
+   environment:row.environment,observed:false
+  }));
+  if(!vessels.length)return;
+  onChange?.({...bench,vessels,selectedId:vessels[0].id,event:bench.event+1});
+  setNotice("Опыт подготовлен: соедините вещества, чтобы наблюдать реакцию");
+  setCabinet(null);
  };
  const openCabinet=(next:"reagents"|"glassware"|"settings")=>{
   if(!editable)return;setCabinet(next);setNotice("");setChosen(null);
@@ -341,24 +360,42 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <header><strong>{cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":"Настройки стола"}</strong>
       <button type="button" aria-label="Закрыть шкаф" onClick={()=>setCabinet(null)}>×</button></header>
      {cabinet==="reagents"&&<>
+      <div className="lektrus-lab-modal-tabs" role="group" aria-label="Раздел шкафа реактивов">
+       <button type="button" className={cabinetTab==="substances"?"active":""}
+        aria-pressed={cabinetTab==="substances"} onClick={()=>setCabinetTab("substances")}>Вещества</button>
+       <button type="button" className={cabinetTab==="experiments"?"active":""}
+        aria-pressed={cabinetTab==="experiments"} onClick={()=>setCabinetTab("experiments")}>Готовые опыты</button>
+      </div>
       <div className="lektrus-lab-modal-filters">
        <input type="search" placeholder="Формула или название" value={query}
         onChange={e=>setQuery(e.target.value)} aria-label="Найти реактив"/>
-       <select value={category} onChange={e=>setCategory(e.target.value)}
+       {cabinetTab==="substances"?<select value={category} onChange={e=>setCategory(e.target.value)}
         aria-label="Класс реактива">
         {classes.map(c=><option key={c}>{c}</option>)}
-       </select>
+       </select>:<select value={effectFilter}
+        aria-label="Признак реакции" onChange={e=>setEffectFilter(e.target.value as "all"|Observation)}>
+        <option value="all">Все</option><option value="gas">Газ</option>
+        <option value="precipitate">Осадок</option><option value="color">Цвет</option>
+        <option value="heat">Тепло</option><option value="dissolution">Растворение</option>
+       </select>}
       </div>
       <div className="lektrus-lab-modal-reagents">
-       {visibleSubstances.map(v=><button key={v.id} type="button"
+       {cabinetTab==="substances"?visibleSubstances.map(v=><button key={v.id} type="button"
         className={chosen===v.id?"active":""} aria-pressed={chosen===v.id}
         onClick={()=>{setChosen(v.id);setUnit(reagentAppearance(v.id).phase==="solid"?"g":"ml");setAmount(reagentAppearance(v.id).phase==="solid"?"1":"10")}}>
         <i style={{background:reagentAppearance(v.id).color}}/>
         <strong>{v.formula}</strong><span>{v.name}</span>
        </button>)}
-       {!visibleSubstances.length&&<p>Ничего не найдено</p>}
+       ):experimentCases.map((row,i)=><button type="button" key={i}
+         className="lektrus-lab-example-choice" onClick={()=>prepareExample(row)}
+         title="Разместить исходные вещества отдельно">
+         <strong>{row.reactants.join(" + ")}</strong>
+         <span>{row.description}</span>
+        </button>)}
+       {((cabinetTab==="substances"?visibleSubstances:experimentCases).length===0)&&
+        <p>Совпадений не найдено</p>}
       </div>
-      <div className="lektrus-lab-modal-dose">
+      {cabinetTab==="substances"&&<div className="lektrus-lab-modal-dose">
        <div><strong>{reagent?.name??"Выберите реактив"}</strong>
         <small>{reagent?reagentAppearance(reagent.id).label:"Сначала выберите вещество из шкафа"}</small>
        </div>
@@ -374,7 +411,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          onClick={dispense}>Отлить в сосуд</button>
        </div>
        <small>Масса и объём фиксируются для учёта, но не используются как стехиометрический расчёт. {selected?"Выбран: "+names[selected.kind]:"Сначала возьмите посуду."}</small>
-      </div>
+      </div>}
      </>}
      {cabinet==="glassware"&&<div className="lektrus-lab-modal-ware">
       {labGlassware.map(v=><button type="button" key={v.id}
