@@ -23,7 +23,7 @@ export const isLabWorktop=(p:{x:number;y:number})=>
  p.x>=5&&p.x<=82&&p.y>=43&&p.y<=91;
 const size=(min:number,relative:number,max:number,width:number)=>
  clamp(width*relative,min,max);
-export type LabMountGeometry={x:number;y:number;kind:string};
+export type LabMountGeometry={x:number;y:number;kind:string;standHeight?:number};
 export type LabVesselGeometry={kind:string};
 /** Shared, responsive alignment for a beaker resting on a heater top,
  * a flask suspended over a flame, or a tube inside a stand clamp.
@@ -33,11 +33,11 @@ export function labMountedGlasswarePoint(
  width:number,height:number,crowded=false
 ){
  const w=width||1600,h=height||1000,small=w<=690;
- const dWidth=device.kind==="tripod"?
+ const dWidth=(device.kind==="tripod"||device.kind==="stand-shelf")?
   (small?size(112,.17,146,w):size(130,.11,190,w)):
   device.kind==="burner"?size(119,.096,166,w):
   (small?size(101,.16,138,w):size(119,.103,175,w));
- const dHeight=device.kind==="tripod"?
+ const dHeight=(device.kind==="tripod"||device.kind==="stand-shelf")?
   (small?size(150,.21,174,w):size(168,.14,212,w)):
   device.kind==="burner"?size(138,.114,180,w):
   (small?size(116,.18,152,w):size(130,.115,178,w));
@@ -47,12 +47,16 @@ export function labMountedGlasswarePoint(
   vHeight=small?size(130,.24,164,w):size(151,.20,198,w);
  if(vessel.kind==="dish"||vessel.kind==="crucible")
   vHeight=size(98,.12,125,w);
- const yPx=device.kind==="tripod"?
-  -.13*dHeight+.30*vHeight:
-  device.kind==="burner"?
-  -.22*dHeight-.35*vHeight:
-  -.185*dHeight-.35*vHeight;
- const xPx=device.kind==="tripod"?.20*dWidth:0;
+ // The glass SVG's bottom is y=120/133; the instrument platform is at
+ // y=36/108. Align those surfaces, not their enclosing rectangle centers.
+ const foot=.405*vHeight;
+ const clampY=(.5-(52-29*(device.standHeight??.5))/108)*dHeight;
+ const yPx=device.kind==="stand-shelf"?.16*dHeight-foot:
+  device.kind==="tripod"?clampY+.27*vHeight:
+  device.kind==="burner"?-.23*dHeight-foot:
+  -.167*dHeight-foot;
+ const xPx=device.kind==="tripod"?.23*dWidth:
+  device.kind==="stand-shelf"?.19*dWidth:0;
  return {
   x:clamp(device.x+xPx/w*100,5,82),
   y:clamp(device.y+yPx/h*100,47,86)
