@@ -565,3 +565,12 @@
  .lektrus-lab-furniture-modal,.lektrus-lab-furniture-dialog,
  .lektrus-lab-chalkboard strong,.lektrus-lab-dose-animation path{animation:none!important}
 }
+
+.lektrus-lab-shelf-header{border:0;background:transparent;color:#416255;
+ cursor:pointer;min-height:18px;padding:1px 2px}
+.lektrus-lab-shelf-header:hover{color:#157659;text-decoration:underline}
+.lektrus-lab-modal-ware button.lektrus-lab-store-selected{
+ grid-column:1/-1;min-height:34px;background:#e7f4e9;
+ border-color:#9fceb3;color:#276c50;font-weight:800}
+.lektrus-lab-modal-ware button.lektrus-lab-store-selected:disabled{
+ opacity:.48;cursor:default}
