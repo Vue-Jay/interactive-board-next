@@ -2,14 +2,14 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labDevices,toggleLabDevice,useLabDevice,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
+ labIndicatorResult,labDevices,toggleLabDevice,useLabDevice,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {buildLabCatalog,cabinetColor,cabinetPhase,phaseNames,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
-import LektrusLabTitrationPanel from "./LektrusLabTitrationPanel";
+import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
 import {labDisplayPoint,labLogicalPoint,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
@@ -170,26 +170,48 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [dropTarget,setDropTarget]=useState<string|null>(null);
  const [dropFurniture,setDropFurniture]=useState<"sink"|"glassware"|null>(null);
  const [transfer,setTransfer]=useState<{from:{x:number;y:number};to:{x:number;y:number}}|null>(null);
- const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"equipment"|"titration"|"settings"|null>(null);
+ const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"equipment"|"settings"|null>(null);
  const [query,setQuery]=useState("");
  const [category,setCategory]=useState("Все");
  const [phase,setPhase]=useState<"all"|StoragePhase>("all");
  const [sort,setSort]=useState<CatalogueSort>("name");
  const [group,setGroup]=useState<CatalogueGroup>("class");
- const [cabinetTab,setCabinetTab]=useState<"substances"|"experiments">("substances");
+ const [cabinetTab,setCabinetTab]=useState<
+ "all"|"acid"|"base"|"salt"|"oxide"|"metal"|"organic"|"other"|"experiments">("all");
  const [effectFilter,setEffectFilter]=useState<"all"|Observation>("all");
  const [chosen,setChosen]=useState<string|null>(null);
  const [amount,setAmount]=useState("10");
  const [unit,setUnit]=useState<"ml"|"g">("ml");
+ const [molarity,setMolarity]=useState("0.1");
+ const [titrationTarget,setTitrationTarget]=useState("");
  const [notice,setNotice]=useState("");
  const [sinkFlow,setSinkFlow]=useState(false);
  const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string}|null>(null);
  const settings=labBenchSettings(bench);
  const selected=selectedLabVessel(bench);
- const catalogue=buildLabCatalog({query,kind:category,phase,sort,group});
+ const isGlobalSearch=!!query.trim();
+ const catalogKind=(v:{kind:string})=>{
+  if(cabinetTab==="all"||isGlobalSearch)return true;
+  if(cabinetTab==="acid")return v.kind==="кислота";
+  if(cabinetTab==="base")return v.kind==="основание";
+  if(cabinetTab==="salt")return v.kind==="соль";
+  if(cabinetTab==="oxide")return v.kind==="оксид";
+  if(cabinetTab==="metal")return v.kind==="металл"||v.kind==="неметалл";
+  if(cabinetTab==="organic")return v.kind==="органика";
+  return !["кислота","основание","соль","оксид","металл","неметалл","органика"].includes(v.kind);
+ };
+ const catalogue=buildLabCatalog({query,kind:category,phase,sort,group})
+  .map(section=>({...section,items:section.items.filter(catalogKind)}))
+  .filter(section=>section.items.length>0);
  const visibleSubstances=catalogue.flatMap(v=>v.items);
  const reagent=chosen?substances.find(s=>s.id===chosen):null;
  const classes=["Все",...new Set(substances.map(s=>s.kind))];
+ const titrationSources=bench.vessels.filter(v=>v.kind==="burette"&&v.reagents.length>0);
+ const activeBurette=selected?.kind==="burette"?selected:titrationSources.find(v=>
+  bench.titrationPair?.sourceId===v.id);
+ const availableTargets=activeBurette?labTitrationTargets(bench,activeBurette.id):[];
+ const chosenTitrationTarget=availableTargets.find(v=>v.id===titrationTarget)?titrationTarget:
+  availableTargets[0]?.id;
  const experimentCases=reviewedReactionCases.filter(v=>v.status==="reaction"&&
   v.reactants.length<=2&&(effectFilter==="all"||v.observation===effectFilter)&&
   (v.equation+" "+v.description+" "+v.reactants.join(" ")).toLocaleLowerCase("ru-RU")
@@ -317,7 +339,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   if(!selected){setNotice("Возьмите чистую посуду из шкафа");return}
   const value=Number(amount.replace(",","."));
   if(!Number.isFinite(value)||value<=0||value>10000){setNotice("Укажите количество больше нуля и не более 10000");return}
-  const dose:LabDose={value:Math.round(value*100)/100,unit};
+  const isTitrant=["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen);
+  const concentration=Number(molarity.replace(",","."));
+  if(isTitrant&&unit==="ml"&&(!Number.isFinite(concentration)||
+    concentration<.001||concentration>2)){
+    setNotice("Укажите концентрацию от 0,001 до 2 моль/л");return;
+  }
+  const dose:LabDose={value:Math.round(value*100)/100,unit,
+   ...(isTitrant&&unit==="ml"?{concentrationM:concentration}:{})};
   const updated=putLabReagent(bench,selected.id,chosen,dose);
   if(updated===bench){setNotice("Реагент уже добавлен или посуда заполнена");return}
   onChange?.(updated);
@@ -336,7 +365,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   setNotice("Опыт подготовлен: соедините вещества, чтобы наблюдать реакцию");
   setCabinet(null);
  };
- const openCabinet=(next:"reagents"|"glassware"|"equipment"|"titration"|"settings")=>{
+ const openCabinet=(next:"reagents"|"glassware"|"equipment"|"settings")=>{
   if(!editable)return;setCabinet(next);setNotice("");setChosen(null);
  };
  return <div className={"lektrus-lab-bench"+(!editable?" is-readonly":"")+(bench.vessels.length>3?" is-crowded":"")+
@@ -346,6 +375,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <div className="lektrus-lab-back-shelf"/>
    <div className="lektrus-lab-counter"/>
    <div className="lektrus-lab-counter-front"/>
+   <div className="lektrus-lab-table-legs"/>
    <div className="lektrus-lab-worktop-zone"/>
   </div>
   <div className="lektrus-lab-scene-header">
@@ -404,13 +434,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     disabled={!editable} aria-label="Открыть шкаф посуды"
     onClick={e=>{e.stopPropagation();openCabinet("glassware")}}>ПОСУДА</button>
    <div className="lektrus-lab-shelf-items">
-    {labGlassware.map(kind=><button type="button" key={kind.id} disabled={!editable}
+    {labGlassware.map(kind=><button type="button" key={kind.id} disabled={!editable
       className="lektrus-lab-shelf-item" title={"Взять: "+kind.name}
       aria-label={"Взять из шкафа "+kind.name} onPointerDown={e=>beginShelf(e,kind.id)}
       onPointerMove={moveShelf} onPointerUp={finishShelf}
       onClick={e=>{if(e.detail===0)take(kind.id)}}
       onPointerCancel={e=>{e.stopPropagation();shelfGesture.current=null;setShelfGhost(null)}}>
-      <span className={"lektrus-lab-mini-glass is-"+kind.id} aria-hidden="true">♙</span>
+      <LektrusLabGlasswareIcon kind={kind.id} size={32}/>
       <small>{kind.name}</small>
      </button>)}
    </div>
@@ -561,7 +591,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onClick={e=>{e.stopPropagation();if(e.target===e.currentTarget)setCabinet(null)}}>
     <section ref={dialogRef} tabIndex={-1}
      className={"lektrus-lab-furniture-dialog is-"+cabinet} role="dialog" aria-modal="true"
-     aria-label={cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":cabinet==="equipment"?"Лабораторное оборудование":cabinet==="titration"?"Титрование":"Настройки химического стола"}
+     aria-label={cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":cabinet==="equipment"?"Шкаф приборов":"Настройки химического стола"}
      onKeyDown={event=>{
       if(event.key!=="Tab")return;
       const focusable=dialogRef.current?.querySelectorAll<HTMLElement>(
@@ -576,10 +606,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      }}>
      <header className="lektrus-lab-modal-head">
       <div className="lektrus-lab-modal-heading">
-       <span className="lektrus-lab-modal-emblem" aria-hidden="true">{cabinet==="reagents"?"⚗":cabinet==="glassware"?"◈":cabinet==="titration"?"◉":"⚙"}</span>
-       <span><strong>{cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":cabinet==="equipment"?"Оборудование":cabinet==="titration"?"Титрование":"Настройки стола"}</strong>
+       <span className="lektrus-lab-modal-emblem" aria-hidden="true">{cabinet==="reagents"?"⚗":cabinet==="glassware"?"◈":"⚙"}</span>
+       <span><strong>{cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":cabinet==="equipment"?"Шкаф приборов":"Настройки стола"}</strong>
         <small>{cabinet==="reagents"?"Выберите вещество и отмерьте нужное количество":
-          cabinet==="glassware"?"Возьмите посуду на рабочий стол":cabinet==="equipment"?"Подключайте приборы к рабочему столу":cabinet==="titration"?"Бюретка, pH и точка эквивалентности":"Настройки этой лаборатории"}</small></span>
+          cabinet==="glassware"?"Возьмите посуду на рабочий стол":cabinet==="equipment"?"Возьмите прибор и работайте с ним на столе":"Настройки этой лаборатории"}</small></span>
       </div>
       <button type="button" aria-label="Закрыть шкаф" onClick={()=>setCabinet(null)}>×</button>
      </header>
@@ -677,7 +707,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      {cabinet==="glassware"&&<div className="lektrus-lab-modal-ware">
       {labGlassware.map(v=><button type="button" key={v.id}
        disabled={bench.vessels.length>=6} onClick={()=>take(v.id)}>
-       <span className={"lektrus-lab-mini-glass is-"+v.id}>♙</span>
+       <LektrusLabGlasswareIcon kind={v.id} size={60}/>
        <strong>{v.name}</strong><small>{v.description}</small></button>)}
       <p>В шкаф возвращается только пустая посуда. Сначала слейте содержимое в раковину.</p>
       <button type="button" className="lektrus-lab-store-selected"
@@ -702,7 +732,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       </div>
       <p className="lektrus-lab-safe-caption">Нагрев и горение изменяют условия выбранного сосуда только в виртуальной модели. Мешалка и штатив не создают новых химических продуктов; термометр не показывает выдуманную температуру.</p>
      </div>}
-     {cabinet==="titration"&&<LektrusLabTitrationPanel bench={bench} onChange={onChange}/>}
      {cabinet==="settings"&&<div className="lektrus-lab-modal-settings">
       <p>Настройки принадлежат этому химическому столу и сохраняются с ним.</p>
       {([
