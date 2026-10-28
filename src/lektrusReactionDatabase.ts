@@ -368,6 +368,36 @@ for(const line of additionalSchoolCases.trim().split("\n")){
    {safety:"Учебная модель: токсичные или потенциально опасные вещества. Не является инструкцией для опыта."}:{});
 }
 
+/* More condition-specific school demonstrations. The catalogue deliberately
+ * distinguishes an unknown mixture from a confirmed "no reaction" case. */
+const extendedSchoolCases=`
+HCl+KOH|aqueous|HCl + KOH → KCl + H2O|heat|Нейтрализация соляной кислоты раствором щёлочи
+H2SO4+NaOH|aqueous|H2SO4 + 2NaOH → Na2SO4 + 2H2O|heat|Полная нейтрализация разбавленной серной кислоты
+HNO3+KOH|aqueous|HNO3 + KOH → KNO3 + H2O|heat|Нейтрализация азотной кислоты
+CH3COOH+KOH|aqueous|CH3COOH + KOH → CH3COOK + H2O|heat|Нейтрализация уксусной кислоты
+H3PO4+NaOH|aqueous|H3PO4 + 3NaOH → Na3PO4 + 3H2O|heat|Условная схема полной нейтрализации при достатке щёлочи
+H2SO4+NaHCO3|aqueous|H2SO4 + 2NaHCO3 → Na2SO4 + 2CO2↑ + 2H2O|gas|Выделяется углекислый газ
+Na2CO3+HNO3|aqueous|Na2CO3 + 2HNO3 → 2NaNO3 + CO2↑ + H2O|gas|Карбонат реагирует с разбавленной азотной кислотой
+NaHCO3+HNO3|aqueous|NaHCO3 + HNO3 → NaNO3 + CO2↑ + H2O|gas|Гидрокарбонат выделяет углекислый газ
+K2CO3+HCl|aqueous|K2CO3 + 2HCl → 2KCl + CO2↑ + H2O|gas|Выделение углекислого газа из карбоната
+Na2CO3+CH3COOH|aqueous|Na2CO3 + 2CH3COOH → 2CH3COONa + CO2↑ + H2O|gas|Уксусная кислота взаимодействует с карбонатом
+CaCO3+HNO3|aqueous|CaCO3 + 2HNO3 → Ca(NO3)2 + CO2↑ + H2O|gas|Разрушение карбоната кальция с выделением CO2
+MgCO3+HNO3|aqueous|MgCO3 + 2HNO3 → Mg(NO3)2 + CO2↑ + H2O|gas|Разрушение карбоната магния с выделением CO2
+AgNO3+KI|aqueous|AgNO3 + KI → AgI↓ + KNO3|precipitate|Светло-жёлтый осадок иодида серебра
+AgNO3+KBr|aqueous|AgNO3 + KBr → AgBr↓ + KNO3|precipitate|Кремовый осадок бромида серебра
+Na2O+H2O|aqueous|Na2O + H2O → 2NaOH|heat|Основный оксид реагирует с водой с выделением тепла
+NaOH+NH4Cl|heated|NaOH + NH4Cl → NaCl + NH3↑ + H2O|gas|При нагревании аммонийной соли со щёлочью выделяется аммиак
+KOH+NH4Cl|heated|KOH + NH4Cl → KCl + NH3↑ + H2O|gas|При нагревании аммонийной соли со щёлочью выделяется аммиак
+`;
+for(const line of extendedSchoolCases.trim().split("\n")){
+ const [reagents,medium,equation,observation,description]=line.split("|");
+ const signature=reagents.split("+").sort().join("|");
+ if(cases.some(row=>row.environment===medium&&row.reactants.slice().sort().join("|")===signature))continue;
+ add(reagents,medium as ReactionEnvironment,equation,observation as Observation,description,
+  reagents.includes("NH4Cl")?
+   {safety:"Выделяющийся аммиак раздражает дыхательные пути; только виртуальный опыт."}:{});
+}
+
 /** Appearance is computed from the actual products, not from the selected
  * reaction category. The solid never recolors the supernatant by accident. */
 export const schoolSolidColors:Record<string,string>={
