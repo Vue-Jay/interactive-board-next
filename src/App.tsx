@@ -42,7 +42,7 @@ import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,subjectBoardLocked,entryBelongsToSubject,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
 import {LektrusSubjectBoardSolutionEditor} from "./LektrusSubjectBoardSolution";
 import {subjectTaskTypeAllowed} from "./lektrusSubjectTaskTemplates";
-import {subjectToneForItem,subjectToneForSubject,subjectAccentPalette} from "./lektrusSubjectAccent";
+import {subjectToneForItem,subjectToneForSubject,subjectAccentPalette,subjectEditorStyle} from "./lektrusSubjectAccent";
 import LektrusPhysicsGraphEditor from "./LektrusPhysicsGraphEditor";
 import {isPhysicsMotionGraph,motionAxisTicks} from "./lektrusPhysicsGraphTicks";
 import LektrusOpticsEditor from "./LektrusOpticsEditor";
@@ -8011,7 +8011,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         {formulaEditorId && formulaDraft && createPortal(
           <div
             className="formula-editor-backdrop lektrus-formula-window"
-            onPointerDown={(event) => { if(event.target===event.currentTarget)closeFormulaEditor(); }}
+            style={subjectEditorStyle("mathematics")} onPointerDown={(event) => { if(event.target===event.currentTarget)closeFormulaEditor(); }}
             onKeyDown={(e) => {
               if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFormulaEditor(); }
               if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); saveFormulaEditor(); }
