@@ -230,7 +230,7 @@ export function arrangeLabVessels(bench:LabBench):LabBench{
   const first=index<upper,groupSize=first?upper:lower;
   const laneIndex=first?index:index-upper;
   return {...v,x:lane(laneIndex,groupSize),
-   y:count<=3?62:first?31:78};
+   y:count<=3?62:first?40:78};
  });
  return vessels.every((v,i)=>v.x===bench.vessels[i].x&&v.y===bench.vessels[i].y)?
   bench:bump(bench,vessels);
