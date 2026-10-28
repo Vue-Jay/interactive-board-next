@@ -31,12 +31,14 @@ export function toggleLabDevice(bench:LabBench,id:LabDevice):LabBench{
  const devices=bench.devices??[];
  if(!labDevices.some(v=>v.id===id))return bench;
  const next=devices.includes(id)?devices.filter(v=>v!==id):[...devices,id];
- return {...bench,devices:next,event:bench.event+1};
+ return {...bench,devices:next,stirringVesselId:next.includes("stirrer")?bench.stirringVesselId:undefined,event:bench.event+1};
 }
 export function useLabDevice(bench:LabBench,id:LabDevice,vesselId:string):LabBench{
  if(!(bench.devices??[]).includes(id)||!bench.vessels.some(v=>v.id===vesselId))return bench;
  if(id==="hotplate")return setLabEnvironment(bench,vesselId,"heated");
  if(id==="burner")return setLabEnvironment(bench,vesselId,"ignited");
+ if(id==="stirrer")return {...bench,
+  stirringVesselId:bench.stirringVesselId===vesselId?undefined:vesselId,event:bench.event+1};
  return bench;
 }
 export function setLabTitration(bench:LabBench,titration:TitrationModel):LabBench{
@@ -106,7 +108,7 @@ export type LabVessel={
  completedReaction?:ReactionCase;
 };
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;
- settings?:LabBenchSettings;devices?:LabDevice[];titration?:TitrationModel};
+ settings?:LabBenchSettings;devices?:LabDevice[];titration?:TitrationModel;stirringVesselId?:string};
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=6;
 const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
 export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>):LabBench{
@@ -167,10 +169,12 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
  const target=bench.vessels.find(v=>v.id===id);
  if(!target||target.reagents.length>0)return bench; // Only clean glassware returns to storage.
  const vessels=bench.vessels.filter(v=>v.id!==id);
- return bump(bench,vessels,bench.selectedId===id?(vessels[0]?.id??""):bench.selectedId);
+ return {...bump(bench,vessels,bench.selectedId===id?(vessels[0]?.id??""):bench.selectedId),
+  stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId};
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- return revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined}));
+ return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId});
 }
 export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|undefined):LabBench{
  if(!bench.vessels.some(v=>v.id===id&&v.reagents.length))return bench;
@@ -296,6 +300,8 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
   remote.devices:mine.devices;
  const titration=JSON.stringify(mine.titration??null)===JSON.stringify(previous.titration??null)?
   remote.titration:mine.titration;
- return {vessels:limited,selectedId,settings,devices,titration,
+ const stirringVesselId=mine.stirringVesselId===previous.stirringVesselId?
+  remote.stirringVesselId:mine.stirringVesselId;
+ return {vessels:limited,selectedId,settings,devices,titration,stirringVesselId,
   event:Math.max(remote.event,mine.event)+1};
 }
