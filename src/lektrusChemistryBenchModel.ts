@@ -75,7 +75,7 @@ export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSett
   {...bench,settings:next,event:bench.event+1};
 }
 export const defaultLabBench=():LabBench=>({
- vessels:[{id:"v1",kind:"beaker",x:48,y:57,reagents:[],environment:"aqueous",observed:false}],
+ vessels:[{id:"v1",kind:"beaker",x:48,y:70,reagents:[],environment:"aqueous",observed:false}],
  selectedId:"v1",event:0,settings:defaultLabBenchSettings()
 });
 export function readLabBench(item:Item):LabBench{
@@ -112,7 +112,7 @@ export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:numbe
  let n=1;while(bench.vessels.some(v=>v.id==="v"+n))n++;
  const index=bench.vessels.length;
  const next:LabVessel={id:"v"+n,kind,x:clamp(position?.x??(36+(index%3)*15)),
-  y:clamp(position?.y??(index<3?59:76)),reagents:[],environment:"aqueous",observed:false};
+  y:clamp(position?.y??(index<3?70:79)),reagents:[],environment:"aqueous",observed:false};
  return bump(bench,[...bench.vessels,next],next.id);
 }
 export function positionLabVessel(bench:LabBench,id:string,x:number,y:number):LabBench{
