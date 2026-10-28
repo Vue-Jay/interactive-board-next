@@ -27,6 +27,69 @@ export const labDevices:{id:LabDevice;name:string;description:string;symbol:stri
  {id:"tripod",name:"Штатив",description:"Держатель лабораторной посуды",symbol:"⌁"},
  {id:"thermometer",name:"Термометр",description:"Показывает режим без выдуманной температуры",symbol:"◉"}
 ];
+export type LabPlacedDevice={id:string;kind:LabDevice;x:number;y:number;
+ active?:boolean;linkedVesselId?:string};
+export const MAX_LAB_DEVICES=10;
+const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
+/** V1 cabinets only stored the types. Preserve them when a board is upgraded. */
+export function placedLabDevices(bench:LabBench):LabPlacedDevice[]{
+ if(bench.placedDevices)return bench.placedDevices;
+ return (bench.devices??[]).map((kind,i)=>({
+  id:"legacy-"+kind,kind,x:12+(i%3)*12,y:64+Math.floor(i/3)*18
+ }));
+}
+export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:number;y:number}):LabBench{
+ if(!labDevices.some(v=>v.id===kind))return bench;
+ const existing=placedLabDevices(bench);
+ if(existing.length>=MAX_LAB_DEVICES)return bench;
+ let number=1;
+ while(existing.some(v=>v.id==="device-"+number))number++;
+ const occupied=existing.length;
+ const placed:LabPlacedDevice={id:"device-"+number,kind,
+  x:clampDevice(point?.x??(12+(occupied%4)*12),9,81),
+  y:clampDevice(point?.y??(63+Math.floor(occupied/4)*15),53,84)};
+ return {...bench,placedDevices:[...existing,placed],
+  devices:[...new Set([...(bench.devices??[]),kind])],event:bench.event+1};
+}
+export function movePlacedLabDevice(bench:LabBench,id:string,x:number,y:number):LabBench{
+ const existing=placedLabDevices(bench);
+ if(!existing.some(d=>d.id===id))return bench;
+ return {...bench,placedDevices:existing.map(d=>d.id===id?
+  {...d,x:clampDevice(x,9,81),y:clampDevice(y,53,84),linkedVesselId:undefined,active:false}:d),
+  event:bench.event+1};
+}
+export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
+ const existing=placedLabDevices(bench),target=existing.find(d=>d.id===id);
+ if(!target)return bench;
+ const placedDevices=existing.filter(d=>d.id!==id);
+ const devices=[...new Set(placedDevices.map(d=>d.kind))];
+ return {...bench,placedDevices,devices,event:bench.event+1,
+  stirringVesselId:target.kind==="stirrer"&&!devices.includes("stirrer")?undefined:bench.stirringVesselId,
+  instrumentTarget:bench.instrumentTarget&&!devices.includes(bench.instrumentTarget.kind)?
+   undefined:bench.instrumentTarget};
+}
+/** Only appropriate vessel types are heated; do not fabricate temperatures,
+ * reaction products or a laboratory measurement outside the reviewed database. */
+export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string):LabBench{
+ const device=placedLabDevices(bench).find(d=>d.id===id);
+ const vessel=bench.vessels.find(v=>v.id===vesselId);
+ if(!device||!vessel)return bench;
+ if((device.kind==="hotplate"||device.kind==="burner")&&
+  !["beaker","tube","flask","conical","dish","crucible"].includes(vessel.kind))return bench;
+ const next=useLabDevice(bench,device.kind,vesselId);
+ const placedDevices=placedLabDevices(next).map(d=>d.id===id?
+  {...d,active:true,linkedVesselId:vesselId}:d);
+ return {...next,placedDevices,event:next.event+1};
+}
+export function stopPlacedLabDevice(bench:LabBench,id:string):LabBench{
+ const target=placedLabDevices(bench).find(d=>d.id===id);
+ if(!target?.active)return bench;
+ const placedDevices=placedLabDevices(bench).map(d=>d.id===id?
+  {...d,active:false,linkedVesselId:undefined}:d);
+ const stirringVesselId=target.kind==="stirrer"&&
+  bench.stirringVesselId===target.linkedVesselId?undefined:bench.stirringVesselId;
+ return {...bench,placedDevices,stirringVesselId,event:bench.event+1};
+}
 export function toggleLabDevice(bench:LabBench,id:LabDevice):LabBench{
  const devices=bench.devices??[];
  if(!labDevices.some(v=>v.id===id))return bench;
@@ -178,7 +241,7 @@ export type LabVessel={
  completedReaction?:ReactionCase;
 };
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;
- settings?:LabBenchSettings;devices?:LabDevice[];titration?:TitrationModel;stirringVesselId?:string;
+ settings?:LabBenchSettings;devices?:LabDevice[];placedDevices?:LabPlacedDevice[];titration?:TitrationModel;stirringVesselId?:string;
  instrumentTarget?:{kind:"tripod"|"thermometer";vesselId:string};
  titrationPair?:{sourceId:string;targetId:string};}
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=6;
@@ -262,12 +325,16 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
  return {...bump(bench,vessels,bench.selectedId===id?(vessels[0]?.id??""):bench.selectedId),
   stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId,
   instrumentTarget:bench.instrumentTarget?.vesselId===id?undefined:bench.instrumentTarget,
+  placedDevices:placedLabDevices(bench).map(d=>d.linkedVesselId===id?
+   {...d,linkedVesselId:undefined,active:false}:d),
   titrationPair:bench.titrationPair&&(bench.titrationPair.sourceId===id||bench.titrationPair.targetId===id)?
    undefined:bench.titrationPair};
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
  const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
+  placedDevices:placedLabDevices(next).map(d=>d.linkedVesselId===id?
+   {...d,linkedVesselId:undefined,active:false}:d),
   titrationPair:next.titrationPair&&(next.titrationPair.sourceId===id||next.titrationPair.targetId===id)?
    undefined:next.titrationPair});
 }
@@ -405,6 +472,8 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  for(const key of Object.keys(mineSettings) as (keyof LabBenchSettings)[]){
   if(mineSettings[key]!==originalSettings[key])settings[key]=mineSettings[key];
  }
+ const placedDevices=JSON.stringify(mine.placedDevices??null)===JSON.stringify(previous.placedDevices??null)?
+  remote.placedDevices:mine.placedDevices;
  const devices=JSON.stringify(mine.devices??[])===JSON.stringify(previous.devices??[])?
   remote.devices:mine.devices;
  const titration=JSON.stringify(mine.titration??null)===JSON.stringify(previous.titration??null)?
@@ -415,6 +484,6 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
   remote.stirringVesselId:mine.stirringVesselId;
  const titrationPair=JSON.stringify(mine.titrationPair??null)===JSON.stringify(previous.titrationPair??null)?
   remote.titrationPair:mine.titrationPair;
- return {vessels:limited,selectedId,settings,devices,titration,titrationPair,stirringVesselId,instrumentTarget,
+ return {vessels:limited,selectedId,settings,devices,placedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,
   event:Math.max(remote.event,mine.event)+1};
 }
