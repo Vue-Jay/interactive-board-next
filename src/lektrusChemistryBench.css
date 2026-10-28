@@ -1137,3 +1137,24 @@
  .lektrus-lab-equipment-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(prefers-reduced-motion:reduce){.lektrus-lab-titration-drop{animation:none}}
+
+/* Labels take up to two natural word-wrapped lines, no ellipsis or mid-word clipping. */
+.lektrus-lab-vessel-label{width:100%;min-width:0;text-align:center;line-height:1.2}
+.lektrus-lab-vessel-label b{display:block;max-width:100%;min-width:0;
+ white-space:normal!important;overflow:visible!important;
+ overflow-wrap:break-word;hyphens:auto;line-height:1.2;text-align:center;
+ font-size:clamp(9px,1vw,11px)}
+.lektrus-lab-bench .lektrus-lab-shelf-item small{
+ -webkit-line-clamp:unset!important;line-clamp:unset!important;
+ overflow:visible!important;max-height:none!important}
+@keyframes lektrus-stir-liquid{
+ 0%{transform:rotate(0deg) scale(1);opacity:.6}
+ 50%{transform:rotate(180deg) scale(.88);opacity:1}
+ 100%{transform:rotate(360deg) scale(1);opacity:.6}
+}
+.lektrus-lab-stir-vortex{transform-origin:50px 90px;
+ animation:lektrus-stir-liquid 1.4s linear infinite}
+.lektrus-lab-bench .lektrus-lab-vessel.is-stirring svg{
+ filter:drop-shadow(0 0 2px #6edbc8)}
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-stir-vortex{animation:none}
+@media(prefers-reduced-motion:reduce){.lektrus-lab-stir-vortex{animation:none}}
