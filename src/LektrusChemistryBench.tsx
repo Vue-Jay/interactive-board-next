@@ -279,6 +279,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [contactCountdown,setContactCountdown]=useState<string|null>(null);
  const cancelContact=()=>{if(contactTimer.current)clearTimeout(contactTimer.current);
   contactTimer.current=null;contactRef.current=null;setContactCountdown(null);};
+ useEffect(()=>()=>{if(contactTimer.current)clearTimeout(contactTimer.current)},[]);
  const [shelfGhost,setShelfGhost]=useState<{kind:LabGlassware;x:number;y:number}|null>(null);
  const [dropTarget,setDropTarget]=useState<string|null>(null);
  const [dropDeviceId,setDropDeviceId]=useState<string|null>(null);
@@ -556,7 +557,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    else if(inGlassware(p))returnGlass(g.id);
    else{
     const target=targetAt(g.id,p);
-    if(target&&contacted){setNotice("Контакт завершён");}
+    if(target&&contacted){setLocalPourId(null);}
     else if(target){setNotice("Подержите сосуд над другим 2 секунды");}
     else{
      const rect=host.current?.getBoundingClientRect();
