@@ -677,8 +677,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <strong>{labDevices.find(d=>d.id===activeDevice.kind)?.name}</strong>
    <label>Сосуд
-    <select aria-label="Сосуд для установки" value={bench.vessels.some(v=>v.id===bench.selectedId)?
-     bench.selectedId:(bench.vessels[0]?.id??"")}
+    <select aria-label="Сосуд для установки" value={bench.vessels.some(v=>
+     v.id===bench.selectedId&&canMountLabVessel(activeDevice.kind,v.kind))?
+     bench.selectedId:(bench.vessels.find(v=>canMountLabVessel(activeDevice.kind,v.kind))?.id??"")}
      onChange={e=>onSelect?.(e.target.value)}>
      {bench.vessels.filter(v=>canMountLabVessel(activeDevice.kind,v.kind))
       .map(v=><option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
@@ -687,7 +688,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    {activeDevice.kind!=="tripod"&&<div className="lektrus-lab-device-power">
     <button type="button" className={activeDevice.powered?"is-on":""}
      onClick={e=>{e.stopPropagation();
-      const next=setPlacedDevicePower(bench,activeDevice.id,!activeDevice.powered);
+      const next=setPlacedDevicePower({...bench,simulationAtMs:Date.now()},activeDevice.id,!activeDevice.powered);
       if(next!==bench){onChange?.(next);
        setNotice(activeDevice.powered?"Прибор выключен":"Прибор включён")}
       else setNotice("Для мешалки поставьте посуду с раствором");
@@ -776,7 +777,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <button type="button" className={selectedBurette.buretteOpen?"is-open":""}
     disabled={!selectedBurette.reagents.length||!chosenValveTarget}
     onClick={e=>{e.stopPropagation();
-     const next=setLabBuretteValve(bench,selectedBurette.id,
+     const next=setLabBuretteValve({...bench,simulationAtMs:Date.now()},selectedBurette.id,
       !selectedBurette.buretteOpen,chosenValveTarget,selectedBurette.buretteRateMlS);
      onChange?.(next);
      setNotice(selectedBurette.buretteOpen?"Кран бюретки закрыт":"Кран бюретки открыт");
