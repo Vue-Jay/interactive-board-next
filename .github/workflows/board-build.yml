@@ -29,6 +29,7 @@ jobs:
       - run: node scripts/test-lektrus-responsive.mjs
       - run: node scripts/test-lektrus-editor-ux.mjs
       - run: node scripts/test-lektrus-subject-editors.mjs
+      - run: node scripts/test-lektrus-subject-catalogue-ui.mjs
       - run: node scripts/test-lektrus-chemistry-ux.mjs
       - run: node scripts/test-lektrus-chemical-equation-workspace.mjs
       - run: node scripts/test-lektrus-chemical-live-board.mjs
