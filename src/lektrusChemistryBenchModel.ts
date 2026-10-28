@@ -43,10 +43,9 @@ export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:numbe
  if(!labDevices.some(v=>v.id===kind))return bench;
  const existing=placedLabDevices(bench);
  if(existing.length>=MAX_LAB_DEVICES)return bench;
- let number=1;
- while(existing.some(v=>v.id==="device-"+number))number++;
  const occupied=existing.length;
- const placed:LabPlacedDevice={id:"device-"+number,kind,
+ const id="device-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9);
+ const placed:LabPlacedDevice={id,kind,
   x:clampDevice(point?.x??(12+(occupied%4)*12),9,81),
   y:clampDevice(point?.y??(63+Math.floor(occupied/4)*15),53,84)};
  return {...bench,placedDevices:[...existing,placed],
@@ -496,10 +495,27 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  for(const key of Object.keys(mineSettings) as (keyof LabBenchSettings)[]){
   if(mineSettings[key]!==originalSettings[key])settings[key]=mineSettings[key];
  }
- const placedDevices=JSON.stringify(mine.placedDevices??null)===JSON.stringify(previous.placedDevices??null)?
-  remote.placedDevices:mine.placedDevices;
- const devices=JSON.stringify(mine.devices??[])===JSON.stringify(previous.devices??[])?
-  remote.devices:mine.devices;
+ // Merge concurrent apparatus additions and moves by durable instance ID.
+ // Replacing the entire array would erase a peer's newly placed instrument.
+ const physicalOld=new Map(placedLabDevices(previous).map(d=>[d.id,d]));
+ const physicalMine=new Map(placedLabDevices(mine).map(d=>[d.id,d]));
+ const physicalRemote=new Map(placedLabDevices(remote).map(d=>[d.id,d]));
+ const placedDevices:LabPlacedDevice[]=[];
+ for(const id of new Set([...physicalOld.keys(),...physicalRemote.keys(),...physicalMine.keys()])){
+  const base=physicalOld.get(id),local=physicalMine.get(id),peer=physicalRemote.get(id);
+  if(!local&&base)continue;
+  if(!peer&&base&&local&&JSON.stringify(local)===JSON.stringify(base))continue;
+  if(!local){if(peer)placedDevices.push(peer);continue}
+  if(!base||!peer){placedDevices.push(local);continue}
+  const combined={...peer};
+  for(const key of Object.keys(local) as (keyof LabPlacedDevice)[]){
+   if(JSON.stringify(local[key])!==JSON.stringify(base[key]))
+    (combined as unknown as Record<string,unknown>)[key]=local[key];
+  }
+  placedDevices.push(combined);
+ }
+ const limitedDevices=placedDevices.slice(0,MAX_LAB_DEVICES);
+ const devices=[...new Set(limitedDevices.map(d=>d.kind))];
  const titration=JSON.stringify(mine.titration??null)===JSON.stringify(previous.titration??null)?
   remote.titration:mine.titration;
  const instrumentTarget=JSON.stringify(mine.instrumentTarget??null)===JSON.stringify(previous.instrumentTarget??null)?
@@ -508,6 +524,6 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
   remote.stirringVesselId:mine.stirringVesselId;
  const titrationPair=JSON.stringify(mine.titrationPair??null)===JSON.stringify(previous.titrationPair??null)?
   remote.titrationPair:mine.titrationPair;
- return {vessels:limited,selectedId,settings,devices,placedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,
+ return {vessels:limited,selectedId,settings,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,
   event:Math.max(remote.event,mine.event)+1};
 }
