@@ -69,7 +69,7 @@ assert.match(activityUi,/lektrus-activity-gap-choices/,"Teacher-created options 
 assert.ok(!activityUi.includes("lektrus-activity-quick-keys"),"No unsolicited global alphabet or punctuation palette");
 assert.match(activityUi,/placeholder=""/,"Ordinary blanks have no prefilled answers or pickers");
 assert.match(activityUi,/const pairs=quickSource.split/,"Teachers can paste vocabulary pairs");
-assert.match(board,/orthography=\{tone==="russian"/,"Pupil board enables the orthography palette");
+assert.match(board,/punctuation=\{tone==="russian"/,"Pupil board distinguishes punctuation gaps");
 assert.match(styles,/width:min\(1180px/,"Language editor gets enough working space");
 const selectable=parseLanguageGapText("бер[е]за, п[о]ле");
 selectable.activity.blanks[0].choices=["е","и"];
