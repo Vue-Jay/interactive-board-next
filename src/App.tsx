@@ -38,6 +38,7 @@ import {boardObjectTypeName} from "./boardObjectNames";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
+import {mergeLabBench,readLabBench} from "./lektrusChemistryBenchModel";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,subjectBoardLocked,entryBelongsToSubject,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
 import {LektrusSubjectBoardSolutionEditor} from "./LektrusSubjectBoardSolution";
@@ -5494,6 +5495,19 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry));
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
    };
+   const liveChemistryBenchUpdate=(before:Item,next:Item)=>{
+     const latest=itemsRef.current.find(v=>v.id===next.id);
+     if(!latest||latest.graphFigureId!=="chem-experiment-free"||
+       latest.locked||!canEdit||structurallyLockedForStudent(latest))return;
+     if(JSON.stringify(before.scienceLabBench)===JSON.stringify(next.scienceLabBench))return;
+     const merged=mergeLabBench(readLabBench(before),readLabBench(next),readLabBench(latest));
+     const updated={...latest,scienceLabBench:merged,scienceReagents:undefined,
+       scienceExperimentStage:undefined};
+     if(JSON.stringify(updated.scienceLabBench)===JSON.stringify(latest.scienceLabBench))return;
+     if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+     commit(itemsRef.current.map(v=>v.id===latest.id?updated:v));
+     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
+   };
    const liveChemicalEquationUpdate=(before:Item,next:Item)=>{
      const latest=itemsRef.current.find(candidate=>candidate.id===next.id);
      if(!latest||!latest.graphFigureId?.startsWith("chem-formula-")||
@@ -7929,19 +7943,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           <LektrusScienceEditor key={scienceEditorItem.id}
           canTeach={roleCapabilities.canUseTeacherTools}
           item={scienceEditorItem.graphFigureId?.startsWith("chem-organic-")||
-            scienceEditorItem.graphFigureId?.startsWith("chem-formula-")?
+            scienceEditorItem.graphFigureId?.startsWith("chem-formula-")||
+            scienceEditorItem.graphFigureId==="chem-experiment-free"?
             (remoteLiveItems[scienceEditorItem.id]??items.find(x=>x.id===scienceEditorItem.id)??scienceEditorItem):
             scienceEditorItem}
           shared={items.some(x=>x.id===scienceEditorItem.id)}
           onOrganicLiveChange={(before,next)=>liveOrganicEditorUpdate(before,next)}
           onFormulaLiveChange={(before,next)=>liveChemicalEquationUpdate(before,next)}
+          onExperimentLiveChange={(before,next)=>liveChemistryBenchUpdate(before,next)}
           subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
           onCancel={()=>scienceEditorItem.graphFigureId?.startsWith("chem-formula-")?
             closeChemicalEquationEditor(false):setScienceEditorItem(null)}
           onClose={next=>{
             if(next.graphFigureId?.startsWith("chem-formula-")){closeChemicalEquationEditor(false);return;}
             if(itemsRef.current.some(i=>i.id===next.id)){
-              if(next.graphFigureId?.startsWith("chem-organic-"))
+              if(next.graphFigureId?.startsWith("chem-organic-")||
+                 next.graphFigureId==="chem-experiment-free")
                 finalizePhysicalEditor(next,false);
               else{
                 commit(itemsRef.current.map(i=>i.id===next.id?next:i));
@@ -7952,7 +7969,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           }}
           onSave={next=>{
             if(next.graphFigureId?.startsWith("chem-formula-")){closeChemicalEquationEditor(true);return;}
-            if(next.graphFigureId?.startsWith("chem-organic-")){
+            if(next.graphFigureId?.startsWith("chem-organic-")||
+               next.graphFigureId==="chem-experiment-free"){
               finalizePhysicalEditor(next,true);
               setNotice("Органическая структура синхронизирована");
             }else{
