@@ -820,7 +820,12 @@ export function parseDocument(raw: string): DocumentData {
               ["hotplate","burner","stirrer","tripod","thermometer"].includes(d.kind)&&
               Number.isFinite(d.x)&&d.x>=9&&d.x<=81&&Number.isFinite(d.y)&&d.y>=53&&d.y<=84&&
               (d.active==null||typeof d.active==="boolean")&&
+              (d.powered==null||typeof d.powered==="boolean")&&
+              (d.heatLevel==null||[1,2,3].includes(d.heatLevel))&&
+              (d.temperatureC==null||(Number.isFinite(d.temperatureC)&&d.temperatureC>=0&&d.temperatureC<=700))&&
               (d.linkedVesselId==null||bench.vessels.some(v=>v.id===d.linkedVesselId)))))||
+          (bench.simulationAtMs!=null&&
+           (!Number.isFinite(bench.simulationAtMs)||bench.simulationAtMs<0))||
           (bench.titration!=null&&!validLabTitration(bench.titration))||
           (bench.titrationPair!=null&&(
            !bench.titration||
@@ -845,6 +850,10 @@ export function parseDocument(raw: string): DocumentData {
             environments.includes(v.environment)&&typeof v.observed==="boolean"&&
             (v.uncertain==null||typeof v.uncertain==="boolean")&&
             (v.indicator==null||indicators.includes(v.indicator))&&
+            (v.temperatureC==null||(Number.isFinite(v.temperatureC)&&v.temperatureC>=0&&v.temperatureC<=450))&&
+            (v.buretteOpen==null||typeof v.buretteOpen==="boolean")&&
+            (v.buretteRateMlS==null||[.05,.2,1].includes(v.buretteRateMlS))&&
+            (v.buretteTargetId==null||bench.vessels.some(x=>x.id===v.buretteTargetId&&x.id!==v.id))&&
             (v.doses==null||(typeof v.doses==="object"&&
                Object.keys(v.doses).length<=6&&
                Object.entries(v.doses).every(([id,dose])=>
