@@ -1,3 +1,4 @@
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {cloneElement,isValidElement,useEffect,useRef,useState,type ReactElement,type ReactNode} from "react";
 import "./lektrusGeometryWorkspace.css";
 import LektrusGeometryToolIcon from "./LektrusGeometryToolIcon";
@@ -664,7 +665,7 @@ export default function LektrusGraphEditor({draft,userId,preview,mode,collaborat
         {mode==="geometry"&&<button type="button" className={tab==="geometry"?"active":""} onClick={()=>{setTab("geometry");setSettingsOpen(true)}}>Элементы</button>}
         {!isSolid&&<button type="button" className={tab==="points"||tab==="connect"?"active":""} onClick={()=>{setTab("points");setSettingsOpen(true)}}>Точки</button>}
       </nav>;
-  return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""} ${mode==="geometry"?"lektrus-geometry-workspace":""} ${!settingsOpen?"is-settings-hidden":""}`} onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
+  return <div className={`graph-editor-backdrop lektrus-graph-overlay ${previewExpanded?"is-preview-expanded":""} ${mode==="geometry"?"lektrus-geometry-workspace":""} ${!settingsOpen?"is-settings-hidden":""}`} style={subjectEditorStyle("mathematics")} onPointerDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <section className="graph-editor-modal lektrus-graph-dialog" role="dialog" aria-modal="true" aria-label="Редактор учебного объекта"
       onPointerDown={e=>e.stopPropagation()}>
       <header className="graph-editor-header lektrus-graph-head">
