@@ -184,9 +184,8 @@ type RunnerProps={
  onChange?:(response:SubjectTaskActivityResponse)=>void;
  compact?:boolean;
  punctuation?:boolean;
- orthography?:boolean;
 };
-export function LektrusSubjectActivityRunner({activity,response,onChange,compact=false,punctuation=false,orthography=false}:RunnerProps){
+export function LektrusSubjectActivityRunner({activity,response,onChange,compact=false,punctuation=false}:RunnerProps){
  const [activeLeft,setActiveLeft]=useState<number|null>(null);
  const data=response??{};
  const patch=(values:Partial<SubjectTaskActivityResponse>)=>onChange?.({...data,...values,checked:false});
