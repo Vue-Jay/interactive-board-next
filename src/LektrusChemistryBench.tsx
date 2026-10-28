@@ -93,6 +93,10 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
  const singlePhase=vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const geo=shape[vessel.kind];
  const labels=vessel.reagents.map(r=>substances.find(s=>s.id===r)?.formula??r);
+ const gearX=["tube","flask","conical","volumetric","pipette","burette"].includes(vessel.kind)?66:
+  vessel.kind==="cylinder"?75:vessel.kind==="crucible"?80:84;
+ const gearY=vessel.kind==="dish"?70:vessel.kind==="crucible"?59:
+  vessel.kind==="funnel"?36:15;
  const substanceState=!vessel.reagents.length?"Пусто":
   observation==="precipitate"?"↓ Осадок":
   observation==="gas"?"↑ Выделяется газ":
@@ -174,7 +178,7 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
    {/* Readouts printed on the vessel itself, not floating HTML badges. */}
    <g className="lektrus-lab-ware-engraving">
     <rect x="24" y="68" width="52" height="32" rx="4"
-     fill="#f0faf3" fillOpacity=".88" stroke="#83b1a6" strokeWidth=".7"/>
+     fill="#f0faf3" fillOpacity=".58" stroke="#83b1a6" strokeWidth=".7"/>
     <text x="50" y="78" fontSize="9" fontWeight="800" textAnchor="middle"
      fill="#285a52" textLength={Math.min(48,substanceState.length*6)}
      lengthAdjust="spacingAndGlyphs">{substanceState}</text>
@@ -190,8 +194,8 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
     onClick={e=>{e.stopPropagation();onOpenSettings?.()}}
     onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){
      e.stopPropagation();e.preventDefault();onOpenSettings?.()}}}>
-    <circle cx="84" cy="15" r="11" fill="#e7f5e9" stroke="#65a58d" strokeWidth="1.6"/>
-    <text x="84" y="20" textAnchor="middle" fontSize="15"
+    <circle cx={gearX} cy={gearY} r="9" fill="#e7f5e9" stroke="#65a58d" strokeWidth="1.6"/>
+    <text x={gearX} y={gearY+4.5} textAnchor="middle" fontSize="12"
      fontWeight="900" fill="#366d57">⚙</text>
    </g>}
 
