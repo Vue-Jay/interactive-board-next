@@ -258,3 +258,36 @@ body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button .lektrus-su
 @media(prefers-reduced-motion:reduce){
   body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button{transition:none!important}
 }
+
+
+/* Full-width subject task: title and placement live in a single flexible
+   text column, never competing for 50% of a tiny two-column tile. */
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button.is-subject-task{
+  grid-column:1 / -1!important;
+  min-height:66px!important;padding:9px 12px!important;
+  border-color:color-mix(in srgb,var(--lt-primary,#267a6b) 35%,var(--lt-line,#d7e2f0))!important;
+  background:color-mix(in srgb,var(--lt-primary,#267a6b) 6%,var(--lt-surface,#fff))!important;
+  gap:11px!important;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-copy{
+  min-width:0;flex:1 1 0;display:flex;flex-direction:column;
+  align-items:flex-start;justify-content:center;gap:5px;text-align:left;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-copy .lektrus-subject-tools-name{
+  flex:none;max-width:100%;font-size:12px!important;line-height:1.35!important;
+  hyphens:none!important;word-break:normal!important;overflow-wrap:break-word!important;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-task-placement{
+  display:inline-flex;align-items:center;align-self:flex-start;
+  max-width:100%;white-space:normal;
+  padding:3px 7px;border-radius:5px;
+  background:color-mix(in srgb,var(--lt-primary,#267a6b) 11%,transparent);
+  color:var(--lt-primary,#267a6b)!important;
+  font-size:10px!important;font-weight:700!important;line-height:1.25!important;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button:not(.is-subject-task){
+  min-height:66px!important;
+}
+body>.lektrus-subject-tools-panel .lektrus-subject-tools-list button:hover.is-subject-task{
+  background:color-mix(in srgb,var(--lt-primary,#267a6b) 11%,var(--lt-surface,#fff))!important;
+}
