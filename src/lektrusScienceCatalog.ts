@@ -52,8 +52,8 @@ export const scienceToolGroups:ScienceToolGroup[]=[
    group:"Химия · органика",templates:[
     {id:"chem-organic-free",label:"Новая структура",hint:"Чистый холст для построений"}
    ]},
-  {id:"chem-formulas",subject:"chem",label:"Химические уравнения",
-   description:"Ввод формулы, условия над стрелкой, специальные символы и предпросмотр",
+  {id:"chem-formulas",subject:"chem",label:"Уравнения реакций",
+   description:"Создаёт отдельный лист химических уравнений с предпросмотром и условиями реакций",
    group:"Химия · запись",templates:[
     {id:"chem-formula-free",label:"Новая формула или уравнение",hint:"Чистый редактор"}
    ]},
