@@ -26,9 +26,9 @@ const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
   liquid:"M32 71H68V100Q68 122 50 122Q32 122 32 100Z"
  },
  flask:{
-  inside:"M41 12H59V48L80 101Q84 119 66 119H34Q16 119 20 101L41 48Z",
-  outline:"M40 10V47L18 102Q13 122 34 122H66Q87 122 82 102L60 47V10M38 10H62",
-  liquid:"M27 75H73L81 103Q84 119 66 119H34Q16 119 19 103Z"
+  inside:"M42 11H58V46Q81 54 81 87Q81 117 50 117Q19 117 19 87Q19 54 42 46Z",
+  outline:"M40 9V45Q17 53 17 86Q17 122 50 122Q83 122 83 86Q83 53 60 45V9M38 9H62",
+  liquid:"M19 75Q50 69 81 75V91Q79 118 50 118Q21 118 19 91Z"
  },
  cylinder:{
   inside:"M28 10H72V109Q72 118 65 118H35Q28 118 28 109Z",
@@ -140,6 +140,19 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
      r={2+i%3} stroke="#528eb1" strokeWidth=".9" fill="#fff" fillOpacity=".2"
      style={{animationDelay:-(i%8)*.27+"s",animationDuration:2+i%5*.32+"s"}}/>)}
    </g>
+   {["beaker","cylinder","burette"].includes(vessel.kind)&&
+    <g className="lektrus-lab-ware-graduations" stroke="#638e8c" strokeWidth="1.25" opacity=".9">
+     {Array.from({length:8},(_,i)=><path key={i}
+      d={vessel.kind==="burette"?`M44 ${22+i*10}h${i%2?6:10}`:
+       vessel.kind==="cylinder"?`M30 ${29+i*10}h${i%2?7:12}`:
+       `M65 ${28+i*10}h${i%2?6:11}`}/>)}
+    </g>}
+   {vessel.kind==="burette"&&<g className="lektrus-lab-burette-stopcock">
+    <path d="M42 112H61M50 111V126" stroke="#497b76" strokeWidth="3" strokeLinecap="round"/>
+    <path d="M39 114H64" stroke={vessel.buretteOpen?"#27a789":"#758f8c"} strokeWidth="5" strokeLinecap="round"/>
+    <circle cx="52" cy="114" r="4" fill="#e2f3ed" stroke="#47776f" strokeWidth="1.5"/>
+    {vessel.buretteOpen&&<circle cx="50" cy="130" r="2.6" fill="#54b4c9" className="lektrus-lab-burette-drop"/>}
+   </g>}
    <path d={geo.outline} fill="none" stroke="#75a4a4" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
    <path d={geo.outline} fill="none" stroke="#fff" strokeWidth="1.25" opacity=".8" strokeLinecap="round"/>
    {vessel.indicator&&<g className="lektrus-lab-indicator-strip">
