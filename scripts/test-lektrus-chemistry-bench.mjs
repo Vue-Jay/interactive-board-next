@@ -54,7 +54,7 @@ for(let i=0;i<9;i++)full=lab.addLabVessel(full,"flask");
 assert.equal(full.vessels.length,lab.MAX_BENCH_VESSELS,"Glassware is bounded");
 assert.equal(new Set(full.vessels.map(v=>v.id)).size,full.vessels.length);
 full=lab.positionLabVessel(full,"v1",-500,500);
-assert.equal(full.vessels[0].x,8);assert.equal(full.vessels[0].y,92);
+assert.equal(full.vessels[0].x,10);assert.equal(full.vessels[0].y,90);
 let indicatorBench=lab.defaultLabBench();
 assert.equal(lab.setLabIndicator(indicatorBench,"v1","litmus"),indicatorBench,
  "Indicators cannot be inserted into empty glassware");
