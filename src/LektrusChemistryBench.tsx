@@ -121,6 +121,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  onChange,onSelect,onPour,onDropReagent,onOpenEditor}:SurfaceProps){
  const host=useRef<HTMLDivElement>(null);
  const dialogRef=useRef<HTMLElement>(null);
+ const sinkId=useId().replace(/:/g,"");
  const scrollRef=useRef<HTMLDivElement>(null);
  const gesture=useRef<{id:string;startX:number;startY:number;x:number;y:number;dragged:boolean}|null>(null);
  const shelfGesture=useRef<{kind:LabGlassware;startX:number;startY:number;dragged:boolean}|null>(null);
@@ -155,6 +156,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
  useEffect(()=>{if(cabinet)dialogRef.current?.focus()},[cabinet]);
+ useEffect(()=>{scrollRef.current?.scrollTo({top:0})},
+  [cabinet,cabinetTab,query,category,effectFilter]);
  useEffect(()=>{
   if(!cabinet)return;
   const onEscape=(event:KeyboardEvent)=>{
@@ -338,11 +341,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <svg className="lektrus-lab-sink-art" viewBox="0 0 220 164"
     role="img" aria-label="Лабораторная раковина с краном">
     <defs>
-     <linearGradient id="lektrus-sink-steel" x1="0" y1="0" x2=".9" y2="1">
+     <linearGradient id={sinkId+"-steel"} x1="0" y1="0" x2=".9" y2="1">
       <stop stopColor="#f1f8f7"/><stop offset=".47" stopColor="#b7cecb"/>
       <stop offset="1" stopColor="#789f9a"/>
      </linearGradient>
-     <linearGradient id="lektrus-sink-ceramic" x1="0" y1="0" x2="0" y2="1">
+     <linearGradient id={sinkId+"-ceramic"} x1="0" y1="0" x2="0" y2="1">
       <stop stopColor="#f4f8f5"/><stop offset=".55" stopColor="#d8e6e2"/>
       <stop offset="1" stopColor="#a4c1b9"/>
      </linearGradient>
@@ -350,9 +353,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <ellipse cx="113" cy="138" rx="100" ry="14" fill="#14392f" opacity=".19"/>
     <path d="M27 87H194Q205 87 203 100L194 137Q191 145 179 145H45Q33 145 30 137L19 100Q17 87 27 87Z"
      fill="#8ca7a0" stroke="#6c928a" strokeWidth="2"/>
-    <ellipse cx="110" cy="94" rx="96" ry="39" fill="url(#lektrus-sink-steel)" stroke="#7baba2" strokeWidth="3"/>
+    <ellipse cx="110" cy="94" rx="96" ry="39" fill={"url(#"+sinkId+"-steel)"} stroke="#7baba2" strokeWidth="3"/>
     <ellipse cx="110" cy="97" rx="79" ry="27" fill="#779d98" stroke="#c9e2d9" strokeWidth="3"/>
-    <ellipse cx="110" cy="105" rx="70" ry="22" fill="url(#lektrus-sink-ceramic)" opacity=".98"/>
+    <ellipse cx="110" cy="105" rx="70" ry="22" fill={"url(#"+sinkId+"-ceramic)"} opacity=".98"/>
     <ellipse cx="110" cy="115" rx="17" ry="5.5" fill="#5e8582" opacity=".65"/>
     <ellipse cx="110" cy="114" rx="10" ry="3" fill="#3d716f"/>
     <path d="M112 80V40Q112 26 126 26H147Q160 26 160 39V50"
@@ -435,7 +438,19 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onClick={e=>{e.stopPropagation();if(e.target===e.currentTarget)setCabinet(null)}}>
     <section ref={dialogRef} tabIndex={-1}
      className={"lektrus-lab-furniture-dialog is-"+cabinet} role="dialog" aria-modal="true"
-     aria-label={cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":"Настройки химического стола"}>
+     aria-label={cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":"Настройки химического стола"}     onKeyDown={event=>{
+      if(event.key!=="Tab")return;
+      const focusable=dialogRef.current?.querySelectorAll<HTMLElement>(
+       'button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex="0"]');
+      if(!focusable?.length)return;
+      const first=focusable[0],last=focusable[focusable.length-1];
+      if(event.shiftKey&&(document.activeElement===first||document.activeElement===dialogRef.current)){
+       event.preventDefault();last.focus();
+      }else if(!event.shiftKey&&document.activeElement===last){
+       event.preventDefault();first.focus();
+      }
+     }}>
+     <header className="lektrus-lab-modal-head">
      <header className="lektrus-lab-modal-head">
       <div className="lektrus-lab-modal-heading">
        <span className="lektrus-lab-modal-emblem" aria-hidden="true">{cabinet==="reagents"?"⚗":cabinet==="glassware"?"◈":"⚙"}</span>
