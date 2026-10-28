@@ -362,6 +362,36 @@ valve=lab.setLabBuretteValve(valve,valveSource.id,false);
 assert.equal(valve.vessels.find(v=>v.id===valveSource.id).buretteOpen,false);
 assert.equal(lab.setLabBuretteValve(valve,valveSource.id,true,"v1",44),valve,
  "Unsupported flow rates cannot be selected");
+let preheated=lab.defaultLabBench();
+preheated=lab.addPlacedLabDevice(preheated,"hotplate");
+const heaterId=lab.placedLabDevices(preheated)[0].id;
+preheated=lab.setPlacedDevicePower(preheated,heaterId,true);
+assert.equal(preheated.placedDevices[0].powered,true);
+preheated=lab.applyPlacedLabDevice(preheated,heaterId,"v1");
+assert.equal(preheated.placedDevices[0].powered,true,
+ "Putting a beaker onto a powered heater must keep the heater on");
+preheated=lab.advanceLabSimulation(preheated,1000);
+preheated=lab.advanceLabSimulation(preheated,8000);
+assert.ok(preheated.vessels[0].temperatureC>22);
+preheated=lab.setPlacedDevicePower(preheated,heaterId,false);
+const beforeCool=preheated.vessels[0].temperatureC;
+preheated=lab.advanceLabSimulation(preheated,18000);
+assert.ok(preheated.vessels[0].temperatureC<beforeCool,
+ "Vessel temperature should cool gradually after the appliance is switched off");
+let carbonate=lab.defaultLabBench();
+carbonate=lab.putLabReagent(carbonate,"v1","CaCO3",{value:5,unit:"g"});
+carbonate=lab.setLabEnvironment(carbonate,"v1","dry");
+carbonate=lab.addPlacedLabDevice(carbonate,"hotplate");
+const calcinerId=lab.placedLabDevices(carbonate)[0].id;
+carbonate=lab.applyPlacedLabDevice(carbonate,calcinerId,"v1");
+carbonate=lab.setPlacedDevicePower(carbonate,calcinerId,true);
+carbonate=lab.advanceLabSimulation(carbonate,1000);
+for(let i=1;i<=80;i++)carbonate=lab.advanceLabSimulation(carbonate,1000+i*10000);
+assert.notEqual(lab.labObservation(carbonate.vessels[0]).status,"reaction",
+ "Carbonate calcination should not be faked on a low-temperature hotplate");
+assert.match(read("src/LektrusChemistryBench.tsx"),/setPlacedDevicePower/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/setLabBuretteValve/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-glass-temperature/);
 const base=lab.defaultLabBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
