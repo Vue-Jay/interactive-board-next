@@ -54,8 +54,12 @@ export function reagentAppearance(id:string,environment:ReactionEnvironment="aqu
  const record=vivid[id];
  const kind=substance?.kind??"";
  const dry=environment==="dry";
- const solid=dry||insoluble.has(id)||["оксид","металл","неметалл","простое вещество"].includes(kind);
- const gas=kind==="газ";
+ const gas=kind==="газ"||(id==="HCl"&&dry);
+ const liquid=new Set(["H2O","H2SO4","HNO3","H3PO4","CH3COOH","H2O2",
+  "C2H5OH","CH3OH","Br2"]);
+ const solid=insoluble.has(id)||["оксид","металл","неметалл"].includes(kind)||
+  (kind==="простое вещество"&&id!=="Br2")||
+  (dry&&!gas&&!liquid.has(id));
  const phase=gas?"gas":kind==="металл"?"metal":solid?"solid":"solution";
  const color=solid?(record?.solid??(kind==="оксид"?"#dededa":"#e9e7df")):
   (record?.solution??(gas?"#e9f0e2":"#e4f1f2"));
