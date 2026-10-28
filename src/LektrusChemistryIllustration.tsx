@@ -69,10 +69,11 @@ export default function LektrusChemistryIllustration({item,onStageChange,onBench
  if(item.graphFigureId==="chem-experiment-free")return item.scienceLabBench?
   <div className="lektrus-chemistry-bench-on-board" tabIndex={0}
    aria-label="Прокручиваемый химический стол: колёсико, Shift с колёсиком, тачпад или пальцем"
-   data-board-interactive="true"
    onWheel={e=>e.stopPropagation()}
    onTouchMove={e=>e.stopPropagation()}>
-   <LektrusChemistryBenchSurface bench={bench} editable={!!onBenchChange} onOpenEditor={onOpenEditor}
+   <div className="lektrus-lab-object-grip"
+    aria-label="Переместить химический стол: перетащите за эту планку">Химический стол <span>Переместить объект</span></div>
+   <LektrusChemistryBenchSurface bench={bench} editable={!!onBenchChange}
     pouringId={pourSource} onChange={changeBench}
     onSelect={id=>changeBench(selectLabVessel(bench,id))}
     onPour={onBenchChange?pour:undefined}
