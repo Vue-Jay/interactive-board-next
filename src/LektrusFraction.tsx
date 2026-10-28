@@ -1,3 +1,4 @@
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {useEffect,useState,type MouseEvent} from "react";
 import type {Item} from "./boardModel";
 
@@ -81,7 +82,7 @@ export default function LektrusFractionEditor({item,onSave,onCancel,onClose}:{
     document.addEventListener("keydown",onKey,true);
     return()=>document.removeEventListener("keydown",onKey,true);
   },[onCancel,onClose,draft]);
-  return <div className="lektrus-fraction-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)onClose(draft)}}>
+  return <div className="lektrus-fraction-overlay" style={subjectEditorStyle("mathematics")} onPointerDown={e=>{if(e.target===e.currentTarget)onClose(draft)}}>
     <div className="lektrus-fraction-dialog" role="dialog" aria-modal="true" aria-label="Редактор дробей" onPointerDown={e=>e.stopPropagation()}>
       <header><div><strong>Наглядные дроби</strong><small>Доли целого и сравнение дробей</small></div>
         <button type="button" aria-label="Закрыть" onClick={()=>onClose(draft)}>×</button></header>
