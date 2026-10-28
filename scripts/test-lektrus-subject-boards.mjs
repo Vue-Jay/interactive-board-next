@@ -19,6 +19,35 @@ const app=read("src/App.tsx");
 const styles=read("src/lektrusSubjectBoard.css");
 const templates=read("src/lektrusSubjectTaskTemplates.ts");
 const colors=read("src/lektrusSubjectAccent.ts");
+const themes=read("src/lektrusSubjectEditorThemes.css");
+const toolIds=["chem-assignments","chem-formulas","physics-optics","physics-circuits",
+ "math-geometry","math-coordinate","maps-atlas","contour-atlas",
+ "history-atlas","bio-genetics","ru-morphemes","literature-analysis",
+ "civics-structure","language-flashcards","info-programming"];
+const colorRuntime=ts.transpileModule(colors,{compilerOptions:{
+ target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext
+}}).outputText.replace(/^export /gm,"");
+const toneHelpers=new Function(colorRuntime+
+ "\nreturn {subjectToneForToolId,subjectEditorStyle,subjectAccentPalette};")();
+const expectedTones=["chemistry","physics","mathematics","geography",
+ "history","biology","russian","literature","social","languages","informatics"];
+for(const tone of expectedTones){
+ const palette=toneHelpers.subjectAccentPalette[tone];
+ assert.ok(palette?.accent&&palette?.soft,"Palette exists for "+tone);
+ assert.equal(toneHelpers.subjectEditorStyle(tone)["--lektrus-tool-accent"],palette.accent);
+ assert.equal(toneHelpers.subjectEditorStyle(tone)["--lektrus-tool-soft"],palette.soft);
+}
+for(const id of toolIds)assert.ok(toneHelpers.subjectToneForToolId(id),id+" gets subject colors");
+for(const name of ["school","science","chem-equation","periodic","graph","optics",
+ "mechanics","circuit","motion","fraction","atom","subject-tools"]){
+ assert.ok(themes.includes(".lektrus-"+name),name+" editor inherits a subject theme");
+}
+assert.match(read("src/main.tsx"),/lektrusSubjectEditorThemes\.css/);
+assert.match(app,/collectChemistryObject\(/);
+assert.match(app,/!value\.subjectBoardStandalone/);
+assert.match(app,/id==="chem-formulas"\|\|id==="chem-assignments"/);
+assert.match(read("src/boardModel.ts"),/subjectBoardStandalone\?: boolean/);
+
 const chemical=read("src/lektrusChemicalBoardSurface.css");
 assert.match(board,/function LektrusTaskPreview\(/,"Ordinary subject tasks have a live student preview");
 assert.match(board,/\<LektrusSubjectBoardView item=\{sheet\}/,
