@@ -49,7 +49,7 @@ export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:numbe
  const id="device-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9);
  const placed:LabPlacedDevice={id,kind,
   x:clampDevice(point?.x??(22+(occupied%5)*13),9,79),
-  y:clampDevice(point?.y??(72+Math.floor(occupied/5)*8),63,84),
+  y:clampDevice(point?.y??(72+Math.floor(occupied/5)*8),58,84),
   powered:false,heatLevel:2,temperatureC:22};
  return {...bench,placedDevices:[...existing,placed],
   devices:[...new Set([...(bench.devices??[]),kind])],event:bench.event+1};
@@ -57,7 +57,7 @@ export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:numbe
 export function movePlacedLabDevice(bench:LabBench,id:string,x:number,y:number):LabBench{
  const existing=placedLabDevices(bench),source=existing.find(d=>d.id===id);
  if(!source)return bench;
- const updated={...source,x:clampDevice(x,9,79),y:clampDevice(y,63,84)};
+ const updated={...source,x:clampDevice(x,9,79),y:clampDevice(y,58,84)};
  const placedDevices=existing.map(d=>d.id===id?updated:d);
  // The supported vessel travels with a single appliance. In a burner+stand
  // pair, moving one support disconnects only that one, not its partner.
@@ -114,7 +114,7 @@ export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string):L
  const aligned=companion?{
   ...device,
   x:clampDevice(companion.x+(device.kind==="burner"?2.2:-2.2),9,79),
-  y:clampDevice(companion.y+(device.kind==="burner"?10:-10),63,84)
+  y:clampDevice(companion.y+(device.kind==="burner"?10:-10),58,84)
  }:device;
  const placedDevices=placedLabDevices(bench).map(d=>d.id===id?
   {...aligned,active:true,linkedVesselId:vesselId}:
