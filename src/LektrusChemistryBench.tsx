@@ -6,7 +6,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassw
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
-import {buildLabCatalog,cabinetColor,cabinetPhase,phaseNames,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
+import {buildLabCatalog,cabinetColor,phaseNames,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
