@@ -67,7 +67,7 @@ export function makeSciencePresetItem(id:SciencePresetId,x:number,y:number,creat
     "chem-experiment-lime":"Реакция CO₂ с известковой водой"
   };
   if(id==="chem-experiment-free")
-    return {...base,text:"Химический стол",scienceLabBench:{vessels:[{id:"v1",kind:"beaker",x:48,y:57,reagents:[],environment:"aqueous",observed:false}],selectedId:"v1",event:0},scienceReagents:[],scienceEnvironment:"aqueous",scienceExperimentStage:0,width:820,height:500};
+    return {...base,x:x-410,y:y-250,text:"Химический стол",scienceLabBench:{vessels:[{id:"v1",kind:"beaker",x:48,y:57,reagents:[],environment:"aqueous",observed:false}],selectedId:"v1",event:0},scienceReagents:[],scienceEnvironment:"aqueous",scienceExperimentStage:0,width:820,height:500};
   if(experimentPresets[id])
     return {...base,text:experimentPresets[id],scienceExperimentStage:0,width:630,height:390};
   switch(id){
