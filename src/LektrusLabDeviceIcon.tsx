@@ -4,7 +4,7 @@ import type {LabDevice} from "./lektrusChemistryBenchModel";
 type MountChoice={id:string;label:string};
 type DeviceIconProps={
  kind:LabDevice;size?:number;active?:boolean;
- editable?:boolean;temperatureC?:number;targetTemperatureC?:number;
+ editable?:boolean;controlsVisible?:boolean;temperatureC?:number;targetTemperatureC?:number;
  standHeight?:number;heatLevel?:number;
  choices?:MountChoice[];shelfChoices?:MountChoice[];
  onPowerToggle?:()=>void;onTemperatureChange?:(value:number)=>void;
@@ -15,7 +15,7 @@ type DeviceIconProps={
 /** The controls are engraved into the equipment's own scalable SVG.
  * There are no absolute-positioned controls floating over the drawing. */
 export default function LektrusLabDeviceIcon({
- kind,size=42,active=false,editable=false,temperatureC,targetTemperatureC=150,
+ kind,size=42,active=false,editable=false,controlsVisible=false,temperatureC,targetTemperatureC=150,
  standHeight=.5,heatLevel=2,choices=[],shelfChoices=[],
  onPowerToggle,onTemperatureChange,onStandHeightChange,onLevelCycle,
  onAttach,onRelease,onReturn
@@ -76,7 +76,7 @@ export default function LektrusLabDeviceIcon({
      onChange={e=>setTemperatureDraft(e.target.value)}
      onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){commitTemperature();
       (e.currentTarget as HTMLInputElement).blur()}
-      else if(e.key==="ArrowUp"||e.key==="ArrowDown")setTimeout(()=>{if(e.currentTarget){/* Native input step */}},0)}}
+      }}
      onBlur={commitTemperature}/>
    </foreignObject>:<text x="43" y="71" textAnchor="middle"
     fontSize="9" fontWeight="800" fill="#c7efbb">
@@ -183,7 +183,7 @@ export default function LektrusLabDeviceIcon({
    <text className="lektrus-lab-device-brand" x="55" y={kind==="tripod"?95:kind==="burner"?88:86}
     textAnchor="middle" fontSize="7.5" fontWeight="900" letterSpacing=".8"
     fill={kind==="burner"?"#2c645d":"#2e6757"}>LEKTRUS</text>
-   {editable&&<foreignObject x="6" y="91" width="98" height="16"
+   {editable&&controlsVisible&&<foreignObject x="6" y="91" width="98" height="16"
     onPointerDown={e=>e.stopPropagation()} onPointerMove={e=>e.stopPropagation()}
     onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
     <div className="lektrus-lab-device-integrated-controls">
