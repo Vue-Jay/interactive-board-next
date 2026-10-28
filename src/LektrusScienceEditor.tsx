@@ -10,7 +10,7 @@ import {periodicElements} from "./lektrusPeriodicElements";
 import {layoutScienceLabels} from "./lektrusScienceLabelLayout";
 import LektrusChemistryIllustration from "./LektrusChemistryIllustration";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
-import LektrusReactionLab from "./LektrusReactionLab";
+import LektrusChemistryBenchEditor from "./LektrusChemistryBenchEditor";
 import LektrusOrganicCanvas from "./LektrusOrganicCanvas";
 import LektrusOrganicEditorPanel from "./LektrusOrganicEditorPanel";
 import {analyzeOrganicStructure,organicAtomColor} from "./lektrusOrganicFormula";
@@ -23,6 +23,7 @@ type Props={
   onClose?:(item:Item)=>void;
   onOrganicLiveChange?:(before:Item,next:Item)=>void;
   onFormulaLiveChange?:(before:Item,next:Item)=>void;
+  onExperimentLiveChange?:(before:Item,next:Item)=>void;
   shared?:boolean;
   canTeach?:boolean;
 };
@@ -55,7 +56,7 @@ const deletePoint=(item:Item,index:number):Item=>{
   };
 };
 
-export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose,onOrganicLiveChange,onFormulaLiveChange,shared=false,canTeach=false}:Props){
+export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose,onOrganicLiveChange,onFormulaLiveChange,onExperimentLiveChange,shared=false,canTeach=false}:Props){
   const [draft,setDraft]=useState<Item>(()=>copyItem(item));
   const [selected,setSelected]=useState(-1);
   const [first,setFirst]=useState(0);
@@ -88,12 +89,19 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
   const organicLocalPrevious=useRef<Item>(draft);
   const organicRemotePrevious=useRef<Item>(item);
   const formulaRemotePrevious=useRef<Item>(item);
+  const experimentRemotePrevious=useRef<Item>(item);
   useEffect(()=>{
     if(!formula||!shared||item===formulaRemotePrevious.current)return;
     const previousRemote=formulaRemotePrevious.current;
     formulaRemotePrevious.current=item;
     setDraft(current=>mergeEditedValue(previousRemote,current,item));
   },[formula,shared,item]);
+  useEffect(()=>{
+    if(!experiment||!shared||item===experimentRemotePrevious.current)return;
+    const previous=experimentRemotePrevious.current;
+    experimentRemotePrevious.current=item;
+    setDraft(current=>mergeEditedValue(previous,current,item));
+  },[experiment,shared,item]);
   useEffect(()=>{
     if(!organic||!shared||item===organicRemotePrevious.current)return;
     const previousRemote=organicRemotePrevious.current;
@@ -256,8 +264,9 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
 
   if(organic)return <LektrusOrganicEditorPanel item={draft} onChange={setDraft} canTeach={canTeach}
     onSave={()=>onSave(draft)} onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
-  if(experiment&&draft.graphFigureId==="chem-experiment-free")return <LektrusReactionLab
-   item={draft} onChange={setDraft} onSave={()=>onSave(draft)}
+  if(experiment&&draft.graphFigureId==="chem-experiment-free")return <LektrusChemistryBenchEditor
+   item={draft} onChange={next=>{setDraft(next);onExperimentLiveChange?.(draft,next)}}
+   onSave={()=>onSave(draft)}
    onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
   if(formula)return <LektrusChemicalEquationEditor canTeach={canTeach===true} item={draft}
     onChange={next=>{setDraft(next);onFormulaLiveChange?.(draft,next)}}
