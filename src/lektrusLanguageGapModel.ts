@@ -1,56 +1,1114 @@
-import type {SubjectTaskActivity} from "./boardModel";
-
-/** Author a gap naturally within text: square brackets contain the teacher's answer.
- * Bracket contents are never rendered to pupils, only the input slot is shown. */
-export type GapDraft={activity:SubjectTaskActivity|undefined;issue:string|null;count:number};
-export function parseLanguageGapText(source:string):GapDraft{
- const text=source.replace(/\r\n/g,"\n");
- const parts:{before:string;answer:string}[]=[];
- let fragment="",position=0;
- while(position<text.length){
-  const current=text[position];
-  if(current==="]")return {activity:undefined,issue:"Закрывающая скобка без начала пропуска",count:parts.length};
-  if(current!=="["){fragment+=current;position++;continue;}
-  const close=text.indexOf("]",position+1);
-  if(close===-1)return {activity:undefined,issue:"Закройте пропуск квадратной скобкой",count:parts.length};
-  const answer=text.slice(position+1,close);
-  if(!answer.trim())return {activity:undefined,issue:"В пропуске должен быть правильный ответ",count:parts.length};
-  if(answer.includes("["))
-   return {activity:undefined,issue:"Пропуски нельзя вкладывать друг в друга",count:parts.length};
-  if(answer.length>240||fragment.length>1200)
-   return {activity:undefined,issue:"Укоротите текст фрагмента или ответ",count:parts.length};
-  if(parts.length>=8)return {activity:undefined,issue:"В одном задании допускается до восьми пропусков",count:parts.length};
-  parts.push({before:fragment,answer:answer.trim()});
-  fragment="";position=close+1;
+/** Self-contained persisted circuit validation.
+ * Keep this module import-free for whiteboard persistence and ink tests. */
+/** Validate persisted mechanics without importing any rendering modules. */
+function validMechanicsPayload(input:unknown):boolean{
+ if(!input||typeof input!=="object")return false;
+ const d=input as Record<string,unknown>;
+ if(d.version!==1||!Array.isArray(d.bodies)||!Array.isArray(d.supports)||!Array.isArray(d.forces)||
+   d.bodies.length>60||d.supports.length>60||d.forces.length>180||
+   typeof d.grid!=="boolean"||typeof d.labels!=="boolean")return false;
+ const ids=new Set<string>(),bodyIds=new Set<string>();
+ const coords=(v:Record<string,unknown>)=>typeof v.id==="string"&&!!v.id&&v.id.length<=64&&!ids.has(v.id)&&
+  typeof v.label==="string"&&v.label.length<=75&&
+  typeof v.x==="number"&&Number.isFinite(v.x)&&v.x>=0&&v.x<=960&&
+  typeof v.y==="number"&&Number.isFinite(v.y)&&v.y>=0&&v.y<=560;
+ for(const raw of d.bodies){if(!raw||typeof raw!=="object")return false;const b=raw as Record<string,unknown>;
+  if(!coords(b)||!["block","circle"].includes(b.kind as string)||
+    !["width","height","mass"].every(k=>typeof b[k]==="number"&&Number.isFinite(b[k]))||
+    (b.width as number)<20||(b.width as number)>420||
+    (b.height as number)<20||(b.height as number)>420||
+    (b.mass as number)<0||(b.mass as number)>1e7)return false;
+  ids.add(b.id as string);bodyIds.add(b.id as string);}
+ for(const raw of d.supports){if(!raw||typeof raw!=="object")return false;const v=raw as Record<string,unknown>;
+  if(!coords(v)||!["floor","incline","pivot"].includes(v.kind as string)||
+   typeof v.width!=="number"||!Number.isFinite(v.width)||(v.width as number)<30||(v.width as number)>500||
+   typeof v.angle!=="number"||!Number.isFinite(v.angle)||(v.angle as number)<-75||(v.angle as number)>75)return false;
+  ids.add(v.id as string);}
+ for(const raw of d.forces){if(!raw||typeof raw!=="object")return false;const f=raw as Record<string,unknown>;
+  if(!coords(f)||!["angle","length","magnitude"].every(k=>typeof f[k]==="number"&&Number.isFinite(f[k]))||
+    (f.angle as number)<-360||(f.angle as number)>360||
+    (f.length as number)<15||(f.length as number)>400||
+    (f.magnitude as number)<0||(f.magnitude as number)>1e9||
+    typeof f.showValue!=="boolean"||
+    (f.bodyId!==null&&(typeof f.bodyId!=="string"||!bodyIds.has(f.bodyId))))return false;
+  ids.add(f.id as string);}
+ return true;
+}
+/** Validate the independent optics payload without coupling board storage to UI. */
+function validOpticsPayload(data:unknown):boolean{
+ if(!data||typeof data!=="object")return false;
+ const doc=data as Record<string,unknown>;
+ if(doc.version!==1||!Array.isArray(doc.elements)||!Array.isArray(doc.rays)||
+   doc.elements.length>80||doc.rays.length>160||typeof doc.grid!=="boolean"||
+   typeof doc.labels!=="boolean"||typeof doc.normals!=="boolean")return false;
+ const kinds=["source","mirror","converging-lens","diverging-lens","interface","screen","prism"];
+ if(doc.legacy!=null&&(!Array.isArray(doc.legacy)||doc.legacy.length>200||
+   doc.legacy.some((seg:Record<string,unknown>)=>!seg||typeof seg.id!=="string"||
+     typeof seg.label!=="string"||seg.label.length>75||typeof seg.arrow!=="boolean"||
+     !["x1","y1","x2","y2"].every(k=>typeof seg[k]==="number"&&Number.isFinite(seg[k])))))return false;
+ const ids=new Set<string>();
+ for(const e of doc.elements){
+   if(!e||typeof e!=="object")return false;
+   const x=e as Record<string,unknown>;
+   if(typeof x.id!=="string"||!x.id||ids.has(x.id)||!kinds.includes(x.kind as string)||
+      typeof x.label!=="string"||x.label.length>75||
+      !["x","y","length","focalLength","n1","n2"].every(k=>typeof x[k]==="number"&&Number.isFinite(x[k]))||
+      (x.x as number)<0||(x.x as number)>960||(x.y as number)<0||(x.y as number)>560||
+      (x.length as number)<30||(x.length as number)>530||
+      (x.focalLength as number)<20||(x.focalLength as number)>500||
+      (x.n1 as number)<1||(x.n1 as number)>3||(x.n2 as number)<1||(x.n2 as number)>3)return false;
+   ids.add(x.id);
  }
- if(fragment.length>1200)return {activity:undefined,issue:"Укоротите текст после последнего пропуска",count:parts.length};
- if(!parts.length)return {activity:undefined,issue:text.trim()?"Выделите пропущенные буквы, знаки или слова квадратными скобками":null,count:0};
- const activity:SubjectTaskActivity={mode:"fill",blanks:parts,tail:fragment};
- return {activity,issue:null,count:parts.length};
+ const rays=new Set<string>();
+ for(const raw of doc.rays){
+   if(!raw||typeof raw!=="object")return false;
+   const ray=raw as Record<string,unknown>;
+   if(typeof ray.id!=="string"||rays.has(ray.id)||typeof ray.sourceId!=="string"||
+      !doc.elements.some((e:Record<string,unknown>)=>e.id===ray.sourceId&&e.kind==="source")||
+      typeof ray.angle!=="number"||!Number.isFinite(ray.angle)||(ray.angle as number)<-85||(ray.angle as number)>85||
+      typeof ray.color!=="string"||!/^#[0-9a-fA-F]{6}$/.test(ray.color))return false;
+   rays.add(ray.id);
+ }
+ return true;
 }
-export function languageGapText(activity?:SubjectTaskActivity):string{
- if(activity?.mode!=="fill")return "";
- const blanks=activity.blanks??[];
- if(!blanks.some(part=>part.before||part.answer)&&!activity.tail)return "";
- return blanks.map(part=>part.before+"["+part.answer+"]").join("")+(activity.tail??"");
+/** Import-free validation prevents corrupt school objects from breaking board loads. */
+function validSchoolTeachingDiagram(value:unknown):boolean{
+ if(!value||typeof value!=="object")return false;
+ const d=value as Record<string,unknown>;
+ if(typeof d.title!=="string"||d.title.length>120)return false;
+ const finiteIn=(x:unknown,lo:number,hi:number)=>typeof x==="number"&&Number.isFinite(x)&&x>=lo&&x<=hi;
+ const field=(x:unknown,n:number)=>typeof x==="string"&&x.length<=n&&x.trim().length>0;
+ if(d.kind==="geo-training"){
+  return (d.exercise==="matching"||d.exercise==="cards")&&
+   (d.relation==="flag-country"||d.relation==="country-capital"||d.relation==="outline-country")&&
+   (d.difficulty===undefined||d.difficulty==="custom"||d.difficulty==="easy"||
+    d.difficulty==="medium"||d.difficulty==="hard")&&
+   typeof d.reverse==="boolean"&&Array.isArray(d.countryCodes)&&
+   d.countryCodes.length>=2&&d.countryCodes.length<=12&&
+   d.countryCodes.every((code:unknown)=>typeof code==="string"&&/^[A-Z]{2}$/.test(code))&&
+   new Set(d.countryCodes).size===d.countryCodes.length;
+ }
+ if(d.kind==="organs"){
+  if(d.system!=="digestive"&&d.system!=="respiratory"||!Array.isArray(d.labels))return false;
+  const allowed=d.system==="digestive"?
+   ["mouth","esophagus","stomach","liver","pancreas","small-intestine","large-intestine"]:
+   ["nasal-cavity","larynx","trachea","bronchi","lungs","diaphragm"];
+  return d.labels.length<=allowed.length&&d.labels.every((v:unknown)=>
+   typeof v==="string"&&allowed.includes(v))&&new Set(d.labels).size===d.labels.length;
+ }
+ if(d.kind==="relief"){
+  if(typeof d.showGrid!=="boolean"||typeof d.showLabels!=="boolean"||!Array.isArray(d.points)||
+   d.points.length<2||d.points.length>10)return false;
+  const points=d.points as Record<string,unknown>[];
+  if(!points.every(p=>p&&typeof p==="object"&&field(p.id,64)&&
+   typeof p.label==="string"&&p.label.length<=40&&
+   finiteIn(p.distance,0,5000)&&finiteIn(p.height,-500,9000)))return false;
+  return new Set(points.map(p=>p.id)).size===points.length&&
+   new Set(points.map(p=>p.distance)).size===points.length;
+ }
+ if(d.kind==="syntax"){
+  if(typeof d.showMarks!=="boolean"||!Array.isArray(d.words)||d.words.length<1||d.words.length>14)return false;
+  const roles=["subject","predicate","attribute","object","adverbial","none"];
+  const words=d.words as Record<string,unknown>[];
+  return words.every(w=>w&&typeof w==="object"&&field(w.id,64)&&field(w.text,28)&&
+   roles.includes(w.role as string))&&new Set(words.map(w=>w.id)).size===words.length;
+ }
+ if(d.kind==="place-value"){
+  const base=d.base as number,numberDigits=d.digits;
+  return [2,8,10,16].includes(base)&&typeof d.showPowers==="boolean"&&
+   typeof numberDigits==="string"&&/^[0-9A-F]{1,10}$/.test(numberDigits)&&
+   [...numberDigits].every(ch=>parseInt(ch,16)<base);
+ }
+ if(d.kind==="flowchart"){
+  if(typeof d.showEdgeLabels!=="boolean"||!Array.isArray(d.nodes)||!Array.isArray(d.edges)||
+   d.nodes.length<2||d.nodes.length>7||d.edges.length>18)return false;
+  const nodes=d.nodes as Record<string,unknown>[],edges=d.edges as Record<string,unknown>[];
+  const kinds=["start","end","process","decision","input","output"],labels=["","да","нет"];
+  if(!nodes.every(n=>n&&typeof n==="object"&&field(n.id,64)&&field(n.label,48)&&
+   kinds.includes(n.kind as string)&&[-1,0,1].includes(n.lane as number)))return false;
+  if(new Set(nodes.map(n=>n.id)).size!==nodes.length||
+   nodes.filter(n=>n.kind==="start").length!==1||nodes.filter(n=>n.kind==="end").length!==1)return false;
+  const known=new Set(nodes.map(n=>n.id));
+  if(!edges.every(e=>e&&typeof e==="object"&&field(e.id,64)&&
+   known.has(e.from)&&known.has(e.to)&&e.from!==e.to&&labels.includes(e.label as string))||
+   new Set(edges.map(e=>e.id)).size!==edges.length||
+   new Set(edges.map(e=>String(e.from)+"->"+String(e.to))).size!==edges.length)return false;
+  for(const node of nodes){
+   const out=edges.filter(e=>e.from===node.id);
+   if(node.kind==="end"&&out.length)return false;
+   if(node.kind==="decision"){
+    if(out.length!==2||!out.some(e=>e.label==="да")||!out.some(e=>e.label==="нет"))return false;
+   }else if(out.length>1)return false;
+  }
+  const start=nodes.find(n=>n.kind==="start")!.id,visited=new Set<unknown>([start]),stack=[start];
+  while(stack.length){
+   const current=stack.pop();
+   for(const edge of edges.filter(e=>e.from===current))if(!visited.has(edge.to)){
+    visited.add(edge.to);stack.push(edge.to);
+   }
+  }
+  return visited.size===nodes.length;
+ }
+ if(d.kind==="sentence-builder"){
+  if(typeof d.instructions!=="string"||d.instructions.length>180||
+   typeof d.showKey!=="boolean"||typeof d.showHint!=="boolean"||
+   typeof d.patternId!=="string"||d.patternId.length>40||
+   !Array.isArray(d.parts)||d.parts.length<2||d.parts.length>24)return false;
+  const parts=d.parts as Record<string,unknown>[];
+  return parts.every(p=>p&&typeof p==="object"&&field(p.id,64)&&field(p.text,65))&&
+   new Set(parts.map(p=>p.id)).size===parts.length;
+ }
+ if(d.kind==="state-structure"){
+  if(typeof d.subtitle!=="string"||d.subtitle.length>160||
+   typeof d.templateId!=="string"||d.templateId.length>40||
+   typeof d.showRelationships!=="boolean"||typeof d.showLabels!=="boolean"||
+   !Array.isArray(d.nodes)||d.nodes.length<1||d.nodes.length>15||
+   !Array.isArray(d.edges)||d.edges.length>26)return false;
+  const nodes=d.nodes as Record<string,unknown>[],edges=d.edges as Record<string,unknown>[];
+  const kinds=["concept","institution","example"];
+  if(!nodes.every(n=>n&&typeof n==="object"&&field(n.id,64)&&field(n.text,62)&&
+   [0,1,2,3].includes(n.column as number)&&[0,1,2,3,4].includes(n.row as number)&&
+   kinds.includes(n.kind as string))||
+   new Set(nodes.map(n=>n.id)).size!==nodes.length||
+   new Set(nodes.map(n=>n.column+":"+n.row)).size!==nodes.length)return false;
+  const ids=new Set(nodes.map(n=>n.id)),relationships=["part","subordinate","interacts"];
+  return edges.every(e=>e&&typeof e==="object"&&field(e.id,64)&&
+   ids.has(e.from)&&ids.has(e.to)&&e.from!==e.to&&
+   relationships.includes(e.kind as string))&&
+   new Set(edges.map(e=>e.id)).size===edges.length&&
+   new Set(edges.map(e=>e.from+"|"+e.to+"|"+e.kind)).size===edges.length;
+ }
+ if(d.kind==="atlas"){
+  const modes=["political","contour","physical","hydrography","coordinates","historical","events"];
+  const dates=[-123000,-10000,-8000,-5000,-4000,-3000,-2000,-1500,-1000,-700,-500,-400,-323,-300,-200,-100,-1,
+   100,200,300,400,500,600,700,800,900,1000,1100,1200,1279,1300,1400,1492,1500,1530,1600,1650,1700,1715,
+   1783,1800,1815,1878,1880,1900,1914,1920,1930,1938,1945,1960,1994,2000,2010];
+  if(!modes.includes(d.mode as string)||!dates.includes(d.year as number)||
+   (d.scope!==undefined&&((d.scope!=="geography"&&d.scope!=="history")||
+    (d.scope==="geography"&&["historical","events"].includes(d.mode as string))||
+    (d.scope==="history"&&!["historical","events"].includes(d.mode as string))))||
+   typeof d.showLabels!=="boolean"||typeof d.showGrid!=="boolean"||
+   typeof d.showEvents!=="boolean"||!Array.isArray(d.markers)||d.markers.length>40)return false;
+  const markers=d.markers as Record<string,unknown>[];
+  return markers.every(m=>m&&typeof m==="object"&&field(m.id,64)&&field(m.title,80)&&
+   typeof m.description==="string"&&m.description.length<=300&&
+   finiteIn(m.lat,-90,90)&&finiteIn(m.lon,-180,180)&&
+   Number.isInteger(m.year)&&finiteIn(m.year,-123000,2100))&&
+   new Set(markers.map(m=>m.id)).size===markers.length;
+ }
+ if(d.kind==="morphology"){
+  if(!field(d.word,65)||typeof d.sentence!=="string"||d.sentence.length>220||
+   !["noun","adjective","verb","pronoun","numeral","adverb","participle","gerund","preposition",
+    "conjunction","particle","interjection","other"].includes(d.partOfSpeech as string)||
+   typeof d.showAnalysis!=="boolean"||!Array.isArray(d.rows)||
+   d.rows.length<1||d.rows.length>18)return false;
+  const rows=d.rows as Record<string,unknown>[];
+  return rows.every(row=>row&&typeof row==="object"&&field(row.id,64)&&
+   ["permanent","variable","syntax"].includes(row.group as string)&&
+   field(row.feature,52)&&field(row.value,90))&&
+   new Set(rows.map(row=>row.id)).size===rows.length;
+ }
+ if(d.kind==="phonetics"){
+  if(!field(d.word,36)||typeof d.showSounds!=="boolean"||
+   typeof d.showCharacteristics!=="boolean"||!Array.isArray(d.letters)||
+   d.letters.length<1||d.letters.length>24)return false;
+  const letters=d.letters as Record<string,unknown>[];
+  return letters.every(l=>l&&typeof l==="object"&&field(l.id,64)&&
+   field(l.letter,4)&&Array.isArray(l.sounds)&&l.sounds.length<=2&&
+   l.sounds.every((x:unknown)=>field(x,12))&&typeof l.characteristic==="string"&&
+   l.characteristic.length<=100&&typeof l.stressed==="boolean")&&
+   new Set(letters.map(l=>l.id)).size===letters.length&&
+   letters.filter(l=>l.stressed).length<=1&&
+   letters.every(l=>!l.stressed||(l.sounds as unknown[]).length>0)&&
+   letters.map(l=>l.letter).join("")===d.word;
+ }
+ if(d.kind==="orthography"){
+  if(typeof d.showExplanation!=="boolean"||!Array.isArray(d.questions)||
+   d.questions.length<1||d.questions.length>20)return false;
+  const questions=d.questions as Record<string,unknown>[];
+  return questions.every(q=>q&&typeof q==="object"&&field(q.id,64)&&
+   field(q.prompt,180)&&(q.prompt as string).split("□").length===2&&
+   Array.isArray(q.options)&&q.options.length>=2&&q.options.length<=4&&
+   q.options.every((o:unknown)=>field(o,24))&&
+   new Set((q.options as string[]).map(o=>o.trim())).size===q.options.length&&
+   Number.isInteger(q.correct)&&(q.correct as number)>=0&&(q.correct as number)<q.options.length&&
+   typeof q.explanation==="string"&&q.explanation.length<=250)&&
+   new Set(questions.map(q=>q.id)).size===questions.length;
+ }
+ if(d.kind==="morphemes"){
+  if(typeof d.showMarks!=="boolean"||typeof d.showBase!=="boolean"||
+   typeof d.zeroEnding!=="boolean"||!Array.isArray(d.segments)||
+   d.segments.length<1||d.segments.length>10)return false;
+  const morphemes=d.segments as Record<string,unknown>[];
+  const kinds=["prefix","root","suffix","ending","postfix"];
+  if(!morphemes.every(m=>m&&typeof m==="object"&&field(m.id,64)&&field(m.text,24)&&
+   kinds.includes(m.role as string))||
+   new Set(morphemes.map(m=>m.id)).size!==morphemes.length)return false;
+  const roots=morphemes.filter(m=>m.role==="root").length;
+  const ends=morphemes.filter(m=>m.role==="ending").length;
+  if(roots<1||roots>2||ends>1||ends>0&&d.zeroEnding||
+   morphemes.filter(m=>m.role==="postfix").length>1)return false;
+  const first=morphemes.findIndex(m=>m.role==="root"),last=morphemes.map(m=>m.role).lastIndexOf("root");
+  if(morphemes.some((m,i)=>m.role==="prefix"&&i>first||
+   ["suffix","ending","postfix"].includes(m.role as string)&&i<last))return false;
+  const endingIndex=morphemes.findIndex(m=>m.role==="ending");
+  const postIndex=morphemes.findIndex(m=>m.role==="postfix");
+  if(endingIndex>=0&&morphemes.slice(endingIndex+1).some(m=>m.role!=="postfix"))return false;
+  if(postIndex>=0&&postIndex!==morphemes.length-1)return false;
+  return true;
+ }
+ if(d.kind==="family-tree"){
+  if(typeof d.showGenerations!=="boolean"||!Array.isArray(d.people)||
+   d.people.length<1||d.people.length>12)return false;
+  const people=d.people as Record<string,unknown>[];
+  if(people.some(p=>!p||typeof p!=="object"||!field(p.id,64)||!field(p.name,35)||
+   !Array.isArray(p.parents)||p.parents.length>2||
+   p.parents.some((parent:unknown)=>!field(parent,64))||
+   new Set(p.parents).size!==p.parents.length)||
+   new Set(people.map(p=>p.id)).size!==people.length)return false;
+  const byId=new Map(people.map(p=>[p.id,p]));
+  if(people.some(p=>(p.parents as string[]).includes(p.id as string)||
+   (p.parents as string[]).some(id=>!byId.has(id))))return false;
+  const states=new Map<unknown,0|1|2>();
+  const visit=(id:unknown):boolean=>{
+   const state=states.get(id)??0;
+   if(state===1)return false;
+   if(state===2)return true;
+   states.set(id,1);
+   for(const parent of byId.get(id)!.parents as string[])if(!visit(parent))return false;
+   states.set(id,2);return true;
+  };
+  return people.every(p=>visit(p.id));
+ }
+ if(d.kind==="flashcards"){
+  if(typeof d.showTranslation!=="boolean"||typeof d.showTranscription!=="boolean"||
+   !["foreign-first","russian-first"].includes(d.direction as string)||
+   !Array.isArray(d.cards)||d.cards.length<1||d.cards.length>30)return false;
+  const cards=d.cards as Record<string,unknown>[];
+  return cards.every(c=>c&&typeof c==="object"&&field(c.id,64)&&field(c.term,65)&&
+   field(c.translation,80)&&typeof c.transcription==="string"&&c.transcription.length<=75)&&
+   new Set(cards.map(c=>c.id)).size===cards.length;
+ }
+ if(d.kind==="cell"){
+  const types=["plant","animal"];
+  const allowed=d.cell==="plant"?["wall","membrane","cytoplasm","nucleus","vacuole","chloroplast","mitochondria"]:
+   ["membrane","cytoplasm","nucleus","mitochondria"];
+  return types.includes(d.cell as string)&&typeof d.showLabels==="boolean"&&Array.isArray(d.visible)&&
+   d.visible.length<=7&&d.visible.every((v:unknown)=>allowed.includes(v as string))&&
+   new Set(d.visible).size===d.visible.length;
+ }
+ if(d.kind==="food-chain")return typeof d.showRoles==="boolean"&&Array.isArray(d.organisms)&&
+  d.organisms.length>=2&&d.organisms.length<=6&&d.organisms.every((v:unknown)=>{
+   if(!v||typeof v!=="object")return false;
+   const o=v as Record<string,unknown>;
+   return field(o.id,64)&&field(o.name,45)&&["producer","consumer","decomposer"].includes(o.role as string);
+  })&&new Set(d.organisms.map((v:{id:string})=>v.id)).size===d.organisms.length;
+ if(d.kind==="climate")return typeof d.showLegend==="boolean"&&Array.isArray(d.months)&&
+  d.months.length===12&&d.months.every((v:unknown)=>{
+   if(!v||typeof v!=="object")return false;
+   const m=v as Record<string,unknown>;
+   return finiteIn(m.temperature,-70,60)&&finiteIn(m.precipitation,0,1000);
+  });
+ if(d.kind==="timeline")return typeof d.showEra==="boolean"&&Array.isArray(d.events)&&
+  d.events.length>=2&&d.events.length<=8&&d.events.every((v:unknown)=>{
+   if(!v||typeof v!=="object")return false;
+   const o=v as Record<string,unknown>;
+   return field(o.id,64)&&field(o.label,90)&&Number.isInteger(o.year)&&finiteIn(o.year,-3000,2100)&&o.year!==0;
+  })&&new Set(d.events.map((v:{id:string})=>v.id)).size===d.events.length;
+ return false;
 }
-export const isLanguageGapExercise=(subject:string,format:string|undefined):boolean=>
- (subject==="russian"&&(format==="orthography"||format==="punctuation"))||
- (subject==="languages"&&format==="gaps");
+function circuitIsDocument(value:unknown):boolean{
+  if(!value||typeof value!=="object")return false;
+  const data=value as Record<string,unknown>;
+  if(data.version!==1||!Array.isArray(data.components)||!Array.isArray(data.junctions)||
+    !Array.isArray(data.wires)||typeof data.showGrid!=="boolean"||typeof data.snap!=="boolean"||
+    data.components.length>120||data.junctions.length>240||data.wires.length>400)return false;
+  const validXY=(x:unknown,y:unknown)=>typeof x==="number"&&Number.isFinite(x)&&x>=0&&x<=900&&
+    typeof y==="number"&&Number.isFinite(y)&&y>=0&&y<=580;
+  const symbols=new Set(["resistor","variable-resistor","photoresistor","lamp",
+    "source","cell","battery","ac-source","switch","push-button","fuse",
+    "ammeter","voltmeter","galvanometer","motor","diode","led",
+    "capacitor","capacitor-polarized","inductor","bell","ground"]);
+  const compIds=new Set<string>(),junctionIds=new Set<string>(),ids=new Set<string>();
+  const add=(id:unknown,section:Set<string>)=>{
+    if(typeof id!=="string"||!id||id.length>72||ids.has(id))return false;
+    section.add(id);ids.add(id);return true;
+  };
+  for(const part of data.components as Record<string,unknown>[]){
+    if(!part||typeof part!=="object"||!add(part.id,compIds)||
+      !symbols.has(part.type as string)||!validXY(part.x,part.y)||
+      ![0,90,180,270].includes(part.rotation as number)||
+      typeof part.label!=="string"||part.label.length>60||
+      typeof part.value!=="string"||part.value.length>60||
+      (part.closed!=null&&typeof part.closed!=="boolean"))return false;
+  }
+  for(const node of data.junctions as Record<string,unknown>[]){
+    if(!node||typeof node!=="object"||!add(node.id,junctionIds)||
+      !validXY(node.x,node.y))return false;
+  }
+  const validAnchor=(candidate:unknown)=>{
+    if(!candidate||typeof candidate!=="object")return false;
+    const a=candidate as Record<string,unknown>;
+    return a.kind==="terminal"&&typeof a.componentId==="string"&&
+        compIds.has(a.componentId)&&(a.side==="a"||a.side==="b")||
+      a.kind==="junction"&&typeof a.junctionId==="string"&&junctionIds.has(a.junctionId);
+  };
+  for(const wire of data.wires as Record<string,unknown>[]){
+    if(!wire||typeof wire!=="object"||!add(wire.id,new Set<string>())||
+      !validAnchor(wire.from)||!validAnchor(wire.to)||
+      !["hvh","vhv","straight"].includes(wire.route as string)||
+      JSON.stringify(wire.from)===JSON.stringify(wire.to))return false;
+  }
+  return true;
+}
 
-/** Carry a teacher's two-choice settings across markup edits. A removed or changed
- * answer cannot silently inherit another blank's options. Repeated same answers
- * are matched by occurrence order, without changing the plain-text syntax. */
-export function preserveGapChoices(next:GapDraft,previous?:SubjectTaskActivity):GapDraft{
- if(!next.activity||previous?.mode!=="fill"||!previous.blanks?.length)return next;
- const old=previous.blanks;
- const used=new Set<number>();
- const blanks=next.activity.blanks?.map((blank,i)=>{
-  const candidates=old.map((b,j)=>({b,j})).filter(({b,j})=>!used.has(j)&&b.answer===blank.answer);
-  const match=candidates.find(({b})=>b.before===blank.before)??candidates.find(({j})=>j===i)??candidates[0];
-  if(!match)return blank;
-  used.add(match.j);
-  return match.b.choices?{...blank,choices:[blank.answer,match.b.choices[1]] as [string,string]}:blank;
- });
- return {...next,activity:{...next.activity,blanks}};
+export type BoardBackground={mode:"dots"|"grid"|"plain";color:string;opacity:number};
+export const DEFAULT_BOARD_BACKGROUND:BoardBackground={mode:"dots",color:"#f7f7f8",opacity:100};
+export function normalizeBoardBackground(value:unknown):BoardBackground{
+  const v=value&&typeof value==="object"?value as Partial<BoardBackground>:{};
+  return {
+    mode:v.mode==="grid"||v.mode==="plain"||v.mode==="dots"?v.mode:"dots",
+    color:typeof v.color==="string"&&/^#[0-9a-f]{6}$/i.test(v.color)?v.color.toLowerCase():"#f7f7f8",
+    opacity:typeof v.opacity==="number"&&Number.isFinite(v.opacity)?Math.max(0,Math.min(100,Math.round(v.opacity))):100
+  };
+}
+
+export type Point = { x: number; y: number };
+/** Non-destructive crop, normalized against the ORIGINAL stored image. */
+export type ImageCropRect = { x: number; y: number; width: number; height: number };
+export function validImageCrop(value: unknown): value is ImageCropRect {
+  if (!value || typeof value !== "object") return false;
+  const {x,y,width,height}=value as ImageCropRect;
+  return [x,y,width,height].every(n=>typeof n==="number"&&Number.isFinite(n)) &&
+    x>=0&&y>=0&&width>0&&height>0&&
+    x+width<=1.000001&&y+height<=1.000001;
+}
+export type View = Point & { zoom: number };
+export type ShapeType = "rectangle" | "square" | "rounded" | "ellipse" | "circle" | "diamond" | "triangle" | "rightTriangle" | "parallelogram" | "trapezoid" | "pentagon" | "hexagon" | "star" | "arrow";
+export type ConnectorStyle = "line" | "arrow" | "double";
+export type ArrowHeadStyle = "triangle" | "open" | "stealth" | "diamond" | "oval";
+export type ConnectorRouting = "straight" | "elbow";
+export type ConnectorBinding = { itemId: string; nx: number; ny: number };
+export type SubjectBoardWorkedSolution={
+ given:string;
+ find:string;
+ si:string;
+ work:string;
+ answer:string;
+};
+export type SubjectTaskActivity={
+ mode:"choice"|"fill"|"match"|"order";
+ options?:string[];
+ correctIndex?:number;
+ blanks?:{before:string;answer:string;choices?:[string,string];rule?:string}[];
+ tail?:string;
+ pairs?:{left:string;right:string}[];
+ tokens?:string[];
+};
+export type SubjectTaskActivityResponse={
+ selected?:number;
+ values?:string[];
+ matched?:number[];
+ ordered?:number[];
+ checked?:boolean;
+ explanations?:string[];
+};
+/** Editable student work for Russian-language exercises. Reuses the same
+ * school role classifications as the standalone Russian tools. */
+export type RussianTaskWork={
+ source?:string;
+ cuts?:number[];
+ morphemeRoles?:("unset"|"prefix"|"root"|"suffix"|"ending"|"postfix")[];
+ zeroEnding?:boolean;
+ syntaxRoles?:("subject"|"predicate"|"attribute"|"object"|"adverbial"|"none")[];
+ partOfSpeech?:string;
+ initialForm?:string;
+ permanent?:string;
+ variable?:string;
+ syntax?:string;
+ textAnswers?:string[];
+};
+export type SubjectBoardEntry={
+  id:string;
+  kind:"equation"|"task";
+  /** Owning subject; absent only in exercises saved before subject tagging. */
+  subject?:"chemistry"|"physics"|"mathematics"|"geography"|"history"|"biology"|"russian"|"literature"|"social"|"languages"|"informatics";
+  title:string;
+  prompt:string;
+  format?:string;
+  details?:Record<string,string>;
+  workedSolution?:SubjectBoardWorkedSolution;
+  activity?:SubjectTaskActivity;
+  activityResponse?:SubjectTaskActivityResponse;
+  russianWork?:RussianTaskWork;
+  domain?:"inorganic"|"organic";
+  steps?:{expression:string;conditions:string}[];
+  answer:string;
+  solution:string;
+  revealed:boolean;
+};
+export type Item = {
+  id: string;
+  kind: "sticky" | "text" | "shape" | "pen" | "marker" | "image" | "pdf" | "frame" | "connector" | "comment" | "table" | "formula" | "graph" | "fraction" | "checklist" | "quiz" | "flashcard" | "cover" | "linkmedia" | "instrument";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  text: string;
+  points?: Point[];
+  color?: string;
+  weight?: number;
+  fontSize?: number;
+  textAlign?: "left" | "center" | "right";
+  fontWeight?: "normal" | "bold";
+  fontStyle?: "normal" | "italic";
+  textDecoration?: "none" | "underline";
+  textList?: "none" | "bullet" | "number";
+  lineHeight?: number;
+  shapeType?: ShapeType;
+  instrumentType?: "ruler" | "triangle" | "protractor";
+  instrumentScale?: number;
+  assetId?: string;
+  imageCrop?: ImageCropRect;
+  name?: string;
+  mime?: string;
+  pdfPage?: number;
+  rotation?: number;
+  groupId?: string;
+  locked?: boolean;
+  hidden?: boolean;
+  connectorStart?: Point;
+  connectorEnd?: Point;
+  connectorStyle?: ConnectorStyle;
+  arrowHeadStyle?: ArrowHeadStyle;
+  arrowHeadSize?: number;
+  connectorRouting?: ConnectorRouting;
+  connectorStartBinding?: ConnectorBinding;
+  connectorEndBinding?: ConnectorBinding;
+  tableRows?: number;
+  tableCols?: number;
+  tableCells?: string[];
+  tableHeader?: boolean;
+  tableAlign?: "left" | "center" | "right";
+  tableStripe?: boolean;
+  tableCompact?: boolean;
+  // Subject objects keep their teaching purpose, title and visible axes.
+  graphPurpose?: "function" | "coordinates" | "geometry" | "unit-circle" | "number-line";
+  graphFigureId?: string;
+  chartStyle?: "bar" | "line" | "pie";
+  chartEntries?: {label:string;value:number}[];
+  scienceCircuit?: import("./lektrusCircuitModel").CircuitDocument;
+  scienceOptics?: import("./lektrusOpticsModel").OpticsDocument;
+  scienceMechanics?: import("./lektrusMechanicsModel").MechanicsDocument;
+  scienceAtomModel?: import("./lektrusAtomModel").AtomModel;
+  sciencePeriodicHighlights?: number[];
+  sciencePeriodicShowNames?: boolean;
+  sciencePeriodicLayout?: "school" | "long";
+  scienceExperimentStage?: 0 | 1;
+  scienceOrganicAnnotations?: {x:number;y:number;text:string}[];
+  scienceOrganicShowSystematic?: boolean;
+  scienceOrganicShowTrivial?: boolean;
+  scienceReactionConditions?: string;
+  scienceReactionDomain?: "inorganic" | "organic";
+  scienceReactionSteps?: {expression:string;conditions:string}[];
+  subjectBoardEntries?: SubjectBoardEntry[];
+  scienceReagents?: string[];
+  scienceEnvironment?: "aqueous" | "dry" | "heated" | "ignited";
+  schoolDiagram?: import("./lektrusSchoolDiagramModel").SchoolDiagram;
+  graphRotationX?: number;
+  graphRotationY?: number;
+  graphParallelMarks?: ("corresponding"|"alternate-interior"|"alternate-exterior"|"same-side-interior"|"vertical"|"adjacent")[];
+  fractionMode?: "circle" | "bar";
+  fractionNumerator?: number;
+  fractionDenominator?: number;
+  graphAxisMode?: "both" | "x" | "y" | "none";
+  graphIntervalStartClosed?: boolean;
+  graphIntervalEndClosed?: boolean;
+  graphType?: "linear" | "quadratic" | "sin" | "cos";
+  graphExpression?: string;
+  graphConnectPoints?: boolean;
+  graphA?: number; graphB?: number; graphC?: number;
+  graphXMin?: number; graphXMax?: number; graphYMin?: number; graphYMax?: number;
+  graphGrid?: boolean;
+  graphPoints?: { x:number; y:number; label:string; color?: string; labelDx?:number;labelDy?:number; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphShowLabels?: boolean;
+  graphSegments?: { a:number; b:number; kind:"segment"|"line"|"ray"; label:string; measure:boolean; bondOrder?:1|2|3; scienceArrow?:boolean; color?:string; scienceCircuitSymbol?:import("./ScienceCircuitGlyph").CircuitSymbol; labelDx?:number; labelDy?:number; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphAngles?: { a:number; vertex:number; b:number; label:string; autoMeasure?:boolean; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphCircles?: { center:number; edge:number; label:string; measure:boolean; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphPolygons?: { points:number[]; label:string; measure:boolean; showMetrics?:boolean; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphTriangleLines?: ("median"|"altitude"|"bisector")[];
+  graphTriangleVertex?: 0|1|2;
+  graphShowArea?: boolean;
+  graphGivenSides?: string[];
+  graphGivenAngles?: string[];
+  graphTriangleInputMode?: "SSS"|"SAS"|"ASA";
+  graphMidpoints?: { a:number; b:number; label:string; keepPointsOnDelete?:boolean; schoolGroupId?:string; schoolGroupLabel?:string }[];
+  graphConstraints?: import("./lektrusGeometryConstraints").GeometryConstraint[];
+  graphMagneticSnap?: boolean;
+  graphFreePathStart?:number;
+  graphSnap?: boolean;
+  graphAxisLabels?: boolean;
+  graphGridStep?: number;
+  graphShowCurve?: boolean;
+  graphProjections?: boolean;
+  resolved?: boolean;
+  commentTargetId?: string;
+  presentationOrder?: number;
+  notes?: string;
+  checklistItems?: string[];
+  checklistDone?: boolean[];
+  quizOptions?: string[];
+  quizCorrect?: number;
+  quizSelected?: number;
+  quizRevealed?: boolean;
+  quizExplanation?: string;
+  flashcardBack?: string;
+  flashcardFlipped?: boolean;
+  flashcardMastery?: "again" | "known";
+  coverOpen?: boolean;
+  coverOpacity?: number;
+  mediaUrl?: string;
+  mediaTitle?: string;
+};
+// Ink is stored in its own drawing collection, not in regular board objects.
+// "after" preserves its visual position relative to normal items on old boards.
+export type InkEntry = { after: number; stroke: Item };
+export type DocumentData = { version: 1; title: string; subject?: string; view: View; items: Item[]; ink?: InkEntry[]; background?: BoardBackground; backgroundShared?: boolean };
+export const isInkItem = (item: Item): boolean => item.kind === "pen" || item.kind === "marker";
+
+export function expandDocumentInk(data: DocumentData): Item[] {
+  const ink = data.ink ?? [];
+  if (!ink.length) return data.items;
+  const output: Item[] = [];
+  let cursor = 0;
+  for (let index = 0; index <= data.items.length; index++) {
+    while (cursor < ink.length && ink[cursor].after === index)
+      output.push(ink[cursor++].stroke);
+    if (index < data.items.length) output.push(data.items[index]);
+  }
+  return output;
+}
+
+// Keep each stroke as a real board object for lasso, selection, deletion,
+// movement and undo. The renderer batches non-selected strokes on Canvas,
+// so logical objects do not imply thousands of SVG/DOM nodes.
+export function packDocumentInk(data: DocumentData): DocumentData {
+  const all = expandDocumentInk(data);
+  return { version: 1, title: data.title, subject:typeof data.subject==="string"?data.subject.trim().slice(0,80):"", view: data.view, items: all, background:normalizeBoardBackground(data.background), backgroundShared:data.backgroundShared!==false };
+}
+export const STORAGE_KEY = "lesson-board.document.v1";
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 1e9;
+const point = (v: unknown): boolean => !!v && typeof v === "object" && finite((v as Point).x) && finite((v as Point).y);
+const color = (v: unknown): v is string => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
+const shapes: ShapeType[] = ["rectangle","square","rounded","ellipse","circle","diamond","triangle","rightTriangle","parallelogram","trapezoid","pentagon","hexagon","star","arrow"];
+const connectorStyles: ConnectorStyle[] = ["line","arrow","double"];
+const connectorRoutings: ConnectorRouting[] = ["straight","elbow"];
+const binding = (v: unknown): v is ConnectorBinding => !!v && typeof v === "object" && typeof (v as ConnectorBinding).itemId === "string" && finite((v as ConnectorBinding).nx) && finite((v as ConnectorBinding).ny) && (v as ConnectorBinding).nx >= 0 && (v as ConnectorBinding).nx <= 1 && (v as ConnectorBinding).ny >= 0 && (v as ConnectorBinding).ny <= 1;
+
+/** Preserve the complete, validated teaching-object payload when importing
+ * or reopening a board. Previously these fields were silently dropped and all
+ * subject diagrams rendered as a generic coordinate plane. */
+const persistedGraphKeys = [
+  "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceOptics","scienceMechanics","scienceAtomModel",
+  "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
+  "scienceExperimentStage","scienceOrganicAnnotations","scienceOrganicShowSystematic","scienceOrganicShowTrivial","scienceReactionConditions","scienceReactionDomain","scienceReactionSteps","subjectBoardEntries",
+  "scienceReagents","scienceEnvironment","schoolDiagram",
+  "graphRotationX","graphRotationY","graphParallelMarks",
+  "graphAxisMode","graphIntervalStartClosed","graphIntervalEndClosed",
+  "graphType","graphExpression","graphConnectPoints",
+  "graphA","graphB","graphC","graphXMin","graphXMax","graphYMin","graphYMax",
+  "graphGrid","graphPoints","graphShowLabels","graphSegments","graphAngles",
+  "graphCircles","graphPolygons","graphTriangleLines","graphTriangleVertex",
+  "graphShowArea","graphGivenSides","graphGivenAngles","graphTriangleInputMode",
+  "graphMidpoints","graphSnap","graphConstraints","graphMagneticSnap","graphFreePathStart","graphAxisLabels","graphGridStep",
+  "graphShowCurve","graphProjections"
+] as const satisfies readonly (keyof Item)[];
+function persistedGraphData(item:Item):Partial<Item>{
+  if(item.kind!=="graph")return {};
+  const result:Record<string,unknown>={};
+  for(const key of persistedGraphKeys){
+    if(item[key]!==undefined)result[key]=item[key];
+  }
+  return result as Partial<Item>;
+}
+
+export function parseDocument(raw: string): DocumentData {
+  if (raw.length > 24 * 1024 * 1024) throw new Error("Файл слишком большой");
+  const d = JSON.parse(raw);
+  // Convert old mixed item arrays and new separate ink collections through the
+  // same strict stroke validation. No legacy drawing is discarded.
+  if (d?.ink != null) {
+    if (!Array.isArray(d.items) || !Array.isArray(d.ink) ||
+        d.ink.length + d.items.length > 10000) throw new Error("Повреждён слой рисунков");
+    let previousAfter = -1;
+    for (const entry of d.ink) {
+      if (!entry || !Number.isInteger(entry.after) ||
+          entry.after < 0 || entry.after > d.items.length ||
+          entry.after < previousAfter || !entry.stroke ||
+          !["pen", "marker"].includes(entry.stroke.kind))
+        throw new Error("Повреждён штрих в слое рисунков");
+      previousAfter = entry.after;
+    }
+    d.items = expandDocumentInk(d as DocumentData);
+  }
+  const allowedKinds = ["sticky","text","shape","pen","marker","image","pdf","frame","connector","comment","table","formula","graph","fraction","checklist","quiz","flashcard","cover","linkmedia","instrument"];
+  if (!d || d.version !== 1 || typeof d.title !== "string" || d.title.length > 10000 || !point(d.view) || !finite(d.view.zoom) || d.view.zoom < .1 || d.view.zoom > 8 || !Array.isArray(d.items) || d.items.length > 10000) throw new Error("Неверный формат доски");
+  if(d.subject!=null&&(typeof d.subject!=="string"||d.subject.length>80))throw new Error("Некорректный предмет доски");
+  const ids = new Set<string>();
+  let pointCount = 0;
+  for (const i of d.items) {
+    if (!point(i) || typeof i.id !== "string" || ids.has(i.id) || !allowedKinds.includes(i.kind) || !finite(i.width) || i.width <= 0 || !finite(i.height) || i.height <= 0 || typeof i.text !== "string") throw new Error("Повреждён объект доски");
+    ids.add(i.id);
+    if (i.kind === "shape" && i.shapeType != null && !shapes.includes(i.shapeType)) throw new Error("Неизвестная фигура");
+    if (i.kind === "instrument" && (
+      typeof i.instrumentType !== "string" ||
+      !["ruler","triangle","protractor"].includes(i.instrumentType) ||
+      !finite(i.instrumentScale) || i.instrumentScale < .1 || i.instrumentScale > 5 ||
+      (i.rotation != null && (!finite(i.rotation) || Math.abs(i.rotation)>36000))
+    )) throw new Error("Повреждён измерительный инструмент");
+    if (i.kind === "image" || i.kind === "pdf") {
+      if (typeof i.assetId !== "string" || typeof i.name !== "string" || typeof i.mime !== "string") throw new Error("Повреждён медиаобъект");
+      if (i.kind === "image" && i.imageCrop != null && !validImageCrop(i.imageCrop))
+        throw new Error("Повреждены границы обрезки изображения");
+      if (i.kind === "pdf" && i.pdfPage != null && (!finite(i.pdfPage) || i.pdfPage < 1 || i.pdfPage > 10000)) throw new Error("Повреждён номер страницы PDF");
+    }
+    if (i.kind === "pen" || i.kind === "marker") {
+      if (!Array.isArray(i.points) || !i.points.length || !i.points.every(point) || !finite(i.weight) || i.weight <= 0 || i.weight > 100 || !color(i.color)) throw new Error("Повреждён штрих");
+      pointCount += i.points.length;
+      if (pointCount > 500000) throw new Error("Слишком много точек в рисунках");
+    }
+    if (i.kind === "connector") {
+      if (!point(i.connectorStart) || !point(i.connectorEnd)) throw new Error("Повреждена соединительная линия");
+      if (i.connectorStyle != null && !connectorStyles.includes(i.connectorStyle)) throw new Error("Неизвестный тип соединительной линии");
+      if (i.connectorRouting != null && !connectorRoutings.includes(i.connectorRouting)) throw new Error("Неизвестный маршрут соединительной линии");
+      if (i.connectorStartBinding != null && !binding(i.connectorStartBinding)) throw new Error("Повреждена привязка начала соединительной линии");
+      if (i.connectorEndBinding != null && !binding(i.connectorEndBinding)) throw new Error("Повреждена привязка конца соединительной линии");
+      if (i.color != null && !color(i.color)) throw new Error("Повреждён цвет соединительной линии");
+      if (i.weight != null && (!finite(i.weight) || i.weight <= 0 || i.weight > 32)) throw new Error("Повреждена толщина соединительной линии");
+    }
+    if (i.kind === "text" || i.kind === "sticky") {
+      if (i.textAlign != null && !["left","center","right"].includes(i.textAlign)) throw new Error("Повреждено выравнивание текста");
+      if (i.fontWeight != null && !["normal","bold"].includes(i.fontWeight)) throw new Error("Повреждена насыщенность текста");
+      if (i.fontStyle != null && !["normal","italic"].includes(i.fontStyle)) throw new Error("Повреждено начертание текста");
+      if (i.textDecoration != null && !["none","underline"].includes(i.textDecoration)) throw new Error("Повреждено подчёркивание текста");
+      if (i.textList != null && !["none","bullet","number"].includes(i.textList)) throw new Error("Повреждён тип списка");
+      if (i.lineHeight != null && (!finite(i.lineHeight) || i.lineHeight < 1 || i.lineHeight > 2.5)) throw new Error("Повреждён межстрочный интервал");
+      if (i.color != null && !color(i.color)) throw new Error("Повреждён цвет текста");
+    }
+    if (i.kind === "fraction") {
+      if (i.fractionMode != null && !["circle","bar"].includes(i.fractionMode)) throw new Error("Неверный вид дроби");
+      if (!Number.isInteger(i.fractionDenominator) || i.fractionDenominator! < 1 || !Number.isInteger(i.fractionNumerator) || i.fractionNumerator! < 0 || i.fractionNumerator! > i.fractionDenominator!) throw new Error("Повреждена дробь");
+    }
+    if (i.kind === "graph") {
+      if(i.graphFigureId==="lektrus-chart"&&(
+        !["bar","line","pie"].includes(i.chartStyle)||
+        !Array.isArray(i.chartEntries)||i.chartEntries.length<1||i.chartEntries.length>12||
+        i.chartEntries.some((entry:{label?:unknown;value?:unknown})=>!entry||typeof entry.label!=="string"||entry.label.length>80||typeof entry.value!=="number"||!Number.isFinite(entry.value)||entry.value<0||entry.value>1e9)
+      ))throw new Error("Некорректные данные диаграммы");
+      if(i.graphFigureId!=null&&(typeof i.graphFigureId!=="string"||i.graphFigureId.length>64))throw new Error("Некорректный тип геометрической фигуры");
+      for(const list of [i.graphPoints,i.graphSegments,i.graphCircles,i.graphPolygons,i.graphAngles,i.graphMidpoints]){
+        if(!Array.isArray(list))continue;
+        for(const element of list){
+          if(element&&typeof element==="object"){
+            const ref=element as {schoolGroupId?:unknown;schoolGroupLabel?:unknown};
+            if(ref.schoolGroupId!=null&&(typeof ref.schoolGroupId!=="string"||ref.schoolGroupId.length>64))throw new Error("Повреждена группа школьного построения");
+            if(ref.schoolGroupLabel!=null&&(typeof ref.schoolGroupLabel!=="string"||ref.schoolGroupLabel.length>100))throw new Error("Повреждено название школьного построения");
+          }
+        }
+      }
+
+      if (Array.isArray(i.graphSegments)&&i.graphSegments.some((seg:{bondOrder?:unknown;scienceArrow?:unknown;scienceCircuitSymbol?:unknown})=>(seg.bondOrder!=null&&(typeof seg.bondOrder!=="number"||![1,2,3].includes(seg.bondOrder)))||(seg.scienceArrow!=null&&typeof seg.scienceArrow!=="boolean")||(seg.scienceCircuitSymbol!=null&&typeof seg.scienceCircuitSymbol!=="string"))) throw new Error("Повреждены связи предметной схемы");
+      if(i.schoolDiagram!=null&&!validSchoolTeachingDiagram(i.schoolDiagram))
+        throw new Error("Повреждена предметная учебная схема");
+      if(i.scienceCircuit!=null&&!circuitIsDocument(i.scienceCircuit))throw new Error("Повреждена схема электрической цепи");
+      if(i.scienceOptics!=null&&!validOpticsPayload(i.scienceOptics))throw new Error("Повреждена оптическая схема");
+      if(i.scienceMechanics!=null&&!validMechanicsPayload(i.scienceMechanics))throw new Error("Повреждена схема механики");
+      if(i.scienceAtomModel!=null){
+        const model=i.scienceAtomModel;
+        if(!model||!Number.isInteger(model.atomicNumber)||model.atomicNumber<1||model.atomicNumber>118||
+          !["shell","orbit","orbital","lewis","nucleus"].includes(model.mode)||
+          typeof model.showElectronConfiguration!=="boolean"||
+          !Number.isFinite(model.labelX)||Math.abs(model.labelX)>235||
+          !Number.isFinite(model.labelY)||model.labelY< -90||model.labelY>20)
+            throw new Error("Повреждена схема атома");
+      }
+      for(const list of [i.graphPoints,i.graphSegments]){
+        if(!list)continue;
+        if(!Array.isArray(list)||list.some(o=>!o||
+          (o.labelDx!=null&&(!Number.isFinite(o.labelDx)||Math.abs(o.labelDx)>6))||
+          (o.labelDy!=null&&(!Number.isFinite(o.labelDy)||Math.abs(o.labelDy)>4))))
+          throw new Error("Повреждено положение подписи");
+      }
+
+      if(i.sciencePeriodicHighlights!=null&&(!Array.isArray(i.sciencePeriodicHighlights)||i.sciencePeriodicHighlights.length>24||i.sciencePeriodicHighlights.some((value:unknown)=>typeof value!=="number"||!Number.isInteger(value)||value<1||value>118)))throw new Error("Некорректно выделены элементы периодической таблицы");
+      if(i.sciencePeriodicShowNames!=null&&typeof i.sciencePeriodicShowNames!=="boolean")throw new Error("Некорректны подписи периодической таблицы");
+      if(i.graphRotationX!=null&&(!Number.isFinite(i.graphRotationX)||Math.abs(i.graphRotationX)>3600))throw new Error("Повреждён угол поворота фигуры");
+      if(i.graphRotationY!=null&&(!Number.isFinite(i.graphRotationY)||Math.abs(i.graphRotationY)>3600))throw new Error("Повреждён угол поворота фигуры");
+      if(i.graphParallelMarks!=null&&(!Array.isArray(i.graphParallelMarks)||i.graphParallelMarks.length>6||i.graphParallelMarks.some((v:unknown)=>typeof v!=="string"||!["corresponding","alternate-interior","alternate-exterior","same-side-interior","vertical","adjacent"].includes(v))))throw new Error("Повреждены обозначения углов параллельных прямых");
+      if (i.graphIntervalStartClosed != null && typeof i.graphIntervalStartClosed !== "boolean") throw new Error("Повреждена левая граница промежутка");
+      if (i.graphIntervalEndClosed != null && typeof i.graphIntervalEndClosed !== "boolean") throw new Error("Повреждена правая граница промежутка");
+      if(i.graphGivenSides != null && (!Array.isArray(i.graphGivenSides)||i.graphGivenSides.length>20||i.graphGivenSides.some((v:unknown)=>typeof v!=="string"||v.length>32))) throw new Error("Повреждены заданные стороны");
+      if(i.graphGivenAngles != null && (!Array.isArray(i.graphGivenAngles)||i.graphGivenAngles.length>20||i.graphGivenAngles.some((v:unknown)=>typeof v!=="string"||v.length>32))) throw new Error("Повреждены заданные углы");
+      if(i.graphTriangleInputMode!=null && !["SSS","SAS","ASA"].includes(i.graphTriangleInputMode)) throw new Error("Некорректный тип построения");
+      if (i.graphTriangleVertex != null && ![0,1,2].includes(i.graphTriangleVertex)) throw new Error("Некорректная вершина треугольника");
+      if (i.graphShowArea != null && typeof i.graphShowArea !== "boolean") throw new Error("Некорректные настройки площади");
+      if (i.graphTriangleLines != null && (!Array.isArray(i.graphTriangleLines) || i.graphTriangleLines.length>3 || i.graphTriangleLines.some((v:unknown)=>typeof v!=="string"||!["median","altitude","bisector"].includes(v)))) throw new Error("Повреждены построения треугольника");
+      if (i.graphPurpose != null && !["function","coordinates","geometry","unit-circle","number-line"].includes(i.graphPurpose)) throw new Error("Повреждён тип учебного объекта");
+      if (i.graphAxisMode != null && !["both","x","y","none"].includes(i.graphAxisMode)) throw new Error("Повреждён режим осей");
+      if (i.graphType != null && !["linear","quadratic","sin","cos"].includes(i.graphType)) throw new Error("Повреждён тип графика");
+      if (i.graphExpression != null && (typeof i.graphExpression !== "string" || i.graphExpression.length > 500)) throw new Error("Повреждена функция графика");
+      if(i.scienceReactionDomain!=null&&!["inorganic","organic"].includes(i.scienceReactionDomain))throw new Error("Повреждён раздел химических реакций");
+      if(i.scienceReactionSteps!=null&&(!Array.isArray(i.scienceReactionSteps)||i.scienceReactionSteps.length<1||i.scienceReactionSteps.length>8||
+        !i.scienceReactionSteps.every((step: {expression:string;conditions:string})=>!!step&&typeof step.expression==="string"&&step.expression.length<=500&&typeof step.conditions==="string"&&step.conditions.length<=180)))
+        throw new Error("Повреждены этапы химической цепочки");
+      if(i.subjectBoardEntries!=null&&(!Array.isArray(i.subjectBoardEntries)||i.subjectBoardEntries.length>48||
+        !i.subjectBoardEntries.every((entry:SubjectBoardEntry)=>!!entry&&typeof entry.id==="string"&&entry.id.length<=100&&
+          (entry.kind==="equation"||entry.kind==="task")&&
+           (entry.subject==null||["chemistry","physics","mathematics","geography","history","biology","russian","literature","social","languages","informatics"].includes(entry.subject))&&
+           (!i.graphFigureId?.startsWith("subject-board-")||entry.subject==null||entry.subject===i.graphFigureId.slice("subject-board-".length))&&
+           (entry.kind!=="equation"||entry.subject==null||entry.subject==="chemistry")&&
+           typeof entry.title==="string"&&entry.title.length<=120&&
+          typeof entry.prompt==="string"&&entry.prompt.length<=2500&&typeof entry.answer==="string"&&entry.answer.length<=2000&&
+          typeof entry.solution==="string"&&entry.solution.length<=2000&&typeof entry.revealed==="boolean"&&
+          (entry.format==null||(typeof entry.format==="string"&&entry.format.length<=50))&&
+          (entry.details==null||(typeof entry.details==="object"&&!Array.isArray(entry.details)&&
+             Object.entries(entry.details).length<=20&&Object.entries(entry.details).every(([key,value])=>
+               key.length<=50&&typeof value==="string"&&value.length<=1800)))&&
+          (!entry.steps||(Array.isArray(entry.steps)&&entry.steps.length<=8&&
+            entry.steps.every(step=>typeof step.expression==="string"&&step.expression.length<=500&&
+              typeof step.conditions==="string"&&step.conditions.length<=180))))))
+        throw new Error("Повреждены записи предметной доски");
+      if(i.subjectBoardEntries?.some((entry:SubjectBoardEntry)=>{
+        const a=entry.activity,r=entry.activityResponse;
+        if(a!=null&&(!a||typeof a!=="object"||!["choice","fill","match","order"].includes(a.mode)||
+         (a.options!=null&&(!Array.isArray(a.options)||a.options.length>8||!a.options.every(t=>typeof t==="string"&&t.length<=240)))||
+         (a.correctIndex!=null&&(!Number.isInteger(a.correctIndex)||a.correctIndex<0||a.correctIndex>7))||
+         (a.blanks!=null&&(!Array.isArray(a.blanks)||a.blanks.length>8||!a.blanks.every(x=>!!x&&typeof x.before==="string"&&x.before.length<=1200&&typeof x.answer==="string"&&x.answer.length<=240&&
+          (x.choices==null||(Array.isArray(x.choices)&&x.choices.length===2&&x.choices[0]===x.answer&&
+           x.choices.every((v:unknown)=>typeof v==="string"&&v.length<=24)))&&
+          (x.rule==null||(typeof x.rule==="string"&&x.rule.length<=160)))))||
+         (a.tail!=null&&(typeof a.tail!=="string"||a.tail.length>1200))||
+         (a.pairs!=null&&(!Array.isArray(a.pairs)||a.pairs.length>8||!a.pairs.every(x=>!!x&&typeof x.left==="string"&&x.left.length<=240&&typeof x.right==="string"&&x.right.length<=240)))||
+         (a.tokens!=null&&(!Array.isArray(a.tokens)||a.tokens.length>12||!a.tokens.every(x=>typeof x==="string"&&x.length<=240)))))return true;
+        if(r!=null&&(!r||typeof r!=="object"||
+         (r.checked!=null&&typeof r.checked!=="boolean")||
+         (r.explanations!=null&&(!Array.isArray(r.explanations)||r.explanations.length>8||
+          !r.explanations.every(x=>typeof x==="string"&&x.length<=500)))||
+         (r.selected!=null&&(!Number.isInteger(r.selected)||r.selected<0||r.selected>8))||
+         (r.values!=null&&(!Array.isArray(r.values)||r.values.length>8||!r.values.every(x=>typeof x==="string"&&x.length<=240)))||
+         (r.matched!=null&&(!Array.isArray(r.matched)||r.matched.length>8||!r.matched.every(x=>Number.isInteger(x)&&x>=-1&&x<=8)))||
+         (r.ordered!=null&&(!Array.isArray(r.ordered)||r.ordered.length>12||!r.ordered.every(x=>Number.isInteger(x)&&x>=0&&x<=12)))))return true;
+        return false;
+      }))throw new Error("Повреждено интерактивное задание");
+      if(i.subjectBoardEntries?.some((entry:SubjectBoardEntry)=>{
+        const w=entry.russianWork;
+        if(w==null)return false;
+        if(entry.subject!==undefined&&entry.subject!=="russian")return true;
+        if(typeof w!=="object"||Array.isArray(w))return true;
+        const str=(v:unknown,max:number)=>v==null||(typeof v==="string"&&v.length<=max);
+        if(!str(w.source,1800)||!str(w.partOfSpeech,30)||!str(w.permanent,1500)||
+           !str(w.variable,1500)||!str(w.syntax,1000))return true;
+        if(w.zeroEnding!=null&&typeof w.zeroEnding!=="boolean")return true;
+        if(w.cuts!=null&&(!Array.isArray(w.cuts)||w.cuts.length>45||
+          !w.cuts.every((n:number)=>Number.isInteger(n)&&n>0&&n<65)||
+          new Set(w.cuts).size!==w.cuts.length))return true;
+        if(w.morphemeRoles!=null&&(!Array.isArray(w.morphemeRoles)||w.morphemeRoles.length>48||
+          !w.morphemeRoles.every((v:string)=>["unset","prefix","root","suffix","ending","postfix"].includes(v))))return true;
+        if(w.syntaxRoles!=null&&(!Array.isArray(w.syntaxRoles)||w.syntaxRoles.length>100||
+          !w.syntaxRoles.every((v:string)=>["subject","predicate","attribute","object","adverbial","none"].includes(v))))return true;
+        if(w.textAnswers!=null&&(!Array.isArray(w.textAnswers)||w.textAnswers.length>15||
+          !w.textAnswers.every((v:string)=>typeof v==="string"&&v.length<=1500)))return true;
+        return false;
+      }))throw new Error("Повреждён разбор по русскому языку");
+      if(i.subjectBoardEntries?.some((entry:SubjectBoardEntry)=>entry.workedSolution!=null&&
+         (typeof entry.workedSolution!=="object"||!["given","find","si","work","answer"].every(key=>{
+           const value=entry.workedSolution?.[key as keyof SubjectBoardWorkedSolution];
+           return typeof value==="string"&&value.length<=(key==="work"?5000:2000);
+         }))))throw new Error("Повреждено школьное решение задачи");
+
+      if (i.graphConnectPoints != null && typeof i.graphConnectPoints !== "boolean") throw new Error("Повреждено соединение точек");
+      for (const value of [i.graphA,i.graphB,i.graphC,i.graphXMin,i.graphXMax,i.graphYMin,i.graphYMax]) if (value != null && !finite(value)) throw new Error("Повреждены параметры графика");
+      if (i.graphGrid != null && typeof i.graphGrid !== "boolean") throw new Error("Повреждена сетка графика");
+      if (i.graphPoints != null && (!Array.isArray(i.graphPoints) || i.graphPoints.length > 40 || !i.graphPoints.every((p: unknown) => !!p && typeof p === "object" && finite((p as {x:number}).x) && finite((p as {y:number}).y) && typeof (p as {label:string}).label === "string" && (p as {label:string}).label.length <= 24 && ((p as {color?:string}).color == null || color((p as {color?:string}).color))))) throw new Error("Повреждены точки графика");
+      if (i.graphShowLabels != null && typeof i.graphShowLabels !== "boolean") throw new Error("Повреждены подписи графика");
+      if (i.graphSnap != null && typeof i.graphSnap !== "boolean") throw new Error("Повреждена привязка графика");
+      if (i.graphAxisLabels != null && typeof i.graphAxisLabels !== "boolean") throw new Error("Повреждены подписи осей графика");
+      if (i.graphGridStep != null && (!finite(i.graphGridStep) || i.graphGridStep <= 0 || i.graphGridStep > 1000)) throw new Error("Повреждён шаг сетки графика");
+      if (i.graphShowCurve != null && typeof i.graphShowCurve !== "boolean") throw new Error("Повреждена видимость функции графика");
+      if (i.graphProjections != null && typeof i.graphProjections !== "boolean") throw new Error("Повреждены проекции точек графика");
+      if (i.graphSegments != null && (!Array.isArray(i.graphSegments) || i.graphSegments.length > 60 || !i.graphSegments.every((s: unknown) => !!s && typeof s === "object" && Number.isInteger((s as {a:number}).a) && Number.isInteger((s as {b:number}).b) && ["segment","line","ray"].includes((s as {kind:string}).kind) && typeof (s as {label:string}).label === "string" && typeof (s as {measure:boolean}).measure === "boolean"))) throw new Error("Повреждены геометрические связи графика");
+      if (i.graphCircles != null && (!Array.isArray(i.graphCircles) || i.graphCircles.length > 30 || !i.graphCircles.every((g: unknown) => !!g && typeof g === "object" && Number.isInteger((g as {center:number}).center) && Number.isInteger((g as {edge:number}).edge) && typeof (g as {label:string}).label === "string" && typeof (g as {measure:boolean}).measure === "boolean"))) throw new Error("Повреждены окружности графика");
+      if (i.graphPolygons != null && (!Array.isArray(i.graphPolygons) || i.graphPolygons.length > 30 || !i.graphPolygons.every((g: unknown) => !!g && typeof g === "object" && Array.isArray((g as {points:number[]}).points) && (g as {points:number[]}).points.length >= 3 && (g as {points:number[]}).points.length <= 20 && (g as {points:number[]}).points.every(Number.isInteger) && typeof (g as {label:string}).label === "string" && typeof (g as {measure:boolean}).measure === "boolean"))) throw new Error("Повреждены многоугольники графика");
+      if (i.graphMidpoints != null && (!Array.isArray(i.graphMidpoints) || i.graphMidpoints.length > 40 || !i.graphMidpoints.every((g: unknown) => !!g && typeof g === "object" && Number.isInteger((g as {a:number}).a) && Number.isInteger((g as {b:number}).b) && typeof (g as {label:string}).label === "string"))) throw new Error("Повреждены середины отрезков графика");
+      if (i.graphAngles != null && (!Array.isArray(i.graphAngles) || i.graphAngles.length > 40 || !i.graphAngles.every((g: unknown) => !!g && typeof g === "object" && Number.isInteger((g as {a:number}).a) && Number.isInteger((g as {vertex:number}).vertex) && Number.isInteger((g as {b:number}).b) && typeof (g as {label:string}).label === "string"))) throw new Error("Повреждены углы графика");
+      if ((i.graphXMin ?? -10) >= (i.graphXMax ?? 10) || (i.graphYMin ?? -10) >= (i.graphYMax ?? 10)) throw new Error("Повреждён диапазон графика");
+    }
+    if (i.kind === "table") {
+      if (!finite(i.tableRows) || !finite(i.tableCols) || i.tableRows < 1 || i.tableRows > 20 || i.tableCols < 1 || i.tableCols > 12) throw new Error("Повреждён размер таблицы");
+      if (!Array.isArray(i.tableCells) || i.tableCells.length !== i.tableRows * i.tableCols || !i.tableCells.every((cell: unknown) => typeof cell === "string" && cell.length <= 2000)) throw new Error("Повреждены ячейки таблицы");
+      if (i.tableHeader != null && typeof i.tableHeader !== "boolean") throw new Error("Повреждён заголовок таблицы");
+      if (i.tableAlign != null && !["left","center","right"].includes(i.tableAlign)) throw new Error("Повреждено выравнивание таблицы");
+      if (i.tableStripe != null && typeof i.tableStripe !== "boolean") throw new Error("Повреждено чередование строк таблицы");
+      if (i.tableCompact != null && typeof i.tableCompact !== "boolean") throw new Error("Повреждён компактный режим таблицы");
+      if (i.fontSize != null && (!finite(i.fontSize) || i.fontSize < 9 || i.fontSize > 32)) throw new Error("Повреждён размер текста таблицы");
+    }
+    if (i.kind === "comment") {
+      if (i.resolved != null && typeof i.resolved !== "boolean") throw new Error("Повреждён комментарий");
+      if (i.commentTargetId != null && typeof i.commentTargetId !== "string") throw new Error("Повреждена привязка комментария");
+      if (i.color != null && !color(i.color)) throw new Error("Повреждён цвет комментария");
+    }
+    if (i.kind === "formula") {
+      if (i.fontSize != null && (!finite(i.fontSize) || i.fontSize < 12 || i.fontSize > 96)) throw new Error("Повреждён размер формулы");
+      if (i.color != null && !color(i.color)) throw new Error("Повреждён цвет формулы");
+      if (i.text.length > 10000) throw new Error("Формула слишком длинная");
+    }
+    if (i.kind === "checklist") {
+      if (!Array.isArray(i.checklistItems) || i.checklistItems.length < 1 || i.checklistItems.length > 40 || !i.checklistItems.every((value: unknown) => typeof value === "string" && value.length <= 2000)) throw new Error("Повреждён чек-лист");
+      if (!Array.isArray(i.checklistDone) || i.checklistDone.length !== i.checklistItems.length || !i.checklistDone.every((value: unknown) => typeof value === "boolean")) throw new Error("Повреждены отметки чек-листа");
+      if (i.fontSize != null && (!finite(i.fontSize) || i.fontSize < 10 || i.fontSize > 32)) throw new Error("Повреждён размер текста чек-листа");
+      if (i.color != null && !color(i.color)) throw new Error("Повреждён цвет чек-листа");
+    }
+    if (i.kind === "quiz") {
+      if (!Array.isArray(i.quizOptions) || i.quizOptions.length < 2 || i.quizOptions.length > 8 || !i.quizOptions.every((value: unknown) => typeof value === "string" && value.length <= 2000)) throw new Error("Повреждены варианты ответа");
+      if (!finite(i.quizCorrect) || i.quizCorrect < 0 || i.quizCorrect >= i.quizOptions.length) throw new Error("Повреждён правильный ответ");
+      if (i.quizSelected != null && (!finite(i.quizSelected) || i.quizSelected < 0 || i.quizSelected >= i.quizOptions.length)) throw new Error("Повреждён выбранный ответ");
+      if (i.quizRevealed != null && typeof i.quizRevealed !== "boolean") throw new Error("Повреждён режим показа ответа");
+      if (i.quizExplanation != null && (typeof i.quizExplanation !== "string" || i.quizExplanation.length > 5000)) throw new Error("Повреждено пояснение к вопросу");
+      if (i.fontSize != null && (!finite(i.fontSize) || i.fontSize < 10 || i.fontSize > 32)) throw new Error("Повреждён размер текста вопроса");
+      if (i.color != null && !color(i.color)) throw new Error("Повреждён цвет вопроса");
+    }
+    if (i.kind === "flashcard") {
+      if (i.text.length > 5000) throw new Error("Лицевая сторона карточки слишком длинная");
+      if (i.flashcardBack != null && (typeof i.flashcardBack !== "string" || i.flashcardBack.length > 5000)) throw new Error("Повреждена обратная сторона карточки");
+      if (i.flashcardFlipped != null && typeof i.flashcardFlipped !== "boolean") throw new Error("Повреждено состояние карточки");
+      if (i.flashcardMastery != null && !["again","known"].includes(i.flashcardMastery)) throw new Error("Повреждён статус изучения карточки");
+      if (i.fontSize != null && (!finite(i.fontSize) || i.fontSize < 10 || i.fontSize > 48)) throw new Error("Повреждён размер текста карточки");
+      if (i.color != null && !color(i.color)) throw new Error("Повреждён цвет карточки");
+    }
+    if (i.kind === "linkmedia") {
+      if (typeof i.mediaUrl !== "string" || i.mediaUrl.length > 5000 || !/^https?:\/\//i.test(i.mediaUrl)) throw new Error("Повреждена ссылка мультимедиа");
+      if (i.mediaTitle != null && (typeof i.mediaTitle !== "string" || i.mediaTitle.length > 500)) throw new Error("Повреждено название мультимедиа");
+    }
+    if (i.kind === "cover") {
+      if (i.text.length > 5000) throw new Error("Подпись шторки слишком длинная");
+      if (i.coverOpen != null && typeof i.coverOpen !== "boolean") throw new Error("Повреждено состояние шторки");
+      if (i.coverOpacity != null && (!finite(i.coverOpacity) || i.coverOpacity < 0 || i.coverOpacity > 1)) throw new Error("Повреждена прозрачность шторки");
+      if (i.fontSize != null && (!finite(i.fontSize) || i.fontSize < 10 || i.fontSize > 48)) throw new Error("Повреждён размер текста шторки");
+      if (i.color != null && !color(i.color)) throw new Error("Повреждён цвет шторки");
+    }
+  }
+  return packDocumentInk({
+    version: 1,
+    title: d.title,
+    subject:typeof d.subject==="string"?d.subject.trim().slice(0,80):"",
+    view: { x: d.view.x, y: d.view.y, zoom: d.view.zoom },
+    background:normalizeBoardBackground(d.background),
+    backgroundShared:d.backgroundShared!==false,
+    items: d.items.map((i: Item) => ({
+      id: i.id,
+      kind: i.kind,
+      x: i.x,
+      y: i.y,
+      width: i.width,
+      height: i.height,
+      text: i.text,
+      ...persistedGraphData(i),
+      ...(i.kind === "fraction" ? {
+        fractionMode:i.fractionMode??"circle",
+        fractionNumerator:i.fractionNumerator,
+        fractionDenominator:i.fractionDenominator,
+      } : {}),
+      ...(i.kind === "pen" || i.kind === "marker" ? { color: i.color, weight: i.weight, points: i.points!.map(p => ({ x: p.x, y: p.y })) } : {}),
+      ...(i.kind === "shape" ? { shapeType: i.shapeType ?? "rounded", ...(color(i.color) ? { color: i.color } : {}) } : {}),
+      ...(i.kind === "instrument" ? {
+        instrumentType:i.instrumentType,
+        instrumentScale:i.instrumentScale,
+      } : {}),
+      ...(i.kind === "image" || i.kind === "pdf" ? {
+          assetId: i.assetId, name: i.name, mime: i.mime,
+          ...(i.kind === "image" && validImageCrop(i.imageCrop) ? { imageCrop: { ...i.imageCrop } } : {}),
+          ...(i.kind === "pdf" && finite(i.pdfPage) ? { pdfPage: Math.max(1, Math.round(i.pdfPage)) } : {})
+        } : {}),
+      ...(i.kind === "connector" ? {
+        connectorStart: { ...i.connectorStart! },
+        connectorEnd: { ...i.connectorEnd! },
+        connectorStyle: i.connectorStyle ?? "arrow",
+        arrowHeadStyle: i.arrowHeadStyle ?? "triangle",
+        arrowHeadSize: Number.isFinite(i.arrowHeadSize) ? Math.max(4,Math.min(24,i.arrowHeadSize!)) : 8,
+        connectorRouting: i.connectorRouting ?? "straight",
+        ...(binding(i.connectorStartBinding) ? { connectorStartBinding: { ...i.connectorStartBinding } } : {}),
+        ...(binding(i.connectorEndBinding) ? { connectorEndBinding: { ...i.connectorEndBinding } } : {}),
+        color: color(i.color) ? i.color : "#5355c9",
+        weight: finite(i.weight) ? i.weight : 3,
+      } : {}),
+      ...(i.kind === "table" ? {
+        tableRows: Math.max(1, Math.min(20, Math.round(i.tableRows ?? 3))),
+        tableCols: Math.max(1, Math.min(12, Math.round(i.tableCols ?? 3))),
+        tableCells: Array.isArray(i.tableCells) ? i.tableCells.map((cell) => String(cell)) : [],
+        tableHeader: i.tableHeader !== false,
+        tableAlign:i.tableAlign??"left",
+        tableStripe:i.tableStripe===true,
+        tableCompact:i.tableCompact===true,
+        ...(finite(i.fontSize) && i.fontSize >= 9 && i.fontSize <= 32 ? { fontSize: i.fontSize } : {}),
+      } : {}),
+      ...(i.kind === "comment" ? {
+        resolved: i.resolved === true,
+        ...(typeof i.commentTargetId === "string" && i.commentTargetId ? { commentTargetId: i.commentTargetId } : {}),
+        color: color(i.color) ? i.color : "#fff8d6",
+      } : {}),
+      ...((i.kind === "sticky" || i.kind === "frame" || i.kind === "formula") && color(i.color) ? { color: i.color } : {}),
+      ...((i.kind === "text" || i.kind === "sticky") && finite(i.fontSize) && i.fontSize >= 10 && i.fontSize <= 96 ? { fontSize: i.fontSize } : {}),
+      ...((i.kind === "text" || i.kind === "sticky") ? {
+        textAlign: i.textAlign ?? "left", fontWeight: i.fontWeight ?? "normal", fontStyle: i.fontStyle ?? "normal", textDecoration: i.textDecoration ?? "none",
+        textList: i.textList ?? "none", lineHeight: finite(i.lineHeight) ? Math.max(1, Math.min(2.5, i.lineHeight)) : 1.45,
+        ...(color(i.color) ? { color: i.color } : {}),
+      } : {}),
+      ...(i.kind === "formula" && finite(i.fontSize) && i.fontSize >= 12 && i.fontSize <= 96 ? { fontSize: i.fontSize } : {}),
+      ...(i.kind === "checklist" ? {
+        checklistItems: Array.isArray(i.checklistItems) ? i.checklistItems.map((value) => String(value).slice(0, 2000)) : ["Новый пункт"],
+        checklistDone: Array.isArray(i.checklistDone) ? i.checklistDone.map((value) => value === true) : [false],
+        ...(finite(i.fontSize) && i.fontSize >= 10 && i.fontSize <= 32 ? { fontSize: i.fontSize } : {}),
+        color: color(i.color) ? i.color : "#5355c9",
+      } : {}),
+      ...(i.kind === "quiz" ? {
+        quizOptions: Array.isArray(i.quizOptions) ? i.quizOptions.slice(0, 8).map((value) => String(value).slice(0, 2000)) : ["Вариант 1", "Вариант 2"],
+        quizCorrect: finite(i.quizCorrect) ? Math.max(0, Math.min((i.quizOptions?.length ?? 2) - 1, Math.round(i.quizCorrect))) : 0,
+        ...(finite(i.quizSelected) ? { quizSelected: Math.max(0, Math.min((i.quizOptions?.length ?? 2) - 1, Math.round(i.quizSelected))) } : {}),
+        quizRevealed: i.quizRevealed === true,
+        ...(typeof i.quizExplanation === "string" ? { quizExplanation: i.quizExplanation.slice(0, 5000) } : {}),
+        ...(finite(i.fontSize) && i.fontSize >= 10 && i.fontSize <= 32 ? { fontSize: i.fontSize } : {}),
+        color: color(i.color) ? i.color : "#5355c9",
+      } : {}),
+      ...(i.kind === "flashcard" ? {
+        flashcardBack: typeof i.flashcardBack === "string" ? i.flashcardBack.slice(0, 5000) : "Ответ",
+        flashcardFlipped: i.flashcardFlipped === true,
+        ...(i.flashcardMastery === "again" || i.flashcardMastery === "known" ? { flashcardMastery: i.flashcardMastery } : {}),
+        ...(finite(i.fontSize) && i.fontSize >= 10 && i.fontSize <= 48 ? { fontSize: i.fontSize } : {}),
+        color: color(i.color) ? i.color : "#5355c9",
+      } : {}),
+      ...(i.kind === "linkmedia" ? { mediaUrl: i.mediaUrl, ...(typeof i.mediaTitle === "string" ? { mediaTitle: i.mediaTitle.slice(0,500) } : {}) } : {}),
+      ...(i.kind === "cover" ? {
+        coverOpen: i.coverOpen === true,
+        coverOpacity: finite(i.coverOpacity) ? Math.max(0, Math.min(1, i.coverOpacity)) : 1,
+        ...(finite(i.fontSize) && i.fontSize >= 10 && i.fontSize <= 48 ? { fontSize: i.fontSize } : {}),
+        color: color(i.color) ? i.color : "#5355c9",
+      } : {}),
+      ...(finite(i.rotation) ? { rotation: i.rotation } : {}),
+      ...(i.kind === "frame" && finite(i.presentationOrder) ? { presentationOrder: Math.max(0, Math.round(i.presentationOrder)) } : {}),
+      ...(i.kind === "frame" && typeof i.notes === "string" ? { notes: i.notes.slice(0, 20000) } : {}),
+      ...(typeof i.groupId === "string" && i.groupId ? { groupId: i.groupId } : {}),
+      ...(i.locked === true ? { locked: true } : {}),
+      ...(i.hidden === true ? { hidden: true } : {}),
+    })),
+  });
+}
+
+// Keep visually identical strokes lightweight in saved JSON and undo history:
+// simplify sub-pixel pointer jitter and round long floating-point coordinates.
+// This never changes the visible pencil/marker width or older saved strokes.
+export function simplifyStrokePath(path: readonly Point[], zoom = 1): Point[] {
+  if (path.length < 3) return path.map(p => ({ x:p.x, y:p.y }));
+  const epsilon = Math.max(0.035, 0.35 / Math.max(0.1, zoom));
+  const minStepSquared = (epsilon * 0.35) ** 2;
+  const filtered: Point[] = [path[0]];
+  for (let i=1; i<path.length-1; i++) {
+    const last = filtered[filtered.length-1], p = path[i];
+    const dx = p.x-last.x, dy = p.y-last.y;
+    if (dx*dx+dy*dy >= minStepSquared) filtered.push(p);
+  }
+  filtered.push(path[path.length-1]);
+  if (filtered.length <= 2) return filtered.map(p => ({...p}));
+  const keep = new Uint8Array(filtered.length);
+  keep[0] = keep[filtered.length-1] = 1;
+  const segments: Array<[number, number]> = [[0, filtered.length-1]];
+  const limitSquared=epsilon*epsilon;
+  while (segments.length) {
+    const [first,last] = segments.pop()!;
+    const a=filtered[first], b=filtered[last];
+    const vx=b.x-a.x, vy=b.y-a.y, lengthSquared=vx*vx+vy*vy;
+    let mostDistant=-1, index=-1;
+    for (let i=first+1; i<last; i++) {
+      const p=filtered[i];
+      const t=lengthSquared>0 ? Math.max(0,Math.min(1,
+        ((p.x-a.x)*vx+(p.y-a.y)*vy)/lengthSquared)) : 0;
+      const dx=p.x-(a.x+t*vx), dy=p.y-(a.y+t*vy);
+      const d=dx*dx+dy*dy;
+      if(d>mostDistant){mostDistant=d;index=i}
+    }
+    if (index>=0 && mostDistant>limitSquared) {
+      keep[index]=1;
+      segments.push([first,index],[index,last]);
+    }
+  }
+  const result:Point[]=[];
+  for (let i=0; i<filtered.length; i++)
+    if(keep[i])result.push({x:filtered[i].x,y:filtered[i].y});
+  return result;
+}
+
+export function stroke(
+ id: string, kind: "pen" | "marker", path: Point[],
+ colorValue: string, weight: number, zoom = 1
+): Item {
+  const reduced=simplifyStrokePath(path,zoom);
+  const precise=(value:number)=>Math.round(value*100)/100;
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for(const p of reduced){
+    minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);
+    maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);
+  }
+  const x=precise(minX-weight/2),y=precise(minY-weight/2);
+  return {
+    id,kind,x,y,
+    width:Math.max(weight,precise(maxX-minX+weight)),
+    height:Math.max(weight,precise(maxY-minY+weight)),
+    text:"",color:colorValue,weight,
+    points:reduced.map(p=>({x:precise(p.x-x),y:precise(p.y-y)})),
+  };
+}
+
+function distanceToSegment(p: Point, a: Point, b: Point) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  if (dx === 0 && dy === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+function erasedByPath(p: Point, path: Point[], radius: number) {
+  if (!path.length) return false;
+  if (path.length === 1) return Math.hypot(p.x - path[0].x, p.y - path[0].y) <= radius;
+  for (let i = 1; i < path.length; i++) if (distanceToSegment(p, path[i - 1], path[i]) <= radius) return true;
+  return false;
+}
+
+export function eraseInk(items: Item[], path: Point[], radius: number): Item[] {
+  if (!path.length) return items;
+  const out: Item[] = [];
+  for (const item of items) {
+    if ((item.kind !== "pen" && item.kind !== "marker") || !item.points) {
+      out.push(item);
+      continue;
+    }
+    const world = item.points.map(p => ({ x: p.x + item.x, y: p.y + item.y }));
+    const effectiveRadius = radius + (item.weight ?? 1) / 2;
+    const runs: Point[][] = [];
+    let run: Point[] = [];
+    for (let i = 0; i < world.length; i++) {
+      const p = world[i];
+      const pointErased = erasedByPath(p, path, effectiveRadius);
+      let segmentErased = false;
+      if (i > 0) {
+        for (let j = 1; j < path.length && !segmentErased; j++) {
+          const a = world[i - 1], b = world[i], c = path[j - 1], d = path[j];
+          segmentErased = distanceToSegment(c, a, b) <= effectiveRadius || distanceToSegment(d, a, b) <= effectiveRadius || distanceToSegment(a, c, d) <= effectiveRadius || distanceToSegment(b, c, d) <= effectiveRadius;
+        }
+      }
+      if (pointErased || segmentErased) {
+        if (run.length) { runs.push(run); run = []; }
+      } else run.push(p);
+    }
+    if (run.length) runs.push(run);
+    for (const segment of runs) if (segment.length) out.push(stroke(crypto.randomUUID(), item.kind, segment, item.color ?? "#000000", item.weight ?? 3));
+  }
+  return out;
 }
