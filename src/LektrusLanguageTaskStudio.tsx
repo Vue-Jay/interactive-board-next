@@ -180,10 +180,11 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
           <span><small>{i+1}</small> Правильный ответ: <b>{part.answer}</b></span>
           <button type="button" onClick={()=>removeGap(i)} aria-label={"Убрать пропуск "+(i+1)}>Убрать пропуск ×</button>
          </div>
-         {orthography&&<label className="lektrus-language-choice-toggle">
+         {orthography&&part.answer.length<=24&&<label className="lektrus-language-choice-toggle">
           <input type="checkbox" checked={!!part.choices} onChange={e=>configureChoices(i,e.target.checked)}/>
           Показать два варианта под пропуском
          </label>}
+         {orthography&&part.answer.length>24&&<small>Для двух вариантов выделите не более 24 букв.</small>}
          {orthography&&part.choices&&<label className="lektrus-language-distractor">
           Второй вариант
           <input value={part.choices[1]} maxLength={24} placeholder="Например, о"
