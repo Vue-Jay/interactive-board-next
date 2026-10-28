@@ -1,6 +1,7 @@
 import {useState} from "react";
 import type {NextSchoolDiagram,WordRole,AlgorithmNodeKind,AlgorithmNode,AlgorithmEdge} from "./lektrusNextSchoolModel";
 import {grammarRoles,flowNodeNames,validPlaceDigit} from "./lektrusNextSchoolModel";
+import {russianSentenceTokens} from "./lektrusRussianWorkLogic";
 type Props={diagram:NextSchoolDiagram;onChange:(next:NextSchoolDiagram)=>void};
 const key=()=>crypto.randomUUID();
 const arrows=(next:NextSchoolDiagram,change:Props["onChange"])=>change(next);
@@ -9,7 +10,7 @@ function SyntaxSentenceSetup({diagram,onChange}:{
  diagram:Extract<NextSchoolDiagram,{kind:"syntax"}>;onChange:(next:NextSchoolDiagram)=>void;
 }){
  const [source,setSource]=useState("");
- const words=source.match(/[\p{L}\p{M}]+(?:[-’][\p{L}\p{M}]+)*|\d+|[^\s]/gu)??[];
+ const words=russianSentenceTokens(source);
  const ready=words.length>0&&words.length<=14&&words.every(word=>word.length<=28);
  return <div className="lektrus-syntax-quick-start">
   <label className="lektrus-school-field">Предложение целиком
