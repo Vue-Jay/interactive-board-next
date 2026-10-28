@@ -1,4 +1,5 @@
 import type {Item} from "./boardModel";
+import {labDisplayPoint} from "./lektrusLabLayout";
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
  from "./lektrusLabTitration";
 import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
@@ -65,7 +66,8 @@ export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
  const devices=[...new Set(placedDevices.map(d=>d.kind))];
  return {...bench,placedDevices,devices,event:bench.event+1,
   stirringVesselId:target.kind==="stirrer"&&!devices.includes("stirrer")?undefined:bench.stirringVesselId,
-  instrumentTarget:bench.instrumentTarget&&!devices.includes(bench.instrumentTarget.kind)?
+  instrumentTarget:bench.instrumentTarget&&(target.kind===bench.instrumentTarget.kind&&
+   target.linkedVesselId===bench.instrumentTarget.vesselId)?
    undefined:bench.instrumentTarget};
 }
 /** Only appropriate vessel types are heated; do not fabricate temperatures,
@@ -76,9 +78,15 @@ export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string):L
  if(!device||!vessel)return bench;
  if((device.kind==="hotplate"||device.kind==="burner")&&
   !["beaker","tube","flask","conical","dish","crucible"].includes(vessel.kind))return bench;
+ if(device.active&&device.linkedVesselId===vesselId)return bench;
  const next=useLabDevice(bench,device.kind,vesselId);
+ const screen=labDisplayPoint(vessel,bench.vessels.length>3);
+ const isSupport=["hotplate","burner","stirrer","tripod"].includes(device.kind);
+ // Supports sit beneath the vessel; thermometers stand alongside its wall.
+ const x=clampDevice(screen.x+(isSupport?0:9),9,81);
+ const y=clampDevice(screen.y+(isSupport?10:0),53,84);
  const placedDevices=placedLabDevices(next).map(d=>d.id===id?
-  {...d,active:true,linkedVesselId:vesselId}:d);
+  {...d,x,y,active:true,linkedVesselId:vesselId}:d);
  return {...next,placedDevices,event:next.event+1};
 }
 export function stopPlacedLabDevice(bench:LabBench,id:string):LabBench{
@@ -88,7 +96,13 @@ export function stopPlacedLabDevice(bench:LabBench,id:string):LabBench{
   {...d,active:false,linkedVesselId:undefined}:d);
  const stirringVesselId=target.kind==="stirrer"&&
   bench.stirringVesselId===target.linkedVesselId?undefined:bench.stirringVesselId;
- return {...bench,placedDevices,stirringVesselId,event:bench.event+1};
+ const instrumentTarget=target.linkedVesselId===bench.instrumentTarget?.vesselId&&
+  target.kind===bench.instrumentTarget?.kind?undefined:bench.instrumentTarget;
+ // Turning the appliance off ends its heating condition, but the chemistry
+ // of any already verified reaction is retained in the vessel.
+ const next=target.linkedVesselId&&["hotplate","burner"].includes(target.kind)?
+  setLabEnvironment(bench,target.linkedVesselId,"aqueous"):bench;
+ return {...next,placedDevices,stirringVesselId,instrumentTarget,event:next.event+1};
 }
 export function toggleLabDevice(bench:LabBench,id:LabDevice):LabBench{
  const devices=bench.devices??[];
