@@ -6,12 +6,13 @@ const file="src/LektrusRussianTaskAnswer.tsx";
 const js=ts.transpileModule(read(file),{fileName:file,compilerOptions:{
  target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.React
 }}).outputText.replace(/^import[^;]*;\s*$/gm,"").replace(/^export default /gm,"").replace(/^export /gm,"");
-const api=new Function("grammarRoles","morphemeNames","posNames",js+
+const api=new Function("grammarRoles","morphemeNames","posNames","russianSentenceTokens",js+
  "\nreturn {splitRussianSentence,separateRussianQuestions,russianWorkSource};")(
  {subject:"Подлежащее",predicate:"Сказуемое",attribute:"Определение",
  object:"Дополнение",adverbial:"Обстоятельство",none:"Не отмечать"},
  {prefix:"Приставка",root:"Корень",suffix:"Суффикс",ending:"Окончание",postfix:"Постфикс"},
- {noun:"Имя существительное"}
+ {noun:"Имя существительное"},
+ source=>source.match(/[\\p{L}\\p{M}]+(?:[-’][\\p{L}\\p{M}]+)*|\\d+|[^\\s]/gu)??[]
 );
 assert.deepEqual(api.splitRussianSentence("Тихо шумел лес."),
  ["Тихо","шумел","лес","."]);
