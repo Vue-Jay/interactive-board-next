@@ -4,7 +4,7 @@ import type {LabDevice} from "./lektrusChemistryBenchModel";
 type MountChoice={id:string;label:string};
 type DeviceIconProps={
  kind:LabDevice;size?:number;active?:boolean;
- editable?:boolean;controlsVisible?:boolean;temperatureC?:number;targetTemperatureC?:number;
+ editable?:boolean;controlsVisible?:boolean;temperatureC?:number;temperatureVisible?:boolean;targetTemperatureC?:number;
  standHeight?:number;heatLevel?:number;
  choices?:MountChoice[];shelfChoices?:MountChoice[];
  onPowerToggle?:()=>void;onTemperatureChange?:(value:number)=>void;
@@ -15,7 +15,7 @@ type DeviceIconProps={
 /** The controls are engraved into the equipment's own scalable SVG.
  * There are no absolute-positioned controls floating over the drawing. */
 export default function LektrusLabDeviceIcon({
- kind,size=42,active=false,editable=false,controlsVisible=false,temperatureC,targetTemperatureC=150,
+ kind,size=42,active=false,editable=false,controlsVisible=false,temperatureC,temperatureVisible=true,targetTemperatureC=150,
  standHeight=.5,heatLevel=2,choices=[],shelfChoices=[],
  onPowerToggle,onTemperatureChange,onStandHeightChange,onLevelCycle,
  onAttach,onRelease,onReturn
@@ -91,8 +91,8 @@ export default function LektrusLabDeviceIcon({
      fill={active?"#e7ffdc":"#214a43"}>⏻</text>
    </g>}
    <circle cx="19" cy="82" r="2.2" fill={active?"#d8e874":"#8faca0"}/>
-   <text x="43" y="84" fill="#2b6a5a" fontSize="7.5" fontWeight="800"
-    textAnchor="middle">≈{Math.round(temperatureC??22)}°C</text>
+   {temperatureVisible&&<text x="43" y="84" fill="#2b6a5a" fontSize="7.5" fontWeight="800"
+    textAnchor="middle">≈{Math.round(temperatureC??22)}°C</text>}
   </>}
   {kind==="burner"&&<>
    <path d="M36 88H74L89 96H21Z" fill={"url(#"+metal+")"} stroke="#406d69" strokeWidth="2.7"/>
