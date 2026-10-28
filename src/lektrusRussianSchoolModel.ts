@@ -93,5 +93,5 @@ export function synchronizePhoneticLetters(word:string,existing:PhoneticLetter[]
  });
 }
 export const phoneticWordValid=(word:string)=>
- word.length<=24&&/^[\\p{L}\\p{M}ёЁъЪьЬ-]*$/u.test(word);
+ word.length<=24&&/^[\p{L}\p{M}ёЁъЪьЬ-]*$/u.test(word);
 export const totalSounds=(letters:PhoneticLetter[])=>letters.reduce((n,l)=>n+l.sounds.length,0);
