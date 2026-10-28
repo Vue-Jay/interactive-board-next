@@ -350,8 +350,6 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
           onChange={e=>patch({details:{...entry.details,[key]:e.target.value}})}/>
        </label>)}
      </details>}
-    {tone!=="russian"&&tone!=="languages"&&
-     <LektrusTaskPreview key={tone+":"+current.id} tone={tone} entry={entry}/>}
     <details className="lektrus-subject-task-teacher-answer">
       <summary>Ответ для проверки <span>необязательно, скрыт от учеников</span></summary>
       <label>Правильный ответ / образец
@@ -359,6 +357,8 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
         placeholder="Введите правильный ответ или краткие критерии проверки"
         onChange={e=>patch({solution:e.target.value})}/></label>
     </details>
+    {tone!=="russian"&&tone!=="languages"&&
+     <LektrusTaskPreview key={tone+":"+current.id} tone={tone} entry={entry}/>}
    </div>
    <footer><button type="button" className="is-danger" onClick={onDelete}>Удалить задание</button>
     <button type="button" className="is-primary" onClick={onClose}>Готово</button></footer>
