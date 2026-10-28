@@ -38,7 +38,7 @@ for(const text of [
  'morphemeNames','grammarRoles','posNames','Граница после буквы',
  'className="lektrus-rus-word-divider"','className="lektrus-rus-roles"',
  'Подчеркните члены предложения','Нулевое окончание',
- 'Постоянные признаки','Непостоянные признаки','Синтаксическая роль',
+ 'Постоянные:','Непостоянные:','Синтаксическая роль',
  'Ответьте на вопросы к тексту'
 ])assert.ok(answer.includes(text),text);
 assert.ok(board.includes('onRussianWorkChange(entry.id,work)'));
