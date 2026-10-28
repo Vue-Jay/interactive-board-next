@@ -1,4 +1,4 @@
-import {useId,useRef,useState,type PointerEvent} from "react";
+import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import type {LabBench,LabVessel,LabGlassware} from "./lektrusChemistryBenchModel";
 import {labObservation,labIndicatorResult,positionLabVessel} from "./lektrusChemistryBenchModel";
 import {reactionAppearance,substances} from "./lektrusReactionDatabase";
@@ -95,6 +95,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const gesture=useRef<{id:string;startX:number;startY:number;x:number;y:number;dragged:boolean}|null>(null);
  const [preview,setPreview]=useState<{id:string;x:number;y:number}|null>(null);
  const [dropTarget,setDropTarget]=useState<string|null>(null);
+ const [transfer,setTransfer]=useState<{from:{x:number;y:number};to:{x:number;y:number}}|null>(null);
+ useEffect(()=>{if(!transfer)return;const timeout=setTimeout(()=>setTransfer(null),850);
+  return()=>clearTimeout(timeout);
+ },[transfer]);
  const point=(event:PointerEvent)=>{const rect=host.current?.getBoundingClientRect();
   if(!rect||!rect.width||!rect.height)return null;
   return {x:(event.clientX-rect.left)/rect.width*100,
@@ -107,6 +111,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    id:v.id,dist:Math.hypot((p.x-v.x)*rect.width/100,(p.y-v.y)*rect.height/100)
   })).filter(v=>v.dist<Math.min(115,Math.max(54,rect.width*.15))).sort((a,b)=>a.dist-b.dist);
   return candidates[0]?.id??null;
+ };
+ const transferVessel=(sourceId:string,targetId:string)=>{
+  const from=bench.vessels.find(v=>v.id===sourceId);
+  const to=bench.vessels.find(v=>v.id===targetId);
+  if(from&&to&&from.reagents.length)setTransfer({
+   from:{x:from.x,y:from.y-12},to:{x:to.x,y:to.y-12}});
+  onPour?.(sourceId,targetId);
  };
  const down=(event:PointerEvent<HTMLButtonElement>,v:LabVessel)=>{
   if(!editable||event.button!==0||!event.isPrimary)return;
@@ -134,9 +145,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const p=point(event);
   if(g.dragged){
    const destination=p?targetAt(g.id,p):null;
-   if(destination)onPour?.(g.id,destination);
+   if(destination)transferVessel(g.id,destination);
    else if(p)onChange?.(positionLabVessel(bench,g.id,g.x+p.x-g.startX,g.y+p.y-g.startY));
-  }else if(pouringId&&pouringId!==g.id)onPour?.(pouringId,g.id);
+  }else if(pouringId&&pouringId!==g.id)transferVessel(pouringId,g.id);
   else onSelect?.(g.id);
   setPreview(null);setDropTarget(null);
  };
@@ -173,6 +184,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <LabVesselGraphic vessel={v}/>
    </button>;
   })}
+  {transfer&&<svg className="lektrus-lab-pour-stream" viewBox="0 0 100 100"
+   preserveAspectRatio="none" aria-hidden="true">
+   <path d={`M ${transfer.from.x} ${transfer.from.y} Q ${(transfer.from.x+transfer.to.x)/2} ${Math.min(transfer.from.y,transfer.to.y)-12} ${transfer.to.x} ${transfer.to.y}`}
+    fill="none" stroke="#58afe0" strokeWidth=".9" strokeLinecap="round"/>
+  </svg>}
   {editable&&(dropTarget||pouringId)&&<div className="lektrus-lab-pour-hint" aria-live="polite">
    {dropTarget?"Отпустите, чтобы перелить содержимое": "Выберите сосуд назначения или перетащите исходный на него"}</div>}
  </div>;
