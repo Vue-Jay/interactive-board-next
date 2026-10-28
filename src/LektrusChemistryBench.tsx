@@ -335,9 +335,43 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onClick={e=>{e.stopPropagation();if(selected?.reagents.length)clean(selected.id);else setNotice("Выберите заполненный сосуд")}}
    title="Слейте выбранный раствор или перетащите сюда посуду"
    aria-label="Раковина: слить содержимое выбранного сосуда">
-   <span className="lektrus-lab-sink-tap" aria-hidden="true">⌒</span>
-   <span className="lektrus-lab-sink-basin" aria-hidden="true">◉</span>
-   <small>СЛИВ</small>
+   <svg className="lektrus-lab-sink-art" viewBox="0 0 220 164"
+    role="img" aria-label="Лабораторная раковина с краном">
+    <defs>
+     <linearGradient id="lektrus-sink-steel" x1="0" y1="0" x2=".9" y2="1">
+      <stop stopColor="#f1f8f7"/><stop offset=".47" stopColor="#b7cecb"/>
+      <stop offset="1" stopColor="#789f9a"/>
+     </linearGradient>
+     <linearGradient id="lektrus-sink-ceramic" x1="0" y1="0" x2="0" y2="1">
+      <stop stopColor="#f4f8f5"/><stop offset=".55" stopColor="#d8e6e2"/>
+      <stop offset="1" stopColor="#a4c1b9"/>
+     </linearGradient>
+    </defs>
+    <ellipse cx="113" cy="138" rx="100" ry="14" fill="#14392f" opacity=".19"/>
+    <path d="M27 87H194Q205 87 203 100L194 137Q191 145 179 145H45Q33 145 30 137L19 100Q17 87 27 87Z"
+     fill="#8ca7a0" stroke="#6c928a" strokeWidth="2"/>
+    <ellipse cx="110" cy="94" rx="96" ry="39" fill="url(#lektrus-sink-steel)" stroke="#7baba2" strokeWidth="3"/>
+    <ellipse cx="110" cy="97" rx="79" ry="27" fill="#779d98" stroke="#c9e2d9" strokeWidth="3"/>
+    <ellipse cx="110" cy="105" rx="70" ry="22" fill="url(#lektrus-sink-ceramic)" opacity=".98"/>
+    <ellipse cx="110" cy="115" rx="17" ry="5.5" fill="#5e8582" opacity=".65"/>
+    <ellipse cx="110" cy="114" rx="10" ry="3" fill="#3d716f"/>
+    <path d="M112 80V40Q112 26 126 26H147Q160 26 160 39V50"
+     stroke="#5e8f90" strokeWidth="15" strokeLinecap="round" fill="none"/>
+    <path d="M112 78V40Q112 26 126 26H147Q160 26 160 39V49"
+     stroke="url(#lektrus-sink-steel)" strokeWidth="10" strokeLinecap="round" fill="none"/>
+    <path d="M153 50h15" stroke="#548789" strokeWidth="7" strokeLinecap="round"/>
+    <rect x="102" y="69" width="22" height="17" rx="7" fill="#b7ccca" stroke="#679690" strokeWidth="2"/>
+    <path d="M125 23v-9h20" stroke="#5b8a88" strokeWidth="5" strokeLinecap="round"/>
+    <rect x="145" y="11" width="18" height="7" rx="3" fill="#b9d0c9" stroke="#709d94"/>
+    {sinkFlow&&<>
+     <path className="lektrus-lab-sink-water" d="M160 52Q162 72 153 94"
+      fill="none" stroke="#b1e7ee" strokeWidth="5" strokeLinecap="round"/>
+     <circle className="lektrus-lab-sink-drop" cx="147" cy="110" r="6"
+      fill="#8ac8d1" opacity=".8"/>
+    </>}
+   </svg>
+   <span className="lektrus-lab-sink-caption"><strong>МОЙКА</strong>
+    <small>{sinkFlow?"Раствор слит":"Слить содержимое"}</small></span>
   </button>
   {onOpenEditor&&editable&&<button type="button" data-board-interactive="true"
    className="lektrus-lab-journal-trigger" title="Журнал опыта: условия и наблюдения"
