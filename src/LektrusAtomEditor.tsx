@@ -1,3 +1,4 @@
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {useState} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
@@ -26,7 +27,7 @@ export default function LektrusAtomEditor({item,onSave,onCancel,onClose}:Props){
  });
  const change=(patch:Partial<AtomModel>)=>setModel(cur=>({...cur,...patch}));
  const close=()=>onClose?onClose(result()):onCancel();
- return createPortal(<div className="lektrus-atom-backdrop"
+ return createPortal(<div className="lektrus-atom-backdrop" style={subjectEditorStyle("chemistry")}
    onPointerDown={e=>{if(e.target===e.currentTarget)close()}}>
   <section className="lektrus-atom-dialog" role="dialog" aria-modal="true"
    aria-label="Редактор строения атома" onPointerDown={e=>e.stopPropagation()}>
