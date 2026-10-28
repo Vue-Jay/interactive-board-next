@@ -1777,3 +1777,13 @@
  .lektrus-lab-worktop-actions label{flex:1 1 auto}
  .lektrus-lab-worktop-actions select{max-width:100px}
 }
+
+/* Leave a real front edge but let the tabletop hold two complete rows. */
+.lektrus-lab-bench .lektrus-lab-worktop-zone{bottom:12%!important}
+.lektrus-lab-bench .lektrus-lab-counter{bottom:5%;height:7%}
+.lektrus-lab-bench .lektrus-lab-counter-front{bottom:3%;height:4%}
+.lektrus-lab-bench .lektrus-lab-table-legs{height:6%}
+.lektrus-lab-bench.is-crowded .lektrus-lab-vessel{height:18%!important}
+@container(max-width:460px){
+ .lektrus-lab-bench.is-crowded .lektrus-lab-vessel{height:17%!important}
+}
