@@ -198,8 +198,15 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // remain an approximation: no general boiling points are inferred.
   const isWater=v.environment==="aqueous"&&v.reagents.length>0;
   const next=Math.round(Math.max(ambient,Math.min(isWater?100:400,raw))*10)/10;
-  if(next!==old)changed=true;
-  return next===old?v:{...v,temperatureC:next};
+  const cooling=!device?.powered&&next<42&&v.temperatureC!==undefined&&
+   ["heated","ignited"].includes(v.environment);
+  if(next!==old||cooling)changed=true;
+  if(next===old&&!cooling)return v;
+  // Once the apparatus is off and a vessel has cooled, stop treating it
+  // as continuously heated. Preserve its verified completed chemistry.
+  const hasLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml");
+  return {...v,temperatureC:next,
+   environment:cooling?(hasLiquid?"aqueous":"dry"):v.environment};
  });
  result={...result,vessels};
  // Start pre-reviewed heated cases only after reaching a sufficiently warm state.
