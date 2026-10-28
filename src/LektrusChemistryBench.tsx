@@ -229,8 +229,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  };
  const transferVessel=(sourceId:string,targetId:string)=>{
   const from=bench.vessels.find(v=>v.id===sourceId),to=bench.vessels.find(v=>v.id===targetId);
-  if(from&&to&&from.reagents.length)setTransfer({from:{x:from.x,y:from.y-12},
-   to:{x:to.x,y:to.y-12}});
+  if(from&&to&&from.reagents.length){
+   const start=labDisplayPoint(from),end=labDisplayPoint(to);
+   setTransfer({from:{x:start.x,y:start.y-12},to:{x:end.x,y:end.y-12}});
+  }
   onPour?.(sourceId,targetId);
  };
  const clean=(id:string)=>{
@@ -319,7 +321,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const updated=putLabReagent(bench,selected.id,chosen,dose);
   if(updated===bench){setNotice("Реагент уже добавлен или посуда заполнена");return}
   onChange?.(updated);
-  setDoseEffect({x:selected.x,y:selected.y,color:reagentAppearance(chosen).color});
+  setDoseEffect({...labDisplayPoint(selected),color:reagentAppearance(chosen).color});
   setNotice(chosen+" · "+dose.value+" "+(unit==="ml"?"мл":"г")+" добавлено в "+names[selected.kind]);
   setCabinet(null);setChosen(null);
  };
@@ -403,6 +405,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <span aria-hidden="true">⚙</span><strong>Приборы</strong><small>{(bench.devices??[]).length}/5</small>
    </button>
    <div className="lektrus-lab-devices-active">
+    {!(bench.devices??[]).length&&<span className="lektrus-lab-equipment-empty">Добавьте приборы из шкафа</span>}
     {(bench.devices??[]).map(id=>{
      const device=labDevices.find(v=>v.id===id);
      if(!device)return null;
