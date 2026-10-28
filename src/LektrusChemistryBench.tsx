@@ -276,6 +276,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [localPourId,setLocalPourId]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
  const [sinkFlow,setSinkFlow]=useState(false);
+ const [confirmClear,setConfirmClear]=useState(false);
  const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string}|null>(null);
  const settings=labBenchSettings(bench);
  const selected=selectedLabVessel(bench);
@@ -1083,8 +1084,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
           {items.map(v=><button key={v.id} type="button"
            className={chosen===v.id?"active":""} aria-pressed={chosen===v.id}
            onClick={()=>{setChosen(v.id);
-            setUnit(cabinetPhase(v)==="solid"?"g":"ml");
-            setAmount("10")}}>
+            const saved=quickReagents.find(q=>q.id===v.id)?.dose;
+            setUnit(saved?.unit??(cabinetPhase(v)==="solid"?"g":"ml"));
+            setAmount(String(saved?.value??10));
+            setMolarity(String(saved?.concentrationM??.1))}}>
            <i style={{background:cabinetColor(v)}}/>
            <strong>{v.formula}</strong>
            <span>{v.name}<small>{phaseNames[cabinetPhase(v)]}</small></span>
@@ -1099,6 +1102,27 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        {((cabinetTab!=="experiments"?visibleSubstances:experimentCases).length===0)&&
         <p>Совпадений не найдено</p>}
       </div>
+      {cabinetTab!=="experiments"&&<div className="lektrus-lab-quick-editor">
+       <div className="lektrus-lab-quick-editor-title">
+        <strong>Быстрый доступ на столе</strong>
+        <small>{quickReagents.length} из {MAX_QUICK_REAGENTS} · нажмите, чтобы изменить дозировку</small>
+       </div>
+       <div className="lektrus-lab-quick-editor-list">
+        {quickReagents.map(q=><div key={q.id} className="lektrus-lab-quick-editor-entry">
+         <button type="button" className={chosen===q.id?"active":""}
+          title="Изменить количество и концентрацию" onClick={()=>{
+           setChosen(q.id);setAmount(String(q.dose.value));setUnit(q.dose.unit);
+           setMolarity(String(q.dose.concentrationM??.1))}}>
+          <strong>{substances.find(v=>v.id===q.id)?.formula??q.id}</strong>
+          <small>{formatLabDose(q.dose)}</small>
+         </button>
+         <button type="button" aria-label={"Убрать "+q.id+" из быстрого доступа"}
+          title="Убрать с полки" onClick={()=>{
+           onChange?.(setLabQuickReagent(bench,q.id));
+          }}>×</button>
+        </div>)}
+       </div>
+      </div>}
       {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-dose">
        <div><strong>{reagent?.name??"Выберите реактив"}</strong>
         <small>{reagent?reagentAppearance(reagent.id).label:"Сначала выберите вещество из шкафа"}</small>
@@ -1118,6 +1142,21 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          </select></label>
         <button type="button" className="primary" disabled={!chosen||!selected}
          onClick={dispense}>Добавить в сосуд</button>
+        <button type="button" disabled={!chosen||
+          (!quickReagents.some(v=>v.id===chosen)&&quickReagents.length>=MAX_QUICK_REAGENTS)}
+         className="lektrus-lab-save-quick" onClick={()=>{
+          if(!chosen)return;
+          const value=Number(amount.replace(",","."));
+          const concentration=Number(molarity.replace(",","."));
+          if(!Number.isFinite(value)||value<=0||value>10000){setNotice("Укажите положительное количество");return}
+          const isTitrant=unit==="ml"&&["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen);
+          if(isTitrant&&(!Number.isFinite(concentration)||concentration<.001||concentration>2)){
+           setNotice("Концентрация должна быть от 0,001 до 2 моль/л");return}
+          const next=setLabQuickReagent(bench,chosen,{value,unit,
+           ...(isTitrant?{concentrationM:concentration}:{})});
+          if(next===bench){setNotice("Не удалось изменить быстрый доступ");return}
+          onChange?.(next);setNotice("Быстрый реактив обновлён: "+chosen);
+         }}>{quickReagents.some(q=>q.id===chosen)?"Сохранить на полке":"На полку быстрого доступа"}</button>
        </div>
        <small>Для титрования заполните бюретку и колбу кислотой и щёлочью с известными концентрациями. {selected?"Выбран: "+names[selected.kind]:"Выберите посуду на столе."}</small>
       </div>}
