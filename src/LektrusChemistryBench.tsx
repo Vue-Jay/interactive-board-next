@@ -371,6 +371,17 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <span><b>3</b> Смешайте и наблюдайте</span>
     </div>}
   </div>}
+  {!settings.showEquationBoard&&<div className="lektrus-lab-wall-guide">
+   <span>LEKTRUS · ЛАБОРАТОРНЫЙ СТОЛ</span>
+   <strong>Экспериментируйте на доске</strong>
+   <p>Возьмите посуду, выберите реактивы и наблюдайте за опытом.</p>
+   <div><b>Посуда</b><b>Реактивы</b><b>Наблюдение</b></div>
+  </div>}
+  <div className="lektrus-lab-worktop-caption">
+   <strong>{selected?"Выбрано: "+names[selected.kind]:"Рабочее место"}</strong>
+   <span>{selected?(selected.reagents.length?selected.reagents.join(" + "):"Чистая посуда"):
+    "Возьмите посуду из шкафа"}</span>
+  </div>
   <button type="button" className="lektrus-lab-reagent-furniture" data-board-interactive="true"
     disabled={!editable} onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
     onClick={e=>{e.stopPropagation();openCabinet("reagents")}}
