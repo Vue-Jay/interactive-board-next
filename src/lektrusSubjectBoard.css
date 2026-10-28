@@ -865,3 +865,129 @@
  .lektrus-foreign-work-head{display:grid}
  .lektrus-foreign-work-source{padding:9px}
 }
+
+
+/* Compact task authoring. Keep the existing educational interactions intact:
+   text-heavy controls remain usable, while repeated labels and empty scaffolding
+   no longer consume an entire screen. */
+.lektrus-subject-task-editor:has(.lektrus-language-studio){
+ max-height:min(94dvh,900px);
+}
+.lektrus-subject-task-body{gap:10px;padding:13px 16px}
+.lektrus-subject-task-type{gap:5px}
+.lektrus-subject-task-type>strong{font-size:11px;line-height:1.4}
+.lektrus-subject-task-types{gap:5px}
+.lektrus-subject-task-types button{
+ min-height:34px;padding:6px 11px;border-radius:8px;
+ font:650 11px/1.3 system-ui,sans-serif;
+}
+.lektrus-subject-task-body>.lektrus-subject-task-title{
+ display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;
+ align-items:center;min-width:0;font:750 11px/1.4 system-ui,sans-serif;
+}
+.lektrus-subject-task-title>span{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px}
+.lektrus-subject-task-title>span small{color:#8596a0;font:500 10px/1.2 system-ui,sans-serif}
+.lektrus-subject-task-title>input{width:100%;min-height:36px}
+.lektrus-language-studio{gap:9px}
+.lektrus-language-studio-intro{
+ display:flex;align-items:center;flex-wrap:wrap;gap:3px 12px;padding:8px 12px;
+ border-radius:10px;min-width:0;
+}
+.lektrus-language-studio-intro>strong{flex:0 1 auto;font:750 12px/1.35 system-ui,sans-serif}
+.lektrus-language-studio-intro>small{flex:1 1 200px;color:#7a8c97;font:500 11px/1.35 system-ui,sans-serif}
+.lektrus-language-studio-layout,
+.lektrus-language-studio-layout.lektrus-language-wide-preview{gap:11px}
+.lektrus-language-author{gap:10px;padding:12px 13px;border-radius:11px}
+.lektrus-language-preview{border-radius:11px}
+.lektrus-language-preview-header{
+ display:flex;align-items:center;justify-content:space-between;gap:7px;
+ padding:10px 12px;min-height:0;
+}
+.lektrus-language-preview-header>strong{font:750 12px/1.35 system-ui,sans-serif}
+.lektrus-language-preview-header>small{color:#8a9aa4;font:500 10px/1.3 system-ui,sans-serif}
+.lektrus-language-preview-content{gap:9px;padding:12px 13px}
+.lektrus-language-preview-content>strong{font-size:13px}
+.lektrus-language-studio-fields{gap:9px}
+.lektrus-language-author .lektrus-language-field{gap:5px;font:700 11px/1.4 system-ui,sans-serif}
+.lektrus-language-author .lektrus-language-field small{font-size:10px;font-weight:450}
+.lektrus-language-author textarea,.lektrus-language-author input{
+ min-height:36px;padding:7px 9px;border-radius:8px;font-size:12px;line-height:1.45;
+}
+.lektrus-language-author textarea.lektrus-language-gap-source{
+ min-height:135px;padding:10px 12px;font-size:15px;line-height:1.6;border-radius:9px;
+}
+.lektrus-language-gap-heading{
+ display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 10px;
+}
+.lektrus-language-gap-heading strong{font:750 12px/1.4 system-ui,sans-serif}
+.lektrus-language-gap-heading small{flex:1 1 160px;font:500 10px/1.4 system-ui,sans-serif}
+.lektrus-language-gap-actions{gap:6px}
+.lektrus-language-gap-actions button{min-height:34px;padding:7px 10px;border-radius:8px;font-size:11px}
+.lektrus-language-prompt-optional{display:grid;gap:7px;min-width:0;border:1px dashed #dbe5e9;
+ border-radius:8px;padding:8px 10px;background:#fbfdfd}
+.lektrus-language-prompt-optional summary{cursor:pointer;color:var(--subject-board-accent);
+ font:700 11px/1.4 system-ui,sans-serif}
+.lektrus-language-prompt-optional summary small{font:450 10px system-ui,sans-serif;color:#8799a3}
+.lektrus-language-prompt-optional textarea{width:100%;box-sizing:border-box;margin-top:7px;min-height:56px}
+.lektrus-language-punctuation-editor,.lektrus-language-gaps-list,.lektrus-language-target{
+ gap:7px;padding:9px 11px;border-radius:9px;
+}
+.lektrus-language-punctuation-editor>strong,.lektrus-language-gaps-list>strong,
+.lektrus-language-target>strong{font-size:12px}
+.lektrus-language-punctuation-editor button,.lektrus-language-target button,
+.lektrus-language-gaps-list button{min-height:30px;padding:5px 9px;font-size:11px}
+.lektrus-language-punctuation-actions>button{min-height:34px!important;font-size:11px!important;padding:6px 10px!important}
+.lektrus-language-gaps-list>.lektrus-language-gap-settings{gap:6px}
+.lektrus-language-gap-setting{gap:5px;padding:8px 10px;border-radius:8px}
+.lektrus-language-gap-setting-heading{gap:6px}
+.lektrus-language-gap-setting-heading>span{font-size:11px}
+.lektrus-language-gap-setting-heading button{min-height:28px}
+.lektrus-language-punctuation-rule select{min-height:34px;font-size:11px}
+.lektrus-language-distractor{gap:4px;font-size:11px}
+.lektrus-language-question-editor{gap:6px}
+.lektrus-language-question-row{grid-template-columns:22px minmax(0,1fr) 29px;gap:6px}
+.lektrus-language-question-row>span{width:22px;height:29px}
+.lektrus-language-question-row>button{min-height:31px}
+.lektrus-language-add-question{padding:7px 10px;min-height:32px}
+.lektrus-language-directions,.lektrus-language-direction{gap:6px}
+.lektrus-language-direction>div,.lektrus-language-directions>div{gap:5px}
+.lektrus-language-direction button,.lektrus-language-directions button{min-height:32px;padding:6px 9px}
+.lektrus-activity-builder{gap:9px;padding:12px}
+.lektrus-activity-builder-heading{gap:8px;align-items:center}
+.lektrus-activity-builder-heading>div{gap:2px}
+.lektrus-activity-builder-heading strong{font:750 12px/1.35 system-ui,sans-serif}
+.lektrus-activity-builder-heading small{font:500 10px/1.4 system-ui,sans-serif}
+.lektrus-activity-builder-symbol{flex:0 0 27px;width:27px;height:27px;border-radius:8px;font-size:17px}
+.lektrus-activity-quick-import{
+ display:block;padding:9px 11px;border:1px dashed #dae5eb;border-radius:8px;background:#fbfdfe;
+}
+.lektrus-activity-quick-import>summary{cursor:pointer;color:var(--subject-board-accent);
+ font:700 11px/1.4 system-ui,sans-serif}
+.lektrus-activity-quick-import>small{display:block;margin:7px 0;font:450 10px/1.4 system-ui,sans-serif;color:#7b909a}
+.lektrus-activity-quick-import textarea{display:block;max-height:120px;margin:6px 0;
+ font-size:12px;padding:7px 9px}
+.lektrus-activity-quick-import>button{min-height:32px;padding:6px 9px}
+.lektrus-activity-fill-editor,.lektrus-activity-pairs-editor,.lektrus-activity-order-editor{gap:7px}
+.lektrus-activity-fill-row{gap:6px}
+.lektrus-activity-fill-row-head{gap:8px}
+.lektrus-activity-fill-grid{gap:8px}
+.lektrus-activity-add{min-height:32px}
+@media(max-width:850px){
+ .lektrus-subject-task-editor:has(.lektrus-language-studio){width:calc(100vw - 20px)}
+ .lektrus-language-studio-layout,.lektrus-language-studio-layout.lektrus-language-wide-preview{
+  grid-template-columns:1fr;
+ }
+ .lektrus-language-preview{position:static}
+}
+@media(max-width:600px){
+ .lektrus-subject-task-body{padding:10px;gap:8px}
+ .lektrus-subject-task-body>.lektrus-subject-task-title{
+  grid-template-columns:1fr;gap:4px;
+ }
+ .lektrus-language-studio-intro{padding:8px 10px;gap:3px}
+ .lektrus-language-studio-intro>small{flex-basis:100%}
+ .lektrus-language-author,.lektrus-language-preview-content{padding:10px}
+ .lektrus-language-gap-heading small{flex-basis:100%}
+ .lektrus-subject-task-types button{min-height:36px}
+ .lektrus-language-punctuation-actions>button{min-height:36px!important}
+}
