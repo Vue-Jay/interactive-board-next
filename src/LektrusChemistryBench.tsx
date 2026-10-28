@@ -70,31 +70,45 @@ const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
   liquid:"M21 47H79L55 85H45Z"
  }
 };
-export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false}:{vessel:LabVessel;small?:boolean;showLabels?:boolean;stirring?:boolean}){
+export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,titrationResult}:{
+ vessel:LabVessel;small?:boolean;showLabels?:boolean;stirring?:boolean;
+ titrationResult?:ReturnType<typeof titrationReading>}){
  const id=useId().replace(/:/g,"");
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
  const visualCase=vessel.completedReaction??verified;
  const appearance=reactionAppearance(visualCase);
- const indicator=labIndicatorResult(vessel);
+ const indicator=titrationResult&&vessel.indicator?{
+  medium:titrationResult.phase==="acidic"?"acid":titrationResult.phase==="alkaline"?"base":"neutral",
+  label:"pH "+titrationResult.pH,color:titrationResult.tint,
+  note:"Расчётное значение при титровании, 25 °C"
+ }:labIndicatorResult(vessel);
  const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],vessel.environment):null;
  const active=Boolean(visualCase);
- const color=indicator?.color??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3");
+ const color=titrationResult?(vessel.indicator?titrationResult.tint:"#dceff0"):
+  indicator?.color??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3");
  const observation=visualCase?.observation??"none";
  const singlePhase=vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const geo=shape[vessel.kind];
  const labels=vessel.reagents.map(r=>substances.find(s=>s.id===r)?.formula??r);
+ const volumeMl=Object.values(vessel.doses??{}).reduce((sum,d)=>sum+(d.unit==="ml"?d.value:0),0);
+ const capacity=vessel.kind==="burette"?100:
+  vessel.kind==="pipette"?25:vessel.kind==="tube"?25:150;
+ const fillFraction=volumeMl>0?Math.min(.92,Math.max(.08,volumeMl/capacity)):
+  vessel.reagents.length?.5:0;
  return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
   <svg viewBox="0 0 100 133" role="img" aria-label={names[vessel.kind]+": "+(labels.join(", ")||"пустой")}>
    <defs>
     <clipPath id={id+"clip"}><path d={geo.inside}/></clipPath>
+    <clipPath id={id+"level"}><rect x="0" y={120-106*fillFraction}
+     width="100" height="133"/></clipPath>
     <linearGradient id={id+"glass"} x1="0" x2="1"><stop stopColor="#e9f6f4" stopOpacity=".35"/><stop offset=".3" stopColor="#fff" stopOpacity=".08"/><stop offset=".8" stopColor="#acc9c8" stopOpacity=".2"/><stop offset="1" stopColor="#fff" stopOpacity=".12"/></linearGradient>
    </defs>
    <ellipse cx="50" cy="126" rx="34" ry="4" fill="#254f49" opacity=".12"/>
    <path d={geo.inside} fill={"url(#"+id+"glass)"} stroke="none"/>
    <g clipPath={"url(#"+id+"clip)"}>
     {labels.length>0&&singlePhase!=="solid"&&singlePhase!=="metal"&&singlePhase!=="gas"&&
-     <path d={geo.liquid} fill={color} opacity=".76" className="lektrus-lab-fluid"/>}
+     <path d={geo.liquid} clipPath={"url(#"+id+"level)"} fill={color} opacity=".76" className="lektrus-lab-fluid"/>}
     {labels.length>0&&(singlePhase==="solid"||singlePhase==="metal")&&<>
      <path d="M17 107Q29 99 47 103Q69 98 82 107L79 119H21Z" fill={color} opacity=".88"/>
      {Array.from({length:22},(_,i)=><circle key={"grain"+i}
@@ -249,8 +263,27 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      (p.y-screen.y)*rect.height/100)};
   }).filter(v=>v.dist<Math.min(115,Math.max(54,rect.width*.15))).sort((a,b)=>a.dist-b.dist)[0]?.id??null;
  };
+ const drip=(sourceId:string,targetId:string,ml:number)=>{
+  const next=dripLabVessel(bench,sourceId,targetId,ml);
+  if(next===bench){
+   setNotice("Для титрования наполните бюретку и колбу кислотой и щёлочью с известной концентрацией");
+   return;
+  }
+  onChange?.(next);
+  const from=bench.vessels.find(v=>v.id===sourceId);
+  const to=bench.vessels.find(v=>v.id===targetId);
+  if(from&&to){
+   const start=labDisplayPoint(from,bench.vessels.length>3),
+    end=labDisplayPoint(to,bench.vessels.length>3);
+   setTransfer({from:{x:start.x,y:start.y-11},to:{x:end.x,y:end.y-10}});
+  }
+  setNotice("Добавлено "+ml.toLocaleString("ru-RU")+" мл из бюретки");
+ };
  const transferVessel=(sourceId:string,targetId:string)=>{
   const from=bench.vessels.find(v=>v.id===sourceId),to=bench.vessels.find(v=>v.id===targetId);
+  if(from?.kind==="burette"&&labTitrationTargets(bench,sourceId).some(v=>v.id===targetId)){
+   drip(sourceId,targetId,1);return;
+  }
   if(from&&to&&from.reagents.length){
    const start=labDisplayPoint(from,bench.vessels.length>3),end=labDisplayPoint(to,bench.vessels.length>3);
    setTransfer({from:{x:start.x,y:start.y-12},to:{x:end.x,y:end.y-12}});
@@ -486,6 +519,29 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     </button>;
    })}
   </div>}
+  {editable&&activeBurette&&availableTargets.length>0&&<div
+   className="lektrus-lab-titration-on-table" data-board-interactive="true"
+   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+   <strong><span aria-hidden="true">◉</span> Бюретка</strong>
+   <label>В колбу
+    <select aria-label="Колба для титрования" value={chosenTitrationTarget}
+     onChange={e=>setTitrationTarget(e.target.value)}>
+     {availableTargets.map(v=><option key={v.id} value={v.id}>
+      {names[v.kind]} · {v.reagents[0]}
+     </option>)}
+    </select>
+   </label>
+   <div className="lektrus-lab-titration-drops">
+    {[.1,1,5].map(ml=><button type="button" key={ml}
+     onClick={e=>{e.stopPropagation();if(chosenTitrationTarget)
+      drip(activeBurette.id,chosenTitrationTarget,ml)}}>+{ml.toLocaleString("ru-RU")} мл</button>)}
+   </div>
+   {bench.titration&&bench.titrationPair?.sourceId===activeBurette.id&&
+    <span className="lektrus-lab-ph-readout">
+     pH {titrationReading(bench.titration).pH} ·
+     {bench.titration.addedMl.toLocaleString("ru-RU")} мл
+    </span>}
+  </div>}
   <button type="button" data-board-interactive="true"
    className={"lektrus-lab-sink"+(dropFurniture==="sink"?" is-dropzone":"")+
      (sinkFlow?" is-flowing":"")}
@@ -564,7 +620,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      if(id)onDropReagent?.(v.id,id);
     }}>
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
-     stirring={bench.stirringVesselId===v.id}/>
+     stirring={bench.stirringVesselId===v.id}
+     titrationResult={bench.titrationPair?.targetId===v.id&&bench.titration?
+      titrationReading(bench.titration):undefined}/>
    </button>;
   })}
   {doseEffect&&<svg className="lektrus-lab-dose-animation" viewBox="0 0 100 100"
