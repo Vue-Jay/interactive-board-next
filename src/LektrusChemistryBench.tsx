@@ -69,7 +69,7 @@ const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
   liquid:"M21 47H79L55 85H45Z"
  }
 };
-export function LabVesselGraphic({vessel,small=false,showLabels=true}:{vessel:LabVessel;small?:boolean;showLabels?:boolean}){
+export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false}:{vessel:LabVessel;small?:boolean;showLabels?:boolean;stirring?:boolean}){
  const id=useId().replace(/:/g,"");
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
@@ -106,6 +106,11 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true}:{vessel:La
       cx={34+(i*13)%33} cy={32+(i*21)%61} r={3+i%3}
       fill={color} opacity=".42"/>)}
     </>}
+    {stirring&&labels.length>0&&<g className="lektrus-lab-stir-vortex">
+     <ellipse cx="50" cy="90" rx="24" ry="6" fill="none" stroke="#effffd" strokeWidth="2" opacity=".85"/>
+     <ellipse cx="50" cy="93" rx="14" ry="4" fill="none" stroke="#318f90" strokeWidth="2" opacity=".75"/>
+     <path d="M42 87Q51 81 59 89" stroke="#e9ffff" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+    </g>}
     {active&&observation==="precipitate"&&<>
      <rect className="lektrus-lab-sediment" x="16" y="106" width="70" height="18"
       fill={appearance.solidColor||"#d6dee1"} opacity=".94"/>
@@ -385,7 +390,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        if(next!==bench)onChange?.(next);
        setNotice(id==="hotplate"?"Нагревание применено к сосуду":
         id==="burner"?"Пламя применено к выбранному сосуду":
-        id==="stirrer"?"Раствор перемешан (состав не изменился)":
+        id==="stirrer"?(next.stirringVesselId?"Перемешивание включено":"Перемешивание остановлено"):
         id==="thermometer"?"Численная температура не измеряется в этой модели":
         "Штатив установлен; выберите посуду для работы");
       }} title={device.description}>
@@ -464,7 +469,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    return <button type="button" key={v.id} data-board-interactive="true"
     className={"lektrus-lab-vessel"+(selectedVessel?" selected":"")+
     (pouringId===v.id?" is-pouring":"")+
-    (dropTarget===v.id?" is-drop-target":"")+
+    (dropTarget===v.id?" is-drop-target":"")+(bench.stirringVesselId===v.id?" is-stirring":"")+
     (preview?.id===v.id&&dropTarget?" is-pour-drag":"")+
     (pouringId&&pouringId!==v.id?" is-pour-target":"")}
     style={{left:p.x+"%",top:p.y+"%",zIndex:selectedVessel||preview?.id===v.id?25:10+i}}
@@ -480,7 +485,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      const id=e.dataTransfer.getData("application/x-lektrus-reagent");
      if(id)onDropReagent?.(v.id,id);
     }}>
-    <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}/>
+    <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
+     stirring={bench.stirringVesselId===v.id}/>
    </button>;
   })}
   {doseEffect&&<svg className="lektrus-lab-dose-animation" viewBox="0 0 100 100"
