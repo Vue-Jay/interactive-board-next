@@ -164,9 +164,8 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
   </div>
   <div className={"lektrus-language-studio-layout"+(tone==="russian"&&["morphemes","syntax","morphology"].includes(template.id)?" lektrus-language-wide-preview":"")}>
    <div className="lektrus-language-author">
-    {promptNeeded&&<details key={tone+":"+template.id} className="lektrus-language-prompt-optional"
-      defaultOpen={!!entry.prompt.trim()}>
-      <summary>Инструкция ученику <small>необязательно</small></summary>
+    {promptNeeded&&<details key={tone+":"+template.id} className="lektrus-language-prompt-optional">
+      <summary>Инструкция ученику <small>{entry.prompt.trim()?"заполнена":"необязательно"}</small></summary>
       <textarea rows={2} value={entry.prompt} maxLength={2500}
        aria-label="Инструкция ученику" placeholder="Что нужно сделать"
        onChange={e=>patch({prompt:e.target.value})}/>
