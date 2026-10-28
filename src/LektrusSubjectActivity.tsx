@@ -135,14 +135,14 @@ export function LektrusSubjectActivityBuilder({activity,onChange}:EditorProps){
      onChange={e=>{setQuickSource(e.target.value);setQuickHint("");}}/>
     <button type="button" onClick={()=>{
      if(activity.mode==="match"){
-      const pairs=quickSource.split(/\\r?\\n/).map(line=>line.split(/\\s+(?:—|→|=)\\s+|\\t|;/).map(piece=>piece.trim()));
+      const pairs=quickSource.split(/\r?\n/).map(line=>line.split(/\s+(?:—|→|=)\s+|\t|;/).map(piece=>piece.trim()));
       if(pairs.length<2||pairs.length>8||pairs.some(pair=>pair.length!==2||!pair[0]||!pair[1])){
        setQuickHint("Введите от 2 до 8 строк. В каждой строке разделите пару знаком —, = или табуляцией.");return;
       }
       patch({pairs:pairs.map(([left,right])=>({left,right}))});
       setQuickHint("Пары добавлены. Проверьте соответствия ниже.");
      }else{
-      const tokens=quickSource.trim().split(/\\s+/).filter(Boolean);
+      const tokens=quickSource.trim().split(/\s+/).filter(Boolean);
       if(tokens.length<2||tokens.length>12){setQuickHint("Для упражнения нужно от 2 до 12 слов.");return;}
       patch({tokens});setQuickHint("Слова добавлены в правильном порядке. На доске они перемешаются.");
      }
