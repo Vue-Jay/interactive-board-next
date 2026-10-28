@@ -58,6 +58,8 @@ assert.ok(!registry.includes('{id:"ru-sentence-builder",label:'),
 assert.ok(!panel.includes('ids:["ru-orthography","ru-sentence-builder"]'));
 assert.ok(read("src/lektrusSubjectBoard.css").includes(".lektrus-rus-token.mark-subject"));
 assert.ok(answer.includes("morphologyPlans"),"Morphological features depend on part of speech");
+assert.ok(!answer.includes("Свой вариант…"),"Morphological dropdown cannot offer custom categories");
+assert.ok(!answer.includes('value="__custom__"'),"Morphological custom choice is removed");
 assert.ok(answer.includes("Начальная форма"),"Morphology asks for an initial form");
 assert.ok(answer.includes("lektrus-rus-school-analysis"),"Morphology uses compact notebook layout");
 assert.ok(answer.includes("lektrus-rus-school-number"),"School morphology uses Roman numeral outline");
