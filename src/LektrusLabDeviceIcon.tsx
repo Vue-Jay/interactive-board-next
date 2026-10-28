@@ -1,4 +1,4 @@
-import {useId,useEffect,useState} from "react";
+import {useId} from "react";
 import type {LabDevice} from "./lektrusChemistryBenchModel";
 
 type MountChoice={id:string;label:string};
@@ -15,32 +15,16 @@ type DeviceIconProps={
 /** The controls are engraved into the equipment's own scalable SVG.
  * There are no absolute-positioned controls floating over the drawing. */
 export default function LektrusLabDeviceIcon({
- kind,size=42,active=false,editable=false,controlsVisible=false,temperatureC,temperatureVisible=true,targetTemperatureC=150,
- standHeight=.5,heatLevel=2,choices=[],shelfChoices=[],
- onPowerToggle,onTemperatureChange,onStandHeightChange,onLevelCycle,
- onAttach,onRelease,onReturn
+ kind,size=42,active=false,temperatureC,temperatureVisible=true,targetTemperatureC=150,
+ standHeight=.5
 }:DeviceIconProps){
  const uid=useId().replace(/:/g,"");
- const [temperatureDraft,setTemperatureDraft]=useState(String(targetTemperatureC));
- useEffect(()=>setTemperatureDraft(String(targetTemperatureC)),[targetTemperatureC]);
- const commitTemperature=()=>{
-  const value=Number(temperatureDraft);
-  if(Number.isFinite(value)&&value>=30&&value<=350)onTemperatureChange?.(value);
-  else setTemperatureDraft(String(targetTemperatureC));
- };
  const metal=uid+"-metal",glass=uid+"-glass",plastic=uid+"-case";
  const clampShift=40-(52-29*standHeight);
- const activeControl=(handler?:()=>void)=>({
-  onPointerDown:(e:import("react").PointerEvent<SVGGElement>)=>e.stopPropagation(),
-  onClick:(e:import("react").MouseEvent<SVGGElement>)=>{e.stopPropagation();handler?.()},
-  onKeyDown:(e:import("react").KeyboardEvent<SVGGElement>)=>{
-   if(e.key==="Enter"||e.key===" "){e.preventDefault();e.stopPropagation();handler?.()}
-  }
- });
  return <svg className={"lektrus-lab-device-icon is-"+kind+(active?" is-active":"")}
   viewBox="0 0 110 108" width={size} height={size} aria-hidden={!editable}
   fill="none" strokeLinecap="round" strokeLinejoin="round"
-  preserveAspectRatio="none">
+  preserveAspectRatio="xMidYMid meet">
   <defs>
    <linearGradient id={metal} x1="0" y1="0" x2="1" y2=".3">
     <stop stopColor="#dcebea"/><stop offset=".32" stopColor="#789e9c"/>
@@ -68,28 +52,10 @@ export default function LektrusLabDeviceIcon({
    <path d="M37 34c11-8 26-8 38 0c-11 8-27 8-38 0Z"
     stroke={active?"#f5cf97":"#627f76"} strokeWidth="2.3"/>
    <rect x="24" y="57" width="40" height="19" rx="3" fill="#214f44" stroke="#537c6e" strokeWidth="1.8"/>
-   {editable?<foreignObject x="26" y="59" width="36" height="15"
-    onPointerDown={e=>e.stopPropagation()}>
-    <input className="lektrus-device-thermostat" type="number" inputMode="numeric"
-     min={30} max={350} step={10} value={temperatureDraft}
-     aria-label="Заданная температура плитки, °C" title="Задать 30–350 °C"
-     onChange={e=>setTemperatureDraft(e.target.value)}
-     onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){commitTemperature();
-      (e.currentTarget as HTMLInputElement).blur()}
-      }}
-     onBlur={commitTemperature}/>
-   </foreignObject>:<text x="43" y="71" textAnchor="middle"
-    fontSize="9" fontWeight="800" fill="#c7efbb">
-    {Math.round(targetTemperatureC)}°</text>}
+   <text x="43" y="71" textAnchor="middle" fontSize="10" fontWeight="800"
+    fill="#c7efbb">{Math.round(targetTemperatureC)}°</text>
    <circle cx="83" cy="68" r="9" fill={"url(#"+metal+")"} stroke="#3f6c60" strokeWidth="2"/>
    <path d="M83 60V64" stroke="#2a6358" strokeWidth="2.6"/>
-   {editable&&<g {...activeControl(onPowerToggle)} role="button" tabIndex={0}
-    aria-label={active?"Выключить плитку":"Включить плитку"}
-    className="lektrus-lab-svg-control" cursor="pointer">
-    <circle cx="83" cy="68" r="11" fill="transparent"/>
-    <text x="83" y="73" fontSize="13" textAnchor="middle"
-     fill={active?"#e7ffdc":"#214a43"}>⏻</text>
-   </g>}
    <circle cx="19" cy="82" r="2.2" fill={active?"#d8e874":"#8faca0"}/>
    {temperatureVisible&&<text x="43" y="84" fill="#2b6a5a" fontSize="7.5" fontWeight="800"
     textAnchor="middle">≈{Math.round(temperatureC??22)}°C</text>}
@@ -101,14 +67,6 @@ export default function LektrusLabDeviceIcon({
    <path d="M47 42H64M47 48H64" stroke="#e1f2e9" strokeWidth="1.7"/>
    <rect x="42" y="63" width="27" height="13" rx="3" fill="#6e9c92" stroke="#3f6660" strokeWidth="2.4"/>
    <circle cx="55" cy="69" r="3" fill="#d8e8df"/>
-   {editable&&<g {...activeControl(onPowerToggle)} role="button" tabIndex={0}
-    aria-label={active?"Погасить горелку":"Зажечь горелку"}
-    className="lektrus-lab-svg-control" cursor="pointer">
-    <circle cx="55" cy="69" r="10" fill={active?"#389b83":"#bad0c5"}
-     stroke="#496f66" strokeWidth="2"/>
-    <text x="55" y="73" textAnchor="middle" fontSize="12"
-     fill={active?"#fff":"#37675b"}>⏻</text>
-   </g>}
    <path d="M65 80H84Q92 80 94 88" stroke="#527d78" strokeWidth="5"/>
    <path d="M83 80l6 2" stroke="#c2d7cc" strokeWidth="2"/>
    <rect x="43" y="31" width="26" height="9" rx="3" fill="#91b8a9" stroke="#427467" strokeWidth="2"/>
@@ -134,13 +92,6 @@ export default function LektrusLabDeviceIcon({
     {active?"RUN":"STOP"}</text>
    <circle cx="78" cy="71" r="9" fill={"url(#"+metal+")"} stroke="#49776b" strokeWidth="2"/>
    <path d="M78 64V68" stroke="#295d54" strokeWidth="2.5"/>
-   {editable&&<g {...activeControl(onPowerToggle)} role="button" tabIndex={0}
-    aria-label={active?"Остановить мешалку":"Запустить мешалку"}
-    className="lektrus-lab-svg-control" cursor="pointer">
-    <circle cx="78" cy="71" r="11" fill="transparent"/>
-    <text x="78" y="76" textAnchor="middle" fontSize="13"
-     fill={active?"#e7ffdc":"#214a43"}>⏻</text>
-   </g>}
   </>}
   {kind==="tripod"&&<>
    <path d="M14 90H86L96 98H7Z" fill={"url(#"+metal+")"}
@@ -160,57 +111,13 @@ export default function LektrusLabDeviceIcon({
     stroke="#456e65" strokeWidth="1.8"/>
    <circle cx="43" cy="39" r="2.2" fill="#2c6258"/>
    <circle cx="43" cy="65" r="2.2" fill="#2c6258"/>
-   {editable&&<>
-    <g {...activeControl(()=>onStandHeightChange?.(Math.min(1,Math.round((standHeight+.1)*10)/10)))}
-     role="button" tabIndex={0} aria-label="Поднять зажим штатива"
-     className="lektrus-lab-svg-control" cursor="pointer">
-     <rect x="9" y="27" width="20" height="17" rx="4" fill="#d3e8d7" stroke="#5c8a7b"/>
-     <text x="19" y="40" textAnchor="middle" fontSize="14" fontWeight="900" fill="#245f52">+</text>
-    </g>
-    <g {...activeControl(()=>onStandHeightChange?.(Math.max(0,Math.round((standHeight-.1)*10)/10)))}
-     role="button" tabIndex={0} aria-label="Опустить зажим штатива"
-     className="lektrus-lab-svg-control" cursor="pointer">
-     <rect x="9" y="47" width="20" height="17" rx="4" fill="#d3e8d7" stroke="#5c8a7b"/>
-     <text x="19" y="60" textAnchor="middle" fontSize="14" fontWeight="900" fill="#245f52">−</text>
-    </g>
-   </>}
+
   </>}
   {kind==="thermometer"&&<>
    <path d="M46 16Q46 6 55 6Q64 6 64 16V65A20 20 0 1 1 46 65Z"
     fill={"url(#"+glass+")"} stroke="#53867e" strokeWidth="3"/>
    <path d="M55 32V77" stroke="#d96b67" strokeWidth="5"/>
    <circle cx="55" cy="80" r="12" fill="#d96b67" stroke="#b35d57" strokeWidth="2"/>
-  </>}
-  {kind!=="thermometer"&&<>
-   <text className="lektrus-lab-device-brand" x="55" y={kind==="tripod"?95:kind==="burner"?88:86}
-    textAnchor="middle" fontSize="7.5" fontWeight="900" letterSpacing=".8"
-    fill={kind==="burner"?"#2c645d":"#2e6757"}>LEKTRUS</text>
-   {editable&&controlsVisible&&<foreignObject x="6" y="91" width="98" height="16"
-    onPointerDown={e=>e.stopPropagation()} onPointerMove={e=>e.stopPropagation()}
-    onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
-    <div className="lektrus-lab-device-integrated-controls">
-     {kind!=="tripod"&&<button type="button" title="Мощность"
-      aria-label={"Мощность: "+heatLevel} onClick={onLevelCycle}>
-      {"Ⅰ".repeat(heatLevel)}</button>}
-     <select aria-label="Установить сосуд" defaultValue=""
-      title="Установить посуду на прибор" onChange={e=>{
-       if(e.target.value){onAttach?.(e.target.value,"clamp");e.target.value=""}
-      }}>
-      <option value="">+ сосуд</option>
-      {choices.map(v=><option value={v.id} key={v.id}>{v.label}</option>)}
-     </select>
-     {kind==="tripod"&&<select aria-label="Поставить сосуд на полку штатива"
-      title="Нижняя полка штатива" defaultValue=""
-      onChange={e=>{if(e.target.value){onAttach?.(e.target.value,"shelf");e.target.value=""}}}>
-      <option value="">+ полка</option>
-      {shelfChoices.map(v=><option value={v.id} key={v.id}>{v.label}</option>)}
-     </select>}
-     <button type="button" aria-label="Снять посуду" title="Снять посуду"
-      onClick={onRelease}>↥</button>
-     <button type="button" aria-label="Вернуть прибор в шкаф" title="В шкаф"
-      onClick={onReturn}>×</button>
-    </div>
-   </foreignObject>}
   </>}
  </svg>;
 }
