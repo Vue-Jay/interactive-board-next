@@ -1,0 +1,171 @@
+/* Lektrus chemistry laboratory. Motion is an illustration of observation,
+   not a quantitative reaction simulation. */
+.lektrus-reaction-lab-overlay{
+ --lab-accent:#1e766a;--lab-soft:#e5f6ec;
+ backdrop-filter:blur(5px);
+}
+.lektrus-reaction-lab{
+ border:1px solid #a4d9c1!important;background:#f7fbf9!important;
+ color:#2d5349!important;
+ box-shadow:0 18px 55px #103c3360!important;
+ padding:0!important;gap:0!important;
+}
+.lektrus-reaction-lab>header{
+ flex:0 0 auto;padding:16px 20px!important;
+ border:0!important;border-bottom:1px solid #2a836c!important;
+ background:linear-gradient(116deg,#195d53,#2e9075)!important;color:#fff;
+}
+.lektrus-reaction-lab>header strong{color:#fff!important;letter-spacing:.01em}
+.lektrus-reaction-lab>header small{color:#d8f5e8!important;font-size:11px}
+.lektrus-reaction-lab>header>button{
+ background:#ffffff18!important;color:white!important;border-color:#ffffff55!important;
+}
+.lektrus-reaction-lab-body{
+ padding:13px;gap:12px!important;
+ background:linear-gradient(145deg,#f4faf6,#eaf4ee)!important;
+}
+.lektrus-reaction-reagents,.lektrus-reaction-simulator{
+ border:1px solid #c5e1d2!important;border-radius:13px!important;background:#fff!important;
+ padding:12px!important;
+ box-shadow:0 2px 10px #2259490b;
+}
+.lektrus-reaction-reagents>strong{color:#1c6656;font-weight:800}
+.lektrus-reaction-lab :is(input,select):focus-visible,
+.lektrus-reaction-lab button:focus-visible{
+ outline:2px solid #1e766a!important;outline-offset:2px;
+}
+.lektrus-reaction-lab :is(input,select){
+ border-color:#c9ddd3;color:#294b44;background:#fbfffc;
+}
+.lektrus-reaction-lab :is(input,select):focus{border-color:#378873}
+.lektrus-reaction-catalog-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.lektrus-reaction-catalog-tabs button{
+ min-height:36px;border-radius:8px;padding:6px 8px;
+ border:1px solid #c8ded3;background:#f5faf7;color:#4c7469;
+ cursor:pointer;font:750 11px/1.3 system-ui,sans-serif;
+}
+.lektrus-reaction-catalog-tabs button.active{
+ background:#1e766a;color:white;border-color:#1e766a;
+}
+.lektrus-reaction-reagent-list>button.selected,
+.lektrus-reaction-examples>button.selected{
+ background:#e4f5ec!important;border-color:#2f8b72!important;
+}
+.lektrus-reaction-reagent-list>button{border-color:#e1ebe5;color:#35594e}
+.lektrus-reaction-reagent-list>button b{color:#206c57}
+.lektrus-reaction-reagents>.lektrus-reaction-examples{
+ flex:1 1 auto;min-height:0;overflow:auto;display:grid;
+ align-content:start;gap:7px;padding:3px;scrollbar-width:thin;
+}
+.lektrus-reaction-examples>button{
+ display:grid;gap:3px;text-align:left;min-width:0;cursor:pointer;
+ padding:10px 11px;background:#fcfefc;color:#34574c;
+ border:1px solid #d7e7de;border-radius:10px;
+}
+.lektrus-reaction-examples>button:hover{
+ border-color:#7cb69f;background:#f0faf5;
+}
+.lektrus-reaction-examples>button strong{
+ color:#206b56;font:750 12px/1.4 system-ui,sans-serif;overflow-wrap:anywhere;
+}
+.lektrus-reaction-examples>button small{color:#608b78;font:650 10px/1.4 system-ui,sans-serif}
+.lektrus-reaction-examples>button span{font:500 11px/1.4 system-ui,sans-serif;color:#587469}
+.lektrus-reaction-simulator>label{color:#2c6657;font-weight:750}
+.lektrus-reaction-simulator>small{color:#648779}
+.lektrus-reaction-scene{
+ border:1px solid #cde4d5!important;border-radius:12px!important;
+ background:linear-gradient(160deg,#ffffff,#f5fbf7)!important;
+ padding:12px!important;
+}
+.lektrus-reaction-scene-head{color:#26604f;font-weight:700;line-height:1.5}
+.lektrus-reaction-scene-head span{color:#689782}
+.lektrus-reaction-scene svg{
+ border-radius:10px;max-width:570px!important;filter:drop-shadow(0 3px 8px #3d7f5e18);
+}
+.lektrus-reaction-outcome{
+ background:linear-gradient(140deg,#ecf8ef,#e1f2e9)!important;
+ border-color:#b5dccc!important;color:#315649;text-align:left!important;
+}
+.lektrus-reaction-outcome strong{color:#1e715a}
+.lektrus-reaction-outcome p{color:#4b6c5e}
+.lektrus-reaction-scene.is-unknown .lektrus-reaction-outcome{
+ background:#fff9ec!important;border-color:#e8d9b6!important;
+}
+.lektrus-reaction-scene.is-none .lektrus-reaction-outcome{
+ background:#f2f6f4!important;border-color:#d4e2db!important;
+}
+.lektrus-reaction-products{
+ display:grid;gap:5px;margin-top:8px;padding-top:8px;
+ border-top:1px solid #7dae9850;font:500 11px/1.35 system-ui,sans-serif;
+}
+.lektrus-reaction-products>strong{font-size:11px;color:#2c7861}
+.lektrus-reaction-products>div{display:flex;flex-wrap:wrap;gap:5px}
+.lektrus-reaction-products>div>span{
+ display:inline-flex;padding:4px 8px;background:#fff;border-radius:6px;
+ border:1px solid #c7e6d5;color:#3d6556;font:750 12px/1.2 ui-monospace,monospace;
+}
+.lektrus-reaction-products>small{color:#568977;font-size:10px}
+.lektrus-reaction-lab>footer{
+ flex:0 0 auto;padding:12px 16px!important;
+ border-top:1px solid #cde5d7!important;background:#f8fcf9!important;
+}
+.lektrus-reaction-lab>footer button{
+ background:#fff!important;color:#2d6c57!important;
+ border-color:#bcdac9!important;
+}
+.lektrus-reaction-lab>footer button.primary{
+ background:#1e766a!important;color:white!important;border-color:#1e766a!important;
+}
+.lektrus-reaction-lab>footer button.primary:hover{background:#176150!important}
+.lektrus-reaction-chosen .lektrus-reaction-selected-chip{
+ color:#215b4b;background:#e7f5ed;border-color:#aad5bf;
+}
+.lektrus-reaction-chosen .lektrus-reaction-selected-chip:hover{background:#d6efe1}
+.lektrus-chem-experiment-stages button[aria-pressed="true"]{
+ color:#fff!important;background:#1e766a!important;border-color:#1e766a!important;
+}
+/* Particles visibly rise or settle; their phases and colors come from the
+ * specific reaction row. CSS respects reduced-motion preferences. */
+@keyframes lektrus-chem-rise{
+ 0%{transform:translateY(12px) scale(.72);opacity:0}
+ 17%{opacity:.85}
+ 75%{opacity:.7}
+ 100%{transform:translateY(-86px) scale(1.1);opacity:0}
+}
+@keyframes lektrus-chem-escape{
+ 0%{transform:translateY(6px) scale(.8);opacity:0}
+ 20%{opacity:.75}100%{transform:translateY(-44px) scale(1.2);opacity:0}
+}
+@keyframes lektrus-chem-settle{
+ 0%{transform:translateY(-22px) translateX(-5px);opacity:0}
+ 25%{opacity:.8}
+ 100%{transform:translateY(28px) translateX(4px);opacity:.15}
+}
+@keyframes lektrus-chem-sediment{
+ from{opacity:.12;transform:scaleY(.12);transform-origin:bottom center}
+ to{opacity:.95;transform:scaleY(1);transform-origin:bottom center}
+}
+.lektrus-reaction-bubble{
+ animation:lektrus-chem-rise 2.7s ease-in infinite;
+ transform-box:fill-box;transform-origin:center;
+}
+.lektrus-reaction-escaping-gas{
+ animation:lektrus-chem-escape 2.4s ease-out infinite;
+}
+.lektrus-reaction-falling-particle{
+ animation:lektrus-chem-settle 2.6s ease-in infinite;
+}
+.lektrus-reaction-sediment{animation:lektrus-chem-sediment 1.75s ease-out both}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-reaction-bubble,.lektrus-reaction-escaping-gas,
+ .lektrus-reaction-falling-particle,.lektrus-reaction-sediment{
+  animation:none!important;opacity:.85;
+ }
+}
+@media(max-width:780px){
+ .lektrus-reaction-lab-body{padding:8px;gap:8px!important}
+ .lektrus-reaction-reagents,.lektrus-reaction-simulator{padding:9px!important}
+ .lektrus-reaction-lab>header{padding:10px 12px!important}
+ .lektrus-reaction-lab>footer{padding:9px 12px!important}
+ .lektrus-reaction-scene{padding:7px!important}
+}
