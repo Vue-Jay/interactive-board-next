@@ -71,9 +71,9 @@ const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
   liquid:"M21 47H79L55 85H45Z"
  }
 };
-export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,titrationResult}:{
+export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,titrationResult,temperatureC}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;stirring?:boolean;
- titrationResult?:ReturnType<typeof titrationReading>}){
+ titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number}){
  const id=useId().replace(/:/g,"");
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
@@ -148,6 +148,10 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
    </g>}
    <path d="M29 32V57" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".5"/>
   </svg>
+  {temperatureC!==undefined&&<span className="lektrus-lab-glass-temperature"
+   title="Расчётная температура учебной модели, не измерение">
+   ≈ {Math.round(temperatureC)} °C
+  </span>}
   {showLabels&&<div className="lektrus-lab-vessel-label"><b>{names[vessel.kind]}</b>
    <span>{labels.length?labels.join(" + "):"Пусто"}</span>
   </div>}
@@ -236,6 +240,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const activeBurette=selected?.kind==="burette"?selected:titrationSources.find(v=>
   bench.titrationPair?.sourceId===v.id);
  const availableTargets=activeBurette?labTitrationTargets(bench,activeBurette.id):[];
+ const selectedBurette=selected?.kind==="burette"?selected:undefined;
+ const buretteTargets=selectedBurette?bench.vessels.filter(v=>
+  v.id!==selectedBurette.id&&["beaker","flask","conical","tube"].includes(v.kind)):[];
+ const chosenValveTarget=buretteTargets.some(v=>v.id===(selectedBurette?.buretteTargetId??titrationTarget))?
+  (selectedBurette?.buretteTargetId??titrationTarget):buretteTargets[0]?.id;
  const effectivePouringId=pouringId??localPourId;
  const chosenTitrationTarget=availableTargets.find(v=>v.id===titrationTarget)?titrationTarget:
   availableTargets[0]?.id;
@@ -727,28 +736,43 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      {effectivePouringId===selected.id?"Отмена":"⇢ Перелить"}
     </button>}
    </div>}
-  {editable&&!activeDevice&&activeBurette&&availableTargets.length>0&&<div
-   className="lektrus-lab-titration-on-table" data-board-interactive="true"
-   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
-   <strong><span aria-hidden="true">◉</span> Бюретка</strong>
-   <label>В колбу
-    <select aria-label="Колба для титрования" value={chosenTitrationTarget}
-     onChange={e=>setTitrationTarget(e.target.value)}>
-     {availableTargets.map(v=><option key={v.id} value={v.id}>
-      {names[v.kind]} · {v.reagents[0]}
+  {editable&&!activeDevice&&selectedBurette&&<div className="lektrus-lab-titration-on-table is-burette-valve"
+   data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
+   onPointerUp={e=>e.stopPropagation()}>
+   <strong>Бюретка <span className={selectedBurette.buretteOpen?"is-open":""}>
+    {selectedBurette.buretteOpen?"● Кран открыт":"○ Кран закрыт"}</span></strong>
+   <label>Приёмник
+    <select aria-label="Сосуд под бюреткой" value={chosenValveTarget??""}
+     onChange={e=>{setTitrationTarget(e.target.value);
+      onChange?.(setLabBuretteValve(bench,selectedBurette.id,false,
+       e.target.value,selectedBurette.buretteRateMlS))}}>
+     {!buretteTargets.length&&<option value="">Нет подходящего сосуда</option>}
+     {buretteTargets.map(v=><option key={v.id} value={v.id}>
+      {names[v.kind]} · {v.id}
      </option>)}
     </select>
    </label>
-   <div className="lektrus-lab-titration-drops">
-    {[.1,1,5].map(ml=><button type="button" key={ml}
-     onClick={e=>{e.stopPropagation();if(chosenTitrationTarget)
-      drip(activeBurette.id,chosenTitrationTarget,ml)}}>+{ml.toLocaleString("ru-RU")} мл</button>)}
-   </div>
-   {bench.titration&&bench.titrationPair?.sourceId===activeBurette.id&&
-    <span className="lektrus-lab-ph-readout">
-     pH {titrationReading(bench.titration).pH} ·
-     {bench.titration.addedMl.toLocaleString("ru-RU")} мл
-    </span>}
+   <label>Скорость
+    <select value={selectedBurette.buretteRateMlS??.2}
+     aria-label="Скорость капания, миллилитров в секунду"
+     onChange={e=>onChange?.(setLabBuretteValve(bench,selectedBurette.id,
+      !!selectedBurette.buretteOpen,chosenValveTarget,Number(e.target.value)))}>
+     {LAB_DRIP_RATES.map(v=><option key={v} value={v}>
+      {v===.05?"Медленно":v===.2?"Средне":"Быстро"} · {v.toLocaleString("ru-RU")} мл/с
+     </option>)}
+    </select>
+   </label>
+   <button type="button" className={selectedBurette.buretteOpen?"is-open":""}
+    disabled={!selectedBurette.reagents.length||!chosenValveTarget}
+    onClick={e=>{e.stopPropagation();
+     const next=setLabBuretteValve(bench,selectedBurette.id,
+      !selectedBurette.buretteOpen,chosenValveTarget,selectedBurette.buretteRateMlS);
+     onChange?.(next);
+     setNotice(selectedBurette.buretteOpen?"Кран бюретки закрыт":"Кран бюретки открыт");
+    }}>{selectedBurette.buretteOpen?"Закрыть кран":"Открыть кран"}</button>
+   {bench.titration&&bench.titrationPair?.sourceId===selectedBurette.id&&
+    <span className="lektrus-lab-ph-readout">pH {titrationReading(bench.titration).pH} ·
+     {bench.titration.addedMl.toLocaleString("ru-RU")} мл</span>}
   </div>}
   <button type="button" data-board-interactive="true"
    className={"lektrus-lab-sink"+(dropFurniture==="sink"?" is-dropzone":"")+
@@ -829,6 +853,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     </span>}
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
      stirring={bench.stirringVesselId===v.id}
+     temperatureC={v.temperatureC}
      titrationResult={bench.titrationPair?.targetId===v.id&&bench.titration?
       titrationReading(bench.titration):undefined}/>
    </button>;
