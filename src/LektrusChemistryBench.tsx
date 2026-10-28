@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,setLabStandShelf,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,pourThroughLabFunnel,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,setLabStandShelf,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -172,9 +172,6 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
     <rect x="73" y="71" width="7" height="24" rx="1" fill={indicator?.color??"#b5b9b3"} opacity=".95" transform="rotate(12 76 60)"/>
    </g>}
    <path d="M29 32V57" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".5"/>
-   <text x="50" y="113" className="lektrus-lab-ware-brand"
-    textAnchor="middle" fontSize="6.5" fontWeight="850"
-    fill="#398378" letterSpacing=".8">LEKTRUS</text>
    {/* Contents are labelled above the vessel; temperature stays on glass. */}
    {temperatureVisible&&<g className="lektrus-lab-ware-engraving">
     <rect x="27" y="75" width="46" height="16" rx="4"
@@ -253,6 +250,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [activeDeviceId,setActiveDeviceId]=useState<string|null>(null);
  const [vesselMenuId,setVesselMenuId]=useState<string|null>(null);
  const [preview,setPreview]=useState<{id:string;x:number;y:number}|null>(null);
+ const contactRef=useRef<{sourceId:string;targetId:string;activated:boolean}|null>(null);
+ const contactTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+ const [contactCountdown,setContactCountdown]=useState<string|null>(null);
+ const cancelContact=()=>{if(contactTimer.current)clearTimeout(contactTimer.current);
+  contactTimer.current=null;contactRef.current=null;setContactCountdown(null);};
  const [shelfGhost,setShelfGhost]=useState<{kind:LabGlassware;x:number;y:number}|null>(null);
  const [dropTarget,setDropTarget]=useState<string|null>(null);
  const [dropDeviceId,setDropDeviceId]=useState<string|null>(null);
@@ -274,8 +276,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [molarity,setMolarity]=useState("0.1");
  const [measuredMl,setMeasuredMl]=useState("5");
  const [measuredPartnerId,setMeasuredPartnerId]=useState("");
- const [funnelSourceId,setFunnelSourceId]=useState("");
- const [funnelTargetId,setFunnelTargetId]=useState("");
  const [titrationTarget,setTitrationTarget]=useState("");
  const [localPourId,setLocalPourId]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
@@ -398,7 +398,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const targetAt=(sourceId:string,p:{x:number;y:number})=>{
   const rect=host.current?.getBoundingClientRect();
   const source=bench.vessels.find(v=>v.id===sourceId);
-  if(!rect||!source?.reagents.length||!onPour)return null;
+  if(!rect||!source||(!source.reagents.length&&source.kind!=="pipette")||!onPour)return null;
   return bench.vessels.filter(v=>v.id!==sourceId).map(v=>{
    const screen=vesselPosition(v);
    return {id:v.id,dist:Math.hypot((p.x-screen.x)*rect.width/100,
@@ -438,6 +438,38 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   setLocalPourId(null);
   setNotice("Переливание: по 5% каждые 0,4 секунды");
  };
+ const beginContact=(sourceId:string,targetId:string)=>{
+  const prior=contactRef.current;
+  if(prior?.sourceId===sourceId&&prior.targetId===targetId)return;
+  cancelContact();
+  contactRef.current={sourceId,targetId,activated:false};
+  setContactCountdown(targetId);
+  contactTimer.current=setTimeout(()=>{
+   const c=contactRef.current;
+   if(!c||c.sourceId!==sourceId||c.targetId!==targetId||c.activated)return;
+   const current=benchRef.current;
+   const source=current.vessels.find(v=>v.id===sourceId);
+   const target=current.vessels.find(v=>v.id===targetId);
+   if(!source||!target)return;
+   let next=current;
+   if(source.kind==="pipette"){
+    const sample=target.reagents.length===1?target.doses?.[target.reagents[0]]:undefined;
+    const contained=Object.values(source.doses??{}).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
+    const volume=sample?.unit==="ml"?Math.min(5,25-contained,sample.value):0;
+    if(volume>0)next=transferLabMeasuredLiquid(current,targetId,sourceId,volume);
+    setNotice(next===current?"Пипетке нужен раствор известного объёма":
+     "Пипетка набрала "+volume.toLocaleString("ru-RU")+" мл раствора");
+   }else if(source.reagents.length){
+    const id="pour-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,7);
+    next=startLabPour(current,sourceId,targetId,id);
+    if(next!==current){localPourRef.current=id;lastPourStepRef.current=-1;
+     setNotice("Переливание по 5% · 2,5 порции/с")}
+    else setNotice("Не удалось перелить: проверьте объём и посуду");
+   }
+   if(next!==current)changeRef.current?.(next);
+   contactRef.current={...c,activated:true};setContactCountdown(null);
+  },2000);
+ };
  const clean=(id:string)=>{
   const next=emptyLabVessel(bench,id);
   if(next===bench)return;
@@ -470,6 +502,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    setDropFurniture(furniture);
    const pouring=furniture?null:targetAt(g.id,p);
    setDropTarget(pouring);
+   if(pouring)beginContact(g.id,pouring);
+   else if(contactRef.current)cancelContact();
    const vessel=bench.vessels.find(v=>v.id===g.id);
    const nearby=!furniture&&!pouring&&vessel?physicalDevices.map(d=>({
     d,dist:Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)
@@ -477,12 +511,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     .sort((a,b)=>a.dist-b.dist)[0]:undefined;
    setDropDeviceId(nearby?.d.id??null);
    const a=labDisplayPoint({x:g.x,y:g.y},bench.vessels.length>3);
-   setPreview({id:g.id,...labLogicalPoint({
-    x:a.x+p.x-g.startX,y:a.y+p.y-g.startY})});
+   setPreview({id:g.id,x:Math.max(1,Math.min(99,a.x+p.x-g.startX)),
+    y:Math.max(1,Math.min(99,a.y+p.y-g.startY))});
   }
  };
  const finish=(event:PointerEvent<HTMLButtonElement>)=>{
   const g=gesture.current;if(!g)return;gesture.current=null;
+  const contacted=contactRef.current?.activated===true;
+  cancelContact();
   event.preventDefault();event.stopPropagation();
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
   const p=point(event);
@@ -491,7 +527,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    else if(inGlassware(p))returnGlass(g.id);
    else{
     const target=targetAt(g.id,p);
-    if(target)transferVessel(g.id,target);
+    if(target&&contacted){setNotice("Контакт завершён");}
+    else if(target){setNotice("Подержите сосуд над другим 2 секунды");}
     else{
      const rect=host.current?.getBoundingClientRect();
      const vessel=bench.vessels.find(v=>v.id===g.id);
@@ -887,7 +924,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <LektrusLabDeviceIcon kind={deviceShelfGhost.kind} size={58}/>
   </div>}
   {editable&&vesselMenuId===selected?.id&&selected&&
-   (selected.reagents.length>0||["pipette","cylinder","volumetric","funnel"].includes(selected.kind))&&
+   (selected.reagents.length>0||["pipette","cylinder","volumetric"].includes(selected.kind))&&
    (!activeBurette||availableTargets.length===0)&&
    <div className="lektrus-lab-worktop-actions" data-board-interactive="true"
     style={{"--lab-menu-x":Math.min(69,Math.max(11,vesselPosition(selected).x))+"%",
@@ -945,25 +982,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       if(next!==bench){onChange?.(next);setNotice("Колба доведена до 100 мл")}
       else setNotice("Сосуд уже заполнен или не может быть доведён до метки")}}>
      Долить до 100 мл</button>}
-    {selected.kind==="funnel"&&<div className="lektrus-lab-measured-tools">
-     {([["Источник",funnelSourceId,setFunnelSourceId],
-       ["Приёмник",funnelTargetId,setFunnelTargetId]] as const).map(([title,value,setValue],i)=>{
-       const other=bench.vessels.filter(v=>v.id!==selected.id);
-       return <label key={title}>{title}<select aria-label={title+" для воронки"}
-        value={other.some(v=>v.id===value)?value:(other[i]?.id??"")}
-        onChange={e=>setValue(e.target.value)}>
-        {other.map(v=><option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
-       </select></label>;
-      })}
-     <button type="button" onClick={e=>{e.stopPropagation();
-      const other=bench.vessels.filter(v=>v.id!==selected.id);
-      const source=other.some(v=>v.id===funnelSourceId)?funnelSourceId:other[0]?.id;
-      const target=other.some(v=>v.id===funnelTargetId)?funnelTargetId:other[1]?.id;
-      const next=source&&target?pourThroughLabFunnel(bench,selected.id,source,target):bench;
-      if(next!==bench){onChange?.(next);setNotice("Жидкость перелита через воронку")}
-      else setNotice("Выберите сосуды с жидкостью и свободным объёмом")}}>
-     Перелить</button>
-    </div>}
     <button type="button" aria-label="Закрыть настройки посуды"
      onClick={e=>{e.stopPropagation();setVesselMenuId(null)}}>×</button>
    </div>}
@@ -1057,7 +1075,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
    onClick={e=>{e.stopPropagation();openCabinet("settings")}}>⚙</button>
   {bench.vessels.map((v,i)=>{
-   const p=preview?.id===v.id?labDisplayPoint(preview,bench.vessels.length>3):vesselPosition(v);
+   const p=preview?.id===v.id?preview:vesselPosition(v);
    const selectedVessel=bench.selectedId===v.id;
    return <button type="button" key={v.id} data-board-interactive="true"
     className={"lektrus-lab-vessel is-"+v.kind+(selectedVessel?" selected":"")+
@@ -1071,7 +1089,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     aria-pressed={selectedVessel} title={editable?
       "Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, в шкаф для возврата":"Посуда"}
     onPointerDown={e=>down(e,v)} onPointerMove={move} onPointerUp={finish}
-    onPointerCancel={e=>{e.stopPropagation();gesture.current=null;setPreview(null);
+    onPointerCancel={e=>{e.stopPropagation();cancelContact();gesture.current=null;setPreview(null);
      setDropTarget(null);setDropFurniture(null);setDropDeviceId(null)}}
     onDragOver={e=>{if(editable)e.preventDefault()}}
     onDrop={e=>{if(!editable)return;e.preventDefault();e.stopPropagation();
