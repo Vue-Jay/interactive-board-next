@@ -218,6 +218,23 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
   </span>}
  </div>;
 }
+/** A draft value must not clamp while its digits are still being typed. */
+function LabTemperatureInput({temperature,onSet}:{temperature:number;onSet:(v:number)=>void}){
+ const [draft,setDraft]=useState(String(temperature));
+ useEffect(()=>setDraft(String(temperature)),[temperature]);
+ const commit=()=>{
+  const value=Number(draft);
+  if(draft.trim()&&Number.isFinite(value)&&value>=30&&value<=350)onSet(value);
+  else setDraft(String(temperature));
+ };
+ return <input type="number" className="lektrus-lab-device-face-temp"
+  aria-label="Задать температуру плитки в °C" title="Заданная температура 30–350 °C"
+  min={30} max={350} step={10} value={draft}
+  onChange={e=>setDraft(e.target.value)}
+  onPointerDown={e=>e.stopPropagation()}
+  onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){commit();e.currentTarget.blur()}}}
+  onBlur={commit}/>;
+}
 type SurfaceProps={
  bench:LabBench;editable?:boolean;
  pouringId?:string|null;
@@ -460,12 +477,17 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    if(!source||!target)return;
    let next=current;
    if(source.kind==="pipette"){
-    const sample=target.reagents.length===1?target.doses?.[target.reagents[0]]:undefined;
-    const contained=Object.values(source.doses??{}).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
-    const volume=sample?.unit==="ml"?Math.min(5,25-contained,sample.value):0;
-    if(volume>0)next=transferLabMeasuredLiquid(current,targetId,sourceId,volume);
-    setNotice(next===current?"Пипетке нужен раствор известного объёма":
-     "Пипетка набрала "+volume.toLocaleString("ru-RU")+" мл раствора");
+    // Empty pipette samples, filled pipette dispenses. No imaginary volume.
+    const drawing=source.reagents.length===0;
+    const donor=drawing?target:source,receiver=drawing?source:target;
+    const sample=donor.reagents.length===1?donor.doses?.[donor.reagents[0]]:undefined;
+    const contained=Object.values(receiver.doses??{}).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
+    const capacity=labMeasuredCapacityMl(receiver.kind);
+    const volume=sample?.unit==="ml"?
+     Math.min(5,capacity===undefined?5:Math.max(0,capacity-contained),sample.value):0;
+    if(volume>0)next=transferLabMeasuredLiquid(current,donor.id,receiver.id,volume);
+    setNotice(next===current?"Нужен совместимый раствор с известным объёмом":
+     "Пипетка "+(drawing?"набрала ":"выдала ")+volume.toLocaleString("ru-RU")+" мл");
    }else if(source.reagents.length){
     const id="pour-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,7);
     next=startLabPour(current,sourceId,targetId,id);
@@ -901,11 +923,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          title={(device.powered?"Выключить ":"Включить ")+(meta?.name??device.kind)}
          onClick={()=>onChange?.(setPlacedDevicePower({...bench,simulationAtMs:Date.now()},
           device.id,!device.powered))}>⏻</button>
-        {device.kind==="hotplate"&&<input type="number" className="lektrus-lab-device-face-temp"
-         aria-label="Задать температуру плитки в °C" title="Заданная температура 30–350 °C"
-         min={30} max={350} step={10} value={device.targetTemperatureC??150}
-         onChange={e=>onChange?.(setLabHotplateTemperature(bench,device.id,
-          Number(e.target.value)))}/>}
+        {device.kind==="hotplate"&&<LabTemperatureInput
+         temperature={device.targetTemperatureC??150}
+         onSet={value=>onChange?.(setLabHotplateTemperature(bench,device.id,value))}/>}
         {device.kind==="burner"&&focused&&<button type="button"
          className="lektrus-lab-device-level" title="Изменить мощность горелки"
          aria-label="Мощность горелки"
