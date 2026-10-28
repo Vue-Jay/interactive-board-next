@@ -1,3 +1,4 @@
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
@@ -157,7 +158,7 @@ export default function LektrusOpticsEditor({item,onSave,onCancel,onClose,onLive
    };
    window.addEventListener("keydown",handle,true);return()=>window.removeEventListener("keydown",handle,true);
  });
- return createPortal(<div className="lektrus-optics-backdrop" onPointerDown={e=>{if(e.target===e.currentTarget)close()}}>
+ return createPortal(<div className="lektrus-optics-backdrop" style={subjectEditorStyle("physics")} onPointerDown={e=>{if(e.target===e.currentTarget)close()}}>
   <section className={"lektrus-optics-editor"+(drawer?"":" catalog-hidden")+(inspector&&selected?" show-properties":"")} role="dialog" aria-modal="true" aria-label="Редактор оптики" onPointerDown={e=>e.stopPropagation()}>
    <header className="lektrus-optics-header">
     <div className="lektrus-optics-heading"><span className="lektrus-optics-logo" aria-hidden="true"><LektrusSubjectToolIcon id="physics-optics" size={30}/></span>
