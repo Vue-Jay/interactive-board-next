@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,setLabStandShelf,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -220,6 +220,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [devicePreview,setDevicePreview]=useState<{id:string;x:number;y:number}|null>(null);
  const [deviceShelfGhost,setDeviceShelfGhost]=useState<{kind:LabDevice;x:number;y:number}|null>(null);
  const [activeDeviceId,setActiveDeviceId]=useState<string|null>(null);
+ const [vesselMenuId,setVesselMenuId]=useState<string|null>(null);
  const [preview,setPreview]=useState<{id:string;x:number;y:number}|null>(null);
  const [shelfGhost,setShelfGhost]=useState<{kind:LabGlassware;x:number;y:number}|null>(null);
  const [dropTarget,setDropTarget]=useState<string|null>(null);
@@ -249,11 +250,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const physicalDevices=placedLabDevices(bench);
  const activeDevice=physicalDevices.find(d=>d.id===activeDeviceId);
  const vesselPosition=(v:LabVessel)=>{
-  const stand=physicalDevices.find(d=>d.active&&d.linkedVesselId===v.id&&d.kind==="tripod");
-  const anchor=stand??physicalDevices.find(d=>d.active&&d.linkedVesselId===v.id);
+  const stand=physicalDevices.find(d=>d.kind==="tripod"&&d.active&&d.linkedVesselId===v.id);
+  const shelf=physicalDevices.find(d=>d.kind==="tripod"&&d.shelfVesselId===v.id);
+  const anchor=stand??shelf??physicalDevices.find(d=>d.active&&d.linkedVesselId===v.id);
   const device=anchor&&devicePreview?.id===anchor.id?{...anchor,...devicePreview}:anchor;
-  return device?labMountedGlasswarePoint(device,v,stageSize.width,stageSize.height,
-   bench.vessels.length>3):labDisplayPoint(v,bench.vessels.length>3);
+  return device?labMountedGlasswarePoint(shelf&&anchor===shelf?{...device,kind:"stand-shelf"}:device,v,
+   stageSize.width,stageSize.height,bench.vessels.length>3):
+   labDisplayPoint(v,bench.vessels.length>3);
  };
  const benchRef=useRef(bench);
  const changeRef=useRef(onChange);
@@ -508,15 +511,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   return candidates[0]&&candidates[0].distance<Math.min(150,Math.max(65,bounds.width*.10))?
    candidates[0].id:null;
  };
- const attachDevice=(id:string,vesselId:string)=>{
+ const attachDevice=(id:string,vesselId:string,mount:"clamp"|"shelf"="clamp")=>{
   const device=physicalDevices.find(d=>d.id===id);
-  const next=applyPlacedLabDevice(bench,id,vesselId);
+  const next=applyPlacedLabDevice(bench,id,vesselId,mount);
   if(next===bench){setNotice("Этот прибор нельзя использовать с выбранной посудой");return}
   onChange?.(next);setActiveDeviceId(id);
   const name=labDevices.find(d=>d.id===device?.kind)?.name??"Прибор";
   const target=bench.vessels.find(v=>v.id===vesselId);
-  setNotice(name+" · "+(target?names[target.kind]:"сосуд")+
-   ". Прибор установлен, включите его отдельно.");
+  setNotice(name+" · "+(target?names[target.kind]:"сосуд")+" установлен"+(mount==="shelf"?" на полку":" в крепление"));
  };
  const downDevice=(e:PointerEvent<HTMLButtonElement>,id:string,x:number,y:number)=>{
   if(!editable||e.button!==0||!e.isPrimary)return;
@@ -539,13 +541,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const p=point(e);
   if(g.dragged&&p){
-   if(p.y<42&&p.x>=82){
+   if(p.y>=8&&p.y<=42&&p.x>=82){
     onChange?.(returnPlacedLabDevice(bench,g.id));
     setActiveDeviceId(null);setNotice("Прибор возвращён в шкаф");
    }else{
     const moved=movePlacedLabDevice(bench,g.id,g.x+p.x-g.startX,g.y+p.y-g.startY);
     const device=physicalDevices.find(d=>d.id===g.id);
-     const vesselId=device?nearestVessel(p,device.kind):null;
+    const vesselId=device?nearestVessel(p,device.kind):null;
     const final=vesselId?applyPlacedLabDevice(moved,g.id,vesselId):moved;
     onChange?.(final);
     setActiveDeviceId(g.id);
@@ -690,71 +692,41 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const meta=labDevices.find(d=>d.id===device.kind);
    const focused=activeDeviceId===device.id;
    const choices=bench.vessels.filter(v=>canMountLabVessel(device.kind,v.kind));
+   const shelves=bench.vessels.filter(v=>LAB_STAND_SHELF_TYPES.includes(v.kind));
    return <div key={device.id} data-board-interactive="true"
     className={"lektrus-lab-placed-device is-"+device.kind+
      (focused?" is-selected":"")+(device.powered?" is-running":"")+
      (device.active?" is-mounted":"")+
      (dropDeviceId===device.id?" is-drop-device":"")}
     style={{left:current.x+"%",top:current.y+"%",zIndex:focused?28:11+i}}>
-    <button type="button" className="lektrus-lab-device-grip"
-     disabled={!editable} title={(meta?.name??device.kind)+": перетащить по столу"}
+    <div role="button" tabIndex={editable?0:-1} data-board-interactive="true"
+     className="lektrus-lab-device-grip"
      aria-label={"Переместить "+(meta?.name??device.kind)}
      aria-pressed={focused}
-     onPointerDown={e=>downDevice(e,device.id,device.x,device.y)}
-     onPointerMove={moveDevice} onPointerUp={finishDevice}
+     title={(meta?.name??device.kind)+": перетащить по столу"}
+     onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();setActiveDeviceId(device.id)}}}
+     onPointerDown={e=>downDevice(e as PointerEvent<HTMLButtonElement>,device.id,device.x,device.y)}
+     onPointerMove={e=>moveDevice(e as PointerEvent<HTMLButtonElement>)}
+     onPointerUp={e=>finishDevice(e as PointerEvent<HTMLButtonElement>)}
      onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;setDevicePreview(null)}}
      onClick={e=>{e.stopPropagation();if(e.detail===0)setActiveDeviceId(device.id)}}>
-     <LektrusLabDeviceIcon kind={device.kind} size={150} active={!!device.powered}/>
-    </button>
-    {device.kind!=="tripod"&&<button type="button" data-board-interactive="true"
-     className={"lektrus-lab-device-switch"+(device.powered?" is-on":"")}
-     disabled={!editable} aria-label={(device.powered?"Выключить: ":"Включить: ")+meta?.name}
-     aria-pressed={!!device.powered}
-     title={device.powered?"Выключить прибор":"Включить прибор"}
-     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
-     onClick={e=>{e.stopPropagation();
-      const next=setPlacedDevicePower({...bench,simulationAtMs:Date.now()},device.id,!device.powered);
-      if(next!==bench){onChange?.(next);setActiveDeviceId(device.id);
-       setNotice(device.powered?"Прибор выключен":"Прибор включён")}
-     }}>
-     <span aria-hidden="true">⏻</span>
-    </button>}
-    {device.kind==="hotplate"&&<output className="lektrus-lab-device-display"
-     title="Расчётная температура поверхности">
-     {Math.round(device.temperatureC??22)}°C
-    </output>}
-    {device.kind==="stirrer"&&<output className="lektrus-lab-device-display"
-     title="Магнитная мешалка">
-     {device.powered?(device.active&&bench.stirringVesselId===device.linkedVesselId?"RUN":"ON"):"OFF"}
-    </output>}
-    {focused&&editable&&<div className="lektrus-lab-device-mini-controls"
-     data-board-interactive="true"
-     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
-     {device.kind!=="tripod"&&<button type="button"
-      aria-label={"Изменить мощность: "+(device.heatLevel??2)+" из 3"}
-      title="Мощность: нажмите для изменения (1, 2, 3)"
-      onClick={e=>{e.stopPropagation();
-       onChange?.(setPlacedDeviceLevel(bench,device.id,((device.heatLevel??2)%3+1) as 1|2|3));
-      }}>{"I".repeat(device.heatLevel??2)}</button>}
-     <select aria-label={"Установить посуду на "+(meta?.name??"прибор")}
-      value="" disabled={!choices.length}
-      title="Выбрать сосуд для установки на прибор"
-      onChange={e=>{if(e.target.value)attachDevice(device.id,e.target.value)}}>
-      <option value="">+ посуда</option>
-      {choices.map(v=><option key={v.id} value={v.id}>
-       {names[v.kind]} · {v.id}
-      </option>)}
-     </select>
-     {device.active&&<button type="button" aria-label="Снять посуду с прибора"
-      title="Снять посуду" onClick={e=>{e.stopPropagation();
-       onChange?.(stopPlacedLabDevice(bench,device.id));setNotice("Посуда снята с прибора")}}>↥</button>}
-     <button type="button" aria-label="Вернуть прибор в шкаф" title="В шкаф"
-      onClick={e=>{e.stopPropagation();
-       onChange?.(returnPlacedLabDevice(bench,device.id));setActiveDeviceId(null);
-       setNotice("Прибор убран в шкаф")}}>×</button>
-    </div>}
-    {focused&&editable&&<span className="lektrus-lab-device-focus-name"
-     aria-hidden="true">{meta?.name}</span>}
+     <LektrusLabDeviceIcon kind={device.kind} size={150}
+      active={!!device.powered} editable={editable} controlsVisible={focused}
+      temperatureC={device.temperatureC} targetTemperatureC={device.targetTemperatureC}
+      standHeight={device.standHeight} heatLevel={device.heatLevel}
+      choices={choices.map(v=>({id:v.id,label:names[v.kind]+" · "+v.id}))}
+      shelfChoices={shelves.map(v=>({id:v.id,label:names[v.kind]+" · "+v.id}))}
+      onPowerToggle={()=>{const next=setPlacedDevicePower({...bench,simulationAtMs:Date.now()},
+       device.id,!device.powered);if(next!==bench)onChange?.(next)}}
+      onTemperatureChange={value=>onChange?.(setLabHotplateTemperature(bench,device.id,value))}
+      onStandHeightChange={height=>onChange?.(setLabStandHeight(bench,device.id,height))}
+      onLevelCycle={()=>onChange?.(setPlacedDeviceLevel(bench,device.id,
+       ((device.heatLevel??2)%3+1) as 1|2|3))}
+      onAttach={(id,mount)=>attachDevice(device.id,id,mount)}
+      onRelease={()=>onChange?.(stopPlacedLabDevice(bench,device.id))}
+      onReturn={()=>{onChange?.(returnPlacedLabDevice(bench,device.id));
+       setActiveDeviceId(null)}}/>
+    </div>
    </div>;
   })}
   {physicalDevices.filter(d=>d.kind==="tripod"&&d.active&&
@@ -763,10 +735,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    return <svg key={d.id+"-clamp"} className="lektrus-lab-retort-jaws"
     viewBox="0 0 110 108" aria-hidden="true"
     style={{left:p.x+"%",top:p.y+"%"}}>
-    <path d="M48 40H76M76 40l11-8M76 40l11 8M84 30Q99 40 84 50"
-     stroke="#537e75" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-    <path d="M48 65H70Q77 65 80 59M70 65Q77 65 80 71"
-     stroke="#5b8a7e" strokeWidth="3" strokeLinecap="round" fill="none"/>
+    <g transform={`translate(0 ${14.5-29*(p.standHeight??.5)})`}>
+     <path d="M48 40H76M76 40l11-8M76 40l11 8M84 30Q99 40 84 50"
+      stroke="#537e75" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </g>
    </svg>;
   })}
   {deviceShelfGhost&&<div className="lektrus-lab-device-shelf-ghost"
