@@ -578,44 +578,66 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <button type="button" className="lektrus-lab-device-cupboard-title"
     disabled={!editable} onClick={e=>{e.stopPropagation();openCabinet("equipment")}}>
-    ПРИБОРЫ <span>{(bench.devices??[]).length}/5</span>
+    ПРИБОРЫ <span>{physicalDevices.length}/10</span>
    </button>
    <div className="lektrus-lab-device-cupboard-shelf">
     {labDevices.map(device=><button type="button" key={device.id}
-     disabled={!editable} title={device.name}
+     disabled={!editable} title={"Взять: "+device.name+" · нажмите или перетащите на стол"}
      aria-label={"Взять прибор: "+device.name}
-     className={(bench.devices??[]).includes(device.id)?"is-installed":""}
-     onClick={e=>{e.stopPropagation();onChange?.(toggleLabDevice(bench,device.id))}}>
+     onPointerDown={e=>beginDeviceShelf(e,device.id)}
+     onPointerMove={moveDeviceShelf} onPointerUp={finishDeviceShelf}
+     onPointerCancel={e=>{e.stopPropagation();deviceShelfGesture.current=null;setDeviceShelfGhost(null)}}
+     onClick={e=>{e.stopPropagation();if(e.detail===0)takeDevice(device.id)}}>
      <LektrusLabDeviceIcon kind={device.id} size={40}/>
      <small>{device.name}</small>
     </button>)}
    </div>
-   <span className="lektrus-lab-furniture-foot">Выберите прибор</span>
+   <span className="lektrus-lab-furniture-foot">Нажмите или перетащите</span>
   </div>
-  {(bench.devices??[]).length>0&&<div className="lektrus-lab-installed-devices" data-board-interactive="true"
+  {physicalDevices.map((device,i)=>{
+   const current=devicePreview?.id===device.id?devicePreview:device;
+   const meta=labDevices.find(d=>d.id===device.kind);
+   const focused=activeDeviceId===device.id;
+   return <button key={device.id} type="button" data-board-interactive="true"
+    disabled={!editable} title={(meta?.name??device.kind)+": переместить на столе или поднести к сосуду"}
+    aria-label={(meta?.name??device.kind)+(device.active?" · работает":" · выключен")}
+    aria-pressed={focused}
+    className={"lektrus-lab-placed-device is-"+device.kind+
+     (focused?" is-selected":"")+(device.active?" is-running":"")}
+    style={{left:current.x+"%",top:current.y+"%",zIndex:focused?29:18+i}}
+    onPointerDown={e=>downDevice(e,device.id,device.x,device.y)}
+    onPointerMove={moveDevice} onPointerUp={finishDevice}
+    onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;setDevicePreview(null)}}
+    onClick={e=>{e.stopPropagation();if(e.detail===0)setActiveDeviceId(device.id)}}>
+    <LektrusLabDeviceIcon kind={device.kind} size={68}/>
+    <span>{meta?.name}</span>
+    {device.active&&<small>{device.kind==="stirrer"?"Перемешивание":
+     device.kind==="hotplate"?"Нагрев":device.kind==="burner"?"Пламя":"Прикреплён"}</small>}
+   </button>;
+  })}
+  {deviceShelfGhost&&<div className="lektrus-lab-device-shelf-ghost"
+   style={{left:deviceShelfGhost.x+"%",top:deviceShelfGhost.y+"%"}} aria-hidden="true">
+   <LektrusLabDeviceIcon kind={deviceShelfGhost.kind} size={58}/>
+  </div>}
+  {editable&&activeDevice&&<div className="lektrus-lab-device-actions"
+   data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
-   {(bench.devices??[]).map(id=>{
-    const device=labDevices.find(v=>v.id===id);
-    if(!device)return null;
-    return <button key={id} type="button" disabled={!editable}
-     className={"lektrus-lab-device-on-table is-"+id+(bench.stirringVesselId&&id==="stirrer"?" is-running":"")}
-     title={device.description}
-     onClick={e=>{e.stopPropagation();
-      const vessel=selected??bench.vessels[0];
-      if(!vessel){setNotice("Добавьте посуду на стол, затем примените прибор");return}
-      const next=useLabDevice(bench,id,vessel.id);
-      onChange?.(next);
-      if(!selected)onSelect?.(vessel.id);
-      setNotice(id==="hotplate"?"Нагревание включено":
-       id==="burner"?"Горелка применяется к сосуду":
-       id==="stirrer"?(next.stirringVesselId?"Перемешивание включено":"Перемешивание остановлено"):
-       id==="thermometer"?"Термометр установлен (температура рассчитывается только для известных опытов)":
-       "Штатив закреплён за выбранным сосудом");
-     }}>
-     <LektrusLabDeviceIcon kind={id} size={56}/>
-     <small>{device.name}</small>
-    </button>;
-   })}
+   <strong>{labDevices.find(d=>d.id===activeDevice.kind)?.name}</strong>
+   <select aria-label="К какому сосуду применить прибор" value={bench.vessels.some(v=>v.id===bench.selectedId)?
+    bench.selectedId:(bench.vessels[0]?.id??"")}
+    onChange={e=>onSelect?.(e.target.value)}>
+    {bench.vessels.map(v=><option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
+   </select>
+   {activeDevice.active&&<button type="button" onClick={e=>{e.stopPropagation();
+    onChange?.(stopPlacedLabDevice(bench,activeDevice.id));setNotice("Прибор выключен")}}>Выключить</button>}
+   <button type="button" disabled={!bench.vessels.length} onClick={e=>{e.stopPropagation();
+    const target=bench.vessels.some(v=>v.id===bench.selectedId)?bench.selectedId:bench.vessels[0]?.id;
+    if(target)attachDevice(activeDevice.id,target)}}>Применить</button>
+   <button type="button" onClick={e=>{e.stopPropagation();
+    onChange?.(returnPlacedLabDevice(bench,activeDevice.id));setActiveDeviceId(null);
+    setNotice("Прибор убран в шкаф")}}>В шкаф</button>
+   <button type="button" aria-label="Закрыть управление прибором"
+    onClick={e=>{e.stopPropagation();setActiveDeviceId(null)}}>×</button>
   </div>}
   {editable&&selected&&selected.reagents.length>0&&
    (!activeBurette||availableTargets.length===0)&&
