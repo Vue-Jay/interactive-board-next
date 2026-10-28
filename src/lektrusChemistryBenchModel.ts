@@ -478,7 +478,7 @@ export function labIndicatorResult(vessel:LabVessel):LabIndicatorResult|null{
    "Качественная оценка среды, без вычисления pH и концентраций."};
 }
 
-export type LabVessel={
+export type LabVessel={pourFraction?:number;
  id:string;kind:LabGlassware;x:number;y:number;
  reagents:string[];environment:ReactionEnvironment;
  observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
@@ -523,14 +523,21 @@ export function setLabQuickReagent(bench:LabBench,id:string,dose?:LabDose):LabBe
   [...list,normalized],event:bench.event+1};
 }
 export function clearLabTable(bench:LabBench):LabBench{
- if(!bench.vessels.length&&!placedLabDevices(bench).length)return bench;
+ if(!bench.vessels.length&&!placedLabDevices(bench).length&&!bench.pouring)return bench;
  // Empty only the physical worktop. The configured quick shelf and
  // presentation settings must survive cleaning.
  return {...bench,vessels:[],selectedId:"",placedDevices:[],devices:[],
   titration:undefined,titrationPair:undefined,stirringVesselId:undefined,
-  instrumentTarget:undefined,simulationAtMs:undefined,event:bench.event+1};
+  instrumentTarget:undefined,simulationAtMs:undefined,pouring:undefined,event:bench.event+1};
 }
-export type LabBench={vessels:LabVessel[];selectedId:string;event:number;
+export type LabPourProgress={id:string;sourceId:string;targetId:string;step:number;totalSteps:20;
+ initialDoses:Record<string,LabDose>;unmeasured:boolean};
+export const LAB_POUR_STEPS=20,LAB_POUR_INTERVAL_MS=400;
+export const labPourPercent=(p:LabPourProgress)=>Math.round(p.step/p.totalSteps*100);
+export const labPourAmounts=(p:LabPourProgress)=>Object.entries(p.initialDoses).map(([id,d])=>({
+ id,unit:d.unit,transferred:Math.round(d.value*p.step/p.totalSteps*1000)/1000,
+ remaining:Math.round(d.value*(1-p.step/p.totalSteps)*1000)/1000}));
+export type LabBench={vessels:LabVessel[];selectedId:string;event:number;pouring?:LabPourProgress;
  settings?:LabBenchSettings;quickReagents?:LabQuickReagent[];devices?:LabDevice[];placedDevices?:LabPlacedDevice[];titration?:TitrationModel;stirringVesselId?:string;
  instrumentTarget?:{kind:"tripod"|"thermometer";vesselId:string};
  titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;}
@@ -761,6 +768,72 @@ export function activateLabVessel(bench:LabBench,id:string):LabBench{
 }
 /** Complete transfer of contents: products and their visible appearance move with
  * the liquid. Adding a new reagent to spent material is deliberately unknown. */
+/** One shared 20-step pour. A single initiating client runs the 400ms clock. */
+export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:string):LabBench{
+ if(!id||sourceId===targetId||(b.pouring&&b.pouring.step<20))return b;
+ const a=b.vessels.find(v=>v.id===sourceId),t=b.vessels.find(v=>v.id===targetId);
+ if(!a||!t||!a.reagents.length||a.kind==="funnel"||t.kind==="funnel"||
+  [...new Set([...a.reagents,...t.reagents])].length>MAX_VESSEL_REAGENTS)return b;
+ const initialDoses={...a.doses};
+ const volume=Object.values(initialDoses).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
+ const current=Object.values(t.doses??{}).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
+ const max=labMeasuredCapacityMl(t.kind);
+ if(max!==undefined&&volume+current>max+1e-7)return b;
+ if(Object.entries(initialDoses).some(([name,d])=>{
+  const old=t.doses?.[name];
+  return old&&(old.unit!==d.unit||old.value+d.value>10000);
+ }))return b;
+ return {...b,pouring:{id,sourceId,targetId,step:0,totalSteps:20,initialDoses,
+  unmeasured:a.reagents.some(r=>!initialDoses[r])},event:b.event+1};
+}
+const portionRound=(x:number)=>Math.round(x*1000000)/1000000;
+export function advanceLabPour(b:LabBench):LabBench{
+ const p=b.pouring;if(!p||p.step>=20)return b;
+ const source=b.vessels.find(v=>v.id===p.sourceId),target=b.vessels.find(v=>v.id===p.targetId);
+ if(!source||!target||!source.reagents.length)return stopLabPour(b);
+ const n=p.step+1,finish=n===20;
+ const left={...source.doses},received={...target.doses};
+ for(const [reagent,original] of Object.entries(p.initialDoses)){
+  const amount=portionRound(portionRound(original.value*n/20)-
+   portionRound(original.value*p.step/20));
+  const remaining=left[reagent]?.value??0,old=received[reagent];
+  if(amount>remaining+1e-7||(old?.value??0)+amount>10000)return stopLabPour(b);
+  const updated=portionRound((old?.value??0)+amount);
+  const concentrationM=old?
+   old.concentrationM!==undefined&&original.concentrationM!==undefined?
+    portionRound(((old.value*old.concentrationM)+(amount*original.concentrationM))/updated):
+    undefined:original.concentrationM;
+  received[reagent]={...original,value:updated,
+   ...(concentrationM===undefined?{concentrationM:undefined}:{concentrationM})};
+  left[reagent]={...original,value:portionRound(Math.max(0,remaining-amount))};
+ }
+ const combined=[...new Set([...target.reagents,...source.reagents])];
+ const targetWasEmpty=!target.reagents.length;
+ const sourceReaction=source.completedReaction??labObservation(source).caseData;
+ const targetReaction=target.completedReaction??labObservation(target).caseData;
+ const uncertain=target.uncertain||source.uncertain||
+  (p.step===0&&!targetWasEmpty&&Boolean(sourceReaction||targetReaction));
+ const vessels=b.vessels.map(v=>{
+  if(v.id===source.id)return {...v,reagents:finish?[]:v.reagents,
+   doses:finish?undefined:left,observed:finish?false:v.observed,
+   completedReaction:finish?undefined:v.completedReaction,
+   indicator:finish?undefined:v.indicator,
+   pourFraction:p.unmeasured?(20-n)/20:v.pourFraction};
+  if(v.id===target.id)return {...v,reagents:combined,doses:received,
+   observed:true,uncertain,environment:targetWasEmpty?source.environment:v.environment,
+   completedReaction:targetWasEmpty?sourceReaction:v.completedReaction,
+   indicator:v.indicator??source.indicator,
+   pourFraction:p.unmeasured?Math.min(1,(v.pourFraction??(targetWasEmpty?0:.5))+.05):v.pourFraction};
+  return v;
+ });
+ return {...b,vessels,pouring:{...p,step:n},event:b.event+1,
+  ...(b.titrationPair&&(b.titrationPair.sourceId===source.id||
+   b.titrationPair.targetId===target.id)?{titrationPair:undefined,titration:undefined}:{})};
+}
+export function stopLabPour(b:LabBench,id?:string):LabBench{
+ if(!b.pouring||(id&&b.pouring.id!==id))return b;
+ return {...b,pouring:undefined,event:b.event+1};
+}
 export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):LabBench{
  if(sourceId===targetId)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
