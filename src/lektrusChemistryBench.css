@@ -2792,3 +2792,62 @@
  order:3!important;margin-left:auto!important;padding-right:1px!important}
 .lektrus-lab-bench .lektrus-lab-content-tag{top:-3px!important}
 .lektrus-lab-bench .lektrus-lab-content-tag:after{height:4px!important}
+
+
+/* Gradual shared pouring: 20 equally sized doses at 400 ms each. */
+.lektrus-lab-bench .lektrus-lab-gradual-pour{
+ position:absolute;z-index:62;transform:translate(-50%,-100%);
+ display:flex;flex-direction:column;gap:5px;
+ width:clamp(156px,18cqw,260px);max-width:42%;
+ padding:9px 11px 8px;box-sizing:border-box;
+ color:#26594e;background:#f4fff8f7;
+ border:1px solid #86c7b0;border-radius:11px;
+ box-shadow:0 4px 17px #174d3d3d;
+ text-align:left;pointer-events:auto;
+ font:700 clamp(10px,.88cqw,12px)/1.22 system-ui,sans-serif;
+ backdrop-filter:blur(5px)
+}
+.lektrus-lab-bench .lektrus-lab-gradual-pour.is-complete{
+ border-color:#7fbca1;background:#e7f6ebf6;
+}
+.lektrus-lab-bench .lektrus-lab-pour-progress-title{
+ display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.lektrus-lab-bench .lektrus-lab-pour-progress-title strong{
+ font:850 clamp(11px,1.05cqw,14px)/1.2 system-ui,sans-serif}
+.lektrus-lab-bench .lektrus-lab-pour-progress-title b{
+ font:900 clamp(13px,1.1cqw,15px)/1 system-ui,sans-serif;color:#1c8b70}
+.lektrus-lab-bench .lektrus-lab-pour-progress-track{
+ width:100%;height:6px;border-radius:9px;overflow:hidden;
+ background:#c8ded4;box-shadow:inset 0 1px 2px #45776844}
+.lektrus-lab-bench .lektrus-lab-pour-progress-track>span{
+ display:block;height:100%;border-radius:9px;
+ background:linear-gradient(90deg,#49afbd,#299d84);transition:width 330ms linear}
+.lektrus-lab-bench .lektrus-lab-pour-progress-amounts{
+ display:flex;flex-direction:column;gap:2px;min-width:0;
+ font:650 clamp(9px,.78cqw,11px)/1.2 system-ui,sans-serif}
+.lektrus-lab-bench .lektrus-lab-pour-progress-amounts span{
+ display:block;white-space:normal;overflow-wrap:anywhere}
+.lektrus-lab-bench .lektrus-lab-pour-progress-amounts b{
+ color:#39816c;margin-right:4px}
+.lektrus-lab-bench .lektrus-lab-gradual-pour button{
+ align-self:flex-end;padding:3px 8px;
+ border:1px solid #9fc9b7;border-radius:6px;
+ background:#e4f6ed;color:#326a55;cursor:pointer;
+ font:800 10px/1.2 system-ui,sans-serif}
+.lektrus-lab-bench .lektrus-lab-pour-stream.is-gradual{
+ pointer-events:none;z-index:52}
+.lektrus-lab-bench .lektrus-lab-stream-pulses{
+ animation:lektrus-lab-flow-dashes .4s linear infinite;
+ filter:drop-shadow(0 0 2px #58c5d4)}
+@keyframes lektrus-lab-flow-dashes{
+ from{stroke-dashoffset:0}to{stroke-dashoffset:-4.2}
+}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-gradual-pour{
+  width:158px;max-width:46%;padding:7px 8px;gap:3px}
+ .lektrus-lab-bench .lektrus-lab-pour-progress-amounts{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench .lektrus-lab-stream-pulses{animation:none}
+ .lektrus-lab-bench .lektrus-lab-pour-progress-track>span{transition:none}
+}
