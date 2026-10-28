@@ -38,7 +38,7 @@ import {boardObjectTypeName} from "./boardObjectNames";
 import LektrusSchoolDiagramEditor from "./LektrusSchoolDiagramEditor";
 import {isSchoolDiagramId,isSchoolDiagram} from "./lektrusSchoolDiagramModel";
 import LektrusScienceEditor from "./LektrusScienceEditor";
-import {mergeLabBench,readLabBench} from "./lektrusChemistryBenchModel";
+import {mergeLabBench,readLabBench,type LabBench} from "./lektrusChemistryBenchModel";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 import {LektrusSubjectBoardView,LektrusSubjectBoardTaskEditor,isSubjectBoard,boardTone,subjectBoardLocked,entryBelongsToSubject,newSubjectBoardEntry,subjectBoardEntryFilled} from "./LektrusSubjectBoard";
 import {LektrusSubjectBoardSolutionEditor} from "./LektrusSubjectBoardSolution";
@@ -1134,7 +1134,7 @@ function prettyGraphEquation(expression:string):string{
     .replace(/\*/g,"·").replace(/\s*([+-])\s*/g," $1 ").replace(/\s+/g," ").trim();
 }
 
-function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
+function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint, onCreateAndPickPoint, pickedPoints, onCloseFreePolygon, onRemovePoint, onRotate, onRayChange, onGridChange, onSnapChange, onPeriodicChange, onPeriodicLayoutChange, onSchoolDiagramChange, onLabBenchChange, onMatchingSize, onOpenEditor, onToggleConstruction, constructionActive=false, suspendPeriodicWindows, onPhysicalPartMove, onPhysicalPartPreview }: {
   item: Item;
   onPointMove?: (index:number,x:number,y:number)=>void;
   onPointMoveEnd?: (index:number,x:number,y:number)=>void;
@@ -1151,6 +1151,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
   onSchoolDiagramChange?: (diagram:import("./lektrusSchoolDiagramModel").SchoolDiagram)=>void;
+  onLabBenchChange?: (bench:LabBench)=>void;
   onMatchingSize?: (width:number,height:number)=>void;
   onOpenEditor?: ()=>void;
   onToggleConstruction?: ()=>void;
@@ -1204,7 +1205,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
     return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} onMatchingSize={onMatchingSize}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
   if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
-    <LektrusChemistryIllustration item={item}/>
+    <LektrusChemistryIllustration item={item} onBenchChange={onLabBenchChange}/>
   </div>;
   const expression = item.graphExpression?.trim() ?? "";
   const purpose = item.graphPurpose ?? (item.graphCircles?.length ? "unit-circle" : item.graphPolygons?.length ? "geometry" : expression ? "function" : "coordinates");
@@ -9098,6 +9099,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                      (value.text||"Химическая доска")+" · "+(index+1)}))}
                   onCollect={destinationId=>collectChemistryObject(item.id,destinationId)}/>}
                 {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item}
+                  onLabBenchChange={canEdit&&!item.locked&&!presentation&&!space&&
+                    !selectionLocked&&!structurallyLockedForStudent(item)&&
+                    item.graphFigureId==="chem-experiment-free"&&!!item.scienceLabBench&&tool==="select"?
+                    nextBench=>{
+                      const latest=itemsRef.current.find(candidate=>candidate.id===item.id);
+                      if(!latest||latest.locked)return;
+                      const merged=mergeLabBench(readLabBench(item),nextBench,readLabBench(latest));
+                      const updated={...latest,scienceLabBench:merged};
+                      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
+                      commit(itemsRef.current.map(v=>v.id===latest.id?updated:v));
+                      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
+                    }:undefined}
                   onPhysicalPartMove={!presentation&&!item.locked&&!space&&!selectionLocked&&
                    canEdit&&!structurallyLockedForStudent(item)&&tool==="select"&&
                    !!(item.scienceMechanics||item.scienceOptics||item.scienceCircuit)
