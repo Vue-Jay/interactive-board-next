@@ -421,6 +421,7 @@ export type RussianTaskWork={
  zeroEnding?:boolean;
  syntaxRoles?:("subject"|"predicate"|"attribute"|"object"|"adverbial"|"none")[];
  partOfSpeech?:string;
+ initialForm?:string;
  permanent?:string;
  variable?:string;
  syntax?:string;
