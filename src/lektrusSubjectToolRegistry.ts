@@ -58,6 +58,11 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
+  if(id==="chem-assignments"){
+   const base=makeSubjectToolItem("subject-board-chemistry",x,y,createId);
+   return {...base,text:"Химическое задание",x:x-370,y:y-210,
+    width:740,height:420,subjectBoardStandalone:true};
+  }
   if(id.startsWith("subject-board-")){
    const tone=id.slice("subject-board-".length) as SubjectTone;
    return {id:createId(),kind:"graph",text:subjectAccentPalette[tone].label+(tone==="chemistry"?" · рабочий лист":" · учебная доска"),
