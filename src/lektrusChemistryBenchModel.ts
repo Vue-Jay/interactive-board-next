@@ -161,12 +161,12 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    unit:validDose.unit}:undefined;
   if(combined&&combined.value>10000)return v;
   const reagents=present?v.reagents:[...v.reagents,reagent];
-  const previous=labObservation(v);
+  const beforeReaction=labObservation(v);
   return {...v,reagents,
-   completedReaction:v.completedReaction??(previous.status==="reaction"?previous.caseData:undefined),
+   completedReaction:v.completedReaction??(beforeReaction.status==="reaction"?beforeReaction.caseData:undefined),
    doses:combined?{...v.doses,[reagent]:combined}:v.doses,
    observed:reagents.length>1,
-   uncertain:v.uncertain||previous.status==="reaction"};
+   uncertain:v.uncertain||beforeReaction.status==="reaction"};
  });
 }
 /** Full transfer. Never assume that a second step using already reacted
