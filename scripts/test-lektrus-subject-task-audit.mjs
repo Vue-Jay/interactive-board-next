@@ -17,7 +17,7 @@ const expected={
  physics:["task","calculation","lab"],
  chemistry:["task","chain","calculation","experiment"],
  russian:["task","orthography","punctuation","morphemes","morphology","syntax","text"],
- languages:["task","translation","gaps","vocabulary","word-order","grammar","reading","choice"],
+ languages:["task","translation","gaps","vocabulary","word-order"],
  biology:["task"],geography:["task"],history:["task"],literature:["task"],
  social:["task"],informatics:["task"]
 };
@@ -52,7 +52,7 @@ for(const [tone,oldFormats] of [
  ["mathematics",["interactive","choice","cloze","matching","sequence","expression","function"]],
  ["russian",["interactive","choice","matching","sequence","cloze"]],
  ["chemistry",["equation","balance"]],
- ["languages",["matching","sequence","cloze"]]
+ ["languages",["matching","sequence","cloze","grammar","reading","choice"]]
 ]){
  for(const format of oldFormats){
   assert.equal(registry.subjectTaskTypeKnown(tone,format),true,"Preserve older "+tone+"/"+format);
