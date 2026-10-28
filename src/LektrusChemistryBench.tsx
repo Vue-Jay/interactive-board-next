@@ -1185,7 +1185,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   {editable&&(dropTarget||dropDeviceId||effectivePouringId||dropFurniture||notice)&&<div className="lektrus-lab-pour-hint" aria-live="polite">
    {dropFurniture==="sink"?"Отпустите для слива в раковину":
     dropFurniture==="glassware"?"Отпустите, чтобы вернуть пустую посуду":
-    dropTarget?"Отпустите, чтобы перелить":
+    dropTarget?(contactCountdown===dropTarget?"Удерживайте 2 секунды для "+(bench.vessels.find(v=>v.id===gesture.current?.id)?.kind==="pipette"?"набора раствора":"переливания"):"Дождитесь завершения контакта"):
      dropDeviceId?"Отпустите, чтобы установить посуду":
     effectivePouringId?"Выберите посуду для переливания":notice}
   </div>}
