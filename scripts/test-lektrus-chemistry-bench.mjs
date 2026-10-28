@@ -55,6 +55,35 @@ assert.equal(full.vessels.length,lab.MAX_BENCH_VESSELS,"Glassware is bounded");
 assert.equal(new Set(full.vessels.map(v=>v.id)).size,full.vessels.length);
 full=lab.positionLabVessel(full,"v1",-500,500);
 assert.equal(full.vessels[0].x,8);assert.equal(full.vessels[0].y,92);
+let indicatorBench=lab.defaultLabBench();
+assert.equal(lab.setLabIndicator(indicatorBench,"v1","litmus"),indicatorBench,
+ "Indicators cannot be inserted into empty glassware");
+indicatorBench=lab.putLabReagent(indicatorBench,"v1","HCl");
+indicatorBench=lab.setLabIndicator(indicatorBench,"v1","litmus");
+assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).medium,"acid");
+assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).color,"#d85761");
+indicatorBench=lab.emptyLabVessel(indicatorBench,"v1");
+assert.equal(indicatorBench.vessels[0].indicator,undefined,"Cleaning also removes indicator");
+indicatorBench=lab.putLabReagent(indicatorBench,"v1","NaOH");
+indicatorBench=lab.setLabIndicator(indicatorBench,"v1","phenolphthalein");
+assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).medium,"base");
+assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).color,"#d83a96");
+let neutral=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O");
+neutral=lab.setLabIndicator(neutral,"v1","universal");
+assert.equal(lab.labIndicatorResult(neutral.vessels[0]).medium,"neutral");
+let salt=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl");
+salt=lab.setLabIndicator(salt,"v1","universal");
+assert.equal(lab.labIndicatorResult(salt.vessels[0]).medium,"unknown",
+ "The model must not infer pH from an unspecified salt solution");
+let transferred=lab.addLabVessel(neutral,"tube");
+transferred=lab.pourLabVessel(transferred,"v1","v2");
+assert.equal(transferred.vessels[0].indicator,undefined,"Empty source has no indicator");
+assert.equal(transferred.vessels[1].indicator,"universal","Indicator travels with solution");
+let mixed=lab.addLabVessel(indicatorBench,"flask");
+mixed=lab.putLabReagent(mixed,mixed.selectedId,"HCl");
+mixed=lab.pourLabVessel(mixed,mixed.selectedId,"v1");
+assert.equal(lab.labIndicatorResult(mixed.vessels[0]).medium,"unknown",
+ "Neutralisation cannot give an exact indicator colour without quantities");
 const base=lab.defaultLabBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
@@ -74,6 +103,8 @@ assert.match(editor,/onDropReagent=\{addReagent\}/);
 assert.match(editor,/addLabVessel/);
 assert.match(editor,/setLabEnvironment/);
 assert.match(editor,/lektrus-lab-catalog/);
+assert.match(editor,/labIndicatorResult/);
+assert.match(editor,/setLabIndicator/);
 const app=read("src/App.tsx");
 assert.match(app,/liveChemistryBenchUpdate/);
 assert.match(app,/mergeLabBench\(/);
@@ -81,6 +112,12 @@ assert.match(app,/onExperimentLiveChange=\{/);
 assert.match(app,/onLabBenchChange=\{/,"On-board glassware can be moved without reopening the editor");
 assert.match(read("src/LektrusChemistryIllustration.tsx"),/editable=\{!!onBenchChange\}/,
  "On-board chemistry table enables direct vessel interaction when permitted");
+assert.match(read("src/LektrusChemistryBench.tsx"),/targetAt\(/,
+ "Dragging a filled vessel over another triggers the transfer target");
+assert.match(read("src/LektrusChemistryIllustration.tsx"),/onPour=\{onBenchChange\?pour:undefined\}/,
+ "On-board laboratory can pour mixtures without opening an editor");
+assert.match(read("src/LektrusChemistryIllustration.tsx"),/lektrus-lab-board-controls/,
+ "On-board laboratory has direct reagents, indicator and glassware controls");
 assert.match(read("src/LektrusChemistryBench.tsx"),/data-board-interactive="true"/,
  "Glassware gestures do not drag the surrounding board object");
 assert.match(read("src/lektrusSciencePresets.ts"),/x:x-410,y:y-250,text:"Химический стол"/,
