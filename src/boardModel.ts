@@ -818,6 +818,10 @@ export function parseDocument(raw: string): DocumentData {
            !bench.vessels.some(v=>v.id===bench.titrationPair?.sourceId)||
            !bench.vessels.some(v=>v.id===bench.titrationPair?.targetId)||
            bench.titrationPair.sourceId===bench.titrationPair.targetId))||
+          (bench.instrumentTarget!=null&&(
+           !["tripod","thermometer"].includes(bench.instrumentTarget.kind)||
+           !bench.vessels.some(v=>v.id===bench.instrumentTarget?.vesselId)||
+           !(bench.devices??[]).includes(bench.instrumentTarget.kind)))||
           (bench.stirringVesselId!=null&&(!bench.vessels.some(v=>v.id===bench.stirringVesselId)||
             !(bench.devices??[]).includes("stirrer")))||
           (bench.vessels.length===0?bench.selectedId!=="":
