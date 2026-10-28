@@ -21,21 +21,23 @@ export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
 ];
 export type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
 export type LabDevice="hotplate"|"burner"|"stirrer"|"tripod"|"thermometer";
-export const labDevices:{id:LabDevice;name:string;description:string;symbol:string}[]=[
+export type LabAvailableDevice=Exclude<LabDevice,"thermometer">;
+export const labDevices:{id:LabAvailableDevice;name:string;description:string;symbol:string}[]=[
  {id:"hotplate",name:"Плитка",description:"Нагревать выбранный сосуд",symbol:"▤"},
  {id:"burner",name:"Горелка",description:"Виртуальный источник пламени",symbol:"♨"},
  {id:"stirrer",name:"Магнитная мешалка",description:"Перемешивать раствор",symbol:"◌"},
- {id:"tripod",name:"Штатив",description:"Держатель лабораторной посуды",symbol:"⌁"},
- {id:"thermometer",name:"Термометр",description:"Показывает режим без выдуманной температуры",symbol:"◉"}
+ {id:"tripod",name:"Штатив",description:"Закрепить пробирку, колбу или бюретку",symbol:"⌁"}
 ];
 export type LabPlacedDevice={id:string;kind:LabDevice;x:number;y:number;
- active?:boolean;linkedVesselId?:string};
+ /** Mounted on the vessel, regardless of power. */ active?:boolean;
+ linkedVesselId?:string;
+ powered?:boolean;heatLevel?:1|2|3;temperatureC?:number};
 export const MAX_LAB_DEVICES=10;
 const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
 /** V1 cabinets only stored the types. Preserve them when a board is upgraded. */
 export function placedLabDevices(bench:LabBench):LabPlacedDevice[]{
  if(bench.placedDevices)return bench.placedDevices;
- return (bench.devices??[]).map((kind,i)=>({
+ return (bench.devices??[]).filter(kind=>kind!=="thermometer").map((kind,i)=>({
   id:"legacy-"+kind,kind,x:12+(i%3)*12,y:64+Math.floor(i/3)*18
  }));
 }
@@ -47,7 +49,8 @@ export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:numbe
  const id="device-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9);
  const placed:LabPlacedDevice={id,kind,
   x:clampDevice(point?.x??(12+(occupied%4)*12),9,81),
-  y:clampDevice(point?.y??(63+Math.floor(occupied/4)*15),53,84)};
+  y:clampDevice(point?.y??(63+Math.floor(occupied/4)*15),53,84),
+  powered:false,heatLevel:2,temperatureC:22};
  return {...bench,placedDevices:[...existing,placed],
   devices:[...new Set([...(bench.devices??[]),kind])],event:bench.event+1};
 }
@@ -55,7 +58,8 @@ export function movePlacedLabDevice(bench:LabBench,id:string,x:number,y:number):
  const existing=placedLabDevices(bench);
  if(!existing.some(d=>d.id===id))return bench;
  return {...bench,placedDevices:existing.map(d=>d.id===id?
-  {...d,x:clampDevice(x,9,81),y:clampDevice(y,53,84),linkedVesselId:undefined,active:false}:d),
+  {...d,x:clampDevice(x,9,81),y:clampDevice(y,53,84),
+    linkedVesselId:undefined,active:false,powered:false}:d),
   event:bench.event+1};
 }
 export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
@@ -72,37 +76,162 @@ export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
 }
 /** Only appropriate vessel types are heated; do not fabricate temperatures,
  * reaction products or a laboratory measurement outside the reviewed database. */
+/** Glassware may be supported/held only where its geometry is appropriate. */
+export function canMountLabVessel(kind:LabPlacedDevice["kind"],glass:LabGlassware){
+ if(kind==="tripod")return ["tube","flask","conical","burette","volumetric"].includes(glass);
+ if(kind==="hotplate")return ["beaker","flask","conical","dish"].includes(glass);
+ if(kind==="stirrer")return ["beaker","flask","conical"].includes(glass);
+ if(kind==="burner")return ["beaker","tube","flask","conical","crucible"].includes(glass);
+ return false;
+}
 export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string):LabBench{
  const device=placedLabDevices(bench).find(d=>d.id===id);
  const vessel=bench.vessels.find(v=>v.id===vesselId);
- if(!device||!vessel)return bench;
- if((device.kind==="hotplate"||device.kind==="burner")&&
-  !["beaker","tube","flask","conical","dish","crucible"].includes(vessel.kind))return bench;
+ if(!device||!vessel||!canMountLabVessel(device.kind,vessel.kind))return bench;
  if(device.active&&device.linkedVesselId===vesselId)return bench;
- const next=useLabDevice(bench,device.kind,vesselId);
- const screen=labDisplayPoint(vessel,bench.vessels.length>3);
- const isSupport=["hotplate","burner","stirrer","tripod"].includes(device.kind);
- // Supports sit beneath the vessel; thermometers stand alongside its wall.
- const x=clampDevice(screen.x+(isSupport?0:9),9,81);
- const y=clampDevice(screen.y+(isSupport?10:0),53,84);
- const placedDevices=placedLabDevices(next).map(d=>d.id===id?
-  {...d,x,y,active:true,linkedVesselId:vesselId}:d);
- return {...next,placedDevices,event:next.event+1};
+ // One vessel cannot be mounted on two incompatible devices at once.
+ const next=placedLabDevices(bench).map(d=>d.id===id?
+  {...d,active:true,linkedVesselId:vesselId,powered:false}:
+  d.linkedVesselId===vesselId?{...d,active:false,linkedVesselId:undefined,powered:false}:d);
+ const point=labDisplayPoint(vessel,bench.vessels.length>3);
+ const placedDevices=next.map(d=>d.id===id?{...d,
+  x:clampDevice(point.x,9,81),y:clampDevice(point.y+10,53,84)}:d);
+ return {...bench,placedDevices,stirringVesselId:bench.stirringVesselId===vesselId?
+  undefined:bench.stirringVesselId,event:bench.event+1};
+}
+export function setPlacedDevicePower(bench:LabBench,id:string,powered:boolean):LabBench{
+ const d=placedLabDevices(bench).find(v=>v.id===id);
+ if(!d||d.kind==="tripod"||d.kind==="thermometer")return bench;
+ if(powered&&d.kind==="stirrer"&&(!d.linkedVesselId||
+  !bench.vessels.some(v=>v.id===d.linkedVesselId&&v.reagents.length)))return bench;
+ if(Boolean(d.powered)===powered)return bench;
+ const placedDevices=placedLabDevices(bench).map(v=>v.id===id?{...v,powered}:v);
+ return {...bench,placedDevices,
+  stirringVesselId:d.kind==="stirrer"?
+   (powered?d.linkedVesselId:undefined):bench.stirringVesselId,
+  event:bench.event+1};
+}
+export function setPlacedDeviceLevel(bench:LabBench,id:string,level:1|2|3):LabBench{
+ const d=placedLabDevices(bench).find(v=>v.id===id);
+ if(!d||!["hotplate","burner","stirrer"].includes(d.kind)||
+  ![1,2,3].includes(level))return bench;
+ return {...bench,placedDevices:placedLabDevices(bench).map(v=>v.id===id?
+  {...v,heatLevel:level}:v),event:bench.event+1};
 }
 export function stopPlacedLabDevice(bench:LabBench,id:string):LabBench{
  const target=placedLabDevices(bench).find(d=>d.id===id);
- if(!target?.active)return bench;
+ if(!target)return bench;
  const placedDevices=placedLabDevices(bench).map(d=>d.id===id?
-  {...d,active:false,linkedVesselId:undefined}:d);
- const stirringVesselId=target.kind==="stirrer"&&
-  bench.stirringVesselId===target.linkedVesselId?undefined:bench.stirringVesselId;
- const instrumentTarget=target.linkedVesselId===bench.instrumentTarget?.vesselId&&
-  target.kind===bench.instrumentTarget?.kind?undefined:bench.instrumentTarget;
- // Turning the appliance off ends its heating condition, but the chemistry
- // of any already verified reaction is retained in the vessel.
- const next=target.linkedVesselId&&["hotplate","burner"].includes(target.kind)?
-  setLabEnvironment(bench,target.linkedVesselId,"aqueous"):bench;
- return {...next,placedDevices,stirringVesselId,instrumentTarget,event:next.event+1};
+  {...d,active:false,linkedVesselId:undefined,powered:false}:d);
+ return {...bench,placedDevices,
+  stirringVesselId:target.kind==="stirrer"&&
+   bench.stirringVesselId===target.linkedVesselId?undefined:bench.stirringVesselId,
+  instrumentTarget:target.kind==="tripod"&&
+   bench.instrumentTarget?.vesselId===target.linkedVesselId?undefined:bench.instrumentTarget,
+  event:bench.event+1};
+}
+/** Burette valve is attached to a specific target and has an actual flow rate. */
+export const LAB_DRIP_RATES=[.05,.2,1] as const;
+export function setLabBuretteValve(bench:LabBench,id:string,open:boolean,
+ targetId?:string,rateMlS?:number):LabBench{
+ const source=bench.vessels.find(v=>v.id===id);
+ if(source?.kind!=="burette")return bench;
+ const target=targetId??source.buretteTargetId;
+ if(open&&(!source.reagents.length||!target||target===id||
+  !bench.vessels.some(v=>v.id===target)))return bench;
+ const rate=rateMlS??source.buretteRateMlS??.2;
+ if(!LAB_DRIP_RATES.some(v=>v===rate))return bench;
+ return revise(bench,id,v=>({...v,buretteOpen:open,buretteTargetId:target,
+  buretteRateMlS:rate}));
+}
+export function dispenseLabBurette(bench:LabBench,id:string,targetId:string,ml:number):LabBench{
+ const src=bench.vessels.find(v=>v.id===id);
+ if(src?.kind!=="burette"||!src.reagents.length||!Number.isFinite(ml)||ml<=0)return bench;
+ if(labTitrationTargets(bench,id).some(v=>v.id===targetId))
+  return dripLabVessel(bench,id,targetId,ml);
+ const reagent=src.reagents[0],dose=src.doses?.[reagent];
+ const target=bench.vessels.find(v=>v.id===targetId);
+ if(!target||!["beaker","conical","flask","tube"].includes(target.kind)||
+  !dose||dose.unit!=="ml"||dose.value<=0)return bench;
+ const amount=Math.min(dose.value,Math.round(ml*100)/100);
+ if(amount<=0)return bench;
+ const updated=putLabReagent(bench,targetId,reagent,{...dose,value:amount});
+ if(updated===bench)return bench;
+ const vessels=updated.vessels.map(v=>v.id!==id?v:{
+  ...v,
+  doses:dose.value>amount?{...v.doses,[reagent]:{...dose,value:Math.round((dose.value-amount)*100)/100}}:undefined,
+  reagents:dose.value>amount?v.reagents:[],
+  observed:dose.value>amount?v.observed:false
+ });
+ return {...updated,vessels};
+}
+/** Deterministic approximate educational heat-transfer model.
+ * No claim of laboratory-grade thermometry or chemistry at arbitrary temperatures.
+ * Time is passed explicitly so all viewers can reproduce the same evolution. */
+export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
+ if(!Number.isFinite(nowMs)||nowMs<0)return bench;
+ if(bench.simulationAtMs===undefined)return {...bench,simulationAtMs:nowMs};
+ const seconds=Math.min(10,Math.max(0,(nowMs-bench.simulationAtMs)/1000));
+ if(seconds<.05)return bench;
+ const ambient=22;
+ let changed=false;
+ const devices=placedLabDevices(bench).map(d=>{
+  if(d.kind!=="hotplate"&&d.kind!=="burner")return d;
+  const old=d.temperatureC??ambient;
+  const level=d.heatLevel??2;
+  const target=d.powered?(d.kind==="hotplate"?75+level*60:220+level*100):ambient;
+  const rate=d.powered?.075:.11;
+  const next=Math.round((old+(target-old)*(1-Math.exp(-seconds*rate)))*10)/10;
+  if(next!==old)changed=true;
+  return {...d,temperatureC:next};
+ });
+ let result:LabBench={...bench,placedDevices:devices,simulationAtMs:nowMs};
+ let vessels=bench.vessels.map(v=>{
+  const old=v.temperatureC??ambient;
+  const device=devices.find(d=>d.active&&d.linkedVesselId===v.id&&
+   ["hotplate","burner"].includes(d.kind));
+  const toward=device&&device.powered?(device.temperatureC??ambient):ambient;
+  const volumes=Object.values(v.doses??{}).reduce((total,d)=>total+d.value,0);
+  const inertia=Math.max(.035,Math.min(.18,60/Math.max(100,volumes)*.10));
+  const raw=old+(toward-old)*(1-Math.exp(-seconds*(device?.powered?inertia:.018)));
+  // Aqueous solutions at ambient pressure boil near 100°C. Other materials
+  // remain an approximation: no general boiling points are inferred.
+  const isWater=v.environment==="aqueous"&&v.reagents.length>0;
+  const next=Math.round(Math.max(ambient,Math.min(isWater?100:400,raw))*10)/10;
+  if(next!==old)changed=true;
+  return next===old?v:{...v,temperatureC:next};
+ });
+ result={...result,vessels};
+ // Start pre-reviewed heated cases only after reaching a sufficiently warm state.
+ vessels=result.vessels.map(v=>{
+  if(v.temperatureC===undefined||v.temperatureC<60||!v.reagents.length)return v;
+  const heater=devices.find(d=>d.active&&d.powered&&d.linkedVesselId===v.id&&
+   ["hotplate","burner"].includes(d.kind));
+  if(!heater)return v;
+  const mode=heater.kind==="burner"&&v.temperatureC>=115?"ignited":"heated";
+  if(v.environment===mode)return v;
+  const next=setLabEnvironment({...result,vessels:[v]},v.id,mode);
+  const updated=next.vessels[0];
+  changed=true;
+  return updated;
+ });
+ result={...result,vessels};
+ // Titrate by opening a valve; dispensed volume is real, never a button animation.
+ let dropChanged=false;
+ for(const v of result.vessels){
+  if(v.kind!=="burette"||!v.buretteOpen||!v.buretteTargetId)continue;
+  const dose=v.doses?.[v.reagents[0]];
+  if(!dose){result=setLabBuretteValve(result,v.id,false);continue}
+  const amount=Math.max(0,Math.round(seconds*(v.buretteRateMlS??.2)*100)/100);
+  if(!amount)continue;
+  const next=dispenseLabBurette(result,v.id,v.buretteTargetId,amount);
+  if(next===result){result=setLabBuretteValve(result,v.id,false);continue}
+  result=next;dropChanged=true;
+  if(!result.vessels.find(x=>x.id===v.id)?.reagents.length)
+   result=setLabBuretteValve(result,v.id,false);
+ }
+ return changed||dropChanged||result.event!==bench.event?
+  {...result,event:Math.max(result.event,bench.event)+1}:result;
 }
 export function toggleLabDevice(bench:LabBench,id:LabDevice):LabBench{
  const devices=bench.devices??[];
@@ -250,6 +379,8 @@ export type LabVessel={
  id:string;kind:LabGlassware;x:number;y:number;
  reagents:string[];environment:ReactionEnvironment;
  observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
+ temperatureC?:number;
+ buretteOpen?:boolean;buretteTargetId?:string;buretteRateMlS?:number;
  doses?:Record<string,LabDose>;
  /** A verified reaction already completed in this material; survives full transfer. */
  completedReaction?:ReactionCase;
@@ -257,7 +388,7 @@ export type LabVessel={
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;
  settings?:LabBenchSettings;devices?:LabDevice[];placedDevices?:LabPlacedDevice[];titration?:TitrationModel;stirringVesselId?:string;
  instrumentTarget?:{kind:"tripod"|"thermometer";vesselId:string};
- titrationPair?:{sourceId:string;targetId:string};}
+ titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;}
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=6;
 const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
 export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>):LabBench{
