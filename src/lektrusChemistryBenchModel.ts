@@ -1,5 +1,5 @@
 import type {Item} from "./boardModel";
-import {labDisplayPoint} from "./lektrusLabLayout";
+import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint} from "./lektrusLabLayout";
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
  from "./lektrusLabTitration";
 import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
@@ -48,21 +48,29 @@ export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:numbe
  const occupied=existing.length;
  const id="device-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,9);
  const placed:LabPlacedDevice={id,kind,
-  x:clampDevice(point?.x??(35+(occupied%4)*11),27,79),
-  y:clampDevice(point?.y??(73+Math.floor(occupied/4)*5),54,84),
+  x:clampDevice(point?.x??(22+(occupied%5)*13),9,79),
+  y:clampDevice(point?.y??(72+Math.floor(occupied/5)*8),63,84),
   powered:false,heatLevel:2,temperatureC:22};
  return {...bench,placedDevices:[...existing,placed],
   devices:[...new Set([...(bench.devices??[]),kind])],event:bench.event+1};
 }
 export function movePlacedLabDevice(bench:LabBench,id:string,x:number,y:number):LabBench{
- const existing=placedLabDevices(bench);
- const source=existing.find(d=>d.id===id);
+ const existing=placedLabDevices(bench),source=existing.find(d=>d.id===id);
  if(!source)return bench;
- return {...bench,placedDevices:existing.map(d=>d.id===id?
-  {...d,x:clampDevice(x,27,79),y:clampDevice(y,53,84),
-   linkedVesselId:undefined,active:false,powered:false}:d),
-  stirringVesselId:source.kind==="stirrer"&&
-   bench.stirringVesselId===source.linkedVesselId?undefined:bench.stirringVesselId,
+ const updated={...source,x:clampDevice(x,9,79),y:clampDevice(y,63,84)};
+ const placedDevices=existing.map(d=>d.id===id?updated:d);
+ // The supported vessel travels with a single appliance. In a burner+stand
+ // pair, moving one support disconnects only that one, not its partner.
+ const shared=existing.some(d=>d.id!==id&&d.active&&d.linkedVesselId===source.linkedVesselId);
+ const connected=source.active&&source.linkedVesselId&&!shared?
+  bench.vessels.find(v=>v.id===source.linkedVesselId):undefined;
+ const point=connected?labMountedGlasswarePoint(updated,connected,1600,1000,bench.vessels.length>3):null;
+ const position=point&&labLogicalPoint(point);
+ return {...bench,placedDevices:shared?placedDevices.map(d=>d.id===id?
+   {...d,active:false,linkedVesselId:undefined}:d):placedDevices,
+  vessels:position?bench.vessels.map(v=>v.id===connected?.id?
+   {...v,x:position.x,y:position.y}:v):bench.vessels,
+  stirringVesselId:shared&&source.kind==="stirrer"?undefined:bench.stirringVesselId,
   event:bench.event+1};
 }
 export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
@@ -94,29 +102,27 @@ export function canMountLabVessel(kind:LabPlacedDevice["kind"],glass:LabGlasswar
  * combinations use just one support to avoid physically conflicting mounts. */
 const mayShareLabVessel=(a:LabDevice,b:LabDevice)=>
  (a==="burner"&&b==="tripod")||(a==="tripod"&&b==="burner");
-function labMountedDevicePosition(vessel:LabVessel,count:number,kind:LabDevice){
- const p=labDisplayPoint(vessel,count>3);
- return {
-  x:clampDevice(p.x+(kind==="tripod"?-2.5:kind==="burner"?1.5:0),27,79),
-  y:clampDevice(p.y+(kind==="tripod"?8:kind==="burner"?13:11),54,84)
- };
-}
 export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string):LabBench{
  const device=placedLabDevices(bench).find(d=>d.id===id);
  const vessel=bench.vessels.find(v=>v.id===vesselId);
  if(!device||!vessel||!canMountLabVessel(device.kind,vessel.kind))return bench;
  if(device.active&&device.linkedVesselId===vesselId)return bench;
- const next=placedLabDevices(bench).map(d=>d.id===id?
-  {...d,active:true,linkedVesselId:vesselId,powered:d.powered??false}:
-  d.linkedVesselId===vesselId&&!mayShareLabVessel(device.kind,d.kind)?
-  {...d,active:false,linkedVesselId:undefined,powered:false}:d);
- const placedDevices=next.map(d=>d.id===id?
-  {...d,...labMountedDevicePosition(vessel,bench.vessels.length,d.kind)}:d);
- const mixer=placedDevices.find(d=>d.kind==="stirrer"&&d.active&&d.powered&&
-  d.linkedVesselId===vesselId&&vessel.reagents.length);
+ // Equipment is stationary. Move the glassware into/onto it, never slide
+ // the entire instrument across the table toward the selected vessel.
+ const conflicting=placedLabDevices(bench).filter(d=>d.id!==id&&d.active&&
+  d.linkedVesselId===vesselId&&!mayShareLabVessel(device.kind,d.kind));
+ const placedDevices=placedLabDevices(bench).map(d=>d.id===id?
+  {...d,active:true,linkedVesselId:vesselId}:
+  conflicting.some(c=>c.id===d.id)?
+  {...d,active:false,linkedVesselId:undefined}:d);
+ const point=labMountedGlasswarePoint(device,vessel,1600,1000,bench.vessels.length>3);
+ const logical=labLogicalPoint(point);
  return {...bench,placedDevices,
-  stirringVesselId:mixer?vesselId:
-   bench.stirringVesselId===vesselId?undefined:bench.stirringVesselId,
+  vessels:bench.vessels.map(v=>v.id===vesselId?{...v,x:logical.x,y:logical.y}:v),
+  stirringVesselId:device.kind==="stirrer"&&device.powered&&vessel.reagents.length?
+   vesselId:bench.stirringVesselId===vesselId&&
+    placedDevices.every(d=>d.kind!=="stirrer"||d.linkedVesselId!==vesselId)?
+     undefined:bench.stirringVesselId,
   event:bench.event+1};
 }
 export function setPlacedDevicePower(bench:LabBench,id:string,powered:boolean):LabBench{
@@ -480,11 +486,10 @@ export function arrangeLabVessels(bench:LabBench):LabBench{
    y:count<=3?62:first?40:78};
  });
  if(vessels.every((v,i)=>v.x===bench.vessels[i].x&&v.y===bench.vessels[i].y))return bench;
- const placedDevices=placedLabDevices(bench).map(d=>{
-  const vessel=d.active&&vessels.find(v=>v.id===d.linkedVesselId);
-  return vessel?{...d,...labMountedDevicePosition(vessel,vessels.length,d.kind)}:d;
- });
- return {...bump(bench,vessels),placedDevices};
+ // Arrange only free vessels. Mounted vessels keep their attachments.
+ const stabilized=vessels.map((v,i)=>placedLabDevices(bench).some(d=>d.active&&
+  d.linkedVesselId===v.id)?bench.vessels[i]:v);
+ return bump(bench,stabilized);
 }
 export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:number;y:number}):LabBench{
  if(bench.vessels.length>=MAX_BENCH_VESSELS)return bench;
