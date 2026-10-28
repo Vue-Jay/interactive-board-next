@@ -2043,3 +2043,11 @@
 .lektrus-lab-bench .lektrus-lab-device-cupboard-shelf button,
 .lektrus-lab-bench .lektrus-lab-shelf-item{
  cursor:pointer!important;pointer-events:auto!important}
+
+.lektrus-lab-bench .lektrus-lab-instrument-attachment{
+ position:absolute;left:50%;bottom:4%;transform:translateX(-50%);
+ z-index:28;min-width:max-content;max-width:180px;
+ padding:3px 7px;border-radius:7px;background:#e3f8eaff;
+ border:1px solid #75b69a;color:#25654e;
+ font:750 10px/1.2 system-ui,sans-serif;pointer-events:none;
+ box-shadow:0 2px 5px #17523c21}
