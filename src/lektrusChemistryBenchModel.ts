@@ -668,6 +668,12 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
     (dose.unit==="ml"&&Number.isFinite(dose.concentrationM)&&
      dose.concentrationM>=.001&&dose.concentrationM<=2))?dose:undefined;
   if(dose&&!validDose)return v;
+  // Graduated glassware has a real maximum capacity, not an unlimited beaker.
+  const capacity=labMeasuredCapacityMl(v.kind);
+  const priorMl=Object.values(v.doses??{}).reduce((sum,d)=>sum+
+   (d.unit==="ml"?d.value:0),0);
+  if(capacity!==undefined&&validDose?.unit==="ml"&&priorMl+validDose.value>capacity)return v;
+  if((v.kind==="pipette"||v.kind==="burette")&&validDose?.unit==="g")return v;
   const present=v.reagents.includes(reagent);
   if(!present&&v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
   const previous=v.doses?.[reagent];
@@ -693,6 +699,60 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
  return running!==bench&&bench.titrationPair&&
   (bench.titrationPair.sourceId===id||bench.titrationPair.targetId===id)?
   {...running,titrationPair:undefined,titration:undefined}:running;
+}
+/** Graduated transfers for pipettes and cylinders. Only a single
+ * homogeneous liquid with a known volume can be transferred precisely. */
+export const labMeasuredCapacityMl=(kind:LabGlassware):number|undefined=>
+ kind==="pipette"?25:kind==="burette"?50:kind==="cylinder"?100:
+ kind==="volumetric"?100:undefined;
+export function transferLabMeasuredLiquid(
+ bench:LabBench,sourceId:string,targetId:string,volumeMl:number
+):LabBench{
+ if(sourceId===targetId||!Number.isFinite(volumeMl)||volumeMl<=0)return bench;
+ const source=bench.vessels.find(v=>v.id===sourceId);
+ const target=bench.vessels.find(v=>v.id===targetId);
+ if(!source||!target||source.reagents.length!==1||source.kind==="funnel"||
+  target.kind==="funnel")return bench;
+ const reagent=source.reagents[0],dose=source.doses?.[reagent];
+ if(!dose||dose.unit!=="ml"||dose.value<volumeMl)return bench;
+ const capacity=labMeasuredCapacityMl(target.kind);
+ const current=Object.values(target.doses??{}).reduce((sum,d)=>sum+
+  (d.unit==="ml"?d.value:0),0);
+ if(capacity!==undefined&&current+volumeMl>capacity)return bench;
+ const aliquot={...dose,value:Math.round(volumeMl*100)/100};
+ if(aliquot.value===0)return bench;
+ const next=putLabReagent(bench,targetId,reagent,aliquot);
+ if(next===bench)return bench;
+ const remaining=Math.round((dose.value-aliquot.value)*100)/100;
+ const vessels=next.vessels.map(v=>v.id===sourceId?{
+  ...v,
+  reagents:remaining>0?v.reagents:[],
+  doses:remaining>0?{...v.doses,[reagent]:{...dose,value:remaining}}:undefined,
+  observed:remaining>0?v.observed:false,
+  completedReaction:remaining>0?v.completedReaction:undefined,
+  indicator:remaining>0?v.indicator:undefined
+ }:v);
+ return {...next,vessels,event:next.event+1};
+}
+/** Funnel assists a full transfer without itself becoming a storage bottle. */
+export function pourThroughLabFunnel(
+ bench:LabBench,funnelId:string,sourceId:string,targetId:string
+):LabBench{
+ if(!bench.vessels.some(v=>v.id===funnelId&&v.kind==="funnel")||
+  sourceId===funnelId||targetId===funnelId)return bench;
+ const source=bench.vessels.find(v=>v.id===sourceId);
+ if(!source||!source.reagents.length||
+  Object.values(source.doses??{}).some(d=>d.unit!=="ml"))return bench;
+ return pourLabVessel(bench,sourceId,targetId);
+}
+/** Add solvent to the calibration mark of a 100 ml volumetric flask. */
+export function fillLabVolumetricFlask(bench:LabBench,id:string):LabBench{
+ const vessel=bench.vessels.find(v=>v.id===id&&v.kind==="volumetric");
+ if(!vessel)return bench;
+ const total=Object.values(vessel.doses??{}).reduce((sum,d)=>sum+
+  (d.unit==="ml"?d.value:0),0);
+ if(total>=100||Object.values(vessel.doses??{}).some(d=>d.unit==="g"))return bench;
+ return putLabReagent(bench,id,"H2O",{value:Math.round((100-total)*100)/100,unit:"ml"});
 }
 /** Full transfer. Never assume that a second step using already reacted
  * mixtures can be predicted from their original reagent identifiers. */
