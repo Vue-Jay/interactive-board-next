@@ -320,17 +320,17 @@ assert.match(read("src/lektrusSciencePresets.ts"),/x:x-830,y:y-530,text:"Хим�
 const boardLaboratory=read("src/LektrusChemistryIllustration.tsx");
 const editorLaboratory=read("src/LektrusChemistryBenchEditor.tsx");
 const hugeLabCss=read("src/lektrusChemistryBench.css");
-assert.match(boardLaboratory,/className="lektrus-chemistry-bench-on-board"[\\s\\S]*?onWheel=\\{e=>e\\.stopPropagation\\(\\)\\}/,
+assert.match(boardLaboratory,/className="lektrus-chemistry-bench-on-board"[\s\S]*?onWheel=\{e=>e\.stopPropagation\(\)\}/,
  "Scrolling inside the board lab must not zoom the board");
 assert.match(editorLaboratory,/className="lektrus-lab-editor-bench-viewport"/,
  "All lab content must scroll even in the smaller editing modal");
-assert.match(hugeLabCss,/lektrus-chemistry-bench-on-board\\{[\\s\\S]*?overflow:auto!important/,
+assert.match(hugeLabCss,/lektrus-chemistry-bench-on-board\{[\s\S]*?overflow:auto!important/,
  "The board lab viewport must allow scrolling");
 assert.match(hugeLabCss,/min-width:1600px!important/,
  "The laboratory must have a full-size unclipped stage at any object size");
-assert.match(hugeLabCss,/grid-template-columns:repeat\\(4,minmax\\(0,1fr\\)\\)!important/,
+assert.match(hugeLabCss,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)!important/,
  "All 11 vessel cards must fit in a four-column shelf");
-assert.match(hugeLabCss,/grid-template-rows:repeat\\(3,minmax\\(0,1fr\\)\\)!important/,
+assert.match(hugeLabCss,/grid-template-rows:repeat\(3,minmax\(0,1fr\)\)!important/,
  "The vessel shelf must display all glassware in three rows");
 assert.match(hugeLabCss,/overflow:visible!important;touch-action:manipulation!important/,
  "Glassware cupboard must not rely on scrollbars");
@@ -341,7 +341,7 @@ for(const device of lab.labDevices){
 }
 assert.match(read("src/LektrusChemistryBench.tsx"),/LektrusLabDeviceIcon/);
 assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),
- /className=\\{"lektrus-lab-device-art/,
+ /className=\{"lektrus-lab-device-art/,
  "The installed tools must no longer render placeholder text glyphs");
 const cabinetSurface=read("src/LektrusChemistryBench.tsx");
 const cabinetCss=read("src/lektrusChemistryBench.css");
