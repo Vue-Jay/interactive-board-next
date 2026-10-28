@@ -19,6 +19,28 @@ export function cabinetPhase(v:Substance):StoragePhase{
   ["C2H5OH","CH3OH","CH3COOH","H2O2","Br2"].includes(v.id))return "liquid";
  return "solid";
 }
+/** Presentation in the reagent cabinet is determined by the supplied form,
+ * not inferred from a chemical formula alone. A solid and its prepared
+ * solution are different shelf choices. Insoluble classroom compounds are
+ * deliberately not offered as ready-to-pour solutions. */
+const insolubleStock=new Set([
+ "AgCl","AgBr","AgI","BaSO4","CaCO3","MgCO3","BaCO3","CuCO3",
+ "FeS","CuS","Cu(OH)2","Fe(OH)2","Fe(OH)3","PbI2","PbSO4"
+]);
+export function labReagentForms(v:Substance):("ml"|"g")[]{
+ const state=cabinetPhase(v);
+ if(state==="gas")return ["ml"];
+ if(v.kind==="кислота"||v.kind==="вода"||v.id==="H2O"||
+  ["C2H5OH","CH3OH","CH3COOH","H2O2","Br2"].includes(v.id))return ["ml"];
+ if(v.kind==="металл"||v.kind==="неметалл"||v.kind==="оксид"||
+  insolubleStock.has(v.id))return ["g"];
+ if(v.kind==="соль"||v.kind==="основание")return ["g","ml"];
+ return state==="liquid"?["ml"]:["g"];
+}
+export function labReagentPhaseLabel(v:Substance,unit:"ml"|"g"){
+ return unit==="g"?"Твёрдое вещество":cabinetPhase(v)==="gas"?
+  "Газообразное вещество":"Раствор / жидкость";
+}
 export function cabinetColor(v:Substance){
  return reagentAppearance(v.id,cabinetPhase(v)==="solid"?"dry":"aqueous").color;
 }
