@@ -187,6 +187,47 @@ assert.match(catalogSource,/labDevices\.map/);
 assert.match(catalogSource,/useLabDevice\(/);
 assert.match(read("src/lektrusChemistryBench.css"),/white-space:normal!important/,
  "Long glassware names should wrap naturally instead of ellipsizing");
+const labLayout=load("src/lektrusLabLayout.ts");
+for(const count of [1,2,3,4,5,6]){
+ let arranged=lab.defaultLabBench();
+ for(let i=1;i<count;i++)arranged=lab.addLabVessel(arranged,"tube");
+ arranged=lab.arrangeLabVessels(arranged);
+ assert.equal(arranged.vessels.length,count);
+ const projected=arranged.vessels.map(v=>labLayout.labDisplayPoint(v));
+ const width=count>3?10:10.8, height=count>3?19:30;
+ for(let i=0;i<projected.length;i++){
+  const a=projected[i];
+  assert.ok(a.x-width/2>26&&a.x+width/2<80,
+   "Placed vessels must stay clear of left controls and right sink");
+  assert.ok(a.y-height*.56>53&&a.y+height*.44<97,
+   "Placed vessels must stay inside the available work surface");
+  for(let j=i+1;j<projected.length;j++){
+   const b=projected[j];
+   assert.ok(Math.abs(a.x-b.x)>=width||Math.abs(a.y-b.y)>=height,
+    "Vessels should not overlap after auto arrangement: "+count+" vessels");
+  }
+  const roundtrip=labLayout.labLogicalPoint(a);
+  assert.ok(Math.abs(roundtrip.x-arranged.vessels[i].x)<.0001);
+  assert.ok(Math.abs(roundtrip.y-arranged.vessels[i].y)<.0001);
+ }
+}
+const legacyVessel=labLayout.labDisplayPoint({x:10,y:90});
+assert.ok(legacyVessel.x>26&&legacyVessel.x<80,
+ "Saved vessels at extreme old coordinates must not cover furniture");
+assert.equal(labLayout.isLabSink({x:85,y:70}),true);
+assert.equal(labLayout.isLabCupboard({x:85,y:22}),true);
+assert.equal(labLayout.isLabWorktop({x:50,y:73}),true);
+assert.equal(labLayout.isLabWorktop({x:14,y:73}),false);
+const redesignedLab=read("src/LektrusChemistryBench.tsx");
+assert.match(redesignedLab,/lektrus-lab-scene-header/);
+assert.match(redesignedLab,/lektrus-lab-worktop-zone/);
+assert.match(redesignedLab,/labDisplayPoint\(preview\?\.id===v\.id\?preview:v\)/);
+assert.match(redesignedLab,/arrangeLabVessels\(bench\)/);
+assert.match(redesignedLab,/lektrus-lab-chalk-steps/);
+const redesignedCss=read("src/lektrusChemistryBench.css");
+assert.match(redesignedCss,/lektrus-lab-reagent-furniture[\s\S]*?lektrus-lab-glass-cupboard/);
+assert.match(redesignedCss,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+assert.match(redesignedCss,/lektrus-lab-worktop-zone/);
 const base=lab.defaultLabBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
