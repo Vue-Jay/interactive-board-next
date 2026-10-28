@@ -14,7 +14,7 @@ import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 import {subjectEditorStyle} from "./lektrusSubjectAccent";
 
 type Props={item:Item;onChange:(next:Item)=>void;onSave:()=>void;onCancel:()=>void};
-const labels:Record<LabGlassware,string>={beaker:"Стакан",tube:"Пробирка",flask:"Колба"};
+const labels:Record<LabGlassware,string>={beaker:"Стакан",tube:"Пробирка",flask:"Колба",cylinder:"Мерный цилиндр",dish:"Чашка"};
 const media:{id:ReactionEnvironment;name:string;description:string}[]=[
  {id:"aqueous",name:"Водный раствор",description:"Смешивание растворов"},
  {id:"dry",name:"Сухие вещества",description:"Без растворителя"},
