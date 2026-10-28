@@ -54,6 +54,12 @@ const sequence={mode:"order",tokens:["сначала","потом","затем"]
 assert.equal(activityComplete(sequence),true);
 assert.deepEqual(activityScore(sequence,{ordered:[2,0,1]}),{correct:0,total:3});
 assert.deepEqual(activityScore(sequence,{ordered:[0,1,2]}),{correct:3,total:3});
+assert.deepEqual(activityScore({mode:"order",tokens:["I","had","had","enough"]},
+ {ordered:[0,2,1,3]}),{correct:4,total:4},
+ "Identical words are interchangeable when rebuilding a sentence");
+assert.deepEqual(mixedIndices(7,"She likes studying"),mixedIndices(7,"She likes studying"),
+ "Mixed order must stay stable across participant renders");
+
 for(const len of [2,3,4,6]){
  const mixed=mixedIndices(len);
  assert.equal(new Set(mixed).size,len);
