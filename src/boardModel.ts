@@ -768,11 +768,33 @@ export function parseDocument(raw: string): DocumentData {
       if(i.scienceLabBench!=null){
         const bench=i.scienceLabBench as import("./lektrusChemistryBenchModel").LabBench;
         const environments=["aqueous","dry","heated","ignited"];
-        const kinds=["beaker","tube","flask"];
-        if(!bench||!Array.isArray(bench.vessels)||bench.vessels.length<1||
-          bench.vessels.length>6||typeof bench.selectedId!=="string"||
-          !Number.isSafeInteger(bench.event)||bench.event<0||
-          !bench.vessels.some(v=>v.id===bench.selectedId)||
+        const kinds=["beaker","tube","flask","cylinder","dish"];
+        const indicators=["litmus","phenolphthalein","methyl-orange","universal"];
+        const settings=bench?.settings;
+        const validSettings=!settings||(
+          typeof settings.showEquationBoard==="boolean"&&
+          typeof settings.showVesselLabels==="boolean"&&
+          typeof settings.animateEffects==="boolean");
+        const validDose=(entry:unknown)=>!!entry&&typeof entry==="object"&&
+          Number.isFinite((entry as {value:number}).value)&&
+          (entry as {value:number}).value>0&&(entry as {value:number}).value<=10000&&
+          ["ml","g"].includes((entry as {unit:string}).unit);
+        const validReaction=(entry:unknown)=>{
+          if(entry==null)return true;
+          if(!entry||typeof entry!=="object")return false;
+          const reaction=entry as import("./lektrusReactionDatabase").ReactionCase;
+          return Array.isArray(reaction.reactants)&&reaction.reactants.length<=6&&
+            reaction.reactants.every(x=>typeof x==="string"&&x.length<=70)&&
+            environments.includes(reaction.environment)&&reaction.status==="reaction"&&
+            typeof reaction.equation==="string"&&reaction.equation.length<=500&&
+            ["gas","precipitate","color","heat","dissolution","none"].includes(reaction.observation)&&
+            typeof reaction.description==="string"&&reaction.description.length<=600;
+        };
+        if(!bench||!Array.isArray(bench.vessels)||bench.vessels.length>6||
+          typeof bench.selectedId!=="string"||
+          !Number.isSafeInteger(bench.event)||bench.event<0||!validSettings||
+          (bench.vessels.length===0?bench.selectedId!=="":
+            !bench.vessels.some(v=>v.id===bench.selectedId))||
           new Set(bench.vessels.map(v=>v.id)).size!==bench.vessels.length||
           !bench.vessels.every(v=>typeof v.id==="string"&&v.id.length<=40&&
             kinds.includes(v.kind)&&Number.isFinite(v.x)&&Number.isFinite(v.y)&&
@@ -781,7 +803,13 @@ export function parseDocument(raw: string): DocumentData {
             v.reagents.every(r=>typeof r==="string"&&r.length<=70)&&
             new Set(v.reagents).size===v.reagents.length&&
             environments.includes(v.environment)&&typeof v.observed==="boolean"&&
-            (v.uncertain==null||typeof v.uncertain==="boolean")))
+            (v.uncertain==null||typeof v.uncertain==="boolean")&&
+            (v.indicator==null||indicators.includes(v.indicator))&&
+            (v.doses==null||(typeof v.doses==="object"&&
+               Object.keys(v.doses).length<=6&&
+               Object.entries(v.doses).every(([id,dose])=>
+                 v.reagents.includes(id)&&validDose(dose))))&&
+            validReaction(v.completedReaction)))
           throw new Error("Повреждено состояние химического стола");
       }
       if(i.subjectBoardStandalone!=null&&typeof i.subjectBoardStandalone!=="boolean")
