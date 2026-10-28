@@ -750,4 +750,40 @@ assert.match(gradualUi,/Перелилось/);
 assert.match(gradualUi,/Осталось/);
 assert.match(gradualUi,/stopLabPour\(bench,p\.id\)/);
 
+// Laboratory v10: hover triggers are timed and apparatus controls live on their bodies.
+const hoverSurface=read("src/LektrusChemistryBench.tsx");
+assert.match(hoverSurface,/contactTimer\.current=setTimeout/);
+assert.match(hoverSurface,/\},2000\)/,"Liquid transfer starts after a two-second hover");
+assert.match(hoverSurface,/beginContact\(g\.id,pouring\)/);
+assert.match(hoverSurface,/const drawing=source\.reagents\.length===0/);
+assert.match(hoverSurface,/transferLabMeasuredLiquid\(current,donor\.id,receiver\.id,volume\)/);
+assert.match(hoverSurface,/lektrus-lab-device-face-controls/);
+assert.match(hoverSurface,/lektrus-lab-device-power/);
+assert.match(hoverSurface,/setPlacedDevicePower\(\{\.\.\.bench,simulationAtMs:Date\.now\(\)\}/);
+assert.match(hoverSurface,/lektrus-lab-stand-raise/);
+assert.match(hoverSurface,/setLabStandHeight\(bench,device\.id/);
+assert.match(hoverSurface,/LabTemperatureInput/);
+assert.match(hoverSurface,/g\.x\+p\.x-g\.startX/);
+assert.match(hoverSurface,/p\.y-g\.startY/);
+assert.doesNotMatch(hoverSurface,/lektrus-lab-ware-brand"/);
+assert.doesNotMatch(read("src/LektrusLabDeviceIcon.tsx"),/>LEKTRUS<\/text>/);
+assert.doesNotMatch(hoverSurface,/selected\.kind==="funnel"/);
+assert.ok(!lab.labGlassware.some(v=>v.id==="funnel"),"Funnel is absent from available cabinet glassware");
+const stock=load("src/lektrusLabCatalog.ts",key=>{
+ assert.equal(key,"./lektrusLabAppearance");
+ return load("src/lektrusLabAppearance.ts",k=>{
+  assert.equal(k,"./lektrusReactionDatabase");return reaction;
+ });
+});
+const item=id=>reaction.substances.find(v=>v.id===id);
+assert.deepEqual(stock.labReagentForms(item("HCl")),["ml"]);
+assert.deepEqual(stock.labReagentForms(item("Cu")),["g"]);
+assert.deepEqual(stock.labReagentForms(item("NaCl")),["g","ml"]);
+assert.deepEqual(stock.labReagentForms(item("AgCl")),["g"]);
+assert.equal(stock.labReagentPhaseLabel(item("CuSO4"),"ml"),"Раствор / жидкость");
+assert.equal(stock.labReagentPhaseLabel(item("CaCO3"),"g"),"Твёрдое вещество");
+assert.match(hoverSurface,/const massG=measures\.reduce/);
+assert.match(hoverSurface,/const volumeMl=measures\.reduce/);
+assert.match(hoverSurface,/totalLabel\|\|substanceState/);
+
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
