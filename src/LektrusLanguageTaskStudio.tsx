@@ -186,7 +186,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
      {template.fields.filter(field=>!(tone==="russian"&&template.id==="morphology"&&field.id==="target")).map(field=>{
       const content=subjectFieldInfo[tone+":"+template.id+":"+field.id]??fieldInfo[field.id];
       if(field.id==="questions"&&((tone==="russian"&&template.id==="text")||(tone==="languages"&&template.id==="reading"))){
-       const questions=(entry.details?.questions??"").split(/\r?\n/).filter(line=>line.trim()).slice(0,15);
+       const questions=(entry.details?.questions??"").split(/\r?\n/).slice(0,15);
        const setQuestions=(next:string[])=>changeMaterial("questions",next.join("\n"));
        return <div className="lektrus-language-question-editor" key={field.id}>
         <div className="lektrus-language-gap-heading"><strong>{content?.label??"Вопросы"}</strong>
@@ -201,7 +201,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
            title="Удалить вопрос" onClick={()=>setQuestions(questions.filter((_,j)=>j!==i))}>×</button>}
          </div>)}
         {questions.length<15&&<button type="button" className="lektrus-language-add-question"
-         onClick={()=>setQuestions([...questions,"Новый вопрос"]) }>+ Добавить вопрос</button>}
+         onClick={()=>setQuestions([...questions,""])}>+ Добавить вопрос</button>}
        </div>;
       }
       return <label className="lektrus-language-field" key={field.id}>
