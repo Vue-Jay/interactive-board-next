@@ -131,12 +131,18 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
               <section className="lektrus-subject-tools-group" key={section.title}>
                 {sections.length>1&&<h3>{section.title}</h3>}
                 <div className="lektrus-subject-tools-list">
-                  {section.items.map(t=>
-                    <button type="button" key={t.id} onClick={()=>onChoose(t.id)} title={t.description??t.label} aria-label={t.label}>
+                  {section.items.map(t=>{
+                    const isTask=t.id.startsWith("subject-task-");
+                    return <button type="button" key={t.id} onClick={()=>onChoose(t.id)}
+                      className={isTask?"is-subject-task":undefined}
+                      title={t.description??t.label} aria-label={t.label}>
                       <span className="lektrus-subject-tools-icon">{t.icon}</span>
-                      <span className="lektrus-subject-tools-name">{t.label}</span>
-                      {t.id.startsWith("subject-task-")&&<small className="lektrus-subject-task-placement">На предметную доску</small>}
-                    </button>)}
+                      <span className="lektrus-subject-tools-copy">
+                        <span className="lektrus-subject-tools-name">{t.label}</span>
+                        {isTask&&<small className="lektrus-subject-task-placement">На предметную доску</small>}
+                      </span>
+                    </button>;
+                  })}
                 </div>
               </section>)}
           </div>:
