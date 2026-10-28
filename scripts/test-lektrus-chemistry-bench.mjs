@@ -132,7 +132,13 @@ devices=lab.putLabReagent(devices,"v1","CaCO3");
 devices=lab.useLabDevice(devices,"hotplate","v1");
 assert.equal(lab.labObservation(devices.vessels[0]).caseData.observation,"gas",
  "Hotplate applies validated heated conditions to the chosen vessel");
+devices=lab.useLabDevice(devices,"stirrer","v1");
+assert.equal(devices.stirringVesselId,"v1","Mixer starts on the selected vessel");
+devices=lab.useLabDevice(devices,"stirrer","v1");
+assert.equal(devices.stirringVesselId,undefined,"Mixer can be stopped");
+devices=lab.useLabDevice(devices,"stirrer","v1");
 devices=lab.toggleLabDevice(devices,"stirrer");
+assert.equal(devices.stirringVesselId,undefined,"Storing the mixer must stop stirring");
 assert.equal(devices.devices.includes("stirrer"),false,"Devices can be returned to storage");
 let extra=lab.defaultLabBench();
 for(const kind of lab.labGlassware.slice(5)){
