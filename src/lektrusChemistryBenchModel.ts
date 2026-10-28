@@ -1,5 +1,5 @@
 import type {Item} from "./boardModel";
-import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint} from "./lektrusLabLayout";
+import {labLogicalPoint,labMountedGlasswarePoint} from "./lektrusLabLayout";
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
  from "./lektrusLabTitration";
 import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
