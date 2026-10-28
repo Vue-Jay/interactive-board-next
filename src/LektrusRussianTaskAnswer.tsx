@@ -169,76 +169,89 @@ export default function LektrusRussianTaskAnswer({entry,work,onChange}:Props){
  if(entry.format==="morphology"){
   const part=state?.partOfSpeech as RussianPartOfSpeech|undefined;
   const plan=part?morphologyPlans[part]:undefined;
-  const initial=(state?.initialForm??"");
-  const morphGroup=(group:"permanent"|"variable",heading:string,number:string)=>{
+  const initial=state?.initialForm??"";
+  const syntaxRoles=["подлежащее","сказуемое","определение","дополнение","обстоятельство","не является членом предложения"];
+  const morphGroup=(group:"permanent"|"variable",label:string)=>{
    const features=plan?.[group]??[];
    const values=morphRows(state?.[group]??"");
    const notes=morphNotes(state?.[group]??"");
-   return <section className="lektrus-rus-morph-step">
-    <div className="lektrus-rus-morph-step-title"><span>{number}</span><strong>{heading}</strong></div>
-    {features.length>0?<div className="lektrus-rus-morph-features">
+   return <div className="lektrus-rus-school-traits">
+    <strong>{label}</strong>
+    {features.length?<div className="lektrus-rus-school-trait-grid">
      {features.map(f=>{
       const selected=values[f.name]??"";
       const custom=selected.startsWith("Свой вариант: ")?selected.slice(14):"";
-      return <label key={f.name} className="lektrus-rus-morph-feature">
+      return <label key={f.name} className="lektrus-rus-school-trait">
        <span>{f.name}</span>
-       <select disabled={!editable} aria-label={f.name}
-        value={custom?"__custom__":f.options.includes(selected)?selected:selected?"__custom__":""}
+       {editable?<><select aria-label={f.name}
+        value={selected&&!f.options.includes(selected)?"__custom__":selected}
         onChange={e=>update({[group]:setMorphRow(state?.[group]??"",f.name,
          e.target.value==="__custom__"?"Свой вариант: ":e.target.value)})}>
-        <option value="">Не указано / не применяется</option>
+        <option value="">—</option>
         {f.options.map(value=><option key={value} value={value}>{value}</option>)}
         <option value="__custom__">Свой вариант…</option>
        </select>
-       {(custom||selected==="Свой вариант: "||selected&&!f.options.includes(selected))&&
-        <input disabled={!editable} aria-label={f.name+": свой вариант"} value={custom||(!selected.startsWith("Свой вариант: ")?selected:"")}
-         placeholder="Уточните признак" maxLength={100}
-         onChange={e=>update({[group]:setMorphRow(state?.[group]??"",f.name,"Свой вариант: "+e.target.value)})}/>}
+       {selected&&!f.options.includes(selected)&&<input aria-label={f.name+": свой вариант"}
+        value={custom||(!selected.startsWith("Свой вариант: ")?selected:"")}
+        placeholder="Уточните" maxLength={100}
+        onChange={e=>update({[group]:setMorphRow(state?.[group]??"",f.name,"Свой вариант: "+e.target.value)})}/>}</>:
+        <span className="lektrus-rus-school-value">{selected||"—"}</span>}
       </label>;
      })}
-    </div>:<p className="lektrus-rus-morph-invariable">{plan?.unchanging?"Эта часть речи не изменяется.":"Для этой части речи обязательные признаки не заданы."}</p>}
-    <label className="lektrus-rus-morph-notes">Дополнительные сведения <small>По желанию, если школьный план требует уточнения</small>
-      <textarea rows={2} maxLength={600} disabled={!editable}
-       placeholder="Необязательные особенности разбора" value={notes}
-       onChange={e=>update({[group]:[...Object.entries(values).map(([k,v])=>k+": "+v),e.target.value].filter(Boolean).join("\n")})}/>
-    </label>
-   </section>;
+    </div>:<span className="lektrus-rus-school-no-traits">{plan?.unchanging?"Не изменяется.":"Нет обязательных признаков в этом плане."}</span>}
+    {(editable||notes)&&<details className="lektrus-rus-school-extra" open={undefined}>
+     <summary>{notes?"Дополнения к разбору":"Дополнительно"}</summary>
+     {editable?<textarea rows={2} maxLength={600} value={notes} placeholder="При необходимости"
+      onChange={e=>update({[group]:[...Object.entries(values).map(([k,v])=>k+": "+v),e.target.value].filter(Boolean).join("\n")})}/>:
+      <span>{notes}</span>}
+    </details>}
+   </div>;
   };
-  return <div className="lektrus-rus-task-work lektrus-rus-morphology-work" onPointerDown={stop} onClick={stop}>
-   <div className="lektrus-rus-work-top"><strong>Морфологический разбор</strong><small>Разбирайте по плану. Признаки выбирает ученик, без автоматических подсказок с ответами.</small></div>
-   {entry.details?.material&&<p className="lektrus-rus-morph-context">{entry.details.material}</p>}
-   {entry.details?.target?<p className="lektrus-rus-analysis-target">Слово: <strong>{entry.details.target}</strong></p>:
-    <p className="lektrus-rus-answer-help">Преподавателю нужно выбрать слово из предложения.</p>}
-   <section className="lektrus-rus-morph-step">
-    <div className="lektrus-rus-morph-step-title"><span>01</span><strong>Часть речи и начальная форма</strong></div>
-    <div className="lektrus-rus-morph-first">
-     <label className="lektrus-rus-morph-feature"><span>Часть речи</span>
-      <select disabled={!editable} value={part??""}
+  return <div className="lektrus-rus-task-work lektrus-rus-morphology-work lektrus-rus-school-analysis"
+   onPointerDown={stop} onClick={stop}>
+   <div className="lektrus-rus-school-heading"><strong>Морфологический разбор</strong>
+    {entry.details?.target&&<b>{entry.details.target}</b>}</div>
+   {entry.details?.material&&<div className="lektrus-rus-school-context">{entry.details.material}</div>}
+   {!entry.details?.target&&<div className="lektrus-rus-answer-help">Укажите слово для разбора.</div>}
+   <div className="lektrus-rus-school-section">
+    <span className="lektrus-rus-school-number">I.</span>
+    <div className="lektrus-rus-school-line">
+     <label><strong>Часть речи:</strong>
+      {editable?<select aria-label="Часть речи" value={part??""}
        onChange={e=>update({partOfSpeech:e.target.value,permanent:"",variable:""})}>
-       <option value="">Выберите часть речи</option>
+       <option value="">Выберите</option>
        {(Object.entries(posNames) as [RussianPartOfSpeech,string][]).map(([id,name])=>
         <option key={id} value={id}>{name}</option>)}
-      </select></label>
-     <label className="lektrus-rus-morph-feature"><span>Начальная форма</span>
-      <input disabled={!editable} value={initial} maxLength={120}
-       placeholder="Запишите начальную форму" onChange={e=>update({initialForm:e.target.value})}/></label>
-    </div>
-   </section>
-   {part&&<>{morphGroup("permanent","Постоянные признаки","02")}
-    {morphGroup("variable","Непостоянные признаки","03")}
-    <section className="lektrus-rus-morph-step">
-     <div className="lektrus-rus-morph-step-title"><span>04</span><strong>Роль в предложении</strong></div>
-     <label className="lektrus-rus-morph-feature"><span>Синтаксическая роль</span>
-      <select disabled={!editable} value={state?.syntax??""}
-       onChange={e=>update({syntax:e.target.value})}>
-       <option value="">Ещё не определена</option>
-       {["подлежащее","сказуемое","определение","дополнение","обстоятельство","не является членом предложения"].map(v=>
-        <option key={v} value={v}>{v}</option>)}
-       {state?.syntax&&!["подлежащее","сказуемое","определение","дополнение","обстоятельство","не является членом предложения"].includes(state.syntax)&&
-        <option value={state.syntax}>{state.syntax}</option>}
-      </select>
+      </select>:<span>{part?posNames[part]: "—"}</span>}
      </label>
-    </section></>}
+     <label><strong>Начальная форма:</strong>
+      {editable?<input aria-label="Начальная форма" value={initial} maxLength={120}
+       placeholder="Нач. форма" onChange={e=>update({initialForm:e.target.value})}/>:
+       <span>{initial||"—"}</span>}
+     </label>
+    </div>
+   </div>
+   {part&&<>
+    <div className="lektrus-rus-school-section">
+     <span className="lektrus-rus-school-number">II.</span>
+     <div className="lektrus-rus-school-traits-wrapper">
+      <strong>Морфологические признаки</strong>
+      {morphGroup("permanent","Постоянные:")}
+      {morphGroup("variable","Непостоянные:")}
+     </div>
+    </div>
+    <div className="lektrus-rus-school-section">
+     <span className="lektrus-rus-school-number">III.</span>
+     <label className="lektrus-rus-school-syntax"><strong>Синтаксическая роль:</strong>
+      {editable?<select aria-label="Синтаксическая роль" value={state?.syntax??""}
+       onChange={e=>update({syntax:e.target.value})}>
+       <option value="">Выберите</option>
+       {syntaxRoles.map(v=><option key={v} value={v}>{v}</option>)}
+       {state?.syntax&&!syntaxRoles.includes(state.syntax)&&<option value={state.syntax}>{state.syntax}</option>}
+      </select>:<span>{state?.syntax||"—"}</span>}
+     </label>
+    </div>
+   </>}
   </div>;
  }
  if(entry.format==="text"){
