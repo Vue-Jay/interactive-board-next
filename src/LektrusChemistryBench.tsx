@@ -630,7 +630,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const focused=activeDeviceId===device.id;
    return <button key={device.id} type="button" data-board-interactive="true"
     disabled={!editable} title={(meta?.name??device.kind)+": переместить на столе или поднести к сосуду"}
-    aria-label={(meta?.name??device.kind)+(device.active?" · работает":" · выключен")}
+    aria-label={(meta?.name??device.kind)+(device.powered?" · включён":" · выключен")}
     aria-pressed={focused}
     className={"lektrus-lab-placed-device is-"+device.kind+
      (focused?" is-selected":"")+(device.active?" is-running":"")}
@@ -639,10 +639,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     onPointerMove={moveDevice} onPointerUp={finishDevice}
     onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;setDevicePreview(null)}}
     onClick={e=>{e.stopPropagation();if(e.detail===0)setActiveDeviceId(device.id)}}>
-    <LektrusLabDeviceIcon kind={device.kind} size={68} active={device.active}/>
+    <LektrusLabDeviceIcon kind={device.kind} size={68} active={!!device.powered}/>
     <span>{meta?.name}</span>
-    {device.active&&<small>{device.kind==="stirrer"?"Перемешивание":
-     device.kind==="hotplate"?"Нагрев":device.kind==="burner"?"Пламя":"Прикреплён"}</small>}
+    {device.kind==="hotplate"&&<small className="lektrus-lab-thermal-readout">
+     {Math.round(device.temperatureC??22)} °C</small>}
+    {device.powered&&<small>{device.kind==="stirrer"?"Перемешивание":
+     device.kind==="burner"?"Горит":"Включена"}</small>}
+    {device.kind==="tripod"&&device.linkedVesselId&&<small>Посуда закреплена</small>}
    </button>;
   })}
   {deviceShelfGhost&&<div className="lektrus-lab-device-shelf-ghost"
@@ -653,16 +656,43 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <strong>{labDevices.find(d=>d.id===activeDevice.kind)?.name}</strong>
-   <select aria-label="К какому сосуду применить прибор" value={bench.vessels.some(v=>v.id===bench.selectedId)?
-    bench.selectedId:(bench.vessels[0]?.id??"")}
-    onChange={e=>onSelect?.(e.target.value)}>
-    {bench.vessels.map(v=><option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
-   </select>
+   <label>Сосуд
+    <select aria-label="Сосуд для установки" value={bench.vessels.some(v=>v.id===bench.selectedId)?
+     bench.selectedId:(bench.vessels[0]?.id??"")}
+     onChange={e=>onSelect?.(e.target.value)}>
+     {bench.vessels.filter(v=>canMountLabVessel(activeDevice.kind,v.kind))
+      .map(v=><option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
+    </select>
+   </label>
+   {activeDevice.kind!=="tripod"&&<div className="lektrus-lab-device-power">
+    <button type="button" className={activeDevice.powered?"is-on":""}
+     onClick={e=>{e.stopPropagation();
+      const next=setPlacedDevicePower(bench,activeDevice.id,!activeDevice.powered);
+      if(next!==bench){onChange?.(next);
+       setNotice(activeDevice.powered?"Прибор выключен":"Прибор включён")}
+      else setNotice("Для мешалки поставьте посуду с раствором");
+     }}>{activeDevice.powered?"■ Выключить":"▶ Включить"}</button>
+    {["hotplate","burner","stirrer"].includes(activeDevice.kind)&&
+     <label>Мощность
+      <select aria-label="Мощность прибора" value={activeDevice.heatLevel??2}
+       onChange={e=>onChange?.(setPlacedDeviceLevel(bench,activeDevice.id,
+        Number(e.target.value) as 1|2|3))}>
+       <option value={1}>Низкая</option><option value={2}>Средняя</option>
+       <option value={3}>Высокая</option>
+      </select>
+     </label>}
+   </div>}
+   {activeDevice.kind==="hotplate"&&<output className="lektrus-lab-panel-thermo">
+    Поверхность: {Math.round(activeDevice.temperatureC??22)} °C · расчётно
+   </output>}
+   <button type="button" disabled={!bench.vessels.some(v=>canMountLabVessel(activeDevice.kind,v.kind))}
+    onClick={e=>{e.stopPropagation();
+     const target=bench.vessels.find(v=>v.id===bench.selectedId&&canMountLabVessel(activeDevice.kind,v.kind))?
+      bench.selectedId:bench.vessels.find(v=>canMountLabVessel(activeDevice.kind,v.kind))?.id;
+     if(target)attachDevice(activeDevice.id,target);
+    }}>Установить</button>
    {activeDevice.active&&<button type="button" onClick={e=>{e.stopPropagation();
-    onChange?.(stopPlacedLabDevice(bench,activeDevice.id));setNotice("Прибор выключен")}}>Выключить</button>}
-   <button type="button" disabled={!bench.vessels.length} onClick={e=>{e.stopPropagation();
-    const target=bench.vessels.some(v=>v.id===bench.selectedId)?bench.selectedId:bench.vessels[0]?.id;
-    if(target)attachDevice(activeDevice.id,target)}}>Применить</button>
+    onChange?.(stopPlacedLabDevice(bench,activeDevice.id));setNotice("Посуда снята с прибора")}}>Снять</button>}
    <button type="button" onClick={e=>{e.stopPropagation();
     onChange?.(returnPlacedLabDevice(bench,activeDevice.id));setActiveDeviceId(null);
     setNotice("Прибор убран в шкаф")}}>В шкаф</button>
