@@ -220,3 +220,53 @@
 .lektrus-chem-collect-backdrop .lektrus-chem-collect-menu>button{
  min-height:39px;font-size:12px;
 }
+
+/* Chemistry has a genuine shared board surface, not a generic worksheet. */
+.lektrus-subject-board.is-chemistry-board{
+ background:linear-gradient(145deg,#f0faf4 0%,#e7f5ec 55%,#def0e5 100%);
+ border:2px solid #287d68;border-radius:14px;
+ box-shadow:inset 0 0 0 3px #ffffff90,0 9px 30px #194d3c25;
+}
+.lektrus-subject-board.is-chemistry-board .lektrus-subject-board-header{
+ background:linear-gradient(105deg,#195b51,#277d69)!important;
+ border-bottom:1px solid #155247;color:white;min-height:49px;
+}
+.lektrus-subject-board.is-chemistry-board .lektrus-subject-board-header strong,
+.lektrus-subject-board.is-chemistry-board .lektrus-subject-board-header strong span,
+.lektrus-subject-board.is-chemistry-board .lektrus-subject-board-header small{color:#f3fff9!important}
+.lektrus-subject-board.is-chemistry-board .lektrus-subject-board-emblem{
+ color:#f0fff8;background:#ffffff20;font:750 20px/1.2 Georgia,serif;
+ border:1px solid #ffffff4a;
+}
+.lektrus-subject-board.is-chemistry-board .lektrus-subject-board-sheet{
+ background-color:#eaf7ef;
+ background-image:linear-gradient(#287d6911 1px,transparent 1px),
+  linear-gradient(90deg,#287d6911 1px,transparent 1px),
+  radial-gradient(ellipse at 80% 10%,#ffffff8a,transparent 55%);
+ background-size:29px 29px,29px 29px,100% 100%;
+}
+.lektrus-subject-board.is-chemistry-board .lektrus-subject-board-content{
+ background:transparent;
+}
+.lektrus-subject-board.is-chemistry-board .lektrus-subject-board-entry{
+ border-bottom:1px solid #287d6930;
+}
+.lektrus-subject-board.is-chemistry-board .lektrus-subject-board-tools button{
+ border-color:#c9efe0;background:#ecfff6;color:#145f4d;font-weight:720;
+}
+.lektrus-subject-board.is-chemistry-board .lektrus-subject-board-tools button:hover{
+ background:#ddf6e8;
+}
+.lektrus-subject-tools-list button:has(.lektrus-subject-task-placement){
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 38%,#dce7e8);
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 68%,#fff);
+}
+.lektrus-subject-task-placement{
+ display:inline-block;flex:0 0 auto;font:650 9px/1.25 system-ui,sans-serif;
+ color:var(--lektrus-tool-accent);border:1px solid color-mix(in srgb,var(--lektrus-tool-accent) 33%,#e0e7e7);
+ border-radius:5px;padding:3px 5px;background:#fff;
+}
+.lektrus-task-target-hint{
+ color:var(--subject-board-accent);font:750 10px/1.3 system-ui,sans-serif;
+ background:var(--subject-board-soft);padding:3px 6px;border-radius:6px;
+}
