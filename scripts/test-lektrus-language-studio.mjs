@@ -71,6 +71,22 @@ assert.match(activityUi,/placeholder=""/,"Ordinary blanks have no prefilled answ
 assert.match(activityUi,/const pairs=quickSource.split/,"Teachers can paste vocabulary pairs");
 assert.match(board,/punctuation=\{tone==="russian"/,"Pupil board distinguishes punctuation gaps");
 assert.match(styles,/width:min\(1180px/,"Language editor gets enough working space");
+const activityPath="src/LektrusSubjectActivity.tsx";
+const activityJs=ts.transpileModule(read(activityPath),{fileName:activityPath,
+ compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.React}
+}).outputText.replace(/^import[^;]*;\\s*$/gm,"").replace(/^export /gm,"");
+const {activityComplete,activityScore}=new Function(activityJs+
+ "\\nreturn {activityComplete,activityScore};")();
+const twoLetters={mode:"fill",blanks:[{before:"б",answer:"е",choices:["е","и"]}],tail:"реза"};
+assert.equal(activityComplete(twoLetters),true,"Two distinct letters and a correct answer form a valid exercise");
+assert.deepEqual(activityScore(twoLetters,{values:["и"]}),{correct:0,total:1});
+assert.deepEqual(activityScore(twoLetters,{values:["е"]}),{correct:1,total:1});
+assert.equal(activityComplete({...twoLetters,blanks:[{before:"б",answer:"е",choices:["е",""]}]}),false,
+ "Missing distractor must not yield a completed exercise");
+assert.equal(activityComplete({...twoLetters,blanks:[{before:"б",answer:"е",choices:["е","Е"]}]}),false,
+ "Options cannot be the same letter in different case");
+assert.equal(activityComplete({...twoLetters,blanks:[{before:"б",answer:"е"}]}),true,
+ "A plain fill-in blank does not require choosing an answer");
 const selectable=parseLanguageGapText("бер[е]за, п[о]ле");
 selectable.activity.blanks[0].choices=["е","и"];
 assert.equal(selectable.activity.blanks[1].choices,undefined,"Plain gaps remain plain");
