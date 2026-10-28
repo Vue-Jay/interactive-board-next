@@ -156,9 +156,12 @@ type RunnerProps={
  response?:SubjectTaskActivityResponse;
  onChange?:(response:SubjectTaskActivityResponse)=>void;
  compact?:boolean;
+ punctuation?:boolean;
+ orthography?:boolean;
 };
-export function LektrusSubjectActivityRunner({activity,response,onChange,compact=false}:RunnerProps){
+export function LektrusSubjectActivityRunner({activity,response,onChange,compact=false,punctuation=false,orthography=false}:RunnerProps){
  const [activeLeft,setActiveLeft]=useState<number|null>(null);
+ const [activeGap,setActiveGap]=useState(0);
  const data=response??{};
  const patch=(values:Partial<SubjectTaskActivityResponse>)=>onChange?.({...data,...values,checked:false});
  const complete=activityComplete(activity);
@@ -175,6 +178,9 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
   onChange({...data,checked:true});
  };
  const stop=(e:SyntheticEvent)=>e.stopPropagation();
+ const updateGap=(index:number,value:string)=>{
+  patch({values:(activity.blanks??[]).map((_,j)=>j===index?value:data.values?.[j]??"")});
+ };
  return <div className={"lektrus-activity-runner"+(compact?" compact":"")}
   data-board-interactive="true" onPointerDown={stop} onClick={stop}
   aria-label="Интерактивное упражнение">
@@ -190,11 +196,21 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
    {(activity.blanks??[]).map((blank,i)=><span className="lektrus-activity-gap-part" key={i}>
      <span>{blank.before}</span>
      <input type="text" value={data.values?.[i]??""} disabled={!onChange}
-      maxLength={240} aria-label={"Пропуск "+(i+1)} placeholder={"Пропуск "+(i+1)}
-      onChange={e=>patch({values:(activity.blanks??[]).map((_,j)=>j===i?e.target.value:data.values?.[j]??"")})}/>
+      maxLength={240} aria-label={"Пропуск "+(i+1)} placeholder={punctuation?"Знак":orthography?"Буквы":"Пропуск "+(i+1)}
+      onFocus={()=>setActiveGap(i)} className={punctuation?"lektrus-activity-sign-input":""}
+      onChange={e=>updateGap(i,e.target.value)}/>
     </span>)}
     <span>{activity.tail}</span>
    </div>}
+  {activity.mode==="fill"&&(punctuation||orthography)&&(activity.blanks?.length??0)>0&&<div className="lektrus-activity-quick-keys">
+   <small>{punctuation?"Выберите пропуск и нажмите на знак":"Выберите пропуск и вставьте букву либо введите ответ с клавиатуры"}</small>
+   <div role="group" aria-label={punctuation?"Знаки препинания":"Буквы для пропуска"}>
+    {(punctuation?[",",".",":",";","—","?","!","«","»","(",")"]:
+     ["а","о","е","и","ё","я","у","ы","ю","э","ь","ъ","н","нн"]).map(value=>
+     <button type="button" key={value} disabled={!onChange} aria-label={"Вставить "+value}
+      onClick={()=>updateGap(Math.min(activeGap,(activity.blanks?.length??1)-1),value)}>{value}</button>)}
+   </div>
+  </div>}
   {activity.mode==="match"&&<div className="lektrus-activity-match-columns">
     <div><small>Выберите слева</small>
      {(activity.pairs??[]).map((pair,i)=><button key={i} type="button" disabled={!onChange}
