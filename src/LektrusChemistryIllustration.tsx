@@ -102,7 +102,6 @@ export default function LektrusChemistryIllustration({item,onStageChange,onBench
      onClick={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()}>
     <div className="lektrus-lab-board-action-row">
      <label className="lektrus-lab-board-add-vessel">
-      <span className="sr-only">Добавить посуду</span>
       <select aria-label="Добавить посуду" value="" disabled={bench.vessels.length>=6}
        onChange={e=>{if(e.target.value)changeBench(addLabVessel(bench,e.target.value as LabGlassware));setPourSource(null)}}>
        <option value="">＋ Посуда</option>
