@@ -221,6 +221,32 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
   </article>
  </div>;
 }
+/** Preview uses the real worksheet renderer but keeps every trial response local.
+ * Nothing entered here is committed to the shared pupil board. */
+function LektrusTaskPreview({tone,entry}:{tone:SubjectTone;entry:SubjectBoardEntry}){
+ const [answer,setAnswer]=useState("");
+ const [response,setResponse]=useState<SubjectTaskActivityResponse>({});
+ const [russianWork,setRussianWork]=useState<RussianTaskWork>({});
+ const [solution,setSolution]=useState<import("./boardModel").SubjectBoardWorkedSolution>(emptyWorkedSolution());
+ const sheet:Item={
+  id:"task-preview-sheet",kind:"graph",text:"Предпросмотр",x:0,y:0,
+  width:820,height:470,graphFigureId:"subject-board-"+tone,
+  graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,graphSnap:false,
+  graphPoints:[],graphSegments:[],
+  subjectBoardEntries:[{...entry,answer,activityResponse:response,russianWork,workedSolution:solution}]
+ };
+ return <section className="lektrus-task-preview" aria-label="Предпросмотр задания">
+  <div className="lektrus-task-preview-heading">
+   <strong>На доске ученика</strong><small>Пробные ответы не сохраняются</small>
+  </div>
+  <div className="lektrus-task-preview-board">
+   <LektrusSubjectBoardView item={sheet} onAnswerChange={(_,value)=>setAnswer(value)}
+    onActivityAnswer={(_,value)=>setResponse(value)}
+    onRussianWorkChange={(_,value)=>setRussianWork(value)}
+    onWorkedSolutionChange={(_,value)=>setSolution(value)}/>
+  </div>
+ </section>;
+}
 type EditorProps={
  tone:SubjectTone;entry:SubjectBoardEntry;onChange:(entry:SubjectBoardEntry)=>void;
  onClose:()=>void;onDelete:()=>void;
@@ -324,6 +350,8 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
           onChange={e=>patch({details:{...entry.details,[key]:e.target.value}})}/>
        </label>)}
      </details>}
+    {tone!=="russian"&&tone!=="languages"&&
+     <LektrusTaskPreview key={tone+":"+current.id} tone={tone} entry={entry}/>}
     <details className="lektrus-subject-task-teacher-answer">
       <summary>Ответ для проверки <span>необязательно, скрыт от учеников</span></summary>
       <label>Правильный ответ / образец
