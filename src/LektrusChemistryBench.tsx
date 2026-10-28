@@ -442,7 +442,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     }
    }
   }else if(!g.dragged&&effectivePouringId&&effectivePouringId!==g.id)transferVessel(effectivePouringId,g.id);
-  else if(!g.dragged)onSelect?.(g.id);
+  else if(!g.dragged){setActiveDeviceId(null);onSelect?.(g.id)}
   setPreview(null);setDropTarget(null);setDropFurniture(null);setDropDeviceId(null);
  };
  const beginShelf=(event:PointerEvent<HTMLButtonElement>,kind:LabGlassware)=>{
