@@ -1,3 +1,4 @@
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import {useEffect,useMemo,useRef,useState,type WheelEvent as ReactWheelEvent,type DragEvent,type PointerEvent as ReactPointerEvent} from "react";
 import {createPortal} from "react-dom";
@@ -391,7 +392,7 @@ export default function LektrusCircuitEditor({item,onSave,onCancel,onClose,onLiv
     return()=>window.removeEventListener("keydown",keyboard,true);
   });
   return createPortal(
-    <div className="lektrus-circuit-backdrop" onPointerDown={e=>{if(e.currentTarget===e.target)close()}}>
+    <div className="lektrus-circuit-backdrop" style={subjectEditorStyle("physics")} onPointerDown={e=>{if(e.currentTarget===e.target)close()}}>
       <section className={"lektrus-circuit-editor"+(paletteOpen?"":" palette-collapsed")+(inspectorOpen?" inspector-expanded":"")} role="dialog" aria-modal="true" aria-label="Конструктор электрических цепей"
         onPointerDown={e=>e.stopPropagation()}>
         <header className="lektrus-circuit-header">
