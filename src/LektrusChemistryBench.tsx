@@ -1052,11 +1052,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        </div>
        <div className="lektrus-lab-dose-controls">
         <label>Количество
-         <input type="number" inputMode="decimal" min="0.01" max="10000" step="10"
+         <input type="number" inputMode="decimal" min="0" max="10000" step="10"
           value={amount} onChange={e=>setAmount(e.target.value)} /></label>
         {chosen&&unit==="ml"&&["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen)&&
          <label>Концентрация, моль/л
-          <input type="number" min=".001" max="2" step="0.1" value={molarity}
+          <input type="number" min="0" max="2" step="0.1" value={molarity}
            onChange={e=>setMolarity(e.target.value)} />
          </label>}
         <label>Единица
