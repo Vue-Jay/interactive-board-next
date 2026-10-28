@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,setLabStandShelf,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -622,15 +622,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   return candidates[0]&&candidates[0].distance<Math.min(150,Math.max(65,bounds.width*.10))?
    candidates[0].id:null;
  };
- const attachDevice=(id:string,vesselId:string,mount:"clamp"|"shelf"="clamp")=>{
-  const device=physicalDevices.find(d=>d.id===id);
-  const next=applyPlacedLabDevice(bench,id,vesselId,mount);
-  if(next===bench){setNotice("Этот прибор нельзя использовать с выбранной посудой");return}
-  onChange?.(next);setActiveDeviceId(id);
-  const name=labDevices.find(d=>d.id===device?.kind)?.name??"Прибор";
-  const target=bench.vessels.find(v=>v.id===vesselId);
-  setNotice(name+" · "+(target?names[target.kind]:"сосуд")+" установлен"+(mount==="shelf"?" на полку":" в крепление"));
- };
  const downDevice=(e:PointerEvent<HTMLDivElement>,id:string,x:number,y:number)=>{
   if(!editable||e.button!==0||!e.isPrimary)return;
   e.preventDefault();e.stopPropagation();
@@ -644,8 +635,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   if(!p||!rect)return;
   if(Math.hypot((p.x-g.startX)*rect.width/100,(p.y-g.startY)*rect.height/100)>8)g.dragged=true;
   if(g.dragged){
-   setDevicePreview({id:g.id,x:Math.max(9,Math.min(79,g.x+p.x-g.startX)),
-    y:Math.max(58,Math.min(84,g.y+p.y-g.startY))});
+   setDevicePreview({id:g.id,x:Math.max(1,Math.min(99,g.x+p.x-g.startX)),
+    y:Math.max(1,Math.min(99,g.y+p.y-g.startY))});
    setDropDeviceShelf(p.x>=82&&p.y>=8&&p.y<=42);
   }
  };
@@ -867,8 +858,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const current=devicePreview?.id===device.id?devicePreview:device;
    const meta=labDevices.find(d=>d.id===device.kind);
    const focused=activeDeviceId===device.id;
-   const choices=bench.vessels.filter(v=>canMountLabVessel(device.kind,v.kind));
-   const shelves=bench.vessels.filter(v=>LAB_STAND_SHELF_TYPES.includes(v.kind));
    return <div key={device.id} data-board-interactive="true"
     className={"lektrus-lab-placed-device is-"+device.kind+
      (focused?" is-selected":"")+(device.powered?" is-running":"")+
@@ -891,19 +880,41 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       temperatureVisible={settings.showTemperatures}
       temperatureC={device.temperatureC} targetTemperatureC={device.targetTemperatureC}
       standHeight={device.standHeight} heatLevel={device.heatLevel}
-      choices={choices.map(v=>({id:v.id,label:names[v.kind]+" · "+v.id}))}
-      shelfChoices={shelves.map(v=>({id:v.id,label:names[v.kind]+" · "+v.id}))}
-      onPowerToggle={()=>{const next=setPlacedDevicePower({...bench,simulationAtMs:Date.now()},
-       device.id,!device.powered);if(next!==bench)onChange?.(next)}}
-      onTemperatureChange={value=>onChange?.(setLabHotplateTemperature(bench,device.id,value))}
-      onStandHeightChange={height=>onChange?.(setLabStandHeight(bench,device.id,height))}
-      onLevelCycle={()=>onChange?.(setPlacedDeviceLevel(bench,device.id,
-       ((device.heatLevel??2)%3+1) as 1|2|3))}
-      onAttach={(id,mount)=>attachDevice(device.id,id,mount)}
-      onRelease={()=>onChange?.(device.kind==="tripod"&&device.shelfVesselId?
-       setLabStandShelf(bench,device.id):stopPlacedLabDevice(bench,device.id))}
-      onReturn={()=>{onChange?.(returnPlacedLabDevice(bench,device.id));
-       setActiveDeviceId(null)}}/>
+      />
+      {editable&&<div className={"lektrus-lab-device-face-controls is-"+device.kind}
+       onPointerDown={e=>e.stopPropagation()}
+       onPointerMove={e=>e.stopPropagation()}
+       onPointerUp={e=>e.stopPropagation()}
+       onClick={e=>e.stopPropagation()}>
+       {device.kind!=="tripod"?<>
+        <button type="button" className="lektrus-lab-device-power"
+         aria-pressed={!!device.powered}
+         aria-label={(device.powered?"Выключить ":"Включить ")+(meta?.name??device.kind)}
+         title={(device.powered?"Выключить ":"Включить ")+(meta?.name??device.kind)}
+         onClick={()=>onChange?.(setPlacedDevicePower({...bench,simulationAtMs:Date.now()},
+          device.id,!device.powered))}>⏻</button>
+        {device.kind==="hotplate"&&<input type="number" className="lektrus-lab-device-face-temp"
+         aria-label="Задать температуру плитки в °C" title="Заданная температура 30–350 °C"
+         min={30} max={350} step={10} value={device.targetTemperatureC??150}
+         onChange={e=>onChange?.(setLabHotplateTemperature(bench,device.id,
+          Number(e.target.value)))}/>}
+        {device.kind==="burner"&&focused&&<button type="button"
+         className="lektrus-lab-device-level" title="Изменить мощность горелки"
+         aria-label="Мощность горелки"
+         onClick={()=>onChange?.(setPlacedDeviceLevel(bench,device.id,
+          ((device.heatLevel??2)%3+1) as 1|2|3))}>
+         {["Ⅰ","Ⅱ","Ⅲ"][(device.heatLevel??2)-1]}</button>}
+       </>:<>
+        <button type="button" className="lektrus-lab-stand-raise" aria-label="Поднять зажим штатива"
+         disabled={(device.standHeight??.5)>=1}
+         onClick={()=>onChange?.(setLabStandHeight(bench,device.id,
+          Math.min(1,Math.round(((device.standHeight??.5)+.1)*10)/10)))}>+</button>
+        <button type="button" className="lektrus-lab-stand-lower" aria-label="Опустить зажим штатива"
+         disabled={(device.standHeight??.5)<=0}
+         onClick={()=>onChange?.(setLabStandHeight(bench,device.id,
+          Math.max(0,Math.round(((device.standHeight??.5)-.1)*10)/10)))}>−</button>
+       </>}
+      </div>
     </div>
    </div>;
   })}
