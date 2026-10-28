@@ -56,9 +56,12 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
     <main className="lektrus-lab-main">
      <div className="lektrus-lab-panel-head"><strong>Лаборатория</strong>
       <small>{bench.vessels.length} из 6 сосудов</small></div>
-     <LektrusChemistryBenchSurface bench={bench} editable pouringId={pouringId}
-      onSelect={id=>{patch(selectLabVessel(bench,id));setNotice("")}}
-      onPour={pour} onChange={patch} onDropReagent={addReagent}/>
+     <div className="lektrus-lab-editor-bench-viewport" data-board-interactive="true"
+      onWheel={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()}>
+      <LektrusChemistryBenchSurface bench={bench} editable pouringId={pouringId}
+       onSelect={id=>{patch(selectLabVessel(bench,id));setNotice("")}}
+       onPour={pour} onChange={patch} onDropReagent={addReagent}/>
+     </div>
      <div className="lektrus-lab-hint" role="status">{notice||
       "Шкаф посуды: возьмите сосуд. Шкаф реактивов: отмерьте вещество. Слив: раковина."}</div>
     </main>
