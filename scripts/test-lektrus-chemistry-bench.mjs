@@ -32,6 +32,8 @@ assert.deepEqual(bench.vessels[0].reagents,["NaCl","AgNO3"]);
 let unknown=lab.putLabReagent(bench,"v1","HCl");
 assert.equal(lab.labObservation(unknown.vessels[0]).status,"unknown",
  "Second-stage products cannot be predicted from original reactant IDs");
+assert.equal(unknown.vessels[0].completedReaction?.observation,"precipitate",
+ "Existing precipitate must stay visually represented even when later chemistry is unknown");
 let heated=lab.defaultLabBench();
 heated=lab.putLabReagent(heated,"v1","CaCO3");
 assert.equal(lab.labObservation(heated.vessels[0]).status,"unknown");
