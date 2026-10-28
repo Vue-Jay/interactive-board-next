@@ -858,10 +858,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      const id=e.dataTransfer.getData("application/x-lektrus-reagent");
      if(id)onDropReagent?.(v.id,id);
     }}>
-    {bench.instrumentTarget?.vesselId===v.id&&<span
-     className="lektrus-lab-instrument-attachment">
-     {bench.instrumentTarget.kind==="thermometer"?"Термометр · показания не моделируются":"На штативе"}
-    </span>}
+    {bench.instrumentTarget?.kind==="tripod"&&bench.instrumentTarget.vesselId===v.id&&<span
+     className="lektrus-lab-instrument-attachment">На штативе</span>}
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
      stirring={bench.stirringVesselId===v.id}
      temperatureC={v.temperatureC??22}
