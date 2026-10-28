@@ -530,3 +530,38 @@
  display:grid;place-items:center;width:29px;height:28px;
  border-radius:9px;border:1px solid #84a99b;background:#f3fcf5c9;
  color:#35725e;font-size:20px;cursor:pointer}
+
+/* Fine motion cues, muted enough for a lesson and disabled on demand. */
+@keyframes lektrus-lab-modal-in{from{opacity:0}to{opacity:1}}
+@keyframes lektrus-lab-dialog-in{
+ from{opacity:.4;transform:translateY(8px) scale(.975)}
+ to{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes lektrus-lab-chalk-in{
+ from{opacity:.2;filter:blur(2px);transform:translateY(3px)}
+ to{opacity:1;filter:none;transform:translateY(0)}
+}
+@keyframes lektrus-lab-dose{
+ 0%{stroke-dashoffset:125;opacity:0}
+ 15%{opacity:.9}
+ 82%{opacity:.9}
+ 100%{stroke-dashoffset:0;opacity:0}
+}
+.lektrus-lab-furniture-modal{animation:lektrus-lab-modal-in .17s ease-out}
+.lektrus-lab-furniture-dialog{animation:lektrus-lab-dialog-in .2s ease-out}
+.lektrus-lab-chalkboard strong{animation:lektrus-lab-chalk-in .38s ease-out}
+.lektrus-lab-shelf-item:not(:disabled):hover{
+ background:#e7f8ea;border-color:#4fa985}
+.lektrus-lab-shelf-item:not(:disabled):active{filter:brightness(.96);cursor:grabbing}
+.lektrus-lab-reagent-furniture:not(:disabled):hover{
+ filter:brightness(1.035);border-color:#76a58c}
+.lektrus-lab-dose-animation{position:absolute;inset:0;width:100%;height:100%;
+ pointer-events:none;z-index:45;filter:drop-shadow(0 1px 3px #2b786359)}
+.lektrus-lab-dose-animation path{stroke-dasharray:5 4;animation:lektrus-lab-dose .9s ease-in forwards}
+.lektrus-lab-bench.lab-reduced-animation :is(.lektrus-lab-furniture-modal,
+ .lektrus-lab-furniture-dialog,.lektrus-lab-chalkboard strong,
+ .lektrus-lab-dose-animation path){animation:none!important}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-furniture-modal,.lektrus-lab-furniture-dialog,
+ .lektrus-lab-chalkboard strong,.lektrus-lab-dose-animation path{animation:none!important}
+}
