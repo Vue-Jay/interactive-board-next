@@ -222,7 +222,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const source=bench.vessels.find(v=>v.id===sourceId);
   if(!rect||!source?.reagents.length||!onPour)return null;
   return bench.vessels.filter(v=>v.id!==sourceId).map(v=>{
-   const screen=labDisplayPoint(v);
+   const screen=labDisplayPoint(v,bench.vessels.length>3);
    return {id:v.id,dist:Math.hypot((p.x-screen.x)*rect.width/100,
      (p.y-screen.y)*rect.height/100)};
   }).filter(v=>v.dist<Math.min(115,Math.max(54,rect.width*.15))).sort((a,b)=>a.dist-b.dist)[0]?.id??null;
@@ -230,7 +230,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const transferVessel=(sourceId:string,targetId:string)=>{
   const from=bench.vessels.find(v=>v.id===sourceId),to=bench.vessels.find(v=>v.id===targetId);
   if(from&&to&&from.reagents.length){
-   const start=labDisplayPoint(from),end=labDisplayPoint(to);
+   const start=labDisplayPoint(from,bench.vessels.length>3),end=labDisplayPoint(to,bench.vessels.length>3);
    setTransfer({from:{x:start.x,y:start.y-12},to:{x:end.x,y:end.y-12}});
   }
   onPour?.(sourceId,targetId);
@@ -265,7 +265,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const furniture=inSink(p)?"sink":inGlassware(p)?"glassware":null;
    setDropFurniture(furniture);
    setDropTarget(furniture?null:targetAt(g.id,p));
-   const a=labDisplayPoint({x:g.x,y:g.y});
+   const a=labDisplayPoint({x:g.x,y:g.y},bench.vessels.length>3);
    setPreview({id:g.id,...labLogicalPoint({
     x:a.x+p.x-g.startX,y:a.y+p.y-g.startY})});
   }
@@ -321,7 +321,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const updated=putLabReagent(bench,selected.id,chosen,dose);
   if(updated===bench){setNotice("Реагент уже добавлен или посуда заполнена");return}
   onChange?.(updated);
-  setDoseEffect({...labDisplayPoint(selected),color:reagentAppearance(chosen).color});
+  setDoseEffect({...labDisplayPoint(selected,bench.vessels.length>3),color:reagentAppearance(chosen).color});
   setNotice(chosen+" · "+dose.value+" "+(unit==="ml"?"мл":"г")+" добавлено в "+names[selected.kind]);
   setCabinet(null);setChosen(null);
  };
@@ -509,7 +509,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
    onClick={e=>{e.stopPropagation();openCabinet("settings")}}>⚙</button>
   {bench.vessels.map((v,i)=>{
-   const p=labDisplayPoint(preview?.id===v.id?preview:v);
+   const p=labDisplayPoint(preview?.id===v.id?preview:v,bench.vessels.length>3);
    const selectedVessel=bench.selectedId===v.id;
    return <button type="button" key={v.id} data-board-interactive="true"
     className={"lektrus-lab-vessel"+(selectedVessel?" selected":"")+
