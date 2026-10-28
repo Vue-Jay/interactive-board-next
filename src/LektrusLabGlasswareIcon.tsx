@@ -1,29 +1,63 @@
+import {useId} from "react";
 import type {LabGlassware} from "./lektrusChemistryBenchModel";
-/** Consistent vector pictograms. Each silhouette is a recognizable vessel,
- * not a resized placeholder glyph. Used on both cupboard shelves and cards. */
-const paths:Record<LabGlassware,{glass:string;rim?:string;detail?:string;liquid?:string}>={
- beaker:{glass:"M17 13V61Q17 70 28 70H52Q63 70 63 61V13",rim:"M13 13H67",detail:"M52 26h9 M52 35h9 M52 44h9",liquid:"M20 49H60V61Q60 67 52 67H28Q20 67 20 61Z"},
- tube:{glass:"M30 13V56Q30 72 40 72Q50 72 50 56V13",rim:"M26 13H54",liquid:"M33 47H47V55Q47 69 40 69Q33 69 33 55Z"},
- flask:{glass:"M32 10V32L13 63Q9 72 23 72H57Q71 72 67 63L48 32V10",rim:"M29 10H51",liquid:"M24 55H56L63 66Q65 69 57 69H23Q15 69 17 66Z"},
- cylinder:{glass:"M28 10V64Q28 70 33 70H47Q52 70 52 64V10",rim:"M24 10H56",detail:"M31 22H39 M31 30H36 M31 38H39 M31 46H36",liquid:"M31 49H49V63Q49 67 46 67H34Q31 67 31 63Z"},
- dish:{glass:"M10 45Q12 71 40 71Q68 71 70 45",rim:"M9 45Q40 57 71 45",liquid:"M18 53Q40 60 62 53Q55 67 40 67Q25 67 18 53Z"},
- conical:{glass:"M31 10V31L12 64Q9 72 23 72H57Q71 72 68 64L49 31V10",rim:"M28 10H52",liquid:"M20 56H60L65 67Q63 70 57 70H23Q17 70 15 67Z"},
- volumetric:{glass:"M34 8V34Q16 43 16 56Q16 73 40 73Q64 73 64 56Q64 43 46 34V8",rim:"M31 8H49",detail:"M28 23H52",liquid:"M21 53Q40 49 59 53Q64 69 40 69Q16 69 21 53Z"},
- crucible:{glass:"M15 31H65L59 62Q56 70 40 70Q24 70 21 62Z",rim:"M13 31H67",detail:"M26 21H54",liquid:"M21 49H59L56 62Q53 67 40 67Q27 67 24 62Z"},
- pipette:{glass:"M36 8V32Q22 43 36 54V70H44V54Q58 43 44 32V8",rim:"M33 8H47",detail:"M40 70V76 M34 20H46",liquid:"M34 42Q40 48 46 42Q48 50 41 55V67H39V55Q32 50 34 42Z"},
- burette:{glass:"M33 7V60H47V7",rim:"M29 7H51",detail:"M36 14h7 M36 24h7 M36 34h7 M36 44h7 M27 60h26 M40 60v15",liquid:"M36 21H44V57H36Z"},
- funnel:{glass:"M10 18H70L45 47V73H35V47Z",rim:"M10 18H70",liquid:"M18 26H62L42 44H38Z"}
+
+/** True-to-purpose glassware silhouettes, consistent fine graduations and light
+ * reflections. Shelf vessels are empty, never fake filled with colored liquid. */
+const drawings:Record<LabGlassware,{body:string;rim?:string;markings?:string;parts?:string}> = {
+ beaker:{body:"M18 13V60Q18 69 28 69H54Q64 69 64 59V13",
+  rim:"M12 13H17L20 17M64 13H67Q70 13 70 9",markings:"M51 26h9M54 32h6M51 38h9M54 44h6M51 50h9"},
+ tube:{body:"M30 12V58Q30 73 42 73Q54 73 54 58V12",
+  rim:"M27 12H57",markings:"M35 32h6M35 40h6"},
+ flask:{body:"M36 10V35Q15 42 15 57A27 22 0 0 0 69 57Q69 43 48 35V10",
+  rim:"M33 10H51",markings:"M23 52h7M23 58h7"},
+ cylinder:{body:"M32 9V66Q32 69 36 69H48Q52 69 52 66V9",
+  rim:"M29 9H55",markings:"M34 19h12M34 26h7M34 33h12M34 40h7M34 47h12M34 54h7",
+  parts:"M25 70H59V74H25Z"},
+ dish:{body:"M11 48Q14 68 42 68Q70 68 73 48",
+  rim:"M11 48Q42 56 73 48Q42 39 11 48",markings:"M18 53Q42 63 66 53"},
+ conical:{body:"M33 10V34L13 62Q8 71 21 71H63Q76 71 71 62L51 34V10",
+  rim:"M30 10H54",markings:"M22 55h8M22 62h12M59 55h6"},
+ volumetric:{body:"M37 8V39Q18 48 18 59Q18 73 42 73Q66 73 66 59Q66 48 47 39V8",
+  rim:"M34 8H50",markings:"M34 28H50M39 24H45"},
+ crucible:{body:"M16 32L21 61Q23 71 42 71Q61 71 63 61L68 32Z",
+  rim:"M14 32H70M17 22Q42 16 67 22L70 26H14Z",markings:"M23 44h38"},
+ pipette:{body:"M38 6V23Q29 29 35 39Q38 44 38 52V70H46V52Q46 44 49 39Q55 29 46 23V6",
+  rim:"M34 6H50",markings:"M42 70V77M40 15h4"},
+ burette:{body:"M37 5V57H47V5",
+  rim:"M34 5H50",markings:"M39 13h6M39 20h4M39 27h6M39 34h4M39 41h6M39 48h4M37 56H47",
+  parts:"M35 58H50M42 58V73M30 60H54M50 58L56 53M56 53h8"},
+ funnel:{body:"M11 19H73L47 51V73H37V51Z",
+  rim:"M11 19Q42 16 73 19",markings:"M18 26H66M39 53H45"}
 };
 export default function LektrusLabGlasswareIcon({kind,size=36}:{
  kind:LabGlassware;size?:number}){
- const p=paths[kind];
- return <svg viewBox="0 0 80 82" width={size} height={size} aria-hidden="true"
-  className={"lektrus-lab-ware-icon is-"+kind} fill="none"
-  strokeLinecap="round" strokeLinejoin="round">
-  {p.liquid&&<path d={p.liquid} fill="#9dcfc5" fillOpacity=".58" stroke="none"/>}
-  <path d={p.glass} stroke="#518f89" strokeWidth="3.5" fill="#eff9f6" fillOpacity=".14"/>
-  {p.rim&&<path d={p.rim} stroke="#427f7b" strokeWidth="3.2"/>}
-  {p.detail&&<path d={p.detail} stroke="#82aba6" strokeWidth="2.3"/>}
-  <path d="M25 20v16" stroke="#fff" strokeWidth="2" opacity=".52"/>
+ const p=drawings[kind],uid=useId().replace(/:/g,"");
+ return <svg viewBox="0 0 84 82" width={size} height={size}
+  aria-hidden="true" className={"lektrus-lab-ware-icon is-"+kind}
+  fill="none" strokeLinecap="round" strokeLinejoin="round">
+  <defs>
+   <linearGradient id={uid+"glass"} x1="0" y1="0" x2="1" y2=".25">
+    <stop stopColor="#fcffff" stopOpacity=".83"/>
+    <stop offset=".23" stopColor="#d7f3f1" stopOpacity=".4"/>
+    <stop offset=".65" stopColor="#c2e2df" stopOpacity=".18"/>
+    <stop offset="1" stopColor="#8cbcb5" stopOpacity=".57"/>
+   </linearGradient>
+   <linearGradient id={uid+"ceramic"} x1="0" y1="0" x2="1" y2="1">
+    <stop stopColor="#ffffff"/><stop offset=".75" stopColor="#d1e2dc"/>
+    <stop offset="1" stopColor="#a2bcb0"/>
+   </linearGradient>
+  </defs>
+  <ellipse cx="42" cy="76" rx={kind==="dish"?29:17} ry="3"
+   fill="#2a5d52" opacity=".12"/>
+  <path d={p.body} fill={kind==="crucible"?
+   "url(#"+uid+"ceramic)":"url(#"+uid+"glass)"}
+   stroke={kind==="crucible"?"#7b9a90":"#467f80"}
+   strokeWidth="2.9"/>
+  {p.rim&&<path d={p.rim} stroke="#568e8c" strokeWidth="2.6"/>}
+  {p.markings&&<path d={p.markings} stroke="#86aaa7" strokeWidth="1.9"/>}
+  {p.parts&&<path d={p.parts} stroke="#5b837c" strokeWidth="2.6"
+   fill={kind==="cylinder"?"#d2e4dc":"none"}/>}
+  <path d={kind==="dish"?"M18 51Q42 57 66 51":"M25 24V42"}
+   stroke="#fff" strokeWidth="2.6" strokeOpacity=".68"/>
  </svg>;
 }
