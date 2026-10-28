@@ -622,7 +622,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     onPointerMove={moveDevice} onPointerUp={finishDevice}
     onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;setDevicePreview(null)}}
     onClick={e=>{e.stopPropagation();if(e.detail===0)setActiveDeviceId(device.id)}}>
-    <LektrusLabDeviceIcon kind={device.kind} size={68}/>
+    <LektrusLabDeviceIcon kind={device.kind} size={68} active={device.active}/>
     <span>{meta?.name}</span>
     {device.active&&<small>{device.kind==="stirrer"?"Перемешивание":
      device.kind==="hotplate"?"Нагрев":device.kind==="burner"?"Пламя":"Прикреплён"}</small>}
