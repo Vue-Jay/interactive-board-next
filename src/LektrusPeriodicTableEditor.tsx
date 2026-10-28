@@ -1,3 +1,4 @@
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {useRef,useState} from "react";
 import LektrusPeriodicFloatingInfo from "./LektrusPeriodicFloatingInfo";
 import {createPortal} from "react-dom";
@@ -38,7 +39,7 @@ export default function LektrusPeriodicTableEditor({item,onSave,onCancel,onClose
   };
   const focusElement=(number:number)=>{setOpened([number]);setQuery("")};
   return createPortal(
-    <div className="lektrus-periodic-backdrop" onPointerDown={e=>{if(e.currentTarget===e.target)(onClose??onCancel)(updateItem())}}>
+    <div className="lektrus-periodic-backdrop" style={subjectEditorStyle("chemistry")} onPointerDown={e=>{if(e.currentTarget===e.target)(onClose??onCancel)(updateItem())}}>
       <section className="lektrus-periodic-dialog" role="dialog" aria-modal="true" aria-label="Редактор периодической таблицы"
         onPointerDown={e=>e.stopPropagation()}>
         <header className="lektrus-periodic-header">
