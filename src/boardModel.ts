@@ -512,6 +512,8 @@ export type Item = {
   scienceReactionDomain?: "inorganic" | "organic";
   scienceReactionSteps?: {expression:string;conditions:string}[];
   subjectBoardEntries?: SubjectBoardEntry[];
+  /** Standalone chemistry task, which may explicitly be moved into a chemistry worksheet. */
+  subjectBoardStandalone?: boolean;
   scienceReagents?: string[];
   scienceEnvironment?: "aqueous" | "dry" | "heated" | "ignited";
   schoolDiagram?: import("./lektrusSchoolDiagramModel").SchoolDiagram;
@@ -761,6 +763,8 @@ export function parseDocument(raw: string): DocumentData {
       if(i.scienceReactionSteps!=null&&(!Array.isArray(i.scienceReactionSteps)||i.scienceReactionSteps.length<1||i.scienceReactionSteps.length>8||
         !i.scienceReactionSteps.every((step: {expression:string;conditions:string})=>!!step&&typeof step.expression==="string"&&step.expression.length<=500&&typeof step.conditions==="string"&&step.conditions.length<=180)))
         throw new Error("Повреждены этапы химической цепочки");
+      if(i.subjectBoardStandalone!=null&&typeof i.subjectBoardStandalone!=="boolean")
+        throw new Error("Повреждён тип химического учебного объекта");
       if(i.subjectBoardEntries!=null&&(!Array.isArray(i.subjectBoardEntries)||i.subjectBoardEntries.length>48||
         !i.subjectBoardEntries.every((entry:SubjectBoardEntry)=>!!entry&&typeof entry.id==="string"&&entry.id.length<=100&&
           (entry.kind==="equation"||entry.kind==="task")&&
