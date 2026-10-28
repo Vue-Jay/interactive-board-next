@@ -82,4 +82,16 @@ export function validateRussianSchoolDiagram(value:unknown):value is RussianScho
  }
  return false;
 }
+/** Keep phonetic annotations for unchanged letters while editing the word.
+ * Never invent sounds, stress or transcription for a changed letter. */
+export function synchronizePhoneticLetters(word:string,existing:PhoneticLetter[],createId:()=>string):PhoneticLetter[]{
+ return Array.from(word).slice(0,24).map((letter,index)=>{
+  const previous=existing[index];
+  return previous?.letter===letter?previous:{
+   id:previous?.id??createId(),letter,sounds:[],characteristic:"",stressed:false
+  };
+ });
+}
+export const phoneticWordValid=(word:string)=>
+ word.length<=24&&/^[\\p{L}\\p{M}ёЁъЪьЬ-]*$/u.test(word);
 export const totalSounds=(letters:PhoneticLetter[])=>letters.reduce((n,l)=>n+l.sounds.length,0);
