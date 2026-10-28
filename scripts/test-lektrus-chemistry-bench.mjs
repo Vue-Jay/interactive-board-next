@@ -191,7 +191,12 @@ assert.doesNotMatch(catalogSource,/openCabinet\("titration"\)/,
 assert.match(catalogSource,/lektrus-lab-titration-on-table/);
 assert.match(catalogSource,/lektrus-lab-class-tabs/);
 assert.match(catalogSource,/labDevices\.map/);
-assert.match(catalogSource,/useLabDevice\(/);
+assert.match(catalogSource,/applyPlacedLabDevice\(/,
+ "Apparatus must attach directly to physical vessels");
+assert.match(catalogSource,/downDevice\(/,
+ "Apparatus must be draggable as a tabletop object");
+assert.match(catalogSource,/finishDeviceShelf/,
+ "Cabinet items must be movable to the tabletop");
 assert.match(read("src/lektrusChemistryBench.css"),/white-space:normal!important/,
  "Long glassware names should wrap naturally instead of ellipsizing");
 const labLayout=load("src/lektrusLabLayout.ts");
@@ -276,6 +281,31 @@ for(const kind of lab.labGlassware)assert.match(icons,new RegExp("^\\s*"+kind.id
  "Each glassware type has an independent vector pictogram");
 assert.match(read("src/lektrusSciencePresets.ts"),/width:1660,height:1060/,
  "New chemistry benches must have sufficient tabletop space");
+// Physical device inventory, duplicate tools, positions and cleanup.
+let equipment=lab.defaultLabBench();
+equipment=lab.addPlacedLabDevice(equipment,"hotplate");
+equipment=lab.addPlacedLabDevice(equipment,"stirrer");
+equipment=lab.addPlacedLabDevice(equipment,"hotplate");
+assert.equal(lab.placedLabDevices(equipment).length,3);
+assert.equal(equipment.devices.length,2);
+const firstDevice=lab.placedLabDevices(equipment)[0];
+equipment=lab.movePlacedLabDevice(equipment,firstDevice.id,59,67);
+assert.equal(equipment.placedDevices[0].x,59);
+assert.equal(equipment.placedDevices[0].y,67);
+equipment=lab.applyPlacedLabDevice(equipment,firstDevice.id,"v1");
+assert.equal(equipment.placedDevices[0].active,true);
+assert.equal(equipment.placedDevices[0].linkedVesselId,"v1");
+equipment=lab.stopPlacedLabDevice(equipment,firstDevice.id);
+assert.equal(equipment.placedDevices[0].active,false);
+equipment=lab.returnPlacedLabDevice(equipment,firstDevice.id);
+assert.equal(equipment.placedDevices.length,2);
+assert.equal(equipment.devices.includes("hotplate"),true,
+ "Storing a plate must not remove its second copy");
+equipment=lab.returnPlacedLabDevice(equipment,lab.placedLabDevices(equipment).find(d=>d.kind==="hotplate").id);
+assert.equal(equipment.devices.includes("hotplate"),false);
+const migrated=lab.placedLabDevices({...lab.defaultLabBench(),devices:["burner","stirrer"]});
+assert.equal(migrated.length,2,"Previously saved laboratory devices must remain visible");
+assert.notEqual(migrated[0].id,migrated[1].id);
 const base=lab.defaultLabBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
@@ -366,8 +396,10 @@ assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),
  /className=\{"lektrus-lab-device-art/,
  "The installed tools must no longer render placeholder text glyphs");
 const fixedLayout=read("src/lektrusChemistryBench.css");
-assert.match(fixedLayout,/\.lektrus-lab-bench \.lektrus-lab-installed-devices\{[\s\S]*?display:flex!important/,
- "Devices must occupy a shallow horizontal dock rather than a tall overlay");
+assert.match(fixedLayout,/\.lektrus-lab-bench \.lektrus-lab-placed-device\{/,
+ "Each tool must be an individually positioned tabletop object");
+assert.match(fixedLayout,/\.lektrus-lab-bench \.lektrus-lab-installed-devices\{display:none!important\}/,
+ "Old overlay device dock must be permanently removed");
 assert.match(fixedLayout,/\.lektrus-lab-bench \.lektrus-lab-worktop-zone\{pointer-events:none!important\}/,
  "Decorative worktop must never intercept vessel touches");
 assert.match(fixedLayout,/\.lektrus-lab-bench \.lektrus-lab-pour-hint\{[\s\S]*?bottom:10\.5%!important/,
