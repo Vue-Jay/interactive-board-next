@@ -714,3 +714,85 @@
 .lektrus-language-add-question{justify-self:start;border:1px solid #d7e4ea;border-radius:9px;
  color:var(--subject-board-accent);background:var(--subject-board-soft);padding:10px 13px;
  cursor:pointer;font:750 12px system-ui,sans-serif}
+
+
+/* Plain blanks: no global letter palette; only explicitly configured gaps have two
+   options located immediately beneath their own empty answer slot. */
+.lektrus-activity-gap-slot{display:inline-flex;vertical-align:middle;align-items:center;
+ flex-direction:column;justify-content:flex-start;min-width:0;line-height:1.25;margin:0 3px 2px}
+.lektrus-activity-gap-slot>input{display:block;max-width:none}
+.lektrus-activity-gap-slot.has-choices{min-width:56px;margin:3px 4px 5px}
+.lektrus-activity-gap-selected{display:flex;justify-content:center;align-items:center;box-sizing:border-box;
+ min-width:54px;min-height:33px;padding:2px 9px;border-bottom:2px solid var(--subject-board-accent);
+ color:#2e4d5e;font:750 16px/1.2 system-ui,sans-serif;white-space:nowrap}
+.lektrus-activity-gap-choices{display:flex;align-items:center;gap:4px;margin-top:4px;white-space:nowrap}
+.lektrus-activity-gap-choices button{box-sizing:border-box;min-width:31px;min-height:29px;
+ padding:4px 7px;border:1px solid #cadbe3;border-radius:7px;background:#fff;color:#446475;
+ cursor:pointer;font:750 13px/1.15 system-ui,sans-serif}
+.lektrus-activity-gap-choices button.selected{border-color:var(--subject-board-accent);
+ background:var(--subject-board-soft);color:var(--subject-board-accent)}
+.lektrus-activity-gap-choices button:disabled{cursor:default}
+.lektrus-activity-gap-content .lektrus-activity-sign-input{width:43px!important;min-width:42px!important}
+.lektrus-language-gaps-list>.lektrus-language-gap-settings{display:grid;gap:8px;align-items:stretch}
+.lektrus-language-gap-setting{display:grid;gap:9px;padding:11px;
+ border:1px solid #e1e9ed;background:#fff;border-radius:9px}
+.lektrus-language-gap-setting-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.lektrus-language-gap-setting-heading>span{display:flex;align-items:center;flex-wrap:wrap;gap:6px;
+ color:#556a73;font:600 12px/1.4 system-ui,sans-serif}
+.lektrus-language-gap-setting-heading>span>b{color:var(--subject-board-accent);font-weight:750}
+.lektrus-language-gap-setting-heading button{font-size:11px;min-height:29px;padding:5px 9px}
+.lektrus-language-choice-toggle{display:flex;align-items:center;gap:8px;color:#455f6a;
+ font:650 12px/1.4 system-ui,sans-serif;cursor:pointer}
+.lektrus-language-choice-toggle input{width:17px;height:17px;min-height:0;accent-color:var(--subject-board-accent)}
+.lektrus-language-distractor{display:grid;gap:6px;color:#516975;font:650 12px/1.3 system-ui,sans-serif}
+.lektrus-language-distractor>input{max-width:210px;min-height:36px}
+.lektrus-language-distractor>small{color:#8498a0;font-weight:450;font-size:11px}
+/* A school notebook, not four separate large form cards. */
+.lektrus-rus-task-work.lektrus-rus-school-analysis{display:grid;gap:7px;padding:10px 12px;
+ border-radius:8px;background:#fff}
+.lektrus-rus-school-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:7px;
+ font:650 12px/1.35 system-ui,sans-serif;color:#486474}
+.lektrus-rus-school-heading>strong{color:var(--subject-board-accent);font-size:13px}
+.lektrus-rus-school-heading>b{color:#304f60;font-size:16px}
+.lektrus-rus-school-context{white-space:pre-wrap;overflow-wrap:anywhere;color:#5a707a;
+ font:500 11px/1.45 system-ui,sans-serif;border-bottom:1px solid #e9eff1;padding:0 0 6px}
+.lektrus-rus-school-section{display:grid;grid-template-columns:22px minmax(0,1fr);gap:5px;
+ align-items:start;padding:4px 0;border-bottom:1px solid #eef2f5}
+.lektrus-rus-school-section:last-child{border-bottom:0}
+.lektrus-rus-school-number{padding-top:4px;color:var(--subject-board-accent);
+ font:800 12px/1.4 Georgia,serif}
+.lektrus-rus-school-line{display:flex;align-items:center;gap:6px 15px;flex-wrap:wrap}
+.lektrus-rus-school-line>label,.lektrus-rus-school-syntax{display:inline-flex;align-items:center;
+ min-width:0;flex-wrap:wrap;gap:6px;color:#405d69;font:500 12px/1.4 system-ui,sans-serif}
+.lektrus-rus-school-line strong,.lektrus-rus-school-syntax strong{white-space:nowrap;font-weight:750}
+.lektrus-rus-school-line select,.lektrus-rus-school-line input,.lektrus-rus-school-syntax select{
+ box-sizing:border-box;max-width:100%;min-width:90px;min-height:29px;padding:4px 7px;
+ border:1px solid #dce5e9;border-radius:6px;background:#fff;color:#355261;
+ font:550 11px/1.4 system-ui,sans-serif}
+.lektrus-rus-school-line input{width:165px}
+.lektrus-rus-school-traits-wrapper{display:grid;gap:6px;min-width:0}
+.lektrus-rus-school-traits-wrapper>strong{color:#3c5866;font:750 12px/1.4 system-ui,sans-serif}
+.lektrus-rus-school-traits{display:flex;align-items:flex-start;gap:5px 10px;flex-wrap:wrap;min-width:0}
+.lektrus-rus-school-traits>strong{flex:0 0 auto;padding-top:5px;min-width:105px;color:#536e7a;font:700 11px/1.5 system-ui,sans-serif}
+.lektrus-rus-school-trait-grid{display:flex;flex:1 1 260px;gap:5px 12px;flex-wrap:wrap;min-width:0}
+.lektrus-rus-school-trait{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0;
+ color:#637b85;font:550 10px/1.3 system-ui,sans-serif}
+.lektrus-rus-school-trait>span:first-child{white-space:nowrap}
+.lektrus-rus-school-trait select,.lektrus-rus-school-trait input{
+ min-width:63px;max-width:min(190px,100%);height:27px;box-sizing:border-box;
+ padding:3px 6px;border:1px solid #e0e7eb;border-radius:6px;background:#fbfdfd;
+ color:#3b5865;font:600 11px/1.3 system-ui,sans-serif}
+.lektrus-rus-school-trait input{width:130px}
+.lektrus-rus-school-value{color:#405d6a}
+.lektrus-rus-school-no-traits{padding-top:4px;color:#6b7f88;font:500 11px/1.4 system-ui,sans-serif}
+.lektrus-rus-school-extra{flex:1 0 100%;color:#7b919b;font:500 10px/1.4 system-ui,sans-serif}
+.lektrus-rus-school-extra>summary{display:inline-block;cursor:pointer;font-size:10px}
+.lektrus-rus-school-extra textarea{display:block;box-sizing:border-box;max-width:100%;width:100%;
+ border:1px solid #dfe8ed;border-radius:6px;padding:6px;font:500 11px/1.4 system-ui,sans-serif}
+@media(max-width:600px){
+ .lektrus-rus-task-work.lektrus-rus-school-analysis{padding:8px;gap:5px}
+ .lektrus-rus-school-section{grid-template-columns:19px minmax(0,1fr);gap:4px}
+ .lektrus-rus-school-traits>strong{min-width:0}
+ .lektrus-rus-school-trait-grid{flex-basis:100%;gap:5px}
+ .lektrus-language-gap-setting{padding:9px}
+}
