@@ -1,3 +1,4 @@
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {useEffect,useRef,useState,type PointerEvent} from "react";
 import {mergeEditedValue} from "./lektrusLiveEditorMerge";
 import {createPortal} from "react-dom";
@@ -262,7 +263,7 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     onChange={next=>{setDraft(next);onFormulaLiveChange?.(draft,next)}}
     onSave={()=>onSave(draft)} onCancel={onCancel}/>;
   return createPortal(<div className={"lektrus-science-backdrop "+(isPhysics?"physics":"chemistry")}
-     onPointerDown={e=>{if(e.currentTarget===e.target)(onClose??onCancel)(draft)}}>
+     style={subjectEditorStyle(isPhysics?"physics":"chemistry")} onPointerDown={e=>{if(e.currentTarget===e.target)(onClose??onCancel)(draft)}}>
     <section className={"lektrus-science-editor"+(isPhysics?" physics-workspace"+(settingsOpen?"":" settings-collapsed"):"")} role="dialog" aria-modal="true"
       aria-label={isPhysics?"Редактор физики":"Редактор химии"}
       onPointerDown={e=>e.stopPropagation()}>
