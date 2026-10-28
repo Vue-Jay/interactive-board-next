@@ -1934,3 +1934,36 @@
  .lektrus-lab-editor-body.is-laboratory-layout .lektrus-lab-inspector{
   flex:0 0 auto!important;max-height:none!important}
 }
+
+/* Board-object geometry is owned by the canvas, never by the laboratory.
+   Resizing the item scales its available stage rather than leaving an
+   unresizable 1600px minimum behind the handles. */
+.lektrus-chemistry-bench-on-board{
+ position:relative;width:100%;height:100%;
+ overflow:auto!important;overscroll-behavior:contain;
+}
+.lektrus-chemistry-bench-on-board>.lektrus-lab-bench{
+ width:100%!important;height:100%!important;
+ min-width:0!important;min-height:0!important;
+ max-width:none!important;max-height:none!important;
+ box-sizing:border-box!important;
+}
+/* Only this unobstructed label starts a whole-object board drag. */
+.lektrus-chemistry-bench-on-board>.lektrus-lab-object-grip{
+ position:absolute;z-index:105;top:0;left:25%;right:15%;
+ min-height:32px;display:flex;align-items:center;justify-content:center;
+ gap:12px;white-space:nowrap;
+ border-radius:0 0 10px 10px;
+ background:linear-gradient(110deg,#155d4cca,#297e68dc);
+ color:#fff;font:800 clamp(11px,1.2vw,14px)/1.2 system-ui,sans-serif;
+ box-shadow:0 3px 9px #183e3150;
+ cursor:grab;user-select:none;touch-action:none;
+ pointer-events:auto;
+}
+.lektrus-chemistry-bench-on-board>.lektrus-lab-object-grip:active{cursor:grabbing}
+.lektrus-lab-object-grip span{font:650 11px/1.1 system-ui,sans-serif;color:#e0faee}
+@container(max-width:680px){
+ .lektrus-chemistry-bench-on-board>.lektrus-lab-object-grip{
+  left:22%;right:14%;min-height:27px;font-size:10px;gap:6px}
+ .lektrus-lab-object-grip span{font-size:9px}
+}
