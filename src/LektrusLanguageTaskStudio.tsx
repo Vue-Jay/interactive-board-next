@@ -5,7 +5,7 @@ import {subjectAccentPalette} from "./lektrusSubjectAccent";
 import {activityMatchesTask,freshActivity,interactiveModesForSubject,
  isIntegratedInteractiveTask,preferredActivityMode,LektrusSubjectActivityBuilder,
  LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
-import {isLanguageGapExercise,languageGapText,parseLanguageGapText} from "./lektrusLanguageGapModel";
+import {isLanguageGapExercise,languageGapText,parseLanguageGapText,preserveGapChoices} from "./lektrusLanguageGapModel";
 import LektrusRussianTaskAnswer from "./LektrusRussianTaskAnswer";
 
 type Props={
@@ -68,16 +68,31 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
  const integrated=isIntegratedInteractiveTask(tone,template.id);
  const isGap=isLanguageGapExercise(tone,template.id);
  const markup=isGap?(entry.details?.markup??languageGapText(entry.activity)):"";
- const gapState=isGap?parseLanguageGapText(markup):null;
+ const gapState=isGap?preserveGapChoices(parseLanguageGapText(markup),entry.activity):null;
  const activity=isGap?gapState?.activity:(defaultMode?
   (activityMatchesTask(tone,template.id,entry.activity)?entry.activity:freshActivity(defaultMode)):undefined);
  const patch=(next:Partial<SubjectBoardEntry>)=>onChange({...entry,...next,subject:tone});
  const changeMaterial=(id:string,value:string)=>patch({details:{...entry.details,[id]:value}});
  const changeMarkup=(value:string)=>{
-  const parsed=parseLanguageGapText(value);
+  const parsed=preserveGapChoices(parseLanguageGapText(value),activity);
   patch({details:{...entry.details,markup:value},activity:parsed.activity,activityResponse:undefined});
   setPreviewAnswer({});
   setSelectionHint("");
+ };
+ const configureChoices=(index:number,enabled:boolean)=>{
+  if(activity?.mode!=="fill")return;
+  const blanks=(activity.blanks??[]).map((blank,i)=>{
+   if(i!==index)return blank;
+   if(!enabled){const {choices:removed,...rest}=blank;return rest;}
+   return {...blank,choices:[blank.answer,""] as [string,string]};
+  });
+  patch({activity:{...activity,blanks},activityResponse:undefined});setPreviewAnswer({});
+ };
+ const updateDistractor=(index:number,distractor:string)=>{
+  if(activity?.mode!=="fill")return;
+  const blanks=(activity.blanks??[]).map((blank,i)=>i===index?
+   {...blank,choices:[blank.answer,distractor] as [string,string]}:blank);
+  patch({activity:{...activity,blanks},activityResponse:undefined});setPreviewAnswer({});
  };
  const removeGap=(index:number)=>{
   if(!gapState?.activity?.blanks)return;
@@ -157,13 +172,29 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
       <small>Поставьте курсор в нужное место. Знак появится как пропуск с правильным ответом для проверки.</small>
      </div>}
      {gapState&&gapState.count>0&&!gapState.issue&&<div className="lektrus-language-gaps-list">
-      <strong>Скрытые фрагменты <span>{gapState.count}/8</span></strong>
-      <div>{gapState.activity?.blanks?.map((part,i)=>
-       <button type="button" key={i} aria-label={"Вернуть в текст фрагмент "+part.answer}
-        title="Вернуть фрагмент в текст" onClick={()=>removeGap(i)}>
-        <small>{i+1}</small> {part.answer} <span aria-hidden="true">×</span>
-       </button>)}</div>
-      <small>Нажмите на фрагмент, чтобы вернуть его в текст. Ответы ученику не показываются.</small>
+      <strong>Пропуски <span>{gapState.count}/8</span></strong>
+      <div className="lektrus-language-gap-settings">
+       {activity?.mode==="fill"&&activity.blanks?.map((part,i)=>
+        <div className="lektrus-language-gap-setting" key={i}>
+         <div className="lektrus-language-gap-setting-heading">
+          <span><small>{i+1}</small> Правильный ответ: <b>{part.answer}</b></span>
+          <button type="button" onClick={()=>removeGap(i)} aria-label={"Убрать пропуск "+(i+1)}>Убрать пропуск ×</button>
+         </div>
+         {orthography&&<label className="lektrus-language-choice-toggle">
+          <input type="checkbox" checked={!!part.choices} onChange={e=>configureChoices(i,e.target.checked)}/>
+          Показать два варианта под пропуском
+         </label>}
+         {orthography&&part.choices&&<label className="lektrus-language-distractor">
+          Второй вариант
+          <input value={part.choices[1]} maxLength={24} placeholder="Например, о"
+           aria-label={"Неправильный вариант для пропуска "+(i+1)}
+           onChange={e=>updateDistractor(i,e.target.value)}/>
+          <small>{part.choices[1]&&part.choices[1].toLocaleLowerCase("ru-RU")===part.answer.toLocaleLowerCase("ru-RU")?
+           "Варианты должны отличаться.":"Первый вариант — правильная буква или сочетание из текста. Порядок вариантов на доске меняется."}</small>
+         </label>}
+        </div>)}
+      </div>
+      <small>Обычные пропуски ученик заполняет самостоятельно. Если включены два варианта, они появятся под конкретным пропуском.</small>
      </div>}
      {selectionHint&&<p className="lektrus-language-studio-help" role="status">{selectionHint}</p>}
      {gapState?.issue&&<p className="lektrus-language-studio-warning" role="status">{gapState.issue}</p>}
