@@ -231,7 +231,7 @@ assert.equal(labLayout.isLabWorktop({x:14,y:73}),false);
 const redesignedLab=read("src/LektrusChemistryBench.tsx");
 assert.match(redesignedLab,/lektrus-lab-scene-header/);
 assert.match(redesignedLab,/lektrus-lab-worktop-zone/);
-assert.match(redesignedLab,/labDisplayPoint\(preview\?\.id===v\.id\?preview:v\)/);
+assert.match(redesignedLab,/labDisplayPoint\(preview\?\.id===v\.id\?preview:v,bench\.vessels\.length>3\)/);
 assert.match(redesignedLab,/arrangeLabVessels\(bench\)/);
 assert.match(redesignedLab,/lektrus-lab-chalk-steps/);
 const redesignedCss=read("src/lektrusChemistryBench.css");
