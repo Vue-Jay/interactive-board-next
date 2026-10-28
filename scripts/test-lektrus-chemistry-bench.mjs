@@ -465,7 +465,7 @@ assert.notEqual(lab.labObservation(carbonate.vessels[0]).status,"reaction",
  "Carbonate calcination should not be faked on a low-temperature hotplate");
 assert.match(read("src/LektrusChemistryBench.tsx"),/setPlacedDevicePower/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/setLabBuretteValve/);
-assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-glass-temperature/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-ware-engraving/);
 const base=lab.defaultLabBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
