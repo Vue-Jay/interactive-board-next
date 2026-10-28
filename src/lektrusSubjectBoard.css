@@ -980,6 +980,7 @@
  .lektrus-language-preview{position:static}
 }
 @media(max-width:600px){
+ .lektrus-subject-task-editor:has(.lektrus-language-studio){width:100%;max-width:100%}
  .lektrus-subject-task-body{padding:10px;gap:8px}
  .lektrus-subject-task-body>.lektrus-subject-task-title{
   grid-template-columns:1fr;gap:4px;
