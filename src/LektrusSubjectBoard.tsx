@@ -101,7 +101,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
   <article className="lektrus-subject-board" style={style} aria-label={palette.label+" · учебная доска"}>
    <header className="lektrus-subject-board-header" ref={headerRef}>
     <span className="lektrus-subject-board-emblem" aria-hidden="true">▤</span>
-    <strong>{palette.label} <span>· учебная доска</span></strong>
+    <strong>{palette.label} <span>· {chemistry?"рабочий лист":"учебная доска"}</span></strong>
     {onAction&&<nav className="lektrus-subject-board-tools" aria-label="Инструменты предметной доски">
      {chemistry&&<button type="button" data-board-interactive="true"
        onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onAction("equation")}}>
