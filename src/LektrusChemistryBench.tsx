@@ -92,6 +92,13 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
  const singlePhase=vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const geo=shape[vessel.kind];
  const labels=vessel.reagents.map(r=>substances.find(s=>s.id===r)?.formula??r);
+ const substanceState=!vessel.reagents.length?"Пусто":
+  observation==="precipitate"?"↓ Осадок":
+  observation==="gas"?"↑ Выделяется газ":
+  observation==="color"?"Изменение цвета":
+  singlePhase==="solid"||singlePhase==="metal"?"Твёрдое вещество":
+  singlePhase==="gas"?"Газ":
+  vessel.environment==="dry"?"Сухая смесь":"Раствор";
  const volumeMl=Object.values(vessel.doses??{}).reduce((sum,d)=>sum+(d.unit==="ml"?d.value:0),0);
  const capacity=vessel.kind==="burette"?100:
   vessel.kind==="pipette"?25:vessel.kind==="tube"?25:150;
@@ -163,18 +170,16 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
   </svg>
   {temperatureC!==undefined&&<span className="lektrus-lab-glass-temperature"
    title="Расчётная температура учебной модели, не измерение">
-   ≈ {Math.round(temperatureC)} °C
+   ≈{Math.round(temperatureC)} °C
   </span>}
-  {showLabels&&<div className="lektrus-lab-vessel-label"><b>{names[vessel.kind]}</b>
-   <span>{labels.length?labels.join(" + "):"Пусто"}</span>
+  {showLabels&&<div className="lektrus-lab-glass-state"
+   title={substanceState+(labels.length?" · "+labels.join(" + "):"")}>
+   <strong>{substanceState}</strong>
+   {!!labels.length&&<small>{labels.slice(0,2).join(" + ")}{labels.length>2?" …":""}</small>}
   </div>}
   {indicator&&<span className="lektrus-lab-indicator-tag" title={indicator.note}>
    <span className="lektrus-lab-indicator-dot" style={{background:indicator.color??"#a2a9a4"}}/>
    {indicator.label}
-  </span>}
-  {active&&observation!=="none"&&showLabels&&<span className="lektrus-lab-effect-tag">
-   {observation==="gas"?"↑ Газ":observation==="precipitate"?"↓ Осадок":
-    observation==="color"?"◉ Цвет":observation==="heat"?"♨ Тепло":"Растворение"}
   </span>}
  </div>;
 }
@@ -485,7 +490,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const g=deviceShelfGesture.current;if(!g)return;
   deviceShelfGesture.current=null;e.preventDefault();e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
-  const p=point(e);takeDevice(g.kind,g.dragged&&p&&isLabWorktop(p)?p:undefined);
+  const p=point(e);
+  if(!g.dragged)takeDevice(g.kind);
+  else if(p&&isLabWorktop(p))takeDevice(g.kind,p);
+  else setNotice("Прибор можно поставить только на рабочую поверхность");
   setDeviceShelfGhost(null);
  };
  const nearestVessel=(p:{x:number;y:number},kind:LabDevice)=>{
@@ -616,7 +624,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <p>Возьмите посуду, выберите реактивы и наблюдайте за опытом.</p>
    <div><b>Посуда</b><b>Реактивы</b><b>Наблюдение</b></div>
   </div>}
-  {!selected?.reagents.length&&<div className="lektrus-lab-worktop-caption">
+  {false&&!selected?.reagents.length&&<div className="lektrus-lab-worktop-caption">
    <strong>{selected?"Выбрано: "+names[selected.kind]:"Рабочее место"}</strong>
    <span>{selected?(selected.reagents.length?selected.reagents.join(" + "):"Чистая посуда"):
     "Возьмите посуду из шкафа"}</span>
@@ -746,6 +754,18 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     {focused&&editable&&<span className="lektrus-lab-device-focus-name"
      aria-hidden="true">{meta?.name}</span>}
    </div>;
+  })}
+  {physicalDevices.filter(d=>d.kind==="tripod"&&d.active&&
+   bench.vessels.some(v=>v.id===d.linkedVesselId)).map(d=>{
+   const p=devicePreview?.id===d.id?{...d,...devicePreview}:d;
+   return <svg key={d.id+"-clamp"} className="lektrus-lab-retort-jaws"
+    viewBox="0 0 110 108" aria-hidden="true"
+    style={{left:p.x+"%",top:p.y+"%"}}>
+    <path d="M48 40H76M76 40l11-8M76 40l11 8M84 30Q99 40 84 50"
+     stroke="#537e75" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    <path d="M48 65H70Q77 65 80 59M70 65Q77 65 80 71"
+     stroke="#5b8a7e" strokeWidth="3" strokeLinecap="round" fill="none"/>
+   </svg>;
   })}
   {deviceShelfGhost&&<div className="lektrus-lab-device-shelf-ghost"
    style={{left:deviceShelfGhost.x+"%",top:deviceShelfGhost.y+"%"}} aria-hidden="true">
