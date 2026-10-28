@@ -91,6 +91,8 @@ export default function LektrusLabDeviceIcon({
      fill={active?"#e7ffdc":"#214a43"}>⏻</text>
    </g>}
    <circle cx="19" cy="82" r="2.2" fill={active?"#d8e874":"#8faca0"}/>
+   <text x="43" y="84" fill="#2b6a5a" fontSize="7.5" fontWeight="800"
+    textAnchor="middle">≈{Math.round(temperatureC??22)}°C</text>
   </>}
   {kind==="burner"&&<>
    <path d="M36 88H74L89 96H21Z" fill={"url(#"+metal+")"} stroke="#406d69" strokeWidth="2.7"/>
@@ -106,7 +108,7 @@ export default function LektrusLabDeviceIcon({
      stroke="#496f66" strokeWidth="2"/>
     <text x="55" y="73" textAnchor="middle" fontSize="12"
      fill={active?"#fff":"#37675b"}>⏻</text>
-   </g>
+   </g>}
    <path d="M65 80H84Q92 80 94 88" stroke="#527d78" strokeWidth="5"/>
    <path d="M83 80l6 2" stroke="#c2d7cc" strokeWidth="2"/>
    <rect x="43" y="31" width="26" height="9" rx="3" fill="#91b8a9" stroke="#427467" strokeWidth="2"/>
@@ -138,7 +140,7 @@ export default function LektrusLabDeviceIcon({
     <circle cx="78" cy="71" r="11" fill="transparent"/>
     <text x="78" y="76" textAnchor="middle" fontSize="13"
      fill={active?"#e7ffdc":"#214a43"}>⏻</text>
-   </g>
+   </g>}
   </>}
   {kind==="tripod"&&<>
    <path d="M14 90H86L96 98H7Z" fill={"url(#"+metal+")"}
