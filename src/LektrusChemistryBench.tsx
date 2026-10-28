@@ -245,6 +245,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [dropTarget,setDropTarget]=useState<string|null>(null);
  const [dropDeviceId,setDropDeviceId]=useState<string|null>(null);
  const [dropFurniture,setDropFurniture]=useState<"sink"|"glassware"|null>(null);
+ const [dropDeviceShelf,setDropDeviceShelf]=useState(false);
  const [transfer,setTransfer]=useState<{from:{x:number;y:number};to:{x:number;y:number}}|null>(null);
  const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"equipment"|"settings"|null>(null);
  const [query,setQuery]=useState("");
@@ -553,8 +554,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   e.stopPropagation();const p=point(e),rect=host.current?.getBoundingClientRect();
   if(!p||!rect)return;
   if(Math.hypot((p.x-g.startX)*rect.width/100,(p.y-g.startY)*rect.height/100)>8)g.dragged=true;
-  if(g.dragged)setDevicePreview({id:g.id,x:Math.max(9,Math.min(79,g.x+p.x-g.startX)),
-   y:Math.max(58,Math.min(84,g.y+p.y-g.startY))});
+  if(g.dragged){
+   setDevicePreview({id:g.id,x:Math.max(9,Math.min(79,g.x+p.x-g.startX)),
+    y:Math.max(58,Math.min(84,g.y+p.y-g.startY))});
+   setDropDeviceShelf(p.x>=82&&p.y>=8&&p.y<=42);
+  }
  };
  const finishDevice=(e:PointerEvent<HTMLDivElement>)=>{
   const g=deviceGesture.current;if(!g)return;
@@ -575,7 +579,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     setNotice(vesselId&&final!==moved?"Прибор установлен рядом с сосудом":"Прибор перемещён по столу");
    }
   }else setActiveDeviceId(g.id);
-  setDevicePreview(null);
+  setDevicePreview(null);setDropDeviceShelf(false);
  };
  const dispense=()=>{
   if(!editable||!chosen)return;
@@ -688,7 +692,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    </div>
    <span className="lektrus-lab-furniture-foot">Нажмите или перетащите</span>
   </div>
-  <div className="lektrus-lab-device-cupboard" data-board-interactive="true"
+  <div  className={"lektrus-lab-device-cupboard"+(dropDeviceShelf?" is-dropzone":"")} data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <button type="button" className="lektrus-lab-device-cupboard-title"
     disabled={!editable} onClick={e=>{e.stopPropagation();openCabinet("equipment")}}>
@@ -729,7 +733,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      onPointerDown={e=>downDevice(e,device.id,device.x,device.y)}
      onPointerMove={e=>moveDevice(e)}
      onPointerUp={e=>finishDevice(e)}
-     onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;setDevicePreview(null)}}
+     onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;setDevicePreview(null);setDropDeviceShelf(false)}}
      onClick={e=>{e.stopPropagation();if(e.detail===0)setActiveDeviceId(device.id)}}>
      <LektrusLabDeviceIcon kind={device.kind} size={150}
       active={!!device.powered} editable={editable} controlsVisible={focused}
