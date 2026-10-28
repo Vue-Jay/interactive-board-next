@@ -311,6 +311,96 @@ for(const line of furtherKnownCases.trim().split("\n")){
  add(reagents,medium as ReactionEnvironment,equation,observation as Observation,description);
 }
 
+
+/* Additional explicit, balanced school equations. Observations are tied to
+ * conditions and quantities typical of qualitative demonstration, not a
+ * general-purpose products predictor. */
+const additionalSchoolCases=`
+H2SO4+BaCl2|aqueous|H2SO4 + BaCl2 → BaSO4↓ + 2HCl|precipitate|Белый сульфат бария образуется из двух прозрачных растворов
+H2SO4+Pb(NO3)2|aqueous|H2SO4 + Pb(NO3)2 → PbSO4↓ + 2HNO3|precipitate|Белый осадок сульфата свинца(II)
+K2SO4+Pb(NO3)2|aqueous|K2SO4 + Pb(NO3)2 → PbSO4↓ + 2KNO3|precipitate|Осадок малорастворимого сульфата свинца(II)
+KCl+Pb(NO3)2|aqueous|2KCl + Pb(NO3)2 → PbCl2↓ + 2KNO3|precipitate|Белый кристаллический осадок хлорида свинца(II)
+Na2CO3+Pb(NO3)2|aqueous|Na2CO3 + Pb(NO3)2 → PbCO3↓ + 2NaNO3|precipitate|Белый осадок карбоната свинца(II)
+K2CO3+Ca(NO3)2|aqueous|K2CO3 + Ca(NO3)2 → CaCO3↓ + 2KNO3|precipitate|Белый карбонат кальция
+Na3PO4+Ca(NO3)2|aqueous|2Na3PO4 + 3Ca(NO3)2 → Ca3(PO4)2↓ + 6NaNO3|precipitate|Белый фосфат кальция
+KOH+CuSO4|aqueous|2KOH + CuSO4 → Cu(OH)2↓ + K2SO4|precipitate|Нежно-голубой осадок гидроксида меди(II)
+NaOH+Fe2(SO4)3|aqueous|6NaOH + Fe2(SO4)3 → 2Fe(OH)3↓ + 3Na2SO4|precipitate|Красно-бурый осадок гидроксида железа(III)
+KOH+Fe2(SO4)3|aqueous|6KOH + Fe2(SO4)3 → 2Fe(OH)3↓ + 3K2SO4|precipitate|Красно-бурый осадок гидроксида железа(III)
+NaOH+ZnCl2|aqueous|2NaOH + ZnCl2 → Zn(OH)2↓ + 2NaCl|precipitate|Белый амфотерный гидроксид цинка без избытка щёлочи
+KOH+ZnCl2|aqueous|2KOH + ZnCl2 → Zn(OH)2↓ + 2KCl|precipitate|Белый осадок; в избытке щёлочи может раствориться
+NaOH+MgCl2|aqueous|2NaOH + MgCl2 → Mg(OH)2↓ + 2NaCl|precipitate|Белый гидроксид магния
+KOH+MgCl2|aqueous|2KOH + MgCl2 → Mg(OH)2↓ + 2KCl|precipitate|Белый гидроксид магния
+Na2S+CuSO4|aqueous|Na2S + CuSO4 → CuS↓ + Na2SO4|precipitate|Чёрный осадок сульфида меди(II)
+Na2S+CuCl2|aqueous|Na2S + CuCl2 → CuS↓ + 2NaCl|precipitate|Чёрный осадок сульфида меди(II)
+Na2S+ZnSO4|aqueous|Na2S + ZnSO4 → ZnS↓ + Na2SO4|precipitate|Белый осадок сульфида цинка
+Na2S+FeSO4|aqueous|Na2S + FeSO4 → FeS↓ + Na2SO4|precipitate|Чёрный осадок сульфида железа(II)
+Na2S+Pb(NO3)2|aqueous|Na2S + Pb(NO3)2 → PbS↓ + 2NaNO3|precipitate|Чёрный осадок сульфида свинца(II)
+AgNO3+Na3PO4|aqueous|3AgNO3 + Na3PO4 → Ag3PO4↓ + 3NaNO3|precipitate|Жёлтый осадок фосфата серебра
+AgNO3+K2CO3|aqueous|2AgNO3 + K2CO3 → Ag2CO3↓ + 2KNO3|precipitate|Бледно-жёлтый осадок карбоната серебра
+BaCl2+Na3PO4|aqueous|3BaCl2 + 2Na3PO4 → Ba3(PO4)2↓ + 6NaCl|precipitate|Белый фосфат бария
+Ba(OH)2+H2SO4|aqueous|Ba(OH)2 + H2SO4 → BaSO4↓ + 2H2O|precipitate|Нейтрализация и выпадение белого осадка
+HNO3+MgO|aqueous|2HNO3 + MgO → Mg(NO3)2 + H2O|dissolution|Основный оксид реагирует с кислотой
+HNO3+CaO|aqueous|2HNO3 + CaO → Ca(NO3)2 + H2O|dissolution|Растворение оксида кальция в кислоте
+HNO3+ZnO|aqueous|2HNO3 + ZnO → Zn(NO3)2 + H2O|dissolution|Растворение амфотерного оксида
+HNO3+Fe2O3|aqueous|6HNO3 + Fe2O3 → 2Fe(NO3)3 + 3H2O|dissolution|Растворение оксида железа(III)
+HCl+FeO|aqueous|2HCl + FeO → FeCl2 + H2O|dissolution|Оксид железа(II) реагирует с кислотой
+HCl+Al2O3|aqueous|6HCl + Al2O3 → 2AlCl3 + 3H2O|dissolution|Амфотерный оксид алюминия реагирует с кислотой при подходящих условиях
+HCl+Zn(OH)2|aqueous|2HCl + Zn(OH)2 → ZnCl2 + 2H2O|dissolution|Белый осадок растворяется в кислоте
+HCl+Al(OH)3|aqueous|3HCl + Al(OH)3 → AlCl3 + 3H2O|dissolution|Гидроксид алюминия растворяется в кислоте
+H2SO4+Cu(OH)2|aqueous|H2SO4 + Cu(OH)2 → CuSO4 + 2H2O|dissolution|Голубой осадок растворяется, остаётся голубой раствор
+H2SO4+Zn(OH)2|aqueous|H2SO4 + Zn(OH)2 → ZnSO4 + 2H2O|dissolution|Осадок гидроксида цинка растворяется
+H2SO4+Mg(OH)2|aqueous|H2SO4 + Mg(OH)2 → MgSO4 + 2H2O|dissolution|Суспензия гидроксида магния нейтрализуется
+HCl+Mg(OH)2|aqueous|2HCl + Mg(OH)2 → MgCl2 + 2H2O|dissolution|Осадок гидроксида магния исчезает
+HNO3+Cu(OH)2|aqueous|2HNO3 + Cu(OH)2 → Cu(NO3)2 + 2H2O|dissolution|Голубой осадок растворяется, раствор остаётся голубым
+CH3COOH+CaCO3|aqueous|2CH3COOH + CaCO3 → Ca(CH3COO)2 + CO2↑ + H2O|gas|Карбонат кальция выделяет углекислый газ при действии уксусной кислоты
+CH3COOH+MgCO3|aqueous|2CH3COOH + MgCO3 → Mg(CH3COO)2 + CO2↑ + H2O|gas|Карбонат магния выделяет CO2
+CH3COOH+Mg|aqueous|2CH3COOH + Mg → Mg(CH3COO)2 + H2↑|gas|Магний медленно взаимодействует с уксусной кислотой с выделением водорода
+AgNO3+Zn|aqueous|2AgNO3 + Zn → Zn(NO3)2 + 2Ag↓|color|Серебристый налёт на цинке
+AgNO3+Cu|aqueous|2AgNO3 + Cu → Cu(NO3)2 + 2Ag↓|color|Серебристые кристаллы на меди, раствор становится голубым
+H2O2+MnO2|aqueous|2H2O2 → 2H2O + O2↑|gas|Диоксид марганца выступает катализатором разложения пероксида водорода
+`;
+for(const line of additionalSchoolCases.trim().split("\n")){
+ const [reagents,medium,equation,observation,description]=line.split("|");
+ const signature=reagents.split("+").sort().join("|");
+ if(cases.some(row=>row.environment===medium&&row.reactants.slice().sort().join("|")===signature))continue;
+ add(reagents,medium as ReactionEnvironment,equation,observation as Observation,description,
+  /Pb\(|Na2S|AgNO3\+|MnO2/.test(reagents)?
+   {safety:"Учебная модель: токсичные или потенциально опасные вещества. Не является инструкцией для опыта."}:{});
+}
+
+/** Appearance is computed from the actual products, not from the selected
+ * reaction category. The solid never recolors the supernatant by accident. */
+export const schoolSolidColors:Record<string,string>={
+ "AgCl":"#f2f3f5","AgBr":"#eddfad","AgI":"#e9ca37",
+ "Ag2CO3":"#eddf99","Ag3PO4":"#e5ce36","PbI2":"#f4d82e",
+ "PbCl2":"#f0f0ea","PbBr2":"#e9e8db","PbSO4":"#f1f1eb",
+ "PbCO3":"#f1f2eb","PbS":"#222b32",
+ "BaSO4":"#f2f3f2","BaCO3":"#f2f1ed","Ba3(PO4)2":"#f3f3ec",
+ "CaCO3":"#f1f0e9","Ca3(PO4)2":"#eeefea","Mg(OH)2":"#f4f4ef",
+ "Cu(OH)2":"#74badd","CuS":"#202a32","Cu":"#b76b47",
+ "Fe(OH)2":"#90ae81","Fe(OH)3":"#a26142","FeS":"#252a30",
+ "Zn(OH)2":"#f1f2ee","ZnS":"#f0f1e7","Al(OH)3":"#f2f2ec",
+ "Ag":"#c6ced2","Fe":"#788f90"
+};
+export function reactionProducts(equation:string):string[]{
+ const rhs=equation.split("→")[1]??"";
+ return rhs.split(/\s+\+\s+/).map(value=>value.trim()).filter(Boolean);
+}
+export function reactionAppearance(row:ReactionCase|undefined){
+ if(!row)return{solutionBefore:"#c8e2e7",solutionAfter:"#c8e2e7",solid:"",solidColor:"",
+  gas:"",products:[] as string[]};
+ const products=reactionProducts(row.equation);
+ const solid=products.find(product=>product.includes("↓"))?.replace(/^\d+\s*/,"").replace("↓","")??"";
+ const gas=products.find(product=>product.includes("↑"))?.replace(/^\d+\s*/,"").replace("↑","")??"";
+ const solutionBefore=row.beforeColor??"#cae1e9";
+ // Dissolved copper(II) stays blue even if a white solid settles.
+ const solutionAfter=row.observation==="color"?
+    row.afterColor??(products.some(p=>/Cu\(NO3\)2|CuSO4|CuCl2/.test(p))?"#79b9db":"#c8e3e7"):
+   products.some(p=>/Cu\(NO3\)2|CuSO4|CuCl2/.test(p))?"#8dbfd6":
+   products.some(p=>/FeSO4|FeCl2/.test(p))?"#c3d8b8":
+   products.some(p=>/FeCl3|Fe\(NO3\)3/.test(p))?"#ead697":"#d5e8ed";
+ return {solutionBefore,solutionAfter,solid,solidColor:schoolSolidColors[solid]??row.afterColor??"#eef0ed",gas,products};
+}
 export const reviewedReactionCases=cases;
 const key=(ids:string[])=>ids.slice().sort().join("|");
 export const identifyReaction=(reagents:string[],environment:ReactionEnvironment):{
