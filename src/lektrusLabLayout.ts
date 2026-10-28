@@ -7,7 +7,7 @@ export function labDisplayPoint(point:{x:number;y:number},crowded=false){
  return {
   x:lerp(LAB_WORKSPACE.left,LAB_WORKSPACE.right,clamp((point.x-10)/80,0,1)),
   y:clamp(lerp(LAB_WORKSPACE.top,LAB_WORKSPACE.bottom,
-   clamp((point.y-10)/80,0,1)),crowded?54:60,crowded?84:80)
+   clamp((point.y-10)/80,0,1)),crowded?55:59,crowded?81:76)
  };
 }
 export function labLogicalPoint(point:{x:number;y:number}){
