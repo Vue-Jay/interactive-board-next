@@ -782,3 +782,113 @@
  .lektrus-lab-modal-reagents{scroll-behavior:auto!important}
  .lektrus-lab-modal-reagents>button{transition:none!important}
 }
+
+/* A laboratory washbasin rather than a symbolic circular drain.
+ * Keep its tap and drain crisp at every zoom level. */
+.lektrus-lab-bench .lektrus-lab-sink{
+ top:54%;right:2.5%;width:23%;height:30%;
+ display:flex;flex-direction:column;justify-content:center;align-items:center;
+ gap:0;padding:0 4px 2px;
+ background:none!important;border:0!important;border-radius:0!important;
+ box-shadow:none!important;overflow:visible;
+ filter:drop-shadow(0 4px 5px #24483c36);
+ transition:filter .15s ease,transform .15s ease;
+ touch-action:manipulation;
+}
+.lektrus-lab-sink-art{display:block;width:100%;height:calc(100% - 23px);
+ flex:1 1 auto;min-height:0;overflow:visible;pointer-events:none}
+.lektrus-lab-sink-caption{
+ display:flex;align-items:center;justify-content:center;flex-direction:column;
+ gap:1px;flex:0 0 23px;min-width:0;width:100%;
+ padding:2px 4px;border-radius:7px;
+ color:#2f6255;background:#eaf5eddb;
+ border:1px solid #bdd9c8;box-sizing:border-box;
+ text-align:center;white-space:nowrap;pointer-events:none;
+}
+.lektrus-lab-sink-caption strong{
+ font:850 clamp(8px,1.05vw,11px)/1.1 system-ui,sans-serif;
+ letter-spacing:.08em}
+.lektrus-lab-sink-caption small{
+ font:600 clamp(7px,.9vw,10px)/1 system-ui,sans-serif;
+ color:#558774;padding:0!important}
+.lektrus-lab-bench .lektrus-lab-sink:not(:disabled):hover{
+ filter:drop-shadow(0 7px 8px #23735d50);transform:translateY(-2px)}
+.lektrus-lab-bench .lektrus-lab-sink.is-dropzone{
+ outline:0!important;filter:drop-shadow(0 0 8px #31cbb4)!important;
+ transform:scale(1.07)}
+.lektrus-lab-bench .lektrus-lab-sink:focus-visible{
+ outline:2px solid #248e7c;outline-offset:2px;border-radius:12px!important}
+@keyframes lektrus-lab-water-fall{
+ 0%{stroke-dashoffset:70;opacity:0}
+ 22%{opacity:1}85%{opacity:1}
+ 100%{stroke-dashoffset:0;opacity:0}
+}
+@keyframes lektrus-lab-drop-splash{
+ 0%{transform:translateY(-9px) scale(.45);opacity:0}
+ 50%{transform:translateY(0) scale(1);opacity:1}
+ 100%{transform:translateY(3px) scale(1.9);opacity:0}
+}
+.lektrus-lab-sink-water{stroke-dasharray:4 4;
+ animation:lektrus-lab-water-fall .85s ease-in-out both}
+.lektrus-lab-sink-drop{transform-origin:147px 110px;
+ animation:lektrus-lab-drop-splash .7s ease-out both}
+.lektrus-lab-bench.lab-reduced-animation :is(.lektrus-lab-sink-water,.lektrus-lab-sink-drop){
+ animation:none!important}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-sink-water,.lektrus-lab-sink-drop{animation:none!important}
+}
+/* Calm, branded furniture without oversized text spilling into the workspace. */
+.lektrus-lab-bench{container-type:inline-size;
+ background:linear-gradient(180deg,#e3eee7 0%,#d3e4d9 51%,#bbccbd 52%,#b0c3b5 100%)}
+.lektrus-lab-bench-backdrop:before{
+ content:"";position:absolute;inset:0 0 50%;
+ background:repeating-linear-gradient(90deg,transparent 0 17%,#e9f3eb4a 17.15% 17.3%,transparent 17.45% 34%);
+ pointer-events:none}
+.lektrus-lab-bench .lektrus-lab-counter{
+ border-top:4px solid #eff2e5;background:linear-gradient(#c8dacb,#aebeb1);
+ box-shadow:0 -3px 11px #244b3c20,0 6px 8px #1b45393b}
+.lektrus-lab-bench .lektrus-lab-counter-front{
+ background:linear-gradient(100deg,#759984,#8caf98 48%,#789985);
+ border-top:1px solid #a2bda5;box-shadow:inset 0 4px 9px #355b4b22}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture,
+.lektrus-lab-bench .lektrus-lab-glass-cupboard{
+ border:2px solid #88a99a;border-bottom:5px solid #76998b;
+ background:linear-gradient(120deg,#eaf0e4,#d1e2d3 59%,#c9daca);
+ box-shadow:inset 0 2px 8px #fff9,0 5px 12px #26554324;
+}
+.lektrus-lab-bench .lektrus-lab-furniture-title{
+ font-weight:850;letter-spacing:.06em;color:#2c6955;line-height:1.15}
+.lektrus-lab-bench .lektrus-lab-furniture-foot{
+ color:#598875;line-height:1.2}
+.lektrus-lab-chalkboard{
+ border-color:#b1a485;background:linear-gradient(130deg,#164439,#215749);
+ box-shadow:inset 0 2px 16px #092c245c,0 6px 13px #123e3540}
+.lektrus-lab-bench .lektrus-lab-vessel{transition:filter .15s}
+.lektrus-lab-bench .lektrus-lab-vessel.selected{
+ filter:drop-shadow(0 0 3px #207d68) drop-shadow(0 0 5px #5cd7ad)}
+.lektrus-lab-bench .lektrus-lab-vessel.selected:focus-visible{
+ outline:0!important;filter:drop-shadow(0 0 7px #1e9277)}
+@container(max-width:600px){
+ .lektrus-lab-bench .lektrus-lab-reagent-furniture{width:25%;top:10%;height:34%}
+ .lektrus-lab-bench .lektrus-lab-glass-cupboard{width:27%;top:10%;height:37%}
+ .lektrus-lab-chalkboard{left:29%;top:12%;width:39%;height:31%;border-width:4px;padding:5px}
+ .lektrus-lab-chalkboard strong{font-size:11px}
+ .lektrus-lab-bench .lektrus-lab-sink{right:2%;width:25%;top:56%;height:29%}
+ .lektrus-lab-bench .lektrus-lab-furniture-title{font-size:9px}
+ .lektrus-lab-bench .lektrus-lab-furniture-foot{font-size:8px}
+ .lektrus-lab-shelf-item small{font-size:7px}
+ .lektrus-lab-bench .lektrus-lab-vessel{width:19%;height:45%}
+}
+@container(max-width:380px){
+ .lektrus-lab-bench .lektrus-lab-reagent-furniture{width:27%;height:34%}
+ .lektrus-lab-bench .lektrus-lab-glass-cupboard{width:29%;height:35%}
+ .lektrus-lab-bench .lektrus-lab-furniture-foot{display:none}
+ .lektrus-lab-shelf-items{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .lektrus-lab-shelf-item small{display:none}
+ .lektrus-lab-chalkboard{left:31%;width:35%;padding:3px}
+ .lektrus-lab-chalkboard small,.lektrus-lab-chalkboard span{display:none}
+ .lektrus-lab-chalkboard strong{font-size:9px;line-height:1.2}
+ .lektrus-lab-bench .lektrus-lab-vessel{width:19%;height:44%}
+ .lektrus-lab-sink-caption small{display:none}
+ .lektrus-lab-sink-caption{flex-basis:16px}
+}
