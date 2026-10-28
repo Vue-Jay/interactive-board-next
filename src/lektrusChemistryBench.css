@@ -492,3 +492,36 @@
 @media(prefers-reduced-motion:reduce){
  .lektrus-lab-sink.is-flowing .lektrus-lab-sink-basin{animation:none}
 }
+
+/* The editor now mirrors the board: no duplicate reagent sidebar or bottom toolbar. */
+.lektrus-lab-editor-body.is-laboratory-layout{display:grid;
+ grid-template-columns:minmax(0,1fr) minmax(250px,295px);gap:11px;
+ grid-template-rows:minmax(0,1fr);min-height:0}
+.lektrus-lab-editor-body.is-laboratory-layout .lektrus-lab-main{min-height:0}
+.lektrus-lab-editor-body.is-laboratory-layout .lektrus-lab-bench{min-height:360px}
+.lektrus-lab-editor-body.is-laboratory-layout .lektrus-lab-inspector{
+ display:flex;flex-direction:column;max-height:none;grid-column:auto;overflow:auto}
+.lektrus-lab-empty-message{font-size:12px;color:#6c8f7c}
+.lektrus-lab-modal-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.lektrus-lab-modal-tabs button{border:1px solid #c3dbcd;border-radius:8px;
+ background:#fff;color:#30745b;min-height:32px;font-weight:800;cursor:pointer}
+.lektrus-lab-modal-tabs button.active{background:#266d57;border-color:#266d57;color:#fff}
+.lektrus-lab-modal-reagents>button.lektrus-lab-example-choice{
+ grid-template-columns:1fr;gap:3px}
+.lektrus-lab-modal-reagents>button.lektrus-lab-example-choice strong{font-size:11px}
+.lektrus-lab-modal-reagents>button.lektrus-lab-example-choice span{
+ white-space:normal;line-height:1.35;max-height:3em;overflow:hidden}
+@media(max-width:900px){
+ .lektrus-lab-editor-body.is-laboratory-layout{
+  grid-template-columns:minmax(0,1fr) minmax(205px,26%)}
+}
+@media(max-width:700px){
+ .lektrus-lab-editor-body.is-laboratory-layout{display:flex;
+  flex-direction:column;overflow:auto}
+ .lektrus-lab-editor-body.is-laboratory-layout .lektrus-lab-main{
+  flex:0 0 auto;min-height:350px}
+ .lektrus-lab-editor-body.is-laboratory-layout .lektrus-lab-bench{
+  height:310px;flex:0 0 310px;min-height:310px}
+ .lektrus-lab-editor-body.is-laboratory-layout .lektrus-lab-inspector{
+  flex:0 0 auto;max-height:none}
+}
