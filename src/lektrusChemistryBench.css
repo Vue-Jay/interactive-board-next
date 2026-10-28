@@ -525,3 +525,8 @@
  .lektrus-lab-editor-body.is-laboratory-layout .lektrus-lab-inspector{
   flex:0 0 auto;max-height:none}
 }
+
+.lektrus-lab-journal-trigger{position:absolute;top:2%;right:calc(2% + 35px);z-index:7;
+ display:grid;place-items:center;width:29px;height:28px;
+ border-radius:9px;border:1px solid #84a99b;background:#f3fcf5c9;
+ color:#35725e;font-size:20px;cursor:pointer}
