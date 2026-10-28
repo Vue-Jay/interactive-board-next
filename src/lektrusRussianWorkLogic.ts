@@ -19,6 +19,9 @@ export function russianWordParts(word:string,work?:RussianTaskWork):WordPart[]{
  * linguistic roles: newly split fragments are left unassigned. */
 export function changeRussianMorphemeBoundary(word:string,work:RussianTaskWork|undefined,at:number):Pick<RussianTaskWork,"cuts"|"morphemeRoles"|"zeroEnding">{
  const letters=russianLetters(word);
+ if(!Number.isInteger(at)||at<=0||at>=letters.length){
+  return {cuts:work?.cuts??[],morphemeRoles:work?.morphemeRoles??[],zeroEnding:work?.zeroEnding??false};
+ }
  const current=russianWordParts(word,work);
  const cuts=(work?.cuts??[]).filter(n=>n>0&&n<letters.length);
  const next=cuts.includes(at)?cuts.filter(n=>n!==at):[...cuts,at];
