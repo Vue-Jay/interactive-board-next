@@ -1,6 +1,6 @@
 import {useId,useRef,useState,type PointerEvent} from "react";
 import type {LabBench,LabVessel,LabGlassware} from "./lektrusChemistryBenchModel";
-import {labObservation,positionLabVessel} from "./lektrusChemistryBenchModel";
+import {labObservation,labIndicatorResult,positionLabVessel} from "./lektrusChemistryBenchModel";
 import {reactionAppearance,substances} from "./lektrusReactionDatabase";
 
 const names:Record<LabGlassware,string>={beaker:"Стакан",tube:"Пробирка",flask:"Колба"};
@@ -26,7 +26,14 @@ export function LabVesselGraphic({vessel,small=false}:{vessel:LabVessel;small?:b
  const result=labObservation(vessel);
  const active=result.status==="reaction"&&vessel.observed;
  const appearance=reactionAppearance(active?result.caseData:undefined);
- const color=active?appearance.solutionAfter:"#b8dbe5";
+ const indicator=labIndicatorResult(vessel);
+ const baseColors:Record<string,string>={
+  CuSO4:"#6bb0d7","Cu(NO3)2":"#75b8de",CuCl2:"#83c5b7",
+  FeCl3:"#e1c36f",FeSO4:"#bad49e",KMnO4:"#ab76c8",K2Cr2O7:"#ebb466",
+  I2:"#b99867"
+ };
+ const baseColor=vessel.reagents.find(r=>baseColors[r]);
+ const color=indicator?.color??(active?appearance.solutionAfter:baseColor?baseColors[baseColor]:"#b8dbe5");
  const observation=active?result.caseData?.observation:"none";
  const geo=shape[vessel.kind];
  const labels=vessel.reagents.map(r=>substances.find(s=>s.id===r)?.formula??r);
@@ -55,11 +62,19 @@ export function LabVesselGraphic({vessel,small=false}:{vessel:LabVessel;small?:b
    </g>
    <path d={geo.outline} fill="none" stroke="#75a4a4" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
    <path d={geo.outline} fill="none" stroke="#fff" strokeWidth="1.25" opacity=".8" strokeLinecap="round"/>
+   {vessel.indicator&&<g className="lektrus-lab-indicator-strip">
+    <rect x="73" y="24" width="7" height="73" rx="2" fill="#f4edda" stroke="#9a9f91" strokeWidth="1" transform="rotate(12 76 60)"/>
+    <rect x="73" y="71" width="7" height="24" rx="1" fill={indicator?.color??"#b5b9b3"} opacity=".95" transform="rotate(12 76 60)"/>
+   </g>}
    <path d="M29 32V57" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".5"/>
   </svg>
   <div className="lektrus-lab-vessel-label"><b>{names[vessel.kind]}</b>
    <span>{labels.length?labels.join(" + "):"Пусто"}</span>
   </div>
+  {indicator&&<span className="lektrus-lab-indicator-tag" title={indicator.note}>
+   <span className="lektrus-lab-indicator-dot" style={{background:indicator.color??"#a2a9a4"}}/>
+   {indicator.label}
+  </span>}
   {active&&observation!=="none"&&<span className="lektrus-lab-effect-tag">
    {observation==="gas"?"↑ Газ":observation==="precipitate"?"↓ Осадок":
     observation==="color"?"◉ Цвет":observation==="heat"?"♨ Тепло":"Растворение"}
@@ -79,32 +94,51 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const host=useRef<HTMLDivElement>(null);
  const gesture=useRef<{id:string;startX:number;startY:number;x:number;y:number;dragged:boolean}|null>(null);
  const [preview,setPreview]=useState<{id:string;x:number;y:number}|null>(null);
+ const [dropTarget,setDropTarget]=useState<string|null>(null);
  const point=(event:PointerEvent)=>{const rect=host.current?.getBoundingClientRect();
-  if(!rect)return null;
+  if(!rect||!rect.width||!rect.height)return null;
   return {x:(event.clientX-rect.left)/rect.width*100,
    y:(event.clientY-rect.top)/rect.height*100};};
+ const targetAt=(sourceId:string,p:{x:number;y:number})=>{
+  const rect=host.current?.getBoundingClientRect();
+  const source=bench.vessels.find(v=>v.id===sourceId);
+  if(!rect||!source?.reagents.length||!onPour)return null;
+  const candidates=bench.vessels.filter(v=>v.id!==sourceId).map(v=>({
+   id:v.id,dist:Math.hypot((p.x-v.x)*rect.width/100,(p.y-v.y)*rect.height/100)
+  })).filter(v=>v.dist<Math.min(115,Math.max(54,rect.width*.15))).sort((a,b)=>a.dist-b.dist);
+  return candidates[0]?.id??null;
+ };
  const down=(event:PointerEvent<HTMLButtonElement>,v:LabVessel)=>{
-  if(!editable||event.button!==0)return;
-  event.stopPropagation();
+  if(!editable||event.button!==0||!event.isPrimary)return;
+  event.stopPropagation();event.preventDefault();
   const p=point(event);if(!p)return;
   gesture.current={id:v.id,startX:p.x,startY:p.y,x:v.x,y:v.y,dragged:false};
   event.currentTarget.setPointerCapture(event.pointerId);
  };
  const move=(event:PointerEvent<HTMLButtonElement>)=>{
   const g=gesture.current;if(!g||!editable)return;
+  event.stopPropagation();
   const p=point(event);if(!p)return;
-  if(Math.abs(p.x-g.startX)+Math.abs(p.y-g.startY)>2)g.dragged=true;
-  if(g.dragged)setPreview({id:g.id,x:Math.max(8,Math.min(92,g.x+p.x-g.startX)),
-   y:Math.max(8,Math.min(92,g.y+p.y-g.startY))});
+  const rect=host.current?.getBoundingClientRect();
+  if(rect&&Math.hypot((p.x-g.startX)*rect.width/100,(p.y-g.startY)*rect.height/100)>8)g.dragged=true;
+  if(g.dragged){
+   const target=targetAt(g.id,p);setDropTarget(target);
+   setPreview({id:g.id,x:Math.max(8,Math.min(92,g.x+p.x-g.startX)),
+    y:Math.max(8,Math.min(92,g.y+p.y-g.startY))});
+  }
  };
  const finish=(event:PointerEvent<HTMLButtonElement>)=>{
   const g=gesture.current;if(!g)return;gesture.current=null;
+  event.stopPropagation();event.preventDefault();
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
+  const p=point(event);
   if(g.dragged){
-   const p=point(event);if(p)onChange?.(positionLabVessel(bench,g.id,g.x+p.x-g.startX,g.y+p.y-g.startY));
+   const destination=p?targetAt(g.id,p):null;
+   if(destination)onPour?.(g.id,destination);
+   else if(p)onChange?.(positionLabVessel(bench,g.id,g.x+p.x-g.startX,g.y+p.y-g.startY));
   }else if(pouringId&&pouringId!==g.id)onPour?.(pouringId,g.id);
   else onSelect?.(g.id);
-  setPreview(null);
+  setPreview(null);setDropTarget(null);
  };
  return <div className={"lektrus-lab-bench"+(!editable?" is-readonly":"")} ref={host}
   aria-label="Химический стол с посудой">
@@ -120,12 +154,18 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const pouring=pouringId===v.id;
    return <button type="button" key={v.id} data-board-interactive="true" className={"lektrus-lab-vessel"+
     (selected?" selected":"")+(pouring?" is-pouring":"")+
+    (dropTarget===v.id?" is-drop-target":"")+
+    (preview?.id===v.id&&dropTarget?" is-pour-drag":"")+
     (pouringId&&pouringId!==v.id?" is-pour-target":"")}
-    style={{left:p.x+"%",top:p.y+"%",zIndex:selected?10:i+1}}
-    disabled={!editable} aria-label={"Сосуд "+(i+1)+": "+names[v.kind]}
-    aria-pressed={selected} title={editable?"Нажмите, чтобы выбрать; перетащите, чтобы переместить":names[v.kind]}
+    style={{left:p.x+"%",top:p.y+"%",zIndex:selected||preview?.id===v.id?10:i+1}}
+    disabled={!editable} aria-label={"Сосуд "+(i+1)+": "+names[v.kind]+
+      (v.reagents.length?", "+v.reagents.join(", "):", пустой")}
+    aria-pressed={selected} title={editable?
+      "Нажмите для выбора; перетащите для перемещения или на другой сосуд для переливания":names[v.kind]}
     onPointerDown={e=>down(e,v)} onPointerMove={move}
-    onPointerUp={finish} onPointerCancel={()=>{gesture.current=null;setPreview(null)}}
+    onPointerUp={finish} onPointerCancel={e=>{
+      e.stopPropagation();gesture.current=null;setPreview(null);setDropTarget(null);
+    }}
     onDragOver={e=>{if(editable)e.preventDefault()}}
     onDrop={e=>{if(!editable)return;e.preventDefault();e.stopPropagation();
       const id=e.dataTransfer.getData("application/x-lektrus-reagent");if(id)onDropReagent?.(v.id,id);
@@ -133,7 +173,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <LabVesselGraphic vessel={v}/>
    </button>;
   })}
-  {pouringId&&editable&&<div className="lektrus-lab-pour-hint" aria-live="polite">
-   Нажмите на сосуд, в который нужно перелить содержимое</div>}
+  {editable&&(dropTarget||pouringId)&&<div className="lektrus-lab-pour-hint" aria-live="polite">
+   {dropTarget?"Отпустите, чтобы перелить содержимое": "Выберите сосуд назначения или перетащите исходный на него"}</div>}
  </div>;
 }
