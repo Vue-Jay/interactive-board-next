@@ -10,9 +10,9 @@ const load=(path)=>{
  new Function("exports",js)(exports);
  return exports;
 };
-const {substances,reviewedReactionCases,identifyReaction}=load("src/lektrusReactionDatabase.ts");
+const {substances,reviewedReactionCases,identifyReaction,reactionAppearance,reactionProducts}=load("src/lektrusReactionDatabase.ts");
 assert.ok(substances.length>=100,"At least 100 named and classified substances");
-assert.ok(reviewedReactionCases.length>=120,"Maintain at least 120 explicit condition-specific reaction/negative cases");
+assert.ok(reviewedReactionCases.length>=150,"Maintain at least 120 explicit condition-specific reaction/negative cases");
 const ids=new Set(substances.map(s=>s.id));
 assert.equal(ids.size,substances.length,"No duplicated formulas/identifiers");
 for(const row of substances)assert.ok(row.name&&row.kind&&row.formula);
@@ -41,6 +41,21 @@ assert.equal(identifyReaction(["Mg","O2"],"ignited").status,"reaction");
 assert.equal(identifyReaction(["Mg","O2"],"aqueous").status,"unknown");
 assert.equal(identifyReaction(["NaCl","KNO3","HCl"],"aqueous").status,"unknown");
 assert.equal(identifyReaction(["C2H6","CuSO4"],"aqueous").status,"unknown");
+assert.equal(identifyReaction(["Na2S","CuSO4"],"aqueous").status,"reaction");
+assert.equal(identifyReaction(["H2SO4","BaCl2"],"aqueous").status,"reaction");
+assert.equal(identifyReaction(["Na2S","CuSO4"],"dry").status,"unknown");
+const darkSolid=reactionAppearance(identifyReaction(["Na2S","CuSO4"],"aqueous").caseData);
+assert.equal(darkSolid.solid,"CuS");
+assert.equal(darkSolid.solidColor,"#202a32","Copper sulfide must be black, not bright blue");
+const copperBlue=reactionAppearance(identifyReaction(["CuSO4","NaOH"],"aqueous").caseData);
+assert.equal(copperBlue.solid,"Cu(OH)2");
+assert.equal(copperBlue.solidColor,"#74badd","Copper hydroxide must form a blue precipitate");
+assert.notEqual(copperBlue.solutionAfter,copperBlue.solidColor,
+ "The mother liquor cannot be colored as the precipitate");
+const gas=reactionAppearance(identifyReaction(["HCl","NaHCO3"],"aqueous").caseData);
+assert.equal(gas.gas,"CO2");
+assert.ok(reactionProducts("2H2O2 → 2H2O + O2↑").includes("O2↑"));
+
 // Element conservation check handles nested stoichiometric groups.
 function atoms(formula){
  formula=formula.replace(/[↓↑]/g,"").trim();
@@ -83,6 +98,16 @@ assert.match(catalog,/id:"chem-organic-free"/);
 assert.doesNotMatch(catalog,/id:"chem-organic-ethane"/,"No fixed organic templates in chooser");
 assert.doesNotMatch(catalog,/id:"chem-experiment-salt"/,"Reagent builder replaces preset experiment chooser");
 const scene=read("src/LektrusReactionLab.tsx");
+assert.match(scene,/lektrus-reaction-catalog-tabs/);
+assert.match(scene,/lektrus-reaction-examples/);
+assert.match(scene,/reactionAppearance\(matchedCase\)/);
+assert.match(scene,/lektrus-reaction-falling-particle/);
+assert.match(scene,/lektrus-reaction-bubble/);
+const labCss=read("src/lektrusReactionLabNext.css");
+assert.match(labCss,/@media\(prefers-reduced-motion:reduce\)/);
+assert.match(labCss,/lektrus-chem-settle/);
+assert.match(labCss,/lektrus-chem-rise/);
+
 assert.match(scene,/matched\.status==="none"\?"none":"unknown"/);
 assert.match(scene,/scienceReagents/);
 const handwriting=read("src/LektrusOrganicHandwriting.tsx");
