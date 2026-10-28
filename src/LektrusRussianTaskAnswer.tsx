@@ -69,13 +69,13 @@ const morphologyPlans:Partial<Record<RussianPartOfSpeech,MorphPlan>>={
  particle:{permanent:[feature("Разряд","формообразующая","отрицательная","смысловая")],variable:[],unchanging:true},
  interjection:{permanent:[],variable:[],unchanging:true}
 };
-const morphRows=(value:string)=>value.split(/\\r?\\n/).reduce<Record<string,string>>((result,line)=>{
+const morphRows=(value:string)=>value.split(/\r?\n/).reduce<Record<string,string>>((result,line)=>{
  const divider=line.indexOf(": ");if(divider>0)result[line.slice(0,divider)]=line.slice(divider+2);return result;
 },{});
-const morphNotes=(value:string)=>value.split(/\\r?\\n/).filter(line=>!line.includes(": ")).join("\\n");
+const morphNotes=(value:string)=>value.split(/\r?\n/).filter(line=>!line.includes(": ")).join("\n");
 const setMorphRow=(source:string,name:string,value:string)=>{
- const lines=source.split(/\\r?\\n/).filter(Boolean).filter(line=>!line.startsWith(name+": "));
- if(value)lines.push(name+": "+value);return lines.join("\\n");
+ const lines=source.split(/\r?\n/).filter(Boolean).filter(line=>!line.startsWith(name+": "));
+ if(value)lines.push(name+": "+value);return lines.join("\n");
 };
 
 const sentencePunctuation=/^[^\p{L}\p{N}]+$/u;
@@ -200,7 +200,7 @@ export default function LektrusRussianTaskAnswer({entry,work,onChange}:Props){
     <label className="lektrus-rus-morph-notes">Дополнительные сведения <small>По желанию, если школьный план требует уточнения</small>
       <textarea rows={2} maxLength={600} disabled={!editable}
        placeholder="Необязательные особенности разбора" value={notes}
-       onChange={e=>update({[group]:[...Object.entries(values).map(([k,v])=>k+": "+v),e.target.value].filter(Boolean).join("\\n")})}/>
+       onChange={e=>update({[group]:[...Object.entries(values).map(([k,v])=>k+": "+v),e.target.value].filter(Boolean).join("\n")})}/>
     </label>
    </section>;
   };
