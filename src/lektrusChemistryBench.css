@@ -892,3 +892,38 @@
  .lektrus-lab-sink-caption small{display:none}
  .lektrus-lab-sink-caption{flex-basis:16px}
 }
+
+/* Wheel and trackpad scrolling stays immediate. Only arrow-button scrolling
+   requests smooth motion, so a long catalogue never feels delayed. */
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-reagents{
+ scroll-behavior:auto!important;
+}
+@media(max-height:620px){
+ .lektrus-lab-furniture-modal .lektrus-lab-furniture-dialog{gap:7px!important}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-head{
+  min-height:56px;padding:8px 14px}
+ .lektrus-lab-modal-emblem{width:36px;height:36px;flex-basis:36px;font-size:19px}
+ .lektrus-lab-modal-heading strong{font-size:16px}
+ .lektrus-lab-modal-heading small{font-size:10px}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-tabs{min-height:31px}
+ .lektrus-lab-modal-tabs button{min-height:31px;padding:4px 13px;font-size:12px}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-filters{min-height:35px}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-filters :is(input,select){
+  height:35px;min-height:35px}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-results-head{min-height:25px}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-dose{
+  margin-bottom:8px;gap:5px;padding:8px 11px!important}
+ .lektrus-lab-modal-dose>small{font-size:9px}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-reagents{
+  min-height:100px!important}
+}
+@media(max-height:450px) and (orientation:landscape){
+ .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-furniture-dialog{
+  overflow-y:auto!important;overscroll-behavior:contain;
+  padding-bottom:12px!important}
+ .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-reagents{
+  flex:0 0 150px!important;min-height:150px!important;
+  max-height:150px!important}
+ .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-dose{
+  flex:0 0 auto}
+}
