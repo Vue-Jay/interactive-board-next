@@ -8390,9 +8390,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
             const centerY=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
             if(id==="chem-formulas"||id==="chem-assignments"){
-              const boards=itemsRef.current.filter(value=>value.graphFigureId==="subject-board-chemistry");
-              const target=boards.find(value=>selected.includes(value.id))??boards.at(-1)??
-                makeSubjectToolItem("subject-board-chemistry",centerX,centerY,createId);
+              // A subject-tool click creates its own worksheet, just like the
+              // other specialist tools. Do not silently append to the last
+              // chemistry sheet: combining tasks and equations is an explicit
+              // choice through the controls on an already selected sheet.
+              const existing=itemsRef.current.filter(value=>value.graphFigureId==="subject-board-chemistry");
+              const offset=Math.min(4,existing.length)*32;
+              const target=makeSubjectToolItem("subject-board-chemistry",centerX+offset,centerY+offset,createId);
               setSubjectToolsOpen(false);
               openSubjectBoardEntry(target,id==="chem-formulas"?"equation":"task");
               return;
