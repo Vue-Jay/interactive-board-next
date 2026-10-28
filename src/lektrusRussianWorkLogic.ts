@@ -2,6 +2,9 @@ import type {RussianTaskWork} from "./boardModel";
 import type {MorphemeRole} from "./lektrusApprovedSchoolModel";
 
 export type WordPart={start:number;end:number;text:string;role:MorphemeRole|"unset"};
+/** Shared tokenisation for classroom syntax work, never a grammatical parser. */
+export const russianSentenceTokens=(value:string):string[]=>
+ value.match(/[\p{L}\p{M}]+(?:[-’][\p{L}\p{M}]+)*|\d+|[^\s]/gu)??[];
 export const russianLetters=(value:string)=>Array.from(value);
 export function russianWordParts(word:string,work?:RussianTaskWork):WordPart[]{
  const letters=russianLetters(word);
