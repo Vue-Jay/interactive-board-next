@@ -11,7 +11,9 @@ const load=(path,requireFn=()=>{throw Error("Unexpected import")})=>{
  return exports;
 };
 const reaction=load("src/lektrusReactionDatabase.ts");
+const titration=load("src/lektrusLabTitration.ts");
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
+ if(key==="./lektrusLabTitration")return titration;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
@@ -123,6 +125,62 @@ assert.equal(palette.reagentAppearance("CuO").phase,"solid");
 for(const substance of reaction.substances)
  assert.ok(palette.reagentAppearance(substance.id).color,
   "Every catalogued reagent must have a representative appearance");
+let devices=lab.defaultLabBench();
+for(const device of lab.labDevices)devices=lab.toggleLabDevice(devices,device.id);
+assert.equal(devices.devices.length,5,"The lab supports all five installed devices");
+devices=lab.putLabReagent(devices,"v1","CaCO3");
+devices=lab.useLabDevice(devices,"hotplate","v1");
+assert.equal(lab.labObservation(devices.vessels[0]).caseData.observation,"gas",
+ "Hotplate applies validated heated conditions to the chosen vessel");
+devices=lab.toggleLabDevice(devices,"stirrer");
+assert.equal(devices.devices.includes("stirrer"),false,"Devices can be returned to storage");
+let extra=lab.defaultLabBench();
+for(const kind of lab.labGlassware.slice(5)){
+ extra=lab.addLabVessel(extra,kind);
+}
+assert.equal(extra.vessels.length,lab.MAX_BENCH_VESSELS);
+assert.ok(lab.labGlassware.some(v=>v.id==="burette"));
+assert.ok(lab.labGlassware.some(v=>v.id==="pipette"));
+assert.ok(lab.labGlassware.some(v=>v.id==="conical"));
+let titrationBench=lab.defaultLabBench();
+titrationBench=lab.setLabTitration(titrationBench,titration.defaultTitration());
+assert.equal(titration.titrationReading(titrationBench.titration).pH,1);
+titrationBench=lab.dripLabTitration(titrationBench,24);
+assert.ok(titration.titrationReading(titrationBench.titration).pH<7);
+titrationBench=lab.dripLabTitration(titrationBench,1);
+assert.equal(titration.titrationReading(titrationBench.titration).pH,7);
+assert.equal(titration.titrationReading(titrationBench.titration).endPointMl,25);
+titrationBench=lab.dripLabTitration(titrationBench,1);
+assert.ok(titration.titrationReading(titrationBench.titration).pH>7);
+titrationBench=lab.restartLabTitration(titrationBench);
+assert.equal(titrationBench.titration.addedMl,0);
+const reversed=titration.updateTitration(titration.defaultTitration(),{analyte:"base"});
+assert.ok(titration.titrationReading(reversed).pH>12);
+assert.equal(titration.titrationReading({...reversed,addedMl:25}).pH,7);
+assert.equal(titration.updateTitration(reversed,{concentrationAnalyte:-2}),reversed,
+ "Invalid concentration must not be accepted");
+const paletteForCatalog=load("src/lektrusLabAppearance.ts",key=>{
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
+const labCatalog=load("src/lektrusLabCatalog.ts",key=>{
+ if(key==="./lektrusReactionDatabase")return reaction;
+ assert.equal(key,"./lektrusLabAppearance");return paletteForCatalog;
+});
+assert.equal(labCatalog.cabinetPhase(reaction.substances.find(x=>x.id==="NaCl")),"solid");
+assert.equal(labCatalog.cabinetPhase(reaction.substances.find(x=>x.id==="HCl")),"liquid");
+assert.equal(labCatalog.cabinetPhase(reaction.substances.find(x=>x.id==="CO2")),"gas");
+const grouped=labCatalog.buildLabCatalog({group:"class",phase:"solid",sort:"formula"});
+assert.ok(grouped.length>2,"Chemical groups must appear as separate catalogue sections");
+assert.ok(grouped.flatMap(g=>g.items).every(v=>labCatalog.cabinetPhase(v)==="solid"));
+assert.ok(grouped.some(g=>g.title==="Соли"),"Salt cabinet section exists");
+const catalogSource=read("src/LektrusChemistryBench.tsx");
+assert.match(catalogSource,/lektrus-lab-modal-sortbar/);
+assert.match(catalogSource,/lektrus-lab-reagent-group-grid/);
+assert.match(catalogSource,/LektrusLabTitrationPanel/);
+assert.match(catalogSource,/labDevices\.map/);
+assert.match(catalogSource,/useLabDevice\(/);
+assert.match(read("src/lektrusChemistryBench.css"),/white-space:normal!important/,
+ "Long glassware names should wrap naturally instead of ellipsizing");
 const base=lab.defaultLabBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
