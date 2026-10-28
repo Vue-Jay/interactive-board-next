@@ -166,6 +166,34 @@ assert.match(read("src/LektrusChemistryBench.tsx"),/data-board-interactive="true
 assert.match(read("src/lektrusSciencePresets.ts"),/x:x-410,y:y-250,text:"Химический стол"/,
  "Bench must be centered under the insertion cursor");
 
+const cabinetSurface=read("src/LektrusChemistryBench.tsx");
+const cabinetCss=read("src/lektrusChemistryBench.css");
+assert.match(cabinetSurface,/createPortal\(<div className=\{"lektrus-lab-furniture-modal is-"/,
+ "Cabinet must be portalled above the board, independent of canvas scale");
+assert.match(cabinetSurface,/document\.body\)\}/,
+ "The cabinet portal must attach to document.body");
+assert.match(cabinetSurface,/onWheel=\{e=>e\.stopPropagation\(\)\}/,
+ "Wheel input inside the cabinet must not zoom the surrounding board");
+assert.match(cabinetSurface,/onTouchMove=\{e=>e\.stopPropagation\(\)\}/,
+ "Finger scrolling must stay within the cabinet");
+assert.match(cabinetSurface,/scrollRef\.current\?\.scrollBy/,
+ "Mouse users need scroll controls in addition to the scrollbar");
+assert.match(cabinetSurface,/role="region" tabIndex=\{0\}/,
+ "Scrollable catalogue must support keyboard navigation");
+assert.match(cabinetSurface,/lektrus-lab-modal-results-head/,
+ "Cabinet shows filtered result count and scroll help");
+assert.match(cabinetSurface,/lektrus-lab-sink-art/,
+ "A real faucet and washbasin replace the circular placeholder");
+assert.doesNotMatch(cabinetSurface,/lektrus-lab-sink-basin"[^\n]*>◉/,
+ "Old circular sink glyph must not return");
+assert.match(cabinetCss,/\.lektrus-lab-furniture-modal\{\s*position:fixed!important/,
+ "Catalog must have full-viewport positioning");
+assert.match(cabinetCss,/overflow-y:auto!important/,
+ "Substance grid must have native wheel/touch scrolling");
+assert.match(cabinetCss,/touch-action:pan-y/,
+ "Touch users must be able to drag-scroll through substances");
+assert.match(cabinetCss,/@container\(max-width:380px\)/,
+ "Furniture must adapt to the actual board-object width");
 const model=read("src/boardModel.ts");
 assert.match(model,/"scienceLabBench"/);
 assert.match(model,/Повреждено состояние химического стола/);
