@@ -732,7 +732,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     </>}
    </svg>
    <span className="lektrus-lab-sink-caption"><strong>РАКОВИНА</strong>
-    <small>{sinkFlow?"Раствор слит":"Слить раствор"}</small></span>
+    <small>{sinkFlow?"Раствор слит":"Слить содержимое"}</small></span>
   </button>
 
   <button type="button" data-board-interactive="true"
