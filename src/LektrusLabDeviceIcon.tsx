@@ -2,10 +2,10 @@ import type {LabDevice} from "./lektrusChemistryBenchModel";
 
 /** Original vector drawings using a common laboratory visual language.
  * Shapes indicate the actual instrument rather than arbitrary font symbols. */
-export default function LektrusLabDeviceIcon({kind,size=42}:{
- kind:LabDevice;size?:number}){
+export default function LektrusLabDeviceIcon({kind,size=42,active=false}:{
+ kind:LabDevice;size?:number;active?:boolean}){
  const steel="#527f78",edge="#305c58",light="#d7ece3",glass="#89bcc0";
- return <svg className={"lektrus-lab-device-icon is-"+kind}
+ return <svg className={"lektrus-lab-device-icon is-"+kind+(active?" is-active":"")}
   viewBox="0 0 88 86" width={size} height={size} aria-hidden="true"
   fill="none" strokeLinecap="round" strokeLinejoin="round">
   <ellipse cx="44" cy="76" rx="32" ry="5" fill="#255747" opacity=".12"/>
@@ -13,8 +13,8 @@ export default function LektrusLabDeviceIcon({kind,size=42}:{
    <path d="M14 39h60v22l-7 9H21l-7-9Z" fill={light} stroke={steel} strokeWidth="3"/>
    <path d="M14 40l10-22h40l10 22Z" fill="#d6e5df" stroke={edge} strokeWidth="3"/>
    <ellipse cx="44" cy="35" rx="21" ry="9" fill="#829c92" stroke={edge} strokeWidth="2.5"/>
-   <ellipse cx="44" cy="35" rx="15" ry="6" stroke="#e5ac75" strokeWidth="2.5"/>
-   <path d="M31 35q12-8 25 0q-12 8-25 0Z" stroke="#c17a53" strokeWidth="2"/>
+   <ellipse cx="44" cy="35" rx="15" ry="6" stroke={active?"#e97f4f":"#a3b1a5"} strokeWidth="2.5"/>
+   <path d="M31 35q12-8 25 0q-12 8-25 0Z" stroke={active?"#d9683d":"#839b90"} strokeWidth="2"/>
    <circle cx="25" cy="60" r="4" fill="#428f77" stroke={edge} strokeWidth="2"/>
    <circle cx="60" cy="60" r="4" fill="#f4b477" stroke={edge} strokeWidth="2"/>
   </>}
@@ -23,9 +23,11 @@ export default function LektrusLabDeviceIcon({kind,size=42}:{
    <path d="M38 36h12v32H38z" fill={light} stroke={steel} strokeWidth="3"/>
    <path d="M34 52h20v8H34z" fill="#6f9e99" stroke={edge} strokeWidth="2"/>
    <path d="M50 57h15l5 5" stroke={edge} strokeWidth="3"/>
-   <path d="M39 34q-9-11 4-28q0 12 7 17q5-7 3-12q14 21-1 27Z"
-    fill="#f4a34c" stroke="#cd7844" strokeWidth="2"/>
-   <path d="M42 35q-2-8 4-16q-1 9 5 15Z" fill="#78c7e1"/>
+   {active&&<g className="lektrus-lab-device-flame">
+    <path d="M39 34q-9-11 4-28q0 12 7 17q5-7 3-12q14 21-1 27Z"
+     fill="#f4a34c" stroke="#cd7844" strokeWidth="2"/>
+    <path d="M42 35q-2-8 4-16q-1 9 5 15Z" fill="#78c7e1"/>
+   </g>}
   </>}
   {kind==="stirrer"&&<>
    <rect x="14" y="37" width="60" height="30" rx="7"
@@ -36,7 +38,8 @@ export default function LektrusLabDeviceIcon({kind,size=42}:{
    <rect x="37" y="29" width="14" height="4" rx="2" fill="#457f7b"/>
    <circle cx="26" cy="56" r="5" fill="#8cafa1" stroke={edge} strokeWidth="2"/>
    <circle cx="60" cy="56" r="5" fill="#d89c68" stroke={edge} strokeWidth="2"/>
-   <path d="M34 19q10-7 20 0" stroke="#64a7a1" strokeDasharray="3 4" strokeWidth="2"/>
+   {active&&<path className="lektrus-lab-stir-ring" d="M34 19q10-7 20 0"
+    stroke="#64a7a1" strokeDasharray="3 4" strokeWidth="2"/>}
   </>}
   {kind==="tripod"&&<>
    <ellipse cx="44" cy="25" rx="29" ry="11" stroke={edge} strokeWidth="4"/>
