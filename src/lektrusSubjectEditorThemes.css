@@ -1,0 +1,122 @@
+/* Unified, muted subject colors for every classroom tool.
+ * The palette is assigned by subjectEditorStyle in lektrusSubjectAccent.ts;
+ * colors affect interface controls, never educational diagrams or answers. */
+:is(.lektrus-school-backdrop,.lektrus-subject-tools-panel,.lektrus-science-backdrop,
+ .lektrus-chem-equation-overlay,.lektrus-periodic-backdrop,.lektrus-optics-backdrop,
+ .lektrus-mechanics-backdrop,.lektrus-circuit-backdrop,.graph-editor-backdrop){
+ --lektrus-tool-accent:var(--subject-board-accent,#587383);
+ --lektrus-tool-soft:var(--subject-board-soft,#edf4f5);
+ accent-color:var(--lektrus-tool-accent);
+}
+.lektrus-subject-tools-panel{
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 23%,#e0e8eb);
+}
+.lektrus-subject-tools-head{
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 62%,white)!important;
+ border-bottom-color:color-mix(in srgb,var(--lektrus-tool-accent) 22%,#e1e8e9)!important;
+}
+.lektrus-subject-tools-head strong,
+.lektrus-subject-tools-group h3,
+.lektrus-subject-tools-category span{color:var(--lektrus-tool-accent)!important}
+.lektrus-subject-tools-list button:is(:hover,:focus-visible){
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 42%,#dce8eb)!important;
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 65%,white)!important;
+}
+.lektrus-subject-tools-icon{
+ color:var(--lektrus-tool-accent)!important;
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 68%,white)!important;
+}
+.lektrus-subject-tools-category select:focus-visible{
+ outline-color:var(--lektrus-tool-accent)!important;
+}
+.lektrus-school-editor{
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 28%,#e2e8eb)!important;
+}
+.lektrus-school-header{
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 68%,white)!important;
+ border-bottom-color:color-mix(in srgb,var(--lektrus-tool-accent) 20%,#e2e9ee)!important;
+}
+.lektrus-school-header h2,
+.lektrus-school-controls-heading,
+.lektrus-school-preview-heading,
+.lektrus-school-footer strong{color:var(--lektrus-tool-accent)!important}
+.lektrus-school-primary,
+.lektrus-school-editor button:is(.active,.selected,[aria-pressed="true"]){
+ background:var(--lektrus-tool-accent)!important;
+ border-color:var(--lektrus-tool-accent)!important;
+ color:white!important;
+}
+.lektrus-school-editor :is(input,select,textarea):focus-visible,
+.lektrus-school-editor button:focus-visible{
+ outline-color:var(--lektrus-tool-accent)!important;
+}
+.lektrus-school-add{color:var(--lektrus-tool-accent)!important}
+.lektrus-science-editor{
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 25%,#e3e8ed)!important;
+}
+.lektrus-science-header{
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 65%,white)!important;
+ border-bottom:1px solid color-mix(in srgb,var(--lektrus-tool-accent) 20%,#e5e9ee);
+}
+.lektrus-science-header strong,.lektrus-science-subhead,
+.lektrus-science-preview-head,.lektrus-science-symbol{
+ color:var(--lektrus-tool-accent)!important;
+}
+.lektrus-science-save{
+ background:var(--lektrus-tool-accent)!important;border-color:var(--lektrus-tool-accent)!important;
+ color:white!important;
+}
+.lektrus-science-editor :is(button,input,textarea,select):focus-visible{
+ outline-color:var(--lektrus-tool-accent)!important;
+}
+.lektrus-chem-equation-editor{
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 27%,#e7eef1)!important;
+}
+.lektrus-chem-equation-header{
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 70%,white)!important;
+ border-bottom-color:color-mix(in srgb,var(--lektrus-tool-accent) 25%,#e2e8ea)!important;
+}
+.lektrus-chem-equation-heading strong{color:var(--lektrus-tool-accent)!important}
+.lektrus-chem-equation-editor :is(input,textarea,button):focus-visible{
+ outline-color:var(--lektrus-tool-accent)!important;
+}
+.lektrus-periodic-dialog{
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 22%,#e6edf1)!important;
+}
+.lektrus-periodic-header{
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 65%,white)!important;
+ border-bottom:1px solid color-mix(in srgb,var(--lektrus-tool-accent) 20%,#e4ebee);
+}
+.lektrus-periodic-header h2,.lektrus-periodic-header-mark{
+ color:var(--lektrus-tool-accent)!important;
+}
+.graph-editor-backdrop .graph-editor-modal{
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 22%,#e3e8ed)!important;
+}
+.graph-editor-backdrop .graph-editor-header{
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 64%,white)!important;
+}
+.graph-editor-backdrop .graph-editor-header strong{
+ color:var(--lektrus-tool-accent)!important;
+}
+.graph-editor-backdrop :is(button,input,textarea,select):focus-visible{
+ outline-color:var(--lektrus-tool-accent)!important;
+}
+:is(.lektrus-mechanics-editor,.lektrus-optics-editor,.lektrus-circuit-editor){
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 20%,#e4ebee)!important;
+}
+:is(.lektrus-mechanics-header,.lektrus-optics-header,.lektrus-circuit-header){
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 57%,white)!important;
+ border-bottom:1px solid color-mix(in srgb,var(--lektrus-tool-accent) 23%,#e7eef2);
+}
+:is(.lektrus-mechanics-heading,.lektrus-optics-heading,.lektrus-circuit-title) :is(strong,h2,small){
+ color:var(--lektrus-tool-accent)!important;
+}
+:is(.lektrus-mechanics-editor,.lektrus-optics-editor,.lektrus-circuit-editor)
+ :is(input,textarea,select,button):focus-visible{
+ outline-color:var(--lektrus-tool-accent)!important;
+}
+@media (prefers-reduced-motion:no-preference){
+ .lektrus-subject-tools-list button,
+ .lektrus-school-editor button{transition:background-color .14s,border-color .14s}
+}
