@@ -100,7 +100,11 @@ assert.match(board,/onAnswerChange\(entry\.id,e\.target\.value\)/);
 assert.match(board,/entry\.revealed\?/);
 assert.match(board,/LektrusChemicalEquationTypeset/);
 assert.match(app,/id==="chem-formulas"\|\|id==="chem-assignments"/);
-assert.match(app,/const target=makeSubjectToolItem\("subject-board-chemistry"/);
+assert.match(app,/const chosen=itemsRef\.current\.find/,"Selected chemistry board is the only implicit destination");
+assert.match(app,/const target=makeSubjectToolItem\(id,centerX,centerY,createId\)/,
+ "Standalone chemistry tool creates its own object");
+assert.match(app,/collectChemistryObject\(/,"Standalone tasks and reactions can be explicitly moved");
+assert.match(board,/item\.subjectBoardStandalone/,"Standalone chemistry task has distinct board chrome");
 assert.ok(!app.includes("boards.find(value=>selected.includes(value.id))"),"Chemistry tools cannot silently append to an unrelated board");
 assert.match(app,/provisionalChemistryWorksheets/,"Empty provisional chemistry sheets can be cleaned up");
 assert.match(app,/patchSubjectBoardEntry\(item\.id,entryId,\{answer\}\)/);
