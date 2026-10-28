@@ -69,10 +69,8 @@ export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
  const placedDevices=placedLabDevices(normalized).filter(d=>d.id!==id);
  const devices=[...new Set(placedDevices.map(d=>d.kind))];
  return {...normalized,placedDevices,devices,event:normalized.event+1,
-  stirringVesselId:target.kind==="stirrer"&&!devices.includes("stirrer")?undefined:bench.stirringVesselId,
-  instrumentTarget:bench.instrumentTarget&&(target.kind===bench.instrumentTarget.kind&&
-   target.linkedVesselId===bench.instrumentTarget.vesselId)?
-   undefined:bench.instrumentTarget};
+  stirringVesselId:normalized.stirringVesselId,
+  instrumentTarget:normalized.instrumentTarget};
 }
 /** Only appropriate vessel types are heated; do not fabricate temperatures,
  * reaction products or a laboratory measurement outside the reviewed database. */
@@ -671,6 +669,7 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
   remote.stirringVesselId:mine.stirringVesselId;
  const titrationPair=JSON.stringify(mine.titrationPair??null)===JSON.stringify(previous.titrationPair??null)?
   remote.titrationPair:mine.titrationPair;
- return {vessels:limited,selectedId,settings,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,
+ const simulationAtMs=Math.max(mine.simulationAtMs??0,remote.simulationAtMs??0)||undefined;
+ return {vessels:limited,selectedId,settings,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,
   event:Math.max(remote.event,mine.event)+1};
 }
