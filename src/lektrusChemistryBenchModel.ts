@@ -56,10 +56,13 @@ export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:numbe
 }
 export function movePlacedLabDevice(bench:LabBench,id:string,x:number,y:number):LabBench{
  const existing=placedLabDevices(bench);
- if(!existing.some(d=>d.id===id))return bench;
+ const source=existing.find(d=>d.id===id);
+ if(!source)return bench;
  return {...bench,placedDevices:existing.map(d=>d.id===id?
-  {...d,x:clampDevice(x,9,81),y:clampDevice(y,53,84),
-    linkedVesselId:undefined,active:false,powered:false}:d),
+  {...d,x:clampDevice(x,27,79),y:clampDevice(y,53,84),
+   linkedVesselId:undefined,active:false,powered:false}:d),
+  stirringVesselId:source.kind==="stirrer"&&
+   bench.stirringVesselId===source.linkedVesselId?undefined:bench.stirringVesselId,
   event:bench.event+1};
 }
 export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
@@ -571,9 +574,13 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    observed:reagents.length>1,
    uncertain:v.uncertain||beforeReaction.status==="reaction"};
  });
- return updated!==bench&&bench.titrationPair&&
+ const activeMixer=placedLabDevices(updated).some(d=>
+  d.kind==="stirrer"&&d.active&&d.powered&&d.linkedVesselId===id);
+ const running=updated!==bench&&activeMixer?
+  {...updated,stirringVesselId:id}:updated;
+ return running!==bench&&bench.titrationPair&&
   (bench.titrationPair.sourceId===id||bench.titrationPair.targetId===id)?
-  {...updated,titrationPair:undefined,titration:undefined}:updated;
+  {...running,titrationPair:undefined,titration:undefined}:running;
 }
 /** Full transfer. Never assume that a second step using already reacted
  * mixtures can be predicted from their original reagent identifiers. */
