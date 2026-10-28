@@ -361,7 +361,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <path d="M112 80V40Q112 26 126 26H147Q160 26 160 39V50"
      stroke="#5e8f90" strokeWidth="15" strokeLinecap="round" fill="none"/>
     <path d="M112 78V40Q112 26 126 26H147Q160 26 160 39V49"
-     stroke="url(#lektrus-sink-steel)" strokeWidth="10" strokeLinecap="round" fill="none"/>
+     stroke={"url(#"+sinkId+"-steel)"} strokeWidth="10" strokeLinecap="round" fill="none"/>
     <path d="M153 50h15" stroke="#548789" strokeWidth="7" strokeLinecap="round"/>
     <rect x="102" y="69" width="22" height="17" rx="7" fill="#b7ccca" stroke="#679690" strokeWidth="2"/>
     <path d="M125 23v-9h20" stroke="#5b8a88" strokeWidth="5" strokeLinecap="round"/>
@@ -438,7 +438,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onClick={e=>{e.stopPropagation();if(e.target===e.currentTarget)setCabinet(null)}}>
     <section ref={dialogRef} tabIndex={-1}
      className={"lektrus-lab-furniture-dialog is-"+cabinet} role="dialog" aria-modal="true"
-     aria-label={cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":"Настройки химического стола"}     onKeyDown={event=>{
+     aria-label={cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":"Настройки химического стола"}
+     onKeyDown={event=>{
       if(event.key!=="Tab")return;
       const focusable=dialogRef.current?.querySelectorAll<HTMLElement>(
        'button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex="0"]');
@@ -450,7 +451,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        event.preventDefault();first.focus();
       }
      }}>
-     <header className="lektrus-lab-modal-head">
      <header className="lektrus-lab-modal-head">
       <div className="lektrus-lab-modal-heading">
        <span className="lektrus-lab-modal-emblem" aria-hidden="true">{cabinet==="reagents"?"⚗":cabinet==="glassware"?"◈":"⚙"}</span>
