@@ -19,22 +19,22 @@ const activityTitles:Record<SubjectTaskActivity["mode"],string>={
  choice:"Выбрать ответ",fill:"Заполнить пропуски",match:"Соединить пары",order:"Собрать по порядку"
 };
 const introduction:Record<string,{title:string;hint:string}>={
- "russian:task":{title:"Свободное задание",hint:"Запишите вопрос или инструкцию. Ученик ответит на доске."},
- "russian:orthography":{title:"Найди орфограмму",hint:"Подготовьте текст, выделите трудные места. Ученик восстанавливает буквы прямо в словах и проверяет себя."},
- "russian:punctuation":{title:"Пунктуационный практикум",hint:"Разметьте контрольные места, включая позиции без знака. Ученик решает, нужен ли знак, расставляет его и объясняет правило."},
- "russian:morphemes":{title:"Разбор слова по составу",hint:"Укажите слово. Ученик сам разделит его на морфемы и назначит обозначения."},
- "russian:morphology":{title:"Морфологический разбор",hint:"Укажите предложение и слово. Ученик разберёт его по удобному плану с признаками для выбранной части речи."},
- "russian:syntax":{title:"Разбор предложения",hint:"Введите предложение. Ученик выберет тип линии и отметит члены предложения на словах."},
- "russian:text":{title:"Работа с текстом",hint:"Разместите текст и вопросы к нему. Ученик ответит самостоятельно."},
- "russian:interactive":{title:"Интерактивная практика",hint:"Выберите способ выполнения и создайте упражнение с проверкой ответа."},
- "languages:task":{title:"Свободное задание",hint:"Запишите инструкцию. Ученик напишет ответ."},
- "languages:translation":{title:"Перевод текста",hint:"Укажите исходный текст и язык перевода. Ученик напишет перевод самостоятельно."},
- "languages:gaps":{title:"Заполнение пропусков",hint:"Выделите в тексте слова или формы, которые ученик должен вписать."},
- "languages:vocabulary":{title:"Сопоставление слов",hint:"Заполните соответствующие пары. На доске ученику предложат перемешанные варианты."},
- "languages:word-order":{title:"Составление предложения",hint:"Добавьте слова отдельно в правильном порядке. На доске они появятся перемешанными."},
- "languages:grammar":{title:"Грамматическое преобразование",hint:"Добавьте предложения по одному и задайте конкретное правило. Ученик преобразует каждое предложение отдельно."},
- "languages:reading":{title:"Чтение и понимание",hint:"Укажите связный текст и вопросы к нему. Каждый ответ ученик запишет непосредственно под вопросом."},
- "languages:choice":{title:"Вопрос с вариантами",hint:"Создайте вопрос и варианты, обозначив правильный ответ."}
+ "russian:task":{title:"Свободное задание",hint:"Вопрос или упражнение со свободным ответом."},
+ "russian:orthography":{title:"Найди орфограмму",hint:"Выделите буквы и создайте пропуски."},
+ "russian:punctuation":{title:"Пунктуационный практикум",hint:"Отметьте знаки и места без знака."},
+ "russian:morphemes":{title:"Разбор слова по составу",hint:"Разделите слово и обозначьте морфемы."},
+ "russian:morphology":{title:"Морфологический разбор",hint:"Выберите слово и выполните школьный разбор."},
+ "russian:syntax":{title:"Разбор предложения",hint:"Подчеркните члены предложения."},
+ "russian:text":{title:"Работа с текстом",hint:"Текст и вопросы к нему."},
+ "russian:interactive":{title:"Интерактивная практика",hint:"Создайте упражнение с проверкой."},
+ "languages:task":{title:"Свободное задание",hint:"Вопрос или письменное упражнение."},
+ "languages:translation":{title:"Перевод текста",hint:"Исходный текст и направление перевода."},
+ "languages:gaps":{title:"Заполнение пропусков",hint:"Выделите слова для пропусков."},
+ "languages:vocabulary":{title:"Сопоставление слов",hint:"Составьте пары слов."},
+ "languages:word-order":{title:"Составление предложения",hint:"Введите слова в правильном порядке."},
+ "languages:grammar":{title:"Грамматическое преобразование",hint:"Задайте правило и исходные предложения."},
+ "languages:reading":{title:"Чтение и понимание",hint:"Добавьте текст и вопросы."},
+ "languages:choice":{title:"Вопрос с вариантами",hint:"Укажите вопрос и правильный вариант."}
 };
 /** The same stored field can have different school meaning in different workflows. */
 const subjectFieldInfo:Record<string,{label:string;hint:string;rows?:number}>={
@@ -160,42 +160,43 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
  const promptNeeded=!(template.id==="task");
  return <div className="lektrus-language-studio" style={style}>
   <div className="lektrus-language-studio-intro">
-   <span className="lektrus-language-studio-number">01</span>
-   <div><strong>{note.title}</strong><p>{note.hint}</p></div>
+   <strong>{note.title}</strong><small>{note.hint}</small>
   </div>
   <div className={"lektrus-language-studio-layout"+(tone==="russian"&&["morphemes","syntax","morphology"].includes(template.id)?" lektrus-language-wide-preview":"")}>
    <div className="lektrus-language-author">
-    {promptNeeded&&<label className="lektrus-language-field">Инструкция ученику <small>Необязательно, если вид задания очевиден</small>
+    {promptNeeded&&<details key={tone+":"+template.id} className="lektrus-language-prompt-optional"
+      defaultOpen={!!entry.prompt.trim()}>
+      <summary>Инструкция ученику <small>необязательно</small></summary>
       <textarea rows={2} value={entry.prompt} maxLength={2500}
-       placeholder="Кратко объясните, что требуется выполнить"
+       aria-label="Инструкция ученику" placeholder="Что нужно сделать"
        onChange={e=>patch({prompt:e.target.value})}/>
-     </label>}
+     </details>}
     {template.id==="task"&&<label className="lektrus-language-field">Задание для ученика
-      <textarea rows={5} value={entry.prompt} maxLength={2500}
+      <textarea rows={4} value={entry.prompt} maxLength={2500}
        placeholder="Сформулируйте вопрос или упражнение"
        onChange={e=>patch({prompt:e.target.value})}/>
      </label>}
     {isGap&&<>
      <div className="lektrus-language-gap-heading">
       <strong>{punctuation?"Предложение для пунктуационного анализа":"Текст упражнения"}</strong>
-      <small>{punctuation?"Напишите правильно оформленное предложение. Отметьте места, где нужен знак или где его быть не должно.":"Введите текст, затем выделите букву, часть слова или целое слово."}</small>
+      <small>{punctuation?"Отметьте знаки и места без знака.":"Выделите буквы или слова для пропусков."}</small>
      </div>
-     <textarea className="lektrus-language-gap-source" ref={selectedRef} rows={8} maxLength={1800}
+     <textarea className="lektrus-language-gap-source" ref={selectedRef} rows={5} maxLength={1800}
       aria-label="Текст упражнения для создания пропусков" value={markup}
       placeholder={punctuation?"Напишите предложение. Выделите существующий знак или выберите место для нового.":"Напишите слова или предложения, затем выделите орфограммы."}
       onChange={e=>changeMarkup(e.target.value)}/>
      <div className="lektrus-language-gap-actions">
       <button type="button" onMouseDown={e=>e.preventDefault()} onClick={markSelected}>
-       <span aria-hidden="true">▱</span> {punctuation?"Сделать пропуск из знака":"Сделать пропуск из выделения"}
+       <span aria-hidden="true">▱</span> {punctuation?"Скрыть знак":"Сделать пропуск"}
       </button>
      </div>
      {punctuation&&<div className="lektrus-language-punctuation-editor">
-      <strong>Контрольные места в предложении</strong>
+      <strong>Контрольные места</strong>
       <div className="lektrus-language-punctuation-actions">
-       <button type="button" onClick={markAllPunctuation}>Разметить знаки автоматически</button>
+       <button type="button" onClick={markAllPunctuation}>Разметить знаки</button>
        <button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>insertPunctuation("∅")}>+ Место без знака</button>
       </div>
-      <small>Для проверки в спорном месте поставьте курсор и добавьте «Место без знака». Так ученик не сможет расставлять знаки механически.</small>
+      <small>Добавьте места без знака, чтобы проверить понимание правил.</small>
      </div>}
      {gapState&&gapState.count>0&&!gapState.issue&&<div className="lektrus-language-gaps-list">
       <strong>Пропуски <span>{gapState.count}/8</span></strong>
@@ -203,20 +204,20 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
        {activity?.mode==="fill"&&activity.blanks?.map((part,i)=>
         <div className="lektrus-language-gap-setting" key={i}>
          <div className="lektrus-language-gap-setting-heading">
-          <span><small>{i+1}</small> Правильный ответ: <b>{part.answer}</b></span>
-          <button type="button" onClick={()=>removeGap(i)} aria-label={"Убрать пропуск "+(i+1)}>Убрать пропуск ×</button>
+          <span><small>{i+1}</small> Ответ: <b>{part.answer}</b></span>
+          <button type="button" onClick={()=>removeGap(i)} aria-label={"Убрать пропуск "+(i+1)}>Убрать ×</button>
          </div>
          {punctuation&&<label className="lektrus-language-field lektrus-language-punctuation-rule">
-          Правило для объяснения (необязательно)
+          Правило <small>необязательно</small>
           <select aria-label={"Правило для места "+(i+1)} value={part.rule??""}
            onChange={e=>updatePunctuationRule(i,e.target.value)}>
-           <option value="">Ученик объясняет самостоятельно</option>
+           <option value="">Без подсказки</option>
            {punctuationRules.map(rule=><option key={rule} value={rule}>{rule}</option>)}
           </select>
          </label>}
          {orthography&&part.answer.length<=24&&<label className="lektrus-language-choice-toggle">
           <input type="checkbox" checked={!!part.choices} onChange={e=>configureChoices(i,e.target.checked)}/>
-          Показать два варианта под пропуском
+          Два варианта под пропуском
          </label>}
          {orthography&&part.answer.length>24&&<small>Для двух вариантов выделите не более 24 букв.</small>}
          {orthography&&part.choices&&<label className="lektrus-language-distractor">
@@ -224,18 +225,14 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
           <input value={part.choices[1]} maxLength={24} placeholder="Например, о"
            aria-label={"Неправильный вариант для пропуска "+(i+1)}
            onChange={e=>updateDistractor(i,e.target.value)}/>
-          <small>{part.choices[1]&&part.choices[1].toLocaleLowerCase("ru-RU")===part.answer.toLocaleLowerCase("ru-RU")?
-           "Варианты должны отличаться.":"Первый вариант — правильная буква или сочетание из текста. Порядок вариантов на доске меняется."}</small>
+          {part.choices[1]&&part.choices[1].toLocaleLowerCase("ru-RU")===part.answer.toLocaleLowerCase("ru-RU")&&
+           <small>Варианты должны отличаться.</small>}
          </label>}
         </div>)}
       </div>
-      <small>{punctuation?"Проверяются знаки, а объяснения ученик пишет сам. Выбранное преподавателем правило показывается после проверки.":"Обычные пропуски ученик заполняет самостоятельно. Если включены два варианта, они появятся под конкретным пропуском."}</small>
      </div>}
      {selectionHint&&<p className="lektrus-language-studio-help" role="status">{selectionHint}</p>}
      {gapState?.issue&&<p className="lektrus-language-studio-warning" role="status">{gapState.issue}</p>}
-     {gapState&&gapState.count>0&&!gapState.issue&&<p className="lektrus-language-studio-ready">
-      <span aria-hidden="true">✓</span> Задание готово: {gapState.count} {gapState.count===1?"пропуск":"пропусков"}.
-     </p>}
     </>}
     {integrated&&activity&&<section className="lektrus-language-mode-picker">
      <strong>Способ выполнения</strong>
@@ -256,7 +253,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
        const setSentences=(items:string[])=>changeMaterial("material",items.join("\n").slice(0,1800));
        return <div className="lektrus-language-question-editor" key={field.id}>
         <div className="lektrus-language-gap-heading"><strong>Предложения для преобразования</strong>
-         <small>Одно предложение на строку, до 12. У ученика будет отдельное поле для каждого.</small></div>
+         <small>До 12 предложений, по одному на строку.</small></div>
         {(sentences.length?sentences:[""]).map((sentence,i)=>
          <div className="lektrus-language-question-row" key={i}>
           <span>{i+1}</span>
@@ -287,7 +284,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
         "Поставьте в прошедшее время","Поставьте в будущее время",
         "Измените число","Преобразуйте в пассивную конструкцию"];
        return <div className="lektrus-language-field lektrus-language-directions" key={field.id}>
-        <strong>Что изменить</strong><small>Выберите готовое задание или сформулируйте правило на изучаемом языке</small>
+        <strong>Что изменить</strong>
         <div>{common.map(action=><button key={action} type="button"
          className={entry.details?.instruction===action?"selected":""}
          onClick={()=>changeMaterial("instruction",action)}>{action}</button>)}</div>
@@ -301,7 +298,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
        const setQuestions=(next:string[])=>changeMaterial("questions",next.join("\n"));
        return <div className="lektrus-language-question-editor" key={field.id}>
         <div className="lektrus-language-gap-heading"><strong>{content?.label??"Вопросы"}</strong>
-         <small>Каждый вопрос отдельно. На доске у ученика появится место для ответа под ним.</small></div>
+         <small>По одному вопросу на строку.</small></div>
         {(questions.length?questions:[""]).map((question,i)=>
          <div className="lektrus-language-question-row" key={i}>
           <span>{i+1}</span>
@@ -326,8 +323,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
       </label>;
      })}
      {tone==="russian"&&template.id==="morphology"&&<div className="lektrus-language-target">
-      <strong>Выберите слово для разбора</strong>
-      <small>Нажмите на слово из предложения или введите своё ниже</small>
+      <strong>Слово для разбора</strong>
       <div role="group" aria-label="Слова предложения">
        {(entry.details?.material??"").match(/[\p{L}]+(?:[-’][\p{L}]+)*/gu)?.slice(0,60).map((word,i)=>
         <button type="button" key={i} className={word.toLocaleLowerCase("ru-RU")===(entry.details?.target??"").toLocaleLowerCase("ru-RU")?"selected":""}
@@ -335,7 +331,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
       </div>
       <label className="lektrus-language-field">Разбираемое слово
        <input maxLength={100} value={entry.details?.target??""}
-        placeholder="Выберите слово выше или введите вручную"
+        placeholder="Выберите слово или введите"
         onChange={e=>changeMaterial("target",e.target.value)}/>
       </label>
      </div>}
@@ -348,8 +344,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
    </div>
    <aside className="lektrus-language-preview" aria-label="Предпросмотр задания для ученика">
     <div className="lektrus-language-preview-header">
-     <span className="lektrus-language-studio-number">02</span>
-     <div><strong>На доске ученика</strong><small>Интерактивный предпросмотр задания</small></div>
+     <strong>На доске ученика</strong><small>Предпросмотр</small>
     </div>
     <div className="lektrus-language-preview-content">
      <strong>{entry.title.trim()||template.title}</strong>
@@ -370,7 +365,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
        {isGap?"Добавьте хотя бы один пропуск, чтобы увидеть упражнение":"Место для письменного ответа ученика"}
       </div>}
     </div>
-    <div className="lektrus-language-preview-foot">Предпросмотр не изменяет ответы учеников</div>
+
    </aside>
   </div>
  </div>;
