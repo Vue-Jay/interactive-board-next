@@ -180,22 +180,16 @@ export default function LektrusRussianTaskAnswer({entry,work,onChange}:Props){
     {features.length?<div className="lektrus-rus-school-trait-grid">
      {features.map(f=>{
       const selected=values[f.name]??"";
-      const custom=selected.startsWith("Свой вариант: ")?selected.slice(14):"";
+      const legacy=selected.startsWith("Свой вариант: ")?selected.slice("Свой вариант: ".length):selected;
       return <label key={f.name} className="lektrus-rus-school-trait">
        <span>{f.name}</span>
-       {editable?<><select aria-label={f.name}
-        value={selected&&!f.options.includes(selected)?"__custom__":selected}
-        onChange={e=>update({[group]:setMorphRow(state?.[group]??"",f.name,
-         e.target.value==="__custom__"?"Свой вариант: ":e.target.value)})}>
+       {editable?<select aria-label={f.name} value={f.options.includes(selected)?selected:legacy?"__legacy__":""}
+        onChange={e=>update({[group]:setMorphRow(state?.[group]??"",f.name,e.target.value)})}>
         <option value="">—</option>
         {f.options.map(value=><option key={value} value={value}>{value}</option>)}
-        <option value="__custom__">Свой вариант…</option>
-       </select>
-       {selected&&!f.options.includes(selected)&&<input aria-label={f.name+": свой вариант"}
-        value={custom||(!selected.startsWith("Свой вариант: ")?selected:"")}
-        placeholder="Уточните" maxLength={100}
-        onChange={e=>update({[group]:setMorphRow(state?.[group]??"",f.name,"Свой вариант: "+e.target.value)})}/>}</>:
-        <span className="lektrus-rus-school-value">{selected||"—"}</span>}
+        {legacy&&!f.options.includes(selected)&&<option value="__legacy__" disabled>{legacy} (ранее сохранено)</option>}
+       </select>:
+        <span className="lektrus-rus-school-value">{legacy||"—"}</span>}
       </label>;
      })}
     </div>:<span className="lektrus-rus-school-no-traits">{plan?.unchanging?"Не изменяется.":"Нет обязательных признаков в этом плане."}</span>}
