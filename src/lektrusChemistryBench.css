@@ -2199,3 +2199,23 @@
 @media(prefers-reduced-motion:reduce){
  .lektrus-lab-bench .lektrus-lab-placed-device.is-stirrer.is-running .lektrus-lab-device-icon{animation:none!important}
 }
+
+/* An unlit burner has no flame; active apparatus gets restrained animation. */
+@keyframes lektrus-burner-flutter{
+ 0%,100%{transform:translateY(0) scaleX(1)}
+ 50%{transform:translateY(-2px) scaleX(.91)}
+}
+.lektrus-lab-device-icon .lektrus-lab-device-flame{
+ transform-origin:45px 34px;
+ animation:lektrus-burner-flutter .62s ease-in-out infinite}
+@keyframes lektrus-mixer-rotate{
+ from{stroke-dashoffset:0}to{stroke-dashoffset:28}
+}
+.lektrus-lab-device-icon .lektrus-lab-stir-ring{
+ animation:lektrus-mixer-rotate 1.1s linear infinite}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-device-icon .lektrus-lab-device-flame,
+ .lektrus-lab-device-icon .lektrus-lab-stir-ring{animation:none!important}
+}
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-device-flame,
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-stir-ring{animation:none!important}
