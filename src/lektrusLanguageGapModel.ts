@@ -37,3 +37,20 @@ export function languageGapText(activity?:SubjectTaskActivity):string{
 export const isLanguageGapExercise=(subject:string,format:string|undefined):boolean=>
  (subject==="russian"&&(format==="orthography"||format==="punctuation"))||
  (subject==="languages"&&format==="gaps");
+
+/** Carry a teacher's two-choice settings across markup edits. A removed or changed
+ * answer cannot silently inherit another blank's options. Repeated same answers
+ * are matched by occurrence order, without changing the plain-text syntax. */
+export function preserveGapChoices(next:GapDraft,previous?:SubjectTaskActivity):GapDraft{
+ if(!next.activity||previous?.mode!=="fill"||!previous.blanks?.length)return next;
+ const old=previous.blanks;
+ const used=new Set<number>();
+ const blanks=next.activity.blanks?.map((blank,i)=>{
+  const candidates=old.map((b,j)=>({b,j})).filter(({b,j})=>!used.has(j)&&b.answer===blank.answer);
+  const match=candidates.find(({b})=>b.before===blank.before)??candidates.find(({j})=>j===i)??candidates[0];
+  if(!match)return blank;
+  used.add(match.j);
+  return match.b.choices?{...blank,choices:[blank.answer,match.b.choices[1]] as [string,string]}:blank;
+ });
+ return {...next,activity:{...next.activity,blanks}};
+}
