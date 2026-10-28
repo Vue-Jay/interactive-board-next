@@ -98,10 +98,10 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
  const chemistry=tone==="chemistry";
  const style={"--subject-board-accent":palette.accent,"--subject-board-soft":palette.soft} as CSSProperties;
  return <div className="graph-view lektrus-subject-board-shell" data-worksheet-subject={tone}>
-  <article className={"lektrus-subject-board"+(item.subjectBoardStandalone?" is-standalone-chemistry":"")} style={style} aria-label={palette.label+" · "+(item.subjectBoardStandalone?"отдельное задание":"учебная доска")}>
+  <article className={"lektrus-subject-board"+(item.subjectBoardStandalone?" is-standalone-chemistry":chemistry?" is-chemistry-board":"")} style={style} aria-label={palette.label+" · "+(item.subjectBoardStandalone?"отдельное задание":"учебная доска")}>
    <header className="lektrus-subject-board-header" ref={headerRef}>
-    <span className="lektrus-subject-board-emblem" aria-hidden="true">▤</span>
-    <strong>{palette.label} <span>· {item.subjectBoardStandalone?"отдельное задание":chemistry?"рабочий лист":"учебная доска"}</span></strong>
+    <span className="lektrus-subject-board-emblem" aria-hidden="true">{chemistry?"⚗":"▤"}</span>
+    <strong>{palette.label} <span>· {item.subjectBoardStandalone?"отдельное задание":chemistry?"ХИМИЧЕСКАЯ ДОСКА":"учебная доска"}</span></strong>
     {onAction&&!item.subjectBoardStandalone&&<nav className="lektrus-subject-board-tools" aria-label="Инструменты предметной доски">
      {chemistry&&<button type="button" data-board-interactive="true"
        onPointerDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onAction("equation")}}>
@@ -109,14 +109,14 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
      <button type="button" data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
        onClick={e=>{e.stopPropagation();onAction("task")}}>Создать задание</button>
     </nav>}
-    <small>{incompatibleCount?"Есть задания другого предмета":subjectBoardLocked(item)?"Закреплена":entries.length?entries.length+" заданий":"Чистый лист"}</small>
+    <small>{incompatibleCount?"Есть задания другого предмета":subjectBoardLocked(item)?"Закреплена":entries.length?entries.length+" записей":chemistry?"Готова к работе":"Чистый лист"}</small>
    </header>
    <div className="lektrus-subject-board-sheet" ref={sheetRef}>
     <div className="lektrus-subject-board-content" ref={contentRef}>
     {entries.length===0&&<div className="lektrus-subject-board-empty">
-      <strong>Задания и решения</strong>
+      <strong>{chemistry?"Химическая доска":"Задания и решения"}</strong>
       <span>{chemistry?"Уравнения, цепочки и химические задачи":"Выберите вид задания и заполните поля"}</span>
-      <span className="lektrus-subject-board-empty-note">Предмет закрепится после первой записи.</span>
+      <span className="lektrus-subject-board-empty-note">{chemistry?"Составляйте уравнения и выполняйте химические задания прямо здесь.":"Предмет закрепится после первой записи."}</span>
     </div>}
     {entries.map((entry,index)=>{
       const definition=taskTemplateFor(tone,entry.format);
@@ -276,7 +276,7 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
  return createPortal(<div className="lektrus-subject-task-overlay" onPointerDown={e=>{if(e.target===e.currentTarget)onClose();}}>
   <section className="lektrus-subject-task-editor" style={style} role="dialog" aria-modal="true" aria-label="Создание задания"
    onPointerDown={e=>e.stopPropagation()} onKeyDown={e=>{if(e.key==="Escape"){e.stopPropagation();onClose();}}}>
-   <header><div><strong>Создание задания</strong><small>{palette.label} · {current.title}</small></div>
+   <header><div><strong>Создание задания</strong><small>{palette.label} · {current.title} · <span className="lektrus-task-target-hint">На предметную доску</span></small></div>
     <button type="button" aria-label="Закрыть" onClick={onClose}>×</button></header>
    <div className="lektrus-subject-task-body">
     {options.length>1&&<div className="lektrus-subject-task-type">
