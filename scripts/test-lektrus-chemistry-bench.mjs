@@ -770,6 +770,7 @@ assert.doesNotMatch(read("src/LektrusLabDeviceIcon.tsx"),/>LEKTRUS<\/text>/);
 assert.doesNotMatch(hoverSurface,/selected\.kind==="funnel"/);
 assert.ok(!lab.labGlassware.some(v=>v.id==="funnel"),"Funnel is absent from available cabinet glassware");
 const stock=load("src/lektrusLabCatalog.ts",key=>{
+ if(key==="./lektrusReactionDatabase")return reaction;
  assert.equal(key,"./lektrusLabAppearance");
  return load("src/lektrusLabAppearance.ts",k=>{
   assert.equal(k,"./lektrusReactionDatabase");return reaction;
