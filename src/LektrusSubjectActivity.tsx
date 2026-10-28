@@ -58,7 +58,9 @@ export function activityComplete(a:SubjectTaskActivity|undefined):boolean{
  if(!a)return false;
  if(a.mode==="choice")return (a.options?.filter(x=>x.trim()).length??0)>=2&&
    !!a.options?.[a.correctIndex??0]?.trim();
- if(a.mode==="fill")return !!a.blanks?.length&&a.blanks.every(x=>x.answer.trim())&&
+ if(a.mode==="fill")return !!a.blanks?.length&&a.blanks.every(x=>x.answer.trim()&&
+   (!x.choices||(x.choices.length===2&&x.choices[0]===x.answer&&!!x.choices[1].trim()&&
+    x.choices[1].trim().toLocaleLowerCase("ru-RU")!==x.answer.trim().toLocaleLowerCase("ru-RU"))))&&
    (!!a.blanks.some(x=>x.before.trim())||!!a.tail?.trim());
  if(a.mode==="match")return (a.pairs?.length??0)>=2&&!!a.pairs?.every(x=>x.left.trim()&&x.right.trim());
  return (a.tokens?.length??0)>=2&&!!a.tokens?.every(x=>x.trim());
@@ -186,7 +188,6 @@ type RunnerProps={
 };
 export function LektrusSubjectActivityRunner({activity,response,onChange,compact=false,punctuation=false,orthography=false}:RunnerProps){
  const [activeLeft,setActiveLeft]=useState<number|null>(null);
- const [activeGap,setActiveGap]=useState(0);
  const data=response??{};
  const patch=(values:Partial<SubjectTaskActivityResponse>)=>onChange?.({...data,...values,checked:false});
  const complete=activityComplete(activity);
@@ -218,23 +219,30 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
    </button>)}
   </div>}
   {activity.mode==="fill"&&<div className="lektrus-activity-gap-content">
-   {(activity.blanks??[]).map((blank,i)=><span className="lektrus-activity-gap-part" key={i}>
+   {(activity.blanks??[]).map((blank,i)=>{
+    const hasChoice=!!blank.choices&&blank.choices[0]===blank.answer&&!!blank.choices[1]?.trim()&&
+     blank.choices[1].trim().toLocaleLowerCase("ru-RU")!==blank.answer.trim().toLocaleLowerCase("ru-RU");
+    const variants=hasChoice?(i%2===0?[blank.choices![1],blank.choices![0]]:blank.choices!):[];
+    const selected=data.values?.[i]??"";
+    return <span className="lektrus-activity-gap-part" key={i}>
      <span>{blank.before}</span>
-     <input type="text" value={data.values?.[i]??""} disabled={!onChange}
-      maxLength={240} aria-label={"Пропуск "+(i+1)} placeholder={punctuation?"Знак":orthography?"Буквы":"Пропуск "+(i+1)}
-      onFocus={()=>setActiveGap(i)} className={punctuation?"lektrus-activity-sign-input":""}
-      onChange={e=>updateGap(i,e.target.value)}/>
-    </span>)}
-    <span>{activity.tail}</span>
-   </div>}
-  {activity.mode==="fill"&&(punctuation||orthography)&&(activity.blanks?.length??0)>0&&<div className="lektrus-activity-quick-keys">
-   <small>{punctuation?"Выберите пропуск и нажмите на знак":"Выберите пропуск и вставьте букву либо введите ответ с клавиатуры"}</small>
-   <div role="group" aria-label={punctuation?"Знаки препинания":"Буквы для пропуска"}>
-    {(punctuation?[",",".",":",";","—","?","!","«","»","(",")"]:
-     ["а","о","е","и","ё","я","у","ы","ю","э","ь","ъ","н","нн"]).map(value=>
-     <button type="button" key={value} disabled={!onChange} aria-label={"Вставить "+value}
-      onClick={()=>updateGap(Math.min(activeGap,(activity.blanks?.length??1)-1),value)}>{value}</button>)}
-   </div>
+     <span className={"lektrus-activity-gap-slot"+(hasChoice?" has-choices":"")}>
+      {hasChoice?<span className={"lektrus-activity-gap-selected"+(selected?" filled":"")}
+       role="status" aria-label={"Ответ в пропуске "+(i+1)}>{selected}</span>:
+       <input type="text" value={selected} disabled={!onChange}
+        maxLength={240} aria-label={"Пропуск "+(i+1)} placeholder=""
+        className={punctuation?"lektrus-activity-sign-input":""}
+        onChange={e=>updateGap(i,e.target.value)}/>}
+      {hasChoice&&<span className="lektrus-activity-gap-choices" role="group"
+       aria-label={"Варианты для пропуска "+(i+1)}>
+       {variants.map((variant,j)=><button type="button" key={j} disabled={!onChange}
+        className={selected===variant?"selected":""} aria-pressed={selected===variant}
+        onClick={()=>updateGap(i,variant)}>{variant}</button>)}
+      </span>}
+     </span>
+    </span>;
+   })}
+   <span>{activity.tail}</span>
   </div>}
   {activity.mode==="match"&&<div className="lektrus-activity-match-columns">
     <div><small>Выберите слева</small>
