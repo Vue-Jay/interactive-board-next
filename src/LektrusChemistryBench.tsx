@@ -118,7 +118,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const p=preview?.id===v.id?preview:v;
    const selected=bench.selectedId===v.id;
    const pouring=pouringId===v.id;
-   return <button type="button" key={v.id} className={"lektrus-lab-vessel"+
+   return <button type="button" key={v.id} data-board-interactive="true" className={"lektrus-lab-vessel"+
     (selected?" selected":"")+(pouring?" is-pouring":"")+
     (pouringId&&pouringId!==v.id?" is-pour-target":"")}
     style={{left:p.x+"%",top:p.y+"%",zIndex:selected?10:i+1}}
