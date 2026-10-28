@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,setLabStandShelf,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,setLabStandShelf,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,pourThroughLabFunnel,fillLabVolumetricFlask,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -272,6 +272,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [amount,setAmount]=useState("10");
  const [unit,setUnit]=useState<"ml"|"g">("ml");
  const [molarity,setMolarity]=useState("0.1");
+ const [measuredMl,setMeasuredMl]=useState("5");
+ const [measuredPartnerId,setMeasuredPartnerId]=useState("");
+ const [funnelSourceId,setFunnelSourceId]=useState("");
+ const [funnelTargetId,setFunnelTargetId]=useState("");
  const [titrationTarget,setTitrationTarget]=useState("");
  const [localPourId,setLocalPourId]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
@@ -841,7 +845,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    style={{left:deviceShelfGhost.x+"%",top:deviceShelfGhost.y+"%"}} aria-hidden="true">
    <LektrusLabDeviceIcon kind={deviceShelfGhost.kind} size={58}/>
   </div>}
-  {editable&&vesselMenuId===selected?.id&&selected&&selected.reagents.length>0&&
+  {editable&&vesselMenuId===selected?.id&&selected&&
+   (selected.reagents.length>0||["pipette","cylinder","volumetric","funnel"].includes(selected.kind))&&
    (!activeBurette||availableTargets.length===0)&&
    <div className="lektrus-lab-worktop-actions" data-board-interactive="true"
     style={{"--lab-menu-x":Math.min(69,Math.max(11,vesselPosition(selected).x))+"%",
@@ -869,6 +874,55 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       setLocalPourId(effectivePouringId===selected.id?null:selected.id)}}>
      {effectivePouringId===selected.id?"Отмена":"⇢ Перелить"}
     </button>}
+    {["pipette","cylinder"].includes(selected.kind)&&
+     <div className="lektrus-lab-measured-tools">
+      <label>мл <input type="number" min=".1" step="1" value={measuredMl}
+       max={labMeasuredCapacityMl(selected.kind)} aria-label="Отмеренный объём, мл"
+       onChange={e=>setMeasuredMl(e.target.value)}/></label>
+      <label>Сосуд <select aria-label="Второй сосуд для мерного переноса"
+       value={bench.vessels.some(v=>v.id===measuredPartnerId&&v.id!==selected.id)?
+        measuredPartnerId:(bench.vessels.find(v=>v.id!==selected.id)?.id??"")}
+       onChange={e=>setMeasuredPartnerId(e.target.value)}>
+       {bench.vessels.filter(v=>v.id!==selected.id).map(v=>
+        <option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
+      </select></label>
+      {(["Набрать","Выдать"] as const).map(action=><button type="button" key={action}
+       onClick={e=>{e.stopPropagation();
+        const partner=bench.vessels.some(v=>v.id===measuredPartnerId&&v.id!==selected.id)?
+         measuredPartnerId:bench.vessels.find(v=>v.id!==selected.id)?.id;
+        const from=action==="Набрать"?partner:selected.id;
+        const to=action==="Набрать"?selected.id:partner;
+        const next=from&&to?transferLabMeasuredLiquid(bench,from,to,Number(measuredMl)):bench;
+        if(next!==bench){onChange?.(next);setNotice(action==="Набрать"?
+         "Набрано "+measuredMl+" мл":"Выдано "+measuredMl+" мл")}
+        else setNotice("Недостаточно жидкости или выбран несовместимый сосуд")}}>
+       {action}</button>)}
+     </div>}
+    {selected.kind==="volumetric"&&<button type="button"
+     title="Долить воду до калибровочной метки"
+     onClick={e=>{e.stopPropagation();const next=fillLabVolumetricFlask(bench,selected.id);
+      if(next!==bench){onChange?.(next);setNotice("Колба доведена до 100 мл")}
+      else setNotice("Сосуд уже заполнен или не может быть доведён до метки")}}>
+     Долить до 100 мл</button>}
+    {selected.kind==="funnel"&&<div className="lektrus-lab-measured-tools">
+     {([["Источник",funnelSourceId,setFunnelSourceId],
+       ["Приёмник",funnelTargetId,setFunnelTargetId]] as const).map(([title,value,setValue],i)=>{
+       const other=bench.vessels.filter(v=>v.id!==selected.id);
+       return <label key={title}>{title}<select aria-label={title+" для воронки"}
+        value={other.some(v=>v.id===value)?value:(other[i]?.id??"")}
+        onChange={e=>setValue(e.target.value)}>
+        {other.map(v=><option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
+       </select></label>;
+      })}
+     <button type="button" onClick={e=>{e.stopPropagation();
+      const other=bench.vessels.filter(v=>v.id!==selected.id);
+      const source=other.some(v=>v.id===funnelSourceId)?funnelSourceId:other[0]?.id;
+      const target=other.some(v=>v.id===funnelTargetId)?funnelTargetId:other[1]?.id;
+      const next=source&&target?pourThroughLabFunnel(bench,selected.id,source,target):bench;
+      if(next!==bench){onChange?.(next);setNotice("Жидкость перелита через воронку")}
+      else setNotice("Выберите сосуды с жидкостью и свободным объёмом")}}>
+     Перелить</button>
+    </div>}
     <button type="button" aria-label="Закрыть настройки посуды"
      onClick={e=>{e.stopPropagation();setVesselMenuId(null)}}>×</button>
    </div>}
