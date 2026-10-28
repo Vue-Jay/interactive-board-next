@@ -1098,6 +1098,56 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   {shelfGhost&&<div className="lektrus-lab-shelf-ghost"
     style={{left:shelfGhost.x+"%",top:shelfGhost.y+"%"}} aria-hidden="true">
     {names[shelfGhost.kind]}</div>}
+  {bench.pouring&&(()=>{
+   const p=bench.pouring;
+   const source=bench.vessels.find(v=>v.id===p.sourceId);
+   const target=bench.vessels.find(v=>v.id===p.targetId);
+   if(!source||!target)return null;
+   const a=vesselPosition(source),b=vesselPosition(target),percent=labPourPercent(p);
+   const amounts=labPourAmounts(p);
+   const fmt=(field:"transferred"|"remaining")=>{
+    const totals=new Map<string,number>();
+    for(const item of amounts)totals.set(item.unit,(totals.get(item.unit)??0)+item[field]);
+    const values=[...totals.entries()].map(([unit,value])=>
+     Number(value.toFixed(3)).toLocaleString("ru-RU")+" "+(unit==="ml"?"мл":"г"));
+    if(p.unmeasured||!values.length)values.push(field==="transferred"?
+     percent+"% исходного содержимого":(100-percent)+"% исходного содержимого");
+    return values.join(" + ");
+   };
+   const flowing=p.step<LAB_POUR_STEPS;
+   return <>
+    {flowing&&<svg className="lektrus-lab-pour-stream is-gradual"
+     viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+     <path d={`M ${a.x} ${a.y-11} Q ${(a.x+b.x)/2} ${Math.min(a.y,b.y)-17} ${b.x} ${b.y-11}`}
+      fill="none" stroke="#59b0cc" strokeWidth="1.1" strokeLinecap="round"
+      strokeDasharray="2.5 1.7" className="lektrus-lab-stream-pulses"/>
+    </svg>}
+    <div data-board-interactive="true"
+     className={"lektrus-lab-gradual-pour"+(!flowing?" is-complete":"")}
+     style={{left:Math.max(14,Math.min(77,(a.x+b.x)/2))+"%",
+      top:Math.max(40,Math.min(78,Math.min(a.y,b.y)-24))+"%"}}
+     role="status" aria-label={"Переливание "+percent+" процентов"}
+     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+     <div className="lektrus-lab-pour-progress-title">
+      <strong>{flowing?"Переливание":"Переливание завершено"}</strong>
+      <b>{percent}%</b>
+     </div>
+     <div className="lektrus-lab-pour-progress-track">
+      <span style={{width:percent+"%"}}/>
+     </div>
+     <div className="lektrus-lab-pour-progress-amounts">
+      <span><b>Перелилось</b> {fmt("transferred")}</span>
+      <span><b>Осталось</b> {fmt("remaining")}</span>
+     </div>
+     {flowing&&editable&&<button type="button" title="Остановить переливание, оставив остаток в исходном сосуде"
+      onClick={e=>{e.stopPropagation();
+       onChange?.(stopLabPour(bench,p.id));
+       if(localPourRef.current===p.id)localPourRef.current=null;
+       setNotice("Переливание остановлено. Оставшееся содержимое сохранено.")}}>
+      Остановить</button>}
+    </div>
+   </>;
+  })()}
   {transfer&&<svg className="lektrus-lab-pour-stream" viewBox="0 0 100 100"
     preserveAspectRatio="none" aria-hidden="true">
    <path d={`M ${transfer.from.x} ${transfer.from.y} Q ${(transfer.from.x+transfer.to.x)/2} ${Math.min(transfer.from.y,transfer.to.y)-12} ${transfer.to.x} ${transfer.to.y}`}
