@@ -446,43 +446,46 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    </div>
    <span className="lektrus-lab-furniture-foot">Нажмите или перетащите</span>
   </div>
-  <div className="lektrus-lab-equipment-station" data-board-interactive="true"
+  <div className="lektrus-lab-device-cupboard" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
-   <button type="button" className="lektrus-lab-equipment-open" disabled={!editable}
-    onClick={e=>{e.stopPropagation();openCabinet("equipment")}}>
-    <span aria-hidden="true">⚙</span><strong>Приборы</strong><small>{(bench.devices??[]).length}/5</small>
+   <button type="button" className="lektrus-lab-device-cupboard-title"
+    disabled={!editable} onClick={e=>{e.stopPropagation();openCabinet("equipment")}}>
+    ПРИБОРЫ <span>{(bench.devices??[]).length}/5</span>
    </button>
-   <div className="lektrus-lab-devices-active">
-    {!(bench.devices??[]).length&&<span className="lektrus-lab-equipment-empty">Добавьте приборы из шкафа</span>}
-    {(bench.devices??[]).map(id=>{
-     const device=labDevices.find(v=>v.id===id);
-     if(!device)return null;
-     return <button type="button" key={id} disabled={!editable}
-      className={"lektrus-lab-device-chip is-"+id}
-      onClick={e=>{e.stopPropagation();
-       if(!selected){setNotice("Сначала выберите посуду");return}
-       const next=useLabDevice(bench,id,selected.id);
-       if(next!==bench)onChange?.(next);
-       setNotice(id==="hotplate"?"Нагревание применено к сосуду":
-        id==="burner"?"Пламя применено к выбранному сосуду":
-        id==="stirrer"?(next.stirringVesselId?"Перемешивание включено":"Перемешивание остановлено"):
-        id==="thermometer"?"Численная температура не измеряется в этой модели":
-        "Штатив установлен; выберите посуду для работы");
-      }} title={device.description}>
-      <span aria-hidden="true">{device.symbol}</span><small>{device.name}</small>
-     </button>;
-    })}
+   <div className="lektrus-lab-device-cupboard-shelf">
+    {labDevices.map(device=><button type="button" key={device.id}
+     disabled={!editable} title={device.name}
+     aria-label={"Взять прибор: "+device.name}
+     className={(bench.devices??[]).includes(device.id)?"is-installed":""}
+     onClick={e=>{e.stopPropagation();onChange?.(toggleLabDevice(bench,device.id))}}>
+     <span className={"lektrus-lab-device-art is-"+device.id} aria-hidden="true">{device.symbol}</span>
+     <small>{device.name}</small>
+    </button>)}
    </div>
+   <span className="lektrus-lab-furniture-foot">Выберите прибор</span>
   </div>
-  <button type="button" className="lektrus-lab-titration-station" disabled={!editable}
-   data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
-   onPointerUp={e=>e.stopPropagation()}
-   onClick={e=>{e.stopPropagation();openCabinet("titration")}}>
-   <span className="lektrus-lab-titration-icon" aria-hidden="true">♧</span>
-   <span><strong>Титрование</strong>
-    <small>{bench.titration?("pH "+titrationReading(bench.titration).pH):
-      "Бюретка · индикатор"}</small></span>
-  </button>
+  {(bench.devices??[]).length>0&&<div className="lektrus-lab-installed-devices" data-board-interactive="true"
+   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+   {(bench.devices??[]).map(id=>{
+    const device=labDevices.find(v=>v.id===id);
+    if(!device)return null;
+    return <button key={id} type="button" disabled={!editable}
+     className={"lektrus-lab-device-on-table is-"+id+(bench.stirringVesselId&&id==="stirrer"?" is-running":"")}
+     title={device.description}
+     onClick={e=>{e.stopPropagation();
+      if(!selected){setNotice("Выберите посуду для работы с прибором");return}
+      const next=useLabDevice(bench,id,selected.id);
+      onChange?.(next);
+      setNotice(id==="hotplate"?"Нагревание включено":
+       id==="burner"?"Горелка применяется к сосуду":
+       id==="stirrer"?(next.stirringVesselId?"Перемешивание включено":"Перемешивание остановлено"):
+       "Прибор установлен на столе");
+     }}>
+     <span className={"lektrus-lab-device-art is-"+id} aria-hidden="true">{device.symbol}</span>
+     <small>{device.name}</small>
+    </button>;
+   })}
+  </div>}
   <button type="button" data-board-interactive="true"
    className={"lektrus-lab-sink"+(dropFurniture==="sink"?" is-dropzone":"")+
      (sinkFlow?" is-flowing":"")}
@@ -614,16 +617,21 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <button type="button" aria-label="Закрыть шкаф" onClick={()=>setCabinet(null)}>×</button>
      </header>
      {cabinet==="reagents"&&<>
-      <div className="lektrus-lab-modal-tabs" role="group" aria-label="Раздел шкафа реактивов">
-       <button type="button" className={cabinetTab==="substances"?"active":""}
-        aria-pressed={cabinetTab==="substances"} onClick={()=>setCabinetTab("substances")}>Вещества</button>
-       <button type="button" className={cabinetTab==="experiments"?"active":""}
-        aria-pressed={cabinetTab==="experiments"} onClick={()=>setCabinetTab("experiments")}>Готовые опыты</button>
+      <div className="lektrus-lab-modal-tabs lektrus-lab-class-tabs" role="tablist"
+       aria-label="Разделы шкафа реактивов">
+       {([
+        ["all","Все"],["acid","Кислоты"],["base","Основания"],
+        ["salt","Соли"],["oxide","Оксиды"],["metal","Простые вещества"],
+        ["organic","Органические"],["other","Прочие"],["experiments","Готовые опыты"]
+       ] as const).map(([id,name])=><button type="button" key={id} role="tab"
+        className={cabinetTab===id?"active":""} aria-selected={cabinetTab===id}
+        onClick={()=>{setCabinetTab(id);setChosen(null)}}>{name}</button>)}
       </div>
       <div className="lektrus-lab-modal-filters">
-       <input type="search" placeholder="Формула или название" value={query}
-        onChange={e=>setQuery(e.target.value)} aria-label="Найти реактив"/>
-       {cabinetTab==="substances"?<select value={category} onChange={e=>setCategory(e.target.value)}
+       <input type="search" placeholder="Поиск по всем веществам и формулам" value={query}
+        onChange={e=>{setQuery(e.target.value);if(e.target.value.trim())setCabinetTab("all")}}
+        aria-label="Поиск по всем веществам"/>
+       {cabinetTab!=="experiments"?<select value={category} onChange={e=>setCategory(e.target.value)}
         aria-label="Класс реактива">
         {classes.map(c=><option key={c}>{c}</option>)}
        </select>:<select value={effectFilter}
@@ -633,7 +641,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         <option value="heat">Тепло</option><option value="dissolution">Растворение</option>
        </select>}
       </div>
-      {cabinetTab==="substances"&&<div className="lektrus-lab-modal-sortbar">
+      {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-sortbar">
        <label>Состояние <select aria-label="Агрегатное состояние" value={phase}
         onChange={e=>setPhase(e.target.value as "all"|StoragePhase)}>
         <option value="all">Все</option>
@@ -650,8 +658,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        </select></label>
       </div>}
       <div className="lektrus-lab-modal-results-head">
-       <span><strong>{cabinetTab==="substances"?visibleSubstances.length:experimentCases.length}</strong>
-        {cabinetTab==="substances"?" веществ в каталоге":" опытов найдено"}</span>
+       <span><strong>{cabinetTab!=="experiments"?visibleSubstances.length:experimentCases.length}</strong>
+        {cabinetTab!=="experiments"?" веществ в каталоге":" опытов найдено"}</span>
        <span className="lektrus-lab-modal-scroll-help">Колесо мыши, тачпад или прокрутка пальцем</span>
        <div className="lektrus-lab-scroll-buttons">
         <button type="button" aria-label="Прокрутить список вверх"
@@ -663,7 +671,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <div ref={scrollRef} className="lektrus-lab-modal-reagents"
        role="region" tabIndex={0} aria-label="Прокручиваемый список веществ и опытов"
        onWheel={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()}>
-       {cabinetTab==="substances"?catalogue.map(({title,items})=>
+       {cabinetTab!=="experiments"?catalogue.map(({title,items})=>
         <div className="lektrus-lab-reagent-group" key={title}>
          {group!=="none"&&<h3>{title}<small>{items.length}</small></h3>}
          <div className="lektrus-lab-reagent-group-grid">
@@ -683,10 +691,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          <strong>{row.reactants.join(" + ")}</strong>
          <span>{row.description}</span>
         </button>)}
-       {((cabinetTab==="substances"?visibleSubstances:experimentCases).length===0)&&
+       {((cabinetTab!=="experiments"?visibleSubstances:experimentCases).length===0)&&
         <p>Совпадений не найдено</p>}
       </div>
-      {cabinetTab==="substances"&&<div className="lektrus-lab-modal-dose">
+      {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-dose">
        <div><strong>{reagent?.name??"Выберите реактив"}</strong>
         <small>{reagent?reagentAppearance(reagent.id).label:"Сначала выберите вещество из шкафа"}</small>
        </div>
@@ -694,6 +702,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         <label>Количество
          <input type="number" inputMode="decimal" min="0.01" max="10000" step="0.1"
           value={amount} onChange={e=>setAmount(e.target.value)} /></label>
+        {chosen&&unit==="ml"&&["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen)&&
+         <label>Концентрация, моль/л
+          <input type="number" min=".001" max="2" step=".01" value={molarity}
+           onChange={e=>setMolarity(e.target.value)} />
+         </label>}
         <label>Единица
          <select value={unit} onChange={e=>setUnit(e.target.value as "ml"|"g")}>
           <option value="ml">мл</option><option value="g">г</option>
@@ -701,7 +714,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         <button type="button" className="primary" disabled={!chosen||!selected}
          onClick={dispense}>Отлить в сосуд</button>
        </div>
-       <small>Масса и объём фиксируются для учёта, но не используются как стехиометрический расчёт. {selected?"Выбран: "+names[selected.kind]:"Сначала возьмите посуду."}</small>
+       <small>Для титрования заполните бюретку и колбу кислотой и щёлочью с известными концентрациями. {selected?"Выбран: "+names[selected.kind]:"Выберите посуду на столе."}</small>
       </div>}
      </>}
      {cabinet==="glassware"&&<div className="lektrus-lab-modal-ware">
