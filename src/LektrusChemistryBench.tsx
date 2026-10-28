@@ -510,13 +510,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      className={"lektrus-lab-device-on-table is-"+id+(bench.stirringVesselId&&id==="stirrer"?" is-running":"")}
      title={device.description}
      onClick={e=>{e.stopPropagation();
-      if(!selected){setNotice("Выберите посуду для работы с прибором");return}
-      const next=useLabDevice(bench,id,selected.id);
+      const vessel=selected??bench.vessels[0];
+      if(!vessel){setNotice("Добавьте посуду на стол, затем примените прибор");return}
+      const next=useLabDevice(bench,id,vessel.id);
       onChange?.(next);
+      if(!selected)onSelect?.(vessel.id);
       setNotice(id==="hotplate"?"Нагревание включено":
        id==="burner"?"Горелка применяется к сосуду":
        id==="stirrer"?(next.stirringVesselId?"Перемешивание включено":"Перемешивание остановлено"):
-       "Прибор установлен на столе");
+       id==="thermometer"?"Термометр установлен (температура рассчитывается только для известных опытов)":
+       "Штатив установлен на лабораторном столе");
      }}>
      <LektrusLabDeviceIcon kind={id} size={56}/>
      <small>{device.name}</small>
