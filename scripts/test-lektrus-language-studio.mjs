@@ -6,8 +6,8 @@ const path="src/lektrusLanguageGapModel.ts";
 const stripped=ts.transpileModule(read(path),{
  fileName:path,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}
 }).outputText.replace(/^import[^;]*;\s*$/gm,"").replace(/^export /gm,"");
-const model=new Function(stripped+"\nreturn {parseLanguageGapText,languageGapText,isLanguageGapExercise};")();
-const {parseLanguageGapText,languageGapText,isLanguageGapExercise}=model;
+const model=new Function(stripped+"\nreturn {parseLanguageGapText,languageGapText,isLanguageGapExercise,preserveGapChoices};")();
+const {parseLanguageGapText,languageGapText,isLanguageGapExercise,preserveGapChoices}=model;
 for(const [tone,type,expected] of [
  ["russian","orthography",true],["russian","punctuation",true],
  ["russian","morphology",false],["russian","syntax",false],
@@ -65,8 +65,25 @@ assert.match(studio,/const insertPunctuation=/,"Punctuation offers sign insertio
 assert.match(studio,/lektrus-language-target/,"Morphology word can be chosen from a sentence");
 assert.match(studio,/lektrus-language-question-row/,"Reading questions use editable rows");
 assert.match(studio,/Сделать пропуск/,"Highlighted material becomes a masked exercise");
-assert.match(activityUi,/lektrus-activity-quick-keys/,"Pupil has quick keys for language exercises");
+assert.match(activityUi,/lektrus-activity-gap-choices/,"Teacher-created options appear immediately below their own gaps");
+assert.ok(!activityUi.includes("lektrus-activity-quick-keys"),"No unsolicited global alphabet or punctuation palette");
+assert.match(activityUi,/placeholder=""/,"Ordinary blanks have no prefilled answers or pickers");
 assert.match(activityUi,/const pairs=quickSource.split/,"Teachers can paste vocabulary pairs");
 assert.match(board,/orthography=\{tone==="russian"/,"Pupil board enables the orthography palette");
 assert.match(styles,/width:min\(1180px/,"Language editor gets enough working space");
+const selectable=parseLanguageGapText("бер[е]за, п[о]ле");
+selectable.activity.blanks[0].choices=["е","и"];
+assert.equal(selectable.activity.blanks[1].choices,undefined,"Plain gaps remain plain");
+const kept=preserveGapChoices(parseLanguageGapText("бер[е]за, п[о]ле!"),selectable.activity);
+assert.deepEqual(kept.activity.blanks[0].choices,["е","и"],"Options survive changing surrounding text");
+assert.equal(kept.activity.blanks[1].choices,undefined);
+const deleted=preserveGapChoices(parseLanguageGapText("береза, п[о]ле"),selectable.activity);
+assert.equal(deleted.activity.blanks[0].choices,undefined,"Removed gaps cannot transfer variants to a different answer");
+const duplicate=parseLanguageGapText("тр[а]ва, з[а]ря");
+duplicate.activity.blanks[1].choices=["а","о"];
+const duplicateKept=preserveGapChoices(parseLanguageGapText("тр[а]ва, з[а]ря!"),duplicate.activity);
+assert.equal(duplicateKept.activity.blanks[0].choices,undefined,"Identical correct letters do not steal each other's options");
+assert.deepEqual(duplicateKept.activity.blanks[1].choices,["а","о"]);
+assert.match(studio,/configureChoices/,"Teacher can switch one gap between typing and two options");
+assert.match(studio,/updateDistractor/,"Teacher can supply the alternate letter");
 console.log("Language studio: Russian spelling/punctuation, English gaps, authoring, safe preview, archived exercises OK");
