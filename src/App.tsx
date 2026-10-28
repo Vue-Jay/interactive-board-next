@@ -1867,9 +1867,12 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
           onKeyDown={event=>{if(event.key!=="Enter"&&event.key!==" ")return;event.preventDefault();event.stopPropagation();onSnapChange(item.graphSnap!==true)}}>
           <title>{item.graphSnap===true?"Отключить привязку к сетке":"Включить привязку к сетке"}</title>
           <rect width="30" height="25" rx="7" className={item.graphSnap===true?"is-on":""}/>
-          <g stroke="currentColor" strokeWidth="1.3" fill="none" pointerEvents="none">
-            <path d="M15 4v17M6.5 12.5h17"/>
-            <circle cx="15" cy="12.5" r="3" fill="var(--lt-raised,#fff)"/>
+          <g stroke="currentColor" strokeWidth="1.15" fill="none" pointerEvents="none"
+             strokeLinecap="round" strokeLinejoin="round">
+            {/* Grid junction and a short arrow moving the loose point into it. */}
+            <path d="M9 5.5v14M15 5.5v14M21 5.5v14M6 9.5h18M6 15.5h18" opacity=".42"/>
+            <path d="M21 8.5l-5 5M16.4 10.5l-.4 3.1 3.1-.4" strokeWidth="1.65"/>
+            <circle cx="15" cy="15.5" r="2.45" fill="currentColor" stroke="var(--lt-raised,#fff)" strokeWidth=".9"/>
           </g>
         </g>}
       </g>}
