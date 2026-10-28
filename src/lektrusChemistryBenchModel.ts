@@ -31,7 +31,8 @@ export function toggleLabDevice(bench:LabBench,id:LabDevice):LabBench{
  const devices=bench.devices??[];
  if(!labDevices.some(v=>v.id===id))return bench;
  const next=devices.includes(id)?devices.filter(v=>v!==id):[...devices,id];
- return {...bench,devices:next,stirringVesselId:next.includes("stirrer")?bench.stirringVesselId:undefined,event:bench.event+1};
+ return {...bench,devices:next,stirringVesselId:next.includes("stirrer")?bench.stirringVesselId:undefined,
+ instrumentTarget:bench.instrumentTarget&&!next.includes(bench.instrumentTarget.kind)?undefined:bench.instrumentTarget,event:bench.event+1};
 }
 export function useLabDevice(bench:LabBench,id:LabDevice,vesselId:string):LabBench{
  if(!(bench.devices??[]).includes(id)||!bench.vessels.some(v=>v.id===vesselId))return bench;
@@ -39,6 +40,8 @@ export function useLabDevice(bench:LabBench,id:LabDevice,vesselId:string):LabBen
  if(id==="burner")return setLabEnvironment(bench,vesselId,"ignited");
  if(id==="stirrer")return {...bench,
   stirringVesselId:bench.stirringVesselId===vesselId?undefined:vesselId,event:bench.event+1};
+ if(id==="tripod"||id==="thermometer")
+  return {...bench,instrumentTarget:{kind:id,vesselId},event:bench.event+1};
  return bench;
 }
 export function setLabTitration(bench:LabBench,titration:TitrationModel):LabBench{
@@ -176,6 +179,7 @@ export type LabVessel={
 };
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;
  settings?:LabBenchSettings;devices?:LabDevice[];titration?:TitrationModel;stirringVesselId?:string;
+ instrumentTarget?:{kind:"tripod"|"thermometer";vesselId:string};
  titrationPair?:{sourceId:string;targetId:string};}
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=6;
 const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
@@ -257,6 +261,7 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
  const vessels=bench.vessels.filter(v=>v.id!==id);
  return {...bump(bench,vessels,bench.selectedId===id?(vessels[0]?.id??""):bench.selectedId),
   stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId,
+  instrumentTarget:bench.instrumentTarget?.vesselId===id?undefined:bench.instrumentTarget,
   titrationPair:bench.titrationPair&&(bench.titrationPair.sourceId===id||bench.titrationPair.targetId===id)?
    undefined:bench.titrationPair};
 }
@@ -404,10 +409,12 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
   remote.devices:mine.devices;
  const titration=JSON.stringify(mine.titration??null)===JSON.stringify(previous.titration??null)?
   remote.titration:mine.titration;
+ const instrumentTarget=JSON.stringify(mine.instrumentTarget??null)===JSON.stringify(previous.instrumentTarget??null)?
+  remote.instrumentTarget:mine.instrumentTarget;
  const stirringVesselId=mine.stirringVesselId===previous.stirringVesselId?
   remote.stirringVesselId:mine.stirringVesselId;
  const titrationPair=JSON.stringify(mine.titrationPair??null)===JSON.stringify(previous.titrationPair??null)?
   remote.titrationPair:mine.titrationPair;
- return {vessels:limited,selectedId,settings,devices,titration,titrationPair,stirringVesselId,
+ return {vessels:limited,selectedId,settings,devices,titration,titrationPair,stirringVesselId,instrumentTarget,
   event:Math.max(remote.event,mine.event)+1};
 }
