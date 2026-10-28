@@ -2851,3 +2851,78 @@
  .lektrus-lab-bench .lektrus-lab-stream-pulses{animation:none}
  .lektrus-lab-bench .lektrus-lab-pour-progress-track>span{transition:none}
 }
+
+
+/* V10. Hit targets on the physical instrument faces: no foreignObject controls,
+   no bottom strip, no competing SVG pointer capture. */
+.lektrus-lab-bench .lektrus-lab-device-face-controls{
+ position:absolute;inset:0;z-index:6;pointer-events:none!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls button,
+.lektrus-lab-bench .lektrus-lab-device-face-controls input{
+ position:absolute!important;pointer-events:auto!important;
+ padding:0!important;min-width:0!important;min-height:0!important;
+ box-sizing:border-box!important;transform:translate(-50%,-50%);
+ display:grid;place-items:center;z-index:6;
+ border-radius:5px!important;border:1px solid #628b80!important;
+ background:#d9e9df!important;color:#275a4d!important;
+ box-shadow:0 1px 2px #24483c42!important;
+ font:850 clamp(11px,.9cqw,15px)/1 system-ui,sans-serif!important;
+ cursor:pointer!important;touch-action:manipulation!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-device-power{
+ width:21%!important;height:19%!important;font-size:clamp(15px,1.55cqw,22px)!important;
+ border-radius:50%!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-device-power[aria-pressed=true]{
+ background:#479d80!important;border-color:#286f5a!important;color:white!important;
+ box-shadow:0 0 8px #5bd1a280!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-hotplate .lektrus-lab-device-power{
+ left:75.5%!important;top:63%!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-burner .lektrus-lab-device-power{
+ left:50%!important;top:64%!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-stirrer .lektrus-lab-device-power{
+ left:71%!important;top:65.5%!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-device-face-temp{
+ left:40%!important;top:62%!important;width:32%!important;height:17%!important;
+ font:850 clamp(10px,1cqw,14px)/1 system-ui,sans-serif!important;
+ background:#264f43!important;color:#e3ffe3!important;text-align:center!important;
+ border-radius:4px!important;cursor:text!important;appearance:textfield!important}
+.lektrus-lab-bench .lektrus-lab-device-face-temp::-webkit-inner-spin-button{
+ appearance:none!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-tripod button{
+ left:18%!important;width:19%!important;height:16%!important;
+ border-radius:4px!important;font-size:clamp(15px,1.2cqw,19px)!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-stand-raise{top:33%!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-stand-lower{top:52%!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls button:disabled{
+ opacity:.4!important;cursor:not-allowed!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-device-level{
+ left:53%!important;top:85%!important;width:18%!important;height:17%!important}
+.lektrus-lab-bench .lektrus-lab-placed-device,
+.lektrus-lab-bench .lektrus-lab-device-grip{
+ overflow:visible!important}
+.lektrus-lab-bench .lektrus-lab-placed-device:has(.lektrus-lab-device-face-controls) .lektrus-lab-device-icon{
+ pointer-events:none!important}
+.lektrus-lab-bench .lektrus-lab-reagent-group-grid{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}
+.lektrus-lab-bench .lektrus-lab-reagent-group-grid>button{
+ min-width:0!important;min-height:63px!important;padding:7px 8px!important;
+ gap:3px 7px!important;grid-template-columns:20px minmax(0,1fr)!important;
+ grid-template-rows:auto 1fr!important}
+.lektrus-lab-bench .lektrus-lab-reagent-group-grid>button span{
+ overflow-wrap:anywhere;word-break:normal}
+.lektrus-lab-bench .lektrus-lab-quick-bottle.is-solid>i{
+ border-radius:6px 6px 4px 4px!important;
+ background:repeating-radial-gradient(circle at 40% 65%,var(--bottle-color) 0 2px,#e7efe8 3px 4px)!important}
+.lektrus-lab-bench .lektrus-lab-quick-bottle .lektrus-lab-quick-phase{
+ font-size:clamp(7px,.55cqw,9px)!important;line-height:1.05!important;
+ font-weight:650!important;color:#567c6a!important}
+@container(max-width:960px){
+ .lektrus-lab-bench .lektrus-lab-reagent-group-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:620px){
+ .lektrus-lab-bench .lektrus-lab-reagent-group-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@container(max-width:520px){
+ .lektrus-lab-bench .lektrus-lab-quick-phase{display:none!important}
+}
