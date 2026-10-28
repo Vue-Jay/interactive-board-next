@@ -99,11 +99,23 @@ export function validateRussianSchoolDiagram(value:unknown):value is RussianScho
 /** Keep phonetic annotations for unchanged letters while editing the word.
  * Never invent sounds, stress or transcription for a changed letter. */
 export function synchronizePhoneticLetters(word:string,existing:PhoneticLetter[],createId:()=>string):PhoneticLetter[]{
- return Array.from(word).slice(0,24).map((letter,index)=>{
-  const previous=existing[index];
-  return previous?.letter===letter?previous:{
-   id:previous?.id??createId(),letter,sounds:[],characteristic:"",stressed:false
-  };
+ const letters=Array.from(word).slice(0,24),old=existing.map(entry=>entry.letter);
+ // Longest common subsequence keeps teacher annotations even after insertion
+ // or deletion at the start of a word, not just when indices are unchanged.
+ const lengths=Array.from({length:old.length+1},()=>Array<number>(letters.length+1).fill(0));
+ for(let i=old.length-1;i>=0;i--)for(let j=letters.length-1;j>=0;j--){
+  lengths[i][j]=old[i]===letters[j]?1+lengths[i+1][j+1]:
+   Math.max(lengths[i+1][j],lengths[i][j+1]);
+ }
+ const matched=new Map<number,PhoneticLetter>();
+ let i=0,j=0;
+ while(i<old.length&&j<letters.length){
+  if(old[i]===letters[j]){matched.set(j,existing[i]);i++;j++;}
+  else if(lengths[i+1][j]>=lengths[i][j+1])i++;
+  else j++;
+ }
+ return letters.map((letter,index)=>matched.get(index)??{
+  id:createId(),letter,sounds:[],characteristic:"",stressed:false
  });
 }
 export const phoneticWordValid=(word:string)=>
