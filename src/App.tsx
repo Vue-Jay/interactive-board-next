@@ -5546,7 +5546,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      const owned=latest.subjectBoardEntries?.find(entry=>entry.id===entryId);
      if(!owned||!entryBelongsToSubject(boardTone(latest),owned))return;
      const remaining=(latest.subjectBoardEntries??[]).filter(entry=>entry.id!==entryId);
-     if(!remaining.length&&provisionalChemistryWorksheets.current.has(boardId)){
+     if(!remaining.length&&(provisionalChemistryWorksheets.current.has(boardId)||latest.subjectBoardStandalone)){
        provisionalChemistryWorksheets.current.delete(boardId);
        commit(itemsRef.current.filter(value=>value.id!==boardId));
        setSelected([]);return;
@@ -5607,7 +5607,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
          return [{...eq,domain:source.scienceReactionDomain??"inorganic",
           steps:source.scienceReactionSteps?.length?source.scienceReactionSteps:
            [{expression:source.graphExpression??"",conditions:source.scienceReactionConditions??""}]}]})();
-     if(!entries.length||standaloneReaction&&!chemistryBoardHasContent(source)){
+     if(!entries.some(subjectBoardEntryFilled)||standaloneReaction&&!chemistryBoardHasContent(source)){
        setNotice("Сначала заполните химический материал");return;
      }
      const existing=destinationId!=="__new__"?
