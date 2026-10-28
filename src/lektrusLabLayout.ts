@@ -49,7 +49,8 @@ export function labMountedGlasswarePoint(
   vHeight=size(98,.12,125,w);
  // The glass SVG's bottom is y=120/133; the instrument platform is at
  // y=36/108. Align those surfaces, not their enclosing rectangle centers.
- const foot=.405*vHeight;
+ const foot=(vessel.kind==="conical"||vessel.kind==="crucible"?.385:
+  vessel.kind==="dish"?.33:.36)*vHeight;
  const clampY=(.5-(52-29*(device.standHeight??.5))/108)*dHeight;
  const yPx=device.kind==="stand-shelf"?.16*dHeight-foot:
   device.kind==="tripod"?clampY+.27*vHeight:
