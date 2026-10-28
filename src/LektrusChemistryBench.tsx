@@ -444,7 +444,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       ??nearby[0];
      if(appliance&&appliance.distance<105&&vessel&&
       canMountLabVessel(appliance.device.kind,vessel.kind)){
-      const applied=applyPlacedLabDevice(bench,appliance.device.id,g.id);
+      const mount=appliance.device.kind==="tripod"&&
+       LAB_STAND_SHELF_TYPES.includes(vessel.kind)&&
+       p.y>appliance.device.y+1.5?"shelf":"clamp";
+      const applied=applyPlacedLabDevice(bench,appliance.device.id,g.id,mount);
       onChange?.(applied);
       setNotice("Сосуд установлен на "+(labDevices.find(d=>d.id===appliance.device.kind)?.name??"прибор"));
      }else if(appliance&&appliance.distance<105&&vessel){
@@ -757,9 +760,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    style={{left:deviceShelfGhost.x+"%",top:deviceShelfGhost.y+"%"}} aria-hidden="true">
    <LektrusLabDeviceIcon kind={deviceShelfGhost.kind} size={58}/>
   </div>}
-  {editable&&!activeDevice&&selected&&selected.reagents.length>0&&
+  {editable&&vesselMenuId===selected?.id&&selected&&selected.reagents.length>0&&
    (!activeBurette||availableTargets.length===0)&&
    <div className="lektrus-lab-worktop-actions" data-board-interactive="true"
+    style={{"--lab-menu-x":Math.min(69,Math.max(11,vesselPosition(selected).x))+"%",
+     "--lab-menu-y":Math.min(73,Math.max(42,vesselPosition(selected).y-15))+"%"} as React.CSSProperties}
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
     <label>Индикатор
      <select aria-label="Индикатор выбранной посуды" value={selected.indicator??""}
@@ -783,8 +788,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       setLocalPourId(effectivePouringId===selected.id?null:selected.id)}}>
      {effectivePouringId===selected.id?"Отмена":"⇢ Перелить"}
     </button>}
+    <button type="button" aria-label="Закрыть настройки посуды"
+     onClick={e=>{e.stopPropagation();setVesselMenuId(null)}}>×</button>
    </div>}
-  {editable&&!activeDevice&&selectedBurette&&<div className="lektrus-lab-titration-on-table is-burette-valve"
+  {editable&&vesselMenuId===selectedBurette?.id&&selectedBurette&&<div className="lektrus-lab-titration-on-table is-burette-valve"
+   style={{"--lab-menu-x":Math.min(67,Math.max(12,vesselPosition(selectedBurette).x))+"%",
+    "--lab-menu-y":Math.max(42,vesselPosition(selectedBurette).y-20)+"%"} as React.CSSProperties}
    data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
    onPointerUp={e=>e.stopPropagation()}>
    <strong>Бюретка <span className={selectedBurette.buretteOpen?"is-open":""}>
@@ -1019,7 +1028,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
            className={chosen===v.id?"active":""} aria-pressed={chosen===v.id}
            onClick={()=>{setChosen(v.id);
             setUnit(cabinetPhase(v)==="solid"?"g":"ml");
-            setAmount(cabinetPhase(v)==="solid"?"1":"10")}}>
+            setAmount("10")}}>
            <i style={{background:cabinetColor(v)}}/>
            <strong>{v.formula}</strong>
            <span>{v.name}<small>{phaseNames[cabinetPhase(v)]}</small></span>
@@ -1040,11 +1049,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        </div>
        <div className="lektrus-lab-dose-controls">
         <label>Количество
-         <input type="number" inputMode="decimal" min="0.01" max="10000" step="0.1"
+         <input type="number" inputMode="decimal" min="0.01" max="10000" step="10"
           value={amount} onChange={e=>setAmount(e.target.value)} /></label>
         {chosen&&unit==="ml"&&["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen)&&
          <label>Концентрация, моль/л
-          <input type="number" min=".001" max="2" step=".01" value={molarity}
+          <input type="number" min=".001" max="2" step="0.1" value={molarity}
            onChange={e=>setMolarity(e.target.value)} />
          </label>}
         <label>Единица
@@ -1052,7 +1061,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
           <option value="ml">мл</option><option value="g">г</option>
          </select></label>
         <button type="button" className="primary" disabled={!chosen||!selected}
-         onClick={dispense}>Отлить в сосуд</button>
+         onClick={dispense}>Добавить в сосуд</button>
        </div>
        <small>Для титрования заполните бюретку и колбу кислотой и щёлочью с известными концентрациями. {selected?"Выбран: "+names[selected.kind]:"Выберите посуду на столе."}</small>
       </div>}
