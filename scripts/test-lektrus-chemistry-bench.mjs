@@ -694,4 +694,58 @@ assert.doesNotMatch(surface,/onClick=\{e=>\{e\.stopPropagation\(\);if\(selected\
 assert.match(surface,/if\(inSink\(p\)\)clean\(g\.id\)/,
  "Only dropping an individual vessel into the sink triggers disposal");
 
+// Stepwise pouring uses twenty fixed 5% portions, not exponential depletion.
+assert.equal(lab.LAB_POUR_STEPS,20);
+assert.equal(lab.LAB_POUR_INTERVAL_MS,400);
+let gradual=lab.addLabVessel(lab.defaultLabBench(),"conical");
+gradual=lab.putLabReagent(gradual,"v1","HCl",{value:100,unit:"ml",concentrationM:.2});
+gradual=lab.startLabPour(gradual,"v1","v2","gradual-pour-1");
+assert.equal(gradual.pouring.step,0);
+assert.equal(lab.startLabPour(gradual,"v1","v2","duplicate"),gradual,
+ "One concurrent pour per laboratory table");
+gradual=lab.advanceLabPour(gradual);
+assert.equal(gradual.pouring.step,1);
+assert.equal(gradual.vessels.find(v=>v.id==="v1").doses.HCl.value,95);
+assert.equal(gradual.vessels.find(v=>v.id==="v2").doses.HCl.value,5);
+assert.equal(gradual.vessels.find(v=>v.id==="v2").doses.HCl.concentrationM,.2);
+assert.equal(lab.labPourPercent(gradual.pouring),5);
+assert.equal(lab.labPourAmounts(gradual.pouring)[0].remaining,95);
+for(let tick=2;tick<=10;tick++)gradual=lab.advanceLabPour(gradual);
+assert.equal(gradual.vessels.find(v=>v.id==="v1").doses.HCl.value,50);
+assert.equal(gradual.vessels.find(v=>v.id==="v2").doses.HCl.value,50);
+assert.equal(lab.labPourPercent(gradual.pouring),50);
+let interrupted=lab.stopLabPour(gradual,"gradual-pour-1");
+assert.equal(interrupted.pouring,undefined,"Stop pouring must not discard the partially transferred liquid");
+assert.equal(interrupted.vessels.find(v=>v.id==="v1").doses.HCl.value,50);
+assert.equal(interrupted.vessels.find(v=>v.id==="v2").doses.HCl.value,50);
+for(let tick=11;tick<=20;tick++)gradual=lab.advanceLabPour(gradual);
+assert.equal(gradual.pouring.step,20);
+assert.equal(gradual.vessels.find(v=>v.id==="v1").reagents.length,0);
+assert.equal(gradual.vessels.find(v=>v.id==="v2").doses.HCl.value,100);
+assert.equal(lab.advanceLabPour(gradual),gradual);
+assert.equal(lab.labPourPercent(gradual.pouring),100);
+gradual=lab.stopLabPour(gradual,"gradual-pour-1");
+assert.equal(gradual.pouring,undefined);
+let unknownGradual=lab.addLabVessel(lab.defaultLabBench(),"tube");
+unknownGradual=lab.putLabReagent(unknownGradual,"v1","H2O");
+unknownGradual=lab.startLabPour(unknownGradual,"v1","v2","pour-without-fabricated-volume");
+for(let tick=0;tick<10;tick++)unknownGradual=lab.advanceLabPour(unknownGradual);
+assert.equal(unknownGradual.pouring.step,10);
+assert.ok(unknownGradual.vessels.find(v=>v.id==="v1").reagents.includes("H2O"));
+assert.equal(unknownGradual.vessels.find(v=>v.id==="v1").pourFraction,.25);
+assert.equal(unknownGradual.vessels.find(v=>v.id==="v2").pourFraction,.25);
+assert.deepEqual(lab.labPourAmounts(unknownGradual.pouring),[],
+ "Unknown quantities display percentages, not invented ml");
+assert.ok(unknownGradual.pouring.unmeasured);
+let clearedMidPour=lab.clearLabTable(unknownGradual);
+assert.equal(clearedMidPour.pouring,undefined);
+const gradualUi=read("src/LektrusChemistryBench.tsx");
+assert.match(gradualUi,/startLabPour\(bench,sourceId,targetId,id\)/);
+assert.match(gradualUi,/advanceLabPour\(current\)/);
+assert.match(gradualUi,/LAB_POUR_INTERVAL_MS/);
+assert.match(gradualUi,/lektrus-lab-pour-progress-amounts/);
+assert.match(gradualUi,/Перелилось/);
+assert.match(gradualUi,/Осталось/);
+assert.match(gradualUi,/stopLabPour\(bench,p\.id\)/);
+
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
