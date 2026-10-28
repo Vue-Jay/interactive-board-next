@@ -1,7 +1,7 @@
 import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose} from "./lektrusChemistryBenchModel";
-import {addLabVessel,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
+import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
  labIndicatorResult,labDevices,toggleLabDevice,useLabDevice,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
@@ -339,7 +339,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const openCabinet=(next:"reagents"|"glassware"|"equipment"|"titration"|"settings")=>{
   if(!editable)return;setCabinet(next);setNotice("");setChosen(null);
  };
- return <div className={"lektrus-lab-bench"+(!editable?" is-readonly":"")+
+ return <div className={"lektrus-lab-bench"+(!editable?" is-readonly":"")+(bench.vessels.length>3?" is-crowded":"")+
   (!settings.animateEffects?" lab-reduced-animation":"")} ref={host}
   aria-label="Интерактивный химический стол с шкафами и раковиной">
   <div className="lektrus-lab-bench-backdrop" aria-hidden="true">
@@ -352,6 +352,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <span className="lektrus-lab-scene-brand">LEKTRUS <span>LAB</span></span>
    <strong>Химическая лаборатория</strong>
    <span className="lektrus-lab-scene-stats">{bench.vessels.length} из 6 сосудов <b>·</b> {(bench.devices??[]).length} приборов</span>
+   {editable&&bench.vessels.length>1&&<button type="button" className="lektrus-lab-arrange-btn"
+    aria-label="Автоматически расставить посуду без наложений"
+    title="Упорядочить посуду" data-board-interactive="true"
+    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
+    onClick={e=>{e.stopPropagation();onChange?.(arrangeLabVessels(bench))}}>
+    <span aria-hidden="true">▦</span> Расставить
+   </button>}
   </div>
   {settings.showEquationBoard&&<div className="lektrus-lab-chalkboard" aria-live="polite">
    <small>{shownReaction?"УРАВНЕНИЕ РЕАКЦИИ":"ПЛАН ЭКСПЕРИМЕНТА"}</small>
