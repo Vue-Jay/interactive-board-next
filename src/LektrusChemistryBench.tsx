@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,setLabStandShelf,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,pourThroughLabFunnel,fillLabVolumetricFlask,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,setLabStandShelf,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,pourThroughLabFunnel,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -107,8 +107,8 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
  const volumeMl=Object.values(vessel.doses??{}).reduce((sum,d)=>sum+(d.unit==="ml"?d.value:0),0);
  const capacity=vessel.kind==="burette"?100:
   vessel.kind==="pipette"?25:vessel.kind==="tube"?25:150;
- const fillFraction=volumeMl>0?Math.min(.92,Math.max(.08,volumeMl/capacity)):
-  (vessel.reagents.length>0?0.5:0);
+ const fillFraction=volumeMl>0?Math.min(.92,Math.max(.008,volumeMl/capacity)):
+  (vessel.reagents.length>0?(vessel.pourFraction??0.5):0);
  return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
   <svg viewBox="0 0 100 133" role="img" aria-label={names[vessel.kind]+": "+(labels.join(", ")||"пустой")}>
    <defs>
@@ -296,6 +296,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  };
  const benchRef=useRef(bench);
  const changeRef=useRef(onChange);
+ const localPourRef=useRef<string|null>(null);
+ const lastPourStepRef=useRef(-1);
  benchRef.current=bench;changeRef.current=onChange;
  const isGlobalSearch=!!query.trim();
  const catalogKind=(v:{kind:string})=>{
@@ -332,6 +334,33 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const rxn=selected?labObservation(selected):null;
  const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
+ /** Only the participant who starts a pour advances the shared 5% ticks.
+  * The session itself lives in the board so other users see every portion. */
+ useEffect(()=>{
+  const id=bench.pouring?.id;
+  if(!editable||!id||localPourRef.current!==id)return;
+  const timer=setInterval(()=>{
+   const current=benchRef.current,session=current.pouring;
+   if(!session||session.id!==id||session.step>=LAB_POUR_STEPS)return;
+   if(session.step<=lastPourStepRef.current)return;
+   lastPourStepRef.current=session.step;
+   const next=advanceLabPour(current);
+   if(next!==current)changeRef.current?.(next);
+  },LAB_POUR_INTERVAL_MS);
+  return()=>clearInterval(timer);
+ },[bench.pouring?.id,editable]);
+ useEffect(()=>{
+  const session=bench.pouring;
+  if(!session||session.step!==LAB_POUR_STEPS||
+   session.id!==localPourRef.current)return;
+  const timer=setTimeout(()=>{
+   const current=benchRef.current;
+   if(current.pouring?.id===session.id&&current.pouring.step===LAB_POUR_STEPS)
+    changeRef.current?.(stopLabPour(current,session.id));
+   localPourRef.current=null;
+  },1600);
+  return()=>clearTimeout(timer);
+ },[bench.pouring?.id,bench.pouring?.step]);
  /** Persist one deterministic simulated thermal clock in board state. */
  useEffect(()=>{
   if(!editable)return;
@@ -392,16 +421,22 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   setNotice("Добавлено "+ml.toLocaleString("ru-RU")+" мл из бюретки");
  };
  const transferVessel=(sourceId:string,targetId:string)=>{
-  const from=bench.vessels.find(v=>v.id===sourceId),to=bench.vessels.find(v=>v.id===targetId);
+  const from=bench.vessels.find(v=>v.id===sourceId);
   if(from?.kind==="burette"&&labTitrationTargets(bench,sourceId).some(v=>v.id===targetId)){
    drip(sourceId,targetId,1);return;
   }
-  if(from&&to&&from.reagents.length){
-   const start=vesselPosition(from),end=vesselPosition(to);
-   setTransfer({from:{x:start.x,y:start.y-12},to:{x:end.x,y:end.y-12}});
+  const id=String(Date.now())+"-"+Math.random().toString(36).slice(2);
+  const next=startLabPour(bench,sourceId,targetId,id);
+  if(next===bench){
+   setNotice(bench.pouring&&bench.pouring.step<LAB_POUR_STEPS?
+    "Сначала завершите текущее переливание":
+    "Нельзя перелить: проверьте содержимое и вместимость второго сосуда");
+   return;
   }
-  onPour?.(sourceId,targetId);
+  localPourRef.current=id;lastPourStepRef.current=-1;
+  onChange?.(next);
   setLocalPourId(null);
+  setNotice("Переливание: по 5% каждые 0,4 секунды");
  };
  const clean=(id:string)=>{
   const next=emptyLabVessel(bench,id);
