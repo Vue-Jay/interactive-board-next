@@ -36,7 +36,7 @@ export const MAX_LAB_DEVICES=10;
 const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
 /** V1 cabinets only stored the types. Preserve them when a board is upgraded. */
 export function placedLabDevices(bench:LabBench):LabPlacedDevice[]{
- if(bench.placedDevices)return bench.placedDevices;
+ if(bench.placedDevices)return bench.placedDevices.filter(d=>d.kind!=="thermometer");
  return (bench.devices??[]).filter(kind=>kind!=="thermometer").map((kind,i)=>({
   id:"legacy-"+kind,kind,x:12+(i%3)*12,y:64+Math.floor(i/3)*18
  }));
@@ -170,7 +170,7 @@ export function dispenseLabBurette(bench:LabBench,id:string,targetId:string,ml:n
  * Time is passed explicitly so all viewers can reproduce the same evolution. */
 export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
  if(!Number.isFinite(nowMs)||nowMs<0)return bench;
- if(bench.simulationAtMs===undefined)return {...bench,simulationAtMs:nowMs};
+ if(bench.simulationAtMs===undefined)return {...bench,simulationAtMs:nowMs,event:bench.event+1};
  const seconds=Math.min(10,Math.max(0,(nowMs-bench.simulationAtMs)/1000));
  if(seconds<.05)return bench;
  const ambient=22;
@@ -180,7 +180,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const old=d.temperatureC??ambient;
   const level=d.heatLevel??2;
   const target=d.powered?(d.kind==="hotplate"?75+level*60:220+level*100):ambient;
-  const rate=d.powered?.075:.11;
+  const rate=d.powered?0.075:0.11;
   const next=Math.round((old+(target-old)*(1-Math.exp(-seconds*rate)))*10)/10;
   if(next!==old)changed=true;
   return {...d,temperatureC:next};
