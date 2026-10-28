@@ -209,8 +209,8 @@ for(const count of [1,2,3,4,5,6]){
  const width=count>3?10:10.8, height=count>3?19:30;
  for(let i=0;i<projected.length;i++){
   const a=projected[i];
-  assert.ok(a.x-width/2>26&&a.x+width/2<80,
-   "Placed vessels must stay clear of left controls and right sink");
+  assert.ok(a.x-width/2>8&&a.x+width/2<83,
+   "Free vessels fit the expanded worktop without colliding with the sink");
   assert.ok(a.y-height*.56>42&&a.y+height*.44<94,
    "Placed vessels must stay inside the available work surface");
   for(let j=i+1;j<projected.length;j++){
