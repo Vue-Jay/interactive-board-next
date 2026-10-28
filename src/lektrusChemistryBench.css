@@ -574,3 +574,211 @@
  border-color:#9fceb3;color:#276c50;font-weight:800}
 .lektrus-lab-modal-ware button.lektrus-lab-store-selected:disabled{
  opacity:.48;cursor:default}
+
+/* Full-sized cabinet. Rendered in a portal so zooming the shared board never
+   shrinks the catalogue or clips its scrollable contents. */
+.lektrus-lab-furniture-modal{
+ position:fixed!important;inset:0!important;z-index:2147483000!important;
+ display:grid!important;place-items:center!important;
+ padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right))
+         max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))!important;
+ overflow:hidden;overscroll-behavior:contain;
+ background:#102f2bbd!important;backdrop-filter:blur(8px);
+ touch-action:pan-y;
+}
+.lektrus-lab-furniture-modal .lektrus-lab-furniture-dialog{
+ width:min(1060px,100%)!important;
+ height:min(780px,calc(100dvh - 24px))!important;
+ max-height:calc(100dvh - 24px)!important;
+ min-height:0!important;
+ overflow:hidden!important;display:flex!important;
+ flex-direction:column!important;gap:13px!important;
+ padding:0!important;
+ border-radius:18px!important;border:1px solid #9dc9b3!important;
+ background:#f5faf6!important;
+ box-shadow:0 28px 85px #071c1a85,0 0 0 1px #e6f4eb4d inset!important;
+ color:#234d42;font:500 14px/1.4 system-ui,sans-serif;
+ touch-action:pan-y;
+}
+.lektrus-lab-furniture-modal:not(.is-reagents) .lektrus-lab-furniture-dialog{
+ width:min(650px,100%)!important;height:auto!important;
+ max-height:min(680px,calc(100dvh - 24px))!important;
+ padding-bottom:14px!important;
+}
+.lektrus-lab-furniture-modal .lektrus-lab-furniture-dialog:focus{outline:none}
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-head{
+ display:flex;flex:0 0 auto;align-items:center;justify-content:space-between;
+ min-height:84px;gap:18px;padding:16px 22px;
+ background:linear-gradient(115deg,#154d40,#287b60 80%,#378569);
+ color:#fff;border-bottom:1px solid #1c694f;
+}
+.lektrus-lab-modal-heading{display:flex;align-items:center;min-width:0;gap:13px}
+.lektrus-lab-modal-emblem{flex:0 0 46px;width:46px;height:46px;
+ display:grid;place-items:center;border-radius:13px;
+ background:#ffffff1f;border:1px solid #ffffff4d;
+ font-size:24px;color:#effff6}
+.lektrus-lab-modal-heading>span:last-child{display:grid;gap:3px;min-width:0}
+.lektrus-lab-modal-heading strong{font:800 clamp(17px,2vw,22px)/1.2 system-ui,sans-serif;
+ letter-spacing:-.02em}
+.lektrus-lab-modal-heading small{font-size:12px;line-height:1.35;color:#d3ebe0}
+.lektrus-lab-modal-head>button{flex:0 0 40px;width:40px;height:40px;
+ border-radius:11px!important;background:#ffffff24!important;
+ border:1px solid #ffffff56!important;
+ color:#fff!important;font-size:25px!important;line-height:1;
+ cursor:pointer;transition:background-color .18s}
+.lektrus-lab-modal-head>button:hover{background:#ffffff40!important}
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-tabs,
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-filters,
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-results-head{
+ margin:0 22px;flex:0 0 auto;
+}
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-tabs{
+ display:flex;gap:8px;min-height:38px}
+.lektrus-lab-modal-tabs button{
+ min-height:38px;padding:7px 18px;border-radius:9px;
+ border:1px solid #d1e1d6;background:#fff;color:#45705a;
+ font:700 13px system-ui,sans-serif;cursor:pointer;transition:background-color .16s}
+.lektrus-lab-modal-tabs button.active{
+ border-color:#26755b;background:#e2f3e9;color:#186447;
+ box-shadow:inset 0 -2px 0 #2b966a}
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-filters{display:grid;
+ grid-template-columns:minmax(0,1fr) minmax(156px,220px);gap:10px;min-height:44px}
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-filters :is(input,select){
+ width:100%;height:44px;max-width:none;min-height:44px;
+ border-radius:10px;border:1px solid #c7dacd;
+ background:#fff;color:#275443;
+ padding:9px 13px;font-size:13px;
+ box-shadow:0 2px 6px #1e594908;
+}
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-filters input{
+ padding-left:40px;
+ background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237caa90' stroke-width='2'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m16 16 5 5'/%3E%3C/svg%3E") no-repeat 12px center / 18px 18px;
+}
+.lektrus-lab-modal-results-head{display:flex;align-items:center;min-height:30px;
+ gap:12px;color:#628778;font-size:12px;line-height:1.3}
+.lektrus-lab-modal-results-head>span:first-child{color:#386a54}
+.lektrus-lab-modal-results-head strong{font-size:14px;font-weight:800;color:#1d7352}
+.lektrus-lab-modal-scroll-help{margin-left:auto}
+.lektrus-lab-scroll-buttons{display:flex;gap:5px}
+.lektrus-lab-scroll-buttons button{width:31px;height:30px;display:grid;place-items:center;
+ border:1px solid #cbded0;background:#fff;border-radius:8px;color:#327b58;
+ font-weight:900;font-size:16px;cursor:pointer}
+.lektrus-lab-scroll-buttons button:hover{border-color:#72bb98;background:#e9f7ee}
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-reagents{
+ flex:1 1 auto!important;min-height:130px!important;max-height:none!important;
+ align-content:start!important;
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ grid-auto-rows:max-content;gap:9px!important;
+ overflow-x:hidden!important;overflow-y:auto!important;
+ overscroll-behavior:contain;scroll-behavior:smooth;
+ -webkit-overflow-scrolling:touch;touch-action:pan-y;
+ margin:0 12px 0 22px;padding:4px 10px 15px 2px;
+ scrollbar-width:auto;scrollbar-color:#a6cdb7 #e5f0e9;
+}
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-reagents:focus-visible{
+ outline:2px solid #42a883;outline-offset:-3px;border-radius:9px}
+.lektrus-lab-modal-reagents>button{
+ display:grid;grid-template-columns:26px minmax(0,1fr)!important;
+ grid-template-rows:auto 1fr;align-items:center!important;
+ gap:5px 10px!important;min-height:75px!important;
+ padding:11px 12px!important;
+ border:1px solid #d6e5db!important;
+ border-radius:12px!important;background:#fff!important;color:#376a54!important;
+ box-shadow:0 2px 4px #194c3c0b;
+ text-align:left;cursor:pointer;transition:background-color .14s,border-color .14s,transform .14s;
+}
+.lektrus-lab-modal-reagents>button:hover{
+ border-color:#7cbe9a!important;background:#f0faf3!important;
+ transform:translateY(-1px)}
+.lektrus-lab-modal-reagents>button.active{
+ border-color:#32956c!important;background:#e5f6ed!important;
+ box-shadow:0 0 0 2px #309b6930!important}
+.lektrus-lab-modal-reagents>button i{
+ width:23px!important;height:34px!important;grid-row:1/-1;
+ border:1px solid #90aba8;border-radius:4px 4px 6px 6px!important;
+ box-shadow:inset 3px 0 6px #fff7,0 2px 4px #224e4322}
+.lektrus-lab-modal-reagents>button strong{
+ font:800 14px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace!important;
+ color:#1e624c}
+.lektrus-lab-modal-reagents>button>span{grid-column:2;display:grid;
+ align-content:start;gap:3px;min-width:0;
+ white-space:normal!important;overflow:visible!important;
+ font-size:12px!important;line-height:1.3!important;color:#426b58}
+.lektrus-lab-modal-reagents>button>span small{
+ display:block;font-size:10px;font-weight:600;color:#87a295}
+.lektrus-lab-modal-reagents>button.lektrus-lab-example-choice{
+ grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto;
+ align-content:start;gap:6px!important}
+.lektrus-lab-modal-reagents>button.lektrus-lab-example-choice strong{
+ font:750 12px/1.3 ui-monospace,monospace!important}
+.lektrus-lab-modal-reagents>button.lektrus-lab-example-choice span{
+ grid-column:1;font-size:12px!important;line-height:1.35!important}
+.lektrus-lab-furniture-dialog .lektrus-lab-modal-dose{
+ flex:0 0 auto;margin:0 22px 20px;
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(285px,1fr);
+ align-items:center;gap:10px 20px;padding:15px 17px!important;
+ border:1px solid #bddcc9;border-radius:12px;
+ background:linear-gradient(115deg,#e9f5ed,#f5fbf7);
+ box-shadow:0 3px 10px #1f6c490d;
+}
+.lektrus-lab-modal-dose>div:first-child{min-width:0;gap:4px}
+.lektrus-lab-modal-dose>div:first-child strong{font-size:14px}
+.lektrus-lab-modal-dose>div:first-child small{font-size:11px}
+.lektrus-lab-furniture-dialog .lektrus-lab-dose-controls{gap:8px;flex-wrap:nowrap}
+.lektrus-lab-dose-controls label{min-width:0;font-size:11px}
+.lektrus-lab-dose-controls label input{width:96px;height:39px}
+.lektrus-lab-dose-controls label select{min-width:67px;height:39px}
+.lektrus-lab-furniture-dialog .lektrus-lab-dose-controls button{
+ height:40px;min-width:136px;white-space:nowrap;flex:1 1 auto;
+ border-radius:9px;font-size:12px}
+.lektrus-lab-modal-dose>small{grid-column:1/-1}
+.lektrus-lab-furniture-modal:not(.is-reagents) :is(.lektrus-lab-modal-ware,.lektrus-lab-modal-settings){
+ margin:0 18px;min-height:0;max-height:calc(100dvh - 150px);
+ overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+.lektrus-lab-furniture-modal button:focus-visible,
+.lektrus-lab-furniture-modal :is(input,select):focus-visible{
+ outline:2px solid #288e67;outline-offset:2px}
+@media(max-width:960px){
+ .lektrus-lab-furniture-modal .lektrus-lab-modal-reagents{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-dose{
+  grid-template-columns:1fr;gap:8px}
+ .lektrus-lab-dose-controls{justify-content:flex-start}
+}
+@media(max-width:620px){
+ .lektrus-lab-furniture-modal{padding:0!important}
+ .lektrus-lab-furniture-modal .lektrus-lab-furniture-dialog{
+  width:100%!important;height:100dvh!important;max-height:100dvh!important;
+  border-radius:0!important;border:0!important;gap:10px!important}
+ .lektrus-lab-furniture-modal:not(.is-reagents) .lektrus-lab-furniture-dialog{
+  max-height:100dvh!important}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-head{padding:12px 14px;min-height:70px}
+ .lektrus-lab-modal-heading strong{font-size:18px}
+ .lektrus-lab-modal-heading small{font-size:10px}
+ .lektrus-lab-modal-emblem{width:38px;height:38px;flex-basis:38px;font-size:20px}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-tabs,
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-filters,
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-results-head{margin:0 13px}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-filters{grid-template-columns:minmax(0,1fr) 126px;gap:6px}
+ .lektrus-lab-modal-scroll-help{display:none}
+ .lektrus-lab-furniture-modal .lektrus-lab-modal-reagents{
+  margin:0 7px 0 13px;padding-right:8px;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+ .lektrus-lab-modal-reagents>button{padding:9px!important;min-height:72px!important}
+ .lektrus-lab-modal-reagents>button strong{font-size:12px!important}
+ .lektrus-lab-modal-reagents>button>span{font-size:10px!important}
+ .lektrus-lab-furniture-dialog .lektrus-lab-modal-dose{
+  margin:0 12px max(12px,env(safe-area-inset-bottom));padding:10px!important;gap:6px}
+ .lektrus-lab-furniture-dialog .lektrus-lab-dose-controls{gap:6px;flex-wrap:wrap}
+ .lektrus-lab-dose-controls label input{width:82px}
+ .lektrus-lab-furniture-dialog .lektrus-lab-dose-controls button{min-width:100px}
+}
+@media(max-width:390px){
+ .lektrus-lab-furniture-modal .lektrus-lab-modal-reagents{
+  grid-template-columns:minmax(0,1fr)!important}
+ .lektrus-lab-modal-results-head{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-modal-reagents{scroll-behavior:auto!important}
+ .lektrus-lab-modal-reagents>button{transition:none!important}
+}
