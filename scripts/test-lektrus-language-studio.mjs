@@ -102,4 +102,34 @@ assert.equal(duplicateKept.activity.blanks[0].choices,undefined,"Identical corre
 assert.deepEqual(duplicateKept.activity.blanks[1].choices,["а","о"]);
 assert.match(studio,/configureChoices/,"Teacher can switch one gap between typing and two options");
 assert.match(studio,/updateDistractor/,"Teacher can supply the alternate letter");
+// Grammar and reading use the existing answer field, without leaking one
+// student's answers into another task or adding a second persistence path.
+const foreignPath="src/LektrusForeignTaskAnswer.tsx";
+const foreignJs=ts.transpileModule(read(foreignPath),{fileName:foreignPath,
+ compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.React}
+}).outputText.replace(/^import[^;]*;\s*$/gm,"").replace(/^export default /gm,"")
+ .replace(/^export /gm,"");
+const foreign=new Function(foreignJs+"\nreturn {foreignTaskLines,foreignAnswerAt,editForeignAnswer};")();
+assert.deepEqual(foreign.foreignTaskLines("A sentence\n\nB sentence"),["A sentence","B sentence"]);
+assert.equal(foreign.editForeignAnswer("",1,"Has she gone?",3),"\nHas she gone?\n");
+assert.equal(foreign.foreignAnswerAt("\nHas she gone?\n",1),"Has she gone?");
+assert.equal(foreign.editForeignAnswer("one\ntwo",0,"other\nline",2),"other line\ntwo",
+ "Each grammar response stays on its own row");
+assert.equal(foreign.editForeignAnswer("",0,"a".repeat(2001),1),"",
+ "Stored answers must respect the board's 2000 character limit");
+assert.match(board,/LektrusForeignTaskAnswer/,"Foreign pupil work is shown in the subject board");
+assert.match(studio,/LektrusForeignTaskAnswer/,"Teacher sees the same foreign language worksheet");
+assert.match(studio,/Предложения для преобразования/);
+assert.match(studio,/Разметить знаки автоматически/,"Teacher can mark punctuation");
+assert.match(studio,/Место без знака/,"Punctuation asks whether a mark is necessary");
+assert.match(activityUi,/Объяснить постановку знаков/,"Student has to explain punctuation");
+assert.match(activityUi,/Правило преподавателя/,"Teacher rule is revealed only after checking");
+const punctuationDraft=parseLanguageGapText("Он сказал[,] что придёт[∅] завтра");
+punctuationDraft.activity.blanks[0].rule="Части сложного предложения";
+punctuationDraft.activity.blanks[1].rule="Знак не требуется";
+const punctuationEdited=preserveGapChoices(
+ parseLanguageGapText("Он сказал[,] что придёт[∅] завтра."),punctuationDraft.activity);
+assert.equal(punctuationEdited.activity.blanks[0].rule,"Части сложного предложения");
+assert.equal(punctuationEdited.activity.blanks[1].rule,"Знак не требуется");
+assert.deepEqual(activityScore(punctuationEdited.activity,{values:[",","∅"]}),{correct:2,total:2});
 console.log("Language studio: Russian spelling/punctuation, English gaps, authoring, safe preview, archived exercises OK");
