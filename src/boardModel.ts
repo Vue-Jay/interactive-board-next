@@ -789,7 +789,12 @@ export function parseDocument(raw: string): DocumentData {
         const validDose=(entry:unknown)=>!!entry&&typeof entry==="object"&&
           Number.isFinite((entry as {value:number}).value)&&
           (entry as {value:number}).value>0&&(entry as {value:number}).value<=10000&&
-          ["ml","g"].includes((entry as {unit:string}).unit);
+          ["ml","g"].includes((entry as {unit:string}).unit)&&
+          ((entry as {concentrationM?:number}).concentrationM==null||
+            ((entry as {unit:string}).unit==="ml"&&
+             Number.isFinite((entry as {concentrationM?:number}).concentrationM)&&
+             (entry as {concentrationM:number}).concentrationM>=.001&&
+             (entry as {concentrationM:number}).concentrationM<=2));
         const validReaction=(entry:unknown)=>{
           if(entry==null)return true;
           if(!entry||typeof entry!=="object")return false;
@@ -808,6 +813,11 @@ export function parseDocument(raw: string): DocumentData {
             bench.devices.length>5||new Set(bench.devices).size!==bench.devices.length||
             !bench.devices.every(id=>["hotplate","burner","stirrer","tripod","thermometer"].includes(id))))||
           (bench.titration!=null&&!validLabTitration(bench.titration))||
+          (bench.titrationPair!=null&&(
+           !bench.titration||
+           !bench.vessels.some(v=>v.id===bench.titrationPair?.sourceId)||
+           !bench.vessels.some(v=>v.id===bench.titrationPair?.targetId)||
+           bench.titrationPair.sourceId===bench.titrationPair.targetId))||
           (bench.stirringVesselId!=null&&(!bench.vessels.some(v=>v.id===bench.stirringVesselId)||
             !(bench.devices??[]).includes("stirrer")))||
           (bench.vessels.length===0?bench.selectedId!=="":
