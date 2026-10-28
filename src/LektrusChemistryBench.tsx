@@ -168,12 +168,11 @@ type SurfaceProps={
  onSelect?:(id:string)=>void;
  onPour?:(sourceId:string,targetId:string)=>void;
  onDropReagent?:(id:string,reagent:string,dose?:LabDose)=>void;
- onOpenEditor?:()=>void;
 };
 /** Furniture is part of the shared bench, not a second toolbar. Both the
  * editor and the board use these exact same interactions. */
 export default function LektrusChemistryBenchSurface({bench,editable=false,pouringId,
- onChange,onSelect,onPour,onDropReagent,onOpenEditor}:SurfaceProps){
+ onChange,onSelect,onPour,onDropReagent}:SurfaceProps){
  const host=useRef<HTMLDivElement>(null);
  const dialogRef=useRef<HTMLElement>(null);
  const sinkId=useId().replace(/:/g,"");
@@ -620,11 +619,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <span className="lektrus-lab-sink-caption"><strong>МОЙКА</strong>
     <small>{sinkFlow?"Раствор слит":"Слить содержимое"}</small></span>
   </button>
-  {onOpenEditor&&editable&&<button type="button" data-board-interactive="true"
-   className="lektrus-lab-journal-trigger" title="Журнал опыта: условия и наблюдения"
-   aria-label="Открыть лабораторный журнал"
-   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
-   onClick={e=>{e.stopPropagation();onOpenEditor()}}>▤</button>}
+
   <button type="button" data-board-interactive="true"
    className="lektrus-lab-settings-trigger" title="Настройки химического стола"
    aria-label="Настройки химического стола" disabled={!editable}
