@@ -317,8 +317,26 @@ assert.match(read("src/lektrusSciencePresets.ts"),/x:x-830,y:y-530,text:"Хим�
  "Bench must be centered under the insertion cursor");
 
 // The visual stage is scrollable for old boards without clipping apparatus.
+const subjectInsertion=read("src/App.tsx");
+assert.match(subjectInsertion,/if\(id==="chem-experiments"\)\{/,
+ "The subject tool should create a laboratory directly on the board");
+assert.match(subjectInsertion,/commit\(\[\.\.\.itemsRef\.current,item\]\)/,
+ "The new laboratory must be saved as a board object");
+assert.match(subjectInsertion,/setSelected\(\[item\.id\]\)/,
+ "Newly created laboratory must be selected for resize and movement");
+assert.match(subjectInsertion,/if\(item\.graphFigureId==="chem-experiment-free"\)/,
+ "The object edit command should select a laboratory without reopening the modal");
+assert.doesNotMatch(read("src/LektrusScienceEditor.tsx"),/import LektrusChemistryBenchEditor/,
+ "The obsolete experiment editor is no longer imported");
+assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-journal-trigger/,
+ "There must be no button reopening the obsolete dialog");
 const boardLaboratory=read("src/LektrusChemistryIllustration.tsx");
 const editorLaboratory=read("src/LektrusChemistryBenchEditor.tsx");
+assert.match(boardLaboratory,/lektrus-lab-object-grip/,
+ "Lab object must have an unobstructed whole-object drag handle");
+assert.doesNotMatch(boardLaboratory,/className="lektrus-chemistry-bench-on-board"[^>]*data-board-interactive/,
+ "The object wrapper must not suppress the board's normal transform gestures");
+
 const hugeLabCss=read("src/lektrusChemistryBench.css");
 assert.match(boardLaboratory,/className="lektrus-chemistry-bench-on-board"[\s\S]*?onWheel=\{e=>e\.stopPropagation\(\)\}/,
  "Scrolling inside the board lab must not zoom the board");
