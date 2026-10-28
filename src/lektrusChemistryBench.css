@@ -2611,3 +2611,14 @@
   top:var(--lab-menu-y,56%)!important;right:auto!important;bottom:auto!important;
   width:max-content!important;max-width:330px!important}
 }
+
+
+/* Drag-to-cabinet affordance is a physical part of the laboratory furniture. */
+.lektrus-lab-bench .lektrus-lab-device-cupboard.is-dropzone,
+.lektrus-lab-bench .lektrus-lab-glass-cupboard.is-dropzone{
+ outline:4px solid #39b68c!important;outline-offset:-3px!important;
+ box-shadow:inset 0 0 24px #a8f5c588,0 0 17px #328f7044!important;
+ background:linear-gradient(130deg,#efffeb,#c8f0d8)!important;
+ transition:background-color .12s,box-shadow .12s}
+.lektrus-lab-bench .lektrus-lab-device-grip .lektrus-lab-device-brand{
+ user-select:none}
