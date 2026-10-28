@@ -5544,7 +5544,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      if(!latest||!isSubjectBoard(latest)||latest.locked||!canEdit||!roleCapabilities.canUseTeacherTools)return;
      const owned=latest.subjectBoardEntries?.find(entry=>entry.id===entryId);
      if(!owned||!entryBelongsToSubject(boardTone(latest),owned))return;
-     const next={...latest,subjectBoardEntries:(latest.subjectBoardEntries??[]).filter(entry=>entry.id!==entryId)};
+     const remaining=(latest.subjectBoardEntries??[]).filter(entry=>entry.id!==entryId);
+     if(!remaining.length&&provisionalChemistryWorksheets.current.has(boardId)){
+       provisionalChemistryWorksheets.current.delete(boardId);
+       commit(itemsRef.current.filter(value=>value.id!==boardId));
+       setSelected([]);return;
+     }
+     const next={...latest,subjectBoardEntries:remaining};
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
      commit(itemsRef.current.map(value=>value.id===latest.id?next:value));
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,next));
