@@ -32,6 +32,14 @@ for(const [subject,ids] of Object.entries({
  const section=panel.slice(start,end);
  for(const id of ids)assert.ok(section.includes('"'+id+'"'),"Missing "+id+" under "+subject);
 }
+assert.match(panel,/className=\{isTask\?"is-subject-task":undefined\}/,
+ "Subject assignments must have a dedicated full-width tile");
+assert.ok(panel.includes('className="lektrus-subject-tools-copy"'),
+ "The name and placement caption must use one text column");
+assert.match(panelCss,/grid-column:1 \/ -1!important/,
+ "Task tile must span both regular-tool grid columns");
+assert.ok(panelCss.includes("--lektrus-tool-accent"),
+ "Subject assignment should inherit subject-specific colour");
 assert.ok(panel.includes("const remaining=tools.filter(tool=>!used.has(tool.id))"),
  "Newly registered subject tools must stay discoverable");
 assert.ok(!panel.includes('type="search"'),"Subject popup must contain no search input");
