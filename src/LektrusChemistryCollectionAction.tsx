@@ -1,4 +1,5 @@
 import {useState} from "react";
+import {createPortal} from "react-dom";
 
 type Destination={id:string;title:string};
 type Props={destinations:Destination[];onCollect:(destinationId:string)=>void};
@@ -12,11 +13,20 @@ export default function LektrusChemistryCollectionAction({destinations,onCollect
   onDoubleClick={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
   <button type="button" aria-expanded={open} aria-label="Поместить на химическую доску"
    onClick={()=>setOpen(value=>!value)}>На химическую доску</button>
-  {open&&<div className="lektrus-chem-collect-menu" role="group" aria-label="Выберите химическую доску">
-   <strong>Куда перенести?</strong>
-   {destinations.map((destination)=><button type="button" key={destination.id}
-    onClick={()=>onCollect(destination.id)}>{destination.title}</button>)}
-   <button type="button" onClick={()=>onCollect("__new__")}>+ Новая химическая доска</button>
-  </div>}
+  {open&&createPortal(<div className="lektrus-chem-collect-backdrop"
+   onPointerDown={e=>{e.stopPropagation();if(e.target===e.currentTarget)setOpen(false)}}
+   onClick={e=>e.stopPropagation()}>
+   <section className="lektrus-chem-collect-menu" role="dialog" aria-modal="true"
+    aria-label="Выберите химическую доску">
+    <div className="lektrus-chem-collect-menu-heading">
+     <strong>Перенести на химическую доску</strong>
+     <button type="button" aria-label="Закрыть" onClick={()=>setOpen(false)}>×</button>
+    </div>
+    <p>Выберите существующую доску или создайте новую. Исходный объект переносится без дубликата.</p>
+    {destinations.map(destination=><button type="button" key={destination.id}
+     onClick={()=>onCollect(destination.id)}>{destination.title}</button>)}
+    <button type="button" onClick={()=>onCollect("__new__")}>+ Новая химическая доска</button>
+   </section>
+  </div>,document.body)}
  </div>;
 }
