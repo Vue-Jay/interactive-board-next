@@ -16,8 +16,7 @@ export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
  {id:"volumetric",name:"Мерная колба",description:"Приготовление растворов"},
  {id:"crucible",name:"Тигель",description:"Нагревание твёрдых веществ"},
  {id:"pipette",name:"Мерная пипетка",description:"Отбор небольшого объёма"},
- {id:"burette",name:"Бюретка",description:"Дозирование при титровании"},
- {id:"funnel",name:"Воронка",description:"Аккуратное переливание"}
+ {id:"burette",name:"Бюретка",description:"Дозирование при титровании"}
 ];
 export type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
 export type LabDevice="hotplate"|"burner"|"stirrer"|"tripod"|"thermometer";
