@@ -1205,7 +1205,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
     return <div className="graph-view lektrus-school-on-board"><LektrusSchoolDiagramView diagram={item.schoolDiagram} onChange={onSchoolDiagramChange} onMatchingSize={onMatchingSize}/></div>;
   if(item.graphFigureId?.startsWith("chem-organic-"))return <div className="graph-view lektrus-organic-on-board"><LektrusOrganicView item={item}/></div>;
   if(isChemicalIllustration(item))return <div className="graph-view lektrus-chemical-illustration">
-    <LektrusChemistryIllustration item={item} onBenchChange={onLabBenchChange}/>
+    <LektrusChemistryIllustration item={item} onBenchChange={onLabBenchChange} onOpenEditor={onOpenEditor}/>
   </div>;
   const expression = item.graphExpression?.trim() ?? "";
   const purpose = item.graphPurpose ?? (item.graphCircles?.length ? "unit-circle" : item.graphPolygons?.length ? "geometry" : expression ? "function" : "coordinates");
@@ -9143,7 +9143,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                    }:undefined}
                   onOpenEditor={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation
                     ?()=>{setGraphPointEditId(null);openGraphEditor(item)}:
-                    (item.graphFigureId?.startsWith("physics-")||!!item.scienceMechanics||!!item.scienceOptics||!!item.scienceCircuit)&&
+                    (item.graphFigureId==="chem-experiment-free"||item.graphFigureId?.startsWith("physics-")||!!item.scienceMechanics||!!item.scienceOptics||!!item.scienceCircuit)&&
                     selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!space&&!presentation
                     ?()=>{setGraphPointEditId(null);openGraphEditor(item)}:undefined}
                   constructionActive={boardGeometryMode?.id===item.id}
