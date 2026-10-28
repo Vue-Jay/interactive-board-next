@@ -432,9 +432,10 @@ export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,req
 }
 export type LabBenchSettings={
  showEquationBoard:boolean;showVesselLabels:boolean;animateEffects:boolean;
+ showTemperatures:boolean;
 };
 export const defaultLabBenchSettings=():LabBenchSettings=>({
- showEquationBoard:false,showVesselLabels:true,animateEffects:true
+ showEquationBoard:false,showVesselLabels:true,animateEffects:true,showTemperatures:true
 });
 export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
  ...defaultLabBenchSettings(),...bench.settings
@@ -487,8 +488,50 @@ export type LabVessel={
  /** A verified reaction already completed in this material; survives full transfer. */
  completedReaction?:ReactionCase;
 };
+export type LabQuickReagent={id:string;dose:LabDose};
+export const MAX_QUICK_REAGENTS=12;
+export const defaultLabQuickReagents=():LabQuickReagent[]=>[
+ {id:"H2O",dose:{value:10,unit:"ml"}},
+ {id:"HCl",dose:{value:10,unit:"ml",concentrationM:.1}},
+ {id:"NaOH",dose:{value:10,unit:"ml",concentrationM:.1}},
+ {id:"CuSO4",dose:{value:10,unit:"ml"}},
+ {id:"AgNO3",dose:{value:10,unit:"ml"}},
+ {id:"BaCl2",dose:{value:10,unit:"ml"}},
+ {id:"KMnO4",dose:{value:10,unit:"ml"}},
+ {id:"FeSO4",dose:{value:10,unit:"ml"}},
+ {id:"CaCO3",dose:{value:10,unit:"g"}},
+ {id:"NaCl",dose:{value:10,unit:"g"}}
+];
+export function labQuickReagents(bench:LabBench):LabQuickReagent[]{
+ return (bench.quickReagents??defaultLabQuickReagents()).filter(q=>
+  substances.some(v=>v.id===q.id)).slice(0,MAX_QUICK_REAGENTS);
+}
+export function setLabQuickReagent(bench:LabBench,id:string,dose?:LabDose):LabBench{
+ if(!substances.some(v=>v.id===id))return bench;
+ const list=labQuickReagents(bench),existing=list.find(v=>v.id===id);
+ if(!dose){
+  if(!existing)return bench;
+  return {...bench,quickReagents:list.filter(v=>v.id!==id),event:bench.event+1};
+ }
+ if(!Number.isFinite(dose.value)||dose.value<=0||dose.value>10000||
+  !["g","ml"].includes(dose.unit)||
+  (dose.concentrationM!==undefined&&(dose.unit!=="ml"||dose.concentrationM<.001||
+   dose.concentrationM>2)))return bench;
+ if(!existing&&list.length>=MAX_QUICK_REAGENTS)return bench;
+ const normalized={id,dose:{...dose,value:Math.round(dose.value*100)/100}};
+ return {...bench,quickReagents:existing?list.map(v=>v.id===id?normalized:v):
+  [...list,normalized],event:bench.event+1};
+}
+export function clearLabTable(bench:LabBench):LabBench{
+ if(!bench.vessels.length&&!placedLabDevices(bench).length)return bench;
+ // Empty only the physical worktop. The configured quick shelf and
+ // presentation settings must survive cleaning.
+ return {...bench,vessels:[],selectedId:"",placedDevices:[],devices:[],
+  titration:undefined,titrationPair:undefined,stirringVesselId:undefined,
+  instrumentTarget:undefined,simulationAtMs:undefined,event:bench.event+1};
+}
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;
- settings?:LabBenchSettings;devices?:LabDevice[];placedDevices?:LabPlacedDevice[];titration?:TitrationModel;stirringVesselId?:string;
+ settings?:LabBenchSettings;quickReagents?:LabQuickReagent[];devices?:LabDevice[];placedDevices?:LabPlacedDevice[];titration?:TitrationModel;stirringVesselId?:string;
  instrumentTarget?:{kind:"tripod"|"thermometer";vesselId:string};
  titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;}
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=6;
@@ -548,8 +591,8 @@ export function arrangeLabVessels(bench:LabBench):LabBench{
  });
  if(vessels.every((v,i)=>v.x===bench.vessels[i].x&&v.y===bench.vessels[i].y))return bench;
  // Arrange only free vessels. Mounted vessels keep their attachments.
- const stabilized=vessels.map((v,i)=>placedLabDevices(bench).some(d=>d.active&&
-  d.linkedVesselId===v.id)?bench.vessels[i]:v);
+ const stabilized=vessels.map((v,i)=>placedLabDevices(bench).some(d=>
+  d.active&&d.linkedVesselId===v.id||d.shelfVesselId===v.id)?bench.vessels[i]:v);
  return bump(bench,stabilized);
 }
 export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:number;y:number}):LabBench{
@@ -777,6 +820,8 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  const titrationPair=JSON.stringify(mine.titrationPair??null)===JSON.stringify(previous.titrationPair??null)?
   remote.titrationPair:mine.titrationPair;
  const simulationAtMs=Math.max(mine.simulationAtMs??0,remote.simulationAtMs??0)||undefined;
- return {vessels:limited,selectedId,settings,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,
+ const quickReagents=JSON.stringify(labQuickReagents(mine))===JSON.stringify(labQuickReagents(previous))?
+  labQuickReagents(remote):labQuickReagents(mine);
+ return {vessels:limited,selectedId,settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,
   event:Math.max(remote.event,mine.event)+1};
 }
