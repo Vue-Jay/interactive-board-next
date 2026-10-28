@@ -57,4 +57,8 @@ assert.ok(!registry.includes('{id:"ru-sentence-builder",label:'),
  "Old sentence builder must not be offered as an independent tool");
 assert.ok(!panel.includes('ids:["ru-orthography","ru-sentence-builder"]'));
 assert.ok(read("src/lektrusSubjectBoard.css").includes(".lektrus-rus-token.mark-subject"));
+assert.ok(answer.includes("morphologyPlans"),"Morphological features depend on part of speech");
+assert.ok(answer.includes("Начальная форма"),"Morphology asks for an initial form");
+assert.ok(answer.includes("lektrus-rus-morph-step"),"Morphology has a step-by-step worksheet");
+assert.ok(model.includes("initialForm?:string"),"Initial form is included in saved student work");
 console.log("Russian schoolwork: morpheme boundaries, shared role markings, morphology, question answers and pupil permissions OK");
