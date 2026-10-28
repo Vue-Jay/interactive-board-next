@@ -638,7 +638,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    environment:row.environment,observed:false
   }));
   if(!vessels.length)return;
-  onChange?.({...bench,vessels,selectedId:vessels[0].id,event:bench.event+1});
+  // Reused IDs in a new example must never reconnect old powered equipment.
+  onChange?.({...bench,vessels,selectedId:vessels[0].id,
+   placedDevices:physicalDevices.map(d=>({...d,active:false,
+    linkedVesselId:undefined,shelfVesselId:undefined})),
+   stirringVesselId:undefined,titrationPair:undefined,titration:undefined,
+   instrumentTarget:undefined,event:bench.event+1});
   setNotice("Опыт подготовлен: соедините вещества, чтобы наблюдать реакцию");
   setCabinet(null);
  };
@@ -811,6 +816,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      onClick={e=>{e.stopPropagation();if(e.detail===0)setActiveDeviceId(device.id)}}>
      <LektrusLabDeviceIcon kind={device.kind} size={150}
       active={!!device.powered} editable={editable} controlsVisible={focused}
+      temperatureVisible={settings.showTemperatures}
       temperatureC={device.temperatureC} targetTemperatureC={device.targetTemperatureC}
       standHeight={device.standHeight} heatLevel={device.heatLevel}
       choices={choices.map(v=>({id:v.id,label:names[v.kind]+" · "+v.id}))}
