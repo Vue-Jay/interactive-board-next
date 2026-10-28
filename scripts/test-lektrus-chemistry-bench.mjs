@@ -579,8 +579,8 @@ assert.match(fixedLayout,/\.lektrus-lab-bench \.lektrus-lab-worktop-zone\{pointe
  "Decorative worktop must never intercept vessel touches");
 assert.match(fixedLayout,/\.lektrus-lab-bench \.lektrus-lab-pour-hint\{[\s\S]*?bottom:10\.5%!important/,
  "Pour hint must stay on the tabletop and not hide under the front edge");
-assert.match(read("src/LektrusChemistryBench.tsx"),/canMountLabVessel\(device\.kind,v\.kind\)/,
- "Mount selector should only offer compatible vessel types");
+assert.match(read("src/LektrusChemistryBench.tsx"),/canMountLabVessel\(v\.device\.kind,vessel\.kind\)/,
+ "Mounting is restricted to compatible vessel types at the point of contact");
 const cabinetSurface=read("src/LektrusChemistryBench.tsx");
 const cabinetCss=read("src/lektrusChemistryBench.css");
 assert.match(cabinetSurface,/createPortal\(<div className=\{"lektrus-lab-furniture-modal is-"/,
