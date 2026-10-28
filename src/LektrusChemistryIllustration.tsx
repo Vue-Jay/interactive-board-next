@@ -67,7 +67,10 @@ export default function LektrusChemistryIllustration({item,onStageChange,onBench
  const stage=onStageChange?(item.scienceExperimentStage??0):localStage;
  const setStage=(next:0|1)=>onStageChange?onStageChange(next):setLocalStage(next);
  if(item.graphFigureId==="chem-experiment-free")return item.scienceLabBench?
-  <div className="lektrus-chemistry-bench-on-board">
+  <div className="lektrus-chemistry-bench-on-board"
+   data-board-interactive="true"
+   onWheel={e=>e.stopPropagation()}
+   onTouchMove={e=>e.stopPropagation()}>
    <LektrusChemistryBenchSurface bench={bench} editable={!!onBenchChange} onOpenEditor={onOpenEditor}
     pouringId={pourSource} onChange={changeBench}
     onSelect={id=>changeBench(selectLabVessel(bench,id))}
