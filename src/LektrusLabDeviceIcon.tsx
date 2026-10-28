@@ -22,7 +22,7 @@ export default function LektrusLabDeviceIcon({
  const metal=uid+"-metal",glass=uid+"-glass",plastic=uid+"-case";
  const clampShift=40-(52-29*standHeight);
  return <svg className={"lektrus-lab-device-icon is-"+kind+(active?" is-active":"")}
-  viewBox="0 0 110 108" width={size} height={size} aria-hidden={!editable}
+  viewBox="0 0 110 108" width={size} height={size} aria-hidden="true"
   fill="none" strokeLinecap="round" strokeLinejoin="round"
   preserveAspectRatio="xMidYMid meet">
   <defs>
