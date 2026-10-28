@@ -199,7 +199,7 @@ export default function LektrusRussianTaskAnswer({entry,work,onChange}:Props){
       </label>;
      })}
     </div>:<span className="lektrus-rus-school-no-traits">{plan?.unchanging?"Не изменяется.":"Нет обязательных признаков в этом плане."}</span>}
-    {(editable||notes)&&<details className="lektrus-rus-school-extra" open={undefined}>
+    {notes&&<details className="lektrus-rus-school-extra">
      <summary>{notes?"Дополнения к разбору":"Дополнительно"}</summary>
      {editable?<textarea rows={2} maxLength={600} value={notes} placeholder="При необходимости"
       onChange={e=>update({[group]:[...Object.entries(values).map(([k,v])=>k+": "+v),e.target.value].filter(Boolean).join("\n")})}/>:
