@@ -313,7 +313,7 @@ assert.doesNotMatch(read("src/LektrusChemistryIllustration.tsx"),/lektrus-lab-bo
  "The old bottom toolbar must not overlay the interactive bench");
 assert.match(read("src/LektrusChemistryBench.tsx"),/data-board-interactive="true"/,
  "Glassware gestures do not drag the surrounding board object");
-assert.match(read("src/lektrusSciencePresets.ts"),/x:x-410,y:y-250,text:"Химический стол"/,
+assert.match(read("src/lektrusSciencePresets.ts"),/x:x-580,y:y-350,text:"Химический стол"/,
  "Bench must be centered under the insertion cursor");
 
 const cabinetSurface=read("src/LektrusChemistryBench.tsx");
