@@ -308,13 +308,36 @@ assert.ok(equipment.vessels[0].temperatureC>22,
 assert.equal(equipment.placedDevices[0].linkedVesselId,"v1");
 equipment=lab.stopPlacedLabDevice(equipment,firstDevice.id);
 assert.equal(equipment.placedDevices[0].active,false);
-assert.equal(equipment.placedDevices[0].powered,false);
+assert.equal(equipment.placedDevices[0].powered,true,
+ "Removing a vessel must not turn off the heater");
 equipment=lab.returnPlacedLabDevice(equipment,firstDevice.id);
 assert.equal(equipment.placedDevices.length,2);
 assert.equal(equipment.devices.includes("hotplate"),true,
  "Storing a plate must not remove its second copy");
 equipment=lab.returnPlacedLabDevice(equipment,lab.placedLabDevices(equipment).find(d=>d.kind==="hotplate").id);
 assert.equal(equipment.devices.includes("hotplate"),false);
+let thermostat=lab.addPlacedLabDevice(lab.defaultLabBench(),"hotplate");
+const thermostatId=lab.placedLabDevices(thermostat)[0].id;
+thermostat=lab.setLabHotplateTemperature(thermostat,thermostatId,185);
+assert.equal(lab.placedLabDevices(thermostat)[0].targetTemperatureC,185);
+assert.equal(lab.setLabHotplateTemperature(thermostat,thermostatId,900).placedDevices[0].targetTemperatureC,350);
+thermostat=lab.setPlacedDevicePower(thermostat,thermostatId,true);
+thermostat=lab.movePlacedLabDevice(thermostat,thermostatId,50,66);
+assert.equal(thermostat.placedDevices[0].powered,true,"Moving a heater must preserve its power");
+let adjustable=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod");
+const standForShelf=lab.placedLabDevices(adjustable)[0].id;
+adjustable=lab.setLabStandHeight(adjustable,standForShelf,.8);
+assert.equal(adjustable.placedDevices[0].standHeight,.8);
+adjustable=lab.addLabVessel(adjustable,"conical");
+adjustable=lab.applyPlacedLabDevice(adjustable,standForShelf,"v1");
+adjustable=lab.setLabStandShelf(adjustable,standForShelf,"v2");
+assert.equal(adjustable.placedDevices[0].linkedVesselId,"v1");
+assert.equal(adjustable.placedDevices[0].shelfVesselId,"v2",
+ "Lower ring must support a second vessel independently of the clamp");
+assert.equal(lab.LAB_STAND_SHELF_TYPES.includes("tube"),false);
+adjustable=lab.positionLabVessel(adjustable,"v2",45,75);
+assert.equal(adjustable.placedDevices[0].shelfVesselId,undefined);
+assert.equal(adjustable.placedDevices[0].linkedVesselId,"v1");
 const migrated=lab.placedLabDevices({...lab.defaultLabBench(),devices:["burner","stirrer"]});
 assert.equal(migrated.length,2,"Previously saved laboratory devices must remain visible");
 assert.notEqual(migrated[0].id,migrated[1].id);
@@ -529,15 +552,15 @@ for(const device of lab.labDevices){
   "Each lab device requires a distinct SVG icon: "+device.name);
 }
 assert.match(read("src/LektrusChemistryBench.tsx"),/LektrusLabDeviceIcon/);
-assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-device-switch/,
- "Each heater and mixer must have a physical power switch on its model");
-assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-device-mini-controls/,
- "Attachment and strength controls must belong to the instrument");
+assert.match(deviceIcons,/onPowerToggle/,
+ "Physical SVG model must contain the heater and mixer switch");
+assert.match(deviceIcons,/lektrus-lab-device-integrated-controls/,
+ "Attachment controls must be embedded in the SVG model");
 assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),
  /\{editable&&activeDevice&&<div className="lektrus-lab-device-actions"/,
  "Blocking top equipment panel must be removed from the DOM");
-assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-glass-state/,
- "Container contents and observation belong directly to the glassware");
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-ware-engraving/,
+ "Container contents and observation must be printed into the glassware");
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-retort-jaws/,
  "Physical clamps must appear over the mounted glassware");
 assert.match(read("src/lektrusLabLayout.ts"),/labMountedGlasswarePoint/,
