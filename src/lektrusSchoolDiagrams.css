@@ -323,3 +323,24 @@
  flex:0 1 auto;min-height:33px;padding:7px 10px;font:650 11px/1.3 system-ui,sans-serif;
  white-space:nowrap;border-radius:8px}
 .lektrus-morpheme-add-roles .lektrus-school-add:disabled{opacity:.42;cursor:default}
+
+
+/* Consistent, practical teacher controls for Russian language diagrams. */
+.lektrus-russian-feature-groups{display:grid;gap:12px;margin:5px 0 12px}
+.lektrus-russian-feature-group{display:grid;gap:7px;border:1px solid #e0e9f0;
+ border-radius:10px;padding:10px 11px;background:#fbfdff}
+.lektrus-russian-feature-group>strong{font:750 12px/1.4 system-ui,sans-serif;color:#365b82}
+.lektrus-russian-feature-group>div{display:flex;flex-wrap:wrap;gap:6px}
+.lektrus-russian-feature-group button{border:1px solid #d2e2ee;padding:7px 10px;
+ border-radius:8px;background:#fff;color:#41668b;cursor:pointer;font:650 11px/1.4 system-ui,sans-serif}
+.lektrus-russian-feature-group button:hover:not(:disabled){border-color:#729ed0;background:#edf5ff}
+.lektrus-russian-feature-group button:disabled{opacity:.42;cursor:default}
+.lektrus-russian-insert-gap{align-self:flex-start;border:1px dashed #a6c0db;
+ border-radius:7px;background:#f3f8ff;color:#37638e;padding:7px 10px;cursor:pointer;
+ font:700 11px/1.35 system-ui,sans-serif}
+.lektrus-syntax-quick-start{display:grid;gap:10px;padding:12px;border:1px solid #dde8f1;
+ border-radius:11px;background:#f9fcff}
+.lektrus-syntax-quick-start textarea{width:100%;min-height:75px;box-sizing:border-box;
+ border:1px solid #ccdaea;border-radius:8px;padding:9px 11px;font:500 13px/1.55 system-ui,sans-serif}
+.lektrus-syntax-quick-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.lektrus-syntax-quick-actions small{font:500 11px/1.4 system-ui,sans-serif;color:#748da2}
