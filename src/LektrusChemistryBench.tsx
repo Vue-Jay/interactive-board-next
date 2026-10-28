@@ -1,8 +1,8 @@
 import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
-import type {LabBench,LabVessel,LabGlassware,LabDose} from "./lektrusChemistryBenchModel";
+import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,toggleLabDevice,useLabDevice,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -179,6 +179,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const scrollRef=useRef<HTMLDivElement>(null);
  const gesture=useRef<{id:string;startX:number;startY:number;x:number;y:number;dragged:boolean}|null>(null);
  const shelfGesture=useRef<{kind:LabGlassware;startX:number;startY:number;dragged:boolean}|null>(null);
+ const deviceShelfGesture=useRef<{kind:LabDevice;startX:number;startY:number;dragged:boolean}|null>(null);
+ const deviceGesture=useRef<{id:string;startX:number;startY:number;x:number;y:number;dragged:boolean}|null>(null);
+ const [devicePreview,setDevicePreview]=useState<{id:string;x:number;y:number}|null>(null);
+ const [deviceShelfGhost,setDeviceShelfGhost]=useState<{kind:LabDevice;x:number;y:number}|null>(null);
+ const [activeDeviceId,setActiveDeviceId]=useState<string|null>(null);
  const [preview,setPreview]=useState<{id:string;x:number;y:number}|null>(null);
  const [shelfGhost,setShelfGhost]=useState<{kind:LabGlassware;x:number;y:number}|null>(null);
  const [dropTarget,setDropTarget]=useState<string|null>(null);
@@ -204,6 +209,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string}|null>(null);
  const settings=labBenchSettings(bench);
  const selected=selectedLabVessel(bench);
+ const physicalDevices=placedLabDevices(bench);
+ const activeDevice=physicalDevices.find(d=>d.id===activeDeviceId);
  const isGlobalSearch=!!query.trim();
  const catalogKind=(v:{kind:string})=>{
   if(cabinetTab==="all"||isGlobalSearch)return true;
@@ -371,6 +378,90 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   else if(!g.dragged)take(g.kind);
   setShelfGhost(null);
  };
+ const takeDevice=(kind:LabDevice,p?:{x:number;y:number})=>{
+  const updated=addPlacedLabDevice(bench,kind,p&&isLabWorktop(p)?p:undefined);
+  if(updated===bench){setNotice("На столе не больше десяти приборов");return}
+  onChange?.(updated);
+  const newest=placedLabDevices(updated).at(-1);
+  setActiveDeviceId(newest?.id??null);
+  setNotice("Прибор установлен: "+(labDevices.find(d=>d.id===kind)?.name??kind));
+  setCabinet(null);
+ };
+ const beginDeviceShelf=(e:PointerEvent<HTMLButtonElement>,kind:LabDevice)=>{
+  if(!editable||e.button!==0||!e.isPrimary)return;
+  e.preventDefault();e.stopPropagation();
+  deviceShelfGesture.current={kind,startX:e.clientX,startY:e.clientY,dragged:false};
+  e.currentTarget.setPointerCapture(e.pointerId);
+ };
+ const moveDeviceShelf=(e:PointerEvent<HTMLButtonElement>)=>{
+  const g=deviceShelfGesture.current;if(!g)return;
+  e.stopPropagation();
+  const p=point(e);if(!p)return;
+  if(Math.hypot(e.clientX-g.startX,e.clientY-g.startY)>7)g.dragged=true;
+  if(g.dragged)setDeviceShelfGhost({kind:g.kind,...p});
+ };
+ const finishDeviceShelf=(e:PointerEvent<HTMLButtonElement>)=>{
+  const g=deviceShelfGesture.current;if(!g)return;
+  deviceShelfGesture.current=null;e.preventDefault();e.stopPropagation();
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  const p=point(e);takeDevice(g.kind,g.dragged&&p&&isLabWorktop(p)?p:undefined);
+  setDeviceShelfGhost(null);
+ };
+ const nearestVessel=(p:{x:number;y:number})=>{
+  const bounds=host.current?.getBoundingClientRect();
+  if(!bounds)return null;
+  const candidates=bench.vessels.map(v=>{
+   const q=labDisplayPoint(v,bench.vessels.length>3);
+   return {id:v.id,distance:Math.hypot((q.x-p.x)*bounds.width/100,(q.y-p.y)*bounds.height/100)};
+  }).sort((a,b)=>a.distance-b.distance);
+  return candidates[0]&&candidates[0].distance<Math.min(150,Math.max(65,bounds.width*.10))?
+   candidates[0].id:null;
+ };
+ const attachDevice=(id:string,vesselId:string)=>{
+  const device=physicalDevices.find(d=>d.id===id);
+  const next=applyPlacedLabDevice(bench,id,vesselId);
+  if(next===bench){setNotice("Этот прибор нельзя использовать с выбранной посудой");return}
+  onChange?.(next);setActiveDeviceId(id);
+  const name=labDevices.find(d=>d.id===device?.kind)?.name??"Прибор";
+  const target=bench.vessels.find(v=>v.id===vesselId);
+  setNotice(name+" · "+(target?names[target.kind]:"сосуд")+
+   (device?.kind==="thermometer"?" (температура не вычисляется)":""));
+ };
+ const downDevice=(e:PointerEvent<HTMLButtonElement>,id:string,x:number,y:number)=>{
+  if(!editable||e.button!==0||!e.isPrimary)return;
+  e.preventDefault();e.stopPropagation();
+  const p=point(e);if(!p)return;
+  deviceGesture.current={id,startX:p.x,startY:p.y,x,y,dragged:false};
+  e.currentTarget.setPointerCapture(e.pointerId);
+ };
+ const moveDevice=(e:PointerEvent<HTMLButtonElement>)=>{
+  const g=deviceGesture.current;if(!g)return;
+  e.stopPropagation();const p=point(e),rect=host.current?.getBoundingClientRect();
+  if(!p||!rect)return;
+  if(Math.hypot((p.x-g.startX)*rect.width/100,(p.y-g.startY)*rect.height/100)>8)g.dragged=true;
+  if(g.dragged)setDevicePreview({id:g.id,x:Math.max(9,Math.min(81,g.x+p.x-g.startX)),
+   y:Math.max(53,Math.min(84,g.y+p.y-g.startY))});
+ };
+ const finishDevice=(e:PointerEvent<HTMLButtonElement>)=>{
+  const g=deviceGesture.current;if(!g)return;
+  deviceGesture.current=null;e.preventDefault();e.stopPropagation();
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  const p=point(e);
+  if(g.dragged&&p){
+   if(p.y<42&&p.x>=82){
+    onChange?.(returnPlacedLabDevice(bench,g.id));
+    setActiveDeviceId(null);setNotice("Прибор возвращён в шкаф");
+   }else{
+    const moved=movePlacedLabDevice(bench,g.id,g.x+p.x-g.startX,g.y+p.y-g.startY);
+    const vesselId=nearestVessel(p);
+    const final=vesselId?applyPlacedLabDevice(moved,g.id,vesselId):moved;
+    onChange?.(final);
+    setActiveDeviceId(g.id);
+    setNotice(vesselId&&final!==moved?"Прибор установлен рядом с сосудом":"Прибор перемещён по столу");
+   }
+  }else setActiveDeviceId(g.id);
+  setDevicePreview(null);
+ };
  const dispense=()=>{
   if(!editable||!chosen)return;
   if(!selected){setNotice("Возьмите чистую посуду из шкафа");return}
@@ -418,7 +509,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   <div className="lektrus-lab-scene-header">
    <span className="lektrus-lab-scene-brand">LEKTRUS <span>LAB</span></span>
    <strong>Химическая лаборатория</strong>
-   <span className="lektrus-lab-scene-stats">{bench.vessels.length} из 6 сосудов <b>·</b> {(bench.devices??[]).length} приборов</span>
+   <span className="lektrus-lab-scene-stats">{bench.vessels.length} из 6 сосудов <b>·</b> {physicalDevices.length} приборов</span>
    {editable&&bench.vessels.length>1&&<button type="button" className="lektrus-lab-arrange-btn"
     aria-label="Автоматически расставить посуду без наложений"
     title="Упорядочить посуду" data-board-interactive="true"
