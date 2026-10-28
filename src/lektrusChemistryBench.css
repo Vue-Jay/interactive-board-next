@@ -1,0 +1,196 @@
+/* Lektrus interactive virtual chemistry table.
+   Glass, effects and solids are educational visualizations; the validated
+   chemistry database, rather than animation, determines reaction results. */
+.lektrus-lab-editor-overlay{
+ position:fixed;inset:0;z-index:2147482600;background:#102b2c90;
+ backdrop-filter:blur(6px);display:grid;place-items:center;
+ padding:clamp(6px,1.4vw,20px);box-sizing:border-box;
+}
+.lektrus-lab-editor{display:flex;flex-direction:column;overflow:hidden;
+ width:min(1440px,100%);height:min(870px,97dvh);min-height:0;
+ border:1px solid #87b8a6;border-radius:17px;
+ background:#f4faf6;color:#244f43;
+ box-shadow:0 22px 75px #0b2a2c70;font:500 13px/1.4 system-ui,sans-serif;
+}
+.lektrus-lab-editor button,.lektrus-lab-editor select,.lektrus-lab-editor input{
+ font:inherit;box-sizing:border-box;
+}
+.lektrus-lab-editor-head{display:flex;align-items:center;gap:13px;padding:13px 19px;
+ background:linear-gradient(115deg,#164a43,#297b68);
+ color:#fff;border-bottom:1px solid #206c58;flex:0 0 auto;
+}
+.lektrus-lab-editor-mark{width:41px;height:41px;display:grid;place-items:center;
+ border:1px solid #ffffff60;background:#ffffff19;border-radius:12px;font-size:27px}
+.lektrus-lab-editor-heading{flex:1 1 auto;display:grid;gap:3px}
+.lektrus-lab-editor-heading strong{font-size:19px;line-height:1.2}
+.lektrus-lab-editor-heading small{font-size:11px;color:#d3eee3}
+.lektrus-lab-icon-close{min-width:36px;height:36px;border:1px solid #ffffff50;
+ border-radius:9px;background:#ffffff19;color:#fff;font-size:24px!important;cursor:pointer}
+.lektrus-lab-editor-body{flex:1 1 auto;min-height:0;display:grid;
+ grid-template-columns:minmax(210px,25%) minmax(320px,1fr) minmax(205px,25%);
+ gap:11px;padding:12px;}
+.lektrus-lab-cabinet,.lektrus-lab-main,.lektrus-lab-inspector{
+ min-height:0;min-width:0;display:flex;flex-direction:column;gap:9px;
+ border:1px solid #c5dfd2;border-radius:13px;padding:11px;
+ background:#fff;box-shadow:0 3px 13px #204f4210;
+}
+.lektrus-lab-panel-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.lektrus-lab-panel-head strong{color:#205d4c;font-weight:800;font-size:13px}
+.lektrus-lab-panel-head small{color:#78978a;font-size:10px}
+.lektrus-lab-cabinet-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.lektrus-lab-cabinet-tabs>button,.lektrus-lab-glassware-toolbar>button{
+ border:1px solid #c7ddcf;border-radius:8px;min-height:36px;
+ background:#f5faf6;color:#376d58;font-weight:720;cursor:pointer;padding:6px 9px
+}
+.lektrus-lab-cabinet-tabs>button.active,.lektrus-lab-actions>button.active{
+ background:#216e5a;color:#fff;border-color:#216e5a}
+.lektrus-lab-cabinet>input,.lektrus-lab-cabinet>select,.lektrus-lab-condition select{
+ width:100%;min-width:0;min-height:37px;border:1px solid #c2d9ce;
+ border-radius:8px;background:#fcfefc;color:#315e50;padding:7px 9px;
+}
+.lektrus-lab-catalog{flex:1 1 auto;min-height:0;overflow:auto;scrollbar-width:thin;
+ display:grid;align-content:start;gap:5px;padding:2px;overscroll-behavior:contain}
+.lektrus-lab-catalog>button{width:100%;min-width:0;display:grid;
+ grid-template-columns:minmax(66px,auto) minmax(0,1fr) auto;gap:7px;align-items:center;
+ padding:8px;border:1px solid #e0ebe4;border-radius:8px;
+ background:#fdfefd;color:#35584c;text-align:left;cursor:pointer}
+.lektrus-lab-catalog>button:hover,.lektrus-lab-glassware-toolbar>button:hover{
+ border-color:#82b9a2;background:#eef9f3}
+.lektrus-lab-catalog>button b{font-size:12px;color:#216e58;word-break:break-word}
+.lektrus-lab-catalog>button span{font-size:11px;line-height:1.3;min-width:0}
+.lektrus-lab-catalog>button small{font-size:12px;color:#3f9573}
+.lektrus-lab-catalog>button.lektrus-lab-experiment-choice{
+ grid-template-columns:1fr;gap:3px}
+.lektrus-lab-catalog>button.lektrus-lab-experiment-choice small{font-size:10px}
+.lektrus-lab-no-results{padding:15px;color:#6c8b7c;text-align:center}
+.lektrus-lab-cabinet-help,.lektrus-lab-educational-note{font-size:10px;line-height:1.5;color:#6f9180}
+.lektrus-lab-main{background:linear-gradient(#ffffff,#f2f9f4)}
+.lektrus-lab-glassware-toolbar{display:flex;flex-wrap:wrap;gap:6px}
+.lektrus-lab-glassware-toolbar>button{flex:1 1 auto;white-space:nowrap;min-height:33px;
+ font-size:11px;padding:5px 8px}
+.lektrus-lab-bench{position:relative;isolation:isolate;flex:1 1 auto;min-height:280px;
+ overflow:hidden;touch-action:pan-x pan-y;border:1px solid #81b9a4;border-radius:13px;
+ background:linear-gradient(180deg,#e2f1eb 0%,#d0e5db 52%,#c2d5ca 52%,#bdcbbf 100%);
+}
+.lektrus-lab-bench-backdrop{position:absolute;inset:0;pointer-events:none}
+.lektrus-lab-board-top{position:absolute;top:5%;left:6%;font:800 12px/1.2 system-ui,sans-serif;
+ letter-spacing:.18em;color:#6eab96;opacity:.65}
+.lektrus-lab-board-top span{font-weight:500;font-size:8px;letter-spacing:.22em}
+.lektrus-lab-back-shelf{position:absolute;left:0;right:0;top:45%;height:3%;
+ background:#9abaad;box-shadow:0 3px 8px #285f4e20}
+.lektrus-lab-counter{position:absolute;left:0;right:0;bottom:15%;height:8%;
+ background:linear-gradient(#d4c1a3,#e6d4b6 30%,#c5b394);
+ border-top:3px solid #eae3d0;box-shadow:0 -3px 12px #1b54462e}
+.lektrus-lab-counter-front{position:absolute;left:0;right:0;bottom:0;height:15%;
+ background:linear-gradient(#b19e81,#a69175);box-shadow:inset 0 2px 8px #72654f31}
+.lektrus-lab-vessel{position:absolute;transform:translate(-50%,-55%);
+ width:clamp(100px,22%,150px);height:clamp(160px,40%,218px);
+ background:transparent;border:2px solid transparent;border-radius:14px;
+ padding:4px;display:grid;place-items:center;cursor:grab;touch-action:none;
+ color:#264f48;user-select:none;-webkit-user-select:none}
+.lektrus-lab-vessel:disabled{cursor:default;opacity:1}
+.lektrus-lab-vessel.selected{background:#ffffff18;border:2px solid #217b61;box-shadow:0 4px 20px #165b5427}
+.lektrus-lab-vessel.is-pouring{border-style:dashed;border-color:#f5bc55;background:#fffae8a0}
+.lektrus-lab-vessel.is-pour-target{border-color:#c8a251;cursor:copy}
+.lektrus-lab-vessel:active:not(:disabled){cursor:grabbing}
+.lektrus-lab-vessel-art{display:flex;flex-direction:column;align-items:center;
+ justify-content:center;width:100%;height:100%;min-width:0;gap:0;pointer-events:none}
+.lektrus-lab-vessel-art svg{display:block;flex:1 1 auto;min-height:0;max-height:155px;width:auto;max-width:100%}
+.lektrus-lab-vessel-label{display:grid;gap:1px;justify-items:center;max-width:100%;
+ min-height:30px;line-height:1.1}
+.lektrus-lab-vessel-label b{font-size:11px;color:#316659}
+.lektrus-lab-vessel-label span{font-size:10px;color:#457368;max-width:125px;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lektrus-lab-effect-tag{font:720 10px/1.2 system-ui,sans-serif;
+ background:#fff9e7;border:1px solid #edd398;border-radius:6px;
+ color:#a27437;padding:3px 7px;white-space:nowrap}
+.lektrus-lab-pour-hint{position:absolute;left:10%;right:10%;bottom:3%;
+ text-align:center;background:#1d6957e8;color:white;font:720 11px/1.4 system-ui,sans-serif;
+ border-radius:8px;padding:7px}
+.lektrus-lab-hint{min-height:28px;border:1px solid #d1e7da;
+ border-radius:8px;background:#f6fcf7;color:#527869;
+ padding:7px 9px;font-size:11px}
+.lektrus-lab-inspector{overflow:auto;scrollbar-width:thin}
+.lektrus-lab-selected-name{display:flex;align-items:baseline;justify-content:space-between;
+ padding:9px 10px;border:1px solid #cde5d7;border-radius:9px;background:#f3faf5}
+.lektrus-lab-selected-name strong{color:#246b55}
+.lektrus-lab-selected-name small{color:#829e90;font-size:10px}
+.lektrus-lab-content-chips{display:flex;flex-wrap:wrap;gap:5px;min-height:40px;padding:6px;
+ border:1px solid #e2eee6;border-radius:9px;background:#fdfefd}
+.lektrus-lab-content-chips span{font:760 12px/1.2 ui-monospace,monospace;
+ color:#2b735c;background:#e8f5eb;border-radius:6px;padding:7px}
+.lektrus-lab-content-chips small{font-size:11px;color:#94aaa0}
+.lektrus-lab-condition{display:grid;gap:5px;font:750 11px/1.4 system-ui,sans-serif;
+ color:#3a6b58}
+.lektrus-lab-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.lektrus-lab-actions>button{min-height:39px;padding:6px;border:1px solid #c8dfd1;
+ border-radius:8px;background:#f7fcf9;color:#2b725a;font-weight:720;font-size:11px;cursor:pointer}
+.lektrus-lab-actions>button:first-child{grid-column:span 2;background:#e2f3e9;color:#226c55}
+.lektrus-lab-actions>button.danger{color:#a55045}
+.lektrus-lab-actions>button:disabled{opacity:.4;cursor:default}
+.lektrus-lab-observation{padding:11px;border:1px solid #d4e9dc;border-radius:10px;
+ background:#f2fbf5;color:#3f6254}
+.lektrus-lab-observation>strong{font-size:12px;color:#28705a}
+.lektrus-lab-observation p{margin:5px 0 8px;font-size:11px;line-height:1.45}
+.lektrus-lab-observation.is-unknown{background:#fffaf0;border-color:#ecdfbf}
+.lektrus-lab-observation.is-none{background:#f4f8f6}
+.lektrus-lab-observation details{margin-top:7px}
+.lektrus-lab-observation summary{cursor:pointer;color:#376d57;font-weight:730}
+.lektrus-lab-observation .lektrus-reaction-equation-text{font-size:15px;justify-content:start}
+.lektrus-lab-products{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.lektrus-lab-products span{font:700 12px/1.1 ui-monospace,monospace;
+ border:1px solid #d3e7d9;padding:5px 7px;border-radius:6px;background:#fff}
+.lektrus-lab-safety{display:block;margin-top:7px;font-size:10px;color:#a65d3e}
+.lektrus-lab-editor-footer{display:flex;align-items:center;gap:9px;padding:11px 16px;
+ border-top:1px solid #c7dfd0;background:#fafdfa;flex:0 0 auto}
+.lektrus-lab-editor-footer span{margin-right:auto;font-size:11px;color:#719381}
+.lektrus-lab-editor-footer button{min-height:38px;padding:8px 14px;border-radius:9px;
+ border:1px solid #c5dbce;background:#fff;color:#316d55;font-weight:750;cursor:pointer}
+.lektrus-lab-editor-footer button.primary{background:#216e56;color:#fff;border-color:#216e56}
+.lektrus-lab-editor :is(input,select,button):focus-visible{outline:2px solid #278d6f;outline-offset:2px}
+@keyframes lektrus-bench-rise{0%{transform:translateY(12px);opacity:0}
+ 25%{opacity:.9}100%{transform:translateY(-62px);opacity:0}}
+@keyframes lektrus-bench-fall{0%{transform:translateY(-20px);opacity:0}
+ 25%{opacity:.8}100%{transform:translateY(28px);opacity:.2}}
+@keyframes lektrus-bench-settle{from{transform:scaleY(.1);transform-origin:bottom}
+ to{transform:scaleY(1);transform-origin:bottom}}
+.lektrus-lab-bubble{animation:lektrus-bench-rise 2.8s ease-in infinite}
+.lektrus-lab-particle{animation:lektrus-bench-fall 2.7s ease-in infinite}
+.lektrus-lab-sediment{animation:lektrus-bench-settle 2s ease-out both}
+.lektrus-lab-fluid{transition:fill .5s}
+.lektrus-lab-bench.is-readonly .lektrus-lab-vessel{border:0}
+.lektrus-chemistry-bench-on-board{height:100%;width:100%;position:relative;
+ background:#d6e8df;border-radius:10px;overflow:hidden}
+.lektrus-chemistry-bench-on-board .lektrus-lab-bench{width:100%;height:100%;
+ min-height:0;border:0;border-radius:10px}
+.lektrus-chemistry-bench-on-board .lektrus-lab-board-top{top:3%;font-size:10px}
+.lektrus-chemistry-bench-on-board .lektrus-lab-vessel{width:21%;height:59%;max-height:230px}
+@media(max-width:1050px){
+ .lektrus-lab-editor-body{grid-template-columns:minmax(180px,28%) minmax(280px,1fr);
+  grid-template-rows:minmax(0,1fr) auto}
+ .lektrus-lab-inspector{grid-column:1/-1;display:grid;
+  grid-template-columns:1fr 1fr 1fr;gap:9px;max-height:210px}
+ .lektrus-lab-inspector .lektrus-lab-panel-head{grid-column:1/-1}
+ .lektrus-lab-educational-note{grid-column:1/-1}
+ .lektrus-lab-observation{grid-column:span 2}
+ .lektrus-lab-bench{min-height:250px}
+}
+@media(max-width:700px){
+ .lektrus-lab-editor-overlay{padding:0;align-items:stretch}
+ .lektrus-lab-editor{width:100%;height:100dvh;max-height:100dvh;border-radius:0}
+ .lektrus-lab-editor-body{display:flex;flex-direction:column;overflow:auto;gap:8px;padding:8px}
+ .lektrus-lab-main{order:0;flex:0 0 auto;min-height:345px}
+ .lektrus-lab-bench{height:270px;flex:0 0 270px;min-height:0}
+ .lektrus-lab-cabinet{order:1;flex:0 0 auto;min-height:260px;max-height:330px}
+ .lektrus-lab-catalog{min-height:160px}
+ .lektrus-lab-inspector{order:2;display:flex;flex:0 0 auto;max-height:none}
+ .lektrus-lab-vessel{width:110px;height:166px}
+ .lektrus-lab-editor-head{padding:10px 12px}
+ .lektrus-lab-editor-heading strong{font-size:16px}
+ .lektrus-lab-editor-footer{padding:7px 10px}
+ .lektrus-lab-editor-footer span{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bubble,.lektrus-lab-particle,.lektrus-lab-sediment{animation:none!important}
+ .lektrus-lab-fluid{transition:none}
+}
