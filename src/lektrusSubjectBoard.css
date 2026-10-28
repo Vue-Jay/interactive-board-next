@@ -692,3 +692,25 @@
  .lektrus-rus-morph-step{padding:10px}
  .lektrus-language-punctuation-editor button{min-width:36px}
 }
+
+
+.lektrus-activity-quick-import{display:grid;gap:9px;padding:14px;border:1px solid #e0eaf0;
+ border-radius:11px;background:#f9fcfe}
+.lektrus-activity-quick-import>div{display:grid;gap:5px}
+.lektrus-activity-quick-import strong{font:750 13px system-ui,sans-serif;color:#476071}
+.lektrus-activity-quick-import small{font:500 11px/1.5 system-ui,sans-serif;color:#778d99}
+.lektrus-activity-quick-import textarea{width:100%;box-sizing:border-box;border:1px solid #d8e5ea;
+ border-radius:8px;background:#fff;padding:10px;font:500 13px/1.5 system-ui,sans-serif;resize:vertical}
+.lektrus-activity-quick-import>button{justify-self:start;border:1px solid var(--subject-board-accent);
+ border-radius:8px;background:var(--subject-board-soft);color:var(--subject-board-accent);
+ padding:9px 12px;cursor:pointer;font:750 12px system-ui,sans-serif}
+.lektrus-language-question-editor{display:grid;gap:11px}
+.lektrus-language-question-row{display:grid;grid-template-columns:28px minmax(0,1fr) 32px;gap:8px;align-items:center}
+.lektrus-language-question-row>span{display:grid;place-items:center;width:28px;height:32px;
+ border-radius:8px;background:var(--subject-board-soft);color:var(--subject-board-accent);
+ font:750 11px system-ui,sans-serif}
+.lektrus-language-question-row>button{border:1px solid #d9e3e8;border-radius:8px;
+ color:#8499a5;background:#fff;min-height:36px;cursor:pointer;font-size:18px}
+.lektrus-language-add-question{justify-self:start;border:1px solid #d7e4ea;border-radius:9px;
+ color:var(--subject-board-accent);background:var(--subject-board-soft);padding:10px 13px;
+ cursor:pointer;font:750 12px system-ui,sans-serif}
