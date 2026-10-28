@@ -3,8 +3,12 @@ import type {Item} from "./boardModel";
 import {LektrusChemicalEquationBoardView} from "./LektrusChemicalEquationEditor";
 import {LektrusReactionScene} from "./LektrusReactionLab";
 import LektrusChemistryBenchSurface from "./LektrusChemistryBench";
-import {readLabBench} from "./lektrusChemistryBenchModel";
-import {selectLabVessel,type LabBench} from "./lektrusChemistryBenchModel";
+import {
+ addLabVessel,emptyLabVessel,labIndicators,labIndicatorResult,labObservation,
+ pourLabVessel,putLabReagent,readLabBench,selectLabVessel,selectedLabVessel,
+ setLabIndicator,type LabBench,type LabGlassware,type LabIndicator
+} from "./lektrusChemistryBenchModel";
+import {substances} from "./lektrusReactionDatabase";
 
 export const isChemicalIllustration=(item:Item)=>/^(chem-formula-|chem-experiment-)/.test(item.graphFigureId??"");
 export const chemicalFormulaParts=(value:string)=>value.split(/([A-Z][a-z]?|\)|\])([0-9]+)/g);
@@ -53,19 +57,95 @@ const experiments:Record<string,Experiment>={
   initial:"Прозрачный раствор",final:"Осадок CaCO₃",note:"Образование карбоната кальция показано условно, не в масштабе.",
   colorBefore:"#d8eefa",colorAfter:"#c9d0d6"}
 };
-export default function LektrusChemistryIllustration({item,onStageChange,onBenchChange}:{
+export default function LektrusChemistryIllustration({item,onStageChange,onBenchChange,onOpenEditor}:{
  item:Item;onStageChange?:(stage:0|1)=>void;
- onBenchChange?:(bench:LabBench)=>void
+ onBenchChange?:(bench:LabBench)=>void;onOpenEditor?:()=>void
 }){
  const experiment=experiments[item.graphFigureId??""];
  const [localStage,setLocalStage]=useState<0|1>(item.scienceExperimentStage??0);
+ const [pourSource,setPourSource]=useState<string|null>(null);
+ const [showReagents,setShowReagents]=useState(false);
+ const [reagentQuery,setReagentQuery]=useState("");
+ const [boardNotice,setBoardNotice]=useState("");
+ const bench=readLabBench(item);
+ const selected=selectedLabVessel(bench);
+ const observation=selected?labObservation(selected):null;
+ const indicatorReading=selected?labIndicatorResult(selected):null;
+ const candidates=substances.filter(v=>
+  (v.formula+" "+v.name).toLocaleLowerCase("ru-RU")
+   .includes(reagentQuery.toLocaleLowerCase("ru-RU"))).slice(0,16);
+ const changeBench=(next:LabBench)=>{if(next!==bench)onBenchChange?.(next)};
+ const pour=(from:string,to:string)=>{
+  const next=pourLabVessel(bench,from,to);
+  setPourSource(null);
+  if(next===bench){setBoardNotice("Нельзя перелить: сосуд пуст или достигнут предел веществ.");return}
+  setBoardNotice("Содержимое перелито. Наблюдайте за результатом.");
+  changeBench(next);
+ };
+ const addReagent=(id:string,to=selected?.id)=>{
+  if(!to)return;
+  const next=putLabReagent(bench,to,id);
+  if(next===bench){setBoardNotice("Этот реагент уже добавлен или сосуд заполнен.");return}
+  changeBench(next);setBoardNotice("Реагент добавлен.");
+ };
  useEffect(()=>setLocalStage(item.scienceExperimentStage??0),[item.scienceExperimentStage,item.id]);
  const stage=onStageChange?(item.scienceExperimentStage??0):localStage;
  const setStage=(next:0|1)=>onStageChange?onStageChange(next):setLocalStage(next);
  if(item.graphFigureId==="chem-experiment-free")return item.scienceLabBench?
-  <div className="lektrus-chemistry-bench-on-board"><LektrusChemistryBenchSurface
-   bench={readLabBench(item)} editable={!!onBenchChange} onChange={onBenchChange}
-   onSelect={id=>onBenchChange?.(selectLabVessel(readLabBench(item),id))}/></div>:
+  <div className="lektrus-chemistry-bench-on-board">
+   <LektrusChemistryBenchSurface bench={bench} editable={!!onBenchChange}
+    pouringId={pourSource} onChange={changeBench}
+    onSelect={id=>{changeBench(selectLabVessel(bench,id));setBoardNotice("")}}
+    onPour={onBenchChange?pour:undefined} onDropReagent={onBenchChange?addReagent:undefined}/>
+   {onBenchChange&&selected&&<div className="lektrus-lab-board-controls" data-board-interactive="true"
+     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
+     onClick={e=>e.stopPropagation()} onDoubleClick={e=>e.stopPropagation()}>
+    <div className="lektrus-lab-board-action-row">
+     <label className="lektrus-lab-board-add-vessel">
+      <span className="sr-only">Добавить посуду</span>
+      <select aria-label="Добавить посуду" value="" disabled={bench.vessels.length>=6}
+       onChange={e=>{if(e.target.value)changeBench(addLabVessel(bench,e.target.value as LabGlassware));setPourSource(null)}}>
+       <option value="">＋ Посуда</option>
+       <option value="beaker">Стакан</option><option value="tube">Пробирка</option>
+       <option value="flask">Колба</option>
+      </select>
+     </label>
+     <button type="button" aria-expanded={showReagents} onClick={()=>setShowReagents(v=>!v)}>
+      ＋ Реактив</button>
+     <select aria-label="Индикатор для выбранного сосуда" value={selected.indicator??""}
+      disabled={!selected.reagents.length}
+      onChange={e=>changeBench(setLabIndicator(bench,selected.id,(e.target.value||undefined) as LabIndicator|undefined))}>
+      <option value="">Индикатор</option>
+      {labIndicators.map(v=><option value={v.id} key={v.id}>{v.name}</option>)}
+     </select>
+     <button type="button" aria-pressed={pourSource===selected.id} disabled={!selected.reagents.length}
+      className={pourSource===selected.id?"active":""}
+      onClick={()=>{setPourSource(pourSource===selected.id?null:selected.id);setBoardNotice("")}}>
+      {pourSource===selected.id?"Отмена":"⇢ Перелить"}</button>
+     <button type="button" disabled={!selected.reagents.length}
+      onClick={()=>{changeBench(emptyLabVessel(bench,selected.id));setPourSource(null)}}>Очистить</button>
+     {onOpenEditor&&<button type="button" onClick={onOpenEditor}>Редактор</button>}
+    </div>
+    <div className="lektrus-lab-board-status" role="status">
+     <strong>{selected.kind==="tube"?"Пробирка":selected.kind==="flask"?"Колба":"Стакан"}</strong>
+     <span>{boardNotice||indicatorReading?.label||
+      (observation?.status==="reaction"?"Реакция: "+observation.message:
+       observation?.status==="none"?"Реакция не идёт":
+       selected.reagents.length?selected.reagents.join(" + "):"Выберите реагент")}</span>
+    </div>
+    {showReagents&&<div className="lektrus-lab-board-picker">
+     <input type="search" placeholder="Поиск вещества или формулы"
+      value={reagentQuery} onChange={e=>setReagentQuery(e.target.value)}
+      aria-label="Поиск реактивов для сосуда"/>
+     <div className="lektrus-lab-board-picker-list">
+      {candidates.map(v=><button type="button" key={v.id}
+       onClick={()=>{addReagent(v.id);setShowReagents(false);setReagentQuery("")}}
+       title={v.name}><strong>{v.formula}</strong><span>{v.name}</span></button>)}
+      {!candidates.length&&<small>Вещества не найдены</small>}
+     </div>
+    </div>}
+   </div>}
+  </div>:
   <LektrusReactionScene item={item} stage={stage} onStageChange={onStageChange??setLocalStage}/>;
  if(!experiment)return <LektrusChemicalEquationBoardView item={item}/>;
  const before=stage===0;
