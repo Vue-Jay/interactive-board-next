@@ -223,7 +223,7 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
        <option value="heat">Тепловой эффект</option>
       </select>
       <div className="lektrus-reaction-examples" role="group" aria-label="Каталог проверенных опытов">
-       {demonstrated.length?demonstrated.map((row,i)=><button type="button"
+       {demonstrated.length?demonstrated.map(row=><button type="button"
         key={row.environment+"|"+row.reactants.join("+")}
         className={row.reactants.slice().sort().join("|")===chosen.slice().sort().join("|")&&
           row.environment===(item.scienceEnvironment??"aqueous")?"selected":""}
