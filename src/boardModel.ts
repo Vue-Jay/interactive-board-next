@@ -808,6 +808,8 @@ export function parseDocument(raw: string): DocumentData {
             bench.devices.length>5||new Set(bench.devices).size!==bench.devices.length||
             !bench.devices.every(id=>["hotplate","burner","stirrer","tripod","thermometer"].includes(id))))||
           (bench.titration!=null&&!validLabTitration(bench.titration))||
+          (bench.stirringVesselId!=null&&(!bench.vessels.some(v=>v.id===bench.stirringVesselId)||
+            !(bench.devices??[]).includes("stirrer")))||
           (bench.vessels.length===0?bench.selectedId!=="":
             !bench.vessels.some(v=>v.id===bench.selectedId))||
           new Set(bench.vessels.map(v=>v.id)).size!==bench.vessels.length||
