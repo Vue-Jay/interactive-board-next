@@ -151,6 +151,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const rxn=selected?labObservation(selected):null;
  const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
+ useEffect(()=>{
+  if(!cabinet)return;
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key!=="Escape")return;
+   event.preventDefault();event.stopPropagation();setCabinet(null);
+  };
+  document.addEventListener("keydown",onEscape,true);
+  return()=>document.removeEventListener("keydown",onEscape,true);
+ },[cabinet]);
  useEffect(()=>{if(!transfer)return;const timer=setTimeout(()=>setTransfer(null),900);return()=>clearTimeout(timer)},[transfer]);
  useEffect(()=>{if(!sinkFlow)return;const timer=setTimeout(()=>setSinkFlow(false),900);return()=>clearTimeout(timer)},[sinkFlow]);
  useEffect(()=>{if(!doseEffect)return;const timer=setTimeout(()=>setDoseEffect(null),900);return()=>clearTimeout(timer)},[doseEffect]);
@@ -379,7 +388,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   </div>}
   {cabinet&&<div className="lektrus-lab-furniture-modal" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerMove={e=>e.stopPropagation()}
-   onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+   onPointerUp={e=>e.stopPropagation()}
+   onClick={e=>{e.stopPropagation();if(e.target===e.currentTarget)setCabinet(null)}}>
     <section className="lektrus-lab-furniture-dialog" role="dialog" aria-modal="true"
      aria-label={cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":"Настройки химического стола"}>
      <header><strong>{cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":"Настройки стола"}</strong>
