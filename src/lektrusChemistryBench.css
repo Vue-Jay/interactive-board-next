@@ -2219,3 +2219,76 @@
 }
 .lektrus-lab-bench.lab-reduced-animation .lektrus-lab-device-flame,
 .lektrus-lab-bench.lab-reduced-animation .lektrus-lab-stir-ring{animation:none!important}
+
+/* Scientific lab controls: unmistakable power state and readable temperatures. */
+.lektrus-lab-bench .lektrus-lab-device-actions{
+ left:15%!important;right:13%!important;top:45%!important;
+ min-height:52px!important;max-height:none!important;
+ flex-wrap:wrap!important;justify-content:center!important;
+ padding:7px 10px!important;gap:6px!important}
+.lektrus-lab-bench .lektrus-lab-device-actions label{
+ display:flex;align-items:center;gap:4px;min-width:0;
+ font:750 11px/1.2 system-ui,sans-serif;color:#3b765c}
+.lektrus-lab-bench .lektrus-lab-device-power{
+ display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
+.lektrus-lab-bench .lektrus-lab-device-power button.is-on,
+.lektrus-lab-bench .lektrus-lab-titration-on-table button.is-open{
+ background:#267b5d!important;color:#fff!important;border-color:#267b5d!important}
+.lektrus-lab-bench .lektrus-lab-device-actions output{
+ font:850 12px/1.2 system-ui,sans-serif;white-space:normal;color:#ad5934}
+.lektrus-lab-bench .lektrus-lab-placed-device .lektrus-lab-thermal-readout{
+ font:850 12px/1.1 ui-monospace,monospace!important;
+ background:#1d5144;color:#e9ffe6!important;
+ border-radius:6px;padding:3px 7px;min-width:52px;white-space:nowrap}
+.lektrus-lab-bench .lektrus-lab-glass-temperature{
+ display:block;flex:0 0 auto;align-self:center;
+ padding:3px 7px;margin-top:0;
+ border-radius:6px;background:#275e50e6;color:#f3fff2;
+ font:800 clamp(10px,1cqw,12px)/1.2 ui-monospace,monospace;
+ text-align:center;white-space:nowrap;
+ box-shadow:0 2px 4px #174a3b2b;pointer-events:none}
+.lektrus-lab-bench .lektrus-lab-vessel-art>svg{
+ flex:1 1 auto!important;min-height:0!important;
+ max-height:calc(100% - 70px)!important}
+.lektrus-lab-bench .lektrus-lab-vessel-label{
+ min-height:31px!important;gap:2px!important;padding:0 0 3px!important}
+.lektrus-lab-bench .lektrus-lab-titration-on-table.is-burette-valve{
+ left:15%!important;right:13%!important;top:45%!important;
+ max-width:none!important;min-height:53px!important;
+ flex-wrap:wrap;gap:7px;padding:7px 10px!important;
+ box-sizing:border-box!important;overflow:visible!important;
+ z-index:49!important}
+.lektrus-lab-bench .is-burette-valve>strong{
+ display:flex;gap:5px;align-items:center;font-size:13px;white-space:normal}
+.lektrus-lab-bench .is-burette-valve>strong span{font-size:11px;color:#6c917d}
+.lektrus-lab-bench .is-burette-valve>strong span.is-open{color:#268b60}
+.lektrus-lab-bench .is-burette-valve label{
+ display:flex;gap:5px;align-items:center;
+ font:700 11px/1.2 system-ui,sans-serif;min-width:0}
+.lektrus-lab-bench .is-burette-valve select{
+ min-width:0;max-width:160px!important;
+ height:32px;padding:4px 5px;border-radius:7px;
+ background:#fff;color:#245d45;border:1px solid #afd1bb}
+.lektrus-lab-bench .is-burette-valve button{
+ padding:6px 11px;min-height:32px;
+ border:1px solid #94c4a6;border-radius:8px;
+ background:#e4f5e8;color:#236f4f;
+ font:800 11px/1.2 system-ui,sans-serif;cursor:pointer}
+.lektrus-lab-bench .is-burette-valve button:disabled{opacity:.45;cursor:default}
+@keyframes lektrus-burette-drip{
+ 0%{opacity:0;transform:translateY(-2px)}
+ 30%{opacity:1}100%{opacity:0;transform:translateY(8px)}
+}
+.lektrus-lab-burette-drop{animation:lektrus-burette-drip .65s ease-in infinite}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-burette-drop{animation:none}
+}
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-burette-drop{animation:none}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-device-actions,
+ .lektrus-lab-bench .lektrus-lab-titration-on-table.is-burette-valve{
+  left:16%!important;right:15%!important;gap:4px!important;padding:5px!important}
+ .lektrus-lab-bench .is-burette-valve label{font-size:10px}
+ .lektrus-lab-bench .is-burette-valve select{max-width:120px!important;font-size:10px}
+ .lektrus-lab-bench .lektrus-lab-glass-temperature{font-size:10px}
+}
