@@ -341,6 +341,9 @@ assert.equal(lab.labDevices.length,4);
 assert.ok(!lab.labDevices.some(d=>d.id==="thermometer"));
 assert.equal(lab.canMountLabVessel("hotplate","beaker"),true);
 assert.equal(lab.canMountLabVessel("hotplate","tube"),false);
+assert.equal(lab.canMountLabVessel("hotplate","flask"),false,
+ "A round-bottom flask needs support instead of a flat heater");
+assert.equal(lab.canMountLabVessel("stirrer","flask"),false);
 assert.equal(lab.canMountLabVessel("burner","tube"),true);
 assert.equal(lab.canMountLabVessel("stirrer","conical"),true);
 assert.equal(lab.canMountLabVessel("tripod","burette"),true);
