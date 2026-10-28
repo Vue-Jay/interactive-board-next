@@ -1,12 +1,37 @@
+import {useState} from "react";
 import type {NextSchoolDiagram,WordRole,AlgorithmNodeKind,AlgorithmNode,AlgorithmEdge} from "./lektrusNextSchoolModel";
 import {grammarRoles,flowNodeNames,validPlaceDigit} from "./lektrusNextSchoolModel";
 type Props={diagram:NextSchoolDiagram;onChange:(next:NextSchoolDiagram)=>void};
 const key=()=>crypto.randomUUID();
 const arrows=(next:NextSchoolDiagram,change:Props["onChange"])=>change(next);
+/** Create a sentence by splitting the source into editable words and punctuation. */
+function SyntaxSentenceSetup({diagram,onChange}:{
+ diagram:Extract<NextSchoolDiagram,{kind:"syntax"}>;onChange:(next:NextSchoolDiagram)=>void;
+}){
+ const [source,setSource]=useState("");
+ const words=source.match(/[\p{L}\p{M}]+(?:[-’][\p{L}\p{M}]+)*|\d+|[^\s]/gu)??[];
+ const ready=words.length>0&&words.length<=14&&words.every(word=>word.length<=28);
+ return <div className="lektrus-syntax-quick-start">
+  <label className="lektrus-school-field">Предложение целиком
+   <textarea rows={3} value={source} maxLength={320}
+    placeholder="Введите предложение для разбора" onChange={e=>setSource(e.target.value)}/>
+  </label>
+  <div className="lektrus-syntax-quick-actions">
+   <button type="button" className="lektrus-school-add" disabled={!ready}
+    onClick={()=>onChange({...diagram,words:words.map((text,index)=>{
+     const old=diagram.words[index];
+     return old?.text===text?old:{id:old?.id??key(),text,role:"none"};
+    })})}>Разместить слова на схеме</button>
+   {source.trim()&&<small>{ready?words.length+" элементов":"Не более 14 элементов; каждый до 28 символов"}</small>}
+  </div>
+  {diagram.words.length>0&&<p className="lektrus-school-hint">После переноса можно отметить слова и изменить их порядок. Старые роли сохраняются у неизменённых элементов.</p>}
+ </div>;
+}
 export default function LektrusNextSchoolControls({diagram:d,onChange}:Props){
  if(d.kind==="syntax")return <>
   <div className="lektrus-school-controls-heading">Слова и члены предложения</div>
-  <p className="lektrus-school-hint">Введите слова по порядку и самостоятельно назначьте их синтаксическую роль. Программа ничего не определяет за ученика.</p>
+  <p className="lektrus-school-hint">Можно ввести предложение целиком или добавлять слова отдельно. Подчёркивания ученик определяет самостоятельно.</p>
+  <SyntaxSentenceSetup diagram={d} onChange={onChange}/>
   {d.words.map((w,i)=><div className="lektrus-school-edit-row" key={w.id}>
    <span className="lektrus-school-number">{i+1}</span>
    <div className="lektrus-school-edit-content">
@@ -27,7 +52,7 @@ export default function LektrusNextSchoolControls({diagram:d,onChange}:Props){
    </div>
   </div>)}
   <button type="button" className="lektrus-school-add" disabled={d.words.length>=14}
-   onClick={()=>onChange({...d,words:[...d.words,{id:key(),text:"Слово",role:"none"}]})}>
+   onClick={()=>onChange({...d,words:[...d.words,{id:key(),text:"□",role:"none"}]})}>
    + Добавить слово ({d.words.length}/14)</button>
   <label className="lektrus-school-toggle"><input type="checkbox" checked={d.showMarks}
    onChange={e=>onChange({...d,showMarks:e.target.checked})}/> Показывать подчёркивания</label>
