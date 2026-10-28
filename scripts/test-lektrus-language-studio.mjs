@@ -58,4 +58,15 @@ assert.ok(!mathOptions.includes('type("interactive"'),
  "New math tasks must not expose interactive training");
 assert.ok(registry.includes('type("interactive","Интерактивный тренажёр","Сохранённое интерактивное упражнение")'),
  "Do not delete legacy mathematical exercises");
+const activityUi=read("src/LektrusSubjectActivity.tsx");
+const styles=read("src/lektrusSubjectBoard.css");
+assert.match(studio,/const removeGap=/,"Teacher can remove a single hidden fragment");
+assert.match(studio,/const insertPunctuation=/,"Punctuation offers sign insertion at cursor");
+assert.match(studio,/lektrus-language-target/,"Morphology word can be chosen from a sentence");
+assert.match(studio,/lektrus-language-question-row/,"Reading questions use editable rows");
+assert.match(studio,/Сделать пропуск/,"Highlighted material becomes a masked exercise");
+assert.match(activityUi,/lektrus-activity-quick-keys/,"Pupil has quick keys for language exercises");
+assert.match(activityUi,/const pairs=quickSource.split/,"Teachers can paste vocabulary pairs");
+assert.match(board,/orthography=\{tone==="russian"/,"Pupil board enables the orthography palette");
+assert.match(styles,/width:min\(1180px/,"Language editor gets enough working space");
 console.log("Language studio: Russian spelling/punctuation, English gaps, authoring, safe preview, archived exercises OK");
