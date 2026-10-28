@@ -2,10 +2,14 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose} from "./lektrusChemistryBenchModel";
 import {addLabVessel,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
+ labIndicatorResult,labDevices,toggleLabDevice,useLabDevice,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
+import {buildLabCatalog,cabinetColor,cabinetPhase,phaseNames,type CatalogueGroup,type CatalogueSort,type StoragePhase}
+ from "./lektrusLabCatalog";
+import {titrationReading} from "./lektrusLabTitration";
+import LektrusLabTitrationPanel from "./LektrusLabTitrationPanel";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
 const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
@@ -33,6 +37,36 @@ const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
   inside:"M12 70Q14 117 50 117Q86 117 88 70Z",
   outline:"M12 70Q14 117 50 117Q86 117 88 70M12 70Q50 82 88 70",
   liquid:"M14 86Q50 94 86 86Q78 115 50 115Q22 115 14 86Z"
+ },
+ conical:{
+  inside:"M39 12H61V55L86 105Q88 119 73 120H27Q12 119 14 105L39 55Z",
+  outline:"M38 10V55L13 105Q9 123 27 123H73Q91 123 87 105L62 55V10M36 10H64",
+  liquid:"M27 88H73L84 108Q86 120 70 120H30Q14 120 16 108Z"
+ },
+ volumetric:{
+  inside:"M44 9H56V61Q83 75 82 98Q82 121 50 122Q18 121 18 98Q17 75 44 61Z",
+  outline:"M43 8V60Q17 72 17 98Q17 124 50 124Q83 124 83 98Q83 72 57 60V8M40 8H60",
+  liquid:"M26 91Q50 87 74 91Q83 117 50 120Q17 117 26 91Z"
+ },
+ crucible:{
+  inside:"M22 61H78L72 112Q69 120 50 120Q31 120 28 112Z",
+  outline:"M19 58H81L74 113Q70 124 50 124Q30 124 26 113ZM18 57H82",
+  liquid:"M26 83H74L69 113Q50 122 31 113Z"
+ },
+ pipette:{
+  inside:"M45 9H55V52L61 76Q62 92 55 99V121H45V99Q38 92 39 76L45 52Z",
+  outline:"M43 7H57V50L63 75Q65 92 57 101V125H43V101Q35 92 37 75L43 50ZM40 8H60",
+  liquid:"M42 78H58Q62 93 55 101V121H45V101Q38 93 42 78Z"
+ },
+ burette:{
+  inside:"M44 8H56V108H44Z",
+  outline:"M43 7H57V111H43ZM39 111H61M50 111V126",
+  liquid:"M45 33H55V107H45Z"
+ },
+ funnel:{
+  inside:"M13 35H87L55 83V122H45V83Z",
+  outline:"M12 33H88L56 83V124H44V83ZM12 33H88",
+  liquid:"M21 47H79L55 85H45Z"
  }
 };
 export function LabVesselGraphic({vessel,small=false,showLabels=true}:{vessel:LabVessel;small?:boolean;showLabels?:boolean}){
@@ -130,9 +164,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [dropTarget,setDropTarget]=useState<string|null>(null);
  const [dropFurniture,setDropFurniture]=useState<"sink"|"glassware"|null>(null);
  const [transfer,setTransfer]=useState<{from:{x:number;y:number};to:{x:number;y:number}}|null>(null);
- const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"settings"|null>(null);
+ const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"equipment"|"titration"|"settings"|null>(null);
  const [query,setQuery]=useState("");
  const [category,setCategory]=useState("Все");
+ const [phase,setPhase]=useState<"all"|StoragePhase>("all");
+ const [sort,setSort]=useState<CatalogueSort>("name");
+ const [group,setGroup]=useState<CatalogueGroup>("class");
  const [cabinetTab,setCabinetTab]=useState<"substances"|"experiments">("substances");
  const [effectFilter,setEffectFilter]=useState<"all"|Observation>("all");
  const [chosen,setChosen]=useState<string|null>(null);
@@ -143,9 +180,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string}|null>(null);
  const settings=labBenchSettings(bench);
  const selected=selectedLabVessel(bench);
- const visibleSubstances=substances.filter(v=>
-  (category==="Все"||category===v.kind)&&
-  (v.formula+" "+v.name).toLocaleLowerCase("ru-RU").includes(query.trim().toLocaleLowerCase("ru-RU")));
+ const catalogue=buildLabCatalog({query,kind:category,phase,sort,group});
+ const visibleSubstances=catalogue.flatMap(v=>v.items);
  const reagent=chosen?substances.find(s=>s.id===chosen):null;
  const classes=["Все",...new Set(substances.map(s=>s.kind))];
  const experimentCases=reviewedReactionCases.filter(v=>v.status==="reaction"&&
@@ -157,7 +193,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
  useEffect(()=>{if(cabinet)dialogRef.current?.focus()},[cabinet]);
  useEffect(()=>{scrollRef.current?.scrollTo({top:0})},
-  [cabinet,cabinetTab,query,category,effectFilter]);
+  [cabinet,cabinetTab,query,category,phase,sort,group,effectFilter]);
  useEffect(()=>{
   if(!cabinet)return;
   const onEscape=(event:KeyboardEvent)=>{
@@ -285,7 +321,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   setNotice("Опыт подготовлен: соедините вещества, чтобы наблюдать реакцию");
   setCabinet(null);
  };
- const openCabinet=(next:"reagents"|"glassware"|"settings")=>{
+ const openCabinet=(next:"reagents"|"glassware"|"equipment"|"titration"|"settings")=>{
   if(!editable)return;setCabinet(next);setNotice("");setChosen(null);
  };
  return <div className={"lektrus-lab-bench"+(!editable?" is-readonly":"")+
