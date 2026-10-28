@@ -5721,6 +5721,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     }
     if(item.scienceAtomModel||item.graphFigureId==="chem-atom"){setAtomEditorItem(item);return;}
     if(item.graphFigureId==="chem-periodic"){setPeriodicEditorItem(item);return;}
+    if(item.graphFigureId==="chem-experiment-free"){
+      setSelected([item.id]);setTool("select");return;
+    }
     if(item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")){setScienceEditorItem(item);return;}
     if(itemsRef.current.some(existing=>existing.id===item.id))setSelected([item.id]);
     const next=graphDraftFromItem(item);
@@ -8499,7 +8502,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             setSelected([]);
             setTool("select");
             setSubjectToolsOpen(false);
-            if(id==="chem-atoms"){setAtomEditorItem(item);
+            if(id==="chem-experiments"){
+              // Chemistry experiments are born as a normal, selected board object.
+              // All further work is done in the tabletop; no modal editor.
+              commit([...itemsRef.current,item]);
+              setSelected([item.id]);
+              setNotice("Химический стол добавлен. Перемещайте за верхнюю планку, изменяйте размер за углы.");
+            }else if(id==="chem-atoms"){setAtomEditorItem(item);
             }else if(id==="physics-circuits"){
               setCircuitEditorItem(item);
             }else if(id==="chem-periodic-table"){
