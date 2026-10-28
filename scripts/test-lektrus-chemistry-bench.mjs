@@ -84,6 +84,43 @@ mixed=lab.putLabReagent(mixed,mixed.selectedId,"HCl");
 mixed=lab.pourLabVessel(mixed,mixed.selectedId,"v1");
 assert.equal(lab.labIndicatorResult(mixed.vessels[0]).medium,"unknown",
  "Neutralisation cannot give an exact indicator colour without quantities");
+let precip=lab.defaultLabBench();
+precip=lab.putLabReagent(precip,"v1","NaCl",{value:12,unit:"ml"});
+precip=lab.addLabVessel(precip,"tube");
+precip=lab.putLabReagent(precip,"v2","AgNO3",{value:7,unit:"ml"});
+precip=lab.pourLabVessel(precip,"v2","v1");
+assert.equal(lab.labObservation(precip.vessels[0]).caseData.observation,"precipitate");
+precip=lab.addLabVessel(precip,"flask");
+const decanted=lab.pourLabVessel(precip,"v1","v3");
+assert.equal(lab.labObservation(decanted.vessels[2]).status,"reaction",
+ "Previously reacted material stays visibly reacted after pouring into clean glassware");
+assert.equal(lab.labObservation(decanted.vessels[2]).caseData.observation,"precipitate");
+assert.ok(decanted.vessels[2].completedReaction,"The verified result is preserved separately from reactant IDs");
+assert.equal(decanted.vessels[2].doses.NaCl.value,12);
+assert.equal(decanted.vessels[2].doses.AgNO3.value,7);
+assert.equal(decanted.vessels[0].completedReaction,undefined,"Emptied source loses its products");
+const postReaction=lab.putLabReagent(decanted,"v3","HCl",{value:5,unit:"ml"});
+assert.equal(lab.labObservation(postReaction.vessels[2]).status,"unknown",
+ "Further transformation of spent mixture must not be invented");
+assert.ok(postReaction.vessels[2].completedReaction,"Previously precipitated solid should remain visible as last known appearance");
+const cleaned=lab.emptyLabVessel(postReaction,"v3");
+assert.equal(cleaned.vessels[2].completedReaction,undefined,"Sink removes all products");
+const stored=lab.removeLabVessel(cleaned,"v3");
+assert.equal(stored.vessels.length,2,"Only cleaned glassware returns to cupboard");
+assert.equal(lab.removeLabVessel(decanted,"v3"),decanted,"A filled flask cannot be stored before draining");
+const settings=lab.setLabBenchSettings(lab.defaultLabBench(),{showEquationBoard:true,animateEffects:false});
+assert.equal(lab.labBenchSettings(settings).showEquationBoard,true);
+assert.equal(lab.labBenchSettings(settings).animateEffects,false);
+const palette=load("src/lektrusLabAppearance.ts",key=>{
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
+assert.equal(palette.reagentAppearance("CuSO4").color,"#61a9d3");
+assert.equal(palette.reagentAppearance("FeCl3").color,"#e1b66d");
+assert.equal(palette.reagentAppearance("NaCl").phase,"solution");
+assert.equal(palette.reagentAppearance("CuO").phase,"solid");
+for(const substance of reaction.substances)
+ assert.ok(palette.reagentAppearance(substance.id).color,
+  "Every catalogued reagent must have a representative appearance");
 const base=lab.defaultLabBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
@@ -100,9 +137,13 @@ for(const p of ["src/LektrusChemistryBench.tsx","src/LektrusChemistryBenchEditor
 const editor=read("src/LektrusChemistryBenchEditor.tsx");
 assert.match(editor,/onPour=\{pour\}/);
 assert.match(editor,/onDropReagent=\{addReagent\}/);
-assert.match(editor,/addLabVessel/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/addLabVessel/);
 assert.match(editor,/setLabEnvironment/);
-assert.match(editor,/lektrus-lab-catalog/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-modal-reagents/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-glass-cupboard/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-sink/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-chalkboard/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-modal-settings/);
 assert.match(editor,/labIndicatorResult/);
 assert.match(editor,/setLabIndicator/);
 const app=read("src/App.tsx");
@@ -116,8 +157,8 @@ assert.match(read("src/LektrusChemistryBench.tsx"),/targetAt\(/,
  "Dragging a filled vessel over another triggers the transfer target");
 assert.match(read("src/LektrusChemistryIllustration.tsx"),/onPour=\{onBenchChange\?pour:undefined\}/,
  "On-board laboratory can pour mixtures without opening an editor");
-assert.match(read("src/LektrusChemistryIllustration.tsx"),/lektrus-lab-board-controls/,
- "On-board laboratory has direct reagents, indicator and glassware controls");
+assert.doesNotMatch(read("src/LektrusChemistryIllustration.tsx"),/lektrus-lab-board-controls/,
+ "The old bottom toolbar must not overlay the interactive bench");
 assert.match(read("src/LektrusChemistryBench.tsx"),/data-board-interactive="true"/,
  "Glassware gestures do not drag the surrounding board object");
 assert.match(read("src/lektrusSciencePresets.ts"),/x:x-410,y:y-250,text:"Химический стол"/,
