@@ -20,7 +20,7 @@ const activityTitles:Record<SubjectTaskActivity["mode"],string>={
 const introduction:Record<string,{title:string;hint:string}>={
  "russian:task":{title:"Свободное задание",hint:"Запишите вопрос или инструкцию. Ученик ответит на доске."},
  "russian:orthography":{title:"Найди орфограмму",hint:"Подготовьте текст, выделите трудные места. Ученик восстанавливает буквы прямо в словах и проверяет себя."},
- "russian:punctuation":{title:"Расставь знаки",hint:"Создайте предложение с пропусками. Ученик выбирает знаки из палитры или вводит их сам."},
+ "russian:punctuation":{title:"Пунктуационный практикум",hint:"Разметьте контрольные места, включая позиции без знака. Ученик решает, нужен ли знак, расставляет его и объясняет правило."},
  "russian:morphemes":{title:"Разбор слова по составу",hint:"Укажите слово. Ученик сам разделит его на морфемы и назначит обозначения."},
  "russian:morphology":{title:"Морфологический разбор",hint:"Укажите предложение и слово. Ученик разберёт его по удобному плану с признаками для выбранной части речи."},
  "russian:syntax":{title:"Разбор предложения",hint:"Введите предложение. Ученик выберет тип линии и отметит члены предложения на словах."},
@@ -94,6 +94,31 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
    {...blank,choices:[blank.answer,distractor] as [string,string]}:blank);
   patch({activity:{...activity,blanks},activityResponse:undefined});setPreviewAnswer({});
  };
+ const punctuationRules=[
+  "Однородные члены предложения","Части сложного предложения",
+  "Обращение","Вводное слово или конструкция","Причастный или деепричастный оборот",
+  "Уточнение или пояснение","Прямая речь и диалог",
+  "Тире между подлежащим и сказуемым","Конец предложения","Знак не требуется"
+ ];
+ const updatePunctuationRule=(index:number,rule:string)=>{
+  if(activity?.mode!=="fill")return;
+  const blanks=activity.blanks?.map((blank,i)=>i===index?{...blank,rule}:blank);
+  patch({activity:{...activity,blanks},activityResponse:undefined});setPreviewAnswer({});
+ };
+ const markAllPunctuation=()=>{
+  if(!markup.trim())return setSelectionHint("Сначала введите предложение.");
+  let count=gapState?.count??0,inBlank=false,added=0;
+  const next=Array.from(markup).map((ch,i,chars)=>{
+   if(ch==="[")inBlank=true;
+   if(ch==="]"){inBlank=false;return ch;}
+   if(inBlank||count>=8)return ch;
+   if(!/[,;:!?—]/.test(ch))return ch;
+   if(ch==="—"&&chars[i-1]!==" "&&chars[i+1]!==" ")return ch;
+   count++;added++;return "["+ch+"]";
+  }).join("");
+  if(!added){setSelectionHint("Новых знаков не найдено. Выделите нужный знак или добавьте место без знака.");return;}
+  changeMarkup(next);setSelectionHint("Создано контрольных мест: "+added+". Добавьте несколько мест без знака для проверки понимания.");
+ };
  const removeGap=(index:number)=>{
   if(!gapState?.activity?.blanks)return;
   const blanks=gapState.activity.blanks;
@@ -150,8 +175,8 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
      </label>}
     {isGap&&<>
      <div className="lektrus-language-gap-heading">
-      <strong>{punctuation?"Предложение со знаками":"Текст упражнения"}</strong>
-      <small>{punctuation?"Выделите готовый знак или поставьте курсор между словами и нажмите на знак в палитре.":"Введите текст, затем выделите букву, часть слова или целое слово."}</small>
+      <strong>{punctuation?"Предложение для пунктуационного анализа":"Текст упражнения"}</strong>
+      <small>{punctuation?"Напишите правильно оформленное предложение. Отметьте места, где нужен знак или где его быть не должно.":"Введите текст, затем выделите букву, часть слова или целое слово."}</small>
      </div>
      <textarea className="lektrus-language-gap-source" ref={selectedRef} rows={8} maxLength={1800}
       aria-label="Текст упражнения для создания пропусков" value={markup}
@@ -163,13 +188,12 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
       </button>
      </div>
      {punctuation&&<div className="lektrus-language-punctuation-editor">
-      <strong>Добавить место для знака</strong>
-      <div role="group" aria-label="Вставка знака препинания">
-       {[",",".",":",";","—","?","!","«","»","(",")"].map(mark=>
-        <button type="button" key={mark} onMouseDown={e=>e.preventDefault()}
-         title={"Добавить скрытый знак "+mark} onClick={()=>insertPunctuation(mark)}>{mark}</button>)}
+      <strong>Контрольные места в предложении</strong>
+      <div className="lektrus-language-punctuation-actions">
+       <button type="button" onClick={markAllPunctuation}>Разметить знаки автоматически</button>
+       <button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>insertPunctuation("∅")}>+ Место без знака</button>
       </div>
-      <small>Поставьте курсор в нужное место. Знак появится как пропуск с правильным ответом для проверки.</small>
+      <small>Для проверки в спорном месте поставьте курсор и добавьте «Место без знака». Так ученик не сможет расставлять знаки механически.</small>
      </div>}
      {gapState&&gapState.count>0&&!gapState.issue&&<div className="lektrus-language-gaps-list">
       <strong>Пропуски <span>{gapState.count}/8</span></strong>
@@ -180,6 +204,14 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
           <span><small>{i+1}</small> Правильный ответ: <b>{part.answer}</b></span>
           <button type="button" onClick={()=>removeGap(i)} aria-label={"Убрать пропуск "+(i+1)}>Убрать пропуск ×</button>
          </div>
+         {punctuation&&<label className="lektrus-language-field lektrus-language-punctuation-rule">
+          Правило для объяснения (необязательно)
+          <select aria-label={"Правило для места "+(i+1)} value={part.rule??""}
+           onChange={e=>updatePunctuationRule(i,e.target.value)}>
+           <option value="">Ученик объясняет самостоятельно</option>
+           {punctuationRules.map(rule=><option key={rule} value={rule}>{rule}</option>)}
+          </select>
+         </label>}
          {orthography&&part.answer.length<=24&&<label className="lektrus-language-choice-toggle">
           <input type="checkbox" checked={!!part.choices} onChange={e=>configureChoices(i,e.target.checked)}/>
           Показать два варианта под пропуском
@@ -195,7 +227,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
          </label>}
         </div>)}
       </div>
-      <small>Обычные пропуски ученик заполняет самостоятельно. Если включены два варианта, они появятся под конкретным пропуском.</small>
+      <small>{punctuation?"Проверяются знаки, а объяснения ученик пишет сам. Выбранное преподавателем правило показывается после проверки.":"Обычные пропуски ученик заполняет самостоятельно. Если включены два варианта, они появятся под конкретным пропуском."}</small>
      </div>}
      {selectionHint&&<p className="lektrus-language-studio-help" role="status">{selectionHint}</p>}
      {gapState?.issue&&<p className="lektrus-language-studio-warning" role="status">{gapState.issue}</p>}
