@@ -3,10 +3,10 @@ import type {RussianTaskWork,SubjectBoardEntry} from "./boardModel";
 import {morphemeNames,type MorphemeRole} from "./lektrusApprovedSchoolModel";
 import {grammarRoles,type WordRole} from "./lektrusNextSchoolModel";
 import {posNames,type RussianPartOfSpeech} from "./lektrusRussianSchoolModel";
-import {changeRussianMorphemeBoundary,isSingleRussianWord,russianLetters,russianWordParts,russianTaskHasWork} from "./lektrusRussianWorkLogic";
+import {changeRussianMorphemeBoundary,isSingleRussianWord,russianLetters,russianWordParts,russianTaskHasWork,russianSentenceTokens} from "./lektrusRussianWorkLogic";
 
 export const splitRussianSentence=(source:string):string[]=>
- source.match(/[\p{L}\p{M}]+(?:[-’][\p{L}\p{M}]+)*|\d+|[^\s]/gu)?.slice(0,100)??[];
+ russianSentenceTokens(source).slice(0,100);
 export const separateRussianQuestions=(source:string)=>
  source.split(/\r?\n/).map(v=>v.trim()).filter(Boolean).slice(0,15);
 export const russianWorkSource=(entry:SubjectBoardEntry):string=>{
