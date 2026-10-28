@@ -405,7 +405,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       canMountLabVessel(appliance.device.kind,vessel.kind)){
       const offset=appliance.device.kind==="tripod"?8:
        appliance.device.kind==="burner"?13:11;
-      const logical=labLogicalPoint({x:appliance.device.x,y:appliance.device.y-offset});
+      const offsetX=appliance.device.kind==="tripod"?-2.5:
+       appliance.device.kind==="burner"?1.5:0;
+      const logical=labLogicalPoint({
+       x:appliance.device.x-offsetX,y:appliance.device.y-offset});
       const positioned=positionLabVessel(bench,g.id,logical.x,logical.y);
       const applied=applyPlacedLabDevice(positioned,appliance.device.id,g.id);
       onChange?.(applied);
