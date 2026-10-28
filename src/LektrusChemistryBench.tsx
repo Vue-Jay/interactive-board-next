@@ -394,10 +394,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     if(target)transferVessel(g.id,target);
     else{
      const rect=host.current?.getBoundingClientRect();
-     const appliance=rect?physicalDevices.map(d=>({
-      device:d,distance:Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)
-     })).sort((a,b)=>a.distance-b.distance)[0]:undefined;
      const vessel=bench.vessels.find(v=>v.id===g.id);
+     const nearby=rect?physicalDevices.map(d=>({
+      device:d,distance:Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)
+     })).filter(v=>v.distance<105).sort((a,b)=>a.distance-b.distance):[];
+     // When tools overlap, prefer the closest physically compatible surface.
+     const appliance=nearby.find(v=>vessel&&canMountLabVessel(v.device.kind,vessel.kind))
+      ??nearby[0];
      if(appliance&&appliance.distance<105&&vessel&&
       canMountLabVessel(appliance.device.kind,vessel.kind)){
       const offset=appliance.device.kind==="tripod"?8:
@@ -502,7 +505,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   e.stopPropagation();const p=point(e),rect=host.current?.getBoundingClientRect();
   if(!p||!rect)return;
   if(Math.hypot((p.x-g.startX)*rect.width/100,(p.y-g.startY)*rect.height/100)>8)g.dragged=true;
-  if(g.dragged)setDevicePreview({id:g.id,x:Math.max(9,Math.min(81,g.x+p.x-g.startX)),
+  if(g.dragged)setDevicePreview({id:g.id,x:Math.max(27,Math.min(79,g.x+p.x-g.startX)),
    y:Math.max(53,Math.min(84,g.y+p.y-g.startY))});
  };
  const finishDevice=(e:PointerEvent<HTMLButtonElement>)=>{
