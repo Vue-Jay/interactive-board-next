@@ -13,7 +13,6 @@ const vivid:Record<string,{solution?:string;solid?:string;label:string}>={
  "Fe2(SO4)3":{solution:"#e8c68c",solid:"#dbc08d",label:"Желтоватый раствор"},
  "KMnO4":{solution:"#9853bb",solid:"#633068",label:"Фиолетовый раствор, тёмные кристаллы"},
  "K2Cr2O7":{solution:"#e7a04c",solid:"#d7782b",label:"Оранжевый раствор и кристаллы"},
- "Cu(OH)2":{solid:"#69b9df",label:"Голубой осадок"},
  "Fe(OH)2":{solid:"#92aa80",label:"Зеленоватый осадок"},
  "Fe(OH)3":{solid:"#a85c38",label:"Бурый осадок"},
  "CuO":{solid:"#242c35",label:"Чёрный порошок"},
