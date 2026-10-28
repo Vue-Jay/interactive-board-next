@@ -818,12 +818,12 @@ export function advanceLabPour(b:LabBench):LabBench{
    doses:finish?undefined:left,observed:finish?false:v.observed,
    completedReaction:finish?undefined:v.completedReaction,
    indicator:finish?undefined:v.indicator,
-   pourFraction:p.unmeasured?(20-n)/20:v.pourFraction};
+   pourFraction:p.unmeasured?.5*(20-n)/20:v.pourFraction};
   if(v.id===target.id)return {...v,reagents:combined,doses:received,
    observed:true,uncertain,environment:targetWasEmpty?source.environment:v.environment,
    completedReaction:targetWasEmpty?sourceReaction:v.completedReaction,
    indicator:v.indicator??source.indicator,
-   pourFraction:p.unmeasured?Math.min(1,(v.pourFraction??(targetWasEmpty?0:.5))+.05):v.pourFraction};
+   pourFraction:p.unmeasured?Math.min(1,(v.pourFraction??(targetWasEmpty?0:.5))+.025):v.pourFraction};
   return v;
  });
  return {...b,vessels,pouring:{...p,step:n},event:b.event+1,
@@ -953,8 +953,12 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  const titrationPair=JSON.stringify(mine.titrationPair??null)===JSON.stringify(previous.titrationPair??null)?
   remote.titrationPair:mine.titrationPair;
  const simulationAtMs=Math.max(mine.simulationAtMs??0,remote.simulationAtMs??0)||undefined;
+ const pouring=mine.pouring?.id===remote.pouring?.id&&mine.pouring&&remote.pouring?
+  (mine.pouring.step>=remote.pouring.step?mine.pouring:remote.pouring):
+  JSON.stringify(mine.pouring??null)===JSON.stringify(previous.pouring??null)?
+   remote.pouring:mine.pouring;
  const quickReagents=JSON.stringify(labQuickReagents(mine))===JSON.stringify(labQuickReagents(previous))?
   labQuickReagents(remote):labQuickReagents(mine);
- return {vessels:limited,selectedId,settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,
+ return {vessels:limited,selectedId,settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,pouring,
   event:Math.max(remote.event,mine.event)+1};
 }
