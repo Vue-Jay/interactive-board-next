@@ -373,6 +373,11 @@ combinedSupport=lab.applyPlacedLabDevice(combinedSupport,flameId,"v1");
 assert.equal(lab.placedLabDevices(combinedSupport)
  .filter(d=>d.linkedVesselId==="v1").length,2,
  "The retort stand and burner must work with the same vessel");
+const supportPlate=lab.placedLabDevices(combinedSupport).find(d=>d.id===standId);
+const supportFlame=lab.placedLabDevices(combinedSupport).find(d=>d.id===flameId);
+assert.ok(supportFlame.y>supportPlate.y&&Math.abs(supportFlame.x-supportPlate.x)<5,
+ "Burner must sit below the stand clamp, not heat glassware from across the table");
+
 combinedSupport=lab.setPlacedDevicePower(combinedSupport,flameId,true);
 combinedSupport=lab.positionLabVessel(combinedSupport,"v1",64,72);
 assert.equal(lab.placedLabDevices(combinedSupport)
@@ -524,6 +529,20 @@ for(const device of lab.labDevices){
   "Each lab device requires a distinct SVG icon: "+device.name);
 }
 assert.match(read("src/LektrusChemistryBench.tsx"),/LektrusLabDeviceIcon/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/className="lektrus-lab-device-switch"/,
+ "Each heater and mixer must have a physical power switch on its model");
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-device-mini-controls/,
+ "Attachment and strength controls must belong to the instrument");
+assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),
+ /\{editable&&activeDevice&&<div className="lektrus-lab-device-actions"/,
+ "Blocking top equipment panel must be removed from the DOM");
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-glass-state/,
+ "Container contents and observation belong directly to the glassware");
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-retort-jaws/,
+ "Physical clamps must appear over the mounted glassware");
+assert.match(read("src/lektrusLabLayout.ts"),/labMountedGlasswarePoint/,
+ "Responsive appliance anchors must be shared with both models and rendering");
+
 assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),
  /className=\{"lektrus-lab-device-art/,
  "The installed tools must no longer render placeholder text glyphs");
