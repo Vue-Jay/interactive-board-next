@@ -72,6 +72,19 @@ assert.match(app,/provisionalChemistryWorksheets\.current\.delete\(boardId\)/,
  "Deleting an unfinished assignment must not create an orphan worksheet");
 
 assert.match(registry,/subject-board-\$\{SubjectTone\}/);
+assert.match(registry,/`subject-task-\$\{SubjectTone\}`/,
+ "All school subjects share a task-creation tool type");
+assert.match(panel,/Задания на предметной доске/,"Task group is consistently named");
+assert.match(panel,/На предметную доску/,"Task placement is explicitly labelled");
+assert.match(app,/id\.startsWith\("subject-task-"\)/,
+ "Choosing task tool opens a subject-board task");
+assert.match(app,/provisionalSubjectTaskBoards/,
+ "Blank new subject boards do not survive cancelled task creation");
+assert.match(board,/ХИМИЧЕСКАЯ ДОСКА/,
+ "Chemistry uses its distinct board rather than a plain worksheet");
+assert.match(read("src/lektrusSubjectEditorThemes.css"),/\.lektrus-subject-board\.is-chemistry-board/,
+ "Chemistry board has its own enamel-green appearance");
+
 assert.match(registry,/subjectBoardEntries:\[\]/);
 assert.doesNotMatch(panel,/subject-board-[a-z]+/,"No individual worksheet in subject catalogue");
 assert.ok(app.includes('aria-label="Предметная доска"'),"One universal main toolbar entry");
