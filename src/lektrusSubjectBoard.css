@@ -992,3 +992,43 @@
  .lektrus-subject-task-types button{min-height:36px}
  .lektrus-language-punctuation-actions>button{min-height:36px!important}
 }
+
+
+/* Reserve the naturally unused lower part of task dialogs for a live preview.
+ * The footer stays attached to the bottom, instead of floating in mid-dialog. */
+.lektrus-subject-task-editor{min-height:0}
+.lektrus-subject-task-editor>.lektrus-subject-task-body{
+ flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+ align-content:start;
+}
+.lektrus-subject-task-editor>header,
+.lektrus-subject-task-editor>footer{flex:0 0 auto}
+.lektrus-subject-task-editor>footer{margin-top:auto}
+.lektrus-task-preview{display:grid;gap:8px;min-width:0;margin-top:4px;
+ border:1px solid color-mix(in srgb,var(--subject-board-accent) 24%,#e5ecee);
+ border-radius:11px;padding:11px 12px;background:color-mix(in srgb,var(--subject-board-soft) 10%,#fff)}
+.lektrus-task-preview-heading{display:flex;flex-wrap:wrap;justify-content:space-between;
+ align-items:center;gap:5px 12px}
+.lektrus-task-preview-heading strong{font:750 12px/1.35 system-ui,sans-serif;color:var(--subject-board-accent)}
+.lektrus-task-preview-heading small{font:500 10px/1.4 system-ui,sans-serif;color:#7d9299}
+.lektrus-task-preview-board{
+ height:clamp(210px,32dvh,325px);min-width:0;border-radius:9px;overflow:hidden;
+ border:1px solid color-mix(in srgb,var(--subject-board-accent) 20%,#e7ebed);
+}
+.lektrus-task-preview-board .lektrus-subject-board{box-shadow:none;border:0;border-radius:0}
+.lektrus-task-preview-board .lektrus-subject-board-sheet{padding:12px 15px;gap:8px}
+.lektrus-task-preview-board .lektrus-subject-board-header{min-height:34px;padding:7px 12px}
+.lektrus-task-preview-board .lektrus-subject-board-footer{padding:7px 12px}
+@media(min-width:900px) and (min-height:850px){
+ .lektrus-subject-task-editor:has(.lektrus-language-studio) .lektrus-language-studio-layout,
+ .lektrus-subject-task-editor:has(.lektrus-language-studio) .lektrus-language-studio-layout.lektrus-language-wide-preview{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .lektrus-subject-task-editor:has(.lektrus-language-studio) .lektrus-language-preview{
+  position:static;min-width:0;
+ }
+}
+@media(max-width:700px), (max-height:680px){
+ .lektrus-task-preview{padding:8px}
+ .lektrus-task-preview-board{height:210px}
+}
