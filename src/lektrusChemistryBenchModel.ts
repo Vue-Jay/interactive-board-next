@@ -137,10 +137,14 @@ export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|
  return revise(bench,id,v=>v.indicator===indicator?v:{...v,indicator});
 }
 export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionEnvironment):LabBench{
- return revise(bench,id,v=>({...v,environment,
-  // Keep previous products opaque when reaction conditions change.
-  uncertain:v.uncertain||labObservation(v).status==="reaction",
-  observed:v.reagents.length>1||identifyReaction(v.reagents,environment).status==="reaction"}));
+ return revise(bench,id,v=>{
+  const previous=labObservation(v);
+  return {...v,environment,
+   completedReaction:v.completedReaction??(previous.status==="reaction"?previous.caseData:undefined),
+   // Future chemistry is unknown, but previously visible products stay visible.
+   uncertain:v.uncertain||previous.status==="reaction",
+   observed:v.reagents.length>1||identifyReaction(v.reagents,environment).status==="reaction"};
+ });
 }
 export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabDose):LabBench{
  if(!bench.vessels.some(v=>v.id===id))return bench;
@@ -157,10 +161,12 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    unit:validDose.unit}:undefined;
   if(combined&&combined.value>10000)return v;
   const reagents=present?v.reagents:[...v.reagents,reagent];
+  const previous=labObservation(v);
   return {...v,reagents,
+   completedReaction:v.completedReaction??(previous.status==="reaction"?previous.caseData:undefined),
    doses:combined?{...v.doses,[reagent]:combined}:v.doses,
    observed:reagents.length>1,
-   uncertain:v.uncertain||labObservation(v).status==="reaction"};
+   uncertain:v.uncertain||previous.status==="reaction"};
  });
 }
 /** Full transfer. Never assume that a second step using already reacted
