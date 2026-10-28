@@ -18,6 +18,66 @@ export const russianWorkSource=(entry:SubjectBoardEntry):string=>{
 
 const grammaticalRoles=Object.entries(grammarRoles) as [WordRole,string][];
 const morphemeRoles=Object.entries(morphemeNames) as [MorphemeRole,string][];
+
+type MorphFeature={name:string;options:readonly string[]};
+type MorphPlan={permanent:readonly MorphFeature[];variable:readonly MorphFeature[];unchanging?:boolean};
+const feature=(name:string,...options:string[]):MorphFeature=>({name,options});
+/** School plans are prompts, not inferred grammatical answers. Empty fields are allowed
+ * when a feature is inapplicable to a concrete word or a particular school programme. */
+const morphologyPlans:Partial<Record<RussianPartOfSpeech,MorphPlan>>={
+ noun:{permanent:[
+  feature("Собственное / нарицательное","нарицательное","собственное"),
+  feature("Одушевлённость","одушевлённое","неодушевлённое"),
+  feature("Род","мужской","женский","средний","общий","не определяется"),
+  feature("Склонение","1-е","2-е","3-е","разносклоняемое","несклоняемое")],
+  variable:[feature("Число","единственное","множественное"),
+   feature("Падеж","именительный","родительный","дательный","винительный","творительный","предложный")]},
+ adjective:{permanent:[feature("Разряд","качественное","относительное","притяжательное")],
+  variable:[feature("Форма","полная","краткая"),feature("Степень сравнения","положительная","сравнительная","превосходная"),
+   feature("Род","мужской","женский","средний"),feature("Число","единственное","множественное"),
+   feature("Падеж","именительный","родительный","дательный","винительный","творительный","предложный")]},
+ verb:{permanent:[feature("Вид","совершенный","несовершенный"),
+   feature("Переходность","переходный","непереходный"),
+   feature("Возвратность","возвратный","невозвратный"),
+   feature("Спряжение","I","II","разноспрягаемый","особое спряжение")],
+  variable:[feature("Наклонение","изъявительное","повелительное","условное"),
+   feature("Время","настоящее","прошедшее","будущее"),
+   feature("Лицо","1-е","2-е","3-е"),feature("Род","мужской","женский","средний"),
+   feature("Число","единственное","множественное")]},
+ pronoun:{permanent:[feature("Разряд","личное","возвратное","притяжательное","указательное","определительное","вопросительное","относительное","отрицательное","неопределённое"),
+   feature("Лицо","1-е","2-е","3-е")],
+  variable:[feature("Падеж","именительный","родительный","дательный","винительный","творительный","предложный"),
+   feature("Число","единственное","множественное"),feature("Род","мужской","женский","средний")]},
+ numeral:{permanent:[feature("Значение","количественное","порядковое","собирательное"),
+   feature("Строение","простое","сложное","составное")],
+  variable:[feature("Падеж","именительный","родительный","дательный","винительный","творительный","предложный"),
+   feature("Род","мужской","женский","средний"),feature("Число","единственное","множественное")]},
+ participle:{permanent:[feature("Вид","совершенный","несовершенный"),
+   feature("Время","настоящее","прошедшее"),feature("Залог","действительное","страдательное"),
+   feature("Возвратность","возвратное","невозвратное")],
+  variable:[feature("Форма","полная","краткая"),feature("Род","мужской","женский","средний"),
+   feature("Число","единственное","множественное"),
+   feature("Падеж","именительный","родительный","дательный","винительный","творительный","предложный")]},
+ gerund:{permanent:[feature("Вид","совершенный","несовершенный"),
+   feature("Возвратность","возвратное","невозвратное")],variable:[],unchanging:true},
+ adverb:{permanent:[feature("Разряд по значению","образа действия","меры и степени","места","времени","причины","цели")],
+  variable:[feature("Степень сравнения","положительная","сравнительная","превосходная")]},
+ preposition:{permanent:[feature("Происхождение","производный","непроизводный"),
+   feature("Строение","простой","составной")],variable:[],unchanging:true},
+ conjunction:{permanent:[feature("Сочинительный / подчинительный","сочинительный","подчинительный"),
+   feature("Строение","простой","составной")],variable:[],unchanging:true},
+ particle:{permanent:[feature("Разряд","формообразующая","отрицательная","смысловая")],variable:[],unchanging:true},
+ interjection:{permanent:[],variable:[],unchanging:true}
+};
+const morphRows=(value:string)=>value.split(/\\r?\\n/).reduce<Record<string,string>>((result,line)=>{
+ const divider=line.indexOf(": ");if(divider>0)result[line.slice(0,divider)]=line.slice(divider+2);return result;
+},{});
+const morphNotes=(value:string)=>value.split(/\\r?\\n/).filter(line=>!line.includes(": ")).join("\\n");
+const setMorphRow=(source:string,name:string,value:string)=>{
+ const lines=source.split(/\\r?\\n/).filter(Boolean).filter(line=>!line.startsWith(name+": "));
+ if(value)lines.push(name+": "+value);return lines.join("\\n");
+};
+
 const sentencePunctuation=/^[^\p{L}\p{N}]+$/u;
 const stop=(e:React.SyntheticEvent)=>e.stopPropagation();
 
@@ -105,29 +165,80 @@ export default function LektrusRussianTaskAnswer({entry,work,onChange}:Props){
    </div>
   </div>;
  }
+
  if(entry.format==="morphology"){
+  const part=state?.partOfSpeech as RussianPartOfSpeech|undefined;
+  const plan=part?morphologyPlans[part]:undefined;
+  const initial=(state?.initialForm??"");
+  const morphGroup=(group:"permanent"|"variable",heading:string,number:string)=>{
+   const features=plan?.[group]??[];
+   const values=morphRows(state?.[group]??"");
+   const notes=morphNotes(state?.[group]??"");
+   return <section className="lektrus-rus-morph-step">
+    <div className="lektrus-rus-morph-step-title"><span>{number}</span><strong>{heading}</strong></div>
+    {features.length>0?<div className="lektrus-rus-morph-features">
+     {features.map(f=>{
+      const selected=values[f.name]??"";
+      const custom=selected.startsWith("Свой вариант: ")?selected.slice(14):"";
+      return <label key={f.name} className="lektrus-rus-morph-feature">
+       <span>{f.name}</span>
+       <select disabled={!editable} aria-label={f.name}
+        value={custom?"__custom__":f.options.includes(selected)?selected:selected?"__custom__":""}
+        onChange={e=>update({[group]:setMorphRow(state?.[group]??"",f.name,
+         e.target.value==="__custom__"?"Свой вариант: ":e.target.value)})}>
+        <option value="">Не указано / не применяется</option>
+        {f.options.map(value=><option key={value} value={value}>{value}</option>)}
+        <option value="__custom__">Свой вариант…</option>
+       </select>
+       {(custom||selected==="Свой вариант: "||selected&&!f.options.includes(selected))&&
+        <input disabled={!editable} aria-label={f.name+": свой вариант"} value={custom||(!selected.startsWith("Свой вариант: ")?selected:"")}
+         placeholder="Уточните признак" maxLength={100}
+         onChange={e=>update({[group]:setMorphRow(state?.[group]??"",f.name,"Свой вариант: "+e.target.value)})}/>}
+      </label>;
+     })}
+    </div>:<p className="lektrus-rus-morph-invariable">{plan?.unchanging?"Эта часть речи не изменяется.":"Для этой части речи обязательные признаки не заданы."}</p>}
+    <label className="lektrus-rus-morph-notes">Дополнительные сведения <small>По желанию, если школьный план требует уточнения</small>
+      <textarea rows={2} maxLength={600} disabled={!editable}
+       placeholder="Необязательные особенности разбора" value={notes}
+       onChange={e=>update({[group]:[...Object.entries(values).map(([k,v])=>k+": "+v),e.target.value].filter(Boolean).join("\\n")})}/>
+    </label>
+   </section>;
+  };
   return <div className="lektrus-rus-task-work lektrus-rus-morphology-work" onPointerDown={stop} onClick={stop}>
-   <div className="lektrus-rus-work-top"><strong>Морфологический разбор</strong><small>Заполните признаки самостоятельно. Программа не определяет их вместо вас.</small></div>
-   {entry.details?.target&&<p className="lektrus-rus-analysis-target">Разбираемое слово: <strong>{entry.details.target}</strong></p>}
-   {!entry.details?.target&&<p className="lektrus-rus-answer-help">Преподавателю нужно указать разбираемое слово.</p>}
-   <label className="lektrus-rus-work-field">Часть речи
-     <select disabled={!editable} value={state?.partOfSpeech??""}
-      onChange={e=>update({partOfSpeech:e.target.value})}>
-      <option value="">Выберите часть речи</option>
-      {(Object.entries(posNames) as [RussianPartOfSpeech,string][]).map(([id,name])=>
-       <option key={id} value={id}>{name}</option>)}
-     </select>
-   </label>
-   <div className="lektrus-rus-analysis-fields">
-    {([["permanent","Постоянные признаки"],["variable","Непостоянные признаки"],
-       ["syntax","Синтаксическая роль"]] as const).map(([key,label])=>
-     <label key={key} className="lektrus-rus-work-field">{label}
-       {editable?<textarea rows={2} maxLength={key==="syntax"?1000:1500}
-        placeholder={key==="syntax"?"Укажите член предложения":"Запишите грамматические признаки"}
-        value={state?.[key]??""} onChange={e=>update({[key]:e.target.value})}/>:
-        <p>{state?.[key]||"Ещё не заполнено"}</p>}
-     </label>)}
-   </div>
+   <div className="lektrus-rus-work-top"><strong>Морфологический разбор</strong><small>Разбирайте по плану. Признаки выбирает ученик, без автоматических подсказок с ответами.</small></div>
+   {entry.details?.material&&<p className="lektrus-rus-morph-context">{entry.details.material}</p>}
+   {entry.details?.target?<p className="lektrus-rus-analysis-target">Слово: <strong>{entry.details.target}</strong></p>:
+    <p className="lektrus-rus-answer-help">Преподавателю нужно выбрать слово из предложения.</p>}
+   <section className="lektrus-rus-morph-step">
+    <div className="lektrus-rus-morph-step-title"><span>01</span><strong>Часть речи и начальная форма</strong></div>
+    <div className="lektrus-rus-morph-first">
+     <label className="lektrus-rus-morph-feature"><span>Часть речи</span>
+      <select disabled={!editable} value={part??""}
+       onChange={e=>update({partOfSpeech:e.target.value,permanent:"",variable:""})}>
+       <option value="">Выберите часть речи</option>
+       {(Object.entries(posNames) as [RussianPartOfSpeech,string][]).map(([id,name])=>
+        <option key={id} value={id}>{name}</option>)}
+      </select></label>
+     <label className="lektrus-rus-morph-feature"><span>Начальная форма</span>
+      <input disabled={!editable} value={initial} maxLength={120}
+       placeholder="Запишите начальную форму" onChange={e=>update({initialForm:e.target.value})}/></label>
+    </div>
+   </section>
+   {part&&<>{morphGroup("permanent","Постоянные признаки","02")}
+    {morphGroup("variable","Непостоянные признаки","03")}
+    <section className="lektrus-rus-morph-step">
+     <div className="lektrus-rus-morph-step-title"><span>04</span><strong>Роль в предложении</strong></div>
+     <label className="lektrus-rus-morph-feature"><span>Синтаксическая роль</span>
+      <select disabled={!editable} value={state?.syntax??""}
+       onChange={e=>update({syntax:e.target.value})}>
+       <option value="">Ещё не определена</option>
+       {["подлежащее","сказуемое","определение","дополнение","обстоятельство","не является членом предложения"].map(v=>
+        <option key={v} value={v}>{v}</option>)}
+       {state?.syntax&&!["подлежащее","сказуемое","определение","дополнение","обстоятельство","не является членом предложения"].includes(state.syntax)&&
+        <option value={state.syntax}>{state.syntax}</option>}
+      </select>
+     </label>
+    </section></>}
   </div>;
  }
  if(entry.format==="text"){
