@@ -83,7 +83,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
   if(activity?.mode!=="fill")return;
   const blanks=(activity.blanks??[]).map((blank,i)=>{
    if(i!==index)return blank;
-   if(!enabled){const {choices:removed,...rest}=blank;return rest;}
+   if(!enabled){const rest={...blank};delete rest.choices;return rest;}
    return {...blank,choices:[blank.answer,""] as [string,string]};
   });
   patch({activity:{...activity,blanks},activityResponse:undefined});setPreviewAnswer({});
@@ -281,7 +281,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
      {tone==="russian"&&["morphemes","morphology","syntax","text"].includes(template.id)?
        <LektrusRussianTaskAnswer entry={entry} work={previewRussian} onChange={setPreviewRussian}/>:
       activity?<LektrusSubjectActivityRunner activity={activity} response={previewAnswer}
-       onChange={setPreviewAnswer} punctuation={punctuation} orthography={orthography} compact/>:
+       onChange={setPreviewAnswer} punctuation={punctuation} compact/>:
       <div className="lektrus-language-preview-answer">
        {isGap?"Добавьте хотя бы один пропуск, чтобы увидеть упражнение":"Место для письменного ответа ученика"}
       </div>}
