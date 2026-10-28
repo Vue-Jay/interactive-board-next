@@ -768,8 +768,19 @@ export function parseDocument(raw: string): DocumentData {
       if(i.scienceLabBench!=null){
         const bench=i.scienceLabBench as import("./lektrusChemistryBenchModel").LabBench;
         const environments=["aqueous","dry","heated","ignited"];
-        const kinds=["beaker","tube","flask","cylinder","dish"];
+        const kinds=["beaker","tube","flask","cylinder","dish","conical","volumetric","crucible","pipette","burette","funnel"];
         const indicators=["litmus","phenolphthalein","methyl-orange","universal"];
+        const validLabTitration=(entry:unknown):boolean=>{
+          if(!entry||typeof entry!=="object")return false;
+          const t=entry as import("./lektrusLabTitration").TitrationModel;
+          return ["HCl","HNO3","HBr"].includes(t.acid)&&["NaOH","KOH"].includes(t.base)&&
+           ["acid","base"].includes(t.analyte)&&
+           indicators.includes(t.indicator)&&
+           Number.isFinite(t.volumeAnalyteMl)&&t.volumeAnalyteMl>=1&&t.volumeAnalyteMl<=100&&
+           Number.isFinite(t.concentrationAnalyte)&&t.concentrationAnalyte>=.001&&t.concentrationAnalyte<=2&&
+           Number.isFinite(t.concentrationTitrant)&&t.concentrationTitrant>=.001&&t.concentrationTitrant<=2&&
+           Number.isFinite(t.addedMl)&&t.addedMl>=0&&t.addedMl<=100;
+        };
         const settings=bench?.settings;
         const validSettings=!settings||(
           typeof settings.showEquationBoard==="boolean"&&
@@ -793,6 +804,10 @@ export function parseDocument(raw: string): DocumentData {
         if(!bench||!Array.isArray(bench.vessels)||bench.vessels.length>6||
           typeof bench.selectedId!=="string"||
           !Number.isSafeInteger(bench.event)||bench.event<0||!validSettings||
+          (bench.devices!=null&&(!Array.isArray(bench.devices)||
+            bench.devices.length>5||new Set(bench.devices).size!==bench.devices.length||
+            !bench.devices.every(id=>["hotplate","burner","stirrer","tripod","thermometer"].includes(id))))||
+          (bench.titration!=null&&!validLabTitration(bench.titration))||
           (bench.vessels.length===0?bench.selectedId!=="":
             !bench.vessels.some(v=>v.id===bench.selectedId))||
           new Set(bench.vessels.map(v=>v.id)).size!==bench.vessels.length||
