@@ -5,7 +5,8 @@ import LektrusChemistryBenchSurface from "./LektrusChemistryBench";
 import {
  addLabVessel,emptyLabVessel,removeLabVessel,putLabReagent,pourLabVessel,
  readLabBench,selectLabVessel,selectedLabVessel,setLabEnvironment,activateLabVessel,
- type LabBench,type LabGlassware
+ labIndicators,labIndicatorResult,setLabIndicator,
+ type LabBench,type LabGlassware,type LabIndicator
 } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,
  type Observation,type ReactionEnvironment} from "./lektrusReactionDatabase";
@@ -41,6 +42,7 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
  const [pouringId,setPouringId]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
  const [showInfo,setShowInfo]=useState(true);
+ const indicatorResult=selected?labIndicatorResult(selected):null;
  const kinds=useMemo(()=>["Все классы",...new Set(substances.map(x=>x.kind))],[]);
  const chemicals=useMemo(()=>substances.filter(s=>(group==="Все классы"||s.kind===group)&&
   (s.formula+" "+s.name).toLocaleLowerCase("ru-RU").includes(query.toLocaleLowerCase("ru-RU"))),[query,group]);
@@ -125,7 +127,7 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
       {(tab==="chemicals"?chemicals.length:examples.length)===0&&
        <div className="lektrus-lab-no-results">Совпадений в проверенной базе нет.</div>}
      </div>
-     <small className="lektrus-lab-cabinet-help">Нажмите на реагент, чтобы добавить его в выбранную посуду. На компьютере можно перетащить его прямо в сосуд.</small>
+     <small className="lektrus-lab-cabinet-help">Выберите сосуд, затем нажмите на вещество. Также можно перетащить реагент в сосуд. Чтобы перелить, перетащите один заполненный сосуд на другой либо нажмите «Перелить».</small>
     </aside>
     <main className="lektrus-lab-main">
      <div className="lektrus-lab-panel-head"><strong>Рабочий стол</strong>
@@ -140,7 +142,7 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
       onPour={pour} onChange={patch} onDropReagent={addReagent}/>
      <div className="lektrus-lab-hint" role="status">{notice||(
       pouringId?"Выберите сосуд назначения. Нажмите «Отмена», чтобы прекратить переливание.":
-      "Перемещайте посуду по столу. Выберите сосуд и добавляйте вещества.")}</div>
+      "Нажмите на сосуд для выбора. Перетащите его на другой, чтобы перелить содержимое.")}</div>
     </main>
     <aside className="lektrus-lab-inspector">
      <div className="lektrus-lab-panel-head"><strong>Свойства сосуда</strong><small>02</small></div>
@@ -151,6 +153,22 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
        {selected.reagents.length?selected.reagents.map((reagent,i)=><span key={i}
         title={getName(reagent)}>{reagent}</span>):<small>Пустой сосуд</small>}
       </div>
+      <div className="lektrus-lab-indicators">
+       <div className="lektrus-lab-indicator-heading"><strong>Индикаторы</strong>
+        <small>Качественная оценка среды</small></div>
+       <label className="lektrus-lab-condition">Добавить индикатор
+        <select value={selected.indicator??""} disabled={!selected.reagents.length}
+         onChange={e=>{patch(setLabIndicator(bench,selected.id,(e.target.value||undefined) as LabIndicator|undefined));
+          setNotice(e.target.value?"Индикатор добавлен. Цвет зависит от состава среды.":"Индикатор убран.");}}>
+         <option value="">Без индикатора</option>
+         {labIndicators.map(ind=><option key={ind.id} value={ind.id}>{ind.name}</option>)}
+        </select>
+       </label>
+       {indicatorResult&&<div className="lektrus-lab-indicator-reading" role="status">
+        <span className="lektrus-lab-indicator-dot" style={{background:indicatorResult.color??"#a2a9a4"}}/>
+        <span><strong>{indicatorResult.label}</strong><small>{indicatorResult.note}</small></span>
+       </div>}
+      </div>
       <label className="lektrus-lab-condition">Условия проведения
        <select value={selected.environment}
         onChange={e=>{patch(setLabEnvironment(bench,selected.id,e.target.value as ReactionEnvironment));setNotice("Условия изменены.")}}>
@@ -160,7 +178,7 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
        <button type="button" disabled={!selected.reagents.length}
         className={pouringId===selected.id?"active":""}
         onClick={()=>{setPouringId(pouringId===selected.id?null:selected.id);setNotice("")}}>
-        {pouringId===selected.id?"Отменить переливание":"Перелить в другой сосуд"}</button>
+        {pouringId===selected.id?"Отменить переливание":"↗ Перелить в…"}</button>
        <button type="button" disabled={!selected.reagents.length}
         onClick={()=>{patch(activateLabVessel(bench,selected.id));setNotice("Условия применены.")}}>
         Применить условия</button>
@@ -186,6 +204,7 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
        </details>}
       </div>
      </>}
+     <small className="lektrus-lab-educational-note">Индикаторы: лакмус, фенолфталеин, метилоранж и универсальный. Цвет надёжно определяется только для однозначно кислой, щелочной или нейтральной среды.</small>
      <small className="lektrus-lab-educational-note">Модель показывает качественные признаки только проверенных реакций. Не рассчитывает скорость, концентрации или многостадийные смеси. Не является инструкцией для лабораторных опытов.</small>
     </aside>
    </div>
