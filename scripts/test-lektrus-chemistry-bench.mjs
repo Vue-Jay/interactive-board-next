@@ -243,7 +243,8 @@ assert.equal(labLayout.isLabWorktop({x:14,y:73}),true);
 const redesignedLab=read("src/LektrusChemistryBench.tsx");
 assert.match(redesignedLab,/lektrus-lab-scene-header/);
 assert.match(redesignedLab,/lektrus-lab-worktop-zone/);
-assert.match(redesignedLab,/preview\?\.id===v\.id\?labDisplayPoint\(preview,bench\.vessels\.length>3\):vesselPosition\(v\)/);
+assert.match(redesignedLab,/preview\?\.id===v\.id\?preview:vesselPosition\(v\)/,
+ "Dragged vessels should visually reach cabinets rather than stop at the worktop");
 assert.match(redesignedLab,/arrangeLabVessels\(bench\)/);
 assert.match(redesignedLab,/lektrus-lab-chalk-steps/);
 const redesignedCss=read("src/lektrusChemistryBench.css");
@@ -552,9 +553,9 @@ for(const device of lab.labDevices){
   "Each lab device requires a distinct SVG icon: "+device.name);
 }
 assert.match(read("src/LektrusChemistryBench.tsx"),/LektrusLabDeviceIcon/);
-assert.match(deviceIcons,/onPowerToggle/,
+assert.doesNotMatch(deviceIcons,/>LEKTRUS<\//,
  "Physical SVG model must contain the heater and mixer switch");
-assert.match(deviceIcons,/lektrus-lab-device-integrated-controls/,
+assert.doesNotMatch(deviceIcons,/lektrus-lab-device-integrated-controls/,
  "Attachment controls must be embedded in the SVG model");
 assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),
  /\{editable&&activeDevice&&<div className="lektrus-lab-device-actions"/,
@@ -687,7 +688,8 @@ assert.match(surface,/setLabQuickReagent\(bench/);
 assert.match(surface,/addQuick\(v\.id\)/);
 assert.match(surface,/labMeasuredCapacityMl/);
 assert.match(surface,/transferLabMeasuredLiquid/);
-assert.match(surface,/pourThroughLabFunnel/);
+assert.doesNotMatch(surface,/pourThroughLabFunnel/);
+assert.ok(!lab.labGlassware.some(v=>v.id==="funnel"),"Funnel is no longer offered in inventory");
 assert.match(surface,/fillLabVolumetricFlask/);
 assert.doesNotMatch(surface,/onClick=\{e=>\{e\.stopPropagation\(\);if\(selected\?\.reagents\.length\)clean/,
  "The sink must never empty selected glassware merely because it was clicked");
