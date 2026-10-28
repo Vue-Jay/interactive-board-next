@@ -600,3 +600,95 @@
  font:700 11px/1.35 system-ui,sans-serif;background:#fff;color:#557181;cursor:pointer}
 .lektrus-rus-clear:hover{border-color:#7295af;background:#f3f8fb}
 .lektrus-rus-work-top small{color:#788c9b}
+
+
+/* Wider language studios, with clear creation/preview zones and mobile-first controls. */
+.lektrus-subject-task-editor:has(.lektrus-language-studio){
+ width:min(1180px,calc(100vw - 40px));max-width:1180px;max-height:min(95dvh,940px);
+}
+.lektrus-subject-task-editor:has(.lektrus-language-studio) .lektrus-subject-task-editor-body{min-width:0}
+.lektrus-language-studio{gap:19px}
+.lektrus-language-studio-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.lektrus-language-studio-layout.lektrus-language-wide-preview{grid-template-columns:minmax(300px,.85fr) minmax(0,1.15fr)}
+.lektrus-language-studio-intro{border-radius:15px;padding:17px 19px}
+.lektrus-language-studio-intro strong{font-size:16px}
+.lektrus-language-studio-intro p{font-size:13px;line-height:1.55}
+.lektrus-language-studio-number{flex-basis:34px;width:34px;height:34px;border-radius:11px}
+.lektrus-language-author{padding:21px;gap:20px;border-radius:15px}
+.lektrus-language-preview{border-radius:15px}
+.lektrus-language-preview-header{padding:18px}
+.lektrus-language-preview-content{padding:21px;gap:14px;overflow-wrap:anywhere}
+.lektrus-language-preview-content>strong{font-size:16px}
+.lektrus-language-preview-content .lektrus-rus-task-work{border-color:#dbe9ed}
+.lektrus-language-field{font-size:13px;gap:9px}
+.lektrus-language-field small{font-size:12px}
+.lektrus-language-author textarea,.lektrus-language-author input{min-height:42px;font-size:14px;padding:11px 13px;border-radius:10px}
+.lektrus-language-author textarea{resize:vertical}
+.lektrus-language-author textarea.lektrus-language-gap-source{min-height:225px;font-size:17px;line-height:1.9;border-radius:12px}
+.lektrus-language-gap-heading strong{font-size:14px}
+.lektrus-language-gap-heading small{font-size:12px}
+.lektrus-language-gap-actions button{min-height:42px;padding:10px 15px;border-radius:10px;font-size:13px}
+.lektrus-language-punctuation-editor,.lektrus-language-gaps-list,.lektrus-language-target{
+ display:grid;gap:10px;padding:13px 14px;border:1px solid #dce8eb;border-radius:12px;background:#fbfdfd;
+ color:#3e5964;font:600 12px/1.55 system-ui,sans-serif;
+}
+.lektrus-language-punctuation-editor>strong,.lektrus-language-gaps-list>strong,.lektrus-language-target>strong{font-size:13px}
+.lektrus-language-punctuation-editor>div,.lektrus-language-gaps-list>div,.lektrus-language-target>div{
+ display:flex;flex-wrap:wrap;align-items:center;gap:7px;
+}
+.lektrus-language-punctuation-editor button,.lektrus-language-target button,.lektrus-language-gaps-list button{
+ background:#fff;border:1px solid #d9e6eb;color:#415e70;border-radius:8px;
+ min-height:36px;padding:6px 11px;font:700 14px/1.2 system-ui,sans-serif;cursor:pointer;
+}
+.lektrus-language-punctuation-editor button{min-width:39px;font-size:18px}
+.lektrus-language-punctuation-editor button:hover,.lektrus-language-target button:hover,
+.lektrus-language-target button.selected{background:var(--subject-board-soft);border-color:var(--subject-board-accent);color:var(--subject-board-accent)}
+.lektrus-language-gaps-list button{display:inline-flex;gap:8px;align-items:center;color:var(--subject-board-accent)}
+.lektrus-language-gaps-list button span{color:#9aaab3;font-size:17px}
+.lektrus-language-gaps-list button small{background:var(--subject-board-soft);padding:3px 7px;border-radius:5px}
+.lektrus-language-gaps-list>strong span{font-size:11px;color:#7e95a0}
+.lektrus-language-punctuation-editor>small,.lektrus-language-gaps-list>small,
+.lektrus-language-target>small{font-size:11px;color:#7b9099}
+.lektrus-language-target .lektrus-language-field{margin-top:3px}
+.lektrus-rus-morphology-work{gap:14px}
+.lektrus-rus-morph-context{padding:12px 15px;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere;
+ background:#f5f9fb;color:#49626f;font:500 13px/1.7 system-ui,sans-serif;margin:0}
+.lektrus-rus-morph-step{display:grid;gap:13px;border:1px solid #e3eaf0;border-radius:12px;padding:13px;background:#fff}
+.lektrus-rus-morph-step-title{display:flex;align-items:center;gap:10px}
+.lektrus-rus-morph-step-title>span{display:grid;place-items:center;flex:none;width:29px;height:29px;
+ border-radius:9px;background:var(--subject-board-soft);color:var(--subject-board-accent);font:800 11px system-ui,sans-serif}
+.lektrus-rus-morph-step-title strong{color:#3c5665;font:750 13px/1.4 system-ui,sans-serif}
+.lektrus-rus-morph-features,.lektrus-rus-morph-first{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.lektrus-rus-morph-feature{display:grid;gap:6px;min-width:0;color:#546b76;font:700 11px/1.35 system-ui,sans-serif}
+.lektrus-rus-morph-feature select,.lektrus-rus-morph-feature input,.lektrus-rus-morph-notes textarea{
+ width:100%;min-width:0;box-sizing:border-box;min-height:38px;border:1px solid #dce6eb;border-radius:8px;
+ background:#fbfdfd;color:#375261;padding:8px 10px;font:600 12px/1.4 system-ui,sans-serif;
+}
+.lektrus-rus-morph-feature select:focus-visible,.lektrus-rus-morph-feature input:focus-visible,
+.lektrus-rus-morph-notes textarea:focus-visible{outline:2px solid var(--subject-board-accent);outline-offset:1px}
+.lektrus-rus-morph-notes{display:grid;gap:5px;color:#566d77;font:650 11px/1.4 system-ui,sans-serif}
+.lektrus-rus-morph-notes small{font-weight:400;color:#91a0a7}
+.lektrus-rus-morph-notes textarea{resize:vertical;min-height:65px}
+.lektrus-rus-morph-invariable{margin:0;color:#7c919a;font:500 12px/1.5 system-ui,sans-serif}
+.lektrus-activity-quick-keys{display:grid;gap:9px;padding:12px;border:1px solid #e0e9ee;
+ border-radius:10px;background:#f8fbfd}
+.lektrus-activity-quick-keys>small{color:#627d89;font:650 11px/1.5 system-ui,sans-serif}
+.lektrus-activity-quick-keys>div{display:flex;gap:7px;flex-wrap:wrap}
+.lektrus-activity-quick-keys button{border:1px solid #d4e3ea;border-radius:8px;background:#fff;
+ color:#405e70;min-width:35px;min-height:36px;padding:5px 8px;cursor:pointer;font:750 15px system-ui,sans-serif}
+.lektrus-activity-quick-keys button:hover:not(:disabled){border-color:var(--subject-board-accent);
+ background:var(--subject-board-soft);color:var(--subject-board-accent)}
+.lektrus-activity-sign-input{width:61px!important;min-width:52px!important;text-align:center}
+@media(max-width:950px){
+ .lektrus-language-studio-layout,.lektrus-language-studio-layout.lektrus-language-wide-preview{grid-template-columns:1fr}
+ .lektrus-language-preview{position:static}
+ .lektrus-rus-morph-features,.lektrus-rus-morph-first{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+ .lektrus-subject-task-editor:has(.lektrus-language-studio){width:100%;max-width:100%;height:100dvh;max-height:100dvh;border-radius:0}
+ .lektrus-language-author,.lektrus-language-preview-content{padding:12px}
+ .lektrus-language-studio-intro{padding:13px}
+ .lektrus-rus-morph-features,.lektrus-rus-morph-first{grid-template-columns:1fr}
+ .lektrus-rus-morph-step{padding:10px}
+ .lektrus-language-punctuation-editor button{min-width:36px}
+}
