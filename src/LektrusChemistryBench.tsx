@@ -10,6 +10,7 @@ import {buildLabCatalog,cabinetColor,cabinetPhase,phaseNames,type CatalogueGroup
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
+import LektrusLabDeviceIcon from "./LektrusLabDeviceIcon";
 import {labDisplayPoint,labLogicalPoint,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
@@ -495,7 +496,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      aria-label={"Взять прибор: "+device.name}
      className={(bench.devices??[]).includes(device.id)?"is-installed":""}
      onClick={e=>{e.stopPropagation();onChange?.(toggleLabDevice(bench,device.id))}}>
-     <span className={"lektrus-lab-device-art is-"+device.id} aria-hidden="true">{device.symbol}</span>
+     <LektrusLabDeviceIcon kind={device.id} size={40}/>
      <small>{device.name}</small>
     </button>)}
    </div>
@@ -518,7 +519,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        id==="stirrer"?(next.stirringVesselId?"Перемешивание включено":"Перемешивание остановлено"):
        "Прибор установлен на столе");
      }}>
-     <span className={"lektrus-lab-device-art is-"+id} aria-hidden="true">{device.symbol}</span>
+     <LektrusLabDeviceIcon kind={id} size={56}/>
      <small>{device.name}</small>
     </button>;
    })}
@@ -827,7 +828,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         return <button type="button" key={device.id} aria-pressed={active}
          className={active?"active":""}
          onClick={()=>onChange?.(toggleLabDevice(bench,device.id))}>
-         <span className={"lektrus-lab-equipment-symbol is-"+device.id} aria-hidden="true">{device.symbol}</span>
+         <LektrusLabDeviceIcon kind={device.id} size={56}/>
          <strong>{device.name}</strong><small>{device.description}</small>
          <em>{active?"✓ На столе":"＋ Добавить"}</em>
         </button>;
