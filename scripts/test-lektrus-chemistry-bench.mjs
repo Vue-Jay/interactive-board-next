@@ -261,7 +261,7 @@ assert.equal(realBench.titrationPair?.targetId,"v1");
 realBench=lab.dripLabVessel(realBench,burette.id,"v1",24);
 assert.equal(titration.titrationReading(realBench.titration).pH,7,
  "At 25 ml of 0.1 M NaOH the 25 ml of 0.1 M acid reaches equivalence");
-assert.equal(realBench.vessels.find(v=>v.id=burette.id)?.doses?.NaOH.value,5);
+assert.equal(realBench.vessels.find(v=>v.id===burette.id)?.doses?.NaOH.value,5);
 realBench=lab.dripLabVessel(realBench,burette.id,"v1",.1);
 assert.ok(titration.titrationReading(realBench.titration).pH>7);
 const drainedTarget=lab.emptyLabVessel(realBench,"v1");
