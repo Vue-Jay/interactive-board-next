@@ -10,6 +10,7 @@ import {buildLabCatalog,cabinetColor,cabinetPhase,phaseNames,type CatalogueGroup
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabTitrationPanel from "./LektrusLabTitrationPanel";
+import {labDisplayPoint,labLogicalPoint,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
 const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
@@ -214,15 +215,17 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const point=(event:PointerEvent)=>{const rect=host.current?.getBoundingClientRect();
   if(!rect||!rect.width||!rect.height)return null;
   return{x:(event.clientX-rect.left)/rect.width*100,y:(event.clientY-rect.top)/rect.height*100};};
- const inGlassware=(p:{x:number;y:number})=>p.x>=74&&p.y>=7&&p.y<=43;
- const inSink=(p:{x:number;y:number})=>p.x>=76&&p.y>=52&&p.y<=87;
+ const inGlassware=isLabCupboard;
+ const inSink=isLabSink;
  const targetAt=(sourceId:string,p:{x:number;y:number})=>{
   const rect=host.current?.getBoundingClientRect();
   const source=bench.vessels.find(v=>v.id===sourceId);
   if(!rect||!source?.reagents.length||!onPour)return null;
-  return bench.vessels.filter(v=>v.id!==sourceId).map(v=>({
-   id:v.id,dist:Math.hypot((p.x-v.x)*rect.width/100,(p.y-v.y)*rect.height/100)
-  })).filter(v=>v.dist<Math.min(115,Math.max(54,rect.width*.15))).sort((a,b)=>a.dist-b.dist)[0]?.id??null;
+  return bench.vessels.filter(v=>v.id!==sourceId).map(v=>{
+   const screen=labDisplayPoint(v);
+   return {id:v.id,dist:Math.hypot((p.x-screen.x)*rect.width/100,
+     (p.y-screen.y)*rect.height/100)};
+  }).filter(v=>v.dist<Math.min(115,Math.max(54,rect.width*.15))).sort((a,b)=>a.dist-b.dist)[0]?.id??null;
  };
  const transferVessel=(sourceId:string,targetId:string)=>{
   const from=bench.vessels.find(v=>v.id===sourceId),to=bench.vessels.find(v=>v.id===targetId);
@@ -241,8 +244,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   onChange?.(next);setNotice("Чистая посуда возвращена в шкаф");
  };
  const take=(kind:LabGlassware,p?:{x:number;y:number})=>{
-  const next=addLabVessel(bench,kind,p&&p.x>=21&&p.x<77&&p.y>=41?
-   {x:p.x,y:p.y}:undefined);
+  const next=addLabVessel(bench,kind,p&&isLabWorktop(p)?
+   labLogicalPoint(p):undefined);
   if(next===bench){setNotice("На столе не больше шести сосудов");return}
   onChange?.(next);setNotice("Посуда добавлена на стол");setCabinet(null);
  };
@@ -260,8 +263,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const furniture=inSink(p)?"sink":inGlassware(p)?"glassware":null;
    setDropFurniture(furniture);
    setDropTarget(furniture?null:targetAt(g.id,p));
-   setPreview({id:g.id,x:Math.max(8,Math.min(92,g.x+p.x-g.startX)),
-    y:Math.max(8,Math.min(92,g.y+p.y-g.startY))});
+   const a=labDisplayPoint({x:g.x,y:g.y});
+   setPreview({id:g.id,...labLogicalPoint({
+    x:a.x+p.x-g.startX,y:a.y+p.y-g.startY})});
   }
  };
  const finish=(event:PointerEvent<HTMLButtonElement>)=>{
@@ -275,7 +279,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    else{
     const target=targetAt(g.id,p);
     if(target)transferVessel(g.id,target);
-    else onChange?.(positionLabVessel(bench,g.id,g.x+p.x-g.startX,g.y+p.y-g.startY));
+    else{
+     const a=labDisplayPoint({x:g.x,y:g.y});
+     const next=labLogicalPoint({x:a.x+p.x-g.startX,y:a.y+p.y-g.startY});
+     onChange?.(positionLabVessel(bench,g.id,next.x,next.y));
+    }
    }
   }else if(!g.dragged&&pouringId&&pouringId!==g.id)transferVessel(pouringId,g.id);
   else if(!g.dragged)onSelect?.(g.id);
@@ -297,7 +305,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const g=shelfGesture.current;if(!g)return;shelfGesture.current=null;
   event.stopPropagation();event.preventDefault();
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
-  const p=point(event);if(g.dragged&&p&&p.x>=21&&p.x<77&&p.y>=42)
+  const p=point(event);if(g.dragged&&p&&isLabWorktop(p))
    take(g.kind,p);
   else if(!g.dragged)take(g.kind);
   setShelfGhost(null);
@@ -318,7 +326,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const prepareExample=(row:(typeof reviewedReactionCases)[number])=>{
   const vessels=row.reactants.map((reagent,i)=>({
    id:"v"+(i+1),kind:(i===0?"beaker":"tube") as LabGlassware,
-   x:i===0?40:60,y:67,reagents:[reagent],
+   x:i===0?31:72,y:69,reagents:[reagent],
    environment:row.environment,observed:false
   }));
   if(!vessels.length)return;
@@ -333,15 +341,26 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   (!settings.animateEffects?" lab-reduced-animation":"")} ref={host}
   aria-label="Интерактивный химический стол с шкафами и раковиной">
   <div className="lektrus-lab-bench-backdrop" aria-hidden="true">
-   <div className="lektrus-lab-board-top">LEKTRUS <span>CHEM LAB</span></div>
    <div className="lektrus-lab-back-shelf"/>
    <div className="lektrus-lab-counter"/>
    <div className="lektrus-lab-counter-front"/>
+   <div className="lektrus-lab-worktop-zone"/>
+  </div>
+  <div className="lektrus-lab-scene-header">
+   <span className="lektrus-lab-scene-brand">LEKTRUS <span>LAB</span></span>
+   <strong>Химическая лаборатория</strong>
+   <span className="lektrus-lab-scene-stats">{bench.vessels.length} из 6 сосудов <b>·</b> {(bench.devices??[]).length} приборов</span>
   </div>
   {settings.showEquationBoard&&<div className="lektrus-lab-chalkboard" aria-live="polite">
-   <small>УРАВНЕНИЕ РЕАКЦИИ</small>
-   <strong key={shownReaction?.equation??"idle"}>{shownReaction?.equation??"Выберите опыт и смешайте вещества"}</strong>
-   {shownReaction&&<span>{shownReaction.description}</span>}
+   <small>{shownReaction?"УРАВНЕНИЕ РЕАКЦИИ":"ПЛАН ЭКСПЕРИМЕНТА"}</small>
+   {shownReaction?<><strong key={shownReaction.equation}>{shownReaction.equation}</strong>
+    <span>{shownReaction.description}</span></>:
+    <div className="lektrus-lab-chalk-steps">
+     <strong>Приступим к опыту</strong>
+     <span><b>1</b> Возьмите посуду из шкафа</span>
+     <span><b>2</b> Добавьте вещества и условия</span>
+     <span><b>3</b> Смешайте и наблюдайте</span>
+    </div>}
   </div>}
   <button type="button" className="lektrus-lab-reagent-furniture" data-board-interactive="true"
     disabled={!editable} onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
@@ -349,10 +368,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     aria-label="Открыть шкаф реактивов" title="Шкаф реактивов · выбор вещества, объёма и массы">
    <span className="lektrus-lab-furniture-title">РЕАКТИВЫ</span>
    <span className="lektrus-lab-bottle-rack" aria-hidden="true">
-    {["#66a8c7","#e3c17c","#a07ab5","#b4d9a3","#dda979","#6aaead"].map((color,i)=>
-     <i key={i} style={{"--bottle-color":color} as React.CSSProperties}/>)}
+    {[
+     {id:"CuSO4",color:"#66a8c7"},{id:"HCl",color:"#f3dfb8"},
+     {id:"KMnO4",color:"#a07ab5"},{id:"FeSO4",color:"#9fc5a3"},
+     {id:"K2Cr2O7",color:"#dda979"},{id:"H2O",color:"#b8dce0"}
+    ].map(v=><i key={v.id} style={{"--bottle-color":v.color} as React.CSSProperties}>
+     <span>{v.id}</span>
+    </i>)}
    </span>
-   <span className="lektrus-lab-furniture-foot">{editable?"Открыть шкаф":"Шкаф реактивов"}</span>
+   <span className="lektrus-lab-furniture-foot">{editable?"Выбрать реактивы":"Каталог веществ"}</span>
   </button>
   <div className={"lektrus-lab-glass-cupboard"+(dropFurniture==="glassware"?" is-dropzone":"")} data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
@@ -370,7 +394,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <small>{kind.name}</small>
      </button>)}
    </div>
-   <span className="lektrus-lab-furniture-foot">Взять или вернуть пустую</span>
+   <span className="lektrus-lab-furniture-foot">Нажмите или перетащите</span>
   </div>
   <div className="lektrus-lab-equipment-station" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
@@ -464,7 +488,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
    onClick={e=>{e.stopPropagation();openCabinet("settings")}}>⚙</button>
   {bench.vessels.map((v,i)=>{
-   const p=preview?.id===v.id?preview:v;
+   const p=labDisplayPoint(preview?.id===v.id?preview:v);
    const selectedVessel=bench.selectedId===v.id;
    return <button type="button" key={v.id} data-board-interactive="true"
     className={"lektrus-lab-vessel"+(selectedVessel?" selected":"")+
