@@ -593,6 +593,19 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   }else setActiveDeviceId(g.id);
   setDevicePreview(null);setDropDeviceShelf(false);
  };
+ const quickReagents=labQuickReagents(bench);
+ const addQuick=(id:string,targetId?:string)=>{
+  if(!editable)return;
+  const preset=quickReagents.find(v=>v.id===id);
+  if(!preset)return;
+  const target=bench.vessels.find(v=>v.id===(targetId??selected?.id));
+  if(!target){setNotice("Сначала возьмите посуду из шкафа");return}
+  const next=putLabReagent(bench,target.id,id,preset.dose);
+  if(next===bench){setNotice("Не удалось добавить реагент: проверьте сосуд и количество");return}
+  onChange?.(next);
+  setDoseEffect({...vesselPosition(target),color:reagentAppearance(id).color});
+  setNotice(id+" · "+formatLabDose(preset.dose)+" добавлено в "+names[target.kind]);
+ };
  const dispense=()=>{
   if(!editable||!chosen)return;
   if(!selected){setNotice("Возьмите чистую посуду из шкафа");return}
@@ -670,22 +683,41 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <span>{selected?(selected.reagents.length?selected.reagents.join(" + "):"Чистая посуда"):
     "Возьмите посуду из шкафа"}</span>
   </div>}
-  <button type="button" className="lektrus-lab-reagent-furniture" data-board-interactive="true"
-    disabled={!editable} onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
-    onClick={e=>{e.stopPropagation();openCabinet("reagents")}}
-    aria-label="Открыть шкаф реактивов" title="Шкаф реактивов · выбор вещества, объёма и массы">
-   <span className="lektrus-lab-furniture-title">РЕАКТИВЫ</span>
-   <span className="lektrus-lab-bottle-rack" aria-hidden="true">
-    {[
-     {id:"CuSO4",color:"#66a8c7"},{id:"HCl",color:"#f3dfb8"},
-     {id:"KMnO4",color:"#a07ab5"},{id:"FeSO4",color:"#9fc5a3"},
-     {id:"K2Cr2O7",color:"#dda979"},{id:"H2O",color:"#b8dce0"}
-    ].map(v=><i key={v.id} style={{"--bottle-color":v.color} as React.CSSProperties}>
-     <span>{v.id}</span>
-    </i>)}
-   </span>
-   <span className="lektrus-lab-furniture-foot">{editable?"Выбрать реактивы":"Каталог веществ"}</span>
-  </button>
+  <div className="lektrus-lab-reagent-furniture" data-board-interactive="true"
+   aria-label="Быстрые реактивы" onPointerDown={e=>e.stopPropagation()}
+   onPointerUp={e=>e.stopPropagation()}>
+   <button type="button" className="lektrus-lab-furniture-title lektrus-lab-reagent-shelf-header"
+    disabled={!editable} onClick={e=>{e.stopPropagation();openCabinet("reagents")}}
+    title="Открыть шкаф и изменить быстрый набор">РЕАКТИВЫ
+    <span aria-hidden="true"> ⚙</span></button>
+   <div className="lektrus-lab-bottle-rack" role="group" aria-label="Реактивы быстрого доступа">
+    {quickReagents.map(v=>{
+     const item=substances.find(r=>r.id===v.id);
+     const color=reagentAppearance(v.id).color;
+     return <button type="button" key={v.id} draggable={editable}
+      className="lektrus-lab-quick-bottle"
+      disabled={!editable} title={(item?.name??v.id)+" · "+formatLabDose(v.dose)+
+       (v.dose.concentrationM!==undefined?" · "+v.dose.concentrationM+" М":"")+
+       " · добавить в выбранный сосуд или перетащить"}
+      aria-label={"Добавить "+(item?.name??v.id)+" в выбранный сосуд"}
+      onDragStart={e=>{e.stopPropagation();
+       e.dataTransfer.setData("application/x-lektrus-reagent",v.id);
+       e.dataTransfer.effectAllowed="copy"}}
+      onPointerDown={e=>e.stopPropagation()}
+      onClick={e=>{e.stopPropagation();addQuick(v.id)}}>
+      <i style={{"--bottle-color":color} as React.CSSProperties}/>
+      <strong>{item?.formula??v.id}</strong>
+      <small>{v.dose.value}{v.dose.unit==="ml"?" мл":" г"}</small>
+     </button>;
+    })}
+    {editable&&quickReagents.length<MAX_QUICK_REAGENTS&&<button type="button"
+     className="lektrus-lab-quick-bottle is-add"
+     title="Добавить реактив быстрого доступа"
+     aria-label="Редактировать быстрые реактивы"
+     onClick={e=>{e.stopPropagation();openCabinet("reagents")}}>+</button>}
+   </div>
+   <span className="lektrus-lab-furniture-foot">Нажмите для добавления · перетащите на сосуд</span>
+  </div>
   <div className={"lektrus-lab-glass-cupboard"+(dropFurniture==="glassware"?" is-dropzone":"")} data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <button type="button" className="lektrus-lab-furniture-title lektrus-lab-shelf-header"
@@ -925,7 +957,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     onDragOver={e=>{if(editable)e.preventDefault()}}
     onDrop={e=>{if(!editable)return;e.preventDefault();e.stopPropagation();
      const id=e.dataTransfer.getData("application/x-lektrus-reagent");
-     if(id)onDropReagent?.(v.id,id);
+     if(id&&quickReagents.some(r=>r.id===id))addQuick(id,v.id);
+     else if(id)onDropReagent?.(v.id,id);
     }}>
     {bench.instrumentTarget?.kind==="tripod"&&bench.instrumentTarget.vesselId===v.id&&<span
      className="lektrus-lab-instrument-attachment">На штативе</span>}
