@@ -367,6 +367,42 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    </div>
    <span className="lektrus-lab-furniture-foot">Взять или вернуть пустую</span>
   </div>
+  <div className="lektrus-lab-equipment-station" data-board-interactive="true"
+   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+   <button type="button" className="lektrus-lab-equipment-open" disabled={!editable}
+    onClick={e=>{e.stopPropagation();openCabinet("equipment")}}>
+    <span aria-hidden="true">⚙</span><strong>Приборы</strong><small>{(bench.devices??[]).length}/5</small>
+   </button>
+   <div className="lektrus-lab-devices-active">
+    {(bench.devices??[]).map(id=>{
+     const device=labDevices.find(v=>v.id===id);
+     if(!device)return null;
+     return <button type="button" key={id} disabled={!editable}
+      className={"lektrus-lab-device-chip is-"+id}
+      onClick={e=>{e.stopPropagation();
+       if(!selected){setNotice("Сначала выберите посуду");return}
+       const next=useLabDevice(bench,id,selected.id);
+       if(next!==bench)onChange?.(next);
+       setNotice(id==="hotplate"?"Нагревание применено к сосуду":
+        id==="burner"?"Пламя применено к выбранному сосуду":
+        id==="stirrer"?"Раствор перемешан (состав не изменился)":
+        id==="thermometer"?"Численная температура не измеряется в этой модели":
+        "Штатив установлен; выберите посуду для работы");
+      }} title={device.description}>
+      <span aria-hidden="true">{device.symbol}</span><small>{device.name}</small>
+     </button>;
+    })}
+   </div>
+  </div>
+  <button type="button" className="lektrus-lab-titration-station" disabled={!editable}
+   data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}
+   onPointerUp={e=>e.stopPropagation()}
+   onClick={e=>{e.stopPropagation();openCabinet("titration")}}>
+   <span className="lektrus-lab-titration-icon" aria-hidden="true">♧</span>
+   <span><strong>Титрование</strong>
+    <small>{bench.titration?("pH "+titrationReading(bench.titration).pH):
+      "Бюретка · индикатор"}</small></span>
+  </button>
   <button type="button" data-board-interactive="true"
    className={"lektrus-lab-sink"+(dropFurniture==="sink"?" is-dropzone":"")+
      (sinkFlow?" is-flowing":"")}
@@ -474,7 +510,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onClick={e=>{e.stopPropagation();if(e.target===e.currentTarget)setCabinet(null)}}>
     <section ref={dialogRef} tabIndex={-1}
      className={"lektrus-lab-furniture-dialog is-"+cabinet} role="dialog" aria-modal="true"
-     aria-label={cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":"Настройки химического стола"}
+     aria-label={cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":cabinet==="equipment"?"Лабораторное оборудование":cabinet==="titration"?"Титрование":"Настройки химического стола"}
      onKeyDown={event=>{
       if(event.key!=="Tab")return;
       const focusable=dialogRef.current?.querySelectorAll<HTMLElement>(
@@ -489,10 +525,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      }}>
      <header className="lektrus-lab-modal-head">
       <div className="lektrus-lab-modal-heading">
-       <span className="lektrus-lab-modal-emblem" aria-hidden="true">{cabinet==="reagents"?"⚗":cabinet==="glassware"?"◈":"⚙"}</span>
-       <span><strong>{cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":"Настройки стола"}</strong>
+       <span className="lektrus-lab-modal-emblem" aria-hidden="true">{cabinet==="reagents"?"⚗":cabinet==="glassware"?"◈":cabinet==="titration"?"◉":"⚙"}</span>
+       <span><strong>{cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":cabinet==="equipment"?"Оборудование":cabinet==="titration"?"Титрование":"Настройки стола"}</strong>
         <small>{cabinet==="reagents"?"Выберите вещество и отмерьте нужное количество":
-          cabinet==="glassware"?"Возьмите посуду на рабочий стол":"Настройки этой лаборатории"}</small></span>
+          cabinet==="glassware"?"Возьмите посуду на рабочий стол":cabinet==="equipment"?"Подключайте приборы к рабочему столу":cabinet==="titration"?"Бюретка, pH и точка эквивалентности":"Настройки этой лаборатории"}</small></span>
       </div>
       <button type="button" aria-label="Закрыть шкаф" onClick={()=>setCabinet(null)}>×</button>
      </header>
@@ -599,6 +635,23 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        Вернуть выбранную пустую посуду
       </button>
      </div>}
+     {cabinet==="equipment"&&<div className="lektrus-lab-equipment-catalog">
+      <p>Выберите прибор. Он появится на столе и будет доступен каждому участнику.</p>
+      <div className="lektrus-lab-equipment-grid">
+       {labDevices.map(device=>{
+        const active=(bench.devices??[]).includes(device.id);
+        return <button type="button" key={device.id} aria-pressed={active}
+         className={active?"active":""}
+         onClick={()=>onChange?.(toggleLabDevice(bench,device.id))}>
+         <span className={"lektrus-lab-equipment-symbol is-"+device.id} aria-hidden="true">{device.symbol}</span>
+         <strong>{device.name}</strong><small>{device.description}</small>
+         <em>{active?"✓ На столе":"＋ Добавить"}</em>
+        </button>;
+       })}
+      </div>
+      <p className="lektrus-lab-safe-caption">Нагрев и горение изменяют условия выбранного сосуда только в виртуальной модели. Мешалка и штатив не создают новых химических продуктов; термометр не показывает выдуманную температуру.</p>
+     </div>}
+     {cabinet==="titration"&&<LektrusLabTitrationPanel bench={bench} onChange={onChange}/>}
      {cabinet==="settings"&&<div className="lektrus-lab-modal-settings">
       <p>Настройки принадлежат этому химическому столу и сохраняются с ним.</p>
       {([
