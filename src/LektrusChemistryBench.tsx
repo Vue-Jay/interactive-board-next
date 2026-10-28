@@ -1,6 +1,6 @@
 import {useId,useRef,useState,type PointerEvent} from "react";
 import type {LabBench,LabVessel,LabGlassware} from "./lektrusChemistryBenchModel";
-import {labObservation,positionLabVessel,selectedLabVessel} from "./lektrusChemistryBenchModel";
+import {labObservation,positionLabVessel} from "./lektrusChemistryBenchModel";
 import {reactionAppearance,substances} from "./lektrusReactionDatabase";
 
 const names:Record<LabGlassware,string>={beaker:"Стакан",tube:"Пробирка",flask:"Колба"};
