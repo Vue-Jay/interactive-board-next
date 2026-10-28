@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test:eraser": "node scripts/test-eraser.mjs",
     "test:atlas": "node scripts/test-lektrus-atlas.mjs && node scripts/test-lektrus-history-encyclopedia.mjs",
-    "test:subject-boards": "node scripts/test-lektrus-subject-boards.mjs && node scripts/test-lektrus-interactive-worksheets.mjs && node scripts/test-lektrus-subject-isolation.mjs && node scripts/test-lektrus-worksheet-growth.mjs && node scripts/test-lektrus-subject-task-audit.mjs && node scripts/test-lektrus-language-studio.mjs && node scripts/test-lektrus-russian-board-work.mjs",
+    "test:subject-boards": "node scripts/test-lektrus-subject-boards.mjs && node scripts/test-lektrus-interactive-worksheets.mjs && node scripts/test-lektrus-subject-isolation.mjs && node scripts/test-lektrus-worksheet-growth.mjs && node scripts/test-lektrus-subject-task-audit.mjs && node scripts/test-lektrus-language-studio.mjs && node scripts/test-lektrus-russian-board-work.mjs && node scripts/test-lektrus-russian-tools-workflow.mjs",
     "test:ui": "node scripts/test-lektrus-ui.mjs && node scripts/test-lektrus-responsive.mjs && node scripts/test-lektrus-polish.mjs && node scripts/test-lektrus-board-chrome.mjs && node scripts/test-lektrus-tool-layout.mjs && node scripts/test-lektrus-tool-refinements.mjs && node scripts/test-lektrus-draw-over-objects.mjs && node scripts/test-lektrus-board-background.mjs && node scripts/test-lektrus-math-gesture.mjs && node scripts/test-lektrus-shared-rulers-and-resizing.mjs && node scripts/test-lektrus-collaborative-editors.mjs && node scripts/test-lektrus-board-role-preview.mjs",
     "test:storage-rls": "node scripts/test-lektrus-storage-rls.mjs",
     "native:sync": "npm run build && npx cap sync",
