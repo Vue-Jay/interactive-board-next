@@ -1,5 +1,5 @@
 import type {RussianSchoolDiagram,RussianPartOfSpeech,TraitGroup} from "./lektrusRussianSchoolModel";
-import {posNames,traitGroupNames,totalSounds} from "./lektrusRussianSchoolModel";
+import {posNames,traitGroupNames,totalSounds,synchronizePhoneticLetters,phoneticWordValid,russianMorphologyFeatures} from "./lektrusRussianSchoolModel";
 type Props={diagram:RussianSchoolDiagram;onChange:(value:RussianSchoolDiagram)=>void};
 const makeId=()=>crypto.randomUUID();
 export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props){
@@ -18,6 +18,21 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
     </select>
    </label>
    <div className="lektrus-school-controls-heading">Признаки и синтаксическая роль</div>
+   {russianMorphologyFeatures[d.partOfSpeech]&&<div className="lektrus-russian-feature-groups">
+    {(["permanent","variable"] as const).map(group=><div className="lektrus-russian-feature-group" key={group}>
+     <strong>{traitGroupNames[group]}</strong>
+     <div role="group" aria-label={"Добавить "+traitGroupNames[group].toLocaleLowerCase("ru-RU")}>
+      {russianMorphologyFeatures[d.partOfSpeech]?.[group].map(feature=><button type="button" key={feature}
+       disabled={d.rows.length>=18||d.rows.some(row=>row.feature===feature&&row.group===group)}
+       onClick={()=>onChange({...d,rows:[...d.rows,{id:makeId(),group,feature,value:""}]})}>
+       + {feature}</button>)}
+     </div>
+    </div>)}
+   </div>}
+   <button type="button" className="lektrus-school-add" disabled={d.rows.length>=18}
+    onClick={()=>onChange({...d,rows:[...d.rows,{id:makeId(),group:"syntax",feature:"Член предложения",value:""}]})}>
+    + Синтаксическая роль
+   </button>
    <p className="lektrus-school-hint">Учитель самостоятельно задаёт признаки. У разных частей речи они различаются, поэтому поля полностью редактируемые. Программа не выполняет автоматический разбор.</p>
    {d.rows.map((row,i)=><div className="lektrus-russian-edit-row" key={row.id}>
     <div className="lektrus-russian-edit-header"><span className="lektrus-school-number">{i+1}</span>
@@ -25,7 +40,7 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
       onChange={e=>setRow(row.id,{group:e.target.value as TraitGroup})}>
       {Object.entries(traitGroupNames).map(([id,name])=><option key={id} value={id}>{name}</option>)}
      </select>
-     <button type="button" disabled={d.rows.length<=1} title="Удалить признак"
+     <button type="button" title="Удалить признак"
       onClick={()=>onChange({...d,rows:d.rows.filter(x=>x.id!==row.id)})}>×</button>
     </div>
     <input aria-label={"Название признака "+(i+1)} value={row.feature} maxLength={52}
@@ -46,16 +61,13 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
    onChange({...d,letters:d.letters.map(letter=>letter.id===id?{...letter,...changes}:letter)});
   const lettersCount=d.letters.length,soundsCount=totalSounds(d.letters);
   return <>
-   <label className="lektrus-school-field">Слово
-    <input value={d.word} maxLength={36} onChange={e=>onChange({...d,word:e.target.value})}
-     placeholder="Введите слово"/></label>
-   <button type="button" className="lektrus-school-add" onClick={()=>{
-    const chars=Array.from(d.word.trim()).slice(0,24);
-    onChange({...d,word:chars.join(""),letters:chars.map(letter=>({
-     id:makeId(),letter,sounds:[],characteristic:"",stressed:false
-    }))});
-   }}>Создать пустую таблицу букв из слова</button>
-   <p className="lektrus-school-hint">Кнопка пересоздаёт список букв и очищает старые звуки. Для каждой буквы вручную укажите 0, 1 или 2 звука. Для Ь/Ъ обычно нет собственного звука, а некоторые буквы могут обозначать два звука. Никакой автоматической транскрипции нет.</p>
+   <label className="lektrus-school-field">Слово для фонетического разбора
+    <input value={d.word} maxLength={24} onChange={e=>{
+     const word=e.target.value.trim().slice(0,24);
+     if(!phoneticWordValid(word))return;
+     onChange({...d,word,letters:synchronizePhoneticLetters(word,d.letters,makeId)});
+    }} placeholder="Введите одно слово"/></label>
+   <p className="lektrus-school-hint">Таблица букв создаётся сразу при вводе слова. Данные неизменённых букв сохраняются; у исправленной буквы звуки и признаки не угадываются автоматически. Для Ь и Ъ можно оставить список звуков пустым.</p>
    <div className="lektrus-school-controls-heading">Буквы и звуки ({lettersCount} букв, {soundsCount} звуков)</div>
    {d.letters.map((entry,i)=><div className="lektrus-russian-phonetic-row" key={entry.id}>
     <span className="lektrus-school-number">{i+1}</span>
@@ -67,10 +79,11 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
      <input value={entry.sounds.join(" ")} aria-label={"Звуки буквы "+(i+1)}
       placeholder="Запишите звуки буквы через пробел" onChange={e=>{
        const sounds=e.target.value.trim().split(/\s+/u).filter(Boolean).slice(0,2).map(v=>v.slice(0,12));
-       update(entry.id,{sounds});
+       update(entry.id,{sounds,stressed:sounds.length?entry.stressed:false});
       }}/></label>
     <label className="lektrus-russian-stress">
-     <input type="checkbox" checked={entry.stressed} aria-label={"Ударение на букве "+(i+1)}
+     <input type="checkbox" checked={entry.stressed}
+      disabled={entry.sounds.length===0} aria-label={"Ударение на букве "+(i+1)}
       onChange={e=>onChange({...d,letters:d.letters.map(l=>({...l,
        stressed:l.id===entry.id?e.target.checked:false}))})}/> Ударение
     </label>
@@ -95,14 +108,17 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
    <div className="lektrus-russian-edit-header">
     <span className="lektrus-school-number">{i+1}</span>
     <b>Задание {i+1}</b>
-    <button type="button" title="Удалить" disabled={d.questions.length<=1}
+    <button type="button" title="Удалить задание"
      onClick={()=>onChange({...d,questions:d.questions.filter(x=>x.id!==q.id)})}>×</button>
    </div>
    <label>Текст с одним пропуском □
     <input value={q.prompt} maxLength={180} placeholder="Текст с одним пропуском □"
      onChange={e=>edit(q.id,{prompt:e.target.value})}/>
    </label>
-   {q.prompt.split("□").length!==2&&<small className="lektrus-russian-validation">Используйте ровно один символ □.</small>}
+   {q.prompt.split("□").length!==2&&<small className="lektrus-russian-validation">В тексте должен быть один пропуск □.</small>}
+   {!q.prompt.includes("□")&&<button type="button" className="lektrus-russian-insert-gap"
+     onClick={()=>edit(q.id,{prompt:q.prompt+"□"})}>+ Добавить пропуск □</button>}
+   {q.options.some(option=>!option.trim())&&<small className="lektrus-russian-validation">Заполните все варианты ответа перед публикацией.</small>}
    <div className="lektrus-russian-options">
     {q.options.map((option,index)=><label key={index}>
      <input type="radio" name={"orthography-answer-"+q.id} checked={index===q.correct}
@@ -116,7 +132,7 @@ export default function LektrusRussianSchoolControls({diagram:d,onChange}:Props)
     </label>)}
    </div>
    <button type="button" disabled={q.options.length>=4} onClick={()=>edit(q.id,{
-    options:[...q.options,"новый вариант"]})}>+ Вариант ({q.options.length}/4)</button>
+    options:[...q.options,""]})}>+ Вариант ({q.options.length}/4)</button>
    <label>Пояснение к правильному ответу (по желанию)
     <textarea rows={2} value={q.explanation} maxLength={250}
      onChange={e=>edit(q.id,{explanation:e.target.value})}/></label>
