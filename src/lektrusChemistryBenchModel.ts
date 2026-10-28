@@ -433,7 +433,16 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
    const doses={...v.doses};
    for(const [id,dose] of Object.entries(source.doses??{})){
     const old=doses[id];
-    doses[id]={value:Math.round(((old?.value??0)+dose.value)*100)/100,unit:dose.unit};
+    const total=Math.round(((old?.value??0)+dose.value)*100)/100;
+    // Preserve known concentrations when decanting, and use a
+    // volume-weighted average for two same-solute solutions.
+    const concentrationM=dose.unit==="ml"&&
+     (old?old.concentrationM!==undefined&&dose.concentrationM!==undefined:
+      dose.concentrationM!==undefined)?
+     Math.round(((old?.value??0)*(old?.concentrationM??0)+
+      dose.value*(dose.concentrationM??0))/total*100000)/100000:undefined;
+    doses[id]={value:total,unit:dose.unit,
+     ...(concentrationM!==undefined?{concentrationM}:{})};
    }
    return {...v,reagents,observed:reagents.length>1||source.observed,
     doses,environment:targetWasEmpty?source.environment:target.environment,
