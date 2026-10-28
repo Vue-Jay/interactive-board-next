@@ -8408,17 +8408,24 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
             const centerY=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
             if(id==="chem-formulas"||id==="chem-assignments"){
-              // A subject-tool click creates its own worksheet, just like the
-              // other specialist tools. Do not silently append to the last
-              // chemistry sheet: combining tasks and equations is an explicit
-              // choice through the controls on an already selected sheet.
-              const existing=itemsRef.current.filter(value=>value.graphFigureId==="subject-board-chemistry");
-              const offset=Math.min(4,existing.length)*32;
-              const target=makeSubjectToolItem("subject-board-chemistry",centerX+offset,centerY+offset,createId);
-              provisionalChemistryWorksheets.current.add(target.id);
-              setSubjectToolsOpen(false);
-              openSubjectBoardEntry(target,id==="chem-formulas"?"equation":"task");
-              return;
+              const chosen=itemsRef.current.find(value=>selected.includes(value.id)&&
+               value.graphFigureId==="subject-board-chemistry"&&!value.subjectBoardStandalone&&!value.locked);
+              if(chosen){
+               // The selected chemistry worksheet is the one unambiguous
+               // destination. Otherwise both tools create independent objects.
+               setSubjectToolsOpen(false);
+               openSubjectBoardEntry(chosen,id==="chem-formulas"?"equation":"task");
+               return;
+              }
+              if(id==="chem-assignments"){
+               const target=makeSubjectToolItem(id,centerX,centerY,createId);
+               provisionalChemistryWorksheets.current.add(target.id);
+               setSubjectToolsOpen(false);
+               openSubjectBoardEntry(target,"task");
+               return;
+              }
+              // Equations have their own live chemical editor and independent
+              // graph object. Keep the same editor for worksheet equations.
             }
             const item=makeSubjectToolItem(id as SubjectToolId,centerX,centerY,createId);
             setSelected([]);
