@@ -1495,3 +1495,6 @@
  .lektrus-lab-worktop-caption{left:30%;right:23%}
  .lektrus-lab-worktop-caption span{display:none}
 }
+
+/* Selected-vessel caption replaces the static worktop heading, not stacked on it. */
+.lektrus-lab-worktop-zone:before{display:none!important}
