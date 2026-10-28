@@ -4,6 +4,7 @@ import {LektrusChemicalEquationBoardView} from "./LektrusChemicalEquationEditor"
 import {LektrusReactionScene} from "./LektrusReactionLab";
 import LektrusChemistryBenchSurface from "./LektrusChemistryBench";
 import {readLabBench} from "./lektrusChemistryBenchModel";
+import {selectLabVessel,type LabBench} from "./lektrusChemistryBenchModel";
 
 export const isChemicalIllustration=(item:Item)=>/^(chem-formula-|chem-experiment-)/.test(item.graphFigureId??"");
 export const chemicalFormulaParts=(value:string)=>value.split(/([A-Z][a-z]?|\)|\])([0-9]+)/g);
@@ -52,8 +53,9 @@ const experiments:Record<string,Experiment>={
   initial:"Прозрачный раствор",final:"Осадок CaCO₃",note:"Образование карбоната кальция показано условно, не в масштабе.",
   colorBefore:"#d8eefa",colorAfter:"#c9d0d6"}
 };
-export default function LektrusChemistryIllustration({item,onStageChange}:{
- item:Item;onStageChange?:(stage:0|1)=>void
+export default function LektrusChemistryIllustration({item,onStageChange,onBenchChange}:{
+ item:Item;onStageChange?:(stage:0|1)=>void;
+ onBenchChange?:(bench:LabBench)=>void
 }){
  const experiment=experiments[item.graphFigureId??""];
  const [localStage,setLocalStage]=useState<0|1>(item.scienceExperimentStage??0);
@@ -61,7 +63,9 @@ export default function LektrusChemistryIllustration({item,onStageChange}:{
  const stage=onStageChange?(item.scienceExperimentStage??0):localStage;
  const setStage=(next:0|1)=>onStageChange?onStageChange(next):setLocalStage(next);
  if(item.graphFigureId==="chem-experiment-free")return item.scienceLabBench?
-  <div className="lektrus-chemistry-bench-on-board"><LektrusChemistryBenchSurface bench={readLabBench(item)}/></div>:
+  <div className="lektrus-chemistry-bench-on-board"><LektrusChemistryBenchSurface
+   bench={readLabBench(item)} editable={!!onBenchChange} onChange={onBenchChange}
+   onSelect={id=>onBenchChange?.(selectLabVessel(readLabBench(item),id))}/></div>:
   <LektrusReactionScene item={item} stage={stage} onStageChange={onStageChange??setLocalStage}/>;
  if(!experiment)return <LektrusChemicalEquationBoardView item={item}/>;
  const before=stage===0;
