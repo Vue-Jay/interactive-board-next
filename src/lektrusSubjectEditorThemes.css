@@ -3,7 +3,8 @@
  * colors affect interface controls, never educational diagrams or answers. */
 :is(.lektrus-school-backdrop,.lektrus-subject-tools-panel,.lektrus-science-backdrop,
  .lektrus-chem-equation-overlay,.lektrus-periodic-backdrop,.lektrus-optics-backdrop,
- .lektrus-mechanics-backdrop,.lektrus-circuit-backdrop,.graph-editor-backdrop){
+ .lektrus-mechanics-backdrop,.lektrus-circuit-backdrop,.graph-editor-backdrop,
+ .lektrus-motion-backdrop,.lektrus-fraction-overlay,.lektrus-atom-backdrop){
  --lektrus-tool-accent:var(--subject-board-accent,#587383);
  --lektrus-tool-soft:var(--subject-board-soft,#edf4f5);
  accent-color:var(--lektrus-tool-accent);
@@ -162,3 +163,21 @@
  border-radius:7px;font:600 11px/1.35 system-ui,sans-serif;cursor:pointer;
 }
 .lektrus-chem-collect-menu button:hover{background:#e8f5ec;border-color:#a7d5be}
+
+/* Additional single-purpose subject editors use the same soft/strong pairing. */
+:is(.lektrus-motion-editor,.lektrus-fraction-dialog,.lektrus-atom-dialog){
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 25%,#e4eaee)!important;
+}
+:is(.lektrus-motion-editor,.lektrus-fraction-dialog,.lektrus-atom-dialog)>header,
+.lektrus-motion-header{
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 63%,white)!important;
+ border-bottom-color:color-mix(in srgb,var(--lektrus-tool-accent) 22%,#e5ebed)!important;
+}
+:is(.lektrus-motion-editor,.lektrus-fraction-dialog,.lektrus-atom-dialog)
+ :is(h2,header strong,.lektrus-atom-icon){
+ color:var(--lektrus-tool-accent)!important;
+}
+:is(.lektrus-motion-editor,.lektrus-fraction-dialog,.lektrus-atom-dialog)
+ :is(button,input,select,textarea):focus-visible{
+ outline-color:var(--lektrus-tool-accent)!important;
+}
