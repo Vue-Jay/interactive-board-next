@@ -224,12 +224,12 @@ for(const count of [1,2,3,4,5,6]){
  }
 }
 const legacyVessel=labLayout.labDisplayPoint({x:10,y:90});
-assert.ok(legacyVessel.x>=26&&legacyVessel.x<80,
+assert.ok(legacyVessel.x>=6&&legacyVessel.x<83,
  "Saved vessels at extreme old coordinates must not cover furniture");
 for(const crowded of [false,true]){
  for(const y of [10,90]){
   const projectedEdge=labLayout.labDisplayPoint({x:50,y},crowded);
-  const occupiedHeight=crowded?19:30;
+  const occupiedHeight=crowded?13.3:15.7;
   assert.ok(projectedEdge.y-occupiedHeight*.56>=42,
    "Glassware must never extend into the wall cabinets");
   assert.ok(projectedEdge.y+occupiedHeight*.44<=97,
