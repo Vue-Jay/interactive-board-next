@@ -85,12 +85,19 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
   label:"pH "+titrationResult.pH,color:titrationResult.tint,
   note:"Расчётное значение при титровании, 25 °C"
  }:labIndicatorResult(vessel);
- const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],vessel.environment):null;
+ const measures=Object.values(vessel.doses??{});
+ const volumeMl=measures.reduce((sum,d)=>sum+(d.unit==="ml"?d.value:0),0);
+ const massG=measures.reduce((sum,d)=>sum+(d.unit==="g"?d.value:0),0);
+ const totalLabel=[volumeMl>0?volumeMl.toLocaleString("ru-RU")+" мл":null,
+  massG>0?massG.toLocaleString("ru-RU")+" г":null].filter(Boolean).join(" · ");
+ const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],
+  massG>0&&volumeMl===0?"dry":vessel.environment):null;
  const active=Boolean(visualCase);
  const color=titrationResult?(vessel.indicator?titrationResult.tint:"#dceff0"):
   indicator?.color??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3");
  const observation=visualCase?.observation??"none";
- const singlePhase=vessel.reagents.length===1&&!active?reagent?.phase:undefined;
+ const singlePhase=massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
+  vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const geo=shape[vessel.kind];
  const labels=vessel.reagents.map(r=>substances.find(s=>s.id===r)?.formula??r);
  const gearX=["tube","flask","conical","volumetric","pipette","burette"].includes(vessel.kind)?66:
@@ -104,9 +111,9 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
   singlePhase==="solid"||singlePhase==="metal"?"Твёрдое вещество":
   singlePhase==="gas"?"Газ":
   vessel.environment==="dry"?"Сухая смесь":"Раствор";
- const volumeMl=Object.values(vessel.doses??{}).reduce((sum,d)=>sum+(d.unit==="ml"?d.value:0),0);
- const capacity=vessel.kind==="burette"?100:
-  vessel.kind==="pipette"?25:vessel.kind==="tube"?25:150;
+ const capacity=vessel.kind==="burette"?50:
+  vessel.kind==="pipette"||vessel.kind==="tube"?25:
+  vessel.kind==="volumetric"||vessel.kind==="cylinder"?100:150;
  const fillFraction=volumeMl>0?Math.min(.92,Math.max(.008,volumeMl/capacity)):
   (vessel.reagents.length>0?(vessel.pourFraction??0.5):0);
  return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
@@ -198,7 +205,7 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
      (dose.concentrationM!==undefined?" · "+dose.concentrationM.toLocaleString("ru-RU")+" моль/л":""):"");
    }).join("; "):"Пустая посуда"}>
    <strong>{labels.length?labels.join(" + "):"Пусто"}</strong>
-   {labels.length>0&&<small>{substanceState}</small>}
+   {labels.length>0&&<small>{totalLabel||substanceState}</small>}
    <span className="lektrus-lab-content-quantity" aria-hidden="true">
     {labels.length?labels.map((formula,i)=>{
      const dose=vessel.doses?.[vessel.reagents[i]];
@@ -266,7 +273,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [category,setCategory]=useState("Все");
  const [phase,setPhase]=useState<"all"|StoragePhase>("all");
  const [sort,setSort]=useState<CatalogueSort>("name");
- const [group,setGroup]=useState<CatalogueGroup>("class");
+ const [group,setGroup]=useState<CatalogueGroup>("phase");
  const [cabinetTab,setCabinetTab]=useState<
  "all"|"acid"|"base"|"salt"|"oxide"|"metal"|"organic"|"other"|"experiments">("all");
  const [effectFilter,setEffectFilter]=useState<"all"|Observation>("all");
@@ -791,9 +798,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <div className="lektrus-lab-bottle-rack" role="group" aria-label="Реактивы быстрого доступа">
     {quickReagents.map(v=>{
      const item=substances.find(r=>r.id===v.id);
-     const color=reagentAppearance(v.id).color;
+     const color=reagentAppearance(v.id,v.dose.unit==="g"?"dry":"aqueous").color;
      return <button type="button" key={v.id} draggable={editable}
-      className="lektrus-lab-quick-bottle"
+      className={"lektrus-lab-quick-bottle"+(v.dose.unit==="g"?" is-solid":" is-solution")}
       disabled={!editable} title={(item?.name??v.id)+" · "+formatLabDose(v.dose)+
        (v.dose.concentrationM!==undefined?" · "+v.dose.concentrationM+" М":"")+
        " · добавить в выбранный сосуд или перетащить"}
@@ -806,6 +813,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <i style={{"--bottle-color":color} as React.CSSProperties}/>
       <strong>{item?.formula??v.id}</strong>
       <small>{v.dose.value}{v.dose.unit==="ml"?" мл":" г"}</small>
+      <span className="lektrus-lab-quick-phase">{v.dose.unit==="g"?"Твёрдое":"Раствор"}</span>
      </button>;
     })}
     {editable&&quickReagents.length<MAX_QUICK_REAGENTS&&<button type="button"
@@ -1287,7 +1295,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
             setMolarity(String(saved?.concentrationM??.1))}}>
            <i style={{background:cabinetColor(v)}}/>
            <strong>{v.formula}</strong>
-           <span>{v.name}<small>{phaseNames[cabinetPhase(v)]}</small></span>
+           <span>{v.name}<small>{cabinetPhase(v)==="solid"?"Твёрдое":
+            cabinetPhase(v)==="gas"?"Газ":"Раствор / жидкость"}</small></span>
           </button>)}
          </div>
         </div>):experimentCases.map((row,i)=><button type="button" key={i}
@@ -1325,7 +1334,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         <small>{reagent?reagentAppearance(reagent.id).label:"Сначала выберите вещество из шкафа"}</small>
        </div>
        <div className="lektrus-lab-dose-controls">
-        <label>Количество
+        <label>{unit==="ml"?"Объём, мл":"Масса, г"}
          <input type="number" inputMode="decimal" min="0" max="10000" step="10"
           value={amount} onChange={e=>setAmount(e.target.value)} /></label>
         {chosen&&unit==="ml"&&["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen)&&
@@ -1333,9 +1342,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
           <input type="number" min="0" max="2" step="0.1" value={molarity}
            onChange={e=>setMolarity(e.target.value)} />
          </label>}
-        <label>Единица
+        <label>Форма реактива
          <select value={unit} onChange={e=>setUnit(e.target.value as "ml"|"g")}>
-          <option value="ml">мл</option><option value="g">г</option>
+          <option value="ml">Раствор, мл</option><option value="g">Твёрдое, г</option>
          </select></label>
         <button type="button" className="primary" disabled={!chosen||!selected}
          onClick={dispense}>Добавить в сосуд</button>
