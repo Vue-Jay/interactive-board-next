@@ -308,6 +308,25 @@ assert.equal(equipment.devices.includes("hotplate"),false);
 const migrated=lab.placedLabDevices({...lab.defaultLabBench(),devices:["burner","stirrer"]});
 assert.equal(migrated.length,2,"Previously saved laboratory devices must remain visible");
 assert.notEqual(migrated[0].id,migrated[1].id);
+const beforeConcurrent=lab.defaultLabBench();
+const peerPlate=lab.addPlacedLabDevice(beforeConcurrent,"hotplate");
+const peerMixer=lab.addPlacedLabDevice(beforeConcurrent,"stirrer");
+const joined=lab.mergeLabBench(beforeConcurrent,peerPlate,peerMixer);
+assert.equal(lab.placedLabDevices(joined).length,2,
+ "Concurrent peers putting different devices on one table must both survive");
+assert.equal(new Set(lab.placedLabDevices(joined).map(d=>d.id)).size,2);
+let decant=lab.defaultLabBench();
+decant=lab.putLabReagent(decant,"v1","HCl",
+ {value:10,unit:"ml",concentrationM:.1});
+decant=lab.addLabVessel(decant,"beaker");
+decant=lab.putLabReagent(decant,"v2","HCl",
+ {value:20,unit:"ml",concentrationM:.3});
+decant=lab.pourLabVessel(decant,"v1","v2");
+assert.equal(decant.vessels.find(v=>v.id==="v2").doses.HCl.value,30);
+assert.ok(Math.abs(decant.vessels.find(v=>v.id==="v2").doses.HCl.concentrationM-
+ (10*.1+20*.3)/30)<.00001,
+ "Same-solute concentrations must be volume-weighted during decanting");
+assert.equal(decant.vessels.find(v=>v.id==="v1").reagents.length,0);
 const base=lab.defaultLabBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
