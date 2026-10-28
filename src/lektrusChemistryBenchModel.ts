@@ -62,9 +62,10 @@ export function movePlacedLabDevice(bench:LabBench,id:string,x:number,y:number):
 export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
  const existing=placedLabDevices(bench),target=existing.find(d=>d.id===id);
  if(!target)return bench;
- const placedDevices=existing.filter(d=>d.id!==id);
+ const normalized=target.active?stopPlacedLabDevice(bench,id):bench;
+ const placedDevices=placedLabDevices(normalized).filter(d=>d.id!==id);
  const devices=[...new Set(placedDevices.map(d=>d.kind))];
- return {...bench,placedDevices,devices,event:bench.event+1,
+ return {...normalized,placedDevices,devices,event:normalized.event+1,
   stirringVesselId:target.kind==="stirrer"&&!devices.includes("stirrer")?undefined:bench.stirringVesselId,
   instrumentTarget:bench.instrumentTarget&&(target.kind===bench.instrumentTarget.kind&&
    target.linkedVesselId===bench.instrumentTarget.vesselId)?
