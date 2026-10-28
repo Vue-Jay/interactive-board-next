@@ -652,7 +652,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <button type="button" aria-label="Закрыть управление прибором"
     onClick={e=>{e.stopPropagation();setActiveDeviceId(null)}}>×</button>
   </div>}
-  {editable&&selected&&selected.reagents.length>0&&
+  {editable&&!activeDevice&&selected&&selected.reagents.length>0&&
    (!activeBurette||availableTargets.length===0)&&
    <div className="lektrus-lab-worktop-actions" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
@@ -680,7 +680,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      {effectivePouringId===selected.id?"Отмена":"⇢ Перелить"}
     </button>}
    </div>}
-  {editable&&activeBurette&&availableTargets.length>0&&<div
+  {editable&&!activeDevice&&activeBurette&&availableTargets.length>0&&<div
    className="lektrus-lab-titration-on-table" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <strong><span aria-hidden="true">◉</span> Бюретка</strong>
