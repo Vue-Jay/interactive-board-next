@@ -144,7 +144,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
       onChange={e=>changeMarkup(e.target.value)}/>
      <div className="lektrus-language-gap-actions">
       <button type="button" onMouseDown={e=>e.preventDefault()} onClick={markSelected}>
-       <span aria-hidden="true">▱</span> {punctuation?"Скрыть выделенный знак":"Скрыть выделенную букву / слово"}
+       <span aria-hidden="true">▱</span> {punctuation?"Сделать пропуск из знака":"Сделать пропуск из выделения"}
       </button>
      </div>
      {punctuation&&<div className="lektrus-language-punctuation-editor">
@@ -183,7 +183,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
     {!isGap&&activity&&<LektrusSubjectActivityBuilder tone={tone} format={template.id} activity={activity}
      onChange={next=>{patch({activity:next,activityResponse:undefined});setPreviewAnswer({});}}/>}
     {template.fields.length>0&&<div className="lektrus-language-studio-fields">
-     {template.fields.map(field=>{
+     {template.fields.filter(field=>!(tone==="russian"&&template.id==="morphology"&&field.id==="target")).map(field=>{
       const content=subjectFieldInfo[tone+":"+template.id+":"+field.id]??fieldInfo[field.id];
       return <label className="lektrus-language-field" key={field.id}>
        {content?.label??field.label}
@@ -224,7 +224,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
     <div className="lektrus-language-preview-content">
      <strong>{entry.title.trim()||template.title}</strong>
      {entry.prompt.trim()&&<p className="lektrus-language-preview-instruction">{entry.prompt}</p>}
-     {template.fields.filter(field=>!(tone==="russian"&&template.id==="morphology"&&field.id==="target")).map(field=>(entry.details?.[field.id]?.trim()?
+     {template.fields.filter(field=>!(tone==="russian"&&["morphemes","morphology","syntax"].includes(template.id))).map(field=>(entry.details?.[field.id]?.trim()?
       <div key={field.id} className="lektrus-language-preview-material">
        <small>{subjectFieldInfo[tone+":"+template.id+":"+field.id]?.label??field.label}</small><p>{entry.details?.[field.id]}</p>
       </div>:null))}
