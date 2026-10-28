@@ -193,7 +193,7 @@ for(const count of [1,2,3,4,5,6]){
  for(let i=1;i<count;i++)arranged=lab.addLabVessel(arranged,"tube");
  arranged=lab.arrangeLabVessels(arranged);
  assert.equal(arranged.vessels.length,count);
- const projected=arranged.vessels.map(v=>labLayout.labDisplayPoint(v));
+ const projected=arranged.vessels.map(v=>labLayout.labDisplayPoint(v,count>3));
  const width=count>3?10:10.8, height=count>3?19:30;
  for(let i=0;i<projected.length;i++){
   const a=projected[i];
@@ -214,6 +214,16 @@ for(const count of [1,2,3,4,5,6]){
 const legacyVessel=labLayout.labDisplayPoint({x:10,y:90});
 assert.ok(legacyVessel.x>26&&legacyVessel.x<80,
  "Saved vessels at extreme old coordinates must not cover furniture");
+for(const crowded of [false,true]){
+ for(const y of [10,90]){
+  const projectedEdge=labLayout.labDisplayPoint({x:50,y},crowded);
+  const occupiedHeight=crowded?19:30;
+  assert.ok(projectedEdge.y-occupiedHeight*.56>=53,
+   "Glassware must never extend into the wall cabinets");
+  assert.ok(projectedEdge.y+occupiedHeight*.44<=97,
+   "Glassware must not cross the front of the bench");
+ }
+}
 assert.equal(labLayout.isLabSink({x:85,y:70}),true);
 assert.equal(labLayout.isLabCupboard({x:85,y:22}),true);
 assert.equal(labLayout.isLabWorktop({x:50,y:73}),true);
