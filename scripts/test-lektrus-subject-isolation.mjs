@@ -65,7 +65,7 @@ for(const tone of ["mathematics","russian"]){
  }
 }
 assert.deepEqual(templates.subjectTaskTemplates.languages.map(x=>x.id),
- ["task","translation","gaps","vocabulary","word-order","grammar","reading","choice"]);
+ ["task","translation","gaps","vocabulary","word-order"]);
 assert.ok(!templates.subjectTaskTemplates.russian.some(x=>x.id==="cloze"),
  "Russian orthography already has a specialised gaps constructor");
 assert.ok(!templates.subjectTaskTemplates.chemistry.some(x=>x.id==="balance"||x.id==="equation"),
