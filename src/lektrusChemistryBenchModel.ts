@@ -149,13 +149,31 @@ const revise=(bench:LabBench,id:string,update:(v:LabVessel)=>LabVessel):LabBench
  const vessels=bench.vessels.map(v=>v.id===id?update(v):v);
  return vessels.every((v,i)=>v===bench.vessels[i])?bench:bump(bench,vessels,id);
 };
+/** Tidy into one row of up to three, or two unobstructed rows of up to six.
+ * Existing contents and stable IDs remain untouched. */
+export function arrangeLabVessels(bench:LabBench):LabBench{
+ const count=bench.vessels.length;
+ if(count===0)return bench;
+ const upper=count<=3?count:Math.ceil(count/2);
+ const lower=count<=3?0:count-upper;
+ const lane=(index:number,size:number)=>size===1?50:
+  size===2?(index===0?31:69):20+index*30;
+ const vessels=bench.vessels.map((v,index)=>{
+  const first=index<upper,groupSize=first?upper:lower;
+  const laneIndex=first?index:index-upper;
+  return {...v,x:lane(laneIndex,groupSize),
+   y:count<=3?62:first?30:80};
+ });
+ return vessels.every((v,i)=>v.x===bench.vessels[i].x&&v.y===bench.vessels[i].y)?
+  bench:bump(bench,vessels);
+}
 export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:number;y:number}):LabBench{
  if(bench.vessels.length>=MAX_BENCH_VESSELS)return bench;
  let n=1;while(bench.vessels.some(v=>v.id==="v"+n))n++;
- const index=bench.vessels.length;
- const next:LabVessel={id:"v"+n,kind,x:clamp(position?.x??(36+(index%3)*15)),
-  y:clamp(position?.y??(index<3?70:79)),reagents:[],environment:"aqueous",observed:false};
- return bump(bench,[...bench.vessels,next],next.id);
+ const next:LabVessel={id:"v"+n,kind,x:clamp(position?.x??50),
+  y:clamp(position?.y??62),reagents:[],environment:"aqueous",observed:false};
+ const result=bump(bench,[...bench.vessels,next],next.id);
+ return position?result:arrangeLabVessels(result);
 }
 export function positionLabVessel(bench:LabBench,id:string,x:number,y:number):LabBench{
  if(!bench.vessels.some(v=>v.id===id))return bench;
