@@ -467,7 +467,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     disabled={!editable} aria-label="Открыть шкаф посуды"
     onClick={e=>{e.stopPropagation();openCabinet("glassware")}}>ПОСУДА</button>
    <div className="lektrus-lab-shelf-items">
-    {labGlassware.map(kind=><button type="button" key={kind.id} disabled={!editable
+    {labGlassware.map(kind=><button type="button" key={kind.id} disabled={!editable}
       className="lektrus-lab-shelf-item" title={"Взять: "+kind.name}
       aria-label={"Взять из шкафа "+kind.name} onPointerDown={e=>beginShelf(e,kind.id)}
       onPointerMove={moveShelf} onPointerUp={finishShelf}
