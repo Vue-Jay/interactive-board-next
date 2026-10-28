@@ -100,3 +100,39 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  });
  return bump(bench,vessels,targetId);
 }
+
+/** Reconcile simultaneous edits to different vessels. Array replacement would
+ * silently erase a peer's vessel. Merge by stable vessel ID and changed fields. */
+export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):LabBench{
+ const old=new Map(previous.vessels.map(v=>[v.id,v]));
+ const local=new Map(mine.vessels.map(v=>[v.id,v]));
+ const peer=new Map(remote.vessels.map(v=>[v.id,v]));
+ const allIds=new Set([...old.keys(),...peer.keys(),...local.keys()]);
+ const vessels:LabVessel[]=[];
+ for(const id of allIds){
+  const base=old.get(id),a=local.get(id),b=peer.get(id);
+  if(!a&&base)continue; // Explicit local removal
+  if(!b&&base&&a&&JSON.stringify(a)===JSON.stringify(base))continue; // Peer removal
+  if(!a){if(b)vessels.push(b);continue}
+  if(!base||!b){vessels.push(a);continue}
+  const merged={...b} as LabVessel;
+  for(const key of Object.keys(a) as (keyof LabVessel)[]){
+   if(JSON.stringify(a[key])!==JSON.stringify(base[key])){
+    // Independent additions to the same beaker should both survive.
+    if(key==="reagents"&&Array.isArray(a.reagents)&&
+      JSON.stringify(b.reagents)!==JSON.stringify(base.reagents)){
+      const baseSet=new Set(base.reagents);
+      const removed=new Set(base.reagents.filter(v=>!a.reagents.includes(v)));
+      merged.reagents=[...new Set([...b.reagents.filter(v=>!removed.has(v)),
+       ...a.reagents.filter(v=>!baseSet.has(v))])].slice(0,MAX_VESSEL_REAGENTS);
+    }else (merged as unknown as Record<string,unknown>)[key]=a[key];
+   }
+  }
+  vessels.push(merged);
+ }
+ const limited=vessels.slice(0,MAX_BENCH_VESSELS);
+ if(!limited.length)return defaultLabBench();
+ const selectedId=limited.some(v=>v.id===mine.selectedId)?mine.selectedId:
+  limited.some(v=>v.id===remote.selectedId)?remote.selectedId:limited[0].id;
+ return {vessels:limited,selectedId,event:Math.max(remote.event,mine.event)+1};
+}
