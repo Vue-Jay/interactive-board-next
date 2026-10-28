@@ -348,6 +348,49 @@ assert.equal(lab.canMountLabVessel("burner","tube"),true);
 assert.equal(lab.canMountLabVessel("stirrer","conical"),true);
 assert.equal(lab.canMountLabVessel("tripod","burette"),true);
 assert.equal(lab.canMountLabVessel("tripod","cylinder"),false);
+assert.equal(lab.canMountLabVessel("hotplate","beaker"),true,
+ "A flat-bottom beaker must sit on the hotplate");
+assert.equal(lab.canMountLabVessel("hotplate","conical"),true);
+assert.equal(lab.canMountLabVessel("hotplate","cylinder"),false);
+assert.equal(lab.canMountLabVessel("hotplate","volumetric"),false);
+assert.equal(lab.canMountLabVessel("hotplate","burette"),false);
+assert.equal(lab.canMountLabVessel("stirrer","beaker"),true);
+assert.equal(lab.canMountLabVessel("stirrer","dish"),false);
+assert.equal(lab.canMountLabVessel("stirrer","tube"),false);
+assert.equal(lab.canMountLabVessel("tripod","funnel"),true);
+assert.equal(lab.canMountLabVessel("tripod","pipette"),true);
+assert.equal(lab.canMountLabVessel("tripod","crucible"),true);
+assert.equal(lab.canMountLabVessel("burner","dish"),true);
+for(const device of lab.labDevices)
+ assert.equal(lab.canMountLabVessel(device.id,"cylinder"),false);
+let combinedSupport=lab.defaultLabBench();
+combinedSupport=lab.addPlacedLabDevice(combinedSupport,"tripod");
+combinedSupport=lab.addPlacedLabDevice(combinedSupport,"burner");
+const standId=lab.placedLabDevices(combinedSupport).find(d=>d.kind==="tripod").id;
+const flameId=lab.placedLabDevices(combinedSupport).find(d=>d.kind==="burner").id;
+combinedSupport=lab.applyPlacedLabDevice(combinedSupport,standId,"v1");
+combinedSupport=lab.applyPlacedLabDevice(combinedSupport,flameId,"v1");
+assert.equal(lab.placedLabDevices(combinedSupport)
+ .filter(d=>d.linkedVesselId==="v1").length,2,
+ "The retort stand and burner must work with the same vessel");
+combinedSupport=lab.setPlacedDevicePower(combinedSupport,flameId,true);
+combinedSupport=lab.positionLabVessel(combinedSupport,"v1",64,72);
+assert.equal(lab.placedLabDevices(combinedSupport)
+ .filter(d=>d.linkedVesselId==="v1").length,0,
+ "Moving a vessel disconnects support and heater");
+assert.equal(lab.placedLabDevices(combinedSupport)
+ .find(d=>d.id===flameId).powered,true,
+ "Removing glassware does not magically extinguish a burner");
+let freeMixer=lab.addPlacedLabDevice(lab.defaultLabBench(),"stirrer");
+const freeMixerId=lab.placedLabDevices(freeMixer)[0].id;
+freeMixer=lab.setPlacedDevicePower(freeMixer,freeMixerId,true);
+assert.equal(lab.placedLabDevices(freeMixer)[0].powered,true,
+ "A mixer may be switched on without a mounted vessel");
+assert.equal(freeMixer.stirringVesselId,undefined);
+assert.match(read("src/lektrusChemistryBench.css"),
+ /\.lektrus-lab-placed-device\.is-selected>\.lektrus-lab-device-icon/,
+ "Selection must outline the apparatus silhouette, not a rectangular tile");
+
 let valve=lab.defaultLabBench();
 valve=lab.addLabVessel(valve,"burette");
 const valveSource=valve.vessels.find(v=>v.kind==="burette");
