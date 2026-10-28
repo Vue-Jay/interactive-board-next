@@ -78,6 +78,14 @@ const app=read("src/App.tsx");
 assert.match(app,/liveChemistryBenchUpdate/);
 assert.match(app,/mergeLabBench\(/);
 assert.match(app,/onExperimentLiveChange=\{/);
+assert.match(app,/onLabBenchChange=\{/,"On-board glassware can be moved without reopening the editor");
+assert.match(read("src/LektrusChemistryIllustration.tsx"),/editable=\{!!onBenchChange\}/,
+ "On-board chemistry table enables direct vessel interaction when permitted");
+assert.match(read("src/LektrusChemistryBench.tsx"),/data-board-interactive="true"/,
+ "Glassware gestures do not drag the surrounding board object");
+assert.match(read("src/lektrusSciencePresets.ts"),/x:x-410,y:y-250,text:"Химический стол"/,
+ "Bench must be centered under the insertion cursor");
+
 const model=read("src/boardModel.ts");
 assert.match(model,/"scienceLabBench"/);
 assert.match(model,/Повреждено состояние химического стола/);
