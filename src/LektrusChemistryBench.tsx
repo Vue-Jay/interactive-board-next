@@ -168,6 +168,9 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
     <rect x="73" y="71" width="7" height="24" rx="1" fill={indicator?.color??"#b5b9b3"} opacity=".95" transform="rotate(12 76 60)"/>
    </g>}
    <path d="M29 32V57" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".5"/>
+   <text x="50" y="113" className="lektrus-lab-ware-brand"
+    textAnchor="middle" fontSize="6.5" fontWeight="850"
+    fill="#398378" letterSpacing=".8">LEKTRUS</text>
    {/* Readouts printed on the vessel itself, not floating HTML badges. */}
    <g className="lektrus-lab-ware-engraving">
     <rect x="24" y="68" width="52" height="32" rx="4"
@@ -260,7 +263,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const settings=labBenchSettings(bench);
  const selected=selectedLabVessel(bench);
  const physicalDevices=placedLabDevices(bench);
- const activeDevice=physicalDevices.find(d=>d.id===activeDeviceId);
  const vesselPosition=(v:LabVessel)=>{
   const stand=physicalDevices.find(d=>d.kind==="tripod"&&d.active&&d.linkedVesselId===v.id);
   const shelf=physicalDevices.find(d=>d.kind==="tripod"&&d.shelfVesselId===v.id);
@@ -535,14 +537,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const target=bench.vessels.find(v=>v.id===vesselId);
   setNotice(name+" · "+(target?names[target.kind]:"сосуд")+" установлен"+(mount==="shelf"?" на полку":" в крепление"));
  };
- const downDevice=(e:PointerEvent<HTMLButtonElement>,id:string,x:number,y:number)=>{
+ const downDevice=(e:PointerEvent<HTMLDivElement>,id:string,x:number,y:number)=>{
   if(!editable||e.button!==0||!e.isPrimary)return;
   e.preventDefault();e.stopPropagation();
   const p=point(e);if(!p)return;
   deviceGesture.current={id,startX:p.x,startY:p.y,x,y,dragged:false};
   e.currentTarget.setPointerCapture(e.pointerId);
  };
- const moveDevice=(e:PointerEvent<HTMLButtonElement>)=>{
+ const moveDevice=(e:PointerEvent<HTMLDivElement>)=>{
   const g=deviceGesture.current;if(!g)return;
   e.stopPropagation();const p=point(e),rect=host.current?.getBoundingClientRect();
   if(!p||!rect)return;
@@ -550,7 +552,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   if(g.dragged)setDevicePreview({id:g.id,x:Math.max(9,Math.min(79,g.x+p.x-g.startX)),
    y:Math.max(58,Math.min(84,g.y+p.y-g.startY))});
  };
- const finishDevice=(e:PointerEvent<HTMLButtonElement>)=>{
+ const finishDevice=(e:PointerEvent<HTMLDivElement>)=>{
   const g=deviceGesture.current;if(!g)return;
   deviceGesture.current=null;e.preventDefault();e.stopPropagation();
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
@@ -720,9 +722,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      aria-pressed={focused}
      title={(meta?.name??device.kind)+": перетащить по столу"}
      onKeyDown={e=>{if(e.key==="Enter"){e.stopPropagation();setActiveDeviceId(device.id)}}}
-     onPointerDown={e=>downDevice(e as PointerEvent<HTMLButtonElement>,device.id,device.x,device.y)}
-     onPointerMove={e=>moveDevice(e as PointerEvent<HTMLButtonElement>)}
-     onPointerUp={e=>finishDevice(e as PointerEvent<HTMLButtonElement>)}
+     onPointerDown={e=>downDevice(e,device.id,device.x,device.y)}
+     onPointerMove={e=>moveDevice(e)}
+     onPointerUp={e=>finishDevice(e)}
      onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;setDevicePreview(null)}}
      onClick={e=>{e.stopPropagation();if(e.detail===0)setActiveDeviceId(device.id)}}>
      <LektrusLabDeviceIcon kind={device.kind} size={150}
@@ -738,7 +740,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       onLevelCycle={()=>onChange?.(setPlacedDeviceLevel(bench,device.id,
        ((device.heatLevel??2)%3+1) as 1|2|3))}
       onAttach={(id,mount)=>attachDevice(device.id,id,mount)}
-      onRelease={()=>onChange?.(stopPlacedLabDevice(bench,device.id))}
+      onRelease={()=>onChange?.(device.kind==="tripod"&&device.shelfVesselId?
+       setLabStandShelf(bench,device.id):stopPlacedLabDevice(bench,device.id))}
       onReturn={()=>{onChange?.(returnPlacedLabDevice(bench,device.id));
        setActiveDeviceId(null)}}/>
     </div>
