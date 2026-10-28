@@ -732,14 +732,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       {labIndicators.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}
      </select>
     </label>
-    <label>Условия
-     <select value={selected.environment} aria-label="Условия реакции"
+    <label>Среда
+     <select value={selected.environment==="dry"?"dry":"aqueous"}
+      aria-label="Среда вещества; нагрев только от включённого прибора"
       onChange={e=>onChange?.(setLabEnvironment(bench,selected.id,
        e.target.value as typeof selected.environment))}>
       <option value="aqueous">Раствор</option>
       <option value="dry">Сухая среда</option>
-      <option value="heated">Нагрев</option>
-      <option value="ignited">Горение</option>
      </select>
     </label>
     {onPour&&<button type="button" className={effectivePouringId===selected.id?"active":""}
