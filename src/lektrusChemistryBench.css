@@ -2782,3 +2782,13 @@
  min-height:27px!important}
 .lektrus-lab-bench .lektrus-lab-worktop-actions{
  max-width:min(85%,620px)!important}
+
+
+/* Top-right thermometer belongs after the arrange action, clear of settings. */
+.lektrus-lab-bench .lektrus-lab-scene-stats{order:1!important}
+.lektrus-lab-bench .lektrus-lab-arrange-btn{
+ order:2!important;margin-left:0!important;flex:0 0 auto!important}
+.lektrus-lab-bench .lektrus-lab-header-tools{
+ order:3!important;margin-left:auto!important;padding-right:1px!important}
+.lektrus-lab-bench .lektrus-lab-content-tag{top:-3px!important}
+.lektrus-lab-bench .lektrus-lab-content-tag:after{height:4px!important}
