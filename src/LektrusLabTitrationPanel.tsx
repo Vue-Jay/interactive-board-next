@@ -1,3 +1,4 @@
+import {useEffect,useState} from "react";
 import type {LabBench} from "./lektrusChemistryBenchModel";
 import {dripLabTitration,restartLabTitration,setLabTitration} from "./lektrusChemistryBenchModel";
 import {defaultTitration,titrationEquation,titrationReading,updateTitration,type TitrationModel} from "./lektrusLabTitration";
@@ -5,11 +6,24 @@ type Props={bench:LabBench;onChange?:(bench:LabBench)=>void};
 const fmt=(n:number)=>n.toLocaleString("ru-RU",{maximumFractionDigits:2});
 export default function LektrusLabTitrationPanel({bench,onChange}:Props){
  const t=bench.titration??defaultTitration(),r=titrationReading(t);
+ const [draft,setDraft]=useState({
+  volumeAnalyteMl:String(t.volumeAnalyteMl),
+  concentrationAnalyte:String(t.concentrationAnalyte),
+  concentrationTitrant:String(t.concentrationTitrant)
+ });
+ useEffect(()=>setDraft({
+  volumeAnalyteMl:String(t.volumeAnalyteMl),
+  concentrationAnalyte:String(t.concentrationAnalyte),
+  concentrationTitrant:String(t.concentrationTitrant)
+ }),[t.volumeAnalyteMl,t.concentrationAnalyte,t.concentrationTitrant]);
  const change=(next:TitrationModel)=>{if(onChange)onChange(setLabTitration(bench,next))};
  const adjust=(ml:number)=>{if(onChange)onChange(dripLabTitration(bench,ml))};
- const setNumber=(key:"concentrationAnalyte"|"concentrationTitrant"|"volumeAnalyteMl",value:string)=>{
-  if(value.trim()==="")return;
-  change(updateTitration(t,{[key]:Number(value)}));
+ const setNumber=(key:"concentrationAnalyte"|"concentrationTitrant"|"volumeAnalyteMl")=>{
+  const number=Number(draft[key].replace(",","."));
+  if(draft[key].trim()&&Number.isFinite(number)&&number>0){
+   change(updateTitration(t,{[key]:number}));
+  }
+  setDraft(v=>({...v,[key]:String(t[key])}));
  };
  const points=Array.from({length:101},(_,i)=>{
   const v=i;
@@ -40,14 +54,20 @@ export default function LektrusLabTitrationPanel({bench,onChange}:Props){
      </select></label>
     <div className="lektrus-lab-titration-numbers">
      <label>Объём в колбе, мл
-      <input type="number" min="1" max="100" step=".5" value={t.volumeAnalyteMl}
-       onChange={e=>setNumber("volumeAnalyteMl",e.target.value)}/></label>
+      <input type="number" min="1" max="100" step=".5" value={draft.volumeAnalyteMl}
+       onChange={e=>setDraft(v=>({...v,volumeAnalyteMl:e.target.value}))}
+       onBlur={()=>setNumber("volumeAnalyteMl")}
+       onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/></label>
      <label>С₁, моль/л
-      <input type="number" min=".001" max="2" step=".01" value={t.concentrationAnalyte}
-       onChange={e=>setNumber("concentrationAnalyte",e.target.value)}/></label>
+      <input type="number" min=".001" max="2" step=".01" value={draft.concentrationAnalyte}
+       onChange={e=>setDraft(v=>({...v,concentrationAnalyte:e.target.value}))}
+       onBlur={()=>setNumber("concentrationAnalyte")}
+       onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/></label>
      <label>С₂, моль/л
-      <input type="number" min=".001" max="2" step=".01" value={t.concentrationTitrant}
-       onChange={e=>setNumber("concentrationTitrant",e.target.value)}/></label>
+      <input type="number" min=".001" max="2" step=".01" value={draft.concentrationTitrant}
+       onChange={e=>setDraft(v=>({...v,concentrationTitrant:e.target.value}))}
+       onBlur={()=>setNumber("concentrationTitrant")}
+       onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/></label>
     </div>
     <label>Индикатор
      <select value={t.indicator} onChange={e=>change(updateTitration(t,{
