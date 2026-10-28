@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labDevices,toggleLabDevice,useLabDevice,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,toggleLabDevice,useLabDevice,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -198,6 +198,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [unit,setUnit]=useState<"ml"|"g">("ml");
  const [molarity,setMolarity]=useState("0.1");
  const [titrationTarget,setTitrationTarget]=useState("");
+ const [localPourId,setLocalPourId]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
  const [sinkFlow,setSinkFlow]=useState(false);
  const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string}|null>(null);
@@ -224,6 +225,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const activeBurette=selected?.kind==="burette"?selected:titrationSources.find(v=>
   bench.titrationPair?.sourceId===v.id);
  const availableTargets=activeBurette?labTitrationTargets(bench,activeBurette.id):[];
+ const effectivePouringId=pouringId??localPourId;
  const chosenTitrationTarget=availableTargets.find(v=>v.id===titrationTarget)?titrationTarget:
   availableTargets[0]?.id;
  const experimentCases=reviewedReactionCases.filter(v=>v.status==="reaction"&&
@@ -289,6 +291,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    setTransfer({from:{x:start.x,y:start.y-12},to:{x:end.x,y:end.y-12}});
   }
   onPour?.(sourceId,targetId);
+  setLocalPourId(null);
  };
  const clean=(id:string)=>{
   const next=emptyLabVessel(bench,id);
@@ -342,7 +345,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      onChange?.(positionLabVessel(bench,g.id,next.x,next.y));
     }
    }
-  }else if(!g.dragged&&pouringId&&pouringId!==g.id)transferVessel(pouringId,g.id);
+  }else if(!g.dragged&&effectivePouringId&&effectivePouringId!==g.id)transferVessel(effectivePouringId,g.id);
   else if(!g.dragged)onSelect?.(g.id);
   setPreview(null);setDropTarget(null);setDropFurniture(null);
  };
@@ -519,6 +522,34 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     </button>;
    })}
   </div>}
+  {editable&&selected&&selected.reagents.length>0&&
+   (!activeBurette||availableTargets.length===0)&&
+   <div className="lektrus-lab-worktop-actions" data-board-interactive="true"
+    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+    <label>Индикатор
+     <select aria-label="Индикатор выбранной посуды" value={selected.indicator??""}
+      onChange={e=>onChange?.(setLabIndicator(bench,selected.id,
+       (e.target.value||undefined) as typeof selected.indicator))}>
+      <option value="">Без индикатора</option>
+      {labIndicators.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}
+     </select>
+    </label>
+    <label>Условия
+     <select value={selected.environment} aria-label="Условия реакции"
+      onChange={e=>onChange?.(setLabEnvironment(bench,selected.id,
+       e.target.value as typeof selected.environment))}>
+      <option value="aqueous">Раствор</option>
+      <option value="dry">Сухая среда</option>
+      <option value="heated">Нагрев</option>
+      <option value="ignited">Горение</option>
+     </select>
+    </label>
+    {onPour&&<button type="button" className={effectivePouringId===selected.id?"active":""}
+     onClick={e=>{e.stopPropagation();
+      setLocalPourId(effectivePouringId===selected.id?null:selected.id)}}>
+     {effectivePouringId===selected.id?"Отмена":"⇢ Перелить"}
+    </button>}
+   </div>}
   {editable&&activeBurette&&availableTargets.length>0&&<div
    className="lektrus-lab-titration-on-table" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
@@ -602,10 +633,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const selectedVessel=bench.selectedId===v.id;
    return <button type="button" key={v.id} data-board-interactive="true"
     className={"lektrus-lab-vessel"+(selectedVessel?" selected":"")+
-    (pouringId===v.id?" is-pouring":"")+
+    (effectivePouringId===v.id?" is-pouring":"")+
     (dropTarget===v.id?" is-drop-target":"")+(bench.stirringVesselId===v.id?" is-stirring":"")+
     (preview?.id===v.id&&dropTarget?" is-pour-drag":"")+
-    (pouringId&&pouringId!==v.id?" is-pour-target":"")}
+    (effectivePouringId&&effectivePouringId!==v.id?" is-pour-target":"")}
     style={{left:p.x+"%",top:p.y+"%",zIndex:selectedVessel||preview?.id===v.id?25:10+i}}
     disabled={!editable} aria-label={"Сосуд "+(i+1)+": "+names[v.kind]+
       (v.reagents.length?", "+v.reagents.join(", "):", пустой")}
@@ -638,11 +669,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <path d={`M ${transfer.from.x} ${transfer.from.y} Q ${(transfer.from.x+transfer.to.x)/2} ${Math.min(transfer.from.y,transfer.to.y)-12} ${transfer.to.x} ${transfer.to.y}`}
      fill="none" stroke="#58afe0" strokeWidth=".9" strokeLinecap="round"/>
   </svg>}
-  {editable&&(dropTarget||pouringId||dropFurniture||notice)&&<div className="lektrus-lab-pour-hint" aria-live="polite">
+  {editable&&(dropTarget||effectivePouringId||dropFurniture||notice)&&<div className="lektrus-lab-pour-hint" aria-live="polite">
    {dropFurniture==="sink"?"Отпустите для слива в раковину":
     dropFurniture==="glassware"?"Отпустите, чтобы вернуть пустую посуду":
     dropTarget?"Отпустите, чтобы перелить":
-    pouringId?"Выберите посуду для переливания":notice}
+    effectivePouringId?"Выберите посуду для переливания":notice}
   </div>}
   {cabinet&&createPortal(<div className={"lektrus-lab-furniture-modal is-"+cabinet}
    data-board-interactive="true"
