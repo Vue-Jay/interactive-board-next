@@ -654,7 +654,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     aria-pressed={focused}
     className={"lektrus-lab-placed-device is-"+device.kind+
      (focused?" is-selected":"")+(device.active?" is-running":"")}
-    style={{left:current.x+"%",top:current.y+"%",zIndex:focused?29:18+i}}
+    style={{left:current.x+"%",top:current.y+"%",zIndex:focused?19:11+i}}
     onPointerDown={e=>downDevice(e,device.id,device.x,device.y)}
     onPointerMove={moveDevice} onPointerUp={finishDevice}
     onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;setDevicePreview(null)}}
@@ -845,7 +845,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     (dropTarget===v.id?" is-drop-target":"")+(bench.stirringVesselId===v.id?" is-stirring":"")+
     (preview?.id===v.id&&dropTarget?" is-pour-drag":"")+
     (effectivePouringId&&effectivePouringId!==v.id?" is-pour-target":"")}
-    style={{left:p.x+"%",top:p.y+"%",zIndex:selectedVessel||preview?.id===v.id?25:10+i}}
+    style={{left:p.x+"%",top:p.y+"%",zIndex:selectedVessel||preview?.id===v.id?35:23+i}}
     disabled={!editable} aria-label={"Сосуд "+(i+1)+": "+names[v.kind]+
       (v.reagents.length?", "+v.reagents.join(", "):", пустой")}
     aria-pressed={selectedVessel} title={editable?
