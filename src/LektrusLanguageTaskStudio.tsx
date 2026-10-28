@@ -274,7 +274,7 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
     <div className="lektrus-language-preview-content">
      <strong>{entry.title.trim()||template.title}</strong>
      {entry.prompt.trim()&&<p className="lektrus-language-preview-instruction">{entry.prompt}</p>}
-     {template.fields.filter(field=>!(tone==="russian"&&["morphemes","morphology","syntax"].includes(template.id))).map(field=>(entry.details?.[field.id]?.trim()?
+     {template.fields.filter(()=>!(tone==="russian"&&["morphemes","morphology","syntax"].includes(template.id))).map(field=>(entry.details?.[field.id]?.trim()?
       <div key={field.id} className="lektrus-language-preview-material">
        <small>{subjectFieldInfo[tone+":"+template.id+":"+field.id]?.label??field.label}</small><p>{entry.details?.[field.id]}</p>
       </div>:null))}
