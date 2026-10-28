@@ -1,15 +1,55 @@
 import type {Item} from "./boardModel";
+import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
+ from "./lektrusLabTitration";
 import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
 
-export type LabGlassware="beaker"|"tube"|"flask"|"cylinder"|"dish";
+export type LabGlassware="beaker"|"tube"|"flask"|"cylinder"|"dish"|
+ "conical"|"volumetric"|"crucible"|"pipette"|"burette"|"funnel";
 export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
  {id:"beaker",name:"Стакан",description:"Смешивание растворов"},
  {id:"tube",name:"Пробирка",description:"Небольшие пробы"},
  {id:"flask",name:"Колба",description:"Работа с жидкостями"},
  {id:"cylinder",name:"Мерный цилиндр",description:"Отмеривание жидкости"},
- {id:"dish",name:"Чашка",description:"Открытый сосуд"}
+ {id:"dish",name:"Чашка",description:"Открытый сосуд"},
+ {id:"conical",name:"Коническая колба",description:"Титрование и перемешивание"},
+ {id:"volumetric",name:"Мерная колба",description:"Приготовление растворов"},
+ {id:"crucible",name:"Тигель",description:"Нагревание твёрдых веществ"},
+ {id:"pipette",name:"Мерная пипетка",description:"Отбор небольшого объёма"},
+ {id:"burette",name:"Бюретка",description:"Дозирование при титровании"},
+ {id:"funnel",name:"Воронка",description:"Аккуратное переливание"}
 ];
 export type LabDose={value:number;unit:"ml"|"g"};
+export type LabDevice="hotplate"|"burner"|"stirrer"|"tripod"|"thermometer";
+export const labDevices:{id:LabDevice;name:string;description:string;symbol:string}[]=[
+ {id:"hotplate",name:"Плитка",description:"Нагревать выбранный сосуд",symbol:"▤"},
+ {id:"burner",name:"Горелка",description:"Виртуальный источник пламени",symbol:"♨"},
+ {id:"stirrer",name:"Магнитная мешалка",description:"Перемешивать раствор",symbol:"◌"},
+ {id:"tripod",name:"Штатив",description:"Держатель лабораторной посуды",symbol:"⌁"},
+ {id:"thermometer",name:"Термометр",description:"Показывает режим без выдуманной температуры",symbol:"◉"}
+];
+export function toggleLabDevice(bench:LabBench,id:LabDevice):LabBench{
+ const devices=bench.devices??[];
+ if(!labDevices.some(v=>v.id===id))return bench;
+ const next=devices.includes(id)?devices.filter(v=>v!==id):[...devices,id];
+ return {...bench,devices:next,event:bench.event+1};
+}
+export function useLabDevice(bench:LabBench,id:LabDevice,vesselId:string):LabBench{
+ if(!(bench.devices??[]).includes(id)||!bench.vessels.some(v=>v.id===vesselId))return bench;
+ if(id==="hotplate")return setLabEnvironment(bench,vesselId,"heated");
+ if(id==="burner")return setLabEnvironment(bench,vesselId,"ignited");
+ return bench;
+}
+export function setLabTitration(bench:LabBench,titration:TitrationModel):LabBench{
+ return validTitration(titration)?{...bench,titration,event:bench.event+1}:bench;
+}
+export function dripLabTitration(bench:LabBench,ml:number):LabBench{
+ const initial=bench.titration??defaultTitration();
+ const next=addTitrant(initial,ml);
+ return next===initial?bench:setLabTitration(bench,next);
+}
+export function restartLabTitration(bench:LabBench):LabBench{
+ return setLabTitration(bench,resetTitration(bench.titration??defaultTitration()));
+}
 export type LabBenchSettings={
  showEquationBoard:boolean;showVesselLabels:boolean;animateEffects:boolean;
 };
@@ -66,7 +106,7 @@ export type LabVessel={
  completedReaction?:ReactionCase;
 };
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;
- settings?:LabBenchSettings};
+ settings?:LabBenchSettings;devices?:LabDevice[];titration?:TitrationModel};
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=6;
 const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
 export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>):LabBench{
@@ -252,5 +292,10 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  for(const key of Object.keys(mineSettings) as (keyof LabBenchSettings)[]){
   if(mineSettings[key]!==originalSettings[key])settings[key]=mineSettings[key];
  }
- return {vessels:limited,selectedId,settings,event:Math.max(remote.event,mine.event)+1};
+ const devices=JSON.stringify(mine.devices??[])===JSON.stringify(previous.devices??[])?
+  remote.devices:mine.devices;
+ const titration=JSON.stringify(mine.titration??null)===JSON.stringify(previous.titration??null)?
+  remote.titration:mine.titration;
+ return {vessels:limited,selectedId,settings,devices,titration,
+  event:Math.max(remote.event,mine.event)+1};
 }
