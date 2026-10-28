@@ -239,11 +239,11 @@ for(const crowded of [false,true]){
 assert.equal(labLayout.isLabSink({x:85,y:70}),true);
 assert.equal(labLayout.isLabCupboard({x:67,y:22}),true);
 assert.equal(labLayout.isLabWorktop({x:50,y:73}),true);
-assert.equal(labLayout.isLabWorktop({x:14,y:73}),false);
+assert.equal(labLayout.isLabWorktop({x:14,y:73}),true);
 const redesignedLab=read("src/LektrusChemistryBench.tsx");
 assert.match(redesignedLab,/lektrus-lab-scene-header/);
 assert.match(redesignedLab,/lektrus-lab-worktop-zone/);
-assert.match(redesignedLab,/labDisplayPoint\(preview\?\.id===v\.id\?preview:v,bench\.vessels\.length>3\)/);
+assert.match(redesignedLab,/preview\?\.id===v\.id\?labDisplayPoint\(preview,bench\.vessels\.length>3\):vesselPosition\(v\)/);
 assert.match(redesignedLab,/arrangeLabVessels\(bench\)/);
 assert.match(redesignedLab,/lektrus-lab-chalk-steps/);
 const redesignedCss=read("src/lektrusChemistryBench.css");
