@@ -2,6 +2,8 @@ import {useEffect,useState} from "react";
 import type {Item} from "./boardModel";
 import {LektrusChemicalEquationBoardView} from "./LektrusChemicalEquationEditor";
 import {LektrusReactionScene} from "./LektrusReactionLab";
+import LektrusChemistryBenchSurface from "./LektrusChemistryBench";
+import {readLabBench} from "./lektrusChemistryBenchModel";
 
 export const isChemicalIllustration=(item:Item)=>/^(chem-formula-|chem-experiment-)/.test(item.graphFigureId??"");
 export const chemicalFormulaParts=(value:string)=>value.split(/([A-Z][a-z]?|\)|\])([0-9]+)/g);
@@ -58,7 +60,9 @@ export default function LektrusChemistryIllustration({item,onStageChange}:{
  useEffect(()=>setLocalStage(item.scienceExperimentStage??0),[item.scienceExperimentStage,item.id]);
  const stage=onStageChange?(item.scienceExperimentStage??0):localStage;
  const setStage=(next:0|1)=>onStageChange?onStageChange(next):setLocalStage(next);
- if(item.graphFigureId==="chem-experiment-free")return <LektrusReactionScene item={item} stage={stage} onStageChange={onStageChange??setLocalStage}/>;
+ if(item.graphFigureId==="chem-experiment-free")return item.scienceLabBench?
+  <div className="lektrus-chemistry-bench-on-board"><LektrusChemistryBenchSurface bench={readLabBench(item)}/></div>:
+  <LektrusReactionScene item={item} stage={stage} onStageChange={onStageChange??setLocalStage}/>;
  if(!experiment)return <LektrusChemicalEquationBoardView item={item}/>;
  const before=stage===0;
  const salt=item.graphFigureId==="chem-experiment-salt";
