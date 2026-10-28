@@ -1,5 +1,5 @@
 import type {Item} from "./boardModel";
-import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus} from "./lektrusReactionDatabase";
+import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
 
 export type LabGlassware="beaker"|"tube"|"flask"|"cylinder"|"dish";
 export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
@@ -62,6 +62,8 @@ export type LabVessel={
  reagents:string[];environment:ReactionEnvironment;
  observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
  doses?:Record<string,LabDose>;
+ /** A verified reaction already completed in this material; survives full transfer. */
+ completedReaction?:ReactionCase;
 };
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;
  settings?:LabBenchSettings};
@@ -88,10 +90,13 @@ export const selectedLabVessel=(bench:LabBench)=>bench.vessels.find(v=>v.id===be
 export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:string;
  caseData?:ReturnType<typeof identifyReaction>["caseData"]}{
  if(vessel.reagents.length===0)return{status:"unknown",message:"Сосуд пуст."};
- if(vessel.reagents.length===1&&!vessel.observed)
-  return{status:"unknown",message:"Добавьте второй реагент или настройте условия."};
  if(vessel.uncertain)return{status:"unknown",
   message:"Смесь уже содержит продукты предыдущего опыта. Для следующего превращения требуется отдельная проверенная модель; продукты не предполагаются."};
+ if(vessel.completedReaction)return{
+  status:"reaction",message:vessel.completedReaction.description,caseData:vessel.completedReaction
+ };
+ if(vessel.reagents.length===1&&!vessel.observed)
+  return{status:"unknown",message:"Добавьте второй реагент или настройте условия."};
  if(!vessel.observed)return{status:"unknown",message:"До смешивания изменений нет."};
  return identifyReaction(vessel.reagents,vessel.environment);
 }
@@ -125,7 +130,7 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
  return bump(bench,vessels,bench.selectedId===id?(vessels[0]?.id??""):bench.selectedId);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- return revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined}));
+ return revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined}));
 }
 export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|undefined):LabBench{
  if(!bench.vessels.some(v=>v.id===id&&v.reagents.length))return bench;
@@ -163,6 +168,8 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
 export function activateLabVessel(bench:LabBench,id:string):LabBench{
  return revise(bench,id,v=>({...v,observed:true}));
 }
+/** Complete transfer of contents: products and their visible appearance move with
+ * the liquid. Adding a new reagent to spent material is deliberately unknown. */
 export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):LabBench{
  if(sourceId===targetId)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
@@ -170,25 +177,30 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  if(!source||!target||!source.reagents.length)return bench;
  const reagents=[...new Set([...target.reagents,...source.reagents])];
  if(reagents.length>MAX_VESSEL_REAGENTS)return bench;
- const uncertain=Boolean(source.uncertain||target.uncertain||
-  labObservation(source).status==="reaction"||
-  labObservation(target).status==="reaction"||
-  source.environment!==target.environment&&source.environment!=="aqueous");
  const incompatible=Object.entries(source.doses??{}).some(([id,dose])=>{
   const previous=target.doses?.[id];
   return previous&&(previous.unit!==dose.unit||previous.value+dose.value>10000);
  });
  if(incompatible)return bench;
+ const targetWasEmpty=target.reagents.length===0;
+ const sourceResult=labObservation(source),targetResult=labObservation(target);
+ const sourceReaction=source.completedReaction??(sourceResult.status==="reaction"?sourceResult.caseData:undefined);
+ const targetReaction=target.completedReaction??(targetResult.status==="reaction"?targetResult.caseData:undefined);
+ const uncertain=Boolean(source.uncertain||target.uncertain||
+  (!targetWasEmpty&&(sourceReaction||targetReaction))||
+  (source.environment!==target.environment&&source.environment!=="aqueous"));
  const vessels=bench.vessels.map(v=>{
-  if(v.id===sourceId)return {...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined};
+  if(v.id===sourceId)return {...v,reagents:[],observed:false,uncertain:false,
+   completedReaction:undefined,indicator:undefined,doses:undefined};
   if(v.id===targetId){
    const doses={...v.doses};
    for(const [id,dose] of Object.entries(source.doses??{})){
     const old=doses[id];
-    if(old&&old.unit!==dose.unit)return v; // Unsupported units are not silently converted.
     doses[id]={value:Math.round(((old?.value??0)+dose.value)*100)/100,unit:dose.unit};
    }
-   return {...v,reagents,observed:reagents.length>1,doses,
+   return {...v,reagents,observed:reagents.length>1||source.observed,
+    doses,environment:targetWasEmpty?source.environment:target.environment,
+    completedReaction:targetWasEmpty?sourceReaction:(targetReaction??sourceReaction),
     indicator:v.indicator??source.indicator,
     uncertain:uncertain||Boolean(v.indicator&&source.indicator&&v.indicator!==source.indicator)};
   }
