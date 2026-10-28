@@ -77,8 +77,8 @@ export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
 /** Glassware may be supported/held only where its geometry is appropriate. */
 export function canMountLabVessel(kind:LabPlacedDevice["kind"],glass:LabGlassware){
  if(kind==="tripod")return ["tube","flask","conical","burette","volumetric"].includes(glass);
- if(kind==="hotplate")return ["beaker","flask","conical","dish"].includes(glass);
- if(kind==="stirrer")return ["beaker","flask","conical"].includes(glass);
+ if(kind==="hotplate")return ["beaker","conical","dish"].includes(glass);
+ if(kind==="stirrer")return ["beaker","conical"].includes(glass);
  if(kind==="burner")return ["beaker","tube","flask","conical","crucible"].includes(glass);
  return false;
 }
