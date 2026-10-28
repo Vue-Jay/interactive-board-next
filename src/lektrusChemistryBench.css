@@ -2292,3 +2292,95 @@
  .lektrus-lab-bench .is-burette-valve select{max-width:120px!important;font-size:10px}
  .lektrus-lab-bench .lektrus-lab-glass-temperature{font-size:10px}
 }
+
+
+/* Laboratory proportions v6: visual instruments, not rectangular cards.
+   Beakers stay visibly smaller than equipment; selection follows SVG art. */
+.lektrus-lab-bench .lektrus-lab-vessel{
+ width:clamp(58px,6.3cqw,104px)!important;
+ height:clamp(112px,15.7cqw,158px)!important;
+ max-height:158px!important;min-width:0!important;
+ padding:0 2px!important;
+ border:0!important;background:transparent!important;box-shadow:none!important}
+.lektrus-lab-bench.is-crowded .lektrus-lab-vessel{
+ width:clamp(54px,5.8cqw,94px)!important;
+ height:clamp(100px,13.3cqw,136px)!important;max-height:136px!important}
+.lektrus-lab-bench .lektrus-lab-vessel.is-tube,
+.lektrus-lab-bench .lektrus-lab-vessel.is-pipette{
+ width:clamp(50px,4.5cqw,72px)!important}
+.lektrus-lab-bench .lektrus-lab-vessel.is-burette{
+ width:clamp(52px,4.7cqw,78px)!important;
+ height:clamp(151px,20cqw,198px)!important;max-height:198px!important}
+.lektrus-lab-bench .lektrus-lab-vessel.is-cylinder,
+.lektrus-lab-bench .lektrus-lab-vessel.is-volumetric{
+ width:clamp(56px,5.3cqw,86px)!important}
+.lektrus-lab-bench .lektrus-lab-vessel.is-dish,
+.lektrus-lab-bench .lektrus-lab-vessel.is-crucible{
+ height:clamp(98px,12cqw,125px)!important}
+.lektrus-lab-bench .lektrus-lab-vessel-art>svg{
+ flex:1 1 auto!important;height:auto!important;max-height:none!important}
+.lektrus-lab-bench .lektrus-lab-vessel-label{
+ min-height:0!important;max-height:38px!important;gap:1px!important}
+.lektrus-lab-bench .lektrus-lab-vessel-label b,
+.lektrus-lab-bench .lektrus-lab-vessel-label span{
+ font-size:clamp(9px,.85cqw,11px)!important;line-height:1.1!important}
+.lektrus-lab-bench .lektrus-lab-glass-temperature{
+ font-size:clamp(9px,.82cqw,11px)!important;padding:2px 4px!important}
+.lektrus-lab-bench .lektrus-lab-placed-device{
+ width:clamp(119px,10.3cqw,175px)!important;
+ height:clamp(130px,11.5cqw,178px)!important;
+ min-width:0!important;min-height:0!important;max-height:none!important;
+ gap:1px!important;padding:0!important;
+ background:transparent!important;border:0!important;
+ border-radius:0!important;box-shadow:none!important;outline:0!important;
+ overflow:visible!important;transition:filter .15s!important}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-tripod{
+ width:clamp(130px,11cqw,190px)!important;
+ height:clamp(168px,14cqw,212px)!important}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-burner{
+ width:clamp(119px,9.6cqw,166px)!important;
+ height:clamp(138px,11.4cqw,180px)!important}
+.lektrus-lab-bench .lektrus-lab-placed-device>.lektrus-lab-device-icon{
+ display:block!important;flex:1 1 auto!important;
+ width:100%!important;height:calc(100% - 29px)!important;
+ min-height:0!important;max-width:100%!important;
+ filter:drop-shadow(0 4px 3px #1b51493b);transition:filter .15s}
+.lektrus-lab-bench .lektrus-lab-placed-device:hover,
+.lektrus-lab-bench .lektrus-lab-placed-device.is-selected,
+.lektrus-lab-bench .lektrus-lab-placed-device.is-running{
+ background:transparent!important;border:0!important;box-shadow:none!important}
+.lektrus-lab-bench .lektrus-lab-placed-device:hover>.lektrus-lab-device-icon,
+.lektrus-lab-bench .lektrus-lab-placed-device:focus-visible>.lektrus-lab-device-icon{
+ filter:drop-shadow(0 0 5px #54ba91) drop-shadow(0 3px 3px #235f4555)}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-selected>.lektrus-lab-device-icon,
+.lektrus-lab-bench .lektrus-lab-placed-device.is-drop-device>.lektrus-lab-device-icon{
+ filter:drop-shadow(0 0 4px #269d83) drop-shadow(0 0 7px #78e8bc)!important}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-running.is-hotplate>.lektrus-lab-device-icon,
+.lektrus-lab-bench .lektrus-lab-placed-device.is-running.is-burner>.lektrus-lab-device-icon{
+ filter:drop-shadow(0 0 6px #f7ba76) drop-shadow(0 4px 4px #79502c55)}
+.lektrus-lab-bench .lektrus-lab-placed-device>span{
+ font:800 clamp(10px,.88cqw,12px)/1.15 system-ui,sans-serif!important;
+ white-space:normal!important;max-width:100%!important;
+ text-shadow:0 1px 2px #e8faf2}
+.lektrus-lab-bench .lektrus-lab-placed-device>small{
+ font-size:clamp(9px,.75cqw,11px)!important;line-height:1.12!important;
+ background:transparent!important;box-shadow:none!important;padding:0!important;
+ border:0!important}
+.lektrus-lab-bench .lektrus-lab-placed-device .lektrus-lab-thermal-readout{
+ background:#1d5144!important;color:#e9ffe6!important;
+ border-radius:5px!important;padding:2px 5px!important;
+ box-shadow:0 1px 4px #1b544044!important}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-placed-device{
+  width:clamp(101px,16cqw,138px)!important;
+  height:clamp(116px,18cqw,152px)!important}
+ .lektrus-lab-bench .lektrus-lab-placed-device.is-tripod{
+  width:clamp(112px,17cqw,146px)!important;
+  height:clamp(150px,21cqw,174px)!important}
+ .lektrus-lab-bench .lektrus-lab-vessel{
+  width:clamp(52px,9cqw,82px)!important;
+  height:clamp(96px,17cqw,130px)!important}
+ .lektrus-lab-bench .lektrus-lab-vessel.is-burette{
+  width:clamp(47px,7cqw,67px)!important;
+  height:clamp(130px,24cqw,164px)!important}
+}
