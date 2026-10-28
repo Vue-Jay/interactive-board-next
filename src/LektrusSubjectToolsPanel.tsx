@@ -42,9 +42,10 @@ const subjectToolSections:Record<string,{title:string;ids:string[]}[]>={
 
 function sectionsForSubject(subject:string,tools:SubjectToolOption[]){
   const scheme=subjectToolSections[subject.trim().toLocaleLowerCase("ru-RU")]??[];
+  const task=tools.find(tool=>tool.id.startsWith("subject-task-"));
   const byId=new Map(tools.map(tool=>[tool.id,tool]));
   const used=new Set<string>();
-  const sections=scheme.map(({title,ids})=>{
+  const sections=[...(task?[{title:"Задания на предметной доске",ids:[task.id]}]:[]),...scheme].map(({title,ids})=>{
     const items=ids.map(id=>byId.get(id)).filter((tool):tool is SubjectToolOption=>Boolean(tool));
     for(const item of items)used.add(item.id);
     return {title,items};
@@ -134,6 +135,7 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
                     <button type="button" key={t.id} onClick={()=>onChoose(t.id)} title={t.description??t.label} aria-label={t.label}>
                       <span className="lektrus-subject-tools-icon">{t.icon}</span>
                       <span className="lektrus-subject-tools-name">{t.label}</span>
+                      {t.id.startsWith("subject-task-")&&<small className="lektrus-subject-task-placement">На предметную доску</small>}
                     </button>)}
                 </div>
               </section>)}
