@@ -1,3 +1,4 @@
+import {subjectToneForSubject,subjectEditorStyle} from "./lektrusSubjectAccent";
 import {useLayoutEffect,useRef,useState,type CSSProperties,type ReactNode} from "react";
 import {createPortal} from "react-dom";
 
@@ -108,7 +109,7 @@ export default function LektrusSubjectToolsPanel({anchor,subject,canChangeSubjec
   return createPortal(
     <section id="lektrus-subject-tools-panel" ref={panelRef} className="lektrus-subject-tools-panel" role="dialog"
       aria-modal="false" aria-label="Предметные инструменты"
-      style={position} onPointerDown={e=>e.stopPropagation()} onContextMenu={e=>e.stopPropagation()}>
+      style={{...position,...subjectEditorStyle(subjectToneForSubject(subject))}} onPointerDown={e=>e.stopPropagation()} onContextMenu={e=>e.stopPropagation()}>
       <header className="lektrus-subject-tools-head">
         <div><strong>Предметные инструменты</strong><small>{subject?subject+" · "+tools.length:"Выберите предмет"}</small></div>
         <button type="button" aria-label="Закрыть предметные инструменты" onClick={onClose}>×</button>
