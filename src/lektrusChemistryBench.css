@@ -1743,3 +1743,37 @@
  .lektrus-lab-furniture-modal .lektrus-lab-class-tabs button{
   min-height:34px;padding:6px 10px;font-size:11px}
 }
+
+/* Instrument controls are attached to the active vessel on the table itself. */
+.lektrus-lab-bench .lektrus-lab-worktop-actions{
+ position:absolute;z-index:23;left:21%;right:19%;top:42%;
+ display:flex;align-items:center;gap:8px;min-height:41px;
+ padding:5px 10px;box-sizing:border-box;
+ border-radius:10px;border:1px solid #9fcdb0;
+ background:#f5fbf3ed;box-shadow:0 3px 9px #2b644525;
+ color:#2b7355;backdrop-filter:blur(3px)}
+.lektrus-lab-worktop-actions label{min-width:0;display:flex;
+ align-items:center;gap:6px;
+ font:750 clamp(10px,1.05cqw,12px)/1.2 system-ui,sans-serif}
+.lektrus-lab-worktop-actions select{
+ min-width:0;max-width:175px;height:32px;
+ border:1px solid #b9d5bc;border-radius:7px;padding:4px 7px;
+ background:#fff;color:#326f50;font:650 11px/1.1 system-ui,sans-serif}
+.lektrus-lab-worktop-actions button{
+ min-height:32px;padding:5px 12px;border:1px solid #88bf9c;
+ border-radius:7px;background:#d9efdc;color:#226f4c;
+ font:850 11px/1.2 system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.lektrus-lab-worktop-actions button.active{
+ background:#28785c;border-color:#28785c;color:#fff}
+@container(max-width:700px){
+ .lektrus-lab-bench .lektrus-lab-worktop-actions{
+  left:19%;right:18%;gap:4px;padding:4px}
+ .lektrus-lab-worktop-actions label{font-size:9px;gap:3px}
+ .lektrus-lab-worktop-actions select{max-width:122px;height:30px;font-size:9px;padding:3px}
+ .lektrus-lab-worktop-actions button{font-size:9px;padding:4px}
+}
+@container(max-width:440px){
+ .lektrus-lab-bench .lektrus-lab-worktop-actions{flex-wrap:wrap}
+ .lektrus-lab-worktop-actions label{flex:1 1 auto}
+ .lektrus-lab-worktop-actions select{max-width:100px}
+}
