@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,setLabStandShelf,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,setLabStandShelf,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -71,10 +71,10 @@ const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
   liquid:"M21 47H79L55 85H45Z"
  }
 };
-export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,titrationResult,temperatureC,editable=false,onOpenSettings}:{
+export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,titrationResult,temperatureC,editable=false,onOpenSettings,temperatureVisible=true}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
- editable?:boolean;onOpenSettings?:()=>void}){
+ editable?:boolean;onOpenSettings?:()=>void;temperatureVisible?:boolean}){
  const id=useId().replace(/:/g,"");
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
@@ -175,19 +175,13 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
    <text x="50" y="113" className="lektrus-lab-ware-brand"
     textAnchor="middle" fontSize="6.5" fontWeight="850"
     fill="#398378" letterSpacing=".8">LEKTRUS</text>
-   {/* Readouts printed on the vessel itself, not floating HTML badges. */}
-   <g className="lektrus-lab-ware-engraving">
-    <rect x="24" y="68" width="52" height="32" rx="4"
-     fill="#f0faf3" fillOpacity=".58" stroke="#83b1a6" strokeWidth=".7"/>
-    <text x="50" y="78" fontSize="9" fontWeight="800" textAnchor="middle"
-     fill="#285a52" textLength={Math.min(48,substanceState.length*6)}
-     lengthAdjust="spacingAndGlyphs">{substanceState}</text>
-    {showLabels&&labels.length>0&&<text x="50" y="88" textAnchor="middle" fontSize="8"
-     fill="#3f7164" textLength={Math.min(45,labels.slice(0,2).join("+").length*5)}
-     lengthAdjust="spacingAndGlyphs">{labels.slice(0,2).join("+")}</text>}
-    <text x="50" y="97" fontWeight="800" fontSize="10" textAnchor="middle"
+   {/* Contents are labelled above the vessel; temperature stays on glass. */}
+   {temperatureVisible&&<g className="lektrus-lab-ware-engraving">
+    <rect x="27" y="75" width="46" height="16" rx="4"
+     fill="#f0faf3" fillOpacity=".8" stroke="#83b1a6" strokeWidth=".7"/>
+    <text x="50" y="86" fontWeight="800" fontSize="10" textAnchor="middle"
      fill="#2c7162">≈{Math.round(temperatureC??22)}°C</text>
-   </g>
+   </g>}
    {editable&&<g role="button" tabIndex={0} className="lektrus-lab-svg-ware-control"
     aria-label="Настроить сосуд" cursor="pointer"
     onPointerDown={e=>e.stopPropagation()}
@@ -200,6 +194,24 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
    </g>}
 
   </svg>
+  {showLabels&&<span className="lektrus-lab-content-tag"
+   title={labels.length?labels.map((formula,i)=>{
+    const dose=vessel.doses?.[vessel.reagents[i]];
+    return formula+(dose?" · "+formatLabDose(dose)+
+     (dose.concentrationM!==undefined?" · "+dose.concentrationM.toLocaleString("ru-RU")+" моль/л":""):"");
+   }).join("; "):"Пустая посуда"}>
+   <strong>{labels.length?labels.join(" + "):"Пусто"}</strong>
+   {labels.length>0&&<small>{substanceState}</small>}
+   <span className="lektrus-lab-content-quantity" aria-hidden="true">
+    {labels.length?labels.map((formula,i)=>{
+     const dose=vessel.doses?.[vessel.reagents[i]];
+     return <span key={vessel.reagents[i]}>{formula}: {dose?
+      formatLabDose(dose)+(dose.concentrationM!==undefined?
+       " · "+dose.concentrationM.toLocaleString("ru-RU")+" М":""):
+      "количество не задано"}</span>;
+    }):"Пусто"}
+   </span>
+  </span>}
  </div>;
 }
 type SurfaceProps={
@@ -918,7 +930,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     {bench.instrumentTarget?.kind==="tripod"&&bench.instrumentTarget.vesselId===v.id&&<span
      className="lektrus-lab-instrument-attachment">На штативе</span>}
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
-     editable={editable} onOpenSettings={()=>{onSelect?.(v.id);setActiveDeviceId(null);
+     editable={editable} temperatureVisible={settings.showTemperatures} onOpenSettings={()=>{onSelect?.(v.id);setActiveDeviceId(null);
       setVesselMenuId(vesselMenuId===v.id?null:v.id)}}
      stirring={bench.stirringVesselId===v.id}
      temperatureC={v.temperatureC??22}
