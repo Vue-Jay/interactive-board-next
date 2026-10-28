@@ -136,6 +136,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [unit,setUnit]=useState<"ml"|"g">("ml");
  const [notice,setNotice]=useState("");
  const [sinkFlow,setSinkFlow]=useState(false);
+ const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string}|null>(null);
  const settings=labBenchSettings(bench);
  const selected=selectedLabVessel(bench);
  const visibleSubstances=substances.filter(v=>
@@ -152,6 +153,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
  useEffect(()=>{if(!transfer)return;const timer=setTimeout(()=>setTransfer(null),900);return()=>clearTimeout(timer)},[transfer]);
  useEffect(()=>{if(!sinkFlow)return;const timer=setTimeout(()=>setSinkFlow(false),900);return()=>clearTimeout(timer)},[sinkFlow]);
+ useEffect(()=>{if(!doseEffect)return;const timer=setTimeout(()=>setDoseEffect(null),900);return()=>clearTimeout(timer)},[doseEffect]);
  const point=(event:PointerEvent)=>{const rect=host.current?.getBoundingClientRect();
   if(!rect||!rect.width||!rect.height)return null;
   return{x:(event.clientX-rect.left)/rect.width*100,y:(event.clientY-rect.top)/rect.height*100};};
@@ -252,6 +254,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const updated=putLabReagent(bench,selected.id,chosen,dose);
   if(updated===bench){setNotice("Реагент уже добавлен или посуда заполнена");return}
   onChange?.(updated);
+  setDoseEffect({x:selected.x,y:selected.y,color:reagentAppearance(chosen).color});
   setNotice(chosen+" · "+dose.value+" "+(unit==="ml"?"мл":"г")+" добавлено в "+names[selected.kind]);
   setCabinet(null);setChosen(null);
  };
@@ -280,7 +283,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   </div>
   {settings.showEquationBoard&&<div className="lektrus-lab-chalkboard" aria-live="polite">
    <small>УРАВНЕНИЕ РЕАКЦИИ</small>
-   <strong>{shownReaction?.equation??"Выберите опыт и смешайте вещества"}</strong>
+   <strong key={shownReaction?.equation??"idle"}>{shownReaction?.equation??"Выберите опыт и смешайте вещества"}</strong>
    {shownReaction&&<span>{shownReaction.description}</span>}
   </div>}
   <button type="button" className="lektrus-lab-reagent-furniture" data-board-interactive="true"
@@ -355,6 +358,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}/>
    </button>;
   })}
+  {doseEffect&&<svg className="lektrus-lab-dose-animation" viewBox="0 0 100 100"
+   preserveAspectRatio="none" aria-hidden="true">
+   <path d={`M 22 34 Q 30 20 ${doseEffect.x} ${doseEffect.y-13}`}
+    fill="none" stroke={doseEffect.color} strokeWidth="1" strokeLinecap="round"/>
+  </svg>}
   {shelfGhost&&<div className="lektrus-lab-shelf-ghost"
     style={{left:shelfGhost.x+"%",top:shelfGhost.y+"%"}} aria-hidden="true">
     {names[shelfGhost.kind]}</div>}
