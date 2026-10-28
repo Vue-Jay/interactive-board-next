@@ -531,7 +531,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   if(!p||!rect)return;
   if(Math.hypot((p.x-g.startX)*rect.width/100,(p.y-g.startY)*rect.height/100)>8)g.dragged=true;
   if(g.dragged)setDevicePreview({id:g.id,x:Math.max(9,Math.min(79,g.x+p.x-g.startX)),
-   y:Math.max(63,Math.min(84,g.y+p.y-g.startY))});
+   y:Math.max(58,Math.min(84,g.y+p.y-g.startY))});
  };
  const finishDevice=(e:PointerEvent<HTMLButtonElement>)=>{
   const g=deviceGesture.current;if(!g)return;
