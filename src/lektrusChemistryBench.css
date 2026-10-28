@@ -2926,3 +2926,30 @@
 @container(max-width:520px){
  .lektrus-lab-bench .lektrus-lab-quick-phase{display:none!important}
 }
+
+
+/* The reagent cabinet is portalled to body, so its grid must not depend
+   on .lektrus-lab-bench ancestry or tabletop container queries. */
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-reagent-group-grid{
+ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+ gap:7px!important;align-items:stretch!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-reagent-group-grid>button{
+ min-width:0!important;min-height:69px!important;
+ padding:9px 10px!important;gap:4px 8px!important;
+ grid-template-columns:23px minmax(0,1fr)!important;
+ grid-template-rows:auto 1fr!important;overflow:hidden!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-reagent-group-grid>button span{
+ min-width:0!important;overflow-wrap:anywhere!important;
+ line-height:1.2!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-reagent-group-grid>button small{
+ display:block!important;font-size:10px!important;color:#6c937b!important}
+@media(max-width:960px){
+ .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-reagent-group-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:620px){
+ .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-reagent-group-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-reagent-group-grid>button{
+  min-height:66px!important;padding:7px!important}
+}
