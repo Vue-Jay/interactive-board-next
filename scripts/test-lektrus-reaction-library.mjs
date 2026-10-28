@@ -1,3 +1,4 @@
+import "./test-lektrus-chemistry-bench.mjs";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
