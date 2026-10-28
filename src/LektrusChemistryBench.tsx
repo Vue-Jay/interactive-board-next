@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,stopPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -211,6 +211,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const selected=selectedLabVessel(bench);
  const physicalDevices=placedLabDevices(bench);
  const activeDevice=physicalDevices.find(d=>d.id===activeDeviceId);
+ const benchRef=useRef(bench);
+ const changeRef=useRef(onChange);
+ benchRef.current=bench;changeRef.current=onChange;
  const isGlobalSearch=!!query.trim();
  const catalogKind=(v:{kind:string})=>{
   if(cabinetTab==="all"||isGlobalSearch)return true;
@@ -243,6 +246,20 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const rxn=selected?labObservation(selected):null;
  const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
+ /** Persist one deterministic simulated thermal clock in board state. */
+ useEffect(()=>{
+  if(!editable)return;
+  const timer=setInterval(()=>{
+   const current=benchRef.current;
+   const active=placedLabDevices(current).some(d=>d.powered||
+    (d.temperatureC??22)>22.1)||
+    current.vessels.some(v=>v.buretteOpen||(v.temperatureC??22)>22.1);
+   if(!active)return;
+   const next=advanceLabSimulation(current,Date.now());
+   if(next!==current)changeRef.current?.(next);
+  },2000);
+  return ()=>clearInterval(timer);
+ },[editable]);
  useEffect(()=>{if(cabinet)dialogRef.current?.focus()},[cabinet]);
  useEffect(()=>{scrollRef.current?.scrollTo({top:0})},
   [cabinet,cabinetTab,query,category,phase,sort,group,effectFilter]);
@@ -439,7 +456,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const name=labDevices.find(d=>d.id===device?.kind)?.name??"Прибор";
   const target=bench.vessels.find(v=>v.id===vesselId);
   setNotice(name+" · "+(target?names[target.kind]:"сосуд")+
-   (device?.kind==="thermometer"?" (температура не вычисляется)":""));
+   ". Прибор установлен, включите его отдельно.");
  };
  const downDevice=(e:PointerEvent<HTMLButtonElement>,id:string,x:number,y:number)=>{
   if(!editable||e.button!==0||!e.isPrimary)return;
