@@ -91,7 +91,7 @@ export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string):L
  if(device.active&&device.linkedVesselId===vesselId)return bench;
  // One vessel cannot be mounted on two incompatible devices at once.
  const next=placedLabDevices(bench).map(d=>d.id===id?
-  {...d,active:true,linkedVesselId:vesselId,powered:false}:
+  {...d,active:true,linkedVesselId:vesselId,powered:d.powered??false}:
   d.linkedVesselId===vesselId?{...d,active:false,linkedVesselId:undefined,powered:false}:d);
  const point=labDisplayPoint(vessel,bench.vessels.length>3);
  const placedDevices=next.map(d=>d.id===id?{...d,
@@ -208,6 +208,15 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const heater=devices.find(d=>d.active&&d.powered&&d.linkedVesselId===v.id&&
    ["hotplate","burner"].includes(d.kind));
   if(!heater)return v;
+  // Realistic minimum activation temperatures for selected reviewed cases.
+  // CaCO3 calcination requires kiln-level heat, not a hotplate.
+  const thermalThreshold=v.reagents.includes("CaCO3")?825:
+   v.reagents.includes("MgCO3")?350:
+   v.reagents.includes("CuCO3")?200:
+   v.reagents.includes("NaHCO3")?85:
+   v.reagents.includes("Cu(OH)2")?95:
+   v.reagents.includes("Fe")&&v.reagents.includes("S")?200:60;
+  if(v.temperatureC<thermalThreshold)return v;
   const mode=heater.kind==="burner"&&v.temperatureC>=115?"ignited":"heated";
   if(v.environment===mode)return v;
   const next=setLabEnvironment({...result,vessels:[v]},v.id,mode);
