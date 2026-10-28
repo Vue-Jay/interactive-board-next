@@ -2051,3 +2051,151 @@
  border:1px solid #75b69a;color:#25654e;
  font:750 10px/1.2 system-ui,sans-serif;pointer-events:none;
  box-shadow:0 2px 5px #17523c21}
+
+/* Chemistry lab v5: all apparatus are independent draggable lab objects.
+   No floating appliance panel hides the reaction surface. */
+.lektrus-lab-bench .lektrus-lab-installed-devices{display:none!important}
+.lektrus-lab-table-legs{display:none!important}
+.lektrus-lab-bench .lektrus-lab-counter-front{
+ bottom:0!important;height:5%!important;
+ background:linear-gradient(180deg,#84ae93,#618871)!important;
+ border-top:2px solid #b0d2b5!important;box-shadow:inset 0 3px 10px #24473333!important}
+.lektrus-lab-bench .lektrus-lab-counter{
+ bottom:4.5%!important;height:5%!important;
+ border-top:3px solid #e6f2e3!important;
+ background:linear-gradient(180deg,#bad5bc,#8fb59b)!important}
+.lektrus-lab-bench .lektrus-lab-placed-device{
+ position:absolute!important;display:flex!important;flex-direction:column!important;
+ align-items:center!important;justify-content:center!important;
+ gap:4px!important;min-width:76px!important;
+ width:clamp(80px,7.7cqw,118px)!important;
+ height:clamp(92px,11cqw,139px)!important;
+ padding:8px 5px!important;box-sizing:border-box!important;
+ transform:translate(-50%,-50%)!important;z-index:17;
+ border:1px solid transparent!important;border-radius:13px!important;
+ background:linear-gradient(140deg,#f9fffbaa,#e4f2e0c9)!important;
+ box-shadow:0 4px 10px #2a5f483b!important;
+ color:#285a4a!important;touch-action:none!important;
+ cursor:grab!important;-webkit-user-select:none;user-select:none;
+ transition:background-color .16s,border-color .16s;
+}
+.lektrus-lab-bench .lektrus-lab-placed-device:active{cursor:grabbing!important}
+.lektrus-lab-bench .lektrus-lab-placed-device:hover{
+ border-color:#8ac3a3!important;background:#f7fff7!important}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-selected{
+ border:2px solid #4fbb8b!important;box-shadow:0 0 0 3px #6fba9a25,0 5px 13px #234e3b37!important}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-running{
+ background:linear-gradient(#f2fff1,#d6ecdc)!important}
+.lektrus-lab-placed-device>.lektrus-lab-device-icon{
+ width:clamp(45px,5.3cqw,78px)!important;
+ height:clamp(45px,5.3cqw,78px)!important;
+ flex:0 1 auto!important;min-height:0;pointer-events:none}
+.lektrus-lab-bench .lektrus-lab-placed-device>span{
+ display:block;max-width:100%;text-align:center;
+ font:850 clamp(11px,1.04cqw,13px)/1.15 system-ui,sans-serif!important;
+ white-space:normal!important;overflow-wrap:break-word}
+.lektrus-lab-bench .lektrus-lab-placed-device>small{
+ font:750 10px/1.15 system-ui,sans-serif!important;color:#397a5b;
+ white-space:normal;text-align:center}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-hotplate.is-running,
+.lektrus-lab-bench .lektrus-lab-placed-device.is-burner.is-running{
+ box-shadow:0 0 12px #e9a3678c,0 5px 15px #815b3a2a!important}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-stirrer.is-running .lektrus-lab-device-icon{
+ animation:lektrus-apparatus-pulse 1.6s ease-in-out infinite}
+@keyframes lektrus-apparatus-pulse{
+ 0%,100%{filter:drop-shadow(0 0 1px #6dcaa4)}
+ 50%{filter:drop-shadow(0 0 7px #4caf8f)}
+}
+.lektrus-lab-device-shelf-ghost{
+ position:absolute;z-index:110;pointer-events:none;transform:translate(-50%,-50%);
+ filter:drop-shadow(0 4px 8px #255a4666);opacity:.85}
+.lektrus-lab-bench .lektrus-lab-device-actions{
+ position:absolute!important;left:21%!important;right:19%!important;top:45%!important;
+ z-index:48!important;min-height:44px!important;max-height:65px!important;
+ display:flex!important;align-items:center!important;justify-content:center;
+ gap:7px!important;box-sizing:border-box!important;padding:7px 10px!important;
+ background:#f5fff5f3!important;border:1px solid #97ceb0!important;
+ border-radius:11px!important;box-shadow:0 5px 12px #2a6a4c33!important;
+ color:#286b50;white-space:normal;overflow:visible!important}
+.lektrus-lab-device-actions strong{
+ max-width:135px;min-width:0;font:800 12px/1.15 system-ui,sans-serif;
+ overflow-wrap:break-word}
+.lektrus-lab-device-actions select{
+ min-width:0!important;max-width:155px!important;height:32px;
+ border-radius:8px;border:1px solid #c2d9c8;background:#fff;
+ color:#2e6c52;font:650 11px/1.2 system-ui,sans-serif}
+.lektrus-lab-device-actions button{
+ flex:none!important;min-height:31px!important;
+ padding:4px 9px!important;border-radius:8px!important;
+ background:#dcefe2!important;border:1px solid #9ac8ac!important;
+ font:800 11px/1.15 system-ui,sans-serif!important;color:#297354!important;
+ cursor:pointer}
+.lektrus-lab-device-actions button:last-child{font-size:17px!important;padding:2px 8px!important}
+.lektrus-lab-device-actions button:disabled{opacity:.45;cursor:default}
+.lektrus-lab-device-actions button:hover:not(:disabled){background:#c8e8d4!important}
+.lektrus-lab-bench .lektrus-lab-vessel{
+ overflow:visible!important;padding:0 3px 10px!important;
+ min-height:0!important;box-sizing:border-box!important}
+.lektrus-lab-bench .lektrus-lab-vessel-art{
+ display:flex!important;flex-direction:column!important;
+ justify-content:flex-start!important;align-items:center!important;
+ width:100%!important;height:100%!important;overflow:visible!important;
+ gap:4px!important;padding:0!important;box-sizing:border-box!important}
+.lektrus-lab-bench .lektrus-lab-vessel-art>svg{
+ display:block!important;height:calc(100% - 55px)!important;
+ max-height:none!important;min-height:0!important;flex:1 1 auto!important;
+ width:100%!important;max-width:100%!important;overflow:visible!important}
+.lektrus-lab-bench .lektrus-lab-vessel-label{
+ display:flex!important;flex:0 0 auto!important;flex-direction:column!important;
+ align-items:center!important;justify-content:center!important;
+ width:100%!important;max-width:100%!important;
+ min-height:35px!important;height:auto!important;
+ gap:3px!important;padding:1px 0 4px!important;margin:0!important;
+ overflow:visible!important;line-height:1.2!important}
+.lektrus-lab-bench .lektrus-lab-vessel-label b,
+.lektrus-lab-bench .lektrus-lab-vessel-label span{
+ display:block!important;max-width:100%!important;min-width:0!important;
+ overflow:visible!important;text-overflow:clip!important;
+ white-space:normal!important;word-break:normal!important;
+ font:750 clamp(11px,1.05cqw,13px)/1.2 system-ui,sans-serif!important;
+ text-align:center!important;color:#356e56!important}
+.lektrus-lab-bench .lektrus-lab-vessel-label b{font-weight:850!important}
+.lektrus-lab-bench .lektrus-lab-vessel-label span{font-weight:650!important}
+.lektrus-lab-bench .lektrus-lab-sink{
+ right:1%!important;width:18%!important;height:34%!important;
+ overflow:visible!important;padding:2px 0 0!important}
+.lektrus-lab-bench .lektrus-lab-sink-caption{
+ display:flex!important;flex-direction:column!important;
+ align-items:center!important;justify-content:center!important;
+ width:100%!important;min-width:0!important;
+ padding:5px 6px!important;gap:3px!important;
+ min-height:51px!important;height:auto!important;flex:0 0 51px!important;
+ box-sizing:border-box!important;white-space:normal!important;
+ overflow:visible!important;line-height:1.25!important;
+ background:#e7f5ebf5!important;border:1px solid #a5d0b4!important;
+ border-radius:9px!important}
+.lektrus-lab-bench .lektrus-lab-sink-caption strong{
+ display:block!important;font:850 clamp(12px,1.1cqw,15px)/1.25 system-ui,sans-serif!important;
+ letter-spacing:.02em!important;white-space:normal!important}
+.lektrus-lab-bench .lektrus-lab-sink-caption small{
+ display:block!important;max-width:100%!important;
+ padding:0!important;font:700 clamp(10px,.95cqw,12px)/1.25 system-ui,sans-serif!important;
+ letter-spacing:0!important;color:#497862!important;
+ white-space:normal!important;overflow-wrap:break-word!important;text-align:center!important}
+@container(max-width:670px){
+ .lektrus-lab-bench .lektrus-lab-placed-device{
+  width:clamp(60px,10cqw,80px)!important;height:clamp(77px,12cqw,100px)!important;
+  padding:3px!important}
+ .lektrus-lab-placed-device>.lektrus-lab-device-icon{width:42px!important;height:42px!important}
+ .lektrus-lab-bench .lektrus-lab-placed-device>span{font-size:10px!important}
+ .lektrus-lab-bench .lektrus-lab-device-actions{left:17%!important;right:16%!important;
+  gap:3px!important;padding:4px!important;flex-wrap:wrap;max-height:96px!important}
+ .lektrus-lab-device-actions strong{font-size:10px}
+ .lektrus-lab-device-actions select{max-width:100px!important;font-size:10px}
+ .lektrus-lab-device-actions button{padding:4px!important;font-size:9px!important}
+ .lektrus-lab-bench .lektrus-lab-sink-caption strong{font-size:11px!important}
+ .lektrus-lab-bench .lektrus-lab-sink-caption small{font-size:10px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench .lektrus-lab-placed-device.is-stirrer.is-running .lektrus-lab-device-icon{animation:none!important}
+}
