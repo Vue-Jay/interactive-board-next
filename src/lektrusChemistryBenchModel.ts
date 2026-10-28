@@ -18,7 +18,7 @@ export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
  {id:"burette",name:"Бюретка",description:"Дозирование при титровании"},
  {id:"funnel",name:"Воронка",description:"Аккуратное переливание"}
 ];
-export type LabDose={value:number;unit:"ml"|"g"};
+export type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
 export type LabDevice="hotplate"|"burner"|"stirrer"|"tripod"|"thermometer";
 export const labDevices:{id:LabDevice;name:string;description:string;symbol:string}[]=[
  {id:"hotplate",name:"Плитка",description:"Нагревать выбранный сосуд",symbol:"▤"},
@@ -51,6 +51,73 @@ export function dripLabTitration(bench:LabBench,ml:number):LabBench{
 }
 export function restartLabTitration(bench:LabBench):LabBench{
  return setLabTitration(bench,resetTitration(bench.titration??defaultTitration()));
+}
+/** Use a filled burette over a vessel, not a separate titration mode. Only
+ * explicit concentrations and familiar strong monoprotic acids/bases qualify. */
+const titrationAcids=["HCl","HNO3","HBr"] as const;
+const titrationBases=["NaOH","KOH"] as const;
+export function labTitrationTargets(bench:LabBench,sourceId:string){
+ const source=bench.vessels.find(v=>v.id===sourceId);
+ if(source?.kind!=="burette"||source.reagents.length!==1)return [];
+ const reagent=source.reagents[0],dose=source.doses?.[reagent];
+ if(!dose||dose.unit!=="ml"||!dose.concentrationM||dose.value<=0)return [];
+ const isAcid=titrationAcids.some(a=>a===reagent);
+ const isBase=titrationBases.some(a=>a===reagent);
+ if(!isAcid&&!isBase)return [];
+ return bench.vessels.filter(v=>v.id!==sourceId&&
+  ["conical","beaker","flask"].includes(v.kind)&&
+  (v.reagents.length===1||(bench.titrationPair?.sourceId===sourceId&&
+   bench.titrationPair.targetId===v.id))&&
+  v.reagents.some(id=>isAcid?titrationBases.some(b=>b===id):titrationAcids.some(a=>a===id))&&
+  v.reagents.some(id=>{
+   const d=v.doses?.[id];
+   return d?.unit==="ml"&&d.value>0&&d.concentrationM!==undefined;
+  }));
+}
+export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,requestedMl:number):LabBench{
+ if(!Number.isFinite(requestedMl)||requestedMl<=0||
+  !labTitrationTargets(bench,sourceId).some(v=>v.id===targetId))return bench;
+ const src=bench.vessels.find(v=>v.id===sourceId)!;
+ const dst=bench.vessels.find(v=>v.id===targetId)!;
+ const titrant=src.reagents[0],sourceDose=src.doses![titrant];
+ const isAcid=titrationAcids.some(id=>id===titrant);
+ const analyte=dst.reagents.find(id=>isAcid?
+  titrationBases.some(b=>b===id):titrationAcids.some(a=>a===id))!;
+ const initialDose=dst.doses![analyte];
+ const old=bench.titrationPair?.sourceId===sourceId&&bench.titrationPair.targetId===targetId?
+  bench.titration:undefined;
+ if(old&&(old.analyte!==(isAcid?"base":"acid")||
+  old.concentrationAnalyte!==initialDose.concentrationM||
+  old.concentrationTitrant!==sourceDose.concentrationM))return bench;
+ const addedBefore=old?.addedMl??0;
+ const ml=Math.min(Math.round(requestedMl*100)/100,sourceDose.value,100-addedBefore);
+ if(ml<=0)return bench;
+ const newTotal=Math.round((addedBefore+ml)*100)/100;
+ const model:TitrationModel=old?{...old,addedMl:newTotal}:{
+  acid:(isAcid?titrant:analyte) as TitrationModel["acid"],
+  base:(isAcid?analyte:titrant) as TitrationModel["base"],
+  analyte:isAcid?"base":"acid",
+  concentrationAnalyte:initialDose.concentrationM!,
+  concentrationTitrant:sourceDose.concentrationM!,
+  volumeAnalyteMl:initialDose.value,addedMl:newTotal,
+  indicator:dst.indicator??"phenolphthalein"
+ };
+ if(!validTitration(model))return bench;
+ const vessels=bench.vessels.map(v=>{
+  if(v.id===sourceId){
+   const left=Math.round((sourceDose.value-ml)*100)/100;
+   return {...v,reagents:left?[titrant]:[],doses:left?
+    {[titrant]:{...sourceDose,value:left}}:undefined,observed:false};
+  }
+  if(v.id===targetId){
+   const dosed={...v.doses};
+   dosed[titrant]={value:newTotal,unit:"ml" as const,concentrationM:sourceDose.concentrationM};
+   return {...v,reagents:[...new Set([...v.reagents,titrant])],doses:dosed,observed:true,
+    uncertain:false};
+  }
+  return v;
+ });
+ return {...bump(bench,vessels,targetId),titration:model,titrationPair:{sourceId,targetId}};
 }
 export type LabBenchSettings={
  showEquationBoard:boolean;showVesselLabels:boolean;animateEffects:boolean;
@@ -108,7 +175,8 @@ export type LabVessel={
  completedReaction?:ReactionCase;
 };
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;
- settings?:LabBenchSettings;devices?:LabDevice[];titration?:TitrationModel;stirringVesselId?:string};
+ settings?:LabBenchSettings;devices?:LabDevice[];titration?:TitrationModel;stirringVesselId?:string;
+ titrationPair?:{sourceId:string;targetId:string};}
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=6;
 const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
 export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>):LabBench{
@@ -188,11 +256,15 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
  if(!target||target.reagents.length>0)return bench; // Only clean glassware returns to storage.
  const vessels=bench.vessels.filter(v=>v.id!==id);
  return {...bump(bench,vessels,bench.selectedId===id?(vessels[0]?.id??""):bench.selectedId),
-  stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId};
+  stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId,
+  titrationPair:bench.titrationPair&&(bench.titrationPair.sourceId===id||bench.titrationPair.targetId===id)?
+   undefined:bench.titrationPair};
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
  const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined}));
- return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId});
+ return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
+  titrationPair:next.titrationPair&&(next.titrationPair.sourceId===id||next.titrationPair.targetId===id)?
+   undefined:next.titrationPair});
 }
 export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|undefined):LabBench{
  if(!bench.vessels.some(v=>v.id===id&&v.reagents.length))return bench;
@@ -212,15 +284,20 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
  if(!bench.vessels.some(v=>v.id===id))return bench;
  return revise(bench,id,v=>{
   const validDose=dose&&Number.isFinite(dose.value)&&dose.value>0&&
-   dose.value<=10000&&(dose.unit==="ml"||dose.unit==="g")?dose:undefined;
+   dose.value<=10000&&(dose.unit==="ml"||dose.unit==="g")&&
+   (dose.concentrationM===undefined||
+    (dose.unit==="ml"&&Number.isFinite(dose.concentrationM)&&
+     dose.concentrationM>=.001&&dose.concentrationM<=2))?dose:undefined;
   if(dose&&!validDose)return v;
   const present=v.reagents.includes(reagent);
   if(!present&&v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
   const previous=v.doses?.[reagent];
   if(present&&!validDose)return v;
-  if(previous&&validDose&&previous.unit!==validDose.unit)return v;
+  if(previous&&validDose&&(previous.unit!==validDose.unit||
+   (previous.concentrationM!==undefined&&validDose.concentrationM!==undefined&&
+    previous.concentrationM!==validDose.concentrationM)))return v;
   const combined=validDose?{value:Math.round(((previous?.value??0)+validDose.value)*100)/100,
-   unit:validDose.unit}:undefined;
+   unit:validDose.unit,concentrationM:validDose.concentrationM??previous?.concentrationM}:undefined;
   if(combined&&combined.value>10000)return v;
   const reagents=present?v.reagents:[...v.reagents,reagent];
   const beforeReaction=labObservation(v);
@@ -320,6 +397,8 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
   remote.titration:mine.titration;
  const stirringVesselId=mine.stirringVesselId===previous.stirringVesselId?
   remote.stirringVesselId:mine.stirringVesselId;
- return {vessels:limited,selectedId,settings,devices,titration,stirringVesselId,
+ const titrationPair=JSON.stringify(mine.titrationPair??null)===JSON.stringify(previous.titrationPair??null)?
+  remote.titrationPair:mine.titrationPair;
+ return {vessels:limited,selectedId,settings,devices,titration,titrationPair,stirringVesselId,
   event:Math.max(remote.event,mine.event)+1};
 }
