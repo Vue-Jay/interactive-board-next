@@ -120,3 +120,45 @@
  .lektrus-subject-tools-list button,
  .lektrus-school-editor button{transition:background-color .14s,border-color .14s}
 }
+
+/* A standalone chemistry task is a real editable card, not an implicit shared
+ * chemistry worksheet. Only the explicit "collect" action moves it. */
+.lektrus-subject-board-shell:has(.lektrus-subject-board.is-standalone-chemistry){
+ border-radius:10px;
+}
+.lektrus-subject-board.is-standalone-chemistry .lektrus-subject-board-header{
+ background:color-mix(in srgb,var(--subject-board-soft) 75%,white);
+}
+.lektrus-subject-board.is-standalone-chemistry .lektrus-subject-board-tools{display:none}
+.lektrus-subject-board.is-standalone-chemistry .lektrus-subject-board-footer>span:last-child{
+ font-size:0;
+}
+.lektrus-subject-board.is-standalone-chemistry .lektrus-subject-board-footer>span:last-child::after{
+ content:"ХИМИЧЕСКОЕ ЗАДАНИЕ";font-size:9px;
+}
+.board-object .lektrus-chem-collect-action{
+ position:absolute;z-index:90;right:10px;top:43px;
+ font:600 11px/1.3 system-ui,sans-serif;
+}
+.lektrus-chem-collect-action>button{
+ min-height:30px;max-width:185px;padding:5px 9px;
+ border:1px solid color-mix(in srgb,#1e766a 45%,#d8e6e1);
+ background:#f2faf6;color:#1e766a;border-radius:8px;
+ cursor:pointer;font:700 11px/1.25 system-ui,sans-serif;
+}
+.lektrus-chem-collect-action>button:hover,.lektrus-chem-collect-action>button[aria-expanded="true"]{
+ background:#e0f2e8;border-color:#1e766a;
+}
+.lektrus-chem-collect-menu{
+ position:absolute;right:0;top:calc(100% + 5px);width:min(240px,75vw);max-height:230px;
+ overflow:auto;z-index:100;display:grid;gap:5px;padding:9px;
+ background:#fff;border:1px solid #b9d9c9;border-radius:10px;
+ box-shadow:0 8px 24px #1f374126;
+}
+.lektrus-chem-collect-menu strong{font:750 11px/1.3 system-ui,sans-serif;color:#1e766a}
+.lektrus-chem-collect-menu button{
+ text-align:left;padding:7px 9px;min-height:32px;
+ border:1px solid #e1ebe7;background:#f9fcfa;color:#355f56;
+ border-radius:7px;font:600 11px/1.35 system-ui,sans-serif;cursor:pointer;
+}
+.lektrus-chem-collect-menu button:hover{background:#e8f5ec;border-color:#a7d5be}
