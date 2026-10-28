@@ -97,10 +97,10 @@ export function LektrusSubjectActivityBuilder({activity,onChange}:EditorProps){
  const patch=(v:Partial<SubjectTaskActivity>)=>onChange({...activity,...v});
  const title=activity.mode==="choice"?"Варианты ответа":
   activity.mode==="fill"?"Текст с пропусками":activity.mode==="match"?"Пары для сопоставления":"Последовательность";
- const help=activity.mode==="choice"?"Добавьте варианты, затем отметьте правильный. На доске ученик выберет ответ.":
-  activity.mode==="fill"?"Соберите строку из фрагментов и пропусков. На доске ученик введёт недостающие слова или числа.":
-  activity.mode==="match"?"Запишите соответствующие элементы парами. На доске ученику нужно соединить их.":
-  "Каждый элемент добавьте отдельно в правильном порядке. На доске порядок будет перемешан.";
+ const help=activity.mode==="choice"?"Отметьте верный ответ.":
+  activity.mode==="fill"?"Укажите текст и ответы к пропускам.":
+  activity.mode==="match"?"Соедините элементы в правильные пары.":
+  "Укажите исходный порядок элементов.";
  return <section className="lektrus-activity-builder" aria-label={"Конструктор: "+title}>
   <div className="lektrus-activity-builder-heading"><span className="lektrus-activity-builder-symbol" aria-hidden="true">
    {activity.mode==="choice"?"◉":activity.mode==="fill"?"▢":activity.mode==="match"?"⇄":"⇢"}</span>
@@ -122,13 +122,13 @@ export function LektrusSubjectActivityBuilder({activity,onChange}:EditorProps){
   </>}
   {activity.mode==="fill"&&<div className="lektrus-activity-fill-editor">
    {(activity.blanks??[]).map((blank,i)=><div className="lektrus-activity-fill-row" key={i}>
-    <div className="lektrus-activity-fill-row-head"><span>Фрагмент {i+1} и пропуск</span>
+    <div className="lektrus-activity-fill-row-head"><span>Пропуск {i+1}</span>
      {(activity.blanks?.length??0)>1&&<button type="button" aria-label="Удалить пропуск" onClick={()=>
        patch({blanks:activity.blanks?.filter((_,j)=>j!==i)})}>Удалить</button>}</div>
     <div className="lektrus-activity-fill-grid">
      <label>Текст перед пропуском<textarea rows={2} maxLength={1200} value={blank.before}
-      placeholder="Часть фразы, формулы или предложения" onChange={e=>patch({blanks:activity.blanks?.map((v,j)=>j===i?{...v,before:e.target.value}:v)})}/></label>
-     <label>Правильный ответ<input value={blank.answer} maxLength={240}
+      placeholder="Текст перед пропуском" onChange={e=>patch({blanks:activity.blanks?.map((v,j)=>j===i?{...v,before:e.target.value}:v)})}/></label>
+     <label>Ответ<input value={blank.answer} maxLength={240}
       placeholder="Что ученик должен вписать" onChange={e=>patch({blanks:activity.blanks?.map((v,j)=>j===i?{...v,answer:e.target.value}:v)})}/></label>
     </div>
    </div>)}
@@ -138,10 +138,11 @@ export function LektrusSubjectActivityBuilder({activity,onChange}:EditorProps){
    {(activity.blanks?.length??0)<8&&<button type="button" className="lektrus-activity-add"
      onClick={()=>patch({blanks:[...(activity.blanks??[]),{before:"",answer:""}]})}>+ Добавить пропуск</button>}
   </div>}
-  {(activity.mode==="match"||activity.mode==="order")&&<div className="lektrus-activity-quick-import">
-    <div><strong>Быстрое заполнение</strong><small>{activity.mode==="match"?
-     "Вставьте пары построчно: слово — перевод. Можно использовать знак = или табуляцию.":
-     "Вставьте предложение. Оно разделится на отдельные слова, сохранив исходный порядок."}</small></div>
+  {(activity.mode==="match"||activity.mode==="order")&&<details className="lektrus-activity-quick-import">
+    <summary>{activity.mode==="match"?"Вставить список пар":"Разделить предложение на слова"}</summary>
+    <small>{activity.mode==="match"?
+     "Пары по строкам: слово — перевод (или =, Tab).":
+     "Вставьте предложение, чтобы разбить его на слова."}</small>
     <textarea rows={activity.mode==="match"?4:2} maxLength={1800} value={quickSource}
      placeholder={activity.mode==="match"?"house — дом\nwindow — окно":"She is reading a book."}
      onChange={e=>{setQuickSource(e.target.value);setQuickHint("");}}/>
@@ -160,7 +161,7 @@ export function LektrusSubjectActivityBuilder({activity,onChange}:EditorProps){
      }
     }}>{activity.mode==="match"?"Заполнить пары":"Разделить на слова"}</button>
     {quickHint&&<small role="status">{quickHint}</small>}
-   </div>}
+   </details>}
   {activity.mode==="match"&&<div className="lektrus-activity-pairs-editor">
    {(activity.pairs??[]).map((pair,i)=><div className="lektrus-activity-pair-row" key={i}>
     <span className="lektrus-activity-index">{i+1}</span>
