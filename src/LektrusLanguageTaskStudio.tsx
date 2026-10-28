@@ -185,6 +185,25 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
     {template.fields.length>0&&<div className="lektrus-language-studio-fields">
      {template.fields.filter(field=>!(tone==="russian"&&template.id==="morphology"&&field.id==="target")).map(field=>{
       const content=subjectFieldInfo[tone+":"+template.id+":"+field.id]??fieldInfo[field.id];
+      if(field.id==="questions"&&((tone==="russian"&&template.id==="text")||(tone==="languages"&&template.id==="reading"))){
+       const questions=(entry.details?.questions??"").split(/\r?\n/).filter(line=>line.trim()).slice(0,15);
+       const setQuestions=(next:string[])=>changeMaterial("questions",next.join("\n"));
+       return <div className="lektrus-language-question-editor" key={field.id}>
+        <div className="lektrus-language-gap-heading"><strong>{content?.label??"Вопросы"}</strong>
+         <small>Каждый вопрос отдельно. На доске у ученика появится место для ответа под ним.</small></div>
+        {(questions.length?questions:[""]).map((question,i)=>
+         <div className="lektrus-language-question-row" key={i}>
+          <span>{i+1}</span>
+          <input value={question} maxLength={350} aria-label={"Вопрос "+(i+1)}
+           placeholder="Напишите вопрос к тексту"
+           onChange={e=>setQuestions((questions.length?questions:[""]).map((old,j)=>j===i?e.target.value:old))}/>
+          {questions.length>1&&<button type="button" aria-label={"Удалить вопрос "+(i+1)}
+           title="Удалить вопрос" onClick={()=>setQuestions(questions.filter((_,j)=>j!==i))}>×</button>}
+         </div>)}
+        {questions.length<15&&<button type="button" className="lektrus-language-add-question"
+         onClick={()=>setQuestions([...questions,"Новый вопрос"]) }>+ Добавить вопрос</button>}
+       </div>;
+      }
       return <label className="lektrus-language-field" key={field.id}>
        {content?.label??field.label}
        {field.multiline||content?.rows?<textarea rows={content?.rows??4} maxLength={1800}
