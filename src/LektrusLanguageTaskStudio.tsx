@@ -7,6 +7,7 @@ import {activityMatchesTask,freshActivity,interactiveModesForSubject,
  LektrusSubjectActivityRunner} from "./LektrusSubjectActivity";
 import {isLanguageGapExercise,languageGapText,parseLanguageGapText,preserveGapChoices} from "./lektrusLanguageGapModel";
 import LektrusRussianTaskAnswer from "./LektrusRussianTaskAnswer";
+import LektrusForeignTaskAnswer from "./LektrusForeignTaskAnswer";
 
 type Props={
  tone:"russian"|"languages";
@@ -31,8 +32,8 @@ const introduction:Record<string,{title:string;hint:string}>={
  "languages:gaps":{title:"Заполнение пропусков",hint:"Выделите в тексте слова или формы, которые ученик должен вписать."},
  "languages:vocabulary":{title:"Сопоставление слов",hint:"Заполните соответствующие пары. На доске ученику предложат перемешанные варианты."},
  "languages:word-order":{title:"Составление предложения",hint:"Добавьте слова отдельно в правильном порядке. На доске они появятся перемешанными."},
- "languages:grammar":{title:"Грамматическое преобразование",hint:"Укажите предложения и требуемое изменение. Ученик запишет новые формы."},
- "languages:reading":{title:"Чтение с вопросами",hint:"Поместите текст и вопросы. Ученик читает и записывает ответы."},
+ "languages:grammar":{title:"Грамматическое преобразование",hint:"Добавьте предложения по одному и задайте конкретное правило. Ученик преобразует каждое предложение отдельно."},
+ "languages:reading":{title:"Чтение и понимание",hint:"Укажите связный текст и вопросы к нему. Каждый ответ ученик запишет непосредственно под вопросом."},
  "languages:choice":{title:"Вопрос с вариантами",hint:"Создайте вопрос и варианты, обозначив правильный ответ."}
 };
 /** The same stored field can have different school meaning in different workflows. */
@@ -59,6 +60,7 @@ const fieldInfo:Record<string,{label:string;hint:string;rows?:number}>={
 export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
  const [previewAnswer,setPreviewAnswer]=useState<SubjectTaskActivityResponse>({});
  const [previewRussian,setPreviewRussian]=useState<RussianTaskWork>({});
+ const [previewForeign,setPreviewForeign]=useState("");
  const [selectionHint,setSelectionHint]=useState("");
  const selectedRef=useRef<HTMLTextAreaElement>(null);
  const punctuation=tone==="russian"&&template.id==="punctuation";
@@ -249,6 +251,51 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
     {template.fields.length>0&&<div className="lektrus-language-studio-fields">
      {template.fields.filter(field=>!(tone==="russian"&&template.id==="morphology"&&field.id==="target")).map(field=>{
       const content=subjectFieldInfo[tone+":"+template.id+":"+field.id]??fieldInfo[field.id];
+      if(tone==="languages"&&template.id==="grammar"&&field.id==="material"){
+       const sentences=(entry.details?.material??"").split(/\r?\n/).slice(0,12);
+       const setSentences=(items:string[])=>changeMaterial("material",items.join("\n").slice(0,1800));
+       return <div className="lektrus-language-question-editor" key={field.id}>
+        <div className="lektrus-language-gap-heading"><strong>Предложения для преобразования</strong>
+         <small>Одно предложение на строку, до 12. У ученика будет отдельное поле для каждого.</small></div>
+        {(sentences.length?sentences:[""]).map((sentence,i)=>
+         <div className="lektrus-language-question-row" key={i}>
+          <span>{i+1}</span>
+          <input value={sentence} maxLength={240} aria-label={"Предложение "+(i+1)}
+           placeholder="Например: She reads every day."
+           onChange={e=>setSentences((sentences.length?sentences:[""]).map((old,j)=>j===i?e.target.value:old))}/>
+          {sentences.length>1&&<button type="button" aria-label={"Удалить предложение "+(i+1)}
+           onClick={()=>setSentences(sentences.filter((_,j)=>j!==i))}>×</button>}
+         </div>)}
+        {sentences.length<12&&<button type="button" className="lektrus-language-add-question"
+         onClick={()=>setSentences([...sentences,""])}>+ Добавить предложение</button>}
+       </div>;
+      }
+      if(tone==="languages"&&template.id==="translation"&&field.id==="direction"){
+       const directions=["На русский язык","На изучаемый язык"];
+       return <div className="lektrus-language-field lektrus-language-direction" key={field.id}>
+        <strong>Направление перевода</strong>
+        <div>{directions.map(direction=><button key={direction} type="button"
+         className={entry.details?.direction===direction?"selected":""}
+         onClick={()=>changeMaterial("direction",direction)}>{direction}</button>)}</div>
+        <input value={entry.details?.direction??""} maxLength={100}
+         placeholder="При необходимости укажите конкретный язык"
+         onChange={e=>changeMaterial("direction",e.target.value)}/>
+       </div>;
+      }
+      if(tone==="languages"&&template.id==="grammar"&&field.id==="instruction"){
+       const common=["Сделайте предложение вопросительным","Поставьте в отрицательную форму",
+        "Поставьте в прошедшее время","Поставьте в будущее время",
+        "Измените число","Преобразуйте в пассивную конструкцию"];
+       return <div className="lektrus-language-field lektrus-language-directions" key={field.id}>
+        <strong>Что изменить</strong><small>Выберите готовое задание или сформулируйте правило на изучаемом языке</small>
+        <div>{common.map(action=><button key={action} type="button"
+         className={entry.details?.instruction===action?"selected":""}
+         onClick={()=>changeMaterial("instruction",action)}>{action}</button>)}</div>
+        <textarea rows={2} value={entry.details?.instruction??""} maxLength={500}
+         placeholder="Например: преобразуйте утверждения в вопросы в Present Simple"
+         onChange={e=>changeMaterial("instruction",e.target.value)}/>
+       </div>;
+      }
       if(field.id==="questions"&&((tone==="russian"&&template.id==="text")||(tone==="languages"&&template.id==="reading"))){
        const questions=(entry.details?.questions??"").split(/\r?\n/).slice(0,15);
        const setQuestions=(next:string[])=>changeMaterial("questions",next.join("\n"));
@@ -307,11 +354,15 @@ export function LektrusLanguageTaskStudio({tone,entry,template,onChange}:Props){
     <div className="lektrus-language-preview-content">
      <strong>{entry.title.trim()||template.title}</strong>
      {entry.prompt.trim()&&<p className="lektrus-language-preview-instruction">{entry.prompt}</p>}
-     {template.fields.filter(()=>!(tone==="russian"&&["morphemes","morphology","syntax"].includes(template.id))).map(field=>(entry.details?.[field.id]?.trim()?
+     {template.fields.filter(()=>!(tone==="russian"&&["morphemes","morphology","syntax"].includes(template.id))&&
+      !(tone==="languages"&&["translation","grammar","reading"].includes(template.id))).map(field=>(entry.details?.[field.id]?.trim()?
       <div key={field.id} className="lektrus-language-preview-material">
        <small>{subjectFieldInfo[tone+":"+template.id+":"+field.id]?.label??field.label}</small><p>{entry.details?.[field.id]}</p>
       </div>:null))}
-     {tone==="russian"&&["morphemes","morphology","syntax","text"].includes(template.id)?
+     {tone==="languages"&&["translation","grammar","reading"].includes(template.id)?
+       <LektrusForeignTaskAnswer entry={entry} format={template.id as "translation"|"grammar"|"reading"}
+        answer={previewForeign} onChange={setPreviewForeign}/>:
+      tone==="russian"&&["morphemes","morphology","syntax","text"].includes(template.id)?
        <LektrusRussianTaskAnswer entry={entry} work={previewRussian} onChange={setPreviewRussian}/>:
       activity?<LektrusSubjectActivityRunner activity={activity} response={previewAnswer}
        onChange={setPreviewAnswer} punctuation={punctuation} compact/>:
