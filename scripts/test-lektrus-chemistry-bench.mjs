@@ -129,15 +129,13 @@ for(const substance of reaction.substances)
   "Every catalogued reagent must have a representative appearance");
 let devices=lab.defaultLabBench();
 for(const device of lab.labDevices)devices=lab.toggleLabDevice(devices,device.id);
-assert.equal(devices.devices.length,5,"The lab supports all five installed devices");
+assert.equal(devices.devices.length,4,"The lab provides four physical instruments without thermometer");
 devices=lab.putLabReagent(devices,"v1","CaCO3");
 devices=lab.useLabDevice(devices,"hotplate","v1");
 assert.equal(lab.labObservation(devices.vessels[0]).caseData.observation,"gas",
  "Hotplate applies validated heated conditions to the chosen vessel");
 devices=lab.useLabDevice(devices,"tripod","v1");
 assert.deepEqual(devices.instrumentTarget,{kind:"tripod",vesselId:"v1"});
-devices=lab.useLabDevice(devices,"thermometer","v1");
-assert.deepEqual(devices.instrumentTarget,{kind:"thermometer",vesselId:"v1"});
 devices=lab.useLabDevice(devices,"stirrer","v1");
 assert.equal(devices.stirringVesselId,"v1","Mixer starts on the selected vessel");
 devices=lab.useLabDevice(devices,"stirrer","v1");
@@ -296,9 +294,21 @@ assert.equal(equipment.placedDevices[0].x,59);
 assert.equal(equipment.placedDevices[0].y,67);
 equipment=lab.applyPlacedLabDevice(equipment,firstDevice.id,"v1");
 assert.equal(equipment.placedDevices[0].active,true);
+assert.equal(equipment.placedDevices[0].powered,false,
+ "Mounting a flask must not start the hotplate automatically");
+equipment=lab.setPlacedDevicePower(equipment,firstDevice.id,true);
+assert.equal(equipment.placedDevices[0].powered,true,
+ "A separate power switch turns on the hotplate");
+equipment=lab.advanceLabSimulation(equipment,1000);
+equipment=lab.advanceLabSimulation(equipment,5000);
+assert.ok(equipment.placedDevices[0].temperatureC>22,
+ "Hotplate temperature rises gradually when powered on");
+assert.ok(equipment.vessels[0].temperatureC>22,
+ "Mounted glassware warms according to modelled thermal transfer");
 assert.equal(equipment.placedDevices[0].linkedVesselId,"v1");
 equipment=lab.stopPlacedLabDevice(equipment,firstDevice.id);
 assert.equal(equipment.placedDevices[0].active,false);
+assert.equal(equipment.placedDevices[0].powered,false);
 equipment=lab.returnPlacedLabDevice(equipment,firstDevice.id);
 assert.equal(equipment.placedDevices.length,2);
 assert.equal(equipment.devices.includes("hotplate"),true,
@@ -327,6 +337,31 @@ assert.ok(Math.abs(decant.vessels.find(v=>v.id==="v2").doses.HCl.concentrationM-
  (10*.1+20*.3)/30)<.00001,
  "Same-solute concentrations must be volume-weighted during decanting");
 assert.equal(decant.vessels.find(v=>v.id==="v1").reagents.length,0);
+assert.equal(lab.labDevices.length,4);
+assert.ok(!lab.labDevices.some(d=>d.id==="thermometer"));
+assert.equal(lab.canMountLabVessel("hotplate","beaker"),true);
+assert.equal(lab.canMountLabVessel("hotplate","tube"),false);
+assert.equal(lab.canMountLabVessel("burner","tube"),true);
+assert.equal(lab.canMountLabVessel("stirrer","conical"),true);
+assert.equal(lab.canMountLabVessel("tripod","burette"),true);
+assert.equal(lab.canMountLabVessel("tripod","cylinder"),false);
+let valve=lab.defaultLabBench();
+valve=lab.addLabVessel(valve,"burette");
+const valveSource=valve.vessels.find(v=>v.kind==="burette");
+valve=lab.putLabReagent(valve,valveSource.id,"NaOH",
+ {unit:"ml",value:30,concentrationM:.1});
+valve=lab.putLabReagent(valve,"v1","HCl",
+ {unit:"ml",value:25,concentrationM:.1});
+valve=lab.setLabBuretteValve(valve,valveSource.id,true,"v1",.2);
+assert.equal(valve.vessels.find(v=>v.id===valveSource.id).buretteOpen,true);
+valve=lab.advanceLabSimulation(valve,1000);
+valve=lab.advanceLabSimulation(valve,6000);
+assert.ok(valve.titration?.addedMl>=.9&&valve.titration?.addedMl<=1.1);
+assert.ok(valve.vessels.find(v=>v.id===valveSource.id).doses.NaOH.value<30);
+valve=lab.setLabBuretteValve(valve,valveSource.id,false);
+assert.equal(valve.vessels.find(v=>v.id===valveSource.id).buretteOpen,false);
+assert.equal(lab.setLabBuretteValve(valve,valveSource.id,true,"v1",44),valve,
+ "Unsupported flow rates cannot be selected");
 const base=lab.defaultLabBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
