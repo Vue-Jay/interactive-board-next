@@ -444,11 +444,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <p>Возьмите посуду, выберите реактивы и наблюдайте за опытом.</p>
    <div><b>Посуда</b><b>Реактивы</b><b>Наблюдение</b></div>
   </div>}
-  <div className="lektrus-lab-worktop-caption">
+  {!selected?.reagents.length&&<div className="lektrus-lab-worktop-caption">
    <strong>{selected?"Выбрано: "+names[selected.kind]:"Рабочее место"}</strong>
    <span>{selected?(selected.reagents.length?selected.reagents.join(" + "):"Чистая посуда"):
     "Возьмите посуду из шкафа"}</span>
-  </div>
+  </div>}
   <button type="button" className="lektrus-lab-reagent-furniture" data-board-interactive="true"
     disabled={!editable} onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
     onClick={e=>{e.stopPropagation();openCabinet("reagents")}}
