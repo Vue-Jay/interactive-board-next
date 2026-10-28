@@ -2763,3 +2763,22 @@
 @media(max-width:620px){
  .lektrus-lab-quick-editor{margin:0 10px 4px!important;padding:7px!important}
 }
+
+
+.lektrus-lab-bench .lektrus-lab-measured-tools{
+ display:flex;align-items:end;flex-wrap:wrap;gap:4px;
+ max-width:330px;border-left:1px solid #b5d4be;
+ padding:0 0 0 7px;margin-left:3px}
+.lektrus-lab-bench .lektrus-lab-measured-tools label{
+ display:grid;align-content:end;gap:2px;max-width:145px;
+ color:#457560;font:700 9px/1.15 system-ui,sans-serif}
+.lektrus-lab-bench .lektrus-lab-measured-tools input{
+ width:65px!important;max-width:65px!important;min-height:27px!important;
+ border:1px solid #aed1ba;border-radius:6px;padding:2px 4px;
+ font:700 11px/1.1 system-ui,sans-serif}
+.lektrus-lab-bench .lektrus-lab-measured-tools select{
+ width:125px!important;max-width:125px!important;min-width:0!important}
+.lektrus-lab-bench .lektrus-lab-measured-tools button{
+ min-height:27px!important}
+.lektrus-lab-bench .lektrus-lab-worktop-actions{
+ max-width:min(85%,620px)!important}
