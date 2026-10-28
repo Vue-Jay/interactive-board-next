@@ -361,6 +361,15 @@ assert.match(read("src/LektrusChemistryBench.tsx"),/LektrusLabDeviceIcon/);
 assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),
  /className=\{"lektrus-lab-device-art/,
  "The installed tools must no longer render placeholder text glyphs");
+const fixedLayout=read("src/lektrusChemistryBench.css");
+assert.match(fixedLayout,/\.lektrus-lab-bench \.lektrus-lab-installed-devices\{[\s\S]*?display:flex!important/,
+ "Devices must occupy a shallow horizontal dock rather than a tall overlay");
+assert.match(fixedLayout,/\.lektrus-lab-bench \.lektrus-lab-worktop-zone\{pointer-events:none!important\}/,
+ "Decorative worktop must never intercept vessel touches");
+assert.match(fixedLayout,/\.lektrus-lab-bench \.lektrus-lab-pour-hint\{[\s\S]*?bottom:10\.5%!important/,
+ "Pour hint must stay on the tabletop and not hide under the front edge");
+assert.match(read("src/LektrusChemistryBench.tsx"),/const vessel=selected\?\?bench\.vessels\[0\]/,
+ "Device use should not silently fail if no vessel was selected");
 const cabinetSurface=read("src/LektrusChemistryBench.tsx");
 const cabinetCss=read("src/lektrusChemistryBench.css");
 assert.match(cabinetSurface,/createPortal\(<div className=\{"lektrus-lab-furniture-modal is-"/,
