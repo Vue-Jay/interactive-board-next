@@ -38,9 +38,14 @@ for(const tone of expectedTones){
  assert.equal(toneHelpers.subjectEditorStyle(tone)["--lektrus-tool-soft"],palette.soft);
 }
 for(const id of toolIds)assert.ok(toneHelpers.subjectToneForToolId(id),id+" gets subject colors");
-for(const name of ["school","science","chem-equation","periodic","graph","optics",
- "mechanics","circuit","motion","fraction","atom","subject-tools"]){
- assert.ok(themes.includes(".lektrus-"+name),name+" editor inherits a subject theme");
+for(const selector of [".lektrus-school-editor",".lektrus-science-editor",
+ ".lektrus-chem-equation-editor",".lektrus-periodic-dialog",
+ ".graph-editor-backdrop",".lektrus-optics-editor",
+ ".lektrus-mechanics-editor",".lektrus-circuit-editor",
+ ".lektrus-motion-editor",".lektrus-fraction-dialog",
+ ".lektrus-atom-dialog",".lektrus-subject-tools-panel",
+ ".formula-editor-backdrop"]){
+ assert.ok(themes.includes(selector),selector+" editor inherits a subject theme");
 }
 assert.match(read("src/main.tsx"),/lektrusSubjectEditorThemes\.css/);
 assert.match(app,/collectChemistryObject\(/);
