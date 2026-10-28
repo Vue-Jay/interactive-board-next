@@ -165,7 +165,7 @@ export function LektrusSubjectBoardView({item,onAction,onAnswerChange,onReveal,o
       </div>}
       {entry.kind==="task"&&activityMatchesTask(tone,entry.format,entry.activity)&&
        <LektrusSubjectActivityRunner activity={entry.activity!} response={entry.activityResponse}
-        punctuation={tone==="russian"&&entry.format==="punctuation"} orthography={tone==="russian"&&entry.format==="orthography"}
+        punctuation={tone==="russian"&&entry.format==="punctuation"}
         onChange={onActivityAnswer?(response)=>onActivityAnswer(entry.id,response):undefined}/>}
       {tone==="russian"&&["morphemes","syntax","morphology","text"].includes(entry.format??"")&&
        <LektrusRussianTaskAnswer entry={entry} work={entry.russianWork}
