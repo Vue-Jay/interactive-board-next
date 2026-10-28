@@ -1,7 +1,8 @@
-import {useMemo,useState} from "react";
+import {useMemo,useState,useId} from "react";
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
-import {identifyReaction,substances,reviewedReactionCases,type ReactionEnvironment,type Observation} from "./lektrusReactionDatabase";
+import {identifyReaction,substances,reviewedReactionCases,reactionAppearance,type ReactionEnvironment,type Observation} from "./lektrusReactionDatabase";
 import {LektrusChemicalEquationTypeset} from "./LektrusChemicalEquationEditor";
 
 const conditions:{id:ReactionEnvironment;title:string;help:string}[]=[
@@ -22,15 +23,13 @@ export function LektrusReactionScene({item,stage,onStageChange}:{item:Item;stage
  const ids=item.scienceReagents??[];
  const matched=identifyReaction(ids,item.scienceEnvironment??"aqueous");
  const matchedCase=matched.caseData;
+ const appearance=reactionAppearance(matchedCase);
+ const gradientId=useId().replace(/:/g,"");
  const observation=stage===1&&matched.status==="reaction"?matchedCase?.observation??"none":"none";
  const reagentFormulas=ids.map(id=>substances.find(s=>s.id===id)?.formula??id);
- const beforeColor=matchedCase?.beforeColor??"#bcdcf4";
- // A coloured precipitate is NOT the colour of the remaining solution.
- // Keep phase colours separate to avoid teaching the wrong observation.
- const solidColor=matchedCase?.afterColor??"#bdc7d0";
- const afterColor=observation==="precipitate"?"#d9eaf5":
-   observation==="color"?(matchedCase?.afterColor??"#d5b89e"):
-   matchedCase?.afterColor??beforeColor;
+ const beforeColor=appearance.solutionBefore;
+ const solidColor=appearance.solidColor;
+ const afterColor=appearance.solutionAfter;
  const color=stage===1?afterColor:beforeColor;
  const theme=matched.status==="reaction"?"reaction":matched.status==="none"?"none":"unknown";
  return <div className={"lektrus-reaction-scene is-"+theme}>
@@ -44,7 +43,7 @@ export function LektrusReactionScene({item,stage,onStageChange}:{item:Item;stage
   </div>}
   <svg viewBox="0 0 520 270" role="img" aria-label="Качественная модель смеси, пузырьков газа и осадка">
    <defs>
-    <linearGradient id="lektrus-liquid-glow" x1="0%" y1="0%" x2="100%" y2="80%">
+    <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="80%">
      <stop offset="0%" stopColor="#fff" stopOpacity=".52"/>
      <stop offset="55%" stopColor="#fff" stopOpacity=".05"/>
      <stop offset="100%" stopColor="#5f95b8" stopOpacity=".18"/>
@@ -54,27 +53,31 @@ export function LektrusReactionScene({item,stage,onStageChange}:{item:Item;stage
    <ellipse cx="260" cy="228" rx="113" ry="8" fill="#87a9ca" opacity=".13"/>
    <path d="M160 40V205Q160 231 186 231H334Q360 231 360 205V40" fill="none" stroke="#84a9d1" strokeWidth="6" strokeLinecap="round"/>
    <path d="M165 135H355V207Q355 226 334 226H186Q165 226 165 207Z" fill={color} opacity=".82"/>
-   <path d="M165 135H355V207Q355 226 334 226H186Q165 226 165 207Z" fill="url(#lektrus-liquid-glow)"/>
+   <path d="M165 135H355V207Q355 226 334 226H186Q165 226 165 207Z" fill={"url(#"+gradientId+")"}/>
    <path d="M165 135Q202 131 244 135T355 135" stroke="#6199cb" fill="none" strokeWidth="2.5" strokeLinecap="round"/>
    {stage===1&&matched.status==="reaction"&&<>
     {observation==="gas"&&<g>
      {Array.from({length:24},(_,i)=>{
       const cx=185+(i*47)%150,cy=150+(i*29)%63,r=2.8+(i%5)*1.3;
-      return <g key={i} className="lektrus-reaction-bubble">
+      return <g key={i} className="lektrus-reaction-bubble"
+       style={{animationDelay:((i*13)%17)*-.14+"s",animationDuration:(2.4+(i%5)*.35)+"s"}}>
        <circle cx={cx} cy={cy} r={r} fill="#fff" fillOpacity=".28" stroke="#568ec4" strokeWidth="1.5"/>
        <path d={"M"+(cx-r*.45)+" "+(cy-r*.35)+"q"+(r*.2)+" "+(-r*.35)+" "+(r*.48)+" "+(-r*.24)} stroke="#fff" strokeWidth="1.3" fill="none" strokeLinecap="round"/>
       </g>;
      })}
-     {Array.from({length:5},(_,i)=><circle key={"escape"+i} cx={213+i*22} cy={120-(i%3)*18} r={2.5+(i%2)} fill="none" stroke="#7caad3" strokeWidth="1.5" opacity=".7"/>)}
+     {Array.from({length:5},(_,i)=><circle key={"escape"+i} className="lektrus-reaction-escaping-gas" cx={213+i*22} cy={120-(i%3)*18} r={2.5+(i%2)} fill="none" stroke="#7caad3" strokeWidth="1.5" opacity=".7"
+      style={{animationDelay:-(i*.57)+"s"}}/>)}
     </g>}
     {observation==="precipitate"&&<g>
-     <path d="M166 211Q191 199 218 207T273 208T328 205Q345 206 354 210V210Q353 225 334 226H186Q169 226 166 211Z"
+     <path className="lektrus-reaction-sediment" d="M166 211Q191 199 218 207T273 208T328 205Q345 206 354 210V210Q353 225 334 226H186Q169 226 166 211Z"
       fill={solidColor} opacity=".9"/>
      <path d="M171 212Q204 201 235 211T306 208T349 210" stroke="#71869a" fill="none" strokeWidth="1.3" opacity=".65"/>
      {Array.from({length:64},(_,i)=>{const cx=176+(i*37)%169,cy=207+(i*17)%17;
       return <circle key={i} cx={cx} cy={cy} r={.9+i%4*.47} fill={i%4===0?"#eef3f8":solidColor} stroke="#71839b" strokeWidth=".45" opacity=".85"/>;
      })}
-     {Array.from({length:12},(_,i)=><circle key={"s"+i} cx={189+(i*31)%140} cy={158+(i*17)%43} r={1.3+i%3*.7} fill={solidColor} opacity=".58"/>)}
+     {Array.from({length:12},(_,i)=><circle key={"s"+i} className="lektrus-reaction-falling-particle"
+       style={{animationDelay:-(i*.23)+"s",animationDuration:(2.1+(i%5)*.3)+"s"}}
+       cx={189+(i*31)%140} cy={158+(i*17)%43} r={1.3+i%3*.7} fill={solidColor} opacity=".7"/>)}
     </g>}
     {observation==="dissolution"&&Array.from({length:9},(_,i)=><circle key={i} cx={200+(i*39)%135} cy={156+(i*17)%55} r="3" fill="#8eafd0" opacity=".45"/>)}
     {observation==="heat"&&<g fill="none" stroke="#d68a44" strokeWidth="2">
@@ -93,7 +96,15 @@ export function LektrusReactionScene({item,stage,onStageChange}:{item:Item;stage
   <div className="lektrus-reaction-outcome" role="status">
    <strong>{stage===0?"Исходные вещества":matched.status==="reaction"?"Реакция подтверждена":matched.status==="none"?"Превращение не наблюдается":"Данных недостаточно"}</strong>
    <p>{stage===0?"Выбранные реагенты и среда. Нажмите «После», чтобы увидеть известный результат.":matched.message}</p>
-   {stage===1&&matchedCase?.equation&&<LektrusChemicalEquationTypeset expression={matchedCase.equation}/>}
+   {stage===1&&matchedCase?.equation&&<>
+    <LektrusChemicalEquationTypeset expression={matchedCase.equation}/>
+    <div className="lektrus-reaction-products">
+     <strong>Продукты реакции</strong>
+     <div>{appearance.products.map((product,i)=><span key={i}>{product}</span>)}</div>
+     {appearance.solid&&<small style={{color:"#47665d"}}>Осадок: {appearance.solid}</small>}
+     {appearance.gas&&<small>Выделяется газ: {appearance.gas}</small>}
+    </div>
+   </>}
    {stage===1&&matchedCase?.safety&&<small>{matchedCase.safety}</small>}
   </div>
   <small className="lektrus-reaction-disclaimer">Схема качественная. Не моделирует скорости, концентрации и точные количества продуктов. Не является лабораторной инструкцией.</small>
@@ -106,12 +117,25 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
  const [remote,setRemote]=useState<{formula:string;name:string}|null>(null);
  const [remoteState,setRemoteState]=useState("");
  const [stage,setStage]=useState<0|1>(item.scienceExperimentStage??0);
+ const [catalogTab,setCatalogTab]=useState<"substances"|"reactions">("substances");
+ const [reactionQuery,setReactionQuery]=useState("");
+ const [effectFilter,setEffectFilter]=useState<"all"|Observation>("all");
  const chosen=item.scienceReagents??[];
  const classes=useMemo(()=>["Все классы",...new Set(substances.map(s=>s.kind))],[]);
  const options=useMemo(()=>substances.filter(s=>
   (group==="Все классы"||s.kind===group)&&
   (s.name+" "+s.formula+" "+s.kind).toLocaleLowerCase("ru").includes(query.toLocaleLowerCase("ru"))
  ).slice(0,250),[group,query]);
+ const demonstrated=useMemo(()=>reviewedReactionCases.filter(row=>row.status==="reaction"&&row.reactants.length<=2&&
+  (effectFilter==="all"||row.observation===effectFilter)&&
+  (row.equation+" "+row.description+" "+row.reactants.join(" ")).toLocaleLowerCase("ru-RU")
+   .includes(reactionQuery.toLocaleLowerCase("ru-RU"))).slice(0,100),
+   [reactionQuery,effectFilter]);
+ const chooseExample=(row:(typeof reviewedReactionCases)[number])=>{
+  setStage(0);
+  onChange({...item,scienceReagents:[...row.reactants],
+   scienceEnvironment:row.environment,scienceExperimentStage:0});
+ };
  const findPubChem=async()=>{
   if(query.trim().length<2)return;
   setRemote(null);setRemoteState("Поиск в PubChem…");
@@ -132,7 +156,7 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
   onChange({...item,scienceReagents:chosen.includes(id)?
    chosen.filter(v=>v!==id):chosen.length<6?[...chosen,id]:chosen,scienceExperimentStage:0});
  };
- return createPortal(<div className="lektrus-reaction-lab-overlay"
+ return createPortal(<div className="lektrus-reaction-lab-overlay" style={subjectEditorStyle("chemistry")}
   onPointerDown={e=>{if(e.target===e.currentTarget)onCancel()}}>
   <section className="lektrus-reaction-lab" role="dialog" aria-modal="true" aria-label="Моделирование химической реакции"
     onPointerDown={e=>e.stopPropagation()}>
@@ -144,7 +168,7 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
     <aside className="lektrus-reaction-reagents">
      <strong>Вещества (до 6)</strong>
      <div className="lektrus-reaction-chosen" role="group" aria-label="Выбранные реагенты">
-      {chosen.length===0?<small>Нажмите на вещества ниже, чтобы добавить их в опыт.</small>:chosen.map(id=>{
+      {chosen.length===0?<small>Выберите вещества или готовую реакцию из каталога.</small>:chosen.map(id=>{
        const reagent=substances.find(entry=>entry.id===id);
        const formula=reagent?.formula??id;
        return <button className="lektrus-reaction-selected-chip" key={id} type="button"
@@ -154,6 +178,13 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
        </button>;
       })}
      </div>
+     <nav className="lektrus-reaction-catalog-tabs" role="group" aria-label="Выбор режима">
+      <button type="button" className={catalogTab==="substances"?"active":""}
+       aria-pressed={catalogTab==="substances"} onClick={()=>setCatalogTab("substances")}>Вещества</button>
+      <button type="button" className={catalogTab==="reactions"?"active":""}
+       aria-pressed={catalogTab==="reactions"} onClick={()=>setCatalogTab("reactions")}>База реакций</button>
+     </nav>
+     {catalogTab==="substances"?<>
      <input type="search" value={query} placeholder="Поиск по названию или формуле"
       onChange={e=>setQuery(e.target.value)} aria-label="Поиск веществ"/>
      <div className="lektrus-remote-substance">
@@ -179,6 +210,30 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
        <b>{s.formula}</b><span>{s.name}</span><small>{s.kind}</small>
       </button>)}
      </div>
+     </>:<>
+      <input type="search" value={reactionQuery} placeholder="Найти реакцию или продукт"
+       aria-label="Поиск реакции" onChange={e=>setReactionQuery(e.target.value)}/>
+      <select value={effectFilter} aria-label="Вид наблюдения"
+       onChange={e=>setEffectFilter(e.target.value as "all"|Observation)}>
+       <option value="all">Все реакции</option>
+       <option value="precipitate">Осадок</option>
+       <option value="gas">Газ</option>
+       <option value="color">Изменение цвета</option>
+       <option value="dissolution">Растворение</option>
+       <option value="heat">Тепловой эффект</option>
+      </select>
+      <div className="lektrus-reaction-examples" role="group" aria-label="Каталог проверенных опытов">
+       {demonstrated.length?demonstrated.map((row,i)=><button type="button"
+        key={row.environment+"|"+row.reactants.join("+")}
+        className={row.reactants.slice().sort().join("|")===chosen.slice().sort().join("|")&&
+          row.environment===(item.scienceEnvironment??"aqueous")?"selected":""}
+        onClick={()=>chooseExample(row)}>
+        <strong>{row.reactants.join(" + ")}</strong>
+        <small>{phases[row.observation].caption} · {conditions.find(c=>c.id===row.environment)?.title}</small>
+        <span>{row.description}</span>
+       </button>):<small>Таких реакций в проверенной базе пока нет.</small>}
+      </div>
+     </>}
     </aside>
     <div className="lektrus-reaction-simulator">
      <label>Условия
@@ -195,7 +250,7 @@ export default function LektrusReactionLab({item,onChange,onSave,onCancel}:Props
    </div>
    <footer><button type="button" onClick={onCancel}>Отмена</button>
     <button type="button" className="primary" disabled={!chosen.length}
-     onClick={onSave}>Вывести модель на доску</button></footer>
+     onClick={onSave}>Разместить опыт на доске</button></footer>
   </section>
  </div>,document.body);
 }
