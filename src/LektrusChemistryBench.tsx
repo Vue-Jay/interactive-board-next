@@ -282,7 +282,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     const target=targetAt(g.id,p);
     if(target)transferVessel(g.id,target);
     else{
-     const a=labDisplayPoint({x:g.x,y:g.y});
+     const a=labDisplayPoint({x:g.x,y:g.y},bench.vessels.length>3);
      const next=labLogicalPoint({x:a.x+p.x-g.startX,y:a.y+p.y-g.startY});
      onChange?.(positionLabVessel(bench,g.id,next.x,next.y));
     }
