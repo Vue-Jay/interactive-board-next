@@ -2317,6 +2317,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const lastGeometryCanvasTap=useRef<{id:string;x:number;y:number;time:number}|null>(null);
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
   const provisionalChemistryBoards=useRef(new Set<string>());
+  const provisionalChemistryWorksheets=useRef(new Set<string>());
   const [subjectBoardEditor,setSubjectBoardEditor]=useState<{boardId:string;entryId:string;mode:"equation"|"task"}|null>(null);
   const [subjectBoardSolution,setSubjectBoardSolution]=useState<{boardId:string;entryId:string}|null>(null);
   const [schoolEditorItem,setSchoolEditorItem]=useState<Item|null>(null);
@@ -5573,7 +5574,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      const state=subjectBoardEditor;
      const current=itemsRef.current.find(value=>value.id===state.boardId);
      const entry=current?.subjectBoardEntries?.find(value=>value.id===state.entryId);
-     if(entry&&!subjectBoardEntryFilled(entry))removeSubjectBoardEntry(state.boardId,state.entryId);
+     const isEmpty=!!entry&&!subjectBoardEntryFilled(entry);
+     if(provisionalChemistryWorksheets.current.has(state.boardId)){
+       provisionalChemistryWorksheets.current.delete(state.boardId);
+       if(isEmpty&&current?.subjectBoardEntries?.length===1){
+         commit(itemsRef.current.filter(value=>value.id!==state.boardId));
+         setSelected([]);setSubjectBoardEditor(null);return;
+       }
+     }
+     if(isEmpty)removeSubjectBoardEntry(state.boardId,state.entryId);
      setSubjectBoardEditor(null);
    };
    const openSubjectBoardEntry=(boardItem:Item,mode:"equation"|"task",entryId?:string)=>{
@@ -8400,6 +8409,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
               const existing=itemsRef.current.filter(value=>value.graphFigureId==="subject-board-chemistry");
               const offset=Math.min(4,existing.length)*32;
               const target=makeSubjectToolItem("subject-board-chemistry",centerX+offset,centerY+offset,createId);
+              provisionalChemistryWorksheets.current.add(target.id);
               setSubjectToolsOpen(false);
               openSubjectBoardEntry(target,id==="chem-formulas"?"equation":"task");
               return;
