@@ -12,8 +12,8 @@ export type SubjectToolDefinition={id:SubjectToolId;label:string;description:str
 
 /** A tool is a distinct editing workflow; its examples are selected INSIDE the editor. */
 export const subjectToolRegistry:SubjectToolDefinition[]=[
-  {id:"chem-assignments",label:"Создание заданий",description:"Уравнения, цепочки превращений, вопросы и решения на химической доске",
-   group:"Химия · учебная доска",subjects:["химия"]},
+  {id:"chem-assignments",label:"Химические задания",description:"Создаёт отдельный рабочий лист с задачами, цепочками или вопросами. Уравнения добавляются только по вашему выбору.",
+   group:"Химия · задания",subjects:["химия"]},
   {id:"math-formula",label:"Математическая формула",description:"Степени, корни и математические символы",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-geometry",label:"Построение фигур",description:"Плоские и объёмные фигуры, стороны и углы",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-coordinate",label:"Координатная плоскость",description:"Функции, точки, числовая прямая и графики",group:"Математические инструменты",subjects:["математика"]},
@@ -60,7 +60,7 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
   if(id.startsWith("subject-board-")){
    const tone=id.slice("subject-board-".length) as SubjectTone;
-   return {id:createId(),kind:"graph",text:subjectAccentPalette[tone].label+" · учебная доска",
+   return {id:createId(),kind:"graph",text:subjectAccentPalette[tone].label+(tone==="chemistry"?" · рабочий лист":" · учебная доска"),
     x:x-410,y:y-235,width:820,height:470,graphFigureId:id,
     graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,graphSnap:false,
     graphPoints:[],graphSegments:[],subjectBoardEntries:[]};
