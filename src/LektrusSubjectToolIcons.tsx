@@ -79,7 +79,7 @@ const illustratedAtlasSize=illustratedTileSize*7;
 export const subjectToolIconIds=Object.keys(icons);
 
 export function hasDedicatedSubjectToolIcon(id:string):boolean{
- return id.startsWith("subject-board-")||id==="chem-assignments"||Object.prototype.hasOwnProperty.call(icons,id);
+ return id.startsWith("subject-board-")||id.startsWith("subject-task-")||id==="chem-assignments"||Object.prototype.hasOwnProperty.call(icons,id);
 }
 
 export default function LektrusSubjectToolIcon({id,size=23,className}:{id:string;size?:number;className?:string}){
@@ -96,9 +96,9 @@ export default function LektrusSubjectToolIcon({id,size=23,className}:{id:string
     preserveAspectRatio="xMinYMin meet" pointerEvents="none"/>
   </svg>;
  }
- if(id.startsWith("subject-board-")||id==="chem-assignments"){
+ if(id.startsWith("subject-board-")||id.startsWith("subject-task-")||id==="chem-assignments"){
   return <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-   {id==="chem-assignments"?<><path d="M5 3h11l3 3v15H5zM8 11h8m-8 4h8m-8 4h5"/><path d="M15 2v5h5"/></>:
+   {id.startsWith("subject-task-")?<><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="m7 9 1.5 1.5L11 8m2 2h4m-10 6 1.5 1.5L11 15m2 2h4"/></>:id==="chem-assignments"?<><path d="M5 3h11l3 3v15H5zM8 11h8m-8 4h8m-8 4h5"/><path d="M15 2v5h5"/></>:
     <><rect x="3" y="3.5" width="18" height="17" rx="2"/><path d="M7 8h10M7 12h10M7 16h5"/><path d="M17 15v5m-2.5-2.5h5"/></>}
   </svg>;
  }
