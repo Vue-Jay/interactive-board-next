@@ -503,7 +503,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <div className="lektrus-lab-back-shelf"/>
    <div className="lektrus-lab-counter"/>
    <div className="lektrus-lab-counter-front"/>
-   <div className="lektrus-lab-table-legs"/>
    <div className="lektrus-lab-worktop-zone"/>
   </div>
   <div className="lektrus-lab-scene-header">
@@ -732,8 +731,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       fill="#8ac8d1" opacity=".8"/>
     </>}
    </svg>
-   <span className="lektrus-lab-sink-caption"><strong>МОЙКА</strong>
-    <small>{sinkFlow?"Раствор слит":"Слить содержимое"}</small></span>
+   <span className="lektrus-lab-sink-caption"><strong>РАКОВИНА</strong>
+    <small>{sinkFlow?"Раствор слит":"Слить раствор"}</small></span>
   </button>
 
   <button type="button" data-board-interactive="true"
@@ -939,13 +938,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <p>Выберите прибор. Он появится на столе и будет доступен каждому участнику.</p>
       <div className="lektrus-lab-equipment-grid">
        {labDevices.map(device=>{
-        const active=(bench.devices??[]).includes(device.id);
-        return <button type="button" key={device.id} aria-pressed={active}
-         className={active?"active":""}
-         onClick={()=>onChange?.(toggleLabDevice(bench,device.id))}>
+        const count=physicalDevices.filter(d=>d.kind===device.id).length;
+        return <button type="button" key={device.id}
+         aria-label={"Поставить на стол: "+device.name} onClick={()=>takeDevice(device.id)}>
          <LektrusLabDeviceIcon kind={device.id} size={56}/>
          <strong>{device.name}</strong><small>{device.description}</small>
-         <em>{active?"✓ На столе":"＋ Добавить"}</em>
+         <em>＋ На стол {count>0?" · "+count:""}</em>
         </button>;
        })}
       </div>
