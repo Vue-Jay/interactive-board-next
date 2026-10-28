@@ -20,6 +20,23 @@ const styles=read("src/lektrusSubjectBoard.css");
 const templates=read("src/lektrusSubjectTaskTemplates.ts");
 const colors=read("src/lektrusSubjectAccent.ts");
 const chemical=read("src/lektrusChemicalBoardSurface.css");
+assert.match(board,/function LektrusTaskPreview\(/,"Ordinary subject tasks have a live student preview");
+assert.match(board,/\<LektrusSubjectBoardView item=\{sheet\}/,
+ "Preview reuses the real board renderer instead of a fake mockup");
+assert.match(board,/onAnswerChange=\{\(_,value\)=>setAnswer\(value\)\}/,
+ "Preview responses stay in local component state");
+assert.match(styles,/\.lektrus-subject-task-editor>footer\{margin-top:auto\}/,
+ "Dialog action footer stays pinned to its bottom");
+assert.match(styles,/\.lektrus-subject-task-editor>\.lektrus-subject-task-body\{/,
+ "Task body takes all available height instead of leaving whitespace");
+assert.match(styles,/\.lektrus-task-preview-board\{/,"A preview surface is shown below the fields");
+assert.match(app,/circle cx="15" cy="15\.5" r="2\.45"/,
+ "Grid-snapping glyph must highlight a point at a grid intersection");
+assert.match(app,/provisionalChemistryWorksheets\.current\.add\(target\.id\)/,
+ "Chemistry subject-tool drafts are explicitly tracked for cleanup");
+assert.match(app,/provisionalChemistryWorksheets\.current\.delete\(boardId\)/,
+ "Deleting an unfinished assignment must not create an orphan worksheet");
+
 assert.match(registry,/subject-board-\$\{SubjectTone\}/);
 assert.match(registry,/subjectBoardEntries:\[\]/);
 assert.doesNotMatch(panel,/subject-board-[a-z]+/,"No individual worksheet in subject catalogue");
