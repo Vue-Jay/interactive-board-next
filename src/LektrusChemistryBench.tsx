@@ -95,7 +95,7 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
  const capacity=vessel.kind==="burette"?100:
   vessel.kind==="pipette"?25:vessel.kind==="tube"?25:150;
  const fillFraction=volumeMl>0?Math.min(.92,Math.max(.08,volumeMl/capacity)):
-  vessel.reagents.length?.5:0;
+  (vessel.reagents.length>0?0.5:0);
  return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
   <svg viewBox="0 0 100 133" role="img" aria-label={names[vessel.kind]+": "+(labels.join(", ")||"пустой")}>
    <defs>
