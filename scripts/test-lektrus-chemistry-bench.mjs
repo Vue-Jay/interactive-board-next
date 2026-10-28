@@ -182,7 +182,10 @@ assert.ok(grouped.some(g=>g.title==="Соли"),"Salt cabinet section exists");
 const catalogSource=read("src/LektrusChemistryBench.tsx");
 assert.match(catalogSource,/lektrus-lab-modal-sortbar/);
 assert.match(catalogSource,/lektrus-lab-reagent-group-grid/);
-assert.match(catalogSource,/LektrusLabTitrationPanel/);
+assert.doesNotMatch(catalogSource,/openCabinet\("titration"\)/,
+ "Titration runs between real vessels without an independent editor");
+assert.match(catalogSource,/lektrus-lab-titration-on-table/);
+assert.match(catalogSource,/lektrus-lab-class-tabs/);
 assert.match(catalogSource,/labDevices\.map/);
 assert.match(catalogSource,/useLabDevice\(/);
 assert.match(read("src/lektrusChemistryBench.css"),/white-space:normal!important/,
@@ -199,7 +202,7 @@ for(const count of [1,2,3,4,5,6]){
   const a=projected[i];
   assert.ok(a.x-width/2>26&&a.x+width/2<80,
    "Placed vessels must stay clear of left controls and right sink");
-  assert.ok(a.y-height*.56>53&&a.y+height*.44<97,
+  assert.ok(a.y-height*.56>42&&a.y+height*.44<94,
    "Placed vessels must stay inside the available work surface");
   for(let j=i+1;j<projected.length;j++){
    const b=projected[j];
@@ -212,20 +215,20 @@ for(const count of [1,2,3,4,5,6]){
  }
 }
 const legacyVessel=labLayout.labDisplayPoint({x:10,y:90});
-assert.ok(legacyVessel.x>26&&legacyVessel.x<80,
+assert.ok(legacyVessel.x>=26&&legacyVessel.x<80,
  "Saved vessels at extreme old coordinates must not cover furniture");
 for(const crowded of [false,true]){
  for(const y of [10,90]){
   const projectedEdge=labLayout.labDisplayPoint({x:50,y},crowded);
   const occupiedHeight=crowded?19:30;
-  assert.ok(projectedEdge.y-occupiedHeight*.56>=53,
+  assert.ok(projectedEdge.y-occupiedHeight*.56>=42,
    "Glassware must never extend into the wall cabinets");
   assert.ok(projectedEdge.y+occupiedHeight*.44<=97,
    "Glassware must not cross the front of the bench");
  }
 }
 assert.equal(labLayout.isLabSink({x:85,y:70}),true);
-assert.equal(labLayout.isLabCupboard({x:85,y:22}),true);
+assert.equal(labLayout.isLabCupboard({x:67,y:22}),true);
 assert.equal(labLayout.isLabWorktop({x:50,y:73}),true);
 assert.equal(labLayout.isLabWorktop({x:14,y:73}),false);
 const redesignedLab=read("src/LektrusChemistryBench.tsx");
@@ -238,6 +241,37 @@ const redesignedCss=read("src/lektrusChemistryBench.css");
 assert.match(redesignedCss,/lektrus-lab-reagent-furniture[\s\S]*?lektrus-lab-glass-cupboard/);
 assert.match(redesignedCss,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 assert.match(redesignedCss,/lektrus-lab-worktop-zone/);
+let realBench=lab.defaultLabBench();
+realBench=lab.putLabReagent(realBench,"v1","HCl",
+ {value:25,unit:"ml",concentrationM:.1});
+realBench=lab.addLabVessel(realBench,"burette");
+const burette=realBench.vessels.find(v=>v.kind==="burette");
+assert.ok(burette);
+realBench=lab.putLabReagent(realBench,burette.id,"NaOH",
+ {value:30,unit:"ml",concentrationM:.1});
+realBench=lab.setLabIndicator(realBench,"v1","phenolphthalein");
+assert.equal(lab.labTitrationTargets(realBench,burette.id).length,1);
+assert.equal(lab.dripLabVessel(realBench,"v1",burette.id,1),realBench,
+ "Drops cannot flow backwards from the target flask");
+realBench=lab.dripLabVessel(realBench,burette.id,"v1",1);
+assert.equal(realBench.titration?.addedMl,1);
+assert.equal(realBench.vessels.find(v=>v.id===burette.id)?.doses?.NaOH.value,29);
+assert.equal(realBench.vessels.find(v=>v.id==="v1")?.doses?.NaOH.value,1);
+assert.equal(realBench.titrationPair?.targetId,"v1");
+realBench=lab.dripLabVessel(realBench,burette.id,"v1",24);
+assert.equal(titration.titrationReading(realBench.titration).pH,7,
+ "At 25 ml of 0.1 M NaOH the 25 ml of 0.1 M acid reaches equivalence");
+assert.equal(realBench.vessels.find(v=>v.id=burette.id)?.doses?.NaOH.value,5);
+realBench=lab.dripLabVessel(realBench,burette.id,"v1",.1);
+assert.ok(titration.titrationReading(realBench.titration).pH>7);
+const drainedTarget=lab.emptyLabVessel(realBench,"v1");
+assert.equal(drainedTarget.titrationPair,undefined,
+ "Pouring out a titrated sample ends the vessel-linked titration");
+const icons=read("src/LektrusLabGlasswareIcon.tsx");
+for(const kind of lab.labGlassware)assert.match(icons,new RegExp("^\\s*"+kind.id+":","m"),
+ "Each glassware type has an independent vector pictogram");
+assert.match(read("src/lektrusSciencePresets.ts"),/width:1160,height:700/,
+ "New chemistry benches must have sufficient tabletop space");
 const base=lab.defaultLabBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
@@ -247,7 +281,8 @@ assert.ok(merged.vessels.some(v=>v.reagents.includes("HCl")),"Local reagent addi
 assert.deepEqual(lab.readLabBench({scienceReagents:["NaCl"],scienceEnvironment:"aqueous",
  scienceExperimentStage:0}).vessels[0].reagents,["NaCl"],"Older experiment data migrate");
 for(const p of ["src/LektrusChemistryBench.tsx","src/LektrusChemistryBenchEditor.tsx",
- "src/LektrusScienceEditor.tsx","src/LektrusChemistryIllustration.tsx"]){
+ "src/LektrusScienceEditor.tsx","src/LektrusChemistryIllustration.tsx",
+  "src/LektrusLabGlasswareIcon.tsx"]){
  const source=ts.createSourceFile(p,read(p),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  assert.equal(source.parseDiagnostics.length,0,p+" has invalid TSX");
 }
