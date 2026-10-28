@@ -74,9 +74,9 @@ assert.match(styles,/width:min\(1180px/,"Language editor gets enough working spa
 const activityPath="src/LektrusSubjectActivity.tsx";
 const activityJs=ts.transpileModule(read(activityPath),{fileName:activityPath,
  compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.React}
-}).outputText.replace(/^import[^;]*;\\s*$/gm,"").replace(/^export /gm,"");
+}).outputText.replace(/^import[^;]*;\s*$/gm,"").replace(/^export /gm,"");
 const {activityComplete,activityScore}=new Function(activityJs+
- "\\nreturn {activityComplete,activityScore};")();
+ "\nreturn {activityComplete,activityScore};")();
 const twoLetters={mode:"fill",blanks:[{before:"б",answer:"е",choices:["е","и"]}],tail:"реза"};
 assert.equal(activityComplete(twoLetters),true,"Two distinct letters and a correct answer form a valid exercise");
 assert.deepEqual(activityScore(twoLetters,{values:["и"]}),{correct:0,total:1});
