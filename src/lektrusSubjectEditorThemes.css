@@ -4,7 +4,8 @@
 :is(.lektrus-school-backdrop,.lektrus-subject-tools-panel,.lektrus-science-backdrop,
  .lektrus-chem-equation-overlay,.lektrus-periodic-backdrop,.lektrus-optics-backdrop,
  .lektrus-mechanics-backdrop,.lektrus-circuit-backdrop,.graph-editor-backdrop,
- .lektrus-motion-backdrop,.lektrus-fraction-overlay,.lektrus-atom-backdrop){
+ .lektrus-motion-backdrop,.lektrus-fraction-overlay,.lektrus-atom-backdrop,
+ .formula-editor-backdrop.lektrus-formula-window){
  --lektrus-tool-accent:var(--subject-board-accent,#587383);
  --lektrus-tool-soft:var(--subject-board-soft,#edf4f5);
  accent-color:var(--lektrus-tool-accent);
@@ -179,5 +180,19 @@
 }
 :is(.lektrus-motion-editor,.lektrus-fraction-dialog,.lektrus-atom-dialog)
  :is(button,input,select,textarea):focus-visible{
+ outline-color:var(--lektrus-tool-accent)!important;
+}
+
+.formula-editor-backdrop.lektrus-formula-window .formula-editor-modal{
+ border-color:color-mix(in srgb,var(--lektrus-tool-accent) 24%,#e3e8ed)!important;
+}
+.formula-editor-backdrop.lektrus-formula-window .formula-editor-header{
+ background:color-mix(in srgb,var(--lektrus-tool-soft) 64%,white)!important;
+ border-bottom:1px solid color-mix(in srgb,var(--lektrus-tool-accent) 24%,#e5e9ed)!important;
+}
+.formula-editor-backdrop.lektrus-formula-window .formula-editor-header strong{
+ color:var(--lektrus-tool-accent)!important;
+}
+.formula-editor-backdrop.lektrus-formula-window :is(button,input,select,textarea):focus-visible{
  outline-color:var(--lektrus-tool-accent)!important;
 }
