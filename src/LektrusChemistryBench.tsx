@@ -519,7 +519,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        id==="burner"?"Горелка применяется к сосуду":
        id==="stirrer"?(next.stirringVesselId?"Перемешивание включено":"Перемешивание остановлено"):
        id==="thermometer"?"Термометр установлен (температура рассчитывается только для известных опытов)":
-       "Штатив установлен на лабораторном столе");
+       "Штатив закреплён за выбранным сосудом");
      }}>
      <LektrusLabDeviceIcon kind={id} size={56}/>
      <small>{device.name}</small>
@@ -650,6 +650,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      const id=e.dataTransfer.getData("application/x-lektrus-reagent");
      if(id)onDropReagent?.(v.id,id);
     }}>
+    {bench.instrumentTarget?.vesselId===v.id&&<span
+     className="lektrus-lab-instrument-attachment">
+     {bench.instrumentTarget.kind==="thermometer"?"Термометр · показания не моделируются":"На штативе"}
+    </span>}
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
      stirring={bench.stirringVesselId===v.id}
      titrationResult={bench.titrationPair?.targetId===v.id&&bench.titration?
