@@ -246,8 +246,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const chosenValveTarget=buretteTargets.some(v=>v.id===(selectedBurette?.buretteTargetId??titrationTarget))?
   (selectedBurette?.buretteTargetId??titrationTarget):buretteTargets[0]?.id;
  const effectivePouringId=pouringId??localPourId;
- const chosenTitrationTarget=availableTargets.find(v=>v.id===titrationTarget)?titrationTarget:
-  availableTargets[0]?.id;
  const experimentCases=reviewedReactionCases.filter(v=>v.status==="reaction"&&
   v.reactants.length<=2&&(effectFilter==="all"||v.observation===effectFilter)&&
   (v.equation+" "+v.description+" "+v.reactants.join(" ")).toLocaleLowerCase("ru-RU")
@@ -853,7 +851,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     </span>}
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
      stirring={bench.stirringVesselId===v.id}
-     temperatureC={v.temperatureC}
+     temperatureC={v.temperatureC??22}
      titrationResult={bench.titrationPair?.targetId===v.id&&bench.titration?
       titrationReading(bench.titration):undefined}/>
    </button>;
