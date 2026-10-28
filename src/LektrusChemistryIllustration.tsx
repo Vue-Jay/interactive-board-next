@@ -67,7 +67,8 @@ export default function LektrusChemistryIllustration({item,onStageChange,onBench
  const stage=onStageChange?(item.scienceExperimentStage??0):localStage;
  const setStage=(next:0|1)=>onStageChange?onStageChange(next):setLocalStage(next);
  if(item.graphFigureId==="chem-experiment-free")return item.scienceLabBench?
-  <div className="lektrus-chemistry-bench-on-board"
+  <div className="lektrus-chemistry-bench-on-board" tabIndex={0}
+   aria-label="Прокручиваемый химический стол: колёсико, Shift с колёсиком, тачпад или пальцем"
    data-board-interactive="true"
    onWheel={e=>e.stopPropagation()}
    onTouchMove={e=>e.stopPropagation()}>
