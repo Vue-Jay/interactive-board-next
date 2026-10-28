@@ -20,6 +20,20 @@ export const posNames:Record<RussianPartOfSpeech,string>={
  conjunction:"Союз",particle:"Частица",interjection:"Междометие",
  other:"Другая часть речи"
 };
+/** School morphology feature labels are prompts, not generated answers. */
+export const russianMorphologyFeatures:Partial<Record<RussianPartOfSpeech,{
+ permanent:string[];variable:string[]
+}>>={
+ noun:{permanent:["Собственное / нарицательное","Одушевлённость","Род","Склонение"],
+  variable:["Число","Падеж"]},
+ adjective:{permanent:["Разряд"],variable:["Степень сравнения","Род","Число","Падеж"]},
+ verb:{permanent:["Вид","Переходность","Возвратность","Спряжение"],
+  variable:["Наклонение","Время","Лицо / род","Число"]},
+ pronoun:{permanent:["Разряд","Лицо"],variable:["Род","Число","Падеж"]},
+ numeral:{permanent:["Разряд","Состав"],variable:["Падеж","Род","Число"]},
+ participle:{permanent:["Вид","Время","Залог"],variable:["Форма","Род","Число","Падеж"]},
+ adverb:{permanent:["Разряд по значению"],variable:["Степень сравнения"]}
+};
 export const traitGroupNames:Record<TraitGroup,string>={
  permanent:"Постоянные признаки",variable:"Непостоянные признаки",
  syntax:"Синтаксическая роль"
