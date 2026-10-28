@@ -514,6 +514,8 @@ export type Item = {
   subjectBoardEntries?: SubjectBoardEntry[];
   /** Standalone chemistry task, which may explicitly be moved into a chemistry worksheet. */
   subjectBoardStandalone?: boolean;
+  /** Persistent, shareable interactive chemistry table and glassware. */
+  scienceLabBench?: import("./lektrusChemistryBenchModel").LabBench;
   scienceReagents?: string[];
   scienceEnvironment?: "aqueous" | "dry" | "heated" | "ignited";
   schoolDiagram?: import("./lektrusSchoolDiagramModel").SchoolDiagram;
@@ -614,7 +616,7 @@ const persistedGraphKeys = [
   "graphPurpose","graphFigureId","chartStyle","chartEntries","scienceCircuit","scienceOptics","scienceMechanics","scienceAtomModel",
   "sciencePeriodicHighlights","sciencePeriodicShowNames","sciencePeriodicLayout",
   "scienceExperimentStage","scienceOrganicAnnotations","scienceOrganicShowSystematic","scienceOrganicShowTrivial","scienceReactionConditions","scienceReactionDomain","scienceReactionSteps","subjectBoardEntries",
-  "scienceReagents","scienceEnvironment","schoolDiagram",
+  "scienceReagents","scienceEnvironment","scienceLabBench","schoolDiagram",
   "graphRotationX","graphRotationY","graphParallelMarks",
   "graphAxisMode","graphIntervalStartClosed","graphIntervalEndClosed",
   "graphType","graphExpression","graphConnectPoints",
@@ -763,6 +765,25 @@ export function parseDocument(raw: string): DocumentData {
       if(i.scienceReactionSteps!=null&&(!Array.isArray(i.scienceReactionSteps)||i.scienceReactionSteps.length<1||i.scienceReactionSteps.length>8||
         !i.scienceReactionSteps.every((step: {expression:string;conditions:string})=>!!step&&typeof step.expression==="string"&&step.expression.length<=500&&typeof step.conditions==="string"&&step.conditions.length<=180)))
         throw new Error("Повреждены этапы химической цепочки");
+      if(i.scienceLabBench!=null){
+        const bench=i.scienceLabBench;
+        const environments=["aqueous","dry","heated","ignited"];
+        const kinds=["beaker","tube","flask"];
+        if(!bench||!Array.isArray(bench.vessels)||bench.vessels.length<1||
+          bench.vessels.length>6||typeof bench.selectedId!=="string"||
+          !Number.isSafeInteger(bench.event)||bench.event<0||
+          !bench.vessels.some(v=>v.id===bench.selectedId)||
+          new Set(bench.vessels.map(v=>v.id)).size!==bench.vessels.length||
+          !bench.vessels.every(v=>typeof v.id==="string"&&v.id.length<=40&&
+            kinds.includes(v.kind)&&Number.isFinite(v.x)&&Number.isFinite(v.y)&&
+            v.x>=8&&v.x<=92&&v.y>=8&&v.y<=92&&
+            Array.isArray(v.reagents)&&v.reagents.length<=6&&
+            v.reagents.every(r=>typeof r==="string"&&r.length<=70)&&
+            new Set(v.reagents).size===v.reagents.length&&
+            environments.includes(v.environment)&&typeof v.observed==="boolean"&&
+            (v.uncertain==null||typeof v.uncertain==="boolean")))
+          throw new Error("Повреждено состояние химического стола");
+      }
       if(i.subjectBoardStandalone!=null&&typeof i.subjectBoardStandalone!=="boolean")
         throw new Error("Повреждён тип химического учебного объекта");
       if(i.subjectBoardEntries!=null&&(!Array.isArray(i.subjectBoardEntries)||i.subjectBoardEntries.length>48||
