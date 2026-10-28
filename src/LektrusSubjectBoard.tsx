@@ -258,14 +258,14 @@ export function LektrusSubjectBoardTaskEditor({tone,entry,onChange,onClose,onDel
       <div className="lektrus-subject-task-types" role="group" aria-label="Тип задания">
        {options.map(template=><button type="button" key={template.id}
         className={current.id===template.id?"selected":""} aria-pressed={current.id===template.id}
-        onClick={()=>chooseType(template.id)}>
+        title={template.instruction} onClick={()=>chooseType(template.id)}>
         {template.title}</button>)}
       </div>
-      <small>{current.instruction}</small>
+      {tone!=="russian"&&tone!=="languages"&&<small>{current.instruction}</small>}
       {!options.some(option=>option.id===current.id)&&
        <small>Это сохранённый тип прежней версии. Его содержимое останется доступным.</small>}
      </div>}
-    <label className="lektrus-subject-task-title">Название <small>Необязательно</small>
+    <label className="lektrus-subject-task-title"><span>Название <small>необязательно</small></span>
      <input value={entry.title} maxLength={120} placeholder="Краткое название задания"
       onChange={e=>patch({title:e.target.value})}/></label>
     {(tone==="russian"||tone==="languages")?
