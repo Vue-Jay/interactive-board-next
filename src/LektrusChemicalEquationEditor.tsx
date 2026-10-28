@@ -1,3 +1,4 @@
+import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {Fragment,useRef,useState,type ReactNode} from "react";
 import {chemistryBoardHasContent} from "./lektrusChemistryBoardLifecycle";
 import {reviewEquationChain,applyKnownProductMarks,balancedStep,type ReviewIssue,type EquationDomain,type EquationStep} from "./lektrusEquationReview";
@@ -222,7 +223,7 @@ export default function LektrusChemicalEquationEditor({item,onChange,onSave,onCa
  };
  const issuesFor=(side:Side)=>currentReview?.issues.filter(v=>v.side===side||!v.side&&v.kind==="formula")??[];
  const save=()=>{if(canSave)onSave();};
- return createPortal(<div className="lektrus-chem-equation-overlay lektrus-chem-equation-v2 lektrus-chem-equation-compact lektrus-chem-one-screen lektrus-chem-reaction-workspace lektrus-chem-nonblocking">
+ return createPortal(<div className="lektrus-chem-equation-overlay lektrus-chem-equation-v2 lektrus-chem-equation-compact lektrus-chem-one-screen lektrus-chem-reaction-workspace lektrus-chem-nonblocking" style={subjectEditorStyle("chemistry")}>
    <section className="lektrus-chem-equation-editor" role="dialog" aria-modal="false" aria-label="Редактор уравнений и цепочек"
     onPointerDown={e=>e.stopPropagation()} onKeyDown={e=>{
      if(e.key==="Escape"){e.stopPropagation();onCancel();}
