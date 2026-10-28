@@ -766,7 +766,7 @@ export function parseDocument(raw: string): DocumentData {
         !i.scienceReactionSteps.every((step: {expression:string;conditions:string})=>!!step&&typeof step.expression==="string"&&step.expression.length<=500&&typeof step.conditions==="string"&&step.conditions.length<=180)))
         throw new Error("Повреждены этапы химической цепочки");
       if(i.scienceLabBench!=null){
-        const bench=i.scienceLabBench;
+        const bench=i.scienceLabBench as import("./lektrusChemistryBenchModel").LabBench;
         const environments=["aqueous","dry","heated","ignited"];
         const kinds=["beaker","tube","flask"];
         if(!bench||!Array.isArray(bench.vessels)||bench.vessels.length<1||
