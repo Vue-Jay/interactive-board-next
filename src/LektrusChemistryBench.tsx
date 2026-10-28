@@ -516,6 +516,22 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         <option value="heat">Тепло</option><option value="dissolution">Растворение</option>
        </select>}
       </div>
+      {cabinetTab==="substances"&&<div className="lektrus-lab-modal-sortbar">
+       <label>Состояние <select aria-label="Агрегатное состояние" value={phase}
+        onChange={e=>setPhase(e.target.value as "all"|StoragePhase)}>
+        <option value="all">Все</option>
+        {Object.entries(phaseNames).map(([id,name])=><option key={id} value={id}>{name}</option>)}
+       </select></label>
+       <label>Сортировка <select aria-label="Сортировка реактивов" value={sort}
+        onChange={e=>setSort(e.target.value as CatalogueSort)}>
+        <option value="name">По названию</option><option value="formula">По формуле</option>
+       </select></label>
+       <label>Группировка <select aria-label="Группировка реактивов" value={group}
+        onChange={e=>setGroup(e.target.value as CatalogueGroup)}>
+        <option value="class">По классам</option><option value="phase">По состоянию</option>
+        <option value="none">Без группировки</option>
+       </select></label>
+      </div>}
       <div className="lektrus-lab-modal-results-head">
        <span><strong>{cabinetTab==="substances"?visibleSubstances.length:experimentCases.length}</strong>
         {cabinetTab==="substances"?" веществ в каталоге":" опытов найдено"}</span>
@@ -530,15 +546,21 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <div ref={scrollRef} className="lektrus-lab-modal-reagents"
        role="region" tabIndex={0} aria-label="Прокручиваемый список веществ и опытов"
        onWheel={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()}>
-       {cabinetTab==="substances"?visibleSubstances.map(v=><button key={v.id} type="button"
-        className={chosen===v.id?"active":""} aria-pressed={chosen===v.id}
-        onClick={()=>{setChosen(v.id);setUnit(reagentAppearance(v.id).phase==="solid"?"g":"ml");setAmount(reagentAppearance(v.id).phase==="solid"?"1":"10")}}>
-        <i style={{background:reagentAppearance(v.id).color}}/>
-        <strong>{v.formula}</strong>
-        <span>{v.name}<small>{reagentAppearance(v.id).phase==="solid"?"Твёрдое":
-          reagentAppearance(v.id).phase==="gas"?"Газ":
-          reagentAppearance(v.id).phase==="metal"?"Металл":"Раствор / жидкость"}</small></span>
-       </button>):experimentCases.map((row,i)=><button type="button" key={i}
+       {cabinetTab==="substances"?catalogue.map(({title,items})=>
+        <div className="lektrus-lab-reagent-group" key={title}>
+         {group!=="none"&&<h3>{title}<small>{items.length}</small></h3>}
+         <div className="lektrus-lab-reagent-group-grid">
+          {items.map(v=><button key={v.id} type="button"
+           className={chosen===v.id?"active":""} aria-pressed={chosen===v.id}
+           onClick={()=>{setChosen(v.id);
+            setUnit(cabinetPhase(v)==="solid"?"g":"ml");
+            setAmount(cabinetPhase(v)==="solid"?"1":"10")}}>
+           <i style={{background:cabinetColor(v)}}/>
+           <strong>{v.formula}</strong>
+           <span>{v.name}<small>{phaseNames[cabinetPhase(v)]}</small></span>
+          </button>)}
+         </div>
+        </div>):experimentCases.map((row,i)=><button type="button" key={i}
          className="lektrus-lab-example-choice" onClick={()=>prepareExample(row)}
          title="Разместить исходные вещества отдельно">
          <strong>{row.reactants.join(" + ")}</strong>
