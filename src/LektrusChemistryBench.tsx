@@ -308,12 +308,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   </button>
   <div className={"lektrus-lab-glass-cupboard"+(dropFurniture==="glassware"?" is-dropzone":"")} data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
-   <span className="lektrus-lab-furniture-title">ПОСУДА</span>
+   <button type="button" className="lektrus-lab-furniture-title lektrus-lab-shelf-header"
+    disabled={!editable} aria-label="Открыть шкаф посуды"
+    onClick={e=>{e.stopPropagation();openCabinet("glassware")}}>ПОСУДА</button>
    <div className="lektrus-lab-shelf-items">
     {labGlassware.map(kind=><button type="button" key={kind.id} disabled={!editable}
       className="lektrus-lab-shelf-item" title={"Взять: "+kind.name}
       aria-label={"Взять из шкафа "+kind.name} onPointerDown={e=>beginShelf(e,kind.id)}
       onPointerMove={moveShelf} onPointerUp={finishShelf}
+      onClick={e=>{if(e.detail===0)take(kind.id)}}
       onPointerCancel={e=>{e.stopPropagation();shelfGesture.current=null;setShelfGhost(null)}}>
       <span className={"lektrus-lab-mini-glass is-"+kind.id} aria-hidden="true">♙</span>
       <small>{kind.name}</small>
@@ -453,6 +456,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        <span className={"lektrus-lab-mini-glass is-"+v.id}>♙</span>
        <strong>{v.name}</strong><small>{v.description}</small></button>)}
       <p>В шкаф возвращается только пустая посуда. Сначала слейте содержимое в раковину.</p>
+      <button type="button" className="lektrus-lab-store-selected"
+       disabled={!selected||!!selected.reagents.length}
+       onClick={()=>{if(selected)returnGlass(selected.id);setCabinet(null)}}>
+       Вернуть выбранную пустую посуду
+      </button>
      </div>}
      {cabinet==="settings"&&<div className="lektrus-lab-modal-settings">
       <p>Настройки принадлежат этому химическому столу и сохраняются с ним.</p>
