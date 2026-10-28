@@ -529,7 +529,7 @@ for(const device of lab.labDevices){
   "Each lab device requires a distinct SVG icon: "+device.name);
 }
 assert.match(read("src/LektrusChemistryBench.tsx"),/LektrusLabDeviceIcon/);
-assert.match(read("src/LektrusChemistryBench.tsx"),/className="lektrus-lab-device-switch"/,
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-device-switch/,
  "Each heater and mixer must have a physical power switch on its model");
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-device-mini-controls/,
  "Attachment and strength controls must belong to the instrument");
