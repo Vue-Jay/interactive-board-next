@@ -107,22 +107,28 @@ export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string):L
  const vessel=bench.vessels.find(v=>v.id===vesselId);
  if(!device||!vessel||!canMountLabVessel(device.kind,vessel.kind))return bench;
  if(device.active&&device.linkedVesselId===vesselId)return bench;
- // Equipment is stationary. Move the glassware into/onto it, never slide
- // the entire instrument across the table toward the selected vessel.
- const conflicting=placedLabDevices(bench).filter(d=>d.id!==id&&d.active&&
-  d.linkedVesselId===vesselId&&!mayShareLabVessel(device.kind,d.kind));
+ const companion=placedLabDevices(bench).find(d=>d.id!==id&&d.active&&
+  d.linkedVesselId===vesselId&&mayShareLabVessel(device.kind,d.kind));
+ // A retort stand and a burner are not independent, distant heaters:
+ // align the flame under the vessel held in the upper clamp.
+ const aligned=companion?{
+  ...device,
+  x:clampDevice(companion.x+(device.kind==="burner"?2.2:-2.2),9,79),
+  y:clampDevice(companion.y+(device.kind==="burner"?10:-10),63,84)
+ }:device;
  const placedDevices=placedLabDevices(bench).map(d=>d.id===id?
-  {...d,active:true,linkedVesselId:vesselId}:
-  conflicting.some(c=>c.id===d.id)?
+  {...aligned,active:true,linkedVesselId:vesselId}:
+  d.linkedVesselId===vesselId&&d.active&&!mayShareLabVessel(device.kind,d.kind)?
   {...d,active:false,linkedVesselId:undefined}:d);
- const point=labMountedGlasswarePoint(device,vessel,1600,1000,bench.vessels.length>3);
+ const stand=placedDevices.find(d=>d.kind==="tripod"&&d.active&&d.linkedVesselId===vesselId);
+ const anchor=stand??aligned;
+ const point=labMountedGlasswarePoint(anchor,vessel,1600,1000,bench.vessels.length>3);
  const logical=labLogicalPoint(point);
+ const mixer=placedDevices.find(d=>d.kind==="stirrer"&&d.active&&d.powered&&
+  d.linkedVesselId&&bench.vessels.some(v=>v.id===d.linkedVesselId&&v.reagents.length));
  return {...bench,placedDevices,
   vessels:bench.vessels.map(v=>v.id===vesselId?{...v,x:logical.x,y:logical.y}:v),
-  stirringVesselId:device.kind==="stirrer"&&device.powered&&vessel.reagents.length?
-   vesselId:bench.stirringVesselId===vesselId&&
-    placedDevices.every(d=>d.kind!=="stirrer"||d.linkedVesselId!==vesselId)?
-     undefined:bench.stirringVesselId,
+  stirringVesselId:mixer?.linkedVesselId,
   event:bench.event+1};
 }
 export function setPlacedDevicePower(bench:LabBench,id:string,powered:boolean):LabBench{
