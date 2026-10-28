@@ -215,7 +215,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   if(cabinetTab==="organic")return v.kind==="органика";
   return !["кислота","основание","соль","оксид","металл","неметалл","органика"].includes(v.kind);
  };
- const catalogue=buildLabCatalog({query,kind:category,phase,sort,group})
+ const catalogue=buildLabCatalog({query,kind:isGlobalSearch?"Все":category,
+  phase:isGlobalSearch?"all":phase,sort,group:isGlobalSearch?"class":group})
   .map(section=>({...section,items:section.items.filter(catalogKind)}))
   .filter(section=>section.items.length>0);
  const visibleSubstances=catalogue.flatMap(v=>v.items);
@@ -714,7 +715,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         ["organic","Органические"],["other","Прочие"],["experiments","Готовые опыты"]
        ] as const).map(([id,name])=><button type="button" key={id} role="tab"
         className={cabinetTab===id?"active":""} aria-selected={cabinetTab===id}
-        onClick={()=>{setCabinetTab(id);setChosen(null)}}>{name}</button>)}
+        onClick={()=>{setCabinetTab(id);setChosen(null);setCategory("Все");setPhase("all")}}>{name}</button>)}
       </div>
       <div className="lektrus-lab-modal-filters">
        <input type="search" placeholder="Поиск по всем веществам и формулам" value={query}
