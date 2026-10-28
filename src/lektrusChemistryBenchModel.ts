@@ -268,7 +268,9 @@ export function emptyLabVessel(bench:LabBench,id:string):LabBench{
 }
 export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|undefined):LabBench{
  if(!bench.vessels.some(v=>v.id===id&&v.reagents.length))return bench;
- return revise(bench,id,v=>v.indicator===indicator?v:{...v,indicator});
+ const next=revise(bench,id,v=>v.indicator===indicator?v:{...v,indicator});
+ return next!==bench&&bench.titrationPair?.targetId===id&&bench.titration&&indicator?
+  {...next,titration:{...bench.titration,indicator}}:next;
 }
 export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionEnvironment):LabBench{
  return revise(bench,id,v=>{
@@ -282,7 +284,7 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
 }
 export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabDose):LabBench{
  if(!bench.vessels.some(v=>v.id===id))return bench;
- return revise(bench,id,v=>{
+ const updated=revise(bench,id,v=>{
   const validDose=dose&&Number.isFinite(dose.value)&&dose.value>0&&
    dose.value<=10000&&(dose.unit==="ml"||dose.unit==="g")&&
    (dose.concentrationM===undefined||
@@ -307,6 +309,9 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    observed:reagents.length>1,
    uncertain:v.uncertain||beforeReaction.status==="reaction"};
  });
+ return updated!==bench&&bench.titrationPair&&
+  (bench.titrationPair.sourceId===id||bench.titrationPair.targetId===id)?
+  {...updated,titrationPair:undefined,titration:undefined}:updated;
 }
 /** Full transfer. Never assume that a second step using already reacted
  * mixtures can be predicted from their original reagent identifiers. */
@@ -351,7 +356,11 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
   }
   return v;
  });
- return bump(bench,vessels,targetId);
+ const result=bump(bench,vessels,targetId);
+ return bench.titrationPair&&
+  [bench.titrationPair.sourceId,bench.titrationPair.targetId].some(id=>
+   id===sourceId||id===targetId)?
+  {...result,titrationPair:undefined,titration:undefined}:result;
 }
 
 /** Reconcile simultaneous edits to different vessels. Array replacement would
