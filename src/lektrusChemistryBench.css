@@ -194,3 +194,100 @@
  .lektrus-lab-bubble,.lektrus-lab-particle,.lektrus-lab-sediment{animation:none!important}
  .lektrus-lab-fluid{transition:none}
 }
+
+/* Live glassware gestures: highlighted destination and a deliberate pouring tilt. */
+.lektrus-lab-vessel.is-drop-target{
+ background:#e9fff0a0;border-color:#2baf80!important;
+ box-shadow:0 0 0 3px #2baf8044,0 0 24px #4dba8e55;
+}
+.lektrus-lab-vessel.is-pour-drag .lektrus-lab-vessel-art{
+ transform:rotate(15deg);transform-origin:50% 80%;transition:transform .16s ease;
+}
+.lektrus-lab-vessel.is-pour-drag{z-index:25!important}
+.lektrus-lab-indicator-strip{filter:drop-shadow(0 1px 1px #1b3d4a44)}
+.lektrus-lab-indicator-tag{display:flex;align-items:center;gap:5px;max-width:100%;
+ color:#365e57;font:700 9px/1.2 system-ui,sans-serif;
+ padding:3px 5px;border-radius:5px;
+ background:#f6f6ee;border:1px solid #d6e1d6;white-space:nowrap}
+.lektrus-lab-indicator-dot{display:inline-block;flex:0 0 11px;
+ width:11px;height:11px;border:1px solid #64877d70;border-radius:50%}
+.lektrus-lab-indicators{border:1px solid #d6e6da;border-radius:10px;
+ padding:9px;display:grid;gap:8px;background:#f6fbf7}
+.lektrus-lab-indicator-heading{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px;
+ align-items:baseline}
+.lektrus-lab-indicator-heading strong{font-size:12px;color:#276e55}
+.lektrus-lab-indicator-heading small{font-size:10px;color:#789687}
+.lektrus-lab-indicator-reading{display:flex;align-items:flex-start;gap:8px;
+ background:#fff;border:1px solid #daeadd;border-radius:8px;padding:8px}
+.lektrus-lab-indicator-reading .lektrus-lab-indicator-dot{width:18px;height:18px;flex-basis:18px}
+.lektrus-lab-indicator-reading>span:last-child{display:grid;gap:3px;min-width:0}
+.lektrus-lab-indicator-reading strong{color:#2c6d55;font-size:12px}
+.lektrus-lab-indicator-reading small{color:#648678;font-size:10px;line-height:1.35}
+.lektrus-lab-bench{touch-action:none}
+.lektrus-chemistry-bench-on-board .lektrus-lab-bench{touch-action:none}
+
+/* The bench works in place: one compact dock rather than a passive screenshot.
+   Only the dock owns pointer events; the surrounding board stays pannable. */
+.lektrus-lab-board-controls{
+ position:absolute;z-index:45;left:1.5%;right:1.5%;bottom:1.5%;
+ display:grid;gap:4px;max-width:100%;padding:7px 9px;
+ border:1px solid #b4d8c6;border-radius:12px;
+ background:#f6fcf5f2;box-shadow:0 3px 18px #173f3c30;
+ backdrop-filter:blur(8px);color:#285a4c;
+ font:600 11px/1.35 system-ui,sans-serif;box-sizing:border-box;
+}
+.lektrus-lab-board-action-row{display:flex;align-items:center;justify-content:center;
+ gap:5px;flex-wrap:wrap;min-width:0}
+.lektrus-lab-board-action-row>button,
+.lektrus-lab-board-action-row select{
+ min-height:30px;min-width:0;border:1px solid #c7dfce;border-radius:7px;
+ background:#fff;color:#286a53;padding:5px 8px;
+ font:700 11px/1.15 system-ui,sans-serif;cursor:pointer;
+}
+.lektrus-lab-board-action-row>button.active{background:#27775d;color:white}
+.lektrus-lab-board-action-row :is(button,select):disabled{
+ opacity:.43;cursor:not-allowed}
+.lektrus-lab-board-add-vessel{display:flex;min-width:0}
+.lektrus-lab-board-add-vessel select{max-width:103px}
+.lektrus-lab-board-action-row>select{max-width:138px}
+.lektrus-lab-board-status{
+ display:flex;align-items:center;justify-content:center;gap:8px;min-width:0;
+ text-align:center;color:#527d70;font-size:10px;line-height:1.3;
+}
+.lektrus-lab-board-status strong{flex:none;color:#28715c}
+.lektrus-lab-board-status span{min-width:0;max-width:100%;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lektrus-lab-board-picker{
+ position:absolute;bottom:calc(100% + 5px);right:8px;
+ width:min(330px,calc(100% - 16px));max-height:260px;
+ background:#f9fffa;border:1px solid #a7d6bf;border-radius:11px;
+ padding:8px;display:flex;flex-direction:column;gap:7px;
+ box-shadow:0 8px 28px #17483f55;box-sizing:border-box;
+}
+.lektrus-lab-board-picker input{min-height:34px;width:100%;min-width:0;
+ background:#fff;border:1px solid #c3decd;border-radius:7px;
+ padding:7px 9px;font:600 12px/1.2 system-ui,sans-serif;color:#23533e}
+.lektrus-lab-board-picker-list{min-height:0;overflow-y:auto;display:grid;gap:3px}
+.lektrus-lab-board-picker-list button{display:grid;
+ grid-template-columns:minmax(60px,auto) minmax(0,1fr);align-items:center;
+ text-align:left;gap:8px;min-height:29px;padding:5px 7px;
+ border:1px solid #e0ede5;border-radius:7px;
+ background:#fff;color:#3b705b;cursor:pointer}
+.lektrus-lab-board-picker-list button:hover{background:#e9f6ec;border-color:#8fbea5}
+.lektrus-lab-board-picker-list button strong{font-size:11px}
+.lektrus-lab-board-picker-list button span{font-size:10px;overflow:hidden;
+ white-space:nowrap;text-overflow:ellipsis}
+.lektrus-lab-board-picker-list small{padding:8px;text-align:center}
+.lektrus-lab-board-controls :is(button,select,input):focus-visible{
+ outline:2px solid #238f6d;outline-offset:1px}
+@media(max-width:700px){
+ .lektrus-lab-board-controls{padding:5px;gap:3px}
+ .lektrus-lab-board-action-row{gap:3px}
+ .lektrus-lab-board-action-row>button,
+ .lektrus-lab-board-action-row select{padding:4px;min-height:27px;font-size:9px}
+ .lektrus-lab-board-action-row>select{max-width:105px}
+ .lektrus-lab-board-status{font-size:9px;gap:5px}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-vessel.is-pour-drag .lektrus-lab-vessel-art{transition:none}
+}
