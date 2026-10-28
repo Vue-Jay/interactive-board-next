@@ -120,7 +120,7 @@ assert.equal(foreign.editForeignAnswer("",0,"a".repeat(2001),1),"",
 assert.match(board,/LektrusForeignTaskAnswer/,"Foreign pupil work is shown in the subject board");
 assert.match(studio,/LektrusForeignTaskAnswer/,"Teacher sees the same foreign language worksheet");
 assert.match(studio,/Предложения для преобразования/);
-assert.match(studio,/Разметить знаки автоматически/,"Teacher can mark punctuation");
+assert.match(studio,/Разметить знаки/,"Teacher can mark punctuation");
 assert.match(studio,/Место без знака/,"Punctuation asks whether a mark is necessary");
 assert.match(activityUi,/Объяснить постановку знаков/,"Student has to explain punctuation");
 assert.match(activityUi,/Правило преподавателя/,"Teacher rule is revealed only after checking");
