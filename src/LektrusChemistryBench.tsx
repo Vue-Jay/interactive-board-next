@@ -914,7 +914,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          onClick={()=>onChange?.(setLabStandHeight(bench,device.id,
           Math.max(0,Math.round(((device.standHeight??.5)-.1)*10)/10)))}>−</button>
        </>}
-      </div>
+      </div>}
     </div>
    </div>;
   })}
