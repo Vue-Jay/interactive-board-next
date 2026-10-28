@@ -2524,3 +2524,90 @@
   left:2%!important;right:17%!important;gap:3px!important;
   max-height:105px!important;flex-wrap:wrap!important}
 }
+
+
+/* Laboratory v8: engravings, switches and displays are inside each SVG
+   viewBox, so they scale exactly with the apparatus silhouette. */
+.lektrus-lab-bench .lektrus-lab-placed-device{
+ overflow:visible!important;pointer-events:none!important;
+ border:0!important;background:transparent!important;box-shadow:none!important}
+.lektrus-lab-bench .lektrus-lab-device-grip{
+ pointer-events:auto!important;overflow:visible!important;
+ touch-action:none!important;outline:0!important}
+.lektrus-lab-bench .lektrus-lab-device-grip>.lektrus-lab-device-icon{
+ width:100%!important;height:100%!important;
+ filter:drop-shadow(0 3px 3px #204e4144)!important}
+.lektrus-lab-device-icon .lektrus-lab-svg-control:focus-visible{
+ outline:none;filter:drop-shadow(0 0 3px #218e70)}
+.lektrus-lab-device-icon foreignObject{
+ overflow:visible;pointer-events:auto}
+.lektrus-device-thermostat{
+ display:block!important;box-sizing:border-box!important;
+ width:100%!important;height:100%!important;
+ border:0!important;border-radius:2px!important;
+ padding:0 1px!important;text-align:center!important;
+ background:#254d43!important;color:#e7fbd8!important;
+ font:900 9px/1 system-ui,sans-serif!important;
+ box-shadow:none!important;outline:0!important}
+.lektrus-device-thermostat:focus{
+ outline:1px solid #d0f3d7!important}
+.lektrus-lab-device-integrated-controls{
+ display:flex;justify-content:center;align-items:center;
+ width:100%;height:100%;gap:2px;min-width:0;
+ padding:0;box-sizing:border-box;user-select:none}
+.lektrus-lab-device-integrated-controls button,
+.lektrus-lab-device-integrated-controls select{
+ flex:0 1 auto;min-width:0;height:100%;max-height:100%;
+ padding:0 1px;border:1px solid #699f89;border-radius:2px;
+ background:#ecf7ed;color:#27594a;
+ font:800 7px/1.1 system-ui,sans-serif;
+ text-overflow:clip;box-shadow:none;cursor:pointer}
+.lektrus-lab-device-integrated-controls button{width:15px;flex-shrink:0}
+.lektrus-lab-device-integrated-controls select{flex:1 1 auto;max-width:53px}
+.lektrus-lab-device-icon .lektrus-lab-device-brand{
+ paint-order:stroke;stroke:#d2e8d5;stroke-width:.5px;
+ text-shadow:0 1px 1px #fff9}
+.lektrus-lab-bench .lektrus-lab-vessel-art>.lektrus-lab-indicator-tag{
+ display:none!important}
+.lektrus-lab-bench .lektrus-lab-vessel-art>svg{
+ width:100%!important;height:100%!important;max-height:none!important}
+.lektrus-lab-bench .lektrus-lab-vessel{
+ overflow:visible!important;background:transparent!important}
+.lektrus-lab-bench .lektrus-lab-ware-engraving,
+.lektrus-lab-bench .lektrus-lab-ware-brand{pointer-events:none}
+.lektrus-lab-bench .lektrus-lab-svg-ware-control:hover circle{
+ fill:#cceedd;stroke:#318766}
+.lektrus-lab-bench .lektrus-lab-svg-ware-control:focus-visible circle{
+ stroke-width:3}
+.lektrus-lab-bench .lektrus-lab-worktop-actions,
+.lektrus-lab-bench .lektrus-lab-titration-on-table,
+.lektrus-lab-bench .lektrus-lab-titration-on-table.is-burette-valve{
+ top:var(--lab-menu-y,56%)!important;
+ left:var(--lab-menu-x,49%)!important;
+ right:auto!important;bottom:auto!important;
+ transform:translate(-50%,-110%)!important;
+ max-width:450px!important;width:max-content!important;
+ min-height:32px!important;max-height:190px!important;
+ z-index:55!important;display:flex!important;flex-wrap:wrap!important;
+ padding:6px!important;gap:4px!important;
+ box-shadow:0 4px 15px #1d594b36!important;
+ background:#f4fff3f6!important;border-radius:9px!important}
+.lektrus-lab-bench .lektrus-lab-worktop-actions:before,
+.lektrus-lab-bench .lektrus-lab-titration-on-table:before{
+ content:"";position:absolute;top:100%;left:50%;
+ border-left:7px solid transparent;border-right:7px solid transparent;
+ border-top:7px solid #f4fff3f6;transform:translateX(-50%)}
+.lektrus-lab-bench .lektrus-lab-worktop-actions select,
+.lektrus-lab-bench .lektrus-lab-titration-on-table select{
+ height:28px!important;min-height:0!important;max-width:138px!important}
+.lektrus-lab-bench .lektrus-lab-worktop-actions button,
+.lektrus-lab-bench .lektrus-lab-titration-on-table button{
+ min-height:27px!important;height:auto!important;padding:3px 7px!important}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-worktop-actions,
+ .lektrus-lab-bench .lektrus-lab-titration-on-table,
+ .lektrus-lab-bench .lektrus-lab-titration-on-table.is-burette-valve{
+  left:var(--lab-menu-x,49%)!important;
+  top:var(--lab-menu-y,56%)!important;right:auto!important;bottom:auto!important;
+  width:max-content!important;max-width:330px!important}
+}
