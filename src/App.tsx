@@ -8446,7 +8446,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
             const centerY=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
             if(id.startsWith("subject-task-")){
-              const tone=id.slice("subject-task-".length) as SubjectTone;
+              const tone=id.slice("subject-task-".length) as keyof typeof subjectAccentPalette;
               if(!(tone in subjectAccentPalette)){setNotice("Выберите предмет доски");return;}
               const chosen=itemsRef.current.find(value=>selected.includes(value.id)&&
                value.graphFigureId==="subject-board-"+tone&&!value.subjectBoardStandalone&&!value.locked);
