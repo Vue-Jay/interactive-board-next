@@ -230,6 +230,7 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
        role="status" aria-label={"Ответ в пропуске "+(i+1)}>{selected}</span>:
        <input type="text" value={selected} disabled={!onChange}
         maxLength={240} aria-label={"Пропуск "+(i+1)} placeholder=""
+        style={{width:Math.min(190,Math.max(36,blank.answer.length*15+12))}}
         className={punctuation?"lektrus-activity-sign-input":""}
         onChange={e=>updateGap(i,e.target.value)}/>}
       {hasChoice&&<span className="lektrus-activity-gap-choices" role="group"
