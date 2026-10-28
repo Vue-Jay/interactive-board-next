@@ -12,8 +12,10 @@ const load=(path,requireFn=()=>{throw Error("Unexpected import")})=>{
 };
 const reaction=load("src/lektrusReactionDatabase.ts");
 const titration=load("src/lektrusLabTitration.ts");
+const layout=load("src/lektrusLabLayout.ts");
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabTitration")return titration;
+ if(key==="./lektrusLabLayout")return layout;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
