@@ -1,3 +1,4 @@
+import type {CSSProperties} from "react";
 import type {Item} from "./boardModel";
 
 /** Shared, restrained colors for subject-specific on-board objects. */
@@ -39,4 +40,35 @@ export function subjectToneForItem(item:Item):SubjectTone|undefined{
  if(id.startsWith("info-"))return "informatics";
  if(item.graphPurpose||id==="lektrus-chart"||id==="")return "mathematics";
  return undefined;
+}
+
+/** One shared color contract for every specialized subject editor and the
+ * subject-tool catalogue. Colors affect controls, never scientific diagrams. */
+export function subjectToneForToolId(id:string):SubjectTone|undefined{
+ if(id.startsWith("subject-board-")){
+  const tone=id.slice("subject-board-".length) as SubjectTone;
+  return tone in subjectAccentPalette?tone:undefined;
+ }
+ if(/^(chem-|periodic-)/.test(id))return "chemistry";
+ if(id.startsWith("physics-"))return "physics";
+ if(/^(math-|graph-)/.test(id))return "mathematics";
+ if(/^(geo-|maps-|contour-)/.test(id))return "geography";
+ if(id.startsWith("history-"))return "history";
+ if(id.startsWith("bio-"))return "biology";
+ if(id.startsWith("ru-"))return "russian";
+ if(id.startsWith("literature-"))return "literature";
+ if(id.startsWith("civics-"))return "social";
+ if(/^(language-|foreign-)/.test(id))return "languages";
+ if(id.startsWith("info-"))return "informatics";
+ return undefined;
+}
+export function subjectEditorStyle(tone:SubjectTone|undefined):CSSProperties{
+ const palette=tone?subjectAccentPalette[tone]:undefined;
+ if(!palette)return {};
+ return {
+  "--lektrus-tool-accent":palette.accent,
+  "--lektrus-tool-soft":palette.soft,
+  "--subject-board-accent":palette.accent,
+  "--subject-board-soft":palette.soft,
+ } as CSSProperties;
 }
