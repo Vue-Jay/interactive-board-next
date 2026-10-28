@@ -200,7 +200,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  useEffect(()=>{
   const node=host.current;if(!node)return;
   const update=()=>{
-   const {width,height}=node.getBoundingClientRect();
+   // CSS container queries use untransformed layout pixels, not the
+   // scaled bounding rect of a board item being zoomed.
+   const width=node.clientWidth,height=node.clientHeight;
    if(width>0&&height>0)setStageSize(old=>
     Math.abs(old.width-width)<1&&Math.abs(old.height-height)<1?old:{width,height});
   };
