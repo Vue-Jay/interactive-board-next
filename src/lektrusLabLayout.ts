@@ -1,7 +1,7 @@
 /** Coordinates on the shared bench remain 10..90; display coordinates are
  * projected into the clear central work surface. Shelves and washbasin must
  * never overlap an active vessel, even in boards saved before the redesign. */
-export const LAB_WORKSPACE={left:29,right:77,top:57,bottom:91} as const;
+export const LAB_WORKSPACE={left:31,right:73,top:57,bottom:91} as const;
 const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
 const lerp=(min:number,max:number,t:number)=>min+(max-min)*t;
 export function labDisplayPoint(point:{x:number;y:number}){
