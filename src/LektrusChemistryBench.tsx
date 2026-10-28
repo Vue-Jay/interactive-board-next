@@ -6,7 +6,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassw
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
-import {buildLabCatalog,cabinetColor,cabinetPhase,phaseNames,type CatalogueGroup,type CatalogueSort,type StoragePhase}
+import {buildLabCatalog,cabinetColor,cabinetPhase,phaseNames,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
@@ -707,6 +707,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   if(!editable||!chosen)return;
   if(!selected){setNotice("Возьмите чистую посуду из шкафа");return}
   const value=Number(amount.replace(",","."));
+  if(reagent&&!labReagentForms(reagent).includes(unit)){setNotice("Эта форма реактива недоступна");return}
   if(!Number.isFinite(value)||value<=0||value>10000){setNotice("Укажите количество больше нуля и не более 10000");return}
   const isTitrant=["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen);
   const concentration=Number(molarity.replace(",","."));
@@ -835,7 +836,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <i style={{"--bottle-color":color} as React.CSSProperties}/>
       <strong>{item?.formula??v.id}</strong>
       <small>{v.dose.value}{v.dose.unit==="ml"?" мл":" г"}</small>
-      <span className="lektrus-lab-quick-phase">{v.dose.unit==="g"?"Твёрдое":"Раствор"}</span>
+      <span className="lektrus-lab-quick-phase">{item?labReagentPhaseLabel(item,v.dose.unit):"Реактив"}</span>
      </button>;
     })}
     {editable&&quickReagents.length<MAX_QUICK_REAGENTS&&<button type="button"
@@ -1310,13 +1311,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
            className={chosen===v.id?"active":""} aria-pressed={chosen===v.id}
            onClick={()=>{setChosen(v.id);
             const saved=quickReagents.find(q=>q.id===v.id)?.dose;
-            setUnit(saved?.unit??(cabinetPhase(v)==="solid"?"g":"ml"));
+            const forms=labReagentForms(v);
+            setUnit(saved&&forms.includes(saved.unit)?saved.unit:
+             forms.includes("g")?"g":"ml");
             setAmount(String(saved?.value??10));
             setMolarity(String(saved?.concentrationM??.1))}}>
            <i style={{background:cabinetColor(v)}}/>
            <strong>{v.formula}</strong>
-           <span>{v.name}<small>{cabinetPhase(v)==="solid"?"Твёрдое":
-            cabinetPhase(v)==="gas"?"Газ":"Раствор / жидкость"}</small></span>
+           <span>{v.name}<small>{labReagentForms(v).length>1?"Твёрдое / раствор":
+            labReagentPhaseLabel(v,labReagentForms(v)[0])}</small></span>
           </button>)}
          </div>
         </div>):experimentCases.map((row,i)=><button type="button" key={i}
@@ -1351,7 +1354,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       </div>}
       {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-dose">
        <div><strong>{reagent?.name??"Выберите реактив"}</strong>
-        <small>{reagent?reagentAppearance(reagent.id).label:"Сначала выберите вещество из шкафа"}</small>
+        <small>{reagent?labReagentPhaseLabel(reagent,unit)+" · "+
+          reagentAppearance(reagent.id,unit==="g"?"dry":"aqueous").label:
+          "Сначала выберите вещество из шкафа"}</small>
        </div>
        <div className="lektrus-lab-dose-controls">
         <label>{unit==="ml"?"Объём, мл":"Масса, г"}
@@ -1364,7 +1369,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          </label>}
         <label>Форма реактива
          <select value={unit} onChange={e=>setUnit(e.target.value as "ml"|"g")}>
-          <option value="ml">Раствор, мл</option><option value="g">Твёрдое, г</option>
+          <option value="ml" disabled={!!reagent&&!labReagentForms(reagent).includes("ml")}>
+           Раствор / жидкость, мл</option>
+          <option value="g" disabled={!!reagent&&!labReagentForms(reagent).includes("g")}>
+           Твёрдое, г</option>
          </select></label>
         <button type="button" className="primary" disabled={!chosen||!selected}
          onClick={dispense}>Добавить в сосуд</button>
@@ -1373,6 +1381,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          className="lektrus-lab-save-quick" onClick={()=>{
           if(!chosen)return;
           const value=Number(amount.replace(",","."));
+          const substance=substances.find(v=>v.id===chosen);
+          if(substance&&!labReagentForms(substance).includes(unit)){
+           setNotice("Выбранная форма реактива не подходит");return}
           const concentration=Number(molarity.replace(",","."));
           if(!Number.isFinite(value)||value<=0||value>10000){setNotice("Укажите положительное количество");return}
           const isTitrant=unit==="ml"&&["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen);
