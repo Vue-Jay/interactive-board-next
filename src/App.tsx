@@ -2319,6 +2319,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
   const [scienceEditorItem,setScienceEditorItem]=useState<Item|null>(null);
   const provisionalChemistryBoards=useRef(new Set<string>());
   const provisionalChemistryWorksheets=useRef(new Set<string>());
+  const provisionalSubjectTaskBoards=useRef(new Set<string>());
   const [subjectBoardEditor,setSubjectBoardEditor]=useState<{boardId:string;entryId:string;mode:"equation"|"task"}|null>(null);
   const [subjectBoardSolution,setSubjectBoardSolution]=useState<{boardId:string;entryId:string}|null>(null);
   const [schoolEditorItem,setSchoolEditorItem]=useState<Item|null>(null);
@@ -5546,8 +5547,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      const owned=latest.subjectBoardEntries?.find(entry=>entry.id===entryId);
      if(!owned||!entryBelongsToSubject(boardTone(latest),owned))return;
      const remaining=(latest.subjectBoardEntries??[]).filter(entry=>entry.id!==entryId);
-     if(!remaining.length&&(provisionalChemistryWorksheets.current.has(boardId)||latest.subjectBoardStandalone)){
+     if(!remaining.length&&(provisionalChemistryWorksheets.current.has(boardId)||provisionalSubjectTaskBoards.current.has(boardId)||latest.subjectBoardStandalone)){
        provisionalChemistryWorksheets.current.delete(boardId);
+       provisionalSubjectTaskBoards.current.delete(boardId);
        commit(itemsRef.current.filter(value=>value.id!==boardId));
        setSelected([]);return;
      }
@@ -5582,8 +5584,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      const current=itemsRef.current.find(value=>value.id===state.boardId);
      const entry=current?.subjectBoardEntries?.find(value=>value.id===state.entryId);
      const isEmpty=!!entry&&!subjectBoardEntryFilled(entry);
-     if(provisionalChemistryWorksheets.current.has(state.boardId)){
+     if(provisionalChemistryWorksheets.current.has(state.boardId)||provisionalSubjectTaskBoards.current.has(state.boardId)){
        provisionalChemistryWorksheets.current.delete(state.boardId);
+       provisionalSubjectTaskBoards.current.delete(state.boardId);
        if(isEmpty&&current?.subjectBoardEntries?.length===1){
          commit(itemsRef.current.filter(value=>value.id!==state.boardId));
          setSelected([]);setSubjectBoardEditor(null);return;
@@ -8442,6 +8445,17 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
             const rect=board.current?.getBoundingClientRect();
             const centerX=((rect?.width||boardViewportSize.width||1000)/2-view.x)/view.zoom;
             const centerY=((rect?.height||boardViewportSize.height||700)/2-view.y)/view.zoom;
+            if(id.startsWith("subject-task-")){
+              const tone=id.slice("subject-task-".length) as SubjectTone;
+              if(!(tone in subjectAccentPalette)){setNotice("Выберите предмет доски");return;}
+              const chosen=itemsRef.current.find(value=>selected.includes(value.id)&&
+               value.graphFigureId==="subject-board-"+tone&&!value.subjectBoardStandalone&&!value.locked);
+              const target=chosen??makeSubjectToolItem(id as SubjectToolId,centerX,centerY,createId);
+              if(!chosen)provisionalSubjectTaskBoards.current.add(target.id);
+              setSubjectToolsOpen(false);
+              openSubjectBoardEntry(target,"task");
+              return;
+            }
             if(id==="chem-formulas"||id==="chem-assignments"){
               const chosen=itemsRef.current.find(value=>selected.includes(value.id)&&
                value.graphFigureId==="subject-board-chemistry"&&!value.subjectBoardStandalone&&!value.locked);
