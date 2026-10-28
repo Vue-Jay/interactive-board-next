@@ -613,4 +613,85 @@ assert.match(model,/"scienceLabBench"/);
 assert.match(model,/Повреждено состояние химического стола/);
 assert.match(read("src/main.tsx"),/lektrusChemistryBench\.css/);
 assert.match(read("src/lektrusChemistryBench.css"),/prefers-reduced-motion:reduce/);
+// Every glassware silhouette must be an actionable shared bench object,
+// and special calibrated instruments have bounded physical behaviour.
+for(const glass of lab.labGlassware){
+ let b=lab.addLabVessel(lab.defaultLabBench(),glass.id);
+ const vessel=b.vessels.find(v=>v.kind===glass.id);
+ assert.ok(vessel,"Can add "+glass.name);
+ const dry=glass.id==="crucible";
+ const reagent=dry?"NaCl":"H2O";
+ b=lab.putLabReagent(b,vessel.id,reagent,
+  {value:5,unit:dry?"g":"ml"});
+ assert.ok(b.vessels.find(v=>v.id===vessel.id).reagents.includes(reagent),
+  glass.name+" must accept material appropriate to its lab function");
+ assert.ok(lab.labObservation(b.vessels.find(v=>v.id===vessel.id)).message);
+}
+let calibrated=lab.addLabVessel(lab.defaultLabBench(),"pipette");
+const pipetteId=calibrated.vessels.find(v=>v.kind==="pipette").id;
+calibrated=lab.putLabReagent(calibrated,"v1","HCl",{value:40,unit:"ml",concentrationM:.1});
+assert.equal(lab.putLabReagent(calibrated,pipetteId,"HCl",
+ {value:30,unit:"ml",concentrationM:.1}),calibrated,
+ "A 25 ml pipette cannot hold 30 ml");
+calibrated=lab.transferLabMeasuredLiquid(calibrated,"v1",pipetteId,10);
+assert.equal(calibrated.vessels.find(v=>v.id===pipetteId).doses.HCl.value,10);
+assert.equal(calibrated.vessels.find(v=>v.id==="v1").doses.HCl.value,30);
+calibrated=lab.addLabVessel(calibrated,"cylinder");
+const cylinderId=calibrated.vessels.find(v=>v.kind==="cylinder").id;
+calibrated=lab.transferLabMeasuredLiquid(calibrated,pipetteId,cylinderId,4);
+assert.equal(calibrated.vessels.find(v=>v.id===pipetteId).doses.HCl.value,6);
+assert.equal(calibrated.vessels.find(v=>v.id===cylinderId).doses.HCl.value,4);
+assert.equal(calibrated.vessels.find(v=>v.id===cylinderId).doses.HCl.concentrationM,.1);
+assert.equal(lab.transferLabMeasuredLiquid(calibrated,pipetteId,cylinderId,50),calibrated);
+let markFlask=lab.addLabVessel(lab.defaultLabBench(),"volumetric");
+const markId=markFlask.vessels.find(v=>v.kind==="volumetric").id;
+markFlask=lab.putLabReagent(markFlask,markId,"NaCl",{value:20,unit:"ml"});
+markFlask=lab.fillLabVolumetricFlask(markFlask,markId);
+assert.equal(markFlask.vessels.find(v=>v.id===markId).doses.H2O.value,80);
+assert.equal(lab.fillLabVolumetricFlask(markFlask,markId),markFlask,
+ "A volumetric flask must stop at the calibration mark");
+let funnelWork=lab.addLabVessel(lab.defaultLabBench(),"funnel");
+const funnelId=funnelWork.vessels.find(v=>v.kind==="funnel").id;
+funnelWork=lab.addLabVessel(funnelWork,"conical");
+const receiverId=funnelWork.vessels.find(v=>v.kind==="conical").id;
+funnelWork=lab.putLabReagent(funnelWork,"v1","CuSO4",{value:25,unit:"ml"});
+funnelWork=lab.pourThroughLabFunnel(funnelWork,funnelId,"v1",receiverId);
+assert.equal(funnelWork.vessels.find(v=>v.id===receiverId).doses.CuSO4.value,25);
+assert.equal(funnelWork.vessels.find(v=>v.id==="v1").reagents.length,0);
+const savedQuick=lab.defaultLabQuickReagents();
+assert.ok(savedQuick.length>=8&&savedQuick.length<=lab.MAX_QUICK_REAGENTS);
+let quickBench=lab.defaultLabBench();
+quickBench=lab.setLabQuickReagent(quickBench,"HCl",{value:25,unit:"ml",concentrationM:.5});
+assert.equal(lab.labQuickReagents(quickBench).find(v=>v.id==="HCl").dose.value,25);
+quickBench=lab.setLabQuickReagent(quickBench,"NaCl");
+assert.ok(!lab.labQuickReagents(quickBench).some(v=>v.id==="NaCl"));
+quickBench=lab.setLabBenchSettings(quickBench,{showTemperatures:false});
+assert.equal(lab.labBenchSettings(quickBench).showTemperatures,false);
+quickBench=lab.addPlacedLabDevice(quickBench,"hotplate");
+quickBench=lab.clearLabTable(quickBench);
+assert.equal(quickBench.vessels.length,0,"Clear table removes every vessel");
+assert.equal(lab.placedLabDevices(quickBench).length,0,"Clear table removes equipment");
+assert.equal(lab.labQuickReagents(quickBench).find(v=>v.id==="HCl").dose.value,25,
+ "Clear table preserves custom quick bottles and their dosages");
+assert.equal(lab.labBenchSettings(quickBench).showTemperatures,false);
+assert.ok(lab.addLabVessel(quickBench,"tube").vessels.some(v=>v.kind==="tube"),
+ "After a full clear the table accepts fresh glassware again");
+const surface=read("src/LektrusChemistryBench.tsx");
+assert.match(surface,/lektrus-lab-content-tag/);
+assert.match(surface,/lektrus-lab-content-quantity/);
+assert.match(surface,/lektrus-lab-temperature-toggle/);
+assert.match(surface,/lektrus-lab-clear-worktop/);
+assert.match(surface,/clearLabTable\(bench\)/);
+assert.match(surface,/lektrus-lab-quick-editor/);
+assert.match(surface,/setLabQuickReagent\(bench/);
+assert.match(surface,/addQuick\(v\.id\)/);
+assert.match(surface,/labMeasuredCapacityMl/);
+assert.match(surface,/transferLabMeasuredLiquid/);
+assert.match(surface,/pourThroughLabFunnel/);
+assert.match(surface,/fillLabVolumetricFlask/);
+assert.doesNotMatch(surface,/onClick=\{e=>\{e\.stopPropagation\(\);if\(selected\?\.reagents\.length\)clean/,
+ "The sink must never empty selected glassware merely because it was clicked");
+assert.match(surface,/if\(inSink\(p\)\)clean\(g\.id\)/,
+ "Only dropping an individual vessel into the sink triggers disposal");
+
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
