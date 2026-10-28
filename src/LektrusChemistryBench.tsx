@@ -654,6 +654,31 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <span className="lektrus-lab-scene-brand">LEKTRUS <span>LAB</span></span>
    <strong>Химическая лаборатория</strong>
    <span className="lektrus-lab-scene-stats">{bench.vessels.length} из 6 сосудов <b>·</b> {physicalDevices.length} приборов</span>
+   <div className="lektrus-lab-header-tools" data-board-interactive="true"
+    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+    <button type="button" className="lektrus-lab-temperature-toggle"
+     aria-label={settings.showTemperatures?"Скрыть температуры посуды":"Показать температуры посуды"}
+     aria-pressed={settings.showTemperatures}
+     title={settings.showTemperatures?"Скрыть температуры на посуде":"Показать температуры на посуде"}
+     disabled={!editable} onClick={e=>{e.stopPropagation();
+      onChange?.(setLabBenchSettings(bench,{showTemperatures:!settings.showTemperatures}))}}>
+     <span aria-hidden="true">°C</span>
+     <span>{settings.showTemperatures?"Температуры":"Показать °C"}</span>
+    </button>
+    {editable&&(bench.vessels.length>0||physicalDevices.length>0)&&
+     <button type="button" className={"lektrus-lab-clear-worktop"+(confirmClear?" is-confirm":"")}
+      aria-label={confirmClear?"Подтвердить очистку стола":"Очистить стол"}
+      title="Убрать всю посуду и приборы со стола, сохранить быстрый доступ"
+      onClick={e=>{e.stopPropagation();
+       if(!confirmClear){setConfirmClear(true);return}
+       onChange?.(clearLabTable(bench));setConfirmClear(false);
+       setVesselMenuId(null);setActiveDeviceId(null);
+       setNotice("Рабочая поверхность очищена. Быстрые реактивы сохранены.")}}>
+      {confirmClear?"Подтвердить очистку":"Очистить стол"}
+     </button>}
+    {confirmClear&&<button type="button" className="lektrus-lab-cancel-clear"
+     aria-label="Отменить очистку" onClick={e=>{e.stopPropagation();setConfirmClear(false)}}>×</button>}
+   </div>
    {editable&&bench.vessels.length>1&&<button type="button" className="lektrus-lab-arrange-btn"
     aria-label="Автоматически расставить посуду без наложений"
     title="Упорядочить посуду" data-board-interactive="true"
@@ -887,13 +912,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <span className="lektrus-lab-ph-readout">pH {titrationReading(bench.titration).pH} ·
      {bench.titration.addedMl.toLocaleString("ru-RU")} мл</span>}
   </div>}
-  <button type="button" data-board-interactive="true"
+  <div data-board-interactive="true"
    className={"lektrus-lab-sink"+(dropFurniture==="sink"?" is-dropzone":"")+
      (sinkFlow?" is-flowing":"")}
-   disabled={!editable} onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
-   onClick={e=>{e.stopPropagation();if(selected?.reagents.length)clean(selected.id);else setNotice("Выберите заполненный сосуд")}}
-   title="Слейте выбранный раствор или перетащите сюда посуду"
-   aria-label="Раковина: слить содержимое выбранного сосуда">
+   title="Перетащите сюда один сосуд, чтобы слить только его содержимое"
+   aria-label="Раковина: слив содержимого только перетаскиванием посуды">
    <svg className="lektrus-lab-sink-art" viewBox="0 0 220 164"
     role="img" aria-label="Лабораторная раковина с краном">
     <defs>
@@ -930,8 +953,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     </>}
    </svg>
    <span className="lektrus-lab-sink-caption"><strong>РАКОВИНА</strong>
-    <small>{sinkFlow?"Раствор слит":"Слить содержимое"}</small></span>
-  </button>
+    <small>{sinkFlow?"Сосуд опорожнён":"Перетащите сосуд"}</small></span>
+  </div>
 
   <button type="button" data-board-interactive="true"
    className="lektrus-lab-settings-trigger" title="Настройки химического стола"
@@ -1192,7 +1215,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <p>Настройки принадлежат этому химическому столу и сохраняются с ним.</p>
       {([
        ["showEquationBoard","Доска с уравнениями","Показывать на стене уравнение проверенной реакции"],
-       ["showVesselLabels","Подписи посуды","Показывать названия и содержимое сосудов"],
+       ["showVesselLabels","Подписи над посудой","Показывать формулы содержимого над сосудами"],
        ["animateEffects","Анимации","Газ, осадок, переливание и слив"]
       ] as const).map(([id,title,description])=><label key={id}>
        <span><strong>{title}</strong><small>{description}</small></span>
