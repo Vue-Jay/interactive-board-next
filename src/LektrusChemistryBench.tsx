@@ -348,9 +348,23 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     const target=targetAt(g.id,p);
     if(target)transferVessel(g.id,target);
     else{
-     const a=labDisplayPoint({x:g.x,y:g.y},bench.vessels.length>3);
-     const next=labLogicalPoint({x:a.x+p.x-g.startX,y:a.y+p.y-g.startY});
-     onChange?.(positionLabVessel(bench,g.id,next.x,next.y));
+     const rect=host.current?.getBoundingClientRect();
+     const appliance=rect?physicalDevices.map(d=>({
+      device:d,distance:Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)
+     })).sort((a,b)=>a.distance-b.distance)[0]:undefined;
+     if(appliance&&appliance.distance<85){
+      const logical=labLogicalPoint({x:appliance.device.x,y:appliance.device.y-10});
+      const positioned=positionLabVessel(bench,g.id,logical.x,logical.y);
+      const applied=applyPlacedLabDevice(positioned,appliance.device.id,g.id);
+      onChange?.(applied);
+      setNotice(applied===positioned?
+       "Этот прибор не подходит для выбранного сосуда":
+       "Сосуд установлен на прибор");
+     }else{
+      const a=labDisplayPoint({x:g.x,y:g.y},bench.vessels.length>3);
+      const next=labLogicalPoint({x:a.x+p.x-g.startX,y:a.y+p.y-g.startY});
+      onChange?.(positionLabVessel(bench,g.id,next.x,next.y));
+     }
     }
    }
   }else if(!g.dragged&&effectivePouringId&&effectivePouringId!==g.id)transferVessel(effectivePouringId,g.id);
