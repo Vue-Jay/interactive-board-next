@@ -226,12 +226,20 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
     return <span className="lektrus-activity-gap-part" key={i}>
      <span>{blank.before}</span>
      <span className={"lektrus-activity-gap-slot"+(hasChoice?" has-choices":"")}>
-      {hasChoice?<span className={"lektrus-activity-gap-selected"+(selected?" filled":"")}
+      {punctuation?<select className="lektrus-activity-punctuation-select" value={selected}
+       aria-label={"Знак в контрольном месте "+(i+1)} disabled={!onChange}
+       onChange={e=>updateGap(i,e.target.value)}>
+       <option value="">▱</option>
+       <option value="∅">нет знака</option>
+       {[",",";",":","—",".","?","!","«","»","(",")"].map(sign=>
+        <option key={sign} value={sign}>{sign}</option>)}
+       {selected&&!["∅",",",";",":","—",".","?","!","«","»","(",")"].includes(selected)&&
+        <option value={selected}>{selected}</option>}
+      </select>:hasChoice?<span className={"lektrus-activity-gap-selected"+(selected?" filled":"")}
        role="status" aria-label={"Ответ в пропуске "+(i+1)}>{selected}</span>:
        <input type="text" value={selected} disabled={!onChange}
         maxLength={240} aria-label={"Пропуск "+(i+1)} placeholder=""
         style={{width:Math.min(190,Math.max(36,blank.answer.length*15+12))}}
-        className={punctuation?"lektrus-activity-sign-input":""}
         onChange={e=>updateGap(i,e.target.value)}/>}
       {hasChoice&&<span className="lektrus-activity-gap-choices" role="group"
        aria-label={"Варианты для пропуска "+(i+1)}>
@@ -244,6 +252,19 @@ export function LektrusSubjectActivityRunner({activity,response,onChange,compact
    })}
    <span>{activity.tail}</span>
   </div>}
+  {activity.mode==="fill"&&punctuation&&(activity.blanks?.length??0)>0&&
+   <details className="lektrus-activity-punctuation-explanations">
+    <summary>Объяснить постановку знаков</summary>
+    <p>После расстановки знаков объясните, почему в каждом отмеченном месте нужен знак или почему он не нужен. Объяснение проверяет преподаватель.</p>
+    {(activity.blanks??[]).map((blank,i)=><label key={i}>
+     <strong>{i+1}. {data.values?.[i]??"Знак ещё не выбран"}</strong>
+     <textarea disabled={!onChange} rows={2} maxLength={500}
+      placeholder="Например: запятая разделяет части сложного предложения"
+      value={data.explanations?.[i]??""}
+      onChange={e=>patch({explanations:(activity.blanks??[]).map((_,j)=>j===i?e.target.value:data.explanations?.[j]??"")})}/>
+     {data.checked&&blank.rule&&<small>Правило преподавателя: {blank.rule}</small>}
+    </label>)}
+   </details>}
   {activity.mode==="match"&&<div className="lektrus-activity-match-columns">
     <div><small>Выберите слева</small>
      {(activity.pairs??[]).map((pair,i)=><button key={i} type="button" disabled={!onChange}
