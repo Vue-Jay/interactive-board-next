@@ -59,18 +59,23 @@ export function movePlacedLabDevice(bench:LabBench,id:string,x:number,y:number):
  const existing=placedLabDevices(bench),source=existing.find(d=>d.id===id);
  if(!source)return bench;
  const updated={...source,x:clampDevice(x,9,79),y:clampDevice(y,58,84)};
- const placedDevices=existing.map(d=>d.id===id?updated:d);
- // The supported vessel travels with a single appliance. In a burner+stand
- // pair, moving one support disconnects only that one, not its partner.
- const shared=!!source.linkedVesselId&&existing.some(d=>d.id!==id&&d.active&&d.linkedVesselId===source.linkedVesselId);
- const connected=source.active&&source.linkedVesselId&&!shared?
-  bench.vessels.find(v=>v.id===source.linkedVesselId):undefined;
- const point=connected?labMountedGlasswarePoint(updated,connected,1600,1000,bench.vessels.length>3):null;
- const position=point&&labLogicalPoint(point);
- return {...bench,placedDevices:shared?placedDevices.map(d=>d.id===id?
-   {...d,active:false,linkedVesselId:undefined}:d):placedDevices,
-  vessels:position?bench.vessels.map(v=>v.id===connected?.id?
-   {...v,x:position.x,y:position.y}:v):bench.vessels,
+ // A shared heater and clamp are two separate units. Moving just one
+ // releases that fixture, without touching its power switch.
+ const shared=!!source.linkedVesselId&&existing.some(d=>d.id!==id&&d.active&&
+  d.linkedVesselId===source.linkedVesselId);
+ const placedDevices=existing.map(d=>d.id===id?
+  (shared?{...updated,active:false,linkedVesselId:undefined}:updated):d);
+ const positions=new Map<string,{x:number;y:number}>();
+ const savePosition=(vesselId:string|undefined,kind:string)=>{
+  const vessel=bench.vessels.find(v=>v.id===vesselId);
+  if(!vessel)return;
+  positions.set(vessel.id,labLogicalPoint(labMountedGlasswarePoint({...updated,kind},
+   vessel,1600,1000,bench.vessels.length>3)));
+ };
+ if(source.active&&!shared)savePosition(source.linkedVesselId,source.kind);
+ if(source.kind==="tripod")savePosition(source.shelfVesselId,"stand-shelf");
+ return {...bench,placedDevices,
+  vessels:bench.vessels.map(v=>positions.has(v.id)?{...v,...positions.get(v.id)!}:v),
   stirringVesselId:shared&&source.kind==="stirrer"?undefined:bench.stirringVesselId,
   event:bench.event+1};
 }
@@ -110,23 +115,35 @@ export function setLabStandShelf(bench:LabBench,id:string,vesselId?:string):LabB
  const vessel=bench.vessels.find(v=>v.id===vesselId);
  if(!stand||(vesselId&&(!vessel||!LAB_STAND_SHELF_TYPES.includes(vessel.kind))))return bench;
  if(stand.shelfVesselId===vesselId)return bench;
+ // A vessel cannot be on the stand shelf and on an electrical appliance
+ // at the same time. Release the old support without switching it off.
  const placedDevices=placedLabDevices(bench).map(d=>{
   if(d.id===id)return {...d,shelfVesselId:vesselId,
    ...(d.linkedVesselId===vesselId?{active:false,linkedVesselId:undefined}:{})};
-  return d.shelfVesselId===vesselId?{...d,shelfVesselId:undefined}:d;
+  return {...d,...(d.shelfVesselId===vesselId?{shelfVesselId:undefined}:{}),
+   ...(d.linkedVesselId===vesselId?{active:false,linkedVesselId:undefined}:{})};
  });
- const point=vessel?labMountedGlasswarePoint({...stand,kind:"stand-shelf"},vessel,1600,1000,
-  bench.vessels.length>3):null;
+ const point=vessel?labMountedGlasswarePoint({...stand,kind:"stand-shelf"},vessel,
+  1600,1000,bench.vessels.length>3):null;
  const logical=point&&labLogicalPoint(point);
- return {...bench,placedDevices,vessels:logical?bench.vessels.map(v=>v.id===vesselId?
-  {...v,x:logical.x,y:logical.y}:v):bench.vessels,event:bench.event+1};
+ return {...bench,placedDevices,
+  vessels:logical?bench.vessels.map(v=>v.id===vesselId?
+   {...v,x:logical.x,y:logical.y}:v):bench.vessels,
+  stirringVesselId:bench.stirringVesselId===vesselId?undefined:bench.stirringVesselId,
+  event:bench.event+1};
 }
 export function setLabStandHeight(bench:LabBench,id:string,height:number):LabBench{
  const stand=placedLabDevices(bench).find(d=>d.id===id&&d.kind==="tripod");
  if(!stand||!Number.isFinite(height))return bench;
  const standHeight=clampDevice(height,0,1);
  if(stand.standHeight===standHeight)return bench;
- return {...bench,placedDevices:placedLabDevices(bench).map(d=>d.id===id?{...d,standHeight}:d),
+ const updated={...stand,standHeight};
+ const vessel=bench.vessels.find(v=>v.id===stand.linkedVesselId);
+ const logical=vessel?labLogicalPoint(labMountedGlasswarePoint(updated,vessel,
+  1600,1000,bench.vessels.length>3)):null;
+ return {...bench,
+  placedDevices:placedLabDevices(bench).map(d=>d.id===id?updated:d),
+  vessels:logical?bench.vessels.map(v=>v.id===vessel?.id?{...v,...logical}:v):bench.vessels,
   event:bench.event+1};
 }
 export function setLabHotplateTemperature(bench:LabBench,id:string,temperature:number):LabBench{
