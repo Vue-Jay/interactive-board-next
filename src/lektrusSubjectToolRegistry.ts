@@ -7,12 +7,17 @@ import {makeSciencePresetItem} from "./lektrusSciencePresets";
 import {emptyMechanics} from "./lektrusMechanicsModel";
 import {scienceDefaultPreset,scienceToolGroups,type ScienceToolId} from "./lektrusScienceCatalog";
 
-export type SubjectToolId=`subject-board-${SubjectTone}`|"chem-assignments"|"math-coordinate"|"math-fractions"|"math-formula"|"math-geometry"|"chem-periodic-table"|ScienceToolId|SchoolDiagramId;
+export type SubjectToolId=`subject-board-${SubjectTone}`|`subject-task-${SubjectTone}`|"chem-assignments"|"math-coordinate"|"math-fractions"|"math-formula"|"math-geometry"|"chem-periodic-table"|ScienceToolId|SchoolDiagramId;
 export type SubjectToolDefinition={id:SubjectToolId;label:string;description:string;subjects:string[];group:string};
 
 /** A tool is a distinct editing workflow; its examples are selected INSIDE the editor. */
 export const subjectToolRegistry:SubjectToolDefinition[]=[
-  {id:"chem-assignments",label:"Химические задания",description:"Создаёт отдельный рабочий лист с задачами, цепочками или вопросами. Уравнения добавляются только по вашему выбору.",
+  ...(Object.entries(subjectAccentPalette) as [SubjectTone,{label:string}][]).map(([tone,meta])=>({
+   id:`subject-task-${tone}` as const,label:"Задания на доске",
+   description:"Создать задания непосредственно на предметной доске: "+meta.label,
+   subjects:[meta.label.toLocaleLowerCase("ru-RU")],group:"Задания · на предметной доске"
+  })),
+  {id:"chem-assignments",label:"Химические задания",description:"Самостоятельное химическое задание. Для добавления заданий непосредственно на химическую доску выберите «Задания на доске».",
    group:"Химия · задания",subjects:["химия"]},
   {id:"math-formula",label:"Математическая формула",description:"Степени, корни и математические символы",group:"Математические инструменты",subjects:["математика"]},
   {id:"math-geometry",label:"Построение фигур",description:"Плоские и объёмные фигуры, стороны и углы",group:"Математические инструменты",subjects:["математика"]},
@@ -58,6 +63,10 @@ export function subjectToolsFor(subject:string):SubjectToolDefinition[]{
 }
 
 export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:()=>string):Item{
+  if(id.startsWith("subject-task-")){
+   const tone=id.slice("subject-task-".length) as SubjectTone;
+   return makeSubjectToolItem((`subject-board-${tone}` as SubjectToolId),x,y,createId);
+  }
   if(id==="chem-assignments"){
    const base=makeSubjectToolItem("subject-board-chemistry",x,y,createId);
    return {...base,text:"Химическое задание",x:x-370,y:y-210,
@@ -65,7 +74,7 @@ export function makeSubjectToolItem(id:SubjectToolId,x:number,y:number,createId:
   }
   if(id.startsWith("subject-board-")){
    const tone=id.slice("subject-board-".length) as SubjectTone;
-   return {id:createId(),kind:"graph",text:subjectAccentPalette[tone].label+(tone==="chemistry"?" · рабочий лист":" · учебная доска"),
+   return {id:createId(),kind:"graph",text:subjectAccentPalette[tone].label+(tone==="chemistry"?" · химическая доска":" · учебная доска"),
     x:x-410,y:y-235,width:820,height:470,graphFigureId:id,
     graphPurpose:"geometry",graphAxisMode:"none",graphGrid:false,graphSnap:false,
     graphPoints:[],graphSegments:[],subjectBoardEntries:[]};
