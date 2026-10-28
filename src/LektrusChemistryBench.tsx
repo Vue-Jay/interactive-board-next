@@ -11,7 +11,7 @@ import {buildLabCatalog,cabinetColor,cabinetPhase,phaseNames,type CatalogueGroup
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
 import LektrusLabDeviceIcon from "./LektrusLabDeviceIcon";
-import {labDisplayPoint,labLogicalPoint,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
+import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
 const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
@@ -191,6 +191,18 @@ type SurfaceProps={
 export default function LektrusChemistryBenchSurface({bench,editable=false,pouringId,
  onChange,onSelect,onPour,onDropReagent}:SurfaceProps){
  const host=useRef<HTMLDivElement>(null);
+ const [stageSize,setStageSize]=useState({width:1600,height:1000});
+ useEffect(()=>{
+  const node=host.current;if(!node)return;
+  const update=()=>{
+   const {width,height}=node.getBoundingClientRect();
+   if(width>0&&height>0)setStageSize(old=>
+    Math.abs(old.width-width)<1&&Math.abs(old.height-height)<1?old:{width,height});
+  };
+  update();
+  const resize=new ResizeObserver(update);resize.observe(node);
+  return()=>resize.disconnect();
+ },[]);
  const dialogRef=useRef<HTMLElement>(null);
  const sinkId=useId().replace(/:/g,"");
  const scrollRef=useRef<HTMLDivElement>(null);
@@ -229,6 +241,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const selected=selectedLabVessel(bench);
  const physicalDevices=placedLabDevices(bench);
  const activeDevice=physicalDevices.find(d=>d.id===activeDeviceId);
+ const vesselPosition=(v:LabVessel)=>{
+  const stand=physicalDevices.find(d=>d.active&&d.linkedVesselId===v.id&&d.kind==="tripod");
+  const anchor=stand??physicalDevices.find(d=>d.active&&d.linkedVesselId===v.id);
+  const device=anchor&&devicePreview?.id===anchor.id?{...anchor,...devicePreview}:anchor;
+  return device?labMountedGlasswarePoint(device,v,stageSize.width,stageSize.height,
+   bench.vessels.length>3):labDisplayPoint(v,bench.vessels.length>3);
+ };
  const benchRef=useRef(bench);
  const changeRef=useRef(onChange);
  benchRef.current=bench;changeRef.current=onChange;
@@ -306,7 +325,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const source=bench.vessels.find(v=>v.id===sourceId);
   if(!rect||!source?.reagents.length||!onPour)return null;
   return bench.vessels.filter(v=>v.id!==sourceId).map(v=>{
-   const screen=labDisplayPoint(v,bench.vessels.length>3);
+   const screen=vesselPosition(v);
    return {id:v.id,dist:Math.hypot((p.x-screen.x)*rect.width/100,
      (p.y-screen.y)*rect.height/100)};
   }).filter(v=>v.dist<Math.min(115,Math.max(54,rect.width*.15))).sort((a,b)=>a.dist-b.dist)[0]?.id??null;
@@ -321,8 +340,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const from=bench.vessels.find(v=>v.id===sourceId);
   const to=bench.vessels.find(v=>v.id===targetId);
   if(from&&to){
-   const start=labDisplayPoint(from,bench.vessels.length>3),
-    end=labDisplayPoint(to,bench.vessels.length>3);
+   const start=vesselPosition(from),end=vesselPosition(to);
    setTransfer({from:{x:start.x,y:start.y-11},to:{x:end.x,y:end.y-10}});
   }
   setNotice("Добавлено "+ml.toLocaleString("ru-RU")+" мл из бюретки");
@@ -333,7 +351,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    drip(sourceId,targetId,1);return;
   }
   if(from&&to&&from.reagents.length){
-   const start=labDisplayPoint(from,bench.vessels.length>3),end=labDisplayPoint(to,bench.vessels.length>3);
+   const start=vesselPosition(from),end=vesselPosition(to);
    setTransfer({from:{x:start.x,y:start.y-12},to:{x:end.x,y:end.y-12}});
   }
   onPour?.(sourceId,targetId);
@@ -358,7 +376,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const down=(event:PointerEvent<HTMLButtonElement>,v:LabVessel)=>{
   if(!editable||event.button!==0||!event.isPrimary)return;
   event.preventDefault();event.stopPropagation();const p=point(event);if(!p)return;
-  gesture.current={id:v.id,startX:p.x,startY:p.y,x:v.x,y:v.y,dragged:false};
+  const origin=labLogicalPoint(vesselPosition(v));
+  gesture.current={id:v.id,startX:p.x,startY:p.y,x:origin.x,y:origin.y,dragged:false};
   event.currentTarget.setPointerCapture(event.pointerId);
  };
  const move=(event:PointerEvent<HTMLButtonElement>)=>{
@@ -403,14 +422,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       ??nearby[0];
      if(appliance&&appliance.distance<105&&vessel&&
       canMountLabVessel(appliance.device.kind,vessel.kind)){
-      const offset=appliance.device.kind==="tripod"?8:
-       appliance.device.kind==="burner"?13:11;
-      const offsetX=appliance.device.kind==="tripod"?-2.5:
-       appliance.device.kind==="burner"?1.5:0;
-      const logical=labLogicalPoint({
-       x:appliance.device.x-offsetX,y:appliance.device.y-offset});
-      const positioned=positionLabVessel(bench,g.id,logical.x,logical.y);
-      const applied=applyPlacedLabDevice(positioned,appliance.device.id,g.id);
+      const applied=applyPlacedLabDevice(bench,appliance.device.id,g.id);
       onChange?.(applied);
       setNotice("Сосуд установлен на "+(labDevices.find(d=>d.id===appliance.device.kind)?.name??"прибор"));
      }else if(appliance&&appliance.distance<105&&vessel){
@@ -480,7 +492,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const bounds=host.current?.getBoundingClientRect();
   if(!bounds)return null;
   const candidates=bench.vessels.filter(v=>canMountLabVessel(kind,v.kind)).map(v=>{
-   const q=labDisplayPoint(v,bench.vessels.length>3);
+   const q=vesselPosition(v);
    return {id:v.id,distance:Math.hypot((q.x-p.x)*bounds.width/100,(q.y-p.y)*bounds.height/100)};
   }).sort((a,b)=>a.distance-b.distance);
   return candidates[0]&&candidates[0].distance<Math.min(150,Math.max(65,bounds.width*.10))?
@@ -508,8 +520,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   e.stopPropagation();const p=point(e),rect=host.current?.getBoundingClientRect();
   if(!p||!rect)return;
   if(Math.hypot((p.x-g.startX)*rect.width/100,(p.y-g.startY)*rect.height/100)>8)g.dragged=true;
-  if(g.dragged)setDevicePreview({id:g.id,x:Math.max(27,Math.min(79,g.x+p.x-g.startX)),
-   y:Math.max(53,Math.min(84,g.y+p.y-g.startY))});
+  if(g.dragged)setDevicePreview({id:g.id,x:Math.max(9,Math.min(79,g.x+p.x-g.startX)),
+   y:Math.max(63,Math.min(84,g.y+p.y-g.startY))});
  };
  const finishDevice=(e:PointerEvent<HTMLButtonElement>)=>{
   const g=deviceGesture.current;if(!g)return;
@@ -859,7 +871,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
    onClick={e=>{e.stopPropagation();openCabinet("settings")}}>⚙</button>
   {bench.vessels.map((v,i)=>{
-   const p=labDisplayPoint(preview?.id===v.id?preview:v,bench.vessels.length>3);
+   const p=preview?.id===v.id?labDisplayPoint(preview,bench.vessels.length>3):vesselPosition(v);
    const selectedVessel=bench.selectedId===v.id;
    return <button type="button" key={v.id} data-board-interactive="true"
     className={"lektrus-lab-vessel is-"+v.kind+(selectedVessel?" selected":"")+
