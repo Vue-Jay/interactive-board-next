@@ -25,7 +25,8 @@ export function cabinetPhase(v:Substance):StoragePhase{
  * deliberately not offered as ready-to-pour solutions. */
 const insolubleStock=new Set([
  "AgCl","AgBr","AgI","BaSO4","CaCO3","MgCO3","BaCO3","CuCO3",
- "FeS","CuS","Cu(OH)2","Fe(OH)2","Fe(OH)3","PbI2","PbSO4"
+ "FeS","CuS","Cu(OH)2","Fe(OH)2","Fe(OH)3","PbI2","PbSO4",
+ "AgBr","AgI","SrSO4","SrCO3","Ni(OH)2","Co(OH)2","ZnS","Li2CO3"
 ]);
 export function labReagentForms(v:Substance):("ml"|"g")[]{
  const state=cabinetPhase(v);
