@@ -374,12 +374,12 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const inertia=Math.max(.035,Math.min(.18,60/Math.max(100,volumes)*.10));
   const raw=old+(toward-old)*(1-Math.exp(-seconds*(device?.powered?inertia:.018)));
   const pure=labVesselThermal(v.reagents,v.doses);
-  // Without verified composition a stock solution has NO published boiling point
-  // assigned here. 100°C is only a conservative simulator ceiling, not a claim.
-  const unverifiedLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml")&&!pure;
+  // No generic 100°C ceiling: concentrations and gaseous samples have no
+  // single verified boiling point. Only a neat liquid with known properties
+  // receives a boiling plateau below.
   const maxVesselC=device?.kind==="burner"&&v.kind==="crucible"?1250:
    device?.kind==="burner"?450:350;
-  let next=Math.round(Math.max(ambient,Math.min(unverifiedLiquid?100:maxVesselC,raw))*10)/10;
+  let next=Math.round(Math.max(ambient,Math.min(maxVesselC,raw))*10)/10;
   let meltFraction=v.meltFraction??0;
   let phaseTransition=v.phaseTransition;
   const point=pure?.unit==="g"&&!v.uncertain&&!v.completedReaction?
