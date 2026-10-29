@@ -13,13 +13,18 @@ type Props={item:Item;onChange:(next:Item)=>void;onSave:()=>void;onCancel:()=>vo
 export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCancel}:Props){
  const bench=readLabBench(item);
  const viewport=useRef<HTMLDivElement>(null);
- const [stageScale,setStageScale]=useState(1);
+ const [stage,setStage]=useState({width:1600,scale:1});
  useEffect(()=>{
   const node=viewport.current;if(!node)return;
   const resize=()=>{
    const w=node.clientWidth,h=node.clientHeight;
    if(!w||!h)return;
-   setStageScale(Math.min(w/1600,h/1000));
+   // Fill BOTH axes. The wall and worktop absorb widescreen extra space;
+   // glassware remains at the same stage-relative coordinates.
+   const scale=h/1000;
+   const width=w/scale;
+   setStage(old=>Math.abs(old.width-width)<.5&&Math.abs(old.scale-scale)<.001?
+    old:{width,scale});
   };
   resize();
   const observer=new ResizeObserver(resize);
@@ -52,7 +57,7 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
     role="region" tabIndex={0} aria-label="Интерактивный химический стол"
     onWheel={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()}>
     <div className="lektrus-lab-fit-stage" style={{
-     width:1600,height:1000,transform:"translate(-50%, -50%) scale("+stageScale+")"}}>
+     width:stage.width,height:1000,transform:"translate(-50%, -50%) scale("+stage.scale+")"}}>
      <LektrusChemistryBenchSurface bench={bench} editable
       onSelect={id=>patch(selectLabVessel(bench,id))}
       onPour={pour} onChange={patch} onDropReagent={addReagent}/>
