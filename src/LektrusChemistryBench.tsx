@@ -378,9 +378,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const stand=physicalDevices.find(d=>d.kind==="tripod"&&d.active&&d.linkedVesselId===v.id);
   const anchor=stand??physicalDevices.find(d=>d.active&&d.linkedVesselId===v.id);
   const device=anchor&&devicePreview?.id===anchor.id?{...anchor,...devicePreview}:anchor;
-  return device?labMountedGlasswarePoint(device,v,
-   stageSize.width,stageSize.height,bench.vessels.length>3):
-   labDisplayPoint(v,bench.vessels.length>3);
+  if(device)return labMountedGlasswarePoint(device,v,stageSize.width,stageSize.height);
+  const base=physicalDevices.find(d=>d.kind==="tripod"&&d.id===v.restingOnStandId);
+  if(base){
+   const current=devicePreview?.id===base.id?{...base,...devicePreview}:base;
+   return labStandBaseVesselPoint(current,v,stageSize.width,stageSize.height);
+  }
+  return labDisplayPoint(v);
  };
  const benchRef=useRef(bench);
  const changeRef=useRef(onChange);
