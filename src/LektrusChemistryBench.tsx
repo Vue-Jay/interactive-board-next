@@ -1,7 +1,7 @@
 import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
-import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
+import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,labReactionNeedsTick,
  labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
@@ -128,12 +128,20 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const singlePhase=massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
   vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const geo=shape[vessel.kind];
- const labels=vessel.reagents.map(r=>substances.find(s=>s.id===r)?.formula??r);
+ const amounts=vessel.reactionAmounts;
+ const species=amounts?[...Object.entries(amounts.remainingMol),
+  ...Object.entries(amounts.productsMol)].filter(([,mol])=>mol>1e-12):
+  vessel.reagents.map(id=>[id,0] as [string,number]);
+ const labels=species.map(([id])=>substances.find(s=>s.id===id)?.formula??id);
+ const conversionFraction=amounts?amounts.maxExtentMol>0?
+  amounts.extentMol/amounts.maxExtentMol:0:1;
  const gearX=["tube","flask","conical","volumetric","pipette","burette"].includes(vessel.kind)?66:
   vessel.kind==="cylinder"?75:vessel.kind==="crucible"?80:84;
  const gearY=vessel.kind==="dish"?70:vessel.kind==="crucible"?59:
   15;
- const substanceState=!vessel.reagents.length?"Пусто":
+ const substanceState=amounts?
+  (amounts.complete?"Превращение завершено":"Реакция "+Math.round(conversionFraction*100)+"%"):
+  !vessel.reagents.length?"Пусто":
   appearance.productSolid?"Продукт: "+appearance.productSolid:
   observation==="precipitate"?"↓ Осадок":
   observation==="gas"?"↑ Выделяется газ":
@@ -174,15 +182,16 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
      <ellipse cx="50" cy="93" rx="14" ry="4" fill="none" stroke="#318f90" strokeWidth="2" opacity=".75"/>
      <path d="M42 87Q51 81 59 89" stroke="#e9ffff" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
     </g>}
-    {active&&observation==="precipitate"&&<>
-     <rect className="lektrus-lab-sediment" x="16" y="106" width="70" height="18"
+    {active&&observation==="precipitate"&&conversionFraction>0&&<>
+     <rect className="lektrus-lab-sediment" x="16"
+       y={124-18*conversionFraction} width="70" height={18*conversionFraction}
       fill={appearance.solidColor||"#d6dee1"} opacity=".94"/>
      {Array.from({length:18},(_,i)=><circle key={i} className="lektrus-lab-particle"
       cx={28+i*31%45} cy={76+i*13%31} r={1.1+i%3*.5}
       fill={appearance.solidColor||"#cddbe0"}
       style={{animationDelay:-(i%9)*.25+"s"}}/>)}
     </>}
-    {active&&observation==="gas"&&Array.from({length:17},(_,i)=><circle key={i}
+    {active&&observation==="gas"&&Array.from({length:Math.ceil(17*conversionFraction)},(_,i)=><circle key={i}
      className="lektrus-lab-bubble" cx={31+i*29%38} cy={98-i*17%45}
      r={2+i%3} stroke="#528eb1" strokeWidth=".9" fill="#fff" fillOpacity=".2"
      style={{animationDelay:-(i%8)*.27+"s",animationDuration:2+i%5*.32+"s"}}/>)}
@@ -242,8 +251,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
    </div>}
   {showLabels&&<span className="lektrus-lab-content-tag"
    title={labels.length?labels.map((formula,i)=>{
-    const dose=vessel.doses?.[vessel.reagents[i]];
-    return formula+(dose?" · "+formatLabDose(dose)+
+    const dose=amounts?undefined:vessel.doses?.[vessel.reagents[i]];
+    const mol=amounts?species[i]?.[1]:undefined;
+     return formula+(mol!==undefined?" · "+(mol*1000).toLocaleString("ru-RU",{maximumFractionDigits:4})+" ммоль":
+      dose?" · "+formatLabDose(dose)+
      (dose.concentrationM!==undefined?" · "+dose.concentrationM.toLocaleString("ru-RU")+" моль/л":""):"");
    }).join("; "):"Пустая посуда"}>
    <strong>{labels.length?labels.join(" + "):"Пусто"}</strong>
@@ -254,12 +265,15 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
    </small>}
    <span className="lektrus-lab-content-quantity" aria-hidden="true">
     {labels.length?labels.map((formula,i)=>{
-     const dose=vessel.doses?.[vessel.reagents[i]];
-     return <span key={vessel.reagents[i]}>{formula}: {dose?
-      formatLabDose(dose)+(dose.concentrationM!==undefined?
-       " · "+dose.concentrationM.toLocaleString("ru-RU")+" М":""):
-      "количество не задано"}</span>;
-    }):"Пусто"}
+      const id=species[i]?.[0]??formula;
+      const dose=vessel.doses?.[id];
+      const mol=amounts?species[i]?.[1]:undefined;
+      return <span key={id}>{formula}: {mol!==undefined?
+       (mol*1000).toLocaleString("ru-RU",{maximumFractionDigits:4})+" ммоль":
+       dose?formatLabDose(dose)+(dose.concentrationM!==undefined?
+        " · "+dose.concentrationM.toLocaleString("ru-RU")+" М":""):
+       "количество не задано"}</span>;
+     }}):"Пусто"}
    </span>
   </span>}
  </div>;
@@ -419,6 +433,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const rxn=selected?labObservation(selected):null;
  const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
+ const currentQuantities=bench.vessels.find(v=>v.reactionAmounts&&!v.uncertain)?.reactionAmounts;
+ const displayMmoles=(mol:number)=>(mol*1000).toLocaleString("ru-RU",
+  {maximumFractionDigits:4})+" ммоль";
  /** Only the participant who starts a pour advances the shared 5% ticks.
   * The session itself lives in the board so other users see every portion. */
  useEffect(()=>{
@@ -452,12 +469,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const timer=setInterval(()=>{
    const current=benchRef.current;
    const openBurette=current.vessels.some(v=>v.buretteOpen);
-   const active=openBurette||placedLabDevices(current).some(d=>d.powered||
+   const active=openBurette||current.vessels.some(labReactionNeedsTick)||
+    placedLabDevices(current).some(d=>d.powered||
     (d.temperatureC??22)>22.1)||
     current.vessels.some(v=>(v.temperatureC??22)>22.1);
    if(!active)return;
    // Fine-grained updates only while titrating. Heating needs fewer board writes.
-   if(!openBurette&&Date.now()-(current.simulationAtMs??0)<1900)return;
+   if(!openBurette&&!current.vessels.some(labReactionNeedsTick)&&
+     Date.now()-(current.simulationAtMs??0)<1900)return;
    const next=advanceLabSimulation(current,Date.now());
    if(next!==current)changeRef.current?.(next);
   },500);
@@ -882,7 +901,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   {settings.showEquationBoard&&<div className="lektrus-lab-chalkboard" aria-live="polite">
    <small>{shownReaction?"УРАВНЕНИЕ РЕАКЦИИ":"ПЛАН ЭКСПЕРИМЕНТА"}</small>
    {shownReaction?<><strong key={shownReaction.equation}>{shownReaction.equation}</strong>
-    <span>{shownReaction.family?reactionFamilyLabels[shownReaction.family]+" · ":""}{shownReaction.description}{shownReaction.safety?" · Только виртуальный опыт":""}</span></>:
+    <span>{shownReaction.family?reactionFamilyLabels[shownReaction.family]+" · ":""}{shownReaction.description}{shownReaction.safety?" · Только виртуальный опыт":""}</span>
+    {currentQuantities&&<div className="lektrus-lab-stoichiometry">
+     <b>{currentQuantities.complete?"Превращение завершено":
+      "Ход реакции "+Math.round(currentQuantities.extentMol/currentQuantities.maxExtentMol*100)+"%"}</b>
+     <span>Реагенты: {Object.entries(currentQuantities.remainingMol).map(([id,mol])=>
+      id+" "+displayMmoles(mol)).join(" · ")}</span>
+     <span>Продукты: {Object.entries(currentQuantities.productsMol).map(([id,mol])=>
+      id+" "+displayMmoles(mol)).join(" · ")}</span>
+    </div>}</>:
     <div className="lektrus-lab-chalk-steps">
      <strong>Приступим к опыту</strong>
      <span><b>1</b> Возьмите посуду из шкафа</span>
