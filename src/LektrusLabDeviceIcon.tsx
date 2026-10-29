@@ -1,5 +1,6 @@
 import {useId} from "react";
 import type {LabDevice} from "./lektrusChemistryBenchModel";
+import {labStandClampSvgY} from "./lektrusLabLayout";
 
 type MountChoice={id:string;label:string};
 type DeviceIconProps={
@@ -20,7 +21,7 @@ export default function LektrusLabDeviceIcon({
 }:DeviceIconProps){
  const uid=useId().replace(/:/g,"");
  const metal=uid+"-metal",glass=uid+"-glass",plastic=uid+"-case";
- const clampShift=40-(52-29*standHeight);
+ const clampY=labStandClampSvgY(standHeight);
  return <svg className={"lektrus-lab-device-icon is-"+kind+(active?" is-active":"")}
   viewBox="0 0 110 108" width={size} height={size} aria-hidden="true"
   fill="none" strokeLinecap="round" strokeLinejoin="round"
@@ -69,6 +70,9 @@ export default function LektrusLabDeviceIcon({
    <circle cx="55" cy="69" r="3" fill="#d8e8df"/>
    <path d="M65 80H84Q92 80 94 88" stroke="#527d78" strokeWidth="5"/>
    <path d="M83 80l6 2" stroke="#c2d7cc" strokeWidth="2"/>
+   {/* Gas tap at the hose connection. The actual clickable lever is a
+       small native button placed over this marking. */}
+   <circle cx="84" cy="79" r="5" fill="#b7d4c9" stroke="#446b64" strokeWidth="1.5"/>
    <rect x="43" y="31" width="26" height="9" rx="3" fill="#91b8a9" stroke="#427467" strokeWidth="2"/>
    {active&&<g className="lektrus-lab-device-flame">
     <path d="M49 31Q32 13 52 1Q54 12 59 15Q67 8 63 3Q84 25 66 33Z"
@@ -94,24 +98,22 @@ export default function LektrusLabDeviceIcon({
    <path d="M78 64V68" stroke="#295d54" strokeWidth="2.5"/>
   </>}
   {kind==="tripod"&&<>
-   <path d="M14 90H86L96 98H7Z" fill={"url(#"+metal+")"}
-    stroke="#466e66" strokeWidth="2.8"/>
-   <path d="M43 90V9" stroke="#345d56" strokeWidth="6"/>
-   <path d="M44 90V8" stroke="#c3e0d6" strokeWidth="2.4"/>
-   <g transform={`translate(0 ${-clampShift})`}>
-   <rect x="37" y="33" width="13" height="13" rx="3" fill={"url(#"+metal+")"} stroke="#37645d" strokeWidth="2"/>
-   <path d="M49 40H76" stroke="#5a847c" strokeWidth="5"/>
-   <path d="M76 40l11-8M76 40l11 8" stroke="#517e76" strokeWidth="3.5"/>
-   <path d="M84 30Q99 40 84 50" stroke="#40756a" strokeWidth="2.5"/>
+   {/* Taller metal rod: one sliding clamp from y=12 to y=64. */}
+   <ellipse cx="50" cy="100" rx="45" ry="5" fill="#1e5249" opacity=".19"/>
+   <path d="M9 96H91L99 103H3Z" fill={"url(#"+metal+")"}
+    stroke="#466e66" strokeWidth="2.7"/>
+   <path d="M43 96V3" stroke="#345d56" strokeWidth="6.5" strokeLinecap="round"/>
+   <path d="M44 95V4" stroke="#d6eee3" strokeWidth="2.2" strokeLinecap="round"/>
+   <path d="M37 7H50" stroke="#94bdb0" strokeWidth="3.2" strokeLinecap="round"/>
+   <g transform={`translate(0 ${clampY-40})`}>
+    <rect x="35" y="31" width="17" height="19" rx="3.5"
+     fill={"url(#"+metal+")"} stroke="#37645d" strokeWidth="2.4"/>
+    <rect x="39" y="34" width="4" height="13" rx="2"
+     fill="#d5ede1" opacity=".75"/>
+    <path d="M51 40H79" stroke="#517e76" strokeWidth="5" strokeLinecap="round"/>
+    <path d="M51 38H77" stroke="#b3d3c3" strokeWidth="1.6" strokeLinecap="round"/>
+    <circle cx="42" cy="40" r="3" fill="#315f55" stroke="#d9ece2" strokeWidth="1"/>
    </g>
-   <rect x="37" y="58" width="13" height="13" rx="3" fill={"url(#"+metal+")"} stroke="#37645d" strokeWidth="2"/>
-   <path d="M49 65H70Q77 65 80 59" stroke="#5b8a7e" strokeWidth="4"/>
-   <path d="M49 65H70Q77 65 80 71" stroke="#5b8a7e" strokeWidth="4"/>
-   <path d="M49 65H84L88 71H50Z" fill={"url(#"+metal+")"}
-    stroke="#456e65" strokeWidth="1.8"/>
-   <circle cx="43" cy="39" r="2.2" fill="#2c6258"/>
-   <circle cx="43" cy="65" r="2.2" fill="#2c6258"/>
-
   </>}
   {kind==="thermometer"&&<>
    <path d="M46 16Q46 6 55 6Q64 6 64 16V65A20 20 0 1 1 46 65Z"
