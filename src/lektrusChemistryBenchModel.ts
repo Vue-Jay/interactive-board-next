@@ -1,4 +1,6 @@
 import type {Item} from "./boardModel";
+import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,type LabReactionAmounts}
+ from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
  from "./lektrusLabTitration";
@@ -328,6 +330,24 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    environment:cooling?(hasLiquid?"aqueous":"dry"):v.environment};
  });
  result={...result,vessels};
+ // Quantitative progress is allowed only for balanced and fully measured cases.
+ // Carrier-solution volume stays constant while solute moles are consumed.
+ vessels=result.vessels.map(v=>{
+  if(v.uncertain||!v.observed)return v;
+  let state=v.reactionAmounts;
+  if(!state){
+   if(v.completedReaction)return v;
+   const reaction=identifyReaction(v.reagents,v.environment);
+   if(reaction.status!=="reaction"||!reaction.caseData)return v;
+   state=startQuantifiedLabReaction(reaction.caseData,v.reagents,v.doses)??undefined;
+   if(!state)return v;
+  }else if(state.complete)return v;
+  const next=v.reactionAmounts?advanceQuantifiedLabReaction(state,seconds):state;
+  if(next===v.reactionAmounts)return v;
+  changed=true;
+  return {...v,reactionAmounts:next};
+ });
+ result={...result,vessels};
  // Start pre-reviewed heated cases only after reaching a sufficiently warm state.
  vessels=result.vessels.map(v=>{
   if(v.temperatureC===undefined||v.temperatureC<60||!v.reagents.length)return v;
@@ -537,6 +557,8 @@ export type LabVessel={pourFraction?:number;
  /** Sub-centimillilitre remainder is saved between dosing ticks. */
  buretteRemainderMl?:number;
  doses?:Record<string,LabDose>;
+ /** Moles of reagents/products; solvent volume is conserved separately. */
+ reactionAmounts?:LabReactionAmounts;
  /** A verified reaction already completed in this material; survives full transfer. */
  completedReaction?:ReactionCase;
 };
@@ -614,9 +636,20 @@ export function readLabBench(item:Item):LabBench{
  return initial;
 }
 export const selectedLabVessel=(bench:LabBench)=>bench.vessels.find(v=>v.id===bench.selectedId)??bench.vessels[0];
+export function labReactionNeedsTick(vessel:LabVessel):boolean{
+ if(vessel.reactionAmounts)return !vessel.reactionAmounts.complete;
+ if(!vessel.observed||vessel.uncertain||vessel.completedReaction)return false;
+ const reaction=identifyReaction(vessel.reagents,vessel.environment);
+ return reaction.status==="reaction"&&!!reaction.caseData&&
+  !!startQuantifiedLabReaction(reaction.caseData,vessel.reagents,vessel.doses);
+}
 export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:string;
  caseData?:ReturnType<typeof identifyReaction>["caseData"]}{
  if(vessel.reagents.length===0)return{status:"unknown",message:"Сосуд пуст."};
+ if(vessel.reactionAmounts){
+  const row=identifyReaction(vessel.reagents,vessel.environment);
+  if(row.status==="reaction")return row;
+ }
  if(vessel.uncertain)return{status:"unknown",
   message:"Смесь уже содержит продукты предыдущего опыта. Для следующего превращения требуется отдельная проверенная модель; продукты не предполагаются."};
  if(vessel.completedReaction)return{
@@ -695,7 +728,7 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
    undefined:bench.titrationPair};
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -715,6 +748,7 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
   const next=identifyReaction(v.reagents,environment);
   const starts=previous.status!=="reaction"&&!v.uncertain&&next.status==="reaction";
   return {...v,environment,
+   reactionAmounts:environment===v.environment?v.reactionAmounts:undefined,
    completedReaction:v.completedReaction??(previous.status==="reaction"?previous.caseData:undefined),
    // Future chemistry is unknown, but previously visible products stay visible.
    uncertain:v.uncertain||previous.status==="reaction",
@@ -750,6 +784,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const reagents=present?v.reagents:[...v.reagents,reagent];
   const beforeReaction=labObservation(v);
   return {...v,reagents,
+   reactionAmounts:undefined,
    completedReaction:v.completedReaction??(beforeReaction.status==="reaction"?beforeReaction.caseData:undefined),
    doses:combined?{...v.doses,[reagent]:combined}:v.doses,
    observed:reagents.length>1,
