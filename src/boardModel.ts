@@ -768,7 +768,7 @@ export function parseDocument(raw: string): DocumentData {
       if(i.scienceLabBench!=null){
         const bench=i.scienceLabBench as import("./lektrusChemistryBenchModel").LabBench;
         const environments=["aqueous","dry","heated","ignited"];
-        const kinds=["beaker","tube","flask","cylinder","dish","conical","volumetric","crucible","pipette","burette","funnel"];
+        const kinds=["beaker","tube","flask","cylinder","dish","conical","volumetric","crucible","pipette","burette"];
         const indicators=["litmus","phenolphthalein","methyl-orange","universal"];
         const validLabTitration=(entry:unknown):boolean=>{
           if(!entry||typeof entry!=="object")return false;
