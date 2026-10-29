@@ -71,9 +71,7 @@ export default function LektrusChemistryIllustration({item,onStageChange,onBench
    aria-label="Прокручиваемый химический стол: колёсико, Shift с колёсиком, тачпад или пальцем"
    onWheel={e=>e.stopPropagation()}
    onTouchMove={e=>e.stopPropagation()}>
-   <div className="lektrus-lab-object-grip"
-    aria-label="Переместить химический стол: перетащите за эту планку">Химический стол
-   </div>
+
    {onOpenEditor&&<button type="button" data-board-interactive="true"
     className="lektrus-lab-open-editor"
     aria-label="Развернуть химическую лабораторию на весь экран"
