@@ -1252,14 +1252,17 @@ assert.ok(!filtrate.reagents.includes("AgCl"),
 assert.equal(lab.labVesselQuantity(separated.vessels[0]).volumeMl,0);
 assert.equal(lab.filterLabPrecipitate(separated,"v1",destination),separated,
  "The same collected residue cannot be filtered repeatedly");
-const qualitative=lab.addPlacedLabDevice(lab.addLabVessel(lab.putLabReagent(
+let qualitative=lab.addPlacedLabDevice(lab.addLabVessel(lab.putLabReagent(
  lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3"),"v1","NaCl"),
  "conical"),"filter");
 const qTarget=qualitative.vessels.find(v=>v.kind==="conical").id;
+qualitative=lab.advanceLabSimulation(qualitative,0);
+qualitative=lab.advanceLabSimulation(qualitative,1000);
+qualitative=lab.advanceLabSimulation(qualitative,6000);
 const qFiltered=lab.filterLabPrecipitate(qualitative,"v1",qTarget);
 assert.equal(qFiltered.vessels[0].filteredResidue?.formula,"AgCl");
-assert.equal(qFiltered.vessels[0].filteredResidue?.massG,undefined,
- "Unknown original amounts must not create a fictitious precipitate mass");
+assert.ok(Math.abs(qFiltered.vessels[0].filteredResidue.massG-.143318)<1e-5,
+ "Even default stock volumes generate a calculated mass of AgCl");
 
 // New education modes, physical dissolution, direct cartridge filtration,
  // and solution-first catalog behavior.
