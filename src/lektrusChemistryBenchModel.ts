@@ -1125,13 +1125,15 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
   sum+(d.unit==="ml"?d.value:0),0);
  const receiver=bench.vessels.filter(v=>v.id!==sourceId&&!v.reagents.length&&
   ["beaker","conical","flask","tube","volumetric"].includes(v.kind)&&
-  (labMeasuredCapacityMl(v.kind)??(v.kind==="tube"?25:200))>=pouringVolume)
+  (labMeasuredCapacityMl(v.kind)??(v.kind==="tube"?25:v.kind==="conical"||v.kind==="flask"?200:150))>=pouringVolume)
   .sort((a,b)=>Math.hypot(a.x-device.x,a.y-device.y)-
                  Math.hypot(b.x-device.x,b.y-device.y))[0];
  let prepared=bench;
  if(!receiver){
   if(bench.vessels.length>=MAX_BENCH_VESSELS)return bench;
-  prepared=addLabVessel(bench,"beaker",{x:Math.min(82,device.x+8),y:Math.min(84,device.y+11)});
+  if(pouringVolume>200)return bench;
+  prepared=addLabVessel(bench,pouringVolume>150?"conical":"beaker",
+   {x:Math.min(82,device.x+8),y:Math.min(84,device.y+11)});
  }
  const target=receiver??prepared.vessels[prepared.vessels.length-1];
  const separated=filterLabPrecipitate(prepared,sourceId,target.id);
