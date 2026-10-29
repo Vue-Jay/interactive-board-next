@@ -2,12 +2,12 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,fillLabVolumetricFlask,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
-import {buildLabCatalog,cabinetColor,phaseNames,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
+import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
@@ -101,8 +101,8 @@ function LabReactionBurst({vessel,visual,formula}:{
  </div>;
 }
 
-function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,titrationResult,temperatureC,temperatureVisible=true}:{
- vessel:LabVessel;small?:boolean;showLabels?:boolean;stirring?:boolean;
+function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true}:{
+ vessel:LabVessel;small?:boolean;showLabels?:boolean;details?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
  temperatureVisible?:boolean}){
  const id=useId().replace(/:/g,"");
@@ -116,6 +116,12 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
   note:"Расчётное значение при титровании, 25 °C"
  }:labIndicatorResult(vessel);
  const {volumeMl,massG,capacityMl,liquidFraction,solidFraction}=labVesselQuantity(vessel);
+ const contents=labVesselContents(vessel);
+ const readable=(n:number,decimals=3)=>n.toLocaleString("ru-RU",{maximumFractionDigits:decimals});
+ const solutionNames=contents.solution.map(x=>x.formula+(x.mmol===undefined?"":" ("+readable(x.mmol)+" ммоль)"));
+ const solidNames=contents.solid.map(x=>x.formula+(x.massG===undefined?"":" ("+readable(x.massG)+" г)"));
+ const sedimentH=contents.precipitateFraction===undefined?0:
+  Math.min(105*liquidFraction,Math.max(1,106*contents.precipitateFraction));
  const totalLabel=[volumeMl>0?volumeMl.toLocaleString("ru-RU")+" мл":null,
   massG>0?massG.toLocaleString("ru-RU")+" г":null].filter(Boolean).join(" · ");
  const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],
@@ -206,12 +212,18 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
      <path d="M42 87Q51 81 59 89" stroke="#e9ffff" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
     </g>}
     {active&&observation==="precipitate"&&conversionFraction>0&&<>
-     <rect className="lektrus-lab-sediment" x="16"
-       y={124-18*conversionFraction} width="70" height={18*conversionFraction}
-      fill={appearance.solidColor||"#d6dee1"} opacity=".94"/>
-     {Array.from({length:18},(_,i)=><circle key={i} className="lektrus-lab-particle"
-      cx={28+i*31%45} cy={76+i*13%31} r={1.1+i%3*.5}
-      fill={appearance.solidColor||"#cddbe0"}
+     {/* Quantified precipitation uses actual produced mass/density and vessel volume.
+         The one-pixel minimum only keeps subpixel traces perceptible. */}
+     {sedimentH>0&&<rect className="lektrus-lab-sediment"
+      x="16" y={120-sedimentH} width="70" height={sedimentH}
+      fill={appearance.solidColor||"#d6dee1"} opacity=".94"/>}
+     {contents.precipitateFraction===undefined&&<g className="lektrus-lab-qualitative-residue">
+      {Array.from({length:18},(_,i)=><circle key={i} cx={23+i*17%56}
+       cy={116-i%3*1.8} r=".7" fill={appearance.solidColor||"#d6dee1"}/>)}
+     </g>}
+     {!amounts?.complete&&Array.from({length:14},(_,i)=><circle key={i}
+      className="lektrus-lab-particle" cx={28+i*31%45} cy={76+i*13%31}
+      r={1.1+i%3*.5} fill={appearance.solidColor||"#cddbe0"}
       style={{animationDelay:-(i%9)*.25+"s"}}/>)}
     </>}
     {active&&observation==="gas"&&gasEventActive&&Array.from({length:Math.ceil(17*conversionFraction)},(_,i)=><circle key={i}
@@ -269,7 +281,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
     title={"Учебная оценка теплового эффекта, не показание реального термометра"}>
     {vessel.reactionHeat.direction==="exothermic"?"↑ Нагрев":"↓ Охлаждение"}
    </span>}
-  {(volumeMl>0||massG>0)&&<div className="lektrus-lab-quantity-meter"
+  {!details&&(volumeMl>0||massG>0)&&<div className="lektrus-lab-quantity-meter"
     role="img" aria-label={"Количество: "+totalLabel+". Заполнение относительно условной вместимости сосуда"}>
     {volumeMl>0&&<div className="lektrus-lab-quantity-measure is-liquid"
       title={volumeMl.toLocaleString("ru-RU")+" мл / "+capacityMl+" мл (условная вместимость)"}>
@@ -282,7 +294,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
       <strong>{massG.toLocaleString("ru-RU")}<small>г</small></strong>
      </div>}
    </div>}
-  {showLabels&&<span className="lektrus-lab-content-tag"
+  {showLabels&&!details&&<span className="lektrus-lab-content-tag"
    title={labels.length?labels.map((formula,i)=>{
     const dose=amounts?undefined:vessel.doses?.[vessel.reagents[i]];
     const mol=amounts?species[i]?.[1]:undefined;
@@ -290,7 +302,8 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
       dose?" · "+formatLabDose(dose)+
      (dose.concentrationM!==undefined?" · "+dose.concentrationM.toLocaleString("ru-RU")+" моль/л":""):"");
    }).join("; "):"Пустая посуда"}>
-   <strong>{labels.length?labels.join(" + "):"Пусто"}</strong>
+   <strong>{contents.solid.length?"Осадок: "+contents.solid.map(v=>v.formula).join(", "):
+     contents.solution.length?contents.solution.map(v=>v.formula).join(" + "):"Пусто"}</strong>
    {labels.length>0&&(!!totalLabel||!!vessel.filteredResidue)&&<small>{totalLabel||"Осадок"}</small>}
 
    <span className="lektrus-lab-content-quantity" aria-hidden="true">
@@ -306,6 +319,14 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
      }):"Пусто"}
    </span>
   </span>}
+  {details&&<div className="lektrus-lab-vessel-composition" aria-live="polite">
+   <strong>Раствор: {readable(contents.solutionMl)} мл</strong>
+   <span>{solutionNames.join(", ")||"Нет растворённых веществ"}</span>
+   <strong>Осадок: {contents.precipitateG===undefined?
+     contents.solid.length?"Количество не измерено":"0 г":readable(contents.precipitateG)+" г"}</strong>
+   <span>{solidNames.join(", ")||"Нет осадка"}</span>
+   {contents.remainderUnknown&&<small>Остаток реагентов без измерений неизвестен</small>}
+  </div>}
  </div>;
 }
 /** A draft value must not clamp while its digits are still being typed. */
@@ -393,9 +414,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [amount,setAmount]=useState("10");
  const [unit,setUnit]=useState<"ml"|"g">("ml");
  const [molarity,setMolarity]=useState("0.1");
+ const [titrationTarget,setTitrationTarget]=useState("");
  const [measuredMl,setMeasuredMl]=useState("5");
  const [measuredPartnerId,setMeasuredPartnerId]=useState("");
- const [titrationTarget,setTitrationTarget]=useState("");
  const [localPourId,setLocalPourId]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
  const [sinkFlow,setSinkFlow]=useState(false);
@@ -421,6 +442,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const localPourRef=useRef<string|null>(null);
  const lastPourStepRef=useRef(-1);
  benchRef.current=bench;changeRef.current=onChange;
+ useEffect(()=>{
+  if(!editable)return;
+  const current=benchRef.current,updated=recordLabReactions(current);
+  if(updated!==current){benchRef.current=updated;changeRef.current?.(updated)}
+ },[bench.vessels,editable]);
  const endContact=()=>{
   cancelContact();const id=contactPourRef.current;
   contactPourRef.current=null;
@@ -448,10 +474,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const visibleSubstances=catalogue.flatMap(v=>v.items);
  const reagent=chosen?substances.find(s=>s.id===chosen):null;
  const classes=["Все",...new Set(substances.map(s=>s.kind))];
- const titrationSources=bench.vessels.filter(v=>v.kind==="burette"&&v.reagents.length>0);
- const activeBurette=selected?.kind==="burette"?selected:titrationSources.find(v=>
-  bench.titrationPair?.sourceId===v.id);
- const availableTargets=activeBurette?labTitrationTargets(bench,activeBurette.id):[];
  const selectedBurette=selected?.kind==="burette"?selected:undefined;
  const buretteTargets=selectedBurette?bench.vessels.filter(v=>
   v.id!==selectedBurette.id&&["beaker","flask","conical","tube"].includes(v.kind)):[];
@@ -467,13 +489,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   v.reactants.length<=3&&(effectFilter==="all"||v.observation===effectFilter||v.family===effectFilter)&&
   (v.equation+" "+v.description+" "+v.reactants.join(" ")).toLocaleLowerCase("ru-RU")
    .includes(query.trim().toLocaleLowerCase("ru-RU")));
- const rxn=selected?labObservation(selected):null;
- const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
-  bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
- const currentQuantities=bench.vessels.find(v=>v.reactionAmounts&&!v.uncertain&&
-  v.reactionAmounts.equation===shownReaction?.equation)?.reactionAmounts;
- const displayMmoles=(mol:number)=>(mol*1000).toLocaleString("ru-RU",
-  {maximumFractionDigits:4})+" ммоль";
  /** Only the participant who starts a pour advances the shared 5% ticks.
   * The session itself lives in the board so other users see every portion. */
  useEffect(()=>{
@@ -1037,23 +1052,25 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <span aria-hidden="true">{settings.showEquationBoard?"✎":"✕"}</span><span>{settings.showEquationBoard?"Пишем":"Не пишем"}</span>
    </button>
 
+   <button type="button" className="lektrus-lab-chalk-wipe"
+    data-board-interactive="true" disabled={!editable||!(bench.reactionLog?.length)}
+    title="Стереть записанные уравнения с доски" aria-label="Стереть с доски"
+    onPointerDown={e=>e.stopPropagation()}
+    onClick={e=>{e.stopPropagation();onChange?.(wipeLabChalkboard(bench))}}>
+    <svg viewBox="0 0 32 28" width="24" height="21" aria-hidden="true">
+     <path d="M5 12L10 4H25L29 12L24 24H10Z" fill="#e5cda8"
+      stroke="#956f4e" strokeWidth="1.8"/>
+     <path d="M6 13L28 13L24 24H10Z" fill="#85b7ac"/>
+     <path d="M9 17H26" stroke="#d8f5e7" strokeWidth="1.5"/>
+    </svg>
+   </button>
    {settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing">
-    <small>{shownReaction?"УРАВНЕНИЕ РЕАКЦИИ":labModeInfo(bench).name.toLocaleUpperCase("ru-RU")}</small>
-    {shownReaction?<><strong key={shownReaction.equation}>{shownReaction.equation}</strong>
-     <span>{shownReaction.family?reactionFamilyLabels[shownReaction.family]+" · ":""}{shownReaction.description}</span>
-     {currentQuantities&&<div className="lektrus-lab-stoichiometry">
-      <b>{currentQuantities.complete?"Превращение завершено":
-       "Ход реакции "+Math.round(currentQuantities.extentMol/currentQuantities.maxExtentMol*100)+"%"}</b>
-      <span>Реагенты: {Object.entries(currentQuantities.remainingMol).map(([id,mol])=>
-       id+" "+displayMmoles(mol)).join(" · ")}</span>
-      <span>Продукты: {Object.entries(currentQuantities.productsMol).map(([id,mol])=>
-       id+" "+displayMmoles(mol)).join(" · ")}</span>
-     </div>}</>:
-     <div className="lektrus-lab-chalk-steps">
-      <strong>{labModeInfo(bench).name}</strong>
-      <span>{labModeInfo(bench).description}</span>
-      <span>Возьмите посуду, добавьте вещества и проведите опыт.</span>
-     </div>}
+    <small>УРАВНЕНИЯ РЕАКЦИЙ</small>
+    {(bench.reactionLog??[]).length>0?
+     <ol className="lektrus-lab-equation-history">
+      {bench.reactionLog!.map((equation,i)=><li key={i}>{equation}</li>)}
+     </ol>:
+     <span className="lektrus-lab-chalk-empty">Проведите опыт. Уравнения останутся здесь до стирания тряпкой.</span>}
    </div>}
   </div>
   {false&&!selected?.reagents.length&&<div className="lektrus-lab-worktop-caption">
@@ -1113,6 +1130,23 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      </button>)}
    </div>
    <span className="lektrus-lab-furniture-foot">Выберите место на столе или перетащите</span>
+  </div>
+  <div className="lektrus-lab-indicator-cupboard" data-board-interactive="true"
+   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+   <strong>ИНДИКАТОРЫ</strong>
+   <div className="lektrus-lab-indicator-shelf" role="group"
+    aria-label="Добавить индикатор в выбранный сосуд">
+    {labIndicators.map((indicator,i)=><button key={indicator.id} type="button"
+     title={indicator.name+" · "+indicator.note} disabled={!editable||!selected?.reagents.length}
+     aria-pressed={selected?.indicator===indicator.id}
+     className={selected?.indicator===indicator.id?"is-active":""}
+     onClick={e=>{e.stopPropagation();
+      if(selected)onChange?.(setLabIndicator(bench,selected.id,
+       selected.indicator===indicator.id?undefined:indicator.id))}}>
+     <i style={{"--indicator-tint":["#a28dd2","#d84c9c","#e4aa53","#64b992"][i]} as React.CSSProperties}/>
+     <span>{indicator.name}</span>
+    </button>)}
+   </div>
   </div>
   <div  className={"lektrus-lab-device-cupboard"+(dropDeviceShelf?" is-dropzone":"")} data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
@@ -1240,92 +1274,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    style={{left:deviceShelfGhost.x+"%",top:deviceShelfGhost.y+"%"}} aria-hidden="true">
    <LektrusLabDeviceIcon kind={deviceShelfGhost.kind} size={58}/>
   </div>}
-  {editable&&vesselMenuId===selected?.id&&selected&&
-   (selected.reagents.length>0||["pipette","cylinder","volumetric"].includes(selected.kind))&&
-   (!activeBurette||availableTargets.length===0)&&
-   <div className="lektrus-lab-worktop-actions" data-board-interactive="true"
-    style={{"--lab-menu-x":Math.min(69,Math.max(11,vesselPosition(selected).x))+"%",
-     "--lab-menu-y":Math.min(73,Math.max(42,vesselPosition(selected).y-15))+"%"} as React.CSSProperties}
-    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
-    <label>Индикатор
-     <select aria-label="Индикатор выбранной посуды" value={selected.indicator??""}
-      onChange={e=>onChange?.(setLabIndicator(bench,selected.id,
-       (e.target.value||undefined) as typeof selected.indicator))}>
-      <option value="">Без индикатора</option>
-      {labIndicators.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}
-     </select>
-    </label>
-    <label>Среда
-     <select value={selected.environment==="dry"?"dry":"aqueous"}
-      aria-label="Среда вещества; нагрев только от включённого прибора"
-      onChange={e=>onChange?.(setLabEnvironment(bench,selected.id,
-       e.target.value as typeof selected.environment))}>
-      <option value="aqueous">Раствор</option>
-      <option value="dry">Сухая среда</option>
-     </select>
-    </label>
-    {selected.reagents.length>0&&
-     identifyReaction(selected.reagents,"ignited").status==="reaction"&&
-     selected.environment!=="ignited"&&<button type="button"
-      className="lektrus-lab-virtual-ignition"
-      title="Учебная имитация воспламенения, без инструкций для реального опыта"
-      onClick={()=>onChange?.(setLabEnvironment(bench,selected.id,"ignited"))}>
-      🔥 Поджечь виртуально
-     </button>}
-    {onPour&&<button type="button" className={effectivePouringId===selected.id?"active":""}
-     onClick={e=>{e.stopPropagation();
-      setLocalPourId(effectivePouringId===selected.id?null:selected.id)}}>
-     {effectivePouringId===selected.id?"Отмена":"⇢ Перелить"}
-    </button>}
-    {["pipette","cylinder"].includes(selected.kind)&&
-     <div className="lektrus-lab-measured-tools">
-      <label>{selected.kind==="pipette"?"Набрать / выдать":"Отмерить"} · мл
-       <input type="number" min=".01" step=".01"
-        value={measuredMl}
-        max={labMeasuredCapacityMl(selected.kind)} aria-label="Отмеренный объём, мл"
-        onChange={e=>setMeasuredMl(e.target.value)}
-        onBlur={()=>{if(selected.kind==="pipette")onChange?.(
-         setLabPipetteTarget(bench,selected.id,Number(measuredMl)))}} 
-        onKeyDown={e=>{if(e.key==="Enter"){e.currentTarget.blur()}}}/></label>
-      <label>Сосуд <select aria-label="Второй сосуд для мерного переноса"
-       value={bench.vessels.some(v=>v.id===measuredPartnerId&&v.id!==selected.id)?
-        measuredPartnerId:(bench.vessels.find(v=>v.id!==selected.id)?.id??"")}
-       onChange={e=>setMeasuredPartnerId(e.target.value)}>
-       {bench.vessels.filter(v=>v.id!==selected.id).map(v=>
-        <option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
-      </select></label>
-      {(["Набрать","Выдать"] as const).map(action=><button type="button" key={action}
-       onClick={e=>{e.stopPropagation();
-        const partner=bench.vessels.some(v=>v.id===measuredPartnerId&&v.id!==selected.id)?
-         measuredPartnerId:bench.vessels.find(v=>v.id!==selected.id)?.id;
-        const from=action==="Набрать"?partner:selected.id;
-        const to=action==="Набрать"?selected.id:partner;
-        const needed=Number(measuredMl);
-        const specified=selected.kind==="pipette"?
-         setLabPipetteTarget(bench,selected.id,needed):bench;
-        const next=from&&to?transferLabMeasuredLiquid(specified,from,to,needed):bench;
-        if(next!==bench){onChange?.(next);setNotice(action==="Набрать"?
-         "Набрано "+measuredMl+" мл":"Выдано "+measuredMl+" мл")}
-        else setNotice("Недостаточно жидкости или выбран несовместимый сосуд")}}>
-       {action}</button>)}
-     </div>}
-    {selected.reagents.length>0&&selected.kind!=="burette"&&
-     labReceiverBelowStand(bench,selected.id)&&
-     <button type="button" className="lektrus-lab-stand-transfer"
-      title="Наклонить закреплённый сосуд и постепенно перелить в посуду под ним"
-      onClick={e=>{e.stopPropagation();const receiver=labReceiverBelowStand(bench,selected.id);
-       if(receiver)transferVessel(selected.id,receiver.id)}}>
-      ⇣ Перелить вниз
-     </button>}
-    {selected.kind==="volumetric"&&<button type="button"
-     title="Долить воду до калибровочной метки"
-     onClick={e=>{e.stopPropagation();const next=fillLabVolumetricFlask(bench,selected.id);
-      if(next!==bench){onChange?.(next);setNotice("Колба доведена до 100 мл")}
-      else setNotice("Сосуд уже заполнен или не может быть доведён до метки")}}>
-     Долить до 100 мл</button>}
-    <button type="button" aria-label="Закрыть действия с посудой"
-     onClick={e=>{e.stopPropagation();setVesselMenuId(null)}}>×</button>
-   </div>}
   {editable&&vesselMenuId===selectedBurette?.id&&selectedBurette&&<div className="lektrus-lab-titration-on-table is-burette-valve"
    style={{"--lab-menu-x":Math.min(67,Math.max(12,vesselPosition(selectedBurette).x))+"%",
     "--lab-menu-y":Math.max(42,vesselPosition(selectedBurette).y-20)+"%"} as React.CSSProperties}
@@ -1448,6 +1396,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     {bench.instrumentTarget?.kind==="tripod"&&bench.instrumentTarget.vesselId===v.id&&<span
      className="lektrus-lab-instrument-attachment">На штативе</span>}
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
+     details={selectedVessel&&v.reagents.length>0}
      temperatureVisible={settings.showTemperatures&&v.kind!=="burette"}
      stirring={bench.stirringVesselId===v.id||
       labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)}
@@ -1675,41 +1624,21 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          aria-pressed={phase===id} className={phase===id?"is-active":""}
          onClick={()=>{setPhase(id);setChosen(null)}}>{label}</button>)}
       </div>}
-      {cabinetTab!=="experiments"&&<div className="lektrus-lab-reagent-shortcuts"
-       role="group" aria-label="Часто используемые реактивы">
-       <span>Быстрый выбор</span>
-       {(["H2O","HCl","NaOH","NaCl","AgNO3","CuSO4","BaCl2"] as const).map(id=>{
-        const v=substances.find(s=>s.id===id);
-        if(!v)return null;
-        return <button key={id} type="button" aria-pressed={chosen===id}
-         className={chosen===id?"is-active":""} title={v.name}
-         onClick={()=>{
-          const saved=quickReagents.find(q=>q.id===id)?.dose;
-          const forms=labReagentForms(v);
-          setChosen(id);setUnit(saved&&forms.includes(saved.unit)?saved.unit:
-           forms.includes("ml")?"ml":"g");
-          setAmount(String(saved?.value??10));
-          setMolarity(String(saved?.concentrationM??.1));
-         }}>{v.formula}</button>;
-       })}
-      </div>}
-      {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-sortbar">
-       <label>Состояние <select aria-label="Агрегатное состояние" value={phase}
-        onChange={e=>setPhase(e.target.value as "all"|StoragePhase)}>
-        <option value="all">Все</option>
-        {Object.entries(phaseNames).map(([id,name])=><option key={id} value={id}>{name}</option>)}
-       </select></label>
-       <label>Сортировка <select aria-label="Сортировка реактивов" value={sort}
-        onChange={e=>setSort(e.target.value as CatalogueSort)}>
-        <option value="recommended">Сначала растворы</option>
+      {cabinetTab!=="experiments"&&<details className="lektrus-lab-catalog-extra">
+       <summary>Дополнительные фильтры и сортировка</summary>
+       <div className="lektrus-lab-modal-sortbar">
+        <label>Сортировка <select aria-label="Сортировка реактивов" value={sort}
+         onChange={e=>setSort(e.target.value as CatalogueSort)}>
+         <option value="recommended">Сначала растворы</option>
          <option value="name">По названию</option><option value="formula">По формуле</option>
-       </select></label>
-       <label>Группировка <select aria-label="Группировка реактивов" value={group}
-        onChange={e=>setGroup(e.target.value as CatalogueGroup)}>
-        <option value="class">По классам</option><option value="phase">По состоянию</option>
-        <option value="none">Без группировки</option>
-       </select></label>
-      </div>}
+        </select></label>
+        <label>Группировка <select aria-label="Группировка реактивов" value={group}
+         onChange={e=>setGroup(e.target.value as CatalogueGroup)}>
+         <option value="class">По классам</option><option value="phase">По состоянию</option>
+         <option value="none">Без группировки</option>
+        </select></label>
+       </div>
+      </details>}
       <div className="lektrus-lab-modal-results-head">
        <span><strong>{cabinetTab!=="experiments"?visibleSubstances.length:experimentCases.length}</strong>
         {cabinetTab!=="experiments"?" веществ в каталоге":" опытов найдено"}</span>
@@ -1759,7 +1688,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        {((cabinetTab!=="experiments"?visibleSubstances:experimentCases).length===0)&&
         <p>Совпадений не найдено</p>}
       </div>
-      {cabinetTab!=="experiments"&&<div className="lektrus-lab-quick-editor">
+      {cabinetTab!=="experiments"&&<details className="lektrus-lab-quick-editor">
+       <summary>Быстрый доступ: {quickReagents.length} веществ · изменить полку</summary>
        <div className="lektrus-lab-quick-editor-title">
         <strong>Быстрый доступ на столе</strong>
         <small>{quickReagents.length} из {MAX_QUICK_REAGENTS} · нажмите, чтобы изменить дозировку</small>
@@ -1779,7 +1709,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
           }}>×</button>
         </div>)}
        </div>
-      </div>}
+      </details>}
       {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-dose">
        <div><strong>{reagent?.name??"Выберите реактив"}</strong>
         <small>{reagent?labReagentPhaseLabel(reagent,unit)+" · "+
@@ -1854,6 +1784,37 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        disabled={bench.vessels.length>=6} onClick={()=>chooseGlassware(v.id)}>
        <LektrusLabGlasswareIcon kind={v.id} size={60}/>
        <strong>{v.name}</strong><small>{v.description}</small></button>)}
+      {selected&&["pipette","cylinder","volumetric"].includes(selected.kind)&&
+       <section className="lektrus-lab-measuring-cabinet">
+        <strong>{names[selected.kind]} · измерение и перенос</strong>
+        {selected.kind!=="volumetric"&&<>
+         <label>Объём, мл <input type="number" min=".01" step=".01"
+          max={labMeasuredCapacityMl(selected.kind)} value={measuredMl}
+          onChange={e=>setMeasuredMl(e.target.value)}/></label>
+         <label>Другой сосуд <select value={bench.vessels.some(v=>v.id===measuredPartnerId&&v.id!==selected.id)?
+          measuredPartnerId:(bench.vessels.find(v=>v.id!==selected.id)?.id??"")}
+          onChange={e=>setMeasuredPartnerId(e.target.value)}>
+          {bench.vessels.filter(v=>v.id!==selected.id).map(v=>
+           <option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
+         </select></label>
+         {(["Набрать","Выдать"] as const).map(action=><button type="button" key={action}
+          onClick={()=>{
+           const partner=bench.vessels.some(v=>v.id===measuredPartnerId&&v.id!==selected.id)?
+            measuredPartnerId:bench.vessels.find(v=>v.id!==selected.id)?.id;
+           const from=action==="Набрать"?partner:selected.id;
+           const to=action==="Набрать"?selected.id:partner;
+           const requested=Number(measuredMl);
+           const configured=selected.kind==="pipette"?
+            setLabPipetteTarget(bench,selected.id,requested):bench;
+           const next=from&&to?transferLabMeasuredLiquid(configured,from,to,requested):bench;
+           if(next!==bench){onChange?.(next);setNotice(action+" "+measuredMl+" мл")}
+           else setNotice("Не удалось отмерить: проверьте объём и сосуд");
+          }}>{action}</button>)}
+        </>}
+        {selected.kind==="volumetric"&&<button type="button"
+         onClick={()=>{const next=fillLabVolumetricFlask(bench,selected.id);
+          if(next!==bench)onChange?.(next)}}>Долить до метки</button>}
+       </section>}
       <p>В шкаф возвращается только пустая посуда. Сначала слейте содержимое в раковину.</p>
       <button type="button" className="lektrus-lab-store-selected"
        disabled={!selected||!!selected.reagents.length}
@@ -1878,6 +1839,21 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         </button>;
        })}
       </div>
+      {selected?.reagents.length>0&&<div className="lektrus-lab-measuring-cabinet">
+       <strong>Условия выбранного сосуда</strong>
+       <label>Среда <select value={selected.environment==="dry"?"dry":"aqueous"}
+        onChange={e=>onChange?.(setLabEnvironment(bench,selected.id,
+         e.target.value as typeof selected.environment))}>
+        <option value="aqueous">Раствор</option><option value="dry">Сухая среда</option>
+       </select></label>
+       {identifyReaction(selected.reagents,"ignited").status==="reaction"&&
+        selected.environment!=="ignited"&&<button type="button"
+         className="lektrus-lab-virtual-ignition"
+         title="Учебная имитация воспламенения, только виртуально"
+         onClick={()=>onChange?.(setLabEnvironment(bench,selected.id,"ignited"))}>
+         🔥 Виртуальное воспламенение
+        </button>}
+      </div>}
       <p className="lektrus-lab-safe-caption">Нагрев и горение изменяют условия выбранного сосуда только в виртуальной модели. Мешалка и штатив не создают новых химических продуктов; термометр не показывает выдуманную температуру.</p>
      </div>}
     </section>

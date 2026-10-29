@@ -250,7 +250,7 @@ assert.match(redesignedLab,/lektrus-lab-worktop-zone/);
 assert.match(redesignedLab,/preview\?\.id===v\.id\?preview:vesselPosition\(v\)/,
  "Dragged vessels should visually reach cabinets rather than stop at the worktop");
 assert.match(redesignedLab,/arrangeLabVessels\(bench\)/);
-assert.match(redesignedLab,/lektrus-lab-chalk-steps/);
+assert.match(redesignedLab,/lektrus-lab-equation-history/);
 const redesignedCss=read("src/lektrusChemistryBench.css");
 assert.match(redesignedCss,/lektrus-lab-reagent-furniture[\s\S]*?lektrus-lab-glass-cupboard/);
 assert.match(redesignedCss,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
@@ -809,7 +809,7 @@ assert.match(surface,/clearLabTable\(bench\)/);
 assert.match(surface,/lektrus-lab-quick-editor/);
 assert.match(surface,/setLabQuickReagent\(bench/);
 assert.match(surface,/addQuick\(v\.id\)/);
-assert.match(surface,/labMeasuredCapacityMl/);
+assert.match(read("src/lektrusChemistryBenchModel.ts"),/labMeasuredCapacityMl/);
 assert.match(surface,/transferLabMeasuredLiquid/);
 assert.match(surface,/lektrus-lab-quantity-meter/);
 assert.match(surface,/labReceiverBelowStand/);
@@ -1050,7 +1050,7 @@ assert.match(editorFixed,/const width=w\/scale/,
  "Fullscreen scales rather than scrolls a 1600 x 1000 stage");
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-fit-stage/);
 const polishedSurface=read("src/LektrusChemistryBench.tsx");
-assert.match(polishedSurface,/currentQuantities&&/);
+assert.match(polishedSurface,/bench\.reactionLog/);
 assert.match(polishedSurface,/current.vessels.some\(labReactionNeedsTick\)/);
 assert.match(polishedSurface,/isQuantifiedSolution/);
 assert.match(polishedSurface,/settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing"/);
@@ -1060,7 +1060,7 @@ assert.match(read("src/lektrusLabLayout.ts"),/77\/110/);
 
 // Mode-specific apparatus must not remove any already placed work.
 assert.deepEqual(lab.LAB_MODES.map(m=>m.id),
- ["qualitative","quantitative","titration","solutions","synthesis"]);
+ ["reactions","titration","solutions","synthesis"]);
 let modeBench=lab.defaultLabBench();
 const previousPositions=JSON.stringify(modeBench.vessels);
 modeBench=lab.setLabMode(modeBench,"titration");
@@ -1297,8 +1297,8 @@ assert.match(polishedLabSource,/lektrus-lab-dissolving-particles/);
 assert.match(polishedLabSource,/lektrus-lab-boiling-particles/);
 assert.match(polishedLabSource,/lektrus-lab-steam-plumes/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-reagent-form-tabs/);
-assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-reagent-shortcuts/,
- "Frequently-used solutions are selectable without scrolling");
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-catalog-extra/,
+ "Less-used filters stay collapsed to enlarge the reactant catalogue");
 assert.match(read("src/lektrusChemistryBench.css"),/max-width:425px!important/,
  "Mode names have a wider adaptive menu on desktop");
 
@@ -1670,3 +1670,98 @@ brokenThermo.vessels[2].meltFraction=.5;
 brokenThermo.vessels[2].reactionHeat.deltaC=-5;
 assert.throws(()=>parseLab(brokenThermo),/Повреждено состояние химического стола/);
 console.log("Persisted high-temperature laboratory reopened without losing other objects");
+
+
+/* Reaction chalkboard remains persistent between collaborators and saves. */
+assert.equal(lab.labMode(lab.defaultLabBench()),"reactions");
+assert.equal(lab.labMode({...lab.defaultLabBench(),mode:"qualitative"}),"reactions");
+assert.equal(lab.labMode({...lab.defaultLabBench(),mode:"quantitative"}),"reactions");
+const chalkSource=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl",
+ {value:10,unit:"ml",concentrationM:.1});
+const chalkReacted=lab.putLabReagent(chalkSource,"v1","AgNO3",
+ {value:10,unit:"ml",concentrationM:.1});
+let chalk=lab.recordLabReactions(chalkReacted);
+assert.equal(chalk.reactionLog.length,1,"An identified reaction is added to the permanent wall");
+assert.match(chalk.reactionLog[0],/AgCl↓/);
+assert.equal(lab.recordLabReactions(chalk),chalk,
+ "Simulation ticks must not duplicate previously recorded equations");
+chalk=lab.wipeLabChalkboard(chalk);
+assert.deepEqual(chalk.reactionLog,[]);
+assert.equal(lab.recordLabReactions(chalk),chalk,
+ "A wiped but ongoing reaction must not magically reappear");
+let nextReaction=lab.emptyLabVessel(chalk,"v1");
+nextReaction=lab.putLabReagent(nextReaction,"v1","HCl",
+ {value:20,unit:"ml",concentrationM:.1});
+nextReaction=lab.putLabReagent(nextReaction,"v1","NaOH",
+ {value:20,unit:"ml",concentrationM:.1});
+nextReaction=lab.recordLabReactions(nextReaction);
+assert.equal(nextReaction.reactionLog.length,1);
+assert.match(nextReaction.reactionLog[0],/NaCl \+ H2O/);
+let measuredSediment=lab.advanceLabSimulation(chalkReacted,0);
+measuredSediment=lab.advanceLabSimulation(measuredSediment,1000);
+measuredSediment=lab.advanceLabSimulation(measuredSediment,6000);
+const physical=lab.labVesselContents(measuredSediment.vessels[0]);
+assert.ok(physical.solutionMl>=19.9&&physical.solutionMl<=20.1);
+assert.equal(physical.solid.length,1);
+assert.equal(physical.solid[0].formula,"AgCl");
+assert.ok(Math.abs(physical.precipitateG-.143318)<1e-5,
+ "Sediment mass must be based on actual produced moles, not a decorative fixed layer");
+assert.ok(physical.precipitateFraction>0&&physical.precipitateFraction<.01);
+assert.ok(physical.solution.some(v=>v.formula==="NaNO3"));
+assert.ok(!physical.solution.some(v=>v.formula==="AgCl"),
+ "Insoluble AgCl must not appear in the dissolved-products list");
+assert.ok(physical.precipitateVolumeMl<physical.solutionMl);
+const halfPrecipitation=lab.labVesselContents({...measuredSediment.vessels[0],
+ reactionAmounts:{...measuredSediment.vessels[0].reactionAmounts,
+  productsMol:Object.fromEntries(Object.entries(
+   measuredSediment.vessels[0].reactionAmounts.productsMol).map(([id,m])=>[id,m/2]))}});
+assert.ok(Math.abs(halfPrecipitation.precipitateG/physical.precipitateG-.5)<.001);
+const labUi=read("src/LektrusChemistryBench.tsx");
+assert.doesNotMatch(labUi,/className="lektrus-lab-worktop-actions"/,
+ "Floating indicator/environment/pour toolbar must be removed");
+assert.match(labUi,/lektrus-lab-indicator-cupboard/);
+assert.match(labUi,/wipeLabChalkboard\(bench\)/);
+assert.match(labUi,/recordLabReactions\(current\)/);
+assert.match(labUi,/lektrus-lab-vessel-composition/);
+assert.match(labUi,/contents\.precipitateFraction/);
+assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-indicator-shelf/);
+const labWithBoard={
+ ...persistedLab,mode:"reactions",reactionLog:[nextReaction.reactionLog[0]],
+ seenReactionKeys:nextReaction.seenReactionKeys
+};
+assert.doesNotThrow(()=>parseLab(labWithBoard),
+ "Persistent equations and the unified reaction mode are valid save data");
+console.log("Cabinets, reaction history, and proportional precipitate regression passed");
+
+const originalShared=lab.recordLabReactions(chalkReacted);
+const localShared={...originalShared,reactionLog:[...originalShared.reactionLog,
+ "CaCO3 → CaO + CO2↑"],event:originalShared.event+1};
+const remoteShared={...originalShared,reactionLog:[...originalShared.reactionLog,
+ "HCl + NaOH → NaCl + H2O"],event:originalShared.event+1};
+const mergedEquations=lab.mergeLabBench(originalShared,localShared,remoteShared);
+assert.equal(mergedEquations.reactionLog.length,3,
+ "Concurrent participants cannot erase each other's written equations");
+const erasedShared=lab.wipeLabChalkboard(originalShared);
+const mergedAfterWipe=lab.mergeLabBench(originalShared,erasedShared,originalShared);
+assert.deepEqual(mergedAfterWipe.reactionLog,[],
+ "A wipe must survive a concurrent stale write without restoring erased equations");
+const mergedWithPeer=lab.mergeLabBench(originalShared,erasedShared,remoteShared);
+assert.deepEqual(mergedWithPeer.reactionLog,["HCl + NaOH → NaCl + H2O"],
+ "A later new peer equation may survive a wipe without resurrecting old equations");
+assert.ok(mergedWithPeer.seenReactionKeys.length>0,
+ "Wiped recorded keys stay in sync so old reactions do not reappear");
+console.log("Shared chalkboard: concurrent writes and explicit erasing passed");
+
+
+const plainQualitative=lab.putLabReagent(
+ lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl"),"v1","AgNO3");
+const qualContents=lab.labVesselContents(plainQualitative.vessels[0]);
+assert.deepEqual(qualContents.solid.map(v=>v.formula),["AgCl"],
+ "Qualitative reaction must show the insoluble product, not the initial reagent list");
+assert.ok(qualContents.solution.some(v=>v.formula==="NaNO3"));
+assert.ok(!qualContents.solution.some(v=>v.formula==="AgNO3"));
+assert.equal(qualContents.precipitateG,undefined,
+ "With no quantified doses, mass of sediment must stay unknown");
+assert.equal(qualContents.remainderUnknown,true,
+ "Unmeasured initial reactant excess must be explicitly unknown");
+console.log("Qualitative chemistry shows products, not fabricated residue masses");
