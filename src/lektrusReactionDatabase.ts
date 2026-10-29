@@ -155,6 +155,7 @@ C4H10|Бутан|газ
 C3H6|Пропен|газ
 C3H8O|Пропан-2-ол|органика
 NaH2PO4|Дигидрофосфат натрия|соль
+(NH4)2CO3|Карбонат аммония|соль
 ZnS|Сульфид цинка|соль
 `;
 export const substances:Substance[]=catalog.trim().split("\n").map(row=>{
