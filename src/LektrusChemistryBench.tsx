@@ -651,8 +651,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   if(Math.hypot((p.x-g.startX)*rect.width/100,(p.y-g.startY)*rect.height/100)>8)g.dragged=true;
   if(g.dragged){
    const furniture=inSink(p)?"sink":inGlassware(p)?"glassware":null;
+   const nearestFilter=physicalDevices.find(d=>d.kind==="filter"&&
+    Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)<95);
    setDropFurniture(furniture);
-   const pouring=furniture?null:targetAt(g.id,p);
+   const pouring=furniture||nearestFilter?null:targetAt(g.id,p);
    setDropTarget(pouring);
    if(pouring)beginContact(g.id,pouring);
    else if(contactRef.current)endContact();
@@ -661,9 +663,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     d,dist:Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)
    })).filter(v=>v.dist<105&&canMountLabVessel(v.d.kind,vessel.kind))
     .sort((a,b)=>a.dist-b.dist)[0]:undefined;
-   const filter=physicalDevices.find(d=>d.kind==="filter"&&
-    Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)<95);
-   setDropDeviceId(filter?.id??nearby?.d.id??null);
+   setDropDeviceId(nearestFilter?.id??nearby?.d.id??null);
    const a=labDisplayPoint({x:g.x,y:g.y},bench.vessels.length>3);
    setPreview({id:g.id,x:Math.max(1,Math.min(99,a.x+p.x-g.startX)),
     y:Math.max(1,Math.min(99,a.y+p.y-g.startY))});
@@ -686,7 +686,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     })).sort((a,b)=>a.distance-b.distance)[0]:undefined;
     if(filter&&filter.distance<95){
      const next=pourLabIntoFilter(bench,g.id,filter.d.id);
-     if(next!==bench){onChange?.(next);
+     if(next!==bench){
+      const from=bench.vessels.find(v=>v.id===g.id);
+      if(from)setTransfer({from:vesselPosition(from),to:{x:filter.d.x,y:filter.d.y-3}});
+      onChange?.(next);
       setNotice("Осадок задержан фильтром, фильтрат в чистом сосуде");
      }else setNotice("Нужен завершённый осадок и свободное место для фильтрата");
      setPreview(null);setDropDeviceId(null);setDropTarget(null);return;
