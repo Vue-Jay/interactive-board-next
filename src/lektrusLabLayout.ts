@@ -82,7 +82,7 @@ export function labMountedGlasswarePoint(
  };
 }
 
-/** Center a free receiving vessel on the retort stand's REAL metal foot.
+/** Place receiving glassware on the right half of a wide retort stand base, clear of the left rod.
  * The bottom of the vessel, not its middle, coincides with SVG y=96/108.
  * Keep the same responsive dimensions as the rendered stand and glass. */
 export function labStandBaseVesselPoint(
@@ -97,7 +97,7 @@ export function labStandBaseVesselPoint(
  if(vessel.kind==="dish"||vessel.kind==="crucible")vh=size(98,.12,125,w);
  const vesselFoot=0.4*vh;
  return {
-  x:clamp(stand.x+(60/110-.5)*dw/w*100,5,82),
+  x:clamp(stand.x+(77/110-.5)*dw/w*100,5,82),
   y:clamp(stand.y+((96/108-.5)*dh-vesselFoot)/h*100,46,85)
  };
 }
