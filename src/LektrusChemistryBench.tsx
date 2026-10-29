@@ -135,7 +135,11 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const labels=species.map(([id])=>substances.find(s=>s.id===id)?.formula??id);
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
- const substanceState=vessel.filteredResidue?"Отфильтрованный осадок":
+ const boiling=!!volumeMl&&vessel.environment==="aqueous"&&
+  (temperatureC??vessel.temperatureC??22)>=99.5&&vessel.reagents.includes("H2O");
+ const substanceState=boiling?"Кипение воды":
+  vessel.physicalProcess==="dissolving"?"Растворение в воде":
+  vessel.filteredResidue?"Отфильтрованный осадок":
   vessel.filteredSolution?"Фильтрат":amounts?
   (amounts.complete?"Превращение завершено":"Реакция "+Math.round(conversionFraction*100)+"%"):
   !vessel.reagents.length?"Пусто":
@@ -175,6 +179,20 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
       cx={34+(i*13)%33} cy={32+(i*21)%61} r={3+i%3}
       fill={color} opacity=".42"/>)}
     </>}
+    {vessel.physicalProcess==="dissolving"&&vessel.physicalStartedAtMs&&
+     <g className="lektrus-lab-dissolving-particles">
+      {Array.from({length:16},(_,i)=><circle key={i}
+       cx={28+i*23%44} cy={85+i*17%27} r={1.3+i%3*.6}
+       fill={i%2?"#e9f8ff":"#d7e7f1"} stroke="#83afbb" strokeWidth=".5"
+       style={{animationDelay:-(Math.max(0,Date.now()-vessel.physicalStartedAtMs!)/1000)
+        -(i%5)*.13+"s"}}/>)}
+     </g>}
+    {boiling&&<g className="lektrus-lab-boiling-particles">
+     {Array.from({length:18},(_,i)=><circle key={i}
+      cx={28+i*19%46} cy={80+i*23%30} r={1.6+i%4*.7}
+      fill="#fff" fillOpacity=".18" stroke="#9ecfd7" strokeWidth=".8"
+      style={{animationDelay:-(i%8)*.31+"s"}}/>)}
+    </g>}
     {stirring&&labels.length>0&&<g className="lektrus-lab-stir-vortex">
      <ellipse cx="50" cy="90" rx="24" ry="6" fill="none" stroke="#effffd" strokeWidth="2" opacity=".85"/>
      <ellipse cx="50" cy="93" rx="14" ry="4" fill="none" stroke="#318f90" strokeWidth="2" opacity=".75"/>
@@ -206,6 +224,12 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
     <path d={vessel.buretteOpen?"M52 102V125":"M39 114H64"} stroke={vessel.buretteOpen?"#27a789":"#758f8c"} strokeWidth="5" strokeLinecap="round"/>
     <circle cx="52" cy="114" r="4" fill="#e2f3ed" stroke="#47776f" strokeWidth="1.5"/>
     
+   </g>}
+   {boiling&&<g className="lektrus-lab-steam-plumes" aria-hidden="true">
+    {Array.from({length:5},(_,i)=><path key={i}
+     d={`M${31+i*10} 13q-5 -7 0 -15t0 -14`}
+     fill="none" stroke="#dffbfb" strokeWidth="2.5" strokeLinecap="round"
+     style={{animationDelay:-(i*.45)+"s"}}/>)}
    </g>}
    <path d={geo.outline} fill="none" stroke="#75a4a4" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
    <path d={geo.outline} fill="none" stroke="#fff" strokeWidth="1.25" opacity=".8" strokeLinecap="round"/>
