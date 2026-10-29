@@ -722,7 +722,7 @@ for(const row of cases){
    row.observation==="gas"?"fizz":
    row.observation==="precipitate"?"crystals":
    row.observation==="heat"?"thermal":
-   row.observation==="color"?"colorShift":undefined;
+   row.observation==="color"||row.observation==="dissolution"?"colorShift":undefined;
  }
 }
 
