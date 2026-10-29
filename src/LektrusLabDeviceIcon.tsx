@@ -106,13 +106,11 @@ export default function LektrusLabDeviceIcon({
    <path d="M23 95V4" stroke="#d6eee3" strokeWidth="2.2" strokeLinecap="round"/>
    <path d="M16 7H29" stroke="#94bdb0" strokeWidth="3.2" strokeLinecap="round"/>
    <g transform={`translate(0 ${clampY-40})`}>
-    <rect x="14" y="31" width="17" height="19" rx="3.5"
-     fill={"url(#"+metal+")"} stroke="#37645d" strokeWidth="2.4"/>
-    <rect x="18" y="34" width="4" height="13" rx="2"
-     fill="#d5ede1" opacity=".75"/>
-    <path d="M30 40H79" stroke="#517e76" strokeWidth="5" strokeLinecap="round"/>
-    <path d="M30 38H77" stroke="#b3d3c3" strokeWidth="1.6" strokeLinecap="round"/>
-    <circle cx="22" cy="40" r="3" fill="#315f55" stroke="#d9ece2" strokeWidth="1"/>
+    <rect x="16" y="35" width="12" height="11" rx="2.4"
+     fill={"url(#"+metal+")"} stroke="#37645d" strokeWidth="1.8"/>
+    <path d="M27 40H76" stroke="#537d78" strokeWidth="3.1" strokeLinecap="round"/>
+    <path d="M27 38.7H75" stroke="#c8e5d8" strokeWidth="1.2" strokeLinecap="round"/>
+    <circle cx="21" cy="40.5" r="2" fill="#315f55" stroke="#d9ece2" strokeWidth=".8"/>
    </g>
   </>}
   {kind==="thermometer"&&<>
