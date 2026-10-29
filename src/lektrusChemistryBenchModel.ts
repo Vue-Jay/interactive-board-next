@@ -1102,6 +1102,11 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
   (source.reactionAmounts&&!source.reactionAmounts.complete))return bench;
  const reaction=labObservation(source).caseData;
  if(!reaction||reaction.observation!=="precipitate")return bench;
+ // A measured reaction begins on the first simulation tick. Until it
+ // finishes, the animated precipitate has not fully formed and cannot
+ // be collected. Do not treat an uninitialised measured reaction as complete.
+ if(!source.reactionAmounts&&!source.completedReaction&&
+  startQuantifiedLabReaction(reaction,source.reagents,source.doses))return bench;
  const products=(reaction.equation.split("→")[1]??"")
   .split(/\s+\+\s+/).map(v=>v.trim());
  const solid=products.find(p=>p.includes("↓"))?.
