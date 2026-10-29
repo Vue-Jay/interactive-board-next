@@ -980,6 +980,7 @@ export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:numbe
 /** Optional one-click preparation. Adds only missing EMPTY glassware and
  * compatible apparatus, never clearing or moving existing experiments. */
 const LAB_STARTER_SETS:Record<LabMode,{glassware:LabGlassware[];devices:LabAvailableDevice[]}>={
+ reactions:{glassware:["beaker","tube","pipette","cylinder"],devices:["filter"]},
  qualitative:{glassware:["beaker","tube","tube","pipette"],devices:["filter"]},
  quantitative:{glassware:["beaker","cylinder","pipette","conical"],devices:["stirrer"]},
  titration:{glassware:["burette","conical","pipette"],devices:["tripod"]},
