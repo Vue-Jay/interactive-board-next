@@ -7,6 +7,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassw
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
+import {labVesselPH} from "./lektrusLabPH";
 import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
@@ -110,11 +111,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const verified=result.status==="reaction"?result.caseData:undefined;
  const visualCase=vessel.completedReaction??verified;
  const appearance=reactionAppearance(visualCase);
- const indicator=titrationResult&&vessel.indicator?{
-  medium:titrationResult.phase==="acidic"?"acid":titrationResult.phase==="alkaline"?"base":"neutral",
-  label:"pH "+titrationResult.pH,color:titrationResult.tint,
-  note:"Расчётное значение при титровании, 25 °C"
- }:labIndicatorResult(vessel);
+ const indicator=labIndicatorResult(vessel);
+ // The measured vessel composition, not a parallel titration slider, drives
+ // the visible colour and pH after every burette drop or ordinary addition.
+ const ph=labVesselPH(vessel);
  const {volumeMl,massG,capacityMl,liquidFraction,solidFraction}=labVesselQuantity(vessel);
  const contents=labVesselContents(vessel);
  const readable=(n:number,decimals=3)=>n.toLocaleString("ru-RU",{maximumFractionDigits:decimals});
@@ -129,8 +129,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const active=Boolean(visualCase);
  const dryProductColor=active&&volumeMl===0&&appearance.productSolid?
   appearance.productSolidColor:undefined;
- const color=vessel.filteredResidue?.color??(titrationResult?(vessel.indicator?titrationResult.tint:"#dceff0"):
-  indicator?.color??dryProductColor??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3"));
+ const liquidIndicator=vessel.indicator&&vessel.indicator!=="universal";
+ const solutionBase=dryProductColor??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3");
+ const color=vessel.filteredResidue?.color??
+  (liquidIndicator&&indicator?.color&&volumeMl>0?indicator.color:solutionBase);
  const observation=visualCase?.observation??"none";
  const gasEventActive=!!vessel.reactionAmounts&&!vessel.reactionAmounts.complete||
   !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<6500;
@@ -252,7 +254,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
    </g>}
    <path d={geo.outline} fill="none" stroke="#75a4a4" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
    <path d={geo.outline} fill="none" stroke="#fff" strokeWidth="1.25" opacity=".8" strokeLinecap="round"/>
-   {vessel.indicator&&<g className="lektrus-lab-indicator-strip">
+   {vessel.indicator==="universal"&&<g className="lektrus-lab-indicator-strip">
     <rect x="73" y="24" width="7" height="73" rx="2" fill="#f4edda" stroke="#9a9f91" strokeWidth="1" transform="rotate(12 76 60)"/>
     <rect x="73" y="71" width="7" height="24" rx="1" fill={indicator?.color??"#b5b9b3"} opacity=".95" transform="rotate(12 76 60)"/>
    </g>}
@@ -294,6 +296,11 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
       {details&&<span className="lektrus-lab-quantity-info is-solution">
        <b>Раствор · {readable(contents.solutionMl)} мл</b>
        <span>{solutionNames.join(", ")||"Растворённых веществ нет"}</span>
+       <small className="lektrus-lab-inline-ph" title={ph?.note??"Нужны данные о составе и концентрации"}>
+        {ph?.label??"pH не определён"}
+        {vessel.indicator&&vessel.indicator!=="universal"?
+         " · "+(vessel.indicatorDrops??1)+" кап.":""}
+       </small>
       </span>}
      </div>}
     {(details||contents.solid.length>0)&&<div className="lektrus-lab-quantity-measure is-solid"
@@ -1153,14 +1160,44 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <strong>ИНДИКАТОРЫ</strong>
    <div className="lektrus-lab-indicator-shelf" role="group"
     aria-label="Добавить индикатор в выбранный сосуд">
-    {labIndicators.map((indicator,i)=><button key={indicator.id} type="button"
-     title={indicator.name+" · "+indicator.note} disabled={!editable||!selected?.reagents.length}
+    {labIndicators.map(indicator=><button key={indicator.id} type="button"
+     title={indicator.name+" · "+(indicator.id==="universal"?
+      "Проверить каплей раствора на бумаге":indicator.note+" · добавить одну каплю")}
+     disabled={!editable||!selected?.reagents.length}
      aria-pressed={selected?.indicator===indicator.id}
-     className={selected?.indicator===indicator.id?"is-active":""}
+     className={(selected?.indicator===indicator.id?"is-active ":"")+
+      (indicator.id==="universal"?"is-paper":"is-liquid")}
      onClick={e=>{e.stopPropagation();
-      if(selected)onChange?.(setLabIndicator(bench,selected.id,
-       selected.indicator===indicator.id?undefined:indicator.id))}}>
-     <i style={{"--indicator-tint":["#a28dd2","#d84c9c","#e4aa53","#64b992"][i]} as React.CSSProperties}/>
+      if(!selected)return;
+      const updated=setLabIndicator(bench,selected.id,indicator.id);
+      if(updated!==bench){
+       onChange?.(updated);
+       setNotice(indicator.id==="universal"?
+        "Универсальная бумага показала цвет по pH":
+        "В раствор добавлена капля индикатора");
+      }}}>
+     {indicator.id==="universal"?
+      <svg className="lektrus-lab-indicator-paper" viewBox="0 0 24 30"
+       width="21" height="26" aria-hidden="true">
+       <rect x="6" y="2" width="12" height="25" rx="1.4"
+        fill="#fff8e8" stroke="#a2a091" strokeWidth="1.4"/>
+       <rect x="7.8" y="14" width="8.4" height="11"
+        fill="#81bc75" opacity=".85"/>
+       <path d="M8 6h8M8 9h8" stroke="#bbb09a" strokeWidth=".9"/>
+      </svg>:
+      <svg className="lektrus-lab-indicator-bottle" viewBox="0 0 24 30"
+       width="22" height="27" aria-hidden="true">
+       <rect x="9" y="1" width="6" height="5" rx="1"
+        fill="#8aa89d" stroke="#537f73" strokeWidth="1"/>
+       <path d="M9 5h6v4l4 4v12q0 3-3 3H8q-3 0-3-3V13l4-4Z"
+        fill="#e5f4ee" stroke="#5d998c" strokeWidth="1.3"/>
+       <path d="M6.7 15h10.6v9.7q0 2-2 2H8.7q-2 0-2-2Z"
+        fill={indicator.id==="litmus"?"#9e83c4":
+         indicator.id==="phenolphthalein"?"#eef6f0":"#dfa949"}
+        opacity=".85"/>
+       <path d="M9 12h2" stroke="#fff" strokeWidth="1.3" strokeLinecap="round"/>
+       <circle cx="11" cy="19" r="1.1" fill="#ffffffb7"/>
+      </svg>}
      <span>{indicator.name}</span>
     </button>)}
    </div>
