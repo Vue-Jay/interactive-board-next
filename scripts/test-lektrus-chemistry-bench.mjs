@@ -1254,7 +1254,7 @@ assert.ok(wateryCatalog.flatMap(g=>g.items).some(v=>v.id==="NaCl"));
 assert.ok(!wateryCatalog.flatMap(g=>g.items).some(v=>v.id==="CO2"),
  "Liquid-first catalogue must not accidentally show compressed gases");
 assert.equal(wateryCatalog[0].title,"Растворы и жидкости");
-assert.ok(reaction.substances.length>=140);
+assert.ok(reaction.substances.length>=180,"Expanded catalog contains all reviewed chemical products");
 for(const ids of [["AgNO3","NaBr"],["SrCl2","Na2SO4"],["NiSO4","NaOH"],
  ["HCl","LiOH"],["C3H8","O2"]]){
  const medium=ids[0]==="C3H8"?"ignited":"aqueous";
@@ -1287,6 +1287,41 @@ assert.match(polishedLabSource,/lektrus-lab-boiling-particles/);
 assert.match(polishedLabSource,/lektrus-lab-steam-plumes/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-reagent-form-tabs/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-board-write-toggle/);
+// Chemistry-wide audit: verify all available reactants, products and visuals.
+// An explosion-like flash is exclusive to explicitly reviewed energetic systems.
+assert.ok(chem.parseBalancedLabEquation("BaCl2 + (NH4)2SO4 → BaSO4↓ + 2NH4Cl"),
+ "Balanced ammonium salts must be accepted, not skipped by the parser");
+assert.ok(chem.parseBalancedLabEquation("2NH3 + H2SO4 → (NH4)2SO4"),
+ "Parenthesized products must also be quantified");
+const indexedReagents=new Set(reaction.substances.map(v=>v.id));
+const allowedEffects=new Set(["flame","flash","sparks","smoke","glow",
+ "steam","fizz","crystals","thermal","colorShift"]);
+const reviewedFlashes=new Set(["H2+O2","Na+Cl2","K+Cl2","Al+Cl2",
+ "H2+Cl2","K+H2O"]);
+assert.ok(reaction.reviewedReactionCases.length>=300,
+ "School laboratory must cover diverse exchange, redox and combustion chemistry");
+for(const row of reaction.reviewedReactionCases.filter(v=>v.status==="reaction")){
+ assert.ok(row.reactants.every(id=>indexedReagents.has(id)),
+  "Cannot initiate a reaction from a missing reagent: "+row.equation);
+ const products=reaction.reactionProducts(row.equation).map(x=>
+  x.replace(/^\\d+\\s*/,"").replace(/[↑↓]/g,"").trim());
+ assert.ok(products.every(id=>indexedReagents.has(id)),
+  "All products must have substance records for display: "+row.equation);
+ assert.ok(row.visual&&allowedEffects.has(row.visual),
+  "All verified reactions need a supported effect: "+row.equation);
+ if(row.visual==="flash")
+  assert.ok(reviewedFlashes.has(row.reactants.slice().sort().join("+"))||
+    reviewedFlashes.has(row.reactants.join("+")),
+   "A bright flash must not be invented for ordinary chemistry: "+row.equation);
+ if(row.observation==="precipitate")
+  assert.ok(row.equation.includes("↓"),"Precipitate must match actual solid product");
+ if(row.observation==="gas")
+  assert.ok(row.equation.includes("↑"),"Gas animation must correspond to gas product");
+}
+assert.match(read("src/LektrusChemistryBench.tsx"),/pourLabIntoFilter\\(bench,effectivePouringId,g\\.id\\)/,
+ "A user can click the physical membrane filter after selecting pour");
+assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),/substanceState/,
+ "Above-glassware labels must not show the reaction family or process status");
 // Entire reviewed inventory: only atom-balanced equations should be presented.
 for(const row of reaction.reviewedReactionCases.filter(v=>v.status==="reaction")){
  assert.ok(chem.parseBalancedLabEquation(row.equation),
