@@ -960,7 +960,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const p=devicePreview?.id===d.id?{...d,...devicePreview}:d;
    const y=labStandClampSvgY(p.standHeight);
    return <svg key={d.id+"-clamp"} className="lektrus-lab-retort-jaws"
-    viewBox="0 0 110 108" preserveAspectRatio="xMidYMid meet"
+    viewBox="0 0 110 108" preserveAspectRatio="none"
     aria-hidden="true" style={{left:p.x+"%",top:p.y+"%"}}>
     <g transform={`translate(0 ${y-40})`}>
      <path d="M76 40L87 31M76 40L88 49M85 31Q101 40 85 49"
