@@ -749,62 +749,88 @@ export const labMeasuredCapacityMl=(kind:LabGlassware):number|undefined=>
 /** Measure a declared volume of a homogeneous liquid without creating
  * substance from nothing. Mixed SOLUTIONS are transferred proportionally,
  * while dry powders and unmeasured compositions cannot be pipetted. */
+/** Transfer a requested volume in hundredth-milliliter units.
+ * Mixed solutions are sampled proportionally, without intermediate
+ * reactions or floating-point rounding losing / inventing liquid. */
 export function transferLabMeasuredLiquid(
  bench:LabBench,sourceId:string,targetId:string,volumeMl:number
 ):LabBench{
  if(sourceId===targetId||!Number.isFinite(volumeMl)||volumeMl<.01||
-  Math.round(volumeMl*100)!==Math.round(volumeMl*1000000)/10000)return bench;
+  Math.abs(volumeMl*100-Math.round(volumeMl*100))>1e-6)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||!source.reagents.length)return bench;
  const entries=source.reagents.map(id=>({id,dose:source.doses?.[id]}));
- if(entries.some(e=>!e.dose||e.dose.unit!=="ml"))return bench;
- const total=entries.reduce((sum,e)=>sum+e.dose!.value,0);
- const exact=Math.round(volumeMl*100)/100;
- if(total+1e-7<exact)return bench;
+ if(entries.some(e=>!e.dose||e.dose.unit!=="ml"||e.dose.value<=0))return bench;
+ const amounts=entries.map(e=>Math.round(e.dose!.value*100));
+ const totalCents=amounts.reduce((n,v)=>n+v,0);
+ const requested=Math.round(volumeMl*100);
+ if(requested>totalCents)return bench;
  const capacity=labMeasuredCapacityMl(target.kind);
- const current=Object.values(target.doses??{}).reduce((sum,d)=>sum+
-  (d.unit==="ml"?d.value:0),0);
- if(capacity!==undefined&&current+exact>capacity+1e-7)return bench;
- const apportioned=entries.map(({id,dose},i)=>({
-  id,dose:{...dose!,value: i===entries.length-1?0:
-   Math.round(exact*dose!.value/total*100)/100}
- }));
- const assigned=apportioned.reduce((sum,e)=>sum+e.dose.value,0);
- apportioned[apportioned.length-1].dose.value=Math.round((exact-assigned)*100)/100;
- let next=bench;
- for(const entry of apportioned){
-  if(entry.dose.value<=0)continue;
-  const previous=next;
-  next=putLabReagent(next,targetId,entry.id,entry.dose);
-  if(next===previous)return bench;
+ const current=Object.values(target.doses??{}).reduce((sum,d)=>
+  sum+(d.unit==="ml"?d.value:0),0);
+ if(capacity!==undefined&&current+volumeMl>capacity+1e-7)return bench;
+ const ids=[...new Set([...target.reagents,...source.reagents])];
+ if(ids.length>MAX_VESSEL_REAGENTS)return bench;
+ // Largest remainder allocation: every 0.01ml is attributed to a component,
+ // and no component can contribute more than its actual stock.
+ const exactShares=amounts.map(v=>requested*v/totalCents);
+ const allocated=exactShares.map(v=>Math.floor(v));
+ let remainder=requested-allocated.reduce((n,v)=>n+v,0);
+ const order=exactShares.map((v,i)=>i).sort((a,b)=>
+  (exactShares[b]-Math.floor(exactShares[b]))-
+  (exactShares[a]-Math.floor(exactShares[a]))||a-b);
+ for(const i of order){
+  if(remainder<=0)break;
+  if(allocated[i]<amounts[i]){allocated[i]++;remainder--}
  }
- if(next===bench)return bench;
- const old=source.completedReaction??labObservation(source).caseData;
- const now=Date.now();
- return {...next,vessels:next.vessels.map(v=>{
-  if(v.id===sourceId){
-   const doses={...source.doses};
-   for(const {id,dose} of apportioned){
-    const remaining=Math.round(((doses[id]?.value??0)-dose.value)*100)/100;
-    if(remaining<=0)delete doses[id];
-    else doses[id]={...doses[id],value:remaining};
-   }
-   const reagents=source.reagents.filter(id=>doses[id]);
-   return {...v,reagents,doses:Object.keys(doses).length?doses:undefined,
-    observed:reagents.length>0?v.observed:false,
-    completedReaction:reagents.length>0?v.completedReaction:undefined,
-    indicator:reagents.length>0?v.indicator:undefined};
-  }
-  if(v.id===targetId){
-   const wasEmpty=target.reagents.length===0;
-   return {...v,completedReaction:wasEmpty?old:v.completedReaction,
-    uncertain:v.uncertain||Boolean(!wasEmpty&&old),
-    visualStartedAtMs:!wasEmpty&&!old&&
-     identifyReaction(v.reagents,v.environment).status==="reaction"?now:v.visualStartedAtMs};
-  }
+ if(remainder!==0)return bench;
+ const received={...target.doses};
+ const left={...source.doses};
+ for(let i=0;i<entries.length;i++){
+  const {id,dose}=entries[i],portion=allocated[i]/100;
+  if(portion<=0)continue;
+  const existing=received[id];
+  if(existing?.unit!=="ml"&&existing!==undefined)return bench;
+  const quantity=Math.round(((existing?.value??0)+portion)*100)/100;
+  if(quantity>10000)return bench;
+  const concentrationM=existing?
+   existing.concentrationM!==undefined&&dose!.concentrationM!==undefined?
+    ((existing.value*existing.concentrationM)+(portion*dose!.concentrationM))/quantity:
+    undefined:dose!.concentrationM;
+  received[id]={value:quantity,unit:"ml",
+   ...(concentrationM!==undefined?{concentrationM:Math.round(concentrationM*1e5)/1e5}:{})};
+  const remaining=Math.round((dose!.value-portion)*100)/100;
+  if(remaining>0)left[id]={...dose!,value:remaining};
+  else delete left[id];
+ }
+ const remainingIds=source.reagents.filter(id=>left[id]);
+ const wasEmpty=target.reagents.length===0;
+ const sourceReaction=source.completedReaction??labObservation(source).caseData;
+ const targetReaction=target.completedReaction??labObservation(target).caseData;
+ const medium=wasEmpty?source.environment:target.environment;
+ const uncertain=Boolean(source.uncertain||target.uncertain||
+  (!wasEmpty&&(sourceReaction||targetReaction))||
+  (!wasEmpty&&source.environment!==target.environment&&source.environment!=="aqueous"));
+ const newReaction=!uncertain&&!sourceReaction&&!targetReaction&&
+  identifyReaction(ids,medium).status==="reaction";
+ const now=newReaction?Date.now():undefined;
+ const vessels=bench.vessels.map(v=>{
+  if(v.id===sourceId)return {...v,reagents:remainingIds,
+   doses:remainingIds.length?left:undefined,
+   observed:remainingIds.length?v.observed:false,
+   completedReaction:remainingIds.length?v.completedReaction:undefined,
+   indicator:remainingIds.length?v.indicator:undefined,
+   visualStartedAtMs:remainingIds.length?v.visualStartedAtMs:undefined};
+  if(v.id===targetId)return {...v,reagents:ids,doses:received,
+   observed:ids.length>1||source.observed,
+   environment:medium,uncertain,
+   completedReaction:wasEmpty?sourceReaction:targetReaction,
+   indicator:v.indicator??source.indicator,
+   visualStartedAtMs:now??v.visualStartedAtMs};
   return v;
- }),event:next.event+1};
+ });
+ return {...bench,vessels,event:bench.event+1};
 }
 /** Quantity readout shared by the board and fullscreen laboratory.
  * Liquid fill is proportional to the simulated vessel capacity. For loose
