@@ -20,6 +20,43 @@ export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
  {id:"pipette",name:"Мерная пипетка",description:"Отбор небольшого объёма"},
  {id:"burette",name:"Бюретка",description:"Дозирование при титровании"}
 ];
+/** A work mode selects the useful tools; existing apparatus stays on the table. */
+export type LabMode="qualitative"|"quantitative"|"titration"|"solutions"|"synthesis";
+export const LAB_MODES:{id:LabMode;name:string;description:string;
+ glassware:LabGlassware[];devices:LabAvailableDevice[]}[]=[
+ {id:"qualitative",name:"Качественные реакции",
+  description:"Распознавание веществ по осадку, газу, цвету и другим признакам",
+  glassware:["tube","beaker","pipette","conical","dish"],
+  devices:["tripod","burner","hotplate"]},
+ {id:"quantitative",name:"Количественные реакции",
+  description:"Измеренные массы, объёмы и концентрации, расчёт по уравнению",
+  glassware:["beaker","cylinder","pipette","volumetric","conical","flask"],
+  devices:["stirrer","hotplate","tripod"]},
+ {id:"titration",name:"Титрование",
+  description:"Бюретка со штативом, дозирование по каплям и точка эквивалентности",
+  glassware:["burette","conical","pipette","beaker","cylinder"],
+  devices:["tripod","stirrer"]},
+ {id:"solutions",name:"Приготовление растворов",
+  description:"Отмеривание, растворение, перенос и доведение до метки",
+  glassware:["volumetric","beaker","cylinder","pipette","flask"],
+  devices:["stirrer","hotplate","tripod"]},
+ {id:"synthesis",name:"Синтез",
+  description:"Нагревание, получение и сбор продуктов проверенных превращений",
+  glassware:["flask","conical","tube","beaker","crucible","dish","cylinder"],
+  devices:["tripod","burner","hotplate","stirrer"]}
+];
+export const labMode=(bench:LabBench):LabMode=>
+ LAB_MODES.some(m=>m.id===bench.mode)?bench.mode!:"qualitative";
+export const labModeInfo=(bench:LabBench)=>LAB_MODES.find(m=>m.id===labMode(bench))!;
+export function setLabMode(bench:LabBench,mode:LabMode):LabBench{
+ if(!LAB_MODES.some(v=>v.id===mode)||labMode(bench)===mode)return bench;
+ return {...bench,mode,event:bench.event+1};
+}
+export const glasswareForLabMode=(bench:LabBench)=>
+ labModeInfo(bench).glassware.flatMap(id=>labGlassware.filter(v=>v.id===id));
+export const devicesForLabMode=(bench:LabBench)=>
+ labModeInfo(bench).devices.flatMap(id=>labDevices.filter(v=>v.id===id));
+
 export type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
 export type LabDevice="hotplate"|"burner"|"stirrer"|"tripod"|"thermometer";
 export type LabAvailableDevice=Exclude<LabDevice,"thermometer">;
@@ -621,7 +658,7 @@ export const labPourPercent=(p:LabPourProgress)=>Math.round(p.step/p.totalSteps*
 export const labPourAmounts=(p:LabPourProgress)=>Object.entries(p.initialDoses).map(([id,d])=>({
  id,unit:d.unit,transferred:Math.round(d.value*p.step/p.totalSteps*1000)/1000,
  remaining:Math.round(d.value*(1-p.step/p.totalSteps)*1000)/1000}));
-export type LabBench={vessels:LabVessel[];selectedId:string;event:number;pouring?:LabPourProgress;
+export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:LabMode;pouring?:LabPourProgress;
  settings?:LabBenchSettings;quickReagents?:LabQuickReagent[];devices?:LabDevice[];placedDevices?:LabPlacedDevice[];titration?:TitrationModel;stirringVesselId?:string;
  instrumentTarget?:{kind:"tripod"|"thermometer";vesselId:string};
  titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;}
@@ -634,7 +671,7 @@ export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSett
 }
 export const defaultLabBench=():LabBench=>({
  vessels:[{id:"v1",kind:"beaker",x:48,y:70,reagents:[],environment:"aqueous",observed:false}],
- selectedId:"v1",event:0,settings:defaultLabBenchSettings()
+ selectedId:"v1",event:0,mode:"qualitative",settings:defaultLabBenchSettings()
 });
 export function readLabBench(item:Item):LabBench{
  if(item.scienceLabBench)return {...item.scienceLabBench,
@@ -699,13 +736,35 @@ export function arrangeLabVessels(bench:LabBench):LabBench{
   d.active&&d.linkedVesselId===v.id||d.shelfVesselId===v.id)?bench.vessels[i]:v);
  return bump(bench,stabilized);
 }
+/** Pick an unused tabletop position, leaving EVERY existing vessel untouched.
+ * Explicit pointer drops always win, even when placed close to another vessel.
+ * Automatic spots are only used for keyboard/cabinet insertion. */
+export function labFreeVesselPosition(bench:LabBench):{x:number;y:number}{
+ const spaces=[
+  {x:50,y:64},{x:33,y:64},{x:68,y:64},
+  {x:17,y:73},{x:83,y:73},{x:40,y:84},{x:60,y:84},
+  {x:23,y:49},{x:77,y:49},{x:50,y:49}
+ ];
+ const occupied=bench.vessels.map(v=>labDisplayPoint(v,bench.vessels.length>3));
+ const devices=placedLabDevices(bench);
+ const score=(p:{x:number;y:number})=>{
+  const display=labDisplayPoint(p,bench.vessels.length>3);
+  const nearestVessel=occupied.length?Math.min(...occupied.map(v=>
+   Math.hypot((v.x-display.x)*1.4,v.y-display.y))):100;
+  const nearestDevice=devices.length?Math.min(...devices.map(d=>
+   Math.hypot((d.x-display.x)*1.4,d.y-display.y))):100;
+  return Math.min(nearestVessel,nearestDevice);
+ };
+ return spaces.reduce((best,p)=>score(p)>score(best)?p:best,spaces[0]);
+}
 export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:number;y:number}):LabBench{
  if(bench.vessels.length>=MAX_BENCH_VESSELS)return bench;
  let n=1;while(bench.vessels.some(v=>v.id==="v"+n))n++;
- const next:LabVessel={id:"v"+n,kind,x:clamp(position?.x??50),
-  y:clamp(position?.y??62),reagents:[],environment:"aqueous",observed:false};
- const result=bump(bench,[...bench.vessels,next],next.id);
- return position?result:arrangeLabVessels(result);
+ const location=position??labFreeVesselPosition(bench);
+ const next:LabVessel={id:"v"+n,kind,x:clamp(location.x),
+  y:clamp(location.y),reagents:[],environment:"aqueous",observed:false};
+ // Never run arrangeLabVessels implicitly: it used to make other glassware jump.
+ return bump(bench,[...bench.vessels,next],next.id);
 }
 export function positionLabVessel(bench:LabBench,id:string,x:number,y:number):LabBench{
  const vessel=bench.vessels.find(v=>v.id===id);
