@@ -129,8 +129,13 @@ export function startQuantifiedLabReaction(
 ):LabReactionAmounts|null{
  if(!doses||reaction.status!=="reaction")return null;
  const equation=parseBalancedLabEquation(reaction.equation);
+ // Pure water is an optional solvent ONLY when absent from the balanced
+ // equation. For metal + water, water remains a consumed stoichiometric
+ // reagent. Other spectator species require explicit reaction modelling.
+ const actual=reactants.filter(id=>id!=="H2O"||
+  equation?.reactants.some(t=>t.formula==="H2O"));
  if(!equation||equation.reactants.length!==reaction.reactants.length||
-  [...reaction.reactants].sort().join("|")!==[...reactants].sort().join("|")||
+  [...reaction.reactants].sort().join("|")!==[...actual].sort().join("|")||
   [...reaction.reactants].sort().join("|")!==
    equation.reactants.map(t=>t.formula).sort().join("|"))return null;
  const initialMol:Record<string,number>={};
