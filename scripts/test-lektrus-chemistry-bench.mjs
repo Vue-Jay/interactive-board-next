@@ -1797,3 +1797,15 @@ assert.match(labUi,/readoutLeft=\{p\.x>62\}/,
  "Right-edge vessels must show readout toward the middle of the worktop");
 assert.doesNotMatch(labUi,/details&&<div className="lektrus-lab-vessel-composition"/);
 console.log("Lab selection, inline blue/brown contents, and spatial readouts passed");
+
+
+const sideReadoutCss=read("src/lektrusChemistryBench.css");
+assert.match(sideReadoutCss,/left:calc\(100% \+ 8px\)!important;right:auto!important/,
+ "Selected vessel composition must sit completely to its side");
+assert.match(sideReadoutCss,/right:calc\(100% \+ 8px\)!important/,
+ "Right-hand glassware needs an inward-facing side readout");
+assert.match(sideReadoutCss,/max-width:154px!important/,
+ "Readout must remain compact");
+assert.match(sideReadoutCss,/pointer-events:none!important/,
+ "Side contents must not block picking or dragging glassware");
+console.log("Compact side composition labels do not overlay the vessel");
