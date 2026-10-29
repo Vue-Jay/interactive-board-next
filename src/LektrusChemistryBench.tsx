@@ -1312,11 +1312,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <small>{sinkFlow?"Сосуд опорожнён":"Перетащите сосуд"}</small></span>
   </div>
 
-  <button type="button" data-board-interactive="true"
-   className="lektrus-lab-settings-trigger" title="Настройки химического стола"
-   aria-label="Настройки химического стола" disabled={!editable}
-   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
-   onClick={e=>{e.stopPropagation();openCabinet("settings")}}>⚙</button>
   {bench.vessels.map((v,i)=>{
    const p=preview?.id===v.id?preview:vesselPosition(v);
    const selectedVessel=bench.selectedId===v.id;
