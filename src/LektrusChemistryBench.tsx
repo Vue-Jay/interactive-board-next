@@ -258,6 +258,12 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
 
   </svg>
   <LabReactionBurst vessel={vessel} visual={visualCase?.visual} formula={visualCase?.equation??""}/>
+  {vessel.reactionHeat&&(!vessel.reactionHeat.complete||
+   !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<8500)&&
+   <span className={"lektrus-lab-reaction-heat is-"+vessel.reactionHeat.direction}
+    title={"Учебная оценка теплового эффекта, не показание реального термометра"}>
+    {vessel.reactionHeat.direction==="exothermic"?"↑ Нагрев":"↓ Охлаждение"}
+   </span>}
   {(volumeMl>0||massG>0)&&<div className="lektrus-lab-quantity-meter"
     role="img" aria-label={"Количество: "+totalLabel+". Заполнение относительно условной вместимости сосуда"}>
     {volumeMl>0&&<div className="lektrus-lab-quantity-measure is-liquid"
@@ -1420,7 +1426,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     style={{left:p.x+"%",top:p.y+"%",zIndex:v.kind==="burette"?44:selectedVessel||preview?.id===v.id?35:23+i}}
     disabled={!editable} aria-label={"Сосуд "+(i+1)+": "+names[v.kind]+
       (v.reagents.length?", "+v.reagents.join(", "):", пустой")}
-    aria-pressed={selectedVessel} title={(v.reagents.length?
+    aria-pressed={selectedVessel} title={(v.reactionHeat?
+      (v.reactionHeat.direction==="exothermic"?"Экзотермический нагрев":"Эндотермическое охлаждение")+" · ":"")+
+      (v.reagents.length?
       labThermalState(v.reagents,v.doses,v.temperatureC??22,v.meltFraction).label+" · ":"")+
       (editable?"Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, в шкаф для возврата":"Посуда")}
     onPointerDown={e=>down(e,v)} onPointerMove={move} onPointerUp={finish}
@@ -1798,6 +1806,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
            "Плавление / кристаллизация: "+labThermalInfo(reagent.id,unit).meltingC+" °C. ":""}
           {labThermalInfo(reagent.id,unit).boilingC!==undefined?
            "Кипение: "+labThermalInfo(reagent.id,unit).boilingC+" °C. ":""}
+          {labThermalInfo(reagent.id,unit).decompositionC!==undefined?
+           "Разложение при нагреве: около "+labThermalInfo(reagent.id,unit).decompositionC+" °C. ":""}
+          {reagent.id==="CaCO3"&&unit==="g"?
+           "Для разложения CaCO₃ используйте тигель и горелку на высокой мощности. ":""}
           {labThermalInfo(reagent.id,unit).description}
          </small>}
         </div>
