@@ -982,7 +982,7 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
   const next=identifyReaction(v.reagents,environment);
   const starts=previous.status!=="reaction"&&!v.uncertain&&next.status==="reaction";
   return {...v,environment,
-   reactionHeat:starts?undefined:v.reactionHeat,
+   reactionHeat:environment!==v.environment?undefined:v.reactionHeat,
    reactionAmounts:environment===v.environment?v.reactionAmounts:undefined,
    completedReaction:v.completedReaction??(previous.status==="reaction"?previous.caseData:undefined),
    // Future chemistry is unknown, but previously visible products stay visible.
@@ -1211,6 +1211,7 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
  const color=reaction.afterColor??"#eef0ed";
  const vessels=bench.vessels.map(v=>{
   if(v.id===sourceId)return {...v,reagents:[solid],
+   reactionHeat:undefined,
    environment:"dry" as const,observed:false,uncertain:false,
    indicator:undefined,completedReaction:undefined,reactionAmounts:undefined,
    filteredSolution:undefined,
@@ -1219,6 +1220,7 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
     {[solid]:{unit:"g" as const,value:massG}}:undefined,
    visualStartedAtMs:undefined};
   if(v.id===targetId)return {...v,reagents:["H2O",...solutes],
+   reactionHeat:undefined,
    environment:"aqueous" as const,observed:false,uncertain:true,
    indicator:undefined,completedReaction:undefined,reactionAmounts:undefined,
    filteredResidue:undefined,
@@ -1357,6 +1359,7 @@ export function advanceLabPour(b:LabBench):LabBench{
   (p.step===0&&!targetWasEmpty&&Boolean(sourceReaction||targetReaction));
  const vessels=b.vessels.map(v=>{
   if(v.id===source.id)return {...v,reactionAmounts:undefined,
+    reactionHeat:finish?undefined:v.reactionHeat,
     uncertain:!!source.reactionAmounts||v.uncertain,reagents:finish?[]:v.reagents,
    doses:finish?undefined:left,observed:finish?false:v.observed,
    completedReaction:finish?undefined:v.completedReaction,
@@ -1367,6 +1370,7 @@ export function advanceLabPour(b:LabBench):LabBench{
     key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&received[key]?.unit==="g")&&
     identifyReaction(combined,medium).status!=="reaction";
    return {...v,reactionAmounts:undefined,reagents:combined,doses:received,
+   reactionHeat:p.step===0?undefined:v.reactionHeat,
    physicalProcess:dissolving?"dissolving" as const:undefined,
    physicalStartedAtMs:dissolving?(v.physicalStartedAtMs??Date.now()):undefined,
    observed:true,uncertain,environment:medium,
