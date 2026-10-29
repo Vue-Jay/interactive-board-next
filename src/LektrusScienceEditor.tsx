@@ -57,7 +57,7 @@ const deletePoint=(item:Item,index:number):Item=>{
   };
 };
 
-export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose,onOrganicLiveChange,onFormulaLiveChange,shared=false,canTeach=false}:Props){
+export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClose,onOrganicLiveChange,onFormulaLiveChange,onExperimentLiveChange,shared=false,canTeach=false}:Props){
   const [draft,setDraft]=useState<Item>(()=>copyItem(item));
   const [selected,setSelected]=useState(-1);
   const [first,setFirst]=useState(0);
