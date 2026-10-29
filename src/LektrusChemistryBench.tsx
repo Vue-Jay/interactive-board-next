@@ -816,14 +816,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const value=Number(amount.replace(",","."));
   if(reagent&&!labReagentForms(reagent).includes(unit)){setNotice("Эта форма реактива недоступна");return}
   if(!Number.isFinite(value)||value<=0||value>10000){setNotice("Укажите количество больше нуля и не более 10000");return}
-  const isTitrant=["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen);
+  const isQuantifiedSolution=unit==="ml"&&!!reagent&&
+   ["кислота","основание","соль","пероксид"].includes(reagent.kind);
   const concentration=Number(molarity.replace(",","."));
-  if(isTitrant&&unit==="ml"&&(!Number.isFinite(concentration)||
+  if(isQuantifiedSolution&&(!Number.isFinite(concentration)||
     concentration<.001||concentration>2)){
     setNotice("Укажите концентрацию от 0,001 до 2 моль/л");return;
   }
   const dose:LabDose={value:Math.round(value*100)/100,unit,
-   ...(isTitrant&&unit==="ml"?{concentrationM:concentration}:{})};
+   ...(isQuantifiedSolution?{concentrationM:concentration}:{})};
   const updated=putLabReagent(bench,selected.id,chosen,dose);
   if(updated===bench){setNotice("Реагент уже добавлен или посуда заполнена");return}
   onChange?.(updated);
@@ -1571,7 +1572,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         <label>{unit==="ml"?"Объём, мл":"Масса, г"}
          <input type="number" inputMode="decimal" min="0" max="10000" step="10"
           value={amount} onChange={e=>setAmount(e.target.value)} /></label>
-        {chosen&&unit==="ml"&&["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen)&&
+        {reagent&&unit==="ml"&&["кислота","основание","соль","пероксид"].includes(reagent.kind)&&
          <label>Концентрация, моль/л
           <input type="number" min="0" max="2" step="0.1" value={molarity}
            onChange={e=>setMolarity(e.target.value)} />
@@ -1595,11 +1596,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
            setNotice("Выбранная форма реактива не подходит");return}
           const concentration=Number(molarity.replace(",","."));
           if(!Number.isFinite(value)||value<=0||value>10000){setNotice("Укажите положительное количество");return}
-          const isTitrant=unit==="ml"&&["HCl","HNO3","HBr","NaOH","KOH"].includes(chosen);
-          if(isTitrant&&(!Number.isFinite(concentration)||concentration<.001||concentration>2)){
+          const isQuantifiedSolution=unit==="ml"&&!!substance&&
+   ["кислота","основание","соль","пероксид"].includes(substance.kind);
+          if(isQuantifiedSolution&&(!Number.isFinite(concentration)||concentration<.001||concentration>2)){
            setNotice("Концентрация должна быть от 0,001 до 2 моль/л");return}
           const next=setLabQuickReagent(bench,chosen,{value,unit,
-           ...(isTitrant?{concentrationM:concentration}:{})});
+           ...(isQuantifiedSolution?{concentrationM:concentration}:{})});
           if(next===bench){setNotice("Не удалось изменить быстрый доступ");return}
           onChange?.(next);setNotice("Быстрый реактив обновлён: "+chosen);
          }}>{quickReagents.some(q=>q.id===chosen)?"Сохранить на полке":"На полку быстрого доступа"}</button>
