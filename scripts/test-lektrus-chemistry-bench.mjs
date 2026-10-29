@@ -1571,3 +1571,41 @@ assert.equal(decomposedCalcite.reactionHeat.complete,true);
 assert.match(read("src/LektrusChemistryBench.tsx"),/Нагрев|Охлаждение/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/gasEventActive/);
 console.log("Reaction visualizations, sodium with water and acids, calcination and real temperature response passed");
+
+/** Gas volumes are not liquid volumes, and undefined boiling temperatures
+ * never impose a fictitious 100°C plateau on an aqueous stock solution. */
+let salineHeat=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+ {value:20,unit:"ml"});
+salineHeat=lab.putLabReagent(salineHeat,"v1","NaCl",{value:2,unit:"g"});
+salineHeat=lab.addPlacedLabDevice(salineHeat,"hotplate");
+const salineHeater=lab.placedLabDevices(salineHeat).find(d=>d.kind==="hotplate").id;
+salineHeat=lab.applyPlacedLabDevice(salineHeat,salineHeater,"v1");
+salineHeat=lab.setLabHotplateTemperature(salineHeat,salineHeater,160);
+salineHeat=lab.setPlacedDevicePower(salineHeat,salineHeater,true);
+salineHeat=lab.advanceLabSimulation(salineHeat,0);
+for(let i=1;i<=130;i++)salineHeat=lab.advanceLabSimulation(salineHeat,i*2000);
+assert.ok(salineHeat.vessels[0].temperatureC>100,
+ "Mixed salt solution has an unknown boiling point, not a hard-coded 100°C ceiling");
+assert.equal(thermal.labVesselThermal(salineHeat.vessels[0].reagents,
+ salineHeat.vessels[0].doses),null);
+assert.match(read("src/LektrusChemistryBench.tsx"),/const gasOnly=/,
+ "Gas-only stock must render as gas rather than an imaginary liquid");
+assert.match(read("src/LektrusChemistryBench.tsx"),/gasEventActive/,
+ "Bubbles must stop after the documented reaction finishes");
+const coReduction=reaction.identifyReaction(["Fe2O3","CO"],"heated");
+if(coReduction.status==="reaction"){
+ let gasHeated=lab.addLabVessel(lab.defaultLabBench(),"crucible");
+ const id=gasHeated.vessels.find(v=>v.kind==="crucible").id;
+ gasHeated=lab.putLabReagent(gasHeated,id,"Fe2O3",{value:5,unit:"g"});
+ gasHeated=lab.putLabReagent(gasHeated,id,"CO",{value:10,unit:"ml"});
+ gasHeated=lab.addPlacedLabDevice(gasHeated,"burner");
+ const heater=lab.placedLabDevices(gasHeated).find(d=>d.kind==="burner").id;
+ gasHeated=lab.applyPlacedLabDevice(gasHeated,heater,id);
+ gasHeated=lab.setPlacedDeviceLevel(gasHeated,heater,3);
+ gasHeated=lab.setPlacedDevicePower(gasHeated,heater,true);
+ gasHeated=lab.advanceLabSimulation(gasHeated,0);
+ for(let i=1;i<=220;i++)gasHeated=lab.advanceLabSimulation(gasHeated,i*2000);
+ assert.equal(lab.labObservation(gasHeated.vessels.find(v=>v.id===id)).status,"reaction",
+  "Gas CO must not cap the heated crucible at the boiling point of water");
+}
+console.log("No fictitious boiling point for solutions or gas mixtures: OK");
