@@ -690,7 +690,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    completedReaction:v.completedReaction??(beforeReaction.status==="reaction"?beforeReaction.caseData:undefined),
    doses:combined?{...v.doses,[reagent]:combined}:v.doses,
    observed:reagents.length>1,
-   visualStartedAtMs:!v.uncertain&&beforeReaction.status!=="reaction"&&
+   visualStartedAtMs:reagents.length>1&&!v.uncertain&&beforeReaction.status!=="reaction"&&
     identifyReaction(reagents,v.environment).status==="reaction"?Date.now():v.visualStartedAtMs,
    uncertain:v.uncertain||beforeReaction.status==="reaction"};
  });
