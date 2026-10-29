@@ -3641,3 +3641,73 @@
  min-width:0!important;width:100%!important;max-width:100%!important}
 .lektrus-lab-bench .lektrus-lab-filter-actions button{
  flex:0 1 auto;white-space:normal!important;min-width:90px}
+
+/* Laboratory modes: a readable, themed native menu with five fully visible names. */
+.lektrus-lab-bench .lektrus-lab-mode-picker{
+ flex:0 0 clamp(255px,24cqw,380px)!important;
+ width:clamp(255px,24cqw,380px)!important;max-width:380px!important;
+ min-width:255px!important;position:relative;overflow:visible;
+ display:flex!important;gap:8px!important}
+.lektrus-lab-bench .lektrus-lab-mode-picker>span{
+ display:inline!important;flex:0 0 auto;color:#376d51;font-size:12px}
+.lektrus-lab-bench .lektrus-lab-mode-picker select{
+ appearance:none!important;-webkit-appearance:none!important;
+ flex:1 1 auto!important;display:block!important;min-width:0!important;
+ width:100%!important;max-width:none!important;
+ height:36px!important;min-height:36px!important;
+ padding:5px 31px 5px 13px!important;
+ border:1.5px solid #6cac8a!important;border-radius:10px!important;
+ background:linear-gradient(145deg,#f6fff7,#d5eee0)!important;
+ color:#245b46!important;font:800 13px/1.25 system-ui,sans-serif!important;
+ box-shadow:0 2px 4px #2f6d4b1f!important;cursor:pointer!important}
+.lektrus-lab-bench .lektrus-lab-mode-picker:after{
+ content:"";pointer-events:none;position:absolute;right:12px;top:14px;
+ width:8px;height:8px;border-bottom:2px solid #276f52;border-right:2px solid #276f52;
+ transform:rotate(45deg)}
+.lektrus-lab-bench .lektrus-lab-mode-picker select:focus-visible{
+ outline:2px solid #249d72!important;outline-offset:2px}
+.lektrus-lab-bench .lektrus-lab-mode-picker select option{
+ background:#e8f6ec;color:#235c46;font:700 14px system-ui,sans-serif}
+@container(max-width:1050px){
+ .lektrus-lab-bench .lektrus-lab-mode-picker{
+  flex:1 1 258px!important;width:auto!important;min-width:230px!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker>span{display:none!important}
+}
+@container(max-width:600px){
+ .lektrus-lab-bench .lektrus-lab-mode-picker{
+  flex:1 1 190px!important;width:auto!important;min-width:190px!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker select{font-size:11px!important;padding-left:7px!important}
+}
+/* Chalkboard has two mutually exclusive writing states. Native button remains
+   reachable while the wall itself does not intercept glassware gestures. */
+.lektrus-lab-bench .lektrus-lab-chalkboard{position:absolute!important}
+.lektrus-lab-bench .lektrus-lab-board-write-toggle{
+ position:absolute;right:8px;top:7px;z-index:8;
+ display:inline-flex;align-items:center;gap:5px;
+ min-height:25px;padding:4px 8px!important;
+ color:#dbecdf;background:#395b49ee;border:1px solid #789c80;
+ border-radius:6px;font:750 10px/1.1 system-ui,sans-serif;
+ pointer-events:auto!important;cursor:pointer}
+.lektrus-lab-bench .lektrus-lab-board-write-toggle.is-active{
+ background:#b9e6c9;color:#184e3c;border-color:#d5f1db}
+.lektrus-lab-bench .lektrus-lab-chalk-writing{padding-top:22px!important}
+@container(max-width:760px){
+ .lektrus-lab-bench .lektrus-lab-board-write-toggle{
+  right:4px;top:4px;padding:2px 5px!important;min-height:22px}
+ .lektrus-lab-bench .lektrus-lab-chalk-writing{padding-top:17px!important}
+}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-filter .lektrus-lab-device-face-controls{
+ pointer-events:auto}
+.lektrus-lab-bench .lektrus-lab-filter-residue{
+ position:absolute;left:50%;top:57%;transform:translateX(-50%);z-index:3;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ min-width:72px;max-width:90%;gap:2px;padding:3px 6px;
+ background:#eaf5ecde;border:1px solid #88bda6;border-radius:7px;
+ font:750 11px/1.15 system-ui,sans-serif;color:#205f4b;pointer-events:none;
+ text-align:center;box-shadow:0 2px 4px #234d3733}
+.lektrus-lab-bench .lektrus-lab-filter-residue i{
+ width:44px;height:5px;display:block;border-radius:4px;
+ border:1px solid #68817b}
+.lektrus-lab-bench .lektrus-lab-filter-residue small{font-size:9px}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-filter.is-drop-device{
+ filter:drop-shadow(0 0 8px #45bb8c)}
