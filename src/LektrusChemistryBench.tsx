@@ -1097,11 +1097,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <span className="lektrus-lab-chalk-empty">Проведите опыт. Уравнения останутся здесь до стирания тряпкой.</span>}
    </div>}
   </div>
-  {false&&!selected?.reagents.length&&<div className="lektrus-lab-worktop-caption">
-   <strong>{selected?"Выбрано: "+names[selected.kind]:"Рабочее место"}</strong>
-   <span>{selected?(selected.reagents.length?selected.reagents.join(" + "):"Чистая посуда"):
-    "Возьмите посуду из шкафа"}</span>
-  </div>}
   <div className="lektrus-lab-reagent-furniture" data-board-interactive="true"
    aria-label="Быстрые реактивы" onPointerDown={e=>e.stopPropagation()}
    onPointerUp={e=>e.stopPropagation()}>
@@ -1863,7 +1858,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         </button>;
        })}
       </div>
-      {selected?.reagents.length>0&&<div className="lektrus-lab-measuring-cabinet">
+      {selected&&selected.reagents.length>0&&<div className="lektrus-lab-measuring-cabinet">
        <strong>Условия выбранного сосуда</strong>
        <label>Среда <select value={selected.environment==="dry"?"dry":"aqueous"}
         onChange={e=>onChange?.(setLabEnvironment(bench,selected.id,
