@@ -9153,7 +9153,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onOpenEditor={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation
                     ?()=>{setGraphPointEditId(null);openGraphEditor(item)}:
                     (item.graphFigureId==="chem-experiment-free"||(item.graphFigureId?.startsWith("physics-")||!!item.scienceMechanics||!!item.scienceOptics||!!item.scienceCircuit))&&
-                    selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!space&&!presentation
+                    (selectedIds.has(item.id)||item.graphFigureId==="chem-experiment-free")&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!space&&!presentation
                     ?()=>{setGraphPointEditId(null);openGraphEditor(item)}:undefined}
                   constructionActive={boardGeometryMode?.id===item.id}
                   onToggleConstruction={item.graphPurpose==="geometry"&&selectedIds.has(item.id)&&canEdit&&!item.locked&&!selectionLocked&&!structurallyLockedForStudent(item)&&tool==="select"&&!presentation&&!isSolidFigure(item.graphFigureId)&&!isSchoolDiagramId(item.graphFigureId)&&!item.graphFigureId?.startsWith("physics-")&&!item.graphFigureId?.startsWith("chem-")
