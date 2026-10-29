@@ -6,6 +6,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassw
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
+import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
 import {buildLabCatalog,cabinetColor,phaseNames,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
@@ -127,6 +128,11 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const observation=visualCase?.observation??"none";
  const singlePhase=vessel.filteredResidue?"solid":massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
   vessel.reagents.length===1&&!active?reagent?.phase:undefined;
+ const pureThermal=labVesselThermal(vessel.reagents,vessel.doses);
+ const thermalState=labThermalState(vessel.reagents,vessel.doses,
+  temperatureC??vessel.temperatureC??22,vessel.meltFraction);
+ const moltenFraction=pureThermal?.unit==="g"&&
+  pureThermal.info.meltingC!==undefined?Math.min(1,Math.max(0,vessel.meltFraction??0)):0;
  const geo=shape[vessel.kind];
  const amounts=vessel.reactionAmounts;
  const species=amounts?[...Object.entries(amounts.remainingMol),
@@ -135,9 +141,9 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const labels=species.map(([id])=>substances.find(s=>s.id===id)?.formula??id);
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
- const boiling=!!volumeMl&&vessel.environment==="aqueous"&&
-  (temperatureC??vessel.temperatureC??22)>=99.5&&vessel.reagents.includes("H2O");
- const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):solidFraction;
+ const boiling=!!volumeMl&&thermalState.boiling;
+ const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):
+  solidFraction*(1-moltenFraction);
  const fillFraction=volumeMl>0?Math.max(.008,liquidFraction):
   (vessel.reagents.length>0?(vessel.pourFraction??0.5):0);
  return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
@@ -146,6 +152,9 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
     <clipPath id={id+"clip"}><path d={geo.inside}/></clipPath>
     <clipPath id={id+"level"}><rect x="0" y={120-106*fillFraction}
      width="100" height="133"/></clipPath>
+    <clipPath id={id+"melt-level"}><rect x="0"
+     y={120-106*Math.max(.015,solidFraction*moltenFraction)}
+     width="100" height="133"/></clipPath>
     <linearGradient id={id+"glass"} x1="0" x2="1"><stop stopColor="#e9f6f4" stopOpacity=".35"/><stop offset=".3" stopColor="#fff" stopOpacity=".08"/><stop offset=".8" stopColor="#acc9c8" stopOpacity=".2"/><stop offset="1" stopColor="#fff" stopOpacity=".12"/></linearGradient>
    </defs>
    <ellipse cx="50" cy="126" rx="34" ry="4" fill="#254f49" opacity=".12"/>
@@ -153,7 +162,13 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
    <g clipPath={"url(#"+id+"clip)"}>
     {labels.length>0&&singlePhase!=="solid"&&singlePhase!=="metal"&&singlePhase!=="gas"&&
      <path d={geo.liquid} clipPath={"url(#"+id+"level)"} fill={color} opacity=".76" className="lektrus-lab-fluid"/>}
-    {labels.length>0&&(singlePhase==="solid"||singlePhase==="metal")&&<>
+    {labels.length>0&&moltenFraction>0&&<g className="lektrus-lab-molten-liquid">
+     <path d={geo.liquid} clipPath={"url(#"+id+"melt-level)"}
+      fill={reagent?.color??"#d6bd82"} opacity=".86"/>
+     <ellipse cx="50" cy={119-106*Math.max(.015,solidFraction*moltenFraction)}
+      rx="27" ry="2.8" fill="#fff6d9" fillOpacity=".27"/>
+    </g>}
+    {labels.length>0&&(singlePhase==="solid"||singlePhase==="metal")&&renderedSolidFraction>.005&&<>
      <path d={`M17 ${119-48*renderedSolidFraction}Q29 ${111-48*solidFraction} 47 ${115-48*solidFraction}Q69 ${111-48*solidFraction} 82 ${119-48*solidFraction}L79 119H21Z`}
       fill={color} opacity=".88"/>
      {Array.from({length:Math.min(36,Math.max(3,Math.ceil(32*renderedSolidFraction)))},(_,i)=><circle key={"grain"+i}
@@ -231,6 +246,12 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
      fill="#f0faf3" fillOpacity=".8" stroke="#83b1a6" strokeWidth=".7"/>
     <text x="50" y="86" fontWeight="800" fontSize="10" textAnchor="middle"
      fill="#2c7162">≈{Math.round(temperatureC??22)}°C</text>
+   </g>}
+   {moltenFraction>0&&<g className="lektrus-lab-phase-engraving">
+    <rect x="22" y="95" width="56" height="13" rx="4"
+     fill="#f7e7c5" stroke="#c3a373" strokeWidth=".6"/>
+    <text x="50" y="104" fontSize="7.5" fontWeight="800" textAnchor="middle"
+     fill="#76542e">{moltenFraction>=.995?"Расплав":"Плавление"}</text>
    </g>}
 
 
@@ -367,7 +388,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [notice,setNotice]=useState("");
  const [sinkFlow,setSinkFlow]=useState(false);
  const [confirmClear,setConfirmClear]=useState(false);
- const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string}|null>(null);
+ const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string;solid:boolean}|null>(null);
  const settings=labBenchSettings(bench);
  const selected=selectedLabVessel(bench);
  const physicalDevices=placedLabDevices(bench);
@@ -860,7 +881,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const next=putLabReagent(bench,target.id,id,preset.dose);
   if(next===bench){setNotice("Не удалось добавить реагент: проверьте сосуд и количество");return}
   onChange?.(next);
-  setDoseEffect({...vesselPosition(target),color:reagentAppearance(id).color});
+  setDoseEffect({...vesselPosition(target),
+   color:reagentAppearance(id,preset.dose.unit==="g"?"dry":"aqueous").color,
+   solid:preset.dose.unit==="g"});
   setNotice(id+" · "+formatLabDose(preset.dose)+" добавлено в "+names[target.kind]);
  };
  const dispense=()=>{
@@ -881,7 +904,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const updated=putLabReagent(bench,selected.id,chosen,dose);
   if(updated===bench){setNotice("Реагент уже добавлен или посуда заполнена");return}
   onChange?.(updated);
-  setDoseEffect({...labDisplayPoint(selected,bench.vessels.length>3),color:reagentAppearance(chosen).color});
+  setDoseEffect({...labDisplayPoint(selected,bench.vessels.length>3),
+   color:reagentAppearance(chosen,unit==="g"?"dry":"aqueous").color,solid:unit==="g"});
   setNotice(chosen+" · "+dose.value+" "+(unit==="ml"?"мл":"г")+" добавлено в "+names[selected.kind]);
   setCabinet(null);setChosen(null);
  };
@@ -1396,8 +1420,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     style={{left:p.x+"%",top:p.y+"%",zIndex:v.kind==="burette"?44:selectedVessel||preview?.id===v.id?35:23+i}}
     disabled={!editable} aria-label={"Сосуд "+(i+1)+": "+names[v.kind]+
       (v.reagents.length?", "+v.reagents.join(", "):", пустой")}
-    aria-pressed={selectedVessel} title={editable?
-      "Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, в шкаф для возврата":"Посуда"}
+    aria-pressed={selectedVessel} title={(v.reagents.length?
+      labThermalState(v.reagents,v.doses,v.temperatureC??22,v.meltFraction).label+" · ":"")+
+      (editable?"Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, в шкаф для возврата":"Посуда")}
     onPointerDown={e=>down(e,v)} onPointerMove={move} onPointerUp={finish}
     onPointerCancel={e=>{e.stopPropagation();endContact();gesture.current=null;setPreview(null);
      setDropTarget(null);setDropFurniture(null);setDropDeviceId(null)}}
@@ -1495,10 +1520,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       animationDelay:-(i*interval+.04)+"s"}}/>)}
    </svg>;
   })}
-  {doseEffect&&<svg className="lektrus-lab-dose-animation" viewBox="0 0 100 100"
-   preserveAspectRatio="none" aria-hidden="true">
-   <path d={`M 22 34 Q 30 20 ${doseEffect.x} ${doseEffect.y-13}`}
-    fill="none" stroke={doseEffect.color} strokeWidth="1" strokeLinecap="round"/>
+  {doseEffect&&<svg className={"lektrus-lab-dose-animation"+(doseEffect.solid?" is-solid":"")}
+   viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+   {doseEffect.solid?Array.from({length:12},(_,i)=><circle key={i}
+    cx={doseEffect.x-4+i%5*2} cy={doseEffect.y-19-Math.floor(i/5)*4}
+    r={.27+i%3*.12} fill={doseEffect.color}
+    style={{animationDelay:i*.035+"s"}}/>):
+    <path d={`M 22 34 Q 30 20 ${doseEffect.x} ${doseEffect.y-13}`}
+     fill="none" stroke={doseEffect.color} strokeWidth="1" strokeLinecap="round"/>}
   </svg>}
   {shelfGhost&&<div className="lektrus-lab-shelf-ghost"
     style={{left:shelfGhost.x+"%",top:shelfGhost.y+"%"}} aria-hidden="true">
@@ -1698,7 +1727,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
            <i style={{background:cabinetColor(v)}}/>
            <strong>{v.formula}</strong>
            <span>{v.name}<small>{labReagentForms(v).includes("ml")?"Раствор · доступен":
-            labReagentPhaseLabel(v,labReagentForms(v)[0])}</small></span>
+            labReagentPhaseLabel(v,labReagentForms(v)[0])}</small>
+            {labReagentForms(v).includes("g")&&
+             <small className="lektrus-lab-solid-property">Твёрдое · {labThermalInfo(v.id,"g").meltingC!==undefined?
+              "tпл "+labThermalInfo(v.id,"g").meltingC+" °C":
+              labThermalInfo(v.id,"g").behavior==="decomposes"?"разлагается при нагреве":
+              "tпл не установлена"}</small>}
+           </span>
           </button>)}
          </div>
         </div>):experimentCases.map((row,i)=><button type="button" key={i}
@@ -1747,15 +1782,27 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
           <input type="number" min="0" max="2" step="0.1" value={molarity}
            onChange={e=>setMolarity(e.target.value)} />
          </label>}
-        <label>Форма реактива
-         <select value={unit} onChange={e=>setUnit(e.target.value as "ml"|"g")}>
-          <option value="ml" disabled={!!reagent&&!labReagentForms(reagent).includes("ml")}>
-           Раствор / жидкость, мл</option>
-          <option value="g" disabled={!!reagent&&!labReagentForms(reagent).includes("g")}>
-           Твёрдое, г</option>
-         </select></label>
+        <div className="lektrus-lab-solid-form" role="group" aria-label="Выберите форму добавления вещества">
+         <strong>Что добавляем?</strong>
+         <div className="lektrus-lab-solid-form-switch">
+          <button type="button" className={unit==="ml"?"is-active":""}
+           aria-pressed={unit==="ml"} disabled={!!reagent&&!labReagentForms(reagent).includes("ml")}
+           onClick={()=>setUnit("ml")}>💧 Раствор · мл</button>
+          <button type="button" className={unit==="g"?"is-active":""}
+           aria-pressed={unit==="g"} disabled={!!reagent&&!labReagentForms(reagent).includes("g")}
+           onClick={()=>setUnit("g")}>▦ Порошок / кусочки · г</button>
+         </div>
+         {reagent&&<small className="lektrus-lab-thermal-note">
+          {unit==="g"?"Насыпать в выбранный сосуд. ":"Налить в выбранный сосуд. "}
+          {labThermalInfo(reagent.id,unit).meltingC!==undefined?
+           "Плавление / кристаллизация: "+labThermalInfo(reagent.id,unit).meltingC+" °C. ":""}
+          {labThermalInfo(reagent.id,unit).boilingC!==undefined?
+           "Кипение: "+labThermalInfo(reagent.id,unit).boilingC+" °C. ":""}
+          {labThermalInfo(reagent.id,unit).description}
+         </small>}
+        </div>
         <button type="button" className="primary" disabled={!chosen||!selected}
-         onClick={dispense}>Добавить в сосуд</button>
+         onClick={dispense}>{unit==="g"?"▦ Насыпать в сосуд":"💧 Налить в сосуд"}</button>
         <button type="button" disabled={!chosen||
           (!quickReagents.some(v=>v.id===chosen)&&quickReagents.length>=MAX_QUICK_REAGENTS)}
          className="lektrus-lab-save-quick" onClick={()=>{
