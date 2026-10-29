@@ -2953,3 +2953,61 @@
  .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-reagent-group-grid>button{
   min-height:66px!important;padding:7px!important}
 }
+
+
+/* Single taller retort clamp. CSS dimensions match labMountedGlasswarePoint.
+   The jaws overlay uses the same size as the model, so neither drifts when
+   the stand height changes or when the stage is resized. */
+.lektrus-lab-bench .lektrus-lab-placed-device.is-tripod,
+.lektrus-lab-bench .lektrus-lab-retort-jaws{
+ width:clamp(130px,11cqw,190px)!important;
+ height:clamp(228px,19cqw,280px)!important;
+}
+.lektrus-lab-bench .lektrus-lab-retort-jaws{
+ transform:translate(-50%,-50%)!important;z-index:41!important}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-placed-device.is-tripod,
+ .lektrus-lab-bench .lektrus-lab-retort-jaws{
+  width:clamp(112px,17cqw,146px)!important;
+  height:clamp(208px,34cqw,266px)!important}
+}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-tripod button{
+ left:17%!important;width:18%!important;height:12%!important;
+ font-size:clamp(14px,1.15cqw,19px)!important;
+ border-radius:5px!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-tripod .lektrus-lab-stand-raise{
+ top:30%!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-tripod .lektrus-lab-stand-lower{
+ top:47%!important}
+/* The thermostat is a quiet embedded display, not a browser-blue form box. */
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-device-face-temp,
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-device-face-temp:focus,
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-device-face-temp:focus-visible,
+.lektrus-lab-bench .lektrus-lab-device-face-controls .lektrus-lab-device-face-temp:active{
+ outline:none!important;outline-width:0!important;outline-offset:0!important;
+ border:0!important;border-radius:3px!important;box-shadow:none!important;
+ background:#264f43!important;color:#e3ffe3!important;
+ -webkit-tap-highlight-color:transparent!important}
+.lektrus-lab-bench .lektrus-lab-device-face-temp::selection{
+ background:#4c8371!important;color:#e3ffe3!important}
+/* The Bunsen burner is lit by turning a small gas valve at the hose, not
+   by a floating appliance-style power button. Single tap opens/closes it. */
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-burner .lektrus-lab-burner-valve{
+ left:77%!important;top:73%!important;
+ width:15%!important;height:15%!important;min-width:16px!important;
+ min-height:16px!important;padding:0!important;
+ border-radius:50%!important;border:1px solid #476a64!important;
+ background:radial-gradient(circle at 38% 27%,#e6f3e8,#91b4a9 75%)!important;
+ box-shadow:0 1px 2px #34564952!important;
+ touch-action:manipulation!important;cursor:pointer!important;
+ -webkit-tap-highlight-color:transparent!important}
+.lektrus-lab-bench .lektrus-lab-burner-valve-lever{
+ width:70%;height:3px;border-radius:3px;
+ background:#335e56;box-shadow:0 1px 0 #d7e9de;
+ transform:rotate(-35deg);transition:transform .14s ease}
+.lektrus-lab-bench .lektrus-lab-burner-valve[aria-pressed=true] .lektrus-lab-burner-valve-lever{
+ transform:rotate(55deg);background:#c07043}
+.lektrus-lab-bench .lektrus-lab-burner-valve:focus-visible{
+ outline:2px solid #498b72!important;outline-offset:2px!important}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench .lektrus-lab-burner-valve-lever{transition:none}}
