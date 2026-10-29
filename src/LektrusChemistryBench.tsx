@@ -4,7 +4,7 @@ import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusC
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,pourLabIntoFilter,
  labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,fillLabVolumetricFlask,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
-import {reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
+import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
 import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
@@ -1844,6 +1844,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          e.target.value as typeof selected.environment))}>
         <option value="aqueous">Раствор</option><option value="dry">Сухая среда</option>
        </select></label>
+       {identifyReaction(selected.reagents,"ignited").status==="reaction"&&
+        selected.environment!=="ignited"&&<button type="button"
+         className="lektrus-lab-virtual-ignition"
+         title="Учебная имитация воспламенения, только виртуально"
+         onClick={()=>onChange?.(setLabEnvironment(bench,selected.id,"ignited"))}>
+         🔥 Виртуальное воспламенение
+        </button>}
       </div>}
       <p className="lektrus-lab-safe-caption">Нагрев и горение изменяют условия выбранного сосуда только в виртуальной модели. Мешалка и штатив не создают новых химических продуктов; термометр не показывает выдуманную температуру.</p>
      </div>}
