@@ -129,6 +129,33 @@ KMnO4|Перманганат калия|соль
 K2Cr2O7|Дихромат калия|соль
 MnO2|Диоксид марганца|оксид
 H2O2|Пероксид водорода|пероксид
+NaBr|Бромид натрия|соль
+AgBr|Бромид серебра|соль
+AgI|Иодид серебра|соль
+SrCl2|Хлорид стронция|соль
+SrSO4|Сульфат стронция|соль
+SrCO3|Карбонат стронция|соль
+Mg(NO3)2|Нитрат магния|соль
+Ba(NO3)2|Нитрат бария|соль
+NiSO4|Сульфат никеля(II)|соль
+NiCl2|Хлорид никеля(II)|соль
+Ni(OH)2|Гидроксид никеля(II)|основание
+CoCl2|Хлорид кобальта(II)|соль
+Co(OH)2|Гидроксид кобальта(II)|основание
+Fe(NO3)3|Нитрат железа(III)|соль
+Fe(NO3)2|Нитрат железа(II)|соль
+LiOH|Гидроксид лития|основание
+LiCl|Хлорид лития|соль
+LiNO3|Нитрат лития|соль
+Li2SO4|Сульфат лития|соль
+Li2CO3|Карбонат лития|соль
+CH3COOLi|Ацетат лития|соль
+C3H8|Пропан|газ
+C4H10|Бутан|газ
+C3H6|Пропен|газ
+C3H8O|Пропан-2-ол|органика
+NaH2PO4|Дигидрофосфат натрия|соль
+ZnS|Сульфид цинка|соль
 `;
 export const substances:Substance[]=catalog.trim().split("\n").map(row=>{
  const [formula,name,kind]=row.split("|");return {id:formula,formula,name,kind};
@@ -517,6 +544,54 @@ for(const line of extendedDiverseCases.trim().split("\n")){
   family:family as ReactionFamily,visual:visual as ReactionVisual,
   safety:/Na\+|K\+|Cl2|P\+|H2S|Pb\(|HNO3|HF\+|AgNO3\+|NO2/.test(reagents+" "+equation)?
    "Опасная реакция: только виртуальная демонстрация; не является инструкцией для реального опыта.":undefined
+ });
+}
+/** Additional condition-scoped, balanced school cases. Flash effects remain
+ * reserved for specifically reviewed rapid reactions, not every combustion. */
+const newVerifiedCases=`
+AgNO3+NaBr|aqueous|AgNO3 + NaBr → AgBr↓ + NaNO3|precipitate|Кремовый осадок бромида серебра|exchange|crystals
+AgNO3+KBr|aqueous|AgNO3 + KBr → AgBr↓ + KNO3|precipitate|Кремовый осадок бромида серебра|exchange|crystals
+AgNO3+KI|aqueous|AgNO3 + KI → AgI↓ + KNO3|precipitate|Жёлтый осадок иодида серебра|exchange|crystals
+SrCl2+Na2SO4|aqueous|SrCl2 + Na2SO4 → SrSO4↓ + 2NaCl|precipitate|Белый малорастворимый сульфат стронция|exchange|crystals
+SrCl2+Na2CO3|aqueous|SrCl2 + Na2CO3 → SrCO3↓ + 2NaCl|precipitate|Белый карбонат стронция|exchange|crystals
+CaCl2+Na3PO4|aqueous|3CaCl2 + 2Na3PO4 → Ca3(PO4)2↓ + 6NaCl|precipitate|Белый фосфат кальция|exchange|crystals
+MgCl2+NaOH|aqueous|MgCl2 + 2NaOH → Mg(OH)2↓ + 2NaCl|precipitate|Белый гидроксид магния|exchange|crystals
+NiSO4+NaOH|aqueous|NiSO4 + 2NaOH → Ni(OH)2↓ + Na2SO4|precipitate|Зеленоватый гидроксид никеля(II)|exchange|crystals
+NiCl2+NaOH|aqueous|NiCl2 + 2NaOH → Ni(OH)2↓ + 2NaCl|precipitate|Зеленоватый осадок гидроксида никеля(II)|exchange|crystals
+CoCl2+NaOH|aqueous|CoCl2 + 2NaOH → Co(OH)2↓ + 2NaCl|precipitate|Гидроксид кобальта(II), изменение оттенка зависит от условий|exchange|crystals
+Fe(NO3)3+NaOH|aqueous|Fe(NO3)3 + 3NaOH → Fe(OH)3↓ + 3NaNO3|precipitate|Бурый гидроксид железа(III)|exchange|crystals
+Fe(NO3)2+NaOH|aqueous|Fe(NO3)2 + 2NaOH → Fe(OH)2↓ + 2NaNO3|precipitate|Зеленоватый осадок гидроксида железа(II)|exchange|crystals
+Mg(NO3)2+NaOH|aqueous|Mg(NO3)2 + 2NaOH → Mg(OH)2↓ + 2NaNO3|precipitate|Белый гидроксид магния|exchange|crystals
+Ba(NO3)2+Na2SO4|aqueous|Ba(NO3)2 + Na2SO4 → BaSO4↓ + 2NaNO3|precipitate|Белый сульфат бария|exchange|crystals
+Na2S+ZnCl2|aqueous|Na2S + ZnCl2 → ZnS↓ + 2NaCl|precipitate|Белый сульфид цинка|exchange|crystals
+Na2S+FeCl2|aqueous|Na2S + FeCl2 → FeS↓ + 2NaCl|precipitate|Чёрный сульфид железа(II)|exchange|crystals
+Na2S+CuCl2|aqueous|Na2S + CuCl2 → CuS↓ + 2NaCl|precipitate|Чёрный сульфид меди(II)|exchange|crystals
+HCl+LiOH|aqueous|HCl + LiOH → LiCl + H2O|heat|Нейтрализация гидроксида лития|neutralization|thermal
+HNO3+LiOH|aqueous|HNO3 + LiOH → LiNO3 + H2O|heat|Нейтрализация азотной кислоты|neutralization|thermal
+H2SO4+LiOH|aqueous|H2SO4 + 2LiOH → Li2SO4 + 2H2O|heat|Нейтрализация серной кислоты|neutralization|thermal
+CH3COOH+LiOH|aqueous|CH3COOH + LiOH → CH3COOLi + H2O|heat|Нейтрализация уксусной кислоты|neutralization|thermal
+HCl+NH4OH|aqueous|HCl + NH4OH → NH4Cl + H2O|heat|Нейтрализация раствора аммиака (школьная условная запись)|neutralization|thermal
+H2SO4+NH4OH|aqueous|H2SO4 + 2NH4OH → (NH4)2SO4 + 2H2O|heat|Нейтрализация раствора аммиака (школьная схема)|neutralization|thermal
+HCl+MgO|aqueous|2HCl + MgO → MgCl2 + H2O|dissolution|Реакция основного оксида с кислотой|neutralization|colorShift
+H2SO4+MgO|aqueous|H2SO4 + MgO → MgSO4 + H2O|dissolution|Реакция оксида магния с кислотой|neutralization|colorShift
+HNO3+CaCO3|aqueous|2HNO3 + CaCO3 → Ca(NO3)2 + CO2↑ + H2O|gas|Реакция карбоната с кислотой|exchange|fizz
+HCl+Li2CO3|aqueous|2HCl + Li2CO3 → 2LiCl + CO2↑ + H2O|gas|Карбонат лития реагирует с кислотой|exchange|fizz
+CaCl2+(NH4)2CO3|aqueous|CaCl2 + (NH4)2CO3 → CaCO3↓ + 2NH4Cl|precipitate|Осаждение карбоната кальция|exchange|crystals
+C3H8+O2|ignited|C3H8 + 5O2 → 3CO2 + 4H2O|heat|Полное сгорание пропана при избытке кислорода|combustion|flame
+C4H10+O2|ignited|2C4H10 + 13O2 → 8CO2 + 10H2O|heat|Полное сгорание бутана при достатке кислорода|combustion|flame
+C2H6+O2|ignited|2C2H6 + 7O2 → 4CO2 + 6H2O|heat|Полное сгорание этана при достатке кислорода|combustion|flame
+C3H6+O2|ignited|2C3H6 + 9O2 → 6CO2 + 6H2O|heat|Полное сгорание пропена при достатке кислорода|combustion|flame
+C3H8O+O2|ignited|2C3H8O + 9O2 → 6CO2 + 8H2O|heat|Полное горение пропан-2-ола|combustion|flame
+NaHCO3|heated|2NaHCO3 → Na2CO3 + H2O + CO2↑|gas|Выделение пара и углекислого газа при нагревании|decomposition|steam
+`;
+for(const line of newVerifiedCases.trim().split("\n")){
+ const [reactants,medium,equation,observation,description,family,visual]=line.split("|");
+ const signature=reactants.split("+").sort().join("|");
+ if(cases.some(row=>row.environment===medium&&row.reactants.slice().sort().join("|")===signature))continue;
+ add(reactants,medium as ReactionEnvironment,equation,observation as Observation,description,{
+  family:family as ReactionFamily,visual:visual as ReactionVisual,
+  safety:/Ni|Co|AgNO3|Ba\(|BaCl2|Ba\(NO3\)2|Na2S|HNO3/.test(reactants)?
+   "Только виртуальная модель: некоторые вещества токсичны или опасны.":undefined
  });
 }
 /** Minimum modeled activation points, not laboratory instructions. A case
