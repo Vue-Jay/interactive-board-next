@@ -611,12 +611,12 @@ assert.doesNotMatch(boardLaboratory,/className="lektrus-chemistry-bench-on-board
 const hugeLabCss=read("src/lektrusChemistryBench.css");
 assert.match(boardLaboratory,/className="lektrus-chemistry-bench-on-board"[\s\S]*?onWheel=\{e=>e\.stopPropagation\(\)\}/,
  "Scrolling inside the board lab must not zoom the board");
-assert.match(editorLaboratory,/className="lektrus-lab-editor-bench-viewport"/,
- "All lab content must scroll even in the smaller editing modal");
+assert.match(editorLaboratory,/ref=\{viewport\} className="lektrus-lab-editor-bench-viewport"/,
+ "The fullscreen editing viewport fills the window with no vertical scroll");
 assert.match(hugeLabCss,/lektrus-chemistry-bench-on-board\{[\s\S]*?overflow:auto!important/,
  "The board lab viewport must allow scrolling");
-assert.match(hugeLabCss,/min-width:1600px!important/,
- "The laboratory must have a full-size unclipped stage at any object size");
+assert.match(hugeLabCss,/lektrus-lab-fit-stage>\.lektrus-lab-bench/,
+ "The laboratory stage uses its computed width rather than fixed side gutters");
 assert.match(hugeLabCss,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)!important/,
  "All 11 vessel cards must fit in a four-column shelf");
 assert.match(hugeLabCss,/grid-template-rows:repeat\(3,minmax\(0,1fr\)\)!important/,
