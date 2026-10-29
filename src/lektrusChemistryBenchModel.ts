@@ -806,6 +806,24 @@ export function transferLabMeasuredLiquid(
   return v;
  }),event:next.event+1};
 }
+/** Quantity readout shared by the board and fullscreen laboratory.
+ * Liquid fill is proportional to the simulated vessel capacity. For loose
+ * solids a reference scale is used because density/packing are unknown. */
+export function labVesselQuantity(vessel:LabVessel){
+ const doses=Object.values(vessel.doses??{});
+ const volumeMl=Math.round(doses.reduce((total,d)=>
+  total+(d.unit==="ml"?d.value:0),0)*100)/100;
+ const massG=Math.round(doses.reduce((total,d)=>
+  total+(d.unit==="g"?d.value:0),0)*100)/100;
+ const capacityMl=labMeasuredCapacityMl(vessel.kind)??(
+  vessel.kind==="tube"?25:vessel.kind==="dish"||vessel.kind==="crucible"?70:
+  vessel.kind==="conical"||vessel.kind==="flask"?200:150);
+ const massReferenceG=vessel.kind==="tube"||vessel.kind==="pipette"?10:
+  vessel.kind==="crucible"||vessel.kind==="dish"?30:100;
+ return {volumeMl,massG,capacityMl,massReferenceG,
+  liquidFraction:Math.min(.96,volumeMl/capacityMl),
+  solidFraction:Math.min(.9,massG/massReferenceG)};
+}
 /** Adjust the exact sampling volume (ml) of this graduated pipette. */
 export function setLabPipetteTarget(bench:LabBench,id:string,ml:number):LabBench{
  if(!Number.isFinite(ml)||ml<.1||ml>25||Math.abs(ml*10-Math.round(ml*10))>1e-6)
