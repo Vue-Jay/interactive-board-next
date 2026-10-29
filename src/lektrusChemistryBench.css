@@ -3433,12 +3433,12 @@
 .lektrus-lab-bench .lektrus-lab-placed-device.is-tripod,
 .lektrus-lab-bench .lektrus-lab-retort-jaws{
  width:clamp(130px,11cqw,190px)!important;
- height:clamp(335px,28cqw,420px)!important}
+ height:clamp(400px,32cqw,460px)!important}
 @container(max-width:690px){
  .lektrus-lab-bench .lektrus-lab-placed-device.is-tripod,
  .lektrus-lab-bench .lektrus-lab-retort-jaws{
   width:clamp(112px,17cqw,146px)!important;
-  height:clamp(282px,42cqw,355px)!important}
+  height:clamp(350px,54cqw,385px)!important}
  .lektrus-lab-bench .lektrus-lab-mode-picker{flex:1 1 145px;min-width:115px}
  .lektrus-lab-bench .lektrus-lab-mode-picker span{display:none}
  .lektrus-lab-bench .lektrus-lab-mode-picker select{font-size:11px}
