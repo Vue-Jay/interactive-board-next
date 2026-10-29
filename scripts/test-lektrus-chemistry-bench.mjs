@@ -1877,8 +1877,8 @@ assert.equal(lab.labIndicatorResult(measurePH.vessels[0]).color,"#d83697",
 assert.ok(lab.labIndicatorResult(measurePH.vessels[0]).pH>12);
 let paper=lab.setLabIndicator(measurePH,"v1","universal");
 assert.equal(paper.vessels[0].indicatorDrops,undefined);
-const decant=lab.addLabVessel(paper,"tube");
-const paperMoved=lab.pourLabVessel(decant,"v1","v2");
+const paperDecant=lab.addLabVessel(paper,"tube");
+const paperMoved=lab.pourLabVessel(paperDecant,"v1","v2");
 assert.equal(paperMoved.vessels[1].indicator,undefined,
  "Universal indicator paper must not travel into the receiving glass");
 assert.match(read("src/LektrusChemistryBench.tsx"),/is-paper/);
