@@ -1450,3 +1450,22 @@ assert.match(read("src/LektrusChemistryBench.tsx"),/Плавление \/ кри
 assert.match(read("src/LektrusChemistryBench.tsx"),/Порошок \/ кусочки/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-solid-charge/);
 console.log("Thermal registry, boiling, melting and cooling verified");
+
+
+let crucible=lab.addLabVessel(lab.defaultLabBench(),"crucible");
+const crucibleId=crucible.vessels.find(v=>v.kind==="crucible").id;
+crucible=lab.putLabReagent(crucible,crucibleId,"NaCl",{value:5,unit:"g"});
+crucible=lab.addPlacedLabDevice(crucible,"burner");
+const crucibleBurner=lab.placedLabDevices(crucible).find(d=>d.kind==="burner").id;
+crucible=lab.applyPlacedLabDevice(crucible,crucibleBurner,crucibleId);
+crucible=lab.setPlacedDeviceLevel(crucible,crucibleBurner,3);
+crucible=lab.setPlacedDevicePower(crucible,crucibleBurner,true);
+crucible=lab.advanceLabSimulation(crucible,0);
+for(let i=1;i<=210;i++)crucible=lab.advanceLabSimulation(crucible,i*2000);
+const moltenSalt=crucible.vessels.find(v=>v.id===crucibleId);
+assert.equal(moltenSalt.meltFraction,1,
+ "High setting of simulated burner melts pure NaCl inside a crucible");
+assert.ok(moltenSalt.temperatureC>=800.7);
+assert.equal(moltenSalt.doses.NaCl.value,5);
+assert.ok((crucible.vessels.find(v=>v.id==="v1").temperatureC??22)<500,
+ "Ordinary glassware does not inherit the crucible's high-temperature limit");
