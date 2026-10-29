@@ -1,7 +1,7 @@
 import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
-import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,labReactionNeedsTick,
+import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,labObservation,labReactionNeedsTick,
  labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
@@ -348,6 +348,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [dropDeviceShelf,setDropDeviceShelf]=useState(false);
  const [transfer,setTransfer]=useState<{from:{x:number;y:number};to:{x:number;y:number}}|null>(null);
  const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"equipment"|"settings"|null>(null);
+ const [pendingGlassware,setPendingGlassware]=useState<LabGlassware|null>(null);
+ const [showAllGlassware,setShowAllGlassware]=useState(false);
+ const [showAllDevices,setShowAllDevices]=useState(false);
  const [query,setQuery]=useState("");
  const [category,setCategory]=useState("Все");
  const [phase,setPhase]=useState<"all"|StoragePhase>("all");
@@ -600,11 +603,26 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   onChange?.(next);setNotice("Чистая посуда возвращена в шкаф");
  };
  const take=(kind:LabGlassware,p?:{x:number;y:number})=>{
-  const next=addLabVessel(bench,kind,p&&isLabWorktop(p)?
-   labLogicalPoint(p):undefined);
+  if(!p||!isLabWorktop(p)){setNotice("Нажмите на свободное место стола");return}
+  const next=addLabVessel(bench,kind,labLogicalPoint(p));
   if(next===bench){setNotice("На столе не больше шести сосудов");return}
-  onChange?.(next);setNotice("Посуда добавлена на стол");setCabinet(null);
+  onChange?.(next);setPendingGlassware(null);
+  setNotice(names[kind]+" поставлен в выбранное место");setCabinet(null);
  };
+ const chooseGlassware=(kind:LabGlassware)=>{
+  if(bench.vessels.length>=6){setNotice("На столе не больше шести сосудов");return}
+  setPendingGlassware(kind);setCabinet(null);
+  setNotice("Нажмите на свободное место стола, чтобы поставить: "+names[kind]);
+ };
+ useEffect(()=>{
+  if(!pendingGlassware)return;
+  const escape=(event:KeyboardEvent)=>{
+   if(event.key!=="Escape")return;
+   event.preventDefault();event.stopPropagation();setPendingGlassware(null);
+  };
+  document.addEventListener("keydown",escape,true);
+  return()=>document.removeEventListener("keydown",escape,true);
+ },[pendingGlassware]);
  const down=(event:PointerEvent<HTMLButtonElement>,v:LabVessel)=>{
   if(!editable||event.button!==0||!event.isPrimary)return;
   event.preventDefault();event.stopPropagation();const p=point(event);if(!p)return;
@@ -706,7 +724,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
   const p=point(event);if(g.dragged&&p&&isLabWorktop(p))
    take(g.kind,p);
-  else if(!g.dragged)take(g.kind);
+  else if(!g.dragged)chooseGlassware(g.kind);
   setShelfGhost(null);
  };
  const takeDevice=(kind:LabDevice,p?:{x:number;y:number})=>{
@@ -853,10 +871,19 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  };
  const openCabinet=(next:"reagents"|"glassware"|"equipment"|"settings")=>{
   if(!editable)return;setCabinet(next);setNotice("");setChosen(null);
+  setShowAllGlassware(false);setShowAllDevices(false);
  };
- return <div className={"lektrus-lab-bench"+(!editable?" is-readonly":"")+(bench.vessels.length>3?" is-crowded":"")+
+ return <div className={"lektrus-lab-bench"+(!editable?" is-readonly":"")+
+  (pendingGlassware?" is-placing-glassware":"")+
   (!settings.animateEffects?" lab-reduced-animation":"")} ref={host}
-  aria-label="Интерактивный химический стол с шкафами и раковиной">
+  aria-label="Интерактивный химический стол с шкафами и раковиной"
+  onPointerDown={e=>{
+   if(!pendingGlassware||!editable||e.button!==0)return;
+   if((e.target as HTMLElement).closest("[data-board-interactive]"))return;
+   const p=point(e);
+   if(!p||!isLabWorktop(p))return;
+   e.preventDefault();e.stopPropagation();take(pendingGlassware,p);
+  }}>
   <div className="lektrus-lab-bench-backdrop" aria-hidden="true">
    <div className="lektrus-lab-back-shelf"/>
    <div className="lektrus-lab-counter"/>
@@ -866,6 +893,19 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   <div className="lektrus-lab-scene-header">
    <span className="lektrus-lab-scene-brand">LEKTRUS <span>LAB</span></span>
    <strong>Химическая лаборатория</strong>
+   <label className="lektrus-lab-mode-picker" data-board-interactive="true"
+    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+    <span>Режим</span>
+    <select value={labMode(bench)} aria-label="Режим химической лаборатории"
+     disabled={!editable} title={labModeInfo(bench).description}
+     onChange={e=>{
+      onChange?.(setLabMode(bench,e.target.value as typeof LAB_MODES[number]["id"]));
+      setPendingGlassware(null);setShowAllGlassware(false);setShowAllDevices(false);
+      setNotice("Режим: "+(LAB_MODES.find(m=>m.id===e.target.value)?.name??"Лаборатория"));
+     }}>
+     {LAB_MODES.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+    </select>
+   </label>
    <span className="lektrus-lab-scene-stats">{bench.vessels.length} из 6 сосудов <b>·</b> {physicalDevices.length} приборов</span>
    <div className="lektrus-lab-header-tools" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
@@ -972,11 +1012,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     disabled={!editable} aria-label="Открыть шкаф посуды"
     onClick={e=>{e.stopPropagation();openCabinet("glassware")}}>ПОСУДА</button>
    <div className="lektrus-lab-shelf-items">
-    {labGlassware.map(kind=><button type="button" key={kind.id} disabled={!editable}
+    {glasswareForLabMode(bench).map(kind=><button type="button" key={kind.id} disabled={!editable}
       className="lektrus-lab-shelf-item" title={"Взять: "+kind.name}
       aria-label={"Взять из шкафа "+kind.name} onPointerDown={e=>beginShelf(e,kind.id)}
       onPointerMove={moveShelf} onPointerUp={finishShelf}
-      onClick={e=>{if(e.detail===0)take(kind.id)}}
+      onClick={e=>{if(e.detail===0)chooseGlassware(kind.id)}}
       onPointerCancel={e=>{e.stopPropagation();shelfGesture.current=null;setShelfGhost(null)}}>
       <LektrusLabGlasswareIcon kind={kind.id} size={32}/>
       <small>{kind.name}</small>
@@ -991,7 +1031,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     ПРИБОРЫ <span>{physicalDevices.length}/10</span>
    </button>
    <div className="lektrus-lab-device-cupboard-shelf">
-    {labDevices.map(device=><button type="button" key={device.id}
+    {devicesForLabMode(bench).map(device=><button type="button" key={device.id}
      disabled={!editable} title={"Взять: "+device.name+" · нажмите или перетащите на стол"}
      aria-label={"Взять прибор: "+device.name}
      onPointerDown={e=>beginDeviceShelf(e,device.id)}
