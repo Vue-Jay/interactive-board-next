@@ -582,7 +582,7 @@ export const defaultLabBench=():LabBench=>({
 });
 export function readLabBench(item:Item):LabBench{
  if(item.scienceLabBench)return {...item.scienceLabBench,
-  vessels:item.scienceLabBench.vessels.filter(v=>v.kind!=="funnel")};
+  vessels:item.scienceLabBench.vessels.filter(v=>(v.kind as string)!=="funnel")};
  const initial=defaultLabBench();
  initial.vessels[0].reagents=(item.scienceReagents??[]).slice(0,MAX_VESSEL_REAGENTS);
  initial.vessels[0].environment=item.scienceEnvironment??"aqueous";
