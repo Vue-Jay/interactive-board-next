@@ -7,6 +7,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassw
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
+import {labVesselPH} from "./lektrusLabPH";
 import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
@@ -111,11 +112,16 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const visualCase=vessel.completedReaction??verified;
  const appearance=reactionAppearance(visualCase);
  const isLiquidIndicator=!!vessel.indicator&&vessel.indicator!=="universal";
- const indicator=titrationResult&&vessel.indicator?{
-  medium:titrationResult.phase==="acidic"?"acid":titrationResult.phase==="alkaline"?"base":"neutral",
-  label:"pH "+titrationResult.pH,color:titrationResult.tint,
-  note:"Расчётное значение при титровании, 25 °C"
- }:labIndicatorResult(vessel);
+ const ph=labVesselPH(vessel);
+ const measuredIndicator=labIndicatorResult(vessel);
+ // Current vessel doses, not the parallel titration demo, drive colours.
+ // Keep the legacy measured-titration reading as a compatibility fallback.
+ const indicator=measuredIndicator?.pH!==undefined?measuredIndicator:
+  titrationResult&&vessel.indicator?{
+   medium:titrationResult.phase==="acidic"?"acid":titrationResult.phase==="alkaline"?"base":"neutral",
+   label:"pH "+titrationResult.pH,color:titrationResult.tint,
+   note:"Расчётное значение при титровании, 25 °C"
+  }:measuredIndicator;
  const {volumeMl,massG,capacityMl,liquidFraction,solidFraction}=labVesselQuantity(vessel);
  const contents=labVesselContents(vessel);
  const readable=(n:number,decimals=3)=>n.toLocaleString("ru-RU",{maximumFractionDigits:decimals});
@@ -306,6 +312,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
       {details&&<span className="lektrus-lab-quantity-info is-solution">
        <b>Раствор · {readable(contents.solutionMl)} мл</b>
        <span>{solutionNames.join(", ")||"Растворённых веществ нет"}</span>
+       <small className="lektrus-lab-inline-ph" title={ph?.note??"Недостаточно данных о равновесии и концентрации"}>
+        {ph?.label??"pH не определён"}
+        {isLiquidIndicator?" · "+(vessel.indicatorDrops??1)+" кап.":""}
+       </small>
       </span>}
      </div>}
     {(details||contents.solid.length>0)&&<div className="lektrus-lab-quantity-measure is-solid"
