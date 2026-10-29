@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,labVesselQuantity,labVesselContents,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,fillLabVolumetricFlask,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -414,6 +414,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [unit,setUnit]=useState<"ml"|"g">("ml");
  const [molarity,setMolarity]=useState("0.1");
  const [titrationTarget,setTitrationTarget]=useState("");
+ const [measuredMl,setMeasuredMl]=useState("5");
+ const [measuredPartnerId,setMeasuredPartnerId]=useState("");
  const [localPourId,setLocalPourId]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
  const [sinkFlow,setSinkFlow]=useState(false);
@@ -891,6 +893,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   }
   setDevicePreview(null);setDropDeviceShelf(false);
  };
+ useEffect(()=>{
+  if(selected?.kind==="pipette")setMeasuredMl(String(selected.pipetteTargetMl??5));
+ },[selected?.id,selected?.pipetteTargetMl]);
  const quickReagents=labQuickReagents(bench);
  const addQuick=(id:string,targetId?:string)=>{
   if(!editable)return;
@@ -1777,6 +1782,37 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        disabled={bench.vessels.length>=6} onClick={()=>chooseGlassware(v.id)}>
        <LektrusLabGlasswareIcon kind={v.id} size={60}/>
        <strong>{v.name}</strong><small>{v.description}</small></button>)}
+      {selected&&["pipette","cylinder","volumetric"].includes(selected.kind)&&
+       <section className="lektrus-lab-measuring-cabinet">
+        <strong>{names[selected.kind]} · измерение и перенос</strong>
+        {selected.kind!=="volumetric"&&<>
+         <label>Объём, мл <input type="number" min=".01" step=".01"
+          max={labMeasuredCapacityMl(selected.kind)} value={measuredMl}
+          onChange={e=>setMeasuredMl(e.target.value)}/></label>
+         <label>Другой сосуд <select value={bench.vessels.some(v=>v.id===measuredPartnerId&&v.id!==selected.id)?
+          measuredPartnerId:(bench.vessels.find(v=>v.id!==selected.id)?.id??"")}
+          onChange={e=>setMeasuredPartnerId(e.target.value)}>
+          {bench.vessels.filter(v=>v.id!==selected.id).map(v=>
+           <option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
+         </select></label>
+         {(["Набрать","Выдать"] as const).map(action=><button type="button" key={action}
+          onClick={()=>{
+           const partner=bench.vessels.some(v=>v.id===measuredPartnerId&&v.id!==selected.id)?
+            measuredPartnerId:bench.vessels.find(v=>v.id!==selected.id)?.id;
+           const from=action==="Набрать"?partner:selected.id;
+           const to=action==="Набрать"?selected.id:partner;
+           const requested=Number(measuredMl);
+           const configured=selected.kind==="pipette"?
+            setLabPipetteTarget(bench,selected.id,requested):bench;
+           const next=from&&to?transferLabMeasuredLiquid(configured,from,to,requested):bench;
+           if(next!==bench){onChange?.(next);setNotice(action+" "+measuredMl+" мл")}
+           else setNotice("Не удалось отмерить: проверьте объём и сосуд");
+          }}>{action}</button>)}
+        </>}
+        {selected.kind==="volumetric"&&<button type="button"
+         onClick={()=>{const next=fillLabVolumetricFlask(bench,selected.id);
+          if(next!==bench)onChange?.(next)}}>Долить до метки</button>}
+       </section>}
       <p>В шкаф возвращается только пустая посуда. Сначала слейте содержимое в раковину.</p>
       <button type="button" className="lektrus-lab-store-selected"
        disabled={!selected||!!selected.reagents.length}
@@ -1801,6 +1837,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         </button>;
        })}
       </div>
+      {selected?.reagents.length>0&&<div className="lektrus-lab-measuring-cabinet">
+       <strong>Условия выбранного сосуда</strong>
+       <label>Среда <select value={selected.environment==="dry"?"dry":"aqueous"}
+        onChange={e=>onChange?.(setLabEnvironment(bench,selected.id,
+         e.target.value as typeof selected.environment))}>
+        <option value="aqueous">Раствор</option><option value="dry">Сухая среда</option>
+       </select></label>
+      </div>}
       <p className="lektrus-lab-safe-caption">Нагрев и горение изменяют условия выбранного сосуда только в виртуальной модели. Мешалка и штатив не создают новых химических продуктов; термометр не показывает выдуманную температуру.</p>
      </div>}
     </section>
