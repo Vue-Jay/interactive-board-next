@@ -1101,12 +1101,25 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       temperatureC={device.temperatureC} targetTemperatureC={device.targetTemperatureC}
       standHeight={device.standHeight} heatLevel={device.heatLevel}
       />
+      {device.kind==="filter"&&<span className="lektrus-lab-filter-residue"
+       title={device.collectedResidue?"Осадок "+device.collectedResidue.formula:
+        "Слейте сюда сосуд с осадком"}>
+       {device.collectedResidue?<><i style={{background:device.collectedResidue.color}}/>
+        <strong>{device.collectedResidue.formula}</strong>
+        <small>{device.collectedResidue.massG!==undefined?
+         device.collectedResidue.massG.toLocaleString("ru-RU")+" г":"осадок"}</small></>:
+        "↓ Слить сюда"}
+      </span>
       {editable&&<div className={"lektrus-lab-device-face-controls is-"+device.kind}
        onPointerDown={e=>e.stopPropagation()}
        onPointerMove={e=>e.stopPropagation()}
        onPointerUp={e=>e.stopPropagation()}
        onClick={e=>e.stopPropagation()}>
-       {device.kind!=="tripod"?<>
+       {device.kind==="filter"?<>{device.collectedResidue&&<button type="button"
+        title="Очистить мембранный фильтр" aria-label="Очистить мембранный фильтр"
+        onClick={()=>onChange?.({...bench,placedDevices:physicalDevices.map(d=>d.id===device.id?
+         {...d,collectedResidue:undefined}:d),event:bench.event+1})}>×</button>}</>:
+        device.kind!=="tripod"?<>
         {device.kind==="burner"?
          <button type="button" className="lektrus-lab-burner-valve"
           aria-pressed={!!device.powered}
