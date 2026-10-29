@@ -969,4 +969,71 @@ assert.match(geometricalSurface,/const flowPath=/,
 assert.doesNotMatch(editor,/lektrus-lab-observation/,
  "Fullscreen editor adds no separate content fields");
 
+// Verified reactions advance by the exact balanced coefficients, not by
+// changing the carrier-solution volume or inventing concentration.
+const chem=load("src/lektrusLabStoichiometry.ts");
+assert.equal(Math.round(chem.labMolarMass("NaCl")*100)/100,58.44);
+assert.ok(Math.abs(chem.labMolarMass("Ca(OH)2")-74.092)<.02);
+assert.ok(chem.parseBalancedLabEquation("HCl + NaOH → NaCl + H2O"));
+assert.ok(chem.parseBalancedLabEquation("2HCl + Ca(OH)2 → CaCl2 + 2H2O"));
+assert.equal(chem.parseBalancedLabEquation("HCl + NaOH → 2NaCl + H2O"),null,
+ "A false/unbalanced source equation must never be used for calculations");
+const neutralization=reaction.identifyReaction(["HCl","NaOH"],"aqueous").caseData;
+assert.ok(neutralization);
+const measuredReaction=chem.startQuantifiedLabReaction(neutralization,["HCl","NaOH"],{
+ HCl:{value:10,unit:"ml",concentrationM:.1},
+ NaOH:{value:5,unit:"ml",concentrationM:.1}
+});
+assert.ok(measuredReaction);
+assert.equal(chem.startQuantifiedLabReaction(neutralization,["HCl","NaOH"],{
+ HCl:{value:10,unit:"ml"},NaOH:{value:5,unit:"ml",concentrationM:.1}
+}),null,"Missing source molarity must not be guessed");
+assert.ok(Math.abs(measuredReaction.maxExtentMol-.0005)<1e-12);
+const halfway=chem.advanceQuantifiedLabReaction(measuredReaction,2);
+assert.ok(Math.abs(halfway.remainingMol.HCl-.00075)<1e-12);
+assert.ok(Math.abs(halfway.productsMol.NaCl-.00025)<1e-12);
+const reacted=chem.advanceQuantifiedLabReaction(halfway,2);
+assert.ok(reacted.complete);
+assert.equal(reacted.remainingMol.NaOH,0);
+assert.ok(Math.abs(reacted.remainingMol.HCl-.0005)<1e-12);
+assert.ok(Math.abs(reacted.productsMol.NaCl-.0005)<1e-12);
+assert.ok(Math.abs(reacted.productsMol.H2O-.0005)<1e-12);
+const precipitateCase=reaction.identifyReaction(["AgNO3","NaCl"],"aqueous").caseData;
+const precipitation=chem.startQuantifiedLabReaction(precipitateCase,["AgNO3","NaCl"],{
+ AgNO3:{value:8,unit:"ml",concentrationM:.1},
+ NaCl:{value:10,unit:"ml",concentrationM:.2}
+});
+assert.ok(precipitation);
+const precipitated=chem.advanceQuantifiedLabReaction(precipitation,4);
+assert.ok(Math.abs(precipitated.productsMol.AgCl-.0008)<1e-12);
+assert.ok(Math.abs(precipitated.remainingMol.NaCl-.0012)<1e-12);
+let liveReaction=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {value:10,unit:"ml",concentrationM:.1});
+liveReaction=lab.putLabReagent(liveReaction,"v1","NaOH",
+ {value:5,unit:"ml",concentrationM:.1});
+assert.equal(lab.labReactionNeedsTick(liveReaction.vessels[0]),true);
+liveReaction=lab.advanceLabSimulation(liveReaction,1000);
+liveReaction=lab.advanceLabSimulation(liveReaction,1500);
+assert.equal(liveReaction.vessels[0].reactionAmounts.elapsedSeconds,0);
+liveReaction=lab.advanceLabSimulation(liveReaction,3500);
+assert.ok(Math.abs(liveReaction.vessels[0].reactionAmounts.productsMol.NaCl-.00025)<1e-12);
+liveReaction=lab.advanceLabSimulation(liveReaction,5500);
+assert.equal(liveReaction.vessels[0].reactionAmounts.complete,true);
+assert.equal(lab.labReactionNeedsTick(liveReaction.vessels[0]),false);
+assert.equal(lab.labVesselQuantity(liveReaction.vessels[0]).volumeMl,15,
+ "Solute reaction must not incorrectly subtract the carrier liquids");
+const editorFixed=read("src/LektrusChemistryBenchEditor.tsx");
+assert.match(editorFixed,/stageScale/);
+assert.match(editorFixed,/Math.min\(w\/1600,h\/1000\)/,
+ "Fullscreen scales rather than scrolls a 1600 x 1000 stage");
+assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-fit-stage/);
+const polishedSurface=read("src/LektrusChemistryBench.tsx");
+assert.match(polishedSurface,/currentQuantities&&/);
+assert.match(polishedSurface,/current.vessels.some\(labReactionNeedsTick\)/);
+assert.match(polishedSurface,/isQuantifiedSolution/);
+assert.match(polishedSurface,/settings.showEquationBoard&&<div className="lektrus-lab-chalkboard"/);
+const standFoot=read("src/LektrusLabDeviceIcon.tsx");
+assert.match(standFoot,/M22 96V3/);
+assert.match(read("src/lektrusLabLayout.ts"),/77\/110/);
+
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
