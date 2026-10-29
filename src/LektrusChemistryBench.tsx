@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -385,8 +385,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const selectedBurette=selected?.kind==="burette"?selected:undefined;
  const buretteTargets=selectedBurette?bench.vessels.filter(v=>
   v.id!==selectedBurette.id&&["beaker","flask","conical","tube"].includes(v.kind)):[];
+ const belowBurette=selectedBurette?labReceiverBelowStand(bench,selectedBurette.id):undefined;
  const chosenValveTarget=buretteTargets.some(v=>v.id===(selectedBurette?.buretteTargetId??titrationTarget))?
-  (selectedBurette?.buretteTargetId??titrationTarget):buretteTargets[0]?.id;
+  (selectedBurette?.buretteTargetId??titrationTarget):
+  belowBurette?.id??buretteTargets[0]?.id;
  const effectivePouringId=pouringId??localPourId;
  const experimentCases=reviewedReactionCases.filter(v=>v.status==="reaction"&&
   v.reactants.length<=3&&(effectFilter==="all"||v.observation===effectFilter||v.family===effectFilter)&&
@@ -601,6 +603,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       device:d,distance:Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)
      })).filter(v=>v.distance<105).sort((a,b)=>a.distance-b.distance):[];
      // When tools overlap, prefer the closest physically compatible surface.
+     // Another vessel can stand directly under the occupied upper clamp.
+     const beneath=physicalDevices.find(d=>d.kind==="tripod"&&d.active&&
+      d.linkedVesselId!==g.id&&Math.abs(p.x-d.x-3.5)<=8&&
+      p.y>d.y+3&&p.y<d.y+24);
+     if(beneath){
+      const pos=labLogicalPoint(p);
+      onChange?.(positionLabVessel(bench,g.id,pos.x,pos.y));
+      setNotice("Сосуд поставлен под зажим, без замены закреплённой посуды");
+     }else{
      const appliance=nearby.find(v=>vessel&&canMountLabVessel(v.device.kind,vessel.kind))
       ??nearby[0];
      if(appliance&&appliance.distance<105&&vessel&&
@@ -614,6 +625,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       const a=labDisplayPoint({x:g.x,y:g.y},bench.vessels.length>3);
       const next=labLogicalPoint({x:a.x+p.x-g.startX,y:a.y+p.y-g.startY});
       onChange?.(positionLabVessel(bench,g.id,next.x,next.y));
+     }
      }
     }
    }
@@ -714,7 +726,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    }else{
     const moved=movePlacedLabDevice(bench,g.id,g.x+p.x-g.startX,g.y+p.y-g.startY);
     const device=physicalDevices.find(d=>d.id===g.id);
-    const vesselId=device?nearestVessel(p,device.kind):null;
+    // A heater or mixer on the tabletop beneath a stand must remain free:
+    // otherwise old proximity binding teleports it onto the upper clamp.
+    const underneath=physicalDevices.some(d=>d.kind==="tripod"&&d.active&&
+     d.linkedVesselId&&Math.abs((g.x+p.x-g.startX)-d.x-3.5)<8&&
+     g.y+p.y-g.startY>d.y+1&&g.y+p.y-g.startY<d.y+18);
+    const vesselId=device&&!underneath?nearestVessel(p,device.kind):null;
     const final=vesselId?applyPlacedLabDevice(moved,g.id,vesselId):moved;
     onChange?.(final);
     setActiveDeviceId(g.id);
@@ -1083,6 +1100,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         else setNotice("Недостаточно жидкости или выбран несовместимый сосуд")}}>
        {action}</button>)}
      </div>}
+    {selected.reagents.length>0&&selected.kind!=="burette"&&
+     labReceiverBelowStand(bench,selected.id)&&
+     <button type="button" className="lektrus-lab-stand-transfer"
+      title="Наклонить закреплённый сосуд и постепенно перелить в посуду под ним"
+      onClick={e=>{e.stopPropagation();const receiver=labReceiverBelowStand(bench,selected.id);
+       if(receiver)transferVessel(selected.id,receiver.id)}}>
+      ⇣ Перелить вниз
+     </button>}
     {selected.kind==="volumetric"&&<button type="button"
      title="Долить воду до калибровочной метки"
      onClick={e=>{e.stopPropagation();const next=fillLabVolumetricFlask(bench,selected.id);
@@ -1187,7 +1212,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    return <button type="button" key={v.id} data-board-interactive="true"
     className={"lektrus-lab-vessel is-"+v.kind+(selectedVessel?" selected":"")+
     (effectivePouringId===v.id?" is-pouring":"")+
-    (dropTarget===v.id?" is-drop-target":"")+(bench.stirringVesselId===v.id?" is-stirring":"")+
+    (dropTarget===v.id?" is-drop-target":"")+(bench.stirringVesselId===v.id||
+     labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)?" is-stirring":"")+
     (preview?.id===v.id&&dropTarget?" is-pour-drag":"")+
     (effectivePouringId&&effectivePouringId!==v.id?" is-pour-target":"")}
     style={{left:p.x+"%",top:p.y+"%",zIndex:selectedVessel||preview?.id===v.id?35:23+i}}
@@ -1209,7 +1235,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
      editable={editable} temperatureVisible={settings.showTemperatures} onOpenSettings={()=>{onSelect?.(v.id);setActiveDeviceId(null);
       setVesselMenuId(vesselMenuId===v.id?null:v.id)}}
-     stirring={bench.stirringVesselId===v.id}
+     stirring={bench.stirringVesselId===v.id||
+      labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)}
      temperatureC={v.temperatureC??22}
      titrationResult={bench.titrationPair?.targetId===v.id&&bench.titration?
       titrationReading(bench.titration):undefined}/>
