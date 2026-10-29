@@ -1139,4 +1139,42 @@ assert.equal(lab.labMode(lab.mergeLabBench(modeBaseline,glassRemote,modeLocal)),
 
 assert.match(writtenWall,/prepareLabModeSetup\(bench\)/);
 
+// Burette is a graduated dosing instrument, not a temperature probe.
+const visualLab=read("src/LektrusChemistryBench.tsx");
+const visualStyles=read("src/lektrusChemistryBench.css");
+assert.match(visualLab,/temperatureVisible&&vessel.kind!=="burette"/,
+ "The glassware graphic must not show a temperature sticker on burettes");
+assert.match(visualLab,/temperatureVisible=\{settings.showTemperatures&&v.kind!=="burette"\}/,
+ "The worktop ignores the general temperature toggle for burettes");
+assert.doesNotMatch(visualLab,/className="lektrus-lab-burette-drop"/,
+ "Remove the disconnected static nozzle droplet");
+assert.doesNotMatch(visualLab,/lektrus-lab-titration-flow-drops/,
+ "A dashed line is not a realistic liquid titration");
+assert.match(visualLab,/className="lektrus-lab-droplet"/,
+ "Render individually formed falling drops");
+assert.match(visualLab,/className="lektrus-lab-titration-ripple"/,
+ "A receiving solution should show a small impact ripple");
+assert.match(visualLab,/labTitrationDropEndpoints\(from,to,destination.kind,width,height\)/,
+ "Droplet paths must connect the actual glassware landmarks");
+assert.match(visualLab,/viewBox=\{`0 0 \$\{width\} \$\{height\}`\}/,
+ "Stage-pixel SVG prevents wide-screen distortion of droplets");
+assert.match(visualStyles,/@keyframes lektrus-lab-gravity-drop/);
+assert.match(visualStyles,/@keyframes lektrus-lab-titration-impact/);
+for(const rate of lab.LAB_DRIP_RATES){
+ const interval=.05/rate;
+ const count=rate>=1?12:rate>=.2?5:1;
+ assert.ok(Math.abs(count/(interval*count)-rate/.05)<1e-8,
+  "The animation cadence follows actual valve flow rate "+rate+" ml/s");
+}
+for(const width of [400,690,700,900,1200,1600,2600]){
+ const stand={x:42,y:62,kind:"tripod",standHeight:.88};
+ const upper=layout.labMountedGlasswarePoint(stand,{kind:"burette"},width,1000);
+ const lower=layout.labStandBaseVesselPoint(stand,{kind:"conical"},width,1000);
+ const drops=layout.labTitrationDropEndpoints(upper,lower,"conical",width,1000);
+ assert.ok(drops&&drops.targetY>drops.y+4,
+  "The droplet travels DOWN into the real receiving flask at "+width+"px");
+ assert.ok(Math.abs(drops.targetX-drops.x)<width*.12,
+  "The receiving flask must be aligned with the burette nozzle");
+}
+
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
