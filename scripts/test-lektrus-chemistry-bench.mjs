@@ -1995,7 +1995,9 @@ assert.deepEqual(noDose.vessels[0].doses.AgNO3,
  {value:10,unit:"ml",concentrationM:.1});
 const quicks=lab.labQuickReagents(lab.defaultLabBench());
 assert.ok(quicks.every(q=>q.dose.value>0));
-assert.ok(quicks.filter(q=>catalog.labIsPreparedStock(q.id)).every(q=>q.dose.concentrationM===.1));
+assert.ok(quicks.filter(q=>q.dose.unit==="ml"&&catalog.labIsPreparedStock(q.id))
+ .every(q=>q.dose.concentrationM===.1),
+ "Only prepared liquid stock requires molarity; dry NaCl is measured by mass");
 let mixedConcentrations=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
  {value:10,unit:"ml",concentrationM:.1});
 mixedConcentrations=lab.putLabReagent(mixedConcentrations,"v1","HCl",
