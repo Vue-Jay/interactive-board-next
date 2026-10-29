@@ -25,7 +25,7 @@ export default function LektrusLabDeviceIcon({
  return <svg className={"lektrus-lab-device-icon is-"+kind+(active?" is-active":"")}
   viewBox="0 0 110 108" width={size} height={size} aria-hidden="true"
   fill="none" strokeLinecap="round" strokeLinejoin="round"
-  preserveAspectRatio="xMidYMid meet">
+  preserveAspectRatio={kind==="tripod"?"none":"xMidYMid meet"}>
   <defs>
    <linearGradient id={metal} x1="0" y1="0" x2="1" y2=".3">
     <stop stopColor="#dcebea"/><stop offset=".32" stopColor="#789e9c"/>
