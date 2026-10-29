@@ -1262,6 +1262,7 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
    remote.pouring:mine.pouring;
  const quickReagents=JSON.stringify(labQuickReagents(mine))===JSON.stringify(labQuickReagents(previous))?
   labQuickReagents(remote):labQuickReagents(mine);
- return {vessels:limited,selectedId,settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,pouring,
+ const mode=labMode(mine)===labMode(previous)?labMode(remote):labMode(mine);
+ return {vessels:limited,selectedId,mode,settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,pouring,
   event:Math.max(remote.event,mine.event)+1};
 }
