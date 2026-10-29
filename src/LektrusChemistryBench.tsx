@@ -251,7 +251,8 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
     <rect x="22" y="95" width="56" height="13" rx="4"
      fill="#f7e7c5" stroke="#c3a373" strokeWidth=".6"/>
     <text x="50" y="104" fontSize="7.5" fontWeight="800" textAnchor="middle"
-     fill="#76542e">{moltenFraction>=.995?"Расплав":"Плавление"}</text>
+     fill="#76542e">{moltenFraction>=.995?"Расплав":
+      vessel.phaseTransition==="crystallizing"?"Кристалл.":"Плавление"}</text>
    </g>}
 
 
