@@ -577,7 +577,13 @@ export const schoolSolidColors:Record<string,string>={
  "Cu(OH)2":"#74badd","CuS":"#202a32","Cu":"#b76b47",
  "Fe(OH)2":"#90ae81","Fe(OH)3":"#a26142","FeS":"#252a30",
  "Zn(OH)2":"#f1f2ee","ZnS":"#f0f1e7","Al(OH)3":"#f2f2ec",
- "Ag":"#c6ced2","Fe":"#788f90"
+ "Ag":"#c6ced2","Fe":"#788f90",
+ "MgO":"#f1f1e9","Fe3O4":"#42494d","ZnO":"#f0efdf",
+ "CuO":"#303538","Al2O3":"#eceeec","CaO":"#ecece2",
+ "NaCl":"#f1f0e9","KCl":"#eeefeb","P2O5":"#f0f0ec",
+ "Na2CO3":"#ebe9e3","K2CO3":"#ecece7",
+ "MnO2":"#34373b","Fe2O3":"#9a5e43","PbO":"#d5a958",
+ "K2MnO4":"#66945e"
 };
 export function reactionProducts(equation:string):string[]{
  const rhs=equation.split("→")[1]??"";
@@ -585,18 +591,26 @@ export function reactionProducts(equation:string):string[]{
 }
 export function reactionAppearance(row:ReactionCase|undefined){
  if(!row)return{solutionBefore:"#c8e2e7",solutionAfter:"#c8e2e7",solid:"",solidColor:"",
-  gas:"",products:[] as string[]};
+  gas:"",products:[] as string[],productSolid:"",productSolidColor:""};
  const products=reactionProducts(row.equation);
  const solid=products.find(product=>product.includes("↓"))?.replace(/^\d+\s*/,"").replace("↓","")??"";
  const gas=products.find(product=>product.includes("↑"))?.replace(/^\d+\s*/,"").replace("↑","")??"";
+ // After a verified dry/thermal reaction the product can be a visible
+ // powder or metal, not the original reagent or an imaginary blue liquid.
+ const productSolid=row.environment!=="aqueous"?
+  products.map(p=>p.replace(/^\d+\s*/,"").replace(/[↓↑]/g,""))
+   .find(id=>schoolSolidColors[id]!==undefined)??"":"";
+ const productSolidColor=schoolSolidColors[productSolid]??"";
  const solutionBefore=row.beforeColor??"#cae1e9";
  // Dissolved copper(II) stays blue even if a white solid settles.
  const solutionAfter=row.observation==="color"?
-    row.afterColor??(products.some(p=>/Cu\(NO3\)2|CuSO4|CuCl2/.test(p))?"#79b9db":"#c8e3e7"):
+    row.afterColor??(products.some(p=>/Cu\(NO3\)2|CuSO4|CuCl2/.test(p))?"#79b9db":
+     products.some(p=>/\bI2\b/.test(p))?"#9d6b36":
+     products.some(p=>/\bBr2\b/.test(p))?"#be7343":"#c8e3e7"):
    products.some(p=>/Cu\(NO3\)2|CuSO4|CuCl2/.test(p))?"#8dbfd6":
    products.some(p=>/FeSO4|FeCl2/.test(p))?"#c3d8b8":
    products.some(p=>/FeCl3|Fe\(NO3\)3/.test(p))?"#ead697":"#d5e8ed";
- return {solutionBefore,solutionAfter,solid,solidColor:schoolSolidColors[solid]??row.afterColor??"#eef0ed",gas,products};
+ return {solutionBefore,solutionAfter,solid,solidColor:schoolSolidColors[solid]??row.afterColor??"#eef0ed",gas,products,productSolid,productSolidColor};
 }
 export const reviewedReactionCases=cases;
 const key=(ids:string[])=>ids.slice().sort().join("|");
