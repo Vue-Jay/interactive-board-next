@@ -1114,6 +1114,15 @@ assert.deepEqual(preparedKit.vessels[0],starterOriginal,
  "Preparing a kit must leave previously placed glassware untouched");
 assert.deepEqual(lab.prepareLabModeSetup(preparedKit),preparedKit,
  "Preparing the same laboratory kit twice must not duplicate apparatus");
+const modeBaseline=lab.defaultLabBench();
+const modeLocal=lab.setLabMode(modeBaseline,"titration");
+const glassRemote=lab.addLabVessel(modeBaseline,"flask",{x:65,y:70});
+const modeMerged=lab.mergeLabBench(modeBaseline,modeLocal,glassRemote);
+assert.equal(lab.labMode(modeMerged),"titration",
+ "Concurrent glassware additions must not silently reset selected mode");
+assert.equal(modeMerged.vessels.length,2);
+assert.equal(lab.labMode(lab.mergeLabBench(modeBaseline,glassRemote,modeLocal)),"titration");
+
 assert.match(writtenWall,/prepareLabModeSetup\(bench\)/);
 
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
