@@ -1065,7 +1065,8 @@ export function emptyLabVessel(bench:LabBench,id:string):LabBench{
 }
 export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|undefined):LabBench{
  if(!bench.vessels.some(v=>v.id===id&&v.reagents.length&&
-  labVesselQuantity(v).volumeMl>0))return bench;
+  (labVesselQuantity(v).volumeMl>0||
+   (v.environment==="aqueous"&&!Object.values(v.doses??{}).some(d=>d.unit==="g")))))return bench;
  const next=revise(bench,id,v=>{
   if(!indicator)return v.indicator?{...v,indicator:undefined,indicatorDrops:undefined}:v;
   // A liquid indicator is dosed as drops. These trace amounts do not
