@@ -846,8 +846,7 @@ assert.deepEqual(stock.labReagentForms(item("NaCl")),["g","ml"]);
 assert.deepEqual(stock.labReagentForms(item("AgCl")),["g"]);
 assert.equal(stock.labReagentPhaseLabel(item("CuSO4"),"ml"),"Раствор / жидкость");
 assert.equal(stock.labReagentPhaseLabel(item("CaCO3"),"g"),"Твёрдое вещество");
-assert.match(hoverSurface,/const massG=measures\.reduce/);
-assert.match(hoverSurface,/const volumeMl=measures\.reduce/);
+assert.match(hoverSurface,/labVesselQuantity\(vessel\)/);
 assert.match(hoverSurface,/totalLabel\|\|substanceState/);
 
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
