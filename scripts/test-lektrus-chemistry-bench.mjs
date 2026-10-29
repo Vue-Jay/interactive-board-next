@@ -1732,3 +1732,22 @@ const labWithBoard={
 assert.doesNotThrow(()=>parseLab(labWithBoard),
  "Persistent equations and the unified reaction mode are valid save data");
 console.log("Cabinets, reaction history, and proportional precipitate regression passed");
+
+const originalShared=lab.recordLabReactions(chalkReacted);
+const localShared={...originalShared,reactionLog:[...originalShared.reactionLog,
+ "CaCO3 → CaO + CO2↑"],event:originalShared.event+1};
+const remoteShared={...originalShared,reactionLog:[...originalShared.reactionLog,
+ "HCl + NaOH → NaCl + H2O"],event:originalShared.event+1};
+const mergedEquations=lab.mergeLabBench(originalShared,localShared,remoteShared);
+assert.equal(mergedEquations.reactionLog.length,3,
+ "Concurrent participants cannot erase each other's written equations");
+const erasedShared=lab.wipeLabChalkboard(originalShared);
+const mergedAfterWipe=lab.mergeLabBench(originalShared,erasedShared,originalShared);
+assert.deepEqual(mergedAfterWipe.reactionLog,[],
+ "A wipe must survive a concurrent stale write without restoring erased equations");
+const mergedWithPeer=lab.mergeLabBench(originalShared,erasedShared,remoteShared);
+assert.deepEqual(mergedWithPeer.reactionLog,["HCl + NaOH → NaCl + H2O"],
+ "A later new peer equation may survive a wipe without resurrecting old equations");
+assert.ok(mergedWithPeer.seenReactionKeys.length>0,
+ "Wiped recorded keys stay in sync so old reactions do not reappear");
+console.log("Shared chalkboard: concurrent writes and explicit erasing passed");
