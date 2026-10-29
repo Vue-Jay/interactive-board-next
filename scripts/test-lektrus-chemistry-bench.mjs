@@ -104,8 +104,8 @@ assert.equal(transferred.vessels[1].indicator,undefined,"Universal indicator pap
 let mixed=lab.addLabVessel(indicatorBench,"flask");
 mixed=lab.putLabReagent(mixed,mixed.selectedId,"HCl");
 mixed=lab.pourLabVessel(mixed,mixed.selectedId,"v1");
-assert.equal(lab.labIndicatorResult(mixed.vessels[0]).medium,"unknown",
- "Neutralisation cannot give an exact indicator colour without quantities");
+assert.equal(lab.labIndicatorResult(mixed.vessels[0]).medium,"neutral",
+ "Neutralisation of known 0.1 M stocks gives a calculable equilibrium pH");
 let precip=lab.defaultLabBench();
 precip=lab.putLabReagent(precip,"v1","NaCl",{value:12,unit:"ml"});
 precip=lab.addLabVessel(precip,"tube");
