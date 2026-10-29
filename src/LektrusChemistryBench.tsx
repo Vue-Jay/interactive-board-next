@@ -128,7 +128,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const observation=visualCase?.observation??"none";
  const gasEventActive=!!vessel.reactionAmounts&&!vessel.reactionAmounts.complete||
   !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<6500;
- const singlePhase=vessel.filteredResidue?"solid":massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
+ const gasOnly=vessel.reagents.length>0&&vessel.reagents.every(id=>
+  substances.find(s=>s.id===id)?.kind==="газ")&&massG===0;
+ const singlePhase=vessel.filteredResidue?"solid":gasOnly?"gas":
+  massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
   vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const pureThermal=labVesselThermal(vessel.reagents,vessel.doses);
  const thermalState=labThermalState(vessel.reagents,vessel.doses,
