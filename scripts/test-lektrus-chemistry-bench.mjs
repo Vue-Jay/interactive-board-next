@@ -13,7 +13,16 @@ const load=(path,requireFn=()=>{throw Error("Unexpected import")})=>{
 const reaction=load("src/lektrusReactionDatabase.ts");
 const titration=load("src/lektrusLabTitration.ts");
 const layout=load("src/lektrusLabLayout.ts");
-const chem=load("src/lektrusLabStoichiometry.ts");
+const chem=load("src/lektrusLabStoichiometry.ts",key=>{
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
+const appearance=load("src/lektrusLabAppearance.ts",key=>{
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
+const catalog=load("src/lektrusLabCatalog.ts",key=>{
+ if(key==="./lektrusLabAppearance")return appearance;
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const acidBase=load("src/lektrusLabPH.ts");
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
@@ -22,6 +31,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabPhysicalProperties")return thermal;
  if(key==="./lektrusLabPH")return acidBase;
+ if(key==="./lektrusLabCatalog")return catalog;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
@@ -1958,3 +1968,44 @@ assert.match(read("src/LektrusChemistryBench.tsx"),/const ph=labVesselPH\(vessel
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-inline-ph/);
 assert.match(read("src/lektrusChemistryBench.css"),/left:calc\(100% \+ 6px\)/);
 console.log("Measured strong/weak acid-base equilibrium and indicator colours passed");
+
+
+/* Every catalog stock, including previous quick-slot presets, has a measured
+ * amount and a known prepared-solution molarity before it enters glassware. */
+const stockIds=reaction.substances;
+for(const item of stockIds){
+ const stock=catalog.labDefaultStockDose(item.id);
+ assert.ok(stock&&Number.isFinite(stock.value)&&stock.value>0,
+  "No stock recipe for "+item.id);
+ if(catalog.labIsPreparedStock(item.id)){
+  assert.equal(stock.concentrationM,.1,"Missing 0.1M stock for "+item.id);
+  assert.ok(Math.abs(chem.labDoseMoles(item.id,stock)-.001)<1e-9,
+   "Moles of "+item.id+" should be measurable");
+ }else{
+  assert.equal(stock.concentrationM,undefined,
+   "Neat liquid, gas or solid "+item.id+" cannot be assigned fake molarity");
+ }
+}
+let noDose=lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3");
+assert.deepEqual(noDose.vessels[0].doses.AgNO3,
+ {value:10,unit:"ml",concentrationM:.1});
+const quicks=lab.labQuickReagents(lab.defaultLabBench());
+assert.ok(quicks.every(q=>q.dose.value>0));
+assert.ok(quicks.filter(q=>catalog.labIsPreparedStock(q.id)).every(q=>q.dose.concentrationM===.1));
+let mixedConcentrations=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {value:10,unit:"ml",concentrationM:.1});
+mixedConcentrations=lab.putLabReagent(mixedConcentrations,"v1","HCl",
+ {value:10,unit:"ml",concentrationM:.3});
+assert.equal(mixedConcentrations.vessels[0].doses.HCl.value,20);
+assert.ok(Math.abs(mixedConcentrations.vessels[0].doses.HCl.concentrationM-.2)<1e-10);
+assert.ok(Math.abs(chem.labDoseMoles("HCl",mixedConcentrations.vessels[0].doses.HCl)-.004)<1e-10);
+assert.ok(Math.abs(chem.labDoseMoles("H2O",{value:18,unit:"g"})-1)<.02);
+assert.ok(Math.abs(chem.labDoseMoles("CO2",{value:24.465,unit:"ml"})-.001)<1e-9,
+ "Gas volumes use a documented 25C/1atm reference");
+assert.ok(Math.abs(chem.labDoseMoles("C2H5OH",{value:10,unit:"ml"})-
+  10*.785/chem.labMolarMass("C2H5OH"))<1e-10);
+assert.ok(chem.labDoseMoles("HCl",{value:10,unit:"ml"})===undefined,
+ "An arbitrary no-concentration liquid dose must not silently become 0.1 M in the formula calculator");
+assert.match(read("src/LektrusChemistryBench.tsx"),/labIsPreparedStock\(reagent\.id\)/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/labDefaultStockDose\(reagent/);
+console.log("Quantified stocks, reproducible molarity and moles by known physical dose: OK");
