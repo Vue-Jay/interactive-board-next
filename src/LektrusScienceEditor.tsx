@@ -9,6 +9,7 @@ import ScienceCircuitGlyph,{circuitSymbols,type CircuitSymbol} from "./ScienceCi
 import {periodicElements} from "./lektrusPeriodicElements";
 import {layoutScienceLabels} from "./lektrusScienceLabelLayout";
 import LektrusChemistryIllustration from "./LektrusChemistryIllustration";
+import LektrusChemistryBenchEditor from "./LektrusChemistryBenchEditor";
 import LektrusChemicalEquationEditor from "./LektrusChemicalEquationEditor";
 
 import LektrusOrganicCanvas from "./LektrusOrganicCanvas";
@@ -264,9 +265,13 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
 
   if(organic)return <LektrusOrganicEditorPanel item={draft} onChange={setDraft} canTeach={canTeach}
     onSave={()=>onSave(draft)} onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
-  // The chemistry laboratory is a first-class board object. It is created
-  // and edited directly on the board rather than in this legacy dialog.
-  if(experiment&&draft.graphFigureId==="chem-experiment-free")return null;
+  // Fullscreen lab and compact board view edit the SAME shared item. Every
+  // interaction is published immediately, rather than waiting for Save.
+  if(experiment&&draft.graphFigureId==="chem-experiment-free")
+   return <LektrusChemistryBenchEditor item={draft}
+    onChange={next=>{setDraft(next);onExperimentLiveChange?.(draft,next)}}
+    onSave={()=>onSave(draft)}
+    onCancel={()=>{if(onClose)onClose(draft);else onCancel()}}/>;
   if(formula)return <LektrusChemicalEquationEditor canTeach={canTeach===true} item={draft}
     onChange={next=>{setDraft(next);onFormulaLiveChange?.(draft,next)}}
     onSave={()=>onSave(draft)} onCancel={onCancel}/>;
