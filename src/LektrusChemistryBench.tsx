@@ -127,8 +127,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],
   massG>0&&volumeMl===0?"dry":vessel.environment):null;
  const active=Boolean(visualCase);
+ const dryProductColor=active&&volumeMl===0&&appearance.productSolid?
+  appearance.productSolidColor:undefined;
  const color=titrationResult?(vessel.indicator?titrationResult.tint:"#dceff0"):
-  indicator?.color??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3");
+  indicator?.color??dryProductColor??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3");
  const observation=visualCase?.observation??"none";
  const singlePhase=massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
   vessel.reagents.length===1&&!active?reagent?.phase:undefined;
@@ -139,6 +141,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const gearY=vessel.kind==="dish"?70:vessel.kind==="crucible"?59:
   vessel.kind==="funnel"?36:15;
  const substanceState=!vessel.reagents.length?"Пусто":
+  appearance.productSolid?"Продукт: "+appearance.productSolid:
   observation==="precipitate"?"↓ Осадок":
   observation==="gas"?"↑ Выделяется газ":
   observation==="color"?"Изменение цвета":
@@ -241,6 +244,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
    }).join("; "):"Пустая посуда"}>
    <strong>{labels.length?labels.join(" + "):"Пусто"}</strong>
    {labels.length>0&&<small>{totalLabel||substanceState}</small>}
+   {visualCase?.family&&<small className="lektrus-lab-vessel-reaction-type">
+    {reactionFamilyLabels[visualCase.family]}{appearance.productSolid?
+     " · "+appearance.productSolid:""}
+   </small>}
    <span className="lektrus-lab-content-quantity" aria-hidden="true">
     {labels.length?labels.map((formula,i)=>{
      const dose=vessel.doses?.[vessel.reagents[i]];
