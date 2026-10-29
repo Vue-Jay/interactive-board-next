@@ -774,6 +774,47 @@ export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:numbe
  // Never run arrangeLabVessels implicitly: it used to make other glassware jump.
  return bump(bench,[...bench.vessels,next],next.id);
 }
+/** Optional one-click preparation. Adds only missing EMPTY glassware and
+ * compatible apparatus, never clearing or moving existing experiments. */
+const LAB_STARTER_SETS:Record<LabMode,{glassware:LabGlassware[];devices:LabAvailableDevice[]}>={
+ qualitative:{glassware:["beaker","tube","tube","pipette"],devices:[]},
+ quantitative:{glassware:["beaker","cylinder","pipette","conical"],devices:["stirrer"]},
+ titration:{glassware:["burette","conical","pipette"],devices:["tripod"]},
+ solutions:{glassware:["volumetric","beaker","cylinder","pipette"],devices:["stirrer"]},
+ synthesis:{glassware:["flask","crucible","beaker"],devices:["hotplate","tripod"]}
+};
+export function prepareLabModeSetup(bench:LabBench):LabBench{
+ const setup=LAB_STARTER_SETS[labMode(bench)];
+ let result=bench;
+ const required=new Map<LabGlassware,number>();
+ for(const kind of setup.glassware)required.set(kind,(required.get(kind)??0)+1);
+ for(const [kind,count] of required){
+  while(result.vessels.filter(v=>v.kind===kind).length<count&&
+   result.vessels.length<MAX_BENCH_VESSELS){
+   const next=addLabVessel(result,kind);
+   if(next===result)break;
+   result=next;
+  }
+ }
+ for(const kind of setup.devices){
+  if(placedLabDevices(result).some(d=>d.kind===kind))continue;
+  result=addPlacedLabDevice(result,kind);
+ }
+ if(labMode(result)==="titration"){
+  const stand=placedLabDevices(result).find(d=>d.kind==="tripod"&&!d.linkedVesselId);
+  const burette=result.vessels.find(v=>v.kind==="burette");
+  const receiver=result.vessels.find(v=>v.kind==="conical");
+  if(stand&&burette){
+   const mounted=applyPlacedLabDevice(result,stand.id,burette.id);
+   if(mounted!==result){
+    result=mounted;
+    if(receiver&&!placedLabDevices(result).some(d=>d.linkedVesselId===receiver.id))
+     result=placeLabVesselOnStandBase(result,receiver.id,stand.id);
+   }
+  }
+ }
+ return result;
+}
 export function positionLabVessel(bench:LabBench,id:string,x:number,y:number):LabBench{
  const vessel=bench.vessels.find(v=>v.id===id);
  if(!vessel)return bench;
