@@ -1397,15 +1397,48 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const destination=bench.vessels.find(other=>other.id===v.buretteTargetId);
    if(!destination)return null;
    const from=vesselPosition(v),to=vesselPosition(destination);
-   const x=from.x,y=from.y+8.1,tx=to.x;
-   // The burette tip may extend inside a flask mouth: drops still FALL
-   // into the receiver and never travel uphill across the screen.
-   const ty=Math.min(to.y+3,Math.max(to.y-7,y+2));
-   const stream=`M ${x} ${y} C ${x} ${y+3}, ${tx} ${ty-3}, ${tx} ${ty}`;
+   // SVG viewport is stage PIXELS, not stretched 100x100 percentages.
+   // A falling drop remains round at any fullscreen aspect ratio.
+   const width=stageSize.width,height=stageSize.height;
+   const nozzleX=from.x*width/100,nozzleY=(from.y+8.1)*height/100;
+   const receiverX=to.x*width/100,receiverY=(to.y-7)*height/100;
+   if(receiverY<=nozzleY+4)return null;
+   const dx=receiverX-nozzleX,dy=receiverY-nozzleY;
+   // ~0.05 ml per drop: 1 / 4 / 20 drops a second at the available rates.
+   const rate=v.buretteRateMlS??.2,interval=.05/rate;
+   const dropCount=rate>=1?12:rate>=.2?5:1;
+   const cycleSeconds=interval*dropCount;
+   const gradientId="lektrus-titrant-"+v.id;
+   const drops=Array.from({length:dropCount},(_,i)=>{
+    const phaseStyle={
+     "--lab-drop-x-early":dx*.14+"px",
+     "--lab-drop-y-early":dy*.15+"px",
+     "--lab-drop-x-middle":dx*.57+"px",
+     "--lab-drop-y-middle":dy*.57+"px",
+     "--lab-drop-x-final":dx+"px",
+     "--lab-drop-y-final":dy+"px",
+     animationDuration:cycleSeconds+"s",
+     animationDelay:-(i*interval+.04)+"s"
+    } as React.CSSProperties;
+    return <g key={i} className="lektrus-lab-droplet" style={phaseStyle}>
+     <path d="M0 -3.4C-1.4 -1.6 -2.4 .2 -2.1 2C-1.7 4.8 1.7 4.8 2.1 2C2.4 .2 1.4 -1.6 0 -3.4Z"
+      fill={"url(#"+gradientId+")"} stroke="#218cac" strokeWidth=".5"/>
+     <path d="M-1.1 .2Q-1.7 1.1 -1.15 2.1" stroke="#fff" strokeWidth=".65"
+      strokeLinecap="round" fill="none" opacity=".86"/>
+    </g>;
+   });
    return <svg key={v.id+"-drops"} className="lektrus-lab-titration-drops"
-    viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    <path d={stream} className="lektrus-lab-titration-flow-path"/>
-    <path d={stream} className="lektrus-lab-titration-flow-drops"/>
+    viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
+     <stop stopColor="#caeff6"/><stop offset=".32" stopColor="#f5ffff"/>
+     <stop offset=".75" stopColor="#67b8d1"/><stop offset="1" stopColor="#218bab"/>
+    </linearGradient></defs>
+    <g transform={`translate(${nozzleX} ${nozzleY})`}>{drops}</g>
+    {Array.from({length:dropCount},(_,i)=><ellipse key={i}
+     className="lektrus-lab-titration-ripple" cx={receiverX} cy={receiverY}
+     rx="3.5" ry=".95" fill="none" stroke="#80c7d6" strokeWidth=".9"
+     style={{animationDuration:cycleSeconds+"s",
+      animationDelay:-(i*interval+.04)+"s"}}/>)}
    </svg>;
   })}
   {doseEffect&&<svg className="lektrus-lab-dose-animation" viewBox="0 0 100 100"
