@@ -52,9 +52,9 @@ const physical:Record<string,LabThermalRecord>={
   note:"Разложение зависит от парциального давления CO₂; не обычное кипение."},
  NaHCO3:{decompositionC:80,behavior:"decomposes",
   note:"Начало термического разложения зависит от условий."},
- Cu(OH)2:{decompositionC:80,behavior:"decomposes"},
- Fe(OH)3:{decompositionC:100,behavior:"decomposes"},
- Mg(OH)2:{decompositionC:350,behavior:"decomposes"}
+ "Cu(OH)2":{decompositionC:80,behavior:"decomposes"},
+ "Fe(OH)3":{decompositionC:100,behavior:"decomposes"},
+ "Mg(OH)2":{decompositionC:350,behavior:"decomposes"}
 };
 const pureLiquids=new Set(["H2O","C2H5OH","CH3OH","C3H8O","Br2"]);
 /** A measured ml of a stock acid or a salt solution is not the neat compound.
