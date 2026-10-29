@@ -433,7 +433,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const rxn=selected?labObservation(selected):null;
  const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
- const currentQuantities=bench.vessels.find(v=>v.reactionAmounts&&!v.uncertain)?.reactionAmounts;
+ const currentQuantities=bench.vessels.find(v=>v.reactionAmounts&&!v.uncertain&&
+  v.reactionAmounts.equation===shownReaction?.equation)?.reactionAmounts;
  const displayMmoles=(mol:number)=>(mol*1000).toLocaleString("ru-RU",
   {maximumFractionDigits:4})+" ммоль";
  /** Only the participant who starts a pour advances the shared 5% ticks.
