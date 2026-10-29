@@ -248,10 +248,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
    }).join("; "):"Пустая посуда"}>
    <strong>{labels.length?labels.join(" + "):"Пусто"}</strong>
    {labels.length>0&&<small>{totalLabel||substanceState}</small>}
-   {visualCase?.family&&<small className="lektrus-lab-vessel-reaction-type">
-    {reactionFamilyLabels[visualCase.family]}{appearance.productSolid?
-     " · "+appearance.productSolid:""}
-   </small>}
+
    <span className="lektrus-lab-content-quantity" aria-hidden="true">
     {labels.length?labels.map((formula,i)=>{
       const id=species[i]?.[0]??formula;
@@ -898,15 +895,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   <div className="lektrus-lab-scene-header">
    <span className="lektrus-lab-scene-brand">LEKTRUS <span>LAB</span></span>
    <strong>Химическая лаборатория</strong>
-   <button type="button" className={"lektrus-lab-equations-toggle"+(settings.showEquationBoard?" is-active":"")}
-    data-board-interactive="true" disabled={!editable}
-    aria-label={settings.showEquationBoard?"Скрыть уравнения на доске":"Показать уравнения на доске"}
-    aria-pressed={settings.showEquationBoard}
-    title="Показывать уравнения реакций на задней доске"
-    onPointerDown={e=>e.stopPropagation()}
-    onClick={e=>{e.stopPropagation();onChange?.(setLabBenchSettings(bench,{showEquationBoard:!settings.showEquationBoard}))}}>
-    <span aria-hidden="true">▤</span><span>Уравнения</span>
-   </button>
    <label className="lektrus-lab-mode-picker" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
     <span>Режим</span>
@@ -972,6 +960,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         the glassware, never in a floating reaction card. */}
   <div className="lektrus-lab-chalkboard" aria-label="Доска на стене за лабораторным столом"
    aria-live="polite">
+   <button type="button" className={"lektrus-lab-board-write-toggle"+(settings.showEquationBoard?" is-active":"")}
+    data-board-interactive="true" disabled={!editable}
+    aria-label={settings.showEquationBoard?"Скрыть уравнения на доске":"Показать уравнения на доске"}
+    aria-pressed={settings.showEquationBoard}
+    title="Показывать уравнения реакций на задней доске"
+    onPointerDown={e=>e.stopPropagation()}
+    onClick={e=>{e.stopPropagation();onChange?.(setLabBenchSettings(bench,{showEquationBoard:!settings.showEquationBoard}))}}>
+    <span aria-hidden="true">{settings.showEquationBoard?"✎":"✕"}</span><span>{settings.showEquationBoard?"Пишем":"Не пишем"}</span>
+   </button>
+
    {settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing">
     <small>{shownReaction?"УРАВНЕНИЕ РЕАКЦИИ":labModeInfo(bench).name.toLocaleUpperCase("ru-RU")}</small>
     {shownReaction?<><strong key={shownReaction.equation}>{shownReaction.equation}</strong>
