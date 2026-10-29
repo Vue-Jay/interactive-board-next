@@ -125,7 +125,12 @@ export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
  const normalized=target.active?stopPlacedLabDevice(bench,id):bench;
  const placedDevices=placedLabDevices(normalized).filter(d=>d.id!==id);
  const devices=[...new Set(placedDevices.map(d=>d.kind))];
- return {...normalized,placedDevices,devices,event:normalized.event+1,
+ const vessels=normalized.vessels.map(v=>{
+  if(v.restingOnStandId!==id)return v;
+  const foot=labStandBaseVesselPoint(target,v,1600,1000);
+  return {...v,...labLogicalPoint(foot),restingOnStandId:undefined};
+ });
+ return {...normalized,vessels,placedDevices,devices,event:normalized.event+1,
   stirringVesselId:normalized.stirringVesselId,
   instrumentTarget:normalized.instrumentTarget};
 }
