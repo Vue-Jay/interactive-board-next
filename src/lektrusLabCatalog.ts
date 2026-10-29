@@ -31,7 +31,7 @@ const insolubleStock=new Set([
 export function labReagentForms(v:Substance):("ml"|"g")[]{
  const state=cabinetPhase(v);
  if(state==="gas")return ["ml"];
- if(v.kind==="кислота"||v.kind==="вода"||v.id==="H2O"||
+ if(v.kind==="кислота"||v.kind==="вода"||v.id==="H2O"||v.id==="NH4OH"||
   ["C2H5OH","CH3OH","CH3COOH","H2O2","Br2"].includes(v.id))return ["ml"];
  if(v.kind==="металл"||v.kind==="неметалл"||v.kind==="оксид"||
   insolubleStock.has(v.id))return ["g"];
