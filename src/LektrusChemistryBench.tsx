@@ -1080,8 +1080,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     {["pipette","cylinder"].includes(selected.kind)&&
      <div className="lektrus-lab-measured-tools">
       <label>{selected.kind==="pipette"?"Набрать / выдать":"Отмерить"} · мл
-       <input type="number" min=".1" step=".1"
-        value={selected.kind==="pipette"?measuredMl:measuredMl}
+       <input type="number" min=".01" step=".01"
+        value={measuredMl}
         max={labMeasuredCapacityMl(selected.kind)} aria-label="Отмеренный объём, мл"
         onChange={e=>setMeasuredMl(e.target.value)}
         onBlur={()=>{if(selected.kind==="pipette")onChange?.(
