@@ -3,7 +3,7 @@ import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import LektrusChemistryBenchSurface from "./LektrusChemistryBench";
 import {
- activateLabVessel,emptyLabVessel,labGlassware,labIndicatorResult,labIndicators,
+ emptyLabVessel,labGlassware,labIndicatorResult,labIndicators,
  labObservation,pourLabVessel,putLabReagent,readLabBench,selectLabVessel,
  selectedLabVessel,setLabEnvironment,setLabIndicator,type LabBench,
  type LabIndicator
@@ -15,8 +15,7 @@ import {subjectEditorStyle} from "./lektrusSubjectAccent";
 
 type Props={item:Item;onChange:(next:Item)=>void;onSave:()=>void;onCancel:()=>void};
 const media:{id:ReactionEnvironment;name:string}[]=[
- {id:"aqueous",name:"Водный раствор"},{id:"dry",name:"Сухая среда"},
- {id:"heated",name:"Нагревание"},{id:"ignited",name:"Горение"}
+ {id:"aqueous",name:"Водный раствор"},{id:"dry",name:"Сухая среда"}
 ];
 const getName=(id:string)=>labGlassware.find(v=>v.id===id)?.name??"Посуда";
 export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCancel}:Props){
@@ -76,7 +75,7 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
         {id} {selected.doses?.[id]&&<small>{selected.doses[id].value} {selected.doses[id].unit==="ml"?"мл":"г"}</small>}
        </span>):<small>Чистая посуда</small>}
       </div>
-      <label className="lektrus-lab-condition">Условия опыта
+      <label className="lektrus-lab-condition">Среда в сосуде
        <select value={selected.environment} onChange={e=>
         patch(setLabEnvironment(bench,selected.id,e.target.value as ReactionEnvironment))}>
         {media.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
@@ -100,8 +99,6 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
         onClick={()=>setPouringId(pouringId===selected.id?null:selected.id)}>
         {pouringId===selected.id?"Отменить переливание":"⇢ Перелить в другой"}</button>
        <button type="button" disabled={!selected.reagents.length}
-        onClick={()=>patch(activateLabVessel(bench,selected.id))}>Применить условия</button>
-       <button type="button" disabled={!selected.reagents.length}
         onClick={()=>patch(emptyLabVessel(bench,selected.id))}>Слить в раковину</button>
       </div>
       <div className={"lektrus-lab-observation is-"+(status?.status??"unknown")} aria-live="polite">
@@ -116,14 +113,14 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
        </>}
       </div>
      </>:<p className="lektrus-lab-empty-message">Возьмите посуду из шкафа на стене.</p>}
-     <small className="lektrus-lab-educational-note">Настройки оформления находятся на самом столе, под значком ⚙. 
-      Проверяются только известные реакции; количества учитываются, но не рассчитываются по стехиометрии.</small>
+     <small className="lektrus-lab-educational-note">Температура меняется при работе плитки или горелки.
+      Приборы под штативом взаимодействуют с опущенным зажимом. Проверяются только известные реакции;
+      объём и масса сохраняются, но неизвестный химический выход не рассчитывается.</small>
     </aside>
    </div>
    <footer className="lektrus-lab-editor-footer">
-    <span>Состояние сосудов и результаты сохраняются на общей доске.</span>
-    <button type="button" onClick={onCancel}>Закрыть</button>
-    <button type="button" className="primary" onClick={onSave}>Сохранить стол на доске</button>
+    <span>Все изменения сразу видны участникам доски. Закрытие окна не отменяет опыт.</span>
+    <button type="button" className="primary" onClick={onSave}>Готово</button>
    </footer>
   </section>
  </div>,document.body);
