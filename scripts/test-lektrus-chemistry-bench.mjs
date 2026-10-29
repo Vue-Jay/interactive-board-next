@@ -1304,7 +1304,7 @@ for(const row of reaction.reviewedReactionCases.filter(v=>v.status==="reaction")
  assert.ok(row.reactants.every(id=>indexedReagents.has(id)),
   "Cannot initiate a reaction from a missing reagent: "+row.equation);
  const products=reaction.reactionProducts(row.equation).map(x=>
-  x.replace(/^\\d+\\s*/,"").replace(/[↑↓]/g,"").trim());
+  x.replace(/^\d+\s*/,"").replace(/[↑↓]/g,"").trim());
  assert.ok(products.every(id=>indexedReagents.has(id)),
   "All products must have substance records for display: "+row.equation);
  assert.ok(row.visual&&allowedEffects.has(row.visual),
@@ -1318,7 +1318,7 @@ for(const row of reaction.reviewedReactionCases.filter(v=>v.status==="reaction")
  if(row.observation==="gas")
   assert.ok(row.equation.includes("↑"),"Gas animation must correspond to gas product");
 }
-assert.match(read("src/LektrusChemistryBench.tsx"),/pourLabIntoFilter\\(bench,effectivePouringId,g\\.id\\)/,
+assert.match(read("src/LektrusChemistryBench.tsx"),/pourLabIntoFilter\(bench,effectivePouringId,g\.id\)/,
  "A user can click the physical membrane filter after selecting pour");
 assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),/substanceState/,
  "Above-glassware labels must not show the reaction family or process status");
