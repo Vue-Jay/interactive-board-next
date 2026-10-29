@@ -783,6 +783,9 @@ export function parseDocument(raw: string): DocumentData {
         };
         // Keep readback compatible with the heater: 1350°C flame / 1250°C vessel.
         // Old 700/450°C caps could reject a valid saved classroom experiment.
+        const validEquationHistory=(entries:unknown,limit:number,maxLength:number)=>
+          entries==null||(Array.isArray(entries)&&entries.length<=limit&&
+            entries.every(v=>typeof v==="string"&&v.length>0&&v.length<=maxLength));
         const settings=bench?.settings;
         const validSettings=!settings||(
           typeof settings.showEquationBoard==="boolean"&&
@@ -849,8 +852,10 @@ export function parseDocument(raw: string): DocumentData {
         };
         if(!bench||!Array.isArray(bench.vessels)||bench.vessels.length>6||
           typeof bench.selectedId!=="string"||
-          (bench.mode!=null&&!["qualitative","quantitative","titration","solutions","synthesis"].includes(bench.mode))||
+          (bench.mode!=null&&!["reactions","qualitative","quantitative","titration","solutions","synthesis"].includes(bench.mode))||
           !Number.isSafeInteger(bench.event)||bench.event<0||!validSettings||
+          !validEquationHistory(bench.reactionLog,30,500)||
+          !validEquationHistory(bench.seenReactionKeys,150,650)||
           (bench.devices!=null&&(!Array.isArray(bench.devices)||
             bench.devices.length>6||new Set(bench.devices).size!==bench.devices.length||
             !bench.devices.every(id=>["hotplate","burner","stirrer","tripod","filter","thermometer"].includes(id))))||
