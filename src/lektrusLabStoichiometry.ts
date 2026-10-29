@@ -15,78 +15,50 @@ const ATOMIC_MASS:Record<string,number>={
 export type LabEquationTerm={formula:string;coefficient:number};
 export type LabBalancedEquation={reactants:LabEquationTerm[];products:LabEquationTerm[]};
 export type LabReactionAmounts={
- equation:string;elapsedSeconds:number;durationSeconds:number;
+ equation:string;elapsedSeconds:number;durationSeconds:number;startedAtMs?:number;
  extentMol:number;maxExtentMol:number;
  initialMol:Record<string,number>;remainingMol:Record<string,number>;
  productsMol:Record<string,number>;complete:boolean;
 };
 
+/** Parse nested formula groups and hydrate coefficients without guessing. */
 function atomsOf(formula:string):Record<string,number>|null{
  const elements:Record<string,number>={};
- let cursor=0;
- const readGroup=(closing?:string):Record<string,number>|null=>{
-  const atoms:Record<string,number>={};
-  while(cursor<formula.length){
-   const chr=formula[cursor];
-   if(closing&&chr===closing){cursor++;return atoms}
-   if(chr==="("||chr==="["){
-    cursor++;const nested=readGroup(chr==="("?")":"]");
-    if(!nested)return null;
-    const m=/^\d+/.exec(formula.slice(cursor));const factor=m?Number(m[0]):1;
-    if(m)cursor+=m[0].length;
-    for(const [id,n] of Object.entries(nested))atoms[id]=(atoms[id]??0)+n*factor;
-   }else{
-    const match=/^[A-Z][a-z]?/.exec(formula.slice(cursor));
-    if(!match||ATOMIC_MASS[match[0]]===undefined)return null;
-    cursor+=match[0].length;
-    const amount=/^\d+/.exec(formula.slice(cursor));
-    if(amount)cursor+=amount[0].length;
-    atoms[match[0]]=(atoms[match[0]]??0)+(amount?Number(amount[0]):1);
-   }
-  }
-  return closing?null:atoms;
- };
- // Hydrates can contain a multiple of water: CuSO4·5H2O.
- for(const part of formula.split(/[·]/)){
-  const leading=/^(\d+)(.+)$/.exec(part);
-  const factor=leading?Number(leading[1]):1;
-  const cleaned=leading?leading[2]:part;
-  cursor=0;
-  // Parse each hydrate section separately (the recursive closure reads formula).
-  const priorFormula=formula;
-  const readAtoms=(text:string):Record<string,number>|null=>{
-   let index=0;
-   const parse=(end?:string):Record<string,number>|null=>{
-    const result:Record<string,number>={};
-    while(index<text.length){
-     const char=text[index];
-     if(end&&char===end){index++;return result}
-     if(char==="("||char==="["){
-      index++;const inner=parse(char==="("?")":"]");
-      if(!inner)return null;
-      const n=/^\d+/.exec(text.slice(index));const count=n?Number(n[0]):1;
-      if(n)index+=n[0].length;
-      for(const [name,v] of Object.entries(inner))result[name]=(result[name]??0)+v*count;
-     }else{
-      const e=/^[A-Z][a-z]?/.exec(text.slice(index));
-      if(!e||ATOMIC_MASS[e[0]]===undefined)return null;
-      index+=e[0].length;
-      const n=/^\d+/.exec(text.slice(index));const count=n?Number(n[0]):1;
-      if(n)index+=n[0].length;
-      result[e[0]]=(result[e[0]]??0)+count;
-     }
+ for(const part of formula.split("·")){
+  const prefix=/^(\d+)(.*)$/.exec(part);
+  const factor=prefix?Number(prefix[1]):1;
+  const text=prefix?prefix[2]:part;
+  let pos=0;
+  const read=(closing?:string):Record<string,number>|null=>{
+   const result:Record<string,number>={};
+   while(pos<text.length){
+    if(closing&&text[pos]===closing){pos++;return result}
+    if(text[pos]==="("||text[pos]==="["){
+     const pair=text[pos++]==="("?")":"]";
+     const nested=read(pair);
+     if(!nested)return null;
+     const n=/^\d+/.exec(text.slice(pos));
+     const count=n?Number(n[0]):1;
+     if(n)pos+=n[0].length;
+     for(const [name,value] of Object.entries(nested))
+      result[name]=(result[name]??0)+value*count;
+    }else{
+     const symbol=/^[A-Z][a-z]?/.exec(text.slice(pos));
+     if(!symbol||ATOMIC_MASS[symbol[0]]===undefined)return null;
+     pos+=symbol[0].length;
+     const n=/^\d+/.exec(text.slice(pos));
+     const count=n?Number(n[0]):1;
+     if(n)pos+=n[0].length;
+     result[symbol[0]]=(result[symbol[0]]??0)+count;
     }
-    return end?null:result;
-   };
-   const found=parse();
-   return index===text.length?found:null;
+   }
+   return closing?null:result;
   };
-  const parsed=readAtoms(cleaned);
-  if(!parsed||!Object.keys(parsed).length)return null;
-  for(const [name,n] of Object.entries(parsed))elements[name]=(elements[name]??0)+n*factor;
-  void priorFormula;
+  const parsed=read();
+  if(!parsed||pos!==text.length||!Object.keys(parsed).length)return null;
+  for(const [name,n] of Object.entries(parsed))
+   elements[name]=(elements[name]??0)+n*factor;
  }
- void readGroup;
  return Object.keys(elements).length?elements:null;
 }
 export function labMolarMass(formula:string):number|undefined{
@@ -135,7 +107,8 @@ export function labDoseMoles(formula:string,dose:LabDose):number|undefined{
  return mass&&mass>0?dose.value/mass:undefined;
 }
 export function startQuantifiedLabReaction(
- reaction:ReactionCase,reactants:string[],doses:Record<string,LabDose>|undefined
+ reaction:ReactionCase,reactants:string[],doses:Record<string,LabDose>|undefined,
+ startedAtMs?:number
 ):LabReactionAmounts|null{
  if(!doses||reaction.status!=="reaction")return null;
  const equation=parseBalancedLabEquation(reaction.equation);
@@ -152,7 +125,7 @@ export function startQuantifiedLabReaction(
  }
  const maxExtentMol=Math.min(...equation.reactants.map(t=>initialMol[t.formula]/t.coefficient));
  if(!Number.isFinite(maxExtentMol)||maxExtentMol<=0)return null;
- return {equation:reaction.equation,elapsedSeconds:0,durationSeconds:4,
+ return {equation:reaction.equation,elapsedSeconds:0,durationSeconds:4,startedAtMs,
   extentMol:0,maxExtentMol,initialMol,remainingMol:{...initialMol},
   productsMol:Object.fromEntries(equation.products.map(t=>[t.formula,0])),complete:false};
 }
