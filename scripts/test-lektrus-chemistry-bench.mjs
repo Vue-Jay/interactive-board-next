@@ -900,8 +900,8 @@ assert.match(gradualUi,/stopLabPour\(bench,p\.id\)/);
 // Laboratory v10: hover triggers are timed and apparatus controls live on their bodies.
 const hoverSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(hoverSurface,/contactTimer\.current=setTimeout/);
-assert.match(hoverSurface,/const sampling=!!pipette&&pipette\.reagents\.length===0/,"Empty pipette draws on a sustained contact");
-assert.match(hoverSurface,/setTimeout\(perform,sampling\?1000:120\)/,"Measured pipette aspiration needs 1s contact; pours 120ms");
+assert.match(hoverSurface,/const drawing=pipette\.reagents\.length===0/,"Empty pipette draws after the contact delay");
+assert.match(hoverSurface,/setTimeout\(perform,2000\)/,"Pouring and pipettes both require two seconds uninterrupted contact");
 assert.match(hoverSurface,/endContact\(\)/,"Release cancels the active pour");
 assert.match(hoverSurface,/beginContact\(g\.id,pouring\)/);
 assert.match(hoverSurface,/const drawing=pipette\.reagents\.length===0/);
@@ -1182,7 +1182,7 @@ for(const width of [400,690,700,900,1200,1600,2600]){
 
 // Real-time pipette dwell: a contact must survive a full second.
 const polishedLabSource=read("src/LektrusChemistryBench.tsx");
-assert.match(polishedLabSource,/contactTimer\.current=setTimeout\(perform,sampling\?1000:120\)/);
+assert.match(polishedLabSource,/contactTimer\.current=setTimeout\(perform,2000\)/);
 assert.match(polishedLabSource,/if\(contactRef\.current\)endContact\(\)/);
 assert.match(polishedLabSource,/endContact\(\);\s*event\.preventDefault\(\)/);
 assert.doesNotMatch(polishedLabSource,/className="lektrus-lab-svg-ware-control"/);
