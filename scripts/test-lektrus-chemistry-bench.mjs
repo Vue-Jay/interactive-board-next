@@ -1191,6 +1191,12 @@ assert.match(polishedLabSource,/aria-pressed=\{\(selectedBurette\.buretteRateMlS
 assert.doesNotMatch(polishedLabSource,/<label>Скорость\s*<select/);
 assert.match(polishedLabSource,/className=\{"lektrus-lab-equations-toggle"/);
 assert.match(polishedLabSource,/labObservation\(selected\)\.caseData\?\.observation==="precipitate"/);
+assert.match(polishedLabSource,/d\.kind==="filter"/,
+ "The real filter must be recognized as an interactive tabletop appliance");
+assert.match(polishedLabSource,/setVesselMenuId\(sample\.id\)/,
+ "Clicking the filter opens filtration for a vessel with precipitate");
+assert.ok(lab.devicesForLabMode(lab.defaultLabBench()).some(v=>v.id==="filter"));
+
 assert.match(read("src/LektrusChemistryIllustration.tsx"),/className="lektrus-lab-open-editor"/);
 assert.doesNotMatch(read("src/LektrusChemistryIllustration.tsx"),/>⤢ Открыть лабораторию<\/button>/);
 const uiCss=read("src/lektrusChemistryBench.css");
