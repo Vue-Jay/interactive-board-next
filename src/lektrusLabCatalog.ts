@@ -16,7 +16,7 @@ export const classNames:Record<string,string>={
 export function cabinetPhase(v:Substance):StoragePhase{
  if(v.kind==="газ"||["CO2","NH3","Cl2","NO2"].includes(v.id))return "gas";
  if(v.kind==="кислота"||v.id==="H2O"||v.id==="NH4OH"||
-  ["C2H5OH","CH3OH","CH3COOH","H2O2","Br2"].includes(v.id))return "liquid";
+  ["C2H5OH","CH3OH","C3H8O","CH3COOH","H2O2","Br2"].includes(v.id))return "liquid";
  return "solid";
 }
 /** Presentation in the reagent cabinet is determined by the supplied form,
@@ -32,7 +32,7 @@ export function labReagentForms(v:Substance):("ml"|"g")[]{
  const state=cabinetPhase(v);
  if(state==="gas")return ["ml"];
  if(v.kind==="кислота"||v.kind==="вода"||v.id==="H2O"||v.id==="NH4OH"||
-  ["C2H5OH","CH3OH","CH3COOH","H2O2","Br2"].includes(v.id))return ["ml"];
+  ["C2H5OH","CH3OH","C3H8O","CH3COOH","H2O2","Br2"].includes(v.id))return ["ml"];
  if(v.kind==="металл"||v.kind==="неметалл"||v.kind==="оксид"||
   insolubleStock.has(v.id))return ["g"];
  if(v.kind==="соль"||v.kind==="основание")return ["g","ml"];
