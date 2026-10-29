@@ -451,10 +451,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   if(!editable)return;
   const timer=setInterval(()=>{
    const current=benchRef.current;
-   const active=placedLabDevices(current).some(d=>d.powered||
+   const openBurette=current.vessels.some(v=>v.buretteOpen);
+   const active=openBurette||placedLabDevices(current).some(d=>d.powered||
     (d.temperatureC??22)>22.1)||
-    current.vessels.some(v=>v.buretteOpen||(v.temperatureC??22)>22.1);
+    current.vessels.some(v=>(v.temperatureC??22)>22.1);
    if(!active)return;
+   // Fine-grained updates only while titrating. Heating needs fewer board writes.
+   if(!openBurette&&Date.now()-(current.simulationAtMs??0)<1900)return;
    const next=advanceLabSimulation(current,Date.now());
    if(next!==current)changeRef.current?.(next);
   },500);
@@ -1309,7 +1312,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const destination=bench.vessels.find(other=>other.id===v.buretteTargetId);
    if(!destination)return null;
    const from=vesselPosition(v),to=vesselPosition(destination);
-   const x=from.x,y=from.y+8.1,tx=to.x,ty=to.y-9.2;
+   const x=from.x,y=from.y+8.1,tx=to.x;
+   // The burette tip may extend inside a flask mouth: drops still FALL
+   // into the receiver and never travel uphill across the screen.
+   const ty=Math.min(to.y+3,Math.max(to.y-7,y+2));
    const stream=`M ${x} ${y} C ${x} ${y+3}, ${tx} ${ty-3}, ${tx} ${ty}`;
    return <svg key={v.id+"-drops"} className="lektrus-lab-titration-drops"
     viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -1331,7 +1337,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const target=bench.vessels.find(v=>v.id===p.targetId);
    if(!source||!target)return null;
    const a=preview?.id===source.id?preview:vesselPosition(source),b=vesselPosition(target),percent=labPourPercent(p);
-    const dx=b.x-a.x,tipX=a.x+(dx>=0?2.5:-2.5),tipY=a.y-8.5,receiveY=b.y-8.8;
+    const dx=b.x-a.x,tipX=a.x+(dx>=0?2.5:-2.5);
+    const tipY=Math.min(a.y-12,b.y-11),receiveY=b.y-7.6;
     const flowPath=`M ${tipX} ${tipY} C ${tipX+dx*.36} ${tipY+6}, ${b.x-dx*.22} ${receiveY-6}, ${b.x} ${receiveY}`;
    const amounts=labPourAmounts(p);
    const fmt=(field:"transferred"|"remaining")=>{
