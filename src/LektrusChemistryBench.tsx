@@ -281,9 +281,8 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
     title={"Учебная оценка теплового эффекта, не показание реального термометра"}>
     {vessel.reactionHeat.direction==="exothermic"?"↑ Нагрев":"↓ Охлаждение"}
    </span>}
-  {(details||volumeMl>0||contents.solid.length>0)&&
-   <div className={"lektrus-lab-quantity-meter"+(details?" has-composition":"")+
-     (details&&readoutLeft?" is-reversed":"")}
+  {(volumeMl>0||contents.solid.length>0)&&
+   <div className={"lektrus-lab-quantity-meter"+(readoutLeft?" is-reversed":"")}
     aria-label="Количество раствора и твёрдых веществ">
     {(details||volumeMl>0)&&<div className="lektrus-lab-quantity-measure is-liquid"
       title={readable(volumeMl)+" мл / "+capacityMl+" мл (условная вместимость)"}>
@@ -291,10 +290,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
        <i style={{height:(liquidFraction*100)+"%"}}/>
       </span>
       <strong>{readable(volumeMl)}<small>мл</small></strong>
-      {details&&<span className="lektrus-lab-quantity-info is-solution">
-       <b>Раствор · {readable(contents.solutionMl)} мл</b>
-       <span>{solutionNames.join(", ")||"Растворённых веществ нет"}</span>
-      </span>}
+      
      </div>}
     {(details||contents.solid.length>0)&&<div className="lektrus-lab-quantity-measure is-solid"
       title="Масса осадка или твёрдого вещества: данные из состава сосуда">
@@ -307,18 +303,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
         contents.solid.every(item=>item.massG!==undefined)?
          readable(contents.solid.reduce((sum,item)=>sum+(item.massG??0),0)):"?":
         readable(contents.precipitateG)):"0"}<small>г</small></strong>
-      {details&&<span className="lektrus-lab-quantity-info is-residue">
-       <b>{observation==="precipitate"||vessel.filteredResidue?"Осадок":"Твёрдое"} · {contents.solid.length?
-        contents.precipitateG===undefined?
-         contents.solid.every(item=>item.massG!==undefined)?
-          readable(contents.solid.reduce((sum,item)=>sum+(item.massG??0),0))+" г":"масса неизвестна":
-         readable(contents.precipitateG)+" г":"0 г"}</b>
-       <span>{solidNames.join(", ")||"Нет осадка"}</span>
-       {contents.remainderUnknown&&<small>Остаток реагентов не определён</small>}
-      </span>}
+
      </div>}
    </div>}
-  {showLabels&&!details&&<span className="lektrus-lab-content-tag"
+  {showLabels&&<span className="lektrus-lab-content-tag"
    title={labels.length?labels.map((formula,i)=>{
     const dose=amounts?undefined:vessel.doses?.[vessel.reagents[i]];
     const mol=amounts?species[i]?.[1]:undefined;
@@ -326,8 +314,14 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
       dose?" · "+formatLabDose(dose)+
      (dose.concentrationM!==undefined?" · "+dose.concentrationM.toLocaleString("ru-RU")+" моль/л":""):"");
    }).join("; "):"Пустая посуда"}>
-   <strong>{contents.solid.length?"Осадок: "+contents.solid.map(v=>v.formula).join(", "):
-     contents.solution.length?contents.solution.map(v=>v.formula).join(" + "):"Пусто"}</strong>
+   <strong>{contents.solution.length?
+      contents.solution.map(v=>v.formula).join(" + "):contents.solid.length?
+       contents.solid.map(v=>v.formula).join(" + "):"Пусто"}</strong>
+   {details&&<small className="lektrus-lab-selection-composition">
+    {volumeMl>0?"Раствор: "+readable(contents.solutionMl)+" мл":""}
+    {solidNames.length?" · Осадок: "+solidNames.join(", "):""}
+    {contents.remainderUnknown?" · остаток неизвестен":""}
+   </small>}
    {labels.length>0&&(!!totalLabel||!!vessel.filteredResidue)&&<small>{totalLabel||"Осадок"}</small>}
 
    <span className="lektrus-lab-content-quantity" aria-hidden="true">
@@ -1154,7 +1148,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <div className="lektrus-lab-indicator-shelf" role="group"
     aria-label="Добавить индикатор в выбранный сосуд">
     {labIndicators.map((indicator,i)=><button key={indicator.id} type="button"
-     title={indicator.name+" · "+indicator.note} disabled={!editable||!selected?.reagents.length}
+     title={indicator.name+" · "+(indicator.id==="universal"?
+      "Индикаторная бумага": "Добавить три капли раствора")+" · "+indicator.note} disabled={!editable||!selected?.reagents.length}
      aria-pressed={selected?.indicator===indicator.id}
      className={selected?.indicator===indicator.id?"is-active":""}
      onClick={e=>{e.stopPropagation();
@@ -1165,7 +1160,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          "Добавлены капли раствора индикатора: "+indicator.name)}}}}>
      <i className={indicator.id==="universal"?"is-paper-strip":"is-liquid-drop"}
       style={{"--indicator-tint":["#847bb1","#eac7e1","#e99d4c","#64b992"][i]} as React.CSSProperties}/>
-     <span>{indicator.name}</span>
+     <span>{indicator.name}{selected?.indicator===indicator.id&&
+      indicator.id!=="universal"&&selected.indicatorDrops?
+       " · "+selected.indicatorDrops+" кап.":""}</span>
     </button>)}
    </div>
   </div>
