@@ -473,6 +473,8 @@ export type LabVessel={pourFraction?:number;
  temperatureC?:number;
  /** Shared event timestamp: peer clients render brief physical effects once. */
  visualStartedAtMs?:number;
+ /** Target volume when collecting a sample with a graduated pipette. */
+ pipetteTargetMl?:number;
  buretteOpen?:boolean;buretteTargetId?:string;buretteRateMlS?:number;
  doses?:Record<string,LabDose>;
  /** A verified reaction already completed in this material; survives full transfer. */
@@ -708,33 +710,72 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
 export const labMeasuredCapacityMl=(kind:LabGlassware):number|undefined=>
  kind==="pipette"?25:kind==="burette"?50:kind==="cylinder"?100:
  kind==="volumetric"?100:undefined;
+/** Measure a declared volume of a homogeneous liquid without creating
+ * substance from nothing. Mixed SOLUTIONS are transferred proportionally,
+ * while dry powders and unmeasured compositions cannot be pipetted. */
 export function transferLabMeasuredLiquid(
  bench:LabBench,sourceId:string,targetId:string,volumeMl:number
 ):LabBench{
- if(sourceId===targetId||!Number.isFinite(volumeMl)||volumeMl<=0)return bench;
+ if(sourceId===targetId||!Number.isFinite(volumeMl)||volumeMl<.01||
+  Math.round(volumeMl*100)!==Math.round(volumeMl*1000000)/10000)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||!target||source.reagents.length!==1)return bench;
- const reagent=source.reagents[0],dose=source.doses?.[reagent];
- if(!dose||dose.unit!=="ml"||dose.value<volumeMl)return bench;
+ if(!source||!target||!source.reagents.length)return bench;
+ const entries=source.reagents.map(id=>({id,dose:source.doses?.[id]}));
+ if(entries.some(e=>!e.dose||e.dose.unit!=="ml"))return bench;
+ const total=entries.reduce((sum,e)=>sum+e.dose!.value,0);
+ const exact=Math.round(volumeMl*100)/100;
+ if(total+1e-7<exact)return bench;
  const capacity=labMeasuredCapacityMl(target.kind);
  const current=Object.values(target.doses??{}).reduce((sum,d)=>sum+
   (d.unit==="ml"?d.value:0),0);
- if(capacity!==undefined&&current+volumeMl>capacity)return bench;
- const aliquot={...dose,value:Math.round(volumeMl*100)/100};
- if(aliquot.value===0)return bench;
- const next=putLabReagent(bench,targetId,reagent,aliquot);
+ if(capacity!==undefined&&current+exact>capacity+1e-7)return bench;
+ const apportioned=entries.map(({id,dose},i)=>({
+  id,dose:{...dose!,value: i===entries.length-1?0:
+   Math.round(exact*dose!.value/total*100)/100}
+ }));
+ const assigned=apportioned.reduce((sum,e)=>sum+e.dose.value,0);
+ apportioned[apportioned.length-1].dose.value=Math.round((exact-assigned)*100)/100;
+ let next=bench;
+ for(const entry of apportioned){
+  if(entry.dose.value<=0)continue;
+  const previous=next;
+  next=putLabReagent(next,targetId,entry.id,entry.dose);
+  if(next===previous)return bench;
+ }
  if(next===bench)return bench;
- const remaining=Math.round((dose.value-aliquot.value)*100)/100;
- const vessels=next.vessels.map(v=>v.id===sourceId?{
-  ...v,
-  reagents:remaining>0?v.reagents:[],
-  doses:remaining>0?{...v.doses,[reagent]:{...dose,value:remaining}}:undefined,
-  observed:remaining>0?v.observed:false,
-  completedReaction:remaining>0?v.completedReaction:undefined,
-  indicator:remaining>0?v.indicator:undefined
- }:v);
- return {...next,vessels,event:next.event+1};
+ const old=source.completedReaction??labObservation(source).caseData;
+ const now=Date.now();
+ return {...next,vessels:next.vessels.map(v=>{
+  if(v.id===sourceId){
+   const doses={...source.doses};
+   for(const {id,dose} of apportioned){
+    const remaining=Math.round(((doses[id]?.value??0)-dose.value)*100)/100;
+    if(remaining<=0)delete doses[id];
+    else doses[id]={...doses[id],value:remaining};
+   }
+   const reagents=source.reagents.filter(id=>doses[id]);
+   return {...v,reagents,doses:Object.keys(doses).length?doses:undefined,
+    observed:reagents.length>0?v.observed:false,
+    completedReaction:reagents.length>0?v.completedReaction:undefined,
+    indicator:reagents.length>0?v.indicator:undefined};
+  }
+  if(v.id===targetId){
+   const wasEmpty=target.reagents.length===0;
+   return {...v,completedReaction:wasEmpty?old:v.completedReaction,
+    uncertain:v.uncertain||Boolean(!wasEmpty&&old),
+    visualStartedAtMs:!wasEmpty&&!old&&
+     identifyReaction(v.reagents,v.environment).status==="reaction"?now:v.visualStartedAtMs};
+  }
+  return v;
+ }),event:next.event+1};
+}
+/** Adjust the exact sampling volume (ml) of this graduated pipette. */
+export function setLabPipetteTarget(bench:LabBench,id:string,ml:number):LabBench{
+ if(!Number.isFinite(ml)||ml<.1||ml>25||Math.abs(ml*10-Math.round(ml*10))>1e-6)
+  return bench;
+ return revise(bench,id,v=>v.kind==="pipette"&&v.pipetteTargetMl!==ml?
+  {...v,pipetteTargetMl:ml}:v);
 }
 export function fillLabVolumetricFlask(bench:LabBench,id:string):LabBench{
  const vessel=bench.vessels.find(v=>v.id===id&&v.kind==="volumetric");
