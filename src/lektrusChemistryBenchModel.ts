@@ -347,7 +347,10 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   if(d.kind!=="hotplate"&&d.kind!=="burner")return d;
   const old=d.temperatureC??ambient;
   const level=d.heatLevel??2;
-  const target=d.powered?(d.kind==="hotplate"?(d.targetTemperatureC??150):220+level*100):ambient;
+  // The open flame is hotter than the effective vessel temperature.
+  // A crucible can take substantially more heat than ordinary glassware.
+  const target=d.powered?(d.kind==="hotplate"?(d.targetTemperatureC??150):
+   level===1?450:level===2?850:1350):ambient;
   const rate=d.powered?0.075:0.11;
   const next=Math.round((old+(target-old)*(1-Math.exp(-seconds*rate)))*10)/10;
   if(next!==old)changed=true;
@@ -368,7 +371,9 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // Without verified composition a stock solution has NO published boiling point
   // assigned here. 100°C is only a conservative simulator ceiling, not a claim.
   const unverifiedLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml")&&!pure;
-  let next=Math.round(Math.max(ambient,Math.min(unverifiedLiquid?100:600,raw))*10)/10;
+  const maxVesselC=device?.kind==="burner"&&v.kind==="crucible"?1250:
+   device?.kind==="burner"?450:350;
+  let next=Math.round(Math.max(ambient,Math.min(unverifiedLiquid?100:maxVesselC,raw))*10)/10;
   let meltFraction=v.meltFraction??0;
   let phaseTransition=v.phaseTransition;
   const point=pure?.unit==="g"&&!v.uncertain&&!v.completedReaction?
