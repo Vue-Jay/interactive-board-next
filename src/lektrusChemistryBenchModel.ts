@@ -5,7 +5,7 @@ import {addTitrant,defaultTitration,resetTitration,validTitration,type Titration
 import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
 
 export type LabGlassware="beaker"|"tube"|"flask"|"cylinder"|"dish"|
- "conical"|"volumetric"|"crucible"|"pipette"|"burette"|"funnel";
+ "conical"|"volumetric"|"crucible"|"pipette"|"burette";
 export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
  {id:"beaker",name:"Стакан",description:"Смешивание растворов"},
  {id:"tube",name:"Пробирка",description:"Небольшие пробы"},
@@ -25,7 +25,7 @@ export const labDevices:{id:LabAvailableDevice;name:string;description:string;sy
  {id:"hotplate",name:"Плитка",description:"Для посуды с устойчивым плоским дном",symbol:"▤"},
  {id:"burner",name:"Горелка",description:"Нагревание посуды над пламенем",symbol:"♨"},
  {id:"stirrer",name:"Магнитная мешалка",description:"Перемешивание в плоскодонных сосудах",symbol:"◌"},
- {id:"tripod",name:"Штатив",description:"Кольцо и зажимы для посуды",symbol:"⌁"}
+ {id:"tripod",name:"Штатив",description:"Один регулируемый зажим для посуды",symbol:"⌁"}
 ];
 export type LabPlacedDevice={id:string;kind:LabDevice;x:number;y:number;
  /** Mounted on the vessel, regardless of power. */ active?:boolean;
@@ -95,9 +95,9 @@ export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
 /** Glassware may be supported/held only where its geometry is appropriate. */
 /** Base geometry and safe laboratory placement matrix.
  * Flat plates need a stable flat bottom, while a ring/clamp stand can hold
- * tubes, narrow necks, funnels, a crucible or a beaker on gauze. */
+ * tubes, narrow necks, a crucible or a beaker on gauze. */
 const LAB_MOUNTABLE:Record<LabAvailableDevice,readonly LabGlassware[]>={
- tripod:["beaker","tube","flask","conical","volumetric","crucible","pipette","burette","funnel","dish"],
+ tripod:["beaker","tube","flask","conical","volumetric","crucible","pipette","burette","dish"],
  hotplate:["beaker","conical","dish"],
  stirrer:["beaker","conical"],
  burner:["beaker","tube","flask","conical","crucible","dish"]
@@ -543,7 +543,8 @@ export const defaultLabBench=():LabBench=>({
  selectedId:"v1",event:0,settings:defaultLabBenchSettings()
 });
 export function readLabBench(item:Item):LabBench{
- if(item.scienceLabBench)return item.scienceLabBench;
+ if(item.scienceLabBench)return {...item.scienceLabBench,
+  vessels:item.scienceLabBench.vessels.filter(v=>v.kind!=="funnel")};
  const initial=defaultLabBench();
  initial.vessels[0].reagents=(item.scienceReagents??[]).slice(0,MAX_VESSEL_REAGENTS);
  initial.vessels[0].environment=item.scienceEnvironment??"aqueous";
@@ -713,8 +714,7 @@ export function transferLabMeasuredLiquid(
  if(sourceId===targetId||!Number.isFinite(volumeMl)||volumeMl<=0)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||!target||source.reagents.length!==1||source.kind==="funnel"||
-  target.kind==="funnel")return bench;
+ if(!source||!target||source.reagents.length!==1)return bench;
  const reagent=source.reagents[0],dose=source.doses?.[reagent];
  if(!dose||dose.unit!=="ml"||dose.value<volumeMl)return bench;
  const capacity=labMeasuredCapacityMl(target.kind);
@@ -736,18 +736,6 @@ export function transferLabMeasuredLiquid(
  }:v);
  return {...next,vessels,event:next.event+1};
 }
-/** Funnel assists a full transfer without itself becoming a storage bottle. */
-export function pourThroughLabFunnel(
- bench:LabBench,funnelId:string,sourceId:string,targetId:string
-):LabBench{
- if(!bench.vessels.some(v=>v.id===funnelId&&v.kind==="funnel")||
-  sourceId===funnelId||targetId===funnelId)return bench;
- const source=bench.vessels.find(v=>v.id===sourceId);
- if(!source||!source.reagents.length||
-  Object.values(source.doses??{}).some(d=>d.unit!=="ml"))return bench;
- return pourLabVessel(bench,sourceId,targetId);
-}
-/** Add solvent to the calibration mark of a 100 ml volumetric flask. */
 export function fillLabVolumetricFlask(bench:LabBench,id:string):LabBench{
  const vessel=bench.vessels.find(v=>v.id===id&&v.kind==="volumetric");
  if(!vessel)return bench;
@@ -767,7 +755,7 @@ export function activateLabVessel(bench:LabBench,id:string):LabBench{
 export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:string):LabBench{
  if(!id||sourceId===targetId||(b.pouring&&b.pouring.step<20))return b;
  const a=b.vessels.find(v=>v.id===sourceId),t=b.vessels.find(v=>v.id===targetId);
- if(!a||!t||!a.reagents.length||a.kind==="funnel"||t.kind==="funnel"||
+ if(!a||!t||!a.reagents.length||
   [...new Set([...a.reagents,...t.reagents])].length>MAX_VESSEL_REAGENTS)return b;
  const initialDoses={...a.doses};
  const volume=Object.values(initialDoses).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
