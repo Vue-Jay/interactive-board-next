@@ -1,4 +1,5 @@
 import type {Item} from "./boardModel";
+import {labVesselThermal} from "./lektrusLabPhysicalProperties";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,labMolarMass,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
@@ -346,7 +347,10 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   if(d.kind!=="hotplate"&&d.kind!=="burner")return d;
   const old=d.temperatureC??ambient;
   const level=d.heatLevel??2;
-  const target=d.powered?(d.kind==="hotplate"?(d.targetTemperatureC??150):220+level*100):ambient;
+  // The open flame is hotter than the effective vessel temperature.
+  // A crucible can take substantially more heat than ordinary glassware.
+  const target=d.powered?(d.kind==="hotplate"?(d.targetTemperatureC??150):
+   level===1?450:level===2?850:1350):ambient;
   const rate=d.powered?0.075:0.11;
   const next=Math.round((old+(target-old)*(1-Math.exp(-seconds*rate)))*10)/10;
   if(next!==old)changed=true;
@@ -363,31 +367,60 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const volumes=Object.values(v.doses??{}).reduce((total,d)=>total+d.value,0);
   const inertia=Math.max(.035,Math.min(.18,60/Math.max(100,volumes)*.10));
   const raw=old+(toward-old)*(1-Math.exp(-seconds*(device?.powered?inertia:.018)));
-  // Aqueous solutions at ambient pressure boil near 100°C. Other materials
-  // remain an approximation: no general boiling points are inferred.
-  const isWater=v.environment==="aqueous"&&v.reagents.length>0;
-  const next=Math.round(Math.max(ambient,Math.min(isWater?100:400,raw))*10)/10;
+  const pure=labVesselThermal(v.reagents,v.doses);
+  // Without verified composition a stock solution has NO published boiling point
+  // assigned here. 100°C is only a conservative simulator ceiling, not a claim.
+  const unverifiedLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml")&&!pure;
+  const maxVesselC=device?.kind==="burner"&&v.kind==="crucible"?1250:
+   device?.kind==="burner"?450:350;
+  let next=Math.round(Math.max(ambient,Math.min(unverifiedLiquid?100:maxVesselC,raw))*10)/10;
+  let meltFraction=v.meltFraction??0;
+  let phaseTransition=v.phaseTransition;
+  const point=pure?.unit==="g"&&!v.uncertain&&!v.completedReaction?
+   pure.info.meltingC:undefined;
+  if(point!==undefined&&point>ambient){
+   // Latent-heat plateau. Heat changes the LIQUID FRACTION at the melting
+   // point before the measured temperature rises above it. Cooling reverses
+   // this process, at the same point (equilibrium crystallization).
+   const heating=toward>point+.1&&(raw>=point||old>=point-.1&&meltFraction<1);
+   const cooling=toward<point-.1&&(raw<=point||old<=point+.1&&meltFraction>0);
+   if(heating&&meltFraction<1){
+    phaseTransition="melting";
+    meltFraction=Math.min(1,meltFraction+seconds*Math.max(.008,(toward-point)/350)*.14);
+    next=point;
+   }else if(cooling&&meltFraction>0){
+    phaseTransition="crystallizing";
+    meltFraction=Math.max(0,meltFraction-seconds*Math.max(.008,(point-toward)/350)*.14);
+    next=point;
+   }
+  }
+  // Only a measured, single, neat liquid is assigned its verified boiling
+  // temperature. Mixed liquids and prepared solutions receive no bubbles.
+  const boilingPoint=pure?.unit==="ml"?pure.info.boilingC:undefined;
+  if(boilingPoint!==undefined&&next>boilingPoint)next=boilingPoint;
   const dissolutionComplete=v.physicalProcess==="dissolving"&&
    v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500;
   const cooling=!device?.powered&&next<42&&v.temperatureC!==undefined&&
    ["heated","ignited"].includes(v.environment);
-  // Only a separately measured PURE-WATER dose can be evaporated without
-  // inventing the solvent composition of an acid/salt stock solution.
-  const pureWater=v.reagents.length===1&&v.reagents[0]==="H2O"&&
-   v.doses?.H2O?.unit==="ml";
-  const boiling=!!device?.powered&&pureWater&&next>=99.5;
-  const water=v.doses?.H2O;
-  const newWater=boiling&&water?Math.max(0,
-   Math.round((water.value-seconds*.02)*100)/100):water?.value;
-  const evaporating=boiling&&newWater!==water?.value;
-  if(next!==old||cooling||evaporating||dissolutionComplete)changed=true;
-  if(next===old&&!cooling&&!evaporating&&!dissolutionComplete)return v;
+  const boiling=!!device?.powered&&boilingPoint!==undefined&&
+   next>=boilingPoint-.5;
+  const neatDose=pure?v.doses?.[pure.id]:undefined;
+  // Illustrative small-scale evaporation, never inferred for arbitrary mixtures.
+  const remaining=boiling&&neatDose?Math.max(0,
+   Math.round((neatDose.value-seconds*.02)*100)/100):neatDose?.value;
+  const evaporating=boiling&&remaining!==neatDose?.value;
+  const phaseChanged=meltFraction!==(v.meltFraction??0)||
+   phaseTransition!==v.phaseTransition;
+  if(next!==old||cooling||evaporating||dissolutionComplete||phaseChanged)changed=true;
+  if(next===old&&!cooling&&!evaporating&&!dissolutionComplete&&!phaseChanged)return v;
   const hasLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml");
   return {...v,temperatureC:next,
+   ...(phaseChanged?{meltFraction,phaseTransition}:{}),
    ...(dissolutionComplete?{physicalProcess:undefined,physicalStartedAtMs:undefined}:{}),
-   ...(evaporating?{doses:(newWater??0)>0?{H2O:{...water!,value:newWater!}}:undefined,
-    reagents:(newWater??0)>0?v.reagents:[],observed:false}:{}),
-   environment:evaporating&&newWater===0?"dry":
+   ...(evaporating&&pure&&neatDose?{
+    doses:(remaining??0)>0?{[pure.id]:{...neatDose,value:remaining!}}:undefined,
+    reagents:(remaining??0)>0?v.reagents:[],observed:false}:{}),
+   environment:evaporating&&remaining===0?"dry":
     cooling?(hasLiquid?"aqueous":"dry"):v.environment};
  });
  result={...result,vessels};
@@ -623,6 +656,9 @@ export type LabVessel={pourFraction?:number;
  reagents:string[];environment:ReactionEnvironment;
  observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
  temperatureC?:number;
+ /** 0 = solid, 1 = fully molten. Conserved across viewers and cooling. */
+ meltFraction?:number;
+ phaseTransition?:"melting"|"crystallizing";
  /** Shared event timestamp: peer clients render brief physical effects once. */
  visualStartedAtMs?:number;
  /** Target volume when collecting a sample with a graduated pipette. */
@@ -875,7 +911,7 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
    undefined:bench.titrationPair};
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -942,7 +978,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&
     nextDoses?.[key]?.unit==="g")&&
    identifyReaction(reagents,v.environment).status!=="reaction";
-  return {...v,reagents,
+  return {...v,reagents,meltFraction:undefined,phaseTransition:undefined,
    physicalProcess:physicalDissolution?"dissolving":undefined,
    physicalStartedAtMs:physicalDissolution?Date.now():undefined,
    reactionAmounts:undefined,
@@ -1071,6 +1107,11 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
   (source.reactionAmounts&&!source.reactionAmounts.complete))return bench;
  const reaction=labObservation(source).caseData;
  if(!reaction||reaction.observation!=="precipitate")return bench;
+ // A measured reaction begins on the first simulation tick. Until it
+ // finishes, the animated precipitate has not fully formed and cannot
+ // be collected. Do not treat an uninitialised measured reaction as complete.
+ if(!source.reactionAmounts&&!source.completedReaction&&
+  startQuantifiedLabReaction(reaction,source.reagents,source.doses))return bench;
  const products=(reaction.equation.split("→")[1]??"")
   .split(/\s+\+\s+/).map(v=>v.trim());
  const solid=products.find(p=>p.includes("↓"))?.

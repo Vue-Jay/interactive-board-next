@@ -3831,3 +3831,42 @@
 }
 .lektrus-lab-bench.lab-reduced-animation .lektrus-lab-filter-drain-drop{
  animation:none!important;opacity:0!important}
+
+
+/* Verified phases and solid charging: responsive, explicit form selection. */
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-solid-form{
+ display:flex;flex-direction:column;gap:6px;min-width:0;grid-column:span 2;
+ align-self:stretch;justify-content:center;border:1px solid #c9e5d6;
+ background:#f2faf6;border-radius:11px;padding:8px 10px;
+}
+.lektrus-lab-solid-form>strong{font:800 11px/1.2 system-ui,sans-serif;color:#316c56}
+.lektrus-lab-solid-form-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;min-width:0}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-dose-controls .lektrus-lab-solid-form-switch button{
+ min-width:0!important;min-height:37px!important;width:100%!important;
+ border:1px solid #c1daca!important;background:#fff!important;color:#386c55!important;
+ border-radius:8px!important;font:700 11px/1.25 system-ui,sans-serif!important;
+ padding:7px 5px!important;white-space:normal!important;
+}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-dose-controls .lektrus-lab-solid-form-switch button.is-active{
+ border-color:#208767!important;background:#d9f1e4!important;
+ color:#145a44!important;box-shadow:0 0 0 1px #20876733 inset}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-dose-controls .lektrus-lab-solid-form-switch button:disabled{
+ opacity:.37!important;cursor:not-allowed!important}
+.lektrus-lab-thermal-note{color:#527d66;font:600 10px/1.35 system-ui,sans-serif;
+ overflow-wrap:anywhere}
+.lektrus-lab-reagent-group-grid>button .lektrus-lab-solid-property{
+ font-size:9px;color:#a07b48;overflow-wrap:anywhere}
+.lektrus-lab-vessel-art .lektrus-lab-molten-liquid{
+ filter:drop-shadow(0 0 2px #f4dfad66)}
+.lektrus-lab-dose-animation.is-solid circle{
+ animation:lektrus-lab-solid-charge .8s ease-in both}
+@keyframes lektrus-lab-solid-charge{
+ from{opacity:0;transform:translateY(-15px)}
+ 45%{opacity:1}to{opacity:0;transform:translateY(5px)}
+}
+@media(max-width:700px){
+ .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-solid-form{grid-column:1/-1}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-dose-animation.is-solid circle{animation:none!important}
+}

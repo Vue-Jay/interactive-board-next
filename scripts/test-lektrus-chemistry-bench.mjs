@@ -14,10 +14,12 @@ const reaction=load("src/lektrusReactionDatabase.ts");
 const titration=load("src/lektrusLabTitration.ts");
 const layout=load("src/lektrusLabLayout.ts");
 const chem=load("src/lektrusLabStoichiometry.ts");
+const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabTitration")return titration;
  if(key==="./lektrusLabLayout")return layout;
  if(key==="./lektrusLabStoichiometry")return chem;
+ if(key==="./lektrusLabPhysicalProperties")return thermal;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
@@ -131,7 +133,7 @@ for(const substance of reaction.substances)
   "Every catalogued reagent must have a representative appearance");
 let devices=lab.defaultLabBench();
 for(const device of lab.labDevices)devices=lab.toggleLabDevice(devices,device.id);
-assert.equal(devices.devices.length,4,"The lab provides four physical instruments without thermometer");
+assert.equal(devices.devices.length,5,"The lab provides five physical instruments without thermometer");
 devices=lab.putLabReagent(devices,"v1","CaCO3");
 devices=lab.useLabDevice(devices,"hotplate","v1");
 assert.equal(lab.labObservation(devices.vessels[0]).caseData.observation,"gas",
@@ -898,12 +900,12 @@ assert.match(gradualUi,/stopLabPour\(bench,p\.id\)/);
 // Laboratory v10: hover triggers are timed and apparatus controls live on their bodies.
 const hoverSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(hoverSurface,/contactTimer\.current=setTimeout/);
-assert.match(hoverSurface,/if\(isPipette\)perform\(\)/,"Pipette draws at contact without any wait");
-assert.match(hoverSurface,/setTimeout\(perform,120\)/,"Brief dwell prevents accidental spills");
+assert.match(hoverSurface,/const sampling=!!pipette&&pipette\.reagents\.length===0/,"Empty pipette draws on a sustained contact");
+assert.match(hoverSurface,/setTimeout\(perform,sampling\?1000:120\)/,"Measured pipette aspiration needs 1s contact; pours 120ms");
 assert.match(hoverSurface,/endContact\(\)/,"Release cancels the active pour");
 assert.match(hoverSurface,/beginContact\(g\.id,pouring\)/);
 assert.match(hoverSurface,/const drawing=pipette\.reagents\.length===0/);
-assert.match(hoverSurface,/transferLabMeasuredLiquid\(current,donor\.id,receiver\.id,requested\)/);
+assert.match(hoverSurface,/transferLabMeasuredLiquid\(latest,donor\.id,receiver\.id,requested\)/);
 assert.match(hoverSurface,/lektrus-lab-device-face-controls/);
 assert.match(hoverSurface,/lektrus-lab-device-power/);
 assert.match(hoverSurface,/setPlacedDevicePower\(\{\.\.\.bench,simulationAtMs:Date\.now\(\)\}/);
@@ -931,7 +933,7 @@ assert.deepEqual(stock.labReagentForms(item("AgCl")),["g"]);
 assert.equal(stock.labReagentPhaseLabel(item("CuSO4"),"ml"),"Раствор / жидкость");
 assert.equal(stock.labReagentPhaseLabel(item("CaCO3"),"g"),"Твёрдое вещество");
 assert.match(hoverSurface,/labVesselQuantity\(vessel\)/);
-assert.match(hoverSurface,/totalLabel\|\|substanceState/);
+assert.match(hoverSurface,/totalLabel\|\|\"Осадок\"/);
 
 /* Realistic receiving glassware snaps to the retort stand foot, whereas
  * clamp-held glassware remains attached independently above it. */
@@ -1096,8 +1098,8 @@ const higherStand=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod");
 assert.equal(higherStand.placedDevices[0].standHeight,.88);
 const stand=higherStand.placedDevices[0];
 const receiving=layout.labStandBaseVesselPoint(stand,{kind:"conical"},1600,1000);
-const burette=layout.labMountedGlasswarePoint(stand,{kind:"burette"},1600,1000);
-assert.ok(receiving.y-burette.y>12,
+const mountedBurettePoint=layout.labMountedGlasswarePoint(stand,{kind:"burette"},1600,1000);
+assert.ok(receiving.y-mountedBurettePoint.y>12,
  "A taller stand must leave a visible gap for titrant drops");
 for(const width of [400,450,690,700,900,1200,1600,2600]){
  const jar=layout.labStandBaseVesselPoint(stand,{kind:"conical"},width,1000);
@@ -1365,3 +1367,105 @@ assert.ok(lab.labVesselQuantity(boiling.vessels[0]).volumeMl<20,
 assert.ok(lab.labVesselQuantity(boiling.vessels[0]).volumeMl>=0,
  "Water must not evaporate to a negative quantity");
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
+
+
+/* Thermal safety audit: a reference for every reagent is either explicitly
+ * curated or explicitly unknown, never fabricated from a chemical class. */
+for(const substance of reaction.substances){
+ const forms=stock.labReagentForms(substance);
+ for(const unit of forms){
+  const row=thermal.labThermalInfo(substance.id,unit);
+  assert.equal(typeof row.description,"string");
+  assert.ok(row.description.length>15);
+  if(row.form==="solution")assert.equal(row.boilingC,undefined,
+   "Do not assign pure boiling point to a stock solution: "+substance.id);
+  if(row.behavior==="decomposes")assert.equal(row.boilingC,undefined,
+   "Decomposing "+substance.id+" must not appear to boil");
+  if(row.meltingC!==undefined&&row.boilingC!==undefined)
+   assert.ok(row.meltingC<row.boilingC, "Physical phase order for "+substance.id);
+ }
+}
+assert.equal(thermal.labThermalInfo("H2O","ml").boilingC,100);
+assert.equal(thermal.labThermalInfo("C2H5OH","ml").boilingC,78.37);
+assert.equal(thermal.labThermalInfo("CH3OH","ml").boilingC,64.7);
+assert.equal(thermal.labThermalInfo("NaCl","g").meltingC,800.7);
+assert.equal(thermal.labThermalInfo("Na","g").meltingC,97.79);
+assert.equal(thermal.labThermalInfo("KNO3","g").decompositionC,400);
+assert.equal(thermal.labThermalInfo("HCl","ml").boilingC,undefined);
+assert.equal(thermal.labThermalInfo("CuSO4","ml").meltingC,undefined);
+assert.equal(thermal.labThermalInfo("C12H22O11","g").meltingC,undefined,
+ "Decomposition of sugar cannot be mistaken for a reversible melt");
+assert.equal(thermal.labThermalInfo("C12H22O11","g").boilingC,undefined);
+
+let melt=lab.putLabReagent(lab.defaultLabBench(),"v1","Na",{value:8,unit:"g"});
+melt=lab.addPlacedLabDevice(melt,"hotplate");
+const meltingHeater=lab.placedLabDevices(melt).find(d=>d.kind==="hotplate").id;
+melt=lab.applyPlacedLabDevice(melt,meltingHeater,"v1");
+melt=lab.setLabHotplateTemperature(melt,meltingHeater,180);
+melt=lab.setPlacedDevicePower(melt,meltingHeater,true);
+melt=lab.advanceLabSimulation(melt,0);
+let hadPartialMelt=false;
+for(let i=1;i<=190;i++){
+ melt=lab.advanceLabSimulation(melt,i*2000);
+ if((melt.vessels[0].meltFraction??0)>0&&(melt.vessels[0].meltFraction??0)<1)
+  hadPartialMelt=true;
+}
+assert.ok(hadPartialMelt,"Reversible melting must show a partial phase rather than jump");
+assert.equal(melt.vessels[0].meltFraction,1,"Heated sodium reaches full melt");
+assert.ok((melt.vessels[0].temperatureC??0)>97.79);
+assert.equal(lab.labVesselQuantity(melt.vessels[0]).massG,8,
+ "Melting does not convert grams to invented millilitres");
+assert.equal(thermal.labThermalState(melt.vessels[0].reagents,
+ melt.vessels[0].doses,melt.vessels[0].temperatureC,melt.vessels[0].meltFraction).label,"Расплав");
+melt=lab.setPlacedDevicePower(melt,meltingHeater,false);
+let hadPartialCrystal=false;
+for(let i=191;i<=530;i++){
+ melt=lab.advanceLabSimulation(melt,i*2000);
+ if((melt.vessels[0].meltFraction??0)>0&&(melt.vessels[0].meltFraction??0)<1)
+  hadPartialCrystal=true;
+}
+assert.ok(hadPartialCrystal,"Cooling must pass through crystallisation");
+assert.equal(melt.vessels[0].meltFraction,0);
+assert.ok((melt.vessels[0].temperatureC??500)<97.79);
+assert.equal(lab.labVesselQuantity(melt.vessels[0]).massG,8,
+ "Crystallisation preserves solid material");
+
+const alcohol=lab.putLabReagent(lab.defaultLabBench(),"v1","C2H5OH",{value:30,unit:"ml"});
+let alcoholHeat=lab.addPlacedLabDevice(alcohol,"hotplate");
+const alcoholHeater=lab.placedLabDevices(alcoholHeat)[0].id;
+alcoholHeat=lab.applyPlacedLabDevice(alcoholHeat,alcoholHeater,"v1");
+alcoholHeat=lab.setLabHotplateTemperature(alcoholHeat,alcoholHeater,160);
+alcoholHeat=lab.setPlacedDevicePower(alcoholHeat,alcoholHeater,true);
+alcoholHeat=lab.advanceLabSimulation(alcoholHeat,0);
+for(let i=1;i<=130;i++)alcoholHeat=lab.advanceLabSimulation(alcoholHeat,i*2000);
+assert.ok((alcoholHeat.vessels[0].temperatureC??0)<=78.37,
+ "Ethanol cannot use the 100°C water boiling point");
+assert.ok(lab.labVesselQuantity(alcoholHeat.vessels[0]).volumeMl<30);
+const saline=lab.putLabReagent(lab.putLabReagent(lab.defaultLabBench(),"v1",
+ "H2O",{value:30,unit:"ml"}),"v1","NaCl",{value:2,unit:"g"});
+assert.equal(thermal.labVesselThermal(saline.vessels[0].reagents,saline.vessels[0].doses),
+ null,"A solution has no invented exact boiling temperature");
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-molten-liquid/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/Плавление \/ кристаллизация/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/Порошок \/ кусочки/);
+assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-solid-charge/);
+console.log("Thermal registry, boiling, melting and cooling verified");
+
+
+let crucible=lab.addLabVessel(lab.defaultLabBench(),"crucible");
+const crucibleId=crucible.vessels.find(v=>v.kind==="crucible").id;
+crucible=lab.putLabReagent(crucible,crucibleId,"NaCl",{value:5,unit:"g"});
+crucible=lab.addPlacedLabDevice(crucible,"burner");
+const crucibleBurner=lab.placedLabDevices(crucible).find(d=>d.kind==="burner").id;
+crucible=lab.applyPlacedLabDevice(crucible,crucibleBurner,crucibleId);
+crucible=lab.setPlacedDeviceLevel(crucible,crucibleBurner,3);
+crucible=lab.setPlacedDevicePower(crucible,crucibleBurner,true);
+crucible=lab.advanceLabSimulation(crucible,0);
+for(let i=1;i<=210;i++)crucible=lab.advanceLabSimulation(crucible,i*2000);
+const moltenSalt=crucible.vessels.find(v=>v.id===crucibleId);
+assert.equal(moltenSalt.meltFraction,1,
+ "High setting of simulated burner melts pure NaCl inside a crucible");
+assert.ok(moltenSalt.temperatureC>=800.7);
+assert.equal(moltenSalt.doses.NaCl.value,5);
+assert.ok((crucible.vessels.find(v=>v.id==="v1").temperatureC??22)<500,
+ "Ordinary glassware does not inherit the crucible's high-temperature limit");
