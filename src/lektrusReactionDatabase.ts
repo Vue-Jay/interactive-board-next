@@ -645,7 +645,7 @@ SrCl2+K2CO3|aqueous|SrCl2 + K2CO3 → SrCO3↓ + 2KCl|precipitate|Белый к�
 CaCl2+Na2SO4|aqueous|CaCl2 + Na2SO4 → CaSO4↓ + 2NaCl|precipitate|При подходящих концентрациях образуется малорастворимый сульфат кальция|exchange|crystals
 Ba(NO3)2+K2SO4|aqueous|Ba(NO3)2 + K2SO4 → BaSO4↓ + 2KNO3|precipitate|Белый сульфат бария|exchange|crystals
 LiOH+CO2|aqueous|2LiOH + CO2 → Li2CO3↓ + H2O|precipitate|Образование малорастворимого карбоната лития|exchange|crystals
-Li2CO3+HNO3|aqueous|Li2CO3 + 2HNO3 → 2LiNO3 + CO2↑ + H2O|gas|Углекислый газ выделяется при реакции карбоната с кислотой|displacement|fizz
+Li2CO3+HNO3|aqueous|Li2CO3 + 2HNO3 → 2LiNO3 + CO2↑ + H2O|gas|Углекислый газ выделяется при реакции карбоната с кислотой|exchange|fizz
 Li+H2O|aqueous|2Li + 2H2O → 2LiOH + H2↑|gas|Литий реагирует с водой с выделением водорода|displacement|fizz
 Na2CO3+Ca(OH)2|aqueous|Na2CO3 + Ca(OH)2 → CaCO3↓ + 2NaOH|precipitate|Осаждение карбоната кальция|exchange|crystals
 K2CO3+Ca(OH)2|aqueous|K2CO3 + Ca(OH)2 → CaCO3↓ + 2KOH|precipitate|Белый карбонат кальция|exchange|crystals
