@@ -110,6 +110,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const verified=result.status==="reaction"?result.caseData:undefined;
  const visualCase=vessel.completedReaction??verified;
  const appearance=reactionAppearance(visualCase);
+ const isLiquidIndicator=!!vessel.indicator&&vessel.indicator!=="universal";
  const indicator=titrationResult&&vessel.indicator?{
   medium:titrationResult.phase==="acidic"?"acid":titrationResult.phase==="alkaline"?"base":"neutral",
   label:"pH "+titrationResult.pH,color:titrationResult.tint,
@@ -129,8 +130,11 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const active=Boolean(visualCase);
  const dryProductColor=active&&volumeMl===0&&appearance.productSolid?
   appearance.productSolidColor:undefined;
- const color=vessel.filteredResidue?.color??(titrationResult?(vessel.indicator?titrationResult.tint:"#dceff0"):
-  indicator?.color??dryProductColor??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3"));
+ // Only indicator SOLUTIONS tint the bulk sample. Universal test paper
+ // displays its reading on the strip without recoloring the liquid.
+ const naturalColor=dryProductColor??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3");
+ const color=vessel.filteredResidue?.color??(isLiquidIndicator?
+  indicator?.color??naturalColor:naturalColor);
  const observation=visualCase?.observation??"none";
  const gasEventActive=!!vessel.reactionAmounts&&!vessel.reactionAmounts.complete||
   !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<6500;
@@ -252,10 +256,18 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
    </g>}
    <path d={geo.outline} fill="none" stroke="#75a4a4" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
    <path d={geo.outline} fill="none" stroke="#fff" strokeWidth="1.25" opacity=".8" strokeLinecap="round"/>
-   {vessel.indicator&&<g className="lektrus-lab-indicator-strip">
+   {vessel.indicator==="universal"&&<g className="lektrus-lab-indicator-strip">
     <rect x="73" y="24" width="7" height="73" rx="2" fill="#f4edda" stroke="#9a9f91" strokeWidth="1" transform="rotate(12 76 60)"/>
     <rect x="73" y="71" width="7" height="24" rx="1" fill={indicator?.color??"#b5b9b3"} opacity=".95" transform="rotate(12 76 60)"/>
    </g>}
+   {isLiquidIndicator&&vessel.indicatorAddedAtMs&&
+    Date.now()-vessel.indicatorAddedAtMs>=0&&Date.now()-vessel.indicatorAddedAtMs<2100&&
+    <g className="lektrus-lab-indicator-drops" aria-label="Капли индикатора">
+     {Array.from({length:Math.min(3,vessel.indicatorDrops??1)},(_,i)=>
+      <path key={i} d={`M${45+i*6} ${12-i*7}q-3 6 0 8q3 -2 0 -8`}
+       fill={indicator?.color??"#9b82c1"} stroke="#f7fff8" strokeWidth=".7"
+       style={{animationDelay:i*.18+"s"}}/>)}
+    </g>}
    <path d="M29 32V57" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".5"/>
    {/* Contents are labelled above the vessel; temperature stays on glass. */}
    {temperatureVisible&&vessel.kind!=="burette"&&<g className="lektrus-lab-ware-engraving">
@@ -1153,14 +1165,34 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <strong>ИНДИКАТОРЫ</strong>
    <div className="lektrus-lab-indicator-shelf" role="group"
     aria-label="Добавить индикатор в выбранный сосуд">
-    {labIndicators.map((indicator,i)=><button key={indicator.id} type="button"
-     title={indicator.name+" · "+indicator.note} disabled={!editable||!selected?.reagents.length}
+    {labIndicators.map(indicator=><button key={indicator.id} type="button"
+     title={indicator.name+" · "+indicator.note}
+     disabled={!editable||!selected?.reagents.length}
      aria-pressed={selected?.indicator===indicator.id}
-     className={selected?.indicator===indicator.id?"is-active":""}
+     className={"lektrus-lab-indicator-item is-"+indicator.form+
+      (selected?.indicator===indicator.id?" is-active":"")}
      onClick={e=>{e.stopPropagation();
-      if(selected)onChange?.(setLabIndicator(bench,selected.id,
-       selected.indicator===indicator.id?undefined:indicator.id))}}>
-     <i style={{"--indicator-tint":["#a28dd2","#d84c9c","#e4aa53","#64b992"][i]} as React.CSSProperties}/>
+      if(!selected)return;
+      const next=setLabIndicator(bench,selected.id,indicator.id);
+      if(next!==bench){onChange?.(next);setNotice(indicator.form==="solution"?
+       "Добавлена капля: "+indicator.name:"Проверка универсальной индикаторной бумагой")}
+     }}>
+     {indicator.form==="solution"?<svg className="lektrus-lab-indicator-bottle"
+       viewBox="0 0 30 35" role="img" aria-label="Флакон раствора индикатора">
+       <rect x="10.5" y="1.5" width="9" height="5.5" rx="1.3" fill="#6e8c85"/>
+       <rect x="9" y="6" width="12" height="4.5" rx="2" fill="#d4e6dc" stroke="#84a99a" strokeWidth=".8"/>
+       <path d="M9 10H21L24 13V29Q24 33 20 33H10Q6 33 6 29V13Z"
+        fill="#ecf5f1" stroke="#77a59a" strokeWidth="1.4"/>
+       <path d="M7.5 18H22.5V29Q22.5 31.5 20 31.5H10Q7.5 31.5 7.5 29Z"
+        fill={indicator.stockColor} opacity=".87"/>
+       <path d="M11 13V28" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity=".75"/>
+       <path d="M9 20H21" stroke="#fff" strokeWidth=".7" opacity=".65"/>
+      </svg>:<svg className="lektrus-lab-indicator-paper"
+       viewBox="0 0 30 35" role="img" aria-label="Бумажная универсальная индикаторная полоска">
+       <rect x="11" y="1" width="8" height="33" rx="1" fill="#f9f0d8" stroke="#aba791" strokeWidth=".8"/>
+       {["#dd6547","#e6a34e","#d4d95e","#81b16b","#4d9ba4","#7477b5"].map((c,i)=>
+        <rect key={i} x="12.5" y={3.5+i*4.6} width="5" height="4.2" rx=".5" fill={c}/>)}
+      </svg>}
      <span>{indicator.name}</span>
     </button>)}
    </div>
@@ -1419,7 +1451,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)}
      temperatureC={v.temperatureC??22}
      titrationResult={bench.titrationPair?.targetId===v.id&&bench.titration?
-      titrationReading(bench.titration):undefined}/>
+      titrationReading({...bench.titration,indicator:v.indicator??bench.titration.indicator}):undefined}/>
    </button>;
   })}
   {editable&&bench.vessels.filter(v=>v.kind==="burette").map(v=>{

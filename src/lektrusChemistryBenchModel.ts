@@ -659,11 +659,11 @@ export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
 export const formatLabDose=(dose:LabDose)=>`${dose.value.toLocaleString("ru-RU")} ${dose.unit==="ml"?"мл":"г"}`;
 
 export type LabIndicator="litmus"|"phenolphthalein"|"methyl-orange"|"universal";
-export const labIndicators:{id:LabIndicator;name:string;note:string}[]=[
- {id:"litmus",name:"Лакмус",note:"Красный в кислой среде, синий в щелочной"},
- {id:"phenolphthalein",name:"Фенолфталеин",note:"Малиновый в щелочной среде"},
- {id:"methyl-orange",name:"Метилоранж",note:"Красный в кислой среде, жёлтый в щелочной"},
- {id:"universal",name:"Универсальный",note:"Условная цветовая шкала кислотности"}
+export const labIndicators:{id:LabIndicator;name:string;note:string;form:"solution"|"paper";stockColor:string}[]=[
+ {id:"litmus",name:"Лакмус",form:"solution",stockColor:"#8f6ab8",note:"Раствор: красный в кислой среде, синий в щелочной"},
+ {id:"phenolphthalein",name:"Фенолфталеин",form:"solution",stockColor:"#e9f1f4",note:"Бесцветный раствор: малиновый при pH выше 8,2"},
+ {id:"methyl-orange",name:"Метилоранж",form:"solution",stockColor:"#e9a74c",note:"Раствор: красный при pH ниже 3,1, жёлтый выше 4,4"},
+ {id:"universal",name:"Универсальный",form:"paper",stockColor:"#e9edb4",note:"Бумажная тест-полоска, не окрашивает раствор"}
 ];
 export type LabIndicatorResult={medium:"acid"|"base"|"neutral"|"unknown";
  label:string;color?:string;note:string};
@@ -701,6 +701,8 @@ export type LabVessel={pourFraction?:number;
  restingOnStandId?:string;
  reagents:string[];environment:ReactionEnvironment;
  observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
+ /** Reagent indicator drops are traced separately, not mistaken for analytes. */
+ indicatorDrops?:number;indicatorAddedAtMs?:number;
  temperatureC?:number;
  reactionHeat?:LabReactionHeat;
  /** 0 = solid, 1 = fully molten. Conserved across viewers and cooling. */
@@ -1064,7 +1066,7 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
    undefined:bench.titrationPair};
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -1073,10 +1075,30 @@ export function emptyLabVessel(bench:LabBench,id:string):LabBench{
    undefined:next.titrationPair});
 }
 export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|undefined):LabBench{
- if(!bench.vessels.some(v=>v.id===id&&v.reagents.length))return bench;
- const next=revise(bench,id,v=>v.indicator===indicator?v:{...v,indicator});
+ // Testing an empty/dry vessel is invalid. Only solutions receive drops;
+ // the universal paper stays a separate test strip and never colors the bulk.
+ const target=bench.vessels.find(v=>v.id===id&&v.reagents.length);
+ if(!target||!indicator&&target.indicator==null)return bench;
+ if(indicator&&!(labVesselQuantity(target).volumeMl>0||!target.doses&&
+  target.environment==="aqueous"))return bench;
+ if(indicator&&target.indicator===indicator&&indicator==="universal")return bench;
+ if(indicator&&target.indicator===indicator&&(target.indicatorDrops??0)>=6)return bench;
+ const next=revise(bench,id,v=>({
+  ...v,indicator,
+  indicatorDrops:indicator&&indicator!=="universal"?
+   Math.min(6,(v.indicator===indicator?v.indicatorDrops??0:0)+1):undefined,
+  indicatorAddedAtMs:indicator&&indicator!=="universal"?Date.now():undefined
+ }));
  return next!==bench&&bench.titrationPair?.targetId===id&&bench.titration&&indicator?
   {...next,titration:{...bench.titration,indicator}}:next;
+}
+/** The universal paper remains separate; only dissolved indicator travels
+ * when the solution is poured into another vessel. */
+function carriedLabIndicator(source:LabVessel,target:LabVessel){
+ const donor=source.indicator&&source.indicator!=="universal"?source:undefined;
+ return {indicator:target.indicator??donor?.indicator,
+  indicatorDrops:target.indicatorDrops??donor?.indicatorDrops,
+  indicatorAddedAtMs:target.indicatorAddedAtMs};
 }
 export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionEnvironment):LabBench{
  return revise(bench,id,v=>{
@@ -1258,12 +1280,14 @@ export function transferLabMeasuredLiquid(
    observed:remainingIds.length?v.observed:false,
    completedReaction:remainingIds.length?v.completedReaction:undefined,
    indicator:remainingIds.length?v.indicator:undefined,
+    indicatorDrops:remainingIds.length?v.indicatorDrops:undefined,
+    indicatorAddedAtMs:remainingIds.length?v.indicatorAddedAtMs:undefined,
    visualStartedAtMs:remainingIds.length?v.visualStartedAtMs:undefined};
   if(v.id===targetId)return {...v,reactionAmounts:undefined,reagents:ids,doses:received,
    observed:ids.length>1||source.observed,
    environment:medium,uncertain,
    completedReaction:wasEmpty?sourceReaction:targetReaction,
-   indicator:v.indicator??source.indicator,
+   ...carriedLabIndicator(source,v),
    visualStartedAtMs:now??v.visualStartedAtMs};
   return v;
  });
@@ -1466,6 +1490,8 @@ export function advanceLabPour(b:LabBench):LabBench{
    doses:finish?undefined:left,observed:finish?false:v.observed,
    completedReaction:finish?undefined:v.completedReaction,
    indicator:finish?undefined:v.indicator,
+    indicatorDrops:finish?undefined:v.indicatorDrops,
+    indicatorAddedAtMs:finish?undefined:v.indicatorAddedAtMs,
    pourFraction:p.unmeasured?portionRound(.5*(20-n)/20):v.pourFraction};
   if(v.id===target.id){
    const dissolving=received.H2O?.unit==="ml"&&combined.some(key=>
@@ -1480,7 +1506,7 @@ export function advanceLabPour(b:LabBench):LabBench{
     identifyReaction(combined,medium).status==="reaction"?
     (v.visualStartedAtMs??Date.now()):v.visualStartedAtMs,
    completedReaction:targetWasEmpty?sourceReaction:v.completedReaction,
-   indicator:v.indicator??source.indicator,
+   ...carriedLabIndicator(source,v),
    pourFraction:p.unmeasured?portionRound(Math.min(1,(v.pourFraction??(targetWasEmpty?0:.5))+.025)):v.pourFraction};
   }
   return v;
@@ -1515,7 +1541,8 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
   (!targetWasEmpty&&(sourceReaction||targetReaction)));
  const vessels=bench.vessels.map(v=>{
   if(v.id===sourceId)return {...v,reactionAmounts:undefined,reactionHeat:undefined,reagents:[],observed:false,uncertain:false,
-   completedReaction:undefined,indicator:undefined,doses:undefined};
+   completedReaction:undefined,indicator:undefined,
+    indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined};
   if(v.id===targetId){
    const doses={...v.doses};
    for(const [id,dose] of Object.entries(source.doses??{})){
@@ -1542,7 +1569,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
     doses,environment:medium,
     visualStartedAtMs:newReaction?Date.now():v.visualStartedAtMs,
     completedReaction:targetWasEmpty?sourceReaction:(targetReaction??sourceReaction),
-    indicator:v.indicator??source.indicator,
+    ...carriedLabIndicator(source,v),
     uncertain:uncertain||Boolean(v.indicator&&source.indicator&&v.indicator!==source.indicator)};
   }
   return v;
