@@ -1609,3 +1609,64 @@ if(coReduction.status==="reaction"){
   "Gas CO must not cap the heated crucible at the boiling point of water");
 }
 console.log("No fictitious boiling point for solutions or gas mixtures: OK");
+
+
+/* Persisted high-temperature laboratory regression.
+ * A real classroom board with a powered burner at 1333°C was rejected by
+ * the old 700°C device limit. This must never make the entire board unreadable.
+ * Testing the real document parser, not just a regex on the validator. */
+const docModel=load("src/boardModel.ts");
+const persistedLab=lab.defaultLabBench();
+persistedLab.vessels=[
+ {id:"v1",kind:"tube",x:84.3,y:37.6,reagents:[],environment:"aqueous",observed:false},
+ {id:"v2",kind:"beaker",x:18,y:47.7,reagents:[],environment:"aqueous",observed:false},
+ {id:"v3",kind:"dish",x:53.3,y:29.4,reagents:["CaCO3"],
+  environment:"heated",observed:true,temperatureC:220.1,
+  doses:{CaCO3:{value:5,unit:"g"}}}
+];
+persistedLab.selectedId="v1";
+persistedLab.event=3308;
+persistedLab.placedDevices=[{id:"dev1",kind:"burner",x:62.4,y:68.2,
+ temperatureC:1333,heatLevel:3,powered:true,active:false,targetTemperatureC:150}];
+persistedLab.devices=["burner"];
+const persistedItem={
+ id:"chemical-experiment",kind:"graph",x:20,y:30,width:1660,height:1060,
+ text:"",graphFigureId:"chem-experiment-free",scienceLabBench:persistedLab
+};
+const savedDocument={version:1,title:"Восстановление учебной доски",
+ view:{x:0,y:0,zoom:1},items:[persistedItem,
+ {id:"keep-user-text",kind:"text",x:30,y:40,width:180,height:70,text:"Работа ученика"}]};
+const parseLab=bench=>docModel.parseDocument(JSON.stringify({...savedDocument,
+ items:[{...persistedItem,scienceLabBench:bench},savedDocument.items[1]]}));
+const reopened=parseLab(persistedLab);
+assert.equal(reopened.items.length,2,"Opening a hot laboratory must preserve other board items");
+assert.equal(reopened.items[0].scienceLabBench.placedDevices[0].temperatureC,1333,
+ "Restoring a hot burner must never silently reset the apparatus");
+assert.equal(reopened.items[0].scienceLabBench.vessels[2].temperatureC,220.1);
+assert.equal(reopened.items[1].text,"Работа ученика");
+const burnerNearPeak=structuredClone(persistedLab);
+burnerNearPeak.placedDevices[0].temperatureC=1350;
+burnerNearPeak.vessels[2].temperatureC=1250;
+assert.doesNotThrow(()=>parseLab(burnerNearPeak),
+ "The maximum reachable virtual burner and crucible temperature must be accepted");
+const badBurner=structuredClone(persistedLab);
+badBurner.placedDevices[0].temperatureC=2000;
+assert.throws(()=>parseLab(badBurner),/Повреждено состояние химического стола/,
+ "Implausible temperatures must still be rejected");
+const badVessel=structuredClone(persistedLab);
+badVessel.vessels[2].temperatureC=1400;
+assert.throws(()=>parseLab(badVessel),/Повреждено состояние химического стола/);
+const safeThermo=structuredClone(persistedLab);
+safeThermo.vessels[2].meltFraction=.5;
+safeThermo.vessels[2].phaseTransition="melting";
+safeThermo.vessels[2].reactionHeat={equation:"HCl + NaOH → NaCl + H2O",
+ direction:"exothermic",elapsedSeconds:2,durationSeconds:4,deltaC:5,complete:false};
+assert.doesNotThrow(()=>parseLab(safeThermo),
+ "Persisted molten fraction and reaction heat must survive board reopening");
+const brokenThermo=structuredClone(safeThermo);
+brokenThermo.vessels[2].meltFraction=2;
+assert.throws(()=>parseLab(brokenThermo),/Повреждено состояние химического стола/);
+brokenThermo.vessels[2].meltFraction=.5;
+brokenThermo.vessels[2].reactionHeat.deltaC=-5;
+assert.throws(()=>parseLab(brokenThermo),/Повреждено состояние химического стола/);
+console.log("Persisted high-temperature laboratory reopened without losing other objects");

@@ -781,6 +781,8 @@ export function parseDocument(raw: string): DocumentData {
            Number.isFinite(t.concentrationTitrant)&&t.concentrationTitrant>=.001&&t.concentrationTitrant<=2&&
            Number.isFinite(t.addedMl)&&t.addedMl>=0&&t.addedMl<=100;
         };
+        // Keep readback compatible with the heater: 1350°C flame / 1250°C vessel.
+        // Old 700/450°C caps could reject a valid saved classroom experiment.
         const settings=bench?.settings;
         const validSettings=!settings||(
           typeof settings.showEquationBoard==="boolean"&&
@@ -806,6 +808,23 @@ export function parseDocument(raw: string): DocumentData {
             ["gas","precipitate","color","heat","dissolution","none"].includes(reaction.observation)&&
             typeof reaction.description==="string"&&reaction.description.length<=600;
         };
+        const validPhaseState=(v:import("./lektrusChemistryBenchModel").LabVessel)=>
+          (v.meltFraction==null||(Number.isFinite(v.meltFraction)&&
+            v.meltFraction>=0&&v.meltFraction<=1))&&
+          (v.phaseTransition==null||["melting","crystallizing"].includes(v.phaseTransition))&&
+          (v.reactionHeat==null||(
+            typeof v.reactionHeat.equation==="string"&&v.reactionHeat.equation.length<=500&&
+            ["exothermic","endothermic"].includes(v.reactionHeat.direction)&&
+            Number.isFinite(v.reactionHeat.elapsedSeconds)&&
+            Number.isFinite(v.reactionHeat.durationSeconds)&&
+            v.reactionHeat.durationSeconds>0&&v.reactionHeat.durationSeconds<=120&&
+            v.reactionHeat.elapsedSeconds>=0&&
+            v.reactionHeat.elapsedSeconds<=v.reactionHeat.durationSeconds&&
+            Number.isFinite(v.reactionHeat.deltaC)&&
+            Math.abs(v.reactionHeat.deltaC)<=100&&
+            (v.reactionHeat.direction==="exothermic"?
+              v.reactionHeat.deltaC>=0:v.reactionHeat.deltaC<=0)&&
+            typeof v.reactionHeat.complete==="boolean"));
         const validMolRecord=(value:unknown):boolean=>
           !!value&&typeof value==="object"&&!Array.isArray(value)&&
           Object.entries(value as Record<string,unknown>).length<=18&&
@@ -845,7 +864,7 @@ export function parseDocument(raw: string): DocumentData {
               (d.active==null||typeof d.active==="boolean")&&
               (d.powered==null||typeof d.powered==="boolean")&&
               (d.heatLevel==null||[1,2,3].includes(d.heatLevel))&&
-              (d.temperatureC==null||(Number.isFinite(d.temperatureC)&&d.temperatureC>=0&&d.temperatureC<=700))&&
+              (d.temperatureC==null||(Number.isFinite(d.temperatureC)&&d.temperatureC>=0&&d.temperatureC<=1450))&&
               (d.linkedVesselId==null||bench.vessels.some(v=>v.id===d.linkedVesselId))&&
                (d.filterStartedAtMs==null||(Number.isFinite(d.filterStartedAtMs)&&d.filterStartedAtMs>=0))&&
                (d.collectedResidue==null||(typeof d.collectedResidue.formula==="string"&&
@@ -890,7 +909,7 @@ export function parseDocument(raw: string): DocumentData {
             environments.includes(v.environment)&&typeof v.observed==="boolean"&&
             (v.uncertain==null||typeof v.uncertain==="boolean")&&
             (v.indicator==null||indicators.includes(v.indicator))&&
-            (v.temperatureC==null||(Number.isFinite(v.temperatureC)&&v.temperatureC>=0&&v.temperatureC<=450))&&
+            (v.temperatureC==null||(Number.isFinite(v.temperatureC)&&v.temperatureC>=0&&v.temperatureC<=1300))&&
             (v.buretteOpen==null||typeof v.buretteOpen==="boolean")&&
             (v.buretteRateMlS==null||[.05,.2,1].includes(v.buretteRateMlS))&&
             (v.buretteRemainderMl==null||(Number.isFinite(v.buretteRemainderMl)&&v.buretteRemainderMl>=0&&v.buretteRemainderMl<.01))&&
@@ -899,7 +918,8 @@ export function parseDocument(raw: string): DocumentData {
                Object.keys(v.doses).length<=6&&
                Object.entries(v.doses).every(([id,dose])=>
                  v.reagents.includes(id)&&validDose(dose))))&&
-            validReaction(v.completedReaction)&&validReactionAmounts(v.reactionAmounts)))
+            validReaction(v.completedReaction)&&validReactionAmounts(v.reactionAmounts)&&
+            validPhaseState(v)))
           throw new Error("Повреждено состояние химического стола");
       }
       if(i.subjectBoardStandalone!=null&&typeof i.subjectBoardStandalone!=="boolean")
