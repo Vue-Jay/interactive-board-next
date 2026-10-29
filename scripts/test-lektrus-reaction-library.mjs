@@ -92,7 +92,7 @@ assert.match(benchScene,/LabReactionBurst/);
 assert.match(benchScene,/visualStartedAtMs/);
 assert.match(benchScene,/lektrus-lab-virtual-ignition/);
 assert.match(benchScene,/reactionFamilyLabels/);
-assert.match(benchScene,/slice\(0,260\)/,"All reviewed cases must be reachable from the cupboard");
+assert.doesNotMatch(benchScene,/slice\(0,260\)/,"No arbitrary cap may hide newly verified reactions");
 const fxCss=read("src/lektrusChemistryBench.css");
 for(const effect of ["flash","flame","sparks","smoke","glow","thermal","fizz","crystals"])
  assert.ok(fxCss.includes(".is-"+effect),"Missing chemistry visual effect: "+effect);
