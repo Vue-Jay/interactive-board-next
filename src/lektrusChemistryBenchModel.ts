@@ -618,6 +618,8 @@ export type LabVessel={pourFraction?:number;
  /** Sub-centimillilitre remainder is saved between dosing ticks. */
  buretteRemainderMl?:number;
  doses?:Record<string,LabDose>;
+ /** Physical dissolution animation; no chemical product is invented. */
+ physicalProcess?:"dissolving";physicalStartedAtMs?:number;
  /** Filtered insoluble solid; mass only when quantities were measured. */
  filteredResidue?:{formula:string;massG?:number;color:string};
  /** Liquid filtrate, its unknown concentrations are not guessed. */
@@ -860,7 +862,7 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
    undefined:bench.titrationPair};
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -888,6 +890,13 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
    observed:v.reagents.length>1||next.status==="reaction"};
  });
 }
+/** Classroom water-soluble solids: appearance only, not a solubility claim. */
+export const LAB_WATER_SOLUTES=new Set([
+ "NaCl","KCl","NaBr","KBr","NaNO3","KNO3","LiCl","LiNO3",
+ "Na2SO4","K2SO4","MgSO4","CuSO4","FeSO4","NiSO4","CaCl2",
+ "BaCl2","AgNO3","Na2CO3","NaHCO3","KI","KMnO4",
+ "C12H22O11","C6H12O6"
+]);
 export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabDose):LabBench{
  if(!bench.vessels.some(v=>v.id===id))return bench;
  const updated=revise(bench,id,v=>{
@@ -915,10 +924,17 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   if(combined&&combined.value>10000)return v;
   const reagents=present?v.reagents:[...v.reagents,reagent];
   const beforeReaction=labObservation(v);
+  const nextDoses=combined?{...v.doses,[reagent]:combined}:v.doses;
+  const physicalDissolution=!!nextDoses?.H2O&&nextDoses.H2O.unit==="ml"&&
+   reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&
+    nextDoses?.[key]?.unit==="g")&&
+   identifyReaction(reagents,v.environment).status!=="reaction";
   return {...v,reagents,
+   physicalProcess:physicalDissolution?"dissolving":undefined,
+   physicalStartedAtMs:physicalDissolution?Date.now():undefined,
    reactionAmounts:undefined,
    completedReaction:v.completedReaction??(beforeReaction.status==="reaction"?beforeReaction.caseData:undefined),
-   doses:combined?{...v.doses,[reagent]:combined}:v.doses,
+   doses:nextDoses,
    observed:reagents.length>1,
    visualStartedAtMs:reagents.length>1&&!v.uncertain&&beforeReaction.status!=="reaction"&&
     identifyReaction(reagents,v.environment).status==="reaction"?Date.now():v.visualStartedAtMs,
