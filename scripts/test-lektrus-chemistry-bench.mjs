@@ -402,7 +402,7 @@ assert.equal(lab.canMountLabVessel("hotplate","burette"),false);
 assert.equal(lab.canMountLabVessel("stirrer","beaker"),true);
 assert.equal(lab.canMountLabVessel("stirrer","dish"),false);
 assert.equal(lab.canMountLabVessel("stirrer","tube"),false);
-assert.equal(lab.canMountLabVessel("tripod","funnel"),true);
+assert.equal(lab.labGlassware.some(v=>v.id==="funnel"),false);
 assert.equal(lab.canMountLabVessel("tripod","pipette"),true);
 assert.equal(lab.canMountLabVessel("tripod","crucible"),true);
 assert.equal(lab.canMountLabVessel("burner","dish"),true);
@@ -541,9 +541,9 @@ assert.match(subjectInsertion,/commit\(\[\.\.\.itemsRef\.current,item\]\)/,
 assert.match(subjectInsertion,/setSelected\(\[item\.id\]\)/,
  "Newly created laboratory must be selected for resize and movement");
 assert.match(subjectInsertion,/if\(item\.graphFigureId==="chem-experiment-free"\)/,
- "The object edit command should select a laboratory without reopening the modal");
-assert.doesNotMatch(read("src/LektrusScienceEditor.tsx"),/import LektrusChemistryBenchEditor/,
- "The obsolete experiment editor is no longer imported");
+ "The object edit command opens the shared fullscreen laboratory");
+assert.match(read("src/LektrusScienceEditor.tsx"),/import LektrusChemistryBenchEditor/,
+ "The shared fullscreen laboratory editor is now connected");
 assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-journal-trigger/,
  "There must be no button reopening the obsolete dialog");
 const boardLaboratory=read("src/LektrusChemistryIllustration.tsx");
@@ -672,14 +672,32 @@ markFlask=lab.fillLabVolumetricFlask(markFlask,markId);
 assert.equal(markFlask.vessels.find(v=>v.id===markId).doses.H2O.value,80);
 assert.equal(lab.fillLabVolumetricFlask(markFlask,markId),markFlask,
  "A volumetric flask must stop at the calibration mark");
-let funnelWork=lab.addLabVessel(lab.defaultLabBench(),"funnel");
-const funnelId=funnelWork.vessels.find(v=>v.kind==="funnel").id;
-funnelWork=lab.addLabVessel(funnelWork,"conical");
-const receiverId=funnelWork.vessels.find(v=>v.kind==="conical").id;
-funnelWork=lab.putLabReagent(funnelWork,"v1","CuSO4",{value:25,unit:"ml"});
-funnelWork=lab.pourThroughLabFunnel(funnelWork,funnelId,"v1",receiverId);
-assert.equal(funnelWork.vessels.find(v=>v.id===receiverId).doses.CuSO4.value,25);
-assert.equal(funnelWork.vessels.find(v=>v.id==="v1").reagents.length,0);
+// Retired funnel is no longer a supported lab object, including on old boards.
+const legacyFunnel=lab.readLabBench({scienceLabBench:{
+ ...lab.defaultLabBench(),vessels:[...lab.defaultLabBench().vessels,
+ {id:"legacy-funnel",kind:"funnel",x:20,y:30,reagents:[],environment:"dry",observed:false}]
+}});
+assert.ok(!legacyFunnel.vessels.some(v=>v.kind==="funnel"));
+assert.doesNotMatch(read("src/LektrusLabGlasswareIcon.tsx"),/funnel:/);
+assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),/funnel:/);
+assert.doesNotMatch(read("src/lektrusChemistryBenchModel.ts"),/pourThroughLabFunnel/);
+
+// A pipette takes the EXACT requested portion, never an arbitrary 5 ml.
+let measured=lab.addLabVessel(lab.defaultLabBench(),"pipette");
+const precisePipette=measured.vessels.find(v=>v.kind==="pipette").id;
+measured=lab.setLabPipetteTarget(measured,precisePipette,7.5);
+assert.equal(measured.vessels.find(v=>v.id===precisePipette).pipetteTargetMl,7.5);
+measured=lab.putLabReagent(measured,"v1","HCl",{value:11,unit:"ml"});
+assert.equal(lab.transferLabMeasuredLiquid(measured,"v1",precisePipette,12),measured);
+measured=lab.transferLabMeasuredLiquid(measured,"v1",precisePipette,7.5);
+assert.equal(measured.vessels.find(v=>v.id===precisePipette).doses.HCl.value,7.5);
+assert.equal(measured.vessels.find(v=>v.id==="v1").doses.HCl.value,3.5);
+assert.equal(lab.labVesselQuantity(measured.vessels.find(v=>v.id===precisePipette)).volumeMl,7.5);
+assert.ok(lab.labVesselQuantity(measured.vessels.find(v=>v.id===precisePipette)).liquidFraction>0);
+const solidSample=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl",{value:12,unit:"g"});
+assert.equal(lab.labVesselQuantity(solidSample.vessels[0]).massG,12);
+assert.equal(lab.labVesselQuantity(solidSample.vessels[0]).volumeMl,0);
+assert.ok(lab.labVesselQuantity(solidSample.vessels[0]).solidFraction>0);
 const savedQuick=lab.defaultLabQuickReagents();
 assert.ok(savedQuick.length>=8&&savedQuick.length<=lab.MAX_QUICK_REAGENTS);
 let quickBench=lab.defaultLabBench();
@@ -709,6 +727,11 @@ assert.match(surface,/setLabQuickReagent\(bench/);
 assert.match(surface,/addQuick\(v\.id\)/);
 assert.match(surface,/labMeasuredCapacityMl/);
 assert.match(surface,/transferLabMeasuredLiquid/);
+assert.match(surface,/lektrus-lab-quantity-meter/);
+assert.match(surface,/labReceiverBelowStand/);
+assert.match(surface,/labAppliancesBelowStand/);
+assert.match(read("src/LektrusChemistryIllustration.tsx"),/lektrus-lab-open-editor/);
+assert.match(read("src/lektrusChemistryBench.css"),/width:100vw!important/);
 assert.doesNotMatch(surface,/pourThroughLabFunnel/);
 assert.ok(!lab.labGlassware.some(v=>v.id==="funnel"),"Funnel is no longer offered in inventory");
 assert.match(surface,/fillLabVolumetricFlask/);
@@ -795,8 +818,8 @@ const hoverSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(hoverSurface,/contactTimer\.current=setTimeout/);
 assert.match(hoverSurface,/\},2000\)/,"Liquid transfer starts after a two-second hover");
 assert.match(hoverSurface,/beginContact\(g\.id,pouring\)/);
-assert.match(hoverSurface,/const drawing=source\.reagents\.length===0/);
-assert.match(hoverSurface,/transferLabMeasuredLiquid\(current,donor\.id,receiver\.id,volume\)/);
+assert.match(hoverSurface,/const drawing=pipette\.reagents\.length===0/);
+assert.match(hoverSurface,/transferLabMeasuredLiquid\(current,donor\.id,receiver\.id,requested\)/);
 assert.match(hoverSurface,/lektrus-lab-device-face-controls/);
 assert.match(hoverSurface,/lektrus-lab-device-power/);
 assert.match(hoverSurface,/setPlacedDevicePower\(\{\.\.\.bench,simulationAtMs:Date\.now\(\)\}/);
