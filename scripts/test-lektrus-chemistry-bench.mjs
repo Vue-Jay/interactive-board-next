@@ -2015,3 +2015,26 @@ assert.ok(chem.labDoseMoles("HCl",{value:10,unit:"ml"})===undefined,
 assert.match(read("src/LektrusChemistryBench.tsx"),/labIsPreparedStock\(reagent\.id\)/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/labDefaultStockDose\(reagent/);
 console.log("Quantified stocks, reproducible molarity and moles by known physical dose: OK");
+
+
+/** Every published balanced reaction must have a computable extent with the
+ * catalogue's internally defined doses, including gas and neat-liquid stock. */
+let allQuantified=0;
+for(const row of reaction.reviewedReactionCases.filter(r=>r.status==="reaction")){
+ const doses=Object.fromEntries(row.reactants.map(id=>[id,catalog.labDefaultStockDose(id)]));
+ assert.ok(Object.values(doses).every(Boolean),"Missing input stock for "+row.equation);
+ const state=chem.startQuantifiedLabReaction(row,row.reactants,doses);
+ assert.ok(state&&Number.isFinite(state.maxExtentMol)&&state.maxExtentMol>0,
+  "No mathematical reaction extent for "+row.equation);
+ const result=chem.advanceQuantifiedLabReaction(state,state.durationSeconds);
+ assert.equal(result.complete,true);
+ const sum=(entries)=>Object.entries(entries).reduce((acc,[id,mol])=>
+  acc+mol*chem.labMolarMass(id),0);
+ const reactantsMass=sum(state.initialMol);
+ const productsMass=sum(result.productsMol)+sum(result.remainingMol);
+ assert.ok(Math.abs(reactantsMass-productsMass)<1e-5*Math.max(1,reactantsMass),
+  "Mass conservation violation for "+row.equation);
+ allQuantified++;
+}
+assert.ok(allQuantified>=300);
+console.log("All "+allQuantified+" reviewed reaction equations quantified and mass-conserving");
