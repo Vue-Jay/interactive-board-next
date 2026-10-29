@@ -1723,8 +1723,8 @@ assert.match(labUi,/lektrus-lab-indicator-cupboard/);
 assert.match(labUi,/wipeLabChalkboard\(bench\)/);
 assert.match(labUi,/recordLabReactions\(current\)/);
 assert.match(labUi,/lektrus-lab-quantity-info/);
-assert.doesNotMatch(labUi,/className="lektrus-lab-vessel-composition"/,
- "No composition popup separate from volume/mass gauges");
+assert.match(labUi,/lektrus-lab-content-tag/,
+ "Composition tag returns above the vessel");
 assert.match(labUi,/contents\.precipitateFraction/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-indicator-shelf/);
 const labWithBoard={
@@ -1791,8 +1791,8 @@ assert.match(labUi,/onSelect\?\.\(""\)/);
 assert.match(labUi,/closest\("\[data-board-interactive\]"\)/,
  "Clicks on a vessel or interactive cabinet must not trigger deselection");
 assert.match(labUi,/lektrus-lab-quantity-meter/);
-assert.match(labUi,/lektrus-lab-quantity-info is-solution/);
-assert.match(labUi,/lektrus-lab-quantity-info is-residue/);
+assert.match(labUi,/lektrus-lab-selection-composition/);
+assert.match(labUi,/lektrus-lab-quantity-measure is-solid/);
 assert.match(labUi,/readoutLeft=\{p\.x>62\}/,
  "Right-edge vessels must show readout toward the middle of the worktop");
 assert.doesNotMatch(labUi,/details&&<div className="lektrus-lab-vessel-composition"/);
@@ -1820,3 +1820,23 @@ assert.match(sideGaugeLayout,/grid-template-columns:6px 27px minmax\(0,1fr\)/,
 assert.match(sideGaugeLayout,/width:152px!important/,
  "Compact badge should have a bounded but legible width");
 console.log("Side gauges are separated from vessel and use nonoverlapping columns");
+
+
+let drops=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {unit:"ml",value:25,concentrationM:.1});
+drops=lab.setLabIndicator(drops,"v1","phenolphthalein");
+assert.equal(drops.vessels[0].indicatorDrops,3);
+assert.equal(lab.labIndicatorResult(drops.vessels[0]).medium,"acid");
+assert.equal(lab.labIndicatorResult(drops.vessels[0]).color,"#c8e3eb");
+drops=lab.setLabIndicator(drops,"v1","phenolphthalein");
+assert.equal(drops.vessels[0].indicatorDrops,6);
+drops=lab.setLabIndicator(drops,"v1","universal");
+assert.equal(drops.vessels[0].indicatorDrops,undefined);
+assert.equal(drops.vessels[0].indicator,"universal");
+const dropUi=read("src/LektrusChemistryBench.tsx");
+assert.match(dropUi,/vessel.indicator==="universal"&&<g className="lektrus-lab-indicator-strip"/);
+assert.match(dropUi,/is-liquid-drop/);
+assert.match(dropUi,/is-paper-strip/);
+assert.match(dropUi,/lektrus-lab-content-tag/);
+assert.match(read("src/boardModel.ts"),/v.indicatorDrops==null/);
+console.log("Liquid indicators applied as drops; universal paper and overhead tag restored");
