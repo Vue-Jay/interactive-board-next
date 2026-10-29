@@ -2,7 +2,6 @@
  * Only balanced equations and measured stock (g or mol/L) are supported.
  * The 4-second animation is instructional, NOT a kinetic-rate prediction. */
 import type {LabDose} from "./lektrusChemistryBenchModel";
-import {cabinetPhase,LAB_NEAT_STOCK} from "./lektrusLabCatalog";
 import {substances,type ReactionCase} from "./lektrusReactionDatabase";
 const substancesByFormula=(formula:string)=>substances.find(v=>v.id===formula);
 
@@ -114,9 +113,9 @@ export function labDoseMoles(formula:string,dose:LabDose):number|undefined{
    return Number.isFinite(dose.concentrationM)&&dose.concentrationM>0?
     dose.value*dose.concentrationM/1000:undefined;
   const substance=substancesByFormula(formula);
-  if(substance?.kind==="газ"||substance&&cabinetPhase(substance)==="gas")
+  if(substance?.kind==="газ")
    return dose.value/REFERENCE_GAS_MOLAR_VOLUME_ML;
-  const density=LAB_NEAT_STOCK.has(formula)?NEAT_DENSITY_G_ML[formula]:undefined;
+  const density=NEAT_DENSITY_G_ML[formula];
   const mass=density!==undefined?labMolarMass(formula):undefined;
   return density!==undefined&&mass?dose.value*density/mass:undefined;
  }
