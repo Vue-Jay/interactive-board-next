@@ -1,7 +1,7 @@
 import {substances,type Substance} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 export type StoragePhase="liquid"|"solid"|"gas";
-export type CatalogueSort="name"|"formula";
+export type CatalogueSort="recommended"|"name"|"formula";
 export type CatalogueGroup="class"|"phase"|"none";
 export const phaseNames:Record<StoragePhase,string>={
  liquid:"Жидкие и растворы",solid:"Твёрдые",gas:"Газообразные"
@@ -46,22 +46,36 @@ export function cabinetColor(v:Substance){
 }
 export function buildLabCatalog(options:{query?:string;kind?:string;phase?:"all"|StoragePhase;
  sort?:CatalogueSort;group?:CatalogueGroup}){
- const {query="",kind="Все",phase="all",sort="name",group="class"}=options;
+ const {query="",kind="Все",phase="all",sort="recommended",group="class"}=options;
  const needle=query.toLocaleLowerCase("ru-RU").trim();
  const entries=substances.filter(v=>
-  (kind==="Все"||v.kind===kind)&&(phase==="all"||cabinetPhase(v)===phase)&&
+  (kind==="Все"||v.kind===kind)&&
+  (phase==="all"||(phase==="liquid"&&labReagentForms(v).includes("ml"))||
+   (phase==="solid"&&labReagentForms(v).includes("g"))||
+   (phase==="gas"&&cabinetPhase(v)==="gas"))&&
   (v.name+" "+v.formula+" "+(classNames[v.kind]??v.kind)).toLocaleLowerCase("ru-RU").includes(needle));
- const cmp=(a:Substance,b:Substance)=>sort==="formula"?
-  a.formula.localeCompare(b.formula,"ru-RU",{numeric:true}):
-  a.name.localeCompare(b.name,"ru-RU",{numeric:true});
+ const recommended=(v:Substance)=>{
+  if(v.id==="H2O")return -3;
+  const forms=labReagentForms(v),liquid=forms.includes("ml");
+  const common=["HCl","NaOH","AgNO3","NaCl","CuSO4","BaCl2","CaCl2","Na2CO3","KOH","H2SO4","NaHCO3"];
+  return liquid?(common.includes(v.id)?-2:-1):1;
+ };
+ const cmp=(a:Substance,b:Substance)=>{
+  const score=sort==="recommended"?recommended(a)-recommended(b):0;
+  if(score)return score;
+  return sort==="formula"?a.formula.localeCompare(b.formula,"ru-RU",{numeric:true}):
+   a.name.localeCompare(b.name,"ru-RU",{numeric:true});
+ };
  const groupName=(v:Substance)=>group==="none"?"Все вещества":
-  group==="phase"?phaseNames[cabinetPhase(v)]:(classNames[v.kind]??v.kind);
+  group==="phase"?(labReagentForms(v).includes("ml")?"Растворы и жидкости":phaseNames[cabinetPhase(v)]):(classNames[v.kind]??v.kind);
  const grouped=new Map<string,Substance[]>();
  for(const v of entries){
   const title=groupName(v);
   if(!grouped.has(title))grouped.set(title,[]);
   grouped.get(title)?.push(v);
  }
- return [...grouped.entries()].sort(([a],[b])=>a.localeCompare(b,"ru-RU"))
+ return [...grouped.entries()].sort(([a],[b])=>
+  (a==="Растворы и жидкости"?-1:b==="Растворы и жидкости"?1:0)||
+  a.localeCompare(b,"ru-RU"))
   .map(([title,items])=>({title,items:items.sort(cmp)}));
 }
