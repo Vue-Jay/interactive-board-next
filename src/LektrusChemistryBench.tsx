@@ -64,11 +64,6 @@ const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
   inside:"M44 8H56V108H44Z",
   outline:"M43 7H57V111H43ZM39 111H61M50 111V126",
   liquid:"M45 33H55V107H45Z"
- },
- funnel:{
-  inside:"M13 35H87L55 83V122H45V83Z",
-  outline:"M12 33H88L56 83V124H44V83ZM12 33H88",
-  liquid:"M21 47H79L55 85H45Z"
  }
 };
 export const reactionFamilyLabels:Record<ReactionFamily,string>={
@@ -139,7 +134,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const gearX=["tube","flask","conical","volumetric","pipette","burette"].includes(vessel.kind)?66:
   vessel.kind==="cylinder"?75:vessel.kind==="crucible"?80:84;
  const gearY=vessel.kind==="dish"?70:vessel.kind==="crucible"?59:
-  vessel.kind==="funnel"?36:15;
+  15;
  const substanceState=!vessel.reagents.length?"Пусто":
   appearance.productSolid?"Продукт: "+appearance.productSolid:
   observation==="precipitate"?"↓ Осадок":
