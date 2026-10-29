@@ -88,7 +88,7 @@ assert.equal(lab.labIndicatorResult(salt.vessels[0]).medium,"unknown",
 let transferred=lab.addLabVessel(neutral,"tube");
 transferred=lab.pourLabVessel(transferred,"v1","v2");
 assert.equal(transferred.vessels[0].indicator,undefined,"Empty source has no indicator");
-assert.equal(transferred.vessels[1].indicator,"universal","Indicator travels with solution");
+assert.equal(transferred.vessels[1].indicator,undefined,"Universal indicator paper must not transfer with solution");
 let mixed=lab.addLabVessel(indicatorBench,"flask");
 mixed=lab.putLabReagent(mixed,mixed.selectedId,"HCl");
 mixed=lab.pourLabVessel(mixed,mixed.selectedId,"v1");
@@ -1891,3 +1891,16 @@ assert.match(indicatorCss,/left:calc\(100% \+ 11px\)!important/,
  "Composition plaque should return close to the vessel");
 assert.match(indicatorCss,/right:calc\(100% \+ 11px\)!important/);
 console.log("Indicator solution dosing, universal paper, pH-titration color transitions and readout spacing passed");
+
+
+let liquidTransfer=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {value:12,unit:"ml",concentrationM:.1});
+liquidTransfer=lab.setLabIndicator(liquidTransfer,"v1","methyl-orange");
+liquidTransfer=lab.addLabVessel(liquidTransfer,"tube");
+const liquidReceiverId=liquidTransfer.vessels.find(v=>v.id!=="v1").id;
+liquidTransfer=lab.pourLabVessel(liquidTransfer,"v1",liquidReceiverId);
+assert.equal(liquidTransfer.vessels.find(v=>v.id===liquidReceiverId).indicator,"methyl-orange",
+ "Indicator solution must travel with poured liquid");
+assert.equal(liquidTransfer.vessels.find(v=>v.id===liquidReceiverId).indicatorDrops,1);
+assert.equal(liquidTransfer.vessels.find(v=>v.id==="v1").indicatorDrops,undefined,
+ "The emptied source cannot keep liquid indicator");
