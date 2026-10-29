@@ -1098,6 +1098,13 @@ const receiving=layout.labStandBaseVesselPoint(stand,{kind:"conical"},1600,1000)
 const burette=layout.labMountedGlasswarePoint(stand,{kind:"burette"},1600,1000);
 assert.ok(receiving.y-burette.y>12,
  "A taller stand must leave a visible gap for titrant drops");
+for(const width of [400,450,690,700,900,1200,1600,2600]){
+ const jar=layout.labStandBaseVesselPoint(stand,{kind:"conical"},width,1000);
+ const source=layout.labMountedGlasswarePoint(stand,{kind:"burette"},width,1000);
+ assert.ok(jar.y-7-(source.y+8.1)>3,
+  "Titration drops should fall visibly between burette and flask at "+width+"px");
+}
+
 const starterInput=lab.setLabMode(lab.defaultLabBench(),"titration");
 const starterOriginal={...starterInput.vessels[0]};
 const preparedKit=lab.prepareLabModeSetup(starterInput);
