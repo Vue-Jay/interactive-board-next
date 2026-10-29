@@ -81,3 +81,23 @@ export function labMountedGlasswarePoint(
   y:clamp(device.y+yPx/h*100,47,86)
  };
 }
+
+/** Center a free receiving vessel on the retort stand's REAL metal foot.
+ * The bottom of the vessel, not its middle, coincides with SVG y=96/108.
+ * Keep the same responsive dimensions as the rendered stand and glass. */
+export function labStandBaseVesselPoint(
+ stand:LabMountGeometry,vessel:LabVesselGeometry,
+ width:number,height:number,crowded=false
+){
+ const w=width||1600,h=height||1000,small=w<=690;
+ const dw=small?size(112,.17,146,w):size(130,.11,190,w);
+ const dh=small?size(208,.34,266,w):size(228,.19,280,w);
+ let vh=small?size(96,.17,130,w):size(112,.157,158,w);
+ if(crowded)vh=size(100,.133,136,w);
+ if(vessel.kind==="dish"||vessel.kind==="crucible")vh=size(98,.12,125,w);
+ const vesselFoot=0.4*vh;
+ return {
+  x:clamp(stand.x+(60/110-.5)*dw/w*100,5,82),
+  y:clamp(stand.y+((96/108-.5)*dh-vesselFoot)/h*100,46,85)
+ };
+}
