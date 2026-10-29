@@ -1140,9 +1140,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     viewBox="0 0 110 108" preserveAspectRatio="none"
     aria-hidden="true" style={{left:p.x+"%",top:p.y+"%"}}>
     <g transform={`translate(0 ${y-40})`}>
-     <path d="M76 40L87 31M76 40L88 49M85 31Q101 40 85 49"
-      stroke="#577e77" strokeWidth="3.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-     <path d="M78 40Q92 38 93 41" stroke="#d2ede1" strokeWidth="1.4" fill="none"/>
+     <path d="M77 40Q82 34 88 36M77 40Q82 46 88 44"
+      stroke="#4b796e" strokeWidth="2.6" strokeLinecap="round" fill="none"/>
+     <path d="M80 38Q84 36 87 37" stroke="#d2ede1" strokeWidth="1" fill="none"/>
     </g>
    </svg>;
   })}
@@ -1365,7 +1365,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)?" is-stirring":"")+
     (preview?.id===v.id&&dropTarget?" is-pour-drag":"")+
     (effectivePouringId&&effectivePouringId!==v.id?" is-pour-target":"")}
-    style={{left:p.x+"%",top:p.y+"%",zIndex:selectedVessel||preview?.id===v.id?35:23+i}}
+    style={{left:p.x+"%",top:p.y+"%",zIndex:v.kind==="burette"?44:selectedVessel||preview?.id===v.id?35:23+i}}
     disabled={!editable} aria-label={"Сосуд "+(i+1)+": "+names[v.kind]+
       (v.reagents.length?", "+v.reagents.join(", "):", пустой")}
     aria-pressed={selectedVessel} title={editable?
