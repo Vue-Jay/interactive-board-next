@@ -770,8 +770,8 @@ export function transferLabMeasuredLiquid(
  const current=Object.values(target.doses??{}).reduce((sum,d)=>
   sum+(d.unit==="ml"?d.value:0),0);
  if(capacity!==undefined&&current+volumeMl>capacity+1e-7)return bench;
- const ids=[...new Set([...target.reagents,...source.reagents])];
- if(ids.length>MAX_VESSEL_REAGENTS)return bench;
+ // Decide which solutes actually enter the recipient after rounding to 0.01 ml.
+ // An untransferred trace must not appear as a new reagent in the target.
  // Largest remainder allocation: every 0.01ml is attributed to a component,
  // and no component can contribute more than its actual stock.
  const exactShares=amounts.map(v=>requested*v/totalCents);
@@ -785,6 +785,9 @@ export function transferLabMeasuredLiquid(
   if(allocated[i]<amounts[i]){allocated[i]++;remainder--}
  }
  if(remainder!==0)return bench;
+ const transferredIds=entries.filter((_,i)=>allocated[i]>0).map(e=>e.id);
+ const ids=[...new Set([...target.reagents,...transferredIds])];
+ if(ids.length>MAX_VESSEL_REAGENTS)return bench;
  const received={...target.doses};
  const left={...source.doses};
  for(let i=0;i<entries.length;i++){
