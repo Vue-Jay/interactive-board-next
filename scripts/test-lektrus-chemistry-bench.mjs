@@ -565,7 +565,7 @@ assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-modal-reagents/)
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-glass-cupboard/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-sink/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-chalkboard/);
-assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-modal-settings/);
+assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-modal-settings/);
 assert.doesNotMatch(editor,/lektrus-lab-inspector/,"No separate observation/sidebar in fullscreen");
 assert.doesNotMatch(editor,/lektrus-lab-editor-head/,"No additional lab header");
 assert.match(editor,/lektrus-lab-editor-exit/,"Only a compact close control remains");
@@ -1176,5 +1176,64 @@ for(const width of [400,690,700,900,1200,1600,2600]){
  assert.ok(Math.abs(drops.targetX-drops.x)<width*.12,
   "The receiving flask must be aligned with the burette nozzle");
 }
+
+// Real-time pipette dwell: a contact must survive a full second.
+const polishedLabSource=read("src/LektrusChemistryBench.tsx");
+assert.match(polishedLabSource,/contactTimer\.current=setTimeout\(perform,sampling\?1000:120\)/);
+assert.match(polishedLabSource,/if\(contactRef\.current\)endContact\(\)/);
+assert.match(polishedLabSource,/endContact\(\);\s*event\.preventDefault\(\)/);
+assert.doesNotMatch(polishedLabSource,/className="lektrus-lab-svg-ware-control"/);
+assert.doesNotMatch(polishedLabSource,/className="lektrus-lab-settings-trigger"/);
+assert.doesNotMatch(polishedLabSource,/openCabinet\("settings"\)/);
+assert.match(polishedLabSource,/className="lektrus-lab-burette-rate-buttons"/);
+assert.match(polishedLabSource,/aria-pressed=\{\(selectedBurette\.buretteRateMlS\?\?\.2\)===rate\}/);
+assert.doesNotMatch(polishedLabSource,/<label>Скорость\s*<select/);
+assert.match(polishedLabSource,/className=\{"lektrus-lab-equations-toggle"/);
+assert.match(polishedLabSource,/labObservation\(selected\)\.caseData\?\.observation==="precipitate"/);
+assert.match(read("src/LektrusChemistryIllustration.tsx"),/className="lektrus-lab-open-editor"/);
+assert.doesNotMatch(read("src/LektrusChemistryIllustration.tsx"),/>⤢ Открыть лабораторию<\/button>/);
+const uiCss=read("src/lektrusChemistryBench.css");
+assert.match(uiCss,/lektrus-lab-burette-rate-buttons/);
+assert.match(uiCss,/lektrus-chemistry-bench-on-board>\.lektrus-lab-open-editor/);
+assert.match(uiCss,/lektrus-lab-editor\.is-board-identical \.lektrus-lab-scene-header/);
+assert.match(uiCss,/lektrus-lab-bench \.lektrus-lab-chalkboard/);
+assert.match(read("src/LektrusLabDeviceIcon.tsx"),/M27 40H76/,
+ "Retort clamp is physically thinner than its previous full-width arm");
+
+// Filtration physically separates a reviewed precipitate, keeps measured
+// solid mass and transfers the carrier solution without duplication.
+let filtered=lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3",
+ {value:10,unit:"ml",concentrationM:.1});
+filtered=lab.putLabReagent(filtered,"v1","NaCl",
+ {value:10,unit:"ml",concentrationM:.1});
+filtered=lab.addLabVessel(filtered,"conical",{x:72,y:73});
+const destination=filtered.vessels.find(v=>v.kind==="conical").id;
+assert.equal(lab.filterLabPrecipitate(filtered,"v1",destination),filtered,
+ "A measured reaction cannot be filtered before it has finished");
+filtered=lab.advanceLabSimulation(filtered,1000);
+filtered=lab.advanceLabSimulation(filtered,1500);
+filtered=lab.advanceLabSimulation(filtered,5500);
+assert.equal(filtered.vessels[0].reactionAmounts?.complete,true);
+const separated=lab.filterLabPrecipitate(filtered,"v1",destination);
+assert.notEqual(separated,filtered);
+assert.equal(separated.vessels[0].filteredResidue?.formula,"AgCl");
+assert.ok(Math.abs(separated.vessels[0].filteredResidue.massG-.143318)<1e-5);
+assert.equal(separated.vessels[0].doses.AgCl.unit,"g");
+const filtrate=separated.vessels.find(v=>v.id===destination);
+assert.equal(lab.labVesselQuantity(filtrate).volumeMl,20);
+assert.ok(filtrate.filteredSolution?.solutes.includes("NaNO3"));
+assert.ok(!filtrate.reagents.includes("AgCl"),
+ "The insoluble salt cannot magically pass through a filter");
+assert.equal(lab.labVesselQuantity(separated.vessels[0]).volumeMl,0);
+assert.equal(lab.filterLabPrecipitate(separated,"v1",destination),separated,
+ "The same collected residue cannot be filtered repeatedly");
+const qualitative=lab.addLabVessel(lab.putLabReagent(
+ lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3"),"v1","NaCl"),
+ "conical");
+const qTarget=qualitative.vessels.find(v=>v.kind==="conical").id;
+const qFiltered=lab.filterLabPrecipitate(qualitative,"v1",qTarget);
+assert.equal(qFiltered.vessels[0].filteredResidue?.formula,"AgCl");
+assert.equal(qFiltered.vessels[0].filteredResidue?.massG,undefined,
+ "Unknown original amounts must not create a fictitious precipitate mass");
 
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
