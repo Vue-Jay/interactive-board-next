@@ -816,6 +816,9 @@ export function advanceLabPour(b:LabBench):LabBench{
    pourFraction:p.unmeasured?portionRound(.5*(20-n)/20):v.pourFraction};
   if(v.id===target.id)return {...v,reagents:combined,doses:received,
    observed:true,uncertain,environment:targetWasEmpty?source.environment:v.environment,
+   visualStartedAtMs:!uncertain&&!sourceReaction&&!targetReaction&&
+    identifyReaction(combined,targetWasEmpty?source.environment:v.environment).status==="reaction"?
+    (v.visualStartedAtMs??Date.now()):v.visualStartedAtMs,
    completedReaction:targetWasEmpty?sourceReaction:v.completedReaction,
    indicator:v.indicator??source.indicator,
    pourFraction:p.unmeasured?portionRound(Math.min(1,(v.pourFraction??(targetWasEmpty?0:.5))+.025)):v.pourFraction};
@@ -866,8 +869,12 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
     doses[id]={value:total,unit:dose.unit,
      ...(concentrationM!==undefined?{concentrationM}:{})};
    }
+   const medium=targetWasEmpty?source.environment:target.environment;
+   const newReaction=!uncertain&&!sourceReaction&&!targetReaction&&
+    identifyReaction(reagents,medium).status==="reaction";
    return {...v,reagents,observed:reagents.length>1||source.observed,
-    doses,environment:targetWasEmpty?source.environment:target.environment,
+    doses,environment:medium,
+    visualStartedAtMs:newReaction?Date.now():v.visualStartedAtMs,
     completedReaction:targetWasEmpty?sourceReaction:(targetReaction??sourceReaction),
     indicator:v.indicator??source.indicator,
     uncertain:uncertain||Boolean(v.indicator&&source.indicator&&v.indicator!==source.indicator)};
