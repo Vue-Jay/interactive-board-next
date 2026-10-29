@@ -531,12 +531,15 @@ const thermalCaseThresholds:Record<string,number>={
  "CuO+CO":200,"CuO+C":300,"Fe2O3+CO":700,"Fe2O3+H2":550,
  "C2H5OH+CuO":210,"CH3OH+CuO":200
 };
+const canonicalThermalThresholds=Object.fromEntries(
+ Object.entries(thermalCaseThresholds).map(([signature,temp])=>
+  [signature.split("+").sort().join("+"),temp]));
 for(const row of cases){
  if(row.status!=="reaction")continue;
  if(row.environment==="heated"||row.environment==="ignited"){
   const signature=row.reactants.slice().sort().join("+");
-  row.minTemperatureC=thermalCaseThresholds[signature]??
-   thermalCaseThresholds[row.reactants[0]]??
+  row.minTemperatureC=canonicalThermalThresholds[signature]??
+   row.reactants.map(id=>thermalCaseThresholds[id]).find(v=>v!==undefined)??
    (row.environment==="ignited"?135:90);
  }
 }
