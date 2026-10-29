@@ -491,8 +491,16 @@ export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,req
   if(v.id===targetId){
    const dosed={...v.doses};
    dosed[titrant]={value:newTotal,unit:"ml" as const,concentrationM:sourceDose.concentrationM};
-   return {...v,reagents:[...new Set([...v.reagents,titrant])],doses:dosed,observed:true,
-    uncertain:false};
+   // Strong acid/base titration reaches equilibrium between individual drops.
+   // Both consumption and salt/water production follow limiting-reagent moles.
+   const ids=[...new Set([...v.reagents,titrant])];
+   const row=identifyReaction(ids,"aqueous");
+   const initial=row.status==="reaction"&&row.caseData?
+    startQuantifiedLabReaction(row.caseData,ids,dosed):null;
+   const reactionAmounts=initial?
+    advanceQuantifiedLabReaction(initial,initial.durationSeconds):undefined;
+   return {...v,reagents:ids,doses:dosed,observed:true,
+    reactionAmounts,uncertain:false};
   }
   return v;
  });
