@@ -259,7 +259,7 @@ export function setLabBuretteValve(bench:LabBench,id:string,open:boolean,
  const rate=rateMlS??source.buretteRateMlS??.2;
  if(!LAB_DRIP_RATES.some(v=>v===rate))return bench;
  return revise(bench,id,v=>({...v,buretteOpen:open,buretteTargetId:target,
-  buretteRateMlS:rate}));
+  buretteRateMlS:rate,buretteRemainderMl:open&&!v.buretteOpen?0:v.buretteRemainderMl}));
 }
 export function dispenseLabBurette(bench:LabBench,id:string,targetId:string,ml:number):LabBench{
  const src=bench.vessels.find(v=>v.id===id);
@@ -364,11 +364,17 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   }
   const dose=v.doses?.[v.reagents[0]];
   if(!dose){result=setLabBuretteValve(result,v.id,false);continue}
-  const amount=Math.max(0,Math.round(seconds*(v.buretteRateMlS??.2)*100)/100);
-  if(!amount)continue;
+  const precise=Math.max(0,seconds*(v.buretteRateMlS??.2)+(v.buretteRemainderMl??0));
+  const amount=Math.floor(precise*100+1e-9)/100;
+  const remainder=Math.max(0,Math.round((precise-amount)*1e7)/1e7);
+  if(!amount){
+   result=revise(result,v.id,x=>({...x,buretteRemainderMl:remainder}));
+   dropChanged=true;continue;
+  }
   const next=dispenseLabBurette(result,v.id,v.buretteTargetId,amount);
   if(next===result){result=setLabBuretteValve(result,v.id,false);continue}
-  result=next;dropChanged=true;
+  result=revise(next,v.id,x=>({...x,buretteRemainderMl:remainder}));
+  dropChanged=true;
   if(!result.vessels.find(x=>x.id===v.id)?.reagents.length)
    result=setLabBuretteValve(result,v.id,false);
  }
@@ -528,6 +534,8 @@ export type LabVessel={pourFraction?:number;
  /** Target volume when collecting a sample with a graduated pipette. */
  pipetteTargetMl?:number;
  buretteOpen?:boolean;buretteTargetId?:string;buretteRateMlS?:number;
+ /** Sub-centimillilitre remainder is saved between dosing ticks. */
+ buretteRemainderMl?:number;
  doses?:Record<string,LabDose>;
  /** A verified reaction already completed in this material; survives full transfer. */
  completedReaction?:ReactionCase;
