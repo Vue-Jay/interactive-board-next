@@ -7,6 +7,7 @@ type DeviceIconProps={
  kind:LabDevice;size?:number;active?:boolean;
  editable?:boolean;controlsVisible?:boolean;temperatureC?:number;temperatureVisible?:boolean;targetTemperatureC?:number;
  standHeight?:number;heatLevel?:number;
+ collectedResidue?:{formula:string;color:string;massG?:number};filtering?:boolean;
  choices?:MountChoice[];shelfChoices?:MountChoice[];
  onPowerToggle?:()=>void;onTemperatureChange?:(value:number)=>void;
  onStandHeightChange?:(value:number)=>void;onLevelCycle?:()=>void;
@@ -17,7 +18,7 @@ type DeviceIconProps={
  * There are no absolute-positioned controls floating over the drawing. */
 export default function LektrusLabDeviceIcon({
  kind,size=42,active=false,temperatureC,temperatureVisible=true,targetTemperatureC=150,
- standHeight=.5
+ standHeight=.5,collectedResidue,filtering=false
 }:DeviceIconProps){
  const uid=useId().replace(/:/g,"");
  const metal=uid+"-metal",glass=uid+"-glass",plastic=uid+"-case";
@@ -98,23 +99,37 @@ export default function LektrusLabDeviceIcon({
    <path d="M78 64V68" stroke="#295d54" strokeWidth="2.5"/>
   </>}
   {kind==="filter"&&<>
-   {/* Portable sealed membrane filter; no funnel is introduced. */}
-   <ellipse cx="55" cy="98" rx="37" ry="6" fill="#22493e" opacity=".15"/>
-   <path d="M34 92H75L81 98H28Z" fill={"url(#"+metal+")"}
-    stroke="#45776c" strokeWidth="2"/>
-   <path d="M54 82V94" stroke="#608f84" strokeWidth="5"/>
-   <rect x="28" y="22" width="53" height="61" rx="9"
-    fill={"url(#"+glass+")"} stroke="#588c83" strokeWidth="3"/>
-   <rect x="34" y="18" width="41" height="10" rx="4"
-    fill={"url(#"+metal+")"} stroke="#4d8275" strokeWidth="2"/>
-   <path d="M33 45H76" stroke="#3b807a" strokeWidth="2"/>
-   <path d="M34 49H75" stroke="#93bb9f" strokeWidth="8" opacity=".8"/>
-   <path d="M35 57Q54 51 74 57" stroke="#6bb4c4" strokeWidth="4"
-    fill="none" opacity=".82"/>
-   {Array.from({length:6},(_,i)=><path key={i}
-    d={`M${38+i*6} 46l-4 6`} stroke="#568b72" strokeWidth="1.4"/>)}
-   <path d="M54 60V77" stroke="#5baca6" strokeWidth="4"/>
-   <path d="M46 73L54 83L62 73" stroke="#489e99" strokeWidth="2.2" fill="none"/>
+   {/* Open membrane cup on a sturdy base. No separate funnel or popup. */}
+   <ellipse cx="55" cy="97" rx="40" ry="5" fill="#183d34" opacity=".16"/>
+   <path d="M26 92H84L90 99H20Z" fill={"url(#"+metal+")"}
+    stroke="#46746a" strokeWidth="2.5"/>
+   <path d="M39 91V65M72 91V65" stroke="#70978c" strokeWidth="4.5"/>
+   <path d="M26 27V53Q26 64 38 64H73Q84 64 84 53V27"
+    fill={"url(#"+glass+")"} stroke="#47887b" strokeWidth="3"/>
+   <path d="M29 44Q55 50 81 44" fill="none"
+    stroke="#a7d9c7" strokeWidth="7" strokeLinecap="round"/>
+   <ellipse cx="55" cy="45" rx="26" ry="6" fill="#d8eadd"
+    stroke="#5c9a81" strokeWidth="2.3"/>
+   {Array.from({length:9},(_,i)=><path key={i}
+    d={`M${34+i*5} 43l-3 5`} stroke="#78ac8f" strokeWidth="1.2"/>)}
+   {collectedResidue&&<>
+    <ellipse cx="55" cy="43" rx="23" ry="5"
+     fill={collectedResidue.color} stroke="#72887e" strokeWidth="1.2"/>
+    {Array.from({length:8},(_,i)=><circle key={i}
+     cx={36+i*5} cy={42+(i%2)*2} r={1.3+(i%3)*.25}
+     fill={collectedResidue.color} stroke="#677e76" strokeWidth=".4"/>)}
+   </>}
+   <ellipse cx="55" cy="27" rx="34" ry="9.5"
+    fill="#e5f7f0" fillOpacity=".68" stroke="#578b7f" strokeWidth="3"/>
+   <ellipse cx="55" cy="27" rx="29" ry="6.5"
+    fill="#c4e0d5" fillOpacity=".42" stroke="#9abbb0" strokeWidth="1"/>
+   <path d="M42 64V68H68V64" stroke="#66988a" strokeWidth="2.2"/>
+   <path d="M55 69V81" stroke="#78b9b9" strokeWidth="2.8" strokeLinecap="round"/>
+   {filtering&&[0,1,2].map(i=><path key={i}
+    className="lektrus-lab-filter-drain-drop"
+    d="M55 75C52 79 51 82 55 85C59 82 58 79 55 75Z"
+    fill="#9edce9" stroke="#4aabb2" strokeWidth=".7"
+    style={{animationDelay:i*.35+"s"}}/>)}
   </>}
   {kind==="tripod"&&<>
    {/* Taller metal rod: one sliding clamp from y=12 to y=64. */}
