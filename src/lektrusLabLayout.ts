@@ -102,3 +102,43 @@ export function labStandBaseVesselPoint(
   y:clamp(stand.y+((96/108-.5)*dh-vesselFoot)/h*100,46,85)
  };
 }
+
+/** Position visible titration droplets at the true SVG nozzle and the
+ * recipient's open rim, not at an arbitrary offset from a vessel centre.
+ * The SVG pictures are aspect-ratio contained in the rendered glassware
+ * buttons, whose logical viewBox is 100 × 133. Keep the stage in pixels
+ * so teardrops remain circular when the tabletop stretches horizontally. */
+export function labTitrationDropEndpoints(
+ source:{x:number;y:number},receiver:{x:number;y:number},
+ receiverKind:string,stageWidth:number,stageHeight:number
+):{x:number;y:number;targetX:number;targetY:number}|null{
+ if(!Number.isFinite(stageWidth)||!Number.isFinite(stageHeight)||
+  stageWidth<=0||stageHeight<=0)return null;
+ const w=stageWidth,h=stageHeight,compact=w<=690;
+ const clampSize=(min:number,relative:number,max:number)=>
+  Math.max(min,Math.min(max,w*relative));
+ const sourceWidth=compact?clampSize(47,.07,67):clampSize(52,.047,78);
+ const sourceHeight=compact?clampSize(130,.24,164):clampSize(151,.20,198);
+ const targetWidth=compact?(
+  receiverKind==="tube"?clampSize(50,.045,72):clampSize(52,.09,82)):
+  receiverKind==="tube"?clampSize(50,.045,72):
+  receiverKind==="cylinder"||receiverKind==="volumetric"?clampSize(56,.053,86):
+  clampSize(58,.063,104);
+ const targetHeight=compact?clampSize(96,.17,130):
+  receiverKind==="dish"||receiverKind==="crucible"?clampSize(98,.12,125):
+  clampSize(112,.157,158);
+ const pictureHeight=(width:number,height:number)=>Math.min(height,width*1.33);
+ const sourcePicture=pictureHeight(sourceWidth,sourceHeight);
+ const targetPicture=pictureHeight(targetWidth,targetHeight);
+ const nozzleSvgY=126; // burette nozzle in LabVesselGraphic
+ const rimSvgY=receiverKind==="beaker"?14:
+  receiverKind==="tube"?12:
+  receiverKind==="flask"||receiverKind==="conical"?9:12;
+ const x=source.x*w/100;
+ const y=source.y*h/100-sourceHeight*.54+
+  (sourceHeight-sourcePicture)/2+sourcePicture*nozzleSvgY/133;
+ const targetX=receiver.x*w/100;
+ const targetY=receiver.y*h/100-targetHeight*.54+
+  (targetHeight-targetPicture)/2+targetPicture*rimSvgY/133;
+ return targetY>y+4?{x,y,targetX,targetY}:null;
+}
