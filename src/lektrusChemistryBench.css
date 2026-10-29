@@ -3452,3 +3452,29 @@
 .lektrus-lab-bench.is-crowded .lektrus-lab-vessel{
  width:clamp(58px,6.3cqw,104px)!important;
  height:clamp(112px,15.7cqw,158px)!important;max-height:158px!important}
+
+/* Compact, explicit mode kit. Never auto-clears an active experiment. */
+.lektrus-lab-bench .lektrus-lab-prepare-mode{
+ flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;
+ height:31px;min-width:0;padding:4px 9px;
+ border:1px solid #9fc9ad;border-radius:8px;background:#e7f5eb;
+ color:#286c50;font:800 clamp(10px,.9cqw,12px)/1.1 system-ui,sans-serif;
+ cursor:pointer;white-space:nowrap}
+.lektrus-lab-bench .lektrus-lab-prepare-mode:hover{background:#d1f1da}
+.lektrus-lab-bench .lektrus-lab-prepare-mode:disabled{opacity:.66;cursor:default}
+@container(max-width:920px){
+ .lektrus-lab-bench .lektrus-lab-scene-header>strong{display:none!important}
+ .lektrus-lab-bench .lektrus-lab-scene-stats{display:none!important}
+ .lektrus-lab-bench .lektrus-lab-prepare-label{display:none}
+ .lektrus-lab-bench .lektrus-lab-mode-picker{flex:1 1 145px;min-width:110px}
+ .lektrus-lab-bench .lektrus-lab-prepare-mode{padding:4px 8px}
+}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-scene-header{
+  gap:4px!important;right:7%!important;padding-right:0!important}
+ .lektrus-lab-bench .lektrus-lab-scene-brand{font-size:10px!important}
+ .lektrus-lab-bench .lektrus-lab-header-tools{gap:2px}
+ .lektrus-lab-bench .lektrus-lab-header-tools button{padding:3px 4px!important}
+ .lektrus-lab-bench .lektrus-lab-temperature-toggle>span:last-child{display:none}
+ .lektrus-lab-bench .lektrus-lab-arrange-btn{display:none!important}
+}
