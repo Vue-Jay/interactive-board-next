@@ -846,7 +846,12 @@ export function parseDocument(raw: string): DocumentData {
               (d.powered==null||typeof d.powered==="boolean")&&
               (d.heatLevel==null||[1,2,3].includes(d.heatLevel))&&
               (d.temperatureC==null||(Number.isFinite(d.temperatureC)&&d.temperatureC>=0&&d.temperatureC<=700))&&
-              (d.linkedVesselId==null||bench.vessels.some(v=>v.id===d.linkedVesselId)))))||
+              (d.linkedVesselId==null||bench.vessels.some(v=>v.id===d.linkedVesselId))&&
+               (d.collectedResidue==null||(typeof d.collectedResidue.formula==="string"&&
+                d.collectedResidue.formula.length<=70&&typeof d.collectedResidue.color==="string"&&
+                d.collectedResidue.color.length<=35&&
+                (d.collectedResidue.massG==null||(Number.isFinite(d.collectedResidue.massG)&&
+                 d.collectedResidue.massG>=0&&d.collectedResidue.massG<=10000)))))))||
           (bench.simulationAtMs!=null&&
            (!Number.isFinite(bench.simulationAtMs)||bench.simulationAtMs<0))||
           (bench.titration!=null&&!validLabTitration(bench.titration))||
@@ -874,6 +879,9 @@ export function parseDocument(raw: string): DocumentData {
             (v.filteredSolution==null||(typeof v.filteredSolution.sourceEquation==="string"&&
              v.filteredSolution.sourceEquation.length<=500&&
              Array.isArray(v.filteredSolution.solutes)&&v.filteredSolution.solutes.length<=6))&&
+            (v.physicalProcess==null||v.physicalProcess==="dissolving")&&
+            (v.physicalStartedAtMs==null||(Number.isFinite(v.physicalStartedAtMs)&&
+             v.physicalStartedAtMs>=0))&&
             v.x>=8&&v.x<=92&&v.y>=8&&v.y<=92&&
             Array.isArray(v.reagents)&&v.reagents.length<=6&&
             v.reagents.every(r=>typeof r==="string"&&r.length<=70)&&
