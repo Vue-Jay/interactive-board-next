@@ -174,6 +174,33 @@ export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string,
   stirringVesselId:mixer?.linkedVesselId,
   event:bench.event+1};
 }
+/** Apparatus standing below a suspended vessel is NOT attached to its clamp.
+ * The vertical limits approximate tabletop distance to the burner flame or
+ * the magnetic drive plate. No heater affects a high-raised vessel. */
+export function labAppliancesBelowStand(bench:LabBench,vesselId:string){
+ const stands=placedLabDevices(bench).filter(d=>d.kind==="tripod"&&
+  d.active&&d.linkedVesselId===vesselId);
+ return placedLabDevices(bench).filter(d=>
+  ["hotplate","burner","stirrer"].includes(d.kind)&&stands.some(stand=>{
+   const maxHeight=d.kind==="burner"?.7:.36;
+   return (stand.standHeight??.5)<=maxHeight&&
+    Math.abs(d.x-(stand.x+3.5))<=7&&
+    d.y>stand.y+1&&d.y<=stand.y+17;
+  }));
+}
+/** Locate a free receiving vessel under the stand's one clamp. */
+export function labReceiverBelowStand(bench:LabBench,sourceId:string):LabVessel|undefined{
+ const stand=placedLabDevices(bench).find(d=>d.kind==="tripod"&&d.active&&
+  d.linkedVesselId===sourceId);
+ if(!stand)return;
+ return bench.vessels.filter(v=>v.id!==sourceId&&
+  !placedLabDevices(bench).some(d=>d.active&&d.linkedVesselId===v.id)&&
+  ["beaker","conical","flask","tube","cylinder"].includes(v.kind))
+  .map(v=>({v,p:labDisplayPoint(v,bench.vessels.length>3)}))
+  .filter(({p})=>Math.abs(p.x-stand.x-3.5)<=8&&
+   p.y>stand.y+3&&p.y<=Math.min(91,stand.y+24))
+  .sort((a,b)=>a.p.y-b.p.y)[0]?.v;
+}
 export function setPlacedDevicePower(bench:LabBench,id:string,powered:boolean):LabBench{
  const d=placedLabDevices(bench).find(v=>v.id===id);
  if(!d||d.kind==="tripod"||d.kind==="thermometer")return bench;
@@ -210,7 +237,7 @@ export function setLabBuretteValve(bench:LabBench,id:string,open:boolean,
  targetId?:string,rateMlS?:number):LabBench{
  const source=bench.vessels.find(v=>v.id===id);
  if(source?.kind!=="burette")return bench;
- const target=targetId??source.buretteTargetId;
+ const target=targetId??labReceiverBelowStand(bench,id)?.id??source.buretteTargetId;
  if(open&&(!source.reagents.length||!target||target===id||
   !bench.vessels.some(v=>v.id===target)))return bench;
  const rate=rateMlS??source.buretteRateMlS??.2;
@@ -263,7 +290,9 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
  let vessels=bench.vessels.map(v=>{
   const old=v.temperatureC??ambient;
   const device=devices.find(d=>d.active&&d.linkedVesselId===v.id&&
-   ["hotplate","burner"].includes(d.kind));
+   ["hotplate","burner"].includes(d.kind))??
+   labAppliancesBelowStand({...bench,placedDevices:devices},v.id).find(d=>
+    d.powered&&["hotplate","burner"].includes(d.kind));
   const toward=device&&device.powered?(device.temperatureC??ambient):ambient;
   const volumes=Object.values(v.doses??{}).reduce((total,d)=>total+d.value,0);
   const inertia=Math.max(.035,Math.min(.18,60/Math.max(100,volumes)*.10));
@@ -287,7 +316,9 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
  vessels=result.vessels.map(v=>{
   if(v.temperatureC===undefined||v.temperatureC<60||!v.reagents.length)return v;
   const heater=devices.find(d=>d.active&&d.powered&&d.linkedVesselId===v.id&&
-   ["hotplate","burner"].includes(d.kind));
+   ["hotplate","burner"].includes(d.kind))??
+   labAppliancesBelowStand({...bench,placedDevices:devices},v.id).find(d=>
+    d.powered&&["hotplate","burner"].includes(d.kind));
   if(!heater)return v;
   // Only a matching reviewed thermal or combustion case can start.
   // No ignition of an unrelated aqueous solution and no invented explosion.
@@ -310,6 +341,11 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
  let dropChanged=false;
  for(const v of result.vessels){
   if(v.kind!=="burette"||!v.buretteOpen||!v.buretteTargetId)continue;
+  // A clamped burette feeds only glassware physically positioned below it.
+  const held=devices.some(d=>d.kind==="tripod"&&d.active&&d.linkedVesselId===v.id);
+  if(held&&labReceiverBelowStand(result,v.id)?.id!==v.buretteTargetId){
+   result=setLabBuretteValve(result,v.id,false);continue;
+  }
   const dose=v.doses?.[v.reagents[0]];
   if(!dose){result=setLabBuretteValve(result,v.id,false);continue}
   const amount=Math.max(0,Math.round(seconds*(v.buretteRateMlS??.2)*100)/100);
