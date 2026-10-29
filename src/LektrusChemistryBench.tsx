@@ -1,7 +1,7 @@
 import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
-import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,filterLabPrecipitate,
+import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,filterLabPrecipitate,pourLabIntoFilter,
  labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
@@ -351,7 +351,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [molarity,setMolarity]=useState("0.1");
  const [measuredMl,setMeasuredMl]=useState("5");
  const [measuredPartnerId,setMeasuredPartnerId]=useState("");
- const [filterReceiverId,setFilterReceiverId]=useState("");
  const [titrationTarget,setTitrationTarget]=useState("");
  const [localPourId,setLocalPourId]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
@@ -638,7 +637,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     d,dist:Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)
    })).filter(v=>v.dist<105&&canMountLabVessel(v.d.kind,vessel.kind))
     .sort((a,b)=>a.dist-b.dist)[0]:undefined;
-   setDropDeviceId(nearby?.d.id??null);
+   const filter=physicalDevices.find(d=>d.kind==="filter"&&
+    Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)<95);
+   setDropDeviceId(filter?.id??nearby?.d.id??null);
    const a=labDisplayPoint({x:g.x,y:g.y},bench.vessels.length>3);
    setPreview({id:g.id,x:Math.max(1,Math.min(99,a.x+p.x-g.startX)),
     y:Math.max(1,Math.min(99,a.y+p.y-g.startY))});
@@ -655,6 +656,17 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    if(inSink(p))clean(g.id);
    else if(inGlassware(p))returnGlass(g.id);
    else{
+    const rect=host.current?.getBoundingClientRect();
+    const filter=rect?physicalDevices.filter(d=>d.kind==="filter").map(d=>({
+     d,distance:Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)
+    })).sort((a,b)=>a.distance-b.distance)[0]:undefined;
+    if(filter&&filter.distance<95){
+     const next=pourLabIntoFilter(bench,g.id,filter.d.id);
+     if(next!==bench){onChange?.(next);
+      setNotice("Осадок задержан фильтром, фильтрат в чистом сосуде");
+     }else setNotice("Нужен завершённый осадок и свободное место для фильтрата");
+     setPreview(null);setDropDeviceId(null);setDropTarget(null);return;
+    }
     const target=targetAt(g.id,p);
     if(contacted){setLocalPourId(null);}
     else if(target){setNotice("Поднесите сосуд ближе к приёмнику");}
@@ -805,12 +817,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   }else{
    setActiveDeviceId(g.id);
    if(physicalDevices.some(d=>d.id===g.id&&d.kind==="filter")){
-    const sample=bench.vessels.find(v=>!v.uncertain&&!v.filteredResidue&&
-     labObservation(v).caseData?.observation==="precipitate");
-    if(sample){
-     onSelect?.(sample.id);setVesselMenuId(sample.id);
-     setNotice("Мембранный фильтр: выберите чистый приёмник и нажмите «Фильтровать»");
-    }else setNotice("Для фильтрации сначала получите осадок в одном из сосудов");
+    setNotice("Перетащите сосуд с готовым осадком непосредственно на фильтр");
    }
   }
   setDevicePreview(null);setDropDeviceShelf(false);
@@ -1195,37 +1202,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       setLocalPourId(effectivePouringId===selected.id?null:selected.id)}}>
      {effectivePouringId===selected.id?"Отмена":"⇢ Перелить"}
     </button>}
-    {labObservation(selected).caseData?.observation==="precipitate"&&
-     !selected.uncertain&&!selected.filteredResidue&&
-     bench.vessels.some(v=>v.id!==selected.id&&!v.reagents.length&&
-      ["beaker","tube","flask","conical","volumetric"].includes(v.kind))&&
-     <div className="lektrus-lab-filter-actions">
-      <label>Фильтрат в
-       <select aria-label="Чистый сосуд для фильтрата"
-        value={bench.vessels.some(v=>v.id===filterReceiverId&&v.id!==selected.id&&!v.reagents.length)?
-         filterReceiverId:(bench.vessels.find(v=>v.id!==selected.id&&!v.reagents.length&&
-         ["beaker","tube","flask","conical","volumetric"].includes(v.kind))?.id??"")}
-        onChange={e=>setFilterReceiverId(e.target.value)}>
-        {bench.vessels.filter(v=>v.id!==selected.id&&!v.reagents.length&&
-         ["beaker","tube","flask","conical","volumetric"].includes(v.kind)).
-         map(v=><option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
-       </select>
-      </label>
-      <button type="button" title="Отделить осадок на мембранном фильтре из шкафа приборов"
-       onClick={e=>{
-        e.stopPropagation();
-        if(!physicalDevices.some(d=>d.kind==="filter")){
-         setNotice("Сначала установите мембранный фильтр из шкафа приборов");
-         return;
-        }
-        const target=bench.vessels.some(v=>v.id===filterReceiverId&&v.id!==selected.id&&!v.reagents.length)?
-         filterReceiverId:bench.vessels.find(v=>v.id!==selected.id&&!v.reagents.length&&
-          ["beaker","tube","flask","conical","volumetric"].includes(v.kind))?.id;
-        const next=target?filterLabPrecipitate(bench,selected.id,target):bench;
-        if(next!==bench){onChange?.(next);setNotice("Осадок задержан фильтром, раствор перенесён в приёмник")}
-        else setNotice("Нужны завершённая реакция с осадком и пустой приёмный сосуд подходящего объёма");
-       }}>◫ Фильтровать</button>
-     </div>}
     {["pipette","cylinder"].includes(selected.kind)&&
      <div className="lektrus-lab-measured-tools">
       <label>{selected.kind==="pipette"?"Набрать / выдать":"Отмерить"} · мл
