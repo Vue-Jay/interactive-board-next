@@ -548,11 +548,22 @@ for(const row of cases){
 for(const row of cases){
  if(row.status==="none")continue;
  if(!row.family){
-  row.family=row.environment==="ignited"?"combustion":
-   row.environment==="heated"&&row.reactants.length===1?"decomposition":
+  const metal=["Fe","Cu","Zn","Mg","Al","Ca","Na","K"];
+  const displacement=row.reactants.some(r=>metal.includes(r))&&
+   row.reactants.some(r=>r!=="Fe"&&r!=="Cu"&&r!=="Zn"&&r!=="Mg"&&
+    r!=="Al"&&r!=="Ca"&&r!=="Na"&&r!=="K"&&r!=="S"&&r!=="O2");
+  const isHydration=row.reactants.includes("H2O")&&
+   row.reactants.some(r=>["CaO","Na2O","MgO","P2O5","SO3"].includes(r));
+  row.family=row.reactants.length===1?"decomposition":
+   row.environment==="ignited"?"combustion":
+   isHydration?"hydration":
+   row.environment==="heated"&&row.reactants.includes("Fe")&&
+    row.reactants.includes("S")?"synthesis":
+   row.reactants.includes("H2O2")&&row.reactants.includes("MnO2")?
+    "decomposition":
+   displacement?"displacement":
    row.observation==="heat"&&row.environment==="aqueous"?"neutralization":
-   row.observation==="color"?"redox":
-   row.reactants.some(r=>["Fe","Cu","Zn","Mg","Al"].includes(r))?"displacement":"exchange";
+   row.observation==="color"?"redox":"exchange";
  }
  if(!row.visual){
   row.visual=row.environment==="ignited"?
