@@ -126,6 +126,8 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const color=vessel.filteredResidue?.color??(titrationResult?(vessel.indicator?titrationResult.tint:"#dceff0"):
   indicator?.color??dryProductColor??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3"));
  const observation=visualCase?.observation??"none";
+ const gasEventActive=!!vessel.reactionAmounts&&!vessel.reactionAmounts.complete||
+  !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<6500;
  const singlePhase=vessel.filteredResidue?"solid":massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
   vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const pureThermal=labVesselThermal(vessel.reagents,vessel.doses);
@@ -209,7 +211,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
       fill={appearance.solidColor||"#cddbe0"}
       style={{animationDelay:-(i%9)*.25+"s"}}/>)}
     </>}
-    {active&&observation==="gas"&&Array.from({length:Math.ceil(17*conversionFraction)},(_,i)=><circle key={i}
+    {active&&observation==="gas"&&gasEventActive&&Array.from({length:Math.ceil(17*conversionFraction)},(_,i)=><circle key={i}
      className="lektrus-lab-bubble" cx={31+i*29%38} cy={98-i*17%45}
      r={2+i%3} stroke="#528eb1" strokeWidth=".9" fill="#fff" fillOpacity=".2"
      style={{animationDelay:-(i%8)*.27+"s",animationDuration:2+i%5*.32+"s"}}/>)}
