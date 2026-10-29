@@ -992,6 +992,24 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
  });
 }
 /** Classroom water-soluble solids: appearance only, not a solubility claim. */
+/** The physical form wins over the dry storage state. A poured sodium
+ * granule does not make a beaker of water "dry". Aqueous acid stock remains
+ * aqueous even when the destination vessel was dry. Gas or neat organic
+ * liquids are not silently reclassified as water. */
+const LAB_NEAT_LIQUIDS=new Set(["C2H5OH","CH3OH","C3H8O","Br2","CH3CHO"]);
+export function labMixEnvironment(
+ inputs:readonly {environment:ReactionEnvironment;doses?:Record<string,LabDose>}[],
+ combinedDoses?:Record<string,LabDose>
+):ReactionEnvironment{
+ const all=combinedDoses??Object.assign({},...inputs.map(x=>x.doses??{}));
+ const measured=Object.entries(all);
+ if(measured.some(([id,d])=>d.unit==="ml"&&!LAB_NEAT_LIQUIDS.has(id)&&
+  substances.find(s=>s.id===id)?.kind!=="газ"))return "aqueous";
+ // Preserve explicitly requested dry experiments when every portion is solid.
+ if(measured.length&&measured.every(([,d])=>d.unit==="g")&&
+  inputs.some(x=>x.environment==="dry"))return "dry";
+ return inputs.some(x=>x.environment==="aqueous")?"aqueous":"dry";
+}
 export const LAB_WATER_SOLUTES=new Set([
  "NaCl","KCl","NaBr","KBr","NaNO3","KNO3","LiCl","LiNO3",
  "Na2SO4","K2SO4","MgSO4","CuSO4","FeSO4","NiSO4","CaCl2",
@@ -1026,10 +1044,13 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const reagents=present?v.reagents:[...v.reagents,reagent];
   const beforeReaction=labObservation(v);
   const nextDoses=combined?{...v.doses,[reagent]:combined}:v.doses;
+  const environment=labMixEnvironment([{environment:v.environment,doses:v.doses},
+   {environment:validDose?.unit==="g"?"dry":"aqueous",
+    doses:validDose?{[reagent]:validDose}:undefined}],nextDoses);
   const physicalDissolution=!!nextDoses?.H2O&&nextDoses.H2O.unit==="ml"&&
    reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&
     nextDoses?.[key]?.unit==="g")&&
-   identifyReaction(reagents,v.environment).status!=="reaction";
+   identifyReaction(reagents,environment).status!=="reaction";
   return {...v,reagents,meltFraction:undefined,phaseTransition:undefined,
    reactionHeat:undefined,
    physicalProcess:physicalDissolution?"dissolving":undefined,
@@ -1038,8 +1059,9 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    completedReaction:v.completedReaction??(beforeReaction.status==="reaction"?beforeReaction.caseData:undefined),
    doses:nextDoses,
    observed:reagents.length>1,
+   environment,
    visualStartedAtMs:reagents.length>1&&!v.uncertain&&beforeReaction.status!=="reaction"&&
-    identifyReaction(reagents,v.environment).status==="reaction"?Date.now():v.visualStartedAtMs,
+    identifyReaction(reagents,environment).status==="reaction"?Date.now():v.visualStartedAtMs,
    uncertain:v.uncertain||beforeReaction.status==="reaction"};
  });
  const activeMixer=placedLabDevices(updated).some(d=>
@@ -1326,7 +1348,12 @@ export function advanceLabPour(b:LabBench):LabBench{
  const targetWasEmpty=!target.reagents.length;
  const sourceReaction=source.completedReaction??labObservation(source).caseData;
  const targetReaction=target.completedReaction??labObservation(target).caseData;
- const uncertain=target.uncertain||source.uncertain||!!target.reactionAmounts||!!source.reactionAmounts||
+ const medium=labMixEnvironment([source,target],received);
+ const verifiedContinuing=identifyReaction(combined,medium);
+ const sameReaction=verifiedContinuing.status==="reaction"&&
+  !!target.reactionAmounts&&target.reactionAmounts.equation===verifiedContinuing.caseData?.equation;
+ const uncertain=target.uncertain||source.uncertain||!!source.reactionAmounts||
+  (!!target.reactionAmounts&&!sameReaction)||
   (p.step===0&&!targetWasEmpty&&Boolean(sourceReaction||targetReaction));
  const vessels=b.vessels.map(v=>{
   if(v.id===source.id)return {...v,reactionAmounts:undefined,
@@ -1338,13 +1365,13 @@ export function advanceLabPour(b:LabBench):LabBench{
   if(v.id===target.id){
    const dissolving=received.H2O?.unit==="ml"&&combined.some(key=>
     key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&received[key]?.unit==="g")&&
-    identifyReaction(combined,targetWasEmpty?source.environment:v.environment).status!=="reaction";
+    identifyReaction(combined,medium).status!=="reaction";
    return {...v,reactionAmounts:undefined,reagents:combined,doses:received,
    physicalProcess:dissolving?"dissolving" as const:undefined,
    physicalStartedAtMs:dissolving?(v.physicalStartedAtMs??Date.now()):undefined,
-   observed:true,uncertain,environment:targetWasEmpty?source.environment:v.environment,
+   observed:true,uncertain,environment:medium,
    visualStartedAtMs:!uncertain&&!sourceReaction&&!targetReaction&&
-    identifyReaction(combined,targetWasEmpty?source.environment:v.environment).status==="reaction"?
+    identifyReaction(combined,medium).status==="reaction"?
     (v.visualStartedAtMs??Date.now()):v.visualStartedAtMs,
    completedReaction:targetWasEmpty?sourceReaction:v.completedReaction,
    indicator:v.indicator??source.indicator,
@@ -1376,9 +1403,10 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  const sourceResult=labObservation(source),targetResult=labObservation(target);
  const sourceReaction=source.completedReaction??(sourceResult.status==="reaction"?sourceResult.caseData:undefined);
  const targetReaction=target.completedReaction??(targetResult.status==="reaction"?targetResult.caseData:undefined);
+ // Unlike arbitrary product mixtures, putting a dry solid into a liquid
+ // is an ordinary, recognized school reaction, not "unknown chemistry".
  const uncertain=Boolean(source.uncertain||target.uncertain||source.reactionAmounts||target.reactionAmounts||
-  (!targetWasEmpty&&(sourceReaction||targetReaction))||
-  (source.environment!==target.environment&&source.environment!=="aqueous"));
+  (!targetWasEmpty&&(sourceReaction||targetReaction)));
  const vessels=bench.vessels.map(v=>{
   if(v.id===sourceId)return {...v,reactionAmounts:undefined,reactionHeat:undefined,reagents:[],observed:false,uncertain:false,
    completedReaction:undefined,indicator:undefined,doses:undefined};
@@ -1397,7 +1425,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
     doses[id]={value:total,unit:dose.unit,
      ...(concentrationM!==undefined?{concentrationM}:{})};
    }
-   const medium=targetWasEmpty?source.environment:target.environment;
+   const medium=labMixEnvironment([source,target],doses);
    const newReaction=!uncertain&&!sourceReaction&&!targetReaction&&
     identifyReaction(reagents,medium).status==="reaction";
    const dissolving=!newReaction&&doses.H2O?.unit==="ml"&&
