@@ -1,5 +1,5 @@
 import type {Item} from "./boardModel";
-import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint} from "./lektrusLabLayout";
+import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
  from "./lektrusLabTitration";
 import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
@@ -188,18 +188,31 @@ export function labAppliancesBelowStand(bench:LabBench,vesselId:string){
     d.y>stand.y+1&&d.y<=stand.y+17;
   }));
 }
-/** Locate a free receiving vessel under the stand's one clamp. */
+/** A free vessel rests on the rectangular foot, directly under the clamp. */
+export function placeLabVesselOnStandBase(bench:LabBench,vesselId:string,standId:string):LabBench{
+ const stand=placedLabDevices(bench).find(d=>d.id===standId&&d.kind==="tripod");
+ const vessel=bench.vessels.find(v=>v.id===vesselId);
+ if(!stand||!vessel||stand.linkedVesselId===vesselId)return bench;
+ const point=labStandBaseVesselPoint(stand,vessel,1600,1000,bench.vessels.length>3);
+ const logical=labLogicalPoint(point);
+ return positionLabVessel(bench,vesselId,logical.x,logical.y);
+}
+/** Only glassware physically positioned over the stand foot receives
+ * liquid from a clamped burette; geometry is shared with drop placement. */
 export function labReceiverBelowStand(bench:LabBench,sourceId:string):LabVessel|undefined{
- const stand=placedLabDevices(bench).find(d=>d.kind==="tripod"&&d.active&&
-  d.linkedVesselId===sourceId);
+ const devices=placedLabDevices(bench);
+ const stand=devices.find(d=>d.kind==="tripod"&&d.active&&d.linkedVesselId===sourceId);
  if(!stand)return;
  return bench.vessels.filter(v=>v.id!==sourceId&&
-  !placedLabDevices(bench).some(d=>d.active&&d.linkedVesselId===v.id)&&
+  !devices.some(d=>d.active&&d.linkedVesselId===v.id)&&
   ["beaker","conical","flask","tube","cylinder"].includes(v.kind))
-  .map(v=>({v,p:labDisplayPoint(v,bench.vessels.length>3)}))
-  .filter(({p})=>Math.abs(p.x-stand.x-3.5)<=8&&
-   p.y>stand.y+3&&p.y<=Math.min(91,stand.y+24))
-  .sort((a,b)=>a.p.y-b.p.y)[0]?.v;
+  .map(v=>{
+   const p=labDisplayPoint(v,bench.vessels.length>3);
+   const foot=labStandBaseVesselPoint(stand,v,1600,1000,bench.vessels.length>3);
+   return {v,distance:Math.hypot((p.x-foot.x)*16,(p.y-foot.y)*10)};
+  })
+  .filter(({distance})=>distance<=67)
+  .sort((a,b)=>a.distance-b.distance)[0]?.v;
 }
 export function setPlacedDevicePower(bench:LabBench,id:string,powered:boolean):LabBench{
  const d=placedLabDevices(bench).find(v=>v.id===id);
@@ -238,8 +251,11 @@ export function setLabBuretteValve(bench:LabBench,id:string,open:boolean,
  const source=bench.vessels.find(v=>v.id===id);
  if(source?.kind!=="burette")return bench;
  const target=targetId??labReceiverBelowStand(bench,id)?.id??source.buretteTargetId;
+ const clamped=placedLabDevices(bench).some(d=>d.kind==="tripod"&&
+  d.active&&d.linkedVesselId===id);
  if(open&&(!source.reagents.length||!target||target===id||
-  !bench.vessels.some(v=>v.id===target)))return bench;
+  !bench.vessels.some(v=>v.id===target)||
+  (clamped&&labReceiverBelowStand(bench,id)?.id!==target)))return bench;
  const rate=rateMlS??source.buretteRateMlS??.2;
  if(!LAB_DRIP_RATES.some(v=>v===rate))return bench;
  return revise(bench,id,v=>({...v,buretteOpen:open,buretteTargetId:target,
@@ -560,7 +576,7 @@ export function clearLabTable(bench:LabBench):LabBench{
 }
 export type LabPourProgress={id:string;sourceId:string;targetId:string;step:number;totalSteps:20;
  initialDoses:Record<string,LabDose>;unmeasured:boolean};
-export const LAB_POUR_STEPS=20,LAB_POUR_INTERVAL_MS=400;
+export const LAB_POUR_STEPS=20,LAB_POUR_INTERVAL_MS=150;
 export const labPourPercent=(p:LabPourProgress)=>Math.round(p.step/p.totalSteps*100);
 export const labPourAmounts=(p:LabPourProgress)=>Object.entries(p.initialDoses).map(([id,d])=>({
  id,unit:d.unit,transferred:Math.round(d.value*p.step/p.totalSteps*1000)/1000,
@@ -875,7 +891,7 @@ export function activateLabVessel(bench:LabBench,id:string):LabBench{
 }
 /** Complete transfer of contents: products and their visible appearance move with
  * the liquid. Adding a new reagent to spent material is deliberately unknown. */
-/** One shared 20-step pour. A single initiating client runs the 400ms clock. */
+/** One shared 20-step pour. The initiating client advances 5% per 150ms tick. */
 export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:string):LabBench{
  if(!id||sourceId===targetId||(b.pouring&&b.pouring.step<20))return b;
  const a=b.vessels.find(v=>v.id===sourceId),t=b.vessels.find(v=>v.id===targetId);
