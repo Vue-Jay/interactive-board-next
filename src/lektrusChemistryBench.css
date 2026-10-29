@@ -3126,3 +3126,12 @@
 }
 .lektrus-lab-bench.lab-reduced-animation .lektrus-lab-reaction-burst{
  display:none!important}
+
+
+/* Flame has warm radiance; metal oxidation can instead emit a compact
+   brilliant white glow, without implying explosive combustion. */
+.lektrus-lab-reaction-burst.is-flame .lektrus-lab-reaction-light{
+ opacity:.9;filter:drop-shadow(0 0 9px #ffa45a)}
+.lektrus-lab-reaction-burst.is-glow .lektrus-lab-reaction-light{
+ background:radial-gradient(ellipse,#fff 0%,#fcfffff0 23%,#b7e0ed9f 49%,transparent 74%);
+ animation-duration:2.6s;filter:drop-shadow(0 0 12px #f2fbf8)}
