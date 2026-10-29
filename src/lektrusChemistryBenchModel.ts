@@ -777,7 +777,7 @@ export function transferLabMeasuredLiquid(
  const exactShares=amounts.map(v=>requested*v/totalCents);
  const allocated=exactShares.map(v=>Math.floor(v));
  let remainder=requested-allocated.reduce((n,v)=>n+v,0);
- const order=exactShares.map((v,i)=>i).sort((a,b)=>
+ const order=exactShares.map((_,i)=>i).sort((a,b)=>
   (exactShares[b]-Math.floor(exactShares[b]))-
   (exactShares[a]-Math.floor(exactShares[a]))||a-b);
  for(const i of order){
