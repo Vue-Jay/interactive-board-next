@@ -52,7 +52,7 @@ export function labMountedGlasswarePoint(
   device.kind==="burner"?size(119,.096,166,w):
   (small?size(101,.16,138,w):size(119,.103,175,w));
  const dHeight=(device.kind==="tripod"||device.kind==="stand-shelf")?
-  (small?size(282,.42,355,w):size(335,.28,420,w)):
+  (small?size(350,.54,385,w):size(400,.32,460,w)):
   device.kind==="burner"?size(138,.114,180,w):
   (small?size(116,.18,152,w):size(130,.115,178,w));
  let vHeight=small?size(96,.17,130,w):size(112,.157,158,w);
@@ -92,7 +92,7 @@ export function labStandBaseVesselPoint(
 ){
  const w=width||1600,h=height||1000,small=w<=690;
  const dw=small?size(112,.17,146,w):size(130,.11,190,w);
- const dh=small?size(282,.42,355,w):size(335,.28,420,w);
+ const dh=small?size(350,.54,385,w):size(400,.32,460,w);
  let vh=small?size(96,.17,130,w):size(112,.157,158,w);
  void crowded;
  if(vessel.kind==="dish"||vessel.kind==="crucible")vh=size(98,.12,125,w);
