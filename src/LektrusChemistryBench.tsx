@@ -885,6 +885,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   <div className="lektrus-lab-scene-header">
    <span className="lektrus-lab-scene-brand">LEKTRUS <span>LAB</span></span>
    <strong>Химическая лаборатория</strong>
+   <button type="button" className={"lektrus-lab-equations-toggle"+(settings.showEquationBoard?" is-active":"")}
+    data-board-interactive="true" disabled={!editable}
+    aria-label={settings.showEquationBoard?"Скрыть уравнения на доске":"Показать уравнения на доске"}
+    aria-pressed={settings.showEquationBoard}
+    title="Показывать уравнения реакций на задней доске"
+    onPointerDown={e=>e.stopPropagation()}
+    onClick={e=>{e.stopPropagation();onChange?.(setLabBenchSettings(bench,{showEquationBoard:!settings.showEquationBoard}))}}>
+    <span aria-hidden="true">▤</span><span>Уравнения</span>
+   </button>
    <label className="lektrus-lab-mode-picker" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
     <span>Режим</span>
@@ -1221,7 +1230,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       if(next!==bench){onChange?.(next);setNotice("Колба доведена до 100 мл")}
       else setNotice("Сосуд уже заполнен или не может быть доведён до метки")}}>
      Долить до 100 мл</button>}
-    <button type="button" aria-label="Закрыть настройки посуды"
+    <button type="button" aria-label="Закрыть действия с посудой"
      onClick={e=>{e.stopPropagation();setVesselMenuId(null)}}>×</button>
    </div>}
   {editable&&vesselMenuId===selectedBurette?.id&&selectedBurette&&<div className="lektrus-lab-titration-on-table is-burette-valve"
