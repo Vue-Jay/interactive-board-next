@@ -102,9 +102,9 @@ function LabReactionBurst({vessel,visual,formula}:{
  </div>;
 }
 
-function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true}:{
+function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,temperatureC,temperatureVisible=true}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;details?:boolean;readoutLeft?:boolean;stirring?:boolean;
- titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
+ temperatureC?:number;
  temperatureVisible?:boolean}){
  const id=useId().replace(/:/g,"");
  const result=labObservation(vessel);
@@ -1455,8 +1455,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      stirring={bench.stirringVesselId===v.id||
       labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)}
      temperatureC={v.temperatureC??22}
-     titrationResult={bench.titrationPair?.targetId===v.id&&bench.titration?
-      titrationReading(bench.titration):undefined}/>
+    />
    </button>;
   })}
   {editable&&bench.vessels.filter(v=>v.kind==="burette").map(v=>{
