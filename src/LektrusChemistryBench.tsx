@@ -760,7 +760,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const vessels=row.reactants.map((reagent,i)=>({
    id:"v"+(i+1),kind:(i===0?"beaker":"tube") as LabGlassware,
    x:row.reactants.length===3?23+i*27:i===0?31:72,y:69,reagents:[reagent],
-   environment:(row.environment==="aqueous"?"aqueous":"dry") as const,observed:false
+   environment:(row.environment==="aqueous"?"aqueous":"dry") as "aqueous"|"dry",observed:false
   }));
   if(!vessels.length)return;
   // Reused IDs in a new example must never reconnect old powered equipment.
