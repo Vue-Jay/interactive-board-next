@@ -900,8 +900,8 @@ assert.match(gradualUi,/stopLabPour\(bench,p\.id\)/);
 // Laboratory v10: hover triggers are timed and apparatus controls live on their bodies.
 const hoverSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(hoverSurface,/contactTimer\.current=setTimeout/);
-assert.match(hoverSurface,/if\(isPipette\)perform\(\)/,"Pipette draws at contact without any wait");
-assert.match(hoverSurface,/setTimeout\(perform,120\)/,"Brief dwell prevents accidental spills");
+assert.match(hoverSurface,/const sampling=!!pipette&&pipette\.reagents\.length===0/,"Empty pipette draws on a sustained contact");
+assert.match(hoverSurface,/setTimeout\(perform,sampling\?1000:120\)/,"Measured pipette aspiration needs 1s contact; pours 120ms");
 assert.match(hoverSurface,/endContact\(\)/,"Release cancels the active pour");
 assert.match(hoverSurface,/beginContact\(g\.id,pouring\)/);
 assert.match(hoverSurface,/const drawing=pipette\.reagents\.length===0/);
