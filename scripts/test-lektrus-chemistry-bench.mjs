@@ -133,7 +133,7 @@ for(const substance of reaction.substances)
   "Every catalogued reagent must have a representative appearance");
 let devices=lab.defaultLabBench();
 for(const device of lab.labDevices)devices=lab.toggleLabDevice(devices,device.id);
-assert.equal(devices.devices.length,4,"The lab provides four physical instruments without thermometer");
+assert.equal(devices.devices.length,5,"The lab provides five physical instruments without thermometer");
 devices=lab.putLabReagent(devices,"v1","CaCO3");
 devices=lab.useLabDevice(devices,"hotplate","v1");
 assert.equal(lab.labObservation(devices.vessels[0]).caseData.observation,"gas",
