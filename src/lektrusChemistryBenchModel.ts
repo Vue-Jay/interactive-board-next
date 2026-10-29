@@ -1121,8 +1121,11 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
  const device=placedLabDevices(bench).find(d=>d.id===filterId&&d.kind==="filter");
  const source=bench.vessels.find(v=>v.id===sourceId);
  if(!device||device.collectedResidue||!source)return bench;
+ const pouringVolume=Object.values(source.doses??{}).reduce((sum,d)=>
+  sum+(d.unit==="ml"?d.value:0),0);
  const receiver=bench.vessels.filter(v=>v.id!==sourceId&&!v.reagents.length&&
-  ["beaker","conical","flask","tube","volumetric"].includes(v.kind))
+  ["beaker","conical","flask","tube","volumetric"].includes(v.kind)&&
+  (labMeasuredCapacityMl(v.kind)??(v.kind==="tube"?25:200))>=pouringVolume)
   .sort((a,b)=>Math.hypot(a.x-device.x,a.y-device.y)-
                  Math.hypot(b.x-device.x,b.y-device.y))[0];
  let prepared=bench;
