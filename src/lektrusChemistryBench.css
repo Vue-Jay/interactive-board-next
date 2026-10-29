@@ -3135,3 +3135,38 @@
 .lektrus-lab-reaction-burst.is-glow .lektrus-lab-reaction-light{
  background:radial-gradient(ellipse,#fff 0%,#fcfffff0 23%,#b7e0ed9f 49%,transparent 74%);
  animation-duration:2.6s;filter:drop-shadow(0 0 12px #f2fbf8)}
+
+
+/* The laboratory is a real fullscreen shared editor, not a tiny inset. */
+.lektrus-lab-editor-overlay{
+ inset:0!important;padding:0!important;background:#102a27d9!important;
+ z-index:2147482600!important;overscroll-behavior:contain}
+.lektrus-lab-editor{
+ width:100vw!important;max-width:none!important;min-width:0!important;
+ height:100dvh!important;max-height:none!important;
+ border:0!important;border-radius:0!important;
+ box-shadow:none!important;overflow:hidden!important}
+.lektrus-lab-editor-body.is-laboratory-layout{
+ flex:1!important;min-height:0!important;overflow:hidden!important}
+.lektrus-lab-main,.lektrus-lab-editor-bench-viewport{
+ flex:1!important;min-height:0!important}
+.lektrus-lab-editor-bench-viewport{
+ display:flex!important;flex-direction:column!important;overflow:hidden!important}
+.lektrus-lab-editor-bench-viewport>.lektrus-lab-bench{
+ width:100%!important;height:100%!important;min-height:0!important}
+.lektrus-lab-object-grip{display:flex!important;align-items:center!important;gap:8px!important}
+.lektrus-lab-open-editor{
+ margin-left:auto!important;display:inline-flex!important;align-items:center!important;
+ justify-content:center!important;gap:3px!important;
+ padding:4px 10px!important;min-height:27px!important;
+ color:#215347!important;background:#e5f4ea!important;
+ border:1px solid #80ae9b!important;border-radius:7px!important;
+ font-weight:750!important;cursor:pointer!important;pointer-events:auto!important;
+ white-space:nowrap!important;font-size:clamp(11px,.83cqw,13px)!important}
+.lektrus-lab-open-editor:hover{background:#c7eddb!important}
+@media(max-width:760px){
+ .lektrus-lab-editor-body.is-laboratory-layout{display:flex!important;flex-direction:column!important}
+ .lektrus-lab-main{min-height:55%!important}
+ .lektrus-lab-inspector{max-height:26dvh!important;overflow-y:auto!important}
+ .lektrus-lab-editor-head,.lektrus-lab-editor-footer{flex-shrink:0!important}
+}
