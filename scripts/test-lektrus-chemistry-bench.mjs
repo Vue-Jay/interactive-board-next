@@ -436,7 +436,8 @@ assert.ok(Math.abs(decant.vessels.find(v=>v.id==="v2").doses.HCl.concentrationM-
  (10*.1+20*.3)/30)<.00001,
  "Same-solute concentrations must be volume-weighted during decanting");
 assert.equal(decant.vessels.find(v=>v.id==="v1").reagents.length,0);
-assert.equal(lab.labDevices.length,4);
+assert.equal(lab.labDevices.length,5);
+assert.ok(lab.labDevices.some(d=>d.id==="filter"),"Filtration uses a physical membrane-filter cartridge");
 assert.ok(!lab.labDevices.some(d=>d.id==="thermometer"));
 assert.equal(lab.canMountLabVessel("hotplate","beaker"),true);
 assert.equal(lab.canMountLabVessel("hotplate","tube"),false);
@@ -1209,6 +1210,9 @@ filtered=lab.putLabReagent(filtered,"v1","NaCl",
 filtered=lab.addLabVessel(filtered,"conical",{x:72,y:73});
 const destination=filtered.vessels.find(v=>v.kind==="conical").id;
 assert.equal(lab.filterLabPrecipitate(filtered,"v1",destination),filtered,
+ "Filtration cannot run without membrane-filter equipment");
+filtered=lab.addPlacedLabDevice(filtered,"filter");
+assert.equal(lab.filterLabPrecipitate(filtered,"v1",destination),filtered,
  "A measured reaction cannot be filtered before it has finished");
 filtered=lab.advanceLabSimulation(filtered,1000);
 filtered=lab.advanceLabSimulation(filtered,1500);
@@ -1227,9 +1231,9 @@ assert.ok(!filtrate.reagents.includes("AgCl"),
 assert.equal(lab.labVesselQuantity(separated.vessels[0]).volumeMl,0);
 assert.equal(lab.filterLabPrecipitate(separated,"v1",destination),separated,
  "The same collected residue cannot be filtered repeatedly");
-const qualitative=lab.addLabVessel(lab.putLabReagent(
+const qualitative=lab.addPlacedLabDevice(lab.addLabVessel(lab.putLabReagent(
  lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3"),"v1","NaCl"),
- "conical");
+ "conical"),"filter");
 const qTarget=qualitative.vessels.find(v=>v.kind==="conical").id;
 const qFiltered=lab.filterLabPrecipitate(qualitative,"v1",qTarget);
 assert.equal(qFiltered.vessels[0].filteredResidue?.formula,"AgCl");
