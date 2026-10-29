@@ -3,11 +3,17 @@
  * Data model is compatible with future reviewed reaction datasets and PubChem IDs. */
 export type ReactionEnvironment="aqueous"|"dry"|"heated"|"ignited";
 export type ReactionStatus="reaction"|"none"|"unknown";
+export type ReactionFamily="exchange"|"neutralization"|"synthesis"|"decomposition"|
+ "displacement"|"combustion"|"redox"|"hydration"|"organic";
+export type ReactionVisual="flame"|"flash"|"sparks"|"smoke"|"glow"|
+ "steam"|"fizz"|"crystals"|"thermal"|"colorShift";
+
 export type Observation="gas"|"precipitate"|"color"|"heat"|"dissolution"|"none";
 export type Substance={id:string;name:string;formula:string;kind:string};
 export type ReactionCase={reactants:string[];environment:ReactionEnvironment;status:"reaction"|"none";
  equation:string;observation:Observation;description:string;beforeColor?:string;afterColor?:string;
- safety?:string;confidence:"curated";sourceNote:string};
+ safety?:string;family?:ReactionFamily;visual?:ReactionVisual;
+ minTemperatureC?:number;confidence:"curated";sourceNote:string};
 const catalog=`
 H2O|Вода|вода
 HCl|Соляная кислота (раствор)|кислота
@@ -396,6 +402,143 @@ for(const line of extendedSchoolCases.trim().split("\n")){
  add(reagents,medium as ReactionEnvironment,equation,observation as Observation,description,
   reagents.includes("NH4Cl")?
    {safety:"Выделяющийся аммиак раздражает дыхательные пути; только виртуальный опыт."}:{});
+}
+
+
+/* Expanded condition-specific cases for the full existing reagent cupboard.
+ * Families and animations encode observations, NOT a general equilibrium,
+ * kinetics or energetics predictor. Sources for teaching categories:
+ * OpenStax Chemistry 2e §4.2 and RSC Education demonstration collection.
+ * Vigorous/toxic reactions are virtual visualizations only. */
+const extendedDiverseCases=`
+Na+Cl2|ignited|2Na + Cl2 → 2NaCl|heat|Реакция соединения натрия с хлором; возможна яркая вспышка|synthesis|flash
+K+Cl2|ignited|2K + Cl2 → 2KCl|heat|Реакция соединения калия с хлором, интенсивное свечение|synthesis|flash
+Fe+Cl2|ignited|2Fe + 3Cl2 → 2FeCl3|heat|Горячее железо взаимодействует с хлором|synthesis|sparks
+Cu+Cl2|ignited|Cu + Cl2 → CuCl2|heat|Медь образует хлорид меди(II) при нагревании|synthesis|glow
+Zn+Cl2|ignited|Zn + Cl2 → ZnCl2|heat|Образуется хлорид цинка|synthesis|glow
+Al+Cl2|ignited|2Al + 3Cl2 → 2AlCl3|heat|Реакция соединения алюминия с хлором|synthesis|flash
+H2+Cl2|ignited|H2 + Cl2 → 2HCl|heat|Фотохимическая или инициированная реакция; может протекать чрезвычайно быстро|synthesis|flash
+Fe+O2|ignited|3Fe + 2O2 → Fe3O4|heat|Образование оксида железа и искры раскалённого металла|combustion|sparks
+Zn+O2|ignited|2Zn + O2 → 2ZnO|heat|Горящий цинк образует оксид цинка|combustion|glow
+P+O2|ignited|4P + 5O2 → 2P2O5|heat|Образование оксида фосфора(V); белый дым частиц оксида|combustion|smoke
+Cu+O2|heated|2Cu + O2 → 2CuO|color|Медная поверхность чернеет при окислении|synthesis|colorShift
+Zn+S|heated|Zn + S → ZnS|heat|Синтез сульфида цинка при нагревании|synthesis|glow
+Na2O+CO2|dry|Na2O + CO2 → Na2CO3|heat|Основный оксид связывает кислотный оксид|synthesis|thermal
+CaO+CO2|dry|CaO + CO2 → CaCO3|heat|Образование карбоната кальция|synthesis|thermal
+MgO+CO2|dry|MgO + CO2 → MgCO3|heat|Схематическое образование карбоната магния при подходящих условиях|synthesis|thermal
+SO3+H2O|aqueous|SO3 + H2O → H2SO4|heat|Резко экзотермическая гидратация серного ангидрида|hydration|steam
+P2O5+H2O|aqueous|P2O5 + 3H2O → 2H3PO4|heat|Образование ортофосфорной кислоты из оксида(V)|hydration|steam
+MgO+H2O|aqueous|MgO + H2O → Mg(OH)2|dissolution|Медленная гидратация оксида магния|hydration|colorShift
+NH3+HCl|dry|NH3 + HCl → NH4Cl|color|Белый дым мельчайших частиц хлорида аммония|synthesis|smoke
+NH3+H2SO4|aqueous|2NH3 + H2SO4 → (NH4)2SO4|heat|Связывание аммиака серной кислотой|neutralization|thermal
+CH3OH+O2|ignited|2CH3OH + 3O2 → 2CO2 + 4H2O|heat|Горение метанола с бледным пламенем|combustion|flame
+H2S+O2|ignited|2H2S + 3O2 → 2SO2 + 2H2O|heat|Горение сероводорода; продукт токсичен|combustion|flame
+NH3+O2|ignited|4NH3 + 3O2 → 2N2 + 6H2O|heat|Горение аммиака в кислороде без катализатора|combustion|flame
+C12H22O11+O2|ignited|C12H22O11 + 12O2 → 12CO2 + 11H2O|heat|Идеализированная полная схема горения сахарозы|combustion|flame
+C6H12O6+O2|ignited|C6H12O6 + 6O2 → 6CO2 + 6H2O|heat|Идеализированная полная схема окисления глюкозы|combustion|flame
+Na+H2O|aqueous|2Na + 2H2O → 2NaOH + H2↑|gas|Бурное взаимодействие щелочного металла с водой, выделяются водород и тепло|displacement|fizz
+K+H2O|aqueous|2K + 2H2O → 2KOH + H2↑|gas|Энергичная реакция калия с водой, возможно воспламенение водорода|displacement|flash
+Ca+H2O|aqueous|Ca + 2H2O → Ca(OH)2 + H2↑|gas|Кальций реагирует с водой, появляются пузырьки водорода|displacement|fizz
+Mg+CuSO4|aqueous|Mg + CuSO4 → MgSO4 + Cu↓|color|Магний вытесняет медь, выпадает красноватый металл|displacement|crystals
+Mg+CuCl2|aqueous|Mg + CuCl2 → MgCl2 + Cu↓|color|Магний вытесняет медь из хлорида|displacement|crystals
+Mg+FeSO4|aqueous|Mg + FeSO4 → MgSO4 + Fe↓|color|Магний вытесняет железо|displacement|crystals
+Mg+AgNO3|aqueous|Mg + 2AgNO3 → Mg(NO3)2 + 2Ag↓|color|Серебро осаждается на поверхности магния|displacement|crystals
+Zn+FeCl2|aqueous|Zn + FeCl2 → ZnCl2 + Fe↓|color|Замещение железа цинком|displacement|crystals
+Fe+Cu(NO3)2|aqueous|Fe + Cu(NO3)2 → Fe(NO3)2 + Cu↓|color|Железо покрывается медью|displacement|crystals
+Fe+AgNO3|aqueous|Fe + 2AgNO3 → Fe(NO3)2 + 2Ag↓|color|Серебристый налёт выделяется на железе|displacement|crystals
+Zn+AgNO3|aqueous|Zn + 2AgNO3 → Zn(NO3)2 + 2Ag↓|color|Серебро выделяется на цинке|displacement|crystals
+Al+CuSO4|aqueous|2Al + 3CuSO4 → Al2(SO4)3 + 3Cu↓|color|После разрушения защитной плёнки алюминий вытесняет медь|displacement|crystals
+Al+CuCl2|aqueous|2Al + 3CuCl2 → 2AlCl3 + 3Cu↓|heat|Восстановление меди алюминием с выделением тепла|redox|thermal
+Al+AgNO3|aqueous|Al + 3AgNO3 → Al(NO3)3 + 3Ag↓|color|На активированной поверхности алюминия выделяется серебро|displacement|crystals
+Cu+FeCl3|aqueous|Cu + 2FeCl3 → CuCl2 + 2FeCl2|color|Ионы железа(III) окисляют медь, окраска раствора изменяется|redox|colorShift
+Fe+FeCl3|aqueous|Fe + 2FeCl3 → 3FeCl2|color|Железо восстанавливает ионы железа(III) до железа(II)|redox|colorShift
+KI+Cl2|aqueous|2KI + Cl2 → 2KCl + I2|color|Хлор вытесняет йод из иодида; появляется бурое окрашивание|redox|colorShift
+KBr+Cl2|aqueous|2KBr + Cl2 → 2KCl + Br2|color|Хлор окисляет бромид, раствор окрашивается|redox|colorShift
+KI+Br2|aqueous|2KI + Br2 → 2KBr + I2|color|Бром окисляет иодид до йода|redox|colorShift
+FeCl2+Cl2|aqueous|2FeCl2 + Cl2 → 2FeCl3|color|Хлор окисляет железо(II) до железа(III)|redox|colorShift
+FeSO4+H2O2+H2SO4|aqueous|2FeSO4 + H2SO4 + H2O2 → Fe2(SO4)3 + 2H2O|color|Окисление железа(II) пероксидом в кислой среде|redox|colorShift
+KI+H2O2+H2SO4|aqueous|2KI + H2O2 + H2SO4 → I2 + K2SO4 + 2H2O|color|Йодид окисляется пероксидом в кислой среде|redox|colorShift
+KMnO4+H2O2+H2SO4|aqueous|2KMnO4 + 5H2O2 + 3H2SO4 → K2SO4 + 2MnSO4 + 5O2↑ + 8H2O|gas|Обесцвечивание перманганата с выделением кислорода в кислой среде|redox|fizz
+FeCl3+KI|aqueous|2FeCl3 + 2KI → 2FeCl2 + 2KCl + I2|color|Железо(III) окисляет иодид до йода|redox|colorShift
+H2S+Cl2|aqueous|H2S + Cl2 → 2HCl + S↓|precipitate|Жёлтая взвесь серы, хлор восстанавливается до хлорида|redox|crystals
+H2S+I2|aqueous|H2S + I2 → 2HI + S↓|precipitate|Образование серы; йод восстанавливается|redox|crystals
+CuO+H2|heated|CuO + H2 → Cu + H2O|color|Чёрный оксид восстанавливается до красной меди|redox|colorShift
+CuO+CO|heated|CuO + CO → Cu + CO2|color|Монооксид углерода восстанавливает медь из оксида|redox|colorShift
+Fe2O3+CO|heated|Fe2O3 + 3CO → 2Fe + 3CO2|color|Восстановление оксида железа(III) при высоких температурах|redox|colorShift
+Fe2O3+H2|heated|Fe2O3 + 3H2 → 2Fe + 3H2O|color|Восстановление железа водородом при высоких температурах|redox|colorShift
+CuO+C|heated|2CuO + C → 2Cu + CO2|color|Восстановление меди углеродом при сильном нагревании|redox|glow
+CuSO4|heated|CuSO4 → CuO + SO3↑|gas|Сульфат меди(II) при сильном нагревании разлагается|decomposition|smoke
+FeSO4|heated|2FeSO4 → Fe2O3 + SO2↑ + SO3↑|gas|При сильном нагревании сульфата железа(II) появляются оксид и газы|decomposition|smoke
+Fe(OH)3|heated|2Fe(OH)3 → Fe2O3 + 3H2O|color|При нагревании бурый гидроксид теряет воду|decomposition|colorShift
+Fe(OH)2|heated|Fe(OH)2 → FeO + H2O|color|Разложение гидроксида железа(II)|decomposition|colorShift
+Mg(OH)2|heated|Mg(OH)2 → MgO + H2O|color|При нагревании гидроксид магния образует оксид|decomposition|colorShift
+Ca(OH)2|heated|Ca(OH)2 → CaO + H2O|color|Разложение гидроксида кальция при сильном нагревании|decomposition|colorShift
+Al(OH)3|heated|2Al(OH)3 → Al2O3 + 3H2O|color|Образуется оксид алюминия и вода|decomposition|colorShift
+Zn(OH)2|heated|Zn(OH)2 → ZnO + H2O|color|Образуется оксид цинка|decomposition|colorShift
+AgNO3|heated|2AgNO3 → 2Ag + 2NO2↑ + O2↑|gas|Термическое разложение нитрата серебра с выделением оксида азота(IV)|decomposition|smoke
+Cu(NO3)2|heated|2Cu(NO3)2 → 2CuO + 4NO2↑ + O2↑|gas|Бурый токсичный газ выделяется при нагревании нитрата меди|decomposition|smoke
+Pb(NO3)2|heated|2Pb(NO3)2 → 2PbO + 4NO2↑ + O2↑|gas|Бурый токсичный газ выделяется при разложении нитрата свинца|decomposition|smoke
+NaNO3|heated|2NaNO3 → 2NaNO2 + O2↑|gas|При сильном нагревании выделяется кислород|decomposition|fizz
+KNO3|heated|2KNO3 → 2KNO2 + O2↑|gas|Разложение нитрата калия при сильном нагревании|decomposition|fizz
+KMnO4|heated|2KMnO4 → K2MnO4 + MnO2 + O2↑|gas|Перманганат разлагается при нагревании с выделением кислорода|decomposition|fizz
+H2CO3|aqueous|H2CO3 → H2O + CO2↑|gas|Нестойкая угольная кислота разлагается|decomposition|fizz
+H2O2|aqueous|2H2O2 → 2H2O + O2↑|gas|Медленное разложение пероксида водорода без катализатора|decomposition|fizz
+FeS+HCl|aqueous|FeS + 2HCl → FeCl2 + H2S↑|gas|Образуется токсичный сероводород|exchange|fizz
+FeS+H2SO4|aqueous|FeS + H2SO4 → FeSO4 + H2S↑|gas|Выделяется сероводород|exchange|fizz
+Na2S+HCl|aqueous|Na2S + 2HCl → 2NaCl + H2S↑|gas|Сульфид реагирует с кислотой|exchange|fizz
+Na2S+H2SO4|aqueous|Na2S + H2SO4 → Na2SO4 + H2S↑|gas|Кислота вытесняет сероводород из соли|exchange|fizz
+CO2+NaOH|aqueous|CO2 + 2NaOH → Na2CO3 + H2O|heat|Щёлочь поглощает углекислый газ|neutralization|thermal
+CO2+KOH|aqueous|CO2 + 2KOH → K2CO3 + H2O|heat|Щёлочь связывает углекислый газ|neutralization|thermal
+SO2+NaOH|aqueous|SO2 + 2NaOH → Na2SO3 + H2O|heat|Образуется сульфит натрия|neutralization|thermal
+SO2+KOH|aqueous|SO2 + 2KOH → K2SO3 + H2O|heat|Образуется сульфит калия|neutralization|thermal
+SO3+NaOH|aqueous|SO3 + 2NaOH → Na2SO4 + H2O|heat|Серный ангидрид реагирует со щёлочью|neutralization|thermal
+SO3+KOH|aqueous|SO3 + 2KOH → K2SO4 + H2O|heat|Образуется сульфат калия|neutralization|thermal
+SO2+Ca(OH)2|aqueous|SO2 + Ca(OH)2 → CaSO3↓ + H2O|precipitate|Белая суспензия сульфита кальция|exchange|crystals
+NH3+H2O|aqueous|NH3 + H2O → NH4OH|dissolution|Условная школьная запись равновесного растворения аммиака|hydration|colorShift
+NaHCO3+NaOH|aqueous|NaHCO3 + NaOH → Na2CO3 + H2O|heat|Гидрокарбонат нейтрализуется щёлочью|neutralization|thermal
+HBr+NaOH|aqueous|HBr + NaOH → NaBr + H2O|heat|Нейтрализация бромоводородной кислоты|neutralization|thermal
+HF+NaOH|aqueous|HF + NaOH → NaF + H2O|heat|Нейтрализация плавиковой кислоты|neutralization|thermal
+H3PO4+KOH|aqueous|H3PO4 + 3KOH → K3PO4 + 3H2O|heat|Условная полная нейтрализация кислоты щёлочью|neutralization|thermal
+CH3COOH+Zn|aqueous|2CH3COOH + Zn → Zn(CH3COO)2 + H2↑|gas|Цинк медленно реагирует с уксусной кислотой|displacement|fizz
+CH3COOH+Fe|aqueous|2CH3COOH + Fe → Fe(CH3COO)2 + H2↑|gas|Медленная реакция железа с уксусной кислотой|displacement|fizz
+CH3COOH+CaO|aqueous|2CH3COOH + CaO → Ca(CH3COO)2 + H2O|dissolution|Образование ацетата кальция|neutralization|colorShift
+C2H4+Br2|aqueous|C2H4 + Br2 → C2H4Br2|color|Обесцвечивание бромной воды этеном|organic|colorShift
+C2H2+Br2|aqueous|C2H2 + Br2 → C2H2Br2|color|Присоединение одной молекулы брома к этину|organic|colorShift
+C2H5OH+CuO|heated|C2H5OH + CuO → CH3CHO + Cu + H2O|color|Окисление этанола и восстановление меди(II)|organic|colorShift
+CH3OH+CuO|heated|CH3OH + CuO → HCHO + Cu + H2O|color|Окисление метанола до формальдегида|organic|colorShift
+C2H5OH+Na|dry|2C2H5OH + 2Na → 2C2H5ONa + H2↑|gas|Образование этилата натрия с выделением водорода|organic|fizz
+CH3OH+Na|dry|2CH3OH + 2Na → 2CH3ONa + H2↑|gas|Образование метилата натрия|organic|fizz
+`;
+for(const line of extendedDiverseCases.trim().split("\n")){
+ const [reagents,medium,equation,observation,description,family,visual]=line.split("|");
+ const signature=reagents.split("+").sort().join("|");
+ if(cases.some(row=>row.environment===medium&&row.reactants.slice().sort().join("|")===signature))continue;
+ add(reagents,medium as ReactionEnvironment,equation,observation as Observation,description,{
+  family:family as ReactionFamily,visual:visual as ReactionVisual,
+  safety:/Na\+|K\+|Cl2|P\+|H2S|Pb\(|HNO3|HF\+|AgNO3\+|NO2/.test(reagents+" "+equation)?
+   "Опасная реакция: только виртуальная демонстрация; не является инструкцией для реального опыта.":undefined
+ });
+}
+// Annotate existing reviewed cases, so both new and old reactions use one
+// visual language. Explosive visuals require a specifically identified case.
+for(const row of cases){
+ if(row.status==="none")continue;
+ if(!row.family){
+  row.family=row.environment==="ignited"?"combustion":
+   row.environment==="heated"&&row.reactants.length===1?"decomposition":
+   row.observation==="heat"&&row.environment==="aqueous"?"neutralization":
+   row.observation==="color"?"redox":
+   row.reactants.some(r=>["Fe","Cu","Zn","Mg","Al"].includes(r))?"displacement":"exchange";
+ }
+ if(!row.visual){
+  row.visual=row.environment==="ignited"?
+    row.reactants.includes("H2")&&row.reactants.includes("O2")?"flash":
+    row.reactants.includes("Mg")?"glow":"flame":
+   row.observation==="gas"?"fizz":
+   row.observation==="precipitate"?"crystals":
+   row.observation==="heat"?"thermal":
+   row.observation==="color"?"colorShift":undefined;
+ }
 }
 
 /** Appearance is computed from the actual products, not from the selected
