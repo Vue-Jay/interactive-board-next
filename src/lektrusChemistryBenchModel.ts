@@ -1001,7 +1001,7 @@ export function labMixEnvironment(
  inputs:readonly {environment:ReactionEnvironment;doses?:Record<string,LabDose>}[],
  combinedDoses?:Record<string,LabDose>
 ):ReactionEnvironment{
- const all=combinedDoses??Object.assign({},...inputs.map(x=>x.doses??{}));
+ const all:Record<string,LabDose>=combinedDoses??Object.assign({},...inputs.map(x=>x.doses??{}));
  const measured=Object.entries(all);
  if(measured.some(([id,d])=>d.unit==="ml"&&!LAB_NEAT_LIQUIDS.has(id)&&
   substances.find(s=>s.id===id)?.kind!=="газ"))return "aqueous";
