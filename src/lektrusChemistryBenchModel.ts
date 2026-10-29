@@ -1096,6 +1096,10 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
       const removed=new Set(base.reagents.filter(v=>!a.reagents.includes(v)));
       merged.reagents=[...new Set([...b.reagents.filter(v=>!removed.has(v)),
        ...a.reagents.filter(v=>!baseSet.has(v))])].slice(0,MAX_VESSEL_REAGENTS);
+    }else if(key==="reactionAmounts"&&a.reactionAmounts&&b.reactionAmounts&&
+       a.reactionAmounts.equation===b.reactionAmounts.equation){
+      merged.reactionAmounts=a.reactionAmounts.elapsedSeconds>=b.reactionAmounts.elapsedSeconds?
+       a.reactionAmounts:b.reactionAmounts;
     }else (merged as unknown as Record<string,unknown>)[key]=a[key];
    }
   }
