@@ -36,7 +36,9 @@ export const MAX_LAB_DEVICES=10;
 const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
 /** V1 cabinets only stored the types. Preserve them when a board is upgraded. */
 export function placedLabDevices(bench:LabBench):LabPlacedDevice[]{
- if(bench.placedDevices)return bench.placedDevices.filter(d=>d.kind!=="thermometer");
+ if(bench.placedDevices)return bench.placedDevices.filter(d=>d.kind!=="thermometer").map(d=>
+  d.kind==="tripod"&&d.shelfVesselId?{...d,active:!!(d.linkedVesselId||d.shelfVesselId),
+   linkedVesselId:d.linkedVesselId??d.shelfVesselId,shelfVesselId:undefined}:d);
  return (bench.devices??[]).filter(kind=>kind!=="thermometer").map((kind,i)=>({
   id:"legacy-"+kind,kind,x:35+(i%4)*11,y:74+Math.floor(i/4)*5
  }));
@@ -72,7 +74,7 @@ export function movePlacedLabDevice(bench:LabBench,id:string,x:number,y:number):
    vessel,1600,1000,bench.vessels.length>3)));
  };
  if(source.active&&!shared)savePosition(source.linkedVesselId,source.kind);
- if(source.kind==="tripod")savePosition(source.shelfVesselId,"stand-shelf");
+
  return {...bench,placedDevices,
   vessels:bench.vessels.map(v=>positions.has(v.id)?{...v,...positions.get(v.id)!}:v),
   stirringVesselId:shared&&source.kind==="stirrer"?undefined:bench.stirringVesselId,
@@ -107,28 +109,15 @@ export function canMountLabVessel(kind:LabPlacedDevice["kind"],glass:LabGlasswar
  * combinations use just one support to avoid physically conflicting mounts. */
 const mayShareLabVessel=(a:LabDevice,b:LabDevice)=>
  (a==="burner"&&b==="tripod")||(a==="tripod"&&b==="burner");
-/** Retort stands hold independently an adjustable upper clamp and a lower ring. */
+/** Historical shelf operations now use the stand's single clamp.
+ * Earlier two-holder tables are normalized by placedLabDevices. */
 export const LAB_STAND_SHELF_TYPES:readonly LabGlassware[]=["beaker","conical","crucible","dish"];
 export function setLabStandShelf(bench:LabBench,id:string,vesselId?:string):LabBench{
  const stand=placedLabDevices(bench).find(d=>d.id===id&&d.kind==="tripod");
- const vessel=bench.vessels.find(v=>v.id===vesselId);
- if(!stand||(vesselId&&(!vessel||!LAB_STAND_SHELF_TYPES.includes(vessel.kind))))return bench;
- if(stand.shelfVesselId===vesselId)return bench;
- // A vessel cannot be on the stand shelf and on an electrical appliance
- // at the same time. Release the old support without switching it off.
- const placedDevices=placedLabDevices(bench).map(d=>{
-  if(d.id===id)return {...d,shelfVesselId:vesselId,
-   ...(d.linkedVesselId===vesselId?{active:false,linkedVesselId:undefined}:{})};
-  return {...d,...(d.shelfVesselId===vesselId?{shelfVesselId:undefined}:{}),
-   ...(d.linkedVesselId===vesselId?{active:false,linkedVesselId:undefined}:{})};
- });
- const point=vessel?labMountedGlasswarePoint({...stand,kind:"stand-shelf"},vessel,
-  1600,1000,bench.vessels.length>3):null;
- const logical=point&&labLogicalPoint(point);
- return {...bench,placedDevices,
-  vessels:logical?bench.vessels.map(v=>v.id===vesselId?
-   {...v,x:logical.x,y:logical.y}:v):bench.vessels,
-  stirringVesselId:bench.stirringVesselId===vesselId?undefined:bench.stirringVesselId,
+ if(!stand)return bench;
+ if(vesselId)return applyPlacedLabDevice(bench,id,vesselId,"clamp");
+ return {...bench,placedDevices:placedLabDevices(bench).map(d=>d.id===id?
+  {...d,active:false,linkedVesselId:undefined,shelfVesselId:undefined}:d),
   event:bench.event+1};
 }
 export function setLabStandHeight(bench:LabBench,id:string,height:number):LabBench{
@@ -170,7 +159,7 @@ export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string,
   y:clampDevice(companion.y+(device.kind==="burner"?10:-10),58,84)
  }:device;
  const placedDevices=placedLabDevices(bench).map(d=>d.id===id?
-  {...aligned,active:true,linkedVesselId:vesselId}:
+  {...aligned,active:true,linkedVesselId:vesselId,shelfVesselId:undefined}:
   d.linkedVesselId===vesselId&&d.active&&!mayShareLabVessel(device.kind,d.kind)?
   {...d,active:false,linkedVesselId:undefined}:
   d.shelfVesselId===vesselId?{...d,shelfVesselId:undefined}:d);
