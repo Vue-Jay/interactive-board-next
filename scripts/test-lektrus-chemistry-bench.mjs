@@ -13,7 +13,16 @@ const load=(path,requireFn=()=>{throw Error("Unexpected import")})=>{
 const reaction=load("src/lektrusReactionDatabase.ts");
 const titration=load("src/lektrusLabTitration.ts");
 const layout=load("src/lektrusLabLayout.ts");
-const chem=load("src/lektrusLabStoichiometry.ts");
+const chem=load("src/lektrusLabStoichiometry.ts",key=>{
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
+const appearance=load("src/lektrusLabAppearance.ts",key=>{
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
+const catalog=load("src/lektrusLabCatalog.ts",key=>{
+ if(key==="./lektrusLabAppearance")return appearance;
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const acidBase=load("src/lektrusLabPH.ts");
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
@@ -22,6 +31,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabPhysicalProperties")return thermal;
  if(key==="./lektrusLabPH")return acidBase;
+ if(key==="./lektrusLabCatalog")return catalog;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
@@ -85,8 +95,8 @@ neutral=lab.setLabIndicator(neutral,"v1","universal");
 assert.equal(lab.labIndicatorResult(neutral.vessels[0]).medium,"neutral");
 let salt=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl");
 salt=lab.setLabIndicator(salt,"v1","universal");
-assert.equal(lab.labIndicatorResult(salt.vessels[0]).medium,"unknown",
- "The model must not infer pH from an unspecified salt solution");
+assert.equal(lab.labIndicatorResult(salt.vessels[0]).medium,"neutral",
+ "Measured 0.1 M NaCl is a neutral reference solution");
 let transferred=lab.addLabVessel(neutral,"tube");
 transferred=lab.pourLabVessel(transferred,"v1","v2");
 assert.equal(transferred.vessels[0].indicator,undefined,"Empty source has no indicator");
@@ -94,8 +104,8 @@ assert.equal(transferred.vessels[1].indicator,undefined,"Universal indicator pap
 let mixed=lab.addLabVessel(indicatorBench,"flask");
 mixed=lab.putLabReagent(mixed,mixed.selectedId,"HCl");
 mixed=lab.pourLabVessel(mixed,mixed.selectedId,"v1");
-assert.equal(lab.labIndicatorResult(mixed.vessels[0]).medium,"unknown",
- "Neutralisation cannot give an exact indicator colour without quantities");
+assert.equal(lab.labIndicatorResult(mixed.vessels[0]).medium,"neutral",
+ "Neutralisation of known 0.1 M stocks gives a calculable equilibrium pH");
 let precip=lab.defaultLabBench();
 precip=lab.putLabReagent(precip,"v1","NaCl",{value:12,unit:"ml"});
 precip=lab.addLabVessel(precip,"tube");
@@ -864,11 +874,12 @@ unknownGradual=lab.startLabPour(unknownGradual,"v1","v2","pour-without-fabricate
 for(let tick=0;tick<10;tick++)unknownGradual=lab.advanceLabPour(unknownGradual);
 assert.equal(unknownGradual.pouring.step,10);
 assert.ok(unknownGradual.vessels.find(v=>v.id==="v1").reagents.includes("H2O"));
-assert.equal(unknownGradual.vessels.find(v=>v.id==="v1").pourFraction,.25);
-assert.equal(unknownGradual.vessels.find(v=>v.id==="v2").pourFraction,.25);
-assert.deepEqual(lab.labPourAmounts(unknownGradual.pouring),[],
- "Unknown quantities display percentages, not invented ml");
-assert.ok(unknownGradual.pouring.unmeasured);
+assert.equal(unknownGradual.vessels.find(v=>v.id==="v1").doses.H2O.value,5);
+assert.equal(unknownGradual.vessels.find(v=>v.id==="v2").doses.H2O.value,5);
+assert.deepEqual(lab.labPourAmounts(unknownGradual.pouring),
+ [{id:"H2O",unit:"ml",transferred:5,remaining:5}],
+ "The default measured water portion transfers exactly 5 of 10 ml");
+assert.equal(unknownGradual.pouring.unmeasured,false);
 let clearedMidPour=lab.clearLabTable(unknownGradual);
 assert.equal(clearedMidPour.pouring,undefined);
 const standIcon=read("src/LektrusLabDeviceIcon.tsx");
@@ -1241,14 +1252,17 @@ assert.ok(!filtrate.reagents.includes("AgCl"),
 assert.equal(lab.labVesselQuantity(separated.vessels[0]).volumeMl,0);
 assert.equal(lab.filterLabPrecipitate(separated,"v1",destination),separated,
  "The same collected residue cannot be filtered repeatedly");
-const qualitative=lab.addPlacedLabDevice(lab.addLabVessel(lab.putLabReagent(
+let qualitative=lab.addPlacedLabDevice(lab.addLabVessel(lab.putLabReagent(
  lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3"),"v1","NaCl"),
  "conical"),"filter");
 const qTarget=qualitative.vessels.find(v=>v.kind==="conical").id;
+qualitative=lab.advanceLabSimulation(qualitative,0);
+qualitative=lab.advanceLabSimulation(qualitative,1000);
+qualitative=lab.advanceLabSimulation(qualitative,6000);
 const qFiltered=lab.filterLabPrecipitate(qualitative,"v1",qTarget);
 assert.equal(qFiltered.vessels[0].filteredResidue?.formula,"AgCl");
-assert.equal(qFiltered.vessels[0].filteredResidue?.massG,undefined,
- "Unknown original amounts must not create a fictitious precipitate mass");
+assert.ok(Math.abs(qFiltered.vessels[0].filteredResidue.massG-.143318)<1e-5,
+ "Even default stock volumes generate a calculated mass of AgCl");
 
 // New education modes, physical dissolution, direct cartridge filtration,
  // and solution-first catalog behavior.
@@ -1958,3 +1972,69 @@ assert.match(read("src/LektrusChemistryBench.tsx"),/const ph=labVesselPH\(vessel
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-inline-ph/);
 assert.match(read("src/lektrusChemistryBench.css"),/left:calc\(100% \+ 6px\)/);
 console.log("Measured strong/weak acid-base equilibrium and indicator colours passed");
+
+
+/* Every catalog stock, including previous quick-slot presets, has a measured
+ * amount and a known prepared-solution molarity before it enters glassware. */
+const stockIds=reaction.substances;
+for(const item of stockIds){
+ const stock=catalog.labDefaultStockDose(item.id);
+ assert.ok(stock&&Number.isFinite(stock.value)&&stock.value>0,
+  "No stock recipe for "+item.id);
+ if(catalog.labIsPreparedStock(item.id)){
+  assert.equal(stock.concentrationM,.1,"Missing 0.1M stock for "+item.id);
+  assert.ok(Math.abs(chem.labDoseMoles(item.id,stock)-.001)<1e-9,
+   "Moles of "+item.id+" should be measurable");
+ }else{
+  assert.equal(stock.concentrationM,undefined,
+   "Neat liquid, gas or solid "+item.id+" cannot be assigned fake molarity");
+ }
+}
+let noDose=lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3");
+assert.deepEqual(noDose.vessels[0].doses.AgNO3,
+ {value:10,unit:"ml",concentrationM:.1});
+const quicks=lab.labQuickReagents(lab.defaultLabBench());
+assert.ok(quicks.every(q=>q.dose.value>0));
+assert.ok(quicks.filter(q=>q.dose.unit==="ml"&&catalog.labIsPreparedStock(q.id))
+ .every(q=>q.dose.concentrationM===.1),
+ "Only prepared liquid stock requires molarity; dry NaCl is measured by mass");
+let mixedConcentrations=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {value:10,unit:"ml",concentrationM:.1});
+mixedConcentrations=lab.putLabReagent(mixedConcentrations,"v1","HCl",
+ {value:10,unit:"ml",concentrationM:.3});
+assert.equal(mixedConcentrations.vessels[0].doses.HCl.value,20);
+assert.ok(Math.abs(mixedConcentrations.vessels[0].doses.HCl.concentrationM-.2)<1e-10);
+assert.ok(Math.abs(chem.labDoseMoles("HCl",mixedConcentrations.vessels[0].doses.HCl)-.004)<1e-10);
+assert.ok(Math.abs(chem.labDoseMoles("H2O",{value:18,unit:"g"})-1)<.02);
+assert.ok(Math.abs(chem.labDoseMoles("CO2",{value:24.465,unit:"ml"})-.001)<1e-9,
+ "Gas volumes use a documented 25C/1atm reference");
+assert.ok(Math.abs(chem.labDoseMoles("C2H5OH",{value:10,unit:"ml"})-
+  10*.785/chem.labMolarMass("C2H5OH"))<1e-10);
+assert.ok(chem.labDoseMoles("HCl",{value:10,unit:"ml"})===undefined,
+ "An arbitrary no-concentration liquid dose must not silently become 0.1 M in the formula calculator");
+assert.match(read("src/LektrusChemistryBench.tsx"),/labIsPreparedStock\(reagent\.id\)/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/labDefaultStockDose\(reagent/);
+console.log("Quantified stocks, reproducible molarity and moles by known physical dose: OK");
+
+
+/** Every published balanced reaction must have a computable extent with the
+ * catalogue's internally defined doses, including gas and neat-liquid stock. */
+let allQuantified=0;
+for(const row of reaction.reviewedReactionCases.filter(r=>r.status==="reaction")){
+ const doses=Object.fromEntries(row.reactants.map(id=>[id,catalog.labDefaultStockDose(id)]));
+ assert.ok(Object.values(doses).every(Boolean),"Missing input stock for "+row.equation);
+ const state=chem.startQuantifiedLabReaction(row,row.reactants,doses);
+ assert.ok(state&&Number.isFinite(state.maxExtentMol)&&state.maxExtentMol>0,
+  "No mathematical reaction extent for "+row.equation);
+ const result=chem.advanceQuantifiedLabReaction(state,state.durationSeconds);
+ assert.equal(result.complete,true);
+ const sum=(entries)=>Object.entries(entries).reduce((acc,[id,mol])=>
+  acc+mol*chem.labMolarMass(id),0);
+ const reactantsMass=sum(state.initialMol);
+ const productsMass=sum(result.productsMol)+sum(result.remainingMol);
+ assert.ok(Math.abs(reactantsMass-productsMass)<1e-5*Math.max(1,reactantsMass),
+  "Mass conservation violation for "+row.equation);
+ allQuantified++;
+}
+assert.ok(allQuantified>=300);
+console.log("All "+allQuantified+" reviewed reaction equations quantified and mass-conserving");

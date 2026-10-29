@@ -834,7 +834,14 @@ export const identifyReaction=(reagents:string[],environment:ReactionEnvironment
  if(ids.length<1)return{status:"unknown",message:"Добавьте реагенты и выберите условия."};
  if(ids.length>6)return{status:"unknown",message:"Выберите не более шести веществ."};
  if(ids.length!==new Set(ids).size)return{status:"unknown",message:"Один и тот же реагент выбран несколько раз. Измените список."};
- const found=cases.find(c=>c.environment===environment&&key(c.reactants)===key(ids));
+ const direct=cases.find(c=>c.environment===environment&&key(c.reactants)===key(ids));
+ // An added bottle of water does not turn an otherwise supported
+ // *aqueous* reaction into unknown chemistry. Direct matching wins so
+ // Na + H2O still consumes H2O as a genuine reactant.
+ const diluted=environment==="aqueous"&&ids.includes("H2O")?
+  cases.find(c=>c.environment==="aqueous"&&!c.reactants.includes("H2O")&&
+   key(c.reactants)===key(ids.filter(x=>x!=="H2O"))):undefined;
+ const found=direct??diluted;
  if(found)return{status:found.status,caseData:found,
   message:found.status==="none"?"Нет наблюдаемого превращения для данной проверенной пары.":found.description};
  return{status:"unknown",message:"Нельзя достоверно определить результат для такой смеси и условий по проверенной базе. Это не означает, что реакция не идёт."};

@@ -40,6 +40,29 @@ export function labReagentForms(v:Substance):("ml"|"g")[]{
  if(v.kind==="соль"||v.kind==="основание")return ["g","ml"];
  return state==="liquid"?["ml"]:["g"];
 }
+/** Virtual cabinet stocks have measured starting quantities, not merely a
+ * formula label. All prepared aqueous stocks use 0.1 mol/L by default,
+ * explicitly visible/editable in the catalog. Pure liquids and gases are
+ * tracked by physical volume, never given fictitious 0.1M molarity. */
+export const LAB_STOCK_MOLARITY_M=0.1;
+export const LAB_NEAT_STOCK=new Set([
+ "H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO"
+]);
+export function labIsPreparedStock(id:string):boolean{
+ const item=substances.find(v=>v.id===id);
+ return !!item&&labReagentForms(item).includes("ml")&&
+  cabinetPhase(item)!=="gas"&&!LAB_NEAT_STOCK.has(id);
+}
+export function labDefaultStockDose(id:string,unit?:"ml"|"g"){
+ const substance=substances.find(v=>v.id===id);
+ if(!substance)return undefined;
+ const forms=labReagentForms(substance);
+ const form=unit??(forms.includes("ml")?"ml":"g");
+ if(!forms.includes(form))return undefined;
+ if(form==="g")return {value:1,unit:"g" as const};
+ return {value:10,unit:"ml" as const,...(labIsPreparedStock(id)?
+  {concentrationM:LAB_STOCK_MOLARITY_M}:{})};
+}
 export function labReagentPhaseLabel(v:Substance,unit:"ml"|"g"){
  return unit==="g"?"Твёрдое вещество":cabinetPhase(v)==="gas"?
   "Газообразное вещество":"Раствор / жидкость";

@@ -2,7 +2,8 @@
  * Only balanced equations and measured stock (g or mol/L) are supported.
  * The 4-second animation is instructional, NOT a kinetic-rate prediction. */
 import type {LabDose} from "./lektrusChemistryBenchModel";
-import type {ReactionCase} from "./lektrusReactionDatabase";
+import {substances,type ReactionCase} from "./lektrusReactionDatabase";
+const substancesByFormula=(formula:string)=>substances.find(v=>v.id===formula);
 
 const ATOMIC_MASS:Record<string,number>={
  H:1.008,C:12.011,N:14.007,O:15.999,Na:22.989769,K:39.0983,
@@ -97,11 +98,27 @@ export function parseBalancedLabEquation(equation:string):LabBalancedEquation|nu
   Object.entries(a).some(([id,n])=>n!==b[id]))return null;
  return {reactants,products};
 }
+/** Source amount in moles from measured mass, known molarity, or
+ * explicitly defined physical stocks. Gases use 25 °C / 1 atm ideal-gas
+ * reference volume, not a guessed aqueous concentration. Neat-liquid
+ * densities are 25 °C reference approximations (g/ml). */
+const NEAT_DENSITY_G_ML:Record<string,number>={
+ H2O:.997,C2H5OH:.785,CH3OH:.787,C3H8O:.803,Br2:3.102,CH3CHO:.783
+};
+const REFERENCE_GAS_MOLAR_VOLUME_ML=24465;
 export function labDoseMoles(formula:string,dose:LabDose):number|undefined{
  if(!Number.isFinite(dose.value)||dose.value<=0)return undefined;
- if(dose.unit==="ml")return dose.concentrationM!==undefined&&
-  Number.isFinite(dose.concentrationM)&&dose.concentrationM>0?
-  dose.value*dose.concentrationM/1000:undefined;
+ if(dose.unit==="ml"){
+  if(dose.concentrationM!==undefined)
+   return Number.isFinite(dose.concentrationM)&&dose.concentrationM>0?
+    dose.value*dose.concentrationM/1000:undefined;
+  const substance=substancesByFormula(formula);
+  if(substance?.kind==="газ")
+   return dose.value/REFERENCE_GAS_MOLAR_VOLUME_ML;
+  const density=NEAT_DENSITY_G_ML[formula];
+  const mass=density!==undefined?labMolarMass(formula):undefined;
+  return density!==undefined&&mass?dose.value*density/mass:undefined;
+ }
  if(dose.unit!=="g")return undefined;
  const mass=labMolarMass(formula);
  return mass&&mass>0?dose.value/mass:undefined;
@@ -112,10 +129,21 @@ export function startQuantifiedLabReaction(
 ):LabReactionAmounts|null{
  if(!doses||reaction.status!=="reaction")return null;
  const equation=parseBalancedLabEquation(reaction.equation);
- if(!equation||equation.reactants.length!==reaction.reactants.length||
-  [...reaction.reactants].sort().join("|")!==[...reactants].sort().join("|")||
-  [...reaction.reactants].sort().join("|")!==
-   equation.reactants.map(t=>t.formula).sort().join("|"))return null;
+ // Pure water is an optional solvent ONLY when absent from the balanced
+ // equation. For metal + water, water remains a consumed stoichiometric
+ // reagent. Other spectator species require explicit reaction modelling.
+ const actual=reactants.filter(id=>id!=="H2O"||
+  equation?.reactants.some(t=>t.formula==="H2O"));
+ // A documented catalyst is physically present but does not appear on
+ // either side of the net reaction. MnO2 catalyses peroxide decomposition.
+ const consumed=equation?.reactants.map(t=>t.formula)??[];
+ const nonConsumed=reaction.reactants.filter(id=>!consumed.includes(id));
+ const explicitCatalysts=new Set(["MnO2"]);
+ if(!equation||
+  [...reaction.reactants].sort().join("|")!==[...actual].sort().join("|")||
+  nonConsumed.some(id=>!explicitCatalysts.has(id))||
+  consumed.some(id=>!reaction.reactants.includes(id))||
+  consumed.length+nonConsumed.length!==reaction.reactants.length)return null;
  const initialMol:Record<string,number>={};
  for(const term of equation.reactants){
   const dose=doses[term.formula];

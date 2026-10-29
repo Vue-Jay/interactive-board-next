@@ -1,5 +1,6 @@
 import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
+import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,labMolarMass,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
@@ -719,17 +720,21 @@ export const defaultLabQuickReagents=():LabQuickReagent[]=>[
  {id:"H2O",dose:{value:10,unit:"ml"}},
  {id:"HCl",dose:{value:10,unit:"ml",concentrationM:.1}},
  {id:"NaOH",dose:{value:10,unit:"ml",concentrationM:.1}},
- {id:"CuSO4",dose:{value:10,unit:"ml"}},
- {id:"AgNO3",dose:{value:10,unit:"ml"}},
- {id:"BaCl2",dose:{value:10,unit:"ml"}},
- {id:"KMnO4",dose:{value:10,unit:"ml"}},
- {id:"FeSO4",dose:{value:10,unit:"ml"}},
+ {id:"CuSO4",dose:{value:10,unit:"ml",concentrationM:LAB_STOCK_MOLARITY_M}},
+ {id:"AgNO3",dose:{value:10,unit:"ml",concentrationM:LAB_STOCK_MOLARITY_M}},
+ {id:"BaCl2",dose:{value:10,unit:"ml",concentrationM:LAB_STOCK_MOLARITY_M}},
+ {id:"KMnO4",dose:{value:10,unit:"ml",concentrationM:LAB_STOCK_MOLARITY_M}},
+ {id:"FeSO4",dose:{value:10,unit:"ml",concentrationM:LAB_STOCK_MOLARITY_M}},
  {id:"CaCO3",dose:{value:10,unit:"g"}},
  {id:"NaCl",dose:{value:10,unit:"g"}}
 ];
 export function labQuickReagents(bench:LabBench):LabQuickReagent[]{
  return (bench.quickReagents??defaultLabQuickReagents()).filter(q=>
-  substances.some(v=>v.id===q.id)).slice(0,MAX_QUICK_REAGENTS);
+  substances.some(v=>v.id===q.id)).slice(0,MAX_QUICK_REAGENTS)
+  .map(q=>({id:q.id,dose:{
+   ...q.dose,
+   ...(q.dose.unit==="ml"&&q.dose.concentrationM===undefined&&labIsPreparedStock(q.id)?
+    {concentrationM:LAB_STOCK_MOLARITY_M}:{})}}));
 }
 export function setLabQuickReagent(bench:LabBench,id:string,dose?:LabDose):LabBench{
  if(!substances.some(v=>v.id===id))return bench;
@@ -743,7 +748,9 @@ export function setLabQuickReagent(bench:LabBench,id:string,dose?:LabDose):LabBe
   (dose.concentrationM!==undefined&&(dose.unit!=="ml"||dose.concentrationM<.001||
    dose.concentrationM>2)))return bench;
  if(!existing&&list.length>=MAX_QUICK_REAGENTS)return bench;
- const normalized={id,dose:{...dose,value:Math.round(dose.value*100)/100}};
+ const normalized={id,dose:{...dose,value:Math.round(dose.value*100)/100,
+  ...(dose.unit==="ml"&&dose.concentrationM===undefined&&labIsPreparedStock(id)?
+   {concentrationM:LAB_STOCK_MOLARITY_M}:{})}};
  return {...bench,quickReagents:existing?list.map(v=>v.id===id?normalized:v):
   [...list,normalized],event:bench.event+1};
 }
@@ -1128,13 +1135,19 @@ export const LAB_WATER_SOLUTES=new Set([
 ]);
 export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabDose):LabBench{
  if(!bench.vessels.some(v=>v.id===id))return bench;
+ // Legacy callsites and presets receive a REAL, explicit stock dose.
+ // Never create a reagent name without material quantity / concentration.
+ const stock=dose??labDefaultStockDose(reagent);
+ if(!stock)return bench;
+ const measured:LabDose=stock.unit==="ml"&&stock.concentrationM===undefined&&
+  labIsPreparedStock(reagent)?{...stock,concentrationM:LAB_STOCK_MOLARITY_M}:stock;
  const updated=revise(bench,id,v=>{
-  const validDose=dose&&Number.isFinite(dose.value)&&dose.value>0&&
-   dose.value<=10000&&(dose.unit==="ml"||dose.unit==="g")&&
-   (dose.concentrationM===undefined||
-    (dose.unit==="ml"&&Number.isFinite(dose.concentrationM)&&
-     dose.concentrationM>=.001&&dose.concentrationM<=2))?dose:undefined;
-  if(dose&&!validDose)return v;
+  const validDose=Number.isFinite(measured.value)&&measured.value>0&&
+   measured.value<=10000&&(measured.unit==="ml"||measured.unit==="g")&&
+   (measured.concentrationM===undefined||
+    (measured.unit==="ml"&&Number.isFinite(measured.concentrationM)&&
+     measured.concentrationM>=.001&&measured.concentrationM<=2))?measured:undefined;
+  if(!validDose)return v;
   // Graduated glassware has a real maximum capacity, not an unlimited beaker.
   const capacity=labMeasuredCapacityMl(v.kind);
   const priorMl=Object.values(v.doses??{}).reduce((sum,d)=>sum+
@@ -1145,11 +1158,14 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   if(!present&&v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
   const previous=v.doses?.[reagent];
   if(present&&!validDose)return v;
-  if(previous&&validDose&&(previous.unit!==validDose.unit||
-   (previous.concentrationM!==undefined&&validDose.concentrationM!==undefined&&
-    previous.concentrationM!==validDose.concentrationM)))return v;
+  if(previous&&validDose&&previous.unit!==validDose.unit)return v;
   const combined=validDose?{value:Math.round(((previous?.value??0)+validDose.value)*100)/100,
-   unit:validDose.unit,concentrationM:validDose.concentrationM??previous?.concentrationM}:undefined;
+   unit:validDose.unit,
+   ...(validDose.unit==="ml"&&validDose.concentrationM!==undefined?
+    {concentrationM:previous?.concentrationM!==undefined?
+      ((previous.value*previous.concentrationM)+(validDose.value*validDose.concentrationM))/
+        ((previous.value+validDose.value)) :validDose.concentrationM}:
+    previous?.concentrationM!==undefined?{concentrationM:previous.concentrationM}:{})}:undefined;
   if(combined&&combined.value>10000)return v;
   const reagents=present?v.reagents:[...v.reagents,reagent];
   const beforeReaction=labObservation(v);
