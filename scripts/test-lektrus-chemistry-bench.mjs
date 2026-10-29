@@ -1287,4 +1287,32 @@ assert.match(polishedLabSource,/lektrus-lab-boiling-particles/);
 assert.match(polishedLabSource,/lektrus-lab-steam-plumes/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-reagent-form-tabs/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-board-write-toggle/);
+// Entire reviewed inventory: only atom-balanced equations should be presented.
+for(const row of reaction.reviewedReactionCases.filter(v=>v.status==="reaction")){
+ assert.ok(chem.parseBalancedLabEquation(row.equation),
+  "Every presented equation must balance: "+row.equation);
+}
+const noReceiver={...filtered,vessels:filtered.vessels.filter(v=>v.id==="v1"),selectedId:"v1"};
+const automaticReceiver=lab.pourLabIntoFilter(noReceiver,"v1",
+ lab.placedLabDevices(noReceiver).find(d=>d.kind==="filter").id);
+assert.equal(automaticReceiver.vessels.length,2,
+ "A clean beaker is prepared when none is available; no chooser is opened");
+assert.equal(automaticReceiver.vessels[0].reagents.length,0);
+assert.equal(lab.placedLabDevices(automaticReceiver).find(d=>d.kind==="filter").
+ collectedResidue.formula,"AgCl");
+let boiling=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+ {value:20,unit:"ml"});
+boiling=lab.addPlacedLabDevice(boiling,"hotplate");
+const heater=lab.placedLabDevices(boiling).find(d=>d.kind==="hotplate").id;
+boiling=lab.applyPlacedLabDevice(boiling,heater,"v1");
+boiling=lab.setLabHotplateTemperature(boiling,heater,185);
+boiling=lab.setPlacedDevicePower(boiling,heater,true);
+boiling=lab.advanceLabSimulation(boiling,0);
+for(let i=1;i<=130;i++)boiling=lab.advanceLabSimulation(boiling,i*2000);
+assert.ok((boiling.vessels[0].temperatureC??22)>=99,
+ "Heating explicit water must eventually bring it to the boiling range");
+assert.ok(lab.labVesselQuantity(boiling.vessels[0]).volumeMl<20,
+ "Only explicitly measured pure water evaporates when boiling");
+assert.ok(lab.labVesselQuantity(boiling.vessels[0]).volumeMl>=0,
+ "Water must not evaporate to a negative quantity");
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
