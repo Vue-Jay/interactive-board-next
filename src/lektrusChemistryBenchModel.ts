@@ -339,10 +339,12 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    if(v.completedReaction)return v;
    const reaction=identifyReaction(v.reagents,v.environment);
    if(reaction.status!=="reaction"||!reaction.caseData)return v;
-   state=startQuantifiedLabReaction(reaction.caseData,v.reagents,v.doses)??undefined;
+   state=startQuantifiedLabReaction(reaction.caseData,v.reagents,v.doses,nowMs)??undefined;
    if(!state)return v;
   }else if(state.complete)return v;
-  const next=v.reactionAmounts?advanceQuantifiedLabReaction(state,seconds):state;
+  const elapsed=state.startedAtMs===undefined?seconds:
+   Math.max(0,(nowMs-state.startedAtMs)/1000-state.elapsedSeconds);
+  const next=v.reactionAmounts?advanceQuantifiedLabReaction(state,elapsed):state;
   if(next===v.reactionAmounts)return v;
   changed=true;
   return {...v,reactionAmounts:next};
