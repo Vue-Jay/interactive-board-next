@@ -604,8 +604,8 @@ assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-journal-t
  "There must be no button reopening the obsolete dialog");
 const boardLaboratory=read("src/LektrusChemistryIllustration.tsx");
 const editorLaboratory=read("src/LektrusChemistryBenchEditor.tsx");
-assert.match(boardLaboratory,/lektrus-lab-object-grip/,
- "Lab object must have an unobstructed whole-object drag handle");
+assert.doesNotMatch(boardLaboratory,/>Химический стол\s*<\/div>/,
+ "The chemical lab no longer shows a protruding title strip");
 assert.doesNotMatch(boardLaboratory,/className="lektrus-chemistry-bench-on-board"[^>]*data-board-interactive/,
  "The object wrapper must not suppress the board's normal transform gestures");
 
@@ -1189,12 +1189,12 @@ assert.doesNotMatch(polishedLabSource,/openCabinet\("settings"\)/);
 assert.match(polishedLabSource,/className="lektrus-lab-burette-rate-buttons"/);
 assert.match(polishedLabSource,/aria-pressed=\{\(selectedBurette\.buretteRateMlS\?\?\.2\)===rate\}/);
 assert.doesNotMatch(polishedLabSource,/<label>Скорость\s*<select/);
-assert.match(polishedLabSource,/className=\{"lektrus-lab-equations-toggle"/);
-assert.match(polishedLabSource,/labObservation\(selected\)\.caseData\?\.observation==="precipitate"/);
+assert.match(polishedLabSource,/className=\{"lektrus-lab-board-write-toggle"/);
+assert.match(polishedLabSource,/pourLabIntoFilter\(bench,g\.id,filter\.d\.id\)/);
 assert.match(polishedLabSource,/d\.kind==="filter"/,
  "The real filter must be recognized as an interactive tabletop appliance");
-assert.match(polishedLabSource,/setVesselMenuId\(sample\.id\)/,
- "Clicking the filter opens filtration for a vessel with precipitate");
+assert.match(polishedLabSource,/setNotice\("Перетащите сосуд с готовым осадком непосредственно на фильтр"\)/,
+ "The device asks for direct pouring, never an extra selection dialog");
 assert.ok(lab.devicesForLabMode(lab.defaultLabBench()).some(v=>v.id==="filter"));
 
 assert.match(read("src/LektrusChemistryIllustration.tsx"),/className="lektrus-lab-open-editor"/);
@@ -1246,4 +1246,45 @@ assert.equal(qFiltered.vessels[0].filteredResidue?.formula,"AgCl");
 assert.equal(qFiltered.vessels[0].filteredResidue?.massG,undefined,
  "Unknown original amounts must not create a fictitious precipitate mass");
 
+// New education modes, physical dissolution, direct cartridge filtration,
+ // and solution-first catalog behavior.
+assert.deepEqual(stock.labReagentForms(item("NH4OH")),["ml"]);
+const wateryCatalog=labCatalog.buildLabCatalog({phase:"liquid",group:"phase"});
+assert.ok(wateryCatalog.flatMap(g=>g.items).some(v=>v.id==="NaCl"));
+assert.ok(!wateryCatalog.flatMap(g=>g.items).some(v=>v.id==="CO2"),
+ "Liquid-first catalogue must not accidentally show compressed gases");
+assert.equal(wateryCatalog[0].title,"Растворы и жидкости");
+assert.ok(reaction.substances.length>=140);
+for(const ids of [["AgNO3","NaBr"],["SrCl2","Na2SO4"],["NiSO4","NaOH"],
+ ["HCl","LiOH"],["C3H8","O2"]]){
+ const medium=ids[0]==="C3H8"?"ignited":"aqueous";
+ const result=reaction.identifyReaction(ids,medium);
+ assert.equal(result.status,"reaction","Verified new chemical pair "+ids.join("+"));
+ assert.ok(chem.parseBalancedLabEquation(result.caseData.equation),
+  "Each new chemical equation must conserve every element");
+}
+const pureWater=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+ {value:60,unit:"ml"});
+const dissolving=lab.putLabReagent(pureWater,"v1","NaCl",{value:3,unit:"g"});
+assert.equal(dissolving.vessels[0].physicalProcess,"dissolving");
+assert.equal(dissolving.vessels[0].doses.H2O.value,60);
+assert.equal(dissolving.vessels[0].doses.NaCl.value,3);
+assert.notEqual(lab.labObservation(dissolving.vessels[0]).status,"reaction",
+ "Dissolving a solid in water must not create invented reaction products");
+let directly=lab.pourLabIntoFilter(filtered,"v1",
+ lab.placedLabDevices(filtered).find(d=>d.kind==="filter").id);
+assert.notEqual(directly,filtered);
+assert.equal(directly.vessels.find(v=>v.id==="v1").reagents.length,0);
+assert.equal(lab.placedLabDevices(directly).find(d=>d.kind==="filter").collectedResidue.formula,"AgCl");
+assert.equal(directly.vessels.find(v=>v.id===destination).filteredSolution.solutes[0],"NaNO3");
+assert.equal(lab.pourLabIntoFilter(directly,"v1",
+ lab.placedLabDevices(directly).find(d=>d.kind==="filter").id),directly,
+ "A loaded cartridge cannot silently duplicate a precipitate");
+assert.doesNotMatch(polishedLabSource,/lektrus-lab-filter-actions/,
+ "Direct filtration must not reopen the previous receiver selection panel");
+assert.match(polishedLabSource,/lektrus-lab-dissolving-particles/);
+assert.match(polishedLabSource,/lektrus-lab-boiling-particles/);
+assert.match(polishedLabSource,/lektrus-lab-steam-plumes/);
+assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-reagent-form-tabs/);
+assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-board-write-toggle/);
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
