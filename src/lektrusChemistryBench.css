@@ -4145,3 +4145,47 @@
  .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-info{
   padding-left:4px!important;font-size:8px!important}
 }
+
+
+/* v19: small familiar stock bottles on the reagent-indicator shelf.
+ * Universal indicator alone is a coloured test-paper strip. */
+.lektrus-lab-bench .lektrus-lab-indicator-shelf .lektrus-lab-indicator-item{
+ display:flex!important;flex-direction:column!important;
+ align-items:center!important;justify-content:center!important;gap:2px!important;
+ min-height:0!important;padding:1px 2px!important;
+ overflow:hidden!important;
+}
+.lektrus-lab-bench .lektrus-lab-indicator-bottle,
+.lektrus-lab-bench .lektrus-lab-indicator-paper{
+ width:24px!important;height:29px!important;min-height:0!important;
+ flex:0 1 auto!important;display:block;overflow:visible;
+ filter:drop-shadow(0 1px 1px #365f5240)}
+.lektrus-lab-bench .lektrus-lab-indicator-item>span{
+ font-size:clamp(8px,.68cqw,10px)!important;
+ max-width:100%!important;overflow-wrap:anywhere;line-height:1.05!important}
+.lektrus-lab-bench .lektrus-lab-indicator-drops path{
+ animation:lektrus-lab-indicator-drip .85s cubic-bezier(.27,.06,.67,.85) both}
+@keyframes lektrus-lab-indicator-drip{
+ 0%{opacity:0;transform:translateY(-14px)}
+ 20%{opacity:1}95%{opacity:1}
+ 100%{opacity:0;transform:translateY(63px)}
+}
+/* Reposition composition only a little off the vessel's edge.
+ * The column layout remains rigid to avoid overlap with the measuring scale. */
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+ left:calc(100% + 11px)!important;right:auto!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed{
+ left:auto!important;right:calc(100% + 11px)!important}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+  left:calc(100% + 7px)!important}
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed{
+  left:auto!important;right:calc(100% + 7px)!important}
+ .lektrus-lab-bench .lektrus-lab-indicator-bottle,
+ .lektrus-lab-bench .lektrus-lab-indicator-paper{
+  width:20px!important;height:24px!important}
+ .lektrus-lab-bench .lektrus-lab-indicator-item>span{font-size:8px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-indicator-drops path{animation:none!important}
+}
