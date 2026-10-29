@@ -3170,3 +3170,40 @@
  .lektrus-lab-inspector{max-height:26dvh!important;overflow-y:auto!important}
  .lektrus-lab-editor-head,.lektrus-lab-editor-footer{flex-shrink:0!important}
 }
+
+
+/* Graduated readouts follow actual measured quantities. Solid packing is
+   illustrative only: the printed mass remains the authoritative value. */
+.lektrus-lab-bench .lektrus-lab-vessel-art{position:relative!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter{
+ position:absolute;z-index:18;right:-23px;bottom:14%;
+ display:flex;flex-direction:column;gap:3px;pointer-events:none!important;
+ filter:drop-shadow(0 1px 2px #193f3555)}
+.lektrus-lab-bench .lektrus-lab-quantity-measure{
+ display:flex;align-items:center;gap:3px;
+ background:#eff9f1ed;border:1px solid #89b29f;border-radius:6px;
+ padding:3px 5px 3px 3px;min-width:36px;
+ font:800 clamp(9px,.8cqw,12px)/1.05 ui-monospace,monospace!important;
+ color:#255e51}
+.lektrus-lab-bench .lektrus-lab-quantity-measure.is-solid{color:#7a5537;background:#fff4e7ed;border-color:#c9a484}
+.lektrus-lab-bench .lektrus-lab-quantity-measure>strong{
+ display:flex;flex-direction:column;align-items:center;gap:1px}
+.lektrus-lab-bench .lektrus-lab-quantity-measure small{font:700 9px/1 sans-serif!important;opacity:.85}
+.lektrus-lab-bench .lektrus-lab-quantity-track{
+ width:7px;height:29px;border:1px solid #8cb1aa;background:#cbdad2a3;
+ border-radius:4px;position:relative;overflow:hidden}
+.lektrus-lab-bench .lektrus-lab-quantity-track i{
+ position:absolute;bottom:0;left:0;width:100%;display:block;
+ background:linear-gradient(#88d3ef,#379ac8);border-radius:3px;
+ transition:height .2s ease}
+.lektrus-lab-bench .is-solid .lektrus-lab-quantity-track i{
+ background:linear-gradient(#e1ba85,#a77950)}
+.lektrus-lab-bench .lektrus-lab-stand-transfer{
+ border:1px solid #74b397!important;background:#e2f5e7!important;
+ color:#315a49!important;font-weight:750!important}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-quantity-meter{right:-17px;bottom:23%}
+ .lektrus-lab-bench .lektrus-lab-quantity-measure{
+  padding:2px 3px!important;gap:2px!important;font-size:9px!important}
+ .lektrus-lab-bench .lektrus-lab-quantity-track{width:5px;height:24px}
+}
