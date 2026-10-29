@@ -1254,16 +1254,21 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      </option>)}
     </select>}
    </label>
-   <label>Скорость
-    <select value={selectedBurette.buretteRateMlS??.2}
-     aria-label="Скорость капания, миллилитров в секунду"
-     onChange={e=>onChange?.(setLabBuretteValve(bench,selectedBurette.id,
-      !!selectedBurette.buretteOpen,chosenValveTarget,Number(e.target.value)))}>
-     {LAB_DRIP_RATES.map(v=><option key={v} value={v}>
-      {v===.05?"Медленно":v===.2?"Средне":"Быстро"} · {v.toLocaleString("ru-RU")} мл/с
-     </option>)}
-    </select>
-   </label>
+   <div className="lektrus-lab-burette-rate" role="group"
+    aria-label="Скорость титрования">
+    <span className="lektrus-lab-burette-rate-label">Скорость</span>
+    <div className="lektrus-lab-burette-rate-buttons">
+     {LAB_DRIP_RATES.map(rate=><button key={rate} type="button"
+      className={(selectedBurette.buretteRateMlS??.2)===rate?"is-active":""}
+      aria-pressed={(selectedBurette.buretteRateMlS??.2)===rate}
+      title={rate.toLocaleString("ru-RU")+" мл/с"}
+      onClick={e=>{e.stopPropagation();onChange?.(setLabBuretteValve(
+       bench,selectedBurette.id,!!selectedBurette.buretteOpen,chosenValveTarget,rate))}}>
+      <strong>{rate===.05?"Медленно":rate===.2?"Средне":"Быстро"}</strong>
+      <small>{rate.toLocaleString("ru-RU")} мл/с</small>
+     </button>)}
+    </div>
+   </div>
    <button type="button" className={selectedBurette.buretteOpen?"is-open":""}
     disabled={!selectedBurette.reagents.length||!chosenValveTarget}
     onClick={e=>{e.stopPropagation();
