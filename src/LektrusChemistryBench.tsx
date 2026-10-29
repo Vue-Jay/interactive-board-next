@@ -217,7 +217,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
    </g>}
    <path d="M29 32V57" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".5"/>
    {/* Contents are labelled above the vessel; temperature stays on glass. */}
-   {temperatureVisible&&<g className="lektrus-lab-ware-engraving">
+   {temperatureVisible&&vessel.kind!=="burette"&&<g className="lektrus-lab-ware-engraving">
     <rect x="27" y="75" width="46" height="16" rx="4"
      fill="#f0faf3" fillOpacity=".8" stroke="#83b1a6" strokeWidth=".7"/>
     <text x="50" y="86" fontWeight="800" fontSize="10" textAnchor="middle"
@@ -1356,7 +1356,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     {bench.instrumentTarget?.kind==="tripod"&&bench.instrumentTarget.vesselId===v.id&&<span
      className="lektrus-lab-instrument-attachment">На штативе</span>}
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
-     editable={editable} temperatureVisible={settings.showTemperatures} onOpenSettings={()=>{onSelect?.(v.id);setActiveDeviceId(null);
+     editable={editable} temperatureVisible={settings.showTemperatures&&v.kind!=="burette"} onOpenSettings={()=>{onSelect?.(v.id);setActiveDeviceId(null);
       setVesselMenuId(vesselMenuId===v.id?null:v.id)}}
      stirring={bench.stirringVesselId===v.id||
       labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)}
