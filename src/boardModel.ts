@@ -833,14 +833,14 @@ export function parseDocument(raw: string): DocumentData {
           (bench.mode!=null&&!["qualitative","quantitative","titration","solutions","synthesis"].includes(bench.mode))||
           !Number.isSafeInteger(bench.event)||bench.event<0||!validSettings||
           (bench.devices!=null&&(!Array.isArray(bench.devices)||
-            bench.devices.length>5||new Set(bench.devices).size!==bench.devices.length||
-            !bench.devices.every(id=>["hotplate","burner","stirrer","tripod","thermometer"].includes(id))))||
+            bench.devices.length>6||new Set(bench.devices).size!==bench.devices.length||
+            !bench.devices.every(id=>["hotplate","burner","stirrer","tripod","filter","thermometer"].includes(id))))||
           (bench.placedDevices!=null&&(!Array.isArray(bench.placedDevices)||
             bench.placedDevices.length>10||
             new Set(bench.placedDevices.map(d=>d.id)).size!==bench.placedDevices.length||
             !bench.placedDevices.every(d=>
               typeof d.id==="string"&&d.id.length>0&&d.id.length<=50&&
-              ["hotplate","burner","stirrer","tripod","thermometer"].includes(d.kind)&&
+              ["hotplate","burner","stirrer","tripod","filter","thermometer"].includes(d.kind)&&
               Number.isFinite(d.x)&&d.x>=9&&d.x<=81&&Number.isFinite(d.y)&&d.y>=53&&d.y<=84&&
               (d.active==null||typeof d.active==="boolean")&&
               (d.powered==null||typeof d.powered==="boolean")&&
