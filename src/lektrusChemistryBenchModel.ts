@@ -73,7 +73,7 @@ export type LabPlacedDevice={id:string;kind:LabDevice;x:number;y:number;
  powered?:boolean;heatLevel?:1|2|3;temperatureC?:number;
  targetTemperatureC?:number;standHeight?:number;shelfVesselId?:string;
  /** Solid retained inside the cartridge after pouring a precipitated mixture. */
- collectedResidue?:{formula:string;massG?:number;color:string};};
+ collectedResidue?:{formula:string;massG?:number;color:string};filterStartedAtMs?:number;};
 export const MAX_LAB_DEVICES=10;
 const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
 /** V1 cabinets only stored the types. Preserve them when a board is upgraded. */
@@ -1148,7 +1148,7 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
    indicator:undefined,visualStartedAtMs:undefined,
    reactionAmounts:undefined,completedReaction:undefined,observed:false}),
   placedDevices:placedLabDevices(separated).map(d=>d.id===filterId?
-   {...d,collectedResidue:solid}:d),
+   {...d,collectedResidue:solid,filterStartedAtMs:Date.now()}:d),
   event:separated.event+1};
 }
 
