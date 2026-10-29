@@ -1751,3 +1751,17 @@ assert.deepEqual(mergedWithPeer.reactionLog,["HCl + NaOH → NaCl + H2O"],
 assert.ok(mergedWithPeer.seenReactionKeys.length>0,
  "Wiped recorded keys stay in sync so old reactions do not reappear");
 console.log("Shared chalkboard: concurrent writes and explicit erasing passed");
+
+
+const plainQualitative=lab.putLabReagent(
+ lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl"),"v1","AgNO3");
+const qualContents=lab.labVesselContents(plainQualitative.vessels[0]);
+assert.deepEqual(qualContents.solid.map(v=>v.formula),["AgCl"],
+ "Qualitative reaction must show the insoluble product, not the initial reagent list");
+assert.ok(qualContents.solution.some(v=>v.formula==="NaNO3"));
+assert.ok(!qualContents.solution.some(v=>v.formula==="AgNO3"));
+assert.equal(qualContents.precipitateG,undefined,
+ "With no quantified doses, mass of sediment must stay unknown");
+assert.equal(qualContents.remainderUnknown,true,
+ "Unmeasured initial reactant excess must be explicitly unknown");
+console.log("Qualitative chemistry shows products, not fabricated residue masses");
