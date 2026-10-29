@@ -905,7 +905,7 @@ assert.match(hoverSurface,/setTimeout\(perform,sampling\?1000:120\)/,"Measured p
 assert.match(hoverSurface,/endContact\(\)/,"Release cancels the active pour");
 assert.match(hoverSurface,/beginContact\(g\.id,pouring\)/);
 assert.match(hoverSurface,/const drawing=pipette\.reagents\.length===0/);
-assert.match(hoverSurface,/transferLabMeasuredLiquid\(current,donor\.id,receiver\.id,requested\)/);
+assert.match(hoverSurface,/transferLabMeasuredLiquid\(latest,donor\.id,receiver\.id,requested\)/);
 assert.match(hoverSurface,/lektrus-lab-device-face-controls/);
 assert.match(hoverSurface,/lektrus-lab-device-power/);
 assert.match(hoverSurface,/setPlacedDevicePower\(\{\.\.\.bench,simulationAtMs:Date\.now\(\)\}/);
