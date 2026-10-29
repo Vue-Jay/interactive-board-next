@@ -747,8 +747,7 @@ export const schoolSolidColors:Record<string,string>={
  "K2MnO4":"#66945e",
  "SrSO4":"#f3f3ef","SrCO3":"#f4f3ee",
  "Ni(OH)2":"#91b796","Co(OH)2":"#9d86b1",
- "AgBr":"#e8d5a0","AgI":"#e7ca39",
- "Li2CO3":"#f3f3ed","ZnS":"#f2f1e9"
+ "Li2CO3":"#f3f3ed"
 };
 export function reactionProducts(equation:string):string[]{
  const rhs=equation.split("→")[1]??"";
