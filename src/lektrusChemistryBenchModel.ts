@@ -889,13 +889,14 @@ export function transferLabMeasuredLiquid(
   identifyReaction(ids,medium).status==="reaction";
  const now=newReaction?Date.now():undefined;
  const vessels=bench.vessels.map(v=>{
-  if(v.id===sourceId)return {...v,reagents:remainingIds,
+  if(v.id===sourceId)return {...v,reactionAmounts:undefined,
+    uncertain:!!source.reactionAmounts||v.uncertain,reagents:remainingIds,
    doses:remainingIds.length?left:undefined,
    observed:remainingIds.length?v.observed:false,
    completedReaction:remainingIds.length?v.completedReaction:undefined,
    indicator:remainingIds.length?v.indicator:undefined,
    visualStartedAtMs:remainingIds.length?v.visualStartedAtMs:undefined};
-  if(v.id===targetId)return {...v,reagents:ids,doses:received,
+  if(v.id===targetId)return {...v,reactionAmounts:undefined,reagents:ids,doses:received,
    observed:ids.length>1||source.observed,
    environment:medium,uncertain,
    completedReaction:wasEmpty?sourceReaction:targetReaction,
