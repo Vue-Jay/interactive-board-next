@@ -1,4 +1,5 @@
 import type {Item} from "./boardModel";
+import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,labMolarMass,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
@@ -666,32 +667,17 @@ export const labIndicators:{id:LabIndicator;name:string;note:string;form:"soluti
  {id:"universal",name:"Универсальный",form:"paper",stockColor:"#e9edb4",note:"Бумажная тест-полоска, не окрашивает раствор"}
 ];
 export type LabIndicatorResult={medium:"acid"|"base"|"neutral"|"unknown";
- label:string;color?:string;note:string};
-const indicatorPalette:Record<LabIndicator,Record<"acid"|"base"|"neutral",string>>={
- litmus:{acid:"#d85761",base:"#426cce",neutral:"#8978b5"},
- phenolphthalein:{acid:"#c8e3eb",base:"#d83a96",neutral:"#c8e3eb"},
- "methyl-orange":{acid:"#db4444",base:"#efc94b",neutral:"#eda24f"},
- universal:{acid:"#e55b45",base:"#5673cc",neutral:"#72ad5c"}
-};
-/** Qualitative indicator reading only where medium is unambiguous.
- * Never invent pH for neutralisation, salts or multi-stage mixtures. */
+ label:string;color?:string;pH?:number;note:string};
+/** Indicator colour comes from concentrations, including after every
+ * neutralisation/titration dose. Unsupported equilibria remain unknown. */
 export function labIndicatorResult(vessel:LabVessel):LabIndicatorResult|null{
  if(!vessel.indicator)return null;
- const reagents=vessel.reagents;
- let medium:LabIndicatorResult["medium"]="unknown";
- if(reagents.length&&vessel.environment==="aqueous"&&!vessel.uncertain&&
-    !(vessel.observed&&identifyReaction(reagents,vessel.environment).status==="reaction")){
-  if(reagents.length===1&&reagents[0]==="H2O")medium="neutral";
-  else if(reagents.every(id=>substances.find(s=>s.id===id)?.kind==="кислота"))medium="acid";
-  else if(reagents.every(id=>["NaOH","KOH","Ca(OH)2","Ba(OH)2","NH4OH"].includes(id)))medium="base";
- }
- const descriptions={acid:"Кислая среда",base:"Щелочная среда",
-  neutral:"Нейтральная среда",unknown:"Окраска не определена"};
- const color=medium==="unknown"?undefined:indicatorPalette[vessel.indicator][medium];
- return{medium,label:descriptions[medium],color,
-  note:medium==="unknown"?
-   "Без известных pH и концентраций нельзя надёжно определить цвет индикатора.":
-   "Качественная оценка среды, без вычисления pH и концентраций."};
+ const ph=labVesselPH(vessel);
+ if(!ph)return {medium:"unknown",label:"pH не определён",
+  note:"Недостаточно измерений либо равновесие вещества не поддерживается; цвет не придумывается."};
+ return {medium:ph.pH<6.5?"acid":ph.pH>7.5?"base":"neutral",
+  label:ph.label,pH:ph.pH,color:labIndicatorTint(vessel.indicator,ph.pH),
+  note:ph.note};
 }
 
 export type LabVessel={pourFraction?:number;

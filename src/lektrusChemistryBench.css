@@ -4189,3 +4189,21 @@
 @media(prefers-reduced-motion:reduce){
  .lektrus-lab-indicator-drops path{animation:none!important}
 }
+
+
+/* Compact pH readout: close to the flask but outside the liquid silhouette. */
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+ left:calc(100% + 6px)!important;right:auto!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed{
+ left:auto!important;right:calc(100% + 6px)!important}
+.lektrus-lab-bench .lektrus-lab-quantity-info .lektrus-lab-inline-ph{
+ display:block;font:800 9px/1.25 system-ui,sans-serif!important;
+ padding-top:3px;margin-top:2px;border-top:1px solid #b5d5c4;
+ color:#3b8065;white-space:normal;overflow-wrap:anywhere}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+  left:calc(100% + 4px)!important}
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed{
+  left:auto!important;right:calc(100% + 4px)!important}
+ .lektrus-lab-bench .lektrus-lab-quantity-info .lektrus-lab-inline-ph{font-size:8px!important}
+}
