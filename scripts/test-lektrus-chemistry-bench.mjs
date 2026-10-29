@@ -933,7 +933,7 @@ assert.deepEqual(stock.labReagentForms(item("AgCl")),["g"]);
 assert.equal(stock.labReagentPhaseLabel(item("CuSO4"),"ml"),"Раствор / жидкость");
 assert.equal(stock.labReagentPhaseLabel(item("CaCO3"),"g"),"Твёрдое вещество");
 assert.match(hoverSurface,/labVesselQuantity\(vessel\)/);
-assert.match(hoverSurface,/totalLabel\|\|substanceState/);
+assert.match(hoverSurface,/totalLabel\|\|\"Осадок\"/);
 
 /* Realistic receiving glassware snaps to the retort stand foot, whereas
  * clamp-held glassware remains attached independently above it. */
