@@ -1,6 +1,7 @@
 import {subjectEditorStyle} from "./lektrusSubjectAccent";
 import {useEffect,useRef,useState,type PointerEvent} from "react";
 import {mergeEditedValue} from "./lektrusLiveEditorMerge";
+import {mergeLabBench,readLabBench} from "./lektrusChemistryBenchModel";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import {scienceToolGroupForId} from "./lektrusScienceCatalog";
@@ -101,7 +102,17 @@ export default function LektrusScienceEditor({item,subject,onSave,onCancel,onClo
     if(!experiment||!shared||item===experimentRemotePrevious.current)return;
     const previous=experimentRemotePrevious.current;
     experimentRemotePrevious.current=item;
-    setDraft(current=>mergeEditedValue(previous,current,item));
+    setDraft(current=>{
+      // The laboratory holds ID-addressed vessels and apparatus. Generic
+      // positional array merging can duplicate or overwrite simultaneous
+      // edits to different pieces of glassware. Use its domain-aware merge.
+      const fields=mergeEditedValue(
+       {...previous,scienceLabBench:undefined},
+       {...current,scienceLabBench:undefined},
+       {...item,scienceLabBench:undefined});
+      return {...fields,scienceLabBench:mergeLabBench(
+       readLabBench(previous),readLabBench(current),readLabBench(item))};
+    });
   },[experiment,shared,item]);
   useEffect(()=>{
     if(!organic||!shared||item===organicRemotePrevious.current)return;
