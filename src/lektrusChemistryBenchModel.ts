@@ -1619,6 +1619,20 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  const quickReagents=JSON.stringify(labQuickReagents(mine))===JSON.stringify(labQuickReagents(previous))?
   labQuickReagents(remote):labQuickReagents(mine);
  const mode=labMode(mine)===labMode(previous)?labMode(remote):labMode(mine);
+ // The chalkboard is a shared write-once ledger, except for an EXPLICIT wipe.
+ // A wiped equation must not resurrect because a stale peer edited a vessel.
+ const baseLog=previous.reactionLog??[];
+ const localLog=mine.reactionLog??[];
+ const peerLog=remote.reactionLog??[];
+ const localWipe=baseLog.length>0&&localLog.length===0;
+ const peerWipe=baseLog.length>0&&peerLog.length===0;
+ const logSources=localWipe?peerLog:peerWipe?localLog:
+  [...peerLog,...localLog];
+ const reactionLog=(localWipe||peerWipe?
+  logSources.filter(eq=>!baseLog.includes(eq)):
+  [...new Set(logSources)]).slice(-30);
+ const seenReactionKeys=[...new Set([...(previous.seenReactionKeys??[]),
+  ...(remote.seenReactionKeys??[]),...(mine.seenReactionKeys??[])])].slice(-150);
  return {vessels:limited,selectedId,mode,settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,pouring,
-  event:Math.max(remote.event,mine.event)+1};
+  reactionLog,seenReactionKeys,event:Math.max(remote.event,mine.event)+1};
 }
