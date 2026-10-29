@@ -519,6 +519,27 @@ for(const line of extendedDiverseCases.trim().split("\n")){
    "Опасная реакция: только виртуальная демонстрация; не является инструкцией для реального опыта.":undefined
  });
 }
+/** Minimum modeled activation points, not laboratory instructions. A case
+ * is shown by the heater only if it can actually reach the threshold. */
+const thermalCaseThresholds:Record<string,number>={
+ "CaCO3":825,"BaCO3":1000,"MgCO3":350,"CuCO3":200,
+ "NaHCO3":85,"Cu(OH)2":95,"Fe(OH)3":150,"Fe(OH)2":150,
+ "Mg(OH)2":350,"Ca(OH)2":500,"Al(OH)3":200,"Zn(OH)2":150,
+ "CuSO4":650,"FeSO4":480,"AgNO3":430,"Cu(NO3)2":180,
+ "Pb(NO3)2":220,"NaNO3":380,"KNO3":410,"KMnO4":220,
+ "Zn+S":190,"Fe+S":200,"Cu+O2":220,"CuO+H2":200,
+ "CuO+CO":200,"CuO+C":300,"Fe2O3+CO":700,"Fe2O3+H2":550,
+ "C2H5OH+CuO":210,"CH3OH+CuO":200
+};
+for(const row of cases){
+ if(row.status!=="reaction")continue;
+ if(row.environment==="heated"||row.environment==="ignited"){
+  const signature=row.reactants.slice().sort().join("+");
+  row.minTemperatureC=thermalCaseThresholds[signature]??
+   thermalCaseThresholds[row.reactants[0]]??
+   (row.environment==="ignited"?135:90);
+ }
+}
 // Annotate existing reviewed cases, so both new and old reactions use one
 // visual language. Explosive visuals require a specifically identified case.
 for(const row of cases){
