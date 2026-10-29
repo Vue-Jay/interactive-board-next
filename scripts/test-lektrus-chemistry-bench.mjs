@@ -360,6 +360,58 @@ const dualHolder=lab.placedLabDevices({...adjustable,placedDevices:[
 assert.equal(dualHolder[0].linkedVesselId,"v1");
 assert.equal(dualHolder[0].shelfVesselId,undefined,
  "Old two-holder stands must normalize to a single retort clamp");
+// Independently placed heater and mixer can occupy the tabletop directly
+// under ONE suspended vessel without overwriting its stand attachment.
+let suspended=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod",{x:40,y:68});
+const suspendedStand=lab.placedLabDevices(suspended)[0].id;
+suspended=lab.setLabStandHeight(suspended,suspendedStand,.25);
+suspended=lab.applyPlacedLabDevice(suspended,suspendedStand,"v1");
+suspended=lab.putLabReagent(suspended,"v1","H2O",{value:40,unit:"ml"});
+suspended=lab.addLabVessel(suspended,"conical",{x:48,y:69});
+const lowerReceiver=suspended.vessels.find(v=>v.kind==="conical").id;
+assert.equal(lab.labReceiverBelowStand(suspended,"v1")?.id,lowerReceiver,
+ "Gravity transfer locates glassware on the tabletop below the upper clamp");
+suspended=lab.addPlacedLabDevice(suspended,"hotplate",{x:43.5,y:78});
+const underHeater=lab.placedLabDevices(suspended).find(d=>d.kind==="hotplate").id;
+assert.equal(lab.placedLabDevices(suspended).find(d=>d.id===underHeater).linkedVesselId,undefined,
+ "A heater may be placed freely below the stand, not physically in its clamp");
+assert.ok(lab.labAppliancesBelowStand(suspended,"v1").some(d=>d.id===underHeater));
+suspended=lab.setPlacedDevicePower(suspended,underHeater,true);
+suspended=lab.advanceLabSimulation(suspended,1000);
+suspended=lab.advanceLabSimulation(suspended,11000);
+assert.ok(suspended.vessels.find(v=>v.id==="v1").temperatureC>22,
+ "An energized heater beneath the low clamp warms the suspended glassware");
+suspended=lab.setLabStandHeight(suspended,suspendedStand,.95);
+assert.equal(lab.labAppliancesBelowStand(suspended,"v1").some(d=>d.id===underHeater),false,
+ "Raising glassware high removes thermal contact with the heating plate");
+suspended=lab.setLabStandHeight(suspended,suspendedStand,.25);
+suspended=lab.addPlacedLabDevice(suspended,"stirrer",{x:43.5,y:78});
+const underMixer=lab.placedLabDevices(suspended).find(d=>d.kind==="stirrer").id;
+suspended=lab.setPlacedDevicePower(suspended,underMixer,true);
+assert.ok(lab.labAppliancesBelowStand(suspended,"v1").some(d=>d.id===underMixer&&d.powered),
+ "The magnetic stirrer beneath a lowered vessel has visual contact");
+suspended=lab.startLabPour(suspended,"v1",lowerReceiver,"stand-gravity-flow");
+assert.equal(suspended.pouring.sourceId,"v1");
+assert.equal(suspended.pouring.targetId,lowerReceiver);
+suspended=lab.advanceLabPour(suspended);
+assert.ok(suspended.vessels.find(v=>v.id===lowerReceiver).doses.H2O.value>0,
+ "Tipping suspended glassware transfers measured liquid in aliquots");
+let suspendedBurette=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod",{x:40,y:68});
+const buretteStand=lab.placedLabDevices(suspendedBurette)[0].id;
+suspendedBurette=lab.addLabVessel(suspendedBurette,"burette");
+const upperBurette=suspendedBurette.vessels.find(v=>v.kind==="burette").id;
+suspendedBurette=lab.applyPlacedLabDevice(suspendedBurette,buretteStand,upperBurette);
+suspendedBurette=lab.positionLabVessel(suspendedBurette,"v1",48,69);
+suspendedBurette=lab.putLabReagent(suspendedBurette,upperBurette,"HCl",{value:10,unit:"ml"});
+assert.equal(lab.labReceiverBelowStand(suspendedBurette,upperBurette)?.id,"v1");
+suspendedBurette=lab.setLabBuretteValve(suspendedBurette,upperBurette,true);
+assert.equal(suspendedBurette.vessels.find(v=>v.id===upperBurette).buretteTargetId,"v1",
+ "An opened burette above a vessel chooses its physical receiver");
+suspendedBurette=lab.advanceLabSimulation(suspendedBurette,1000);
+suspendedBurette=lab.advanceLabSimulation(suspendedBurette,5000);
+assert.ok((suspendedBurette.vessels.find(v=>v.id==="v1").doses?.HCl?.value??0)>0,
+ "The lower vessel accumulates burette drops through live simulation");
+
 const migrated=lab.placedLabDevices({...lab.defaultLabBench(),devices:["burner","stirrer"]});
 assert.equal(migrated.length,2,"Previously saved laboratory devices must remain visible");
 assert.notEqual(migrated[0].id,migrated[1].id);
