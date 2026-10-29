@@ -207,7 +207,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
     <path d="M42 112H61M50 111V126" stroke="#497b76" strokeWidth="3" strokeLinecap="round"/>
     <path d={vessel.buretteOpen?"M52 102V125":"M39 114H64"} stroke={vessel.buretteOpen?"#27a789":"#758f8c"} strokeWidth="5" strokeLinecap="round"/>
     <circle cx="52" cy="114" r="4" fill="#e2f3ed" stroke="#47776f" strokeWidth="1.5"/>
-    {vessel.buretteOpen&&<circle cx="50" cy="130" r="2.6" fill="#54b4c9" className="lektrus-lab-burette-drop"/>}
+    
    </g>}
    <path d={geo.outline} fill="none" stroke="#75a4a4" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
    <path d={geo.outline} fill="none" stroke="#fff" strokeWidth="1.25" opacity=".8" strokeLinecap="round"/>
