@@ -57,6 +57,47 @@ const gas=reactionAppearance(identifyReaction(["HCl","NaHCO3"],"aqueous").caseDa
 assert.equal(gas.gas,"CO2");
 assert.ok(reactionProducts("2H2O2 → 2H2O + O2↑").includes("O2↑"));
 
+// Expansions span all named laboratory categories and never reclassify
+// arbitrary mixtures as explosions or invent reactions for the wrong state.
+assert.ok(reviewedReactionCases.length>=220,
+ "The cupboard must support an expanded and diverse reviewed reaction library");
+const familySet=new Set(reviewedReactionCases.filter(r=>r.status==="reaction").map(r=>r.family));
+for(const family of ["combustion","synthesis","decomposition","displacement","redox",
+ "hydration","organic","neutralization","exchange"])
+ assert.ok(familySet.has(family),"Missing reaction family: "+family);
+const check=(reagents,env,family,visual)=>{
+ const row=identifyReaction(reagents,env);
+ assert.equal(row.status,"reaction","Unsupported reviewed scenario "+reagents+" "+env);
+ assert.equal(row.caseData.family,family);
+ assert.equal(row.caseData.visual,visual);
+ return row.caseData;
+};
+check(["Na","Cl2"],"ignited","synthesis","flash");
+check(["H2","O2"],"ignited","combustion","flash");
+check(["P","O2"],"ignited","combustion","smoke");
+check(["Cu","O2"],"heated","synthesis","colorShift");
+check(["FeCl3","KI"],"aqueous","redox","colorShift");
+check(["AgNO3"],"heated","decomposition","smoke");
+check(["CH3OH","O2"],"ignited","combustion","flame");
+check(["CuO","H2"],"heated","redox","colorShift");
+check(["Na","H2O"],"aqueous","displacement","fizz");
+assert.equal(identifyReaction(["Na","H2O"],"heated").status,"unknown");
+assert.ok(identifyReaction(["Fe2O3","CO"],"heated").caseData.minTemperatureC>=650);
+assert.ok(identifyReaction(["Zn","S"],"heated").caseData.minTemperatureC>=170);
+assert.equal(reactionAppearance(identifyReaction(["Mg","O2"],"ignited").caseData).productSolid,"MgO");
+assert.equal(reactionAppearance(identifyReaction(["CuO","H2"],"heated").caseData).productSolid,"Cu");
+assert.equal(reactionAppearance(identifyReaction(["KI","Cl2"],"aqueous").caseData).solutionAfter,"#9d6b36");
+const benchScene=read("src/LektrusChemistryBench.tsx");
+assert.match(benchScene,/LabReactionBurst/);
+assert.match(benchScene,/visualStartedAtMs/);
+assert.match(benchScene,/lektrus-lab-virtual-ignition/);
+assert.match(benchScene,/reactionFamilyLabels/);
+assert.match(benchScene,/slice\(0,260\)/,"All reviewed cases must be reachable from the cupboard");
+const fxCss=read("src/lektrusChemistryBench.css");
+for(const effect of ["flash","flame","sparks","smoke","glow","thermal","fizz","crystals"])
+ assert.ok(fxCss.includes(".is-"+effect),"Missing chemistry visual effect: "+effect);
+assert.match(fxCss,/@media\(prefers-reduced-motion:reduce\)/);
+
 // Element conservation check handles nested stoichiometric groups.
 function atoms(formula){
  formula=formula.replace(/[↓↑]/g,"").trim();
