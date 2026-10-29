@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -11,7 +11,7 @@ import {buildLabCatalog,cabinetColor,phaseNames,labReagentForms,labReagentPhaseL
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
 import LektrusLabDeviceIcon from "./LektrusLabDeviceIcon";
-import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandClampSvgY,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
+import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint,labStandClampSvgY,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
 const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
@@ -323,6 +323,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const contactRef=useRef<{sourceId:string;targetId:string;activated:boolean}|null>(null);
  const contactTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const [contactCountdown,setContactCountdown]=useState<string|null>(null);
+ const contactPourRef=useRef<string|null>(null);
  const cancelContact=()=>{if(contactTimer.current)clearTimeout(contactTimer.current);
   contactTimer.current=null;contactRef.current=null;setContactCountdown(null);};
  useEffect(()=>()=>{if(contactTimer.current)clearTimeout(contactTimer.current)},[]);
@@ -369,6 +370,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const localPourRef=useRef<string|null>(null);
  const lastPourStepRef=useRef(-1);
  benchRef.current=bench;changeRef.current=onChange;
+ const endContact=()=>{
+  cancelContact();const id=contactPourRef.current;
+  contactPourRef.current=null;
+  if(!id)return;
+  const current=benchRef.current;
+  if(current.pouring?.id===id){const next=stopLabPour(current,id);
+   benchRef.current=next;changeRef.current?.(next)}
+  if(localPourRef.current===id)localPourRef.current=null;
+ };
  const isGlobalSearch=!!query.trim();
  const catalogKind=(v:{kind:string})=>{
   if(cabinetTab==="all"||isGlobalSearch)return true;
@@ -417,7 +427,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    if(session.step<=lastPourStepRef.current)return;
    lastPourStepRef.current=session.step;
    const next=advanceLabPour(current);
-   if(next!==current)changeRef.current?.(next);
+   if(next!==current){benchRef.current=next;changeRef.current?.(next)}
   },LAB_POUR_INTERVAL_MS);
   return()=>clearInterval(timer);
  },[bench.pouring?.id,editable]);
@@ -444,7 +454,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    if(!active)return;
    const next=advanceLabSimulation(current,Date.now());
    if(next!==current)changeRef.current?.(next);
-  },2000);
+  },500);
   return ()=>clearInterval(timer);
  },[editable]);
  useEffect(()=>{if(cabinet)dialogRef.current?.focus()},[cabinet]);
@@ -508,43 +518,50 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   localPourRef.current=id;lastPourStepRef.current=-1;
   onChange?.(next);
   setLocalPourId(null);
-  setNotice("Переливание: по 5% каждые 0,4 секунды");
+  setNotice("Переливание: по 5% каждые 0,15 секунды");
  };
  const beginContact=(sourceId:string,targetId:string)=>{
-  const prior=contactRef.current;
-  if(prior?.sourceId===sourceId&&prior.targetId===targetId)return;
-  cancelContact();
+  const old=contactRef.current;
+  if(old?.sourceId===sourceId&&old.targetId===targetId)return;
+  endContact();
   contactRef.current={sourceId,targetId,activated:false};
   setContactCountdown(targetId);
-  contactTimer.current=setTimeout(()=>{
+  const source=benchRef.current.vessels.find(v=>v.id===sourceId);
+  const target=benchRef.current.vessels.find(v=>v.id===targetId);
+  if(!source||!target)return;
+  const isPipette=source.kind==="pipette"||target.kind==="pipette";
+  const perform=()=>{
    const c=contactRef.current;
    if(!c||c.sourceId!==sourceId||c.targetId!==targetId||c.activated)return;
-   const current=benchRef.current;
-   const source=current.vessels.find(v=>v.id===sourceId);
-   const target=current.vessels.find(v=>v.id===targetId);
-   if(!source||!target)return;
-   let next=current;
-   if(source.kind==="pipette"||target.kind==="pipette"){
-    const pipette=source.kind==="pipette"?source:target;
+   const latest=benchRef.current;
+   const from=latest.vessels.find(v=>v.id===sourceId);
+   const to=latest.vessels.find(v=>v.id===targetId);
+   if(!from||!to)return;
+   let next=latest;
+   if(from.kind==="pipette"||to.kind==="pipette"){
+    const pipette=from.kind==="pipette"?from:to;
     const drawing=pipette.reagents.length===0;
-    const donor=drawing?(pipette===source?target:source):pipette;
-    const receiver=drawing?pipette:(pipette===source?target:source);
+    const donor=drawing?(pipette===from?to:from):pipette;
+    const receiver=drawing?pipette:(pipette===from?to:from);
     const requested=pipette.pipetteTargetMl??5;
-    // Never quietly replace the requested volume with a smaller one.
-    next=transferLabMeasuredLiquid(current,donor.id,receiver.id,requested);
-    setNotice(next===current?
-     "Нельзя отобрать "+requested.toLocaleString("ru-RU")+" мл: проверьте раствор, объём и вместимость":
+    next=transferLabMeasuredLiquid(latest,donor.id,receiver.id,requested);
+    setNotice(next===latest?
+     "Недостаточно раствора или места для "+requested.toLocaleString("ru-RU")+" мл":
      "Пипетка "+(drawing?"набрала ":"выдала ")+requested.toLocaleString("ru-RU")+" мл");
-   }else if(source.reagents.length){
+   }else if(from.reagents.length){
     const id="pour-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,7);
-    next=startLabPour(current,sourceId,targetId,id);
-    if(next!==current){localPourRef.current=id;lastPourStepRef.current=-1;
-     setNotice("Переливание по 5% · 2,5 порции/с")}
-    else setNotice("Не удалось перелить: проверьте объём и посуду");
+    next=startLabPour(latest,sourceId,targetId,id);
+    if(next!==latest){localPourRef.current=id;contactPourRef.current=id;
+     lastPourStepRef.current=-1;setNotice("Удерживайте сосуд, чтобы переливать")}
+    else setNotice("Переливание невозможно: проверьте содержимое и объём");
    }
-   if(next!==current)changeRef.current?.(next);
+   if(next!==latest){benchRef.current=next;changeRef.current?.(next)}
    contactRef.current={...c,activated:true};setContactCountdown(null);
-  },2000);
+  };
+  // Contact immediately aspirates a measured pipette sample.
+  // A tiny dwell protects against accidental drags across receivers.
+  if(isPipette)perform();
+  else contactTimer.current=setTimeout(perform,120);
  };
  const clean=(id:string)=>{
   const next=emptyLabVessel(bench,id);
@@ -579,7 +596,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const pouring=furniture?null:targetAt(g.id,p);
    setDropTarget(pouring);
    if(pouring)beginContact(g.id,pouring);
-   else if(contactRef.current)cancelContact();
+   else if(contactRef.current)endContact();
    const vessel=bench.vessels.find(v=>v.id===g.id);
    const nearby=!furniture&&!pouring&&vessel?physicalDevices.map(d=>({
     d,dist:Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)
@@ -594,7 +611,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const finish=(event:PointerEvent<HTMLButtonElement>)=>{
   const g=gesture.current;if(!g)return;gesture.current=null;
   const contacted=contactRef.current?.activated===true;
-  cancelContact();
+  endContact();
   event.preventDefault();event.stopPropagation();
   if(event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId);
   const p=point(event);
@@ -603,8 +620,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    else if(inGlassware(p))returnGlass(g.id);
    else{
     const target=targetAt(g.id,p);
-    if(target&&contacted){setLocalPourId(null);}
-    else if(target){setNotice("Подержите сосуд над другим 2 секунды");}
+    if(contacted){setLocalPourId(null);}
+    else if(target){setNotice("Поднесите сосуд ближе к приёмнику");}
     else{
      const rect=host.current?.getBoundingClientRect();
      const vessel=bench.vessels.find(v=>v.id===g.id);
@@ -1231,7 +1248,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     aria-pressed={selectedVessel} title={editable?
       "Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, в шкаф для возврата":"Посуда"}
     onPointerDown={e=>down(e,v)} onPointerMove={move} onPointerUp={finish}
-    onPointerCancel={e=>{e.stopPropagation();cancelContact();gesture.current=null;setPreview(null);
+    onPointerCancel={e=>{e.stopPropagation();endContact();gesture.current=null;setPreview(null);
      setDropTarget(null);setDropFurniture(null);setDropDeviceId(null)}}
     onDragOver={e=>{if(editable)e.preventDefault()}}
     onDrop={e=>{if(!editable)return;e.preventDefault();e.stopPropagation();
@@ -1317,7 +1334,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   {editable&&(dropTarget||dropDeviceId||effectivePouringId||dropFurniture||notice)&&<div className="lektrus-lab-pour-hint" aria-live="polite">
    {dropFurniture==="sink"?"Отпустите для слива в раковину":
     dropFurniture==="glassware"?"Отпустите, чтобы вернуть пустую посуду":
-    dropTarget?(contactCountdown===dropTarget?"Удерживайте 2 секунды для "+(bench.vessels.find(v=>v.id===gesture.current?.id)?.kind==="pipette"?"набора раствора":"переливания"):"Дождитесь завершения контакта"):
+    dropTarget?(contactCountdown===dropTarget?"Поднесите пипетку или удерживайте сосуд":"Переливание идёт. Отпустите, чтобы остановить"):
      dropDeviceId?"Отпустите, чтобы установить посуду":
     effectivePouringId?"Выберите посуду для переливания":notice}
   </div>}
