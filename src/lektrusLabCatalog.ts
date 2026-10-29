@@ -46,7 +46,7 @@ export function labReagentForms(v:Substance):("ml"|"g")[]{
  * tracked by physical volume, never given fictitious 0.1M molarity. */
 export const LAB_STOCK_MOLARITY_M=0.1;
 export const LAB_NEAT_STOCK=new Set([
- "H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO","HCHO"
+ "H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO"
 ]);
 export function labIsPreparedStock(id:string):boolean{
  const item=substances.find(v=>v.id===id);
