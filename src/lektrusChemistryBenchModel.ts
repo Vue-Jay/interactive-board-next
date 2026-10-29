@@ -750,8 +750,11 @@ export function labFreeVesselPosition(bench:LabBench):{x:number;y:number}{
   {x:17,y:73},{x:83,y:73},{x:40,y:84},{x:60,y:84},
   {x:23,y:49},{x:77,y:49},{x:50,y:49}
  ];
- const occupied=bench.vessels.map(v=>labDisplayPoint(v,bench.vessels.length>3));
  const devices=placedLabDevices(bench);
+ const occupied=bench.vessels.map(v=>{
+  const stand=devices.find(d=>d.kind==="tripod"&&d.id===v.restingOnStandId);
+  return stand?labStandBaseVesselPoint(stand,v,1600,1000):labDisplayPoint(v);
+ });
  const score=(p:{x:number;y:number})=>{
   const display=labDisplayPoint(p,bench.vessels.length>3);
   const nearestVessel=occupied.length?Math.min(...occupied.map(v=>
