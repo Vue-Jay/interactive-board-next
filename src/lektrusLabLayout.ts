@@ -5,10 +5,11 @@ export const LAB_WORKSPACE={left:9,right:81,top:43,bottom:89} as const;
 const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
 const lerp=(min:number,max:number,t:number)=>min+(max-min)*t;
 export function labDisplayPoint(point:{x:number;y:number},crowded=false){
+ void crowded;
  return {
   x:lerp(LAB_WORKSPACE.left,LAB_WORKSPACE.right,clamp((point.x-10)/80,0,1)),
   y:clamp(lerp(LAB_WORKSPACE.top,LAB_WORKSPACE.bottom,
-   clamp((point.y-10)/80,0,1)),crowded?52:53,crowded?84:85)
+   clamp((point.y-10)/80,0,1)),53,85)
  };
 }
 export function labLogicalPoint(point:{x:number;y:number}){
@@ -26,7 +27,7 @@ const size=(min:number,relative:number,max:number,width:number)=>
 export type LabMountGeometry={x:number;y:number;kind:string;standHeight?:number};
 export type LabVesselGeometry={kind:string};
 /** One adjustable retort clamp, shared by illustration and layout. */
-export const LAB_STAND_CLAMP_LOW_Y=64;
+export const LAB_STAND_CLAMP_LOW_Y=61;
 export const LAB_STAND_CLAMP_HIGH_Y=12;
 export const labStandClampSvgY=(height=0.5)=>
  LAB_STAND_CLAMP_LOW_Y-
@@ -51,11 +52,11 @@ export function labMountedGlasswarePoint(
   device.kind==="burner"?size(119,.096,166,w):
   (small?size(101,.16,138,w):size(119,.103,175,w));
  const dHeight=(device.kind==="tripod"||device.kind==="stand-shelf")?
-  (small?size(208,.34,266,w):size(228,.19,280,w)):
+  (small?size(282,.42,355,w):size(335,.28,420,w)):
   device.kind==="burner"?size(138,.114,180,w):
   (small?size(116,.18,152,w):size(130,.115,178,w));
  let vHeight=small?size(96,.17,130,w):size(112,.157,158,w);
- if(crowded)vHeight=size(100,.133,136,w);
+ void crowded;
  if(vessel.kind==="burette")
   vHeight=small?size(130,.24,164,w):size(151,.20,198,w);
  if(vessel.kind==="dish"||vessel.kind==="crucible")
@@ -91,9 +92,9 @@ export function labStandBaseVesselPoint(
 ){
  const w=width||1600,h=height||1000,small=w<=690;
  const dw=small?size(112,.17,146,w):size(130,.11,190,w);
- const dh=small?size(208,.34,266,w):size(228,.19,280,w);
+ const dh=small?size(282,.42,355,w):size(335,.28,420,w);
  let vh=small?size(96,.17,130,w):size(112,.157,158,w);
- if(crowded)vh=size(100,.133,136,w);
+ void crowded;
  if(vessel.kind==="dish"||vessel.kind==="crucible")vh=size(98,.12,125,w);
  const vesselFoot=0.4*vh;
  return {
