@@ -325,6 +325,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,stir
    <strong>Осадок: {contents.precipitateG===undefined?
      contents.solid.length?"Количество не измерено":"0 г":readable(contents.precipitateG)+" г"}</strong>
    <span>{solidNames.join(", ")||"Нет осадка"}</span>
+   {contents.remainderUnknown&&<small>Остаток реагентов без измерений неизвестен</small>}
   </div>}
  </div>;
 }
