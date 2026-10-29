@@ -585,7 +585,7 @@ assert.doesNotMatch(read("src/LektrusChemistryIllustration.tsx"),/lektrus-lab-bo
  "The old bottom toolbar must not overlay the interactive bench");
 assert.match(read("src/LektrusChemistryBench.tsx"),/data-board-interactive="true"/,
  "Glassware gestures do not drag the surrounding board object");
-assert.match(read("src/lektrusSciencePresets.ts"),/x:x-830,y:y-530,text:"Химический стол"/,
+assert.match(read("src/lektrusSciencePresets.ts"),/x:x-830,y:y-530,text:""/,
  "Bench must be centered under the insertion cursor");
 
 // The visual stage is scrollable for old boards without clipping apparatus.
@@ -1286,6 +1286,11 @@ assert.match(polishedLabSource,/lektrus-lab-dissolving-particles/);
 assert.match(polishedLabSource,/lektrus-lab-boiling-particles/);
 assert.match(polishedLabSource,/lektrus-lab-steam-plumes/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-reagent-form-tabs/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-reagent-shortcuts/,
+ "Frequently-used solutions are selectable without scrolling");
+assert.match(read("src/lektrusChemistryBench.css"),/max-width:425px!important/,
+ "Mode names have a wider adaptive menu on desktop");
+
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-board-write-toggle/);
 // Chemistry-wide audit: verify all available reactants, products and visuals.
 // An explosion-like flash is exclusive to explicitly reviewed energetic systems.
