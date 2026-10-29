@@ -91,7 +91,7 @@ export function addPlacedLabDevice(bench:LabBench,kind:LabDevice,point?:{x:numbe
  const placed:LabPlacedDevice={id,kind,
   x:clampDevice(point?.x??(22+(occupied%5)*13),9,79),
   y:clampDevice(point?.y??(62+Math.floor(occupied/5)*22),58,84),
-  powered:false,heatLevel:2,temperatureC:22,targetTemperatureC:150,standHeight:.5};
+  powered:false,heatLevel:2,temperatureC:22,targetTemperatureC:150,standHeight:kind==="tripod"?.88:.5};
  return {...bench,placedDevices:[...existing,placed],
   devices:[...new Set([...(bench.devices??[]),kind])],event:bench.event+1};
 }
