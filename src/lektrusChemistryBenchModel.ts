@@ -214,7 +214,7 @@ export function applyPlacedLabDevice(bench:LabBench,id:string,vesselId:string,
  const mixer=placedDevices.find(d=>d.kind==="stirrer"&&d.active&&d.powered&&
   d.linkedVesselId&&bench.vessels.some(v=>v.id===d.linkedVesselId&&v.reagents.length));
  return {...bench,placedDevices,
-  vessels:bench.vessels.map(v=>v.id===vesselId?{...v,x:logical.x,y:logical.y}:v),
+  vessels:bench.vessels.map(v=>v.id===vesselId?{...v,x:logical.x,y:logical.y,restingOnStandId:undefined}:v),
   stirringVesselId:mixer?.linkedVesselId,
   event:bench.event+1};
 }
