@@ -3807,3 +3807,27 @@
  .lektrus-lab-bench .lektrus-lab-mode-picker select{
   font-size:14px!important;letter-spacing:0!important}
 }
+
+/* A real tabletop membrane catches the solid, while translucent drops
+   pass through to the receiving vessel below. The short transient animation
+   plays only after a successful separation and does not loop indefinitely. */
+.lektrus-lab-bench .lektrus-lab-filter-drain-drop{
+ opacity:0;transform-box:fill-box;transform-origin:center;
+ animation:lektrus-lab-membrane-drain .8s ease-in 2 both;
+ pointer-events:none}
+@keyframes lektrus-lab-membrane-drain{
+ 0%{opacity:0;transform:translateY(-6px) scale(.65)}
+ 17%{opacity:.92;transform:translateY(0) scale(.82)}
+ 56%{opacity:.87;transform:translateY(10px) scale(1)}
+ 100%{opacity:0;transform:translateY(22px) scale(.8)}
+}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-filter .lektrus-lab-device-icon{
+ filter:drop-shadow(0 2px 3px #2c6f593d)}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-filter .lektrus-lab-filter-residue{
+ top:63%!important;min-width:63px!important;max-width:84%!important;
+ padding:3px 5px!important}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench .lektrus-lab-filter-drain-drop{animation:none!important;opacity:0!important}
+}
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-filter-drain-drop{
+ animation:none!important;opacity:0!important}
