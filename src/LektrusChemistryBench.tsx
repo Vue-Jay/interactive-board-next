@@ -4,7 +4,7 @@ import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusC
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
  labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
-import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
+import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {buildLabCatalog,cabinetColor,phaseNames,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
@@ -71,7 +71,41 @@ const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
   liquid:"M21 47H79L55 85H45Z"
  }
 };
-export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,titrationResult,temperatureC,editable=false,onOpenSettings,temperatureVisible=true}:{
+export const reactionFamilyLabels:Record<ReactionFamily,string>={
+ exchange:"Обмен",neutralization:"Нейтрализация",synthesis:"Соединение",
+ decomposition:"Разложение",displacement:"Замещение",combustion:"Горение",
+ redox:"ОВР",hydration:"Гидратация",organic:"Органическая реакция"
+};
+/** Ephemeral visual events share their clock through the board model.
+ * Existing settled products stay visible, flames and flashes do not. */
+function LabReactionBurst({vessel,visual,formula}:{
+ vessel:LabVessel;visual?:ReactionVisual;formula:string}){
+ const started=vessel.visualStartedAtMs;
+ if(!visual||!started)return null;
+ const elapsed=Math.max(0,Date.now()-started);
+ if(elapsed>6500||elapsed<0)return null;
+ const shift={animationDelay:-elapsed/1000+"s"} as React.CSSProperties;
+ const blazing=["flame","flash","sparks","glow"].includes(visual);
+ return <div key={started} aria-hidden="true"
+  className={"lektrus-lab-reaction-burst is-"+visual+
+   (formula.includes("Mg + O2")?" is-magnesium":"")+
+   (formula.includes("CH3OH")||formula.includes("C2H5OH")?" is-alcohol":"")}>
+  {blazing&&<div className="lektrus-lab-reaction-light" style={shift}/>}
+  {visual==="flash"&&<div className="lektrus-lab-reaction-shockwave" style={shift}/>}
+  {(visual==="flame"||visual==="glow")&&
+   <div className="lektrus-lab-reaction-flame" style={shift}>
+    <span/><span/><span/>
+   </div>}
+  {Array.from({length:visual==="sparks"?12:visual==="smoke"||visual==="steam"?9:
+    visual==="fizz"?14:visual==="crystals"?12:7},(_,i)=>
+   <i key={i} className="lektrus-lab-reaction-mote"
+    style={{"--lab-particle-x":(i*53%91-45)+"px",
+     "--lab-particle-delay":-(elapsed/1000)+(i%7)*.11+"s",
+     "--lab-particle-angle":(i*61%130-65)+"deg"} as React.CSSProperties}/>)}
+ </div>;
+}
+
+function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,titrationResult,temperatureC,editable=false,onOpenSettings,temperatureVisible=true}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
  editable?:boolean;onOpenSettings?:()=>void;temperatureVisible?:boolean}){
@@ -198,6 +232,7 @@ export function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=fa
    </g>}
 
   </svg>
+  <LabReactionBurst vessel={vessel} visual={visualCase?.visual} formula={visualCase?.equation??""}/>
   {showLabels&&<span className="lektrus-lab-content-tag"
    title={labels.length?labels.map((formula,i)=>{
     const dose=vessel.doses?.[vessel.reagents[i]];
@@ -294,7 +329,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [group,setGroup]=useState<CatalogueGroup>("phase");
  const [cabinetTab,setCabinetTab]=useState<
  "all"|"acid"|"base"|"salt"|"oxide"|"metal"|"organic"|"other"|"experiments">("all");
- const [effectFilter,setEffectFilter]=useState<"all"|Observation>("all");
+ const [effectFilter,setEffectFilter]=useState<"all"|Observation|ReactionFamily>("all");
  const [chosen,setChosen]=useState<string|null>(null);
  const [amount,setAmount]=useState("10");
  const [unit,setUnit]=useState<"ml"|"g">("ml");
@@ -352,9 +387,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   (selectedBurette?.buretteTargetId??titrationTarget):buretteTargets[0]?.id;
  const effectivePouringId=pouringId??localPourId;
  const experimentCases=reviewedReactionCases.filter(v=>v.status==="reaction"&&
-  v.reactants.length<=2&&(effectFilter==="all"||v.observation===effectFilter)&&
+  v.reactants.length<=3&&(effectFilter==="all"||v.observation===effectFilter||v.family===effectFilter)&&
   (v.equation+" "+v.description+" "+v.reactants.join(" ")).toLocaleLowerCase("ru-RU")
-   .includes(query.trim().toLocaleLowerCase("ru-RU"))).slice(0,80);
+   .includes(query.trim().toLocaleLowerCase("ru-RU"))).slice(0,260);
  const rxn=selected?labObservation(selected):null;
  const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
@@ -724,8 +759,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const prepareExample=(row:(typeof reviewedReactionCases)[number])=>{
   const vessels=row.reactants.map((reagent,i)=>({
    id:"v"+(i+1),kind:(i===0?"beaker":"tube") as LabGlassware,
-   x:i===0?31:72,y:69,reagents:[reagent],
-   environment:row.environment,observed:false
+   x:row.reactants.length===3?23+i*27:i===0?31:72,y:69,reagents:[reagent],
+   environment:row.environment==="aqueous"?"aqueous":"dry",observed:false
   }));
   if(!vessels.length)return;
   // Reused IDs in a new example must never reconnect old powered equipment.
@@ -734,7 +769,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     linkedVesselId:undefined,shelfVesselId:undefined})),
    stirringVesselId:undefined,titrationPair:undefined,titration:undefined,
    instrumentTarget:undefined,event:bench.event+1});
-  setNotice("Опыт подготовлен: соедините вещества, чтобы наблюдать реакцию");
+  setNotice(row.environment==="ignited"?"Смешайте вещества и запустите виртуальное воспламенение":
+   row.environment==="heated"?"Смешайте и нагрейте посуду на приборе":
+   "Опыт подготовлен: соедините вещества, чтобы наблюдать реакцию");
   setCabinet(null);
  };
  const openCabinet=(next:"reagents"|"glassware"|"equipment"|"settings")=>{
@@ -789,7 +826,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   {settings.showEquationBoard&&<div className="lektrus-lab-chalkboard" aria-live="polite">
    <small>{shownReaction?"УРАВНЕНИЕ РЕАКЦИИ":"ПЛАН ЭКСПЕРИМЕНТА"}</small>
    {shownReaction?<><strong key={shownReaction.equation}>{shownReaction.equation}</strong>
-    <span>{shownReaction.description}</span></>:
+    <span>{shownReaction.family?reactionFamilyLabels[shownReaction.family]+" · ":""}{shownReaction.description}{shownReaction.safety?" · Только виртуальный опыт":""}</span></>:
     <div className="lektrus-lab-chalk-steps">
      <strong>Приступим к опыту</strong>
      <span><b>1</b> Возьмите посуду из шкафа</span>
@@ -997,6 +1034,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <option value="dry">Сухая среда</option>
      </select>
     </label>
+    {selected.reagents.length>0&&
+     identifyReaction(selected.reagents,"ignited").status==="reaction"&&
+     selected.environment!=="ignited"&&<button type="button"
+      className="lektrus-lab-virtual-ignition"
+      title="Учебная имитация воспламенения, без инструкций для реального опыта"
+      onClick={()=>onChange?.(setLabEnvironment(bench,selected.id,"ignited"))}>
+      🔥 Поджечь виртуально
+     </button>}
     {onPour&&<button type="button" className={effectivePouringId===selected.id?"active":""}
      onClick={e=>{e.stopPropagation();
       setLocalPourId(effectivePouringId===selected.id?null:selected.id)}}>
@@ -1277,10 +1322,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         aria-label="Класс реактива">
         {classes.map(c=><option key={c}>{c}</option>)}
        </select>:<select value={effectFilter}
-        aria-label="Признак реакции" onChange={e=>setEffectFilter(e.target.value as "all"|Observation)}>
+        aria-label="Признак реакции" onChange={e=>setEffectFilter(e.target.value as "all"|Observation|ReactionFamily)}>
         <option value="all">Все</option><option value="gas">Газ</option>
         <option value="precipitate">Осадок</option><option value="color">Цвет</option>
         <option value="heat">Тепло</option><option value="dissolution">Растворение</option>
+        {Object.entries(reactionFamilyLabels).map(([id,label])=>
+         <option key={id} value={id}>{label}</option>)}
        </select>}
       </div>
       {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-sortbar">
@@ -1335,7 +1382,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         </div>):experimentCases.map((row,i)=><button type="button" key={i}
          className="lektrus-lab-example-choice" onClick={()=>prepareExample(row)}
          title="Разместить исходные вещества отдельно">
-         <strong>{row.reactants.join(" + ")}</strong>
+         <strong>{row.reactants.join(" + ")}{row.family&&
+          <small className="lektrus-lab-reaction-family">{reactionFamilyLabels[row.family]}</small>}</strong>
          <span>{row.description}</span>
         </button>)}
        {((cabinetTab!=="experiments"?visibleSubstances:experimentCases).length===0)&&
