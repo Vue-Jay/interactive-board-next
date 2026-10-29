@@ -701,6 +701,8 @@ export type LabVessel={pourFraction?:number;
  restingOnStandId?:string;
  reagents:string[];environment:ReactionEnvironment;
  observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
+ /** Liquid indicators are dispensed in drops, not inserted as a paper strip. */
+ indicatorDrops?:number;
  temperatureC?:number;
  reactionHeat?:LabReactionHeat;
  /** 0 = solid, 1 = fully molten. Conserved across viewers and cooling. */
@@ -1064,7 +1066,7 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
    undefined:bench.titrationPair};
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -1074,7 +1076,16 @@ export function emptyLabVessel(bench:LabBench,id:string):LabBench{
 }
 export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|undefined):LabBench{
  if(!bench.vessels.some(v=>v.id===id&&v.reagents.length))return bench;
- const next=revise(bench,id,v=>v.indicator===indicator?v:{...v,indicator});
+ const next=revise(bench,id,v=>{
+  if(indicator===undefined)return v.indicator?{...v,indicator:undefined,indicatorDrops:undefined}:v;
+  if(indicator==="universal")return v.indicator===indicator?v:
+   {...v,indicator,indicatorDrops:undefined};
+  // Three drops of dilute indicator, regardless of how many times the bottle
+  // is clicked. A second click adds another 3 drops (max 12).
+  const indicatorDrops=v.indicator===indicator?
+   Math.min(12,(v.indicatorDrops??3)+3):3;
+  return {...v,indicator,indicatorDrops};
+ });
  return next!==bench&&bench.titrationPair?.targetId===id&&bench.titration&&indicator?
   {...next,titration:{...bench.titration,indicator}}:next;
 }
@@ -1258,6 +1269,7 @@ export function transferLabMeasuredLiquid(
    observed:remainingIds.length?v.observed:false,
    completedReaction:remainingIds.length?v.completedReaction:undefined,
    indicator:remainingIds.length?v.indicator:undefined,
+    indicatorDrops:remainingIds.length?v.indicatorDrops:undefined,
    visualStartedAtMs:remainingIds.length?v.visualStartedAtMs:undefined};
   if(v.id===targetId)return {...v,reactionAmounts:undefined,reagents:ids,doses:received,
    observed:ids.length>1||source.observed,
