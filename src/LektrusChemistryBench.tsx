@@ -405,9 +405,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const buretteTargets=selectedBurette?bench.vessels.filter(v=>
   v.id!==selectedBurette.id&&["beaker","flask","conical","tube"].includes(v.kind)):[];
  const belowBurette=selectedBurette?labReceiverBelowStand(bench,selectedBurette.id):undefined;
- const chosenValveTarget=buretteTargets.some(v=>v.id===(selectedBurette?.buretteTargetId??titrationTarget))?
-  (selectedBurette?.buretteTargetId??titrationTarget):
-  belowBurette?.id??buretteTargets[0]?.id;
+ const mountedBurette=!!selectedBurette&&physicalDevices.some(d=>
+  d.kind==="tripod"&&d.active&&d.linkedVesselId===selectedBurette.id);
+ const chosenValveTarget=mountedBurette?belowBurette?.id:
+  buretteTargets.some(v=>v.id===(selectedBurette?.buretteTargetId??titrationTarget))?
+   (selectedBurette?.buretteTargetId??titrationTarget):
+   buretteTargets[0]?.id;
  const effectivePouringId=pouringId??localPourId;
  const experimentCases=reviewedReactionCases.filter(v=>v.status==="reaction"&&
   v.reactants.length<=3&&(effectFilter==="all"||v.observation===effectFilter||v.family===effectFilter)&&
@@ -630,13 +633,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      })).filter(v=>v.distance<105).sort((a,b)=>a.distance-b.distance):[];
      // When tools overlap, prefer the closest physically compatible surface.
      // Another vessel can stand directly under the occupied upper clamp.
-     const beneath=physicalDevices.find(d=>d.kind==="tripod"&&d.active&&
-      d.linkedVesselId!==g.id&&Math.abs(p.x-d.x-3.5)<=8&&
-      p.y>d.y+3&&p.y<d.y+24);
-     if(beneath){
-      const pos=labLogicalPoint(p);
-      onChange?.(positionLabVessel(bench,g.id,pos.x,pos.y));
-      setNotice("Сосуд поставлен под зажим, без замены закреплённой посуды");
+     const beneath=rect&&vessel?physicalDevices.filter(d=>d.kind==="tripod"&&
+      d.linkedVesselId!==g.id).map(d=>{
+       const base=labStandBaseVesselPoint(d,vessel,stageSize.width,stageSize.height,
+        bench.vessels.length>3);
+       return {d,distance:Math.hypot((p.x-base.x)*rect.width/100,
+        (p.y-base.y)*rect.height/100)};
+      }).sort((a,b)=>a.distance-b.distance)[0]:undefined;
+     if(beneath&&beneath.distance<65){
+      onChange?.(placeLabVesselOnStandBase(bench,g.id,beneath.d.id));
+      setNotice("Сосуд установлен на основание штатива");
      }else{
      const appliance=nearby.find(v=>vessel&&canMountLabVessel(v.device.kind,vessel.kind))
       ??nearby[0];
@@ -1151,6 +1157,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    <strong>Бюретка <span className={selectedBurette.buretteOpen?"is-open":""}>
     {selectedBurette.buretteOpen?"● Кран открыт":"○ Кран закрыт"}</span></strong>
    <label>Приёмник
+    {mountedBurette?<span className="lektrus-lab-titration-receiver">
+     {belowBurette?names[belowBurette.kind]+" · "+belowBurette.id:
+      "Поставьте колбу на основание штатива"}</span>:
     <select aria-label="Сосуд под бюреткой" value={chosenValveTarget??""}
      onChange={e=>{setTitrationTarget(e.target.value);
       onChange?.(setLabBuretteValve(bench,selectedBurette.id,false,
@@ -1159,7 +1168,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      {buretteTargets.map(v=><option key={v.id} value={v.id}>
       {names[v.kind]} · {v.id}
      </option>)}
-    </select>
+    </select>}
    </label>
    <label>Скорость
     <select value={selectedBurette.buretteRateMlS??.2}
