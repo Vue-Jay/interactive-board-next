@@ -27,11 +27,11 @@ export const LAB_MODES:{id:LabMode;name:string;description:string;
  {id:"qualitative",name:"Качественные реакции",
   description:"Распознавание веществ по осадку, газу, цвету и другим признакам",
   glassware:["tube","beaker","pipette","conical","dish"],
-  devices:["tripod","burner","hotplate"]},
+  devices:["tripod","burner","hotplate","filter"]},
  {id:"quantitative",name:"Количественные реакции",
   description:"Измеренные массы, объёмы и концентрации, расчёт по уравнению",
   glassware:["beaker","cylinder","pipette","volumetric","conical","flask"],
-  devices:["stirrer","hotplate","tripod"]},
+  devices:["stirrer","hotplate","tripod","filter"]},
  {id:"titration",name:"Титрование",
   description:"Бюретка со штативом, дозирование по каплям и точка эквивалентности",
   glassware:["burette","conical","pipette","beaker","cylinder"],
@@ -43,7 +43,7 @@ export const LAB_MODES:{id:LabMode;name:string;description:string;
  {id:"synthesis",name:"Синтез",
   description:"Нагревание, получение и сбор продуктов проверенных превращений",
   glassware:["flask","conical","tube","beaker","crucible","dish","cylinder"],
-  devices:["tripod","burner","hotplate","stirrer"]}
+  devices:["tripod","burner","hotplate","stirrer","filter"]}
 ];
 export const labMode=(bench:LabBench):LabMode=>
  LAB_MODES.some(m=>m.id===bench.mode)?bench.mode!:"qualitative";
@@ -58,13 +58,14 @@ export const devicesForLabMode=(bench:LabBench)=>
  labModeInfo(bench).devices.flatMap(id=>labDevices.filter(v=>v.id===id));
 
 export type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
-export type LabDevice="hotplate"|"burner"|"stirrer"|"tripod"|"thermometer";
+export type LabDevice="hotplate"|"burner"|"stirrer"|"tripod"|"filter"|"thermometer";
 export type LabAvailableDevice=Exclude<LabDevice,"thermometer">;
 export const labDevices:{id:LabAvailableDevice;name:string;description:string;symbol:string}[]=[
  {id:"hotplate",name:"Плитка",description:"Для посуды с устойчивым плоским дном",symbol:"▤"},
  {id:"burner",name:"Горелка",description:"Нагревание посуды над пламенем",symbol:"♨"},
  {id:"stirrer",name:"Магнитная мешалка",description:"Перемешивание в плоскодонных сосудах",symbol:"◌"},
- {id:"tripod",name:"Штатив",description:"Один регулируемый зажим для посуды",symbol:"⌁"}
+ {id:"tripod",name:"Штатив",description:"Один регулируемый зажим для посуды",symbol:"⌁"},
+ {id:"filter",name:"Мембранный фильтр",description:"Отделение твёрдого осадка от жидкого фильтрата",symbol:"▧"}
 ];
 export type LabPlacedDevice={id:string;kind:LabDevice;x:number;y:number;
  /** Mounted on the vessel, regardless of power. */ active?:boolean;
@@ -142,6 +143,7 @@ export function returnPlacedLabDevice(bench:LabBench,id:string):LabBench{
  * tubes, narrow necks, a crucible or a beaker on gauze. */
 const LAB_MOUNTABLE:Record<LabAvailableDevice,readonly LabGlassware[]>={
  tripod:["beaker","tube","flask","conical","volumetric","crucible","pipette","burette","dish"],
+ filter:[],
  hotplate:["beaker","conical","dish"],
  stirrer:["beaker","conical"],
  burner:["beaker","tube","flask","conical","crucible","dish"]
@@ -786,7 +788,7 @@ export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:numbe
 /** Optional one-click preparation. Adds only missing EMPTY glassware and
  * compatible apparatus, never clearing or moving existing experiments. */
 const LAB_STARTER_SETS:Record<LabMode,{glassware:LabGlassware[];devices:LabAvailableDevice[]}>={
- qualitative:{glassware:["beaker","tube","tube","pipette"],devices:[]},
+ qualitative:{glassware:["beaker","tube","tube","pipette"],devices:["filter"]},
  quantitative:{glassware:["beaker","cylinder","pipette","conical"],devices:["stirrer"]},
  titration:{glassware:["burette","conical","pipette"],devices:["tripod"]},
  solutions:{glassware:["volumetric","beaker","cylinder","pipette"],devices:["stirrer"]},
@@ -1029,7 +1031,7 @@ export function transferLabMeasuredLiquid(
 /** The insoluble reviewed product stays as residue on the virtual filter;
  * the liquid moves into an EMPTY receiving vessel. No funnel is reinstated. */
 export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:string):LabBench{
- if(sourceId===targetId)return bench;
+ if(sourceId===targetId||!placedLabDevices(bench).some(d=>d.kind==="filter"))return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||source.filteredResidue||source.uncertain||
