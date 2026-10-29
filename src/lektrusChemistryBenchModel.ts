@@ -1267,8 +1267,9 @@ export function transferLabMeasuredLiquid(
    observed:ids.length>1||source.observed,
    environment:medium,uncertain,
    completedReaction:wasEmpty?sourceReaction:targetReaction,
-   indicator:v.indicator??source.indicator,
-    indicatorDrops:v.indicator?v.indicatorDrops:source.indicatorDrops,
+   indicator:v.indicator??(source.indicator==="universal"?undefined:source.indicator),
+    indicatorDrops:v.indicator?v.indicatorDrops:
+     source.indicator==="universal"?undefined:source.indicatorDrops,
    visualStartedAtMs:now??v.visualStartedAtMs};
   return v;
  });
@@ -1486,7 +1487,7 @@ export function advanceLabPour(b:LabBench):LabBench{
     identifyReaction(combined,medium).status==="reaction"?
     (v.visualStartedAtMs??Date.now()):v.visualStartedAtMs,
    completedReaction:targetWasEmpty?sourceReaction:v.completedReaction,
-   indicator:v.indicator??source.indicator,
+   indicator:v.indicator??(source.indicator==="universal"?undefined:source.indicator),
     indicatorDrops:v.indicator?v.indicatorDrops:source.indicatorDrops,
    pourFraction:p.unmeasured?portionRound(Math.min(1,(v.pourFraction??(targetWasEmpty?0:.5))+.025)):v.pourFraction};
   }
@@ -1549,7 +1550,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
     doses,environment:medium,
     visualStartedAtMs:newReaction?Date.now():v.visualStartedAtMs,
     completedReaction:targetWasEmpty?sourceReaction:(targetReaction??sourceReaction),
-    indicator:v.indicator??source.indicator,
+    indicator:v.indicator??(source.indicator==="universal"?undefined:source.indicator),
     indicatorDrops:v.indicator?v.indicatorDrops:source.indicatorDrops,
     uncertain:uncertain||Boolean(v.indicator&&source.indicator&&v.indicator!==source.indicator)};
   }
