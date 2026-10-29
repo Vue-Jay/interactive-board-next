@@ -1722,7 +1722,9 @@ assert.doesNotMatch(labUi,/className="lektrus-lab-worktop-actions"/,
 assert.match(labUi,/lektrus-lab-indicator-cupboard/);
 assert.match(labUi,/wipeLabChalkboard\(bench\)/);
 assert.match(labUi,/recordLabReactions\(current\)/);
-assert.match(labUi,/lektrus-lab-vessel-composition/);
+assert.match(labUi,/lektrus-lab-quantity-info/);
+assert.doesNotMatch(labUi,/className="lektrus-lab-vessel-composition"/,
+ "No composition popup separate from volume/mass gauges");
 assert.match(labUi,/contents\.precipitateFraction/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-indicator-shelf/);
 const labWithBoard={
@@ -1765,3 +1767,33 @@ assert.equal(qualContents.precipitateG,undefined,
 assert.equal(qualContents.remainderUnknown,true,
  "Unmeasured initial reactant excess must be explicitly unknown");
 console.log("Qualitative chemistry shows products, not fabricated residue masses");
+
+
+/* An empty worktop click must deselect without moving/emptying any vessel. */
+let pickedVessel=lab.addLabVessel(lab.defaultLabBench(),"tube");
+const pickedId=pickedVessel.selectedId;
+const beforeDeselect=JSON.stringify(pickedVessel.vessels);
+pickedVessel=lab.selectLabVessel(pickedVessel,"");
+assert.equal(pickedVessel.selectedId,"");
+assert.equal(JSON.stringify(pickedVessel.vessels),beforeDeselect,
+ "Clearing selection cannot change the chemistry or locations of glassware");
+assert.equal(lab.selectLabVessel(pickedVessel,""),pickedVessel,
+ "A second click on the empty worktop is a no-op");
+const reselected=lab.selectLabVessel(pickedVessel,pickedId);
+assert.equal(reselected.selectedId,pickedId);
+assert.equal(lab.selectLabVessel(reselected,"missing"),reselected,
+ "An invalid vessel ID must not clear the current selection");
+const removedSelection=lab.mergeLabBench(reselected,
+ lab.selectLabVessel(reselected,""),reselected);
+assert.equal(removedSelection.selectedId,"",
+ "Peer merge must not silently reselect the first glassware");
+assert.match(labUi,/onSelect\?\.\(""\)/);
+assert.match(labUi,/closest\("\[data-board-interactive\]"\)/,
+ "Clicks on a vessel or interactive cabinet must not trigger deselection");
+assert.match(labUi,/lektrus-lab-quantity-meter/);
+assert.match(labUi,/lektrus-lab-quantity-info is-solution/);
+assert.match(labUi,/lektrus-lab-quantity-info is-residue/);
+assert.match(labUi,/readoutLeft=\{p\.x>62\}/,
+ "Right-edge vessels must show readout toward the middle of the worktop");
+assert.doesNotMatch(labUi,/details&&<div className="lektrus-lab-vessel-composition"/);
+console.log("Lab selection, inline blue/brown contents, and spatial readouts passed");
