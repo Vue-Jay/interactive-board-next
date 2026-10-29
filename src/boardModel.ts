@@ -853,6 +853,7 @@ export function parseDocument(raw: string): DocumentData {
             (v.temperatureC==null||(Number.isFinite(v.temperatureC)&&v.temperatureC>=0&&v.temperatureC<=450))&&
             (v.buretteOpen==null||typeof v.buretteOpen==="boolean")&&
             (v.buretteRateMlS==null||[.05,.2,1].includes(v.buretteRateMlS))&&
+            (v.buretteRemainderMl==null||(Number.isFinite(v.buretteRemainderMl)&&v.buretteRemainderMl>=0&&v.buretteRemainderMl<.01))&&
             (v.buretteTargetId==null||bench.vessels.some(x=>x.id===v.buretteTargetId&&x.id!==v.id))&&
             (v.doses==null||(typeof v.doses==="object"&&
                Object.keys(v.doses).length<=6&&
