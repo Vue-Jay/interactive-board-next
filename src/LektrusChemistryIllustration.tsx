@@ -53,7 +53,7 @@ const experiments:Record<string,Experiment>={
   initial:"Прозрачный раствор",final:"Осадок CaCO₃",note:"Образование карбоната кальция показано условно, не в масштабе.",
   colorBefore:"#d8eefa",colorAfter:"#c9d0d6"}
 };
-export default function LektrusChemistryIllustration({item,onStageChange,onBenchChange}:{
+export default function LektrusChemistryIllustration({item,onStageChange,onBenchChange,onOpenEditor}:{
  item:Item;onStageChange?:(stage:0|1)=>void;
  onBenchChange?:(bench:LabBench)=>void;onOpenEditor?:()=>void
 }){
@@ -72,7 +72,13 @@ export default function LektrusChemistryIllustration({item,onStageChange,onBench
    onWheel={e=>e.stopPropagation()}
    onTouchMove={e=>e.stopPropagation()}>
    <div className="lektrus-lab-object-grip"
-    aria-label="Переместить химический стол: перетащите за эту планку">Химический стол <span>Переместить объект</span></div>
+    aria-label="Переместить химический стол: перетащите за эту планку">Химический стол
+    {onOpenEditor&&<button type="button" data-board-interactive="true"
+      className="lektrus-lab-open-editor"
+      aria-label="Открыть лабораторию на весь экран"
+      onPointerDown={e=>e.stopPropagation()}
+      onClick={e=>{e.preventDefault();e.stopPropagation();onOpenEditor()}}>⤢ Открыть лабораторию</button>}
+   </div>
    <LektrusChemistryBenchSurface bench={bench} editable={!!onBenchChange}
     pouringId={pourSource} onChange={changeBench}
     onSelect={id=>changeBench(selectLabVessel(bench,id))}
