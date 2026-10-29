@@ -1277,6 +1277,15 @@ assert.notEqual(directly,filtered);
 assert.equal(directly.vessels.find(v=>v.id==="v1").reagents.length,0);
 assert.equal(lab.placedLabDevices(directly).find(d=>d.kind==="filter").collectedResidue.formula,"AgCl");
 assert.equal(directly.vessels.find(v=>v.id===destination).filteredSolution.solutes[0],"NaNO3");
+assert.ok(lab.placedLabDevices(directly).find(d=>d.kind==="filter").filterStartedAtMs>0,
+ "Successful pouring records a shared event time for drain animation");
+assert.match(read("src/LektrusLabDeviceIcon.tsx"),/lektrus-lab-filter-drain-drop/,
+ "Membrane shows actual draining droplets after pouring");
+assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-membrane-drain/,
+ "The drain animation must be styled and short-lived");
+assert.match(read("src/LektrusChemistryBench.tsx"),/collectedResidue=\{device\.collectedResidue\}/,
+ "Solid left by the filter must be drawn on its real membrane");
+
 assert.equal(lab.pourLabIntoFilter(directly,"v1",
  lab.placedLabDevices(directly).find(d=>d.kind==="filter").id),directly,
  "A loaded cartridge cannot silently duplicate a precipitate");
