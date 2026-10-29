@@ -59,6 +59,12 @@ export const devicesForLabMode=(bench:LabBench)=>
  labModeInfo(bench).devices.flatMap(id=>labDevices.filter(v=>v.id===id));
 
 export type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
+/** Preserved heat exchange from one verified reaction, not a predicted
+ * experiment temperature. All clients advance the same progress. */
+export type LabReactionHeat={
+ equation:string;direction:"exothermic"|"endothermic";
+ elapsedSeconds:number;durationSeconds:number;deltaC:number;complete:boolean;
+};
 export type LabDevice="hotplate"|"burner"|"stirrer"|"tripod"|"filter"|"thermometer";
 export type LabAvailableDevice=Exclude<LabDevice,"thermometer">;
 export const labDevices:{id:LabAvailableDevice;name:string;description:string;symbol:string}[]=[
@@ -469,6 +475,47 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   return updated;
  });
  result={...result,vessels};
+ // A verified reaction transfers heat as it progresses. This runs for both
+ // quantified and qualitative reactions, including single-solid calcination.
+ // A fallback change is explicitly illustrative when no amounts are known.
+ vessels=result.vessels.map(v=>{
+  if(!v.observed||v.uncertain||v.completedReaction)return v;
+  const matching=identifyReaction(v.reagents,v.environment);
+  const row=matching.status==="reaction"?matching.caseData:undefined;
+  if(!row?.thermalEffect)return v;
+  const same=v.reactionHeat?.equation===row.equation;
+  const previous=same?v.reactionHeat:undefined;
+  if(previous?.complete)return v;
+  let deltaC=previous?.deltaC;
+  if(deltaC===undefined){
+   const quantified=v.reactionAmounts??
+    startQuantifiedLabReaction(row,v.reagents,v.doses);
+   const heatKJ=quantified&&row.enthalpyKJPerMol!==undefined?
+    quantified.maxExtentMol*row.enthalpyKJPerMol:undefined;
+   const heatCapacityJPerK=60+Object.values(v.doses??{}).reduce(
+    (sum,d)=>sum+d.value*(d.unit==="ml"?4.18:0.85),0);
+   deltaC=heatKJ!==undefined?
+    Math.max(-30,Math.min(42,-heatKJ*1000/heatCapacityJPerK)):
+    row.thermalEffect==="exothermic"?12:-9;
+   // Preserve the vetted direction even after rounding and small doses.
+   deltaC=row.thermalEffect==="exothermic"?
+    Math.max(0,deltaC):Math.min(0,deltaC);
+  }
+  const durationSeconds=4,elapsedSeconds=Math.min(durationSeconds,
+   (previous?.elapsedSeconds??0)+seconds);
+  const fraction=elapsedSeconds/durationSeconds;
+  const oldFraction=(previous?.elapsedSeconds??0)/durationSeconds;
+  const increment=deltaC*(fraction-oldFraction);
+  const temperatureC=Math.round(Math.max(0,Math.min(1250,
+   (v.temperatureC??ambient)+increment))*10)/10;
+  const reactionHeat:LabReactionHeat={
+   equation:row.equation,direction:row.thermalEffect,deltaC,
+   elapsedSeconds,durationSeconds,complete:elapsedSeconds>=durationSeconds
+  };
+  changed=true;
+  return {...v,temperatureC,reactionHeat};
+ });
+ result={...result,vessels};
  // Titrate by opening a valve; dispensed volume is real, never a button animation.
  let dropChanged=false;
  for(const v of result.vessels){
@@ -656,6 +703,7 @@ export type LabVessel={pourFraction?:number;
  reagents:string[];environment:ReactionEnvironment;
  observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
  temperatureC?:number;
+ reactionHeat?:LabReactionHeat;
  /** 0 = solid, 1 = fully molten. Conserved across viewers and cooling. */
  meltFraction?:number;
  phaseTransition?:"melting"|"crystallizing";
@@ -754,10 +802,13 @@ export function readLabBench(item:Item):LabBench{
 export const selectedLabVessel=(bench:LabBench)=>bench.vessels.find(v=>v.id===bench.selectedId)??bench.vessels[0];
 export function labReactionNeedsTick(vessel:LabVessel):boolean{
  if(vessel.uncertain)return false;
- if(vessel.reactionAmounts)return !vessel.reactionAmounts.complete;
- if(!vessel.observed||vessel.uncertain||vessel.completedReaction)return false;
+ if(vessel.reactionHeat&&!vessel.reactionHeat.complete)return true;
+ if(vessel.reactionAmounts&&!vessel.reactionAmounts.complete)return true;
+ if(!vessel.observed||vessel.completedReaction)return false;
  const reaction=identifyReaction(vessel.reagents,vessel.environment);
- return reaction.status==="reaction"&&!!reaction.caseData&&
+ if(reaction.status!=="reaction"||!reaction.caseData)return false;
+ if(reaction.caseData.thermalEffect&&!vessel.reactionHeat)return true;
+ return !vessel.reactionAmounts&&
   !!startQuantifiedLabReaction(reaction.caseData,vessel.reagents,vessel.doses);
 }
 export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:string;
@@ -911,7 +962,7 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
    undefined:bench.titrationPair};
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -931,6 +982,7 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
   const next=identifyReaction(v.reagents,environment);
   const starts=previous.status!=="reaction"&&!v.uncertain&&next.status==="reaction";
   return {...v,environment,
+   reactionHeat:starts?undefined:v.reactionHeat,
    reactionAmounts:environment===v.environment?v.reactionAmounts:undefined,
    completedReaction:v.completedReaction??(previous.status==="reaction"?previous.caseData:undefined),
    // Future chemistry is unknown, but previously visible products stay visible.
@@ -979,6 +1031,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
     nextDoses?.[key]?.unit==="g")&&
    identifyReaction(reagents,v.environment).status!=="reaction";
   return {...v,reagents,meltFraction:undefined,phaseTransition:undefined,
+   reactionHeat:undefined,
    physicalProcess:physicalDissolution?"dissolving":undefined,
    physicalStartedAtMs:physicalDissolution?Date.now():undefined,
    reactionAmounts:undefined,
@@ -1327,7 +1380,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
   (!targetWasEmpty&&(sourceReaction||targetReaction))||
   (source.environment!==target.environment&&source.environment!=="aqueous"));
  const vessels=bench.vessels.map(v=>{
-  if(v.id===sourceId)return {...v,reactionAmounts:undefined,reagents:[],observed:false,uncertain:false,
+  if(v.id===sourceId)return {...v,reactionAmounts:undefined,reactionHeat:undefined,reagents:[],observed:false,uncertain:false,
    completedReaction:undefined,indicator:undefined,doses:undefined};
   if(v.id===targetId){
    const doses={...v.doses};
@@ -1349,7 +1402,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
     identifyReaction(reagents,medium).status==="reaction";
    const dissolving=!newReaction&&doses.H2O?.unit==="ml"&&
     reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&doses[key]?.unit==="g");
-   return {...v,reagents,reactionAmounts:undefined,observed:reagents.length>1||source.observed,
+   return {...v,reagents,reactionAmounts:undefined,reactionHeat:undefined,observed:reagents.length>1||source.observed,
     physicalProcess:dissolving?"dissolving" as const:undefined,
     physicalStartedAtMs:dissolving?Date.now():undefined,
     doses,environment:medium,
