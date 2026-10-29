@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,LAB_STAND_SHELF_TYPES,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {reactionAppearance,reviewedReactionCases,substances,type Observation} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -11,7 +11,7 @@ import {buildLabCatalog,cabinetColor,phaseNames,labReagentForms,labReagentPhaseL
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
 import LektrusLabDeviceIcon from "./LektrusLabDeviceIcon";
-import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
+import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandClampSvgY,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
 const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
@@ -312,10 +312,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const physicalDevices=placedLabDevices(bench);
  const vesselPosition=(v:LabVessel)=>{
   const stand=physicalDevices.find(d=>d.kind==="tripod"&&d.active&&d.linkedVesselId===v.id);
-  const shelf=physicalDevices.find(d=>d.kind==="tripod"&&d.shelfVesselId===v.id);
-  const anchor=stand??shelf??physicalDevices.find(d=>d.active&&d.linkedVesselId===v.id);
+  const anchor=stand??physicalDevices.find(d=>d.active&&d.linkedVesselId===v.id);
   const device=anchor&&devicePreview?.id===anchor.id?{...anchor,...devicePreview}:anchor;
-  return device?labMountedGlasswarePoint(shelf&&anchor===shelf?{...device,kind:"stand-shelf"}:device,v,
+  return device?labMountedGlasswarePoint(device,v,
    stageSize.width,stageSize.height,bench.vessels.length>3):
    labDisplayPoint(v,bench.vessels.length>3);
  };
@@ -570,10 +569,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       ??nearby[0];
      if(appliance&&appliance.distance<105&&vessel&&
       canMountLabVessel(appliance.device.kind,vessel.kind)){
-      const mount=appliance.device.kind==="tripod"&&
-       LAB_STAND_SHELF_TYPES.includes(vessel.kind)&&
-       p.y>appliance.device.y+1.5?"shelf":"clamp";
-      const applied=applyPlacedLabDevice(bench,appliance.device.id,g.id,mount);
+      const applied=applyPlacedLabDevice(bench,appliance.device.id,g.id,"clamp");
       onChange?.(applied);
       setNotice("Сосуд установлен на "+(labDevices.find(d=>d.id===appliance.device.kind)?.name??"прибор"));
      }else if(appliance&&appliance.distance<105&&vessel){
@@ -919,12 +915,21 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        onPointerUp={e=>e.stopPropagation()}
        onClick={e=>e.stopPropagation()}>
        {device.kind!=="tripod"?<>
-        <button type="button" className="lektrus-lab-device-power"
-         aria-pressed={!!device.powered}
-         aria-label={(device.powered?"Выключить ":"Включить ")+(meta?.name??device.kind)}
-         title={(device.powered?"Выключить ":"Включить ")+(meta?.name??device.kind)}
-         onClick={()=>onChange?.(setPlacedDevicePower({...bench,simulationAtMs:Date.now()},
-          device.id,!device.powered))}>⏻</button>
+        {device.kind==="burner"?
+         <button type="button" className="lektrus-lab-burner-valve"
+          aria-pressed={!!device.powered}
+          aria-label={device.powered?"Перекрыть газ горелки":"Открыть газ и зажечь горелку"}
+          title={device.powered?"Закрыть газ":"Повернуть кран, зажечь горелку"}
+          onClick={()=>onChange?.(setPlacedDevicePower({...bench,simulationAtMs:Date.now()},
+           device.id,!device.powered))}>
+          <span className="lektrus-lab-burner-valve-lever" aria-hidden="true"/>
+         </button>:
+         <button type="button" className="lektrus-lab-device-power"
+          aria-pressed={!!device.powered}
+          aria-label={(device.powered?"Выключить ":"Включить ")+(meta?.name??device.kind)}
+          title={(device.powered?"Выключить ":"Включить ")+(meta?.name??device.kind)}
+          onClick={()=>onChange?.(setPlacedDevicePower({...bench,simulationAtMs:Date.now()},
+           device.id,!device.powered))}>⏻</button>}
         {device.kind==="hotplate"&&<LabTemperatureInput
          temperature={device.targetTemperatureC??150}
          onSet={value=>onChange?.(setLabHotplateTemperature(bench,device.id,value))}/>}
@@ -948,15 +953,19 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     </div>
    </div>;
   })}
+  {/* The single forward jaw is drawn above the glass while the rod and
+      rear arm remain behind it. Both share the exact SVG clamp height. */}
   {physicalDevices.filter(d=>d.kind==="tripod"&&d.active&&
    bench.vessels.some(v=>v.id===d.linkedVesselId)).map(d=>{
    const p=devicePreview?.id===d.id?{...d,...devicePreview}:d;
+   const y=labStandClampSvgY(p.standHeight);
    return <svg key={d.id+"-clamp"} className="lektrus-lab-retort-jaws"
-    viewBox="0 0 110 108" aria-hidden="true"
-    style={{left:p.x+"%",top:p.y+"%"}}>
-    <g transform={`translate(0 ${14.5-29*(p.standHeight??.5)})`}>
-     <path d="M48 40H76M76 40l11-8M76 40l11 8M84 30Q99 40 84 50"
-      stroke="#537e75" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    viewBox="0 0 110 108" preserveAspectRatio="xMidYMid meet"
+    aria-hidden="true" style={{left:p.x+"%",top:p.y+"%"}}>
+    <g transform={`translate(0 ${y-40})`}>
+     <path d="M76 40L87 31M76 40L88 49M85 31Q101 40 85 49"
+      stroke="#577e77" strokeWidth="3.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+     <path d="M78 40Q92 38 93 41" stroke="#d2ede1" strokeWidth="1.4" fill="none"/>
     </g>
    </svg>;
   })}
