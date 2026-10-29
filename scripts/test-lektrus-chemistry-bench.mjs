@@ -874,11 +874,12 @@ unknownGradual=lab.startLabPour(unknownGradual,"v1","v2","pour-without-fabricate
 for(let tick=0;tick<10;tick++)unknownGradual=lab.advanceLabPour(unknownGradual);
 assert.equal(unknownGradual.pouring.step,10);
 assert.ok(unknownGradual.vessels.find(v=>v.id==="v1").reagents.includes("H2O"));
-assert.equal(unknownGradual.vessels.find(v=>v.id==="v1").pourFraction,.25);
-assert.equal(unknownGradual.vessels.find(v=>v.id==="v2").pourFraction,.25);
-assert.deepEqual(lab.labPourAmounts(unknownGradual.pouring),[],
- "Unknown quantities display percentages, not invented ml");
-assert.ok(unknownGradual.pouring.unmeasured);
+assert.equal(unknownGradual.vessels.find(v=>v.id==="v1").doses.H2O.value,5);
+assert.equal(unknownGradual.vessels.find(v=>v.id==="v2").doses.H2O.value,5);
+assert.deepEqual(lab.labPourAmounts(unknownGradual.pouring),
+ [{id:"H2O",unit:"ml",transferred:5,remaining:5}],
+ "The default measured water portion transfers exactly 5 of 10 ml");
+assert.equal(unknownGradual.pouring.unmeasured,false);
 let clearedMidPour=lab.clearLabTable(unknownGradual);
 assert.equal(clearedMidPour.pouring,undefined);
 const standIcon=read("src/LektrusLabDeviceIcon.tsx");
