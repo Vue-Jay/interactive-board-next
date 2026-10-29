@@ -558,14 +558,15 @@ const editor=read("src/LektrusChemistryBenchEditor.tsx");
 assert.match(editor,/onPour=\{pour\}/);
 assert.match(editor,/onDropReagent=\{addReagent\}/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/addLabVessel/);
-assert.match(editor,/setLabEnvironment/);
+assert.match(editor,/is-board-identical/,"Fullscreen is the actual board-stage surface");
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-modal-reagents/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-glass-cupboard/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-sink/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-chalkboard/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-modal-settings/);
-assert.match(editor,/labIndicatorResult/);
-assert.match(editor,/setLabIndicator/);
+assert.doesNotMatch(editor,/lektrus-lab-inspector/,"No separate observation/sidebar in fullscreen");
+assert.doesNotMatch(editor,/lektrus-lab-editor-head/,"No additional lab header");
+assert.match(editor,/lektrus-lab-editor-exit/,"Only a compact close control remains");
 const app=read("src/App.tsx");
 assert.match(app,/liveChemistryBenchUpdate/);
 assert.match(app,/mergeLabBench\(/);
@@ -820,7 +821,7 @@ assert.match(surface,/if\(inSink\(p\)\)clean\(g\.id\)/,
 
 // Stepwise pouring uses twenty fixed 5% portions, not exponential depletion.
 assert.equal(lab.LAB_POUR_STEPS,20);
-assert.equal(lab.LAB_POUR_INTERVAL_MS,400);
+assert.equal(lab.LAB_POUR_INTERVAL_MS,150);
 let gradual=lab.addLabVessel(lab.defaultLabBench(),"conical");
 gradual=lab.putLabReagent(gradual,"v1","HCl",{value:100,unit:"ml",concentrationM:.2});
 gradual=lab.startLabPour(gradual,"v1","v2","gradual-pour-1");
@@ -894,7 +895,9 @@ assert.match(gradualUi,/stopLabPour\(bench,p\.id\)/);
 // Laboratory v10: hover triggers are timed and apparatus controls live on their bodies.
 const hoverSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(hoverSurface,/contactTimer\.current=setTimeout/);
-assert.match(hoverSurface,/\},2000\)/,"Liquid transfer starts after a two-second hover");
+assert.match(hoverSurface,/if\(isPipette\)perform\(\)/,"Pipette draws at contact without any wait");
+assert.match(hoverSurface,/setTimeout\(perform,120\)/,"Brief dwell prevents accidental spills");
+assert.match(hoverSurface,/endContact\(\)/,"Release cancels the active pour");
 assert.match(hoverSurface,/beginContact\(g\.id,pouring\)/);
 assert.match(hoverSurface,/const drawing=pipette\.reagents\.length===0/);
 assert.match(hoverSurface,/transferLabMeasuredLiquid\(current,donor\.id,receiver\.id,requested\)/);
@@ -926,5 +929,44 @@ assert.equal(stock.labReagentPhaseLabel(item("CuSO4"),"ml"),"Раствор / ж
 assert.equal(stock.labReagentPhaseLabel(item("CaCO3"),"g"),"Твёрдое вещество");
 assert.match(hoverSurface,/labVesselQuantity\(vessel\)/);
 assert.match(hoverSurface,/totalLabel\|\|substanceState/);
+
+/* Realistic receiving glassware snaps to the retort stand foot, whereas
+ * clamp-held glassware remains attached independently above it. */
+let onFoot=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod",{x:40,y:68});
+const onFootStand=lab.placedLabDevices(onFoot)[0].id;
+onFoot=lab.addLabVessel(onFoot,"burette");
+const onFootBurette=onFoot.vessels.find(v=>v.kind==="burette").id;
+onFoot=lab.applyPlacedLabDevice(onFoot,onFootStand,onFootBurette);
+onFoot=lab.placeLabVesselOnStandBase(onFoot,"v1",onFootStand);
+assert.equal(lab.labReceiverBelowStand(onFoot,onFootBurette)?.id,"v1",
+ "Receiver on metal foot is aligned beneath the mounted burette");
+assert.equal(lab.placedLabDevices(onFoot)[0].linkedVesselId,onFootBurette,
+ "Putting another vessel on the base cannot displace the upper clamp");
+assert.ok(layout.labStandBaseVesselPoint(
+ lab.placedLabDevices(onFoot)[0],onFoot.vessels[0],1600,1000).y>68,
+ "Receiving flask must stand lower than the clamp on the base");
+onFoot=lab.putLabReagent(onFoot,onFootBurette,"HCl",{value:5,unit:"ml"});
+assert.equal(lab.setLabBuretteValve(onFoot,onFootBurette,true,"v1",.05)
+ .vessels.find(v=>v.id===onFootBurette).buretteOpen,true);
+onFoot=lab.setLabBuretteValve({...onFoot,simulationAtMs:0},onFootBurette,true,"v1",.05);
+for(let i=1;i<=10;i++)onFoot=lab.advanceLabSimulation(onFoot,i*500);
+assert.equal(onFoot.vessels.find(v=>v.id==="v1").doses?.HCl?.value,.25,
+ "Ten half-second slow-drip ticks must deliver exactly 0.25 ml");
+onFoot=lab.setLabBuretteValve(onFoot,onFootBurette,false);
+const atClose=onFoot.vessels.find(v=>v.id==="v1").doses.HCl.value;
+onFoot=lab.advanceLabSimulation(onFoot,6000);
+assert.equal(onFoot.vessels.find(v=>v.id==="v1").doses.HCl.value,atClose,
+ "Closing the valve instantly stops dosing");
+const geometricalSurface=read("src/LektrusChemistryBench.tsx");
+assert.match(geometricalSurface,/placeLabVesselOnStandBase\(bench,g\.id,beneath\.d\.id\)/,
+ "Stand-foot drop must snap to metal base");
+assert.match(geometricalSurface,/lektrus-lab-valve-toggle/,
+ "Burette stopcock must be directly clickable on the tabletop");
+assert.match(geometricalSurface,/className="lektrus-lab-titration-drops"/,
+ "A real titration stream is drawn beneath the open stopcock");
+assert.match(geometricalSurface,/const flowPath=/,
+ "Pour rendering must follow the moving vessel's lip");
+assert.doesNotMatch(editor,/lektrus-lab-observation/,
+ "Fullscreen editor adds no separate content fields");
 
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
