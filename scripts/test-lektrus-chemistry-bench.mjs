@@ -1098,4 +1098,22 @@ const receiving=layout.labStandBaseVesselPoint(stand,{kind:"conical"},1600,1000)
 const burette=layout.labMountedGlasswarePoint(stand,{kind:"burette"},1600,1000);
 assert.ok(receiving.y-burette.y>12,
  "A taller stand must leave a visible gap for titrant drops");
+const starterInput=lab.setLabMode(lab.defaultLabBench(),"titration");
+const starterOriginal={...starterInput.vessels[0]};
+const preparedKit=lab.prepareLabModeSetup(starterInput);
+const kitStand=lab.placedLabDevices(preparedKit).find(d=>d.kind==="tripod");
+const kitBurette=preparedKit.vessels.find(v=>v.kind==="burette");
+const kitFlask=preparedKit.vessels.find(v=>v.kind==="conical");
+assert.ok(kitStand&&kitBurette&&kitFlask,"Titration kit includes its stand, burette and receiving flask");
+assert.equal(kitStand.linkedVesselId,kitBurette.id,
+ "A freshly prepared titration kit suspends its burette in the clamp");
+assert.equal(kitFlask.restingOnStandId,kitStand.id,
+ "Titration receiver is tied to the metal foot, not the vertical rod");
+assert.equal(lab.labReceiverBelowStand(preparedKit,kitBurette.id)?.id,kitFlask.id);
+assert.deepEqual(preparedKit.vessels[0],starterOriginal,
+ "Preparing a kit must leave previously placed glassware untouched");
+assert.deepEqual(lab.prepareLabModeSetup(preparedKit),preparedKit,
+ "Preparing the same laboratory kit twice must not duplicate apparatus");
+assert.match(writtenWall,/prepareLabModeSetup\(bench\)/);
+
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
