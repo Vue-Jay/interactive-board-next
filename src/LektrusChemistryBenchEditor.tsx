@@ -1,4 +1,4 @@
-import {useEffect} from "react";
+import {useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
 import LektrusChemistryBenchSurface from "./LektrusChemistryBench";
@@ -12,6 +12,20 @@ type Props={item:Item;onChange:(next:Item)=>void;onSave:()=>void;onCancel:()=>vo
  * and the reagent cupboard remain directly on the same tabletop. */
 export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCancel}:Props){
  const bench=readLabBench(item);
+ const viewport=useRef<HTMLDivElement>(null);
+ const [stageScale,setStageScale]=useState(1);
+ useEffect(()=>{
+  const node=viewport.current;if(!node)return;
+  const resize=()=>{
+   const w=node.clientWidth,h=node.clientHeight;
+   if(!w||!h)return;
+   setStageScale(Math.min(w/1600,h/1000));
+  };
+  resize();
+  const observer=new ResizeObserver(resize);
+  observer.observe(node);
+  return()=>observer.disconnect();
+ },[]);
  const patch=(updated:LabBench)=>{
   if(updated!==bench)onChange({...item,scienceLabBench:updated,
    scienceReagents:undefined,scienceExperimentStage:undefined});
@@ -34,12 +48,15 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
   onPointerDown={e=>{if(e.target===e.currentTarget)onCancel()}}>
   <section className="lektrus-lab-editor is-board-identical" role="dialog" aria-modal="true"
    aria-label="Химический стол" onPointerDown={e=>e.stopPropagation()}>
-   <div className="lektrus-lab-editor-bench-viewport" data-board-interactive="true"
+   <div ref={viewport} className="lektrus-lab-editor-bench-viewport" data-board-interactive="true"
     role="region" tabIndex={0} aria-label="Интерактивный химический стол"
     onWheel={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()}>
-    <LektrusChemistryBenchSurface bench={bench} editable
-     onSelect={id=>patch(selectLabVessel(bench,id))}
-     onPour={pour} onChange={patch} onDropReagent={addReagent}/>
+    <div className="lektrus-lab-fit-stage" style={{
+     width:1600,height:1000,transform:"translate(-50%, -50%) scale("+stageScale+")"}}>
+     <LektrusChemistryBenchSurface bench={bench} editable
+      onSelect={id=>patch(selectLabVessel(bench,id))}
+      onPour={pour} onChange={patch} onDropReagent={addReagent}/>
+    </div>
    </div>
    <button type="button" className="lektrus-lab-editor-exit" onClick={onSave}
     aria-label="Закрыть лабораторию">✕ <span>Закрыть</span></button>
