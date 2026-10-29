@@ -1098,8 +1098,8 @@ const higherStand=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod");
 assert.equal(higherStand.placedDevices[0].standHeight,.88);
 const stand=higherStand.placedDevices[0];
 const receiving=layout.labStandBaseVesselPoint(stand,{kind:"conical"},1600,1000);
-const burette=layout.labMountedGlasswarePoint(stand,{kind:"burette"},1600,1000);
-assert.ok(receiving.y-burette.y>12,
+const mountedBurettePoint=layout.labMountedGlasswarePoint(stand,{kind:"burette"},1600,1000);
+assert.ok(receiving.y-mountedBurettePoint.y>12,
  "A taller stand must leave a visible gap for titrant drops");
 for(const width of [400,450,690,700,900,1200,1600,2600]){
  const jar=layout.labStandBaseVesselPoint(stand,{kind:"conical"},width,1000);
