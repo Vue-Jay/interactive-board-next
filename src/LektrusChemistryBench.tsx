@@ -126,7 +126,12 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const color=vessel.filteredResidue?.color??(titrationResult?(vessel.indicator?titrationResult.tint:"#dceff0"):
   indicator?.color??dryProductColor??(active?appearance.solutionAfter:reagent?.color??"#e7f3f3"));
  const observation=visualCase?.observation??"none";
- const singlePhase=vessel.filteredResidue?"solid":massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
+ const gasEventActive=!!vessel.reactionAmounts&&!vessel.reactionAmounts.complete||
+  !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<6500;
+ const gasOnly=vessel.reagents.length>0&&vessel.reagents.every(id=>
+  substances.find(s=>s.id===id)?.kind==="газ")&&massG===0;
+ const singlePhase=vessel.filteredResidue?"solid":gasOnly?"gas":
+  massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
   vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const pureThermal=labVesselThermal(vessel.reagents,vessel.doses);
  const thermalState=labThermalState(vessel.reagents,vessel.doses,
@@ -209,7 +214,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
       fill={appearance.solidColor||"#cddbe0"}
       style={{animationDelay:-(i%9)*.25+"s"}}/>)}
     </>}
-    {active&&observation==="gas"&&Array.from({length:Math.ceil(17*conversionFraction)},(_,i)=><circle key={i}
+    {active&&observation==="gas"&&gasEventActive&&Array.from({length:Math.ceil(17*conversionFraction)},(_,i)=><circle key={i}
      className="lektrus-lab-bubble" cx={31+i*29%38} cy={98-i*17%45}
      r={2+i%3} stroke="#528eb1" strokeWidth=".9" fill="#fff" fillOpacity=".2"
      style={{animationDelay:-(i%8)*.27+"s",animationDuration:2+i%5*.32+"s"}}/>)}
@@ -258,6 +263,12 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
 
   </svg>
   <LabReactionBurst vessel={vessel} visual={visualCase?.visual} formula={visualCase?.equation??""}/>
+  {vessel.reactionHeat&&(!vessel.reactionHeat.complete||
+   !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<8500)&&
+   <span className={"lektrus-lab-reaction-heat is-"+vessel.reactionHeat.direction}
+    title={"Учебная оценка теплового эффекта, не показание реального термометра"}>
+    {vessel.reactionHeat.direction==="exothermic"?"↑ Нагрев":"↓ Охлаждение"}
+   </span>}
   {(volumeMl>0||massG>0)&&<div className="lektrus-lab-quantity-meter"
     role="img" aria-label={"Количество: "+totalLabel+". Заполнение относительно условной вместимости сосуда"}>
     {volumeMl>0&&<div className="lektrus-lab-quantity-measure is-liquid"
@@ -1420,7 +1431,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     style={{left:p.x+"%",top:p.y+"%",zIndex:v.kind==="burette"?44:selectedVessel||preview?.id===v.id?35:23+i}}
     disabled={!editable} aria-label={"Сосуд "+(i+1)+": "+names[v.kind]+
       (v.reagents.length?", "+v.reagents.join(", "):", пустой")}
-    aria-pressed={selectedVessel} title={(v.reagents.length?
+    aria-pressed={selectedVessel} title={(v.reactionHeat?
+      (v.reactionHeat.direction==="exothermic"?"Экзотермический нагрев":"Эндотермическое охлаждение")+" · ":"")+
+      (v.reagents.length?
       labThermalState(v.reagents,v.doses,v.temperatureC??22,v.meltFraction).label+" · ":"")+
       (editable?"Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, в шкаф для возврата":"Посуда")}
     onPointerDown={e=>down(e,v)} onPointerMove={move} onPointerUp={finish}
@@ -1798,6 +1811,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
            "Плавление / кристаллизация: "+labThermalInfo(reagent.id,unit).meltingC+" °C. ":""}
           {labThermalInfo(reagent.id,unit).boilingC!==undefined?
            "Кипение: "+labThermalInfo(reagent.id,unit).boilingC+" °C. ":""}
+          {labThermalInfo(reagent.id,unit).decompositionC!==undefined?
+           "Разложение при нагреве: около "+labThermalInfo(reagent.id,unit).decompositionC+" °C. ":""}
+          {reagent.id==="CaCO3"&&unit==="g"?
+           "Для разложения CaCO₃ используйте тигель и горелку на высокой мощности. ":""}
           {labThermalInfo(reagent.id,unit).description}
          </small>}
         </div>

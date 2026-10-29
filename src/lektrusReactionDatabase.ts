@@ -13,7 +13,10 @@ export type Substance={id:string;name:string;formula:string;kind:string};
 export type ReactionCase={reactants:string[];environment:ReactionEnvironment;status:"reaction"|"none";
  equation:string;observation:Observation;description:string;beforeColor?:string;afterColor?:string;
  safety?:string;family?:ReactionFamily;visual?:ReactionVisual;
- minTemperatureC?:number;confidence:"curated";sourceNote:string};
+ minTemperatureC?:number;
+ /** Direction only for vetted energetic cases. No guessed sign for unrelated reactions. */
+ thermalEffect?:"exothermic"|"endothermic";enthalpyKJPerMol?:number;
+ confidence:"curated";sourceNote:string};
 const catalog=`
 H2O|Вода|вода
 HCl|Соляная кислота (раствор)|кислота
@@ -235,6 +238,27 @@ add("HCl+CaCO3","aqueous","CaCO3 + 2HCl → CaCl2 + CO2↑ + H2O","gas","Газ 
 add("HCl+MgCO3","aqueous","MgCO3 + 2HCl → MgCl2 + CO2↑ + H2O","gas","Выделяется CO2.");
 add("HCl+Zn","aqueous","Zn + 2HCl → ZnCl2 + H2↑","gas","Цинк вытесняет водород из неокисляющей кислоты.",{safety:"Выделяющийся водород горюч."});
 add("HCl+Mg","aqueous","Mg + 2HCl → MgCl2 + H2↑","gas","Магний вытесняет водород.",{safety:"Выделяющийся водород горюч."});
+/** Dilute aqueous acids only; these are balanced overall school equations.
+ * Alkali metals also attack the water solvent, so reaction proportions,
+ * possible ignition and the heating rate are NOT predicted by this record. */
+add("Na+HCl","aqueous","2Na + 2HCl → 2NaCl + H2↑","gas",
+ "Натрий в разбавленной кислоте: бурное выделение водорода и сильный нагрев; в реальном растворе металл также реагирует с водой.",
+ {family:"displacement",visual:"fizz",safety:"Крайне опасно в реальности. Только виртуальная модель."});
+add("K+HCl","aqueous","2K + 2HCl → 2KCl + H2↑","gas",
+ "Калий в разбавленной кислоте: очень бурная реакция с выделением водорода и тепла.",
+ {family:"displacement",visual:"fizz",safety:"Крайне опасно в реальности. Только виртуальная модель."});
+add("Li+HCl","aqueous","2Li + 2HCl → 2LiCl + H2↑","gas",
+ "Литий взаимодействует с разбавленной кислотой, выделяя водород и тепло.",
+ {family:"displacement",visual:"fizz",safety:"Только виртуальная модель."});
+add("Na+H2SO4","aqueous","2Na + H2SO4 → Na2SO4 + H2↑","gas",
+ "Схематическая итоговая реакция с разбавленной серной кислотой; вода раствора также взаимодействует с натрием.",
+ {family:"displacement",visual:"fizz",safety:"Только виртуальная модель; концентрированная кислота даёт иные продукты."});
+add("K+H2SO4","aqueous","2K + H2SO4 → K2SO4 + H2↑","gas",
+ "Итоговая школьная схема с разбавленной кислотой; возможна очень бурная реакция.",
+ {family:"displacement",visual:"fizz",safety:"Только виртуальная модель; не использовать для концентрированной кислоты."});
+add("Ca+HCl","aqueous","Ca + 2HCl → CaCl2 + H2↑","gas",
+ "Кальций вытесняет водород из разбавленной соляной кислоты, выделяя тепло.",
+ {family:"displacement",visual:"fizz",safety:"Только виртуальная модель."});
 add("H2SO4+Zn","aqueous","Zn + H2SO4 → ZnSO4 + H2↑","gas","Разбавленная серная кислота реагирует с цинком.",{safety:"Важно: для концентрированной H2SO4 продукты могут быть другими."});
 add("CuSO4+Fe","aqueous","Fe + CuSO4 → FeSO4 + Cu↓","color","Железо вытесняет медь, появляется красноватый налёт меди.",{beforeColor:"#65b2dc",afterColor:"#afcfa1"});
 add("CuSO4+Zn","aqueous","Zn + CuSO4 → ZnSO4 + Cu↓","color","Цинк вытесняет медь из раствора.");
@@ -726,6 +750,31 @@ for(const row of cases){
  }
 }
 
+/** Curated thermal directions, never inferred from just bubbles/colour.
+ * Strong-acid neutralisation ~ -57 kJ per mole of formed water:
+ * https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry_Textbook_Maps/Supplemental_Modules_%28Physical_and_Theoretical_Chemistry%29/Thermodynamics/Energies_and_Potentials/Enthalpy/Enthalpy_Change_of_Neutralization
+ * Calcination of CaCO3: deltaH ≈ +178 kJ per mole (endothermic).
+ * Direction does not by itself predict a precise measured temperature. */
+const verifiedExothermicGas=new Set([
+ "H2O+Na","H2O+K","H2O+Li","Ca+H2O",
+ "HCl+Na","HCl+K","HCl+Li","HCl+Ca","HCl+Mg","HCl+Zn",
+ "H2SO4+Na","H2SO4+K","H2SO4+Mg","H2SO4+Zn"
+]);
+const verifiedEndothermicSolids=new Set(["CaCO3","MgCO3","BaCO3","NaHCO3"]);
+for(const row of cases){
+ if(row.status!=="reaction")continue;
+ const signature=row.reactants.slice().sort().join("+");
+ if(row.environment==="heated"&&row.reactants.length===1&&
+  verifiedEndothermicSolids.has(row.reactants[0])){
+  row.thermalEffect="endothermic";
+  if(row.reactants[0]==="CaCO3")row.enthalpyKJPerMol=178;
+ }else if(row.observation==="heat"||
+  (row.environment==="aqueous"&&verifiedExothermicGas.has(signature))){
+  row.thermalEffect="exothermic";
+  if(row.environment==="aqueous"&&signature==="HCl+NaOH")row.enthalpyKJPerMol=-57.3;
+  if(row.environment==="aqueous"&&signature==="H2O+Na")row.enthalpyKJPerMol=-368;
+ }
+}
 /** Appearance is computed from the actual products, not from the selected
  * reaction category. The solid never recolors the supernatant by accident. */
 export const schoolSolidColors:Record<string,string>={

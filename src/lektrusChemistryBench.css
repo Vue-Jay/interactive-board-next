@@ -3870,3 +3870,27 @@
 @media(prefers-reduced-motion:reduce){
  .lektrus-lab-dose-animation.is-solid circle{animation:none!important}
 }
+
+
+/* Reaction thermochemistry is visible directly on the real shared vessel.
+   These are approximate simulator values, not measured calorimeter data. */
+.lektrus-lab-vessel-art .lektrus-lab-reaction-heat{
+ position:absolute;top:15%;left:50%;transform:translateX(-50%);
+ max-width:94%;box-sizing:border-box;padding:3px 6px;border-radius:8px;
+ background:#fff4e6eb;border:1px solid #dd9a64;color:#9a4e22;
+ font:800 clamp(8px,.66cqw,11px)/1.25 system-ui,sans-serif;
+ text-align:center;white-space:nowrap;pointer-events:none;z-index:10;
+ box-shadow:0 2px 9px #56452e25;
+ animation:lektrus-lab-thermal-status .9s ease-in-out infinite alternate;
+}
+.lektrus-lab-vessel-art .lektrus-lab-reaction-heat.is-endothermic{
+ background:#e7f5ffef;border-color:#6eacd0;color:#26618d;
+}
+@keyframes lektrus-lab-thermal-status{
+ from{opacity:.75;filter:brightness(.98)}
+ to{opacity:1;filter:brightness(1.06)}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-vessel-art .lektrus-lab-reaction-heat{
+ animation:none!important}
+}

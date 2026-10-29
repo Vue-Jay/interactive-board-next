@@ -1469,3 +1469,143 @@ assert.ok(moltenSalt.temperatureC>=800.7);
 assert.equal(moltenSalt.doses.NaCl.value,5);
 assert.ok((crucible.vessels.find(v=>v.id==="v1").temperatureC??22)<500,
  "Ordinary glassware does not inherit the crucible's high-temperature limit");
+
+
+/** Reaction activation and energy regression: only verified records produce
+ * effects. Previously a dry solid poured into water was marked "uncertain". */
+for(const row of reaction.reviewedReactionCases.filter(v=>v.status==="reaction")){
+ assert.equal(reaction.identifyReaction(row.reactants,row.environment).status,"reaction",
+  "Every curated mixture is discoverable in its documented environment: "+row.equation);
+ assert.ok(["flame","flash","sparks","smoke","glow","steam","fizz",
+  "crystals","thermal","colorShift"].includes(row.visual),
+  "Every reviewed reaction can be visualised: "+row.equation);
+ if(row.thermalEffect){
+  assert.ok(["exothermic","endothermic"].includes(row.thermalEffect));
+  assert.equal(row.thermalEffect==="exothermic"?
+   (row.enthalpyKJPerMol??-1)<0:(row.enthalpyKJPerMol??1)>0,true,
+   "Declared energy direction must match enthalpy: "+row.equation);
+ }
+}
+assert.match(read("src/LektrusChemistryIllustration.tsx"),/lektrus-chemistry-bench-on-board/);
+assert.doesNotMatch(read("src/LektrusChemistryIllustration.tsx"),/lektrus-lab-object-grip/,
+ "Remove the unwanted nine-dot moving button");
+const sodiumInWater=reaction.identifyReaction(["Na","H2O"],"aqueous");
+assert.equal(sodiumInWater.status,"reaction");
+assert.equal(sodiumInWater.caseData.visual,"fizz",
+ "Sodium-water reaction emits hydrogen without an unconditional explosion");
+assert.equal(sodiumInWater.caseData.thermalEffect,"exothermic");
+for(const acid of ["HCl","H2SO4"]){
+ const caseData=reaction.identifyReaction(["Na",acid],"aqueous");
+ assert.equal(caseData.status,"reaction","Sodium in "+acid+" must react");
+ assert.equal(caseData.caseData.thermalEffect,"exothermic");
+ assert.equal(caseData.caseData.observation,"gas");
+ assert.ok(chem.parseBalancedLabEquation(caseData.caseData.equation));
+}
+assert.equal(reaction.identifyReaction(["CaCO3"],"heated").caseData.thermalEffect,"endothermic");
+assert.equal(reaction.identifyReaction(["AgNO3","NaCl"],"aqueous").caseData.thermalEffect,undefined,
+ "Ordinary precipitation cannot heat the glass just because particles appear");
+
+let sodiumVessel=lab.putLabReagent(lab.defaultLabBench(),"v1","Na",{value:1,unit:"g"});
+sodiumVessel=lab.setLabEnvironment(sodiumVessel,"v1","dry");
+sodiumVessel=lab.addLabVessel(sodiumVessel,"beaker");
+const receiverWaterId=sodiumVessel.vessels.find(v=>v.id!=="v1").id;
+sodiumVessel=lab.putLabReagent(sodiumVessel,receiverWaterId,"H2O",
+ {value:30,unit:"ml"});
+sodiumVessel=lab.pourLabVessel(sodiumVessel,"v1",receiverWaterId);
+assert.equal(sodiumVessel.vessels.find(v=>v.id===receiverWaterId).environment,"aqueous");
+assert.equal(sodiumVessel.vessels.find(v=>v.id===receiverWaterId).uncertain,false,
+ "Dry sodium into water is a known transformation, not an unknown mixture");
+assert.equal(lab.labObservation(sodiumVessel.vessels.find(v=>v.id===receiverWaterId)).status,"reaction");
+assert.ok(lab.labReactionNeedsTick(sodiumVessel.vessels.find(v=>v.id===receiverWaterId)));
+sodiumVessel=lab.advanceLabSimulation(sodiumVessel,0);
+sodiumVessel=lab.advanceLabSimulation(sodiumVessel,2000);
+const warmSodium=sodiumVessel.vessels.find(v=>v.id===receiverWaterId);
+assert.equal(warmSodium.reactionHeat.direction,"exothermic");
+assert.ok(warmSodium.temperatureC>22,"Sodium-water reaction really heats the vessel");
+assert.ok(warmSodium.reactionHeat.deltaC>0);
+sodiumVessel=lab.advanceLabSimulation(sodiumVessel,6000);
+assert.equal(sodiumVessel.vessels.find(v=>v.id===receiverWaterId).reactionHeat.complete,true);
+
+let acidSodium=lab.putLabReagent(lab.defaultLabBench(),"v1","Na",{value:1,unit:"g"});
+acidSodium=lab.setLabEnvironment(acidSodium,"v1","dry");
+acidSodium=lab.putLabReagent(acidSodium,"v1","HCl",
+ {value:20,unit:"ml",concentrationM:.1});
+assert.equal(acidSodium.vessels[0].environment,"aqueous",
+ "Acid solution added to a dry metal automatically establishes aqueous conditions");
+assert.equal(lab.labObservation(acidSodium.vessels[0]).status,"reaction");
+acidSodium=lab.advanceLabSimulation(acidSodium,0);
+acidSodium=lab.advanceLabSimulation(acidSodium,2000);
+assert.ok(acidSodium.vessels[0].temperatureC>22);
+assert.equal(acidSodium.vessels[0].reactionHeat.direction,"exothermic");
+
+let neutralizationHeat=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {value:20,unit:"ml",concentrationM:1});
+neutralizationHeat=lab.putLabReagent(neutralizationHeat,"v1","NaOH",
+ {value:20,unit:"ml",concentrationM:1});
+neutralizationHeat=lab.advanceLabSimulation(neutralizationHeat,0);
+neutralizationHeat=lab.advanceLabSimulation(neutralizationHeat,2000);
+assert.equal(neutralizationHeat.vessels[0].reactionHeat.direction,"exothermic");
+assert.ok(neutralizationHeat.vessels[0].reactionHeat.deltaC>0);
+assert.ok(neutralizationHeat.vessels[0].temperatureC>22);
+assert.equal(lab.labObservation(neutralizationHeat.vessels[0]).status,"reaction");
+
+let calciteBench=lab.addLabVessel(lab.defaultLabBench(),"crucible");
+const calciteId=calciteBench.vessels.find(v=>v.kind==="crucible").id;
+calciteBench=lab.putLabReagent(calciteBench,calciteId,"CaCO3",{value:5,unit:"g"});
+calciteBench=lab.setLabEnvironment(calciteBench,calciteId,"dry");
+calciteBench=lab.addPlacedLabDevice(calciteBench,"burner");
+const calciteBurner=lab.placedLabDevices(calciteBench).find(d=>d.kind==="burner").id;
+calciteBench=lab.applyPlacedLabDevice(calciteBench,calciteBurner,calciteId);
+calciteBench=lab.setPlacedDeviceLevel(calciteBench,calciteBurner,3);
+calciteBench=lab.setPlacedDevicePower(calciteBench,calciteBurner,true);
+calciteBench=lab.advanceLabSimulation(calciteBench,0);
+for(let i=1;i<=220;i++)calciteBench=lab.advanceLabSimulation(calciteBench,i*2000);
+const decomposedCalcite=calciteBench.vessels.find(v=>v.id===calciteId);
+assert.equal(lab.labObservation(decomposedCalcite).status,"reaction",
+ "Heated calcium carbonate must decompose inside a sufficiently hot crucible");
+assert.ok(decomposedCalcite.temperatureC>=reaction.identifyReaction(["CaCO3"],"heated").caseData.minTemperatureC-30);
+assert.equal(decomposedCalcite.reactionHeat.direction,"endothermic");
+assert.ok(decomposedCalcite.reactionHeat.deltaC<0,
+ "Thermal decomposition draws heat from the crucible instead of heating it");
+assert.equal(decomposedCalcite.reactionHeat.complete,true);
+assert.match(read("src/LektrusChemistryBench.tsx"),/Нагрев|Охлаждение/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/gasEventActive/);
+console.log("Reaction visualizations, sodium with water and acids, calcination and real temperature response passed");
+
+/** Gas volumes are not liquid volumes, and undefined boiling temperatures
+ * never impose a fictitious 100°C plateau on an aqueous stock solution. */
+let salineHeat=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+ {value:20,unit:"ml"});
+salineHeat=lab.putLabReagent(salineHeat,"v1","NaCl",{value:2,unit:"g"});
+salineHeat=lab.addPlacedLabDevice(salineHeat,"hotplate");
+const salineHeater=lab.placedLabDevices(salineHeat).find(d=>d.kind==="hotplate").id;
+salineHeat=lab.applyPlacedLabDevice(salineHeat,salineHeater,"v1");
+salineHeat=lab.setLabHotplateTemperature(salineHeat,salineHeater,160);
+salineHeat=lab.setPlacedDevicePower(salineHeat,salineHeater,true);
+salineHeat=lab.advanceLabSimulation(salineHeat,0);
+for(let i=1;i<=130;i++)salineHeat=lab.advanceLabSimulation(salineHeat,i*2000);
+assert.ok(salineHeat.vessels[0].temperatureC>100,
+ "Mixed salt solution has an unknown boiling point, not a hard-coded 100°C ceiling");
+assert.equal(thermal.labVesselThermal(salineHeat.vessels[0].reagents,
+ salineHeat.vessels[0].doses),null);
+assert.match(read("src/LektrusChemistryBench.tsx"),/const gasOnly=/,
+ "Gas-only stock must render as gas rather than an imaginary liquid");
+assert.match(read("src/LektrusChemistryBench.tsx"),/gasEventActive/,
+ "Bubbles must stop after the documented reaction finishes");
+const coReduction=reaction.identifyReaction(["Fe2O3","CO"],"heated");
+if(coReduction.status==="reaction"){
+ let gasHeated=lab.addLabVessel(lab.defaultLabBench(),"crucible");
+ const id=gasHeated.vessels.find(v=>v.kind==="crucible").id;
+ gasHeated=lab.putLabReagent(gasHeated,id,"Fe2O3",{value:5,unit:"g"});
+ gasHeated=lab.putLabReagent(gasHeated,id,"CO",{value:10,unit:"ml"});
+ gasHeated=lab.addPlacedLabDevice(gasHeated,"burner");
+ const heater=lab.placedLabDevices(gasHeated).find(d=>d.kind==="burner").id;
+ gasHeated=lab.applyPlacedLabDevice(gasHeated,heater,id);
+ gasHeated=lab.setPlacedDeviceLevel(gasHeated,heater,3);
+ gasHeated=lab.setPlacedDevicePower(gasHeated,heater,true);
+ gasHeated=lab.advanceLabSimulation(gasHeated,0);
+ for(let i=1;i<=220;i++)gasHeated=lab.advanceLabSimulation(gasHeated,i*2000);
+ assert.equal(lab.labObservation(gasHeated.vessels.find(v=>v.id===id)).status,"reaction",
+  "Gas CO must not cap the heated crucible at the boiling point of water");
+}
+console.log("No fictitious boiling point for solutions or gas mixtures: OK");
