@@ -97,6 +97,25 @@ export default function LektrusLabDeviceIcon({
    <circle cx="78" cy="71" r="9" fill={"url(#"+metal+")"} stroke="#49776b" strokeWidth="2"/>
    <path d="M78 64V68" stroke="#295d54" strokeWidth="2.5"/>
   </>}
+  {kind==="filter"&&<>
+   {/* Portable sealed membrane filter; no funnel is introduced. */}
+   <ellipse cx="55" cy="98" rx="37" ry="6" fill="#22493e" opacity=".15"/>
+   <path d="M34 92H75L81 98H28Z" fill={"url(#"+metal+")"}
+    stroke="#45776c" strokeWidth="2"/>
+   <path d="M54 82V94" stroke="#608f84" strokeWidth="5"/>
+   <rect x="28" y="22" width="53" height="61" rx="9"
+    fill={"url(#"+glass+")"} stroke="#588c83" strokeWidth="3"/>
+   <rect x="34" y="18" width="41" height="10" rx="4"
+    fill={"url(#"+metal+")"} stroke="#4d8275" strokeWidth="2"/>
+   <path d="M33 45H76" stroke="#3b807a" strokeWidth="2"/>
+   <path d="M34 49H75" stroke="#93bb9f" strokeWidth="8" opacity=".8"/>
+   <path d="M35 57Q54 51 74 57" stroke="#6bb4c4" strokeWidth="4"
+    fill="none" opacity=".82"/>
+   {Array.from({length:6},(_,i)=><path key={i}
+    d={`M${38+i*6} 46l-4 6`} stroke="#568b72" strokeWidth="1.4"/>)}
+   <path d="M54 60V77" stroke="#5baca6" strokeWidth="4"/>
+   <path d="M46 73L54 83L62 73" stroke="#489e99" strokeWidth="2.2" fill="none"/>
+  </>}
   {kind==="tripod"&&<>
    {/* Taller metal rod: one sliding clamp from y=12 to y=64. */}
    <ellipse cx="50" cy="100" rx="45" ry="5" fill="#1e5249" opacity=".19"/>
