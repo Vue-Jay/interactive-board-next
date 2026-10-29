@@ -134,10 +134,16 @@ export function startQuantifiedLabReaction(
  // reagent. Other spectator species require explicit reaction modelling.
  const actual=reactants.filter(id=>id!=="H2O"||
   equation?.reactants.some(t=>t.formula==="H2O"));
- if(!equation||equation.reactants.length!==reaction.reactants.length||
+ // A documented catalyst is physically present but does not appear on
+ // either side of the net reaction. MnO2 catalyses peroxide decomposition.
+ const consumed=equation?.reactants.map(t=>t.formula)??[];
+ const nonConsumed=reaction.reactants.filter(id=>!consumed.includes(id));
+ const explicitCatalysts=new Set(["MnO2"]);
+ if(!equation||
   [...reaction.reactants].sort().join("|")!==[...actual].sort().join("|")||
-  [...reaction.reactants].sort().join("|")!==
-   equation.reactants.map(t=>t.formula).sort().join("|"))return null;
+  nonConsumed.some(id=>!explicitCatalysts.has(id))||
+  consumed.some(id=>!reaction.reactants.includes(id))||
+  consumed.length+nonConsumed.length!==reaction.reactants.length)return null;
  const initialMol:Record<string,number>={};
  for(const term of equation.reactants){
   const dose=doses[term.formula];
