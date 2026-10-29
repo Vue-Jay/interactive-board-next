@@ -1119,6 +1119,13 @@ assert.equal(kitFlask.restingOnStandId,kitStand.id,
 assert.equal(lab.labReceiverBelowStand(preparedKit,kitBurette.id)?.id,kitFlask.id);
 assert.deepEqual(preparedKit.vessels[0],starterOriginal,
  "Preparing a kit must leave previously placed glassware untouched");
+const movedKit=lab.movePlacedLabDevice(preparedKit,kitStand.id,58,68);
+assert.equal(movedKit.vessels.find(v=>v.id===kitFlask.id).restingOnStandId,kitStand.id,
+ "The flask stays on the metal foot when the stand moves");
+const storedKit=lab.returnPlacedLabDevice(movedKit,kitStand.id);
+assert.equal(storedKit.vessels.find(v=>v.id===kitFlask.id).restingOnStandId,undefined,
+ "Storing the stand leaves its receiver as free tabletop glassware");
+
 assert.deepEqual(lab.prepareLabModeSetup(preparedKit),preparedKit,
  "Preparing the same laboratory kit twice must not duplicate apparatus");
 const modeBaseline=lab.defaultLabBench();
