@@ -14,10 +14,12 @@ const reaction=load("src/lektrusReactionDatabase.ts");
 const titration=load("src/lektrusLabTitration.ts");
 const layout=load("src/lektrusLabLayout.ts");
 const chem=load("src/lektrusLabStoichiometry.ts");
+const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabTitration")return titration;
  if(key==="./lektrusLabLayout")return layout;
  if(key==="./lektrusLabStoichiometry")return chem;
+ if(key==="./lektrusLabPhysicalProperties")return thermal;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
@@ -1365,3 +1367,86 @@ assert.ok(lab.labVesselQuantity(boiling.vessels[0]).volumeMl<20,
 assert.ok(lab.labVesselQuantity(boiling.vessels[0]).volumeMl>=0,
  "Water must not evaporate to a negative quantity");
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
+
+
+/* Thermal safety audit: a reference for every reagent is either explicitly
+ * curated or explicitly unknown, never fabricated from a chemical class. */
+for(const substance of reaction.substances){
+ const forms=stock.labReagentForms(substance);
+ for(const unit of forms){
+  const row=thermal.labThermalInfo(substance.id,unit);
+  assert.equal(typeof row.description,"string");
+  assert.ok(row.description.length>15);
+  if(row.form==="solution")assert.equal(row.boilingC,undefined,
+   "Do not assign pure boiling point to a stock solution: "+substance.id);
+  if(row.behavior==="decomposes")assert.equal(row.boilingC,undefined,
+   "Decomposing "+substance.id+" must not appear to boil");
+  if(row.meltingC!==undefined&&row.boilingC!==undefined)
+   assert.ok(row.meltingC<row.boilingC, "Physical phase order for "+substance.id);
+ }
+}
+assert.equal(thermal.labThermalInfo("H2O","ml").boilingC,100);
+assert.equal(thermal.labThermalInfo("C2H5OH","ml").boilingC,78.37);
+assert.equal(thermal.labThermalInfo("CH3OH","ml").boilingC,64.7);
+assert.equal(thermal.labThermalInfo("NaCl","g").meltingC,800.7);
+assert.equal(thermal.labThermalInfo("Na","g").meltingC,97.79);
+assert.equal(thermal.labThermalInfo("KNO3","g").decompositionC,400);
+assert.equal(thermal.labThermalInfo("HCl","ml").boilingC,undefined);
+assert.equal(thermal.labThermalInfo("CuSO4","ml").meltingC,undefined);
+assert.equal(thermal.labThermalInfo("C12H22O11","g").meltingC,undefined,
+ "Decomposition of sugar cannot be mistaken for a reversible melt");
+assert.equal(thermal.labThermalInfo("C12H22O11","g").boilingC,undefined);
+
+let melt=lab.putLabReagent(lab.defaultLabBench(),"v1","Na",{value:8,unit:"g"});
+melt=lab.addPlacedLabDevice(melt,"hotplate");
+const meltingHeater=lab.placedLabDevices(melt).find(d=>d.kind==="hotplate").id;
+melt=lab.applyPlacedLabDevice(melt,meltingHeater,"v1");
+melt=lab.setLabHotplateTemperature(melt,meltingHeater,180);
+melt=lab.setPlacedDevicePower(melt,meltingHeater,true);
+melt=lab.advanceLabSimulation(melt,0);
+let hadPartialMelt=false;
+for(let i=1;i<=190;i++){
+ melt=lab.advanceLabSimulation(melt,i*2000);
+ if((melt.vessels[0].meltFraction??0)>0&&(melt.vessels[0].meltFraction??0)<1)
+  hadPartialMelt=true;
+}
+assert.ok(hadPartialMelt,"Reversible melting must show a partial phase rather than jump");
+assert.equal(melt.vessels[0].meltFraction,1,"Heated sodium reaches full melt");
+assert.ok((melt.vessels[0].temperatureC??0)>97.79);
+assert.equal(lab.labVesselQuantity(melt.vessels[0]).massG,8,
+ "Melting does not convert grams to invented millilitres");
+assert.equal(thermal.labThermalState(melt.vessels[0].reagents,
+ melt.vessels[0].doses,melt.vessels[0].temperatureC,melt.vessels[0].meltFraction).label,"Расплав");
+melt=lab.setPlacedDevicePower(melt,meltingHeater,false);
+let hadPartialCrystal=false;
+for(let i=191;i<=530;i++){
+ melt=lab.advanceLabSimulation(melt,i*2000);
+ if((melt.vessels[0].meltFraction??0)>0&&(melt.vessels[0].meltFraction??0)<1)
+  hadPartialCrystal=true;
+}
+assert.ok(hadPartialCrystal,"Cooling must pass through crystallisation");
+assert.equal(melt.vessels[0].meltFraction,0);
+assert.ok((melt.vessels[0].temperatureC??500)<97.79);
+assert.equal(lab.labVesselQuantity(melt.vessels[0]).massG,8,
+ "Crystallisation preserves solid material");
+
+const alcohol=lab.putLabReagent(lab.defaultLabBench(),"v1","C2H5OH",{value:30,unit:"ml"});
+let alcoholHeat=lab.addPlacedLabDevice(alcohol,"hotplate");
+const alcoholHeater=lab.placedLabDevices(alcoholHeat)[0].id;
+alcoholHeat=lab.applyPlacedLabDevice(alcoholHeat,alcoholHeater,"v1");
+alcoholHeat=lab.setLabHotplateTemperature(alcoholHeat,alcoholHeater,160);
+alcoholHeat=lab.setPlacedDevicePower(alcoholHeat,alcoholHeater,true);
+alcoholHeat=lab.advanceLabSimulation(alcoholHeat,0);
+for(let i=1;i<=130;i++)alcoholHeat=lab.advanceLabSimulation(alcoholHeat,i*2000);
+assert.ok((alcoholHeat.vessels[0].temperatureC??0)<=78.37,
+ "Ethanol cannot use the 100°C water boiling point");
+assert.ok(lab.labVesselQuantity(alcoholHeat.vessels[0]).volumeMl<30);
+const saline=lab.putLabReagent(lab.putLabReagent(lab.defaultLabBench(),"v1",
+ "H2O",{value:30,unit:"ml"}),"v1","NaCl",{value:2,unit:"g"});
+assert.equal(thermal.labVesselThermal(saline.vessels[0].reagents,saline.vessels[0].doses),
+ null,"A solution has no invented exact boiling temperature");
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-molten-liquid/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/Плавление \/ кристаллизация/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/Порошок \/ кусочки/);
+assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-solid-charge/);
+console.log("Thermal registry, boiling, melting and cooling verified");
