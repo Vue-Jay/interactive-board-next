@@ -95,8 +95,8 @@ neutral=lab.setLabIndicator(neutral,"v1","universal");
 assert.equal(lab.labIndicatorResult(neutral.vessels[0]).medium,"neutral");
 let salt=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl");
 salt=lab.setLabIndicator(salt,"v1","universal");
-assert.equal(lab.labIndicatorResult(salt.vessels[0]).medium,"unknown",
- "The model must not infer pH from an unspecified salt solution");
+assert.equal(lab.labIndicatorResult(salt.vessels[0]).medium,"neutral",
+ "Measured 0.1 M NaCl is a neutral reference solution");
 let transferred=lab.addLabVessel(neutral,"tube");
 transferred=lab.pourLabVessel(transferred,"v1","v2");
 assert.equal(transferred.vessels[0].indicator,undefined,"Empty source has no indicator");
