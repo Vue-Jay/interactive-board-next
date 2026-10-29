@@ -281,17 +281,40 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,stir
     title={"Учебная оценка теплового эффекта, не показание реального термометра"}>
     {vessel.reactionHeat.direction==="exothermic"?"↑ Нагрев":"↓ Охлаждение"}
    </span>}
-  {!details&&(volumeMl>0||massG>0)&&<div className="lektrus-lab-quantity-meter"
-    role="img" aria-label={"Количество: "+totalLabel+". Заполнение относительно условной вместимости сосуда"}>
-    {volumeMl>0&&<div className="lektrus-lab-quantity-measure is-liquid"
-      title={volumeMl.toLocaleString("ru-RU")+" мл / "+capacityMl+" мл (условная вместимость)"}>
-      <span className="lektrus-lab-quantity-track"><i style={{height:(liquidFraction*100)+"%"}}/></span>
-      <strong>{volumeMl.toLocaleString("ru-RU")}<small>мл</small></strong>
+  {(details||volumeMl>0||contents.solid.length>0)&&
+   <div className={"lektrus-lab-quantity-meter"+(details?" has-composition":"")}
+    aria-label="Количество раствора и твёрдых веществ">
+    {(details||volumeMl>0)&&<div className="lektrus-lab-quantity-measure is-liquid"
+      title={readable(volumeMl)+" мл / "+capacityMl+" мл (условная вместимость)"}>
+      <span className="lektrus-lab-quantity-track">
+       <i style={{height:(liquidFraction*100)+"%"}}/>
+      </span>
+      <strong>{readable(volumeMl)}<small>мл</small></strong>
+      {details&&<span className="lektrus-lab-quantity-info is-solution">
+       <b>Раствор · {readable(contents.solutionMl)} мл</b>
+       <span>{solutionNames.join(", ")||"Растворённых веществ нет"}</span>
+      </span>}
      </div>}
-    {massG>0&&<div className="lektrus-lab-quantity-measure is-solid"
-      title="Масса вещества в граммах; высота слоя условная, плотность не моделируется">
-      <span className="lektrus-lab-quantity-track"><i style={{height:(solidFraction*100)+"%"}}/></span>
-      <strong>{massG.toLocaleString("ru-RU")}<small>г</small></strong>
+    {(details||contents.solid.length>0)&&<div className="lektrus-lab-quantity-measure is-solid"
+      title="Масса осадка или твёрдого вещества: данные из состава сосуда">
+      <span className="lektrus-lab-quantity-track">
+       <i style={{height:((contents.precipitateFraction===undefined?
+        solidFraction:contents.precipitateFraction)*100)+"%"}}/>
+      </span>
+      <strong>{contents.solid.length?
+       (contents.precipitateG===undefined?
+        contents.solid.every(item=>item.massG!==undefined)?
+         readable(contents.solid.reduce((sum,item)=>sum+(item.massG??0),0)):"?":
+        readable(contents.precipitateG)):"0"}<small>г</small></strong>
+      {details&&<span className="lektrus-lab-quantity-info is-residue">
+       <b>{observation==="precipitate"||vessel.filteredResidue?"Осадок":"Твёрдое"} · {contents.solid.length?
+        contents.precipitateG===undefined?
+         contents.solid.every(item=>item.massG!==undefined)?
+          readable(contents.solid.reduce((sum,item)=>sum+(item.massG??0),0))+" г":"масса неизвестна":
+         readable(contents.precipitateG)+" г":"0 г"}</b>
+       <span>{solidNames.join(", ")||"Нет осадка"}</span>
+       {contents.remainderUnknown&&<small>Остаток реагентов не определён</small>}
+      </span>}
      </div>}
    </div>}
   {showLabels&&!details&&<span className="lektrus-lab-content-tag"
@@ -319,14 +342,6 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,stir
      }):"Пусто"}
    </span>
   </span>}
-  {details&&<div className="lektrus-lab-vessel-composition" aria-live="polite">
-   <strong>Раствор: {readable(contents.solutionMl)} мл</strong>
-   <span>{solutionNames.join(", ")||"Нет растворённых веществ"}</span>
-   <strong>Осадок: {contents.precipitateG===undefined?
-     contents.solid.length?"Количество не измерено":"0 г":readable(contents.precipitateG)+" г"}</strong>
-   <span>{solidNames.join(", ")||"Нет осадка"}</span>
-   {contents.remainderUnknown&&<small>Остаток реагентов без измерений неизвестен</small>}
-  </div>}
  </div>;
 }
 /** A draft value must not clamp while its digits are still being typed. */
@@ -423,7 +438,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [confirmClear,setConfirmClear]=useState(false);
  const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string;solid:boolean}|null>(null);
  const settings=labBenchSettings(bench);
- const selected=selectedLabVessel(bench);
+ const selected=bench.selectedId?selectedLabVessel(bench):undefined;
  const physicalDevices=placedLabDevices(bench);
  const vesselPosition=(v:LabVessel)=>{
   const stand=physicalDevices.find(d=>d.kind==="tripod"&&d.active&&d.linkedVesselId===v.id);
@@ -962,11 +977,19 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   (!settings.animateEffects?" lab-reduced-animation":"")} ref={host}
   aria-label="Интерактивный химический стол с шкафами и раковиной"
   onPointerDown={e=>{
-   if(!pendingGlassware||!editable||e.button!==0)return;
+   if(!editable||e.button!==0||!e.isPrimary)return;
+   // Apparatus and cabinetry keep their own gestures; only bare table
+   // pixels dismiss vessel selection.
    if((e.target as HTMLElement).closest("[data-board-interactive]"))return;
    const p=point(e);
-   if(!p||!isLabWorktop(p))return;
-   e.preventDefault();e.stopPropagation();take(pendingGlassware,p);
+   if(pendingGlassware){
+    if(!p||!isLabWorktop(p))return;
+    e.preventDefault();e.stopPropagation();take(pendingGlassware,p);
+    return;
+   }
+   if(!bench.selectedId&&!vesselMenuId)return;
+   e.stopPropagation();setVesselMenuId(null);setActiveDeviceId(null);
+   onSelect?.("");
   }}>
   <div className="lektrus-lab-bench-backdrop" aria-hidden="true">
    <div className="lektrus-lab-back-shelf"/>
@@ -1396,7 +1419,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     {bench.instrumentTarget?.kind==="tripod"&&bench.instrumentTarget.vesselId===v.id&&<span
      className="lektrus-lab-instrument-attachment">На штативе</span>}
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
-     details={selectedVessel&&v.reagents.length>0}
+     details={selectedVessel}
      temperatureVisible={settings.showTemperatures&&v.kind!=="burette"}
      stirring={bench.stirringVesselId===v.id||
       labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)}
