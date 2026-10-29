@@ -639,6 +639,7 @@ export function readLabBench(item:Item):LabBench{
 }
 export const selectedLabVessel=(bench:LabBench)=>bench.vessels.find(v=>v.id===bench.selectedId)??bench.vessels[0];
 export function labReactionNeedsTick(vessel:LabVessel):boolean{
+ if(vessel.uncertain)return false;
  if(vessel.reactionAmounts)return !vessel.reactionAmounts.complete;
  if(!vessel.observed||vessel.uncertain||vessel.completedReaction)return false;
  const reaction=identifyReaction(vessel.reagents,vessel.environment);
@@ -873,7 +874,7 @@ export function transferLabMeasuredLiquid(
  const sourceReaction=source.completedReaction??labObservation(source).caseData;
  const targetReaction=target.completedReaction??labObservation(target).caseData;
  const medium=wasEmpty?source.environment:target.environment;
- const uncertain=Boolean(source.uncertain||target.uncertain||
+ const uncertain=Boolean(source.uncertain||target.uncertain||source.reactionAmounts||target.reactionAmounts||
   (!wasEmpty&&(sourceReaction||targetReaction))||
   (!wasEmpty&&source.environment!==target.environment&&source.environment!=="aqueous"));
  const newReaction=!uncertain&&!sourceReaction&&!targetReaction&&
@@ -979,15 +980,16 @@ export function advanceLabPour(b:LabBench):LabBench{
  const targetWasEmpty=!target.reagents.length;
  const sourceReaction=source.completedReaction??labObservation(source).caseData;
  const targetReaction=target.completedReaction??labObservation(target).caseData;
- const uncertain=target.uncertain||source.uncertain||
+ const uncertain=target.uncertain||source.uncertain||!!target.reactionAmounts||!!source.reactionAmounts||
   (p.step===0&&!targetWasEmpty&&Boolean(sourceReaction||targetReaction));
  const vessels=b.vessels.map(v=>{
-  if(v.id===source.id)return {...v,reagents:finish?[]:v.reagents,
+  if(v.id===source.id)return {...v,reactionAmounts:undefined,
+    uncertain:!!source.reactionAmounts||v.uncertain,reagents:finish?[]:v.reagents,
    doses:finish?undefined:left,observed:finish?false:v.observed,
    completedReaction:finish?undefined:v.completedReaction,
    indicator:finish?undefined:v.indicator,
    pourFraction:p.unmeasured?portionRound(.5*(20-n)/20):v.pourFraction};
-  if(v.id===target.id)return {...v,reagents:combined,doses:received,
+  if(v.id===target.id)return {...v,reactionAmounts:undefined,reagents:combined,doses:received,
    observed:true,uncertain,environment:targetWasEmpty?source.environment:v.environment,
    visualStartedAtMs:!uncertain&&!sourceReaction&&!targetReaction&&
     identifyReaction(combined,targetWasEmpty?source.environment:v.environment).status==="reaction"?
@@ -1021,11 +1023,11 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  const sourceResult=labObservation(source),targetResult=labObservation(target);
  const sourceReaction=source.completedReaction??(sourceResult.status==="reaction"?sourceResult.caseData:undefined);
  const targetReaction=target.completedReaction??(targetResult.status==="reaction"?targetResult.caseData:undefined);
- const uncertain=Boolean(source.uncertain||target.uncertain||
+ const uncertain=Boolean(source.uncertain||target.uncertain||source.reactionAmounts||target.reactionAmounts||
   (!targetWasEmpty&&(sourceReaction||targetReaction))||
   (source.environment!==target.environment&&source.environment!=="aqueous"));
  const vessels=bench.vessels.map(v=>{
-  if(v.id===sourceId)return {...v,reagents:[],observed:false,uncertain:false,
+  if(v.id===sourceId)return {...v,reactionAmounts:undefined,reagents:[],observed:false,uncertain:false,
    completedReaction:undefined,indicator:undefined,doses:undefined};
   if(v.id===targetId){
    const doses={...v.doses};
@@ -1045,7 +1047,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
    const medium=targetWasEmpty?source.environment:target.environment;
    const newReaction=!uncertain&&!sourceReaction&&!targetReaction&&
     identifyReaction(reagents,medium).status==="reaction";
-   return {...v,reagents,observed:reagents.length>1||source.observed,
+   return {...v,reagents,reactionAmounts:undefined,observed:reagents.length>1||source.observed,
     doses,environment:medium,
     visualStartedAtMs:newReaction?Date.now():v.visualStartedAtMs,
     completedReaction:targetWasEmpty?sourceReaction:(targetReaction??sourceReaction),
