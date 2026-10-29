@@ -826,7 +826,7 @@ export function labVesselQuantity(vessel:LabVessel){
 }
 /** Adjust the exact sampling volume (ml) of this graduated pipette. */
 export function setLabPipetteTarget(bench:LabBench,id:string,ml:number):LabBench{
- if(!Number.isFinite(ml)||ml<.1||ml>25||Math.abs(ml*10-Math.round(ml*10))>1e-6)
+ if(!Number.isFinite(ml)||ml<.01||ml>25||Math.abs(ml*100-Math.round(ml*100))>1e-6)
   return bench;
  return revise(bench,id,v=>v.kind==="pipette"&&v.pipetteTargetMl!==ml?
   {...v,pipetteTargetMl:ml}:v);
