@@ -252,7 +252,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
    </g>}
    <path d={geo.outline} fill="none" stroke="#75a4a4" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
    <path d={geo.outline} fill="none" stroke="#fff" strokeWidth="1.25" opacity=".8" strokeLinecap="round"/>
-   {vessel.indicator&&<g className="lektrus-lab-indicator-strip">
+   {vessel.indicator==="universal"&&<g className="lektrus-lab-indicator-strip">
     <rect x="73" y="24" width="7" height="73" rx="2" fill="#f4edda" stroke="#9a9f91" strokeWidth="1" transform="rotate(12 76 60)"/>
     <rect x="73" y="71" width="7" height="24" rx="1" fill={indicator?.color??"#b5b9b3"} opacity=".95" transform="rotate(12 76 60)"/>
    </g>}
@@ -1158,9 +1158,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      aria-pressed={selected?.indicator===indicator.id}
      className={selected?.indicator===indicator.id?"is-active":""}
      onClick={e=>{e.stopPropagation();
-      if(selected)onChange?.(setLabIndicator(bench,selected.id,
-       selected.indicator===indicator.id?undefined:indicator.id))}}>
-     <i style={{"--indicator-tint":["#a28dd2","#d84c9c","#e4aa53","#64b992"][i]} as React.CSSProperties}/>
+      if(selected){const next=setLabIndicator(bench,selected.id,indicator.id);
+       if(next!==bench){onChange?.(next);
+        setNotice(indicator.id==="universal"?
+         "Универсальная индикаторная полоска: проверка цвета":
+         "Добавлены капли раствора индикатора: "+indicator.name)}}}}>
+     <i className={indicator.id==="universal"?"is-paper-strip":"is-liquid-drop"}
+      style={{"--indicator-tint":["#847bb1","#eac7e1","#e99d4c","#64b992"][i]} as React.CSSProperties}/>
      <span>{indicator.name}</span>
     </button>)}
    </div>
