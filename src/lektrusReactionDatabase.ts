@@ -618,6 +618,42 @@ for(const line of newVerifiedCases.trim().split("\n")){
    "Только виртуальная модель: некоторые вещества токсичны или опасны.":undefined
  });
 }
+/** Complementary school cases: independently balanced before registration.
+ * Conditions refer to dilute classroom solutions. Insoluble solids are
+ * represented by crystals rather than fictitious flames. */
+const complementaryAqueousCases=`
+NiSO4+KOH|aqueous|NiSO4 + 2KOH → Ni(OH)2↓ + K2SO4|precipitate|Зелёный осадок гидроксида никеля|exchange|crystals
+CoCl2+KOH|aqueous|CoCl2 + 2KOH → Co(OH)2↓ + 2KCl|precipitate|Гидроксид кобальта(II), оттенок зависит от условий|exchange|crystals
+AgNO3+MgCl2|aqueous|2AgNO3 + MgCl2 → 2AgCl↓ + Mg(NO3)2|precipitate|Белый хлорид серебра|exchange|crystals
+SrCl2+K2SO4|aqueous|SrCl2 + K2SO4 → SrSO4↓ + 2KCl|precipitate|Малорастворимый сульфат стронция|exchange|crystals
+SrCl2+K2CO3|aqueous|SrCl2 + K2CO3 → SrCO3↓ + 2KCl|precipitate|Белый карбонат стронция|exchange|crystals
+CaCl2+Na2SO4|aqueous|CaCl2 + Na2SO4 → CaSO4↓ + 2NaCl|precipitate|При подходящих концентрациях образуется малорастворимый сульфат кальция|exchange|crystals
+Ba(NO3)2+K2SO4|aqueous|Ba(NO3)2 + K2SO4 → BaSO4↓ + 2KNO3|precipitate|Белый сульфат бария|exchange|crystals
+LiOH+CO2|aqueous|2LiOH + CO2 → Li2CO3↓ + H2O|precipitate|Образование малорастворимого карбоната лития|exchange|crystals
+Li2CO3+HNO3|aqueous|Li2CO3 + 2HNO3 → 2LiNO3 + CO2↑ + H2O|gas|Углекислый газ выделяется при реакции карбоната с кислотой|displacement|fizz
+Li+H2O|aqueous|2Li + 2H2O → 2LiOH + H2↑|gas|Литий реагирует с водой с выделением водорода|displacement|fizz
+Na2CO3+Ca(OH)2|aqueous|Na2CO3 + Ca(OH)2 → CaCO3↓ + 2NaOH|precipitate|Осаждение карбоната кальция|exchange|crystals
+K2CO3+Ca(OH)2|aqueous|K2CO3 + Ca(OH)2 → CaCO3↓ + 2KOH|precipitate|Белый карбонат кальция|exchange|crystals
+Na2S+NiSO4|aqueous|Na2S + NiSO4 → NiS↓ + Na2SO4|precipitate|Чёрный осадок сульфида никеля|exchange|crystals
+Na2S+CoCl2|aqueous|Na2S + CoCl2 → CoS↓ + 2NaCl|precipitate|Тёмный осадок сульфида кобальта|exchange|crystals
+AgNO3+LiCl|aqueous|AgNO3 + LiCl → AgCl↓ + LiNO3|precipitate|Белый осадок хлорида серебра|exchange|crystals
+Mg(NO3)2+KOH|aqueous|Mg(NO3)2 + 2KOH → Mg(OH)2↓ + 2KNO3|precipitate|Белый гидроксид магния|exchange|crystals
+Fe(NO3)3+KOH|aqueous|Fe(NO3)3 + 3KOH → Fe(OH)3↓ + 3KNO3|precipitate|Бурый осадок гидроксида железа(III)|exchange|crystals
+Fe(NO3)2+KOH|aqueous|Fe(NO3)2 + 2KOH → Fe(OH)2↓ + 2KNO3|precipitate|Зеленоватый гидроксид железа(II)|exchange|crystals
+NiCl2+KOH|aqueous|NiCl2 + 2KOH → Ni(OH)2↓ + 2KCl|precipitate|Зеленоватый осадок гидроксида никеля|exchange|crystals
+H3PO4+Ca(OH)2|aqueous|2H3PO4 + 3Ca(OH)2 → Ca3(PO4)2↓ + 6H2O|precipitate|Условное полное осаждение фосфата кальция при заданном соотношении|exchange|crystals
+H3PO4+Ba(OH)2|aqueous|2H3PO4 + 3Ba(OH)2 → Ba3(PO4)2↓ + 6H2O|precipitate|Условное полное осаждение фосфата бария при заданном соотношении|exchange|crystals
+`;
+for(const row of complementaryAqueousCases.trim().split("\n")){
+ const [reactants,environment,equation,observation,description,family,visual]=row.split("|");
+ const signature=reactants.split("+").sort().join("|");
+ if(cases.some(v=>v.environment===environment&&v.reactants.slice().sort().join("|")===signature))continue;
+ add(reactants,environment as ReactionEnvironment,equation,observation as Observation,description,{
+  family:family as ReactionFamily,visual:visual as ReactionVisual,
+  safety:/Pb|AgNO3|Ba|Ni|Co|Na2S|HNO3|Li\+H2O|Ca\+H2O/.test(reactants)?
+   "Опасные вещества: только виртуальная модель, не руководство к реальному опыту.":undefined
+ });
+}
 /** Minimum modeled activation points, not laboratory instructions. A case
  * is shown by the heater only if it can actually reach the threshold. */
 const thermalCaseThresholds:Record<string,number>={
