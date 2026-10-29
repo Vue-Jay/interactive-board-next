@@ -4145,3 +4145,31 @@
  .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-info{
   padding-left:4px!important;font-size:8px!important}
 }
+
+.lektrus-lab-indicator-shelf button>i.is-liquid-drop{
+ width:13px!important;height:19px!important;flex:0 0 19px!important;
+ border-radius:4px 4px 6px 6px!important;
+ background:linear-gradient(to top,var(--indicator-tint) 65%,#f2fbf5 65%)!important;
+ border:1px solid #78999b!important}
+.lektrus-lab-indicator-shelf button>i.is-liquid-drop:before{
+ top:-6px!important;left:4px!important;right:4px!important;height:5px!important;
+ background:#596f70!important}
+.lektrus-lab-indicator-shelf button>i.is-paper-strip{
+ width:6px!important;height:20px!important;flex:0 0 20px!important;
+ border:1px solid #c0aa79!important;border-radius:1px!important;
+ background:linear-gradient(to bottom,#f7efd3 55%,#d5b45a 55% 66%,#80b874 66% 77%,#6384d7 77% 88%,#c97791 88%)!important}
+.lektrus-lab-indicator-shelf button>i.is-paper-strip:before{display:none!important}
+.lektrus-lab-bench .lektrus-lab-content-tag{
+ top:-13px!important;left:50%!important;transform:translate(-50%,-100%)!important;
+ max-width:220px!important;white-space:normal!important}
+.lektrus-lab-bench .lektrus-lab-selection-composition{
+ display:block!important;font-size:9px!important;max-width:205px!important;
+ text-align:center;white-space:normal!important;overflow-wrap:anywhere!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter:not(.has-composition){
+ left:calc(100% + 5px)!important;right:auto!important;bottom:20%!important;
+ width:max-content!important;max-width:48px!important;gap:3px!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter:not(.has-composition).is-reversed{
+ left:auto!important;right:calc(100% + 5px)!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter:not(.has-composition) .lektrus-lab-quantity-measure{
+ display:flex!important;width:auto!important;min-width:34px!important;
+ max-width:48px!important;padding:3px!important;gap:3px!important}
