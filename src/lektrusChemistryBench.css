@@ -4145,3 +4145,38 @@
  .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-info{
   padding-left:4px!important;font-size:8px!important}
 }
+
+/* Bring the contents chip back beside the vessel. The layout keeps its
+   separated grid columns but no longer looks detached from the flask. */
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+ left:calc(100% + 6px)!important;right:auto!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed{
+ left:auto!important;right:calc(100% + 6px)!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-measure{
+ width:145px!important;max-width:145px!important;
+ grid-template-columns:6px 27px minmax(0,1fr)!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+ width:145px!important}
+.lektrus-lab-bench .lektrus-lab-quantity-info .lektrus-lab-inline-ph{
+ font:800 9px/1.2 system-ui,sans-serif!important;
+ border-top:1px solid #c5dacc;padding-top:3px;margin-top:1px;
+ color:#3c8267;white-space:normal}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button{
+ gap:1px!important;padding:2px!important}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button svg{
+ flex:0 0 27px;min-height:0;width:22px;height:27px;
+ filter:drop-shadow(0 1px 1px #31675440)}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button.is-paper svg{
+ width:19px;height:27px}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button.is-active.is-liquid{
+ border-color:#5b9f87!important;background:#dbf2e6!important}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+  left:calc(100% + 4px)!important;width:124px!important}
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed{
+  left:auto!important;right:calc(100% + 4px)!important}
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-measure{
+  width:124px!important;max-width:124px!important;
+  grid-template-columns:5px 23px minmax(0,1fr)!important}
+ .lektrus-lab-bench .lektrus-lab-quantity-info .lektrus-lab-inline-ph{font-size:8px!important}
+}
