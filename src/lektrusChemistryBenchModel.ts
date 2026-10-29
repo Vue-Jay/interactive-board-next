@@ -875,6 +875,16 @@ export function labVesselContents(v:LabVessel){
  }else if(v.filteredSolution){
   solution.push(...v.filteredSolution.solutes.map(formula=>({formula})));
   if(!solution.length&&volumeMl>0)solution.push({formula:"Раствор"});
+ }else if(v.observed&&!v.uncertain&&equation){
+  // A qualitative experiment still displays its KNOWN products, even when
+  // concentrations are unavailable. It does not pretend to know how much
+  // of the initial reactants remains after the reaction.
+  for(const term of products){
+   const formula=term.replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim();
+   if(!formula||gases.has(formula))continue;
+   if(precipitates.has(formula))solid.push({formula});
+   else solution.push({formula});
+  }
  }else{
   for(const formula of v.reagents){
    const d=v.doses?.[formula];
@@ -883,6 +893,7 @@ export function labVesselContents(v:LabVessel){
   }
  }
  return {solutionMl:volumeMl,capacityMl,solution,solid,
+  remainderUnknown:!quantities&&v.observed&&!v.uncertain&&!!equation,
   precipitateG,precipitateVolumeMl,
   precipitateFraction:precipitateVolumeMl===undefined?undefined:
    Math.max(0,Math.min(.8,precipitateVolumeMl/capacityMl))};
