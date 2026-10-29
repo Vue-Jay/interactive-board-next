@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -114,9 +114,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
   label:"pH "+titrationResult.pH,color:titrationResult.tint,
   note:"Расчётное значение при титровании, 25 °C"
  }:labIndicatorResult(vessel);
- const measures=Object.values(vessel.doses??{});
- const volumeMl=measures.reduce((sum,d)=>sum+(d.unit==="ml"?d.value:0),0);
- const massG=measures.reduce((sum,d)=>sum+(d.unit==="g"?d.value:0),0);
+ const {volumeMl,massG,capacityMl,liquidFraction,solidFraction}=labVesselQuantity(vessel);
  const totalLabel=[volumeMl>0?volumeMl.toLocaleString("ru-RU")+" мл":null,
   massG>0?massG.toLocaleString("ru-RU")+" г":null].filter(Boolean).join(" · ");
  const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],
@@ -143,10 +141,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
   singlePhase==="solid"||singlePhase==="metal"?"Твёрдое вещество":
   singlePhase==="gas"?"Газ":
   vessel.environment==="dry"?"Сухая смесь":"Раствор";
- const capacity=vessel.kind==="burette"?50:
-  vessel.kind==="pipette"||vessel.kind==="tube"?25:
-  vessel.kind==="volumetric"||vessel.kind==="cylinder"?100:150;
- const fillFraction=volumeMl>0?Math.min(.92,Math.max(.008,volumeMl/capacity)):
+ const fillFraction=volumeMl>0?Math.max(.008,liquidFraction):
   (vessel.reagents.length>0?(vessel.pourFraction??0.5):0);
  return <div className={"lektrus-lab-vessel-art"+(small?" is-small":"")}>
   <svg viewBox="0 0 100 133" role="img" aria-label={names[vessel.kind]+": "+(labels.join(", ")||"пустой")}>
@@ -162,9 +157,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
     {labels.length>0&&singlePhase!=="solid"&&singlePhase!=="metal"&&singlePhase!=="gas"&&
      <path d={geo.liquid} clipPath={"url(#"+id+"level)"} fill={color} opacity=".76" className="lektrus-lab-fluid"/>}
     {labels.length>0&&(singlePhase==="solid"||singlePhase==="metal")&&<>
-     <path d="M17 107Q29 99 47 103Q69 98 82 107L79 119H21Z" fill={color} opacity=".88"/>
-     {Array.from({length:22},(_,i)=><circle key={"grain"+i}
-      cx={27+(i*17)%46} cy={102+(i*13)%13} r={1.2+i%3*.7}
+     <path d={`M17 ${119-48*solidFraction}Q29 ${111-48*solidFraction} 47 ${115-48*solidFraction}Q69 ${111-48*solidFraction} 82 ${119-48*solidFraction}L79 119H21Z`}
+      fill={color} opacity=".88"/>
+     {Array.from({length:Math.min(36,Math.max(3,Math.ceil(32*solidFraction)))},(_,i)=><circle key={"grain"+i}
+      cx={27+(i*17)%46} cy={Math.max(73,115-46*solidFraction)+(i*13)%(Math.max(3,42*solidFraction))} r={1.2+i%3*.7}
       fill={color} stroke="#526962" strokeOpacity=".28"/>)}
     </>}
     {labels.length>0&&singlePhase==="gas"&&<>
@@ -231,6 +227,19 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
 
   </svg>
   <LabReactionBurst vessel={vessel} visual={visualCase?.visual} formula={visualCase?.equation??""}/>
+  {(volumeMl>0||massG>0)&&<div className="lektrus-lab-quantity-meter"
+    role="img" aria-label={"Количество: "+totalLabel+". Заполнение относительно условной вместимости сосуда"}>
+    {volumeMl>0&&<div className="lektrus-lab-quantity-measure is-liquid"
+      title={volumeMl.toLocaleString("ru-RU")+" мл / "+capacityMl+" мл (условная вместимость)"}>
+      <span className="lektrus-lab-quantity-track"><i style={{height:(liquidFraction*100)+"%"}}/></span>
+      <strong>{volumeMl.toLocaleString("ru-RU")}<small>мл</small></strong>
+     </div>}
+    {massG>0&&<div className="lektrus-lab-quantity-measure is-solid"
+      title="Масса вещества в граммах; высота слоя условная, плотность не моделируется">
+      <span className="lektrus-lab-quantity-track"><i style={{height:(solidFraction*100)+"%"}}/></span>
+      <strong>{massG.toLocaleString("ru-RU")}<small>г</small></strong>
+     </div>}
+   </div>}
   {showLabels&&<span className="lektrus-lab-content-tag"
    title={labels.length?labels.map((formula,i)=>{
     const dose=vessel.doses?.[vessel.reagents[i]];
