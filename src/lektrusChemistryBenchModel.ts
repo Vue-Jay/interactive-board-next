@@ -234,7 +234,8 @@ export function placeLabVesselOnStandBase(bench:LabBench,vesselId:string,standId
  if(!stand||!vessel||stand.linkedVesselId===vesselId)return bench;
  const point=labStandBaseVesselPoint(stand,vessel,1600,1000,bench.vessels.length>3);
  const logical=labLogicalPoint(point);
- return positionLabVessel(bench,vesselId,logical.x,logical.y);
+ const positioned=positionLabVessel(bench,vesselId,logical.x,logical.y);
+ return revise(positioned,vesselId,v=>({...v,restingOnStandId:standId}));
 }
 /** Only glassware physically positioned over the stand foot receives
  * liquid from a clamped burette; geometry is shared with drop placement. */
@@ -248,7 +249,8 @@ export function labReceiverBelowStand(bench:LabBench,sourceId:string):LabVessel|
   .map(v=>{
    const p=labDisplayPoint(v,bench.vessels.length>3);
    const foot=labStandBaseVesselPoint(stand,v,1600,1000,bench.vessels.length>3);
-   return {v,distance:Math.hypot((p.x-foot.x)*16,(p.y-foot.y)*10)};
+   return {v,distance:v.restingOnStandId===stand.id?0:
+    Math.hypot((p.x-foot.x)*16,(p.y-foot.y)*10)};
   })
   .filter(({distance})=>distance<=67)
   .sort((a,b)=>a.distance-b.distance)[0]?.v;
@@ -593,6 +595,9 @@ export function labIndicatorResult(vessel:LabVessel):LabIndicatorResult|null{
 
 export type LabVessel={pourFraction?:number;
  id:string;kind:LabGlassware;x:number;y:number;
+ /** A free receiving vessel resting on a real metal stand base.
+  * Its anchor follows the stand at every viewport size, independent of zoom. */
+ restingOnStandId?:string;
  reagents:string[];environment:ReactionEnvironment;
  observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
  temperatureC?:number;
@@ -733,7 +738,7 @@ export function arrangeLabVessels(bench:LabBench):LabBench{
  if(vessels.every((v,i)=>v.x===bench.vessels[i].x&&v.y===bench.vessels[i].y))return bench;
  // Arrange only free vessels. Mounted vessels keep their attachments.
  const stabilized=vessels.map((v,i)=>placedLabDevices(bench).some(d=>
-  d.active&&d.linkedVesselId===v.id||d.shelfVesselId===v.id)?bench.vessels[i]:v);
+  d.active&&d.linkedVesselId===v.id||d.shelfVesselId===v.id)||bench.vessels[i].restingOnStandId?bench.vessels[i]:v);
  return bump(bench,stabilized);
 }
 /** Pick an unused tabletop position, leaving EVERY existing vessel untouched.
@@ -770,8 +775,8 @@ export function positionLabVessel(bench:LabBench,id:string,x:number,y:number):La
  const vessel=bench.vessels.find(v=>v.id===id);
  if(!vessel)return bench;
  const nextX=clamp(x),nextY=clamp(y);
- if(vessel.x===nextX&&vessel.y===nextY)return bench;
- const moved=revise(bench,id,v=>({...v,x:nextX,y:nextY}));
+ if(vessel.x===nextX&&vessel.y===nextY&&!vessel.restingOnStandId)return bench;
+ const moved=revise(bench,id,v=>({...v,x:nextX,y:nextY,restingOnStandId:undefined}));
  // Picking the vessel up physically disconnects equipment. The powered
  // burner may remain on, but it must no longer heat a distant vessel.
  if(!placedLabDevices(bench).some(d=>d.linkedVesselId===id||d.shelfVesselId===id))return moved;
