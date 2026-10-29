@@ -382,8 +382,8 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   if(next===old&&!cooling&&!evaporating)return v;
   const hasLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml");
   return {...v,temperatureC:next,
-   ...(evaporating?{doses:newWater!>0?{H2O:{...water!,value:newWater!}}:undefined,
-    reagents:newWater!>0?v.reagents:[],observed:false}:{}),
+   ...(evaporating?{doses:(newWater??0)>0?{H2O:{...water!,value:newWater!}}:undefined,
+    reagents:(newWater??0)>0?v.reagents:[],observed:false}:{}),
    environment:evaporating&&newWater===0?"dry":
     cooling?(hasLiquid?"aqueous":"dry"):v.environment};
  });
