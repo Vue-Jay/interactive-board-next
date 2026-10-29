@@ -250,7 +250,7 @@ assert.match(redesignedLab,/lektrus-lab-worktop-zone/);
 assert.match(redesignedLab,/preview\?\.id===v\.id\?preview:vesselPosition\(v\)/,
  "Dragged vessels should visually reach cabinets rather than stop at the worktop");
 assert.match(redesignedLab,/arrangeLabVessels\(bench\)/);
-assert.match(redesignedLab,/lektrus-lab-chalk-steps/);
+assert.match(redesignedLab,/lektrus-lab-equation-history/);
 const redesignedCss=read("src/lektrusChemistryBench.css");
 assert.match(redesignedCss,/lektrus-lab-reagent-furniture[\s\S]*?lektrus-lab-glass-cupboard/);
 assert.match(redesignedCss,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
@@ -1050,7 +1050,7 @@ assert.match(editorFixed,/const width=w\/scale/,
  "Fullscreen scales rather than scrolls a 1600 x 1000 stage");
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-fit-stage/);
 const polishedSurface=read("src/LektrusChemistryBench.tsx");
-assert.match(polishedSurface,/currentQuantities&&/);
+assert.match(polishedSurface,/bench\.reactionLog/);
 assert.match(polishedSurface,/current.vessels.some\(labReactionNeedsTick\)/);
 assert.match(polishedSurface,/isQuantifiedSolution/);
 assert.match(polishedSurface,/settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing"/);
