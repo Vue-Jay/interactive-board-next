@@ -1407,6 +1407,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const dropCount=rate>=1?12:rate>=.2?5:1;
    const cycleSeconds=interval*dropCount;
    const gradientId="lektrus-titrant-"+v.id;
+   const liquidTint=v.reagents[0]?reagentAppearance(v.reagents[0]).color:"#8fcedc";
    const drops=Array.from({length:dropCount},(_,i)=>{
     const phaseStyle={
      "--lab-drop-x-early":dx*.14+"px",
@@ -1420,7 +1421,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     } as React.CSSProperties;
     return <g key={i} className="lektrus-lab-droplet" style={phaseStyle}>
      <path d="M0 -3.4C-1.4 -1.6 -2.4 .2 -2.1 2C-1.7 4.8 1.7 4.8 2.1 2C2.4 .2 1.4 -1.6 0 -3.4Z"
-      fill={"url(#"+gradientId+")"} stroke="#218cac" strokeWidth=".5"/>
+      fill={"url(#"+gradientId+")"} stroke="#5b9ea9" strokeWidth=".5"/>
      <path d="M-1.1 .2Q-1.7 1.1 -1.15 2.1" stroke="#fff" strokeWidth=".65"
       strokeLinecap="round" fill="none" opacity=".86"/>
     </g>;
@@ -1428,8 +1429,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    return <svg key={v.id+"-drops"} className="lektrus-lab-titration-drops"
     viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
     <defs><linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
-     <stop stopColor="#caeff6"/><stop offset=".32" stopColor="#f5ffff"/>
-     <stop offset=".75" stopColor="#67b8d1"/><stop offset="1" stopColor="#218bab"/>
+     <stop stopColor="#e8ffff" stopOpacity=".88"/>
+     <stop offset=".27" stopColor="#fff" stopOpacity=".95"/>
+     <stop offset=".7" stopColor={liquidTint} stopOpacity=".9"/>
+     <stop offset="1" stopColor="#5199ae" stopOpacity=".93"/>
     </linearGradient></defs>
     <g transform={`translate(${nozzleX} ${nozzleY})`}>{drops}</g>
     {Array.from({length:dropCount},(_,i)=><ellipse key={i}
