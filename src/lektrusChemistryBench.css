@@ -3260,16 +3260,47 @@
 .lektrus-lab-bench .lektrus-lab-titration-receiver{
  display:block;max-width:170px;font-size:11px;line-height:1.3;
  color:#356557;font-weight:700;overflow-wrap:anywhere}
-/* Falling drops run along the actual nozzle-to-flask path. */
+/* Real titration: separate glossy drops with a rounded tail, gravity
+   acceleration and a short surface ripple. Each SVG uses stage pixels,
+   so the droplets do not become horizontal ovals in widescreen mode. */
 .lektrus-lab-bench .lektrus-lab-titration-drops{
- position:absolute;inset:0;width:100%;height:100%;
- z-index:38;overflow:visible;pointer-events:none!important}
-.lektrus-lab-bench .lektrus-lab-titration-flow-path{
- fill:none;stroke:#9ce2eb;stroke-width:.4;stroke-linecap:round;opacity:.45}
-.lektrus-lab-bench .lektrus-lab-titration-flow-drops{
- fill:none;stroke:#39a5c8;stroke-width:.8;stroke-linecap:round;
- stroke-dasharray:.1 1.2;animation:lektrus-live-drop .55s linear infinite}
-@keyframes lektrus-live-drop{from{stroke-dashoffset:1.3}to{stroke-dashoffset:0}}
+ position:absolute;inset:0;display:block!important;width:100%;height:100%;
+ z-index:38;overflow:visible;pointer-events:none!important
+}
+.lektrus-lab-bench .lektrus-lab-droplet{
+ opacity:0;
+ transform-origin:0 0;
+ animation-name:lektrus-lab-gravity-drop;
+ animation-timing-function:linear;
+ animation-iteration-count:infinite;
+ pointer-events:none;
+ will-change:transform,opacity
+}
+@keyframes lektrus-lab-gravity-drop{
+ 0%,4%{opacity:0;transform:translate(0,0) scale(.4,.3)}
+ 9%{opacity:.94;transform:translate(0,0) scale(.72,.86)}
+ 17%{opacity:1;transform:translate(0,1px) scale(.9,1)}
+ 23%{opacity:1;transform:translate(0,2px) scale(.86,1.15)}
+ 33%{opacity:1;transform:translate(var(--lab-drop-x-early),var(--lab-drop-y-early)) scale(.88,1.08)}
+ 45%{opacity:1;transform:translate(var(--lab-drop-x-middle),var(--lab-drop-y-middle)) scale(.95,1)}
+ 55%{opacity:.94;transform:translate(var(--lab-drop-x-final),var(--lab-drop-y-final)) scale(.85,.9)}
+ 57%,100%{opacity:0;transform:translate(var(--lab-drop-x-final),var(--lab-drop-y-final)) scale(.7,.35)}
+}
+.lektrus-lab-bench .lektrus-lab-titration-ripple{
+ opacity:0;
+ transform-box:fill-box;
+ transform-origin:center;
+ animation-name:lektrus-lab-titration-impact;
+ animation-timing-function:linear;
+ animation-iteration-count:infinite;
+ pointer-events:none;
+}
+@keyframes lektrus-lab-titration-impact{
+ 0%,52%{opacity:0;transform:scale(.45)}
+ 55%{opacity:.75;transform:scale(.75)}
+ 60%{opacity:.44;transform:scale(1.4)}
+ 66%,100%{opacity:0;transform:scale(2)}
+}
 /* Gravity-flow curve starts at the moving glass lip and enters the receiver.
    No rising dotted arc or detached, full-screen diagonal fake stream. */
 .lektrus-lab-bench .lektrus-lab-pour-stream.is-gradual{
@@ -3478,3 +3509,17 @@
  .lektrus-lab-bench .lektrus-lab-temperature-toggle>span:last-child{display:none}
  .lektrus-lab-bench .lektrus-lab-arrange-btn{display:none!important}
 }
+
+/* The flow amount is still simulated, but motion-sensitive and disabled
+   animation modes get a quiet meniscus instead of looping falling drops. */
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench .lektrus-lab-droplet,
+ .lektrus-lab-bench .lektrus-lab-titration-ripple{animation:none!important;opacity:0!important}
+ .lektrus-lab-bench .lektrus-lab-droplet:first-child{
+  opacity:.85!important;transform:translate(0,3px) scale(.55)!important}
+}
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-droplet,
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-titration-ripple{
+ animation:none!important;opacity:0!important}
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-droplet:first-child{
+ opacity:.85!important;transform:translate(0,3px) scale(.55)!important}
