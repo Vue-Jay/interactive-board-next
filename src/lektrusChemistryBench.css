@@ -3711,3 +3711,53 @@
 .lektrus-lab-bench .lektrus-lab-filter-residue small{font-size:9px}
 .lektrus-lab-bench .lektrus-lab-placed-device.is-filter.is-drop-device{
  filter:drop-shadow(0 0 8px #45bb8c)}
+
+/* Physical processes are distinct from chemical reaction bursts: dissolving
+   solutes disperse without creating reaction products; explicit water boils. */
+.lektrus-lab-bench .lektrus-lab-dissolving-particles circle{
+ opacity:0;animation:lektrus-lab-solute-disperse 3.5s ease-out forwards;
+ transform-origin:center;transform-box:fill-box}
+@keyframes lektrus-lab-solute-disperse{
+ 0%{opacity:.95;transform:translateY(7px) scale(1.25)}
+ 35%{opacity:.8;transform:translate(-4px,-12px) scale(.8)}
+ 70%{opacity:.4;transform:translate(8px,-27px) scale(.4)}
+ 100%{opacity:0;transform:translate(12px,-33px) scale(.12)}
+}
+.lektrus-lab-bench .lektrus-lab-boiling-particles circle{
+ animation:lektrus-lab-boil-rise 1.8s ease-in infinite}
+@keyframes lektrus-lab-boil-rise{
+ 0%{transform:translateY(8px) scale(.45);opacity:0}
+ 20%{opacity:.65}
+ 80%{transform:translateY(-34px) scale(1.3);opacity:.8}
+ 100%{transform:translateY(-48px) scale(1.6);opacity:0}
+}
+.lektrus-lab-bench .lektrus-lab-steam-plumes path{
+ animation:lektrus-lab-steam-rise 2.7s ease-out infinite;opacity:0}
+@keyframes lektrus-lab-steam-rise{
+ 0%{opacity:0;transform:translateY(7px)}
+ 23%{opacity:.65}
+ 100%{opacity:0;transform:translateY(-30px)}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench .lektrus-lab-dissolving-particles circle,
+ .lektrus-lab-bench .lektrus-lab-boiling-particles circle,
+ .lektrus-lab-bench .lektrus-lab-steam-plumes path{animation:none!important}
+ .lektrus-lab-bench .lektrus-lab-boiling-particles circle{opacity:.6}
+}
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-dissolving-particles circle,
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-boiling-particles circle,
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-steam-plumes path{animation:none!important}
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-boiling-particles circle{opacity:.6}
+/* Catalogue cards favor solutions with one-click form filters rather than
+   forcing teachers to traverse physical-state groups manually. */
+.lektrus-lab-furniture-modal .lektrus-lab-reagent-form-tabs{
+ display:flex;flex-wrap:wrap;gap:5px;padding:0 2px;flex:0 0 auto}
+.lektrus-lab-furniture-modal .lektrus-lab-reagent-form-tabs button{
+ flex:1 1 95px;min-width:0;min-height:33px;padding:5px 9px;
+ border:1px solid #a4c5b4;border-radius:9px;background:#e9f3ec;
+ color:#376956;font:750 11px/1.2 system-ui,sans-serif;cursor:pointer}
+.lektrus-lab-furniture-modal .lektrus-lab-reagent-form-tabs button.is-active{
+ background:#c9ebd6;border-color:#54a57f;color:#215d47;
+ box-shadow:inset 0 0 0 1px #73be97}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-sortbar select{
+ width:100%;min-width:0;max-width:none;box-sizing:border-box}
