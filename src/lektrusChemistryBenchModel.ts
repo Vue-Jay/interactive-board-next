@@ -651,7 +651,7 @@ export type LabBenchSettings={
  showTemperatures:boolean;
 };
 export const defaultLabBenchSettings=():LabBenchSettings=>({
- showEquationBoard:false,showVesselLabels:true,animateEffects:true,showTemperatures:true
+ showEquationBoard:true,showVesselLabels:true,animateEffects:true,showTemperatures:true
 });
 export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
  ...defaultLabBenchSettings(),...bench.settings
@@ -869,7 +869,7 @@ export function labVesselContents(v:LabVessel){
    if(mol<=1e-12)continue;
    // Only non-dissolved solids remain a separate particulate phase.
    if(v.doses?.[formula]?.unit==="g"&&!LAB_WATER_SOLUTES.has(formula)&&formula!=="H2O")
-    solid.push({formula,massG:labMolarMass(formula)!*mol});
+    solid.push({formula,massG:labMolarMass(formula)===undefined?undefined:labMolarMass(formula)!*mol});
    else solution.push({formula,mmol:formatMol(mol)});
   }
  }else if(v.filteredSolution){
