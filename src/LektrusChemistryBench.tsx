@@ -471,9 +471,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const visibleSubstances=catalogue.flatMap(v=>v.items);
  const reagent=chosen?substances.find(s=>s.id===chosen):null;
  const classes=["Все",...new Set(substances.map(s=>s.kind))];
- const titrationSources=bench.vessels.filter(v=>v.kind==="burette"&&v.reagents.length>0);
- const activeBurette=selected?.kind==="burette"?selected:titrationSources.find(v=>
-  bench.titrationPair?.sourceId===v.id);
  const selectedBurette=selected?.kind==="burette"?selected:undefined;
  const buretteTargets=selectedBurette?bench.vessels.filter(v=>
   v.id!==selectedBurette.id&&["beaker","flask","conical","tube"].includes(v.kind)):[];
