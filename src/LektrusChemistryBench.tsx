@@ -334,7 +334,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [dropFurniture,setDropFurniture]=useState<"sink"|"glassware"|null>(null);
  const [dropDeviceShelf,setDropDeviceShelf]=useState(false);
  const [transfer,setTransfer]=useState<{from:{x:number;y:number};to:{x:number;y:number}}|null>(null);
- const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"equipment"|"settings"|null>(null);
+ const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"equipment"|null>(null);
  const [pendingGlassware,setPendingGlassware]=useState<LabGlassware|null>(null);
  const [showAllGlassware,setShowAllGlassware]=useState(false);
  const [showAllDevices,setShowAllDevices]=useState(false);
@@ -861,7 +861,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    "Опыт подготовлен: соедините вещества, чтобы наблюдать реакцию");
   setCabinet(null);
  };
- const openCabinet=(next:"reagents"|"glassware"|"equipment"|"settings")=>{
+ const openCabinet=(next:"reagents"|"glassware"|"equipment")=>{
   if(!editable)return;setCabinet(next);setNotice("");setChosen(null);
   setShowAllGlassware(false);setShowAllDevices(false);
  };
@@ -979,8 +979,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    onPointerUp={e=>e.stopPropagation()}>
    <button type="button" className="lektrus-lab-furniture-title lektrus-lab-reagent-shelf-header"
     disabled={!editable} onClick={e=>{e.stopPropagation();openCabinet("reagents")}}
-    title="Открыть шкаф и изменить быстрый набор">РЕАКТИВЫ
-    <span aria-hidden="true"> ⚙</span></button>
+    title="Открыть шкаф реактивов">РЕАКТИВЫ</button>
    <div className="lektrus-lab-bottle-rack" role="group" aria-label="Реактивы быстрого доступа">
     {quickReagents.map(v=>{
      const item=substances.find(r=>r.id===v.id);
@@ -1521,10 +1520,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      }}>
      <header className="lektrus-lab-modal-head">
       <div className="lektrus-lab-modal-heading">
-       <span className="lektrus-lab-modal-emblem" aria-hidden="true">{cabinet==="reagents"?"⚗":cabinet==="glassware"?"◈":"⚙"}</span>
-       <span><strong>{cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":cabinet==="equipment"?"Шкаф приборов":"Настройки стола"}</strong>
+       <span className="lektrus-lab-modal-emblem" aria-hidden="true">{cabinet==="reagents"?"⚗":cabinet==="glassware"?"◈":"▤"}</span>
+       <span><strong>{cabinet==="reagents"?"Шкаф реактивов":cabinet==="glassware"?"Шкаф посуды":"Шкаф приборов"}</strong>
         <small>{cabinet==="reagents"?"Выберите вещество и отмерьте нужное количество":
-          cabinet==="glassware"?"Возьмите посуду на рабочий стол":cabinet==="equipment"?"Возьмите прибор и работайте с ним на столе":"Настройки этой лаборатории"}</small></span>
+          cabinet==="glassware"?"Возьмите посуду на рабочий стол":"Возьмите прибор и работайте с ним на столе"}</small></span>
       </div>
       <button type="button" aria-label="Закрыть шкаф" onClick={()=>setCabinet(null)}>×</button>
      </header>
@@ -1718,18 +1717,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        })}
       </div>
       <p className="lektrus-lab-safe-caption">Нагрев и горение изменяют условия выбранного сосуда только в виртуальной модели. Мешалка и штатив не создают новых химических продуктов; термометр не показывает выдуманную температуру.</p>
-     </div>}
-     {cabinet==="settings"&&<div className="lektrus-lab-modal-settings">
-      <p>Настройки принадлежат этому химическому столу и сохраняются с ним.</p>
-      {([
-       ["showEquationBoard","Доска с уравнениями","Показывать на стене уравнение проверенной реакции"],
-       ["showVesselLabels","Подписи над посудой","Показывать формулы содержимого над сосудами"],
-       ["animateEffects","Анимации","Газ, осадок, переливание и слив"]
-      ] as const).map(([id,title,description])=><label key={id}>
-       <span><strong>{title}</strong><small>{description}</small></span>
-       <input type="checkbox" checked={settings[id]}
-        onChange={e=>onChange?.(setLabBenchSettings(bench,{[id]:e.target.checked}))}/>
-      </label>)}
      </div>}
     </section>
    </div>,document.body)}
