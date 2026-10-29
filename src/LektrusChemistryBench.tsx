@@ -8,7 +8,7 @@ import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,typ
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
 import {labVesselPH} from "./lektrusLabPH";
-import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,type CatalogueGroup,type CatalogueSort,type StoragePhase}
+import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,labIsPreparedStock,labDefaultStockDose,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
@@ -954,8 +954,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const value=Number(amount.replace(",","."));
   if(reagent&&!labReagentForms(reagent).includes(unit)){setNotice("Эта форма реактива недоступна");return}
   if(!Number.isFinite(value)||value<=0||value>10000){setNotice("Укажите количество больше нуля и не более 10000");return}
-  const isQuantifiedSolution=unit==="ml"&&!!reagent&&
-   ["кислота","основание","соль","пероксид"].includes(reagent.kind);
+  const isQuantifiedSolution=unit==="ml"&&!!reagent&&labIsPreparedStock(reagent.id);
   const concentration=Number(molarity.replace(",","."));
   if(isQuantifiedSolution&&(!Number.isFinite(concentration)||
     concentration<.001||concentration>2)){
@@ -975,6 +974,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const vessels=row.reactants.map((reagent,i)=>({
    id:"v"+(i+1),kind:(i===0?"beaker":"tube") as LabGlassware,
    x:row.reactants.length===3?23+i*27:i===0?31:72,y:69,reagents:[reagent],
+   doses:(()=>{
+    const dose=labDefaultStockDose(reagent,
+     row.environment==="aqueous"?undefined:"g")??labDefaultStockDose(reagent);
+    return dose?{[reagent]:dose}:undefined;
+   })(),
    environment:(row.environment==="aqueous"?"aqueous":"dry") as "aqueous"|"dry",observed:false
   }));
   if(!vessels.length)return;
@@ -1779,7 +1783,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         <label>{unit==="ml"?"Объём, мл":"Масса, г"}
          <input type="number" inputMode="decimal" min="0" max="10000" step="10"
           value={amount} onChange={e=>setAmount(e.target.value)} /></label>
-        {reagent&&unit==="ml"&&["кислота","основание","соль","пероксид"].includes(reagent.kind)&&
+        {reagent&&unit==="ml"&&labIsPreparedStock(reagent.id)&&
          <label>Концентрация, моль/л
           <input type="number" min="0" max="2" step="0.1" value={molarity}
            onChange={e=>setMolarity(e.target.value)} />
@@ -1819,8 +1823,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
            setNotice("Выбранная форма реактива не подходит");return}
           const concentration=Number(molarity.replace(",","."));
           if(!Number.isFinite(value)||value<=0||value>10000){setNotice("Укажите положительное количество");return}
-          const isQuantifiedSolution=unit==="ml"&&!!substance&&
-   ["кислота","основание","соль","пероксид"].includes(substance.kind);
+          const isQuantifiedSolution=unit==="ml"&&!!substance&&labIsPreparedStock(substance.id);
           if(isQuantifiedSolution&&(!Number.isFinite(concentration)||concentration<.001||concentration>2)){
            setNotice("Концентрация должна быть от 0,001 до 2 моль/л");return}
           const next=setLabQuickReagent(bench,chosen,{value,unit,
