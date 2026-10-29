@@ -847,6 +847,7 @@ export function parseDocument(raw: string): DocumentData {
               (d.heatLevel==null||[1,2,3].includes(d.heatLevel))&&
               (d.temperatureC==null||(Number.isFinite(d.temperatureC)&&d.temperatureC>=0&&d.temperatureC<=700))&&
               (d.linkedVesselId==null||bench.vessels.some(v=>v.id===d.linkedVesselId))&&
+               (d.filterStartedAtMs==null||(Number.isFinite(d.filterStartedAtMs)&&d.filterStartedAtMs>=0))&&
                (d.collectedResidue==null||(typeof d.collectedResidue.formula==="string"&&
                 d.collectedResidue.formula.length<=70&&typeof d.collectedResidue.color==="string"&&
                 d.collectedResidue.color.length<=35&&
