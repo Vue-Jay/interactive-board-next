@@ -51,7 +51,7 @@ export function buildLabCatalog(options:{query?:string;kind?:string;phase?:"all"
  const needle=query.toLocaleLowerCase("ru-RU").trim();
  const entries=substances.filter(v=>
   (kind==="Все"||v.kind===kind)&&
-  (phase==="all"||(phase==="liquid"&&labReagentForms(v).includes("ml"))||
+  (phase==="all"||(phase==="liquid"&&cabinetPhase(v)!=="gas"&&labReagentForms(v).includes("ml"))||
    (phase==="solid"&&labReagentForms(v).includes("g"))||
    (phase==="gas"&&cabinetPhase(v)==="gas"))&&
   (v.name+" "+v.formula+" "+(classNames[v.kind]??v.kind)).toLocaleLowerCase("ru-RU").includes(needle));
@@ -68,7 +68,7 @@ export function buildLabCatalog(options:{query?:string;kind?:string;phase?:"all"
    a.name.localeCompare(b.name,"ru-RU",{numeric:true});
  };
  const groupName=(v:Substance)=>group==="none"?"Все вещества":
-  group==="phase"?(labReagentForms(v).includes("ml")?"Растворы и жидкости":phaseNames[cabinetPhase(v)]):(classNames[v.kind]??v.kind);
+  group==="phase"?(cabinetPhase(v)==="gas"?"Газообразные":labReagentForms(v).includes("ml")?"Растворы и жидкости":phaseNames[cabinetPhase(v)]):(classNames[v.kind]??v.kind);
  const grouped=new Map<string,Substance[]>();
  for(const v of entries){
   const title=groupName(v);
