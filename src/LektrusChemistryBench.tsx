@@ -1203,9 +1203,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          map(v=><option key={v.id} value={v.id}>{names[v.kind]} · {v.id}</option>)}
        </select>
       </label>
-      <button type="button" title="Отделить осадок на виртуальном мембранном фильтре"
+      <button type="button" title="Отделить осадок на мембранном фильтре из шкафа приборов"
        onClick={e=>{
         e.stopPropagation();
+        if(!physicalDevices.some(d=>d.kind==="filter")){
+         setNotice("Сначала установите мембранный фильтр из шкафа приборов");
+         return;
+        }
         const target=bench.vessels.some(v=>v.id===filterReceiverId&&v.id!==selected.id&&!v.reagents.length)?
          filterReceiverId:bench.vessels.find(v=>v.id!==selected.id&&!v.reagents.length&&
           ["beaker","tube","flask","conical","volumetric"].includes(v.kind))?.id;
