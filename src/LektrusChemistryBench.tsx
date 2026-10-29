@@ -196,7 +196,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
     </g>}
    {vessel.kind==="burette"&&<g className="lektrus-lab-burette-stopcock">
     <path d="M42 112H61M50 111V126" stroke="#497b76" strokeWidth="3" strokeLinecap="round"/>
-    <path d="M39 114H64" stroke={vessel.buretteOpen?"#27a789":"#758f8c"} strokeWidth="5" strokeLinecap="round"/>
+    <path d={vessel.buretteOpen?"M52 102V125":"M39 114H64"} stroke={vessel.buretteOpen?"#27a789":"#758f8c"} strokeWidth="5" strokeLinecap="round"/>
     <circle cx="52" cy="114" r="4" fill="#e2f3ed" stroke="#47776f" strokeWidth="1.5"/>
     {vessel.buretteOpen&&<circle cx="50" cy="130" r="2.6" fill="#54b4c9" className="lektrus-lab-burette-drop"/>}
    </g>}
@@ -1276,6 +1276,46 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      titrationResult={bench.titrationPair?.targetId===v.id&&bench.titration?
       titrationReading(bench.titration):undefined}/>
    </button>;
+  })}
+  {editable&&bench.vessels.filter(v=>v.kind==="burette").map(v=>{
+   const p=vesselPosition(v);
+   const below=labReceiverBelowStand(bench,v.id);
+   const mounted=physicalDevices.some(d=>d.kind==="tripod"&&d.active&&d.linkedVesselId===v.id);
+   const receiver=mounted?below?.id:v.buretteTargetId??
+    bench.vessels.find(other=>other.id!==v.id&&["beaker","conical","flask","tube"].includes(other.kind))?.id;
+   const toggle=()=>{
+    onSelect?.(v.id);setVesselMenuId(v.id);
+    if(!v.buretteOpen&&(!v.reagents.length||!receiver)){
+     setNotice("Наполните бюретку и поставьте колбу на основание штатива");
+     return;
+    }
+    const next=setLabBuretteValve({...bench,simulationAtMs:Date.now()},v.id,
+     !v.buretteOpen,receiver,v.buretteRateMlS);
+    if(next!==bench)onChange?.(next);
+    setNotice(v.buretteOpen?"Кран закрыт, титрование остановлено":"Кран открыт, идёт титрование");
+   };
+   return <button key={v.id+"-valve"} type="button" data-board-interactive="true"
+    className={"lektrus-lab-valve-toggle"+(v.buretteOpen?" is-open":"")}
+    style={{left:Math.min(95,p.x+2.3)+"%",top:Math.min(91,p.y+7.4)+"%"}}
+    aria-label={(v.buretteOpen?"Закрыть":"Открыть")+" кран бюретки"}
+    aria-pressed={!!v.buretteOpen}
+    title={v.buretteOpen?"Перекрыть бюретку":"Открыть бюретку для титрования"}
+    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
+    onClick={e=>{e.stopPropagation();toggle()}}>
+    <span className="lektrus-lab-valve-lever" aria-hidden="true"/>
+   </button>;
+  })}
+  {bench.vessels.filter(v=>v.kind==="burette"&&v.buretteOpen&&v.buretteTargetId).map(v=>{
+   const destination=bench.vessels.find(other=>other.id===v.buretteTargetId);
+   if(!destination)return null;
+   const from=vesselPosition(v),to=vesselPosition(destination);
+   const x=from.x,y=from.y+8.1,tx=to.x,ty=to.y-9.2;
+   const stream=`M ${x} ${y} C ${x} ${y+3}, ${tx} ${ty-3}, ${tx} ${ty}`;
+   return <svg key={v.id+"-drops"} className="lektrus-lab-titration-drops"
+    viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+    <path d={stream} className="lektrus-lab-titration-flow-path"/>
+    <path d={stream} className="lektrus-lab-titration-flow-drops"/>
+   </svg>;
   })}
   {doseEffect&&<svg className="lektrus-lab-dose-animation" viewBox="0 0 100 100"
    preserveAspectRatio="none" aria-hidden="true">
