@@ -914,6 +914,11 @@ export function parseDocument(raw: string): DocumentData {
             environments.includes(v.environment)&&typeof v.observed==="boolean"&&
             (v.uncertain==null||typeof v.uncertain==="boolean")&&
             (v.indicator==null||indicators.includes(v.indicator))&&
+            (v.indicatorDrops==null||(Number.isSafeInteger(v.indicatorDrops)&&
+             v.indicatorDrops>=1&&v.indicatorDrops<=6&&
+             v.indicator!=null&&v.indicator!=="universal"))&&
+            (v.indicatorAddedAtMs==null||(Number.isFinite(v.indicatorAddedAtMs)&&
+             v.indicatorAddedAtMs>=0&&v.indicator!=null&&v.indicator!=="universal"))&&
             (v.temperatureC==null||(Number.isFinite(v.temperatureC)&&v.temperatureC>=0&&v.temperatureC<=1300))&&
             (v.buretteOpen==null||typeof v.buretteOpen==="boolean")&&
             (v.buretteRateMlS==null||[.05,.2,1].includes(v.buretteRateMlS))&&
