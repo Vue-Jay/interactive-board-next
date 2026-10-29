@@ -22,17 +22,14 @@ export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
  {id:"burette",name:"Бюретка",description:"Дозирование при титровании"}
 ];
 /** A work mode selects the useful tools; existing apparatus stays on the table. */
-export type LabMode="qualitative"|"quantitative"|"titration"|"solutions"|"synthesis";
+/** Legacy qualitative/quantitative values are migrated on read. */
+export type LabMode="reactions"|"qualitative"|"quantitative"|"titration"|"solutions"|"synthesis";
 export const LAB_MODES:{id:LabMode;name:string;description:string;
  glassware:LabGlassware[];devices:LabAvailableDevice[]}[]=[
- {id:"qualitative",name:"Качественные реакции",
-  description:"Распознавание веществ по осадку, газу, цвету и другим признакам",
-  glassware:["tube","beaker","pipette","conical","dish"],
-  devices:["tripod","burner","hotplate","filter"]},
- {id:"quantitative",name:"Количественные реакции",
-  description:"Измеренные массы, объёмы и концентрации, расчёт по уравнению",
-  glassware:["beaker","cylinder","pipette","volumetric","conical","flask"],
-  devices:["stirrer","hotplate","tripod","filter"]},
+ {id:"reactions",name:"Реакции",
+  description:"Качественные наблюдения и расчёты по измеренным количествам",
+  glassware:["tube","beaker","pipette","conical","dish","cylinder","flask","volumetric"],
+  devices:["tripod","burner","hotplate","stirrer","filter"]},
  {id:"titration",name:"Титрование",
   description:"Бюретка со штативом, дозирование по каплям и точка эквивалентности",
   glassware:["burette","conical","pipette","beaker","cylinder"],
@@ -47,7 +44,8 @@ export const LAB_MODES:{id:LabMode;name:string;description:string;
   devices:["tripod","burner","hotplate","stirrer","filter"]}
 ];
 export const labMode=(bench:LabBench):LabMode=>
- LAB_MODES.some(m=>m.id===bench.mode)?bench.mode!:"qualitative";
+ bench.mode==="qualitative"||bench.mode==="quantitative"?"reactions":
+ LAB_MODES.some(m=>m.id===bench.mode)?bench.mode!:"reactions";
 export const labModeInfo=(bench:LabBench)=>LAB_MODES.find(m=>m.id===labMode(bench))!;
 export function setLabMode(bench:LabBench,mode:LabMode):LabBench{
  if(!LAB_MODES.some(v=>v.id===mode)||labMode(bench)===mode)return bench;
@@ -777,6 +775,10 @@ export const labPourAmounts=(p:LabPourProgress)=>Object.entries(p.initialDoses).
  id,unit:d.unit,transferred:Math.round(d.value*p.step/p.totalSteps*1000)/1000,
  remaining:Math.round(d.value*(1-p.step/p.totalSteps)*1000)/1000}));
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:LabMode;pouring?:LabPourProgress;
+ /** Equations remain on the shared chalkboard until manually wiped. */
+ reactionLog?:string[];
+ /** Prevents a wiped, still-present reaction from being written again. */
+ seenReactionKeys?:string[];
  settings?:LabBenchSettings;quickReagents?:LabQuickReagent[];devices?:LabDevice[];placedDevices?:LabPlacedDevice[];titration?:TitrationModel;stirringVesselId?:string;
  instrumentTarget?:{kind:"tripod"|"thermometer";vesselId:string};
  titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;}
@@ -789,7 +791,7 @@ export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSett
 }
 export const defaultLabBench=():LabBench=>({
  vessels:[{id:"v1",kind:"beaker",x:48,y:70,reagents:[],environment:"aqueous",observed:false}],
- selectedId:"v1",event:0,mode:"qualitative",settings:defaultLabBenchSettings()
+ selectedId:"v1",event:0,mode:"reactions",settings:defaultLabBenchSettings()
 });
 export function readLabBench(item:Item):LabBench{
  if(item.scienceLabBench)return {...item.scienceLabBench,
@@ -801,6 +803,91 @@ export function readLabBench(item:Item):LabBench{
  return initial;
 }
 export const selectedLabVessel=(bench:LabBench)=>bench.vessels.find(v=>v.id===bench.selectedId)??bench.vessels[0];
+/** Persistent equation history. Recognized reactions are recorded once per
+ * source vessel and equation; wiping the board never restarts an old entry. */
+export function recordLabReactions(bench:LabBench):LabBench{
+ const seen=new Set(bench.seenReactionKeys??[]);
+ const log=[...(bench.reactionLog??[])];
+ let changed=false;
+ for(const vessel of bench.vessels){
+  const current=labObservation(vessel);
+  const row=current.status==="reaction"?current.caseData:undefined;
+  if(!row?.equation)continue;
+  const key=vessel.id+"|"+row.equation;
+  if(seen.has(key))continue;
+  seen.add(key);changed=true;
+  if(log.length>=30)log.shift();
+  log.push(row.equation);
+ }
+ return changed?{...bench,reactionLog:log,seenReactionKeys:[...seen].slice(-150),
+  event:bench.event+1}:bench;
+}
+export function wipeLabChalkboard(bench:LabBench):LabBench{
+ if(!(bench.reactionLog?.length))return bench;
+ return {...bench,reactionLog:[],event:bench.event+1};
+}
+/** A measured suspension is two physically different phases.
+ * Insoluble products are selected ONLY by a ↓ in the reviewed equation.
+ * Mass is calculated from measured product moles, never inferred from a
+ * precipitation animation. Densities give physical layer volume. */
+const precipitateDensity:Record<string,number>={
+ AgCl:5.56,AgBr:6.47,AgI:5.68,BaSO4:4.5,CaCO3:2.71,
+ "Cu(OH)2":3.37,"Fe(OH)3":3.4,"Fe(OH)2":3.4,
+ "Zn(OH)2":3.05,"Al(OH)3":2.42,PbI2:6.16
+};
+const formatMol=(v:number)=>Number((v*1000).toPrecision(4));
+export function labVesselContents(v:LabVessel){
+ const {volumeMl,capacityMl}=labVesselQuantity(v);
+ const quantities=v.reactionAmounts;
+ const equation=(v.completedReaction??labObservation(v).caseData)?.equation??"";
+ const products=(equation.split("→")[1]??"").split(/\s+\+\s+/);
+ const precipitates=new Set(products.filter(t=>t.includes("↓"))
+  .map(t=>t.replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim()));
+ const gases=new Set(products.filter(t=>t.includes("↑"))
+  .map(t=>t.replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim()));
+ const solid:{formula:string;massG?:number}[]=[];
+ const solution:{formula:string;mmol?:number}[]=[];
+ let precipitateG: number|undefined=undefined,precipitateVolumeMl: number|undefined=undefined;
+ if(v.filteredResidue){
+  solid.push({formula:v.filteredResidue.formula,massG:v.filteredResidue.massG});
+  precipitateG=v.filteredResidue.massG;
+  if(precipitateG!==undefined&&precipitateDensity[v.filteredResidue.formula])
+   precipitateVolumeMl=precipitateG/precipitateDensity[v.filteredResidue.formula];
+ }else if(quantities){
+  for(const [formula,mol] of Object.entries(quantities.productsMol)){
+   if(mol<=1e-12||gases.has(formula))continue;
+   if(precipitates.has(formula)){
+    const mass=labMolarMass(formula);
+    const massG=mass===undefined?undefined:mol*mass;
+    solid.push({formula,massG});
+    if(massG!==undefined)precipitateG=(precipitateG??0)+massG;
+    if(massG!==undefined&&precipitateDensity[formula])
+     precipitateVolumeMl=(precipitateVolumeMl??0)+massG/precipitateDensity[formula];
+   }else solution.push({formula,mmol:formatMol(mol)});
+  }
+  for(const [formula,mol] of Object.entries(quantities.remainingMol)){
+   if(mol<=1e-12)continue;
+   // Only non-dissolved solids remain a separate particulate phase.
+   if(v.doses?.[formula]?.unit==="g"&&!LAB_WATER_SOLUTES.has(formula)&&formula!=="H2O")
+    solid.push({formula,massG:labMolarMass(formula)!*mol});
+   else solution.push({formula,mmol:formatMol(mol)});
+  }
+ }else if(v.filteredSolution){
+  solution.push(...v.filteredSolution.solutes.map(formula=>({formula})));
+  if(!solution.length&&volumeMl>0)solution.push({formula:"Раствор"});
+ }else{
+  for(const formula of v.reagents){
+   const d=v.doses?.[formula];
+   if(d?.unit==="g"&&!LAB_WATER_SOLUTES.has(formula))solid.push({formula,massG:d.value});
+   else solution.push({formula});
+  }
+ }
+ return {solutionMl:volumeMl,capacityMl,solution,solid,
+  precipitateG,precipitateVolumeMl,
+  precipitateFraction:precipitateVolumeMl===undefined?undefined:
+   Math.max(0,Math.min(.8,precipitateVolumeMl/capacityMl))};
+}
+
 export function labReactionNeedsTick(vessel:LabVessel):boolean{
  if(vessel.uncertain)return false;
  if(vessel.reactionHeat&&!vessel.reactionHeat.complete)return true;
