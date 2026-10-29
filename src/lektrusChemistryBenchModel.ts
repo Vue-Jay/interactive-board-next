@@ -369,13 +369,23 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const next=Math.round(Math.max(ambient,Math.min(isWater?100:400,raw))*10)/10;
   const cooling=!device?.powered&&next<42&&v.temperatureC!==undefined&&
    ["heated","ignited"].includes(v.environment);
-  if(next!==old||cooling)changed=true;
-  if(next===old&&!cooling)return v;
-  // Once the apparatus is off and a vessel has cooled, stop treating it
-  // as continuously heated. Preserve its verified completed chemistry.
+  // Only a separately measured PURE-WATER dose can be evaporated without
+  // inventing the solvent composition of an acid/salt stock solution.
+  const pureWater=v.reagents.length===1&&v.reagents[0]==="H2O"&&
+   v.doses?.H2O?.unit==="ml";
+  const boiling=!!device?.powered&&pureWater&&next>=99.5;
+  const water=v.doses?.H2O;
+  const newWater=boiling&&water?Math.max(0,
+   Math.round((water.value-seconds*.02)*100)/100):water?.value;
+  const evaporating=boiling&&newWater!==water?.value;
+  if(next!==old||cooling||evaporating)changed=true;
+  if(next===old&&!cooling&&!evaporating)return v;
   const hasLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml");
   return {...v,temperatureC:next,
-   environment:cooling?(hasLiquid?"aqueous":"dry"):v.environment};
+   ...(evaporating?{doses:newWater!>0?{H2O:{...water!,value:newWater!}}:undefined,
+    reagents:newWater!>0?v.reagents:[],observed:false}:{}),
+   environment:evaporating&&newWater===0?"dry":
+    cooling?(hasLiquid?"aqueous":"dry"):v.environment};
  });
  result={...result,vessels};
  // Quantitative progress is allowed only for balanced and fully measured cases.
