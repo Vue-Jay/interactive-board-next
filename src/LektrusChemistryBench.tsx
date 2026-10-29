@@ -1121,6 +1121,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      onPointerCancel={e=>{e.stopPropagation();deviceGesture.current=null;setDevicePreview(null);setDropDeviceShelf(false)}}
      onClick={e=>{e.stopPropagation();if(e.detail===0)setActiveDeviceId(device.id)}}>
      <LektrusLabDeviceIcon kind={device.kind} size={150}
+      collectedResidue={device.collectedResidue}
+      filtering={!!device.filterStartedAtMs&&Date.now()-device.filterStartedAtMs<2400}
       active={!!device.powered} editable={editable} controlsVisible={focused}
       temperatureVisible={settings.showTemperatures}
       temperatureC={device.temperatureC} targetTemperatureC={device.targetTemperatureC}
