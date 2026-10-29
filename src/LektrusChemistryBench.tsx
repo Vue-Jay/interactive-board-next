@@ -1160,7 +1160,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         <small>{device.collectedResidue.massG!==undefined?
          device.collectedResidue.massG.toLocaleString("ru-RU")+" г":"осадок"}</small></>:
         "↓ Слить сюда"}
-      </span>
+      </span>}
       {editable&&<div className={"lektrus-lab-device-face-controls is-"+device.kind}
        onPointerDown={e=>e.stopPropagation()}
        onPointerMove={e=>e.stopPropagation()}
