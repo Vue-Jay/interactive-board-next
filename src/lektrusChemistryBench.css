@@ -3011,3 +3011,118 @@
  outline:2px solid #498b72!important;outline-offset:2px!important}
 @media(prefers-reduced-motion:reduce){
  .lektrus-lab-bench .lektrus-lab-burner-valve-lever{transition:none}}
+
+
+/* Reaction event layer is synchronized by visualStartedAtMs on the shared bench.
+   Effects are transient. The liquid/precipitate rendering remains persistent. */
+.lektrus-lab-bench .lektrus-lab-vessel-art{position:relative!important;overflow:visible!important}
+.lektrus-lab-bench .lektrus-lab-reaction-burst{
+ position:absolute;left:50%;top:-12%;width:130%;height:115%;
+ transform:translateX(-50%);z-index:14;pointer-events:none!important;
+ overflow:visible!important;isolation:isolate;filter:drop-shadow(0 1px 1px #274b463b)}
+.lektrus-lab-reaction-light{
+ position:absolute;inset:14% 4% 0;border-radius:50%;
+ background:radial-gradient(ellipse,#fffbe8 0%,#ffe9a79c 23%,#ff985326 56%,transparent 76%);
+ mix-blend-mode:screen;animation:lektrus-chem-light 2.8s ease-out both}
+.lektrus-lab-reaction-burst.is-flash .lektrus-lab-reaction-light{
+ background:radial-gradient(ellipse,#fff 0%,#fffbd9 25%,#f1bf6075 43%,transparent 72%);
+ animation:lektrus-chem-flash .85s ease-out both}
+.lektrus-lab-reaction-burst.is-magnesium .lektrus-lab-reaction-light{
+ background:radial-gradient(ellipse,#fff 0%,#fafafaed 24%,#d0e9f39e 55%,transparent 78%)}
+.lektrus-lab-reaction-shockwave{
+ position:absolute;left:50%;top:39%;width:27px;height:27px;
+ margin-left:-14px;margin-top:-14px;border:3px solid #fff5c9;
+ box-shadow:0 0 17px #ffdc77d9;border-radius:50%;
+ animation:lektrus-chem-shock .9s ease-out both}
+.lektrus-lab-reaction-flame{
+ position:absolute;bottom:27%;left:24%;width:52%;height:65%;
+ display:flex;align-items:flex-end;justify-content:center;
+ animation:lektrus-chem-flame-lifetime 3.4s both}
+.lektrus-lab-reaction-flame span{
+ width:38%;height:87%;border-radius:65% 10% 56% 45%;
+ background:linear-gradient(14deg,#fa6233 2%,#f5aa47 36%,#fff0b4 72%,#fff9ea 100%);
+ transform:rotate(-16deg);filter:drop-shadow(0 0 9px #f29b57);
+ animation:lektrus-chem-flicker .35s ease-in-out infinite alternate}
+.lektrus-lab-reaction-flame span:nth-child(2){
+ height:100%;margin:0 -15%;transform:rotate(7deg);
+ background:linear-gradient(12deg,#ee6836,#f2ad44 42%,#fff7d5 85%);
+ animation-delay:-.18s}
+.lektrus-lab-reaction-flame span:nth-child(3){height:70%;transform:rotate(21deg);animation-delay:-.25s}
+.lektrus-lab-reaction-burst.is-alcohol .lektrus-lab-reaction-flame span{
+ background:linear-gradient(14deg,#4ca9ca55,#7fd2efa8,#eafcfff1);
+ filter:drop-shadow(0 0 5px #a1ddfa)}
+.lektrus-lab-reaction-burst.is-magnesium .lektrus-lab-reaction-flame span{
+ background:linear-gradient(14deg,#d5edf0,#fff,#fff)}
+.lektrus-lab-reaction-mote{
+ position:absolute;left:50%;top:55%;width:5px;height:5px;
+ border-radius:50%;background:#ffd89f;opacity:0;
+ animation:lektrus-chem-mote 1.8s ease-out both;
+ animation-delay:var(--lab-particle-delay,0s)}
+.lektrus-lab-reaction-burst.is-sparks .lektrus-lab-reaction-mote{
+ width:3px;height:9px;border-radius:2px;background:#ffeab3;
+ box-shadow:0 0 8px #fcab47;animation-name:lektrus-chem-spark;animation-duration:1.2s}
+.lektrus-lab-reaction-burst:is(.is-smoke,.is-steam) .lektrus-lab-reaction-mote{
+ width:16px;height:16px;background:#a5b2adaf;filter:blur(4px);
+ animation-name:lektrus-chem-vapor;animation-duration:3.5s}
+.lektrus-lab-reaction-burst.is-steam .lektrus-lab-reaction-mote{
+ background:#f1f5e2ae;filter:blur(5px)}
+.lektrus-lab-reaction-burst.is-fizz .lektrus-lab-reaction-mote{
+ width:6px;height:6px;background:#ffffff8a;border:1px solid #85b3c8;
+ animation-name:lektrus-chem-fizz;animation-duration:2.6s}
+.lektrus-lab-reaction-burst.is-crystals .lektrus-lab-reaction-mote{
+ width:5px;height:7px;border-radius:1px;background:#e5d4ab;
+ animation-name:lektrus-chem-crystal;animation-duration:3s}
+.lektrus-lab-reaction-burst.is-thermal .lektrus-lab-reaction-mote{
+ width:8px;height:15px;border-radius:50%;background:#ffd5a74d;
+ filter:blur(4px);animation-name:lektrus-chem-vapor;animation-duration:2.4s}
+.lektrus-lab-reaction-burst.is-colorShift .lektrus-lab-reaction-mote{
+ width:12px;height:12px;background:#b6dfdd83;filter:blur(4px);
+ animation-name:lektrus-chem-vapor;animation-duration:2s}
+@keyframes lektrus-chem-light{
+ 0%{opacity:0;transform:scale(.65)}12%{opacity:1}55%{opacity:.65}
+ 100%{opacity:0;transform:scale(1.12)}}
+@keyframes lektrus-chem-flash{
+ 0%{opacity:0;transform:scale(.5)}8%{opacity:1;transform:scale(1.2)}
+ 24%{opacity:.84}100%{opacity:0;transform:scale(1.8)}}
+@keyframes lektrus-chem-shock{
+ 0%{opacity:0;transform:scale(.2)}12%{opacity:.9}
+ 100%{opacity:0;transform:scale(5)}}
+@keyframes lektrus-chem-flame-lifetime{
+ 0%{opacity:0;transform:scaleY(.3);transform-origin:bottom}
+ 18%{opacity:1;transform:scaleY(1);transform-origin:bottom}
+ 65%{opacity:.9}100%{opacity:0;transform:scaleY(.35);transform-origin:bottom}}
+@keyframes lektrus-chem-flicker{
+ from{transform:rotate(-16deg) scaleX(.78)}
+ to{transform:rotate(9deg) scaleX(1.15) translateY(-3px)}}
+@keyframes lektrus-chem-mote{
+ 0%{opacity:0;transform:translate(0,12px) scale(.5)}
+ 16%{opacity:1}100%{opacity:0;transform:translate(var(--lab-particle-x,20px),-70px) scale(.3)}}
+@keyframes lektrus-chem-spark{
+ 0%{opacity:0;transform:translate(0,8px) rotate(20deg)}
+ 20%{opacity:1}100%{opacity:0;transform:translate(var(--lab-particle-x,20px),-96px) rotate(var(--lab-particle-angle,60deg)) scale(.2)}}
+@keyframes lektrus-chem-vapor{
+ 0%{opacity:0;transform:translate(0,18px) scale(.5)}
+ 22%{opacity:.67}100%{opacity:0;transform:translate(var(--lab-particle-x,12px),-115px) scale(2.4)}}
+@keyframes lektrus-chem-fizz{
+ 0%{opacity:0;transform:translate(0,20px)}
+ 14%{opacity:.85}100%{opacity:0;transform:translate(var(--lab-particle-x,14px),-65px) scale(1.3)}}
+@keyframes lektrus-chem-crystal{
+ 0%{opacity:0;transform:translate(0,-12px) rotate(0)}
+ 20%{opacity:1}100%{opacity:0;transform:translate(var(--lab-particle-x,14px),60px) rotate(150deg)}}
+.lektrus-lab-bench .lektrus-lab-virtual-ignition{
+ background:#f9e9d6!important;border:1px solid #cc925e!important;
+ color:#86502d!important;font-weight:800!important;white-space:nowrap}
+.lektrus-lab-bench .lektrus-lab-virtual-ignition:hover{
+ background:#ffddba!important}
+.lektrus-lab-bench .lektrus-lab-reaction-family{
+ display:inline-flex;margin-left:6px;padding:2px 5px;vertical-align:middle;
+ border-radius:5px;background:#dbebe1;color:#3d7161;
+ font-size:10px!important;font-weight:700}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench .lektrus-lab-reaction-burst{
+  filter:none!important;opacity:0!important}
+ .lektrus-lab-bench .lektrus-lab-reaction-burst *{
+  animation:none!important;transition:none!important}
+}
+.lektrus-lab-bench.lab-reduced-animation .lektrus-lab-reaction-burst{
+ display:none!important}
