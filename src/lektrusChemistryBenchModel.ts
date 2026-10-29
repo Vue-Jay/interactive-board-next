@@ -71,7 +71,9 @@ export type LabPlacedDevice={id:string;kind:LabDevice;x:number;y:number;
  /** Mounted on the vessel, regardless of power. */ active?:boolean;
  linkedVesselId?:string;
  powered?:boolean;heatLevel?:1|2|3;temperatureC?:number;
- targetTemperatureC?:number;standHeight?:number;shelfVesselId?:string};
+ targetTemperatureC?:number;standHeight?:number;shelfVesselId?:string;
+ /** Solid retained inside the cartridge after pouring a precipitated mixture. */
+ collectedResidue?:{formula:string;massG?:number;color:string};};
 export const MAX_LAB_DEVICES=10;
 const clampDevice=(v:number,min:number,max:number)=>Math.round(Math.min(max,Math.max(min,v))*10)/10;
 /** V1 cabinets only stored the types. Preserve them when a board is upgraded. */
@@ -1081,6 +1083,37 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
   return v;
  });
  return {...bench,vessels,selectedId:sourceId,event:bench.event+1};
+}
+
+/** Pour a reacted suspension onto a placed filter cartridge.
+ * It retains the actual precipitate and lets the liquid through into a
+ * clean receiver automatically. No chooser, extra dialogs, or funnel. */
+export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string):LabBench{
+ const device=placedLabDevices(bench).find(d=>d.id===filterId&&d.kind==="filter");
+ const source=bench.vessels.find(v=>v.id===sourceId);
+ if(!device||device.collectedResidue||!source)return bench;
+ const receiver=bench.vessels.filter(v=>v.id!==sourceId&&!v.reagents.length&&
+  ["beaker","conical","flask","tube","volumetric"].includes(v.kind))
+  .sort((a,b)=>Math.hypot(a.x-device.x,a.y-device.y)-
+                 Math.hypot(b.x-device.x,b.y-device.y))[0];
+ let prepared=bench;
+ if(!receiver){
+  if(bench.vessels.length>=MAX_BENCH_VESSELS)return bench;
+  prepared=addLabVessel(bench,"beaker",{x:Math.min(82,device.x+8),y:Math.min(84,device.y+11)});
+ }
+ const target=receiver??prepared.vessels[prepared.vessels.length-1];
+ const separated=filterLabPrecipitate(prepared,sourceId,target.id);
+ if(separated===prepared)return bench;
+ const solid=separated.vessels.find(v=>v.id===sourceId)?.filteredResidue;
+ if(!solid)return bench;
+ return {...separated,selectedId:target.id,
+  vessels:separated.vessels.map(v=>v.id!==sourceId?v:{
+   ...v,reagents:[],doses:undefined,filteredResidue:undefined,
+   filteredSolution:undefined,environment:"aqueous" as const,
+   reactionAmounts:undefined,completedReaction:undefined,observed:false}),
+  placedDevices:placedLabDevices(separated).map(d=>d.id===filterId?
+   {...d,collectedResidue:solid}:d),
+  event:separated.event+1};
 }
 
 export function labVesselQuantity(vessel:LabVessel){
