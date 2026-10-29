@@ -1787,7 +1787,7 @@ const removedSelection=lab.mergeLabBench(reselected,
  lab.selectLabVessel(reselected,""),reselected);
 assert.equal(removedSelection.selectedId,"",
  "Peer merge must not silently reselect the first glassware");
-assert.match(labUi,/onSelect\?\.\("?"?\)/);
+assert.match(labUi,/onSelect\?\.\(""\)/);
 assert.match(labUi,/closest\("\[data-board-interactive\]"\)/,
  "Clicks on a vessel or interactive cabinet must not trigger deselection");
 assert.match(labUi,/lektrus-lab-quantity-meter/);
