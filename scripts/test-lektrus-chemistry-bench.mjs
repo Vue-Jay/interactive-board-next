@@ -750,6 +750,32 @@ const solidSample=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl",{value:12,
 assert.equal(lab.labVesselQuantity(solidSample.vessels[0]).massG,12);
 assert.equal(lab.labVesselQuantity(solidSample.vessels[0]).volumeMl,0);
 assert.ok(lab.labVesselQuantity(solidSample.vessels[0]).solidFraction>0);
+// Exact pipette sampling from multicomponent solutions is atomic. Rounding
+// cannot create a negative aliquot or list a component that did not transfer.
+let diluteSample=lab.defaultLabBench();
+for(const id of ["NaCl","KCl","NaNO3"])
+ diluteSample=lab.putLabReagent(diluteSample,"v1",id,{value:10,unit:"ml"});
+diluteSample=lab.addLabVessel(diluteSample,"pipette");
+const samplePipette=diluteSample.vessels.find(v=>v.kind==="pipette").id;
+const sampleBefore=lab.labVesselQuantity(diluteSample.vessels.find(v=>v.id==="v1"));
+diluteSample=lab.transferLabMeasuredLiquid(diluteSample,"v1",samplePipette,.01);
+const sampled=diluteSample.vessels.find(v=>v.id===samplePipette);
+assert.equal(lab.labVesselQuantity(sampled).volumeMl,.01);
+assert.equal(sampled.reagents.length,1,
+ "A trace rounded to zero must not materialize as an extra solute");
+assert.ok(Object.values(sampled.doses).every(d=>d.value>0));
+assert.equal(lab.labVesselQuantity(diluteSample.vessels.find(v=>v.id==="v1")).volumeMl,
+ sampleBefore.volumeMl-.01);
+assert.equal(lab.transferLabMeasuredLiquid(diluteSample,"v1",samplePipette,.005),diluteSample,
+ "Sub-centimilliliter volumes cannot be sampled");
+assert.equal(lab.transferLabMeasuredLiquid(diluteSample,"v1",samplePipette,50),diluteSample,
+ "More than the donor has must never be withdrawn");
+// Remote updates to the same shared laboratory must merge by stable IDs,
+// not as position-based arrays.
+const scienceEditor=read("src/LektrusScienceEditor.tsx");
+assert.match(scienceEditor,/mergeLabBench\(/);
+assert.match(scienceEditor,/onExperimentLiveChange\?\.\(draft,next\)/);
+
 const savedQuick=lab.defaultLabQuickReagents();
 assert.ok(savedQuick.length>=8&&savedQuick.length<=lab.MAX_QUICK_REAGENTS);
 let quickBench=lab.defaultLabBench();
