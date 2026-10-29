@@ -1044,8 +1044,10 @@ export function positionLabVessel(bench:LabBench,id:string,x:number,y:number):La
    ...(d.shelfVesselId===id?{shelfVesselId:undefined}:{})})),
   stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId};
 }
+/** Empty id means nothing is selected. It must remain a valid state so a
+ * click on the free worktop can dismiss the vessel readout. */
 export function selectLabVessel(bench:LabBench,id:string):LabBench{
- return bench.selectedId===id?bench:bench.vessels.some(v=>v.id===id)?
+ return bench.selectedId===id?bench:id===""||bench.vessels.some(v=>v.id===id)?
   {...bench,selectedId:id}:bench;
 }
 export function removeLabVessel(bench:LabBench,id:string):LabBench{
@@ -1586,8 +1588,11 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
   vessels.push(merged);
  }
  const limited=vessels.slice(0,MAX_BENCH_VESSELS);
- const selectedId=limited.some(v=>v.id===mine.selectedId)?mine.selectedId:
-  limited.some(v=>v.id===remote.selectedId)?remote.selectedId:(limited[0]?.id??"");
+ // Selection is transient shared board state; an explicit deselection is
+ // different from a missing/invalid id and must not reselect the first vessel.
+ const candidate=mine.selectedId!==previous.selectedId?mine.selectedId:remote.selectedId;
+ const selectedId=candidate===""?"":limited.some(v=>v.id===candidate)?candidate:
+  (limited[0]?.id??"");
  const originalSettings=labBenchSettings(previous),mineSettings=labBenchSettings(mine);
  const settings={...labBenchSettings(remote)};
  for(const key of Object.keys(mineSettings) as (keyof LabBenchSettings)[]){
