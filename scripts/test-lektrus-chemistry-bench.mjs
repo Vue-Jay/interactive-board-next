@@ -331,14 +331,35 @@ adjustable=lab.setLabStandHeight(adjustable,standForShelf,.8);
 assert.equal(adjustable.placedDevices[0].standHeight,.8);
 adjustable=lab.addLabVessel(adjustable,"conical");
 adjustable=lab.applyPlacedLabDevice(adjustable,standForShelf,"v1");
+const clampStand=lab.placedLabDevices(adjustable)[0];
+const highGrip=labLayout.labMountedGlasswarePoint(clampStand,
+ adjustable.vessels.find(v=>v.id==="v1"),1600,1000);
+assert.ok(highGrip.y<clampStand.y,
+ "Glassware must attach at the raised clamp instead of underneath the stand");
+const loweredStand={...clampStand,standHeight:0};
+const raisedStand={...clampStand,standHeight:1};
+const lowGrip=labLayout.labMountedGlasswarePoint(loweredStand,
+ adjustable.vessels.find(v=>v.id==="v1"),1600,1000);
+const upperGrip=labLayout.labMountedGlasswarePoint(raisedStand,
+ adjustable.vessels.find(v=>v.id==="v1"),1600,1000);
+assert.ok(upperGrip.y<lowGrip.y-8,
+ "The 0–100% clamp travel must lift glassware a visible distance");
+assert.equal(labLayout.labStandClampSvgY(1),12);
+assert.equal(labLayout.labStandClampSvgY(0),64);
+assert.ok(highGrip.x>clampStand.x,
+ "Held glassware must be located beside the rod at its clamp");
 adjustable=lab.setLabStandShelf(adjustable,standForShelf,"v2");
-assert.equal(adjustable.placedDevices[0].linkedVesselId,"v1");
-assert.equal(adjustable.placedDevices[0].shelfVesselId,"v2",
- "Lower ring must support a second vessel independently of the clamp");
+assert.equal(adjustable.placedDevices[0].linkedVesselId,"v2",
+ "Old shelf calls must use the only clamp rather than adding a second support");
+assert.equal(adjustable.placedDevices[0].shelfVesselId,undefined);
 assert.equal(lab.LAB_STAND_SHELF_TYPES.includes("tube"),false);
 adjustable=lab.positionLabVessel(adjustable,"v2",45,75);
-assert.equal(adjustable.placedDevices[0].shelfVesselId,undefined);
-assert.equal(adjustable.placedDevices[0].linkedVesselId,"v1");
+assert.equal(adjustable.placedDevices[0].linkedVesselId,undefined);
+const dualHolder=lab.placedLabDevices({...adjustable,placedDevices:[
+ {...adjustable.placedDevices[0],active:true,linkedVesselId:"v1",shelfVesselId:"v2"}]});
+assert.equal(dualHolder[0].linkedVesselId,"v1");
+assert.equal(dualHolder[0].shelfVesselId,undefined,
+ "Old two-holder stands must normalize to a single retort clamp");
 const migrated=lab.placedLabDevices({...lab.defaultLabBench(),devices:["burner","stirrer"]});
 assert.equal(migrated.length,2,"Previously saved laboratory devices must remain visible");
 assert.notEqual(migrated[0].id,migrated[1].id);
@@ -741,6 +762,25 @@ assert.deepEqual(lab.labPourAmounts(unknownGradual.pouring),[],
 assert.ok(unknownGradual.pouring.unmeasured);
 let clearedMidPour=lab.clearLabTable(unknownGradual);
 assert.equal(clearedMidPour.pouring,undefined);
+const standIcon=read("src/LektrusLabDeviceIcon.tsx");
+assert.match(standIcon,/V3/,"The rod must reach almost to the top of its SVG");
+assert.match(standIcon,/labStandClampSvgY\(standHeight\)/);
+assert.doesNotMatch(standIcon,/M49 65H70/,
+ "The obsolete second lower holder must be absent");
+const standUi=read("src/LektrusChemistryBench.tsx");
+assert.match(standUi,/labStandClampSvgY\(p\.standHeight\)/,
+ "Front jaws follow the same height as the rear clamp");
+assert.match(standUi,/applyPlacedLabDevice\(bench,appliance\.device\.id,g\.id,"clamp"\)/,
+ "Glassware drop must mount on the sole clamp");
+assert.match(standUi,/lektrus-lab-burner-valve/);
+assert.match(standUi,/Открыть газ и зажечь горелку/);
+assert.match(standUi,/Перекрыть газ горелки/);
+assert.doesNotMatch(standUi,/device\.kind==="burner"&&focused&&<button type="button"\s+className="lektrus-lab-device-power"/);
+const heightCss=read("src/lektrusChemistryBench.css");
+assert.match(heightCss,/height:clamp\(228px,19cqw,280px\)/);
+assert.match(heightCss,/lektrus-lab-device-face-temp:focus-visible/);
+assert.match(heightCss,/outline:none!important;outline-width:0!important/);
+assert.match(heightCss,/lektrus-lab-burner-valve-lever/);
 const gradualUi=read("src/LektrusChemistryBench.tsx");
 assert.match(gradualUi,/startLabPour\(bench,sourceId,targetId,id\)/);
 assert.match(gradualUi,/advanceLabPour\(current\)/);
