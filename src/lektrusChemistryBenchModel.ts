@@ -419,7 +419,8 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    phaseTransition!==v.phaseTransition;
   if(next!==old||cooling||evaporating||dissolutionComplete||phaseChanged)changed=true;
   if(next===old&&!cooling&&!evaporating&&!dissolutionComplete&&!phaseChanged)return v;
-  const hasLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml");
+  const hasLiquid=Object.entries(v.doses??{}).some(([id,d])=>d.unit==="ml"&&
+   substances.find(s=>s.id===id)?.kind!=="газ");
   return {...v,temperatureC:next,
    ...(phaseChanged?{meltFraction,phaseTransition}:{}),
    ...(dissolutionComplete?{physicalProcess:undefined,physicalStartedAtMs:undefined}:{}),
