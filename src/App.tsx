@@ -5722,7 +5722,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if(item.scienceAtomModel||item.graphFigureId==="chem-atom"){setAtomEditorItem(item);return;}
     if(item.graphFigureId==="chem-periodic"){setPeriodicEditorItem(item);return;}
     if(item.graphFigureId==="chem-experiment-free"){
-      setSelected([item.id]);setTool("select");return;
+      setScienceEditorItem(item);return;
     }
     if(item.graphFigureId?.startsWith("physics-")||item.graphFigureId?.startsWith("chem-")){setScienceEditorItem(item);return;}
     if(itemsRef.current.some(existing=>existing.id===item.id))setSelected([item.id]);
