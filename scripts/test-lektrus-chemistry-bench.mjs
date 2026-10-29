@@ -13,9 +13,11 @@ const load=(path,requireFn=()=>{throw Error("Unexpected import")})=>{
 const reaction=load("src/lektrusReactionDatabase.ts");
 const titration=load("src/lektrusLabTitration.ts");
 const layout=load("src/lektrusLabLayout.ts");
+const chem=load("src/lektrusLabStoichiometry.ts");
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabTitration")return titration;
  if(key==="./lektrusLabLayout")return layout;
+ if(key==="./lektrusLabStoichiometry")return chem;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
@@ -190,7 +192,7 @@ assert.doesNotMatch(catalogSource,/openCabinet\("titration"\)/,
  "Titration runs between real vessels without an independent editor");
 assert.match(catalogSource,/lektrus-lab-titration-on-table/);
 assert.match(catalogSource,/lektrus-lab-class-tabs/);
-assert.match(catalogSource,/labDevices\.map/);
+assert.match(catalogSource,/devicesForLabMode\(bench\)/);
 assert.match(catalogSource,/applyPlacedLabDevice\(/,
  "Apparatus must attach directly to physical vessels");
 assert.match(catalogSource,/downDevice\(/,
@@ -345,7 +347,7 @@ const upperGrip=labLayout.labMountedGlasswarePoint(raisedStand,
 assert.ok(upperGrip.y<lowGrip.y-8,
  "The 0–100% clamp travel must lift glassware a visible distance");
 assert.equal(labLayout.labStandClampSvgY(1),12);
-assert.equal(labLayout.labStandClampSvgY(0),64);
+assert.equal(labLayout.labStandClampSvgY(0),61);
 assert.ok(highGrip.x>clampStand.x,
  "Held glassware must be located beside the rod at its clamp");
 adjustable=lab.setLabStandShelf(adjustable,standForShelf,"v2");
@@ -971,7 +973,6 @@ assert.doesNotMatch(editor,/lektrus-lab-observation/,
 
 // Verified reactions advance by the exact balanced coefficients, not by
 // changing the carrier-solution volume or inventing concentration.
-const chem=load("src/lektrusLabStoichiometry.ts");
 assert.equal(Math.round(chem.labMolarMass("NaCl")*100)/100,58.44);
 assert.ok(Math.abs(chem.labMolarMass("Ca(OH)2")-74.092)<.02);
 assert.ok(chem.parseBalancedLabEquation("HCl + NaOH → NaCl + H2O"));
@@ -1041,17 +1042,60 @@ assert.ok(Math.abs(nextDrop.productsMol.NaCl-.0003)<1e-12,
  "The newly added 2 ml must grow the product total from 0.1 to 0.3 mmol");
 assert.ok(Math.abs(nextDrop.remainingMol.HCl-.0007)<1e-12);
 const editorFixed=read("src/LektrusChemistryBenchEditor.tsx");
-assert.match(editorFixed,/stageScale/);
-assert.match(editorFixed,/Math.min\(w\/1600,h\/1000\)/,
+assert.match(editorFixed,/setStage/);
+assert.match(editorFixed,/const width=w\/scale/,
  "Fullscreen scales rather than scrolls a 1600 x 1000 stage");
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-fit-stage/);
 const polishedSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(polishedSurface,/currentQuantities&&/);
 assert.match(polishedSurface,/current.vessels.some\(labReactionNeedsTick\)/);
 assert.match(polishedSurface,/isQuantifiedSolution/);
-assert.match(polishedSurface,/settings.showEquationBoard&&<div className="lektrus-lab-chalkboard"/);
+assert.match(polishedSurface,/settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing"/);
 const standFoot=read("src/LektrusLabDeviceIcon.tsx");
 assert.match(standFoot,/M22 96V3/);
 assert.match(read("src/lektrusLabLayout.ts"),/77\/110/);
 
+// Mode-specific apparatus must not remove any already placed work.
+assert.deepEqual(lab.LAB_MODES.map(m=>m.id),
+ ["qualitative","quantitative","titration","solutions","synthesis"]);
+let modeBench=lab.defaultLabBench();
+const previousPositions=JSON.stringify(modeBench.vessels);
+modeBench=lab.setLabMode(modeBench,"titration");
+assert.equal(lab.labMode(modeBench),"titration");
+assert.equal(JSON.stringify(modeBench.vessels),previousPositions);
+assert.ok(lab.glasswareForLabMode(modeBench).some(v=>v.id==="burette"));
+assert.ok(lab.devicesForLabMode(modeBench).some(v=>v.id==="tripod"));
+assert.ok(!lab.glasswareForLabMode(modeBench).some(v=>v.id==="crucible"));
+modeBench=lab.setLabMode(modeBench,"synthesis");
+assert.ok(lab.glasswareForLabMode(modeBench).some(v=>v.id==="crucible"));
+assert.ok(lab.devicesForLabMode(modeBench).some(v=>v.id==="burner"));
+const firstCoordinates=modeBench.vessels.map(v=>[v.id,v.x,v.y]);
+modeBench=lab.addLabVessel(modeBench,"tube",{x:66,y:75});
+assert.deepEqual(modeBench.vessels.slice(0,-1).map(v=>[v.id,v.x,v.y]),firstCoordinates,
+ "Inserting glassware at a pointer must never move existing vessels");
+assert.equal(modeBench.vessels.at(-1).x,66);
+assert.equal(modeBench.vessels.at(-1).y,75);
+const fallbackInserted=lab.addLabVessel(modeBench,"flask");
+assert.deepEqual(fallbackInserted.vessels.slice(0,-1),modeBench.vessels,
+ "Keyboard insertion uses an empty position, not a forced rearrangement");
+assert.equal(layout.labDisplayPoint(fallbackInserted.vessels[0],true).y,
+ layout.labDisplayPoint(fallbackInserted.vessels[0],false).y,
+ "Crossing the fourth vessel cannot change earlier screen positions");
+const writtenWall=read("src/LektrusChemistryBench.tsx");
+assert.match(writtenWall,/settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing"/);
+assert.doesNotMatch(writtenWall,/lektrus-lab-wall-guide/,
+ "Equation mode must only write to the integrated backboard");
+assert.match(writtenWall,/chooseGlassware\(kind\.id\)/);
+assert.match(writtenWall,/pendingGlassware/);
+assert.match(writtenWall,/glasswareForLabMode\(bench\)/);
+assert.match(writtenWall,/devicesForLabMode\(bench\)/);
+assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-bench-backdrop::before/);
+assert.match(editorFixed,/const scale=h\/1000/);
+const higherStand=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod");
+assert.equal(higherStand.placedDevices[0].standHeight,.88);
+const stand=higherStand.placedDevices[0];
+const receiving=layout.labStandBaseVesselPoint(stand,{kind:"conical"},1600,1000);
+const burette=layout.labMountedGlasswarePoint(stand,{kind:"burette"},1600,1000);
+assert.ok(receiving.y-burette.y>12,
+ "A taller stand must leave a visible gap for titrant drops");
 console.log("Virtual chemistry bench: glassware, mixing, curated results, heating, persistence and peer merge passed");
