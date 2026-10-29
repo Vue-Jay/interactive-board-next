@@ -1022,7 +1022,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <small>{kind.name}</small>
      </button>)}
    </div>
-   <span className="lektrus-lab-furniture-foot">Нажмите или перетащите</span>
+   <span className="lektrus-lab-furniture-foot">Выберите место на столе или перетащите</span>
   </div>
   <div  className={"lektrus-lab-device-cupboard"+(dropDeviceShelf?" is-dropzone":"")} data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
@@ -1651,8 +1651,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       </div>}
      </>}
      {cabinet==="glassware"&&<div className="lektrus-lab-modal-ware">
-      {labGlassware.map(v=><button type="button" key={v.id}
-       disabled={bench.vessels.length>=6} onClick={()=>take(v.id)}>
+      <div className="lektrus-lab-mode-cabinet-note">
+       <span>{labModeInfo(bench).name}: {labModeInfo(bench).description}</span>
+       <button type="button" onClick={()=>setShowAllGlassware(x=>!x)}>
+        {showAllGlassware?"Рекомендуемый набор":"Вся посуда"}
+       </button>
+      </div>
+      {(showAllGlassware?labGlassware:glasswareForLabMode(bench)).map(v=><button type="button" key={v.id}
+       disabled={bench.vessels.length>=6} onClick={()=>chooseGlassware(v.id)}>
        <LektrusLabGlasswareIcon kind={v.id} size={60}/>
        <strong>{v.name}</strong><small>{v.description}</small></button>)}
       <p>В шкаф возвращается только пустая посуда. Сначала слейте содержимое в раковину.</p>
@@ -1663,9 +1669,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       </button>
      </div>}
      {cabinet==="equipment"&&<div className="lektrus-lab-equipment-catalog">
-      <p>Выберите прибор. Он появится на столе и будет доступен каждому участнику.</p>
+      <p>{labModeInfo(bench).name}: {labModeInfo(bench).description}</p>
+      <button type="button" className="lektrus-lab-show-all-devices"
+       onClick={()=>setShowAllDevices(x=>!x)}>
+       {showAllDevices?"Рекомендуемые приборы":"Все приборы"}
+      </button>
       <div className="lektrus-lab-equipment-grid">
-       {labDevices.map(device=>{
+       {(showAllDevices?labDevices:devicesForLabMode(bench)).map(device=>{
         const count=physicalDevices.filter(d=>d.kind===device.id).length;
         return <button type="button" key={device.id}
          aria-label={"Поставить на стол: "+device.name} onClick={()=>takeDevice(device.id)}>
