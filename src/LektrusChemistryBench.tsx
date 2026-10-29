@@ -100,10 +100,10 @@ function LabReactionBurst({vessel,visual,formula}:{
  </div>;
 }
 
-function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,titrationResult,temperatureC,editable=false,onOpenSettings,temperatureVisible=true}:{
+function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,titrationResult,temperatureC,temperatureVisible=true}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
- editable?:boolean;onOpenSettings?:()=>void;temperatureVisible?:boolean}){
+ temperatureVisible?:boolean}){
  const id=useId().replace(/:/g,"");
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
@@ -135,10 +135,6 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
  const labels=species.map(([id])=>substances.find(s=>s.id===id)?.formula??id);
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
- const gearX=["tube","flask","conical","volumetric","pipette","burette"].includes(vessel.kind)?66:
-  vessel.kind==="cylinder"?75:vessel.kind==="crucible"?80:84;
- const gearY=vessel.kind==="dish"?70:vessel.kind==="crucible"?59:
-  15;
  const substanceState=amounts?
   (amounts.complete?"Превращение завершено":"Реакция "+Math.round(conversionFraction*100)+"%"):
   !vessel.reagents.length?"Пусто":
@@ -223,16 +219,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
     <text x="50" y="86" fontWeight="800" fontSize="10" textAnchor="middle"
      fill="#2c7162">≈{Math.round(temperatureC??22)}°C</text>
    </g>}
-   {editable&&<g role="button" tabIndex={0} className="lektrus-lab-svg-ware-control"
-    aria-label="Настроить сосуд" cursor="pointer"
-    onPointerDown={e=>e.stopPropagation()}
-    onClick={e=>{e.stopPropagation();onOpenSettings?.()}}
-    onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){
-     e.stopPropagation();e.preventDefault();onOpenSettings?.()}}}>
-    <circle cx={gearX} cy={gearY} r="9" fill="#e7f5e9" stroke="#65a58d" strokeWidth="1.6"/>
-    <text x={gearX} y={gearY+4.5} textAnchor="middle" fontSize="12"
-     fontWeight="900" fill="#366d57">⚙</text>
-   </g>}
+
 
   </svg>
   <LabReactionBurst vessel={vessel} visual={visualCase?.visual} formula={visualCase?.equation??""}/>
@@ -708,7 +695,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     }
    }
   }else if(!g.dragged&&effectivePouringId&&effectivePouringId!==g.id)transferVessel(effectivePouringId,g.id);
-  else if(!g.dragged){setActiveDeviceId(null);onSelect?.(g.id)}
+  else if(!g.dragged){setActiveDeviceId(null);onSelect?.(g.id);setVesselMenuId(current=>current===g.id?null:g.id)}
   setPreview(null);setDropTarget(null);setDropFurniture(null);setDropDeviceId(null);
  };
  const beginShelf=(event:PointerEvent<HTMLButtonElement>,kind:LabGlassware)=>{
@@ -1357,8 +1344,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     {bench.instrumentTarget?.kind==="tripod"&&bench.instrumentTarget.vesselId===v.id&&<span
      className="lektrus-lab-instrument-attachment">На штативе</span>}
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
-     editable={editable} temperatureVisible={settings.showTemperatures&&v.kind!=="burette"} onOpenSettings={()=>{onSelect?.(v.id);setActiveDeviceId(null);
-      setVesselMenuId(vesselMenuId===v.id?null:v.id)}}
+     temperatureVisible={settings.showTemperatures&&v.kind!=="burette"}
      stirring={bench.stirringVesselId===v.id||
       labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)}
      temperatureC={v.temperatureC??22}
