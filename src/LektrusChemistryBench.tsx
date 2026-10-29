@@ -137,19 +137,6 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
   amounts.extentMol/amounts.maxExtentMol:0:1;
  const boiling=!!volumeMl&&vessel.environment==="aqueous"&&
   (temperatureC??vessel.temperatureC??22)>=99.5&&vessel.reagents.includes("H2O");
- const substanceState=boiling?"Кипение воды":
-  vessel.physicalProcess==="dissolving"?"Растворение в воде":
-  vessel.filteredResidue?"Отфильтрованный осадок":
-  vessel.filteredSolution?"Фильтрат":amounts?
-  (amounts.complete?"Превращение завершено":"Реакция "+Math.round(conversionFraction*100)+"%"):
-  !vessel.reagents.length?"Пусто":
-  appearance.productSolid?"Продукт: "+appearance.productSolid:
-  observation==="precipitate"?"↓ Осадок":
-  observation==="gas"?"↑ Выделяется газ":
-  observation==="color"?"Изменение цвета":
-  singlePhase==="solid"||singlePhase==="metal"?"Твёрдое вещество":
-  singlePhase==="gas"?"Газ":
-  vessel.environment==="dry"?"Сухая смесь":"Раствор";
  const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):solidFraction;
  const fillFraction=volumeMl>0?Math.max(.008,liquidFraction):
   (vessel.reagents.length>0?(vessel.pourFraction??0.5):0);
@@ -271,7 +258,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
      (dose.concentrationM!==undefined?" · "+dose.concentrationM.toLocaleString("ru-RU")+" моль/л":""):"");
    }).join("; "):"Пустая посуда"}>
    <strong>{labels.length?labels.join(" + "):"Пусто"}</strong>
-   {labels.length>0&&<small>{totalLabel||substanceState}</small>}
+   {labels.length>0&&(!!totalLabel||!!vessel.filteredResidue)&&<small>{totalLabel||"Осадок"}</small>}
 
    <span className="lektrus-lab-content-quantity" aria-hidden="true">
     {labels.length?labels.map((formula,i)=>{
@@ -846,7 +833,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   }else{
    setActiveDeviceId(g.id);
    if(physicalDevices.some(d=>d.id===g.id&&d.kind==="filter")){
-    setNotice("Перетащите сосуд с готовым осадком непосредственно на фильтр");
+    if(effectivePouringId){
+     const next=pourLabIntoFilter(bench,effectivePouringId,g.id);
+     if(next!==bench){
+      const source=bench.vessels.find(v=>v.id===effectivePouringId);
+      const filter=physicalDevices.find(d=>d.id===g.id);
+      if(source&&filter)setTransfer({from:vesselPosition(source),to:{x:filter.x,y:filter.y-3}});
+      onChange?.(next);setLocalPourId(null);
+      setNotice("Фильтрат прошёл через мембрану, осадок остался на фильтре");
+     }else setNotice("Нужна завершённая реакция с осадком и свободный приёмник");
+    }else setNotice("Перетащите сосуд с готовым осадком непосредственно на фильтр");
    }
   }
   setDevicePreview(null);setDropDeviceShelf(false);
