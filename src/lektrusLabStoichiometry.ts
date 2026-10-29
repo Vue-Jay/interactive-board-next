@@ -70,7 +70,7 @@ const parseSide=(source:string):LabEquationTerm[]|null=>{
  const terms=source.split(/\s+\+\s+/).map(v=>v.trim());
  if(!terms.length)return null;
  const parsed=terms.map(raw=>{
-  const m=/^(\d+)?\s*([A-Za-z][A-Za-z0-9()[\]·]*)(?:[↑↓])?$/.exec(raw);
+  const m=/^(\d+)?\s*([A-Za-z(\[][A-Za-z0-9()[\]·]*)(?:[↑↓])?$/.exec(raw);
   return m?{coefficient:m[1]?Number(m[1]):1,formula:m[2]}:null;
  });
  return parsed.every(t=>t&&t.coefficient>0&&t.coefficient<=100)?
