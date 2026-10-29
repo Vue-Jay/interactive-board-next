@@ -289,16 +289,16 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const heater=devices.find(d=>d.active&&d.powered&&d.linkedVesselId===v.id&&
    ["hotplate","burner"].includes(d.kind));
   if(!heater)return v;
-  // Realistic minimum activation temperatures for selected reviewed cases.
-  // CaCO3 calcination requires kiln-level heat, not a hotplate.
-  const thermalThreshold=v.reagents.includes("CaCO3")?825:
-   v.reagents.includes("MgCO3")?350:
-   v.reagents.includes("CuCO3")?200:
-   v.reagents.includes("NaHCO3")?85:
-   v.reagents.includes("Cu(OH)2")?95:
-   v.reagents.includes("Fe")&&v.reagents.includes("S")?200:60;
-  if(v.temperatureC<thermalThreshold)return v;
-  const mode=heater.kind==="burner"&&v.temperatureC>=115?"ignited":"heated";
+  // Only a matching reviewed thermal or combustion case can start.
+  // No ignition of an unrelated aqueous solution and no invented explosion.
+  const ignition=heater.kind==="burner"?identifyReaction(v.reagents,"ignited"):null;
+  const heating=identifyReaction(v.reagents,"heated");
+  const ignited=ignition?.status==="reaction"&&
+   v.temperatureC>=(ignition.caseData?.minTemperatureC??135);
+  const warmed=heating.status==="reaction"&&
+   v.temperatureC>=(heating.caseData?.minTemperatureC??90);
+  if(!ignited&&!warmed)return v;
+  const mode=ignited?"ignited":"heated";
   if(v.environment===mode)return v;
   const next=setLabEnvironment({...result,vessels:[v]},v.id,mode);
   const updated=next.vessels[0];
@@ -471,6 +471,8 @@ export type LabVessel={pourFraction?:number;
  reagents:string[];environment:ReactionEnvironment;
  observed:boolean;uncertain?:boolean;indicator?:LabIndicator;
  temperatureC?:number;
+ /** Shared event timestamp: peer clients render brief physical effects once. */
+ visualStartedAtMs?:number;
  buretteOpen?:boolean;buretteTargetId?:string;buretteRateMlS?:number;
  doses?:Record<string,LabDose>;
  /** A verified reaction already completed in this material; survives full transfer. */
@@ -647,11 +649,14 @@ export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|
 export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionEnvironment):LabBench{
  return revise(bench,id,v=>{
   const previous=labObservation(v);
+  const next=identifyReaction(v.reagents,environment);
+  const starts=previous.status!=="reaction"&&!v.uncertain&&next.status==="reaction";
   return {...v,environment,
    completedReaction:v.completedReaction??(previous.status==="reaction"?previous.caseData:undefined),
    // Future chemistry is unknown, but previously visible products stay visible.
    uncertain:v.uncertain||previous.status==="reaction",
-   observed:v.reagents.length>1||identifyReaction(v.reagents,environment).status==="reaction"};
+   visualStartedAtMs:starts?Date.now():v.visualStartedAtMs,
+   observed:v.reagents.length>1||next.status==="reaction"};
  });
 }
 export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabDose):LabBench{
@@ -685,6 +690,8 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    completedReaction:v.completedReaction??(beforeReaction.status==="reaction"?beforeReaction.caseData:undefined),
    doses:combined?{...v.doses,[reagent]:combined}:v.doses,
    observed:reagents.length>1,
+   visualStartedAtMs:!v.uncertain&&beforeReaction.status!=="reaction"&&
+    identifyReaction(reagents,v.environment).status==="reaction"?Date.now():v.visualStartedAtMs,
    uncertain:v.uncertain||beforeReaction.status==="reaction"};
  });
  const activeMixer=placedLabDevices(updated).some(d=>
