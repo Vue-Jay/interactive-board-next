@@ -72,6 +72,9 @@ export default function LektrusChemistryIllustration({item,onStageChange,onBench
    onWheel={e=>e.stopPropagation()}
    onTouchMove={e=>e.stopPropagation()}>
 
+   <div className="lektrus-lab-object-grip"
+    aria-label="Переместить лабораторный объект"
+    title="Переместить лабораторию">⠿</div>
    {onOpenEditor&&<button type="button" data-board-interactive="true"
     className="lektrus-lab-open-editor"
     aria-label="Развернуть химическую лабораторию на весь экран"
