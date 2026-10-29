@@ -1330,7 +1330,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const source=bench.vessels.find(v=>v.id===p.sourceId);
    const target=bench.vessels.find(v=>v.id===p.targetId);
    if(!source||!target)return null;
-   const a=vesselPosition(source),b=vesselPosition(target),percent=labPourPercent(p);
+   const a=preview?.id===source.id?preview:vesselPosition(source),b=vesselPosition(target),percent=labPourPercent(p);
+    const dx=b.x-a.x,tipX=a.x+(dx>=0?2.5:-2.5),tipY=a.y-8.5,receiveY=b.y-8.8;
+    const flowPath=`M ${tipX} ${tipY} C ${tipX+dx*.36} ${tipY+6}, ${b.x-dx*.22} ${receiveY-6}, ${b.x} ${receiveY}`;
    const amounts=labPourAmounts(p);
    const fmt=(field:"transferred"|"remaining")=>{
     const totals=new Map<string,number>();
@@ -1344,11 +1346,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const flowing=p.step<LAB_POUR_STEPS;
    return <>
     {flowing&&<svg className="lektrus-lab-pour-stream is-gradual"
-     viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-     <path d={`M ${a.x} ${a.y-11} Q ${(a.x+b.x)/2} ${Math.min(a.y,b.y)-17} ${b.x} ${b.y-11}`}
-      fill="none" stroke="#59b0cc" strokeWidth="1.1" strokeLinecap="round"
-      strokeDasharray="2.5 1.7" className="lektrus-lab-stream-pulses"/>
-    </svg>}
+      viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <path d={flowPath} fill="none" stroke="#9fe4ed" strokeWidth=".95"
+       strokeLinecap="round" className="lektrus-lab-fluid-stream"/>
+      <path d={flowPath} fill="none" stroke="#3b9cc2" strokeWidth=".38"
+       strokeLinecap="round" className="lektrus-lab-stream-pulses"/>
+     </svg>}
     <div data-board-interactive="true"
      className={"lektrus-lab-gradual-pour"+(!flowing?" is-complete":"")}
      style={{left:Math.max(14,Math.min(77,(a.x+b.x)/2))+"%",
