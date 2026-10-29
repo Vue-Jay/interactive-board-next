@@ -413,8 +413,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [amount,setAmount]=useState("10");
  const [unit,setUnit]=useState<"ml"|"g">("ml");
  const [molarity,setMolarity]=useState("0.1");
- const [measuredMl,setMeasuredMl]=useState("5");
- const [measuredPartnerId,setMeasuredPartnerId]=useState("");
  const [titrationTarget,setTitrationTarget]=useState("");
  const [localPourId,setLocalPourId]=useState<string|null>(null);
  const [notice,setNotice]=useState("");
@@ -492,13 +490,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   v.reactants.length<=3&&(effectFilter==="all"||v.observation===effectFilter||v.family===effectFilter)&&
   (v.equation+" "+v.description+" "+v.reactants.join(" ")).toLocaleLowerCase("ru-RU")
    .includes(query.trim().toLocaleLowerCase("ru-RU")));
- const rxn=selected?labObservation(selected):null;
- const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
-  bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
- const currentQuantities=bench.vessels.find(v=>v.reactionAmounts&&!v.uncertain&&
-  v.reactionAmounts.equation===shownReaction?.equation)?.reactionAmounts;
- const displayMmoles=(mol:number)=>(mol*1000).toLocaleString("ru-RU",
-  {maximumFractionDigits:4})+" ммоль";
  /** Only the participant who starts a pour advances the shared 5% ticks.
   * The session itself lives in the board so other users see every portion. */
  useEffect(()=>{
@@ -1062,23 +1053,25 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <span aria-hidden="true">{settings.showEquationBoard?"✎":"✕"}</span><span>{settings.showEquationBoard?"Пишем":"Не пишем"}</span>
    </button>
 
+   <button type="button" className="lektrus-lab-chalk-wipe"
+    data-board-interactive="true" disabled={!editable||!(bench.reactionLog?.length)}
+    title="Стереть записанные уравнения с доски" aria-label="Стереть с доски"
+    onPointerDown={e=>e.stopPropagation()}
+    onClick={e=>{e.stopPropagation();onChange?.(wipeLabChalkboard(bench))}}>
+    <svg viewBox="0 0 32 28" width="24" height="21" aria-hidden="true">
+     <path d="M5 12L10 4H25L29 12L24 24H10Z" fill="#e5cda8"
+      stroke="#956f4e" strokeWidth="1.8"/>
+     <path d="M6 13L28 13L24 24H10Z" fill="#85b7ac"/>
+     <path d="M9 17H26" stroke="#d8f5e7" strokeWidth="1.5"/>
+    </svg>
+   </button>
    {settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing">
-    <small>{shownReaction?"УРАВНЕНИЕ РЕАКЦИИ":labModeInfo(bench).name.toLocaleUpperCase("ru-RU")}</small>
-    {shownReaction?<><strong key={shownReaction.equation}>{shownReaction.equation}</strong>
-     <span>{shownReaction.family?reactionFamilyLabels[shownReaction.family]+" · ":""}{shownReaction.description}</span>
-     {currentQuantities&&<div className="lektrus-lab-stoichiometry">
-      <b>{currentQuantities.complete?"Превращение завершено":
-       "Ход реакции "+Math.round(currentQuantities.extentMol/currentQuantities.maxExtentMol*100)+"%"}</b>
-      <span>Реагенты: {Object.entries(currentQuantities.remainingMol).map(([id,mol])=>
-       id+" "+displayMmoles(mol)).join(" · ")}</span>
-      <span>Продукты: {Object.entries(currentQuantities.productsMol).map(([id,mol])=>
-       id+" "+displayMmoles(mol)).join(" · ")}</span>
-     </div>}</>:
-     <div className="lektrus-lab-chalk-steps">
-      <strong>{labModeInfo(bench).name}</strong>
-      <span>{labModeInfo(bench).description}</span>
-      <span>Возьмите посуду, добавьте вещества и проведите опыт.</span>
-     </div>}
+    <small>УРАВНЕНИЯ РЕАКЦИЙ</small>
+    {(bench.reactionLog??[]).length>0?
+     <ol className="lektrus-lab-equation-history">
+      {bench.reactionLog!.map((equation,i)=><li key={i}>{equation}</li>)}
+     </ol>:
+     <span className="lektrus-lab-chalk-empty">Проведите опыт. Уравнения останутся здесь до стирания тряпкой.</span>}
    </div>}
   </div>
   {false&&!selected?.reagents.length&&<div className="lektrus-lab-worktop-caption">
@@ -1138,6 +1131,23 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      </button>)}
    </div>
    <span className="lektrus-lab-furniture-foot">Выберите место на столе или перетащите</span>
+  </div>
+  <div className="lektrus-lab-indicator-cupboard" data-board-interactive="true"
+   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+   <strong>ИНДИКАТОРЫ</strong>
+   <div className="lektrus-lab-indicator-shelf" role="group"
+    aria-label="Добавить индикатор в выбранный сосуд">
+    {labIndicators.map((indicator,i)=><button key={indicator.id} type="button"
+     title={indicator.name+" · "+indicator.note} disabled={!editable||!selected?.reagents.length}
+     aria-pressed={selected?.indicator===indicator.id}
+     className={selected?.indicator===indicator.id?"is-active":""}
+     onClick={e=>{e.stopPropagation();
+      if(selected)onChange?.(setLabIndicator(bench,selected.id,
+       selected.indicator===indicator.id?undefined:indicator.id))}}>
+     <i style={{"--indicator-tint":["#a28dd2","#d84c9c","#e4aa53","#64b992"][i]} as React.CSSProperties}/>
+     <span>{indicator.name}</span>
+    </button>)}
+   </div>
   </div>
   <div  className={"lektrus-lab-device-cupboard"+(dropDeviceShelf?" is-dropzone":"")} data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
@@ -1615,41 +1625,21 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          aria-pressed={phase===id} className={phase===id?"is-active":""}
          onClick={()=>{setPhase(id);setChosen(null)}}>{label}</button>)}
       </div>}
-      {cabinetTab!=="experiments"&&<div className="lektrus-lab-reagent-shortcuts"
-       role="group" aria-label="Часто используемые реактивы">
-       <span>Быстрый выбор</span>
-       {(["H2O","HCl","NaOH","NaCl","AgNO3","CuSO4","BaCl2"] as const).map(id=>{
-        const v=substances.find(s=>s.id===id);
-        if(!v)return null;
-        return <button key={id} type="button" aria-pressed={chosen===id}
-         className={chosen===id?"is-active":""} title={v.name}
-         onClick={()=>{
-          const saved=quickReagents.find(q=>q.id===id)?.dose;
-          const forms=labReagentForms(v);
-          setChosen(id);setUnit(saved&&forms.includes(saved.unit)?saved.unit:
-           forms.includes("ml")?"ml":"g");
-          setAmount(String(saved?.value??10));
-          setMolarity(String(saved?.concentrationM??.1));
-         }}>{v.formula}</button>;
-       })}
-      </div>}
-      {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-sortbar">
-       <label>Состояние <select aria-label="Агрегатное состояние" value={phase}
-        onChange={e=>setPhase(e.target.value as "all"|StoragePhase)}>
-        <option value="all">Все</option>
-        {Object.entries(phaseNames).map(([id,name])=><option key={id} value={id}>{name}</option>)}
-       </select></label>
-       <label>Сортировка <select aria-label="Сортировка реактивов" value={sort}
-        onChange={e=>setSort(e.target.value as CatalogueSort)}>
-        <option value="recommended">Сначала растворы</option>
+      {cabinetTab!=="experiments"&&<details className="lektrus-lab-catalog-extra">
+       <summary>Дополнительные фильтры и сортировка</summary>
+       <div className="lektrus-lab-modal-sortbar">
+        <label>Сортировка <select aria-label="Сортировка реактивов" value={sort}
+         onChange={e=>setSort(e.target.value as CatalogueSort)}>
+         <option value="recommended">Сначала растворы</option>
          <option value="name">По названию</option><option value="formula">По формуле</option>
-       </select></label>
-       <label>Группировка <select aria-label="Группировка реактивов" value={group}
-        onChange={e=>setGroup(e.target.value as CatalogueGroup)}>
-        <option value="class">По классам</option><option value="phase">По состоянию</option>
-        <option value="none">Без группировки</option>
-       </select></label>
-      </div>}
+        </select></label>
+        <label>Группировка <select aria-label="Группировка реактивов" value={group}
+         onChange={e=>setGroup(e.target.value as CatalogueGroup)}>
+         <option value="class">По классам</option><option value="phase">По состоянию</option>
+         <option value="none">Без группировки</option>
+        </select></label>
+       </div>
+      </details>}
       <div className="lektrus-lab-modal-results-head">
        <span><strong>{cabinetTab!=="experiments"?visibleSubstances.length:experimentCases.length}</strong>
         {cabinetTab!=="experiments"?" веществ в каталоге":" опытов найдено"}</span>
