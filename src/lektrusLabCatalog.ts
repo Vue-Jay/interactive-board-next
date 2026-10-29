@@ -9,14 +9,14 @@ export const phaseNames:Record<StoragePhase,string>={
 export const classNames:Record<string,string>={
  кислота:"Кислоты",основание:"Основания",соль:"Соли",оксид:"Оксиды",
  металл:"Металлы",неметалл:"Неметаллы",газ:"Газы",органика:"Органические",
- вода:"Вода", "простое вещество":"Простые вещества"
+ вода:"Вода",пероксид:"Пероксиды","простое вещество":"Простые вещества"
 };
 /** Physical state as stocked in a school virtual reagent cabinet. The same
  * formula can be a solution during an experiment and a solid in storage. */
 export function cabinetPhase(v:Substance):StoragePhase{
  if(v.kind==="газ"||["CO2","NH3","Cl2","NO2"].includes(v.id))return "gas";
  if(v.kind==="кислота"||v.id==="H2O"||v.id==="NH4OH"||
-  ["C2H5OH","CH3OH","C3H8O","CH3COOH","H2O2","Br2"].includes(v.id))return "liquid";
+  ["C2H5OH","CH3OH","C3H8O","CH3COOH","H2O2","Br2","CH3CHO","HCHO"].includes(v.id))return "liquid";
  return "solid";
 }
 /** Presentation in the reagent cabinet is determined by the supplied form,
@@ -26,13 +26,15 @@ export function cabinetPhase(v:Substance):StoragePhase{
 const insolubleStock=new Set([
  "AgCl","AgBr","AgI","BaSO4","CaCO3","MgCO3","BaCO3","CuCO3",
  "FeS","CuS","Cu(OH)2","Fe(OH)2","Fe(OH)3","PbI2","PbSO4",
- "AgBr","AgI","SrSO4","SrCO3","Ni(OH)2","Co(OH)2","ZnS","Li2CO3"
+ "AgBr","AgI","SrSO4","SrCO3","Ni(OH)2","Co(OH)2","ZnS","Li2CO3",
+ "Ag2CO3","Ag3PO4","Ba3(PO4)2","PbCl2","PbBr2","PbCO3","PbS","NiS","CoS",
+ "Ca3(PO4)2","CaSO4","CaSO3","PbO","C2H5ONa","CH3ONa"
 ]);
 export function labReagentForms(v:Substance):("ml"|"g")[]{
  const state=cabinetPhase(v);
  if(state==="gas")return ["ml"];
  if(v.kind==="кислота"||v.kind==="вода"||v.id==="H2O"||v.id==="NH4OH"||
-  ["C2H5OH","CH3OH","C3H8O","CH3COOH","H2O2","Br2"].includes(v.id))return ["ml"];
+  ["C2H5OH","CH3OH","C3H8O","CH3COOH","H2O2","Br2","CH3CHO","HCHO"].includes(v.id))return ["ml"];
  if(v.kind==="металл"||v.kind==="неметалл"||v.kind==="оксид"||
   insolubleStock.has(v.id))return ["g"];
  if(v.kind==="соль"||v.kind==="основание")return ["g","ml"];
@@ -47,7 +49,7 @@ export function cabinetColor(v:Substance){
 }
 export function buildLabCatalog(options:{query?:string;kind?:string;phase?:"all"|StoragePhase;
  sort?:CatalogueSort;group?:CatalogueGroup}){
- const {query="",kind="Все",phase="all",sort="recommended",group="class"}=options;
+ const {query="",kind="Все",phase="all",sort="recommended",group="phase"}=options;
  const needle=query.toLocaleLowerCase("ru-RU").trim();
  const entries=substances.filter(v=>
   (kind==="Все"||v.kind===kind)&&
