@@ -3523,3 +3523,121 @@
  animation:none!important;opacity:0!important}
 .lektrus-lab-bench.lab-reduced-animation .lektrus-lab-droplet:first-child{
  opacity:.85!important;transform:translate(0,3px) scale(.55)!important}
+
+/* Distinct equation chalkboard placed BETWEEN the reagent and glassware
+   cupboards. The display switch is in the header, not a settings modal. */
+.lektrus-lab-bench .lektrus-lab-bench-backdrop::before{
+ background:linear-gradient(156deg,#c7d9c7,#e5efe3 46%,#b9d5c4)!important;
+ border-color:#97b8a2!important}
+.lektrus-lab-bench .lektrus-lab-chalkboard{
+ left:23.2%!important;width:33.7%!important;top:8.15%!important;height:32%!important;
+ background:linear-gradient(145deg,#153d30,#0e2f26 75%,#103a2e)!important;
+ border:6px solid #a78964!important;border-radius:8px!important;
+ padding:12px 16px!important;
+ box-shadow:inset 0 0 14px #061c1399,0 3px 8px #26473440!important;
+ z-index:7!important}
+.lektrus-lab-bench .lektrus-lab-equations-toggle{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ flex:0 0 auto;min-width:0;min-height:30px;max-width:112px;
+ padding:4px 8px;background:#f3f8ed;color:#4f725a;
+ border:1px solid #b5cfb9;border-radius:8px;
+ font:750 11px/1.2 system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.lektrus-lab-bench .lektrus-lab-equations-toggle.is-active{
+ border-color:#75b496;background:#d4f0df;color:#25684d}
+@container(max-width:850px){
+ .lektrus-lab-bench .lektrus-lab-equations-toggle{
+  min-width:27px;padding:4px 5px;gap:2px}
+ .lektrus-lab-bench .lektrus-lab-equations-toggle span:last-child{display:none}
+ .lektrus-lab-bench .lektrus-lab-chalkboard{padding:5px 7px!important}
+}
+/* Burette stays visually in front of the rod and its compact clamp. */
+.lektrus-lab-bench .lektrus-lab-vessel.is-burette{
+ filter:drop-shadow(0 1px 5px #e2fff0)
+        drop-shadow(0 0 2px #3b9c8a)!important}
+.lektrus-lab-bench .lektrus-lab-vessel.is-burette .lektrus-lab-vessel-art>svg{
+ filter:drop-shadow(0 0 3px #ffffffad)
+        drop-shadow(0 3px 2px #245c5266)!important}
+.lektrus-lab-bench .lektrus-lab-retort-jaws{z-index:39!important}
+/* The three rate switches must fit with receiver information and the valve
+   across a narrow workbench. No fixed width or overflowing single-row text. */
+.lektrus-lab-bench .lektrus-lab-titration-on-table.is-burette-valve{
+ display:grid!important;
+ grid-template-columns:minmax(112px,.85fr) minmax(136px,1fr) minmax(220px,1.65fr) minmax(112px,.8fr)!important;
+ gap:7px!important;align-items:center!important;justify-content:stretch!important;
+ box-sizing:border-box!important;max-height:none!important;min-height:0!important;
+ width:auto!important;left:16%!important;right:19%!important;
+ top:auto!important;bottom:6%!important;overflow:visible!important;
+ padding:9px 11px!important}
+.lektrus-lab-bench .lektrus-lab-titration-on-table.is-burette-valve>*{
+ min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+.lektrus-lab-bench .lektrus-lab-burette-rate{
+ display:flex;flex-direction:column;gap:3px;min-width:0!important}
+.lektrus-lab-bench .lektrus-lab-burette-rate-label{
+ font:800 10px/1.15 system-ui,sans-serif;color:#547464}
+.lektrus-lab-bench .lektrus-lab-burette-rate-buttons{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:4px;min-width:0}
+.lektrus-lab-bench .lektrus-lab-titration-on-table .lektrus-lab-burette-rate-buttons>button{
+ display:flex!important;flex-direction:column!important;align-items:center!important;
+ justify-content:center!important;gap:2px!important;min-width:0!important;
+ max-width:none!important;min-height:37px!important;width:100%!important;
+ padding:5px 3px!important;white-space:normal!important;line-height:1.1!important;
+ background:#e9f4ea!important;border:1px solid #b4d0bd!important;
+ border-radius:7px!important;overflow:hidden!important}
+.lektrus-lab-bench .lektrus-lab-burette-rate-buttons>button strong{
+ font:750 clamp(9px,.75cqw,11px)/1.15 system-ui,sans-serif!important;
+ overflow-wrap:anywhere;text-align:center}
+.lektrus-lab-bench .lektrus-lab-burette-rate-buttons>button small{
+ font:700 9px/1.1 system-ui,sans-serif!important;color:#5d796e;
+ white-space:nowrap}
+.lektrus-lab-bench .lektrus-lab-titration-on-table .lektrus-lab-burette-rate-buttons>button.is-active{
+ border-color:#2c956f!important;background:#c8eed8!important;color:#1d674b!important;
+ box-shadow:inset 0 0 0 1px #58b38b}
+@container(max-width:1000px){
+ .lektrus-lab-bench .lektrus-lab-titration-on-table.is-burette-valve{
+  left:13%!important;right:14%!important;top:auto!important;bottom:5%!important;
+  width:auto!important;max-width:none!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  padding:7px!important;gap:5px!important}
+ .lektrus-lab-bench .lektrus-lab-burette-rate{grid-column:1/-1}
+ .lektrus-lab-bench .lektrus-lab-burette-rate-buttons>button strong{font-size:10px!important}
+}
+@container(max-width:550px){
+ .lektrus-lab-bench .lektrus-lab-titration-on-table.is-burette-valve{
+  left:6%!important;right:6%!important;bottom:2%!important;
+  padding:5px!important;gap:3px!important}
+ .lektrus-lab-bench .lektrus-lab-burette-rate-buttons>button strong{font-size:9px!important}
+}
+/* On-board expansion lives directly on the object corner, not above its title. */
+.lektrus-chemistry-bench-on-board>.lektrus-lab-open-editor{
+ position:absolute!important;right:9px!important;top:8px!important;z-index:122!important;
+ display:grid!important;place-items:center!important;
+ box-sizing:border-box!important;width:36px!important;height:36px!important;
+ min-width:36px!important;min-height:36px!important;padding:5px!important;
+ margin:0!important;color:#f2fff6!important;background:#216d57f0!important;
+ border:1px solid #b9e5d1!important;border-radius:9px!important;
+ box-shadow:0 2px 8px #143e3277!important;pointer-events:auto!important}
+.lektrus-chemistry-bench-on-board>.lektrus-lab-open-editor:hover{
+ background:#218767!important}
+.lektrus-chemistry-bench-on-board>.lektrus-lab-open-editor svg{pointer-events:none}
+/* Fullscreen close control is top right, outside the header control zone. */
+.lektrus-lab-editor.is-board-identical .lektrus-lab-editor-exit{
+ top:8px!important;right:8px!important;width:40px!important;height:40px!important;
+ min-width:40px!important;padding:0!important;font-size:19px!important;
+ z-index:600!important}
+.lektrus-lab-editor.is-board-identical .lektrus-lab-editor-exit span{display:none!important}
+.lektrus-lab-editor.is-board-identical .lektrus-lab-scene-header{
+ right:125px!important;padding-right:0!important}
+/* Filtration is a deliberate liquid/solid separation into a clean receiver. */
+.lektrus-lab-bench .lektrus-lab-filter-actions{
+ display:flex;align-items:flex-end;flex-wrap:wrap;gap:6px;
+ padding:4px 7px;background:#e7f4ea;border:1px solid #a6ccb6;border-radius:8px;
+ min-width:0!important}
+.lektrus-lab-bench .lektrus-lab-filter-actions label{
+ display:flex;flex-direction:column;align-items:stretch;gap:3px;
+ min-width:110px!important;max-width:210px!important;flex:1 1 125px;
+ font:700 10px/1.2 system-ui,sans-serif}
+.lektrus-lab-bench .lektrus-lab-filter-actions select{
+ min-width:0!important;width:100%!important;max-width:100%!important}
+.lektrus-lab-bench .lektrus-lab-filter-actions button{
+ flex:0 1 auto;white-space:normal!important;min-width:90px}
