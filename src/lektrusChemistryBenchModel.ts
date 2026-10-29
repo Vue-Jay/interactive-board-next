@@ -370,6 +370,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const unverifiedLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml")&&!pure;
   let next=Math.round(Math.max(ambient,Math.min(unverifiedLiquid?100:600,raw))*10)/10;
   let meltFraction=v.meltFraction??0;
+  let phaseTransition=v.phaseTransition;
   const point=pure?.unit==="g"&&!v.uncertain&&!v.completedReaction?
    pure.info.meltingC:undefined;
   if(point!==undefined&&point>ambient){
@@ -379,9 +380,11 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    const heating=toward>point+.1&&(raw>=point||old>=point-.1&&meltFraction<1);
    const cooling=toward<point-.1&&(raw<=point||old<=point+.1&&meltFraction>0);
    if(heating&&meltFraction<1){
+    phaseTransition="melting";
     meltFraction=Math.min(1,meltFraction+seconds*Math.max(.008,(toward-point)/350)*.14);
     next=point;
    }else if(cooling&&meltFraction>0){
+    phaseTransition="crystallizing";
     meltFraction=Math.max(0,meltFraction-seconds*Math.max(.008,(point-toward)/350)*.14);
     next=point;
    }
@@ -401,12 +404,13 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const remaining=boiling&&neatDose?Math.max(0,
    Math.round((neatDose.value-seconds*.02)*100)/100):neatDose?.value;
   const evaporating=boiling&&remaining!==neatDose?.value;
-  const phaseChanged=meltFraction!==(v.meltFraction??0);
+  const phaseChanged=meltFraction!==(v.meltFraction??0)||
+   phaseTransition!==v.phaseTransition;
   if(next!==old||cooling||evaporating||dissolutionComplete||phaseChanged)changed=true;
   if(next===old&&!cooling&&!evaporating&&!dissolutionComplete&&!phaseChanged)return v;
   const hasLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml");
   return {...v,temperatureC:next,
-   ...(phaseChanged?{meltFraction}:{}),
+   ...(phaseChanged?{meltFraction,phaseTransition}:{}),
    ...(dissolutionComplete?{physicalProcess:undefined,physicalStartedAtMs:undefined}:{}),
    ...(evaporating&&pure&&neatDose?{
     doses:(remaining??0)>0?{[pure.id]:{...neatDose,value:remaining!}}:undefined,
@@ -649,6 +653,7 @@ export type LabVessel={pourFraction?:number;
  temperatureC?:number;
  /** 0 = solid, 1 = fully molten. Conserved across viewers and cooling. */
  meltFraction?:number;
+ phaseTransition?:"melting"|"crystallizing";
  /** Shared event timestamp: peer clients render brief physical effects once. */
  visualStartedAtMs?:number;
  /** Target volume when collecting a sample with a graduated pipette. */
@@ -901,7 +906,7 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
    undefined:bench.titrationPair};
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -968,7 +973,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&
     nextDoses?.[key]?.unit==="g")&&
    identifyReaction(reagents,v.environment).status!=="reaction";
-  return {...v,reagents,meltFraction:undefined,
+  return {...v,reagents,meltFraction:undefined,phaseTransition:undefined,
    physicalProcess:physicalDissolution?"dissolving":undefined,
    physicalStartedAtMs:physicalDissolution?Date.now():undefined,
    reactionAmounts:undefined,
