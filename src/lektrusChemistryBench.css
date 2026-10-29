@@ -3775,3 +3775,35 @@
  user-select:none!important;touch-action:none!important}
 .lektrus-chemistry-bench-on-board>.lektrus-lab-object-grip:active{
  cursor:grabbing!important}
+
+/* Preferred reagent row keeps frequently used solutions a single click away
+   without collapsing the full catalogue or stealing scroll height. */
+.lektrus-lab-furniture-modal .lektrus-lab-reagent-shortcuts{
+ display:flex;align-items:center;flex-wrap:wrap;gap:5px;
+ padding:3px 4px;min-width:0;flex:0 0 auto}
+.lektrus-lab-furniture-modal .lektrus-lab-reagent-shortcuts>span{
+ font:750 10px/1.2 system-ui,sans-serif;color:#527d65;
+ margin-right:3px;white-space:nowrap}
+.lektrus-lab-furniture-modal .lektrus-lab-reagent-shortcuts>button{
+ box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+ min-height:27px;min-width:43px;max-width:100%;
+ padding:4px 9px;border:1px solid #bad6c5;border-radius:14px;
+ background:#eff8f1;color:#2b6450;font:800 11px/1.2 ui-monospace,monospace;
+ white-space:nowrap;cursor:pointer}
+.lektrus-lab-furniture-modal .lektrus-lab-reagent-shortcuts>button:hover,
+.lektrus-lab-furniture-modal .lektrus-lab-reagent-shortcuts>button.is-active{
+ background:#c7ebd6;border-color:#5aa783;color:#19583f}
+@container(max-width:630px){
+ .lektrus-lab-furniture-modal .lektrus-lab-reagent-shortcuts{gap:3px}
+ .lektrus-lab-furniture-modal .lektrus-lab-reagent-shortcuts>span{display:none}
+ .lektrus-lab-furniture-modal .lektrus-lab-reagent-shortcuts>button{
+  padding:3px 5px;min-width:38px;font-size:10px}
+}
+/* Keep the five long lab mode titles legible on a wide classroom screen. */
+@container(min-width:1100px){
+ .lektrus-lab-bench .lektrus-lab-mode-picker{
+  flex:0 0 clamp(315px,26cqw,425px)!important;
+  width:clamp(315px,26cqw,425px)!important;max-width:425px!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker select{
+  font-size:14px!important;letter-spacing:0!important}
+}
