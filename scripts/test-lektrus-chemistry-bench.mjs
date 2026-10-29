@@ -1820,3 +1820,74 @@ assert.match(sideGaugeLayout,/grid-template-columns:6px 27px minmax\(0,1fr\)/,
 assert.match(sideGaugeLayout,/width:152px!important/,
  "Compact badge should have a bounded but legible width");
 console.log("Side gauges are separated from vessel and use nonoverlapping columns");
+
+
+/* Solution indicators are liquids added to the sample, not test paper.
+ * They change the actual liquid tint as titration crosses the endpoint.
+ * The universal indicator remains a separate strip and does not dye it. */
+const labAfterIndicator=lab.setLabIndicator(
+ lab.putLabReagent(lab.defaultLabBench(),"v1","NaOH",
+  {value:25,unit:"ml",concentrationM:.1}),"v1","phenolphthalein");
+assert.equal(labAfterIndicator.vessels[0].indicatorDrops,1);
+assert.equal(lab.labIndicatorResult(labAfterIndicator.vessels[0]).color,"#d83a96");
+assert.equal(labAfterIndicator.vessels[0].doses.NaOH.value,25,
+ "Adding trace indicator must not alter stoichiometric analyte concentration");
+const repeated=lab.setLabIndicator(labAfterIndicator,"v1","phenolphthalein");
+assert.equal(repeated.vessels[0].indicatorDrops,2,
+ "A second click adds another indicator drop rather than removing indicator");
+assert.ok(repeated.vessels[0].indicatorAddedAtMs>0);
+const paper=lab.setLabIndicator(repeated,"v1","universal");
+assert.equal(paper.vessels[0].indicator,"universal");
+assert.equal(paper.vessels[0].indicatorDrops,undefined,
+ "Universal indicator is a paper strip, not a liquid added to the flask");
+assert.equal(lab.setLabIndicator(paper,"v1","universal"),paper,
+ "Pressing the same universal strip twice must not create extra reagent");
+const emptyLiquid=lab.putLabReagent(lab.defaultLabBench(),"v1","Na",
+ {value:2,unit:"g"});
+assert.equal(lab.setLabIndicator(emptyLiquid,"v1","litmus"),emptyLiquid,
+ "A liquid indicator cannot be added to a dry metal");
+const rinsed=lab.emptyLabVessel(repeated,"v1").vessels[0];
+assert.equal(rinsed.indicatorDrops,undefined);
+assert.equal(rinsed.indicatorAddedAtMs,undefined);
+
+let endpointBench=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {value:25,unit:"ml",concentrationM:.1});
+endpointBench=lab.setLabIndicator(endpointBench,"v1","phenolphthalein");
+endpointBench=lab.addLabVessel(endpointBench,"burette");
+const endpointBurette=endpointBench.vessels.find(v=>v.kind==="burette").id;
+endpointBench=lab.putLabReagent(endpointBench,endpointBurette,"NaOH",
+ {value:30,unit:"ml",concentrationM:.1});
+endpointBench=lab.dripLabVessel(endpointBench,endpointBurette,"v1",24);
+let endpointReading=titration.titrationReading(endpointBench.titration);
+assert.ok(endpointReading.pH<7);
+assert.equal(endpointReading.tint,"#dcecef","Phenolphthalein is colorless before endpoint");
+endpointBench=lab.dripLabVessel(endpointBench,endpointBurette,"v1",1);
+endpointReading=titration.titrationReading(endpointBench.titration);
+assert.equal(endpointReading.pH,7);
+assert.equal(endpointReading.tint,"#dcecef","Phenolphthalein remains colorless at pH 7");
+endpointBench=lab.dripLabVessel(endpointBench,endpointBurette,"v1",.1);
+endpointReading=titration.titrationReading(endpointBench.titration);
+assert.ok(endpointReading.pH>8.2,"Slight excess base changes the indicator");
+assert.notEqual(endpointReading.tint,"#dcecef");
+assert.equal(endpointBench.vessels[0].indicator,"phenolphthalein");
+assert.equal(endpointBench.vessels[0].indicatorDrops,1);
+const storedDrops={...persistedLab,vessels:[{...persistedLab.vessels[0],
+ indicator:"litmus",reagents:["H2O"],indicatorDrops:3,indicatorAddedAtMs:Date.now()},
+ ...persistedLab.vessels.slice(1)]};
+assert.doesNotThrow(()=>parseLab(storedDrops),
+ "Indicator drops and their timestamp must persist with shared board document");
+const corruptDrops={...storedDrops,vessels:[{...storedDrops.vessels[0],indicatorDrops:30},
+ ...storedDrops.vessels.slice(1)]};
+assert.throws(()=>parseLab(corruptDrops),/Повреждено состояние химического стола/);
+const uiIndicators=read("src/LektrusChemistryBench.tsx");
+assert.match(uiIndicators,/indicator\.form==="solution"/);
+assert.match(uiIndicators,/lektrus-lab-indicator-bottle/);
+assert.match(uiIndicators,/lektrus-lab-indicator-paper/);
+assert.match(uiIndicators,/vessel\.indicator==="universal"/);
+assert.match(uiIndicators,/isLiquidIndicator\?/);
+assert.match(uiIndicators,/titrationReading\(\{\.\.\.bench\.titration,indicator:v\.indicator/);
+const indicatorCss=read("src/lektrusChemistryBench.css");
+assert.match(indicatorCss,/left:calc\(100% \+ 11px\)!important/,
+ "Composition plaque should return close to the vessel");
+assert.match(indicatorCss,/right:calc\(100% \+ 11px\)!important/);
+console.log("Indicator solution dosing, universal paper, pH-titration color transitions and readout spacing passed");
