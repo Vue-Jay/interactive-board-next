@@ -15,11 +15,13 @@ const titration=load("src/lektrusLabTitration.ts");
 const layout=load("src/lektrusLabLayout.ts");
 const chem=load("src/lektrusLabStoichiometry.ts");
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
+const ph=load("src/lektrusLabPH.ts");
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabTitration")return titration;
  if(key==="./lektrusLabLayout")return layout;
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabPhysicalProperties")return thermal;
+ if(key==="./lektrusLabPH")return ph;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
@@ -68,16 +70,16 @@ assert.equal(full.vessels[0].x,10);assert.equal(full.vessels[0].y,90);
 let indicatorBench=lab.defaultLabBench();
 assert.equal(lab.setLabIndicator(indicatorBench,"v1","litmus"),indicatorBench,
  "Indicators cannot be inserted into empty glassware");
-indicatorBench=lab.putLabReagent(indicatorBench,"v1","HCl");
+indicatorBench=lab.putLabReagent(indicatorBench,"v1","HCl",{value:10,unit:"ml",concentrationM:.1});
 indicatorBench=lab.setLabIndicator(indicatorBench,"v1","litmus");
 assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).medium,"acid");
-assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).color,"#d85761");
+assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).color,"#da556b");
 indicatorBench=lab.emptyLabVessel(indicatorBench,"v1");
 assert.equal(indicatorBench.vessels[0].indicator,undefined,"Cleaning also removes indicator");
-indicatorBench=lab.putLabReagent(indicatorBench,"v1","NaOH");
+indicatorBench=lab.putLabReagent(indicatorBench,"v1","NaOH",{value:10,unit:"ml",concentrationM:.1});
 indicatorBench=lab.setLabIndicator(indicatorBench,"v1","phenolphthalein");
 assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).medium,"base");
-assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).color,"#d83a96");
+assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).color,"#d83697");
 let neutral=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O");
 neutral=lab.setLabIndicator(neutral,"v1","universal");
 assert.equal(lab.labIndicatorResult(neutral.vessels[0]).medium,"neutral");
@@ -88,7 +90,7 @@ assert.equal(lab.labIndicatorResult(salt.vessels[0]).medium,"unknown",
 let transferred=lab.addLabVessel(neutral,"tube");
 transferred=lab.pourLabVessel(transferred,"v1","v2");
 assert.equal(transferred.vessels[0].indicator,undefined,"Empty source has no indicator");
-assert.equal(transferred.vessels[1].indicator,"universal","Indicator travels with solution");
+assert.equal(transferred.vessels[1].indicator,undefined,"Universal paper is not poured into the receiving vessel");
 let mixed=lab.addLabVessel(indicatorBench,"flask");
 mixed=lab.putLabReagent(mixed,mixed.selectedId,"HCl");
 mixed=lab.pourLabVessel(mixed,mixed.selectedId,"v1");
@@ -1820,3 +1822,68 @@ assert.match(sideGaugeLayout,/grid-template-columns:6px 27px minmax\(0,1fr\)/,
 assert.match(sideGaugeLayout,/width:152px!important/,
  "Compact badge should have a bounded but legible width");
 console.log("Side gauges are separated from vessel and use nonoverlapping columns");
+
+
+/* Reagent moles determine pH even while the titration model is being
+ * updated one burette drop at a time. Only supported equilibria are shown. */
+const strongAcid={reagents:["HCl"],environment:"aqueous",doses:{
+ HCl:{value:20,unit:"ml",concentrationM:0.1}}};
+assert.equal(ph.labVesselPH(strongAcid).pH,1);
+const dilutedAcid={reagents:["HCl","H2O"],environment:"aqueous",doses:{
+ HCl:{value:20,unit:"ml",concentrationM:.1},H2O:{value:20,unit:"ml"}}};
+assert.ok(Math.abs(ph.labVesselPH(dilutedAcid).pH-1.3)<.01);
+assert.equal(ph.labVesselPH({reagents:["NaOH"],environment:"aqueous",doses:{
+ NaOH:{value:20,unit:"ml",concentrationM:.1}}}).pH,13);
+const exactNeutral={reagents:["HCl","NaOH"],environment:"aqueous",doses:{
+ HCl:{value:20,unit:"ml",concentrationM:.1},
+ NaOH:{value:20,unit:"ml",concentrationM:.1}}};
+assert.equal(ph.labVesselPH(exactNeutral).pH,7);
+const acidExcess={...exactNeutral,doses:{...exactNeutral.doses,
+ NaOH:{value:10,unit:"ml",concentrationM:.1}}};
+assert.ok(ph.labVesselPH(acidExcess).pH<2);
+const alkaliExcess={...exactNeutral,doses:{...exactNeutral.doses,
+ NaOH:{value:30,unit:"ml",concentrationM:.1}}};
+assert.ok(ph.labVesselPH(alkaliExcess).pH>12);
+assert.equal(ph.labVesselPH({reagents:["HCl"],environment:"aqueous",
+ doses:{HCl:{value:20,unit:"ml"}}}),null,
+ "No numeric pH for unmeasured concentration");
+assert.equal(ph.labVesselPH({reagents:["HCl","CuSO4"],environment:"aqueous",
+ doses:{HCl:{value:20,unit:"ml",concentrationM:.1},CuSO4:{value:10,unit:"ml"}}}),null,
+ "Do not infer pH for an unsupported ionic hydrolysis mixture");
+assert.equal(ph.labVesselPH({reagents:["H2O"],environment:"aqueous"}).pH,7);
+assert.ok(Math.abs(ph.labVesselPH({reagents:["CH3COOH"],environment:"aqueous",
+ doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1}}}).pH-2.87)<.04);
+assert.ok(Math.abs(ph.labVesselPH({reagents:["CH3COOH","NaOH"],environment:"aqueous",
+ doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1},
+ NaOH:{value:10,unit:"ml",concentrationM:.1}}}).pH-4.74)<.04);
+assert.equal(ph.labIndicatorTint("methyl-orange",2),"#d53f42");
+assert.equal(ph.labIndicatorTint("methyl-orange",6),"#efc954");
+assert.equal(ph.labIndicatorTint("phenolphthalein",7),undefined,
+ "Phenolphthalein must be colorless until the basic transition");
+assert.equal(ph.labIndicatorTint("phenolphthalein",12),"#d83697");
+assert.equal(ph.labIndicatorTint("litmus",1),"#da556b");
+assert.equal(ph.labIndicatorTint("litmus",13),"#466bc9");
+let measurePH=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {value:20,unit:"ml",concentrationM:.1});
+measurePH=lab.setLabIndicator(measurePH,"v1","phenolphthalein");
+assert.equal(measurePH.vessels[0].indicatorDrops,1);
+measurePH=lab.setLabIndicator(measurePH,"v1","phenolphthalein");
+assert.equal(measurePH.vessels[0].indicatorDrops,2,"Repeated use adds a drop");
+measurePH=lab.putLabReagent(measurePH,"v1","NaOH",
+ {value:30,unit:"ml",concentrationM:.1});
+assert.equal(lab.labIndicatorResult(measurePH.vessels[0]).medium,"base");
+assert.equal(lab.labIndicatorResult(measurePH.vessels[0]).color,"#d83697",
+ "The liquid itself must turn pink after enough alkali is added");
+assert.ok(lab.labIndicatorResult(measurePH.vessels[0]).pH>12);
+let paper=lab.setLabIndicator(measurePH,"v1","universal");
+assert.equal(paper.vessels[0].indicatorDrops,undefined);
+const decant=lab.addLabVessel(paper,"tube");
+const paperMoved=lab.pourLabVessel(decant,"v1","v2");
+assert.equal(paperMoved.vessels[1].indicator,undefined,
+ "Universal indicator paper must not travel into the receiving glass");
+assert.match(read("src/LektrusChemistryBench.tsx"),/is-paper/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/is-liquid/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/labVesselPH\(vessel\)/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/vessel.indicator==="universal"/);
+assert.match(read("src/lektrusChemistryBench.css"),/left:calc\(100% \+ 6px\)/);
+console.log("Indicator solutions, universal paper and stoichiometric pH verified");
