@@ -1809,3 +1809,14 @@ assert.match(sideReadoutCss,/max-width:154px!important/,
 assert.match(sideReadoutCss,/pointer-events:none!important/,
  "Side contents must not block picking or dragging glassware");
 console.log("Compact side composition labels do not overlay the vessel");
+
+const sideGaugeLayout=read("src/lektrusChemistryBench.css");
+assert.match(sideGaugeLayout,/left:calc\(100% \+ 23px\)!important/,
+ "Side gauges must clear the right vessel edge");
+assert.match(sideGaugeLayout,/right:calc\(100% \+ 23px\)!important/,
+ "Right-edge vessels must keep gauges outside their left edge");
+assert.match(sideGaugeLayout,/grid-template-columns:6px 27px minmax\(0,1fr\)/,
+ "Mass, volume and composition need separate nonoverlapping columns");
+assert.match(sideGaugeLayout,/width:152px!important/,
+ "Compact badge should have a bounded but legible width");
+console.log("Side gauges are separated from vessel and use nonoverlapping columns");

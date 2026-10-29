@@ -4097,3 +4097,51 @@
  .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-info{
   max-width:78px!important;font-size:8px!important;padding-left:3px!important}
 }
+
+
+/* v18: make the graduated composition badges a true sidecar instead of
+   placing them against the flask lip. The body is narrow and its label
+   columns cannot collapse beneath the graduated tube. */
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+ left:calc(100% + 23px)!important;right:auto!important;
+ bottom:25%!important;max-width:none!important;width:152px!important;
+ display:flex!important;flex-direction:column!important;align-items:stretch!important;
+ gap:5px!important;z-index:76!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed{
+ right:calc(100% + 23px)!important;left:auto!important;
+ align-items:stretch!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-measure{
+ box-sizing:border-box!important;width:152px!important;max-width:152px!important;
+ min-height:36px!important;display:grid!important;grid-template-columns:6px 27px minmax(0,1fr)!important;
+ align-items:center!important;gap:5px!important;padding:4px 5px!important;
+ flex-direction:row!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed .lektrus-lab-quantity-measure{
+ flex-direction:row!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-track{
+ width:6px!important;height:24px!important;min-width:6px!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-measure>strong{
+ min-width:0!important;font-size:10px!important;white-space:nowrap!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-info{
+ display:flex!important;flex-direction:column!important;gap:2px!important;
+ box-sizing:border-box!important;min-width:0!important;max-width:none!important;
+ overflow:hidden!important;padding:0 0 0 5px!important;
+ border-left:1px solid #c5d8ca!important;border-right:0!important;
+ overflow-wrap:anywhere!important;word-break:normal!important;
+ line-height:1.25!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-info>b{
+ display:block!important;font-size:9px!important;line-height:1.25!important;
+ white-space:normal!important;overflow-wrap:anywhere!important}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-info>span{
+ font:600 9px/1.25 system-ui,sans-serif!important;white-space:normal!important;
+ overflow-wrap:anywhere!important}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+  width:130px!important;left:calc(100% + 14px)!important}
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed{
+  left:auto!important;right:calc(100% + 14px)!important}
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-measure{
+  width:130px!important;max-width:130px!important;grid-template-columns:5px 23px minmax(0,1fr)!important;
+  padding:3px 4px!important;gap:4px!important}
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition .lektrus-lab-quantity-info{
+  padding-left:4px!important;font-size:8px!important}
+}
