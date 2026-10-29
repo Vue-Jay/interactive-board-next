@@ -830,6 +830,7 @@ export function parseDocument(raw: string): DocumentData {
         };
         if(!bench||!Array.isArray(bench.vessels)||bench.vessels.length>6||
           typeof bench.selectedId!=="string"||
+          (bench.mode!=null&&!["qualitative","quantitative","titration","solutions","synthesis"].includes(bench.mode))||
           !Number.isSafeInteger(bench.event)||bench.event<0||!validSettings||
           (bench.devices!=null&&(!Array.isArray(bench.devices)||
             bench.devices.length>5||new Set(bench.devices).size!==bench.devices.length||
