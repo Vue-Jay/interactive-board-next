@@ -940,31 +940,29 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     <span aria-hidden="true">▦</span> Расставить
    </button>}
   </div>
-  {settings.showEquationBoard&&<div className="lektrus-lab-chalkboard" aria-live="polite">
-   <small>{shownReaction?"УРАВНЕНИЕ РЕАКЦИИ":"ПЛАН ЭКСПЕРИМЕНТА"}</small>
-   {shownReaction?<><strong key={shownReaction.equation}>{shownReaction.equation}</strong>
-    <span>{shownReaction.family?reactionFamilyLabels[shownReaction.family]+" · ":""}{shownReaction.description}{shownReaction.safety?" · Только виртуальный опыт":""}</span>
-    {currentQuantities&&<div className="lektrus-lab-stoichiometry">
-     <b>{currentQuantities.complete?"Превращение завершено":
-      "Ход реакции "+Math.round(currentQuantities.extentMol/currentQuantities.maxExtentMol*100)+"%"}</b>
-     <span>Реагенты: {Object.entries(currentQuantities.remainingMol).map(([id,mol])=>
-      id+" "+displayMmoles(mol)).join(" · ")}</span>
-     <span>Продукты: {Object.entries(currentQuantities.productsMol).map(([id,mol])=>
-      id+" "+displayMmoles(mol)).join(" · ")}</span>
-    </div>}</>:
-    <div className="lektrus-lab-chalk-steps">
-     <strong>Приступим к опыту</strong>
-     <span><b>1</b> Возьмите посуду из шкафа</span>
-     <span><b>2</b> Добавьте вещества и условия</span>
-     <span><b>3</b> Смешайте и наблюдайте</span>
-    </div>}
-  </div>}
-  {!settings.showEquationBoard&&<div className="lektrus-lab-wall-guide">
-   <span>LEKTRUS · ЛАБОРАТОРНЫЙ СТОЛ</span>
-   <strong>Экспериментируйте на доске</strong>
-   <p>Возьмите посуду, выберите реактивы и наблюдайте за опытом.</p>
-   <div><b>Посуда</b><b>Реактивы</b><b>Наблюдение</b></div>
-  </div>}
+  {/* The writing is physically on the same large wall board behind
+        the glassware, never in a floating reaction card. */}
+  <div className="lektrus-lab-chalkboard" aria-label="Доска на стене за лабораторным столом"
+   aria-live="polite">
+   {settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing">
+    <small>{shownReaction?"УРАВНЕНИЕ РЕАКЦИИ":labModeInfo(bench).name.toLocaleUpperCase("ru-RU")}</small>
+    {shownReaction?<><strong key={shownReaction.equation}>{shownReaction.equation}</strong>
+     <span>{shownReaction.family?reactionFamilyLabels[shownReaction.family]+" · ":""}{shownReaction.description}</span>
+     {currentQuantities&&<div className="lektrus-lab-stoichiometry">
+      <b>{currentQuantities.complete?"Превращение завершено":
+       "Ход реакции "+Math.round(currentQuantities.extentMol/currentQuantities.maxExtentMol*100)+"%"}</b>
+      <span>Реагенты: {Object.entries(currentQuantities.remainingMol).map(([id,mol])=>
+       id+" "+displayMmoles(mol)).join(" · ")}</span>
+      <span>Продукты: {Object.entries(currentQuantities.productsMol).map(([id,mol])=>
+       id+" "+displayMmoles(mol)).join(" · ")}</span>
+     </div>}</>:
+     <div className="lektrus-lab-chalk-steps">
+      <strong>{labModeInfo(bench).name}</strong>
+      <span>{labModeInfo(bench).description}</span>
+      <span>Возьмите посуду, добавьте вещества и проведите опыт.</span>
+     </div>}
+   </div>}
+  </div>
   {false&&!selected?.reagents.length&&<div className="lektrus-lab-worktop-caption">
    <strong>{selected?"Выбрано: "+names[selected.kind]:"Рабочее место"}</strong>
    <span>{selected?(selected.reagents.length?selected.reagents.join(" + "):"Чистая посуда"):
