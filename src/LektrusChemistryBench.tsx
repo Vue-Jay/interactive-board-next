@@ -409,7 +409,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   return !["кислота","основание","соль","оксид","металл","неметалл","органика"].includes(v.kind);
  };
  const catalogue=buildLabCatalog({query,kind:isGlobalSearch?"Все":category,
-  phase:isGlobalSearch?"all":phase,sort,group:isGlobalSearch?"class":group})
+  phase:isGlobalSearch?"all":phase,sort,group})
   .map(section=>({...section,items:section.items.filter(catalogKind)}))
   .filter(section=>section.items.length>0);
  const visibleSubstances=catalogue.flatMap(v=>v.items);
@@ -1630,6 +1630,24 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
         map(([id,label])=><button type="button" key={id}
          aria-pressed={phase===id} className={phase===id?"is-active":""}
          onClick={()=>{setPhase(id);setChosen(null)}}>{label}</button>)}
+      </div>}
+      {cabinetTab!=="experiments"&&<div className="lektrus-lab-reagent-shortcuts"
+       role="group" aria-label="Часто используемые реактивы">
+       <span>Быстрый выбор</span>
+       {(["H2O","HCl","NaOH","NaCl","AgNO3","CuSO4","BaCl2"] as const).map(id=>{
+        const v=substances.find(s=>s.id===id);
+        if(!v)return null;
+        return <button key={id} type="button" aria-pressed={chosen===id}
+         className={chosen===id?"is-active":""} title={v.name}
+         onClick={()=>{
+          const saved=quickReagents.find(q=>q.id===id)?.dose;
+          const forms=labReagentForms(v);
+          setChosen(id);setUnit(saved&&forms.includes(saved.unit)?saved.unit:
+           forms.includes("ml")?"ml":"g");
+          setAmount(String(saved?.value??10));
+          setMolarity(String(saved?.concentrationM??.1));
+         }}>{v.formula}</button>;
+       })}
       </div>}
       {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-sortbar">
        <label>Состояние <select aria-label="Агрегатное состояние" value={phase}
