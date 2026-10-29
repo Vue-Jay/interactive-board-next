@@ -3761,3 +3761,17 @@
  box-shadow:inset 0 0 0 1px #73be97}
 .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-sortbar select{
  width:100%;min-width:0;max-width:none;box-sizing:border-box}
+
+/* Small drag affordance: only an icon, no header strip across the object. */
+.lektrus-chemistry-bench-on-board>.lektrus-lab-object-grip{
+ position:absolute!important;top:8px!important;left:8px!important;right:auto!important;
+ z-index:121!important;width:34px!important;height:34px!important;
+ min-width:34px!important;min-height:34px!important;
+ border-radius:9px!important;padding:0!important;
+ display:grid!important;place-items:center!important;box-sizing:border-box!important;
+ background:#216d57e8!important;border:1px solid #b9e5d1!important;
+ color:#e9fff0!important;font:800 22px/1 system-ui,sans-serif!important;
+ box-shadow:0 2px 8px #143e3277!important;cursor:grab!important;
+ user-select:none!important;touch-action:none!important}
+.lektrus-chemistry-bench-on-board>.lektrus-lab-object-grip:active{
+ cursor:grabbing!important}
