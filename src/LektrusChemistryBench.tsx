@@ -101,8 +101,8 @@ function LabReactionBurst({vessel,visual,formula}:{
  </div>;
 }
 
-function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true}:{
- vessel:LabVessel;small?:boolean;showLabels?:boolean;details?:boolean;stirring?:boolean;
+function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true}:{
+ vessel:LabVessel;small?:boolean;showLabels?:boolean;details?:boolean;readoutLeft?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
  temperatureVisible?:boolean}){
  const id=useId().replace(/:/g,"");
@@ -282,7 +282,8 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,stir
     {vessel.reactionHeat.direction==="exothermic"?"↑ Нагрев":"↓ Охлаждение"}
    </span>}
   {(details||volumeMl>0||contents.solid.length>0)&&
-   <div className={"lektrus-lab-quantity-meter"+(details?" has-composition":"")}
+   <div className={"lektrus-lab-quantity-meter"+(details?" has-composition":"")+
+     (details&&readoutLeft?" is-reversed":"")}
     aria-label="Количество раствора и твёрдых веществ">
     {(details||volumeMl>0)&&<div className="lektrus-lab-quantity-measure is-liquid"
       title={readable(volumeMl)+" мл / "+capacityMl+" мл (условная вместимость)"}>
@@ -1419,7 +1420,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     {bench.instrumentTarget?.kind==="tripod"&&bench.instrumentTarget.vesselId===v.id&&<span
      className="lektrus-lab-instrument-attachment">На штативе</span>}
     <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
-     details={selectedVessel}
+     details={selectedVessel} readoutLeft={p.x>62}
      temperatureVisible={settings.showTemperatures&&v.kind!=="burette"}
      stirring={bench.stirringVesselId===v.id||
       labAppliancesBelowStand(bench,v.id).some(d=>d.kind==="stirrer"&&d.powered)}
