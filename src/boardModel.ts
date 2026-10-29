@@ -806,6 +806,27 @@ export function parseDocument(raw: string): DocumentData {
             ["gas","precipitate","color","heat","dissolution","none"].includes(reaction.observation)&&
             typeof reaction.description==="string"&&reaction.description.length<=600;
         };
+        const validMolRecord=(value:unknown):boolean=>
+          !!value&&typeof value==="object"&&!Array.isArray(value)&&
+          Object.entries(value as Record<string,unknown>).length<=18&&
+          Object.entries(value as Record<string,unknown>).every(([id,mol])=>
+            id.length>0&&id.length<=70&&typeof mol==="number"&&
+            Number.isFinite(mol)&&mol>=0&&mol<=10000);
+        const validReactionAmounts=(value:unknown):boolean=>{
+          if(value==null)return true;
+          if(!value||typeof value!=="object")return false;
+          const r=value as import("./lektrusLabStoichiometry").LabReactionAmounts;
+          return typeof r.equation==="string"&&r.equation.length<=500&&
+            Number.isFinite(r.elapsedSeconds)&&Number.isFinite(r.durationSeconds)&&
+            r.elapsedSeconds>=0&&r.durationSeconds>0&&r.durationSeconds<=120&&
+            r.elapsedSeconds<=r.durationSeconds&&
+            Number.isFinite(r.extentMol)&&Number.isFinite(r.maxExtentMol)&&
+            r.extentMol>=0&&r.maxExtentMol>0&&
+            r.extentMol<=r.maxExtentMol+1e-8&&r.maxExtentMol<=10000&&
+            typeof r.complete==="boolean"&&
+            validMolRecord(r.initialMol)&&validMolRecord(r.remainingMol)&&
+            validMolRecord(r.productsMol);
+        };
         if(!bench||!Array.isArray(bench.vessels)||bench.vessels.length>6||
           typeof bench.selectedId!=="string"||
           !Number.isSafeInteger(bench.event)||bench.event<0||!validSettings||
@@ -859,7 +880,7 @@ export function parseDocument(raw: string): DocumentData {
                Object.keys(v.doses).length<=6&&
                Object.entries(v.doses).every(([id,dose])=>
                  v.reagents.includes(id)&&validDose(dose))))&&
-            validReaction(v.completedReaction)))
+            validReaction(v.completedReaction)&&validReactionAmounts(v.reactionAmounts)))
           throw new Error("Повреждено состояние химического стола");
       }
       if(i.subjectBoardStandalone!=null&&typeof i.subjectBoardStandalone!=="boolean")
