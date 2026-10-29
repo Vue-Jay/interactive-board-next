@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labObservation,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -513,18 +513,17 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const target=current.vessels.find(v=>v.id===targetId);
    if(!source||!target)return;
    let next=current;
-   if(source.kind==="pipette"){
-    // Empty pipette samples, filled pipette dispenses. No imaginary volume.
-    const drawing=source.reagents.length===0;
-    const donor=drawing?target:source,receiver=drawing?source:target;
-    const sample=donor.reagents.length===1?donor.doses?.[donor.reagents[0]]:undefined;
-    const contained=Object.values(receiver.doses??{}).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
-    const capacity=labMeasuredCapacityMl(receiver.kind);
-    const volume=sample?.unit==="ml"?
-     Math.min(5,capacity===undefined?5:Math.max(0,capacity-contained),sample.value):0;
-    if(volume>0)next=transferLabMeasuredLiquid(current,donor.id,receiver.id,volume);
-    setNotice(next===current?"Нужен совместимый раствор с известным объёмом":
-     "Пипетка "+(drawing?"набрала ":"выдала ")+volume.toLocaleString("ru-RU")+" мл");
+   if(source.kind==="pipette"||target.kind==="pipette"){
+    const pipette=source.kind==="pipette"?source:target;
+    const drawing=pipette.reagents.length===0;
+    const donor=drawing?(pipette===source?target:source):pipette;
+    const receiver=drawing?pipette:(pipette===source?target:source);
+    const requested=pipette.pipetteTargetMl??5;
+    // Never quietly replace the requested volume with a smaller one.
+    next=transferLabMeasuredLiquid(current,donor.id,receiver.id,requested);
+    setNotice(next===current?
+     "Нельзя отобрать "+requested.toLocaleString("ru-RU")+" мл: проверьте раствор, объём и вместимость":
+     "Пипетка "+(drawing?"набрала ":"выдала ")+requested.toLocaleString("ru-RU")+" мл");
    }else if(source.reagents.length){
     const id="pour-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,7);
     next=startLabPour(current,sourceId,targetId,id);
@@ -724,6 +723,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   }else setActiveDeviceId(g.id);
   setDevicePreview(null);setDropDeviceShelf(false);
  };
+ useEffect(()=>{
+  if(selected?.kind==="pipette")setMeasuredMl(String(selected.pipetteTargetMl??5));
+ },[selected?.id,selected?.pipetteTargetMl]);
  const quickReagents=labQuickReagents(bench);
  const addQuick=(id:string,targetId?:string)=>{
   if(!editable)return;
@@ -1051,9 +1053,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     </button>}
     {["pipette","cylinder"].includes(selected.kind)&&
      <div className="lektrus-lab-measured-tools">
-      <label>мл <input type="number" min=".1" step="1" value={measuredMl}
-       max={labMeasuredCapacityMl(selected.kind)} aria-label="Отмеренный объём, мл"
-       onChange={e=>setMeasuredMl(e.target.value)}/></label>
+      <label>{selected.kind==="pipette"?"Набрать / выдать":"Отмерить"} · мл
+       <input type="number" min=".1" step=".1"
+        value={selected.kind==="pipette"?measuredMl:measuredMl}
+        max={labMeasuredCapacityMl(selected.kind)} aria-label="Отмеренный объём, мл"
+        onChange={e=>setMeasuredMl(e.target.value)}
+        onBlur={()=>{if(selected.kind==="pipette")onChange?.(
+         setLabPipetteTarget(bench,selected.id,Number(measuredMl)))}} 
+        onKeyDown={e=>{if(e.key==="Enter"){e.currentTarget.blur()}}}/></label>
       <label>Сосуд <select aria-label="Второй сосуд для мерного переноса"
        value={bench.vessels.some(v=>v.id===measuredPartnerId&&v.id!==selected.id)?
         measuredPartnerId:(bench.vessels.find(v=>v.id!==selected.id)?.id??"")}
@@ -1067,7 +1074,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          measuredPartnerId:bench.vessels.find(v=>v.id!==selected.id)?.id;
         const from=action==="Набрать"?partner:selected.id;
         const to=action==="Набрать"?selected.id:partner;
-        const next=from&&to?transferLabMeasuredLiquid(bench,from,to,Number(measuredMl)):bench;
+        const needed=Number(measuredMl);
+        const specified=selected.kind==="pipette"?
+         setLabPipetteTarget(bench,selected.id,needed):bench;
+        const next=from&&to?transferLabMeasuredLiquid(specified,from,to,needed):bench;
         if(next!==bench){onChange?.(next);setNotice(action==="Набрать"?
          "Набрано "+measuredMl+" мл":"Выдано "+measuredMl+" мл")}
         else setNotice("Недостаточно жидкости или выбран несовместимый сосуд")}}>
