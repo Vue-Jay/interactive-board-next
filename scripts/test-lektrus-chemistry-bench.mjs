@@ -809,7 +809,7 @@ assert.match(surface,/clearLabTable\(bench\)/);
 assert.match(surface,/lektrus-lab-quick-editor/);
 assert.match(surface,/setLabQuickReagent\(bench/);
 assert.match(surface,/addQuick\(v\.id\)/);
-assert.match(surface,/labMeasuredCapacityMl/);
+assert.match(read("src/lektrusChemistryBenchModel.ts"),/labMeasuredCapacityMl/);
 assert.match(surface,/transferLabMeasuredLiquid/);
 assert.match(surface,/lektrus-lab-quantity-meter/);
 assert.match(surface,/labReceiverBelowStand/);
