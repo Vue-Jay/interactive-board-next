@@ -653,11 +653,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    if(next!==latest){benchRef.current=next;changeRef.current?.(next)}
    contactRef.current={...c,activated:true};setContactCountdown(null);
   };
-  // Collect a measured sample only after one uninterrupted second of contact.
-  // Moving to another vessel or releasing cancels the pending aspiration.
-  const pipette=source.kind==="pipette"?source:target.kind==="pipette"?target:null;
-  const sampling=!!pipette&&pipette.reagents.length===0;
-  contactTimer.current=setTimeout(perform,sampling?1000:120);
+  // All contact-initiated transfers (including pipettes) require two full
+  // seconds of uninterrupted contact; moving off the target cancels the timer.
+  contactTimer.current=setTimeout(perform,2000);
  };
  const clean=(id:string)=>{
   const next=emptyLabVessel(bench,id);
@@ -1575,7 +1573,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   {editable&&(dropTarget||dropDeviceId||effectivePouringId||dropFurniture||notice)&&<div className="lektrus-lab-pour-hint" aria-live="polite">
    {dropFurniture==="sink"?"Отпустите для слива в раковину":
     dropFurniture==="glassware"?"Отпустите, чтобы вернуть пустую посуду":
-    dropTarget?(contactCountdown===dropTarget?"Удерживайте пипетку на растворе 1 секунду":"Переливание идёт. Отпустите, чтобы остановить"):
+    dropTarget?(contactCountdown===dropTarget?"Удерживайте сосуд над приёмником 2 секунды":"Переливание идёт. Отпустите, чтобы остановить"):
      dropDeviceId?"Отпустите, чтобы установить посуду":
     effectivePouringId?"Выберите посуду для переливания":notice}
   </div>}
