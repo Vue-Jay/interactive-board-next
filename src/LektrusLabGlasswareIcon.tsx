@@ -25,9 +25,7 @@ const drawings:Record<LabGlassware,{body:string;rim?:string;markings?:string;par
   rim:"M34 6H50",markings:"M42 70V77M40 15h4"},
  burette:{body:"M37 5V57H47V5",
   rim:"M34 5H50",markings:"M39 13h6M39 20h4M39 27h6M39 34h4M39 41h6M39 48h4M37 56H47",
-  parts:"M35 58H50M42 58V73M30 60H54M50 58L56 53M56 53h8"},
- funnel:{body:"M11 19H73L47 51V73H37V51Z",
-  rim:"M11 19Q42 16 73 19",markings:"M18 26H66M39 53H45"}
+  parts:"M35 58H50M42 58V73M30 60H54M50 58L56 53M56 53h8"}
 };
 export default function LektrusLabGlasswareIcon({kind,size=36}:{
  kind:LabGlassware;size?:number}){
