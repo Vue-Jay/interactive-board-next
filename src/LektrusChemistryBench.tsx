@@ -1,7 +1,7 @@
 import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
-import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,labObservation,labReactionNeedsTick,
+import {addLabVessel,arrangeLabVessels,emptyLabVessel,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,
  labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,transferLabMeasuredLiquid,setLabPipetteTarget,fillLabVolumetricFlask,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
@@ -910,6 +910,20 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      {LAB_MODES.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
     </select>
    </label>
+   <button type="button" className="lektrus-lab-prepare-mode"
+    data-board-interactive="true" disabled={!editable}
+    title="Добавить рекомендуемый набор без перемещения существующей посуды"
+    aria-label="Подготовить комплект для выбранного режима"
+    onPointerDown={e=>e.stopPropagation()}
+    onClick={e=>{
+     e.stopPropagation();
+     const prepared=prepareLabModeSetup(bench);
+     if(prepared!==bench){onChange?.(prepared);setNotice("Комплект подготовлен. Расставленная посуда сохранена.")}
+     else setNotice("Нужная посуда и приборы уже на столе");
+     setPendingGlassware(null);
+    }}>
+    <span aria-hidden="true">⚗</span><span className="lektrus-lab-prepare-label">Комплект</span>
+   </button>
    <span className="lektrus-lab-scene-stats">{bench.vessels.length} из 6 сосудов <b>·</b> {physicalDevices.length} приборов</span>
    <div className="lektrus-lab-header-tools" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
