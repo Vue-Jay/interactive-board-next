@@ -805,7 +805,17 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     setActiveDeviceId(g.id);
     setNotice(vesselId&&final!==moved?"Прибор установлен рядом с сосудом":"Прибор перемещён по столу");
    }
-  }else setActiveDeviceId(g.id);
+  }else{
+   setActiveDeviceId(g.id);
+   if(physicalDevices.some(d=>d.id===g.id&&d.kind==="filter")){
+    const sample=bench.vessels.find(v=>!v.uncertain&&!v.filteredResidue&&
+     labObservation(v).caseData?.observation==="precipitate");
+    if(sample){
+     onSelect?.(sample.id);setVesselMenuId(sample.id);
+     setNotice("Мембранный фильтр: выберите чистый приёмник и нажмите «Фильтровать»");
+    }else setNotice("Для фильтрации сначала получите осадок в одном из сосудов");
+   }
+  }
   setDevicePreview(null);setDropDeviceShelf(false);
  };
  useEffect(()=>{
