@@ -25,6 +25,19 @@ const size=(min:number,relative:number,max:number,width:number)=>
  clamp(width*relative,min,max);
 export type LabMountGeometry={x:number;y:number;kind:string;standHeight?:number};
 export type LabVesselGeometry={kind:string};
+/** One adjustable retort clamp, shared by illustration and layout. */
+export const LAB_STAND_CLAMP_LOW_Y=64;
+export const LAB_STAND_CLAMP_HIGH_Y=12;
+export const labStandClampSvgY=(height=0.5)=>
+ LAB_STAND_CLAMP_LOW_Y-
+ (LAB_STAND_CLAMP_LOW_Y-LAB_STAND_CLAMP_HIGH_Y)*clamp(height,0,1);
+/** Clamp grip in the 100 x 133 glassware SVG, measured from its top. */
+export const labStandVesselGripSvgY=(kind:string)=>
+ kind==="dish"||kind==="crucible"?76:
+ kind==="beaker"?40:
+ kind==="burette"?49:
+ kind==="pipette"?67:kind==="tube"?54:kind==="volumetric"?46:48;
+
 /** Shared, responsive alignment for a beaker resting on a heater top,
  * a flask suspended over a flame, or a tube inside a stand clamp.
  * Unlike fixed percentages, anchors track the actual model dimensions. */
@@ -38,7 +51,7 @@ export function labMountedGlasswarePoint(
   device.kind==="burner"?size(119,.096,166,w):
   (small?size(101,.16,138,w):size(119,.103,175,w));
  const dHeight=(device.kind==="tripod"||device.kind==="stand-shelf")?
-  (small?size(150,.21,174,w):size(168,.14,212,w)):
+  (small?size(208,.34,266,w):size(228,.19,280,w)):
   device.kind==="burner"?size(138,.114,180,w):
   (small?size(116,.18,152,w):size(130,.115,178,w));
  let vHeight=small?size(96,.17,130,w):size(112,.157,158,w);
@@ -47,17 +60,22 @@ export function labMountedGlasswarePoint(
   vHeight=small?size(130,.24,164,w):size(151,.20,198,w);
  if(vessel.kind==="dish"||vessel.kind==="crucible")
   vHeight=size(98,.12,125,w);
+ if(device.kind==="tripod"||device.kind==="stand-shelf"){
+  const clampY=labStandClampSvgY(device.standHeight);
+  // Translate both SVG landmarks into actual stage pixels. Earlier math
+  // reversed the sign, sending suspended glassware below the upper clamp.
+  const gripY=labStandVesselGripSvgY(vessel.kind);
+  const xPx=(83/110-0.5)*dWidth;
+  const yPx=(clampY/108-0.5)*dHeight+(0.55-gripY/133)*vHeight;
+  return {x:clamp(device.x+xPx/w*100,5,86),
+   y:clamp(device.y+yPx/h*100,34,86)};
+ }
  // The glass SVG's bottom is y=120/133; the instrument platform is at
  // y=36/108. Align those surfaces, not their enclosing rectangle centers.
  const foot=(vessel.kind==="conical"||vessel.kind==="crucible"?.385:
   vessel.kind==="dish"?.33:.36)*vHeight;
- const clampY=(.5-(52-29*(device.standHeight??.5))/108)*dHeight;
- const yPx=device.kind==="stand-shelf"?.16*dHeight-foot:
-  device.kind==="tripod"?clampY+.27*vHeight:
-  device.kind==="burner"?-.23*dHeight-foot:
-  -.167*dHeight-foot;
- const xPx=device.kind==="tripod"?.23*dWidth:
-  device.kind==="stand-shelf"?.19*dWidth:0;
+ const yPx=device.kind==="burner"?-.23*dHeight-foot:-.167*dHeight-foot;
+ const xPx=0;
  return {
   x:clamp(device.x+xPx/w*100,5,82),
   y:clamp(device.y+yPx/h*100,47,86)
