@@ -1231,7 +1231,13 @@ export function advanceLabPour(b:LabBench):LabBench{
    completedReaction:finish?undefined:v.completedReaction,
    indicator:finish?undefined:v.indicator,
    pourFraction:p.unmeasured?portionRound(.5*(20-n)/20):v.pourFraction};
-  if(v.id===target.id)return {...v,reactionAmounts:undefined,reagents:combined,doses:received,
+  if(v.id===target.id){
+   const dissolving=received.H2O?.unit==="ml"&&combined.some(key=>
+    key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&received[key]?.unit==="g")&&
+    identifyReaction(combined,targetWasEmpty?source.environment:v.environment).status!=="reaction";
+   return {...v,reactionAmounts:undefined,reagents:combined,doses:received,
+   physicalProcess:dissolving?"dissolving" as const:undefined,
+   physicalStartedAtMs:dissolving?(v.physicalStartedAtMs??Date.now()):undefined,
    observed:true,uncertain,environment:targetWasEmpty?source.environment:v.environment,
    visualStartedAtMs:!uncertain&&!sourceReaction&&!targetReaction&&
     identifyReaction(combined,targetWasEmpty?source.environment:v.environment).status==="reaction"?
@@ -1239,6 +1245,7 @@ export function advanceLabPour(b:LabBench):LabBench{
    completedReaction:targetWasEmpty?sourceReaction:v.completedReaction,
    indicator:v.indicator??source.indicator,
    pourFraction:p.unmeasured?portionRound(Math.min(1,(v.pourFraction??(targetWasEmpty?0:.5))+.025)):v.pourFraction};
+  }
   return v;
  });
  return {...b,vessels,pouring:{...p,step:n},event:b.event+1,
@@ -1289,7 +1296,11 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
    const medium=targetWasEmpty?source.environment:target.environment;
    const newReaction=!uncertain&&!sourceReaction&&!targetReaction&&
     identifyReaction(reagents,medium).status==="reaction";
+   const dissolving=!newReaction&&doses.H2O?.unit==="ml"&&
+    reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&doses[key]?.unit==="g");
    return {...v,reagents,reactionAmounts:undefined,observed:reagents.length>1||source.observed,
+    physicalProcess:dissolving?"dissolving" as const:undefined,
+    physicalStartedAtMs:dissolving?Date.now():undefined,
     doses,environment:medium,
     visualStartedAtMs:newReaction?Date.now():v.visualStartedAtMs,
     completedReaction:targetWasEmpty?sourceReaction:(targetReaction??sourceReaction),
