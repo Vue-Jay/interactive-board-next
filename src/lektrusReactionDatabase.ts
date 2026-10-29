@@ -669,7 +669,11 @@ export const schoolSolidColors:Record<string,string>={
  "NaCl":"#f1f0e9","KCl":"#eeefeb","P2O5":"#f0f0ec",
  "Na2CO3":"#ebe9e3","K2CO3":"#ecece7",
  "MnO2":"#34373b","Fe2O3":"#9a5e43","PbO":"#d5a958",
- "K2MnO4":"#66945e"
+ "K2MnO4":"#66945e",
+ "SrSO4":"#f3f3ef","SrCO3":"#f4f3ee",
+ "Ni(OH)2":"#91b796","Co(OH)2":"#9d86b1",
+ "AgBr":"#e8d5a0","AgI":"#e7ca39",
+ "Li2CO3":"#f3f3ed","ZnS":"#f2f1e9"
 };
 export function reactionProducts(equation:string):string[]{
  const rhs=equation.split("→")[1]??"";
