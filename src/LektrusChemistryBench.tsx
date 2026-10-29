@@ -1687,7 +1687,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        {((cabinetTab!=="experiments"?visibleSubstances:experimentCases).length===0)&&
         <p>Совпадений не найдено</p>}
       </div>
-      {cabinetTab!=="experiments"&&<div className="lektrus-lab-quick-editor">
+      {cabinetTab!=="experiments"&&<details className="lektrus-lab-quick-editor">
+       <summary>Быстрый доступ: {quickReagents.length} веществ · изменить полку</summary>
        <div className="lektrus-lab-quick-editor-title">
         <strong>Быстрый доступ на столе</strong>
         <small>{quickReagents.length} из {MAX_QUICK_REAGENTS} · нажмите, чтобы изменить дозировку</small>
@@ -1707,7 +1708,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
           }}>×</button>
         </div>)}
        </div>
-      </div>}
+      </details>}
       {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-dose">
        <div><strong>{reagent?.name??"Выберите реактив"}</strong>
         <small>{reagent?labReagentPhaseLabel(reagent,unit)+" · "+
