@@ -446,7 +446,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const experimentCases=reviewedReactionCases.filter(v=>v.status==="reaction"&&
   v.reactants.length<=3&&(effectFilter==="all"||v.observation===effectFilter||v.family===effectFilter)&&
   (v.equation+" "+v.description+" "+v.reactants.join(" ")).toLocaleLowerCase("ru-RU")
-   .includes(query.trim().toLocaleLowerCase("ru-RU"))).slice(0,260);
+   .includes(query.trim().toLocaleLowerCase("ru-RU")));
  const rxn=selected?labObservation(selected):null;
  const shownReaction=(rxn?.status==="reaction"?rxn.caseData:undefined)??
   bench.vessels.map(v=>labObservation(v)).find(v=>v.status==="reaction")?.caseData;
