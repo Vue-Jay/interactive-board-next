@@ -867,6 +867,13 @@ export function parseDocument(raw: string): DocumentData {
           !bench.vessels.every(v=>typeof v.id==="string"&&v.id.length<=40&&
             kinds.includes(v.kind)&&Number.isFinite(v.x)&&Number.isFinite(v.y)&&
             (v.restingOnStandId==null||(typeof v.restingOnStandId==="string"&&v.restingOnStandId.length<=80))&&
+            (v.filteredResidue==null||(typeof v.filteredResidue.formula==="string"&&
+             typeof v.filteredResidue.color==="string"&&
+             v.filteredResidue.formula.length<=70&&v.filteredResidue.color.length<=35&&
+             (v.filteredResidue.massG==null||Number.isFinite(v.filteredResidue.massG))))&&
+            (v.filteredSolution==null||(typeof v.filteredSolution.sourceEquation==="string"&&
+             v.filteredSolution.sourceEquation.length<=500&&
+             Array.isArray(v.filteredSolution.solutes)&&v.filteredSolution.solutes.length<=6))&&
             v.x>=8&&v.x<=92&&v.y>=8&&v.y<=92&&
             Array.isArray(v.reagents)&&v.reagents.length<=6&&
             v.reagents.every(r=>typeof r==="string"&&r.length<=70)&&
