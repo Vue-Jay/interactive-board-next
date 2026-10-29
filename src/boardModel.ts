@@ -820,6 +820,7 @@ export function parseDocument(raw: string): DocumentData {
             Number.isFinite(r.elapsedSeconds)&&Number.isFinite(r.durationSeconds)&&
             r.elapsedSeconds>=0&&r.durationSeconds>0&&r.durationSeconds<=120&&
             r.elapsedSeconds<=r.durationSeconds&&
+            (r.startedAtMs==null||(Number.isFinite(r.startedAtMs)&&r.startedAtMs>=0))&&
             Number.isFinite(r.extentMol)&&Number.isFinite(r.maxExtentMol)&&
             r.extentMol>=0&&r.maxExtentMol>0&&
             r.extentMol<=r.maxExtentMol+1e-8&&r.maxExtentMol<=10000&&
