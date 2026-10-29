@@ -11,7 +11,7 @@ import {buildLabCatalog,cabinetColor,phaseNames,labReagentForms,labReagentPhaseL
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
 import LektrusLabDeviceIcon from "./LektrusLabDeviceIcon";
-import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint,labStandClampSvgY,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
+import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint,labStandClampSvgY,labTitrationDropEndpoints,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
 const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
@@ -1397,12 +1397,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const destination=bench.vessels.find(other=>other.id===v.buretteTargetId);
    if(!destination)return null;
    const from=vesselPosition(v),to=vesselPosition(destination);
-   // SVG viewport is stage PIXELS, not stretched 100x100 percentages.
-   // A falling drop remains round at any fullscreen aspect ratio.
    const width=stageSize.width,height=stageSize.height;
-   const nozzleX=from.x*width/100,nozzleY=(from.y+8.1)*height/100;
-   const receiverX=to.x*width/100,receiverY=(to.y-7)*height/100;
-   if(receiverY<=nozzleY+4)return null;
+   const endpoints=labTitrationDropEndpoints(from,to,destination.kind,width,height);
+   if(!endpoints)return null;
+   const {x:nozzleX,y:nozzleY,targetX:receiverX,targetY:receiverY}=endpoints;
    const dx=receiverX-nozzleX,dy=receiverY-nozzleY;
    // ~0.05 ml per drop: 1 / 4 / 20 drops a second at the available rates.
    const rate=v.buretteRateMlS??.2,interval=.05/rate;
