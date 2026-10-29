@@ -1136,6 +1136,8 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
   vessels:separated.vessels.map(v=>v.id!==sourceId?v:{
    ...v,reagents:[],doses:undefined,filteredResidue:undefined,
    filteredSolution:undefined,environment:"aqueous" as const,
+   physicalProcess:undefined,physicalStartedAtMs:undefined,
+   indicator:undefined,visualStartedAtMs:undefined,
    reactionAmounts:undefined,completedReaction:undefined,observed:false}),
   placedDevices:placedLabDevices(separated).map(d=>d.id===filterId?
    {...d,collectedResidue:solid}:d),
