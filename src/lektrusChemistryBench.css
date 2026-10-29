@@ -3894,3 +3894,123 @@
  .lektrus-lab-vessel-art .lektrus-lab-reaction-heat{
  animation:none!important}
 }
+
+/* Bench vNext: indicator bottles occupy a real cabinet immediately UNDER
+   glassware. No selection toolbar floats above the experiment. */
+.lektrus-lab-bench .lektrus-lab-glass-cupboard{
+ top:8%!important;height:23%!important}
+.lektrus-lab-bench .lektrus-lab-indicator-cupboard{
+ position:absolute;left:56.5%;top:31.3%;width:25.5%;height:9.2%;
+ z-index:13;min-width:0;box-sizing:border-box;padding:4px 7px 5px;
+ display:flex;flex-direction:column;gap:3px;overflow:hidden;
+ background:linear-gradient(135deg,#e7f3e8,#d3eadb);
+ border:1.5px solid #83b49b;border-radius:10px;
+ box-shadow:0 3px 10px #285e4735}
+.lektrus-lab-bench .lektrus-lab-indicator-cupboard>strong{
+ color:#2a6e56;font:850 clamp(9px,.8cqw,12px)/1.1 system-ui,sans-serif;
+ text-align:center;letter-spacing:.04em}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ flex:1 1 auto;min-height:0;gap:4px}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button{
+ min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;
+ flex-direction:column;gap:2px;padding:2px 3px;cursor:pointer;
+ border-radius:6px;border:1px solid #bbd9c5;background:#f7fdf7;
+ color:#306b54;font:700 clamp(7px,.68cqw,10px)/1.1 system-ui,sans-serif}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button:disabled{opacity:.5;cursor:default}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button.is-active{
+ background:#d4f1e2;border-color:#4da780}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button>i{
+ width:12px;height:18px;flex:0 0 18px;border-radius:3px 3px 5px 5px;
+ background:linear-gradient(90deg,#ffffffb7,var(--indicator-tint) 35%,var(--indicator-tint) 70%,#fff9);
+ border:1px solid #a0bfb0;position:relative}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button>i:before{
+ content:"";position:absolute;left:3px;right:3px;top:-4px;height:3px;
+ background:#8ea99e;border-radius:1px}
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button>span{
+ text-align:center;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.lektrus-lab-bench .lektrus-lab-worktop-actions{display:none!important}
+/* A selected vessel has its composition below, not an intrusive control strip. */
+.lektrus-lab-bench .lektrus-lab-vessel-composition{
+ position:absolute;left:50%;top:calc(100% + 5px);z-index:80;
+ transform:translateX(-50%);width:max-content;max-width:245px;min-width:125px;
+ box-sizing:border-box;display:grid;gap:2px;padding:6px 9px;
+ border-radius:9px;border:1px solid #8bb59c;background:#f2faf2ef;
+ box-shadow:0 4px 12px #28544040;color:#2c5945;
+ text-align:left;pointer-events:none;font:650 10px/1.28 system-ui,sans-serif;
+ overflow-wrap:anywhere}
+.lektrus-lab-bench .lektrus-lab-vessel-composition>strong{
+ color:#226850;font-weight:850}
+.lektrus-lab-bench .lektrus-lab-vessel-composition>strong:nth-of-type(2){color:#8e673c}
+.lektrus-lab-bench .lektrus-lab-vessel-composition>span{color:#496e5c}
+.lektrus-lab-bench .lektrus-lab-content-tag strong{
+ white-space:normal!important;overflow-wrap:anywhere}
+.lektrus-lab-bench .lektrus-lab-chalkboard{
+ overflow:hidden!important;position:absolute!important}
+.lektrus-lab-bench .lektrus-lab-chalkboard .lektrus-lab-chalk-wipe{
+ position:absolute;right:6px;top:5px;z-index:15;
+ width:34px;height:30px;display:grid;place-items:center;
+ background:#e9e8d8;border:1px solid #a4a17a;border-radius:7px;
+ cursor:pointer;box-shadow:0 2px 5px #061e1b5b}
+.lektrus-lab-bench .lektrus-lab-chalkboard .lektrus-lab-chalk-wipe:disabled{
+ opacity:.5;cursor:default}
+.lektrus-lab-bench .lektrus-lab-chalk-writing{
+ height:100%!important;box-sizing:border-box!important;
+ overflow-y:auto!important;overflow-x:hidden!important;padding-right:6px!important;
+ scrollbar-width:thin;scrollbar-color:#88a79666 transparent}
+.lektrus-lab-bench .lektrus-lab-equation-history{
+ display:grid;gap:4px;list-style:decimal!important;
+ margin:3px 2px 5px 16px!important;padding:0!important;
+ font:700 clamp(10px,1.03cqw,15px)/1.4 ui-monospace,monospace!important;
+ color:#e5f3e6}
+.lektrus-lab-bench .lektrus-lab-equation-history li{
+ white-space:normal;overflow-wrap:anywhere;padding-left:3px}
+.lektrus-lab-bench .lektrus-lab-chalk-empty{
+ display:block;margin-top:8px;color:#a9c9bc;font:650 11px/1.4 system-ui,sans-serif}
+/* Let the substances breathe. Filters are a single light row, detailed
+   controls are collapsed until requested, and the catalogue gets the space. */
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-furniture-dialog{
+ gap:5px!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-head{
+ min-height:55px!important;padding:8px 17px!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-emblem{
+ width:30px!important;height:30px!important;flex-basis:30px!important;font-size:18px!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-tabs{
+ margin:0 12px!important;gap:4px!important;min-height:30px!important;
+ overflow-x:auto!important;flex-wrap:nowrap!important;scrollbar-width:thin}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-tabs button{
+ white-space:nowrap!important;flex:0 0 auto!important;min-height:29px!important;
+ padding:4px 9px!important;font-size:11px!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-filters{
+ margin:0 13px!important;min-height:33px!important;gap:6px!important;
+ grid-template-columns:minmax(0,1fr) minmax(110px,170px)!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-filters :is(input,select){
+ height:33px!important;min-height:33px!important;padding-top:5px!important;padding-bottom:5px!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-reagent-form-tabs{
+ margin:0 13px!important;flex-wrap:nowrap!important;gap:4px!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-reagent-form-tabs button{
+ flex:1 1 0!important;min-width:0!important;min-height:29px!important;
+ padding:4px 6px!important;font-size:11px!important}
+.lektrus-lab-furniture-modal .lektrus-lab-catalog-extra{
+ margin:0 14px!important;flex:0 0 auto!important;min-height:0}
+.lektrus-lab-furniture-modal .lektrus-lab-catalog-extra>summary{
+ width:fit-content;cursor:pointer;color:#477a62;
+ font:700 11px/1.2 system-ui,sans-serif;padding:2px 4px}
+.lektrus-lab-furniture-modal .lektrus-lab-catalog-extra .lektrus-lab-modal-sortbar{
+ display:flex!important;gap:7px!important;flex-wrap:wrap!important;
+ margin:5px 0!important;padding:3px!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-results-head{
+ margin:0 15px!important;min-height:24px!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-reagents{
+ min-height:240px!important;margin:0 10px 0 15px!important;
+ flex:1 1 auto!important;gap:6px!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-quick-editor{
+ margin:0 13px!important;padding:4px 8px!important}
+.lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-dose{
+ margin:0 13px 9px!important;padding:7px 10px!important;gap:5px!important}
+@media(max-width:700px){
+ .lektrus-lab-bench .lektrus-lab-indicator-shelf button>span{font-size:7px}
+ .lektrus-lab-bench .lektrus-lab-vessel-composition{font-size:9px;max-width:180px}
+ .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-reagents{min-height:140px!important}
+ .lektrus-lab-furniture-modal.is-reagents .lektrus-lab-modal-sortbar{flex-wrap:wrap!important}
+}
