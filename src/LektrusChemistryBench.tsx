@@ -340,7 +340,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [query,setQuery]=useState("");
  const [category,setCategory]=useState("Все");
  const [phase,setPhase]=useState<"all"|StoragePhase>("all");
- const [sort,setSort]=useState<CatalogueSort>("name");
+ const [sort,setSort]=useState<CatalogueSort>("recommended");
  const [group,setGroup]=useState<CatalogueGroup>("phase");
  const [cabinetTab,setCabinetTab]=useState<
  "all"|"acid"|"base"|"salt"|"oxide"|"metal"|"organic"|"other"|"experiments">("all");
@@ -1599,6 +1599,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
          <option key={id} value={id}>{label}</option>)}
        </select>}
       </div>
+      {cabinetTab!=="experiments"&&<div className="lektrus-lab-reagent-form-tabs"
+       role="group" aria-label="Выбор формы реактива">
+       {([["all","Все формы"],["liquid","Растворы"],["solid","Твёрдые"],["gas","Газы"]] as const).
+        map(([id,label])=><button type="button" key={id}
+         aria-pressed={phase===id} className={phase===id?"is-active":""}
+         onClick={()=>{setPhase(id);setChosen(null)}}>{label}</button>)}
+      </div>}
       {cabinetTab!=="experiments"&&<div className="lektrus-lab-modal-sortbar">
        <label>Состояние <select aria-label="Агрегатное состояние" value={phase}
         onChange={e=>setPhase(e.target.value as "all"|StoragePhase)}>
@@ -1607,7 +1614,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
        </select></label>
        <label>Сортировка <select aria-label="Сортировка реактивов" value={sort}
         onChange={e=>setSort(e.target.value as CatalogueSort)}>
-        <option value="name">По названию</option><option value="formula">По формуле</option>
+        <option value="recommended">Сначала растворы</option>
+         <option value="name">По названию</option><option value="formula">По формуле</option>
        </select></label>
        <label>Группировка <select aria-label="Группировка реактивов" value={group}
         onChange={e=>setGroup(e.target.value as CatalogueGroup)}>
@@ -1639,12 +1647,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
             const saved=quickReagents.find(q=>q.id===v.id)?.dose;
             const forms=labReagentForms(v);
             setUnit(saved&&forms.includes(saved.unit)?saved.unit:
-             forms.includes("g")?"g":"ml");
+             forms.includes("ml")?"ml":"g");
             setAmount(String(saved?.value??10));
             setMolarity(String(saved?.concentrationM??.1))}}>
            <i style={{background:cabinetColor(v)}}/>
            <strong>{v.formula}</strong>
-           <span>{v.name}<small>{labReagentForms(v).length>1?"Твёрдое / раствор":
+           <span>{v.name}<small>{labReagentForms(v).includes("ml")?"Раствор · доступен":
             labReagentPhaseLabel(v,labReagentForms(v)[0])}</small></span>
           </button>)}
          </div>
