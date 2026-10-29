@@ -273,7 +273,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,stirring=false,tit
        dose?formatLabDose(dose)+(dose.concentrationM!==undefined?
         " · "+dose.concentrationM.toLocaleString("ru-RU")+" М":""):
        "количество не задано"}</span>;
-     }}):"Пусто"}
+     }):"Пусто"}
    </span>
   </span>}
  </div>;
