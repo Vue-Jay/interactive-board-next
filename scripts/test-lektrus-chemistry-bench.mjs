@@ -1022,6 +1022,24 @@ assert.equal(liveReaction.vessels[0].reactionAmounts.complete,true);
 assert.equal(lab.labReactionNeedsTick(liveReaction.vessels[0]),false);
 assert.equal(lab.labVesselQuantity(liveReaction.vessels[0]).volumeMl,15,
  "Solute reaction must not incorrectly subtract the carrier liquids");
+// Every new burette drop re-equilibrates the measured acid/base inventory.
+let accurateTitration=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {value:10,unit:"ml",concentrationM:.1});
+accurateTitration=lab.addLabVessel(accurateTitration,"burette");
+const titrationBurette=accurateTitration.vessels.find(v=>v.kind==="burette").id;
+accurateTitration=lab.putLabReagent(accurateTitration,titrationBurette,"NaOH",
+ {value:10,unit:"ml",concentrationM:.1});
+accurateTitration=lab.dripLabVessel(accurateTitration,titrationBurette,"v1",1);
+const firstDrop=accurateTitration.vessels.find(v=>v.id==="v1").reactionAmounts;
+assert.ok(firstDrop);
+assert.equal(firstDrop.complete,true,"Acid/base neutralisation is fast between titration drops");
+assert.ok(Math.abs(firstDrop.productsMol.NaCl-.0001)<1e-12);
+assert.ok(Math.abs(firstDrop.remainingMol.HCl-.0009)<1e-12);
+accurateTitration=lab.dripLabVessel(accurateTitration,titrationBurette,"v1",2);
+const nextDrop=accurateTitration.vessels.find(v=>v.id==="v1").reactionAmounts;
+assert.ok(Math.abs(nextDrop.productsMol.NaCl-.0003)<1e-12,
+ "The newly added 2 ml must grow the product total from 0.1 to 0.3 mmol");
+assert.ok(Math.abs(nextDrop.remainingMol.HCl-.0007)<1e-12);
 const editorFixed=read("src/LektrusChemistryBenchEditor.tsx");
 assert.match(editorFixed,/stageScale/);
 assert.match(editorFixed,/Math.min\(w\/1600,h\/1000\)/,
