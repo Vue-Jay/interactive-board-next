@@ -100,19 +100,19 @@ export default function LektrusLabDeviceIcon({
   {kind==="tripod"&&<>
    {/* Taller metal rod: one sliding clamp from y=12 to y=64. */}
    <ellipse cx="50" cy="100" rx="45" ry="5" fill="#1e5249" opacity=".19"/>
-   <path d="M9 96H91L99 103H3Z" fill={"url(#"+metal+")"}
+   <path d="M3 96H106L109 103H1Z" fill={"url(#"+metal+")"}
     stroke="#466e66" strokeWidth="2.7"/>
-   <path d="M43 96V3" stroke="#345d56" strokeWidth="6.5" strokeLinecap="round"/>
-   <path d="M44 95V4" stroke="#d6eee3" strokeWidth="2.2" strokeLinecap="round"/>
-   <path d="M37 7H50" stroke="#94bdb0" strokeWidth="3.2" strokeLinecap="round"/>
+   <path d="M22 96V3" stroke="#345d56" strokeWidth="6.5" strokeLinecap="round"/>
+   <path d="M23 95V4" stroke="#d6eee3" strokeWidth="2.2" strokeLinecap="round"/>
+   <path d="M16 7H29" stroke="#94bdb0" strokeWidth="3.2" strokeLinecap="round"/>
    <g transform={`translate(0 ${clampY-40})`}>
-    <rect x="35" y="31" width="17" height="19" rx="3.5"
+    <rect x="14" y="31" width="17" height="19" rx="3.5"
      fill={"url(#"+metal+")"} stroke="#37645d" strokeWidth="2.4"/>
-    <rect x="39" y="34" width="4" height="13" rx="2"
+    <rect x="18" y="34" width="4" height="13" rx="2"
      fill="#d5ede1" opacity=".75"/>
-    <path d="M51 40H79" stroke="#517e76" strokeWidth="5" strokeLinecap="round"/>
-    <path d="M51 38H77" stroke="#b3d3c3" strokeWidth="1.6" strokeLinecap="round"/>
-    <circle cx="42" cy="40" r="3" fill="#315f55" stroke="#d9ece2" strokeWidth="1"/>
+    <path d="M30 40H79" stroke="#517e76" strokeWidth="5" strokeLinecap="round"/>
+    <path d="M30 38H77" stroke="#b3d3c3" strokeWidth="1.6" strokeLinecap="round"/>
+    <circle cx="22" cy="40" r="3" fill="#315f55" stroke="#d9ece2" strokeWidth="1"/>
    </g>
   </>}
   {kind==="thermometer"&&<>
