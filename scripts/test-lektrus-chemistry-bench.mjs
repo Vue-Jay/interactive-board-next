@@ -15,11 +15,13 @@ const titration=load("src/lektrusLabTitration.ts");
 const layout=load("src/lektrusLabLayout.ts");
 const chem=load("src/lektrusLabStoichiometry.ts");
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
+const acidBase=load("src/lektrusLabPH.ts");
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabTitration")return titration;
  if(key==="./lektrusLabLayout")return layout;
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabPhysicalProperties")return thermal;
+ if(key==="./lektrusLabPH")return acidBase;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
@@ -68,13 +70,13 @@ assert.equal(full.vessels[0].x,10);assert.equal(full.vessels[0].y,90);
 let indicatorBench=lab.defaultLabBench();
 assert.equal(lab.setLabIndicator(indicatorBench,"v1","litmus"),indicatorBench,
  "Indicators cannot be inserted into empty glassware");
-indicatorBench=lab.putLabReagent(indicatorBench,"v1","HCl");
+indicatorBench=lab.putLabReagent(indicatorBench,"v1","HCl",{value:10,unit:"ml",concentrationM:.1});
 indicatorBench=lab.setLabIndicator(indicatorBench,"v1","litmus");
 assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).medium,"acid");
 assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).color,"#d85761");
 indicatorBench=lab.emptyLabVessel(indicatorBench,"v1");
 assert.equal(indicatorBench.vessels[0].indicator,undefined,"Cleaning also removes indicator");
-indicatorBench=lab.putLabReagent(indicatorBench,"v1","NaOH");
+indicatorBench=lab.putLabReagent(indicatorBench,"v1","NaOH",{value:10,unit:"ml",concentrationM:.1});
 indicatorBench=lab.setLabIndicator(indicatorBench,"v1","phenolphthalein");
 assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).medium,"base");
 assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).color,"#d83a96");
@@ -1904,3 +1906,55 @@ assert.equal(liquidTransfer.vessels.find(v=>v.id===liquidReceiverId).indicator,"
 assert.equal(liquidTransfer.vessels.find(v=>v.id===liquidReceiverId).indicatorDrops,1);
 assert.equal(liquidTransfer.vessels.find(v=>v.id==="v1").indicatorDrops,undefined,
  "The emptied source cannot keep liquid indicator");
+
+
+/* pH must follow measured species and volumes, not the old acid/base label. */
+const idealAcid={reagents:["HCl"],environment:"aqueous",doses:{
+ HCl:{value:20,unit:"ml",concentrationM:.1}}};
+assert.equal(acidBase.labVesselPH(idealAcid).pH,1);
+const dilution={reagents:["HCl","H2O"],environment:"aqueous",doses:{
+ HCl:{value:20,unit:"ml",concentrationM:.1},H2O:{value:20,unit:"ml"}}};
+assert.ok(Math.abs(acidBase.labVesselPH(dilution).pH-1.30)<.02);
+assert.equal(acidBase.labVesselPH({reagents:["NaOH"],environment:"aqueous",
+ doses:{NaOH:{value:20,unit:"ml",concentrationM:.1}}}).pH,13);
+const perfectNeutral={reagents:["HCl","NaOH"],environment:"aqueous",doses:{
+ HCl:{value:20,unit:"ml",concentrationM:.1},
+ NaOH:{value:20,unit:"ml",concentrationM:.1}}};
+assert.equal(acidBase.labVesselPH(perfectNeutral).pH,7);
+assert.ok(acidBase.labVesselPH({...perfectNeutral,doses:{...perfectNeutral.doses,
+ NaOH:{value:10,unit:"ml",concentrationM:.1}}}).pH<2);
+assert.ok(acidBase.labVesselPH({...perfectNeutral,doses:{...perfectNeutral.doses,
+ NaOH:{value:30,unit:"ml",concentrationM:.1}}}).pH>12);
+assert.equal(acidBase.labVesselPH({reagents:["HCl"],environment:"aqueous",
+ doses:{HCl:{value:20,unit:"ml"}}}),null,
+ "Missing molarity must not produce an invented pH");
+assert.equal(acidBase.labVesselPH({reagents:["HCl","CuSO4"],environment:"aqueous",
+ doses:{HCl:{value:20,unit:"ml",concentrationM:.1},CuSO4:{value:10,unit:"ml"}}}),null,
+ "Unmodelled hydrolysis must not borrow pH from a strong acid");
+assert.ok(Math.abs(acidBase.labVesselPH({reagents:["CH3COOH"],environment:"aqueous",
+ doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1}}}).pH-2.88)<.04);
+assert.ok(Math.abs(acidBase.labVesselPH({reagents:["CH3COOH","NaOH"],environment:"aqueous",
+ doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1},
+ NaOH:{value:10,unit:"ml",concentrationM:.1}}}).pH-4.74)<.04);
+assert.equal(acidBase.labIndicatorTint("phenolphthalein",7),undefined);
+assert.equal(acidBase.labIndicatorTint("phenolphthalein",13),"#d83a96");
+assert.equal(acidBase.labIndicatorTint("methyl-orange",2),"#db4444");
+assert.equal(acidBase.labIndicatorTint("methyl-orange",6),"#efc94b");
+assert.equal(acidBase.labIndicatorTint("litmus",1),"#d85761");
+assert.equal(acidBase.labIndicatorTint("litmus",13),"#426cce");
+let phBeaker=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {value:20,unit:"ml",concentrationM:.1});
+phBeaker=lab.setLabIndicator(phBeaker,"v1","phenolphthalein");
+assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).pH,1);
+phBeaker=lab.putLabReagent(phBeaker,"v1","NaOH",
+ {value:20,unit:"ml",concentrationM:.1});
+assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).pH,7);
+assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).color,undefined,
+ "Phenolphthalein is colorless at strong acid/base equivalence");
+const phOther=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {value:20,unit:"ml",concentrationM:.1});
+assert.equal(acidBase.labVesselPH(phOther.vessels[0]).pH,1);
+assert.match(read("src/LektrusChemistryBench.tsx"),/const ph=labVesselPH\(vessel\)/);
+assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-inline-ph/);
+assert.match(read("src/lektrusChemistryBench.css"),/left:calc\(100% \+ 6px\)/);
+console.log("Measured strong/weak acid-base equilibrium and indicator colours passed");
