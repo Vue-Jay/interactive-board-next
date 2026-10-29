@@ -367,6 +367,8 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // remain an approximation: no general boiling points are inferred.
   const isWater=v.environment==="aqueous"&&v.reagents.length>0;
   const next=Math.round(Math.max(ambient,Math.min(isWater?100:400,raw))*10)/10;
+  const dissolutionComplete=v.physicalProcess==="dissolving"&&
+   v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500;
   const cooling=!device?.powered&&next<42&&v.temperatureC!==undefined&&
    ["heated","ignited"].includes(v.environment);
   // Only a separately measured PURE-WATER dose can be evaporated without
@@ -378,10 +380,11 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const newWater=boiling&&water?Math.max(0,
    Math.round((water.value-seconds*.02)*100)/100):water?.value;
   const evaporating=boiling&&newWater!==water?.value;
-  if(next!==old||cooling||evaporating)changed=true;
-  if(next===old&&!cooling&&!evaporating)return v;
+  if(next!==old||cooling||evaporating||dissolutionComplete)changed=true;
+  if(next===old&&!cooling&&!evaporating&&!dissolutionComplete)return v;
   const hasLiquid=Object.values(v.doses??{}).some(d=>d.unit==="ml");
   return {...v,temperatureC:next,
+   ...(dissolutionComplete?{physicalProcess:undefined,physicalStartedAtMs:undefined}:{}),
    ...(evaporating?{doses:(newWater??0)>0?{H2O:{...water!,value:newWater!}}:undefined,
     reagents:(newWater??0)>0?v.reagents:[],observed:false}:{}),
    environment:evaporating&&newWater===0?"dry":
