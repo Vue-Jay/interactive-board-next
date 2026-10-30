@@ -81,6 +81,14 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   if(STRONG_ACIDS.has(id))acidMol+=mol;
   else if(STRONG_BASES.has(id))baseMol+=mol;
   else if(id==="CH3COOH")aceticMol+=mol;
+  else if(id==="CH3COONa"||id==="CH3COOK"){
+   // Conjugate acetate and its alkali counterion survive neutralisation.
+   aceticMol+=mol;baseMol+=mol;
+  }
+  else if(id==="NH4Cl"){
+   // Ammonium is a weak acid; chloride is the counterion.
+   ammoniaMol+=mol;acidMol+=mol;
+  }
   else if(id==="NH4OH")ammoniaMol+=mol;
   else return null;
  }
