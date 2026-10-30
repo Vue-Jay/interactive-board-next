@@ -843,7 +843,7 @@ export function labVesselContents(v:LabVessel){
  // The chemical species inventory is reconstructed from the measured initial
  // doses, so adding another reagent cannot erase prior precipitates and
  // previously formed products can react in the next reviewed stage.
- const inventory=!v.filteredResidue&&v.doses&&v.reagents.length?
+ const inventory=!v.filteredResidue&&!v.filteredSolution&&v.doses&&v.reagents.length?
   simulateLabInventory(v):undefined;
  if(inventory&&!inventory.unmeasured.length){
   const solid:{formula:string;massG?:number}[]=[];
@@ -1211,7 +1211,6 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
      measured.concentrationM>=.001&&measured.concentrationM<=2))?measured:undefined;
   if(!validDose)return v;
   // Graduated glassware has a real maximum capacity, not an unlimited beaker.
-  const capacity=labMeasuredCapacityMl(v.kind);
   const priorMl=Object.values(v.doses??{}).reduce((sum,d)=>sum+
    (d.unit==="ml"?d.value:0),0);
   if(validDose?.unit==="ml"&&priorMl+validDose.value>labVesselQuantity(v).capacityMl+1e-7)return v;
