@@ -2,6 +2,7 @@ import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
+import {labSensibleHeatStep} from "./lektrusLabCalorimetry";
 import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
@@ -377,7 +378,16 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const toward=device&&device.powered?(device.temperatureC??ambient):ambient;
   const volumes=Object.values(v.doses??{}).reduce((total,d)=>total+d.value,0);
   const inertia=Math.max(.035,Math.min(.18,60/Math.max(100,volumes)*.10));
-  const raw=old+(toward-old)*(1-Math.exp(-seconds*(device?.powered?inertia:.018)));
+  const heaterPower=device?.powered?
+   device.kind==="hotplate"?160:120*(device.heatLevel??2):0;
+  const calorimetry=labSensibleHeatStep(v.kind,v.doses,old,ambient,seconds,
+   device?.powered?{kind:device.kind==="hotplate"?"hotplate":"burner",
+    temperatureC:toward,powerW:heaterPower}:undefined);
+  // Measured pure materials follow energy conservation (m*c*delta(T)).
+  // Unsupported prepared solutions keep the previous bounded educational
+  // temperature curve rather than receiving a fictitious specific heat.
+  const raw=calorimetry?.temperatureC??
+   old+(toward-old)*(1-Math.exp(-seconds*(device?.powered?inertia:.018)));
   const pure=labVesselThermal(v.reagents,v.doses);
   // No generic 100°C ceiling: concentrations and gaseous samples have no
   // single verified boiling point. Only a neat liquid with known properties
@@ -422,8 +432,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // The effective power arriving at the liquid is a bounded instrument
   // parameter. At a known boiling plateau, latent heat limits how much
   // water can actually leave the open vessel per simulation tick.
-  const deliveredHeatW=device?.powered?
-   device.kind==="hotplate"?160:120*(device.heatLevel??2):0;
+  const deliveredHeatW=calorimetry?.heaterWattsToContents??heaterPower;
   const phase=labEvaporate({...v,
    headspaceMl:Math.max(1,capacityMl-occupiedMl),
    reactionGasMol:gasMoles},seconds,next,toward,deliveredHeatW);

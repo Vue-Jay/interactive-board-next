@@ -24,6 +24,7 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
+const calorimetry=load("src/lektrusLabCalorimetry.ts");
 const constants=load("src/lektrusLabMaterialConstants.ts");
 const vapor=load("src/lektrusLabEvaporation.ts",key=>{
  assert.equal(key,"./lektrusLabMaterialConstants");return constants;
@@ -43,6 +44,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabLayout")return layout;
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabPhysicalProperties")return thermal;
+ if(key==="./lektrusLabCalorimetry")return calorimetry;
  if(key==="./lektrusLabEvaporation")return vapor;
  if(key==="./lektrusLabPH")return acidBase;
  if(key==="./lektrusLabReactionNetwork")return network;
@@ -2409,3 +2411,48 @@ assert.equal(layout.isLabReturnDrop({x:18,y:63},68,390,true),false,
  "The ordinary worktop remains a safe movement area");
 assert.equal(layout.isLabReturnDrop({x:80,y:23},65,1000,false),true);
 console.log("Return by upward drag: glassware confirmation, instrument top zone and safe movement");
+
+
+/* Calorimetry: actual measured thermal mass controls the warming curve.
+ * Sources: OpenStax Chemistry 2e §5.1, Physics §11.2; methanol source is
+ * documented in lektrusLabCalorimetry.ts. Unknown solutions stay unsupported. */
+assert.equal(calorimetry.LAB_CALORIMETRY_REFERENCE.H2O.specificJPerGK,4.184);
+assert.equal(calorimetry.LAB_CALORIMETRY_REFERENCE.C2H5OH.specificJPerGK,2.376);
+assert.equal(calorimetry.LAB_CALORIMETRY_REFERENCE.CH3OH.specificJPerGK,2.53);
+const heat20=calorimetry.labKnownHeatCapacityJPerK("beaker",{H2O:{unit:"ml",value:20}});
+const heat80=calorimetry.labKnownHeatCapacityJPerK("beaker",{H2O:{unit:"ml",value:80}});
+assert.ok(heat20>50&&heat80>heat20*2,"Water quantity must affect heat capacity");
+assert.equal(calorimetry.labKnownHeatCapacityJPerK("beaker",
+ {HCl:{unit:"ml",value:20,concentrationM:.1}}),undefined,
+ "Unverified stock solution gets no fabricated heat capacity");
+assert.equal(calorimetry.labKnownHeatCapacityJPerK("beaker",
+ {H2O:{unit:"ml",value:20},NaCl:{unit:"g",value:2}}),undefined,
+ "Mixed unknown-solid heat capacity stays unsupported");
+const source={kind:"hotplate",temperatureC:150,powerW:160};
+const warm20=calorimetry.labSensibleHeatStep("beaker",
+ {H2O:{unit:"ml",value:20}},22,22,10,source);
+const warm80=calorimetry.labSensibleHeatStep("beaker",
+ {H2O:{unit:"ml",value:80}},22,22,10,source);
+assert.ok(warm20.temperatureC>warm80.temperatureC+2,
+ "The same plate must warm a smaller sample faster");
+const cooled=calorimetry.labSensibleHeatStep("beaker",
+ {H2O:{unit:"ml",value:20}},50,22,10);
+assert.ok(cooled.temperatureC<50&&cooled.temperatureC>22,
+ "After switch-off a measured sample cools without overshooting ambient");
+assert.ok(warm20.heaterWattsToContents<=source.powerW);
+let smallCup=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{value:20,unit:"ml"});
+let largeCup=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{value:80,unit:"ml"});
+const heatCup=(sample)=>{
+ let out=lab.addPlacedLabDevice(sample,"hotplate");
+ const h=lab.placedLabDevices(out)[0].id;
+ out=lab.applyPlacedLabDevice(out,h,"v1");
+ out=lab.setLabHotplateTemperature(out,h,180);
+ out=lab.setPlacedDevicePower(out,h,true);
+ return lab.advanceLabSimulation(lab.advanceLabSimulation(out,0),10000);
+};
+smallCup=heatCup(smallCup);largeCup=heatCup(largeCup);
+assert.ok(smallCup.vessels[0].temperatureC>largeCup.vessels[0].temperatureC,
+ "End-to-end: 20 ml must be hotter than 80 ml after the same heating period");
+assert.match(read("src/LektrusChemistryBench.tsx"),
+ /Расчётная теплоёмкость содержимого и посуды/);
+console.log("Thermal mass, measured calorimetry, cooling and inspector: OK");

@@ -7,6 +7,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBen
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
+import {labKnownHeatCapacityJPerK} from "./lektrusLabCalorimetry";
 import {labCanStopper,labVaporPressureKPa,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
@@ -1710,6 +1711,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       <button type="button" onClick={()=>setCompositionId(null)} aria-label="Закрыть состав">✕</button>
      </div>
      <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Добавлено твёрдых веществ: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
+     {labKnownHeatCapacityJPerK(v.kind,v.doses)!==undefined&&
+      <p>Расчётная теплоёмкость содержимого и посуды:
+       {" "+formatted(labKnownHeatCapacityJPerK(v.kind,v.doses)!)} Дж/°C.
+       Масса стекла и передача тепла от прибора приняты учебной моделью.
+      </p>}
      {v.ventedVaporMl?.H2O!==undefined&&
       <p>Выпаривание: удалено {formatted(v.ventedVaporMl.H2O)} мл воды.
        {crystallineSalt&&
