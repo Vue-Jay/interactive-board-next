@@ -3,7 +3,7 @@
  * never fabricated. Gases marked ↑ leave the open vessel; ↓ remain as solids.
  * Solutions are ideal at 25 °C for the limited Ksp cases listed below. */
 import {reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "./lektrusReactionDatabase";
-import {labDoseMoles,labMolarMass,parseBalancedLabEquation} from "./lektrusLabStoichiometry";
+import {labDoseMoles,labMolarMass,parseBalancedLabEquation,type LabReactionAmounts} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
 import {labEquilibrateSingleSaltCrystals,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 
@@ -99,13 +99,15 @@ export function simulateLabInventory(input:{
  reagents:readonly string[];doses?:Record<string,LabDose>;
  environment:ReactionEnvironment;temperatureC?:number;stoppered?:boolean;
  chemicalInventory?:LabChemicalSnapshot;
+ /** Partial progress of a measured gas-generating reaction. */
+ reactionAmounts?:LabReactionAmounts;
  /** Persisted kinetic partition for a verified single-salt water mixture. */
  binarySaltPhase?:{formula:string;solidMol:number};
  /** Measured total liquid volume, independent of solute molar amounts. */
  volumeMl?:number;
 },maxSteps=48):LabInventory{
  const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
-  input.chemicalInventory,input.binarySaltPhase,input.volumeMl,maxSteps]);
+  input.chemicalInventory,input.reactionAmounts,input.binarySaltPhase,input.volumeMl,maxSteps]);
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
@@ -131,6 +133,46 @@ export function simulateLabInventory(input:{
  // Unknown quantities must not be treated as absent: suppress the entire
  // predictive stage rather than claiming a chemically complete result.
  if(inventory.unmeasured.length)return remember(key,inventory);
+ // A measured, running gas reaction has a defined extent. For this
+ // single validated step, never borrow the future final equilibrium.
+ const progress=input.chemicalInventory?undefined:input.reactionAmounts;
+ const progressCase=progress&&!progress.complete?
+  knownRows.find(entry=>entry.row.equation===progress.equation&&
+   entry.row.environment===input.environment&&
+   entry.row.observation==="gas"):undefined;
+ if(progressCase&&progress&&Number.isFinite(progress.extentMol)&&
+  progress.extentMol>=0&&progress.extentMol<=progress.maxExtentMol+1e-9){
+  const {row,equation}=progressCase;
+  if(equation.reactants.every(term=>
+   available(inventory.speciesMol,term.formula)+1e-9>=
+    progress.extentMol*term.coefficient)){
+   for(const term of equation.reactants){
+    const consumed=progress.extentMol*term.coefficient;
+    sum(inventory.speciesMol,term.formula,-consumed);
+    const solid=Math.min(available(inventory.solidMol,term.formula),consumed);
+    if(solid>0)sum(inventory.solidMol,term.formula,-solid);
+   }
+   const rawProducts=(row.equation.split("→")[1]??"").split(/\\s+\\+\\s+/);
+   for(const term of equation.products){
+    const gained=progress.extentMol*term.coefficient;
+    const marker=rawProducts.find(x=>x.replace(/^\\s*\\d+\\s*/,"").
+     replace(/[↓↑]/g,"").trim()===term.formula)??"";
+    if(marker.includes("↑"))sum(input.stoppered?
+     inventory.retainedGasMol:inventory.releasedGasMol,term.formula,gained);
+    else{
+     sum(inventory.speciesMol,term.formula,gained);
+     if(marker.includes("↓"))sum(inventory.solidMol,term.formula,gained);
+    }
+   }
+   const heatKJ=row.enthalpyKJPerMol===undefined?undefined:
+    row.enthalpyKJPerMol*progress.extentMol;
+   inventory.heatEstimateComplete=heatKJ!==undefined;
+   if(heatKJ!==undefined)inventory.knownHeatKJ=heatKJ;
+   inventory.steps.push({equation:row.equation,extentMol:progress.extentMol,
+    observation:row.observation,...(heatKJ===undefined?{}:{heatKJ})});
+   return remember(key,inventory);
+  }
+ }
  const used=new Set<string>();
  for(let iteration=0;iteration<maxSteps;iteration++){
   let winner:typeof knownRows[number]|undefined;
