@@ -5,10 +5,11 @@
  * Solutions are ideal; activities, solubility and temperature shifts
  * are outside this teaching approximation.
  */
+import {simulateLabInventory} from "./lektrusLabReactionNetwork";
 export type LabPHInput={
  reagents:readonly string[];
  doses?:Record<string,{value:number;unit:"ml"|"g";concentrationM?:number}>;
- environment:string;uncertain?:boolean;
+ environment:string;uncertain?:boolean;temperatureC?:number;
  /** Products and reactants tracked by the measured balanced equation. */
  reactionAmounts?:{equation:string;productsMol:Record<string,number>;
   remainingMol:Record<string,number>};
@@ -34,7 +35,9 @@ function doseMoles(id:string,dose:{value:number;unit:"ml"|"g";concentrationM?:nu
  return mass?dose.value/mass:null;
 }
 export function labVesselPH(v:LabPHInput):LabPHResult|null{
- if(v.environment!=="aqueous"||v.uncertain||!v.reagents.length)return null;
+ if(v.environment!=="aqueous"||!v.reagents.length)return null;
+ const inventory=v.doses?simulateLabInventory({...v,environment:"aqueous"}):undefined;
+ if(v.uncertain&&(!inventory||inventory.unmeasured.length||inventory.limited))return null;
  const doses=v.doses??{};
  if(v.reagents.length===1&&v.reagents[0]==="H2O")
   return {pH:7,label:"pH 7,00",acidMol:0,baseMol:0,
@@ -47,7 +50,10 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
  // AgCl is insoluble and must not become a source of imaginary free ions.
  const precipitated=v.reactionAmounts?.equation.includes("↓");
  const species:Record<string,number>={};
- if(precipitated&&v.reactionAmounts){
+ if(inventory&&!inventory.unmeasured.length&&!inventory.limited){
+  for(const [id,mol] of Object.entries(inventory.speciesMol))
+   species[id]=Math.max(0,mol-(inventory.solidMol[id]??0));
+ }else if(precipitated&&v.reactionAmounts){
   for(const stock of [v.reactionAmounts.remainingMol,v.reactionAmounts.productsMol])
    for(const [id,mol] of Object.entries(stock))
     species[id]=(species[id]??0)+mol;
@@ -75,6 +81,14 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   if(STRONG_ACIDS.has(id))acidMol+=mol;
   else if(STRONG_BASES.has(id))baseMol+=mol;
   else if(id==="CH3COOH")aceticMol+=mol;
+  else if(id==="CH3COONa"||id==="CH3COOK"){
+   // Conjugate acetate and its alkali counterion survive neutralisation.
+   aceticMol+=mol;baseMol+=mol;
+  }
+  else if(id==="NH4Cl"){
+   // Ammonium is a weak acid; chloride is the counterion.
+   ammoniaMol+=mol;acidMol+=mol;
+  }
   else if(id==="NH4OH")ammoniaMol+=mol;
   else return null;
  }

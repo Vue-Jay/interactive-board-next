@@ -8,6 +8,8 @@ import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,typ
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
 import {labVesselPH} from "./lektrusLabPH";
+import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
+import {labMolarMass} from "./lektrusLabStoichiometry";
 import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,labIsPreparedStock,labDefaultStockDose,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
@@ -109,7 +111,12 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const id=useId().replace(/:/g,"");
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
- const visualCase=vessel.completedReaction??verified;
+ const inventory=vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
+  simulateLabInventory(vessel):undefined;
+ const mostRecentEquation=inventory?.steps[inventory.steps.length-1]?.equation;
+ const recentCase=mostRecentEquation?
+  reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
+ const visualCase=recentCase??vessel.completedReaction??verified;
  const appearance=reactionAppearance(visualCase);
  const isLiquidIndicator=!!vessel.indicator&&vessel.indicator!=="universal";
  const ph=labVesselPH(vessel);
@@ -156,9 +163,11 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
   pureThermal.info.meltingC!==undefined?Math.min(1,Math.max(0,vessel.meltFraction??0)):0;
  const geo=shape[vessel.kind];
  const amounts=vessel.reactionAmounts;
- const species=amounts?[...Object.entries(amounts.remainingMol),
-  ...Object.entries(amounts.productsMol)].filter(([,mol])=>mol>1e-12):
-  vessel.reagents.map(id=>[id,0] as [string,number]);
+ const species=inventory&&!inventory.unmeasured.length?
+  Object.entries(inventory.speciesMol).filter(([,mol])=>mol>1e-12):
+  amounts?[...Object.entries(amounts.remainingMol),
+   ...Object.entries(amounts.productsMol)].filter(([,mol])=>mol>1e-12):
+   vessel.reagents.map(id=>[id,0] as [string,number]);
  const labels=species.map(([id])=>substances.find(s=>s.id===id)?.formula??id);
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
@@ -302,11 +311,11 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
     title={"Учебная оценка теплового эффекта, не показание реального термометра"}>
     {vessel.reactionHeat.direction==="exothermic"?"↑ Нагрев":"↓ Охлаждение"}
    </span>}
-  {(details||volumeMl>0||contents.solid.length>0)&&
+  {(volumeMl>1e-9||contents.solid.length>0)&&
    <div className={"lektrus-lab-quantity-meter"+(details?" has-composition":"")+
      (details&&readoutLeft?" is-reversed":"")}
     aria-label="Количество раствора и твёрдых веществ">
-    {(details||volumeMl>0)&&<div className="lektrus-lab-quantity-measure is-liquid"
+    {(volumeMl>1e-9)&&<div className="lektrus-lab-quantity-measure is-liquid"
       title={readable(volumeMl)+" мл / "+capacityMl+" мл (условная вместимость)"}>
       <span className="lektrus-lab-quantity-track">
        <i style={{height:(liquidFraction*100)+"%"}}/>
@@ -321,7 +330,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
        </small>
       </span>}
      </div>}
-    {(details||contents.solid.length>0)&&<div className="lektrus-lab-quantity-measure is-solid"
+    {(contents.solid.length>0)&&<div className="lektrus-lab-quantity-measure is-solid"
       title="Масса осадка или твёрдого вещества: данные из состава сосуда">
       <span className="lektrus-lab-quantity-track">
        <i style={{height:((contents.precipitateFraction===undefined?
@@ -343,7 +352,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
       </span>}
      </div>}
    </div>}
-  {showLabels&&!details&&<span className="lektrus-lab-content-tag"
+  {showLabels&&!details&&(volumeMl>1e-9||contents.solid.length>0)&&<span className="lektrus-lab-content-tag"
    title={labels.length?labels.map((formula,i)=>{
     const dose=amounts?undefined:vessel.doses?.[vessel.reagents[i]];
     const mol=amounts?species[i]?.[1]:undefined;
@@ -425,6 +434,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [deviceShelfGhost,setDeviceShelfGhost]=useState<{kind:LabDevice;x:number;y:number}|null>(null);
  const [activeDeviceId,setActiveDeviceId]=useState<string|null>(null);
  const [vesselMenuId,setVesselMenuId]=useState<string|null>(null);
+ const [compositionId,setCompositionId]=useState<string|null>(null);
  const [preview,setPreview]=useState<{id:string;x:number;y:number}|null>(null);
  const contactRef=useRef<{sourceId:string;targetId:string;activated:boolean}|null>(null);
  const contactTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -814,12 +824,18 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  };
  const beginShelf=(event:PointerEvent<HTMLButtonElement>,kind:LabGlassware)=>{
   if(!editable||event.button!==0||!event.isPrimary)return;
-  event.stopPropagation();event.preventDefault();
+  event.stopPropagation();
   shelfGesture.current={kind,startX:event.clientX,startY:event.clientY,dragged:false};
-  event.currentTarget.setPointerCapture(event.pointerId);
+  // A touch swipe belongs to the scrollable cupboard. Tap-to-place still
+  // works, while a mouse/pen retains precise drag-and-drop.
+  if(event.pointerType!=="touch"){
+   event.preventDefault();
+   event.currentTarget.setPointerCapture(event.pointerId);
+  }
  };
  const moveShelf=(event:PointerEvent<HTMLButtonElement>)=>{
   const g=shelfGesture.current;if(!g)return;
+  if(event.pointerType==="touch")return;
   event.stopPropagation();const p=point(event);if(!p)return;
   if(Math.hypot(event.clientX-g.startX,event.clientY-g.startY)>7)g.dragged=true;
   if(g.dragged)setShelfGhost({kind:g.kind,x:p.x,y:p.y});
@@ -844,12 +860,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  };
  const beginDeviceShelf=(e:PointerEvent<HTMLButtonElement>,kind:LabDevice)=>{
   if(!editable||e.button!==0||!e.isPrimary)return;
-  e.preventDefault();e.stopPropagation();
+  e.stopPropagation();
   deviceShelfGesture.current={kind,startX:e.clientX,startY:e.clientY,dragged:false};
-  e.currentTarget.setPointerCapture(e.pointerId);
+  if(e.pointerType!=="touch"){
+   e.preventDefault();
+   e.currentTarget.setPointerCapture(e.pointerId);
+  }
  };
  const moveDeviceShelf=(e:PointerEvent<HTMLButtonElement>)=>{
   const g=deviceShelfGesture.current;if(!g)return;
+  if(e.pointerType==="touch")return;
   e.stopPropagation();
   const p=point(e);if(!p)return;
   if(Math.hypot(e.clientX-g.startX,e.clientY-g.startY)>7)g.dragged=true;
@@ -1055,7 +1075,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     }}>
     <span aria-hidden="true">⚗</span><span className="lektrus-lab-prepare-label">Комплект</span>
    </button>
-   <span className="lektrus-lab-scene-stats">{bench.vessels.length} из 6 сосудов <b>·</b> {physicalDevices.length} приборов</span>
+
    <div className="lektrus-lab-header-tools" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
     <button type="button" className="lektrus-lab-temperature-toggle"
@@ -1157,14 +1177,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      aria-label="Редактировать быстрые реактивы"
      onClick={e=>{e.stopPropagation();openCabinet("reagents")}}>+</button>}
    </div>
-   <span className="lektrus-lab-furniture-foot">Нажмите для добавления · перетащите на сосуд</span>
+   <span className="lektrus-lab-furniture-foot" aria-hidden="true">Нажмите на реактив или перетащите к сосуду</span>
   </div>
   <div className={"lektrus-lab-glass-cupboard"+(dropFurniture==="glassware"?" is-dropzone":"")} data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <button type="button" className="lektrus-lab-furniture-title lektrus-lab-shelf-header"
     disabled={!editable} aria-label="Открыть шкаф посуды"
     onClick={e=>{e.stopPropagation();openCabinet("glassware")}}>ПОСУДА</button>
-   <div className="lektrus-lab-shelf-items">
+   <div className={"lektrus-lab-shelf-items is-count-"+glasswareForLabMode(bench).length} role="group" aria-label="Посуда на полках">
     {glasswareForLabMode(bench).map(kind=><button type="button" key={kind.id} disabled={!editable}
       className="lektrus-lab-shelf-item" title={"Взять: "+kind.name}
       aria-label={"Взять из шкафа "+kind.name} onPointerDown={e=>beginShelf(e,kind.id)}
@@ -1175,7 +1195,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <small>{kind.name}</small>
      </button>)}
    </div>
-   <span className="lektrus-lab-furniture-foot">Выберите место на столе или перетащите</span>
+   <span className="lektrus-lab-furniture-foot" aria-hidden="true">Нажмите на посуду или перетащите на стол</span>
   </div>
   <div className="lektrus-lab-indicator-cupboard" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
@@ -1232,7 +1252,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <small>{device.name}</small>
     </button>)}
    </div>
-   <span className="lektrus-lab-furniture-foot">Нажмите или перетащите</span>
+   <span className="lektrus-lab-furniture-foot" aria-hidden="true">Выберите прибор для стола</span>
   </div>
   {physicalDevices.map((device,i)=>{
    const current=devicePreview?.id===device.id?devicePreview:device;
@@ -1471,6 +1491,62 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       titrationReading({...bench.titration,indicator:v.indicator??bench.titration.indicator}):undefined}/>
    </button>;
   })}
+  {bench.vessels.filter(v=>v.reagents.length>0||v.filteredResidue||v.filteredSolution).map(v=>{
+   const p=vesselPosition(v);
+   return <button key={"composition-"+v.id} type="button" data-board-interactive="true"
+    title="Полный состав сосуда" aria-label={"Открыть полный состав: "+names[v.kind]}
+    onClick={e=>{e.stopPropagation();setCompositionId(v.id)}}
+    style={{position:"absolute",left:`calc(${p.x}% + 37px)`,top:`calc(${p.y}% - 34px)`,zIndex:65,
+     border:"1px solid #7cb5aa",borderRadius:20,background:"#e8faf5",color:"#245e54",
+     minWidth:25,minHeight:25,fontWeight:800,cursor:"pointer"}}>ⓘ</button>;
+  })}
+  {compositionId&&(()=>{
+   const v=bench.vessels.find(x=>x.id===compositionId);
+   if(!v)return null;
+   const composition=labVesselContents(v),quantity=labVesselQuantity(v);
+   const inventory=v.doses&&!v.filteredResidue&&!v.filteredSolution?
+    simulateLabInventory(v):undefined;
+   const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
+    "масса не определена":(labMolarMass(formula)!*mmol/1000).toLocaleString("ru-RU",{maximumFractionDigits:6})+" г";
+   const formatted=(n:number)=>n.toLocaleString("ru-RU",{maximumFractionDigits:6});
+   return <div data-board-interactive="true" role="presentation" onPointerDown={e=>e.stopPropagation()}
+    style={{position:"absolute",inset:0,zIndex:110,display:"grid",placeItems:"center",background:"#132c2b99"}}>
+    <section role="dialog" aria-modal="true" aria-label="Полный состав сосуда"
+     style={{width:"min(520px,90%)",maxHeight:"85%",overflowY:"auto",background:"#f7fffc",color:"#183c37",borderRadius:16,padding:20,boxShadow:"0 12px 45px #102b2855"}}>
+     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+      <strong>Содержимое: {names[v.kind]}</strong>
+      <button type="button" onClick={()=>setCompositionId(null)} aria-label="Закрыть состав">✕</button>
+     </div>
+     <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Добавлено твёрдых веществ: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
+     <strong>Растворённые вещества</strong>
+     <ul>{composition.solution.length?composition.solution.map((s,i)=><li key={i}>{s.formula}: {s.mmol===undefined?"количество не рассчитано":formatted(s.mmol)+" ммоль · "+massOf(s.formula,s.mmol)+(composition.solutionMl>0?" · "+formatted(s.mmol/composition.solutionMl)+" моль/л":"")}</li>):<li>Нет</li>}</ul>
+     <strong>Твёрдая фаза и осадок</strong>
+     <ul>{composition.solid.length?composition.solid.map((s,i)=><li key={i}>{s.formula}: {s.massG===undefined?"масса не рассчитана":formatted(s.massG)+" г"}</li>):<li>Нет</li>}</ul>
+     {inventory&&Object.keys(inventory.releasedGasMol).length>0&&<>
+      <strong>Выделившиеся газы</strong>
+      <ul>{Object.entries(inventory.releasedGasMol).map(([formula,mol])=>
+       <li key={formula}>{formula}: {formatted(mol*1000)} ммоль · {massOf(formula,mol*1000)}
+        {" · ≈"+formatted(mol*24465)+" мл при 25 °C, 1 атм"}</li>)}</ul>
+     </>}
+     {inventory?.steps.length?<><strong>Последовательность превращений</strong>
+      <ol>{inventory.steps.map((step,i)=><li key={i}>{step.equation}
+       {" · "+formatted(step.extentMol*1000)+" ммоль"}
+       {step.heatKJ!==undefined&&" · ΔH "+formatted(step.heatKJ)+" кДж"}</li>)}</ol>
+      {inventory.heatEstimateComplete&&inventory.knownHeatKJ!==undefined&&
+       <p>Расчётный суммарный тепловой эффект: {formatted(inventory.knownHeatKJ)} кДж
+        {inventory.knownHeatKJ<0?" (выделение теплоты)":" (поглощение теплоты)"}.</p>}
+      {!inventory.heatEstimateComplete&&
+       <small>Тепловой эффект всей смеси не определён: не для всех превращений есть проверенные энтальпии.</small>}
+     </>:v.reactionAmounts&&<><strong>Текущая реакция</strong><p>{v.reactionAmounts.equation}</p></>}
+     {inventory&&labInventoryMassG(inventory)!==undefined&&
+      <p title="Сумма масс известных химических компонентов, включая выделившиеся газы. Не включает неучтённый растворитель стандартных растворов.">
+       Масса учтённых компонентов: {formatted(labInventoryMassG(inventory)!)} г
+      </p>}
+     <small>Расчёт выполнен по измеренным количествам и проверенным уравнениям. Для произвольных смесей, активности и скорости реакций необходимы дополнительные термодинамические данные.</small>
+     {composition.remainderUnknown&&<p>Для части компонентов количественная модель реакции пока отсутствует. Эти количества нельзя считать точным результатом.</p>}
+    </section>
+   </div>;
+  })()}
   {editable&&bench.vessels.filter(v=>v.kind==="burette").map(v=>{
    const p=vesselPosition(v);
    const below=labReceiverBelowStand(bench,v.id);

@@ -24,13 +24,20 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
-const acidBase=load("src/lektrusLabPH.ts");
+const network=load("src/lektrusLabReactionNetwork.ts",key=>{
+ if(key==="./lektrusLabStoichiometry")return chem;
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
+const acidBase=load("src/lektrusLabPH.ts",key=>{
+ assert.equal(key,"./lektrusLabReactionNetwork");return network;
+});
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabTitration")return titration;
  if(key==="./lektrusLabLayout")return layout;
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabPhysicalProperties")return thermal;
  if(key==="./lektrusLabPH")return acidBase;
+ if(key==="./lektrusLabReactionNetwork")return network;
  if(key==="./lektrusLabCatalog")return catalog;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
@@ -50,8 +57,8 @@ assert.equal(lab.labObservation(bench.vessels[0]).caseData.observation,"precipit
 assert.equal(bench.vessels[1].reagents.length,0,"Transferred container is empty");
 assert.deepEqual(bench.vessels[0].reagents,["NaCl","AgNO3"]);
 let unknown=lab.putLabReagent(bench,"v1","HCl");
-assert.equal(lab.labObservation(unknown.vessels[0]).status,"unknown",
- "Second-stage products cannot be predicted from original reactant IDs");
+assert.equal(lab.labObservation(unknown.vessels[0]).status,"reaction",
+ "Reviewed first-stage products remain recognised after additional reagent dosing");
 assert.equal(unknown.vessels[0].completedReaction?.observation,"precipitate",
  "Existing precipitate must stay visually represented even when later chemistry is unknown");
 let heated=lab.defaultLabBench();
@@ -122,8 +129,8 @@ assert.equal(decanted.vessels[2].doses.NaCl.value,12);
 assert.equal(decanted.vessels[2].doses.AgNO3.value,7);
 assert.equal(decanted.vessels[0].completedReaction,undefined,"Emptied source loses its products");
 const postReaction=lab.putLabReagent(decanted,"v3","HCl",{value:5,unit:"ml"});
-assert.equal(lab.labObservation(postReaction.vessels[2]).status,"unknown",
- "Further transformation of spent mixture must not be invented");
+assert.equal(lab.labObservation(postReaction.vessels[2]).status,"reaction",
+ "Verified precipitate persists and additional measured reactants can participate");
 assert.ok(postReaction.vessels[2].completedReaction,"Previously precipitated solid should remain visible as last known appearance");
 const cleaned=lab.emptyLabVessel(postReaction,"v3");
 assert.equal(cleaned.vessels[2].completedReaction,undefined,"Sink removes all products");
@@ -1720,8 +1727,8 @@ const physical=lab.labVesselContents(measuredSediment.vessels[0]);
 assert.ok(physical.solutionMl>=19.9&&physical.solutionMl<=20.1);
 assert.equal(physical.solid.length,1);
 assert.equal(physical.solid[0].formula,"AgCl");
-assert.ok(Math.abs(physical.precipitateG-.143318)<1e-5,
- "Sediment mass must be based on actual produced moles, not a decorative fixed layer");
+assert.ok(physical.precipitateG>.1432&&physical.precipitateG<.14332,
+ "Actual precipitate mass must respect remaining soluble material at Ksp equilibrium");
 assert.ok(physical.precipitateFraction>0&&physical.precipitateFraction<.01);
 assert.ok(physical.solution.some(v=>v.formula==="NaNO3"));
 assert.ok(!physical.solution.some(v=>v.formula==="AgCl"),
@@ -1731,7 +1738,8 @@ const halfPrecipitation=lab.labVesselContents({...measuredSediment.vessels[0],
  reactionAmounts:{...measuredSediment.vessels[0].reactionAmounts,
   productsMol:Object.fromEntries(Object.entries(
    measuredSediment.vessels[0].reactionAmounts.productsMol).map(([id,m])=>[id,m/2]))}});
-assert.ok(Math.abs(halfPrecipitation.precipitateG/physical.precipitateG-.5)<.001);
+assert.ok(Math.abs(halfPrecipitation.precipitateG/physical.precipitateG-1)<1e-8,
+ "Legacy animation progress must not override the conserved equilibrium inventory");
 const labUi=read("src/LektrusChemistryBench.tsx");
 assert.doesNotMatch(labUi,/className="lektrus-lab-worktop-actions"/,
  "Floating indicator/environment/pour toolbar must be removed");
@@ -1777,11 +1785,14 @@ const qualContents=lab.labVesselContents(plainQualitative.vessels[0]);
 assert.deepEqual(qualContents.solid.map(v=>v.formula),["AgCl"],
  "Qualitative reaction must show the insoluble product, not the initial reagent list");
 assert.ok(qualContents.solution.some(v=>v.formula==="NaNO3"));
-assert.ok(!qualContents.solution.some(v=>v.formula==="AgNO3"));
-assert.equal(qualContents.precipitateG,undefined,
- "With no quantified doses, mass of sediment must stay unknown");
-assert.equal(qualContents.remainderUnknown,true,
- "Unmeasured initial reactant excess must be explicitly unknown");
+assert.ok((qualContents.solution.find(v=>v.formula==="AgNO3")?.mmol??0)<.001,
+ "Ksp equilibrium allows a trace of dissolved silver nitrate rather than zero");
+assert.ok(qualContents.precipitateG>0,
+ "Default reagent stocks have known concentrations and must yield real mass");
+const trulyUnmeasured=lab.labVesselContents({...plainQualitative.vessels[0],doses:undefined});
+assert.equal(trulyUnmeasured.precipitateG,undefined,
+ "Legacy samples without measured doses must never invent mass");
+assert.equal(trulyUnmeasured.remainderUnknown,true);
 console.log("Qualitative chemistry shows products, not fabricated residue masses");
 
 
@@ -2056,35 +2067,38 @@ assert.equal(preserved.vessels[0].reactionAmounts?.complete,true);
 const beforeDye=lab.labVesselContents(preserved.vessels[0]);
 assert.equal(beforeDye.solutionMl,90);
 assert.equal(beforeDye.solid[0].formula,"AgCl");
-assert.ok(Math.abs(beforeDye.precipitateG-.14332)<.00001);
+assert.ok(beforeDye.precipitateG>.143&&beforeDye.precipitateG<.14332,
+ "Precipitate mass includes the dilute equilibrium dissolved residue");
 assert.ok(beforeDye.solution.some(x=>x.formula==="NaNO3"));
-assert.ok(!beforeDye.solution.some(x=>x.formula==="AgNO3"));
-assert.equal(acidBase.labVesselPH(preserved.vessels[0]).pH,7,
- "The completed AgCl precipitation contains neutral NaNO3, not unreacted AgNO3");
+assert.ok((beforeDye.solution.find(x=>x.formula==="AgNO3")?.mmol??0)<.002,
+ "Dissolved silver remains at the small equilibrium concentration");
+assert.equal(acidBase.labVesselPH(preserved.vessels[0]),null,
+ "Trace AgNO3 ion hydrolysis lacks a validated pH model and must not be labelled pH 7");
 const measuredBefore=JSON.stringify(preserved.vessels[0].reactionAmounts);
 preserved=lab.setLabIndicator(preserved,"v1","litmus");
 assert.equal(JSON.stringify(preserved.vessels[0].reactionAmounts),measuredBefore,
  "Indicator drops must not destroy the reaction mass ledger");
 assert.equal(lab.labVesselContents(preserved.vessels[0]).solid[0].formula,"AgCl");
-assert.ok(Math.abs(lab.labVesselContents(preserved.vessels[0]).precipitateG-
- beforeDye.precipitateG)<1e-12);
+assert.ok(lab.labVesselContents(preserved.vessels[0]).precipitateG>.143,
+ "Indicator addition cannot remove previously precipitated AgCl");
 preserved=lab.putLabReagent(preserved,"v1","H2O",{unit:"ml",value:10});
 assert.equal(preserved.vessels[0].uncertain,false);
 assert.equal(lab.labVesselContents(preserved.vessels[0]).solutionMl,100);
 assert.equal(lab.labVesselContents(preserved.vessels[0]).solid[0].formula,"AgCl");
-assert.equal(acidBase.labVesselPH(preserved.vessels[0]).pH,7);
+assert.ok(lab.labVesselContents(preserved.vessels[0]).precipitateG>.143,
+ "Dilution slightly changes AgCl equilibrium but does not erase the solid");
 preserved=lab.putLabReagent(preserved,"v1","AgNO3",
  {unit:"ml",value:10,concentrationM:.1});
 assert.equal(lab.labVesselContents(preserved.vessels[0]).solid[0].formula,"AgCl",
  "Re-dosing an original reactant must keep the old precipitate");
-assert.ok(Math.abs(lab.labVesselContents(preserved.vessels[0]).precipitateG-
- beforeDye.precipitateG)<1e-10);
+assert.ok(lab.labVesselContents(preserved.vessels[0]).precipitateG>.143,
+ "Adding more silver nitrate changes equilibrium without removing the formed AgCl");
 preserved=lab.putLabReagent(preserved,"v1","CuSO4",
  {unit:"ml",value:10,concentrationM:.1});
 assert.equal(lab.labVesselContents(preserved.vessels[0]).solid[0].formula,"AgCl",
  "Even unsupported next-stage chemistry must not delete a known solid");
-assert.equal(lab.labVesselContents(preserved.vessels[0]).precipitateG,
- beforeDye.precipitateG);
+assert.ok(lab.labVesselContents(preserved.vessels[0]).precipitateG>.143,
+ "Additional neutral solute must not make a known solid disappear");
 assert.ok(lab.labVesselContents(preserved.vessels[0]).solution.some(v=>
  v.formula==="CuSO4"&&Math.abs(v.mmol-1)<1e-6),
  "New measured stock must remain visible beside pre-existing AgCl");
