@@ -1563,7 +1563,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const composition=labVesselContents(v),quantity=labVesselQuantity(v);
    const vaporReading=labVesselPressure(v);
    const boilingEstimate=labIdealBoilingC(v);
-   const inventory=v.doses&&!v.filteredResidue&&!v.filteredSolution?
+   const inventory=v.chemicalInventory?
+    simulateLabInventory({...v,volumeMl:quantity.volumeMl}):
+    v.doses&&!v.filteredResidue&&!v.filteredSolution?
     simulateLabInventory(v):undefined;
    const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
     "масса не определена":(labMolarMass(formula)!*mmol/1000).toLocaleString("ru-RU",{maximumFractionDigits:6})+" г";
@@ -1598,6 +1600,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <ul>{Object.entries(v.ventedVaporMl).map(([id,ml])=>
        <li key={id}>{id}: {formatted(ml)} мл</li>)}</ul>
      </>}
+     {v.chemicalInventory&&v.filteredSolution&&
+      <p>Фильтрат: {formatted(v.filteredSolution.volumeMl??quantity.volumeMl)} мл.
+       Количество каждого растворённого вещества сохранено после отделения осадка и
+       используется в последующих реакциях.</p>}
      <strong>Растворённые вещества</strong>
      <ul>{composition.solution.length?composition.solution.map((s,i)=><li key={i}>{s.formula}: {s.mmol===undefined?"количество не рассчитано":formatted(s.mmol)+" ммоль · "+massOf(s.formula,s.mmol)+(composition.solutionMl>0?" · "+formatted(s.mmol/composition.solutionMl)+" моль/л":"")}</li>):<li>Нет</li>}</ul>
      <strong>Твёрдая фаза и осадок</strong>
