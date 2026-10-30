@@ -52,9 +52,9 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
    for(const [id,mol] of Object.entries(stock))
     species[id]=(species[id]??0)+mol;
   for(const term of (v.reactionAmounts.equation.split("→")[1]??"")
-   .split(/\\s+\\+\\s+/)){
+   .split(/\s+\+\s+/)){
    if(term.includes("↓")){
-    const solid=term.replace(/^\\d+\\s*/,"").replace(/[↓↑]/g,"").trim();
+    const solid=term.replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim();
     delete species[solid];
    }
   }
