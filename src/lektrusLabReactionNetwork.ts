@@ -6,6 +6,14 @@ import {reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "
 import {labDoseMoles,labMolarMass,parseBalancedLabEquation} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
 
+/** Persistent, strictly quantitative phase inventory. A transfer can carry
+ * these molecule counts without pretending the filtrate is a fresh stock
+ * solution or replaying old reactants after the precipitate is removed. */
+export type LabChemicalSnapshot={
+ speciesMol:Record<string,number>;
+ solidMol:Record<string,number>;
+ retainedGasMol?:Record<string,number>;
+};
 export type LabInventoryStep={equation:string;extentMol:number;observation:string;heatKJ?:number};
 export type LabInventory={
  speciesMol:Record<string,number>;solidMol:Record<string,number>;
@@ -89,16 +97,24 @@ const remember=(key:string,value:LabInventory)=>{
 export function simulateLabInventory(input:{
  reagents:readonly string[];doses?:Record<string,LabDose>;
  environment:ReactionEnvironment;temperatureC?:number;stoppered?:boolean;
+ chemicalInventory?:LabChemicalSnapshot;
+ /** Measured total liquid volume, independent of solute molar amounts. */
+ volumeMl?:number;
 },maxSteps=48):LabInventory{
- const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,maxSteps]);
+ const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
+  input.chemicalInventory,input.volumeMl,maxSteps]);
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
   steps:[],unmeasured:[],limited:false,heatEstimateComplete:true};
  const doses=input.doses??{};
- const volumeMl=Object.entries(doses).reduce((n,[id,d])=>
+ const volumeMl=input.volumeMl??Object.entries(doses).reduce((n,[id,d])=>
   n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0);
- for(const id of input.reagents){
+ if(input.chemicalInventory){
+  Object.assign(inventory.speciesMol,input.chemicalInventory.speciesMol);
+  Object.assign(inventory.solidMol,input.chemicalInventory.solidMol);
+  Object.assign(inventory.retainedGasMol,input.chemicalInventory.retainedGasMol??{});
+ }else for(const id of input.reagents){
   const dose=doses[id];
   const mol=dose?labDoseMoles(id,dose):undefined;
   if(mol===undefined||!Number.isFinite(mol)||mol<=0){
@@ -170,6 +186,10 @@ export function simulateLabInventory(input:{
  }
  inventory.limited=inventory.steps.length>=maxSteps;
  return remember(key,inventory);
+}
+export function labInventorySnapshot(inventory:LabInventory):LabChemicalSnapshot{
+ return {speciesMol:{...inventory.speciesMol},solidMol:{...inventory.solidMol},
+  retainedGasMol:{...inventory.retainedGasMol}};
 }
 export function labInventoryMassG(inventory:LabInventory):number|undefined{
  let sumMass=0;

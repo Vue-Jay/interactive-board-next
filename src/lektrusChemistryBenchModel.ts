@@ -9,7 +9,7 @@ import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVes
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
  from "./lektrusLabTitration";
 import {identifyReaction,reviewedReactionCases,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
-import {simulateLabInventory} from "./lektrusLabReactionNetwork";
+import {simulateLabInventory,labInventorySnapshot,type LabChemicalSnapshot} from "./lektrusLabReactionNetwork";
 
 export type LabGlassware="beaker"|"tube"|"flask"|"cylinder"|"dish"|
  "conical"|"volumetric"|"crucible"|"pipette"|"burette";
@@ -410,7 +410,8 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // for an ethanol/water mixture.
   const boilingPoint=labIdealBoilingC(v)??(pure?.unit==="ml"?pure.info.boilingC:undefined);
   if(boilingPoint!==undefined&&next>boilingPoint&&!v.stoppered)next=boilingPoint;
-  const gasInventory=v.stoppered?simulateLabInventory(v):undefined;
+  const gasInventory=v.stoppered?simulateLabInventory({...v,
+   volumeMl:labVesselQuantity(v).volumeMl}):undefined;
   const gasMoles=gasInventory?Object.values(gasInventory.retainedGasMol).
    reduce((sum,mol)=>sum+mol,0)+Object.entries(gasInventory.speciesMol).
    reduce((sum,[id,mol])=>sum+(substances.find(s=>s.id===id)?.kind==="газ"?mol:0),0):0;
@@ -726,8 +727,11 @@ export type LabVessel={pourFraction?:number;
  physicalProcess?:"dissolving";physicalStartedAtMs?:number;
  /** Filtered insoluble solid; mass only when quantities were measured. */
  filteredResidue?:{formula:string;massG?:number;color:string};
- /** Liquid filtrate, its unknown concentrations are not guessed. */
- filteredSolution?:{sourceEquation:string;solutes:string[]};
+ /** Physical carrier volume and identities of dissolved filtrate products. */
+ filteredSolution?:{sourceEquation:string;solutes:string[];volumeMl?:number};
+ /** Exact persistent chemical phase amounts after separation or transfer.
+  * The current doses then describe NEW additions, not consumed stock. */
+ chemicalInventory?:LabChemicalSnapshot;
  /** Moles of reagents/products; solvent volume is conserved separately. */
  reactionAmounts?:LabReactionAmounts;
  /** A verified reaction already completed in this material; survives full transfer. */
@@ -829,7 +833,9 @@ export function recordLabReactions(bench:LabBench):LabBench{
  const log=[...(bench.reactionLog??[])];
  let changed=false;
  for(const vessel of bench.vessels){
-  const inventory=vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
+  const inventory=vessel.chemicalInventory?
+   simulateLabInventory({...vessel,volumeMl:labVesselQuantity(vessel).volumeMl}):
+   vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
    simulateLabInventory(vessel):undefined;
   const current=labObservation(vessel);
   const row=current.status==="reaction"?current.caseData:undefined;
@@ -866,7 +872,9 @@ export function labVesselContents(v:LabVessel){
  // The chemical species inventory is reconstructed from the measured initial
  // doses, so adding another reagent cannot erase prior precipitates and
  // previously formed products can react in the next reviewed stage.
- const inventory=!v.filteredResidue&&!v.filteredSolution&&v.doses&&v.reagents.length?
+ const inventory=v.chemicalInventory?
+  simulateLabInventory({...v,volumeMl}):
+  !v.filteredResidue&&!v.filteredSolution&&v.doses&&v.reagents.length?
   simulateLabInventory(v):undefined;
  if(inventory&&!inventory.unmeasured.length){
   const solid:{formula:string;massG?:number}[]=[];
@@ -882,7 +890,8 @@ export function labVesselContents(v:LabVessel){
    if(solidMol>1e-12){
     const mass=labMolarMass(formula);
     solid.push({formula,massG:mass===undefined?undefined:mass*solidMol});
-    if(precipitated.has(formula)){
+    if(precipitated.has(formula)||(v.chemicalInventory&&
+      v.environment==="aqueous"&&!LAB_WATER_SOLUTES.has(formula))){
      if(mass!==undefined){
       const productMass=mass*solidMol;
       precipitateG+=productMass;
@@ -994,7 +1003,9 @@ export function labReactionNeedsTick(vessel:LabVessel):boolean{
 export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:string;
  caseData?:ReturnType<typeof identifyReaction>["caseData"]}{
  if(vessel.reagents.length===0)return{status:"unknown",message:"Сосуд пуст."};
- const inventory=vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
+ const inventory=vessel.chemicalInventory?
+  simulateLabInventory({...vessel,volumeMl:labVesselQuantity(vessel).volumeMl}):
+  vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
   simulateLabInventory(vessel):undefined;
  if(inventory&&!inventory.unmeasured.length&&inventory.steps.length){
   const last=inventory.steps[inventory.steps.length-1];
@@ -1161,7 +1172,7 @@ export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):
  * vessel inspector. The seal temperature is saved, never assumed to equal
  * the current temperature. */
 export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
- const inventory=simulateLabInventory(v);
+ const inventory=simulateLabInventory({...v,volumeMl:labVesselQuantity(v).volumeMl});
  const retained=Object.values(inventory.retainedGasMol).reduce((s,m)=>s+m,0);
  const gasStock=Object.entries(inventory.speciesMol).reduce((s,[id,m])=>
   s+(substances.find(x=>x.id===id)?.kind==="газ"?m:0),0);
@@ -1170,7 +1181,7 @@ export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
   reactionGasMol:retained+gasStock},0,temperatureC);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -1284,6 +1295,37 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const environment=labMixEnvironment([{environment:v.environment,doses:v.doses},
    {environment:validDose?.unit==="g"?"dry":"aqueous",
     doses:validDose?{[reagent]:validDose}:undefined}],nextDoses);
+  if(v.chemicalInventory){
+   const addedMol=labDoseMoles(reagent,validDose);
+   if(addedMol===undefined||!Number.isFinite(addedMol)||addedMol<=0)return v;
+   const original=v.chemicalInventory;
+   const speciesMol={...original.speciesMol,
+    [reagent]:(original.speciesMol[reagent]??0)+addedMol};
+   const solidMol={...original.solidMol};
+   if(validDose.unit==="g"&&
+    (environment!=="aqueous"||!LAB_WATER_SOLUTES.has(reagent)))
+    solidMol[reagent]=(solidMol[reagent]??0)+addedMol;
+   const currentVolume=labVesselQuantity(v).volumeMl+
+    (validDose.unit==="ml"&&substances.find(s=>s.id===reagent)?.kind!=="газ"?
+     validDose.value:0);
+   const quantified=simulateLabInventory({
+    reagents:Object.keys(speciesMol),environment,stoppered:v.stoppered,
+    temperatureC:v.temperatureC,volumeMl:currentVolume,
+    chemicalInventory:{speciesMol,solidMol,
+     retainedGasMol:original.retainedGasMol}
+   });
+   const productIds=Object.keys(quantified.speciesMol);
+   const confirmed=quantified.steps.length?
+    reviewedReactionCases.find(row=>row.equation===quantified.steps[quantified.steps.length-1].equation):
+    undefined;
+   return {...v,reagents:productIds,doses:nextDoses,environment,
+    chemicalInventory:labInventorySnapshot(quantified),
+    filteredSolution:v.filteredSolution?
+     {...v.filteredSolution,solutes:productIds.filter(x=>x!=="H2O")}:undefined,
+    reactionAmounts:undefined,completedReaction:confirmed??v.completedReaction,
+    observed:true,uncertain:quantified.limited||quantified.unmeasured.length>0,
+    visualStartedAtMs:confirmed?Date.now():v.visualStartedAtMs};
+  }
   const matching=identifyReaction(reagents,environment);
   const previousAmounts=v.reactionAmounts;
   const recorded=v.completedReaction??(beforeReaction.status==="reaction"?
@@ -1341,6 +1383,95 @@ export const labMeasuredCapacityMl=(kind:LabGlassware):number|undefined=>
 /** Transfer a requested volume in hundredth-milliliter units.
  * Mixed solutions are sampled proportionally, without intermediate
  * reactions or floating-point rounding losing / inventing liquid. */
+/** Exact supernatant sampling from a mixed measured inventory. Insoluble
+ * particles remain in the donor; all dissolved molecule counts are divided
+ * by the requested physical liquid-volume fraction. */
+function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel,
+ amountMl:number):LabBench{
+ if(source.reactionAmounts&&!source.reactionAmounts.complete||
+  target.reactionAmounts&&!target.reactionAmounts.complete)return bench;
+ const donorMl=labVesselQuantity(source).volumeMl;
+ if(donorMl<amountMl-1e-8||donorMl<=0||
+  labVesselQuantity(target).volumeMl+amountMl>
+   labVesselQuantity(target).capacityMl+1e-8)return bench;
+ const donor=simulateLabInventory({...source,volumeMl:donorMl});
+ const receiver=simulateLabInventory({...target,
+  volumeMl:labVesselQuantity(target).volumeMl});
+ if(donor.unmeasured.length||receiver.unmeasured.length||
+  donor.limited||receiver.limited)return bench;
+ const fraction=amountMl/donorMl;
+ const fromSpecies={...donor.speciesMol};
+ const toSpecies={...receiver.speciesMol};
+ for(const [id,total] of Object.entries(donor.speciesMol)){
+  const dissolved=Math.max(0,total-(donor.solidMol[id]??0));
+  const portion=dissolved*fraction;
+  const remainder=total-portion;
+  if(remainder>1e-12)fromSpecies[id]=remainder;
+  else delete fromSpecies[id];
+  if(portion>1e-12)toSpecies[id]=(toSpecies[id]??0)+portion;
+ }
+ const fromDoses={...source.doses},toDoses={...target.doses};
+ for(const [id,dose] of Object.entries(source.doses??{})){
+  if(dose.unit!=="ml")continue;
+  const portion=dose.value*fraction;
+  const old=toDoses[id];
+  if(old&&(old.unit!=="ml"||old.value+portion>10000))return bench;
+  const value=(old?.value??0)+portion;
+  const concentrationM=old?.concentrationM!==undefined&&
+   dose.concentrationM!==undefined?
+    (old.value*old.concentrationM+portion*dose.concentrationM)/value:
+    old?undefined:dose.concentrationM;
+  toDoses[id]={value,unit:"ml",
+   ...(concentrationM===undefined?{}:{concentrationM})};
+  const left=dose.value-portion;
+  if(left>1e-9)fromDoses[id]={...dose,value:left};
+  else delete fromDoses[id];
+ }
+ const movedCarrier=(source.filteredSolution?.volumeMl??0)*fraction;
+ const leftCarrier=(source.filteredSolution?.volumeMl??0)-movedCarrier;
+ const toCarrier=(target.filteredSolution?.volumeMl??0)+movedCarrier;
+ const medium=labMixEnvironment([source,target],toDoses);
+ const targetInventory=simulateLabInventory({
+  reagents:Object.keys(toSpecies),environment:medium,
+  volumeMl:labVesselQuantity(target).volumeMl+amountMl,
+  temperatureC:target.temperatureC,
+  chemicalInventory:{speciesMol:toSpecies,solidMol:receiver.solidMol,
+   retainedGasMol:receiver.retainedGasMol}
+ });
+ if(targetInventory.limited||targetInventory.unmeasured.length||
+  Object.keys(targetInventory.speciesMol).length>MAX_VESSEL_REAGENTS)return bench;
+ const toSnapshot=labInventorySnapshot(targetInventory);
+ const fromSnap:LabChemicalSnapshot={speciesMol:fromSpecies,
+  solidMol:{...donor.solidMol},retainedGasMol:{...donor.retainedGasMol}};
+ const fromIds=Object.keys(fromSpecies),toIds=Object.keys(toSnapshot.speciesMol);
+ const last=targetInventory.steps[targetInventory.steps.length-1];
+ const lastCase=last?reviewedReactionCases.find(c=>c.equation===last.equation):undefined;
+ const vessels=bench.vessels.map(v=>{
+  if(v.id===source.id)return {...v,reagents:fromIds,
+   doses:Object.keys(fromDoses).length?fromDoses:undefined,
+   chemicalInventory:fromIds.length?fromSnap:undefined,
+   filteredSolution:leftCarrier>1e-9&&source.filteredSolution?
+    {...source.filteredSolution,solutes:fromIds.filter(x=>x!=="H2O"),
+     volumeMl:leftCarrier}:undefined,
+   observed:fromIds.length>0,uncertain:false,
+   reactionAmounts:undefined,
+   completedReaction:fromIds.length?v.completedReaction:undefined};
+  if(v.id===target.id)return {...v,reagents:toIds,
+   doses:Object.keys(toDoses).length?toDoses:undefined,
+   chemicalInventory:toSnapshot,
+   filteredSolution:toCarrier>1e-9?
+    {sourceEquation:source.filteredSolution?.sourceEquation??
+     target.filteredSolution?.sourceEquation??"",
+     solutes:toIds.filter(x=>x!=="H2O"),volumeMl:toCarrier}:undefined,
+   environment:medium,observed:true,uncertain:false,
+   completedReaction:lastCase??v.completedReaction,
+   reactionAmounts:undefined,
+   ...carriedLabIndicator(source,v),
+   visualStartedAtMs:lastCase?Date.now():v.visualStartedAtMs};
+  return v;
+ });
+ return bump(bench,vessels,target.id);
+}
 export function transferLabMeasuredLiquid(
  bench:LabBench,sourceId:string,targetId:string,volumeMl:number
 ):LabBench{
@@ -1349,6 +1480,8 @@ export function transferLabMeasuredLiquid(
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
+ if(source.chemicalInventory||target.chemicalInventory)
+  return transferSnapshotSample(bench,source,target,volumeMl);
  const entries=source.reagents.map(id=>({id,dose:source.doses?.[id]}));
  if(entries.some(e=>!e.dose||e.dose.unit!=="ml"||e.dose.value<=0))return bench;
  const amounts=entries.map(e=>Math.round(e.dose!.value*100));
@@ -1436,56 +1569,61 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||source.filteredResidue||source.uncertain||
-  target.reagents.length||target.filteredResidue||target.filteredSolution||
+  source.stoppered||target.stoppered||target.reagents.length||
+  target.filteredResidue||target.filteredSolution||
   !["beaker","tube","flask","conical","volumetric"].includes(target.kind)||
   (source.reactionAmounts&&!source.reactionAmounts.complete))return bench;
  const reaction=labObservation(source).caseData;
  if(!reaction||reaction.observation!=="precipitate")return bench;
- // A measured reaction begins on the first simulation tick. Until it
- // finishes, the animated precipitate has not fully formed and cannot
- // be collected. Do not treat an uninitialised measured reaction as complete.
+ // A measured suspension cannot be filtered before the visual/reaction
+ // timer has reached completion, even though the equilibrium solver can
+ // already calculate its final mass balance.
  if(!source.reactionAmounts&&!source.completedReaction&&
   startQuantifiedLabReaction(reaction,source.reagents,source.doses))return bench;
- const products=(reaction.equation.split("→")[1]??"")
-  .split(/\s+\+\s+/).map(v=>v.trim());
- const solid=products.find(p=>p.includes("↓"))?.
-  replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim();
- if(!solid||!substances.some(v=>v.id===solid))return bench;
- const amount=source.reactionAmounts?.productsMol[solid];
- if(amount!==undefined&&(!Number.isFinite(amount)||amount<=0))return bench;
- const molar=amount!==undefined?labMolarMass(solid):undefined;
- const massG=molar!==undefined&&amount!==undefined?
-  Math.round(molar*amount*1e6)/1e6:undefined;
- const volume=Object.values(source.doses??{}).
-  reduce((sum,d)=>sum+(d.unit==="ml"?d.value:0),0);
- const capacity=labMeasuredCapacityMl(target.kind)??(
-  target.kind==="tube"?25:target.kind==="conical"||target.kind==="flask"?200:150);
- if(volume>capacity)return bench;
- const soluble=products.filter(p=>!p.includes("↓")&&!p.includes("↑")).
-  map(p=>p.replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim()).
-  filter(p=>p!=="H2O"&&substances.some(s=>s.id===p));
- const excess=source.reactionAmounts?Object.entries(source.reactionAmounts.remainingMol).
-  filter(([,n])=>n>1e-12).map(([id])=>id):[];
- const solutes=[...new Set([...soluble,...excess])].slice(0,5);
+ const inventory=simulateLabInventory({
+  ...source,volumeMl:labVesselQuantity(source).volumeMl
+ });
+ if(inventory.unmeasured.length||inventory.limited)return bench;
+ const solidEntries=Object.entries(inventory.solidMol).filter(([,mol])=>mol>1e-12);
+ // A single-filter cartridge is not able to split two distinct solids
+ // without their individual retention properties. Refuse rather than
+ // quietly discarding the second precipitate.
+ if(solidEntries.length!==1)return bench;
+ const [solid,solidMol]=solidEntries[0];
+ const molar=labMolarMass(solid);
+ if(molar===undefined||solidMol<=0)return bench;
+ const massG=solidMol*molar;
+ const volume=labVesselQuantity(source).volumeMl;
+ if(volume<=0||volume>labVesselQuantity(target).capacityMl)return bench;
+ const soluble:Record<string,number>={};
+ for(const [formula,mol] of Object.entries(inventory.speciesMol)){
+  const remaining=Math.max(0,mol-(inventory.solidMol[formula]??0));
+  if(remaining>1e-12)soluble[formula]=remaining;
+ }
+ // List reaction products first, then residual reactants. Both remain
+ // present quantitatively, including nonzero solubility at equilibrium.
+ const productOrder=parseBalancedLabEquation(reaction.equation)?.products.map(t=>t.formula)??[];
+ const solutes=[...new Set([...productOrder,...Object.keys(soluble)])].
+  filter(id=>id!=="H2O"&&(soluble[id]??0)>1e-12);
+ if(solutes.length>MAX_VESSEL_REAGENTS)return bench;
  const color=reaction.afterColor??"#eef0ed";
  const vessels=bench.vessels.map(v=>{
   if(v.id===sourceId)return {...v,reagents:[solid],
    reactionHeat:undefined,
    environment:"dry" as const,observed:false,uncertain:false,
    indicator:undefined,completedReaction:undefined,reactionAmounts:undefined,
-   filteredSolution:undefined,
-   filteredResidue:{formula:solid,color,...(massG!==undefined?{massG}:{})},
-   doses:massG!==undefined&&massG>0?
-    {[solid]:{unit:"g" as const,value:massG}}:undefined,
+   chemicalInventory:undefined,filteredSolution:undefined,
+   filteredResidue:{formula:solid,color,massG},
+   doses:{[solid]:{unit:"g" as const,value:massG}},
    visualStartedAtMs:undefined};
-  if(v.id===targetId)return {...v,reagents:["H2O",...solutes],
-   reactionHeat:undefined,
-   environment:"aqueous" as const,observed:false,uncertain:true,
+  if(v.id===targetId)return {...v,reagents:solutes,
+   reactionHeat:undefined,environment:"aqueous" as const,
+   observed:false,uncertain:false,
    indicator:undefined,completedReaction:undefined,reactionAmounts:undefined,
    filteredResidue:undefined,
-   filteredSolution:{sourceEquation:reaction.equation,solutes},
-   doses:volume>0?{H2O:{unit:"ml" as const,value:Math.round(volume*100)/100}}:undefined,
-   visualStartedAtMs:undefined};
+   filteredSolution:{sourceEquation:reaction.equation,solutes,volumeMl:volume},
+   chemicalInventory:{speciesMol:soluble,solidMol:{},retainedGasMol:{}},
+   doses:undefined,visualStartedAtMs:undefined};
   return v;
  });
  return {...bench,vessels,selectedId:sourceId,event:bench.event+1};
@@ -1520,7 +1658,7 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
  return {...separated,selectedId:target.id,
   vessels:separated.vessels.map(v=>v.id!==sourceId?v:{
    ...v,reagents:[],doses:undefined,filteredResidue:undefined,
-   filteredSolution:undefined,environment:"aqueous" as const,
+   filteredSolution:undefined,chemicalInventory:undefined,environment:"aqueous" as const,
    physicalProcess:undefined,physicalStartedAtMs:undefined,
    indicator:undefined,visualStartedAtMs:undefined,
    reactionAmounts:undefined,completedReaction:undefined,observed:false}),
@@ -1531,8 +1669,9 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
 
 export function labVesselQuantity(vessel:LabVessel){
  const doses=Object.values(vessel.doses??{});
- const volumeMl=Math.round(Object.entries(vessel.doses??{}).reduce((total,[id,d])=>
-  total+(d.unit==="ml"&&substances.find(s=>s.id===id)?.kind!=="газ"?d.value:0),0)*100)/100;
+ const volumeMl=Math.round(((vessel.filteredSolution?.volumeMl??0)+
+  Object.entries(vessel.doses??{}).reduce((total,[id,d])=>
+  total+(d.unit==="ml"&&substances.find(s=>s.id===id)?.kind!=="газ"?d.value:0),0))*100)/100;
  const massG=Math.round(doses.reduce((total,d)=>
   total+(d.unit==="g"?d.value:0),0)*100)/100;
  const capacityMl=labMeasuredCapacityMl(vessel.kind)??(
@@ -1572,6 +1711,10 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
  const a=b.vessels.find(v=>v.id===sourceId),t=b.vessels.find(v=>v.id===targetId);
  if(!a||!t||!a.reagents.length||a.stoppered||t.stoppered||
   [...new Set([...a.reagents,...t.reagents])].length>MAX_VESSEL_REAGENTS)return b;
+ // A quantified filtrate is a phase snapshot, not a set of stock doses.
+ // Transfer it atomically rather than running the old dose-only 20-step
+ // algorithm which would otherwise leave its dissolved products behind.
+ if(a.chemicalInventory||t.chemicalInventory)return pourLabVessel(b,sourceId,targetId);
  const initialDoses={...a.doses};
  const volume=labVesselQuantity(a).volumeMl;
  const current=labVesselQuantity(t).volumeMl;
@@ -1652,11 +1795,80 @@ export function stopLabPour(b:LabBench,id?:string):LabBench{
  if(!b.pouring||(id&&b.pouring.id!==id))return b;
  return {...b,pouring:undefined,event:b.event+1};
 }
+/** Merge the exact physical species ledgers, not their historical stock
+ * labels. A later reaction can then consume a filtered product without
+ * pretending the original starting materials are still present. */
+function mergeLabMoles(a:Record<string,number>,b:Record<string,number>){
+ const merged={...a};
+ for(const [id,n] of Object.entries(b))merged[id]=(merged[id]??0)+n;
+ return merged;
+}
+function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):LabBench{
+ const a=simulateLabInventory({...source,volumeMl:labVesselQuantity(source).volumeMl});
+ const b=simulateLabInventory({...target,volumeMl:labVesselQuantity(target).volumeMl});
+ if(a.unmeasured.length||b.unmeasured.length||a.limited||b.limited)return bench;
+ const received={...target.doses};
+ for(const [id,dose] of Object.entries(source.doses??{})){
+  const existing=received[id];
+  if(existing&&existing.unit!==dose.unit)return bench;
+  const value=Math.round(((existing?.value??0)+dose.value)*1e6)/1e6;
+  if(value<=0||value>10000)return bench;
+  const concentrationM=dose.unit==="ml"&&(existing?.concentrationM!==undefined||
+   dose.concentrationM!==undefined)?
+   existing?.concentrationM!==undefined&&dose.concentrationM!==undefined?
+    (existing.value*existing.concentrationM+dose.value*dose.concentrationM)/value:
+    undefined:undefined;
+  received[id]={value,unit:dose.unit,
+   ...(concentrationM===undefined?{}:{concentrationM})};
+ }
+ const carrier=(source.filteredSolution?.volumeMl??0)+
+  (target.filteredSolution?.volumeMl??0);
+ const volume=labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl;
+ const environment=labMixEnvironment([source,target],received);
+ const chemicalInventory:LabChemicalSnapshot={
+  speciesMol:mergeLabMoles(a.speciesMol,b.speciesMol),
+  solidMol:mergeLabMoles(a.solidMol,b.solidMol),
+  retainedGasMol:{}
+ };
+ const reacted=simulateLabInventory({reagents:Object.keys(chemicalInventory.speciesMol),
+  chemicalInventory,volumeMl:volume,environment,stoppered:false,
+  temperatureC:target.temperatureC??source.temperatureC});
+ if(reacted.unmeasured.length||reacted.limited||
+  Object.keys(reacted.speciesMol).length>MAX_VESSEL_REAGENTS)return bench;
+ const inventory=labInventorySnapshot(reacted);
+ const ids=Object.keys(inventory.speciesMol);
+ const last=reacted.steps[reacted.steps.length-1];
+ const lastCase=last?reviewedReactionCases.find(r=>r.equation===last.equation):undefined;
+ const vessels=bench.vessels.map(v=>{
+  if(v.id===source.id)return {...v,reagents:[],doses:undefined,
+   filteredSolution:undefined,filteredResidue:undefined,chemicalInventory:undefined,
+   reactionAmounts:undefined,completedReaction:undefined,reactionHeat:undefined,
+   observed:false,uncertain:false,indicator:undefined,
+   indicatorDrops:undefined,indicatorAddedAtMs:undefined};
+  if(v.id===target.id)return {...v,reagents:ids,
+   doses:Object.keys(received).length?received:undefined,
+   filteredSolution:carrier>0?{sourceEquation:source.filteredSolution?.sourceEquation??
+    target.filteredSolution?.sourceEquation??"",solutes:ids.filter(x=>x!=="H2O"),
+    volumeMl:carrier}:undefined,
+   filteredResidue:undefined,chemicalInventory:inventory,
+   reactionAmounts:undefined,completedReaction:lastCase??target.completedReaction,
+   reactionHeat:undefined,environment,observed:true,uncertain:false,
+   ...carriedLabIndicator(source,v),
+   visualStartedAtMs:lastCase?Date.now():v.visualStartedAtMs};
+  return v;
+ });
+ return bump(bench,vessels,target.id);
+}
 export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):LabBench{
  if(sourceId===targetId)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
+ if(source.chemicalInventory||target.chemicalInventory){
+  if(labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl>
+   labVesselQuantity(target).capacityMl+1e-7)return bench;
+  return pourMeasuredFiltrate(bench,source,target);
+ }
  const reagents=[...new Set([...target.reagents,...source.reagents])];
  if(reagents.length>MAX_VESSEL_REAGENTS)return bench;
  const volume=labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl;

@@ -5,11 +5,13 @@
  * Solutions are ideal; activities, solubility and temperature shifts
  * are outside this teaching approximation.
  */
-import {simulateLabInventory} from "./lektrusLabReactionNetwork";
+import {simulateLabInventory,type LabChemicalSnapshot} from "./lektrusLabReactionNetwork";
 export type LabPHInput={
  reagents:readonly string[];
  doses?:Record<string,{value:number;unit:"ml"|"g";concentrationM?:number}>;
  environment:string;uncertain?:boolean;temperatureC?:number;
+ chemicalInventory?:LabChemicalSnapshot;
+ filteredSolution?:{volumeMl?:number};
  /** Products and reactants tracked by the measured balanced equation. */
  reactionAmounts?:{equation:string;productsMol:Record<string,number>;
   remainingMol:Record<string,number>};
@@ -36,15 +38,16 @@ function doseMoles(id:string,dose:{value:number;unit:"ml"|"g";concentrationM?:nu
 }
 export function labVesselPH(v:LabPHInput):LabPHResult|null{
  if(v.environment!=="aqueous"||!v.reagents.length)return null;
- const inventory=v.doses?simulateLabInventory({...v,environment:"aqueous"}):undefined;
+ const volumeMl=(v.filteredSolution?.volumeMl??0)+Object.values(v.doses??{}).reduce((total,d)=>
+  total+(d.unit==="ml"?d.value:0),0);
+ const inventory=v.chemicalInventory||v.doses?
+  simulateLabInventory({...v,environment:"aqueous",volumeMl}):undefined;
  if(v.uncertain&&(!inventory||inventory.unmeasured.length||inventory.limited))return null;
  const doses=v.doses??{};
  if(v.reagents.length===1&&v.reagents[0]==="H2O")
   return {pH:7,label:"pH 7,00",acidMol:0,baseMol:0,
    note:"Чистая вода, идеальная модель при 25 °C."};
  let acidMol=0,baseMol=0,aceticMol=0,ammoniaMol=0;
- const volumeMl=Object.values(doses).reduce((total,d)=>
-  total+(d.unit==="ml"?d.value:0),0);
  // When precipitation is completed (or in progress), calculate aqueous
  // species from the balance sheet, NOT the original AgNO3/NaCl inputs.
  // AgCl is insoluble and must not become a source of imaginary free ions.
