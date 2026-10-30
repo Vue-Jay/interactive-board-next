@@ -7,7 +7,7 @@ import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLab
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
  from "./lektrusLabTitration";
-import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
+import {identifyReaction,reviewedReactionCases,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
 import {simulateLabInventory} from "./lektrusLabReactionNetwork";
 
 export type LabGlassware="beaker"|"tube"|"flask"|"cylinder"|"dish"|
@@ -783,7 +783,7 @@ export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:L
  settings?:LabBenchSettings;quickReagents?:LabQuickReagent[];devices?:LabDevice[];placedDevices?:LabPlacedDevice[];titration?:TitrationModel;stirringVesselId?:string;
  instrumentTarget?:{kind:"tripod"|"thermometer";vesselId:string};
  titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;}
-export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=6;
+export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=48;
 const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
 export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>):LabBench{
  const next={...labBenchSettings(bench),...settings};
@@ -811,14 +811,19 @@ export function recordLabReactions(bench:LabBench):LabBench{
  const log=[...(bench.reactionLog??[])];
  let changed=false;
  for(const vessel of bench.vessels){
+  const inventory=vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
+   simulateLabInventory(vessel):undefined;
   const current=labObservation(vessel);
   const row=current.status==="reaction"?current.caseData:undefined;
-  if(!row?.equation)continue;
-  const key=vessel.id+"|"+row.equation;
-  if(seen.has(key))continue;
-  seen.add(key);changed=true;
-  if(log.length>=30)log.shift();
-  log.push(row.equation);
+  const equations=inventory?.steps.length?
+   inventory.steps.map(step=>step.equation):row?.equation?[row.equation]:[];
+  for(const equation of equations){
+   const key=vessel.id+"|"+equation;
+   if(seen.has(key))continue;
+   seen.add(key);changed=true;
+   if(log.length>=30)log.shift();
+   log.push(equation);
+  }
  }
  return changed?{...bench,reactionLog:log,seenReactionKeys:[...seen].slice(-150),
   event:bench.event+1}:bench;
@@ -971,6 +976,15 @@ export function labReactionNeedsTick(vessel:LabVessel):boolean{
 export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:string;
  caseData?:ReturnType<typeof identifyReaction>["caseData"]}{
  if(vessel.reagents.length===0)return{status:"unknown",message:"Сосуд пуст."};
+ const inventory=vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
+  simulateLabInventory(vessel):undefined;
+ if(inventory&&!inventory.unmeasured.length&&inventory.steps.length){
+  const last=inventory.steps[inventory.steps.length-1];
+  const row=identifyReaction(vessel.reagents,vessel.environment);
+  if(row.caseData?.equation===last.equation)return row;
+  const lastCase=reviewedReactionCases.find(c=>c.equation===last.equation);
+  if(lastCase)return {status:"reaction",message:lastCase.description,caseData:lastCase};
+ }
  if(vessel.reactionAmounts){
   const row=identifyReaction(vessel.reagents,vessel.environment);
   if(row.status==="reaction")return row;
