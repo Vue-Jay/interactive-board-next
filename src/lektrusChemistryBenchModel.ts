@@ -1179,7 +1179,7 @@ export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
   reactionGasMol:retained+gasStock},0,temperatureC);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -1561,7 +1561,7 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
  return {...separated,selectedId:target.id,
   vessels:separated.vessels.map(v=>v.id!==sourceId?v:{
    ...v,reagents:[],doses:undefined,filteredResidue:undefined,
-   filteredSolution:undefined,environment:"aqueous" as const,
+   filteredSolution:undefined,chemicalInventory:undefined,environment:"aqueous" as const,
    physicalProcess:undefined,physicalStartedAtMs:undefined,
    indicator:undefined,visualStartedAtMs:undefined,
    reactionAmounts:undefined,completedReaction:undefined,observed:false}),
