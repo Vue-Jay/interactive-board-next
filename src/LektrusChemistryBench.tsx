@@ -381,7 +381,8 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
          readable(contents.solid.reduce((sum,item)=>sum+(item.massG??0),0)):"?":
         readable(contents.precipitateG)):"0"}<small>г</small></strong>
       {details&&<span className="lektrus-lab-quantity-info is-residue">
-       <b>{observation==="precipitate"||vessel.filteredResidue?"Осадок":"Твёрдое"} · {contents.solid.length?
+       <b>{growingSaltCrystals?"Кристаллы NaCl":
+         observation==="precipitate"||vessel.filteredResidue?"Осадок":"Твёрдое"} · {contents.solid.length?
         contents.precipitateG===undefined?
          contents.solid.every(item=>item.massG!==undefined)?
           readable(contents.solid.reduce((sum,item)=>sum+(item.massG??0),0))+" г":"масса неизвестна":
@@ -399,7 +400,8 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
       dose?" · "+formatLabDose(dose)+
      (dose.concentrationM!==undefined?" · "+dose.concentrationM.toLocaleString("ru-RU")+" моль/л":""):"");
    }).join("; "):"Пустая посуда"}>
-   <strong>{contents.solid.length?"Осадок: "+contents.solid.map(v=>v.formula).join(", "):
+   <strong>{contents.solid.length?
+    (growingSaltCrystals?"Кристаллы: ":"Осадок: ")+contents.solid.map(v=>v.formula).join(", "):
      contents.solution.length?contents.solution.map(v=>v.formula).join(" + "):"Пусто"}</strong>
    {labels.length>0&&(!!totalLabel||!!vessel.filteredResidue)&&<small>{totalLabel||"Осадок"}</small>}
 
