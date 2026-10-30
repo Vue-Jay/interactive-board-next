@@ -24,9 +24,13 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
-const vapor=load("src/lektrusLabEvaporation.ts");
+const constants=load("src/lektrusLabMaterialConstants.ts");
+const vapor=load("src/lektrusLabEvaporation.ts",key=>{
+ assert.equal(key,"./lektrusLabMaterialConstants");return constants;
+});
 const network=load("src/lektrusLabReactionNetwork.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
+ if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 const waterIonization=load("src/lektrusLabWaterIonization.ts");
@@ -43,6 +47,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabPH")return acidBase;
  if(key==="./lektrusLabReactionNetwork")return network;
  if(key==="./lektrusLabCatalog")return catalog;
+ if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
