@@ -75,6 +75,22 @@ const secondChemistry=chemistry.simulateLabInventory({
 assert.ok((secondChemistry.solidMol.AgCl??0)>.00099);
 assert.ok((secondChemistry.speciesMol.NaCl??0)>.00099,
  "The unconsumed salt must remain in the recipient");
+// A full pour must carry the real product inventory, not only fresh stock
+// labels. It should not produce an unexplained diluted H2O stock.
+let decant=lab.addLabVessel(filtered,"beaker");
+const cleanReceiver=decant.selectedId;
+decant=lab.pourLabVessel(decant,receiver,cleanReceiver);
+assert.equal(decant.vessels.find(v=>v.id===receiver).reagents.length,0);
+const decanted=decant.vessels.find(v=>v.id===cleanReceiver);
+assert.equal(decanted.filteredSolution?.volumeMl,20);
+assert.equal(lab.labVesselQuantity(decanted).volumeMl,20);
+assert.ok(lab.labVesselContents(decanted).solution.some(s=>
+ s.formula==="NaCl"&&s.mmol>1.99));
+approx(chemistry.labInventoryMassG(chemistry.simulateLabInventory({
+ ...decanted,volumeMl:20}))+massSolid,totalBefore,1e-7);
+const decantedAndReacted=lab.putLabReagent(decant,cleanReceiver,"AgNO3",dose());
+assert.ok((lab.labVesselContents(decantedAndReacted.vessels.find(v=>v.id===cleanReceiver)).
+ precipitateG??0)>.143);
 const oldValidated=fs.readFileSync("src/boardModel.ts","utf8");
 assert.match(oldValidated,/v\.chemicalInventory/);
 console.log("Two sequential precipitation stages preserve soluble moles, real volume and molecular mass");
