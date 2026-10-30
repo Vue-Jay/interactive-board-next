@@ -2914,3 +2914,43 @@ for(const formula of ["AgCl","BaSO4","CaCO3","Cu(OH)2",
   "Verified low-solubility precipitate remains a solid: "+formula);
 }
 console.log("All catalog dilute aqueous classifications and dry solids: OK");
+
+
+// The already-existing melting/decomposition process now uses individually
+// reviewed reference data for these current-catalog reactants and products.
+// A prepared solution must never borrow the neat solid's melting point.
+const addedThermalProperties={
+ PbCl2:{m:501,b:950},PbBr2:{m:371,b:892},
+ BaCl2:{m:962,b:1560},CaCl2:{m:772},
+ PbSO4:{m:1170},CuO:{decomposes:1026}
+};
+for(const [formula,expected] of Object.entries(addedThermalProperties)){
+ const pure=thermal.labThermalInfo(formula,"g");
+ assert.equal(pure.known,true,formula+" has reviewed solid properties");
+ assert.equal(pure.meltingC,expected.m);
+ assert.equal(pure.boilingC,expected.b);
+ assert.equal(pure.decompositionC,expected.decomposes);
+ const solution=thermal.labThermalInfo(formula,"ml");
+ assert.equal(solution.known,false,
+  formula+" prepared solution cannot inherit neat-solid transition temperatures");
+ const property=materialRegistry.labSubstanceProperties(formula);
+ assert.equal(property.thermalKnown,true);
+}
+const newReferenceDensities={
+ NH4Cl:1.53,"(NH4)2SO4":1.77,CaCl2:2.10,K2CO3:2.29,
+ K2SO4:2.66,Na2SO4:2.70,Na2SO3:2.66,Al2O3:4.00,
+ NaOH:2.13,KOH:2.044,"Mg(OH)2":2.36,
+ PbSO4:6.20,CuO:6.315,BaCl2:3.856
+};
+for(const [formula,density] of Object.entries(newReferenceDensities)){
+ assert.equal(constants.labCrystalDensityGml(formula),density);
+ const sample=lab.putLabReagent(lab.defaultLabBench(),"v1",formula,
+  {unit:"g",value:1});
+ const result=lab.labVesselQuantity(sample.vessels[0]);
+ assert.equal(result.solidVolumeComplete,true,formula+" true density known");
+ assert.ok(Math.abs(result.solidVolumeMl-1/density)<1e-6,
+  "Solid volume must use verified anhydrous crystal density: "+formula);
+}
+assert.match(read("src/lektrusLabReactionNetwork.ts"),
+ /An aqueous reaction MODE does not conjure any actual solvent/);
+console.log("Existing phase-change temperatures and 14 new solid densities: OK");
