@@ -2542,3 +2542,24 @@ assert.match(read("src/boardModel.ts"),/v\.binarySaltPhase\.solidMol<=10000/);
 assert.match(read("src/LektrusChemistryBench.tsx"),
  /Время растворения и кристаллизации рассчитано по учебной кинетической модели/);
 console.log("Measured binary dissolution, stirring, cooling and crystallisation: OK");
+
+const chemicalPhaseInventory=network.simulateLabInventory(kinVessel);
+assert.ok(Math.abs(chemicalPhaseInventory.solidMol.KNO3-
+ kinVessel.binarySaltPhase.solidMol)<1e-9,
+ "Filtering must use the actual kinetic solid fraction, not instant equilibrium");
+assert.ok(Math.abs(chemicalPhaseInventory.speciesMol.KNO3-
+ 4/chem.labMolarMass("KNO3"))<1e-10,
+ "Phase movement must never change the total molecules of weighed salt");
+const roundTripPhase=structuredClone(persistedLab);
+roundTripPhase.vessels[0]={...kinVessel,id:"v1",x:48,y:70};
+assert.equal(parseLab(roundTripPhase).items[0].scienceLabBench.vessels[0]
+ .binarySaltPhase.solidMol,kinVessel.binarySaltPhase.solidMol,
+ "Opening a shared saved experiment must preserve ongoing crystallisation");
+const badPhase=structuredClone(roundTripPhase);
+badPhase.vessels[0].binarySaltPhase.solidMol=-1;
+assert.throws(()=>parseLab(badPhase),/Повреждено состояние химического стола/,
+ "A negative persisted crystalline phase must be rejected");
+const badPhaseName=structuredClone(roundTripPhase);
+badPhaseName.vessels[0].binarySaltPhase.formula="MadeUpSalt";
+assert.throws(()=>parseLab(badPhaseName),/Повреждено состояние химического стола/,
+ "Unsupported kinetic phase identities cannot damage shared board state");
