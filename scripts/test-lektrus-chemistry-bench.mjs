@@ -1727,8 +1727,8 @@ const physical=lab.labVesselContents(measuredSediment.vessels[0]);
 assert.ok(physical.solutionMl>=19.9&&physical.solutionMl<=20.1);
 assert.equal(physical.solid.length,1);
 assert.equal(physical.solid[0].formula,"AgCl");
-assert.ok(Math.abs(physical.precipitateG-.143318)<1e-5,
- "Sediment mass must be based on actual produced moles, not a decorative fixed layer");
+assert.ok(physical.precipitateG>.1432&&physical.precipitateG<.14332,
+ "Actual precipitate mass must respect remaining soluble material at Ksp equilibrium");
 assert.ok(physical.precipitateFraction>0&&physical.precipitateFraction<.01);
 assert.ok(physical.solution.some(v=>v.formula==="NaNO3"));
 assert.ok(!physical.solution.some(v=>v.formula==="AgCl"),
@@ -1738,7 +1738,8 @@ const halfPrecipitation=lab.labVesselContents({...measuredSediment.vessels[0],
  reactionAmounts:{...measuredSediment.vessels[0].reactionAmounts,
   productsMol:Object.fromEntries(Object.entries(
    measuredSediment.vessels[0].reactionAmounts.productsMol).map(([id,m])=>[id,m/2]))}});
-assert.ok(Math.abs(halfPrecipitation.precipitateG/physical.precipitateG-.5)<.001);
+assert.ok(Math.abs(halfPrecipitation.precipitateG/physical.precipitateG-1)<1e-8,
+ "Legacy animation progress must not override the conserved equilibrium inventory");
 const labUi=read("src/LektrusChemistryBench.tsx");
 assert.doesNotMatch(labUi,/className="lektrus-lab-worktop-actions"/,
  "Floating indicator/environment/pour toolbar must be removed");
@@ -1785,10 +1786,12 @@ assert.deepEqual(qualContents.solid.map(v=>v.formula),["AgCl"],
  "Qualitative reaction must show the insoluble product, not the initial reagent list");
 assert.ok(qualContents.solution.some(v=>v.formula==="NaNO3"));
 assert.ok(!qualContents.solution.some(v=>v.formula==="AgNO3"));
-assert.equal(qualContents.precipitateG,undefined,
- "With no quantified doses, mass of sediment must stay unknown");
-assert.equal(qualContents.remainderUnknown,true,
- "Unmeasured initial reactant excess must be explicitly unknown");
+assert.ok(qualContents.precipitateG>0,
+ "Default reagent stocks have known concentrations and must yield real mass");
+const trulyUnmeasured=lab.labVesselContents({...plainQualitative.vessels[0],doses:undefined});
+assert.equal(trulyUnmeasured.precipitateG,undefined,
+ "Legacy samples without measured doses must never invent mass");
+assert.equal(trulyUnmeasured.remainderUnknown,true);
 console.log("Qualitative chemistry shows products, not fabricated residue masses");
 
 
