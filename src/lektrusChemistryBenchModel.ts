@@ -1508,7 +1508,11 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
   const remaining=Math.max(0,mol-(inventory.solidMol[formula]??0));
   if(remaining>1e-12)soluble[formula]=remaining;
  }
- const solutes=Object.keys(soluble).filter(id=>id!=="H2O");
+ // List reaction products first, then residual reactants. Both remain
+ // present quantitatively, including nonzero solubility at equilibrium.
+ const productOrder=parseBalancedLabEquation(reaction.equation)?.products.map(t=>t.formula)??[];
+ const solutes=[...new Set([...productOrder,...Object.keys(soluble)])].
+  filter(id=>id!=="H2O"&&(soluble[id]??0)>1e-12);
  if(solutes.length>MAX_VESSEL_REAGENTS)return bench;
  const color=reaction.afterColor??"#eef0ed";
  const vessels=bench.vessels.map(v=>{
