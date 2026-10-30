@@ -16,6 +16,9 @@ const layout=load("src/lektrusLabLayout.ts");
 const chem=load("src/lektrusLabStoichiometry.ts",key=>{
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
+const gasDynamics=load("src/lektrusLabGasDynamics.ts",key=>{
+ assert.equal(key,"./lektrusLabStoichiometry");return chem;
+});
 const appearance=load("src/lektrusLabAppearance.ts",key=>{
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
@@ -50,6 +53,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabPhysicalProperties")return thermal;
  if(key==="./lektrusLabCalorimetry")return calorimetry;
  if(key==="./lektrusLabDissolution")return dissolution;
+ if(key==="./lektrusLabGasDynamics")return gasDynamics;
  if(key==="./lektrusLabEvaporation")return vapor;
  if(key==="./lektrusLabPH")return acidBase;
  if(key==="./lektrusLabReactionNetwork")return network;
@@ -2573,3 +2577,64 @@ assert.ok(transferredPhase.vessels.find(v=>v.id===transferId).binarySaltPhase,
  "The receiver inherits real crystalline mass when the full sample is moved");
 assert.ok(Math.abs(transferredPhase.vessels.find(v=>v.id===transferId)
  .binarySaltPhase.solidMol-kinVessel.binarySaltPhase.solidMol)<1e-9);
+
+
+/* Measured gas test suite: same stoichiometric extent controls pressure,
+ * bubble rate, gas volume, and the persisted instrument inspection.
+ * No premature ideal-gas jump to the final equilibrium reaction yield. */
+const carbAcid=reaction.reviewedReactionCases.find(r=>
+ r.equation==="NaHCO3 + HCl → NaCl + CO2↑ + H2O");
+assert.ok(carbAcid,"Vetted acid-carbonate reaction required");
+const gasInitial=chem.startQuantifiedLabReaction(carbAcid,
+ ["NaHCO3","HCl"],{NaHCO3:{unit:"g",value:2},
+ HCl:{unit:"ml",value:5,concentrationM:.1}},1000);
+assert.ok(gasInitial,"Measured acid carbonate reaction starts quantitatively");
+const gasZero=gasDynamics.labReactionGasProgress(gasInitial,25);
+assert.equal(gasZero.totalMol,0);
+assert.equal(gasZero.volumeMl,0);
+assert.ok(gasZero.rateMolPerSecond>0,"New reaction has a nonzero measured gas rate");
+const gasHalf=gasDynamics.labReactionGasProgress(
+ chem.advanceQuantifiedLabReaction(gasInitial,2),25);
+const gasFull=gasDynamics.labReactionGasProgress(
+ chem.advanceQuantifiedLabReaction(gasInitial,4),25);
+assert.ok(gasHalf.totalMol>0&&gasHalf.totalMol<gasFull.totalMol);
+assert.ok(Math.abs(gasHalf.totalMol-gasFull.totalMol/2)<1e-10);
+assert.ok(Math.abs(gasFull.totalMol-.0005)<1e-10,
+ "5 ml of 0.1M HCl gives 0.5 mmol CO2 on limiting reaction");
+assert.ok(gasFull.volumeMl>12&&gasFull.volumeMl<13,
+ "Gas volume follows PV=nRT at 25C and one atmosphere");
+assert.equal(gasFull.rateMolPerSecond,0,"Bubbles stop at completion");
+const malformedGas={...gasInitial,extentMol:gasInitial.maxExtentMol*2};
+assert.equal(gasDynamics.labReactionGasProgress(malformedGas),undefined);
+assert.equal(gasDynamics.labIdealGasVolumeMl(.001,-273.15),undefined);
+assert.equal(gasDynamics.labIdealGasVolumeMl(-.001,25),undefined);
+let sealedGas=lab.defaultLabBench();
+sealedGas=lab.putLabReagent(sealedGas,"v1","NaHCO3",{unit:"g",value:2});
+sealedGas=lab.putLabReagent(sealedGas,"v1","HCl",{
+ unit:"ml",value:5,concentrationM:.1});
+sealedGas=lab.setLabVesselStopper(sealedGas,"v1",true);
+assert.equal(lab.labHeadspaceGasMoles(sealedGas.vessels[0]),0,
+ "Sealed headspace must not contain the entire future reaction yield");
+const beforeReactionGas=lab.labVesselPressure(sealedGas.vessels[0]);
+assert.equal(beforeReactionGas.reactionGasPressureKPa,0);
+sealedGas=lab.advanceLabSimulation(sealedGas,1000);
+sealedGas=lab.advanceLabSimulation(sealedGas,2000);
+sealedGas=lab.advanceLabSimulation(sealedGas,3000);
+const midwaySealed=sealedGas.vessels[0];
+assert.ok(midwaySealed.reactionAmounts?.extentMol>0,
+ "Reaction gases progress while the vessel is closed");
+const midSealedPressure=lab.labVesselPressure(midwaySealed);
+assert.ok(midSealedPressure.reactionGasPressureKPa>0);
+assert.ok(midSealedPressure.reactionGasPressureKPa<30,
+ "Measured dilute experiment remains below stopper pop threshold");
+assert.ok(Math.abs(lab.labHeadspaceGasMoles(midwaySealed)-
+ gasDynamics.labReactionGasProgress(midwaySealed.reactionAmounts).totalMol)<1e-10);
+const openedGas=lab.setLabVesselStopper(sealedGas,"v1",false);
+assert.equal(openedGas.vessels[0].stoppered,false);
+assert.equal(lab.labVesselPressure(openedGas.vessels[0]).reactionGasPressureKPa,0,
+ "Opening the vessel releases the pressure of the produced gas");
+const labGasMarkup=read("src/LektrusChemistryBench.tsx");
+assert.match(labGasMarkup,/const gasBubbleCount=gasProgress\?/);
+assert.match(labGasMarkup,/gasFoaming&&<g className="lektrus-lab-gas-foam"/);
+assert.match(labGasMarkup,/Образование газа по ходу реакции/);
+console.log("Live gas pressure, rate-based bubbles, gas volume and venting: OK");
