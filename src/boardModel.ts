@@ -1015,6 +1015,11 @@ export function parseDocument(raw: string): DocumentData {
             (v.stopperedAtC==null||(typeof v.stopperedAtC==="number"&&
              Number.isFinite(v.stopperedAtC)&&v.stopperedAtC>=0&&
              v.stopperedAtC<=1300&&v.stoppered===true))&&
+            (v.sealedReactionGasBaselineMol==null||(
+             typeof v.sealedReactionGasBaselineMol==="number"&&
+             Number.isFinite(v.sealedReactionGasBaselineMol)&&
+             v.sealedReactionGasBaselineMol>=0&&
+             v.sealedReactionGasBaselineMol<=10000&&v.stoppered===true))&&
             (v.ventedVaporMl==null||(!!v.ventedVaporMl&&
              typeof v.ventedVaporMl==="object"&&!Array.isArray(v.ventedVaporMl)&&
              Object.keys(v.ventedVaporMl).length<=5&&
