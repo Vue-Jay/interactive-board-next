@@ -9,10 +9,12 @@
     "binarySolubilityAnyTemperature": 29,
     "binarySolubilityMeasuredPoints": 142,
     "binarySolubilityFullSixPoints": 18,
-    "hydrateReferenceVariants": 26,
-    "hydrateReferenceCabinetBases": 24,
-    "hydrateReferenceMeasuredPoints": 102,
+    "hydrateReferenceVariants": 36,
+    "hydrateReferenceCabinetBases": 31,
+    "hydrateReferenceMeasuredPoints": 137,
     "hydrateCrystalDensityRecords": 5,
-    "hydrateReferenceAllBases": 25
+    "hydrateReferenceAllBases": 33,
+    "saturatedSolutionDensityRecords": 38,
+    "saturatedSolutionDensityCabinetBases": 38
   }
 }
