@@ -29,6 +29,13 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const calorimetry=load("src/lektrusLabCalorimetry.ts");
 const constants=load("src/lektrusLabMaterialConstants.ts");
+const materialRegistry=load("src/lektrusLabPropertyRegistry.ts",key=>{
+ if(key==="./lektrusReactionDatabase")return reaction;
+ if(key==="./lektrusLabStoichiometry")return chem;
+ if(key==="./lektrusLabMaterialConstants")return constants;
+ if(key==="./lektrusLabPhysicalProperties")return thermal;
+ assert.equal(key,"./lektrusLabCalorimetry");return calorimetry;
+});
 const dissolution=load("src/lektrusLabDissolution.ts",key=>{
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusLabStoichiometry");return chem;
@@ -2739,3 +2746,81 @@ invalidGasBaseline.vessels[0].sealedReactionGasBaselineMol=-.1;
 assert.throws(()=>parseLab(invalidGasBaseline),
  /Повреждено состояние химического стола/);
 console.log("Re-sealing conserves prior venting, gas pressure and saved baseline");
+
+
+/* Complete property index covers every curated reagent AND product formula,
+ * without assigning invented density/phase values to unreviewed materials. */
+assert.equal(materialRegistry.labSubstanceProperties("NaCl").inCabinet,true);
+assert.equal(materialRegistry.labSubstanceProperties("MadeUpFormula").densityKnown,false);
+assert.equal(materialRegistry.labSubstanceProperties("MadeUpFormula").thermalKnown,false);
+assert.equal(materialRegistry.labSubstanceProperties("MadeUpFormula").solubilityKnown,false);
+let reviewedProductsCovered=new Set();
+let reviewedEquationsCovered=0;
+for(const row of reaction.reviewedReactionCases){
+ if(row.status!=="reaction")continue;
+ const equation=chem.parseBalancedLabEquation(row.equation);
+ if(!equation)continue;
+ reviewedEquationsCovered++;
+ const products=materialRegistry.labProductIdentities(row.equation);
+ assert.equal(products.length,equation.products.length);
+ for(const product of products){
+  reviewedProductsCovered.add(product.formula);
+  assert.equal(product.coeff,equation.products.find(x=>
+   x.formula===product.formula).coefficient);
+  const info=materialRegistry.labSubstanceProperties(product.formula,25);
+  assert.equal(info.formula,product.formula);
+  assert.ok(info.name.length>0);
+  assert.equal(typeof info.molarMassGPerMol,"number",
+   "Every balanced reviewed reaction product needs a known molecular mass: "+product.formula);
+  assert.ok(info.molarMassGPerMol>0);
+ }
+}
+assert.ok(reviewedEquationsCovered>100);
+assert.equal(materialRegistry.LAB_REVIEWED_PRODUCT_IDENTITIES.size,
+ reviewedProductsCovered.size);
+for(const [formula,density] of Object.entries({
+ Na2CO3:2.54,CaO:3.34,MgO:3.58,MgCO3:3.05,CaSO4:2.96,
+ BaCO3:4.275,PbCl2:5.85,PbBr2:6.66,
+ "Cu(OH)2":3.37,"Al(OH)3":2.42,ZnO:5.61
+})){
+ assert.equal(constants.labCrystalDensityGml(formula),density);
+ const info=materialRegistry.labSubstanceProperties(formula);
+ assert.equal(info.crystalDensityGPerMl,density);
+ assert.ok(info.molarMassGPerMol>0);
+}
+for(const formula of ["Na2CO3","CaO","MgO","BaCO3","PbCl2","PbBr2"]){
+ const weighed=lab.putLabReagent(lab.defaultLabBench(),"v1",formula,
+  {value:1,unit:"g"});
+ const volume=lab.labVesselQuantity(weighed.vessels[0]);
+ assert.ok(volume.solidVolumeComplete);
+ assert.ok(Math.abs(volume.solidVolumeMl-
+  1/constants.labCrystalDensityGml(formula))<1e-6,
+  "One gram of "+formula+" occupies the published true-crystal volume");
+}
+assert.equal(constants.labSingleSaltSolubilityGPer100gWater("PbCl2",-1),undefined);
+assert.equal(constants.labSingleSaltSolubilityGPer100gWater("PbCl2",101),undefined);
+assert.ok(Math.abs(constants.labSingleSaltSolubilityGPer100gWater("PbCl2",20)-
+  .99/.9982)<1e-10);
+assert.ok(constants.labSingleSaltSolubilityGPer100gWater("PbCl2",100)>
+ constants.labSingleSaltSolubilityGPer100gWater("PbCl2",20));
+const leadWater={reagents:["H2O","PbCl2"],environment:"aqueous",
+ doses:{H2O:{value:100,unit:"ml"},PbCl2:{value:4,unit:"g"}}};
+const leadCold=dissolution.labBinarySaltEquilibrium(leadWater,20);
+const leadHot=dissolution.labBinarySaltEquilibrium(leadWater,100);
+assert.ok(leadCold.equilibriumSolidMol>leadHot.equilibriumSolidMol);
+let leadDissolution=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+ {value:100,unit:"ml"});
+leadDissolution=lab.putLabReagent(leadDissolution,"v1","PbCl2",
+ {value:4,unit:"g"});
+assert.equal(leadDissolution.vessels[0].physicalProcess,"dissolving");
+assert.ok(leadDissolution.vessels[0].binarySaltPhase.solidMol>0);
+const leadFirstMol=leadDissolution.vessels[0].binarySaltPhase.solidMol;
+leadDissolution=lab.advanceLabSimulation(
+ lab.advanceLabSimulation(leadDissolution,0),5000);
+assert.ok(leadDissolution.vessels[0].binarySaltPhase.solidMol<leadFirstMol);
+assert.ok(leadDissolution.vessels[0].binarySaltPhase.solidMol>=
+ leadCold.equilibriumSolidMol-1e-6);
+assert.match(read("src/LektrusChemistryBench.tsx"),
+ /Физико-химические свойства реагентов и продуктов/);
+assert.match(read("src/boardModel.ts"),/NaNO3","PbCl2/);
+console.log("Reviewed reactants/products, curated densities and PbCl2 kinetics: OK");
