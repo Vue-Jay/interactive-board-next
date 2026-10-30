@@ -6,19 +6,27 @@ import {reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "
 import {labDoseMoles,labMolarMass,parseBalancedLabEquation} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
 
-export type LabInventoryStep={equation:string;extentMol:number;observation:string};
+export type LabInventoryStep={equation:string;extentMol:number;observation:string;heatKJ?:number};
 export type LabInventory={
  speciesMol:Record<string,number>;solidMol:Record<string,number>;
  releasedGasMol:Record<string,number>;steps:LabInventoryStep[];
- unmeasured:string[];limited:boolean;
+ unmeasured:string[];limited:boolean;knownHeatKJ?:number;heatEstimateComplete:boolean;
 };
-/** Solids with known low solubility products (25°C, ideal concentrations).
- * The 1:1 solver is only used for binary equations with unit coefficients,
- * not for multivalent ions or nonideal concentrated solutions. */
-const KSP_1_TO_1:Record<string,number>={
- AgCl:1.8e-10,AgBr:5.0e-13,AgI:8.3e-17,BaSO4:1.1e-10,
- CaCO3:3.3e-9,BaCO3:5.1e-9,PbSO4:1.6e-8
-};
+/** Selected Ksp at 25 °C. Source data: OpenStax Chemistry 2e,
+ * Appendix J https://openstax.org/books/chemistry-2e/pages/j-solubility-products
+ * BaSO4 follows the commonly used dilute-solution value in LibreTexts.
+ * A Ksp is an ion-activity equilibrium constant, not a kinetic rate and
+ * not a temperature-independent solubility. Numbers below support only
+ * explicit two-component ideal-solution classroom approximations. */
+export const LAB_KSP_25C:ReadOnly<Record<string,number>>=Object.freeze({
+ AgCl:1.6e-10,AgBr:5.0e-13,AgI:1.5e-16,BaSO4:1.1e-10,
+ CaCO3:8.7e-9,BaCO3:1.6e-9,PbSO4:1.3e-8,
+ PbCl2:1.6e-5,PbBr2:4.6e-6,PbI2:1.4e-8,
+ "Cu(OH)2":2.2e-20,"Fe(OH)2":1.8e-15,
+ "Fe(OH)3":4.0e-38,"Mg(OH)2":8.9e-12,
+ "Al(OH)3":2.0e-32,"Ni(OH)2":1.6e-16,
+ Ag2CO3:8.1e-12,Ag3PO4:1.8e-18
+});
 const WATER_SOLUBLE_SOLIDS=new Set([
  "NaCl","KCl","NaBr","KBr","NaNO3","KNO3","LiCl","LiNO3",
  "Na2SO4","K2SO4","MgSO4","CuSO4","FeSO4","NiSO4","CaCl2",
@@ -40,25 +48,35 @@ const sum=(record:Record<string,number>,name:string,delta:number)=>{
  else delete record[name];
 };
 const available=(record:Record<string,number>,name:string)=>Math.max(0,record[name]??0);
+/** Product ion quotient Q = [cation]^a[anion]^b for a binary
+ * precipitation producing ONE formula unit. All chemical species here are
+ * neutral molecular stocks, so each participating stock must contribute
+ * one precipitating ion per mole. Cases with further equilibria remain
+ * explicitly approximate rather than inferred. */
 function kspLimitedExtent(row:ReactionCase,
  equation:ReturnType<typeof parseBalancedLabEquation>,inventory:LabInventory,
- fullExtent:number,volumeL:number):number{
- if(!equation||row.environment!=="aqueous"||volumeL<=0)return fullExtent;
- const precipitate=row.equation.split("→")[1]?.split(/\s+\+\s+/).
-  find(s=>s.includes("↓"))?.replace(/^\s*\d+\s*/,"").replace("↓","").trim();
- const ksp=precipitate&&KSP_1_TO_1[precipitate];
+ fullExtent:number,volumeL:number,temperatureC:number):number{
+ if(!equation||row.environment!=="aqueous"||volumeL<=0||
+  Math.abs(temperatureC-25)>5)return fullExtent;
+ const marked=(row.equation.split("→")[1]??"").split(/\s+\+\s+/).
+  filter(s=>s.includes("↓"));
+ if(marked.length!==1)return fullExtent;
+ const precipitate=marked[0].replace(/^\s*\d+\s*/,"").replace("↓","").trim();
+ const ksp=LAB_KSP_25C[precipitate];
  if(!ksp||equation.reactants.length!==2||
-  equation.reactants.some(t=>t.coefficient!==1)||
-  !equation.products.some(t=>t.formula===precipitate&&t.coefficient===1))return fullExtent;
- const [a,b]=equation.reactants.map(t=>available(inventory.speciesMol,t.formula));
- if(a*b/(volumeL*volumeL)<=ksp)return 0;
- // Binary ionic approximation: Q=(a-x)(b-x)/V². Bisection preserves
- // a small soluble residue instead of precipitating everything.
+  !equation.products.some(t=>t.formula===precipitate&&t.coefficient===1)||
+  equation.reactants.some(t=>t.coefficient>3))return fullExtent;
+ const terms=equation.reactants;
+ const stocks=terms.map(t=>available(inventory.speciesMol,t.formula));
+ const quotient=(extent:number)=>terms.reduce((value,term,i)=>{
+  const concentration=Math.max(0,stocks[i]-extent*term.coefficient)/volumeL;
+  return value*concentration**term.coefficient;
+ },1);
+ if(quotient(0)<=ksp)return 0;
  let low=0,high=fullExtent;
- for(let i=0;i<60;i++){
+ for(let i=0;i<70;i++){
   const x=(low+high)/2;
-  const quotient=(a-x)*(b-x)/(volumeL*volumeL);
-  if(quotient>ksp)low=x;else high=x;
+  if(quotient(x)>ksp)low=x;else high=x;
  }
  return low;
 }
@@ -75,9 +93,10 @@ export function simulateLabInventory(input:{
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},
-  steps:[],unmeasured:[],limited:false};
+  steps:[],unmeasured:[],limited:false,heatEstimateComplete:true};
  const doses=input.doses??{};
- const volumeMl=Object.values(doses).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
+ const volumeMl=Object.entries(doses).reduce((n,[id,d])=>
+  n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0);
  for(const id of input.reagents){
   const dose=doses[id];
   const mol=dose?labDoseMoles(id,dose):undefined;
@@ -107,7 +126,7 @@ export function simulateLabInventory(input:{
    const bound=Math.min(...equation.reactants.map(t=>
     available(inventory.speciesMol,t.formula)/t.coefficient));
    if(!Number.isFinite(bound)||bound<=EPS)continue;
-   const extent=kspLimitedExtent(row,equation,inventory,bound,volumeMl/1000);
+   const extent=kspLimitedExtent(row,equation,inventory,bound,volumeMl/1000,input.temperatureC??25);
    if(extent<=EPS)continue;
    // Prefer precipitation / neutralization before secondary reactions.
    // No sign of ΔG° is inferred for cases lacking thermodynamic data.
@@ -140,8 +159,12 @@ export function simulateLabInventory(input:{
      sum(inventory.solidMol,term.formula,gained);
    }
   }
+  const heatKJ=row.enthalpyKJPerMol===undefined?undefined:
+   row.enthalpyKJPerMol*winningExtent;
+  if(heatKJ===undefined)inventory.heatEstimateComplete=false;
+  else inventory.knownHeatKJ=(inventory.knownHeatKJ??0)+heatKJ;
   inventory.steps.push({equation:row.equation,extentMol:winningExtent,
-   observation:row.observation});
+   observation:row.observation,...(heatKJ===undefined?{}:{heatKJ})});
  }
  inventory.limited=inventory.steps.length>=maxSteps;
  return remember(key,inventory);
