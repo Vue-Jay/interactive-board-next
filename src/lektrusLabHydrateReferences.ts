@@ -123,3 +123,26 @@ export function labHydrateNearestMeasuredReferences(
    return sample?[sample]:[];
   });
 }
+
+
+/** Five independently measured TRUE DENSITIES for hydrated crystal phases
+ * at 20 °C, not loose powder or the corresponding dry salt.
+ * VŠCHT Prague, Density of solids: https://uchi.vscht.cz/e-tables/density-solids?jazyk=en&lang=en
+ * Source values in kg/m³ have been divided by 1000 to give g/mL.
+ */
+export const LAB_HYDRATE_CRYSTAL_DENSITIES:readonly {
+ baseFormula:string;hydrateFormula:string;densityGPerMl:number;sourceUrl:string;
+}[]=[
+ {baseFormula:"CuSO4",hydrateFormula:"CuSO4·5H2O",densityGPerMl:2.29,
+  sourceUrl:"https://uchi.vscht.cz/e-tables/density-solids?jazyk=en&lang=en"},
+ {baseFormula:"Na2CO3",hydrateFormula:"Na2CO3·10H2O",densityGPerMl:1.46,
+  sourceUrl:"https://uchi.vscht.cz/e-tables/density-solids?jazyk=en&lang=en"},
+ {baseFormula:"Na2SO4",hydrateFormula:"Na2SO4·10H2O",densityGPerMl:1.46,
+  sourceUrl:"https://uchi.vscht.cz/e-tables/density-solids?jazyk=en&lang=en"},
+ {baseFormula:"K2CO3",hydrateFormula:"K2CO3·2H2O",densityGPerMl:2.04,
+  sourceUrl:"https://uchi.vscht.cz/e-tables/density-solids?jazyk=en&lang=en"},
+ {baseFormula:"K2CO3",hydrateFormula:"2K2CO3·3H2O",densityGPerMl:2.13,
+  sourceUrl:"https://uchi.vscht.cz/e-tables/density-solids?jazyk=en&lang=en"}
+];
+export const labHydrateCrystalDensityReferences=(baseFormula:string)=>
+ LAB_HYDRATE_CRYSTAL_DENSITIES.filter(row=>row.baseFormula===baseFormula);
