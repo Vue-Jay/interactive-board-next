@@ -279,7 +279,7 @@ export function simulateLabInventory(input:{
   !!doses.H2O&&doses.H2O.unit==="ml"&&doses.H2O.concentrationM===undefined;
  if(binary){
   const binaryFormula=labEquilibrateSingleSaltCrystals(inventory,
-   input.temperatureC??22,true);
+   input.temperatureC??22,true,labMolarMass);
   const phase=input.binarySaltPhase;
   if(binaryFormula&&phase?.formula===binaryFormula&&
    Number.isFinite(phase.solidMol)&&phase.solidMol>=0&&
