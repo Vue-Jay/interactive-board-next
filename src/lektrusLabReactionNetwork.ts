@@ -5,6 +5,7 @@
 import {reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "./lektrusReactionDatabase";
 import {labDoseMoles,labMolarMass,parseBalancedLabEquation} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
+import {labEquilibrateNaClCrystals} from "./lektrusLabMaterialConstants";
 
 /** Persistent, strictly quantitative phase inventory. A transfer can carry
  * these molecule counts without pretending the filtrate is a fresh stock
@@ -185,6 +186,20 @@ export function simulateLabInventory(input:{
    observation:row.observation,...(heatKJ===undefined?{}:{heatKJ})});
  }
  inventory.limited=inventory.steps.length>=maxSteps;
+ // Reference NaCl + pure-water crystallization is a reversible phase change,
+ // not a chemical reaction. It never consumes NaCl, and never runs for other
+ // ions, aqueous stocks without an explicit solvent, or unknown hydration.
+ const isBinaryNaCl=inventory.steps.length===0&&input.environment==="aqueous"&&
+  !!doses.H2O&&doses.H2O.unit==="ml"&&doses.H2O.concentrationM===undefined;
+ if(isBinaryNaCl)labEquilibrateNaClCrystals(inventory,
+  input.temperatureC??22,true);
+ // Once the *explicit* pure water volume is entirely evaporated, the
+ // originally weighed NaCl is dry. Do not treat arbitrary NaCl stock
+ // solutions without a tracked solvent as evaporated residue.
+ if(!doses.H2O&&doses.NaCl?.unit==="g"&&volumeMl===0&&
+  inventory.steps.length===0&&
+  Object.keys(inventory.speciesMol).every(id=>id==="NaCl"))
+  inventory.solidMol.NaCl=inventory.speciesMol.NaCl;
  return remember(key,inventory);
 }
 export function labInventorySnapshot(inventory:LabInventory):LabChemicalSnapshot{

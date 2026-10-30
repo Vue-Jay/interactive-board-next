@@ -175,7 +175,7 @@ const added=lab.putLabReagent(barelyFits,"physical","H2O",
 assert.equal(added,barelyFits,
  "An added liquid dose must be rejected if its known crystalline sediment would overflow the rim");
 const incomplete=lab.labVesselQuantity({...physicalVessel,
- chemicalInventory:{speciesMol:{NaCl:1},solidMol:{NaCl:1}}});
+ chemicalInventory:{speciesMol:{"Fe(OH)3":1},solidMol:{"Fe(OH)3":1}}});
 assert.equal(incomplete.solidVolumeComplete,false,
  "Unknown crystal density must not be silently presented as a complete displacement calculation");
 console.log("Curated precipitate density conserves occupied space and closed-flask gas headspace");

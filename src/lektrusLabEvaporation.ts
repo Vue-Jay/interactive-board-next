@@ -65,6 +65,7 @@ const aperture:Record<string,number>={
  cylinder:.28,dish:1.7,pipette:.06,burette:.08,crucible:.8
 };
 const own=(obj:object,key:string)=>Object.prototype.hasOwnProperty.call(obj,key);
+import {labNaClSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 /** Ideal liquid-phase mole fractions. For explicitly weighed soluble
  * nonvolatile salt/sugar in measured water, use the number of dissolved
  * solute particles; electrolyte coefficients are upper-bound dilute ideals.
@@ -79,6 +80,7 @@ function components(v:LabEvaporationState){
  if(otherLiquids||liquid.length===0)return [];
  const solids=entries.filter(([,d])=>d.unit==="g"&&d.value>0);
  let particlesMol=0;
+ let activityOverride:number|undefined;
  if(solids.length){
   if(liquid.length!==1||liquid[0][0]!=="H2O")return [];
   const waterKg=liquid[0][1].value*.000997;
@@ -88,7 +90,22 @@ function components(v:LabEvaporationState){
    if(!known)return [];
    particlesMol+=d.value/known.molarG*known.i;
   }
-  if(particlesMol/waterKg>4)return [];
+  const measuredNaCl=solids.length===1&&solids[0][0]==="NaCl";
+  if(measuredNaCl){
+   // Greenspan, NBS J. Research 81A (1977): saturated NaCl has ~0.753
+   // water activity at 25°C. Between pure water and that endpoint an
+   // explicitly approximate concentration interpolation is used. Excess
+   // undissolved crystals NEVER depress water activity further and NEVER
+   // prevent the last droplets of pure water from evaporating.
+   const solubility=labNaClSolubilityGPer100gWater(25);
+   const saturationMolal=solubility===undefined?undefined:
+    solubility/100/.05844277;
+   if(!saturationMolal)return [];
+   const molal=solids[0][1].value/58.44277/waterKg;
+   activityOverride=1-.247*Math.min(1,molal/saturationMolal);
+   particlesMol=Math.min(particlesMol,
+    saturationMolal*waterKg*2);
+  }else if(particlesMol/waterKg>4)return [];
  }
  const totalMol=particlesMol+liquid.reduce((s,[id,d])=>{
   const p=table[id as EvaporatingLiquid];
@@ -96,7 +113,8 @@ function components(v:LabEvaporationState){
  },0);
  return liquid.map(([id,d])=>{
   const p=table[id as EvaporatingLiquid];
-  return {id,d,moleFraction:(d.value*p.densityGml/p.molG)/totalMol};
+  const ideal=(d.value*p.densityGml/p.molG)/totalMol;
+  return {id,d,moleFraction:activityOverride??ideal};
  });
 }
 export function labVaporPressureKPa(v:LabEvaporationState,tempC:number):number|undefined{
@@ -149,7 +167,7 @@ const bubbleCache=new Map<string,number|undefined>();
  * max 10 seconds per tick, deterministic from current shared state.
  */
 export function labEvaporate(v:LabEvaporationState,seconds:number,
- temperatureC=v.temperatureC??22,heaterTargetC=22){
+ temperatureC=v.temperatureC??22,heaterTargetC=22,heaterPowerW=0){
  const items=components(v),dt=Math.max(0,Math.min(10,seconds));
  const partials=items.map(c=>({
   ...c,pressureKPa:labSaturationPressureKPa(c.id,temperatureC)
@@ -199,8 +217,16 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   // Heat delivered above the boiling range drives faster vapor generation.
   const rate=aperture[v.kind]??.4;
   const diffusionMlPerS=.0002*rate*partial*Math.sqrt(18.015/table[item.id as EvaporatingLiquid].molG);
-  const heatBoost=boiling?Math.max(0,heaterTargetC-temperatureC)*.00014*
-   rate*item.moleFraction:0;
+  // For boiling WATER, enforce the latent-heat energy budget.
+  // Latent heat of vaporisation at 100 °C: ~2257 J/g, water density
+  // ~0.997 g/ml. The effective heater power is an explicit instrument
+  // input (not an inferred universal evaporation coefficient).
+  const energeticWaterLoss=boiling&&item.id==="H2O"&&heaterPowerW>0?
+   heaterPowerW/(2257*.997)*item.moleFraction:0;
+  const empiricalOtherLiquid=boiling&&item.id!=="H2O"?
+   Math.max(0,heaterTargetC-temperatureC)*.00014*
+    rate*item.moleFraction:0;
+  const heatBoost=energeticWaterLoss+empiricalOtherLiquid;
   const loss=Math.min(item.d.value,dt*(diffusionMlPerS+heatBoost));
   if(loss<1e-7)continue;
   const left=Math.max(0,Math.round((item.d.value-loss)*1e5)/1e5);

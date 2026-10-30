@@ -858,7 +858,7 @@ export function parseDocument(raw: string): DocumentData {
         };
         if(!bench||!Array.isArray(bench.vessels)||bench.vessels.length>6||
           typeof bench.selectedId!=="string"||
-          (bench.mode!=null&&!["reactions","qualitative","quantitative","titration","solutions","synthesis"].includes(bench.mode))||
+          (bench.mode!=null&&!["reactions","qualitative","quantitative","titration","solutions","synthesis","evaporation"].includes(bench.mode))||
           !Number.isSafeInteger(bench.event)||bench.event<0||!validSettings||
           !validEquationHistory(bench.reactionLog,30,500)||
           !validEquationHistory(bench.seenReactionKeys,150,650)||

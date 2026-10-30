@@ -3,6 +3,7 @@ import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
 import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
+import {LAB_CRYSTAL_DENSITY_G_ML} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
@@ -25,7 +26,7 @@ export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
 ];
 /** A work mode selects the useful tools; existing apparatus stays on the table. */
 /** Legacy qualitative/quantitative values are migrated on read. */
-export type LabMode="reactions"|"qualitative"|"quantitative"|"titration"|"solutions"|"synthesis";
+export type LabMode="reactions"|"qualitative"|"quantitative"|"titration"|"solutions"|"synthesis"|"evaporation";
 export const LAB_MODES:{id:LabMode;name:string;description:string;
  glassware:LabGlassware[];devices:LabAvailableDevice[]}[]=[
  {id:"reactions",name:"Реакции",
@@ -40,6 +41,10 @@ export const LAB_MODES:{id:LabMode;name:string;description:string;
   description:"Растворение, дозирование и перемешивание",
   glassware:["beaker","pipette","flask","conical"],
   devices:["stirrer","hotplate","tripod"]},
+ {id:"evaporation",name:"Выпаривание",
+  description:"Нагревание водного раствора, удаление растворителя и рост кристаллов",
+  glassware:["dish","beaker","flask","conical","pipette"],
+  devices:["hotplate","burner","tripod","stirrer"]},
  {id:"synthesis",name:"Синтез",
   description:"Нагревание, получение и сбор продуктов проверенных превращений",
   glassware:["flask","conical","tube","beaker","crucible","dish"],
@@ -414,9 +419,14 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    reduce((sum,mol)=>sum+mol,0)+Object.entries(gasInventory.speciesMol).
    reduce((sum,[id,mol])=>sum+(substances.find(s=>s.id===id)?.kind==="газ"?mol:0),0):0;
   const {occupiedMl,capacityMl}=labVesselQuantity(v);
+  // The effective power arriving at the liquid is a bounded instrument
+  // parameter. At a known boiling plateau, latent heat limits how much
+  // water can actually leave the open vessel per simulation tick.
+  const deliveredHeatW=device?.powered?
+   device.kind==="hotplate"?160:120*(device.heatLevel??2):0;
   const phase=labEvaporate({...v,
    headspaceMl:Math.max(1,capacityMl-occupiedMl),
-   reactionGasMol:gasMoles},seconds,next,toward);
+   reactionGasMol:gasMoles},seconds,next,toward,deliveredHeatW);
   const evaporating=phase.evaporatedMl>0,popped=phase.popped;
   const dissolutionComplete=v.physicalProcess==="dissolving"&&
    v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500;
@@ -858,11 +868,7 @@ export function wipeLabChalkboard(bench:LabBench):LabBench{
  * Insoluble products are selected ONLY by a ↓ in the reviewed equation.
  * Mass is calculated from measured product moles, never inferred from a
  * precipitation animation. Densities give physical layer volume. */
-const precipitateDensity:Record<string,number>={
- AgCl:5.56,AgBr:6.47,AgI:5.68,BaSO4:4.5,CaCO3:2.71,
- "Cu(OH)2":3.37,"Fe(OH)3":3.4,"Fe(OH)2":3.4,
- "Zn(OH)2":3.05,"Al(OH)3":2.42,PbI2:6.16
-};
+const precipitateDensity=LAB_CRYSTAL_DENSITY_G_ML;
 const formatMol=(v:number)=>Number((v*1000).toPrecision(4));
 export function labVesselContents(v:LabVessel){
  const {volumeMl,capacityMl}=labVesselQuantity(v);
@@ -888,8 +894,9 @@ export function labVesselContents(v:LabVessel){
    if(solidMol>1e-12){
     const mass=labMolarMass(formula);
     solid.push({formula,massG:mass===undefined?undefined:mass*solidMol});
-    if(precipitated.has(formula)||(v.chemicalInventory&&
-      v.environment==="aqueous"&&!LAB_WATER_SOLUTES.has(formula))){
+    if(precipitated.has(formula)||formula==="NaCl"||
+     (v.chemicalInventory&&v.environment==="aqueous"&&
+      !LAB_WATER_SOLUTES.has(formula))){
      if(mass!==undefined){
       const productMass=mass*solidMol;
       precipitateG+=productMass;
@@ -1098,6 +1105,7 @@ const LAB_STARTER_SETS:Record<LabMode,{glassware:LabGlassware[];devices:LabAvail
  quantitative:{glassware:["beaker","pipette","conical","flask"],devices:["stirrer"]},
  titration:{glassware:["burette","conical","pipette"],devices:["tripod"]},
  solutions:{glassware:["beaker","pipette","flask","conical"],devices:["stirrer"]},
+ evaporation:{glassware:["dish","beaker","pipette"],devices:["hotplate"]},
  synthesis:{glassware:["flask","crucible","beaker"],devices:["hotplate","tripod"]}
 };
 export function prepareLabModeSetup(bench:LabBench):LabBench{

@@ -24,9 +24,13 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
-const vapor=load("src/lektrusLabEvaporation.ts");
+const constants=load("src/lektrusLabMaterialConstants.ts");
+const vapor=load("src/lektrusLabEvaporation.ts",key=>{
+ assert.equal(key,"./lektrusLabMaterialConstants");return constants;
+});
 const network=load("src/lektrusLabReactionNetwork.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
+ if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 const waterIonization=load("src/lektrusLabWaterIonization.ts");
@@ -43,6 +47,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabPH")return acidBase;
  if(key==="./lektrusLabReactionNetwork")return network;
  if(key==="./lektrusLabCatalog")return catalog;
+ if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 let bench=lab.defaultLabBench();
@@ -1086,7 +1091,7 @@ assert.match(read("src/lektrusLabLayout.ts"),/77\/110/);
 
 // Mode-specific apparatus must not remove any already placed work.
 assert.deepEqual(lab.LAB_MODES.map(m=>m.id),
- ["reactions","titration","solutions","synthesis"]);
+ ["reactions","titration","solutions","evaporation","synthesis"]);
 let modeBench=lab.defaultLabBench();
 const previousPositions=JSON.stringify(modeBench.vessels);
 modeBench=lab.setLabMode(modeBench,"titration");
@@ -1095,6 +1100,10 @@ assert.equal(JSON.stringify(modeBench.vessels),previousPositions);
 assert.ok(lab.glasswareForLabMode(modeBench).some(v=>v.id==="burette"));
 assert.ok(lab.devicesForLabMode(modeBench).some(v=>v.id==="tripod"));
 assert.ok(!lab.glasswareForLabMode(modeBench).some(v=>v.id==="crucible"));
+modeBench=lab.setLabMode(modeBench,"evaporation");
+assert.ok(lab.glasswareForLabMode(modeBench).some(v=>v.id==="dish"));
+assert.ok(lab.devicesForLabMode(modeBench).some(v=>v.id==="hotplate"));
+assert.ok(lab.labModeInfo(modeBench).description.includes("кристаллов"));
 modeBench=lab.setLabMode(modeBench,"synthesis");
 assert.ok(lab.glasswareForLabMode(modeBench).some(v=>v.id==="crucible"));
 assert.ok(lab.devicesForLabMode(modeBench).some(v=>v.id==="burner"));
