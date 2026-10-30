@@ -1998,7 +1998,7 @@ const dilution={reagents:["HCl","H2O"],environment:"aqueous",doses:{
  HCl:{value:20,unit:"ml",concentrationM:.1},H2O:{value:20,unit:"ml"}}};
 assert.ok(Math.abs(acidBase.labVesselPH(dilution).pH-1.30)<.02);
 assert.equal(acidBase.labVesselPH({reagents:["NaOH"],environment:"aqueous",
- doses:{NaOH:{value:20,unit:"ml",concentrationM:.1}}}).pH,13);
+ doses:{NaOH:{value:20,unit:"ml",concentrationM:.1}}}).pH,12.99);
 const perfectNeutral={reagents:["HCl","NaOH"],environment:"aqueous",doses:{
  HCl:{value:20,unit:"ml",concentrationM:.1},
  NaOH:{value:20,unit:"ml",concentrationM:.1}}};
@@ -2030,7 +2030,9 @@ phBeaker=lab.setLabIndicator(phBeaker,"v1","phenolphthalein");
 assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).pH,1);
 phBeaker=lab.putLabReagent(phBeaker,"v1","NaOH",
  {value:20,unit:"ml",concentrationM:.1});
-assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).pH,7);
+assert.ok(Math.abs(lab.labIndicatorResult(phBeaker.vessels[0]).pH-
+ waterIonization.labNeutralWaterPH(phBeaker.vessels[0].temperatureC??25))<.015,
+ "Equivalence point follows neutral-water pH at actual vessel temperature");
 assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).color,undefined,
  "Phenolphthalein is colorless at strong acid/base equivalence");
 const phOther=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
