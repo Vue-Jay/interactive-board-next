@@ -56,7 +56,13 @@ export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
  // MgO periclase: Kirk-Othmer (27 C) via PubChem CID 14792:
  // 0.92885 kJ/kg/K = 0.92885 J/g/K. Not an arbitrary hydrated mix.
  // https://pubchem.ncbi.nlm.nih.gov/compound/14792
- MgO:{specificJPerGK:.92885,phase:"solid"}
+ MgO:{specificJPerGK:.92885,phase:"solid"},
+ // NaCl crystalline solid: Kirk-Othmer via PubChem CID 5234, 0.853 J/g/K:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/5234
+ NaCl:{specificJPerGK:.853,phase:"solid"},
+ // Anhydrous (NH4)2SO4, average c_p 2-55°C (Ullmann's) from PubChem:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/6097028
+ "(NH4)2SO4":{specificJPerGK:1.423,phase:"solid"}
 };
 /** Effective glass + utensil thermal mass by vessel type, grams of glass
  * equivalent (c_glass≈0.84 J/g/K). Intended for comparative teaching only. */
