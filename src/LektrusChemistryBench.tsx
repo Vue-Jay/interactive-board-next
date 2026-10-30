@@ -604,9 +604,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     current.vessels.some(v=>(v.temperatureC??22)>22.1);
    if(!active)return;
    // Fine-grained updates only while titrating. Heating needs fewer board writes.
+   const ambientOnly=!openBurette&&!current.vessels.some(labReactionNeedsTick)&&
+    !current.vessels.some(v=>v.physicalProcess==="dissolving")&&
+    !placedLabDevices(current).some(d=>d.powered||(d.temperatureC??22)>22.1)&&
+    !current.vessels.some(v=>(v.temperatureC??22)>22.1);
+   // Quiet, ambient evaporation updates every ~10s rather than generating
+   // hundreds of unnecessary board versions per classroom hour.
    if(!openBurette&&!current.vessels.some(labReactionNeedsTick)&&
-     !current.vessels.some(v=>v.physicalProcess==="dissolving")&&
-     Date.now()-(current.simulationAtMs??0)<1900)return;
+    !current.vessels.some(v=>v.physicalProcess==="dissolving")&&
+    Date.now()-(current.simulationAtMs??0)<(ambientOnly?9800:1900))return;
    const next=advanceLabSimulation(current,Date.now());
    if(next!==current)changeRef.current?.(next);
   },500);
