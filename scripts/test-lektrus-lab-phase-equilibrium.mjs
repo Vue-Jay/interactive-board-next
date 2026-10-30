@@ -100,3 +100,19 @@ assert.match(modelSource,/export function labVesselPressure/);
 assert.match(modelSource,/retainedGasMol/);
 assert.match(validatorSource,/v\.stopperedAtC/);
 console.log("Closed flask gas-headspace PV=nRT, seal temperatures, stopper release and schema: OK");
+
+
+const aqueousAcidWithGas={
+ kind:"conical",stoppered:true,stopperedAtC:22,headspaceMl:100,
+ doses:{HCl:{value:10,unit:"ml",concentrationM:.1}},
+ reactionGasMol:.002,temperatureC:22
+};
+const acidGasReading=labEvaporate(aqueousAcidWithGas,0,22);
+const acidGasPressure=.002*8.314462618*(22+273.15)/.1;
+assert.ok(Math.abs(acidGasReading.reactionGasPressureKPa-acidGasPressure)<1e-8,
+ "Measured gas partial pressure is always quantified, even for aqueous stocks");
+assert.equal(acidGasReading.pressureKPa,undefined,
+ "An unverified solvent vapor model must not invent a total headspace pressure");
+const forceRelease=labEvaporate({...aqueousAcidWithGas,reactionGasMol:.01},10,22);
+assert.ok(forceRelease.popped&&!forceRelease.stoppered,
+ "When gas partial pressure alone exceeds cork limit, safely pop the cork");
