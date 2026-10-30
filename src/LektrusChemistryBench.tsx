@@ -7,7 +7,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBen
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
-import {labCanStopper,labSaturationPressureKPa,labApproxWaterBoilingC} from "./lektrusLabEvaporation";
+import {labCanStopper,labVaporPressureKPa,labIdealBoilingC,labEvaporate} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
 import {labMolarMass} from "./lektrusLabStoichiometry";
@@ -153,9 +153,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const gasEventActive=!!vessel.reactionAmounts&&!vessel.reactionAmounts.complete||
   !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<6500;
  const vaporVisible=!small&&!vessel.stoppered&&volumeMl>0&&
-  Object.entries(vessel.doses??{}).some(([id,d])=>d.unit==="ml"&&
-   d.concentrationM===undefined&&d.value>0&&
-   (labSaturationPressureKPa(id,temperatureC??vessel.temperatureC??22)??0)>5);
+  (labVaporPressureKPa(vessel,temperatureC??vessel.temperatureC??22)??0)>5;
  const gasOnly=vessel.reagents.length>0&&vessel.reagents.every(id=>
   substances.find(s=>s.id===id)?.kind==="газ")&&massG===0;
  const singlePhase=vessel.filteredResidue?"solid":gasOnly?"gas":
@@ -176,7 +174,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const labels=species.map(([id])=>substances.find(s=>s.id===id)?.formula??id);
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
- const solutionBoiling=labApproxWaterBoilingC(vessel.doses);
+ const solutionBoiling=labIdealBoilingC(vessel);
  const boiling=!!volumeMl&&!vessel.stoppered&&(thermalState.boiling||
   solutionBoiling!==undefined&&(temperatureC??vessel.temperatureC??22)>=solutionBoiling-.5);
  const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):
@@ -596,8 +594,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const current=benchRef.current;
    const openBurette=current.vessels.some(v=>v.buretteOpen);
    const active=openBurette||current.vessels.some(labReactionNeedsTick)||
-    current.vessels.some(v=>!v.stoppered&&Object.entries(v.doses??{}).some(([id,d])=>
-     d.unit==="ml"&&!d.concentrationM&&labSaturationPressureKPa(id,v.temperatureC??22)!==undefined))||
+    current.vessels.some(v=>!v.stoppered&&
+     labVaporPressureKPa(v,v.temperatureC??22)!==undefined)||
     current.vessels.some(v=>v.physicalProcess==="dissolving")||
     placedLabDevices(current).some(d=>d.powered||
     (d.temperatureC??22)>22.1)||
@@ -1209,7 +1207,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     disabled={!editable} onClick={e=>{e.stopPropagation();openCabinet("reagents")}}
     title="Открыть шкаф реактивов">РЕАКТИВЫ</button>
    <div className="lektrus-lab-bottle-rack" role="group" aria-label="Реактивы быстрого доступа">
-    {quickReagents.map(v=>{
+    {Array.from({length:Math.max(3,Math.ceil((quickReagents.length+(editable&&quickReagents.length<MAX_QUICK_REAGENTS?1:0))/4))},(_,row)=><div key={row} className="lektrus-lab-reagent-row">
+    {quickReagents.slice(row*4,(row+1)*4).map(v=>{
      const item=substances.find(r=>r.id===v.id);
      const color=reagentAppearance(v.id,v.dose.unit==="g"?"dry":"aqueous").color;
      return <button type="button" key={v.id} draggable={editable}
@@ -1229,11 +1228,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <span className="lektrus-lab-quick-phase">{item?labReagentPhaseLabel(item,v.dose.unit):"Реактив"}</span>
      </button>;
     })}
-    {editable&&quickReagents.length<MAX_QUICK_REAGENTS&&<button type="button"
+    {editable&&quickReagents.length<MAX_QUICK_REAGENTS&&Math.floor(quickReagents.length/4)===row&&<button type="button"
      className="lektrus-lab-quick-bottle is-add"
      title="Добавить реактив быстрого доступа"
      aria-label="Редактировать быстрые реактивы"
      onClick={e=>{e.stopPropagation();openCabinet("reagents")}}>+</button>}
+    </div>)}
    </div>
    <span className="lektrus-lab-furniture-foot" aria-hidden="true">Нажмите на реактив или перетащите к сосуду</span>
   </div>
@@ -1554,6 +1554,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const v=bench.vessels.find(x=>x.id===compositionId);
    if(!v)return null;
    const composition=labVesselContents(v),quantity=labVesselQuantity(v);
+   const vaporReading=labEvaporate(v,0,v.temperatureC??22);
+   const boilingEstimate=labIdealBoilingC(v);
    const inventory=v.doses&&!v.filteredResidue&&!v.filteredSolution?
     simulateLabInventory(v):undefined;
    const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
@@ -1570,6 +1572,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Добавлено твёрдых веществ: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
      <p>Горлышко: {v.stoppered?"закрыто пробкой":"открыто"}.
       {v.stoppered?" Пар остаётся внутри; обычная пробка может выскочить при нагреве.":""}</p>
+     {(vaporReading.pressureKPa!==undefined||boilingEstimate!==undefined)&&
+      <p title="Приближённое равновесие идеального раствора. Учитываются только заданные компоненты с проверенными физическими свойствами.">
+       {vaporReading.pressureKPa!==undefined&&
+        <span>{v.stoppered?"Оценка давления в закрытой колбе":"Давление насыщенных паров"}:
+         {" "+formatted(vaporReading.pressureKPa)} кПа. </span>}
+       {boilingEstimate!==undefined&&
+        <span>Расчётная температура кипения при 1 атм: {formatted(boilingEstimate)} °C.</span>}
+      </p>}
      {v.ventedVaporMl&&Object.keys(v.ventedVaporMl).length>0&&<>
       <strong>Испарилось в окружающую среду</strong>
       <ul>{Object.entries(v.ventedVaporMl).map(([id,ml])=>

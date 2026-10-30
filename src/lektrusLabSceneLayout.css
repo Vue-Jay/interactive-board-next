@@ -595,3 +595,70 @@
  text-overflow:ellipsis!important;overflow-wrap:normal!important;
  font:750 clamp(7px,.59cqw,9px)/1.1 system-ui,sans-serif!important;
 }
+
+
+/* Three actual bottle shelves. The rail belongs to EACH row, not to a
+   repeating gradient on the entire rack: it cannot run over captions. */
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-bottle-rack{
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr)!important;
+ grid-template-rows:repeat(3,minmax(56px,1fr))!important;
+ grid-auto-rows:minmax(56px,1fr)!important;
+ row-gap:3px!important;column-gap:0!important;
+ align-content:start!important;
+ padding:2px 5px 4px!important;
+ background:none!important;background-image:none!important;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-reagent-row{
+ position:relative;display:grid;
+ grid-template-columns:repeat(4,minmax(0,1fr));
+ grid-template-rows:minmax(0,1fr);
+ min-width:0;min-height:56px;
+ gap:4px;padding:0 2px 9px;
+ box-sizing:border-box;
+ isolation:isolate;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-reagent-row::after{
+ content:"";position:absolute;left:0;right:0;bottom:1px;
+ height:5px;pointer-events:none;z-index:0;
+ border-radius:1px 1px 4px 4px;
+ background:linear-gradient(#8bad98,#5e8b72 50%,#9ebba4);
+ border-bottom:1px solid #53765c;
+ box-shadow:0 3px 3px #214e3a24;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-reagent-row>.lektrus-lab-quick-bottle{
+ position:relative!important;z-index:1!important;
+ height:100%!important;min-height:0!important;
+ box-sizing:border-box!important;
+ grid-template-rows:minmax(20px,1fr) 11px 11px!important;
+ padding:2px 1px 0!important;
+ align-content:end!important;
+ gap:1px!important;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-reagent-row>.lektrus-lab-quick-bottle>i{
+ width:clamp(17px,1.65cqw,25px)!important;
+ height:clamp(20px,2.1cqw,32px)!important;
+ max-height:100%!important;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-reagent-row>.lektrus-lab-quick-bottle>strong,
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-reagent-row>.lektrus-lab-quick-bottle>small{
+ position:relative;z-index:2;overflow:hidden!important;
+ line-height:11px!important;white-space:nowrap!important;
+ text-overflow:ellipsis!important;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-reagent-row>.lektrus-lab-quick-bottle.is-add{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ height:100%!important;padding:1px!important;
+ border:1px dashed #72a78d!important;border-radius:6px!important;
+}
+@container(max-width:1000px){
+ .lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-bottle-rack{
+  grid-template-columns:1fr!important;
+  grid-template-rows:repeat(3,minmax(56px,1fr))!important;
+  grid-auto-rows:minmax(56px,1fr)!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-reagent-row{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  min-height:56px!important;
+ }
+}

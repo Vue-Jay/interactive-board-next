@@ -2,7 +2,7 @@ import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
-import {labEvaporate,labCanStopper,labApproxWaterBoilingC} from "./lektrusLabEvaporation";
+import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
@@ -405,8 +405,10 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // Verified pure liquids receive a boiling plateau. Neat mixtures get
   // ideal Raoult vapor pressures; stock solvents with unrecorded composition
   // must never be assigned a fictitious boiling point.
-  const boilingPoint=pure?.unit==="ml"?pure.info.boilingC:
-   labApproxWaterBoilingC(v.doses);
+  // The same ideal liquid activity governs both vapor escape and the
+  // measured mixture's boiling plateau, rather than using arbitrary 100°C
+  // for an ethanol/water mixture.
+  const boilingPoint=labIdealBoilingC(v)??(pure?.unit==="ml"?pure.info.boilingC:undefined);
   if(boilingPoint!==undefined&&next>boilingPoint&&!v.stoppered)next=boilingPoint;
   const phase=labEvaporate(v,seconds,next,toward);
   const evaporating=phase.evaporatedMl>0,popped=phase.popped;
