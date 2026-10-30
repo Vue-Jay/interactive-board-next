@@ -52,7 +52,11 @@ export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
  Cu:{specificJPerGK:.385,phase:"solid"},
  Ag:{specificJPerGK:.235,phase:"solid"},
  Au:{specificJPerGK:.129,phase:"solid"},
- Si:{specificJPerGK:.712,phase:"solid"}
+ Si:{specificJPerGK:.712,phase:"solid"},
+ // MgO periclase: Kirk-Othmer (27 C) via PubChem CID 14792:
+ // 0.92885 kJ/kg/K = 0.92885 J/g/K. Not an arbitrary hydrated mix.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/14792
+ MgO:{specificJPerGK:.92885,phase:"solid"}
 };
 /** Effective glass + utensil thermal mass by vessel type, grams of glass
  * equivalent (c_glass≈0.84 J/g/K). Intended for comparative teaching only. */
