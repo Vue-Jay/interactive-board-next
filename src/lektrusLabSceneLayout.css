@@ -737,3 +737,43 @@
   font-size:8px!important;line-height:1.1!important;
  }
 }
+
+
+/* Full-height worktop, 2026-10-30. Previously the scene used 12% of its
+ * entire height for a decorative cabinet apron, leaving a broad empty green
+ * strip underneath the experiments. The usable surface now runs almost to
+ * the bottom of the SAME design stage in both board and fullscreen editor.
+ * A narrow front lip remains to make the surface read as a laboratory table. */
+.lektrus-lab-bench .lektrus-lab-worktop-zone{
+ top:42%!important;
+ bottom:2.75%!important;
+ left:.8%!important;right:.8%!important;
+ box-sizing:border-box!important;
+ border-radius:18px 18px 5px 5px!important;
+ background:linear-gradient(158deg,#e8f5e7 0%,#d8eada 34%,#c4dfcf 72%,#b2d2c1 100%)!important;
+ box-shadow:inset 0 2px 5px #ffffffb8,inset 0 -3px 10px #7daa9670,
+  0 -3px 9px #32664d25!important;
+}
+.lektrus-lab-bench .lektrus-lab-worktop-zone:after{
+ inset:3.5% 2.25% 3.5%!important;
+ border:1px dashed #90b6a268!important;
+ border-radius:12px!important;
+}
+.lektrus-lab-bench .lektrus-lab-counter{
+ bottom:0!important;
+ height:3.75%!important;
+ border-top:3px solid #e2f1e3!important;
+ border-radius:0 0 9px 9px!important;
+ background:linear-gradient(180deg,#a8ccb4,#769d83 75%,#709680)!important;
+ box-shadow:0 3px 9px #335a4733!important;
+}
+.lektrus-lab-bench .lektrus-lab-counter-front{
+ bottom:0!important;
+ height:2.5%!important;
+ border-top:1px solid #b5d4bc!important;
+ background:linear-gradient(180deg,#739b82,#63866f)!important;
+ box-shadow:inset 0 2px 5px #244a3630!important;
+}
+.lektrus-lab-bench .lektrus-lab-back-shelf{
+ top:40.6%!important;height:1.1%!important;
+}
