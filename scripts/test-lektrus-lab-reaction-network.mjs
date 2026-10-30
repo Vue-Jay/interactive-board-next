@@ -119,3 +119,25 @@ const cabinetView=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
 assert.match(cabinetView,/<small>\{kind\.name\}<\/small>/,
  "Every compact icon must retain its visible full-name label");
 console.log("Glassware cupboard compact and expanded layout guards passed");
+
+
+const openGas=simulateLabInventory({
+ reagents:["HCl","NaHCO3"],environment:"aqueous",
+ doses:{HCl:solution(30),NaHCO3:{unit:"g",value:.3}}
+});
+const closedGas=simulateLabInventory({
+ reagents:["HCl","NaHCO3"],environment:"aqueous",stoppered:true,
+ doses:{HCl:solution(30),NaHCO3:{unit:"g",value:.3}}
+});
+assert.ok((openGas.releasedGasMol.CO2??0)>0,
+ "Gas from a reviewed reaction escapes an open flask");
+assert.ok((closedGas.retainedGasMol.CO2??0)>0,
+ "Gas from the SAME balanced reaction stays inside a corked flask");
+assert.equal(closedGas.releasedGasMol.CO2??0,0,
+ "Closed flask must not simultaneously vent reaction gas");
+assert.equal(openGas.retainedGasMol.CO2??0,0);
+approximately(openGas.releasedGasMol.CO2,closedGas.retainedGasMol.CO2,1e-12);
+approximately(labInventoryMassG(openGas),labInventoryMassG(closedGas),1e-8);
+approximately(labInventoryMassG(closedGas),
+ .003*labMolarMass("HCl")+.3,1e-7);
+console.log("Open-vessel CO2 escapes; corked CO2 remains, fully mass-balanced");
