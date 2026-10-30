@@ -813,3 +813,25 @@
   gap:5px!important;
  }
 }
+
+
+/* Align the washbasin with the NEW full-height countertop.
+ * Its original inset from the OLD table edge was ~4% of the stage;
+ * keep that visual clearance rather than leaving it stranded halfway
+ * up the right side after the worktop was extended. */
+.lektrus-lab-bench .lektrus-lab-sink{
+ top:auto!important;
+ bottom:6.5%!important;
+ right:2.5%!important;
+ width:23%!important;
+ height:30%!important;
+}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-sink{
+  top:auto!important;
+  bottom:6.5%!important;
+  right:2.5%!important;
+  width:23%!important;
+  height:30%!important;
+ }
+}
