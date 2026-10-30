@@ -996,7 +996,12 @@ export function parseDocument(raw: string): DocumentData {
                Object.entries(v.chemicalInventory.retainedGasMol).every(([formula,mol])=>
                 formula.length>0&&formula.length<=70&&
                 typeof mol==="number"&&Number.isFinite(mol)&&mol>=0&&mol<=10000)))))&&
-            (v.physicalProcess==null||v.physicalProcess==="dissolving")&&
+            (v.physicalProcess==null||["dissolving","crystallizing"].includes(v.physicalProcess))&&
+            (v.binarySaltPhase==null||(
+             typeof v.binarySaltPhase.formula==="string"&&
+             ["NaCl","KCl","KNO3","NaNO3"].includes(v.binarySaltPhase.formula)&&
+             Number.isFinite(v.binarySaltPhase.solidMol)&&
+             v.binarySaltPhase.solidMol>=0&&v.binarySaltPhase.solidMol<=10000))&&
             (v.physicalStartedAtMs==null||(Number.isFinite(v.physicalStartedAtMs)&&
              v.physicalStartedAtMs>=0))&&
             v.x>=8&&v.x<=92&&v.y>=8&&v.y<=92&&
