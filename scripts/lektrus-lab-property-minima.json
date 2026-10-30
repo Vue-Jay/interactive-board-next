@@ -8,6 +8,9 @@
     "binarySolubility": 24,
     "binarySolubilityAnyTemperature": 29,
     "binarySolubilityMeasuredPoints": 142,
-    "binarySolubilityFullSixPoints": 18
+    "binarySolubilityFullSixPoints": 18,
+    "hydrateReferenceVariants": 26,
+    "hydrateReferenceCabinetBases": 25,
+    "hydrateReferenceMeasuredPoints": 102
   }
 }
