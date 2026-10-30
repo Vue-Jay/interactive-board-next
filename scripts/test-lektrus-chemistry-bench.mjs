@@ -1088,6 +1088,7 @@ assert.ok(Math.abs(nextDrop.productsMol.NaCl-.0003)<1e-12,
 assert.ok(Math.abs(nextDrop.remainingMol.HCl-.0007)<1e-12);
 const editorFixed=read("src/LektrusChemistryBenchEditor.tsx");
 assert.match(editorFixed,/setStage/);
+assert.match(editorFixed,/zoom:stage\.scale/,"Fullscreen must use layout zoom to avoid Android GPU repaint artifacts");
 assert.match(editorFixed,/const width=w\/scale/,
  "Fullscreen scales rather than scrolls a 1600 x 1000 stage");
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-fit-stage/);

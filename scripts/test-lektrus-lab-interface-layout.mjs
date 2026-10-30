@@ -133,3 +133,23 @@ const layout=readFileSync("src/lektrusLabLayout.ts","utf8");
 assert.match(layout,/LAB_SINK_BOUNDS=\{left:74\.5,right:97\.5,top:63\.5,bottom:93\.5\}/);
 assert.match(layout,/p\.x>=LAB_SINK_BOUNDS\.left/);
 console.log("New bottom-right sink and drag-to-drain bounds agree");
+
+
+// Fullscreen on Android must not cause the two bench surfaces to race a
+// simulation tick, nor repaint the entire chemistry stage through a scaled
+// GPU layer. These guards cover selection + heating in the same viewport.
+const app=readFileSync("src/App.tsx","utf8");
+assert.match(app,/scienceEditorItem\?\.id!==item\.id&&/,
+ "Board bench must stop writing while its fullscreen editor owns simulation");
+assert.match(editor,/document\.body\.classList\.add\("lektrus-lab-fullscreen-active"\)/);
+assert.match(editor,/document\.body\.classList\.remove\("lektrus-lab-fullscreen-active"\)/);
+assert.match(editor,/zoom:stage\.scale/,
+ "Android fullscreen must scale in layout space instead of transformed paint layers");
+assert.doesNotMatch(editor,/transform:"translate\(-50%, -50%\) scale\("/);
+const stableFullscreen=css.slice(css.lastIndexOf("Android fullscreen laboratory paint stability"));
+assert.ok(stableFullscreen.length>400);
+assert.match(stableFullscreen,/body\.lektrus-lab-fullscreen-active \.workspace\{[\s\S]*?visibility:hidden!important/);
+assert.match(stableFullscreen,/\.lektrus-lab-editor-overlay\.is-board-identical\{[\s\S]*?background:#d6e8df!important/);
+assert.match(stableFullscreen,/\.lektrus-lab-editor\.is-board-identical \.lektrus-lab-fit-stage\{[\s\S]*?transform:none!important/);
+assert.match(stableFullscreen,/contain:layout paint/);
+console.log("Android fullscreen laboratory: isolated paint, single simulation writer, fluid viewport OK");

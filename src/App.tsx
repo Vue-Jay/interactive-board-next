@@ -9112,6 +9112,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                   onCollect={destinationId=>collectChemistryObject(item.id,destinationId)}/>}
                 {item.kind === "graph" && !isSubjectBoard(item) && <GraphView item={item}
                   onLabBenchChange={canEdit&&!item.locked&&!presentation&&!space&&
+                    // Only the full-screen editor advances this laboratory
+                    // while it is open; the background preview is read-only.
+                    scienceEditorItem?.id!==item.id&&
                     !selectionLocked&&!structurallyLockedForStudent(item)&&
                     item.graphFigureId==="chem-experiment-free"&&!!item.scienceLabBench&&tool==="select"?
                     nextBench=>{

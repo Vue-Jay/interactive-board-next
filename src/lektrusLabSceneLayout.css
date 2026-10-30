@@ -853,3 +853,33 @@
   animation:none!important;
  }
 }
+
+
+/* Android fullscreen laboratory paint stability, 2026-10-30.
+ * The previous nested transform:scale plus transparent portal re-rasterized
+ * the giant animated stage during every object focus/simulation update.
+ * Keep the portal fully opaque; CSS zoom is applied as a layout property
+ * from the React editor, not as a GPU transform texture. */
+body.lektrus-lab-fullscreen-active .workspace{
+ visibility:hidden!important;
+}
+.lektrus-lab-editor-overlay.is-board-identical{
+ background:#d6e8df!important;
+ backdrop-filter:none!important;
+ isolation:isolate!important;
+}
+.lektrus-lab-editor.is-board-identical{
+ background:#d6e8df!important;
+ isolation:isolate!important;
+}
+.lektrus-lab-editor.is-board-identical .lektrus-lab-editor-bench-viewport{
+ background:#d6e8df!important;
+ overflow:hidden!important;
+}
+.lektrus-lab-editor.is-board-identical .lektrus-lab-fit-stage{
+ left:0!important;top:0!important;
+ transform:none!important;transform-origin:top left!important;
+ will-change:auto!important;
+ contain:layout paint;
+ isolation:isolate;
+}

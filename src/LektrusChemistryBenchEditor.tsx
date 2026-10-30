@@ -14,6 +14,12 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
  const bench=readLabBench(item);
  const viewport=useRef<HTMLDivElement>(null);
  const [stage,setStage]=useState({width:1600,scale:1});
+ // The full-screen laboratory owns the live simulation. Keep the underlying
+ // board out of Android WebView's paint tree while the portal is shown.
+ useEffect(()=>{
+  document.body.classList.add("lektrus-lab-fullscreen-active");
+  return()=>document.body.classList.remove("lektrus-lab-fullscreen-active");
+ },[]);
  useEffect(()=>{
   const node=viewport.current;if(!node)return;
   const resize=()=>{
@@ -57,7 +63,10 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
     role="region" tabIndex={0} aria-label="Интерактивный химический стол"
     onWheel={e=>e.stopPropagation()} onTouchMove={e=>e.stopPropagation()}>
     <div className="lektrus-lab-fit-stage" style={{
-     width:stage.width,height:1000,transform:"translate(-50%, -50%) scale("+stage.scale+")"}}>
+     // CSS zoom scales the stage in layout space. A transformed 2000+ px
+     // layer with animated SVG filters was intermittently repainted as pale
+     // rectangles on Android when selections and thermal ticks updated.
+     width:stage.width,height:1000,zoom:stage.scale}}>
      <LektrusChemistryBenchSurface bench={bench} editable
       onSelect={id=>patch(selectLabVessel(bench,id))}
       onPour={pour} onChange={patch} onDropReagent={addReagent}/>
