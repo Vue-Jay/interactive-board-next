@@ -8,6 +8,7 @@ import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,typ
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
 import {labKnownHeatCapacityJPerK} from "./lektrusLabCalorimetry";
+import {labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labVisibleBinarySaltSolid} from "./lektrusLabDissolution";
 import {labCanStopper,labVaporPressureKPa,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
@@ -120,7 +121,11 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
   vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
   simulateLabInventory(vessel):undefined;
  const mostRecentEquation=inventory?.steps[inventory.steps.length-1]?.equation;
- const retainedGasTotal=Object.values(inventory?.retainedGasMol??{}).reduce((s,n)=>s+n,0);
+ const gasProgress=labReactionGasProgress(vessel.reactionAmounts,
+  temperatureC??vessel.temperatureC??22);
+ const retainedGasTotal=gasProgress&&vessel.stoppered?
+  gasProgress.totalMol:
+  Object.values(inventory?.retainedGasMol??{}).reduce((s,n)=>s+n,0);
  const recentCase=mostRecentEquation?
   reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
  const visualCase=recentCase??vessel.completedReaction??verified;
@@ -164,8 +169,16 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const color=vessel.filteredResidue?.color??(isLiquidIndicator?
   indicator?.color??naturalColor:naturalColor);
  const observation=visualCase?.observation??"none";
- const gasEventActive=!!vessel.reactionAmounts&&!vessel.reactionAmounts.complete||
+ const gasEventActive=gasProgress?
+  gasProgress.rateMolPerSecond>1e-12:
   !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<6500;
+ // Rate-dependent bubbles have a bounded visual count. Gas volume is
+ // calculated independently by PV=nRT; circles are not literal molecules.
+ const gasBubbleCount=gasProgress?
+  Math.min(26,Math.max(3,Math.ceil(gasProgress.rateMolPerSecond*24465*1.4))):
+  12;
+ const gasFoaming=!!gasProgress&&gasProgress.rateMolPerSecond*24465>3&&
+  volumeMl>0&&!vessel.stoppered;
  const vaporVisible=!small&&!vessel.stoppered&&volumeMl>0&&
   (labVaporPressureKPa(vessel,temperatureC??vessel.temperatureC??22)??0)>5;
  const gasOnly=vessel.reagents.length>0&&vessel.reagents.every(id=>
@@ -280,10 +293,16 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
       r={1.1+i%3*.5} fill={appearance.solidColor||"#cddbe0"}
       style={{animationDelay:-(i%9)*.25+"s"}}/>)}
     </>}
-    {active&&observation==="gas"&&gasEventActive&&Array.from({length:Math.ceil(17*conversionFraction)},(_,i)=><circle key={i}
+    {active&&observation==="gas"&&gasEventActive&&Array.from({length:gasBubbleCount},(_,i)=><circle key={i}
      className="lektrus-lab-bubble" cx={31+i*29%38} cy={98-i*17%45}
-     r={2+i%3} stroke="#528eb1" strokeWidth=".9" fill="#fff" fillOpacity=".2"
+     r={1.6+i%3*.6} stroke="#528eb1" strokeWidth=".9" fill="#fff" fillOpacity=".25"
      style={{animationDelay:-(i%8)*.27+"s",animationDuration:2+i%5*.32+"s"}}/>)}
+    {gasFoaming&&<g className="lektrus-lab-gas-foam" aria-label="Газ образует пену на поверхности жидкости">
+     {Array.from({length:Math.min(20,gasBubbleCount)},(_,i)=>
+      <circle key={i} cx={22+i*17%55} cy={120-106*fillFraction-(i%3)*2.3}
+       r={1.8+i%3*.65} fill="#f3ffff" fillOpacity=".65"
+       stroke="#80b8ba" strokeWidth=".6"/>)}
+    </g>}
    </g>
    {["beaker","cylinder","burette"].includes(vessel.kind)&&
     <g className="lektrus-lab-ware-graduations" stroke="#638e8c" strokeWidth="1.25" opacity=".9">
@@ -1697,6 +1716,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    if(!v)return null;
    const composition=labVesselContents(v),quantity=labVesselQuantity(v);
    const vaporReading=labVesselPressure(v);
+   const producedGas=labReactionGasProgress(v.reactionAmounts,v.temperatureC??22);
    const boilingEstimate=labIdealBoilingC(v);
    const inventory=v.chemicalInventory?
     simulateLabInventory({...v,volumeMl:quantity.volumeMl}):
@@ -1746,6 +1766,18 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      </p>}
      <p>Горлышко: {v.stoppered?"закрыто пробкой":"открыто"}.
       {v.stoppered?" Пар остаётся внутри; обычная пробка может выскочить при нагреве.":""}</p>
+     {producedGas&&<div className="lektrus-lab-gas-readout">
+      <strong>Образование газа по ходу реакции</strong>
+      <p>Сейчас образовалось {formatted(producedGas.totalMol*1000)} ммоль
+       {" · "}объём при температуре сосуда и 1 атм:
+       {" "+formatted(producedGas.volumeMl)} мл.
+       {v.stoppered?" Газ удерживается в закрытой колбе.":" Газ выходит в окружающую среду."}
+      </p>
+      {Object.entries(producedGas.producedMol).map(([formula,mol])=>
+       <p key={formula}>{formula}: {formatted(mol*1000)} ммоль.</p>)}
+      {!v.reactionAmounts?.complete&&
+       <small>Мгновенная скорость газа и пузырьки зависят от рассчитанного прогресса реакции. Скорость химической реакции остаётся учебной аппроксимацией.</small>}
+     </div>}
      {v.stoppered&&vaporReading.reactionGasPressureKPa>0&&
       <p>Парциальное давление образовавшегося газа:
        {" "+formatted(vaporReading.reactionGasPressureKPa)} кПа.
@@ -1773,14 +1805,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      <ul>{composition.solution.length?composition.solution.map((s,i)=><li key={i}>{s.formula}: {s.mmol===undefined?"количество не рассчитано":formatted(s.mmol)+" ммоль · "+massOf(s.formula,s.mmol)+(composition.solutionMl>0?" · "+formatted(s.mmol/composition.solutionMl)+" моль/л":"")}</li>):<li>Нет</li>}</ul>
      <strong>Твёрдая фаза и осадок</strong>
      <ul>{composition.solid.length?composition.solid.map((s,i)=><li key={i}>{s.formula}: {s.massG===undefined?"масса не рассчитана":formatted(s.massG)+" г"}</li>):<li>Нет</li>}</ul>
-     {inventory&&Object.keys(inventory.retainedGasMol).length>0&&<>
+     {!producedGas&&inventory&&Object.keys(inventory.retainedGasMol).length>0&&<>
       <strong>Газ внутри закрытого сосуда</strong>
       <ul>{Object.entries(inventory.retainedGasMol).map(([formula,mol])=>
        <li key={formula}>{formula}: {formatted(mol*1000)} ммоль · {massOf(formula,mol*1000)}</li>)}</ul>
       <p>Свободное газовое пространство: {formatted(Math.max(1,quantity.capacityMl-quantity.volumeMl))} мл.
        Давление вычисляется по уравнению идеального газа с учётом воздуха и паров жидкости.</p>
      </>}
-     {inventory&&Object.keys(inventory.releasedGasMol).length>0&&<>
+     {!producedGas&&inventory&&Object.keys(inventory.releasedGasMol).length>0&&<>
       <strong>Выделившиеся газы</strong>
       <ul>{Object.entries(inventory.releasedGasMol).map(([formula,mol])=>
        <li key={formula}>{formula}: {formatted(mol*1000)} ммоль · {massOf(formula,mol*1000)}
