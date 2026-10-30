@@ -11,6 +11,7 @@ import {labCanStopper,labVaporPressureKPa,labIdealBoilingC} from "./lektrusLabEv
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
 import {labMolarMass} from "./lektrusLabStoichiometry";
+import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,labIsPreparedStock,labDefaultStockDose,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
@@ -139,8 +140,9 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const solutionNames=contents.solution.map(x=>x.formula+(x.mmol===undefined?"":" ("+readable(x.mmol)+" ммоль)"));
  const solidNames=contents.solid.map(x=>x.formula+(x.massG===undefined?"":" ("+readable(x.massG)+" г)"));
  const evaporatedWaterMl=vessel.ventedVaporMl?.H2O??0;
- const crystallizedNaClMol=inventory?.solidMol.NaCl??0;
- const growingSaltCrystals=evaporatedWaterMl>0&&crystallizedNaClMol>1e-12;
+ const crystallineSalt=Object.entries(inventory?.solidMol??{}).find(([formula,mol])=>
+  mol>1e-12&&labSingleSaltSolubilityGPer100gWater(formula,25)!==undefined);
+ const growingSaltCrystals=evaporatedWaterMl>0&&!!crystallineSalt;
  const sedimentH=contents.precipitateFraction===undefined?0:
   Math.min(105*liquidFraction,Math.max(3,106*contents.precipitateFraction));
  const totalLabel=[volumeMl>0?volumeMl.toLocaleString("ru-RU")+" мл":null,
@@ -237,7 +239,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
         -(i%5)*.13+"s"}}/>)}
      </g>}
     {growingSaltCrystals&&<g className="lektrus-lab-evaporation-crystals"
-     aria-label="Кристаллы NaCl образуются при выпаривании воды">
+     aria-label="Кристаллы соли образуются при выпаривании воды">
      {Array.from({length:13},(_,i)=><path key={i}
       d={`M${25+i*13%48} ${113-i%4*2}l3 -4l3 4l-3 3Z`}
       fill="#f7faf8" stroke="#a2b4c0" strokeWidth=".65"
@@ -381,7 +383,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
          readable(contents.solid.reduce((sum,item)=>sum+(item.massG??0),0)):"?":
         readable(contents.precipitateG)):"0"}<small>г</small></strong>
       {details&&<span className="lektrus-lab-quantity-info is-residue">
-       <b>{growingSaltCrystals?"Кристаллы NaCl":
+       <b>{growingSaltCrystals?"Кристаллы "+(crystallineSalt?.[0]??"соли"):
          observation==="precipitate"||vessel.filteredResidue?"Осадок":"Твёрдое"} · {contents.solid.length?
         contents.precipitateG===undefined?
          contents.solid.every(item=>item.massG!==undefined)?
@@ -1599,9 +1601,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Добавлено твёрдых веществ: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
      {v.ventedVaporMl?.H2O!==undefined&&
       <p>Выпаривание: удалено {formatted(v.ventedVaporMl.H2O)} мл воды.
-       {inventory?.solidMol.NaCl!==undefined&&inventory.solidMol.NaCl>1e-12&&
-        " · Кристаллизовалось NaCl: "+
-        formatted(inventory.solidMol.NaCl*58.44277)+" г."}
+       {crystallineSalt&&
+        " · Кристаллизовалось "+crystallineSalt[0]+": "+
+        formatted(crystallineSalt[1]*(labMolarMass(crystallineSalt[0])??0))+" г."}
       </p>}
      {quantity.solidVolumeMl>1e-8&&<p>
       Объём твёрдой фазы по справочной плотности:
