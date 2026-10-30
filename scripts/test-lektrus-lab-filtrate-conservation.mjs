@@ -111,6 +111,24 @@ const sampledMass=chemistry.labInventoryMassG(chemistry.simulateLabInventory({
 approx(sampledMass,totalBefore,1e-7);
 assert.equal(lab.labVesselContents(pipetteAfter).solid.length,0,
  "The pipette must not suction out settled particles");
+// A second filtration must collect only the NEW precipitate, not the
+// BaSO4 that was already removed during the first separation.
+let twice=lab.addLabVessel(afterAddition,"beaker");
+const twiceReceiver=twice.selectedId;
+twice=lab.filterLabPrecipitate(twice,receiver,twiceReceiver);
+assert.notEqual(twice,afterAddition,"The second independently formed solid can be filtered");
+assert.equal(twice.vessels.find(v=>v.id===receiver).filteredResidue.formula,"AgCl");
+const secondFiltrate=twice.vessels.find(v=>v.id===twiceReceiver);
+assert.ok(secondFiltrate.chemicalInventory.speciesMol.NaNO3>.00099);
+assert.ok(secondFiltrate.chemicalInventory.speciesMol.NaCl>.00099);
+assert.equal(secondFiltrate.uncertain,false);
+const sumSeparatedMass=massSolid+
+ chemistry.labInventoryMassG(chemistry.simulateLabInventory(
+  twice.vessels.find(v=>v.id===receiver)))+
+ chemistry.labInventoryMassG(chemistry.simulateLabInventory({
+  ...secondFiltrate,volumeMl:lab.labVesselQuantity(secondFiltrate).volumeMl
+ }));
+approx(sumSeparatedMass,newMass,1e-6);
 const oldValidated=fs.readFileSync("src/boardModel.ts","utf8");
 assert.match(oldValidated,/v\.chemicalInventory/);
 console.log("Two sequential precipitation stages preserve soluble moles, real volume and molecular mass");
