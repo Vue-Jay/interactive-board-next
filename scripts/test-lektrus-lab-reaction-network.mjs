@@ -344,3 +344,44 @@ for(const [formula,cp] of Object.entries({NaCl:.853,"(NH4)2SO4":1.423})){
   [formula]:{unit:"g",value:10}
  }),heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+10*cp,1e-9);
 }
+
+
+// Additional phase references for catalog gas cylinders and dry crystals.
+// Crucially these gas volumes do not become liquid in the thermal model.
+for(const [formula,data] of Object.entries({
+ CH4:{meltingC:-182.5,boilingC:-161.5},
+ C2H6:{boilingC:-88.6},
+ C2H4:{meltingC:-169.4,boilingC:-103.8},
+ C3H8:{meltingC:-187.7,boilingC:-42.1},
+ C4H10:{meltingC:-137.2,boilingC:-0.5},
+ C3H6:{meltingC:-185.2,boilingC:-47.6},
+ C2H2:{sublimationC:-84.05},
+ SO2:{meltingC:-75.5,boilingC:-10},
+ H2S:{meltingC:-82.3,boilingC:-60.3}
+})){
+ const result=thermalProps.labThermalInfo(formula,"ml");
+ assert.equal(result.form,"gas",formula+" must remain a gas, never a volatile liquid dose");
+ assert.equal(result.known,true);
+ for(const [field,expected] of Object.entries(data))approximately(result[field],expected,1e-6);
+ assert.equal(thermalProps.labVesselThermal([formula],{
+  [formula]:{value:100,unit:"ml"}
+ }),null,"Gas inventory cannot be heated as liquid");
+ const stock=registryProps.labSubstanceProperties(formula);
+ assert.equal(stock.physicalForm,"gas");
+}
+for(const formula of ["C2H2","CO2"]){
+ assert.equal(thermalProps.labThermalInfo(formula,"ml").boilingC,undefined,
+  "No invented atmospheric liquid boiling temperature for subliming gas");
+}
+for(const [formula,data] of Object.entries({
+ LiCl:{meltingC:610},NaBr:{meltingC:755,boilingC:1390},
+ AgI:{meltingC:552,boilingC:1506},
+ "Ba(NO3)2":{meltingC:590,decompositionC:590}
+})){
+ const result=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(result.known,true);
+ for(const [field,expected] of Object.entries(data))approximately(result[field],expected,1e-6);
+ assert.equal(thermalProps.labThermalInfo(formula,"ml").known,false,
+  "Salt solution cannot acquire dry salt melting point");
+}
+console.log("Nine measured pure-gas records, four dry salts, and no gas/solution confusion");
