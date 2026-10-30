@@ -1663,6 +1663,20 @@ const parseLab=bench=>docModel.parseDocument(JSON.stringify({...savedDocument,
  items:[{...persistedItem,scienceLabBench:bench},savedDocument.items[1]]}));
 const reopened=parseLab(persistedLab);
 assert.equal(reopened.items.length,2,"Opening a hot laboratory must preserve other board items");
+const deselectedBeforeSave=lab.selectLabVessel(persistedLab,"");
+assert.equal(deselectedBeforeSave.selectedId,"",
+ "Clicking the bare worktop may leave no vessel selected");
+const reopenedUnselected=parseLab(deselectedBeforeSave);
+assert.equal(reopenedUnselected.items[0].scienceLabBench.selectedId,"",
+ "A board with nonempty glassware but no selection must reopen");
+assert.deepEqual(reopenedUnselected.items[0].scienceLabBench.vessels,persistedLab.vessels,
+ "Reopening an unselected laboratory preserves every saved vessel");
+assert.equal(reopenedUnselected.items[1].text,"Работа ученика",
+ "An unselected lab cannot block unrelated work on the board");
+const corruptSelection=structuredClone(persistedLab);
+corruptSelection.selectedId="missing-vessel";
+assert.throws(()=>parseLab(corruptSelection),/Повреждено состояние химического стола/,
+ "A genuinely dangling selection ID must still be rejected");
 /* The chemistry engine allows 48 distinct reagents, but the old board
  * validator accepted only six reagents/dose keys. A correct saved 7-component
  * mixture made the whole collaborative board appear damaged and unreadable. */
