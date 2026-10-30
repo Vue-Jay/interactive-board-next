@@ -23,6 +23,20 @@ const table:Record<EvaporatingLiquid,Antoine>={
  Br2:{minK:224.5,maxK:331.4,A:2.94529,B:638.258,C:-115.144,molG:159.808,densityGml:3.11}
 };
 export const LAB_VAPOR_REFERENCE=table;
+/** Latent heat at (or near) normal boiling, J/g of the NEAT liquid.
+ * These are NOT Antoine coefficients and must never be applied to an
+ * arbitrary prepared salt/acid stock, whose composition is unrecorded.
+ * Water: OpenStax Physics, 2257 J/g at 100°C.
+ * Ethanol 846 J/g and methanol 1100 J/g: RSC Green Chemistry supporting
+ * information, https://www.rsc.org/suppdata/d4/gc/d4gc05530f/d4gc05530f1.pdf
+ * IPA 160 kcal/kg (669.44 J/g): Labconco RapidVap manual, NIST-hosted
+ * https://www.nist.gov/system/files/documents/2023/01/25/RapidVap%20Vacuum%2C%20N2%20%26%20N2-48%20Evaporation%20Systems%20%287490100%20Rev%20L%29.pdf
+ * Bromine 31.3 kJ/mol near 312K: NIST WebBook (31.3e3/159.808 J/g).
+ * Reference temperatures vary; no promise of engineering precision.
+ */
+export const LAB_LATENT_VAPORIZATION_J_PER_G:Readonly<Record<EvaporatingLiquid,number>>={
+ H2O:2257,C2H5OH:846,CH3OH:1100,C3H8O:669.44,Br2:31300/159.808
+};
 export function labSaturationPressureKPa(id:string,tempC:number):number|undefined{
  const entry=table[id as EvaporatingLiquid];if(!entry)return;
  const kelvin=tempC+273.15;
@@ -217,16 +231,14 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   // Heat delivered above the boiling range drives faster vapor generation.
   const rate=aperture[v.kind]??.4;
   const diffusionMlPerS=.0002*rate*partial*Math.sqrt(18.015/table[item.id as EvaporatingLiquid].molG);
-  // For boiling WATER, enforce the latent-heat energy budget.
-  // Latent heat of vaporisation at 100 °C: ~2257 J/g, water density
-  // ~0.997 g/ml. The effective heater power is an explicit instrument
-  // input (not an inferred universal evaporation coefficient).
-  const energeticWaterLoss=boiling&&item.id==="H2O"&&heaterPowerW>0?
-   heaterPowerW/(2257*.997)*item.moleFraction:0;
-  const empiricalOtherLiquid=boiling&&item.id!=="H2O"?
-   Math.max(0,heaterTargetC-temperatureC)*.00014*
-    rate*item.moleFraction:0;
-  const heatBoost=energeticWaterLoss+empiricalOtherLiquid;
+  // The same power budget drives every reviewed NEAT volatile liquid.
+  // Raoult mole fractions share the available heater energy in mixtures,
+  // rather than synthesizing arbitrary vapor from heater temperature.
+  // Non-boiling diffusion remains separately limited by surface area.
+  const latent=LAB_LATENT_VAPORIZATION_J_PER_G[item.id as EvaporatingLiquid];
+  const heatedLoss=boiling&&heaterPowerW>0&&heaterTargetC>temperatureC&&latent?
+   heaterPowerW*item.moleFraction/(latent*table[item.id as EvaporatingLiquid].densityGml):0;
+  const heatBoost=heatedLoss;
   const loss=Math.min(item.d.value,dt*(diffusionMlPerS+heatBoost));
   if(loss<1e-7)continue;
   const left=Math.max(0,Math.round((item.d.value-loss)*1e5)/1e5);
