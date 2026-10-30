@@ -3,7 +3,7 @@ import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
 import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
-import {LAB_CRYSTAL_DENSITY_G_ML} from "./lektrusLabMaterialConstants";
+import {LAB_CRYSTAL_DENSITY_G_ML,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
@@ -894,7 +894,7 @@ export function labVesselContents(v:LabVessel){
    if(solidMol>1e-12){
     const mass=labMolarMass(formula);
     solid.push({formula,massG:mass===undefined?undefined:mass*solidMol});
-    if(precipitated.has(formula)||formula==="NaCl"||
+    if(precipitated.has(formula)||labSingleSaltSolubilityGPer100gWater(formula,25)!==undefined||
      (v.chemicalInventory&&v.environment==="aqueous"&&
       !LAB_WATER_SOLUTES.has(formula))){
      if(mass!==undefined){
