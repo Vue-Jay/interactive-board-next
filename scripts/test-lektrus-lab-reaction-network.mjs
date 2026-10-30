@@ -552,3 +552,24 @@ assert.deepEqual(zinc.map(x=>x.temperatureC),[20,60]);
 assert.equal(registryProps.labSubstanceProperties("NaCl",22)
  .hydratedSolubilityReferences.length,0);
 console.log("26 hydrate polymorph reference rows with 102 exact Merck measurements and zero guessed knots");
+
+
+const crystalHydrates=hydrates.LAB_HYDRATE_CRYSTAL_DENSITIES;
+assert.equal(crystalHydrates.length,5);
+for(const [hydrateFormula,baseFormula,density] of [
+ ["CuSO4·5H2O","CuSO4",2.29],
+ ["Na2CO3·10H2O","Na2CO3",1.46],
+ ["Na2SO4·10H2O","Na2SO4",1.46],
+ ["K2CO3·2H2O","K2CO3",2.04],
+ ["2K2CO3·3H2O","K2CO3",2.13]
+]){
+ const item=crystalHydrates.find(x=>x.hydrateFormula===hydrateFormula);
+ assert.equal(item?.baseFormula,baseFormula);
+ approximately(item.densityGPerMl,density);
+ const prop=registryProps.labSubstanceProperties(baseFormula);
+ assert.ok(prop.hydratedCrystalDensityReferences.some(x=>
+  x.hydrateFormula===hydrateFormula&&x.densityGPerMl===density));
+ assert.notEqual(physicalDensity.labCrystalDensityGml(baseFormula),density,
+  "A crystal hydrate may NOT overwrite true density of the anhydrous salt");
+}
+console.log("Five crystal hydrate true-density references remain distinct from pure anhydrous solids");
