@@ -498,6 +498,18 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   return {...v,reactionAmounts:next};
  });
  result={...result,vessels};
+ // A rapid measured gas reaction can release the stopper immediately after
+ // THIS tick's stoichiometric progress, not one thermal tick later. The
+ // labEvaporate pressure helper already accounts for air, vapor and nRT/V.
+ vessels=result.vessels.map(v=>{
+  if(!v.stoppered||!v.reactionAmounts)return v;
+  const pressure=labVesselPressure(v);
+  if(!pressure.popped)return v;
+  changed=true;
+  return {...v,stoppered:false,stopperedAtC:undefined,
+   visualStartedAtMs:nowMs};
+ });
+ result={...result,vessels};
  // Start pre-reviewed heated cases only after reaching a sufficiently warm state.
  vessels=result.vessels.map(v=>{
   if(v.temperatureC===undefined||v.temperatureC<60||!v.reagents.length)return v;
