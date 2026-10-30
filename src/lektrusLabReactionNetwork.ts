@@ -116,6 +116,12 @@ export function simulateLabInventory(input:{
  const doses=input.doses??{};
  const volumeMl=input.volumeMl??Object.entries(doses).reduce((n,[id,d])=>
   n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0);
+ // An aqueous reaction MODE does not conjure any actual solvent.
+ // Dry weighed NaCl, KNO3, or a base pellet stays SOLID until it receives
+ // a measured volume of water, a solution, or another liquid medium.
+ // When an existing filtrate carries liquid, volumeMl is the same
+ // explicitly persisted liquid volume that the vessel quantity reports.
+ const hasMeasuredLiquid=volumeMl>1e-10;
  if(input.chemicalInventory){
   Object.assign(inventory.speciesMol,input.chemicalInventory.speciesMol);
   Object.assign(inventory.solidMol,input.chemicalInventory.solidMol);
@@ -128,7 +134,8 @@ export function simulateLabInventory(input:{
   }
   sum(inventory.speciesMol,id,mol);
   if(dose?.unit==="g"&&
-   (input.environment!=="aqueous"||!WATER_SOLUBLE_SOLIDS.has(id)))
+   (!hasMeasuredLiquid||input.environment!=="aqueous"||
+    !WATER_SOLUBLE_SOLIDS.has(id)))
    sum(inventory.solidMol,id,mol);
  }
  // Unknown quantities must not be treated as absent: suppress the entire
