@@ -869,7 +869,8 @@ export function labVesselContents(v:LabVessel){
      }
     }
    }
-   if(mol-solidMol>1e-12)solution.push({formula,mmol:formatMol(mol-solidMol)});
+   if(mol-solidMol>1e-12&&substances.find(s=>s.id===formula)?.kind!=="газ")
+    solution.push({formula,mmol:formatMol(mol-solidMol)});
   }
   return {solutionMl:volumeMl,capacityMl,solution,solid,
    remainderUnknown:inventory.limited,
@@ -1211,9 +1212,10 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
      measured.concentrationM>=.001&&measured.concentrationM<=2))?measured:undefined;
   if(!validDose)return v;
   // Graduated glassware has a real maximum capacity, not an unlimited beaker.
-  const priorMl=Object.values(v.doses??{}).reduce((sum,d)=>sum+
-   (d.unit==="ml"?d.value:0),0);
-  if(validDose?.unit==="ml"&&priorMl+validDose.value>labVesselQuantity(v).capacityMl+1e-7)return v;
+  const priorMl=labVesselQuantity(v).volumeMl;
+  if(validDose?.unit==="ml"&&
+   priorMl+(substances.find(s=>s.id===reagent)?.kind==="газ"?0:validDose.value)>
+    labVesselQuantity(v).capacityMl+1e-7)return v;
   if((v.kind==="pipette"||v.kind==="burette")&&validDose?.unit==="g")return v;
   const present=v.reagents.includes(reagent);
   if(!present&&v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
@@ -1306,8 +1308,7 @@ export function transferLabMeasuredLiquid(
  const requested=Math.round(volumeMl*100);
  if(requested>totalCents)return bench;
  const capacity=labVesselQuantity(target).capacityMl;
- const current=Object.values(target.doses??{}).reduce((sum,d)=>
-  sum+(d.unit==="ml"?d.value:0),0);
+ const current=labVesselQuantity(target).volumeMl;
  if(capacity!==undefined&&current+volumeMl>capacity+1e-7)return bench;
  // Decide which solutes actually enter the recipient after rounding to 0.01 ml.
  // An untransferred trace must not appear as a new reagent in the target.
@@ -1482,8 +1483,8 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
 
 export function labVesselQuantity(vessel:LabVessel){
  const doses=Object.values(vessel.doses??{});
- const volumeMl=Math.round(doses.reduce((total,d)=>
-  total+(d.unit==="ml"?d.value:0),0)*100)/100;
+ const volumeMl=Math.round(Object.entries(vessel.doses??{}).reduce((total,[id,d])=>
+  total+(d.unit==="ml"&&substances.find(s=>s.id===id)?.kind!=="газ"?d.value:0),0)*100)/100;
  const massG=Math.round(doses.reduce((total,d)=>
   total+(d.unit==="g"?d.value:0),0)*100)/100;
  const capacityMl=labMeasuredCapacityMl(vessel.kind)??(
@@ -1524,8 +1525,8 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
  if(!a||!t||!a.reagents.length||
   [...new Set([...a.reagents,...t.reagents])].length>MAX_VESSEL_REAGENTS)return b;
  const initialDoses={...a.doses};
- const volume=Object.values(initialDoses).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
- const current=Object.values(t.doses??{}).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
+ const volume=labVesselQuantity(a).volumeMl;
+ const current=labVesselQuantity(t).volumeMl;
  const max=labVesselQuantity(t).capacityMl;
  if(volume+current>max+1e-7)return b;
  if(Object.entries(initialDoses).some(([name,d])=>{
