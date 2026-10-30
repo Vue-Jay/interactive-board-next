@@ -62,10 +62,18 @@ function kspLimitedExtent(row:ReactionCase,
  }
  return low;
 }
+const inventoryCache=new Map<string,LabInventory>();
+const remember=(key:string,value:LabInventory)=>{
+ if(inventoryCache.size>=256)inventoryCache.delete(inventoryCache.keys().next().value!);
+ inventoryCache.set(key,value);return value;
+};
 export function simulateLabInventory(input:{
  reagents:readonly string[];doses?:Record<string,LabDose>;
  environment:ReactionEnvironment;temperatureC?:number;
 },maxSteps=48):LabInventory{
+ const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,maxSteps]);
+ const cached=inventoryCache.get(key);
+ if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},
   steps:[],unmeasured:[],limited:false};
  const doses=input.doses??{};
@@ -83,7 +91,7 @@ export function simulateLabInventory(input:{
  }
  // Unknown quantities must not be treated as absent: suppress the entire
  // predictive stage rather than claiming a chemically complete result.
- if(inventory.unmeasured.length)return inventory;
+ if(inventory.unmeasured.length)return remember(key,inventory);
  const used=new Set<string>();
  for(let iteration=0;iteration<maxSteps;iteration++){
   let winner:typeof knownRows[number]|undefined;
@@ -136,7 +144,7 @@ export function simulateLabInventory(input:{
    observation:row.observation});
  }
  inventory.limited=inventory.steps.length>=maxSteps;
- return inventory;
+ return remember(key,inventory);
 }
 export function labInventoryMassG(inventory:LabInventory):number|undefined{
  let sumMass=0;
