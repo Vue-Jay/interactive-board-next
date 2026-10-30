@@ -1907,7 +1907,6 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  }
  const reagents=[...new Set([...target.reagents,...source.reagents])];
  if(reagents.length>MAX_VESSEL_REAGENTS)return bench;
- const volume=labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl;
  if(labVesselQuantity(source).occupiedMl+labVesselQuantity(target).occupiedMl>
   labVesselQuantity(target).capacityMl+1e-7)return bench;
  const incompatible=Object.entries(source.doses??{}).some(([id,dose])=>{
