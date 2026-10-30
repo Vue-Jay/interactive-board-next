@@ -18,12 +18,17 @@
  *   https://www.inchem.org/documents/icsc/icsc/eics0751.htm
  * BaSO4: ILO-WHO ICSC / CRC through PubChem
  *   https://pubchem.ncbi.nlm.nih.gov/compound/Barium-sulfate
+ * AgI, PbI2: NIH PubChem experimental crystal densities
+ *   https://pubchem.ncbi.nlm.nih.gov/compound/Silver-iodide
+ *   https://pubchem.ncbi.nlm.nih.gov/compound/Lead-iodide
+ * CaCO3: NIST SRM 915c calcite phase density 2.71 (NOT aragonite)
+ *   https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.260-223.pdf
  */
 export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  NaCl:2.16,KCl:1.984,KNO3:2.109,NaNO3:2.261,NaHCO3:2.20,
  KBr:2.75,CuSO4:3.6,AgNO3:4.35,
  AgCl:5.56,AgBr:6.47,BaSO4:4.50,
- CaCO3:2.71,AgI:5.68,PbI2:6.16
+ CaCO3:2.71,AgI:5.67,PbI2:6.16
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
