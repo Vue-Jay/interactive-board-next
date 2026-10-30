@@ -482,3 +482,94 @@ for(const [id,record] of Object.entries({
 }
 assert.equal(thermalProps.labThermalInfo("CuS","g").behavior,"decomposes");
 console.log("Twelve dry specific heats, four crystal densities, five solid phase records verified");
+
+
+// Hydrate references are an independent measurement series, NOT anhydrous
+// binary saturation or a fictitious source of dry-crystal mass.
+const hydrates=load("src/lektrusLabHydrateReferences.ts");
+const rows=hydrates.LAB_HYDRATE_SOLUBILITY_REFERENCES;
+assert.equal(rows.length,26);
+assert.equal(new Set(rows.map(x=>x.baseFormula)).size,25);
+assert.equal(new Set(rows.map(x=>x.hydrateFormula)).size,26);
+let measured=0;
+const waterKnots=hydrates.LAB_HYDRATE_KNOT_TEMPERATURES_C;
+for(const row of rows){
+ assert.equal(row.massGPer100gWater.length,waterKnots.length);
+ assert.ok(row.waters>0&&Number.isInteger(row.waters));
+ assert.ok(labMolarMass(row.baseFormula)>0,
+  "Hydrate source needs a valid existing formula: "+row.baseFormula);
+ for(let i=0;i<waterKnots.length;i++){
+  const sample=hydrates.labHydrateSolubilityAtTemperature(
+   row.hydrateFormula,waterKnots[i]);
+  const expected=row.massGPer100gWater[i];
+  if(expected===null){
+   assert.equal(sample,undefined,
+    "Missing experimental data must remain unknown, never zero");
+  }else{
+   measured++;
+   approximately(sample.massGPer100gWater,expected);
+   assert.equal(sample.temperatureC,waterKnots[i]);
+   assert.equal(sample.waters,row.waters);
+   assert.equal(sample.sourceUrl,hydrates.LAB_HYDRATE_REFERENCE_SOURCE);
+  }
+ }
+ for(const extra of row.extra??[]){
+  measured++;
+  const sample=hydrates.labHydrateSolubilityAtTemperature(
+   row.hydrateFormula,extra.temperatureC);
+  assert.equal(sample.massGPer100gWater,extra.massGPer100gWater);
+ }
+}
+assert.equal(measured,102);
+assert.equal(hydrates.labHydrateSolubilityAtTemperature(
+ "CuSO4·5H2O",22),undefined,
+ "Unmeasured 22 °C must not be guessed from 20 and 40 °C");
+assert.equal(hydrates.labHydrateSolubilityAtTemperature(
+ "CuSO4·5H2O",20)?.massGPer100gWater,20.77);
+assert.equal(hydrates.labHydrateSolubilityAtTemperature(
+ "CuSO4·5H2O",40)?.massGPer100gWater,29);
+assert.equal(hydrates.labHydrateSolubilityAtTemperature(
+ "CuSO4·5H2O",101),undefined);
+assert.equal(hydrates.labHydrateSolubilityAtTemperature(
+ "CoCl2·6H2O",56)?.massGPer100gWater,169.5);
+assert.equal(hydrates.labHydrateSolubilityAtTemperature(
+ "FeSO4·7H2O",50)?.massGPer100gWater,47.6);
+assert.equal(hydrates.labHydrateSolubilityAtTemperature(
+ "MgSO4·7H2O",10)?.massGPer100gWater,30.05);
+const cuHydrates=registryProps.labSubstanceProperties("CuSO4",22)
+ .hydratedSolubilityReferences;
+assert.equal(cuHydrates.length,1);
+assert.equal(cuHydrates[0].hydrateFormula,"CuSO4·5H2O");
+assert.equal(cuHydrates[0].temperatureC,20);
+assert.equal(cuHydrates[0].massGPer100gWater,20.77);
+assert.equal(registryProps.labSubstanceProperties("CuSO4",22)
+ .solubilityGPer100gWater,physicalDensity.labSingleSaltSolubilityGPer100gWater("CuSO4",22));
+const zinc=registryProps.labSubstanceProperties("ZnSO4",22)
+ .hydratedSolubilityReferences;
+assert.equal(zinc.length,2,
+ "Zinc sulfate mono- and heptahydrate must remain different phases");
+assert.deepEqual(zinc.map(x=>x.temperatureC),[20,60]);
+assert.equal(registryProps.labSubstanceProperties("NaCl",22)
+ .hydratedSolubilityReferences.length,0);
+console.log("26 hydrate polymorph reference rows with 102 exact Merck measurements and zero guessed knots");
+
+
+const crystalHydrates=hydrates.LAB_HYDRATE_CRYSTAL_DENSITIES;
+assert.equal(crystalHydrates.length,5);
+for(const [hydrateFormula,baseFormula,density] of [
+ ["CuSO4·5H2O","CuSO4",2.29],
+ ["Na2CO3·10H2O","Na2CO3",1.46],
+ ["Na2SO4·10H2O","Na2SO4",1.46],
+ ["K2CO3·2H2O","K2CO3",2.04],
+ ["2K2CO3·3H2O","K2CO3",2.13]
+]){
+ const item=crystalHydrates.find(x=>x.hydrateFormula===hydrateFormula);
+ assert.equal(item?.baseFormula,baseFormula);
+ approximately(item.densityGPerMl,density);
+ const prop=registryProps.labSubstanceProperties(baseFormula);
+ assert.ok(prop.hydratedCrystalDensityReferences.some(x=>
+  x.hydrateFormula===hydrateFormula&&x.densityGPerMl===density));
+ assert.notEqual(physicalDensity.labCrystalDensityGml(baseFormula),density,
+  "A crystal hydrate may NOT overwrite true density of the anhydrous salt");
+}
+console.log("Five crystal hydrate true-density references remain distinct from pure anhydrous solids");

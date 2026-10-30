@@ -1840,6 +1840,20 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
          {soluble!==undefined&&
           " · Растворимость при "+formatted(v.temperatureC??22)+
           " °C: "+formatted(soluble)+" г/100 г чистой воды"}
+         {property.hydratedSolubilityReferences.map(hydrate=>
+          <span key={hydrate.hydrateFormula} className="lektrus-lab-hydrate-reference">
+           {" · Справочно, "+hydrate.hydrateFormula+" при "+
+            formatted(hydrate.temperatureC)+" °C: "+
+            formatted(hydrate.massGPer100gWater)+
+            " г кристаллогидрата/100 г воды (не расчёт безводной соли)"}
+          </span>
+         )}
+         {property.hydratedCrystalDensityReferences.map(hydrate=>
+          <span key={hydrate.hydrateFormula} className="lektrus-lab-hydrate-reference">
+           {" · ρ "+hydrate.hydrateFormula+": "+
+            formatted(hydrate.densityGPerMl)+" г/мл (кристаллогидрат)"}
+          </span>
+         )}
          {soluble===undefined&&property.typicallySolubleInDiluteWater&&
           " · Обычно растворимо в разбавленной воде; точная степень "+
           "растворения при данном количестве не рассчитана"}

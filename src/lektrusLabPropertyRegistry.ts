@@ -12,6 +12,7 @@ import {LAB_CRYSTAL_DENSITY_G_ML,labSingleSaltSolubilityGPer100gWater} from "./l
 import {LAB_GAS_FORMULAS,labThermalInfo} from "./lektrusLabPhysicalProperties";
 import {LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
 import {labIsTypicallyWaterSoluble} from "./lektrusLabReactionNetwork";
+import {labHydrateNearestMeasuredReferences,labHydrateCrystalDensityReferences} from "./lektrusLabHydrateReferences";
 type Phase="gas"|"precipitate"|"other";
 export type LabProductIdentity={
  formula:string;name:string;coeff:number;reactionPhase:Phase;
@@ -62,6 +63,11 @@ export function labSubstanceProperties(formula:string,temperatureC=22){
  const thermal=labThermalInfo(formula,stock?.kind==="газ"||LAB_GAS_FORMULAS.has(formula)?"ml":"g");
  const solubilityGPer100gWater=
   labSingleSaltSolubilityGPer100gWater(formula,temperatureC);
+ // These are distinct formulae with waters of crystallization and remain
+ // REFERENCE-ONLY. Their mass values never enter anhydrous Ksp or dosing.
+ const hydratedSolubilityReferences=
+  labHydrateNearestMeasuredReferences(formula,temperatureC);
+ const hydratedCrystalDensityReferences=labHydrateCrystalDensityReferences(formula);
  return {formula,name:stock?.name??formula,stockKind:stock?.kind,
   inCabinet:!!stock,
   knownProduct:reviewedProducts.has(formula),
@@ -75,6 +81,8 @@ export function labSubstanceProperties(formula:string,temperatureC=22){
   sublimationC:thermal.known?thermal.sublimationC:undefined,
   physicalForm:thermal.form,
   solubilityGPer100gWater,
+  hydratedSolubilityReferences,
+  hydratedCrystalDensityReferences,
   /** An absent value is genuinely missing, not a predicted constant. */
   densityKnown:crystalDensityGPerMl!==undefined||
    liquidDensityGPerMl!==undefined,
