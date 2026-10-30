@@ -2070,7 +2070,8 @@ assert.equal(beforeDye.solid[0].formula,"AgCl");
 assert.ok(beforeDye.precipitateG>.143&&beforeDye.precipitateG<.14332,
  "Precipitate mass includes the dilute equilibrium dissolved residue");
 assert.ok(beforeDye.solution.some(x=>x.formula==="NaNO3"));
-assert.ok(!beforeDye.solution.some(x=>x.formula==="AgNO3"));
+assert.ok((beforeDye.solution.find(x=>x.formula==="AgNO3")?.mmol??0)<.002,
+ "Dissolved silver remains at the small equilibrium concentration");
 assert.equal(acidBase.labVesselPH(preserved.vessels[0]),null,
  "Trace AgNO3 ion hydrolysis lacks a validated pH model and must not be labelled pH 7");
 const measuredBefore=JSON.stringify(preserved.vessels[0].reactionAmounts);
