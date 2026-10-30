@@ -2,7 +2,7 @@ import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
-import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,type LabReactionAmounts}
+import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
@@ -871,6 +871,23 @@ export function labVesselContents(v:LabVessel){
    if(v.doses?.[formula]?.unit==="g"&&!LAB_WATER_SOLUTES.has(formula)&&formula!=="H2O")
     solid.push({formula,massG:labMolarMass(formula)===undefined?undefined:labMolarMass(formula)!*mol});
    else solution.push({formula,mmol:formatMol(mol)});
+  }
+  // Carry non-reacting catalysts and any newly added measured material in
+  // the readout. A known older precipitate is not erased, and a newly
+  // introduced reagent is not silently omitted while the next chemistry
+  // stage awaits an independently verified reaction model.
+  const accounted=new Set([...Object.keys(quantities.initialMol),
+   ...Object.keys(quantities.productsMol),"H2O"]);
+  for(const formula of v.reagents){
+   if(accounted.has(formula))continue;
+   const dose=v.doses?.[formula];
+   if(!dose)continue;
+   if(dose.unit==="g"&&!LAB_WATER_SOLUTES.has(formula))
+    solid.push({formula,massG:dose.value});
+   else{
+    const n=labDoseMoles(formula,dose);
+    solution.push({formula,mmol:n===undefined?undefined:formatMol(n)});
+   }
   }
  }else if(v.filteredSolution){
   solution.push(...v.filteredSolution.solutes.map(formula=>({formula})));
