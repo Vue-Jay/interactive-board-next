@@ -55,7 +55,7 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   return {pH,label:"pH "+pH.toFixed(2).replace(".",","),
    acidMol:0,baseMol:0,
    note:"Нейтральная вода при "+temperatureC.toLocaleString("ru-RU")+
-    " °C; Kᵥ по IAPWS. Нейтральность не всегда означает pH 7."};
+    " °C; K_w по IAPWS. Нейтральность не всегда означает pH 7."};
  }
  let acidMol=0,baseMol=0,aceticMol=0,ammoniaMol=0;
  // When precipitation is completed (or in progress), calculate aqueous
@@ -136,7 +136,7 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   acidMol,baseMol,
   note:weak?
    "Идеальная модель; константы слабых кислот/оснований при 25 °C. Без поправок на активности.":
-   "Расчёт из измеренных молей и Kᵥ воды при "+temperatureC.toLocaleString("ru-RU")+
+   "Расчёт из измеренных молей и K_w воды при "+temperatureC.toLocaleString("ru-RU")+
     " °C (IAPWS). Без поправок на активности."};
 }
 export type LabIndicatorKind="litmus"|"phenolphthalein"|"methyl-orange"|"universal";
