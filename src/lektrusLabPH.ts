@@ -1,11 +1,14 @@
-/** Ideal aqueous acid/base equilibrium, 25°C. Ref:
+/** Ideal aqueous acid/base equilibrium with IAPWS water ionization. Ref:
  * OpenStax Chemistry 2e §14.7; Chemistry LibreTexts, Acid-Base Indicators.
  * No pH is guessed from "acid/salt" labels when amounts or equilibria
  * of an unsupported dissolved species are missing.
- * Solutions are ideal; activities, solubility and temperature shifts
- * are outside this teaching approximation.
+ * Solutions are ideal. Water ionization follows temperature-dependent
+ * IAPWS data (0–100°C); weak Ka/Kb values remain 25°C reference only
+ * (restricted to 20–30°C), not invented at elevated temperatures.
+ * Nonideal activities and missing ion equilibria remain unsupported.
  */
 import {simulateLabInventory,type LabChemicalSnapshot} from "./lektrusLabReactionNetwork";
+import {labWaterIonProduct,labNeutralWaterPH} from "./lektrusLabWaterIonization";
 export type LabPHInput={
  reagents:readonly string[];
  doses?:Record<string,{value:number;unit:"ml"|"g";concentrationM?:number}>;
@@ -17,7 +20,6 @@ export type LabPHInput={
   remainingMol:Record<string,number>};
 };
 export type LabPHResult={pH:number;label:string;note:string;acidMol:number;baseMol:number};
-const KW=1e-14;
 const STRONG_ACIDS=new Set(["HCl","HBr","HNO3"]);
 const STRONG_BASES=new Set(["NaOH","KOH"]);
 const NEUTRAL_SPECTATORS=new Set([
@@ -43,10 +45,18 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
  const inventory=v.chemicalInventory||v.doses?
   simulateLabInventory({...v,environment:"aqueous",volumeMl}):undefined;
  if(v.uncertain&&(!inventory||inventory.unmeasured.length||inventory.limited))return null;
+ const temperatureC=v.temperatureC??25;
+ const KW=labWaterIonProduct(temperatureC);
+ if(KW===undefined)return null;
  const doses=v.doses??{};
- if(v.reagents.length===1&&v.reagents[0]==="H2O")
-  return {pH:7,label:"pH 7,00",acidMol:0,baseMol:0,
-   note:"Чистая вода, идеальная модель при 25 °C."};
+ if(v.reagents.length===1&&v.reagents[0]==="H2O"){
+  const neutral=labNeutralWaterPH(temperatureC)!;
+  const pH=Math.round(neutral*100)/100;
+  return {pH,label:"pH "+pH.toFixed(2).replace(".",","),
+   acidMol:0,baseMol:0,
+   note:"Нейтральная вода при "+temperatureC.toLocaleString("ru-RU")+
+    " °C; Kᵥ по IAPWS. Нейтральность не всегда означает pH 7."};
+ }
  let acidMol=0,baseMol=0,aceticMol=0,ammoniaMol=0;
  // When precipitation is completed (or in progress), calculate aqueous
  // species from the balance sheet, NOT the original AgNO3/NaCl inputs.
@@ -96,6 +106,12 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   else return null;
  }
  if(!Number.isFinite(volumeMl)||volumeMl<=0)return null;
+ // Curated acetic-acid and ammonia dissociation constants are only
+ // measured/represented at 25 °C. A small room-temperature window retains
+ // the schoolroom approximation; outside it we decline to assign a pH.
+ const weak=aceticMol>0||ammoniaMol>0;
+ if(weak&&(temperatureC<20||temperatureC>30))return null;
+ const effectiveKw=weak?1e-14:KW;
  const volumeL=volumeMl/1000;
  const acid=acidMol/volumeL,base=baseMol/volumeL,
   acetic=aceticMol/volumeL,ammonia=ammoniaMol/volumeL;
@@ -103,9 +119,9 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
  // weak systems. Bisection in log[H+] is stable even at equivalence.
  // [H+] + [Na+] + [NH4+] = [OH-] + [Cl-] + [CH3COO-].
  const charge=(logH:number)=>{
-  const h=Math.pow(10,logH),oh=KW/h;
+  const h=Math.pow(10,logH),oh=effectiveKw/h;
   const acetate=acetic*weakAcidKa/(weakAcidKa+h);
-  const ammonium=ammonia*h/(h+KW/weakBaseKb);
+  const ammonium=ammonia*h/(h+effectiveKw/weakBaseKb);
   return h+base+ammonium-oh-acid-acetate;
  };
  let lower=-16,upper=1;
@@ -118,7 +134,10 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
  const pH=Math.max(0,Math.min(14,Math.round(value*100)/100));
  return {pH,label:"pH "+pH.toFixed(2).replace(".",","),
   acidMol,baseMol,
-  note:"Расчёт по измеренным количествам и равновесию при 25 °C; без поправок на активности."};
+  note:weak?
+   "Идеальная модель; константы слабых кислот/оснований при 25 °C. Без поправок на активности.":
+   "Расчёт из измеренных молей и Kᵥ воды при "+temperatureC.toLocaleString("ru-RU")+
+    " °C (IAPWS). Без поправок на активности."};
 }
 export type LabIndicatorKind="litmus"|"phenolphthalein"|"methyl-orange"|"universal";
 /** Indicator transition ranges (LibreTexts):
