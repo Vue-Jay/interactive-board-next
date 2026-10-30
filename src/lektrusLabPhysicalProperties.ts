@@ -8,10 +8,31 @@
  * A value only means it was individually curated, NOT an exhaustive dataset.
  */
 export type LabThermalRecord={
- meltingC?:number;boilingC?:number;decompositionC?:number;
+ meltingC?:number;boilingC?:number;decompositionC?:number;sublimationC?:number;
  behavior?:"decomposes"|"sublimes";note?:string;
 };
+/** Verified normal-pressure gas identities. They are NOT liquid reagent stocks:
+ * a gas bottle must not enter the liquid boiling/evaporation simulation. */
+export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
+ "H2","O2","N2","CO","CO2","NH3","Cl2","SO2","NO2","H2S",
+ "CH4","C2H4","C2H2","C2H6","HCl"
+]);
 const physical:Record<string,LabThermalRecord>={
+ // Pure gases, phase transitions at approximately 1 atm. OpenStax
+ // University Physics Vol.2 §1.5 and NIST TN 2126:
+ // https://openstax.org/books/university-physics-volume-2/pages/1-5-phase-changes
+ // https://nvlpubs.nist.gov/nistpubs/TechnicalNotes/NIST.TN.2126.pdf
+ H2:{meltingC:-259.3,boilingC:-252.9},
+ O2:{meltingC:-218.8,boilingC:-183.0},
+ N2:{meltingC:-210.0,boilingC:-195.8},
+ CO:{meltingC:-205.0,boilingC:-191.5},
+ NH3:{meltingC:-77.73,boilingC:-33.33},
+ Cl2:{meltingC:-101.5,boilingC:-34.04},
+ // CO2 has NO normal boiling point at 1 atm: its liquid exists
+ // above the triple-point pressure. PubChem CID 280 / NIOSH.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/280
+ CO2:{sublimationC:-78.5,behavior:"sublimes",
+  note:"При атмосферном давлении твёрдый CO₂ сублимирует, не кипит."},
  H2O:{meltingC:0,boilingC:100},
  C2H5OH:{meltingC:-114.1,boilingC:78.37},
  CH3OH:{meltingC:-97.6,boilingC:64.7},
@@ -84,6 +105,13 @@ const pureLiquids=new Set(["H2O","C2H5OH","CH3OH","C3H8O","Br2"]);
 export function labThermalInfo(id:string,unit:"ml"|"g"):LabThermalRecord&{
  known:boolean;form:"pure"|"solution"|"gas"|"unverified";description:string
 }{
+ if(unit==="ml"&&LAB_GAS_FORMULAS.has(id)){
+  const data=physical[id];
+  return {...data,known:!!data,form:"gas" as const,
+   description:data?.note??(data?
+    "Температуры относятся к чистому газу при атмосферном давлении; баллон не считается жидкостью.":
+    "Газовая проба: проверенные температуры фазовых переходов пока не заданы.")};
+ }
  if(unit==="ml"&&!pureLiquids.has(id))return{
   known:false,form:"solution",
   description:"Раствор или газовая проба: температуры фазовых переходов зависят от состава, концентрации и давления; числовое значение не задано."
