@@ -45,6 +45,10 @@ jobs:
       - run: node scripts/test-lektrus-organic-nomenclature.mjs
       - run: node scripts/test-lektrus-reaction-library.mjs
       - run: node scripts/test-lektrus-lab-reaction-network.mjs
+      - name: Check chemical property coverage and publish remaining work
+        run: |
+          node scripts/audit-lektrus-lab-properties.mjs --verify
+          node scripts/audit-lektrus-lab-properties.mjs --markdown >> "$GITHUB_STEP_SUMMARY"
       - run: node scripts/test-lektrus-lab-filtrate-conservation.mjs
       - run: node scripts/test-lektrus-lab-interface-layout.mjs
       - run: node scripts/test-lektrus-lab-phase-equilibrium.mjs
