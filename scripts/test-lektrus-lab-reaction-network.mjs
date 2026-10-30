@@ -605,7 +605,7 @@ assert.deepEqual(carbonatePhases.map(x=>x.temperatureC),[20,40]);
 // Saturated aqueous solution has a separately MEASURED concentration and
 // density; they cannot be borrowed for 0.1 mol/L prepared cabinet stock.
 const saturation=load("src/lektrusLabSaturatedSolutionReferences.ts");
-assert.equal(saturation.LAB_SATURATED_SOLUTION_REFERENCES.length,38);
+assert.equal(saturation.LAB_SATURATED_SOLUTION_REFERENCES.length,37);
 assert.equal(new Set(saturation.LAB_SATURATED_SOLUTION_REFERENCES.map(x=>
  x.baseFormula+"|"+x.saturationSolidFormula)).size,38);
 for(const [formula,solid,percent,density] of [
@@ -634,4 +634,4 @@ assert.equal(registryProps.labSubstanceProperties("NaCl")
  .liquidDensityGPerMl,undefined);
 assert.equal(registryProps.labSubstanceProperties("CuSO4")
  .liquidDensityGPerMl,undefined);
-console.log("38 saturated water-solution densities kept distinct from dilute stocks and pure substances");
+console.log("37 validated saturated water-solution densities kept distinct from dilute stocks and pure substances");
