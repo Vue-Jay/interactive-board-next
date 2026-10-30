@@ -211,7 +211,8 @@ if(process.argv.includes("--verify")){
     material.labSingleSaltSolubilityGPer100gWater(row.baseFormula,20):undefined);
   if(has(solubility)){
    const expectedMassPercent=100*solubility/(100+solubility);
-   assert.ok(Math.abs(expectedMassPercent-row.concentrationMassPercent)<0.6,
+   assert.ok(Math.abs(expectedMassPercent-row.concentrationMassPercent)<
+     Math.max(0.05,0.02*row.concentrationMassPercent),
     "Reference sources disagree on saturated mass fraction: "+identity+
     ", "+expectedMassPercent+" vs "+row.concentrationMassPercent);
   }
