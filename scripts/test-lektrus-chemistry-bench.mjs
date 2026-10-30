@@ -1089,8 +1089,8 @@ assert.ok(Math.abs(nextDrop.remainingMol.HCl-.0007)<1e-12);
 const editorFixed=read("src/LektrusChemistryBenchEditor.tsx");
 assert.match(editorFixed,/setStage/);
 assert.match(editorFixed,/zoom:stage\.scale/,"Fullscreen must use layout zoom to avoid Android GPU repaint artifacts");
-assert.match(editorFixed,/const width=w\/scale/,
- "Fullscreen scales rather than scrolls a 1600 x 1000 stage");
+assert.match(editorFixed,/const width=compact\?w:w\/scale/,
+ "Phones use native pixels while desktop continues fitted layout zoom");
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-fit-stage/);
 const polishedSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(polishedSurface,/bench\.reactionLog/);
@@ -1140,7 +1140,7 @@ assert.match(writtenWall,/pendingGlassware/);
 assert.match(writtenWall,/glasswareForLabMode\(bench\)/);
 assert.match(writtenWall,/devicesForLabMode\(bench\)/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-bench-backdrop::before/);
-assert.match(editorFixed,/const scale=h\/1000/);
+assert.match(editorFixed,/const scale=compact\?1:h\/1000/);
 const higherStand=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod");
 assert.equal(higherStand.placedDevices[0].standHeight,.88);
 const stand=higherStand.placedDevices[0];
