@@ -1164,7 +1164,7 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
  const target=bench.vessels.find(v=>v.id===id);
  if(!target||target.reagents.length>0)return bench; // Only clean glassware returns to storage.
  const vessels=bench.vessels.filter(v=>v.id!==id);
- return {...bump(bench,vessels,bench.selectedId===id?(vessels[0]?.id??""):bench.selectedId),
+ return {...bump(bench,vessels,""),
   stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId,
   instrumentTarget:bench.instrumentTarget?.vesselId===id?undefined:bench.instrumentTarget,
   placedDevices:placedLabDevices(bench).map(d=>({
