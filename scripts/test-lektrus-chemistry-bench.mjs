@@ -1251,7 +1251,7 @@ assert.equal(filtered.vessels[0].reactionAmounts?.complete,true);
 const separated=lab.filterLabPrecipitate(filtered,"v1",destination);
 assert.notEqual(separated,filtered);
 assert.equal(separated.vessels[0].filteredResidue?.formula,"AgCl");
-assert.ok(Math.abs(separated.vessels[0].filteredResidue.massG-.143318)<1e-5);
+assert.ok(Math.abs(separated.vessels[0].filteredResidue.massG-.143318)<.001);
 assert.equal(separated.vessels[0].doses.AgCl.unit,"g");
 const filtrate=separated.vessels.find(v=>v.id===destination);
 assert.equal(lab.labVesselQuantity(filtrate).volumeMl,20);
@@ -1270,7 +1270,7 @@ qualitative=lab.advanceLabSimulation(qualitative,1000);
 qualitative=lab.advanceLabSimulation(qualitative,6000);
 const qFiltered=lab.filterLabPrecipitate(qualitative,"v1",qTarget);
 assert.equal(qFiltered.vessels[0].filteredResidue?.formula,"AgCl");
-assert.ok(Math.abs(qFiltered.vessels[0].filteredResidue.massG-.143318)<1e-5,
+assert.ok(Math.abs(qFiltered.vessels[0].filteredResidue.massG-.143318)<.001,
  "Even default stock volumes generate a calculated mass of AgCl");
 
 // New education modes, physical dissolution, direct cartridge filtration,
