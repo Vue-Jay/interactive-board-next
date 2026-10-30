@@ -82,7 +82,22 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  // PubChem substance-specific measured anhydrous solids:
  // https://pubchem.ncbi.nlm.nih.gov/compound/164827
  // https://pubchem.ncbi.nlm.nih.gov/compound/25204
- CuO:6.315,BaCl2:3.856
+ CuO:6.315,BaCl2:3.856,
+ // Additional current cabinet substances and reviewed products. The numbers
+ // are true densities of the SPECIFIED solid modifications at ~20-25 °C:
+ // Si (crystalline), S (orthorhombic), I2 (molecular crystal):
+ // https://pubchem.ncbi.nlm.nih.gov/periodic-table/density/
+ // https://pubchem.ncbi.nlm.nih.gov/compound/Sulfur
+ // https://pubchem.ncbi.nlm.nih.gov/compound/Iodine
+ Si:2.3296,S:2.067,I2:4.93,
+ // Hematite (alpha-Fe2O3), magnetite, quartz (alpha-SiO2):
+ // https://pubchem.ncbi.nlm.nih.gov/compound/518696
+ // https://www.science.smith.edu/~jbrady/petrology/intro-topics/comp-axis/axis-page05.php
+ Fe2O3:5.24,Fe3O4:5.175,SiO2:2.65,
+ // ZnS sphalerite, PbS galena. Different polymorphs vary in density:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/9833931
+ // https://pubchem.ncbi.nlm.nih.gov/compound/9794739
+ ZnS:4.04,PbS:7.60
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
