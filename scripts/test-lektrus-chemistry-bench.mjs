@@ -129,8 +129,8 @@ assert.equal(decanted.vessels[2].doses.NaCl.value,12);
 assert.equal(decanted.vessels[2].doses.AgNO3.value,7);
 assert.equal(decanted.vessels[0].completedReaction,undefined,"Emptied source loses its products");
 const postReaction=lab.putLabReagent(decanted,"v3","HCl",{value:5,unit:"ml"});
-assert.equal(lab.labObservation(postReaction.vessels[2]).status,"unknown",
- "Further transformation of spent mixture must not be invented");
+assert.equal(lab.labObservation(postReaction.vessels[2]).status,"reaction",
+ "Verified precipitate persists and additional measured reactants can participate");
 assert.ok(postReaction.vessels[2].completedReaction,"Previously precipitated solid should remain visible as last known appearance");
 const cleaned=lab.emptyLabVessel(postReaction,"v3");
 assert.equal(cleaned.vessels[2].completedReaction,undefined,"Sink removes all products");
