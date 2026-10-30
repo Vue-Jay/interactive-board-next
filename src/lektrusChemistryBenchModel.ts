@@ -1105,6 +1105,7 @@ const LAB_STARTER_SETS:Record<LabMode,{glassware:LabGlassware[];devices:LabAvail
  quantitative:{glassware:["beaker","pipette","conical","flask"],devices:["stirrer"]},
  titration:{glassware:["burette","conical","pipette"],devices:["tripod"]},
  solutions:{glassware:["beaker","pipette","flask","conical"],devices:["stirrer"]},
+ evaporation:{glassware:["dish","beaker","pipette"],devices:["hotplate"]},
  synthesis:{glassware:["flask","crucible","beaker"],devices:["hotplate","tripod"]}
 };
 export function prepareLabModeSetup(bench:LabBench):LabBench{
