@@ -1289,6 +1289,37 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const environment=labMixEnvironment([{environment:v.environment,doses:v.doses},
    {environment:validDose?.unit==="g"?"dry":"aqueous",
     doses:validDose?{[reagent]:validDose}:undefined}],nextDoses);
+  if(v.chemicalInventory){
+   const addedMol=labDoseMoles(reagent,validDose);
+   if(addedMol===undefined||!Number.isFinite(addedMol)||addedMol<=0)return v;
+   const original=v.chemicalInventory;
+   const speciesMol={...original.speciesMol,
+    [reagent]:(original.speciesMol[reagent]??0)+addedMol};
+   const solidMol={...original.solidMol};
+   if(validDose.unit==="g"&&
+    (environment!=="aqueous"||!LAB_WATER_SOLUTES.has(reagent)))
+    solidMol[reagent]=(solidMol[reagent]??0)+addedMol;
+   const currentVolume=labVesselQuantity(v).volumeMl+
+    (validDose.unit==="ml"&&substances.find(s=>s.id===reagent)?.kind!=="газ"?
+     validDose.value:0);
+   const quantified=simulateLabInventory({
+    reagents:Object.keys(speciesMol),environment,stoppered:v.stoppered,
+    temperatureC:v.temperatureC,volumeMl:currentVolume,
+    chemicalInventory:{speciesMol,solidMol,
+     retainedGasMol:original.retainedGasMol}
+   });
+   const productIds=Object.keys(quantified.speciesMol);
+   const confirmed=quantified.steps.length?
+    reviewedReactionCases.find(row=>row.equation===quantified.steps[quantified.steps.length-1].equation):
+    undefined;
+   return {...v,reagents:productIds,doses:nextDoses,environment,
+    chemicalInventory:labInventorySnapshot(quantified),
+    filteredSolution:v.filteredSolution?
+     {...v.filteredSolution,solutes:productIds.filter(x=>x!=="H2O")}:undefined,
+    reactionAmounts:undefined,completedReaction:confirmed??v.completedReaction,
+    observed:true,uncertain:quantified.limited||quantified.unmeasured.length>0,
+    visualStartedAtMs:confirmed?Date.now():v.visualStartedAtMs};
+  }
   const matching=identifyReaction(reagents,environment);
   const previousAmounts=v.reactionAmounts;
   const recorded=v.completedReaction??(beforeReaction.status==="reaction"?
