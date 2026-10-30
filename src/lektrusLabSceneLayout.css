@@ -554,3 +554,36 @@
   display:none!important;
  }
 }
+
+
+/* Gentle, non-interactive vapor from OPEN containers. The number of traces
+   is illustrative; conserved liquid losses are calculated in the model. */
+.lektrus-lab-bench .lektrus-lab-vapor-plume{
+ position:absolute!important;z-index:14!important;
+ left:50%!important;top:1%!important;width:52px!important;
+ height:48px!important;transform:translate(-50%,-75%)!important;
+ overflow:visible!important;pointer-events:none!important;
+}
+.lektrus-lab-bench .lektrus-lab-vapor-plume>span{
+ position:absolute;bottom:0;left:33%;width:8px;height:27px;
+ border-left:2.5px solid #93c8cfaa;border-radius:50%;
+ opacity:0;filter:blur(1px);
+ animation:lektrus-lab-vapor-rise 2.8s ease-out infinite;
+}
+.lektrus-lab-bench .lektrus-lab-vapor-plume>span:nth-child(2){
+ left:51%;height:21px;animation-delay:.82s;
+}
+.lektrus-lab-bench .lektrus-lab-vapor-plume>span:nth-child(3){
+ left:18%;height:24px;animation-delay:1.73s;
+}
+@keyframes lektrus-lab-vapor-rise{
+ 0%{opacity:0;transform:translate(0,5px) scale(.65)}
+ 25%{opacity:.8}
+ 80%{opacity:.3}
+ 100%{opacity:0;transform:translate(9px,-25px) scale(1.8)}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench .lektrus-lab-vapor-plume>span{
+  animation:none!important;opacity:.35!important;
+ }
+}
