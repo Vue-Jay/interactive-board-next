@@ -8,6 +8,7 @@ import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVes
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
  from "./lektrusLabTitration";
 import {identifyReaction,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
+import {simulateLabInventory} from "./lektrusLabReactionNetwork";
 
 export type LabGlassware="beaker"|"tube"|"flask"|"cylinder"|"dish"|
  "conical"|"volumetric"|"crucible"|"pipette"|"burette";
@@ -839,6 +840,45 @@ const formatMol=(v:number)=>Number((v*1000).toPrecision(4));
 export function labVesselContents(v:LabVessel){
  const {volumeMl,capacityMl}=labVesselQuantity(v);
  const quantities=v.reactionAmounts;
+ // The chemical species inventory is reconstructed from the measured initial
+ // doses, so adding another reagent cannot erase prior precipitates and
+ // previously formed products can react in the next reviewed stage.
+ const inventory=!v.filteredResidue&&v.doses&&v.reagents.length?
+  simulateLabInventory(v):undefined;
+ if(inventory&&!inventory.unmeasured.length){
+  const solid:{formula:string;massG?:number}[]=[];
+  const solution:{formula:string;mmol?:number}[]=[];
+  const precipitated=new Set(inventory.steps.flatMap(step=>
+   (step.equation.split("→")[1]??"").split(/\\s+\\+\\s+/)
+    .filter(term=>term.includes("↓")).map(term=>
+     term.replace(/^\\d+\\s*/,"").replace(/[↓↑]/g,"").trim())));
+  let precipitateG=0,precipitateVolumeMl=0,unknownDensity=false;
+  for(const [formula,mol] of Object.entries(inventory.speciesMol)){
+   if(mol<=1e-12)continue;
+   const solidMol=inventory.solidMol[formula]??0;
+   if(solidMol>1e-12){
+    const mass=labMolarMass(formula);
+    solid.push({formula,massG:mass===undefined?undefined:mass*solidMol});
+    if(precipitated.has(formula)){
+     if(mass!==undefined){
+      const productMass=mass*solidMol;
+      precipitateG+=productMass;
+      if(precipitateDensity[formula])
+       precipitateVolumeMl+=productMass/precipitateDensity[formula];
+      else unknownDensity=true;
+     }
+    }
+   }
+   if(mol-solidMol>1e-12)solution.push({formula,mmol:formatMol(mol-solidMol)});
+  }
+  return {solutionMl:volumeMl,capacityMl,solution,solid,
+   remainderUnknown:inventory.limited,
+   precipitateG:precipitateG>1e-10?precipitateG:undefined,
+   precipitateVolumeMl:unknownDensity?undefined:
+    precipitateVolumeMl>1e-12?precipitateVolumeMl:undefined,
+   precipitateFraction:unknownDensity?undefined:
+    precipitateVolumeMl>1e-12?Math.max(0,Math.min(.8,precipitateVolumeMl/capacityMl)):undefined};
+ }
  const equation=(v.completedReaction??labObservation(v).caseData)?.equation??"";
  const products=(equation.split("→")[1]??"").split(/\s+\+\s+/);
  const precipitates=new Set(products.filter(t=>t.includes("↓"))
@@ -1174,7 +1214,7 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const capacity=labMeasuredCapacityMl(v.kind);
   const priorMl=Object.values(v.doses??{}).reduce((sum,d)=>sum+
    (d.unit==="ml"?d.value:0),0);
-  if(capacity!==undefined&&validDose?.unit==="ml"&&priorMl+validDose.value>capacity)return v;
+  if(validDose?.unit==="ml"&&priorMl+validDose.value>labVesselQuantity(v).capacityMl+1e-7)return v;
   if((v.kind==="pipette"||v.kind==="burette")&&validDose?.unit==="g")return v;
   const present=v.reagents.includes(reagent);
   if(!present&&v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
@@ -1266,7 +1306,7 @@ export function transferLabMeasuredLiquid(
  const totalCents=amounts.reduce((n,v)=>n+v,0);
  const requested=Math.round(volumeMl*100);
  if(requested>totalCents)return bench;
- const capacity=labMeasuredCapacityMl(target.kind);
+ const capacity=labVesselQuantity(target).capacityMl;
  const current=Object.values(target.doses??{}).reduce((sum,d)=>
   sum+(d.unit==="ml"?d.value:0),0);
  if(capacity!==undefined&&current+volumeMl>capacity+1e-7)return bench;
@@ -1487,8 +1527,8 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
  const initialDoses={...a.doses};
  const volume=Object.values(initialDoses).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
  const current=Object.values(t.doses??{}).reduce((n,d)=>n+(d.unit==="ml"?d.value:0),0);
- const max=labMeasuredCapacityMl(t.kind);
- if(max!==undefined&&volume+current>max+1e-7)return b;
+ const max=labVesselQuantity(t).capacityMl;
+ if(volume+current>max+1e-7)return b;
  if(Object.entries(initialDoses).some(([name,d])=>{
   const old=t.doses?.[name];
   return old&&(old.unit!==d.unit||old.value+d.value>10000);
@@ -1571,6 +1611,8 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  if(!source||!target||!source.reagents.length)return bench;
  const reagents=[...new Set([...target.reagents,...source.reagents])];
  if(reagents.length>MAX_VESSEL_REAGENTS)return bench;
+ const volume=labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl;
+ if(volume>labVesselQuantity(target).capacityMl+1e-7)return bench;
  const incompatible=Object.entries(source.doses??{}).some(([id,dose])=>{
   const previous=target.doses?.[id];
   return previous&&(previous.unit!==dose.unit||previous.value+dose.value>10000);
