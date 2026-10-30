@@ -97,7 +97,26 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  // ZnS sphalerite, PbS galena. Different polymorphs vary in density:
  // https://pubchem.ncbi.nlm.nih.gov/compound/9833931
  // https://pubchem.ncbi.nlm.nih.gov/compound/9794739
- ZnS:4.04,PbS:7.60
+ ZnS:4.04,PbS:7.60,
+ // Individually cited single-phase crystal densities. These are not
+ // loose-powder (bulk) densities, solutions or substituted hydrates:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24502  K2Cr2O7 25°C
+ // https://pubchem.ncbi.nlm.nih.gov/compound/516875 KMnO4
+ // https://pubchem.ncbi.nlm.nih.gov/compound/4875   KI
+ // https://pubchem.ncbi.nlm.nih.gov/compound/253881 NaBr
+ // https://pubchem.ncbi.nlm.nih.gov/compound/3084026 SrSO4
+ K2Cr2O7:2.676,KMnO4:2.70,KI:3.13,NaBr:3.21,SrSO4:3.96,
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24798 Ba(NO3)2
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24924 Pb(NO3)2
+ // https://pubchem.ncbi.nlm.nih.gov/compound/516910 KNO2
+ // https://pubchem.ncbi.nlm.nih.gov/compound/22985 NH4NO3
+ "Ba(NO3)2":3.24,"Pb(NO3)2":4.53,KNO2:1.915,NH4NO3:1.72,
+ // Crystalline sucrose (not a loose sugar heap): VŠCHT, 20°C.
+ // https://uchi.vscht.cz/e-tables/density-solids?jazyk=en&lang=en
+ C12H22O11:1.59,
+ // Anhydrous D-glucose crystal (not the monohydrate):
+ // https://pubchem.ncbi.nlm.nih.gov/compound/5793
+ C6H12O6:1.562
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
