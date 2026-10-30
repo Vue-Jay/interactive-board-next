@@ -198,3 +198,98 @@ for(const [formula,expected] of Object.entries({
  assert.ok(props.densityKnown,"Current stock or reviewed product has checked density: "+formula);
 }
 console.log("Dry/aqueous reaction isolation, gas transitions, and curated crystal densities passed");
+
+
+// Every new Merck pure-water entry participates in the SAME binary
+// dissolution/evaporation engine. This guards units, molar mass, interpolation,
+// cooling and mass conservation, not just property-data presence.
+const newBinarySolubilities={
+ NH4Cl:[29.7,37.56,46,55.3,65.6,77.3],
+ NH4NO3:[118.5,187.7,283,415,610,1000],
+ "(NH4)2SO4":[70.4,75.44,81.2,87.4,94.1,102],
+ "Ba(NO3)2":[4.95,9.06,14.4,20.3,27.2,34.2],
+ "Pb(NO3)2":[36.4,52.22,69.4,88,107.5,127.3],
+ KBr:[54,65.85,76.1,85.9,95.3,104.9],
+ KI:[127.8,144.51,161,176.2,191.5,208],
+ K2SO4:[7.33,11.11,14.79,18.2,21.29,24.1],
+ AgNO3:[115,219.2,334.8,471,652,1024],
+ NaNO2:[73,84.52,95.7,112.3,135.5,163],
+ NaHCO3:[6.89,9.6,12.7,16,null,null],
+ KMnO4:[2.83,6.43,12.56,22.4,null,null]
+};
+const referenceTemperatures=[0,20,40,60,80,100];
+for(const [formula,data] of Object.entries(newBinarySolubilities)){
+ const amount=labMolarMass(formula);
+ assert.ok(amount>0,formula+" must have a supported formula mass");
+ for(let i=0;i<data.length;i++){
+  const measured=physicalDensity.labSingleSaltSolubilityGPer100gWater(
+   formula,referenceTemperatures[i]);
+  if(data[i]===null)assert.equal(measured,undefined,
+   formula+" must NOT extrapolate into an undocumented range");
+  else approximately(measured,data[i],1e-8);
+ }
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,101),undefined);
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,-1),undefined);
+ const dilute={reagents:[formula,"H2O"],environment:"aqueous",
+  temperatureC:20,doses:{[formula]:{unit:"g",value:1},H2O:{unit:"ml",value:100}}};
+ const saturated={...dilute,
+  doses:{[formula]:{unit:"g",value:1},H2O:{unit:"ml",value:.1}}};
+ const inWater=simulateLabInventory(dilute);
+ const asCrystals=simulateLabInventory(saturated);
+ assert.ok((asCrystals.solidMol[formula]??0)>0,
+  formula+" supersaturated binary water mixture should form crystals");
+ assert.ok(!(inWater.solidMol[formula]>1e-10),
+  formula+" sufficiently dilute mixture must dissolve");
+ approximately(inWater.speciesMol[formula],asCrystals.speciesMol[formula],1e-12);
+ approximately(labInventoryMassG(inWater),labInventoryMassG(asCrystals)+
+  (100-.1)*.997,1e-4);
+}
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater("NaHCO3",65),
+ undefined,"Never interpolate beyond the documented bicarbonate range");
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater("KMnO4",90),
+ undefined,"No extrapolated permanganate solubility");
+console.log("12 additional measured binary salt curves: 72 temperature cells and conserved crystallization");
+
+// Reference properties are consistent across the previously existing quantity,
+// phase, calorimetry and vapor simulation paths.
+const heatProps=load("src/lektrusLabCalorimetry.ts");
+const vaporProps=load("src/lektrusLabEvaporation.ts");
+const neatLiquids=["H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO"];
+for(const formula of neatLiquids){
+ const heat=heatProps.LAB_CALORIMETRY_REFERENCE[formula];
+ const vapor=vaporProps.LAB_VAPOR_REFERENCE[formula];
+ assert.ok(heat?.densityGPerMl>0&&heat.specificJPerGK>0);
+ assert.ok(vapor?.densityGml>0);
+ approximately(heat.densityGPerMl,vapor.densityGml,1e-12);
+ approximately(labDoseMoles(formula,{unit:"ml",value:10}),
+  10*heat.densityGPerMl/labMolarMass(formula),1e-8);
+ assert.ok(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [formula]:{unit:"ml",value:10}
+ })>0);
+}
+const aldehyde=thermalProps.labThermalInfo("CH3CHO","ml");
+assert.equal(aldehyde.form,"pure");
+assert.ok(Math.abs(aldehyde.boilingC-20.8)<1);
+const acetaldehydeVapor=vaporProps.labSaturationPressureKPa("CH3CHO",20.8);
+assert.ok(acetaldehydeVapor>90&&acetaldehydeVapor<115,
+ "NIST acetaldehyde Antoine must give near-atmospheric vapor pressure at its boiling point");
+const evaporatingAldehyde=vaporProps.labEvaporate({
+ kind:"dish",doses:{CH3CHO:{value:10,unit:"ml"}}
+},10,22,100,200);
+assert.ok(evaporatingAldehyde.evaporatedMl>0,
+ "Pure acetaldehyde must use the existing evaporation process");
+assert.ok(evaporatingAldehyde.doses.CH3CHO?.value<10);
+const aqueousAldehyde=vaporProps.labEvaporate({
+ kind:"dish",doses:{CH3CHO:{value:10,unit:"ml",concentrationM:.1}}
+},10,22,100,200);
+assert.equal(aqueousAldehyde.evaporatedMl,0,
+ "Prepared stocks must never inherit neat acetaldehyde vapor constants");
+for(const [formula,density] of Object.entries({
+ K2Cr2O7:2.676,KMnO4:2.70,KI:3.13,NaBr:3.21,SrSO4:3.96,
+ "Ba(NO3)2":3.24,"Pb(NO3)2":4.53,KNO2:1.915,
+ NH4NO3:1.72,C12H22O11:1.59,C6H12O6:1.562
+})){
+ approximately(physicalDensity.labCrystalDensityGml(formula),density);
+ assert.ok(registryProps.labSubstanceProperties(formula).densityKnown);
+}
+console.log("Neat liquid mass/heat/vapor references and 11 solid densities agree across subsystems");
