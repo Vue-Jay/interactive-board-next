@@ -60,9 +60,12 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   }
  }else{
   for(const id of v.reagents){
+   // Solvent water and inert salts contribute dilution without requiring
+   // fictitious molarity for H2O itself.
+   if(NEUTRAL_SPECTATORS.has(id)){species[id]=0;continue}
    const dose=doses[id];
-   if(!dose&&id!=="H2O")return null;
-   species[id]=dose?doseMoles(id,dose)??NaN:0;
+   if(!dose)return null;
+   species[id]=doseMoles(id,dose)??NaN;
   }
  }
  for(const [id,mol] of Object.entries(species)){
