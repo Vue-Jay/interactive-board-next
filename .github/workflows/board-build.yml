@@ -44,6 +44,7 @@ jobs:
       - run: node scripts/test-lektrus-equation-review.mjs
       - run: node scripts/test-lektrus-organic-nomenclature.mjs
       - run: node scripts/test-lektrus-reaction-library.mjs
+      - run: node scripts/test-lektrus-lab-reaction-network.mjs
       - run: node scripts/test-lektrus-chemistry-bench.mjs
       - run: node scripts/test-lektrus-physics-templates.mjs
       - run: node scripts/test-lektrus-optics-editor.mjs
