@@ -18,7 +18,12 @@ export function labLogicalPoint(point:{x:number;y:number}){
   y:clamp(10+80*(point.y-LAB_WORKSPACE.top)/(LAB_WORKSPACE.bottom-LAB_WORKSPACE.top),10,90)
  };
 }
-export const isLabSink=(p:{x:number;y:number})=>p.x>=83&&p.y>=45&&p.y<=94;
+/** Match the relocated bottom-right sink's physical footprint.
+ * Same coordinates are used for drag-to-drain hit testing. */
+export const LAB_SINK_BOUNDS={left:74.5,right:97.5,top:63.5,bottom:93.5} as const;
+export const isLabSink=(p:{x:number;y:number})=>
+ p.x>=LAB_SINK_BOUNDS.left&&p.x<=LAB_SINK_BOUNDS.right&&
+ p.y>=LAB_SINK_BOUNDS.top&&p.y<=LAB_SINK_BOUNDS.bottom;
 export const isLabCupboard=(p:{x:number;y:number})=>p.x>=55&&p.x<83&&p.y>=8&&p.y<=41;
 export const isLabWorktop=(p:{x:number;y:number})=>
  p.x>=5&&p.x<=82&&p.y>=43&&p.y<=91;
