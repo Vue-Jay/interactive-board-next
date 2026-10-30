@@ -103,7 +103,10 @@ export function parseBalancedLabEquation(equation:string):LabBalancedEquation|nu
  * reference volume, not a guessed aqueous concentration. Neat-liquid
  * densities are 25 °C reference approximations (g/ml). */
 const NEAT_DENSITY_G_ML:Record<string,number>={
- H2O:.997,C2H5OH:.785,CH3OH:.787,C3H8O:.803,Br2:3.102,CH3CHO:.783
+ // Pure liquid densities match calorimetry and the Antoine evaporation
+ // reference at ~25 °C. A prepared 0.1 M stock uses molarity INSTEAD.
+ // NIST / CRC values; Br2: bromine engineering handbook, CH3CHO: PubChem.
+ H2O:.997,C2H5OH:.789,CH3OH:.792,C3H8O:.785,Br2:3.1055,CH3CHO:.7846
 };
 const REFERENCE_GAS_MOLAR_VOLUME_ML=24465;
 export function labDoseMoles(formula:string,dose:LabDose):number|undefined{

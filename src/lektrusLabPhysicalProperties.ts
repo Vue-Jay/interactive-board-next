@@ -55,6 +55,29 @@ const physical:Record<string,LabThermalRecord>={
  Si:{meltingC:1414,boilingC:3265},
  NaCl:{meltingC:800.7,boilingC:1465},
  KCl:{meltingC:770,boilingC:1420},
+ // Verified ANHYDROUS solids, ~101.3 kPa; do not transfer these to
+ // prepared aqueous solutions. Experimental reference pages:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24561 (AgCl)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/5235 (NaF)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/4875 (KI)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/253877 (KBr)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/3084026 (SrSO4)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24507 (K2SO4)
+ AgCl:{meltingC:455,boilingC:1547},
+ NaF:{meltingC:993,boilingC:1700},
+ KI:{meltingC:681},
+ KBr:{meltingC:734},
+ SrSO4:{meltingC:1605},
+ K2SO4:{meltingC:1067},
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24502 (K2Cr2O7)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/516875 (KMnO4)
+ K2Cr2O7:{meltingC:398,decompositionC:500,behavior:"decomposes"},
+ KMnO4:{decompositionC:240,behavior:"decomposes"},
+ // https://pubchem.ncbi.nlm.nih.gov/compound/9989226 (alpha-Al2O3)
+ Al2O3:{meltingC:2072,boilingC:2977},
+ // https://pubchem.ncbi.nlm.nih.gov/compound/177 (pure ethanal)
+ CH3CHO:{meltingC:-123.4,boilingC:20.8,
+  note:"Чистый этаналь кипит около комнатной температуры; это не температура кипения раствора."},
  // Individually reviewed pure ANHYDROUS compounds, NOT water solutions.
  // PubChem 24459: PbCl2 501/950°C (melting/boiling).
  // https://pubchem.ncbi.nlm.nih.gov/compound/24459
@@ -99,7 +122,7 @@ const physical:Record<string,LabThermalRecord>={
  "Fe(OH)3":{decompositionC:100,behavior:"decomposes"},
  "Mg(OH)2":{decompositionC:350,behavior:"decomposes"}
 };
-const pureLiquids=new Set(["H2O","C2H5OH","CH3OH","C3H8O","Br2"]);
+const pureLiquids=new Set(["H2O","C2H5OH","CH3OH","C3H8O","Br2","CH3CHO"]);
 /** A measured ml of a stock acid or a salt solution is not the neat compound.
  * Formula alone does not specify its solvent ratio or boiling range. */
 export function labThermalInfo(id:string,unit:"ml"|"g"):LabThermalRecord&{

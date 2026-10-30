@@ -18,6 +18,35 @@ export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
  H2O:{specificJPerGK:4.184,densityGPerMl:.997,phase:"liquid"},
  C2H5OH:{specificJPerGK:2.376,densityGPerMl:.789,phase:"liquid"},
  CH3OH:{specificJPerGK:2.53,densityGPerMl:.792,phase:"liquid"},
+ // CRC/PubChem individually measured neat liquids, ~20–25°C:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/3776 (isopropanol 2.604)
+ // https://www.bromaid.net/section-1-properties-of-bromaid/ (Br2 .473)
+ // https://pubchem.ncbi.nlm.nih.gov/compound/177 (acetaldehyde 1.38)
+ // Never use these for dilute prepared solutions or gaseous samples.
+ C3H8O:{specificJPerGK:2.604,densityGPerMl:.785,phase:"liquid"},
+ Br2:{specificJPerGK:.473,densityGPerMl:3.1055,phase:"liquid"},
+ CH3CHO:{specificJPerGK:1.38,densityGPerMl:.7846,phase:"liquid"},
+ // Room-temperature elemental-solid c_p, explicitly J/g/K, not J/kg/K.
+ // Royal Society of Chemistry individually tabulated elements:
+ // https://periodic-table.rsc.org/element/3/lithium
+ // https://periodic-table.rsc.org/element/11/sodium
+ // https://periodic-table.rsc.org/element/19/potassium
+ // https://periodic-table.rsc.org/element/20/calcium
+ // https://periodic-table.rsc.org/element/12/magnesium
+ // https://periodic-table.rsc.org/element/30/zinc
+ // https://periodic-table.rsc.org/element/82/lead
+ // https://periodic-table.rsc.org/element/16/sulfur
+ Li:{specificJPerGK:3.582,phase:"solid"},
+ Na:{specificJPerGK:1.228,phase:"solid"},
+ K:{specificJPerGK:.757,phase:"solid"},
+ Ca:{specificJPerGK:.647,phase:"solid"},
+ Mg:{specificJPerGK:1.023,phase:"solid"},
+ Zn:{specificJPerGK:.388,phase:"solid"},
+ Pb:{specificJPerGK:.130,phase:"solid"},
+ S:{specificJPerGK:.708,phase:"solid"},
+ // Solid iodine near room temperature, CRC chemistry heat table:
+ // https://www.alloprof.qc.ca/en/students/vl/chemistry/specific-heat-capacity-of-some-substances-c1703
+ I2:{specificJPerGK:.214,phase:"solid"},
  Al:{specificJPerGK:.897,phase:"solid"},
  Fe:{specificJPerGK:.449,phase:"solid"},
  Cu:{specificJPerGK:.385,phase:"solid"},

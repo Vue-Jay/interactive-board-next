@@ -2208,7 +2208,9 @@ assert.ok(Math.abs(chem.labDoseMoles("H2O",{value:18,unit:"g"})-1)<.02);
 assert.ok(Math.abs(chem.labDoseMoles("CO2",{value:24.465,unit:"ml"})-.001)<1e-9,
  "Gas volumes use a documented 25C/1atm reference");
 assert.ok(Math.abs(chem.labDoseMoles("C2H5OH",{value:10,unit:"ml"})-
-  10*.785/chem.labMolarMass("C2H5OH"))<1e-10);
+  10*calorimetry.LAB_CALORIMETRY_REFERENCE.C2H5OH.densityGPerMl/
+   chem.labMolarMass("C2H5OH"))<1e-10,
+ "A pure ethanol portion must use the same measured density in thermodynamics and mole inventory");
 assert.ok(chem.labDoseMoles("HCl",{value:10,unit:"ml"})===undefined,
  "An arbitrary no-concentration liquid dose must not silently become 0.1 M in the formula calculator");
 assert.match(read("src/LektrusChemistryBench.tsx"),/labIsPreparedStock\(reagent\.id\)/);
@@ -2481,7 +2483,12 @@ for(const [id,reference] of Object.entries(vapor.LAB_LATENT_VAPORIZATION_J_PER_G
  assert.ok(reference>160&&reference<3000,"Plausible reviewed latent heat: "+id);
  const sample={kind:"dish",doses:{[id]:{value:100,unit:"ml"}}};
  // Br2's published Antoine fit reaches 1 atm at ~59.1°C; use 60°C.
- const boilingC={H2O:100,C2H5OH:78.37,CH3OH:64.7,C3H8O:82.6,Br2:60}[id];
+ const referenceBoilingC=thermal.labThermalInfo(id,"ml").boilingC;
+assert.ok(Number.isFinite(referenceBoilingC),
+ "All pure volatile stock has an audited boiling point: "+id);
+// Br2 has a small source/model Antoine mismatch at 58.8 C; testing at
+// 60 C (still within NIST's fitted range) verifies actual P >= 1 atm.
+const boilingC=id==="Br2"?Math.max(60,referenceBoilingC):referenceBoilingC;
  const watts=120,seconds=5;
  const withHeater=vapor.labEvaporate(sample,seconds,boilingC,boilingC+60,watts);
  const without=vapor.labEvaporate(sample,seconds,boilingC,boilingC+60,0);
@@ -2501,7 +2508,7 @@ const noHeaterAlcohol=vapor.labEvaporate({kind:"beaker",
  doses:{C2H5OH:{value:15,unit:"ml"}}},10,25,180,0);
 assert.equal(coolAlcohol.evaporatedMl,noHeaterAlcohol.evaporatedMl,
  "Heat cannot be used for latent boiling before the boiling point");
-console.log("Evaporation: five reviewed latent heats obey the shared power budget");
+console.log("Evaporation: all six reviewed pure-liquid latent heats obey the shared power budget");
 
 
 /* Kinetic phase regression: reference saturation controls only the target.
