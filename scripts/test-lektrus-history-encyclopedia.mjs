@@ -162,3 +162,19 @@ assert.ok(atlas.includes("normalizeHistoricalReferenceName"),"Map and catalogue 
 assert.ok(atlas.includes("indexedReferenceMaps"),"References must use actual indexed historical shapes");
 assert.ok(atlas.includes("Показать на карте ·"),"Map action must be available only for dated matches");
 console.log("Historical atlas: 41 encyclopedia entries, "+historicalReferences.length+" sourced reference records, alias/date guards and cross-era UI checked.");
+
+for(const [alias,year,expected] of [
+ ["Mali Empire",1324,"Империя Мали"],
+ ["Songhai Empire",1493,"Империя Сонгай"],
+ ["Kingdom of Kongo",1650,"Королевство Конго"]
+]){
+ assert.equal(findHistoricalArticle(alias,year)?.name,expected,
+  "Historical encyclopaedia must recognize a dated feature alias: "+alias);
+}
+for(const [alias,year] of [
+ ["Mali Empire",1700],["Songhai Empire",1600],["Kingdom of Kongo",1300]
+])assert.equal(findHistoricalArticle(alias,year),undefined,
+ "History must not attribute an empire to a different century: "+alias);
+assert.equal(historicalArticles.length,44,
+ "School history gained exactly three source-reviewed African state articles");
+console.log("African historical encyclopedia: Mali, Songhai and Kongo period lookup verified");
