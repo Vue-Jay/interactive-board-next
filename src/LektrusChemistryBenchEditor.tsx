@@ -13,7 +13,7 @@ type Props={item:Item;onChange:(next:Item)=>void;onSave:()=>void;onCancel:()=>vo
 export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCancel}:Props){
  const bench=readLabBench(item);
  const viewport=useRef<HTMLDivElement>(null);
- const [stage,setStage]=useState({width:1600,scale:1});
+ const [stage,setStage]=useState({width:1600,height:1000,scale:1,compact:false});
  // The full-screen laboratory owns the live simulation. Keep the underlying
  // board out of Android WebView's paint tree while the portal is shown.
  useEffect(()=>{
@@ -25,12 +25,16 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
   const resize=()=>{
    const w=node.clientWidth,h=node.clientHeight;
    if(!w||!h)return;
-   // Fill BOTH axes. The wall and worktop absorb widescreen extra space;
-   // glassware remains at the same stage-relative coordinates.
-   const scale=h/1000;
-   const width=w/scale;
-   setStage(old=>Math.abs(old.width-width)<.5&&Math.abs(old.scale-scale)<.001?
-    old:{width,scale});
+   // Phones need real-size controls, not a 1000px desktop stage zoomed
+   // down to illegible text. Landscape/portrait can change at runtime.
+   const compact=window.matchMedia("(pointer:coarse) and (max-width:1100px)").matches||
+    window.matchMedia("(max-width:650px)").matches;
+   const scale=compact?1:h/1000;
+   const width=compact?w:w/scale;
+   const height=compact?h:1000;
+   setStage(old=>Math.abs(old.width-width)<.5&&
+    Math.abs(old.height-height)<.5&&Math.abs(old.scale-scale)<.001&&
+    old.compact===compact?old:{width,height,scale,compact});
   };
   resize();
   const observer=new ResizeObserver(resize);
@@ -57,7 +61,7 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
  return createPortal(<div className="lektrus-lab-editor-overlay is-board-identical"
   style={subjectEditorStyle("chemistry")} data-board-interactive="true"
   onPointerDown={e=>{if(e.target===e.currentTarget)onCancel()}}>
-  <section className="lektrus-lab-editor is-board-identical" role="dialog" aria-modal="true"
+  <section className={"lektrus-lab-editor is-board-identical"+(stage.compact?" is-compact-fullscreen":"")} role="dialog" aria-modal="true"
    aria-label="Химический стол" onPointerDown={e=>e.stopPropagation()}>
    <div ref={viewport} className="lektrus-lab-editor-bench-viewport" data-board-interactive="true"
     role="region" tabIndex={0} aria-label="Интерактивный химический стол"
@@ -66,8 +70,8 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
      // CSS zoom scales the stage in layout space. A transformed 2000+ px
      // layer with animated SVG filters was intermittently repainted as pale
      // rectangles on Android when selections and thermal ticks updated.
-     width:stage.width,height:1000,zoom:stage.scale}}>
-     <LektrusChemistryBenchSurface bench={bench} editable
+     width:stage.width,height:stage.height,zoom:stage.scale}}>
+     <LektrusChemistryBenchSurface bench={bench} editable compactFullscreen={stage.compact}
       onSelect={id=>patch(selectLabVessel(bench,id))}
       onPour={pour} onChange={patch} onDropReagent={addReagent}/>
     </div>

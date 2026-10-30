@@ -440,7 +440,7 @@ function LabTemperatureInput({temperature,onSet}:{temperature:number;onSet:(v:nu
   onBlur={commit}/>;
 }
 type SurfaceProps={
- bench:LabBench;editable?:boolean;
+ bench:LabBench;editable?:boolean;compactFullscreen?:boolean;
  pouringId?:string|null;
  onChange?:(bench:LabBench)=>void;
  onSelect?:(id:string)=>void;
@@ -449,7 +449,7 @@ type SurfaceProps={
 };
 /** Furniture is part of the shared bench, not a second toolbar. Both the
  * editor and the board use these exact same interactions. */
-export default function LektrusChemistryBenchSurface({bench,editable=false,pouringId,
+export default function LektrusChemistryBenchSurface({bench,editable=false,compactFullscreen=false,pouringId,
  onChange,onSelect,onPour,onDropReagent}:SurfaceProps){
  const host=useRef<HTMLDivElement>(null);
  const [stageSize,setStageSize]=useState({width:1600,height:1000});
@@ -495,6 +495,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"equipment"|null>(null);
  const [pendingGlassware,setPendingGlassware]=useState<LabGlassware|null>(null);
  const [showAllDevices,setShowAllDevices]=useState(false);
+ type MobileDrawer="reagents"|"glassware"|"equipment"|"indicators"|"equations"|"settings";
+ const [mobileDrawer,setMobileDrawer]=useState<MobileDrawer|null>(null);
+ useEffect(()=>{if(!compactFullscreen)setMobileDrawer(null)},[compactFullscreen]);
  const [query,setQuery]=useState("");
  const [category,setCategory]=useState("Все");
  const [phase,setPhase]=useState<"all"|StoragePhase>("all");
@@ -762,7 +765,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  };
  const chooseGlassware=(kind:LabGlassware)=>{
   if(bench.vessels.length>=6){setNotice("На столе не больше шести сосудов");return}
-  setPendingGlassware(kind);setCabinet(null);
+  setPendingGlassware(kind);setCabinet(null);setMobileDrawer(null);
   setNotice("Нажмите на свободное место стола, чтобы поставить: "+names[kind]);
  };
  useEffect(()=>{
@@ -907,7 +910,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   const newest=placedLabDevices(updated).at(-1);
   setActiveDeviceId(newest?.id??null);
   setNotice("Прибор установлен: "+(labDevices.find(d=>d.id===kind)?.name??kind));
-  setCabinet(null);
+  setCabinet(null);setMobileDrawer(null);
  };
  const beginDeviceShelf=(e:PointerEvent<HTMLButtonElement>,kind:LabDevice)=>{
   if(!editable||e.button!==0||!e.isPrimary)return;
@@ -1020,6 +1023,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   setDoseEffect({...vesselPosition(target),
    color:reagentAppearance(id,preset.dose.unit==="g"?"dry":"aqueous").color,
    solid:preset.dose.unit==="g"});
+  setMobileDrawer(null);
   setNotice(id+" · "+formatLabDose(preset.dose)+" добавлено в "+names[target.kind]);
  };
  const dispense=()=>{
@@ -1068,10 +1072,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   setCabinet(null);
  };
  const openCabinet=(next:"reagents"|"glassware"|"equipment")=>{
-  if(!editable)return;setCabinet(next);setNotice("");setChosen(null);
+  if(!editable)return;setCabinet(next);setMobileDrawer(null);setNotice("");setChosen(null);
   setShowAllDevices(false);
  };
  return <div className={"lektrus-lab-bench"+(!editable?" is-readonly":"")+
+  (compactFullscreen?" is-compact-fullscreen":"")+
+  (compactFullscreen&&mobileDrawer?" is-drawer-"+mobileDrawer:"")+
   (pendingGlassware?" is-placing-glassware":"")+
   (!settings.animateEffects?" lab-reduced-animation":"")} ref={host}
   aria-label="Интерактивный химический стол с шкафами и раковиной"
@@ -1088,12 +1094,50 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     return;
    }
    if(!p||p.y<42||p.y>99)return;
+   if(compactFullscreen&&mobileDrawer)setMobileDrawer(null);
    if(!bench.selectedId&&!vesselMenuId&&!activeDeviceId)return;
    e.stopPropagation();
    setVesselMenuId(null);
    setActiveDeviceId(null);
    if(bench.selectedId)onSelect?.("");
   }}>
+  {compactFullscreen&&<nav className="lektrus-lab-compact-drawer-bar"
+   role="group" aria-label="Открыть панели лаборатории" data-board-interactive="true"
+   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+   {([
+    ["reagents","Реактивы"],["glassware","Посуда"],
+    ["equipment","Приборы"],["indicators","Индикаторы"],
+    ["equations","Уравнения"],["settings","Ещё"]
+   ] as const).map(([id,label])=><button type="button" key={id}
+    className={mobileDrawer===id?"is-active":""}
+    aria-expanded={mobileDrawer===id}
+    aria-controls={"lektrus-lab-compact-"+id}
+    onClick={e=>{e.stopPropagation();setMobileDrawer(previous=>previous===id?null:id)}}>
+    {label}<span aria-hidden="true">{mobileDrawer===id?"⌃":"⌄"}</span>
+   </button>)}
+  </nav>}
+  {compactFullscreen&&mobileDrawer==="settings"&&<div className="lektrus-lab-compact-settings"
+    id="lektrus-lab-compact-settings" data-board-interactive="true"
+    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+   <button type="button" disabled={!editable}
+    onClick={e=>{e.stopPropagation();onChange?.(setLabBenchSettings(bench,{showTemperatures:!settings.showTemperatures}))}}>
+    {settings.showTemperatures?"Скрыть температуры":"Показать температуры"}
+   </button>
+   <button type="button" disabled={!editable}
+    onClick={e=>{e.stopPropagation();onChange?.(arrangeLabVessels(bench));setMobileDrawer(null)}}>
+    Расставить посуду
+   </button>
+   <button type="button" disabled={!editable}
+    onClick={e=>{e.stopPropagation();setConfirmClear(true)}}>
+    Очистить стол
+   </button>
+   {confirmClear&&<div className="lektrus-lab-compact-confirm">
+    <span>Убрать всю посуду и приборы?</span>
+    <button type="button" onClick={e=>{e.stopPropagation();onChange?.(clearLabTable(bench));
+     setConfirmClear(false);setMobileDrawer(null);setNotice("Рабочая поверхность очищена")}}>Очистить</button>
+    <button type="button" onClick={e=>{e.stopPropagation();setConfirmClear(false)}}>Отмена</button>
+   </div>}
+  </div>}
   <div className="lektrus-lab-bench-backdrop" aria-hidden="true">
    <div className="lektrus-lab-back-shelf"/>
    <div className="lektrus-lab-counter"/>
@@ -1184,7 +1228,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   </div>
   {/* The writing is physically on the same large wall board behind
         the glassware, never in a floating reaction card. */}
-  <div className="lektrus-lab-chalkboard" aria-label="Доска на стене за лабораторным столом"
+  <div id={compactFullscreen?"lektrus-lab-compact-equations":undefined}
+   className="lektrus-lab-chalkboard" aria-label="Доска на стене за лабораторным столом"
    aria-live="polite">
    <button type="button" className={"lektrus-lab-board-write-toggle"+(settings.showEquationBoard?" is-active":"")}
     data-board-interactive="true" disabled={!editable}
@@ -1227,7 +1272,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <span className="lektrus-lab-chalk-empty">Проведите опыт. Уравнения останутся здесь до стирания тряпкой.</span>}
    </div>}
   </div>
-  <div className="lektrus-lab-reagent-furniture" data-board-interactive="true"
+  <div id={compactFullscreen?"lektrus-lab-compact-reagents":undefined}
+   className="lektrus-lab-reagent-furniture" data-board-interactive="true"
    aria-label="Быстрые реактивы" onPointerDown={e=>e.stopPropagation()}
    onPointerUp={e=>e.stopPropagation()}>
    <button type="button" className="lektrus-lab-furniture-title lektrus-lab-reagent-shelf-header"
@@ -1264,7 +1310,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    </div>
    <span className="lektrus-lab-furniture-foot" aria-hidden="true">Нажмите на реактив или перетащите к сосуду</span>
   </div>
-  <div className={"lektrus-lab-glass-cupboard"+(dropFurniture==="glassware"?" is-dropzone":"")} data-board-interactive="true"
+  <div id={compactFullscreen?"lektrus-lab-compact-glassware":undefined}
+   className={"lektrus-lab-glass-cupboard"+(dropFurniture==="glassware"?" is-dropzone":"")} data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <button type="button" className="lektrus-lab-furniture-title lektrus-lab-shelf-header"
     disabled={!editable} aria-label="Открыть шкаф посуды"
@@ -1282,7 +1329,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    </div>
    <span className="lektrus-lab-furniture-foot" aria-hidden="true">Нажмите на посуду или перетащите на стол</span>
   </div>
-  <div className="lektrus-lab-indicator-cupboard" data-board-interactive="true"
+  <div id={compactFullscreen?"lektrus-lab-compact-indicators":undefined}
+   className="lektrus-lab-indicator-cupboard" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <strong>ИНДИКАТОРЫ</strong>
    <div className="lektrus-lab-indicator-shelf" role="group"
@@ -1296,7 +1344,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      onClick={e=>{e.stopPropagation();
       if(!selected)return;
       const next=setLabIndicator(bench,selected.id,indicator.id);
-      if(next!==bench){onChange?.(next);setNotice(indicator.form==="solution"?
+      if(next!==bench){onChange?.(next);setMobileDrawer(null);setNotice(indicator.form==="solution"?
        "Добавлена капля: "+indicator.name:"Проверка универсальной индикаторной бумагой")}
      }}>
      {indicator.form==="solution"?<svg className="lektrus-lab-indicator-bottle"
@@ -1319,7 +1367,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     </button>)}
    </div>
   </div>
-  <div  className={"lektrus-lab-device-cupboard"+(dropDeviceShelf?" is-dropzone":"")} data-board-interactive="true"
+  <div id={compactFullscreen?"lektrus-lab-compact-equipment":undefined}
+   className={"lektrus-lab-device-cupboard"+(dropDeviceShelf?" is-dropzone":"")} data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <button type="button" className="lektrus-lab-device-cupboard-title"
     disabled={!editable} onClick={e=>{e.stopPropagation();openCabinet("equipment")}}>

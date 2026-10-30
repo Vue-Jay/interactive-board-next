@@ -153,3 +153,24 @@ assert.match(stableFullscreen,/\.lektrus-lab-editor-overlay\.is-board-identical\
 assert.match(stableFullscreen,/\.lektrus-lab-editor\.is-board-identical \.lektrus-lab-fit-stage\{[\s\S]*?transform:none!important/);
 assert.match(stableFullscreen,/contain:layout paint/);
 console.log("Android fullscreen laboratory: isolated paint, single simulation writer, fluid viewport OK");
+
+
+// Mobile fullscreen keeps a physical-size table with one expandable shelf,
+// independently of the desktop laboratory scene.
+assert.match(editor,/const compact=window\.matchMedia/);
+assert.match(editor,/const scale=compact\?1:h\/1000/);
+assert.match(editor,/const height=compact\?h:1000/);
+assert.match(editor,/height:stage\.height,zoom:stage\.scale/);
+assert.match(editor,/compactFullscreen=\{stage\.compact\}/);
+assert.match(markup,/const \[mobileDrawer,setMobileDrawer\]=useState<MobileDrawer\|null>\(null\)/);
+for(const label of ["Реактивы","Посуда","Приборы","Индикаторы","Уравнения","Ещё"])
+ assert.ok(markup.includes('["'+({Реактивы:"reagents",Посуда:"glassware",Приборы:"equipment",Индикаторы:"indicators",Уравнения:"equations",Ещё:"settings"})[label]+'","'+label+'"]'),
+  "Missing compact lab drawer "+label);
+assert.match(markup,/aria-expanded=\{mobileDrawer===id\}/);
+assert.match(markup,/setMobileDrawer\(previous=>previous===id\?null:id\)/);
+assert.match(markup,/id=\{compactFullscreen\?"lektrus-lab-compact-glassware":undefined\}/);
+assert.match(markup,/id=\{compactFullscreen\?"lektrus-lab-compact-reagents":undefined\}/);
+assert.match(css,/\.lektrus-lab-bench\.is-compact-fullscreen\.is-drawer-reagents \.lektrus-lab-reagent-furniture/);
+assert.match(css,/\.lektrus-lab-bench\.is-compact-fullscreen\.is-drawer-equations \.lektrus-lab-chalkboard/);
+assert.match(css,/\.lektrus-lab-bench\.is-compact-fullscreen \.lektrus-lab-worktop-zone\{[\s\S]*?top:105px!important/);
+console.log("Phone laboratory: actual viewport-size workbench and compact dropdown shelves OK");

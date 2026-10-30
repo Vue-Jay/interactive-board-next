@@ -2366,3 +2366,11 @@ assert.match(glassUI,/>\{kind\.name\}<\/small>/);
 assert.ok(!lab.labModeInfo(lab.setLabMode(lab.defaultLabBench(),"solutions"))
  .description.includes("доведение до метки"));
 console.log("Simplified eight-type catalog, six-slot no-scroll wall and legacy glassware preservation: OK");
+
+
+// No scaled-down desktop laboratory on phones: preserve a full-size table
+// and route all physical cupboards through one selectable dropdown shelf.
+assert.match(editorFixed,/const scale=compact\?1:h\/1000/);
+assert.match(editorFixed,/height:stage\.height,zoom:stage\.scale/);
+assert.match(polishedSurface,/compactFullscreen\?:boolean/);
+assert.match(polishedSurface,/is-drawer-\\"\+mobileDrawer/);
