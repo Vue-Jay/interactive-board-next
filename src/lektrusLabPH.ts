@@ -9,6 +9,9 @@ export type LabPHInput={
  reagents:readonly string[];
  doses?:Record<string,{value:number;unit:"ml"|"g";concentrationM?:number}>;
  environment:string;uncertain?:boolean;
+ /** Products and reactants tracked by the measured balanced equation. */
+ reactionAmounts?:{equation:string;productsMol:Record<string,number>;
+  remainingMol:Record<string,number>};
 };
 export type LabPHResult={pH:number;label:string;note:string;acidMol:number;baseMol:number};
 const KW=1e-14;
@@ -37,14 +40,38 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   return {pH:7,label:"pH 7,00",acidMol:0,baseMol:0,
    note:"Чистая вода, идеальная модель при 25 °C."};
  let acidMol=0,baseMol=0,aceticMol=0,ammoniaMol=0;
- let volumeMl=0;
- for(const id of v.reagents){
-  const dose=doses[id];
-  if(!dose&&id!=="H2O")return null;
-  if(dose?.unit==="ml")volumeMl+=dose.value;
+ const volumeMl=Object.values(doses).reduce((total,d)=>
+  total+(d.unit==="ml"?d.value:0),0);
+ // When precipitation is completed (or in progress), calculate aqueous
+ // species from the balance sheet, NOT the original AgNO3/NaCl inputs.
+ // AgCl is insoluble and must not become a source of imaginary free ions.
+ const precipitated=v.reactionAmounts?.equation.includes("↓");
+ const species:Record<string,number>={};
+ if(precipitated&&v.reactionAmounts){
+  for(const stock of [v.reactionAmounts.remainingMol,v.reactionAmounts.productsMol])
+   for(const [id,mol] of Object.entries(stock))
+    species[id]=(species[id]??0)+mol;
+  for(const term of (v.reactionAmounts.equation.split("→")[1]??"")
+   .split(/\s+\+\s+/)){
+   if(term.includes("↓")){
+    const solid=term.replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim();
+    delete species[solid];
+   }
+  }
+ }else{
+  for(const id of v.reagents){
+   // Solvent water and inert salts contribute dilution without requiring
+   // fictitious molarity for H2O itself.
+   if(NEUTRAL_SPECTATORS.has(id)){species[id]=0;continue}
+   const dose=doses[id];
+   if(!dose)return null;
+   species[id]=doseMoles(id,dose)??NaN;
+  }
+ }
+ for(const [id,mol] of Object.entries(species)){
+  if(mol<=1e-12)continue;
+  if(!Number.isFinite(mol))return null;
   if(NEUTRAL_SPECTATORS.has(id))continue;
-  const mol=dose?doseMoles(id,dose):null;
-  if(mol===null)return null;
   if(STRONG_ACIDS.has(id))acidMol+=mol;
   else if(STRONG_BASES.has(id))baseMol+=mol;
   else if(id==="CH3COOH")aceticMol+=mol;
