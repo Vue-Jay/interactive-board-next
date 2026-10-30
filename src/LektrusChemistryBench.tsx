@@ -112,7 +112,9 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const id=useId().replace(/:/g,"");
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
- const inventory=vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
+ const inventory=vessel.chemicalInventory?
+  simulateLabInventory({...vessel,volumeMl:labVesselQuantity(vessel).volumeMl}):
+  vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
   simulateLabInventory(vessel):undefined;
  const mostRecentEquation=inventory?.steps[inventory.steps.length-1]?.equation;
  const retainedGasTotal=Object.values(inventory?.retainedGasMol??{}).reduce((s,n)=>s+n,0);
