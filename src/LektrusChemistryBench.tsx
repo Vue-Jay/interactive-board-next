@@ -8,6 +8,8 @@ import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,typ
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
 import {labVesselPH} from "./lektrusLabPH";
+import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
+import {labMolarMass} from "./lektrusLabStoichiometry";
 import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,labIsPreparedStock,labDefaultStockDose,type CatalogueGroup,type CatalogueSort,type StoragePhase}
  from "./lektrusLabCatalog";
 import {titrationReading} from "./lektrusLabTitration";
@@ -109,7 +111,12 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const id=useId().replace(/:/g,"");
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
- const visualCase=vessel.completedReaction??verified;
+ const inventory=vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
+  simulateLabInventory(vessel):undefined;
+ const mostRecentEquation=inventory?.steps[inventory.steps.length-1]?.equation;
+ const recentCase=mostRecentEquation?
+  reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
+ const visualCase=recentCase??vessel.completedReaction??verified;
  const appearance=reactionAppearance(visualCase);
  const isLiquidIndicator=!!vessel.indicator&&vessel.indicator!=="universal";
  const ph=labVesselPH(vessel);
@@ -156,9 +163,11 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
   pureThermal.info.meltingC!==undefined?Math.min(1,Math.max(0,vessel.meltFraction??0)):0;
  const geo=shape[vessel.kind];
  const amounts=vessel.reactionAmounts;
- const species=amounts?[...Object.entries(amounts.remainingMol),
-  ...Object.entries(amounts.productsMol)].filter(([,mol])=>mol>1e-12):
-  vessel.reagents.map(id=>[id,0] as [string,number]);
+ const species=inventory&&!inventory.unmeasured.length?
+  Object.entries(inventory.speciesMol).filter(([,mol])=>mol>1e-12):
+  amounts?[...Object.entries(amounts.remainingMol),
+   ...Object.entries(amounts.productsMol)].filter(([,mol])=>mol>1e-12):
+   vessel.reagents.map(id=>[id,0] as [string,number]);
  const labels=species.map(([id])=>substances.find(s=>s.id===id)?.formula??id);
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
@@ -1485,6 +1494,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const v=bench.vessels.find(x=>x.id===compositionId);
    if(!v)return null;
    const composition=labVesselContents(v),quantity=labVesselQuantity(v);
+   const inventory=v.doses&&!v.filteredResidue&&!v.filteredSolution?
+    simulateLabInventory(v):undefined;
+   const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
+    "масса не определена":(labMolarMass(formula)!*mmol/1000).toLocaleString("ru-RU",{maximumFractionDigits:6})+" г";
    const formatted=(n:number)=>n.toLocaleString("ru-RU",{maximumFractionDigits:6});
    return <div data-board-interactive="true" role="presentation" onPointerDown={e=>e.stopPropagation()}
     style={{position:"absolute",inset:0,zIndex:110,display:"grid",placeItems:"center",background:"#132c2b99"}}>
@@ -1494,12 +1507,26 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <strong>Содержимое: {names[v.kind]}</strong>
       <button type="button" onClick={()=>setCompositionId(null)} aria-label="Закрыть состав">✕</button>
      </div>
-     <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Масса загрузки: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
+     <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Добавлено твёрдых веществ: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
      <strong>Растворённые вещества</strong>
-     <ul>{composition.solution.length?composition.solution.map((s,i)=><li key={i}>{s.formula}: {s.mmol===undefined?"количество не рассчитано":formatted(s.mmol)+" ммоль"+(composition.solutionMl>0?" · "+formatted(s.mmol/composition.solutionMl)+" моль/л":"")}</li>):<li>Нет</li>}</ul>
+     <ul>{composition.solution.length?composition.solution.map((s,i)=><li key={i}>{s.formula}: {s.mmol===undefined?"количество не рассчитано":formatted(s.mmol)+" ммоль · "+massOf(s.formula,s.mmol)+(composition.solutionMl>0?" · "+formatted(s.mmol/composition.solutionMl)+" моль/л":"")}</li>):<li>Нет</li>}</ul>
      <strong>Твёрдая фаза и осадок</strong>
      <ul>{composition.solid.length?composition.solid.map((s,i)=><li key={i}>{s.formula}: {s.massG===undefined?"масса не рассчитана":formatted(s.massG)+" г"}</li>):<li>Нет</li>}</ul>
-     {v.reactionAmounts&&<><strong>Текущая реакция</strong><p>{v.reactionAmounts.equation}</p></>}
+     {inventory&&Object.keys(inventory.releasedGasMol).length>0&&<>
+      <strong>Выделившиеся газы</strong>
+      <ul>{Object.entries(inventory.releasedGasMol).map(([formula,mol])=>
+       <li key={formula}>{formula}: {formatted(mol*1000)} ммоль · {massOf(formula,mol*1000)}
+        {" · ≈"+formatted(mol*24465)+" мл при 25 °C, 1 атм"}</li>)}</ul>
+     </>}
+     {inventory?.steps.length?<><strong>Последовательность превращений</strong>
+      <ol>{inventory.steps.map((step,i)=><li key={i}>{step.equation}
+       {" · "+formatted(step.extentMol*1000)+" ммоль"}</li>)}</ol>
+     </>:v.reactionAmounts&&<><strong>Текущая реакция</strong><p>{v.reactionAmounts.equation}</p></>}
+     {inventory&&labInventoryMassG(inventory)!==undefined&&
+      <p title="Сумма масс известных химических компонентов, включая выделившиеся газы. Не включает неучтённый растворитель стандартных растворов.">
+       Масса учтённых компонентов: {formatted(labInventoryMassG(inventory)!)} г
+      </p>}
+     <small>Расчёт выполнен по измеренным количествам и проверенным уравнениям. Для произвольных смесей, активности и скорости реакций необходимы дополнительные термодинамические данные.</small>
      {composition.remainderUnknown&&<p>Для части компонентов количественная модель реакции пока отсутствует. Эти количества нельзя считать точным результатом.</p>}
     </section>
    </div>;
