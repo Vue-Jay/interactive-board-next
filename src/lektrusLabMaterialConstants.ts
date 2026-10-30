@@ -65,7 +65,24 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  // https://periodic-table.rsc.org/element/82/lead
  // NOT a powder's bulk packing density or density of a molten sample.
  Li:.534,Na:.97,K:.89,Ca:1.54,Mg:1.74,Al:2.70,
- Zn:7.134,Fe:7.87,Cu:8.96,Ag:10.5,Au:19.3,Pb:11.3
+ Zn:7.134,Fe:7.87,Cu:8.96,Ag:10.5,Au:19.3,Pb:11.3,
+ // Chemistry & Technology University Prague, 20°C solid-density table
+ // (VŠCHT, kilograms/m³ converted explicitly to grams/cm³):
+ // https://uchi.vscht.cz/e-tables/density-solids?jazyk=en&lang=en
+ // Values apply to ANHYDROUS crystal phases, never solvated stocks:
+ NH4Cl:1.53,"(NH4)2SO4":1.77,CaCl2:2.10,K2CO3:2.29,
+ K2SO4:2.66,Na2SO4:2.70,Na2SO3:2.66,Al2O3:4.00,
+ // OTC Inorganic Hydroxides literature survey, FDA; NaOH 20°C,
+ // KOH 2.044, crystalline Mg(OH)2 2.36:
+ // https://www.accessdata.fda.gov/drugsatfda_docs/omuf/order/supportDoc/OTC000039/3.3_Literature_References/rev_cir-2015-sodium-hydroxide_090026f88e12645d.pdf
+ NaOH:2.13,KOH:2.044,"Mg(OH)2":2.36,
+ // ATSDR Toxicological Profile for Lead, table of lead compounds:
+ // https://www.ncbi.nlm.nih.gov/books/NBK589540/
+ PbSO4:6.20,
+ // PubChem substance-specific measured anhydrous solids:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/164827
+ // https://pubchem.ncbi.nlm.nih.gov/compound/25204
+ CuO:6.315,BaCl2:3.856
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
