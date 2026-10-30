@@ -31,7 +31,24 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  NaCl:2.16,KCl:1.984,KNO3:2.109,NaNO3:2.261,NaHCO3:2.20,
  KBr:2.75,CuSO4:3.6,AgNO3:4.35,
  AgCl:5.56,AgBr:6.47,BaSO4:4.50,
- CaCO3:2.71,AgI:5.67,PbI2:6.16
+ CaCO3:2.71,AgI:5.67,PbI2:6.16,
+ // Additional individually verified ANHYDROUS solid/crystal densities at
+ // 20-25 °C (g/cm³). Not loose powder density, and NOT hydrated salts.
+ // Each compound has an independent PubChem experimental entry:
+ // Na2CO3 https://pubchem.ncbi.nlm.nih.gov/compound/10340
+ // CaO https://pubchem.ncbi.nlm.nih.gov/compound/14778
+ // MgO https://pubchem.ncbi.nlm.nih.gov/compound/14792
+ // MgCO3 https://pubchem.ncbi.nlm.nih.gov/compound/11029 (magnesite)
+ // CaSO4 https://pubchem.ncbi.nlm.nih.gov/compound/24497 (anhydrite)
+ // BaCO3 https://pubchem.ncbi.nlm.nih.gov/compound/10563 (witherite)
+ // PbCl2 https://pubchem.ncbi.nlm.nih.gov/compound/24459
+ // PbBr2 https://pubchem.ncbi.nlm.nih.gov/compound/24458
+ // Cu(OH)2 https://pubchem.ncbi.nlm.nih.gov/compound/164826
+ // Al(OH)3 https://pubchem.ncbi.nlm.nih.gov/compound/10176082
+ // ZnO https://pubchem.ncbi.nlm.nih.gov/compound/3007857
+ Na2CO3:2.54,CaO:3.34,MgO:3.58,MgCO3:3.05,
+ CaSO4:2.96,BaCO3:4.275,PbCl2:5.85,PbBr2:6.66,
+ "Cu(OH)2":3.37,"Al(OH)3":2.42,ZnO:5.61
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
@@ -90,6 +107,24 @@ export const LAB_SALT_SOLUBILITY_TEMPERATURES_C=[0,20,40,60,80,100] as const;
 export function labSingleSaltSolubilityGPer100gWater(
  formula:string,tempC:number):number|undefined{
  if(formula==="NaCl")return labNaClSolubilityGPer100gWater(tempC);
+ if(formula==="PbCl2"){
+  // Solubility of ANHYDROUS lead(II) chloride at 0,20,100 °C,
+  // PubChem (Kirk-Othmer): 0.673, 0.99, 3.34 g / 100 mL WATER.
+  // https://pubchem.ncbi.nlm.nih.gov/compound/24459
+  // Convert water-volume basis to g/100 g solvent with tabulated
+  // approximate PURE WATER densities (g/mL), then interpolate.
+  // No Ksp-based extrapolation to concentrated or mixed electrolytes.
+  if(!Number.isFinite(tempC)||tempC<0||tempC>100)return;
+  const points=[[0,.673,.99984],[20,.99,.9982],[100,3.34,.9584]];
+  for(let i=1;i<points.length;i++){
+   if(tempC<=points[i][0]){
+    const lo=points[i-1],hi=points[i];
+    const before=lo[1]/lo[2],after=hi[1]/hi[2];
+    return before+(after-before)*(tempC-lo[0])/(hi[0]-lo[0]);
+   }
+  }
+  return;
+ }
  const data=LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[formula];
  if(!data||!Number.isFinite(tempC)||tempC<0||tempC>100)return;
  if(tempC===100)return data[data.length-1];

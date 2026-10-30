@@ -999,7 +999,7 @@ export function parseDocument(raw: string): DocumentData {
             (v.physicalProcess==null||["dissolving","crystallizing"].includes(v.physicalProcess))&&
             (v.binarySaltPhase==null||(
              typeof v.binarySaltPhase.formula==="string"&&
-             ["NaCl","KCl","KNO3","NaNO3"].includes(v.binarySaltPhase.formula)&&
+             ["NaCl","KCl","KNO3","NaNO3","PbCl2"].includes(v.binarySaltPhase.formula)&&
              Number.isFinite(v.binarySaltPhase.solidMol)&&
              v.binarySaltPhase.solidMol>=0&&v.binarySaltPhase.solidMol<=10000))&&
             (v.physicalStartedAtMs==null||(Number.isFinite(v.physicalStartedAtMs)&&
