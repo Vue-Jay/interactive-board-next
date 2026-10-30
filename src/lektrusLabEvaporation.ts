@@ -78,7 +78,7 @@ function components(v:LabEvaporationState){
 }
 /** Evaporation raises with saturation pressure, exposed surface and heating.
  * A stopper gives a saturated closed headspace: no material leaves. Pressure
- * beyond 125 kPa pops an ordinary rubber stopper (not pressure-rated).
+ * beyond 160 kPa absolute pops a simulated cork (not pressure-rated).
  * max 10 seconds per tick, deterministic from current shared state.
  */
 export function labEvaporate(v:LabEvaporationState,seconds:number,
@@ -88,15 +88,25 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   ...c,pressureKPa:labSaturationPressureKPa(c.id,temperatureC)
  }));
  const known=partials.length>0&&partials.every(c=>c.pressureKPa!==undefined);
- const totalPressureKPa=known?partials.reduce((s,c)=>s+c.moleFraction*c.pressureKPa!,0):undefined;
- const popped=!!v.stoppered&&totalPressureKPa!==undefined&&
-  totalPressureKPa>=125;
+ const vaporPressureKPa=known?partials.reduce((s,c)=>
+  s+c.moleFraction*c.pressureKPa!,0):undefined;
+ // A sealed headspace has ordinary trapped air AND saturated solvent vapor.
+ // Start from a 22 °C ambient seal at one atmosphere. Air follows ideal gas
+ // P/T at roughly fixed vessel headspace; vapor follows measured Antoine P_sat.
+ const roomVaporKPa=known?items.reduce((s,c)=>
+  s+c.moleFraction*(labSaturationPressureKPa(c.id,22)??0),0):undefined;
+ const sealedPressureKPa=vaporPressureKPa!==undefined&&roomVaporKPa!==undefined?
+  Math.max(0,101.325-roomVaporKPa)*(temperatureC+273.15)/295.15+
+   vaporPressureKPa:undefined;
+ const popped=!!v.stoppered&&sealedPressureKPa!==undefined&&
+  sealedPressureKPa>=160;
+ const totalPressureKPa=v.stoppered?sealedPressureKPa:vaporPressureKPa;
  if(!known||dt===0||v.stoppered&&!popped)return {
   doses:v.doses,ventedVaporMl:v.ventedVaporMl,
   stoppered:v.stoppered,popped:false,boiling:false,
   pressureKPa:totalPressureKPa,evaporatedMl:0
  };
- const boiling=(totalPressureKPa??0)>=101.325;
+ const boiling=(vaporPressureKPa??0)>=101.325;
  const doses={...v.doses},vented={...v.ventedVaporMl};
  let evaporatedMl=0;
  for(const item of partials){
