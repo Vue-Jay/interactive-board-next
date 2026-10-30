@@ -2851,3 +2851,28 @@ const bromideStock=materialRegistry.labSubstanceProperties("PbBr2",20);
 assert.ok(bromideStock.solubilityKnown);
 assert.equal(bromideStock.crystalDensityGPerMl,6.66);
 console.log("PbBr2 phase equilibrium, gradual dissolution and reference density: OK");
+
+
+// Elemental metal lumps have a real displacement volume at ambient temp.
+// A metal crystal's density is unrelated to a metal-salt solution density.
+const ambientElementDensities={
+ Li:.534,Na:.97,K:.89,Ca:1.54,Mg:1.74,Al:2.70,
+ Zn:7.134,Fe:7.87,Cu:8.96,Ag:10.5,Au:19.3,Pb:11.3
+};
+for(const [formula,density] of Object.entries(ambientElementDensities)){
+ assert.equal(constants.labCrystalDensityGml(formula),density);
+ const weighed=lab.putLabReagent(lab.defaultLabBench(),"v1",formula,
+  {unit:"g",value:1});
+ const solid=lab.labVesselQuantity(weighed.vessels[0]);
+ assert.ok(solid.solidVolumeComplete,"Density known for "+formula);
+ assert.ok(Math.abs(solid.solidVolumeMl-1/density)<1e-6,
+  "Mass/density displacement for "+formula);
+}
+const lumpOfLi=lab.putLabReagent(lab.defaultLabBench(),"v1","Li",
+ {unit:"g",value:10});
+assert.ok(lab.labVesselQuantity(lumpOfLi.vessels[0]).occupiedMl>18,
+ "Lightweight lithium takes significantly more glassware space than copper");
+const lumpOfCu=lab.putLabReagent(lab.defaultLabBench(),"v1","Cu",
+ {unit:"g",value:10});
+assert.ok(lab.labVesselQuantity(lumpOfCu.vessels[0]).occupiedMl<2);
+console.log("RSC metal densities and weighed solid displacement: OK");
