@@ -300,7 +300,8 @@ console.log("Neat liquid mass/heat/vapor references and 11 solid densities agree
 for(const [formula,density] of Object.entries({
  "Ca(OH)2":2.24,MgCl2:2.325,NaF:2.78,Ag2CO3:6.077,
  AlCl3:2.44,FeS:4.75,SrCO3:3.5,PbO:9.53,
- MnO2:5.0,NaNO2:2.17,MgSO4:2.66
+ MnO2:5.0,NaNO2:2.17,MgSO4:2.66,
+ FeCl3:2.90,FeCl2:3.16,ZnCl2:2.907,LiCl:2.07,Na2S:1.856
 })){
  approximately(physicalDensity.labCrystalDensityGml(formula),density,1e-12);
  const property=registryProps.labSubstanceProperties(formula);
@@ -312,7 +313,7 @@ for(const [formula,density] of Object.entries({
   "Measured anhydrous solid must stay dry without liquid: "+formula);
 }
 for(const [formula,check] of Object.entries({
- MgCl2:{meltingC:714},
+ MgCl2:{meltingC:714},FeCl2:{meltingC:674},
  PbO:{meltingC:887,boilingC:1472},
  AlCl3:{sublimationC:178},
  FeS:{meltingC:1194},
@@ -327,3 +328,11 @@ for(const [formula,check] of Object.entries({
   "A prepared solution must not borrow pure-solid phase transitions");
 }
 console.log("Eleven added densities + six phase records: pure-material and dry-phase guards passed");
+
+// Pure MgO calorimetry must be quantitative and use J/g/K, with the
+// configured vessel heat equivalent, not a fabricated aqueous mixture.
+const testedMgOHeat=heatProps.labKnownHeatCapacityJPerK("beaker",{
+ MgO:{unit:"g",value:10}
+});
+approximately(testedMgOHeat,
+ heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+10*.92885,1e-9);
