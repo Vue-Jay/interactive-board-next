@@ -2670,3 +2670,48 @@ const gasInitialMass=network.labInventoryMassG(gasBeforeLedger);
 assert.ok(Math.abs(gasHalfMass-gasInitialMass)<1e-7,
  "All quantified species mass, including evolved gas, is conserved");
 console.log("Gas reaction inventory, closed/open gas partitions and atom-mass balance OK");
+
+
+// The model also covers other reviewed gas species, with gas coefficients
+// taken exclusively from balanced equations and the marked gaseous products.
+let supportedGasCases=0;
+for(const row of reaction.reviewedReactionCases.filter(row=>
+ row.status==="reaction"&&row.observation==="gas"&&row.equation.includes("↑"))){
+ const eq=chem.parseBalancedLabEquation(row.equation);
+ if(!eq)continue;
+ const productGases=eq.products.filter(t=>(row.equation.split("→")[1]??"").
+  split(/\s+\+\s+/).some(raw=>raw.includes("↑")&&
+   raw.replace(/^\d+\s*/,"").replace(/[↑↓]/g,"").trim()===t.formula));
+ if(!productGases.length)continue;
+ const synthetic={
+  equation:row.equation,elapsedSeconds:2,durationSeconds:4,
+  extentMol:.0002,maxExtentMol:.0004,complete:false,
+  initialMol:{},remainingMol:{},productsMol:{}};
+ const measured=gasDynamics.labReactionGasProgress(synthetic,30);
+ assert.ok(measured,"Missing quantitative gas progress: "+row.equation);
+ const gasCoefficients=productGases.reduce((n,t)=>n+t.coefficient,0);
+ assert.ok(Math.abs(measured.totalMol-gasCoefficients*.0002)<1e-12);
+ assert.equal(measured.producedMol[productGases[0].formula],
+  productGases[0].coefficient*.0002);
+ assert.ok(measured.volumeMl>0);
+ supportedGasCases++;
+}
+assert.ok(supportedGasCases>=10,"Review the gas catalogue for complete visual coverage");
+let pressurePop=lab.addLabVessel(lab.defaultLabBench(),"flask");
+const pressurePopId=pressurePop.selectedId;
+pressurePop=lab.putLabReagent(pressurePop,pressurePopId,"NaHCO3",
+ {unit:"g",value:5});
+pressurePop=lab.putLabReagent(pressurePop,pressurePopId,"HCl",
+ {unit:"ml",value:30,concentrationM:2});
+pressurePop=lab.setLabVesselStopper(pressurePop,pressurePopId,true);
+assert.equal(pressurePop.vessels.find(v=>v.id===pressurePopId).stoppered,true);
+pressurePop=lab.advanceLabSimulation(pressurePop,0);
+pressurePop=lab.advanceLabSimulation(pressurePop,1000);
+pressurePop=lab.advanceLabSimulation(pressurePop,2000);
+const poppedVessel=pressurePop.vessels.find(v=>v.id===pressurePopId);
+assert.ok(poppedVessel.reactionAmounts?.extentMol>0);
+assert.equal(poppedVessel.stoppered,false,
+ "A cork must be released on the first quantified tick exceeding its pressure limit");
+assert.match(read("src/lektrusChemistryBenchModel.ts"),
+ /A rapid measured gas reaction can release the stopper immediately/);
+console.log("Reviewed gas cases and immediate pressure-driven cork release: OK");
