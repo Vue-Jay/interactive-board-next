@@ -1325,7 +1325,7 @@ export function transferLabMeasuredLiquid(
   Math.abs(volumeMl*100-Math.round(volumeMl*100))>1e-6)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||!target||!source.reagents.length)return bench;
+ if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
  const entries=source.reagents.map(id=>({id,dose:source.doses?.[id]}));
  if(entries.some(e=>!e.dose||e.dose.unit!=="ml"||e.dose.value<=0))return bench;
  const amounts=entries.map(e=>Math.round(e.dose!.value*100));
