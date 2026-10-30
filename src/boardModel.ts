@@ -932,7 +932,7 @@ export function parseDocument(raw: string): DocumentData {
               typeof mol==="number"&&Number.isFinite(mol)&&mol>0&&mol<=10000)&&
              Object.entries(v.chemicalInventory.solidMol).every(([formula,mol])=>
               typeof mol==="number"&&Number.isFinite(mol)&&mol>=0&&
-              mol<=(v.chemicalInventory.speciesMol[formula]??-1)+1e-9)&&
+              mol<=(v.chemicalInventory?.speciesMol?.[formula]??-1)+1e-9)&&
              (v.chemicalInventory.retainedGasMol==null||
               (typeof v.chemicalInventory.retainedGasMol==="object"&&
                !Array.isArray(v.chemicalInventory.retainedGasMol)&&
