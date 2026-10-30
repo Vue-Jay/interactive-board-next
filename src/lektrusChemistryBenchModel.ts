@@ -716,17 +716,22 @@ export type LabVessel={pourFraction?:number;
 };
 export type LabQuickReagent={id:string;dose:LabDose};
 export const MAX_QUICK_REAGENTS=12;
+/** Essentials for school titrations, precipitation, metal reactions and
+ * thermolysis. Designed to be useful without opening the full catalog.
+ * Existing user-customised quick shelves are never overwritten. */
 export const defaultLabQuickReagents=():LabQuickReagent[]=>[
- {id:"H2O",dose:{value:10,unit:"ml"}},
+ {id:"H2O",dose:{value:20,unit:"ml"}},
  {id:"HCl",dose:{value:10,unit:"ml",concentrationM:.1}},
+ {id:"H2SO4",dose:{value:10,unit:"ml",concentrationM:.1}},
  {id:"NaOH",dose:{value:10,unit:"ml",concentrationM:.1}},
- {id:"CuSO4",dose:{value:10,unit:"ml",concentrationM:LAB_STOCK_MOLARITY_M}},
- {id:"AgNO3",dose:{value:10,unit:"ml",concentrationM:LAB_STOCK_MOLARITY_M}},
- {id:"BaCl2",dose:{value:10,unit:"ml",concentrationM:LAB_STOCK_MOLARITY_M}},
- {id:"KMnO4",dose:{value:10,unit:"ml",concentrationM:LAB_STOCK_MOLARITY_M}},
- {id:"FeSO4",dose:{value:10,unit:"ml",concentrationM:LAB_STOCK_MOLARITY_M}},
- {id:"CaCO3",dose:{value:10,unit:"g"}},
- {id:"NaCl",dose:{value:10,unit:"g"}}
+ {id:"AgNO3",dose:{value:10,unit:"ml",concentrationM:.1}},
+ {id:"NaCl",dose:{value:10,unit:"ml",concentrationM:.1}},
+ {id:"BaCl2",dose:{value:10,unit:"ml",concentrationM:.1}},
+ {id:"CuSO4",dose:{value:10,unit:"ml",concentrationM:.1}},
+ {id:"Na2CO3",dose:{value:10,unit:"ml",concentrationM:.1}},
+ {id:"KI",dose:{value:10,unit:"ml",concentrationM:.1}},
+ {id:"CaCO3",dose:{value:1,unit:"g"}},
+ {id:"Na",dose:{value:.1,unit:"g"}}
 ];
 export function labQuickReagents(bench:LabBench):LabQuickReagent[]{
  return (bench.quickReagents??defaultLabQuickReagents()).filter(q=>
