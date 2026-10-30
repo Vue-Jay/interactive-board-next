@@ -410,7 +410,8 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // for an ethanol/water mixture.
   const boilingPoint=labIdealBoilingC(v)??(pure?.unit==="ml"?pure.info.boilingC:undefined);
   if(boilingPoint!==undefined&&next>boilingPoint&&!v.stoppered)next=boilingPoint;
-  const gasInventory=v.stoppered?simulateLabInventory(v):undefined;
+  const gasInventory=v.stoppered?simulateLabInventory({...v,
+   volumeMl:labVesselQuantity(v).volumeMl}):undefined;
   const gasMoles=gasInventory?Object.values(gasInventory.retainedGasMol).
    reduce((sum,mol)=>sum+mol,0)+Object.entries(gasInventory.speciesMol).
    reduce((sum,[id,mol])=>sum+(substances.find(s=>s.id===id)?.kind==="газ"?mol:0),0):0;
@@ -1171,7 +1172,7 @@ export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):
  * vessel inspector. The seal temperature is saved, never assumed to equal
  * the current temperature. */
 export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
- const inventory=simulateLabInventory(v);
+ const inventory=simulateLabInventory({...v,volumeMl:labVesselQuantity(v).volumeMl});
  const retained=Object.values(inventory.retainedGasMol).reduce((s,m)=>s+m,0);
  const gasStock=Object.entries(inventory.speciesMol).reduce((s,[id,m])=>
   s+(substances.find(x=>x.id===id)?.kind==="газ"?m:0),0);
