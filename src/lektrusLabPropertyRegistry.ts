@@ -11,6 +11,7 @@ import {labMolarMass,parseBalancedLabEquation} from "./lektrusLabStoichiometry";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {labThermalInfo} from "./lektrusLabPhysicalProperties";
 import {LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
+import {labIsTypicallyWaterSoluble} from "./lektrusLabReactionNetwork";
 type Phase="gas"|"precipitate"|"other";
 export type LabProductIdentity={
  formula:string;name:string;coeff:number;reactionPhase:Phase;
@@ -76,6 +77,9 @@ export function labSubstanceProperties(formula:string,temperatureC=22){
   densityKnown:crystalDensityGPerMl!==undefined||
    liquidDensityGPerMl!==undefined,
   thermalKnown:thermal.known,
-  solubilityKnown:solubilityGPer100gWater!==undefined
+  solubilityKnown:solubilityGPer100gWater!==undefined,
+  /** Qualitative classroom rule, NOT proof of complete dissolution at
+   * arbitrary masses or a numerical solubility. */
+  typicallySolubleInDiluteWater:labIsTypicallyWaterSoluble(formula)
  };
 }

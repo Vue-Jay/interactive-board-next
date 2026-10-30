@@ -1840,6 +1840,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
          {soluble!==undefined&&
           " · Растворимость при "+formatted(v.temperatureC??22)+
           " °C: "+formatted(soluble)+" г/100 г чистой воды"}
+         {soluble===undefined&&property.typicallySolubleInDiluteWater&&
+          " · Обычно растворимо в разбавленной воде; точная степень "+
+          "растворения при данном количестве не рассчитана"}
          {property.meltingC!==undefined&&
           " · t плавления чистой формы: "+formatted(property.meltingC)+" °C"}
          {property.decompositionC!==undefined&&

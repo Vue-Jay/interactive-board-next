@@ -29,13 +29,6 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const calorimetry=load("src/lektrusLabCalorimetry.ts");
 const constants=load("src/lektrusLabMaterialConstants.ts");
-const materialRegistry=load("src/lektrusLabPropertyRegistry.ts",key=>{
- if(key==="./lektrusReactionDatabase")return reaction;
- if(key==="./lektrusLabStoichiometry")return chem;
- if(key==="./lektrusLabMaterialConstants")return constants;
- if(key==="./lektrusLabPhysicalProperties")return thermal;
- assert.equal(key,"./lektrusLabCalorimetry");return calorimetry;
-});
 const dissolution=load("src/lektrusLabDissolution.ts",key=>{
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusLabStoichiometry");return chem;
@@ -47,6 +40,14 @@ const network=load("src/lektrusLabReactionNetwork.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
+const materialRegistry=load("src/lektrusLabPropertyRegistry.ts",key=>{
+ if(key==="./lektrusReactionDatabase")return reaction;
+ if(key==="./lektrusLabStoichiometry")return chem;
+ if(key==="./lektrusLabMaterialConstants")return constants;
+ if(key==="./lektrusLabPhysicalProperties")return thermal;
+ if(key==="./lektrusLabCalorimetry")return calorimetry;
+ assert.equal(key,"./lektrusLabReactionNetwork");return network;
 });
 const waterIonization=load("src/lektrusLabWaterIonization.ts");
 const acidBase=load("src/lektrusLabPH.ts",key=>{
@@ -2876,3 +2877,40 @@ const lumpOfCu=lab.putLabReagent(lab.defaultLabBench(),"v1","Cu",
  {unit:"g",value:10});
 assert.ok(lab.labVesselQuantity(lumpOfCu.vessels[0]).occupiedMl<2);
 console.log("RSC metal densities and weighed solid displacement: OK");
+
+
+// Every supported dilute-water classification is explicitly scoped;
+// no unsupported salt may become dissolved merely from setting "aqueous".
+assert.equal(network.labIsTypicallyWaterSoluble("Zn(NO3)2"),true);
+assert.equal(network.labIsTypicallyWaterSoluble("CH3COOK"),true);
+assert.equal(network.labIsTypicallyWaterSoluble("FeCl3"),true);
+assert.equal(network.labIsTypicallyWaterSoluble("(NH4)2SO4"),true);
+assert.equal(network.labIsTypicallyWaterSoluble("AgCl"),false);
+assert.equal(network.labIsTypicallyWaterSoluble("BaSO4"),false);
+assert.equal(network.labIsTypicallyWaterSoluble("CaCO3"),false);
+assert.equal(network.labIsTypicallyWaterSoluble("PbI2"),false);
+for(const formula of ["NaCl","KNO3","MgCl2","Cu(NO3)2","(NH4)2SO4",
+ "CH3COONa","K2CO3","CaCl2","KOH","BaCl2"]){
+ const dry=network.simulateLabInventory({reagents:[formula],
+  doses:{[formula]:{value:1,unit:"g"}},environment:"aqueous"});
+ assert.ok((dry.solidMol[formula]??0)>0,
+  "Aqueous UI mode may not turn an undiluted dry powder into a solution: "+formula);
+ const wetted=network.simulateLabInventory({
+  reagents:["H2O",formula],
+  doses:{H2O:{value:100,unit:"ml"},[formula]:{value:.01,unit:"g"}},
+  environment:"aqueous"});
+ assert.equal(wetted.solidMol[formula]??0,0,
+  "Dilute, reviewed soluble salt must be classified as dissolved: "+formula);
+ const material=materialRegistry.labSubstanceProperties(formula);
+ assert.equal(material.typicallySolubleInDiluteWater,true);
+}
+for(const formula of ["AgCl","BaSO4","CaCO3","Cu(OH)2",
+ "PbSO4","Fe(OH)3"]){
+ const mixture=network.simulateLabInventory({
+  reagents:["H2O",formula],
+  doses:{H2O:{value:100,unit:"ml"},[formula]:{value:1,unit:"g"}},
+  environment:"aqueous"});
+ assert.ok(mixture.solidMol[formula]>0,
+  "Verified low-solubility precipitate remains a solid: "+formula);
+}
+console.log("All catalog dilute aqueous classifications and dry solids: OK");
