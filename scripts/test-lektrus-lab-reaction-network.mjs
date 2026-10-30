@@ -607,7 +607,7 @@ assert.deepEqual(carbonatePhases.map(x=>x.temperatureC),[20,40]);
 const saturation=load("src/lektrusLabSaturatedSolutionReferences.ts");
 assert.equal(saturation.LAB_SATURATED_SOLUTION_REFERENCES.length,37);
 assert.equal(new Set(saturation.LAB_SATURATED_SOLUTION_REFERENCES.map(x=>
- x.baseFormula+"|"+x.saturationSolidFormula)).size,38);
+ x.baseFormula+"|"+x.saturationSolidFormula)).size,37);
 for(const [formula,solid,percent,density] of [
  ["NaCl","NaCl",26.4,1.201],
  ["KNO3","KNO3",24.1,1.16],
