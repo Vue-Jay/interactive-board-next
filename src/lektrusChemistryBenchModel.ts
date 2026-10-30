@@ -26,7 +26,7 @@ export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
 ];
 /** A work mode selects the useful tools; existing apparatus stays on the table. */
 /** Legacy qualitative/quantitative values are migrated on read. */
-export type LabMode="reactions"|"qualitative"|"quantitative"|"titration"|"solutions"|"synthesis";
+export type LabMode="reactions"|"qualitative"|"quantitative"|"titration"|"solutions"|"synthesis"|"evaporation";
 export const LAB_MODES:{id:LabMode;name:string;description:string;
  glassware:LabGlassware[];devices:LabAvailableDevice[]}[]=[
  {id:"reactions",name:"Реакции",
@@ -41,6 +41,10 @@ export const LAB_MODES:{id:LabMode;name:string;description:string;
   description:"Растворение, дозирование и перемешивание",
   glassware:["beaker","pipette","flask","conical"],
   devices:["stirrer","hotplate","tripod"]},
+ {id:"evaporation",name:"Выпаривание",
+  description:"Нагревание водного раствора, удаление растворителя и рост кристаллов",
+  glassware:["dish","beaker","flask","conical","pipette"],
+  devices:["hotplate","burner","tripod","stirrer"]},
  {id:"synthesis",name:"Синтез",
   description:"Нагревание, получение и сбор продуктов проверенных превращений",
   glassware:["flask","conical","tube","beaker","crucible","dish"],
