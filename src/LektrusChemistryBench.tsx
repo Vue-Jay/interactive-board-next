@@ -1848,6 +1848,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
             " г кристаллогидрата/100 г воды (не расчёт безводной соли)"}
           </span>
          )}
+         {property.hydratedCrystalDensityReferences.map(hydrate=>
+          <span key={hydrate.hydrateFormula} className="lektrus-lab-hydrate-reference">
+           {" · ρ "+hydrate.hydrateFormula+": "+
+            formatted(hydrate.densityGPerMl)+" г/мл (кристаллогидрат)"}
+          </span>
+         )}
          {soluble===undefined&&property.typicallySolubleInDiluteWater&&
           " · Обычно растворимо в разбавленной воде; точная степень "+
           "растворения при данном количестве не рассчитана"}
