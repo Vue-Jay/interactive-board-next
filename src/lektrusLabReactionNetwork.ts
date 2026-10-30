@@ -100,7 +100,8 @@ export function simulateLabInventory(input:{
  environment:ReactionEnvironment;temperatureC?:number;stoppered?:boolean;
  chemicalInventory?:LabChemicalSnapshot;
  /** Partial progress of a measured gas-generating reaction. */
- reactionAmounts?:LabReactionAmounts;
+ reactionAmounts?:Pick<LabReactionAmounts,"equation"|"productsMol"|"remainingMol">&
+  Partial<LabReactionAmounts>;
  /** Persisted kinetic partition for a verified single-salt water mixture. */
  binarySaltPhase?:{formula:string;solidMol:number};
  /** Measured total liquid volume, independent of solute molar amounts. */
@@ -140,8 +141,10 @@ export function simulateLabInventory(input:{
   knownRows.find(entry=>entry.row.equation===progress.equation&&
    entry.row.environment===input.environment&&
    entry.row.observation==="gas"):undefined;
- if(progressCase&&progress&&Number.isFinite(progress.extentMol)&&
-  progress.extentMol>=0&&progress.extentMol<=progress.maxExtentMol+1e-9){
+ if(progressCase&&progress&&typeof progress.extentMol==="number"&&
+  typeof progress.maxExtentMol==="number"&&Number.isFinite(progress.extentMol)&&
+  Number.isFinite(progress.maxExtentMol)&&progress.extentMol>=0&&
+  progress.extentMol<=progress.maxExtentMol+1e-9){
   const {row,equation}=progressCase;
   if(equation.reactants.every(term=>
    available(inventory.speciesMol,term.formula)+1e-9>=

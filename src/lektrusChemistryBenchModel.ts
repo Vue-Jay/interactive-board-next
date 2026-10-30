@@ -445,7 +445,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    reagents:updatedReagents},next,seconds,stirring,v.binarySaltPhase,
    v.physicalProcess==="dissolving"&&!v.binarySaltPhase);
   const nextSalt=kinetic?.state;
-  const phaseMotion=kinetic?.active?
+  const phaseMotion:LabVessel["physicalProcess"]=kinetic?.active?
    (kinetic.direction==="crystallizing"?"crystallizing":"dissolving"):undefined;
   const kineticChanged=!!nextSalt&&(nextSalt.formula!==v.binarySaltPhase?.formula||
    Math.abs(nextSalt.solidMol-(v.binarySaltPhase?.solidMol??-1))>1e-10);
