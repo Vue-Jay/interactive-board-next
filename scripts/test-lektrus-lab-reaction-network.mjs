@@ -488,9 +488,9 @@ console.log("Twelve dry specific heats, four crystal densities, five solid phase
 // binary saturation or a fictitious source of dry-crystal mass.
 const hydrates=load("src/lektrusLabHydrateReferences.ts");
 const rows=hydrates.LAB_HYDRATE_SOLUBILITY_REFERENCES;
-assert.equal(rows.length,26);
-assert.equal(new Set(rows.map(x=>x.baseFormula)).size,25);
-assert.equal(new Set(rows.map(x=>x.hydrateFormula)).size,26);
+assert.equal(rows.length,36);
+assert.equal(new Set(rows.map(x=>x.baseFormula)).size,33);
+assert.equal(new Set(rows.map(x=>x.hydrateFormula)).size,36);
 let measured=0;
 const waterKnots=hydrates.LAB_HYDRATE_KNOT_TEMPERATURES_C;
 for(const row of rows){
@@ -520,7 +520,7 @@ for(const row of rows){
   assert.equal(sample.massGPer100gWater,extra.massGPer100gWater);
  }
 }
-assert.equal(measured,102);
+assert.equal(measured,137);
 assert.equal(hydrates.labHydrateSolubilityAtTemperature(
  "CuSO4·5H2O",22),undefined,
  "Unmeasured 22 °C must not be guessed from 20 and 40 °C");
@@ -551,7 +551,7 @@ assert.equal(zinc.length,2,
 assert.deepEqual(zinc.map(x=>x.temperatureC),[20,60]);
 assert.equal(registryProps.labSubstanceProperties("NaCl",22)
  .hydratedSolubilityReferences.length,0);
-console.log("26 hydrate polymorph reference rows with 102 exact Merck measurements and zero guessed knots");
+console.log("36 hydrate forms with 137 exact measured temperatures; no invented points");
 
 
 const crystalHydrates=hydrates.LAB_HYDRATE_CRYSTAL_DENSITIES;
@@ -573,3 +573,65 @@ for(const [hydrateFormula,baseFormula,density] of [
   "A crystal hydrate may NOT overwrite true density of the anhydrous salt");
 }
 console.log("Five crystal hydrate true-density references remain distinct from pure anhydrous solids");
+
+
+// Added second batch: identities that change their hydration phases as the
+// water temperature changes. Treat each crystal form separately.
+for(const [formula,t,expected] of [
+ ["Na2CO3·10H2O",20,21.66],
+ ["Na2CO3·H2O",40,48.9],
+ ["Na2SO4·10H2O",0,4.56],
+ ["Na3PO4·12H2O",100,108],
+ ["KOH·H2O",80,160],
+ ["NaOH·H2O",20,109.22],
+ ["NaH2PO4·2H2O",40,138.2],
+ ["CH3COONa·3H2O",58,138],
+ ["FeSO4·H2O",80,43.8],
+ ["Sr(OH)2·8H2O",100,24.2]
+])approximately(hydrates.labHydrateSolubilityAtTemperature(
+ formula,t)?.massGPer100gWater,expected);
+for(const [formula,t] of [
+ ["Na2CO3·10H2O",40],["Na2CO3·H2O",20],
+ ["FeSO4·H2O",100],["NaH2PO4·2H2O",42],
+ ["Sr(OH)2·8H2O",25]
+])assert.equal(hydrates.labHydrateSolubilityAtTemperature(formula,t),undefined);
+const carbonatePhases=registryProps.labSubstanceProperties("Na2CO3",22)
+ .hydratedSolubilityReferences;
+assert.equal(carbonatePhases.length,2);
+assert.deepEqual(carbonatePhases.map(x=>x.hydrateFormula),
+ ["Na2CO3·10H2O","Na2CO3·H2O"]);
+assert.deepEqual(carbonatePhases.map(x=>x.temperatureC),[20,40]);
+
+// Saturated aqueous solution has a separately MEASURED concentration and
+// density; they cannot be borrowed for 0.1 mol/L prepared cabinet stock.
+const saturation=load("src/lektrusLabSaturatedSolutionReferences.ts");
+assert.equal(saturation.LAB_SATURATED_SOLUTION_REFERENCES.length,37);
+assert.equal(new Set(saturation.LAB_SATURATED_SOLUTION_REFERENCES.map(x=>
+ x.baseFormula+"|"+x.saturationSolidFormula)).size,37);
+for(const [formula,solid,percent,density] of [
+ ["NaCl","NaCl",26.4,1.201],
+ ["KNO3","KNO3",24.1,1.16],
+ ["AgNO3","AgNO3",68.6,2.18],
+ ["CuSO4","CuSO4·5H2O",17.2,1.1965],
+ ["Na2SO4","Na2SO4·10H2O",16.1,1.15],
+ ["NaOH","NaOH·H2O",52.2,1.55],
+ ["Ba(OH)2","Ba(OH)2·8H2O",3.36,1.04],
+ ["CH3COONa","CH3COONa·3H2O",31.7,1.17]
+]){
+ const reference=saturation.labSaturatedSolutionReferences(formula).find(
+  r=>r.saturationSolidFormula===solid);
+ assert.ok(reference);
+ approximately(reference.concentrationMassPercent,percent);
+ approximately(reference.solutionDensityGPerMl,density);
+ assert.equal(reference.temperatureC,20);
+ assert.equal(reference.sourceUrl,saturation.LAB_SATURATED_SOLUTION_SOURCE);
+ assert.deepEqual(registryProps.labSubstanceProperties(formula)
+  .saturatedSolutionReferences.filter(x=>x.saturationSolidFormula===solid),
+  [reference]);
+}
+assert.equal(saturation.labSaturatedSolutionReferences("HCl").length,0);
+assert.equal(registryProps.labSubstanceProperties("NaCl")
+ .liquidDensityGPerMl,undefined);
+assert.equal(registryProps.labSubstanceProperties("CuSO4")
+ .liquidDensityGPerMl,undefined);
+console.log("37 validated saturated water-solution densities kept distinct from dilute stocks and pure substances");

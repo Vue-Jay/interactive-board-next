@@ -83,7 +83,33 @@ export const LAB_HYDRATE_SOLUBILITY_REFERENCES:readonly LabHydrateSolubilityRow[
  {baseFormula:"ZnSO4",waters:7,hydrateFormula:"ZnSO4·7H2O",
   massGPer100gWater:[41.6,53.8,null,null,null,null]},
  {baseFormula:"ZnSO4",waters:1,hydrateFormula:"ZnSO4·H2O",
-  massGPer100gWater:[null,null,null,76.5,66.7,60.5]}
+  massGPer100gWater:[null,null,null,76.5,66.7,60.5]},
+ // Additional exact Merck tabulations. Both hydrated and unhydrated phases
+ // can be listed for one salt; never substitute crystal-water quantities.
+ {baseFormula:"KOH",waters:1,hydrateFormula:"KOH·H2O",
+  massGPer100gWater:[null,null,136.4,147,160,178]},
+ {baseFormula:"NaOH",waters:1,hydrateFormula:"NaOH·H2O",
+  massGPer100gWater:[null,109.22,126,178,null,null]},
+ {baseFormula:"Na3PO4",waters:12,hydrateFormula:"Na3PO4·12H2O",
+  massGPer100gWater:[1.5,12.11,31,55,81,108]},
+ {baseFormula:"Na2CO3",waters:10,hydrateFormula:"Na2CO3·10H2O",
+  massGPer100gWater:[6.86,21.66,null,null,null,null]},
+ {baseFormula:"Na2CO3",waters:1,hydrateFormula:"Na2CO3·H2O",
+  massGPer100gWater:[null,null,48.9,46.2,44.5,44.5]},
+ {baseFormula:"Na2SO4",waters:10,hydrateFormula:"Na2SO4·10H2O",
+  massGPer100gWater:[4.56,19.19,null,null,null,null]},
+ {baseFormula:"NaH2PO4",waters:2,hydrateFormula:"NaH2PO4·2H2O",
+  massGPer100gWater:[57.7,85.2,138.2,null,null,null]},
+ {baseFormula:"CH3COONa",waters:3,hydrateFormula:"CH3COONa·3H2O",
+  massGPer100gWater:[36.3,46.42,65.4,null,null,null],
+  extra:[{temperatureC:58,massGPer100gWater:138}]},
+ // FeSO4 monohydrate entry is unambiguous only at 80 °C;
+ // the source renders a negative 100 °C datum (-31.6), so omit it.
+ {baseFormula:"FeSO4",waters:1,hydrateFormula:"FeSO4·H2O",
+  massGPer100gWater:[null,null,null,null,43.8,null]},
+ // Reference-only chemical base, not present in cabinet at this revision.
+ {baseFormula:"Sr(OH)2",waters:8,hydrateFormula:"Sr(OH)2·8H2O",
+  massGPer100gWater:[0.35,0.7,1.5,3.13,7.02,24.2]}
 ];
 
 /** Fetch an ACTUALLY measured point of a specific crystal-water formula. */

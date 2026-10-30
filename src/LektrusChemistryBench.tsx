@@ -1854,6 +1854,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
             formatted(hydrate.densityGPerMl)+" г/мл (кристаллогидрат)"}
           </span>
          )}
+         {property.saturatedSolutionReferences.map(reference=>
+          <span key={"sat-"+reference.saturationSolidFormula}
+           className="lektrus-lab-hydrate-reference">
+           {" · Насыщенный раствор "+reference.saturationSolidFormula+
+            " (справочно, "+formatted(reference.temperatureC)+" °C): "+
+            formatted(reference.concentrationMassPercent)+
+            " % масс., ρ = "+formatted(reference.solutionDensityGPerMl)+
+            " г/мл; не плотность приготовленного раствора"}
+          </span>
+         )}
          {soluble===undefined&&property.typicallySolubleInDiluteWater&&
           " · Обычно растворимо в разбавленной воде; точная степень "+
           "растворения при данном количестве не рассчитана"}

@@ -37,6 +37,7 @@ const material=load("src/lektrusLabMaterialConstants.ts");
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const heat=load("src/lektrusLabCalorimetry.ts");
 const hydrate=load("src/lektrusLabHydrateReferences.ts");
+const saturated=load("src/lektrusLabSaturatedSolutionReferences.ts");
 
 const has=(value)=>typeof value==="number"&&Number.isFinite(value);
 const stockRows=db.substances.map(s=>{
@@ -97,6 +98,7 @@ const solubilityCells=Object.entries(material.LAB_SALT_BINARY_SOLUBILITY_G_PER_1
   complete:values.every(has)
  }));
 const hydrateRows=hydrate.LAB_HYDRATE_SOLUBILITY_REFERENCES;
+const saturationRows=saturated.LAB_SATURATED_SOLUTION_REFERENCES;
 const hydrateDensities=hydrate.LAB_HYDRATE_CRYSTAL_DENSITIES;
 const hydrateBases=new Set(hydrateRows.map(row=>row.baseFormula));
 const cabinetBaseSet=new Set(db.substances.map(s=>s.id));
@@ -109,6 +111,9 @@ const rawTotals={
  hydrateReferenceAllBases:hydrateBases.size,
  hydrateReferenceCabinetBases:[...hydrateBases].filter(x=>cabinetBaseSet.has(x)).length,
  hydrateReferenceMeasuredPoints:hydrateKnownCells,
+ saturatedSolutionDensityRecords:saturationRows.length,
+ saturatedSolutionDensityCabinetBases:new Set(saturationRows.map(r=>r.baseFormula)
+  .filter(formula=>cabinetBaseSet.has(formula))).size,
  binarySolubilityAnyTemperature:
   solubilityCells.length+3, // NaCl and independent PbCl2/PbBr2
  binarySolubilityMeasuredPoints:
@@ -128,8 +133,9 @@ for(const row of stockRows){
  bucket.total++;
  if(row.missing.length)bucket.rowsWithGaps++;
 }
-const report={schemaVersion:3,rawTotals,
+const report={schemaVersion:4,rawTotals,
  hydratedReferenceRows:hydrateRows,
+ saturatedSolutionDensityRows:saturationRows,
  solubilityCurveDetail:solubilityCells,
  hydratesNotSimulated:[...material.LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL].sort(),
  applicable:counted,byKind,
@@ -184,6 +190,33 @@ if(process.argv.includes("--verify")){
   assert.ok(!material.LAB_CRYSTAL_DENSITY_G_ML[crystal.hydrateFormula],
    "A hydrated density must not be registered as anhydrous");
  }
+ // A saturated solution is a distinct 20°C aqueous material. Verify
+ // the published % mass data against the independent saturation source's
+ // g/100g water knots, without treating hydrate mass as dry salt mass.
+ const saturationPairs=new Set();
+ for(const row of saturationRows){
+  assert.ok(cabinetBaseSet.has(row.baseFormula),
+   "Saturation density must belong to an existing cabinet substance");
+  const identity=row.baseFormula+"|"+row.saturationSolidFormula;
+  assert.ok(!saturationPairs.has(identity),"Repeated saturated mixture "+identity);
+  saturationPairs.add(identity);
+  assert.equal(row.temperatureC,20);
+  assert.ok(row.concentrationMassPercent>0&&row.concentrationMassPercent<100);
+  assert.ok(row.solutionDensityGPerMl>0.9&&row.solutionDensityGPerMl<3);
+  assert.ok(row.sourceUrl.startsWith("https://"));
+  const hydrateSample=hydrate.labHydrateSolubilityAtTemperature(
+   row.saturationSolidFormula,20);
+  const solubility=hydrateSample?.massGPer100gWater??
+   (row.saturationSolidFormula===row.baseFormula?
+    material.labSingleSaltSolubilityGPer100gWater(row.baseFormula,20):undefined);
+  if(has(solubility)){
+   const expectedMassPercent=100*solubility/(100+solubility);
+   assert.ok(Math.abs(expectedMassPercent-row.concentrationMassPercent)<
+     Math.max(0.05,0.02*row.concentrationMassPercent),
+    "Reference sources disagree on saturated mass fraction: "+identity+
+    ", "+expectedMassPercent+" vs "+row.concentrationMassPercent);
+  }
+ }
  assert.ok(hydrateKnownCells>0);
  assert.ok(producedOnly.every(x=>x.molarMassKnown),
   "Every existing reviewed product must have a calculable formula mass");
@@ -217,7 +250,10 @@ if(process.argv.includes("--json")){
   rawTotals.hydrateReferenceAllBases+"), "+rawTotals.hydrateReferenceMeasuredPoints+
   " измеренных температурных точек; плотностей гидратов: "+
   rawTotals.hydrateCrystalDensityRecords+
-  ". Эти данные не являются расчётом "+
+  ". Плотностей насыщенных растворов при 20 °C: "+
+  rawTotals.saturatedSolutionDensityRecords+
+  " (формул в шкафу: "+rawTotals.saturatedSolutionDensityCabinetBases+")."+
+  " Эти данные не являются расчётом "+
   "насыщения безводного вещества.",
   "",
   "Кривых с измерениями: "+rawTotals.binarySolubilityAnyTemperature+
@@ -245,6 +281,10 @@ if(process.argv.includes("--json")){
   rawTotals.hydrateReferenceAllBases+" reference formulas, "+
   rawTotals.hydrateReferenceMeasuredPoints+" measured exact temperature points, "+
   rawTotals.hydrateCrystalDensityRecords+" hydrate crystal densities");
+ console.log("Saturated water solution: "+
+  rawTotals.saturatedSolutionDensityRecords+
+  " verified density/mass fraction pairs at 20 °C, "+
+  rawTotals.saturatedSolutionDensityCabinetBases+" stock compounds");
  console.log("Measured solubility knots: "+rawTotals.binarySolubilityMeasuredPoints+
   ", curves with any data: "+rawTotals.binarySolubilityAnyTemperature+
   ", complete 6-knot curves: "+rawTotals.binarySolubilityFullSixPoints);
