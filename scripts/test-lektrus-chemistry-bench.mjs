@@ -2085,6 +2085,9 @@ assert.equal(lab.labVesselContents(preserved.vessels[0]).solid[0].formula,"AgCl"
  "Even unsupported next-stage chemistry must not delete a known solid");
 assert.equal(lab.labVesselContents(preserved.vessels[0]).precipitateG,
  beforeDye.precipitateG);
+assert.ok(lab.labVesselContents(preserved.vessels[0]).solution.some(v=>
+ v.formula==="CuSO4"&&Math.abs(v.mmol-1)<1e-6),
+ "New measured stock must remain visible beside pre-existing AgCl");
 assert.match(read("src/LektrusChemistryBench.tsx"),
  /contents.precipitateG!==undefined&&contents.precipitateG>1e-10/,
  "The renderer must show actual solid even if the original visual effect ends");
