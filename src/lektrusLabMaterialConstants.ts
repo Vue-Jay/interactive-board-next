@@ -107,20 +107,26 @@ export const LAB_SALT_SOLUBILITY_TEMPERATURES_C=[0,20,40,60,80,100] as const;
 export function labSingleSaltSolubilityGPer100gWater(
  formula:string,tempC:number):number|undefined{
  if(formula==="NaCl")return labNaClSolubilityGPer100gWater(tempC);
- if(formula==="PbCl2"){
-  // Solubility of ANHYDROUS lead(II) chloride at 0,20,100 °C,
-  // PubChem (Kirk-Othmer): 0.673, 0.99, 3.34 g / 100 mL WATER.
-  // https://pubchem.ncbi.nlm.nih.gov/compound/24459
-  // Convert water-volume basis to g/100 g solvent with tabulated
-  // approximate PURE WATER densities (g/mL), then interpolate.
-  // No Ksp-based extrapolation to concentrated or mixed electrolytes.
+ if(formula==="PbCl2"||formula==="PbBr2"){
+  // Binary solubility of the ANHYDROUS lead halide in PURE WATER.
+  // PbCl2, PubChem 24459 (Kirk-Othmer): 0.673,0.99,3.34 g/100 mL
+  // water at 0/20/100°C.
+  // PbBr2, Patnaik Handbook of Inorganic Chemicals, p.461:
+  // 4.55,8.44,44.1 g/L of water at 0/20/100°C.
+  // https://rushim.ru/books/spravochniki/handbook-of-inorganic-chemicals.pdf
+  // Divide by published pure-water densities to convert to
+  // g per 100g of solvent; no extrapolation above 100°C.
   if(!Number.isFinite(tempC)||tempC<0||tempC>100)return;
-  const points=[[0,.673,.99984],[20,.99,.9982],[100,3.34,.9584]];
-  for(let i=1;i<points.length;i++){
-   if(tempC<=points[i][0]){
-    const lo=points[i-1],hi=points[i];
-    const before=lo[1]/lo[2],after=hi[1]/hi[2];
-    return before+(after-before)*(tempC-lo[0])/(hi[0]-lo[0]);
+  const gramPer100Ml=formula==="PbCl2"?
+   [.673,.99,3.34]:[.455,.844,4.41];
+  const waterDensity=[.99984,.9982,.9584];
+  const temperatures=[0,20,100];
+  for(let i=1;i<temperatures.length;i++){
+   if(tempC<=temperatures[i]){
+    const before=gramPer100Ml[i-1]/waterDensity[i-1];
+    const after=gramPer100Ml[i]/waterDensity[i];
+    return before+(after-before)*(tempC-temperatures[i-1])/
+     (temperatures[i]-temperatures[i-1]);
    }
   }
   return;
@@ -153,7 +159,7 @@ export function labEquilibrateSingleSaltCrystals(
  const waterMass=(inventory.speciesMol.H2O??0)*18.01528;
  const molarMass:Record<string,number>={
   NaCl:58.44277,KNO3:101.1032,KCl:74.5513,NaNO3:84.9947,
-  PbCl2:278.106
+  PbCl2:278.106,PbBr2:367.008
  };
  const capacityMol=waterMass*solubility/100/molarMass[salt];
  const crystals=Math.max(0,mol-Math.max(0,capacityMol));
