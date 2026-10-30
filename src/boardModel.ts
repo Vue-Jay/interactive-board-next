@@ -912,7 +912,34 @@ export function parseDocument(raw: string): DocumentData {
              (v.filteredResidue.massG==null||Number.isFinite(v.filteredResidue.massG))))&&
             (v.filteredSolution==null||(typeof v.filteredSolution.sourceEquation==="string"&&
              v.filteredSolution.sourceEquation.length<=500&&
-             Array.isArray(v.filteredSolution.solutes)&&v.filteredSolution.solutes.length<=6))&&
+             Array.isArray(v.filteredSolution.solutes)&&
+             v.filteredSolution.solutes.length<=maxSavedLabReagents&&
+             v.filteredSolution.solutes.every((id:unknown)=>
+              typeof id==="string"&&id.length>0&&id.length<=70)&&
+             (v.filteredSolution.volumeMl==null||
+              (Number.isFinite(v.filteredSolution.volumeMl)&&
+               v.filteredSolution.volumeMl>0&&v.filteredSolution.volumeMl<=10000))))&&
+            (v.chemicalInventory==null||(!!v.chemicalInventory&&
+             typeof v.chemicalInventory==="object"&&!Array.isArray(v.chemicalInventory)&&
+             !!v.chemicalInventory.speciesMol&&!!v.chemicalInventory.solidMol&&
+             typeof v.chemicalInventory.speciesMol==="object"&&
+             typeof v.chemicalInventory.solidMol==="object"&&
+             !Array.isArray(v.chemicalInventory.speciesMol)&&
+             !Array.isArray(v.chemicalInventory.solidMol)&&
+             Object.keys(v.chemicalInventory.speciesMol).length<=maxSavedLabReagents&&
+             Object.entries(v.chemicalInventory.speciesMol).every(([formula,mol])=>
+              formula.length>0&&formula.length<=70&&
+              typeof mol==="number"&&Number.isFinite(mol)&&mol>0&&mol<=10000)&&
+             Object.entries(v.chemicalInventory.solidMol).every(([formula,mol])=>
+              typeof mol==="number"&&Number.isFinite(mol)&&mol>=0&&
+              mol<=(v.chemicalInventory.speciesMol[formula]??-1)+1e-9)&&
+             (v.chemicalInventory.retainedGasMol==null||
+              (typeof v.chemicalInventory.retainedGasMol==="object"&&
+               !Array.isArray(v.chemicalInventory.retainedGasMol)&&
+               Object.keys(v.chemicalInventory.retainedGasMol).length<=maxSavedLabReagents&&
+               Object.entries(v.chemicalInventory.retainedGasMol).every(([formula,mol])=>
+                formula.length>0&&formula.length<=70&&
+                typeof mol==="number"&&Number.isFinite(mol)&&mol>=0&&mol<=10000)))))&&
             (v.physicalProcess==null||v.physicalProcess==="dissolving")&&
             (v.physicalStartedAtMs==null||(Number.isFinite(v.physicalStartedAtMs)&&
              v.physicalStartedAtMs>=0))&&
