@@ -13,14 +13,17 @@
  */
 /** Same structural dose shape as the bench, without a runtime cycle. */
 type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
-export type EvaporatingLiquid="H2O"|"C2H5OH"|"CH3OH"|"C3H8O"|"Br2";
+export type EvaporatingLiquid="H2O"|"C2H5OH"|"CH3OH"|"C3H8O"|"Br2"|"CH3CHO";
 type Antoine={minK:number;maxK:number;A:number;B:number;C:number;molG:number;densityGml:number};
 const table:Record<EvaporatingLiquid,Antoine>={
  H2O:{minK:255.9,maxK:373,A:4.6543,B:1435.264,C:-64.848,molG:18.015,densityGml:.997},
  C2H5OH:{minK:292.77,maxK:366.63,A:5.24677,B:1598.673,C:-46.424,molG:46.069,densityGml:.789},
  CH3OH:{minK:288.1,maxK:356.83,A:5.20409,B:1581.341,C:-33.5,molG:32.042,densityGml:.792},
  C3H8O:{minK:329.92,maxK:362.41,A:4.8610,B:1357.427,C:-75.814,molG:60.096,densityGml:.785},
- Br2:{minK:224.5,maxK:331.4,A:2.94529,B:638.258,C:-115.144,molG:159.808,densityGml:3.11}
+ Br2:{minK:224.5,maxK:331.4,A:2.94529,B:638.258,C:-115.144,molG:159.808,densityGml:3.1055},
+ // NIST WebBook acetaldehyde (Coles and Popper 1950), 272.9–307.6 K:
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C75070&Type=ANTOINE
+ CH3CHO:{minK:272.9,maxK:307.6,A:5.1883,B:1637.083,C:22.317,molG:44.053,densityGml:.7846}
 };
 export const LAB_VAPOR_REFERENCE=table;
 /** Latent heat at (or near) normal boiling, J/g of the NEAT liquid.
@@ -32,10 +35,13 @@ export const LAB_VAPOR_REFERENCE=table;
  * IPA 160 kcal/kg (669.44 J/g): Labconco RapidVap manual, NIST-hosted
  * https://www.nist.gov/system/files/documents/2023/01/25/RapidVap%20Vacuum%2C%20N2%20%26%20N2-48%20Evaporation%20Systems%20%287490100%20Rev%20L%29.pdf
  * Bromine 31.3 kJ/mol near 312K: NIST WebBook (31.3e3/159.808 J/g).
+ * Pure acetaldehyde 25.76 kJ/mol at 293.3K: NIST WebBook
+ * https://webbook.nist.gov/cgi/cbook.cgi?ID=C75070&Mask=4
  * Reference temperatures vary; no promise of engineering precision.
  */
 export const LAB_LATENT_VAPORIZATION_J_PER_G:Readonly<Record<EvaporatingLiquid,number>>={
- H2O:2257,C2H5OH:846,CH3OH:1100,C3H8O:669.44,Br2:31300/159.808
+ H2O:2257,C2H5OH:846,CH3OH:1100,C3H8O:669.44,Br2:31300/159.808,
+ CH3CHO:25760/44.053
 };
 export function labSaturationPressureKPa(id:string,tempC:number):number|undefined{
  const entry=table[id as EvaporatingLiquid];if(!entry)return;
@@ -61,6 +67,10 @@ export function labSaturationPressureKPa(id:string,tempC:number):number|undefine
   return Math.pow(10,2.94529-638.258/(kelvin-115.144))*100;
  if(id==="Br2"&&kelvin>=343&&kelvin<=383)
   return Math.pow(10,4.70827-1562.264/(kelvin+.628))*100;
+ // Above the low-temperature acetaldehyde fit, NIST's independent
+ // 293.4–377.5 K correlation avoids extrapolating outside its domain.
+ if(id==="CH3CHO"&&kelvin>307.6&&kelvin<=377.5)
+  return Math.pow(10,3.68639-822.894/(kelvin-69.899))*100;
  if(kelvin<entry.minK||kelvin>entry.maxK)return;
  return Math.pow(10,entry.A-entry.B/(kelvin+entry.C))*100;
 }
