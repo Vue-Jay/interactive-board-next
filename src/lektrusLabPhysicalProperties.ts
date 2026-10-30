@@ -78,6 +78,10 @@ const physical:Record<string,LabThermalRecord>={
  // https://pubchem.ncbi.nlm.nih.gov/compound/177 (pure ethanal)
  CH3CHO:{meltingC:-123.4,boilingC:20.8,
   note:"Чистый этаналь кипит около комнатной температуры; это не температура кипения раствора."},
+ // FeCl2 pure anhydrous crystal melts near 674 C; air oxidation can
+ // interfere in practice (PubChem CID 24458 / Merck Index).
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24458
+ FeCl2:{meltingC:674,note:"Безводный хлорид железа(II); на воздухе возможны окисление и гидролиз."},
  // Further SPECIFIC pure solid forms from PubChem experimental records.
  // No phase-transition numbers are inherited by water solutions or hydrates.
  // MgCl2 (anhydrous) melts at ~714 C, PubChem CID 5360315 / DOE PAC:
