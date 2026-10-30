@@ -30,7 +30,23 @@ export function labSaturationPressureKPa(id:string,tempC:number):number|undefine
  // Table S2: A=8.00308, B=1505.52, C=211.6.
  if(id==="C3H8O"&&tempC>=10&&tempC<56.77)
   return Math.pow(10,8.00308-1505.52/(tempC+211.6))*.133322368;
- if(!Number.isFinite(kelvin)||kelvin<entry.minK||kelvin>entry.maxK)return;
+ if(!Number.isFinite(kelvin))return;
+ // Use the adjacent NIST measurement ranges above normal boiling and
+ // a narrow interpolation across their gaps. A hot stoppered vessel must
+ // be able to release its stopper instead of silently losing vapor data.
+ if(id==="H2O"&&kelvin>373&&kelvin<=379)
+  return Math.pow(10,5.08354-1663.125/(kelvin-45.622))*100;
+ if(id==="H2O"&&kelvin>=379&&kelvin<=573)
+  return Math.pow(10,3.55959-643.748/(kelvin-198.043))*100;
+ if(id==="C2H5OH"&&kelvin>366.63&&kelvin<=513.91)
+  return Math.pow(10,4.92531-1432.526/(kelvin-61.819))*100;
+ if(id==="CH3OH"&&kelvin>356.83&&kelvin<=512.63)
+  return Math.pow(10,5.15853-1569.613/(kelvin-34.846))*100;
+ if(id==="Br2"&&kelvin>331.4&&kelvin<=343)
+  return Math.pow(10,2.94529-638.258/(kelvin-115.144))*100;
+ if(id==="Br2"&&kelvin>=343&&kelvin<=383)
+  return Math.pow(10,4.70827-1562.264/(kelvin+.628))*100;
+ if(kelvin<entry.minK||kelvin>entry.maxK)return;
  return Math.pow(10,entry.A-entry.B/(kelvin+entry.C))*100;
 }
 export type LabEvaporationState={
