@@ -8,6 +8,7 @@ import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,typ
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
 import {labKnownHeatCapacityJPerK} from "./lektrusLabCalorimetry";
+import {labVisibleBinarySaltSolid} from "./lektrusLabDissolution";
 import {labCanStopper,labVaporPressureKPa,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
@@ -141,9 +142,13 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const solutionNames=contents.solution.map(x=>x.formula+(x.mmol===undefined?"":" ("+readable(x.mmol)+" ммоль)"));
  const solidNames=contents.solid.map(x=>x.formula+(x.massG===undefined?"":" ("+readable(x.massG)+" г)"));
  const evaporatedWaterMl=vessel.ventedVaporMl?.H2O??0;
- const crystallineSalt=Object.entries(inventory?.solidMol??{}).find(([formula,mol])=>
-  mol>1e-12&&labSingleSaltSolubilityGPer100gWater(formula,25)!==undefined);
- const growingSaltCrystals=evaporatedWaterMl>0&&!!crystallineSalt;
+ const realCrystals=labVisibleBinarySaltSolid(vessel,vessel.binarySaltPhase,vessel.temperatureC??22);
+ const crystallineSalt=realCrystals&&realCrystals.solidMol>1e-12?
+  [realCrystals.formula,realCrystals.solidMol] as const:
+  Object.entries(inventory?.solidMol??{}).find(([formula,mol])=>
+   mol>1e-12&&labSingleSaltSolubilityGPer100gWater(formula,vessel.temperatureC??22)!==undefined);
+ const growingSaltCrystals=(evaporatedWaterMl>0||
+  vessel.physicalProcess==="crystallizing")&&!!crystallineSalt;
  const sedimentH=contents.precipitateFraction===undefined?0:
   Math.min(105*liquidFraction,Math.max(3,106*contents.precipitateFraction));
  const totalLabel=[volumeMl>0?volumeMl.toLocaleString("ru-RU")+" мл":null,
@@ -634,20 +639,20 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    const active=openBurette||current.vessels.some(labReactionNeedsTick)||
     current.vessels.some(v=>!v.stoppered&&
      labVaporPressureKPa(v,v.temperatureC??22)!==undefined)||
-    current.vessels.some(v=>v.physicalProcess==="dissolving")||
+    current.vessels.some(v=>(v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing"))||
     placedLabDevices(current).some(d=>d.powered||
     (d.temperatureC??22)>22.1)||
     current.vessels.some(v=>(v.temperatureC??22)>22.1);
    if(!active)return;
    // Fine-grained updates only while titrating. Heating needs fewer board writes.
    const ambientOnly=!openBurette&&!current.vessels.some(labReactionNeedsTick)&&
-    !current.vessels.some(v=>v.physicalProcess==="dissolving")&&
+    !current.vessels.some(v=>(v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing"))&&
     !placedLabDevices(current).some(d=>d.powered||(d.temperatureC??22)>22.1)&&
     !current.vessels.some(v=>(v.temperatureC??22)>22.1);
    // Quiet, ambient evaporation updates every ~10s rather than generating
    // hundreds of unnecessary board versions per classroom hour.
    if(!openBurette&&!current.vessels.some(labReactionNeedsTick)&&
-    !current.vessels.some(v=>v.physicalProcess==="dissolving")&&
+    !current.vessels.some(v=>(v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing"))&&
     Date.now()-(current.simulationAtMs??0)<(ambientOnly?9800:1900))return;
    const next=advanceLabSimulation(current,Date.now());
    if(next!==current)changeRef.current?.(next);
@@ -1697,8 +1702,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     simulateLabInventory({...v,volumeMl:quantity.volumeMl}):
     v.doses&&!v.filteredResidue&&!v.filteredSolution?
     simulateLabInventory(v):undefined;
-   const crystallineSalt=Object.entries(inventory?.solidMol??{}).find(([formula,mol])=>
-    mol>1e-12&&labSingleSaltSolubilityGPer100gWater(formula,25)!==undefined);
+   const realCrystals=labVisibleBinarySaltSolid(v,v.binarySaltPhase,v.temperatureC??22);
+   const crystallineSalt=realCrystals&&realCrystals.solidMol>1e-12?
+    [realCrystals.formula,realCrystals.solidMol] as const:
+    Object.entries(inventory?.solidMol??{}).find(([formula,mol])=>
+     mol>1e-12&&labSingleSaltSolubilityGPer100gWater(formula,v.temperatureC??22)!==undefined);
    const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
     "масса не определена":(labMolarMass(formula)!*mmol/1000).toLocaleString("ru-RU",{maximumFractionDigits:6})+" г";
    const formatted=(n:number)=>n.toLocaleString("ru-RU",{maximumFractionDigits:6});
@@ -1716,6 +1724,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
        {" "+formatted(labKnownHeatCapacityJPerK(v.kind,v.doses)!)} Дж/°C.
        Масса стекла и передача тепла от прибора приняты учебной моделью.
       </p>}
+     {realCrystals&&<p>Кристаллы {realCrystals.formula}:
+      {" "+formatted(realCrystals.solidMol*(labMolarMass(realCrystals.formula)??0))} г;
+      растворено {" "+formatted((realCrystals.totalMol-realCrystals.solidMol)*
+       (labMolarMass(realCrystals.formula)??0))} г.
+      Время растворения и кристаллизации рассчитано по учебной кинетической модели.
+     </p>}
      {v.ventedVaporMl?.H2O!==undefined&&
       <p>Выпаривание: удалено {formatted(v.ventedVaporMl.H2O)} мл воды.
        {crystallineSalt&&
