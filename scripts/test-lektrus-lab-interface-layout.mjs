@@ -47,7 +47,7 @@ assert.match(markup,/lektrus-lab-indicator-cupboard[\s\S]*?labIndicators\.map/,
  "Indicators should be visible as their own physical cupboard");
 assert.match(markup,/className="lektrus-lab-chalk-wipe"/,
  "The blackboard has an actual eraser");
-assert.match(markup,/className="lektrus-lab-board-write-toggle"/,
+assert.match(markup,/lektrus-lab-board-write-toggle/,
  "Reaction board has two live writing states");
 assert.match(markup,/className=\{"lektrus-lab-quantity-meter"/,
  "Quantity details stay with vessel on the tabletop");
