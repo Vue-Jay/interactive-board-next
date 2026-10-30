@@ -3,10 +3,14 @@ import {readFileSync} from "node:fs";
 import ts from "typescript";
 const src=readFileSync(new URL("../src/lektrusLabEvaporation.ts",import.meta.url),"utf8");
 const exports={};
-const js=ts.transpileModule(src,{compilerOptions:{
- target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS
-}}).outputText;
-new Function("exports",js)(exports);
+const options={target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS};
+const material={};
+const materialSource=readFileSync(new URL("../src/lektrusLabMaterialConstants.ts",import.meta.url),"utf8");
+new Function("exports",ts.transpileModule(materialSource,{compilerOptions:options}).outputText)(material);
+const js=ts.transpileModule(src,{compilerOptions:options}).outputText;
+new Function("require","exports",js)(key=>{
+ assert.equal(key,"./lektrusLabMaterialConstants");return material;
+},exports);
 const {labSaturationPressureKPa,labVaporPressureKPa,labIdealBoilingC,
  labApproxWaterBoilingC,labEvaporate}=exports;
 const ml=value=>({value,unit:"ml"});
