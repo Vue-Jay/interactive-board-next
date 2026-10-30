@@ -163,7 +163,21 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  // ZnCl2: https://pubchem.ncbi.nlm.nih.gov/compound/5727 (2.907 @25C)
  // LiCl:  https://pubchem.ncbi.nlm.nih.gov/compound/433294 (2.07 @25C)
  // Na2S:  https://pubchem.ncbi.nlm.nih.gov/compound/14804 (1.856 @25C)
- FeCl3:2.90,FeCl2:3.16,ZnCl2:2.907,LiCl:2.07,Na2S:1.856
+ FeCl3:2.90,FeCl2:3.16,ZnCl2:2.907,LiCl:2.07,Na2S:1.856,
+ // Room-temperature true crystal densities. These deliberately distinguish
+ // anhydrous NiSO4 from NiSO4·6H2O and FeO from Fe2O3/Fe3O4.
+ // FeO CRC vs ICSC 6.0/5.7: adopt CRC cubic wuestite 6.0 g/cm3.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/449809
+ FeO:6.0,
+ // Covellite crystalline CuS CRC Handbook 4.76 g/cm3.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/165914
+ CuS:4.76,
+ // Pure Na2O, DOE PAC 25°C 2.27 g/cm3, reacts on contact with water.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/73971
+ Na2O:2.27,
+ // Anhydrous NiSO4 4.01 g/cm3 (NOT hexahydrate 2.03 g/cm3).
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24586
+ NiSO4:4.01
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
@@ -239,7 +253,26 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  AgNO3:[115,219.2,334.8,471,652,1024],
  NaNO2:[73,84.52,95.7,112.3,135.5,163],
  NaHCO3:[6.89,9.6,12.7,16,null,null],
- KMnO4:[2.83,6.43,12.56,22.4,null,null]
+ KMnO4:[2.83,6.43,12.56,22.4,null,null],
+ // Bulk curated from Merck/Millipore solubility table (0,20,40,60,80,100°C).
+ // Source: https://www.merckmillipore.com/CR/en/support/calculators-and-apps/solubility-table-compounds-water-temperature
+ // Measured water/salt data, g anhydrous formula-equivalent per 100g H2O.
+ // NOTE: Na2CO3, CuSO4, Na2SO4 and some other salts can form hydrates!
+ // Their numerical solubility data can be DISPLAYED, but the current dry-
+ // crystal equilibrium must NOT silently create anhydrous precipitates.
+ K2CO3:[105.5,111.5,117,127,140,156],
+ K2Cr2O7:[4.68,12.49,26.3,45.6,73,103],
+ CuSO4:[25.5,36.2,48,60,70,83],
+ Na2CO3:[7.1,21.4,48.5,46.5,45.8,45.5],
+ // At isolated reference knots only. Null is UNKNOWN, NOT insoluble.
+ // A knot is usable alone but no interpolating over gaps.
+ Li2CO3:[null,1.33,null,null,null,null],
+ NaF:[null,4.1,null,null,null,null],
+ NaBr:[null,null,null,118,118.3,121.2],
+ Na2SO3:[null,null,37,33.2,29,26.6],
+ Na2SO4:[null,null,48.1,45.26,43.09,42.3],
+ ZnCl2:[null,null,453,488,541,614],
+ NaH2PO4:[null,null,null,179.3,207.3,284.4]
 });
 export const LAB_SALT_SOLUBILITY_TEMPERATURES_C=[0,20,40,60,80,100] as const;
 export function labSingleSaltSolubilityGPer100gWater(
@@ -271,7 +304,11 @@ export function labSingleSaltSolubilityGPer100gWater(
  }
  const data=LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[formula];
  if(!data||!Number.isFinite(tempC)||tempC<0||tempC>100)return;
- if(tempC===100)return data[data.length-1]??undefined;
+ // Exact measured knots remain available even when adjacent knots are absent.
+ // Never assume interpolation is possible from a single measurement.
+ const exact=LAB_SALT_SOLUBILITY_TEMPERATURES_C.indexOf(
+  tempC as (typeof LAB_SALT_SOLUBILITY_TEMPERATURES_C)[number]);
+ if(exact!==-1)return data[exact]??undefined;
  for(let i=1;i<LAB_SALT_SOLUBILITY_TEMPERATURES_C.length;i++){
   const low=LAB_SALT_SOLUBILITY_TEMPERATURES_C[i-1];
   const high=LAB_SALT_SOLUBILITY_TEMPERATURES_C[i];
@@ -282,6 +319,14 @@ export function labSingleSaltSolubilityGPer100gWater(
   }
  }
 }
+/** Formulas for which measured binary solubility DOES NOT authorize
+ * a simulated anhydrous crystal. Hydrate stoichiometry and water binding
+ * must be modelled before their precipitation/evaporation equilibrium.
+ * This list is a conservative guard, not a claim of universal hydration. */
+export const LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL:ReadonlySet<string>=new Set([
+ "CuSO4","Na2CO3","Na2SO4","K2CO3","NaBr","Na2SO3","ZnCl2",
+ "NaH2PO4"
+]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
  * with unspecified solvent, and hydrates require a different equilibrium
@@ -299,6 +344,14 @@ export function labEquilibrateSingleSaltCrystals(
  const salt=nonWater[0],mol=inventory.speciesMol[salt];
  const solubility=labSingleSaltSolubilityGPer100gWater(salt,temperatureC);
  if(solubility===undefined)return;
+ // Salt identity alone is insufficient to predict the crystalline PHASE.
+ // Na2CO3 decahydrate/monohydrate, CuSO4 pentahydrate and several salts
+ // interchange their hydrates with water and temperature. The simulator
+ // currently does not track crystallization water in the solid inventory.
+ // Disable solid-liquid rebalancing for these salts until hydrate-specific
+ // formula and enthalpy accounting is implemented. Do still expose their
+ // independently measured binary solubility in reference UI.
+ if(LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL.has(salt))return;
  const waterMass=(inventory.speciesMol.H2O??0)*18.01528;
  const molarMass:Record<string,number>={
   NaCl:58.44277,KNO3:101.1032,KCl:74.5513,NaNO3:84.9947,

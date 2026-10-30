@@ -4,7 +4,19 @@ import ts from "typescript";
 const source=fs.readFileSync(new URL("../src/lektrusHistoryEncyclopedia.ts",import.meta.url),"utf8");
 const compiled=ts.transpileModule(source,{compilerOptions:{
  module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const api={};new Function("exports",compiled)(api);
+// The encyclopedia now shares the independently vetted historical-reference
+// directory. Load the same module as the compiled app, not a fake fixture.
+const catalogSource=fs.readFileSync(new URL("../src/lektrusHistoricalReferences.ts",import.meta.url),"utf8");
+const catalogCompiled=ts.transpileModule(catalogSource,{compilerOptions:{
+ module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022
+}}).outputText;
+const catalogApi={};
+new Function("exports",catalogCompiled)(catalogApi);
+const api={};
+new Function("exports","require",compiled)(api,(name)=>{
+ if(name==="./lektrusHistoricalReferences")return catalogApi;
+ throw new Error("Unknown history dependency "+name);
+});
 const {historicalArticles,findHistoricalArticle,historicalRussianName,
  normalizeHistoricalName,historyArticleUrl}=api;
 assert.ok(historicalArticles.length>=40,"broad Russian-school historical coverage");
@@ -19,7 +31,8 @@ for(const item of historicalArticles){
   known.add(key);
   assert.equal(historicalRussianName(alias,Math.ceil((item.from+item.to)/2)),item.name);
  }
- assert.ok(historyArticleUrl(item).startsWith("https://ru.wikipedia.org/wiki/"));
+ assert.ok(historyArticleUrl(item).startsWith("https://"),
+  "Every historical item must have an external source");
 }
 assert.equal(findHistoricalArticle("Roman Empire",100).name,"Римская империя");
 assert.equal(findHistoricalArticle("Roman Empire",600),undefined);
@@ -161,7 +174,9 @@ assert.equal(new Set(historicalReferences.map(x=>x.id)).size,historicalReference
 assert.ok(atlas.includes("normalizeHistoricalReferenceName"),"Map and catalogue should share conservative name matching");
 assert.ok(atlas.includes("indexedReferenceMaps"),"References must use actual indexed historical shapes");
 assert.ok(atlas.includes("Показать на карте ·"),"Map action must be available only for dated matches");
-console.log("Historical atlas: 41 encyclopedia entries, "+historicalReferences.length+" sourced reference records, alias/date guards and cross-era UI checked.");
+console.log("Historical atlas: "+historicalArticles.length+
+ " searchable school encyclopedia entries, "+historicalReferences.length+
+ " curated source records, alias/date guards and cross-era UI checked.");
 
 for(const [alias,year,expected] of [
  ["Mali Empire",1324,"Империя Мали"],
@@ -175,6 +190,19 @@ for(const [alias,year] of [
  ["Mali Empire",1700],["Songhai Empire",1600],["Kingdom of Kongo",1300]
 ])assert.equal(findHistoricalArticle(alias,year),undefined,
  "History must not attribute an empire to a different century: "+alias);
-assert.equal(historicalArticles.length,44,
- "School history gained exactly three source-reviewed African state articles");
+assert.ok(historicalArticles.length>=95,
+ "Merge of already vetted historical sources should expose at least 95 unique entries");
+assert.ok(historicalArticles.length<=44+catalogApi.historicalReferences.length,
+ "No duplicated extra reference rows");
+for(const item of historicalArticles){
+ if(item.sourceUrl)assert.equal(historyArticleUrl(item),item.sourceUrl);
+}
+for(const [name,year] of [
+ ["Khmer Empire",1100],["Novgorod Republic",1350],
+ ["Ayutthaya Kingdom",1500],["Mamluk Sultanate",1400]
+]){
+ const matches=historicalArticles.filter(item=>
+  item.aliases.includes(name)&&year>=item.from&&year<=item.to);
+ assert.equal(matches.length,1,"Imported history source must be unambiguous "+name);
+}
 console.log("African historical encyclopedia: Mali, Songhai and Kongo period lookup verified");

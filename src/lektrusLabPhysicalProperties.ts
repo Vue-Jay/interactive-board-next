@@ -18,6 +18,22 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
+ // Additional solid phase boundaries from PubChem/CRC experimental data.
+ // CuS: ~220°C decomposition; cannot be treated as congruent melting.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/165914
+ CuS:{decompositionC:220,behavior:"decomposes"},
+ // FeO (wustite) 1377°C melting in CRC; phase unstable in air.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/449809
+ FeO:{meltingC:1377,note:"Кристаллический FeO; на воздухе окисляется."},
+ // Hematite Fe2O3 ~1565°C from ICSC; not Fe3O4.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/518696
+ Fe2O3:{meltingC:1565},
+ // Pure Na2SO4: Merck measured anhydrous 884°C melting.
+ // https://www.merckmillipore.com/MM/en/product/sigald/13464
+ Na2SO4:{meltingC:884,note:"Безводный сульфат натрия, не декагидрат."},
+ // Pure anhydrous K2CO3 Merck mp 891°C.
+ // https://www.merckmillipore.com/SG/en/product/mm/104928
+ K2CO3:{meltingC:891},
  // Pure gases, phase transitions at approximately 1 atm. OpenStax
  // University Physics Vol.2 §1.5 and NIST TN 2126:
  // https://openstax.org/books/university-physics-volume-2/pages/1-5-phase-changes
