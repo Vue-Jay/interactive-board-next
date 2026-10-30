@@ -178,13 +178,16 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  const sealedPressureKPa=vaporKnown&&sealedAtK>0&&kelvin>0?
   Math.max(0,101.325-vaporAtSeal)*kelvin/sealedAtK+
    (vaporPressureKPa??0)+reactionGasPressureKPa:undefined;
- const popped=!!v.stoppered&&sealedPressureKPa!==undefined&&
-  sealedPressureKPa>=160;
+ const popped=!!v.stoppered&&(
+  (sealedPressureKPa!==undefined&&sealedPressureKPa>=160)||
+  // Even if an aqueous stock lacks a validated vapor model, its measured
+  // reaction-gas partial pressure gives a strict lower bound for cork release.
+  (!vaporKnown&&reactionGasPressureKPa>=160));
  const totalPressureKPa=v.stoppered?sealedPressureKPa:vaporPressureKPa;
  if((!known&&!gasOnly)||dt===0||v.stoppered&&!popped)return {
   doses:v.doses,ventedVaporMl:v.ventedVaporMl,
-  stoppered:v.stoppered,popped:false,boiling:false,
-  pressureKPa:totalPressureKPa,evaporatedMl:0
+  stoppered:popped?false:v.stoppered,popped,boiling:false,
+  pressureKPa:totalPressureKPa,reactionGasPressureKPa,evaporatedMl:0
  };
  const boiling=(vaporPressureKPa??0)>=101.325;
  const doses={...v.doses},vented={...v.ventedVaporMl};
@@ -210,7 +213,7 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  }
  return {
   doses,ventedVaporMl:vented,stoppered:popped?false:v.stoppered,
-  popped,boiling,pressureKPa:totalPressureKPa,evaporatedMl
+  popped,boiling,pressureKPa:totalPressureKPa,reactionGasPressureKPa,evaporatedMl
  };
 }
 /** First-order colligative boiling elevation for explicitly measured water
