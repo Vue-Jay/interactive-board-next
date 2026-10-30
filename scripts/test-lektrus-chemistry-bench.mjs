@@ -2208,7 +2208,9 @@ assert.ok(Math.abs(chem.labDoseMoles("H2O",{value:18,unit:"g"})-1)<.02);
 assert.ok(Math.abs(chem.labDoseMoles("CO2",{value:24.465,unit:"ml"})-.001)<1e-9,
  "Gas volumes use a documented 25C/1atm reference");
 assert.ok(Math.abs(chem.labDoseMoles("C2H5OH",{value:10,unit:"ml"})-
-  10*.785/chem.labMolarMass("C2H5OH"))<1e-10);
+  10*calorimetry.LAB_CALORIMETRY_REFERENCE.C2H5OH.densityGPerMl/
+   chem.labMolarMass("C2H5OH"))<1e-10,
+ "A pure ethanol portion must use the same measured density in thermodynamics and mole inventory");
 assert.ok(chem.labDoseMoles("HCl",{value:10,unit:"ml"})===undefined,
  "An arbitrary no-concentration liquid dose must not silently become 0.1 M in the formula calculator");
 assert.match(read("src/LektrusChemistryBench.tsx"),/labIsPreparedStock\(reagent\.id\)/);
