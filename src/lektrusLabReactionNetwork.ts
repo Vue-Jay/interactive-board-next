@@ -146,18 +146,19 @@ export function simulateLabInventory(input:{
   Number.isFinite(progress.maxExtentMol)&&progress.extentMol>=0&&
   progress.extentMol<=progress.maxExtentMol+1e-9){
   const {row,equation}=progressCase;
+  const extentMol=progress.extentMol;
   if(equation.reactants.every(term=>
    available(inventory.speciesMol,term.formula)+1e-9>=
-    progress.extentMol*term.coefficient)){
+    extentMol*term.coefficient)){
    for(const term of equation.reactants){
-    const consumed=progress.extentMol*term.coefficient;
+    const consumed=extentMol*term.coefficient;
     sum(inventory.speciesMol,term.formula,-consumed);
     const solid=Math.min(available(inventory.solidMol,term.formula),consumed);
     if(solid>0)sum(inventory.solidMol,term.formula,-solid);
    }
    const rawProducts=(row.equation.split("→")[1]??"").split(/\s+\+\s+/);
    for(const term of equation.products){
-    const gained=progress.extentMol*term.coefficient;
+    const gained=extentMol*term.coefficient;
     const marker=rawProducts.find(x=>x.replace(/^\s*\d+\s*/,"").
      replace(/[↓↑]/g,"").trim()===term.formula)??"";
     if(marker.includes("↑"))sum(input.stoppered?
@@ -171,7 +172,7 @@ export function simulateLabInventory(input:{
     row.enthalpyKJPerMol*progress.extentMol;
    inventory.heatEstimateComplete=heatKJ!==undefined;
    if(heatKJ!==undefined)inventory.knownHeatKJ=heatKJ;
-   inventory.steps.push({equation:row.equation,extentMol:progress.extentMol,
+   inventory.steps.push({equation:row.equation,extentMol:extentMol,
     observation:row.observation,...(heatKJ===undefined?{}:{heatKJ})});
    return remember(key,inventory);
   }
