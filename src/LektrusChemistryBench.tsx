@@ -1579,6 +1579,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Добавлено твёрдых веществ: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
      <p>Горлышко: {v.stoppered?"закрыто пробкой":"открыто"}.
       {v.stoppered?" Пар остаётся внутри; обычная пробка может выскочить при нагреве.":""}</p>
+     {v.stoppered&&vaporReading.reactionGasPressureKPa>0&&
+      <p>Парциальное давление образовавшегося газа:
+       {" "+formatted(vaporReading.reactionGasPressureKPa)} кПа.
+       {vaporReading.pressureKPa===undefined&&
+        " Это достоверная идеальная газовая составляющая, а не полное давление неизвестного растворителя."}
+      </p>}
      {(vaporReading.pressureKPa!==undefined||boilingEstimate!==undefined)&&
       <p title="Приближённое равновесие идеального раствора. Учитываются только заданные компоненты с проверенными физическими свойствами.">
        {vaporReading.pressureKPa!==undefined&&
