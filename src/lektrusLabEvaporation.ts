@@ -65,7 +65,7 @@ const aperture:Record<string,number>={
  cylinder:.28,dish:1.7,pipette:.06,burette:.08,crucible:.8
 };
 const own=(obj:object,key:string)=>Object.prototype.hasOwnProperty.call(obj,key);
-import {labNaClSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
+import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 /** Ideal liquid-phase mole fractions. For explicitly weighed soluble
  * nonvolatile salt/sugar in measured water, use the number of dissolved
  * solute particles; electrolyte coefficients are upper-bound dilute ideals.
@@ -90,21 +90,21 @@ function components(v:LabEvaporationState){
    if(!known)return [];
    particlesMol+=d.value/known.molarG*known.i;
   }
-  const measuredNaCl=solids.length===1&&solids[0][0]==="NaCl";
-  if(measuredNaCl){
-   // Greenspan, NBS J. Research 81A (1977): saturated NaCl has ~0.753
-   // water activity at 25°C. Between pure water and that endpoint an
-   // explicitly approximate concentration interpolation is used. Excess
-   // undissolved crystals NEVER depress water activity further and NEVER
-   // prevent the last droplets of pure water from evaporating.
-   const solubility=labNaClSolubilityGPer100gWater(25);
-   const saturationMolal=solubility===undefined?undefined:
-    solubility/100/.05844277;
-   if(!saturationMolal)return [];
-   const molal=solids[0][1].value/58.44277/waterKg;
-   activityOverride=1-.247*Math.min(1,molal/saturationMolal);
-   particlesMol=Math.min(particlesMol,
-    saturationMolal*waterKg*2);
+  const singleSalt=solids.length===1?solids[0][0]:undefined;
+  const saturation=singleSalt?labSingleSaltSolubilityGPer100gWater(singleSalt,25):undefined;
+  if(singleSalt&&saturation!==undefined){
+   const salt=aqueousNonvolatile[singleSalt];
+   const saturationMolal=saturation/100*1000/salt.molarG;
+   const molal=solids[0][1].value/salt.molarG/waterKg;
+   if(singleSalt==="NaCl"){
+    // Greenspan (1977): saturated NaCl water activity ~0.753 at 25°C.
+    // Interpolation below saturation is an explicitly approximate model.
+    activityOverride=1-.247*Math.min(1,molal/saturationMolal);
+   }
+   // Do not attribute additional dissolved ions to crystallised salt.
+   // For KCl, KNO3 and NaNO3 retain a bounded *ideal* mole fraction,
+   // NOT an invented measured activity coefficient.
+   particlesMol=Math.min(particlesMol,saturationMolal*waterKg*salt.i);
   }else if(particlesMol/waterKg>4)return [];
  }
  const totalMol=particlesMol+liquid.reduce((s,[id,d])=>{
@@ -252,6 +252,7 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  */
 const aqueousNonvolatile:Record<string,{molarG:number;i:number}>={
  NaCl:{molarG:58.44,i:2},KCl:{molarG:74.55,i:2},
+ KNO3:{molarG:101.1032,i:2},NaNO3:{molarG:84.9947,i:2},
  NaBr:{molarG:102.89,i:2},KBr:{molarG:119.00,i:2},
  C6H12O6:{molarG:180.16,i:1},C12H22O11:{molarG:342.30,i:1}
 };
