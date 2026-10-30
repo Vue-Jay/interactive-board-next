@@ -1209,7 +1209,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     disabled={!editable} onClick={e=>{e.stopPropagation();openCabinet("reagents")}}
     title="Открыть шкаф реактивов">РЕАКТИВЫ</button>
    <div className="lektrus-lab-bottle-rack" role="group" aria-label="Реактивы быстрого доступа">
-    {quickReagents.map(v=>{
+    {Array.from({length:Math.max(3,Math.ceil((quickReagents.length+(editable&&quickReagents.length<MAX_QUICK_REAGENTS?1:0))/4))},(_,row)=><div key={row} className="lektrus-lab-reagent-row">
+    {quickReagents.slice(row*4,(row+1)*4).map(v=>{
      const item=substances.find(r=>r.id===v.id);
      const color=reagentAppearance(v.id,v.dose.unit==="g"?"dry":"aqueous").color;
      return <button type="button" key={v.id} draggable={editable}
@@ -1229,11 +1230,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <span className="lektrus-lab-quick-phase">{item?labReagentPhaseLabel(item,v.dose.unit):"Реактив"}</span>
      </button>;
     })}
-    {editable&&quickReagents.length<MAX_QUICK_REAGENTS&&<button type="button"
+    {editable&&quickReagents.length<MAX_QUICK_REAGENTS&&Math.floor(quickReagents.length/4)===row&&<button type="button"
      className="lektrus-lab-quick-bottle is-add"
      title="Добавить реактив быстрого доступа"
      aria-label="Редактировать быстрые реактивы"
      onClick={e=>{e.stopPropagation();openCabinet("reagents")}}>+</button>}
+    </div>)}
    </div>
    <span className="lektrus-lab-furniture-foot" aria-hidden="true">Нажмите на реактив или перетащите к сосуду</span>
   </div>
