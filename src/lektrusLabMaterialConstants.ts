@@ -144,13 +144,36 @@ export function labNaClSolubilityGPer100gWater(tempC:number):number|undefined{
  *   https://www.merckmillipore.com/KE/en/support/calculators-and-apps/solubility-table-compounds-water-temperature
  * KCl, NaNO3: independent reference tabulation
  *   https://tools.moldchem.com/solubility
- * No extrapolation above 100°C, and no hydration assumptions.
+ * No extrapolation above 100°C. Each entry is the stated anhydrous
+ * formula, never a hydrate substituted silently. Curves valid only for
+ * ONE salt in pure measured water, not prepared stock or mixed electrolytes.
+ * Independent additional six-temperature rows from Merck:
+ * https://www.merckmillipore.com/KE/en/support/calculators-and-apps/solubility-table-compounds-water-temperature
+ * NaHCO3 and KMnO4 have verified measurements only through 60°C here.
+ * NaHCO3 progressively decomposes when heated, so higher temperatures are
+ * deliberately not modelled by a pure-compound equilibrium curve.
  */
+/** Null means there is NO individually measured point, not zero solubility.
+ * Endpoints never extrapolate across an unavailable temperature boundary. */
 export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
- Record<string,readonly number[]>>=Object.freeze({
+ Record<string,readonly (number|null)[]>>=Object.freeze({
+ // Preserve previously validated reference curves and existing tests.
  KNO3:[13.3,31.6,63.9,110,169,246],
  KCl:[28,34,40,45.5,51.1,56.7],
- NaNO3:[73,88,104,124,148,180]
+ NaNO3:[73,88,104,124,148,180],
+ // Merck laboratory reference: anhydrous formulas, g/100 g pure water.
+ NH4Cl:[29.7,37.56,46,55.3,65.6,77.3],
+ NH4NO3:[118.5,187.7,283,415,610,1000],
+ "(NH4)2SO4":[70.4,75.44,81.2,87.4,94.1,102],
+ "Ba(NO3)2":[4.95,9.06,14.4,20.3,27.2,34.2],
+ "Pb(NO3)2":[36.4,52.22,69.4,88,107.5,127.3],
+ KBr:[54,65.85,76.1,85.9,95.3,104.9],
+ KI:[127.8,144.51,161,176.2,191.5,208],
+ K2SO4:[7.33,11.11,14.79,18.2,21.29,24.1],
+ AgNO3:[115,219.2,334.8,471,652,1024],
+ NaNO2:[73,84.52,95.7,112.3,135.5,163],
+ NaHCO3:[6.89,9.6,12.7,16,null,null],
+ KMnO4:[2.83,6.43,12.56,22.4,null,null]
 });
 export const LAB_SALT_SOLUBILITY_TEMPERATURES_C=[0,20,40,60,80,100] as const;
 export function labSingleSaltSolubilityGPer100gWater(
@@ -182,11 +205,15 @@ export function labSingleSaltSolubilityGPer100gWater(
  }
  const data=LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[formula];
  if(!data||!Number.isFinite(tempC)||tempC<0||tempC>100)return;
- if(tempC===100)return data[data.length-1];
+ if(tempC===100)return data[data.length-1]??undefined;
  for(let i=1;i<LAB_SALT_SOLUBILITY_TEMPERATURES_C.length;i++){
   const low=LAB_SALT_SOLUBILITY_TEMPERATURES_C[i-1];
   const high=LAB_SALT_SOLUBILITY_TEMPERATURES_C[i];
-  if(tempC<=high)return data[i-1]+(data[i]-data[i-1])*(tempC-low)/(high-low);
+  if(tempC<=high){
+   const before=data[i-1],after=data[i];
+   if(before===null||after===null||before===undefined||after===undefined)return;
+   return before+(after-before)*(tempC-low)/(high-low);
+  }
  }
 }
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
@@ -195,7 +222,8 @@ export function labSingleSaltSolubilityGPer100gWater(
  * system. Total salt molecule count is never changed by crystallisation. */
 export function labEquilibrateSingleSaltCrystals(
  inventory:{speciesMol:Record<string,number>;solidMol:Record<string,number>},
- temperatureC:number,hasPureWaterStock:boolean
+ temperatureC:number,hasPureWaterStock:boolean,
+ molarMassForSalt?:(formula:string)=>number|undefined
 ):string|undefined{
  if(!hasPureWaterStock)return;
  const keys=Object.entries(inventory.speciesMol).filter(([,n])=>n>1e-12)
@@ -210,7 +238,12 @@ export function labEquilibrateSingleSaltCrystals(
   NaCl:58.44277,KNO3:101.1032,KCl:74.5513,NaNO3:84.9947,
   PbCl2:278.106,PbBr2:367.008
  };
- const capacityMol=waterMass*solubility/100/molarMass[salt];
+ // First six curated binary salts had explicit molar masses. All newer
+ // measurements use the SAME validated stoichiometric formula parser as
+ // the reaction engine; never silently assign an unrelated salt's mass.
+ const mass=molarMassForSalt?.(salt)??molarMass[salt];
+ if(!Number.isFinite(mass)||!mass||mass<=0)return;
+ const capacityMol=waterMass*solubility/100/mass;
  const crystals=Math.max(0,mol-Math.max(0,capacityMol));
  if(crystals>1e-12)inventory.solidMol[salt]=crystals;
  else delete inventory.solidMol[salt];
