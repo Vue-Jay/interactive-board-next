@@ -17,7 +17,7 @@ import {buildLabCatalog,cabinetColor,labReagentForms,labReagentPhaseLabel,labIsP
 import {titrationReading} from "./lektrusLabTitration";
 import LektrusLabGlasswareIcon from "./LektrusLabGlasswareIcon";
 import LektrusLabDeviceIcon from "./LektrusLabDeviceIcon";
-import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint,labStandClampSvgY,labTitrationDropEndpoints,isLabSink,isLabCupboard,isLabWorktop} from "./lektrusLabLayout";
+import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint,labStandClampSvgY,labTitrationDropEndpoints,isLabSink,isLabCupboard,isLabWorktop,isLabReturnDrop} from "./lektrusLabLayout";
 
 const names:Record<LabGlassware,string>=Object.fromEntries(labGlassware.map(v=>[v.id,v.name])) as Record<LabGlassware,string>;
 const shape:Record<LabGlassware,{inside:string;outline:string;liquid:string}> ={
@@ -477,6 +477,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [deviceShelfGhost,setDeviceShelfGhost]=useState<{kind:LabDevice;x:number;y:number}|null>(null);
  const [activeDeviceId,setActiveDeviceId]=useState<string|null>(null);
  const [vesselMenuId,setVesselMenuId]=useState<string|null>(null);
+ const [pendingReturnId,setPendingReturnId]=useState<string|null>(null);
  const [compositionId,setCompositionId]=useState<string|null>(null);
  const [preview,setPreview]=useState<{id:string;x:number;y:number}|null>(null);
  const contactRef=useRef<{sourceId:string;targetId:string;activated:boolean}|null>(null);
@@ -672,6 +673,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   return{x:(event.clientX-rect.left)/rect.width*100,y:(event.clientY-rect.top)/rect.height*100};};
  const inGlassware=isLabCupboard;
  const inSink=isLabSink;
+ const returnUp=(p:{x:number;y:number},startY:number)=>
+  isLabReturnDrop(p,startY,stageSize.height,compactFullscreen);
  const targetAt=(sourceId:string,p:{x:number;y:number})=>{
   const rect=host.current?.getBoundingClientRect();
   const source=bench.vessels.find(v=>v.id===sourceId);
@@ -763,9 +766,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  };
  const returnGlass=(id:string)=>{
   const next=removeLabVessel(bench,id);
-  if(next===bench){setNotice("Сначала слейте содержимое в раковину");return}
+  if(next===bench){
+   // Filled glassware is still removable, but chemicals are never lost
+   // without an explicit confirmation from the experimenter.
+   if(bench.vessels.some(v=>v.id===id&&v.reagents.length)){
+    setPendingReturnId(id);setNotice("");
+   }
+   return;
+  }
   setVesselMenuId(null);setCompositionId(null);setActiveDeviceId(null);
-  onChange?.(next);setNotice("Чистая посуда возвращена в шкаф");
+  onChange?.(next);setNotice("Чистая посуда убрана со стола");
  };
  const take=(kind:LabGlassware,p?:{x:number;y:number})=>{
   if(!p||!isLabWorktop(p)){setNotice("Нажмите на свободное место стола");return}
@@ -800,7 +810,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   event.stopPropagation();const p=point(event),rect=host.current?.getBoundingClientRect();if(!p||!rect)return;
   if(Math.hypot((p.x-g.startX)*rect.width/100,(p.y-g.startY)*rect.height/100)>8)g.dragged=true;
   if(g.dragged){
-   const furniture=inSink(p)?"sink":inGlassware(p)?"glassware":null;
+   const furniture=inSink(p)?"sink":returnUp(p,g.startY)||
+    (!compactFullscreen&&inGlassware(p))?"glassware":null;
    const nearestFilter=physicalDevices.find(d=>d.kind==="filter"&&
     Math.hypot((d.x-p.x)*rect.width/100,(d.y-p.y)*rect.height/100)<95);
    setDropFurniture(furniture);
@@ -828,7 +839,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   const p=point(event);
   if(g.dragged&&p){
    if(inSink(p))clean(g.id);
-   else if(inGlassware(p))returnGlass(g.id);
+   else if(returnUp(p,g.startY)||(!compactFullscreen&&inGlassware(p)))returnGlass(g.id);
    else{
     const rect=host.current?.getBoundingClientRect();
     const filter=rect?physicalDevices.filter(d=>d.kind==="filter").map(d=>({
@@ -975,7 +986,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   if(g.dragged){
    setDevicePreview({id:g.id,x:Math.max(1,Math.min(99,g.x+p.x-g.startX)),
     y:Math.max(1,Math.min(99,g.y+p.y-g.startY))});
-   setDropDeviceShelf(p.x>=82&&p.y>=8&&p.y<=42);
+   setDropDeviceShelf(returnUp(p,g.startY)||
+    (!compactFullscreen&&p.x>=82&&p.y>=8&&p.y<=42));
   }
  };
  const finishDevice=(e:PointerEvent<HTMLDivElement>)=>{
@@ -984,9 +996,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   const p=point(e);
   if(g.dragged&&p){
-   if(p.y>=8&&p.y<=42&&p.x>=82){
+   if(returnUp(p,g.startY)||(!compactFullscreen&&p.y>=8&&p.y<=42&&p.x>=82)){
     onChange?.(returnPlacedLabDevice(bench,g.id));
-    setActiveDeviceId(null);setNotice("Прибор возвращён в шкаф");
+    setActiveDeviceId(null);setNotice("Прибор убран со стола");
    }else{
     const moved=movePlacedLabDevice(bench,g.id,g.x+p.x-g.startX,g.y+p.y-g.startY);
     const device=physicalDevices.find(d=>d.id===g.id);
@@ -1164,6 +1176,34 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    <div className="lektrus-lab-counter-front"/>
    <div className="lektrus-lab-worktop-zone"/>
   </div>
+  {compactFullscreen&&(preview||devicePreview)&&
+   <div className={"lektrus-lab-return-zone"+
+    (dropFurniture==="glassware"||dropDeviceShelf?" is-ready":"")}
+    aria-hidden="true">
+    <span aria-hidden="true">↑</span> Убрать со стола
+   </div>}
+  {pendingReturnId&&<div className="lektrus-lab-return-confirm-backdrop"
+   data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}>
+   <section className="lektrus-lab-return-confirm" role="dialog" aria-modal="true"
+    aria-label="Подтверждение удаления содержимого сосуда">
+    <strong>Убрать сосуд с содержимым?</strong>
+    <p>В нём остались вещества. При удалении сосуда они тоже будут удалены из опыта.</p>
+    <div>
+     <button type="button" onClick={e=>{
+      e.stopPropagation();
+      const next=removeLabVessel(bench,pendingReturnId,true);
+      setPendingReturnId(null);
+      if(next!==bench){
+       setVesselMenuId(null);setCompositionId(null);setActiveDeviceId(null);
+       onChange?.(next);setNotice("Сосуд с содержимым убран со стола");
+      }
+     }}>Убрать с содержимым</button>
+     <button type="button" onClick={e=>{e.stopPropagation();setPendingReturnId(null)}}>
+      Отмена
+     </button>
+    </div>
+   </section>
+  </div>}
   <div className="lektrus-lab-scene-header">
    <span className="lektrus-lab-scene-brand">LEKTRUS <span>LAB</span></span>
    <strong>Химическая лаборатория</strong>
@@ -1623,7 +1663,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       (v.reactionHeat.direction==="exothermic"?"Экзотермический нагрев":"Эндотермическое охлаждение")+" · ":"")+
       (v.reagents.length?
       labThermalState(v.reagents,v.doses,v.temperatureC??22,v.meltFraction).label+" · ":"")+
-      (editable?"Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, в шкаф для возврата":"Посуда")}
+      (editable?"Выбрать или переместить; перетащить на сосуд для переливания, на раковину для слива, вверх для возврата":"Посуда")}
     onPointerDown={e=>down(e,v)} onPointerMove={move} onPointerUp={finish}
     onPointerCancel={e=>{e.stopPropagation();endContact();gesture.current=null;setPreview(null);
      setDropTarget(null);setDropFurniture(null);setDropDeviceId(null)}}

@@ -1163,9 +1163,11 @@ export function selectLabVessel(bench:LabBench,id:string):LabBench{
  return bench.selectedId===id?bench:id===""||bench.vessels.some(v=>v.id===id)?
   {...bench,selectedId:id}:bench;
 }
-export function removeLabVessel(bench:LabBench,id:string):LabBench{
+export function removeLabVessel(bench:LabBench,id:string,discardContents=false):LabBench{
  const target=bench.vessels.find(v=>v.id===id);
- if(!target||target.reagents.length>0)return bench; // Only clean glassware returns to storage.
+ // A filled vessel requires explicit confirmation. Never silently discard
+ // the student's reagents just because of a swipe toward the top shelf.
+ if(!target||(!discardContents&&target.reagents.length>0))return bench;
  const vessels=bench.vessels.filter(v=>v.id!==id);
  return {...bump(bench,vessels,""),
   stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId,

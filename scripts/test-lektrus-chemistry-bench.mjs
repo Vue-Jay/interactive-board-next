@@ -2388,3 +2388,24 @@ const compactFoot=layout.labStandBaseVesselPoint(compactStand,{kind:"beaker"},90
 assert.ok(Number.isFinite(compactFoot.x)&&Number.isFinite(compactFoot.y));
 assert.match(polishedSurface,/false,compactFullscreen/);
 console.log("Mounted laboratory glassware aligns with short-screen apparatus");
+
+
+// Pushing a vessel upward is instantaneous when empty. For a filled one,
+// removal requires confirmation before deleting measured chemical quantities.
+const storedFilled=lab.defaultLabBench();
+const fullReturnSource=lab.putLabReagent(storedFilled,"v1","NaCl",{value:2,unit:"g"});
+assert.equal(lab.removeLabVessel(fullReturnSource,"v1"),fullReturnSource);
+const confirmedReturn=lab.removeLabVessel(fullReturnSource,"v1",true);
+assert.ok(!confirmedReturn.vessels.some(v=>v.id==="v1"));
+assert.ok(!confirmedReturn.placedDevices?.some(d=>d.linkedVesselId==="v1"));
+const emptyReturnSource=lab.defaultLabBench();
+assert.equal(lab.removeLabVessel(emptyReturnSource,"v1").vessels.some(v=>v.id==="v1"),false);
+assert.equal(layout.isLabReturnDrop({x:18,y:22},68,390,true),true);
+assert.equal(layout.isLabReturnDrop({x:80,y:22},68,390,true),true,
+ "Returning an instrument must not require the formerly visible right cupboard");
+assert.equal(layout.isLabReturnDrop({x:18,y:22},26,390,true),false,
+ "A minor tap near the top cannot remove glassware");
+assert.equal(layout.isLabReturnDrop({x:18,y:63},68,390,true),false,
+ "The ordinary worktop remains a safe movement area");
+assert.equal(layout.isLabReturnDrop({x:80,y:23},65,1000,false),true);
+console.log("Return by upward drag: glassware confirmation, instrument top zone and safe movement");

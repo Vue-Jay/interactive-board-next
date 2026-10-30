@@ -49,7 +49,8 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
   const onKey=(event:KeyboardEvent)=>{
    if(event.key!=="Escape")return;
    // Cabinets own Escape while they are open.
-   if(document.querySelector(".lektrus-lab-furniture-modal"))return;
+   if(document.querySelector(".lektrus-lab-furniture-modal")||
+     document.querySelector(".lektrus-lab-return-confirm"))return;
    event.preventDefault();onSave();
   };
   document.addEventListener("keydown",onKey);

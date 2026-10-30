@@ -198,3 +198,22 @@ assert.match(latestMobileCss,/\.is-compact-fullscreen\.has-selected-vessel \.lek
 assert.match(latestMobileCss,/@media\(max-width:650px\)/);
 assert.match(latestMobileCss,/@media\(max-height:490px\)/);
 console.log("Mobile worktop deselection, 1.5-second notices and safe responsive drawers: OK");
+
+
+// The hidden wall cupboards must not be required when removing apparatus on
+// a phone: an upward drag from the table is sufficient for either object.
+assert.match(markup,/returnUp\(p,g\.startY\)\|\|/);
+assert.match(markup,/!compactFullscreen&&inGlassware\(p\)/);
+assert.match(markup,/!compactFullscreen&&p\.y>=8&&p\.y<=42&&p\.x>=82/);
+assert.match(markup,/setDropDeviceShelf\(returnUp\(p,g\.startY\)/);
+assert.match(markup,/className=\{"lektrus-lab-return-zone"/);
+assert.match(markup,/is-ready/);
+assert.match(markup,/setPendingReturnId\(id\)/);
+assert.match(markup,/removeLabVessel\(bench,pendingReturnId,true\)/);
+assert.match(editor,/document\.querySelector\("\.lektrus-lab-return-confirm"\)/);
+const storageCss=css.slice(css.lastIndexOf("Single upward drop gesture"));
+assert.match(storageCss,/\.lektrus-lab-sink-caption\{[\s\S]*?min-height:56px!important;padding:8px 9px!important/);
+assert.match(storageCss,/flex:0 0 auto!important/);
+assert.match(storageCss,/\.lektrus-lab-sink-caption small\{[\s\S]*?display:block!important/);
+assert.match(storageCss,/pointer-events:none!important;touch-action:none!important/);
+console.log("Upward storage gestures and safe sink-caption padding: OK");

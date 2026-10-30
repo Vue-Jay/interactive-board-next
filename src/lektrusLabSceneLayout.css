@@ -1248,3 +1248,90 @@ body.lektrus-lab-fullscreen-active .workspace{
   max-height:min(49%,205px)!important;
  }
 }
+
+
+/* Single upward drop gesture for fullscreen lab storage.
+   Visual guide is only displayed DURING a drag and never captures touches. */
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-return-zone{
+ position:absolute!important;z-index:89!important;
+ top:var(--lab-compact-panel-top)!important;
+ left:50%!important;transform:translateX(-50%)!important;
+ width:max-content!important;max-width:calc(100% - 28px)!important;
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ gap:9px!important;padding:8px 16px!important;
+ min-height:42px!important;
+ box-sizing:border-box!important;border-radius:12px!important;
+ background:#f0f9f0e8!important;border:2px dashed #6eaa93!important;
+ color:#28634f!important;font:750 14px/1.2 system-ui,sans-serif!important;
+ box-shadow:0 4px 14px #275b4540!important;
+ pointer-events:none!important;touch-action:none!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-return-zone.is-ready{
+ background:#d1f2dcfa!important;border-color:#23845e!important;
+ box-shadow:0 0 0 3px #65ca9155,0 5px 17px #23634552!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-return-zone>span{
+ font-size:23px!important;line-height:1!important;
+}
+.lektrus-lab-return-confirm-backdrop{
+ position:absolute!important;inset:0!important;z-index:180!important;
+ display:grid!important;place-items:center!important;
+ padding:max(14px,env(safe-area-inset-top,0px))
+  max(16px,env(safe-area-inset-right,0px))
+  max(14px,env(safe-area-inset-bottom,0px))
+  max(16px,env(safe-area-inset-left,0px))!important;
+ background:#193e34a3!important;box-sizing:border-box!important;
+}
+.lektrus-lab-return-confirm{
+ display:flex;flex-direction:column;gap:12px;
+ width:min(420px,100%);max-height:100%;overflow-y:auto;
+ border:1px solid #86b69b;border-radius:15px;
+ padding:19px;background:#f5fcf6;color:#254d40;
+ box-shadow:0 16px 35px #0d382e66;
+ font:500 14px/1.45 system-ui,sans-serif;
+}
+.lektrus-lab-return-confirm strong{font-size:17px;line-height:1.25}
+.lektrus-lab-return-confirm p{margin:0;line-height:1.45}
+.lektrus-lab-return-confirm>div{display:flex;flex-wrap:wrap;gap:8px}
+.lektrus-lab-return-confirm button{
+ flex:1 1 145px;min-height:44px;padding:9px 12px;
+ border-radius:9px;border:1px solid #83ae98;
+ background:#fff;color:#285b44;font:700 13px/1.2 system-ui,sans-serif;
+}
+.lektrus-lab-return-confirm button:first-child{
+ background:#286e53;color:#fff;border-color:#245e4a;
+}
+/* The sink's label must have actual INTERNAL breathing room.
+   Previous mobile override forced a 27px flex basis for two text lines. */
+.lektrus-lab-bench .lektrus-lab-sink-caption{
+ display:flex!important;flex-direction:column!important;
+ justify-content:center!important;align-items:center!important;
+ box-sizing:border-box!important;
+ width:100%!important;max-width:100%!important;
+ flex:0 0 auto!important;height:auto!important;
+ min-height:56px!important;padding:8px 9px!important;
+ gap:4px!important;line-height:1.3!important;
+ border-radius:10px!important;white-space:normal!important;
+}
+.lektrus-lab-bench .lektrus-lab-sink-caption strong{
+ display:block!important;font:850 12px/1.3 system-ui,sans-serif!important;
+ margin:0!important;padding:0!important;text-align:center!important;
+}
+.lektrus-lab-bench .lektrus-lab-sink-caption small{
+ display:block!important;font:700 11px/1.3 system-ui,sans-serif!important;
+ max-width:100%!important;margin:0!important;padding:0!important;
+ white-space:normal!important;overflow-wrap:normal!important;
+ text-align:center!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-sink-caption{
+ flex:0 0 auto!important;min-height:56px!important;
+ height:auto!important;padding:8px 8px!important;gap:4px!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-sink{
+ height:clamp(110px,31%,177px)!important;
+}
+@media(max-height:460px){
+ .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-sink-caption{
+  min-height:53px!important;padding:7px 8px!important;gap:3px!important;
+ }
+}

@@ -27,6 +27,16 @@ export const isLabSink=(p:{x:number;y:number})=>
 export const isLabCupboard=(p:{x:number;y:number})=>p.x>=55&&p.x<83&&p.y>=8&&p.y<=41;
 export const isLabWorktop=(p:{x:number;y:number})=>
  p.x>=5&&p.x<=82&&p.y>=43&&p.y<=91;
+/** A drag to the TOP returns an item to storage. On phones the top
+ * toolbar uses real screen pixels, not the old desktop shelf coordinates.
+ * The minimum travel protects short accidental swipes and simple taps. */
+export function isLabReturnDrop(
+ p:{x:number;y:number},startY:number,stageHeight:number,compact=false
+){
+ const height=Math.max(1,stageHeight);
+ const limit=compact?Math.min(44,162/height*100):42;
+ return p.y<limit&&(startY-p.y)*height/100>28;
+}
 const size=(min:number,relative:number,max:number,width:number)=>
  clamp(width*relative,min,max);
 export type LabMountGeometry={x:number;y:number;kind:string;standHeight?:number};
