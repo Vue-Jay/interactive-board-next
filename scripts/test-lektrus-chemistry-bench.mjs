@@ -2483,7 +2483,9 @@ for(const [id,reference] of Object.entries(vapor.LAB_LATENT_VAPORIZATION_J_PER_G
  assert.ok(reference>160&&reference<3000,"Plausible reviewed latent heat: "+id);
  const sample={kind:"dish",doses:{[id]:{value:100,unit:"ml"}}};
  // Br2's published Antoine fit reaches 1 atm at ~59.1°C; use 60°C.
- const boilingC={H2O:100,C2H5OH:78.37,CH3OH:64.7,C3H8O:82.6,Br2:60}[id];
+ const boilingC=thermal.labThermalInfo(id,"ml").boilingC;
+// Physical CH3CHO is already at its 1-atm boiling point around 20.8 C.
+assert.ok(Number.isFinite(boilingC),"All pure volatile stock has an audited boiling point: "+id);
  const watts=120,seconds=5;
  const withHeater=vapor.labEvaporate(sample,seconds,boilingC,boilingC+60,watts);
  const without=vapor.labEvaporate(sample,seconds,boilingC,boilingC+60,0);
@@ -2503,7 +2505,7 @@ const noHeaterAlcohol=vapor.labEvaporate({kind:"beaker",
  doses:{C2H5OH:{value:15,unit:"ml"}}},10,25,180,0);
 assert.equal(coolAlcohol.evaporatedMl,noHeaterAlcohol.evaporatedMl,
  "Heat cannot be used for latent boiling before the boiling point");
-console.log("Evaporation: five reviewed latent heats obey the shared power budget");
+console.log("Evaporation: all six reviewed pure-liquid latent heats obey the shared power budget");
 
 
 /* Kinetic phase regression: reference saturation controls only the target.
