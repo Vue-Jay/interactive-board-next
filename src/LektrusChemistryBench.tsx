@@ -10,6 +10,7 @@ import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysi
 import {labKnownHeatCapacityJPerK} from "./lektrusLabCalorimetry";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labVisibleBinarySaltSolid} from "./lektrusLabDissolution";
+import {labProductIdentities,labSubstanceProperties} from "./lektrusLabPropertyRegistry";
 import {labCanStopper,labVaporPressureKPa,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
@@ -1727,6 +1728,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     [realCrystals.formula,realCrystals.solidMol] as const:
     Object.entries(inventory?.solidMol??{}).find(([formula,mol])=>
      mol>1e-12&&labSingleSaltSolubilityGPer100gWater(formula,v.temperatureC??22)!==undefined);
+   const formulasInVessel=[...new Set([
+    ...v.reagents,
+    ...Object.keys(inventory?.speciesMol??{}),
+    ...Object.keys(inventory?.releasedGasMol??{}),
+    ...Object.keys(inventory?.retainedGasMol??{}),
+    ...(inventory?.steps.flatMap(step=>
+     labProductIdentities(step.equation).map(p=>p.formula))??[])
+   ])].slice(0,48);
    const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
     "масса не определена":(labMolarMass(formula)!*mmol/1000).toLocaleString("ru-RU",{maximumFractionDigits:6})+" г";
    const formatted=(n:number)=>n.toLocaleString("ru-RU",{maximumFractionDigits:6});
@@ -1804,6 +1813,43 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       <p>Фильтрат: {formatted(v.filteredSolution.volumeMl??quantity.volumeMl)} мл.
        Количество каждого растворённого вещества сохранено после отделения осадка и
        используется в последующих реакциях.</p>}
+     <details className="lektrus-lab-property-inspector">
+      <summary>Физико-химические свойства реагентов и продуктов ({formulasInVessel.length})</summary>
+      <small>Значения относятся только к указанному чистому веществу и
+       подтверждённой форме. Для растворов с неизвестным составом
+       температура кипения и плотность не подставляются автоматически.</small>
+      <ul>
+       {formulasInVessel.map(formula=>{
+        const property=labSubstanceProperties(formula,v.temperatureC??22);
+        const observedSolid=inventory?.solidMol?.[formula]??0;
+        const observedGas=(inventory?.releasedGasMol?.[formula]??0)+
+         (inventory?.retainedGasMol?.[formula]??0);
+        const phase=observedGas>1e-12?"Газ":observedSolid>1e-12?
+         "Есть твёрдая фаза":"Раствор / другое состояние";
+        const soluble=property.solubilityGPer100gWater;
+        return <li key={formula}>
+         <strong>{property.name===formula?formula:property.name+" ("+formula+")"}</strong>
+         {" · "+phase}
+         {" · "}M: {property.molarMassGPerMol===undefined?
+          "нет проверенной формулы для расчёта":
+          formatted(property.molarMassGPerMol)+" г/моль"}
+         {property.crystalDensityGPerMl!==undefined&&
+          " · ρ кристалла: "+formatted(property.crystalDensityGPerMl)+" г/мл"}
+         {property.liquidDensityGPerMl!==undefined&&
+          " · ρ чистой жидкости: "+formatted(property.liquidDensityGPerMl)+" г/мл"}
+         {soluble!==undefined&&
+          " · Растворимость при "+formatted(v.temperatureC??22)+
+          " °C: "+formatted(soluble)+" г/100 г чистой воды"}
+         {property.meltingC!==undefined&&
+          " · t плавления чистой формы: "+formatted(property.meltingC)+" °C"}
+         {property.decompositionC!==undefined&&
+          " · начало разложения (зависит от условий): "+
+          formatted(property.decompositionC)+" °C"}
+         {!property.densityKnown&&" · Плотность этой формы не задана"}
+        </li>;
+       })}
+      </ul>
+     </details>
      <strong>Растворённые вещества</strong>
      <ul>{composition.solution.length?composition.solution.map((s,i)=><li key={i}>{s.formula}: {s.mmol===undefined?"количество не рассчитано":formatted(s.mmol)+" ммоль · "+massOf(s.formula,s.mmol)+(composition.solutionMl>0?" · "+formatted(s.mmol/composition.solutionMl)+" моль/л":"")}</li>):<li>Нет</li>}</ul>
      <strong>Твёрдая фаза и осадок</strong>
