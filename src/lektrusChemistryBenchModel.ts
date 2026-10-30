@@ -454,6 +454,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    Math.abs(nextSalt.solidMol-(v.binarySaltPhase?.solidMol??-1))>1e-10);
   const dissolutionComplete=kinetic?
    v.physicalProcess!==phaseMotion:
+   v.physicalProcess==="crystallizing"||
    v.physicalProcess==="dissolving"&&
    v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500;
   const cooling=!device?.powered&&next<42&&v.temperatureC!==undefined&&
