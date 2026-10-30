@@ -122,5 +122,31 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   popped,boiling,pressureKPa:totalPressureKPa,evaporatedMl
  };
 }
+/** First-order colligative boiling elevation for explicitly measured water
+ * and a short list of known, nonvolatile, water-soluble solids.
+ * ΔT = Kb * Σ(i*n) / kg(H2O); Kb=0.512 K kg mol-1 (OpenStax Chemistry 2e).
+ * i is the *ideal* dissociation count. High ionic strengths are outside the
+ * dilute-solution range and intentionally not assigned a precise plateau.
+ * This does not claim an arbitrary stock solution has a known boiling point.
+ */
+const aqueousNonvolatile:Record<string,{molarG:number;i:number}>={
+ NaCl:{molarG:58.44,i:2},KCl:{molarG:74.55,i:2},
+ NaBr:{molarG:102.89,i:2},KBr:{molarG:119.00,i:2},
+ C6H12O6:{molarG:180.16,i:1},C12H22O11:{molarG:342.30,i:1}
+};
+export function labApproxWaterBoilingC(doses?:Record<string,LabDose>):number|undefined{
+ const entries=Object.entries(doses??{}),water=doses?.H2O;
+ if(!water||water.unit!=="ml"||water.concentrationM!==undefined||water.value<.5)return;
+ let soluteParticles=0;
+ for(const [id,d] of entries){
+  if(id==="H2O")continue;
+  const solid=aqueousNonvolatile[id];
+  if(!solid||d.unit!=="g")return;
+  soluteParticles+=d.value/solid.molarG*solid.i;
+ }
+ const molality=soluteParticles/(water.value*.000997);
+ if(!Number.isFinite(molality)||molality>4)return;
+ return Math.round((100+.512*molality)*100)/100;
+}
 export const labCanStopper=(kind:string)=>
  ["tube","flask","conical","volumetric"].includes(kind);
