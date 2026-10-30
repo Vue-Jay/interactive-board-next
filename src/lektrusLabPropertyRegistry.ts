@@ -13,6 +13,7 @@ import {LAB_GAS_FORMULAS,labThermalInfo} from "./lektrusLabPhysicalProperties";
 import {LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
 import {labIsTypicallyWaterSoluble} from "./lektrusLabReactionNetwork";
 import {labHydrateNearestMeasuredReferences,labHydrateCrystalDensityReferences} from "./lektrusLabHydrateReferences";
+import {labSaturatedSolutionReferences} from "./lektrusLabSaturatedSolutionReferences";
 type Phase="gas"|"precipitate"|"other";
 export type LabProductIdentity={
  formula:string;name:string;coeff:number;reactionPhase:Phase;
@@ -68,6 +69,9 @@ export function labSubstanceProperties(formula:string,temperatureC=22){
  const hydratedSolubilityReferences=
   labHydrateNearestMeasuredReferences(formula,temperatureC);
  const hydratedCrystalDensityReferences=labHydrateCrystalDensityReferences(formula);
+ // This is an independently measured SATURATED mixture only. Prepared
+ // stocks (0.1 mol/L) never borrow a saturated solution's mass density.
+ const saturatedSolutionReferences=labSaturatedSolutionReferences(formula);
  return {formula,name:stock?.name??formula,stockKind:stock?.kind,
   inCabinet:!!stock,
   knownProduct:reviewedProducts.has(formula),
@@ -83,6 +87,7 @@ export function labSubstanceProperties(formula:string,temperatureC=22){
   solubilityGPer100gWater,
   hydratedSolubilityReferences,
   hydratedCrystalDensityReferences,
+  saturatedSolutionReferences,
   /** An absent value is genuinely missing, not a predicted constant. */
   densityKnown:crystalDensityGPerMl!==undefined||
    liquidDensityGPerMl!==undefined,
