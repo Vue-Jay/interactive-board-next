@@ -748,6 +748,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const returnGlass=(id:string)=>{
   const next=removeLabVessel(bench,id);
   if(next===bench){setNotice("Сначала слейте содержимое в раковину");return}
+  setVesselMenuId(null);setCompositionId(null);setActiveDeviceId(null);
   onChange?.(next);setNotice("Чистая посуда возвращена в шкаф");
  };
  const take=(kind:LabGlassware,p?:{x:number;y:number})=>{
