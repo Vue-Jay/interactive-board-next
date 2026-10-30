@@ -77,3 +77,24 @@ assert.doesNotMatch(markup,/className="lektrus-lab-worktop-actions"/,
 assert.match(editor,/className="lektrus-lab-editor-exit"/);
 assert.ok(editor.includes("onSave"),"Exit saves synchronized board");
 console.log("Lab wall cabinets, indicator shelf, chalkboard, controls and fullscreen scene: OK");
+
+
+/* The pictured broad empty apron occupied 12% of the stage. The final
+ * layout must reserve at least 95% of the height for the rear wall and
+ * tabletop together, both on the board and in fullscreen. */
+const finalTable=css.slice(css.lastIndexOf("Full-height worktop, 2026-10-30"));
+assert.ok(finalTable.length>300,"The latest laboratory tabletop override must exist");
+const surface=finalTable.match(/\.lektrus-lab-bench \.lektrus-lab-worktop-zone\{([^}]*)\}/)?.[1];
+const apron=finalTable.match(/\.lektrus-lab-bench \.lektrus-lab-counter-front\{([^}]*)\}/)?.[1];
+assert.ok(surface&&apron);
+const bottomSurface=Number(surface.match(/bottom:([\d.]+)%!important/)?.[1]);
+const apronHeight=Number(apron.match(/height:([\d.]+)%!important/)?.[1]);
+assert.ok(bottomSurface<=3&&apronHeight<=3,
+ "The tabletop must fill the bottom of the stage, without a thick decorative apron");
+assert.match(finalTable,/top:42%!important/,
+ "The tabletop remains below wall cupboards and indicator shelf");
+assert.match(finalTable,/left:\.8%!important;right:\.8%!important/,
+ "The surface reaches both sides of the laboratory");
+assert.match(markup,/Объём твёрдой фазы по справочной плотности/,
+ "Vessel inspector exposes measured solid displacement");
+console.log("Full-height worktop with narrow edge and physical vessel displacement: OK");

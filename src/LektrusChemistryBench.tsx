@@ -1580,6 +1580,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <button type="button" onClick={()=>setCompositionId(null)} aria-label="Закрыть состав">✕</button>
      </div>
      <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Добавлено твёрдых веществ: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
+     {quantity.solidVolumeMl>1e-8&&<p>
+      Объём твёрдой фазы по справочной плотности:
+      {" "+formatted(quantity.solidVolumeMl)} мл.
+      {quantity.solidVolumeComplete?
+       " Всего занято в сосуде: "+formatted(quantity.occupiedMl)+" мл.":
+       " Для части твёрдых веществ объём не рассчитан."}
+      {" "}Свободный объём по известным фазам: {formatted(quantity.availableMl)} мл.
+     </p>}
      <p>Горлышко: {v.stoppered?"закрыто пробкой":"открыто"}.
       {v.stoppered?" Пар остаётся внутри; обычная пробка может выскочить при нагреве.":""}</p>
      {v.stoppered&&vaporReading.reactionGasPressureKPa>0&&
