@@ -75,6 +75,12 @@ export function labKnownHeatCapacityJPerK(kind:string,doses?:Record<string,HeatD
  if(!doses)return;
  const entries=Object.entries(doses).filter(([,d])=>d.value>0);
  if(!entries.length)return;
+ // A dry salt's measured c_p is NOT the solution's partial molar heat
+ // capacity. Dissolution and ionic hydration change mixture enthalpy, so
+ // a water + solid-salt mixture needs separately measured solution data.
+ // Otherwise the old cautious relaxation path stays in effect.
+ if(entries.some(([,d])=>d.unit==="g")&&
+  entries.some(([,d])=>d.unit==="ml"))return;
  const glass=LAB_VESSEL_GLASS_EQUIVALENT_G[kind];
  if(glass===undefined)return;
  let capacity=glass*glassCp;
