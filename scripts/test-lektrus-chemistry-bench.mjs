@@ -2954,3 +2954,44 @@ for(const [formula,density] of Object.entries(newReferenceDensities)){
 assert.match(read("src/lektrusLabReactionNetwork.ts"),
  /An aqueous reaction MODE does not conjure any actual solvent/);
 console.log("Existing phase-change temperatures and 14 new solid densities: OK");
+
+
+// Exhaustive coverage audit for the EXISTING reagent cabinet, not a new
+// reaction family: every gram-dosed stock without measured solvent is solid,
+// and every stock has a usable formula and an explicit property record.
+// Unsupported numeric properties remain absent rather than made up.
+const allCabinetEntries=catalog.buildLabCatalog({group:"none"})
+ .flatMap(section=>section.items);
+assert.equal(allCabinetEntries.length,reaction.substances.length,
+ "Audit must not omit substances when cabinet grouping changes");
+let dryStockCount=0,knownCrystalDensityCount=0;
+for(const stock of allCabinetEntries){
+ const property=materialRegistry.labSubstanceProperties(stock.id);
+ assert.equal(property.inCabinet,true);
+ assert.ok(property.molarMassGPerMol>0,
+  "Every existing catalog substance must have its molecular mass: "+stock.id);
+ if(!catalog.labReagentForms(stock).includes("g"))continue;
+ dryStockCount++;
+ const sample={reagents:[stock.id],environment:"aqueous",
+  doses:{[stock.id]:{value:1,unit:"g"}}};
+ const dryInventory=network.simulateLabInventory(sample);
+ assert.ok((dryInventory.solidMol[stock.id]??0)>0,
+  "Dry stored material cannot become a solution before a solvent is added: "+stock.id);
+ assert.ok((dryInventory.speciesMol[stock.id]??0)>0,
+  "The dry material's chemical inventory must preserve its mass: "+stock.id);
+ if(property.crystalDensityGPerMl!==undefined){
+  knownCrystalDensityCount++;
+  const testedVessel={...lab.defaultLabBench().vessels[0],
+   reagents:[stock.id],doses:sample.doses};
+  const displacement=lab.labVesselSolidDisplacement(testedVessel);
+  assert.ok(displacement.complete,
+   "A reviewed true-solid density should yield complete displacement: "+stock.id);
+  assert.ok(Math.abs(displacement.volumeMl-
+   1/property.crystalDensityGPerMl)<1e-6);
+ }
+}
+assert.ok(dryStockCount>100);
+assert.ok(knownCrystalDensityCount>=45);
+console.log("Complete current reagent cabinet audit: "+allCabinetEntries.length+
+ " substances, "+dryStockCount+" dry stocks, "+
+ knownCrystalDensityCount+" reviewed solid densities: OK");
