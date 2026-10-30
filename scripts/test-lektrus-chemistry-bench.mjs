@@ -42,8 +42,10 @@ const network=load("src/lektrusLabReactionNetwork.ts",key=>{
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 const hydratedReferences=load("src/lektrusLabHydrateReferences.ts");
+const saturatedReferences=load("src/lektrusLabSaturatedSolutionReferences.ts");
 const materialRegistry=load("src/lektrusLabPropertyRegistry.ts",key=>{
  if(key==="./lektrusLabHydrateReferences")return hydratedReferences;
+ if(key==="./lektrusLabSaturatedSolutionReferences")return saturatedReferences;
  if(key==="./lektrusReactionDatabase")return reaction;
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabMaterialConstants")return constants;
