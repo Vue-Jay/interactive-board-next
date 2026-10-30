@@ -1160,11 +1160,21 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     title="Стереть записанные уравнения с доски" aria-label="Стереть с доски"
     onPointerDown={e=>e.stopPropagation()}
     onClick={e=>{e.stopPropagation();onChange?.(wipeLabChalkboard(bench))}}>
-    <svg viewBox="0 0 32 28" width="24" height="21" aria-hidden="true">
-     <path d="M5 12L10 4H25L29 12L24 24H10Z" fill="#e5cda8"
-      stroke="#956f4e" strokeWidth="1.8"/>
-     <path d="M6 13L28 13L24 24H10Z" fill="#85b7ac"/>
-     <path d="M9 17H26" stroke="#d8f5e7" strokeWidth="1.5"/>
+    <svg className="lektrus-lab-chalk-cloth" viewBox="0 0 40 32"
+     width="31" height="25" aria-hidden="true">
+     <defs><linearGradient id="chalk-rag-fabric" x1="0" y1="0" x2="1" y2="1">
+      <stop stopColor="#e9dfba"/><stop offset=".55" stopColor="#c7bf9e"/>
+      <stop offset="1" stopColor="#9fae99"/>
+     </linearGradient></defs>
+     <path d="M5 12L12 5L29 7L36 15L29 27L12 26L3 20Z"
+      fill="url(#chalk-rag-fabric)" stroke="#6a826e" strokeWidth="1.5"
+      strokeLinejoin="round"/>
+     <path d="M5 13L14 19L29 20L36 15M12 26L14 19L12 5M29 20L29 27"
+      stroke="#688b76" strokeWidth="1.4" fill="none"/>
+     <path d="M17 10L28 13M18 13L27 16M16 23L26 24"
+      stroke="#f6f0d9" strokeWidth="1.8" strokeLinecap="round" opacity=".82"/>
+     <path d="M5 12L12 5L29 7" stroke="#f6f2df" strokeWidth="1.2"
+      fill="none" opacity=".7"/>
     </svg>
    </button>
    {settings.showEquationBoard&&<div className="lektrus-lab-chalk-writing">
