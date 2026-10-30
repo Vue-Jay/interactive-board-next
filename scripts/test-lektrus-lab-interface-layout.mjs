@@ -121,3 +121,15 @@ assert.ok(finalHeader.includes('right:max(9%,82px)!important;'),
 assert.ok(finalHeader.includes('right:16px!important;'),
  "Fullscreen close control must sit inside, not against, the window boundary");
 console.log("Lab focus resets, selected-only readouts and header insets: OK");
+
+
+/* Worktop expansion also moves the sink's physical drop zone. */
+const lowerSink=css.slice(css.lastIndexOf("Align the washbasin with the NEW full-height countertop"));
+assert.ok(lowerSink.includes("bottom:6.5%!important;"));
+assert.ok(lowerSink.includes("right:2.5%!important;"));
+assert.ok(lowerSink.includes("top:auto!important;"));
+assert.ok(lowerSink.includes("height:30%!important;"));
+const layout=readFileSync("src/lektrusLabLayout.ts","utf8");
+assert.match(layout,/LAB_SINK_BOUNDS=\{left:74\.5,right:97\.5,top:63\.5,bottom:93\.5\}/);
+assert.match(layout,/p\.x>=LAB_SINK_BOUNDS\.left/);
+console.log("New bottom-right sink and drag-to-drain bounds agree");
