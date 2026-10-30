@@ -34,6 +34,28 @@ const physical:Record<string,LabThermalRecord>={
  Si:{meltingC:1414,boilingC:3265},
  NaCl:{meltingC:800.7,boilingC:1465},
  KCl:{meltingC:770,boilingC:1420},
+ // Individually reviewed pure ANHYDROUS compounds, NOT water solutions.
+ // PubChem 24459: PbCl2 501/950°C (melting/boiling).
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24459
+ PbCl2:{meltingC:501,boilingC:950},
+ // ATSDR Table 4-2: PbBr2 371/892°C (pure salt).
+ // https://www.ncbi.nlm.nih.gov/books/NBK589540/table/ch4.tab2/
+ PbBr2:{meltingC:371,boilingC:892},
+ // ATSDR Barium Table 4-2: anhydrous BaCl2 962/1560°C.
+ // https://www.atsdr.cdc.gov/ToxProfiles/tp24-c4.pdf
+ BaCl2:{meltingC:962,boilingC:1560},
+ // ILO/WHO ICSC 1184: anhydrous CaCl2 melts at 772°C;
+ // avoid disputed boiling point and hydration-phase assumptions.
+ // https://www.inchem.org/documents/icsc/icsc/eics1184.htm
+ CaCl2:{meltingC:772,
+  note:"Только безводный хлорид кальция; гидраты плавятся иначе."},
+ // ATSDR table: PbSO4, anhydrous crystal, 1170°C.
+ // https://www.ncbi.nlm.nih.gov/books/NBK589540/
+ PbSO4:{meltingC:1170},
+ // NCBI Toxicological Profile for Copper: CuO thermal decomposition.
+ // https://www.ncbi.nlm.nih.gov/books/NBK610366/
+ CuO:{decompositionC:1026,behavior:"decomposes",
+  note:"Оксид меди(II) при сильном нагревании разлагается; это не кипение."},
  NaOH:{meltingC:318,boilingC:1388},
  KOH:{meltingC:360,boilingC:1327},
  LiOH:{meltingC:462,boilingC:924},
