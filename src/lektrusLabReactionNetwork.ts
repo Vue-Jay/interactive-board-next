@@ -9,7 +9,8 @@ import type {LabDose} from "./lektrusChemistryBenchModel";
 export type LabInventoryStep={equation:string;extentMol:number;observation:string;heatKJ?:number};
 export type LabInventory={
  speciesMol:Record<string,number>;solidMol:Record<string,number>;
- releasedGasMol:Record<string,number>;steps:LabInventoryStep[];
+ releasedGasMol:Record<string,number>;retainedGasMol:Record<string,number>;
+ steps:LabInventoryStep[];
  unmeasured:string[];limited:boolean;knownHeatKJ?:number;heatEstimateComplete:boolean;
 };
 /** Selected Ksp at 25 °C. Source data: OpenStax Chemistry 2e,
@@ -87,12 +88,12 @@ const remember=(key:string,value:LabInventory)=>{
 };
 export function simulateLabInventory(input:{
  reagents:readonly string[];doses?:Record<string,LabDose>;
- environment:ReactionEnvironment;temperatureC?:number;
+ environment:ReactionEnvironment;temperatureC?:number;stoppered?:boolean;
 },maxSteps=48):LabInventory{
- const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,maxSteps]);
+ const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,maxSteps]);
  const cached=inventoryCache.get(key);
  if(cached)return cached;
- const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},
+ const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
   steps:[],unmeasured:[],limited:false,heatEstimateComplete:true};
  const doses=input.doses??{};
  const volumeMl=Object.entries(doses).reduce((n,[id,d])=>
@@ -151,7 +152,8 @@ export function simulateLabInventory(input:{
    const marker=rawProducts.find(s=>s.replace(/^\s*\d+\s*/,"").
     replace(/[↓↑]/g,"").trim()===term.formula)??"";
    if(marker.includes("↑")){
-    sum(inventory.releasedGasMol,term.formula,gained);
+    sum(input.stoppered?inventory.retainedGasMol:inventory.releasedGasMol,
+     term.formula,gained);
    }else{
     sum(inventory.speciesMol,term.formula,gained);
     if(marker.includes("↓")||
@@ -171,7 +173,8 @@ export function simulateLabInventory(input:{
 }
 export function labInventoryMassG(inventory:LabInventory):number|undefined{
  let sumMass=0;
- for(const record of [inventory.speciesMol,inventory.releasedGasMol]){
+ for(const record of [inventory.speciesMol,inventory.releasedGasMol,
+  inventory.retainedGasMol]){
   for(const [formula,mol] of Object.entries(record)){
    const mass=labMolarMass(formula);
    if(mass===undefined)return undefined;
