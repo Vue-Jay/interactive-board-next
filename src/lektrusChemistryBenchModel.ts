@@ -1984,7 +1984,9 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  const vessels=bench.vessels.map(v=>{
   if(v.id===sourceId)return {...v,reactionAmounts:undefined,reactionHeat:undefined,reagents:[],observed:false,uncertain:false,
    completedReaction:undefined,indicator:undefined,
-    indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined};
+    indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,
+    binarySaltPhase:undefined,physicalProcess:undefined,
+    physicalStartedAtMs:undefined};
   if(v.id===targetId){
    const doses={...v.doses};
    for(const [id,dose] of Object.entries(source.doses??{})){
@@ -2006,6 +2008,9 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
    const dissolving=!newReaction&&doses.H2O?.unit==="ml"&&
     reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&doses[key]?.unit==="g");
    return {...v,reagents,reactionAmounts:undefined,reactionHeat:undefined,observed:reagents.length>1||source.observed,
+    // A complete transfer to empty glassware carries the physical crystal
+    // inventory. Mixed recipients must re-evaluate their phase separately.
+    binarySaltPhase:targetWasEmpty?source.binarySaltPhase:undefined,
     physicalProcess:dissolving?"dissolving" as const:undefined,
     physicalStartedAtMs:dissolving?Date.now():undefined,
     doses,environment:medium,
