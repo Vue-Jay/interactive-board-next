@@ -2215,3 +2215,40 @@ savedStopper.vessels[0].ventedVaporMl={H2O:.0023,CH3OH:.014};
 assert.equal(parseLab(savedStopper).items[0].scienceLabBench.vessels[0].stoppered,true);
 assert.equal(parseLab(savedStopper).items[0].scienceLabBench.vessels[0].ventedVaporMl.CH3OH,.014);
 console.log("Measured vapor pressure, open evaporation, stoppers and saved gas loss: OK");
+
+
+/** Final simplified glassware wall: no graduated cylinder/volumetric flask,
+ * no scrolling, and no accidental removal of old experiment contents. */
+assert.deepEqual(lab.labGlassware.map(v=>v.id),[
+ "beaker","tube","flask","dish","conical","crucible","pipette","burette"
+]);
+assert.equal(lab.labGlassware.find(v=>v.id==="pipette").name,"Пипетка");
+assert.ok(!lab.labGlassware.some(v=>/мерн/i.test(v.name)));
+for(const mode of lab.LAB_MODES){
+ const emptyMode=lab.setLabMode(lab.defaultLabBench(),mode.id);
+ const offered=lab.glasswareForLabMode(emptyMode);
+ assert.ok(offered.length<=6&&offered.length>0,
+  "The wall must display every "+mode.name+" glassware item without scrolling");
+ assert.ok(offered.every(v=>!["volumetric","cylinder"].includes(v.id)));
+ const prepared=lab.prepareLabModeSetup(emptyMode);
+ assert.ok(prepared.vessels.every(v=>!["volumetric","cylinder"].includes(v.kind)),
+  "Mode starter kits cannot silently add retired instruments");
+}
+const retiredBefore=lab.defaultLabBench();
+assert.equal(lab.addLabVessel(retiredBefore,"volumetric"),retiredBefore);
+assert.equal(lab.addLabVessel(retiredBefore,"cylinder"),retiredBefore);
+const glassWall=read("src/lektrusLabSceneLayout.css");
+const lastLayout=glassWall.slice(glassWall.lastIndexOf("Final compact glassware wall"));
+assert.ok(lastLayout.length>1000);
+assert.match(lastLayout,/grid-template-rows:repeat\(3,minmax\(0,1fr\)\)!important/);
+assert.match(lastLayout,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
+assert.match(lastLayout,/overflow-y:hidden!important/);
+assert.match(lastLayout,/scrollbar-width:none!important/);
+assert.match(lastLayout,/@container\(max-width:650px\)/);
+const glassUI=read("src/LektrusChemistryBench.tsx");
+assert.doesNotMatch(glassUI,/setShowAllGlassware|showAllGlassware|fillLabVolumetricFlask/);
+assert.match(glassUI,/selected\?\.kind==="pipette"/);
+assert.match(glassUI,/>\{kind\.name\}<\/small>/);
+assert.ok(!lab.labModeInfo(lab.setLabMode(lab.defaultLabBench(),"solutions"))
+ .description.includes("доведение до метки"));
+console.log("Simplified eight-type catalog, six-slot no-scroll wall and legacy glassware preservation: OK");
