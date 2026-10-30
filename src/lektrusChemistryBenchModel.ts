@@ -3,6 +3,7 @@ import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
 import {labSensibleHeatStep} from "./lektrusLabCalorimetry";
+import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,type LabBinarySaltState} from "./lektrusLabDissolution";
 import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
@@ -437,21 +438,41 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    headspaceMl:Math.max(1,capacityMl-occupiedMl),
    reactionGasMol:gasMoles},seconds,next,toward,deliveredHeatW);
   const evaporating=phase.evaporatedMl>0,popped=phase.popped;
-  const dissolutionComplete=v.physicalProcess==="dissolving"&&
+  const updatedDoses=evaporating?phase.doses:v.doses;
+  const updatedReagents=evaporating?v.reagents.filter(id=>
+   !v.doses?.[id]||updatedDoses?.[id]):v.reagents;
+  const stirring=devices.some(d=>d.kind==="stirrer"&&d.active&&
+   d.powered&&d.linkedVesselId===v.id)||
+   bench.stirringVesselId===v.id&&devices.some(d=>d.kind==="stirrer"&&d.powered);
+  const kinetic=labAdvanceBinarySaltPhase({...v,doses:updatedDoses,
+   reagents:updatedReagents},next,seconds,stirring,v.binarySaltPhase,
+   v.physicalProcess==="dissolving"&&!v.binarySaltPhase);
+  const nextSalt=kinetic?.state;
+  const phaseMotion=kinetic?.active?
+   (kinetic.direction==="crystallizing"?"crystallizing":"dissolving"):undefined;
+  const kineticChanged=!!nextSalt&&(nextSalt.formula!==v.binarySaltPhase?.formula||
+   Math.abs(nextSalt.solidMol-(v.binarySaltPhase?.solidMol??-1))>1e-10);
+  const dissolutionComplete=kinetic?
+   v.physicalProcess!==phaseMotion:
+   v.physicalProcess==="dissolving"&&
    v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500;
   const cooling=!device?.powered&&next<42&&v.temperatureC!==undefined&&
    ["heated","ignited"].includes(v.environment);
   const phaseChanged=meltFraction!==(v.meltFraction??0)||
    phaseTransition!==v.phaseTransition;
-  if(next!==old||cooling||evaporating||popped||dissolutionComplete||phaseChanged)changed=true;
-  if(next===old&&!cooling&&!evaporating&&!popped&&!dissolutionComplete&&!phaseChanged)return v;
-  const doses=evaporating?phase.doses:v.doses;
-  const reagents=evaporating?v.reagents.filter(id=>!v.doses?.[id]||doses?.[id]):v.reagents;
+  if(next!==old||cooling||evaporating||popped||dissolutionComplete||
+   phaseChanged||kineticChanged)changed=true;
+  if(next===old&&!cooling&&!evaporating&&!popped&&!dissolutionComplete&&
+   !phaseChanged&&!kineticChanged)return v;
+  const doses=updatedDoses,reagents=updatedReagents;
   const hasLiquid=Object.entries(doses??{}).some(([id,d])=>d.unit==="ml"&&
    substances.find(s=>s.id===id)?.kind!=="газ");
   return {...v,temperatureC:next,
    ...(phaseChanged?{meltFraction,phaseTransition}:{}),
-   ...(dissolutionComplete?{physicalProcess:undefined,physicalStartedAtMs:undefined}:{}),
+   ...(kinetic?{binarySaltPhase:nextSalt,physicalProcess:phaseMotion,
+    physicalStartedAtMs:phaseMotion?(v.physicalStartedAtMs??nowMs):undefined}:
+    dissolutionComplete?{physicalProcess:undefined,physicalStartedAtMs:undefined,
+     binarySaltPhase:undefined}:{binarySaltPhase:undefined}),
    ...(evaporating?{doses,reagents,observed:reagents.length>1,
     ventedVaporMl:phase.ventedVaporMl}:{}),
    ...(popped?{stoppered:false,stopperedAtC:undefined}:{}),
@@ -741,7 +762,9 @@ export type LabVessel={pourFraction?:number;
  buretteRemainderMl?:number;
  doses?:Record<string,LabDose>;
  /** Physical dissolution animation; no chemical product is invented. */
- physicalProcess?:"dissolving";physicalStartedAtMs?:number;
+ physicalProcess?:"dissolving"|"crystallizing";physicalStartedAtMs?:number;
+ /** Persisted crystalline fraction, conserved with dissolved molecules. */
+ binarySaltPhase?:LabBinarySaltState;
  /** Filtered insoluble solid; mass only when quantities were measured. */
  filteredResidue?:{formula:string;massG?:number;color:string};
  /** Physical carrier volume and identities of dissolved filtrate products. */
@@ -893,6 +916,10 @@ export function labVesselContents(v:LabVessel){
   !v.filteredResidue&&!v.filteredSolution&&v.doses&&v.reagents.length?
   simulateLabInventory(v):undefined;
  if(inventory&&!inventory.unmeasured.length){
+  // Reaction totals are conserved; only the binary phase partition moves.
+  const visible=labVisibleBinarySaltSolid(v,v.binarySaltPhase,v.temperatureC??22);
+  const solidPhase={...inventory.solidMol};
+  if(visible)solidPhase[visible.formula]=visible.solidMol;
   const solid:{formula:string;massG?:number}[]=[];
   const solution:{formula:string;mmol?:number}[]=[];
   const precipitated=new Set(inventory.steps.flatMap(step=>
@@ -902,11 +929,11 @@ export function labVesselContents(v:LabVessel){
   let precipitateG=0,precipitateVolumeMl=0,unknownDensity=false;
   for(const [formula,mol] of Object.entries(inventory.speciesMol)){
    if(mol<=1e-12)continue;
-   const solidMol=inventory.solidMol[formula]??0;
+   const solidMol=solidPhase[formula]??0;
    if(solidMol>1e-12){
     const mass=labMolarMass(formula);
     solid.push({formula,massG:mass===undefined?undefined:mass*solidMol});
-    if(precipitated.has(formula)||labSingleSaltSolubilityGPer100gWater(formula,25)!==undefined||
+    if(precipitated.has(formula)||labSingleSaltSolubilityGPer100gWater(formula,v.temperatureC??22)!==undefined||
      (v.chemicalInventory&&v.environment==="aqueous"&&
       !LAB_WATER_SOLUTES.has(formula))){
      if(mass!==undefined){
@@ -1204,7 +1231,7 @@ export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
   reactionGasMol:retained+gasStock},0,temperatureC);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -1377,8 +1404,17 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
     nextDoses?.[key]?.unit==="g")&&matching.status!=="reaction";
   const priorReaction=!!equation;
   const unsupportedAddition=priorReaction&&!carrierWater&&!sameReaction;
+  const eq=labBinarySaltEquilibrium({...v,reagents,doses:nextDoses,
+   environment},v.temperatureC??22);
+  const prior=eq&&v.binarySaltPhase?.formula===eq.formula?v.binarySaltPhase:undefined;
+  const freshDryMol=eq?.formula===reagent&&measured.unit==="g"?
+   measured.value/eq.molarMass:0;
+  const binarySaltPhase=eq?{formula:eq.formula,
+   solidMol:Math.min(eq.totalMol,prior?prior.solidMol+freshDryMol:
+    physicalDissolution?eq.totalMol:eq.equilibriumSolidMol)}:undefined;
   return {...v,reagents,meltFraction:undefined,phaseTransition:undefined,
    reactionHeat:unsupportedAddition?undefined:v.reactionHeat,
+   binarySaltPhase,
    physicalProcess:physicalDissolution?"dissolving":undefined,
    physicalStartedAtMs:physicalDissolution?Date.now():undefined,
    reactionAmounts:preservedAmounts,
