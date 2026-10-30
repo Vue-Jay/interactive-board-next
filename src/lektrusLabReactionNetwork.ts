@@ -37,12 +37,37 @@ export const LAB_KSP_25C:Readonly<Record<string,number>>=Object.freeze({
  "Al(OH)3":2.0e-32,"Ni(OH)2":1.6e-16,
  Ag2CO3:8.1e-12,Ag3PO4:1.8e-18
 });
-const WATER_SOLUBLE_SOLIDS=new Set([
+/** DILUTE water solubility CLASS, not a saturation-curve dataset.
+ * Exact solubility is still available only for a separately tabulated
+ * binary compound. OpenStax Chemistry 2e §4.2 (precipitation solubility
+ * rules): https://openstax.org/books/chemistry-2e/pages/4-2-classifying-chemical-reactions
+ * Exceptions excluded: Ag, Pb halides; Ba/Pb/Sr/Ca sulphates; metal
+ * carbonates, phosphates and most hydroxides. Existing dose quantities
+ * are conserved; classification does NOT invent saturation constants. */
+export const LAB_DILUTE_WATER_SOLUBLE_STOCKS:ReadonlySet<string>=new Set([
+ // Existing soluble salts, metal hydroxides, sugars and misc. reagents
  "NaCl","KCl","NaBr","KBr","NaNO3","KNO3","LiCl","LiNO3",
  "Na2SO4","K2SO4","MgSO4","CuSO4","FeSO4","NiSO4","CaCl2",
  "BaCl2","AgNO3","Na2CO3","NaHCO3","KI","KMnO4",
- "C12H22O11","C6H12O6","KOH","NaOH","Ca(NO3)2","NH4Cl"
+ "C12H22O11","C6H12O6","KOH","NaOH","Ca(NO3)2","NH4Cl",
+ // Additional catalog chlorides (except verified poorly-soluble Pb/Ag)
+ "MgCl2","FeCl2","FeCl3","CuCl2","AlCl3","ZnCl2",
+ "SrCl2","NiCl2","CoCl2",
+ // All catalog nitrates, ammonium salts, and strongly soluble acetates
+ "Cu(NO3)2","Pb(NO3)2","NH4NO3","Mg(NO3)2",
+ "Ba(NO3)2","Fe(NO3)3","Fe(NO3)2","Zn(NO3)2","Al(NO3)3",
+ "(NH4)2SO4","(NH4)2CO3",
+ "CH3COONa","CH3COOK","CH3COOLi","Ca(CH3COO)2",
+ "Mg(CH3COO)2","Zn(CH3COO)2","Fe(CH3COO)2",
+ // Other catalog sulphates, alkali phosphate/carbonate/sulphite salts
+ "ZnSO4","Fe2(SO4)3","Li2SO4","Al2(SO4)3","MnSO4",
+ "K2CO3","Na3PO4","K3PO4","NaH2PO4",
+ "Na2SO3","K2SO3","Na2S",
+ // Alkali hydroxide, nitrate and other vetted soluble compounds
+ "LiOH","NaNO2","KNO2","K2Cr2O7","K2MnO4"
 ]);
+export const labIsTypicallyWaterSoluble=(formula:string):boolean=>
+ LAB_DILUTE_WATER_SOLUBLE_STOCKS.has(formula);
 const EPS=1e-12;
 const knownRows=reviewedReactionCases.flatMap((row,index)=>{
  if(row.status!=="reaction")return [];
@@ -135,7 +160,7 @@ export function simulateLabInventory(input:{
   sum(inventory.speciesMol,id,mol);
   if(dose?.unit==="g"&&
    (!hasMeasuredLiquid||input.environment!=="aqueous"||
-    !WATER_SOLUBLE_SOLIDS.has(id)))
+    !LAB_DILUTE_WATER_SOLUBLE_STOCKS.has(id)))
    sum(inventory.solidMol,id,mol);
  }
  // Unknown quantities must not be treated as absent: suppress the entire
