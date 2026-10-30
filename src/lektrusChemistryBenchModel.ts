@@ -17,12 +17,10 @@ export const labGlassware:{id:LabGlassware;name:string;description:string}[]=[
  {id:"beaker",name:"Стакан",description:"Смешивание растворов"},
  {id:"tube",name:"Пробирка",description:"Небольшие пробы"},
  {id:"flask",name:"Колба",description:"Работа с жидкостями"},
- {id:"cylinder",name:"Мерный цилиндр",description:"Отмеривание жидкости"},
  {id:"dish",name:"Чашка",description:"Открытый сосуд"},
  {id:"conical",name:"Коническая колба",description:"Титрование и перемешивание"},
- {id:"volumetric",name:"Мерная колба",description:"Приготовление растворов"},
  {id:"crucible",name:"Тигель",description:"Нагревание твёрдых веществ"},
- {id:"pipette",name:"Мерная пипетка",description:"Отбор небольшого объёма"},
+ {id:"pipette",name:"Пипетка",description:"Отбор и перенос точного объёма"},
  {id:"burette",name:"Бюретка",description:"Дозирование при титровании"}
 ];
 /** A work mode selects the useful tools; existing apparatus stays on the table. */
@@ -32,19 +30,19 @@ export const LAB_MODES:{id:LabMode;name:string;description:string;
  glassware:LabGlassware[];devices:LabAvailableDevice[]}[]=[
  {id:"reactions",name:"Реакции",
   description:"Качественные наблюдения и расчёты по измеренным количествам",
-  glassware:["tube","beaker","pipette","conical","dish","cylinder","flask","volumetric"],
+  glassware:["tube","beaker","pipette","conical","dish","flask"],
   devices:["tripod","burner","hotplate","stirrer","filter"]},
  {id:"titration",name:"Титрование",
   description:"Бюретка со штативом, дозирование по каплям и точка эквивалентности",
-  glassware:["burette","conical","pipette","beaker","cylinder"],
+  glassware:["burette","conical","pipette","beaker"],
   devices:["tripod","stirrer"]},
  {id:"solutions",name:"Приготовление растворов",
-  description:"Отмеривание, растворение, перенос и доведение до метки",
-  glassware:["volumetric","beaker","cylinder","pipette","flask"],
+  description:"Растворение, дозирование и перемешивание",
+  glassware:["beaker","pipette","flask","conical"],
   devices:["stirrer","hotplate","tripod"]},
  {id:"synthesis",name:"Синтез",
   description:"Нагревание, получение и сбор продуктов проверенных превращений",
-  glassware:["flask","conical","tube","beaker","crucible","dish","cylinder"],
+  glassware:["flask","conical","tube","beaker","crucible","dish"],
   devices:["tripod","burner","hotplate","stirrer","filter"]}
 ];
 export const labMode=(bench:LabBench):LabMode=>
@@ -1080,8 +1078,11 @@ export function labFreeVesselPosition(bench:LabBench):{x:number;y:number}{
  };
  return spaces.reduce((best,p)=>score(p)>score(best)?p:best,spaces[0]);
 }
+/** Keep retired shapes loadable from saved classroom boards, but never
+ * allow creating them in a new experiment or a mode starter kit. */
+export const LAB_RETIRED_GLASSWARE:readonly LabGlassware[]=["cylinder","volumetric"];
 export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:number;y:number}):LabBench{
- if(bench.vessels.length>=MAX_BENCH_VESSELS)return bench;
+ if(bench.vessels.length>=MAX_BENCH_VESSELS||LAB_RETIRED_GLASSWARE.includes(kind))return bench;
  let n=1;while(bench.vessels.some(v=>v.id==="v"+n))n++;
  const location=position??labFreeVesselPosition(bench);
  const next:LabVessel={id:"v"+n,kind,x:clamp(location.x),
@@ -1092,11 +1093,11 @@ export function addLabVessel(bench:LabBench,kind:LabGlassware,position?:{x:numbe
 /** Optional one-click preparation. Adds only missing EMPTY glassware and
  * compatible apparatus, never clearing or moving existing experiments. */
 const LAB_STARTER_SETS:Record<LabMode,{glassware:LabGlassware[];devices:LabAvailableDevice[]}>={
- reactions:{glassware:["beaker","tube","pipette","cylinder"],devices:["filter"]},
+ reactions:{glassware:["beaker","tube","pipette","flask"],devices:["filter"]},
  qualitative:{glassware:["beaker","tube","tube","pipette"],devices:["filter"]},
- quantitative:{glassware:["beaker","cylinder","pipette","conical"],devices:["stirrer"]},
+ quantitative:{glassware:["beaker","pipette","conical","flask"],devices:["stirrer"]},
  titration:{glassware:["burette","conical","pipette"],devices:["tripod"]},
- solutions:{glassware:["volumetric","beaker","cylinder","pipette"],devices:["stirrer"]},
+ solutions:{glassware:["beaker","pipette","flask","conical"],devices:["stirrer"]},
  synthesis:{glassware:["flask","crucible","beaker"],devices:["hotplate","tripod"]}
 };
 export function prepareLabModeSetup(bench:LabBench):LabBench{

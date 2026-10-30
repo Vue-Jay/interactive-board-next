@@ -170,8 +170,8 @@ devices=lab.toggleLabDevice(devices,"stirrer");
 assert.equal(devices.stirringVesselId,undefined,"Storing the mixer must stop stirring");
 assert.equal(devices.devices.includes("stirrer"),false,"Devices can be returned to storage");
 let extra=lab.defaultLabBench();
-for(const kind of lab.labGlassware.slice(5)){
- extra=lab.addLabVessel(extra,kind);
+for(const kind of lab.labGlassware.filter(v=>v.id!=="beaker").slice(0,5)){
+ extra=lab.addLabVessel(extra,kind.id);
 }
 assert.equal(extra.vessels.length,lab.MAX_BENCH_VESSELS);
 assert.ok(lab.labGlassware.some(v=>v.id==="burette"));
@@ -737,21 +737,23 @@ assert.equal(lab.putLabReagent(calibrated,pipetteId,"HCl",
 calibrated=lab.transferLabMeasuredLiquid(calibrated,"v1",pipetteId,10);
 assert.equal(calibrated.vessels.find(v=>v.id===pipetteId).doses.HCl.value,10);
 assert.equal(calibrated.vessels.find(v=>v.id==="v1").doses.HCl.value,30);
-calibrated=lab.addLabVessel(calibrated,"cylinder");
-const cylinderId=calibrated.vessels.find(v=>v.kind==="cylinder").id;
-calibrated=lab.transferLabMeasuredLiquid(calibrated,pipetteId,cylinderId,4);
+calibrated=lab.addLabVessel(calibrated,"beaker");
+const receivingBeakerId=calibrated.vessels.filter(v=>v.kind==="beaker").at(-1).id;
+calibrated=lab.transferLabMeasuredLiquid(calibrated,pipetteId,receivingBeakerId,4);
 assert.equal(calibrated.vessels.find(v=>v.id===pipetteId).doses.HCl.value,6);
-assert.equal(calibrated.vessels.find(v=>v.id===cylinderId).doses.HCl.value,4);
-assert.equal(calibrated.vessels.find(v=>v.id===cylinderId).doses.HCl.concentrationM,.1);
-assert.equal(lab.transferLabMeasuredLiquid(calibrated,pipetteId,cylinderId,50),calibrated);
-let markFlask=lab.addLabVessel(lab.defaultLabBench(),"volumetric");
-const markId=markFlask.vessels.find(v=>v.kind==="volumetric").id;
-markFlask=lab.putLabReagent(markFlask,markId,"NaCl",{value:20,unit:"ml"});
-markFlask=lab.fillLabVolumetricFlask(markFlask,markId);
-assert.equal(markFlask.vessels.find(v=>v.id===markId).doses.H2O.value,80);
-assert.equal(lab.fillLabVolumetricFlask(markFlask,markId),markFlask,
- "A volumetric flask must stop at the calibration mark");
+assert.equal(calibrated.vessels.find(v=>v.id===receivingBeakerId).doses.HCl.value,4);
+assert.equal(calibrated.vessels.find(v=>v.id===receivingBeakerId).doses.HCl.concentrationM,.1);
+assert.equal(lab.transferLabMeasuredLiquid(calibrated,pipetteId,receivingBeakerId,50),calibrated);
+assert.equal(lab.addLabVessel(calibrated,"cylinder"),calibrated);
+assert.equal(lab.addLabVessel(calibrated,"volumetric"),calibrated);
 // Retired funnel is no longer a supported lab object, including on old boards.
+const legacyMeasured=lab.readLabBench({scienceLabBench:{
+ ...lab.defaultLabBench(),vessels:[...lab.defaultLabBench().vessels,
+ {id:"old-cylinder",kind:"cylinder",x:20,y:30,reagents:[],environment:"aqueous",observed:false},
+ {id:"old-volumetric",kind:"volumetric",x:30,y:30,reagents:[],environment:"aqueous",observed:false}]
+}});
+assert.equal(legacyMeasured.vessels.filter(v=>["cylinder","volumetric"].includes(v.kind)).length,2,
+ "Older saved boards must preserve retired vessel objects without data loss");
 const legacyFunnel=lab.readLabBench({scienceLabBench:{
  ...lab.defaultLabBench(),vessels:[...lab.defaultLabBench().vessels,
  {id:"legacy-funnel",kind:"funnel",x:20,y:30,reagents:[],environment:"dry",observed:false}]
@@ -839,7 +841,7 @@ assert.match(read("src/LektrusChemistryIllustration.tsx"),/lektrus-lab-open-edit
 assert.match(read("src/lektrusChemistryBench.css"),/width:100vw!important/);
 assert.doesNotMatch(surface,/pourThroughLabFunnel/);
 assert.ok(!lab.labGlassware.some(v=>v.id==="funnel"),"Funnel is no longer offered in inventory");
-assert.match(surface,/fillLabVolumetricFlask/);
+assert.doesNotMatch(surface,/fillLabVolumetricFlask/);
 assert.doesNotMatch(surface,/onClick=\{e=>\{e\.stopPropagation\(\);if\(selected\?\.reagents\.length\)clean/,
  "The sink must never empty selected glassware merely because it was clicked");
 assert.match(surface,/if\(inSink\(p\)\)clean\(g\.id\)/,
@@ -2213,3 +2215,40 @@ savedStopper.vessels[0].ventedVaporMl={H2O:.0023,CH3OH:.014};
 assert.equal(parseLab(savedStopper).items[0].scienceLabBench.vessels[0].stoppered,true);
 assert.equal(parseLab(savedStopper).items[0].scienceLabBench.vessels[0].ventedVaporMl.CH3OH,.014);
 console.log("Measured vapor pressure, open evaporation, stoppers and saved gas loss: OK");
+
+
+/** Final simplified glassware wall: no graduated cylinder/volumetric flask,
+ * no scrolling, and no accidental removal of old experiment contents. */
+assert.deepEqual(lab.labGlassware.map(v=>v.id),[
+ "beaker","tube","flask","dish","conical","crucible","pipette","burette"
+]);
+assert.equal(lab.labGlassware.find(v=>v.id==="pipette").name,"Пипетка");
+assert.ok(!lab.labGlassware.some(v=>/мерн/i.test(v.name)));
+for(const mode of lab.LAB_MODES){
+ const emptyMode=lab.setLabMode(lab.defaultLabBench(),mode.id);
+ const offered=lab.glasswareForLabMode(emptyMode);
+ assert.ok(offered.length<=6&&offered.length>0,
+  "The wall must display every "+mode.name+" glassware item without scrolling");
+ assert.ok(offered.every(v=>!["volumetric","cylinder"].includes(v.id)));
+ const prepared=lab.prepareLabModeSetup(emptyMode);
+ assert.ok(prepared.vessels.every(v=>!["volumetric","cylinder"].includes(v.kind)),
+  "Mode starter kits cannot silently add retired instruments");
+}
+const retiredBefore=lab.defaultLabBench();
+assert.equal(lab.addLabVessel(retiredBefore,"volumetric"),retiredBefore);
+assert.equal(lab.addLabVessel(retiredBefore,"cylinder"),retiredBefore);
+const glassWall=read("src/lektrusLabSceneLayout.css");
+const lastLayout=glassWall.slice(glassWall.lastIndexOf("Final compact glassware wall"));
+assert.ok(lastLayout.length>1000);
+assert.match(lastLayout,/grid-template-rows:repeat\(3,minmax\(0,1fr\)\)!important/);
+assert.match(lastLayout,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/);
+assert.match(lastLayout,/overflow-y:hidden!important/);
+assert.match(lastLayout,/scrollbar-width:none!important/);
+assert.match(lastLayout,/@container\(max-width:650px\)/);
+const glassUI=read("src/LektrusChemistryBench.tsx");
+assert.doesNotMatch(glassUI,/setShowAllGlassware|showAllGlassware|fillLabVolumetricFlask/);
+assert.match(glassUI,/selected\?\.kind==="pipette"/);
+assert.match(glassUI,/>\{kind\.name\}<\/small>/);
+assert.ok(!lab.labModeInfo(lab.setLabMode(lab.defaultLabBench(),"solutions"))
+ .description.includes("доведение до метки"));
+console.log("Simplified eight-type catalog, six-slot no-scroll wall and legacy glassware preservation: OK");

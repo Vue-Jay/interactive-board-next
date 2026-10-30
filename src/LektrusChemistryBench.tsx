@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,fillLabVolumetricFlask,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -480,7 +480,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  const [transfer,setTransfer]=useState<{from:{x:number;y:number};to:{x:number;y:number}}|null>(null);
  const [cabinet,setCabinet]=useState<"reagents"|"glassware"|"equipment"|null>(null);
  const [pendingGlassware,setPendingGlassware]=useState<LabGlassware|null>(null);
- const [showAllGlassware,setShowAllGlassware]=useState(false);
  const [showAllDevices,setShowAllDevices]=useState(false);
  const [query,setQuery]=useState("");
  const [category,setCategory]=useState("Все");
@@ -1055,7 +1054,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  };
  const openCabinet=(next:"reagents"|"glassware"|"equipment")=>{
   if(!editable)return;setCabinet(next);setNotice("");setChosen(null);
-  setShowAllGlassware(false);setShowAllDevices(false);
+  setShowAllDevices(false);
  };
  return <div className={"lektrus-lab-bench"+(!editable?" is-readonly":"")+
   (pendingGlassware?" is-placing-glassware":"")+
@@ -1092,7 +1091,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      disabled={!editable} title={labModeInfo(bench).description}
      onChange={e=>{
       onChange?.(setLabMode(bench,e.target.value as typeof LAB_MODES[number]["id"]));
-      setPendingGlassware(null);setShowAllGlassware(false);setShowAllDevices(false);
+      setPendingGlassware(null);setShowAllDevices(false);
       setNotice("Режим: "+(LAB_MODES.find(m=>m.id===e.target.value)?.name??"Лаборатория"));
      }}>
      {LAB_MODES.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
@@ -2011,19 +2010,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      </>}
      {cabinet==="glassware"&&<div className="lektrus-lab-modal-ware">
       <div className="lektrus-lab-mode-cabinet-note">
-       <span>{labModeInfo(bench).name}: {labModeInfo(bench).description}</span>
-       <button type="button" onClick={()=>setShowAllGlassware(x=>!x)}>
-        {showAllGlassware?"Рекомендуемый набор":"Вся посуда"}
-       </button>
+       <span>Доступная посуда: {labGlassware.length} видов. Выберите сосуд для стола.</span>
       </div>
-      {(showAllGlassware?labGlassware:glasswareForLabMode(bench)).map(v=><button type="button" key={v.id}
+      {labGlassware.map(v=><button type="button" key={v.id}
        disabled={bench.vessels.length>=6} onClick={()=>chooseGlassware(v.id)}>
        <LektrusLabGlasswareIcon kind={v.id} size={60}/>
        <strong>{v.name}</strong><small>{v.description}</small></button>)}
-      {selected&&["pipette","cylinder","volumetric"].includes(selected.kind)&&
+      {selected?.kind==="pipette"&&
        <section className="lektrus-lab-measuring-cabinet">
         <strong>{names[selected.kind]} · измерение и перенос</strong>
-        {selected.kind!=="volumetric"&&<>
+        <>
          <label>Объём, мл <input type="number" min=".01" step=".01"
           max={labMeasuredCapacityMl(selected.kind)} value={measuredMl}
           onChange={e=>setMeasuredMl(e.target.value)}/></label>
@@ -2046,10 +2042,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
            if(next!==bench){onChange?.(next);setNotice(action+" "+measuredMl+" мл")}
            else setNotice("Не удалось отмерить: проверьте объём и сосуд");
           }}>{action}</button>)}
-        </>}
-        {selected.kind==="volumetric"&&<button type="button"
-         onClick={()=>{const next=fillLabVolumetricFlask(bench,selected.id);
-          if(next!==bench)onChange?.(next)}}>Долить до метки</button>}
+        </>
        </section>}
       <p>В шкаф возвращается только пустая посуда. Сначала слейте содержимое в раковину.</p>
       <button type="button" className="lektrus-lab-store-selected"
