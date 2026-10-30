@@ -156,3 +156,45 @@ for(const substance of allStockReagents){
 assert.deepEqual(unquantifiable,[],
  "Every reagent offered by the virtual catalog must have an explicit measurable stock quantity");
 console.log("Every catalog stock has measurable material amount, including neat liquids and gases");
+
+
+// Conditions are physical, not just a UI mode: two dry powders cannot
+// precipitate before solvent is supplied, even in "aqueous" mode.
+const dryPowders={AgNO3:{value:1,unit:"g"},NaCl:{value:1,unit:"g"}};
+const dryReaction=simulateLabInventory({
+ reagents:["AgNO3","NaCl"],environment:"aqueous",doses:dryPowders
+});
+assert.equal(dryReaction.steps.length,0,
+ "Aqueous mode alone must not react two dry crystals");
+assert.ok((dryReaction.solidMol.NaCl??0)>0);
+assert.ok((dryReaction.solidMol.AgNO3??0)>0);
+const wettedReaction=simulateLabInventory({
+ reagents:["AgNO3","NaCl","H2O"],environment:"aqueous",
+ doses:{...dryPowders,H2O:{value:50,unit:"ml"}}
+});
+assert.ok((wettedReaction.solidMol.AgCl??0)>0,
+ "The same existing precipitation must become possible with water");
+
+// Gases are NEVER poured or heated as neat liquid stocks. CO2 has a
+// normal-pressure sublimation point, not a normal boiling point.
+const thermalProps=load("src/lektrusLabPhysicalProperties.ts");
+const registryProps=load("src/lektrusLabPropertyRegistry.ts");
+const physicalDensity=load("src/lektrusLabMaterialConstants.ts");
+assert.equal(thermalProps.labThermalInfo("CO2","ml").form,"gas");
+assert.equal(thermalProps.labThermalInfo("CO2","ml").boilingC,undefined);
+assert.equal(thermalProps.labThermalInfo("CO2","ml").sublimationC,-78.5);
+assert.equal(thermalProps.labThermalInfo("O2","ml").boilingC,-183);
+assert.equal(thermalProps.labVesselThermal(["O2"],{
+ O2:{value:10,unit:"ml"}
+}),null,"Gas bottles do not count as boiling liquid");
+assert.equal(registryProps.labSubstanceProperties("CO2").physicalForm,"gas");
+assert.equal(registryProps.labSubstanceProperties("CO2").sublimationC,-78.5);
+for(const [formula,expected] of Object.entries({
+ Si:2.3296,S:2.067,I2:4.93,Fe2O3:5.24,Fe3O4:5.175,
+ SiO2:2.65,ZnS:4.04,PbS:7.60
+})){
+ approximately(physicalDensity.labCrystalDensityGml(formula),expected);
+ const props=registryProps.labSubstanceProperties(formula);
+ assert.ok(props.densityKnown,"Current stock or reviewed product has checked density: "+formula);
+}
+console.log("Dry/aqueous reaction isolation, gas transitions, and curated crystal densities passed");
