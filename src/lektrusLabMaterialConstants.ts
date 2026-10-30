@@ -48,7 +48,24 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  // ZnO https://pubchem.ncbi.nlm.nih.gov/compound/3007857
  Na2CO3:2.54,CaO:3.34,MgO:3.58,MgCO3:3.05,
  CaSO4:2.96,BaCO3:4.275,PbCl2:5.85,PbBr2:6.66,
- "Cu(OH)2":3.37,"Al(OH)3":2.42,ZnO:5.61
+ "Cu(OH)2":3.37,"Al(OH)3":2.42,ZnO:5.61,
+ // ELEMENTAL solids at ~20°C from the Royal Society of Chemistry
+ // Periodic Table, individual element fact boxes:
+ // https://periodic-table.rsc.org/element/3/lithium
+ // https://periodic-table.rsc.org/element/11/sodium
+ // https://periodic-table.rsc.org/element/19/potassium
+ // https://periodic-table.rsc.org/element/20/calcium
+ // https://periodic-table.rsc.org/element/12/magnesium
+ // https://periodic-table.rsc.org/element/13/aluminium
+ // https://periodic-table.rsc.org/element/30/zinc
+ // https://periodic-table.rsc.org/element/26/iron
+ // https://periodic-table.rsc.org/element/29/copper
+ // https://periodic-table.rsc.org/element/47/silver
+ // https://periodic-table.rsc.org/element/79/gold
+ // https://periodic-table.rsc.org/element/82/lead
+ // NOT a powder's bulk packing density or density of a molten sample.
+ Li:.534,Na:.97,K:.89,Ca:1.54,Mg:1.74,Al:2.70,
+ Zn:7.134,Fe:7.87,Cu:8.96,Ag:10.5,Au:19.3,Pb:11.3
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
