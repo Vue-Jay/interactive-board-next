@@ -5,7 +5,7 @@
 import {reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "./lektrusReactionDatabase";
 import {labDoseMoles,labMolarMass,parseBalancedLabEquation} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
-import {labEquilibrateNaClCrystals} from "./lektrusLabMaterialConstants";
+import {labEquilibrateSingleSaltCrystals,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 
 /** Persistent, strictly quantitative phase inventory. A transfer can carry
  * these molecule counts without pretending the filtrate is a fresh stock
@@ -186,20 +186,23 @@ export function simulateLabInventory(input:{
    observation:row.observation,...(heatKJ===undefined?{}:{heatKJ})});
  }
  inventory.limited=inventory.steps.length>=maxSteps;
- // Reference NaCl + pure-water crystallization is a reversible phase change,
- // not a chemical reaction. It never consumes NaCl, and never runs for other
- // ions, aqueous stocks without an explicit solvent, or unknown hydration.
- const isBinaryNaCl=inventory.steps.length===0&&input.environment==="aqueous"&&
+ // Curated PURE WATER + ONE SALT phase equilibria: the number of salt
+ // molecules is invariant; only solid/dissolved partition may change.
+ // No rule from these measured binary curves is imposed on mixed salts,
+ // reaction mixtures, unspecified stock-solvent or unknown hydrates.
+ const binary=inventory.steps.length===0&&input.environment==="aqueous"&&
   !!doses.H2O&&doses.H2O.unit==="ml"&&doses.H2O.concentrationM===undefined;
- if(isBinaryNaCl)labEquilibrateNaClCrystals(inventory,
-  input.temperatureC??22,true);
- // Once the *explicit* pure water volume is entirely evaporated, the
- // originally weighed NaCl is dry. Do not treat arbitrary NaCl stock
- // solutions without a tracked solvent as evaporated residue.
- if(!doses.H2O&&doses.NaCl?.unit==="g"&&volumeMl===0&&
-  inventory.steps.length===0&&
-  Object.keys(inventory.speciesMol).every(id=>id==="NaCl"))
-  inventory.solidMol.NaCl=inventory.speciesMol.NaCl;
+ if(binary)labEquilibrateSingleSaltCrystals(inventory,input.temperatureC??22,true);
+ // When the last explicit drop of pure water has evaporated, a weighed
+ // supported salt is dry rather than being indefinitely called dissolved.
+ if(!doses.H2O&&volumeMl===0&&inventory.steps.length===0){
+  const remaining=Object.keys(inventory.speciesMol).filter(id=>
+   inventory.speciesMol[id]>EPS);
+  const salt=remaining.length===1?remaining[0]:undefined;
+  if(salt&&doses[salt]?.unit==="g"&&
+   labSingleSaltSolubilityGPer100gWater(salt,25)!==undefined)
+   inventory.solidMol[salt]=inventory.speciesMol[salt];
+ }
  return remember(key,inventory);
 }
 export function labInventorySnapshot(inventory:LabInventory):LabChemicalSnapshot{

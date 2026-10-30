@@ -145,6 +145,17 @@ const cleaned=lab.emptyLabVessel(postReaction,"v3");
 assert.equal(cleaned.vessels[2].completedReaction,undefined,"Sink removes all products");
 const stored=lab.removeLabVessel(cleaned,"v3");
 assert.equal(stored.vessels.length,2,"Only cleaned glassware returns to cupboard");
+assert.equal(stored.selectedId,"",
+ "Shelving the selected flask must NOT select another vessel on the table");
+const secondShelf=lab.removeLabVessel({...stored,selectedId:"v1"},"v2");
+assert.equal(secondShelf.selectedId,"",
+ "Shelving any glassware clears prior vessel selection, including other vessels");
+assert.equal(secondShelf.vessels[0].id,"v1",
+ "Unrelated glassware and its chemical data remain on the table");
+const shelfUi=read("src/LektrusChemistryBench.tsx");
+assert.match(shelfUi,/const returnGlass=\(id:string\)=>\{/);
+assert.match(shelfUi,/setVesselMenuId\(null\);setCompositionId\(null\);setActiveDeviceId\(null\);/,
+ "Returning glassware must close quantity panels and device focus");
 assert.equal(lab.removeLabVessel(decanted,"v3"),decanted,"A filled flask cannot be stored before draining");
 const settings=lab.setLabBenchSettings(lab.defaultLabBench(),{showEquationBoard:true,animateEffects:false});
 assert.equal(lab.labBenchSettings(settings).showEquationBoard,true);
