@@ -385,3 +385,100 @@ for(const [formula,data] of Object.entries({
   "Salt solution cannot acquire dry salt melting point");
 }
 console.log("Nine measured pure-gas records, four dry salts, and no gas/solution confusion");
+
+
+// Bulk-imported Merck measured water solubility (g/100 g H2O).
+// Every isolated datum must be readable at its exact temperature but MUST NOT
+// invent intermediate values when neighbouring knots are unknown.
+const bulkBinary={
+ K2CO3:[105.5,111.5,117,127,140,156],
+ K2Cr2O7:[4.68,12.49,26.3,45.6,73,103],
+ CuSO4:[25.5,36.2,48,60,70,83],
+ Na2CO3:[7.1,21.4,48.5,46.5,45.8,45.5],
+ Li2CO3:[null,1.33,null,null,null,null],
+ NaF:[null,4.1,null,null,null,null],
+ NaBr:[null,null,null,118,118.3,121.2],
+ Na2SO3:[null,null,37,33.2,29,26.6],
+ Na2SO4:[null,null,48.1,45.26,43.09,42.3],
+ ZnCl2:[null,null,453,488,541,614],
+ NaH2PO4:[null,null,null,179.3,207.3,284.4]
+};
+const temperatureKnots=[0,20,40,60,80,100];
+let measuredNewCells=0;
+for(const [formula,values] of Object.entries(bulkBinary)){
+ assert.ok(labMolarMass(formula)>0,"Formula should parse: "+formula);
+ for(let i=0;i<values.length;i++){
+  const value=physicalDensity.labSingleSaltSolubilityGPer100gWater(
+   formula,temperatureKnots[i]);
+  if(values[i]===null)assert.equal(value,undefined,formula+" at "+temperatureKnots[i]);
+  else {
+   measuredNewCells++;
+   approximately(value,values[i],1e-8);
+  }
+ }
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,-1),undefined);
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,101),undefined);
+}
+assert.equal(measuredNewCells,44);
+for(const id of ["Li2CO3","NaF"]){
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(id,15),undefined);
+ assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(id,20.01),undefined);
+}
+approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater("K2Cr2O7",30),
+ (12.49+26.3)/2,1e-9);
+for(const id of ["CuSO4","Na2CO3","Na2SO4","K2CO3","NaBr","Na2SO3","ZnCl2","NaH2PO4"]){
+ assert.ok(physicalDensity.LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL.has(id));
+ const sample=simulateLabInventory({
+  reagents:[id,"H2O"],environment:"aqueous",temperatureC:20,
+  doses:{[id]:{value:20,unit:"g"},H2O:{value:1,unit:"ml"}}
+ });
+ assert.ok(!(sample.solidMol[id]>0),
+  "Must not invent anhydrous crystals for a hydration-dependent salt: "+id);
+}
+// Stable anhydrous crystals can still form from a measured single-salt,
+// single-water mixture, conserving the complete molecular amount.
+for(const id of ["Li2CO3","NaF","K2Cr2O7"]){
+ const result=simulateLabInventory({
+  reagents:[id,"H2O"],environment:"aqueous",temperatureC:20,
+  doses:{[id]:{value:4,unit:"g"},H2O:{value:1,unit:"ml"}}
+ });
+ assert.ok((result.solidMol[id]??0)>0,id+" should crystallize in binary pure water");
+}
+const dataOnly=Object.values(bulkBinary).reduce((n,row)=>n+row.filter(v=>v!==null).length,0);
+assert.equal(dataOnly,44);
+console.log("Eleven new salt solubility datasets; 44 measured knots; hydrate-safe crystallization");
+
+// Heat capacity of these exact dry compounds, not the unknown mixture Cp.
+// Source entries are J/g/K, from University Medical Lublin and
+// Advances in Solar Heating and Cooling, not solution guesses.
+const bulkHeatCapacities={
+ NH4Cl:1.57,NH4NO3:1.74,CaCl2:.657,Na2CO3:1.06,
+ NaOH:1.49,Na2SO4:.903,KBr:.439,KNO3:.95,
+ Al2O3:.840,Fe3O4:.752,KCl:.670,K2SO4:.920
+};
+for(const [id,cp] of Object.entries(bulkHeatCapacities)){
+ assert.equal(heatProps.LAB_CALORIMETRY_REFERENCE[id].phase,"solid");
+ approximately(heatProps.LAB_CALORIMETRY_REFERENCE[id].specificJPerGK,cp);
+ approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [id]:{unit:"g",value:5}
+ }),heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+5*cp,1e-8);
+ assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  H2O:{unit:"ml",value:5},[id]:{unit:"g",value:5}
+ }),undefined,"Mixing with water needs solution heat capacity: "+id);
+}
+for(const [id,d] of Object.entries({FeO:6,CuS:4.76,Na2O:2.27,NiSO4:4.01})){
+ approximately(physicalDensity.labCrystalDensityGml(id),d,1e-12);
+ assert.equal(registryProps.labSubstanceProperties(id).crystalDensityGPerMl,d);
+}
+for(const [id,record] of Object.entries({
+ CuS:{decompositionC:220},FeO:{meltingC:1377},
+ Fe2O3:{meltingC:1565},Na2SO4:{meltingC:884},K2CO3:{meltingC:891}
+})){
+ const t=thermalProps.labThermalInfo(id,"g");
+ assert.equal(t.known,true);
+ for(const [key,value] of Object.entries(record))approximately(t[key],value);
+ assert.equal(thermalProps.labThermalInfo(id,"ml").known,false,
+  "A prepared solution does not acquire solid phase transitions: "+id);
+}
+assert.equal(thermalProps.labThermalInfo("CuS","g").behavior,"decomposes");
+console.log("Twelve dry specific heats, four crystal densities, five solid phase records verified");
