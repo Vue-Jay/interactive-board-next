@@ -2639,3 +2639,34 @@ assert.match(labGasMarkup,/const gasBubbleCount=gasProgress\?/);
 assert.match(labGasMarkup,/gasFoaming&&<g className="lektrus-lab-gas-foam"/);
 assert.match(labGasMarkup,/Образование газа по ходу реакции/);
 console.log("Live gas pressure, rate-based bubbles, gas volume and venting: OK");
+
+
+// The actual chemistry ledger follows the same fractional extent as gas
+// pressure, not instantaneous end-of-reaction products.
+const gasDoseBook={NaHCO3:{unit:"g",value:2},
+ HCl:{unit:"ml",value:5,concentrationM:.1}};
+const makeGasLedger=(amounts,stoppered)=>network.simulateLabInventory({
+ reagents:["NaHCO3","HCl"],doses:gasDoseBook,
+ environment:"aqueous",reactionAmounts:amounts,stoppered
+});
+const gasBeforeLedger=makeGasLedger(gasInitial,true);
+const gasHalfLedger=makeGasLedger(chem.advanceQuantifiedLabReaction(gasInitial,2),true);
+const gasFullLedger=makeGasLedger(chem.advanceQuantifiedLabReaction(gasInitial,4),true);
+assert.equal(gasBeforeLedger.retainedGasMol.CO2??0,0,
+ "No gaseous products before chemical conversion");
+assert.ok(Math.abs(gasHalfLedger.retainedGasMol.CO2-.00025)<1e-10);
+assert.ok(Math.abs(gasFullLedger.retainedGasMol.CO2-.0005)<1e-10);
+assert.ok(Math.abs(gasHalfLedger.speciesMol.HCl-.00025)<1e-10,
+ "Unreacted acid must decrease in proportion to the same extent");
+assert.ok(Math.abs(gasHalfLedger.speciesMol.NaCl-.00025)<1e-10,
+ "Salt products appear progressively, not at the final yield immediately");
+const gasOpenLedger=makeGasLedger(
+ chem.advanceQuantifiedLabReaction(gasInitial,2),false);
+assert.ok(Math.abs(gasOpenLedger.releasedGasMol.CO2-.00025)<1e-10);
+assert.equal(gasOpenLedger.retainedGasMol.CO2??0,0);
+assert.ok(gasHalfLedger.steps[0].extentMol>0);
+const gasHalfMass=network.labInventoryMassG(gasHalfLedger);
+const gasInitialMass=network.labInventoryMassG(gasBeforeLedger);
+assert.ok(Math.abs(gasHalfMass-gasInitialMass)<1e-7,
+ "All quantified species mass, including evolved gas, is conserved");
+console.log("Gas reaction inventory, closed/open gas partitions and atom-mass balance OK");
