@@ -26,6 +26,10 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const calorimetry=load("src/lektrusLabCalorimetry.ts");
 const constants=load("src/lektrusLabMaterialConstants.ts");
+const dissolution=load("src/lektrusLabDissolution.ts",key=>{
+ if(key==="./lektrusLabMaterialConstants")return constants;
+ assert.equal(key,"./lektrusLabStoichiometry");return chem;
+});
 const vapor=load("src/lektrusLabEvaporation.ts",key=>{
  assert.equal(key,"./lektrusLabMaterialConstants");return constants;
 });
@@ -45,6 +49,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabPhysicalProperties")return thermal;
  if(key==="./lektrusLabCalorimetry")return calorimetry;
+ if(key==="./lektrusLabDissolution")return dissolution;
  if(key==="./lektrusLabEvaporation")return vapor;
  if(key==="./lektrusLabPH")return acidBase;
  if(key==="./lektrusLabReactionNetwork")return network;
@@ -2485,3 +2490,55 @@ const noHeaterAlcohol=vapor.labEvaporate({kind:"beaker",
 assert.equal(coolAlcohol.evaporatedMl,noHeaterAlcohol.evaporatedMl,
  "Heat cannot be used for latent boiling before the boiling point");
 console.log("Evaporation: five reviewed latent heats obey the shared power budget");
+
+
+/* Kinetic phase regression: reference saturation controls only the target.
+ * Both visible phases must conserve weighed material, including after save.
+ * The rate factors are explicitly classroom assumptions, not measurements. */
+const saltInput=(water,salt)=>({reagents:["H2O","KNO3"],environment:"aqueous",
+ doses:{H2O:{value:water,unit:"ml"},KNO3:{value:salt,unit:"g"}}});
+const hotTarget=dissolution.labBinarySaltEquilibrium(saltInput(10,4),60);
+const coldTarget=dissolution.labBinarySaltEquilibrium(saltInput(10,4),20);
+assert.ok(hotTarget.equilibriumSolidMol<coldTarget.equilibriumSolidMol,
+ "Cooling reduces the soluble KNO3 fraction");
+const powdered=dissolution.labAdvanceBinarySaltPhase(saltInput(10,4),
+ 60,0,false,undefined,true);
+assert.ok(Math.abs(powdered.state.solidMol-powdered.totalMol)<1e-12);
+const slow=dissolution.labAdvanceBinarySaltPhase(saltInput(10,4),60,5,false,powdered.state);
+const stirred=dissolution.labAdvanceBinarySaltPhase(saltInput(10,4),60,5,true,powdered.state);
+assert.ok(stirred.state.solidMol<slow.state.solidMol,
+ "Powered stirring must accelerate the same equilibrium approach");
+assert.ok(slow.state.solidMol>=hotTarget.equilibriumSolidMol);
+const coolingCrystals=dissolution.labAdvanceBinarySaltPhase(saltInput(10,4),
+ 20,5,false,{formula:"KNO3",solidMol:hotTarget.equilibriumSolidMol});
+assert.ok(coolingCrystals.state.solidMol>hotTarget.equilibriumSolidMol);
+assert.ok(coolingCrystals.state.solidMol<coldTarget.equilibriumSolidMol,
+ "Crystals must form gradually instead of appearing in one tick");
+const dryingCrystals=dissolution.labAdvanceBinarySaltPhase(saltInput(3,4),
+ 60,5,false,{formula:"KNO3",solidMol:hotTarget.equilibriumSolidMol});
+assert.ok(dryingCrystals.state.solidMol>hotTarget.equilibriumSolidMol,
+ "Reducing water volume raises the crystalline fraction");
+assert.equal(dissolution.labBinarySaltEquilibrium({environment:"aqueous",
+ reagents:["NaCl","KNO3","H2O"],doses:{
+ NaCl:{unit:"g",value:1},KNO3:{unit:"g",value:4},
+ H2O:{unit:"ml",value:10}}},25),undefined,
+ "Binary solution constants cannot be applied to two-salt mixtures");
+let progressive=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{unit:"ml",value:10});
+progressive=lab.putLabReagent(progressive,"v1","KNO3",{unit:"g",value:4});
+assert.ok(progressive.vessels[0].binarySaltPhase);
+assert.equal(progressive.vessels[0].physicalProcess,"dissolving");
+progressive=lab.advanceLabSimulation(lab.advanceLabSimulation(progressive,0),5000);
+const kinVessel=progressive.vessels[0],kinContents=lab.labVesselContents(kinVessel);
+assert.ok(kinContents.solid.some(v=>v.formula==="KNO3"&&v.massG>0));
+assert.ok(kinContents.solution.some(v=>v.formula==="KNO3"&&v.mmol>0));
+const crystalG=kinContents.solid.find(v=>v.formula==="KNO3").massG;
+const dissolvedG=kinContents.solution.find(v=>v.formula==="KNO3").mmol*
+ chem.labMolarMass("KNO3")/1000;
+assert.ok(Math.abs(crystalG+dissolvedG-4)<.002,
+ "Dissolved plus crystalline phases must conserve the full weighed salt");
+const savedPhase=structuredClone(progressive);
+assert.deepEqual(savedPhase.vessels[0].binarySaltPhase,progressive.vessels[0].binarySaltPhase);
+assert.match(read("src/boardModel.ts"),/v\.binarySaltPhase\.solidMol<=10000/);
+assert.match(read("src/LektrusChemistryBench.tsx"),
+ /Время растворения и кристаллизации рассчитано по учебной кинетической модели/);
+console.log("Measured binary dissolution, stirring, cooling and crystallisation: OK");
