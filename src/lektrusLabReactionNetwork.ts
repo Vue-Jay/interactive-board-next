@@ -152,10 +152,10 @@ export function simulateLabInventory(input:{
     const solid=Math.min(available(inventory.solidMol,term.formula),consumed);
     if(solid>0)sum(inventory.solidMol,term.formula,-solid);
    }
-   const rawProducts=(row.equation.split("→")[1]??"").split(/\\s+\\+\\s+/);
+   const rawProducts=(row.equation.split("→")[1]??"").split(/\s+\+\s+/);
    for(const term of equation.products){
     const gained=progress.extentMol*term.coefficient;
-    const marker=rawProducts.find(x=>x.replace(/^\\s*\\d+\\s*/,"").
+    const marker=rawProducts.find(x=>x.replace(/^\s*\d+\s*/,"").
      replace(/[↓↑]/g,"").trim()===term.formula)??"";
     if(marker.includes("↑"))sum(input.stoppered?
      inventory.retainedGasMol:inventory.releasedGasMol,term.formula,gained);
