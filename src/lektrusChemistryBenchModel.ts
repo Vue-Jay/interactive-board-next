@@ -415,9 +415,14 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    reduce((sum,mol)=>sum+mol,0)+Object.entries(gasInventory.speciesMol).
    reduce((sum,[id,mol])=>sum+(substances.find(s=>s.id===id)?.kind==="газ"?mol:0),0):0;
   const {occupiedMl,capacityMl}=labVesselQuantity(v);
+  // The effective power arriving at the liquid is a bounded instrument
+  // parameter. At a known boiling plateau, latent heat limits how much
+  // water can actually leave the open vessel per simulation tick.
+  const deliveredHeatW=device?.powered?
+   device.kind==="hotplate"?160:120*(device.heatLevel??2):0;
   const phase=labEvaporate({...v,
    headspaceMl:Math.max(1,capacityMl-occupiedMl),
-   reactionGasMol:gasMoles},seconds,next,toward);
+   reactionGasMol:gasMoles},seconds,next,toward,deliveredHeatW);
   const evaporating=phase.evaporatedMl>0,popped=phase.popped;
   const dissolutionComplete=v.physicalProcess==="dissolving"&&
    v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500;
