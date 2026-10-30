@@ -832,7 +832,9 @@ export function recordLabReactions(bench:LabBench):LabBench{
  const log=[...(bench.reactionLog??[])];
  let changed=false;
  for(const vessel of bench.vessels){
-  const inventory=vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
+  const inventory=vessel.chemicalInventory?
+   simulateLabInventory({...vessel,volumeMl:labVesselQuantity(vessel).volumeMl}):
+   vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
    simulateLabInventory(vessel):undefined;
   const current=labObservation(vessel);
   const row=current.status==="reaction"?current.caseData:undefined;
@@ -999,7 +1001,9 @@ export function labReactionNeedsTick(vessel:LabVessel):boolean{
 export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:string;
  caseData?:ReturnType<typeof identifyReaction>["caseData"]}{
  if(vessel.reagents.length===0)return{status:"unknown",message:"Сосуд пуст."};
- const inventory=vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
+ const inventory=vessel.chemicalInventory?
+  simulateLabInventory({...vessel,volumeMl:labVesselQuantity(vessel).volumeMl}):
+  vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
   simulateLabInventory(vessel):undefined;
  if(inventory&&!inventory.unmeasured.length&&inventory.steps.length){
   const last=inventory.steps[inventory.steps.length-1];
