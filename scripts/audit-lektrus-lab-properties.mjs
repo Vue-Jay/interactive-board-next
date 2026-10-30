@@ -97,12 +97,14 @@ const solubilityCells=Object.entries(material.LAB_SALT_BINARY_SOLUBILITY_G_PER_1
   complete:values.every(has)
  }));
 const hydrateRows=hydrate.LAB_HYDRATE_SOLUBILITY_REFERENCES;
+const hydrateDensities=hydrate.LAB_HYDRATE_CRYSTAL_DENSITIES;
 const hydrateBases=new Set(hydrateRows.map(row=>row.baseFormula));
 const hydrateKnownCells=hydrateRows.reduce((count,row)=>
  count+row.massGPer100gWater.filter(has).length+(row.extra?.length??0),0);
 const rawTotals={
  stock:db.substances.length,
  hydrateReferenceVariants:hydrateRows.length,
+ hydrateCrystalDensityRecords:hydrateDensities.length,
  hydrateReferenceCabinetBases:hydrateBases.size,
  hydrateReferenceMeasuredPoints:hydrateKnownCells,
  binarySolubilityAnyTemperature:
@@ -171,6 +173,13 @@ if(process.argv.includes("--verify")){
    assert.ok(!hydrate.LAB_HYDRATE_KNOT_TEMPERATURES_C.includes(extra.temperatureC));
   }
  }
+ for(const crystal of hydrateDensities){
+  assert.ok(stockNames.has(crystal.baseFormula));
+  assert.ok(has(crystal.densityGPerMl)&&crystal.densityGPerMl>0);
+  assert.ok(crystal.sourceUrl.startsWith("https://"));
+  assert.ok(!material.LAB_CRYSTAL_DENSITY_G_ML[crystal.hydrateFormula],
+   "A hydrated density must not be registered as anhydrous");
+ }
  assert.ok(hydrateKnownCells>0);
  assert.ok(producedOnly.every(x=>x.molarMassKnown),
   "Every existing reviewed product must have a calculable formula mass");
@@ -201,7 +210,9 @@ if(process.argv.includes("--json")){
   "Кристаллогидраты: "+rawTotals.hydrateReferenceVariants+
   " отдельных форм у "+rawTotals.hydrateReferenceCabinetBases+
   " веществ, "+rawTotals.hydrateReferenceMeasuredPoints+
-  " измеренных температурных точек. Эти данные не являются расчётом "+
+  " измеренных температурных точек; плотностей гидратов: "+
+  rawTotals.hydrateCrystalDensityRecords+
+  ". Эти данные не являются расчётом "+
   "насыщения безводного вещества.",
   "",
   "Кривых с измерениями: "+rawTotals.binarySolubilityAnyTemperature+
@@ -226,7 +237,8 @@ if(process.argv.includes("--json")){
  console.log("Hydrate reference: "+
   rawTotals.hydrateReferenceVariants+" distinct hydrate phases, "+
   rawTotals.hydrateReferenceCabinetBases+" cabinet formulas, "+
-  rawTotals.hydrateReferenceMeasuredPoints+" measured exact temperature points");
+  rawTotals.hydrateReferenceMeasuredPoints+" measured exact temperature points, "+
+  rawTotals.hydrateCrystalDensityRecords+" hydrate crystal densities");
  console.log("Measured solubility knots: "+rawTotals.binarySolubilityMeasuredPoints+
   ", curves with any data: "+rawTotals.binarySolubilityAnyTemperature+
   ", complete 6-knot curves: "+rawTotals.binarySolubilityFullSixPoints);
