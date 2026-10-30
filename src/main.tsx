@@ -68,6 +68,7 @@ import "./lektrusSubjectBoard.css";
 import "./lektrusSubjectEditorThemes.css";
 import "./lektrusReactionLabNext.css";
 import "./lektrusChemistryBench.css";
+import "./lektrusLabSceneLayout.css";
 import {installInterfaceLayout} from "./lektrusInterfaceLayout";
 import { isRemoteBackendEnabled, saveNativeBackendConnection } from "./backend";
 import { initLectrisPalette } from "./lectrisPalette";
