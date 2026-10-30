@@ -336,3 +336,11 @@ const testedMgOHeat=heatProps.labKnownHeatCapacityJPerK("beaker",{
 });
 approximately(testedMgOHeat,
  heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+10*.92885,1e-9);
+
+for(const [formula,cp] of Object.entries({NaCl:.853,"(NH4)2SO4":1.423})){
+ const known=heatProps.LAB_CALORIMETRY_REFERENCE[formula];
+ approximately(known.specificJPerGK,cp);
+ approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [formula]:{unit:"g",value:10}
+ }),heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+10*cp,1e-9);
+}
