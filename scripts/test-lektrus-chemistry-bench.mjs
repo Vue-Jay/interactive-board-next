@@ -1663,6 +1663,43 @@ const parseLab=bench=>docModel.parseDocument(JSON.stringify({...savedDocument,
  items:[{...persistedItem,scienceLabBench:bench},savedDocument.items[1]]}));
 const reopened=parseLab(persistedLab);
 assert.equal(reopened.items.length,2,"Opening a hot laboratory must preserve other board items");
+/* The chemistry engine allows 48 distinct reagents, but the old board
+ * validator accepted only six reagents/dose keys. A correct saved 7-component
+ * mixture made the whole collaborative board appear damaged and unreadable. */
+const compoundIds=["NaCl","AgNO3","HCl","NaOH","CuSO4","BaCl2","Na2SO4"];
+const complexSaved=structuredClone(persistedLab);
+complexSaved.vessels[0].reagents=[...compoundIds];
+complexSaved.vessels[0].doses=Object.fromEntries(
+ compoundIds.map(id=>[id,{value:2,unit:"ml",concentrationM:.1}]));
+const restoredComplex=parseLab(complexSaved);
+assert.deepEqual(restoredComplex.items[0].scienceLabBench.vessels[0].reagents,compoundIds,
+ "Previously rejected 7-reagent mixtures must reopen without losing a reagent");
+assert.equal(Object.keys(restoredComplex.items[0].scienceLabBench.vessels[0].doses).length,7,
+ "All saved reagent volumes and concentrations must survive loading");
+assert.equal(restoredComplex.items[1].text,"Работа ученика",
+ "The whole board, including unrelated student work, must remain available");
+const maxLabReagents=lab.MAX_VESSEL_REAGENTS;
+const maxSaved=structuredClone(persistedLab);
+const fullIds=reaction.substances.slice(0,maxLabReagents).map(s=>s.id);
+assert.equal(fullIds.length,48,"Vetted substance catalog must cover the bounded lab");
+maxSaved.vessels[0].reagents=fullIds;
+maxSaved.vessels[0].doses=Object.fromEntries(
+ fullIds.map(id=>[id,{value:.1,unit:"g"}]));
+assert.doesNotThrow(()=>parseLab(maxSaved),
+ "All 48 supported reagents and measured dose records must be loadable");
+const overLimit=structuredClone(maxSaved);
+overLimit.vessels[0].reagents.push("unsupported-forty-ninth");
+assert.throws(()=>parseLab(overLimit),/Повреждено состояние химического стола/,
+ "Reject samples beyond the supported maximum, not legitimate multi-stage mixtures");
+const invalidMass=structuredClone(complexSaved);
+invalidMass.vessels[0].doses.NaCl.value=-4;
+assert.throws(()=>parseLab(invalidMass),/Повреждено состояние химического стола/,
+ "Negative amounts remain forbidden even in old saved boards");
+const validatorText=read("src/boardModel.ts");
+assert.match(validatorText,/const maxSavedLabReagents=48/);
+assert.equal(maxLabReagents,Number(validatorText.match(/const maxSavedLabReagents=(\d+)/)?.[1]),
+ "Persisted lab and runtime chemistry must agree on their compound limit");
+console.log("Seven- and forty-eight-reagent boards reopen with all quantities intact");
 assert.equal(reopened.items[0].scienceLabBench.placedDevices[0].temperatureC,1333,
  "Restoring a hot burner must never silently reset the apparatus");
 assert.equal(reopened.items[0].scienceLabBench.vessels[2].temperatureC,220.1);
