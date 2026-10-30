@@ -419,6 +419,9 @@ type Gesture = {
 };
 const tools: { id: Tool; icon: IconName; label: string; dividerAfter?: boolean }[] = [
   { id: "select", icon: "select", label: "Выделение прямоугольником · V / М", dividerAfter: true },
+  // The hand is exposed only by touch-specific UI. It must still be in the
+  // shared registry: tablet/mobile toolbar buttons resolve their icon and label here.
+  { id: "hand", icon: "hand", label: "Рука · перемещение доски" },
   { id: "lasso", icon: "lasso", label: "Петля · выделение всех объектов · Q / Й" },
   { id: "pen", icon: "pen", label: "Карандаш · P / З" },
   { id: "marker", icon: "marker", label: "Маркер · M / Ь" },

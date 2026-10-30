@@ -60,6 +60,53 @@ for(const key of ['end(true)','eraserSession.current=null','stopEraserPreview()'
 assert.ok(toolChange.includes('window.addEventListener("pointerup",release)'));
 assert.ok(toolChange.includes('window.addEventListener("pointercancel",release)'));
 assert.ok(toolChange.includes('window.addEventListener("blur",blur)'));
+
+// On coarse pointers the dock includes "hand" and unconditionally reads
+// tools.find(...).label. An unregistered tool previously crashed the whole
+// native Android board during React rendering.
+const definition=(name)=>{
+ for(const statement of parsed.statements){
+  if(!ts.isVariableStatement(statement))continue;
+  const declaration=statement.declarationList.declarations.find(d=>
+   ts.isIdentifier(d.name)&&d.name.text===name);
+  if(declaration)return declaration.initializer;
+ }
+ assert.fail("Missing board tool definition: "+name);
+};
+const property=(node,key)=>ts.isObjectLiteralExpression(node)?
+ node.properties.find(p=>ts.isPropertyAssignment(p)&&p.name.getText(parsed)===key)?.initializer:undefined;
+const registered=definition("tools");
+assert.ok(ts.isArrayLiteralExpression(registered));
+const registeredIds=registered.elements.map(v=>{
+ const id=property(v,"id"),icon=property(v,"icon"),label=property(v,"label");
+ assert.ok(id&&ts.isStringLiteral(id)&&icon&&ts.isStringLiteral(icon)&&label&&ts.isStringLiteral(label),
+  "Every registered tool needs a static id, icon and label");
+ return id.text;
+});
+assert.equal(new Set(registeredIds).size,registeredIds.length,
+ "Registry tools must not have duplicate IDs");
+const groups=definition("mobileToolGroups");
+assert.ok(ts.isArrayLiteralExpression(groups));
+const mobileGroupIds=groups.elements.flatMap(group=>{
+ const list=property(group,"tools");
+ assert.ok(list&&ts.isArrayLiteralExpression(list));
+ return list.elements.map(id=>{
+  assert.ok(ts.isStringLiteral(id));
+  return id.text;
+ });
+});
+const mobileDock=definition("mobileDockTools");
+assert.ok(ts.isArrayLiteralExpression(mobileDock));
+const shownIds=[...mobileGroupIds,...mobileDock.elements.map(x=>x.text),"hand"];
+for(const id of shownIds)assert.ok(registeredIds.includes(id),
+ "The mobile dock would crash reading label for unregistered tool: "+id);
+const desktopSet=definition("primaryDesktopTools");
+assert.ok(ts.isNewExpression(desktopSet));
+assert.ok(!desktopSet.getText(parsed).includes('"hand"'),
+ "Hand must remain touch-only, not a default PC toolbar tool");
+assert.ok(registeredIds.includes("hand")&&app.includes('case "hand": return'),
+ "Hand must render its real icon, not just supply a label");
+
 assert.ok(app.includes('data-lektrus-hand-tool="true"'),
  "Every touch dock must contain a hand button");
 assert.ok(app.includes('...(isCoarsePointer?["hand"]:[])'),
