@@ -2715,3 +2715,27 @@ assert.equal(poppedVessel.stoppered,false,
 assert.match(read("src/lektrusChemistryBenchModel.ts"),
  /A rapid measured gas reaction can release the stopper immediately/);
 console.log("Reviewed gas cases and immediate pressure-driven cork release: OK");
+
+
+// Once a reaction has vented gas into the room, closing the vessel does not
+// magically recover the gas formed before the cork was reinserted.
+let resealedGas=lab.setLabVesselStopper(openedGas,sealedId,true);
+const resealedState=resealedGas.vessels.find(v=>v.id===sealedId);
+assert.ok((resealedState.sealedReactionGasBaselineMol??0)>0);
+assert.ok(lab.labHeadspaceGasMoles(resealedState)<1e-10,
+ "Re-sealing must baseline the gas that already escaped");
+resealedGas=lab.advanceLabSimulation(resealedGas,4000);
+assert.ok(lab.labHeadspaceGasMoles(resealedGas.vessels.find(v=>v.id===sealedId))>0,
+ "Only subsequent gas production accumulates in the new headspace");
+const storedResealed=structuredClone(persistedLab);
+storedResealed.vessels[0]={...resealedGas.vessels.find(v=>v.id===sealedId),
+ id:"v1",kind:"flask",x:40,y:70};
+const reopenedResealed=parseLab(storedResealed);
+assert.equal(reopenedResealed.items[0].scienceLabBench.vessels[0]
+ .sealedReactionGasBaselineMol,
+ storedResealed.vessels[0].sealedReactionGasBaselineMol);
+const invalidGasBaseline=structuredClone(storedResealed);
+invalidGasBaseline.vessels[0].sealedReactionGasBaselineMol=-.1;
+assert.throws(()=>parseLab(invalidGasBaseline),
+ /Повреждено состояние химического стола/);
+console.log("Re-sealing conserves prior venting, gas pressure and saved baseline");
