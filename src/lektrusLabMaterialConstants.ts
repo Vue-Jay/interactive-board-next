@@ -152,7 +152,8 @@ export function labEquilibrateSingleSaltCrystals(
  if(solubility===undefined)return;
  const waterMass=(inventory.speciesMol.H2O??0)*18.01528;
  const molarMass:Record<string,number>={
-  NaCl:58.44277,KNO3:101.1032,KCl:74.5513,NaNO3:84.9947
+  NaCl:58.44277,KNO3:101.1032,KCl:74.5513,NaNO3:84.9947,
+  PbCl2:278.106
  };
  const capacityMol=waterMass*solubility/100/molarMass[salt];
  const crystals=Math.max(0,mol-Math.max(0,capacityMol));

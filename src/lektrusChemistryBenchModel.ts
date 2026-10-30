@@ -1437,7 +1437,9 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    newState?advanceQuantifiedLabReaction(newState,
     previousAmounts?.elapsedSeconds??0):previousAmounts;
   const physicalDissolution=!!nextDoses?.H2O&&nextDoses.H2O.unit==="ml"&&
-   reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&
+   reagents.some(key=>key!=="H2O"&&
+    (LAB_WATER_SOLUTES.has(key)||
+     labSingleSaltSolubilityGPer100gWater(key,v.temperatureC??22)!==undefined)&&
     nextDoses?.[key]?.unit==="g")&&matching.status!=="reaction";
   const priorReaction=!!equation;
   const unsupportedAddition=priorReaction&&!carrierWater&&!sameReaction;
