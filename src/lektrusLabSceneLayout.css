@@ -777,3 +777,39 @@
 .lektrus-lab-bench .lektrus-lab-back-shelf{
  top:40.6%!important;height:1.1%!important;
 }
+
+
+/* Compact and safe laboratory header: controls have breathing room from
+ * the board edge and the independent fullscreen close button. */
+.lektrus-lab-bench .lektrus-lab-scene-header{
+ top:1.35%!important;
+ left:1.8%!important;
+ right:6.5%!important;
+ height:6.2%!important;
+ min-height:46px!important;
+ padding:7px 14px!important;
+ gap:10px!important;
+ box-sizing:border-box!important;
+ align-items:center!important;
+ overflow:hidden!important;
+}
+.lektrus-lab-bench .lektrus-lab-header-tools{
+ margin-right:2px!important;
+ gap:8px!important;
+}
+.lektrus-lab-editor.is-board-identical .lektrus-lab-scene-header{
+ right:max(9%,82px)!important;
+}
+.lektrus-lab-editor.is-board-identical .lektrus-lab-editor-exit{
+ top:14px!important;
+ right:16px!important;
+}
+@container(max-width:1000px){
+ .lektrus-lab-bench .lektrus-lab-scene-header{
+  padding:5px 10px!important;
+  gap:6px!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-header-tools{
+  gap:5px!important;
+ }
+}

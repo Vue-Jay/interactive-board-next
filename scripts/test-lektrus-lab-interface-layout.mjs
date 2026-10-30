@@ -98,3 +98,26 @@ assert.match(finalTable,/left:\.8%!important;right:\.8%!important/,
 assert.match(markup,/Объём твёрдой фазы по справочной плотности/,
  "Vessel inspector exposes measured solid displacement");
 console.log("Full-height worktop with narrow edge and physical vessel displacement: OK");
+
+
+/* Unselected glassware keeps chemistry/particles but loses floating readouts. */
+assert.ok(markup.includes('{details&&(volumeMl>1e-9||contents.solid.length>0)&&'),
+ "Gauges and sediment amounts belong to selected vessels only");
+assert.ok(markup.includes('{showLabels&&details&&(volumeMl>1e-9||contents.solid.length>0)&&'),
+ "Floating composition badge belongs to selected vessels only");
+assert.ok(markup.includes('if(!bench.selectedId&&!vesselMenuId&&!activeDeviceId)return;'),
+ "A bare worktop tap must clear equipment focus even without vessel focus");
+assert.ok(markup.includes('if(!p||p.y<42||p.y>99)return;'),
+ "Bare wall or storage clicks must never dismiss selected objects");
+assert.ok(markup.includes('setVesselMenuId(null);')&&
+ markup.includes('setActiveDeviceId(null);')&&
+ markup.includes('if(bench.selectedId)onSelect?.("");'),
+ "Clear both focus types and persist vessel deselection only when needed");
+const finalHeader=css.slice(css.lastIndexOf("Compact and safe laboratory header"));
+assert.ok(finalHeader.includes('padding:7px 14px!important;'),
+ "The laboratory toolbar needs clear padding from its enclosing frame");
+assert.ok(finalHeader.includes('right:max(9%,82px)!important;'),
+ "Fullscreen header must reserve a protected slot for the close control");
+assert.ok(finalHeader.includes('right:16px!important;'),
+ "Fullscreen close control must sit inside, not against, the window boundary");
+console.log("Lab focus resets, selected-only readouts and header insets: OK");
