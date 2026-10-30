@@ -600,6 +600,7 @@ export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,req
   !labTitrationTargets(bench,sourceId).some(v=>v.id===targetId))return bench;
  const src=bench.vessels.find(v=>v.id===sourceId)!;
  const dst=bench.vessels.find(v=>v.id===targetId)!;
+ if(src.stoppered||dst.stoppered)return bench;
  const titrant=src.reagents[0],sourceDose=src.doses![titrant];
  const isAcid=titrationAcids.some(id=>id===titrant);
  const analyte=dst.reagents.find(id=>isAcid?
@@ -1157,7 +1158,7 @@ export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|
  // Testing an empty/dry vessel is invalid. Only solutions receive drops;
  // the universal paper stays a separate test strip and never colors the bulk.
  const target=bench.vessels.find(v=>v.id===id&&v.reagents.length);
- if(!target||!indicator&&target.indicator==null)return bench;
+ if(!target||target.stoppered||!indicator&&target.indicator==null)return bench;
  if(indicator&&!(labVesselQuantity(target).volumeMl>0||!target.doses&&
   target.environment==="aqueous"))return bench;
  if(indicator&&target.indicator===indicator&&indicator==="universal")return bench;
@@ -1545,7 +1546,7 @@ export function activateLabVessel(bench:LabBench,id:string):LabBench{
 export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:string):LabBench{
  if(!id||sourceId===targetId||(b.pouring&&b.pouring.step<20))return b;
  const a=b.vessels.find(v=>v.id===sourceId),t=b.vessels.find(v=>v.id===targetId);
- if(!a||!t||!a.reagents.length||
+ if(!a||!t||!a.reagents.length||a.stoppered||t.stoppered||
   [...new Set([...a.reagents,...t.reagents])].length>MAX_VESSEL_REAGENTS)return b;
  const initialDoses={...a.doses};
  const volume=labVesselQuantity(a).volumeMl;
