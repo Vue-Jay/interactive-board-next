@@ -88,8 +88,21 @@ for(const key of ["solidDensity","neatLiquidDensity","thermal","specificHeat","b
   remaining:eligible.length-filled.length,
   firstMissing:eligible.filter(r=>!r.known[key]).map(r=>r.formula)};
 }
+// Curated temperature knots, not fictional interpolations over gaps.
+const solubilityCells=Object.entries(material.LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER)
+ .map(([formula,values])=>({formula,
+  measurements:values.filter(has).length,
+  has20C:has(values[1]),
+  complete:values.every(has)
+ }));
 const rawTotals={
  stock:db.substances.length,
+ binarySolubilityAnyTemperature:
+  solubilityCells.length+3, // NaCl and independent PbCl2/PbBr2
+ binarySolubilityMeasuredPoints:
+  solubilityCells.reduce((sum,x)=>sum+x.measurements,0)+12,
+ binarySolubilityFullSixPoints:
+  solubilityCells.filter(x=>x.complete).length+1,
  crystalDensity:db.substances.filter(s=>has(material.LAB_CRYSTAL_DENSITY_G_ML[s.id])).length,
  thermal:db.substances.filter(s=>Object.hasOwn(thermal.LAB_THERMAL_REFERENCE,s.id)).length,
  specificHeat:db.substances.filter(s=>Object.hasOwn(heat.LAB_CALORIMETRY_REFERENCE,s.id)).length,
@@ -103,7 +116,10 @@ for(const row of stockRows){
  bucket.total++;
  if(row.missing.length)bucket.rowsWithGaps++;
 }
-const report={schemaVersion:1,rawTotals,applicable:counted,byKind,
+const report={schemaVersion:2,rawTotals,
+ solubilityCurveDetail:solubilityCells,
+ hydratesNotSimulated:[...material.LAB_HYDRATE_PHASE_REQUIRES_SPECIAL_MODEL].sort(),
+ applicable:counted,byKind,
  stockWithOutstandingProperties:stockRows.filter(r=>r.missing.length).length,
  productOnly:{
   total:producedOnly.length,
@@ -155,7 +171,13 @@ if(process.argv.includes("--json")){
  ];
  for(const [key,v] of Object.entries(counted))
   lines.push("| "+labels[key]+" | "+v.filled+" | "+v.remaining+" | "+v.eligible+" |");
- lines.push("","Продукты вне шкафа: молярная масса "+report.productOnly.molarMassKnown+
+ lines.push("",
+  "Кривых с измерениями: "+rawTotals.binarySolubilityAnyTemperature+
+  "; измеренных узлов: "+rawTotals.binarySolubilityMeasuredPoints+
+  "; полных 6-точечных рядов: "+rawTotals.binarySolubilityFullSixPoints+
+  ". Кристаллизация кристаллогидратов не имитируется без учета воды.",
+  "",
+  "Продукты вне шкафа: молярная масса "+report.productOnly.molarMassKnown+
   "/"+producedOnly.length+", плотность твёрдой фазы "+
   report.productOnly.solidDensityKnown+"/"+producedOnly.length+
   " (не все продукты являются твёрдыми).");
@@ -169,6 +191,9 @@ if(process.argv.includes("--json")){
    v.firstMissing.slice(0,14).join(", ")+")");
  console.log("Unique stock formulas with applicable gaps: "+
   report.stockWithOutstandingProperties);
+ console.log("Measured solubility knots: "+rawTotals.binarySolubilityMeasuredPoints+
+  ", curves with any data: "+rawTotals.binarySolubilityAnyTemperature+
+  ", complete 6-knot curves: "+rawTotals.binarySolubilityFullSixPoints);
  console.log("Product-only molecular masses: "+
   report.productOnly.molarMassKnown+"/"+report.productOnly.total);
  if(process.argv.includes("--verify"))
