@@ -11,7 +11,8 @@
  * https://webbook.nist.gov/cgi/cbook.cgi?ID=C7726956&Type=ANTOINE
  * https://www.rsc.org/suppdata/cc/c3/c3cc39116g/c3cc39116g.pdf (IPA)
  */
-import type {LabDose} from "./lektrusLabStoichiometry";
+/** Same structural dose shape as the bench, without a runtime cycle. */
+type LabDose={value:number;unit:"ml"|"g";concentrationM?:number};
 export type EvaporatingLiquid="H2O"|"C2H5OH"|"CH3OH"|"C3H8O"|"Br2";
 type Antoine={minK:number;maxK:number;A:number;B:number;C:number;molG:number;densityGml:number};
 const table:Record<EvaporatingLiquid,Antoine>={
