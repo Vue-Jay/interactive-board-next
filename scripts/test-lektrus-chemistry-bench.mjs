@@ -24,13 +24,20 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
-const acidBase=load("src/lektrusLabPH.ts");
+const network=load("src/lektrusLabReactionNetwork.ts",key=>{
+ if(key==="./lektrusLabStoichiometry")return chem;
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
+const acidBase=load("src/lektrusLabPH.ts",key=>{
+ assert.equal(key,"./lektrusLabReactionNetwork");return network;
+});
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabTitration")return titration;
  if(key==="./lektrusLabLayout")return layout;
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabPhysicalProperties")return thermal;
  if(key==="./lektrusLabPH")return acidBase;
+ if(key==="./lektrusLabReactionNetwork")return network;
  if(key==="./lektrusLabCatalog")return catalog;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
@@ -50,8 +57,8 @@ assert.equal(lab.labObservation(bench.vessels[0]).caseData.observation,"precipit
 assert.equal(bench.vessels[1].reagents.length,0,"Transferred container is empty");
 assert.deepEqual(bench.vessels[0].reagents,["NaCl","AgNO3"]);
 let unknown=lab.putLabReagent(bench,"v1","HCl");
-assert.equal(lab.labObservation(unknown.vessels[0]).status,"unknown",
- "Second-stage products cannot be predicted from original reactant IDs");
+assert.equal(lab.labObservation(unknown.vessels[0]).status,"reaction",
+ "Reviewed first-stage products remain recognised after additional reagent dosing");
 assert.equal(unknown.vessels[0].completedReaction?.observation,"precipitate",
  "Existing precipitate must stay visually represented even when later chemistry is unknown");
 let heated=lab.defaultLabBench();
