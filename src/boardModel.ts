@@ -767,6 +767,12 @@ export function parseDocument(raw: string): DocumentData {
         throw new Error("Повреждены этапы химической цепочки");
       if(i.scienceLabBench!=null){
         const bench=i.scienceLabBench as import("./lektrusChemistryBenchModel").LabBench;
+        // This persistence module must remain import-free. Keep the bound
+        // in sync with MAX_VESSEL_REAGENTS in lektrusChemistryBenchModel.ts.
+        // The simulation accepts complex multi-stage mixtures (up to 48),
+        // while the previous reader still rejected the 7th reagent or dose,
+        // making the ENTIRE saved board impossible to reopen.
+        const maxSavedLabReagents=48;
         const environments=["aqueous","dry","heated","ignited"];
         const kinds=["beaker","tube","flask","cylinder","dish","conical","volumetric","crucible","pipette","burette"];
         const indicators=["litmus","phenolphthalein","methyl-orange","universal"];
@@ -908,7 +914,7 @@ export function parseDocument(raw: string): DocumentData {
             (v.physicalStartedAtMs==null||(Number.isFinite(v.physicalStartedAtMs)&&
              v.physicalStartedAtMs>=0))&&
             v.x>=8&&v.x<=92&&v.y>=8&&v.y<=92&&
-            Array.isArray(v.reagents)&&v.reagents.length<=6&&
+            Array.isArray(v.reagents)&&v.reagents.length<=maxSavedLabReagents&&
             v.reagents.every(r=>typeof r==="string"&&r.length<=70)&&
             new Set(v.reagents).size===v.reagents.length&&
             environments.includes(v.environment)&&typeof v.observed==="boolean"&&
@@ -925,7 +931,7 @@ export function parseDocument(raw: string): DocumentData {
             (v.buretteRemainderMl==null||(Number.isFinite(v.buretteRemainderMl)&&v.buretteRemainderMl>=0&&v.buretteRemainderMl<.01))&&
             (v.buretteTargetId==null||bench.vessels.some(x=>x.id===v.buretteTargetId&&x.id!==v.id))&&
             (v.doses==null||(typeof v.doses==="object"&&
-               Object.keys(v.doses).length<=6&&
+               Object.keys(v.doses).length<=maxSavedLabReagents&&
                Object.entries(v.doses).every(([id,dose])=>
                  v.reagents.includes(id)&&validDose(dose))))&&
             validReaction(v.completedReaction)&&validReactionAmounts(v.reactionAmounts)&&
