@@ -174,7 +174,9 @@ assert.equal(new Set(historicalReferences.map(x=>x.id)).size,historicalReference
 assert.ok(atlas.includes("normalizeHistoricalReferenceName"),"Map and catalogue should share conservative name matching");
 assert.ok(atlas.includes("indexedReferenceMaps"),"References must use actual indexed historical shapes");
 assert.ok(atlas.includes("Показать на карте ·"),"Map action must be available only for dated matches");
-console.log("Historical atlas: 41 encyclopedia entries, "+historicalReferences.length+" sourced reference records, alias/date guards and cross-era UI checked.");
+console.log("Historical atlas: "+historicalArticles.length+
+ " searchable school encyclopedia entries, "+historicalReferences.length+
+ " curated source records, alias/date guards and cross-era UI checked.");
 
 for(const [alias,year,expected] of [
  ["Mali Empire",1324,"Империя Мали"],
