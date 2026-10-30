@@ -114,3 +114,69 @@ assert.match(css,/lektrus-lab-evaporation-crystals/);
 assert.match(component,/growingSaltCrystals/);
 assert.match(component,/Выпаривание: удалено/);
 console.log("Measured NaCl saturation, true crystal volume, boiling energy and conserved evaporative mass passed");
+
+/** Extend binary water/salt phase consistency to all catalogued salts
+ * with a measured temperature curve. Unsupported mixtures stay unsupported. */
+for(const [formula,at20,at100] of [
+ ["KNO3",31.6,246],["KCl",34,56.7],["NaNO3",88,180]
+]){
+ approx(mat.labSingleSaltSolubilityGPer100gWater(formula,20),at20,1e-9);
+ approx(mat.labSingleSaltSolubilityGPer100gWater(formula,100),at100,1e-9);
+ assert.equal(mat.labSingleSaltSolubilityGPer100gWater(formula,115),undefined);
+ const before={reagents:[formula,"H2O"],environment:"aqueous",
+  temperatureC:20,doses:{[formula]:g(1),H2O:ml(.5)}};
+ const concentrated=reaction.simulateLabInventory(before);
+ assert.ok((concentrated.solidMol[formula]??0)>0,
+  formula+" must crystallise beyond its experimental water saturation");
+ const dissolved=reaction.simulateLabInventory({...before,
+  doses:{[formula]:g(1),H2O:ml(15)}});
+ assert.ok((dissolved.solidMol[formula]??0)<1e-12,
+  formula+" must redissolve below its solubility limit");
+ approx(concentrated.speciesMol[formula],dissolved.speciesMol[formula],1e-12);
+ const reducedWater=vapor.labEvaporate({
+  kind:"dish",doses:{[formula]:g(1),H2O:ml(.5)}
+ },10,75,120,180);
+ assert.ok(reducedWater.evaporatedMl>0,
+  "Saturated "+formula+" must not stop solvent evaporation");
+ const residual=reaction.simulateLabInventory({...before,
+  reagents:Object.keys(reducedWater.doses),doses:reducedWater.doses});
+ approx(residual.speciesMol[formula],concentrated.speciesMol[formula],1e-12);
+ const sumMass=reaction.labInventoryMassG(residual)+
+  (reducedWater.ventedVaporMl?.H2O??0)*waterMassPerMl;
+ approx(sumMass,reaction.labInventoryMassG(concentrated),.001);
+ assert.ok(lab.labVesselQuantity({...before}).solidVolumeMl>0);
+ const completelyDry=reaction.simulateLabInventory({
+  reagents:[formula],environment:"aqueous",temperatureC:20,
+  doses:{[formula]:g(1)}
+ });
+ approx(completelyDry.solidMol[formula],
+  completelyDry.speciesMol[formula],1e-12);
+}
+const coolingKNO3=reaction.simulateLabInventory({
+ reagents:["KNO3","H2O"],environment:"aqueous",temperatureC:20,
+ doses:{KNO3:g(2),H2O:ml(5)}
+});
+const warmingKNO3=reaction.simulateLabInventory({
+ reagents:["KNO3","H2O"],environment:"aqueous",temperatureC:90,
+ doses:{KNO3:g(2),H2O:ml(5)}
+});
+assert.ok((coolingKNO3.solidMol.KNO3??0)>.3/
+ stoich.labMolarMass("KNO3"));
+assert.equal(warmingKNO3.solidMol.KNO3??0,0,
+ "Heating KNO3 increases its measured solubility without changing total moles");
+approx(coolingKNO3.speciesMol.KNO3,warmingKNO3.speciesMol.KNO3);
+const multicomponent=reaction.simulateLabInventory({
+ reagents:["KNO3","KCl","H2O"],environment:"aqueous",temperatureC:20,
+ doses:{KNO3:g(1),KCl:g(1),H2O:ml(.5)}
+});
+assert.ok(!multicomponent.solidMol.KNO3&&!multicomponent.solidMol.KCl,
+ "Do not apply independent pure-water solubility curves to ionic mixtures");
+const stockKNO3=reaction.simulateLabInventory({
+ reagents:["KNO3"],environment:"aqueous",temperatureC:20,
+ doses:{KNO3:{unit:"ml",value:10,concentrationM:.1}}
+});
+assert.equal(stockKNO3.solidMol.KNO3??0,0);
+const ui=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
+assert.match(ui,/labSingleSaltSolubilityGPer100gWater/);
+assert.match(ui,/Кристаллы соли образуются при выпаривании воды/);
+console.log("KNO3, KCl, NaNO3: binary solubility, cold crystallization, redissolution and evaporation mass conservation OK");
