@@ -132,3 +132,50 @@ approx(sumSeparatedMass,newMass,1e-6);
 const oldValidated=fs.readFileSync("src/boardModel.ts","utf8");
 assert.match(oldValidated,/v\.chemicalInventory/);
 console.log("Two sequential precipitation stages preserve soluble moles, real volume and molecular mass");
+
+
+/* Physical displacement: a BaSO4 crystal occupies volume above the liquid
+ * (density 4.5 g/cm³, ILO/WHO ICSC 0827) and reduces gas headspace.
+ * Dissolved solute does NOT count as a separate crystalline solid. */
+const physicalMass=stoich.labMolarMass("BaSO4")*.001;
+const physicalVessel={id:"physical",kind:"conical",x:50,y:65,
+ reagents:["BaSO4","H2O"],environment:"aqueous",observed:true,
+ doses:{BaSO4:{unit:"g",value:physicalMass},
+  H2O:{unit:"ml",value:20}},temperatureC:22,
+ stoppered:true,stopperedAtC:22,
+ chemicalInventory:{speciesMol:{BaSO4:.001,H2O:20*.997/18.015},
+  solidMol:{BaSO4:.001},retainedGasMol:{CO2:.003}}
+};
+const physicalQuantity=lab.labVesselQuantity(physicalVessel);
+approx(physicalQuantity.solidVolumeMl,physicalMass/4.5,1e-9);
+approx(physicalQuantity.occupiedMl,20+physicalMass/4.5,1e-9);
+approx(physicalQuantity.availableMl,200-20-physicalMass/4.5,1e-9);
+assert.equal(physicalQuantity.solidVolumeComplete,true);
+const noSolidPressure=lab.labVesselPressure({...physicalVessel,
+ chemicalInventory:{...physicalVessel.chemicalInventory,solidMol:{}}});
+const withSolidPressure=lab.labVesselPressure(physicalVessel);
+assert.ok(withSolidPressure.reactionGasPressureKPa>
+ noSolidPressure.reactionGasPressureKPa,
+ "A known precipitate reduces the real closed gas headspace and raises CO2 pressure");
+assert.equal(lab.labVesselQuantity({...physicalVessel,
+ chemicalInventory:{speciesMol:{H2O:1,NaCl:.001},solidMol:{}}}).solidVolumeMl,0,
+ "Dissolved salts must never be double counted as solid displacement");
+const almostFull={...physicalVessel,kind:"beaker",stoppered:false,
+ doses:{BaSO4:{unit:"g",value:physicalMass},
+  H2O:{unit:"ml",value:149.96}},
+ chemicalInventory:undefined};
+const filledBench={...lab.defaultLabBench(),vessels:[almostFull]};
+assert.ok(lab.labVesselQuantity(almostFull).occupiedMl>150,
+ "The previous liquid-only model would miss overfilled precipitate vessels");
+const validNearFull={...almostFull,doses:{...almostFull.doses,
+ H2O:{unit:"ml",value:149.94}}};
+const barelyFits={...filledBench,vessels:[validNearFull]};
+const added=lab.putLabReagent(barelyFits,"physical","H2O",
+ {unit:"ml",value:.03});
+assert.equal(added,barelyFits,
+ "An added liquid dose must be rejected if its known crystalline sediment would overflow the rim");
+const incomplete=lab.labVesselQuantity({...physicalVessel,
+ chemicalInventory:{speciesMol:{NaCl:1},solidMol:{NaCl:1}}});
+assert.equal(incomplete.solidVolumeComplete,false,
+ "Unknown crystal density must not be silently presented as a complete displacement calculation");
+console.log("Curated precipitate density conserves occupied space and closed-flask gas headspace");
