@@ -1099,3 +1099,152 @@ body.lektrus-lab-fullscreen-active .workspace{
   grid-template-columns:repeat(3,minmax(0,1fr))!important;
  }
 }
+
+
+/* Mobile laboratory usability refinements, 2026-10-30.
+   Keep these overrides scoped to fullscreen only; board preview and
+   desktop classroom layout preserve their existing dimensions. */
+.lektrus-lab-bench.is-compact-fullscreen{
+ --lab-compact-edge:max(9px,env(safe-area-inset-left,0px));
+ --lab-compact-nav-top:56px;
+ --lab-compact-panel-top:calc(var(--lab-compact-nav-top) + 49px);
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header{
+ left:var(--lab-compact-edge)!important;
+ right:max(65px,calc(env(safe-area-inset-right,0px) + 59px))!important;
+ top:max(6px,env(safe-area-inset-top,0px))!important;
+ height:43px!important;min-height:43px!important;
+ gap:7px!important;padding:4px 9px!important;
+ flex-wrap:nowrap!important;min-width:0!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header .lektrus-lab-mode-picker{
+ flex:1 1 140px!important;min-width:0!important;
+ max-width:none!important;margin:0!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-header .lektrus-lab-mode-picker select{
+ width:100%!important;min-width:0!important;
+ max-width:none!important;height:35px!important;
+ font-size:14px!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-prepare-mode{
+ min-width:40px!important;min-height:35px!important;
+ padding:5px 9px!important;font-size:13px!important;
+}
+.lektrus-lab-editor.is-compact-fullscreen .lektrus-lab-editor-exit{
+ top:max(7px,env(safe-area-inset-top,0px))!important;
+ right:max(9px,env(safe-area-inset-right,0px))!important;
+ width:43px!important;height:43px!important;
+ border-radius:11px!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-drawer-bar{
+ left:var(--lab-compact-edge)!important;
+ right:max(9px,env(safe-area-inset-right,0px))!important;
+ top:var(--lab-compact-nav-top)!important;
+ height:43px!important;
+ padding:1px 0 2px!important;
+ gap:7px!important;
+ scroll-padding-inline:5px;
+ -webkit-overflow-scrolling:touch;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-drawer-bar button{
+ min-width:94px!important;min-height:39px!important;
+ height:39px!important;padding:7px 11px!important;
+ border-radius:10px!important;
+ font-size:13px!important;line-height:1.12!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-drawer-bar button:focus-visible,
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings button:focus-visible{
+ outline:2px solid #16725a!important;outline-offset:2px!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-worktop-zone{
+ top:calc(var(--lab-compact-panel-top) + 1px)!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-back-shelf{
+ top:var(--lab-compact-panel-top)!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen.is-drawer-reagents .lektrus-lab-reagent-furniture,
+.lektrus-lab-bench.is-compact-fullscreen.is-drawer-glassware .lektrus-lab-glass-cupboard,
+.lektrus-lab-bench.is-compact-fullscreen.is-drawer-equipment .lektrus-lab-device-cupboard,
+.lektrus-lab-bench.is-compact-fullscreen.is-drawer-indicators .lektrus-lab-indicator-cupboard,
+.lektrus-lab-bench.is-compact-fullscreen.is-drawer-equations .lektrus-lab-chalkboard{
+ left:var(--lab-compact-edge)!important;
+ right:max(9px,env(safe-area-inset-right,0px))!important;
+ top:var(--lab-compact-panel-top)!important;
+ max-height:min(49%,280px)!important;min-height:0!important;
+ padding:12px!important;gap:8px!important;
+ border-radius:12px!important;
+ overscroll-behavior:contain!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen.is-drawer-glassware .lektrus-lab-shelf-items,
+.lektrus-lab-bench.is-compact-fullscreen.is-drawer-equipment .lektrus-lab-device-cupboard-shelf{
+ grid-auto-rows:minmax(75px,auto)!important;
+ gap:7px!important;align-content:start!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen.is-drawer-glassware .lektrus-lab-shelf-item,
+.lektrus-lab-bench.is-compact-fullscreen.is-drawer-equipment .lektrus-lab-device-cupboard-shelf button{
+ min-height:75px!important;padding:7px 5px!important;
+ border-radius:9px!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen.is-drawer-indicators .lektrus-lab-indicator-item{
+ min-height:92px!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings{
+ left:var(--lab-compact-edge)!important;
+ right:max(9px,env(safe-area-inset-right,0px))!important;
+ top:var(--lab-compact-panel-top)!important;
+ max-height:min(49%,280px)!important;
+ padding:12px!important;gap:9px!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings button{
+ min-height:43px!important;padding:8px 11px!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-selected-vessel-actions{
+ left:var(--lab-compact-edge)!important;
+ bottom:max(12px,env(safe-area-inset-bottom,0px))!important;
+ max-width:calc(100vw - 24px)!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-pour-hint{
+ left:50%!important;right:auto!important;
+ transform:translateX(-50%)!important;
+ bottom:max(14px,env(safe-area-inset-bottom,0px))!important;
+ width:max-content!important;max-width:calc(100% - 26px)!important;
+ min-height:35px!important;box-sizing:border-box!important;
+ padding:8px 14px!important;
+ font:750 13px/1.35 system-ui,sans-serif!important;
+ border-radius:10px!important;z-index:70!important;
+ pointer-events:none!important;
+}
+.lektrus-lab-bench.is-compact-fullscreen.has-selected-vessel .lektrus-lab-pour-hint{
+ bottom:65px!important;
+}
+@media(max-width:650px){
+ .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-brand{display:none!important}
+ .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-mode-picker>span{display:none!important}
+ .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-prepare-label{display:none!important}
+ .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-drawer-bar button{
+  min-width:105px!important;
+ }
+ .lektrus-lab-bench.is-compact-fullscreen.is-drawer-glassware .lektrus-lab-shelf-items,
+ .lektrus-lab-bench.is-compact-fullscreen.is-drawer-equipment .lektrus-lab-device-cupboard-shelf{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ }
+}
+@media(max-height:490px){
+ .lektrus-lab-bench.is-compact-fullscreen{
+  --lab-compact-nav-top:51px;
+ }
+ .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-drawer-bar{
+  height:39px!important;gap:6px!important;
+ }
+ .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-drawer-bar button{
+  height:37px!important;min-height:37px!important;
+  padding:6px 10px!important;
+ }
+ .lektrus-lab-bench.is-compact-fullscreen.is-drawer-reagents .lektrus-lab-reagent-furniture,
+ .lektrus-lab-bench.is-compact-fullscreen.is-drawer-glassware .lektrus-lab-glass-cupboard,
+ .lektrus-lab-bench.is-compact-fullscreen.is-drawer-equipment .lektrus-lab-device-cupboard,
+ .lektrus-lab-bench.is-compact-fullscreen.is-drawer-indicators .lektrus-lab-indicator-cupboard,
+ .lektrus-lab-bench.is-compact-fullscreen.is-drawer-equations .lektrus-lab-chalkboard{
+  max-height:min(49%,205px)!important;
+ }
+}

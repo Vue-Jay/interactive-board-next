@@ -105,10 +105,14 @@ assert.ok(markup.includes('{details&&(volumeMl>1e-9||contents.solid.length>0)&&'
  "Gauges and sediment amounts belong to selected vessels only");
 assert.ok(markup.includes('{showLabels&&details&&(volumeMl>1e-9||contents.solid.length>0)&&'),
  "Floating composition badge belongs to selected vessels only");
-assert.ok(markup.includes('if(!bench.selectedId&&!vesselMenuId&&!activeDeviceId)return;'),
- "A bare worktop tap must clear equipment focus even without vessel focus");
-assert.ok(markup.includes('if(!p||p.y<42||p.y>99)return;'),
- "Bare wall or storage clicks must never dismiss selected objects");
+assert.ok(markup.includes('interactive&&e.currentTarget.contains(interactive)'),
+ "A surrounding interactive fullscreen viewport must not swallow worktop taps");
+assert.ok(markup.includes('const tableTop=compactFullscreen?'),
+ "Real-pixel mobile worktop must accept taps higher than the legacy 42 percent threshold");
+assert.ok(markup.includes('if(p.y<tableTop||p.y>99)return;'),
+ "Header and storage taps must never dismiss selected objects");
+assert.ok(markup.includes('!bench.selectedId&&!vesselMenuId&&!activeDeviceId&&!compositionId'),
+ "Empty-worktop selection reset covers all transient focus types");
 assert.ok(markup.includes('setVesselMenuId(null);')&&
  markup.includes('setActiveDeviceId(null);')&&
  markup.includes('if(bench.selectedId)onSelect?.("");'),
@@ -177,3 +181,20 @@ console.log("Phone laboratory: actual viewport-size workbench and compact dropdo
 
 assert.match(css,/\.lektrus-lab-bench\.is-compact-fullscreen \.lektrus-lab-selected-vessel-actions\{[\s\S]*?position:fixed!important/,
  "Phone vessel controls must escape the narrow fullscreen header");
+
+
+// Action notice is not a permanent status bar: every action, including two
+// identical consecutive messages, resets a strictly 1500 ms timeout.
+assert.match(markup,/const \[noticeSerial,setNoticeSerial\]=useState\(0\)/);
+assert.match(markup,/const setNotice=\(text:string\)=>\{setNoticeText\(text\);setNoticeSerial\(n=>n\+1\)\}/);
+assert.match(markup,/window\.setTimeout\(\(\)=>setNoticeText\(""\),1500\)/);
+assert.match(markup,/window\.clearTimeout\(timer\)/);
+assert.match(markup,/setVesselMenuId\(null\);setActiveDeviceId\(null\);setCompositionId\(null\)/);
+const latestMobileCss=css.slice(css.lastIndexOf("Mobile laboratory usability refinements"));
+assert.ok(latestMobileCss.includes("safe-area-inset-bottom"));
+assert.ok(latestMobileCss.includes("max-height:min(49%,280px)!important"));
+assert.ok(latestMobileCss.includes("max-height:min(49%,205px)!important"));
+assert.match(latestMobileCss,/\.is-compact-fullscreen\.has-selected-vessel \.lektrus-lab-pour-hint/);
+assert.match(latestMobileCss,/@media\(max-width:650px\)/);
+assert.match(latestMobileCss,/@media\(max-height:490px\)/);
+console.log("Mobile worktop deselection, 1.5-second notices and safe responsive drawers: OK");

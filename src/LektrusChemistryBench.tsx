@@ -514,7 +514,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [measuredMl,setMeasuredMl]=useState("5");
  const [measuredPartnerId,setMeasuredPartnerId]=useState("");
  const [localPourId,setLocalPourId]=useState<string|null>(null);
- const [notice,setNotice]=useState("");
+ // Toast actions are transient UI, never persisted with the collaborative bench.
+ // A repeated identical action must restart its 1.5 second visibility window.
+ const [notice,setNoticeText]=useState("");
+ const [noticeSerial,setNoticeSerial]=useState(0);
+ const setNotice=(text:string)=>{setNoticeText(text);setNoticeSerial(n=>n+1)};
+ useEffect(()=>{
+  if(!notice)return;
+  const timer=window.setTimeout(()=>setNoticeText(""),1500);
+  return()=>window.clearTimeout(timer);
+ },[notice,noticeSerial]);
  const [sinkFlow,setSinkFlow]=useState(false);
  const [confirmClear,setConfirmClear]=useState(false);
  const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string;solid:boolean}|null>(null);
@@ -1080,6 +1089,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  return <div className={"lektrus-lab-bench"+(!editable?" is-readonly":"")+
   (compactFullscreen?" is-compact-fullscreen":"")+
   (compactFullscreen&&mobileDrawer?" is-drawer-"+mobileDrawer:"")+
+  (bench.selectedId?" has-selected-vessel":"")+
   (pendingGlassware?" is-placing-glassware":"")+
   (!settings.animateEffects?" lab-reduced-animation":"")} ref={host}
   aria-label="Интерактивный химический стол с шкафами и раковиной"
@@ -1088,19 +1098,27 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    // Apparatus and cabinetry own their gestures. An empty worktop tap
    // dismisses BOTH locally focused equipment and persisted vessel selection.
    // Do not interpret bare wall/header taps as deselection.
-   if((e.target as HTMLElement).closest("[data-board-interactive]"))return;
+   const interactive=(e.target as HTMLElement).closest("[data-board-interactive]");
+   // The fullscreen viewport itself has data-board-interactive. It is an
+   // ANCESTOR, not an interactive child of the bench: do not mistake it for
+   // a clicked vessel/control. This broke deselection on all mobile taps.
+   if(interactive&&e.currentTarget.contains(interactive))return;
    const p=point(e);
+   if(!p)return;
    if(pendingGlassware){
-    if(!p||!isLabWorktop(p))return;
+    if(!isLabWorktop(p))return;
     e.preventDefault();e.stopPropagation();take(pendingGlassware,p);
     return;
    }
-   if(!p||p.y<42||p.y>99)return;
+   const height=e.currentTarget.getBoundingClientRect().height;
+   // Compact phones have a real-pixel top rail. The old y>42% threshold
+   // excluded much of the now enlarged physical table.
+   const tableTop=compactFullscreen?Math.min(40,105/Math.max(height,1)*100):42;
+   if(p.y<tableTop||p.y>99)return;
    if(compactFullscreen&&mobileDrawer)setMobileDrawer(null);
-   if(!bench.selectedId&&!vesselMenuId&&!activeDeviceId)return;
+   if(!bench.selectedId&&!vesselMenuId&&!activeDeviceId&&!compositionId)return;
    e.stopPropagation();
-   setVesselMenuId(null);
-   setActiveDeviceId(null);
+   setVesselMenuId(null);setActiveDeviceId(null);setCompositionId(null);
    if(bench.selectedId)onSelect?.("");
   }}>
   {compactFullscreen&&<nav className="lektrus-lab-compact-drawer-bar"
@@ -1875,7 +1893,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    <path d={`M ${transfer.from.x} ${transfer.from.y} Q ${(transfer.from.x+transfer.to.x)/2} ${Math.min(transfer.from.y,transfer.to.y)-12} ${transfer.to.x} ${transfer.to.y}`}
      fill="none" stroke="#58afe0" strokeWidth=".9" strokeLinecap="round"/>
   </svg>}
-  {editable&&(dropTarget||dropDeviceId||effectivePouringId||dropFurniture||notice)&&<div className="lektrus-lab-pour-hint" aria-live="polite">
+  {editable&&(dropTarget||dropDeviceId||effectivePouringId||dropFurniture||notice)&&<div className="lektrus-lab-pour-hint" role="status" aria-live="polite" aria-atomic="true">
    {dropFurniture==="sink"?"Отпустите для слива в раковину":
     dropFurniture==="glassware"?"Отпустите, чтобы вернуть пустую посуду":
     dropTarget?(contactCountdown===dropTarget?"Удерживайте сосуд над приёмником 2 секунды":"Переливание идёт. Отпустите, чтобы остановить"):
