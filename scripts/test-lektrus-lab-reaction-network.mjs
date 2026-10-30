@@ -106,3 +106,16 @@ assert.equal(sample.heatEstimateComplete,false,
  "Do not invent an enthalpy for a reaction lacking vetted thermodynamics");
 assert.ok(sample.knownHeatKJ===undefined);
 console.log("Expanded Ksp, 1:2 and 1:3 precipitation and audited heat effects passed");
+
+
+const cupboardCss=fs.readFileSync("src/lektrusChemistryBench.css","utf8");
+assert.match(cupboardCss,/grid-template-rows:repeat\(2,minmax\(0,1fr\)\)!important/,
+ "Bench cupboard tiles must have two rows with enough height for labels");
+assert.match(cupboardCss,/grid-auto-rows:minmax\(50px,auto\)!important/,
+ "Narrow cupboard must scroll through legible glassware rows");
+assert.match(cupboardCss,/is-glassware \.lektrus-lab-modal-ware button:has\(\.lektrus-lab-ware-icon\)/,
+ "Expanded cupboard must reserve icon and title slots");
+const cabinetView=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
+assert.match(cabinetView,/<small>\{kind\.name\}<\/small>/,
+ "Every compact icon must retain its visible full-name label");
+console.log("Glassware cupboard compact and expanded layout guards passed");
