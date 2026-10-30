@@ -2608,19 +2608,20 @@ const malformedGas={...gasInitial,extentMol:gasInitial.maxExtentMol*2};
 assert.equal(gasDynamics.labReactionGasProgress(malformedGas),undefined);
 assert.equal(gasDynamics.labIdealGasVolumeMl(.001,-273.15),undefined);
 assert.equal(gasDynamics.labIdealGasVolumeMl(-.001,25),undefined);
-let sealedGas=lab.defaultLabBench();
-sealedGas=lab.putLabReagent(sealedGas,"v1","NaHCO3",{unit:"g",value:2});
-sealedGas=lab.putLabReagent(sealedGas,"v1","HCl",{
+let sealedGas=lab.addLabVessel(lab.defaultLabBench(),"flask");
+const sealedId=sealedGas.selectedId;
+sealedGas=lab.putLabReagent(sealedGas,sealedId,"NaHCO3",{unit:"g",value:2});
+sealedGas=lab.putLabReagent(sealedGas,sealedId,"HCl",{
  unit:"ml",value:5,concentrationM:.1});
-sealedGas=lab.setLabVesselStopper(sealedGas,"v1",true);
-assert.equal(lab.labHeadspaceGasMoles(sealedGas.vessels[0]),0,
+sealedGas=lab.setLabVesselStopper(sealedGas,sealedId,true);
+assert.equal(lab.labHeadspaceGasMoles(sealedGas.vessels.find(v=>v.id===sealedId)),0,
  "Sealed headspace must not contain the entire future reaction yield");
-const beforeReactionGas=lab.labVesselPressure(sealedGas.vessels[0]);
+const beforeReactionGas=lab.labVesselPressure(sealedGas.vessels.find(v=>v.id===sealedId));
 assert.equal(beforeReactionGas.reactionGasPressureKPa,0);
 sealedGas=lab.advanceLabSimulation(sealedGas,1000);
 sealedGas=lab.advanceLabSimulation(sealedGas,2000);
 sealedGas=lab.advanceLabSimulation(sealedGas,3000);
-const midwaySealed=sealedGas.vessels[0];
+const midwaySealed=sealedGas.vessels.find(v=>v.id===sealedId);
 assert.ok(midwaySealed.reactionAmounts?.extentMol>0,
  "Reaction gases progress while the vessel is closed");
 const midSealedPressure=lab.labVesselPressure(midwaySealed);
@@ -2629,9 +2630,9 @@ assert.ok(midSealedPressure.reactionGasPressureKPa<30,
  "Measured dilute experiment remains below stopper pop threshold");
 assert.ok(Math.abs(lab.labHeadspaceGasMoles(midwaySealed)-
  gasDynamics.labReactionGasProgress(midwaySealed.reactionAmounts).totalMol)<1e-10);
-const openedGas=lab.setLabVesselStopper(sealedGas,"v1",false);
-assert.equal(openedGas.vessels[0].stoppered,false);
-assert.equal(lab.labVesselPressure(openedGas.vessels[0]).reactionGasPressureKPa,0,
+const openedGas=lab.setLabVesselStopper(sealedGas,sealedId,false);
+assert.equal(openedGas.vessels.find(v=>v.id===sealedId).stoppered,false);
+assert.equal(lab.labVesselPressure(openedGas.vessels.find(v=>v.id===sealedId)).reactionGasPressureKPa,0,
  "Opening the vessel releases the pressure of the produced gas");
 const labGasMarkup=read("src/LektrusChemistryBench.tsx");
 assert.match(labGasMarkup,/const gasBubbleCount=gasProgress\?/);
