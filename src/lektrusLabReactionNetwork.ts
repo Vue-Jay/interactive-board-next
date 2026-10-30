@@ -169,7 +169,8 @@ export function simulateLabInventory(input:{
  // A measured, running gas reaction has a defined extent. For this
  // single validated step, never borrow the future final equilibrium.
  const progress=input.chemicalInventory?undefined:input.reactionAmounts;
- const progressCase=progress&&!progress.complete?
+ const progressCase=progress&&!progress.complete&&
+  (input.environment!=="aqueous"||hasMeasuredLiquid)?
   knownRows.find(entry=>entry.row.equation===progress.equation&&
    entry.row.environment===input.environment&&
    entry.row.observation==="gas"):undefined;
@@ -217,6 +218,10 @@ export function simulateLabInventory(input:{
    const {row,equation}=entry;
    if(used.has(row.equation+"|"+row.environment))continue;
    if(row.environment!==input.environment)continue;
+   // A dry powder mixture cannot precipitate, neutralise or bubble merely
+   // because the editor is set to "aqueous". Require actual liquid volume;
+   // verified heated/ignited dry reactions keep their own environment.
+   if(row.environment==="aqueous"&&!hasMeasuredLiquid)continue;
    if((row.minTemperatureC??0)>(input.temperatureC??22))continue;
    if(row.environment==="heated"&&(input.temperatureC??22)<90)continue;
    if(row.environment==="ignited"&&(input.temperatureC??22)<135)continue;

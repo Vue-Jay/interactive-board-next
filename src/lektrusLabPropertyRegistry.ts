@@ -9,7 +9,7 @@
 import {substances,reviewedReactionCases} from "./lektrusReactionDatabase";
 import {labMolarMass,parseBalancedLabEquation} from "./lektrusLabStoichiometry";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
-import {labThermalInfo} from "./lektrusLabPhysicalProperties";
+import {LAB_GAS_FORMULAS,labThermalInfo} from "./lektrusLabPhysicalProperties";
 import {LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
 import {labIsTypicallyWaterSoluble} from "./lektrusLabReactionNetwork";
 type Phase="gas"|"precipitate"|"other";
@@ -59,7 +59,7 @@ export function labSubstanceProperties(formula:string,temperatureC=22){
  // Only verified neat liquid density, not an arbitrary 0.1 M stock.
  const liquidDensityGPerMl=neatLiquid?.densityGPerMl;
  const specificHeatJPerGK=liquid?.specificJPerGK;
- const thermal=labThermalInfo(formula,stock?.kind==="газ"?"ml":"g");
+ const thermal=labThermalInfo(formula,stock?.kind==="газ"||LAB_GAS_FORMULAS.has(formula)?"ml":"g");
  const solubilityGPer100gWater=
   labSingleSaltSolubilityGPer100gWater(formula,temperatureC);
  return {formula,name:stock?.name??formula,stockKind:stock?.kind,
@@ -72,6 +72,8 @@ export function labSubstanceProperties(formula:string,temperatureC=22){
   meltingC:thermal.known?thermal.meltingC:undefined,
   boilingC:thermal.known?thermal.boilingC:undefined,
   decompositionC:thermal.known?thermal.decompositionC:undefined,
+  sublimationC:thermal.known?thermal.sublimationC:undefined,
+  physicalForm:thermal.form,
   solubilityGPer100gWater,
   /** An absent value is genuinely missing, not a predicted constant. */
   densityKnown:crystalDensityGPerMl!==undefined||
