@@ -15,7 +15,7 @@ export type LabThermalRecord={
  * a gas bottle must not enter the liquid boiling/evaporation simulation. */
 export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "H2","O2","N2","CO","CO2","NH3","Cl2","SO2","NO2","H2S",
- "CH4","C2H4","C2H2","C2H6"
+ "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
  // Pure gases, phase transitions at approximately 1 atm. OpenStax
@@ -28,6 +28,41 @@ const physical:Record<string,LabThermalRecord>={
  CO:{meltingC:-205.0,boilingC:-191.5},
  NH3:{meltingC:-77.73,boilingC:-33.33},
  Cl2:{meltingC:-101.5,boilingC:-34.04},
+ // NIST Chemistry WebBook SRD 69, phase-change measurements.
+ // Values are normal-pressure temperatures in °C. Original tabulations in
+ // kelvin are converted by T_C = T_K - 273.15, rounded to 0.1 °C.
+ // CH4: 111.65 K boiling; fusion 90.68 K:
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C74828&Mask=4
+ CH4:{meltingC:-182.5,boilingC:-161.5},
+ // C2H6: 184.6 K boiling; fusion datasets disagree (89-101 K):
+ // publish only the well-established normal boiling reference.
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C74840&Mask=4
+ C2H6:{boilingC:-88.6},
+ // C2H4: 169.35 K boiling; fusion 103.8 K:
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C74851&Mask=4
+ C2H4:{meltingC:-169.4,boilingC:-103.8},
+ // Propane: 231.1 K boiling, 85.5 K fusion:
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C74986&Mask=4
+ C3H8:{meltingC:-187.7,boilingC:-42.1},
+ // n-Butane ONLY (C4H10 can have structural isomers):
+ // 273 K boiling and 136 K fusion (rounded reference means ~1 K error).
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C106978&Mask=4
+ C4H10:{meltingC:-137.2,boilingC:-0.5,
+  note:"Для н-бутана; изобутан имеет другие температурные характеристики."},
+ // Propene: 225.6 K boiling; fusion 88.0 K:
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C115071&Mask=4
+ C3H6:{meltingC:-185.2,boilingC:-47.6},
+ // Acetylene triple-point pressure is 1.2745 bar, ABOVE atmospheric,
+ // so liquid C2H2 does not have a 1-atm boiling point. Air Liquide:
+ // https://encyclopedia.airliquide.com/acetylene
+ C2H2:{sublimationC:-84.05,behavior:"sublimes",
+  note:"При 1 атм ацетилен сублимирует; кипение жидкого ацетилена требует давления выше тройной точки."},
+ // ILO/WHO ICSC 0074: SO2 pure melting -75.5, boiling -10 °C:
+ // https://www.inchem.org/documents/icsc/icsc/eics0074.htm
+ SO2:{meltingC:-75.5,boilingC:-10},
+ // NIST SRD 69 H2S 190.85 K fusion, 212.87 K normal boiling:
+ // https://webbook.nist.gov/cgi/cbook.cgi?ID=C7783064&Mask=4
+ H2S:{meltingC:-82.3,boilingC:-60.3},
  // CO2 has NO normal boiling point at 1 atm: its liquid exists
  // above the triple-point pressure. PubChem CID 280 / NIOSH.
  // https://pubchem.ncbi.nlm.nih.gov/compound/280
