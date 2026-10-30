@@ -2373,4 +2373,5 @@ console.log("Simplified eight-type catalog, six-slot no-scroll wall and legacy g
 assert.match(editorFixed,/const scale=compact\?1:h\/1000/);
 assert.match(editorFixed,/height:stage\.height,zoom:stage\.scale/);
 assert.match(polishedSurface,/compactFullscreen\?:boolean/);
-assert.match(polishedSurface,/is-drawer-\\"\+mobileDrawer/);
+assert.ok(polishedSurface.includes('(compactFullscreen&&mobileDrawer?" is-drawer-"+mobileDrawer:"")'),
+ "Fullscreen mobile drawer state must be reflected in the bench class");
