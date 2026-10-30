@@ -99,13 +99,15 @@ const solubilityCells=Object.entries(material.LAB_SALT_BINARY_SOLUBILITY_G_PER_1
 const hydrateRows=hydrate.LAB_HYDRATE_SOLUBILITY_REFERENCES;
 const hydrateDensities=hydrate.LAB_HYDRATE_CRYSTAL_DENSITIES;
 const hydrateBases=new Set(hydrateRows.map(row=>row.baseFormula));
+const cabinetBaseSet=new Set(db.substances.map(s=>s.id));
 const hydrateKnownCells=hydrateRows.reduce((count,row)=>
  count+row.massGPer100gWater.filter(has).length+(row.extra?.length??0),0);
 const rawTotals={
  stock:db.substances.length,
  hydrateReferenceVariants:hydrateRows.length,
  hydrateCrystalDensityRecords:hydrateDensities.length,
- hydrateReferenceCabinetBases:hydrateBases.size,
+ hydrateReferenceAllBases:hydrateBases.size,
+ hydrateReferenceCabinetBases:[...hydrateBases].filter(x=>cabinetBaseSet.has(x)).length,
  hydrateReferenceMeasuredPoints:hydrateKnownCells,
  binarySolubilityAnyTemperature:
   solubilityCells.length+3, // NaCl and independent PbCl2/PbBr2
@@ -160,8 +162,10 @@ if(process.argv.includes("--verify")){
  const stockNames=new Set(db.substances.map(s=>s.id));
  const variants=new Set();
  for(const row of hydrateRows){
-  assert.ok(stockNames.has(row.baseFormula),
-   "Hydrate references must name an existing cabinet formula");
+  // One independently measured salt can live in the source reference
+  // library before becoming a selectable cabinet reagent.
+  assert.ok(has(registry.labSubstanceProperties(row.baseFormula).molarMassGPerMol),
+   "Hydrate references must refer to an actual valid chemical formula");
   assert.ok(!variants.has(row.hydrateFormula),
    "Duplicate hydrate crystal phase "+row.hydrateFormula);
   variants.add(row.hydrateFormula);
@@ -209,7 +213,8 @@ if(process.argv.includes("--json")){
  lines.push("",
   "Кристаллогидраты: "+rawTotals.hydrateReferenceVariants+
   " отдельных форм у "+rawTotals.hydrateReferenceCabinetBases+
-  " веществ, "+rawTotals.hydrateReferenceMeasuredPoints+
+  " веществ в шкафу (всего формул-оснований "+
+  rawTotals.hydrateReferenceAllBases+"), "+rawTotals.hydrateReferenceMeasuredPoints+
   " измеренных температурных точек; плотностей гидратов: "+
   rawTotals.hydrateCrystalDensityRecords+
   ". Эти данные не являются расчётом "+
@@ -236,7 +241,8 @@ if(process.argv.includes("--json")){
   report.stockWithOutstandingProperties);
  console.log("Hydrate reference: "+
   rawTotals.hydrateReferenceVariants+" distinct hydrate phases, "+
-  rawTotals.hydrateReferenceCabinetBases+" cabinet formulas, "+
+  rawTotals.hydrateReferenceCabinetBases+" cabinet formulas out of "+
+  rawTotals.hydrateReferenceAllBases+" reference formulas, "+
   rawTotals.hydrateReferenceMeasuredPoints+" measured exact temperature points, "+
   rawTotals.hydrateCrystalDensityRecords+" hydrate crystal densities");
  console.log("Measured solubility knots: "+rawTotals.binarySolubilityMeasuredPoints+
