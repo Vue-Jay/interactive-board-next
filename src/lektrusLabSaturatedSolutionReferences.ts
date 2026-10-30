@@ -116,10 +116,11 @@ export const LAB_SATURATED_SOLUTION_REFERENCES:readonly LabSaturatedSolutionRefe
  {baseFormula:"Al2(SO4)3",saturationSolidFormula:"Al2(SO4)3·18H2O",
   temperatureC:20,concentrationMassPercent:26.7,
   solutionDensityGPerMl:1.308,sourceUrl:LAB_SATURATED_SOLUTION_SOURCE},
- {baseFormula:"CaSO4",saturationSolidFormula:"CaSO4·2H2O",
-  temperatureC:20,concentrationMassPercent:0.204,
-  solutionDensityGPerMl:1.001,sourceUrl:LAB_SATURATED_SOLUTION_SOURCE},
- {baseFormula:"BaCl2",saturationSolidFormula:"BaCl2·2H2O",
+ // Gypsum is OMITTED: source lists 0.36 g/100g H2O at 20°C,
+ // but a conflicting 0.204 wt% concentration (0.36 g implies 0.359 wt%).
+ // Publishing that row as a single internally consistent solution would
+ // create a fictional density/concentration pairing.
+  {baseFormula:"BaCl2",saturationSolidFormula:"BaCl2·2H2O",
   temperatureC:20,concentrationMassPercent:26.3,
   solutionDensityGPerMl:1.28,sourceUrl:LAB_SATURATED_SOLUTION_SOURCE},
  {baseFormula:"Ba(OH)2",saturationSolidFormula:"Ba(OH)2·8H2O",
