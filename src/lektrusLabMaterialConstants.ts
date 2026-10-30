@@ -163,7 +163,21 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  // ZnCl2: https://pubchem.ncbi.nlm.nih.gov/compound/5727 (2.907 @25C)
  // LiCl:  https://pubchem.ncbi.nlm.nih.gov/compound/433294 (2.07 @25C)
  // Na2S:  https://pubchem.ncbi.nlm.nih.gov/compound/14804 (1.856 @25C)
- FeCl3:2.90,FeCl2:3.16,ZnCl2:2.907,LiCl:2.07,Na2S:1.856
+ FeCl3:2.90,FeCl2:3.16,ZnCl2:2.907,LiCl:2.07,Na2S:1.856,
+ // Room-temperature true crystal densities. These deliberately distinguish
+ // anhydrous NiSO4 from NiSO4·6H2O and FeO from Fe2O3/Fe3O4.
+ // FeO CRC vs ICSC 6.0/5.7: adopt CRC cubic wuestite 6.0 g/cm3.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/449809
+ FeO:6.0,
+ // Covellite crystalline CuS CRC Handbook 4.76 g/cm3.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/165914
+ CuS:4.76,
+ // Pure Na2O, DOE PAC 25°C 2.27 g/cm3, reacts on contact with water.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/73971
+ Na2O:2.27,
+ // Anhydrous NiSO4 4.01 g/cm3 (NOT hexahydrate 2.03 g/cm3).
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24586
+ NiSO4:4.01
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
