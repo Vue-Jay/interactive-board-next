@@ -174,3 +174,6 @@ assert.match(css,/\.lektrus-lab-bench\.is-compact-fullscreen\.is-drawer-reagents
 assert.match(css,/\.lektrus-lab-bench\.is-compact-fullscreen\.is-drawer-equations \.lektrus-lab-chalkboard/);
 assert.match(css,/\.lektrus-lab-bench\.is-compact-fullscreen \.lektrus-lab-worktop-zone\{[\s\S]*?top:105px!important/);
 console.log("Phone laboratory: actual viewport-size workbench and compact dropdown shelves OK");
+
+assert.match(css,/\.lektrus-lab-bench\.is-compact-fullscreen \.lektrus-lab-selected-vessel-actions\{[\s\S]*?position:fixed!important/,
+ "Phone vessel controls must escape the narrow fullscreen header");

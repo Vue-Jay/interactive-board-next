@@ -908,7 +908,7 @@ body.lektrus-lab-fullscreen-active .workspace{
  height:43px!important;min-height:43px!important;
  padding:3px 7px!important;gap:7px!important;
  display:flex!important;align-items:center!important;
- z-index:80!important;overflow:hidden!important;
+ z-index:80!important;overflow:visible!important;
 }
 .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-scene-brand{
  font-size:12px!important;flex:0 0 auto!important;
@@ -1054,9 +1054,12 @@ body.lektrus-lab-fullscreen-active .workspace{
  color:#8d3f38;font:700 13px system-ui,sans-serif;
 }
 .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-selected-vessel-actions{
- position:absolute!important;left:8px!important;right:auto!important;
- top:auto!important;bottom:10px!important;max-width:calc(100% - 20px);
- z-index:81!important;
+ /* This is a child of the scene header. Fixed placement keeps the selected
+    vessel actions outside that 43px bar, so they cannot be clipped. */
+ position:fixed!important;left:10px!important;right:auto!important;
+ top:auto!important;bottom:max(12px,env(safe-area-inset-bottom))!important;
+ max-width:calc(100vw - 20px)!important;
+ z-index:90!important;
 }
 .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-sink{
  top:auto!important;bottom:4%!important;right:1%!important;
