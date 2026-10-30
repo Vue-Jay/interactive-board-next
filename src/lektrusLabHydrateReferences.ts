@@ -113,7 +113,7 @@ export function labHydrateNearestMeasuredReferences(
   .filter(r=>r.baseFormula===baseFormula)
   .flatMap(r=>{
    const temperatures:number[]=[...LAB_HYDRATE_KNOT_TEMPERATURES_C.filter(
-    (t,i)=>r.massGPer100gWater[i]!==null)];
+    (_t,i)=>r.massGPer100gWater[i]!==null)];
    for(const x of r.extra??[])temperatures.push(x.temperatureC);
    temperatures.sort((a,b)=>
     Math.abs(a-desiredTemperatureC)-Math.abs(b-desiredTemperatureC)||a-b);
