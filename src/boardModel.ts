@@ -1030,7 +1030,13 @@ export function parseDocument(raw: string): DocumentData {
             (v.doses==null||(typeof v.doses==="object"&&
                Object.keys(v.doses).length<=maxSavedLabReagents&&
                Object.entries(v.doses).every(([id,dose])=>
-                 v.reagents.includes(id)&&validDose(dose))))&&
+                 // A measured pure-water carrier may remain after the
+                 // dissolved material is represented in reagents separately.
+                 // Evaporation keeps that water dose without synthesizing a
+                 // second reagent entry. Never discard its measured volume.
+                 (v.reagents.includes(id)||
+                  (id==="H2O"&&dose.unit==="ml"&&dose.concentrationM==null))&&
+                 validDose(dose))))&&
             validReaction(v.completedReaction)&&validReactionAmounts(v.reactionAmounts)&&
             validPhaseState(v)))
           throw new Error("Повреждено состояние химического стола");

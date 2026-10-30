@@ -1701,6 +1701,31 @@ assert.equal(reopenedUnselected.items[1].text,"Работа ученика",
  "An unselected lab cannot block unrelated work on the board");
 const corruptSelection=structuredClone(persistedLab);
 corruptSelection.selectedId="missing-vessel";
+// Real-world regression: an evaporating CuSO4 dish can carry measured
+// water independently of the named solute. The previous validator called
+// the entire 134-object board corrupt rather than reopening its lesson.
+const solventCarrier=structuredClone(persistedLab);
+solventCarrier.vessels[0]={...solventCarrier.vessels[0],
+ kind:"dish",reagents:["CuSO4"],doses:{H2O:{unit:"ml",value:10.58959}},
+ ventedVaporMl:{H2O:5.88041},temperatureC:26,observed:false};
+const restoredCarrier=parseLab(solventCarrier);
+assert.deepEqual(restoredCarrier.items[0].scienceLabBench.vessels[0].doses,
+ {H2O:{unit:"ml",value:10.58959}},
+ "Pure water remains a measured carrier even without an explicit reagent row");
+assert.deepEqual(restoredCarrier.items[0].scienceLabBench.vessels[0].reagents,["CuSO4"],
+ "Solute identity must not be replaced or fabricated during recovery");
+assert.equal(restoredCarrier.items[1].text,"Работа ученика",
+ "The rest of the document must reopen unchanged");
+const invalidUnlistedDose=structuredClone(solventCarrier);
+invalidUnlistedDose.vessels[0].doses.NaOH={value:4,unit:"ml",concentrationM:.1};
+assert.throws(()=>parseLab(invalidUnlistedDose),
+ /Повреждено состояние химического стола/,
+ "Unlisted chemical stocks must still fail strict validation");
+const invalidWaterConcentration=structuredClone(solventCarrier);
+invalidWaterConcentration.vessels[0].doses.H2O.concentrationM=1;
+assert.throws(()=>parseLab(invalidWaterConcentration),
+ /Повреждено состояние химического стола/,
+ "The extra carrier exception only accepts measured pure water");
 const healedSelection=parseLab(corruptSelection);
 assert.equal(healedSelection.items[0].scienceLabBench.selectedId,"",
  "A stale selected vessel is just UI state; it must not damage the entire lesson");
