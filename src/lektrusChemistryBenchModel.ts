@@ -849,9 +849,9 @@ export function labVesselContents(v:LabVessel){
   const solid:{formula:string;massG?:number}[]=[];
   const solution:{formula:string;mmol?:number}[]=[];
   const precipitated=new Set(inventory.steps.flatMap(step=>
-   (step.equation.split("→")[1]??"").split(/\\s+\\+\\s+/)
+   (step.equation.split("→")[1]??"").split(/\s+\+\s+/)
     .filter(term=>term.includes("↓")).map(term=>
-     term.replace(/^\\d+\\s*/,"").replace(/[↓↑]/g,"").trim())));
+     term.replace(/^\d+\s*/,"").replace(/[↓↑]/g,"").trim())));
   let precipitateG=0,precipitateVolumeMl=0,unknownDensity=false;
   for(const [formula,mol] of Object.entries(inventory.speciesMol)){
    if(mol<=1e-12)continue;
