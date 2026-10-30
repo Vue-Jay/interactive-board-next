@@ -152,6 +152,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const observation=visualCase?.observation??"none";
  const gasEventActive=!!vessel.reactionAmounts&&!vessel.reactionAmounts.complete||
   !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<6500;
+ const vaporVisible=!small&&!vessel.stoppered&&volumeMl>0&&
+  Object.entries(vessel.doses??{}).some(([id,d])=>d.unit==="ml"&&
+   d.concentrationM===undefined&&d.value>0&&
+   (labSaturationPressureKPa(id,temperatureC??vessel.temperatureC??22)??0)>5);
  const gasOnly=vessel.reagents.length>0&&vessel.reagents.every(id=>
   substances.find(s=>s.id===id)?.kind==="газ")&&massG===0;
  const singlePhase=vessel.filteredResidue?"solid":gasOnly?"gas":
@@ -316,6 +320,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
 
 
   </svg>
+  {vaporVisible&&<div className="lektrus-lab-vapor-plume"
+   title="Испарение летучей жидкости при текущей температуре">
+   {Array.from({length:3},(_,i)=><span key={i}/>)}
+  </div>}
   <LabReactionBurst vessel={vessel} visual={visualCase?.visual} formula={visualCase?.equation??""}/>
   {vessel.reactionHeat&&(!vessel.reactionHeat.complete||
    !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<8500)&&
