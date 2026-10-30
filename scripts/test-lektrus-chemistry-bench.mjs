@@ -2563,3 +2563,13 @@ const badPhaseName=structuredClone(roundTripPhase);
 badPhaseName.vessels[0].binarySaltPhase.formula="MadeUpSalt";
 assert.throws(()=>parseLab(badPhaseName),/Повреждено состояние химического стола/,
  "Unsupported kinetic phase identities cannot damage shared board state");
+
+let transferredPhase=lab.addLabVessel(progressive,"beaker");
+const transferId=transferredPhase.selectedId;
+transferredPhase=lab.pourLabVessel(transferredPhase,"v1",transferId);
+assert.equal(transferredPhase.vessels.find(v=>v.id==="v1").binarySaltPhase,undefined,
+ "The empty donor must not retain crystals after transferring all contents");
+assert.ok(transferredPhase.vessels.find(v=>v.id===transferId).binarySaltPhase,
+ "The receiver inherits real crystalline mass when the full sample is moved");
+assert.ok(Math.abs(transferredPhase.vessels.find(v=>v.id===transferId)
+ .binarySaltPhase.solidMol-kinVessel.binarySaltPhase.solidMol)<1e-9);
