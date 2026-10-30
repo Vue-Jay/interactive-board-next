@@ -293,3 +293,37 @@ for(const [formula,density] of Object.entries({
  assert.ok(registryProps.labSubstanceProperties(formula).densityKnown);
 }
 console.log("Neat liquid mass/heat/vapor references and 11 solid densities agree across subsystems");
+
+
+// The new reference constants must feed real displacement and phase data,
+// not remain unreachable entries in a static text table.
+for(const [formula,density] of Object.entries({
+ "Ca(OH)2":2.24,MgCl2:2.325,NaF:2.78,Ag2CO3:6.077,
+ AlCl3:2.44,FeS:4.75,SrCO3:3.5,PbO:9.53,
+ MnO2:5.0,NaNO2:2.17,MgSO4:2.66
+})){
+ approximately(physicalDensity.labCrystalDensityGml(formula),density,1e-12);
+ const property=registryProps.labSubstanceProperties(formula);
+ assert.equal(property.crystalDensityGPerMl,density);
+ assert.ok(property.molarMassGPerMol>0);
+ const dry=simulateLabInventory({reagents:[formula],environment:"aqueous",
+  doses:{[formula]:{unit:"g",value:1}}});
+ assert.ok((dry.solidMol[formula]??0)>0,
+  "Measured anhydrous solid must stay dry without liquid: "+formula);
+}
+for(const [formula,check] of Object.entries({
+ MgCl2:{meltingC:714},
+ PbO:{meltingC:887,boilingC:1472},
+ AlCl3:{sublimationC:178},
+ FeS:{meltingC:1194},
+ SrCO3:{decompositionC:1100},
+ MnO2:{decompositionC:535}
+})){
+ const info=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(info.known,true);
+ for(const [name,value] of Object.entries(check))
+  assert.equal(info[name],value,formula+" "+name);
+ assert.equal(thermalProps.labThermalInfo(formula,"ml").known,false,
+  "A prepared solution must not borrow pure-solid phase transitions");
+}
+console.log("Eleven added densities + six phase records: pure-material and dry-phase guards passed");
