@@ -170,7 +170,7 @@
  width:100%!important;height:100%!important;
  min-width:0!important;min-height:0!important;
  padding:3px!important;gap:3px!important;overflow:hidden!important;
- cursor:grab!important;touch-action:none!important;
+ cursor:grab!important;touch-action:pan-y!important;
 }
 .lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item .lektrus-lab-ware-icon{
  display:block!important;align-self:center!important;justify-self:center!important;
@@ -299,6 +299,7 @@
   grid-template-columns:repeat(2,minmax(0,1fr))!important;
  }
  .lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item{
+  touch-action:pan-y!important;
   height:auto!important;min-height:47px!important;
   grid-template-columns:26px minmax(0,1fr)!important;
   grid-template-rows:minmax(0,1fr)!important;
