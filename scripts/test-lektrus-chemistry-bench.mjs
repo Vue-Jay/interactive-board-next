@@ -170,8 +170,8 @@ devices=lab.toggleLabDevice(devices,"stirrer");
 assert.equal(devices.stirringVesselId,undefined,"Storing the mixer must stop stirring");
 assert.equal(devices.devices.includes("stirrer"),false,"Devices can be returned to storage");
 let extra=lab.defaultLabBench();
-for(const kind of lab.labGlassware.slice(5)){
- extra=lab.addLabVessel(extra,kind);
+for(const kind of lab.labGlassware.filter(v=>v.id!=="beaker").slice(0,5)){
+ extra=lab.addLabVessel(extra,kind.id);
 }
 assert.equal(extra.vessels.length,lab.MAX_BENCH_VESSELS);
 assert.ok(lab.labGlassware.some(v=>v.id==="burette"));
