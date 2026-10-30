@@ -9,6 +9,7 @@
  * https://webbook.nist.gov/cgi/cbook.cgi?ID=C64175&Type=ANTOINE
  * https://webbook.nist.gov/cgi/cbook.cgi?Name=methanol&cTP=on
  * https://webbook.nist.gov/cgi/cbook.cgi?ID=C7726956&Type=ANTOINE
+ * https://www.rsc.org/suppdata/cc/c3/c3cc39116g/c3cc39116g.pdf (IPA)
  */
 import type {LabDose} from "./lektrusLabStoichiometry";
 export type EvaporatingLiquid="H2O"|"C2H5OH"|"CH3OH"|"C3H8O"|"Br2";
@@ -17,13 +18,18 @@ const table:Record<EvaporatingLiquid,Antoine>={
  H2O:{minK:255.9,maxK:373,A:4.6543,B:1435.264,C:-64.848,molG:18.015,densityGml:.997},
  C2H5OH:{minK:292.77,maxK:366.63,A:5.24677,B:1598.673,C:-46.424,molG:46.069,densityGml:.789},
  CH3OH:{minK:288.1,maxK:356.83,A:5.20409,B:1581.341,C:-33.5,molG:32.042,densityGml:.792},
- C3H8O:{minK:283.15,maxK:363.15,A:5.1806,B:1560.5,C:-33.5,molG:60.096,densityGml:.785},
+ C3H8O:{minK:329.92,maxK:362.41,A:4.8610,B:1357.427,C:-75.814,molG:60.096,densityGml:.785},
  Br2:{minK:224.5,maxK:331.4,A:2.94529,B:638.258,C:-115.144,molG:159.808,densityGml:3.11}
 };
 export const LAB_VAPOR_REFERENCE=table;
 export function labSaturationPressureKPa(id:string,tempC:number):number|undefined{
  const entry=table[id as EvaporatingLiquid];if(!entry)return;
  const kelvin=tempC+273.15;
+ // Published low-temperature IPA correlation, 10–56.77 °C, pressure mmHg.
+ // RSC Chemical Communications 2013 electronic supporting information,
+ // Table S2: A=8.00308, B=1505.52, C=211.6.
+ if(id==="C3H8O"&&tempC>=10&&tempC<56.77)
+  return Math.pow(10,8.00308-1505.52/(tempC+211.6))*.133322368;
  if(!Number.isFinite(kelvin)||kelvin<entry.minK||kelvin>entry.maxK)return;
  return Math.pow(10,entry.A-entry.B/(kelvin+entry.C))*100;
 }
