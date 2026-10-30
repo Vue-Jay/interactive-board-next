@@ -155,7 +155,15 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  // Anhydrous magnesium sulfate, not MgSO4.7H2O (1.67 g/cm3):
  // PubChem CID 24083, ILO-WHO ICSC 2.66 g/cm3.
  // https://pubchem.ncbi.nlm.nih.gov/compound/24083
- MgSO4:2.66
+ MgSO4:2.66,
+ // Five further pure, ANHYDROUS salt crystals, NOT their hydrates or
+ // concentrated stock solutions (PubChem experimental/ICSC references).
+ // FeCl3: https://pubchem.ncbi.nlm.nih.gov/compound/24380 (2.90 @25C)
+ // FeCl2: https://pubchem.ncbi.nlm.nih.gov/compound/24458 (3.16 @25C)
+ // ZnCl2: https://pubchem.ncbi.nlm.nih.gov/compound/5727 (2.907 @25C)
+ // LiCl:  https://pubchem.ncbi.nlm.nih.gov/compound/433294 (2.07 @25C)
+ // Na2S:  https://pubchem.ncbi.nlm.nih.gov/compound/14804 (1.856 @25C)
+ FeCl3:2.90,FeCl2:3.16,ZnCl2:2.907,LiCl:2.07,Na2S:1.856
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
