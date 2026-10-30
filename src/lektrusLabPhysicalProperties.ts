@@ -15,7 +15,7 @@ export type LabThermalRecord={
  * a gas bottle must not enter the liquid boiling/evaporation simulation. */
 export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "H2","O2","N2","CO","CO2","NH3","Cl2","SO2","NO2","H2S",
- "CH4","C2H4","C2H2","C2H6","HCl"
+ "CH4","C2H4","C2H2","C2H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
  // Pure gases, phase transitions at approximately 1 atm. OpenStax
