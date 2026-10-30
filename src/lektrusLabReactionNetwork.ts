@@ -193,6 +193,13 @@ export function simulateLabInventory(input:{
   !!doses.H2O&&doses.H2O.unit==="ml"&&doses.H2O.concentrationM===undefined;
  if(isBinaryNaCl)labEquilibrateNaClCrystals(inventory,
   input.temperatureC??22,true);
+ // Once the *explicit* pure water volume is entirely evaporated, the
+ // originally weighed NaCl is dry. Do not treat arbitrary NaCl stock
+ // solutions without a tracked solvent as evaporated residue.
+ if(!doses.H2O&&doses.NaCl?.unit==="g"&&volumeMl===0&&
+  inventory.steps.length===0&&
+  Object.keys(inventory.speciesMol).every(id=>id==="NaCl"))
+  inventory.solidMol.NaCl=inventory.speciesMol.NaCl;
  return remember(key,inventory);
 }
 export function labInventorySnapshot(inventory:LabInventory):LabChemicalSnapshot{
