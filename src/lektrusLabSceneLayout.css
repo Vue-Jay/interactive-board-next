@@ -587,3 +587,11 @@
   animation:none!important;opacity:.35!important;
  }
 }
+
+/* Indicator vial names share the same no-wrap furniture convention. */
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button>span{
+ width:100%!important;min-width:0!important;
+ white-space:nowrap!important;overflow:hidden!important;
+ text-overflow:ellipsis!important;overflow-wrap:normal!important;
+ font:750 clamp(7px,.59cqw,9px)/1.1 system-ui,sans-serif!important;
+}
