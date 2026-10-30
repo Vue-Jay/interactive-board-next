@@ -70,3 +70,33 @@ assert.match(css,/background:none!important;background-image:none!important/,
 assert.match(css,/\.lektrus-lab-reagent-row\{[^}]*padding:0 2px 9px/s,
  "The bottle and captions reserve physical space above each separate shelf rail");
 console.log("Ideal vapor/boiling equilibrium, salt activity, 2-step mass conservation, stoppers and physical shelf spacing: OK");
+
+
+const gasLid={
+ kind:"conical",stoppered:true,stopperedAtC:25,
+ doses:{H2O:ml(20)},headspaceMl:90,reactionGasMol:.001
+};
+const noGasLid={...gasLid,reactionGasMol:0};
+const humid=labEvaporate(gasLid,0,25);
+const blank=labEvaporate(noGasLid,0,25);
+assert.ok(humid.pressureKPa>blank.pressureKPa);
+const expectedGasKPa=.001*8.314462618*(25+273.15)/.09;
+assert.ok(Math.abs((humid.pressureKPa-blank.pressureKPa)-expectedGasKPa)<1e-8,
+ "Trapped CO2 obeys PV=nRT using the actual measured gas headspace");
+const halfHeadspace=labEvaporate({...gasLid,headspaceMl:45},0,25);
+assert.ok(Math.abs((halfHeadspace.pressureKPa-blank.pressureKPa)-2*expectedGasKPa)<1e-7,
+ "Halving gas volume doubles the excess ideal-gas pressure");
+const freshlySealed=labEvaporate({
+ kind:"conical",stoppered:true,stopperedAtC:50,
+ doses:{C2H5OH:ml(10)},headspaceMl:100
+},0,50);
+assert.ok(Math.abs(freshlySealed.pressureKPa-101.325)<1e-6,
+ "Newly sealing hot glassware does not fabricate pressure rise");
+assert.ok(labEvaporate({...gasLid,reactionGasMol:.004},10,30).popped,
+ "Sufficient measured product gas pops a non-pressure-rated cork");
+const modelSource=readFileSync(new URL("../src/lektrusChemistryBenchModel.ts",import.meta.url),"utf8");
+const validatorSource=readFileSync(new URL("../src/boardModel.ts",import.meta.url),"utf8");
+assert.match(modelSource,/export function labVesselPressure/);
+assert.match(modelSource,/retainedGasMol/);
+assert.match(validatorSource,/v\.stopperedAtC/);
+console.log("Closed flask gas-headspace PV=nRT, seal temperatures, stopper release and schema: OK");
