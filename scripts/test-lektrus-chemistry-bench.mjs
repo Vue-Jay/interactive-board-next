@@ -1785,7 +1785,8 @@ const qualContents=lab.labVesselContents(plainQualitative.vessels[0]);
 assert.deepEqual(qualContents.solid.map(v=>v.formula),["AgCl"],
  "Qualitative reaction must show the insoluble product, not the initial reagent list");
 assert.ok(qualContents.solution.some(v=>v.formula==="NaNO3"));
-assert.ok(!qualContents.solution.some(v=>v.formula==="AgNO3"));
+assert.ok((qualContents.solution.find(v=>v.formula==="AgNO3")?.mmol??0)<.001,
+ "Ksp equilibrium allows a trace of dissolved silver nitrate rather than zero");
 assert.ok(qualContents.precipitateG>0,
  "Default reagent stocks have known concentrations and must yield real mass");
 const trulyUnmeasured=lab.labVesselContents({...plainQualitative.vessels[0],doses:undefined});
