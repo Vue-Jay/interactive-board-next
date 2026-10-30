@@ -473,7 +473,8 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
      binarySaltPhase:undefined}:{binarySaltPhase:undefined}),
    ...(evaporating?{doses,reagents,observed:reagents.length>1,
     ventedVaporMl:phase.ventedVaporMl}:{}),
-   ...(popped?{stoppered:false,stopperedAtC:undefined}:{}),
+   ...(popped?{stoppered:false,stopperedAtC:undefined,
+    sealedReactionGasBaselineMol:undefined}:{}),
    environment:evaporating&&reagents.length===0?"dry":
     cooling?(hasLiquid?"aqueous":"dry"):v.environment};
  });
@@ -507,7 +508,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   if(!pressure.popped)return v;
   changed=true;
   return {...v,stoppered:false,stopperedAtC:undefined,
-   visualStartedAtMs:nowMs};
+   sealedReactionGasBaselineMol:undefined,visualStartedAtMs:nowMs};
  });
  result={...result,vessels};
  // Start pre-reviewed heated cases only after reaching a sufficiently warm state.
@@ -758,6 +759,8 @@ export type LabVessel={pourFraction?:number;
  stoppered?:boolean;
  /** Temperature in °C when the air headspace was sealed. */
  stopperedAtC?:number;
+ /** Gas formed before this stopper was inserted already escaped if open. */
+ sealedReactionGasBaselineMol?:number;
  /** Measured liquid volumes vented to the room as vapor. */
  ventedVaporMl?:Record<string,number>;
  /** 0 = solid, 1 = fully molten. Conserved across viewers and cooling. */
@@ -1226,7 +1229,9 @@ export function removeLabVessel(bench:LabBench,id:string,discardContents=false):
 }
 export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):LabBench{
  return revise(bench,id,v=>labCanStopper(v.kind)&&!!v.stoppered!==stoppered?
-  {...v,stoppered,stopperedAtC:stoppered?(v.temperatureC??22):undefined}:v);
+  {...v,stoppered,stopperedAtC:stoppered?(v.temperatureC??22):undefined,
+   sealedReactionGasBaselineMol:stoppered?
+    (labReactionGasProgress(v.reactionAmounts)?.totalMol??0):undefined}:v);
 }
 /** Ideal-gas headspace uses the same measured chemical species ledger as the
  * vessel inspector. The seal temperature is saved, never assumed to equal
@@ -1241,7 +1246,9 @@ export function labHeadspaceGasMoles(v:LabVessel){
   const sourceGas=Object.entries(v.doses??{}).reduce((sum,[id,d])=>
    sum+(substances.find(x=>x.id===id)?.kind==="газ"?
     labDoseMoles(id,d)??0:0),0);
-  return measured.totalMol+sourceGas;
+  const baseline=v.stoppered?Math.max(0,
+   v.sealedReactionGasBaselineMol??0):0;
+  return Math.max(0,measured.totalMol-baseline)+sourceGas;
  }
  // Before the first reaction tick, the measured inputs have not produced
  // their final gas yield. Do not import future products into the headspace.
@@ -1261,7 +1268,7 @@ export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
   reactionGasMol:v.stoppered?labHeadspaceGasMoles(v):0},0,temperatureC);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,sealedReactionGasBaselineMol:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
