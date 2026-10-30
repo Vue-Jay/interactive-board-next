@@ -91,6 +91,26 @@ approx(chemistry.labInventoryMassG(chemistry.simulateLabInventory({
 const decantedAndReacted=lab.putLabReagent(decant,cleanReceiver,"AgNO3",dose());
 assert.ok((lab.labVesselContents(decantedAndReacted.vessels.find(v=>v.id===cleanReceiver)).
  precipitateG??0)>.143);
+// A graduated pipette samples the dissolved phase only. A measured 5 mL
+// aliquot from 20 mL contains exactly one quarter of each dissolved species.
+let sampling=lab.addLabVessel(filtered,"pipette");
+const pipetteId=sampling.selectedId;
+sampling=lab.transferLabMeasuredLiquid(sampling,receiver,pipetteId,5);
+const donorAfter=sampling.vessels.find(v=>v.id===receiver);
+const pipetteAfter=sampling.vessels.find(v=>v.id===pipetteId);
+assert.equal(lab.labVesselQuantity(donorAfter).volumeMl,15);
+assert.equal(lab.labVesselQuantity(pipetteAfter).volumeMl,5);
+const totalNaCl=liquid.chemicalInventory.speciesMol.NaCl;
+approx(pipetteAfter.chemicalInventory.speciesMol.NaCl,totalNaCl*.25,1e-12);
+approx(donorAfter.chemicalInventory.speciesMol.NaCl,totalNaCl*.75,1e-12);
+const sampledMass=chemistry.labInventoryMassG(chemistry.simulateLabInventory({
+ ...pipetteAfter,volumeMl:5
+}))+chemistry.labInventoryMassG(chemistry.simulateLabInventory({
+ ...donorAfter,volumeMl:15
+}))+massSolid;
+approx(sampledMass,totalBefore,1e-7);
+assert.equal(lab.labVesselContents(pipetteAfter).solid.length,0,
+ "The pipette must not suction out settled particles");
 const oldValidated=fs.readFileSync("src/boardModel.ts","utf8");
 assert.match(oldValidated,/v\.chemicalInventory/);
 console.log("Two sequential precipitation stages preserve soluble moles, real volume and molecular mass");
