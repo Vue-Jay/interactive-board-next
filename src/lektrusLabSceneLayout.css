@@ -602,8 +602,8 @@
 .lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-bottle-rack{
  display:grid!important;
  grid-template-columns:minmax(0,1fr)!important;
- grid-template-rows:repeat(3,minmax(67px,1fr))!important;
- grid-auto-rows:minmax(67px,1fr)!important;
+ grid-template-rows:repeat(3,minmax(56px,1fr))!important;
+ grid-auto-rows:minmax(56px,1fr)!important;
  row-gap:3px!important;column-gap:0!important;
  align-content:start!important;
  padding:2px 5px 4px!important;
@@ -613,7 +613,7 @@
  position:relative;display:grid;
  grid-template-columns:repeat(4,minmax(0,1fr));
  grid-template-rows:minmax(0,1fr);
- min-width:0;min-height:67px;
+ min-width:0;min-height:56px;
  gap:4px;padding:0 2px 9px;
  box-sizing:border-box;
  isolation:isolate;
@@ -654,11 +654,11 @@
 @container(max-width:1000px){
  .lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-bottle-rack{
   grid-template-columns:1fr!important;
-  grid-template-rows:repeat(3,minmax(66px,1fr))!important;
-  grid-auto-rows:minmax(66px,1fr)!important;
+  grid-template-rows:repeat(3,minmax(56px,1fr))!important;
+  grid-auto-rows:minmax(56px,1fr)!important;
  }
  .lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-reagent-row{
   grid-template-columns:repeat(4,minmax(0,1fr))!important;
-  min-height:66px!important;
+  min-height:56px!important;
  }
 }
