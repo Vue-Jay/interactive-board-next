@@ -612,7 +612,9 @@ export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,req
   old.concentrationAnalyte!==initialDose.concentrationM||
   old.concentrationTitrant!==sourceDose.concentrationM))return bench;
  const addedBefore=old?.addedMl??0;
- const ml=Math.min(Math.round(requestedMl*100)/100,sourceDose.value,100-addedBefore);
+ const freeMl=Math.max(0,labVesselQuantity(dst).capacityMl-labVesselQuantity(dst).volumeMl);
+ const ml=Math.min(Math.round(requestedMl*100)/100,sourceDose.value,100-addedBefore,
+  Math.floor(freeMl*100+1e-7)/100);
  if(ml<=0)return bench;
  const newTotal=Math.round((addedBefore+ml)*100)/100;
  const model:TitrationModel=old?{...old,addedMl:newTotal}:{
