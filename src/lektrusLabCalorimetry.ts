@@ -62,7 +62,25 @@ export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
  NaCl:{specificJPerGK:.853,phase:"solid"},
  // Anhydrous (NH4)2SO4, average c_p 2-55°C (Ullmann's) from PubChem:
  // https://pubchem.ncbi.nlm.nih.gov/compound/6097028
- "(NH4)2SO4":{specificJPerGK:1.423,phase:"solid"}
+ "(NH4)2SO4":{specificJPerGK:1.423,phase:"solid"},
+ // University Medical Lublin Lab 6, Calorimetry, table 1, room temp.
+ // Specific heat of crystalline/anhydrous salts, J/(g K):
+ // https://www.stn.host.umlub.pl/gfx/umlub/userfiles/beatapolak/angielskie/labs_1-10/lab.6/lab_no_6._calorimetry.pdf
+ NH4Cl:{specificJPerGK:1.57,phase:"solid"},
+ NH4NO3:{specificJPerGK:1.74,phase:"solid"},
+ CaCl2:{specificJPerGK:.657,phase:"solid"},
+ Na2CO3:{specificJPerGK:1.06,phase:"solid"},
+ NaOH:{specificJPerGK:1.49,phase:"solid"},
+ Na2SO4:{specificJPerGK:.903,phase:"solid"},
+ KBr:{specificJPerGK:.439,phase:"solid"},
+ KNO3:{specificJPerGK:.95,phase:"solid"},
+ // Published materials table in Velraj et al., Advances in Solar Heating
+ // and Cooling (2016), table 15.2. All listed values are J/(g K) for solids:
+ // https://www.sciencedirect.com/topics/engineering/solid-storage-material
+ Al2O3:{specificJPerGK:.840,phase:"solid"},
+ Fe3O4:{specificJPerGK:.752,phase:"solid"},
+ KCl:{specificJPerGK:.670,phase:"solid"},
+ K2SO4:{specificJPerGK:.920,phase:"solid"}
 };
 /** Effective glass + utensil thermal mass by vessel type, grams of glass
  * equivalent (c_glass≈0.84 J/g/K). Intended for comparative teaching only. */
