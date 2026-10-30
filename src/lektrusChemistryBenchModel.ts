@@ -3,6 +3,7 @@ import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
 import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
+import {LAB_CRYSTAL_DENSITY_G_ML} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
@@ -858,11 +859,7 @@ export function wipeLabChalkboard(bench:LabBench):LabBench{
  * Insoluble products are selected ONLY by a ↓ in the reviewed equation.
  * Mass is calculated from measured product moles, never inferred from a
  * precipitation animation. Densities give physical layer volume. */
-const precipitateDensity:Record<string,number>={
- AgCl:5.56,AgBr:6.47,AgI:5.68,BaSO4:4.5,CaCO3:2.71,
- "Cu(OH)2":3.37,"Fe(OH)3":3.4,"Fe(OH)2":3.4,
- "Zn(OH)2":3.05,"Al(OH)3":2.42,PbI2:6.16
-};
+const precipitateDensity=LAB_CRYSTAL_DENSITY_G_ML;
 const formatMol=(v:number)=>Number((v*1000).toPrecision(4));
 export function labVesselContents(v:LabVessel){
  const {volumeMl,capacityMl}=labVesselQuantity(v);
@@ -888,8 +885,9 @@ export function labVesselContents(v:LabVessel){
    if(solidMol>1e-12){
     const mass=labMolarMass(formula);
     solid.push({formula,massG:mass===undefined?undefined:mass*solidMol});
-    if(precipitated.has(formula)||(v.chemicalInventory&&
-      v.environment==="aqueous"&&!LAB_WATER_SOLUTES.has(formula))){
+    if(precipitated.has(formula)||formula==="NaCl"||
+     (v.chemicalInventory&&v.environment==="aqueous"&&
+      !LAB_WATER_SOLUTES.has(formula))){
      if(mass!==undefined){
       const productMass=mass*solidMol;
       precipitateG+=productMass;
