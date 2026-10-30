@@ -69,3 +69,40 @@ const diluteBelowKsp=simulateLabInventory({
 });
 assert.ok(!diluteBelowKsp.solidMol.AgCl,"Below Ksp: no visible precipitate");
 console.log("Sequential lab chemistry checks passed");
+
+
+const lead=simulateLabInventory({
+ reagents:["Pb(NO3)2","KI"],environment:"aqueous",
+ temperatureC:25,
+ doses:{"Pb(NO3)2":solution(10),KI:solution(20)}
+});
+assert.ok(lead.steps.some(s=>s.equation.includes("PbI2↓")),
+ "A 1:2 lead iodide reaction must be included");
+assert.ok((lead.solidMol.PbI2??0)>0.0009&&lead.solidMol.PbI2<0.001,
+ "PbI2 precipitation must retain a calculable dissolved remainder");
+approximately(labInventoryMassG(lead),
+ .001*labMolarMass("Pb(NO3)2")+.002*labMolarMass("KI"),1e-7);
+const weakLead=simulateLabInventory({
+ reagents:["Pb(NO3)2","KI"],environment:"aqueous",
+ temperatureC:25,
+ doses:{"Pb(NO3)2":solution(10,.0001),KI:solution(10,.0001)}
+});
+assert.ok(!(weakLead.solidMol.PbI2>0),
+ "Undersaturated lead iodide must not precipitate");
+const iron=simulateLabInventory({
+ reagents:["FeCl3","NaOH"],environment:"aqueous",
+ temperatureC:25,
+ doses:{FeCl3:solution(10),NaOH:solution(30)}
+});
+assert.ok((iron.solidMol["Fe(OH)3"]??0)>.00099,
+ "1:3 hydroxide precipitation uses the Fe3+/OH- mass-action powers");
+const neutralization=simulateLabInventory({
+ reagents:["HCl","NaOH"],environment:"aqueous",
+ doses:{HCl:solution(10),NaOH:solution(10)}
+});
+assert.ok(neutralization.heatEstimateComplete);
+approximately(neutralization.knownHeatKJ,-.0573,1e-7);
+assert.equal(sample.heatEstimateComplete,false,
+ "Do not invent an enthalpy for a reaction lacking vetted thermodynamics");
+assert.ok(sample.knownHeatKJ===undefined);
+console.log("Expanded Ksp, 1:2 and 1:3 precipitation and audited heat effects passed");
