@@ -116,7 +116,54 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  C12H22O11:1.59,
  // Anhydrous D-glucose crystal (not the monohydrate):
  // https://pubchem.ncbi.nlm.nih.gov/compound/5793
- C6H12O6:1.562
+ C6H12O6:1.562,
+ // Anhydrous solids and SPECIFIC crystal phases, ~20–25°C.
+ // Numeric density is the true material density, not bulk powder packing.
+ // Ca(OH)2: PubChem CID 6093208 (CAMEO 2.24 g/cm3).
+ // https://pubchem.ncbi.nlm.nih.gov/compound/6093208
+ "Ca(OH)2":2.24,
+ // MgCl2: PubChem CID 5360315 (DOE PAC 2.325 @25C).
+ // https://pubchem.ncbi.nlm.nih.gov/compound/5360315
+ MgCl2:2.325,
+ // NaF: PubChem CID 5235 (DOE PAC 2.78 @25C).
+ // https://pubchem.ncbi.nlm.nih.gov/compound/5235
+ NaF:2.78,
+ // Ag2CO3: PubChem CID 92796 (DOE PAC 6.077 @25C).
+ // https://pubchem.ncbi.nlm.nih.gov/compound/92796
+ Ag2CO3:6.077,
+ // AlCl3 ANHYDROUS: ILO-WHO ICSC 1125, 2.44 g/cm3.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24012
+ AlCl3:2.44,
+ // FeS reference troilite-like iron monosulfide, NOT hydrated FeS slurry:
+ // PubChem CID 14828, Hawley's Dictionary 4.75 g/cm3.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/14828
+ FeS:4.75,
+ // Strontianite SrCO3: CRC / PubChem CID 15407, 3.5 g/cm3.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/15407
+ SrCO3:3.50,
+ // alpha-PbO (litharge): Kirk-Othmer / PubChem CID 14827.
+ // beta-PbO is a distinct polymorph and has a different density.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/14827
+ PbO:9.53,
+ // MnO2 pyrolusite reference: ILO-WHO ICSC 0175, 5.0 g/cm3.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/14801
+ MnO2:5.0,
+ // Solid anhydrous NaNO2: PubChem CID 23668193 (2.17 g/cm3).
+ // An aqueous sodium nitrite stock has a DIFFERENT density.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/23668193
+ NaNO2:2.17,
+ // Anhydrous magnesium sulfate, not MgSO4.7H2O (1.67 g/cm3):
+ // PubChem CID 24083, ILO-WHO ICSC 2.66 g/cm3.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24083
+ MgSO4:2.66,
+ // Five further pure, ANHYDROUS salt crystals, NOT their hydrates or
+ // concentrated stock solutions (PubChem experimental/ICSC references).
+ // FeCl3: https://pubchem.ncbi.nlm.nih.gov/compound/24380 (2.90 @25C)
+ // FeCl2: https://pubchem.ncbi.nlm.nih.gov/compound/24458 (3.16 @25C)
+ // ZnCl2: https://pubchem.ncbi.nlm.nih.gov/compound/5727 (2.907 @25C)
+ // LiCl:  https://pubchem.ncbi.nlm.nih.gov/compound/433294 (2.07 @25C)
+ // Na2S:  https://pubchem.ncbi.nlm.nih.gov/compound/14804 (1.856 @25C)
+ FeCl3:2.90,FeCl2:3.16,ZnCl2:2.907,LiCl:2.07,Na2S:1.856
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];

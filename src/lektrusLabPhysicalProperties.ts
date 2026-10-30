@@ -78,6 +78,32 @@ const physical:Record<string,LabThermalRecord>={
  // https://pubchem.ncbi.nlm.nih.gov/compound/177 (pure ethanal)
  CH3CHO:{meltingC:-123.4,boilingC:20.8,
   note:"Чистый этаналь кипит около комнатной температуры; это не температура кипения раствора."},
+ // FeCl2 pure anhydrous crystal melts near 674 C; air oxidation can
+ // interfere in practice (PubChem CID 24458 / Merck Index).
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24458
+ FeCl2:{meltingC:674,note:"Безводный хлорид железа(II); на воздухе возможны окисление и гидролиз."},
+ // Further SPECIFIC pure solid forms from PubChem experimental records.
+ // No phase-transition numbers are inherited by water solutions or hydrates.
+ // MgCl2 (anhydrous) melts at ~714 C, PubChem CID 5360315 / DOE PAC:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/5360315
+ MgCl2:{meltingC:714,note:"Безводный MgCl₂; гидраты при нагревании ведут себя иначе."},
+ // alpha-PbO (litharge), CRC, ~887 C melt and ~1472 C boil:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/14827
+ PbO:{meltingC:887,boilingC:1472,
+  note:"Параметры α-PbO; β-PbO представляет другую кристаллическую фазу."},
+ // Anhydrous AlCl3 sublimes at normal pressure, rather than melting:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24012
+ AlCl3:{sublimationC:178,behavior:"sublimes",
+  note:"Безводный AlCl₃ при атмосферном давлении сублимирует; плавление ~190 °C требует повышенного давления."},
+ // FeS ~1194 C measured high-temperature fusion, PubChem CID 14828:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/14828
+ FeS:{meltingC:1194},
+ // Strontianite (SrCO3) decomposes near 1100 C, not a normal boiling:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/15407
+ SrCO3:{decompositionC:1100,behavior:"decomposes"},
+ // MnO2 decomposes near 535 C; does not form a stable simple melt:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/14801
+ MnO2:{decompositionC:535,behavior:"decomposes"},
  // Individually reviewed pure ANHYDROUS compounds, NOT water solutions.
  // PubChem 24459: PbCl2 501/950°C (melting/boiling).
  // https://pubchem.ncbi.nlm.nih.gov/compound/24459

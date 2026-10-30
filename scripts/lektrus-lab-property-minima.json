@@ -1,0 +1,10 @@
+{
+  "description": "Monotone numeric reference coverage floors for current reagent catalog; update only after validated growth.",
+  "minimum": {
+    "stock": 180,
+    "crystalDensity": 85,
+    "thermal": 67,
+    "specificHeat": 23,
+    "binarySolubility": 18
+  }
+}
