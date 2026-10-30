@@ -69,7 +69,7 @@
  width:100%!important;padding-top:27px!important;
  justify-content:flex-start!important;gap:6px!important;
  box-sizing:border-box!important;overflow-y:auto!important;overflow-x:hidden!important;
- scrollbar-width:thin!important;pointer-events:none!important;
+ scrollbar-width:thin!important;pointer-events:auto!important;
 }
 .lektrus-lab-bench .lektrus-lab-equation-history{
  min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
@@ -219,12 +219,14 @@
  grid-template-rows:repeat(3,minmax(0,1fr))!important;
  grid-auto-rows:minmax(0,1fr)!important;gap:5px!important;
  overflow-y:auto!important;overflow-x:hidden!important;
+ overscroll-behavior:contain!important;touch-action:pan-y!important;
 }
 .lektrus-lab-bench .lektrus-lab-device-cupboard-shelf button{
  display:grid!important;grid-template-rows:minmax(0,1fr) auto!important;
  justify-items:center!important;align-items:center!important;
  gap:3px!important;padding:2px!important;
  min-width:0!important;min-height:0!important;overflow:hidden!important;
+ touch-action:pan-y!important;
 }
 .lektrus-lab-bench .lektrus-lab-device-cupboard-shelf button .lektrus-lab-device-icon{
  width:41px!important;height:41px!important;
