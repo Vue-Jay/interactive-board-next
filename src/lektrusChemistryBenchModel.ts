@@ -1277,6 +1277,11 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
    priorMl+(substances.find(s=>s.id===reagent)?.kind==="газ"?0:validDose.value)>
     labVesselQuantity(v).capacityMl+1e-7)return v;
   if((v.kind==="pipette"||v.kind==="burette")&&validDose?.unit==="g")return v;
+  // Known crystalline solids occupy physical vessel volume too. Don't
+  // accept an extra weighed sample if it would exceed the rim.
+  if(validDose.unit==="g"&&precipitateDensity[reagent]&&
+   priorMl+validDose.value/precipitateDensity[reagent]>
+    labVesselQuantity(v).capacityMl+1e-7)return v;
   const present=v.reagents.includes(reagent);
   if(!present&&v.reagents.length>=MAX_VESSEL_REAGENTS)return v;
   const previous=v.doses?.[reagent];
@@ -1749,7 +1754,8 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
  const volume=labVesselQuantity(a).volumeMl;
  const current=labVesselQuantity(t).volumeMl;
  const max=labVesselQuantity(t).capacityMl;
- if(volume+current>max+1e-7)return b;
+ if(volume+current+labVesselQuantity(a).solidVolumeMl+
+   labVesselQuantity(t).solidVolumeMl>max+1e-7)return b;
  if(Object.entries(initialDoses).some(([name,d])=>{
   const old=t.doses?.[name];
   return old&&(old.unit!==d.unit||old.value+d.value>10000);
@@ -1895,7 +1901,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
  if(source.chemicalInventory||target.chemicalInventory){
-  if(labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl>
+  if(labVesselQuantity(source).occupiedMl+labVesselQuantity(target).occupiedMl>
    labVesselQuantity(target).capacityMl+1e-7)return bench;
   return pourMeasuredFiltrate(bench,source,target);
  }
