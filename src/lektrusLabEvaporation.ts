@@ -181,7 +181,7 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  const popped=!!v.stoppered&&sealedPressureKPa!==undefined&&
   sealedPressureKPa>=160;
  const totalPressureKPa=v.stoppered?sealedPressureKPa:vaporPressureKPa;
- if(!known||dt===0||v.stoppered&&!popped)return {
+ if((!known&&!gasOnly)||dt===0||v.stoppered&&!popped)return {
   doses:v.doses,ventedVaporMl:v.ventedVaporMl,
   stoppered:v.stoppered,popped:false,boiling:false,
   pressureKPa:totalPressureKPa,evaporatedMl:0
