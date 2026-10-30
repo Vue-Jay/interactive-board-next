@@ -99,11 +99,13 @@ export function simulateLabInventory(input:{
  reagents:readonly string[];doses?:Record<string,LabDose>;
  environment:ReactionEnvironment;temperatureC?:number;stoppered?:boolean;
  chemicalInventory?:LabChemicalSnapshot;
+ /** Persisted kinetic partition for a verified single-salt water mixture. */
+ binarySaltPhase?:{formula:string;solidMol:number};
  /** Measured total liquid volume, independent of solute molar amounts. */
  volumeMl?:number;
 },maxSteps=48):LabInventory{
  const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
-  input.chemicalInventory,input.volumeMl,maxSteps]);
+  input.chemicalInventory,input.binarySaltPhase,input.volumeMl,maxSteps]);
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
@@ -192,7 +194,19 @@ export function simulateLabInventory(input:{
  // reaction mixtures, unspecified stock-solvent or unknown hydrates.
  const binary=inventory.steps.length===0&&input.environment==="aqueous"&&
   !!doses.H2O&&doses.H2O.unit==="ml"&&doses.H2O.concentrationM===undefined;
- if(binary)labEquilibrateSingleSaltCrystals(inventory,input.temperatureC??22,true);
+ if(binary){
+  const binaryFormula=labEquilibrateSingleSaltCrystals(inventory,
+   input.temperatureC??22,true);
+  const phase=input.binarySaltPhase;
+  if(binaryFormula&&phase?.formula===binaryFormula&&
+   Number.isFinite(phase.solidMol)&&phase.solidMol>=0&&
+   phase.solidMol<=(inventory.speciesMol[binaryFormula]??0)+1e-9){
+   // The solubility curve gives the TARGET. Actual solid mass follows
+   // persisted kinetics, also for filtration and liquid sampling.
+   if(phase.solidMol>EPS)inventory.solidMol[binaryFormula]=phase.solidMol;
+   else delete inventory.solidMol[binaryFormula];
+  }
+ }
  // When the last explicit drop of pure water has evaporated, a weighed
  // supported salt is dry rather than being indefinitely called dissolved.
  if(!doses.H2O&&volumeMl===0&&inventory.steps.length===0){
