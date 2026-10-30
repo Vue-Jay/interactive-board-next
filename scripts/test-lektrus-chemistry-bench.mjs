@@ -1701,8 +1701,47 @@ assert.equal(reopenedUnselected.items[1].text,"Работа ученика",
  "An unselected lab cannot block unrelated work on the board");
 const corruptSelection=structuredClone(persistedLab);
 corruptSelection.selectedId="missing-vessel";
-assert.throws(()=>parseLab(corruptSelection),/Повреждено состояние химического стола/,
- "A genuinely dangling selection ID must still be rejected");
+const healedSelection=parseLab(corruptSelection);
+assert.equal(healedSelection.items[0].scienceLabBench.selectedId,"",
+ "A stale selected vessel is just UI state; it must not damage the entire lesson");
+assert.equal(healedSelection.items[1].text,"Работа ученика");
+const legacyBoard=structuredClone(persistedLab);
+legacyBoard.vessels.push({id:"old-funnel",kind:"funnel",x:30,y:65,
+ reagents:["NaCl"],doses:{NaCl:{value:2,unit:"g"}},
+ environment:"aqueous",observed:false});
+legacyBoard.selectedId="old-funnel";
+const openedLegacy=parseLab(legacyBoard);
+const rescued=openedLegacy.items[0].scienceLabBench.vessels.find(v=>v.id==="old-funnel");
+assert.equal(rescued.kind,"beaker");
+assert.deepEqual(rescued.reagents,["NaCl"]);
+assert.deepEqual(rescued.doses.NaCl,{value:2,unit:"g"});
+assert.equal(openedLegacy.items[0].scienceLabBench.selectedId,"old-funnel");
+assert.equal(openedLegacy.items[1].text,"Работа ученика");
+const staleLinks=structuredClone(persistedLab);
+staleLinks.placedDevices[0].linkedVesselId="stored-vessel";
+staleLinks.placedDevices[0].active=true;
+staleLinks.stirringVesselId="stored-vessel";
+staleLinks.instrumentTarget={kind:"tripod",vesselId:"stored-vessel"};
+staleLinks.titrationPair={sourceId:"stored-vessel",targetId:"v1"};
+staleLinks.vessels[0].buretteTargetId="stored-vessel";
+const restoredLinks=parseLab(staleLinks).items[0].scienceLabBench;
+assert.equal(restoredLinks.placedDevices[0].linkedVesselId,undefined);
+assert.equal(restoredLinks.placedDevices[0].active,false);
+assert.equal(restoredLinks.stirringVesselId,undefined);
+assert.equal(restoredLinks.instrumentTarget,undefined);
+assert.equal(restoredLinks.titrationPair,undefined);
+assert.equal(restoredLinks.vessels[0].buretteTargetId,undefined);
+const fortyComponents=structuredClone(persistedLab);
+fortyComponents.vessels[0].reactionAmounts={
+ equation:"NaCl → NaCl",elapsedSeconds:1,durationSeconds:2,
+ extentMol:1,maxExtentMol:1,complete:false,
+ initialMol:Object.fromEntries(Array.from({length:36},(_,n)=>["S"+n,.001])),
+ remainingMol:Object.fromEntries(Array.from({length:36},(_,n)=>["S"+n,.001])),
+ productsMol:{}
+};
+assert.equal(Object.keys(parseLab(fortyComponents).items[0].scienceLabBench
+ .vessels[0].reactionAmounts.initialMol).length,36,
+ "Reaction inventories within the 48-substance engine limit must reopen");
 /* The chemistry engine allows 48 distinct reagents, but the old board
  * validator accepted only six reagents/dose keys. A correct saved 7-component
  * mixture made the whole collaborative board appear damaged and unreadable. */

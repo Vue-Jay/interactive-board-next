@@ -826,7 +826,10 @@ export const defaultLabBench=():LabBench=>({
 });
 export function readLabBench(item:Item):LabBench{
  if(item.scienceLabBench)return {...item.scienceLabBench,
-  vessels:item.scienceLabBench.vessels.filter(v=>(v.kind as string)!=="funnel")};
+  // Legacy funnels were retired: preserve any measured contents by migrating
+  // the old vessel to a beaker instead of silently deleting its reagents.
+  vessels:item.scienceLabBench.vessels.map(v=>(v.kind as string)==="funnel"?
+   {...v,kind:"beaker" as const}:v)};
  const initial=defaultLabBench();
  initial.vessels[0].reagents=(item.scienceReagents??[]).slice(0,MAX_VESSEL_REAGENTS);
  initial.vessels[0].environment=item.scienceEnvironment??"aqueous";

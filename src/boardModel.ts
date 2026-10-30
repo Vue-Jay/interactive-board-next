@@ -766,6 +766,62 @@ export function parseDocument(raw: string): DocumentData {
         !i.scienceReactionSteps.every((step: {expression:string;conditions:string})=>!!step&&typeof step.expression==="string"&&step.expression.length<=500&&typeof step.conditions==="string"&&step.conditions.length<=180)))
         throw new Error("Повреждены этапы химической цепочки");
       if(i.scienceLabBench!=null){
+        // Old lab snapshots can contain a retired funnel or dangling UI links
+        // after glassware was returned to its cupboard. Neither is a reason to
+        // reject the entire lesson (including unrelated drawings and text).
+        // Keep all chemicals, doses, phase ledgers, vessel IDs and equipment.
+        const savedBench=i.scienceLabBench as import("./lektrusChemistryBenchModel").LabBench;
+        if(savedBench&&Array.isArray(savedBench.vessels)){
+          let repaired=false;
+          const vessels=savedBench.vessels.map(v=>{
+            if(!v||typeof v!=="object")return v;
+            let next=v;
+            if((v.kind as string)==="funnel"){
+              // A removed funnel is represented by a beaker, with its actual
+              // contents and ID intact rather than silently throwing it away.
+              next={...next,kind:"beaker"};repaired=true;
+            }
+            if(v.buretteTargetId&&
+              !savedBench.vessels.some(target=>target?.id===v.buretteTargetId)){
+              next={...next,buretteTargetId:undefined,buretteOpen:false};
+              repaired=true;
+            }
+            return next;
+          });
+          const ids=new Set(vessels.filter(v=>v&&typeof v.id==="string").map(v=>v.id));
+          const selectedId=savedBench.selectedId&&
+            !ids.has(savedBench.selectedId)?"":savedBench.selectedId;
+          if(selectedId!==savedBench.selectedId)repaired=true;
+          const placedDevices=Array.isArray(savedBench.placedDevices)?
+            savedBench.placedDevices.map(device=>{
+              if(device?.linkedVesselId&&!ids.has(device.linkedVesselId)){
+                repaired=true;
+                return {...device,linkedVesselId:undefined,active:false};
+              }
+              if(device?.shelfVesselId&&!ids.has(device.shelfVesselId)){
+                repaired=true;
+                return {...device,shelfVesselId:undefined};
+              }
+              return device;
+            }):savedBench.placedDevices;
+          const stirringVesselId=savedBench.stirringVesselId&&
+            (!ids.has(savedBench.stirringVesselId)||
+             !(savedBench.devices??[]).includes("stirrer"))?
+            undefined:savedBench.stirringVesselId;
+          if(stirringVesselId!==savedBench.stirringVesselId)repaired=true;
+          const instrumentTarget=savedBench.instrumentTarget&&
+            (!ids.has(savedBench.instrumentTarget.vesselId)||
+             !(savedBench.devices??[]).includes(savedBench.instrumentTarget.kind))?
+            undefined:savedBench.instrumentTarget;
+          if(instrumentTarget!==savedBench.instrumentTarget)repaired=true;
+          const pair=savedBench.titrationPair;
+          const titrationPair=pair&&
+            (!ids.has(pair.sourceId)||!ids.has(pair.targetId))?
+            undefined:pair;
+          if(titrationPair!==pair)repaired=true;
+          if(repaired)i.scienceLabBench={...savedBench,vessels,selectedId,
+            placedDevices,stirringVesselId,instrumentTarget,titrationPair};
+        }
         const bench=i.scienceLabBench as import("./lektrusChemistryBenchModel").LabBench;
         // This persistence module must remain import-free. Keep the bound
         // in sync with MAX_VESSEL_REAGENTS in lektrusChemistryBenchModel.ts.
@@ -836,7 +892,7 @@ export function parseDocument(raw: string): DocumentData {
             typeof v.reactionHeat.complete==="boolean"));
         const validMolRecord=(value:unknown):boolean=>
           !!value&&typeof value==="object"&&!Array.isArray(value)&&
-          Object.entries(value as Record<string,unknown>).length<=18&&
+          Object.entries(value as Record<string,unknown>).length<=maxSavedLabReagents&&
           Object.entries(value as Record<string,unknown>).every(([id,mol])=>
             id.length>0&&id.length<=70&&typeof mol==="number"&&
             Number.isFinite(mol)&&mol>=0&&mol<=10000);
