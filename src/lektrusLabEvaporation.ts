@@ -59,15 +59,32 @@ const aperture:Record<string,number>={
  cylinder:.28,dish:1.7,pipette:.06,burette:.08,crucible:.8
 };
 const own=(obj:object,key:string)=>Object.prototype.hasOwnProperty.call(obj,key);
+/** Ideal liquid-phase mole fractions. For explicitly weighed soluble
+ * nonvolatile salt/sugar in measured water, use the number of dissolved
+ * solute particles; electrolyte coefficients are upper-bound dilute ideals.
+ * Reject any unknown stock solvent, mixed undissolved powder, or molality
+ * outside the dilute range instead of silently treating it as pure water. */
 function components(v:LabEvaporationState){
- const liquid=Object.entries(v.doses??{}).filter(([id,d])=>
+ const entries=Object.entries(v.doses??{});
+ const liquid=entries.filter(([id,d])=>
   own(table,id)&&d.unit==="ml"&&d.concentrationM===undefined&&d.value>0);
- // Prepared stocks have implicit, unknown solvent volumes. They must not
- // be approximated as a mixture of neat molecules.
- const otherLiquids=Object.entries(v.doses??{}).some(([id,d])=>
-  d.unit==="ml"&&!own(table,id));
+ const otherLiquids=entries.some(([id,d])=>
+  d.unit==="ml"&&(!own(table,id)||d.concentrationM!==undefined));
  if(otherLiquids||liquid.length===0)return [];
- const totalMol=liquid.reduce((s,[id,d])=>{
+ const solids=entries.filter(([,d])=>d.unit==="g"&&d.value>0);
+ let particlesMol=0;
+ if(solids.length){
+  if(liquid.length!==1||liquid[0][0]!=="H2O")return [];
+  const waterKg=liquid[0][1].value*.000997;
+  if(waterKg<=0)return [];
+  for(const [id,d] of solids){
+   const known=aqueousNonvolatile[id];
+   if(!known)return [];
+   particlesMol+=d.value/known.molarG*known.i;
+  }
+  if(particlesMol/waterKg>4)return [];
+ }
+ const totalMol=particlesMol+liquid.reduce((s,[id,d])=>{
   const p=table[id as EvaporatingLiquid];
   return s+d.value*p.densityGml/p.molG;
  },0);
@@ -76,6 +93,50 @@ function components(v:LabEvaporationState){
   return {id,d,moleFraction:(d.value*p.densityGml/p.molG)/totalMol};
  });
 }
+export function labVaporPressureKPa(v:LabEvaporationState,tempC:number):number|undefined{
+ const items=components(v);
+ if(!items.length)return;
+ let pressure=0;
+ for(const item of items){
+  const saturation=labSaturationPressureKPa(item.id,tempC);
+  if(saturation===undefined)return;
+  pressure+=item.moleFraction*saturation;
+ }
+ return pressure;
+}
+/** Equilibrium bubble point of a MEASURED ideal liquid mixture at 1 atm.
+ * Uses the same Raoult mole fractions as vapor loss; limited to the
+ * published Antoine ranges, and intentionally undefined for unsupported
+ * non-ideal / concentrated mixtures. */
+export function labIdealBoilingC(v:LabEvaporationState):number|undefined{
+ const diluteWater=labApproxWaterBoilingC(v.doses);
+ if(diluteWater!==undefined)return diluteWater;
+ if(!components(v).length)return;
+ const key=JSON.stringify(v.doses??{});
+ if(bubbleCache.has(key))return bubbleCache.get(key);
+ let lowerT=20,lowerP=labVaporPressureKPa(v,lowerT);
+ if(lowerP!==undefined&&lowerP>=101.325)return lowerT;
+ let solved:number|undefined;
+ for(let t=21;t<=125;t++){
+  const currentP=labVaporPressureKPa(v,t);
+  if(lowerP!==undefined&&currentP!==undefined&&
+   lowerP<101.325&&currentP>=101.325){
+   let low=lowerT,high=t;
+   for(let k=0;k<34;k++){
+    const mid=(low+high)/2;
+    if((labVaporPressureKPa(v,mid)??0)<101.325)low=mid;
+    else high=mid;
+   }
+   solved=Math.round((low+high)*50)/100;
+   break;
+  }
+  lowerT=t;lowerP=currentP;
+ }
+ if(bubbleCache.size>=256)bubbleCache.delete(bubbleCache.keys().next().value!);
+ bubbleCache.set(key,solved);
+ return solved;
+}
+const bubbleCache=new Map<string,number|undefined>();
 /** Evaporation raises with saturation pressure, exposed surface and heating.
  * A stopper gives a saturated closed headspace: no material leaves. Pressure
  * beyond 160 kPa absolute pops a simulated cork (not pressure-rated).
@@ -139,6 +200,7 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  * i is the *ideal* dissociation count. High ionic strengths are outside the
  * dilute-solution range and intentionally not assigned a precise plateau.
  * This does not claim an arbitrary stock solution has a known boiling point.
+ * The vapor-pressure model uses the SAME particle count for water activity.
  */
 const aqueousNonvolatile:Record<string,{molarG:number;i:number}>={
  NaCl:{molarG:58.44,i:2},KCl:{molarG:74.55,i:2},
