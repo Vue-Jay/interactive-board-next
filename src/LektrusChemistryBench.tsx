@@ -7,7 +7,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBen
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
-import {labCanStopper,labVaporPressureKPa,labIdealBoilingC} from "./lektrusLabEvaporation";
+import {labCanStopper,labVaporPressureKPa,labIdealBoilingC,labEvaporate} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
 import {labMolarMass} from "./lektrusLabStoichiometry";
@@ -1554,6 +1554,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const v=bench.vessels.find(x=>x.id===compositionId);
    if(!v)return null;
    const composition=labVesselContents(v),quantity=labVesselQuantity(v);
+   const vaporReading=labEvaporate(v,0,v.temperatureC??22);
+   const boilingEstimate=labIdealBoilingC(v);
    const inventory=v.doses&&!v.filteredResidue&&!v.filteredSolution?
     simulateLabInventory(v):undefined;
    const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
@@ -1570,6 +1572,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <p>Жидкость: {formatted(composition.solutionMl)} мл из {formatted(quantity.capacityMl)} мл. Добавлено твёрдых веществ: {formatted(quantity.massG)} г. Температура: {formatted(v.temperatureC??22)} °C.</p>
      <p>Горлышко: {v.stoppered?"закрыто пробкой":"открыто"}.
       {v.stoppered?" Пар остаётся внутри; обычная пробка может выскочить при нагреве.":""}</p>
+     {(vaporReading.pressureKPa!==undefined||boilingEstimate!==undefined)&&
+      <p title="Приближённое равновесие идеального раствора. Учитываются только заданные компоненты с проверенными физическими свойствами.">
+       {vaporReading.pressureKPa!==undefined&&
+        <span>{v.stoppered?"Оценка давления в закрытой колбе":"Давление насыщенных паров"}:
+         {" "+formatted(vaporReading.pressureKPa)} кПа. </span>}
+       {boilingEstimate!==undefined&&
+        <span>Расчётная температура кипения при 1 атм: {formatted(boilingEstimate)} °C.</span>}
+      </p>}
      {v.ventedVaporMl&&Object.keys(v.ventedVaporMl).length>0&&<>
       <strong>Испарилось в окружающую среду</strong>
       <ul>{Object.entries(v.ventedVaporMl).map(([id,ml])=>
