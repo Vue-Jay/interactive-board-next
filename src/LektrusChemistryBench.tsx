@@ -1065,7 +1065,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     }}>
     <span aria-hidden="true">⚗</span><span className="lektrus-lab-prepare-label">Комплект</span>
    </button>
-   <span className="lektrus-lab-scene-stats">{bench.vessels.length} из 6 сосудов <b>·</b> {physicalDevices.length} приборов</span>
+
    <div className="lektrus-lab-header-tools" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
     <button type="button" className="lektrus-lab-temperature-toggle"
@@ -1167,14 +1167,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      aria-label="Редактировать быстрые реактивы"
      onClick={e=>{e.stopPropagation();openCabinet("reagents")}}>+</button>}
    </div>
-   <span className="lektrus-lab-furniture-foot">Нажмите для добавления · перетащите на сосуд</span>
+   <span className="lektrus-lab-furniture-foot" aria-hidden="true">Нажмите на реактив или перетащите к сосуду</span>
   </div>
   <div className={"lektrus-lab-glass-cupboard"+(dropFurniture==="glassware"?" is-dropzone":"")} data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
    <button type="button" className="lektrus-lab-furniture-title lektrus-lab-shelf-header"
     disabled={!editable} aria-label="Открыть шкаф посуды"
     onClick={e=>{e.stopPropagation();openCabinet("glassware")}}>ПОСУДА</button>
-   <div className="lektrus-lab-shelf-items">
+   <div className={"lektrus-lab-shelf-items is-count-"+glasswareForLabMode(bench).length} role="group" aria-label="Посуда на полках">
     {glasswareForLabMode(bench).map(kind=><button type="button" key={kind.id} disabled={!editable}
       className="lektrus-lab-shelf-item" title={"Взять: "+kind.name}
       aria-label={"Взять из шкафа "+kind.name} onPointerDown={e=>beginShelf(e,kind.id)}
@@ -1185,7 +1185,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
       <small>{kind.name}</small>
      </button>)}
    </div>
-   <span className="lektrus-lab-furniture-foot">Выберите место на столе или перетащите</span>
+   <span className="lektrus-lab-furniture-foot" aria-hidden="true">Нажмите на посуду или перетащите на стол</span>
   </div>
   <div className="lektrus-lab-indicator-cupboard" data-board-interactive="true"
    onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
@@ -1242,7 +1242,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <small>{device.name}</small>
     </button>)}
    </div>
-   <span className="lektrus-lab-furniture-foot">Нажмите или перетащите</span>
+   <span className="lektrus-lab-furniture-foot" aria-hidden="true">Выберите прибор для стола</span>
   </div>
   {physicalDevices.map((device,i)=>{
    const current=devicePreview?.id===device.id?devicePreview:device;
