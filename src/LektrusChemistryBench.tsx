@@ -1587,6 +1587,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     simulateLabInventory({...v,volumeMl:quantity.volumeMl}):
     v.doses&&!v.filteredResidue&&!v.filteredSolution?
     simulateLabInventory(v):undefined;
+   const crystallineSalt=Object.entries(inventory?.solidMol??{}).find(([formula,mol])=>
+    mol>1e-12&&labSingleSaltSolubilityGPer100gWater(formula,25)!==undefined);
    const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
     "масса не определена":(labMolarMass(formula)!*mmol/1000).toLocaleString("ru-RU",{maximumFractionDigits:6})+" г";
    const formatted=(n:number)=>n.toLocaleString("ru-RU",{maximumFractionDigits:6});
