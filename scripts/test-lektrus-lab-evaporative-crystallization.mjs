@@ -38,7 +38,10 @@ assert.equal(mat.labCrystalDensityGml("CuSO4.5H2O"),undefined,
 assert.equal(mat.labCrystalDensityGml("Fe(OH)3"),undefined,
  "Hydrated gelatinous precipitates lack a defined true density in the model");
 assert.equal(mat.labNaClSolubilityGPer100gWater(-1),undefined);
-assert.equal(mat.labNaClSolubilityGPer100gWater(101),undefined);
+assert.equal(mat.labNaClSolubilityGPer100gWater(126),undefined);
+const boilingBrine=mat.labNaClSolubilityGPer100gWater(108);
+assert.ok(boilingBrine>39&&boilingBrine<40,
+ "Use USGS experimental elevated-temperature correlation for boiling brine");
 for(const [t,fraction] of [[0,.2634],[20,.2643],[40,.2671],
  [60,.2709],[80,.2753],[100,.2812]]){
  const sol=mat.labNaClSolubilityGPer100gWater(t);
@@ -104,7 +107,7 @@ const heated=vapor.labEvaporate({kind:"dish",doses:{H2O:ml(20)}},10,100,180,200)
 const unheated=vapor.labEvaporate({kind:"dish",doses:{H2O:ml(20)}},10,100,180,0);
 assert.ok(heated.evaporatedMl>unheated.evaporatedMl+.5,
  "Latent heat and actual input heater power must control boiling-water loss");
-assert.equal(vapor.labEvaporate({...initial,stoppered:true},10,100,180,200).evaporatedMl,0);
+assert.equal(vapor.labEvaporate({...initial,stoppered:true,stopperedAtC:100},10,100,180,200).evaporatedMl,0);
 const css=fs.readFileSync("src/lektrusLabSceneLayout.css","utf8");
 const component=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
 assert.match(css,/lektrus-lab-evaporation-crystals/);
