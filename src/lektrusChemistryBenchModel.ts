@@ -1615,6 +1615,10 @@ export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:strin
  const a=b.vessels.find(v=>v.id===sourceId),t=b.vessels.find(v=>v.id===targetId);
  if(!a||!t||!a.reagents.length||a.stoppered||t.stoppered||
   [...new Set([...a.reagents,...t.reagents])].length>MAX_VESSEL_REAGENTS)return b;
+ // A quantified filtrate is a phase snapshot, not a set of stock doses.
+ // Transfer it atomically rather than running the old dose-only 20-step
+ // algorithm which would otherwise leave its dissolved products behind.
+ if(a.chemicalInventory||t.chemicalInventory)return pourLabVessel(b,sourceId,targetId);
  const initialDoses={...a.doses};
  const volume=labVesselQuantity(a).volumeMl;
  const current=labVesselQuantity(t).volumeMl;
@@ -1695,11 +1699,80 @@ export function stopLabPour(b:LabBench,id?:string):LabBench{
  if(!b.pouring||(id&&b.pouring.id!==id))return b;
  return {...b,pouring:undefined,event:b.event+1};
 }
+/** Merge the exact physical species ledgers, not their historical stock
+ * labels. A later reaction can then consume a filtered product without
+ * pretending the original starting materials are still present. */
+function mergeLabMoles(a:Record<string,number>,b:Record<string,number>){
+ const merged={...a};
+ for(const [id,n] of Object.entries(b))merged[id]=(merged[id]??0)+n;
+ return merged;
+}
+function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):LabBench{
+ const a=simulateLabInventory({...source,volumeMl:labVesselQuantity(source).volumeMl});
+ const b=simulateLabInventory({...target,volumeMl:labVesselQuantity(target).volumeMl});
+ if(a.unmeasured.length||b.unmeasured.length||a.limited||b.limited)return bench;
+ const received={...target.doses};
+ for(const [id,dose] of Object.entries(source.doses??{})){
+  const existing=received[id];
+  if(existing&&existing.unit!==dose.unit)return bench;
+  const value=Math.round(((existing?.value??0)+dose.value)*1e6)/1e6;
+  if(value<=0||value>10000)return bench;
+  const concentrationM=dose.unit==="ml"&&(existing?.concentrationM!==undefined||
+   dose.concentrationM!==undefined)?
+   existing?.concentrationM!==undefined&&dose.concentrationM!==undefined?
+    (existing.value*existing.concentrationM+dose.value*dose.concentrationM)/value:
+    undefined:undefined;
+  received[id]={value,unit:dose.unit,
+   ...(concentrationM===undefined?{}:{concentrationM})};
+ }
+ const carrier=(source.filteredSolution?.volumeMl??0)+
+  (target.filteredSolution?.volumeMl??0);
+ const volume=labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl;
+ const environment=labMixEnvironment([source,target],received);
+ const chemicalInventory:LabChemicalSnapshot={
+  speciesMol:mergeLabMoles(a.speciesMol,b.speciesMol),
+  solidMol:mergeLabMoles(a.solidMol,b.solidMol),
+  retainedGasMol:{}
+ };
+ const reacted=simulateLabInventory({reagents:Object.keys(chemicalInventory.speciesMol),
+  chemicalInventory,volumeMl:volume,environment,stoppered:false,
+  temperatureC:target.temperatureC??source.temperatureC});
+ if(reacted.unmeasured.length||reacted.limited||
+  Object.keys(reacted.speciesMol).length>MAX_VESSEL_REAGENTS)return bench;
+ const inventory=labInventorySnapshot(reacted);
+ const ids=Object.keys(inventory.speciesMol);
+ const last=reacted.steps[reacted.steps.length-1];
+ const lastCase=last?reviewedReactionCases.find(r=>r.equation===last.equation):undefined;
+ const vessels=bench.vessels.map(v=>{
+  if(v.id===source.id)return {...v,reagents:[],doses:undefined,
+   filteredSolution:undefined,filteredResidue:undefined,chemicalInventory:undefined,
+   reactionAmounts:undefined,completedReaction:undefined,reactionHeat:undefined,
+   observed:false,uncertain:false,indicator:undefined,
+   indicatorDrops:undefined,indicatorAddedAtMs:undefined};
+  if(v.id===target.id)return {...v,reagents:ids,
+   doses:Object.keys(received).length?received:undefined,
+   filteredSolution:carrier>0?{sourceEquation:source.filteredSolution?.sourceEquation??
+    target.filteredSolution?.sourceEquation??"",solutes:ids.filter(x=>x!=="H2O"),
+    volumeMl:carrier}:undefined,
+   filteredResidue:undefined,chemicalInventory:inventory,
+   reactionAmounts:undefined,completedReaction:lastCase??target.completedReaction,
+   reactionHeat:undefined,environment,observed:true,uncertain:false,
+   ...carriedLabIndicator(source,v),
+   visualStartedAtMs:lastCase?Date.now():v.visualStartedAtMs};
+  return v;
+ });
+ return bump(bench,vessels,target.id);
+}
 export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):LabBench{
  if(sourceId===targetId)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
  if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
+ if(source.chemicalInventory||target.chemicalInventory){
+  if(labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl>
+   labVesselQuantity(target).capacityMl+1e-7)return bench;
+  return pourMeasuredFiltrate(bench,source,target);
+ }
  const reagents=[...new Set([...target.reagents,...source.reagents])];
  if(reagents.length>MAX_VESSEL_REAGENTS)return bench;
  const volume=labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl;
