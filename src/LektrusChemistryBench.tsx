@@ -1520,7 +1520,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      </>}
      {inventory?.steps.length?<><strong>Последовательность превращений</strong>
       <ol>{inventory.steps.map((step,i)=><li key={i}>{step.equation}
-       {" · "+formatted(step.extentMol*1000)+" ммоль"}</li>)}</ol>
+       {" · "+formatted(step.extentMol*1000)+" ммоль"}
+       {step.heatKJ!==undefined&&" · ΔH "+formatted(step.heatKJ)+" кДж"}</li>)}</ol>
+      {inventory.heatEstimateComplete&&inventory.knownHeatKJ!==undefined&&
+       <p>Расчётный суммарный тепловой эффект: {formatted(inventory.knownHeatKJ)} кДж
+        {inventory.knownHeatKJ<0?" (выделение теплоты)":" (поглощение теплоты)"}.</p>}
+      {!inventory.heatEstimateComplete&&
+       <small>Тепловой эффект всей смеси не определён: не для всех превращений есть проверенные энтальпии.</small>}
      </>:v.reactionAmounts&&<><strong>Текущая реакция</strong><p>{v.reactionAmounts.equation}</p></>}
      {inventory&&labInventoryMassG(inventory)!==undefined&&
       <p title="Сумма масс известных химических компонентов, включая выделившиеся газы. Не включает неучтённый растворитель стандартных растворов.">
