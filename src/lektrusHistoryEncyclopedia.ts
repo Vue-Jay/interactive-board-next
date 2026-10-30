@@ -567,9 +567,14 @@ const editorialHistoricalArticles:HistoricalArticle[]=[
 export const normalizeHistoricalName=(s:string)=>s.trim().toLocaleLowerCase("en").replace(/[’‘ʼ]/g,"'").replace(/\s+/g," ");
 const used=new Set<string>();
 for(const article of editorialHistoricalArticles)
- for(const alias of article.aliases)used.add(normalizeHistoricalName(alias));
+ for(const alias of [article.name,...article.aliases])
+  used.add(normalizeHistoricalName(alias));
 const importedHistoricalArticles:HistoricalArticle[]=[];
 for(const item of historicalReferences){
+ // An encyclopedia entry already authored for the same historical title
+ // takes precedence over the shorter sourced reference.
+ if(editorialHistoricalArticles.some(entry=>
+  normalizeHistoricalName(entry.name)===normalizeHistoricalName(item.title)))continue;
  const aliases=[item.title,...item.aliases].filter(alias=>{
   const key=normalizeHistoricalName(alias);
   if(!key||used.has(key))return false;
