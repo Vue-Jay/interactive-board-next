@@ -9,7 +9,7 @@ import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVes
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
  from "./lektrusLabTitration";
 import {identifyReaction,reviewedReactionCases,substances,type ReactionEnvironment,type ReactionStatus,type ReactionCase} from "./lektrusReactionDatabase";
-import {simulateLabInventory} from "./lektrusLabReactionNetwork";
+import {simulateLabInventory,labInventorySnapshot,type LabChemicalSnapshot} from "./lektrusLabReactionNetwork";
 
 export type LabGlassware="beaker"|"tube"|"flask"|"cylinder"|"dish"|
  "conical"|"volumetric"|"crucible"|"pipette"|"burette";
@@ -726,8 +726,11 @@ export type LabVessel={pourFraction?:number;
  physicalProcess?:"dissolving";physicalStartedAtMs?:number;
  /** Filtered insoluble solid; mass only when quantities were measured. */
  filteredResidue?:{formula:string;massG?:number;color:string};
- /** Liquid filtrate, its unknown concentrations are not guessed. */
- filteredSolution?:{sourceEquation:string;solutes:string[]};
+ /** Physical carrier volume and identities of dissolved filtrate products. */
+ filteredSolution?:{sourceEquation:string;solutes:string[];volumeMl?:number};
+ /** Exact persistent chemical phase amounts after separation or transfer.
+  * The current doses then describe NEW additions, not consumed stock. */
+ chemicalInventory?:LabChemicalSnapshot;
  /** Moles of reagents/products; solvent volume is conserved separately. */
  reactionAmounts?:LabReactionAmounts;
  /** A verified reaction already completed in this material; survives full transfer. */
@@ -866,7 +869,9 @@ export function labVesselContents(v:LabVessel){
  // The chemical species inventory is reconstructed from the measured initial
  // doses, so adding another reagent cannot erase prior precipitates and
  // previously formed products can react in the next reviewed stage.
- const inventory=!v.filteredResidue&&!v.filteredSolution&&v.doses&&v.reagents.length?
+ const inventory=v.chemicalInventory?
+  simulateLabInventory({...v,volumeMl}):
+  !v.filteredResidue&&!v.filteredSolution&&v.doses&&v.reagents.length?
   simulateLabInventory(v):undefined;
  if(inventory&&!inventory.unmeasured.length){
   const solid:{formula:string;massG?:number}[]=[];
@@ -1531,8 +1536,9 @@ export function pourLabIntoFilter(bench:LabBench,sourceId:string,filterId:string
 
 export function labVesselQuantity(vessel:LabVessel){
  const doses=Object.values(vessel.doses??{});
- const volumeMl=Math.round(Object.entries(vessel.doses??{}).reduce((total,[id,d])=>
-  total+(d.unit==="ml"&&substances.find(s=>s.id===id)?.kind!=="газ"?d.value:0),0)*100)/100;
+ const volumeMl=Math.round(((vessel.filteredSolution?.volumeMl??0)+
+  Object.entries(vessel.doses??{}).reduce((total,[id,d])=>
+  total+(d.unit==="ml"&&substances.find(s=>s.id===id)?.kind!=="газ"?d.value:0),0))*100)/100;
  const massG=Math.round(doses.reduce((total,d)=>
   total+(d.unit==="g"?d.value:0),0)*100)/100;
  const capacityMl=labMeasuredCapacityMl(vessel.kind)??(
