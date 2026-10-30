@@ -2,7 +2,7 @@ import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
-import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,labMolarMass,type LabReactionAmounts}
+import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
 import {addTitrant,defaultTitration,resetTitration,validTitration,type TitrationModel}
@@ -1178,22 +1178,43 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
   const environment=labMixEnvironment([{environment:v.environment,doses:v.doses},
    {environment:validDose?.unit==="g"?"dry":"aqueous",
     doses:validDose?{[reagent]:validDose}:undefined}],nextDoses);
+  const matching=identifyReaction(reagents,environment);
+  const previousAmounts=v.reactionAmounts;
+  const recorded=v.completedReaction??(beforeReaction.status==="reaction"?
+   beforeReaction.caseData:undefined);
+  const equation=previousAmounts?.equation??recorded?.equation;
+  // Adding solvent cannot annihilate an existing precipitate! Pure carrier
+  // H2O is distinguished from H2O consumed by a balanced reaction.
+  const carrierWater=reagent==="H2O"&&!!equation&&
+   !parseBalancedLabEquation(equation)?.reactants.some(t=>t.formula==="H2O");
+  const sameReaction=!!equation&&matching.status==="reaction"&&
+   matching.caseData?.equation===equation;
+  // Redosing an original reactant recomputes extent from the complete
+  // cumulative inventory. An already settled solid does not disappear.
+  const newState=previousAmounts&&sameReaction&&matching.caseData?
+   startQuantifiedLabReaction(matching.caseData,reagents,nextDoses):null;
+  const preservedAmounts=previousAmounts&&carrierWater?previousAmounts:
+   newState?advanceQuantifiedLabReaction(newState,
+    previousAmounts?.elapsedSeconds??0):previousAmounts;
   const physicalDissolution=!!nextDoses?.H2O&&nextDoses.H2O.unit==="ml"&&
    reagents.some(key=>key!=="H2O"&&LAB_WATER_SOLUTES.has(key)&&
-    nextDoses?.[key]?.unit==="g")&&
-   identifyReaction(reagents,environment).status!=="reaction";
+    nextDoses?.[key]?.unit==="g")&&matching.status!=="reaction";
+  const priorReaction=!!equation;
+  const unsupportedAddition=priorReaction&&!carrierWater&&!sameReaction;
   return {...v,reagents,meltFraction:undefined,phaseTransition:undefined,
-   reactionHeat:undefined,
+   reactionHeat:unsupportedAddition?undefined:v.reactionHeat,
    physicalProcess:physicalDissolution?"dissolving":undefined,
    physicalStartedAtMs:physicalDissolution?Date.now():undefined,
-   reactionAmounts:undefined,
-   completedReaction:v.completedReaction??(beforeReaction.status==="reaction"?beforeReaction.caseData:undefined),
+   reactionAmounts:preservedAmounts,
+   completedReaction:recorded,
    doses:nextDoses,
    observed:reagents.length>1,
    environment,
-   visualStartedAtMs:reagents.length>1&&!v.uncertain&&beforeReaction.status!=="reaction"&&
-    identifyReaction(reagents,environment).status==="reaction"?Date.now():v.visualStartedAtMs,
-   uncertain:v.uncertain||beforeReaction.status==="reaction"};
+   visualStartedAtMs:reagents.length>1&&!v.uncertain&&!priorReaction&&
+    matching.status==="reaction"?Date.now():v.visualStartedAtMs,
+   // Unsupported next-stage chemistry remains explicit, but known measured
+   // products are NEVER erased just because another substance was added.
+   uncertain:v.uncertain||unsupportedAddition};
  });
  const activeMixer=placedLabDevices(updated).some(d=>
   d.kind==="stirrer"&&d.active&&d.powered&&d.linkedVesselId===id);
