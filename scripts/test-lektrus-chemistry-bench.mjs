@@ -737,21 +737,23 @@ assert.equal(lab.putLabReagent(calibrated,pipetteId,"HCl",
 calibrated=lab.transferLabMeasuredLiquid(calibrated,"v1",pipetteId,10);
 assert.equal(calibrated.vessels.find(v=>v.id===pipetteId).doses.HCl.value,10);
 assert.equal(calibrated.vessels.find(v=>v.id==="v1").doses.HCl.value,30);
-calibrated=lab.addLabVessel(calibrated,"cylinder");
-const cylinderId=calibrated.vessels.find(v=>v.kind==="cylinder").id;
-calibrated=lab.transferLabMeasuredLiquid(calibrated,pipetteId,cylinderId,4);
+calibrated=lab.addLabVessel(calibrated,"beaker");
+const receivingBeakerId=calibrated.vessels.filter(v=>v.kind==="beaker").at(-1).id;
+calibrated=lab.transferLabMeasuredLiquid(calibrated,pipetteId,receivingBeakerId,4);
 assert.equal(calibrated.vessels.find(v=>v.id===pipetteId).doses.HCl.value,6);
-assert.equal(calibrated.vessels.find(v=>v.id===cylinderId).doses.HCl.value,4);
-assert.equal(calibrated.vessels.find(v=>v.id===cylinderId).doses.HCl.concentrationM,.1);
-assert.equal(lab.transferLabMeasuredLiquid(calibrated,pipetteId,cylinderId,50),calibrated);
-let markFlask=lab.addLabVessel(lab.defaultLabBench(),"volumetric");
-const markId=markFlask.vessels.find(v=>v.kind==="volumetric").id;
-markFlask=lab.putLabReagent(markFlask,markId,"NaCl",{value:20,unit:"ml"});
-markFlask=lab.fillLabVolumetricFlask(markFlask,markId);
-assert.equal(markFlask.vessels.find(v=>v.id===markId).doses.H2O.value,80);
-assert.equal(lab.fillLabVolumetricFlask(markFlask,markId),markFlask,
- "A volumetric flask must stop at the calibration mark");
+assert.equal(calibrated.vessels.find(v=>v.id===receivingBeakerId).doses.HCl.value,4);
+assert.equal(calibrated.vessels.find(v=>v.id===receivingBeakerId).doses.HCl.concentrationM,.1);
+assert.equal(lab.transferLabMeasuredLiquid(calibrated,pipetteId,receivingBeakerId,50),calibrated);
+assert.equal(lab.addLabVessel(calibrated,"cylinder"),calibrated);
+assert.equal(lab.addLabVessel(calibrated,"volumetric"),calibrated);
 // Retired funnel is no longer a supported lab object, including on old boards.
+const legacyMeasured=lab.readLabBench({scienceLabBench:{
+ ...lab.defaultLabBench(),vessels:[...lab.defaultLabBench().vessels,
+ {id:"old-cylinder",kind:"cylinder",x:20,y:30,reagents:[],environment:"aqueous",observed:false},
+ {id:"old-volumetric",kind:"volumetric",x:30,y:30,reagents:[],environment:"aqueous",observed:false}]
+}});
+assert.equal(legacyMeasured.vessels.filter(v=>["cylinder","volumetric"].includes(v.kind)).length,2,
+ "Older saved boards must preserve retired vessel objects without data loss");
 const legacyFunnel=lab.readLabBench({scienceLabBench:{
  ...lab.defaultLabBench(),vessels:[...lab.defaultLabBench().vessels,
  {id:"legacy-funnel",kind:"funnel",x:20,y:30,reagents:[],environment:"dry",observed:false}]
@@ -839,7 +841,7 @@ assert.match(read("src/LektrusChemistryIllustration.tsx"),/lektrus-lab-open-edit
 assert.match(read("src/lektrusChemistryBench.css"),/width:100vw!important/);
 assert.doesNotMatch(surface,/pourThroughLabFunnel/);
 assert.ok(!lab.labGlassware.some(v=>v.id==="funnel"),"Funnel is no longer offered in inventory");
-assert.match(surface,/fillLabVolumetricFlask/);
+assert.doesNotMatch(surface,/fillLabVolumetricFlask/);
 assert.doesNotMatch(surface,/onClick=\{e=>\{e\.stopPropagation\(\);if\(selected\?\.reagents\.length\)clean/,
  "The sink must never empty selected glassware merely because it was clicked");
 assert.match(surface,/if\(inSink\(p\)\)clean\(g\.id\)/,
