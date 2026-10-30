@@ -897,7 +897,10 @@ export function parseDocument(raw: string): DocumentData {
            !(bench.devices??[]).includes(bench.instrumentTarget.kind)))||
           (bench.stirringVesselId!=null&&(!bench.vessels.some(v=>v.id===bench.stirringVesselId)||
             !(bench.devices??[]).includes("stirrer")))||
-          (bench.vessels.length===0?bench.selectedId!=="":
+          // Deselecting the vessel by clicking the empty worktop is a valid
+          // persisted UI state, even when the cupboard still has glassware.
+          // The old condition rejected it and blocked loading the whole board.
+          (bench.selectedId!==""&&
             !bench.vessels.some(v=>v.id===bench.selectedId))||
           new Set(bench.vessels.map(v=>v.id)).size!==bench.vessels.length||
           !bench.vessels.every(v=>typeof v.id==="string"&&v.id.length<=40&&
