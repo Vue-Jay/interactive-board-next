@@ -4,6 +4,7 @@ import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lek
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
 import {labSensibleHeatStep} from "./lektrusLabCalorimetry";
 import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,type LabBinarySaltState} from "./lektrusLabDissolution";
+import {labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labEvaporate,labCanStopper,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {LAB_CRYSTAL_DENSITY_G_ML,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
@@ -424,11 +425,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // for an ethanol/water mixture.
   const boilingPoint=labIdealBoilingC(v)??(pure?.unit==="ml"?pure.info.boilingC:undefined);
   if(boilingPoint!==undefined&&next>boilingPoint&&!v.stoppered)next=boilingPoint;
-  const gasInventory=v.stoppered?simulateLabInventory({...v,
-   volumeMl:labVesselQuantity(v).volumeMl}):undefined;
-  const gasMoles=gasInventory?Object.values(gasInventory.retainedGasMol).
-   reduce((sum,mol)=>sum+mol,0)+Object.entries(gasInventory.speciesMol).
-   reduce((sum,[id,mol])=>sum+(substances.find(s=>s.id===id)?.kind==="газ"?mol:0),0):0;
+  const gasMoles=v.stoppered?labHeadspaceGasMoles(v):0;
   const {occupiedMl,capacityMl}=labVesselQuantity(v);
   // The effective power arriving at the liquid is a bounded instrument
   // parameter. At a known boiling plateau, latent heat limits how much
@@ -1222,14 +1219,34 @@ export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):
 /** Ideal-gas headspace uses the same measured chemical species ledger as the
  * vessel inspector. The seal temperature is saved, never assumed to equal
  * the current temperature. */
-export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
+/** One shared gas tally for live pressure and saved lab inspection.
+ * During a measured gas reaction, inventory equilibrium is a FUTURE final
+ * state: only progress so far may pressurize a sealed container. */
+export function labHeadspaceGasMoles(v:LabVessel){
+ const measured=labReactionGasProgress(v.reactionAmounts);
+ if(measured){
+  // Existing gaseous stock may be present independently of products.
+  const sourceGas=Object.entries(v.doses??{}).reduce((sum,[id,d])=>
+   sum+(substances.find(x=>x.id===id)?.kind==="газ"?
+    labDoseMoles(id,d)??0:0),0);
+  return measured.totalMol+sourceGas;
+ }
+ // Before the first reaction tick, the measured inputs have not produced
+ // their final gas yield. Do not import future products into the headspace.
+ if(!v.completedReaction&&!v.chemicalInventory){
+  const row=identifyReaction(v.reagents,v.environment);
+  if(row.status==="reaction"&&row.caseData?.observation==="gas"&&
+   startQuantifiedLabReaction(row.caseData,v.reagents,v.doses))return 0;
+ }
  const inventory=simulateLabInventory({...v,volumeMl:labVesselQuantity(v).volumeMl});
- const retained=Object.values(inventory.retainedGasMol).reduce((s,m)=>s+m,0);
- const gasStock=Object.entries(inventory.speciesMol).reduce((s,[id,m])=>
-  s+(substances.find(x=>x.id===id)?.kind==="газ"?m:0),0);
+ return Object.values(inventory.retainedGasMol).reduce((s,m)=>s+m,0)+
+  Object.entries(inventory.speciesMol).reduce((s,[id,m])=>
+   s+(substances.find(x=>x.id===id)?.kind==="газ"?m:0),0);
+}
+export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
  const {occupiedMl,capacityMl}=labVesselQuantity(v);
  return labEvaporate({...v,headspaceMl:Math.max(1,capacityMl-occupiedMl),
-  reactionGasMol:retained+gasStock},0,temperatureC);
+  reactionGasMol:v.stoppered?labHeadspaceGasMoles(v):0},0,temperatureC);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
  const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
