@@ -7,7 +7,7 @@ import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBen
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
-import {labCanStopper,labSaturationPressureKPa,labApproxWaterBoilingC} from "./lektrusLabEvaporation";
+import {labCanStopper,labVaporPressureKPa,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
 import {labMolarMass} from "./lektrusLabStoichiometry";
@@ -153,9 +153,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const gasEventActive=!!vessel.reactionAmounts&&!vessel.reactionAmounts.complete||
   !!vessel.visualStartedAtMs&&Date.now()-vessel.visualStartedAtMs<6500;
  const vaporVisible=!small&&!vessel.stoppered&&volumeMl>0&&
-  Object.entries(vessel.doses??{}).some(([id,d])=>d.unit==="ml"&&
-   d.concentrationM===undefined&&d.value>0&&
-   (labSaturationPressureKPa(id,temperatureC??vessel.temperatureC??22)??0)>5);
+  (labVaporPressureKPa(vessel,temperatureC??vessel.temperatureC??22)??0)>5;
  const gasOnly=vessel.reagents.length>0&&vessel.reagents.every(id=>
   substances.find(s=>s.id===id)?.kind==="газ")&&massG===0;
  const singlePhase=vessel.filteredResidue?"solid":gasOnly?"gas":
@@ -176,7 +174,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const labels=species.map(([id])=>substances.find(s=>s.id===id)?.formula??id);
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
- const solutionBoiling=labApproxWaterBoilingC(vessel.doses);
+ const solutionBoiling=labIdealBoilingC(vessel);
  const boiling=!!volumeMl&&!vessel.stoppered&&(thermalState.boiling||
   solutionBoiling!==undefined&&(temperatureC??vessel.temperatureC??22)>=solutionBoiling-.5);
  const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):
@@ -596,8 +594,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const current=benchRef.current;
    const openBurette=current.vessels.some(v=>v.buretteOpen);
    const active=openBurette||current.vessels.some(labReactionNeedsTick)||
-    current.vessels.some(v=>!v.stoppered&&Object.entries(v.doses??{}).some(([id,d])=>
-     d.unit==="ml"&&!d.concentrationM&&labSaturationPressureKPa(id,v.temperatureC??22)!==undefined))||
+    current.vessels.some(v=>!v.stoppered&&
+     labVaporPressureKPa(v,v.temperatureC??22)!==undefined)||
     current.vessels.some(v=>v.physicalProcess==="dissolving")||
     placedLabDevices(current).some(d=>d.powered||
     (d.temperatureC??22)>22.1)||
