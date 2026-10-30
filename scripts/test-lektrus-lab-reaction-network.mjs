@@ -141,3 +141,18 @@ approximately(labInventoryMassG(openGas),labInventoryMassG(closedGas),1e-8);
 approximately(labInventoryMassG(closedGas),
  .003*labMolarMass("HCl")+.3,1e-7);
 console.log("Open-vessel CO2 escapes; corked CO2 remains, fully mass-balanced");
+
+
+const catalogue=load("src/lektrusLabCatalog.ts");
+const {substances:allStockReagents}=load("src/lektrusReactionDatabase.ts");
+const {labDoseMoles}=load("src/lektrusLabStoichiometry.ts");
+const unquantifiable=[];
+for(const substance of allStockReagents){
+ const dose=catalogue.labDefaultStockDose(substance.id);
+ const moles=dose?labDoseMoles(substance.id,dose):undefined;
+ if(!dose||!Number.isFinite(moles)||!(moles>0))
+  unquantifiable.push(substance.id);
+}
+assert.deepEqual(unquantifiable,[],
+ "Every reagent offered by the virtual catalog must have an explicit measurable stock quantity");
+console.log("Every catalog stock has measurable material amount, including neat liquids and gases");
