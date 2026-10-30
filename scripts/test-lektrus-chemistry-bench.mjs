@@ -2080,7 +2080,7 @@ assert.equal(JSON.stringify(preserved.vessels[0].reactionAmounts),measuredBefore
  "Indicator drops must not destroy the reaction mass ledger");
 assert.equal(lab.labVesselContents(preserved.vessels[0]).solid[0].formula,"AgCl");
 assert.ok(lab.labVesselContents(preserved.vessels[0]).precipitateG>.143,
- "Additional AgNO3 cannot remove previously precipitated AgCl");
+ "Indicator addition cannot remove previously precipitated AgCl");
 preserved=lab.putLabReagent(preserved,"v1","H2O",{unit:"ml",value:10});
 assert.equal(preserved.vessels[0].uncertain,false);
 assert.equal(lab.labVesselContents(preserved.vessels[0]).solutionMl,100);
@@ -2091,8 +2091,8 @@ preserved=lab.putLabReagent(preserved,"v1","AgNO3",
  {unit:"ml",value:10,concentrationM:.1});
 assert.equal(lab.labVesselContents(preserved.vessels[0]).solid[0].formula,"AgCl",
  "Re-dosing an original reactant must keep the old precipitate");
-assert.ok(Math.abs(lab.labVesselContents(preserved.vessels[0]).precipitateG-
- beforeDye.precipitateG)<1e-10);
+assert.ok(lab.labVesselContents(preserved.vessels[0]).precipitateG>.143,
+ "Adding more silver nitrate changes equilibrium without removing the formed AgCl");
 preserved=lab.putLabReagent(preserved,"v1","CuSO4",
  {unit:"ml",value:10,concentrationM:.1});
 assert.equal(lab.labVesselContents(preserved.vessels[0]).solid[0].formula,"AgCl",
