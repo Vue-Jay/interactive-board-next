@@ -1,12 +1,14 @@
+import {historicalReferences} from "./lektrusHistoricalReferences";
+
 /** Curated Russian-language introductory reference entries for classroom use.
  * These are educational summaries, NOT claims that the polygon dataset proves a
  * state's capital, duration, or government. Entries are shown only with matching
  * historical feature names AND in relevant years. Read linked articles critically. */
 export type HistoricalArticle={
  name:string;aliases:string[];from:number;to:number;capital:string;
- summary:string;turn:string;article:string
+ summary:string;turn:string;article:string;sourceUrl?:string
 };
-export const historicalArticles:HistoricalArticle[]=[
+const editorialHistoricalArticles:HistoricalArticle[]=[
   {
     "name": "Древний Египет",
     "aliases": [
@@ -555,7 +557,40 @@ export const historicalArticles:HistoricalArticle[]=[
     "article": "Королевство_Конго"
   }
 ];
+/** Merge the two ALREADY curated history datasets, rather than manually
+ * duplicating their 120+ existing source-backed entries in the encyclopedia.
+ * Preserve authored school overviews first, then import missing historical
+ * names from the source-linked reference catalogue. Never create competing
+ * aliases or pretend a historic polygon establishes a country's history.
+ * The UI can open each entry's actual source URL if it is not Wikipedia.
+ */
 export const normalizeHistoricalName=(s:string)=>s.trim().toLocaleLowerCase("en").replace(/[’‘ʼ]/g,"'").replace(/\s+/g," ");
+const used=new Set<string>();
+for(const article of editorialHistoricalArticles)
+ for(const alias of article.aliases)used.add(normalizeHistoricalName(alias));
+const importedHistoricalArticles:HistoricalArticle[]=[];
+for(const item of historicalReferences){
+ const aliases=[item.title,...item.aliases].filter(alias=>{
+  const key=normalizeHistoricalName(alias);
+  if(!key||used.has(key))return false;
+  used.add(key);return true;
+ });
+ // Do not create a record with no unambiguous lookup name.
+ if(!aliases.length)continue;
+ importedHistoricalArticles.push({
+  name:item.title,aliases,
+  from:item.from,to:item.to,
+  capital:item.capital??"Не указана в справочном источнике",
+  summary:item.description.length>=60?item.description:
+   item.description+" "+item.change,
+  turn:item.change,
+  article:item.title,
+  sourceUrl:item.sourceUrl
+ });
+}
+export const historicalArticles:HistoricalArticle[]=[
+ ...editorialHistoricalArticles,...importedHistoricalArticles
+];
 export function findHistoricalArticle(rawName:string,year:number):HistoricalArticle|undefined{
  const key=normalizeHistoricalName(rawName);
  return historicalArticles.find(entry=>year>=entry.from&&year<=entry.to&&
@@ -565,4 +600,4 @@ export function historicalRussianName(rawName:string,year:number):string|undefin
  return findHistoricalArticle(rawName,year)?.name;
 }
 export const historyArticleUrl=(article:HistoricalArticle)=>
- "https://ru.wikipedia.org/wiki/"+encodeURIComponent(article.article);
+ article.sourceUrl??"https://ru.wikipedia.org/wiki/"+encodeURIComponent(article.article);
