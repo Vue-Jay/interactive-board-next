@@ -69,6 +69,63 @@ export function labNaClSolubilityGPer100gWater(tempC:number):number|undefined{
  }
  return 100*w/(1-w);
 }
+/** Single-salt binary water saturation, grams of ANHYDROUS solute / 100 g
+ * of pure water. These are measured/reference tabulations for 0–100°C, not
+ * precipitation reaction Ksp values or constants for ionic mixtures.
+ * KNO3: Australian Council for Educational Research chemistry test bank
+ *   https://files.eric.ed.gov/fulltext/ED224819.pdf (p. 96)
+ * KCl and NaNO3: Merck/Millipore water solubility compilation
+ *   https://www.merckmillipore.com/KE/en/support/calculators-and-apps/solubility-table-compounds-water-temperature
+ * KCl, NaNO3: independent reference tabulation
+ *   https://tools.moldchem.com/solubility
+ * No extrapolation above 100°C, and no hydration assumptions.
+ */
+export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
+ Record<string,readonly number[]>>=Object.freeze({
+ KNO3:[13.3,31.6,63.9,110,169,246],
+ KCl:[28,34,40,45.5,51.1,56.7],
+ NaNO3:[73,88,104,124,148,180]
+});
+export const LAB_SALT_SOLUBILITY_TEMPERATURES_C=[0,20,40,60,80,100] as const;
+export function labSingleSaltSolubilityGPer100gWater(
+ formula:string,tempC:number):number|undefined{
+ if(formula==="NaCl")return labNaClSolubilityGPer100gWater(tempC);
+ const data=LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[formula];
+ if(!data||!Number.isFinite(tempC)||tempC<0||tempC>100)return;
+ if(tempC===100)return data[data.length-1];
+ for(let i=1;i<LAB_SALT_SOLUBILITY_TEMPERATURES_C.length;i++){
+  const low=LAB_SALT_SOLUBILITY_TEMPERATURES_C[i-1];
+  const high=LAB_SALT_SOLUBILITY_TEMPERATURES_C[i];
+  if(tempC<=high)return data[i-1]+(data[i]-data[i-1])*(tempC-low)/(high-low);
+ }
+}
+/** Phase fractions for EXACTLY one supported anhydrous crystalline salt
+ * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
+ * with unspecified solvent, and hydrates require a different equilibrium
+ * system. Total salt molecule count is never changed by crystallisation. */
+export function labEquilibrateSingleSaltCrystals(
+ inventory:{speciesMol:Record<string,number>;solidMol:Record<string,number>},
+ temperatureC:number,hasPureWaterStock:boolean
+):string|undefined{
+ if(!hasPureWaterStock)return;
+ const keys=Object.entries(inventory.speciesMol).filter(([,n])=>n>1e-12)
+  .map(([id])=>id);
+ const nonWater=keys.filter(id=>id!=="H2O");
+ if(nonWater.length!==1||keys.some(id=>id!=="H2O"&&id!==nonWater[0]))return;
+ const salt=nonWater[0],mol=inventory.speciesMol[salt];
+ const solubility=labSingleSaltSolubilityGPer100gWater(salt,temperatureC);
+ if(solubility===undefined)return;
+ const waterMass=(inventory.speciesMol.H2O??0)*18.01528;
+ const molarMass:Record<string,number>={
+  NaCl:58.44277,KNO3:101.1032,KCl:74.5513,NaNO3:84.9947
+ };
+ const capacityMol=waterMass*solubility/100/molarMass[salt];
+ const crystals=Math.max(0,mol-Math.max(0,capacityMol));
+ if(crystals>1e-12)inventory.solidMol[salt]=crystals;
+ else delete inventory.solidMol[salt];
+ return salt;
+}
+
 /** Only binary NaCl + explicitly present pure H2O can be crystallised
  * using these data. All original molecules remain in speciesMol; solidMol
  * records only the portion in the separate crystalline phase.
@@ -77,19 +134,6 @@ export function labEquilibrateNaClCrystals(
  inventory:{speciesMol:Record<string,number>;solidMol:Record<string,number>},
  temperatureC:number,hasPureWaterStock:boolean
 ):boolean{
- if(!hasPureWaterStock)return false;
- const keys=Object.entries(inventory.speciesMol).filter(([,n])=>n>1e-12)
-  .map(([id])=>id);
- if(keys.some(id=>id!=="NaCl"&&id!=="H2O"))return false;
- const saltMol=inventory.speciesMol.NaCl??0;
- if(saltMol<=0)return false;
- const dissolvedCapacity=labNaClSolubilityGPer100gWater(temperatureC);
- if(dissolvedCapacity===undefined)return false;
- const waterMol=inventory.speciesMol.H2O??0;
- const waterMassG=waterMol*18.01528;
- const saltCapacityMol=waterMassG*dissolvedCapacity/100/58.44277;
- const crystalMol=Math.max(0,saltMol-Math.max(0,saltCapacityMol));
- if(crystalMol>1e-12)inventory.solidMol.NaCl=crystalMol;
- else delete inventory.solidMol.NaCl;
- return true;
+ return labEquilibrateSingleSaltCrystals(inventory,
+  temperatureC,hasPureWaterStock)==="NaCl";
 }
