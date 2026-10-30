@@ -98,6 +98,21 @@ const physical:Record<string,LabThermalRecord>={
  // https://pubchem.ncbi.nlm.nih.gov/compound/253877 (KBr)
  // https://pubchem.ncbi.nlm.nih.gov/compound/3084026 (SrSO4)
  // https://pubchem.ncbi.nlm.nih.gov/compound/24507 (K2SO4)
+ // PubChem / CRC, pure ANHYDROUS crystals at ordinary pressure.
+ // LiCl 610 °C melting; sources disagree on high-T boiling, omit it:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/433294
+ LiCl:{meltingC:610,note:"Температура для безводного хлорида лития, не гидрата."},
+ // NaBr 755 °C (Merck) / 747 °C (DOE PAC); selected Merck datum:
+ // https://pubchem.ncbi.nlm.nih.gov/compound/253881
+ NaBr:{meltingC:755,boilingC:1390},
+ // AgI 552 °C (Merck) and 1506 °C boiling (CRC):
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24563
+ AgI:{meltingC:552,boilingC:1506},
+ // Barium nitrate near 590 °C melts and decomposes when heated; no
+ // stable normal-pressure boiling point should ever be fabricated.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/24798
+ "Ba(NO3)2":{meltingC:590,decompositionC:590,behavior:"decomposes",
+  note:"Нитрат бария при сильном нагревании разлагается; это не кипение."},
  AgCl:{meltingC:455,boilingC:1547},
  NaF:{meltingC:993,boilingC:1700},
  KI:{meltingC:681},
