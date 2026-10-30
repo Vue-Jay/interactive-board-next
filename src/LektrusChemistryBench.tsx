@@ -340,7 +340,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
     title={"Учебная оценка теплового эффекта, не показание реального термометра"}>
     {vessel.reactionHeat.direction==="exothermic"?"↑ Нагрев":"↓ Охлаждение"}
    </span>}
-  {(volumeMl>1e-9||contents.solid.length>0)&&
+  {details&&(volumeMl>1e-9||contents.solid.length>0)&&
    <div className={"lektrus-lab-quantity-meter"+(details?" has-composition":"")+
      (details&&readoutLeft?" is-reversed":"")}
     aria-label="Количество раствора и твёрдых веществ">
@@ -381,7 +381,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
       </span>}
      </div>}
    </div>}
-  {showLabels&&!details&&(volumeMl>1e-9||contents.solid.length>0)&&<span className="lektrus-lab-content-tag"
+  {showLabels&&details&&(volumeMl>1e-9||contents.solid.length>0)&&<span className="lektrus-lab-content-tag"
    title={labels.length?labels.map((formula,i)=>{
     const dose=amounts?undefined:vessel.doses?.[vessel.reagents[i]];
     const mol=amounts?species[i]?.[1]:undefined;
@@ -1062,8 +1062,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
   aria-label="Интерактивный химический стол с шкафами и раковиной"
   onPointerDown={e=>{
    if(!editable||e.button!==0||!e.isPrimary)return;
-   // Apparatus and cabinetry keep their own gestures; only bare table
-   // pixels dismiss vessel selection.
+   // Apparatus and cabinetry own their gestures. An empty worktop tap
+   // dismisses BOTH locally focused equipment and persisted vessel selection.
+   // Do not interpret bare wall/header taps as deselection.
    if((e.target as HTMLElement).closest("[data-board-interactive]"))return;
    const p=point(e);
    if(pendingGlassware){
@@ -1071,9 +1072,12 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
     e.preventDefault();e.stopPropagation();take(pendingGlassware,p);
     return;
    }
-   if(!bench.selectedId&&!vesselMenuId)return;
-   e.stopPropagation();setVesselMenuId(null);setActiveDeviceId(null);
-   onSelect?.("");
+   if(!p||p.y<42||p.y>99)return;
+   if(!bench.selectedId&&!vesselMenuId&&!activeDeviceId)return;
+   e.stopPropagation();
+   setVesselMenuId(null);
+   setActiveDeviceId(null);
+   if(bench.selectedId)onSelect?.("");
   }}>
   <div className="lektrus-lab-bench-backdrop" aria-hidden="true">
    <div className="lektrus-lab-back-shelf"/>
