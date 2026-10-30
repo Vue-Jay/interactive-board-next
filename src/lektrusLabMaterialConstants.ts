@@ -6,6 +6,9 @@
  * Sources:
  * NaCl crystal and saturated mass fractions: EN 14805:2022 §4.3 (CEN)
  *   https://standards.iteh.ai/catalog/standards/sist/15e8dc0b-cb2d-4139-b47a-b7e4cd02ad7c/sist-en-14805-2022
+ * 100–125°C brine: Potter, Babcock & Brown (1977), U.S. Geological Survey,
+ * measured fit for saturated NaCl:
+ *   https://pubs.usgs.gov/publication/70233561
  * AgCl/AgBr/AgNO3: Environment and Climate Change Canada, Silver Group:
  *   https://www.canada.ca/en/environment-climate-change/services/evaluating-existing-substances/draft-screening-assessment-silver-compounds.html
  * KCl, KNO3, NaNO3, NaHCO3, KBr: US NIH PubChem experimental density
@@ -45,7 +48,15 @@ export const LAB_NACL_SATURATION_MASS_FRACTION=[
  {temperatureC:100,massFraction:.2812}
 ] as const;
 export function labNaClSolubilityGPer100gWater(tempC:number):number|undefined{
- if(!Number.isFinite(tempC)||tempC<0||tempC>100)return;
+ if(!Number.isFinite(tempC)||tempC<0||tempC>125)return;
+ if(tempC>100){
+  // USGS 1977 mass-% regression (NaCl–H2O at liquid-vapor equilibrium).
+  // This empirical fit was checked against elevated-temperature data,
+  // unlike an invented linear extrapolation from 20–100°C.
+  const weightPercent=26.218+.0072*tempC+.000106*tempC**2;
+  const fraction=weightPercent/100;
+  return 100*fraction/(1-fraction);
+ }
  const pts=LAB_NACL_SATURATION_MASS_FRACTION;
  let w:number=pts[pts.length-1].massFraction;
  for(let i=1;i<pts.length;i++){
