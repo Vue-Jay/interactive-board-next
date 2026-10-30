@@ -2,12 +2,12 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,fillLabVolumetricFlask,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,fillLabVolumetricFlask,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
 import {labThermalInfo,labVesselThermal,labThermalState} from "./lektrusLabPhysicalProperties";
-import {labCanStopper,labVaporPressureKPa,labIdealBoilingC,labEvaporate} from "./lektrusLabEvaporation";
+import {labCanStopper,labVaporPressureKPa,labIdealBoilingC} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
 import {labMolarMass} from "./lektrusLabStoichiometry";
@@ -115,6 +115,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const inventory=vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
   simulateLabInventory(vessel):undefined;
  const mostRecentEquation=inventory?.steps[inventory.steps.length-1]?.equation;
+ const retainedGasTotal=Object.values(inventory?.retainedGasMol??{}).reduce((s,n)=>s+n,0);
  const recentCase=mostRecentEquation?
   reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
  const visualCase=recentCase??vessel.completedReaction??verified;
@@ -210,6 +211,12 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
       cx={27+(i*17)%46} cy={Math.max(73,115-46*renderedSolidFraction)+(i*13)%(Math.max(3,42*renderedSolidFraction))} r={1.2+i%3*.7}
       fill={color} stroke="#526962" strokeOpacity=".28"/>)}
     </>}
+    {vessel.stoppered&&retainedGasTotal>1e-12&&
+     <g className="lektrus-lab-retained-gas" aria-label="Газ удерживается пробкой">
+      {Array.from({length:8},(_,i)=><circle key={"retained"+i}
+       cx={35+(i*11)%34} cy={29+(i*17)%36} r={1.5+i%3}
+       fill="#bbecf3" fillOpacity=".48" stroke="#7fbfc4" strokeWidth=".4"/>)}
+     </g>}
     {labels.length>0&&singlePhase==="gas"&&<>
      <path d={geo.inside} fill={color} opacity=".17"/>
      {Array.from({length:9},(_,i)=><circle key={"gascloud"+i}
@@ -1554,7 +1561,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
    const v=bench.vessels.find(x=>x.id===compositionId);
    if(!v)return null;
    const composition=labVesselContents(v),quantity=labVesselQuantity(v);
-   const vaporReading=labEvaporate(v,0,v.temperatureC??22);
+   const vaporReading=labVesselPressure(v);
    const boilingEstimate=labIdealBoilingC(v);
    const inventory=v.doses&&!v.filteredResidue&&!v.filteredSolution?
     simulateLabInventory(v):undefined;
@@ -1589,6 +1596,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
      <ul>{composition.solution.length?composition.solution.map((s,i)=><li key={i}>{s.formula}: {s.mmol===undefined?"количество не рассчитано":formatted(s.mmol)+" ммоль · "+massOf(s.formula,s.mmol)+(composition.solutionMl>0?" · "+formatted(s.mmol/composition.solutionMl)+" моль/л":"")}</li>):<li>Нет</li>}</ul>
      <strong>Твёрдая фаза и осадок</strong>
      <ul>{composition.solid.length?composition.solid.map((s,i)=><li key={i}>{s.formula}: {s.massG===undefined?"масса не рассчитана":formatted(s.massG)+" г"}</li>):<li>Нет</li>}</ul>
+     {inventory&&Object.keys(inventory.retainedGasMol).length>0&&<>
+      <strong>Газ внутри закрытого сосуда</strong>
+      <ul>{Object.entries(inventory.retainedGasMol).map(([formula,mol])=>
+       <li key={formula}>{formula}: {formatted(mol*1000)} ммоль · {massOf(formula,mol*1000)}</li>)}</ul>
+      <p>Свободное газовое пространство: {formatted(Math.max(1,quantity.capacityMl-quantity.volumeMl))} мл.
+       Давление вычисляется по уравнению идеального газа с учётом воздуха и паров жидкости.</p>
+     </>}
      {inventory&&Object.keys(inventory.releasedGasMol).length>0&&<>
       <strong>Выделившиеся газы</strong>
       <ul>{Object.entries(inventory.releasedGasMol).map(([formula,mol])=>
