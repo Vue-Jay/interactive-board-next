@@ -29,7 +29,9 @@ const network=load("src/lektrusLabReactionNetwork.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
+const waterIonization=load("src/lektrusLabWaterIonization.ts");
 const acidBase=load("src/lektrusLabPH.ts",key=>{
+ if(key==="./lektrusLabWaterIonization")return waterIonization;
  assert.equal(key,"./lektrusLabReactionNetwork");return network;
 });
 const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
@@ -1996,7 +1998,7 @@ const dilution={reagents:["HCl","H2O"],environment:"aqueous",doses:{
  HCl:{value:20,unit:"ml",concentrationM:.1},H2O:{value:20,unit:"ml"}}};
 assert.ok(Math.abs(acidBase.labVesselPH(dilution).pH-1.30)<.02);
 assert.equal(acidBase.labVesselPH({reagents:["NaOH"],environment:"aqueous",
- doses:{NaOH:{value:20,unit:"ml",concentrationM:.1}}}).pH,13);
+ doses:{NaOH:{value:20,unit:"ml",concentrationM:.1}}}).pH,12.99);
 const perfectNeutral={reagents:["HCl","NaOH"],environment:"aqueous",doses:{
  HCl:{value:20,unit:"ml",concentrationM:.1},
  NaOH:{value:20,unit:"ml",concentrationM:.1}}};
@@ -2028,7 +2030,9 @@ phBeaker=lab.setLabIndicator(phBeaker,"v1","phenolphthalein");
 assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).pH,1);
 phBeaker=lab.putLabReagent(phBeaker,"v1","NaOH",
  {value:20,unit:"ml",concentrationM:.1});
-assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).pH,7);
+assert.ok(Math.abs(lab.labIndicatorResult(phBeaker.vessels[0]).pH-
+ waterIonization.labNeutralWaterPH(phBeaker.vessels[0].temperatureC??25))<.015,
+ "Equivalence point follows neutral-water pH at actual vessel temperature");
 assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).color,undefined,
  "Phenolphthalein is colorless at strong acid/base equivalence");
 const phOther=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
@@ -2037,6 +2041,31 @@ assert.equal(acidBase.labVesselPH(phOther.vessels[0]).pH,1);
 assert.match(read("src/LektrusChemistryBench.tsx"),/const ph=labVesselPH\(vessel\)/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-inline-ph/);
 assert.match(read("src/lektrusChemistryBench.css"),/left:calc\(100% \+ 6px\)/);
+/* Temperature-dependent ionization from IAPWS pKw (liquid water). */
+for(const [t,pKw] of [[0,14.95],[25,13.99],[50,13.26],
+ [75,12.70],[100,12.25]]){
+ assert.ok(Math.abs(waterIonization.labWaterPKw(t)-pKw)<1e-9);
+ const neutralPH=waterIonization.labNeutralWaterPH(t);
+ assert.ok(Math.abs(neutralPH-pKw/2)<1e-9);
+ const pure=acidBase.labVesselPH({reagents:["H2O"],environment:"aqueous",
+  temperatureC:t,doses:{H2O:{value:20,unit:"ml"}}});
+ assert.ok(Math.abs(pure.pH-neutralPH)<.008,
+  "Neutral-water pH must track temperature; neutral does not mean pH 7");
+}
+assert.equal(waterIonization.labWaterPKw(-1),undefined);
+assert.equal(waterIonization.labWaterPKw(110),undefined);
+const strongAt50=acidBase.labVesselPH({...perfectNeutral,temperatureC:50});
+assert.ok(Math.abs(strongAt50.pH-6.63)<.02,
+ "Strong acid/base equivalence at 50C reflects water Kw, not pH 7");
+const baseAt50=acidBase.labVesselPH({reagents:["NaOH"],
+ environment:"aqueous",temperatureC:50,
+ doses:{NaOH:{value:20,unit:"ml",concentrationM:.1}}});
+assert.ok(Math.abs(baseAt50.pH-12.26)<.02,
+ "Known strong hydroxide pH must use pKw(T)");
+assert.equal(acidBase.labVesselPH({reagents:["CH3COOH"],environment:"aqueous",
+ temperatureC:60,doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1}}}),null,
+ "Do not invent weak-acid Ka at unverified temperatures");
+assert.equal(acidBase.labVesselPH({...perfectNeutral,temperatureC:110}),null);
 console.log("Measured strong/weak acid-base equilibrium and indicator colours passed");
 
 
