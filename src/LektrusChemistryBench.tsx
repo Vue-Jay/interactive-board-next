@@ -824,12 +824,18 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  };
  const beginShelf=(event:PointerEvent<HTMLButtonElement>,kind:LabGlassware)=>{
   if(!editable||event.button!==0||!event.isPrimary)return;
-  event.stopPropagation();event.preventDefault();
+  event.stopPropagation();
   shelfGesture.current={kind,startX:event.clientX,startY:event.clientY,dragged:false};
-  event.currentTarget.setPointerCapture(event.pointerId);
+  // A touch swipe belongs to the scrollable cupboard. Tap-to-place still
+  // works, while a mouse/pen retains precise drag-and-drop.
+  if(event.pointerType!=="touch"){
+   event.preventDefault();
+   event.currentTarget.setPointerCapture(event.pointerId);
+  }
  };
  const moveShelf=(event:PointerEvent<HTMLButtonElement>)=>{
   const g=shelfGesture.current;if(!g)return;
+  if(event.pointerType==="touch")return;
   event.stopPropagation();const p=point(event);if(!p)return;
   if(Math.hypot(event.clientX-g.startX,event.clientY-g.startY)>7)g.dragged=true;
   if(g.dragged)setShelfGhost({kind:g.kind,x:p.x,y:p.y});
@@ -854,12 +860,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,pouri
  };
  const beginDeviceShelf=(e:PointerEvent<HTMLButtonElement>,kind:LabDevice)=>{
   if(!editable||e.button!==0||!e.isPrimary)return;
-  e.preventDefault();e.stopPropagation();
+  e.stopPropagation();
   deviceShelfGesture.current={kind,startX:e.clientX,startY:e.clientY,dragged:false};
-  e.currentTarget.setPointerCapture(e.pointerId);
+  if(e.pointerType!=="touch"){
+   e.preventDefault();
+   e.currentTarget.setPointerCapture(e.pointerId);
+  }
  };
  const moveDeviceShelf=(e:PointerEvent<HTMLButtonElement>)=>{
   const g=deviceShelfGesture.current;if(!g)return;
+  if(e.pointerType==="touch")return;
   e.stopPropagation();
   const p=point(e);if(!p)return;
   if(Math.hypot(e.clientX-g.startX,e.clientY-g.startY)>7)g.dragged=true;
