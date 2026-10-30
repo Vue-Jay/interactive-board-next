@@ -383,3 +383,215 @@
  top:9px!important;right:9px!important;z-index:601!important;
  width:40px!important;height:40px!important;
 }
+
+/* 2026-10-30: real furniture shelves rather than narrow tile wallpaper.
+   Use one-line names and scroll vertically; no label will split mid-word. */
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-bottle-rack{
+ background-image:linear-gradient(to bottom,transparent 0 83%,#8cae9a 84% 89%,#eff8ef 90% 100%)!important;
+ background-size:100% 33.3333%!important;
+ background-repeat:repeat-y!important;
+ padding:2px 6px 3px!important;
+ align-items:stretch!important;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-quick-bottle{
+ display:grid!important;
+ grid-template-rows:minmax(0,1fr) 11px 11px!important;
+ justify-items:center!important;align-items:end!important;
+ gap:1px!important;padding:2px 1px 5px!important;
+ background:transparent!important;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-quick-bottle>i{
+ width:clamp(17px,1.65cqw,25px)!important;
+ height:clamp(22px,2.1cqw,33px)!important;
+ align-self:end!important;margin-bottom:1px!important;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-quick-bottle strong,
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-quick-bottle small{
+ display:block!important;width:100%!important;
+ max-width:100%!important;overflow:hidden!important;
+ text-overflow:ellipsis!important;white-space:nowrap!important;
+ line-height:11px!important;text-align:center!important;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-quick-bottle strong{
+ font-size:10px!important;font-weight:800!important;
+}
+.lektrus-lab-bench .lektrus-lab-reagent-furniture .lektrus-lab-quick-phase{
+ display:none!important;
+}
+.lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-items,
+.lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-items:is(.is-count-5,.is-count-6){
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ grid-template-rows:repeat(4,minmax(43px,1fr))!important;
+ grid-auto-rows:minmax(43px,1fr)!important;
+ align-content:start!important;gap:3px!important;
+}
+.lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item{
+ display:grid!important;
+ grid-template-columns:30px minmax(0,1fr)!important;
+ grid-template-rows:minmax(0,1fr)!important;
+ height:auto!important;min-height:43px!important;
+ padding:4px 6px!important;gap:4px!important;
+ border-radius:7px!important;
+}
+.lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item .lektrus-lab-ware-icon{
+ width:29px!important;height:32px!important;max-height:100%!important;
+}
+.lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item small{
+ align-self:center!important;
+ font:750 clamp(9px,.80cqw,11px)/1.1 system-ui,sans-serif!important;
+ white-space:nowrap!important;overflow:hidden!important;
+ text-overflow:ellipsis!important;hyphens:none!important;
+ overflow-wrap:normal!important;word-break:normal!important;
+ text-align:left!important;
+}
+.lektrus-lab-bench .lektrus-lab-device-cupboard-shelf{
+ grid-template-columns:1fr!important;
+ grid-template-rows:repeat(5,minmax(40px,1fr))!important;
+ grid-auto-rows:minmax(40px,1fr)!important;
+ gap:4px!important;
+}
+.lektrus-lab-bench .lektrus-lab-device-cupboard-shelf button{
+ display:grid!important;grid-template-columns:30px minmax(0,1fr)!important;
+ grid-template-rows:minmax(0,1fr)!important;
+ gap:4px!important;padding:3px 5px!important;
+ height:auto!important;min-height:40px!important;
+}
+.lektrus-lab-bench .lektrus-lab-device-cupboard-shelf button .lektrus-lab-device-icon{
+ width:29px!important;height:30px!important;max-height:100%!important;
+}
+.lektrus-lab-bench .lektrus-lab-device-cupboard-shelf button small{
+ font:750 clamp(9px,.78cqw,11px)/1.08 system-ui,sans-serif!important;
+ white-space:nowrap!important;overflow:hidden!important;
+ text-overflow:ellipsis!important;hyphens:none!important;
+ overflow-wrap:normal!important;word-break:normal!important;
+ text-align:left!important;
+}
+/* Clear the upper corners of the writing board: writing switch left,
+   linen chalk eraser right. Both are large enough to tap individually. */
+.lektrus-lab-bench .lektrus-lab-chalkboard .lektrus-lab-board-write-toggle{
+ position:absolute!important;left:8px!important;right:auto!important;top:7px!important;
+ z-index:16!important;min-height:29px!important;
+ max-width:calc(100% - 66px)!important;padding:4px 9px!important;
+ border:1px solid #9cbd9e!important;border-radius:8px!important;
+ background:#34624e!important;color:#ebf5ed!important;
+ box-shadow:0 2px 5px #0c2d2499!important;
+ font-size:11px!important;
+}
+.lektrus-lab-bench .lektrus-lab-chalkboard .lektrus-lab-board-write-toggle.is-active{
+ background:#b4e2c6!important;color:#194633!important;
+}
+.lektrus-lab-bench .lektrus-lab-chalkboard .lektrus-lab-chalk-wipe{
+ position:absolute!important;right:8px!important;left:auto!important;top:6px!important;
+ z-index:17!important;width:39px!important;height:32px!important;
+ display:grid!important;place-items:center!important;
+ padding:3px!important;border:1px solid #a9c6b3!important;
+ border-radius:8px!important;background:linear-gradient(150deg,#edf5e9,#d2e5d9)!important;
+ box-shadow:0 2px 6px #0b2c2480,inset 0 1px #fff!important;
+}
+.lektrus-lab-bench .lektrus-lab-chalkboard .lektrus-lab-chalk-wipe:hover:not(:disabled){
+ filter:brightness(1.08)!important;
+}
+.lektrus-lab-bench .lektrus-lab-chalkboard .lektrus-lab-chalk-writing{
+ padding-top:37px!important;
+}
+.lektrus-lab-bench .lektrus-lab-selected-vessel-actions{
+ display:flex!important;flex:0 1 auto!important;min-width:0!important;
+ align-items:center!important;gap:5px!important;
+}
+.lektrus-lab-bench .lektrus-lab-selected-controls{
+ display:flex!important;align-items:center!important;gap:5px!important;min-width:0!important;
+}
+.lektrus-lab-bench .lektrus-lab-selected-controls button{
+ display:inline-flex!important;align-items:center!important;gap:5px!important;
+ padding:5px 8px!important;min-height:29px!important;
+ border:1px solid #83baa2!important;border-radius:8px!important;
+ background:#e9f6ed!important;color:#2b7055!important;
+ font:750 11px/1.1 system-ui,sans-serif!important;
+ white-space:nowrap!important;cursor:pointer!important;
+}
+.lektrus-lab-bench .lektrus-lab-stopper-action.is-sealed{
+ background:#f2e4cf!important;border-color:#c4a783!important;color:#775638!important;
+}
+/* The amount badges sit CLEAR of the glass outline and remain next to it
+   even if the vessel turns toward the screen's right edge. */
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+ left:calc(100% + 30px)!important;right:auto!important;
+ width:142px!important;max-width:142px!important;bottom:22%!important;
+}
+.lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed{
+ left:auto!important;right:calc(100% + 30px)!important;
+}
+@container(max-width:1000px){
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition{
+  left:calc(100% + 18px)!important;width:120px!important;max-width:120px!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-quantity-meter.has-composition.is-reversed{
+  left:auto!important;right:calc(100% + 18px)!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-selected-controls button{
+  font-size:10px!important;padding:4px!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-device-cupboard-shelf button small,
+ .lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item small{
+  font-size:9px!important;
+ }
+}
+@container(max-width:650px){
+ .lektrus-lab-bench .lektrus-lab-selected-vessel-actions{
+  position:absolute!important;top:calc(100% + 5px)!important;
+  right:3%!important;background:#eef8eeef!important;
+  border:1px solid #b0d1b5!important;border-radius:8px!important;
+  padding:3px!important;z-index:26!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-items{
+  grid-template-columns:1fr!important;
+  grid-template-rows:none!important;grid-auto-rows:minmax(35px,auto)!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item{
+  min-height:35px!important;height:auto!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-chalkboard .lektrus-lab-board-write-toggle span:last-child{
+  display:none!important;
+ }
+}
+
+
+/* Gentle, non-interactive vapor from OPEN containers. The number of traces
+   is illustrative; conserved liquid losses are calculated in the model. */
+.lektrus-lab-bench .lektrus-lab-vapor-plume{
+ position:absolute!important;z-index:14!important;
+ left:50%!important;top:1%!important;width:52px!important;
+ height:48px!important;transform:translate(-50%,-75%)!important;
+ overflow:visible!important;pointer-events:none!important;
+}
+.lektrus-lab-bench .lektrus-lab-vapor-plume>span{
+ position:absolute;bottom:0;left:33%;width:8px;height:27px;
+ border-left:2.5px solid #93c8cfaa;border-radius:50%;
+ opacity:0;filter:blur(1px);
+ animation:lektrus-lab-vapor-rise 2.8s ease-out infinite;
+}
+.lektrus-lab-bench .lektrus-lab-vapor-plume>span:nth-child(2){
+ left:51%;height:21px;animation-delay:.82s;
+}
+.lektrus-lab-bench .lektrus-lab-vapor-plume>span:nth-child(3){
+ left:18%;height:24px;animation-delay:1.73s;
+}
+@keyframes lektrus-lab-vapor-rise{
+ 0%{opacity:0;transform:translate(0,5px) scale(.65)}
+ 25%{opacity:.8}
+ 80%{opacity:.3}
+ 100%{opacity:0;transform:translate(9px,-25px) scale(1.8)}
+}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench .lektrus-lab-vapor-plume>span{
+  animation:none!important;opacity:.35!important;
+ }
+}
+
+/* Indicator vial names share the same no-wrap furniture convention. */
+.lektrus-lab-bench .lektrus-lab-indicator-shelf button>span{
+ width:100%!important;min-width:0!important;
+ white-space:nowrap!important;overflow:hidden!important;
+ text-overflow:ellipsis!important;overflow-wrap:normal!important;
+ font:750 clamp(7px,.59cqw,9px)/1.1 system-ui,sans-serif!important;
+}

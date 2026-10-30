@@ -2,6 +2,7 @@ import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
+import {labEvaporate,labCanStopper,labApproxWaterBoilingC} from "./lektrusLabEvaporation";
 import {startQuantifiedLabReaction,advanceQuantifiedLabReaction,parseBalancedLabEquation,labMolarMass,labDoseMoles,type LabReactionAmounts}
  from "./lektrusLabStoichiometry";
 import {labDisplayPoint,labLogicalPoint,labMountedGlasswarePoint,labStandBaseVesselPoint} from "./lektrusLabLayout";
@@ -401,34 +402,33 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
     next=point;
    }
   }
-  // Only a measured, single, neat liquid is assigned its verified boiling
-  // temperature. Mixed liquids and prepared solutions receive no bubbles.
-  const boilingPoint=pure?.unit==="ml"?pure.info.boilingC:undefined;
-  if(boilingPoint!==undefined&&next>boilingPoint)next=boilingPoint;
+  // Verified pure liquids receive a boiling plateau. Neat mixtures get
+  // ideal Raoult vapor pressures; stock solvents with unrecorded composition
+  // must never be assigned a fictitious boiling point.
+  const boilingPoint=pure?.unit==="ml"?pure.info.boilingC:
+   labApproxWaterBoilingC(v.doses);
+  if(boilingPoint!==undefined&&next>boilingPoint&&!v.stoppered)next=boilingPoint;
+  const phase=labEvaporate(v,seconds,next,toward);
+  const evaporating=phase.evaporatedMl>0,popped=phase.popped;
   const dissolutionComplete=v.physicalProcess==="dissolving"&&
    v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500;
   const cooling=!device?.powered&&next<42&&v.temperatureC!==undefined&&
    ["heated","ignited"].includes(v.environment);
-  const boiling=!!device?.powered&&boilingPoint!==undefined&&
-   next>=boilingPoint-.5;
-  const neatDose=pure?v.doses?.[pure.id]:undefined;
-  // Illustrative small-scale evaporation, never inferred for arbitrary mixtures.
-  const remaining=boiling&&neatDose?Math.max(0,
-   Math.round((neatDose.value-seconds*.02)*100)/100):neatDose?.value;
-  const evaporating=boiling&&remaining!==neatDose?.value;
   const phaseChanged=meltFraction!==(v.meltFraction??0)||
    phaseTransition!==v.phaseTransition;
-  if(next!==old||cooling||evaporating||dissolutionComplete||phaseChanged)changed=true;
-  if(next===old&&!cooling&&!evaporating&&!dissolutionComplete&&!phaseChanged)return v;
-  const hasLiquid=Object.entries(v.doses??{}).some(([id,d])=>d.unit==="ml"&&
+  if(next!==old||cooling||evaporating||popped||dissolutionComplete||phaseChanged)changed=true;
+  if(next===old&&!cooling&&!evaporating&&!popped&&!dissolutionComplete&&!phaseChanged)return v;
+  const doses=evaporating?phase.doses:v.doses;
+  const reagents=evaporating?v.reagents.filter(id=>!v.doses?.[id]||doses?.[id]):v.reagents;
+  const hasLiquid=Object.entries(doses??{}).some(([id,d])=>d.unit==="ml"&&
    substances.find(s=>s.id===id)?.kind!=="газ");
   return {...v,temperatureC:next,
    ...(phaseChanged?{meltFraction,phaseTransition}:{}),
    ...(dissolutionComplete?{physicalProcess:undefined,physicalStartedAtMs:undefined}:{}),
-   ...(evaporating&&pure&&neatDose?{
-    doses:(remaining??0)>0?{[pure.id]:{...neatDose,value:remaining!}}:undefined,
-    reagents:(remaining??0)>0?v.reagents:[],observed:false}:{}),
-   environment:evaporating&&remaining===0?"dry":
+   ...(evaporating?{doses,reagents,observed:reagents.length>1,
+    ventedVaporMl:phase.ventedVaporMl}:{}),
+   ...(popped?{stoppered:false}:{}),
+   environment:evaporating&&reagents.length===0?"dry":
     cooling?(hasLiquid?"aqueous":"dry"):v.environment};
  });
  result={...result,vessels};
@@ -601,6 +601,7 @@ export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,req
   !labTitrationTargets(bench,sourceId).some(v=>v.id===targetId))return bench;
  const src=bench.vessels.find(v=>v.id===sourceId)!;
  const dst=bench.vessels.find(v=>v.id===targetId)!;
+ if(src.stoppered||dst.stoppered)return bench;
  const titrant=src.reagents[0],sourceDose=src.doses![titrant];
  const isAcid=titrationAcids.some(id=>id===titrant);
  const analyte=dst.reagents.find(id=>isAcid?
@@ -695,6 +696,10 @@ export type LabVessel={pourFraction?:number;
  indicatorDrops?:number;indicatorAddedAtMs?:number;
  temperatureC?:number;
  reactionHeat?:LabReactionHeat;
+ /** Reusable cork for suitable laboratory necks. */
+ stoppered?:boolean;
+ /** Measured liquid volumes vented to the room as vapor. */
+ ventedVaporMl?:Record<string,number>;
  /** 0 = solid, 1 = fully molten. Conserved across viewers and cooling. */
  meltFraction?:number;
  phaseTransition?:"melting"|"crystallizing";
@@ -1137,8 +1142,12 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
   titrationPair:bench.titrationPair&&(bench.titrationPair.sourceId===id||bench.titrationPair.targetId===id)?
    undefined:bench.titrationPair};
 }
+export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):LabBench{
+ return revise(bench,id,v=>labCanStopper(v.kind)&&!!v.stoppered!==stoppered?
+  {...v,stoppered}:v);
+}
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -1150,7 +1159,7 @@ export function setLabIndicator(bench:LabBench,id:string,indicator:LabIndicator|
  // Testing an empty/dry vessel is invalid. Only solutions receive drops;
  // the universal paper stays a separate test strip and never colors the bulk.
  const target=bench.vessels.find(v=>v.id===id&&v.reagents.length);
- if(!target||!indicator&&target.indicator==null)return bench;
+ if(!target||target.stoppered||!indicator&&target.indicator==null)return bench;
  if(indicator&&!(labVesselQuantity(target).volumeMl>0||!target.doses&&
   target.environment==="aqueous"))return bench;
  if(indicator&&target.indicator===indicator&&indicator==="universal")return bench;
@@ -1213,7 +1222,7 @@ export const LAB_WATER_SOLUTES=new Set([
  "C12H22O11","C6H12O6"
 ]);
 export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabDose):LabBench{
- if(!bench.vessels.some(v=>v.id===id))return bench;
+ if(!bench.vessels.some(v=>v.id===id&&!v.stoppered))return bench;
  // Legacy callsites and presets receive a REAL, explicit stock dose.
  // Never create a reagent name without material quantity / concentration.
  const stock=dose??labDefaultStockDose(reagent);
@@ -1316,7 +1325,7 @@ export function transferLabMeasuredLiquid(
   Math.abs(volumeMl*100-Math.round(volumeMl*100))>1e-6)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||!target||!source.reagents.length)return bench;
+ if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
  const entries=source.reagents.map(id=>({id,dose:source.doses?.[id]}));
  if(entries.some(e=>!e.dose||e.dose.unit!=="ml"||e.dose.value<=0))return bench;
  const amounts=entries.map(e=>Math.round(e.dose!.value*100));
@@ -1538,7 +1547,7 @@ export function activateLabVessel(bench:LabBench,id:string):LabBench{
 export function startLabPour(b:LabBench,sourceId:string,targetId:string,id:string):LabBench{
  if(!id||sourceId===targetId||(b.pouring&&b.pouring.step<20))return b;
  const a=b.vessels.find(v=>v.id===sourceId),t=b.vessels.find(v=>v.id===targetId);
- if(!a||!t||!a.reagents.length||
+ if(!a||!t||!a.reagents.length||a.stoppered||t.stoppered||
   [...new Set([...a.reagents,...t.reagents])].length>MAX_VESSEL_REAGENTS)return b;
  const initialDoses={...a.doses};
  const volume=labVesselQuantity(a).volumeMl;
@@ -1624,7 +1633,7 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  if(sourceId===targetId)return bench;
  const source=bench.vessels.find(v=>v.id===sourceId);
  const target=bench.vessels.find(v=>v.id===targetId);
- if(!source||!target||!source.reagents.length)return bench;
+ if(!source||!target||!source.reagents.length||source.stoppered||target.stoppered)return bench;
  const reagents=[...new Set([...target.reagents,...source.reagents])];
  if(reagents.length>MAX_VESSEL_REAGENTS)return bench;
  const volume=labVesselQuantity(source).volumeMl+labVesselQuantity(target).volumeMl;

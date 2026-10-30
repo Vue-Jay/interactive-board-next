@@ -922,6 +922,14 @@ export function parseDocument(raw: string): DocumentData {
             new Set(v.reagents).size===v.reagents.length&&
             environments.includes(v.environment)&&typeof v.observed==="boolean"&&
             (v.uncertain==null||typeof v.uncertain==="boolean")&&
+            (v.stoppered==null||(typeof v.stoppered==="boolean"&&
+             (!v.stoppered||["tube","flask","conical","volumetric"].includes(v.kind))))&&
+            (v.ventedVaporMl==null||(!!v.ventedVaporMl&&
+             typeof v.ventedVaporMl==="object"&&!Array.isArray(v.ventedVaporMl)&&
+             Object.keys(v.ventedVaporMl).length<=5&&
+             Object.entries(v.ventedVaporMl).every(([formula,ml])=>
+              ["H2O","C2H5OH","CH3OH","C3H8O","Br2"].includes(formula)&&
+              typeof ml==="number"&&Number.isFinite(ml)&&ml>=0&&ml<=10000)))&&
             (v.indicator==null||indicators.includes(v.indicator))&&
             (v.indicatorDrops==null||(Number.isSafeInteger(v.indicatorDrops)&&
              v.indicatorDrops>=1&&v.indicatorDrops<=6&&

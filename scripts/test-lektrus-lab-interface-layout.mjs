@@ -51,7 +51,27 @@ assert.match(markup,/lektrus-lab-board-write-toggle/,
  "Reaction board has two live writing states");
 assert.match(markup,/className=\{"lektrus-lab-quantity-meter"/,
  "Quantity details stay with vessel on the tabletop");
-assert.match(markup,/title="Полный состав сосуда"/);
+assert.match(markup,/className="lektrus-lab-composition-action"/,
+ "Full composition is accessible only from the selected-vessel control");
+assert.doesNotMatch(markup,/ⓘ/,"No floating info badge near glassware");
+assert.match(markup,/className=\{"lektrus-lab-stopper-action"/,
+ "Stopper is a selected-vessel action, not an arbitrary decoration");
+assert.match(markup,/lektrus-lab-physical-stopper/,
+ "Sealed flask needs visible cork in the shared scene");
+assert.match(markup,/lektrus-lab-vapor-plume/,
+ "Open volatile liquids must display vapor");
+const shelfLayouts=css.slice(css.indexOf("2026-10-30: real furniture shelves"));
+assert.match(shelfLayouts,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)!important/,
+ "Glassware has two wide columns, so long names do not break");
+assert.match(shelfLayouts,/grid-template-columns:1fr!important/,
+ "Equipment uses spacious single-column rows");
+assert.match(shelfLayouts,/white-space:nowrap!important/,
+ "Cabinets use no-wrap single-line text");
+assert.match(shelfLayouts,/chalk-wipe[\s\S]*?right:8px!important/,
+ "The cloth must remain on the right side of the blackboard");
+assert.match(shelfLayouts,/board-write-toggle[\s\S]*?left:8px!important/,
+ "Writing mode switch must remain on the opposite side");
+
 assert.doesNotMatch(markup,/className="lektrus-lab-worktop-actions"/,
  "No floating toolbar above experiments");
 assert.match(editor,/className="lektrus-lab-editor-exit"/);

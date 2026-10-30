@@ -24,6 +24,7 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
+const vapor=load("src/lektrusLabEvaporation.ts");
 const network=load("src/lektrusLabReactionNetwork.ts",key=>{
  if(key==="./lektrusLabStoichiometry")return chem;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
@@ -36,6 +37,7 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabLayout")return layout;
  if(key==="./lektrusLabStoichiometry")return chem;
  if(key==="./lektrusLabPhysicalProperties")return thermal;
+ if(key==="./lektrusLabEvaporation")return vapor;
  if(key==="./lektrusLabPH")return acidBase;
  if(key==="./lektrusLabReactionNetwork")return network;
  if(key==="./lektrusLabCatalog")return catalog;
@@ -2165,3 +2167,49 @@ for(const required of ["H2O","HCl","H2SO4","NaOH","AgNO3","NaCl",
 }
 assert.ok(lab.defaultLabQuickReagents().every(x=>x.dose.value>0));
 console.log("AgCl survives dye, dilution, repeat dosing and further chemistry; essentials shelf OK");
+
+/* The precise physical vapor model integrates with the shared bench and
+ * every participant sees a conserved ventilated loss, not local-only FX. */
+const neatBeaker=lab.putLabReagent(lab.defaultLabBench(),"v1","C2H5OH",
+ {unit:"ml",value:20});
+const roomEvap=lab.advanceLabSimulation(
+ lab.advanceLabSimulation(neatBeaker,100000),110000);
+const afterRoom=roomEvap.vessels[0];
+assert.ok(lab.labVesselQuantity(afterRoom).volumeMl<20,
+ "Ethanol evaporates before boiling at room temperature");
+assert.ok((afterRoom.ventedVaporMl?.C2H5OH??0)>0,
+ "Escaped vapor volume is conserved as a persisted ledger");
+const sealed=lab.addLabVessel(neatBeaker,"conical");
+const conical=sealed.vessels.find(v=>v.kind==="conical");
+let corked=lab.putLabReagent(sealed,conical.id,"CH3OH",{unit:"ml",value:10});
+corked=lab.setLabVesselStopper(corked,conical.id,true);
+assert.equal(corked.vessels.find(v=>v.id===conical.id).stoppered,true);
+const sealedBefore=lab.labVesselQuantity(corked.vessels.find(v=>v.id===conical.id)).volumeMl;
+const sealedAfter=lab.advanceLabSimulation(lab.advanceLabSimulation(corked,100000),110000);
+assert.equal(lab.labVesselQuantity(sealedAfter.vessels.find(v=>v.id===conical.id)).volumeMl,sealedBefore,
+ "Cork keeps volatile pure liquid inside at room temperature");
+assert.equal(lab.putLabReagent(corked,conical.id,"H2O"),corked,
+ "Cork prevents dosing through sealed glassware");
+assert.equal(lab.setLabVesselStopper(corked,conical.id,false).vessels.find(v=>v.id===conical.id).stoppered,false);
+const unsupported=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+ {unit:"ml",value:10,concentrationM:.1});
+const unsupportedNext=lab.advanceLabSimulation(lab.advanceLabSimulation(unsupported,100000),110000);
+assert.equal(unsupportedNext.vessels[0].doses.HCl.value,10,
+ "Unknown composition of aqueous stock must not evaporate as a neat acid");
+const nearBoil=vapor.labSaturationPressureKPa("H2O",100);
+assert.ok(nearBoil>95&&nearBoil<110,"Water vapor pressure reaches 1 atm at boiling");
+const atRoom=vapor.labSaturationPressureKPa("H2O",22);
+assert.ok(atRoom>2&&atRoom<4);
+assert.ok(vapor.labSaturationPressureKPa("CH3OH",40)>
+ vapor.labSaturationPressureKPa("CH3OH",22),"Hot alcohol evaporates more readily");
+assert.ok(vapor.labSaturationPressureKPa("Br2",22)>atRoom,
+ "Bromine is much more volatile than water at room temperature");
+assert.ok(vapor.labEvaporate({...corked.vessels.find(v=>v.id===conical.id),
+ temperatureC:90},10,90,180).popped,
+ "Hot sealed alcohol with high vapor pressure releases the rubber cork");
+const savedStopper=structuredClone(persistedLab);
+savedStopper.vessels[0].stoppered=true;
+savedStopper.vessels[0].ventedVaporMl={H2O:.0023,CH3OH:.014};
+assert.equal(parseLab(savedStopper).items[0].scienceLabBench.vessels[0].stoppered,true);
+assert.equal(parseLab(savedStopper).items[0].scienceLabBench.vessels[0].ventedVaporMl.CH3OH,.014);
+console.log("Measured vapor pressure, open evaporation, stoppers and saved gas loss: OK");
