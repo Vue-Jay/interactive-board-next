@@ -119,3 +119,40 @@ const cabinetView=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
 assert.match(cabinetView,/<small>\{kind\.name\}<\/small>/,
  "Every compact icon must retain its visible full-name label");
 console.log("Glassware cupboard compact and expanded layout guards passed");
+
+
+const openGas=simulateLabInventory({
+ reagents:["HCl","NaHCO3"],environment:"aqueous",
+ doses:{HCl:solution(30),NaHCO3:{unit:"g",value:.3}}
+});
+const closedGas=simulateLabInventory({
+ reagents:["HCl","NaHCO3"],environment:"aqueous",stoppered:true,
+ doses:{HCl:solution(30),NaHCO3:{unit:"g",value:.3}}
+});
+assert.ok((openGas.releasedGasMol.CO2??0)>0,
+ "Gas from a reviewed reaction escapes an open flask");
+assert.ok((closedGas.retainedGasMol.CO2??0)>0,
+ "Gas from the SAME balanced reaction stays inside a corked flask");
+assert.equal(closedGas.releasedGasMol.CO2??0,0,
+ "Closed flask must not simultaneously vent reaction gas");
+assert.equal(openGas.retainedGasMol.CO2??0,0);
+approximately(openGas.releasedGasMol.CO2,closedGas.retainedGasMol.CO2,1e-12);
+approximately(labInventoryMassG(openGas),labInventoryMassG(closedGas),1e-8);
+approximately(labInventoryMassG(closedGas),
+ .003*labMolarMass("HCl")+.3,1e-7);
+console.log("Open-vessel CO2 escapes; corked CO2 remains, fully mass-balanced");
+
+
+const catalogue=load("src/lektrusLabCatalog.ts");
+const {substances:allStockReagents}=load("src/lektrusReactionDatabase.ts");
+const {labDoseMoles}=load("src/lektrusLabStoichiometry.ts");
+const unquantifiable=[];
+for(const substance of allStockReagents){
+ const dose=catalogue.labDefaultStockDose(substance.id);
+ const moles=dose?labDoseMoles(substance.id,dose):undefined;
+ if(!dose||!Number.isFinite(moles)||!(moles>0))
+  unquantifiable.push(substance.id);
+}
+assert.deepEqual(unquantifiable,[],
+ "Every reagent offered by the virtual catalog must have an explicit measurable stock quantity");
+console.log("Every catalog stock has measurable material amount, including neat liquids and gases");

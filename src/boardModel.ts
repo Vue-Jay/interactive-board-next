@@ -924,6 +924,9 @@ export function parseDocument(raw: string): DocumentData {
             (v.uncertain==null||typeof v.uncertain==="boolean")&&
             (v.stoppered==null||(typeof v.stoppered==="boolean"&&
              (!v.stoppered||["tube","flask","conical","volumetric"].includes(v.kind))))&&
+            (v.stopperedAtC==null||(typeof v.stopperedAtC==="number"&&
+             Number.isFinite(v.stopperedAtC)&&v.stopperedAtC>=0&&
+             v.stopperedAtC<=1300&&v.stoppered===true))&&
             (v.ventedVaporMl==null||(!!v.ventedVaporMl&&
              typeof v.ventedVaporMl==="object"&&!Array.isArray(v.ventedVaporMl)&&
              Object.keys(v.ventedVaporMl).length<=5&&

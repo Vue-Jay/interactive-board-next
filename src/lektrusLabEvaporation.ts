@@ -53,6 +53,12 @@ export function labSaturationPressureKPa(id:string,tempC:number):number|undefine
 export type LabEvaporationState={
  doses?:Record<string,LabDose>;stoppered?:boolean;kind:string;
  temperatureC?:number;ventedVaporMl?:Record<string,number>;
+ /** Actual temperature when the stopper was put in. */
+ stopperedAtC?:number;
+ /** Explicit gas retained by reviewed equations or measured gas stocks. */
+ reactionGasMol?:number;
+ /** Gas space inside the vessel above the measured liquid level. */
+ headspaceMl?:number;
 };
 const aperture:Record<string,number>={
  beaker:1,tube:.2,flask:.38,conical:.52,volumetric:.19,
@@ -151,21 +157,37 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  const known=partials.length>0&&partials.every(c=>c.pressureKPa!==undefined);
  const vaporPressureKPa=known?partials.reduce((s,c)=>
   s+c.moleFraction*c.pressureKPa!,0):undefined;
- // A sealed headspace has ordinary trapped air AND saturated solvent vapor.
- // Start from a 22 °C ambient seal at one atmosphere. Air follows ideal gas
- // P/T at roughly fixed vessel headspace; vapor follows measured Antoine P_sat.
- const roomVaporKPa=known?items.reduce((s,c)=>
-  s+c.moleFraction*(labSaturationPressureKPa(c.id,22)??0),0):undefined;
- const sealedPressureKPa=vaporPressureKPa!==undefined&&roomVaporKPa!==undefined?
-  Math.max(0,101.325-roomVaporKPa)*(temperatureC+273.15)/295.15+
-   vaporPressureKPa:undefined;
- const popped=!!v.stoppered&&sealedPressureKPa!==undefined&&
-  sealedPressureKPa>=160;
+ // Closed vessel: Dalton's law and PV=nRT with *measured* headspace.
+ // The trapped air was at ambient pressure when the cork was inserted,
+ // not necessarily at 22°C. Reaction gas adds a separate ideal partial
+ // pressure. Never assume an unsupported liquid has zero vapor pressure.
+ const sealedAtK=(v.stopperedAtC??22)+273.15;
+ const kelvin=temperatureC+273.15;
+ const hasUnsupportedLiquid=Object.entries(v.doses??{}).some(([id,d])=>
+  d.unit==="ml"&&d.value>0&&
+  (!own(table,id)||d.concentrationM!==undefined)&&
+  !["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S"].includes(id));
+ const gasOnly=!items.length&&!hasUnsupportedLiquid;
+ const vaporKnown=known||gasOnly;
+ const vaporAtSeal=known?items.reduce((s,item)=>
+  s+item.moleFraction*(labSaturationPressureKPa(item.id,v.stopperedAtC??22)??0),0):0;
+ const gasMoles=v.reactionGasMol??0;
+ const headspaceL=Math.max(.001,(v.headspaceMl??100)/1000);
+ const reactionGasPressureKPa=gasMoles>0&&Number.isFinite(gasMoles)?
+  gasMoles*8.314462618*kelvin/headspaceL:0;
+ const sealedPressureKPa=vaporKnown&&sealedAtK>0&&kelvin>0?
+  Math.max(0,101.325-vaporAtSeal)*kelvin/sealedAtK+
+   (vaporPressureKPa??0)+reactionGasPressureKPa:undefined;
+ const popped=!!v.stoppered&&(
+  (sealedPressureKPa!==undefined&&sealedPressureKPa>=160)||
+  // Even if an aqueous stock lacks a validated vapor model, its measured
+  // reaction-gas partial pressure gives a strict lower bound for cork release.
+  (!vaporKnown&&reactionGasPressureKPa>=160));
  const totalPressureKPa=v.stoppered?sealedPressureKPa:vaporPressureKPa;
- if(!known||dt===0||v.stoppered&&!popped)return {
+ if((!known&&!gasOnly)||dt===0||v.stoppered&&!popped)return {
   doses:v.doses,ventedVaporMl:v.ventedVaporMl,
-  stoppered:v.stoppered,popped:false,boiling:false,
-  pressureKPa:totalPressureKPa,evaporatedMl:0
+  stoppered:popped?false:v.stoppered,popped,boiling:false,
+  pressureKPa:totalPressureKPa,reactionGasPressureKPa,evaporatedMl:0
  };
  const boiling=(vaporPressureKPa??0)>=101.325;
  const doses={...v.doses},vented={...v.ventedVaporMl};
@@ -191,7 +213,7 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
  }
  return {
   doses,ventedVaporMl:vented,stoppered:popped?false:v.stoppered,
-  popped,boiling,pressureKPa:totalPressureKPa,evaporatedMl
+  popped,boiling,pressureKPa:totalPressureKPa,reactionGasPressureKPa,evaporatedMl
  };
 }
 /** First-order colligative boiling elevation for explicitly measured water

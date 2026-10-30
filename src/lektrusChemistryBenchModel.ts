@@ -410,7 +410,14 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // for an ethanol/water mixture.
   const boilingPoint=labIdealBoilingC(v)??(pure?.unit==="ml"?pure.info.boilingC:undefined);
   if(boilingPoint!==undefined&&next>boilingPoint&&!v.stoppered)next=boilingPoint;
-  const phase=labEvaporate(v,seconds,next,toward);
+  const gasInventory=v.stoppered?simulateLabInventory(v):undefined;
+  const gasMoles=gasInventory?Object.values(gasInventory.retainedGasMol).
+   reduce((sum,mol)=>sum+mol,0)+Object.entries(gasInventory.speciesMol).
+   reduce((sum,[id,mol])=>sum+(substances.find(s=>s.id===id)?.kind==="газ"?mol:0),0):0;
+  const {volumeMl,capacityMl}=labVesselQuantity(v);
+  const phase=labEvaporate({...v,
+   headspaceMl:Math.max(1,capacityMl-volumeMl),
+   reactionGasMol:gasMoles},seconds,next,toward);
   const evaporating=phase.evaporatedMl>0,popped=phase.popped;
   const dissolutionComplete=v.physicalProcess==="dissolving"&&
    v.physicalStartedAtMs!==undefined&&nowMs-v.physicalStartedAtMs>=4500;
@@ -429,7 +436,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    ...(dissolutionComplete?{physicalProcess:undefined,physicalStartedAtMs:undefined}:{}),
    ...(evaporating?{doses,reagents,observed:reagents.length>1,
     ventedVaporMl:phase.ventedVaporMl}:{}),
-   ...(popped?{stoppered:false}:{}),
+   ...(popped?{stoppered:false,stopperedAtC:undefined}:{}),
    environment:evaporating&&reagents.length===0?"dry":
     cooling?(hasLiquid?"aqueous":"dry"):v.environment};
  });
@@ -700,6 +707,8 @@ export type LabVessel={pourFraction?:number;
  reactionHeat?:LabReactionHeat;
  /** Reusable cork for suitable laboratory necks. */
  stoppered?:boolean;
+ /** Temperature in °C when the air headspace was sealed. */
+ stopperedAtC?:number;
  /** Measured liquid volumes vented to the room as vapor. */
  ventedVaporMl?:Record<string,number>;
  /** 0 = solid, 1 = fully molten. Conserved across viewers and cooling. */
@@ -1146,7 +1155,19 @@ export function removeLabVessel(bench:LabBench,id:string):LabBench{
 }
 export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):LabBench{
  return revise(bench,id,v=>labCanStopper(v.kind)&&!!v.stoppered!==stoppered?
-  {...v,stoppered}:v);
+  {...v,stoppered,stopperedAtC:stoppered?(v.temperatureC??22):undefined}:v);
+}
+/** Ideal-gas headspace uses the same measured chemical species ledger as the
+ * vessel inspector. The seal temperature is saved, never assumed to equal
+ * the current temperature. */
+export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
+ const inventory=simulateLabInventory(v);
+ const retained=Object.values(inventory.retainedGasMol).reduce((s,m)=>s+m,0);
+ const gasStock=Object.entries(inventory.speciesMol).reduce((s,[id,m])=>
+  s+(substances.find(x=>x.id===id)?.kind==="газ"?m:0),0);
+ const {volumeMl,capacityMl}=labVesselQuantity(v);
+ return labEvaporate({...v,headspaceMl:Math.max(1,capacityMl-volumeMl),
+  reactionGasMol:retained+gasStock},0,temperatureC);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
  const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
