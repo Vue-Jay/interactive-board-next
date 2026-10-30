@@ -18,7 +18,7 @@ export type LabInventory={
  * A Ksp is an ion-activity equilibrium constant, not a kinetic rate and
  * not a temperature-independent solubility. Numbers below support only
  * explicit two-component ideal-solution classroom approximations. */
-export const LAB_KSP_25C:ReadOnly<Record<string,number>>=Object.freeze({
+export const LAB_KSP_25C:Readonly<Record<string,number>>=Object.freeze({
  AgCl:1.6e-10,AgBr:5.0e-13,AgI:1.5e-16,BaSO4:1.1e-10,
  CaCO3:8.7e-9,BaCO3:1.6e-9,PbSO4:1.3e-8,
  PbCl2:1.6e-5,PbBr2:4.6e-6,PbI2:1.4e-8,
