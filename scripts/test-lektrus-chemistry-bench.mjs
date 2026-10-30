@@ -2824,3 +2824,30 @@ assert.match(read("src/LektrusChemistryBench.tsx"),
  /Физико-химические свойства реагентов и продуктов/);
 assert.match(read("src/boardModel.ts"),/NaNO3","PbCl2/);
 console.log("Reviewed reactants/products, curated densities and PbCl2 kinetics: OK");
+
+
+// The second reviewed lead halide follows its OWN measured binary water
+// saturation curve, not PbCl2's Ksp or a fabricated temperature multiplier.
+const bromideCold=constants.labSingleSaltSolubilityGPer100gWater("PbBr2",20);
+const bromideHot=constants.labSingleSaltSolubilityGPer100gWater("PbBr2",100);
+assert.ok(Math.abs(bromideCold-.844/.9982)<1e-10);
+assert.ok(Math.abs(bromideHot-4.41/.9584)<1e-10);
+assert.equal(constants.labSingleSaltSolubilityGPer100gWater("PbBr2",101),undefined);
+const bromideWater={reagents:["H2O","PbBr2"],environment:"aqueous",
+ doses:{H2O:{value:100,unit:"ml"},PbBr2:{value:5,unit:"g"}}};
+const bromideEqCold=dissolution.labBinarySaltEquilibrium(bromideWater,20);
+const bromideEqHot=dissolution.labBinarySaltEquilibrium(bromideWater,100);
+assert.ok(bromideEqCold.equilibriumSolidMol>bromideEqHot.equilibriumSolidMol);
+let bromideBench=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+ {unit:"ml",value:100});
+bromideBench=lab.putLabReagent(bromideBench,"v1","PbBr2",
+ {unit:"g",value:5});
+assert.equal(bromideBench.vessels[0].physicalProcess,"dissolving");
+const bromideInitial=bromideBench.vessels[0].binarySaltPhase.solidMol;
+bromideBench=lab.advanceLabSimulation(lab.advanceLabSimulation(bromideBench,0),5000);
+const bromideNow=bromideBench.vessels[0].binarySaltPhase.solidMol;
+assert.ok(bromideNow<bromideInitial&&bromideNow>bromideEqCold.equilibriumSolidMol);
+const bromideStock=materialRegistry.labSubstanceProperties("PbBr2",20);
+assert.ok(bromideStock.solubilityKnown);
+assert.equal(bromideStock.crystalDensityGPerMl,6.66);
+console.log("PbBr2 phase equilibrium, gradual dissolution and reference density: OK");
