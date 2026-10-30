@@ -28,7 +28,9 @@ const approx=(actual,expected,tol=1e-6)=>
  assert.ok(Math.abs(actual-expected)<=tol,actual+" != "+expected);
 assert.ok(Object.keys(mat.LAB_CRYSTAL_DENSITY_G_ML).length>=14);
 for(const [id,density] of Object.entries(mat.LAB_CRYSTAL_DENSITY_G_ML))
- assert.ok(density>1&&density<12&&Number.isFinite(density),id);
+ assert.ok(density>0&&density<25&&Number.isFinite(density),id);
+ // Real elemental solids span .534 g/cm³ (Li) to 19.3 g/cm³ (Au).
+ // Bound checks must not accidentally prohibit verified low/high densities.
 approx(mat.labCrystalDensityGml("NaCl"),2.16);
 approx(mat.labCrystalDensityGml("AgCl"),5.56);
 approx(mat.labCrystalDensityGml("KCl"),1.984);
