@@ -167,7 +167,7 @@ const bubbleCache=new Map<string,number|undefined>();
  * max 10 seconds per tick, deterministic from current shared state.
  */
 export function labEvaporate(v:LabEvaporationState,seconds:number,
- temperatureC=v.temperatureC??22,heaterTargetC=22){
+ temperatureC=v.temperatureC??22,heaterTargetC=22,heaterPowerW=0){
  const items=components(v),dt=Math.max(0,Math.min(10,seconds));
  const partials=items.map(c=>({
   ...c,pressureKPa:labSaturationPressureKPa(c.id,temperatureC)
@@ -217,8 +217,16 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   // Heat delivered above the boiling range drives faster vapor generation.
   const rate=aperture[v.kind]??.4;
   const diffusionMlPerS=.0002*rate*partial*Math.sqrt(18.015/table[item.id as EvaporatingLiquid].molG);
-  const heatBoost=boiling?Math.max(0,heaterTargetC-temperatureC)*.00014*
-   rate*item.moleFraction:0;
+  // For boiling WATER, enforce the latent-heat energy budget.
+  // Latent heat of vaporisation at 100 °C: ~2257 J/g, water density
+  // ~0.997 g/ml. The effective heater power is an explicit instrument
+  // input (not an inferred universal evaporation coefficient).
+  const energeticWaterLoss=boiling&&item.id==="H2O"&&heaterPowerW>0?
+   heaterPowerW/(2257*.997)*item.moleFraction:0;
+  const empiricalOtherLiquid=boiling&&item.id!=="H2O"?
+   Math.max(0,heaterTargetC-temperatureC)*.00014*
+    rate*item.moleFraction:0;
+  const heatBoost=energeticWaterLoss+empiricalOtherLiquid;
   const loss=Math.min(item.d.value,dt*(diffusionMlPerS+heatBoost));
   if(loss<1e-7)continue;
   const left=Math.max(0,Math.round((item.d.value-loss)*1e5)/1e5);
