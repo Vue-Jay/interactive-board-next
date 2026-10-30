@@ -128,7 +128,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const solutionNames=contents.solution.map(x=>x.formula+(x.mmol===undefined?"":" ("+readable(x.mmol)+" ммоль)"));
  const solidNames=contents.solid.map(x=>x.formula+(x.massG===undefined?"":" ("+readable(x.massG)+" г)"));
  const sedimentH=contents.precipitateFraction===undefined?0:
-  Math.min(105*liquidFraction,Math.max(1,106*contents.precipitateFraction));
+  Math.min(105*liquidFraction,Math.max(3,106*contents.precipitateFraction));
  const totalLabel=[volumeMl>0?volumeMl.toLocaleString("ru-RU")+" мл":null,
   massG>0?massG.toLocaleString("ru-RU")+" г":null].filter(Boolean).join(" · ");
  const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],
@@ -221,7 +221,10 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
      <ellipse cx="50" cy="93" rx="14" ry="4" fill="none" stroke="#318f90" strokeWidth="2" opacity=".75"/>
      <path d="M42 87Q51 81 59 89" stroke="#e9ffff" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
     </g>}
-    {active&&observation==="precipitate"&&conversionFraction>0&&<>
+    {/* The measured precipitate is material state, not a transient visual
+         effect. Indicator additions and dilution must never hide it. */}
+    {(contents.precipitateG!==undefined&&contents.precipitateG>1e-10||
+      active&&observation==="precipitate"&&conversionFraction>0)&&<>
      {/* Quantified precipitation uses actual produced mass/density and vessel volume.
          The one-pixel minimum only keeps subpixel traces perceptible. */}
      {sedimentH>0&&<rect className="lektrus-lab-sediment"
