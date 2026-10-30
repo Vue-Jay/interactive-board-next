@@ -4207,3 +4207,91 @@
   left:auto!important;right:calc(100% + 4px)!important}
  .lektrus-lab-bench .lektrus-lab-quantity-info .lektrus-lab-inline-ph{font-size:8px!important}
 }
+
+
+/* The bench cupboard is a real grid, not ten independent tiles that can
+   overflow fixed-height tracks. Two generous rows fit every active mode. */
+.lektrus-lab-bench .lektrus-lab-glass-cupboard{
+ box-sizing:border-box!important;
+ min-width:0!important;
+ overflow:hidden!important;
+}
+.lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-items{
+ box-sizing:border-box!important;
+ display:grid!important;
+ grid-template-columns:repeat(4,minmax(0,1fr))!important;
+ grid-template-rows:repeat(2,minmax(0,1fr))!important;
+ grid-auto-rows:minmax(0,1fr)!important;
+ align-items:stretch!important;
+ justify-items:stretch!important;
+ gap:6px!important;
+ min-width:0!important;
+ min-height:0!important;
+ overflow-y:auto!important;
+ overflow-x:hidden!important;
+ scrollbar-width:thin!important;
+ overscroll-behavior:contain!important;
+}
+.lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item{
+ box-sizing:border-box!important;
+ display:flex!important;
+ flex-direction:column!important;
+ align-items:center!important;
+ justify-content:center!important;
+ min-width:0!important;
+ min-height:0!important;
+ width:100%!important;
+ height:100%!important;
+ padding:5px 3px!important;
+ gap:4px!important;
+ overflow:hidden!important;
+}
+.lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item .lektrus-lab-ware-icon{
+ box-sizing:border-box!important;
+ flex:0 1 auto!important;
+ width:clamp(27px,2.5cqw,39px)!important;
+ height:clamp(27px,2.5cqw,39px)!important;
+ max-width:85%!important;
+ max-height:45%!important;
+ object-fit:contain!important;
+}
+.lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item small{
+ box-sizing:border-box!important;
+ display:block!important;
+ flex:0 1 auto!important;
+ width:100%!important;
+ max-height:50%!important;
+ font:750 clamp(10px,.77cqw,12px)/1.22 system-ui,sans-serif!important;
+ text-align:center!important;
+ white-space:normal!important;
+ text-wrap:balance;
+ overflow-wrap:anywhere!important;
+ word-break:normal!important;
+ hyphens:auto!important;
+ overflow:hidden!important;
+}
+@container(max-width:700px){
+ .lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-items{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-template-rows:none!important;
+  grid-auto-rows:minmax(50px,auto)!important;
+  align-content:start!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item{
+  min-height:50px!important;
+  flex-direction:row!important;
+  justify-content:flex-start!important;
+  padding:3px!important;
+  gap:2px!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item .lektrus-lab-ware-icon{
+  width:clamp(18px,3cqw,25px)!important;
+  height:clamp(18px,3cqw,25px)!important;
+  flex:0 0 auto!important;max-height:75%!important;
+ }
+ .lektrus-lab-bench .lektrus-lab-glass-cupboard .lektrus-lab-shelf-item small{
+  max-height:none!important;
+  font-size:clamp(8px,1.3cqw,10px)!important;
+  text-align:left!important;
+ }
+}
