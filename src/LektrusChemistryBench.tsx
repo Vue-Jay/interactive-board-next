@@ -2,7 +2,7 @@ import {useEffect,useId,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -123,9 +123,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
  const mostRecentEquation=inventory?.steps[inventory.steps.length-1]?.equation;
  const gasProgress=labReactionGasProgress(vessel.reactionAmounts,
   temperatureC??vessel.temperatureC??22);
- const retainedGasTotal=gasProgress&&vessel.stoppered?
-  gasProgress.totalMol:
-  Object.values(inventory?.retainedGasMol??{}).reduce((s,n)=>s+n,0);
+ const retainedGasTotal=vessel.stoppered?labHeadspaceGasMoles(vessel):0;
  const recentCase=mostRecentEquation?
   reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
  const visualCase=recentCase??vessel.completedReaction??verified;
@@ -1717,6 +1715,8 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    const composition=labVesselContents(v),quantity=labVesselQuantity(v);
    const vaporReading=labVesselPressure(v);
    const producedGas=labReactionGasProgress(v.reactionAmounts,v.temperatureC??22);
+   const gasPending=!producedGas&&!v.chemicalInventory&&!v.completedReaction&&
+    !!v.doses&&labObservation(v).caseData?.observation==="gas";
    const boilingEstimate=labIdealBoilingC(v);
    const inventory=v.chemicalInventory?
     simulateLabInventory({...v,volumeMl:quantity.volumeMl}):
@@ -1766,6 +1766,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      </p>}
      <p>Горлышко: {v.stoppered?"закрыто пробкой":"открыто"}.
       {v.stoppered?" Пар остаётся внутри; обычная пробка может выскочить при нагреве.":""}</p>
+     {gasPending&&<p>Газообразующая реакция готова к расчёту.
+       Фактический объём и давление появятся по мере её протекания,
+       а не будут заранее подставлены из конечного выхода.</p>}
      {producedGas&&<div className="lektrus-lab-gas-readout">
       <strong>Образование газа по ходу реакции</strong>
       <p>Сейчас образовалось {formatted(producedGas.totalMol*1000)} ммоль
@@ -1805,14 +1808,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      <ul>{composition.solution.length?composition.solution.map((s,i)=><li key={i}>{s.formula}: {s.mmol===undefined?"количество не рассчитано":formatted(s.mmol)+" ммоль · "+massOf(s.formula,s.mmol)+(composition.solutionMl>0?" · "+formatted(s.mmol/composition.solutionMl)+" моль/л":"")}</li>):<li>Нет</li>}</ul>
      <strong>Твёрдая фаза и осадок</strong>
      <ul>{composition.solid.length?composition.solid.map((s,i)=><li key={i}>{s.formula}: {s.massG===undefined?"масса не рассчитана":formatted(s.massG)+" г"}</li>):<li>Нет</li>}</ul>
-     {!producedGas&&inventory&&Object.keys(inventory.retainedGasMol).length>0&&<>
+     {!producedGas&&!gasPending&&inventory&&Object.keys(inventory.retainedGasMol).length>0&&<>
       <strong>Газ внутри закрытого сосуда</strong>
       <ul>{Object.entries(inventory.retainedGasMol).map(([formula,mol])=>
        <li key={formula}>{formula}: {formatted(mol*1000)} ммоль · {massOf(formula,mol*1000)}</li>)}</ul>
       <p>Свободное газовое пространство: {formatted(Math.max(1,quantity.capacityMl-quantity.volumeMl))} мл.
        Давление вычисляется по уравнению идеального газа с учётом воздуха и паров жидкости.</p>
      </>}
-     {!producedGas&&inventory&&Object.keys(inventory.releasedGasMol).length>0&&<>
+     {!producedGas&&!gasPending&&inventory&&Object.keys(inventory.releasedGasMol).length>0&&<>
       <strong>Выделившиеся газы</strong>
       <ul>{Object.entries(inventory.releasedGasMol).map(([formula,mol])=>
        <li key={formula}>{formula}: {formatted(mol*1000)} ммоль · {massOf(formula,mol*1000)}
