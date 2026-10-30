@@ -525,11 +525,13 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   const stand=physicalDevices.find(d=>d.kind==="tripod"&&d.active&&d.linkedVesselId===v.id);
   const anchor=stand??physicalDevices.find(d=>d.active&&d.linkedVesselId===v.id);
   const device=anchor&&devicePreview?.id===anchor.id?{...anchor,...devicePreview}:anchor;
-  if(device)return labMountedGlasswarePoint(device,v,stageSize.width,stageSize.height);
+  if(device)return labMountedGlasswarePoint(device,v,stageSize.width,stageSize.height,
+   false,compactFullscreen);
   const base=physicalDevices.find(d=>d.kind==="tripod"&&d.id===v.restingOnStandId);
   if(base){
    const current=devicePreview?.id===base.id?{...base,...devicePreview}:base;
-   return labStandBaseVesselPoint(current,v,stageSize.width,stageSize.height);
+   return labStandBaseVesselPoint(current,v,stageSize.width,stageSize.height,
+    false,compactFullscreen);
   }
   return labDisplayPoint(v);
  };
@@ -847,7 +849,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      const beneath=rect&&vessel?physicalDevices.filter(d=>d.kind==="tripod"&&
       d.linkedVesselId!==g.id).map(d=>{
        const base=labStandBaseVesselPoint(d,vessel,stageSize.width,stageSize.height,
-        bench.vessels.length>3);
+        bench.vessels.length>3,compactFullscreen);
        return {d,distance:Math.hypot((p.x-base.x)*rect.width/100,
         (p.y-base.y)*rect.height/100)};
       }).sort((a,b)=>a.distance-b.distance)[0]:undefined;

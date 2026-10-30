@@ -2375,3 +2375,16 @@ assert.match(editorFixed,/height:stage\.height,zoom:stage\.scale/);
 assert.match(polishedSurface,/compactFullscreen\?:boolean/);
 assert.ok(polishedSurface.includes('(compactFullscreen&&mobileDrawer?" is-drawer-"+mobileDrawer:"")'),
  "Fullscreen mobile drawer state must be reflected in the bench class");
+
+
+// Mounted glassware follows the actual shorter, native-size phone stand.
+// The desktop stage keeps its original physical anchoring unchanged.
+const compactStand=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod").placedDevices[0];
+const desktopMount=layout.labMountedGlasswarePoint(compactStand,{kind:"tube"},900,420);
+const phoneMount=layout.labMountedGlasswarePoint(compactStand,{kind:"tube"},900,420,false,true);
+assert.ok(Math.abs(phoneMount.y-desktopMount.y)>1,
+ "Compact lab must calculate against the shorter physical phone stand");
+const compactFoot=layout.labStandBaseVesselPoint(compactStand,{kind:"beaker"},900,420,false,true);
+assert.ok(Number.isFinite(compactFoot.x)&&Number.isFinite(compactFoot.y));
+assert.match(polishedSurface,/false,compactFullscreen/);
+console.log("Mounted laboratory glassware aligns with short-screen apparatus");

@@ -49,21 +49,25 @@ export const labStandVesselGripSvgY=(kind:string)=>
  * Unlike fixed percentages, anchors track the actual model dimensions. */
 export function labMountedGlasswarePoint(
  device:LabMountGeometry,vessel:LabVesselGeometry,
- width:number,height:number,crowded=false
+ width:number,height:number,crowded=false,compactFullscreen=false
 ){
  const w=width||1600,h=height||1000,small=w<=690;
- const dWidth=(device.kind==="tripod"||device.kind==="stand-shelf")?
-  (small?size(112,.17,146,w):size(130,.11,190,w)):
+ const stand=device.kind==="tripod"||device.kind==="stand-shelf";
+ const dWidth=compactFullscreen?(stand?size(110,.15,150,w):size(96,.12,136,w)):
+  stand?(small?size(112,.17,146,w):size(130,.11,190,w)):
   device.kind==="burner"?size(119,.096,166,w):
   (small?size(101,.16,138,w):size(119,.103,175,w));
- const dHeight=(device.kind==="tripod"||device.kind==="stand-shelf")?
-  (small?size(350,.54,385,w):size(400,.32,460,w)):
+ const dHeight=compactFullscreen?(stand?Math.min(h*.6,270):
+  Math.max(96,Math.min(145,h*.28))):
+  stand?(small?size(350,.54,385,w):size(400,.32,460,w)):
   device.kind==="burner"?size(138,.114,180,w):
   (small?size(116,.18,152,w):size(130,.115,178,w));
- let vHeight=small?size(96,.17,130,w):size(112,.157,158,w);
+ let vHeight=compactFullscreen?Math.max(90,Math.min(122,h*.26)):
+  small?size(96,.17,130,w):size(112,.157,158,w);
  void crowded;
  if(vessel.kind==="burette")
-  vHeight=small?size(130,.24,164,w):size(151,.20,198,w);
+  vHeight=compactFullscreen?Math.max(116,Math.min(156,h*.34)):
+   small?size(130,.24,164,w):size(151,.20,198,w);
  if(vessel.kind==="dish"||vessel.kind==="crucible")
   vHeight=size(98,.12,125,w);
  if(device.kind==="tripod"||device.kind==="stand-shelf"){
@@ -93,12 +97,15 @@ export function labMountedGlasswarePoint(
  * Keep the same responsive dimensions as the rendered stand and glass. */
 export function labStandBaseVesselPoint(
  stand:LabMountGeometry,vessel:LabVesselGeometry,
- width:number,height:number,crowded=false
+ width:number,height:number,crowded=false,compactFullscreen=false
 ){
  const w=width||1600,h=height||1000,small=w<=690;
- const dw=small?size(112,.17,146,w):size(130,.11,190,w);
- const dh=small?size(350,.54,385,w):size(400,.32,460,w);
- let vh=small?size(96,.17,130,w):size(112,.157,158,w);
+ const dw=compactFullscreen?size(110,.15,150,w):
+  small?size(112,.17,146,w):size(130,.11,190,w);
+ const dh=compactFullscreen?Math.min(h*.6,270):
+  small?size(350,.54,385,w):size(400,.32,460,w);
+ let vh=compactFullscreen?Math.max(90,Math.min(122,h*.26)):
+  small?size(96,.17,130,w):size(112,.157,158,w);
  void crowded;
  if(vessel.kind==="dish"||vessel.kind==="crucible")vh=size(98,.12,125,w);
  const vesselFoot=0.4*vh;
