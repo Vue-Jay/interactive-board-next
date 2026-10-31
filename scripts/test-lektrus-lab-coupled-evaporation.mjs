@@ -88,3 +88,38 @@ close(filteredV.filteredSolution.volumeMl+
  (filteredV.ventedVaporMl?.H2O??0),20,1e-6);
 close(net.simulateLabInventory(filteredV).speciesMol.NaCl,.002);
 console.log("Lab coupled thermal-vapor energy, solvent-aware crystals and mass conservation: OK");
+
+
+// Experiment controls are shared state, not local UI preferences.
+// Legacy boards default to evaporation on and normal time.
+assert.equal(lab.labBenchSettings(bare).evaporationEnabled,true);
+assert.equal(lab.labBenchSettings(bare).timeScale,1);
+const configured=lab.setLabBenchSettings(idle,{
+ evaporationEnabled:false,timeScale:5,pourMode:"fast"});
+assert.equal(lab.labBenchSettings(configured).pourMode,"fast");
+assert.equal(lab.labBenchSettings(configured).timeScale,5);
+const disabled=lab.advanceLabSimulation(configured,3000).vessels[0];
+assert.equal(disabled.doses.H2O.value,40,
+ "Disabling evaporation must preserve the existing solvent");
+assert.equal(disabled.ventedVaporMl?.H2O??0,0,
+ "Disabling evaporation must not add vapor to the inventory");
+assert.ok(disabled.temperatureC>passive.temperatureC,
+ "Without evaporative latent-heat losses, the sample cools less");
+const normalTwoSeconds=lab.advanceLabSimulation(idle,3000).vessels[0];
+const acceleratedTenSeconds=lab.advanceLabSimulation(
+ lab.setLabBenchSettings(idle,{timeScale:5}),3000).vessels[0];
+assert.ok((acceleratedTenSeconds.ventedVaporMl?.H2O??0)>
+ (normalTwoSeconds.ventedVaporMl?.H2O??0),
+ "A faster educational clock must advance the physical evaporation");
+close(acceleratedTenSeconds.doses.H2O.value,passive.doses.H2O.value,1e-6);
+assert.equal(lab.labSimulationTickWaitMs(configured,1000)<lab.labSimulationTickWaitMs(idle,1000),true,
+ "The accelerated clock should schedule smoother simulation ticks");
+let highPlate=lab.addPlacedLabDevice(bare,"hotplate");
+const plateId=highPlate.placedDevices[0].id;
+highPlate=lab.setLabHotplateTemperature(highPlate,plateId,950);
+assert.equal(highPlate.placedDevices[0].targetTemperatureC,950);
+highPlate=lab.setLabHotplateTemperature(highPlate,plateId,1600);
+assert.equal(highPlate.placedDevices[0].targetTemperatureC,lab.LAB_HOTPLATE_MAX_C);
+assert.equal(lab.canMountLabVessel("hotplate","crucible"),true,
+ "A high-temperature demonstration requires an appropriate crucible");
+console.log("Lab experiment settings, accelerated clock and virtual high heat: OK");

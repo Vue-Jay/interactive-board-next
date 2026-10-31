@@ -1,8 +1,8 @@
 import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
-import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
+import type {LabBench,LabBenchSettings,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -447,18 +447,67 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   </span>}
  </div>;
 });
+
+/** Shared, persistent settings for the full-screen editor and board surface.
+ * Controls update the bench revision, so teachers and students see one clock. */
+function LabExperimentControls({settings,editable,onUpdate}:{
+ settings:LabBenchSettings;editable:boolean;
+ onUpdate:(next:Partial<LabBenchSettings>)=>void;
+}){
+ return <div className="lektrus-lab-experiment-controls">
+  <div className="lektrus-lab-experiment-control">
+   <div className="lektrus-lab-experiment-copy">
+    <strong>Переливание</strong>
+    <small>Быстрое или порционное, после 1 секунды контакта</small>
+   </div>
+   <div className="lektrus-lab-experiment-options" role="group" aria-label="Режим переливания">
+    {([["gradual","Постепенно"],["fast","Быстро"]] as const).map(([mode,label])=>
+     <button type="button" key={mode} disabled={!editable}
+      aria-pressed={settings.pourMode===mode}
+      onClick={()=>onUpdate({pourMode:mode})}>{label}</button>)}
+   </div>
+  </div>
+  <div className="lektrus-lab-experiment-control">
+   <div className="lektrus-lab-experiment-copy">
+    <strong>Испарение</strong>
+    <small>Потеря растворителя и выпаривание при нагреве</small>
+   </div>
+   <button type="button" className="lektrus-lab-experiment-switch"
+    role="switch" aria-checked={settings.evaporationEnabled}
+    disabled={!editable}
+    onClick={()=>onUpdate({evaporationEnabled:!settings.evaporationEnabled})}>
+    {settings.evaporationEnabled?"Включено":"Выключено"}
+   </button>
+  </div>
+  <div className="lektrus-lab-experiment-control">
+   <div className="lektrus-lab-experiment-copy">
+    <strong>Скорость времени</strong>
+    <small>Ускоряет нагрев, реакции, растворение, титрование и испарение</small>
+   </div>
+   <div className="lektrus-lab-experiment-options" role="group" aria-label="Ускорение времени">
+    {([1,2,5,10] as const).map(scale=>
+     <button type="button" key={scale} disabled={!editable}
+      aria-pressed={settings.timeScale===scale}
+      onClick={()=>onUpdate({timeScale:scale})}>×{scale}</button>)}
+   </div>
+  </div>
+  <small className="lektrus-lab-experiment-footnote">
+   Настройки сохраняются вместе с доской и применяются у всех участников опыта.
+  </small>
+ </div>;
+}
 /** A draft value must not clamp while its digits are still being typed. */
 function LabTemperatureInput({temperature,onSet}:{temperature:number;onSet:(v:number)=>void}){
  const [draft,setDraft]=useState(String(temperature));
  useEffect(()=>setDraft(String(temperature)),[temperature]);
  const commit=()=>{
   const value=Number(draft);
-  if(draft.trim()&&Number.isFinite(value)&&value>=30&&value<=350)onSet(value);
+  if(draft.trim()&&Number.isFinite(value)&&value>=30&&value<=LAB_HOTPLATE_MAX_C)onSet(value);
   else setDraft(String(temperature));
  };
  return <input type="number" className="lektrus-lab-device-face-temp"
-  aria-label="Задать температуру плитки в °C" title="Заданная температура 30–350 °C"
-  min={30} max={350} step={10} value={draft}
+  aria-label="Задать температуру плитки в °C" title="Виртуальная высокотемпературная плитка: 30–1000 °C. В реальности такие температуры требуют специального оборудования."
+  min={30} max={LAB_HOTPLATE_MAX_C} step={10} value={draft}
   onChange={e=>setDraft(e.target.value)}
   onPointerDown={e=>e.stopPropagation()}
   onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"){commit();e.currentTarget.blur()}}}
@@ -1227,7 +1276,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    {([
     ["reagents","Реактивы"],["glassware","Посуда"],
     ["equipment","Приборы"],["indicators","Индикаторы"],
-    ["equations","Уравнения"],["settings","Ещё"]
+    ["equations","Уравнения"],["settings","Опыт"]
    ] as const).map(([id,label])=><button type="button" key={id}
     className={mobileDrawer===id?"is-active":""}
     aria-expanded={mobileDrawer===id}
@@ -1239,6 +1288,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   {compactFullscreen&&mobileDrawer==="settings"&&<div className="lektrus-lab-compact-settings"
     id="lektrus-lab-compact-settings" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+   <h3>Настройки опыта</h3>
+   <LabExperimentControls settings={settings} editable={editable}
+    onUpdate={next=>onChange?.(setLabBenchSettings(bench,next))}/>
    <button type="button" disabled={!editable}
     onClick={e=>{e.stopPropagation();onChange?.(setLabBenchSettings(bench,{showTemperatures:!settings.showTemperatures}))}}>
     {settings.showTemperatures?"Скрыть температуры":"Показать температуры"}
@@ -1247,12 +1299,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     onClick={e=>{e.stopPropagation();onChange?.(arrangeLabVessels(bench));setMobileDrawer(null)}}>
     Расставить посуду
    </button>
-   <div className="lektrus-lab-compact-pour-mode" role="group" aria-label="Переливание">
-    {(["fast","gradual"] as const).map(id=><button type="button" key={id}
-     disabled={!editable} aria-pressed={settings.pourMode===id}
-     onClick={e=>{e.stopPropagation();onChange?.(setLabBenchSettings(bench,{pourMode:id}))}}>
-     {id==="fast"?"Быстро":"Постепенно"}</button>)}
-   </div>
    <button type="button" disabled={!editable}
     onClick={e=>{e.stopPropagation();setConfirmClear(true)}}>
     Очистить стол
@@ -1314,17 +1360,6 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      {LAB_MODES.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
     </select>
    </label>
-   <div className="lektrus-lab-pour-mode" role="group" aria-label="Скорость переливания"
-    data-board-interactive="true" onPointerDown={e=>e.stopPropagation()}>
-    {([["fast","Быстро"],["gradual","Постепенно"]] as const).map(([id,label])=>
-     <button type="button" key={id} disabled={!editable}
-      aria-pressed={settings.pourMode===id}
-      className={settings.pourMode===id?"is-active":""}
-      title={id==="fast"?"Перелить всё за одно действие после одной секунды контакта":
-       "Переливать порциями по 5%, пока удерживается сосуд"}
-      onClick={e=>{e.stopPropagation();onChange?.(setLabBenchSettings(bench,{pourMode:id}))}}>
-      {label}</button>)}
-   </div>
    <button type="button" className="lektrus-lab-prepare-mode"
     data-board-interactive="true" disabled={!editable}
     title="Добавить рекомендуемый набор без перемещения существующей посуды"
@@ -1360,6 +1395,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     </div>}
    <div className="lektrus-lab-header-tools" data-board-interactive="true"
     onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}>
+    {!compactFullscreen&&<details className="lektrus-lab-experiment-settings">
+     <summary aria-label="Настройки опытов" title="Настройки опытов">⚙ <span>Настройки опыта</span></summary>
+     <section className="lektrus-lab-experiment-panel" aria-label="Настройки опытов">
+      <h3>Настройки опыта</h3>
+      <LabExperimentControls settings={settings} editable={editable}
+       onUpdate={next=>onChange?.(setLabBenchSettings(bench,next))}/>
+     </section>
+    </details>}
     <button type="button" className="lektrus-lab-temperature-toggle"
      aria-label={settings.showTemperatures?"Скрыть температуры посуды":"Показать температуры посуды"}
      aria-pressed={settings.showTemperatures}
