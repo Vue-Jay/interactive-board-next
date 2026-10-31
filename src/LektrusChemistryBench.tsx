@@ -168,6 +168,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    Math.max(0,Math.min(1,vessel.reactionAmounts.extentMol/
     Math.max(1e-12,vessel.reactionAmounts.maxExtentMol))):1;
  const measuredPrecipitateG=(contents.precipitateG??0)*precipitationProgress;
+ const hasSettledSolid=contents.solid.length>0&&
+  (contents.precipitateG!==undefined||contents.precipitateFraction!==undefined);
  // Settled crystals persist, but only active crystallization / evaporation
  // may shimmer. Old vented solvent must not animate forever.
  const growingSaltCrystals=!!crystallineSalt&&
@@ -176,7 +178,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     visualNow-vessel.lastEvaporatedAtMs<5000);
  const sedimentH=contents.precipitateFraction===undefined?0:
   precipitationProgress<=0?0:
-  Math.min(105*liquidFraction,Math.max(1.8,
+  Math.min(105,Math.max(2.5,
    106*contents.precipitateFraction*precipitationProgress));
  const totalLabel=[volumeMl>0?labDisplayNumber(volumeMl,realism)+" мл":null,
   massG>0?labDisplayNumber(massG,realism)+" г":null].filter(Boolean).join(" · ");
@@ -307,7 +309,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     </g>}
     {/* The measured precipitate is material state, not a transient visual
          effect. Indicator additions and dilution must never hide it. */}
-    {(measuredPrecipitateG>1e-10||
+    {(measuredPrecipitateG>1e-10||hasSettledSolid&&precipitationProgress>0||
       active&&observation==="precipitate"&&precipitationProgress>0&&
       conversionFraction>0)&&<>
      {/* Quantified precipitation uses actual produced mass/density and vessel volume.
