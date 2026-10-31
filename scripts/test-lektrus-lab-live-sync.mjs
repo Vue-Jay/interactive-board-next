@@ -68,7 +68,7 @@ const duplicated={...start,scienceLabBench:{...start.scienceLabBench,
  vessels:[start.scienceLabBench.vessels[0],staleVessel,newestVessel],
  placedDevices:[burner,{...burner,temperatureC:36.3}]}};
 const shape={id:"shape-1",kind:"shape",x:3,y:4,width:50,height:30,
- shapeType:"rectangle",color:"#445566"};
+ text:"",shapeType:"rectangle",color:"#445566"};
 const recovered=board.parseDocument(JSON.stringify({version:1,title:"Science lesson",
  view:{x:0,y:0,zoom:1},items:[shape,duplicated]}));
 assert.equal(recovered.items.length,2,"Unrelated objects must survive lab recovery");
