@@ -1,3 +1,5 @@
+import {LAB_BATCH_DRY_PROPERTY_DATUMS} from "./lektrusLabReferenceBatches";
+
 /** Individually traceable, source-reviewed reference measurements curated in
  * a single import batch. Each numeric datum MUST match the actual simulator
  * registry (checked in scripts/audit-lektrus-lab-properties.mjs --verify).
@@ -18,6 +20,7 @@ export type LabReviewedPropertyDatum={
  sourceUrl:string;
 };
 export const LAB_REVIEWED_PROPERTY_DATUMS:readonly LabReviewedPropertyDatum[]=[
+ ...LAB_BATCH_DRY_PROPERTY_DATUMS,
  // Independent original references for EXISTING true-solid densities
  // and new exact sodium sulfite chemical decomposition. Do not use the
  // FeCl3 reactive 92 g/100mL water figure as binary solubility.

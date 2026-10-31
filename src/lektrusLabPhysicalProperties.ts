@@ -1,3 +1,5 @@
+import {LAB_BATCH_THERMAL_REFERENCES} from "./lektrusLabReferenceBatches";
+
 /** Phase data for the VIRTUAL lab. Temperatures are indicative °C at ~101.3 kPa.
  * Do not assign an arbitrary boiling/melting point to a mixture, hydrate,
  * decomposing compound or unverified entry.
@@ -18,6 +20,7 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
 const physical:Record<string,LabThermalRecord>={
+ ...LAB_BATCH_THERMAL_REFERENCES,
  // ILO/WHO ICSC 1200: nominal anhydrous Na2SO3 decomposes
  // at 600°C. The quoted "melting >500°C" is only a lower bound
  // and must not produce an invented congruent melting event.

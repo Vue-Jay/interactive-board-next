@@ -26,10 +26,18 @@ const catalog=load("src/lektrusLabCatalog.ts",key=>{
  if(key==="./lektrusLabAppearance")return appearance;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
-const thermal=load("src/lektrusLabPhysicalProperties.ts");
-const calorimetry=load("src/lektrusLabCalorimetry.ts");
-const solubilityMeasurements=load("src/lektrusLabSolubilityMeasurements.ts");
+const batch=load("src/lektrusLabReferenceBatches.ts");
+const thermal=load("src/lektrusLabPhysicalProperties.ts",key=>{
+ assert.equal(key,"./lektrusLabReferenceBatches");return batch;
+});
+const calorimetry=load("src/lektrusLabCalorimetry.ts",key=>{
+ assert.equal(key,"./lektrusLabReferenceBatches");return batch;
+});
+const solubilityMeasurements=load("src/lektrusLabSolubilityMeasurements.ts",key=>{
+ assert.equal(key,"./lektrusLabReferenceBatches");return batch;
+});
 const constants=load("src/lektrusLabMaterialConstants.ts",key=>{
+ if(key==="./lektrusLabReferenceBatches")return batch;
  assert.equal(key,"./lektrusLabSolubilityMeasurements");return solubilityMeasurements;
 });
 const dissolution=load("src/lektrusLabDissolution.ts",key=>{
@@ -44,7 +52,9 @@ const network=load("src/lektrusLabReactionNetwork.ts",key=>{
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
-const hydratedReferences=load("src/lektrusLabHydrateReferences.ts");
+const hydratedReferences=load("src/lektrusLabHydrateReferences.ts",key=>{
+ assert.equal(key,"./lektrusLabReferenceBatches");return batch;
+});
 const saturatedReferences=load("src/lektrusLabSaturatedSolutionReferences.ts");
 const materialRegistry=load("src/lektrusLabPropertyRegistry.ts",key=>{
  if(key==="./lektrusLabHydrateReferences")return hydratedReferences;

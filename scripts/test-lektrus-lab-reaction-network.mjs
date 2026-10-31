@@ -498,9 +498,9 @@ console.log("Twelve dry specific heats, four crystal densities, five solid phase
 // binary saturation or a fictitious source of dry-crystal mass.
 const hydrates=load("src/lektrusLabHydrateReferences.ts");
 const rows=hydrates.LAB_HYDRATE_SOLUBILITY_REFERENCES;
-assert.equal(rows.length,41);
-assert.equal(new Set(rows.map(x=>x.baseFormula)).size,37);
-assert.equal(new Set(rows.map(x=>x.hydrateFormula)).size,41);
+assert.equal(rows.length,42);
+assert.equal(new Set(rows.map(x=>x.baseFormula)).size,38);
+assert.equal(new Set(rows.map(x=>x.hydrateFormula)).size,42);
 let measured=0;
 const waterKnots=hydrates.LAB_HYDRATE_KNOT_TEMPERATURES_C;
 for(const row of rows){
@@ -530,7 +530,7 @@ for(const row of rows){
   assert.equal(sample.massGPer100gWater,extra.massGPer100gWater);
  }
 }
-assert.equal(measured,147);
+assert.equal(measured,150);
  // Standalone hydrate identities must keep the source crystal water: a
  // nitrate hexahydrate is NEVER an anhydrous nitrate saturation reading.
  const newlySourcedHydrates=[
@@ -608,7 +608,7 @@ assert.equal(zinc.length,2,
 assert.deepEqual(zinc.map(x=>x.temperatureC),[20,60]);
 assert.equal(registryProps.labSubstanceProperties("NaCl",22)
  .hydratedSolubilityReferences.length,0);
-console.log("41 hydrate forms with 147 source-specific measured temperatures; no invented points");
+console.log("42 hydrate forms with 150 source-specific measured temperatures; no invented points");
 
 
 const crystalHydrates=hydrates.LAB_HYDRATE_CRYSTAL_DENSITIES;
@@ -778,7 +778,7 @@ console.log("Six verified pure-solid densities, seven solid transitions and sixt
 // Bulk provenance: 108 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,108);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,111);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -819,9 +819,9 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:34,specificHeatJPerGK:29,thermal:45
+ crystalDensityGPerMl:37,specificHeatJPerGK:29,thermal:45
 });
-console.log("108 source-checked property references: 34 crystal densities, 29 dry-solid Cp, 45 individual phase boundaries");
+console.log("111 source-checked property references: 37 crystal densities, 29 dry-solid Cp, 45 individual phase boundaries");
 // Direct NIST-JANAF (cr) 298.15 K molar values must be recalculated
 // with the real lab formula parser. No hydrate/solution substitution.
 const jan=load("src/lektrusLabJanafSolidHeatReferences.ts");
@@ -992,8 +992,8 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
-assert.equal(pureWaterMeasurements.length,81);
-assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,51);
+assert.equal(pureWaterMeasurements.length,79);
+assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,50);
 assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,31);
 const measuredTemperatures=new Set([0,20,40,60,80,100]);
 assert.equal(pureWaterMeasurements.filter(
@@ -1113,26 +1113,28 @@ for(const [formula,value,unit,expected] of [
   inventory,20,true,labMolarMass),undefined);
  assert.deepEqual(inventory.solidMol,{},"Reference cannot create solid phase");
 }
-// The historical CRC calcium-acetate data provide only two end points,
-// not 20°C or a valid smooth curve across changing hydrate equilibria.
-for(const [temp,raw,waterDensity] of [
- [0,37.4,.99984],[100,29.7,.9584]
-]){
- const id="Ca(CH3COO)2";
- const row=pureWaterMeasurements.find(x=>x.formula===id&&x.temperatureC===temp);
- assert.ok(row&&row.originalUnit==="g/100ml-water");
- assert.equal(row.sourceValue,raw);
- approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
-  id,temp),raw/waterDensity,1e-10);
- assert.equal(registryProps.labSubstanceProperties(id,temp)
-  .binaryCrystallizationUnsupported,true);
-}
-for(const temp of [1,20,50,99]){
+// Corrected scientific PHASE identity: Lange's handbook original source
+// says the 0 / 20 / 100°C values are in g of calcium ACETATE DIHYDRATE
+// per 100 g pure water, NOT anhydrous calcium acetate or g per 100 mL.
+for(const [temperature,expected] of [[0,37.4],[20,34.7],[100,29.7]]){
+ const sample=hydrates.labHydrateSolubilityAtTemperature(
+  "Ca(CH3COO)2·2H2O",temperature);
+ assert.ok(sample);
+ assert.equal(sample.baseFormula,"Ca(CH3COO)2");
+ assert.equal(sample.waters,2);
+ approximately(sample.massGPer100gWater,expected,1e-12);
+ assert.ok(sample.sourceUrl.includes("ndl.ethernet.edu.et"));
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
-  "Ca(CH3COO)2",temp),undefined,"Calcium acetate interpolated through missing data");
+  "Ca(CH3COO)2",temperature),undefined,
+  "Dihydrate data must not be attributed to a pure anhydrous compound");
 }
+for(const t of [1,21,50,99]){
+ assert.equal(hydrates.labHydrateSolubilityAtTemperature(
+  "Ca(CH3COO)2·2H2O",t),undefined);
+}
+assert.ok(!pureWaterMeasurements.some(x=>x.formula==="Ca(CH3COO)2"));
 assert.equal(registryProps.labSubstanceProperties("Ca(CH3COO)2",20).solubilityKnown,false);
-console.log("Six traceable 20C water solubilities plus isolated 0/100C calcium acetate points passed");
+console.log("Calcium acetate dihydrate reattributed to correct phase and solvent basis");
 
 // International Chemical Safety Cards and the Colorado DOT published
 // exact-temperature measurements. Original units are never g/100g WATER
@@ -1420,7 +1422,7 @@ for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
  // The independent ion-speciation / Ksp engine may STILL legitimately
  // predict precipitation. Its settled solid is not a result of this solver.
 }
-console.log("81 sourced measurements across 51 stock formulas: 31 exact 20°C and 32 off-grid points");
+console.log("79 sourced measurements across 50 stock formulas: 31 exact 20°C and 32 off-grid points");
 
 
 // Individual source-linked normal-pressure phase boundaries. Avoid

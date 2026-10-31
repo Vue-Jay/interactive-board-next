@@ -1,3 +1,5 @@
+import {LAB_BATCH_SOLID_DENSITIES,LAB_BATCH_20C_SOLUBILITY_FORMULAS,
+ LAB_BATCH_REFERENCE_ONLY_SOLUTES} from "./lektrusLabReferenceBatches";
 import {labExactMeasuredSolubility} from "./lektrusLabSolubilityMeasurements";
 /** Reference material constants for the school laboratory.
  * Density is CRYSTAL true density in g/cm³ at ~20–25°C, NOT bulk/packing
@@ -29,6 +31,7 @@ import {labExactMeasuredSolubility} from "./lektrusLabSolubilityMeasurements";
  *   https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.260-223.pdf
  */
 export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
+ ...LAB_BATCH_SOLID_DENSITIES,
  // School empirical formula P2O5 means molecular solid P4O10. EPA
  // chemical hazard reference via PubChem: crystalline true density
  // 2.39 g/cm3, NOT loosely packed phosphoric anhydride powder.
@@ -419,10 +422,9 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  AgBr:[null,labExactMeasuredSolubility("AgBr",20)??null,null,null,null,null],
  SrCl2:[null,labExactMeasuredSolubility("SrCl2",20)??null,null,null,null,null],
  K3PO4:[null,labExactMeasuredSolubility("K3PO4",20)??null,null,null,null,null],
- // Calcium acetate source reports two extremes (0 and 100 °C) only.
- // Neither a 20 °C value nor interpolation across missing cells is valid.
- "Ca(CH3COO)2":[labExactMeasuredSolubility("Ca(CH3COO)2",0)??null,
-  null,null,null,null,labExactMeasuredSolubility("Ca(CH3COO)2",100)??null],
+ // Previously assigned Ca(CH3COO)2 0/100 C values actually describe
+ // Ca(CH3COO)2·2H2O: removed from ANHYDROUS binary water grid.
+ // True dihydrate 0/20/100 C values live in the batch hydrate registry.
  // Exact literature measurements (not inferred solubility curves).
  // Nickel(II) sulfate 0/20/100 C: PubChem CRC and ICSC. Hydrated solid
  // identity changes; equal rounded 0/20 C figures do NOT prove constant S.
@@ -470,7 +472,14 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  MgCO3:[null,labExactMeasuredSolubility("MgCO3",20)??null,null,null,null,null],
  CaSO4:[null,labExactMeasuredSolubility("CaSO4",20)??null,null,null,null,null],
  PbI2:[null,labExactMeasuredSolubility("PbI2",20)??null,null,null,null,null],
- PbCO3:[null,labExactMeasuredSolubility("PbCO3",20)??null,null,null,null,null]
+ PbCO3:[null,labExactMeasuredSolubility("PbCO3",20)??null,null,null,null,null],
+ // New source batches: each NEW stock identity has exactly one 20 C
+ // measured knot. No extrapolation, no silent correction of old curves.
+ ...Object.fromEntries(LAB_BATCH_20C_SOLUBILITY_FORMULAS.map(formula=>[
+  formula,[null,labExactMeasuredSolubility(formula,20)??null,
+   null,null,null,null]
+ ])),
+
 });
 export const LAB_SALT_SOLUBILITY_TEMPERATURES_C=[0,20,40,60,80,100] as const;
 export function labSingleSaltSolubilityGPer100gWater(
@@ -571,7 +580,8 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  "LiOH",
  // Sulfite oxidation/hydration and reactive FeCl3 hydrolysis prohibit
  // an arbitrary single-solute anhydrous crystallisation calculation.
- "Na2SO3","FeCl3"
+ "Na2SO3","FeCl3",
+ ...LAB_BATCH_REFERENCE_ONLY_SOLUTES
 ]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
