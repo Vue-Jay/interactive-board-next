@@ -68,10 +68,15 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
  NaH2PO4:2.36,
  MnSO4:3.25,
  FeS2:5,
- LiOH:1.46,
+ // ILO/WHO ICSC 0913 anhydrous dry LiOH crystal, NOT monohydrate:
+ // https://inchem.org/documents/icsc/icsc/eics0913.htm
+ LiOH:2.54,
  "Al2(SO4)3":2.71,
  "Ca(CH3COO)2":1.5,
- "Zn(CH3COO)2":1.735,
+ // GESTIS / Dräger specifically ANHYDROUS zinc acetate CAS 557-34-6;
+ // the former 1.735 g/cm3 value actually belongs to its DIHYDRATE.
+ // https://www.draeger.com/en-us_us/Substances/1521
+ "Zn(CH3COO)2":1.84,
 
  NaCl:2.16,KCl:1.984,KNO3:2.109,NaNO3:2.261,NaHCO3:2.20,
  KBr:2.75,CuSO4:3.6,AgNO3:4.35,
