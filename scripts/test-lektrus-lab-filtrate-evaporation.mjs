@@ -43,7 +43,6 @@ assert.ok(mol>.00199);
 const totalMass=network.labInventoryMassG(network.simulateLabInventory({
  ...fil,volumeMl:lab.labVesselQuantity(fil).volumeMl
 }));
-console.log("Filtrate species:",JSON.stringify(fil.chemicalInventory.speciesMol));
 assert.ok(physical.labVaporPressureKPa(fil,120)>0,
  "Measured NaCl filtrate must expose water vapor without reverting to stock BaCl2");
 const first=physical.labEvaporate(fil,10,120,200,160);
