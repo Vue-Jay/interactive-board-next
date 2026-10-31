@@ -6,6 +6,7 @@ import {reviewedReactionCases,type ReactionEnvironment,type ReactionCase} from "
 import {labDoseMoles,labMolarMass,parseBalancedLabEquation,type LabReactionAmounts} from "./lektrusLabStoichiometry";
 import type {LabDose} from "./lektrusChemistryBenchModel";
 import {labEquilibrateSingleSaltCrystals,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
+import {labSchoolMixedSaltEquilibrium} from "./lektrusLabDissolution";
 
 /** Persistent, strictly quantitative phase inventory. A transfer can carry
  * these molecule counts without pretending the filtrate is a fresh stock
@@ -288,6 +289,24 @@ export function simulateLabInventory(input:{
    // persisted kinetics, also for filtration and liquid sampling.
    if(phase.solidMol>EPS)inventory.solidMol[binaryFormula]=phase.solidMol;
    else delete inventory.solidMol[binaryFormula];
+  }
+ }
+ // Mixtures of weighed salts do not have one global saturation capacity.
+ // For a non-reacting school experiment, calculate EACH pure-water mass
+ // ceiling against the same measured solvent. Keep the separate source
+ // reference curves untouched and never replace a balanced reaction.
+ if(inventory.steps.length===0&&input.environment==="aqueous"&&
+  !input.chemicalInventory){
+  const mixed=labSchoolMixedSaltEquilibrium({
+   reagents:input.reagents,doses:input.doses,environment:input.environment
+  },input.temperatureC??22);
+  if(mixed){
+   for(const formula of mixed.formulas){
+    const solid=Math.min(inventory.speciesMol[formula]??0,
+     mixed.solidMol[formula]??0);
+    if(solid>EPS)inventory.solidMol[formula]=solid;
+    else delete inventory.solidMol[formula];
+   }
   }
  }
  // When the last explicit drop of pure water has evaporated, a weighed

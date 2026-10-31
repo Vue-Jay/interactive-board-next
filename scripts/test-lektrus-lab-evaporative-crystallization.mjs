@@ -72,8 +72,11 @@ const notBinary=reaction.simulateLabInventory({
  reagents:["NaCl","H2O","KNO3"],environment:"aqueous",temperatureC:25,
  doses:{NaCl:g(1),H2O:ml(.5),KNO3:g(.1)}
 });
-assert.equal(notBinary.solidMol.NaCl??0,0,
- "A single-salt solubility curve must never be applied to mixed salts");
+assert.ok((notBinary.solidMol.NaCl??0)>0,
+ "In mixed weighed salts, an explicit school estimate conserves the shared solvent");
+assert.equal(notBinary.solidMol.KNO3??0,0,
+ "A sufficiently dilute second salt must dissolve even while NaCl remains supersaturated");
+
 const stock=reaction.simulateLabInventory({
  reagents:["NaCl"],environment:"aqueous",temperatureC:25,
  doses:{NaCl:{value:10,unit:"ml",concentrationM:.1}}
@@ -171,8 +174,11 @@ const multicomponent=reaction.simulateLabInventory({
  reagents:["KNO3","KCl","H2O"],environment:"aqueous",temperatureC:20,
  doses:{KNO3:g(1),KCl:g(1),H2O:ml(.5)}
 });
-assert.ok(!multicomponent.solidMol.KNO3&&!multicomponent.solidMol.KCl,
- "Do not apply independent pure-water solubility curves to ionic mixtures");
+assert.ok((multicomponent.solidMol.KNO3??0)>0&&
+ (multicomponent.solidMol.KCl??0)>0,
+ "School mixed-solute equilibrium computes two independent saturation targets");
+approx(multicomponent.speciesMol.KNO3,1/stoich.labMolarMass("KNO3"));
+approx(multicomponent.speciesMol.KCl,1/stoich.labMolarMass("KCl"));
 const stockKNO3=reaction.simulateLabInventory({
  reagents:["KNO3"],environment:"aqueous",temperatureC:20,
  doses:{KNO3:{unit:"ml",value:10,concentrationM:.1}}

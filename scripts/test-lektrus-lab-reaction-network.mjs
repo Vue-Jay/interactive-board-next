@@ -74,6 +74,50 @@ const inactive=simulateLabInventory({
  doses:{NaCl:solution(10),KNO3:solution(10)}
 });
 assert.equal(inactive.steps.length,0,"Inert salts must not invent a reaction");
+// Multiple independently weighed salts share ONE actual water inventory.
+// Salt A reaching saturation must not erase or force Salt B to dissolve;
+// neither can mutate the original solute moles or form a fake reaction.
+const multiDoses={
+ H2O:{value:10,unit:"ml"},
+ NaCl:{value:4,unit:"g"},
+ KNO3:{value:4,unit:"g"}
+};
+const mixedCold=simulateLabInventory({
+ reagents:["H2O","NaCl","KNO3"],environment:"aqueous",
+ doses:multiDoses,temperatureC:20
+});
+const mixedHot=simulateLabInventory({
+ reagents:["H2O","NaCl","KNO3"],environment:"aqueous",
+ doses:multiDoses,temperatureC:70
+});
+assert.equal(mixedCold.steps.length,0,"Inert salts do not invent reactions");
+assert.equal(mixedCold.unmeasured.length,0);
+assert.ok((mixedCold.solidMol.NaCl??0)>0);
+assert.ok((mixedCold.solidMol.KNO3??0)>0);
+assert.ok((mixedHot.solidMol.KNO3??0)<(mixedCold.solidMol.KNO3??0),
+ "Hotter water dissolves more weighed KNO3 in a mixture");
+for(const id of ["NaCl","KNO3"]){
+ approximately(mixedCold.speciesMol[id],multiDoses[id].value/labMolarMass(id),1e-10);
+ approximately(mixedHot.speciesMol[id],mixedCold.speciesMol[id],1e-10);
+ assert.ok((mixedCold.solidMol[id]??0)<=mixedCold.speciesMol[id]);
+}
+approximately(labInventoryMassG(mixedCold),labInventoryMassG(mixedHot),1e-8);
+const fullyDissolvedMix=simulateLabInventory({
+ reagents:["H2O","NaCl","KNO3"],environment:"aqueous",
+ doses:{H2O:{value:100,unit:"ml"},NaCl:{value:1,unit:"g"},
+  KNO3:{value:1,unit:"g"}},temperatureC:25
+});
+assert.equal(fullyDissolvedMix.solidMol.NaCl,undefined);
+assert.equal(fullyDissolvedMix.solidMol.KNO3,undefined);
+const reactiveMixedSolids=simulateLabInventory({
+ reagents:["AgNO3","NaCl","H2O","KNO3"],environment:"aqueous",
+ doses:{AgNO3:solution(10),NaCl:{value:1,unit:"g"},
+  H2O:{value:20,unit:"ml"},KNO3:{value:2,unit:"g"}}
+});
+assert.ok(reactiveMixedSolids.steps.some(x=>x.equation.includes("AgCl")),
+ "Measured precipitation takes precedence over classroom binary mixing");
+assert.ok((reactiveMixedSolids.solidMol.AgCl??0)>0,
+ "Reaction-produced AgCl remains a solid");
 const unknown=simulateLabInventory({reagents:["NaCl"],environment:"aqueous"});
 assert.deepEqual(unknown.unmeasured,["NaCl"]);
 const diluteBelowKsp=simulateLabInventory({
