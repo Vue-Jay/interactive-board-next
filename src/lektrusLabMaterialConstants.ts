@@ -458,6 +458,11 @@ export function labSingleSaltSolubilityGPer100gWater(
   }
   return;
  }
+ // Aluminium nitrate saturation follows different stable hydrated phases;
+ // there is no validated between-knot interpolation for the current
+ // single-anhydrous-species model. The exact source temperature lookup
+ // above is still valid for each individually reported observation.
+ if(formula==="Al(NO3)3")return;
  const data=LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[formula];
  if(!data||!Number.isFinite(tempC)||tempC<0||tempC>100)return;
  // Exact measured knots remain available even when adjacent knots are absent.
