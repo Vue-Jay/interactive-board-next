@@ -181,3 +181,72 @@ assert.equal(incomplete.solidVolumeComplete,true,
 assert.equal(incomplete.solidVolumeEstimated,true,
  "Unknown crystal density must be clearly marked as a classroom estimate");
 console.log("Curated precipitate density conserves occupied space and closed-flask gas headspace");
+
+
+/** A finished precipitation is real matter, not a permanent textual label.
+ * Acid is added to the SAME flask, after an observable four-second
+ * reaction. The engine must then consume precisely the previous solid,
+ * show its disappearance, and preserve the quantitative reaction ledger. */
+const addSolution=(b,id,millilitres)=>lab.putLabReagent(b,"v1",id,
+ {value:millilitres,unit:"ml",concentrationM:.1});
+for(const [salt,base,baseMl,solidFormula,acidMl,chloride] of [
+ ["CuSO4","NaOH",20,"Cu(OH)2",20,"CuCl2"],
+ ["FeCl3","NaOH",30,"Fe(OH)3",30,"FeCl3"],
+ ["AlCl3","NaOH",30,"Al(OH)3",30,"AlCl3"],
+ ["ZnSO4","NaOH",20,"Zn(OH)2",20,"ZnCl2"]
+]){
+ let chain=lab.defaultLabBench();
+ chain=addSolution(chain,salt,10);
+ chain=addSolution(chain,base,baseMl);
+ chain=lab.advanceLabSimulation({...chain,simulationAtMs:0},1000);
+ chain=lab.advanceLabSimulation(chain,6000);
+ const first=chain.vessels[0];
+ assert.ok(first.reactionAmounts?.complete,
+  "First reaction must have physically finished: "+solidFormula);
+ const initial=chemistry.simulateLabInventory(first);
+ const solidBefore=initial.solidMol[solidFormula]??0;
+ assert.ok(solidBefore>.0009,
+  "Previously formed hydroxide exists as conserved solid: "+solidFormula);
+ const massBefore=chemistry.labInventoryMassG(initial);
+ chain=addSolution(chain,"HCl",acidMl);
+ const vessel=chain.vessels[0];
+ assert.equal(vessel.uncertain,false,
+  "A reviewed second reaction must not be marked uncertain: "+solidFormula);
+ assert.ok(vessel.chemicalInventory,"Next stage uses a persistent species ledger");
+ assert.equal(vessel.reactionAmounts,undefined,
+  "The finished first-stage timer cannot be replayed");
+ const next=chemistry.simulateLabInventory(vessel);
+ assert.ok((next.solidMol[solidFormula]??0)<solidBefore*.02,
+  "Dilute acid dissolves the accumulated solid: "+solidFormula);
+ assert.ok((next.speciesMol[chloride]??0)>.0009,
+  "Acid dissolution creates the verified chloride: "+chloride);
+ const visible=lab.labVesselContents(vessel);
+ assert.ok(!visible.solid.some(x=>x.formula===solidFormula&&
+  (x.massG??0)>.005),"Old precipitate must disappear on the laboratory table");
+ approx(chemistry.labInventoryMassG(next),
+  massBefore+acidMl*.1/1000*stoich.labMolarMass("HCl"),5e-6);
+ chain=addSolution(chain,"HCl",2);
+ const redosed=chemistry.simulateLabInventory(chain.vessels[0]);
+ assert.ok((redosed.solidMol[solidFormula]??0)<solidBefore*.02);
+ approx(chemistry.labInventoryMassG(redosed),
+  chemistry.labInventoryMassG(next)+.0002*stoich.labMolarMass("HCl"),5e-6);
+}
+// Gas formation must also use a solid that came from a previous
+// precipitation, while unrelated salt stays in the original solution.
+let carbonate=lab.defaultLabBench();
+carbonate=addSolution(carbonate,"CaCl2",10);
+carbonate=addSolution(carbonate,"Na2CO3",10);
+carbonate=lab.advanceLabSimulation({...carbonate,simulationAtMs:0},1000);
+carbonate=lab.advanceLabSimulation(carbonate,6000);
+const carbonateBefore=chemistry.simulateLabInventory(carbonate.vessels[0]);
+assert.ok(carbonateBefore.solidMol.CaCO3>.0009);
+carbonate=addSolution(carbonate,"HCl",20);
+const carbonateVessel=carbonate.vessels[0];
+const carbonateResult=chemistry.simulateLabInventory(carbonateVessel);
+assert.equal(carbonateVessel.uncertain,false);
+assert.ok((carbonateResult.solidMol.CaCO3??0)<.00001);
+assert.ok((carbonateVessel.chemicalInventory?.speciesMol.CaCl2??0)>.0009);
+assert.ok((carbonateVessel.chemicalInventory?.speciesMol.NaCl??0)>.0019);
+assert.ok((carbonateResult.releasedGasMol.CO2??0)>.0009,
+ "Acid attacking a previously formed carbonate releases calculable CO2");
+console.log("Second-stage acid addition consumes real previous solids and preserves masses: PASS");
