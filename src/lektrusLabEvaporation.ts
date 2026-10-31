@@ -103,7 +103,7 @@ import {labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstant
  * Reject any unknown stock solvent, mixed undissolved powder, or molality
  * outside the dilute range instead of silently treating it as pure water. */
 const FILTRATE_WATER_ID="__measured_filtrate_water";
-function components(v:LabEvaporationState){
+function components(v:LabEvaporationState,tempC=v.temperatureC??25){
  const entries=Object.entries(v.doses??{});
  const gasIds=new Set(["CO2","H2","O2","NH3","Cl2","NO2","SO2","CO","H2S","N2"]);
  // Filtration records its exact solvent volume separately from stock doses.
@@ -140,7 +140,7 @@ function components(v:LabEvaporationState){
   // dissolved concentration that increases without limit.
   for(const [id,mol] of soluble){
    const salt=aqueousNonvolatile[id];
-   const limit=labSingleSaltSolubilityGPer100gWater(id,v.temperatureC??25);
+   const limit=labSingleSaltSolubilityGPer100gWater(id,tempC);
    const maxMol=limit===undefined?mol:
     Math.min(mol,limit/100*waterKg*1000/salt.molarG);
    particleMoles+=maxMol*salt.i;
@@ -178,7 +178,7 @@ function components(v:LabEvaporationState){
  });
 }
 export function labVaporPressureKPa(v:LabEvaporationState,tempC:number):number|undefined{
- const items=components(v);
+ const items=components(v,tempC);
  if(!items.length)return;
  let pressure=0;
  for(const item of items){
@@ -196,7 +196,12 @@ export function labIdealBoilingC(v:LabEvaporationState):number|undefined{
  const diluteWater=labApproxWaterBoilingC(v.doses);
  if(diluteWater!==undefined)return diluteWater;
  if(!components(v).length)return;
- const key=JSON.stringify(v.doses??{});
+ // The water carrier of an actual filtrate is NOT stored in doses. Its
+ // changing volume and conserved chemical product moles change Raoult
+ // activity and the boiling plateau. Cache by those physical quantities,
+ // otherwise unrelated filtrates all share the same "{}" cache entry.
+ const key=JSON.stringify([v.doses??{},v.filteredSolution?.volumeMl??0,
+  v.chemicalInventory?.speciesMol??null,v.temperatureC??25]);
  if(bubbleCache.has(key))return bubbleCache.get(key);
  let lowerT=20,lowerP=labVaporPressureKPa(v,lowerT);
  if(lowerP!==undefined&&lowerP>=101.325)return lowerT;
@@ -228,7 +233,7 @@ const bubbleCache=new Map<string,number|undefined>();
  */
 export function labEvaporate(v:LabEvaporationState,seconds:number,
  temperatureC=v.temperatureC??22,heaterTargetC=22,heaterPowerW=0){
- const items=components(v),dt=Math.max(0,Math.min(10,seconds));
+ const items=components(v,temperatureC),dt=Math.max(0,Math.min(10,seconds));
  const partials=items.map(c=>({
   ...c,pressureKPa:labSaturationPressureKPa(c.id,temperatureC)
  }));
