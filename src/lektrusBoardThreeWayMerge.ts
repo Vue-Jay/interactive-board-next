@@ -1,6 +1,7 @@
 import type {DocumentData,Item} from "./boardModel";
 import {expandDocumentInk,packDocumentInk} from "./boardModel";
 import {mergeEditedValue} from "./lektrusLiveEditorMerge";
+import {mergeLabBench} from "./lektrusChemistryBenchModel";
 
 /**
  * Rebase local unsaved board edits onto a newer server version.
@@ -28,6 +29,19 @@ export function mergeBoardItems(base:readonly Item[],local:readonly Item[],remot
    result.push(serverItem);
   }else if(same(original,serverItem)){
    result.push(localItem);
+  }else if(original.graphFigureId==="chem-experiment-free"&&
+    localItem.graphFigureId==="chem-experiment-free"&&
+    serverItem.graphFigureId==="chem-experiment-free"&&
+    original.scienceLabBench&&localItem.scienceLabBench&&serverItem.scienceLabBench){
+   // Generic positional-array merge can resurrect a cleared worktop when
+   // an evaporation tick competes with a server checkpoint. Chemistry arrays
+   // use stable vessel IDs and an explicit clear/kit generation barrier.
+   const baseWithout={...original,scienceLabBench:undefined};
+   const localWithout={...localItem,scienceLabBench:undefined};
+   const remoteWithout={...serverItem,scienceLabBench:undefined};
+   result.push({...mergeEditedValue(baseWithout,localWithout,remoteWithout),
+    scienceLabBench:mergeLabBench(original.scienceLabBench,
+     localItem.scienceLabBench,serverItem.scienceLabBench)});
   }else{
    result.push(mergeEditedValue(original,localItem,serverItem));
   }
