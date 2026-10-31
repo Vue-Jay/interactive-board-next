@@ -1,7 +1,7 @@
 import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
-import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,pourLabIntoFilter,
+import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
  labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
@@ -464,7 +464,7 @@ function LabTemperatureInput({temperature,onSet}:{temperature:number;onSet:(v:nu
   onBlur={commit}/>;
 }
 type SurfaceProps={
- bench:LabBench;editable?:boolean;compactFullscreen?:boolean;
+ bench:LabBench;editable?:boolean;compactFullscreen?:boolean;fullscreenOwner?:boolean;
  pouringId?:string|null;
  onChange?:(bench:LabBench)=>void;
  onSelect?:(id:string)=>void;
@@ -473,7 +473,7 @@ type SurfaceProps={
 };
 /** Furniture is part of the shared bench, not a second toolbar. Both the
  * editor and the board use these exact same interactions. */
-export default function LektrusChemistryBenchSurface({bench,editable=false,compactFullscreen=false,pouringId,
+export default function LektrusChemistryBenchSurface({bench,editable=false,compactFullscreen=false,fullscreenOwner=false,pouringId,
  onChange,onSelect,onPour,onDropReagent}:SurfaceProps){
  const host=useRef<HTMLDivElement>(null);
  const [stageSize,setStageSize]=useState({width:1600,height:1000});
@@ -655,39 +655,48 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   },1600);
   return()=>clearTimeout(timer);
  },[bench.pouring?.id,bench.pouring?.step]);
- /** Persist one deterministic simulated thermal clock in board state. */
+ /** One adaptive clock per visible editable laboratory. Dormant tables
+  * schedule nothing; ambient evaporation wakes only every ~10 seconds.
+  * The tabletop underneath the fullscreen portal must never run a second
+  * clock or upload a competing simulation revision. */
  useEffect(()=>{
   if(!editable)return;
-  const timer=setInterval(()=>{
-   // Background tabs on mobile must not compete with the visible teacher
-   // for CPU and repeated full-board uploads. Elapsed simulation time is
-   // applied deterministically on the next visible tick.
-   if(document.visibilityState==="hidden")return;
-   const current=benchRef.current;
-   const openBurette=current.vessels.some(v=>v.buretteOpen);
-   const active=openBurette||current.vessels.some(labReactionNeedsTick)||
-    current.vessels.some(v=>!v.stoppered&&
-     labVaporPressureKPa(v,v.temperatureC??22)!==undefined)||
-    current.vessels.some(v=>(v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing"))||
-    placedLabDevices(current).some(d=>d.powered||
-    (d.temperatureC??22)>22.1)||
-    current.vessels.some(v=>(v.temperatureC??22)>22.1);
-   if(!active)return;
-   // Fine-grained updates only while titrating. Heating needs fewer board writes.
-   const ambientOnly=!openBurette&&!current.vessels.some(labReactionNeedsTick)&&
-    !current.vessels.some(v=>(v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing"))&&
-    !placedLabDevices(current).some(d=>d.powered||(d.temperatureC??22)>22.1)&&
-    !current.vessels.some(v=>(v.temperatureC??22)>22.1);
-   // Quiet, ambient evaporation updates every ~10s rather than generating
-   // hundreds of unnecessary board versions per classroom hour.
-   if(!openBurette&&!current.vessels.some(labReactionNeedsTick)&&
-    !current.vessels.some(v=>(v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing"))&&
-    Date.now()-(current.simulationAtMs??0)<(ambientOnly?9800:1900))return;
-   const next=advanceLabSimulation(current,Date.now());
-   if(next!==current)changeRef.current?.(next);
-  },500);
-  return ()=>clearInterval(timer);
- },[editable]);
+  let timer:number|undefined;
+  let disposed=false;
+  const tick=()=>{
+   if(disposed||document.visibilityState==="hidden"||
+    !fullscreenOwner&&document.body.classList.contains("lektrus-lab-fullscreen-active"))return;
+   const current=benchRef.current,now=Date.now();
+   const wait=labSimulationTickWaitMs(current,now);
+   if(wait===null)return;
+   if(wait>40){
+    timer=window.setTimeout(tick,wait);
+    return;
+   }
+   const next=advanceLabSimulation(current,now);
+   if(next!==current){
+    benchRef.current=next;
+    changeRef.current?.(next);
+   }
+   // A no-op calculation must not spin when the shared clock is due.
+   // A saved revision normally remounts the timer with its new deadline.
+   timer=window.setTimeout(tick,next===current?500:50);
+  };
+  const resume=()=>{
+   if(timer!==undefined)window.clearTimeout(timer);
+   timer=undefined;
+   tick();
+  };
+  document.addEventListener("visibilitychange",resume);
+  window.addEventListener("focus",resume);
+  tick();
+  return ()=>{
+   disposed=true;
+   if(timer!==undefined)window.clearTimeout(timer);
+   document.removeEventListener("visibilitychange",resume);
+   window.removeEventListener("focus",resume);
+  };
+ },[editable,fullscreenOwner,bench.event,bench.vessels,bench.placedDevices,bench.simulationAtMs]);
  useEffect(()=>{if(cabinet)dialogRef.current?.focus()},[cabinet]);
  useEffect(()=>{scrollRef.current?.scrollTo({top:0})},
   [cabinet,cabinetTab,query,category,phase,sort,group,effectFilter]);
