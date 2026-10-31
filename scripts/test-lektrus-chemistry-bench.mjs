@@ -85,6 +85,80 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
+const kits=load("src/lektrusLabExperimentKits.ts",key=>{
+ if(key==="./lektrusLabCatalog")return catalog;
+ if(key==="./lektrusChemistryBenchModel")return lab;
+ assert.equal(key,"./lektrusReactionDatabase");return reaction;
+});
+assert.equal(lab.labBenchSettings(lab.defaultLabBench()).pourMode,"gradual",
+ "Existing classroom boards retain gradual pouring by default");
+const fastSetting=lab.setLabBenchSettings(lab.defaultLabBench(),{pourMode:"fast"});
+assert.equal(lab.labBenchSettings(fastSetting).pourMode,"fast");
+assert.equal(lab.labBenchSettings(lab.setLabBenchSettings(fastSetting,{pourMode:"gradual"})).pourMode,
+ "gradual","Both pouring speeds can be selected and saved");
+const pourSource=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl",
+ {value:10,unit:"ml",concentrationM:.1});
+const pourPair=lab.addLabVessel(pourSource,"beaker");
+const rapid=lab.fastLabPour(pourPair,"v1","v2");
+const session=lab.startLabPour(pourPair,"v1","v2","test-gradual");
+assert.ok(session.pouring,"Gradual mode starts a 20-step session");
+let gradual=session;
+for(let tick=0;tick<lab.LAB_POUR_STEPS;tick++)
+ gradual=lab.advanceLabPour(gradual);
+gradual=lab.stopLabPour(gradual,"test-gradual");
+assert.deepEqual(rapid.vessels.map(v=>({reagents:v.reagents,doses:v.doses})),
+ gradual.vessels.map(v=>({reagents:v.reagents,doses:v.doses})),
+ "Fast transfer conserves precisely the same measured mass and concentration as gradual");
+assert.equal(rapid.pouring,undefined,"Fast pouring completes without a dangling shared session");
+assert.equal(rapid.vessels[1].doses.NaCl.value,10);
+assert.equal(lab.fastLabPour(pourPair,"v1","v1"),pourPair,
+ "Fast mode rejects transfers into the same vessel");
+
+const precipitation=reaction.reviewedReactionCases.find(row=>
+ row.environment==="aqueous"&&row.status==="reaction"&&
+ row.reactants.includes("NaCl")&&row.reactants.includes("AgNO3"));
+assert.ok(precipitation);
+const kitBench=kits.prepareLabExperimentKit(lab.defaultLabBench(),precipitation);
+assert.deepEqual(kitBench.vessels.flatMap(v=>v.reagents),precipitation.reactants);
+assert.equal(kitBench.vessels.length,precipitation.reactants.length,
+ "Prepared experiments use only the vessels required by their reagents");
+assert.ok(kitBench.vessels.every(v=>v.doses?.[v.reagents[0]]?.value>0));
+assert.equal(kitBench.vessels[0].kind,"beaker");
+assert.ok(kitBench.vessels.slice(1).every(v=>v.kind==="tube"),
+ "Compact tubes replace unnecessary large glassware for small portions");
+const ignition=reaction.reviewedReactionCases.find(row=>row.status==="reaction"&&
+ row.environment==="ignited"&&row.reactants.includes("Mg")&&row.reactants.includes("O2"));
+assert.ok(ignition);
+const fireKit=kits.prepareLabExperimentKit(kitBench,ignition);
+assert.equal(fireKit.vessels[0].kind,"crucible",
+ "Dry heated demonstrations use a crucible instead of a liquid beaker");
+assert.deepEqual((fireKit.placedDevices??[]).map(d=>d.kind),["burner","tripod"]);
+assert.ok(fireKit.placedDevices.every(d=>d.powered===false&&!d.linkedVesselId),
+ "Ready experiments never automatically ignite or reconnect old instruments");
+assert.deepEqual(kits.labExperimentKitSummary(ignition).equipment,["Горелка","Штатив"]);
+assert.equal(fireKit.pouring,undefined);
+assert.equal(fireKit.titration,undefined);
+const existingKit={...kitBench,quickReagents:[{id:"H2O",dose:{value:5,unit:"ml"}}],
+ settings:{...lab.labBenchSettings(kitBench),pourMode:"fast"}};
+const replacedKit=kits.prepareLabExperimentKit(existingKit,ignition);
+assert.deepEqual(replacedKit.quickReagents,existingKit.quickReagents,
+ "Changing a ready experiment retains quick shelf configuration");
+assert.equal(replacedKit.settings.pourMode,"fast",
+ "Experiment kits keep the teacher's chosen pouring speed");
+const surfaceText=read("src/LektrusChemistryBench.tsx");
+assert.match(surfaceText,/Переливание: по 5% каждые 0,15 секунды/);
+assert.match(surfaceText,/fastLabPour\(bench,sourceId,targetId\)/);
+assert.match(surfaceText,/fastLabPour\(latest,sourceId,targetId\)/);
+assert.match(surfaceText,/setTimeout\(perform,2000\)/,
+ "Both pour modes keep the two-second intentional contact");
+assert.match(surfaceText,/Показать ещё 36 опытов/,
+ "Ready experiments must avoid rendering the whole reaction catalogue at once");
+assert.match(surfaceText,/Текущая посуда и содержимое будут заменены/,
+ "A loaded tabletop must not be silently discarded by choosing a recipe");
+const styleText=read("src/lektrusChemistryBench.css");
+assert.match(styleText,/\.lektrus-lab-experiment-grid/);
+assert.match(styleText,/\.lektrus-lab-pour-mode/);
+
 let bench=lab.defaultLabBench();
 assert.equal(bench.vessels.length,1,"New lab starts with a single empty beaker");
 assert.equal(bench.selectedId,"v1");
