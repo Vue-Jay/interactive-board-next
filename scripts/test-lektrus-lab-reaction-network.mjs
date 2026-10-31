@@ -755,3 +755,42 @@ assert.deepEqual(fields,{
  crystalDensityGPerMl:14,specificHeatJPerGK:8,thermal:19
 });
 console.log("41 source-checked property references: 14 crystal densities, 8 pure-solid heat capacities, 19 phase boundaries");
+
+
+// Perry's Chemical Engineers' Handbook, Table 2-194. These 34 documented
+// crystalline Cp(T) correlations each include 298.15 K, and heat capacity
+// is converted cal/mol/K -> J/g/K via the REAL stoichiometry parser.
+const perry=load("src/lektrusLabPerryHeatReferences.ts");
+assert.equal(perry.LAB_PERRY_SOLID_HEAT_REFERENCES.length,34);
+const perryKeys=new Set();
+for(const item of perry.LAB_PERRY_SOLID_HEAT_REFERENCES){
+ assert.ok(!perryKeys.has(item.formula),"Handbook duplicate "+item.formula);
+ perryKeys.add(item.formula);
+ assert.equal(item.phase,"solid");
+ assert.equal(item.sourceUrl,perry.LAB_PERRY_HANDBOOK_SOURCE);
+ assert.ok(item.minKelvin<=298.15&&298.15<=item.maxKelvin);
+ const molarCal=perry.labPerryMolarHeatCalPerMolK(item,298.15);
+ assert.ok(molarCal>0);
+ const expected=molarCal*4.184/labMolarMass(item.formula);
+ approximately(expected,item.roomHeatJPerGK,1e-6);
+ const actual=registryProps.labSubstanceProperties(item.formula);
+ approximately(actual.specificHeatJPerGK,item.roomHeatJPerGK,1e-12);
+ const glass=heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84;
+ approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  [item.formula]:{value:5,unit:"g"}
+ }),glass+5*expected,1e-5);
+ assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  H2O:{value:5,unit:"ml"},
+  [item.formula]:{value:5,unit:"g"}
+ }),undefined,"Perry solid Cp must not be applied to aqueous mixtures");
+ assert.equal(perry.labPerryMolarHeatCalPerMolK(item,item.minKelvin-1),undefined);
+ assert.equal(perry.labPerryMolarHeatCalPerMolK(item,item.maxKelvin+1),undefined);
+}
+for(const [formula,cp] of Object.entries({
+ AlCl3:.677761,AgBr:.284855,AgI:.227828,AgNO3:.581284,
+ Ag3PO4:.374844,NiSO4:.903045,ZnSO4:.725687,MgSO4:.928148
+})){
+ const row=perry.LAB_PERRY_SOLID_HEAT_REFERENCES.find(x=>x.formula===formula);
+ approximately(row.roomHeatJPerGK,cp,1e-12);
+}
+console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass, temperature range, and laboratory heat transfer verified");

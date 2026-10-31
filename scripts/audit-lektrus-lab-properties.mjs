@@ -38,6 +38,7 @@ const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const heat=load("src/lektrusLabCalorimetry.ts");
 const hydrate=load("src/lektrusLabHydrateReferences.ts");
 const provenance=load("src/lektrusLabPropertyProvenance.ts");
+const perry=load("src/lektrusLabPerryHeatReferences.ts");
 const saturated=load("src/lektrusLabSaturatedSolutionReferences.ts");
 
 const has=(value)=>typeof value==="number"&&Number.isFinite(value);
@@ -108,6 +109,7 @@ const hydrateKnownCells=hydrateRows.reduce((count,row)=>
 const rawTotals={
  stock:db.substances.length,
  curatedSourceCheckedProperties:provenance.LAB_REVIEWED_PROPERTY_DATUMS.length,
+ perryRoomTemperatureCrystalHeats:perry.LAB_PERRY_SOLID_HEAT_REFERENCES.length,
  hydrateReferenceVariants:hydrateRows.length,
  hydrateCrystalDensityRecords:hydrateDensities.length,
  hydrateReferenceAllBases:hydrateBases.size,
@@ -135,7 +137,8 @@ for(const row of stockRows){
  bucket.total++;
  if(row.missing.length)bucket.rowsWithGaps++;
 }
-const report={schemaVersion:5,rawTotals,
+const report={schemaVersion:6,rawTotals,
+ perryRoomTemperatureCrystalHeatRows:perry.LAB_PERRY_SOLID_HEAT_REFERENCES,
  sourceCheckedPropertyDatums:provenance.LAB_REVIEWED_PROPERTY_DATUMS,
  hydratedReferenceRows:hydrateRows,
  saturatedSolutionDensityRows:saturationRows,
@@ -245,6 +248,32 @@ if(process.argv.includes("--verify")){
     entry.property==="decompositionC"?"decomposes":"sublimes",
     "Must explicitly distinguish chemical change from fusion/boiling: "+id);
  }
+ // The handbook reports crystalline molar Cp, not dry mass Cp or Cp
+ // of a salt solution. Recalculate against the ACTUAL lab formula parser
+ // to verify that every conversion, temperature range and identity matches.
+ const perryIds=new Set();
+ const temperatureK=298.15;
+ for(const row of perry.LAB_PERRY_SOLID_HEAT_REFERENCES){
+  assert.ok(stockNames.has(row.formula),
+   "Handbook Cp formula must belong to current cabinet: "+row.formula);
+  assert.ok(!perryIds.has(row.formula),"Duplicate handbook Cp: "+row.formula);
+  perryIds.add(row.formula);
+  assert.equal(row.phase,"solid");
+  assert.ok(row.minKelvin<=temperatureK&&temperatureK<=row.maxKelvin,
+   "Experimental Cp fit not valid near room temperature: "+row.formula);
+  assert.equal(row.sourceUrl,perry.LAB_PERRY_HANDBOOK_SOURCE);
+  const molarMass=registry.labSubstanceProperties(row.formula).molarMassGPerMol;
+  assert.ok(has(molarMass)&&molarMass>0);
+  const molarHeat=perry.labPerryMolarHeatCalPerMolK(row,temperatureK);
+  assert.ok(has(molarHeat)&&molarHeat>0);
+  const converted=molarHeat*4.184/molarMass;
+  assert.ok(Math.abs(converted-row.roomHeatJPerGK)<.000001,
+   "Incorrect handbook cal/mol to J/g conversion: "+row.formula);
+  const actual=heat.LAB_CALORIMETRY_REFERENCE[row.formula];
+  assert.equal(actual?.phase,"solid");
+  assert.equal(actual?.specificJPerGK,row.roomHeatJPerGK,
+   "Cp did not reach simulator calorimetry: "+row.formula);
+ }
  assert.ok(hydrateKnownCells>0);
  assert.ok(producedOnly.every(x=>x.molarMassKnown),
   "Every existing reviewed product must have a calculable formula mass");
@@ -272,6 +301,10 @@ if(process.argv.includes("--json")){
  for(const [key,v] of Object.entries(counted))
   lines.push("| "+labels[key]+" | "+v.filled+" | "+v.remaining+" | "+v.eligible+" |");
  lines.push("",
+  "Из инженерного справочника Perry: "+
+  rawTotals.perryRoomTemperatureCrystalHeats+
+  " теплоёмкости кристаллов с измеренными диапазонами и коэффициентами.",
+  "",
   "Проверенных записей с индивидуальным источником (текущая партия): "+
   rawTotals.curatedSourceCheckedProperties+".",
   "",
@@ -306,6 +339,9 @@ if(process.argv.includes("--json")){
    v.firstMissing.slice(0,14).join(", ")+")");
  console.log("Unique stock formulas with applicable gaps: "+
   report.stockWithOutstandingProperties);
+ console.log("Perry's handbook crystalline Cp at 298.15 K: "+
+  rawTotals.perryRoomTemperatureCrystalHeats+
+  " checked empirical molar-to-mass conversions");
  console.log("Source-checked individual property records: "+
   rawTotals.curatedSourceCheckedProperties);
  console.log("Hydrate reference: "+

@@ -115,6 +115,47 @@ export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
  KOH:{specificJPerGK:1.156642,phase:"solid"},
  // https://webbook.nist.gov/cgi/cbook.cgi?ID=C1309428&Mask=2
  "Mg(OH)2":{specificJPerGK:1.323907,phase:"solid"},
+ // Perry's Chemical Engineers' Handbook, Section 2, Table 2-194, pp 2-161–168.
+ // Hosted by University of Maryland:
+ // https://terpconnect.umd.edu/~nsw/chbe301/chap02.pdf
+ // All are PURE CRYSTALLINE SOLID cp at 298.15 K, J/(g K).
+ // Empirical molar Cp formulas, valid T ranges and exact source references
+ // live in lektrusLabPerryHeatReferences.ts and are numerically audited.
+ AlCl3:{specificJPerGK:0.677761,phase:"solid"},
+ "Al2(SO4)3":{specificJPerGK:0.776556,phase:"solid"},
+ AgBr:{specificJPerGK:0.284855,phase:"solid"},
+ AgI:{specificJPerGK:0.227828,phase:"solid"},
+ AgNO3:{specificJPerGK:0.581284,phase:"solid"},
+ Ag3PO4:{specificJPerGK:0.374844,phase:"solid"},
+ BaSO4:{specificJPerGK:0.458121,phase:"solid"},
+ CoS:{specificJPerGK:0.521814,phase:"solid"},
+ CuS:{specificJPerGK:0.498334,phase:"solid"},
+ FeO:{specificJPerGK:0.71094,phase:"solid"},
+ FeS2:{specificJPerGK:0.512107,phase:"solid"},
+ FeSO4:{specificJPerGK:0.605974,phase:"solid"},
+ "Fe2(SO4)3":{specificJPerGK:0.692698,phase:"solid"},
+ LiNO3:{specificJPerGK:1.207876,phase:"solid"},
+ MgCl2:{specificJPerGK:0.809686,phase:"solid"},
+ MgSO4:{specificJPerGK:0.928148,phase:"solid"},
+ MnO2:{specificJPerGK:0.641187,phase:"solid"},
+ MnSO4:{specificJPerGK:0.762017,phase:"solid"},
+ NiS:{specificJPerGK:0.514424,phase:"solid"},
+ NiSO4:{specificJPerGK:0.903045,phase:"solid"},
+ PbBr2:{specificJPerGK:0.217224,phase:"solid"},
+ PbCl2:{specificJPerGK:0.276369,phase:"solid"},
+ PbO:{specificJPerGK:0.211415,phase:"solid"},
+ PbS:{specificJPerGK:0.206797,phase:"solid"},
+ PbSO4:{specificJPerGK:0.364239,phase:"solid"},
+ KMnO4:{specificJPerGK:0.741317,phase:"solid"},
+ NaBr:{specificJPerGK:0.505635,phase:"solid"},
+ NaF:{specificJPerGK:1.122191,phase:"solid"},
+ SrCl2:{specificJPerGK:0.499575,phase:"solid"},
+ SrCO3:{specificJPerGK:0.617845,phase:"solid"},
+ ZnCl2:{specificJPerGK:0.561383,phase:"solid"},
+ ZnO:{specificJPerGK:0.502848,phase:"solid"},
+ ZnS:{specificJPerGK:0.468214,phase:"solid"},
+ ZnSO4:{specificJPerGK:0.725687,phase:"solid"},
+
  // U.S. Army Materiel Command AMCP 706-106, appendix A, table A-4:
  // measured room-temp CAL/(g K), thermochemical cal=4.184 J.
  // https://ru.djvu.online/file/FxAstfSBiPOi2
