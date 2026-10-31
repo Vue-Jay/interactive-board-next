@@ -149,7 +149,7 @@ assert.equal(lowAmbient.doses.H2O.value,40,
 assert.ok(mediumAmbient.doses.H2O.value<40,
  "Warm measured water still evaporates on medium realism");
 assert.ok(highAmbient.doses.H2O.value<40);
-const roomWater={...water,temperatureC:25};
+const roomWater={...water,temperatureC:22};
 const atRoom={...idle,vessels:[roomWater]};
 const slowLow=lab.labSimulationTickWaitMs(
  lab.setLabBenchSettings(atRoom,{realism:"low"}),11000);
