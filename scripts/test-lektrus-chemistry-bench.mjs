@@ -2131,9 +2131,11 @@ nextReaction=lab.putLabReagent(nextReaction,"v1","HCl",
 nextReaction=lab.putLabReagent(nextReaction,"v1","NaOH",
  {value:20,unit:"ml",concentrationM:.1});
 assert.equal(lab.recordLabReactions(nextReaction),nextReaction);
-nextReaction=lab.advanceLabSimulation(nextReaction,0);
-nextReaction=lab.advanceLabSimulation(nextReaction,1000);
-nextReaction=lab.advanceLabSimulation(nextReaction,6000);
+nextReaction=lab.advanceLabSimulation(nextReaction,10000);
+nextReaction=lab.advanceLabSimulation(nextReaction,16000);
+nextReaction=lab.advanceLabSimulation(nextReaction,22000);
+assert.equal(nextReaction.vessels[0].reactionAmounts?.complete,true,
+ "Neutralization must finish before chalk is written");
 nextReaction=lab.recordLabReactions(nextReaction);
 assert.equal(nextReaction.reactionLog.length,1);
 assert.match(nextReaction.reactionLog[0],/NaCl \+ H2O/);
