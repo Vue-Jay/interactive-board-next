@@ -40,6 +40,7 @@ const hydrate=load("src/lektrusLabHydrateReferences.ts");
 const measured=load("src/lektrusLabSolubilityMeasurements.ts");
 const provenance=load("src/lektrusLabPropertyProvenance.ts");
 const perry=load("src/lektrusLabPerryHeatReferences.ts");
+const nist=load("src/lektrusLabNistHeatReferences.ts");
 const saturated=load("src/lektrusLabSaturatedSolutionReferences.ts");
 
 const has=(value)=>typeof value==="number"&&Number.isFinite(value);
@@ -118,6 +119,7 @@ const rawTotals={
   !gridTemps.has(x.temperatureC)).length,
  curatedSourceCheckedProperties:provenance.LAB_REVIEWED_PROPERTY_DATUMS.length,
  perryRoomTemperatureCrystalHeats:perry.LAB_PERRY_SOLID_HEAT_REFERENCES.length,
+ nistRoomTemperatureSolidHeats:nist.LAB_NIST_ROOM_HEAT_REFERENCES.length,
  hydrateReferenceVariants:hydrateRows.length,
  hydrateCrystalDensityRecords:hydrateDensities.length,
  hydrateReferenceAllBases:hydrateBases.size,
@@ -148,6 +150,7 @@ for(const row of stockRows){
 const report={schemaVersion:7,rawTotals,
  measuredPureWaterSourceRows:measuredRows,
  perryRoomTemperatureCrystalHeatRows:perry.LAB_PERRY_SOLID_HEAT_REFERENCES,
+ nistRoomTemperatureSolidHeatRows:nist.LAB_NIST_ROOM_HEAT_REFERENCES,
  sourceCheckedPropertyDatums:provenance.LAB_REVIEWED_PROPERTY_DATUMS,
  hydratedReferenceRows:hydrateRows,
  saturatedSolutionDensityRows:saturationRows,
@@ -257,6 +260,37 @@ if(process.argv.includes("--verify")){
     entry.property==="decompositionC"?"decomposes":"sublimes",
     "Must explicitly distinguish chemical change from fusion/boiling: "+id);
  }
+ // NIST SRD 69 records are measured for the actual pure crystal phases;
+ // check exact 298.15 K Shomate conversions and published molar Cp data
+ // against the simulator's REAL formula parser (not duplicated molar masses).
+ const nistIds=new Set();
+ for(const row of nist.LAB_NIST_ROOM_HEAT_REFERENCES){
+  assert.ok(stockNames.has(row.formula),
+   "NIST solid Cp formula not in the active cabinet: "+row.formula);
+  assert.ok(!nistIds.has(row.formula),"Duplicate NIST heat "+row.formula);
+  nistIds.add(row.formula);
+  assert.equal(row.phase,"solid");
+  assert.ok(row.form&&row.form.length>=9,"Missing exact solid form");
+  assert.ok(row.minKelvin<=298.15&&row.maxKelvin>=298.15,
+   "NIST Cp not measured/fit at ambient: "+row.formula);
+  assert.ok(row.sourceUrl.startsWith("https://webbook.nist.gov/"));
+  assert.notEqual(Boolean(row.shomate),row.molarHeatJPerMolK!==undefined,
+   "Choose exactly one molar Cp source format: "+row.formula);
+  const molarMass=registry.labSubstanceProperties(row.formula).molarMassGPerMol;
+  assert.ok(has(molarMass)&&molarMass>0);
+  const molarHeat=nist.labNistMolarHeatAt298K(row);
+  assert.ok(has(molarHeat)&&molarHeat>0);
+  assert.ok(Math.abs(molarHeat/molarMass-row.roomHeatJPerGK)<.000001,
+   "NIST source molar-to-specific Cp mismatch: "+row.formula);
+  const real=heat.LAB_CALORIMETRY_REFERENCE[row.formula];
+  assert.equal(real?.phase,"solid","NIST source must not heat an aqueous solution");
+  assert.equal(real?.specificJPerGK,row.roomHeatJPerGK,
+   "NIST room Cp not wired to simulator: "+row.formula);
+  assert.ok(provenance.LAB_REVIEWED_PROPERTY_DATUMS.some(p=>
+   p.formula===row.formula&&p.property==="specificHeatJPerGK"&&
+   p.value===row.roomHeatJPerGK&&p.sourceUrl===row.sourceUrl),
+   "NIST calorimetry lacks matching traceable provenance: "+row.formula);
+ }
  // The handbook reports crystalline molar Cp, not dry mass Cp or Cp
  // of a salt solution. Recalculate against the ACTUAL lab formula parser
  // to verify that every conversion, temperature range and identity matches.
@@ -331,6 +365,10 @@ if(process.argv.includes("--json")){
  for(const [key,v] of Object.entries(counted))
   lines.push("| "+labels[key]+" | "+v.filled+" | "+v.remaining+" | "+v.eligible+" |");
  lines.push("",
+  "Из NIST Chemistry WebBook SRD 69: "+
+  rawTotals.nistRoomTemperatureSolidHeats+
+  " проверенных теплоёмкостей чистых кристаллов при 298,15 K.",
+  "",
   "Из инженерного справочника Perry: "+
   rawTotals.perryRoomTemperatureCrystalHeats+
   " теплоёмкости кристаллов с измеренными диапазонами и коэффициентами.",
@@ -375,6 +413,8 @@ if(process.argv.includes("--json")){
    v.firstMissing.slice(0,14).join(", ")+")");
  console.log("Unique stock formulas with applicable gaps: "+
   report.stockWithOutstandingProperties);
+ console.log("NIST SRD 69 verified solid Cp at 298.15 K: "+
+  rawTotals.nistRoomTemperatureSolidHeats);
  console.log("Perry's handbook crystalline Cp at 298.15 K: "+
   rawTotals.perryRoomTemperatureCrystalHeats+
   " checked empirical molar-to-mass conversions");
