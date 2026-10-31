@@ -8,9 +8,9 @@
  */
 import {substances,reviewedReactionCases} from "./lektrusReactionDatabase";
 import {labMolarMass,parseBalancedLabEquation} from "./lektrusLabStoichiometry";
-import {LAB_CRYSTAL_DENSITY_G_ML,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
+import {LAB_CRYSTAL_DENSITY_G_ML,labSchoolSolidDensityGml,labSchoolSolubilityGPer100gWater,labSingleSaltSolubilityGPer100gWater} from "./lektrusLabMaterialConstants";
 import {LAB_GAS_FORMULAS,labThermalInfo} from "./lektrusLabPhysicalProperties";
-import {LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
+import {LAB_CALORIMETRY_REFERENCE,labSchoolSpecificHeatJPerGK} from "./lektrusLabCalorimetry";
 import {labIsTypicallyWaterSoluble} from "./lektrusLabReactionNetwork";
 import {labHydrateNearestMeasuredReferences,labHydrateCrystalDensityReferences} from "./lektrusLabHydrateReferences";
 import {labSaturatedSolutionReferences} from "./lektrusLabSaturatedSolutionReferences";
@@ -96,6 +96,12 @@ export function labSubstanceProperties(formula:string,temperatureC=22){
   hydratedSolubilityReferences,
   hydratedCrystalDensityReferences,
   saturatedSolutionReferences,
+  /** Scientific fields above stay measured-only. Classroom estimates below
+   * drive interactive drawings/calculations, never source provenance. */
+  teachingEstimate:{solidDensityGPerMl:labSchoolSolidDensityGml(formula),
+   solidSpecificHeatJPerGK:labSchoolSpecificHeatJPerGK(formula,"g").value,
+   aqueousSolubilityGPer100gWater:
+    labSchoolSolubilityGPer100gWater(formula,temperatureC)?.value},
   /** An absent value is genuinely missing, not a predicted constant. */
   densityKnown:crystalDensityGPerMl!==undefined||
    liquidDensityGPerMl!==undefined,

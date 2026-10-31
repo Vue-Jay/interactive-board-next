@@ -212,27 +212,32 @@ export const LAB_VESSEL_GLASS_EQUIVALENT_G:Readonly<Record<string,number>>={
  dish:38,cylinder:75,pipette:12,burette:40,crucible:25
 };
 const glassCp=.84;
+/** Effective classroom heat capacity: use documented neat-material Cp first;
+ * for dilute/prepared aqueous stocks use ~4 J/g/K and for unverified
+ * solids ~0.85 J/g/K. Estimates must not enter the source Cp registry. */
+export function labSchoolSpecificHeatJPerGK(id:string,unit:"ml"|"g",concentrationM?:number){
+ const verified=LAB_CALORIMETRY_REFERENCE[id];
+ if(concentrationM===undefined&&verified?.phase===(unit==="g"?"solid":"liquid"))
+  return {value:verified.specificJPerGK,estimated:false};
+ if(unit==="ml")return {value:concentrationM!==undefined?4:3.8,estimated:true};
+ return {value:/^(Pb|Ag|Au|Fe|Cu|Zn|Ni|Co)/.test(id)?.5:.85,estimated:true};
+}
 export function labKnownHeatCapacityJPerK(kind:string,doses?:Record<string,HeatDose>){
  if(!doses)return;
  const entries=Object.entries(doses).filter(([,d])=>d.value>0);
  if(!entries.length)return;
- // A dry salt's measured c_p is NOT the solution's partial molar heat
- // capacity. Dissolution and ionic hydration change mixture enthalpy, so
- // a water + solid-salt mixture needs separately measured solution data.
- // Otherwise the old cautious relaxation path stays in effect.
- if(entries.some(([,d])=>d.unit==="g")&&
-  entries.some(([,d])=>d.unit==="ml"))return;
- const glass=LAB_VESSEL_GLASS_EQUIVALENT_G[kind];
- if(glass===undefined)return;
+ const glass=LAB_VESSEL_GLASS_EQUIVALENT_G[kind]??55;
  let capacity=glass*glassCp;
  for(const [id,d] of entries){
-  if(!Number.isFinite(d.value)||d.value<=0||d.concentrationM!==undefined)return;
+  if(!Number.isFinite(d.value)||d.value<=0||
+   d.concentrationM!==undefined&&(!Number.isFinite(d.concentrationM)||d.concentrationM<0))return;
   const material=LAB_CALORIMETRY_REFERENCE[id];
-  if(!material||material.phase!==(d.unit==="ml"?"liquid":"solid"))return;
-  const mass=d.unit==="ml"?d.value*material.densityGPerMl!:d.value;
-  capacity+=mass*material.specificJPerGK;
+  const neat=d.concentrationM===undefined&&material?.phase==="liquid";
+  const density=neat?material!.densityGPerMl??1:1;
+  const mass=d.unit==="ml"?d.value*density:d.value;
+  capacity+=mass*labSchoolSpecificHeatJPerGK(id,d.unit,d.concentrationM).value;
  }
- return Number.isFinite(capacity)?capacity:undefined;
+ return Number.isFinite(capacity)&&capacity>0?capacity:undefined;
 }
 /** Deterministic bounded heat-exchange step, second-based, no hidden clock.
  * Contact efficiency and ambient conductance are explicit simulation
@@ -247,8 +252,9 @@ export function labSensibleHeatStep(
  const capacity=labKnownHeatCapacityJPerK(kind,doses);
  if(capacity===undefined||!Number.isFinite(currentC)||!Number.isFinite(ambientC)||
   !Number.isFinite(seconds)||seconds<0||!Number.isFinite(heater?.temperatureC??ambientC)||
-  // These room-temperature heat capacities are not high-temperature curves.
-  currentC>220||currentC<0)return;
+  // School model extends constant effective Cp beyond its reference T.
+  // Phase transitions/decomposition are handled separately, not by Cp.
+  currentC>1250||currentC<0)return;
  const dt=Math.min(10,seconds);
  const hot=heater&&heater.powerW>0&&heater.temperatureC>currentC;
  const powerW=hot?

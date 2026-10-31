@@ -1,4 +1,5 @@
-import {labExactMeasuredSolubility} from "./lektrusLabSolubilityMeasurements";
+import {labExactMeasuredSolubility,labNearestMeasuredSolubilityReference} from "./lektrusLabSolubilityMeasurements";
+import {substances} from "./lektrusReactionDatabase";
 import {LAB_BATCH_CRYSTAL_DENSITIES} from "./lektrusLabCuratedPropertyBatch";
 /** Reference material constants for the school laboratory.
  * Density is CRYSTAL true density in g/cm³ at ~20–25°C, NOT bulk/packing
@@ -287,6 +288,19 @@ export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
 };
 export const labCrystalDensityGml=(formula:string):number|undefined=>
  LAB_CRYSTAL_DENSITY_G_ML[formula];
+/** Illustrative SCHOOL density used only to draw a weighed solid volume.
+ * Never saved in the measured crystal reference or labelled as sourced.
+ * A precipitate is drawn with an effective particle/packing density,
+ * not an asserted anhydrous crystal phase (especially hydroxide gels). */
+export function labSchoolSolidDensityGml(formula:string):number{
+ const measured=labCrystalDensityGml(formula);
+ if(measured!==undefined)return measured;
+ if(/\\(OH\\)3|\\(OH\\)2/.test(formula))return 1.8;
+ if(/^(Pb|Ag|Ba|Sr|Fe|Cu|Ni|Co|Zn)/.test(formula))return 3.4;
+ if(/^(C[0-9]|CH3|HCHO)/.test(formula))return 1.2;
+ if(formula==="C"||formula==="P")return 2;
+ return 2.3;
+}
 
 /** EN 14805:2022 §4.3.3 gives saturated NaCl MASS fraction, not grams
  * per 100g solvent. Convert explicitly to avoid 25–30% mass errors.
@@ -533,6 +547,34 @@ export function labSingleSaltSolubilityGPer100gWater(
    return before+(after-before)*(tempC-low)/(high-low);
   }
  }
+}
+/** Classroom saturation LIMIT for one weighed solid in water.
+ * Prefer the real curve, then a nearest measured point with a bounded
+ * illustrative temperature trend. If no data exist, use school-level
+ * qualitative classes: readily soluble 25, sparingly soluble 1,
+ * precipitate-forming 0.02 g per 100 g H2O at 22 C.
+ * This is NOT a measured phase curve and is deliberately separate from
+ * labSingleSaltSolubilityGPer100gWater and scientific provenance.
+ * No value for metals, oxides, gases or a non-salt with unknown chemistry.
+ * Hydration/speciation is not solved; the solid is an equivalent dry mass.
+ */
+export function labSchoolSolubilityGPer100gWater(formula:string,tempC:number):
+ {value:number;estimated:boolean}|undefined{
+ if(!Number.isFinite(tempC))return;
+ const measured=labSingleSaltSolubilityGPer100gWater(formula,tempC);
+ if(measured!==undefined)return {value:measured,estimated:false};
+ const item=substances.find(s=>s.id===formula);
+ if(!item||!["соль","основание","органика"].includes(item.kind))return;
+ const near=labNearestMeasuredSolubilityReference(formula,tempC);
+ const anchor=near?.gPer100gWater;
+ const baseline=anchor??(
+  /^(Na|K|Li|NH4)/.test(formula)||/NO3|CH3COO/.test(formula)?25:
+  /^(Ag|Pb|Ba|Ca|Mg|Cu|Fe|Zn|Ni|Co|Sr)/.test(formula)&&
+   /CO3|SO4|S$|OH|PO4|Cl$|Br$|I$/.test(formula)?0.02:1);
+ // A modest bounded teaching trend, not a temperature-dependent Ksp.
+ const shift=Math.max(-80,Math.min(80,tempC-(near?.temperatureC??22)));
+ const value=baseline*Math.exp(.008*shift);
+ return {value:Number(value.toPrecision(3)),estimated:true};
 }
 /** Formulas for which measured binary solubility DOES NOT authorize
  * a simulated anhydrous crystal. Hydrate stoichiometry and water binding
