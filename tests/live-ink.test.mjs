@@ -92,3 +92,34 @@ test('receiving the latest live ink packet keeps stroke identity',async()=>{
   assert.equal(h.received[0]?.finished,true);
   h.channel.close();
 });
+
+
+test('final stroke awaiting server acknowledgement is resent after network change',async()=>{
+  const h=harness();await h.tick();
+  let ws=h.sockets[0];ws.open();ws.join();
+  h.channel.sendInk(ink('unconfirmed',true));
+  assert.deepEqual(h.packets(ws).filter(p=>p.finished).map(p=>p.id),
+    ['unconfirmed']);
+  // No phx_reply arrived before cellular network changed.
+  ws.onclose();
+  h.fire(1000);await h.tick();
+  ws=h.sockets[1];ws.open();ws.join();
+  assert.deepEqual(h.packets(ws).filter(p=>p.finished).map(p=>p.id),
+    ['unconfirmed'],'unacknowledged final stroke must survive reconnect');
+  h.channel.close();
+});
+
+test('acknowledged final stroke is not replayed on reconnect',async()=>{
+  const h=harness();await h.tick();
+  let ws=h.sockets[0];ws.open();ws.join();
+  h.channel.sendInk(ink('confirmed',true));
+  const message=ws.sent.filter(item=>item.payload?.event==='live_ink').at(-1);
+  assert.ok(message);
+  ws.message('phx_reply',{status:'ok'},message.topic,message.ref);
+  ws.onclose();
+  h.fire(1000);await h.tick();
+  ws=h.sockets[1];ws.open();ws.join();
+  assert.deepEqual(h.packets(ws).map(p=>p.id),[],
+    'ACKed ink is durable in the realtime channel and needs no replay');
+  h.channel.close();
+});
