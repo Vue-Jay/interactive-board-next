@@ -17,9 +17,53 @@ export type LabMeasuredSolubilityUnit=
  "g/100g-water"|"g/100ml-water"|"mg/l-water"|"mg/100g-water";
 export type LabMeasuredSolubility={
  formula:string;temperatureC:number;sourceValue:number;
+ /** Original source in kelvin (where specified); 293 K means 19.85 °C,
+  * not an independently measured 20.00 °C point. */
+ sourceTemperatureKelvin?:number;
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
 };
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ // ILO/WHO ICSC cards + Nickel Institute. Measured at exactly 20 °C,
+ // originally g per 100 mL of PURE WATER, not g per 100 g solvent
+ // and not per 100 mL of the final saturated SOLUTION.
+ // NiCl2 is specifically ANHYDROUS: Institute reports separately a
+ // vastly different 254 g/100 mL for its hexahydrate. Never mix them.
+ {formula:"FeCl2",temperatureC:20,sourceValue:62.5,
+  originalUnit:"g/100ml-water",sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics1715.htm"},
+ {formula:"CoCl2",temperatureC:20,sourceValue:53,
+  originalUnit:"g/100ml-water",sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics0783.htm"},
+ {formula:"MgCl2",temperatureC:20,sourceValue:54.3,
+  originalUnit:"g/100ml-water",sourceUrl:"https://inchem.org/documents/icsc/icsc/eics0764.htm"},
+ {formula:"MgSO4",temperatureC:20,sourceValue:30,
+  originalUnit:"g/100ml-water",sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics1197.htm"},
+ {formula:"NiCl2",temperatureC:20,sourceValue:64.2,
+  originalUnit:"g/100ml-water",sourceUrl:"https://nickelinstitute.org/media/2834/vol26-02dec2011.pdf"},
+ // 293 K (19.85 °C) tabulated from Kaye & Laby / Lange, reproduced by
+ // Wired Chemist. Temperature is kept as source reports it, NOT rounded
+ // to the six-point 20 °C grid. These are isolated BINARY-water
+ // references, not permission to crystallise anhydrous salts from water.
+ // Species that hydrolyse, form hydrates or complexes remain reference-only.
+ {formula:"AlCl3",temperatureC:19.85,sourceTemperatureKelvin:293,
+  sourceValue:45.8,originalUnit:"g/100g-water",
+  sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"},
+ {formula:"CuCl2",temperatureC:19.85,sourceTemperatureKelvin:293,
+  sourceValue:73,originalUnit:"g/100g-water",
+  sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"},
+ {formula:"LiNO3",temperatureC:19.85,sourceTemperatureKelvin:293,
+  sourceValue:70.1,originalUnit:"g/100g-water",
+  sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"},
+ {formula:"Cu(NO3)2",temperatureC:19.85,sourceTemperatureKelvin:293,
+  sourceValue:125,originalUnit:"g/100g-water",
+  sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"},
+ {formula:"Al2(SO4)3",temperatureC:19.85,sourceTemperatureKelvin:293,
+  sourceValue:36.4,originalUnit:"g/100g-water",
+  sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"},
+ {formula:"Li2SO4",temperatureC:19.85,sourceTemperatureKelvin:293,
+  sourceValue:34.8,originalUnit:"g/100g-water",
+  sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"},
+ {formula:"ZnSO4",temperatureC:19.85,sourceTemperatureKelvin:293,
+  sourceValue:53.8,originalUnit:"g/100g-water",
+  sourceUrl:"https://www.wiredchemist.com/chemistry/data/solubilities_inorganic.html"},
  {formula:"LiCl",temperatureC:20,sourceValue:83.2,
   originalUnit:"g/100g-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/433294"},
  {formula:"LiCl",temperatureC:40,sourceValue:89.8,
