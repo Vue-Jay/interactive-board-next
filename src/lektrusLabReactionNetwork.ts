@@ -378,10 +378,17 @@ export function simulateLabInventory(input:{
     id,mol,solubility:labSingleSaltSolubilityGPer100gWater(id,input.temperatureC??25),
     molarMass:labMolarMass(id)
    }));
-   if(known.length&&known.every(s=>s.solubility!==undefined&&
-     s.molarMass!==undefined&&s.molarMass>0)){
+   const supported=known.filter(s=>s.solubility!==undefined&&
+    s.molarMass!==undefined&&s.molarMass>0);
+   const measuredMol=supported.reduce((n,s)=>n+s.mol,0);
+   const unknownMol=known.filter(s=>!supported.includes(s)).
+    reduce((n,s)=>n+s.mol,0);
+   // A few ppm of equilibrated spectators must not suppress the familiar
+   // salt crystallization demonstration. But an unknown major solute makes
+   // the school activity/solubility approximation inappropriate.
+   if(supported.length&&unknownMol<=measuredMol*.005){
     const waterMassG=Math.max(0,volumeMl)*.997;
-    for(const salt of known){
+    for(const salt of supported){
      const capacityMol=salt.solubility!/100*waterMassG/salt.molarMass!;
      const crystalline=Math.max(0,salt.mol-capacityMol);
      if(crystalline>EPS)inventory.solidMol[salt.id]=crystalline;
