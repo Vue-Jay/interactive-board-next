@@ -65,3 +65,43 @@ export function labVisibleBinarySaltSolid(
  return {formula:eq.formula,solidMol:Math.min(eq.totalMol,phase.solidMol),
   totalMol:eq.totalMol,equilibriumSolidMol:eq.equilibriumSolidMol};
 }
+
+/** School approximation for TWO OR MORE weighed salts in measured pure
+ * water. Each salt's binary-water saturation capacity is calculated from
+ * the SAME finite solvent mass. There is no false global solubility number
+ * for the mixture, and no material is destroyed. Common-ion activity,
+ * hydrates, mixed double salts and equilibrium kinetics are not solved.
+ *
+ * This must NOT run on prepared stocks, inherited reaction inventories,
+ * gas-producing reactions, precipitates from balanced reactions, or a
+ * mixture with an unsupported solid. It returns separate target solid
+ * fractions, distinctly labelled as classroom estimates.
+ */
+export function labSchoolMixedSaltEquilibrium(v:LabBinarySaltInput,tempC:number){
+ if(v.environment!=="aqueous"||v.uncertain||v.chemicalInventory||
+  v.completedReaction||v.reactionAmounts||v.filteredSolution||
+  v.filteredResidue||!v.doses||!Number.isFinite(tempC))return;
+ const measured=Object.entries(v.doses).filter(([,d])=>d.value>0);
+ const water=v.doses.H2O;
+ if(!water||water.unit!=="ml"||water.concentrationM!==undefined||
+  !Number.isFinite(water.value)||water.value<=0)return;
+ const salts=measured.filter(([id])=>id!=="H2O");
+ if(salts.length<2||measured.length!==salts.length+1)return;
+ const waterMassG=water.value*.997;
+ const solids:Record<string,number>={};
+ for(const [id,dose] of salts){
+  if(dose.unit!=="g"||dose.concentrationM!==undefined||
+   !Number.isFinite(dose.value)||dose.value<=0||
+   !v.reagents.includes(id))return;
+  const sol=labSchoolSolubilityGPer100gWater(id,tempC);
+  const mass=labMolarMass(id);
+  if(!sol||!Number.isFinite(sol.value)||!mass||mass<=0)return;
+  const initialMol=dose.value/mass;
+  const dissolvedMol=Math.min(initialMol,
+   waterMassG*sol.value/100/mass);
+  const solidMol=Math.max(0,initialMol-dissolvedMol);
+  if(solidMol>1e-12)solids[id]=solidMol;
+ }
+ return {solidMol:solids,waterMl:water.value,estimated:true as const,
+  formulas:salts.map(([id])=>id)};
+}
