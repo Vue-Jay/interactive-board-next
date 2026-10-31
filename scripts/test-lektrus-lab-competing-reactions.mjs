@@ -85,7 +85,12 @@ assert.ok(acidResult&&Number.isFinite(acidResult.pH),
 const massBeforeWater=chemistry.labInventoryMassG(afterAcid);
 bench=lab.putLabReagent(bench,"v1","H2O",{unit:"ml",value:40});
 const diluted=measured(bench);
-near(chemistry.labInventoryMassG(diluted),massBeforeWater,1e-6);
+// Water added to the flask is real physical mass in the molecular ledger:
+ // the old solutes are conserved, while 40 ml of H2O add ~39.88 g.
+const waterMoles=stoich.labDoseMoles("H2O",{unit:"ml",value:40});
+assert.ok(waterMoles>0);
+near(chemistry.labInventoryMassG(diluted),
+ massBeforeWater+waterMoles*stoich.labMolarMass("H2O"),1e-6);
 assert.ok((diluted.solidMol.AgCl??0)>.0009);
 assert.ok((diluted.solidMol.CaCO3??0)<.0001);
 assert.ok(lab.labVesselQuantity(state(bench)).volumeMl>60);
