@@ -367,6 +367,21 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  Na2SO4:[null,null,48.1,45.26,43.09,42.3],
  ZnCl2:[null,null,453,488,541,614],
  NaH2PO4:[null,null,null,179.3,207.3,284.4],
+ // Source-specific 20 C points plus individually measured Al(NO3)3
+ // temperature series; null means UNKNOWN at that exact temperature.
+ // Al(NO3)3 becomes the nonahydrate in water. This reference series
+ // MUST NOT create dry Al(NO3)3 crystals on evaporation.
+ CaCl2:[null,labExactMeasuredSolubility("CaCl2",20)??null,null,null,null,null],
+ Na3PO4:[null,labExactMeasuredSolubility("Na3PO4",20)??null,null,null,null,null],
+ "Mg(CH3COO)2":[null,labExactMeasuredSolubility("Mg(CH3COO)2",20)??null,
+  null,null,null,null],
+ "Al(NO3)3":[labExactMeasuredSolubility("Al(NO3)3",0)??null,
+  labExactMeasuredSolubility("Al(NO3)3",20)??null,
+  labExactMeasuredSolubility("Al(NO3)3",40)??null,
+  labExactMeasuredSolubility("Al(NO3)3",60)??null,
+  null,labExactMeasuredSolubility("Al(NO3)3",100)??null],
+ // ZnCl2 at 25 C and BaCl2 at 25 C are sourced EXACT off-grid
+ // measurements. Do not fill 20 C or bridge unknown grid cells.
  // Exact 20 °C from ILO-WHO/Canada/WHO and published phosphate table.
  // Numerators remain in source units in LabSolubilityMeasurements;
  // the lookup converts g/100mL, g/L and mg/L to g/100g pure H2O.
@@ -485,7 +500,10 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  // Binary-water references do not model silver halide Ksp, dissolution
  // kinetics, acetate hydrolysis, crystal waters or phosphate speciation.
  "CH3COONa","CH3COOK","AgCl","AgBr","SrCl2","K3PO4",
- "Ca(CH3COO)2"
+ "Ca(CH3COO)2",
+ // Some salts change aqueous speciation or stable hydrated crystals.
+ // All values below are isolated aqueous reference measurements only.
+ "CaCl2","Na3PO4","Mg(CH3COO)2","ZnCl2","BaCl2","Al(NO3)3"
 ]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
