@@ -17,7 +17,7 @@ test("the 20-minute cooldown applies to completed work only",()=>{
  assert.equal(dispatchDecision([run(19)],now).reason,"cooldown");
  assert.equal(dispatchDecision([run(20)],now).launch,true);
 });
-test("five-minute polls do not reset the work cooldown",()=>{
+test("each new worker launch resets the work cooldown",()=>{
  assert.equal(dispatchDecision([run(27),run(5,"completed")],now).reason,"cooldown");
 });
 test("the most recent start controls the cooldown",()=>{
