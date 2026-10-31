@@ -452,7 +452,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // single verified boiling point. Only a neat liquid with known properties
   // receives a boiling plateau below.
   // Crucibles tolerate high-temperature virtual heating; normal glass does not.
-  const maxVesselC=v.kind==="crucible"&&(device?.kind==="burner"||device?.kind==="hotplate")?1250:
+  const maxVesselC=v.kind==="crucible"?1250:
    device?.kind==="burner"?450:550;
   // Endothermic cooling below room temperature is physical and should
   // recover gradually by ambient heat exchange, never jump to 22°C.
