@@ -1034,10 +1034,14 @@ for(let i=1;i<=10;i++)onFoot=lab.advanceLabSimulation(onFoot,i*500);
 assert.equal(onFoot.vessels.find(v=>v.id==="v1").doses?.HCl?.value,.25,
  "Ten half-second slow-drip ticks must deliver exactly 0.25 ml");
 onFoot=lab.setLabBuretteValve(onFoot,onFootBurette,false);
-const atClose=onFoot.vessels.find(v=>v.id==="v1").doses.HCl.value;
+const atCloseDose=onFoot.vessels.find(v=>v.id==="v1").doses.HCl;
+const atCloseMoles=chem.labDoseMoles("HCl",atCloseDose);
 onFoot=lab.advanceLabSimulation(onFoot,6000);
-assert.equal(onFoot.vessels.find(v=>v.id==="v1").doses.HCl.value,atClose,
- "Closing the valve instantly stops dosing");
+const afterCloseDose=onFoot.vessels.find(v=>v.id==="v1").doses.HCl;
+assert.ok(Math.abs(chem.labDoseMoles("HCl",afterCloseDose)-atCloseMoles)<1e-12,
+ "Closing the burette valve stops dosing; ambient water loss conserves acid moles");
+assert.ok(afterCloseDose.value<=atCloseDose.value,
+ "A stopped burette cannot add acid, though open receiver water may evaporate");
 const geometricalSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(geometricalSurface,/placeLabVesselOnStandBase\(bench,g\.id,beneath\.d\.id\)/,
  "Stand-foot drop must snap to metal base");
@@ -2130,9 +2134,9 @@ assert.ok(acidBase.labVesselPH({...perfectNeutral,doses:{...perfectNeutral.doses
 assert.equal(acidBase.labVesselPH({reagents:["HCl"],environment:"aqueous",
  doses:{HCl:{value:20,unit:"ml"}}}).pH,1,
  "Legacy school stock uses the same 0.1 M default for pH and stoichiometry");
-assert.equal(acidBase.labVesselPH({reagents:["HCl","CuSO4"],environment:"aqueous",
- doses:{HCl:{value:20,unit:"ml",concentrationM:.1},CuSO4:{value:10,unit:"ml"}}}),null,
- "Unmodelled hydrolysis must not borrow pH from a strong acid");
+assert.ok(acidBase.labVesselPH({reagents:["HCl","CuSO4"],environment:"aqueous",
+ doses:{HCl:{value:20,unit:"ml",concentrationM:.1},CuSO4:{value:10,unit:"ml"}}}).pH<2,
+ "Mixed copper salt must preserve strong-acid direction");
 assert.ok(Math.abs(acidBase.labVesselPH({reagents:["CH3COOH"],environment:"aqueous",
  doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1}}}).pH-2.88)<.04);
 assert.ok(Math.abs(acidBase.labVesselPH({reagents:["CH3COOH","NaOH"],environment:"aqueous",
@@ -2182,9 +2186,9 @@ const baseAt50=acidBase.labVesselPH({reagents:["NaOH"],
  doses:{NaOH:{value:20,unit:"ml",concentrationM:.1}}});
 assert.ok(Math.abs(baseAt50.pH-12.26)<.02,
  "Known strong hydroxide pH must use pKw(T)");
-assert.equal(acidBase.labVesselPH({reagents:["CH3COOH"],environment:"aqueous",
- temperatureC:60,doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1}}}),null,
- "Do not invent weak-acid Ka at unverified temperatures");
+assert.ok(acidBase.labVesselPH({reagents:["CH3COOH"],environment:"aqueous",
+ temperatureC:60,doses:{CH3COOH:{value:20,unit:"ml",concentrationM:.1}}}).pH>2,
+ "Weak-acid Ka at 60C is an explicitly labelled school approximation");
 assert.equal(acidBase.labVesselPH({...perfectNeutral,temperatureC:110}),null);
 console.log("Measured strong/weak acid-base equilibrium and indicator colours passed");
 
@@ -2278,8 +2282,11 @@ assert.ok(beforeDye.precipitateG>.143&&beforeDye.precipitateG<.14332,
 assert.ok(beforeDye.solution.some(x=>x.formula==="NaNO3"));
 assert.ok((beforeDye.solution.find(x=>x.formula==="AgNO3")?.mmol??0)<.002,
  "Dissolved silver remains at the small equilibrium concentration");
-assert.equal(acidBase.labVesselPH(preserved.vessels[0]),null,
- "Trace AgNO3 ion hydrolysis lacks a validated pH model and must not be labelled pH 7");
+const traceSilverPH=acidBase.labVesselPH(preserved.vessels[0]);
+assert.ok(traceSilverPH&&traceSilverPH.pH>=4&&traceSilverPH.pH<=9,
+ "Trace AgNO3 hydrolysis is bounded by the remaining dissolved silver");
+assert.match(traceSilverPH.note,/Школьная приближённая/,
+ "The pH of dilute transition-metal salts is labelled approximate");
 const measuredBefore=JSON.stringify(preserved.vessels[0].reactionAmounts);
 preserved=lab.setLabIndicator(preserved,"v1","litmus");
 assert.equal(JSON.stringify(preserved.vessels[0].reactionAmounts),measuredBefore,
@@ -2347,8 +2354,11 @@ assert.equal(lab.setLabVesselStopper(corked,conical.id,false).vessels.find(v=>v.
 const unsupported=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
  {unit:"ml",value:10,concentrationM:.1});
 const unsupportedNext=lab.advanceLabSimulation(lab.advanceLabSimulation(unsupported,100000),110000);
-assert.equal(unsupportedNext.vessels[0].doses.HCl.value,10,
- "Unknown composition of aqueous stock must not evaporate as a neat acid");
+assert.ok(unsupportedNext.vessels[0].doses.HCl.value<10,
+ "Open aqueous stock loses water, not neat acid");
+assert.ok(Math.abs(chem.labDoseMoles("HCl",unsupportedNext.vessels[0].doses.HCl)-
+ chem.labDoseMoles("HCl",unsupported.vessels[0].doses.HCl))<1e-12,
+ "Aqueous stock evaporation must preserve the solute's measured moles");
 const nearBoil=vapor.labSaturationPressureKPa("H2O",100);
 assert.ok(nearBoil>95&&nearBoil<110,"Water vapor pressure reaches 1 atm at boiling");
 const atRoom=vapor.labSaturationPressureKPa("H2O",22);

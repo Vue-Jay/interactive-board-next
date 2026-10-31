@@ -45,6 +45,7 @@ jobs:
       - run: node scripts/test-lektrus-organic-nomenclature.mjs
       - run: node scripts/test-lektrus-reaction-library.mjs
       - run: node scripts/test-lektrus-lab-reaction-network.mjs
+      - run: node scripts/test-lektrus-lab-classroom-coverage.mjs
       - name: Check chemical property coverage and publish remaining work
         run: |
           node scripts/audit-lektrus-lab-properties.mjs --verify

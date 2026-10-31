@@ -41,9 +41,10 @@ assert.ok(labVaporPressureKPa(lessSalt,22)<labVaporPressureKPa(water,22),
  "Nonvolatile dissolved particles lower water vapor pressure");
 assert.ok(labVaporPressureKPa(salt,70)>labVaporPressureKPa(salt,22),
  "Heating raises the mixture vapor pressure");
-assert.equal(labVaporPressureKPa(unknown,22),undefined,
- "Unknown prepared stock solvent cannot be assigned a made-up vapor pressure");
-assert.equal(labIdealBoilingC(unknown),undefined);
+assert.ok(labVaporPressureKPa(unknown,22)>0&&
+ labVaporPressureKPa(unknown,22)<labVaporPressureKPa(water,22),
+ "Dilute prepared acid uses a water-like estimated vapor pressure");
+assert.ok(labIdealBoilingC(unknown)>=100&&labIdealBoilingC(unknown)<102);
 assert.equal(labIdealBoilingC({kind:"tube",doses:{H2O:ml(20),CuSO4:g(1)}}),undefined,
  "Unknown nonideal dissolved species must not become a pure-water boiling point");
 assert.ok(Math.abs(labIdealBoilingC(water)-100)<.3);
@@ -71,7 +72,21 @@ assert.equal(labEvaporate({...salt,stoppered:true},10,22,22).stoppered,true);
 const popped=labEvaporate({...alcohol,stoppered:true},10,90,130);
 assert.equal(popped.popped,true);
 assert.ok(popped.pressureKPa>160);
-assert.equal(labEvaporate(unknown,10,50,50).evaporatedMl,0);
+const acidDry=labEvaporate(unknown,10,50,50);
+assert.ok(acidDry.evaporatedMl>0);
+assert.ok(acidDry.doses.HCl.value<20);
+assert.ok(Math.abs(acidDry.doses.HCl.value*
+ acidDry.doses.HCl.concentrationM-2)<1e-7,
+ "Dissolved HCl mole quantity remains constant as water evaporates");
+assert.ok(Math.abs(acidDry.doses.HCl.value+
+ acidDry.ventedVaporMl.H2O-20)<1e-6);
+assert.equal(labEvaporate({...unknown,stoppered:true},10,50,50).evaporatedMl,0);
+const nearlyConcentrated={kind:"dish",
+ doses:{NaCl:{value:1,unit:"ml",concentrationM:1.99}}};
+const capped=labEvaporate(nearlyConcentrated,10,100,200,160);
+assert.ok(capped.doses.NaCl.concentrationM<=2.000001);
+assert.ok(Math.abs(capped.doses.NaCl.value*
+ capped.doses.NaCl.concentrationM-1.99)<1e-6);
 for(let i=0;i<3;i++){
  const extreme={kind:"dish",doses:{H2O:ml(.00001)}};
  const after=labEvaporate(extreme,10,100,200);
@@ -128,8 +143,8 @@ const acidGasReading=labEvaporate(aqueousAcidWithGas,0,22);
 const acidGasPressure=.002*8.314462618*(22+273.15)/.1;
 assert.ok(Math.abs(acidGasReading.reactionGasPressureKPa-acidGasPressure)<1e-8,
  "Measured gas partial pressure is always quantified, even for aqueous stocks");
-assert.equal(acidGasReading.pressureKPa,undefined,
- "An unverified solvent vapor model must not invent a total headspace pressure");
+assert.ok(acidGasReading.pressureKPa>100,
+ "A closed school acid stock combines air and water carrier pressure");
 const forceRelease=labEvaporate({...aqueousAcidWithGas,reactionGasMol:.01},10,22);
 assert.ok(forceRelease.popped&&!forceRelease.stoppered,
  "When gas partial pressure alone exceeds cork limit, safely pop the cork");

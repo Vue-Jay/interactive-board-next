@@ -1,11 +1,11 @@
 /** Ideal aqueous acid/base equilibrium with IAPWS water ionization. Ref:
  * OpenStax Chemistry 2e §14.7; Chemistry LibreTexts, Acid-Base Indicators.
- * No pH is guessed from "acid/salt" labels when amounts or equilibria
- * of an unsupported dissolved species are missing.
+ * School estimates for less-documented salts explicitly say "approximate";
+ * the exact stoichiometric inventory is never replaced by an invented mole count.
  * Solutions are ideal. Water ionization follows temperature-dependent
  * IAPWS data (0–100°C); weak Ka/Kb values remain 25°C reference only
- * (restricted to 20–30°C), not invented at elevated temperatures.
- * Nonideal activities and missing ion equilibria remain unsupported.
+ * and used outside that range only as a labelled school approximation.
+ * Nonideal ionic activities and multistage hydrolysis are not simulated.
  */
 import {simulateLabInventory,type LabChemicalSnapshot} from "./lektrusLabReactionNetwork";
 import {labWaterIonProduct,labNeutralWaterPH} from "./lektrusLabWaterIonization";
@@ -20,11 +20,11 @@ export type LabPHInput={
   remainingMol:Record<string,number>};
 };
 export type LabPHResult={pH:number;label:string;note:string;acidMol:number;baseMol:number};
-const STRONG_ACIDS=new Set(["HCl","HBr","HNO3"]);
-const STRONG_BASES=new Set(["NaOH","KOH"]);
+const STRONG_ACIDS=new Set(["HCl","HBr","HNO3","HI"]);
+const STRONG_BASES=new Set(["NaOH","KOH","LiOH"]);
 const NEUTRAL_SPECTATORS=new Set([
  "H2O","NaCl","KCl","NaNO3","KNO3","NaBr","KBr","LiCl",
- "Na2SO4","K2SO4","CaCl2"
+ "CaCl2"
 ]);
 const MOLAR_MASS:Record<string,number>={NaOH:39.997,KOH:56.1056,
  CH3COOH:60.052,NH4OH:35.045};
@@ -58,6 +58,9 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
     " °C; K_w по IAPWS. Нейтральность не всегда означает pH 7."};
  }
  let acidMol=0,baseMol=0,aceticMol=0,ammoniaMol=0;
+ let carbonateMol=0,phosphateMol=0,sulfateMol=0,metalAcidMol=0;
+ let metalWeightedKa=0,schoolApproximation=false;
+ const otherWeakAcids:{mol:number;ka:number}[]=[];
  // When precipitation is completed (or in progress), calculate aqueous
  // species from the balance sheet, NOT the original AgNO3/NaCl inputs.
  // AgCl is insoluble and must not become a source of imaginary free ions.
@@ -91,6 +94,23 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
   if(mol<=1e-12)continue;
   if(!Number.isFinite(mol))return null;
   if(NEUTRAL_SPECTATORS.has(id))continue;
+  // Apply first-order hydrated-metal-ion hydrolysis EVEN when its sulfate
+  // or acetate already has an acid/base counterion model. Distinguish
+  // Fe(II) from strongly hydrolysing Fe(III), never confuse valences.
+  const metal=/^(Fe2|Al2|Fe|Al|Cu|Zn|Ni|Co|Mg|Pb|Ag)(?=Cl|NO3|\(NO3\)|\(SO4\)|SO4|\(CH3COO\))/.exec(id);
+  if(metal){
+   const species=metal[1];
+   const ferric=species.startsWith("Fe")&&
+    (id==="FeCl3"||id==="Fe(NO3)3"||id==="Fe2(SO4)3");
+   const ka:Record<string,number>={Al:1e-5,Cu:1e-8,Zn:1e-9,
+    Ni:1e-10,Co:1e-10,Mg:4e-12,Pb:1e-8,Ag:1e-12};
+   const strength=species.startsWith("Fe")?
+    (ferric?1e-3:3e-10):
+    (ka[species.replace(/2$/,"")]??1e-10);
+   const ions=species.endsWith("2")?2*mol:mol;
+   metalAcidMol+=ions;metalWeightedKa+=ions*strength;
+   schoolApproximation=true;
+  }
   if(STRONG_ACIDS.has(id))acidMol+=mol;
   else if(STRONG_BASES.has(id))baseMol+=mol;
   else if(id==="CH3COOH")aceticMol+=mol;
@@ -102,27 +122,79 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
    // Ammonium is a weak acid; chloride is the counterion.
    ammoniaMol+=mol;acidMol+=mol;
   }
-  else if(id==="NH4OH")ammoniaMol+=mol;
-  else return null;
+  else if(id==="NH4OH"||id==="NH3")ammoniaMol+=mol;
+  else if(id==="H2SO4"){
+   acidMol+=mol;sulfateMol+=mol;schoolApproximation=true;
+  }else if(["Na2SO4","K2SO4","Li2SO4","(NH4)2SO4",
+    "MgSO4","CuSO4","FeSO4","ZnSO4","NiSO4","BaSO4"].includes(id)){
+   baseMol+=2*mol;acidMol+=mol;sulfateMol+=mol;
+   if(id==="(NH4)2SO4"){ammoniaMol+=2*mol;acidMol+=2*mol}
+   schoolApproximation=true;
+  }else if(["Na2CO3","K2CO3","Li2CO3","BaCO3","CaCO3",
+    "MgCO3","(NH4)2CO3"].includes(id)){
+   carbonateMol+=mol;baseMol+=2*mol;
+   if(id==="(NH4)2CO3"){ammoniaMol+=2*mol;acidMol+=2*mol}
+   schoolApproximation=true;
+  }else if(id==="NaHCO3"){
+   carbonateMol+=mol;baseMol+=mol;schoolApproximation=true;
+  }else if(id==="H2CO3"||id==="CO2"){
+   carbonateMol+=mol;schoolApproximation=true;
+  }else if(id==="H3PO4"){
+   phosphateMol+=mol;schoolApproximation=true;
+  }else if(id==="NaH2PO4"){
+   phosphateMol+=mol;baseMol+=mol;schoolApproximation=true;
+  }else if(id==="Na3PO4"||id==="K3PO4"){
+   phosphateMol+=mol;baseMol+=3*mol;schoolApproximation=true;
+  }else if(id==="HF"||id==="H2S"){
+   otherWeakAcids.push({mol,ka:id==="HF"?6.8e-4:1e-7});
+   schoolApproximation=true;
+  }else if(id==="NH4NO3"){
+   ammoniaMol+=mol;acidMol+=mol;schoolApproximation=true;
+  }else if(id==="CH3COOLi"){
+   aceticMol+=mol;baseMol+=mol;schoolApproximation=true;
+  }else if(["Ca(CH3COO)2","Mg(CH3COO)2","Zn(CH3COO)2",
+    "Fe(CH3COO)2"].includes(id)){
+   aceticMol+=2*mol;baseMol+=2*mol;schoolApproximation=true;
+  }else if(id==="Ca(OH)2"||id==="Ba(OH)2"||id==="Mg(OH)2"){
+   baseMol+=2*mol;schoolApproximation=true;
+  }else if(id==="Fe(OH)3"||id==="Al(OH)3"){
+   baseMol+=3*mol;schoolApproximation=true;
+  }else{
+   // Unknown aqueous solute: contribute no extra acid/base charge.
+   // It remains present in the mass ledger; pH is marked approximate.
+   schoolApproximation=true;
+  }
  }
  if(!Number.isFinite(volumeMl)||volumeMl<=0)return null;
- // Curated acetic-acid and ammonia dissociation constants are only
- // measured/represented at 25 °C. A small room-temperature window retains
- // the schoolroom approximation; outside it we decline to assign a pH.
- const weak=aceticMol>0||ammoniaMol>0;
- if(weak&&(temperatureC<20||temperatureC>30))return null;
- const effectiveKw=weak?1e-14:KW;
+ // 25°C reference Ka are used as explicit qualitative classroom estimates
+ // at other water temperatures. Kw itself follows temperature-dependent data.
+ const weak=aceticMol>0||ammoniaMol>0||carbonateMol>0||
+  phosphateMol>0||sulfateMol>0||otherWeakAcids.length>0||metalAcidMol>0;
+ const effectiveKw=KW;
  const volumeL=volumeMl/1000;
  const acid=acidMol/volumeL,base=baseMol/volumeL,
   acetic=aceticMol/volumeL,ammonia=ammoniaMol/volumeL;
- // Charge balance for strong acid/base and the two supported monoprotic
- // weak systems. Bisection in log[H+] is stable even at equivalence.
- // [H+] + [Na+] + [NH4+] = [OH-] + [Cl-] + [CH3COO-].
+ const kaC1=4.3e-7,kaC2=4.7e-11;
+ const kaP1=7.1e-3,kaP2=6.3e-8,kaP3=4.2e-13;
+ // Charge-balance bisection. Each polyprotic fraction is normalized,
+ // guaranteeing stable results for dilute and partially neutralized stocks.
  const charge=(logH:number)=>{
   const h=Math.pow(10,logH),oh=effectiveKw/h;
   const acetate=acetic*weakAcidKa/(weakAcidKa+h);
   const ammonium=ammonia*h/(h+effectiveKw/weakBaseKb);
-  return h+base+ammonium-oh-acid-acetate;
+  const cd=h*h+kaC1*h+kaC1*kaC2;
+  const carbon=carbonateMol/volumeL*(kaC1*h+2*kaC1*kaC2)/cd;
+  const pd=h*h*h+kaP1*h*h+kaP1*kaP2*h+kaP1*kaP2*kaP3;
+  const phosphate=phosphateMol/volumeL*
+   (kaP1*h*h+2*kaP1*kaP2*h+3*kaP1*kaP2*kaP3)/pd;
+  const bisulfate=sulfateMol/volumeL*.012/(.012+h);
+  const other=otherWeakAcids.reduce((sum,x)=>sum+
+   x.mol/volumeL*x.ka/(x.ka+h),0);
+  const avgMetalKa=metalAcidMol>0?metalWeightedKa/metalAcidMol:0;
+  const hydrolysis=metalAcidMol>0?
+   metalAcidMol/volumeL*avgMetalKa/(avgMetalKa+h):0;
+  return h+base+ammonium-oh-acid-acetate-carbon-phosphate-
+   bisulfate-other-hydrolysis;
  };
  let lower=-16,upper=1;
  for(let i=0;i<95;i++){
@@ -134,9 +206,9 @@ export function labVesselPH(v:LabPHInput):LabPHResult|null{
  const pH=Math.max(0,Math.min(14,Math.round(value*100)/100));
  return {pH,label:"pH "+pH.toFixed(2).replace(".",","),
   acidMol,baseMol,
-  note:weak?
-   "Идеальная модель; константы слабых кислот/оснований при 25 °C. Без поправок на активности.":
-   "Расчёт из измеренных молей и K_w воды при "+temperatureC.toLocaleString("ru-RU")+
+  note:schoolApproximation||weak?
+   "Школьная приближённая модель кислотно-основных равновесий при 25 °C; без поправок на активности и сложные гидролизные формы.":
+   "Расчёт из заданных молей и K_w воды при "+temperatureC.toLocaleString("ru-RU")+
     " °C (IAPWS). Без поправок на активности."};
 }
 export type LabIndicatorKind="litmus"|"phenolphthalein"|"methyl-orange"|"universal";
