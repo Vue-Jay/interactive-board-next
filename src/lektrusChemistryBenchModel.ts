@@ -376,11 +376,11 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
   v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing");
  const devices=placedLabDevices(bench);
  const powered=devices.some(d=>d.powered||(d.temperatureC??22)>22.1);
- const hot=vessels.some(v=>(v.temperatureC??22)>22.1);
+ const thermal=vessels.some(v=>Math.abs((v.temperatureC??22)-22)>.1);
  const evaporating=vessels.some(v=>!v.stoppered&&
   labVaporPressureKPa(v,v.temperatureC??22)!==undefined);
- if(!burette&&!reactions&&!phase&&!powered&&!hot&&!evaporating)return null;
- const cadenceMs=burette||reactions||phase?500:powered||hot?1900:9800;
+ if(!burette&&!reactions&&!phase&&!powered&&!thermal&&!evaporating)return null;
+ const cadenceMs=burette||reactions||phase?500:powered||thermal?1900:9800;
  if(bench.simulationAtMs===undefined)return 500;
  return Math.max(0,Math.ceil(cadenceMs-Math.max(0,nowMs-bench.simulationAtMs)));
 }
@@ -434,7 +434,9 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // receives a boiling plateau below.
   const maxVesselC=device?.kind==="burner"&&v.kind==="crucible"?1250:
    device?.kind==="burner"?450:350;
-  let next=Math.round(Math.max(ambient,Math.min(maxVesselC,raw))*10)/10;
+  // Endothermic cooling below room temperature is physical and should
+  // recover gradually by ambient heat exchange, never jump to 22°C.
+  let next=Math.round(Math.max(0,Math.min(maxVesselC,raw))*10)/10;
   let meltFraction=v.meltFraction??0;
   let phaseTransition=v.phaseTransition;
   const point=pure?.unit==="g"&&!v.uncertain&&!v.completedReaction?
