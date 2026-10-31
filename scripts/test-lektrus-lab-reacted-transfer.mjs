@@ -126,6 +126,21 @@ assert.strictEqual(lab.placedLabDevices(equipment),lab.placedLabDevices(equipmen
 const movedEquipment=lab.movePlacedLabDevice(equipment,equipment.placedDevices[0].id,45,70);
 assert.notStrictEqual(lab.placedLabDevices(equipment),lab.placedLabDevices(movedEquipment));
 assert.equal(lab.placedLabDevices(movedEquipment)[0].x,45);
+// An endothermic demonstration can cool a solution to 10°C. Ambient air
+// restores temperature gradually; there must be no instantaneous jump to 22°C
+// and the adaptive clock must continue while the vessel is cold.
+const coldStock=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{value:20,unit:"ml"});
+const coldBench={...coldStock,simulationAtMs:1000,vessels:coldStock.vessels.map(v=>({
+ ...v,temperatureC:10
+}))};
+assert.equal(lab.labSimulationTickWaitMs(coldBench,1000),1900);
+const recovering=lab.advanceLabSimulation(coldBench,2900);
+assert.ok(recovering.vessels[0].temperatureC>=10&&
+ recovering.vessels[0].temperatureC<22,
+ "Endothermic cooling must recover through finite ambient heat exchange");
+assert.ok(lab.labSimulationTickWaitMs(recovering,2900)>0,
+ "A cooled solution must not lose its scheduled ambient thermal updates");
+
 const dormant=lab.defaultLabBench().vessels[0];
 assert.equal(lab.labReactionNeedsTick(dormant),false);
 assert.equal(lab.labReactionNeedsTick(dormant),false);
