@@ -893,7 +893,8 @@ assert.equal(lab.transferLabMeasuredLiquid(diluteSample,"v1",samplePipette,50),d
 // not as position-based arrays.
 const scienceEditor=read("src/LektrusScienceEditor.tsx");
 assert.match(scienceEditor,/mergeLabBench\(/);
-assert.match(scienceEditor,/onExperimentLiveChange\?\.\(draft,next\)/);
+assert.match(scienceEditor,/onExperimentLiveChange\?\.\(draft,next,simulationOnly\)/,
+ "The fullscreen chemistry editor forwards automatic simulation provenance");
 
 const savedQuick=lab.defaultLabQuickReagents();
 assert.ok(savedQuick.length>=8&&savedQuick.length<=lab.MAX_QUICK_REAGENTS);
