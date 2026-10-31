@@ -327,6 +327,14 @@ if(process.argv.includes("--verify")){
     "Source density not connected to actual material map: "+key);
    assert.equal(registry.labSubstanceProperties(row.formula)
     .crystalDensityGPerMl,row.value);
+  }else if(row.property==="specificHeatJPerGK"){
+   assert.equal(batch.LAB_BATCH_SOLID_SPECIFIC_HEAT[row.formula]?.specificJPerGK,
+    row.value,"Missing batch-specific heat "+key);
+   assert.equal(heat.LAB_CALORIMETRY_REFERENCE[row.formula]?.specificJPerGK,
+    row.value,"Source Cp not connected to live calorimetry "+key);
+   assert.equal(heat.LAB_CALORIMETRY_REFERENCE[row.formula]?.phase,"solid");
+   assert.equal(registry.labSubstanceProperties(row.formula).specificHeatJPerGK,
+    row.value);
   }else{
    assert.equal(thermal.LAB_THERMAL_REFERENCE[row.formula]?.[row.property],
     row.value,"Source transition not wired into simulator "+key);

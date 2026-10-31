@@ -858,6 +858,14 @@ for(const item of batchRows){
    ["meltingC","boilingC","decompositionC","sublimationC"].includes(row.property)))
    assert.ok(!Object.hasOwn(ingestion.LAB_BATCH_THERMAL_PROPERTIES,item.formula),
     "Do not fabricate thermal boundary for density-only sample");
+ }else if(item.property==="specificHeatJPerGK"){
+  assert.equal(ingestion.LAB_BATCH_SOLID_SPECIFIC_HEAT[item.formula]?.phase,"solid");
+  approximately(ingestion.LAB_BATCH_SOLID_SPECIFIC_HEAT[item.formula].specificJPerGK,
+   item.value,1e-12);
+  approximately(heatProps.LAB_CALORIMETRY_REFERENCE[item.formula].specificJPerGK,
+   item.value,1e-12);
+  approximately(registryProps.labSubstanceProperties(item.formula)
+   .specificHeatJPerGK,item.value,1e-12);
  }else {
   const thermal=ingestion.LAB_BATCH_THERMAL_PROPERTIES[item.formula];
   assert.ok(thermal,"Missing generated thermal record "+key);
@@ -875,6 +883,19 @@ for(const item of batchRows){
  }
 }
 assert.equal(ingestion.LAB_BATCH_PROPERTY_PROVENANCE.length,batchRows.length);
+// USGS gibbsite 298.15 K Cp,mol: 91.729 J mol-1 K-1, formula mass 78.003.
+approximately(heatProps.LAB_CALORIMETRY_REFERENCE["Al(OH)3"].specificJPerGK,
+ 91.729/78.003,1e-6);
+for(const [formula,key,expected] of [
+ ["Mg(NO3)2","decompositionC",330],["PbS","meltingC",1114],
+ ["CoS","meltingC",1117]
+]){
+ const p=registryProps.labSubstanceProperties(formula);
+ approximately(p[key],expected,1e-12);
+ assert.equal(thermalProps.labThermalInfo(formula,"ml").known,false,
+  "Dry transition cannot apply to liquid solutions: "+formula);
+}
+
 assert.equal(ingestion.LAB_BATCH_CRYSTAL_DENSITIES.CH3ONa,1.3);
 assert.equal(ingestion.LAB_BATCH_CRYSTAL_DENSITIES.C2H5ONa,.87);
 assert.equal(ingestion.LAB_BATCH_THERMAL_PROPERTIES["Fe(OH)2"].decompositionC,150);
