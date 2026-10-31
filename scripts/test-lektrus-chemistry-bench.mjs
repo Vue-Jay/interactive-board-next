@@ -166,6 +166,59 @@ assert.match(styleText,/\.lektrus-lab-experiment-grid/);
 assert.match(styleText,/\.lektrus-lab-pour-mode/);
 
 }
+/** Gas-stock baseline and exclusive apparatus heating regression.
+ * A sample that was already a gas before sealing is not newly generated
+ * reaction gas, and overlapping stands cannot borrow another flask's flame. */
+{
+ let stockGas=lab.addLabVessel(lab.defaultLabBench(),"flask");
+ const vesselId=stockGas.selectedId;
+ stockGas=lab.putLabReagent(stockGas,vesselId,"H2",{value:10,unit:"ml"});
+ assert.ok(stockGas.vessels.find(v=>v.id===vesselId)?.reagents.includes("H2"));
+ const unsealedGas=stockGas.vessels.find(v=>v.id===vesselId);
+ const oldMol=lab.labHeadspaceGasMoles(unsealedGas);
+ assert.ok(oldMol>0,"Gas stock exists before sealing");
+ stockGas=lab.setLabVesselStopper(stockGas,vesselId,true);
+ const sealedStock=stockGas.vessels.find(v=>v.id===vesselId);
+ assert.ok(Math.abs(sealedStock.sealedReactionGasBaselineMol-oldMol)<1e-12,
+  "Cork records all pre-existing gas at sealing, not just reaction products");
+ assert.ok(lab.labHeadspaceGasMoles(sealedStock)<1e-12,
+  "A pre-existing gas stock must not create artificial positive headspace pressure");
+ const initialPressure=lab.labVesselPressure(sealedStock);
+ assert.ok(Math.abs((initialPressure.pressureKPa??101.325)-101.325)<1,
+  "The newly sealed flask starts close to one atmosphere");
+ const resealed=lab.setLabVesselStopper(
+  lab.setLabVesselStopper(stockGas,vesselId,false),vesselId,true);
+ assert.ok(lab.labHeadspaceGasMoles(resealed.vessels.find(v=>v.id===vesselId))<1e-12);
+}
+{
+ let isolated=lab.addLabVessel(lab.defaultLabBench(),"beaker");
+ // A burner secured to v1 overlaps a different retort stand holding v2.
+ // Nearby screen coordinates alone do not authorize heat transfer.
+ isolated={...isolated,simulationAtMs:1000,placedDevices:[
+  {id:"fireA",kind:"burner",x:48.5,y:74,powered:true,
+   heatLevel:2,temperatureC:850,active:true,linkedVesselId:"v1"},
+  {id:"standB",kind:"tripod",x:45,y:65,active:true,
+   linkedVesselId:"v2",standHeight:.5}
+ ]};
+ isolated=lab.putLabReagent(isolated,"v1","H2O",{value:10,unit:"ml"});
+ isolated=lab.putLabReagent(isolated,"v2","H2O",{value:10,unit:"ml"});
+ assert.ok(!lab.labAppliancesBelowStand(isolated,"v2").some(d=>d.id==="fireA"),
+  "An already-mounted burner cannot heat a second vessel through a neighbouring stand");
+ const next=lab.advanceLabSimulation(isolated,2900);
+ assert.ok(next.vessels.find(v=>v.id==="v1").temperatureC>22,
+  "The actual flame's mounted vessel receives heat");
+ assert.ok(next.vessels.find(v=>v.id==="v2").temperatureC<=22.1,
+  "The unrelated vessel remains at ambient temperature");
+ const available={...isolated,placedDevices:isolated.placedDevices.map(d=>
+  d.id==="fireA"?{...d,active:false,linkedVesselId:undefined}:d)};
+ assert.ok(lab.labAppliancesBelowStand(available,"v2").some(d=>d.id==="fireA"),
+  "An unmounted burner can still heat a vessel physically above it");
+ const heated=lab.advanceLabSimulation(available,2900);
+ assert.ok(heated.vessels.find(v=>v.id==="v2").temperatureC>22,
+  "Heat reaches the stand-mounted recipient when the burner is genuinely available");
+}
+console.log("Gas stock sealing baseline and exclusively mounted heater interactions: OK");
+
 let bench=lab.defaultLabBench();
 assert.equal(bench.vessels.length,1,"New lab starts with a single empty beaker");
 assert.equal(bench.selectedId,"v1");
