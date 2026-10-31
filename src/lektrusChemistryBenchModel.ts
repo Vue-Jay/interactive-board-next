@@ -1437,14 +1437,16 @@ export function putLabReagent(bench:LabBench,id:string,reagent:string,dose?:LabD
     chemicalInventory:{speciesMol,solidMol,
      retainedGasMol:original.retainedGasMol,
      releasedGasMol:original.releasedGasMol,
-     equilibriumEquations:original.equilibriumEquations}
+     equilibriumEquations:original.equilibriumEquations,
+     settled:original.settled===true&&reagent==="H2O"}
    });
    const productIds=Object.keys(quantified.speciesMol);
    const confirmed=quantified.steps.length?
     reviewedReactionCases.find(row=>row.equation===quantified.steps[quantified.steps.length-1].equation):
     undefined;
    return {...v,reagents:productIds,doses:nextDoses,environment,
-    chemicalInventory:labInventorySnapshot(quantified),
+    chemicalInventory:{...labInventorySnapshot(quantified),
+     ...(original.settled===true&&reagent==="H2O"?{settled:true}:{})},
     binarySaltPhase:undefined,mixedSaltPhase:undefined,
     physicalProcess:undefined,physicalStartedAtMs:undefined,
     filteredSolution:v.filteredSolution?
@@ -1610,17 +1612,22 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
   temperatureC:target.temperatureC,
   chemicalInventory:{speciesMol:toSpecies,solidMol:receiver.solidMol,
    retainedGasMol:receiver.retainedGasMol,
+   settled:!!source.chemicalInventory?.settled&&
+    !target.reagents.length,
    releasedGasMol:receiver.releasedGasMol,
    equilibriumEquations:[...new Set([
     ...donor.equilibriumEquations,...receiver.equilibriumEquations])].slice(-8)}
  });
  if(targetInventory.limited||targetInventory.unmeasured.length||
   Object.keys(targetInventory.speciesMol).length>MAX_VESSEL_REAGENTS)return bench;
- const toSnapshot=labInventorySnapshot(targetInventory);
+ const toSnapshot:LabChemicalSnapshot={...labInventorySnapshot(targetInventory),
+  ...(source.chemicalInventory?.settled&&!target.reagents.length?
+   {settled:true}:{})};
  const fromSnap:LabChemicalSnapshot={speciesMol:fromSpecies,
   solidMol:{...donor.solidMol},retainedGasMol:{...donor.retainedGasMol},
   releasedGasMol:{...donor.releasedGasMol},
-  equilibriumEquations:[...donor.equilibriumEquations]};
+  equilibriumEquations:[...donor.equilibriumEquations],
+  settled:!!source.chemicalInventory?.settled};
  const fromIds=Object.keys(fromSpecies),toIds=Object.keys(toSnapshot.speciesMol);
  const last=targetInventory.steps[targetInventory.steps.length-1];
  const lastCase=last?reviewedReactionCases.find(c=>c.equation===last.equation):undefined;
@@ -1812,7 +1819,8 @@ export function filterLabPrecipitate(bench:LabBench,sourceId:string,targetId:str
    indicator:undefined,completedReaction:undefined,reactionAmounts:undefined,
    filteredResidue:undefined,
    filteredSolution:{sourceEquation:reaction.equation,solutes,volumeMl:volume},
-   chemicalInventory:{speciesMol:soluble,solidMol:{},retainedGasMol:{}},
+   chemicalInventory:{speciesMol:soluble,solidMol:{},retainedGasMol:{},
+    settled:true},
    doses:undefined,visualStartedAtMs:undefined};
   return v;
  });
@@ -2053,14 +2061,17 @@ function pourMeasuredFiltrate(bench:LabBench,source:LabVessel,target:LabVessel):
   retainedGasMol:{},
   releasedGasMol:mergeLabMoles(a.releasedGasMol,b.releasedGasMol),
   equilibriumEquations:[...new Set([
-   ...a.equilibriumEquations,...b.equilibriumEquations])].slice(-8)
+   ...a.equilibriumEquations,...b.equilibriumEquations])].slice(-8),
+  settled:!!source.chemicalInventory?.settled&&
+   !target.reagents.length
  };
  const reacted=simulateLabInventory({reagents:Object.keys(chemicalInventory.speciesMol),
   chemicalInventory,volumeMl:volume,environment,stoppered:false,
   temperatureC:target.temperatureC??source.temperatureC});
  if(reacted.unmeasured.length||reacted.limited||
   Object.keys(reacted.speciesMol).length>MAX_VESSEL_REAGENTS)return bench;
- const inventory=labInventorySnapshot(reacted);
+ const inventory:LabChemicalSnapshot={...labInventorySnapshot(reacted),
+  ...(chemicalInventory.settled?{settled:true}:{})};
  const ids=Object.keys(inventory.speciesMol);
  const last=reacted.steps[reacted.steps.length-1];
  const lastCase=last?reviewedReactionCases.find(r=>r.equation===last.equation):undefined;
