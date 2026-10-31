@@ -17,7 +17,7 @@ type DeviceIconProps={
 /** The controls are engraved into the equipment's own scalable SVG.
  * There are no absolute-positioned controls floating over the drawing. */
 export default function LektrusLabDeviceIcon({
- kind,size=42,active=false,temperatureC,temperatureVisible=true,targetTemperatureC=150,
+ kind,size=42,active=false,editable=false,temperatureC,temperatureVisible=true,targetTemperatureC=150,
  standHeight=.5,collectedResidue,filtering=false
 }:DeviceIconProps){
  const uid=useId().replace(/:/g,"");
@@ -80,17 +80,17 @@ export default function LektrusLabDeviceIcon({
    </g>)}
    <rect x="29" y="64" width="40" height="16" rx="4"
     fill="#255568" stroke="#70a2ad" strokeWidth="1.3"/>
-   <text x="49" y="75" textAnchor="middle" fontSize="9" fontWeight="800"
-    fill="#d8faff">{Math.round(targetTemperatureC)}°</text>
+   {!editable&&<text x="49" y="75" textAnchor="middle" fontSize="9" fontWeight="800"
+    fill="#d8faff">{Math.round(targetTemperatureC)}°</text>}
    <circle cx="83" cy="73" r="7.7" fill={"url(#"+metal+")"}
     stroke="#477a8b" strokeWidth="1.7"/>
    <path d="M83 68V72" stroke="#376d7d" strokeWidth="2.2"/>
    {active&&<g stroke="#d1f6fc" strokeWidth="1.8" strokeLinecap="round">
     <path d="M21 27l-4 -5M34 20v-6M77 20v-6M90 27l4 -5"/>
    </g>}
-   {temperatureVisible&&<text x="51" y="88" textAnchor="middle"
-    fontSize="8" fontWeight="750" fill="#316c80">
-    ≈{Math.round(temperatureC??22)}°C</text>}
+   {temperatureVisible&&<text x="55" y="94" textAnchor="middle"
+    fontSize="7.5" fontWeight="750" fill="#316c80">
+    Т {Math.round(temperatureC??22)}°C</text>}
   </>}
   {kind==="burner"&&<>
    <path d="M36 88H74L89 96H21Z" fill={"url(#"+metal+")"} stroke="#406d69" strokeWidth="2.7"/>
