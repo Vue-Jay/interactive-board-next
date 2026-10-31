@@ -55,6 +55,8 @@ const passive=lab.advanceLabSimulation(idle,11000).vessels[0];
 assert.ok(passive.temperatureC<noEvapHeat.temperatureC);
 assert.ok((passive.ventedVaporMl?.H2O??0)>0);
 close(passive.doses.H2O.value+passive.ventedVaporMl.H2O,40,1e-6);
+assert.equal(passive.lastEvaporatedAtMs,11000,
+ "Vapor animation must track actual measured liquid loss at each tick");
 // Near boiling, the supplied heater watts cannot BOTH raise sensible
 // temperature and become steam without decrementing the energy budget.
 const hotplate={id:"plate-1",kind:"hotplate",x:50,y:70,active:true,
@@ -105,6 +107,8 @@ assert.equal(disabled.doses.H2O.value,40,
  "Disabling evaporation must preserve the existing solvent");
 assert.equal(disabled.ventedVaporMl?.H2O??0,0,
  "Disabling evaporation must not add vapor to the inventory");
+assert.equal(disabled.lastEvaporatedAtMs,undefined,
+ "Disabled evaporation must not activate a vapor plume");
 assert.ok(disabled.temperatureC>passive.temperatureC,
  "Without evaporative latent-heat losses, the sample cools less");
 const normalTwoSeconds=lab.advanceLabSimulation(idle,3000).vessels[0];
@@ -405,3 +409,38 @@ assert.match(gasUI,/Пауза процессов/);
 assert.match(gasUI,/Газоотвод/);
 assert.match(gasUI,/Перенести до 20 мл/);
 console.log("Measured gas collection, reuse and slow gas release: OK");
+
+
+// Visual effects: no fictitious precipitate before a measured reaction,
+// no eternal salt-growth shimmer and no bubbles above the liquid surface.
+const visualSrc=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
+const physicsCss=fs.readFileSync("src/lektrusChemistryBench.css","utf8");
+const sceneCss=fs.readFileSync("src/lektrusLabSceneLayout.css","utf8");
+assert.match(visualSrc,/const pendingPrecipitate=/);
+assert.match(visualSrc,/measuredPrecipitateG=\(contents\.precipitateG\?\?0\)\*precipitationProgress/);
+assert.match(visualSrc,/106\*contents\.precipitateFraction\*precipitationProgress/);
+assert.match(visualSrc,/lastEvaporatedAtMs<5000/);
+assert.match(visualSrc,/visualNow-vessel\.lastEvaporatedAtMs<6000/);
+assert.match(visualSrc,/evaporationEnabled&&volumeMl>1e-9/);
+assert.match(visualSrc,/className="lektrus-lab-gas-bubbles" clipPath=/);
+assert.match(visualSrc,/className="lektrus-lab-boiling-particles"[\s\S]*?clipPath=/);
+assert.match(visualSrc,/lektrus-lab-gas-vent/);
+assert.match(visualSrc,/lektrus-lab-gas-tube-flow/);
+assert.match(visualSrc,/visualNowMs=\{clockNow\}/);
+assert.match(physicsCss,/\.lektrus-lab-sediment\{[\s\S]*?animation:none!important/);
+assert.match(physicsCss,/is-simulation-paused :is\(/);
+assert.match(sceneCss,/lektrus-lab-vapor-plume\.is-boiling/);
+assert.match(sceneCss,/lektrus-lab-open-gas/);
+assert.match(sceneCss,/animation-play-state:paused!important/);
+const pausedVapor=lab.setLabSimulationPaused({
+ ...idle,simulationAtMs:11000,vessels:[passive]
+},true,11000);
+const unpausedVapor=lab.setLabSimulationPaused(pausedVapor,false,25000).vessels[0];
+assert.equal(unpausedVapor.lastEvaporatedAtMs,25000,
+ "Paused 14 seconds cannot consume the previously visible evaporation effect");
+const rinsed=lab.emptyLabVessel({
+ ...idle,vessels:[passive]
+},"v1").vessels[0];
+assert.equal(rinsed.lastEvaporatedAtMs,undefined,
+ "Washing a vessel cannot retain ghost steam from a previous substance");
+console.log("Lab visual audit: real vapor, bounded precipitation, glass clipping, gas flow and pause: OK");
