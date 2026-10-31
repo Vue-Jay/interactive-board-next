@@ -837,7 +837,7 @@ export function labDisplayNumber(value:number,realism:LabRealism="high",
   const step=profile.temperatureStepC;
   return (Math.round(value/step)*step).toLocaleString("ru-RU",{maximumFractionDigits:1});
  }
- let digits=kind==="moles"?profile.moleDigits:profile.quantityDigits;
+ let digits:number=kind==="moles"?profile.moleDigits:profile.quantityDigits;
  // A measured trace must never be displayed as zero merely because it is small.
  if(value!==0&&Math.abs(value)<1)
   digits=Math.min(6,Math.max(digits,Math.ceil(-Math.log10(Math.abs(value)))+1));
