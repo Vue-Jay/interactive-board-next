@@ -2198,6 +2198,22 @@ assert.equal(deferred.vessels[0].pendingInventoryReaction,true,
  "Adding reactants to a completed mixture during pause queues chemistry");
 assert.equal(deferred.vessels[0].chemicalInventory.solidMol.AgCl??0,0,
  "Unstarted precipitation cannot create settled AgCl during pause");
+// All physical readouts must agree with the immutable pre-reaction ledger,
+// not a future equilibrium forecast from the same reagents.
+const heldVessel=deferred.vessels[0];
+const frozenVessel={...heldVessel,pendingInventoryReaction:undefined,
+ chemicalInventory:{...heldVessel.chemicalInventory,settled:true}};
+const actualSolid=lab.labVesselSolidDisplacement(heldVessel);
+const frozenSolid=lab.labVesselSolidDisplacement(frozenVessel);
+assert.ok(Math.abs(actualSolid.volumeMl-frozenSolid.volumeMl)<1e-10,
+ "Paused follow-up reaction cannot occupy future precipitate volume");
+assert.ok(Math.abs(lab.labVesselQuantity(heldVessel).occupiedMl-
+ lab.labVesselQuantity(frozenVessel).occupiedMl)<1e-10,
+ "Glassware free capacity must use only currently settled solid");
+const actualPH=acidBase.labVesselPH(heldVessel);
+const frozenPH=acidBase.labVesselPH(frozenVessel);
+assert.equal(actualPH?.pH,frozenPH?.pH,
+ "An indicator must not show a future pH change during pause");
 assert.equal(lab.recordLabReactions(deferred),deferred,
  "An unstarted follow-up reaction cannot write chalk");
 deferred=lab.setLabSimulationPaused(deferred,false,9000);
@@ -2211,6 +2227,29 @@ deferred=lab.recordLabReactions(deferred);
 assert.equal(deferred.reactionLog.length,2,
  "The follow-up equation is written once, after the reaction runs");
 assert.match(deferred.reactionLog.at(-1),/AgCl↓/);
+
+const pausedGasVessel={
+ ...lab.defaultLabBench().vessels[0],reagents:["Na2CO3","HCl"],
+ doses:{Na2CO3:{unit:"ml",value:10,concentrationM:.1},
+  HCl:{unit:"ml",value:20,concentrationM:.1}},
+ stoppered:true,observed:true,pendingInventoryReaction:true,
+ chemicalInventory:{speciesMol:{Na2CO3:.001,HCl:.002},solidMol:{},
+  retainedGasMol:{},releasedGasMol:{}}
+};
+const futureGas=network.simulateLabInventory({
+ ...pausedGasVessel,pendingInventoryReaction:undefined});
+assert.ok((futureGas.retainedGasMol.CO2??0)>0,
+ "The staged carbonate reaction has a real gas-producing pathway");
+assert.equal(lab.labHeadspaceGasMoles(pausedGasVessel),0,
+ "Gas pressure must not include unproduced CO2 on a paused bench");
+assert.equal(lab.labVesselSolidDisplacement(pausedGasVessel).volumeMl,0,
+ "A paused reaction does not occupy volume with future reaction products");
+const envSource=lab.putLabReagent(
+ lab.putLabReagent(detailedBench(),"v1","NaCl",{unit:"ml",value:10,concentrationM:.1}),
+ "v1","AgNO3",{unit:"ml",value:10,concentrationM:.1});
+const envChanged=lab.setLabEnvironment(envSource,"v1","dry");
+assert.equal(envChanged.vessels[0].uncertain,false,
+ "Changing conditions before any reaction progress must not declare unknown consumed products");
 console.log("Paused follow-up preparation, settled solids and delayed chalk: OK");
 
 const originalShared=lab.recordLabReactions(measuredSediment);

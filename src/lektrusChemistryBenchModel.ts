@@ -1684,7 +1684,12 @@ export function labHeadspaceGasMoles(v:LabVessel){
    startQuantifiedLabReaction(row.caseData,v.reagents,v.doses))
    return Math.max(0,sourceGas-baseline);
  }
- const inventory=simulateLabInventory({...v,volumeMl:labVesselQuantity(v).volumeMl});
+ // A sealed mixture prepared during pause contains only its PRESENT gases.
+ // Do not charge the headspace for gas forecast by the reaction network.
+ const inventory=simulateLabInventory({...v,
+  chemicalInventory:v.pendingInventoryReaction&&v.chemicalInventory?
+   {...v.chemicalInventory,settled:true}:v.chemicalInventory,
+  volumeMl:labVesselQuantity(v).volumeMl});
  const total=Object.values(inventory.retainedGasMol).reduce((sum,m)=>sum+m,0)+
   Object.entries(inventory.speciesMol).reduce((sum,[id,m])=>
    sum+(substances.find(x=>x.id===id)?.kind==="газ"?m:0),0);
@@ -1785,7 +1790,10 @@ export function setLabEnvironment(bench:LabBench,id:string,environment:ReactionE
    completedReaction:v.completedReaction??(v.reactionAmounts?.complete&&
     previous.status==="reaction"?previous.caseData:undefined),
    // Future chemistry is unknown, but previously visible products stay visible.
-   uncertain:v.uncertain||previous.status==="reaction",
+   // Recognising a possible reaction is not evidence that it happened.
+   // Preserve uncertainty only if a reaction actually advanced.
+   uncertain:v.uncertain||!!v.completedReaction||
+    (v.reactionAmounts?.extentMol??0)>1e-12,
    visualStartedAtMs:starts?Date.now():v.visualStartedAtMs,
    observed:v.reagents.length>1||next.status==="reaction"};
  });
@@ -2335,8 +2343,13 @@ export function labVesselSolidDisplacement(vessel:LabVessel){
   Object.entries(vessel.doses??{}).reduce((total,[id,d])=>
    total+(d.unit==="ml"&&substances.find(s=>s.id===id)?.kind!=="газ"?
     d.value:0),0);
+ // During paused preparation, volume displacement belongs to already
+ // present solids, not a future precipitate predicted by equilibrium.
  const inventory=vessel.reagents.length?simulateLabInventory({
-  ...vessel,volumeMl:liquidMl}):undefined;
+  ...vessel,
+  chemicalInventory:vessel.pendingInventoryReaction&&vessel.chemicalInventory?
+   {...vessel.chemicalInventory,settled:true}:vessel.chemicalInventory,
+  volumeMl:liquidMl}):undefined;
  let volumeMl=0;
  let complete=true,estimated=false;
  if(inventory?.unmeasured.length||inventory?.limited)complete=false;
