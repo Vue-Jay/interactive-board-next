@@ -253,6 +253,38 @@ add("Zn(OH)2+HCl","aqueous",
  "Zn(OH)2 + 2HCl → ZnCl2 + 2H2O","dissolution",
  "Белый осадок гидроксида цинка растворяется в разбавленной кислоте.");
 
+/** Quantitative school continuations for preformed precipitates. Reference:
+ * OpenStax Chemistry 2e §4.2 (acid-base neutralization and carbonate acid
+ * consumption): https://openstax.org/books/chemistry-2e/pages/4-2-classifying-chemical-reactions
+ * Only dilute acid stocks are represented. Fe(II) oxidation, metal
+ * complexation and carbonate gas dissolution remain out of this model. */
+const labPrecipitateAcidContinuations=`
+Cu(OH)2+HNO3|aqueous|Cu(OH)2 + 2HNO3 → Cu(NO3)2 + 2H2O|dissolution|Голубой осадок гидроксида меди(II) постепенно растворяется в разбавленной азотной кислоте
+Fe(OH)3+HNO3|aqueous|Fe(OH)3 + 3HNO3 → Fe(NO3)3 + 3H2O|dissolution|Бурый осадок гидроксида железа(III) растворяется в азотной кислоте
+Al(OH)3+HNO3|aqueous|Al(OH)3 + 3HNO3 → Al(NO3)3 + 3H2O|dissolution|Белый гидроксид алюминия растворяется в разбавленной азотной кислоте
+Zn(OH)2+HNO3|aqueous|Zn(OH)2 + 2HNO3 → Zn(NO3)2 + 2H2O|dissolution|Белый гидроксид цинка растворяется при добавлении кислоты
+Mg(OH)2+HNO3|aqueous|Mg(OH)2 + 2HNO3 → Mg(NO3)2 + 2H2O|dissolution|Белая суспензия гидроксида магния нейтрализуется азотной кислотой
+Mg(OH)2+HCl|aqueous|Mg(OH)2 + 2HCl → MgCl2 + 2H2O|dissolution|Гидроксид магния постепенно растворяется при нейтрализации разбавленной соляной кислотой
+Fe(OH)2+HCl|aqueous|Fe(OH)2 + 2HCl → FeCl2 + 2H2O|dissolution|Зеленоватый гидроксид железа(II) растворяется в соляной кислоте без учёта окисления кислородом воздуха
+Ni(OH)2+HCl|aqueous|Ni(OH)2 + 2HCl → NiCl2 + 2H2O|dissolution|Гидроксид никеля(II) растворяется при добавлении соляной кислоты
+Cu(OH)2+H2SO4|aqueous|Cu(OH)2 + H2SO4 → CuSO4 + 2H2O|dissolution|Гидроксид меди(II) нейтрализуется разбавленной серной кислотой
+Zn(OH)2+H2SO4|aqueous|Zn(OH)2 + H2SO4 → ZnSO4 + 2H2O|dissolution|Гидроксид цинка растворяется в разбавленной серной кислоте
+Fe(OH)3+H2SO4|aqueous|2Fe(OH)3 + 3H2SO4 → Fe2(SO4)3 + 6H2O|dissolution|Гидроксид железа(III) растворяется в разбавленной серной кислоте
+Al(OH)3+H2SO4|aqueous|2Al(OH)3 + 3H2SO4 → Al2(SO4)3 + 6H2O|dissolution|Гидроксид алюминия нейтрализуется серной кислотой
+Mg(OH)2+H2SO4|aqueous|Mg(OH)2 + H2SO4 → MgSO4 + 2H2O|dissolution|Гидроксид магния растворяется в разбавленной серной кислоте
+CaCO3+CH3COOH|aqueous|CaCO3 + 2CH3COOH → Ca(CH3COO)2 + CO2↑ + H2O|gas|Уксусная кислота расходует карбонат кальция с выделением углекислого газа
+MgCO3+CH3COOH|aqueous|MgCO3 + 2CH3COOH → Mg(CH3COO)2 + CO2↑ + H2O|gas|Карбонат магния взаимодействует с уксусной кислотой с выделением CO2
+`;
+for(const line of labPrecipitateAcidContinuations.trim().split("\n")){
+ const [pair,environment,equation,observation,description]=line.split("|");
+ const signature=pair.split("+").sort().join("|");
+ if(cases.some(row=>row.environment===environment&&
+  row.reactants.slice().sort().join("|")===signature))continue;
+ add(pair,environment as ReactionEnvironment,equation,
+  observation as Observation,description,
+  {sourceNote:"OpenStax Chemistry 2e §4.2, кислотно-основное взаимодействие; только разбавленные растворы и школьная стехиометрия."});
+}
+
 add("HCl+Zn","aqueous","Zn + 2HCl → ZnCl2 + H2↑","gas","Цинк вытесняет водород из неокисляющей кислоты.",{safety:"Выделяющийся водород горюч."});
 add("HCl+Mg","aqueous","Mg + 2HCl → MgCl2 + H2↑","gas","Магний вытесняет водород.",{safety:"Выделяющийся водород горюч."});
 /** Dilute aqueous acids only; these are balanced overall school equations.
