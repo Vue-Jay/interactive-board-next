@@ -86,6 +86,12 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
+// This broad historical physics regression suite validates the detailed model.
+// New classrooms default to low fidelity, while these legacy reference
+// scenarios explicitly keep high fidelity to preserve calibrated baselines.
+const classroomDefault=lab.defaultLabBench;
+assert.equal(lab.labBenchSettings(classroomDefault()).realism,"low");
+lab.defaultLabBench=()=>lab.setLabBenchSettings(classroomDefault(),{realism:"high"});
 {
 const kits=load("src/lektrusLabExperimentKits.ts",key=>{
  if(key==="./lektrusLabCatalog")return catalog;

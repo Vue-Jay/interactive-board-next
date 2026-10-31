@@ -203,8 +203,10 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
  const solutionBoiling=labIdealBoilingC(vessel);
- const boiling=!!volumeMl&&!vessel.stoppered&&(thermalState.boiling||
-  solutionBoiling!==undefined&&(temperatureC??vessel.temperatureC??22)>=solutionBoiling-.5);
+ const boiling=!!volumeMl&&!vessel.stoppered&&
+  (solutionBoiling!==undefined?
+   (temperatureC??vessel.temperatureC??22)>=solutionBoiling-2.5:
+   thermalState.boiling);
  const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):
   solidFraction*(1-moltenFraction);
  const fillFraction=volumeMl>0?Math.max(.008,liquidFraction):
@@ -265,8 +267,9 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
       fill="#f7faf8" stroke="#a2b4c0" strokeWidth=".65"
       style={{animationDelay:-(i%6)*.4+"s"}}/>)}
     </g>}
-    {boiling&&<g className="lektrus-lab-boiling-particles">
-     {Array.from({length:18},(_,i)=><circle key={i}
+    {boiling&&<g className="lektrus-lab-boiling-particles"
+     clipPath={"url(#"+id+"level)"} aria-label="Пузырьки внутри кипящей жидкости">
+     {Array.from({length:Math.max(3,Math.min(18,Math.ceil(18*Math.sqrt(liquidFraction))))},(_,i)=><circle key={i}
       cx={28+i*19%46} cy={80+i*23%30} r={1.6+i%4*.7}
       fill="#fff" fillOpacity=".18" stroke="#9ecfd7" strokeWidth=".8"
       style={{animationDelay:-(i%8)*.31+"s"}}/>)}
@@ -713,9 +716,61 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  };
  const benchRef=useRef(bench);
  const changeRef=useRef(onChange);
+ // A selected vessel or apparatus owns Delete, not its whole board object.
+ const keyboardOwnedRef=useRef(false);
+ const keyboardTargetRef=useRef<{kind:"vessel"|"device";id:string}|null>(null);
  const localPourRef=useRef<string|null>(null);
  const lastPourStepRef=useRef(-1);
  benchRef.current=bench;changeRef.current=onChange;
+ useEffect(()=>{
+  if(!editable)return;
+  const resetOnOutside=(e:globalThis.PointerEvent)=>{
+   if(e.target instanceof Node&&!host.current?.contains(e.target)){
+    keyboardOwnedRef.current=false;keyboardTargetRef.current=null;
+   }
+  };
+  const resetOnFocus=(e:FocusEvent)=>{
+   if(e.target instanceof Node&&!host.current?.contains(e.target)){
+    keyboardOwnedRef.current=false;keyboardTargetRef.current=null;
+   }
+  };
+  const handleLabDelete=(e:KeyboardEvent)=>{
+   if(!keyboardOwnedRef.current||!["Delete","Backspace"].includes(e.key)||
+    e.ctrlKey||e.metaKey||e.altKey||e.isComposing)return;
+   const t=e.target instanceof Element?e.target:null;
+   if(t?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]'))return;
+   e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+   if(e.repeat)return;
+   const picked=keyboardTargetRef.current;
+   if(!picked)return;
+   const current=benchRef.current;
+   if(picked.kind==="device"){
+    if(!placedLabDevices(current).some(d=>d.id===picked.id))return;
+    const next=returnPlacedLabDevice(current,picked.id);
+    benchRef.current=next;changeRef.current?.(next);
+    keyboardTargetRef.current=null;setActiveDeviceId(null);
+    setNotice("Прибор убран со стола");return;
+   }
+   const v=current.vessels.find(v=>v.id===picked.id);
+   if(!v)return;
+   if(v.reagents.length>0||v.filteredSolution||v.filteredResidue||
+    v.chemicalInventory){
+    setPendingReturnId(v.id);return;
+   }
+   const next=removeLabVessel(current,v.id);
+   benchRef.current=next;changeRef.current?.(next);
+   keyboardTargetRef.current=null;setVesselMenuId(null);
+   setNotice("Пустой сосуд убран со стола");
+  };
+  document.addEventListener("pointerdown",resetOnOutside,true);
+  document.addEventListener("focusin",resetOnFocus,true);
+  document.addEventListener("keydown",handleLabDelete,true);
+  return()=>{
+   document.removeEventListener("pointerdown",resetOnOutside,true);
+   document.removeEventListener("focusin",resetOnFocus,true);
+   document.removeEventListener("keydown",handleLabDelete,true);
+  };
+ },[editable]);
  useEffect(()=>{
   if(!editable)return;
   const current=benchRef.current,updated=recordLabReactions(current);
@@ -1313,6 +1368,24 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   (pendingGlassware?" is-placing-glassware":"")+
   (!settings.animateEffects?" lab-reduced-animation":"")} ref={host}
   aria-label="Интерактивный химический стол с шкафами и раковиной"
+  onFocusCapture={e=>{
+   if(!editable)return;
+   keyboardOwnedRef.current=true;
+   const target=e.target instanceof Element?e.target:null;
+   const device=target?.closest("[data-lab-device-id]")?.getAttribute("data-lab-device-id");
+   const vessel=target?.closest("[data-lab-vessel-id]")?.getAttribute("data-lab-vessel-id");
+   if(device)keyboardTargetRef.current={kind:"device",id:device};
+   else if(vessel)keyboardTargetRef.current={kind:"vessel",id:vessel};
+  }}
+  onPointerDownCapture={e=>{
+   if(!editable)return;
+   keyboardOwnedRef.current=true;
+   const target=e.target instanceof Element?e.target:null;
+   const device=target?.closest("[data-lab-device-id]")?.getAttribute("data-lab-device-id");
+   const vessel=target?.closest("[data-lab-vessel-id]")?.getAttribute("data-lab-vessel-id");
+   keyboardTargetRef.current=device?{kind:"device",id:device}:
+    vessel?{kind:"vessel",id:vessel}:null;
+  }}
   onPointerDown={e=>{
    if(!editable||e.button!==0||!e.isPrimary)return;
    // Apparatus and cabinetry own their gestures. An empty worktop tap
@@ -1682,7 +1755,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    const current=devicePreview?.id===device.id?devicePreview:device;
    const meta=labDevices.find(d=>d.id===device.kind);
    const focused=activeDeviceId===device.id;
-   return <div key={device.id} data-board-interactive="true"
+   return <div key={device.id} data-board-interactive="true" data-lab-device-id={device.id}
     className={"lektrus-lab-placed-device is-"+device.kind+
      (focused?" is-selected":"")+(device.powered?" is-running":"")+
      (device.active?" is-mounted":"")+
@@ -1886,7 +1959,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   {bench.vessels.map((v,i)=>{
    const p=preview?.id===v.id?preview:vesselPosition(v);
    const selectedVessel=bench.selectedId===v.id;
-   return <button type="button" key={v.id} data-board-interactive="true"
+   return <button type="button" key={v.id} data-board-interactive="true" data-lab-vessel-id={v.id}
     className={"lektrus-lab-vessel is-"+v.kind+(selectedVessel?" selected":"")+
     (effectivePouringId===v.id?" is-pouring":"")+
     (dropTarget===v.id?" is-drop-target":"")+(bench.stirringVesselId===v.id||

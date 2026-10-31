@@ -133,7 +133,11 @@ const coldStock=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{value:20,uni
 const coldBench={...coldStock,simulationAtMs:1000,vessels:coldStock.vessels.map(v=>({
  ...v,temperatureC:10
 }))};
-assert.equal(lab.labSimulationTickWaitMs(coldBench,1000),1900);
+assert.equal(lab.labSimulationTickWaitMs(coldBench,1000),2600,
+ "Simple mode uses a slower low-cost thermal tick");
+assert.equal(lab.labSimulationTickWaitMs(
+ lab.setLabBenchSettings(coldBench,{realism:"high"}),1000),1900,
+ "High realism retains the detailed thermal cadence");
 const recovering=lab.advanceLabSimulation(coldBench,2900);
 assert.ok(recovering.vessels[0].temperatureC>=10&&
  recovering.vessels[0].temperatureC<22,

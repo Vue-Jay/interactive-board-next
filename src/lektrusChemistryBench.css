@@ -4608,3 +4608,35 @@
 .lektrus-lab-bench .lektrus-lab-placed-device.is-cooler{
  width:clamp(119px,10.3cqw,175px)!important;
  height:clamp(130px,11.5cqw,178px)!important}
+
+
+/* Cooler controls align with the SVG itself, not with the taller draggable
+   container (whose 29px bottom strip holds the instrument caption). */
+.lektrus-lab-bench .lektrus-lab-placed-device.is-cooler .lektrus-lab-device-face-controls{
+ inset:0 0 auto!important;height:calc(100% - 29px)!important;
+ overflow:visible!important;pointer-events:none!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-face-temp{
+ left:44.5%!important;top:68%!important;width:28%!important;
+ height:18%!important;min-height:24px!important;
+ padding:0 2px!important;letter-spacing:0!important;
+ font:800 clamp(12px,1.25cqw,16px)/1 system-ui,sans-serif!important;
+ text-align:center!important;border-radius:5px!important;
+ background:#184d60!important;border:1px solid #6ba9b9!important;
+ color:#e6ffff!important;box-shadow:inset 0 1px 3px #10343f90!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-power{
+ left:76%!important;top:68%!important;
+ width:16.5%!important;height:20%!important;min-width:24px!important;
+ min-height:24px!important;border-radius:50%!important;
+ font-size:clamp(14px,1.3cqw,19px)!important;
+ border-color:#6395a4!important;background:#d7edf1!important;color:#275e70!important}
+.lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-power[aria-pressed=true]{
+ background:#4f9eb2!important;border-color:#287e96!important;color:#fff!important;
+ box-shadow:0 0 6px #81dcef99!important}
+.lektrus-lab-bench .lektrus-lab-placed-device.is-cooler .lektrus-lab-device-icon{
+ overflow:visible!important;filter:drop-shadow(0 3px 3px #37697b40)}
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-face-temp{
+  font-size:12px!important;min-height:22px!important}
+ .lektrus-lab-bench .lektrus-lab-device-face-controls.is-cooler .lektrus-lab-device-power{
+  font-size:15px!important;min-height:22px!important;min-width:22px!important}
+}
