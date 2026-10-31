@@ -188,3 +188,83 @@ const ui=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
 assert.match(ui,/labSingleSaltSolubilityGPer100gWater/);
 assert.match(ui,/Кристаллы соли образуются при выпаривании воды/);
 console.log("KNO3, KCl, NaNO3: binary solubility, cold crystallization, redissolution and evaporation mass conservation OK");
+
+/* School multicomponent solution: common-ion correction is small, bounded,
+ * reproducible and does not mutate the independent measured source curves.
+ * Each crystal phase evolves continuously when the simulation clock ticks. */
+const dissolution=load("src/lektrusLabDissolution.ts");
+const mixedIons={
+ reagents:["NaCl","KCl","H2O"],environment:"aqueous",
+ doses:{NaCl:g(4),KCl:g(4),H2O:ml(10)}
+};
+const separatedIons={
+ reagents:["NaCl","KNO3","H2O"],environment:"aqueous",
+ doses:{NaCl:g(4),KNO3:g(4),H2O:ml(10)}
+};
+const shared=dissolution.labSchoolMixedSaltEquilibrium(mixedIons,20);
+const notShared=dissolution.labSchoolMixedSaltEquilibrium(separatedIons,20);
+assert.ok(shared&&notShared);
+assert.ok(shared.solidMol.NaCl>notShared.solidMol.NaCl+1e-5,
+ "A second chloride modestly suppresses NaCl in the school common-ion model");
+const pureSaltCeiling=mat.labSchoolSolubilityGPer100gWater("NaCl",20);
+const unaffectedNaCl=4/stoich.labMolarMass("NaCl")-
+ 10*.997*pureSaltCeiling.value/100/stoich.labMolarMass("NaCl");
+approx(notShared.solidMol.NaCl,unaffectedNaCl,1e-8);
+const baseMass=reaction.labInventoryMassG(
+ reaction.simulateLabInventory(mixedIons));
+const sharedInv=reaction.simulateLabInventory({...mixedIons,temperatureC:20});
+const swapped=reaction.simulateLabInventory({
+ ...mixedIons,reagents:["KCl","H2O","NaCl"],temperatureC:20
+});
+approx(sharedInv.solidMol.NaCl,swapped.solidMol.NaCl,1e-10);
+approx(sharedInv.solidMol.KCl,swapped.solidMol.KCl,1e-10);
+approx(reaction.labInventoryMassG(sharedInv),baseMass,1e-8);
+const dryPhase=Object.fromEntries(["NaCl","KCl"].map(id=>
+ [id,4/stoich.labMolarMass(id)]));
+const firstSlow=dissolution.labAdvanceSchoolMixedSaltPhase(
+ mixedIons,20,2,false,dryPhase);
+const firstStirred=dissolution.labAdvanceSchoolMixedSaltPhase(
+ mixedIons,20,2,true,dryPhase);
+assert.ok(firstSlow&&firstStirred&&firstSlow.active);
+assert.ok(firstSlow.state.NaCl<dryPhase.NaCl&&
+ firstSlow.state.NaCl>shared.solidMol.NaCl,
+ "Dissolution must be gradual, not an instantaneous equilibrium snap");
+assert.ok(firstStirred.state.NaCl<firstSlow.state.NaCl,
+ "Stirring increases the school dissolution rate");
+const warmed=dissolution.labSchoolMixedSaltEquilibrium(mixedIons,85);
+assert.ok((warmed.solidMol.KCl??0)<(shared.solidMol.KCl??0),
+ "Warm water holds more potassium chloride");
+const cooling=dissolution.labAdvanceSchoolMixedSaltPhase(
+ mixedIons,20,3,false,warmed.solidMol);
+assert.ok(cooling.state.KCl>(warmed.solidMol.KCl??0),
+ "Cooling permits a gradual, visible crystal growth");
+const inMotion=reaction.simulateLabInventory({
+ ...mixedIons,temperatureC:20,mixedSaltPhase:firstSlow.state
+});
+approx(inMotion.solidMol.NaCl,firstSlow.state.NaCl,1e-12);
+approx(inMotion.speciesMol.NaCl,sharedInv.speciesMol.NaCl,1e-12);
+approx(reaction.labInventoryMassG(inMotion),baseMass,1e-8);
+// Add both DRY samples first. Adding water must start visible dissolution
+// with all solid matter still present, then tick toward the phase ceiling.
+let mixedBench=lab.defaultLabBench();
+mixedBench=lab.putLabReagent(mixedBench,"v1","NaCl",g(4));
+mixedBench=lab.putLabReagent(mixedBench,"v1","KCl",g(4));
+mixedBench=lab.putLabReagent(mixedBench,"v1","H2O",ml(10));
+const initialMixed=mixedBench.vessels[0];
+assert.ok(initialMixed.mixedSaltPhase);
+approx(initialMixed.mixedSaltPhase.NaCl,dryPhase.NaCl,1e-9);
+approx(initialMixed.mixedSaltPhase.KCl,dryPhase.KCl,1e-9);
+assert.equal(initialMixed.physicalProcess,"dissolving");
+mixedBench=lab.advanceLabSimulation({...mixedBench,simulationAtMs:0},2000);
+const nextMixed=mixedBench.vessels[0];
+assert.ok(nextMixed.mixedSaltPhase.NaCl<initialMixed.mixedSaltPhase.NaCl);
+assert.ok(nextMixed.mixedSaltPhase.KCl<initialMixed.mixedSaltPhase.KCl);
+assert.ok(nextMixed.mixedSaltPhase.NaCl>shared.solidMol.NaCl);
+const visual=lab.labVesselContents(nextMixed);
+for(const id of ["NaCl","KCl"]){
+ const actual=visual.solid.find(x=>x.formula===id)?.massG??0;
+ approx(actual,nextMixed.mixedSaltPhase[id]*stoich.labMolarMass(id),1e-7);
+ approx(reaction.simulateLabInventory(nextMixed).speciesMol[id],
+  4/stoich.labMolarMass(id),1e-10);
+}
+console.log("Mixed salt common-ion model, kinetic dissolution, stirring, cooling and visible crystal conservation: PASS");

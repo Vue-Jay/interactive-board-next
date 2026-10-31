@@ -130,11 +130,14 @@ export function simulateLabInventory(input:{
   Partial<LabReactionAmounts>;
  /** Persisted kinetic partition for a verified single-salt water mixture. */
  binarySaltPhase?:{formula:string;solidMol:number};
+ /** Separate kinetic crystal amounts of a nonreacting multi-salt solution. */
+ mixedSaltPhase?:Record<string,number>;
  /** Measured total liquid volume, independent of solute molar amounts. */
  volumeMl?:number;
 },maxSteps=48):LabInventory{
  const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
-  input.chemicalInventory,input.reactionAmounts,input.binarySaltPhase,input.volumeMl,maxSteps]);
+  input.chemicalInventory,input.reactionAmounts,input.binarySaltPhase,
+  input.mixedSaltPhase,input.volumeMl,maxSteps]);
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
@@ -302,8 +305,11 @@ export function simulateLabInventory(input:{
   },input.temperatureC??22);
   if(mixed){
    for(const formula of mixed.formulas){
-    const solid=Math.min(inventory.speciesMol[formula]??0,
-     mixed.solidMol[formula]??0);
+    const target=input.mixedSaltPhase?.[formula];
+    const equilibrated=target!==undefined&&Number.isFinite(target)&&target>=0?
+     target:mixed.solidMol[formula]??0;
+    const solid=Math.max(0,Math.min(inventory.speciesMol[formula]??0,
+     equilibrated));
     if(solid>EPS)inventory.solidMol[formula]=solid;
     else delete inventory.solidMol[formula];
    }
