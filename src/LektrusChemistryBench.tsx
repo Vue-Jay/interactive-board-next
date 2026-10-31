@@ -1502,10 +1502,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       standHeight={device.standHeight} heatLevel={device.heatLevel}
       />
       {device.kind==="filter"&&<span className="lektrus-lab-filter-residue"
-       title={device.collectedResidue?"Осадок "+device.collectedResidue.formula:
+       title={device.collectedResidue?"Осадок: "+(
+         device.collectedResidue.components?.map(item=>item.formula).join(", ")??
+         device.collectedResidue.formula):
         "Слейте сюда сосуд с осадком"}>
        {device.collectedResidue?<><i style={{background:device.collectedResidue.color}}/>
-        <strong>{device.collectedResidue.formula}</strong>
+        <strong>{device.collectedResidue.components?.length?
+         device.collectedResidue.components.map(item=>item.formula).join(" + "):
+         device.collectedResidue.formula}</strong>
         <small>{device.collectedResidue.massG!==undefined?
          device.collectedResidue.massG.toLocaleString("ru-RU")+" г":"осадок"}</small></>:
         "↓ Слить сюда"}
