@@ -318,17 +318,21 @@ export function simulateLabInventory(input:{
  /** Measured total liquid volume, independent of solute molar amounts. */
  volumeMl?:number;
 },maxSteps=48):LabInventory{
- const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
-  input.chemicalInventory,input.reactionAmounts,input.binarySaltPhase,
-  input.mixedSaltPhase,input.volumeMl,maxSteps]);
- const cached=inventoryCache.get(key);
- if(cached)return cached;
- const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
-  steps:[],equilibriumEquations:[],unmeasured:[],limited:false,heatEstimateComplete:true};
  const doses=input.doses??{};
  const volumeMl=input.volumeMl??((input.filteredSolution?.volumeMl??0)+
   Object.entries(doses).reduce((n,[id,d])=>
    n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0));
+ // The molecular snapshot can be unchanged while the MEASURED carrier water
+ // evaporates or is replenished. Key solubility/Ksp predictions by the actual
+ // solvent volume, not only the chemical ledger and optional caller override.
+ // Otherwise a cached unsaturated filtrate masks newly formed crystals.
+ const key=JSON.stringify([input.reagents,input.doses,input.environment,input.temperatureC??22,!!input.stoppered,
+  input.chemicalInventory,input.reactionAmounts,input.binarySaltPhase,
+  input.mixedSaltPhase,volumeMl,maxSteps]);
+ const cached=inventoryCache.get(key);
+ if(cached)return cached;
+ const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
+  steps:[],equilibriumEquations:[],unmeasured:[],limited:false,heatEstimateComplete:true};
  // An aqueous reaction MODE does not conjure any actual solvent.
  // Dry weighed NaCl, KNO3, or a base pellet stays SOLID until it receives
  // a measured volume of water, a solution, or another liquid medium.
