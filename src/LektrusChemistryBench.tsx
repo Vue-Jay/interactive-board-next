@@ -205,7 +205,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const solutionBoiling=labIdealBoilingC(vessel);
  const boiling=!!volumeMl&&!vessel.stoppered&&
   (solutionBoiling!==undefined?
-   (temperatureC??vessel.temperatureC??22)>=solutionBoiling-.35:
+   (temperatureC??vessel.temperatureC??22)>=solutionBoiling-2.5:
    thermalState.boiling);
  const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):
   solidFraction*(1-moltenFraction);
