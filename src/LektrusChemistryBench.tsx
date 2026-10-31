@@ -1,4 +1,4 @@
-import {useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
+import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
 import type {LabBench,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labReactionNeedsTick,pourLabIntoFilter,
@@ -110,7 +110,7 @@ function LabReactionBurst({vessel,visual,formula}:{
  </div>;
 }
 
-function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true}:{
+const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;details?:boolean;readoutLeft?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
  temperatureVisible?:boolean}){
@@ -445,7 +445,7 @@ function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,read
    </span>
   </span>}
  </div>;
-}
+});
 /** A draft value must not clamp while its digits are still being typed. */
 function LabTemperatureInput({temperature,onSet}:{temperature:number;onSet:(v:number)=>void}){
  const [draft,setDraft]=useState(String(temperature));
