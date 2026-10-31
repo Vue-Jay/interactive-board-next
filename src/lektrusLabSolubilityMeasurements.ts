@@ -14,7 +14,7 @@
  * the density of the final *saturated solution*.
  */
 export type LabMeasuredSolubilityUnit=
- "g/100g-water"|"g/100ml-water"|"mg/l-water"|"mg/100g-water";
+ "g/100g-water"|"g/100ml-water"|"g/l-water"|"mg/l-water"|"mg/100g-water";
 export type LabMeasuredSolubility={
  formula:string;temperatureC:number;sourceValue:number;
  /** Original source in kelvin (where specified); 293 K means 19.85 °C,
@@ -23,6 +23,28 @@ export type LabMeasuredSolubility={
  originalUnit:LabMeasuredSolubilityUnit;sourceUrl:string;
 };
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
+ // Individually traceable exact-temperature aqueous solubility in PURE
+ // water, not density or mass of the final saturated SOLUTION. AgCl/AgBr
+ // are in mg per L solvent and must remain very small positive values.
+ // Ca acetate has source points at 0 and 100 °C ONLY: do NOT fill 20 °C.
+ // K3PO4 is source tabulated at 20 °C as 51 g/100 g pure water;
+ // it hydrolyses, so this is a reference, not a predicted crystal phase.
+ {formula:"CH3COONa",temperatureC:20,sourceValue:46.5,
+  originalUnit:"g/100ml-water",sourceUrl:"https://www.inchem.org/documents/icsc/icsc/eics0565.htm"},
+ {formula:"CH3COOK",temperatureC:20,sourceValue:256,
+  originalUnit:"g/100ml-water",sourceUrl:"https://inchem.org/documents/icsc/icsc/eics0547.htm"},
+ {formula:"AgCl",temperatureC:20,sourceValue:1.93,
+  originalUnit:"mg/l-water",sourceUrl:"https://www.canada.ca/en/environment-climate-change/services/evaluating-existing-substances/screening-assessment-silver-compounds.html"},
+ {formula:"AgBr",temperatureC:20,sourceValue:0.14,
+  originalUnit:"mg/l-water",sourceUrl:"https://www.canada.ca/en/environment-climate-change/services/evaluating-existing-substances/screening-assessment-silver-compounds.html"},
+ {formula:"SrCl2",temperatureC:20,sourceValue:538,
+  originalUnit:"g/l-water",sourceUrl:"https://www.inchem.org/documents/cicads/cicads/cicad77.pdf"},
+ {formula:"K3PO4",temperatureC:20,sourceValue:51,
+  originalUnit:"g/100g-water",sourceUrl:"https://www.specialisednutritioneurope.eu/wp-content/uploads/2019/07/SNE-Literature-Review-December-2018.pdf"},
+ {formula:"Ca(CH3COO)2",temperatureC:0,sourceValue:37.4,
+  originalUnit:"g/100ml-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/6116"},
+ {formula:"Ca(CH3COO)2",temperatureC:100,sourceValue:29.7,
+  originalUnit:"g/100ml-water",sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/6116"},
  // ILO/WHO ICSC cards + Nickel Institute. Measured at exactly 20 °C,
  // originally g per 100 mL of PURE WATER, not g per 100 g solvent
  // and not per 100 mL of the final saturated SOLUTION.
@@ -132,6 +154,7 @@ export function labMeasuredSolubilityGPer100gWater(
  const waterDensity=LAB_PURE_WATER_DENSITY_FOR_SOLUBILITY[temperatureC];
  if(!waterDensity)return;
  if(originalUnit==="g/100ml-water")return sourceValue/waterDensity;
+ if(originalUnit==="g/l-water")return sourceValue/10/waterDensity;
  if(originalUnit==="mg/l-water")return sourceValue/10000/waterDensity;
  return;
 }
