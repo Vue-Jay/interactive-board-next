@@ -2183,12 +2183,15 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
         ["organic","Органические"],["other","Прочие"],["experiments","Готовые опыты"]
        ] as const).map(([id,name])=><button type="button" key={id} role="tab"
         className={cabinetTab===id?"active":""} aria-selected={cabinetTab===id}
-        onClick={()=>{setCabinetTab(id);setChosen(null);setCategory("Все");setPhase("all")}}>{name}</button>)}
+        onClick={()=>{setCabinetTab(id);setChosen(null);setCategory("Все");setPhase("all");
+         setQuery("");setExperimentLimit(36);setSelectedExperiment(null);setConfirmExperiment(false)}}>{name}</button>)}
       </div>
       <div className="lektrus-lab-modal-filters">
-       <input type="search" placeholder="Поиск по всем веществам и формулам" value={query}
-        onChange={e=>{setQuery(e.target.value);if(e.target.value.trim())setCabinetTab("all")}}
-        aria-label="Поиск по всем веществам"/>
+       <input type="search" placeholder={cabinetTab==="experiments"?
+         "Поиск по уравнению, веществам и описанию":"Поиск по веществам и формулам"} value={query}
+        onChange={e=>{setQuery(e.target.value);setExperimentLimit(36);
+         if(e.target.value.trim()&&cabinetTab!=="experiments")setCabinetTab("all")}}
+        aria-label={cabinetTab==="experiments"?"Поиск готовых опытов":"Поиск по всем веществам"}/>
        {cabinetTab!=="experiments"?<select value={category} onChange={e=>setCategory(e.target.value)}
         aria-label="Класс реактива">
         {classes.map(c=><option key={c}>{c}</option>)}
@@ -2201,6 +2204,11 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
          <option key={id} value={id}>{label}</option>)}
        </select>}
       </div>
+      {cabinetTab==="experiments"&&<div className="lektrus-lab-experiments-intro">
+       <strong>Готовые опыты</strong>
+       <span>Выберите реакцию, посмотрите комплект и подготовьте стол. Реактивы
+        будут разложены отдельно, приборы выключены.</span>
+      </div>}
       {cabinetTab!=="experiments"&&<div className="lektrus-lab-reagent-form-tabs"
        role="group" aria-label="Выбор формы реактива">
        {([["all","Все формы"],["liquid","Растворы"],["solid","Твёрдые"],["gas","Газы"]] as const).
@@ -2223,6 +2231,32 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
         </select></label>
        </div>
       </details>}
+      {cabinetTab==="experiments"&&selectedExperiment&&(()=>{
+       const kit=labExperimentKitSummary(selectedExperiment);
+       return <section className="lektrus-lab-experiment-preview" aria-label="Подготовка выбранного опыта">
+        <div className="lektrus-lab-experiment-preview-top">
+         <div><small>ВЫБРАННЫЙ ОПЫТ</small>
+          <strong>{selectedExperiment.equation}</strong></div>
+         <button type="button" onClick={()=>{setSelectedExperiment(null);setConfirmExperiment(false)}}
+          aria-label="Скрыть подготовку опыта">×</button>
+        </div>
+        <p>{selectedExperiment.description}</p>
+        <div className="lektrus-lab-experiment-kit-rows">
+         <span><b>Посуда</b> {kit.glassware.join(" + ")}</span>
+         <span><b>Условия</b> {kit.conditions}</span>
+         {kit.equipment.length>0&&<span><b>Приборы</b> {kit.equipment.join(" + ")} · выключены</span>}
+        </div>
+        {selectedExperiment.safety&&<small className="lektrus-lab-experiment-safety">
+         Виртуальная демонстрация: {selectedExperiment.safety}</small>}
+        {confirmExperiment?<div className="lektrus-lab-experiment-confirm">
+         <span>Текущая посуда и содержимое будут заменены новым комплектом. Продолжить?</span>
+         <button type="button" onClick={()=>prepareExample(selectedExperiment)}>Заменить и подготовить</button>
+         <button type="button" onClick={()=>setConfirmExperiment(false)}>Отмена</button>
+        </div>:<button type="button" className="lektrus-lab-experiment-prepare"
+         disabled={!editable} onClick={()=>requestExample(selectedExperiment)}>
+         Подготовить опыт <span aria-hidden="true">→</span></button>}
+       </section>;
+      })()}
       <div className="lektrus-lab-modal-results-head">
        <span><strong>{cabinetTab!=="experiments"?visibleSubstances.length:experimentCases.length}</strong>
         {cabinetTab!=="experiments"?" веществ в каталоге":" опытов найдено"}</span>
@@ -2262,13 +2296,35 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
            </span>
           </button>)}
          </div>
-        </div>):experimentCases.map((row,i)=><button type="button" key={i}
-         className="lektrus-lab-example-choice" onClick={()=>prepareExample(row)}
-         title="Разместить исходные вещества отдельно">
-         <strong>{row.reactants.join(" + ")}{row.family&&
-          <small className="lektrus-lab-reaction-family">{reactionFamilyLabels[row.family]}</small>}</strong>
-         <span>{row.description}</span>
-        </button>)}
+        </div>):<div className="lektrus-lab-experiment-grid">
+         {visibleExperiments.map((row,i)=>{
+          const kit=labExperimentKitSummary(row);
+          const active=selectedExperiment===row;
+          return <button type="button" key={row.environment+":"+row.reactants.join("|")}
+           className={"lektrus-lab-example-choice"+(active?" is-selected":"")}
+           aria-pressed={active} onClick={()=>{setSelectedExperiment(row);setConfirmExperiment(false)}}
+           title="Посмотреть комплект посуды и условия опыта">
+           <div className="lektrus-lab-experiment-card-head">
+            <span className="lektrus-lab-experiment-number">{String(i+1).padStart(2,"0")}</span>
+            <span className="lektrus-lab-experiment-chips">
+             {kit.recommended&&<small>Рекомендуем</small>}
+             <small>{kit.conditions}</small>
+             {row.family&&<small>{reactionFamilyLabels[row.family]}</small>}
+            </span>
+           </div>
+           <strong>{row.equation}</strong>
+           <span>{row.description}</span>
+           <span className="lektrus-lab-experiment-card-kit">
+            <span aria-hidden="true">⚗</span> {kit.glassware.join(" + ")}
+           </span>
+          </button>;
+         })}
+         {experimentCases.length>experimentLimit&&<button type="button"
+          className="lektrus-lab-experiment-more"
+          onClick={()=>setExperimentLimit(n=>Math.min(n+36,experimentCases.length))}>
+          Показать ещё 36 опытов · осталось {experimentCases.length-experimentLimit}
+         </button>}
+        </div>}
        {((cabinetTab!=="experiments"?visibleSubstances:experimentCases).length===0)&&
         <p>Совпадений не найдено</p>}
       </div>
