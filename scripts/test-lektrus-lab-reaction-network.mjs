@@ -706,3 +706,52 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
  assert.equal(t.meltingC,undefined,"Do not invent congruent melt before decomposition");
 }
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
+
+
+// Bulk provenance: 41 independently sourced properties, checked both in
+// source tables and through the same registry used to render lab state.
+const validated=load("src/lektrusLabPropertyProvenance.ts");
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,41);
+const sourceIds=new Set();
+const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
+for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
+ assert.ok(row.sourceUrl.startsWith("https://"));
+ assert.ok(labMolarMass(row.formula)>0);
+ const key=row.formula+"."+row.property;
+ assert.ok(!sourceIds.has(key),"Duplicate laboratory reference property "+key);
+ sourceIds.add(key);
+ const property=registryProps.labSubstanceProperties(row.formula);
+ let value;
+ if(row.property==="crystalDensityGPerMl"){
+  fields.crystalDensityGPerMl++;
+  value=property.crystalDensityGPerMl;
+ }else if(row.property==="specificHeatJPerGK"){
+  fields.specificHeatJPerGK++;
+  value=property.specificHeatJPerGK;
+  assert.equal(heatProps.LAB_CALORIMETRY_REFERENCE[row.formula]?.phase,"solid");
+  const expected=heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+
+   row.value*3;
+  approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
+   [row.formula]:{value:3,unit:"g"}
+  }),expected,5e-6);
+  assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+   [row.formula]:{value:3,unit:"g"},H2O:{value:3,unit:"ml"}
+  }),undefined,"Do not substitute pure solid Cp for aqueous heat capacity");
+ }else{
+  fields.thermal++;
+  value=thermalProps.labThermalInfo(row.formula,"g")[row.property];
+  assert.equal(thermalProps.labThermalInfo(row.formula,"ml").known,false,
+   "Dry thermal data must not apply to solution: "+row.formula);
+  if(row.property==="decompositionC"||row.property==="sublimationC"){
+   const expectedBehavior=row.property==="decompositionC"?
+    "decomposes":"sublimes";
+   assert.equal(thermalProps.labThermalInfo(row.formula,"g").behavior,
+    expectedBehavior);
+  }
+ }
+ approximately(value,row.value,1e-6);
+}
+assert.deepEqual(fields,{
+ crystalDensityGPerMl:14,specificHeatJPerGK:8,thermal:19
+});
+console.log("41 source-checked property references: 14 crystal densities, 8 pure-solid heat capacities, 19 phase boundaries");
