@@ -279,9 +279,13 @@ assert.notStrictEqual(lab.labVesselContents(heatedCopy),measuredContents,
 assert.deepEqual(lab.labVesselQuantity(measuredVessel),measuredQuantity,
  "The previous vessel revision is not mutated by recalculating another");
 
-let unknown=lab.putLabReagent(bench,"v1","HCl");
+let actuallyReacted=lab.advanceLabSimulation(bench,0);
+actuallyReacted=lab.advanceLabSimulation(actuallyReacted,1000);
+actuallyReacted=lab.advanceLabSimulation(actuallyReacted,6000);
+assert.equal(actuallyReacted.vessels[0].reactionAmounts?.complete,true);
+let unknown=lab.putLabReagent(actuallyReacted,"v1","HCl");
 assert.equal(lab.labObservation(unknown.vessels[0]).status,"reaction",
- "Reviewed first-stage products remain recognised after additional reagent dosing");
+ "Reviewed completed products remain recognised after additional reagent dosing");
 assert.equal(unknown.vessels[0].completedReaction?.observation,"precipitate",
  "Existing precipitate must stay visually represented even when later chemistry is unknown");
 let heated=detailedBench();
