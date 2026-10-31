@@ -1034,10 +1034,14 @@ for(let i=1;i<=10;i++)onFoot=lab.advanceLabSimulation(onFoot,i*500);
 assert.equal(onFoot.vessels.find(v=>v.id==="v1").doses?.HCl?.value,.25,
  "Ten half-second slow-drip ticks must deliver exactly 0.25 ml");
 onFoot=lab.setLabBuretteValve(onFoot,onFootBurette,false);
-const atClose=onFoot.vessels.find(v=>v.id==="v1").doses.HCl.value;
+const atCloseDose=onFoot.vessels.find(v=>v.id==="v1").doses.HCl;
+const atCloseMoles=chem.labDoseMoles("HCl",atCloseDose);
 onFoot=lab.advanceLabSimulation(onFoot,6000);
-assert.equal(onFoot.vessels.find(v=>v.id==="v1").doses.HCl.value,atClose,
- "Closing the valve instantly stops dosing");
+const afterCloseDose=onFoot.vessels.find(v=>v.id==="v1").doses.HCl;
+assert.ok(Math.abs(chem.labDoseMoles("HCl",afterCloseDose)-atCloseMoles)<1e-12,
+ "Closing the burette valve stops dosing; ambient water loss conserves acid moles");
+assert.ok(afterCloseDose.value<=atCloseDose.value,
+ "A stopped burette cannot add acid, though open receiver water may evaporate");
 const geometricalSurface=read("src/LektrusChemistryBench.tsx");
 assert.match(geometricalSurface,/placeLabVesselOnStandBase\(bench,g\.id,beneath\.d\.id\)/,
  "Stand-foot drop must snap to metal base");
