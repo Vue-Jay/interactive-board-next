@@ -318,6 +318,21 @@ if(process.argv.includes("--verify")){
   assert.ok(has(row.value)&&row.value>0,"Invalid numeric source "+key);
   assert.ok(row.sourceUrl.startsWith("https://"));
   assert.ok(row.sourceCondition.length>=12);
+  // For every newly imported source Cp, compare the ORIGINAL published
+  // molar number with the simulator's formula parser. Six-decimal mass
+  // values must agree within the rounding bound, without using the
+  // source's rounded molar mass or assuming a hydrated composition.
+  if(row.sourceMolarHeatJPerMolK!==undefined){
+   assert.equal(row.property,"specificHeatJPerGK",
+    "Molar heat may only describe solid Cp: "+key);
+   assert.ok(row.sourceTemperatureKelvin>=298&&
+    row.sourceTemperatureKelvin<=298.15,
+    "Original Cp source must be room-temperature: "+key);
+   const mm=registry.labSubstanceProperties(row.formula).molarMassGPerMol;
+   assert.ok(has(mm)&&mm>0,"Missing formula mass for "+key);
+   assert.ok(Math.abs(row.sourceMolarHeatJPerMolK/mm-row.value)<=0.00000051,
+    "Published molar Cp does not match live mass-specific Cp: "+key);
+  }
   assert.ok(provenance.LAB_REVIEWED_PROPERTY_DATUMS.some(x=>
    x.formula===row.formula&&x.property===row.property&&
    x.value===row.value&&x.sourceUrl===row.sourceUrl),

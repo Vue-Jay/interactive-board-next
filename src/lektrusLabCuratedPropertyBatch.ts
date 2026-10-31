@@ -23,6 +23,10 @@ export type LabCuratedPropertyBatchRow={
  sourceUrl:string;
  /** Free text capturing crystal form, measurement temperature and context. */
  sourceCondition:string;
+ /** Original molar Cp at source temperature (J/mol/K), if published. */
+ sourceMolarHeatJPerMolK?:number;
+ /** Exact temperature of the molar Cp observation (K), if published. */
+ sourceTemperatureKelvin?:number;
  /** Optional user-facing physical phase note in Russian. */
  note?:string;
 };
@@ -141,7 +145,59 @@ export const LAB_CURATED_PROPERTY_BATCH:readonly LabCuratedPropertyBatchRow[]=[
   phase:"anhydrous-solid",
   sourceCondition:"rhombic Zn(OH)2 crystals; 298.15 K; Rabinovich & Khavin 1977 p.113, Cp,mol 72.27 J/(mol K) / 99.39 g/mol",
   sourceUrl:"https://www.chemister.ru/Databases/Chemdatabase/properties-en.php?id=4200",
-  note:"Теплоёмкость кристаллического Zn(OH)₂ при 25 °C, не ZnO и не водной суспензии."}
+  note:"Теплоёмкость кристаллического Zn(OH)₂ при 25 °C, не ZnO и не водной суспензии."},
+ // Source-transcribed room-temperature crystalline Cp values. Molar
+ // originals are retained so the audit can verify the real formula mass.
+ // Chemister cites Rabinovich & Khavin / CRC and labels these SOLID forms.
+ {formula:"KNO2",property:"specificHeatJPerGK",value:1.261996,
+  phase:"anhydrous-solid",sourceMolarHeatJPerMolK:107.4,
+  sourceTemperatureKelvin:298.15,
+  sourceCondition:"monoclinic dry KNO2 crystal, 298.15 K, Cp,mol 107.4 J/(mol K) / 85.1033 g/mol; not aqueous nitrite",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=514"},
+ {formula:"K3PO4",property:"specificHeatJPerGK",value:0.777331,
+  phase:"anhydrous-solid",sourceMolarHeatJPerMolK:165,
+  sourceTemperatureKelvin:298.15,
+  sourceCondition:"anhydrous rhombic K3PO4 crystals, 298.15 K, Cp,mol 165 J/(mol K) / 212.264662 g/mol; not hydrated phosphate",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=527"},
+ {formula:"NaH2PO4",property:"specificHeatJPerGK",value:0.975199,
+  phase:"anhydrous-solid",sourceMolarHeatJPerMolK:117,
+  sourceTemperatureKelvin:298,
+  sourceCondition:"dry NaH2PO4 solid, 298 K, Cp,mol 117 J/(mol K) / 119.975531 g/mol; not monohydrate or aqueous stock",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=5709"},
+ // US DOE Pacific Northwest Laboratory Waste Tank Safety Program, Table A.1:
+ // NBS/NIST selected thermodynamic crystalline-solid data at 298.15 K.
+ {formula:"Na3PO4",property:"specificHeatJPerGK",value:0.936140,
+  phase:"anhydrous-solid",sourceMolarHeatJPerMolK:153.47,
+  sourceTemperatureKelvin:298.15,
+  sourceCondition:"anhydrous crystalline Na3PO4, 298.15 K, 1 bar, NBS Cp,mol 153.47 J/(mol K) / 163.939069 g/mol; NOT Na3PO4.12H2O",
+  sourceUrl:"https://www.osti.gov/servlets/purl/6934908"},
+ {formula:"K2MnO4",property:"specificHeatJPerGK",value:0.745698,
+  phase:"anhydrous-solid",sourceMolarHeatJPerMolK:147,
+  sourceTemperatureKelvin:298.15,
+  sourceCondition:"dry green rhombic K2MnO4 crystal, 298.15 K, Cp,mol 147 J/(mol K) / 197.130644 g/mol; not KMnO4",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=512"},
+ {formula:"Ag2CO3",property:"specificHeatJPerGK",value:0.407987,
+  phase:"anhydrous-solid",sourceMolarHeatJPerMolK:112.5,
+  sourceTemperatureKelvin:298.15,
+  sourceCondition:"dry pale-yellow monoclinic Ag2CO3 crystals, 298.15 K, Cp,mol 112.5 J/(mol K) / 275.7444 g/mol; not a suspension",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=2374"},
+ // Decomposition is a chemical transition, not congruent fusion.
+ {formula:"K2MnO4",property:"decompositionC",value:500,
+  phase:"anhydrous-solid",
+  sourceCondition:"dry crystalline potassium manganate(VI), reference decomposition 500 C; hydrolysis in water is a different process",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=512",
+  note:"Сухой K₂MnO₄ разлагается около 500 °C; не плавление и не переход KMnO₄."},
+ {formula:"Ag2CO3",property:"decompositionC",value:120,
+  phase:"anhydrous-solid",
+  sourceCondition:"dry monoclinic Ag2CO3 crystals, reference decomposition at 120 C, not a stable melting point",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=2374",
+  note:"Сухой Ag₂CO₃ разлагается около 120 °C; не плавится в устойчивую жидкость."},
+ {formula:"Fe(CH3COO)2",property:"decompositionC",value:190,
+  phase:"anhydrous-solid",
+  sourceCondition:"anhydrous Fe(CH3COO)2 white crystals, CRC Handbook 90th ed. p.4-68: decomposition coincides with reported 190 C fusion",
+  sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=12170",
+  note:"Безводный ацетат железа(II) разлагается около 190 °C; справочник также отмечает плавление при этой температуре, поэтому устойчивую жидкую фазу не предполагаем."}
+
 ];
 
 /** Generated dry crystal density map (single source of truth). */

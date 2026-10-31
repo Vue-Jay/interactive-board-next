@@ -941,6 +941,39 @@ for(const item of batchRows){
  }
 }
 assert.equal(ingestion.LAB_BATCH_PROPERTY_PROVENANCE.length,batchRows.length);
+// Independently recompute all newly sourced crystalline molar heat values
+// from the real chemistry parser, not a second hardcoded formula table.
+for(const row of batchRows.filter(x=>x.sourceMolarHeatJPerMolK!==undefined)){
+ assert.equal(row.property,"specificHeatJPerGK");
+ assert.ok(row.sourceTemperatureKelvin>=298&&
+  row.sourceTemperatureKelvin<=298.15);
+ approximately(row.sourceMolarHeatJPerMolK/labMolarMass(row.formula),
+  row.value,0.00000051);
+ const real=registryProps.labSubstanceProperties(row.formula);
+ approximately(real.specificHeatJPerGK,row.value,1e-12);
+}
+for(const [formula,transitionC] of [
+ ["Ag2CO3",120],["K2MnO4",500],["Fe(CH3COO)2",190]
+]){
+ const dry=thermalProps.labThermalInfo(formula,"g");
+ assert.equal(dry.behavior,"decomposes");
+ approximately(dry.decompositionC,transitionC,1e-12);
+ assert.equal(dry.meltingC,undefined);
+ assert.equal(thermalProps.labThermalInfo(formula,"ml").known,false);
+}
+// Exact pure-water observations are not an interpolation licence or
+// permission to precipitate a fictitious anhydrous carbonate.
+approximately(schoolMaterial.labSingleSaltSolubilityGPer100gWater("Ag2CO3",20),
+ 0.0032,1e-12);
+approximately(schoolMaterial.labSingleSaltSolubilityGPer100gWater("Ag2CO3",100),
+ 0.05,1e-12);
+assert.equal(schoolMaterial.labSingleSaltSolubilityGPer100gWater("Ag2CO3",60),
+ undefined);
+const silverCarbonateInventory={speciesMol:{H2O:1,Ag2CO3:0.01},solidMol:{}};
+assert.equal(schoolMaterial.labEquilibrateSingleSaltCrystals(
+ silverCarbonateInventory,20,true,labMolarMass),undefined);
+assert.equal(silverCarbonateInventory.solidMol.Ag2CO3,undefined);
+
 // USGS gibbsite 298.15 K Cp,mol: 91.729 J mol-1 K-1, formula mass 78.003.
 approximately(heatProps.LAB_CALORIMETRY_REFERENCE["Al(OH)3"].specificJPerGK,
  91.729/78.003,1e-6);
