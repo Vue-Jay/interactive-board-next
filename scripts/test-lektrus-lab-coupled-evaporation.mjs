@@ -123,3 +123,52 @@ assert.equal(highPlate.placedDevices[0].targetTemperatureC,lab.LAB_HOTPLATE_MAX_
 assert.equal(lab.canMountLabVessel("hotplate","crucible"),true,
  "A high-temperature demonstration requires an appropriate crucible");
 console.log("Lab experiment settings, accelerated clock and virtual high heat: OK");
+
+
+// Realism changes the actual engine work, not only presentation.
+assert.equal(lab.labBenchSettings(bare).realism,"high",
+ "Old classroom boards retain the previous detailed model");
+const classroom=lab.setLabBenchSettings(idle,{realism:"low"});
+const standard=lab.setLabBenchSettings(idle,{realism:"medium"});
+const detailed=lab.setLabBenchSettings(idle,{realism:"high"});
+assert.strictEqual(classroom.vessels,idle.vessels,
+ "Changing realism must not recreate or remove a vessel");
+assert.equal(classroom.settings.realism,"low");
+assert.equal(lab.LAB_REALISM_PROFILES.low.calorimetry,false);
+assert.equal(lab.LAB_REALISM_PROFILES.low.melting,false);
+assert.equal(lab.LAB_REALISM_PROFILES.low.mixedSaltKinetics,false);
+assert.equal(lab.LAB_REALISM_PROFILES.medium.calorimetry,true);
+assert.equal(lab.LAB_REALISM_PROFILES.medium.binarySaltKinetics,true);
+assert.equal(lab.LAB_REALISM_PROFILES.medium.mixedSaltKinetics,false);
+assert.equal(lab.LAB_REALISM_PROFILES.high.mixedSaltKinetics,true);
+const lowAmbient=lab.advanceLabSimulation(classroom,11000).vessels[0];
+const mediumAmbient=lab.advanceLabSimulation(standard,11000).vessels[0];
+const highAmbient=lab.advanceLabSimulation(detailed,11000).vessels[0];
+assert.equal(lowAmbient.doses.H2O.value,40,
+ "Low realism skips slow background evaporation");
+assert.ok(mediumAmbient.doses.H2O.value<40,
+ "Warm measured water still evaporates on medium realism");
+assert.ok(highAmbient.doses.H2O.value<40);
+const roomWater={...water,temperatureC:22};
+const atRoom={...idle,vessels:[roomWater]};
+const slowLow=lab.labSimulationTickWaitMs(
+ lab.setLabBenchSettings(atRoom,{realism:"low"}),11000);
+const slowHigh=lab.labSimulationTickWaitMs(atRoom,11000);
+assert.equal(slowLow,null,"Low realism skips the ambient VLE clock");
+assert.ok(slowHigh!==null,"High realism retains ambient VLE simulation");
+assert.equal(lab.labDisplayNumber(38.2,"low","temperature"),"40");
+assert.equal(lab.labDisplayNumber(38.2,"medium","temperature"),"38");
+assert.equal(lab.labDisplayNumber(38.2,"high","temperature"),"38,2");
+assert.equal(lab.labDisplayNumber(12.57,"low"),"13");
+assert.equal(lab.labDisplayNumber(12.57,"medium"),"12,6");
+assert.equal(lab.labDisplayNumber(12.57,"high"),"12,57");
+assert.notEqual(lab.labDisplayNumber(.003,"low"),"0",
+ "Trace amounts must remain visible even under coarse rounding");
+assert.match(lab.formatLabDose({value:12.57,unit:"ml"},"low"),/^13 мл$/);
+const phaseState={formula:"NaCl",solidMol:.01};
+const switching={...classroom,vessels:[{...roomWater,
+ physicalProcess:"crystallizing",binarySaltPhase:phaseState}]};
+const lowPhase=lab.advanceLabSimulation(switching,11000).vessels[0];
+assert.deepEqual(lowPhase.binarySaltPhase,phaseState,
+ "Simplified mode may skip crystallization kinetics but cannot erase existing solids");
+console.log("Lab low/medium/high fidelity engine, conservative switching and coarse readings: OK");

@@ -377,17 +377,22 @@ export function dispenseLabBurette(bench:LabBench,id:string,targetId:string,ml:n
 export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null{
  const vessels=bench.vessels;
  const settings=labBenchSettings(bench);
+ const profile=LAB_REALISM_PROFILES[settings.realism];
  const burette=vessels.some(v=>v.buretteOpen);
  const reactions=vessels.some(labReactionNeedsTick);
+ // Even simple demos need a cleanup tick to finish an existing phase effect.
  const phase=vessels.some(v=>
   v.physicalProcess==="dissolving"||v.physicalProcess==="crystallizing");
  const devices=placedLabDevices(bench);
  const powered=devices.some(d=>d.powered||(d.temperatureC??22)>22.1);
  const thermal=vessels.some(v=>Math.abs((v.temperatureC??22)-22)>.1);
- const evaporating=settings.evaporationEnabled&&vessels.some(v=>!v.stoppered&&
-  labVaporPressureKPa(v,v.temperatureC??22)!==undefined);
+ const evaporating=settings.evaporationEnabled&&profile.passiveEvaporation&&
+  vessels.some(v=>!v.stoppered&&
+   labVaporPressureKPa(v,v.temperatureC??22)!==undefined);
  if(!burette&&!reactions&&!phase&&!powered&&!thermal&&!evaporating)return null;
- const cadenceMs=burette||reactions||phase?500:powered||thermal?1900:9800;
+ const cadenceMs=settings.realism==="low"?
+  (burette||reactions?900:phase||powered||thermal?2600:9800):
+  burette||reactions||phase?500:powered||thermal?1900:9800;
  // Faster simulation means shorter, smoother UI intervals, not extra timers.
  const intervalMs=Math.max(400,Math.round(cadenceMs/Math.sqrt(settings.timeScale)));
  if(bench.simulationAtMs===undefined)return 500;
@@ -402,6 +407,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
  if(bench.simulationAtMs===undefined)return {...bench,simulationAtMs:nowMs,event:bench.event+1};
  // Advance physical processes in simulated time, not wall-clock time.
  const settings=labBenchSettings(bench);
+ const profile=LAB_REALISM_PROFILES[settings.realism];
  const seconds=Math.min(10,Math.max(0,(nowMs-bench.simulationAtMs)/1000))*settings.timeScale;
  if(seconds<.05)return bench;
  const ambient=22;
@@ -438,10 +444,11 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   const inertia=Math.max(.035,Math.min(.18,60/Math.max(100,volumes)*.10));
   const heaterPower=device?.powered?
    device.kind==="hotplate"?160:120*(device.heatLevel??2):0;
-  const calorimetry=labSensibleHeatStep(v.kind,v.doses,old,ambient,seconds,
-   device?.powered?{kind:device.kind==="hotplate"?"hotplate":"burner",
-    temperatureC:toward,powerW:heaterPower}:undefined,
-   v.filteredSolution?.volumeMl??0);
+  const calorimetry=profile.calorimetry?
+   labSensibleHeatStep(v.kind,v.doses,old,ambient,seconds,
+    device?.powered?{kind:device.kind==="hotplate"?"hotplate":"burner",
+     temperatureC:toward,powerW:heaterPower}:undefined,
+    v.filteredSolution?.volumeMl??0):undefined;
   // Measured pure materials follow energy conservation (m*c*delta(T)).
   // Unsupported prepared solutions keep the previous bounded educational
   // temperature curve rather than receiving a fictitious specific heat.
@@ -459,7 +466,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   let next=Math.round(Math.max(0,Math.min(maxVesselC,raw))*10)/10;
   let meltFraction=v.meltFraction??0;
   let phaseTransition=v.phaseTransition;
-  const point=pure?.unit==="g"&&!v.uncertain&&!v.completedReaction?
+  const point=profile.melting&&pure?.unit==="g"&&!v.uncertain&&!v.completedReaction?
    pure.info.meltingC:undefined;
   if(point!==undefined&&point>ambient){
    // Latent-heat plateau. Heat changes the LIQUID FRACTION at the melting
@@ -483,10 +490,16 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // The same ideal liquid activity governs both vapor escape and the
   // measured mixture's boiling plateau, rather than using arbitrary 100°C
   // for an ethanol/water mixture.
-  const boilingPoint=labIdealBoilingC(v)??(pure?.unit==="ml"?pure.info.boilingC:undefined);
+  const boilingPoint=(profile.solutionBoiling?labIdealBoilingC(v):undefined)??
+   (pure?.unit==="ml"?pure.info.boilingC:undefined);
   if(boilingPoint!==undefined&&next>boilingPoint&&!v.stoppered)next=boilingPoint;
-  const gasMoles=v.stoppered?labHeadspaceGasMoles(v):0;
-  const {occupiedMl,capacityMl}=labVesselQuantity(v);
+  const canEvaporate=settings.evaporationEnabled&&
+   (profile.passiveEvaporation||!!device?.powered||
+    settings.realism==="medium"&&(v.temperatureC??22)>=40||
+    settings.realism==="low"&&(v.temperatureC??22)>=85);
+  const computePhase=v.stoppered||canEvaporate;
+  const gasMoles=computePhase&&v.stoppered?labHeadspaceGasMoles(v):0;
+  const {occupiedMl,capacityMl}=computePhase?labVesselQuantity(v):{occupiedMl:0,capacityMl:1};
   // The sensible-heating calculation and boiling share ONE energy budget.
   // A liquid first warms to its actual boiling point; only EXCESS delivered
   // heat becomes latent heat for vaporization. Otherwise a cool flask could
@@ -496,31 +509,34 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    !v.stoppered&&next>=boilingPoint-.05&&seconds>0?
    Math.min(deliveredHeatW,Math.max(0,
     (raw-boilingPoint)*calorimetry.capacityJPerK/seconds)):deliveredHeatW;
-  const phase=labEvaporate({...v,
+  const phase=computePhase?labEvaporate({...v,
    headspaceMl:Math.max(1,capacityMl-occupiedMl),
-   reactionGasMol:gasMoles},seconds,next,toward,heatForBoilingW);
+   reactionGasMol:gasMoles},canEvaporate?seconds:0,next,toward,
+   canEvaporate?heatForBoilingW:0):undefined;
   // Surface evaporation ALSO spends latent heat. Apply it to the same
   // measured heat capacity, so an unheated warm solution cools rather than
   // producing vapor with no thermal cost. Ambient transfer recovers it later.
-  if(settings.evaporationEnabled&&calorimetry&&phase.latentEnergyJ>0&&!v.stoppered){
+  if(canEvaporate&&calorimetry&&phase&&phase.latentEnergyJ>0&&!v.stoppered){
    next=Math.round(Math.max(0,Math.min(next,
     raw-phase.latentEnergyJ/calorimetry.capacityJPerK))*10)/10;
   }
   // When disabled, keep measured solvent, composition and energy intact.
   // Pressure protection still runs independently for a closed vessel.
-  const evaporating=settings.evaporationEnabled&&phase.evaporatedMl>0,popped=phase.popped;
-  const updatedDoses=evaporating?phase.doses:v.doses;
+  const evaporating=canEvaporate&&(phase?.evaporatedMl??0)>0,popped=phase?.popped??false;
+  const updatedDoses=evaporating?phase?.doses:v.doses;
   const updatedReagents=evaporating?v.reagents.filter(id=>
    !v.doses?.[id]||updatedDoses?.[id]):v.reagents;
-  const stirring=devices.some(d=>d.kind==="stirrer"&&d.active&&
-   d.powered&&d.linkedVesselId===v.id)||
-   bench.stirringVesselId===v.id&&devices.some(d=>d.kind==="stirrer"&&d.powered);
+  const stirring=profile.binarySaltKinetics&&(
+   devices.some(d=>d.kind==="stirrer"&&d.active&&
+    d.powered&&d.linkedVesselId===v.id)||
+   bench.stirringVesselId===v.id&&devices.some(d=>d.kind==="stirrer"&&d.powered));
   const phaseInput={...v,doses:updatedDoses,reagents:updatedReagents};
-  const kinetic=labAdvanceBinarySaltPhase(phaseInput,next,seconds,stirring,
-   v.binarySaltPhase,v.physicalProcess==="dissolving"&&!v.binarySaltPhase);
-  const mixedKinetic=kinetic?undefined:labAdvanceSchoolMixedSaltPhase(
-   phaseInput,next,seconds,stirring,v.mixedSaltPhase,
-   v.physicalProcess==="dissolving"&&!v.mixedSaltPhase);
+  const kinetic=profile.binarySaltKinetics?labAdvanceBinarySaltPhase(
+   phaseInput,next,seconds,stirring,v.binarySaltPhase,
+   v.physicalProcess==="dissolving"&&!v.binarySaltPhase):undefined;
+  const mixedKinetic=profile.mixedSaltKinetics&&!kinetic?
+   labAdvanceSchoolMixedSaltPhase(phaseInput,next,seconds,stirring,v.mixedSaltPhase,
+    v.physicalProcess==="dissolving"&&!v.mixedSaltPhase):undefined;
   const nextSalt=kinetic?.state;
   const phaseMotion:LabVessel["physicalProcess"]=
    kinetic?.active||mixedKinetic?.active?
@@ -551,15 +567,16 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   return {...v,temperatureC:next,
    ...(phaseChanged?{meltFraction,phaseTransition}:{}),
    ...(kinetic||mixedKinetic?
-    {binarySaltPhase:nextSalt,mixedSaltPhase:mixedKinetic?.state,
+    {binarySaltPhase:nextSalt??v.binarySaltPhase,
+     mixedSaltPhase:profile.mixedSaltKinetics?mixedKinetic?.state:v.mixedSaltPhase,
      physicalProcess:phaseMotion,
      physicalStartedAtMs:phaseMotion?(v.physicalStartedAtMs??nowMs):undefined}:
     dissolutionComplete?{physicalProcess:undefined,physicalStartedAtMs:undefined,
-     binarySaltPhase:undefined,mixedSaltPhase:undefined}:
-    {binarySaltPhase:undefined,mixedSaltPhase:undefined}),
+     ...(profile.mixedSaltKinetics?{binarySaltPhase:undefined,mixedSaltPhase:undefined}:{})}:
+    profile.mixedSaltKinetics?{binarySaltPhase:undefined,mixedSaltPhase:undefined}:{}),
    ...(evaporating?{doses,reagents,observed:reagents.length>1,
-    filteredSolution:phase.filteredSolution??v.filteredSolution,
-    ventedVaporMl:phase.ventedVaporMl}:{}),
+    filteredSolution:phase?.filteredSolution??v.filteredSolution,
+    ventedVaporMl:phase?.ventedVaporMl}:{}),
    ...(popped?{stoppered:false,stopperedAtC:undefined,
     sealedReactionGasBaselineMol:undefined}:{}),
    environment:evaporating&&reagents.length===0?"dry":
@@ -580,7 +597,7 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   }else if(state.complete)return v;
   // Increment by simulation time; subtracting wall-clock elapsed would stall
   // progress after the first accelerated reaction step.
-  const elapsed=seconds;
+  const elapsed=profile.fastReactions?Math.max(seconds,30):seconds;
   const next=v.reactionAmounts?advanceQuantifiedLabReaction(state,elapsed):state;
   if(next===v.reactionAmounts)return v;
   changed=true;
@@ -634,8 +651,8 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   if(previous?.complete)return v;
   let deltaC=previous?.deltaC;
   if(deltaC===undefined){
-   const quantified=v.reactionAmounts??
-    startQuantifiedLabReaction(row,v.reagents,v.doses);
+   const quantified=profile.measuredHeat?
+    (v.reactionAmounts??startQuantifiedLabReaction(row,v.reagents,v.doses)):undefined;
    const heatKJ=quantified&&row.enthalpyKJPerMol!==undefined?
     quantified.maxExtentMol*row.enthalpyKJPerMol:undefined;
    const heatCapacityJPerK=60+Object.values(v.doses??{}).reduce(
@@ -796,19 +813,49 @@ export function dripLabVessel(bench:LabBench,sourceId:string,targetId:string,req
  });
  return {...bump(bench,vessels,targetId),titration:model,titrationPair:{sourceId,targetId}};
 }
+export type LabRealism="low"|"medium"|"high";
+/** The three classroom profiles change simulation algorithms, not just labels.
+ * Existing experiments default to high fidelity for backward compatibility.
+ * Never round saved reagent inventories: mass, charge and stoichiometry remain
+ * conserved even when the teacher chooses coarser classroom measurements. */
+export const LAB_REALISM_PROFILES={
+ low:{temperatureStepC:5,quantityDigits:0,moleDigits:1,
+  calorimetry:false,melting:false,binarySaltKinetics:false,mixedSaltKinetics:false,
+  passiveEvaporation:false,solutionBoiling:false,measuredHeat:false,fastReactions:true},
+ medium:{temperatureStepC:1,quantityDigits:1,moleDigits:2,
+  calorimetry:true,melting:true,binarySaltKinetics:true,mixedSaltKinetics:false,
+  passiveEvaporation:false,solutionBoiling:false,measuredHeat:true,fastReactions:false},
+ high:{temperatureStepC:.1,quantityDigits:3,moleDigits:4,
+  calorimetry:true,melting:true,binarySaltKinetics:true,mixedSaltKinetics:true,
+  passiveEvaporation:true,solutionBoiling:true,measuredHeat:true,fastReactions:false}
+} as const;
+export function labDisplayNumber(value:number,realism:LabRealism="high",
+ kind:"temperature"|"quantity"|"moles"="quantity"):string{
+ if(!Number.isFinite(value))return "—";
+ const profile=LAB_REALISM_PROFILES[realism];
+ if(kind==="temperature"){
+  const step=profile.temperatureStepC;
+  return (Math.round(value/step)*step).toLocaleString("ru-RU",{maximumFractionDigits:1});
+ }
+ let digits:number=kind==="moles"?profile.moleDigits:profile.quantityDigits;
+ // A measured trace must never be displayed as zero merely because it is small.
+ if(value!==0&&Math.abs(value)<1)
+  digits=Math.min(6,Math.max(digits,Math.ceil(-Math.log10(Math.abs(value)))+1));
+ return value.toLocaleString("ru-RU",{maximumFractionDigits:digits});
+}
 export type LabBenchSettings={
  showEquationBoard:boolean;showVesselLabels:boolean;animateEffects:boolean;
  showTemperatures:boolean;pourMode:"gradual"|"fast";
- evaporationEnabled:boolean;timeScale:1|2|5|10;
+ evaporationEnabled:boolean;timeScale:1|2|5|10;realism:LabRealism;
 };
 export const defaultLabBenchSettings=():LabBenchSettings=>({
  showEquationBoard:true,showVesselLabels:true,animateEffects:true,showTemperatures:true,
- pourMode:"gradual",evaporationEnabled:true,timeScale:1
+ pourMode:"gradual",evaporationEnabled:true,timeScale:1,realism:"high"
 });
 export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
  ...defaultLabBenchSettings(),...bench.settings
 });
-export const formatLabDose=(dose:LabDose)=>`${dose.value.toLocaleString("ru-RU")} ${dose.unit==="ml"?"мл":"г"}`;
+export const formatLabDose=(dose:LabDose,realism:LabRealism="high")=>`${labDisplayNumber(dose.value,realism)} ${dose.unit==="ml"?"мл":"г"}`;
 
 export type LabIndicator="litmus"|"phenolphthalein"|"methyl-orange"|"universal";
 export const labIndicators:{id:LabIndicator;name:string;note:string;form:"solution"|"paper";stockColor:string}[]=[

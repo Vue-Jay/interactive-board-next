@@ -4543,3 +4543,35 @@
 .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings .lektrus-lab-experiment-controls button{
  flex:1 1 auto;min-height:40px!important}
 .lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings h3{margin-bottom:0}
+
+
+/* Realism is the first decision in the experiment controls.
+   Keep compact labels readable on phones without widening the toolbar. */
+.lektrus-lab-bench .lektrus-lab-realism-options{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.lektrus-lab-bench .lektrus-lab-realism-options button{
+ min-width:0!important;min-height:76px!important;height:auto!important;
+ display:flex!important;flex-direction:column;align-items:center;justify-content:center;
+ gap:5px;padding:8px 5px!important;
+ background:#f7faf7!important;color:#376a53!important;
+ border:1px solid #b7d3bd!important;border-radius:9px!important;
+ box-shadow:none!important;cursor:pointer;text-align:center;white-space:normal!important}
+.lektrus-lab-bench .lektrus-lab-realism-options button strong{
+ font:800 11px/1.2 system-ui,sans-serif}
+.lektrus-lab-bench .lektrus-lab-realism-options button small{
+ font:500 9px/1.25 system-ui,sans-serif;white-space:normal}
+.lektrus-lab-bench .lektrus-lab-realism-options button[aria-pressed="true"]{
+ background:#d6eee0!important;border-color:#428e70!important;
+ color:#195a40!important;box-shadow:inset 0 0 0 1px #428e70!important}
+.lektrus-lab-bench .lektrus-lab-realism-options button:disabled{opacity:.6;cursor:default}
+.lektrus-lab-bench .lektrus-lab-realism-options button:focus-visible{
+ outline:2px solid #16694b;outline-offset:2px}
+.lektrus-lab-bench .lektrus-lab-experiment-realism-note{
+ font:600 10px/1.4 system-ui,sans-serif;color:#526e5e}
+.lektrus-lab-bench .lektrus-lab-experiment-panel{
+ width:350px;max-height:min(78vh,690px);overflow-y:auto;
+ overscroll-behavior:contain}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-compact-settings{
+ overscroll-behavior:contain}
+.lektrus-lab-bench.is-compact-fullscreen .lektrus-lab-realism-options button{
+ min-height:78px!important;flex:1 1 auto!important}

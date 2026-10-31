@@ -1,8 +1,8 @@
 import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "react";
 import {createPortal} from "react-dom";
-import type {LabBench,LabBenchSettings,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
+import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -111,10 +111,10 @@ function LabReactionBurst({vessel,visual,formula}:{
  </div>;
 }
 
-const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true}:{
+const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLabels=true,details=false,readoutLeft=false,stirring=false,titrationResult,temperatureC,temperatureVisible=true,realism="high"}:{
  vessel:LabVessel;small?:boolean;showLabels?:boolean;details?:boolean;readoutLeft?:boolean;stirring?:boolean;
  titrationResult?:ReturnType<typeof titrationReading>;temperatureC?:number;
- temperatureVisible?:boolean}){
+ temperatureVisible?:boolean;realism?:LabRealism}){
  const id=useId().replace(/:/g,"");
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
@@ -143,7 +143,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   }:measuredIndicator;
  const {volumeMl,massG,capacityMl,liquidFraction,solidFraction}=labVesselQuantity(vessel);
  const contents=labVesselContents(vessel);
- const readable=(n:number,decimals=3)=>n.toLocaleString("ru-RU",{maximumFractionDigits:decimals});
+ const readable=(n:number,decimals=3)=>realism==="high"?
+  n.toLocaleString("ru-RU",{maximumFractionDigits:decimals}):labDisplayNumber(n,realism);
  const solutionNames=contents.solution.map(x=>x.formula+(x.mmol===undefined?"":" ("+readable(x.mmol)+" ммоль)"));
  const solidNames=contents.solid.map(x=>x.formula+(x.massG===undefined?"":" ("+readable(x.massG)+" г)"));
  const evaporatedWaterMl=vessel.ventedVaporMl?.H2O??0;
@@ -156,8 +157,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   vessel.physicalProcess==="crystallizing")&&!!crystallineSalt;
  const sedimentH=contents.precipitateFraction===undefined?0:
   Math.min(105*liquidFraction,Math.max(3,106*contents.precipitateFraction));
- const totalLabel=[volumeMl>0?volumeMl.toLocaleString("ru-RU")+" мл":null,
-  massG>0?massG.toLocaleString("ru-RU")+" г":null].filter(Boolean).join(" · ");
+ const totalLabel=[volumeMl>0?labDisplayNumber(volumeMl,realism)+" мл":null,
+  massG>0?labDisplayNumber(massG,realism)+" г":null].filter(Boolean).join(" · ");
  const reagent=vessel.reagents[0]?reagentAppearance(vessel.reagents[0],
   massG>0&&volumeMl===0?"dry":vessel.environment):null;
  const active=Boolean(visualCase);
@@ -354,7 +355,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
     <rect x="27" y="75" width="46" height="16" rx="4"
      fill="#f0faf3" fillOpacity=".8" stroke="#83b1a6" strokeWidth=".7"/>
     <text x="50" y="86" fontWeight="800" fontSize="10" textAnchor="middle"
-     fill="#2c7162">≈{Math.round(temperatureC??22)}°C</text>
+     fill="#2c7162">≈{labDisplayNumber(temperatureC??22,realism,"temperature")}°C</text>
    </g>}
    {moltenFraction>0&&<g className="lektrus-lab-phase-engraving">
     <rect x="22" y="95" width="56" height="13" rx="4"
@@ -391,7 +392,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
        <b>Раствор · {readable(contents.solutionMl)} мл</b>
        <span>{solutionNames.join(", ")||"Растворённых веществ нет"}</span>
        <small className="lektrus-lab-inline-ph" title={ph?.note??"Недостаточно данных о равновесии и концентрации"}>
-        {ph?.label??"pH не определён"}
+        {ph?.pH===undefined?(ph?.label??"pH не определён"):
+         "pH "+labDisplayNumber(ph.pH,realism)}
         {isLiquidIndicator?" · "+(vessel.indicatorDrops??1)+" кап.":""}
        </small>
       </span>}
@@ -423,8 +425,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
    title={labels.length?labels.map((formula,i)=>{
     const dose=amounts?undefined:vessel.doses?.[vessel.reagents[i]];
     const mol=amounts?species[i]?.[1]:undefined;
-     return formula+(mol!==undefined?" · "+(mol*1000).toLocaleString("ru-RU",{maximumFractionDigits:4})+" ммоль":
-      dose?" · "+formatLabDose(dose)+
+     return formula+(mol!==undefined?" · "+labDisplayNumber(mol*1000,realism,"moles")+" ммоль":
+      dose?" · "+formatLabDose(dose,realism)+
      (dose.concentrationM!==undefined?" · "+dose.concentrationM.toLocaleString("ru-RU")+" моль/л":""):"");
    }).join("; "):"Пустая посуда"}>
    <strong>{contents.solid.length?
@@ -438,8 +440,8 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
       const dose=vessel.doses?.[id];
       const mol=amounts?species[i]?.[1]:undefined;
       return <span key={id}>{formula}: {mol!==undefined?
-       (mol*1000).toLocaleString("ru-RU",{maximumFractionDigits:4})+" ммоль":
-       dose?formatLabDose(dose)+(dose.concentrationM!==undefined?
+       labDisplayNumber(mol*1000,realism,"moles")+" ммоль":
+       dose?formatLabDose(dose,realism)+(dose.concentrationM!==undefined?
         " · "+dose.concentrationM.toLocaleString("ru-RU")+" М":""):
        "количество не задано"}</span>;
      }):"Пусто"}
@@ -454,7 +456,30 @@ function LabExperimentControls({settings,editable,onUpdate}:{
  settings:LabBenchSettings;editable:boolean;
  onUpdate:(next:Partial<LabBenchSettings>)=>void;
 }){
+ const realismOptions=[
+  {id:"low",name:"Низкий",description:"Базовые реакции, простой нагрев, крупные округления"},
+  {id:"medium",name:"Средний",description:"Теплопередача, растворение, основные переходы"},
+  {id:"high",name:"Высокий",description:"Подробные расчёты, равновесия и кинетика смесей"}
+ ] as const;
  return <div className="lektrus-lab-experiment-controls">
+  <div className="lektrus-lab-experiment-control">
+   <div className="lektrus-lab-experiment-copy">
+    <strong>Степень реализма</strong>
+    <small>Определяет точность и сложность физических процессов</small>
+   </div>
+   <div className="lektrus-lab-realism-options" role="group" aria-label="Степень реализма симуляции">
+    {realismOptions.map(option=><button type="button" key={option.id}
+     aria-pressed={settings.realism===option.id} disabled={!editable}
+     title={option.description} onClick={()=>onUpdate({realism:option.id})}>
+     <strong>{option.name}</strong><small>{option.description}</small>
+    </button>)}
+   </div>
+   <small className="lektrus-lab-experiment-realism-note">
+    {settings.realism==="low"?"Округление до 5 °C и целых единиц. Упрощённая школьная демонстрация.":
+     settings.realism==="medium"?"Округление до 1 °C и десятых. Основные количественные процессы.":
+     "Измерения с десятыми долями градуса и расширенная физико-химическая модель."}
+   </small>
+  </div>
   <div className="lektrus-lab-experiment-control">
    <div className="lektrus-lab-experiment-copy">
     <strong>Переливание</strong>
@@ -1827,7 +1852,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     }}>
     {bench.instrumentTarget?.kind==="tripod"&&bench.instrumentTarget.vesselId===v.id&&<span
      className="lektrus-lab-instrument-attachment">На штативе</span>}
-    <LabVesselGraphic vessel={v} showLabels={settings.showVesselLabels}
+    <LabVesselGraphic vessel={v} realism={settings.realism} showLabels={settings.showVesselLabels}
      details={selectedVessel} readoutLeft={p.x>62}
      temperatureVisible={settings.showTemperatures&&v.kind!=="burette"}
      stirring={bench.stirringVesselId===v.id||
@@ -1865,8 +1890,10 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
      labProductIdentities(step.equation).map(p=>p.formula))??[])
    ])].slice(0,48);
    const massOf=(formula:string,mmol:number)=>labMolarMass(formula)===undefined?
-    "масса не определена":(labMolarMass(formula)!*mmol/1000).toLocaleString("ru-RU",{maximumFractionDigits:6})+" г";
-   const formatted=(n:number)=>n.toLocaleString("ru-RU",{maximumFractionDigits:6});
+    "масса не определена":
+    labDisplayNumber(labMolarMass(formula)!*mmol/1000,settings.realism)+" г";
+   const formatted=(n:number)=>settings.realism==="high"?
+    n.toLocaleString("ru-RU",{maximumFractionDigits:6}):labDisplayNumber(n,settings.realism);
    return <div data-board-interactive="true" role="presentation" onPointerDown={e=>e.stopPropagation()}
     style={{position:"absolute",inset:0,zIndex:110,display:"grid",placeItems:"center",background:"#132c2b99"}}>
     <section role="dialog" aria-modal="true" aria-label="Полный состав сосуда"
