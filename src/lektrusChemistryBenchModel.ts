@@ -1650,8 +1650,7 @@ function transferSnapshotSample(bench:LabBench,source:LabVessel,target:LabVessel
   target.reactionAmounts&&!target.reactionAmounts.complete)return bench;
  const donorMl=labVesselQuantity(source).volumeMl;
  if(donorMl<amountMl-1e-8||donorMl<=0||
-  labVesselQuantity(target).volumeMl+amountMl>
-   labVesselQuantity(target).capacityMl+1e-8)return bench;
+  amountMl>labVesselQuantity(target).availableMl+1e-8)return bench;
  const donor=simulateLabInventory({...source,volumeMl:donorMl});
  const receiver=simulateLabInventory({...target,
   volumeMl:labVesselQuantity(target).volumeMl});
@@ -2264,17 +2263,24 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
  // Do not mistake a partially reacted suspension for completed products.
  if((source.reactionAmounts&&!source.reactionAmounts.complete)||
     (target.reactionAmounts&&!target.reactionAmounts.complete))return bench;
+ const donorQuantity=labVesselQuantity(source),receiverQuantity=labVesselQuantity(target);
+ if(receiverQuantity.availableMl<.005)return bench;
  if(source.chemicalInventory||target.chemicalInventory||
     source.reactionAmounts?.complete||target.reactionAmounts?.complete||
     source.completedReaction||target.completedReaction){
-  if(labVesselQuantity(source).occupiedMl+labVesselQuantity(target).occupiedMl>
-   labVesselQuantity(target).capacityMl+1e-7)return bench;
-  return pourMeasuredFiltrate(bench,source,target);
+  if(donorQuantity.occupiedMl<=receiverQuantity.availableMl+1e-7)
+   return pourMeasuredFiltrate(bench,source,target);
+  // During partial decanting, only measured liquid and dissolved substances
+  // move. A settled precipitate remains in its original vessel.
+  // Hundredth-millilitre rounding cannot exceed the real free headspace.
+  const sampleMl=Math.floor((Math.min(donorQuantity.volumeMl,
+   receiverQuantity.availableMl)+1e-9)*100)/100;
+  return sampleMl>=.01?transferSnapshotSample(bench,source,target,sampleMl):bench;
  }
  const reagents=[...new Set([...target.reagents,...source.reagents])];
  if(reagents.length>MAX_VESSEL_REAGENTS)return bench;
- if(labVesselQuantity(source).occupiedMl+labVesselQuantity(target).occupiedMl>
-  labVesselQuantity(target).capacityMl+1e-7)return bench;
+ if(donorQuantity.occupiedMl>receiverQuantity.availableMl+1e-7)
+  return fastLabPour(bench,sourceId,targetId);
  const incompatible=Object.entries(source.doses??{}).some(([id,dose])=>{
   const previous=target.doses?.[id];
   return previous&&(previous.unit!==dose.unit||previous.value+dose.value>10000);
