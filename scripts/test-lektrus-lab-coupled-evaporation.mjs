@@ -251,6 +251,8 @@ assert.match(keyboardUi,/data-lab-device-id=\{device\.id\}/);
 assert.match(keyboardUi,/data-lab-vessel-id=\{v\.id\}/);
 assert.match(keyboardUi,/setPendingReturnId\(v\.id\)/,
  "Deleting a filled vessel must require explicit confirmation");
+assert.match(keyboardUi,/className="lektrus-lab-boiling-particles"[\s\S]*?clipPath=\{"url\(#"\+id\+"level\)"\}/,
+ "Boiling bubbles must be clipped at the actual liquid fill line");
 const css=fs.readFileSync("src/lektrusChemistryBench.css","utf8");
 assert.match(css,/is-cooler \.lektrus-lab-device-face-controls\{/,
  "Cooler controls must follow the actual icon height");
