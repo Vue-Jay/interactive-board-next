@@ -126,6 +126,7 @@ import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type 
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMerge";
 import {labLiveEditorDiff,applyLabLivePreview} from "./lektrusLabLiveSync";
+import {labSimulationCheckpointDelayMs} from "./lektrusLabPersistence";
 import {mergeBoardDocumentEdits} from "./lektrusBoardThreeWayMerge";
 import {
   parseDocument,
@@ -1157,7 +1158,7 @@ function GraphView({ item, onPointMove, onPointMoveEnd, onAddPoint, onPickPoint,
   onPeriodicChange?: (selected:number[])=>void;
   onPeriodicLayoutChange?: (layout:"school"|"long")=>void;
   onSchoolDiagramChange?: (diagram:import("./lektrusSchoolDiagramModel").SchoolDiagram)=>void;
-  onLabBenchChange?: (bench:LabBench)=>void;
+  onLabBenchChange?: (bench:LabBench,simulationOnly?:boolean)=>void;
   onMatchingSize?: (width:number,height:number)=>void;
   onOpenEditor?: ()=>void;
   onToggleConstruction?: ()=>void;
@@ -2664,6 +2665,10 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
 
   const snapshot = useRef<DocumentData | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Automatic thermodynamic ticks should not each create a megabyte-scale
+  // board version or displace actual teacher actions from undo history.
+  const labSimulationOnly = useRef(false);
+  const labCheckpointStartedAt = useRef<number|null>(null);
   const lastLocalSerialized = useRef<string | null>(null);
   const localBackupValid = useRef(true);
   // Assets already referenced by a remotely loaded document must never be
@@ -2898,6 +2903,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     if (!canEdit || layoutEditing) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = null;
+    labCheckpointStartedAt.current = null;
     if (!snapshot.current) return;
     try {
       const data = snapshot.current;
@@ -2981,7 +2987,13 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
     // The debounced flush performs both operations once after editing settles.
     setSaveStatus("Сохранение…");
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(flushSave, 220);
+    const automatic = labSimulationOnly.current && !editing;
+    if (!automatic) labCheckpointStartedAt.current = null;
+    const now = Date.now();
+    if (automatic && labCheckpointStartedAt.current===null)
+      labCheckpointStartedAt.current=now;
+    saveTimer.current = setTimeout(flushSave,automatic?
+      labSimulationCheckpointDelayMs(now,labCheckpointStartedAt.current!):220);
   }, [
     items,
     title,
@@ -3398,7 +3410,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       );
     }
   };
-  const commit = (next: Item[]) => {
+  const commit = (next: Item[], options?:{labSimulation?:boolean}) => {
     if (!canEdit) { setNotice("У вас доступ только для просмотра"); return; }
     const normalized = syncBoundConnectors(next);
     // Most drawing gestures only add/remove strokes. Compare identities first,
@@ -3408,15 +3420,22 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         normalized.every((item, pos) => item === baseline[pos] ||
           JSON.stringify(item) === JSON.stringify(baseline[pos])))
       return;
+    const isLabSimulation=options?.labSimulation===true;
+    labSimulationOnly.current=isLabSimulation;
+    if(!isLabSimulation)labCheckpointStartedAt.current=null;
     history.current = history.current.slice(0, index.current + 1);
-    history.current.push(normalized);
-    // Full snapshots are convenient for undo but can consume hundreds of MB on boards
-    // with many ink points. Keep a larger history for normal boards and automatically
-    // lower the cap for heavy documents to avoid mobile tab crashes.
-    const inkPoints = normalized.reduce((sum, item) => sum + (item.points?.length ?? 0), 0);
-    const historyLimit = normalized.length > 1200 || inkPoints > 120_000 ? 30 : normalized.length > 500 || inkPoints > 50_000 ? 50 : 80;
-    while (history.current.length > historyLimit) history.current.shift();
-    index.current = history.current.length - 1;
+    if(isLabSimulation){
+      // Passive heating/evaporation is a continuation of the current state,
+      // not a new teacher action for undo/redo on every physical tick.
+      history.current[index.current]=normalized;
+    }else{
+      history.current.push(normalized);
+      // Preserve user undo history even during a long continuously running experiment.
+      const inkPoints = normalized.reduce((sum, item) => sum + (item.points?.length ?? 0), 0);
+      const historyLimit = normalized.length > 1200 || inkPoints > 120_000 ? 30 : normalized.length > 500 || inkPoints > 50_000 ? 50 : 80;
+      while (history.current.length > historyLimit) history.current.shift();
+      index.current = history.current.length - 1;
+    }
     display(normalized);
     // React paints the committed items on the next frame. Keep the persistence
     // snapshot synchronous so navigating away immediately cannot save the old
@@ -5502,7 +5521,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      commit(itemsRef.current.map(entry=>entry.id===latest.id?updated:entry));
      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
    };
-   const liveChemistryBenchUpdate=(before:Item,next:Item)=>{
+   const liveChemistryBenchUpdate=(before:Item,next:Item,simulationOnly=false)=>{
      const latest=itemsRef.current.find(v=>v.id===next.id);
      if(!latest||latest.graphFigureId!=="chem-experiment-free"||
        latest.locked||!canEdit||structurallyLockedForStudent(latest))return;
@@ -5512,7 +5531,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
        scienceExperimentStage:undefined};
      if(JSON.stringify(updated.scienceLabBench)===JSON.stringify(latest.scienceLabBench))return;
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-     commit(itemsRef.current.map(v=>v.id===latest.id?updated:v));
+     commit(itemsRef.current.map(v=>v.id===latest.id?updated:v),
+       {labSimulation:simulationOnly});
      workChannel.current?.publishEdit(latest.id,labLiveEditorDiff(latest,updated));
    };
    const liveChemicalEquationUpdate=(before:Item,next:Item)=>{
@@ -7967,7 +7987,8 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           shared={items.some(x=>x.id===scienceEditorItem.id)}
           onOrganicLiveChange={(before,next)=>liveOrganicEditorUpdate(before,next)}
           onFormulaLiveChange={(before,next)=>liveChemicalEquationUpdate(before,next)}
-          onExperimentLiveChange={(before,next)=>liveChemistryBenchUpdate(before,next)}
+          onExperimentLiveChange={(before,next,simulationOnly)=>
+            liveChemistryBenchUpdate(before,next,simulationOnly)}
           subject={scienceEditorItem.graphFigureId?.startsWith("chem-")?"chem":"physics"}
           onCancel={()=>scienceEditorItem.graphFigureId?.startsWith("chem-formula-")?
             closeChemicalEquationEditor(false):setScienceEditorItem(null)}
@@ -9127,13 +9148,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     scienceEditorItem?.id!==item.id&&
                     !selectionLocked&&!structurallyLockedForStudent(item)&&
                     item.graphFigureId==="chem-experiment-free"&&!!item.scienceLabBench&&tool==="select"?
-                    nextBench=>{
+                    (nextBench,simulationOnly=false)=>{
                       const latest=itemsRef.current.find(candidate=>candidate.id===item.id);
                       if(!latest||latest.locked)return;
                       const merged=mergeLabBench(readLabBench(item),nextBench,readLabBench(latest));
                       const updated={...latest,scienceLabBench:merged};
                       if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
-                      commit(itemsRef.current.map(v=>v.id===latest.id?updated:v));
+                      commit(itemsRef.current.map(v=>v.id===latest.id?updated:v),
+                        {labSimulation:simulationOnly});
                       workChannel.current?.publishEdit(latest.id,labLiveEditorDiff(latest,updated));
                     }:undefined}
                   onPhysicalPartMove={!presentation&&!item.locked&&!space&&!selectionLocked&&
