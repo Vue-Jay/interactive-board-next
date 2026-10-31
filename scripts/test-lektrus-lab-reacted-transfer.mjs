@@ -30,6 +30,27 @@ const moved=lab.fastLabPour(transfer,"v1","v2");
 assert.equal(moved.pouring,undefined);
 assert.equal(qty(moved,"v1").reagents.length,0);
 assert.equal(qty(moved,"v2").doses.NaCl.value,10);
+// The hot source and cold receiver exchange sensible heat. Mixing 10 ml
+// of the same pure liquid at 80C with 10 ml at 20C gives about 50C;
+// no vessel is allowed to remain at the old 20C after a complete transfer.
+let thermal=lab.defaultLabBench();
+thermal=lab.putLabReagent(thermal,"v1","H2O",{value:10,unit:"ml"});
+thermal=lab.addLabVessel(thermal,"beaker");
+thermal=lab.putLabReagent(thermal,"v2","H2O",{value:10,unit:"ml"});
+thermal={...thermal,vessels:thermal.vessels.map(v=>({
+ ...v,temperatureC:v.id==="v1"?80:20
+}))};
+const thermalFast=lab.fastLabPour(thermal,"v1","v2");
+approx(qty(thermalFast,"v2").temperatureC,50,.11);
+const thermalDirect=lab.pourLabVessel(thermal,"v1","v2");
+approx(qty(thermalDirect,"v2").temperatureC,50,.11);
+let thermalGradual=lab.startLabPour(thermal,"v1","v2","gradual-heat");
+for(let index=0;index<lab.LAB_POUR_STEPS;index++)
+ thermalGradual=lab.advanceLabPour(thermalGradual);
+approx(qty(thermalGradual,"v2").temperatureC,50,.31);
+assert.ok(qty(thermalFast,"v2").temperatureC<80&&
+ qty(thermalFast,"v2").temperatureC>20);
+
 // A same-solute solution must be mixed using measured concentration and volume.
 let mixed=lab.putLabReagent(transfer,"v2","NaCl",dose(8,.3));
 mixed=lab.fastLabPour(mixed,"v1","v2");
