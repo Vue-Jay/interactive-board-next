@@ -17,7 +17,11 @@ export const LAB_GAS_FORMULAS:ReadonlySet<string>=new Set([
  "H2","O2","N2","CO","CO2","NH3","Cl2","SO2","NO2","H2S",
  "CH4","C2H4","C2H2","C2H6","C3H8","C4H10","C3H6"
 ]);
+import {LAB_BATCH_THERMAL_PROPERTIES} from "./lektrusLabCuratedPropertyBatch";
 const physical:Record<string,LabThermalRecord>={
+ // Batch-sourced phase boundaries are included without repeating
+ // individual per-formula entries in this legacy table.
+ ...LAB_BATCH_THERMAL_PROPERTIES,
  // ILO/WHO ICSC 1200: nominal anhydrous Na2SO3 decomposes
  // at 600°C. The quoted "melting >500°C" is only a lower bound
  // and must not produce an invented congruent melting event.
