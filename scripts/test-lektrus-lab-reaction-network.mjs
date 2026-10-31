@@ -814,7 +814,7 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
   approximately(heatProps.labKnownHeatCapacityJPerK("beaker",{
    [row.formula]:{value:3,unit:"g"}
   }),expected,5e-6);
-  assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+  assert.ok(heatProps.labKnownHeatCapacityJPerK("beaker",{
    [row.formula]:{value:3,unit:"g"},H2O:{value:3,unit:"ml"}
   })>0,
  "A mixture gets estimated classroom Cp; dry-solid reference stays separate");
