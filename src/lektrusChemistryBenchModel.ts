@@ -864,7 +864,7 @@ export type LabBenchSettings={
 };
 export const defaultLabBenchSettings=():LabBenchSettings=>({
  showEquationBoard:true,showVesselLabels:true,animateEffects:true,showTemperatures:true,
- pourMode:"gradual",evaporationEnabled:true,timeScale:1,realism:"high"
+ pourMode:"gradual",evaporationEnabled:true,timeScale:1,realism:"low"
 });
 export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
  ...defaultLabBenchSettings(),...bench.settings
