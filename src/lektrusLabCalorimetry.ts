@@ -262,8 +262,10 @@ export function labSensibleHeatStep(
    (heater.temperatureC-currentC)*(heater.kind==="hotplate"?4:2.6)):0;
  const ambientLossW=(currentC-ambientC)*.11;
  const temperatureC=currentC+dt*(powerW-ambientLossW)/capacity;
- const bound=hot?Math.min(temperatureC,heater.temperatureC):
-  Math.max(ambientC,temperatureC);
+ // An endothermic process may leave the liquid BELOW room temperature.
+ // Ambient exchange warms it gradually; clamping to ambient here would
+ // invent heat and erase the cooling observation on the next tick.
+ const bound=hot?Math.min(temperatureC,heater.temperatureC):temperatureC;
  return {temperatureC:Math.max(0,bound),
   capacityJPerK:capacity,heaterWattsToContents:powerW};
 }
