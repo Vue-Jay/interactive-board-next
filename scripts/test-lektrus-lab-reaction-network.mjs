@@ -1063,12 +1063,12 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
-assert.ok(pureWaterMeasurements.length>=97);
+assert.ok(pureWaterMeasurements.length>=103);
 assert.ok(new Set(pureWaterMeasurements.map(x=>x.formula)).size>=51);
 assert.ok(pureWaterMeasurements.filter(x=>x.temperatureC===20).length>=31);
 const measuredTemperatures=new Set([0,20,40,60,80,100]);
 assert.ok(pureWaterMeasurements.filter(
- x=>!measuredTemperatures.has(x.temperatureC)).length>=48);
+ x=>!measuredTemperatures.has(x.temperatureC)).length>=54);
 const literatureKeys=new Set();
 for(const x of pureWaterMeasurements){
  const key=x.formula+"|"+x.temperatureC;
@@ -1160,7 +1160,7 @@ for(const [formula,sourceValue] of Object.entries({
  assert.equal(prop.binaryCrystallizationUnsupported,true);
 }
 // Verify independently sourced 293 K points, without changing 20 C grid.
-for(const [formula,reference] of [["NH4Cl",37.2],["KCl",34.2],["NaCl",35.9],["NH4NO3",192],["Ba(NO3)2",9],["Pb(NO3)2",54.3],["KNO3",31.6],["AgNO3",216],["NaNO3",87.6],["(NH4)2SO4",75.4],["MgSO4",33.7],["K2SO4",11.1],["Na2SO4",19.5],["Li2CO3",1.33],["K2CO3",111],["Na2CO3",21.5]]){
+for(const [formula,reference] of [["NH4Cl",37.2],["KCl",34.2],["NaCl",35.9],["NH4NO3",192],["Ba(NO3)2",9],["Pb(NO3)2",54.3],["KNO3",31.6],["AgNO3",216],["NaNO3",87.6],["(NH4)2SO4",75.4],["MgSO4",33.7],["K2SO4",11.1],["Na2SO4",19.5],["Li2CO3",1.33],["K2CO3",111],["Na2CO3",21.5],["FeCl2",62.5],["CoCl2",52.9],["MgCl2",54.6],["NiCl2",60.8],["LiCl",83.5],["Al(NO3)3",73.9]]){
  const row=pureWaterMeasurements.find(x=>x.formula===formula&&
   x.sourceTemperatureKelvin===293);
  assert.ok(row,"Missing handbook datum "+formula);
@@ -1171,7 +1171,7 @@ for(const [formula,reference] of [["NH4Cl",37.2],["KCl",34.2],["NaCl",35.9],["NH
  else assert.ok(Number.isFinite(
   physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,20)));
 }
-console.log("16 independent 293 K source readings, unchanged 20 C grid: PASS");
+console.log("22 independent 293 K source readings, unchanged 20 C grid: PASS");
 // Independently verify six new exact 20°C readings, always against the
 // ORIGINAL published units, and without converting 0.14 mg/L to 0.14 g/L.
 for(const [formula,value,unit,expected] of [

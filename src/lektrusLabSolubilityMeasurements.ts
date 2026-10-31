@@ -46,6 +46,14 @@ const LAB_KAYE_LABY_293K_BATCH:readonly (readonly [string,number])[]=[
  ["Li2CO3",1.33],
  ["K2CO3",111],
  ["Na2CO3",21.5],
+ // Separate 293 K entries for hydrolysing / hydrated chloride and nitrate
+ // systems; the 20 C experimental points remain independent.
+ ["FeCl2",62.5],
+ ["CoCl2",52.9],
+ ["MgCl2",54.6],
+ ["NiCl2",60.8],
+ ["LiCl",83.5],
+ ["Al(NO3)3",73.9],
 ];
 
 export const LAB_MEASURED_PURE_WATER_SOLUBILITIES:readonly LabMeasuredSolubility[]=[
