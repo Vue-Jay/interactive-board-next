@@ -1772,10 +1772,10 @@ export function setLabVesselStopper(bench:LabBench,id:string,stoppered:boolean):
    chemicalInventory:!stoppered&&v.chemicalInventory&&
     Object.keys(v.chemicalInventory.retainedGasMol??{}).length?{
      ...v.chemicalInventory,retainedGasMol:{},
-     releasedGasMol:Object.fromEntries(new Set([
+     releasedGasMol:Object.fromEntries(Array.from(new Set([
       ...Object.keys(v.chemicalInventory.releasedGasMol??{}),
       ...Object.keys(v.chemicalInventory.retainedGasMol??{})
-     ]).values().map(formula=>[formula,
+     ]),formula=>[formula,
       (v.chemicalInventory?.releasedGasMol?.[formula]??0)+
       (v.chemicalInventory?.retainedGasMol?.[formula]??0)]))
     }:v.chemicalInventory}:v);
