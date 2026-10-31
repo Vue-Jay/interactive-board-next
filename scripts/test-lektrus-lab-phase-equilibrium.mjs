@@ -6,11 +6,19 @@ const exports={};
 const options={target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS};
 const material={};
 const measurements={};
+const curated={};
+const curatedSource=readFileSync(new URL(
+ "../src/lektrusLabCuratedPropertyBatch.ts",import.meta.url),"utf8");
+new Function("exports",ts.transpileModule(curatedSource,{
+ compilerOptions:options}).outputText)(curated);
 const measuredSource=readFileSync(new URL("../src/lektrusLabSolubilityMeasurements.ts",import.meta.url),"utf8");
 new Function("exports",ts.transpileModule(measuredSource,{compilerOptions:options}).outputText)(measurements);
 const materialSource=readFileSync(new URL("../src/lektrusLabMaterialConstants.ts",import.meta.url),"utf8");
 new Function("require","exports",ts.transpileModule(materialSource,{compilerOptions:options}).outputText)(
- key=>{assert.equal(key,"./lektrusLabSolubilityMeasurements");return measurements;},material);
+ key=>{
+ if(key==="./lektrusLabCuratedPropertyBatch")return curated;
+ assert.equal(key,"./lektrusLabSolubilityMeasurements");return measurements;
+},material);
 const js=ts.transpileModule(src,{compilerOptions:options}).outputText;
 new Function("require","exports",js)(key=>{
  assert.equal(key,"./lektrusLabMaterialConstants");return material;
