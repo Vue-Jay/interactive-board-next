@@ -396,6 +396,25 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  // Neither a 20 °C value nor interpolation across missing cells is valid.
  "Ca(CH3COO)2":[labExactMeasuredSolubility("Ca(CH3COO)2",0)??null,
   null,null,null,null,labExactMeasuredSolubility("Ca(CH3COO)2",100)??null],
+ // Exact literature measurements (not inferred solubility curves).
+ // Nickel(II) sulfate 0/20/100 C: PubChem CRC and ICSC. Hydrated solid
+ // identity changes; equal rounded 0/20 C figures do NOT prove constant S.
+ // Anhydrous lithium acetate 20/40/50 C: independent supplier dataset;
+ // the 50 C knot is stored solely in exact-temperature measurements.
+ // Ferrous sulfate 0/20.13/70.04/90.13 C: Seidell collected measurements,
+ // retain original fractional temperatures without rounding.
+ // Magnesium nitrate 20/25 C: GESTIS records nonmatching water units
+ // and possible hydrate changes; only direct exact readings are valid.
+ NiSO4:[labExactMeasuredSolubility("NiSO4",0)??null,
+  labExactMeasuredSolubility("NiSO4",20)??null,
+  null,null,null,labExactMeasuredSolubility("NiSO4",100)??null],
+ CH3COOLi:[null,labExactMeasuredSolubility("CH3COOLi",20)??null,
+  labExactMeasuredSolubility("CH3COOLi",40)??null,null,null,null],
+ FeSO4:[labExactMeasuredSolubility("FeSO4",0)??null,
+  null,null,null,null,null],
+ "Mg(NO3)2":[null,labExactMeasuredSolubility("Mg(NO3)2",20)??null,
+  null,null,null,null],
+ // AgI 25 C is in the non-grid exact reference: 0.0028 mg/L.
  // Source-verified EXACT 20 °C binary water-solubility points.
  // Original ICSC / Nickel Institute measurements are g/100 ml WATER.
  // Measured conversion uses the independently sourced pure-water density.
@@ -462,7 +481,11 @@ export function labSingleSaltSolubilityGPer100gWater(
  // there is no validated between-knot interpolation for the current
  // single-anhydrous-species model. The exact source temperature lookup
  // above is still valid for each individually reported observation.
- if(formula==="Al(NO3)3")return;
+ // These salts have unknown/interchanging hydrate phase boundaries or
+ // measured temperatures too sparse to justify a continuous curve.
+ // An explicit exact-temperature row above still takes precedence.
+ if(["Al(NO3)3","NiSO4","CH3COOLi","FeSO4","Mg(NO3)2"]
+  .includes(formula))return;
  const data=LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER[formula];
  if(!data||!Number.isFinite(tempC)||tempC<0||tempC>100)return;
  // Exact measured knots remain available even when adjacent knots are absent.
@@ -508,7 +531,11 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  "Ca(CH3COO)2",
  // Some salts change aqueous speciation or stable hydrated crystals.
  // All values below are isolated aqueous reference measurements only.
- "CaCl2","Na3PO4","Mg(CH3COO)2","ZnCl2","BaCl2","Al(NO3)3"
+ "CaCl2","Na3PO4","Mg(CH3COO)2","ZnCl2","BaCl2","Al(NO3)3",
+ // Explicit 20/25/50 C data, not validated precipitation equilibria;
+ // sulphate hydrates, lithium acetate crystals and magnesium nitrate
+ // transition between different solid phases in water.
+ "NiSO4","CH3COOLi","FeSO4","Mg(NO3)2","AgI"
 ]);
 /** Phase fractions for EXACTLY one supported anhydrous crystalline salt
  * and pure explicitly measured H2O. Aqueous mixed salts, prepared stocks
