@@ -432,7 +432,8 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
    device.kind==="hotplate"?160:120*(device.heatLevel??2):0;
   const calorimetry=labSensibleHeatStep(v.kind,v.doses,old,ambient,seconds,
    device?.powered?{kind:device.kind==="hotplate"?"hotplate":"burner",
-    temperatureC:toward,powerW:heaterPower}:undefined);
+    temperatureC:toward,powerW:heaterPower}:undefined,
+   v.filteredSolution?.volumeMl??0);
   // Measured pure materials follow energy conservation (m*c*delta(T)).
   // Unsupported prepared solutions keep the previous bounded educational
   // temperature curve rather than receiving a fictitious specific heat.
