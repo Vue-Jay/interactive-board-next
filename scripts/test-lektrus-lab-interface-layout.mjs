@@ -167,8 +167,8 @@ assert.match(editor,/const height=compact\?h:1000/);
 assert.match(editor,/height:stage\.height,zoom:stage\.scale/);
 assert.match(editor,/compactFullscreen=\{stage\.compact\}/);
 assert.match(markup,/const \[mobileDrawer,setMobileDrawer\]=useState<MobileDrawer\|null>\(null\)/);
-for(const label of ["Реактивы","Посуда","Приборы","Индикаторы","Уравнения","Ещё"])
- assert.ok(markup.includes('["'+({Реактивы:"reagents",Посуда:"glassware",Приборы:"equipment",Индикаторы:"indicators",Уравнения:"equations",Ещё:"settings"})[label]+'","'+label+'"]'),
+for(const label of ["Реактивы","Посуда","Приборы","Индикаторы","Уравнения","Опыт"])
+ assert.ok(markup.includes('["'+({Реактивы:"reagents",Посуда:"glassware",Приборы:"equipment",Индикаторы:"indicators",Уравнения:"equations",Опыт:"settings"})[label]+'","'+label+'"]'),
   "Missing compact lab drawer "+label);
 assert.match(markup,/aria-expanded=\{mobileDrawer===id\}/);
 assert.match(markup,/setMobileDrawer\(previous=>previous===id\?null:id\)/);
