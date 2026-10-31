@@ -4447,3 +4447,27 @@
  .lektrus-lab-furniture-modal .lektrus-lab-experiments-intro{margin:2px 9px}
  .lektrus-lab-furniture-modal .lektrus-lab-example-choice{padding:10px}
 }
+
+
+/* Narrow tabletop / landscape phone: let the mode picker and pouring choice
+   remain in the header without forcing the fixed-width desktop select. */
+@container(max-width:690px){
+ .lektrus-lab-bench .lektrus-lab-mode-picker{
+  flex:1 1 132px!important;width:auto!important;
+  max-width:195px!important;min-width:112px!important;gap:3px!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker>span{display:none!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker select{
+  font-size:10px!important;padding-left:7px!important;padding-right:19px!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker:after{
+  width:6px;height:6px;right:7px}
+ .lektrus-lab-bench .lektrus-lab-pour-mode{
+  flex:0 0 auto!important;gap:1px!important;padding:2px!important}
+ .lektrus-lab-bench .lektrus-lab-pour-mode button{
+  min-height:27px!important;padding:4px 5px!important;font-size:9px!important}
+ .lektrus-lab-bench .lektrus-lab-prepare-mode{
+  min-width:28px!important;padding:3px 5px!important}
+}
+@container(max-width:460px){
+ .lektrus-lab-bench .lektrus-lab-scene-brand{display:none!important}
+ .lektrus-lab-bench .lektrus-lab-mode-picker{min-width:104px!important}
+}
