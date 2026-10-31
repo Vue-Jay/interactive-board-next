@@ -860,11 +860,14 @@ assert.equal(sr.literatureSolubilityReference.temperatureC,18);
 assert.equal(sr.solubilityKnown,false,
  "18°C evidence alone cannot claim a numerical 22°C solubility");
 for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
- const inventory=simulateLabInventory({
-  reagents:[formula,"H2O"],environment:"aqueous",temperatureC:20,
-  doses:{[formula]:{unit:"g",value:10},H2O:{unit:"ml",value:2}}
- });
- assert.ok(!(inventory.solidMol[formula]>0),
-  "No fictitious dry crystallization before hydrate/ion speciation: "+formula);
+ const inventory={speciesMol:{[formula]:.05,H2O:.5},solidMol:{}};
+ const result=physicalDensity.labEquilibrateSingleSaltCrystals(
+  inventory,20,true,labMolarMass);
+ assert.equal(result,undefined,
+  "Reference-only values must not invoke extra approximate binary-crystal equilibrium: "+formula);
+ assert.deepEqual(inventory.solidMol,{},
+  "The reference-only single-salt solver must not assign new dry crystals");
+ // The independent ion-speciation / Ksp engine may STILL legitimately
+ // predict precipitation. Its settled solid is not a result of this solver.
 }
 console.log("26 sourced measurements across 15 salts, including 10 new 20°C series and 8 exact non-grid temperatures");
