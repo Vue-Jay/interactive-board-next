@@ -916,6 +916,9 @@ export function parseDocument(raw: string): DocumentData {
         };
         if(!bench||!Array.isArray(bench.vessels)||bench.vessels.length>6||
           typeof bench.selectedId!=="string"||
+          (bench.tableEpoch!=null&&(typeof bench.tableEpoch!=="string"||
+           !/^[a-z0-9]+-[a-z0-9]{1,12}$/.test(bench.tableEpoch)||
+           bench.tableEpoch.length>45))||
           (bench.mode!=null&&!["reactions","qualitative","quantitative","titration","solutions","synthesis","evaporation"].includes(bench.mode))||
           !Number.isSafeInteger(bench.event)||bench.event<0||!validSettings||
           !validEquationHistory(bench.reactionLog,30,500)||

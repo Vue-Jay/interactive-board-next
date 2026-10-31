@@ -5526,6 +5526,9 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      if(!latest||latest.graphFigureId!=="chem-experiment-free"||
        latest.locked||!canEdit||structurallyLockedForStudent(latest))return;
      if(JSON.stringify(before.scienceLabBench)===JSON.stringify(next.scienceLabBench))return;
+     // Thermal callbacks can be queued before a teacher clears or replaces
+     // the table. Do not accept those callbacks into the new generation.
+     if(simulationOnly&&readLabBench(before).tableEpoch!==readLabBench(latest).tableEpoch)return;
      const merged=mergeLabBench(readLabBench(before),readLabBench(next),readLabBench(latest));
      const updated={...latest,scienceLabBench:merged,scienceReagents:undefined,
        scienceExperimentStage:undefined};
@@ -9151,6 +9154,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                     (nextBench,simulationOnly=false)=>{
                       const latest=itemsRef.current.find(candidate=>candidate.id===item.id);
                       if(!latest||latest.locked)return;
+                      if(simulationOnly&&readLabBench(item).tableEpoch!==readLabBench(latest).tableEpoch)return;
                       const merged=mergeLabBench(readLabBench(item),nextBench,readLabBench(latest));
                       const updated={...latest,scienceLabBench:merged};
                       if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);

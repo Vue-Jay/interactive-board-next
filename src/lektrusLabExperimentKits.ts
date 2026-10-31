@@ -3,7 +3,7 @@
  * Replacing a tabletop is an EXPLICIT user choice in the catalogue UI. */
 import {labDefaultStockDose,labReagentForms} from "./lektrusLabCatalog";
 import {substances,type ReactionCase} from "./lektrusReactionDatabase";
-import {addPlacedLabDevice,applyPlacedLabDevice,type LabBench,type LabGlassware,
+import {addPlacedLabDevice,applyPlacedLabDevice,nextLabTableEpoch,type LabBench,type LabGlassware,
  type LabDose,type LabVessel,type LabAvailableDevice} from "./lektrusChemistryBenchModel";
 
 const glassName:Record<LabGlassware,string>={
@@ -71,6 +71,7 @@ export function prepareLabExperimentKit(bench:LabBench,row:ReactionCase):LabBenc
  });
  // No old powered equipment or stale object IDs follow a new experiment.
  let result:LabBench={...bench,vessels,selectedId:vessels[0].id,
+  tableEpoch:nextLabTableEpoch(),
   placedDevices:[],devices:[],stirringVesselId:undefined,
   titration:undefined,titrationPair:undefined,instrumentTarget:undefined,
   pouring:undefined,simulationAtMs:undefined,event:bench.event+1};

@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import type {Item} from "./boardModel";
-import LektrusChemistryBenchSurface from "./LektrusChemistryBench";
+import LektrusChemistryBenchSurface,{clearLabCabinetSession} from "./LektrusChemistryBench";
 import {putLabReagent,pourLabVessel,readLabBench,selectLabVessel,type LabBench,type LabDose}
  from "./lektrusChemistryBenchModel";
 import {subjectEditorStyle} from "./lektrusSubjectAccent";
@@ -12,6 +12,11 @@ type Props={item:Item;onChange:(next:Item,simulationOnly?:boolean)=>void;onSave:
  * and the reagent cupboard remain directly on the same tabletop. */
 export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCancel}:Props){
  const bench=readLabBench(item);
+ const cabinetSessionKey="fullscreen:"+item.id;
+ const closeLab=(save:boolean)=>{
+  clearLabCabinetSession(cabinetSessionKey);
+  if(save)onSave();else onCancel();
+ };
  const viewport=useRef<HTMLDivElement>(null);
  const [stage,setStage]=useState({width:1600,height:1000,scale:1,compact:false});
  // The full-screen laboratory owns the live simulation. Keep the underlying
@@ -55,17 +60,17 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
    // Cabinets own Escape while they are open.
    if(document.querySelector(".lektrus-lab-furniture-modal")||
      document.querySelector(".lektrus-lab-return-confirm"))return;
-   event.preventDefault();onSave();
+   event.preventDefault();closeLab(true);
   };
   document.addEventListener("keydown",onKey);
   return()=>document.removeEventListener("keydown",onKey);
- },[onSave]);
+ },[onSave,onCancel,cabinetSessionKey]);
  const pour=(from:string,to:string)=>patch(pourLabVessel(bench,from,to));
  const addReagent=(id:string,reagent:string,dose?:LabDose)=>
   patch(putLabReagent(bench,id,reagent,dose));
  return createPortal(<div className="lektrus-lab-editor-overlay is-board-identical"
   style={subjectEditorStyle("chemistry")} data-board-interactive="true"
-  onPointerDown={e=>{if(e.target===e.currentTarget)onCancel()}}>
+  onPointerDown={e=>{if(e.target===e.currentTarget)closeLab(false)}}>
   <section className={"lektrus-lab-editor is-board-identical"+(stage.compact?" is-compact-fullscreen":"")} role="dialog" aria-modal="true"
    aria-label="Химический стол" onPointerDown={e=>e.stopPropagation()}>
    <div ref={viewport} className="lektrus-lab-editor-bench-viewport" data-board-interactive="true"
@@ -77,11 +82,12 @@ export default function LektrusChemistryBenchEditor({item,onChange,onSave,onCanc
      // rectangles on Android when selections and thermal ticks updated.
      width:stage.width,height:stage.height,zoom:stage.scale}}>
      <LektrusChemistryBenchSurface bench={bench} editable fullscreenOwner compactFullscreen={stage.compact}
+      cabinetSessionKey={cabinetSessionKey}
       onSelect={id=>patch(selectLabVessel(bench,id))}
       onPour={pour} onChange={patch} onDropReagent={addReagent}/>
     </div>
    </div>
-   <button type="button" className="lektrus-lab-editor-exit" onClick={onSave}
+   <button type="button" className="lektrus-lab-editor-exit" onClick={()=>closeLab(true)}
     aria-label="Закрыть лабораторию">✕ <span>Закрыть</span></button>
   </section>
  </div>,document.body);

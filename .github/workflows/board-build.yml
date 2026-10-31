@@ -56,6 +56,7 @@ jobs:
           node scripts/audit-lektrus-lab-properties.mjs --markdown >> "$GITHUB_STEP_SUMMARY"
       - run: node scripts/test-lektrus-lab-filtrate-conservation.mjs
       - run: node scripts/test-lektrus-lab-reacted-transfer.mjs
+      - run: node scripts/test-lektrus-lab-table-reset.mjs
       - run: node scripts/test-lektrus-lab-interface-layout.mjs
       - run: node scripts/test-lektrus-lab-phase-equilibrium.mjs
       - run: node scripts/test-lektrus-lab-evaporative-crystallization.mjs

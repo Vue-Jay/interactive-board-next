@@ -88,6 +88,7 @@ export default function LektrusChemistryIllustration({item,onStageChange,onBench
     </svg>
    </button>}
    <LektrusChemistryBenchSurface bench={bench} editable={!!onBenchChange}
+    cabinetSessionKey={"board:"+item.id}
     pouringId={pourSource} onChange={changeBench}
     onSelect={id=>changeBench(selectLabVessel(bench,id))}
     onPour={onBenchChange?pour:undefined}
