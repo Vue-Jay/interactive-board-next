@@ -20,7 +20,7 @@ function load(file){
  new Function("require","module","exports",transpiled)(requireLocal,mod,mod.exports);
  return mod.exports;
 }
-const {simulateLabInventory,labInventoryMassG}=load("src/lektrusLabReactionNetwork.ts");
+const {simulateLabInventory,labInventoryMassG,labInventorySnapshot}=load("src/lektrusLabReactionNetwork.ts");
 const schoolMaterial=load("src/lektrusLabMaterialConstants.ts");
 const schoolHeat=load("src/lektrusLabCalorimetry.ts");
 const schoolDose=load("src/lektrusLabStoichiometry.ts");
