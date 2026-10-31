@@ -379,3 +379,113 @@ approx(chemistry.labInventoryMassG(equilibratedLead),
  oldMass+stoich.labDoseMoles("H2O",{unit:"ml",value:100})*
  stoich.labMolarMass("H2O"),1e-5);
 console.log("Saved vessel reversible precipitation and quantitative dilution: PASS");
+
+
+/** A formed hydroxide reacts with a NEW dilute acid by actual moles.
+ * Use completed stage-one precipitates, not a fictional mixture of the
+ * original metal salt + base after the first experiment has finished.
+ */
+const acidPrecipitateCases=[
+ ["CuSO4","NaOH",20,"Cu(OH)2","HNO3",20,"Cu(NO3)2"],
+ ["FeCl3","NaOH",30,"Fe(OH)3","HNO3",30,"Fe(NO3)3"],
+ ["AlCl3","NaOH",30,"Al(OH)3","HNO3",30,"Al(NO3)3"],
+ ["ZnSO4","NaOH",20,"Zn(OH)2","HNO3",20,"Zn(NO3)2"],
+ ["MgSO4","NaOH",20,"Mg(OH)2","HNO3",20,"Mg(NO3)2"],
+ ["MgSO4","NaOH",20,"Mg(OH)2","HCl",20,"MgCl2"],
+ ["FeSO4","NaOH",20,"Fe(OH)2","HCl",20,"FeCl2"],
+ ["CuSO4","NaOH",20,"Cu(OH)2","H2SO4",10,"CuSO4"],
+ ["ZnSO4","NaOH",20,"Zn(OH)2","H2SO4",10,"ZnSO4"],
+ ["MgSO4","NaOH",20,"Mg(OH)2","H2SO4",10,"MgSO4"]
+];
+for(const [metalSalt,alkali,alkaliMl,precipitate,acid,acidMl,salt] of acidPrecipitateCases){
+ let state=lab.defaultLabBench();
+ state=addSolution(state,metalSalt,10);
+ state=addSolution(state,alkali,alkaliMl);
+ state=lab.advanceLabSimulation({...state,simulationAtMs:0},1000);
+ state=lab.advanceLabSimulation(state,6000);
+ assert.equal(state.vessels[0].reactionAmounts?.complete,true,
+  "Initial precipitation must complete: "+precipitate);
+ const before=chemistry.simulateLabInventory(state.vessels[0]);
+ assert.ok((before.solidMol[precipitate]??0)>.0009,
+  "Reviewed precipitate must be measurable: "+precipitate);
+ const massBefore=chemistry.labInventoryMassG(before);
+ state=addSolution(state,acid,acidMl);
+ const afterVessel=state.vessels[0];
+ assert.equal(afterVessel.uncertain,false,
+  "Reviewed acidic redissolution is not an unknown reaction: "+acid+"/"+precipitate);
+ const after=chemistry.simulateLabInventory(afterVessel);
+ assert.ok((after.solidMol[precipitate]??0)<.00003,
+  "Complete dose dissolves the preformed solid: "+acid+"/"+precipitate);
+ assert.ok((after.speciesMol[salt]??0)>.0009,
+  "Dissolved metal salt survives: "+salt);
+ approx(chemistry.labInventoryMassG(after),massBefore+
+  acidMl*.1/1000*stoich.labMolarMass(acid),2e-6);
+ assert.ok(!lab.labVesselContents(afterVessel).solid.some(x=>
+  x.formula===precipitate&&(x.massG??0)>.01),
+  "Inspector must not display vanished "+precipitate);
+}
+console.log("Ten sequential acid dissolutions of preformed hydroxides: PASS");
+
+// A 0.001-mol Cu(OH)2 sample takes exactly 0.002 mol HNO3.
+// Incremental acid produces a proportional decrease in solid mass.
+// Only excess acid turns the full, previously alkaline mixture acidic.
+let stagedAcid=lab.defaultLabBench();
+stagedAcid=addSolution(stagedAcid,"CuSO4",10);
+stagedAcid=addSolution(stagedAcid,"NaOH",20);
+stagedAcid=lab.advanceLabSimulation({...stagedAcid,simulationAtMs:0},1000);
+stagedAcid=lab.advanceLabSimulation(stagedAcid,6000);
+stagedAcid=lab.setLabIndicator(stagedAcid,"v1","methyl-orange");
+const initialStaged=chemistry.simulateLabInventory(stagedAcid.vessels[0]);
+const beforeSolid=initialStaged.solidMol["Cu(OH)2"];
+stagedAcid=addSolution(stagedAcid,"HNO3",5);
+const afterQuarter=chemistry.simulateLabInventory(stagedAcid.vessels[0]);
+assert.ok(afterQuarter.solidMol["Cu(OH)2"]<beforeSolid*.80&&
+ afterQuarter.solidMol["Cu(OH)2"]>beforeSolid*.70,
+ "5 ml of 0.1M HNO3 consumes one quarter of the hydroxide");
+stagedAcid=addSolution(stagedAcid,"HNO3",5);
+const afterHalf=chemistry.simulateLabInventory(stagedAcid.vessels[0]);
+assert.ok(afterHalf.solidMol["Cu(OH)2"]<beforeSolid*.55&&
+ afterHalf.solidMol["Cu(OH)2"]>beforeSolid*.45);
+stagedAcid=addSolution(stagedAcid,"HNO3",10);
+const atEquivalent=chemistry.simulateLabInventory(stagedAcid.vessels[0]);
+assert.ok((atEquivalent.solidMol["Cu(OH)2"]??0)<1e-6);
+stagedAcid=addSolution(stagedAcid,"HNO3",5);
+const afterExcess=chemistry.simulateLabInventory(stagedAcid.vessels[0]);
+const endPH=acidPH.labVesselPH(stagedAcid.vessels[0]);
+const endIndicator=lab.labIndicatorResult(stagedAcid.vessels[0]);
+assert.ok(endPH&&endPH.pH<3,
+ "Excess strong acid after hydroxide consumption must control pH");
+assert.equal(endIndicator.medium,"acid");
+assert.ok((afterExcess.solidMol["Cu(OH)2"]??0)<1e-6);
+approx(chemistry.labInventoryMassG(afterExcess),
+ chemistry.labInventoryMassG(initialStaged)+.0025*stoich.labMolarMass("HNO3"),2e-6);
+console.log("Sequential hydroxide titration: quarter, half, full, excess acid and indicator pH PASS");
+
+// Acid consumption of a carbonate that was actually formed on the table.
+// Carbonate + acetic acid is stoichiometric at the school level; dissolved
+// CO2 and weak acid equilibria beyond the reviewed equation are not claimed.
+for(const [carbonateSalt,carbonateName,acetate] of [
+ ["CaCl2","CaCO3","Ca(CH3COO)2"],
+ ["MgCl2","MgCO3","Mg(CH3COO)2"]
+]){
+ let state=lab.defaultLabBench();
+ state=addSolution(state,carbonateSalt,10);
+ state=addSolution(state,"Na2CO3",10);
+ state=lab.advanceLabSimulation({...state,simulationAtMs:0},1000);
+ state=lab.advanceLabSimulation(state,6000);
+ const first=chemistry.simulateLabInventory(state.vessels[0]);
+ assert.ok((first.solidMol[carbonateName]??0)>.0009,
+  "Precipitated solid "+carbonateName+" must be real");
+ const mass=chemistry.labInventoryMassG(first);
+ state=addSolution(state,"CH3COOH",20);
+ const result=chemistry.simulateLabInventory(state.vessels[0]);
+ assert.ok((result.solidMol[carbonateName]??0)<1e-6,
+  "Weak acetic acid consumes carbonate solid: "+carbonateName);
+ assert.ok((result.speciesMol[acetate]??0)>.0009,
+  "A soluble acetate forms: "+acetate);
+ assert.ok((result.releasedGasMol.CO2??0)>.0009,
+  "Carbon dioxide is quantified from the balanced reaction");
+ approx(chemistry.labInventoryMassG(result),
+  mass+.002*stoich.labMolarMass("CH3COOH"),2e-6);
+}
+console.log("Acetic acid on previously formed carbonates: balanced gas and acetate PASS");
