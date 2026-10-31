@@ -81,7 +81,24 @@ export const LAB_CURATED_PROPERTY_BATCH:readonly LabCuratedPropertyBatchRow[]=[
  {formula:"Mg(CH3COO)2",property:"decompositionC",value:323,
   phase:"anhydrous-solid",sourceCondition:"anhydrous magnesium acetate 323 C listed for both melting and decomposition",
   sourceUrl:"https://chemister.ru/Databases/Chemdatabase/properties-en.php?dbid=1&id=3897",
-  note:"Безводный ацетат магния разлагается около 323 °C, без устойчивого кипения."}
+  note:"Безводный ацетат магния разлагается около 323 °C, без устойчивого кипения."},
+ // Source-reviewed pure crystal data: USGS / GESTIS / ATSDR / CRC.
+ {formula:"Mg(NO3)2",property:"decompositionC",value:330,
+  phase:"anhydrous-solid",sourceCondition:"anhydrous crystalline Mg(NO3)2, IFA GESTIS decomposition temperature; hexahydrate dehydrates separately at 89 C",
+  sourceUrl:"https://haber.archive.fhi.mpg.de/send/8IKpJO3bKSzf",
+  note:"Безводный Mg(NO₃)₂ разлагается при 330 °C, не путать с потерей воды гидратами."},
+ {formula:"PbS",property:"meltingC",value:1114,
+  phase:"anhydrous-solid",sourceCondition:"crystalline cubic lead(II) sulfide PbS, ATSDR US Public Health Service table of pure lead compounds",
+  sourceUrl:"https://www.ncbi.nlm.nih.gov/books/NBK589540/table/ch4.tab2/",
+  note:"Плавление кристаллического PbS при 1114 °C; возгонка описана отдельно."},
+ {formula:"CoS",property:"meltingC",value:1117,
+  phase:"anhydrous-solid",sourceCondition:"dry cobalt(II) monosulfide CoS, CRC Handbook 95th edition; not cobalt trisulfide",
+  sourceUrl:"https://pubchem.ncbi.nlm.nih.gov/compound/14832",
+  note:"Кристаллический моносульфид кобальта CoS: справочная температура плавления 1117 °C."},
+ {formula:"Al(OH)3",property:"specificHeatJPerGK",value:1.175968,
+  phase:"anhydrous-solid",sourceCondition:"USGS 1979 monoclinic gibbsite Al(OH)3, 298.15 K Cp,mol=91.729 J/(mol K) / 78.003 g/mol; not bayerite",
+  sourceUrl:"https://pubs.usgs.gov/of/1980/0908/report.pdf",
+  note:"Удельная теплоёмкость чистого гиббсита при 25 °C из экспериментальной таблицы USGS."}
 ];
 
 /** Generated dry crystal density map (single source of truth). */
@@ -89,6 +106,13 @@ export const LAB_BATCH_CRYSTAL_DENSITIES:Readonly<Record<string,number>>=
  Object.freeze(Object.fromEntries(LAB_CURATED_PROPERTY_BATCH
   .filter(row=>row.property==="crystalDensityGPerMl")
   .map(row=>[row.formula,row.value])));
+
+/** Solid-specific Cp imported from same scientific row as its provenance. */
+export const LAB_BATCH_SOLID_SPECIFIC_HEAT:Readonly<Record<string,{
+ specificJPerGK:number;phase:"solid"
+}>>=Object.freeze(Object.fromEntries(LAB_CURATED_PROPERTY_BATCH
+ .filter(row=>row.property==="specificHeatJPerGK")
+ .map(row=>[row.formula,{specificJPerGK:row.value,phase:"solid" as const}])));
 
 /** Generated original-phase thermal records, never aqueous solution data. */
 export const LAB_BATCH_THERMAL_PROPERTIES:Readonly<Record<string,{

@@ -12,9 +12,12 @@
  * Prepared stock solutions, unverified powders and unknown mixtures use the
  * existing cautious legacy relaxation rather than fabricated material data.
  */
+import {LAB_BATCH_SOLID_SPECIFIC_HEAT} from "./lektrusLabCuratedPropertyBatch";
 type HeatDose={value:number;unit:"ml"|"g";concentrationM?:number};
 type SubstanceHeat={specificJPerGK:number;densityGPerMl?:number;phase:"liquid"|"solid"};
 export const LAB_CALORIMETRY_REFERENCE:Readonly<Record<string,SubstanceHeat>>={
+ // Single-source, phase-qualified dry crystal heat values.
+ ...LAB_BATCH_SOLID_SPECIFIC_HEAT,
  // NIST-JANAF fourth edition, source-measured Cp,mol at 298.15 K.
  // Per original CRYSTAL only, not hydrated/aqueous state. Molecular
  // P4O10 source value is converted using TWO P2O5 formula units.
