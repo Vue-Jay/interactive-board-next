@@ -363,8 +363,34 @@ export function simulateLabInventory(input:{
  // The second branch protects older saved filtrates that lack this flag.
  if(input.chemicalInventory&&(input.chemicalInventory.settled||
    (input.filteredSolution?.volumeMl??0)>0&&
-    Object.keys(doses).length===0))
+    Object.keys(doses).length===0)){
+  // A physically separated filtrate is never reconstructed from old
+  // stock reagents. But a measured, nonvolatile SALT solution can become
+  // supersaturated as its remaining water evaporates. Partition the same
+  // conserved solute moles between liquid and crystals. The approximation
+  // is limited to school salts with measured water-solubility curves;
+  // unsupported mixed chemistry keeps its recorded phase untouched.
+  if(input.chemicalInventory.settled&&input.filteredSolution&&
+    input.environment==="aqueous"){
+   const dissolved=Object.entries(inventory.speciesMol).filter(([id,mol])=>
+    id!=="H2O"&&mol>EPS);
+   const known=dissolved.map(([id,mol])=>({
+    id,mol,solubility:labSingleSaltSolubilityGPer100gWater(id,input.temperatureC??25),
+    molarMass:labMolarMass(id)
+   }));
+   if(known.length&&known.every(s=>s.solubility!==undefined&&
+     s.molarMass!==undefined&&s.molarMass>0)){
+    const waterMassG=Math.max(0,volumeMl)*.997;
+    for(const salt of known){
+     const capacityMol=salt.solubility!/100*waterMassG/salt.molarMass!;
+     const crystalline=Math.max(0,salt.mol-capacityMol);
+     if(crystalline>EPS)inventory.solidMol[salt.id]=crystalline;
+     else delete inventory.solidMol[salt.id];
+    }
+   }
+  }
   return remember(key,inventory);
+ }
  // A measured, running gas reaction has a defined extent. For this
  // single validated step, never borrow the future final equilibrium.
  const progress=input.chemicalInventory?undefined:input.reactionAmounts;
