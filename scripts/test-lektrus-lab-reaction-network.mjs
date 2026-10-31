@@ -395,7 +395,7 @@ const bulkBinary={
  K2Cr2O7:[4.68,12.49,26.3,45.6,73,103],
  CuSO4:[25.5,36.2,48,60,70,83],
  Na2CO3:[7.1,21.4,48.5,46.5,45.8,45.5],
- Li2CO3:[null,1.33,null,null,null,null],
+ Li2CO3:[1.543,1.33,1.174,1.010,.847,.715],
  NaF:[null,4.1,null,null,null,null],
  NaBr:[null,null,null,118,118.3,121.2],
  Na2SO3:[null,null,37,33.2,29,26.6],
@@ -419,7 +419,7 @@ for(const [formula,values] of Object.entries(bulkBinary)){
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,-1),undefined);
  assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(formula,101),undefined);
 }
-assert.equal(measuredNewCells,44);
+assert.equal(measuredNewCells,49);
 // NaF remains an isolated 20 C measurement. Li2CO3 is now a fully
 // independently tabulated retrograde solubility series, not isolated data.
 assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater("NaF",15),undefined);
@@ -455,8 +455,8 @@ for(const id of ["Li2CO3","NaF","K2Cr2O7"]){
  assert.ok((result.solidMol[id]??0)>0,id+" should crystallize in binary pure water");
 }
 const dataOnly=Object.values(bulkBinary).reduce((n,row)=>n+row.filter(v=>v!==null).length,0);
-assert.equal(dataOnly,44);
-console.log("Eleven new salt solubility datasets; 44 measured knots; hydrate-safe crystallization");
+assert.equal(dataOnly,49);
+console.log("Eleven salt solubility datasets; 49 measured knots; hydrate-safe crystallization");
 
 // Heat capacity of these exact dry compounds, not the unknown mixture Cp.
 // Source entries are J/g/K, from University Medical Lublin and
