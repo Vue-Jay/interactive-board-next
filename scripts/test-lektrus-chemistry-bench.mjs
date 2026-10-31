@@ -284,8 +284,8 @@ actuallyReacted=lab.advanceLabSimulation(actuallyReacted,1000);
 actuallyReacted=lab.advanceLabSimulation(actuallyReacted,6000);
 assert.equal(actuallyReacted.vessels[0].reactionAmounts?.complete,true);
 let unknown=lab.putLabReagent(actuallyReacted,"v1","HCl");
-assert.equal(lab.labObservation(unknown.vessels[0]).status,"reaction",
- "Reviewed completed products remain recognised after additional reagent dosing");
+assert.equal(lab.labObservation(unknown.vessels[0]).status,"unknown",
+ "A new unsupported mixture is uncertain even though prior measured products remain");
 assert.equal(unknown.vessels[0].completedReaction?.observation,"precipitate",
  "Existing precipitate must stay visually represented even when later chemistry is unknown");
 let heated=detailedBench();
