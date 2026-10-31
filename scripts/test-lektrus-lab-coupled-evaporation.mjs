@@ -351,3 +351,57 @@ assert.match(layoutSource,/aria-label="Часы времени опыта"/);
 assert.match(layoutSource,/setLabExperimentClock\(bench/);
 assert.match(clockStyles,/\.lektrus-lab-experiment-clock\{/);
 console.log("Shared stopwatch, ×5/×10 elapsed time, latent fusion and cooled sodium: OK");
+
+
+// A global freeze really halts EVERY solver, not just the display timer.
+const heatBefore=lab.setLabBenchSettings(acceleratedSeed,{timeScale:10});
+const pausedAll=lab.setLabSimulationPaused(heatBefore,true,5000);
+assert.equal(pausedAll.simulationPaused,true);
+assert.equal(lab.labSimulationTickWaitMs(pausedAll,6000),null);
+assert.strictEqual(lab.advanceLabSimulation(pausedAll,105000),pausedAll,
+ "No evaporation, heating, reaction or gas may tick during preparation");
+const continueAll=lab.setLabSimulationPaused(pausedAll,false,105000);
+assert.equal(continueAll.simulationAtMs,105000,
+ "Resuming rebases the clock, not 100 s of accumulated fictitious physics");
+const resumedHeat=lab.advanceLabSimulation(continueAll,106000);
+assert.ok(resumedHeat.vessels[0].doses.H2O.value<40);
+const timed=lab.setLabExperimentClock(lab.defaultLabBench(),"start",1000);
+const timedPause=lab.setLabSimulationPaused(timed,true,5000);
+close(lab.labExperimentClockSeconds(timedPause,100000),4);
+const timedResume=lab.setLabSimulationPaused(timedPause,false,100000);
+close(lab.labExperimentClockSeconds(timedResume,102000),6);
+console.log("Global pause stops thermal calculations and stopwatch without catch-up: OK");
+
+// Educational gas collection: reaction -> gas receiver -> another vessel.
+// Source loses gas only once and the product never appears out of thin air.
+let gasBench=lab.defaultLabBench();
+gasBench=lab.addLabVessel(gasBench,"flask");
+gasBench=lab.setLabSimulationPaused(gasBench,true,1000);
+gasBench=lab.putLabReagent(gasBench,"v1","NaHCO3",{unit:"g",value:5});
+gasBench=lab.putLabReagent(gasBench,"v1","HCl",{unit:"ml",value:20,concentrationM:.1});
+gasBench=lab.setLabGasCollection(gasBench,"v1","v2");
+assert.equal(gasBench.vessels.find(v=>v.id==="v1").gasCollectionTargetId,"v2");
+assert.equal(lab.advanceLabSimulation(gasBench,10000),gasBench,
+ "Preparing gas glassware under pause cannot release the gas");
+gasBench=lab.setLabSimulationPaused(gasBench,false,10000);
+for(let i=1;i<=30;i++)gasBench=lab.advanceLabSimulation(gasBench,10000+i*1000);
+const receiver=gasBench.vessels.find(v=>v.id==="v2");
+const producer=gasBench.vessels.find(v=>v.id==="v1");
+assert.ok((receiver.doses?.CO2?.value??0)>3,
+ "Measured CO2 from a reviewed reaction must enter its selected receiver");
+assert.ok((producer.gasCollectedMol?.CO2??0)>0);
+const beforeTransfer=receiver.doses.CO2.value;
+gasBench=lab.addLabVessel(gasBench,"flask");
+gasBench=lab.transferLabGasSample(gasBench,"v2","v3",10);
+assert.ok((gasBench.vessels.find(v=>v.id==="v3").doses?.CO2?.value??0)>0);
+const donorAfter=gasBench.vessels.find(v=>v.id==="v2").doses.CO2.value;
+close(beforeTransfer-donorAfter,gasBench.vessels.find(v=>v.id==="v3").doses.CO2.value,1e-6);
+const recheck=lab.advanceLabSimulation(gasBench,42000);
+assert.ok((recheck.vessels.find(v=>v.id==="v2").doses?.CO2?.value??0)<=
+ gasBench.vessels.find(v=>v.id==="v2").doses.CO2.value+1,
+ "Gas that already entered a vessel must never be collected twice");
+const gasUI=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
+assert.match(gasUI,/Пауза процессов/);
+assert.match(gasUI,/Газоотвод/);
+assert.match(gasUI,/Перенести до 20 мл/);
+console.log("Measured gas collection, reuse and slow gas release: OK");
