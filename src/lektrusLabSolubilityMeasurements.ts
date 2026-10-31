@@ -98,3 +98,22 @@ export function labExactMeasuredSolubility(
   item=>item.formula===formula&&item.temperatureC===temperatureC);
  return row?labMeasuredSolubilityGPer100gWater(row):undefined;
 }
+
+/** Nearest *actual* literature measurement for the inspector. The returned
+ * temperature is the published one, never relabelled as the target.
+ * An unmeasured temperature never gets a made-up reference point. */
+export function labNearestMeasuredSolubilityReference(
+ formula:string,temperatureC:number):{
+  temperatureC:number;gPer100gWater:number;sourceUrl:string
+ }|undefined{
+ if(!Number.isFinite(temperatureC))return;
+ const row=LAB_MEASURED_PURE_WATER_SOLUBILITIES
+  .filter(r=>r.formula===formula)
+  .sort((a,b)=>Math.abs(a.temperatureC-temperatureC)-
+   Math.abs(b.temperatureC-temperatureC)||a.temperatureC-b.temperatureC)[0];
+ if(!row)return;
+ const gPer100gWater=labMeasuredSolubilityGPer100gWater(row);
+ return gPer100gWater===undefined?undefined:{
+  temperatureC:row.temperatureC,gPer100gWater,sourceUrl:row.sourceUrl
+ };
+}
