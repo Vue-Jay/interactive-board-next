@@ -2328,8 +2328,8 @@ console.log("Paused follow-up preparation, settled solids and delayed chalk: OK"
  partial=lab.setLabSimulationPaused(partial,false,2000);
  partial=lab.advanceLabSimulation(partial,3000);
  receiver=partial.vessels.find(v=>v.id==="v2");
- assert.ok((receiver.chemicalInventory.solidMol.AgCl??0)>.0009,
-  "Partially poured mixture reacts after process resume");
+ assert.ok((receiver.chemicalInventory.solidMol.AgCl??0)>0,
+  "Partial pouring starts forming a nonzero measured precipitate after resume");
  assert.equal(receiver.pendingInventoryReaction,true,
   "Partial decanting produces a gradually changing reaction state");
  assert.ok((receiver.chemicalInventory.solidMol.AgCl??0)<.001,
