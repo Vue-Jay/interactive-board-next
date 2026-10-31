@@ -612,7 +612,7 @@ console.log("41 hydrate forms with 147 source-specific measured temperatures; no
 
 
 const crystalHydrates=hydrates.LAB_HYDRATE_CRYSTAL_DENSITIES;
-assert.equal(crystalHydrates.length,10);
+assert.equal(crystalHydrates.length,11);
 for(const [hydrateFormula,baseFormula,density] of [
  ["CuSO4·5H2O","CuSO4",2.29],
  ["Na2CO3·10H2O","Na2CO3",1.46],
@@ -623,7 +623,8 @@ for(const [hydrateFormula,baseFormula,density] of [
  ["BaCl2·2H2O","BaCl2",3.86],
  ["MnSO4·H2O","MnSO4",2.95],
  ["Zn(NO3)2·6H2O","Zn(NO3)2",2.065],
- ["CoCl2·6H2O","CoCl2",1.924]
+ ["CoCl2·6H2O","CoCl2",1.924],
+ ["Zn(CH3COO)2·2H2O","Zn(CH3COO)2",1.735]
 ]){
  const item=crystalHydrates.find(x=>x.hydrateFormula===hydrateFormula);
  assert.equal(item?.baseFormula,baseFormula);
@@ -634,7 +635,21 @@ for(const [hydrateFormula,baseFormula,density] of [
  assert.notEqual(physicalDensity.labCrystalDensityGml(baseFormula),density,
   "A crystal hydrate may NOT overwrite true density of the anhydrous salt");
 }
-console.log("Ten true hydrate crystal density records remain distinct from pure anhydrous solids");
+// Correct two historical PHASE MISASSIGNMENTS in the dry density data.
+// The true 1.735 g/cm3 zinc acetate value is from the DIHYDRATE, while
+// GESTIS reports 1.84 g/cm3 for pure anhydrous Zn(CH3COO)2.
+// LiOH ICSC 0913: pure anhydrous LiOH 2.54, its MONOHYDRATE 1.51.
+approximately(physicalDensity.labCrystalDensityGml("Zn(CH3COO)2"),1.84,1e-12);
+approximately(physicalDensity.labCrystalDensityGml("LiOH"),2.54,1e-12);
+assert.equal(registryProps.labSubstanceProperties("Zn(CH3COO)2")
+ .crystalDensityGPerMl,1.84);
+assert.equal(registryProps.labSubstanceProperties("LiOH")
+ .crystalDensityGPerMl,2.54);
+assert.ok(crystalHydrates.some(r=>r.hydrateFormula==="Zn(CH3COO)2·2H2O"&&
+ r.densityGPerMl===1.735),"Zinc acetate dihydrate density lost");
+assert.ok(!crystalHydrates.some(r=>r.hydrateFormula==="Zn(CH3COO)2"||
+ r.hydrateFormula==="LiOH"),"Pure crystalline solids must not be hydrate rows");
+console.log("Eleven hydrate densities and two corrected anhydrous crystal densities: PASS");
 
 
 // Added second batch: identities that change their hydration phases as the
