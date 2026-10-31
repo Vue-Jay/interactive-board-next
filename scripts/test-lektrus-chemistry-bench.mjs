@@ -2040,6 +2040,9 @@ assert.throws(()=>parseLab(badBurner),/Повреждено состояние �
  "Implausible temperatures must still be rejected");
 const badVessel=structuredClone(persistedLab);
 badVessel.vessels[2].temperatureC=1400;
+assert.doesNotThrow(()=>parseLab(badVessel),
+ "High virtual heating above the previous vessel cap is valid");
+badVessel.vessels[2].temperatureC=2000;
 assert.throws(()=>parseLab(badVessel),/Повреждено состояние химического стола/);
 const safeThermo=structuredClone(persistedLab);
 safeThermo.vessels[2].meltFraction=.5;
