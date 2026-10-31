@@ -91,6 +91,6 @@ const faster=lab.advanceLabSimulation(smaller,11000);
 assert.ok(faster.vessels[0].temperatureC>warmC,
  "Full laboratory simulation also respects the smaller liquid's heat capacity");
 const source=fs.readFileSync("src/lektrusChemistryBenchModel.ts","utf8");
-assert.match(source,/v\.filteredSolution\?\.volumeMl\?\?0\);/,
+assert.match(source,/v\.filteredSolution\?\.volumeMl\?\?0\):undefined;/,
  "The shared simulation calls calorimetry with current filtered carrier volume");
 console.log("Filtrate heat capacity, gradual heating, Raoult concentration and boiling cache: OK");
