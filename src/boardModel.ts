@@ -908,7 +908,8 @@ export function parseDocument(raw: string): DocumentData {
           (settings.pourMode==null||["fast","gradual"].includes(settings.pourMode))&&
           (settings.showTemperatures==null||typeof settings.showTemperatures==="boolean")&&
           (settings.evaporationEnabled==null||typeof settings.evaporationEnabled==="boolean")&&
-          (settings.timeScale==null||[1,2,5,10].includes(settings.timeScale)));
+          (settings.timeScale==null||[1,2,5,10].includes(settings.timeScale))&&
+          (settings.realism==null||["low","medium","high"].includes(settings.realism)));
         const validDose=(entry:unknown)=>!!entry&&typeof entry==="object"&&
           Number.isFinite((entry as {value:number}).value)&&
           (entry as {value:number}).value>0&&(entry as {value:number}).value<=10000&&
