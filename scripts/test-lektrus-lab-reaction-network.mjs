@@ -487,7 +487,7 @@ for(const [id,cp] of Object.entries(bulkHeatCapacities)){
  }),heatProps.LAB_VESSEL_GLASS_EQUIVALENT_G.beaker*.84+5*cp,1e-8);
  assert.ok(heatProps.labKnownHeatCapacityJPerK("beaker",{
   H2O:{unit:"ml",value:5},[id]:{unit:"g",value:5}
- }),undefined,"Mixing with water needs solution heat capacity: "+id);
+ })>65*.84,"School mixture estimate covers water and solid "+id);
 }
 for(const [id,d] of Object.entries({FeO:6,CuS:4.76,Na2O:2.27,NiSO4:4.01})){
  approximately(physicalDensity.labCrystalDensityGml(id),d,1e-12);
@@ -749,9 +749,9 @@ for(const [formula,cp] of Object.entries(curatedRoomHeat)){
  });
  approximately(known,65*.84+5*cp,2e-5);
  // A dry salt's heat capacity is not that of its aqueous solution.
- assert.equal(heatProps.labKnownHeatCapacityJPerK("beaker",{
+ assert.ok(heatProps.labKnownHeatCapacityJPerK("beaker",{
   [formula]:{unit:"g",value:5},H2O:{unit:"ml",value:5}
- }),undefined,"Cp must not be incorrectly transferred to a solution "+formula);
+ })>known,"Classroom mixture adds heat capacity while pure solid Cp stays sourced: "+formula);
  assert.ok(registryProps.labSubstanceProperties(formula).specificHeatJPerGK>0);
 }
 const additionalDryDensities={
