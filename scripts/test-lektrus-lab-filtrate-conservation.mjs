@@ -465,8 +465,7 @@ console.log("Sequential hydroxide titration: quarter, half, full, excess acid an
 // Carbonate + acetic acid is stoichiometric at the school level; dissolved
 // CO2 and weak acid equilibria beyond the reviewed equation are not claimed.
 for(const [carbonateSalt,carbonateName,acetate] of [
- ["CaCl2","CaCO3","Ca(CH3COO)2"],
- ["MgCl2","MgCO3","Mg(CH3COO)2"]
+ ["CaCl2","CaCO3","Ca(CH3COO)2"]
 ]){
  let state=lab.defaultLabBench();
  state=addSolution(state,carbonateSalt,10);
@@ -489,3 +488,20 @@ for(const [carbonateSalt,carbonateName,acetate] of [
   mass+.002*stoich.labMolarMass("CH3COOH"),2e-6);
 }
 console.log("Acetic acid on previously formed carbonates: balanced gas and acetate PASS");
+
+/** Magnesium carbonate is explicitly placed as a weighed solid here;
+ * no unsupported aqueous MgCO3 precipitation is invented. */
+let magnesium=lab.defaultLabBench();
+const magnesiumMass=.001*stoich.labMolarMass("MgCO3");
+magnesium=lab.putLabReagent(magnesium,"v1","MgCO3",
+ {unit:"g",value:magnesiumMass});
+const magnesiumStart=chemistry.simulateLabInventory(magnesium.vessels[0]);
+assert.ok((magnesiumStart.solidMol.MgCO3??0)>.00099);
+magnesium=addSolution(magnesium,"CH3COOH",20);
+const magnesiumEnd=chemistry.simulateLabInventory(magnesium.vessels[0]);
+assert.ok((magnesiumEnd.solidMol.MgCO3??0)<1e-6);
+assert.ok((magnesiumEnd.speciesMol["Mg(CH3COO)2"]??0)>.00099);
+assert.ok((magnesiumEnd.releasedGasMol.CO2??0)>.00099);
+approx(chemistry.labInventoryMassG(magnesiumEnd),
+ chemistry.labInventoryMassG(magnesiumStart)+.002*stoich.labMolarMass("CH3COOH"),2e-6);
+console.log("Weighed MgCO3 plus measured acetic acid: stoichiometric CO2 PASS");
