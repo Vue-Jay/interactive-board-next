@@ -72,8 +72,11 @@ const notBinary=reaction.simulateLabInventory({
  reagents:["NaCl","H2O","KNO3"],environment:"aqueous",temperatureC:25,
  doses:{NaCl:g(1),H2O:ml(.5),KNO3:g(.1)}
 });
-assert.equal(notBinary.solidMol.NaCl??0,0,
- "A single-salt solubility curve must never be applied to mixed salts");
+assert.ok((notBinary.solidMol.NaCl??0)>0,
+ "In mixed weighed salts, an explicit school estimate conserves the shared solvent");
+assert.ok((notBinary.solidMol.KNO3??0)>0,
+ "Both dry salts independently approach classroom saturation");
+
 const stock=reaction.simulateLabInventory({
  reagents:["NaCl"],environment:"aqueous",temperatureC:25,
  doses:{NaCl:{value:10,unit:"ml",concentrationM:.1}}
