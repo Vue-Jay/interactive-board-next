@@ -228,7 +228,7 @@ for(const realism of ["low","medium","high"]){
  const before=source.vessels[0].doses.H2O.value;
  const after=lab.advanceLabSimulation(source,11000).vessels[0];
  assert.ok(after.temperatureC>=98&&after.temperatureC<=100.5,
-  realism+": at boiling the thermometer must remain near the phase plateau");
+  realism+": boiling thermometer "+after.temperatureC+" °C must stay near the phase plateau");
  assert.ok(after.doses.H2O.value<before,
   realism+": boiling must actually release some water, not only show bubbles");
  close(after.doses.H2O.value+(after.ventedVaporMl?.H2O??0),before,1e-5);
