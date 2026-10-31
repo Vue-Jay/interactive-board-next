@@ -226,6 +226,14 @@ export function labIdealBoilingC(v:LabEvaporationState):number|undefined{
  return solved;
 }
 const bubbleCache=new Map<string,number|undefined>();
+/** Shared boil criterion for mass loss and visual bubbling.
+ * Use a measured equilibrium bubble point; never assign an arbitrary
+ * boiling temperature to an unverified stock solution. */
+export function labIsBoiling(v:LabEvaporationState,temperatureC:number):boolean{
+ if(v.stoppered||!Number.isFinite(temperatureC)||!components(v,temperatureC).length)return false;
+ const bubblePoint=labIdealBoilingC(v);
+ return bubblePoint!==undefined&&temperatureC>=bubblePoint-.2;
+}
 /** Evaporation raises with saturation pressure, exposed surface and heating.
  * A stopper gives a saturated closed headspace: no material leaves. Pressure
  * beyond 160 kPa absolute pops a simulated cork (not pressure-rated).
@@ -273,7 +281,10 @@ export function labEvaporate(v:LabEvaporationState,seconds:number,
   pressureKPa:totalPressureKPa,reactionGasPressureKPa,evaporatedMl:0,
   latentEnergyJ:0
  };
- const boiling=(vaporPressureKPa??0)>=101.325;
+ // The liquid plateau is rounded to tenths of a degree by the classroom
+ // thermometer. Use that same reviewed bubble point for vaporization, rather
+ // than requiring a numerically exact pressure of 101.325 kPa on every tick.
+ const boiling=labIsBoiling(v,temperatureC);
  const doses={...v.doses},vented={...v.ventedVaporMl};
  let filteredSolution=v.filteredSolution;
  let evaporatedMl=0;

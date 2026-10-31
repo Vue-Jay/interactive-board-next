@@ -4776,6 +4776,18 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
         return;
       }
       if ((e.code === "Delete" || e.code === "Backspace") && selected.length) {
+        // The lab contains separately editable vessels and apparatus. A
+        // keyboard Delete must never erase the entire laboratory because
+        // the board-level wrapper is selected. The lab surface handles its
+        // own selected part; deleting the whole lab remains an explicit
+        // action in the outer object toolbar.
+        const containsLab=itemsRef.current.some(item=>selected.includes(item.id)&&
+          item.graphFigureId==="chem-experiment-free"&&!!item.scienceLabBench);
+        if(containsLab){
+          e.preventDefault();e.stopPropagation();
+          setNotice("Удаляйте выбранный сосуд или прибор. Всю лабораторию можно удалить через меню объекта.");
+          return;
+        }
         e.preventDefault();
         deleteSelected();
         return;

@@ -86,19 +86,26 @@ const lab=load("src/lektrusChemistryBenchModel.ts",key=>{
  if(key==="./lektrusLabMaterialConstants")return constants;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
+// Detailed legacy physics assertions explicitly opt into high realism.
+const detailedBench=()=>{
+ const bench=lab.defaultLabBench();
+ return {...bench,settings:{...bench.settings,realism:"high"}};
+};
+assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low",
+ "New chemistry laboratories start in simple classroom mode");
 {
 const kits=load("src/lektrusLabExperimentKits.ts",key=>{
  if(key==="./lektrusLabCatalog")return catalog;
  if(key==="./lektrusChemistryBenchModel")return lab;
  assert.equal(key,"./lektrusReactionDatabase");return reaction;
 });
-assert.equal(lab.labBenchSettings(lab.defaultLabBench()).pourMode,"gradual",
+assert.equal(lab.labBenchSettings(detailedBench()).pourMode,"gradual",
  "Existing classroom boards retain gradual pouring by default");
-const fastSetting=lab.setLabBenchSettings(lab.defaultLabBench(),{pourMode:"fast"});
+const fastSetting=lab.setLabBenchSettings(detailedBench(),{pourMode:"fast"});
 assert.equal(lab.labBenchSettings(fastSetting).pourMode,"fast");
 assert.equal(lab.labBenchSettings(lab.setLabBenchSettings(fastSetting,{pourMode:"gradual"})).pourMode,
  "gradual","Both pouring speeds can be selected and saved");
-const pourSource=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl",
+const pourSource=lab.putLabReagent(detailedBench(),"v1","NaCl",
  {value:10,unit:"ml",concentrationM:.1});
 const pourPair=lab.addLabVessel(pourSource,"beaker");
 const rapid=lab.fastLabPour(pourPair,"v1","v2");
@@ -120,7 +127,7 @@ const precipitation=reaction.reviewedReactionCases.find(row=>
  row.environment==="aqueous"&&row.status==="reaction"&&
  row.reactants.includes("NaCl")&&row.reactants.includes("AgNO3"));
 assert.ok(precipitation);
-const kitBench=kits.prepareLabExperimentKit(lab.defaultLabBench(),precipitation);
+const kitBench=kits.prepareLabExperimentKit(detailedBench(),precipitation);
 assert.deepEqual(kitBench.vessels.flatMap(v=>v.reagents),precipitation.reactants);
 assert.equal(kitBench.vessels.length,precipitation.reactants.length,
  "Prepared experiments use only the vessels required by their reagents");
@@ -171,7 +178,7 @@ assert.match(styleText,/\.lektrus-lab-pour-mode/);
  * A sample that was already a gas before sealing is not newly generated
  * reaction gas, and overlapping stands cannot borrow another flask's flame. */
 {
- let stockGas=lab.addLabVessel(lab.defaultLabBench(),"flask");
+ let stockGas=lab.addLabVessel(detailedBench(),"flask");
  const vesselId=stockGas.selectedId;
  stockGas=lab.putLabReagent(stockGas,vesselId,"H2",{value:10,unit:"ml"});
  assert.ok(stockGas.vessels.find(v=>v.id===vesselId)?.reagents.includes("H2"));
@@ -192,7 +199,7 @@ assert.match(styleText,/\.lektrus-lab-pour-mode/);
  assert.ok(lab.labHeadspaceGasMoles(resealed.vessels.find(v=>v.id===vesselId))<1e-12);
 }
 {
- let isolated=lab.addLabVessel(lab.defaultLabBench(),"beaker");
+ let isolated=lab.addLabVessel(detailedBench(),"beaker");
  // A burner secured to v1 overlaps a different retort stand holding v2.
  // Nearby screen coordinates alone do not authorize heat transfer.
  isolated={...isolated,simulationAtMs:1000,placedDevices:[
@@ -220,12 +227,12 @@ assert.match(styleText,/\.lektrus-lab-pour-mode/);
 }
 console.log("Gas stock sealing baseline and exclusively mounted heater interactions: OK");
 
-let bench=lab.defaultLabBench();
+let bench=detailedBench();
 assert.equal(bench.vessels.length,1,"New lab starts with a single empty beaker");
 assert.equal(bench.selectedId,"v1");
 
 /** A quiet tabletop does no background work, but titration remains fast. */
-const idleClock=lab.defaultLabBench();
+const idleClock=detailedBench();
 assert.equal(lab.labSimulationTickWaitMs(idleClock,11000),null);
 const waterClock=lab.putLabReagent(idleClock,"v1","H2O",{value:10,unit:"ml"});
 const ambientClock={...waterClock,simulationAtMs:1000};
@@ -277,30 +284,30 @@ assert.equal(lab.labObservation(unknown.vessels[0]).status,"reaction",
  "Reviewed first-stage products remain recognised after additional reagent dosing");
 assert.equal(unknown.vessels[0].completedReaction?.observation,"precipitate",
  "Existing precipitate must stay visually represented even when later chemistry is unknown");
-let heated=lab.defaultLabBench();
+let heated=detailedBench();
 heated=lab.putLabReagent(heated,"v1","CaCO3");
 assert.equal(lab.labObservation(heated.vessels[0]).status,"unknown");
 heated=lab.setLabEnvironment(heated,"v1","heated");
 assert.equal(lab.labObservation(heated.vessels[0]).status,"reaction",
  "Heating single validated reactant initiates decomposition");
 assert.equal(lab.labObservation(heated.vessels[0]).caseData.observation,"gas");
-let noReaction=lab.defaultLabBench();
+let noReaction=detailedBench();
 noReaction=lab.putLabReagent(noReaction,"v1","NaCl");
 noReaction=lab.putLabReagent(noReaction,"v1","KNO3");
 assert.equal(lab.labObservation(noReaction.vessels[0]).status,"none");
-let gas=lab.defaultLabBench();
+let gas=detailedBench();
 gas=lab.putLabReagent(gas,"v1","NaHCO3");
 gas=lab.putLabReagent(gas,"v1","HCl");
 assert.equal(lab.labObservation(gas.vessels[0]).caseData.observation,"gas");
 const invalidPour=lab.pourLabVessel(gas,"v1","v1");
 assert.deepEqual(invalidPour,gas,"Cannot pour into the same container");
-let full=lab.defaultLabBench();
+let full=detailedBench();
 for(let i=0;i<9;i++)full=lab.addLabVessel(full,"flask");
 assert.equal(full.vessels.length,lab.MAX_BENCH_VESSELS,"Glassware is bounded");
 assert.equal(new Set(full.vessels.map(v=>v.id)).size,full.vessels.length);
 full=lab.positionLabVessel(full,"v1",-500,500);
 assert.equal(full.vessels[0].x,10);assert.equal(full.vessels[0].y,90);
-let indicatorBench=lab.defaultLabBench();
+let indicatorBench=detailedBench();
 assert.equal(lab.setLabIndicator(indicatorBench,"v1","litmus"),indicatorBench,
  "Indicators cannot be inserted into empty glassware");
 indicatorBench=lab.putLabReagent(indicatorBench,"v1","HCl",{value:10,unit:"ml",concentrationM:.1});
@@ -313,10 +320,10 @@ indicatorBench=lab.putLabReagent(indicatorBench,"v1","NaOH",{value:10,unit:"ml",
 indicatorBench=lab.setLabIndicator(indicatorBench,"v1","phenolphthalein");
 assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).medium,"base");
 assert.equal(lab.labIndicatorResult(indicatorBench.vessels[0]).color,"#d83a96");
-let neutral=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O");
+let neutral=lab.putLabReagent(detailedBench(),"v1","H2O");
 neutral=lab.setLabIndicator(neutral,"v1","universal");
 assert.equal(lab.labIndicatorResult(neutral.vessels[0]).medium,"neutral");
-let salt=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl");
+let salt=lab.putLabReagent(detailedBench(),"v1","NaCl");
 salt=lab.setLabIndicator(salt,"v1","universal");
 assert.equal(lab.labIndicatorResult(salt.vessels[0]).medium,"neutral",
  "Measured 0.1 M NaCl is a neutral reference solution");
@@ -329,7 +336,7 @@ mixed=lab.putLabReagent(mixed,mixed.selectedId,"HCl");
 mixed=lab.pourLabVessel(mixed,mixed.selectedId,"v1");
 assert.equal(lab.labIndicatorResult(mixed.vessels[0]).medium,"neutral",
  "Neutralisation of known 0.1 M stocks gives a calculable equilibrium pH");
-let precip=lab.defaultLabBench();
+let precip=detailedBench();
 precip=lab.putLabReagent(precip,"v1","NaCl",{value:12,unit:"ml"});
 precip=lab.addLabVessel(precip,"tube");
 precip=lab.putLabReagent(precip,"v2","AgNO3",{value:7,unit:"ml"});
@@ -364,7 +371,7 @@ assert.match(shelfUi,/const returnGlass=\(id:string\)=>\{/);
 assert.match(shelfUi,/setVesselMenuId\(null\);setCompositionId\(null\);setActiveDeviceId\(null\);/,
  "Returning glassware must close quantity panels and device focus");
 assert.equal(lab.removeLabVessel(decanted,"v3"),decanted,"A filled flask cannot be stored before draining");
-const settings=lab.setLabBenchSettings(lab.defaultLabBench(),{showEquationBoard:true,animateEffects:false});
+const settings=lab.setLabBenchSettings(detailedBench(),{showEquationBoard:true,animateEffects:false});
 assert.equal(lab.labBenchSettings(settings).showEquationBoard,true);
 assert.equal(lab.labBenchSettings(settings).animateEffects,false);
 const palette=load("src/lektrusLabAppearance.ts",key=>{
@@ -377,7 +384,7 @@ assert.equal(palette.reagentAppearance("CuO").phase,"solid");
 for(const substance of reaction.substances)
  assert.ok(palette.reagentAppearance(substance.id).color,
   "Every catalogued reagent must have a representative appearance");
-let devices=lab.defaultLabBench();
+let devices=detailedBench();
 for(const device of lab.labDevices)devices=lab.toggleLabDevice(devices,device.id);
 assert.equal(devices.devices.length,6,"The lab provides six physical instruments including cooling bath, without thermometer");
 devices=lab.putLabReagent(devices,"v1","CaCO3");
@@ -394,7 +401,7 @@ devices=lab.useLabDevice(devices,"stirrer","v1");
 devices=lab.toggleLabDevice(devices,"stirrer");
 assert.equal(devices.stirringVesselId,undefined,"Storing the mixer must stop stirring");
 assert.equal(devices.devices.includes("stirrer"),false,"Devices can be returned to storage");
-let extra=lab.defaultLabBench();
+let extra=detailedBench();
 for(const kind of lab.labGlassware.filter(v=>v.id!=="beaker").slice(0,5)){
  extra=lab.addLabVessel(extra,kind.id);
 }
@@ -402,7 +409,7 @@ assert.equal(extra.vessels.length,lab.MAX_BENCH_VESSELS);
 assert.ok(lab.labGlassware.some(v=>v.id==="burette"));
 assert.ok(lab.labGlassware.some(v=>v.id==="pipette"));
 assert.ok(lab.labGlassware.some(v=>v.id==="conical"));
-let titrationBench=lab.defaultLabBench();
+let titrationBench=detailedBench();
 titrationBench=lab.setLabTitration(titrationBench,titration.defaultTitration());
 assert.equal(titration.titrationReading(titrationBench.titration).pH,1);
 titrationBench=lab.dripLabTitration(titrationBench,24);
@@ -451,7 +458,7 @@ assert.match(read("src/lektrusChemistryBench.css"),/white-space:normal!important
  "Long glassware names should wrap naturally instead of ellipsizing");
 const labLayout=load("src/lektrusLabLayout.ts");
 for(const count of [1,2,3,4,5,6]){
- let arranged=lab.defaultLabBench();
+ let arranged=detailedBench();
  for(let i=1;i<count;i++)arranged=lab.addLabVessel(arranged,"tube");
  arranged=lab.arrangeLabVessels(arranged);
  assert.equal(arranged.vessels.length,count);
@@ -501,7 +508,7 @@ const redesignedCss=read("src/lektrusChemistryBench.css");
 assert.match(redesignedCss,/lektrus-lab-reagent-furniture[\s\S]*?lektrus-lab-glass-cupboard/);
 assert.match(redesignedCss,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 assert.match(redesignedCss,/lektrus-lab-worktop-zone/);
-let realBench=lab.defaultLabBench();
+let realBench=detailedBench();
 realBench=lab.putLabReagent(realBench,"v1","HCl",
  {value:25,unit:"ml",concentrationM:.1});
 realBench=lab.addLabVessel(realBench,"burette");
@@ -533,7 +540,7 @@ for(const kind of lab.labGlassware)assert.match(icons,new RegExp("^\\s*"+kind.id
 assert.match(read("src/lektrusSciencePresets.ts"),/width:1660,height:1060/,
  "New chemistry benches must have sufficient tabletop space");
 // Physical device inventory, duplicate tools, positions and cleanup.
-let equipment=lab.defaultLabBench();
+let equipment=detailedBench();
 equipment=lab.addPlacedLabDevice(equipment,"hotplate");
 equipment=lab.addPlacedLabDevice(equipment,"stirrer");
 equipment=lab.addPlacedLabDevice(equipment,"hotplate");
@@ -567,7 +574,7 @@ assert.equal(equipment.devices.includes("hotplate"),true,
  "Storing a plate must not remove its second copy");
 equipment=lab.returnPlacedLabDevice(equipment,lab.placedLabDevices(equipment).find(d=>d.kind==="hotplate").id);
 assert.equal(equipment.devices.includes("hotplate"),false);
-let thermostat=lab.addPlacedLabDevice(lab.defaultLabBench(),"hotplate");
+let thermostat=lab.addPlacedLabDevice(detailedBench(),"hotplate");
 const thermostatId=lab.placedLabDevices(thermostat)[0].id;
 thermostat=lab.setLabHotplateTemperature(thermostat,thermostatId,185);
 assert.equal(lab.placedLabDevices(thermostat)[0].targetTemperatureC,185);
@@ -575,7 +582,7 @@ assert.equal(lab.setLabHotplateTemperature(thermostat,thermostatId,900).placedDe
 thermostat=lab.setPlacedDevicePower(thermostat,thermostatId,true);
 thermostat=lab.movePlacedLabDevice(thermostat,thermostatId,50,66);
 assert.equal(thermostat.placedDevices[0].powered,true,"Moving a heater must preserve its power");
-let adjustable=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod");
+let adjustable=lab.addPlacedLabDevice(detailedBench(),"tripod");
 const standForShelf=lab.placedLabDevices(adjustable)[0].id;
 adjustable=lab.setLabStandHeight(adjustable,standForShelf,.8);
 assert.equal(adjustable.placedDevices[0].standHeight,.8);
@@ -612,7 +619,7 @@ assert.equal(dualHolder[0].shelfVesselId,undefined,
  "Old two-holder stands must normalize to a single retort clamp");
 // Independently placed heater and mixer can occupy the tabletop directly
 // under ONE suspended vessel without overwriting its stand attachment.
-let suspended=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod",{x:40,y:68});
+let suspended=lab.addPlacedLabDevice(detailedBench(),"tripod",{x:40,y:68});
 const suspendedStand=lab.placedLabDevices(suspended)[0].id;
 suspended=lab.setLabStandHeight(suspended,suspendedStand,.25);
 suspended=lab.applyPlacedLabDevice(suspended,suspendedStand,"v1");
@@ -646,7 +653,7 @@ assert.equal(suspended.pouring.targetId,lowerReceiver);
 suspended=lab.advanceLabPour(suspended);
 assert.ok(suspended.vessels.find(v=>v.id===lowerReceiver).doses.H2O.value>0,
  "Tipping suspended glassware transfers measured liquid in aliquots");
-let suspendedBurette=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod",{x:40,y:68});
+let suspendedBurette=lab.addPlacedLabDevice(detailedBench(),"tripod",{x:40,y:68});
 const buretteStand=lab.placedLabDevices(suspendedBurette)[0].id;
 suspendedBurette=lab.addLabVessel(suspendedBurette,"burette");
 const upperBurette=suspendedBurette.vessels.find(v=>v.kind==="burette").id;
@@ -662,17 +669,17 @@ suspendedBurette=lab.advanceLabSimulation(suspendedBurette,5000);
 assert.ok((suspendedBurette.vessels.find(v=>v.id==="v1").doses?.HCl?.value??0)>0,
  "The lower vessel accumulates burette drops through live simulation");
 
-const migrated=lab.placedLabDevices({...lab.defaultLabBench(),devices:["burner","stirrer"]});
+const migrated=lab.placedLabDevices({...detailedBench(),devices:["burner","stirrer"]});
 assert.equal(migrated.length,2,"Previously saved laboratory devices must remain visible");
 assert.notEqual(migrated[0].id,migrated[1].id);
-const beforeConcurrent=lab.defaultLabBench();
+const beforeConcurrent=detailedBench();
 const peerPlate=lab.addPlacedLabDevice(beforeConcurrent,"hotplate");
 const peerMixer=lab.addPlacedLabDevice(beforeConcurrent,"stirrer");
 const joined=lab.mergeLabBench(beforeConcurrent,peerPlate,peerMixer);
 assert.equal(lab.placedLabDevices(joined).length,2,
  "Concurrent peers putting different devices on one table must both survive");
 assert.equal(new Set(lab.placedLabDevices(joined).map(d=>d.id)).size,2);
-let decant=lab.defaultLabBench();
+let decant=detailedBench();
 decant=lab.putLabReagent(decant,"v1","HCl",
  {value:10,unit:"ml",concentrationM:.1});
 decant=lab.addLabVessel(decant,"beaker");
@@ -711,7 +718,7 @@ assert.equal(lab.canMountLabVessel("tripod","crucible"),true);
 assert.equal(lab.canMountLabVessel("burner","dish"),true);
 for(const device of lab.labDevices)
  assert.equal(lab.canMountLabVessel(device.id,"cylinder"),false);
-let combinedSupport=lab.defaultLabBench();
+let combinedSupport=detailedBench();
 combinedSupport=lab.addPlacedLabDevice(combinedSupport,"tripod");
 combinedSupport=lab.addPlacedLabDevice(combinedSupport,"burner");
 const standId=lab.placedLabDevices(combinedSupport).find(d=>d.kind==="tripod").id;
@@ -734,7 +741,7 @@ assert.equal(lab.placedLabDevices(combinedSupport)
 assert.equal(lab.placedLabDevices(combinedSupport)
  .find(d=>d.id===flameId).powered,true,
  "Removing glassware does not magically extinguish a burner");
-let freeMixer=lab.addPlacedLabDevice(lab.defaultLabBench(),"stirrer");
+let freeMixer=lab.addPlacedLabDevice(detailedBench(),"stirrer");
 const freeMixerId=lab.placedLabDevices(freeMixer)[0].id;
 freeMixer=lab.setPlacedDevicePower(freeMixer,freeMixerId,true);
 assert.equal(lab.placedLabDevices(freeMixer)[0].powered,true,
@@ -744,7 +751,7 @@ assert.match(read("src/lektrusChemistryBench.css"),
  /\.lektrus-lab-placed-device\.is-selected>\.lektrus-lab-device-icon/,
  "Selection must outline the apparatus silhouette, not a rectangular tile");
 
-let valve=lab.defaultLabBench();
+let valve=detailedBench();
 valve=lab.addLabVessel(valve,"burette");
 const valveSource=valve.vessels.find(v=>v.kind==="burette");
 valve=lab.putLabReagent(valve,valveSource.id,"NaOH",
@@ -761,7 +768,7 @@ valve=lab.setLabBuretteValve(valve,valveSource.id,false);
 assert.equal(valve.vessels.find(v=>v.id===valveSource.id).buretteOpen,false);
 assert.equal(lab.setLabBuretteValve(valve,valveSource.id,true,"v1",44),valve,
  "Unsupported flow rates cannot be selected");
-let preheated=lab.defaultLabBench();
+let preheated=detailedBench();
 preheated=lab.addPlacedLabDevice(preheated,"hotplate");
 const heaterId=lab.placedLabDevices(preheated)[0].id;
 preheated=lab.setPlacedDevicePower(preheated,heaterId,true);
@@ -777,7 +784,7 @@ const beforeCool=preheated.vessels[0].temperatureC;
 preheated=lab.advanceLabSimulation(preheated,18000);
 assert.ok(preheated.vessels[0].temperatureC<beforeCool,
  "Vessel temperature should cool gradually after the appliance is switched off");
-let carbonate=lab.defaultLabBench();
+let carbonate=detailedBench();
 carbonate=lab.putLabReagent(carbonate,"v1","CaCO3",{value:5,unit:"g"});
 carbonate=lab.setLabEnvironment(carbonate,"v1","dry");
 carbonate=lab.addPlacedLabDevice(carbonate,"hotplate");
@@ -791,7 +798,7 @@ assert.notEqual(lab.labObservation(carbonate.vessels[0]).status,"reaction",
 assert.match(read("src/LektrusChemistryBench.tsx"),/setPlacedDevicePower/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/setLabBuretteValve/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-ware-engraving/);
-const base=lab.defaultLabBench();
+const base=detailedBench();
 const left=lab.putLabReagent(base,"v1","HCl");
 const right=lab.addLabVessel(base,"flask");
 const merged=lab.mergeLabBench(base,left,right);
@@ -942,7 +949,7 @@ assert.match(read("src/lektrusChemistryBench.css"),/prefers-reduced-motion:reduc
 // Every glassware silhouette must be an actionable shared bench object,
 // and special calibrated instruments have bounded physical behaviour.
 for(const glass of lab.labGlassware){
- let b=lab.addLabVessel(lab.defaultLabBench(),glass.id);
+ let b=lab.addLabVessel(detailedBench(),glass.id);
  const vessel=b.vessels.find(v=>v.kind===glass.id);
  assert.ok(vessel,"Can add "+glass.name);
  const dry=glass.id==="crucible";
@@ -953,7 +960,7 @@ for(const glass of lab.labGlassware){
   glass.name+" must accept material appropriate to its lab function");
  assert.ok(lab.labObservation(b.vessels.find(v=>v.id===vessel.id)).message);
 }
-let calibrated=lab.addLabVessel(lab.defaultLabBench(),"pipette");
+let calibrated=lab.addLabVessel(detailedBench(),"pipette");
 const pipetteId=calibrated.vessels.find(v=>v.kind==="pipette").id;
 calibrated=lab.putLabReagent(calibrated,"v1","HCl",{value:40,unit:"ml",concentrationM:.1});
 assert.equal(lab.putLabReagent(calibrated,pipetteId,"HCl",
@@ -973,14 +980,14 @@ assert.equal(lab.addLabVessel(calibrated,"cylinder"),calibrated);
 assert.equal(lab.addLabVessel(calibrated,"volumetric"),calibrated);
 // Retired funnel is no longer a supported lab object, including on old boards.
 const legacyMeasured=lab.readLabBench({scienceLabBench:{
- ...lab.defaultLabBench(),vessels:[...lab.defaultLabBench().vessels,
+ ...detailedBench(),vessels:[...detailedBench().vessels,
  {id:"old-cylinder",kind:"cylinder",x:20,y:30,reagents:[],environment:"aqueous",observed:false},
  {id:"old-volumetric",kind:"volumetric",x:30,y:30,reagents:[],environment:"aqueous",observed:false}]
 }});
 assert.equal(legacyMeasured.vessels.filter(v=>["cylinder","volumetric"].includes(v.kind)).length,2,
  "Older saved boards must preserve retired vessel objects without data loss");
 const legacyFunnel=lab.readLabBench({scienceLabBench:{
- ...lab.defaultLabBench(),vessels:[...lab.defaultLabBench().vessels,
+ ...detailedBench(),vessels:[...detailedBench().vessels,
  {id:"legacy-funnel",kind:"funnel",x:20,y:30,reagents:[],environment:"dry",observed:false}]
 }});
 assert.ok(!legacyFunnel.vessels.some(v=>v.kind==="funnel"));
@@ -989,7 +996,7 @@ assert.doesNotMatch(read("src/LektrusChemistryBench.tsx"),/funnel:/);
 assert.doesNotMatch(read("src/lektrusChemistryBenchModel.ts"),/pourThroughLabFunnel/);
 
 // A pipette takes the EXACT requested portion, never an arbitrary 5 ml.
-let measured=lab.addLabVessel(lab.defaultLabBench(),"pipette");
+let measured=lab.addLabVessel(detailedBench(),"pipette");
 const precisePipette=measured.vessels.find(v=>v.kind==="pipette").id;
 measured=lab.setLabPipetteTarget(measured,precisePipette,7.5);
 assert.equal(measured.vessels.find(v=>v.id===precisePipette).pipetteTargetMl,7.5);
@@ -1000,13 +1007,13 @@ assert.equal(measured.vessels.find(v=>v.id===precisePipette).doses.HCl.value,7.5
 assert.equal(measured.vessels.find(v=>v.id==="v1").doses.HCl.value,3.5);
 assert.equal(lab.labVesselQuantity(measured.vessels.find(v=>v.id===precisePipette)).volumeMl,7.5);
 assert.ok(lab.labVesselQuantity(measured.vessels.find(v=>v.id===precisePipette)).liquidFraction>0);
-const solidSample=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl",{value:12,unit:"g"});
+const solidSample=lab.putLabReagent(detailedBench(),"v1","NaCl",{value:12,unit:"g"});
 assert.equal(lab.labVesselQuantity(solidSample.vessels[0]).massG,12);
 assert.equal(lab.labVesselQuantity(solidSample.vessels[0]).volumeMl,0);
 assert.ok(lab.labVesselQuantity(solidSample.vessels[0]).solidFraction>0);
 // Exact pipette sampling from multicomponent solutions is atomic. Rounding
 // cannot create a negative aliquot or list a component that did not transfer.
-let diluteSample=lab.defaultLabBench();
+let diluteSample=detailedBench();
 for(const id of ["NaCl","KCl","NaNO3"])
  diluteSample=lab.putLabReagent(diluteSample,"v1",id,{value:10,unit:"ml"});
 diluteSample=lab.addLabVessel(diluteSample,"pipette");
@@ -1033,7 +1040,7 @@ assert.match(scienceEditor,/onExperimentLiveChange\?\.\(draft,next,simulationOnl
 
 const savedQuick=lab.defaultLabQuickReagents();
 assert.ok(savedQuick.length>=8&&savedQuick.length<=lab.MAX_QUICK_REAGENTS);
-let quickBench=lab.defaultLabBench();
+let quickBench=detailedBench();
 quickBench=lab.setLabQuickReagent(quickBench,"HCl",{value:25,unit:"ml",concentrationM:.5});
 assert.equal(lab.labQuickReagents(quickBench).find(v=>v.id==="HCl").dose.value,25);
 quickBench=lab.setLabQuickReagent(quickBench,"NaCl");
@@ -1076,7 +1083,7 @@ assert.match(surface,/if\(inSink\(p\)\)clean\(g\.id\)/,
 // Stepwise pouring uses twenty fixed 5% portions, not exponential depletion.
 assert.equal(lab.LAB_POUR_STEPS,20);
 assert.equal(lab.LAB_POUR_INTERVAL_MS,150);
-let gradual=lab.addLabVessel(lab.defaultLabBench(),"conical");
+let gradual=lab.addLabVessel(detailedBench(),"conical");
 gradual=lab.putLabReagent(gradual,"v1","HCl",{value:100,unit:"ml",concentrationM:.2});
 gradual=lab.startLabPour(gradual,"v1","v2","gradual-pour-1");
 assert.equal(gradual.pouring.step,0);
@@ -1105,7 +1112,7 @@ assert.equal(lab.advanceLabPour(gradual),gradual);
 assert.equal(lab.labPourPercent(gradual.pouring),100);
 gradual=lab.stopLabPour(gradual,"gradual-pour-1");
 assert.equal(gradual.pouring,undefined);
-let unknownGradual=lab.addLabVessel(lab.defaultLabBench(),"tube");
+let unknownGradual=lab.addLabVessel(detailedBench(),"tube");
 unknownGradual=lab.putLabReagent(unknownGradual,"v1","H2O");
 unknownGradual=lab.startLabPour(unknownGradual,"v1","v2","pour-without-fabricated-volume");
 for(let tick=0;tick<10;tick++)unknownGradual=lab.advanceLabPour(unknownGradual);
@@ -1187,7 +1194,7 @@ assert.match(hoverSurface,/totalLabel\|\|\"Осадок\"/);
 
 /* Realistic receiving glassware snaps to the retort stand foot, whereas
  * clamp-held glassware remains attached independently above it. */
-let onFoot=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod",{x:40,y:68});
+let onFoot=lab.addPlacedLabDevice(detailedBench(),"tripod",{x:40,y:68});
 const onFootStand=lab.placedLabDevices(onFoot)[0].id;
 onFoot=lab.addLabVessel(onFoot,"burette");
 const onFootBurette=onFoot.vessels.find(v=>v.kind==="burette").id;
@@ -1266,7 +1273,7 @@ assert.ok(precipitation);
 const precipitated=chem.advanceQuantifiedLabReaction(precipitation,4);
 assert.ok(Math.abs(precipitated.productsMol.AgCl-.0008)<1e-12);
 assert.ok(Math.abs(precipitated.remainingMol.NaCl-.0012)<1e-12);
-let liveReaction=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+let liveReaction=lab.putLabReagent(detailedBench(),"v1","HCl",
  {value:10,unit:"ml",concentrationM:.1});
 liveReaction=lab.putLabReagent(liveReaction,"v1","NaOH",
  {value:5,unit:"ml",concentrationM:.1});
@@ -1282,7 +1289,7 @@ assert.equal(lab.labReactionNeedsTick(liveReaction.vessels[0]),false);
 assert.equal(lab.labVesselQuantity(liveReaction.vessels[0]).volumeMl,15,
  "Solute reaction must not incorrectly subtract the carrier liquids");
 // Every new burette drop re-equilibrates the measured acid/base inventory.
-let accurateTitration=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+let accurateTitration=lab.putLabReagent(detailedBench(),"v1","HCl",
  {value:10,unit:"ml",concentrationM:.1});
 accurateTitration=lab.addLabVessel(accurateTitration,"burette");
 const titrationBurette=accurateTitration.vessels.find(v=>v.kind==="burette").id;
@@ -1324,7 +1331,7 @@ assert.match(read("src/lektrusLabLayout.ts"),/77\/110/);
 // Mode-specific apparatus must not remove any already placed work.
 assert.deepEqual(lab.LAB_MODES.map(m=>m.id),
  ["reactions","titration","solutions","evaporation","synthesis"]);
-let modeBench=lab.defaultLabBench();
+let modeBench=detailedBench();
 const previousPositions=JSON.stringify(modeBench.vessels);
 modeBench=lab.setLabMode(modeBench,"titration");
 assert.equal(lab.labMode(modeBench),"titration");
@@ -1361,7 +1368,7 @@ assert.match(writtenWall,/glasswareForLabMode\(bench\)/);
 assert.match(writtenWall,/devicesForLabMode\(bench\)/);
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-bench-backdrop::before/);
 assert.match(editorFixed,/const scale=compact\?1:h\/1000/);
-const higherStand=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod");
+const higherStand=lab.addPlacedLabDevice(detailedBench(),"tripod");
 assert.equal(higherStand.placedDevices[0].standHeight,.88);
 const stand=higherStand.placedDevices[0];
 const receiving=layout.labStandBaseVesselPoint(stand,{kind:"conical"},1600,1000);
@@ -1375,7 +1382,7 @@ for(const width of [400,450,690,700,900,1200,1600,2600]){
   "Titration drops should fall visibly between burette and flask at "+width+"px");
 }
 
-const starterInput=lab.setLabMode(lab.defaultLabBench(),"titration");
+const starterInput=lab.setLabMode(detailedBench(),"titration");
 const starterOriginal={...starterInput.vessels[0]};
 const preparedKit=lab.prepareLabModeSetup(starterInput);
 const kitStand=lab.placedLabDevices(preparedKit).find(d=>d.kind==="tripod");
@@ -1398,7 +1405,7 @@ assert.equal(storedKit.vessels.find(v=>v.id===kitFlask.id).restingOnStandId,unde
 
 assert.deepEqual(lab.prepareLabModeSetup(preparedKit),preparedKit,
  "Preparing the same laboratory kit twice must not duplicate apparatus");
-const modeBaseline=lab.defaultLabBench();
+const modeBaseline=detailedBench();
 const modeLocal=lab.setLabMode(modeBaseline,"titration");
 const glassRemote=lab.addLabVessel(modeBaseline,"flask",{x:65,y:70});
 const modeMerged=lab.mergeLabBench(modeBaseline,modeLocal,glassRemote);
@@ -1464,7 +1471,7 @@ assert.match(polishedLabSource,/d\.kind==="filter"/,
  "The real filter must be recognized as an interactive tabletop appliance");
 assert.match(polishedLabSource,/setNotice\("Перетащите сосуд с готовым осадком непосредственно на фильтр"\)/,
  "The device asks for direct pouring, never an extra selection dialog");
-assert.ok(lab.devicesForLabMode(lab.defaultLabBench()).some(v=>v.id==="filter"));
+assert.ok(lab.devicesForLabMode(detailedBench()).some(v=>v.id==="filter"));
 
 assert.match(read("src/LektrusChemistryIllustration.tsx"),/className="lektrus-lab-open-editor"/);
 assert.doesNotMatch(read("src/LektrusChemistryIllustration.tsx"),/>⤢ Открыть лабораторию<\/button>/);
@@ -1478,7 +1485,7 @@ assert.match(read("src/LektrusLabDeviceIcon.tsx"),/M27 40H76/,
 
 // Filtration physically separates a reviewed precipitate, keeps measured
 // solid mass and transfers the carrier solution without duplication.
-let filtered=lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3",
+let filtered=lab.putLabReagent(detailedBench(),"v1","AgNO3",
  {value:10,unit:"ml",concentrationM:.1});
 filtered=lab.putLabReagent(filtered,"v1","NaCl",
  {value:10,unit:"ml",concentrationM:.1});
@@ -1507,7 +1514,7 @@ assert.equal(lab.labVesselQuantity(separated.vessels[0]).volumeMl,0);
 assert.equal(lab.filterLabPrecipitate(separated,"v1",destination),separated,
  "The same collected residue cannot be filtered repeatedly");
 let qualitative=lab.addPlacedLabDevice(lab.addLabVessel(lab.putLabReagent(
- lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3"),"v1","NaCl"),
+ lab.putLabReagent(detailedBench(),"v1","AgNO3"),"v1","NaCl"),
  "conical"),"filter");
 const qTarget=qualitative.vessels.find(v=>v.kind==="conical").id;
 qualitative=lab.advanceLabSimulation(qualitative,0);
@@ -1535,7 +1542,7 @@ for(const ids of [["AgNO3","NaBr"],["SrCl2","Na2SO4"],["NiSO4","NaOH"],
  assert.ok(chem.parseBalancedLabEquation(result.caseData.equation),
   "Each new chemical equation must conserve every element");
 }
-const pureWater=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+const pureWater=lab.putLabReagent(detailedBench(),"v1","H2O",
  {value:60,unit:"ml"});
 const dissolving=lab.putLabReagent(pureWater,"v1","NaCl",{value:3,unit:"g"});
 assert.equal(dissolving.vessels[0].physicalProcess,"dissolving");
@@ -1621,7 +1628,7 @@ assert.equal(automaticReceiver.vessels.length,2,
 assert.equal(automaticReceiver.vessels[0].reagents.length,0);
 assert.equal(lab.placedLabDevices(automaticReceiver).find(d=>d.kind==="filter").
  collectedResidue.formula,"AgCl");
-let boiling=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+let boiling=lab.putLabReagent(detailedBench(),"v1","H2O",
  {value:20,unit:"ml"});
 boiling=lab.addPlacedLabDevice(boiling,"hotplate");
 const heater=lab.placedLabDevices(boiling).find(d=>d.kind==="hotplate").id;
@@ -1667,7 +1674,7 @@ assert.equal(thermal.labThermalInfo("C12H22O11","g").meltingC,undefined,
  "Decomposition of sugar cannot be mistaken for a reversible melt");
 assert.equal(thermal.labThermalInfo("C12H22O11","g").boilingC,undefined);
 
-let melt=lab.putLabReagent(lab.defaultLabBench(),"v1","Na",{value:8,unit:"g"});
+let melt=lab.putLabReagent(detailedBench(),"v1","Na",{value:8,unit:"g"});
 melt=lab.addPlacedLabDevice(melt,"hotplate");
 const meltingHeater=lab.placedLabDevices(melt).find(d=>d.kind==="hotplate").id;
 melt=lab.applyPlacedLabDevice(melt,meltingHeater,"v1");
@@ -1700,18 +1707,32 @@ assert.ok((melt.vessels[0].temperatureC??500)<97.79);
 assert.equal(lab.labVesselQuantity(melt.vessels[0]).massG,8,
  "Crystallisation preserves solid material");
 
-const alcohol=lab.putLabReagent(lab.defaultLabBench(),"v1","C2H5OH",{value:30,unit:"ml"});
+const alcohol=lab.putLabReagent(detailedBench(),"v1","C2H5OH",{value:30,unit:"ml"});
 let alcoholHeat=lab.addPlacedLabDevice(alcohol,"hotplate");
 const alcoholHeater=lab.placedLabDevices(alcoholHeat)[0].id;
 alcoholHeat=lab.applyPlacedLabDevice(alcoholHeat,alcoholHeater,"v1");
 alcoholHeat=lab.setLabHotplateTemperature(alcoholHeat,alcoholHeater,160);
 alcoholHeat=lab.setPlacedDevicePower(alcoholHeat,alcoholHeater,true);
 alcoholHeat=lab.advanceLabSimulation(alcoholHeat,0);
-for(let i=1;i<=130;i++)alcoholHeat=lab.advanceLabSimulation(alcoholHeat,i*2000);
-assert.ok((alcoholHeat.vessels[0].temperatureC??0)<=78.37,
- "Ethanol cannot use the 100°C water boiling point");
-assert.ok(lab.labVesselQuantity(alcoholHeat.vessels[0]).volumeMl<30);
-const saline=lab.putLabReagent(lab.putLabReagent(lab.defaultLabBench(),"v1",
+let observedAlcoholBoiling=false;
+for(let i=1;i<=130;i++){
+ alcoholHeat=lab.advanceLabSimulation(alcoholHeat,i*2000);
+ const volume=lab.labVesselQuantity(alcoholHeat.vessels[0]).volumeMl;
+ const temp=alcoholHeat.vessels[0].temperatureC??0;
+ if(volume>0.01&&volume<29&&temp>=76){
+  assert.ok(temp<=78.6,
+   "Liquid ethanol must stay near its measured boiling point while present");
+  observedAlcoholBoiling=true;
+ }
+}
+assert.ok(observedAlcoholBoiling,"Ethanol must visibly pass through boiling");
+assert.ok(lab.labVesselQuantity(alcoholHeat.vessels[0]).volumeMl<30,
+ "Ethanol boils away under sustained heat");
+// Once every drop is gone, the dry vessel can heat ABOVE the boiling point.
+if(lab.labVesselQuantity(alcoholHeat.vessels[0]).volumeMl<.01)
+ assert.ok((alcoholHeat.vessels[0].temperatureC??0)>78.37,
+  "A dry vessel must not remain stuck at ethanol's boiling plateau");
+const saline=lab.putLabReagent(lab.putLabReagent(detailedBench(),"v1",
  "H2O",{value:30,unit:"ml"}),"v1","NaCl",{value:2,unit:"g"});
 assert.equal(thermal.labVesselThermal(saline.vessels[0].reagents,saline.vessels[0].doses),
  null,"A solution has no invented exact boiling temperature");
@@ -1722,7 +1743,7 @@ assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-solid-charge/);
 console.log("Thermal registry, boiling, melting and cooling verified");
 
 
-let crucible=lab.addLabVessel(lab.defaultLabBench(),"crucible");
+let crucible=lab.addLabVessel(detailedBench(),"crucible");
 const crucibleId=crucible.vessels.find(v=>v.kind==="crucible").id;
 crucible=lab.putLabReagent(crucible,crucibleId,"NaCl",{value:5,unit:"g"});
 crucible=lab.addPlacedLabDevice(crucible,"burner");
@@ -1775,7 +1796,7 @@ assert.equal(reaction.identifyReaction(["CaCO3"],"heated").caseData.thermalEffec
 assert.equal(reaction.identifyReaction(["AgNO3","NaCl"],"aqueous").caseData.thermalEffect,undefined,
  "Ordinary precipitation cannot heat the glass just because particles appear");
 
-let sodiumVessel=lab.putLabReagent(lab.defaultLabBench(),"v1","Na",{value:1,unit:"g"});
+let sodiumVessel=lab.putLabReagent(detailedBench(),"v1","Na",{value:1,unit:"g"});
 sodiumVessel=lab.setLabEnvironment(sodiumVessel,"v1","dry");
 sodiumVessel=lab.addLabVessel(sodiumVessel,"beaker");
 const receiverWaterId=sodiumVessel.vessels.find(v=>v.id!=="v1").id;
@@ -1796,7 +1817,7 @@ assert.ok(warmSodium.reactionHeat.deltaC>0);
 sodiumVessel=lab.advanceLabSimulation(sodiumVessel,6000);
 assert.equal(sodiumVessel.vessels.find(v=>v.id===receiverWaterId).reactionHeat.complete,true);
 
-let acidSodium=lab.putLabReagent(lab.defaultLabBench(),"v1","Na",{value:1,unit:"g"});
+let acidSodium=lab.putLabReagent(detailedBench(),"v1","Na",{value:1,unit:"g"});
 acidSodium=lab.setLabEnvironment(acidSodium,"v1","dry");
 acidSodium=lab.putLabReagent(acidSodium,"v1","HCl",
  {value:20,unit:"ml",concentrationM:.1});
@@ -1808,7 +1829,7 @@ acidSodium=lab.advanceLabSimulation(acidSodium,2000);
 assert.ok(acidSodium.vessels[0].temperatureC>22);
 assert.equal(acidSodium.vessels[0].reactionHeat.direction,"exothermic");
 
-let neutralizationHeat=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+let neutralizationHeat=lab.putLabReagent(detailedBench(),"v1","HCl",
  {value:20,unit:"ml",concentrationM:1});
 neutralizationHeat=lab.putLabReagent(neutralizationHeat,"v1","NaOH",
  {value:20,unit:"ml",concentrationM:1});
@@ -1819,7 +1840,7 @@ assert.ok(neutralizationHeat.vessels[0].reactionHeat.deltaC>0);
 assert.ok(neutralizationHeat.vessels[0].temperatureC>22);
 assert.equal(lab.labObservation(neutralizationHeat.vessels[0]).status,"reaction");
 
-let calciteBench=lab.addLabVessel(lab.defaultLabBench(),"crucible");
+let calciteBench=lab.addLabVessel(detailedBench(),"crucible");
 const calciteId=calciteBench.vessels.find(v=>v.kind==="crucible").id;
 calciteBench=lab.putLabReagent(calciteBench,calciteId,"CaCO3",{value:5,unit:"g"});
 calciteBench=lab.setLabEnvironment(calciteBench,calciteId,"dry");
@@ -1844,7 +1865,7 @@ console.log("Reaction visualizations, sodium with water and acids, calcination a
 
 /** Gas volumes are not liquid volumes, and undefined boiling temperatures
  * never impose a fictitious 100°C plateau on an aqueous stock solution. */
-let salineHeat=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+let salineHeat=lab.putLabReagent(detailedBench(),"v1","H2O",
  {value:20,unit:"ml"});
 salineHeat=lab.putLabReagent(salineHeat,"v1","NaCl",{value:2,unit:"g"});
 salineHeat=lab.addPlacedLabDevice(salineHeat,"hotplate");
@@ -1864,7 +1885,7 @@ assert.match(read("src/LektrusChemistryBench.tsx"),/gasEventActive/,
  "Bubbles must stop after the documented reaction finishes");
 const coReduction=reaction.identifyReaction(["Fe2O3","CO"],"heated");
 if(coReduction.status==="reaction"){
- let gasHeated=lab.addLabVessel(lab.defaultLabBench(),"crucible");
+ let gasHeated=lab.addLabVessel(detailedBench(),"crucible");
  const id=gasHeated.vessels.find(v=>v.kind==="crucible").id;
  gasHeated=lab.putLabReagent(gasHeated,id,"Fe2O3",{value:5,unit:"g"});
  gasHeated=lab.putLabReagent(gasHeated,id,"CO",{value:10,unit:"ml"});
@@ -1886,7 +1907,7 @@ console.log("No fictitious boiling point for solutions or gas mixtures: OK");
  * the old 700°C device limit. This must never make the entire board unreadable.
  * Testing the real document parser, not just a regex on the validator. */
 const docModel=load("src/boardModel.ts");
-const persistedLab=lab.defaultLabBench();
+const persistedLab=detailedBench();
 persistedLab.vessels=[
  {id:"v1",kind:"tube",x:84.3,y:37.6,reagents:[],environment:"aqueous",observed:false},
  {id:"v2",kind:"beaker",x:18,y:47.7,reagents:[],environment:"aqueous",observed:false},
@@ -2061,10 +2082,10 @@ console.log("Persisted high-temperature laboratory reopened without losing other
 
 
 /* Reaction chalkboard remains persistent between collaborators and saves. */
-assert.equal(lab.labMode(lab.defaultLabBench()),"reactions");
-assert.equal(lab.labMode({...lab.defaultLabBench(),mode:"qualitative"}),"reactions");
-assert.equal(lab.labMode({...lab.defaultLabBench(),mode:"quantitative"}),"reactions");
-const chalkSource=lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl",
+assert.equal(lab.labMode(detailedBench()),"reactions");
+assert.equal(lab.labMode({...detailedBench(),mode:"qualitative"}),"reactions");
+assert.equal(lab.labMode({...detailedBench(),mode:"quantitative"}),"reactions");
+const chalkSource=lab.putLabReagent(detailedBench(),"v1","NaCl",
  {value:10,unit:"ml",concentrationM:.1});
 const chalkReacted=lab.putLabReagent(chalkSource,"v1","AgNO3",
  {value:10,unit:"ml",concentrationM:.1});
@@ -2145,7 +2166,7 @@ console.log("Shared chalkboard: concurrent writes and explicit erasing passed");
 
 
 const plainQualitative=lab.putLabReagent(
- lab.putLabReagent(lab.defaultLabBench(),"v1","NaCl"),"v1","AgNO3");
+ lab.putLabReagent(detailedBench(),"v1","NaCl"),"v1","AgNO3");
 const qualContents=lab.labVesselContents(plainQualitative.vessels[0]);
 assert.deepEqual(qualContents.solid.map(v=>v.formula),["AgCl"],
  "Qualitative reaction must show the insoluble product, not the initial reagent list");
@@ -2162,7 +2183,7 @@ console.log("Qualitative chemistry shows products, not fabricated residue masses
 
 
 /* An empty worktop click must deselect without moving/emptying any vessel. */
-let pickedVessel=lab.addLabVessel(lab.defaultLabBench(),"tube");
+let pickedVessel=lab.addLabVessel(detailedBench(),"tube");
 const pickedId=pickedVessel.selectedId;
 const beforeDeselect=JSON.stringify(pickedVessel.vessels);
 pickedVessel=lab.selectLabVessel(pickedVessel,"");
@@ -2218,7 +2239,7 @@ console.log("Side gauges are separated from vessel and use nonoverlapping column
  * They change the actual liquid tint as titration crosses the endpoint.
  * The universal indicator remains a separate strip and does not dye it. */
 const labAfterIndicator=lab.setLabIndicator(
- lab.putLabReagent(lab.defaultLabBench(),"v1","NaOH",
+ lab.putLabReagent(detailedBench(),"v1","NaOH",
   {value:25,unit:"ml",concentrationM:.1}),"v1","phenolphthalein");
 assert.equal(labAfterIndicator.vessels[0].indicatorDrops,1);
 assert.equal(lab.labIndicatorResult(labAfterIndicator.vessels[0]).color,"#d83a96");
@@ -2234,7 +2255,7 @@ assert.equal(paper.vessels[0].indicatorDrops,undefined,
  "Universal indicator is a paper strip, not a liquid added to the flask");
 assert.equal(lab.setLabIndicator(paper,"v1","universal"),paper,
  "Pressing the same universal strip twice must not create extra reagent");
-const emptyLiquid=lab.putLabReagent(lab.defaultLabBench(),"v1","Na",
+const emptyLiquid=lab.putLabReagent(detailedBench(),"v1","Na",
  {value:2,unit:"g"});
 assert.equal(lab.setLabIndicator(emptyLiquid,"v1","litmus"),emptyLiquid,
  "A liquid indicator cannot be added to a dry metal");
@@ -2242,7 +2263,7 @@ const rinsed=lab.emptyLabVessel(repeated,"v1").vessels[0];
 assert.equal(rinsed.indicatorDrops,undefined);
 assert.equal(rinsed.indicatorAddedAtMs,undefined);
 
-let endpointBench=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+let endpointBench=lab.putLabReagent(detailedBench(),"v1","HCl",
  {value:25,unit:"ml",concentrationM:.1});
 endpointBench=lab.setLabIndicator(endpointBench,"v1","phenolphthalein");
 endpointBench=lab.addLabVessel(endpointBench,"burette");
@@ -2285,7 +2306,7 @@ assert.match(indicatorCss,/right:calc\(100% \+ 11px\)!important/);
 console.log("Indicator solution dosing, universal paper, pH-titration color transitions and readout spacing passed");
 
 
-let liquidTransfer=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+let liquidTransfer=lab.putLabReagent(detailedBench(),"v1","HCl",
  {value:12,unit:"ml",concentrationM:.1});
 liquidTransfer=lab.setLabIndicator(liquidTransfer,"v1","methyl-orange");
 liquidTransfer=lab.addLabVessel(liquidTransfer,"tube");
@@ -2332,7 +2353,7 @@ assert.equal(acidBase.labIndicatorTint("methyl-orange",2),"#db4444");
 assert.equal(acidBase.labIndicatorTint("methyl-orange",6),"#efc94b");
 assert.equal(acidBase.labIndicatorTint("litmus",1),"#d85761");
 assert.equal(acidBase.labIndicatorTint("litmus",13),"#426cce");
-let phBeaker=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+let phBeaker=lab.putLabReagent(detailedBench(),"v1","HCl",
  {value:20,unit:"ml",concentrationM:.1});
 phBeaker=lab.setLabIndicator(phBeaker,"v1","phenolphthalein");
 assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).pH,1);
@@ -2343,7 +2364,7 @@ assert.ok(Math.abs(lab.labIndicatorResult(phBeaker.vessels[0]).pH-
  "Equivalence point follows neutral-water pH at actual vessel temperature");
 assert.equal(lab.labIndicatorResult(phBeaker.vessels[0]).color,undefined,
  "Phenolphthalein is colorless at strong acid/base equivalence");
-const phOther=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+const phOther=lab.putLabReagent(detailedBench(),"v1","HCl",
  {value:20,unit:"ml",concentrationM:.1});
 assert.equal(acidBase.labVesselPH(phOther.vessels[0]).pH,1);
 assert.match(read("src/LektrusChemistryBench.tsx"),/const ph=labVesselPH\(vessel\)/);
@@ -2393,15 +2414,15 @@ for(const item of stockIds){
    "Neat liquid, gas or solid "+item.id+" cannot be assigned fake molarity");
  }
 }
-let noDose=lab.putLabReagent(lab.defaultLabBench(),"v1","AgNO3");
+let noDose=lab.putLabReagent(detailedBench(),"v1","AgNO3");
 assert.deepEqual(noDose.vessels[0].doses.AgNO3,
  {value:10,unit:"ml",concentrationM:.1});
-const quicks=lab.labQuickReagents(lab.defaultLabBench());
+const quicks=lab.labQuickReagents(detailedBench());
 assert.ok(quicks.every(q=>q.dose.value>0));
 assert.ok(quicks.filter(q=>q.dose.unit==="ml"&&catalog.labIsPreparedStock(q.id))
  .every(q=>q.dose.concentrationM===.1),
  "Only prepared liquid stock requires molarity; dry NaCl is measured by mass");
-let mixedConcentrations=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+let mixedConcentrations=lab.putLabReagent(detailedBench(),"v1","HCl",
  {value:10,unit:"ml",concentrationM:.1});
 mixedConcentrations=lab.putLabReagent(mixedConcentrations,"v1","HCl",
  {value:10,unit:"ml",concentrationM:.3});
@@ -2448,7 +2469,7 @@ console.log("All "+allQuantified+" reviewed reaction equations quantified and ma
 
 /* Regression: NaCl + H2O + AgNO3 is not a list of unchanged inputs.
  * AgCl sediment must survive indicator, dilution and extra additions. */
-let preserved=lab.defaultLabBench();
+let preserved=detailedBench();
 preserved=lab.putLabReagent(preserved,"v1","NaCl",
  {unit:"ml",value:10,concentrationM:.1});
 preserved=lab.putLabReagent(preserved,"v1","H2O",{unit:"ml",value:70});
@@ -2515,7 +2536,7 @@ console.log("AgCl survives dye, dilution, repeat dosing and further chemistry; e
 
 /* The precise physical vapor model integrates with the shared bench and
  * every participant sees a conserved ventilated loss, not local-only FX. */
-const neatBeaker=lab.putLabReagent(lab.defaultLabBench(),"v1","C2H5OH",
+const neatBeaker=lab.putLabReagent(detailedBench(),"v1","C2H5OH",
  {unit:"ml",value:20});
 const roomEvap=lab.advanceLabSimulation(
  lab.advanceLabSimulation(neatBeaker,100000),110000);
@@ -2536,7 +2557,7 @@ assert.equal(lab.labVesselQuantity(sealedAfter.vessels.find(v=>v.id===conical.id
 assert.equal(lab.putLabReagent(corked,conical.id,"H2O"),corked,
  "Cork prevents dosing through sealed glassware");
 assert.equal(lab.setLabVesselStopper(corked,conical.id,false).vessels.find(v=>v.id===conical.id).stoppered,false);
-const unsupported=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
+const unsupported=lab.putLabReagent(detailedBench(),"v1","HCl",
  {unit:"ml",value:10,concentrationM:.1});
 const unsupportedNext=lab.advanceLabSimulation(lab.advanceLabSimulation(unsupported,100000),110000);
 assert.ok(unsupportedNext.vessels[0].doses.HCl.value<10,
@@ -2571,7 +2592,7 @@ assert.deepEqual(lab.labGlassware.map(v=>v.id),[
 assert.equal(lab.labGlassware.find(v=>v.id==="pipette").name,"Пипетка");
 assert.ok(!lab.labGlassware.some(v=>/мерн/i.test(v.name)));
 for(const mode of lab.LAB_MODES){
- const emptyMode=lab.setLabMode(lab.defaultLabBench(),mode.id);
+ const emptyMode=lab.setLabMode(detailedBench(),mode.id);
  const offered=lab.glasswareForLabMode(emptyMode);
  assert.ok(offered.length<=6&&offered.length>0,
   "The wall must display every "+mode.name+" glassware item without scrolling");
@@ -2580,7 +2601,7 @@ for(const mode of lab.LAB_MODES){
  assert.ok(prepared.vessels.every(v=>!["volumetric","cylinder"].includes(v.kind)),
   "Mode starter kits cannot silently add retired instruments");
 }
-const retiredBefore=lab.defaultLabBench();
+const retiredBefore=detailedBench();
 assert.equal(lab.addLabVessel(retiredBefore,"volumetric"),retiredBefore);
 assert.equal(lab.addLabVessel(retiredBefore,"cylinder"),retiredBefore);
 const glassWall=read("src/lektrusLabSceneLayout.css");
@@ -2595,7 +2616,7 @@ const glassUI=read("src/LektrusChemistryBench.tsx");
 assert.doesNotMatch(glassUI,/setShowAllGlassware|showAllGlassware|fillLabVolumetricFlask/);
 assert.match(glassUI,/selected\?\.kind==="pipette"/);
 assert.match(glassUI,/>\{kind\.name\}<\/small>/);
-assert.ok(!lab.labModeInfo(lab.setLabMode(lab.defaultLabBench(),"solutions"))
+assert.ok(!lab.labModeInfo(lab.setLabMode(detailedBench(),"solutions"))
  .description.includes("доведение до метки"));
 console.log("Simplified eight-type catalog, six-slot no-scroll wall and legacy glassware preservation: OK");
 
@@ -2611,7 +2632,7 @@ assert.ok(polishedSurface.includes('(compactFullscreen&&mobileDrawer?" is-drawer
 
 // Mounted glassware follows the actual shorter, native-size phone stand.
 // The desktop stage keeps its original physical anchoring unchanged.
-const compactStand=lab.addPlacedLabDevice(lab.defaultLabBench(),"tripod").placedDevices[0];
+const compactStand=lab.addPlacedLabDevice(detailedBench(),"tripod").placedDevices[0];
 const desktopMount=layout.labMountedGlasswarePoint(compactStand,{kind:"tube"},900,420);
 const phoneMount=layout.labMountedGlasswarePoint(compactStand,{kind:"tube"},900,420,false,true);
 assert.ok(Math.abs(phoneMount.y-desktopMount.y)>1,
@@ -2624,13 +2645,13 @@ console.log("Mounted laboratory glassware aligns with short-screen apparatus");
 
 // Pushing a vessel upward is instantaneous when empty. For a filled one,
 // removal requires confirmation before deleting measured chemical quantities.
-const storedFilled=lab.defaultLabBench();
+const storedFilled=detailedBench();
 const fullReturnSource=lab.putLabReagent(storedFilled,"v1","NaCl",{value:2,unit:"g"});
 assert.equal(lab.removeLabVessel(fullReturnSource,"v1"),fullReturnSource);
 const confirmedReturn=lab.removeLabVessel(fullReturnSource,"v1",true);
 assert.ok(!confirmedReturn.vessels.some(v=>v.id==="v1"));
 assert.ok(!confirmedReturn.placedDevices?.some(d=>d.linkedVesselId==="v1"));
-const emptyReturnSource=lab.defaultLabBench();
+const emptyReturnSource=detailedBench();
 assert.equal(lab.removeLabVessel(emptyReturnSource,"v1").vessels.some(v=>v.id==="v1"),false);
 assert.equal(layout.isLabReturnDrop({x:18,y:22},68,390,true),true);
 assert.equal(layout.isLabReturnDrop({x:80,y:22},68,390,true),true,
@@ -2671,8 +2692,8 @@ const cooled=calorimetry.labSensibleHeatStep("beaker",
 assert.ok(cooled.temperatureC<50&&cooled.temperatureC>22,
  "After switch-off a measured sample cools without overshooting ambient");
 assert.ok(warm20.heaterWattsToContents<=source.powerW);
-let smallCup=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{value:20,unit:"ml"});
-let largeCup=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{value:80,unit:"ml"});
+let smallCup=lab.putLabReagent(detailedBench(),"v1","H2O",{value:20,unit:"ml"});
+let largeCup=lab.putLabReagent(detailedBench(),"v1","H2O",{value:80,unit:"ml"});
 const heatCup=(sample)=>{
  let out=lab.addPlacedLabDevice(sample,"hotplate");
  const h=lab.placedLabDevices(out)[0].id;
@@ -2754,7 +2775,7 @@ assert.equal(dissolution.labBinarySaltEquilibrium({environment:"aqueous",
  NaCl:{unit:"g",value:1},KNO3:{unit:"g",value:4},
  H2O:{unit:"ml",value:10}}},25),undefined,
  "Binary solution constants cannot be applied to two-salt mixtures");
-let progressive=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",{unit:"ml",value:10});
+let progressive=lab.putLabReagent(detailedBench(),"v1","H2O",{unit:"ml",value:10});
 progressive=lab.putLabReagent(progressive,"v1","KNO3",{unit:"g",value:4});
 assert.ok(progressive.vessels[0].binarySaltPhase);
 assert.equal(progressive.vessels[0].physicalProcess,"dissolving");
@@ -2835,7 +2856,7 @@ const malformedGas={...gasInitial,extentMol:gasInitial.maxExtentMol*2};
 assert.equal(gasDynamics.labReactionGasProgress(malformedGas),undefined);
 assert.equal(gasDynamics.labIdealGasVolumeMl(.001,-273.15),undefined);
 assert.equal(gasDynamics.labIdealGasVolumeMl(-.001,25),undefined);
-let sealedGas=lab.addLabVessel(lab.defaultLabBench(),"flask");
+let sealedGas=lab.addLabVessel(detailedBench(),"flask");
 const sealedId=sealedGas.selectedId;
 sealedGas=lab.putLabReagent(sealedGas,sealedId,"NaHCO3",{unit:"g",value:2});
 sealedGas=lab.putLabReagent(sealedGas,sealedId,"HCl",{
@@ -2924,7 +2945,7 @@ for(const row of reaction.reviewedReactionCases.filter(row=>
  supportedGasCases++;
 }
 assert.ok(supportedGasCases>=10,"Review the gas catalogue for complete visual coverage");
-let pressurePop=lab.addLabVessel(lab.defaultLabBench(),"flask");
+let pressurePop=lab.addLabVessel(detailedBench(),"flask");
 const pressurePopId=pressurePop.selectedId;
 pressurePop=lab.putLabReagent(pressurePop,pressurePopId,"NaHCO3",
  {unit:"g",value:5});
@@ -3009,7 +3030,7 @@ for(const [formula,density] of Object.entries({
  assert.ok(info.molarMassGPerMol>0);
 }
 for(const formula of ["Na2CO3","CaO","MgO","BaCO3","PbCl2","PbBr2"]){
- const weighed=lab.putLabReagent(lab.defaultLabBench(),"v1",formula,
+ const weighed=lab.putLabReagent(detailedBench(),"v1",formula,
   {value:1,unit:"g"});
  const volume=lab.labVesselQuantity(weighed.vessels[0]);
  assert.ok(volume.solidVolumeComplete);
@@ -3028,7 +3049,7 @@ const leadWater={reagents:["H2O","PbCl2"],environment:"aqueous",
 const leadCold=dissolution.labBinarySaltEquilibrium(leadWater,20);
 const leadHot=dissolution.labBinarySaltEquilibrium(leadWater,100);
 assert.ok(leadCold.equilibriumSolidMol>leadHot.equilibriumSolidMol);
-let leadDissolution=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+let leadDissolution=lab.putLabReagent(detailedBench(),"v1","H2O",
  {value:100,unit:"ml"});
 leadDissolution=lab.putLabReagent(leadDissolution,"v1","PbCl2",
  {value:4,unit:"g"});
@@ -3058,7 +3079,7 @@ const bromideWater={reagents:["H2O","PbBr2"],environment:"aqueous",
 const bromideEqCold=dissolution.labBinarySaltEquilibrium(bromideWater,20);
 const bromideEqHot=dissolution.labBinarySaltEquilibrium(bromideWater,100);
 assert.ok(bromideEqCold.equilibriumSolidMol>bromideEqHot.equilibriumSolidMol);
-let bromideBench=lab.putLabReagent(lab.defaultLabBench(),"v1","H2O",
+let bromideBench=lab.putLabReagent(detailedBench(),"v1","H2O",
  {unit:"ml",value:100});
 bromideBench=lab.putLabReagent(bromideBench,"v1","PbBr2",
  {unit:"g",value:5});
@@ -3081,18 +3102,18 @@ const ambientElementDensities={
 };
 for(const [formula,density] of Object.entries(ambientElementDensities)){
  assert.equal(constants.labCrystalDensityGml(formula),density);
- const weighed=lab.putLabReagent(lab.defaultLabBench(),"v1",formula,
+ const weighed=lab.putLabReagent(detailedBench(),"v1",formula,
   {unit:"g",value:1});
  const solid=lab.labVesselQuantity(weighed.vessels[0]);
  assert.ok(solid.solidVolumeComplete,"Density known for "+formula);
  assert.ok(Math.abs(solid.solidVolumeMl-1/density)<1e-6,
   "Mass/density displacement for "+formula);
 }
-const lumpOfLi=lab.putLabReagent(lab.defaultLabBench(),"v1","Li",
+const lumpOfLi=lab.putLabReagent(detailedBench(),"v1","Li",
  {unit:"g",value:10});
 assert.ok(lab.labVesselQuantity(lumpOfLi.vessels[0]).occupiedMl>18,
  "Lightweight lithium takes significantly more glassware space than copper");
-const lumpOfCu=lab.putLabReagent(lab.defaultLabBench(),"v1","Cu",
+const lumpOfCu=lab.putLabReagent(detailedBench(),"v1","Cu",
  {unit:"g",value:10});
 assert.ok(lab.labVesselQuantity(lumpOfCu.vessels[0]).occupiedMl<2);
 console.log("RSC metal densities and weighed solid displacement: OK");
@@ -3163,7 +3184,7 @@ const newReferenceDensities={
 };
 for(const [formula,density] of Object.entries(newReferenceDensities)){
  assert.equal(constants.labCrystalDensityGml(formula),density);
- const sample=lab.putLabReagent(lab.defaultLabBench(),"v1",formula,
+ const sample=lab.putLabReagent(detailedBench(),"v1",formula,
   {unit:"g",value:1});
  const result=lab.labVesselQuantity(sample.vessels[0]);
  assert.equal(result.solidVolumeComplete,true,formula+" true density known");
@@ -3200,7 +3221,7 @@ for(const stock of allCabinetEntries){
   "The dry material's chemical inventory must preserve its mass: "+stock.id);
  if(property.crystalDensityGPerMl!==undefined){
   knownCrystalDensityCount++;
-  const testedVessel={...lab.defaultLabBench().vessels[0],
+  const testedVessel={...detailedBench().vessels[0],
    reagents:[stock.id],doses:sample.doses};
   const displacement=lab.labVesselSolidDisplacement(testedVessel);
   assert.ok(displacement.complete,

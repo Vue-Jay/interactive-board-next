@@ -531,8 +531,17 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   // measured heat capacity, so an unheated warm solution cools rather than
   // producing vapor with no thermal cost. Ambient transfer recovers it later.
   if(canEvaporate&&calorimetry&&phase&&phase.latentEnergyJ>0&&!v.stoppered){
-   next=Math.round(Math.max(0,Math.min(next,
-    raw-phase.latentEnergyJ/calorimetry.capacityJPerK))*10)/10;
+   // Only ambient / surplus latent heat can cool the sample. The power
+   // that would have driven it ABOVE its boiling plateau is already
+   // assigned to vaporization, so subtracting it a second time made
+   // boiling samples oscillate below 100°C and stopped the bubbles.
+   const plateauEnergyJ=boilingPoint!==undefined&&
+    next>=boilingPoint-.25&&raw>=boilingPoint?
+    (raw-boilingPoint)*calorimetry.capacityJPerK:0;
+   const extraLatentJ=Math.max(0,phase.latentEnergyJ-plateauEnergyJ);
+   if(extraLatentJ>0)
+    next=Math.round(Math.max(-30,Math.min(next,
+     raw-extraLatentJ/calorimetry.capacityJPerK))*10)/10;
   }
   // When disabled, keep measured solvent, composition and energy intact.
   // Pressure protection still runs independently for a closed vessel.
@@ -864,7 +873,7 @@ export type LabBenchSettings={
 };
 export const defaultLabBenchSettings=():LabBenchSettings=>({
  showEquationBoard:true,showVesselLabels:true,animateEffects:true,showTemperatures:true,
- pourMode:"gradual",evaporationEnabled:true,timeScale:1,realism:"high"
+ pourMode:"gradual",evaporationEnabled:true,timeScale:1,realism:"low"
 });
 export const labBenchSettings=(bench:LabBench):LabBenchSettings=>({
  ...defaultLabBenchSettings(),...bench.settings
@@ -1402,7 +1411,10 @@ export function removeLabVessel(bench:LabBench,id:string,discardContents=false):
  const target=bench.vessels.find(v=>v.id===id);
  // A filled vessel requires explicit confirmation. Never silently discard
  // the student's reagents just because of a swipe toward the top shelf.
- if(!target||(!discardContents&&target.reagents.length>0))return bench;
+ if(!target||(!discardContents&&(
+  target.reagents.length>0||!!target.filteredSolution||
+  !!target.filteredResidue||!!target.chemicalInventory||
+  !!target.reactionAmounts)))return bench;
  const vessels=bench.vessels.filter(v=>v.id!==id);
  return {...bump(bench,vessels,""),
   stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId,

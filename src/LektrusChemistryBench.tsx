@@ -11,7 +11,7 @@ import {labKnownHeatCapacityJPerK} from "./lektrusLabCalorimetry";
 import {labReactionGasProgress} from "./lektrusLabGasDynamics";
 import {labVisibleBinarySaltSolid} from "./lektrusLabDissolution";
 import {labProductIdentities,labSubstanceProperties} from "./lektrusLabPropertyRegistry";
-import {labCanStopper,labVaporPressureKPa,labIdealBoilingC} from "./lektrusLabEvaporation";
+import {labCanStopper,labVaporPressureKPa,labIdealBoilingC,labIsBoiling} from "./lektrusLabEvaporation";
 import {labVesselPH} from "./lektrusLabPH";
 import {simulateLabInventory,labInventoryMassG} from "./lektrusLabReactionNetwork";
 import {labMolarMass} from "./lektrusLabStoichiometry";
@@ -188,8 +188,6 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
   vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const pureThermal=labVesselThermal(vessel.reagents,vessel.doses);
- const thermalState=labThermalState(vessel.reagents,vessel.doses,
-  temperatureC??vessel.temperatureC??22,vessel.meltFraction);
  const moltenFraction=pureThermal?.unit==="g"&&
   pureThermal.info.meltingC!==undefined?Math.min(1,Math.max(0,vessel.meltFraction??0)):0;
  const geo=shape[vessel.kind];
@@ -202,9 +200,9 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const labels=species.map(([id])=>substances.find(s=>s.id===id)?.formula??id);
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
- const solutionBoiling=labIdealBoilingC(vessel);
- const boiling=!!volumeMl&&!vessel.stoppered&&(thermalState.boiling||
-  solutionBoiling!==undefined&&(temperatureC??vessel.temperatureC??22)>=solutionBoiling-.5);
+ // Bubble and steam artwork must agree with the same reviewed
+ // temperature criterion used by the mass/energy vaporization model.
+ const boiling=volumeMl>1e-9&&labIsBoiling(vessel,temperatureC??vessel.temperatureC??22);
  const renderedSolidFraction=vessel.filteredResidue?Math.max(.23,solidFraction):
   solidFraction*(1-moltenFraction);
  const fillFraction=volumeMl>0?Math.max(.008,liquidFraction):
@@ -981,7 +979,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   if(next===bench){
    // Filled glassware is still removable, but chemicals are never lost
    // without an explicit confirmation from the experimenter.
-   if(bench.vessels.some(v=>v.id===id&&v.reagents.length)){
+   if(bench.vessels.some(v=>v.id===id&&(
+    v.reagents.length||v.filteredSolution||v.filteredResidue||
+    v.chemicalInventory||v.reactionAmounts))){
     setPendingReturnId(id);setNotice("");
    }
    return;
@@ -989,6 +989,42 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   setVesselMenuId(null);setCompositionId(null);setActiveDeviceId(null);
   onChange?.(next);setNotice("Чистая посуда убрана со стола");
  };
+ // The laboratory owns the Delete key while one of its parts has focus.
+ // Capture before the board-wide keyboard handler, which otherwise deletes
+ // the enclosing "chem-experiment-free" graph and loses the entire table.
+ useEffect(()=>{
+  const onDelete=(event:KeyboardEvent)=>{
+   if(!editable||event.repeat||event.ctrlKey||event.metaKey||event.altKey||
+    (event.key!=="Delete"&&event.key!=="Backspace"))return;
+   const target=event.target instanceof Element?event.target:null;
+   if(target?.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]'))return;
+   if(cabinet||pendingReturnId||compositionId||confirmClear)return;
+   const focused=document.activeElement;
+   if(!fullscreenOwner&&!(focused instanceof Node&&host.current?.contains(focused)))return;
+   const deviceId=activeDeviceId&&placedLabDevices(bench).some(d=>d.id===activeDeviceId)?
+    activeDeviceId:null;
+   const vesselId=bench.selectedId&&bench.vessels.some(v=>v.id===bench.selectedId)?
+    bench.selectedId:null;
+   if(!deviceId&&!vesselId)return;
+   event.preventDefault();event.stopImmediatePropagation();
+   if(deviceId){
+    const next=returnPlacedLabDevice(bench,deviceId);
+    if(next!==bench){
+     // Apply removal and deselection in ONE shared revision. Sending
+     // two separate writes from the same stale bench could resurrect
+     // the removed apparatus during collaborative merging.
+     onChange?.({...next,selectedId:""});
+     setActiveDeviceId(null);setVesselMenuId(null);
+     setNotice("Выбранный прибор убран со стола");
+    }
+    return;
+   }
+   if(vesselId)returnGlass(vesselId);
+  };
+  document.addEventListener("keydown",onDelete,true);
+  return()=>document.removeEventListener("keydown",onDelete,true);
+ },[editable,fullscreenOwner,activeDeviceId,bench,cabinet,pendingReturnId,
+   compositionId,confirmClear,onChange,onSelect]);
  const take=(kind:LabGlassware,p?:{x:number;y:number})=>{
   if(!p||!isLabWorktop(p)){setNotice("Нажмите на свободное место стола");return}
   const next=addLabVessel(bench,kind,labLogicalPoint(p));

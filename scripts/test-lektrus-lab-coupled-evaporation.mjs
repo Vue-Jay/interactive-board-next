@@ -44,7 +44,9 @@ assert.ok(warm.solidMol.NaCl<crystal.solidMol.NaCl);
 close(net.labInventoryMassG(crystal),net.labInventoryMassG(first));
 // Passive evaporation must cool the liquid by the energy needed to form vapor,
 // not silently lose mass while using only the glass/ambient heat equation.
-const bare=lab.defaultLabBench();
+assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low",
+ "Every new school experiment must begin in simple mode");
+const bare=lab.setLabBenchSettings(lab.defaultLabBench(),{realism:"high"});
 const water={...bare.vessels[0],kind:"beaker",temperatureC:80,
  doses:{H2O:{unit:"ml",value:40}},reagents:["H2O"],environment:"aqueous"};
 const idle={...bare,simulationAtMs:1000,vessels:[water],placedDevices:[]};
@@ -127,7 +129,7 @@ console.log("Lab experiment settings, accelerated clock and virtual high heat: O
 
 // Realism changes the actual engine work, not only presentation.
 assert.equal(lab.labBenchSettings(bare).realism,"high",
- "Old classroom boards retain the previous detailed model");
+ "Advanced thermal regression explicitly selects high realism");
 const classroom=lab.setLabBenchSettings(idle,{realism:"low"});
 const standard=lab.setLabBenchSettings(idle,{realism:"medium"});
 const detailed=lab.setLabBenchSettings(idle,{realism:"high"});
@@ -218,3 +220,33 @@ assert.match(ui,/aria-label="Закрыть настройки опыта"/);
 assert.match(ui,/clipPath=\{"url\(#"\+id\+"clip\)"\}/,
  "Glass reflection must be clipped to the vessel geometry");
 console.log("Cooling bath, unbounded vessel heating, settings dismissal and glass glare: OK");
+
+
+// Vaporization and visible boiling use the same measured equilibrium point.
+const pureWater={kind:"beaker",reagents:["H2O"],
+ doses:{H2O:{value:20,unit:"ml"}},stoppered:false,temperatureC:100};
+const waterBubblePoint=phase.labIdealBoilingC(pureWater);
+assert.ok(waterBubblePoint>99&&waterBubblePoint<101,
+ "Only the measured boiling point of water may trigger steam");
+assert.equal(phase.labIsBoiling(pureWater,waterBubblePoint-2),false);
+assert.equal(phase.labIsBoiling(pureWater,waterBubblePoint),true);
+assert.equal(phase.labIsBoiling({...pureWater,stoppered:true},waterBubblePoint),false);
+const atBoil=phase.labEvaporate(pureWater,10,waterBubblePoint,150,160);
+assert.ok(atBoil.evaporatedMl>.01,"Boiling must consume measured water");
+const beforeBoil=phase.labEvaporate(pureWater,10,waterBubblePoint-2,150,160);
+assert.ok(atBoil.evaporatedMl>beforeBoil.evaporatedMl,
+ "Sub-boiling diffusion must not get the boiling heater's latent budget");
+const slightlyHot=lab.advanceLabSimulation({
+ ...bare,simulationAtMs:1000,vessels:[{...water,temperatureC:99.9}],
+ placedDevices:[hotplate]
+},11000).vessels[0];
+assert.ok(slightlyHot.temperatureC>=99.5&&slightlyHot.temperatureC<=100.2,
+ "An actively boiling sample should not be artificially cooled a second time");
+const appSource=fs.readFileSync("src/App.tsx","utf8");
+const surfaceSource=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
+assert.match(appSource,/containsLab=.*itemsRef\.current/);
+assert.match(surfaceSource,/document\.addEventListener\("keydown",onDelete,true\)/);
+assert.match(surfaceSource,/returnPlacedLabDevice\(bench,deviceId\)/);
+assert.match(surfaceSource,/if\(vesselId\)returnGlass\(vesselId\)/);
+assert.match(surfaceSource,/setPendingReturnId\(id\)/);
+console.log("Boiling onset, latent heat and safe Delete focus regression: OK");
