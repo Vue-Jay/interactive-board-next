@@ -1271,13 +1271,11 @@ export function recordLabReactions(bench:LabBench):LabBench{
   const equation=vessel.reactionAmounts?.complete?
    vessel.reactionAmounts.equation:vessel.completedReaction?.equation;
   if(!equation)continue;
-  {
-   const key=vessel.id+"|"+equation;
-   if(seen.has(key))continue;
-   seen.add(key);changed=true;
-   if(log.length>=30)log.shift();
-   log.push(equation);
-  }
+  const key=vessel.id+"|"+equation;
+  if(seen.has(key))continue;
+  seen.add(key);changed=true;
+  if(log.length>=30)log.shift();
+  log.push(equation);
  }
  return changed?{...bench,reactionLog:log,seenReactionKeys:[...seen].slice(-150),
   event:bench.event+1}:bench;
@@ -1737,7 +1735,7 @@ export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
   reactionGasMol:v.stoppered?labHeadspaceGasMoles(v):0},0,temperatureC);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,sealedReactionGasBaselineMol:undefined,gasCollectionTargetId:undefined,
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,pendingInventoryReaction:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,sealedReactionGasBaselineMol:undefined,gasCollectionTargetId:undefined,
   gasCollectionProcessedMol:undefined,gasCollectedMol:undefined,
   meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined,lastEvaporatedAtMs:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
