@@ -409,6 +409,7 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
  const evaporating=settings.evaporationEnabled&&profile.passiveEvaporation&&
   vessels.some(v=>!v.stoppered&&
    labVaporPressureKPa(v,v.temperatureC??22)!==undefined);
+ if(bench.simulationPaused)return null;
  if(!burette&&!reactions&&!phase&&!powered&&!thermal&&!evaporating)return null;
  const cadenceMs=settings.realism==="low"?
   (burette||reactions?900:phase||powered||thermal?2600:9800):
@@ -426,7 +427,7 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
  * This also prevents one large tick from vaporizing solvent before warming it.
  * All intermediate results remain local: only one final revision is synced. */
 export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
- if(!Number.isFinite(nowMs)||nowMs<0)return bench;
+ if(bench.simulationPaused||!Number.isFinite(nowMs)||nowMs<0)return bench;
  if(bench.simulationAtMs===undefined)
   return {...bench,simulationAtMs:nowMs,event:bench.event+1};
  const settings=labBenchSettings(bench);
@@ -674,16 +675,54 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    if(reaction.status!=="reaction"||!reaction.caseData)return v;
    state=startQuantifiedLabReaction(reaction.caseData,v.reagents,v.doses,nowMs)??undefined;
    if(!state)return v;
+   // Gas reactions need a watchable 24-second school demonstration.
+   if(reaction.caseData.observation==="gas")state={...state,durationSeconds:24};
   }else if(state.complete)return v;
   // Increment by simulation time; subtracting wall-clock elapsed would stall
   // progress after the first accelerated reaction step.
-  const elapsed=profile.fastReactions?Math.max(seconds,30):seconds;
+  const elapsed=profile.fastReactions&&!labReactionGasProgress(state)?
+   Math.max(seconds,30):seconds;
   const next=v.reactionAmounts?advanceQuantifiedLabReaction(state,elapsed):state;
   if(next===v.reactionAmounts)return v;
   changed=true;
   return {...v,reactionAmounts:next};
  });
  result={...result,vessels};
+ // An outlet captures only NEW measured gas, never the final predicted yield.
+ // Receiver capacity bounds retained gas; anything additional vents.
+ for(const source of [...result.vessels]){
+  if(!source.gasCollectionTargetId||source.stoppered)continue;
+  const receiver=result.vessels.find(v=>v.id===source.gasCollectionTargetId);
+  const progress=labReactionGasProgress(source.reactionAmounts);
+  if(!receiver||!progress||receiver.stoppered)continue;
+  const processed={...source.gasCollectionProcessedMol};
+  const collected={...source.gasCollectedMol};
+  let moved=result,wasUpdated=false;
+  for(const [formula,produced] of Object.entries(progress.producedMol)){
+   const delta=Math.max(0,produced-(processed[formula]??0));
+   if(delta<=1e-12)continue;
+   const target=moved.vessels.find(v=>v.id===receiver.id)!;
+   const stocked=Object.entries(target.doses??{}).reduce((total,[id,d])=>
+    total+(substances.find(s=>s.id===id)?.kind==="газ"?d.value:0),0);
+   const room=Math.max(0,labVesselQuantity(target).availableMl-stocked);
+   const ml=Math.floor(Math.min(delta*24465,room)*100)/100;
+   if(ml>=.01){
+    const next=putLabReagent(moved,receiver.id,formula,{unit:"ml",value:ml});
+    if(next!==moved){
+     moved=next;wasUpdated=true;
+     collected[formula]=(collected[formula]??0)+ml/24465;
+    }
+   }
+   // Retain traces below 0.01 ml, but vent when receiver is full.
+   processed[formula]=ml>=.01||room<.01?produced:processed[formula]??0;
+   wasUpdated=true;
+  }
+  if(!wasUpdated)continue;
+  result={...moved,selectedId:result.selectedId,
+   vessels:moved.vessels.map(v=>v.id===source.id?
+   {...v,gasCollectionProcessedMol:processed,gasCollectedMol:collected}:v)};
+  changed=true;
+ }
  // A rapid measured gas reaction can release the stopper immediately after
  // THIS tick's stoichiometric progress, not one thermal tick later. The
  // labEvaporate pressure helper already accounts for air, vapor and nRT/V.
@@ -973,6 +1012,12 @@ export type LabVessel={pourFraction?:number;
  stoppered?:boolean;
  /** Temperature in °C when the air headspace was sealed. */
  stopperedAtC?:number;
+ /** Optional gas-outlet tube to a second vessel. */
+ gasCollectionTargetId?:string;
+ /** Already accounted gas, preventing repeated collection across ticks. */
+ gasCollectionProcessedMol?:Record<string,number>;
+ /** Total collected measured gas moles. */
+ gasCollectedMol?:Record<string,number>;
  /** Gas formed before this stopper was inserted already escaped if open. */
  sealedReactionGasBaselineMol?:number;
  /** Measured liquid volumes vented to the room as vapor. */
@@ -1063,7 +1108,9 @@ export function clearLabTable(bench:LabBench):LabBench{
   placedDevices:[],devices:[],
   titration:undefined,titrationPair:undefined,stirringVesselId:undefined,
   instrumentTarget:undefined,simulationAtMs:undefined,pouring:undefined,
-  experimentClock:undefined,event:bench.event+1};
+  simulationPaused:bench.simulationPaused,pausedAtMs:bench.pausedAtMs,
+  experimentClock:undefined,
+  resumeExperimentClock:undefined,event:bench.event+1};
 }
 export type LabPourProgress={id:string;sourceId:string;targetId:string;step:number;totalSteps:20;
  initialDoses:Record<string,LabDose>;unmeasured:boolean;
@@ -1088,7 +1135,8 @@ export function labExperimentClockSeconds(bench:LabBench,nowMs:number):number{
 }
 export function setLabExperimentClock(bench:LabBench,
  action:"start"|"pause"|"reset",nowMs:number):LabBench{
- if(!Number.isFinite(nowMs)||nowMs<0)return bench;
+ if(!Number.isFinite(nowMs)||nowMs<0||
+  action==="start"&&bench.simulationPaused)return bench;
  const old=bench.experimentClock;
  if(action==="reset"){
   if(!old||(old.elapsedSeconds===0&&!old.running))return bench;
@@ -1116,7 +1164,10 @@ export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:L
  seenReactionKeys?:string[];
  settings?:LabBenchSettings;quickReagents?:LabQuickReagent[];devices?:LabDevice[];placedDevices?:LabPlacedDevice[];titration?:TitrationModel;stirringVesselId?:string;
  instrumentTarget?:{kind:"tripod"|"thermometer";vesselId:string};
- titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;}
+ titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;
+ /** Single shared pause for chemistry, heat, crystallization and titration. */
+ simulationPaused?:boolean;resumeExperimentClock?:boolean;
+ pausedAtMs?:number;}
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=48;
 const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
 export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>,
@@ -1130,6 +1181,30 @@ export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSett
   {elapsedSeconds:labExperimentClockSeconds(bench,nowMs),anchorMs:nowMs,running:true}:
   bench.experimentClock;
  return {...bench,settings:next,experimentClock,event:bench.event+1};
+}
+/** Pausing banks the stopwatch and re-bases simulation time on resume. */
+export function setLabSimulationPaused(bench:LabBench,paused:boolean,nowMs=Date.now()):LabBench{
+ if(!!bench.simulationPaused===paused||!Number.isFinite(nowMs)||nowMs<0)return bench;
+ const clock=bench.experimentClock;
+ const banked=clock?.running?
+  {elapsedSeconds:labExperimentClockSeconds(bench,nowMs),anchorMs:nowMs,
+   running:false}:clock;
+ const resumeClock=paused?!!clock?.running:!!bench.resumeExperimentClock;
+ const experimentClock=!paused&&resumeClock?
+  {elapsedSeconds:banked?.elapsedSeconds??0,anchorMs:nowMs,running:true}:banked;
+ const pauseMs=!paused&&bench.pausedAtMs!==undefined?
+  Math.max(0,nowMs-bench.pausedAtMs):0;
+ const vessels=pauseMs?bench.vessels.map(v=>({
+  ...v,
+  visualStartedAtMs:v.visualStartedAtMs===undefined?undefined:v.visualStartedAtMs+pauseMs,
+  physicalStartedAtMs:v.physicalStartedAtMs===undefined?undefined:v.physicalStartedAtMs+pauseMs,
+  reactionAmounts:v.reactionAmounts?.startedAtMs!==undefined?
+   {...v.reactionAmounts,startedAtMs:v.reactionAmounts.startedAtMs+pauseMs}:
+   v.reactionAmounts
+ })):bench.vessels;
+ return {...bench,vessels,simulationPaused:paused,simulationAtMs:nowMs,
+  pausedAtMs:paused?nowMs:undefined,
+  experimentClock,resumeExperimentClock:paused?resumeClock:false,event:bench.event+1};
 }
 export const defaultLabBench=():LabBench=>({
  vessels:[{id:"v1",kind:"beaker",x:48,y:70,reagents:[],environment:"aqueous",observed:false}],
@@ -1513,7 +1588,8 @@ export function removeLabVessel(bench:LabBench,id:string,discardContents=false):
   target.reagents.length>0||!!target.filteredSolution||
   !!target.filteredResidue||!!target.chemicalInventory||
   !!target.reactionAmounts)))return bench;
- const vessels=bench.vessels.filter(v=>v.id!==id);
+ const vessels=bench.vessels.filter(v=>v.id!==id).map(v=>
+  v.gasCollectionTargetId===id?{...v,gasCollectionTargetId:undefined}:v);
  return {...bump(bench,vessels,""),
   stirringVesselId:bench.stirringVesselId===id?undefined:bench.stirringVesselId,
   instrumentTarget:bench.instrumentTarget?.vesselId===id?undefined:bench.instrumentTarget,
@@ -1563,13 +1639,57 @@ export function labHeadspaceGasMoles(v:LabVessel){
    sum+(substances.find(x=>x.id===id)?.kind==="газ"?m:0),0);
  return Math.max(0,total-baseline);
 }
+/** Tube from reaction flask to a gas receiving vessel, without an
+ * imaginary supply of gases already vented before connection. */
+export function setLabGasCollection(bench:LabBench,sourceId:string,targetId?:string):LabBench{
+ const source=bench.vessels.find(v=>v.id===sourceId);
+ const target=bench.vessels.find(v=>v.id===targetId);
+ if(!source||source.stoppered||targetId&&(!target||targetId===sourceId||target.stoppered)||
+  source.gasCollectionTargetId===targetId)return bench;
+ const already=labReactionGasProgress(source.reactionAmounts)?.producedMol??{};
+ return revise(bench,sourceId,v=>({...v,gasCollectionTargetId:targetId,
+  gasCollectionProcessedMol:targetId?{...already}:undefined}));
+}
+/** Transfer a 25 °C, 1 atm measured gas dose to another reactive vessel,
+ * subtracting that same amount from the source gas collection flask. */
+export function transferLabGasSample(bench:LabBench,sourceId:string,targetId:string,
+ requestedMl=20):LabBench{
+ const source=bench.vessels.find(v=>v.id===sourceId);
+ const target=bench.vessels.find(v=>v.id===targetId);
+ if(!source||!target||sourceId===targetId||source.stoppered||target.stoppered||
+  !Number.isFinite(requestedMl)||requestedMl<=0)return bench;
+ const gases=Object.entries(source.doses??{}).filter(([id,d])=>
+  substances.find(s=>s.id===id)?.kind==="газ"&&d.unit==="ml"&&d.value>0);
+ if(gases.length!==1)return bench;
+ const [formula,dose]=gases[0];
+ const stocked=Object.entries(target.doses??{}).reduce((total,[id,d])=>
+  total+(substances.find(s=>s.id===id)?.kind==="газ"?d.value:0),0);
+ const free=labVesselQuantity(target).availableMl-stocked;
+ const ml=Math.floor(Math.min(requestedMl,dose.value,free)*100)/100;
+ if(ml<=0)return bench;
+ const placed=putLabReagent(bench,targetId,formula,{unit:"ml",value:ml});
+ if(placed===bench)return bench;
+ const vessels=placed.vessels.map(v=>{
+  if(v.id!==sourceId)return v;
+  const left=Math.round((dose.value-ml)*100)/100;
+  const doses={...v.doses};
+  if(left>0)doses[formula]={...dose,value:left};
+  else delete doses[formula];
+  const reagents=left>0?v.reagents:v.reagents.filter(id=>id!==formula);
+  return {...v,doses:Object.keys(doses).length?doses:undefined,reagents,
+   observed:reagents.length>1||v.observed};
+ });
+ return {...placed,vessels,event:placed.event+1};
+}
 export function labVesselPressure(v:LabVessel,temperatureC=v.temperatureC??22){
  const {occupiedMl,capacityMl}=labVesselQuantity(v);
  return labEvaporate({...v,headspaceMl:Math.max(1,capacityMl-occupiedMl),
   reactionGasMol:v.stoppered?labHeadspaceGasMoles(v):0},0,temperatureC);
 }
 export function emptyLabVessel(bench:LabBench,id:string):LabBench{
- const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,sealedReactionGasBaselineMol:undefined,meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
+ const next=revise(bench,id,v=>({...v,reagents:[],observed:false,uncertain:false,indicator:undefined,indicatorDrops:undefined,indicatorAddedAtMs:undefined,doses:undefined,completedReaction:undefined,reactionAmounts:undefined,filteredResidue:undefined,filteredSolution:undefined,chemicalInventory:undefined,physicalProcess:undefined,physicalStartedAtMs:undefined,binarySaltPhase:undefined,sealedReactionGasBaselineMol:undefined,gasCollectionTargetId:undefined,
+  gasCollectionProcessedMol:undefined,gasCollectedMol:undefined,
+  meltFraction:undefined,phaseTransition:undefined,reactionHeat:undefined,ventedVaporMl:undefined}));
  return next===bench?bench:({...next,stirringVesselId:next.stirringVesselId===id?undefined:next.stirringVesselId,
   placedDevices:placedLabDevices(next).map(d=>({
    ...d,...(d.linkedVesselId===id?{linkedVesselId:undefined,active:false}:{}),
@@ -2654,5 +2774,11 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  return {vessels:limited,selectedId,mode,tableEpoch:mine.tableEpoch??remote.tableEpoch,
   settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,
   stirringVesselId,instrumentTarget,simulationAtMs,experimentClock,pouring,
+  simulationPaused:mine.simulationPaused===previous.simulationPaused?
+   remote.simulationPaused:mine.simulationPaused,
+  pausedAtMs:mine.pausedAtMs===previous.pausedAtMs?
+   remote.pausedAtMs:mine.pausedAtMs,
+  resumeExperimentClock:mine.resumeExperimentClock===previous.resumeExperimentClock?
+   remote.resumeExperimentClock:mine.resumeExperimentClock,
   reactionLog,seenReactionKeys,event:Math.max(remote.event,mine.event)+1};
 }

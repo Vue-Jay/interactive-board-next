@@ -2,7 +2,8 @@ import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "re
 import {createPortal} from "react-dom";
 import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,
+ setLabSimulationPaused,setLabGasCollection,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -677,6 +678,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [molarity,setMolarity]=useState("0.1");
  const [titrationTarget,setTitrationTarget]=useState("");
  const [measuredMl,setMeasuredMl]=useState("5");
+ const [gasSampleTargetId,setGasSampleTargetId]=useState("");
  const [measuredPartnerId,setMeasuredPartnerId]=useState("");
  const [localPourId,setLocalPourId]=useState<string|null>(null);
  // Toast actions are transient UI, never persisted with the collaborative bench.
@@ -785,17 +787,17 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   * The session itself lives in the board so other users see every portion. */
  useEffect(()=>{
   const id=bench.pouring?.id;
-  if(!editable||!id||localPourRef.current!==id)return;
+  if(!editable||bench.simulationPaused||!id||localPourRef.current!==id)return;
   const timer=setInterval(()=>{
    const current=benchRef.current,session=current.pouring;
-   if(!session||session.id!==id||session.step>=LAB_POUR_STEPS)return;
+   if(!session||benchRef.current.simulationPaused||session.id!==id||session.step>=LAB_POUR_STEPS)return;
    if(session.step<=lastPourStepRef.current)return;
    lastPourStepRef.current=session.step;
    const next=advanceLabPour(current);
    if(next!==current){benchRef.current=next;changeRef.current?.(next,true)}
   },LAB_POUR_INTERVAL_MS);
   return()=>clearInterval(timer);
- },[bench.pouring?.id,editable]);
+ },[bench.pouring?.id,editable,bench.simulationPaused]);
  useEffect(()=>{
   const session=bench.pouring;
   if(!session||session.step!==LAB_POUR_STEPS||
@@ -817,7 +819,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   let timer:number|undefined;
   let disposed=false;
   const tick=()=>{
-   if(disposed||document.visibilityState==="hidden"||
+   if(disposed||benchRef.current.simulationPaused||document.visibilityState==="hidden"||
     !fullscreenOwner&&document.body.classList.contains("lektrus-lab-fullscreen-active"))return;
    const current=benchRef.current,now=Date.now();
    const wait=labSimulationTickWaitMs(current,now);
@@ -853,7 +855,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    window.removeEventListener("focus",resume);
    window.removeEventListener("lektrus-lab-fullscreen-change",resume);
   };
- },[editable,fullscreenOwner,bench.event,bench.vessels,bench.placedDevices,bench.simulationAtMs]);
+ },[editable,fullscreenOwner,bench.event,bench.vessels,bench.placedDevices,bench.simulationAtMs,bench.simulationPaused]);
  useEffect(()=>{if(cabinet)dialogRef.current?.focus()},[cabinet]);
  useEffect(()=>{scrollRef.current?.scrollTo({top:0})},
   [cabinet,cabinetTab,query,category,phase,sort,group,effectFilter]);
@@ -1354,6 +1356,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   (compactFullscreen?" is-compact-fullscreen":"")+
   (compactFullscreen&&mobileDrawer?" is-drawer-"+mobileDrawer:"")+
   (bench.selectedId?" has-selected-vessel":"")+
+  (bench.simulationPaused?" is-simulation-paused":"")+
   (pendingGlassware?" is-placing-glassware":"")+
   (!settings.animateEffects?" lab-reduced-animation":"")} ref={host}
   aria-label="Интерактивный химический стол с шкафами и раковиной"
@@ -1437,6 +1440,25 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    <div className="lektrus-lab-counter-front"/>
    <div className="lektrus-lab-worktop-zone"/>
   </div>
+  {/* A connected, deliberately chosen gas outlet tube is visible to pupils.
+      It does not intercept drops, pouring or worktop pointer gestures. */}
+  {bench.vessels.filter(v=>!!v.gasCollectionTargetId).map(source=>{
+   const receiver=bench.vessels.find(v=>v.id===source.gasCollectionTargetId);
+   if(!receiver)return null;
+   const from=vesselPosition(source),to=vesselPosition(receiver);
+   const y=Math.max(31,Math.min(from.y,to.y)-21);
+   const path=`M ${from.x} ${from.y-9} Q ${(from.x+to.x)/2} ${y} ${to.x} ${to.y-9}`;
+   return <svg key={"gas-tube-"+source.id} className="lektrus-lab-gas-tube"
+    viewBox="0 0 100 100" preserveAspectRatio="none"
+    aria-label="Газоотводная трубка между сосудами" role="img">
+    <path d={path} fill="none" stroke="#366e77" strokeWidth=".85"
+     strokeLinecap="round" opacity=".55"/>
+    <path d={path} fill="none" stroke="#daffff" strokeWidth=".33"
+     strokeLinecap="round" opacity=".95"/>
+    <circle cx={to.x} cy={to.y-9} r="1.2" fill="#c6f7f9"
+     stroke="#45858e" strokeWidth=".35"/>
+   </svg>;
+  })}
   <div className={"lektrus-lab-experiment-clock"+
    (bench.experimentClock?.running?" is-running":"")}
    data-board-interactive="true" role="group" aria-label="Часы времени опыта"
@@ -1451,8 +1473,18 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
     </strong>
     <span className="lektrus-lab-clock-speed">×{settings.timeScale}</span>
    </div>
+   {editable&&<button type="button"
+    className={"lektrus-lab-simulation-toggle"+(bench.simulationPaused?" is-paused":"")}
+    aria-pressed={!!bench.simulationPaused}
+    aria-label={bench.simulationPaused?"Запустить все процессы лаборатории":"Поставить все процессы на паузу"}
+    title="Останавливает нагрев, реакции, испарение, газовыделение и титрование"
+    onClick={e=>{e.stopPropagation();
+     onChange?.(setLabSimulationPaused(bench,!bench.simulationPaused,Date.now()))}}>
+    {bench.simulationPaused?"▶ Запустить процессы":"Ⅱ Пауза процессов"}
+   </button>}
    {editable&&<div className="lektrus-lab-clock-buttons">
     <button type="button" className="lektrus-lab-clock-toggle"
+     disabled={!!bench.simulationPaused}
      aria-label={bench.experimentClock?.running?"Пауза часов опыта":"Запустить часы опыта"}
      title={bench.experimentClock?.running?"Остановить секундомер":"Начать отсчёт времени опыта"}
      onClick={e=>{e.stopPropagation();onChange?.(setLabExperimentClock(bench,
@@ -1466,6 +1498,45 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
       "reset",Date.now()))}}>↺</button>
    </div>}
   </div>
+  {editable&&selected&&(()=>{
+   const reaction=labObservation(selected).caseData;
+   const gasReaction=reaction?.observation==="gas"||!!selected.gasCollectionTargetId;
+   const storedGas=Object.entries(selected.doses??{}).filter(([id,d])=>
+    substances.find(s=>s.id===id)?.kind==="газ"&&d.unit==="ml"&&d.value>0);
+   const targets=bench.vessels.filter(v=>v.id!==selected.id&&!v.stoppered&&
+    ["beaker","tube","flask","conical","volumetric"].includes(v.kind));
+   if(!targets.length||!gasReaction&&!storedGas.length)return null;
+   const chosen=targets.some(v=>v.id===gasSampleTargetId)?
+    gasSampleTargetId:targets[0].id;
+   return <div className="lektrus-lab-gas-workbench" data-board-interactive="true"
+    onPointerDown={e=>e.stopPropagation()}>
+    <strong>Газоотвод <span aria-hidden="true">↗</span></strong>
+    {gasReaction&&<label>Собирать газ в
+     <select aria-label="Сосуд для сбора газа" value={selected.gasCollectionTargetId??""}
+      onChange={e=>{e.stopPropagation();
+       onChange?.(setLabGasCollection(bench,selected.id,e.target.value||undefined))}}>
+      <option value="">Не подключён</option>
+      {targets.map(v=><option key={v.id} value={v.id}>
+       {names[v.kind]} · {bench.vessels.indexOf(v)+1}</option>)}
+     </select>
+    </label>}
+    {storedGas.length>0&&<div className="lektrus-lab-gas-transfer">
+     <span>{storedGas.map(([formula,d])=>formula+" · "+labDisplayNumber(d.value,settings.realism)+" мл").join(" + ")}</span>
+     <label>Перенести газ в
+      <select aria-label="Куда перенести собранный газ"
+       value={chosen} onChange={e=>setGasSampleTargetId(e.target.value)}>
+       {targets.map(v=><option key={v.id} value={v.id}>
+        {names[v.kind]} · {bench.vessels.indexOf(v)+1}</option>)}
+      </select></label>
+     <button type="button" onClick={e=>{e.stopPropagation();
+      const next=transferLabGasSample(bench,selected.id,chosen,20);
+      if(next!==bench){onChange?.(next);setNotice("Порция газа перенесена в выбранный сосуд")}
+      else setNotice("Не хватает свободного объёма или газ не подготовлен")}}>
+      Перенести до 20 мл</button>
+    </div>}
+    {gasReaction&&<small>Подключите второй сосуд до запуска. Газ собирается постепенно; остаток выходит в воздух.</small>}
+   </div>;
+  })()}
   {compactFullscreen&&(preview||devicePreview)&&
    <div className={"lektrus-lab-return-zone"+
     (dropFurniture==="glassware"||dropDeviceShelf?" is-ready":"")}

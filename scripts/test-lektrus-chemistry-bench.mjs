@@ -2956,10 +2956,16 @@ assert.equal(pressurePop.vessels.find(v=>v.id===pressurePopId).stoppered,true);
 pressurePop=lab.advanceLabSimulation(pressurePop,0);
 pressurePop=lab.advanceLabSimulation(pressurePop,1000);
 pressurePop=lab.advanceLabSimulation(pressurePop,2000);
+const pressureBeforePop=pressurePop.vessels.find(v=>v.id===pressurePopId);
+assert.ok(pressureBeforePop.reactionAmounts?.extentMol>0);
+if(pressureBeforePop.stoppered)
+ assert.equal(lab.labVesselPressure(pressureBeforePop).popped,false,
+  "Slower 24 s gas kinetics must not pop the stopper before pressure reaches its limit");
+for(let t=3000;t<=32000&&pressurePop.vessels.find(v=>v.id===pressurePopId)?.stoppered;t+=1000)
+ pressurePop=lab.advanceLabSimulation(pressurePop,t);
 const poppedVessel=pressurePop.vessels.find(v=>v.id===pressurePopId);
-assert.ok(poppedVessel.reactionAmounts?.extentMol>0);
 assert.equal(poppedVessel.stoppered,false,
- "A cork must be released on the first quantified tick exceeding its pressure limit");
+ "Cork must release as soon as slower measured gas generation exceeds the pressure limit");
 assert.match(read("src/lektrusChemistryBenchModel.ts"),
  /A rapid measured gas reaction can release the stopper immediately/);
 console.log("Reviewed gas cases and immediate pressure-driven cork release: OK");

@@ -75,6 +75,7 @@ export function prepareLabExperimentKit(bench:LabBench,row:ReactionCase):LabBenc
   placedDevices:[],devices:[],stirringVesselId:undefined,
   titration:undefined,titrationPair:undefined,instrumentTarget:undefined,
   pouring:undefined,simulationAtMs:undefined,experimentClock:undefined,
+  simulationPaused:true,pausedAtMs:undefined,resumeExperimentClock:undefined,
   event:bench.event+1};
  const devices=labExperimentEquipment(row);
  for(const [i,kind] of devices.entries()){

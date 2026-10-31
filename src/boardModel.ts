@@ -1009,6 +1009,9 @@ export function parseDocument(raw: string): DocumentData {
                    Number.isFinite(c.massG)&&c.massG>0&&c.massG<=10000))))))))||
           (bench.simulationAtMs!=null&&
            (!Number.isFinite(bench.simulationAtMs)||bench.simulationAtMs<0))||
+          (bench.simulationPaused!=null&&typeof bench.simulationPaused!=="boolean")||
+          (bench.resumeExperimentClock!=null&&typeof bench.resumeExperimentClock!=="boolean")||
+          (bench.pausedAtMs!=null&&(!Number.isFinite(bench.pausedAtMs)||bench.pausedAtMs<0))||
           (bench.experimentClock!=null&&(
            typeof bench.experimentClock!=="object"||
            !Number.isFinite(bench.experimentClock.elapsedSeconds)||
@@ -1115,6 +1118,12 @@ export function parseDocument(raw: string): DocumentData {
             (v.stopperedAtC==null||(typeof v.stopperedAtC==="number"&&
              Number.isFinite(v.stopperedAtC)&&v.stopperedAtC>=0&&
              v.stopperedAtC<=1300&&v.stoppered===true))&&
+            (v.gasCollectionTargetId==null||(
+             typeof v.gasCollectionTargetId==="string"&&
+             v.gasCollectionTargetId!==v.id&&
+             bench.vessels.some(other=>other.id===v.gasCollectionTargetId)))&&
+            (v.gasCollectionProcessedMol==null||validMolRecord(v.gasCollectionProcessedMol))&&
+            (v.gasCollectedMol==null||validMolRecord(v.gasCollectedMol))&&
             (v.sealedReactionGasBaselineMol==null||(
              typeof v.sealedReactionGasBaselineMol==="number"&&
              Number.isFinite(v.sealedReactionGasBaselineMol)&&
