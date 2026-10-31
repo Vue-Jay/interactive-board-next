@@ -172,3 +172,49 @@ const lowPhase=lab.advanceLabSimulation(switching,11000).vessels[0];
 assert.deepEqual(lowPhase.binarySaltPhase,phaseState,
  "Simplified mode may skip crystallization kinetics but cannot erase existing solids");
 console.log("Lab low/medium/high fidelity engine, conservative switching and coarse readings: OK");
+
+// Cooling bath is an actual apparatus with persisted temperature and contact.
+let chilled=lab.addPlacedLabDevice(lab.defaultLabBench(),"cooler");
+const coolerId=chilled.placedDevices[0].id;
+assert.ok(lab.labDevices.some(d=>d.id==="cooler"),"Cooling bath must be offered in cabinet");
+assert.equal(lab.canMountLabVessel("cooler","beaker"),true);
+assert.equal(lab.canMountLabVessel("cooler","burette"),false);
+chilled=lab.setLabCoolerTemperature(chilled,coolerId,-14);
+assert.equal(chilled.placedDevices[0].targetTemperatureC,-14);
+chilled=lab.setLabCoolerTemperature(chilled,coolerId,-200);
+assert.equal(chilled.placedDevices[0].targetTemperatureC,-20);
+chilled=lab.setLabCoolerTemperature(chilled,coolerId,100);
+assert.equal(chilled.placedDevices[0].targetTemperatureC,20);
+chilled=lab.setLabCoolerTemperature(chilled,coolerId,0);
+const coldSample={...chilled.vessels[0],reagents:["NaCl"],
+ doses:{NaCl:{value:1,unit:"g"}},temperatureC:90};
+chilled={...chilled,vessels:[coldSample],simulationAtMs:1000};
+chilled=lab.applyPlacedLabDevice(chilled,coolerId,"v1");
+chilled=lab.setPlacedDevicePower(chilled,coolerId,true);
+const cooled=lab.advanceLabSimulation(chilled,11000);
+assert.ok(cooled.vessels[0].temperatureC<90&&cooled.vessels[0].temperatureC>0,
+ "Cooling should be gradual with no sudden jump to bath temperature");
+assert.ok(cooled.placedDevices[0].temperatureC<22);
+const released=lab.stopPlacedLabDevice(chilled,coolerId);
+const detached=lab.advanceLabSimulation(released,11000);
+assert.ok(detached.vessels[0].temperatureC>cooled.vessels[0].temperatureC,
+ "A cooling bath must not cool a disconnected vessel");
+// The formerly hard-coded 450/550 °C glassware cap must never discard
+// the thermal simulation's energy after a measured solid has warmed.
+const solid={...coldSample,kind:"dish",temperatureC:545};
+let high={...chilled,vessels:[solid],placedDevices:[{
+ id:"high-plate",kind:"hotplate",x:50,y:70,active:true,linkedVesselId:"v1",
+ powered:true,temperatureC:900,targetTemperatureC:900,heatLevel:2
+}]};
+const aboveCeiling=lab.advanceLabSimulation(high,11000).vessels[0];
+assert.ok(aboveCeiling.temperatureC>550,
+ "Vessel must not stop artificially at old 550 °C limit");
+const ui=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
+assert.match(ui,/experimentSettingsRef\.current\.open=false/,
+ "Desktop settings must have an explicit and outside-dismiss close path");
+assert.match(ui,/compactSettingsRef\.current\?\.contains/,
+ "Mobile settings must close when tapping outside");
+assert.match(ui,/aria-label="Закрыть настройки опыта"/);
+assert.match(ui,/clipPath=\{"url\(#"\+id\+"clip\)"\}/,
+ "Glass reflection must be clipped to the vessel geometry");
+console.log("Cooling bath, unbounded vessel heating, settings dismissal and glass glare: OK");
