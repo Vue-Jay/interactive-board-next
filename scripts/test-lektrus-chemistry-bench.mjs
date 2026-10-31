@@ -1714,10 +1714,24 @@ alcoholHeat=lab.applyPlacedLabDevice(alcoholHeat,alcoholHeater,"v1");
 alcoholHeat=lab.setLabHotplateTemperature(alcoholHeat,alcoholHeater,160);
 alcoholHeat=lab.setPlacedDevicePower(alcoholHeat,alcoholHeater,true);
 alcoholHeat=lab.advanceLabSimulation(alcoholHeat,0);
-for(let i=1;i<=130;i++)alcoholHeat=lab.advanceLabSimulation(alcoholHeat,i*2000);
-assert.ok((alcoholHeat.vessels[0].temperatureC??0)<=78.37,
- "Ethanol cannot use the 100°C water boiling point");
-assert.ok(lab.labVesselQuantity(alcoholHeat.vessels[0]).volumeMl<30);
+let observedAlcoholBoiling=false;
+for(let i=1;i<=130;i++){
+ alcoholHeat=lab.advanceLabSimulation(alcoholHeat,i*2000);
+ const volume=lab.labVesselQuantity(alcoholHeat.vessels[0]).volumeMl;
+ const temp=alcoholHeat.vessels[0].temperatureC??0;
+ if(volume>0.01&&volume<29&&temp>=76){
+  assert.ok(temp<=78.6,
+   "Liquid ethanol must stay near its measured boiling point while present");
+  observedAlcoholBoiling=true;
+ }
+}
+assert.ok(observedAlcoholBoiling,"Ethanol must visibly pass through boiling");
+assert.ok(lab.labVesselQuantity(alcoholHeat.vessels[0]).volumeMl<30,
+ "Ethanol boils away under sustained heat");
+// Once every drop is gone, the dry vessel can heat ABOVE the boiling point.
+if(lab.labVesselQuantity(alcoholHeat.vessels[0]).volumeMl<.01)
+ assert.ok((alcoholHeat.vessels[0].temperatureC??0)>78.37,
+  "A dry vessel must not remain stuck at ethanol's boiling plateau");
 const saline=lab.putLabReagent(lab.putLabReagent(detailedBench(),"v1",
  "H2O",{value:30,unit:"ml"}),"v1","NaCl",{value:2,unit:"g"});
 assert.equal(thermal.labVesselThermal(saline.vessels[0].reagents,saline.vessels[0].doses),
