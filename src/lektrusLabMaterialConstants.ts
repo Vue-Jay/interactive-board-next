@@ -435,6 +435,10 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  CH3COOK:[null,labExactMeasuredSolubility("CH3COOK",20)??null,null,null,null,null],
  AgCl:[null,labExactMeasuredSolubility("AgCl",20)??null,null,null,null,null],
  AgBr:[null,labExactMeasuredSolubility("AgBr",20)??null,null,null,null,null],
+ // Ag2CO3 Seidell 1940: only measured 20/100 C points. Do NOT
+ // interpolate across the 80 C gap or assume anhydrous precipitation.
+ Ag2CO3:[null,labExactMeasuredSolubility("Ag2CO3",20)??null,
+  null,null,null,labExactMeasuredSolubility("Ag2CO3",100)??null],
  SrCl2:[null,labExactMeasuredSolubility("SrCl2",20)??null,null,null,null,null],
  K3PO4:[null,labExactMeasuredSolubility("K3PO4",20)??null,null,null,null,null],
  // Calcium acetate source reports two extremes (0 and 100 °C) only.
@@ -600,7 +604,7 @@ export const LAB_SOLUBILITY_REFERENCE_ONLY_BINARY_PHASES:ReadonlySet<string>=new
  "LiNO3","Cu(NO3)2","Al2(SO4)3","Li2SO4","ZnSO4",
  // Binary-water references do not model silver halide Ksp, dissolution
  // kinetics, acetate hydrolysis, crystal waters or phosphate speciation.
- "CH3COONa","CH3COOK","AgCl","AgBr","SrCl2","K3PO4",
+ "CH3COONa","CH3COOK","AgCl","AgBr","Ag2CO3","SrCl2","K3PO4",
  "Ca(CH3COO)2",
  // Some salts change aqueous speciation or stable hydrated crystals.
  // All values below are isolated aqueous reference measurements only.
