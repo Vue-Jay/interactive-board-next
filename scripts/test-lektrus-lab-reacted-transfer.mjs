@@ -119,6 +119,13 @@ approx(chemical.labInventoryMassG(secondState),receivedMass,1e-5);
 // conserved-ledger path instead of replaying both sets of starting stocks.
 const another=lab.addLabVessel(second,"tube");
 assert.ok(another.vessels.length>=3);
+// The same immutable lab revision must normalize equipment exactly once,
+// even when six simultaneous vessels ask for heating and stand placement.
+const equipment=lab.addPlacedLabDevice(lab.defaultLabBench(),"hotplate");
+assert.strictEqual(lab.placedLabDevices(equipment),lab.placedLabDevices(equipment));
+const movedEquipment=lab.movePlacedLabDevice(equipment,equipment.placedDevices[0].id,45,70);
+assert.notStrictEqual(lab.placedLabDevices(equipment),lab.placedLabDevices(movedEquipment));
+assert.equal(lab.placedLabDevices(movedEquipment)[0].x,45);
 const dormant=lab.defaultLabBench().vessels[0];
 assert.equal(lab.labReactionNeedsTick(dormant),false);
 assert.equal(lab.labReactionNeedsTick(dormant),false);
