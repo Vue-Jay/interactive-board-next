@@ -122,7 +122,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const visualNow=simulationPaused?pausedAtMs??visualNowMs??Date.now():visualNowMs??Date.now();
  const result=labObservation(vessel);
  const verified=result.status==="reaction"?result.caseData:undefined;
- const inventory=vessel.chemicalInventory?
+ const inventory=vessel.pendingInventoryReaction?undefined:vessel.chemicalInventory?
   simulateLabInventory({...vessel,volumeMl:labVesselQuantity(vessel).volumeMl}):
   vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
   simulateLabInventory(vessel):undefined;
@@ -132,7 +132,12 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const retainedGasTotal=vessel.stoppered?labHeadspaceGasMoles(vessel):0;
  const recentCase=mostRecentEquation?
   reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
- const visualCase=recentCase??vessel.completedReaction??verified;
+ // Forecast reactions must not recolor the mixture before they happen.
+ const hasReactionProgress=!!vessel.reactionAmounts&&vessel.reactionAmounts.extentMol>1e-12;
+ const visualCase=(hasReactionProgress||vessel.reactionAmounts?.complete||
+  !!vessel.completedReaction||!!vessel.chemicalInventory&&!vessel.pendingInventoryReaction?
+  recentCase:undefined)??vessel.completedReaction??
+  (hasReactionProgress?verified:undefined);
  const appearance=reactionAppearance(visualCase);
  const isLiquidIndicator=!!vessel.indicator&&vessel.indicator!=="universal";
  const ph=labVesselPH(vessel);
