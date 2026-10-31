@@ -2,7 +2,7 @@ import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "re
 import {createPortal} from "react-dom";
 import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,labFollowUpGasProgress,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,
  setLabSimulationPaused,setLabGasCollection,transferLabGasSample,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
@@ -127,16 +127,18 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   vessel.doses&&!vessel.filteredResidue&&!vessel.filteredSolution?
   simulateLabInventory(vessel):undefined;
  const mostRecentEquation=inventory?.steps[inventory.steps.length-1]?.equation;
- const gasProgress=labReactionGasProgress(vessel.reactionAmounts,
-  temperatureC??vessel.temperatureC??22);
+ const gasProgress=labFollowUpGasProgress(vessel)??
+  labReactionGasProgress(vessel.reactionAmounts,
+   temperatureC??vessel.temperatureC??22);
  const retainedGasTotal=vessel.stoppered?labHeadspaceGasMoles(vessel):0;
  const recentCase=mostRecentEquation?
   reviewedReactionCases.find(row=>row.equation===mostRecentEquation):undefined;
  // Forecast reactions must not recolor the mixture before they happen.
  const hasReactionProgress=!!vessel.reactionAmounts&&vessel.reactionAmounts.extentMol>1e-12;
- const gradualCase=vessel.inventoryPrecipitation?
-  reviewedReactionCases.find(row=>
-   row.equation===vessel.inventoryPrecipitation?.equation):undefined;
+ const growingEquation=vessel.inventoryPrecipitation?.equation??
+  (vessel.pendingInventoryReaction?vessel.inventoryGasReaction?.equation:undefined);
+ const gradualCase=growingEquation?
+  reviewedReactionCases.find(row=>row.equation===growingEquation):undefined;
  const visualCase=gradualCase??(hasReactionProgress||vessel.reactionAmounts?.complete||
   !!vessel.completedReaction||!!vessel.chemicalInventory&&!vessel.pendingInventoryReaction?
   recentCase:undefined)??vessel.completedReaction??
@@ -210,7 +212,7 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   indicator?.color??naturalColor:naturalColor);
  const observation=visualCase?.observation??"none";
  const gasEventActive=gasProgress?
-  !vessel.reactionAmounts?.complete&&gasProgress.rateMolPerSecond>1e-12:
+  gasProgress.rateMolPerSecond>1e-12:
   !!vessel.visualStartedAtMs&&
    visualNow-vessel.visualStartedAtMs>=0&&
    visualNow-vessel.visualStartedAtMs<6500;
