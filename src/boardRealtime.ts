@@ -142,6 +142,7 @@ export function subscribeBoardDocument(boardId: string, onDocument: (row: Remote
           }
           if (joined && message.event === "postgres_changes") {
             const record = message.payload?.data?.record ?? message.payload?.record;
+            if (record?.board_id && record.board_id !== boardId) return;
             if (record && record.board_id === boardId &&
                 Number.isSafeInteger(record.version) && record.version >= 0 &&
                 record.document && typeof record.document === "object" &&
