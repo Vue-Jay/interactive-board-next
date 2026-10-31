@@ -244,12 +244,12 @@ const warmedStock=lab.advanceLabSimulation(lab.setLabBenchSettings(
  {...boiling,vessels:[stock]}, {realism:"low"}),11000).vessels[0];
 assert.ok(warmedStock.temperatureC<=104);
 assert.ok(warmedStock.doses.HCl.value<=40);
-const ui=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
-assert.match(ui,/document\.addEventListener\("keydown",handleLabDelete,true\)/,
+const keyboardUi=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
+assert.match(keyboardUi,/document\.addEventListener\("keydown",handleLabDelete,true\)/,
  "Lab keyboard Delete must precede the parent board's global handler");
-assert.match(ui,/data-lab-device-id=\{device\.id\}/);
-assert.match(ui,/data-lab-vessel-id=\{v\.id\}/);
-assert.match(ui,/setPendingReturnId\(v\.id\)/,
+assert.match(keyboardUi,/data-lab-device-id=\{device\.id\}/);
+assert.match(keyboardUi,/data-lab-vessel-id=\{v\.id\}/);
+assert.match(keyboardUi,/setPendingReturnId\(v\.id\)/,
  "Deleting a filled vessel must require explicit confirmation");
 const css=fs.readFileSync("src/lektrusChemistryBench.css","utf8");
 assert.match(css,/is-cooler \.lektrus-lab-device-face-controls\{/,
