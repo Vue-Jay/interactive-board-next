@@ -29,6 +29,11 @@ import {labExactMeasuredSolubility} from "./lektrusLabSolubilityMeasurements";
  *   https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.260-223.pdf
  */
 export const LAB_CRYSTAL_DENSITY_G_ML:Readonly<Record<string,number>>={
+ // School empirical formula P2O5 means molecular solid P4O10. EPA
+ // chemical hazard reference via PubChem: crystalline true density
+ // 2.39 g/cm3, NOT loosely packed phosphoric anhydride powder.
+ // https://pubchem.ncbi.nlm.nih.gov/compound/Phosphorus-pentoxide
+ P2O5:2.39,
  // CDH Fine Chemical safety sheet, exact K2SO3 anhydrous reference:
  // true material density 2.35 g/cm3 at 20 C (NOT powder bulk density).
  // https://www.cdhfinechemical.com/images/product/msds/92_1413110475_PotassiumSulphite-CASNO-10117-38-1-MSDS.pdf
