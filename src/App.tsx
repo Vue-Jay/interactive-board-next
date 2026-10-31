@@ -125,6 +125,7 @@ import { connectBoardWorkChannel, type BoardWorkChannel, type RemoteWorkState } 
 import { connectAttachmentApprovalChannel, type AttachmentApprovalChannel, type AttachmentApprovalRequest } from "./boardAttachmentApprovalSync";
 import { documentFingerprint, sharedBoardFingerprint, isOwnRemoteRevision, remoteUpdateDecision } from "./boardSync";
 import {mergeEditedValue,editorDiff,applyEditorOps} from "./lektrusLiveEditorMerge";
+import {labLiveEditorDiff,applyLabLivePreview} from "./lektrusLabLiveSync";
 import {mergeBoardDocumentEdits} from "./lektrusBoardThreeWayMerge";
 import {
   parseDocument,
@@ -5512,7 +5513,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
      if(JSON.stringify(updated.scienceLabBench)===JSON.stringify(latest.scienceLabBench))return;
      if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
      commit(itemsRef.current.map(v=>v.id===latest.id?updated:v));
-     workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
+     workChannel.current?.publishEdit(latest.id,labLiveEditorDiff(latest,updated));
    };
    const liveChemicalEquationUpdate=(before:Item,next:Item)=>{
      const latest=itemsRef.current.find(candidate=>candidate.id===next.id);
@@ -7039,11 +7040,15 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
       !adminHidden,
       (mutation)=>{
         const stored=itemsRef.current.find(item=>item.id===mutation.itemId);
+        const liveLab=stored?.graphFigureId==="chem-experiment-free"&&!!stored.scienceLabBench;
         if(!stored||stored.kind!=="graph"||
           !(stored.graphPurpose==="geometry"||stored.graphFigureId==="contour-atlas"||
-            isMotionGraph(stored.graphFigureId)||stored.scienceMechanics||stored.scienceOptics||stored.scienceCircuit))return;
+            isMotionGraph(stored.graphFigureId)||stored.scienceMechanics||stored.scienceOptics||
+            stored.scienceCircuit||liveLab))return;
         if(!mutation.ops.length||JSON.stringify(mutation.ops).length>120000)return;
-        const allowed=stored.graphFigureId==="contour-atlas"?
+        const allowed=liveLab?
+          (path:string|number)=>path==="scienceLabBench":
+          stored.graphFigureId==="contour-atlas"?
           (path:string|number)=>path==="schoolDiagram"||path==="text":
           (path:string|number)=>typeof path==="string"&&
             (path.startsWith("graph")||path==="text"||
@@ -7056,11 +7061,14 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
           remoteLiveBases.current.set(mutation.itemId,JSON.stringify(stored));
         setRemoteLiveItems(current=>{
           const base=current[mutation.itemId]??stored;
-          const preview=applyEditorOps(base,mutation.ops);
+          const preview=liveLab?
+            applyLabLivePreview(stored,base,mutation.ops):
+            applyEditorOps(base,mutation.ops);
           // Treat realtime as an untrusted visual hint, never as an
           // authoritative edit. Reject malformed objects before rendering.
-          if(preview.kind!=="graph"||preview.id!==stored.id||
+          if(!preview||preview.kind!=="graph"||preview.id!==stored.id||
              preview.graphFigureId!==stored.graphFigureId)return current;
+          if(liveLab)return {...current,[mutation.itemId]:preview};
           if(preview.graphFigureId==="contour-atlas"){
             if(!isSchoolDiagram(preview.schoolDiagram))return current;
           }else if(
@@ -9126,7 +9134,7 @@ function BoardApp({ authUser, boardSummary, accountRole, isAppAdmin = false, adm
                       const updated={...latest,scienceLabBench:merged};
                       if(!pendingEditorBases.current.has(latest.id))pendingEditorBases.current.set(latest.id,latest);
                       commit(itemsRef.current.map(v=>v.id===latest.id?updated:v));
-                      workChannel.current?.publishEdit(latest.id,editorDiff(latest,updated));
+                      workChannel.current?.publishEdit(latest.id,labLiveEditorDiff(latest,updated));
                     }:undefined}
                   onPhysicalPartMove={!presentation&&!item.locked&&!space&&!selectionLocked&&
                    canEdit&&!structurallyLockedForStudent(item)&&tool==="select"&&
