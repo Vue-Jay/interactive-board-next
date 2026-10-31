@@ -2091,8 +2091,19 @@ const chalkSource=lab.putLabReagent(detailedBench(),"v1","NaCl",
  {value:10,unit:"ml",concentrationM:.1});
 const chalkReacted=lab.putLabReagent(chalkSource,"v1","AgNO3",
  {value:10,unit:"ml",concentrationM:.1});
-let chalk=lab.recordLabReactions(chalkReacted);
-assert.equal(chalk.reactionLog.length,1,"An identified reaction is added to the permanent wall");
+// The wall records observed progress, never a merely predicted
+// reaction or a paused preparation. This follows the live simulator's
+// "reaction first, chalk later" contract.
+assert.equal(lab.recordLabReactions(chalkReacted),chalkReacted,
+ "Mixing before a simulation tick must not write a predicted equation");
+const pausedChalk=lab.setLabSimulationPaused(chalkReacted,true,0);
+assert.equal(lab.recordLabReactions(pausedChalk),pausedChalk,
+ "A paused preparation cannot write a predicted equation");
+const chalkReactedProgressed=lab.advanceLabSimulation(
+ lab.advanceLabSimulation(chalkReacted,0),6000);
+let chalk=lab.recordLabReactions(chalkReactedProgressed);
+assert.equal(chalk.reactionLog.length,1,
+ "An actually progressed reaction is added to the permanent wall");
 assert.match(chalk.reactionLog[0],/AgCl↓/);
 assert.equal(lab.recordLabReactions(chalk),chalk,
  "Simulation ticks must not duplicate previously recorded equations");
@@ -2105,6 +2116,10 @@ nextReaction=lab.putLabReagent(nextReaction,"v1","HCl",
  {value:20,unit:"ml",concentrationM:.1});
 nextReaction=lab.putLabReagent(nextReaction,"v1","NaOH",
  {value:20,unit:"ml",concentrationM:.1});
+assert.equal(lab.recordLabReactions(nextReaction),nextReaction,
+ "Unstarted neutralization must not appear on the chalkboard");
+nextReaction=lab.advanceLabSimulation(
+ lab.advanceLabSimulation(nextReaction,10000),16000);
 nextReaction=lab.recordLabReactions(nextReaction);
 assert.equal(nextReaction.reactionLog.length,1);
 assert.match(nextReaction.reactionLog[0],/NaCl \+ H2O/);
@@ -2147,7 +2162,7 @@ assert.doesNotThrow(()=>parseLab(labWithBoard),
  "Persistent equations and the unified reaction mode are valid save data");
 console.log("Cabinets, reaction history, and proportional precipitate regression passed");
 
-const originalShared=lab.recordLabReactions(chalkReacted);
+const originalShared=lab.recordLabReactions(chalkReactedProgressed);
 const localShared={...originalShared,reactionLog:[...originalShared.reactionLog,
  "CaCO3 → CaO + CO2↑"],event:originalShared.event+1};
 const remoteShared={...originalShared,reactionLog:[...originalShared.reactionLog,
