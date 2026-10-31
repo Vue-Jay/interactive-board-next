@@ -287,3 +287,67 @@ const unaffected=lab.advanceLabSimulation({
 assert.equal(unaffected.vessels[0].doses.H2O.value,40,
  "Acceleration cannot bypass the evaporation-off switch");
 console.log("×2/×5/×10 substepping: heat, boiling, vapor mass and cooling stay synchronized");
+
+
+// The teacher's stopwatch is a shared control, not a per-frame DB counter.
+const clockSeed=lab.defaultLabBench();
+assert.equal(lab.labExperimentClockSeconds(clockSeed,1000),0);
+assert.equal(lab.formatLabClock(3661.9),"01:01:01");
+const started=lab.setLabExperimentClock(clockSeed,"start",1000);
+assert.equal(started.experimentClock.running,true);
+close(lab.labExperimentClockSeconds(started,3500),2.5);
+assert.equal(lab.labSimulationTickWaitMs(started,3500),null,
+ "An idle stopwatch must never schedule a network simulation tick");
+assert.strictEqual(lab.setLabExperimentClock(started,"start",2000),started,
+ "Repeating Start must not reset or duplicate the timer");
+const fastClock=lab.setLabBenchSettings(started,{timeScale:5},3500);
+close(lab.labExperimentClockSeconds(fastClock,3500),2.5);
+close(lab.labExperimentClockSeconds(fastClock,5500),12.5);
+const paused=lab.setLabExperimentClock(fastClock,"pause",5500);
+close(lab.labExperimentClockSeconds(paused,99999),12.5);
+const resumed=lab.setLabExperimentClock(paused,"start",100000);
+close(lab.labExperimentClockSeconds(resumed,101000),17.5);
+const resetClock=lab.setLabExperimentClock(resumed,"reset",101000);
+assert.equal(resetClock.experimentClock.running,false);
+assert.equal(lab.labExperimentClockSeconds(resetClock,110000),0);
+const clearedClock=lab.clearLabTable(started);
+assert.equal(clearedClock.experimentClock,undefined,
+ "Cleaning the tabletop starts a fresh experiment clock");
+const peerClock=lab.mergeLabBench(clockSeed,started,
+ lab.setLabBenchSettings(clockSeed,{realism:"high"}));
+assert.equal(peerClock.experimentClock.running,true,
+ "Concurrent realism changes must not discard another peer's stopwatch");
+const idleFast=lab.setLabBenchSettings(started,{timeScale:10},1000);
+assert.equal(lab.advanceLabSimulation({
+ ...idleFast,simulationAtMs:1000},11000).experimentClock.running,true);
+assert.equal(lab.labExperimentClockSeconds(idleFast,11000),100,
+ "Time acceleration applies to experiment seconds, not wall seconds");
+// Measured solid fusion uses Q=mL and the same heat capacity as sensible heat.
+const solidNa={...bare.vessels[0],reagents:["Na"],
+ doses:{Na:{value:8,unit:"g"}},temperatureC:97.79,meltFraction:.2,
+ environment:"dry"};
+const sodiumSample={...bare,simulationAtMs:1000,
+ vessels:[solidNa],placedDevices:[{...hotplate,temperatureC:180,
+ targetTemperatureC:180,active:true,powered:true}]};
+const heatedNa=lab.advanceLabSimulation(sodiumSample,3000).vessels[0];
+const sensibleNa=heat.labSensibleHeatStep("beaker",solidNa.doses,97.79,22,2,
+ {kind:"hotplate",temperatureC:180,powerW:160});
+const capacityNa=heat.labKnownHeatCapacityJPerK("beaker",solidNa.doses);
+const expectedFusion=Math.max(0,(sensibleNa.temperatureC-97.79)*capacityNa)/(8*115);
+assert.ok(expectedFusion>0,"Heater energy must enter melting plateau");
+close(heatedNa.meltFraction,.2+expectedFusion,1e-6);
+assert.ok(Math.abs(heatedNa.temperatureC-97.79)<.12,
+ "Sample must not rise above melting point before latent heat is supplied");
+const chilledNa={...sodiumSample,vessels:[{...solidNa,meltFraction:.8}],
+ placedDevices:[{id:"coldbath",kind:"cooler",x:50,y:70,active:true,
+ linkedVesselId:"v1",powered:true,temperatureC:0,targetTemperatureC:0}]};
+const coolingNa=lab.advanceLabSimulation(chilledNa,2000).vessels[0];
+assert.ok(coolingNa.meltFraction<.8&&coolingNa.meltFraction>0,
+ "Cooling a partial melt must crystallize gradually using latent heat");
+assert.ok(Math.abs(coolingNa.temperatureC-97.79)<.12);
+const layoutSource=fs.readFileSync("src/LektrusChemistryBench.tsx","utf8");
+const clockStyles=fs.readFileSync("src/lektrusLabSceneLayout.css","utf8");
+assert.match(layoutSource,/aria-label="Часы времени опыта"/);
+assert.match(layoutSource,/setLabExperimentClock\(bench/);
+assert.match(clockStyles,/\.lektrus-lab-experiment-clock\{/);
+console.log("Shared stopwatch, ×5/×10 elapsed time, latent fusion and cooled sodium: OK");

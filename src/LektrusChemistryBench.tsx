@@ -2,7 +2,7 @@ import {memo,useEffect,useId,useMemo,useRef,useState,type PointerEvent} from "re
 import {createPortal} from "react-dom";
 import type {LabBench,LabBenchSettings,LabRealism,LabVessel,LabGlassware,LabDose,LabDevice} from "./lektrusChemistryBenchModel";
 import {addLabVessel,arrangeLabVessels,emptyLabVessel,setLabVesselStopper,labBenchSettings,labGlassware,labMode,LAB_MODES,labModeInfo,setLabMode,glasswareForLabMode,devicesForLabMode,prepareLabModeSetup,labObservation,labSimulationTickWaitMs,pourLabIntoFilter,
- labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
+ labIndicatorResult,labIndicators,setLabIndicator,setLabEnvironment,labVesselQuantity,labVesselContents,labVesselPressure,labHeadspaceGasMoles,recordLabReactions,wipeLabChalkboard,labDevices,placedLabDevices,addPlacedLabDevice,movePlacedLabDevice,returnPlacedLabDevice,applyPlacedLabDevice,setPlacedDevicePower,setPlacedDeviceLevel,setLabHotplateTemperature,setLabCoolerTemperature,LAB_HOTPLATE_MAX_C,setLabStandHeight,canMountLabVessel,labAppliancesBelowStand,labReceiverBelowStand,advanceLabSimulation,setLabBuretteValve,LAB_DRIP_RATES,labTitrationTargets,dripLabVessel,positionLabVessel,putLabReagent,removeLabVessel,selectedLabVessel,setLabBenchSettings,setLabExperimentClock,labExperimentClockSeconds,formatLabClock,formatLabDose,labDisplayNumber,labQuickReagents,setLabQuickReagent,clearLabTable,MAX_QUICK_REAGENTS,labMeasuredCapacityMl,setLabPipetteTarget,transferLabMeasuredLiquid,startLabPour,fastLabPour,advanceLabPour,stopLabPour,placeLabVesselOnStandBase,LAB_POUR_INTERVAL_MS,LAB_POUR_STEPS,labPourPercent,labPourAmounts,
  } from "./lektrusChemistryBenchModel";
 import {identifyReaction,reactionAppearance,reviewedReactionCases,substances,type Observation,type ReactionFamily,type ReactionVisual} from "./lektrusReactionDatabase";
 import {reagentAppearance} from "./lektrusLabAppearance";
@@ -693,6 +693,14 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
  const [confirmClear,setConfirmClear]=useState(false);
  const [doseEffect,setDoseEffect]=useState<{x:number;y:number;color:string;solid:boolean}|null>(null);
  const settings=labBenchSettings(bench);
+ const [clockNow,setClockNow]=useState(()=>Date.now());
+ useEffect(()=>{
+  if(!bench.experimentClock?.running)return;
+  setClockNow(Date.now());
+  // Purely presentational ticker: no board writes and no second simulation.
+  const timer=window.setInterval(()=>setClockNow(Date.now()),250);
+  return()=>window.clearInterval(timer);
+ },[bench.experimentClock?.running]);
  const selected=bench.selectedId?selectedLabVessel(bench):undefined;
  const physicalDevices=placedLabDevices(bench);
  const vesselPosition=(v:LabVessel)=>{
@@ -1428,6 +1436,35 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    <div className="lektrus-lab-counter"/>
    <div className="lektrus-lab-counter-front"/>
    <div className="lektrus-lab-worktop-zone"/>
+  </div>
+  <div className={"lektrus-lab-experiment-clock"+
+   (bench.experimentClock?.running?" is-running":"")}
+   data-board-interactive="true" role="group" aria-label="Часы времени опыта"
+   onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()}
+   onClick={e=>e.stopPropagation()}>
+   <div className="lektrus-lab-clock-readout">
+    <span className="lektrus-lab-clock-symbol" aria-hidden="true">◷</span>
+    <span className="lektrus-lab-clock-caption">ВРЕМЯ ОПЫТА</span>
+    <strong className="lektrus-lab-clock-digits" role="timer"
+     aria-label={"Время опыта "+formatLabClock(labExperimentClockSeconds(bench,clockNow))}>
+     {formatLabClock(labExperimentClockSeconds(bench,clockNow))}
+    </strong>
+    <span className="lektrus-lab-clock-speed">×{settings.timeScale}</span>
+   </div>
+   {editable&&<div className="lektrus-lab-clock-buttons">
+    <button type="button" className="lektrus-lab-clock-toggle"
+     aria-label={bench.experimentClock?.running?"Пауза часов опыта":"Запустить часы опыта"}
+     title={bench.experimentClock?.running?"Остановить секундомер":"Начать отсчёт времени опыта"}
+     onClick={e=>{e.stopPropagation();onChange?.(setLabExperimentClock(bench,
+      bench.experimentClock?.running?"pause":"start",Date.now()))}}>
+     <span aria-hidden="true">{bench.experimentClock?.running?"Ⅱ":"▶"}</span>
+     {bench.experimentClock?.running?"Пауза":"Пуск"}
+    </button>
+    <button type="button" className="lektrus-lab-clock-reset"
+     aria-label="Сбросить часы опыта" title="Сбросить секундомер на ноль"
+     onClick={e=>{e.stopPropagation();onChange?.(setLabExperimentClock(bench,
+      "reset",Date.now()))}}>↺</button>
+   </div>}
   </div>
   {compactFullscreen&&(preview||devicePreview)&&
    <div className={"lektrus-lab-return-zone"+

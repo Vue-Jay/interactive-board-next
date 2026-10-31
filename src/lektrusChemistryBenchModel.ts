@@ -2,7 +2,7 @@ import type {Item} from "./boardModel";
 import {labVesselPH,labIndicatorTint} from "./lektrusLabPH";
 import {labDefaultStockDose,labIsPreparedStock,LAB_STOCK_MOLARITY_M} from "./lektrusLabCatalog";
 import {labVesselThermal} from "./lektrusLabPhysicalProperties";
-import {labSensibleHeatStep,labSchoolSpecificHeatJPerGK,LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
+import {labSensibleHeatStep,labKnownHeatCapacityJPerK,labSchoolSpecificHeatJPerGK,LAB_CALORIMETRY_REFERENCE} from "./lektrusLabCalorimetry";
 import {labBinarySaltEquilibrium,labAdvanceBinarySaltPhase,labVisibleBinarySaltSolid,
  labSchoolMixedSaltEquilibrium,labAdvanceSchoolMixedSaltPhase,
  type LabBinarySaltState} from "./lektrusLabDissolution";
@@ -385,6 +385,15 @@ export function dispenseLabBurette(bench:LabBench,id:string,targetId:string,ml:n
  * slower than a reaction, titration or active phase transition.
  * The simulation clock itself stays in the shared bench for deterministic
  * catch-up after a hidden tab becomes visible again. */
+/** Measured/compiled latent heats of FUSION in J/g, for selected
+ * ANHYDROUS pure samples. No invented latent heat for unverified species.
+ * Sources: OpenStax Physics heat-of-fusion table (Na 115 J/g);
+ * Energies 18 (2025) 1233, Table 5 (salt values, approximate).
+ * https://www.mdpi.com/1996-1073/18/5/1233 */
+export const LAB_FUSION_HEAT_J_PER_G:Readonly<Record<string,number>>={
+ Na:115,NaCl:482,KCl:353,NaOH:165,NaNO3:182,KNO3:266,
+ LiNO3:370,LiCl:441,MgCl2:454,Na2SO4:165,NaF:794
+};
 export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null{
  const vessels=bench.vessels;
  const settings=labBenchSettings(bench);
@@ -507,15 +516,44 @@ function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):La
    // this process, at the same point (equilibrium crystallization).
    const heating=toward>point+.1&&(raw>=point||old>=point-.1&&meltFraction<1);
    const cooling=toward<point-.1&&(raw<=point||old<=point+.1&&meltFraction>0);
+   const fusionJPerG=pure?LAB_FUSION_HEAT_J_PER_G[pure.id]:undefined;
+   const sampleMassG=pure?v.doses?.[pure.id]?.value??0:0;
+   const heatCapacity=calorimetry?.capacityJPerK??
+    labKnownHeatCapacityJPerK(v.kind,v.doses,v.filteredSolution?.volumeMl??0);
+   const latentJ=fusionJPerG!==undefined&&sampleMassG>0?
+    fusionJPerG*sampleMassG:undefined;
    if(heating&&meltFraction<1){
     phaseTransition="melting";
-    meltFraction=Math.min(1,meltFraction+seconds*Math.max(.008,(toward-point)/350)*.14);
-    next=point;
+    if(latentJ&&heatCapacity){
+     // Above-melt sensible energy is absorbed by the solid until it melts.
+     // Any surplus heats the newly molten sample in the SAME time step.
+     const availableJ=Math.max(0,(raw-point)*heatCapacity);
+     const usedJ=Math.min(availableJ,(1-meltFraction)*latentJ);
+     meltFraction=Math.min(1,meltFraction+usedJ/latentJ);
+     next=point+Math.max(0,availableJ-usedJ)/heatCapacity;
+    }else{
+     // Unmeasured latent heats retain the previous illustrative transition.
+     meltFraction=Math.min(1,meltFraction+
+      seconds*Math.max(.008,(toward-point)/350)*.14);
+     next=point;
+    }
    }else if(cooling&&meltFraction>0){
     phaseTransition="crystallizing";
-    meltFraction=Math.max(0,meltFraction-seconds*Math.max(.008,(point-toward)/350)*.14);
-    next=point;
+    if(latentJ&&heatCapacity){
+     // Crystallization returns latent heat to the cooling bath/ambient;
+     // the sample remains at its melting point until all liquid freezes.
+     const removedJ=Math.max(0,(point-raw)*heatCapacity);
+     const releasedJ=Math.min(removedJ,meltFraction*latentJ);
+     meltFraction=Math.max(0,meltFraction-releasedJ/latentJ);
+     next=point-Math.max(0,removedJ-releasedJ)/heatCapacity;
+    }else{
+     meltFraction=Math.max(0,meltFraction-
+      seconds*Math.max(.008,(point-toward)/350)*.14);
+     next=point;
+    }
    }
+   next=Math.round(Math.max(-30,Math.min(1450,next))*10)/10;
+   meltFraction=Math.round(meltFraction*1e7)/1e7;
   }
   // Verified pure liquids receive a boiling plateau. Neat mixtures get
   // ideal Raoult vapor pressures; stock solvents with unrecorded composition
@@ -1017,13 +1055,15 @@ export function setLabQuickReagent(bench:LabBench,id:string,dose?:LabDose):LabBe
  * from the previous generation must never recreate its emptied vessels. */
 export const nextLabTableEpoch=()=>Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,10);
 export function clearLabTable(bench:LabBench):LabBench{
- if(!bench.vessels.length&&!placedLabDevices(bench).length&&!bench.pouring)return bench;
+ if(!bench.vessels.length&&!placedLabDevices(bench).length&&!bench.pouring&&
+  !bench.experimentClock)return bench;
  // Empty only the physical worktop. The configured quick shelf and
  // presentation settings must survive cleaning.
  return {...bench,vessels:[],selectedId:"",tableEpoch:nextLabTableEpoch(),
   placedDevices:[],devices:[],
   titration:undefined,titrationPair:undefined,stirringVesselId:undefined,
-  instrumentTarget:undefined,simulationAtMs:undefined,pouring:undefined,event:bench.event+1};
+  instrumentTarget:undefined,simulationAtMs:undefined,pouring:undefined,
+  experimentClock:undefined,event:bench.event+1};
 }
 export type LabPourProgress={id:string;sourceId:string;targetId:string;step:number;totalSteps:20;
  initialDoses:Record<string,LabDose>;unmeasured:boolean;
@@ -1035,7 +1075,39 @@ export const labPourPercent=(p:LabPourProgress)=>Math.round(p.step/p.totalSteps*
 export const labPourAmounts=(p:LabPourProgress)=>Object.entries(p.initialDoses).map(([id,d])=>({
  id,unit:d.unit,transferred:Math.round(d.value*(p.transferFraction??1)*p.step/p.totalSteps*1000)/1000,
  remaining:Math.round(d.value*(1-(p.transferFraction??1)*p.step/p.totalSteps)*1000)/1000}));
+export type LabExperimentClock={elapsedSeconds:number;anchorMs:number;running:boolean};
+/** A shared stopwatch. Its wall-time anchor and speed-normalized elapsed
+ * duration are persisted, while the display updates LOCALLY every second.
+ * Consequently an idle clock generates zero network writes. */
+export function labExperimentClockSeconds(bench:LabBench,nowMs:number):number{
+ const clock=bench.experimentClock;
+ if(!clock)return 0;
+ const additional=clock.running&&Number.isFinite(nowMs)?
+  Math.max(0,nowMs-clock.anchorMs)/1000*labBenchSettings(bench).timeScale:0;
+ return Math.max(0,clock.elapsedSeconds+additional);
+}
+export function setLabExperimentClock(bench:LabBench,
+ action:"start"|"pause"|"reset",nowMs:number):LabBench{
+ if(!Number.isFinite(nowMs)||nowMs<0)return bench;
+ const old=bench.experimentClock;
+ if(action==="reset"){
+  if(!old||(old.elapsedSeconds===0&&!old.running))return bench;
+  return {...bench,experimentClock:{elapsedSeconds:0,anchorMs:nowMs,running:false},
+   event:bench.event+1};
+ }
+ if(action==="start"&&old?.running||action==="pause"&&!old?.running)return bench;
+ const elapsedSeconds=labExperimentClockSeconds(bench,nowMs);
+ return {...bench,experimentClock:{elapsedSeconds,anchorMs:nowMs,
+  running:action==="start"},event:bench.event+1};
+}
+export function formatLabClock(seconds:number):string{
+ const total=Math.floor(Math.max(0,seconds));
+ const h=Math.floor(total/3600),m=Math.floor(total/60)%60,s=total%60;
+ const pad=(n:number)=>String(n).padStart(2,"0");
+ return pad(h)+":"+pad(m)+":"+pad(s);
+}
 export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:LabMode;pouring?:LabPourProgress;
+ experimentClock?:LabExperimentClock;
  /** Explicit clear/replace token; never changed by passive simulation ticks. */
  tableEpoch?:string;
  /** Equations remain on the shared chalkboard until manually wiped. */
@@ -1047,10 +1119,17 @@ export type LabBench={vessels:LabVessel[];selectedId:string;event:number;mode?:L
  titrationPair?:{sourceId:string;targetId:string};simulationAtMs?:number;}
 export const MAX_BENCH_VESSELS=6,MAX_VESSEL_REAGENTS=48;
 const clamp=(v:number)=>Math.round(Math.min(90,Math.max(10,v))*10)/10;
-export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>):LabBench{
- const next={...labBenchSettings(bench),...settings};
- return JSON.stringify(next)===JSON.stringify(labBenchSettings(bench))?bench:
-  {...bench,settings:next,event:bench.event+1};
+export function setLabBenchSettings(bench:LabBench,settings:Partial<LabBenchSettings>,
+ nowMs=Date.now()):LabBench{
+ const previous=labBenchSettings(bench);
+ const next={...previous,...settings};
+ if(JSON.stringify(next)===JSON.stringify(previous))return bench;
+ // Bank elapsed time at the OLD speed before selecting another speed.
+ const experimentClock=bench.experimentClock?.running&&
+  previous.timeScale!==next.timeScale?
+  {elapsedSeconds:labExperimentClockSeconds(bench,nowMs),anchorMs:nowMs,running:true}:
+  bench.experimentClock;
+ return {...bench,settings:next,experimentClock,event:bench.event+1};
 }
 export const defaultLabBench=():LabBench=>({
  vessels:[{id:"v1",kind:"beaker",x:48,y:70,reagents:[],environment:"aqueous",observed:false}],
@@ -2546,6 +2625,11 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  const titrationPair=JSON.stringify(mine.titrationPair??null)===JSON.stringify(previous.titrationPair??null)?
   remote.titrationPair:mine.titrationPair;
  const simulationAtMs=Math.max(mine.simulationAtMs??0,remote.simulationAtMs??0)||undefined;
+ // Stopwatch commands are explicit persisted edits, never produced by
+ // simulation ticks. Thus unrelated peer edits retain the latest command.
+ const experimentClock=JSON.stringify(mine.experimentClock??null)===
+  JSON.stringify(previous.experimentClock??null)?
+  remote.experimentClock:mine.experimentClock;
  const pouring=mine.pouring?.id===remote.pouring?.id&&mine.pouring&&remote.pouring?
   (mine.pouring.step>=remote.pouring.step?mine.pouring:remote.pouring):
   JSON.stringify(mine.pouring??null)===JSON.stringify(previous.pouring??null)?
@@ -2568,6 +2652,7 @@ export function mergeLabBench(previous:LabBench,mine:LabBench,remote:LabBench):L
  const seenReactionKeys=[...new Set([...(previous.seenReactionKeys??[]),
   ...(remote.seenReactionKeys??[]),...(mine.seenReactionKeys??[])])].slice(-150);
  return {vessels:limited,selectedId,mode,tableEpoch:mine.tableEpoch??remote.tableEpoch,
-  settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,stirringVesselId,instrumentTarget,simulationAtMs,pouring,
+  settings,quickReagents,devices,placedDevices:limitedDevices,titration,titrationPair,
+  stirringVesselId,instrumentTarget,simulationAtMs,experimentClock,pouring,
   reactionLog,seenReactionKeys,event:Math.max(remote.event,mine.event)+1};
 }

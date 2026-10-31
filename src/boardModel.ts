@@ -1009,6 +1009,14 @@ export function parseDocument(raw: string): DocumentData {
                    Number.isFinite(c.massG)&&c.massG>0&&c.massG<=10000))))))))||
           (bench.simulationAtMs!=null&&
            (!Number.isFinite(bench.simulationAtMs)||bench.simulationAtMs<0))||
+          (bench.experimentClock!=null&&(
+           typeof bench.experimentClock!=="object"||
+           !Number.isFinite(bench.experimentClock.elapsedSeconds)||
+           bench.experimentClock.elapsedSeconds<0||
+           bench.experimentClock.elapsedSeconds>1e9||
+           !Number.isFinite(bench.experimentClock.anchorMs)||
+           bench.experimentClock.anchorMs<0||
+           typeof bench.experimentClock.running!=="boolean"))||
           (bench.titration!=null&&!validLabTitration(bench.titration))||
           (bench.titrationPair!=null&&(
            !bench.titration||
