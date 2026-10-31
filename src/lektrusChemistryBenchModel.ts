@@ -1501,6 +1501,9 @@ export function labObservation(vessel:LabVessel):{status:ReactionStatus;message:
  if(!vessel.observed)return{status:"unknown",message:"До смешивания изменений нет."};
  return identifyReaction(vessel.reagents,vessel.environment);
 }
+/** A predicted equilibrium is not a completed experiment. */
+const labFinishedReaction=(v:LabVessel):ReactionCase|undefined=>
+ v.completedReaction??(v.reactionAmounts?.complete?labObservation(v).caseData:undefined);
 const bump=(bench:LabBench,vessels:LabVessel[],selectedId=bench.selectedId):LabBench=>({
  ...bench,vessels,selectedId,event:bench.event+1
 });
@@ -2193,7 +2196,7 @@ export function transferLabMeasuredLiquid(
   if(v.id===targetId)return {...v,reactionAmounts:undefined,reagents:ids,doses:received,
    observed:ids.length>1||source.observed,
    environment:medium,uncertain,
-   completedReaction:wasEmpty?sourceReaction:targetReaction,
+   completedReaction:wasEmpty?labFinishedReaction(source):labFinishedReaction(target),
    ...carriedLabIndicator(source,v),
    visualStartedAtMs:now??v.visualStartedAtMs};
   return v;
@@ -2533,7 +2536,7 @@ export function advanceLabPour(b:LabBench,portions=1):LabBench{
    visualStartedAtMs:!uncertain&&!sourceReaction&&!targetReaction&&
     identifyReaction(combined,medium).status==="reaction"?
     (v.visualStartedAtMs??Date.now()):v.visualStartedAtMs,
-   completedReaction:targetWasEmpty?sourceReaction:v.completedReaction,
+   completedReaction:targetWasEmpty?labFinishedReaction(source):v.completedReaction,
    ...carriedLabIndicator(source,v),
    pourFraction:p.unmeasured?portionRound(Math.min(1,(v.pourFraction??(targetWasEmpty?0:.5))+
      .025*(p.transferFraction??1))):v.pourFraction};
@@ -2704,7 +2707,8 @@ export function pourLabVessel(bench:LabBench,sourceId:string,targetId:string):La
     physicalStartedAtMs:dissolving?Date.now():undefined,
     doses,environment:medium,
     visualStartedAtMs:newReaction?Date.now():v.visualStartedAtMs,
-    completedReaction:targetWasEmpty?sourceReaction:(targetReaction??sourceReaction),
+    completedReaction:targetWasEmpty?labFinishedReaction(source):
+    (labFinishedReaction(target)??labFinishedReaction(source)),
     ...carriedLabIndicator(source,v),
     uncertain:uncertain||Boolean(v.indicator&&source.indicator&&v.indicator!==source.indicator)};
   }
