@@ -410,17 +410,36 @@ export function labSimulationTickWaitMs(bench:LabBench,nowMs:number):number|null
  return Math.max(0,Math.ceil(intervalMs-Math.max(0,nowMs-bench.simulationAtMs)));
 }
 
-/** Deterministic approximate educational heat-transfer model.
- * No claim of laboratory-grade thermometry or chemistry at arbitrary temperatures.
- * Time is passed explicitly so all viewers can reproduce the same evolution. */
+/** The vapor and measured-calorimetry engines accept at most ten seconds
+ * per integration step. At ×5/×10 we must split the SIMULATED elapsed time,
+ * not silently cap evaporation at 10 s while heating/reactions jump 50–100 s.
+ * Maximum 10 seconds of wall time are caught up after a suspended tab.
+ * This also prevents one large tick from vaporizing solvent before warming it.
+ * All intermediate results remain local: only one final revision is synced. */
 export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
  if(!Number.isFinite(nowMs)||nowMs<0)return bench;
- if(bench.simulationAtMs===undefined)return {...bench,simulationAtMs:nowMs,event:bench.event+1};
- // Advance physical processes in simulated time, not wall-clock time.
+ if(bench.simulationAtMs===undefined)
+  return {...bench,simulationAtMs:nowMs,event:bench.event+1};
+ const settings=labBenchSettings(bench);
+ const realMs=Math.min(10_000,Math.max(0,nowMs-bench.simulationAtMs));
+ const simulatedSeconds=realMs/1000*settings.timeScale;
+ if(simulatedSeconds<.05)return bench;
+ const steps=Math.max(1,Math.ceil(simulatedSeconds/10));
+ const secondsPerStep=simulatedSeconds/steps;
+ const startMs=nowMs-realMs;
+ let current=bench;
+ for(let i=1;i<=steps;i++){
+  const atMs=i===steps?nowMs:startMs+realMs*i/steps;
+  current=advanceLabSimulationStep(current,atMs,secondsPerStep);
+ }
+ // Internal substeps are intentionally not separate board edits.
+ return steps>1&&current.event!==bench.event?
+  {...current,event:bench.event+1}:current;
+}
+/** Deterministic classroom heat, phase and chemical integration. */
+function advanceLabSimulationStep(bench:LabBench,nowMs:number,seconds:number):LabBench{
  const settings=labBenchSettings(bench);
  const profile=LAB_REALISM_PROFILES[settings.realism];
- const seconds=Math.min(10,Math.max(0,(nowMs-bench.simulationAtMs)/1000))*settings.timeScale;
- if(seconds<.05)return bench;
  const ambient=22;
  let changed=false;
  const devices=placedLabDevices(bench).map(d=>{
