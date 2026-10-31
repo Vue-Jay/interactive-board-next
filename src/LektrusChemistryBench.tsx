@@ -982,7 +982,9 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   if(next===bench){
    // Filled glassware is still removable, but chemicals are never lost
    // without an explicit confirmation from the experimenter.
-   if(bench.vessels.some(v=>v.id===id&&v.reagents.length)){
+   if(bench.vessels.some(v=>v.id===id&&(
+    v.reagents.length||v.filteredSolution||v.filteredResidue||
+    v.chemicalInventory||v.reactionAmounts))){
     setPendingReturnId(id);setNotice("");
    }
    return;
