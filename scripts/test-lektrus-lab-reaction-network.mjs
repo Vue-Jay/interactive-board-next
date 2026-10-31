@@ -708,10 +708,10 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
 
 
-// Bulk provenance: 41 independently sourced properties, checked both in
+// Bulk provenance: 63 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,52);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,63);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -752,9 +752,9 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:14,specificHeatJPerGK:8,thermal:30
+ crystalDensityGPerMl:24,specificHeatJPerGK:8,thermal:31
 });
-console.log("52 source-checked property references: 14 crystal densities, 8 dry-solid Cp, 30 individual phase boundaries");
+console.log("63 source-checked property references: 24 crystal densities, 8 dry-solid Cp, 31 individual phase boundaries");
 
 
 // Perry's Chemical Engineers' Handbook, Table 2-194. These 34 documented
