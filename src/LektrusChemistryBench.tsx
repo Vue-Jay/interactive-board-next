@@ -1484,6 +1484,7 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
    </button>}
    {editable&&<div className="lektrus-lab-clock-buttons">
     <button type="button" className="lektrus-lab-clock-toggle"
+     disabled={!!bench.simulationPaused}
      aria-label={bench.experimentClock?.running?"Пауза часов опыта":"Запустить часы опыта"}
      title={bench.experimentClock?.running?"Остановить секундомер":"Начать отсчёт времени опыта"}
      onClick={e=>{e.stopPropagation();onChange?.(setLabExperimentClock(bench,
