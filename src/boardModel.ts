@@ -953,6 +953,27 @@ export function parseDocument(raw: string): DocumentData {
              validMolRecord(v.inventoryPrecipitation.initial.retainedGasMol))&&
             (v.inventoryPrecipitation.initial.releasedGasMol==null||
              validMolRecord(v.inventoryPrecipitation.initial.releasedGasMol))))&&
+          (v.inventoryGasReaction==null||(
+            !!v.chemicalInventory&&
+            typeof v.inventoryGasReaction.equation==="string"&&
+            v.inventoryGasReaction.equation.length<=500&&
+            v.inventoryGasReaction.equation.includes("↑")&&
+            !!v.inventoryGasReaction.initial&&
+            typeof v.inventoryGasReaction.initial==="object"&&
+            Number.isFinite(v.inventoryGasReaction.elapsedSeconds)&&
+            Number.isFinite(v.inventoryGasReaction.durationSeconds)&&
+            v.inventoryGasReaction.durationSeconds>0&&
+            v.inventoryGasReaction.durationSeconds<=120&&
+            v.inventoryGasReaction.elapsedSeconds>=0&&
+            v.inventoryGasReaction.elapsedSeconds<=v.inventoryGasReaction.durationSeconds&&
+            (v.inventoryGasReaction.elapsedSeconds<v.inventoryGasReaction.durationSeconds?
+             v.pendingInventoryReaction===true:true)&&
+            validMolRecord(v.inventoryGasReaction.initial.speciesMol)&&
+            validMolRecord(v.inventoryGasReaction.initial.solidMol)&&
+            (v.inventoryGasReaction.initial.retainedGasMol==null||
+             validMolRecord(v.inventoryGasReaction.initial.retainedGasMol))&&
+            (v.inventoryGasReaction.initial.releasedGasMol==null||
+             validMolRecord(v.inventoryGasReaction.initial.releasedGasMol))))&&
           (v.meltFraction==null||(Number.isFinite(v.meltFraction)&&
             v.meltFraction>=0&&v.meltFraction<=1))&&
           (v.phaseTransition==null||["melting","crystallizing"].includes(v.phaseTransition))&&
