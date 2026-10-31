@@ -188,8 +188,6 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
   massG>0&&volumeMl===0?"solid":volumeMl>0?"solution":
   vessel.reagents.length===1&&!active?reagent?.phase:undefined;
  const pureThermal=labVesselThermal(vessel.reagents,vessel.doses);
- const thermalState=labThermalState(vessel.reagents,vessel.doses,
-  temperatureC??vessel.temperatureC??22,vessel.meltFraction);
  const moltenFraction=pureThermal?.unit==="g"&&
   pureThermal.info.meltingC!==undefined?Math.min(1,Math.max(0,vessel.meltFraction??0)):0;
  const geo=shape[vessel.kind];
@@ -202,7 +200,6 @@ const LabVesselGraphic=memo(function LabVesselGraphic({vessel,small=false,showLa
  const labels=species.map(([id])=>substances.find(s=>s.id===id)?.formula??id);
  const conversionFraction=amounts?amounts.maxExtentMol>0?
   amounts.extentMol/amounts.maxExtentMol:0:1;
- const solutionBoiling=labIdealBoilingC(vessel);
  // Bubble and steam artwork must agree with the same reviewed
  // temperature criterion used by the mass/energy vaporization model.
  const boiling=volumeMl>1e-9&&labIsBoiling(vessel,temperatureC??vessel.temperatureC??22);
