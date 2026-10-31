@@ -326,8 +326,9 @@ export function simulateLabInventory(input:{
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
   steps:[],equilibriumEquations:[],unmeasured:[],limited:false,heatEstimateComplete:true};
  const doses=input.doses??{};
- const volumeMl=input.volumeMl??Object.entries(doses).reduce((n,[id,d])=>
-  n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0);
+ const volumeMl=input.volumeMl??((input.filteredSolution?.volumeMl??0)+
+  Object.entries(doses).reduce((n,[id,d])=>
+   n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0));
  // An aqueous reaction MODE does not conjure any actual solvent.
  // Dry weighed NaCl, KNO3, or a base pellet stays SOLID until it receives
  // a measured volume of water, a solution, or another liquid medium.
