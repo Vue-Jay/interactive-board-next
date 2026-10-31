@@ -478,13 +478,25 @@ export function advanceLabSimulation(bench:LabBench,nowMs:number):LabBench{
   if(boilingPoint!==undefined&&next>boilingPoint&&!v.stoppered)next=boilingPoint;
   const gasMoles=v.stoppered?labHeadspaceGasMoles(v):0;
   const {occupiedMl,capacityMl}=labVesselQuantity(v);
-  // The effective power arriving at the liquid is a bounded instrument
-  // parameter. At a known boiling plateau, latent heat limits how much
-  // water can actually leave the open vessel per simulation tick.
+  // The sensible-heating calculation and boiling share ONE energy budget.
+  // A liquid first warms to its actual boiling point; only EXCESS delivered
+  // heat becomes latent heat for vaporization. Otherwise a cool flask could
+  // absorb its full heating power as both warmth and newly generated steam.
   const deliveredHeatW=calorimetry?.heaterWattsToContents??heaterPower;
+  const heatForBoilingW=calorimetry&&boilingPoint!==undefined&&
+   !v.stoppered&&next>=boilingPoint-.05&&seconds>0?
+   Math.min(deliveredHeatW,Math.max(0,
+    (raw-boilingPoint)*calorimetry.capacityJPerK/seconds)):deliveredHeatW;
   const phase=labEvaporate({...v,
    headspaceMl:Math.max(1,capacityMl-occupiedMl),
-   reactionGasMol:gasMoles},seconds,next,toward,deliveredHeatW);
+   reactionGasMol:gasMoles},seconds,next,toward,heatForBoilingW);
+  // Surface evaporation ALSO spends latent heat. Apply it to the same
+  // measured heat capacity, so an unheated warm solution cools rather than
+  // producing vapor with no thermal cost. Ambient transfer recovers it later.
+  if(calorimetry&&phase.latentEnergyJ>0&&!v.stoppered){
+   next=Math.round(Math.max(0,Math.min(next,
+    raw-phase.latentEnergyJ/calorimetry.capacityJPerK))*10)/10;
+  }
   const evaporating=phase.evaporatedMl>0,popped=phase.popped;
   const updatedDoses=evaporating?phase.doses:v.doses;
   const updatedReagents=evaporating?v.reagents.filter(id=>
