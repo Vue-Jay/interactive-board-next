@@ -1011,7 +1011,21 @@ export function parseDocument(raw: string): DocumentData {
                Object.keys(v.chemicalInventory.retainedGasMol).length<=maxSavedLabReagents&&
                Object.entries(v.chemicalInventory.retainedGasMol).every(([formula,mol])=>
                 formula.length>0&&formula.length<=70&&
-                typeof mol==="number"&&Number.isFinite(mol)&&mol>=0&&mol<=10000)))))&&
+                typeof mol==="number"&&Number.isFinite(mol)&&mol>=0&&mol<=10000)))&&
+             (v.chemicalInventory.equilibriumEquations==null||
+              (Array.isArray(v.chemicalInventory.equilibriumEquations)&&
+               v.chemicalInventory.equilibriumEquations.length<=8&&
+               v.chemicalInventory.equilibriumEquations.every(equation=>
+                typeof equation==="string"&&equation.length>0&&
+                equation.length<=500&&equation.includes("↓")&&
+                equation.includes("→"))))&&
+             (v.chemicalInventory.releasedGasMol==null||
+              (typeof v.chemicalInventory.releasedGasMol==="object"&&
+               !Array.isArray(v.chemicalInventory.releasedGasMol)&&
+               Object.keys(v.chemicalInventory.releasedGasMol).length<=maxSavedLabReagents&&
+               Object.entries(v.chemicalInventory.releasedGasMol).every(([formula,mol])=>
+                formula.length>0&&formula.length<=70&&typeof mol==="number"&&
+                Number.isFinite(mol)&&mol>=0&&mol<=10000)))))&&
             (v.physicalProcess==null||["dissolving","crystallizing"].includes(v.physicalProcess))&&
             (v.binarySaltPhase==null||(
              typeof v.binarySaltPhase.formula==="string"&&

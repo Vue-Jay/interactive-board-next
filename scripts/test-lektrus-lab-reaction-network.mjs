@@ -20,7 +20,7 @@ function load(file){
  new Function("require","module","exports",transpiled)(requireLocal,mod,mod.exports);
  return mod.exports;
 }
-const {simulateLabInventory,labInventoryMassG}=load("src/lektrusLabReactionNetwork.ts");
+const {simulateLabInventory,labInventoryMassG,labInventorySnapshot}=load("src/lektrusLabReactionNetwork.ts");
 const schoolMaterial=load("src/lektrusLabMaterialConstants.ts");
 const schoolHeat=load("src/lektrusLabCalorimetry.ts");
 const schoolDose=load("src/lektrusLabStoichiometry.ts");
@@ -1622,3 +1622,59 @@ for(const [formula,expected] of Object.entries(phaseBatch)){
   "A decomposing material has no normal-pressure boiling model");
 }
 console.log("Ten reviewed dry-solid thermal materials, eleven individually sourced boundaries checked");
+
+
+/** Reversible, provenance-backed Ksp: ONLY a previously produced
+ * verified PbCl2 precipitate is permitted to redissolve on dilution.
+ * A mass-conserving inverse balanced equation restores stock ions,
+ * without losing either counterion or inventing additional water. */
+const leadChloride=simulateLabInventory({
+ reagents:["Pb(NO3)2","NaCl"],environment:"aqueous",temperatureC:25,
+ doses:{"Pb(NO3)2":solution(10),NaCl:solution(20)}
+});
+const leadChlorideSolid=leadChloride.solidMol.PbCl2??0;
+assert.ok(leadChlorideSolid>0.0001&&leadChlorideSolid<.001,
+ "A concentrated solution must make only a partially precipitated PbCl2");
+const conservedLead=labInventorySnapshot(leadChloride);
+assert.ok(conservedLead.equilibriumEquations.some(x=>x.includes("PbCl2↓")));
+const firstLeadMass=labInventoryMassG(leadChloride);
+const rehydratedLead=simulateLabInventory({
+ reagents:Object.keys(conservedLead.speciesMol),environment:"aqueous",
+ temperatureC:25,volumeMl:200,chemicalInventory:conservedLead
+});
+assert.ok((rehydratedLead.solidMol.PbCl2??0)<leadChlorideSolid*.01,
+ "Diluting precipitated PbCl2 below Ksp dissolves the crystal fraction");
+assert.ok((rehydratedLead.speciesMol["Pb(NO3)2"]??0)>
+ (leadChloride.speciesMol["Pb(NO3)2"]??0),
+ "Reverse stoichiometry restores precisely the dissolved lead stock");
+approximately(labInventoryMassG(rehydratedLead),firstLeadMass,1e-8);
+const noProvenance=simulateLabInventory({
+ reagents:Object.keys(conservedLead.speciesMol),environment:"aqueous",
+ temperatureC:25,volumeMl:200,
+ chemicalInventory:{...conservedLead,equilibriumEquations:[]}
+});
+assert.ok((noProvenance.solidMol.PbCl2??0)>leadChlorideSolid*.99,
+ "Unidentified old precipitates are NOT automatically rewritten into guessed ions");
+const oneHundredMl=simulateLabInventory({
+ reagents:Object.keys(conservedLead.speciesMol),environment:"aqueous",
+ temperatureC:25,volumeMl:100,chemicalInventory:conservedLead
+});
+assert.ok((oneHundredMl.solidMol.PbCl2??0)<
+ leadChlorideSolid,"Dissolution responds monotonically to dilution");
+const chlorideRich=simulateLabInventory({
+ reagents:[...Object.keys(conservedLead.speciesMol),"NaCl"],environment:"aqueous",
+ temperatureC:25,volumeMl:200,
+ chemicalInventory:{...conservedLead,speciesMol:{...conservedLead.speciesMol,
+  NaCl:(conservedLead.speciesMol.NaCl??0)+.02}}
+});
+assert.ok((chlorideRich.solidMol.PbCl2??0)>
+ (rehydratedLead.solidMol.PbCl2??0),
+ "Common chloride keeps more lead chloride precipitated");
+approximately(labInventoryMassG(chlorideRich),firstLeadMass+
+ .02*labMolarMass("NaCl"),1e-7);
+const noChangesOutside25=simulateLabInventory({
+ reagents:Object.keys(conservedLead.speciesMol),environment:"aqueous",
+ temperatureC:70,volumeMl:200,chemicalInventory:conservedLead
+});
+approximately(noChangesOutside25.solidMol.PbCl2,leadChlorideSolid,1e-10);
+console.log("Reversible measured PbCl2: source equation, dilution, common-ion and mass balance PASS");

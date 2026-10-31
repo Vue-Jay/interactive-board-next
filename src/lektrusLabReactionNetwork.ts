@@ -18,12 +18,16 @@ export type LabChemicalSnapshot={
  /** Ventilated products belong to the global mass balance but not the
   * vessel headspace. Never transfer this historical gas to new glassware. */
  releasedGasMol?:Record<string,number>;
+ /** Balanced precipitation equations verified for this exact molecule ledger.
+  * No guessed reaction identity and no implicit creation of ions. */
+ equilibriumEquations?:string[];
 };
 export type LabInventoryStep={equation:string;extentMol:number;observation:string;heatKJ?:number};
 export type LabInventory={
  speciesMol:Record<string,number>;solidMol:Record<string,number>;
  releasedGasMol:Record<string,number>;retainedGasMol:Record<string,number>;
  steps:LabInventoryStep[];
+ equilibriumEquations:string[];
  unmeasured:string[];limited:boolean;knownHeatKJ?:number;heatEstimateComplete:boolean;
 };
 /** Selected Ksp at 25 °C. Source data: OpenStax Chemistry 2e,
@@ -119,6 +123,74 @@ function kspLimitedExtent(row:ReactionCase,
  }
  return low;
 }
+/** A measured precipitate is not necessarily permanently insoluble:
+ * when dilution makes Q < Ksp, dissolve it back into exactly those
+ * stoichiometric neutral stocks and spectator salts that were consumed.
+ *
+ * Narrow applicability: TWO original reactants, ONE solid product of
+ * coefficient one, at least one dissolved product, a curated 25 °C Ksp,
+ * and an exact verified equation saved from the original experiment.
+ * This is a molecular bookkeeping approximation, not a general ionic
+ * speciation or multi-phase thermodynamic solver.
+ */
+function labReequilibrateRecordedPrecipitates(
+ inventory:LabInventory,volumeL:number
+):void{
+ // Multiple precipitates can share metal/anion inventories. Applying
+ // independent molecular Ksp reversals to each would double-count ionic
+ // spectators and can reprecipitate material after filtration. Leave
+ // multi-solid equilibria unchanged until a coupled ion solver exists.
+ if(Object.values(inventory.solidMol).filter(mol=>mol>EPS).length!==1)return;
+ for(let round=0;round<4;round++){
+  let moved=false;
+  for(const equationText of inventory.equilibriumEquations){
+   const row=knownRows.find(r=>r.row.equation===equationText&&
+    r.row.environment==="aqueous"&&r.row.observation==="precipitate");
+   if(!row)continue;
+   const {equation}=row;
+   if(equation.reactants.length!==2)continue;
+   const markers=(equationText.split("→")[1]??"").split(/\s+\+\s+/).
+    filter(x=>x.includes("↓"));
+   if(markers.length!==1)continue;
+   const precipitate=markers[0].replace(/^\s*\d+\s*/,"").
+    replace(/[↓↑]/g,"").trim();
+   const ksp=LAB_KSP_25C[precipitate];
+   const precip=equation.products.find(t=>t.formula===precipitate);
+   if(!ksp||!precip||precip.coefficient!==1)continue;
+   const otherProducts=equation.products.filter(t=>t.formula!==precipitate);
+   if(!otherProducts.length||otherProducts.some(t=>
+    available(inventory.speciesMol,t.formula)<=EPS))continue;
+   const solid=available(inventory.solidMol,precipitate);
+   const capacity=Math.min(solid,...otherProducts.map(t=>
+    available(inventory.speciesMol,t.formula)/t.coefficient));
+   if(capacity<=EPS)continue;
+   const q=(mol:number)=>equation.reactants.reduce((q,t)=>
+    q*Math.pow((available(inventory.speciesMol,t.formula)+
+      mol*t.coefficient)/volumeL,t.coefficient),1);
+   if(q(0)>=ksp||q(capacity)<ksp){
+    // If even the last particle cannot saturate the water, dissolve
+    // all of the material (still constrained by conserved spectators).
+    if(q(0)>=ksp)continue;
+   }
+   let amount=capacity;
+   if(q(capacity)>ksp){
+    let low=0,high=capacity;
+    for(let i=0;i<65;i++){
+     const mid=(low+high)/2;
+     if(q(mid)<ksp)low=mid;else high=mid;
+    }
+    amount=low;
+   }
+   if(amount<=EPS)continue;
+   for(const t of otherProducts)sum(inventory.speciesMol,t.formula,-amount*t.coefficient);
+   for(const t of equation.reactants)sum(inventory.speciesMol,t.formula,amount*t.coefficient);
+   sum(inventory.speciesMol,precipitate,-amount);
+   sum(inventory.solidMol,precipitate,-amount);
+   moved=true;
+  }
+  if(!moved)break;
+ }
+}
 const inventoryCache=new Map<string,LabInventory>();
 const remember=(key:string,value:LabInventory)=>{
  if(inventoryCache.size>=256)inventoryCache.delete(inventoryCache.keys().next().value!);
@@ -144,7 +216,7 @@ export function simulateLabInventory(input:{
  const cached=inventoryCache.get(key);
  if(cached)return cached;
  const inventory:LabInventory={speciesMol:{},solidMol:{},releasedGasMol:{},retainedGasMol:{},
-  steps:[],unmeasured:[],limited:false,heatEstimateComplete:true};
+  steps:[],equilibriumEquations:[],unmeasured:[],limited:false,heatEstimateComplete:true};
  const doses=input.doses??{};
  const volumeMl=input.volumeMl??Object.entries(doses).reduce((n,[id,d])=>
   n+(d.unit==="ml"&&!["CO2","H2","O2","NH3","Cl2","NO2","SO2"].includes(id)?d.value:0),0);
@@ -159,6 +231,8 @@ export function simulateLabInventory(input:{
   Object.assign(inventory.solidMol,input.chemicalInventory.solidMol);
   Object.assign(inventory.retainedGasMol,input.chemicalInventory.retainedGasMol??{});
   Object.assign(inventory.releasedGasMol,input.chemicalInventory.releasedGasMol??{});
+  inventory.equilibriumEquations=[...new Set(
+   (input.chemicalInventory.equilibriumEquations??[]).slice(0,8))];
  }else for(const id of input.reagents){
   const dose=doses[id];
   const mol=dose?labDoseMoles(id,dose):undefined;
@@ -226,6 +300,13 @@ export function simulateLabInventory(input:{
    const {row,equation}=entry;
    if(used.has(row.equation+"|"+row.environment))continue;
    if(row.environment!==input.environment)continue;
+   // A persisted, partially saturated solid was already equilibrated
+   // using a 25 °C Ksp. At a different temperature there is no vetted
+   // Ksp(T) in this model: do not manufacture a complete precipitation
+   // merely because the equilibrium constant is unavailable there.
+   if(input.chemicalInventory?.equilibriumEquations?.includes(row.equation)&&
+    Math.abs((input.temperatureC??25)-25)>5&&
+    row.equation.includes("↓")&&row.observation==="precipitate")continue;
    // A dry powder mixture cannot precipitate, neutralise or bubble merely
    // because the editor is set to "aqueous". Require actual liquid volume;
    // verified heated/ignited dry reactions keep their own environment.
@@ -329,12 +410,22 @@ export function simulateLabInventory(input:{
    labSingleSaltSolubilityGPer100gWater(salt,25)!==undefined)
    inventory.solidMol[salt]=inventory.speciesMol[salt];
  }
+ // Liquid dilution or transfer can dissolve a small measured part of an
+ // EXISTING precipitate. Historical formulas provide the exact reversible
+ // molecular bookkeeping; Ksp sets the dissolved limit only near 25 °C.
+ // Reverse effects are intentionally excluded for unknown mineral phases.
+ if(input.environment==="aqueous"&&!inventory.limited&&
+  volumeMl>0&&Math.abs((input.temperatureC??25)-25)<=5)
+  labReequilibrateRecordedPrecipitates(inventory,volumeMl/1000);
  return remember(key,inventory);
 }
 export function labInventorySnapshot(inventory:LabInventory):LabChemicalSnapshot{
  return {speciesMol:{...inventory.speciesMol},solidMol:{...inventory.solidMol},
   retainedGasMol:{...inventory.retainedGasMol},
-  releasedGasMol:{...inventory.releasedGasMol}};
+  releasedGasMol:{...inventory.releasedGasMol},
+  equilibriumEquations:[...new Set([...inventory.equilibriumEquations,
+   ...inventory.steps.filter(step=>step.equation.includes("↓")).
+    map(step=>step.equation)])].slice(-8)};
 }
 export function labInventoryMassG(inventory:LabInventory):number|undefined{
  let sumMass=0;
