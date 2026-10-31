@@ -236,6 +236,23 @@ add("CH3COOH+NaHCO3","aqueous","NaHCO3 + CH3COOH → CH3COONa + CO2↑ + H2O","g
 add("H2SO4+Na2CO3","aqueous","H2SO4 + Na2CO3 → Na2SO4 + CO2↑ + H2O","gas","Карбонат с кислотой выделяет CO2.");
 add("HCl+CaCO3","aqueous","CaCO3 + 2HCl → CaCl2 + CO2↑ + H2O","gas","Газ CO2 выделяется на поверхности карбоната кальция.");
 add("HCl+MgCO3","aqueous","MgCO3 + 2HCl → MgCl2 + CO2↑ + H2O","gas","Выделяется CO2.");
+
+/** Continuations of a reviewed precipitate experiment: adding a measured
+ * dilute acid to the ALREADY FORMED hydroxide consumes the actual solid.
+ * These are not assumptions about soluble complexes or excess alkali. */
+add("Cu(OH)2+HCl","aqueous",
+ "Cu(OH)2 + 2HCl → CuCl2 + 2H2O","dissolution",
+ "Голубой осадок гидроксида меди(II) растворяется в разбавленной кислоте.");
+add("Fe(OH)3+HCl","aqueous",
+ "Fe(OH)3 + 3HCl → FeCl3 + 3H2O","dissolution",
+ "Бурый осадок гидроксида железа(III) растворяется при добавлении кислоты.");
+add("Al(OH)3+HCl","aqueous",
+ "Al(OH)3 + 3HCl → AlCl3 + 3H2O","dissolution",
+ "Белый студенистый осадок гидроксида алюминия растворяется в кислоте.");
+add("Zn(OH)2+HCl","aqueous",
+ "Zn(OH)2 + 2HCl → ZnCl2 + 2H2O","dissolution",
+ "Белый осадок гидроксида цинка растворяется в разбавленной кислоте.");
+
 add("HCl+Zn","aqueous","Zn + 2HCl → ZnCl2 + H2↑","gas","Цинк вытесняет водород из неокисляющей кислоты.",{safety:"Выделяющийся водород горюч."});
 add("HCl+Mg","aqueous","Mg + 2HCl → MgCl2 + H2↑","gas","Магний вытесняет водород.",{safety:"Выделяющийся водород горюч."});
 /** Dilute aqueous acids only; these are balanced overall school equations.
