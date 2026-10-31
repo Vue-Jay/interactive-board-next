@@ -30,7 +30,9 @@ const curatedBatch=load("src/lektrusLabCuratedPropertyBatch.ts");
 const thermal=load("src/lektrusLabPhysicalProperties.ts",key=>{
  assert.equal(key,"./lektrusLabCuratedPropertyBatch");return curatedBatch;
 });
-const calorimetry=load("src/lektrusLabCalorimetry.ts");
+const calorimetry=load("src/lektrusLabCalorimetry.ts",key=>{
+ assert.equal(key,"./lektrusLabCuratedPropertyBatch");return curatedBatch;
+});
 const solubilityMeasurements=load("src/lektrusLabSolubilityMeasurements.ts");
 const constants=load("src/lektrusLabMaterialConstants.ts",key=>{
  if(key==="./lektrusLabCuratedPropertyBatch")return curatedBatch;
