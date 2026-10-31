@@ -295,7 +295,7 @@ export const labCrystalDensityGml=(formula:string):number|undefined=>
 export function labSchoolSolidDensityGml(formula:string):number{
  const measured=labCrystalDensityGml(formula);
  if(measured!==undefined)return measured;
- if(/\\(OH\\)3|\\(OH\\)2/.test(formula))return 1.8;
+ if(/\(OH\)[23]/.test(formula))return 1.8;
  if(/^(Pb|Ag|Ba|Sr|Fe|Cu|Ni|Co|Zn)/.test(formula))return 3.4;
  if(/^(C[0-9]|CH3|HCHO)/.test(formula))return 1.2;
  if(formula==="C"||formula==="P")return 2;
