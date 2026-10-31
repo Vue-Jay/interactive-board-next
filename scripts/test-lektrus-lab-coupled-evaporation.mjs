@@ -250,3 +250,40 @@ assert.match(surfaceSource,/returnPlacedLabDevice\(bench,deviceId\)/);
 assert.match(surfaceSource,/if\(vesselId\)returnGlass\(vesselId\)/);
 assert.match(surfaceSource,/setPendingReturnId\(id\)/);
 console.log("Boiling onset, latent heat and safe Delete focus regression: OK");
+
+
+// Time acceleration must integrate the SAME measured energy and solvent mass.
+// The evaporation backend intentionally caps one call to 10 seconds. A ×10
+// laboratory therefore uses ten 10-second integrations, NOT one 100-second
+// heat jump with only 10 seconds of vaporization.
+const acceleratedSeed={...bare,simulationAtMs:1000,
+ vessels:[{...water,temperatureC:99.9}],
+ placedDevices:[{...hotplate,temperatureC:150,targetTemperatureC:150}]};
+const checkAccelerated=(scale)=>{
+ const boosted=lab.advanceLabSimulation(
+  lab.setLabBenchSettings(acceleratedSeed,{timeScale:scale}),11000);
+ let reference=acceleratedSeed;
+ for(let step=1;step<=scale;step++)
+  reference=lab.advanceLabSimulation(reference,1000+step*10000);
+ const measured=boosted.vessels[0],expected=reference.vessels[0];
+ close(measured.doses.H2O.value,expected.doses.H2O.value,1e-5);
+ close(measured.ventedVaporMl.H2O,expected.ventedVaporMl.H2O,1e-5);
+ close(measured.doses.H2O.value+measured.ventedVaporMl.H2O,40,1e-5);
+ close(measured.temperatureC,expected.temperatureC,.15);
+ close(boosted.placedDevices[0].temperatureC,
+  reference.placedDevices[0].temperatureC,.15);
+ assert.ok(measured.temperatureC<=100.2,
+  "Even under ×"+scale+" a boiling liquid cannot overheat past its plateau");
+ assert.ok(measured.doses.H2O.value>0);
+ assert.ok(boosted.event>acceleratedSeed.event);
+ assert.equal(boosted.simulationAtMs,11000);
+};
+for(const scale of [2,5,10])checkAccelerated(scale);
+assert.ok(lab.advanceLabSimulation(acceleratedSeed,1000)===acceleratedSeed,
+ "A nonadvancing simulation must not manufacture a board revision");
+const unaffected=lab.advanceLabSimulation({
+ ...acceleratedSeed,settings:{...acceleratedSeed.settings,timeScale:10,
+ evaporationEnabled:false}},11000);
+assert.equal(unaffected.vessels[0].doses.H2O.value,40,
+ "Acceleration cannot bypass the evaporation-off switch");
+console.log("×2/×5/×10 substepping: heat, boiling, vapor mass and cooling stay synchronized");
