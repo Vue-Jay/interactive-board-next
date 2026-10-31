@@ -472,7 +472,7 @@ export const LAB_SALT_BINARY_SOLUBILITY_G_PER_100G_WATER:Readonly<
  MgCO3:[null,labExactMeasuredSolubility("MgCO3",20)??null,null,null,null,null],
  CaSO4:[null,labExactMeasuredSolubility("CaSO4",20)??null,null,null,null,null],
  PbI2:[null,labExactMeasuredSolubility("PbI2",20)??null,null,null,null,null],
- PbCO3:[null,labExactMeasuredSolubility("PbCO3",20)??null,null,null,null,null]
+ PbCO3:[null,labExactMeasuredSolubility("PbCO3",20)??null,null,null,null,null],
  // New source batches: each NEW stock identity has exactly one 20 C
  // measured knot. No extrapolation, no silent correction of old curves.
  ...Object.fromEntries(LAB_BATCH_20C_SOLUBILITY_FORMULAS.map(formula=>[
