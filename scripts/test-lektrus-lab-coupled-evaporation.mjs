@@ -44,7 +44,9 @@ assert.ok(warm.solidMol.NaCl<crystal.solidMol.NaCl);
 close(net.labInventoryMassG(crystal),net.labInventoryMassG(first));
 // Passive evaporation must cool the liquid by the energy needed to form vapor,
 // not silently lose mass while using only the glass/ambient heat equation.
-const bare=lab.defaultLabBench();
+assert.equal(lab.labBenchSettings(lab.defaultLabBench()).realism,"low",
+ "Every new school experiment must begin in simple mode");
+const bare=lab.setLabBenchSettings(lab.defaultLabBench(),{realism:"high"});
 const water={...bare.vessels[0],kind:"beaker",temperatureC:80,
  doses:{H2O:{unit:"ml",value:40}},reagents:["H2O"],environment:"aqueous"};
 const idle={...bare,simulationAtMs:1000,vessels:[water],placedDevices:[]};
@@ -127,7 +129,7 @@ console.log("Lab experiment settings, accelerated clock and virtual high heat: O
 
 // Realism changes the actual engine work, not only presentation.
 assert.equal(lab.labBenchSettings(bare).realism,"high",
- "Old classroom boards retain the previous detailed model");
+ "Advanced thermal regression explicitly selects high realism");
 const classroom=lab.setLabBenchSettings(idle,{realism:"low"});
 const standard=lab.setLabBenchSettings(idle,{realism:"medium"});
 const detailed=lab.setLabBenchSettings(idle,{realism:"high"});
