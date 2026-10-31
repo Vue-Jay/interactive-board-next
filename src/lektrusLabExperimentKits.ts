@@ -74,7 +74,8 @@ export function prepareLabExperimentKit(bench:LabBench,row:ReactionCase):LabBenc
   tableEpoch:nextLabTableEpoch(),
   placedDevices:[],devices:[],stirringVesselId:undefined,
   titration:undefined,titrationPair:undefined,instrumentTarget:undefined,
-  pouring:undefined,simulationAtMs:undefined,event:bench.event+1};
+  pouring:undefined,simulationAtMs:undefined,experimentClock:undefined,
+  event:bench.event+1};
  const devices=labExperimentEquipment(row);
  for(const [i,kind] of devices.entries()){
   result=addPlacedLabDevice(result,kind,kind==="tripod"?{x:49,y:65}:
