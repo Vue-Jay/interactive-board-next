@@ -4,7 +4,7 @@
     "stock": 180,
     "crystalDensity": 109,
     "thermal": 110,
-    "specificHeat": 59,
+    "specificHeat": 93,
     "binarySolubility": 24,
     "binarySolubilityAnyTemperature": 29,
     "binarySolubilityMeasuredPoints": 147,
@@ -16,6 +16,7 @@
     "hydrateReferenceAllBases": 33,
     "saturatedSolutionDensityRecords": 37,
     "saturatedSolutionDensityCabinetBases": 37,
-    "curatedSourceCheckedProperties": 41
+    "curatedSourceCheckedProperties": 41,
+    "perryRoomTemperatureCrystalHeats": 34
   }
 }
