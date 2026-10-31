@@ -7,12 +7,15 @@ const compile=path=>ts.transpileModule(read(path),{compilerOptions:{
 }}).outputText.replace(/^import[\s\S]*?from ["'][^"']+["'];\s*$/gm,"").replace(/^export /gm,"");
 const edit=new Function(compile("src/lektrusLiveEditorMerge.ts")+
  "\nreturn {mergeEditedValue};")();
-const sync=new Function("expandDocumentInk","packDocumentInk","mergeEditedValue",
+const sync=new Function("expandDocumentInk","packDocumentInk","mergeEditedValue","mergeLabBench",
  compile("src/lektrusBoardThreeWayMerge.ts")+
  "\nreturn {mergeBoardItems,mergeBoardDocumentEdits};")(
  data=>[...data.items,...(data.ink??[])],
  data=>({...data,items:data.items,ink:[]}),
- edit.mergeEditedValue
+ edit.mergeEditedValue,
+ // The independent board-merge test exercises ordinary shapes only.
+ // A separate chemical reset test supplies the real chemistry merger.
+ ()=>{throw Error("Unexpected lab merge in ordinary board test")}
 );
 const item=(id,x=0,y=0,kind="shape")=>({id,x,y,width:100,height:100,kind,text:"",color:"#000"});
 const base=[item("box"),item("pen",10,10,"pen"),item("eraserTarget",20,20,"pen")];
