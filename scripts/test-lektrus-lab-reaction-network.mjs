@@ -775,10 +775,10 @@ for(const formula of ["Ca(OH)2","BaCO3","ZnSO4"]){
 console.log("Six verified pure-solid densities, seven solid transitions and sixteen Cp values passed");
 
 
-// Bulk provenance: 105 independently sourced properties, checked both in
+// Bulk provenance: 108 independently sourced properties, checked both in
 // source tables and through the same registry used to render lab state.
 const validated=load("src/lektrusLabPropertyProvenance.ts");
-assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,105);
+assert.equal(validated.LAB_REVIEWED_PROPERTY_DATUMS.length,108);
 const sourceIds=new Set();
 const fields={crystalDensityGPerMl:0,specificHeatJPerGK:0,thermal:0};
 for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
@@ -819,9 +819,9 @@ for(const row of validated.LAB_REVIEWED_PROPERTY_DATUMS){
  approximately(value,row.value,1e-6);
 }
 assert.deepEqual(fields,{
- crystalDensityGPerMl:32,specificHeatJPerGK:29,thermal:44
+ crystalDensityGPerMl:34,specificHeatJPerGK:29,thermal:45
 });
-console.log("105 source-checked property references: 32 crystal densities, 29 dry-solid Cp, 44 individual phase boundaries");
+console.log("108 source-checked property references: 34 crystal densities, 29 dry-solid Cp, 45 individual phase boundaries");
 // Direct NIST-JANAF (cr) 298.15 K molar values must be recalculated
 // with the real lab formula parser. No hydrate/solution substitution.
 const jan=load("src/lektrusLabJanafSolidHeatReferences.ts");
@@ -992,9 +992,9 @@ console.log("34 exact crystalline Perry Handbook Cp correlations: molar-to-mass,
 // 20°C rows from measurements at 18°C or 25°C.
 const literature=load("src/lektrusLabSolubilityMeasurements.ts");
 const pureWaterMeasurements=literature.LAB_MEASURED_PURE_WATER_SOLUBILITIES;
-assert.equal(pureWaterMeasurements.length,80);
-assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,50);
-assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,30);
+assert.equal(pureWaterMeasurements.length,81);
+assert.equal(new Set(pureWaterMeasurements.map(x=>x.formula)).size,51);
+assert.equal(pureWaterMeasurements.filter(x=>x.temperatureC===20).length,31);
 const measuredTemperatures=new Set([0,20,40,60,80,100]);
 assert.equal(pureWaterMeasurements.filter(
  x=>!measuredTemperatures.has(x.temperatureC)).length,32);
@@ -1350,6 +1350,49 @@ assert.equal(physicalDensity.labEquilibrateSingleSaltCrystals(
 assert.deepEqual(liInventory.solidMol,{});
 console.log("LiOH dry/monohydrate separate, exact 20C solubilities, corrected decomposition: PASS");
 
+// Original ILO/WHO ICSC 1200 Na2SO3 is 22 g per 100 mL PURE WATER
+// at exactly 20°C. Its decomposition at 600°C is NOT ordinary melting.
+// UCT Prague independently provides true crystal density 2.66 g/cm3;
+// ICSC quotes 2.63: preserve the declared chosen UCT source, not a
+// fabricated average of these distinct published measurements.
+const sulfiteLiterature=pureWaterMeasurements.find(x=>
+ x.formula==="Na2SO3"&&x.temperatureC===20);
+assert.ok(sulfiteLiterature);
+assert.equal(sulfiteLiterature.originalUnit,"g/100ml-water");
+assert.equal(sulfiteLiterature.sourceValue,22);
+assert.equal(sulfiteLiterature.sourceUrl,
+ "https://inchem.org/documents/icsc/icsc/eics1200.htm");
+approximately(literature.labMeasuredSolubilityGPer100gWater(
+ sulfiteLiterature),22/.9982,1e-12);
+approximately(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ "Na2SO3",20),22/.9982,1e-12);
+const sulfiteProps=registryProps.labSubstanceProperties("Na2SO3",20);
+assert.equal(sulfiteProps.solubilityKnown,true);
+approximately(sulfiteProps.solubilityGPer100gWater,22/.9982,1e-12);
+assert.equal(sulfiteProps.binaryCrystallizationUnsupported,true);
+approximately(physicalDensity.labCrystalDensityGml("Na2SO3"),2.66,1e-12);
+approximately(physicalDensity.labCrystalDensityGml("FeCl3"),2.9,1e-12);
+assert.equal(registryProps.labSubstanceProperties("FeCl3").crystalDensityGPerMl,2.9);
+const sulfiteThermal=thermalProps.labThermalInfo("Na2SO3","g");
+assert.equal(sulfiteThermal.known,true);
+assert.equal(sulfiteThermal.decompositionC,600);
+assert.equal(sulfiteThermal.behavior,"decomposes");
+assert.equal(sulfiteThermal.meltingC,undefined);
+assert.equal(sulfiteThermal.boilingC,undefined);
+assert.equal(thermalProps.labThermalInfo("Na2SO3","ml").known,false);
+const sulfiteInventory={speciesMol:{H2O:.5,Na2SO3:.1},solidMol:{}};
+assert.equal(physicalDensity.labEquilibrateSingleSaltCrystals(
+ sulfiteInventory,20,true,labMolarMass),undefined);
+assert.deepEqual(sulfiteInventory.solidMol,{});
+// FeCl3 is explicitly denoted "reaction" upon contact with water
+// (ICSC 1499). Never assign its 92 g/100mL hydrolysis data as
+// a simple anhydrous binary dissolution equilibrium.
+assert.equal(registryProps.labSubstanceProperties("FeCl3",20).solubilityKnown,
+ false,"Reactive ferric chloride must not be marked pure-water soluble");
+assert.equal(physicalDensity.labSingleSaltSolubilityGPer100gWater(
+ "FeCl3",20),undefined);
+console.log("Sulfite crystal/solubility/thermal references and ferric hydrolysis guard: PASS");
+
 // Invalid extrapolation: a 25°C measurement does NOT define the
 // solubility at 20°C, and an isolated 20°C record does not define 21°C.
 for(const formula of ["PbSO4","SrCO3","ZnS","FeS","Ca3(PO4)2"])
@@ -1377,7 +1420,7 @@ for(const formula of ["Na2S","KNO2","BaSO4","CaCO3","CaSO4","LiCl"]){
  // The independent ion-speciation / Ksp engine may STILL legitimately
  // predict precipitation. Its settled solid is not a result of this solver.
 }
-console.log("80 sourced measurements across 50 stock formulas: 30 exact 20°C and 32 off-grid points");
+console.log("81 sourced measurements across 51 stock formulas: 31 exact 20°C and 32 off-grid points");
 
 
 // Individual source-linked normal-pressure phase boundaries. Avoid
