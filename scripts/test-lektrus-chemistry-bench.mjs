@@ -2354,8 +2354,11 @@ assert.equal(lab.setLabVesselStopper(corked,conical.id,false).vessels.find(v=>v.
 const unsupported=lab.putLabReagent(lab.defaultLabBench(),"v1","HCl",
  {unit:"ml",value:10,concentrationM:.1});
 const unsupportedNext=lab.advanceLabSimulation(lab.advanceLabSimulation(unsupported,100000),110000);
-assert.equal(unsupportedNext.vessels[0].doses.HCl.value,10,
- "Unknown composition of aqueous stock must not evaporate as a neat acid");
+assert.ok(unsupportedNext.vessels[0].doses.HCl.value<10,
+ "Open aqueous stock loses water, not neat acid");
+assert.ok(Math.abs(chem.labDoseMoles("HCl",unsupportedNext.vessels[0].doses.HCl)-
+ chem.labDoseMoles("HCl",unsupported.vessels[0].doses.HCl))<1e-12,
+ "Aqueous stock evaporation must preserve the solute's measured moles");
 const nearBoil=vapor.labSaturationPressureKPa("H2O",100);
 assert.ok(nearBoil>95&&nearBoil<110,"Water vapor pressure reaches 1 atm at boiling");
 const atRoom=vapor.labSaturationPressureKPa("H2O",22);
