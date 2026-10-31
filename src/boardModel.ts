@@ -939,6 +939,8 @@ export function parseDocument(raw: string): DocumentData {
             typeof v.inventoryPrecipitation.equation==="string"&&
             v.inventoryPrecipitation.equation.length<=500&&
             v.inventoryPrecipitation.equation.includes("↓")&&
+            !!v.inventoryPrecipitation.initial&&
+            typeof v.inventoryPrecipitation.initial==="object"&&
             Number.isFinite(v.inventoryPrecipitation.elapsedSeconds)&&
             Number.isFinite(v.inventoryPrecipitation.durationSeconds)&&
             v.inventoryPrecipitation.elapsedSeconds>=0&&
