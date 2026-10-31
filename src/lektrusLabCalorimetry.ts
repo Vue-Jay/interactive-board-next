@@ -222,12 +222,17 @@ export function labSchoolSpecificHeatJPerGK(id:string,unit:"ml"|"g",concentratio
  if(unit==="ml")return {value:concentrationM!==undefined?4:3.8,estimated:true};
  return {value:/^(Pb|Ag|Au|Fe|Cu|Zn|Ni|Co)/.test(id)?.5:.85,estimated:true};
 }
-export function labKnownHeatCapacityJPerK(kind:string,doses?:Record<string,HeatDose>){
- if(!doses)return;
- const entries=Object.entries(doses).filter(([,d])=>d.value>0);
- if(!entries.length)return;
+export function labKnownHeatCapacityJPerK(
+ kind:string,doses?:Record<string,HeatDose>,measuredFiltrateMl=0
+){
+ if(!Number.isFinite(measuredFiltrateMl)||measuredFiltrateMl<0)return;
+ const entries=Object.entries(doses??{}).filter(([,d])=>d.value>0);
+ if(!entries.length&&measuredFiltrateMl<=0)return;
  const glass=LAB_VESSEL_GLASS_EQUIVALENT_G[kind]??55;
- let capacity=glass*glassCp;
+ // A chemically separated filtrate is REAL measured water carrier, not an
+ // empty vessel. Count its thermal inertia while leaving the exact solute
+ // inventory untouched. This is the standard school dilute-water estimate.
+ let capacity=glass*glassCp+measuredFiltrateMl*.997*4.184;
  for(const [id,d] of entries){
   if(!Number.isFinite(d.value)||d.value<=0||
    d.concentrationM!==undefined&&(!Number.isFinite(d.concentrationM)||d.concentrationM<0))return;
@@ -247,9 +252,10 @@ export function labKnownHeatCapacityJPerK(kind:string,doses?:Record<string,HeatD
 export function labSensibleHeatStep(
  kind:string,doses:Record<string,HeatDose>|undefined,
  currentC:number,ambientC:number,seconds:number,
- heater?:{kind:"hotplate"|"burner";temperatureC:number;powerW:number}
+ heater?:{kind:"hotplate"|"burner";temperatureC:number;powerW:number},
+ measuredFiltrateMl=0
 ):{temperatureC:number;capacityJPerK:number;heaterWattsToContents:number}|undefined{
- const capacity=labKnownHeatCapacityJPerK(kind,doses);
+ const capacity=labKnownHeatCapacityJPerK(kind,doses,measuredFiltrateMl);
  if(capacity===undefined||!Number.isFinite(currentC)||!Number.isFinite(ambientC)||
   !Number.isFinite(seconds)||seconds<0||!Number.isFinite(heater?.temperatureC??ambientC)||
   // School model extends constant effective Cp beyond its reference T.
