@@ -74,8 +74,8 @@ const notBinary=reaction.simulateLabInventory({
 });
 assert.ok((notBinary.solidMol.NaCl??0)>0,
  "In mixed weighed salts, an explicit school estimate conserves the shared solvent");
-assert.ok((notBinary.solidMol.KNO3??0)>0,
- "Both dry salts independently approach classroom saturation");
+assert.equal(notBinary.solidMol.KNO3??0,0,
+ "A sufficiently dilute second salt must dissolve even while NaCl remains supersaturated");
 
 const stock=reaction.simulateLabInventory({
  reagents:["NaCl"],environment:"aqueous",temperatureC:25,
