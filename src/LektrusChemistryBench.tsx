@@ -689,12 +689,16 @@ export default function LektrusChemistryBenchSurface({bench,editable=false,compa
   };
   document.addEventListener("visibilitychange",resume);
   window.addEventListener("focus",resume);
+  // Fullscreen opens/closes without necessarily changing a bench revision.
+  // Wake the board-side clock explicitly when it becomes visible again.
+  window.addEventListener("lektrus-lab-fullscreen-change",resume);
   tick();
   return ()=>{
    disposed=true;
    if(timer!==undefined)window.clearTimeout(timer);
    document.removeEventListener("visibilitychange",resume);
    window.removeEventListener("focus",resume);
+   window.removeEventListener("lektrus-lab-fullscreen-change",resume);
   };
  },[editable,fullscreenOwner,bench.event,bench.vessels,bench.placedDevices,bench.simulationAtMs]);
  useEffect(()=>{if(cabinet)dialogRef.current?.focus()},[cabinet]);
