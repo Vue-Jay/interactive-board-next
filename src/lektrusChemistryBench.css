@@ -4635,3 +4635,28 @@
  filter:drop-shadow(0 4px 3px #356f7c38)!important}
 .lektrus-lab-bench .lektrus-lab-placed-device.is-cooler.is-selected .lektrus-lab-device-grip>.lektrus-lab-device-icon{
  filter:drop-shadow(0 0 5px #6bc9e8)!important}
+
+/* The saved precipitate layer grows with actual extent; it is not a
+ * pre-computed equilibrium layer revealed by a one-time scaleY animation. */
+.lektrus-lab-bench .lektrus-lab-sediment{
+ animation:none!important;transition:height .28s ease-out,y .28s ease-out;
+ transform-origin:center bottom}
+.lektrus-lab-bench .lektrus-lab-gas-bubbles,
+.lektrus-lab-bench .lektrus-lab-boiling-particles{
+ pointer-events:none}
+/* Bubble movement stops at the measured surface, clipped by both glass and
+ * the dynamic liquid level. They cannot float in an empty vessel. */
+.lektrus-lab-bench .lektrus-lab-bubble{animation-timing-function:ease-out}
+.lektrus-lab-bench .lektrus-lab-boiling-particles circle{
+ animation-duration:1.55s}
+/* The chemical clock controls ALL time-based material animation, including
+ * steam, sublimation, dissolving, salt faceting, indicator drops and flames. */
+.lektrus-lab-bench.is-simulation-paused :is(
+ .lektrus-lab-vessel-art *, .lektrus-lab-reaction-burst *,
+ .lektrus-lab-device-flame,.lektrus-lab-device-icon *,
+ .lektrus-lab-titration-ripple,.lektrus-lab-droplet,
+ .lektrus-lab-reaction-heat,.lektrus-lab-gas-tube-flow){
+ animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench .lektrus-lab-sediment{transition:none!important}
+}

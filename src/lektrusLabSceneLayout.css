@@ -1497,3 +1497,52 @@ body.lektrus-lab-fullscreen-active .workspace{
  overflow:visible;pointer-events:none;user-select:none;
  filter:drop-shadow(0 1px 1px #27627133)
 }
+
+/* Physical vapor escapes at the lip of the vessel, not from the SVG below
+ * its clipped viewBox. Non-boiling evaporation is faint, a boiling stream
+ * has greater contrast and more persistent plume arcs. */
+.lektrus-lab-bench .lektrus-lab-vapor-plume.is-boiling>span{
+ border-left-color:#b3e5ebdd;border-left-width:3.2px;
+ filter:blur(1.35px);animation-duration:1.8s}
+.lektrus-lab-bench .lektrus-lab-vapor-plume.is-boiling>span:nth-child(2){
+ animation-delay:-.63s}
+.lektrus-lab-bench .lektrus-lab-vapor-plume.is-boiling>span:nth-child(3){
+ animation-delay:-1.15s}
+/* Reaction gas and solvent vapor have DIFFERENT signatures. A gas escaping
+ * an open reaction vessel produces distinct soft bubbles, not white steam. */
+.lektrus-lab-bench .lektrus-lab-gas-vent{
+ position:absolute;top:-15%;left:50%;width:38%;height:43%;
+ transform:translateX(-50%);z-index:16;overflow:visible;
+ pointer-events:none}
+.lektrus-lab-bench .lektrus-lab-gas-vent>i{
+ position:absolute;left:calc(18% + var(--bubble-offset,0%));
+ bottom:0;width:5px;height:5px;border-radius:50%;
+ border:1.5px solid #73aebc;background:#d8f8fbaa;
+ opacity:0;animation:lektrus-lab-open-gas 1.8s ease-out infinite}
+.lektrus-lab-bench .lektrus-lab-gas-vent>i:nth-child(2){left:34%;width:4px;height:4px}
+.lektrus-lab-bench .lektrus-lab-gas-vent>i:nth-child(3){left:60%;width:6px;height:6px}
+.lektrus-lab-bench .lektrus-lab-gas-vent>i:nth-child(4){left:73%;width:3.5px;height:3.5px}
+.lektrus-lab-bench .lektrus-lab-gas-vent>i:nth-child(5){left:45%;width:5px;height:5px}
+@keyframes lektrus-lab-open-gas{
+ 0%{opacity:0;transform:translate(0,6px) scale(.55)}
+ 25%{opacity:.9}75%{opacity:.45}
+ 100%{opacity:0;transform:translate(8px,-28px) scale(1.25)}
+}
+.lektrus-lab-bench .lektrus-lab-gas-tube-flow{
+ animation:lektrus-lab-gas-stream .9s linear infinite}
+@keyframes lektrus-lab-gas-stream{
+ to{stroke-dashoffset:-5.6}
+}
+.lektrus-lab-bench.is-simulation-paused :is(
+ .lektrus-lab-vapor-plume>span,
+ .lektrus-lab-gas-vent>i,
+ .lektrus-lab-gas-tube-flow,
+ .lektrus-lab-evaporation-crystals>path){
+ animation-play-state:paused!important}
+.lektrus-lab-bench.lab-reduced-animation :is(
+ .lektrus-lab-vapor-plume>span,.lektrus-lab-gas-vent>i,
+ .lektrus-lab-gas-tube-flow){animation:none!important;opacity:.4}
+@media(prefers-reduced-motion:reduce){
+ .lektrus-lab-bench :is(.lektrus-lab-gas-vent>i,
+ .lektrus-lab-gas-tube-flow){animation:none!important;opacity:.5}
+}

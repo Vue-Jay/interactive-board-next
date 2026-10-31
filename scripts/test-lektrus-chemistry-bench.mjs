@@ -1572,7 +1572,9 @@ assert.doesNotMatch(polishedLabSource,/lektrus-lab-filter-actions/,
  "Direct filtration must not reopen the previous receiver selection panel");
 assert.match(polishedLabSource,/lektrus-lab-dissolving-particles/);
 assert.match(polishedLabSource,/lektrus-lab-boiling-particles/);
-assert.match(polishedLabSource,/lektrus-lab-steam-plumes/);
+assert.match(polishedLabSource,/lektrus-lab-vapor-plume/);
+assert.doesNotMatch(polishedLabSource,/className="lektrus-lab-steam-plumes"/,
+ "Steam must rise from the actual glass mouth, without double and clipped SVG paths");
 assert.match(read("src/lektrusChemistryBench.css"),/lektrus-lab-reagent-form-tabs/);
 assert.match(read("src/LektrusChemistryBench.tsx"),/lektrus-lab-catalog-extra/,
  "Less-used filters stay collapsed to enlarge the reactant catalogue");
@@ -2522,8 +2524,11 @@ assert.ok(lab.labVesselContents(preserved.vessels[0]).solution.some(v=>
  v.formula==="CuSO4"&&Math.abs(v.mmol-1)<1e-6),
  "New measured stock must remain visible beside pre-existing AgCl");
 assert.match(read("src/LektrusChemistryBench.tsx"),
- /contents.precipitateG!==undefined&&contents.precipitateG>1e-10/,
- "The renderer must show actual solid even if the original visual effect ends");
+ /measuredPrecipitateG>1e-10/,
+ "The renderer must show measured solid rather than an equilibrium deposit prematurely");
+assert.match(read("src/LektrusChemistryBench.tsx"),
+ /!vessel.chemicalInventory&&!vessel.filteredResidue/,
+ "An existing persistent precipitate must not fade while another reaction starts");
 const essentialIds=lab.defaultLabQuickReagents().map(v=>v.id);
 assert.equal(essentialIds.length,12);
 assert.equal(new Set(essentialIds).size,12);
