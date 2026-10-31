@@ -37,6 +37,7 @@ const material=load("src/lektrusLabMaterialConstants.ts");
 const thermal=load("src/lektrusLabPhysicalProperties.ts");
 const heat=load("src/lektrusLabCalorimetry.ts");
 const hydrate=load("src/lektrusLabHydrateReferences.ts");
+const provenance=load("src/lektrusLabPropertyProvenance.ts");
 const saturated=load("src/lektrusLabSaturatedSolutionReferences.ts");
 
 const has=(value)=>typeof value==="number"&&Number.isFinite(value);
@@ -106,6 +107,7 @@ const hydrateKnownCells=hydrateRows.reduce((count,row)=>
  count+row.massGPer100gWater.filter(has).length+(row.extra?.length??0),0);
 const rawTotals={
  stock:db.substances.length,
+ curatedSourceCheckedProperties:provenance.LAB_REVIEWED_PROPERTY_DATUMS.length,
  hydrateReferenceVariants:hydrateRows.length,
  hydrateCrystalDensityRecords:hydrateDensities.length,
  hydrateReferenceAllBases:hydrateBases.size,
@@ -133,7 +135,8 @@ for(const row of stockRows){
  bucket.total++;
  if(row.missing.length)bucket.rowsWithGaps++;
 }
-const report={schemaVersion:4,rawTotals,
+const report={schemaVersion:5,rawTotals,
+ sourceCheckedPropertyDatums:provenance.LAB_REVIEWED_PROPERTY_DATUMS,
  hydratedReferenceRows:hydrateRows,
  saturatedSolutionDensityRows:saturationRows,
  solubilityCurveDetail:solubilityCells,
@@ -217,6 +220,31 @@ if(process.argv.includes("--verify")){
     ", "+expectedMassPercent+" vs "+row.concentrationMassPercent);
   }
  }
+ // Every newly imported measurement is verified against the ACTUAL
+ // physical property map used by the simulator, not a duplicate test table.
+ const reviewed=new Set();
+ for(const entry of provenance.LAB_REVIEWED_PROPERTY_DATUMS){
+  const id=entry.formula+"|"+entry.property;
+  assert.ok(!reviewed.has(id),"Duplicate reviewed property: "+id);
+  reviewed.add(id);
+  assert.ok(stockNames.has(entry.formula),
+   "Source-reviewed property must belong to the active reagent cabinet: "+id);
+  assert.ok(entry.sourceUrl.startsWith("https://"),"Missing source: "+id);
+  assert.ok(has(entry.value),"Non-numeric measurement: "+id);
+  const actual=entry.property==="crystalDensityGPerMl"?
+   material.LAB_CRYSTAL_DENSITY_G_ML[entry.formula]:
+   entry.property==="specificHeatJPerGK"?
+    heat.LAB_CALORIMETRY_REFERENCE[entry.formula]?.specificJPerGK:
+    thermal.LAB_THERMAL_REFERENCE[entry.formula]?.[entry.property];
+  assert.ok(has(actual)&&Math.abs(actual-entry.value)<.000001,
+   "Measurement differs from actual lab property registry: "+id);
+  if(entry.property==="specificHeatJPerGK")
+   assert.equal(heat.LAB_CALORIMETRY_REFERENCE[entry.formula]?.phase,"solid");
+  if(["decompositionC","sublimationC"].includes(entry.property))
+   assert.equal(thermal.LAB_THERMAL_REFERENCE[entry.formula]?.behavior,
+    entry.property==="decompositionC"?"decomposes":"sublimes",
+    "Must explicitly distinguish chemical change from fusion/boiling: "+id);
+ }
  assert.ok(hydrateKnownCells>0);
  assert.ok(producedOnly.every(x=>x.molarMassKnown),
   "Every existing reviewed product must have a calculable formula mass");
@@ -244,6 +272,9 @@ if(process.argv.includes("--json")){
  for(const [key,v] of Object.entries(counted))
   lines.push("| "+labels[key]+" | "+v.filled+" | "+v.remaining+" | "+v.eligible+" |");
  lines.push("",
+  "Проверенных записей с индивидуальным источником (текущая партия): "+
+  rawTotals.curatedSourceCheckedProperties+".",
+  "",
   "Кристаллогидраты: "+rawTotals.hydrateReferenceVariants+
   " отдельных форм у "+rawTotals.hydrateReferenceCabinetBases+
   " веществ в шкафу (всего формул-оснований "+
@@ -275,6 +306,8 @@ if(process.argv.includes("--json")){
    v.firstMissing.slice(0,14).join(", ")+")");
  console.log("Unique stock formulas with applicable gaps: "+
   report.stockWithOutstandingProperties);
+ console.log("Source-checked individual property records: "+
+  rawTotals.curatedSourceCheckedProperties);
  console.log("Hydrate reference: "+
   rawTotals.hydrateReferenceVariants+" distinct hydrate phases, "+
   rawTotals.hydrateReferenceCabinetBases+" cabinet formulas out of "+
